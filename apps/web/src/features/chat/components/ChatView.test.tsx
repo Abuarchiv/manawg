@@ -16,7 +16,7 @@ vi.mock('@/components/wg/WgContextProvider', () => ({
 	}),
 }));
 
-vi.mock('@/components/wg/chat/ChatComposer', () => ({
+vi.mock('./ChatComposer', () => ({
 	ChatComposer: ({
 		onSend,
 	}: {
@@ -42,7 +42,7 @@ vi.mock('@/components/wg/chat/ChatComposer', () => ({
 	),
 }));
 
-vi.mock('@/components/wg/chat/MessageList', () => ({
+vi.mock('./MessageList', () => ({
 	MessageList: ({
 		messages,
 		onDelete,
@@ -78,7 +78,7 @@ vi.mock('@/components/wg/chat/MessageList', () => ({
 	),
 }));
 
-vi.mock('@/components/wg/chat/TypingIndicator', () => ({
+vi.mock('./TypingIndicator', () => ({
 	TypingIndicator: () => null,
 }));
 
@@ -90,7 +90,7 @@ vi.mock('@manawg/shared/lib/haptics', () => ({
 	haptic: vi.fn(),
 }));
 
-vi.mock('@/lib/realtime/chat-channel', () => ({
+vi.mock('../chat-channel', () => ({
 	useChatChannel: (_wgId: string, handlers: { onMessageCreated: () => void }) => {
 		chatChannelMock.handlers = handlers;
 		return { mode: 'off' };

@@ -8,7 +8,7 @@ import {
 	parseMentions,
 	previewBody,
 	sanitizeMessageBody,
-} from '@/lib/wg/chat-pure';
+} from './chat-pure';
 
 const MS_PER_MIN = 60_000;
 

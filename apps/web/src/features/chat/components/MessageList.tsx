@@ -1,13 +1,9 @@
 'use client';
 
-import {
-	type BubbleMessage,
-	MessageBubble,
-	type ReactionSummary,
-} from '@/components/wg/chat/MessageBubble';
-import { SystemMessage } from '@/components/wg/chat/SystemMessage';
-import { groupMessagesByDay } from '@/lib/wg/chat-pure';
 import { useEffect, useRef } from 'react';
+import { groupMessagesByDay } from '../chat-pure';
+import { type BubbleMessage, MessageBubble, type ReactionSummary } from './MessageBubble';
+import { SystemMessage } from './SystemMessage';
 
 const PAGE_SIZE = 50;
 

@@ -15,7 +15,7 @@ vi.mock('@/core/db', () => ({
 
 vi.mock('server-only', () => ({}));
 
-import { appendSystemMessage } from '@/lib/wg/chat-server';
+import { appendSystemMessage } from '@/features/chat/chat-server';
 
 describe('appendSystemMessage', () => {
 	it('inserts a system row and returns it', async () => {

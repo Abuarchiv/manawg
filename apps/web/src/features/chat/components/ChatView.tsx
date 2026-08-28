@@ -2,16 +2,16 @@
 
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { ChatComposer } from '@/components/wg/chat/ChatComposer';
-import type { BubbleMessage, ReactionSummary } from '@/components/wg/chat/MessageBubble';
-import { MessageList } from '@/components/wg/chat/MessageList';
-import { TypingIndicator } from '@/components/wg/chat/TypingIndicator';
 import { apiFetch } from '@/core/infra/api-client';
-import { useChatChannel } from '@/lib/realtime/chat-channel';
-import { mergePagedMessagesById, mergePagedReactions, previewBody } from '@/lib/wg/chat-pure';
 import { haptic } from '@manawg/shared/lib/haptics';
 import { ChevronDown, MessageCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useChatChannel } from '../chat-channel';
+import { mergePagedMessagesById, mergePagedReactions, previewBody } from '../chat-pure';
+import { ChatComposer } from './ChatComposer';
+import type { BubbleMessage, ReactionSummary } from './MessageBubble';
+import { MessageList } from './MessageList';
+import { TypingIndicator } from './TypingIndicator';
 
 interface ChatMessageDto extends BubbleMessage {
 	wgId: string;
