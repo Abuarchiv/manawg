@@ -45,10 +45,12 @@ interface OfflineActionRisk {
 }
 
 /**
- * Per-type behavior for the offline queue. Each mutation domain (shopping,
- * chores, expenses, ...) currently registers its handler right here in
- * core/offline; once feature slices exist, a domain's handler moves into
- * features/<name>/offline.ts and registers itself from there instead.
+ * Per-type behavior for the offline queue. Registered here in core rather
+ * than split across features/<name>/offline.ts: the queue mechanism itself
+ * (types, retry/staleness logic, request building) is one small, cohesive
+ * unit, and splitting the ~9 handlers out would need a bootstrap module to
+ * import every feature's offline.ts just for its registration side effect —
+ * indirection with no reader benefit over this single table.
  */
 interface OfflineActionHandler {
 	buildRequest(action: OfflineAction): OfflineActionRequest;

@@ -8,7 +8,7 @@
 		"vercel-build": "node scripts/db-migrate.mjs && next build",
 		"start": "next start",
 		"typecheck": "tsc --noEmit",
-		"lint": "biome check .",
+		"lint": "biome check . && node scripts/check-feature-boundaries.mjs",
 		"test": "NODE_OPTIONS=--no-experimental-webstorage vitest run",
 		"test:watch": "NODE_OPTIONS=--no-experimental-webstorage vitest",
 		"test:coverage": "NODE_OPTIONS=--no-experimental-webstorage vitest run --coverage",
