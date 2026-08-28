@@ -1,5 +1,5 @@
 import { E2E_EXISTING_WG } from '@/core/infra/e2e-db-down';
-import { EVENTS_LIST_LIMIT } from '@/lib/wg/events';
+import { EVENTS_LIST_LIMIT } from '@/features/events/events';
 import { boundParams, resetRouteHarness, routeDb, routeMocks } from '@/test/route-harness';
 import { MEMBER_ID_HEADER } from '@manawg/shared/lib/member-header';
 import { NextRequest } from 'next/server';

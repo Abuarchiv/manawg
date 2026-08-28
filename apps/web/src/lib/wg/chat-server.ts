@@ -1,19 +1,7 @@
-import 'server-only';
-
-import { type WgChatMessage, db, wgChatMessages } from '@/core/db';
-import { type AppendSystemMessageInput, SYSTEM_MESSAGE_KIND } from './chat-pure';
-
-export async function appendSystemMessage(input: AppendSystemMessageInput): Promise<WgChatMessage> {
-	const [row] = await db
-		.insert(wgChatMessages)
-		.values({
-			wgId: input.wgId,
-			senderMemberId: null,
-			kind: SYSTEM_MESSAGE_KIND,
-			systemKind: input.kind,
-			systemPayload: input.payload,
-		})
-		.returning();
-	if (!row) throw new Error('chat_system_insert_failed');
-	return row;
-}
+// Backward-compat shim: src/lib/wg/expenses.ts (owned by a parallel expense-feature
+// extraction, out of scope here) imports `appendSystemMessage` directly to post a
+// chat system message when an expense is settled. The real implementation now
+// lives in features/chat. Remove this shim once expenses.ts's own extraction
+// either imports from features/chat directly or routes the write through
+// @/core (mirroring @/core/activity-feed.ts's postSystemNotice pattern).
+export { appendSystemMessage } from '@/features/chat/chat-server';

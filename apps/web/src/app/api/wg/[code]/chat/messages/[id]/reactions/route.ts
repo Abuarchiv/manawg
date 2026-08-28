@@ -4,7 +4,7 @@ import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { isSingleEmoji } from '@/lib/wg/chat-pure';
+import { isSingleEmoji } from '@/features/chat/chat-pure';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 

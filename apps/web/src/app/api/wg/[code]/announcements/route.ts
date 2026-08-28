@@ -16,7 +16,7 @@ import {
 	ANNOUNCEMENT_KINDS,
 	ANNOUNCEMENT_SOURCES,
 	summarizeAnnouncementReactions,
-} from '@/lib/announcement-workflow';
+} from '@/features/pinnwand/announcement-workflow';
 import { asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

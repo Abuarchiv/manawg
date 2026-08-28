@@ -10,7 +10,7 @@ const rateLimitMock = vi.hoisted(() => ({
 	checkRateLimit: vi.fn(),
 }));
 
-vi.mock('@/lib/announcement-workflow', () => ({
+vi.mock('@/features/pinnwand/announcement-workflow', () => ({
 	ANNOUNCEMENT_KINDS: ['info', 'request', 'event'],
 }));
 

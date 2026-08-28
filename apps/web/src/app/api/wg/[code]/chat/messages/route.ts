@@ -7,7 +7,7 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { chatMessageLimiter, checkRateLimit } from '@/core/rate-limit';
 import { imageUrlSchema } from '@/core/validators/image-url';
-import { previewBody, sanitizeMessageBody } from '@/lib/wg/chat-pure';
+import { previewBody, sanitizeMessageBody } from '@/features/chat/chat-pure';
 import { and, desc, eq, inArray, isNull, lt, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

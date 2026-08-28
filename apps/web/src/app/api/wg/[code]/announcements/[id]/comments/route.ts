@@ -12,7 +12,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { findWgAnnouncement } from '@/lib/wg/announcement-lookup';
+import { findWgAnnouncement } from '@/features/pinnwand/announcement-lookup';
 import { and, asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

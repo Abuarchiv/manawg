@@ -25,11 +25,11 @@ vi.mock('@/core/rate-limit', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/lib/wg/absence', () => ({
+vi.mock('@/features/chores/absence', () => ({
 	getAbsentMemberIds: (...args: unknown[]) => absenceMock.getAbsentMemberIds(...args),
 }));
 
-vi.mock('@/lib/wg/chore-fairness', () => ({
+vi.mock('@/features/chores/chore-fairness', () => ({
 	chooseNextAvailableMember: (...args: unknown[]) =>
 		fairnessMock.chooseNextAvailableMember(...args),
 	computeOpenGapsByMember: (...args: unknown[]) => fairnessMock.computeOpenGapsByMember(...args),
