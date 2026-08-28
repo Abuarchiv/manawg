@@ -8,10 +8,6 @@ import {
 } from '@/components/ui/styles';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { ListSkeleton } from '@/components/wg/einkauf/ListSkeleton';
-import { ShoppingItemRow } from '@/components/wg/einkauf/ShoppingItemRow';
-import { NAME_MAX, QUANTITY_MAX, QUICK_SHOPPING_ITEMS } from '@/components/wg/einkauf/constants';
-import type { MemberInfo, ShoppingItem } from '@/components/wg/einkauf/shopping-types';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
@@ -26,11 +22,19 @@ import {
 import { formatQueuedOfflineEntries } from '@/core/offline/offline-copy';
 import { createQueuedShoppingItem, createQueuedShoppingUpdate } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
+import { ListSkeleton } from '@/features/shopping/components/ListSkeleton';
+import { ShoppingItemRow } from '@/features/shopping/components/ShoppingItemRow';
+import {
+	NAME_MAX,
+	QUANTITY_MAX,
+	QUICK_SHOPPING_ITEMS,
+} from '@/features/shopping/components/constants';
+import type { MemberInfo, ShoppingItem } from '@/features/shopping/components/shopping-types';
 import {
 	clearBoughtErrorMessage,
 	shoppingActionErrorMessage,
 	shoppingAddErrorMessage,
-} from '@/lib/wg/shopping-errors';
+} from '@/features/shopping/shopping-errors';
 import { ListChecks, Loader2, Plus, RotateCw, Settings, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';

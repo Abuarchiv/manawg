@@ -1,11 +1,11 @@
 'use client';
 
 import { ALERT_DANGER_ROW, ICON_BUTTON_BORDERED } from '@/components/ui/styles';
-import { InventoryList } from '@/components/wg/InventoryList';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { apiFetch } from '@/core/infra/api-client';
-import type { InventoryCategory, InventoryItemDto } from '@/lib/wg/inventory';
+import { InventoryList } from '@/features/inventory/components/InventoryList';
+import type { InventoryCategory, InventoryItemDto } from '@/features/inventory/inventory';
 import { Loader2, RotateCw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 

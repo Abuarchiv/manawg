@@ -91,7 +91,7 @@ describe('event reminders cron route', () => {
 	});
 
 	it('computes horizonStart via UTC year subtraction (stable across calendar years)', async () => {
-		const { computeHorizonStart } = await import('@/lib/wg/event-reminder-window');
+		const { computeHorizonStart } = await import('@/features/events/event-reminder-window');
 		const nonLeap = new Date(Date.UTC(2026, 4, 24, 12, 0, 0));
 		const horizon = computeHorizonStart(nonLeap);
 		expect(horizon.getUTCFullYear()).toBe(2024);
@@ -115,7 +115,7 @@ describe('event reminders cron route', () => {
 	});
 
 	it('computes the reminder tomorrow window on Berlin calendar days', async () => {
-		const { computeTomorrowUtcWindow } = await import('@/lib/wg/event-reminder-window');
+		const { computeTomorrowUtcWindow } = await import('@/features/events/event-reminder-window');
 		// Summer (CEST, UTC+2): Berlin midnight = 22:00 UTC of the previous day.
 		const summer = computeTomorrowUtcWindow(new Date('2026-05-24T22:30:00.000Z'));
 		expect(summer.start.toISOString()).toBe('2026-05-25T22:00:00.000Z');

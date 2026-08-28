@@ -1,23 +1,26 @@
 'use client';
 
 import { ALERT_DANGER } from '@/components/ui/styles';
-import { CalendarMonth } from '@/components/wg/CalendarMonth';
-import { CalendarUpcomingList } from '@/components/wg/CalendarUpcomingList';
-import { type CreateEventPayload, EventCreateModal } from '@/components/wg/EventCreateModal';
+import { useWg } from '@/components/wg/WgContextProvider';
+import { apiFetch } from '@/core/infra/api-client';
+import { MS_PER_DAY } from '@/core/utils/time';
+import { CalendarMonth } from '@/features/events/components/CalendarMonth';
+import { CalendarUpcomingList } from '@/features/events/components/CalendarUpcomingList';
+import {
+	type CreateEventPayload,
+	EventCreateModal,
+} from '@/features/events/components/EventCreateModal';
 import {
 	type EditableEvent,
 	EventEditModal,
 	type UpdateEventPayload,
-} from '@/components/wg/EventEditModal';
-import { useWg } from '@/components/wg/WgContextProvider';
-import { apiFetch } from '@/core/infra/api-client';
-import { MS_PER_DAY } from '@/core/utils/time';
+} from '@/features/events/components/EventEditModal';
 import {
 	type EventInput,
 	type EventOccurrence,
 	expandRecurrence,
 	getMonthBounds,
-} from '@/lib/wg/events';
+} from '@/features/events/events';
 import { haptic } from '@manawg/shared/lib/haptics';
 import { CalendarDays, List, Plus, RotateCw } from 'lucide-react';
 import Link from 'next/link';

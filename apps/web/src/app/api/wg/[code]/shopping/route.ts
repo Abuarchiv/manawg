@@ -1,5 +1,6 @@
+import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
-import { announcements, db, shoppingItems } from '@/core/db';
+import { db, shoppingItems } from '@/core/db';
 import { badRequest, conflict, serverError, tooMany } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -114,18 +115,14 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 			quantity: safeQuantity,
 		},
 	});
-	try {
-		await db.insert(announcements).values({
-			wgId: wg.id,
-			authorMemberId: addedBy,
-			kind: 'request',
-			source: 'shopping',
-			sourcePath: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
-			content: `${auth.member.name} hat ${safeQuantity ? `${name} (${safeQuantity})` : name} auf die Einkaufsliste gesetzt.`,
-		});
-	} catch (announcementErr) {
-		console.warn('[shopping POST] system announcement failed', announcementErr);
-	}
+	await postSystemNotice({
+		wgId: wg.id,
+		authorMemberId: addedBy,
+		kind: 'request',
+		source: 'shopping',
+		sourcePath: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
+		content: `${auth.member.name} hat ${safeQuantity ? `${name} (${safeQuantity})` : name} auf die Einkaufsliste gesetzt.`,
+	});
 	void dispatchNotification({
 		wg,
 		event: 'shopping.added',

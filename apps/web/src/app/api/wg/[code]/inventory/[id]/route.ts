@@ -10,7 +10,7 @@ import {
 	INVENTORY_LIMITS,
 	INVENTORY_UNITS,
 	clampQuantity,
-} from '@/lib/wg/inventory';
+} from '@/features/inventory/inventory';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

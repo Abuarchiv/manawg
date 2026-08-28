@@ -9,7 +9,7 @@ import {
 	INVENTORY_UNITS,
 	type InventoryCategory,
 	type InventoryUnit,
-} from '@/lib/wg/inventory';
+} from '@/features/inventory/inventory';
 import { useFocusTrap } from '@manawg/shared/lib/hooks/useFocusTrap';
 import { Loader2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';

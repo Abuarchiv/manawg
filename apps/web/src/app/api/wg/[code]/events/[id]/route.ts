@@ -6,7 +6,11 @@ import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
-import { formatRecurrenceRule, parseRecurrenceRule, serializeWgEvent } from '@/lib/wg/events';
+import {
+	formatRecurrenceRule,
+	parseRecurrenceRule,
+	serializeWgEvent,
+} from '@/features/events/events';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

@@ -1,7 +1,7 @@
 'use client';
 
 import { EMPTY_PLACEHOLDER, LIST_CARD } from '@/components/ui/styles';
-import { type EventOccurrence, formatEventTimeRange } from '@/lib/wg/events';
+import { type EventOccurrence, formatEventTimeRange } from '@/features/events/events';
 import { CalendarClock, Pencil, Sparkles } from 'lucide-react';
 
 interface CalendarUpcomingListProps {

@@ -1,6 +1,6 @@
 'use client';
 
-import type { EventOccurrence } from '@/lib/wg/events';
+import type { EventOccurrence } from '@/features/events/events';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 

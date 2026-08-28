@@ -2,7 +2,7 @@
 
 import { DeleteConfirmButton } from '@/components/ui/DeleteConfirmButton';
 import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
-import type { MemberInfo, ShoppingItem } from '@/components/wg/einkauf/shopping-types';
+import type { MemberInfo, ShoppingItem } from '@/features/shopping/components/shopping-types';
 import { Check, Loader2, Receipt } from 'lucide-react';
 import Link from 'next/link';
 import { memo } from 'react';

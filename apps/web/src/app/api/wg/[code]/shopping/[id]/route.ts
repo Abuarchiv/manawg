@@ -1,5 +1,6 @@
+import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
-import { announcements, db, shoppingItems } from '@/core/db';
+import { db, shoppingItems } from '@/core/db';
 import { badRequest, forbidden, notFound, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
@@ -67,18 +68,14 @@ export const PATCH = withWgRoute<{ id: string }>('shopping PATCH', async (req, {
 		metadata: { name: updated.name },
 	});
 	if (isBought) {
-		try {
-			await db.insert(announcements).values({
-				wgId,
-				authorMemberId: auth.member.memberId,
-				kind: 'info',
-				source: 'shopping',
-				sourcePath: `/einkauf?highlight=${encodeURIComponent(updated.id)}`,
-				content: `${auth.member.name} hat ${updated.name} gekauft.`,
-			});
-		} catch (announcementErr) {
-			console.warn('[shopping PATCH] system announcement failed', announcementErr);
-		}
+		await postSystemNotice({
+			wgId,
+			authorMemberId: auth.member.memberId,
+			kind: 'info',
+			source: 'shopping',
+			sourcePath: `/einkauf?highlight=${encodeURIComponent(updated.id)}`,
+			content: `${auth.member.name} hat ${updated.name} gekauft.`,
+		});
 	}
 	return NextResponse.json({ item: updated });
 });

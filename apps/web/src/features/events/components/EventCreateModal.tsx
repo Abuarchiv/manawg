@@ -1,8 +1,12 @@
 'use client';
 
 import { ALERT_DANGER, FIELD_INPUT, ICON_BUTTON } from '@/components/ui/styles';
-import { EventFormFields } from '@/components/wg/EventFormFields';
-import { type RecurrenceFreq, formatRecurrenceRule, validateEventForm } from '@/lib/wg/events';
+import { EventFormFields } from '@/features/events/components/EventFormFields';
+import {
+	type RecurrenceFreq,
+	formatRecurrenceRule,
+	validateEventForm,
+} from '@/features/events/events';
 import { useFocusTrap } from '@manawg/shared/lib/hooks/useFocusTrap';
 import { Loader2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
