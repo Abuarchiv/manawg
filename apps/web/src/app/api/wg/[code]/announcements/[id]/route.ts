@@ -7,7 +7,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { ANNOUNCEMENT_KINDS } from '@/lib/announcement-workflow';
+import { ANNOUNCEMENT_KINDS } from '@/features/pinnwand/announcement-workflow';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

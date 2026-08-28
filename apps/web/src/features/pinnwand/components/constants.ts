@@ -1,5 +1,5 @@
-import type { AnnouncementKind } from '@/components/wg/pinnwand/announcement-types';
-import type { AnnouncementFilter } from '@/lib/announcement-workflow';
+import type { AnnouncementFilter } from '@/features/pinnwand/announcement-workflow';
+import type { AnnouncementKind } from '@/features/pinnwand/components/announcement-types';
 
 export const CONTENT_MAX = 2000;
 export const REFRESH_INTERVAL_MS = 30_000;
