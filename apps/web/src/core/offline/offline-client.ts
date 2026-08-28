@@ -1,7 +1,7 @@
 'use client';
 
 import { apiFetch } from '@/core/infra/api-client';
-import { isPendingImageToken, uploadPendingImageToken } from '@/lib/wg/offline-images';
+import { isPendingImageToken, uploadPendingImageToken } from './offline-images';
 import {
 	type OfflineAction,
 	type OfflineActionType,
@@ -9,7 +9,7 @@ import {
 	getOfflineActionRequest,
 	serializeOfflineAction,
 	shouldRetryOfflineAction,
-} from '@/lib/wg/offline-queue';
+} from './offline-queue';
 
 export const OFFLINE_QUEUE_KEY = 'manawg:offline-actions';
 export const SYNCED_IDS_KEY = 'manawg:offline-synced-ids';

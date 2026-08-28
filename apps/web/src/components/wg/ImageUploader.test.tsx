@@ -14,7 +14,7 @@ vi.mock('@/components/wg/WgContextProvider', () => ({
 	}),
 }));
 
-vi.mock('@/lib/wg/offline-images', () => ({
+vi.mock('@/core/offline/offline-images', () => ({
 	isPendingImageToken: (value: string | null | undefined) =>
 		Boolean(value?.startsWith('manawg-pending-image:')),
 	readPendingImage: imageStoreMock.readPendingImage,

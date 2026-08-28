@@ -1,6 +1,6 @@
 'use client';
 
-import { formatQueuedOfflineActions } from '@/lib/wg/offline-copy';
+import { formatQueuedOfflineActions } from '@/core/offline/offline-copy';
 
 /**
  * "N Änderungen warten auf Synchronisierung" — shown while the offline queue

@@ -28,12 +28,23 @@ import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
+import { removeDraft } from '@/core/offline/drafts';
+import {
+	enqueueOfflineAction,
+	readOfflineQueue,
+	syncOfflineActions,
+	writeOfflineQueue,
+} from '@/core/offline/offline-client';
+import {
+	type OfflineActionType,
+	createQueuedExpense,
+	createQueuedRecurring,
+} from '@/core/offline/offline-queue';
+import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import { parseTimestamp } from '@/core/utils/time';
-import { useOfflineQueueSync } from '@/lib/hooks/useOfflineQueueSync';
 import { buildSettlementSummary, computeDirectDebts } from '@/lib/wg/debt-reduction';
-import { removeDraft } from '@/lib/wg/drafts';
 import {
 	expenseActionErrorMessage,
 	expenseSaveErrorMessage,
@@ -48,17 +59,6 @@ import {
 	payerOptions,
 	splitCandidates,
 } from '@/lib/wg/expense-split-input';
-import {
-	enqueueOfflineAction,
-	readOfflineQueue,
-	syncOfflineActions,
-	writeOfflineQueue,
-} from '@/lib/wg/offline-client';
-import {
-	type OfflineActionType,
-	createQueuedExpense,
-	createQueuedRecurring,
-} from '@/lib/wg/offline-queue';
 import { addMonths } from '@/lib/wg/recurring-expenses';
 import { haptic } from '@manawg/shared/lib/haptics';
 import { Loader2, Receipt, RotateCw } from 'lucide-react';

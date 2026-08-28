@@ -14,7 +14,7 @@ vi.mock('@manawg/shared/lib/identity', () => ({
 	getKnownWgs: () => identityMock.getKnownWgs(),
 }));
 
-vi.mock('@/lib/wg/offline-client', () => ({
+vi.mock('@/core/offline/offline-client', () => ({
 	readOfflineQueue: () => offlineClientMock.readOfflineQueue(),
 	syncOfflineActions: (...args: unknown[]) => offlineClientMock.syncOfflineActions(...args),
 }));

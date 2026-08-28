@@ -2,7 +2,7 @@
 
 import { IdentityPicker } from '@/components/wg/IdentityPicker';
 import { apiFetch } from '@/core/infra/api-client';
-import { countOfflineActions, syncOfflineActions } from '@/lib/wg/offline-client';
+import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import {
 	type StoredIdentity,
 	clearIdentity,

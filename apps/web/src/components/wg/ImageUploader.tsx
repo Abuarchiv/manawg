@@ -7,7 +7,7 @@ import {
 	removePendingImage,
 	storePendingImage,
 	uploadPendingImageToken,
-} from '@/lib/wg/offline-images';
+} from '@/core/offline/offline-images';
 import { memberAuthHeader } from '@manawg/shared/lib/identity';
 import { AlertTriangle, ImagePlus, Loader2, Maximize2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';

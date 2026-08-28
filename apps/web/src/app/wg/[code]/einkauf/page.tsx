@@ -16,16 +16,16 @@ import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
-import { useOfflineQueueSync } from '@/lib/hooks/useOfflineQueueSync';
-import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/lib/wg/drafts';
+import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import {
 	enqueueOfflineAction,
 	readOfflineQueue,
 	syncOfflineActions,
 	writeOfflineQueue,
-} from '@/lib/wg/offline-client';
-import { formatQueuedOfflineEntries } from '@/lib/wg/offline-copy';
-import { createQueuedShoppingItem, createQueuedShoppingUpdate } from '@/lib/wg/offline-queue';
+} from '@/core/offline/offline-client';
+import { formatQueuedOfflineEntries } from '@/core/offline/offline-copy';
+import { createQueuedShoppingItem, createQueuedShoppingUpdate } from '@/core/offline/offline-queue';
+import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import {
 	clearBoughtErrorMessage,
 	shoppingActionErrorMessage,

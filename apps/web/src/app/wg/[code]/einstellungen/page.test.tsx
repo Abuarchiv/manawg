@@ -46,7 +46,7 @@ vi.mock('@/core/infra/api-client', () => ({
 	apiFetch: (...args: unknown[]) => apiClientMock.apiFetch(...args),
 }));
 
-vi.mock('@/lib/wg/offline-client', () => ({
+vi.mock('@/core/offline/offline-client', () => ({
 	readOfflineQueue: (...args: unknown[]) => offlineClientMock.readOfflineQueue(...args),
 	syncOfflineActions: (...args: unknown[]) => offlineClientMock.syncOfflineActions(...args),
 	writeOfflineQueue: (...args: unknown[]) => offlineClientMock.writeOfflineQueue(...args),

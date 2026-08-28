@@ -1,12 +1,12 @@
 'use client';
 
 import { useWg } from '@/components/wg/WgContextProvider';
-import { countOfflineActions, syncOfflineActions } from '@/lib/wg/offline-client';
+import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import {
 	formatManualOfflineSyncResult,
 	formatQueuedOfflineActions,
 	getOfflineSyncFailureMessage,
-} from '@/lib/wg/offline-copy';
+} from '@/core/offline/offline-copy';
 import { AlertCircle, CheckCircle2, Loader2, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';

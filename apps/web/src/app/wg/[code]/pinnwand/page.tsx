@@ -26,6 +26,16 @@ import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
+import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
+import {
+	enqueueOfflineAction,
+	readOfflineQueue,
+	syncOfflineActions,
+	writeOfflineQueue,
+} from '@/core/offline/offline-client';
+import { isPendingImageToken } from '@/core/offline/offline-images';
+import { createQueuedAnnouncement } from '@/core/offline/offline-queue';
+import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import {
 	type AnnouncementFilter,
@@ -34,21 +44,11 @@ import {
 	getMyOpenAnnouncements,
 	getNewAnnouncementCount,
 } from '@/lib/announcement-workflow';
-import { useOfflineQueueSync } from '@/lib/hooks/useOfflineQueueSync';
 import {
 	announcementActionErrorMessage,
 	announcementCreateErrorMessage,
 	commentActionErrorMessage,
 } from '@/lib/wg/announcement-errors';
-import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/lib/wg/drafts';
-import {
-	enqueueOfflineAction,
-	readOfflineQueue,
-	syncOfflineActions,
-	writeOfflineQueue,
-} from '@/lib/wg/offline-client';
-import { isPendingImageToken } from '@/lib/wg/offline-images';
-import { createQueuedAnnouncement } from '@/lib/wg/offline-queue';
 import { Megaphone } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import type React from 'react';

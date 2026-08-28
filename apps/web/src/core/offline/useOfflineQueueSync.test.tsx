@@ -7,7 +7,7 @@ const offlineMock = vi.hoisted(() => ({
 	syncOfflineActions: vi.fn(),
 }));
 
-vi.mock('@/lib/wg/offline-client', () => ({
+vi.mock('@/core/offline/offline-client', () => ({
 	countOfflineActions: (...args: unknown[]) => offlineMock.countOfflineActions(...args),
 	syncOfflineActions: (...args: unknown[]) => offlineMock.syncOfflineActions(...args),
 }));

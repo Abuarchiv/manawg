@@ -1,8 +1,8 @@
 'use client';
 
 import { captureException } from '@/core/infra/observability';
-import { countOfflineActions, syncOfflineActions } from '@/lib/wg/offline-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { countOfflineActions, syncOfflineActions } from './offline-client';
 
 interface UseOfflineQueueSyncOptions {
 	shareCode: string;

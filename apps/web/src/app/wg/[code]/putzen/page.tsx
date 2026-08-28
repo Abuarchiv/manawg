@@ -26,6 +26,20 @@ import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
+import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
+import {
+	enqueueOfflineAction,
+	readOfflineQueue,
+	syncOfflineActions,
+	writeOfflineQueue,
+} from '@/core/offline/offline-client';
+import {
+	type OfflineActionType,
+	createQueuedAbsence,
+	createQueuedChore,
+	createQueuedChoreCompletion,
+} from '@/core/offline/offline-queue';
+import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { MS_PER_DAY } from '@/core/utils/time';
 import {
 	getChorePlanHealth,
@@ -33,25 +47,11 @@ import {
 	getChoreStatus,
 	suggestChoreAssignee,
 } from '@/lib/chore-status';
-import { useOfflineQueueSync } from '@/lib/hooks/useOfflineQueueSync';
 import { getAbsentMemberIds } from '@/lib/wg/absence';
 import type { AbsenceInput } from '@/lib/wg/absence';
 import { absenceSaveErrorMessage, choreCreateErrorMessage } from '@/lib/wg/chore-errors';
 import { buildChoreFairness } from '@/lib/wg/chore-fairness';
 import { getChoreHighlightPath } from '@/lib/wg/chore-links';
-import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/lib/wg/drafts';
-import {
-	enqueueOfflineAction,
-	readOfflineQueue,
-	syncOfflineActions,
-	writeOfflineQueue,
-} from '@/lib/wg/offline-client';
-import {
-	type OfflineActionType,
-	createQueuedAbsence,
-	createQueuedChore,
-	createQueuedChoreCompletion,
-} from '@/lib/wg/offline-queue';
 import { Sparkles } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

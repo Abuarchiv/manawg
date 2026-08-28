@@ -9,7 +9,7 @@ import {
 	joinErrorMessage,
 	shouldFallbackToDirectJoin,
 } from '@/core/infra/join-flow';
-import { readDraft, removeDraft, writeDraft } from '@/lib/wg/drafts';
+import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { LogoMark } from '@manawg/shared/components/ui/LogoMark';
 import {
 	type KnownWg,

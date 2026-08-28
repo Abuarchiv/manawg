@@ -1,10 +1,10 @@
 'use client';
 
+import { buildDraftKey, readDraft, writeDraft } from '@/core/offline/drafts';
+import type { OfflineActionType } from '@/core/offline/offline-queue';
 import { formatEuroInput } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
-import { buildDraftKey, readDraft, writeDraft } from '@/lib/wg/drafts';
 import { buildExpensePrefillDraft } from '@/lib/wg/expense-prefill';
-import type { OfflineActionType } from '@/lib/wg/offline-queue';
 import { distributeCentsEqually } from '@/lib/wg/split-math';
 import { useEffect, useRef, useState } from 'react';
 import { DESCRIPTION_MAX, type QUICK_EXPENSE_TEMPLATES } from './constants';

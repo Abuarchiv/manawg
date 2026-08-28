@@ -1,13 +1,16 @@
 'use client';
 
-import { parseTimestamp } from '@/core/utils/time';
-import { readOfflineQueue, syncOfflineActions } from '@/lib/wg/offline-client';
-import { formatManualOfflineSyncResult, getOfflineSyncFailureMessage } from '@/lib/wg/offline-copy';
+import { readOfflineQueue, syncOfflineActions } from '@/core/offline/offline-client';
+import {
+	formatManualOfflineSyncResult,
+	getOfflineSyncFailureMessage,
+} from '@/core/offline/offline-copy';
 import {
 	type OfflineAction,
 	getOfflineActionRisk,
 	getOfflineActionSummary,
-} from '@/lib/wg/offline-queue';
+} from '@/core/offline/offline-queue';
+import { parseTimestamp } from '@/core/utils/time';
 import { type KnownWg, getKnownWgs } from '@manawg/shared/lib/identity';
 import { ArrowRight, CheckCircle2, CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
 import Link from 'next/link';

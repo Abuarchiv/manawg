@@ -9,19 +9,23 @@ import {
 	buildQueueEditHref,
 	readDraft,
 	writeDraft,
-} from '@/lib/wg/drafts';
-import { readOfflineQueue, syncOfflineActions, writeOfflineQueue } from '@/lib/wg/offline-client';
+} from '@/core/offline/drafts';
+import {
+	readOfflineQueue,
+	syncOfflineActions,
+	writeOfflineQueue,
+} from '@/core/offline/offline-client';
 import {
 	formatRecurringAdvanceConflictNote,
 	formatRecurringTemplateConflictNote,
-} from '@/lib/wg/offline-conflicts';
-import { formatOfflineQueueCount } from '@/lib/wg/offline-copy';
+} from '@/core/offline/offline-conflicts';
+import { formatOfflineQueueCount } from '@/core/offline/offline-copy';
 import {
 	type OfflineAction,
 	explainOfflineActionFailure,
 	getOfflineActionRisk,
 	getOfflineActionSummary,
-} from '@/lib/wg/offline-queue';
+} from '@/core/offline/offline-queue';
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 

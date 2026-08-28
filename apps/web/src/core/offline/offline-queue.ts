@@ -44,6 +44,36 @@ interface OfflineActionRisk {
 	detail: string;
 }
 
+/**
+ * Per-type behavior for the offline queue. Each mutation domain (shopping,
+ * chores, expenses, ...) currently registers its handler right here in
+ * core/offline; once feature slices exist, a domain's handler moves into
+ * features/<name>/offline.ts and registers itself from there instead.
+ */
+interface OfflineActionHandler {
+	buildRequest(action: OfflineAction): OfflineActionRequest;
+	summary(action: OfflineAction): OfflineActionSummary;
+	/** "Check before resending" hint shown once an action is stale or has already failed once. */
+	risk(action: OfflineAction): OfflineActionRisk;
+}
+
+const offlineActionHandlers = new Map<OfflineActionType, OfflineActionHandler>();
+
+export function registerOfflineActionHandler(
+	type: OfflineActionType,
+	handler: OfflineActionHandler,
+): void {
+	offlineActionHandlers.set(type, handler);
+}
+
+function getOfflineActionHandler(type: OfflineActionType): OfflineActionHandler {
+	const handler = offlineActionHandlers.get(type);
+	if (!handler) {
+		throw new Error(`No offline action handler registered for type: ${type}`);
+	}
+	return handler;
+}
+
 interface QueuedShoppingInput {
 	shareCode: string;
 	memberId: string;
@@ -275,133 +305,176 @@ export function serializeOfflineAction(action: OfflineAction): string {
 }
 
 export function getOfflineActionRequest(action: OfflineAction): OfflineActionRequest {
-	const shareCode = pathSegment(action.shareCode);
-	switch (action.type) {
-		case 'shopping.create':
-			return {
-				path: `/api/wg/${shareCode}/shopping`,
-				method: 'POST',
-				body: { ...action.payload, addedByMemberId: action.memberId },
-			};
-		case 'shopping.update':
-			return {
-				path: `/api/wg/${shareCode}/shopping/${pathSegment(action.payload.itemId)}`,
-				method: 'PATCH',
-				body: { bought: action.payload.bought },
-			};
-		case 'announcement.create':
-			return {
-				path: `/api/wg/${shareCode}/announcements`,
-				method: 'POST',
-				body: Object.fromEntries(
-					Object.entries(action.payload).filter(([, value]) => value !== null),
-				),
-			};
-		case 'absence.create':
-			return {
-				path: `/api/wg/${shareCode}/absences`,
-				method: 'POST',
-				body: Object.fromEntries(
-					Object.entries(action.payload).filter(([, value]) => value !== null),
-				),
-			};
-		case 'chore.create':
-			return {
-				path: `/api/wg/${shareCode}/chores`,
-				method: 'POST',
-				body: action.payload,
-			};
-		case 'chore.complete':
-			return {
-				path: `/api/wg/${shareCode}/chores/${pathSegment(action.payload.choreId)}/complete`,
-				method: 'POST',
-				body: {},
-			};
-		case 'expense.create': {
-			const {
-				recurringExpenseId: _recurringExpenseId,
-				expectedRecurringNextDueAt: _expectedRecurringNextDueAt,
-				...expensePayload
-			} = action.payload;
-			return {
-				path: `/api/wg/${shareCode}/expenses`,
-				method: 'POST',
-				body: Object.fromEntries(
-					Object.entries(expensePayload).filter(([, value]) => value !== null),
-				),
-			};
-		}
-		case 'recurring.create':
-			return {
-				path: `/api/wg/${shareCode}/recurring-expenses`,
-				method: 'POST',
-				body: action.payload,
-			};
-		case 'recurring.advance':
-			return {
-				path: `/api/wg/${shareCode}/recurring-expenses`,
-				method: 'PATCH',
-				body: {
-					id: action.payload.recurringExpenseId,
-					...(typeof action.payload.expectedRecurringNextDueAt === 'string'
-						? { expectedNextDueAt: action.payload.expectedRecurringNextDueAt }
-						: {}),
-				},
-			};
-	}
+	return getOfflineActionHandler(action.type).buildRequest(action);
 }
 
 export function getOfflineActionSummary(action: OfflineAction): OfflineActionSummary {
-	switch (action.type) {
-		case 'shopping.create':
-			return {
-				title: 'Einkauf',
-				detail: String(action.payload.name ?? 'Neuer Artikel'),
-			};
-		case 'shopping.update':
-			return {
-				title: 'Einkauf',
-				detail: `${String(action.payload.name ?? 'Artikel')} ${
-					action.payload.bought === true ? 'abhaken' : 'wieder öffnen'
-				}`,
-			};
-		case 'announcement.create':
-			return {
-				title: 'Pinnwand-Beitrag',
-				detail: String(action.payload.content ?? 'Neuer Beitrag'),
-			};
-		case 'absence.create':
-			return {
-				title: 'Abwesenheit',
-				detail: 'Rotation überspringt diese Person',
-			};
-		case 'chore.create':
-			return {
-				title: 'Putzplan-Aufgabe',
-				detail: String(action.payload.title ?? 'Neue Aufgabe'),
-			};
-		case 'chore.complete':
-			return {
-				title: 'Putzplan',
-				detail: 'Aufgabe als erledigt markieren',
-			};
-		case 'expense.create':
-			return {
-				title: 'Ausgabe',
-				detail: String(action.payload.description ?? 'Neue Ausgabe'),
-			};
-		case 'recurring.create':
-			return {
-				title: 'Fixkosten-Vorlage',
-				detail: String(action.payload.description ?? 'Neue Vorlage'),
-			};
-		case 'recurring.advance':
-			return {
-				title: 'Fixkosten-Vorlage',
-				detail: 'Fälligkeit nachholen',
-			};
-	}
+	return getOfflineActionHandler(action.type).summary(action);
 }
+
+const STALE_ACTION_RISK: OfflineActionRisk = {
+	title: 'Vor dem Senden prüfen',
+	detail: 'Der Eintrag ist schon länger in der Warteschlange und könnte nicht mehr aktuell sein.',
+};
+
+registerOfflineActionHandler('shopping.create', {
+	buildRequest: (action) => ({
+		path: `/api/wg/${pathSegment(action.shareCode)}/shopping`,
+		method: 'POST',
+		body: { ...action.payload, addedByMemberId: action.memberId },
+	}),
+	summary: (action) => ({
+		title: 'Einkauf',
+		detail: String(action.payload.name ?? 'Neuer Artikel'),
+	}),
+	// No type-specific risk hint for this action; falls back to the generic staleness warning.
+	risk: () => STALE_ACTION_RISK,
+});
+
+registerOfflineActionHandler('shopping.update', {
+	buildRequest: (action) => ({
+		path: `/api/wg/${pathSegment(action.shareCode)}/shopping/${pathSegment(action.payload.itemId)}`,
+		method: 'PATCH',
+		body: { bought: action.payload.bought },
+	}),
+	summary: (action) => ({
+		title: 'Einkauf',
+		detail: `${String(action.payload.name ?? 'Artikel')} ${
+			action.payload.bought === true ? 'abhaken' : 'wieder öffnen'
+		}`,
+	}),
+	risk: () => ({
+		title: 'Status prüfen',
+		detail: 'Prüfe kurz, ob der Einkauf inzwischen von jemand anderem geändert wurde.',
+	}),
+});
+
+registerOfflineActionHandler('announcement.create', {
+	buildRequest: (action) => ({
+		path: `/api/wg/${pathSegment(action.shareCode)}/announcements`,
+		method: 'POST',
+		body: Object.fromEntries(Object.entries(action.payload).filter(([, value]) => value !== null)),
+	}),
+	summary: (action) => ({
+		title: 'Pinnwand-Beitrag',
+		detail: String(action.payload.content ?? 'Neuer Beitrag'),
+	}),
+	risk: () => ({
+		title: 'Pinnwand prüfen',
+		detail: 'Prüfe kurz, ob Inhalt, Kategorie oder Status inzwischen überholt sind.',
+	}),
+});
+
+registerOfflineActionHandler('absence.create', {
+	buildRequest: (action) => ({
+		path: `/api/wg/${pathSegment(action.shareCode)}/absences`,
+		method: 'POST',
+		body: Object.fromEntries(Object.entries(action.payload).filter(([, value]) => value !== null)),
+	}),
+	summary: () => ({
+		title: 'Abwesenheit',
+		detail: 'Rotation überspringt diese Person',
+	}),
+	risk: () => ({
+		title: 'Abwesenheit prüfen',
+		detail: 'Prüfe kurz, ob Zeitraum oder Putzplan inzwischen geändert wurden.',
+	}),
+});
+
+registerOfflineActionHandler('chore.create', {
+	buildRequest: (action) => ({
+		path: `/api/wg/${pathSegment(action.shareCode)}/chores`,
+		method: 'POST',
+		body: action.payload,
+	}),
+	summary: (action) => ({
+		title: 'Putzplan-Aufgabe',
+		detail: String(action.payload.title ?? 'Neue Aufgabe'),
+	}),
+	risk: () => ({
+		title: 'Putzplan prüfen',
+		detail: 'Prüfe kurz, ob Aufgabe, Intervall oder Zuweisung inzwischen geändert wurden.',
+	}),
+});
+
+registerOfflineActionHandler('chore.complete', {
+	buildRequest: (action) => ({
+		path: `/api/wg/${pathSegment(action.shareCode)}/chores/${pathSegment(action.payload.choreId)}/complete`,
+		method: 'POST',
+		body: {},
+	}),
+	summary: () => ({
+		title: 'Putzplan',
+		detail: 'Aufgabe als erledigt markieren',
+	}),
+	risk: () => ({
+		title: 'Möglicher Konflikt',
+		detail: 'Prüfe kurz, ob die Aufgabe inzwischen schon erledigt oder neu zugewiesen wurde.',
+	}),
+});
+
+registerOfflineActionHandler('expense.create', {
+	buildRequest: (action) => {
+		const {
+			recurringExpenseId: _recurringExpenseId,
+			expectedRecurringNextDueAt: _expectedRecurringNextDueAt,
+			...expensePayload
+		} = action.payload;
+		return {
+			path: `/api/wg/${pathSegment(action.shareCode)}/expenses`,
+			method: 'POST',
+			body: Object.fromEntries(
+				Object.entries(expensePayload).filter(([, value]) => value !== null),
+			),
+		};
+	},
+	summary: (action) => ({
+		title: 'Ausgabe',
+		detail: String(action.payload.description ?? 'Neue Ausgabe'),
+	}),
+	risk: () => ({
+		title: 'Aufteilung prüfen',
+		detail:
+			'Wenn sich Mitglieder oder Beträge geändert haben, bearbeite die Ausgabe vor dem Senden.',
+	}),
+});
+
+registerOfflineActionHandler('recurring.create', {
+	buildRequest: (action) => ({
+		path: `/api/wg/${pathSegment(action.shareCode)}/recurring-expenses`,
+		method: 'POST',
+		body: action.payload,
+	}),
+	summary: (action) => ({
+		title: 'Fixkosten-Vorlage',
+		detail: String(action.payload.description ?? 'Neue Vorlage'),
+	}),
+	risk: () => ({
+		title: 'Fixkosten prüfen',
+		detail: 'Prüfe Fälligkeit und Aufteilung, bevor die Vorlage gesendet wird.',
+	}),
+});
+
+registerOfflineActionHandler('recurring.advance', {
+	buildRequest: (action) => ({
+		path: `/api/wg/${pathSegment(action.shareCode)}/recurring-expenses`,
+		method: 'PATCH',
+		body: {
+			id: action.payload.recurringExpenseId,
+			...(typeof action.payload.expectedRecurringNextDueAt === 'string'
+				? { expectedNextDueAt: action.payload.expectedRecurringNextDueAt }
+				: {}),
+		},
+	}),
+	summary: () => ({
+		title: 'Fixkosten-Vorlage',
+		detail: 'Fälligkeit nachholen',
+	}),
+	risk: () => ({
+		title: 'Fixkosten prüfen',
+		detail: 'Prüfe kurz, ob die Vorlage inzwischen schon weitergeschoben wurde.',
+	}),
+});
 
 export function explainOfflineActionFailure(
 	status: number,
@@ -671,57 +744,5 @@ export function getOfflineActionRisk(
 	}
 	const ageHours = Math.floor((now - createdAt) / 3_600_000);
 	if (ageHours < 6 && !action.lastError) return null;
-	if (action.type === 'chore.complete') {
-		return {
-			title: 'Möglicher Konflikt',
-			detail: 'Prüfe kurz, ob die Aufgabe inzwischen schon erledigt oder neu zugewiesen wurde.',
-		};
-	}
-	if (action.type === 'chore.create') {
-		return {
-			title: 'Putzplan prüfen',
-			detail: 'Prüfe kurz, ob Aufgabe, Intervall oder Zuweisung inzwischen geändert wurden.',
-		};
-	}
-	if (action.type === 'shopping.update') {
-		return {
-			title: 'Status prüfen',
-			detail: 'Prüfe kurz, ob der Einkauf inzwischen von jemand anderem geändert wurde.',
-		};
-	}
-	if (action.type === 'announcement.create') {
-		return {
-			title: 'Pinnwand prüfen',
-			detail: 'Prüfe kurz, ob Inhalt, Kategorie oder Status inzwischen überholt sind.',
-		};
-	}
-	if (action.type === 'expense.create') {
-		return {
-			title: 'Aufteilung prüfen',
-			detail:
-				'Wenn sich Mitglieder oder Beträge geändert haben, bearbeite die Ausgabe vor dem Senden.',
-		};
-	}
-	if (action.type === 'absence.create') {
-		return {
-			title: 'Abwesenheit prüfen',
-			detail: 'Prüfe kurz, ob Zeitraum oder Putzplan inzwischen geändert wurden.',
-		};
-	}
-	if (action.type === 'recurring.create') {
-		return {
-			title: 'Fixkosten prüfen',
-			detail: 'Prüfe Fälligkeit und Aufteilung, bevor die Vorlage gesendet wird.',
-		};
-	}
-	if (action.type === 'recurring.advance') {
-		return {
-			title: 'Fixkosten prüfen',
-			detail: 'Prüfe kurz, ob die Vorlage inzwischen schon weitergeschoben wurde.',
-		};
-	}
-	return {
-		title: 'Vor dem Senden prüfen',
-		detail: 'Der Eintrag ist schon länger in der Warteschlange und könnte nicht mehr aktuell sein.',
-	};
+	return getOfflineActionHandler(action.type).risk(action);
 }
