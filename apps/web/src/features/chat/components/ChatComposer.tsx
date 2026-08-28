@@ -1,15 +1,15 @@
 'use client';
 
 import { useToast } from '@/components/ui/Toast';
+import { haptic } from '@manawg/shared/lib/haptics';
+import { Image as ImageIcon, Loader2, Send, X } from 'lucide-react';
+import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
 	MentionAutocomplete,
 	type MentionMember,
 	filterMentionMembers,
 	mentionOptionId,
-} from '@/components/wg/chat/MentionAutocomplete';
-import { haptic } from '@manawg/shared/lib/haptics';
-import { Image as ImageIcon, Loader2, Send, X } from 'lucide-react';
-import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
+} from './MentionAutocomplete';
 
 const BODY_MAX = 4000;
 

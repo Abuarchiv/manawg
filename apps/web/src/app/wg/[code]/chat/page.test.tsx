@@ -32,7 +32,7 @@ vi.mock('next/navigation', () => ({
 	}),
 }));
 
-vi.mock('@/components/wg/chat/ChatView', () => ({
+vi.mock('@/features/chat/components/ChatView', () => ({
 	ChatView: () => null,
 }));
 

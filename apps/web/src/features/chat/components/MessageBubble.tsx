@@ -1,13 +1,13 @@
 'use client';
 
-import { ReactionPicker } from '@/components/wg/chat/ReactionPicker';
 import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
 import { useDismissableMenu } from '@/core/hooks/useDismissableMenu';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
-import { canDeleteMessage, canEditMessage } from '@/lib/wg/chat-pure';
 import { haptic } from '@manawg/shared/lib/haptics';
 import { Loader2, MoreVertical, Pencil, Reply, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { canDeleteMessage, canEditMessage } from '../chat-pure';
+import { ReactionPicker } from './ReactionPicker';
 
 export interface BubbleMessage {
 	id: string;

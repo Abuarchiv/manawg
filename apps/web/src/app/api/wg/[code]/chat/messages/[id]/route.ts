@@ -6,7 +6,7 @@ import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { canEditMessage, sanitizeMessageBody } from '@/lib/wg/chat-pure';
+import { canEditMessage, sanitizeMessageBody } from '@/features/chat/chat-pure';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
