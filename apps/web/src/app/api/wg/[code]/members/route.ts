@@ -1,5 +1,6 @@
+import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
-import { announcements, db, wgMembers } from '@/core/db';
+import { db, wgMembers } from '@/core/db';
 import { LIMITS } from '@/core/db/schema';
 import { withTransaction } from '@/core/db/transaction';
 import { HTTP, apiError, badRequest, forbidden, notFound, tooMany } from '@/core/errors';
@@ -161,17 +162,13 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 		summary: `${member.name} ist der WG beigetreten.`,
 		metadata: { name: member.name },
 	});
-	try {
-		await db.insert(announcements).values({
-			wgId: wg.id,
-			authorMemberId: member.id,
-			kind: 'info',
-			source: 'system',
-			sourcePath: '/',
-			content: `${member.name} ist der WG beigetreten.`,
-		});
-	} catch (announcementErr) {
-		console.warn('[members POST] system announcement failed', announcementErr);
-	}
+	await postSystemNotice({
+		wgId: wg.id,
+		authorMemberId: member.id,
+		kind: 'info',
+		source: 'system',
+		sourcePath: '/',
+		content: `${member.name} ist der WG beigetreten.`,
+	});
 	return NextResponse.json({ member: memberWithToken });
 });
