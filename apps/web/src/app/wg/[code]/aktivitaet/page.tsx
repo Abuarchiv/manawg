@@ -16,7 +16,7 @@ import {
 	filterActivityItems,
 	getActivityEmptyActionHref,
 	groupActivityItemsByDay,
-} from '@/lib/wg/activity';
+} from '@/core/reads/activity';
 import { AlertTriangle, ArrowLeft, ListFilter, Loader2, RotateCw, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

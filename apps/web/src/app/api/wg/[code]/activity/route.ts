@@ -12,7 +12,7 @@ import {
 } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { buildActivityTimeline, getActivityReminders } from '@/lib/wg/activity';
+import { buildActivityTimeline, getActivityReminders } from '@/core/reads/activity';
 import { desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 

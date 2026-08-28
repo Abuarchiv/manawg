@@ -11,7 +11,7 @@ vi.mock('@/core/db', () => {
 	throw new Error('db must not load in dashboard DB-down mode');
 });
 
-vi.mock('@/lib/wg/dashboard-data', () => {
+vi.mock('@/core/reads/dashboard-data', () => {
 	throw new Error('dashboard-data must not load in dashboard DB-down mode');
 });
 

@@ -9,7 +9,7 @@ import {
 	type WgSearchResult,
 	filterSearchResults,
 	filterSearchResultsByQuickFilter,
-} from '@/lib/wg/search';
+} from '@/core/reads/search';
 import { ArrowLeft, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

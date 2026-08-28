@@ -17,8 +17,9 @@ import {
 	prevBerlinDayStart,
 	startOfBerlinDay,
 } from '@/core/utils/berlin-day';
+import { getAbsentMemberIds } from '@/lib/wg/absence';
+import { getDueRecurringExpenses } from '@/lib/wg/recurring-expenses';
 import { and, desc, eq } from 'drizzle-orm';
-import { getAbsentMemberIds } from './absence';
 import { type ActivityKind, formatAuditActivityText } from './activity';
 import { type WgHealth, getWgHealth } from './dashboard-insights';
 import {
@@ -26,7 +27,6 @@ import {
 	getDashboardAuditHref,
 	getDashboardAuditKind,
 } from './dashboard-links';
-import { getDueRecurringExpenses } from './recurring-expenses';
 
 const SPARKLINE_DAYS = 14;
 const ACTIVITY_LIMIT = 6;

@@ -25,7 +25,7 @@ export async function GET(
 		// above — the route module itself must stay importable without a DB.
 		const [{ requireWgMember }, { loadDashboardData }] = await Promise.all([
 			import('@/core/guards/require-wg-member'),
-			import('@/lib/wg/dashboard-data'),
+			import('@/core/reads/dashboard-data'),
 		]);
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;

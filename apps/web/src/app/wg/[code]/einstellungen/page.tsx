@@ -9,7 +9,7 @@ import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { readResponseErrorCode } from '@/core/guards/settings-errors';
 import { SETTINGS_TABS, getSettingsTabFromHash } from '@/core/guards/settings-tabs';
 import type { SettingsTab } from '@/core/guards/settings-tabs';
-import { type WgExport, buildEmptyExportSummary, buildExportSummary } from '@/lib/wg/export';
+import { type WgExport, buildEmptyExportSummary, buildExportSummary } from '@/core/reads/export';
 import { memberAuthHeader } from '@manawg/shared/lib/identity';
 import { ArrowLeft, Monitor } from 'lucide-react';
 import Link from 'next/link';

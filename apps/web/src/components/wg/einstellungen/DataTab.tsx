@@ -5,7 +5,7 @@ import { LinkRow } from '@/components/wg/einstellungen/LinkRow';
 import { OfflineQueueSection } from '@/components/wg/einstellungen/OfflineQueueSection';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { exportErrorMessage, readResponseErrorCode } from '@/core/guards/settings-errors';
-import type { ExportSectionKey, ExportSectionSummary } from '@/lib/wg/export';
+import type { ExportSectionKey, ExportSectionSummary } from '@/core/reads/export';
 import type { StoredIdentity } from '@manawg/shared/lib/identity';
 import { memberAuthHeader } from '@manawg/shared/lib/identity';
 import { Download, Loader2, Upload } from 'lucide-react';

@@ -19,25 +19,25 @@ import { Stat } from '@/components/wg/dashboard/Stat';
 import { TodayIcon } from '@/components/wg/dashboard/TodayIcon';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { apiFetch } from '@/core/infra/api-client';
-import { formatEuroCents } from '@/core/utils/money';
-import { parseTimestamp } from '@/core/utils/time';
-import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
-import type { ActivityReminder } from '@/lib/wg/activity';
-import type { DashboardData } from '@/lib/wg/dashboard-data';
+import type { ActivityReminder } from '@/core/reads/activity';
+import type { DashboardData } from '@/core/reads/dashboard-data';
 import {
 	getTodayFocus,
 	getTodayImportantItems,
 	getTodayListItems,
-} from '@/lib/wg/dashboard-insights';
+} from '@/core/reads/dashboard-insights';
 import {
 	getDashboardAnnouncementHref,
 	getDashboardEmptyActionHref,
-} from '@/lib/wg/dashboard-links';
+} from '@/core/reads/dashboard-links';
 import {
 	type OnboardingStep,
 	getOnboardingChecklist,
 	getOnboardingProgress,
-} from '@/lib/wg/onboarding';
+} from '@/core/reads/onboarding';
+import { formatEuroCents } from '@/core/utils/money';
+import { parseTimestamp } from '@/core/utils/time';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { ThemeToggle } from '@manawg/shared/components/theme/ThemeToggle';
 import { LogoMark } from '@manawg/shared/components/ui/LogoMark';
 import { haptic } from '@manawg/shared/lib/haptics';

@@ -1,4 +1,4 @@
-import type { DashboardData } from '@/lib/wg/dashboard-data';
+import type { DashboardData } from '@/core/reads/dashboard-data';
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import WgHomePage from './page';

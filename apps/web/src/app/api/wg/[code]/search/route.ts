@@ -14,7 +14,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { buildE2EDashboardData } from '@/core/infra/e2e-db-down';
-import { getSearchSuggestions, searchWgItems } from '@/lib/wg/search';
+import { getSearchSuggestions, searchWgItems } from '@/core/reads/search';
 import { desc, eq, inArray } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 

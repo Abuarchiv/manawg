@@ -1,4 +1,4 @@
-import type { TodayImportantKind } from '@/lib/wg/dashboard-insights';
+import type { TodayImportantKind } from '@/core/reads/dashboard-insights';
 import { AlertTriangle, ListChecks, Megaphone, Receipt, Sparkles } from 'lucide-react';
 
 export function TodayIcon({ kind }: { kind: TodayImportantKind }) {
