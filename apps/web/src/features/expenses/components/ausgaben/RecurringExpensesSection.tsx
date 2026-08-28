@@ -1,13 +1,13 @@
 'use client';
 
 import { DeleteConfirmButton } from '@/components/ui/DeleteConfirmButton';
-import type { RecurringExpense } from '@/components/wg/ausgaben/expense-types';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime, formatShortDate, parseTimestamp } from '@/core/utils/time';
+import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
 import {
 	getRecurringExpenseHref,
 	wasRecurringExpenseAlreadyCreated,
-} from '@/lib/wg/recurring-expenses';
+} from '@/features/expenses/recurring-expenses';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 

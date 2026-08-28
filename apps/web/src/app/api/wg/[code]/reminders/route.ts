@@ -7,13 +7,17 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, reminderSendLimiter } from '@/core/rate-limit';
-import { computeBalances, computeOldestDebtAgeDays, findPairBalance } from '@/lib/wg/debts';
-import { loadOpenExpenses } from '@/lib/wg/open-expenses';
+import {
+	computeBalances,
+	computeOldestDebtAgeDays,
+	findPairBalance,
+} from '@/features/expenses/debts';
+import { loadOpenExpenses } from '@/features/expenses/open-expenses';
 import {
 	REMINDER_COOLDOWN_HOURS,
 	canSendReminder,
 	formatReminderMessage,
-} from '@/lib/wg/reminders';
+} from '@/features/expenses/reminders';
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

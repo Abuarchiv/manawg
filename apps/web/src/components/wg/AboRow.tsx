@@ -10,7 +10,7 @@ import {
 	detectProvider,
 	formatIntervalLabel,
 	previewNextOccurrences,
-} from '@/lib/wg/recurring-expenses';
+} from '@/features/expenses/recurring-expenses';
 import { Loader2, Pause, Pencil, Play, Trash2 } from 'lucide-react';
 
 const PREVIEW_COUNT = 3;

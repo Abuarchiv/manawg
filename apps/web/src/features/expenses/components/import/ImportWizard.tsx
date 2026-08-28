@@ -2,8 +2,8 @@
 
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
-import type { ParsedExpense } from '@/lib/wg/import-parsers';
-import { runOcrOnImage } from '@/lib/wg/ocr';
+import type { ParsedExpense } from '@/features/expenses/import-parsers';
+import { runOcrOnImage } from '@/features/expenses/ocr';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useRef, useState } from 'react';

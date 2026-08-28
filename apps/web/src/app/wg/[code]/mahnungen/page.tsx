@@ -8,8 +8,12 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatRelativeTime } from '@/core/utils/time';
-import { type DebtExpenseInput, computeBalances, computeOldestDebtAgeDays } from '@/lib/wg/debts';
-import { REMINDER_COOLDOWN_HOURS, canSendReminder } from '@/lib/wg/reminders';
+import {
+	type DebtExpenseInput,
+	computeBalances,
+	computeOldestDebtAgeDays,
+} from '@/features/expenses/debts';
+import { REMINDER_COOLDOWN_HOURS, canSendReminder } from '@/features/expenses/reminders';
 import { haptic } from '@manawg/shared/lib/haptics';
 import { AlertCircle, Loader2, RotateCw } from 'lucide-react';
 import Link from 'next/link';

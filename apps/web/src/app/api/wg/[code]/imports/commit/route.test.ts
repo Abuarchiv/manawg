@@ -26,11 +26,11 @@ function seedWgSelect(): void {
 	routeDb.select.mockReturnValue(chain);
 }
 
-vi.mock('@/lib/wg/import-commit', () => ({
+vi.mock('@/features/expenses/import-commit', () => ({
 	commitImport: (...args: unknown[]) => commitMock.commitImport(...args),
 }));
 
-vi.mock('@/lib/wg/import-hash', () => ({
+vi.mock('@/features/expenses/import-hash', () => ({
 	hashPayload: (...args: unknown[]) => commitMock.hashPayload(...args),
 }));
 

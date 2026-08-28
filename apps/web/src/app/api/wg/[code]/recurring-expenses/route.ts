@@ -18,8 +18,8 @@ import {
 	buildRecurringAdvance,
 	parseRecurringSplits,
 	recurringDueDateMatchesExpected,
-} from '@/lib/wg/recurring-expenses';
-import { validateSplits } from '@/lib/wg/split-math';
+} from '@/features/expenses/recurring-expenses';
+import { validateSplits } from '@/features/expenses/split-math';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

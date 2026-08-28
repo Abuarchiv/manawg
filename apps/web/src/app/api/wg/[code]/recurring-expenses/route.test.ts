@@ -41,7 +41,7 @@ vi.mock('@/core/guards/admin', () => ({
 	isVerifiedWgAdmin: (...args: unknown[]) => adminMock.isVerifiedWgAdmin(...args),
 }));
 
-vi.mock('@/lib/wg/recurring-expenses', () => ({
+vi.mock('@/features/expenses/recurring-expenses', () => ({
 	buildRecurringAdvance: (...args: unknown[]) => recurringMock.buildRecurringAdvance(...args),
 	parseRecurringSplits: (...args: unknown[]) => recurringMock.parseRecurringSplits(...args),
 	recurringDueDateMatchesExpected: (...args: unknown[]) =>

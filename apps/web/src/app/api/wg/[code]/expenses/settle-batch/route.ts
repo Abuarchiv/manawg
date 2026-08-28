@@ -6,8 +6,8 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { claimIdempotencySlot, readIdempotencyKey } from '@/core/idempotency';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { computeNetBalances, simplifyDebts } from '@/lib/wg/debt-reduction';
-import { groupSplitsByExpense } from '@/lib/wg/open-expenses';
+import { computeNetBalances, simplifyDebts } from '@/features/expenses/debt-reduction';
+import { groupSplitsByExpense } from '@/features/expenses/open-expenses';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 

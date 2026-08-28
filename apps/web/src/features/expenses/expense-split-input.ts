@@ -1,6 +1,6 @@
 import { parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
-import { type DebtorShare, buildEqualSplits } from '@/lib/wg/split-math';
+import { type DebtorShare, buildEqualSplits } from '@/features/expenses/split-math';
 
 /**
  * Turns the expense form's state into the splits array the API expects.

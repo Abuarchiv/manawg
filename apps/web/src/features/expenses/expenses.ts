@@ -1,5 +1,6 @@
+import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
-import { announcements, db, expenseSplits, expenses, wgMembers } from '@/core/db';
+import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
 import type { Expense, ExpenseSplit } from '@/core/db/schema';
 import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
 import { isUuid } from '@/core/guards/api-auth';
@@ -138,18 +139,14 @@ export async function recordExpenseCreatedSideEffects(
 	const { wg, actor, expense } = input;
 	const amount = formatEuroCents(expense.amountCents, expense.currency);
 
-	try {
-		await db.insert(announcements).values({
-			wgId: wg.id,
-			authorMemberId: actor.memberId,
-			kind: 'info',
-			source: 'expense',
-			sourcePath: `/ausgaben?highlight=${encodeURIComponent(expense.id)}`,
-			content: `${actor.name} hat eine Ausgabe eingetragen: ${expense.description} (${amount}).`,
-		});
-	} catch (announcementErr) {
-		console.warn('[expenses] system announcement failed', announcementErr);
-	}
+	await postSystemNotice({
+		wgId: wg.id,
+		authorMemberId: actor.memberId,
+		kind: 'info',
+		source: 'expense',
+		sourcePath: `/ausgaben?highlight=${encodeURIComponent(expense.id)}`,
+		content: `${actor.name} hat eine Ausgabe eingetragen: ${expense.description} (${amount}).`,
+	});
 
 	void appendSystemMessage({
 		wgId: wg.id,

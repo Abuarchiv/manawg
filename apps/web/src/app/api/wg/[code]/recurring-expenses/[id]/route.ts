@@ -6,7 +6,10 @@ import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { parseRecurringSplits, recurringSplitsMatchAmount } from '@/lib/wg/recurring-expenses';
+import {
+	parseRecurringSplits,
+	recurringSplitsMatchAmount,
+} from '@/features/expenses/recurring-expenses';
 import { and, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

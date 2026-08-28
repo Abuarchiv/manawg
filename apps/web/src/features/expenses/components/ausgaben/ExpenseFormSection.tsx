@@ -2,12 +2,15 @@
 
 import { ImageUploader } from '@/components/wg/ImageUploader';
 import type { Member } from '@/components/wg/WgContextProvider';
-import { ManualSplitSummary } from '@/components/wg/ausgaben/ManualSplitSummary';
-import { TextField } from '@/components/wg/ausgaben/TextField';
-import { DESCRIPTION_MAX, RECURRING_INTERVAL_OPTIONS } from '@/components/wg/ausgaben/constants';
-import type { RecurringExpense } from '@/components/wg/ausgaben/expense-types';
-import type { SplitMode } from '@/components/wg/ausgaben/useExpenseForm';
 import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
+import { ManualSplitSummary } from '@/features/expenses/components/ausgaben/ManualSplitSummary';
+import { TextField } from '@/features/expenses/components/ausgaben/TextField';
+import {
+	DESCRIPTION_MAX,
+	RECURRING_INTERVAL_OPTIONS,
+} from '@/features/expenses/components/ausgaben/constants';
+import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
+import type { SplitMode } from '@/features/expenses/components/ausgaben/useExpenseForm';
 import { ChevronDown, Loader2 } from 'lucide-react';
 import type { Dispatch, SetStateAction } from 'react';
 

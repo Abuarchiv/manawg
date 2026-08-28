@@ -49,11 +49,11 @@ vi.mock('@/core/rate-limit', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/lib/wg/debts', () => ({
+vi.mock('@/features/expenses/debts', () => ({
 	computeBalances: (...args: unknown[]) => debtsMock.computeBalances(...args),
 }));
 
-vi.mock('@/lib/wg/open-expenses', () => ({
+vi.mock('@/features/expenses/open-expenses', () => ({
 	loadOpenExpenses: (...args: unknown[]) => openExpensesMock.loadOpenExpenses(...args),
 }));
 

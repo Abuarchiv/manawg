@@ -26,7 +26,7 @@ vi.mock('@/core/infra/api-client', () => ({
 	apiFetch: (...args: unknown[]) => apiClientMock.apiFetch(...args),
 }));
 
-vi.mock('@/lib/wg/ocr', () => ({
+vi.mock('@/features/expenses/ocr', () => ({
 	runOcrOnImage: vi.fn(),
 }));
 

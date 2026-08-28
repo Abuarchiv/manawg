@@ -10,17 +10,17 @@ import { readShareCode } from '@/core/guards/route-preamble';
 import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { checkRateLimit, importCommitLimiter } from '@/core/rate-limit';
-import { MAX_CSV_BYTES, MAX_OCR_BYTES, readImportJsonBody } from '@/lib/wg/import-body';
-import { type CommitResult, commitImport } from '@/lib/wg/import-commit';
-import { hashPayload } from '@/lib/wg/import-hash';
+import { MAX_CSV_BYTES, MAX_OCR_BYTES, readImportJsonBody } from '@/features/expenses/import-body';
+import { type CommitResult, commitImport } from '@/features/expenses/import-commit';
+import { hashPayload } from '@/features/expenses/import-hash';
 import {
 	type ParsedExpense,
 	UnsupportedCurrencyError,
 	findMappingConflicts,
 	parseSplidCsv,
 	parseSplitwiseCsv,
-} from '@/lib/wg/import-parsers';
-import { parseOcrText } from '@/lib/wg/ocr';
+} from '@/features/expenses/import-parsers';
+import { parseOcrText } from '@/features/expenses/ocr';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 

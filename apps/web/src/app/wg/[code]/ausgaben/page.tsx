@@ -6,23 +6,6 @@ import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNot
 import { DebtSummary } from '@/components/wg/DebtSummary';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { AusgabenHeader } from '@/components/wg/ausgaben/AusgabenHeader';
-import { ExpenseFormSection } from '@/components/wg/ausgaben/ExpenseFormSection';
-import { ExpenseRow } from '@/components/wg/ausgaben/ExpenseRow';
-import { ExpensesSkeleton } from '@/components/wg/ausgaben/ExpensesSkeleton';
-import { RecurringExpensesSection } from '@/components/wg/ausgaben/RecurringExpensesSection';
-import {
-	AMOUNT_MAX_EUROS,
-	AMOUNT_MIN_EUROS,
-	DESCRIPTION_MAX,
-	QUICK_EXPENSE_TEMPLATES,
-} from '@/components/wg/ausgaben/constants';
-import type {
-	Expense,
-	ExpenseSplit,
-	RecurringExpense,
-} from '@/components/wg/ausgaben/expense-types';
-import { useExpenseForm } from '@/components/wg/ausgaben/useExpenseForm';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
@@ -44,7 +27,24 @@ import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import { parseTimestamp } from '@/core/utils/time';
-import { buildSettlementSummary, computeDirectDebts } from '@/lib/wg/debt-reduction';
+import { AusgabenHeader } from '@/features/expenses/components/ausgaben/AusgabenHeader';
+import { ExpenseFormSection } from '@/features/expenses/components/ausgaben/ExpenseFormSection';
+import { ExpenseRow } from '@/features/expenses/components/ausgaben/ExpenseRow';
+import { ExpensesSkeleton } from '@/features/expenses/components/ausgaben/ExpensesSkeleton';
+import { RecurringExpensesSection } from '@/features/expenses/components/ausgaben/RecurringExpensesSection';
+import {
+	AMOUNT_MAX_EUROS,
+	AMOUNT_MIN_EUROS,
+	DESCRIPTION_MAX,
+	QUICK_EXPENSE_TEMPLATES,
+} from '@/features/expenses/components/ausgaben/constants';
+import type {
+	Expense,
+	ExpenseSplit,
+	RecurringExpense,
+} from '@/features/expenses/components/ausgaben/expense-types';
+import { useExpenseForm } from '@/features/expenses/components/ausgaben/useExpenseForm';
+import { buildSettlementSummary, computeDirectDebts } from '@/features/expenses/debt-reduction';
 import {
 	expenseActionErrorMessage,
 	expenseSaveErrorMessage,
@@ -52,14 +52,14 @@ import {
 	recurringTemplateDeleteErrorMessage,
 	recurringTemplateSaveErrorMessage,
 	splitInputErrorMessage,
-} from '@/lib/wg/expense-errors';
+} from '@/features/expenses/expense-errors';
 import {
 	type SplitInputResult,
 	buildSplitsFromForm,
 	payerOptions,
 	splitCandidates,
-} from '@/lib/wg/expense-split-input';
-import { addMonths } from '@/lib/wg/recurring-expenses';
+} from '@/features/expenses/expense-split-input';
+import { addMonths } from '@/features/expenses/recurring-expenses';
 import { haptic } from '@manawg/shared/lib/haptics';
 import { Loader2, Receipt, RotateCw } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';

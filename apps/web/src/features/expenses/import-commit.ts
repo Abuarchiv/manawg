@@ -1,5 +1,6 @@
+import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
-import { announcements, db, expenseImports, expenseSplits, expenses, wgMembers } from '@/core/db';
+import { db, expenseImports, expenseSplits, expenses, wgMembers } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
 import { withTransaction } from '@/core/db/transaction';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
@@ -248,17 +249,13 @@ export async function commitImport(input: CommitInput): Promise<CommitResult> {
 	// Everything below is deliberately outside the transaction: it informs the
 	// WG about an import that already happened, so a failure here must not undo
 	// the import itself.
-	try {
-		await db.insert(announcements).values({
-			wgId: input.wg.id,
-			authorMemberId: input.importedByMemberId,
-			kind: 'info',
-			source: 'expense',
-			content: `${input.importedByName} hat ${inserted} Ausgaben importiert (${input.source}).`,
-		});
-	} catch (announcementErr) {
-		console.warn('[import-commit] announcement failed', announcementErr);
-	}
+	await postSystemNotice({
+		wgId: input.wg.id,
+		authorMemberId: input.importedByMemberId,
+		kind: 'info',
+		source: 'expense',
+		content: `${input.importedByName} hat ${inserted} Ausgaben importiert (${input.source}).`,
+	});
 
 	await recordAuditEvent({
 		wgId: input.wg.id,

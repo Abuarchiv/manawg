@@ -1,4 +1,4 @@
-import type { ProviderKey } from '@/lib/wg/recurring-expenses';
+import type { ProviderKey } from '@/features/expenses/recurring-expenses';
 import { Film, Music, Plug, Tv, Wifi } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 

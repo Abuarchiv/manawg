@@ -1,7 +1,7 @@
 'use client';
 
 import { useWg } from '@/components/wg/WgContextProvider';
-import { ImportWizard } from '@/components/wg/import/ImportWizard';
+import { ImportWizard } from '@/features/expenses/components/import/ImportWizard';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 

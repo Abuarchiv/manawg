@@ -9,7 +9,7 @@ import {
 	addMonthsFromAnchor,
 	parseRecurringSplits,
 	recurringSplitsMatchAmount,
-} from '@/lib/wg/recurring-expenses';
+} from '@/features/expenses/recurring-expenses';
 import { and, eq, isNull, lte } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 

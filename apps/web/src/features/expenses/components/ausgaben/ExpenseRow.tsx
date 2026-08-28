@@ -1,10 +1,10 @@
 'use client';
 
 import { DeleteConfirmButton } from '@/components/ui/DeleteConfirmButton';
-import type { Expense, ExpenseSplit } from '@/components/wg/ausgaben/expense-types';
 import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
+import type { Expense, ExpenseSplit } from '@/features/expenses/components/ausgaben/expense-types';
 import { Check, ChevronDown, Loader2, Pencil } from 'lucide-react';
 import { memo } from 'react';
 

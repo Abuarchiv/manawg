@@ -17,8 +17,8 @@ import {
 	prevBerlinDayStart,
 	startOfBerlinDay,
 } from '@/core/utils/berlin-day';
+import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
 import { getAbsentMemberIds } from '@/lib/wg/absence';
-import { getDueRecurringExpenses } from '@/lib/wg/recurring-expenses';
 import { and, desc, eq } from 'drizzle-orm';
 import { type ActivityKind, formatAuditActivityText } from './activity';
 import { type WgHealth, getWgHealth } from './dashboard-insights';

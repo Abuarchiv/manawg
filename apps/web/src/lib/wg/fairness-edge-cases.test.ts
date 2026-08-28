@@ -14,16 +14,16 @@
  * `// REGRESSION GUARD — keep` comment so future refactors don't regress it.
  */
 
-import { describe, expect, it } from 'vitest';
-import { buildChoreFairness, chooseNextAvailableMember } from './chore-fairness';
-import { computeNetBalances, simplifyDebts } from './debt-reduction';
-import { computeBalances } from './debts';
+import { computeNetBalances, simplifyDebts } from '@/features/expenses/debt-reduction';
+import { computeBalances } from '@/features/expenses/debts';
 import {
 	buildEqualSplits,
 	distributeCentsEqually,
 	rotateDebtors,
 	validateSplits,
-} from './split-math';
+} from '@/features/expenses/split-math';
+import { describe, expect, it } from 'vitest';
+import { buildChoreFairness, chooseNextAvailableMember } from './chore-fairness';
 
 const FUTURE = new Date(Date.now() + 86_400_000).toISOString();
 

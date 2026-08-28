@@ -22,8 +22,8 @@ import {
 	insertExpenseWithSplits,
 	recordExpenseCreatedSideEffects,
 	resolveExpensePayer,
-} from '@/lib/wg/expenses';
-import { validateSplits } from '@/lib/wg/split-math';
+} from '@/features/expenses/expenses';
+import { validateSplits } from '@/features/expenses/split-math';
 import { desc, eq, inArray } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
