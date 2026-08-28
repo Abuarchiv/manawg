@@ -5,14 +5,14 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
-import { computeRecurrenceLookbackStart } from '@/lib/wg/event-reminder-window';
+import { computeRecurrenceLookbackStart } from '@/features/events/event-reminder-window';
 import {
 	EVENTS_LIST_LIMIT,
 	type SerializedWgEvent,
 	formatRecurrenceRule,
 	parseRecurrenceRule,
 	serializeWgEvent,
-} from '@/lib/wg/events';
+} from '@/features/events/events';
 import { and, asc, eq, gte, isNotNull, lte, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

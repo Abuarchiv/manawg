@@ -1,16 +1,16 @@
 'use client';
 
 import { LIST_CARD } from '@/components/ui/styles';
-import { InventoryAddModal } from '@/components/wg/InventoryAddModal';
-import { InventoryItemRow } from '@/components/wg/InventoryItemRow';
-import { QuickRestockSheet } from '@/components/wg/QuickRestockSheet';
+import { InventoryAddModal } from '@/features/inventory/components/InventoryAddModal';
+import { InventoryItemRow } from '@/features/inventory/components/InventoryItemRow';
+import { QuickRestockSheet } from '@/features/inventory/components/QuickRestockSheet';
 import {
 	INVENTORY_CATEGORIES,
 	INVENTORY_CATEGORY_LABELS,
 	type InventoryCategory,
 	type InventoryItemDto,
 	groupItemsByCategory,
-} from '@/lib/wg/inventory';
+} from '@/features/inventory/inventory';
 import { Package, Plus, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 

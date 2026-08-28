@@ -5,8 +5,8 @@ import { dispatchNotification } from '@/core/notifications/notification-dispatch
 import {
 	computeRecurrenceLookbackStart,
 	computeTomorrowUtcWindow,
-} from '@/lib/wg/event-reminder-window';
-import { type EventInput, expandRecurrence } from '@/lib/wg/events';
+} from '@/features/events/event-reminder-window';
+import { type EventInput, expandRecurrence } from '@/features/events/events';
 import { and, eq, gte, lte } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 

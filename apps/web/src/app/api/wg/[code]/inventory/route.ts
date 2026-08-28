@@ -11,8 +11,8 @@ import {
 	INVENTORY_UNITS,
 	groupItemsByCategory,
 	isBelowThreshold,
-} from '@/lib/wg/inventory';
-import { getRecentDecrementCounts } from '@/lib/wg/inventory-decrements';
+} from '@/features/inventory/inventory';
+import { getRecentDecrementCounts } from '@/features/inventory/inventory-decrements';
 import { asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
