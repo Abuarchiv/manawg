@@ -1,0 +1,118 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Dependency floors (Next.js security patches) against the frozen lockfile.
+      - run: pnpm check:deps
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+  db-integration:
+    runs-on: ubuntu-latest
+    needs: validate
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: manawg
+          POSTGRES_PASSWORD: manawg
+          POSTGRES_DB: manawg_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U manawg"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_URL: postgres://manawg:manawg@localhost:5432/manawg_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      # Clean-apply check (finding: no test verifies migrations apply
+      # cleanly from a fresh database) — this is the same script
+      # `vercel-build` runs in production.
+      - run: pnpm --filter @manawg/web db:migrate
+      # Runs every `*.integration.test.ts` file's real-DB `describe` block
+      # (gated by `describe.skipIf(!hasRealDb)`, activated here because
+      # POSTGRES_URL is set) alongside the rest of the unit suite, which
+      # continues to run mocked as usual.
+      - run: pnpm --filter @manawg/web test
+  e2e:
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @manawg/web exec playwright install --with-deps chromium
+      - run: pnpm build
+        env:
+          NEXT_PUBLIC_DB_DOWN: 'true'
+      - run: pnpm --filter @manawg/web test:e2e
+        env:
+          NEXT_PUBLIC_DB_DOWN: 'true'
+          PLAYWRIGHT_USE_BUILD: 'true'
+  e2e-landing:
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @manawg/landing exec playwright install --with-deps chromium
+      - run: pnpm --filter @manawg/landing build
+      - run: pnpm --filter @manawg/landing test:e2e
+        env:
+          PLAYWRIGHT_USE_BUILD: 'true'
+  e2e-real-db:
+    runs-on: ubuntu-latest
+    needs: validate
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: manawg
+          POSTGRES_PASSWORD: manawg
+          POSTGRES_DB: manawg_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U manawg"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_URL: postgres://manawg:manawg@localhost:5432/manawg_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @manawg/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @manawg/web db:migrate
+      # No NEXT_PUBLIC_DB_DOWN / PLAYWRIGHT_USE_BUILD here: playwright.config.ts's
+      # dev+real-env branch runs the app against the real POSTGRES_URL above
+      # instead of the hard-coded e2e-db-down fixtures, so the core
+      # create-WG → invite → dashboard flow exercises real persistence.
+      - run: pnpm --filter @manawg/web exec playwright test smoke-launch.spec.ts
