@@ -1,6 +1,6 @@
 'use client';
-import type { Announcement } from '@/components/wg/pinnwand/announcement-types';
-import { KIND_LABELS } from '@/components/wg/pinnwand/constants';
+import type { Announcement } from '@/features/pinnwand/components/announcement-types';
+import { KIND_LABELS } from '@/features/pinnwand/components/constants';
 import type React from 'react';
 
 interface MyOpenAnnouncementsProps {

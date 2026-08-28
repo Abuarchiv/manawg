@@ -6,12 +6,12 @@ export type {
 	AnnouncementKind,
 	AnnouncementSource,
 	AnnouncementStatus,
-} from '@/lib/announcement-workflow';
+} from '@/features/pinnwand/announcement-workflow';
 import type {
 	AnnouncementKind,
 	AnnouncementSource,
 	AnnouncementStatus,
-} from '@/lib/announcement-workflow';
+} from '@/features/pinnwand/announcement-workflow';
 export type ReactionKey = 'seen' | 'take' | 'ok';
 
 export interface Announcement {

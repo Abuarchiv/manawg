@@ -3,25 +3,6 @@ import { ALERT_DANGER, EMPTY_PLACEHOLDER } from '@/components/ui/styles';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { AnnouncementCard } from '@/components/wg/pinnwand/AnnouncementCard';
-import { AnnouncementSkeleton } from '@/components/wg/pinnwand/AnnouncementSkeleton';
-import { EmptyState } from '@/components/wg/pinnwand/EmptyState';
-import { MyOpenAnnouncements } from '@/components/wg/pinnwand/MyOpenAnnouncements';
-import { PinnwandComposer } from '@/components/wg/pinnwand/PinnwandComposer';
-import { PinnwandFilterBar } from '@/components/wg/pinnwand/PinnwandFilterBar';
-import { PinnwandHeader } from '@/components/wg/pinnwand/PinnwandHeader';
-import type {
-	Announcement,
-	AnnouncementComment,
-	AnnouncementKind,
-	AnnouncementStatus,
-	ReactionKey,
-} from '@/components/wg/pinnwand/announcement-types';
-import {
-	CONTENT_MAX,
-	QUICK_ANNOUNCEMENT_TEMPLATES,
-	REFRESH_INTERVAL_MS,
-} from '@/components/wg/pinnwand/constants';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
@@ -38,17 +19,36 @@ import { createQueuedAnnouncement } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import {
+	announcementActionErrorMessage,
+	announcementCreateErrorMessage,
+	commentActionErrorMessage,
+} from '@/features/pinnwand/announcement-errors';
+import {
 	type AnnouncementFilter,
 	filterAnnouncements,
 	getAnnouncementHash,
 	getMyOpenAnnouncements,
 	getNewAnnouncementCount,
-} from '@/lib/announcement-workflow';
+} from '@/features/pinnwand/announcement-workflow';
+import { AnnouncementCard } from '@/features/pinnwand/components/AnnouncementCard';
+import { AnnouncementSkeleton } from '@/features/pinnwand/components/AnnouncementSkeleton';
+import { EmptyState } from '@/features/pinnwand/components/EmptyState';
+import { MyOpenAnnouncements } from '@/features/pinnwand/components/MyOpenAnnouncements';
+import { PinnwandComposer } from '@/features/pinnwand/components/PinnwandComposer';
+import { PinnwandFilterBar } from '@/features/pinnwand/components/PinnwandFilterBar';
+import { PinnwandHeader } from '@/features/pinnwand/components/PinnwandHeader';
+import type {
+	Announcement,
+	AnnouncementComment,
+	AnnouncementKind,
+	AnnouncementStatus,
+	ReactionKey,
+} from '@/features/pinnwand/components/announcement-types';
 import {
-	announcementActionErrorMessage,
-	announcementCreateErrorMessage,
-	commentActionErrorMessage,
-} from '@/lib/wg/announcement-errors';
+	CONTENT_MAX,
+	QUICK_ANNOUNCEMENT_TEMPLATES,
+	REFRESH_INTERVAL_MS,
+} from '@/features/pinnwand/components/constants';
 import { Megaphone } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import type React from 'react';

@@ -1,6 +1,6 @@
 'use client';
-import { KIND_OPTIONS, STATUS_FILTERS } from '@/components/wg/pinnwand/constants';
-import type { AnnouncementFilter } from '@/lib/announcement-workflow';
+import type { AnnouncementFilter } from '@/features/pinnwand/announcement-workflow';
+import { KIND_OPTIONS, STATUS_FILTERS } from '@/features/pinnwand/components/constants';
 import { Pin, RefreshCw, SlidersHorizontal } from 'lucide-react';
 import type React from 'react';
 

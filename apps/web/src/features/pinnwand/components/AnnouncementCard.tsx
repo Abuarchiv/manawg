@@ -3,16 +3,16 @@
 import { DeleteConfirmButton } from '@/components/ui/DeleteConfirmButton';
 import { CHIP_BUTTON, ICON_BUTTON } from '@/components/ui/styles';
 import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
+import { useDismissableMenu } from '@/core/hooks/useDismissableMenu';
+import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import type {
 	Announcement,
 	AnnouncementComment,
 	AnnouncementSource,
 	ReactionKey,
-} from '@/components/wg/pinnwand/announcement-types';
-import { KIND_LABELS } from '@/components/wg/pinnwand/constants';
-import { useDismissableMenu } from '@/core/hooks/useDismissableMenu';
-import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
-import { buildPinnwandPrefill, getPinnwandPrefillHref } from '@/lib/wg/pinnwand-prefill';
+} from '@/features/pinnwand/components/announcement-types';
+import { KIND_LABELS } from '@/features/pinnwand/components/constants';
+import { buildPinnwandPrefill, getPinnwandPrefillHref } from '@/features/pinnwand/pinnwand-prefill';
 import {
 	CheckCircle2,
 	ChevronDown,
