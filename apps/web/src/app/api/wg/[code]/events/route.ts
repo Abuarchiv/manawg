@@ -1,8 +1,10 @@
-import { badRequest, serverError, tooMany } from '@/lib/api-error';
-import { db, wgEvents } from '@/lib/db';
-import { dispatchNotification } from '@/lib/notification-dispatch';
-import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/lib/rate-limit';
-import { recordAuditEvent } from '@/lib/wg/audit';
+import { recordAuditEvent } from '@/core/audit';
+import { db, wgEvents } from '@/core/db';
+import { badRequest, serverError, tooMany } from '@/core/errors';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { withWgRoute } from '@/core/guards/with-wg-route';
+import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import { computeRecurrenceLookbackStart } from '@/lib/wg/event-reminder-window';
 import {
 	EVENTS_LIST_LIMIT,
@@ -11,8 +13,6 @@ import {
 	parseRecurrenceRule,
 	serializeWgEvent,
 } from '@/lib/wg/events';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { withWgRoute } from '@/lib/wg/with-wg-route';
 import { and, asc, eq, gte, isNotNull, lte, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

@@ -23,7 +23,7 @@ const recurringMock = vi.hoisted(() => ({
 	recurringSplitsMatchAmount: vi.fn(),
 }));
 
-vi.mock('@/lib/idempotency', () => ({
+vi.mock('@/core/idempotency', () => ({
 	claimResponseSlot: (...args: unknown[]) => idempotencyMock.claimResponseSlot(...args),
 	getCachedResponse: (...args: unknown[]) => idempotencyMock.getCachedResponse(...args),
 	readIdempotencyKey: (...args: unknown[]) => idempotencyMock.readIdempotencyKey(...args),
@@ -31,13 +31,13 @@ vi.mock('@/lib/idempotency', () => ({
 }));
 
 // Stubbed rather than left to fail open, because this suite asserts the 429.
-vi.mock('@/lib/rate-limit', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/lib/rate-limit')>()),
+vi.mock('@/core/rate-limit', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/core/rate-limit')>()),
 	checkRateLimit: (...args: unknown[]) => rateLimitMock.checkRateLimit(...args),
 	wgWriteLimiter: rateLimitMock.wgWriteLimiter,
 }));
 
-vi.mock('@/lib/wg/admin', () => ({
+vi.mock('@/core/guards/admin', () => ({
 	isVerifiedWgAdmin: (...args: unknown[]) => adminMock.isVerifiedWgAdmin(...args),
 }));
 

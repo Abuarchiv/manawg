@@ -4,7 +4,7 @@ import {
 	wgReadLimiter,
 	wgShareCodeLookupLimiter,
 	wgWriteLimiter,
-} from '@/lib/rate-limit';
+} from '@/core/rate-limit';
 import { contentSecurityPolicy } from '@manawg/shared/lib/security-headers';
 import { type NextRequest, NextResponse } from 'next/server';
 

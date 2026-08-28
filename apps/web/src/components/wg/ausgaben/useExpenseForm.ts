@@ -1,7 +1,7 @@
 'use client';
 
-import { formatEuroInput } from '@/lib/amount';
-import { CENTS_PER_EURO } from '@/lib/money';
+import { formatEuroInput } from '@/core/utils/amount';
+import { CENTS_PER_EURO } from '@/core/utils/money';
 import { buildDraftKey, readDraft, writeDraft } from '@/lib/wg/drafts';
 import { buildExpensePrefillDraft } from '@/lib/wg/expense-prefill';
 import type { OfflineActionType } from '@/lib/wg/offline-queue';

@@ -1,4 +1,4 @@
-import { formatEuroCents } from '@/lib/money';
+import { formatEuroCents } from '@/core/utils/money';
 import Link from 'next/link';
 import { MemberAvatar } from './MemberAvatar';
 

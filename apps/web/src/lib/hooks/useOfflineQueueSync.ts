@@ -1,6 +1,6 @@
 'use client';
 
-import { captureException } from '@/lib/observability';
+import { captureException } from '@/core/infra/observability';
 import { countOfflineActions, syncOfflineActions } from '@/lib/wg/offline-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 

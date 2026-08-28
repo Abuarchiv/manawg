@@ -1,9 +1,9 @@
-import { UUID_PATTERN } from '@/lib/api-auth';
-import { badRequest, notFound, tooMany } from '@/lib/api-error';
-import { db, wgChatMessages, wgChatReads } from '@/lib/db';
-import { chatReadLimiter, checkRateLimit } from '@/lib/rate-limit';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { withWgRoute } from '@/lib/wg/with-wg-route';
+import { db, wgChatMessages, wgChatReads } from '@/core/db';
+import { badRequest, notFound, tooMany } from '@/core/errors';
+import { UUID_PATTERN } from '@/core/guards/api-auth';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { withWgRoute } from '@/core/guards/with-wg-route';
+import { chatReadLimiter, checkRateLimit } from '@/core/rate-limit';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

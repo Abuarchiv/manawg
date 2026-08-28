@@ -1,7 +1,7 @@
 'use client';
 
 import { Section } from '@/components/wg/einstellungen/Section';
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch } from '@/core/infra/api-client';
 import {
 	type QueueEditDraft,
 	buildDraftKey,

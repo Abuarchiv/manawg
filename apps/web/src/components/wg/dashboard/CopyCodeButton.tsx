@@ -1,6 +1,6 @@
 'use client';
 
-import { type NavigatorWithShare, copyViaTextArea } from '@/lib/clipboard';
+import { type NavigatorWithShare, copyViaTextArea } from '@/core/utils/clipboard';
 import { AlertTriangle, Check, Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 

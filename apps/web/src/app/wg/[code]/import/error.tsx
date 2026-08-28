@@ -1,7 +1,7 @@
 // craftsman-ignore: TS002 — Next.js App Router requires default export for error boundaries
 'use client';
 
-import { captureException } from '@/lib/observability';
+import { captureException } from '@/core/infra/observability';
 import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';

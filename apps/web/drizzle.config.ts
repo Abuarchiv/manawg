@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { defineConfig } from 'drizzle-kit';
-import { validateDatabaseUrl } from './src/lib/db/connection';
+import { validateDatabaseUrl } from './src/core/db/connection';
 
 const migrationUrl = process.env.DATABASE_MIGRATION_URL;
 const pooledUrl = process.env.POSTGRES_URL ?? process.env.DATABASE_URL;
@@ -41,7 +41,7 @@ if (url === 'postgres://placeholder') {
 
 // craftsman-ignore: TS002 — drizzle-kit requires default export from drizzle.config.ts
 export default defineConfig({
-	schema: './src/lib/db/schema.ts',
+	schema: './src/core/db/schema.ts',
 	out: './drizzle',
 	dialect: 'postgresql',
 	dbCredentials: { url },

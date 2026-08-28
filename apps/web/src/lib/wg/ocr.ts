@@ -1,4 +1,4 @@
-import { CENTS_PER_EURO } from '@/lib/money';
+import { CENTS_PER_EURO } from '@/core/utils/money';
 import type { ParsedExpense } from './import-parsers';
 
 const OCR_LANGS = 'deu+eng';

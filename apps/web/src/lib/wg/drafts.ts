@@ -1,4 +1,4 @@
-import { formatEuroInput } from '@/lib/amount';
+import { formatEuroInput } from '@/core/utils/amount';
 import type { OfflineAction, OfflineActionType } from './offline-queue';
 
 export type DraftModule = 'announcement' | 'expense' | 'shopping' | 'chore';

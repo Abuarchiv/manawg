@@ -1,4 +1,4 @@
-import { CENTS_PER_EURO } from '@/lib/money';
+import { CENTS_PER_EURO } from '@/core/utils/money';
 const AMOUNT_MAX_CENTS = 100_000_000;
 const FUZZY_MATCH_MAX_DISTANCE = 2;
 const CUSTOM_SPLIT_MAX_DRIFT_CENTS = 2;

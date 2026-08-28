@@ -1,4 +1,4 @@
-import { db, wgInventoryLog } from '@/lib/db';
+import { db, wgInventoryLog } from '@/core/db';
 import { and, eq, gte, inArray, lt } from 'drizzle-orm';
 
 const DEFAULT_DECREMENT_WINDOW_DAYS = 30;

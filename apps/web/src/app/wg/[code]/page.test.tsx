@@ -24,7 +24,7 @@ vi.mock('@manawg/shared/components/theme/ThemeToggle', () => ({
 	ThemeToggle: () => <button type="button">Theme</button>,
 }));
 
-vi.mock('@/lib/api-client', () => ({
+vi.mock('@/core/infra/api-client', () => ({
 	apiFetch: (...args: unknown[]) => apiClientMock.apiFetch(...args),
 }));
 

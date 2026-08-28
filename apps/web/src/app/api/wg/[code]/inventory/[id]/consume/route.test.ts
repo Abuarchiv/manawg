@@ -1,4 +1,4 @@
-import { shoppingItems } from '@/lib/db';
+import { shoppingItems } from '@/core/db';
 import {
 	columnRef,
 	resetRouteHarness,
@@ -13,8 +13,8 @@ const rateLimitMock = vi.hoisted(() => ({
 	checkRateLimit: vi.fn().mockResolvedValue({ success: true, remaining: 9, reset: 0 }),
 }));
 
-vi.mock('@/lib/rate-limit', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@/lib/rate-limit')>();
+vi.mock('@/core/rate-limit', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/core/rate-limit')>();
 	return {
 		...actual,
 		checkRateLimit: (...args: unknown[]) => rateLimitMock.checkRateLimit(...args),

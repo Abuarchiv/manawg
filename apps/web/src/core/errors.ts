@@ -1,4 +1,4 @@
-import { captureException } from '@/lib/observability';
+import { captureException } from '@/core/infra/observability';
 import { NextResponse } from 'next/server';
 
 const HTTP_BAD_REQUEST = 400;

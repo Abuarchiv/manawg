@@ -9,11 +9,11 @@ const authMock = vi.hoisted(() => ({
 	requireMember: vi.fn(),
 }));
 
-vi.mock('@/lib/wg/resolve', () => ({
+vi.mock('@/core/guards/resolve', () => ({
 	resolveWg: (...args: unknown[]) => resolveMock.resolveWg(...args),
 }));
 
-vi.mock('@/lib/api-auth', () => ({
+vi.mock('@/core/guards/api-auth', () => ({
 	requireMember: (...args: unknown[]) => authMock.requireMember(...args),
 }));
 

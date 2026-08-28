@@ -1,4 +1,4 @@
-import { db, wgs } from '@/lib/db';
+import { db, wgs } from '@/core/db';
 import { eq } from 'drizzle-orm';
 
 /**
@@ -19,7 +19,7 @@ export interface ResolvedWg {
  *
  * Returns `null` when no WG with that share code exists. Routes should not
  * call this directly — use `requireWgMember` from
- * `@/lib/wg/require-wg-member`, which combines this lookup with the member
+ * `@/core/guards/require-wg-member`, which combines this lookup with the member
  * check.
  */
 export async function resolveWg(code: string): Promise<ResolvedWg | null> {

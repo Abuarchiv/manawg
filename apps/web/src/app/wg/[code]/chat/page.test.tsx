@@ -10,7 +10,7 @@ const selectChain = vi.fn(() => ({
 	})),
 }));
 
-vi.mock('@/lib/db', () => ({
+vi.mock('@/core/db', () => ({
 	db: { select: selectChain },
 	wgChatMentions: { messageId: 'col' },
 	wgChatMessages: { id: 'col', wgId: 'col', createdAt: 'col', deletedAt: 'col' },

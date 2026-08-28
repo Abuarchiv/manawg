@@ -1,7 +1,7 @@
 /**
  * Real-database integration test for POST /api/wg.
  *
- * Every other route test in this repo mocks `@/lib/db` entirely (see
+ * Every other route test in this repo mocks `@/core/db` entirely (see
  * `route.test.ts` next to this file), so none of them ever issues a real SQL
  * statement — a schema/query drift would only surface in production. This
  * file is the exception: it runs the actual handler against a live Postgres
@@ -14,7 +14,7 @@
  * points POSTGRES_URL at an ephemeral Postgres service and runs migrations
  * first — see .github/workflows/ci.yml.
  */
-import { db, wgMembers, wgs } from '@/lib/db';
+import { db, wgMembers, wgs } from '@/core/db';
 import { eq } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
 import { afterAll, describe, expect, it } from 'vitest';

@@ -1,6 +1,6 @@
 'use client';
 
-import { copyViaTextArea } from '@/lib/clipboard';
+import { copyViaTextArea } from '@/core/utils/clipboard';
 import { Check, Copy, Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';

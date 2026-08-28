@@ -1,10 +1,10 @@
-import { badRequest, conflict, serverError, tooMany } from '@/lib/api-error';
-import { announcements, db, shoppingItems } from '@/lib/db';
-import { dispatchNotification } from '@/lib/notification-dispatch';
-import { checkRateLimit, wgWriteLimiter } from '@/lib/rate-limit';
-import { recordAuditEvent } from '@/lib/wg/audit';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { withWgRoute } from '@/lib/wg/with-wg-route';
+import { recordAuditEvent } from '@/core/audit';
+import { announcements, db, shoppingItems } from '@/core/db';
+import { badRequest, conflict, serverError, tooMany } from '@/core/errors';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { withWgRoute } from '@/core/guards/with-wg-route';
+import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

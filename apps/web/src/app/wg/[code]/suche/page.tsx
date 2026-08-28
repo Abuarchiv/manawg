@@ -2,7 +2,7 @@
 
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { getWgLoadErrorMessage } from '@/lib/wg/load-errors';
+import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import {
 	type WgSearchModule,
 	type WgSearchQuickFilter,

@@ -1,4 +1,4 @@
-import { claimResponseSlot, getCachedResponse } from '@/lib/idempotency';
+import { claimResponseSlot, getCachedResponse } from '@/core/idempotency';
 
 // Poll up to ~10s with backoff. A slow first winner (cold lambda, slow DB)
 // must not make the retrying loser act as a new winner — that would insert
@@ -110,7 +110,7 @@ type ReplaySlotResult<T> = { won: true } | { won: false; cached: T | null };
 
 /**
  * Cross-process response-replay claim with poll-and-retry, backed by the
- * Postgres claim table in `@/lib/idempotency` (deliberately not Redis — see
+ * Postgres claim table in `@/core/idempotency` (deliberately not Redis — see
  * that module's doc comment re: the iter 13 P0 outage where an empty-env
  * Redis client silently no-opped and let duplicate expense inserts through).
  *

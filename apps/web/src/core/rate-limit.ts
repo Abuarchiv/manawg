@@ -1,4 +1,4 @@
-import { captureException } from '@/lib/observability';
+import { captureException } from '@/core/infra/observability';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis/cloudflare';
 

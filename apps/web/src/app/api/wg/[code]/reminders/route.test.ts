@@ -13,8 +13,8 @@ const rateLimitMock = vi.hoisted(() => ({
 	reminderSendLimiter: 'reminderSendLimiter-stub',
 }));
 
-vi.mock('@/lib/rate-limit', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@/lib/rate-limit')>();
+vi.mock('@/core/rate-limit', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/core/rate-limit')>();
 	return {
 		...actual,
 		checkRateLimit: (...args: unknown[]) => rateLimitMock.checkRateLimit(...args),
@@ -22,18 +22,18 @@ vi.mock('@/lib/rate-limit', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/lib/wg/admin', () => ({
+vi.mock('@/core/guards/admin', () => ({
 	isVerifiedWgAdmin: (...args: unknown[]) => adminMock.isVerifiedWgAdmin(...args),
 }));
 
-vi.mock('@/lib/db/transaction', async () => {
-	const { TransactionAbort } = await import('@/lib/db/transaction-abort');
+vi.mock('@/core/db/transaction', async () => {
+	const { TransactionAbort } = await import('@/core/db/transaction-abort');
 	return {
 		TransactionAbort,
 		// Run the callback against the same mocked db — the tests exercise
 		// cooldown logic, not transaction semantics.
 		withTransaction: async (fn: (tx: unknown) => Promise<unknown>) => {
-			const { db } = await import('@/lib/db');
+			const { db } = await import('@/core/db');
 			return fn({ ...db, execute: vi.fn().mockResolvedValue(undefined) });
 		},
 	};

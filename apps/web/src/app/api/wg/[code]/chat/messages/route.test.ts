@@ -6,8 +6,8 @@ const rateLimitMock = vi.hoisted(() => ({
 	checkRateLimit: vi.fn(),
 }));
 
-vi.mock('@/lib/rate-limit', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@/lib/rate-limit')>();
+vi.mock('@/core/rate-limit', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/core/rate-limit')>();
 	return {
 		...actual,
 		chatMessageLimiter: {},
@@ -25,7 +25,7 @@ vi.mock('@upstash/ratelimit', () => ({
 	}),
 }));
 
-vi.mock('@/lib/wg/resolve', () => ({
+vi.mock('@/core/guards/resolve', () => ({
 	resolveWg: vi.fn(() => Promise.resolve({ id: 'wg-1', name: 'Test WG', shareCode: 'MTE8PZAT' })),
 }));
 

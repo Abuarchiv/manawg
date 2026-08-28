@@ -1,11 +1,11 @@
-import { deriveMemberToken } from '@/lib/wg/member-token';
+import { deriveMemberToken } from '@/core/guards/member-token';
 import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from '@manawg/shared/lib/member-header';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const findFirst = vi.fn();
 
-vi.mock('@/lib/db', () => ({
+vi.mock('@/core/db', () => ({
 	db: { query: { wgMembers: { findFirst: (...args: unknown[]) => findFirst(...args) } } },
 	wgMembers: { deactivatedAt: 'deactivatedAt', id: 'id', wgId: 'wgId' },
 }));

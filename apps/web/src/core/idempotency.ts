@@ -1,5 +1,5 @@
-import { UUID_PATTERN } from '@/lib/api-auth';
-import { db, idempotencyResponses } from '@/lib/db';
+import { db, idempotencyResponses } from '@/core/db';
+import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { Redis } from '@upstash/redis/cloudflare';
 import { and, eq, gt } from 'drizzle-orm';
 

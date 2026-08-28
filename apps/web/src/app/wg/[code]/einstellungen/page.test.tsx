@@ -42,7 +42,7 @@ vi.mock('@/components/wg/WgContextProvider', () => ({
 	}),
 }));
 
-vi.mock('@/lib/api-client', () => ({
+vi.mock('@/core/infra/api-client', () => ({
 	apiFetch: (...args: unknown[]) => apiClientMock.apiFetch(...args),
 }));
 
@@ -52,7 +52,7 @@ vi.mock('@/lib/wg/offline-client', () => ({
 	writeOfflineQueue: (...args: unknown[]) => offlineClientMock.writeOfflineQueue(...args),
 }));
 
-vi.mock('@/lib/push-subscribe', () => ({
+vi.mock('@/core/notifications/push-subscribe', () => ({
 	persistExistingWebPushSubscription: (...args: unknown[]) =>
 		pushSubscribeMock.persistExistingWebPushSubscription(...args),
 	subscribeWebPush: (...args: unknown[]) => pushSubscribeMock.subscribeWebPush(...args),

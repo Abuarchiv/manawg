@@ -11,31 +11,31 @@ import { routeDb, routeMocks } from './route-harness';
  * Only the pieces that need a database or reach the network are replaced.
  *
  * Not stubbed on purpose, because the real implementations work fine under
- * test: `@manawg/shared/lib/share-code` (pure), `@/lib/e2e-db-down` (reads env, off unless
+ * test: `@manawg/shared/lib/share-code` (pure), `@/core/infra/e2e-db-down` (reads env, off unless
  * the E2E vars are set), and the drizzle operators.
  *
- * `@/lib/rate-limit` is deliberately absent too. With no Upstash credentials
+ * `@/core/rate-limit` is deliberately absent too. With no Upstash credentials
  * configured it fails open, which is exactly what a test wants by default —
  * and 15 suites rely on that. The handful of tests asserting a 429 stub it
  * themselves.
  */
 
-vi.mock('@/lib/db', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/lib/db')>()),
+vi.mock('@/core/db', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/core/db')>()),
 	db: routeDb,
 }));
 
-vi.mock('@/lib/api-auth', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/lib/api-auth')>()),
+vi.mock('@/core/guards/api-auth', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/core/guards/api-auth')>()),
 	requireMember: (...args: unknown[]) => routeMocks.requireMember(...args),
 }));
 
-vi.mock('@/lib/wg/audit', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/lib/wg/audit')>()),
+vi.mock('@/core/audit', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/core/audit')>()),
 	recordAuditEvent: (...args: unknown[]) => routeMocks.recordAuditEvent(...args),
 }));
 
-vi.mock('@/lib/notification-dispatch', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/lib/notification-dispatch')>()),
+vi.mock('@/core/notifications/notification-dispatch', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/core/notifications/notification-dispatch')>()),
 	dispatchNotification: (...args: unknown[]) => routeMocks.dispatchNotification(...args),
 }));

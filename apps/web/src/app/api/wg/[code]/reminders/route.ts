@@ -1,10 +1,12 @@
-import { apiError, badRequest, forbidden, tooMany } from '@/lib/api-error';
-import { db, expenseReminders, wgMembers } from '@/lib/db';
-import { withTransaction } from '@/lib/db/transaction';
-import { dispatchNotification } from '@/lib/notification-dispatch';
-import { checkRateLimit, reminderSendLimiter } from '@/lib/rate-limit';
-import { isVerifiedWgAdmin } from '@/lib/wg/admin';
-import { recordAuditEvent } from '@/lib/wg/audit';
+import { recordAuditEvent } from '@/core/audit';
+import { db, expenseReminders, wgMembers } from '@/core/db';
+import { withTransaction } from '@/core/db/transaction';
+import { apiError, badRequest, forbidden, tooMany } from '@/core/errors';
+import { isVerifiedWgAdmin } from '@/core/guards/admin';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { withWgRoute } from '@/core/guards/with-wg-route';
+import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { checkRateLimit, reminderSendLimiter } from '@/core/rate-limit';
 import { computeBalances, computeOldestDebtAgeDays, findPairBalance } from '@/lib/wg/debts';
 import { loadOpenExpenses } from '@/lib/wg/open-expenses';
 import {
@@ -12,8 +14,6 @@ import {
 	canSendReminder,
 	formatReminderMessage,
 } from '@/lib/wg/reminders';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { withWgRoute } from '@/lib/wg/with-wg-route';
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

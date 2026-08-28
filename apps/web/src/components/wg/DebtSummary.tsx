@@ -1,8 +1,8 @@
 'use client';
 
 import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
-import { apiFetch } from '@/lib/api-client';
-import { formatEuroCents } from '@/lib/money';
+import { apiFetch } from '@/core/infra/api-client';
+import { formatEuroCents } from '@/core/utils/money';
 import type { SettlementSummary, SimplifiedDebt } from '@/lib/wg/debt-reduction';
 import { ArrowRight, Bell, Check, CheckCircle2, Loader2 } from 'lucide-react';
 import Link from 'next/link';

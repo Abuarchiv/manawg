@@ -1,4 +1,4 @@
-import { nextBerlinDayStart, startOfBerlinDay } from '@/lib/berlin-day';
+import { nextBerlinDayStart, startOfBerlinDay } from '@/core/utils/berlin-day';
 
 const DEFAULT_HORIZON_YEARS = 2;
 

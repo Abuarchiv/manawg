@@ -4,7 +4,7 @@ const observabilityMock = vi.hoisted(() => ({
 	captureException: vi.fn(),
 }));
 
-vi.mock('@/lib/observability', () => observabilityMock);
+vi.mock('@/core/infra/observability', () => observabilityMock);
 
 describe('serverError', () => {
 	afterEach(() => {
@@ -12,7 +12,7 @@ describe('serverError', () => {
 	});
 
 	it('BUG-271: reports string-coded server errors', async () => {
-		const { serverError } = await import('./api-error');
+		const { serverError } = await import('./errors');
 
 		const res = serverError('insert_failed');
 
@@ -25,7 +25,7 @@ describe('serverError', () => {
 	});
 
 	it('reports a caught error and returns the generic message', async () => {
-		const { serverError } = await import('./api-error');
+		const { serverError } = await import('./errors');
 		const caught = new Error('db exploded');
 
 		const res = serverError(caught);
@@ -36,7 +36,7 @@ describe('serverError', () => {
 	});
 
 	it('reports nothing when called without arguments', async () => {
-		const { serverError } = await import('./api-error');
+		const { serverError } = await import('./errors');
 
 		const res = serverError();
 

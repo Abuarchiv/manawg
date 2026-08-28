@@ -1,8 +1,8 @@
-import { type VerifiedMember, requireMember } from '@/lib/api-auth';
-import { forbidden, notFound, tooMany } from '@/lib/api-error';
-import { db } from '@/lib/db';
-import { checkRateLimit, wgWriteLimiter } from '@/lib/rate-limit';
-import { checkWgAdminAccess } from '@/lib/wg/admin';
+import { db } from '@/core/db';
+import { forbidden, notFound, tooMany } from '@/core/errors';
+import { checkWgAdminAccess } from '@/core/guards/admin';
+import { type VerifiedMember, requireMember } from '@/core/guards/api-auth';
+import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import type { NextRequest, NextResponse } from 'next/server';
 
 interface WgAdminOk {

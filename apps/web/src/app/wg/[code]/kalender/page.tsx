@@ -10,8 +10,8 @@ import {
 	type UpdateEventPayload,
 } from '@/components/wg/EventEditModal';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { apiFetch } from '@/lib/api-client';
-import { MS_PER_DAY } from '@/lib/time';
+import { apiFetch } from '@/core/infra/api-client';
+import { MS_PER_DAY } from '@/core/utils/time';
 import {
 	type EventInput,
 	type EventOccurrence,

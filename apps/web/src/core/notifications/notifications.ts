@@ -1,4 +1,4 @@
-import { formatEuroCents } from '@/lib/money';
+import { formatEuroCents } from '@/core/utils/money';
 
 export type NotificationEvent =
 	| 'expense.created'

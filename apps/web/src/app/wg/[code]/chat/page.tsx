@@ -1,6 +1,6 @@
 import { ChatView } from '@/components/wg/chat/ChatView';
-import { db, type wgChatMessages, wgs } from '@/lib/db';
-import { getE2EWgFixture, isE2EDbDownMode } from '@/lib/e2e-db-down';
+import { db, type wgChatMessages, wgs } from '@/core/db';
+import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { isValidShareCode, normalizeShareCode } from '@manawg/shared/lib/share-code';
 import { eq } from 'drizzle-orm';
 import { ArrowLeft } from 'lucide-react';

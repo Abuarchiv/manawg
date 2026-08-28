@@ -1,6 +1,6 @@
 'use client';
 
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch } from '@/core/infra/api-client';
 import { isPendingImageToken, uploadPendingImageToken } from '@/lib/wg/offline-images';
 import {
 	type OfflineAction,

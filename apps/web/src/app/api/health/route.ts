@@ -1,5 +1,5 @@
-import { checkEnv } from '@/lib/env';
-import { checkRateLimit, clientIpKey, healthLimiter } from '@/lib/rate-limit';
+import { checkEnv } from '@/core/infra/env';
+import { checkRateLimit, clientIpKey, healthLimiter } from '@/core/rate-limit';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
@@ -25,7 +25,7 @@ type ProbeStatus = 'ok' | 'unreachable';
 
 async function probeDatabase(): Promise<ProbeStatus> {
 	try {
-		const { db } = await import('@/lib/db');
+		const { db } = await import('@/core/db');
 		const { sql } = await import('drizzle-orm');
 		await Promise.race([
 			db.execute(sql`select 1`),

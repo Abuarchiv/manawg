@@ -3,7 +3,8 @@
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { ActivityFeed } from '@/components/wg/dashboard/ActivityFeed';
-import { apiFetch } from '@/lib/api-client';
+import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { apiFetch } from '@/core/infra/api-client';
 import {
 	type ActivityFilter,
 	type ActivityItem,
@@ -16,7 +17,6 @@ import {
 	getActivityEmptyActionHref,
 	groupActivityItemsByDay,
 } from '@/lib/wg/activity';
-import { getWgLoadErrorMessage } from '@/lib/wg/load-errors';
 import { AlertTriangle, ArrowLeft, ListFilter, Loader2, RotateCw, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

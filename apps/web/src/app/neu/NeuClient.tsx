@@ -4,7 +4,11 @@ import { BackButton } from '@/components/neu/BackButton';
 import { ErrorBox } from '@/components/neu/ErrorBox';
 import { Field } from '@/components/neu/Field';
 import { InviteStep } from '@/components/neu/InviteStep';
-import { getInitialJoinCode, joinErrorMessage, shouldFallbackToDirectJoin } from '@/lib/join-flow';
+import {
+	getInitialJoinCode,
+	joinErrorMessage,
+	shouldFallbackToDirectJoin,
+} from '@/core/infra/join-flow';
 import { readDraft, removeDraft, writeDraft } from '@/lib/wg/drafts';
 import { LogoMark } from '@manawg/shared/components/ui/LogoMark';
 import {

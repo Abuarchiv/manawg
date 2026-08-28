@@ -1,8 +1,8 @@
 'use client';
 
-import { formatEuroInput, parseEuroAmount } from '@/lib/amount';
-import { CENTS_PER_EURO } from '@/lib/money';
-import { formatEuroCents } from '@/lib/money';
+import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
+import { CENTS_PER_EURO } from '@/core/utils/money';
+import { formatEuroCents } from '@/core/utils/money';
 import type { Dispatch, SetStateAction } from 'react';
 
 interface ManualSplitSummaryProps {

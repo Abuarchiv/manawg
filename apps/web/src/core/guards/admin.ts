@@ -1,4 +1,4 @@
-import { db, wgMembers } from '@/lib/db';
+import { db, wgMembers } from '@/core/db';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 
 /**
@@ -56,7 +56,7 @@ interface WgAdminAccessResult {
  * the `wgs` row for every member), so — unlike `isWgAdmin`, which many
  * lower-stakes admin-override actions still call directly — this requires
  * `verified` (a valid `x-manawg-member-token` HMAC, see
- * `@/lib/wg/member-token`) in addition to being the oldest member. A
+ * `@/core/guards/member-token`) in addition to being the oldest member. A
  * request that only matched `x-manawg-member-id` ("legacy") is rejected
  * with `not_verified` even if that id belongs to the real admin — a bare
  * id is spoofable (e.g. harvested from GET /api/wg/[code]/members) and is

@@ -3,8 +3,8 @@
 import { DeleteConfirmButton } from '@/components/ui/DeleteConfirmButton';
 import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
 import type { Chore, MemberInfo, RecurrenceType } from '@/components/wg/putzen/chore-types';
+import { formatRelativeTime } from '@/core/utils/time';
 import { getChoreRepairHint, getChoreStatus } from '@/lib/chore-status';
-import { formatRelativeTime } from '@/lib/time';
 import { AlertTriangle, Check, History, Loader2, MessageSquareMore } from 'lucide-react';
 import { type ReactElement, memo } from 'react';
 

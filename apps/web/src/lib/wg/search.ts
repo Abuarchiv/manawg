@@ -1,5 +1,5 @@
-import { formatEuroCents } from '@/lib/money';
-import { formatShortDateRange, parseTimestamp } from '@/lib/time';
+import { formatEuroCents } from '@/core/utils/money';
+import { formatShortDateRange, parseTimestamp } from '@/core/utils/time';
 
 export type WgSearchModule =
 	| 'pinnwand'

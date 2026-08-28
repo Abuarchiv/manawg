@@ -1,4 +1,4 @@
-import { E2E_EXISTING_WG } from '@/lib/e2e-db-down';
+import { E2E_EXISTING_WG } from '@/core/infra/e2e-db-down';
 import { INVENTORY_LIST_LIMIT } from '@/lib/wg/inventory';
 import { resetRouteHarness, routeDb, routeMocks } from '@/test/route-harness';
 import { MEMBER_ID_HEADER } from '@manawg/shared/lib/member-header';
@@ -9,8 +9,8 @@ const rateLimitMock = vi.hoisted(() => ({
 	checkRateLimit: vi.fn().mockResolvedValue({ success: true, remaining: 9, reset: 0 }),
 }));
 
-vi.mock('@/lib/rate-limit', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@/lib/rate-limit')>();
+vi.mock('@/core/rate-limit', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/core/rate-limit')>();
 	return {
 		...actual,
 		checkRateLimit: (...args: unknown[]) => rateLimitMock.checkRateLimit(...args),

@@ -10,8 +10,8 @@ const rateLimitMock = vi.hoisted(() => ({ checkRateLimit: vi.fn() }));
  */
 const txMock = vi.hoisted(() => ({ committed: false, rolledBack: false }));
 
-vi.mock('@/lib/db/transaction', async () => {
-	const { TransactionAbort } = await import('@/lib/db/transaction-abort');
+vi.mock('@/core/db/transaction', async () => {
+	const { TransactionAbort } = await import('@/core/db/transaction-abort');
 	return {
 		TransactionAbort,
 		withTransaction: async (fn: (tx: unknown) => Promise<unknown>) => {
@@ -34,8 +34,8 @@ vi.mock('@/lib/db/transaction', async () => {
 
 // This suite asserts the 429 path, so the limiter is stubbed rather than left
 // to fail open like the shared harness does.
-vi.mock('@/lib/rate-limit', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/lib/rate-limit')>()),
+vi.mock('@/core/rate-limit', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/core/rate-limit')>()),
 	checkRateLimit: (...args: unknown[]) => rateLimitMock.checkRateLimit(...args),
 	clientIpKey: () => 'spoofed-ip',
 	wgWriteLimiter: {},

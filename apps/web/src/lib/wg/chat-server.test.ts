@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 const insertReturning = vi.fn();
 
-vi.mock('@/lib/db', () => ({
+vi.mock('@/core/db', () => ({
 	db: {
 		insert: vi.fn(() => ({
 			values: vi.fn(() => ({

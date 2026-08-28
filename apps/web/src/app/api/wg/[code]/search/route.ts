@@ -1,5 +1,3 @@
-import { serverError } from '@/lib/api-error';
-import type { RouteCtx } from '@/lib/api-types';
 import {
 	announcements,
 	chores,
@@ -10,10 +8,12 @@ import {
 	recurringExpenses,
 	shoppingItems,
 	wgMembers,
-} from '@/lib/db';
-import { buildE2EDashboardData } from '@/lib/e2e-db-down';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { readShareCode, resolveE2EFixture } from '@/lib/wg/route-preamble';
+} from '@/core/db';
+import { serverError } from '@/core/errors';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
+import type { RouteCtx } from '@/core/infra/api-types';
+import { buildE2EDashboardData } from '@/core/infra/e2e-db-down';
 import { getSearchSuggestions, searchWgItems } from '@/lib/wg/search';
 import { desc, eq, inArray } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';

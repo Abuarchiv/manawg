@@ -1,5 +1,5 @@
 'use client';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils/utils';
 import { haptic } from '@manawg/shared/lib/haptics';
 import { CheckCircle, Info, X, XCircle } from 'lucide-react';
 import { create } from 'zustand';

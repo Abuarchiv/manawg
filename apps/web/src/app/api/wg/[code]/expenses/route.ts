@@ -1,12 +1,21 @@
-import { apiError, badRequest, serverError, tooMany } from '@/lib/api-error';
-import type { RouteCtx } from '@/lib/api-types';
-import { db, expenseSplits, expenses } from '@/lib/db';
-import type { Expense, ExpenseSplit } from '@/lib/db/schema';
-import { TransactionAbort, withTransaction } from '@/lib/db/transaction';
-import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/lib/idempotency';
-import { checkRateLimit, wgWriteLimiter } from '@/lib/rate-limit';
-import { currencySchema } from '@/lib/validators/currency';
-import { imageUrlSchema } from '@/lib/validators/image-url';
+import { db, expenseSplits, expenses } from '@/core/db';
+import type { Expense, ExpenseSplit } from '@/core/db/schema';
+import { TransactionAbort, withTransaction } from '@/core/db/transaction';
+import { apiError, badRequest, serverError, tooMany } from '@/core/errors';
+import {
+	ReplayCache,
+	type ReplayReservation,
+	claimReplaySlotWithRetry,
+	replayKey,
+} from '@/core/guards/idempotency';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { readShareCode } from '@/core/guards/route-preamble';
+import { withWgRoute } from '@/core/guards/with-wg-route';
+import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
+import type { RouteCtx } from '@/core/infra/api-types';
+import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { currencySchema } from '@/core/validators/currency';
+import { imageUrlSchema } from '@/core/validators/image-url';
 import {
 	checkPaidByGuard,
 	findExpenseMemberIds,
@@ -14,16 +23,7 @@ import {
 	recordExpenseCreatedSideEffects,
 	resolveExpensePayer,
 } from '@/lib/wg/expenses';
-import {
-	ReplayCache,
-	type ReplayReservation,
-	claimReplaySlotWithRetry,
-	replayKey,
-} from '@/lib/wg/idempotency';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { readShareCode } from '@/lib/wg/route-preamble';
 import { validateSplits } from '@/lib/wg/split-math';
-import { withWgRoute } from '@/lib/wg/with-wg-route';
 import { desc, eq, inArray } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

@@ -1,7 +1,7 @@
 // Shared helpers for ManaWG Playwright happy-path E2E specs.
 //
 // All specs in this directory rely on the `MTE8PZAT` share-code WG, which is
-// surfaced as a stable fixture in `apps/web/src/lib/e2e-db-down.ts` so that
+// surfaced as a stable fixture in `apps/web/src/core/infra/e2e-db-down.ts` so that
 // the WG layout renders without a real Postgres instance. Individual feature
 // API endpoints are mocked per-test via `page.route()`.
 

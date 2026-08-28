@@ -1,9 +1,9 @@
-import { announcements, db, expenseImports, expenseSplits, expenses, wgMembers } from '@/lib/db';
-import type { DbTransaction } from '@/lib/db/transaction';
-import { withTransaction } from '@/lib/db/transaction';
-import { formatEuroCents } from '@/lib/money';
-import { dispatchNotification } from '@/lib/notification-dispatch';
-import { recordAuditEvent } from '@/lib/wg/audit';
+import { recordAuditEvent } from '@/core/audit';
+import { announcements, db, expenseImports, expenseSplits, expenses, wgMembers } from '@/core/db';
+import type { DbTransaction } from '@/core/db/transaction';
+import { withTransaction } from '@/core/db/transaction';
+import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { formatEuroCents } from '@/core/utils/money';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { ImportSource, ParsedExpense } from './import-parsers';
 

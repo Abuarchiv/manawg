@@ -1,5 +1,3 @@
-import { badRequest, serverError, tooMany } from '@/lib/api-error';
-import type { RouteCtx } from '@/lib/api-types';
 import {
 	announcements,
 	auditEvents,
@@ -11,8 +9,12 @@ import {
 	recurringExpenses,
 	shoppingItems,
 	wgMembers,
-} from '@/lib/db';
-import { checkRateLimit, wgExportLimiter } from '@/lib/rate-limit';
+} from '@/core/db';
+import { badRequest, serverError, tooMany } from '@/core/errors';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
+import type { RouteCtx } from '@/core/infra/api-types';
+import { checkRateLimit, wgExportLimiter } from '@/core/rate-limit';
 import {
 	type ExportSectionKey,
 	buildWgExport,
@@ -23,8 +25,6 @@ import {
 	parseRecurringSplitsForExport,
 	toCsv,
 } from '@/lib/wg/export';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { readShareCode, resolveE2EFixture } from '@/lib/wg/route-preamble';
 import { desc, eq, inArray } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 

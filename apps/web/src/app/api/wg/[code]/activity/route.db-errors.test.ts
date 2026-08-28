@@ -1,11 +1,11 @@
-import { chores } from '@/lib/db';
+import { chores } from '@/core/db';
 import { chainOf, chainRejecting, resetRouteHarness, routeDb } from '@/test/route-harness';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const guardMock = vi.hoisted(() => ({ requireWgMember: vi.fn() }));
 
-vi.mock('@/lib/wg/require-wg-member', () => ({
+vi.mock('@/core/guards/require-wg-member', () => ({
 	requireWgMember: (...args: unknown[]) => guardMock.requireWgMember(...args),
 }));
 

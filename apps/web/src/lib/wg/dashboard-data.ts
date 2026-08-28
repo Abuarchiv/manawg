@@ -1,10 +1,4 @@
 import {
-	berlinDayKey,
-	nextBerlinDayStart,
-	prevBerlinDayStart,
-	startOfBerlinDay,
-} from '@/lib/berlin-day';
-import {
 	announcementReactions,
 	announcements,
 	auditEvents,
@@ -16,7 +10,13 @@ import {
 	recurringExpenses,
 	shoppingItems,
 	wgMembers,
-} from '@/lib/db';
+} from '@/core/db';
+import {
+	berlinDayKey,
+	nextBerlinDayStart,
+	prevBerlinDayStart,
+	startOfBerlinDay,
+} from '@/core/utils/berlin-day';
 import { and, desc, eq } from 'drizzle-orm';
 import { getAbsentMemberIds } from './absence';
 import { type ActivityKind, formatAuditActivityText } from './activity';

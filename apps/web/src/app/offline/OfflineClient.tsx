@@ -1,6 +1,6 @@
 'use client';
 
-import { parseTimestamp } from '@/lib/time';
+import { parseTimestamp } from '@/core/utils/time';
 import { readOfflineQueue, syncOfflineActions } from '@/lib/wg/offline-client';
 import { formatManualOfflineSyncResult, getOfflineSyncFailureMessage } from '@/lib/wg/offline-copy';
 import {

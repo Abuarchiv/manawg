@@ -1,6 +1,6 @@
 'use client';
 
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch } from '@/core/infra/api-client';
 
 interface PushJson {
 	endpoint?: string;

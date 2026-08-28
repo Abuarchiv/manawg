@@ -11,13 +11,13 @@
  * feature fail silently at the moment a user first touches it.
  */
 async function reportEnvironment(): Promise<void> {
-	const { checkEnv, formatEnvReport } = await import('./lib/env');
+	const { checkEnv, formatEnvReport } = await import('./core/infra/env');
 	const result = checkEnv(process.env);
 	const report = formatEnvReport(result);
 
 	if (!result.ok) {
 		console.error(report);
-		const { captureException } = await import('./lib/observability');
+		const { captureException } = await import('./core/infra/observability');
 		const error = new Error(
 			`Missing required environment variables: ${result.missingRequired.join(', ')}`,
 		);
@@ -43,6 +43,6 @@ export async function onRequestError(
 	error: unknown,
 	request: { path: string; method: string },
 ): Promise<void> {
-	const { captureException } = await import('./lib/observability');
+	const { captureException } = await import('./core/infra/observability');
 	captureException(error, { path: request.path, method: request.method });
 }

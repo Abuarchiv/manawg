@@ -12,7 +12,7 @@ const txMock = vi.hoisted(() => ({ committed: false, rolledBack: false }));
 // The transaction is stubbed with the same `dbMock` behind it, so the existing
 // call expectations keep working and the tests can additionally assert whether
 // the run committed or rolled back.
-vi.mock('@/lib/db/transaction', () => ({
+vi.mock('@/core/db/transaction', () => ({
 	withTransaction: async (fn: (tx: unknown) => Promise<unknown>) => {
 		try {
 			const result = await fn({
@@ -30,7 +30,7 @@ vi.mock('@/lib/db/transaction', () => ({
 	},
 }));
 
-vi.mock('@/lib/db', () => ({
+vi.mock('@/core/db', () => ({
 	announcements: {},
 	db: dbMock,
 	expenseImports: { id: 'expenseImports.id' },
@@ -50,15 +50,15 @@ vi.mock('@/lib/db', () => ({
 	},
 }));
 
-vi.mock('@/lib/money', () => ({
+vi.mock('@/core/utils/money', () => ({
 	formatEuroCents: (n: number) => `${(n / 100).toFixed(2)} €`,
 }));
 
-vi.mock('@/lib/notification-dispatch', () => ({
+vi.mock('@/core/notifications/notification-dispatch', () => ({
 	dispatchNotification: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/lib/wg/audit', () => ({
+vi.mock('@/core/audit', () => ({
 	recordAuditEvent: vi.fn().mockResolvedValue(undefined),
 }));
 

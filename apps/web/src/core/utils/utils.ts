@@ -1,4 +1,4 @@
-import { parseTimestamp } from '@/lib/time';
+import { parseTimestamp } from '@/core/utils/time';
 
 // `cn` moved to @manawg/shared/lib/cn — Drawer (now in apps/landing) needs it
 // too, so it can't stay app-local. Re-export here so the many in-app call

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import WgError from './error';
 
-vi.mock('@/lib/observability', () => ({
+vi.mock('@/core/infra/observability', () => ({
 	captureException: vi.fn(),
 }));
 

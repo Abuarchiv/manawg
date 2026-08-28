@@ -1,12 +1,12 @@
-import { db, pushSubscriptions, wgMembers } from '@/lib/db';
-import { isQuietHoursActive } from '@/lib/notification-preferences';
+import { db, pushSubscriptions, wgMembers } from '@/core/db';
+import { isQuietHoursActive } from '@/core/notifications/notification-preferences';
 import {
 	type NotificationEvent,
 	formatNotificationMessage,
 	notificationCategoryForEvent,
 	notificationPriorityForEvent,
-} from '@/lib/notifications';
-import { parseWebPushStatusCode } from '@/lib/web-push-errors';
+} from '@/core/notifications/notifications';
+import { parseWebPushStatusCode } from '@/core/notifications/web-push-errors';
 import { getAppUrl } from '@manawg/shared/lib/app-url';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 

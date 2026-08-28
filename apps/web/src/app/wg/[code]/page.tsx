@@ -17,10 +17,11 @@ import { Panel } from '@/components/wg/dashboard/Panel';
 import { Sparkline } from '@/components/wg/dashboard/Sparkline';
 import { Stat } from '@/components/wg/dashboard/Stat';
 import { TodayIcon } from '@/components/wg/dashboard/TodayIcon';
-import { apiFetch } from '@/lib/api-client';
-import { formatEuroCents } from '@/lib/money';
-import { parseTimestamp } from '@/lib/time';
-import { useVisibilityPausedInterval } from '@/lib/use-visibility-paused-interval';
+import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { apiFetch } from '@/core/infra/api-client';
+import { formatEuroCents } from '@/core/utils/money';
+import { parseTimestamp } from '@/core/utils/time';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import type { ActivityReminder } from '@/lib/wg/activity';
 import type { DashboardData } from '@/lib/wg/dashboard-data';
 import {
@@ -32,7 +33,6 @@ import {
 	getDashboardAnnouncementHref,
 	getDashboardEmptyActionHref,
 } from '@/lib/wg/dashboard-links';
-import { getWgLoadErrorMessage } from '@/lib/wg/load-errors';
 import {
 	type OnboardingStep,
 	getOnboardingChecklist,

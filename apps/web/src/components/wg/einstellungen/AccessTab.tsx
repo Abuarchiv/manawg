@@ -6,13 +6,13 @@ import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { apiFetch } from '@/lib/api-client';
-import { buildSecurityOverview } from '@/lib/wg/security';
 import {
 	accessErrorMessage,
 	deleteWgErrorMessage,
 	readResponseErrorCode,
-} from '@/lib/wg/settings-errors';
+} from '@/core/guards/settings-errors';
+import { apiFetch } from '@/core/infra/api-client';
+import { buildSecurityOverview } from '@/core/infra/security';
 import type { StoredIdentity } from '@manawg/shared/lib/identity';
 import { clearIdentity, forgetWg, memberAuthHeader } from '@manawg/shared/lib/identity';
 import { AlertTriangle, Loader2, LogOut, Trash2, UserMinus, UserPlus } from 'lucide-react';

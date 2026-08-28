@@ -1,6 +1,6 @@
 'use client';
 
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch } from '@/core/infra/api-client';
 import { Bell, Check, Loader2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 

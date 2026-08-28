@@ -1,6 +1,6 @@
-import { db, wgChatMessages, wgChatReads, wgMembers } from '@/lib/db';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { withWgRoute } from '@/lib/wg/with-wg-route';
+import { db, wgChatMessages, wgChatReads, wgMembers } from '@/core/db';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { withWgRoute } from '@/core/guards/with-wg-route';
 import { and, count, eq, gt, isNull, ne, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 

@@ -1,13 +1,15 @@
-import { badRequest, serverError, tooMany } from '@/lib/api-error';
-import type { RouteCtx } from '@/lib/api-types';
-import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/lib/idempotency';
-import { checkRateLimit, importCommitLimiter } from '@/lib/rate-limit';
+import { badRequest, serverError, tooMany } from '@/core/errors';
 import {
 	ReplayCache,
 	type ReplayReservation,
 	claimReplaySlotWithRetry,
 	replayKey,
-} from '@/lib/wg/idempotency';
+} from '@/core/guards/idempotency';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { readShareCode } from '@/core/guards/route-preamble';
+import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
+import type { RouteCtx } from '@/core/infra/api-types';
+import { checkRateLimit, importCommitLimiter } from '@/core/rate-limit';
 import { MAX_CSV_BYTES, MAX_OCR_BYTES, readImportJsonBody } from '@/lib/wg/import-body';
 import { type CommitResult, commitImport } from '@/lib/wg/import-commit';
 import { hashPayload } from '@/lib/wg/import-hash';
@@ -19,8 +21,6 @@ import {
 	parseSplitwiseCsv,
 } from '@/lib/wg/import-parsers';
 import { parseOcrText } from '@/lib/wg/ocr';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { readShareCode } from '@/lib/wg/route-preamble';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 

@@ -1,7 +1,7 @@
 // craftsman-ignore: TS002 — wrapper consumed by Next.js App Router error.tsx default exports
 'use client';
 
-import { captureException } from '@/lib/observability';
+import { captureException } from '@/core/infra/observability';
 import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';

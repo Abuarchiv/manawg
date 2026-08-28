@@ -1,7 +1,7 @@
-import { serverError } from '@/lib/api-error';
-import type { RouteCtx } from '@/lib/api-types';
-import { buildE2EDashboardData } from '@/lib/e2e-db-down';
-import { readShareCode, resolveE2EFixture } from '@/lib/wg/route-preamble';
+import { serverError } from '@/core/errors';
+import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
+import type { RouteCtx } from '@/core/infra/api-types';
+import { buildE2EDashboardData } from '@/core/infra/e2e-db-down';
 import { type NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -24,7 +24,7 @@ export async function GET(
 		// Dynamic imports keep DB-backed modules out of the DB-down fixture path
 		// above — the route module itself must stay importable without a DB.
 		const [{ requireWgMember }, { loadDashboardData }] = await Promise.all([
-			import('@/lib/wg/require-wg-member'),
+			import('@/core/guards/require-wg-member'),
 			import('@/lib/wg/dashboard-data'),
 		]);
 		const auth = await requireWgMember(req, code);

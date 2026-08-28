@@ -1,6 +1,6 @@
-import { type VerifiedMember, requireMember } from '@/lib/api-auth';
-import { notFound } from '@/lib/api-error';
-import { type ResolvedWg, resolveWg } from '@/lib/wg/resolve';
+import { notFound } from '@/core/errors';
+import { type VerifiedMember, requireMember } from '@/core/guards/api-auth';
+import { type ResolvedWg, resolveWg } from '@/core/guards/resolve';
 import type { NextRequest, NextResponse } from 'next/server';
 
 interface WgMemberOk {

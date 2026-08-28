@@ -19,8 +19,8 @@ vi.mock('@/lib/chore-status', () => ({
 	getChoreStatus: (...args: unknown[]) => choreStatusMock.getChoreStatus(...args),
 }));
 
-vi.mock('@/lib/rate-limit', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@/lib/rate-limit')>();
+vi.mock('@/core/rate-limit', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/core/rate-limit')>();
 	return {
 		...actual,
 		checkRateLimit: (...args: unknown[]) => rateLimitMock.checkRateLimit(...args),
@@ -28,7 +28,7 @@ vi.mock('@/lib/rate-limit', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/lib/wg/resolve', () => ({
+vi.mock('@/core/guards/resolve', () => ({
 	resolveWg: (...args: unknown[]) => resolveMock.resolveWg(...args),
 }));
 

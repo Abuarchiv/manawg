@@ -24,7 +24,7 @@ vi.mock('@/components/wg/WgContextProvider', () => ({
 	}),
 }));
 
-vi.mock('@/lib/api-client', () => ({
+vi.mock('@/core/infra/api-client', () => ({
 	apiFetch: (...args: unknown[]) => apiClientMock.apiFetch(...args),
 }));
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { formatEuroCents } from '@/lib/money';
+import { formatEuroCents } from '@/core/utils/money';
 import { RefreshCcw } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';

@@ -1,6 +1,6 @@
-import { berlinDayKey, berlinWallMinutes, instantAtBerlinWallTime } from '@/lib/berlin-day';
-import type { wgEvents } from '@/lib/db';
-import { MS_PER_DAY, parseTimestamp } from '@/lib/time';
+import type { wgEvents } from '@/core/db';
+import { berlinDayKey, berlinWallMinutes, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
+import { MS_PER_DAY, parseTimestamp } from '@/core/utils/time';
 
 export const EVENTS_LIST_LIMIT = 1000;
 

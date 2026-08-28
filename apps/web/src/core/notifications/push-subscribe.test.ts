@@ -10,7 +10,7 @@ const apiMock = vi.hoisted(() => ({
 	apiFetch: vi.fn(),
 }));
 
-vi.mock('@/lib/api-client', () => ({
+vi.mock('@/core/infra/api-client', () => ({
 	apiFetch: apiMock.apiFetch,
 }));
 

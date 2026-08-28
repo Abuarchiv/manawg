@@ -34,7 +34,7 @@ vi.mock('@/lib/wg/import-hash', () => ({
 	hashPayload: (...args: unknown[]) => commitMock.hashPayload(...args),
 }));
 
-vi.mock('@/lib/idempotency', () => ({
+vi.mock('@/core/idempotency', () => ({
 	claimResponseSlot: (...args: unknown[]) => idempotencyMock.claimResponseSlot(...args),
 	getCachedResponse: (...args: unknown[]) => idempotencyMock.getCachedResponse(...args),
 	readIdempotencyKey: (...args: unknown[]) => idempotencyMock.readIdempotencyKey(...args),

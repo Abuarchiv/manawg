@@ -32,8 +32,8 @@ const idempotencyMock = vi.hoisted(() => ({
  */
 const txMock = vi.hoisted(() => ({ committed: false, rolledBack: false }));
 
-vi.mock('@/lib/db/transaction', async () => {
-	const { TransactionAbort } = await import('@/lib/db/transaction-abort');
+vi.mock('@/core/db/transaction', async () => {
+	const { TransactionAbort } = await import('@/core/db/transaction-abort');
 	return {
 		TransactionAbort,
 		withTransaction: async (fn: (tx: unknown) => Promise<unknown>) => {
@@ -52,15 +52,15 @@ vi.mock('@/lib/db/transaction', async () => {
 	};
 });
 
-vi.mock('@/lib/idempotency', () => ({
+vi.mock('@/core/idempotency', () => ({
 	claimResponseSlot: (...args: unknown[]) => idempotencyMock.claimResponseSlot(...args),
 	getCachedResponse: (...args: unknown[]) => idempotencyMock.getCachedResponse(...args),
 	readIdempotencyKey: (...args: unknown[]) => idempotencyMock.readIdempotencyKey(...args),
 	setCachedResponse: (...args: unknown[]) => idempotencyMock.setCachedResponse(...args),
 }));
 
-vi.mock('@/lib/rate-limit', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/lib/rate-limit')>()),
+vi.mock('@/core/rate-limit', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/core/rate-limit')>()),
 	checkRateLimit: (...args: unknown[]) => rateLimitMock.checkRateLimit(...args),
 	clientIpKey: () => '203.0.113.10',
 	wgWriteLimiter: rateLimitMock.wgWriteLimiter,

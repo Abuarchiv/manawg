@@ -1,12 +1,12 @@
-import { isUuid } from '@/lib/api-auth';
-import { announcements, db, expenseSplits, expenses, wgMembers } from '@/lib/db';
-import type { Expense, ExpenseSplit } from '@/lib/db/schema';
-import { type DbTransaction, TransactionAbort } from '@/lib/db/transaction';
-import { formatEuroCents } from '@/lib/money';
-import { dispatchNotification } from '@/lib/notification-dispatch';
-import { recordAuditEvent } from '@/lib/wg/audit';
+import { recordAuditEvent } from '@/core/audit';
+import { announcements, db, expenseSplits, expenses, wgMembers } from '@/core/db';
+import type { Expense, ExpenseSplit } from '@/core/db/schema';
+import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
+import { isUuid } from '@/core/guards/api-auth';
+import type { ResolvedWg } from '@/core/guards/resolve';
+import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { formatEuroCents } from '@/core/utils/money';
 import { appendSystemMessage } from '@/lib/wg/chat-server';
-import type { ResolvedWg } from '@/lib/wg/resolve';
 import { and, eq, inArray } from 'drizzle-orm';
 
 interface ExpenseSplitInput {

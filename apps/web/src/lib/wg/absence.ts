@@ -1,4 +1,4 @@
-import { formatShortDateRange, parseTimestamp } from '@/lib/time';
+import { formatShortDateRange, parseTimestamp } from '@/core/utils/time';
 
 export interface AbsenceInput {
 	id: string;

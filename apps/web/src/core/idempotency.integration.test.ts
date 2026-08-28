@@ -13,7 +13,7 @@
  * `route.integration.test.ts` for how the `db-integration` CI job activates
  * this file.
  */
-import { db, idempotencyResponses } from '@/lib/db';
+import { db, idempotencyResponses } from '@/core/db';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 import { claimResponseSlot, getCachedResponse, setCachedResponse } from './idempotency';

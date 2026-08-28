@@ -1,4 +1,4 @@
-import { db, expenseSplits, expenses } from '@/lib/db';
+import { db, expenseSplits, expenses } from '@/core/db';
 import type { DebtExpenseInput } from '@/lib/wg/debts';
 import { eq, inArray } from 'drizzle-orm';
 

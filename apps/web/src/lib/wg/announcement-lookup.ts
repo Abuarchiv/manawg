@@ -1,4 +1,4 @@
-import { announcements, db } from '@/lib/db';
+import { announcements, db } from '@/core/db';
 import { and, eq } from 'drizzle-orm';
 
 interface AnnouncementRef {

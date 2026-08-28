@@ -1,4 +1,4 @@
-import { wgWriteLimiter } from '@/lib/rate-limit';
+import { wgWriteLimiter } from '@/core/rate-limit';
 import {
 	queueSelects,
 	resetRouteHarness,
@@ -14,8 +14,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // suites that never look at it.
 const rateLimitMock = vi.hoisted(() => ({ checkRateLimit: vi.fn() }));
 
-vi.mock('@/lib/rate-limit', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/lib/rate-limit')>()),
+vi.mock('@/core/rate-limit', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/core/rate-limit')>()),
 	checkRateLimit: (...args: unknown[]) => rateLimitMock.checkRateLimit(...args),
 }));
 

@@ -6,7 +6,7 @@ import { type Mock, vi } from 'vitest';
  *
  * Every route test used to hand-roll the same 8-11 `vi.mock()` blocks — roughly
  * 150 lines of preamble per file, ~7,400 lines across the suite. Worse, each
- * copy stubbed `@/lib/db` by transcribing the schema into string literals
+ * copy stubbed `@/core/db` by transcribing the schema into string literals
  * (`expenses: { id: 'expenses.id', ... }`), so renaming a column left every
  * test green while production broke.
  *

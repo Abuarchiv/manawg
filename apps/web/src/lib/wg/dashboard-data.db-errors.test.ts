@@ -7,7 +7,7 @@ const dbMock = vi.hoisted(() => ({
 	select: vi.fn(),
 }));
 
-vi.mock('@/lib/db', () => ({
+vi.mock('@/core/db', () => ({
 	announcementReactions: {
 		announcementId: 'announcementReactions.announcementId',
 		memberId: 'announcementReactions.memberId',

@@ -1,25 +1,25 @@
-import { badRequest, conflict, forbidden, notFound, serverError, tooMany } from '@/lib/api-error';
-import type { RouteCtx } from '@/lib/api-types';
-import { db, recurringExpenses, wgMembers } from '@/lib/db';
-import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/lib/idempotency';
-import { checkRateLimit, wgWriteLimiter } from '@/lib/rate-limit';
-import { isVerifiedWgAdmin } from '@/lib/wg/admin';
-import { recordAuditEvent } from '@/lib/wg/audit';
+import { recordAuditEvent } from '@/core/audit';
+import { db, recurringExpenses, wgMembers } from '@/core/db';
+import { badRequest, conflict, forbidden, notFound, serverError, tooMany } from '@/core/errors';
+import { isVerifiedWgAdmin } from '@/core/guards/admin';
 import {
 	ReplayCache,
 	type ReplayReservation,
 	claimReplaySlotWithRetry,
 	replayKey,
-} from '@/lib/wg/idempotency';
+} from '@/core/guards/idempotency';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { readShareCode } from '@/core/guards/route-preamble';
+import { withWgRoute } from '@/core/guards/with-wg-route';
+import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
+import type { RouteCtx } from '@/core/infra/api-types';
+import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	buildRecurringAdvance,
 	parseRecurringSplits,
 	recurringDueDateMatchesExpected,
 } from '@/lib/wg/recurring-expenses';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { readShareCode } from '@/lib/wg/route-preamble';
 import { validateSplits } from '@/lib/wg/split-math';
-import { withWgRoute } from '@/lib/wg/with-wg-route';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

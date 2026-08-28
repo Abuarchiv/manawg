@@ -11,8 +11,8 @@ const AUTH_HEADER = { authorization: `Bearer ${CRON_SECRET}` };
  */
 const txMock = vi.hoisted(() => ({ committed: false, rolledBack: false }));
 
-vi.mock('@/lib/db/transaction', async () => {
-	const { TransactionAbort } = await import('@/lib/db/transaction-abort');
+vi.mock('@/core/db/transaction', async () => {
+	const { TransactionAbort } = await import('@/core/db/transaction-abort');
 	return {
 		TransactionAbort,
 		withTransaction: async (fn: (tx: unknown) => Promise<unknown>) => {

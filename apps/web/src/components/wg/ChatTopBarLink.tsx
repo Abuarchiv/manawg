@@ -1,8 +1,8 @@
 'use client';
 
 import { useWg } from '@/components/wg/WgContextProvider';
-import { apiFetch } from '@/lib/api-client';
-import { useVisibilityPausedInterval } from '@/lib/use-visibility-paused-interval';
+import { apiFetch } from '@/core/infra/api-client';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { haptic } from '@manawg/shared/lib/haptics';
 import { MessageCircle } from 'lucide-react';
 import Link from 'next/link';

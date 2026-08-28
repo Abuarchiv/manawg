@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { captureException } from './observability';
+import { captureException } from './infra/observability';
 
 import {
 	checkRateLimit,
@@ -8,7 +8,7 @@ import {
 	resetOpenStateReporting,
 } from './rate-limit';
 
-vi.mock('./observability', () => ({ captureException: vi.fn() }));
+vi.mock('./infra/observability', () => ({ captureException: vi.fn() }));
 
 const FAIL_OPEN_PRODUCTION_LOG =
 	'[rate-limit] Upstash Redis not configured in production — failing open';

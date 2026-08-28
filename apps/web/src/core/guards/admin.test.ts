@@ -10,7 +10,7 @@ vi.mock('drizzle-orm', () => ({
 	isNull: (...args: unknown[]) => ({ isNull: args }),
 }));
 
-vi.mock('@/lib/db', () => ({
+vi.mock('@/core/db', () => ({
 	db: {
 		select: () => ({
 			from: () => ({

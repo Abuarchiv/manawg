@@ -1,7 +1,7 @@
 'use client';
 
-import { formatEuroCents } from '@/lib/money';
-import { formatRelativeTime, formatTimeFull } from '@/lib/time';
+import { formatEuroCents } from '@/core/utils/money';
+import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { Bell } from 'lucide-react';
 
 export interface ReminderHistoryItem {

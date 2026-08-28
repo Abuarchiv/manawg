@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { type WgChatMessage, db, wgChatMessages } from '@/lib/db';
+import { type WgChatMessage, db, wgChatMessages } from '@/core/db';
 import { type AppendSystemMessageInput, SYSTEM_MESSAGE_KIND } from './chat-pure';
 
 export async function appendSystemMessage(input: AppendSystemMessageInput): Promise<WgChatMessage> {

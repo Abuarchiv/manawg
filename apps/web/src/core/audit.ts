@@ -1,4 +1,4 @@
-import { auditEvents, db } from '@/lib/db';
+import { auditEvents, db } from '@/core/db';
 
 interface AuditEventInput {
 	wgId: string;

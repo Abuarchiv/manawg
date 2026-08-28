@@ -12,14 +12,14 @@ const rateLimitMock = vi.hoisted(() => ({
 	uploadSignLimiter: { name: 'uploadSignLimiter' },
 }));
 
-vi.mock('@/lib/s3', () => ({
+vi.mock('@/core/infra/s3', () => ({
 	S3_MAX_UPLOAD_BYTES: 8 * 1024 * 1024,
 	createPresignedUpload: (...args: unknown[]) => s3Mock.createPresignedUpload(...args),
 	isAllowedMimeType: (...args: unknown[]) => s3Mock.isAllowedMimeType(...args),
 }));
 
-vi.mock('@/lib/rate-limit', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@/lib/rate-limit')>();
+vi.mock('@/core/rate-limit', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/core/rate-limit')>();
 	return {
 		...actual,
 		checkRateLimit: (...args: unknown[]) => rateLimitMock.checkRateLimit(...args),

@@ -1,4 +1,4 @@
-import { formatEuroCents } from '@/lib/money';
+import { formatEuroCents } from '@/core/utils/money';
 
 export const REMINDER_COOLDOWN_HOURS = 48;
 const HOURS_TO_MS = 3_600_000;

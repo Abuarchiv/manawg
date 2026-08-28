@@ -1,4 +1,4 @@
-import { MS_PER_DAY, parseTimestamp } from './time';
+import { MS_PER_DAY, parseTimestamp } from '@/core/utils/time';
 
 type ChoreStatusState = 'planned' | 'due' | 'overdue' | 'unknown';
 type ChoreStatusTone = 'ok' | 'soon' | 'overdue';

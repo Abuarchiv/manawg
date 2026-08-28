@@ -12,12 +12,12 @@ import { ListSkeleton } from '@/components/wg/einkauf/ListSkeleton';
 import { ShoppingItemRow } from '@/components/wg/einkauf/ShoppingItemRow';
 import { NAME_MAX, QUANTITY_MAX, QUICK_SHOPPING_ITEMS } from '@/components/wg/einkauf/constants';
 import type { MemberInfo, ShoppingItem } from '@/components/wg/einkauf/shopping-types';
-import { apiFetch } from '@/lib/api-client';
+import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { usePendingSet } from '@/core/hooks/usePendingSet';
+import { apiFetch } from '@/core/infra/api-client';
+import { captureException } from '@/core/infra/observability';
 import { useOfflineQueueSync } from '@/lib/hooks/useOfflineQueueSync';
-import { usePendingSet } from '@/lib/hooks/usePendingSet';
-import { captureException } from '@/lib/observability';
 import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/lib/wg/drafts';
-import { getWgLoadErrorMessage } from '@/lib/wg/load-errors';
 import {
 	enqueueOfflineAction,
 	readOfflineQueue,

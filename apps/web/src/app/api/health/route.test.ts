@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const dbMock = { execute: vi.fn() };
 
-vi.mock('@/lib/db', () => ({ db: dbMock }));
+vi.mock('@/core/db', () => ({ db: dbMock }));
 
 import { GET } from './route';
 

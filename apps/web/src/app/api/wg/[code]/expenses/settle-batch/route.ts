@@ -1,13 +1,13 @@
-import { UUID_PATTERN } from '@/lib/api-auth';
-import { badRequest, forbidden, tooMany } from '@/lib/api-error';
-import { db, expenseSplits, expenses, wgMembers } from '@/lib/db';
-import { claimIdempotencySlot, readIdempotencyKey } from '@/lib/idempotency';
-import { checkRateLimit, wgWriteLimiter } from '@/lib/rate-limit';
-import { recordAuditEvent } from '@/lib/wg/audit';
+import { recordAuditEvent } from '@/core/audit';
+import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
+import { badRequest, forbidden, tooMany } from '@/core/errors';
+import { UUID_PATTERN } from '@/core/guards/api-auth';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { withWgRoute } from '@/core/guards/with-wg-route';
+import { claimIdempotencySlot, readIdempotencyKey } from '@/core/idempotency';
+import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { computeNetBalances, simplifyDebts } from '@/lib/wg/debt-reduction';
 import { groupSplitsByExpense } from '@/lib/wg/open-expenses';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { withWgRoute } from '@/lib/wg/with-wg-route';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 

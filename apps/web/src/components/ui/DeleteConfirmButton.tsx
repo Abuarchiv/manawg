@@ -1,6 +1,6 @@
 'use client';
 
-import { useConfirmDelete } from '@/lib/hooks/useConfirmDelete';
+import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { Loader2, Trash2 } from 'lucide-react';
 
 interface Props {

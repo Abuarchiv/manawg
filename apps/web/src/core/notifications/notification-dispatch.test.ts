@@ -12,7 +12,7 @@ const webPushMock = vi.hoisted(() => ({
 	setVapidDetails: vi.fn(),
 }));
 
-vi.mock('@/lib/db', () => ({
+vi.mock('@/core/db', () => ({
 	db: {
 		select: (...args: unknown[]) => dbMock.select(...args),
 		update: (...args: unknown[]) => dbMock.update(...args),

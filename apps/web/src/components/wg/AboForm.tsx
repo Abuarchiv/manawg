@@ -2,8 +2,8 @@
 
 import { ALERT_DANGER } from '@/components/ui/styles';
 import type { AboSplit, MemberOption } from '@/components/wg/abos-types';
-import { formatEuroInput, parseEuroAmount } from '@/lib/amount';
-import { CENTS_PER_EURO } from '@/lib/money';
+import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
+import { CENTS_PER_EURO } from '@/core/utils/money';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 

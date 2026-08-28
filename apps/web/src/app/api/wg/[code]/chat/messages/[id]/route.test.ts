@@ -14,8 +14,8 @@ const adminMock = vi.hoisted(() => ({
 	isVerifiedWgAdmin: vi.fn(),
 }));
 
-vi.mock('@/lib/rate-limit', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@/lib/rate-limit')>();
+vi.mock('@/core/rate-limit', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/core/rate-limit')>();
 	return {
 		...actual,
 		checkRateLimit: (...args: unknown[]) => rateLimitMock.checkRateLimit(...args),
@@ -23,11 +23,11 @@ vi.mock('@/lib/rate-limit', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/lib/wg/admin', () => ({
+vi.mock('@/core/guards/admin', () => ({
 	isVerifiedWgAdmin: (...args: unknown[]) => adminMock.isVerifiedWgAdmin(...args),
 }));
 
-vi.mock('@/lib/wg/resolve', () => ({
+vi.mock('@/core/guards/resolve', () => ({
 	resolveWg: (...args: unknown[]) => resolveMock.resolveWg(...args),
 }));
 

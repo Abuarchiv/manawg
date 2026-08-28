@@ -2,8 +2,8 @@
 
 import { DeleteConfirmButton } from '@/components/ui/DeleteConfirmButton';
 import type { RecurringExpense } from '@/components/wg/ausgaben/expense-types';
-import { formatEuroCents } from '@/lib/money';
-import { formatRelativeTime, formatShortDate, parseTimestamp } from '@/lib/time';
+import { formatEuroCents } from '@/core/utils/money';
+import { formatRelativeTime, formatShortDate, parseTimestamp } from '@/core/utils/time';
 import {
 	getRecurringExpenseHref,
 	wasRecurringExpenseAlreadyCreated,

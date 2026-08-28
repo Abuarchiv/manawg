@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { requireMember } from '@/lib/api-auth';
-import { badRequest, notFound, serverError, tooMany } from '@/lib/api-error';
-import { db } from '@/lib/db';
-import { checkRateLimit, uploadSignLimiter } from '@/lib/rate-limit';
-import { S3_MAX_UPLOAD_BYTES, createPresignedUpload, isAllowedMimeType } from '@/lib/s3';
+import { db } from '@/core/db';
+import { badRequest, notFound, serverError, tooMany } from '@/core/errors';
+import { requireMember } from '@/core/guards/api-auth';
+import { S3_MAX_UPLOAD_BYTES, createPresignedUpload, isAllowedMimeType } from '@/core/infra/s3';
+import { checkRateLimit, uploadSignLimiter } from '@/core/rate-limit';
 import { isValidShareCode, normalizeShareCode } from '@manawg/shared/lib/share-code';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

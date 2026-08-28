@@ -1,5 +1,5 @@
+import { parseTimestamp } from '@/core/utils/time';
 import { getChoreStatus } from '@/lib/chore-status';
-import { parseTimestamp } from '@/lib/time';
 
 const MS_PER_DAY = 86_400_000;
 

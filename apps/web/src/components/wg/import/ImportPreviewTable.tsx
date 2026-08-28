@@ -1,6 +1,6 @@
 'use client';
 
-import { formatEuroCents } from '@/lib/money';
+import { formatEuroCents } from '@/core/utils/money';
 import type { ParsedExpense } from '@/lib/wg/import-parsers';
 
 interface MemberOption {

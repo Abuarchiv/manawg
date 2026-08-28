@@ -1,18 +1,18 @@
-import { UUID_PATTERN } from '@/lib/api-auth';
-import { badRequest, notFound, serverError, tooMany } from '@/lib/api-error';
+import { recordAuditEvent } from '@/core/audit';
 import {
 	announcementComments,
 	announcementReactions,
 	announcements,
 	db,
 	wgMembers,
-} from '@/lib/db';
-import { dispatchNotification } from '@/lib/notification-dispatch';
-import { checkRateLimit, wgWriteLimiter } from '@/lib/rate-limit';
+} from '@/core/db';
+import { badRequest, notFound, serverError, tooMany } from '@/core/errors';
+import { UUID_PATTERN } from '@/core/guards/api-auth';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { withWgRoute } from '@/core/guards/with-wg-route';
+import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { findWgAnnouncement } from '@/lib/wg/announcement-lookup';
-import { recordAuditEvent } from '@/lib/wg/audit';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { withWgRoute } from '@/lib/wg/with-wg-route';
 import { and, asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

@@ -82,7 +82,7 @@ vi.mock('@/components/wg/chat/TypingIndicator', () => ({
 	TypingIndicator: () => null,
 }));
 
-vi.mock('@/lib/api-client', () => ({
+vi.mock('@/core/infra/api-client', () => ({
 	apiFetch: (...args: unknown[]) => apiMock.apiFetch(...args),
 }));
 

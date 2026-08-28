@@ -15,16 +15,16 @@ vi.mock('@manawg/shared/lib/share-code', async (importOriginal) => ({
 
 // registerLimiter is nulled out for the 503 test; checkRateLimit is stubbed
 // because this suite also asserts the 429 path.
-vi.mock('@/lib/rate-limit', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/lib/rate-limit')>()),
+vi.mock('@/core/rate-limit', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/core/rate-limit')>()),
 	checkRateLimit: (...args: unknown[]) => rateLimitMock.checkRateLimit(...args),
 	registerLimiter: null,
 }));
 
 const txMock = vi.hoisted(() => ({ committed: false, rolledBack: false }));
 
-vi.mock('@/lib/db/transaction', async () => {
-	const { TransactionAbort } = await import('@/lib/db/transaction-abort');
+vi.mock('@/core/db/transaction', async () => {
+	const { TransactionAbort } = await import('@/core/db/transaction-abort');
 	return {
 		TransactionAbort,
 		withTransaction: async (fn: (tx: unknown) => Promise<unknown>) => {

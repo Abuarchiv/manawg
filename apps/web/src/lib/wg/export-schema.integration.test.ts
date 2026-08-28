@@ -2,7 +2,7 @@
  * Real-database integration test for the GDPR/data-export route.
  *
  * `export.test.ts` (formatting helpers) and the route's own `route.test.ts`
- * both mock `@/lib/db`, so a schema change (renamed/added column) that isn't
+ * both mock `@/core/db`, so a schema change (renamed/added column) that isn't
  * reflected in the export route's select statements would only be caught by
  * a user noticing missing data in their export. This test seeds one row per
  * exportable entity into a real database, hits the actual GET handler, and
@@ -37,7 +37,7 @@ describe.skipIf(!hasRealDb)('GET /api/wg/[code]/export (real database)', () => {
 			memberAbsences,
 			announcements,
 			auditEvents,
-		} = await import('@/lib/db');
+		} = await import('@/core/db');
 
 		// Must be a valid share code (Crockford base32 minus look-alikes) — an
 		// ad-hoc uppercased UUID slice can contain '0'/'1', which `isValidShareCode`
@@ -116,7 +116,7 @@ describe.skipIf(!hasRealDb)('GET /api/wg/[code]/export (real database)', () => {
 	});
 
 	afterAll(async () => {
-		const { db, wgs } = await import('@/lib/db');
+		const { db, wgs } = await import('@/core/db');
 		const { eq } = await import('drizzle-orm');
 		// Deleting `wgs` alone is enough: every dependent table's `wgId` FK
 		// cascades from `wgs.id`, including `wgMembers`. Deleting `wgMembers`

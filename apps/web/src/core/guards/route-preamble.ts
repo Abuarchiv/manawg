@@ -1,7 +1,7 @@
-import { apiError, badRequest, notFound } from '@/lib/api-error';
-import type { RouteCtx } from '@/lib/api-types';
-import { type E2EWgFixture, getE2EWgFixture, isE2EDbDownMode } from '@/lib/e2e-db-down';
-// Deliberately NOT from '@/lib/api-auth', which re-exports the same constant:
+import { apiError, badRequest, notFound } from '@/core/errors';
+import type { RouteCtx } from '@/core/infra/api-types';
+import { type E2EWgFixture, getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
+// Deliberately NOT from '@/core/guards/api-auth', which re-exports the same constant:
 // api-auth pulls in the database module, and the E2E db-down path exists
 // precisely to answer requests when no database can be loaded. A route test
 // asserts that api-auth stays unloaded in that mode.

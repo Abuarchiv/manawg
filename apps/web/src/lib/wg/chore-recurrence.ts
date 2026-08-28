@@ -22,7 +22,7 @@
  * overflow-detection step.
  */
 
-import type { ChoreRecurrenceType } from '@/lib/db/schema';
+import type { ChoreRecurrenceType } from '@/core/db/schema';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useModalDialog } from '@/lib/hooks/useModalDialog';
-import { cn } from '@/lib/utils';
+import { useModalDialog } from '@/core/hooks/useModalDialog';
+import { cn } from '@/core/utils/utils';
 import type { LucideIcon } from 'lucide-react';
 import { useId, useRef } from 'react';
 

@@ -1,12 +1,12 @@
-import { UUID_PATTERN, requireMember } from '@/lib/api-auth';
-import { badRequest, conflict, notFound, serverError, tooMany } from '@/lib/api-error';
-import { choreCompletions, chores, db, memberAbsences, wgMembers, wgs } from '@/lib/db';
-import { checkRateLimit, wgWriteLimiter } from '@/lib/rate-limit';
+import { recordAuditEvent } from '@/core/audit';
+import { choreCompletions, chores, db, memberAbsences, wgMembers, wgs } from '@/core/db';
+import { badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
+import { UUID_PATTERN, requireMember } from '@/core/guards/api-auth';
+import { withWgRoute } from '@/core/guards/with-wg-route';
+import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { getAbsentMemberIds } from '@/lib/wg/absence';
-import { recordAuditEvent } from '@/lib/wg/audit';
 import { chooseNextAvailableMember, computeOpenGapsByMember } from '@/lib/wg/chore-fairness';
 import { computeNextDueAt } from '@/lib/wg/chore-recurrence';
-import { withWgRoute } from '@/lib/wg/with-wg-route';
 import { and, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 

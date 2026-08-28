@@ -3,9 +3,9 @@
 import { ALERT_DANGER_ROW, ICON_BUTTON_BORDERED } from '@/components/ui/styles';
 import { InventoryList } from '@/components/wg/InventoryList';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { apiFetch } from '@/lib/api-client';
+import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { apiFetch } from '@/core/infra/api-client';
 import type { InventoryCategory, InventoryItemDto } from '@/lib/wg/inventory';
-import { getWgLoadErrorMessage } from '@/lib/wg/load-errors';
 import { Loader2, RotateCw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 

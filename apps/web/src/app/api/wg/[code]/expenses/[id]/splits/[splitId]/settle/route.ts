@@ -1,9 +1,9 @@
-import { UUID_PATTERN, requireMember } from '@/lib/api-auth';
-import { badRequest, forbidden, notFound, tooMany } from '@/lib/api-error';
-import { db, expenseSplits, expenses, wgs } from '@/lib/db';
-import { checkRateLimit, wgWriteLimiter } from '@/lib/rate-limit';
-import { recordAuditEvent } from '@/lib/wg/audit';
-import { withWgRoute } from '@/lib/wg/with-wg-route';
+import { recordAuditEvent } from '@/core/audit';
+import { db, expenseSplits, expenses, wgs } from '@/core/db';
+import { badRequest, forbidden, notFound, tooMany } from '@/core/errors';
+import { UUID_PATTERN, requireMember } from '@/core/guards/api-auth';
+import { withWgRoute } from '@/core/guards/with-wg-route';
+import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 

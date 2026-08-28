@@ -1,9 +1,9 @@
 'use client';
 
-import { apiFetch } from '@/lib/api-client';
-import { useModalDialog } from '@/lib/hooks/useModalDialog';
-import { formatEuroCents } from '@/lib/money';
-import { cn } from '@/lib/utils';
+import { useModalDialog } from '@/core/hooks/useModalDialog';
+import { apiFetch } from '@/core/infra/api-client';
+import { formatEuroCents } from '@/core/utils/money';
+import { cn } from '@/core/utils/utils';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 

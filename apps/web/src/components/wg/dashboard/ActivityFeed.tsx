@@ -1,5 +1,5 @@
-import { formatEuroCents } from '@/lib/money';
-import { formatCompactRelativeTime } from '@/lib/time';
+import { formatEuroCents } from '@/core/utils/money';
+import { formatCompactRelativeTime } from '@/core/utils/time';
 import {
 	CalendarOff,
 	History,

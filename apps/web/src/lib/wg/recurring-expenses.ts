@@ -1,4 +1,4 @@
-import { parseTimestamp } from '@/lib/time';
+import { parseTimestamp } from '@/core/utils/time';
 
 interface RecurringExpenseInput {
 	id: string;

@@ -1,7 +1,7 @@
-import { verifyCronSecret } from '@/lib/cron-auth';
-import { db, idempotencyResponses, wgEvents, wgs } from '@/lib/db';
-import { dispatchNotification } from '@/lib/notification-dispatch';
-import { withCronLogging } from '@/lib/observability';
+import { db, idempotencyResponses, wgEvents, wgs } from '@/core/db';
+import { verifyCronSecret } from '@/core/infra/cron-auth';
+import { withCronLogging } from '@/core/infra/observability';
+import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import {
 	computeRecurrenceLookbackStart,
 	computeTomorrowUtcWindow,

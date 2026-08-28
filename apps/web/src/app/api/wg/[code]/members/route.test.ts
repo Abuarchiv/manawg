@@ -8,15 +8,15 @@ const rateLimitMock = vi.hoisted(() => ({
 	wgWriteLimiter: { name: 'wgWriteLimiter' },
 }));
 
-vi.mock('@/lib/api-error', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@/lib/api-error')>();
+vi.mock('@/core/errors', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/core/errors')>();
 	return actual;
 });
 
 const txMock = vi.hoisted(() => ({ committed: false, rolledBack: false }));
 
-vi.mock('@/lib/db/transaction', async () => {
-	const { TransactionAbort } = await import('@/lib/db/transaction-abort');
+vi.mock('@/core/db/transaction', async () => {
+	const { TransactionAbort } = await import('@/core/db/transaction-abort');
 	return {
 		TransactionAbort,
 		withTransaction: async (fn: (tx: unknown) => Promise<unknown>) => {
@@ -36,8 +36,8 @@ vi.mock('@/lib/db/transaction', async () => {
 	};
 });
 
-vi.mock('@/lib/rate-limit', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@/lib/rate-limit')>();
+vi.mock('@/core/rate-limit', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/core/rate-limit')>();
 	return {
 		...actual,
 		checkRateLimit: (...args: unknown[]) => rateLimitMock.checkRateLimit(...args),
@@ -46,7 +46,7 @@ vi.mock('@/lib/rate-limit', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/lib/wg/resolve', () => ({
+vi.mock('@/core/guards/resolve', () => ({
 	resolveWg: vi.fn(),
 }));
 

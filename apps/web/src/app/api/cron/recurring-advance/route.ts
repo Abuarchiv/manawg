@@ -1,9 +1,9 @@
-import { verifyCronSecret } from '@/lib/cron-auth';
-import { db, expenseSplits, expenses, recurringExpenses, wgs } from '@/lib/db';
-import { TransactionAbort, withTransaction } from '@/lib/db/transaction';
-import { dispatchNotification } from '@/lib/notification-dispatch';
-import { withCronLogging } from '@/lib/observability';
-import { recordAuditEvent } from '@/lib/wg/audit';
+import { recordAuditEvent } from '@/core/audit';
+import { db, expenseSplits, expenses, recurringExpenses, wgs } from '@/core/db';
+import { TransactionAbort, withTransaction } from '@/core/db/transaction';
+import { verifyCronSecret } from '@/core/infra/cron-auth';
+import { withCronLogging } from '@/core/infra/observability';
+import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import {
 	type RecurringSplit,
 	addMonthsFromAnchor,

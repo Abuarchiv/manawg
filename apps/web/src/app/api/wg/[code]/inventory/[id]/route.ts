@@ -1,16 +1,16 @@
-import { UUID_PATTERN } from '@/lib/api-auth';
-import { badRequest, conflict, notFound, tooMany } from '@/lib/api-error';
-import { db, wgInventoryItems, wgInventoryLog } from '@/lib/db';
-import { checkRateLimit, wgWriteLimiter } from '@/lib/rate-limit';
-import { recordAuditEvent } from '@/lib/wg/audit';
+import { recordAuditEvent } from '@/core/audit';
+import { db, wgInventoryItems, wgInventoryLog } from '@/core/db';
+import { badRequest, conflict, notFound, tooMany } from '@/core/errors';
+import { UUID_PATTERN } from '@/core/guards/api-auth';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { withWgRoute } from '@/core/guards/with-wg-route';
+import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	INVENTORY_CATEGORIES,
 	INVENTORY_LIMITS,
 	INVENTORY_UNITS,
 	clampQuantity,
 } from '@/lib/wg/inventory';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { withWgRoute } from '@/lib/wg/with-wg-route';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

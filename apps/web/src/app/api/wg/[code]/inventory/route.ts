@@ -1,7 +1,9 @@
-import { badRequest, serverError, tooMany } from '@/lib/api-error';
-import { db, wgInventoryItems } from '@/lib/db';
-import { checkRateLimit, wgWriteLimiter } from '@/lib/rate-limit';
-import { recordAuditEvent } from '@/lib/wg/audit';
+import { recordAuditEvent } from '@/core/audit';
+import { db, wgInventoryItems } from '@/core/db';
+import { badRequest, serverError, tooMany } from '@/core/errors';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { withWgRoute } from '@/core/guards/with-wg-route';
+import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	INVENTORY_CATEGORIES,
 	INVENTORY_LIMITS,
@@ -11,8 +13,6 @@ import {
 	isBelowThreshold,
 } from '@/lib/wg/inventory';
 import { getRecentDecrementCounts } from '@/lib/wg/inventory-decrements';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { withWgRoute } from '@/lib/wg/with-wg-route';
 import { asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

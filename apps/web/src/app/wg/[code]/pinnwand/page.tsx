@@ -22,6 +22,11 @@ import {
 	QUICK_ANNOUNCEMENT_TEMPLATES,
 	REFRESH_INTERVAL_MS,
 } from '@/components/wg/pinnwand/constants';
+import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { usePendingSet } from '@/core/hooks/usePendingSet';
+import { apiFetch } from '@/core/infra/api-client';
+import { captureException } from '@/core/infra/observability';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import {
 	type AnnouncementFilter,
 	filterAnnouncements,
@@ -29,18 +34,13 @@ import {
 	getMyOpenAnnouncements,
 	getNewAnnouncementCount,
 } from '@/lib/announcement-workflow';
-import { apiFetch } from '@/lib/api-client';
 import { useOfflineQueueSync } from '@/lib/hooks/useOfflineQueueSync';
-import { usePendingSet } from '@/lib/hooks/usePendingSet';
-import { captureException } from '@/lib/observability';
-import { useVisibilityPausedInterval } from '@/lib/use-visibility-paused-interval';
 import {
 	announcementActionErrorMessage,
 	announcementCreateErrorMessage,
 	commentActionErrorMessage,
 } from '@/lib/wg/announcement-errors';
 import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/lib/wg/drafts';
-import { getWgLoadErrorMessage } from '@/lib/wg/load-errors';
 import {
 	enqueueOfflineAction,
 	readOfflineQueue,

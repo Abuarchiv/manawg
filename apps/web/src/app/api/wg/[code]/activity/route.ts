@@ -9,10 +9,10 @@ import {
 	recurringExpenses,
 	shoppingItems,
 	wgMembers,
-} from '@/lib/db';
+} from '@/core/db';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { withWgRoute } from '@/core/guards/with-wg-route';
 import { buildActivityTimeline, getActivityReminders } from '@/lib/wg/activity';
-import { requireWgMember } from '@/lib/wg/require-wg-member';
-import { withWgRoute } from '@/lib/wg/with-wg-route';
 import { desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 

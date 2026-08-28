@@ -10,8 +10,8 @@ import type {
 	ReactionKey,
 } from '@/components/wg/pinnwand/announcement-types';
 import { KIND_LABELS } from '@/components/wg/pinnwand/constants';
-import { useDismissableMenu } from '@/lib/hooks/useDismissableMenu';
-import { formatRelativeTime, formatTimeFull } from '@/lib/time';
+import { useDismissableMenu } from '@/core/hooks/useDismissableMenu';
+import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { buildPinnwandPrefill, getPinnwandPrefillHref } from '@/lib/wg/pinnwand-prefill';
 import {
 	CheckCircle2,

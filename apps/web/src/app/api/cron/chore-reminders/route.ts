@@ -1,9 +1,9 @@
-import { endOfBerlinDay, startOfBerlinDay } from '@/lib/berlin-day';
-import { verifyCronSecret } from '@/lib/cron-auth';
-import * as dbSchema from '@/lib/db';
-import { choreCompletions, chores, db, wgMembers, wgs } from '@/lib/db';
-import { dispatchNotification } from '@/lib/notification-dispatch';
-import { withCronLogging } from '@/lib/observability';
+import * as dbSchema from '@/core/db';
+import { choreCompletions, chores, db, wgMembers, wgs } from '@/core/db';
+import { verifyCronSecret } from '@/core/infra/cron-auth';
+import { withCronLogging } from '@/core/infra/observability';
+import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { and, eq, gte, inArray, isNotNull, isNull, lte } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 

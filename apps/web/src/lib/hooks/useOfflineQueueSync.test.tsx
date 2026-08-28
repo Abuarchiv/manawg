@@ -13,7 +13,7 @@ vi.mock('@/lib/wg/offline-client', () => ({
 }));
 
 const captureExceptionMock = vi.hoisted(() => vi.fn());
-vi.mock('@/lib/observability', () => ({
+vi.mock('@/core/infra/observability', () => ({
 	captureException: (...args: unknown[]) => captureExceptionMock(...args),
 }));
 

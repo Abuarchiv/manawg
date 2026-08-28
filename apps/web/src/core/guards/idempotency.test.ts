@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const claimResponseSlotMock = vi.fn();
 const getCachedResponseMock = vi.fn();
 
-vi.mock('@/lib/idempotency', () => ({
+vi.mock('@/core/idempotency', () => ({
 	claimResponseSlot: (...args: unknown[]) => claimResponseSlotMock(...args),
 	getCachedResponse: (...args: unknown[]) => getCachedResponseMock(...args),
 	setCachedResponse: vi.fn(),

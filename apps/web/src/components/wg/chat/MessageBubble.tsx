@@ -2,8 +2,8 @@
 
 import { ReactionPicker } from '@/components/wg/chat/ReactionPicker';
 import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
-import { useDismissableMenu } from '@/lib/hooks/useDismissableMenu';
-import { formatRelativeTime, formatTimeFull } from '@/lib/time';
+import { useDismissableMenu } from '@/core/hooks/useDismissableMenu';
+import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { canDeleteMessage, canEditMessage } from '@/lib/wg/chat-pure';
 import { haptic } from '@manawg/shared/lib/haptics';
 import { Loader2, MoreVertical, Pencil, Reply, Trash2 } from 'lucide-react';

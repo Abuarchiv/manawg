@@ -1,19 +1,22 @@
 'use client';
 
 import { Section } from '@/components/wg/einstellungen/Section';
-import { apiFetch } from '@/lib/api-client';
-import { parseQuietHour } from '@/lib/notification-preferences';
+import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import {
+	notificationSaveErrorMessage,
+	notificationTestErrorMessage,
+} from '@/core/guards/settings-errors';
+import { apiFetch } from '@/core/infra/api-client';
+import { parseQuietHour } from '@/core/notifications/notification-preferences';
 import {
 	persistExistingWebPushSubscription,
 	subscribeWebPush,
 	unsubscribeWebPush,
-} from '@/lib/push-subscribe';
-import { formatPushActivationError, formatPushDeactivationError } from '@/lib/web-push-errors';
-import { getWgLoadErrorMessage } from '@/lib/wg/load-errors';
+} from '@/core/notifications/push-subscribe';
 import {
-	notificationSaveErrorMessage,
-	notificationTestErrorMessage,
-} from '@/lib/wg/settings-errors';
+	formatPushActivationError,
+	formatPushDeactivationError,
+} from '@/core/notifications/web-push-errors';
 import { haptic } from '@manawg/shared/lib/haptics';
 import { Bell, CheckCircle2, Loader2, Smartphone } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';

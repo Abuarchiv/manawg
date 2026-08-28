@@ -21,25 +21,25 @@ import type {
 	RecurrenceType,
 } from '@/components/wg/putzen/chore-types';
 import { QUICK_CHORE_TEMPLATES, TITLE_MAX } from '@/components/wg/putzen/constants';
-import { apiFetch } from '@/lib/api-client';
+import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
+import { usePendingSet } from '@/core/hooks/usePendingSet';
+import { apiFetch } from '@/core/infra/api-client';
+import { captureException } from '@/core/infra/observability';
+import { MS_PER_DAY } from '@/core/utils/time';
 import {
 	getChorePlanHealth,
 	getChoreRepairHint,
 	getChoreStatus,
 	suggestChoreAssignee,
 } from '@/lib/chore-status';
-import { useConfirmDelete } from '@/lib/hooks/useConfirmDelete';
 import { useOfflineQueueSync } from '@/lib/hooks/useOfflineQueueSync';
-import { usePendingSet } from '@/lib/hooks/usePendingSet';
-import { captureException } from '@/lib/observability';
-import { MS_PER_DAY } from '@/lib/time';
 import { getAbsentMemberIds } from '@/lib/wg/absence';
 import type { AbsenceInput } from '@/lib/wg/absence';
 import { absenceSaveErrorMessage, choreCreateErrorMessage } from '@/lib/wg/chore-errors';
 import { buildChoreFairness } from '@/lib/wg/chore-fairness';
 import { getChoreHighlightPath } from '@/lib/wg/chore-links';
 import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/lib/wg/drafts';
-import { getWgLoadErrorMessage } from '@/lib/wg/load-errors';
 import {
 	enqueueOfflineAction,
 	readOfflineQueue,

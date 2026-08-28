@@ -1,7 +1,7 @@
 'use client';
 
 import { ICON_BUTTON } from '@/components/ui/styles';
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch } from '@/core/infra/api-client';
 import {
 	INVENTORY_CATEGORIES,
 	INVENTORY_CATEGORY_LABELS,

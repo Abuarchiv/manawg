@@ -1,5 +1,5 @@
-import { parseEuroAmount } from '@/lib/amount';
-import { CENTS_PER_EURO } from '@/lib/money';
+import { parseEuroAmount } from '@/core/utils/amount';
+import { CENTS_PER_EURO } from '@/core/utils/money';
 import { type DebtorShare, buildEqualSplits } from '@/lib/wg/split-math';
 
 /**

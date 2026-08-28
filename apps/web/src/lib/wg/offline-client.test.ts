@@ -15,7 +15,7 @@ const offlineImageMock = vi.hoisted(() => ({
 	uploadPendingImageToken: vi.fn(),
 }));
 
-vi.mock('@/lib/api-client', () => ({
+vi.mock('@/core/infra/api-client', () => ({
 	apiFetch: (...args: unknown[]) => apiFetchMock(...args),
 }));
 

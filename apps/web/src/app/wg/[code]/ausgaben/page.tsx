@@ -23,14 +23,15 @@ import type {
 	RecurringExpense,
 } from '@/components/wg/ausgaben/expense-types';
 import { useExpenseForm } from '@/components/wg/ausgaben/useExpenseForm';
-import { parseEuroAmount } from '@/lib/amount';
-import { apiFetch } from '@/lib/api-client';
-import { useConfirmDelete } from '@/lib/hooks/useConfirmDelete';
+import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
+import { usePendingSet } from '@/core/hooks/usePendingSet';
+import { apiFetch } from '@/core/infra/api-client';
+import { captureException } from '@/core/infra/observability';
+import { parseEuroAmount } from '@/core/utils/amount';
+import { CENTS_PER_EURO } from '@/core/utils/money';
+import { parseTimestamp } from '@/core/utils/time';
 import { useOfflineQueueSync } from '@/lib/hooks/useOfflineQueueSync';
-import { usePendingSet } from '@/lib/hooks/usePendingSet';
-import { CENTS_PER_EURO } from '@/lib/money';
-import { captureException } from '@/lib/observability';
-import { parseTimestamp } from '@/lib/time';
 import { buildSettlementSummary, computeDirectDebts } from '@/lib/wg/debt-reduction';
 import { removeDraft } from '@/lib/wg/drafts';
 import {
@@ -47,7 +48,6 @@ import {
 	payerOptions,
 	splitCandidates,
 } from '@/lib/wg/expense-split-input';
-import { getWgLoadErrorMessage } from '@/lib/wg/load-errors';
 import {
 	enqueueOfflineAction,
 	readOfflineQueue,

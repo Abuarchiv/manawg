@@ -1,7 +1,7 @@
-import { serverError } from '@/lib/api-error';
-import type { RouteCtx } from '@/lib/api-types';
-import type { E2EWgFixture } from '@/lib/e2e-db-down';
-import { readShareCode, resolveE2EFixture } from '@/lib/wg/route-preamble';
+import { serverError } from '@/core/errors';
+import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
+import type { RouteCtx } from '@/core/infra/api-types';
+import type { E2EWgFixture } from '@/core/infra/e2e-db-down';
 import type { NextRequest, NextResponse } from 'next/server';
 
 /**

@@ -1,7 +1,7 @@
 'use client';
 
 import { IdentityPicker } from '@/components/wg/IdentityPicker';
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch } from '@/core/infra/api-client';
 import { countOfflineActions, syncOfflineActions } from '@/lib/wg/offline-client';
 import {
 	type StoredIdentity,

@@ -2,7 +2,7 @@
 
 import { DeleteConfirmButton } from '@/components/ui/DeleteConfirmButton';
 import { ICON_BUTTON } from '@/components/ui/styles';
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch } from '@/core/infra/api-client';
 import { type InventoryItemDto, isBelowThreshold } from '@/lib/wg/inventory';
 import { AlertCircle, Loader2, Minus, Pencil, Plus } from 'lucide-react';
 import { memo, useState } from 'react';

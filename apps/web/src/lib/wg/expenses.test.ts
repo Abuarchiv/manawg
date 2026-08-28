@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const whereMock = vi.fn();
 
-vi.mock('@/lib/db', () => ({
+vi.mock('@/core/db', () => ({
 	db: {
 		select: () => ({
 			from: () => ({

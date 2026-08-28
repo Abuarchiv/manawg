@@ -1,4 +1,4 @@
-import { CENTS_PER_EURO } from '@/lib/money';
+import { CENTS_PER_EURO } from '@/core/utils/money';
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
