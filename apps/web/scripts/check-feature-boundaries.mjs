@@ -9,6 +9,10 @@
  * instead (see core/activity-feed.ts) rather than one feature importing
  * another's internals directly.
  *
+ * Relative specifiers are resolved before checking, so `../chat/x` is
+ * caught exactly like `@/features/chat/x` — an alias-only check would
+ * leave the shortest path across the boundary wide open.
+ *
  * Regex-based on import/require specifiers rather than a full TS parse —
  * this only needs the string literal, and the project already runs
  * tsc/biome for everything else.
@@ -17,27 +21,35 @@
  */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 
 const SRC = join(process.cwd(), 'src');
 const FEATURES_DIR = join(SRC, 'features');
-const SPECIFIER_RE = /(?:from\s+|require\()\s*['"]([^'"]+)['"]/g;
+// Covers `from '...'`, `require('...')`, dynamic `import('...')` and
+// side-effect `import '...'`.
+const SPECIFIER_RE = /(?:from\s+|require\s*\(\s*|import\s*\(\s*|import\s+)['"]([^'"]+)['"]/g;
 const CODE_FILE_RE = /\.(ts|tsx)$/;
 
 function walk(dir) {
 	const out = [];
 	for (const entry of readdirSync(dir)) {
 		const full = join(dir, entry);
-		const stat = statSync(full);
-		if (stat.isDirectory()) out.push(...walk(full));
+		if (statSync(full).isDirectory()) out.push(...walk(full));
 		else if (CODE_FILE_RE.test(entry)) out.push(full);
 	}
 	return out;
 }
 
-function featureOf(specifier) {
-	const match = specifier.match(/^@\/features\/([^/]+)/);
-	return match ? match[1] : null;
+/** Which feature a specifier points into, or null if it leaves features/ entirely. */
+function featureOf(specifier, fromDir) {
+	const aliased = specifier.match(/^@\/features\/([^/]+)/);
+	if (aliased) return aliased[1];
+	if (!specifier.startsWith('.')) return null;
+
+	const abs = resolve(fromDir, specifier);
+	const rel = relative(FEATURES_DIR, abs);
+	if (rel.startsWith('..') || rel === '') return null;
+	return rel.split(sep)[0];
 }
 
 function main() {
@@ -56,7 +68,7 @@ function main() {
 		for (const file of walk(featureDir)) {
 			const source = readFileSync(file, 'utf-8');
 			for (const match of source.matchAll(SPECIFIER_RE)) {
-				const imported = featureOf(match[1]);
+				const imported = featureOf(match[1], dirname(file));
 				if (imported && imported !== feature) {
 					violations.push(
 						`${relative(SRC, file)}: imports "${match[1]}" (feature "${feature}" -> "${imported}")`,

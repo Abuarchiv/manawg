@@ -1,4 +1,4 @@
-import { postSystemNotice } from '@/core/activity-feed';
+import { postChatSystemMessage, postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
 import type { Expense, ExpenseSplit } from '@/core/db/schema';
@@ -7,7 +7,6 @@ import { isUuid } from '@/core/guards/api-auth';
 import type { ResolvedWg } from '@/core/guards/resolve';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { formatEuroCents } from '@/core/utils/money';
-import { appendSystemMessage } from '@/lib/wg/chat-server';
 import { and, eq, inArray } from 'drizzle-orm';
 
 interface ExpenseSplitInput {
@@ -148,7 +147,7 @@ export async function recordExpenseCreatedSideEffects(
 		content: `${actor.name} hat eine Ausgabe eingetragen: ${expense.description} (${amount}).`,
 	});
 
-	void appendSystemMessage({
+	await postChatSystemMessage({
 		wgId: wg.id,
 		kind: 'expense.created',
 		payload: {
@@ -157,7 +156,7 @@ export async function recordExpenseCreatedSideEffects(
 			description: expense.description,
 			amount,
 		},
-	}).catch((err) => console.warn('[expenses] chat system message failed', err));
+	});
 
 	await recordAuditEvent({
 		wgId: wg.id,

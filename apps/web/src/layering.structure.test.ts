@@ -22,7 +22,11 @@ import { collectSourceFiles } from './test-support/source-tree';
 
 const SRC = __dirname;
 const APP_IMPORT = /from\s+'@\/app\//;
-const LOWER_LAYERS = ['components/', 'lib/', 'hooks/'];
+// Every directory that sits below `app/`. Keep this in step with the tree:
+// the vertical-slice migration moved almost all logic into `core/` and
+// `features/`, and a layer missing here is silently unguarded — the filter
+// drops the file before the `@/app/` check ever runs.
+const LOWER_LAYERS = ['components/', 'core/', 'features/', 'lib/'];
 
 describe('layering', () => {
 	it('keeps the dependency arrow pointing from app into components and lib, never back', () => {

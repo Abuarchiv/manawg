@@ -6,6 +6,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, notifTestLimiter, wgWriteLimiter } from '@/core/rate-limit';
+import { pushEndpointSchema } from '@/core/validators/push-endpoint';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -27,7 +28,7 @@ const postSchema = z.discriminatedUnion('action', [
 	z.object({ action: z.literal('test_notification') }),
 	z.object({
 		action: z.literal('push_subscribe'),
-		endpoint: z.string().url(),
+		endpoint: pushEndpointSchema,
 		p256dh: z.string().min(1),
 		authKey: z.string().min(1),
 	}),

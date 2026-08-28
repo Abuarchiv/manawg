@@ -100,6 +100,31 @@ describe('notifications route', () => {
 		expect(routeMocks.requireMember).not.toHaveBeenCalled();
 	});
 
+	// A stored endpoint becomes a server-side fetch target on every WG event
+	// (notification-dispatch POSTs to it), so a member must not be able to
+	// aim it at an internal address. Rejected before any db work, like the
+	// malformed case above.
+	it('refuses a push endpoint outside the known push services', async () => {
+		const { POST } = await import('./route');
+
+		const res = await POST(
+			new NextRequest('https://mana.test/api/wg/MTE8PZAT/notifications', {
+				method: 'POST',
+				body: JSON.stringify({
+					action: 'push_subscribe',
+					endpoint: 'http://169.254.169.254/latest/meta-data/',
+					p256dh: 'p256dh-key',
+					authKey: 'auth-key',
+				}),
+			}),
+			{ params: Promise.resolve({ code: 'MTE8PZAT' }) },
+		);
+
+		expect(res.status).toBe(400);
+		await expect(res.json()).resolves.toEqual({ error: 'push_subscription_invalid' });
+		expect(routeDb.insert).not.toHaveBeenCalled();
+	});
+
 	it('returns 429 when push subscribe is rate-limited', async () => {
 		const { POST } = await import('./route');
 		routeDb.select.mockReturnValueOnce(
@@ -112,7 +137,7 @@ describe('notifications route', () => {
 				method: 'POST',
 				body: JSON.stringify({
 					action: 'push_subscribe',
-					endpoint: 'https://push.example/subscription-1',
+					endpoint: 'https://fcm.googleapis.com/fcm/send/subscription-1',
 					p256dh: 'p256dh-key',
 					authKey: 'auth-key',
 				}),
@@ -141,7 +166,7 @@ describe('notifications route', () => {
 				method: 'POST',
 				body: JSON.stringify({
 					action: 'push_unsubscribe',
-					endpoint: 'https://push.example/subscription-1',
+					endpoint: 'https://fcm.googleapis.com/fcm/send/subscription-1',
 				}),
 			}),
 			{ params: Promise.resolve({ code: 'MTE8PZAT' }) },
@@ -177,7 +202,7 @@ describe('notifications route', () => {
 				method: 'POST',
 				body: JSON.stringify({
 					action: 'push_unsubscribe',
-					endpoint: 'https://push.example/subscription-1',
+					endpoint: 'https://fcm.googleapis.com/fcm/send/subscription-1',
 				}),
 			}),
 			{ params: Promise.resolve({ code: 'MTE8PZAT' }) },
@@ -186,7 +211,9 @@ describe('notifications route', () => {
 		expect(res.status).toBe(200);
 		expect(deleteWhere).toHaveBeenCalledWith({
 			and: [
-				{ eq: ['push_subscriptions.endpoint', 'https://push.example/subscription-1'] },
+				{
+					eq: ['push_subscriptions.endpoint', 'https://fcm.googleapis.com/fcm/send/subscription-1'],
+				},
 				{ eq: ['push_subscriptions.member_id', 'member-1'] },
 			],
 		});
@@ -267,7 +294,7 @@ describe('notifications route', () => {
 				method: 'POST',
 				body: JSON.stringify({
 					action: 'push_unsubscribe',
-					endpoint: 'https://push.example/subscription-1',
+					endpoint: 'https://fcm.googleapis.com/fcm/send/subscription-1',
 				}),
 			}),
 			{ params: Promise.resolve({ code: 'MTE8PZAT' }) },
@@ -324,7 +351,7 @@ describe('notifications route', () => {
 				method: 'POST',
 				body: JSON.stringify({
 					action: 'push_subscribe',
-					endpoint: 'https://push.example/subscription-1',
+					endpoint: 'https://fcm.googleapis.com/fcm/send/subscription-1',
 					p256dh: 'p256dh-key',
 					authKey: 'auth-key',
 				}),
@@ -369,7 +396,7 @@ describe('notifications route', () => {
 					method: 'POST',
 					body: JSON.stringify({
 						action: 'push_subscribe',
-						endpoint: 'https://push.example/subscription-1',
+						endpoint: 'https://fcm.googleapis.com/fcm/send/subscription-1',
 						p256dh: 'p256dh-key',
 						authKey: 'auth-key',
 					}),
@@ -419,7 +446,7 @@ describe('notifications route', () => {
 				method: 'POST',
 				body: JSON.stringify({
 					action: 'push_subscribe',
-					endpoint: 'https://push.example/subscription-1',
+					endpoint: 'https://fcm.googleapis.com/fcm/send/subscription-1',
 					p256dh: 'p256dh-key',
 					authKey: 'auth-key',
 				}),
@@ -472,7 +499,7 @@ describe('notifications route', () => {
 				method: 'POST',
 				body: JSON.stringify({
 					action: 'push_subscribe',
-					endpoint: 'https://push.example/subscription-1',
+					endpoint: 'https://fcm.googleapis.com/fcm/send/subscription-1',
 					p256dh: 'p256dh-key',
 					authKey: 'auth-key',
 				}),
@@ -508,7 +535,7 @@ describe('notifications route', () => {
 				method: 'POST',
 				body: JSON.stringify({
 					action: 'push_unsubscribe',
-					endpoint: 'https://push.example/subscription-1',
+					endpoint: 'https://fcm.googleapis.com/fcm/send/subscription-1',
 				}),
 			}),
 			{ params: Promise.resolve({ code: 'MTE8PZAT' }) },
@@ -581,7 +608,7 @@ describe('notifications route', () => {
 				method: 'POST',
 				body: JSON.stringify({
 					action: 'push_unsubscribe',
-					endpoint: 'https://push.example.test/old-endpoint',
+					endpoint: 'https://fcm.googleapis.com/fcm/send/old-endpoint',
 				}),
 			}),
 			{ params: Promise.resolve({ code: 'MTE8PZAT' }) },
@@ -593,7 +620,7 @@ describe('notifications route', () => {
 				method: 'POST',
 				body: JSON.stringify({
 					action: 'push_subscribe',
-					endpoint: 'https://push.example.test/new-endpoint',
+					endpoint: 'https://fcm.googleapis.com/fcm/send/new-endpoint',
 					p256dh: 'new-p256dh',
 					authKey: 'new-auth',
 				}),

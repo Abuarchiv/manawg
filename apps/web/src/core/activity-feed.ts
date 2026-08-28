@@ -1,4 +1,8 @@
-import { announcements, db } from '@/core/db';
+import 'server-only';
+
+import { announcements, db, wgChatMessages } from '@/core/db';
+import { SYSTEM_MESSAGE_KIND } from '@/features/chat/chat-pure';
+import type { ChatSystemKind } from '@/features/chat/chat-pure';
 
 export interface SystemNoticeInput {
 	wgId: string;
@@ -30,5 +34,34 @@ export async function postSystemNotice(input: SystemNoticeInput): Promise<void> 
 		});
 	} catch (err) {
 		console.warn(`[activity-feed] system notice from "${input.source}" failed`, err);
+	}
+}
+
+export interface ChatSystemMessageInput {
+	wgId: string;
+	kind: ChatSystemKind;
+	payload: Record<string, unknown>;
+}
+
+/**
+ * The chat-feed counterpart of postSystemNotice, and here for the same reason:
+ * nothing inside features/chat writes these — they are always another feature
+ * announcing an event ("expense created") into the chat timeline. Keeping the
+ * write here is what lets expenses post one without importing features/chat.
+ *
+ * Best-effort, like postSystemNotice: a failed system message must never undo
+ * the action that triggered it, so callers need no try/catch of their own.
+ */
+export async function postChatSystemMessage(input: ChatSystemMessageInput): Promise<void> {
+	try {
+		await db.insert(wgChatMessages).values({
+			wgId: input.wgId,
+			senderMemberId: null,
+			kind: SYSTEM_MESSAGE_KIND,
+			systemKind: input.kind,
+			systemPayload: input.payload,
+		});
+	} catch (err) {
+		console.warn(`[activity-feed] chat system message "${input.kind}" failed`, err);
 	}
 }

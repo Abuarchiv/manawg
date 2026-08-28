@@ -5,6 +5,7 @@ const config: Config = {
 	darkMode: 'class',
 	content: [
 		'./src/components/**/*.{js,ts,jsx,tsx,mdx}',
+		'./src/features/**/*.{js,ts,jsx,tsx,mdx}',
 		'./src/app/**/*.{js,ts,jsx,tsx,mdx}',
 		// @manawg/shared ships raw TSX consumed directly by this app's build —
 		// Tailwind needs to scan it too, or utility classes used only inside
