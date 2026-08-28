@@ -4,9 +4,12 @@ import { badRequest, conflict, notFound, serverError, tooMany } from '@/core/err
 import { UUID_PATTERN, requireMember } from '@/core/guards/api-auth';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { getAbsentMemberIds } from '@/lib/wg/absence';
-import { chooseNextAvailableMember, computeOpenGapsByMember } from '@/lib/wg/chore-fairness';
-import { computeNextDueAt } from '@/lib/wg/chore-recurrence';
+import { getAbsentMemberIds } from '@/features/chores/absence';
+import {
+	chooseNextAvailableMember,
+	computeOpenGapsByMember,
+} from '@/features/chores/chore-fairness';
+import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import { and, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
@@ -43,7 +46,7 @@ export const POST = withWgRoute<{ id: string }>(
 
 		// Anchor next-due on the previous due (clamped to "now" if overdue) so
 		// that early completions do not slide the cadence forward week-over-
-		// week. See lib/wg/chore-recurrence.ts.
+		// week. See features/chores/chore-recurrence.ts.
 		const completedAt = new Date();
 		const nextDueAt = computeNextDueAt(
 			c.nextDueAt,

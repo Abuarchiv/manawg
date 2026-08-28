@@ -1,5 +1,5 @@
 'use client';
-import type { ChoreFairness } from '@/lib/wg/chore-fairness';
+import type { ChoreFairness } from '@/features/chores/chore-fairness';
 
 interface FairnessPanelProps {
 	fairness: ChoreFairness;

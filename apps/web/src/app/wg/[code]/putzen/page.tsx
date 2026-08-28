@@ -5,22 +5,6 @@ import { ALERT_DANGER, EMPTY_PLACEHOLDER, LIST_CARD } from '@/components/ui/styl
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { AbsencePanel } from '@/components/wg/putzen/AbsencePanel';
-import { ChoreForm } from '@/components/wg/putzen/ChoreForm';
-import { ChoreRepairFocus } from '@/components/wg/putzen/ChoreRepairFocus';
-import { ChoreRow } from '@/components/wg/putzen/ChoreRow';
-import { FairnessPanel } from '@/components/wg/putzen/FairnessPanel';
-import { HealthStrip } from '@/components/wg/putzen/HealthStrip';
-import { ListSkeleton } from '@/components/wg/putzen/ListSkeleton';
-import { PutzenHeader } from '@/components/wg/putzen/PutzenHeader';
-import type {
-	AbsenceListResponse,
-	Chore,
-	ChoreListResponse,
-	MemberInfo,
-	RecurrenceType,
-} from '@/components/wg/putzen/chore-types';
-import { QUICK_CHORE_TEMPLATES, TITLE_MAX } from '@/components/wg/putzen/constants';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
@@ -41,17 +25,33 @@ import {
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { MS_PER_DAY } from '@/core/utils/time';
+import { getAbsentMemberIds } from '@/features/chores/absence';
+import type { AbsenceInput } from '@/features/chores/absence';
+import { absenceSaveErrorMessage, choreCreateErrorMessage } from '@/features/chores/chore-errors';
+import { buildChoreFairness } from '@/features/chores/chore-fairness';
+import { getChoreHighlightPath } from '@/features/chores/chore-links';
 import {
 	getChorePlanHealth,
 	getChoreRepairHint,
 	getChoreStatus,
 	suggestChoreAssignee,
-} from '@/lib/chore-status';
-import { getAbsentMemberIds } from '@/lib/wg/absence';
-import type { AbsenceInput } from '@/lib/wg/absence';
-import { absenceSaveErrorMessage, choreCreateErrorMessage } from '@/lib/wg/chore-errors';
-import { buildChoreFairness } from '@/lib/wg/chore-fairness';
-import { getChoreHighlightPath } from '@/lib/wg/chore-links';
+} from '@/features/chores/chore-status';
+import { AbsencePanel } from '@/features/chores/components/AbsencePanel';
+import { ChoreForm } from '@/features/chores/components/ChoreForm';
+import { ChoreRepairFocus } from '@/features/chores/components/ChoreRepairFocus';
+import { ChoreRow } from '@/features/chores/components/ChoreRow';
+import { FairnessPanel } from '@/features/chores/components/FairnessPanel';
+import { HealthStrip } from '@/features/chores/components/HealthStrip';
+import { ListSkeleton } from '@/features/chores/components/ListSkeleton';
+import { PutzenHeader } from '@/features/chores/components/PutzenHeader';
+import type {
+	AbsenceListResponse,
+	Chore,
+	ChoreListResponse,
+	MemberInfo,
+	RecurrenceType,
+} from '@/features/chores/components/chore-types';
+import { QUICK_CHORE_TEMPLATES, TITLE_MAX } from '@/features/chores/components/constants';
 import { Sparkles } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

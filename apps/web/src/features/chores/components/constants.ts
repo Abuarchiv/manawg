@@ -1,4 +1,4 @@
-import type { RecurrenceType } from '@/components/wg/putzen/chore-types';
+import type { RecurrenceType } from '@/features/chores/components/chore-types';
 
 interface IntervalPreset {
 	interval: number;

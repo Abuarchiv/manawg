@@ -14,8 +14,8 @@
  * `// REGRESSION GUARD — keep` comment so future refactors don't regress it.
  */
 
+import { buildChoreFairness, chooseNextAvailableMember } from '@/features/chores/chore-fairness';
 import { describe, expect, it } from 'vitest';
-import { buildChoreFairness, chooseNextAvailableMember } from './chore-fairness';
 import { computeNetBalances, simplifyDebts } from './debt-reduction';
 import { computeBalances } from './debts';
 import {
