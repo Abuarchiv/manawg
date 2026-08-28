@@ -19,7 +19,7 @@ import { collectSourceFiles } from '../test-support/source-tree';
 
 const SRC = join(__dirname, '..');
 const FORWARDED_FOR = /x-forwarded-for/i;
-const ALLOWED = ['lib/rate-limit.ts'];
+const ALLOWED = ['core/rate-limit.ts'];
 
 describe('client IP resolution', () => {
 	it('is derived in exactly one place so no route can reintroduce the spoofable variant', () => {
