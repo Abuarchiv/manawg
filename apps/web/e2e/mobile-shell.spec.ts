@@ -1,0 +1,150 @@
+import { type Page, expect, test } from '@playwright/test';
+
+async function gotoWithRetry(page: Page, path: string) {
+	let lastError: unknown;
+	for (let attempt = 0; attempt < 3; attempt += 1) {
+		try {
+			await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 120_000 });
+			if ((await page.locator('body').innerText()).includes('Internal Server Error')) {
+				throw new Error('Next dev server returned Internal Server Error');
+			}
+			return;
+		} catch (err) {
+			lastError = err;
+			await page.waitForTimeout(1500);
+		}
+	}
+	throw lastError;
+}
+
+async function seedIdentity(page: Page) {
+	await page.evaluate(() => {
+		localStorage.setItem(
+			'manawg_identity:989ac820-58b7-431f-9c65-28721264f333',
+			JSON.stringify({ memberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973', name: 'dsaf' }),
+		);
+	});
+}
+
+async function expectNoHorizontalOverflow(page: Page) {
+	const overflow = await page.evaluate(
+		() => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+	);
+	expect(overflow).toBeLessThanOrEqual(2);
+}
+
+test.describe('Mobile WG shell', () => {
+	test.setTimeout(300_000);
+
+	test.use({
+		viewport: { width: 390, height: 844 },
+		isMobile: true,
+		hasTouch: true,
+	});
+
+	test('dashboard and subpage fit mobile width with bottom navigation', async ({ page }) => {
+		await gotoWithRetry(page, '/wg/MTE8PZAT');
+		await seedIdentity(page);
+		await page.reload({ waitUntil: 'domcontentloaded' });
+
+		const bottomNav = page.getByRole('navigation', { name: 'WG Hauptnavigation' });
+		await expect(bottomNav).toBeVisible({
+			timeout: 30_000,
+		});
+		await expect(bottomNav.getByRole('link', { name: /^Start$/ })).toHaveAttribute(
+			'aria-current',
+			'page',
+		);
+		const moduleNavigation = page.getByRole('region', { name: 'Module' });
+		await expect(moduleNavigation.getByRole('link', { name: /^Ausgaben\b/ })).toBeVisible({
+			timeout: 30_000,
+		});
+
+		await expectNoHorizontalOverflow(page);
+
+		await bottomNav.getByRole('link', { name: /^Pinnwand$/ }).click();
+		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/pinnwand$/, { timeout: 60_000 });
+		await expect(page.getByRole('heading', { name: 'Pinnwand' })).toBeVisible({
+			timeout: 60_000,
+		});
+		await expect(bottomNav.getByRole('link', { name: /^Pinnwand$/ })).toHaveAttribute(
+			'aria-current',
+			'page',
+		);
+		const quickNav = page.getByRole('navigation', { name: 'WG Schnellzugriff' });
+		await expect(quickNav).toBeVisible({
+			timeout: 30_000,
+		});
+		await expect(quickNav.getByRole('link', { name: 'WG durchsuchen' })).toBeVisible({
+			timeout: 30_000,
+		});
+		await expect(quickNav.getByRole('link', { name: 'Aktivitätschronik öffnen' })).toBeVisible({
+			timeout: 30_000,
+		});
+		await quickNav.getByRole('link', { name: 'Aktivitätschronik öffnen' }).click();
+		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/aktivitaet$/, { timeout: 60_000 });
+		await expect(page.getByRole('heading', { name: 'Aktivität' })).toBeVisible({
+			timeout: 30_000,
+		});
+		await expect(quickNav.getByRole('link', { name: 'Aktivitätschronik öffnen' })).toHaveAttribute(
+			'aria-current',
+			'page',
+		);
+
+		await gotoWithRetry(page, '/wg/MTE8PZAT/suche');
+		await expect(page.getByRole('navigation', { name: 'WG Schnellzugriff' })).toBeVisible();
+		await expect(quickNav.getByRole('link', { name: 'WG durchsuchen' })).toHaveAttribute(
+			'aria-current',
+			'page',
+		);
+
+		await expectNoHorizontalOverflow(page);
+	});
+
+	test('all primary WG pages avoid horizontal overflow on mobile', async ({ page }) => {
+		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
+		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
+
+		await page.addInitScript(
+			({ wgId, memberId }) => {
+				localStorage.setItem(`manawg_identity:${wgId}`, JSON.stringify({ memberId, name: 'dsaf' }));
+			},
+			{ wgId, memberId },
+		);
+
+		for (const path of [
+			'/wg/MTE8PZAT',
+			'/wg/MTE8PZAT/ausgaben',
+			'/wg/MTE8PZAT/einkauf',
+			'/wg/MTE8PZAT/pinnwand',
+			'/wg/MTE8PZAT/putzen',
+			'/wg/MTE8PZAT/suche',
+			'/wg/MTE8PZAT/aktivitaet',
+			'/wg/MTE8PZAT/einstellungen',
+		]) {
+			await gotoWithRetry(page, path);
+			await expect(page.getByRole('navigation', { name: 'WG Hauptnavigation' })).toBeVisible({
+				timeout: 30_000,
+			});
+			if (
+				[
+					'/wg/MTE8PZAT',
+					'/wg/MTE8PZAT/ausgaben',
+					'/wg/MTE8PZAT/einkauf',
+					'/wg/MTE8PZAT/pinnwand',
+					'/wg/MTE8PZAT/putzen',
+				].includes(path)
+			) {
+				await expect(page.getByRole('link', { name: 'WG-Einstellungen öffnen' })).toBeVisible({
+					timeout: 30_000,
+				});
+			}
+			if (path === '/wg/MTE8PZAT/aktivitaet') {
+				await expect(page.getByRole('link', { name: 'Zurück zum Dashboard' })).toBeVisible({
+					timeout: 30_000,
+				});
+			}
+			await expectNoHorizontalOverflow(page);
+		}
+	});
+});

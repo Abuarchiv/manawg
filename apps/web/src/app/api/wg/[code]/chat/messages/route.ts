@@ -1,0 +1,239 @@
+import { UUID_PATTERN } from '@/lib/api-auth';
+import { badRequest, serverError, tooMany } from '@/lib/api-error';
+import { db, wgChatMentions, wgChatMessages, wgChatReactions, wgMembers } from '@/lib/db';
+import { dispatchNotification } from '@/lib/notification-dispatch';
+import { chatMessageLimiter, checkRateLimit } from '@/lib/rate-limit';
+import { imageUrlSchema } from '@/lib/validators/image-url';
+import { recordAuditEvent } from '@/lib/wg/audit';
+import { previewBody, sanitizeMessageBody } from '@/lib/wg/chat-pure';
+import { requireWgMember } from '@/lib/wg/require-wg-member';
+import { withWgRoute } from '@/lib/wg/with-wg-route';
+import { and, desc, eq, inArray, isNull, lt, or } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const BODY_MAX = 4000;
+const PAGE_DEFAULT = 50;
+const PAGE_MAX = 100;
+const PREVIEW_LENGTH = 120;
+const MENTIONS_MAX = 20;
+
+const createMessageSchema = z
+	.object({
+		body: z.string().max(BODY_MAX).optional(),
+		imageUrl: imageUrlSchema,
+		replyToMessageId: z.string().uuid().optional().nullable(),
+		mentionMemberIds: z.array(z.string().uuid()).max(MENTIONS_MAX).optional(),
+	})
+	.refine(
+		(value) =>
+			(typeof value.body === 'string' && value.body.trim().length > 0) ||
+			(typeof value.imageUrl === 'string' && value.imageUrl.length > 0),
+		{ message: 'empty_message' },
+	);
+
+export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
+	const url = new URL(req.url);
+	const beforeRaw = url.searchParams.get('before');
+	const beforeId = url.searchParams.get('beforeId');
+	const limitRaw = url.searchParams.get('limit');
+	const limit = Math.min(
+		PAGE_MAX,
+		Math.max(1, Number.parseInt(limitRaw ?? `${PAGE_DEFAULT}`, 10) || PAGE_DEFAULT),
+	);
+	const before = beforeRaw ? new Date(beforeRaw) : null;
+	if (before && Number.isNaN(before.getTime())) return badRequest('before_invalid');
+	if (beforeId && !UUID_PATTERN.test(beforeId)) return badRequest('before_id_invalid');
+	// Pagination cursor must be complete: beforeId without before (or vice
+	// versa) would either silently fall back to the latest page or lose rows
+	// on createdAt ties.
+	if (!!before !== !!beforeId) return badRequest('before_cursor_incomplete');
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wg = auth.wg;
+
+	const where = before
+		? and(
+				eq(wgChatMessages.wgId, wg.id),
+				isNull(wgChatMessages.deletedAt),
+				beforeId
+					? or(
+							lt(wgChatMessages.createdAt, before),
+							and(eq(wgChatMessages.createdAt, before), lt(wgChatMessages.id, beforeId)),
+						)
+					: lt(wgChatMessages.createdAt, before),
+			)
+		: and(eq(wgChatMessages.wgId, wg.id), isNull(wgChatMessages.deletedAt));
+
+	const rows = await db
+		.select()
+		.from(wgChatMessages)
+		.where(where)
+		.orderBy(desc(wgChatMessages.createdAt), desc(wgChatMessages.id))
+		.limit(limit);
+
+	if (rows.length === 0) {
+		return NextResponse.json({ messages: [], reactions: [], mentions: [] });
+	}
+
+	const ids = rows.map((row) => row.id);
+	const reactionRows = await db
+		.select({
+			messageId: wgChatReactions.messageId,
+			memberId: wgChatReactions.memberId,
+			emoji: wgChatReactions.emoji,
+			memberName: wgMembers.name,
+			memberColor: wgMembers.color,
+		})
+		.from(wgChatReactions)
+		.innerJoin(wgMembers, eq(wgChatReactions.memberId, wgMembers.id))
+		.where(inArray(wgChatReactions.messageId, ids));
+
+	const mentionRows = await db
+		.select({
+			messageId: wgChatMentions.messageId,
+			mentionedMemberId: wgChatMentions.mentionedMemberId,
+		})
+		.from(wgChatMentions)
+		.where(inArray(wgChatMentions.messageId, ids));
+
+	const messages = rows
+		.map((row) => ({
+			...row,
+			body: row.deletedAt ? null : row.body,
+			imageUrl: row.deletedAt ? null : row.imageUrl,
+		}))
+		.reverse();
+
+	return NextResponse.json({
+		messages,
+		reactions: reactionRows,
+		mentions: mentionRows,
+	});
+});
+
+export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
+	let raw: unknown;
+	try {
+		raw = await req.json();
+	} catch {
+		return badRequest('invalid_json');
+	}
+
+	const parsed = createMessageSchema.safeParse(raw);
+	if (!parsed.success) {
+		const { formErrors, fieldErrors } = parsed.error.flatten();
+		if (formErrors.includes('empty_message')) return badRequest('empty_message');
+		if (fieldErrors.imageUrl) return badRequest('image_invalid');
+		if (fieldErrors.replyToMessageId) return badRequest('reply_to_invalid');
+		if (fieldErrors.mentionMemberIds) return badRequest('mentions_invalid');
+		return badRequest('body_invalid');
+	}
+
+	const cleanBody = sanitizeMessageBody(parsed.data.body ?? null, BODY_MAX);
+	const imageUrl =
+		typeof parsed.data.imageUrl === 'string' && parsed.data.imageUrl.length > 0
+			? parsed.data.imageUrl
+			: null;
+	const kind = imageUrl ? 'image' : 'text';
+	const replyToMessageId = parsed.data.replyToMessageId ?? null;
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wg = auth.wg;
+
+	const limited = await checkRateLimit(chatMessageLimiter, `chat:${wg.id}:${auth.member.memberId}`);
+	if (!limited.success) return tooMany();
+
+	if (replyToMessageId) {
+		if (!UUID_PATTERN.test(replyToMessageId)) return badRequest('reply_to_invalid');
+		const replyRow = await db
+			.select({ id: wgChatMessages.id })
+			.from(wgChatMessages)
+			.where(
+				and(
+					eq(wgChatMessages.id, replyToMessageId),
+					eq(wgChatMessages.wgId, wg.id),
+					isNull(wgChatMessages.deletedAt),
+				),
+			)
+			.limit(1);
+		if (replyRow.length === 0) return badRequest('reply_to_not_found');
+	}
+
+	const requestedMentionIds = Array.from(
+		new Set((parsed.data.mentionMemberIds ?? []).filter((id) => UUID_PATTERN.test(id))),
+	);
+	let validMentionIds: string[] = [];
+	if (requestedMentionIds.length > 0) {
+		const validRows = await db
+			.select({ id: wgMembers.id })
+			.from(wgMembers)
+			.where(and(eq(wgMembers.wgId, wg.id), inArray(wgMembers.id, requestedMentionIds)));
+		validMentionIds = validRows.map((row) => row.id).filter((id) => id !== auth.member.memberId);
+	}
+
+	const [inserted] = await db
+		.insert(wgChatMessages)
+		.values({
+			wgId: wg.id,
+			senderMemberId: auth.member.memberId,
+			kind,
+			body: cleanBody,
+			imageUrl,
+			replyToMessageId,
+		})
+		.returning();
+	if (!inserted) return serverError('insert_failed');
+
+	if (validMentionIds.length > 0) {
+		await db
+			.insert(wgChatMentions)
+			.values(
+				validMentionIds.map((mentionedMemberId) => ({
+					messageId: inserted.id,
+					mentionedMemberId,
+				})),
+			)
+			.onConflictDoNothing();
+	}
+
+	const preview = previewBody(cleanBody ?? (imageUrl ? 'Bild' : ''), PREVIEW_LENGTH);
+
+	void dispatchNotification({
+		wg,
+		event: 'chat.message',
+		payload: {
+			messageId: inserted.id,
+			actorName: auth.member.name,
+			preview,
+		},
+		excludeMemberId: auth.member.memberId,
+	}).catch((err) => console.error('[chat POST] notification failed', err));
+
+	if (validMentionIds.length > 0) {
+		void dispatchNotification({
+			wg,
+			event: 'chat.mention',
+			payload: {
+				messageId: inserted.id,
+				actorName: auth.member.name,
+				preview,
+			},
+			targetMemberIds: validMentionIds,
+			excludeMemberId: auth.member.memberId,
+		}).catch((err) => console.error('[chat POST] mention notification failed', err));
+	}
+
+	// Audit log for traceability — kept lightweight (no full body, only preview).
+	void recordAuditEvent({
+		wgId: wg.id,
+		memberId: auth.member.memberId,
+		eventType: 'chat.message.created',
+		entityType: 'chat_message',
+		entityId: inserted.id,
+		summary: `${auth.member.name} hat im Chat eine Nachricht gesendet.`,
+		metadata: { preview, kind, mentions: validMentionIds.length },
+	}).catch(() => undefined);
+
+	return NextResponse.json({ message: inserted, mentions: validMentionIds });
+});

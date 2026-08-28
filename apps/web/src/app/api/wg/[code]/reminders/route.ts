@@ -1,0 +1,194 @@
+import { apiError, badRequest, forbidden, tooMany } from '@/lib/api-error';
+import { db, expenseReminders, wgMembers } from '@/lib/db';
+import { withTransaction } from '@/lib/db/transaction';
+import { dispatchNotification } from '@/lib/notification-dispatch';
+import { checkRateLimit, reminderSendLimiter } from '@/lib/rate-limit';
+import { isVerifiedWgAdmin } from '@/lib/wg/admin';
+import { recordAuditEvent } from '@/lib/wg/audit';
+import { computeBalances, computeOldestDebtAgeDays, findPairBalance } from '@/lib/wg/debts';
+import { loadOpenExpenses } from '@/lib/wg/open-expenses';
+import {
+	REMINDER_COOLDOWN_HOURS,
+	canSendReminder,
+	formatReminderMessage,
+} from '@/lib/wg/reminders';
+import { requireWgMember } from '@/lib/wg/require-wg-member';
+import { withWgRoute } from '@/lib/wg/with-wg-route';
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const REMINDER_HISTORY_WINDOW_DAYS = 30;
+const MS_PER_DAY = 86_400_000;
+const REMINDER_PAGE_LIMIT = 50;
+
+const postSchema = z.object({
+	debtorMemberId: z.string().uuid(),
+	creditorMemberId: z.string().uuid(),
+	channel: z.enum(['push', 'inapp']).optional().default('push'),
+});
+
+export const GET = withWgRoute('reminders GET', async (req, { code }) => {
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wg = auth.wg;
+
+	const cutoff = new Date(Date.now() - REMINDER_HISTORY_WINDOW_DAYS * MS_PER_DAY);
+	const reminders = await db
+		.select()
+		.from(expenseReminders)
+		.where(and(eq(expenseReminders.wgId, wg.id), gte(expenseReminders.sentAt, cutoff)))
+		.orderBy(desc(expenseReminders.sentAt))
+		.limit(REMINDER_PAGE_LIMIT);
+
+	return NextResponse.json({ reminders });
+});
+
+export const POST = withWgRoute('reminders POST', async (req, { code }) => {
+	let raw: unknown;
+	try {
+		raw = await req.json();
+	} catch {
+		return badRequest('invalid_json');
+	}
+
+	const parsed = postSchema.safeParse(raw);
+	if (!parsed.success) {
+		const { fieldErrors } = parsed.error.flatten();
+		if (fieldErrors.debtorMemberId || fieldErrors.creditorMemberId) {
+			return badRequest('member_ids_invalid');
+		}
+		if (fieldErrors.channel) return badRequest('channel_invalid');
+		return badRequest('invalid_body');
+	}
+
+	const { debtorMemberId, creditorMemberId, channel } = parsed.data;
+	if (debtorMemberId === creditorMemberId) return badRequest('same_member');
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wg = auth.wg;
+	if (
+		(!auth.member.verified || auth.member.memberId !== creditorMemberId) &&
+		!(await isVerifiedWgAdmin(wg.id, auth.member.memberId, auth.member.verified))
+	) {
+		return forbidden('not_creditor', 'not_creditor');
+	}
+
+	const memberRows = await db
+		.select({
+			id: wgMembers.id,
+			name: wgMembers.name,
+			notifyReminders: wgMembers.notifyReminders,
+		})
+		.from(wgMembers)
+		.where(
+			and(eq(wgMembers.wgId, wg.id), inArray(wgMembers.id, [debtorMemberId, creditorMemberId])),
+		);
+	if (memberRows.length !== 2) return badRequest('member_not_in_wg');
+
+	const debtor = memberRows.find((row) => row.id === debtorMemberId);
+	const creditor = memberRows.find((row) => row.id === creditorMemberId);
+	if (!debtor || !creditor) return badRequest('member_not_in_wg');
+
+	if (!debtor.notifyReminders) {
+		return forbidden('debtor_opted_out', 'debtor_opted_out');
+	}
+
+	const rl = await checkRateLimit(reminderSendLimiter, `reminder:${auth.member.memberId}`);
+	if (!rl.success) return tooMany('reminder_rate_limited', 'reminder_rate_limited');
+
+	const openExpenses = await loadOpenExpenses(wg.id);
+	const balances = computeBalances(openExpenses);
+	const pair = findPairBalance(balances, debtorMemberId, creditorMemberId);
+	if (!pair || pair.amountCents <= 0) {
+		return apiError('no_open_debt', 409, 'no_open_debt');
+	}
+
+	const recentSince = new Date(Date.now() - REMINDER_COOLDOWN_HOURS * 60 * 60 * 1000);
+	// Cooldown check + insert must be atomic: two parallel requests would
+	// both pass the JS check and send double push. A transaction-scoped
+	// advisory lock per (wg, debtor, creditor) serializes them.
+	const lockKey = `${wg.id}:${debtorMemberId}:${creditorMemberId}`;
+	const inserted = await withTransaction(async (tx) => {
+		await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${lockKey}))`);
+		const recent = await tx
+			.select({
+				debtorMemberId: expenseReminders.debtorMemberId,
+				creditorMemberId: expenseReminders.creditorMemberId,
+				sentAt: expenseReminders.sentAt,
+			})
+			.from(expenseReminders)
+			.where(
+				and(
+					eq(expenseReminders.wgId, wg.id),
+					eq(expenseReminders.debtorMemberId, debtorMemberId),
+					eq(expenseReminders.creditorMemberId, creditorMemberId),
+					gte(expenseReminders.sentAt, recentSince),
+				),
+			)
+			.orderBy(desc(expenseReminders.sentAt))
+			.limit(5);
+
+		const history = recent.map((row) => ({
+			debtorMemberId: row.debtorMemberId,
+			creditorMemberId: row.creditorMemberId,
+			sentAt: row.sentAt instanceof Date ? row.sentAt.toISOString() : String(row.sentAt),
+		}));
+		const cooldown = canSendReminder(debtorMemberId, creditorMemberId, history);
+		if (!cooldown.allowed) return null;
+
+		const oldestAge = computeOldestDebtAgeDays(debtorMemberId, creditorMemberId, openExpenses);
+		const message = formatReminderMessage({
+			debtorName: debtor.name,
+			creditorName: creditor.name,
+			amountCents: pair.amountCents,
+			oldestDebtAgeDays: oldestAge,
+		});
+
+		const [row] = await tx
+			.insert(expenseReminders)
+			.values({
+				wgId: wg.id,
+				debtorMemberId,
+				creditorMemberId,
+				amountCents: pair.amountCents,
+				currency: 'EUR',
+				sentByMemberId: auth.member.memberId,
+				channel,
+				message,
+				oldestDebtAgeDays: oldestAge,
+			})
+			.returning();
+		return row ?? null;
+	});
+
+	if (!inserted) return tooMany('reminder_cooldown', 'reminder_cooldown');
+
+	void dispatchNotification({
+		wg,
+		event: 'expense.reminder',
+		payload: {
+			amountCents: pair.amountCents,
+			creditorName: creditor.name,
+			debtorName: debtor.name,
+			oldestDebtAgeDays: inserted.oldestDebtAgeDays,
+		},
+		targetMemberIds: [debtorMemberId],
+	}).catch((err) => console.error('[reminders POST] notification failed', err));
+
+	await recordAuditEvent({
+		wgId: wg.id,
+		memberId: auth.member.memberId,
+		eventType: 'expense.reminder.sent',
+		entityType: 'expense_reminder',
+		entityId: inserted.id,
+		summary: `${auth.member.name} hat ${debtor.name} an offene Schulden bei ${creditor.name} erinnert.`,
+		metadata: {
+			amountCents: pair.amountCents,
+			oldestDebtAgeDays: inserted.oldestDebtAgeDays,
+			channel,
+		},
+	});
+
+	return NextResponse.json({ reminder: inserted });
+});

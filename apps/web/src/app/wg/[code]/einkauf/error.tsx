@@ -1,0 +1,21 @@
+// craftsman-ignore: TS002 — Next.js App Router requires default export for error boundaries
+'use client';
+
+import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
+
+interface EinkaufErrorProps {
+	error: Error & { digest?: string };
+	reset: () => void;
+}
+
+export default function EinkaufError({ error, reset }: EinkaufErrorProps) {
+	return (
+		<WgRouteErrorBoundary
+			error={error}
+			reset={reset}
+			boundary="wg-einkauf"
+			title="Einkaufsliste konnte gerade nicht geladen werden"
+			body="In der Einkaufsliste ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
+		/>
+	);
+}

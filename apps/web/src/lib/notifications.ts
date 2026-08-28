@@ -1,0 +1,254 @@
+import { formatEuroCents } from '@/lib/money';
+
+export type NotificationEvent =
+	| 'expense.created'
+	| 'expense.recurring_charged'
+	| 'expense.reminder'
+	| 'import.completed'
+	| 'notification.test'
+	| 'announcement.posted'
+	| 'announcement.commented'
+	| 'announcement.reacted'
+	| 'announcement.resolved'
+	| 'chore.due'
+	| 'shopping.added'
+	| 'event.created'
+	| 'event.upcoming'
+	| 'inventory.low_stock'
+	| 'chat.message'
+	| 'chat.mention';
+
+type NotificationCategory =
+	| 'announcements'
+	| 'chores'
+	| 'expenses'
+	| 'shopping'
+	| 'events'
+	| 'reminders'
+	| 'chat';
+type NotificationPriority = 'urgent' | 'normal' | 'silent';
+
+interface NotificationMessage {
+	title: string;
+	body: string;
+	urlPath: string;
+}
+
+function money(amountCents: unknown): string {
+	const cents = typeof amountCents === 'number' && Number.isFinite(amountCents) ? amountCents : 0;
+	// Replace non-breaking spaces (Intl uses U+00A0) with regular spaces for plain-text channels (push, SMS).
+	return formatEuroCents(cents).replace(/\u00a0/g, ' ');
+}
+
+function text(value: unknown, fallback: string): string {
+	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
+}
+
+export function notificationCategoryForEvent(event: NotificationEvent): NotificationCategory {
+	if (event === 'notification.test') return 'announcements';
+	if (event === 'expense.reminder') return 'reminders';
+	if (event.startsWith('announcement.')) return 'announcements';
+	if (event.startsWith('expense.') || event === 'import.completed') return 'expenses';
+	if (event.startsWith('chore.')) return 'chores';
+	if (event.startsWith('event.')) return 'events';
+	if (event.startsWith('inventory.')) return 'shopping';
+	if (event.startsWith('chat.')) return 'chat';
+	return 'shopping';
+}
+
+export function notificationPriorityForEvent(event: NotificationEvent): NotificationPriority {
+	if (event === 'chore.due') return 'urgent';
+	if (event === 'event.upcoming') return 'urgent';
+	if (event === 'announcement.reacted') return 'silent';
+	if (event === 'notification.test') return 'normal';
+	return 'normal';
+}
+
+function chatUrlPath(payload: Record<string, unknown>): string {
+	const id = typeof payload.messageId === 'string' ? payload.messageId.trim() : '';
+	return id ? `/chat#message-${encodeURIComponent(id)}` : '/chat';
+}
+
+function announcementUrlPath(payload: Record<string, unknown>): string {
+	const id = typeof payload.announcementId === 'string' ? payload.announcementId.trim() : '';
+	return id ? `/pinnwand#announcement-${encodeURIComponent(id)}` : '/pinnwand';
+}
+
+function expenseUrlPath(payload: Record<string, unknown>): string {
+	const id = typeof payload.expenseId === 'string' ? payload.expenseId.trim() : '';
+	return id ? `/ausgaben?highlight=${encodeURIComponent(id)}` : '/ausgaben';
+}
+
+function choreUrlPath(payload: Record<string, unknown>): string {
+	const id = typeof payload.choreId === 'string' ? payload.choreId.trim() : '';
+	return id ? `/putzen?highlight=${encodeURIComponent(id)}` : '/putzen';
+}
+
+function shoppingUrlPath(payload: Record<string, unknown>): string {
+	const id = typeof payload.shoppingItemId === 'string' ? payload.shoppingItemId.trim() : '';
+	return id ? `/einkauf?highlight=${encodeURIComponent(id)}` : '/einkauf';
+}
+
+function eventUrlPath(payload: Record<string, unknown>): string {
+	const id = typeof payload.eventId === 'string' ? payload.eventId.trim() : '';
+	return id ? `/kalender?highlight=${encodeURIComponent(id)}` : '/kalender';
+}
+
+function formatEventTime(value: unknown): string {
+	if (typeof value !== 'string' || value.length === 0) return 'demnächst';
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return 'demnächst';
+	return new Intl.DateTimeFormat('de-DE', {
+		day: '2-digit',
+		month: '2-digit',
+		hour: '2-digit',
+		minute: '2-digit',
+	}).format(date);
+}
+
+function inventoryUrlPath(payload: Record<string, unknown>): string {
+	const id = typeof payload.inventoryItemId === 'string' ? payload.inventoryItemId.trim() : '';
+	return id ? `/vorraete?highlight=${encodeURIComponent(id)}` : '/vorraete';
+}
+
+function quantityNumber(value: unknown): number | null {
+	return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+export function formatNotificationMessage(
+	event: NotificationEvent,
+	payload: Record<string, unknown>,
+): NotificationMessage {
+	const wgName = text(payload.wgName, 'deiner WG');
+
+	switch (event) {
+		case 'notification.test':
+			return {
+				title: 'ManaWG Test',
+				body: `Benachrichtigungen funktionieren für ${wgName}.`,
+				urlPath: '/einstellungen#benachrichtigungen',
+			};
+		case 'expense.created': {
+			const actorName = text(payload.actorName, 'Jemand');
+			const title = text(payload.title, 'eine Ausgabe');
+			return {
+				title: 'Neue Ausgabe',
+				body: `${actorName} hat in ${wgName} ${title} für ${money(payload.amountCents)} eingetragen.`,
+				urlPath: expenseUrlPath(payload),
+			};
+		}
+		case 'expense.recurring_charged': {
+			const description = text(payload.description, 'Ein Abo');
+			return {
+				title: 'Neue Abo-Buchung',
+				body: `Neue Abo-Buchung: ${description} ${money(payload.amountCents)}`,
+				urlPath: expenseUrlPath(payload),
+			};
+		}
+		case 'expense.reminder': {
+			const creditor = text(payload.creditorName, 'jemandem');
+			const rawDays = typeof payload.oldestDebtAgeDays === 'number' ? payload.oldestDebtAgeDays : 0;
+			const dayClause =
+				rawDays >= 1 ? ` (ältester Posten ${rawDays} ${rawDays === 1 ? 'Tag' : 'Tage'} alt)` : '';
+			return {
+				title: 'Mahnung',
+				body: `Du schuldest ${creditor} noch ${money(payload.amountCents)}${dayClause} — bitte zeitnah ausgleichen.`,
+				urlPath: '/mahnungen',
+			};
+		}
+		case 'import.completed': {
+			const actorName = text(payload.actorName, 'Jemand');
+			const insertedRaw = payload.inserted;
+			const inserted =
+				typeof insertedRaw === 'number' && Number.isFinite(insertedRaw) ? insertedRaw : 0;
+			return {
+				title: 'Import abgeschlossen',
+				body: `${actorName} hat ${inserted} Ausgaben in ${wgName} importiert.`,
+				urlPath: '/ausgaben',
+			};
+		}
+		case 'announcement.posted':
+			return {
+				title: 'Neue Pinnwand-Nachricht',
+				body: `${text(payload.actorName, 'Jemand')} in ${wgName}: ${text(payload.title, 'Neue Nachricht')}`,
+				urlPath: announcementUrlPath(payload),
+			};
+		case 'announcement.commented':
+			return {
+				title: 'Neue Antwort',
+				body: `${text(payload.actorName, 'Jemand')} hat auf der Pinnwand geantwortet: ${text(payload.title, 'Neue Antwort')}`,
+				urlPath: announcementUrlPath(payload),
+			};
+		case 'announcement.reacted':
+			return {
+				title: 'Pinnwand-Reaktion',
+				body: `${text(payload.actorName, 'Jemand')} hat auf deinen Beitrag reagiert: ${text(payload.title, 'Neue Reaktion')}`,
+				urlPath: announcementUrlPath(payload),
+			};
+		case 'announcement.resolved':
+			return {
+				title: 'Pinnwand geklärt',
+				body: `${text(payload.actorName, 'Jemand')} hat einen Beitrag als geklärt markiert: ${text(payload.title, 'Beitrag')}`,
+				urlPath: announcementUrlPath(payload),
+			};
+		case 'chore.due':
+			return {
+				title: 'Putzplan',
+				body: `${text(payload.title, 'Eine Aufgabe')} ist heute in ${wgName} fällig.`,
+				urlPath: choreUrlPath(payload),
+			};
+		case 'shopping.added':
+			return {
+				title: 'Einkaufsliste',
+				body: `${text(payload.actorName, 'Jemand')} hat ${text(payload.title, 'etwas')} in ${wgName} hinzugefügt.`,
+				urlPath: shoppingUrlPath(payload),
+			};
+		case 'event.created':
+			return {
+				title: 'Neuer Termin',
+				body: `${text(payload.actorName, 'Jemand')} hat in ${wgName} „${text(
+					payload.title,
+					'Termin',
+				)}“ am ${formatEventTime(payload.startsAt)} eingetragen.`,
+				urlPath: eventUrlPath(payload),
+			};
+		case 'event.upcoming':
+			return {
+				title: 'Termin morgen',
+				body: `Morgen in ${wgName}: „${text(payload.title, 'Termin')}“ um ${formatEventTime(
+					payload.startsAt,
+				)}.`,
+				urlPath: eventUrlPath(payload),
+			};
+		case 'inventory.low_stock': {
+			const itemName = text(payload.title, 'Vorrat');
+			const quantity = quantityNumber(payload.quantity);
+			const threshold = quantityNumber(payload.threshold);
+			const detail =
+				quantity !== null && threshold !== null ? ` (${quantity} von ${threshold})` : '';
+			return {
+				title: 'Vorrat niedrig',
+				body: `Vorrat niedrig: ${itemName}${detail} in ${wgName}.`,
+				urlPath: inventoryUrlPath(payload),
+			};
+		}
+		case 'chat.message': {
+			const sender = text(payload.actorName, 'Jemand');
+			const preview = text(payload.preview, 'Neue Nachricht');
+			return {
+				title: `Chat — ${wgName}`,
+				body: `${sender}: ${preview}`,
+				urlPath: chatUrlPath(payload),
+			};
+		}
+		case 'chat.mention': {
+			const sender = text(payload.actorName, 'Jemand');
+			const preview = text(payload.preview, 'Neue Erwähnung');
+			return {
+				title: `${sender} hat dich erwähnt`,
+				body: `${sender} hat dich erwähnt: ${preview}`,
+				urlPath: chatUrlPath(payload),
+			};
+		}
+	}
+}

@@ -1,0 +1,21 @@
+{
+	"framework": "nextjs",
+	"buildCommand": "cd ../.. && pnpm --filter @manawg/web vercel-build",
+	"installCommand": "cd ../.. && pnpm install",
+	"outputDirectory": ".next",
+	"ignoreCommand": "exit 1",
+	"crons": [
+		{
+			"path": "/api/cron/chore-reminders",
+			"schedule": "0 8 * * *"
+		},
+		{
+			"path": "/api/cron/recurring-advance",
+			"schedule": "10 6 * * *"
+		},
+		{
+			"path": "/api/cron/event-reminders",
+			"schedule": "0 9 * * *"
+		}
+	]
+}

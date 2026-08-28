@@ -1,0 +1,97 @@
+import { UUID_PATTERN } from '@/lib/api-auth';
+import { badRequest, notFound, tooMany } from '@/lib/api-error';
+import { db, wgChatMessages, wgChatReads } from '@/lib/db';
+import { chatReadLimiter, checkRateLimit } from '@/lib/rate-limit';
+import { requireWgMember } from '@/lib/wg/require-wg-member';
+import { withWgRoute } from '@/lib/wg/with-wg-route';
+import { and, eq, sql } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const postSchema = z.object({
+	lastReadMessageId: z.string().uuid().nullable(),
+});
+
+export const POST = withWgRoute('chat read POST', async (req, { code }) => {
+	let raw: unknown;
+	try {
+		raw = await req.json();
+	} catch {
+		return badRequest('invalid_json');
+	}
+	const parsed = postSchema.safeParse(raw);
+	if (!parsed.success) return badRequest('body_invalid');
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wgId = auth.wg.id;
+
+	const limited = await checkRateLimit(
+		chatReadLimiter,
+		`chat-read:${wgId}:${auth.member.memberId}`,
+	);
+	if (!limited.success) return tooMany();
+
+	const messageId = parsed.data.lastReadMessageId;
+	let messageCreatedAt: Date | null = null;
+	if (messageId) {
+		if (!UUID_PATTERN.test(messageId)) return badRequest('message_id_invalid');
+		const messageRows = await db
+			.select({ id: wgChatMessages.id, createdAt: wgChatMessages.createdAt })
+			.from(wgChatMessages)
+			.where(and(eq(wgChatMessages.id, messageId), eq(wgChatMessages.wgId, wgId)))
+			.limit(1);
+		const message = messageRows[0];
+		if (!message) return notFound('message_not_found');
+		messageCreatedAt = message.createdAt;
+
+		const readRows = await db
+			.select({ lastReadMessageId: wgChatReads.lastReadMessageId })
+			.from(wgChatReads)
+			.where(and(eq(wgChatReads.wgId, wgId), eq(wgChatReads.memberId, auth.member.memberId)))
+			.limit(1);
+		const currentLastReadMessageId = readRows[0]?.lastReadMessageId ?? null;
+		if (currentLastReadMessageId) {
+			const currentRows = await db
+				.select({ createdAt: wgChatMessages.createdAt })
+				.from(wgChatMessages)
+				.where(and(eq(wgChatMessages.id, currentLastReadMessageId), eq(wgChatMessages.wgId, wgId)))
+				.limit(1);
+			const currentCreatedAt = currentRows[0]?.createdAt ?? null;
+			if (currentCreatedAt && currentCreatedAt.getTime() >= messageCreatedAt.getTime()) {
+				return NextResponse.json({ ok: true });
+			}
+		}
+	}
+
+	await db
+		.insert(wgChatReads)
+		.values({
+			wgId,
+			memberId: auth.member.memberId,
+			lastReadMessageId: messageId,
+		})
+		.onConflictDoUpdate({
+			target: [wgChatReads.wgId, wgChatReads.memberId],
+			set: { lastReadMessageId: messageId, updatedAt: new Date() },
+			setWhere: sql`
+					${messageId}::uuid is not null
+					and (
+						${wgChatReads.lastReadMessageId} is null
+						or (
+							select candidate.created_at
+							from wg_chat_messages candidate
+							where candidate.id = ${messageId}
+						) >= coalesce(
+							(
+								select current_read.created_at
+								from wg_chat_messages current_read
+								where current_read.id = ${wgChatReads.lastReadMessageId}
+							),
+							'-infinity'::timestamptz
+						)
+					)
+				`,
+		});
+
+	return NextResponse.json({ ok: true });
+});

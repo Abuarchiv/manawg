@@ -1,0 +1,214 @@
+import { requireMember } from '@/lib/api-auth';
+import { badRequest, notFound, serverError } from '@/lib/api-error';
+import type { RouteCtx } from '@/lib/api-types';
+import { db, wgMembers, wgs } from '@/lib/db';
+import { getE2EWgFixture, isE2EDbDownMode } from '@/lib/e2e-db-down';
+import { recordAuditEvent } from '@/lib/wg/audit';
+import { deriveMemberToken } from '@/lib/wg/member-token';
+import { requireWgAdmin } from '@/lib/wg/require-wg-admin';
+import { readShareCode } from '@/lib/wg/route-preamble';
+import { generateShareCode } from '@manawg/shared/lib/share-code';
+import { eq } from 'drizzle-orm';
+import { type NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const WG_NAME_MIN = 1;
+const WG_NAME_MAX = 100;
+
+const patchWgSchema = z
+	.object({
+		name: z.string().trim().min(WG_NAME_MIN).max(WG_NAME_MAX).optional(),
+		joiningEnabled: z.boolean().optional(),
+		rotateShareCode: z.boolean().optional(),
+	})
+	.refine(
+		(value) =>
+			value.name !== undefined ||
+			value.joiningEnabled !== undefined ||
+			value.rotateShareCode === true,
+		{ message: 'empty_update' },
+	);
+
+async function generateUniqueShareCode(): Promise<string> {
+	for (let attempt = 0; attempt < 8; attempt++) {
+		const shareCode = generateShareCode();
+		const existing = await db.query.wgs.findFirst({
+			where: (w, { eq }) => eq(w.shareCode, shareCode),
+			columns: { id: true },
+		});
+		if (!existing) return shareCode;
+	}
+	throw new Error('share_code_generation_failed');
+}
+
+export async function GET(
+	req: NextRequest,
+	ctx: RouteCtx<{ code: string }>,
+): Promise<NextResponse> {
+	const codeResult = await readShareCode(ctx);
+	if (!codeResult.ok) return codeResult.response;
+	const { code } = codeResult;
+
+	if (isE2EDbDownMode()) {
+		const fixture = getE2EWgFixture(code);
+		if (!fixture) return notFound('wg_not_found');
+		return NextResponse.json({
+			wg: {
+				id: fixture.id,
+				name: fixture.name,
+				shareCode: fixture.shareCode,
+				joiningEnabled: fixture.joiningEnabled,
+				shareCodeRotatedAt: fixture.shareCodeRotatedAt,
+				createdAt: new Date().toISOString(),
+			},
+			members: fixture.members,
+		});
+	}
+
+	try {
+		const wg = await db.query.wgs.findFirst({
+			where: (w, { eq }) => eq(w.shareCode, code),
+			columns: {
+				id: true,
+				name: true,
+				shareCode: true,
+				joiningEnabled: true,
+				shareCodeRotatedAt: true,
+				createdAt: true,
+			},
+		});
+		if (!wg) {
+			return notFound('wg_not_found');
+		}
+		const auth = await requireMember(req, wg.id);
+		if (!auth.ok) {
+			return NextResponse.json({ wg });
+		}
+
+		const members = await db
+			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
+			.from(wgMembers)
+			.where(eq(wgMembers.wgId, wg.id));
+		// currentMember carries the caller's own session token so legacy
+		// clients (identity stored before MEMBER_SESSION_SECRET existed) can
+		// self-heal into "verified" auth. Never attach a token to entries in
+		// `members` — those are for display only and belong to other users.
+		// CRITICAL: only mint a token when the caller already proved this
+		// identity via a valid token — otherwise any WG member could claim an
+		// arbitrary memberId (e.g. the admin's) via the spoofable header and
+		// receive that member's real session token back.
+		return NextResponse.json({
+			wg,
+			members,
+			currentMember: {
+				memberId: auth.member.memberId,
+				...(auth.member.verified
+					? { memberToken: deriveMemberToken(wg.id, auth.member.memberId) }
+					: {}),
+			},
+		});
+	} catch (err) {
+		console.error('[api/wg/[code] GET] failed', err);
+		return serverError('db_error');
+	}
+}
+
+export async function PATCH(
+	req: NextRequest,
+	ctx: RouteCtx<{ code: string }>,
+): Promise<NextResponse> {
+	const codeResult = await readShareCode(ctx);
+	if (!codeResult.ok) return codeResult.response;
+	const { code } = codeResult;
+
+	let raw: unknown;
+	try {
+		raw = await req.json();
+	} catch {
+		return badRequest('invalid_json');
+	}
+
+	const parsed = patchWgSchema.safeParse(raw);
+	if (!parsed.success) {
+		return badRequest('wg_update_invalid');
+	}
+
+	const { name, joiningEnabled, rotateShareCode } = parsed.data;
+
+	try {
+		const admin = await requireWgAdmin(req, code, 'wg-settings');
+		if (!admin.ok) return admin.response;
+		const { wg, member } = admin;
+
+		const updates: {
+			name?: string;
+			joiningEnabled?: boolean;
+			shareCode?: string;
+			shareCodeRotatedAt?: Date;
+			updatedAt: Date;
+		} = { updatedAt: new Date() };
+		if (name !== undefined) updates.name = name;
+		if (joiningEnabled !== undefined) updates.joiningEnabled = joiningEnabled;
+		if (rotateShareCode) {
+			updates.shareCode = await generateUniqueShareCode();
+			updates.shareCodeRotatedAt = new Date();
+			updates.joiningEnabled = true;
+		}
+
+		const [updated] = await db.update(wgs).set(updates).where(eq(wgs.id, wg.id)).returning();
+		if (!updated) {
+			return notFound('wg_not_found');
+		}
+		await recordAuditEvent({
+			wgId: wg.id,
+			memberId: member.memberId,
+			eventType: rotateShareCode
+				? 'wg.share_code_rotated'
+				: joiningEnabled !== undefined && name === undefined
+					? 'wg.joining_updated'
+					: 'wg.updated',
+			entityType: 'wg',
+			entityId: wg.id,
+			summary: rotateShareCode
+				? `${member.name} hat den WG-Code rotiert.`
+				: joiningEnabled !== undefined && wg.joiningEnabled !== joiningEnabled
+					? `${member.name} hat Beitritte ${joiningEnabled ? 'geöffnet' : 'gesperrt'}.`
+					: `${member.name} hat die WG-Einstellungen geändert.`,
+			metadata: {
+				nameBefore: wg.name,
+				nameAfter: updated.name,
+				joiningEnabledBefore: wg.joiningEnabled,
+				joiningEnabledAfter: updated.joiningEnabled,
+				shareCodeRotated: Boolean(rotateShareCode),
+			},
+		});
+		return NextResponse.json({ wg: updated });
+	} catch (err) {
+		console.error('[api/wg/[code] PATCH] failed', err);
+		return serverError('db_error');
+	}
+}
+
+export async function DELETE(
+	req: NextRequest,
+	ctx: RouteCtx<{ code: string }>,
+): Promise<NextResponse> {
+	const codeResult = await readShareCode(ctx);
+	if (!codeResult.ok) return codeResult.response;
+	const { code } = codeResult;
+
+	try {
+		const admin = await requireWgAdmin(req, code, 'wg-settings');
+		if (!admin.ok) return admin.response;
+		const { wg } = admin;
+
+		const result = await db.delete(wgs).where(eq(wgs.id, wg.id)).returning({ id: wgs.id });
+		if (result.length === 0) {
+			return notFound('wg_not_found');
+		}
+		return NextResponse.json({ deleted: true });
+	} catch (err) {
+		console.error('[api/wg/[code] DELETE] failed', err);
+		return serverError('db_error');
+	}
+}
