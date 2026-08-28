@@ -1,4 +1,4 @@
-import type { getChorePlanHealth } from '@/lib/chore-status';
+import type { getChorePlanHealth } from '@/features/chores/chore-status';
 
 export function HealthStrip({ health }: { health: ReturnType<typeof getChorePlanHealth> }) {
 	return (

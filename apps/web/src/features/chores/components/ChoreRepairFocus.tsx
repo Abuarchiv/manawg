@@ -1,6 +1,6 @@
 'use client';
-import type { Chore } from '@/components/wg/putzen/chore-types';
-import { type ChoreAssigneeMember, getChoreRepairHint } from '@/lib/chore-status';
+import { type ChoreAssigneeMember, getChoreRepairHint } from '@/features/chores/chore-status';
+import type { Chore } from '@/features/chores/components/chore-types';
 import Link from 'next/link';
 
 interface ChoreRepairFocusProps {

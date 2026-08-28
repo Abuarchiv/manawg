@@ -1,7 +1,10 @@
 'use client';
-import type { ChoreMember, RecurrenceType } from '@/components/wg/putzen/chore-types';
-import { INTERVAL_PRESETS_DAYS, INTERVAL_PRESETS_MONTHS } from '@/components/wg/putzen/constants';
-import { TITLE_MAX } from '@/components/wg/putzen/constants';
+import type { ChoreMember, RecurrenceType } from '@/features/chores/components/chore-types';
+import {
+	INTERVAL_PRESETS_DAYS,
+	INTERVAL_PRESETS_MONTHS,
+} from '@/features/chores/components/constants';
+import { TITLE_MAX } from '@/features/chores/components/constants';
 import { ChevronDown, Plus } from 'lucide-react';
 import type React from 'react';
 

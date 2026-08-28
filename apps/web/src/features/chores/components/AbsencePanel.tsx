@@ -1,6 +1,6 @@
 'use client';
-import type { ChoreMember } from '@/components/wg/putzen/chore-types';
-import { type AbsenceInput, formatAbsenceRange } from '@/lib/wg/absence';
+import { type AbsenceInput, formatAbsenceRange } from '@/features/chores/absence';
+import type { ChoreMember } from '@/features/chores/components/chore-types';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 

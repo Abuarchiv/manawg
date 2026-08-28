@@ -2,9 +2,9 @@
 
 import { DeleteConfirmButton } from '@/components/ui/DeleteConfirmButton';
 import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
-import type { Chore, MemberInfo, RecurrenceType } from '@/components/wg/putzen/chore-types';
 import { formatRelativeTime } from '@/core/utils/time';
-import { getChoreRepairHint, getChoreStatus } from '@/lib/chore-status';
+import { getChoreRepairHint, getChoreStatus } from '@/features/chores/chore-status';
+import type { Chore, MemberInfo, RecurrenceType } from '@/features/chores/components/chore-types';
 import { AlertTriangle, Check, History, Loader2, MessageSquareMore } from 'lucide-react';
 import { type ReactElement, memo } from 'react';
 

@@ -15,7 +15,7 @@ const resolveMock = vi.hoisted(() => ({
 	resolveWg: vi.fn(),
 }));
 
-vi.mock('@/lib/chore-status', () => ({
+vi.mock('@/features/chores/chore-status', () => ({
 	getChoreStatus: (...args: unknown[]) => choreStatusMock.getChoreStatus(...args),
 }));
 

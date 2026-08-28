@@ -1,4 +1,4 @@
-import type { AbsenceInput } from '@/lib/wg/absence';
+import type { AbsenceInput } from '@/features/chores/absence';
 
 export type RecurrenceType = 'days' | 'months';
 
