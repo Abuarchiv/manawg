@@ -35,7 +35,7 @@ function resolveVapidSubject(): string {
 	if (process.env.VERCEL_ENV === 'production') {
 		throw new Error('VAPID_SUBJECT must be configured in production');
 	}
-	return 'mailto:abubakarabditube@gmail.com';
+	return 'mailto:info@manawg.com';
 }
 
 async function configureWebPush(): Promise<typeof import('web-push') | null> {

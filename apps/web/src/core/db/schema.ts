@@ -163,6 +163,12 @@ export const expenses = pgTable(
 			.on(t.wgId, t.importDuplicateKey)
 			.where(sql`${t.importDuplicateKey} IS NOT NULL`),
 		importIdx: index('expenses_import_idx').on(t.importId),
+		// Every write path (POST/PATCH validators, import parsers, the recurring
+		// cron) already rejects amountCents <= 0 in JS. Added NOT VALID in the
+		// migration — this table predates that validation, so an old row from
+		// before it existed could still be 0 or negative — new writes are
+		// checked immediately either way.
+		amountCheck: check('expenses_amount_cents_check', sql`${t.amountCents} > 0`),
 	}),
 );
 
@@ -182,6 +188,11 @@ export const expenseSplits = pgTable(
 	(t) => ({
 		expenseIdx: index('expense_splits_expense_idx').on(t.expenseId),
 		debtorIdx: index('expense_splits_debtor_idx').on(t.debtorMemberId),
+		// >= 0 (not > 0): a Hamilton-distributed split can legitimately land a
+		// debtor's share at 0 cents (e.g. 1c over 3 debtors -> [1, 0, 0]). Added
+		// NOT VALID — see the amount_cents_check comment on `expenses` above for
+		// why pre-existing rows aren't force-validated here.
+		amountCheck: check('expense_splits_amount_cents_check', sql`${t.amountCents} >= 0`),
 	}),
 );
 
@@ -242,6 +253,20 @@ export const announcements = pgTable(
 		wgIdx: index('announcements_wg_idx').on(t.wgId, t.createdAt),
 		pinnedIdx: index('announcements_pinned_idx').on(t.wgId, t.pinnedAt),
 		statusIdx: index('announcements_status_idx').on(t.wgId, t.status),
+		// Values mirror ANNOUNCEMENT_KINDS / ANNOUNCEMENT_STATUS / ANNOUNCEMENT_SOURCES
+		// in lib/announcement-workflow.ts, which every insert/update site already
+		// validates through. Added NOT VALID: this table predates that shared
+		// module, so an older row could carry a value dropped since then; new
+		// writes are checked immediately either way.
+		kindCheck: check(
+			'announcements_kind_check',
+			sql`${t.kind} in ('info', 'question', 'problem', 'request', 'decision')`,
+		),
+		statusCheck: check('announcements_status_check', sql`${t.status} in ('open', 'resolved')`),
+		sourceCheck: check(
+			'announcements_source_check',
+			sql`${t.source} in ('manual', 'system', 'chore_swap', 'expense', 'shopping')`,
+		),
 	}),
 );
 
@@ -319,6 +344,14 @@ export const chores = pgTable(
 	},
 	(t) => ({
 		wgIdx: index('chores_wg_idx').on(t.wgId, t.nextDueAt),
+		// Mirrors CHORE_RECURRENCE_TYPES below — every write goes through a zod
+		// enum of the same two values, and the column has always defaulted to
+		// 'days'. Added NOT VALID out of caution for any row from before that
+		// zod validation existed; new writes are checked immediately either way.
+		recurrenceTypeCheck: check(
+			'chores_recurrence_type_check',
+			sql`${t.recurrenceType} in ('days', 'months')`,
+		),
 	}),
 );
 
@@ -548,6 +581,11 @@ export const wgChatMessages = pgTable(
 	(t) => ({
 		wgCreatedIdx: index('wg_chat_messages_wg_created_idx').on(t.wgId, t.createdAt),
 		replyIdx: index('wg_chat_messages_reply_idx').on(t.wgId, t.replyToMessageId),
+		// The only values ever written: 'text'/'image' in POST /chat/messages
+		// and 'system' via appendSystemMessage (see chat-pure.ts's
+		// TEXT_MESSAGE_KIND/SYSTEM_MESSAGE_KIND). Added NOT VALID out of caution
+		// for any pre-existing row; new writes are checked immediately either way.
+		kindCheck: check('wg_chat_messages_kind_check', sql`${t.kind} in ('text', 'image', 'system')`),
 	}),
 );
 
