@@ -135,9 +135,14 @@ export const GET = withCronLogging(
 			return true;
 		});
 
+		const claimAttempts = await Promise.all(
+			pending.map(async (item) => ({
+				item,
+				claimKey: await claimReminderDispatch(item.id, startOfDay, now),
+			})),
+		);
 		const claimed: Array<(typeof pending)[number] & { reminderClaimKey: string }> = [];
-		for (const item of pending) {
-			const claimKey = await claimReminderDispatch(item.id, startOfDay, now);
+		for (const { item, claimKey } of claimAttempts) {
 			if (claimKey) claimed.push({ ...item, reminderClaimKey: claimKey });
 		}
 

@@ -375,67 +375,74 @@ export async function loadDashboardData(
 	activity.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
 	const latestAnnouncement = getLatestManualAnnouncement(announcementRows, memberById);
-	const myOpenAnnouncements = currentMemberId
-		? await db
+	const [myOpenAnnouncements, absenceRows, recurringRows, auditRows, currentMemberNotification] =
+		await Promise.all([
+			currentMemberId
+				? db
+						.select({
+							id: announcements.id,
+							kind: announcements.kind,
+							content: announcements.content,
+							createdAt: announcements.createdAt,
+						})
+						.from(announcements)
+						.innerJoin(
+							announcementReactions,
+							eq(announcementReactions.announcementId, announcements.id),
+						)
+						.where(
+							and(
+								eq(announcements.wgId, wgId),
+								eq(announcements.status, 'open'),
+								eq(announcementReactions.memberId, currentMemberId),
+								eq(announcementReactions.reaction, 'take'),
+							),
+						)
+						.orderBy(desc(announcements.createdAt))
+				: Promise.resolve([]),
+			db
 				.select({
-					id: announcements.id,
-					kind: announcements.kind,
-					content: announcements.content,
-					createdAt: announcements.createdAt,
+					id: memberAbsences.id,
+					memberId: memberAbsences.memberId,
+					startDate: memberAbsences.startDate,
+					endDate: memberAbsences.endDate,
 				})
-				.from(announcements)
-				.innerJoin(
-					announcementReactions,
-					eq(announcementReactions.announcementId, announcements.id),
-				)
-				.where(
-					and(
-						eq(announcements.wgId, wgId),
-						eq(announcements.status, 'open'),
-						eq(announcementReactions.memberId, currentMemberId),
-						eq(announcementReactions.reaction, 'take'),
-					),
-				)
-				.orderBy(desc(announcements.createdAt))
-		: [];
+				.from(memberAbsences)
+				.where(eq(memberAbsences.wgId, wgId)),
+			db
+				.select({
+					id: recurringExpenses.id,
+					description: recurringExpenses.description,
+					amountCents: recurringExpenses.amountCents,
+					nextDueAt: recurringExpenses.nextDueAt,
+					lastCreatedAt: recurringExpenses.lastCreatedAt,
+					createdAt: recurringExpenses.createdAt,
+				})
+				.from(recurringExpenses)
+				.where(eq(recurringExpenses.wgId, wgId)),
+			db
+				.select({
+					id: auditEvents.id,
+					memberId: auditEvents.memberId,
+					eventType: auditEvents.eventType,
+					entityType: auditEvents.entityType,
+					entityId: auditEvents.entityId,
+					metadataJson: auditEvents.metadataJson,
+					summary: auditEvents.summary,
+					createdAt: auditEvents.createdAt,
+				})
+				.from(auditEvents)
+				.where(eq(auditEvents.wgId, wgId))
+				.orderBy(desc(auditEvents.createdAt))
+				.limit(ACTIVITY_LIMIT),
+			currentMemberId
+				? db.query.wgMembers.findFirst({
+						where: and(eq(wgMembers.id, currentMemberId), eq(wgMembers.wgId, wgId)),
+						columns: { pushOptIn: true },
+					})
+				: Promise.resolve(null),
+		]);
 	const filteredMyOpenAnnouncements = myOpenAnnouncements.slice(0, 4);
-	const [absenceRows, recurringRows] = await Promise.all([
-		db
-			.select({
-				id: memberAbsences.id,
-				memberId: memberAbsences.memberId,
-				startDate: memberAbsences.startDate,
-				endDate: memberAbsences.endDate,
-			})
-			.from(memberAbsences)
-			.where(eq(memberAbsences.wgId, wgId)),
-		db
-			.select({
-				id: recurringExpenses.id,
-				description: recurringExpenses.description,
-				amountCents: recurringExpenses.amountCents,
-				nextDueAt: recurringExpenses.nextDueAt,
-				lastCreatedAt: recurringExpenses.lastCreatedAt,
-				createdAt: recurringExpenses.createdAt,
-			})
-			.from(recurringExpenses)
-			.where(eq(recurringExpenses.wgId, wgId)),
-	]);
-	const auditRows = await db
-		.select({
-			id: auditEvents.id,
-			memberId: auditEvents.memberId,
-			eventType: auditEvents.eventType,
-			entityType: auditEvents.entityType,
-			entityId: auditEvents.entityId,
-			metadataJson: auditEvents.metadataJson,
-			summary: auditEvents.summary,
-			createdAt: auditEvents.createdAt,
-		})
-		.from(auditEvents)
-		.where(eq(auditEvents.wgId, wgId))
-		.orderBy(desc(auditEvents.createdAt))
-		.limit(ACTIVITY_LIMIT);
 	const dueRecurringExpenses = getDueRecurringExpenses(
 		recurringRows.map((item) => ({
 			...item,
@@ -513,12 +520,6 @@ export async function loadDashboardData(
 	const hasAnnouncement = announcementRows.some((item) => item.source === 'manual');
 	const overdueChoreCount = allDueChores.filter((item) => item.overdue).length;
 	const currentMember = currentMemberId ? (memberById.get(currentMemberId) ?? null) : null;
-	const currentMemberNotification = currentMemberId
-		? await db.query.wgMembers.findFirst({
-				where: and(eq(wgMembers.id, currentMemberId), eq(wgMembers.wgId, wgId)),
-				columns: { pushOptIn: true },
-			})
-		: null;
 
 	return {
 		balances: [...balances].sort((a, b) => Math.abs(b.balanceCents) - Math.abs(a.balanceCents)),

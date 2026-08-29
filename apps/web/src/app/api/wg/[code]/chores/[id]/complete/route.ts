@@ -62,19 +62,32 @@ export const POST = withWgRoute<{ id: string }>(
 		const effectiveAnchor = late ? completedAt : (c.anchorAt ?? c.nextDueAt);
 		// Only active members join the rotation. A moved-out ("deactivated")
 		// member is skipped, so the next chore never lands on someone who left.
-		const members = await db
-			.select({ id: wgMembers.id, name: wgMembers.name })
-			.from(wgMembers)
-			.where(and(eq(wgMembers.wgId, c.wgId), isNull(wgMembers.deactivatedAt)))
-			.orderBy(wgMembers.createdAt);
-		const absenceRows = await db
-			.select({
-				memberId: memberAbsences.memberId,
-				startDate: memberAbsences.startDate,
-				endDate: memberAbsences.endDate,
-			})
-			.from(memberAbsences)
-			.where(eq(memberAbsences.wgId, c.wgId));
+		// Score-aware rotation: fetch WG chore snapshot (just the fields the
+		// fairness ranker needs) so chooseNextAvailableMember matches what the
+		// UI's "Nächste:r" hint shows. Without this snapshot, server falls back
+		// to pure round-robin and silently disagrees with the UI prediction.
+		const [members, absenceRows, wgChoresSnapshot] = await Promise.all([
+			db
+				.select({ id: wgMembers.id, name: wgMembers.name })
+				.from(wgMembers)
+				.where(and(eq(wgMembers.wgId, c.wgId), isNull(wgMembers.deactivatedAt)))
+				.orderBy(wgMembers.createdAt),
+			db
+				.select({
+					memberId: memberAbsences.memberId,
+					startDate: memberAbsences.startDate,
+					endDate: memberAbsences.endDate,
+				})
+				.from(memberAbsences)
+				.where(eq(memberAbsences.wgId, c.wgId)),
+			db
+				.select({
+					assignedMemberId: chores.assignedMemberId,
+					nextDueAt: chores.nextDueAt,
+				})
+				.from(chores)
+				.where(eq(chores.wgId, c.wgId)),
+		]);
 		const absentMemberIds = getAbsentMemberIds(
 			absenceRows.map((absence) => ({
 				memberId: absence.memberId,
@@ -82,17 +95,6 @@ export const POST = withWgRoute<{ id: string }>(
 				endDate: absence.endDate.toISOString(),
 			})),
 		);
-		// Score-aware rotation: fetch WG chore snapshot (just the fields the
-		// fairness ranker needs) so chooseNextAvailableMember matches what the
-		// UI's "Nächste:r" hint shows. Without this snapshot, server falls back
-		// to pure round-robin and silently disagrees with the UI prediction.
-		const wgChoresSnapshot = await db
-			.select({
-				assignedMemberId: chores.assignedMemberId,
-				nextDueAt: chores.nextDueAt,
-			})
-			.from(chores)
-			.where(eq(chores.wgId, c.wgId));
 		// Reuse the same shared helper GET /chores uses so
 		// openGapCountForAssignee here matches the UI's "Nächste:r" prediction
 		// exactly instead of being hardcoded to 0.

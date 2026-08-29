@@ -77,25 +77,26 @@ export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 	}
 
 	const ids = rows.map((row) => row.id);
-	const reactionRows = await db
-		.select({
-			messageId: wgChatReactions.messageId,
-			memberId: wgChatReactions.memberId,
-			emoji: wgChatReactions.emoji,
-			memberName: wgMembers.name,
-			memberColor: wgMembers.color,
-		})
-		.from(wgChatReactions)
-		.innerJoin(wgMembers, eq(wgChatReactions.memberId, wgMembers.id))
-		.where(inArray(wgChatReactions.messageId, ids));
-
-	const mentionRows = await db
-		.select({
-			messageId: wgChatMentions.messageId,
-			mentionedMemberId: wgChatMentions.mentionedMemberId,
-		})
-		.from(wgChatMentions)
-		.where(inArray(wgChatMentions.messageId, ids));
+	const [reactionRows, mentionRows] = await Promise.all([
+		db
+			.select({
+				messageId: wgChatReactions.messageId,
+				memberId: wgChatReactions.memberId,
+				emoji: wgChatReactions.emoji,
+				memberName: wgMembers.name,
+				memberColor: wgMembers.color,
+			})
+			.from(wgChatReactions)
+			.innerJoin(wgMembers, eq(wgChatReactions.memberId, wgMembers.id))
+			.where(inArray(wgChatReactions.messageId, ids)),
+		db
+			.select({
+				messageId: wgChatMentions.messageId,
+				mentionedMemberId: wgChatMentions.mentionedMemberId,
+			})
+			.from(wgChatMentions)
+			.where(inArray(wgChatMentions.messageId, ids)),
+	]);
 
 	const messages = rows
 		.map((row) => ({
