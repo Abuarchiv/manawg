@@ -18,6 +18,9 @@ export async function readResponseErrorCode(response: Response): Promise<string 
 }
 
 export function accessErrorMessage(status: number, code: string | null): string {
+	if (isNetworkError(code, status)) {
+		return 'Zugang konnte nicht geändert werden: Prüfe deine Verbindung und versuche es erneut.';
+	}
 	if (isWgUnavailable(code, status)) {
 		return 'Diese WG wurde nicht gefunden. Öffne sie über den aktuellen WG-Link erneut.';
 	}
@@ -34,6 +37,12 @@ export function accessErrorMessage(status: number, code: string | null): string 
 }
 
 export function deleteWgErrorMessage(status: number, code: string | null): string {
+	// Worth being explicit here above all: on a dropped connection the request
+	// may or may not have reached the server, and "Löschen fehlgeschlagen"
+	// would tell the user the WG still exists when it might not.
+	if (isNetworkError(code, status)) {
+		return 'Keine Verbindung — ob die WG gelöscht wurde, ist unklar. Lade die Seite neu und prüfe es.';
+	}
 	if (isWgUnavailable(code, status)) {
 		return 'Diese WG wurde nicht gefunden. Sie wurde möglicherweise schon gelöscht oder der Link ist veraltet.';
 	}
@@ -62,7 +71,11 @@ export function notificationSaveErrorMessage(status: number, code: string | null
 	if (code === 'member_not_found') {
 		return 'Benachrichtigungen konnten nicht gespeichert werden: Tritt der WG erneut bei.';
 	}
-	if (isWgUnavailable(code, status)) {
+	if (isWgUnavailable(code, status) || isInvalidShareCode(code)) {
+		// withWgRoute -> readShareCode rejects a malformed code before the body
+		// is even parsed, so this route really can answer `invalid_share_code`.
+		// Its four siblings handled that; this one fell through to the generic
+		// message.
 		return 'Benachrichtigungen konnten nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
 	}
 	if (isAuthInvalidated(code, status)) {
