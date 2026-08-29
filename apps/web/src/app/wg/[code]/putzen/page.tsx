@@ -93,7 +93,6 @@ export default function PutzenPage() {
 
 	const { isPending, start: startPending, end: endPending } = usePendingSet();
 	// Used for delete confirmation
-	const deleteConfirm = useConfirmDelete();
 	// Used for complete confirmation (armed = first tap shows "OK", second tap commits)
 	const completeConfirm = useConfirmDelete();
 
@@ -702,12 +701,10 @@ export default function PutzenPage() {
 							: 'Entfernen fehlgeschlagen.';
 			setActionError(msg);
 			if (result.status === 404 && result.error === 'chore_not_found') {
-				deleteConfirm.cancel();
 				setItems((current) => current.filter((item) => item.id !== id));
 				void load(false);
 			}
 		} else {
-			deleteConfirm.cancel();
 			setItems((current) => current.filter((item) => item.id !== id));
 			void load(false);
 		}

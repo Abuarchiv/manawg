@@ -7,7 +7,6 @@ import { DebtSummary } from '@/components/wg/DebtSummary';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
@@ -95,7 +94,6 @@ export default function AusgabenPage() {
 	const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
 	const { isPending, start: startPending, end: endPending } = usePendingSet();
-	const { confirmId: _confirmId, cancel: cancelConfirm } = useConfirmDelete();
 
 	// Everything the form itself edits, plus its localStorage draft.
 	const {
@@ -706,7 +704,6 @@ export default function AusgabenPage() {
 			return;
 		}
 
-		cancelConfirm();
 		setExpenses((current) => current.filter((expense) => expense.id !== id));
 		if (alreadyGone) {
 			setActionError('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.');

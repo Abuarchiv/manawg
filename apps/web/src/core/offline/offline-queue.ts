@@ -155,109 +155,113 @@ function pathSegment(value: unknown): string {
 	return encodeURIComponent(String(value));
 }
 
+function createQueuedAction(
+	id: string,
+	type: OfflineAction['type'],
+	shareCode: string,
+	memberId: string,
+	payload: OfflineAction['payload'],
+	now: number,
+): OfflineAction {
+	return {
+		id,
+		type,
+		shareCode,
+		memberId,
+		createdAt: new Date(now).toISOString(),
+		payload,
+	};
+}
+
 export function createQueuedShoppingItem(input: QueuedShoppingInput): OfflineAction {
 	const now = input.now ?? Date.now();
-	return {
-		id: `shopping:${input.shareCode}:${now}:${slug(input.name)}`,
-		type: 'shopping.create',
-		shareCode: input.shareCode,
-		memberId: input.memberId,
-		createdAt: new Date(now).toISOString(),
-		payload: {
-			name: input.name,
-			quantity: input.quantity,
-		},
-	};
+	return createQueuedAction(
+		`shopping:${input.shareCode}:${now}:${slug(input.name)}`,
+		'shopping.create',
+		input.shareCode,
+		input.memberId,
+		{ name: input.name, quantity: input.quantity },
+		now,
+	);
 }
 
 export function createQueuedShoppingUpdate(input: QueuedShoppingUpdateInput): OfflineAction {
 	const now = input.now ?? Date.now();
-	return {
-		id: `shopping-update:${input.shareCode}:${now}:${input.itemId}`,
-		type: 'shopping.update',
-		shareCode: input.shareCode,
-		memberId: input.memberId,
-		createdAt: new Date(now).toISOString(),
-		payload: {
-			itemId: input.itemId,
-			name: input.name,
-			bought: input.bought,
-		},
-	};
+	return createQueuedAction(
+		`shopping-update:${input.shareCode}:${now}:${input.itemId}`,
+		'shopping.update',
+		input.shareCode,
+		input.memberId,
+		{ itemId: input.itemId, name: input.name, bought: input.bought },
+		now,
+	);
 }
 
 export function createQueuedAnnouncement(input: QueuedAnnouncementInput): OfflineAction {
 	const now = input.now ?? Date.now();
-	return {
-		id: `announcement:${input.shareCode}:${now}:${slug(input.content)}`,
-		type: 'announcement.create',
-		shareCode: input.shareCode,
-		memberId: input.memberId,
-		createdAt: new Date(now).toISOString(),
-		payload: {
-			content: input.content,
-			kind: input.kind,
-			imageUrl: input.imageUrl ?? null,
-		},
-	};
+	return createQueuedAction(
+		`announcement:${input.shareCode}:${now}:${slug(input.content)}`,
+		'announcement.create',
+		input.shareCode,
+		input.memberId,
+		{ content: input.content, kind: input.kind, imageUrl: input.imageUrl ?? null },
+		now,
+	);
 }
 
 export function createQueuedChoreCompletion(input: QueuedChoreCompletionInput): OfflineAction {
 	const now = input.now ?? Date.now();
-	return {
-		id: `chore:${input.shareCode}:${now}:${input.choreId}`,
-		type: 'chore.complete',
-		shareCode: input.shareCode,
-		memberId: input.memberId,
-		createdAt: new Date(now).toISOString(),
-		payload: {
-			choreId: input.choreId,
-		},
-	};
+	return createQueuedAction(
+		`chore:${input.shareCode}:${now}:${input.choreId}`,
+		'chore.complete',
+		input.shareCode,
+		input.memberId,
+		{ choreId: input.choreId },
+		now,
+	);
 }
 
 export function createQueuedChore(input: QueuedChoreInput): OfflineAction {
 	const now = input.now ?? Date.now();
-	return {
-		id: `chore-create:${input.shareCode}:${now}:${slug(input.title)}`,
-		type: 'chore.create',
-		shareCode: input.shareCode,
-		memberId: input.memberId,
-		createdAt: new Date(now).toISOString(),
-		payload: {
+	return createQueuedAction(
+		`chore-create:${input.shareCode}:${now}:${slug(input.title)}`,
+		'chore.create',
+		input.shareCode,
+		input.memberId,
+		{
 			title: input.title,
 			intervalDays: input.intervalDays,
 			assignedMemberId: input.assignedMemberId,
 		},
-	};
+		now,
+	);
 }
 
 export function createQueuedAbsence(input: QueuedAbsenceInput): OfflineAction {
 	const now = input.now ?? Date.now();
-	return {
-		id: `absence:${input.shareCode}:${now}:${input.absenceMemberId}`,
-		type: 'absence.create',
-		shareCode: input.shareCode,
-		memberId: input.memberId,
-		createdAt: new Date(now).toISOString(),
-		payload: {
+	return createQueuedAction(
+		`absence:${input.shareCode}:${now}:${input.absenceMemberId}`,
+		'absence.create',
+		input.shareCode,
+		input.memberId,
+		{
 			memberId: input.absenceMemberId,
 			startDate: input.startDate,
 			endDate: input.endDate,
 			reason: input.reason,
 		},
-	};
+		now,
+	);
 }
 
 export function createQueuedExpense(input: QueuedExpenseInput): OfflineAction {
 	const now = input.now ?? Date.now();
-	return {
-		id: `expense:${input.shareCode}:${now}:${slug(input.description)}`,
-		type: 'expense.create',
-		shareCode: input.shareCode,
-		memberId: input.memberId,
-		createdAt: new Date(now).toISOString(),
-		payload: {
+	return createQueuedAction(
+		`expense:${input.shareCode}:${now}:${slug(input.description)}`,
+		'expense.create',
+		input.shareCode,
+		input.memberId,
+		{
 			description: input.description,
 			amountCents: input.amountCents,
 			paidByMemberId: input.paidByMemberId,
@@ -268,18 +272,18 @@ export function createQueuedExpense(input: QueuedExpenseInput): OfflineAction {
 				? { expectedRecurringNextDueAt: input.expectedRecurringNextDueAt }
 				: {}),
 		},
-	};
+		now,
+	);
 }
 
 export function createQueuedRecurring(input: QueuedRecurringInput): OfflineAction {
 	const now = input.now ?? Date.now();
-	return {
-		id: `recurring:${input.shareCode}:${now}:${slug(input.description)}`,
-		type: 'recurring.create',
-		shareCode: input.shareCode,
-		memberId: input.memberId,
-		createdAt: new Date(now).toISOString(),
-		payload: {
+	return createQueuedAction(
+		`recurring:${input.shareCode}:${now}:${slug(input.description)}`,
+		'recurring.create',
+		input.shareCode,
+		input.memberId,
+		{
 			description: input.description,
 			amountCents: input.amountCents,
 			paidByMemberId: input.paidByMemberId,
@@ -287,7 +291,8 @@ export function createQueuedRecurring(input: QueuedRecurringInput): OfflineActio
 			nextDueAt: input.nextDueAt,
 			splits: input.splits,
 		},
-	};
+		now,
+	);
 }
 
 export function serializeOfflineAction(action: OfflineAction): string {

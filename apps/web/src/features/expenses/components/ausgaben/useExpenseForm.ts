@@ -351,7 +351,6 @@ export function useExpenseForm({
 		setRecurringIntervalMonths,
 		recurringNextDueAt,
 		setRecurringNextDueAt,
-		draftHydrated,
 		draftKey,
 		resetForm,
 		applyQuickExpense,
