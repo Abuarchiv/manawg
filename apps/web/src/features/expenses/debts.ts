@@ -82,6 +82,42 @@ export function computeOldestDebtAgeDays(
 	return Math.floor(diffMs / MS_PER_DAY);
 }
 
+/**
+ * Batch form of `computeOldestDebtAgeDays` for rendering a whole balances
+ * list: a single pass over `expenses` builds the oldest-unsettled-split
+ * timestamp for every (debtor, creditor) pair, instead of rescanning all
+ * expenses once per pair (O(expenses × splits) instead of
+ * O(pairs × expenses × splits)). Returns ages in the same order as `pairs`.
+ */
+export function computeOldestDebtAges(
+	pairs: ReadonlyArray<{ debtorId: string; creditorId: string }>,
+	expenses: ReadonlyArray<DebtExpenseInput>,
+	now: Date = new Date(),
+): number[] {
+	const oldestTsByPair = new Map<string, number>();
+
+	for (const expense of expenses) {
+		const ts = Date.parse(expense.occurredAt);
+		if (Number.isNaN(ts)) continue;
+		const creditorId = expense.paidByMemberId;
+		for (const split of expense.splits) {
+			if (split.settledAt !== null) continue;
+			if (split.amountCents <= 0) continue;
+			const key = `${split.debtorMemberId}:${creditorId}`;
+			const current = oldestTsByPair.get(key);
+			if (current === undefined || ts < current) oldestTsByPair.set(key, ts);
+		}
+	}
+
+	const nowMs = now.getTime();
+	return pairs.map((pair) => {
+		const oldestTs = oldestTsByPair.get(`${pair.debtorId}:${pair.creditorId}`);
+		if (oldestTs === undefined) return 0;
+		const diffMs = nowMs - oldestTs;
+		return diffMs <= 0 ? 0 : Math.floor(diffMs / MS_PER_DAY);
+	});
+}
+
 export function findPairBalance(
 	balances: ReadonlyArray<PairBalance>,
 	debtorId: string,

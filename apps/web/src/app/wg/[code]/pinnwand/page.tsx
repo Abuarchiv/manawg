@@ -14,6 +14,11 @@ import {
 	syncOfflineActions,
 	writeOfflineQueue,
 } from '@/core/offline/offline-client';
+import {
+	DRAFT_CLEANUP_FAILED_MESSAGE,
+	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
+	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+} from '@/core/offline/offline-copy';
 import { isPendingImageToken } from '@/core/offline/offline-images';
 import { createQueuedAnnouncement } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
@@ -383,16 +388,12 @@ export default function PinnwandPage(): React.ReactElement {
 						imageUrl,
 					});
 					if (enqueueOfflineAction(queued) === 0) {
-						setError(
-							'Offline-Speicher ist blockiert. Lass den Entwurf offen und versuche es später erneut.',
-						);
+						setError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
 					refreshCount();
 					if (!clearEditedQueueItem()) {
-						setError(
-							'Offline gespeichert, aber der alte Entwurf konnte nicht entfernt werden. Prüfe die Offline-Warteschlange.',
-						);
+						setError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
 					setContent('');
@@ -410,7 +411,7 @@ export default function PinnwandPage(): React.ReactElement {
 			setKind('info');
 			setImageUrl(null);
 			if (!clearEditedQueueItem()) {
-				setError('Gespeichert, aber der alte Offline-Entwurf konnte nicht entfernt werden.');
+				setError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
 			removeDraft(draftKey);

@@ -11,7 +11,7 @@ import { formatRelativeTime } from '@/core/utils/time';
 import {
 	type DebtExpenseInput,
 	computeBalances,
-	computeOldestDebtAgeDays,
+	computeOldestDebtAges,
 } from '@/features/expenses/debts';
 import { REMINDER_COOLDOWN_HOURS, canSendReminder } from '@/features/expenses/reminders';
 import { haptic } from '@/shared/lib/haptics';
@@ -107,16 +107,12 @@ export default function MahnungenPage() {
 
 	const balances = useMemo(() => computeBalances(debtExpenses), [debtExpenses]);
 
-	const rows = useMemo(
-		() =>
-			balances
-				.map((pair) => ({
-					...pair,
-					oldestAge: computeOldestDebtAgeDays(pair.debtorId, pair.creditorId, debtExpenses),
-				}))
-				.sort((a, b) => b.amountCents - a.amountCents),
-		[balances, debtExpenses],
-	);
+	const rows = useMemo(() => {
+		const oldestAges = computeOldestDebtAges(balances, debtExpenses);
+		return balances
+			.map((pair, i) => ({ ...pair, oldestAge: oldestAges[i] ?? 0 }))
+			.sort((a, b) => b.amountCents - a.amountCents);
+	}, [balances, debtExpenses]);
 
 	function cooldownFor(debtorId: string, creditorId: string) {
 		return canSendReminder(

@@ -3,6 +3,7 @@ import {
 	type DebtExpenseInput,
 	computeBalances,
 	computeOldestDebtAgeDays,
+	computeOldestDebtAges,
 	findPairBalance,
 } from './debts';
 
@@ -106,6 +107,40 @@ describe('computeOldestDebtAgeDays', () => {
 		];
 		const now = new Date('2026-05-25T08:00:00.000Z');
 		expect(computeOldestDebtAgeDays('ben', 'alice', expenses, now)).toBe(0);
+	});
+});
+
+describe('computeOldestDebtAges', () => {
+	it('matches computeOldestDebtAgeDays for each pair, including across different creditors', () => {
+		const expenses: DebtExpenseInput[] = [
+			{
+				paidByMemberId: 'alice',
+				occurredAt: T0,
+				splits: [{ debtorMemberId: 'ben', amountCents: 500, settledAt: null }],
+			},
+			{
+				paidByMemberId: 'alice',
+				occurredAt: T2,
+				splits: [{ debtorMemberId: 'ben', amountCents: 200, settledAt: null }],
+			},
+			{
+				paidByMemberId: 'cora',
+				occurredAt: T1,
+				splits: [{ debtorMemberId: 'ben', amountCents: 300, settledAt: null }],
+			},
+		];
+		const now = new Date('2026-05-25T08:00:00.000Z');
+		const pairs = [
+			{ debtorId: 'ben', creditorId: 'alice' },
+			{ debtorId: 'ben', creditorId: 'cora' },
+			{ debtorId: 'ben', creditorId: 'nobody' },
+		];
+
+		const batched = computeOldestDebtAges(pairs, expenses, now);
+
+		expect(batched).toEqual(
+			pairs.map((pair) => computeOldestDebtAgeDays(pair.debtorId, pair.creditorId, expenses, now)),
+		);
 	});
 });
 

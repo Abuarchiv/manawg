@@ -34,10 +34,20 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 	if (!auth.ok) return auth.response;
 	const wgRow = auth.wg;
 
-	const members = await db
-		.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
-		.from(wgMembers)
-		.where(eq(wgMembers.wgId, wgRow.id));
+	const [members, expenseRows] = await Promise.all([
+		db
+			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
+			.from(wgMembers)
+			.where(eq(wgMembers.wgId, wgRow.id)),
+		db
+			.select({
+				id: expenses.id,
+				paidByMemberId: expenses.paidByMemberId,
+				occurredAt: expenses.occurredAt,
+			})
+			.from(expenses)
+			.where(eq(expenses.wgId, wgRow.id)),
+	]);
 	const memberIds = new Set(members.map((member) => member.id));
 	if (!memberIds.has(fromMemberId) || !memberIds.has(toMemberId)) {
 		return badRequest('member_not_in_wg');
@@ -58,15 +68,6 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 		`settle-batch:${wgRow.id}:${auth.member.memberId}`,
 	);
 	if (!limited.success) return tooMany();
-
-	const expenseRows = await db
-		.select({
-			id: expenses.id,
-			paidByMemberId: expenses.paidByMemberId,
-			occurredAt: expenses.occurredAt,
-		})
-		.from(expenses)
-		.where(eq(expenses.wgId, wgRow.id));
 
 	if (expenseRows.length === 0) {
 		return NextResponse.json({

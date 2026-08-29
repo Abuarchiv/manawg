@@ -19,7 +19,12 @@ import {
 	syncOfflineActions,
 	writeOfflineQueue,
 } from '@/core/offline/offline-client';
-import { formatQueuedOfflineEntries } from '@/core/offline/offline-copy';
+import {
+	DRAFT_CLEANUP_FAILED_MESSAGE,
+	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
+	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+	formatQueuedOfflineEntries,
+} from '@/core/offline/offline-copy';
 import { createQueuedShoppingItem, createQueuedShoppingUpdate } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { ListSkeleton } from '@/features/shopping/components/ListSkeleton';
@@ -194,16 +199,12 @@ export default function EinkaufPage() {
 						quantity: newQty.trim() || null,
 					});
 					if (enqueueOfflineAction(queued) === 0) {
-						setAddError(
-							'Offline-Speicher ist blockiert. Lass den Entwurf offen und versuche es später erneut.',
-						);
+						setAddError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
 					refreshCount();
 					if (!clearEditedQueueItem()) {
-						setAddError(
-							'Offline gespeichert, aber der alte Entwurf konnte nicht entfernt werden. Prüfe die Offline-Warteschlange.',
-						);
+						setAddError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
 					setItems((prev) => [
@@ -230,7 +231,7 @@ export default function EinkaufPage() {
 			setNewName('');
 			setNewQty('');
 			if (!clearEditedQueueItem()) {
-				setAddError('Gespeichert, aber der alte Offline-Entwurf konnte nicht entfernt werden.');
+				setAddError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
 			removeDraft(draftKey);

@@ -1,7 +1,7 @@
 import { db, wgMembers } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { computeBalances, computeOldestDebtAgeDays } from '@/features/expenses/debts';
+import { computeBalances, computeOldestDebtAges } from '@/features/expenses/debts';
 import { loadOpenExpenses } from '@/features/expenses/open-expenses';
 import { inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -33,11 +33,15 @@ export const GET = withWgRoute(
 			.where(inArray(wgMembers.id, debtorIds));
 		const nameById = new Map(debtorRows.map((row) => [row.id, row.name]));
 
-		const balances: BalanceDto[] = myCredits.map((pair) => ({
+		const oldestAges = computeOldestDebtAges(
+			myCredits.map((pair) => ({ debtorId: pair.debtorId, creditorId: auth.member.memberId })),
+			openExpenses,
+		);
+		const balances: BalanceDto[] = myCredits.map((pair, i) => ({
 			debtor_id: pair.debtorId,
 			debtor_name: nameById.get(pair.debtorId) ?? 'Unbekannt',
 			amount_cents: pair.amountCents,
-			oldest_age_days: computeOldestDebtAgeDays(pair.debtorId, auth.member.memberId, openExpenses),
+			oldest_age_days: oldestAges[i] ?? 0,
 		}));
 		balances.sort((a, b) => b.amount_cents - a.amount_cents);
 

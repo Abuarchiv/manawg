@@ -18,6 +18,11 @@ import {
 	writeOfflineQueue,
 } from '@/core/offline/offline-client';
 import {
+	DRAFT_CLEANUP_FAILED_MESSAGE,
+	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
+	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+} from '@/core/offline/offline-copy';
+import {
 	type OfflineActionType,
 	createQueuedExpense,
 	createQueuedRecurring,
@@ -414,17 +419,13 @@ export default function AusgabenPage() {
 				);
 				if (queuedCount === 0) {
 					finishSubmitting();
-					setActionError(
-						'Offline-Speicher ist blockiert. Lass den Entwurf offen und versuche es später erneut.',
-					);
+					setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 					return;
 				}
 				refreshCount();
 				if (!clearEditedQueueItem(['expense.create'])) {
 					finishSubmitting();
-					setActionError(
-						'Offline gespeichert, aber der alte Entwurf konnte nicht entfernt werden. Prüfe die Offline-Warteschlange.',
-					);
+					setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 					return;
 				}
 				resetForm();
@@ -457,7 +458,7 @@ export default function AusgabenPage() {
 
 		if (!clearEditedQueueItem(['expense.create'])) {
 			finishSubmitting();
-			setActionError('Gespeichert, aber der alte Offline-Entwurf konnte nicht entfernt werden.');
+			setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
 			return;
 		}
 		resetForm();
@@ -535,9 +536,7 @@ export default function AusgabenPage() {
 					splits,
 				});
 				if (enqueueOfflineAction(queued) === 0) {
-					setActionError(
-						'Offline-Speicher ist blockiert. Lass den Entwurf offen und versuche es später erneut.',
-					);
+					setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 					finishSavingRecurringTemplate();
 					return;
 				}
@@ -556,9 +555,7 @@ export default function AusgabenPage() {
 					},
 				]);
 				if (!clearEditedQueueItem(['recurring.create'])) {
-					setActionError(
-						'Offline gespeichert, aber der alte Entwurf konnte nicht entfernt werden. Prüfe die Offline-Warteschlange.',
-					);
+					setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 					finishSavingRecurringTemplate();
 					return;
 				}
@@ -600,7 +597,7 @@ export default function AusgabenPage() {
 		);
 		setEditingRecurringExpense(null);
 		if (!clearEditedQueueItem(['recurring.create'])) {
-			setActionError('Gespeichert, aber der alte Offline-Entwurf konnte nicht entfernt werden.');
+			setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
 			finishSavingRecurringTemplate();
 			return;
 		}

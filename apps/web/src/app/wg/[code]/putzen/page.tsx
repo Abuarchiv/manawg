@@ -18,6 +18,11 @@ import {
 	writeOfflineQueue,
 } from '@/core/offline/offline-client';
 import {
+	DRAFT_CLEANUP_FAILED_MESSAGE,
+	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
+	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+} from '@/core/offline/offline-copy';
+import {
 	type OfflineActionType,
 	createQueuedAbsence,
 	createQueuedChore,
@@ -309,9 +314,7 @@ export default function PutzenPage() {
 						assignedMemberId: newAssigned || null,
 					});
 					if (enqueueOfflineAction(queued) === 0) {
-						setActionError(
-							'Offline-Speicher ist blockiert. Lass den Entwurf offen und versuche es später erneut.',
-						);
+						setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
 					refreshCount();
@@ -334,9 +337,7 @@ export default function PutzenPage() {
 					setNewRecurrenceType('days');
 					setNewAssigned('');
 					if (!clearEditedQueueItem(['chore.create'])) {
-						setActionError(
-							'Offline gespeichert, aber der alte Entwurf konnte nicht entfernt werden. Prüfe die Offline-Warteschlange.',
-						);
+						setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
 					setShowForm(false);
@@ -355,7 +356,7 @@ export default function PutzenPage() {
 			setNewRecurrenceType('days');
 			setNewAssigned('');
 			if (!clearEditedQueueItem(['chore.create'])) {
-				setActionError('Gespeichert, aber der alte Offline-Entwurf konnte nicht entfernt werden.');
+				setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
 			setShowForm(false);
@@ -400,15 +401,11 @@ export default function PutzenPage() {
 						reason: absenceReason.trim() || null,
 					});
 					if (enqueueOfflineAction(queued) === 0) {
-						setActionError(
-							'Offline-Speicher ist blockiert. Lass den Entwurf offen und versuche es später erneut.',
-						);
+						setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
 					if (!clearEditedQueueItem(['absence.create'])) {
-						setActionError(
-							'Offline gespeichert, aber der alte Entwurf konnte nicht entfernt werden. Prüfe die Offline-Warteschlange.',
-						);
+						setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
 					refreshCount();
@@ -439,7 +436,7 @@ export default function PutzenPage() {
 			setAbsenceEnd('');
 			setAbsenceReason('');
 			if (!clearEditedQueueItem(['absence.create'])) {
-				setActionError('Gespeichert, aber der alte Offline-Entwurf konnte nicht entfernt werden.');
+				setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
 			setQueueEditId(null);
