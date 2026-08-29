@@ -1,10 +1,6 @@
 'use client';
 
 import { useWg } from '@/components/wg/WgContextProvider';
-import { AccessTab } from '@/components/wg/einstellungen/AccessTab';
-import { DataTab } from '@/components/wg/einstellungen/DataTab';
-import { NotificationSection } from '@/components/wg/einstellungen/NotificationSection';
-import { ProfileTab } from '@/components/wg/einstellungen/ProfileTab';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { readResponseErrorCode } from '@/core/guards/settings-errors';
 import { SETTINGS_TABS, getSettingsTabFromHash } from '@/core/guards/settings-tabs';
@@ -12,8 +8,38 @@ import type { SettingsTab } from '@/core/guards/settings-tabs';
 import { type WgExport, buildEmptyExportSummary, buildExportSummary } from '@/core/reads/export';
 import { memberAuthHeader } from '@manawg/shared/lib/identity';
 import { ArrowLeft, Monitor } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+
+/**
+ * Only one tab is ever mounted, but statically importing all four put every
+ * one of them in this route's first-load bundle — it was the heaviest route in
+ * the app at 63.6 kB against a 55 kB budget, ~10 kB clear of the next page.
+ * Loading each on demand means a visitor pays for the tab they opened.
+ *
+ * ssr:false because this page is already a client component behind a resolved
+ * local identity; there is no server render of these panels to preserve.
+ */
+const tabFallback = () => <div className="h-40 animate-pulse rounded-2xl bg-[var(--bg-elev-1)]" />;
+
+const ProfileTab = dynamic(
+	() => import('@/components/wg/einstellungen/ProfileTab').then((m) => m.ProfileTab),
+	{ ssr: false, loading: tabFallback },
+);
+const NotificationSection = dynamic(
+	() =>
+		import('@/components/wg/einstellungen/NotificationSection').then((m) => m.NotificationSection),
+	{ ssr: false, loading: tabFallback },
+);
+const AccessTab = dynamic(
+	() => import('@/components/wg/einstellungen/AccessTab').then((m) => m.AccessTab),
+	{ ssr: false, loading: tabFallback },
+);
+const DataTab = dynamic(
+	() => import('@/components/wg/einstellungen/DataTab').then((m) => m.DataTab),
+	{ ssr: false, loading: tabFallback },
+);
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function EinstellungenPage() {

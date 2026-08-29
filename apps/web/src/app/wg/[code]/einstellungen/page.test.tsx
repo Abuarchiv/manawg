@@ -305,7 +305,7 @@ describe('EinstellungenPage', () => {
 
 		render(<EinstellungenPage />);
 		fireEvent.click(screen.getByRole('tab', { name: 'Zugang' }));
-		fireEvent.click(screen.getByRole('button', { name: 'Neue Beitritte sperren' }));
+		fireEvent.click(await screen.findByRole('button', { name: 'Neue Beitritte sperren' }));
 
 		expect(
 			await screen.findByText('Zugang konnte nicht geändert werden: Versuche es gleich erneut.'),
@@ -319,7 +319,9 @@ describe('EinstellungenPage', () => {
 		await waitFor(() => expect(fetch).toHaveBeenCalled());
 		fireEvent.click(screen.getByRole('tab', { name: 'Zugang' }));
 
-		expect(screen.getByRole('button', { name: 'Neue Beitritte sperren' })).toHaveClass('h-11');
+		expect(await screen.findByRole('button', { name: 'Neue Beitritte sperren' })).toHaveClass(
+			'h-11',
+		);
 		expect(screen.getByRole('button', { name: 'WG-Code erneuern' })).toHaveClass('h-11');
 	});
 
@@ -342,7 +344,7 @@ describe('EinstellungenPage', () => {
 
 		render(<EinstellungenPage />);
 		fireEvent.click(screen.getByRole('tab', { name: 'Zugang' }));
-		fireEvent.click(screen.getByRole('button', { name: 'Komplette WG für alle löschen' }));
+		fireEvent.click(await screen.findByRole('button', { name: 'Komplette WG für alle löschen' }));
 		fireEvent.change(screen.getByLabelText('WG-Code zur Bestätigung'), {
 			target: { value: 'WG/123?X=1' },
 		});
