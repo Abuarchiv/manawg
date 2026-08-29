@@ -4,7 +4,7 @@ import { badRequest, forbidden, notFound, tooMany } from '@/core/errors';
 import { UUID_PATTERN, requireMember } from '@/core/guards/api-auth';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 export const POST = withWgRoute<{ id: string; splitId: string }>(
@@ -73,12 +73,25 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 		);
 		if (!limited.success) return tooMany();
 
+		// Guard the write on the state we just read: settling requires the split
+		// to currently be unsettled, un-settling requires it to currently be
+		// settled. Without this, two concurrent opposite toggles race to
+		// last-write-wins — whichever request's UPDATE commits last silently
+		// overwrites the other's result. With the guard, a stale toggle (the
+		// state already changed since our read above) matches zero rows and
+		// becomes a no-op instead of clobbering the newer state.
 		const [updated] = await db
 			.update(expenseSplits)
 			.set({ settledAt: settled ? new Date() : null })
-			.where(and(eq(expenseSplits.id, splitId), eq(expenseSplits.expenseId, id)))
+			.where(
+				and(
+					eq(expenseSplits.id, splitId),
+					eq(expenseSplits.expenseId, id),
+					settled ? isNull(expenseSplits.settledAt) : isNotNull(expenseSplits.settledAt),
+				),
+			)
 			.returning();
-		if (!updated) return notFound('split_not_found');
+		if (!updated) return NextResponse.json({ split });
 		await recordAuditEvent({
 			wgId: expense.wgId,
 			memberId: auth.member.memberId,

@@ -1,5 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { choreCompletions, chores, db, memberAbsences, wgMembers, wgs } from '@/core/db';
+import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
 import { UUID_PATTERN, requireMember } from '@/core/guards/api-auth';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -117,12 +118,17 @@ export const POST = withWgRoute<{ id: string }>(
 
 		// Race protection: double-click should not rotate the assignee twice. We
 		// use optimistic concurrency on (previousAssignee, previousNextDueAt) —
-		// only the click that observes the original snapshot succeeds. Neon HTTP
-		// does not support multi-statement transactions, so this is the safest
-		// portable guard. nextDueAt is mutated on every successful completion
-		// and therefore also acts as a version stamp for chores whose previous
-		// assignee was NULL (orphaned chore after a member was deleted). The
-		// completion row is inserted only after the rotation wins.
+		// only the click that observes the original snapshot succeeds. nextDueAt
+		// is mutated on every successful completion and therefore also acts as a
+		// version stamp for chores whose previous assignee was NULL (orphaned
+		// chore after a member was deleted).
+		//
+		// The rotation UPDATE and the choreCompletions INSERT are one atomic
+		// unit: chore-fairness.ts reads choreCompletions to count who did what,
+		// so a rotation that commits without its completion row would silently
+		// undercount that person forever. Losing the CAS race is a normal,
+		// expected outcome (someone else's click already won) and still commits
+		// as a no-op — only a genuine insert failure rolls the rotation back.
 		const previousNextDueAt = c.nextDueAt;
 		const assigneeMatch = c.assignedMemberId
 			? eq(chores.assignedMemberId, c.assignedMemberId)
@@ -135,38 +141,50 @@ export const POST = withWgRoute<{ id: string }>(
 		// the stamp when assignee is unchanged (single-member WG) to avoid
 		// double-firing reminders within the same day.
 		const reminderReset = nextAssigned !== c.assignedMemberId ? { lastReminderAt: null } : {};
-		const updatedRows = await db
-			.update(chores)
-			.set({
-				nextDueAt,
-				assignedMemberId: nextAssigned,
-				anchorAt: effectiveAnchor,
-				...reminderReset,
-			})
-			.where(guard)
-			.returning();
-		const updated = updatedRows[0];
-		if (!updated) {
-			// Another concurrent completion already advanced the assignee. Treat
-			// the second click as a no-op rather than rotating again.
-			return conflict('chore_already_completed');
-		}
 
+		let txResult: { raced: true } | { raced: false; chore: typeof chores.$inferSelect };
 		try {
-			const [completion] = await db
-				.insert(choreCompletions)
-				.values({
-					choreId: c.id,
-					completedByMemberId: completedBy,
-				})
-				.returning({ id: choreCompletions.id });
-			if (!completion) return serverError('completion_insert_failed');
+			txResult = await withTransaction(async (tx) => {
+				const updatedRows = await tx
+					.update(chores)
+					.set({
+						nextDueAt,
+						assignedMemberId: nextAssigned,
+						anchorAt: effectiveAnchor,
+						...reminderReset,
+					})
+					.where(guard)
+					.returning();
+				const updated = updatedRows[0];
+				if (!updated) {
+					// Another concurrent completion already advanced the assignee.
+					// Normal outcome — commit as a no-op rather than rotating again.
+					return { raced: true as const };
+				}
+
+				const [completion] = await tx
+					.insert(choreCompletions)
+					.values({
+						choreId: c.id,
+						completedByMemberId: completedBy,
+					})
+					.returning({ id: choreCompletions.id });
+				if (!completion) throw new TransactionAbort('completion_insert_failed');
+
+				return { raced: false as const, chore: updated };
+			});
 		} catch (err) {
-			console.error('[chore complete POST] completion insert failed', err);
-			// Completion log failed but rotation already committed; surface 500
-			// so the client can refresh state.
+			if (err instanceof TransactionAbort) {
+				console.error('[chore complete POST] completion insert failed', err);
+				return serverError(err.code);
+			}
+			console.error('[chore complete POST] transaction failed', err);
 			return serverError('completion_insert_failed');
 		}
+
+		if (txResult.raced) return conflict('chore_already_completed');
+		const updated = txResult.chore;
+
 		await recordAuditEvent({
 			wgId: c.wgId,
 			memberId: completedBy,

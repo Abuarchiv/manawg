@@ -2,6 +2,32 @@ import { resetRouteHarness, routeDb, routeMocks } from '@/test/route-harness';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+/**
+ * Stands in for a real transaction: the callback writes through the same db
+ * stub, and a throwing callback rolls back instead of committing.
+ */
+const txMock = vi.hoisted(() => ({ committed: false, rolledBack: false }));
+
+vi.mock('@/core/db/transaction', async () => {
+	const { TransactionAbort } = await import('@/core/db/transaction-abort');
+	return {
+		TransactionAbort,
+		withTransaction: async (fn: (tx: unknown) => Promise<unknown>) => {
+			try {
+				const result = await fn({
+					insert: (...args: unknown[]) => routeDb.insert(...args),
+					update: (...args: unknown[]) => routeDb.update(...args),
+				});
+				txMock.committed = true;
+				return result;
+			} catch (err) {
+				txMock.rolledBack = true;
+				throw err;
+			}
+		},
+	};
+});
+
 const absenceMock = vi.hoisted(() => ({
 	getAbsentMemberIds: vi.fn(),
 }));
@@ -38,6 +64,8 @@ vi.mock('@/features/chores/chore-fairness', () => ({
 describe('chore complete route', () => {
 	beforeEach(() => {
 		resetRouteHarness();
+		txMock.committed = false;
+		txMock.rolledBack = false;
 		routeMocks.requireMember.mockResolvedValue({
 			ok: true,
 			member: { memberId: 'member-1', name: 'Ava' },
@@ -119,9 +147,13 @@ describe('chore complete route', () => {
 			status: 500,
 		});
 		expect(routeMocks.recordAuditEvent).not.toHaveBeenCalled();
+		// A genuine insert failure must roll back the assignee rotation too —
+		// otherwise the rotation advances with no completion row to show for it.
+		expect(txMock.rolledBack).toBe(true);
+		expect(txMock.committed).toBe(false);
 	});
 
-	it('RED BUG-384: returns 409 when a concurrent completion already advanced the chore', async () => {
+	it('RED BUG-384: commits the rotation as a no-op and returns 409 when a concurrent completion already advanced the chore', async () => {
 		const { POST } = await import('./route');
 		const choreId = '492a85d5-3232-4faf-a2dc-552165aa4dec';
 		let selectIndex = 0;
@@ -184,6 +216,10 @@ describe('chore complete route', () => {
 		await expect(res.json()).resolves.toEqual({ error: 'chore_already_completed' });
 		expect(routeDb.insert).not.toHaveBeenCalled();
 		expect(routeMocks.recordAuditEvent).not.toHaveBeenCalled();
+		// Losing the CAS race is a normal outcome, not a failure: the
+		// transaction must still commit (as a no-op) rather than roll back.
+		expect(txMock.committed).toBe(true);
+		expect(txMock.rolledBack).toBe(false);
 	});
 
 	it('RED BUG-385: fails completion when absence data cannot be loaded for assignee rotation', async () => {
