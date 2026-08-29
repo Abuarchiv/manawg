@@ -1,17 +1,24 @@
+import {
+	isAuthInvalidated,
+	isInvalidShareCode,
+	isNetworkError,
+	isRetryableServerError,
+} from '@/core/errors/generic-error-codes';
+
 export function absenceSaveErrorMessage(error: string): string {
-	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') {
+	if (isNetworkError(error)) {
 		return 'Abwesenheit konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
 	}
-	if (error === 'unexpected_error' || error === 'server_error' || error === 'db_error') {
+	if (isRetryableServerError(error)) {
 		return 'Abwesenheit konnte nicht gespeichert werden: Versuche es gleich erneut.';
 	}
 	if (error === 'wg_not_found') {
 		return 'Abwesenheit konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
 	}
-	if (error === 'invalid_share_code') {
+	if (isInvalidShareCode(error)) {
 		return 'Abwesenheit konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
 	}
-	if (error === 'not_a_member' || error === 'member_id_required' || error === 'member_id_invalid') {
+	if (isAuthInvalidated(error)) {
 		return 'Abwesenheit konnte nicht gespeichert werden: Tritt der WG erneut bei.';
 	}
 	if (error === 'date_range_invalid') {
@@ -33,19 +40,19 @@ export function absenceSaveErrorMessage(error: string): string {
 }
 
 export function choreCreateErrorMessage(error: string): string {
-	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') {
+	if (isNetworkError(error)) {
 		return 'Putzaufgabe konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
 	}
-	if (error === 'unexpected_error' || error === 'server_error' || error === 'db_error') {
+	if (isRetryableServerError(error)) {
 		return 'Putzaufgabe konnte nicht gespeichert werden: Versuche es gleich erneut.';
 	}
 	if (error === 'wg_not_found') {
 		return 'Putzaufgabe konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
 	}
-	if (error === 'invalid_share_code') {
+	if (isInvalidShareCode(error)) {
 		return 'Putzaufgabe konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
 	}
-	if (error === 'not_a_member' || error === 'member_id_required' || error === 'member_id_invalid') {
+	if (isAuthInvalidated(error)) {
 		return 'Putzaufgabe konnte nicht gespeichert werden: Tritt der WG erneut bei.';
 	}
 	if (error === 'member_not_in_wg') {

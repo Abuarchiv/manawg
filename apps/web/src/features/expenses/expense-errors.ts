@@ -1,17 +1,24 @@
+import {
+	isAuthInvalidated,
+	isInvalidShareCode,
+	isNetworkError,
+	isRetryableServerError,
+} from '@/core/errors/generic-error-codes';
+
 export function expenseSaveErrorMessage(error: string): string {
-	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') {
+	if (isNetworkError(error)) {
 		return 'Ausgabe konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
 	}
-	if (error === 'unexpected_error' || error === 'server_error' || error === 'db_error') {
+	if (isRetryableServerError(error)) {
 		return 'Ausgabe konnte nicht gespeichert werden: Versuche es gleich erneut.';
 	}
 	if (error === 'wg_not_found') {
 		return 'Ausgabe konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
 	}
-	if (error === 'invalid_share_code') {
+	if (isInvalidShareCode(error)) {
 		return 'Ausgabe konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
 	}
-	if (error === 'not_a_member' || error === 'member_id_required' || error === 'member_id_invalid') {
+	if (isAuthInvalidated(error)) {
 		return 'Ausgabe konnte nicht gespeichert werden: Tritt der WG erneut bei.';
 	}
 	if (error === 'amount_invalid') {
@@ -60,19 +67,19 @@ export function expenseSaveErrorMessage(error: string): string {
 }
 
 export function expenseActionErrorMessage(error: string): string {
-	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') {
+	if (isNetworkError(error)) {
 		return 'Ausgabenaktion fehlgeschlagen: Prüfe deine Verbindung und versuche es erneut.';
 	}
-	if (error === 'unexpected_error' || error === 'server_error' || error === 'db_error') {
+	if (isRetryableServerError(error)) {
 		return 'Ausgabenaktion fehlgeschlagen: Versuche es gleich erneut.';
 	}
 	if (error === 'wg_not_found') {
 		return 'Ausgabenaktion fehlgeschlagen: Öffne die WG über den aktuellen Link erneut.';
 	}
-	if (error === 'invalid_share_code') {
+	if (isInvalidShareCode(error)) {
 		return 'Ausgabenaktion fehlgeschlagen: Der WG-Code ist ungültig.';
 	}
-	if (error === 'not_a_member' || error === 'member_id_required' || error === 'member_id_invalid') {
+	if (isAuthInvalidated(error)) {
 		return 'Ausgabenaktion fehlgeschlagen: Tritt der WG erneut bei.';
 	}
 	if (error === 'not_split_party') {
@@ -103,19 +110,19 @@ export function expenseActionErrorMessage(error: string): string {
 }
 
 export function recurringTemplateSaveErrorMessage(error: string): string {
-	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') {
+	if (isNetworkError(error)) {
 		return 'Vorlage konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
 	}
-	if (error === 'unexpected_error' || error === 'server_error' || error === 'db_error') {
+	if (isRetryableServerError(error)) {
 		return 'Vorlage konnte nicht gespeichert werden: Versuche es gleich erneut.';
 	}
 	if (error === 'wg_not_found') {
 		return 'Vorlage konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
 	}
-	if (error === 'invalid_share_code') {
+	if (isInvalidShareCode(error)) {
 		return 'Vorlage konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
 	}
-	if (error === 'not_a_member' || error === 'member_id_required' || error === 'member_id_invalid') {
+	if (isAuthInvalidated(error)) {
 		return 'Vorlage konnte nicht gespeichert werden: Tritt der WG erneut bei.';
 	}
 	if (error === 'member_not_in_wg') {
@@ -155,19 +162,19 @@ export function recurringTemplateSaveErrorMessage(error: string): string {
 }
 
 export function recurringTemplateDeleteErrorMessage(error: string): string {
-	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') {
+	if (isNetworkError(error)) {
 		return 'Vorlage konnte nicht gelöscht werden: Prüfe deine Verbindung und versuche es erneut.';
 	}
-	if (error === 'unexpected_error' || error === 'server_error' || error === 'db_error') {
+	if (isRetryableServerError(error)) {
 		return 'Vorlage konnte nicht gelöscht werden: Versuche es gleich erneut.';
 	}
 	if (error === 'wg_not_found') {
 		return 'Vorlage konnte nicht gelöscht werden: Öffne die WG über den aktuellen Link erneut.';
 	}
-	if (error === 'invalid_share_code') {
+	if (isInvalidShareCode(error)) {
 		return 'Vorlage konnte nicht gelöscht werden: Der WG-Code ist ungültig.';
 	}
-	if (error === 'not_a_member' || error === 'member_id_required' || error === 'member_id_invalid') {
+	if (isAuthInvalidated(error)) {
 		return 'Vorlage konnte nicht gelöscht werden: Tritt der WG erneut bei.';
 	}
 	if (error === 'id_invalid') {

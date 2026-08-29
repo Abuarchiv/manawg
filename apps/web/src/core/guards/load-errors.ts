@@ -1,4 +1,10 @@
-const AUTH_ERRORS = new Set(['not_a_member', 'member_id_required', 'member_id_invalid']);
+import {
+	isAuthInvalidated,
+	isInvalidShareCode,
+	isNetworkError,
+	isRetryableServerError,
+	isWgUnavailable,
+} from '@/core/errors/generic-error-codes';
 
 interface WgLoadErrorOptions {
 	verb?: 'konnte' | 'konnten';
@@ -11,22 +17,22 @@ export function getWgLoadErrorMessage(
 	options: WgLoadErrorOptions = {},
 ): string {
 	const prefix = `${label} ${options.verb ?? 'konnte'} nicht geladen werden`;
-	if (status === 0 || error === 'Netzwerkfehler' || error === 'Failed to fetch') {
+	if (isNetworkError(error, status)) {
 		return `${prefix}: Prüfe deine Verbindung und versuche es erneut.`;
 	}
-	if (status === 404 || error === 'wg_not_found') {
+	if (isWgUnavailable(error, status)) {
 		return `${prefix}: Öffne die WG über den aktuellen Link erneut.`;
 	}
-	if (error === 'invalid_share_code') {
+	if (isInvalidShareCode(error)) {
 		return `${prefix}: Der WG-Code ist ungültig.`;
 	}
-	if (status === 401 || (error !== null && AUTH_ERRORS.has(error))) {
+	if (isAuthInvalidated(error, status)) {
 		return `${prefix}: Tritt der WG erneut bei.`;
 	}
 	if (error === 'query_invalid') {
 		return `${prefix}: Der Suchbegriff ist zu lang.`;
 	}
-	if (error === 'server_error' || error === 'db_error' || status >= 500) {
+	if (isRetryableServerError(error, status)) {
 		return `${prefix}: Versuche es gleich erneut.`;
 	}
 	return `${prefix}.`;

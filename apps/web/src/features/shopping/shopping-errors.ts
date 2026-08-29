@@ -1,17 +1,24 @@
+import {
+	isAuthInvalidated,
+	isInvalidShareCode,
+	isNetworkError,
+	isRetryableServerError,
+} from '@/core/errors/generic-error-codes';
+
 export function shoppingAddErrorMessage(error: string): string {
-	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') {
+	if (isNetworkError(error)) {
 		return 'Artikel konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
 	}
-	if (error === 'unexpected_error' || error === 'server_error' || error === 'db_error') {
+	if (isRetryableServerError(error)) {
 		return 'Artikel konnte nicht gespeichert werden: Versuche es gleich erneut.';
 	}
 	if (error === 'wg_not_found') {
 		return 'Artikel konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
 	}
-	if (error === 'invalid_share_code') {
+	if (isInvalidShareCode(error)) {
 		return 'Artikel konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
 	}
-	if (error === 'not_a_member' || error === 'member_id_required' || error === 'member_id_invalid') {
+	if (isAuthInvalidated(error)) {
 		return 'Artikel konnte nicht gespeichert werden: Tritt der WG erneut bei.';
 	}
 	if (error === 'name_invalid') {
@@ -33,19 +40,19 @@ export function shoppingAddErrorMessage(error: string): string {
 }
 
 export function shoppingActionErrorMessage(error: string, fallback: string): string {
-	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') {
+	if (isNetworkError(error)) {
 		return 'Einkaufsaktion konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
 	}
-	if (error === 'unexpected_error' || error === 'server_error' || error === 'db_error') {
+	if (isRetryableServerError(error)) {
 		return 'Einkaufsaktion konnte nicht gespeichert werden: Versuche es gleich erneut.';
 	}
 	if (error === 'wg_not_found') {
 		return 'Einkaufsaktion konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
 	}
-	if (error === 'invalid_share_code') {
+	if (isInvalidShareCode(error)) {
 		return 'Einkaufsaktion konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
 	}
-	if (error === 'not_a_member' || error === 'member_id_required' || error === 'member_id_invalid') {
+	if (isAuthInvalidated(error)) {
 		return 'Einkaufsaktion konnte nicht gespeichert werden: Tritt der WG erneut bei.';
 	}
 	if (error === 'invalid_body' || error === 'invalid_json') {
@@ -61,10 +68,10 @@ export function shoppingActionErrorMessage(error: string, fallback: string): str
 }
 
 export function clearBoughtErrorMessage(status: number, error: string): string {
-	if (status === 0 || error === 'Netzwerkfehler' || error === 'Failed to fetch') {
+	if (isNetworkError(error, status)) {
 		return 'Erledigte konnten nicht entfernt werden: Prüfe deine Verbindung und versuche es erneut.';
 	}
-	if (error === 'unexpected_error' || error === 'server_error' || error === 'db_error') {
+	if (isRetryableServerError(error, status)) {
 		return 'Erledigte konnten nicht entfernt werden: Versuche es gleich erneut.';
 	}
 	return 'Erledigte konnten nicht entfernt werden.';

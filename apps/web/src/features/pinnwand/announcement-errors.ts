@@ -1,21 +1,24 @@
-const AUTH_ERRORS = new Set(['not_a_member', 'member_id_required', 'member_id_invalid']);
-const NETWORK_ERRORS = new Set(['Netzwerkfehler', 'Failed to fetch']);
-const RETRYABLE_SERVER_ERRORS = new Set(['unexpected_error', 'server_error', 'db_error']);
+import {
+	isAuthInvalidated,
+	isInvalidShareCode,
+	isNetworkError,
+	isRetryableServerError,
+} from '@/core/errors/generic-error-codes';
 
 export function announcementCreateErrorMessage(error: string): string {
-	if (NETWORK_ERRORS.has(error)) {
+	if (isNetworkError(error)) {
 		return 'Beitrag konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
 	}
-	if (RETRYABLE_SERVER_ERRORS.has(error)) {
+	if (isRetryableServerError(error)) {
 		return 'Beitrag konnte nicht gespeichert werden: Versuche es gleich erneut.';
 	}
 	if (error === 'wg_not_found') {
 		return 'Beitrag konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
 	}
-	if (error === 'invalid_share_code') {
+	if (isInvalidShareCode(error)) {
 		return 'Beitrag konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
 	}
-	if (AUTH_ERRORS.has(error)) {
+	if (isAuthInvalidated(error)) {
 		return 'Beitrag konnte nicht gespeichert werden: Tritt der WG erneut bei.';
 	}
 	if (error === 'content_invalid') {
@@ -40,16 +43,16 @@ export function announcementCreateErrorMessage(error: string): string {
 }
 
 export function commentActionErrorMessage(error: string): string {
-	if (NETWORK_ERRORS.has(error)) {
+	if (isNetworkError(error)) {
 		return 'Kommentar konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
 	}
 	if (error === 'wg_not_found') {
 		return 'Kommentar konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
 	}
-	if (error === 'invalid_share_code') {
+	if (isInvalidShareCode(error)) {
 		return 'Kommentar konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
 	}
-	if (AUTH_ERRORS.has(error)) {
+	if (isAuthInvalidated(error)) {
 		return 'Kommentar konnte nicht gespeichert werden: Tritt der WG erneut bei.';
 	}
 	if (error === 'comment_invalid') {
@@ -58,7 +61,7 @@ export function commentActionErrorMessage(error: string): string {
 	if (error === 'not_owner') {
 		return 'Nur der/die Autor:in kann diesen Kommentar ändern.';
 	}
-	if (RETRYABLE_SERVER_ERRORS.has(error)) {
+	if (isRetryableServerError(error)) {
 		return 'Kommentar-Aktion fehlgeschlagen: Versuche es gleich erneut.';
 	}
 	if (error === 'insert_failed') {
@@ -77,19 +80,19 @@ export function commentActionErrorMessage(error: string): string {
 }
 
 export function announcementActionErrorMessage(error: string): string {
-	if (NETWORK_ERRORS.has(error)) {
+	if (isNetworkError(error)) {
 		return 'Pinnwand-Aktion fehlgeschlagen: Prüfe deine Verbindung und versuche es erneut.';
 	}
 	if (error === 'wg_not_found') {
 		return 'Pinnwand-Aktion fehlgeschlagen: Öffne die WG über den aktuellen Link erneut.';
 	}
-	if (error === 'invalid_share_code') {
+	if (isInvalidShareCode(error)) {
 		return 'Pinnwand-Aktion fehlgeschlagen: Der WG-Code ist ungültig.';
 	}
-	if (AUTH_ERRORS.has(error)) {
+	if (isAuthInvalidated(error)) {
 		return 'Pinnwand-Aktion fehlgeschlagen: Tritt der WG erneut bei.';
 	}
-	if (RETRYABLE_SERVER_ERRORS.has(error)) {
+	if (isRetryableServerError(error)) {
 		return 'Pinnwand-Aktion fehlgeschlagen: Versuche es gleich erneut.';
 	}
 	if (error === 'reaction_invalid') {
