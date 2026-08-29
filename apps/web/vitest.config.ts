@@ -2,6 +2,12 @@ import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
+// Forces "DB not configured" fallback tests (idempotency.test.ts and
+// friends) to behave the same locally and under the db-integration CI job,
+// which exports POSTGRES_URL/DATABASE_MIGRATION_URL at job level for the
+// *.integration.test.ts projects.
+const NO_DB_ENV = { POSTGRES_URL: '', DATABASE_URL: '', DATABASE_MIGRATION_URL: '' };
+
 // craftsman-ignore: TS002
 export default defineConfig({
 	plugins: [react()],
@@ -23,7 +29,18 @@ export default defineConfig({
 					name: 'node',
 					environment: 'node',
 					include: ['src/**/*.{test,spec}.ts'],
-					exclude: ['e2e/**', 'node_modules/**', '.next/**', 'src/app/api/**'],
+					exclude: [
+						'e2e/**',
+						'node_modules/**',
+						'.next/**',
+						'src/app/api/**',
+						'**/*.integration.test.ts',
+					],
+					// Deterministic "DB not configured" fallback behavior (see
+					// idempotency.test.ts) regardless of what the invoking CI job
+					// happens to export — the db-integration job sets POSTGRES_URL
+					// at job level for the *.integration.test.ts projects below.
+					env: NO_DB_ENV,
 				},
 			},
 			{
@@ -36,6 +53,28 @@ export default defineConfig({
 					environment: 'node',
 					include: ['src/app/api/**/*.{test,spec}.ts'],
 					setupFiles: ['./src/test/setup.ts', './src/test/route-setup.ts'],
+					exclude: ['e2e/**', 'node_modules/**', '.next/**', '**/*.integration.test.ts'],
+					env: NO_DB_ENV,
+				},
+			},
+			{
+				// *.integration.test.ts anywhere in src/ runs the real handler
+				// against a live Postgres instance (see route.integration.test.ts,
+				// idempotency.integration.test.ts, export-schema.integration.test.ts)
+				// instead of a mocked db, so it keeps the real process env
+				// (POSTGRES_URL etc., set by the db-integration CI job) rather than
+				// the DB-cleared env the other projects use. NODE_ENV is overridden
+				// to 'development' here (vitest otherwise forces 'test') because a
+				// couple of route handlers fail closed on an unavailable rate
+				// limiter specifically under NODE_ENV=test — intentional for the
+				// mocked 'route' project (see route.test.ts's RED BUG-012), wrong
+				// here, where there's no Upstash service by design.
+				extends: true,
+				test: {
+					name: 'integration',
+					environment: 'node',
+					env: { NODE_ENV: 'development' },
+					include: ['src/**/*.integration.test.ts'],
 					exclude: ['e2e/**', 'node_modules/**', '.next/**'],
 				},
 			},
@@ -46,6 +85,7 @@ export default defineConfig({
 					environment: 'jsdom',
 					include: ['src/**/*.{test,spec}.tsx'],
 					exclude: ['e2e/**', 'node_modules/**', '.next/**'],
+					env: NO_DB_ENV,
 				},
 			},
 		],
