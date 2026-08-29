@@ -158,8 +158,9 @@ describe('normalizeShareCode', () => {
 	 * is doing. Fixing it means either dropping the substitution or adding 0/1
 	 * to the alphabet, and both change user-visible behaviour.
 	 */
-	it('cannot rescue a code containing I or O — the substitutes are not in the alphabet', () => {
+	it('cannot rescue a code containing I, L or O — the substitutes are not in the alphabet', () => {
 		expect(isValidShareCode(normalizeShareCode('MTE8PZAI'))).toBe(false);
+		expect(isValidShareCode(normalizeShareCode('MTE8PZAL'))).toBe(false);
 		expect(isValidShareCode(normalizeShareCode('MTE8PZAO'))).toBe(false);
 	});
 
