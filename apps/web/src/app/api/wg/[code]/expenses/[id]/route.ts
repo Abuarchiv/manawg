@@ -8,13 +8,12 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema } from '@/core/validators/image-url';
+import { AMOUNT_MAX_CENTS, AMOUNT_MIN_CENTS } from '@/features/expenses/expense-constants';
 import { validateSplits } from '@/features/expenses/split-math';
 import { and, eq, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const AMOUNT_MIN_CENTS = 1;
-const AMOUNT_MAX_CENTS = 100_000_000;
 // Must match POST schema in ../route.ts to avoid asymmetric edit failures.
 const MAX_SPLITS = 50;
 

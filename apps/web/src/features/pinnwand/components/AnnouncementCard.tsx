@@ -2,7 +2,7 @@
 
 import { DeleteConfirmButton } from '@/components/ui/DeleteConfirmButton';
 import { CHIP_BUTTON, ICON_BUTTON } from '@/components/ui/styles';
-import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
+import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useDismissableMenu } from '@/core/hooks/useDismissableMenu';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import type {

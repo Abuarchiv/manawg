@@ -1,7 +1,7 @@
 'use client';
 
 import { DeleteConfirmButton } from '@/components/ui/DeleteConfirmButton';
-import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
+import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import type { Expense, ExpenseSplit } from '@/features/expenses/components/ausgaben/expense-types';

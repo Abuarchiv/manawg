@@ -1,6 +1,6 @@
 import { formatEuroCents } from '@/core/utils/money';
 import Link from 'next/link';
-import { MemberAvatar } from './MemberAvatar';
+import { MemberAvatar } from '../MemberAvatar';
 
 interface BalanceRow {
 	memberId: string;

@@ -1,9 +1,9 @@
 'use client';
 
 import { AboPausedBadge } from '@/components/wg/AboPausedBadge';
+import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { ProviderIcon } from '@/components/wg/ProviderIcon';
 import type { Abo, MemberOption } from '@/components/wg/abos-types';
-import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
 import {
