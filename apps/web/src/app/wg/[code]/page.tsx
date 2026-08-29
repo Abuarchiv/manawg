@@ -36,7 +36,7 @@ import {
 	getOnboardingProgress,
 } from '@/core/reads/onboarding';
 import { formatEuroCents } from '@/core/utils/money';
-import { parseTimestamp } from '@/core/utils/time';
+import { MS_PER_DAY, parseTimestamp } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { ThemeToggle } from '@/shared/components/theme/ThemeToggle';
 import { LogoMark } from '@/shared/components/ui/LogoMark';
@@ -64,7 +64,7 @@ function dueRelative(iso: string): { text: string; tone: 'ok' | 'soon' | 'overdu
 	const due = parseTimestamp(iso);
 	if (due === null) return { text: 'Datum prüfen', tone: 'soon' };
 	const now = Date.now();
-	const diffDays = Math.round((due - now) / 86_400_000);
+	const diffDays = Math.round((due - now) / MS_PER_DAY);
 	if (diffDays < 0)
 		return {
 			text: `${Math.abs(diffDays)} T. überfällig`,

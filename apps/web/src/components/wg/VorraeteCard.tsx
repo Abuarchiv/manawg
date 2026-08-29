@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/core/infra/api-client';
 import { Package } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -35,35 +36,20 @@ export function VorraeteCard({ shareCode, memberId }: Props) {
 		const controller = new AbortController();
 		const url = `/api/wg/${encoded}/inventory?lowStock=true`;
 
-		fetch(url, {
-			signal: controller.signal,
-			cache: 'no-store',
-			headers: { 'x-manawg-member-id': memberId },
-		})
-			.then(async (res) => {
-				if (res.status === 404) {
+		apiFetch<InventoryResponse>(url, { memberId, signal: controller.signal }).then((result) => {
+			if (controller.signal.aborted) return;
+			if (!result.ok) {
+				if (result.status === 404) {
 					setState('unavailable');
-					return;
-				}
-				if (!res.ok) {
-					setState('ready');
-					setItems([]);
-					return;
-				}
-				try {
-					const body = (await res.json()) as InventoryResponse;
-					setItems(Array.isArray(body.items) ? body.items : []);
-					setState('ready');
-				} catch {
+				} else {
 					setState('ready');
 					setItems([]);
 				}
-			})
-			.catch((err: unknown) => {
-				if (err instanceof DOMException && err.name === 'AbortError') return;
-				setState('ready');
-				setItems([]);
-			});
+				return;
+			}
+			setItems(Array.isArray(result.data?.items) ? result.data.items : []);
+			setState('ready');
+		});
 
 		return () => controller.abort();
 	}, [encoded, memberId]);

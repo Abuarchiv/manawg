@@ -7,6 +7,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, reminderSendLimiter } from '@/core/rate-limit';
+import { MS_PER_DAY } from '@/core/utils/time';
 import {
 	computeBalances,
 	computeOldestDebtAgeDays,
@@ -23,7 +24,6 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const REMINDER_HISTORY_WINDOW_DAYS = 30;
-const MS_PER_DAY = 86_400_000;
 const REMINDER_PAGE_LIMIT = 50;
 
 const postSchema = z.object({

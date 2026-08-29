@@ -1,13 +1,13 @@
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 import {
+	MS_PER_DAY,
 	formatShortDateRange as formatSharedShortDateRange,
 	formatShortDate,
 	parseTimestamp,
 } from '@/core/utils/time';
 import { getChoreStatus } from '@/features/chores/chore-status';
 
-const MS_PER_DAY = 86_400_000;
 const STALE_SHOPPING_DAYS = 3;
 const STALE_ANNOUNCEMENT_DAYS = 2;
 

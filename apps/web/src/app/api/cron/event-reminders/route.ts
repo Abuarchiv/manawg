@@ -2,6 +2,7 @@ import { db, idempotencyResponses, wgEvents, wgs } from '@/core/db';
 import { verifyCronSecret } from '@/core/infra/cron-auth';
 import { withCronLogging } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { MS_PER_DAY } from '@/core/utils/time';
 import {
 	computeRecurrenceLookbackStart,
 	computeTomorrowUtcWindow,
@@ -10,7 +11,6 @@ import { type EventInput, expandRecurrence } from '@/features/events/events';
 import { and, eq, gte, lte } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const REMINDER_CLAIM_SCOPE = 'event-reminders';
 const REMINDER_CLAIM_TTL_MS = 32 * MS_PER_DAY;
 

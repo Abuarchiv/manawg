@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
 import { RefreshCcw } from 'lucide-react';
 import Link from 'next/link';
@@ -63,35 +64,20 @@ export function AbosCard({ shareCode, memberId }: Props) {
 		const controller = new AbortController();
 		const url = `/api/wg/${encoded}/recurring-expenses?upcoming=${MAX_DISPLAY_RECURRING}`;
 
-		fetch(url, {
-			signal: controller.signal,
-			cache: 'no-store',
-			headers: { 'x-manawg-member-id': memberId },
-		})
-			.then(async (res) => {
-				if (res.status === 404) {
+		apiFetch<RecurringResponse>(url, { memberId, signal: controller.signal }).then((result) => {
+			if (controller.signal.aborted) return;
+			if (!result.ok) {
+				if (result.status === 404) {
 					setState('unavailable');
-					return;
-				}
-				if (!res.ok) {
-					setState('ready');
-					setRecurring([]);
-					return;
-				}
-				try {
-					const body = (await res.json()) as RecurringResponse;
-					setRecurring(normalizeRecurring(body));
-					setState('ready');
-				} catch {
+				} else {
 					setState('ready');
 					setRecurring([]);
 				}
-			})
-			.catch((err: unknown) => {
-				if (err instanceof DOMException && err.name === 'AbortError') return;
-				setState('ready');
-				setRecurring([]);
-			});
+				return;
+			}
+			setRecurring(normalizeRecurring(result.data ?? {}));
+			setState('ready');
+		});
 
 		return () => controller.abort();
 	}, [encoded, memberId]);

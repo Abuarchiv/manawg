@@ -1,8 +1,6 @@
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
-import { formatShortDate, parseTimestamp } from '@/core/utils/time';
-
-const MS_PER_DAY = 86_400_000;
+import { MS_PER_DAY, formatShortDate, parseTimestamp } from '@/core/utils/time';
 
 export type TodayImportantKind =
 	| 'chore'

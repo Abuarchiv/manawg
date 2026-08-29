@@ -1,7 +1,5 @@
-import { parseTimestamp } from '@/core/utils/time';
+import { MS_PER_DAY, parseTimestamp } from '@/core/utils/time';
 import { getChoreStatus } from '@/features/chores/chore-status';
-
-const MS_PER_DAY = 86_400_000;
 
 interface MemberInput {
 	id: string;

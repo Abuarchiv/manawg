@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
 import { BellRing } from 'lucide-react';
 import Link from 'next/link';
@@ -37,35 +38,20 @@ export function MahnungenCard({ shareCode, memberId }: Props) {
 		const controller = new AbortController();
 		const url = `/api/wg/${encoded}/reminders/balances`;
 
-		fetch(url, {
-			signal: controller.signal,
-			cache: 'no-store',
-			headers: { 'x-manawg-member-id': memberId },
-		})
-			.then(async (res) => {
-				if (res.status === 404) {
+		apiFetch<BalancesResponse>(url, { memberId, signal: controller.signal }).then((result) => {
+			if (controller.signal.aborted) return;
+			if (!result.ok) {
+				if (result.status === 404) {
 					setState('unavailable');
-					return;
-				}
-				if (!res.ok) {
-					setState('ready');
-					setBalances([]);
-					return;
-				}
-				try {
-					const body = (await res.json()) as BalancesResponse;
-					setBalances(Array.isArray(body.balances) ? body.balances : []);
-					setState('ready');
-				} catch {
+				} else {
 					setState('ready');
 					setBalances([]);
 				}
-			})
-			.catch((err: unknown) => {
-				if (err instanceof DOMException && err.name === 'AbortError') return;
-				setState('ready');
-				setBalances([]);
-			});
+				return;
+			}
+			setBalances(Array.isArray(result.data?.balances) ? result.data.balances : []);
+			setState('ready');
+		});
 
 		return () => controller.abort();
 	}, [encoded, memberId]);

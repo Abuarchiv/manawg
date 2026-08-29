@@ -1,9 +1,8 @@
 import { db, wgInventoryLog } from '@/core/db';
+import { MS_PER_DAY } from '@/core/utils/time';
 import { and, eq, gte, inArray, lt } from 'drizzle-orm';
 
 const DEFAULT_DECREMENT_WINDOW_DAYS = 30;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
 export async function getRecentDecrementCount(
 	itemId: string,
 	days: number = DEFAULT_DECREMENT_WINDOW_DAYS,

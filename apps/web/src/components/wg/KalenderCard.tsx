@@ -1,5 +1,7 @@
 'use client';
 
+import { apiFetch } from '@/core/infra/api-client';
+import { MS_PER_DAY } from '@/core/utils/time';
 import { CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -23,7 +25,6 @@ interface Props {
 type LoadState = 'loading' | 'ready' | 'unavailable';
 
 const RANGE_DAYS = 7;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MAX_DISPLAY_EVENTS = 3;
 
 function formatEventDate(iso: string, allDay: boolean): string {
@@ -57,35 +58,20 @@ export function KalenderCard({ shareCode, memberId }: Props) {
 		const to = new Date(Date.now() + RANGE_DAYS * MS_PER_DAY).toISOString();
 		const url = `/api/wg/${encoded}/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
 
-		fetch(url, {
-			signal: controller.signal,
-			cache: 'no-store',
-			headers: { 'x-manawg-member-id': memberId },
-		})
-			.then(async (res) => {
-				if (res.status === 404) {
+		apiFetch<KalenderResponse>(url, { memberId, signal: controller.signal }).then((result) => {
+			if (controller.signal.aborted) return;
+			if (!result.ok) {
+				if (result.status === 404) {
 					setState('unavailable');
-					return;
-				}
-				if (!res.ok) {
-					setState('ready');
-					setEvents([]);
-					return;
-				}
-				try {
-					const body = (await res.json()) as KalenderResponse;
-					setEvents(Array.isArray(body.events) ? body.events : []);
-					setState('ready');
-				} catch {
+				} else {
 					setState('ready');
 					setEvents([]);
 				}
-			})
-			.catch((err: unknown) => {
-				if (err instanceof DOMException && err.name === 'AbortError') return;
-				setState('ready');
-				setEvents([]);
-			});
+				return;
+			}
+			setEvents(Array.isArray(result.data?.events) ? result.data.events : []);
+			setState('ready');
+		});
 
 		return () => controller.abort();
 	}, [encoded, memberId]);

@@ -1,4 +1,4 @@
-const MS_PER_DAY = 86_400_000;
+import { MS_PER_DAY } from '@/core/utils/time';
 
 export interface DebtExpenseInput {
 	paidByMemberId: string;

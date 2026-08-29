@@ -1,6 +1,7 @@
+import { MS_PER_DAY } from '@/core/utils/time';
+
 export const INSTALL_DISMISS_KEY = 'manawg:install-dismissed';
 const INSTALL_DISMISS_DAYS = 14;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export function parseInstallDismissedAt(value: string | null): number | null {
 	if (value === null || value.trim() === '') return null;
