@@ -1,5 +1,7 @@
 import { db, wgMembers } from '@/core/db';
+import { forbidden } from '@/core/errors';
 import { and, asc, eq, isNull } from 'drizzle-orm';
+import type { NextResponse } from 'next/server';
 
 /**
  * Soft admin check until we add a proper `role` column to `wg_members`.
@@ -62,6 +64,29 @@ interface WgAdminAccessResult {
  * id is spoofable (e.g. harvested from GET /api/wg/[code]/members) and is
  * no longer sufficient proof of identity for destructive actions.
  */
+/**
+ * Owner-or-admin gate shared by the resource DELETE/PATCH handlers that let
+ * either the resource's own creator/author or the WG admin act on it (see
+ * app/api/wg/[code]/{absences,events,announcements,chat/messages,members,
+ * recurring-expenses,chores}/[id]/route.ts). Ownership requires a verified
+ * caller — a bare `x-manawg-member-id` is spoofable, so an unverified caller
+ * can never pass as the owner even if the ids match.
+ *
+ * Returns `null` when the caller is allowed to proceed, or the `forbidden`
+ * response to return immediately otherwise.
+ */
+export async function requireOwnerOrAdmin(
+	wgId: string,
+	member: { memberId: string; verified: boolean },
+	ownerId: string | null,
+	reason = 'not_owner',
+): Promise<NextResponse | null> {
+	const isOwner = member.verified && ownerId === member.memberId;
+	if (isOwner) return null;
+	if (await isVerifiedWgAdmin(wgId, member.memberId, member.verified)) return null;
+	return forbidden(reason, reason);
+}
+
 export async function checkWgAdminAccess(
 	wgId: string,
 	memberId: string,

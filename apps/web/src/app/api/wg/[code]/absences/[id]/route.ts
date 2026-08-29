@@ -1,7 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, memberAbsences } from '@/core/db';
-import { badRequest, forbidden, notFound, tooMany } from '@/core/errors';
-import { isVerifiedWgAdmin } from '@/core/guards/admin';
+import { badRequest, notFound, tooMany } from '@/core/errors';
+import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -27,10 +27,8 @@ export const DELETE = withWgRoute<{ id: string }>('absences DELETE', async (req,
 		.limit(1);
 	const target = existing[0];
 	if (!target) return notFound('absence_not_found');
-	const isOwner = auth.member.verified && target.memberId === auth.member.memberId;
-	if (!isOwner && !(await isVerifiedWgAdmin(wgId, auth.member.memberId, auth.member.verified))) {
-		return forbidden('not_owner', 'not_owner');
-	}
+	const denied = await requireOwnerOrAdmin(wgId, auth.member, target.memberId);
+	if (denied) return denied;
 	const limited = await checkRateLimit(wgWriteLimiter, `absence:${wgId}:${auth.member.memberId}`);
 	if (!limited.success) return tooMany();
 

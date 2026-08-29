@@ -2,7 +2,7 @@ import { recordAuditEvent } from '@/core/audit';
 import { db, expenseReminders, wgMembers } from '@/core/db';
 import { withTransaction } from '@/core/db/transaction';
 import { apiError, badRequest, forbidden, tooMany } from '@/core/errors';
-import { isVerifiedWgAdmin } from '@/core/guards/admin';
+import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
@@ -71,12 +71,8 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
-	if (
-		(!auth.member.verified || auth.member.memberId !== creditorMemberId) &&
-		!(await isVerifiedWgAdmin(wg.id, auth.member.memberId, auth.member.verified))
-	) {
-		return forbidden('not_creditor', 'not_creditor');
-	}
+	const denied = await requireOwnerOrAdmin(wg.id, auth.member, creditorMemberId, 'not_creditor');
+	if (denied) return denied;
 
 	const memberRows = await db
 		.select({

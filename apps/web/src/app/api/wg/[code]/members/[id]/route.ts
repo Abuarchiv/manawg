@@ -1,7 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgMembers } from '@/core/db';
-import { badRequest, forbidden, notFound, tooMany } from '@/core/errors';
-import { isVerifiedWgAdmin } from '@/core/guards/admin';
+import { badRequest, notFound, tooMany } from '@/core/errors';
+import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -122,18 +122,13 @@ export const PATCH = withWgRoute<{ id: string }>(
 		if (!target) return notFound('member_not_found');
 
 		// Only the member themselves (leaving/returning) or a verified admin may
-		// flip someone else's active status — matches the isOwner/isVerifiedWgAdmin
-		// gate every other cross-member mutation uses (absences, events, chat,
-		// recurring expenses, ...). A bare x-manawg-member-id is spoofable (any
-		// current member can read every id via GET /members), so without this a
-		// non-admin member could deactivate any flatmate, including the admin.
-		// A bare x-manawg-member-id is spoofable (any member can read every id
-		// via GET /members), so self-ownership only counts with a verified HMAC
-		// token; admins need the verified gate anyway.
-		const isOwner = auth.member.verified && id === auth.member.memberId;
-		if (!isOwner && !(await isVerifiedWgAdmin(wgId, auth.member.memberId, auth.member.verified))) {
-			return forbidden('not_owner', 'not_owner');
-		}
+		// flip someone else's active status — matches the owner/admin gate every
+		// other cross-member mutation uses (absences, events, chat, recurring
+		// expenses, ...). A bare x-manawg-member-id is spoofable (any current
+		// member can read every id via GET /members), so without this a non-admin
+		// member could deactivate any flatmate, including the admin.
+		const denied = await requireOwnerOrAdmin(wgId, auth.member, id);
+		if (denied) return denied;
 
 		// Idempotent: if already in the requested state, report success without a
 		// redundant write or audit entry.

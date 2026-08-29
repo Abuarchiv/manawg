@@ -1,7 +1,15 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { badRequest, conflict, forbidden, notFound, serverError, tooMany } from '@/core/errors';
+import {
+	badRequest,
+	conflict,
+	forbidden,
+	notFound,
+	requireVerifiedMember,
+	serverError,
+	tooMany,
+} from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -9,7 +17,7 @@ import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema } from '@/core/validators/image-url';
 import { AMOUNT_MAX_CENTS, AMOUNT_MIN_CENTS } from '@/features/expenses/expense-constants';
-import { validateSplits } from '@/features/expenses/split-math';
+import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
 import { and, eq, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -42,7 +50,8 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 	// Money mutation: a bare x-manawg-member-id is spoofable, so require a
 	// verified HMAC token before trusting the caller's claimed identity for
 	// the payer/debtor ownership check below.
-	if (!auth.member.verified) return forbidden('member_not_verified', 'member_not_verified');
+	const unverified = requireVerifiedMember(auth.member);
+	if (unverified) return unverified;
 
 	const limited = await checkRateLimit(wgWriteLimiter, `expense:${wgId}:${auth.member.memberId}`);
 	if (!limited.success) return tooMany();
@@ -142,16 +151,7 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	if (splits && amountCents !== undefined) {
 		const splitCheck = validateSplits(amountCents, splits);
 		if (!splitCheck.ok) {
-			switch (splitCheck.reason) {
-				case 'empty':
-					return badRequest('splits_invalid');
-				case 'duplicate_debtor':
-					return badRequest('splits_duplicate_debtor');
-				case 'sum_mismatch':
-					return badRequest('splits_sum_mismatch');
-				case 'invalid_amount':
-					return badRequest('splits_invalid');
-			}
+			return badRequest(splitValidationErrorCode(splitCheck.reason));
 		}
 	}
 	const auth = await requireWgMember(req, code);
@@ -161,7 +161,8 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	// Money mutation: a bare x-manawg-member-id is spoofable, so require a
 	// verified HMAC token before trusting the caller's claimed identity for
 	// the payer-only check below.
-	if (!auth.member.verified) return forbidden('member_not_verified', 'member_not_verified');
+	const unverified = requireVerifiedMember(auth.member);
+	if (unverified) return unverified;
 
 	const limited = await checkRateLimit(wgWriteLimiter, `expense:${wgId}:${auth.member.memberId}`);
 	if (!limited.success) return tooMany();
@@ -188,16 +189,7 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 		const nextAmountCents = amountCents ?? row.amountCents;
 		const splitCheck = validateSplits(nextAmountCents, splits);
 		if (!splitCheck.ok) {
-			switch (splitCheck.reason) {
-				case 'empty':
-					return badRequest('splits_invalid');
-				case 'duplicate_debtor':
-					return badRequest('splits_duplicate_debtor');
-				case 'sum_mismatch':
-					return badRequest('splits_sum_mismatch');
-				case 'invalid_amount':
-					return badRequest('splits_invalid');
-			}
+			return badRequest(splitValidationErrorCode(splitCheck.reason));
 		}
 
 		const debtorIds = Array.from(new Set(splits.map((split) => split.debtorMemberId)));

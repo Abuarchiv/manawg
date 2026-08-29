@@ -1,6 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
-import { badRequest, forbidden, tooMany } from '@/core/errors';
+import { badRequest, forbidden, requireVerifiedMember, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -45,7 +45,8 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 
 	// Money mutation: a bare x-manawg-member-id is spoofable, so require a
 	// verified HMAC token before trusting the caller's claimed identity.
-	if (!auth.member.verified) return forbidden('member_not_verified', 'member_not_verified');
+	const unverified = requireVerifiedMember(auth.member);
+	if (unverified) return unverified;
 
 	// Only the debtor (from) or the creditor (to) may batch-settle
 	if (auth.member.memberId !== fromMemberId && auth.member.memberId !== toMemberId) {

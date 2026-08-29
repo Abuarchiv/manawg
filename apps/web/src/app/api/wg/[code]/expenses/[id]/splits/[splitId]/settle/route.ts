@@ -1,6 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, wgs } from '@/core/db';
-import { badRequest, forbidden, notFound, tooMany } from '@/core/errors';
+import { badRequest, forbidden, notFound, requireVerifiedMember, tooMany } from '@/core/errors';
 import { UUID_PATTERN, requireMember } from '@/core/guards/api-auth';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -43,7 +43,8 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 		// Money mutation: a bare x-manawg-member-id is spoofable (harvested from
 		// GET /api/wg/[code]/members), so require a verified HMAC token before
 		// trusting the caller's claimed identity for the debtor/payer check.
-		if (!auth.member.verified) return forbidden('member_not_verified', 'member_not_verified');
+		const unverified = requireVerifiedMember(auth.member);
+		if (unverified) return unverified;
 
 		const splitRow = await db
 			.select({

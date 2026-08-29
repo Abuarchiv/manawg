@@ -24,7 +24,7 @@ import {
 	recordExpenseCreatedSideEffects,
 	resolveExpensePayer,
 } from '@/features/expenses/expenses';
-import { validateSplits } from '@/features/expenses/split-math';
+import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
 import { desc, eq, inArray } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -156,18 +156,7 @@ export async function POST(
 
 	const splitCheck = validateSplits(amountCents, validatedSplits);
 	if (!splitCheck.ok) {
-		// Map each validation failure to its own error code so the client can
-		// show a precise message instead of a generic "splits invalid".
-		switch (splitCheck.reason) {
-			case 'empty':
-				return badRequest('splits_invalid');
-			case 'duplicate_debtor':
-				return badRequest('splits_duplicate_debtor');
-			case 'sum_mismatch':
-				return badRequest('splits_sum_mismatch');
-			case 'invalid_amount':
-				return badRequest('splits_invalid');
-		}
+		return badRequest(splitValidationErrorCode(splitCheck.reason));
 	}
 
 	try {

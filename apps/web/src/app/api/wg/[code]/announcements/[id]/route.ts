@@ -1,7 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { announcementReactions, announcements, db } from '@/core/db';
 import { badRequest, forbidden, notFound, tooMany } from '@/core/errors';
-import { isVerifiedWgAdmin } from '@/core/guards/admin';
+import { isVerifiedWgAdmin, requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -178,10 +178,8 @@ export const DELETE = withWgRoute<{ id: string }>(
 			.limit(1);
 		const row = existing[0];
 		if (!row) return notFound('announcement_not_found');
-		const isAuthor = auth.member.verified && row.authorMemberId === auth.member.memberId;
-		if (!isAuthor && !(await isVerifiedWgAdmin(wgId, auth.member.memberId, auth.member.verified))) {
-			return forbidden('not_owner', 'not_owner');
-		}
+		const denied = await requireOwnerOrAdmin(wgId, auth.member, row.authorMemberId);
+		if (denied) return denied;
 
 		const deleted = await db
 			.delete(announcements)

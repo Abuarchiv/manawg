@@ -121,3 +121,21 @@ export function validateSplits(
 	if (sum !== amountCents) return { ok: false, reason: 'sum_mismatch' };
 	return { ok: true, splits: splits.map((s) => ({ ...s })) };
 }
+
+/**
+ * Maps a failed `validateSplits` reason to its HTTP error code, so the
+ * client can show a precise message instead of a generic "splits invalid".
+ */
+export function splitValidationErrorCode(
+	reason: Extract<SplitValidationResult, { ok: false }>['reason'],
+): 'splits_invalid' | 'splits_duplicate_debtor' | 'splits_sum_mismatch' {
+	switch (reason) {
+		case 'duplicate_debtor':
+			return 'splits_duplicate_debtor';
+		case 'sum_mismatch':
+			return 'splits_sum_mismatch';
+		case 'empty':
+		case 'invalid_amount':
+			return 'splits_invalid';
+	}
+}

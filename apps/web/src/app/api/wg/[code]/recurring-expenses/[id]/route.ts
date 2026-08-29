@@ -1,7 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, recurringExpenses, wgMembers } from '@/core/db';
-import { badRequest, forbidden, notFound, tooMany } from '@/core/errors';
-import { isVerifiedWgAdmin } from '@/core/guards/admin';
+import { badRequest, notFound, tooMany } from '@/core/errors';
+import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -116,10 +116,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 			.limit(1);
 		const template = rows[0];
 		if (!template) return notFound('recurring_expense_not_found');
-		const isOwner = auth.member.verified && template.createdByMemberId === auth.member.memberId;
-		if (!isOwner && !(await isVerifiedWgAdmin(wgId, auth.member.memberId, auth.member.verified))) {
-			return forbidden('not_owner', 'not_owner');
-		}
+		const denied = await requireOwnerOrAdmin(wgId, auth.member, template.createdByMemberId);
+		if (denied) return denied;
 
 		const nextDescription = parsed.data.description ?? template.description;
 		const nextAmountCents = parsed.data.amountCents ?? template.amountCents;
@@ -272,10 +270,8 @@ export const DELETE = withWgRoute<{ id: string }>(
 			.limit(1);
 		const template = rows[0];
 		if (!template) return notFound('recurring_expense_not_found');
-		const isOwner = auth.member.verified && template.createdByMemberId === auth.member.memberId;
-		if (!isOwner && !(await isVerifiedWgAdmin(wgId, auth.member.memberId, auth.member.verified))) {
-			return forbidden('not_owner', 'not_owner');
-		}
+		const denied = await requireOwnerOrAdmin(wgId, auth.member, template.createdByMemberId);
+		if (denied) return denied;
 
 		const deleted = await db
 			.delete(recurringExpenses)

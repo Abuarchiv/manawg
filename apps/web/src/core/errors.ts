@@ -41,6 +41,19 @@ export function forbidden(message = 'forbidden', code?: string): NextResponse<Ap
 	return apiError(message, HTTP_FORBIDDEN, code);
 }
 
+/**
+ * Money/state mutations that trust a caller-claimed id (owner checks, self-
+ * settle, comment authorship) require a verified HMAC token first — a bare
+ * `x-manawg-member-id` is spoofable. Returns the `forbidden` response to
+ * return immediately, or `null` when the caller is verified.
+ */
+export function requireVerifiedMember(member: {
+	verified: boolean;
+}): NextResponse<ApiErrorBody> | null {
+	if (!member.verified) return forbidden('member_not_verified', 'member_not_verified');
+	return null;
+}
+
 export function conflict(message = 'conflict', code?: string): NextResponse<ApiErrorBody> {
 	return apiError(message, HTTP_CONFLICT, code);
 }

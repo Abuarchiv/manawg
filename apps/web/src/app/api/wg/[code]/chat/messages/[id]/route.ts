@@ -1,7 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgChatMessages } from '@/core/db';
-import { badRequest, forbidden, notFound, tooMany } from '@/core/errors';
-import { isVerifiedWgAdmin } from '@/core/guards/admin';
+import { badRequest, forbidden, notFound, requireVerifiedMember, tooMany } from '@/core/errors';
+import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -38,7 +38,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 		// Owner check trusts the caller identity claimed by the spoofable
 		// x-manawg-member-id header, so require a verified HMAC token before
 		// trusting it (same pattern as comment/expense mutations).
-		if (!auth.member.verified) return forbidden('member_not_verified', 'member_not_verified');
+		const unverified = requireVerifiedMember(auth.member);
+		if (unverified) return unverified;
 		const limited = await checkRateLimit(
 			wgWriteLimiter,
 			`chat-edit:${wgId}:${auth.member.memberId}`,
@@ -92,7 +93,8 @@ export const DELETE = withWgRoute<{ id: string }>(
 		// Owner check trusts the caller identity claimed by the spoofable
 		// x-manawg-member-id header, so require a verified HMAC token before
 		// trusting it (same pattern as comment/expense mutations).
-		if (!auth.member.verified) return forbidden('member_not_verified', 'member_not_verified');
+		const unverified = requireVerifiedMember(auth.member);
+		if (unverified) return unverified;
 		const limited = await checkRateLimit(
 			wgWriteLimiter,
 			`chat-delete:${wgId}:${auth.member.memberId}`,
@@ -114,10 +116,13 @@ export const DELETE = withWgRoute<{ id: string }>(
 		if (!row) return notFound('message_not_found');
 		if (row.deletedAt) return NextResponse.json({ deleted: true });
 
-		const isAuthor = row.senderMemberId === auth.member.memberId;
-		if (!isAuthor && !(await isVerifiedWgAdmin(wgId, auth.member.memberId, auth.member.verified))) {
-			return forbidden('not_owner', 'not_owner');
-		}
+		// auth.member.verified is already guaranteed by the check above; kept
+		// explicit here to match requireOwnerOrAdmin's own isOwner shape.
+		const isAuthor = auth.member.verified && row.senderMemberId === auth.member.memberId;
+		const denied = isAuthor
+			? null
+			: await requireOwnerOrAdmin(wgId, auth.member, row.senderMemberId);
+		if (denied) return denied;
 
 		const now = new Date();
 		const [updated] = await db

@@ -1,7 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, recurringExpenses, wgMembers } from '@/core/db';
-import { badRequest, conflict, forbidden, notFound, serverError, tooMany } from '@/core/errors';
-import { isVerifiedWgAdmin } from '@/core/guards/admin';
+import { badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
+import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import {
 	ReplayCache,
 	type ReplayReservation,
@@ -19,7 +19,7 @@ import {
 	parseRecurringSplits,
 	recurringDueDateMatchesExpected,
 } from '@/features/expenses/recurring-expenses';
-import { validateSplits } from '@/features/expenses/split-math';
+import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -153,15 +153,7 @@ export async function POST(
 	}
 	const splitCheck = validateSplits(parsed.data.amountCents, parsed.data.splits);
 	if (!splitCheck.ok) {
-		switch (splitCheck.reason) {
-			case 'empty':
-			case 'invalid_amount':
-				return badRequest('splits_invalid');
-			case 'duplicate_debtor':
-				return badRequest('splits_duplicate_debtor');
-			case 'sum_mismatch':
-				return badRequest('splits_sum_mismatch');
-		}
+		return badRequest(splitValidationErrorCode(splitCheck.reason));
 	}
 
 	try {
@@ -311,15 +303,7 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 			parsed.data.splits.reduce((total, split) => total + split.amountCents, 0);
 		const splitCheck = validateSplits(effectiveAmount, parsed.data.splits);
 		if (!splitCheck.ok) {
-			switch (splitCheck.reason) {
-				case 'empty':
-				case 'invalid_amount':
-					return badRequest('splits_invalid');
-				case 'duplicate_debtor':
-					return badRequest('splits_duplicate_debtor');
-				case 'sum_mismatch':
-					return badRequest('splits_sum_mismatch');
-			}
+			return badRequest(splitValidationErrorCode(splitCheck.reason));
 		}
 	}
 	if (!isTemplateUpdate && !parsed.data.expectedNextDueAt) {
@@ -340,10 +324,8 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 		.limit(1);
 	const template = rows[0];
 	if (!template) return notFound('recurring_expense_not_found');
-	const isOwner = auth.member.verified && template.createdByMemberId === auth.member.memberId;
-	if (!isOwner && !(await isVerifiedWgAdmin(wg.id, auth.member.memberId, auth.member.verified))) {
-		return forbidden('not_owner', 'not_owner');
-	}
+	const denied = await requireOwnerOrAdmin(wg.id, auth.member, template.createdByMemberId);
+	if (denied) return denied;
 	if (isTemplateUpdate) {
 		const paidByMemberId = parsed.data.paidByMemberId ?? template.paidByMemberId;
 		const splits = parsed.data.splits ?? parseRecurringSplits(template.splitsJson);
@@ -504,10 +486,8 @@ export const DELETE = withWgRoute('recurring-expenses DELETE', async (req, { cod
 		.limit(1);
 	const template = rows[0];
 	if (!template) return notFound('recurring_expense_not_found');
-	const isOwner = auth.member.verified && template.createdByMemberId === auth.member.memberId;
-	if (!isOwner && !(await isVerifiedWgAdmin(wg.id, auth.member.memberId, auth.member.verified))) {
-		return forbidden('not_owner', 'not_owner');
-	}
+	const denied = await requireOwnerOrAdmin(wg.id, auth.member, template.createdByMemberId);
+	if (denied) return denied;
 
 	const deleted = await db
 		.delete(recurringExpenses)

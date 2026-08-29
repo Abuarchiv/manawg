@@ -1,7 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgEvents } from '@/core/db';
-import { badRequest, forbidden, notFound, tooMany } from '@/core/errors';
-import { isVerifiedWgAdmin } from '@/core/guards/admin';
+import { badRequest, notFound, tooMany } from '@/core/errors';
+import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -96,10 +96,8 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 		.limit(1);
 	const current = existing[0];
 	if (!current) return notFound('event_not_found');
-	const isOwner = auth.member.verified && current.createdByMemberId === auth.member.memberId;
-	if (!isOwner && !(await isVerifiedWgAdmin(wgId, auth.member.memberId, auth.member.verified))) {
-		return forbidden('not_owner', 'not_owner');
-	}
+	const denied = await requireOwnerOrAdmin(wgId, auth.member, current.createdByMemberId);
+	if (denied) return denied;
 
 	const update: Partial<typeof wgEvents.$inferInsert> & { updatedAt: Date } = {
 		updatedAt: new Date(),
@@ -156,10 +154,8 @@ export const DELETE = withWgRoute<{ id: string }>('events DELETE', async (req, {
 		.limit(1);
 	const row = existing[0];
 	if (!row) return notFound('event_not_found');
-	const isOwner = auth.member.verified && row.createdByMemberId === auth.member.memberId;
-	if (!isOwner && !(await isVerifiedWgAdmin(wgId, auth.member.memberId, auth.member.verified))) {
-		return forbidden('not_owner', 'not_owner');
-	}
+	const denied = await requireOwnerOrAdmin(wgId, auth.member, row.createdByMemberId);
+	if (denied) return denied;
 
 	const result = await db
 		.delete(wgEvents)

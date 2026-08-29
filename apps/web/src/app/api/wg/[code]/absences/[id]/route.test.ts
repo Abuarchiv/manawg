@@ -13,6 +13,16 @@ const rateLimitMock = vi.hoisted(() => ({
 
 vi.mock('@/core/guards/admin', () => ({
 	isVerifiedWgAdmin: (...args: unknown[]) => adminMock.isVerifiedWgAdmin(...args),
+	requireOwnerOrAdmin: async (
+		wgId: string,
+		member: { memberId: string; verified: boolean },
+		ownerId: string | null,
+		reason = 'not_owner',
+	) => {
+		if (member.verified && ownerId === member.memberId) return null;
+		if (await adminMock.isVerifiedWgAdmin(wgId, member.memberId, member.verified)) return null;
+		return Response.json({ error: reason, code: reason }, { status: 403 });
+	},
 }));
 
 vi.mock('@/core/rate-limit', async (importOriginal) => {

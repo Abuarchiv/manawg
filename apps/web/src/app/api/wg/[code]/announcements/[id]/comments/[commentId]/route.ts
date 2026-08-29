@@ -1,6 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { announcementComments, announcements, db } from '@/core/db';
-import { badRequest, forbidden, notFound, tooMany } from '@/core/errors';
+import { badRequest, forbidden, notFound, requireVerifiedMember, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -64,7 +64,8 @@ export const PATCH = withWgRoute<{ id: string; commentId: string }>(
 		// Owner check trusts the caller identity claimed by the spoofable
 		// x-manawg-member-id header, so require a verified HMAC token before
 		// trusting it (same pattern as expense mutations).
-		if (!auth.member.verified) return forbidden('member_not_verified', 'member_not_verified');
+		const unverified = requireVerifiedMember(auth.member);
+		if (unverified) return unverified;
 		const limited = await checkRateLimit(
 			wgWriteLimiter,
 			`comment-edit:${wgId}:${auth.member.memberId}`,
@@ -111,7 +112,8 @@ export const DELETE = withWgRoute<{ id: string; commentId: string }>(
 		// Owner check trusts the caller identity claimed by the spoofable
 		// x-manawg-member-id header, so require a verified HMAC token before
 		// trusting it (same pattern as expense mutations).
-		if (!auth.member.verified) return forbidden('member_not_verified', 'member_not_verified');
+		const unverified = requireVerifiedMember(auth.member);
+		if (unverified) return unverified;
 		const limited = await checkRateLimit(
 			wgWriteLimiter,
 			`comment-delete:${wgId}:${auth.member.memberId}`,
