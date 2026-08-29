@@ -3,8 +3,8 @@
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { ThemeOption } from '@/components/wg/einstellungen/ThemeOption';
-import { useTheme } from '@manawg/shared/components/theme/ThemeProvider';
-import { haptic } from '@manawg/shared/lib/haptics';
+import { useTheme } from '@/shared/components/theme/ThemeProvider';
+import { haptic } from '@/shared/lib/haptics';
 import { Monitor, Moon, Sun } from 'lucide-react';
 
 interface ProfileTabProps {

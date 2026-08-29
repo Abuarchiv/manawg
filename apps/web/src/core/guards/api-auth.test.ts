@@ -1,5 +1,5 @@
 import { deriveMemberToken } from '@/core/guards/member-token';
-import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from '@manawg/shared/lib/member-header';
+import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from '@/shared/lib/member-header';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

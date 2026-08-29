@@ -8,8 +8,8 @@ const rateLimitMock = vi.hoisted(() => ({ checkRateLimit: vi.fn() }));
 
 // Only the generator is stubbed, so the created WG's share code is
 // deterministic; validation stays real.
-vi.mock('@manawg/shared/lib/share-code', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@manawg/shared/lib/share-code')>()),
+vi.mock('@/shared/lib/share-code', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/shared/lib/share-code')>()),
 	generateShareCode: () => shareCodeMock.generateShareCode(),
 }));
 

@@ -20,7 +20,7 @@ vi.mock('@/core/infra/api-client', () => ({
 	apiFetch: (...args: unknown[]) => apiClientMock.apiFetch(...args),
 }));
 
-vi.mock('@manawg/shared/lib/identity', () => ({
+vi.mock('@/shared/lib/identity', () => ({
 	clearIdentity: (...args: unknown[]) => identityMock.clearIdentity(...args),
 	getIdentity: (...args: unknown[]) => identityMock.getIdentity(...args),
 	rememberWg: (...args: unknown[]) => identityMock.rememberWg(...args),

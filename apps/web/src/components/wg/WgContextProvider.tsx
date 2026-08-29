@@ -9,7 +9,7 @@ import {
 	getIdentity,
 	rememberWg,
 	setIdentity,
-} from '@manawg/shared/lib/identity';
+} from '@/shared/lib/identity';
 import {
 	createContext,
 	useCallback,

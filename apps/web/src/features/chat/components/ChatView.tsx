@@ -3,7 +3,7 @@
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
-import { haptic } from '@manawg/shared/lib/haptics';
+import { haptic } from '@/shared/lib/haptics';
 import { ChevronDown, MessageCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useChatChannel } from '../chat-channel';

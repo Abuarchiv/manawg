@@ -21,7 +21,7 @@ import {
 	expandRecurrence,
 	getMonthBounds,
 } from '@/features/events/events';
-import { haptic } from '@manawg/shared/lib/haptics';
+import { haptic } from '@/shared/lib/haptics';
 import { CalendarDays, List, Plus, RotateCw } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';

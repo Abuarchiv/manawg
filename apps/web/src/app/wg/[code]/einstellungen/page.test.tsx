@@ -24,7 +24,7 @@ vi.mock('next/navigation', () => ({
 	useRouter: () => routerMock,
 }));
 
-vi.mock('@manawg/shared/components/theme/ThemeProvider', () => ({
+vi.mock('@/shared/components/theme/ThemeProvider', () => ({
 	useTheme: () => ({ theme: 'system', setTheme: vi.fn() }),
 }));
 

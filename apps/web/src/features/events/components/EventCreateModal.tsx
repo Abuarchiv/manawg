@@ -7,7 +7,7 @@ import {
 	formatRecurrenceRule,
 	validateEventForm,
 } from '@/features/events/events';
-import { useFocusTrap } from '@manawg/shared/lib/hooks/useFocusTrap';
+import { useFocusTrap } from '@/shared/lib/hooks/useFocusTrap';
 import { Loader2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 

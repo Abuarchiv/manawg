@@ -1,4 +1,4 @@
-import { isValidShareCode, normalizeShareCode } from '@manawg/shared/lib/share-code';
+import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 
 export function getInitialJoinCode(search: string): string {
 	const params = new URLSearchParams(search);

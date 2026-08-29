@@ -1,7 +1,7 @@
 'use client';
 
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
-import { type StoredIdentity, setIdentity } from '@manawg/shared/lib/identity';
+import { type StoredIdentity, setIdentity } from '@/shared/lib/identity';
 import { ArrowLeft, Loader2, UserPlus } from 'lucide-react';
 import { useRef, useState } from 'react';
 

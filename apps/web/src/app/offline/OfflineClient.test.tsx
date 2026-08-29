@@ -10,7 +10,7 @@ const offlineClientMock = vi.hoisted(() => ({
 	syncOfflineActions: vi.fn(),
 }));
 
-vi.mock('@manawg/shared/lib/identity', () => ({
+vi.mock('@/shared/lib/identity', () => ({
 	getKnownWgs: () => identityMock.getKnownWgs(),
 }));
 

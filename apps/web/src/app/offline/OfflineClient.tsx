@@ -11,7 +11,7 @@ import {
 	getOfflineActionSummary,
 } from '@/core/offline/offline-queue';
 import { parseTimestamp } from '@/core/utils/time';
-import { type KnownWg, getKnownWgs } from '@manawg/shared/lib/identity';
+import { type KnownWg, getKnownWgs } from '@/shared/lib/identity';
 import { ArrowRight, CheckCircle2, CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

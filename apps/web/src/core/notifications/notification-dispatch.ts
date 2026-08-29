@@ -7,7 +7,7 @@ import {
 	notificationPriorityForEvent,
 } from '@/core/notifications/notifications';
 import { parseWebPushStatusCode } from '@/core/notifications/web-push-errors';
-import { getAppUrl } from '@manawg/shared/lib/app-url';
+import { getAppUrl } from '@/shared/lib/app-url';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 interface DispatchInput {

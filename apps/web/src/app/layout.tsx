@@ -1,13 +1,13 @@
-import { InstallPrompt } from '@manawg/shared/components/install-prompt';
-import { PwaRegister } from '@manawg/shared/components/pwa-register';
-import { ThemeProvider } from '@manawg/shared/components/theme/ThemeProvider';
-import { getAppUrl } from '@manawg/shared/lib/app-url';
+import { InstallPrompt } from '@/shared/components/install-prompt';
+import { PwaRegister } from '@/shared/components/pwa-register';
+import { ThemeProvider } from '@/shared/components/theme/ThemeProvider';
+import { getAppUrl } from '@/shared/lib/app-url';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import Script from 'next/script';
-import '@manawg/shared/globals.css';
+import '@/shared/globals.css';
 
 const geist = Geist({
 	subsets: ['latin'],

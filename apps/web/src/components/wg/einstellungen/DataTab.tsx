@@ -6,8 +6,8 @@ import { OfflineQueueSection } from '@/components/wg/einstellungen/OfflineQueueS
 import { Section } from '@/components/wg/einstellungen/Section';
 import { exportErrorMessage, readResponseErrorCode } from '@/core/guards/settings-errors';
 import type { ExportSectionKey, ExportSectionSummary } from '@/core/reads/export';
-import type { StoredIdentity } from '@manawg/shared/lib/identity';
-import { memberAuthHeader } from '@manawg/shared/lib/identity';
+import type { StoredIdentity } from '@/shared/lib/identity';
+import { memberAuthHeader } from '@/shared/lib/identity';
 import { Download, Loader2, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';

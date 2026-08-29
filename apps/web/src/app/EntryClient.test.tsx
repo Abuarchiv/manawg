@@ -5,7 +5,7 @@ const replace = vi.fn();
 const getKnownWgs = vi.fn();
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace }) }));
-vi.mock('@manawg/shared/lib/identity', () => ({ getKnownWgs: () => getKnownWgs() }));
+vi.mock('@/shared/lib/identity', () => ({ getKnownWgs: () => getKnownWgs() }));
 
 import { EntryClient } from './EntryClient';
 

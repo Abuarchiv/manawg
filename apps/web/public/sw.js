@@ -1,6 +1,7 @@
 // manawg app service worker — installability + minimal offline shell
 //
-// Registered at runtime by @manawg/shared's pwa-register component. Nothing
+// Registered at runtime by the pwa-register component (src/shared/components).
+// Nothing
 // imports this file, so dead-code tooling reports it as unused — it is not.
 // Deleting it breaks installability and the offline shell with no build error.
 //

@@ -1,5 +1,5 @@
 import { E2E_EXISTING_WG } from '@/core/infra/e2e-db-down';
-import { MEMBER_ID_HEADER } from '@manawg/shared/lib/member-header';
+import { MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 import { NextRequest } from 'next/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

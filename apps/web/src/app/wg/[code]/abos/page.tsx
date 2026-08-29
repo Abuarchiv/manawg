@@ -15,7 +15,7 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import type { Abo, AboFilter } from '@/components/wg/abos-types';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { apiFetch } from '@/core/infra/api-client';
-import { haptic } from '@manawg/shared/lib/haptics';
+import { haptic } from '@/shared/lib/haptics';
 import { Plus, RotateCw, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 

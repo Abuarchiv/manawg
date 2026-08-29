@@ -60,7 +60,7 @@ import {
 	splitCandidates,
 } from '@/features/expenses/expense-split-input';
 import { addMonths } from '@/features/expenses/recurring-expenses';
-import { haptic } from '@manawg/shared/lib/haptics';
+import { haptic } from '@/shared/lib/haptics';
 import { Loader2, Receipt, RotateCw } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

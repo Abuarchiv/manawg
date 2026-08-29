@@ -6,7 +6,7 @@ const identityMock = vi.hoisted(() => ({
 	setIdentity: vi.fn(),
 }));
 
-vi.mock('@manawg/shared/lib/identity', () => ({
+vi.mock('@/shared/lib/identity', () => ({
 	setIdentity: (...args: unknown[]) => identityMock.setIdentity(...args),
 }));
 

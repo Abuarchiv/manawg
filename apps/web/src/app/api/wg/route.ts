@@ -6,7 +6,7 @@ import { badRequest, serverError, tooMany } from '@/core/errors';
 import { deriveMemberToken } from '@/core/guards/member-token';
 import { E2E_CREATED_WG, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { checkRateLimit, clientIpKey, registerLimiter } from '@/core/rate-limit';
-import { generateShareCode, isValidShareCode } from '@manawg/shared/lib/share-code';
+import { generateShareCode, isValidShareCode } from '@/shared/lib/share-code';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 

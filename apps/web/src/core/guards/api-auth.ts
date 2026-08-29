@@ -1,7 +1,7 @@
 import { db, wgMembers } from '@/core/db';
 import { apiError } from '@/core/errors';
 import { verifyMemberToken } from '@/core/guards/member-token';
-import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from '@manawg/shared/lib/member-header';
+import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from '@/shared/lib/member-header';
 import { and, eq } from 'drizzle-orm';
 import type { NextRequest, NextResponse } from 'next/server';
 

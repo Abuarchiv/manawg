@@ -14,7 +14,7 @@ import {
 	computeOldestDebtAgeDays,
 } from '@/features/expenses/debts';
 import { REMINDER_COOLDOWN_HOURS, canSendReminder } from '@/features/expenses/reminders';
-import { haptic } from '@manawg/shared/lib/haptics';
+import { haptic } from '@/shared/lib/haptics';
 import { AlertCircle, Loader2, RotateCw } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';

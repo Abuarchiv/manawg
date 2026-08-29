@@ -5,7 +5,7 @@ import {
 	wgShareCodeLookupLimiter,
 	wgWriteLimiter,
 } from '@/core/rate-limit';
-import { contentSecurityPolicy } from '@manawg/shared/lib/security-headers';
+import { contentSecurityPolicy } from '@/shared/lib/security-headers';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);

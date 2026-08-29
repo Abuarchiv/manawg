@@ -1,7 +1,7 @@
 'use client';
 
 import { useDismissableMenu } from '@/core/hooks/useDismissableMenu';
-import { haptic } from '@manawg/shared/lib/haptics';
+import { haptic } from '@/shared/lib/haptics';
 import { Smile } from 'lucide-react';
 import { useRef, useState } from 'react';
 

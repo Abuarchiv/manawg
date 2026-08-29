@@ -5,8 +5,8 @@ import { type E2EWgFixture, getE2EWgFixture, isE2EDbDownMode } from '@/core/infr
 // api-auth pulls in the database module, and the E2E db-down path exists
 // precisely to answer requests when no database can be loaded. A route test
 // asserts that api-auth stays unloaded in that mode.
-import { MEMBER_ID_HEADER } from '@manawg/shared/lib/member-header';
-import { isValidShareCode, normalizeShareCode } from '@manawg/shared/lib/share-code';
+import { MEMBER_ID_HEADER } from '@/shared/lib/member-header';
+import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import type { NextRequest, NextResponse } from 'next/server';
 
 /**

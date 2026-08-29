@@ -10,15 +10,15 @@ import {
 	shouldFallbackToDirectJoin,
 } from '@/core/infra/join-flow';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
-import { LogoMark } from '@manawg/shared/components/ui/LogoMark';
+import { LogoMark } from '@/shared/components/ui/LogoMark';
 import {
 	type KnownWg,
 	getIdentity,
 	getKnownWgs,
 	rememberWg,
 	setIdentity,
-} from '@manawg/shared/lib/identity';
-import { isValidShareCode, normalizeShareCode } from '@manawg/shared/lib/share-code';
+} from '@/shared/lib/identity';
+import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';

@@ -4,7 +4,7 @@ import { badRequest, notFound, serverError, tooMany } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
 import { S3_MAX_UPLOAD_BYTES, createPresignedUpload, isAllowedMimeType } from '@/core/infra/s3';
 import { checkRateLimit, uploadSignLimiter } from '@/core/rate-limit';
-import { isValidShareCode, normalizeShareCode } from '@manawg/shared/lib/share-code';
+import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 

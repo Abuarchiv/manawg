@@ -7,7 +7,7 @@ import { requireWgAdmin } from '@/core/guards/require-wg-admin';
 import { readShareCode } from '@/core/guards/route-preamble';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
-import { generateShareCode } from '@manawg/shared/lib/share-code';
+import { generateShareCode } from '@/shared/lib/share-code';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

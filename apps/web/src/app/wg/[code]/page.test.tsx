@@ -20,7 +20,7 @@ vi.mock('@/components/wg/WgContextProvider', () => ({
 	}),
 }));
 
-vi.mock('@manawg/shared/components/theme/ThemeToggle', () => ({
+vi.mock('@/shared/components/theme/ThemeToggle', () => ({
 	ThemeToggle: () => <button type="button">Theme</button>,
 }));
 

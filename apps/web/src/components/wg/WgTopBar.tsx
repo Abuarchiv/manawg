@@ -1,8 +1,8 @@
 'use client';
 
 import { ChatTopBarLink } from '@/components/wg/ChatTopBarLink';
-import { ThemeToggle } from '@manawg/shared/components/theme/ThemeToggle';
-import { LogoMark } from '@manawg/shared/components/ui/LogoMark';
+import { ThemeToggle } from '@/shared/components/theme/ThemeToggle';
+import { LogoMark } from '@/shared/components/ui/LogoMark';
 import { Clock3, Search } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';

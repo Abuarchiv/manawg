@@ -12,8 +12,8 @@
  * `route.integration.test.ts` (apps/web/src/app/api/wg) for how the
  * `db-integration` CI job activates this file.
  */
-import { MEMBER_ID_HEADER } from '@manawg/shared/lib/member-header';
-import { generateShareCode } from '@manawg/shared/lib/share-code';
+import { MEMBER_ID_HEADER } from '@/shared/lib/member-header';
+import { generateShareCode } from '@/shared/lib/share-code';
 import { NextRequest } from 'next/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

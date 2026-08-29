@@ -1,6 +1,6 @@
 'use client';
 
-import { memberAuthHeader } from '@manawg/shared/lib/identity';
+import { memberAuthHeader } from '@/shared/lib/identity';
 
 const DB_NAME = 'manawg-offline-images';
 const STORE_NAME = 'images';

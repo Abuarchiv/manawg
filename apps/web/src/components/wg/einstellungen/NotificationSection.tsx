@@ -17,7 +17,7 @@ import {
 	formatPushActivationError,
 	formatPushDeactivationError,
 } from '@/core/notifications/web-push-errors';
-import { haptic } from '@manawg/shared/lib/haptics';
+import { haptic } from '@/shared/lib/haptics';
 import { Bell, CheckCircle2, Loader2, Smartphone } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 

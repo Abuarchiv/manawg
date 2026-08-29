@@ -11,7 +11,7 @@ import { routeDb, routeMocks } from './route-harness';
  * Only the pieces that need a database or reach the network are replaced.
  *
  * Not stubbed on purpose, because the real implementations work fine under
- * test: `@manawg/shared/lib/share-code` (pure), `@/core/infra/e2e-db-down` (reads env, off unless
+ * test: `@/shared/lib/share-code` (pure), `@/core/infra/e2e-db-down` (reads env, off unless
  * the E2E vars are set), and the drizzle operators.
  *
  * `@/core/rate-limit` is deliberately absent too. With no Upstash credentials

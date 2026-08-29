@@ -1,9 +1,9 @@
 import { parseTimestamp } from '@/core/utils/time';
 
-// `cn` moved to @manawg/shared/lib/cn — Drawer (now in apps/landing) needs it
+// `cn` moved to @/shared/lib/cn — Drawer (now in apps/landing) needs it
 // too, so it can't stay app-local. Re-export here so the many in-app call
 // sites don't all need an import-path change.
-export { cn } from '@manawg/shared/lib/cn';
+export { cn } from '@/shared/lib/cn';
 
 export function formatDate(date: string | Date, locale = 'de-DE'): string {
 	const timestamp = parseTimestamp(date);

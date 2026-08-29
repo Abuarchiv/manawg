@@ -3,7 +3,7 @@
  * Feature isolation boundary check for the vertical-slice architecture.
  *
  * Rule: a file under src/features/<X>/** may import from @/core/**,
- * @manawg/shared/**, npm packages, or its own files — never from
+ * @/shared/**, npm packages, or its own files — never from
  * src/features/<Y>/** for a different Y. Cross-feature system effects
  * (e.g. posting to the pinnwand feed) route through a core/ function
  * instead (see core/activity-feed.ts) rather than one feature importing
@@ -82,7 +82,7 @@ function main() {
 		console.error('[feature-boundaries] FAIL: cross-feature imports found:\n');
 		for (const v of violations) console.error(`  - ${v}`);
 		console.error(
-			'\nA feature may only import from @/core/**, @manawg/shared/**, npm packages, or its own files.\n' +
+			'\nA feature may only import from @/core/**, @/shared/**, npm packages, or its own files.\n' +
 				'Route cross-feature effects through a core/ function instead (see core/activity-feed.ts).',
 		);
 		process.exit(1);

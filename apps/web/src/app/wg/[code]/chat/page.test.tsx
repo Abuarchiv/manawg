@@ -36,7 +36,7 @@ vi.mock('@/features/chat/components/ChatView', () => ({
 	ChatView: () => null,
 }));
 
-vi.mock('@manawg/shared/lib/share-code', () => ({
+vi.mock('@/shared/lib/share-code', () => ({
 	isValidShareCode: (value: string) => /^[A-Z0-9]{8}$/.test(value),
 	normalizeShareCode: (value: string) => value.toUpperCase(),
 }));

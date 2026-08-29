@@ -38,9 +38,9 @@ import {
 import { formatEuroCents } from '@/core/utils/money';
 import { parseTimestamp } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
-import { ThemeToggle } from '@manawg/shared/components/theme/ThemeToggle';
-import { LogoMark } from '@manawg/shared/components/ui/LogoMark';
-import { haptic } from '@manawg/shared/lib/haptics';
+import { ThemeToggle } from '@/shared/components/theme/ThemeToggle';
+import { LogoMark } from '@/shared/components/ui/LogoMark';
+import { haptic } from '@/shared/lib/haptics';
 import {
 	AlertTriangle,
 	ArrowRight,

@@ -3,7 +3,7 @@
 import { ICON_BUTTON } from '@/components/ui/styles';
 import { apiFetch } from '@/core/infra/api-client';
 import type { InventoryItemDto } from '@/features/inventory/inventory';
-import { useFocusTrap } from '@manawg/shared/lib/hooks/useFocusTrap';
+import { useFocusTrap } from '@/shared/lib/hooks/useFocusTrap';
 import { Loader2, Plus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 

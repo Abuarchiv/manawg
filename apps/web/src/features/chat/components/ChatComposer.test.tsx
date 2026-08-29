@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ChatComposer } from './ChatComposer';
 
-vi.mock('@manawg/shared/lib/haptics', () => ({ haptic: vi.fn() }));
+vi.mock('@/shared/lib/haptics', () => ({ haptic: vi.fn() }));
 
 describe('ChatComposer', () => {
 	it('detects a mention for a member name ending in a diacritic', async () => {

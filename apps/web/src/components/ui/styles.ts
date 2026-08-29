@@ -42,5 +42,5 @@ export const CHIP_BUTTON = `inline-flex h-11 items-center gap-1.5 rounded-full b
 export const EMPTY_PLACEHOLDER =
 	'rounded-lg border border-dashed border-[var(--border)] px-4 py-8 text-center text-[13px] text-[var(--text-3)]';
 
-// TEXT_LINK moved to @manawg/shared/lib/text-link — the legal pages that use
+// TEXT_LINK moved to @/shared/lib/text-link — the legal pages that use
 // it now live in apps/landing, so the class string can't stay app-local.

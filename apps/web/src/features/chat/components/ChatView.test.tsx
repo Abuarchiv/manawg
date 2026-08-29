@@ -86,7 +86,7 @@ vi.mock('@/core/infra/api-client', () => ({
 	apiFetch: (...args: unknown[]) => apiMock.apiFetch(...args),
 }));
 
-vi.mock('@manawg/shared/lib/haptics', () => ({
+vi.mock('@/shared/lib/haptics', () => ({
 	haptic: vi.fn(),
 }));
 

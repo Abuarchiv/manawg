@@ -1,7 +1,7 @@
 import { db, type wgChatMessages, wgs } from '@/core/db';
 import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { ChatView } from '@/features/chat/components/ChatView';
-import { isValidShareCode, normalizeShareCode } from '@manawg/shared/lib/share-code';
+import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import { eq } from 'drizzle-orm';
 import { ArrowLeft } from 'lucide-react';
 import type { Metadata } from 'next';

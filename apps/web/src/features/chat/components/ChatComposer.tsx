@@ -1,7 +1,7 @@
 'use client';
 
 import { useToast } from '@/components/ui/Toast';
-import { haptic } from '@manawg/shared/lib/haptics';
+import { haptic } from '@/shared/lib/haptics';
 import { Image as ImageIcon, Loader2, Send, X } from 'lucide-react';
 import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {

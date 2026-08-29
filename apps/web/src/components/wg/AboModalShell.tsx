@@ -1,7 +1,7 @@
 'use client';
 
 import { ICON_BUTTON } from '@/components/ui/styles';
-import { useFocusTrap } from '@manawg/shared/lib/hooks/useFocusTrap';
+import { useFocusTrap } from '@/shared/lib/hooks/useFocusTrap';
 import { X } from 'lucide-react';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';

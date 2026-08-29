@@ -7,10 +7,7 @@ const config: Config = {
 		'./src/components/**/*.{js,ts,jsx,tsx,mdx}',
 		'./src/features/**/*.{js,ts,jsx,tsx,mdx}',
 		'./src/app/**/*.{js,ts,jsx,tsx,mdx}',
-		// @manawg/shared ships raw TSX consumed directly by this app's build —
-		// Tailwind needs to scan it too, or utility classes used only inside
-		// shared components (InstallButton, ThemeToggle, ...) never get generated.
-		'../../packages/shared/src/**/*.{js,ts,jsx,tsx,mdx}',
+		'./src/shared/**/*.{js,ts,jsx,tsx,mdx}',
 	],
 	theme: {
 		// Breakpoints — Tailwind defaults, explicitly declared for clarity

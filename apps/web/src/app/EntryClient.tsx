@@ -1,6 +1,6 @@
 'use client';
 
-import { getKnownWgs } from '@manawg/shared/lib/identity';
+import { getKnownWgs } from '@/shared/lib/identity';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 

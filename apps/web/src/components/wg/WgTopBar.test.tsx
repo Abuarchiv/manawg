@@ -18,7 +18,7 @@ vi.mock('@/components/wg/ChatTopBarLink', () => ({
 	),
 }));
 
-vi.mock('@manawg/shared/components/theme/ThemeToggle', () => ({
+vi.mock('@/shared/components/theme/ThemeToggle', () => ({
 	ThemeToggle: ({ className }: { className?: string }) => (
 		<button type="button" className={className}>
 			Theme
