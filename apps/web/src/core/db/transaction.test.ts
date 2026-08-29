@@ -22,6 +22,23 @@ vi.mock('drizzle-orm/node-postgres', () => ({
 }));
 
 const txStub = { marker: 'tx' };
+const TRANSACTION_ENV_VARS = [
+	'POSTGRES_URL',
+	'DATABASE_URL',
+	'DATABASE_MIGRATION_URL',
+	'POSTGRES_URL_NON_POOLING',
+	'DATABASE_URL_UNPOOLED',
+] as const;
+const originalEnv = Object.fromEntries(
+	TRANSACTION_ENV_VARS.map((name) => [name, process.env[name]]),
+) as Record<(typeof TRANSACTION_ENV_VARS)[number], string | undefined>;
+
+const restoreTransactionEnv = () => {
+	for (const name of TRANSACTION_ENV_VARS) {
+		if (originalEnv[name] === undefined) unsetEnvVar(name);
+		else process.env[name] = originalEnv[name];
+	}
+};
 
 const loadModule = async () => {
 	vi.resetModules();
@@ -32,11 +49,13 @@ describe('withTransaction', () => {
 	beforeEach(() => {
 		pgPoolCtor.mockClear();
 		drizzleNode.mockClear();
-		process.env.POSTGRES_URL = 'postgres://user:pw@ep-cool-name.eu-central-1.aws.neon.tech/manawg';
+		for (const name of TRANSACTION_ENV_VARS) unsetEnvVar(name);
+		process.env.POSTGRES_URL =
+			'postgres://user:pw@ep-cool-name.eu-central-1.aws.neon.tech:5432/manawg';
 	});
 
 	afterEach(() => {
-		unsetEnvVar('POSTGRES_URL');
+		restoreTransactionEnv();
 	});
 
 	it('returns whatever the callback returns', async () => {
@@ -78,6 +97,31 @@ describe('withTransaction', () => {
 
 			expect(pgPoolCtor).toHaveBeenCalledWith({ connectionString: expect.any(String), max: 1 });
 			expect(drizzleNode).toHaveBeenCalled();
+		});
+
+		it('prefers DATABASE_MIGRATION_URL over the runtime transaction pooler', async () => {
+			process.env.POSTGRES_URL =
+				'postgres://user:pw@aws-0-eu-central-1.pooler.supabase.com:6543/manawg';
+			process.env.DATABASE_MIGRATION_URL = 'postgres://user:pw@db.example.supabase.co:5432/manawg';
+			const { withTransaction } = await loadModule();
+
+			await withTransaction(async () => null);
+
+			expect(pgPoolCtor).toHaveBeenCalledWith({
+				connectionString: process.env.DATABASE_MIGRATION_URL,
+				max: 1,
+			});
+		});
+
+		it('rejects the runtime Supavisor Transaction Pooler without a direct URL', async () => {
+			process.env.POSTGRES_URL =
+				'postgres://user:pw@aws-0-eu-central-1.pooler.supabase.com:6543/manawg';
+			const { withTransaction } = await loadModule();
+
+			await expect(withTransaction(async () => null)).rejects.toThrow(
+				/withTransaction connection.*port 6543/,
+			);
+			expect(pgPoolCtor).not.toHaveBeenCalled();
 		});
 	});
 
@@ -121,8 +165,7 @@ describe('withTransaction', () => {
 	});
 
 	it('surfaces the actionable error when no connection string is configured', async () => {
-		unsetEnvVar('POSTGRES_URL');
-		unsetEnvVar('DATABASE_URL');
+		for (const name of TRANSACTION_ENV_VARS) unsetEnvVar(name);
 		const { withTransaction } = await loadModule();
 
 		await expect(withTransaction(async () => null)).rejects.toThrow(/POSTGRES_URL/);

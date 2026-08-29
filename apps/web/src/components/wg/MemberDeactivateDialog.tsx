@@ -30,6 +30,7 @@ interface MemberDeactivateDialogProps {
 	member: { id: string; name: string };
 	/** Identity of the device performing the action (for the member-id header). */
 	viewerMemberId: string;
+	viewerMemberToken?: string | undefined;
 	onClose: () => void;
 	onDeactivated: (name: string) => void;
 }
@@ -46,6 +47,7 @@ export function MemberDeactivateDialog({
 	encodedShareCode,
 	member,
 	viewerMemberId,
+	viewerMemberToken,
 	onClose,
 	onDeactivated,
 }: MemberDeactivateDialogProps) {
@@ -95,6 +97,7 @@ export function MemberDeactivateDialog({
 			{
 				method: 'PATCH',
 				memberId: viewerMemberId,
+				memberToken: viewerMemberToken,
 				body: JSON.stringify({ active: false }),
 			},
 		);

@@ -7,8 +7,15 @@ import {
 	wgMembers,
 } from '@/core/db';
 import { badRequest, serverError, tooMany } from '@/core/errors';
+import {
+	ReplayCache,
+	type ReplayReservation,
+	claimReplaySlotWithRetry,
+	replayKey,
+} from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { imageUrlSchema } from '@/core/validators/image-url';
@@ -25,6 +32,17 @@ const CONTENT_MIN = 1;
 const CONTENT_MAX = 2000;
 const ANNOUNCEMENTS_LIST_LIMIT = 300;
 const announcementKindSchema = z.enum(ANNOUNCEMENT_KINDS);
+const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
+
+type AnnouncementCreateResponseBody = { announcement: unknown };
+
+const announcementCreateReplay = new ReplayCache<AnnouncementCreateResponseBody>(
+	IDEMPOTENCY_TTL_MS,
+);
+
+function announcementCreateIdempotencyScope(wgId: string, memberId: string): string {
+	return `announcements-create:${wgId}:${memberId}`;
+}
 
 const createAnnouncementSchema = z.object({
 	content: z.string().trim().min(CONTENT_MIN).max(CONTENT_MAX),
@@ -121,6 +139,10 @@ export const GET = withWgRoute(
 );
 
 export const POST = withWgRoute('announcements POST', async (req, { code }) => {
+	let replayReservation: Extract<
+		ReplayReservation<AnnouncementCreateResponseBody>,
+		{ owned: true }
+	> | null = null;
 	let raw: unknown;
 	try {
 		raw = await req.json();
@@ -144,9 +166,23 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 		safeSource !== 'manual' && typeof sourcePath === 'string' && sourcePath.startsWith('/')
 			? sourcePath
 			: null;
+	const idemKey = readIdempotencyKey(req);
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
+	const idemScope = idemKey
+		? announcementCreateIdempotencyScope(wg.id, auth.member.memberId)
+		: null;
+	const idemReplayKey = idemScope && idemKey ? replayKey(idemScope, idemKey) : null;
+	if (idemScope && idemKey && idemReplayKey) {
+		const localReplay = announcementCreateReplay.get(idemReplayKey);
+		if (localReplay) return NextResponse.json(await localReplay);
+		const cached = await getCachedResponse<AnnouncementCreateResponseBody>(idemScope, idemKey);
+		if (cached) {
+			announcementCreateReplay.remember(idemReplayKey, cached);
+			return NextResponse.json(cached);
+		}
+	}
 	const limited = await checkRateLimit(
 		wgWriteLimiter,
 		`announcement:${wg.id}:${auth.member.memberId}`,
@@ -156,43 +192,73 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 	// SECURITY: author is always the authenticated caller. Body-supplied
 	// author ids are ignored to prevent impersonation.
 	const author = auth.member.memberId;
+	const replaySlot =
+		idemReplayKey === null ? null : announcementCreateReplay.reserve(idemReplayKey);
+	if (replaySlot?.owned === false) return NextResponse.json(await replaySlot.promise);
+	replayReservation = replaySlot;
 
-	const [item] = await db
-		.insert(announcements)
-		.values({
+	try {
+		if (idemScope && idemKey) {
+			const slot = await claimReplaySlotWithRetry<AnnouncementCreateResponseBody>(
+				idemScope,
+				idemKey,
+			);
+			if (!slot.won && slot.cached) {
+				replayReservation?.resolve(slot.cached);
+				return NextResponse.json(slot.cached);
+			}
+		}
+		const [item] = await db
+			.insert(announcements)
+			.values({
+				wgId: wg.id,
+				authorMemberId: author,
+				content,
+				imageUrl: safeImageUrl,
+				kind,
+				source: safeSource,
+				sourcePath: safeSourcePath,
+			})
+			.returning();
+		if (!item) {
+			const err = new Error('insert_failed');
+			replayReservation?.reject(err);
+			return serverError('insert_failed');
+		}
+		await recordAuditEvent({
 			wgId: wg.id,
-			authorMemberId: author,
-			content,
-			imageUrl: safeImageUrl,
-			kind,
-			source: safeSource,
-			sourcePath: safeSourcePath,
-		})
-		.returning();
-	if (!item) return serverError('insert_failed');
-	await recordAuditEvent({
-		wgId: wg.id,
-		memberId: auth.member.memberId,
-		eventType: 'announcement.created',
-		entityType: 'announcement',
-		entityId: item.id,
-		summary: `${auth.member.name} hat einen Pinnwand-Beitrag erstellt.`,
-		metadata: {
-			contentPreview: content.slice(0, 120),
-			kind,
-			source: safeSource,
-			hasImage: Boolean(safeImageUrl),
-		},
-	});
-	void dispatchNotification({
-		wg,
-		event: 'announcement.posted',
-		payload: {
-			announcementId: item.id,
-			title: content.slice(0, 120),
-			actorName: auth.member.name,
-		},
-		excludeMemberId: auth.member.memberId,
-	}).catch((err) => console.error('[announcements POST] notification failed', err));
-	return NextResponse.json({ announcement: item });
+			memberId: auth.member.memberId,
+			eventType: 'announcement.created',
+			entityType: 'announcement',
+			entityId: item.id,
+			summary: `${auth.member.name} hat einen Pinnwand-Beitrag erstellt.`,
+			metadata: {
+				contentPreview: content.slice(0, 120),
+				kind,
+				source: safeSource,
+				hasImage: Boolean(safeImageUrl),
+			},
+		});
+		void dispatchNotification({
+			wg,
+			event: 'announcement.posted',
+			payload: {
+				announcementId: item.id,
+				title: content.slice(0, 120),
+				actorName: auth.member.name,
+			},
+			excludeMemberId: auth.member.memberId,
+		}).catch((err) => console.error('[announcements POST] notification failed', err));
+		const responseBody = { announcement: item };
+		if (idemScope && idemKey && replayReservation?.owned) {
+			replayReservation.resolve(responseBody);
+			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) =>
+				console.warn('[announcements POST] idem cache write failed', err),
+			);
+		}
+		return NextResponse.json(responseBody);
+	} catch (err) {
+		replayReservation?.reject(err);
+		throw err;
+	}
 });

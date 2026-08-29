@@ -13,11 +13,27 @@ import {
 	getOfflineActionRisk,
 	getOfflineActionSummary,
 	getOfflineRetryDelayMs,
+	isOfflineIdempotencyKey,
 	serializeOfflineAction,
 	shouldRetryOfflineAction,
 } from './offline-queue';
 
 describe('offline queue helpers', () => {
+	it('stores the stable WG id without storing a member token', () => {
+		const action = createQueuedShoppingItem({
+			wgId: 'wg-1',
+			shareCode: 'ABC12345',
+			memberId: 'member-1',
+			name: 'Milch',
+			quantity: null,
+			now: 1,
+		});
+
+		expect(action.wgId).toBe('wg-1');
+		expect(action).not.toHaveProperty('memberToken');
+		expect(isOfflineIdempotencyKey(action.idempotencyKey)).toBe(true);
+	});
+
 	it('creates a stable queued shopping action that can be retried later', () => {
 		const action = createQueuedShoppingItem({
 			shareCode: 'ABC12345',
@@ -27,7 +43,7 @@ describe('offline queue helpers', () => {
 			now: 1_768_000_000_000,
 		});
 
-		expect(action).toEqual({
+		expect(action).toMatchObject({
 			id: 'shopping:ABC12345:1768000000000:milch',
 			type: 'shopping.create',
 			shareCode: 'ABC12345',
@@ -35,9 +51,8 @@ describe('offline queue helpers', () => {
 			createdAt: '2026-01-09T23:06:40.000Z',
 			payload: { name: 'Milch', quantity: '2x' },
 		});
-		expect(serializeOfflineAction(action)).toBe(
-			'{"id":"shopping:ABC12345:1768000000000:milch","type":"shopping.create","shareCode":"ABC12345","memberId":"member-1","createdAt":"2026-01-09T23:06:40.000Z","payload":{"name":"Milch","quantity":"2x"}}',
-		);
+		expect(isOfflineIdempotencyKey(action.idempotencyKey)).toBe(true);
+		expect(JSON.parse(serializeOfflineAction(action))).toEqual(action);
 	});
 
 	it('creates a queued shopping status update for offline toggles', () => {
@@ -50,7 +65,7 @@ describe('offline queue helpers', () => {
 			now: 1_768_000_000_000,
 		});
 
-		expect(action).toEqual({
+		expect(action).toMatchObject({
 			id: 'shopping-update:ABC12345:1768000000000:item-1',
 			type: 'shopping.update',
 			shareCode: 'ABC12345',
@@ -58,6 +73,7 @@ describe('offline queue helpers', () => {
 			createdAt: '2026-01-09T23:06:40.000Z',
 			payload: { itemId: 'item-1', name: 'Milch', bought: true },
 		});
+		expect(isOfflineIdempotencyKey(action.idempotencyKey)).toBe(true);
 	});
 
 	it('creates queued actions for announcements, chores, and expenses', () => {

@@ -12,7 +12,11 @@ const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 // duplicate expense inserts (iter 13 outage).
 const redis = url && token ? new Redis({ url, token }) : null;
 
-const TTL_SECONDS = 5 * 60;
+// Queued offline writes can be retried days after a lost response, so the
+// durable response cache must outlive the retry window. Redis still only
+// deduplicates best-effort audit events briefly.
+const RESPONSE_REPLAY_TTL_SECONDS = 7 * 24 * 60 * 60;
+const AUDIT_DEDUP_TTL_SECONDS = 5 * 60;
 // Cap the cached payload to avoid blowing storage if a route accidentally
 // stuffs huge JSON. 32 KiB easily covers an expense + 50 splits.
 const MAX_CACHED_RESPONSE_BYTES = 32 * 1024;
@@ -49,7 +53,7 @@ export async function claimResponseSlot(scope: string, key: string): Promise<boo
 				scope,
 				key,
 				responseBody: CLAIM_PLACEHOLDER,
-				expiresAt: new Date(Date.now() + TTL_SECONDS * 1000),
+				expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
 			})
 			.onConflictDoNothing()
 			.returning({ scope: idempotencyResponses.scope });
@@ -75,7 +79,7 @@ export async function claimIdempotencySlot(scope: string, key: string): Promise<
 	try {
 		const result = await redis.set(`manawg:idem:${scope}:${key}`, '1', {
 			nx: true,
-			ex: TTL_SECONDS,
+			ex: AUDIT_DEDUP_TTL_SECONDS,
 		});
 		// Upstash returns 'OK' when the key was set, null when NX rejected it.
 		return result === 'OK';
@@ -130,7 +134,7 @@ export async function getCachedResponse<T>(scope: string, key: string): Promise<
 }
 
 /**
- * Cache a response payload under `scope:key` with the same 5-minute TTL.
+ * Cache a response payload under `scope:key` for the seven-day offline retry window.
  * Silently drops payloads larger than 32 KiB so a misbehaving caller cannot
  * exhaust storage. `ON CONFLICT DO UPDATE` replaces a temporary claim marker
  * written by `claimResponseSlot` with the real response body.
@@ -154,13 +158,13 @@ export async function setCachedResponse(
 				scope,
 				key,
 				responseBody: payload as object,
-				expiresAt: new Date(Date.now() + TTL_SECONDS * 1000),
+				expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
 			})
 			.onConflictDoUpdate({
 				target: [idempotencyResponses.scope, idempotencyResponses.key],
 				set: {
 					responseBody: payload as object,
-					expiresAt: new Date(Date.now() + TTL_SECONDS * 1000),
+					expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
 				},
 			});
 	} catch (err) {

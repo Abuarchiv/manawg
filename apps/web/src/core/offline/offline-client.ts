@@ -1,12 +1,15 @@
 'use client';
 
 import { apiFetch } from '@/core/infra/api-client';
+import { getIdentity } from '@/shared/lib/identity';
 import { isPendingImageToken, uploadPendingImageToken } from './offline-images';
 import {
 	type OfflineAction,
 	type OfflineActionType,
+	createOfflineIdempotencyKey,
 	explainOfflineActionFailure,
 	getOfflineActionRequest,
+	isOfflineIdempotencyKey,
 	serializeOfflineAction,
 	shouldRetryOfflineAction,
 } from './offline-queue';
@@ -31,6 +34,10 @@ const MISSING_PENDING_IMAGE_ERROR =
 	'Bild fehlt: Der lokale Anhang ist auf diesem Gerät nicht mehr verfügbar. Die Aktion bleibt ohne Anhang sendbar; wähle das Bild bei Bedarf erneut aus.';
 const RECURRING_ADVANCE_ERROR =
 	'Fixkosten-Vorlage nicht weitergeschoben: Die Ausgabe wurde erstellt. Die Vorlage bleibt zur Nachholung in der Warteschlange.';
+const REAUTH_REQUIRED_ERROR =
+	'Erneute Anmeldung erforderlich: Öffne die WG erneut oder tritt mit einem aktuellen Einladungslink bei.';
+const IDEMPOTENCY_KEY_ERROR =
+	'Idempotenz-Schlüssel konnte nicht erzeugt werden. Die Aktion bleibt gespeichert und wird nicht gesendet.';
 const syncInFlight = new Map<string, Promise<number>>();
 let syncTail: Promise<unknown> = Promise.resolve();
 
@@ -151,6 +158,7 @@ function isOfflineAction(value: unknown): value is OfflineAction {
 	) {
 		return false;
 	}
+	if (value.wgId !== undefined && typeof value.wgId !== 'string') return false;
 	const type = value.type as OfflineActionType;
 	return OFFLINE_ACTION_TYPES.has(type) && hasValidPayload(type, value.payload);
 }
@@ -244,10 +252,13 @@ export function enqueueOfflineAction(action: OfflineAction): number {
 	return writeOfflineQueue(next) ? next.length : 0;
 }
 
-async function resolvePendingImages(action: OfflineAction): Promise<OfflineAction> {
+async function resolvePendingImages(
+	action: OfflineAction,
+	memberToken: string,
+): Promise<OfflineAction> {
 	const imageUrl = action.payload.imageUrl;
 	if (typeof imageUrl !== 'string' || !isPendingImageToken(imageUrl)) return action;
-	const publicUrl = await uploadPendingImageToken(imageUrl, action.memberId);
+	const publicUrl = await uploadPendingImageToken(imageUrl, action.memberId, memberToken);
 	return {
 		...action,
 		payload: {
@@ -286,10 +297,13 @@ function createRecurringAdvanceRetry(action: OfflineAction, now: number): Offlin
 	if (action.type !== 'expense.create') return null;
 	const payload = getRecurringAdvancePayload(action);
 	if (!payload) return null;
+	const idempotencyKey = createOfflineIdempotencyKey();
 	return {
 		id: `recurring-advance:${action.shareCode}:${payload.id}`,
+		...(idempotencyKey ? { idempotencyKey } : {}),
 		type: 'recurring.advance',
 		shareCode: action.shareCode,
+		...(action.wgId ? { wgId: action.wgId } : {}),
 		memberId: action.memberId,
 		createdAt: new Date(now).toISOString(),
 		payload: {
@@ -304,6 +318,12 @@ function createRecurringAdvanceRetry(action: OfflineAction, now: number): Offlin
 	};
 }
 
+function backfillIdempotencyKey(action: OfflineAction): OfflineAction {
+	if (isOfflineIdempotencyKey(action.idempotencyKey)) return action;
+	const idempotencyKey = createOfflineIdempotencyKey();
+	return idempotencyKey ? { ...action, idempotencyKey } : action;
+}
+
 function isRecurringAlreadyAdvanced(res: { status: number; error: string }): boolean {
 	return res.status === 409 && res.error === 'recurring_expense_already_advanced';
 }
@@ -314,7 +334,7 @@ function isChoreAlreadyCompleted(
 ): boolean {
 	return (
 		action.type === 'chore.complete' &&
-		res.status === 404 &&
+		res.status === 409 &&
 		res.error === 'chore_already_completed'
 	);
 }
@@ -346,8 +366,9 @@ export async function syncOfflineActions(
 }
 
 async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions): Promise<number> {
-	const queue = readOfflineQueue();
-	if (queue.length === 0) return 0;
+	const storedQueue = readOfflineQueue();
+	if (storedQueue.length === 0) return 0;
+	const queue = storedQueue.map(backfillIdempotencyKey);
 	// Probe storage writability BEFORE spending network calls — if we cannot
 	// persist removals, replaying would duplicate mutations. This rewrite of
 	// the just-read snapshot races with concurrent enqueues only for the few
@@ -378,16 +399,37 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 			remaining.push(action);
 			continue;
 		}
+		const idempotencyKey = action.idempotencyKey;
+		if (!isOfflineIdempotencyKey(idempotencyKey)) {
+			remaining.push({
+				...action,
+				attempts: (action.attempts ?? 0) + 1,
+				lastAttemptAt: new Date(now).toISOString(),
+				lastError: IDEMPOTENCY_KEY_ERROR,
+			});
+			continue;
+		}
+		const identity = action.wgId ? getIdentity(action.wgId) : null;
+		if (!identity?.memberToken || identity.memberId !== action.memberId) {
+			remaining.push({
+				...action,
+				attempts: (action.attempts ?? 0) + 1,
+				lastAttemptAt: new Date(now).toISOString(),
+				lastError: REAUTH_REQUIRED_ERROR,
+			});
+			continue;
+		}
 		try {
-			const readyAction = await resolvePendingImages(action);
+			const readyAction = await resolvePendingImages(action, identity.memberToken);
 			const request = getOfflineActionRequest(readyAction);
 			const res = await apiFetch<unknown>(request.path, {
 				method: request.method,
 				memberId: readyAction.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify(request.body),
 				// Server deduplicates POSTs by this header — without it a lost
 				// response (status 0) would be retried into a duplicate mutation.
-				...(request.method === 'POST' ? { headers: { 'Idempotency-Key': readyAction.id } } : {}),
+				...(request.method === 'POST' ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
 			});
 			if (res.ok) {
 				recordSynced(readyAction);
@@ -399,6 +441,7 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 							{
 								method: 'PATCH',
 								memberId: readyAction.memberId,
+								memberToken: identity.memberToken,
 								body: JSON.stringify(recurringAdvance),
 							},
 						);

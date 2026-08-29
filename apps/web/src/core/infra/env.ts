@@ -62,9 +62,15 @@ function isSet(env: EnvSource, name: string): boolean {
 
 export function checkEnv(env: EnvSource): EnvCheckResult {
 	const isProduction = env.VERCEL_ENV === 'production';
+	const isFixtureE2EDbDown =
+		!isProduction &&
+		env.CI === 'true' &&
+		env.NEXT_PUBLIC_DB_DOWN === 'true' &&
+		!isSet(env, 'POSTGRES_URL') &&
+		!isSet(env, 'DATABASE_URL');
 
 	const missingRequired: string[] = [];
-	if (!isSet(env, 'POSTGRES_URL') && !isSet(env, 'DATABASE_URL')) {
+	if (!isFixtureE2EDbDown && !isSet(env, 'POSTGRES_URL') && !isSet(env, 'DATABASE_URL')) {
 		missingRequired.push('POSTGRES_URL');
 	}
 	if (isProduction) {

@@ -2,8 +2,15 @@ import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, shoppingItems } from '@/core/db';
 import { badRequest, conflict, serverError, tooMany } from '@/core/errors';
+import {
+	ReplayCache,
+	type ReplayReservation,
+	claimReplaySlotWithRetry,
+	replayKey,
+} from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { and, asc, eq, isNotNull } from 'drizzle-orm';
@@ -15,6 +22,15 @@ const NAME_MAX = 120;
 const QUANTITY_MAX = 40;
 const SHOPPING_ITEMS_UNIQUE_OPEN_NAME = 'shopping_items_unique_open_name';
 const SHOPPING_ITEMS_LIST_LIMIT = 1000;
+const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
+
+type ShoppingCreateResponseBody = { item: unknown };
+
+const shoppingCreateReplay = new ReplayCache<ShoppingCreateResponseBody>(IDEMPOTENCY_TTL_MS);
+
+function shoppingCreateIdempotencyScope(wgId: string, memberId: string): string {
+	return `shopping-create:${wgId}:${memberId}`;
+}
 
 const createShoppingItemSchema = z.object({
 	name: z.string().trim().min(NAME_MIN).max(NAME_MAX),
@@ -46,6 +62,10 @@ export const GET = withWgRoute(
 );
 
 export const POST = withWgRoute('shopping POST', async (req, { code }) => {
+	let replayReservation: Extract<
+		ReplayReservation<ShoppingCreateResponseBody>,
+		{ owned: true }
+	> | null = null;
 	let raw: unknown;
 	try {
 		raw = await req.json();
@@ -63,10 +83,23 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 
 	const { name, quantity = null, bought = false } = parsed.data;
 	const safeQuantity = typeof quantity === 'string' && quantity.length > 0 ? quantity : null;
+	const idemKey = readIdempotencyKey(req);
 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
+	const idemScope = idemKey ? shoppingCreateIdempotencyScope(wg.id, auth.member.memberId) : null;
+	const idemReplayKey = idemScope && idemKey ? replayKey(idemScope, idemKey) : null;
+	if (idemScope && idemKey && idemReplayKey) {
+		const localReplay = shoppingCreateReplay.get(idemReplayKey);
+		if (localReplay) return NextResponse.json(await localReplay);
+
+		const cached = await getCachedResponse<ShoppingCreateResponseBody>(idemScope, idemKey);
+		if (cached) {
+			shoppingCreateReplay.remember(idemReplayKey, cached);
+			return NextResponse.json(cached);
+		}
+	}
 
 	// Per-member write cap on top of the middleware's per-IP limit. Creating an
 	// item fans out to a system announcement and a push to every other member,
@@ -82,54 +115,82 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 	// SECURITY: addedBy is always the authenticated caller. Any body-supplied
 	// member id is ignored to prevent attribution spoofing.
 	const addedBy = auth.member.memberId;
+	const replaySlot = idemReplayKey === null ? null : shoppingCreateReplay.reserve(idemReplayKey);
+	if (replaySlot?.owned === false) return NextResponse.json(await replaySlot.promise);
+	replayReservation = replaySlot;
 
-	let item: typeof shoppingItems.$inferSelect | undefined;
 	try {
-		[item] = await db
-			.insert(shoppingItems)
-			.values({
-				wgId: wg.id,
-				addedByMemberId: addedBy,
-				name,
-				quantity: safeQuantity,
-				boughtAt: bought ? new Date() : null,
-				boughtByMemberId: bought ? addedBy : null,
-			})
-			.returning();
-	} catch (insertErr) {
-		if (isOpenShoppingItemDuplicate(insertErr)) {
-			return conflict('shopping_item_duplicate');
+		if (idemScope && idemKey) {
+			const slot = await claimReplaySlotWithRetry<ShoppingCreateResponseBody>(idemScope, idemKey);
+			if (!slot.won && slot.cached) {
+				replayReservation?.resolve(slot.cached);
+				return NextResponse.json(slot.cached);
+			}
 		}
-		throw insertErr;
+
+		let item: typeof shoppingItems.$inferSelect | undefined;
+		try {
+			[item] = await db
+				.insert(shoppingItems)
+				.values({
+					wgId: wg.id,
+					addedByMemberId: addedBy,
+					name,
+					quantity: safeQuantity,
+					boughtAt: bought ? new Date() : null,
+					boughtByMemberId: bought ? addedBy : null,
+				})
+				.returning();
+		} catch (insertErr) {
+			if (isOpenShoppingItemDuplicate(insertErr)) {
+				replayReservation?.reject(insertErr);
+				return conflict('shopping_item_duplicate');
+			}
+			throw insertErr;
+		}
+		if (!item) {
+			const err = new Error('insert_failed');
+			replayReservation?.reject(err);
+			return serverError('insert_failed');
+		}
+		await recordAuditEvent({
+			wgId: wg.id,
+			memberId: auth.member.memberId,
+			eventType: 'shopping.created',
+			entityType: 'shopping_item',
+			entityId: item.id,
+			summary: `${auth.member.name} hat ${name} auf die Einkaufsliste gesetzt.`,
+			metadata: {
+				title: name,
+				quantity: safeQuantity,
+			},
+		});
+		await postSystemNotice({
+			wgId: wg.id,
+			authorMemberId: addedBy,
+			kind: 'request',
+			source: 'shopping',
+			sourcePath: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
+			content: `${auth.member.name} hat ${safeQuantity ? `${name} (${safeQuantity})` : name} auf die Einkaufsliste gesetzt.`,
+		});
+		void dispatchNotification({
+			wg,
+			event: 'shopping.added',
+			payload: { title: name, actorName: auth.member.name, shoppingItemId: item.id },
+			excludeMemberId: auth.member.memberId,
+		}).catch((err) => console.error('[shopping POST] notification failed', err));
+		const responseBody = { item };
+		if (idemScope && idemKey && replayReservation?.owned) {
+			replayReservation.resolve(responseBody);
+			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) =>
+				console.warn('[shopping POST] idem cache write failed', err),
+			);
+		}
+		return NextResponse.json(responseBody);
+	} catch (err) {
+		replayReservation?.reject(err);
+		throw err;
 	}
-	if (!item) return serverError('insert_failed');
-	await recordAuditEvent({
-		wgId: wg.id,
-		memberId: auth.member.memberId,
-		eventType: 'shopping.created',
-		entityType: 'shopping_item',
-		entityId: item.id,
-		summary: `${auth.member.name} hat ${name} auf die Einkaufsliste gesetzt.`,
-		metadata: {
-			title: name,
-			quantity: safeQuantity,
-		},
-	});
-	await postSystemNotice({
-		wgId: wg.id,
-		authorMemberId: addedBy,
-		kind: 'request',
-		source: 'shopping',
-		sourcePath: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
-		content: `${auth.member.name} hat ${safeQuantity ? `${name} (${safeQuantity})` : name} auf die Einkaufsliste gesetzt.`,
-	});
-	void dispatchNotification({
-		wg,
-		event: 'shopping.added',
-		payload: { title: name, actorName: auth.member.name, shoppingItemId: item.id },
-		excludeMemberId: auth.member.memberId,
-	}).catch((err) => console.error('[shopping POST] notification failed', err));
-	return NextResponse.json({ item });
 });
 
 export const DELETE = withWgRoute('shopping DELETE', async (req, { code }) => {

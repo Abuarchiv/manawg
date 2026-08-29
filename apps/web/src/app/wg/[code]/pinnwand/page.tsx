@@ -371,6 +371,7 @@ export default function PinnwandPage(): React.ReactElement {
 				{
 					method: 'POST',
 					memberId: identity.memberId,
+					memberToken: identity.memberToken,
 					body: JSON.stringify({
 						content: text,
 						imageUrl,
@@ -381,6 +382,7 @@ export default function PinnwandPage(): React.ReactElement {
 			if (!res.ok) {
 				if (res.status === 0) {
 					const queued = createQueuedAnnouncement({
+						wgId: wg.id,
 						shareCode: wg.shareCode,
 						memberId: identity.memberId,
 						content: text,
@@ -437,6 +439,7 @@ export default function PinnwandPage(): React.ReactElement {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify(body),
 			},
 		);
@@ -519,6 +522,7 @@ export default function PinnwandPage(): React.ReactElement {
 			{
 				method: 'POST',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({ reaction }),
 			},
 		);
@@ -562,6 +566,7 @@ export default function PinnwandPage(): React.ReactElement {
 			{
 				method: 'POST',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({ content }),
 			},
 		);
@@ -607,6 +612,7 @@ export default function PinnwandPage(): React.ReactElement {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({ content }),
 			},
 		);
@@ -649,6 +655,7 @@ export default function PinnwandPage(): React.ReactElement {
 			{
 				method: 'DELETE',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 			},
 		);
 		end(pendingKey);
@@ -674,6 +681,7 @@ export default function PinnwandPage(): React.ReactElement {
 			{
 				method: 'DELETE',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 			},
 		);
 		end(id);

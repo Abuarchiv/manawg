@@ -1,7 +1,7 @@
 {
 	"framework": "nextjs",
-	"buildCommand": "cd ../.. && pnpm --filter @manawg/web vercel-build",
-	"installCommand": "cd ../.. && pnpm install",
+	"buildCommand": "cd ../.. && pnpm build",
+	"installCommand": "cd ../.. && pnpm install --frozen-lockfile",
 	"outputDirectory": ".next",
 	"ignoreCommand": "exit 1",
 	"crons": [

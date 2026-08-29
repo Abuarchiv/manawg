@@ -133,10 +133,11 @@ export function ChatView({
 			await apiFetch(`/api/wg/${encodedShareCode}/chat/read`, {
 				method: 'POST',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({ lastReadMessageId: messageId }),
 			});
 		},
-		[encodedShareCode, identity.memberId],
+		[encodedShareCode, identity.memberId, identity.memberToken],
 	);
 
 	const markLatestRead = useCallback(() => {
@@ -247,6 +248,7 @@ export function ChatView({
 			{
 				method: 'POST',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify(input),
 			},
 		);
@@ -267,6 +269,7 @@ export function ChatView({
 		const res = await apiFetch(`/api/wg/${encodedShareCode}/chat/messages/${messageId}/reactions`, {
 			method: 'POST',
 			memberId: identity.memberId,
+			memberToken: identity.memberToken,
 			body: JSON.stringify({ emoji }),
 		});
 		if (!res.ok) {
@@ -286,7 +289,7 @@ export function ChatView({
 	async function unreact(messageId: string, emoji: string): Promise<void> {
 		const res = await apiFetch(
 			`/api/wg/${encodedShareCode}/chat/messages/${messageId}/reactions?emoji=${encodeURIComponent(emoji)}`,
-			{ method: 'DELETE', memberId: identity.memberId },
+			{ method: 'DELETE', memberId: identity.memberId, memberToken: identity.memberToken },
 		);
 		if (!res.ok) {
 			toast.error(explainChatError('unreact', res.error));
@@ -310,6 +313,7 @@ export function ChatView({
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({ body: next }),
 			},
 		);
@@ -337,6 +341,7 @@ export function ChatView({
 		const res = await apiFetch(`/api/wg/${encodedShareCode}/chat/messages/${messageId}`, {
 			method: 'DELETE',
 			memberId: identity.memberId,
+			memberToken: identity.memberToken,
 		});
 		if (!res.ok) {
 			toast.error(explainChatError('delete', res.error));

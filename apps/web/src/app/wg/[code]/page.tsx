@@ -750,6 +750,7 @@ export default function WgHomePage() {
 			<DashboardGrid
 				shareCode={wg.shareCode}
 				memberId={identity.memberId}
+				memberToken={identity.memberToken}
 				expenseCount={data?.setup.hasExpense ? 5 : 0}
 			/>
 		</div>

@@ -103,6 +103,7 @@ export default function VorraetePage() {
 					items={items}
 					shareCode={wg.shareCode}
 					memberId={identity.memberId}
+					memberToken={identity.memberToken}
 					onChanged={() => void load(true)}
 				/>
 			)}

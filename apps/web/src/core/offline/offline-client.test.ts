@@ -5,15 +5,28 @@ import {
 	SYNCED_IDS_KEY,
 	countOfflineActions,
 	enqueueOfflineAction,
+	writeOfflineQueue as persistOfflineQueue,
 	readOfflineQueue,
 	syncOfflineActions,
-	writeOfflineQueue,
 } from './offline-client';
+
+const TEST_WG_ID = 'wg-test';
+const TEST_MEMBER_TOKEN = 'test-member-token';
+const TEST_IDEMPOTENCY_KEY = '5c1f6d70-30d4-4f91-8a45-674aafd4b351';
+const writeOfflineQueue = (actions: Parameters<typeof persistOfflineQueue>[0]) =>
+	persistOfflineQueue(
+		actions.map((action) => ({
+			...action,
+			idempotencyKey: action.idempotencyKey ?? TEST_IDEMPOTENCY_KEY,
+			wgId: action.wgId ?? TEST_WG_ID,
+		})),
+	);
 
 const apiFetchMock = vi.fn();
 const offlineImageMock = vi.hoisted(() => ({
 	uploadPendingImageToken: vi.fn(),
 }));
+const identityMock = vi.hoisted(() => ({ getIdentity: vi.fn() }));
 
 vi.mock('@/core/infra/api-client', () => ({
 	apiFetch: (...args: unknown[]) => apiFetchMock(...args),
@@ -25,12 +38,110 @@ vi.mock('@/core/offline/offline-images', () => ({
 	uploadPendingImageToken: offlineImageMock.uploadPendingImageToken,
 }));
 
+vi.mock('@/shared/lib/identity', () => ({
+	getIdentity: (...args: unknown[]) => identityMock.getIdentity(...args),
+}));
+
 describe('offline client queue helpers', () => {
 	beforeEach(() => {
 		window.localStorage.removeItem(OFFLINE_QUEUE_KEY);
 		window.localStorage.removeItem(SYNCED_IDS_KEY);
 		apiFetchMock.mockReset();
 		offlineImageMock.uploadPendingImageToken.mockReset();
+		identityMock.getIdentity.mockReset();
+		identityMock.getIdentity.mockReturnValue({
+			memberId: 'm1',
+			memberToken: TEST_MEMBER_TOKEN,
+		});
+	});
+
+	it('resolves the stored token for mutations and pending-image signing', async () => {
+		identityMock.getIdentity.mockReturnValue({ memberId: 'm1', memberToken: 'signed-token' });
+		offlineImageMock.uploadPendingImageToken.mockResolvedValue('https://cdn.test/image.jpg');
+		apiFetchMock.mockImplementation(() => {
+			expect(readOfflineQueue()[0]?.idempotencyKey).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+			);
+			return Promise.resolve({ ok: true, data: {} });
+		});
+		persistOfflineQueue([
+			{
+				id: 'announcement:ABC12345:test',
+				idempotencyKey: 'invalid-legacy-key',
+				type: 'announcement.create',
+				wgId: 'wg-1',
+				shareCode: 'ABC12345',
+				memberId: 'm1',
+				createdAt: '2026-05-18T12:00:00.000Z',
+				payload: { content: 'Hallo', kind: 'info', imageUrl: 'manawg-pending-image:img1' },
+			},
+		]);
+
+		await expect(syncOfflineActions('ABC12345', { force: true })).resolves.toBe(1);
+		expect(offlineImageMock.uploadPendingImageToken).toHaveBeenCalledWith(
+			'manawg-pending-image:img1',
+			'm1',
+			'signed-token',
+		);
+		expect(apiFetchMock).toHaveBeenCalledWith(
+			'/api/wg/ABC12345/announcements',
+			expect.objectContaining({
+				memberId: 'm1',
+				memberToken: 'signed-token',
+				headers: {
+					'Idempotency-Key': expect.stringMatching(
+						/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+					),
+				},
+			}),
+		);
+	});
+
+	it('does not send an action when a valid idempotency key cannot be persisted', async () => {
+		const randomUuid = vi.spyOn(crypto, 'randomUUID').mockImplementation(() => {
+			throw new Error('unavailable');
+		});
+		try {
+			persistOfflineQueue([
+				{
+					id: 'shopping:ABC12345:invalid-key',
+					idempotencyKey: 'invalid-legacy-key',
+					type: 'shopping.create',
+					wgId: TEST_WG_ID,
+					shareCode: 'ABC12345',
+					memberId: 'm1',
+					createdAt: '2026-05-18T12:00:00.000Z',
+					payload: { name: 'Milch', quantity: null },
+				},
+			]);
+
+			await expect(syncOfflineActions('ABC12345', { force: true })).resolves.toBe(0);
+			expect(apiFetchMock).not.toHaveBeenCalled();
+			expect(readOfflineQueue()[0]).toMatchObject({
+				idempotencyKey: 'invalid-legacy-key',
+				lastError:
+					'Idempotenz-Schlüssel konnte nicht erzeugt werden. Die Aktion bleibt gespeichert und wird nicht gesendet.',
+			});
+		} finally {
+			randomUuid.mockRestore();
+		}
+	});
+
+	it('keeps legacy tokenless actions queued with an explicit re-auth error', async () => {
+		persistOfflineQueue([
+			{
+				id: 'shopping:ABC12345:legacy',
+				type: 'shopping.create',
+				shareCode: 'ABC12345',
+				memberId: 'm1',
+				createdAt: '2026-05-18T12:00:00.000Z',
+				payload: { name: 'Milch', quantity: null },
+			},
+		]);
+
+		await expect(syncOfflineActions('ABC12345', { force: true })).resolves.toBe(0);
+		expect(apiFetchMock).not.toHaveBeenCalled();
+		expect(readOfflineQueue()[0]?.lastError).toContain('Erneute Anmeldung erforderlich');
 	});
 
 	it('counts queued actions globally and per WG', () => {
@@ -254,6 +365,7 @@ describe('offline client queue helpers', () => {
 		expect(apiFetchMock).toHaveBeenCalledWith('/api/wg/ABC12345/shopping/item-1', {
 			method: 'PATCH',
 			memberId: 'm1',
+			memberToken: TEST_MEMBER_TOKEN,
 			body: JSON.stringify({ bought: true }),
 		});
 		expect(readOfflineQueue()).toEqual([]);
@@ -261,6 +373,10 @@ describe('offline client queue helpers', () => {
 
 	it('BUG-581: syncs only the active local member when a WG queue contains multiple identities', async () => {
 		apiFetchMock.mockResolvedValue({ ok: true, data: {} });
+		identityMock.getIdentity.mockReturnValue({
+			memberId: 'member-ben',
+			memberToken: TEST_MEMBER_TOKEN,
+		});
 		writeOfflineQueue([
 			{
 				id: 'shopping:ABC12345:ava',
@@ -290,7 +406,8 @@ describe('offline client queue helpers', () => {
 		expect(apiFetchMock).toHaveBeenCalledWith('/api/wg/ABC12345/shopping', {
 			method: 'POST',
 			memberId: 'member-ben',
-			headers: { 'Idempotency-Key': 'shopping:ABC12345:ben' },
+			memberToken: TEST_MEMBER_TOKEN,
+			headers: { 'Idempotency-Key': TEST_IDEMPOTENCY_KEY },
 			body: JSON.stringify({ name: 'Kaffee', quantity: null, addedByMemberId: 'member-ben' }),
 		});
 		expect(readOfflineQueue()).toEqual([
@@ -328,7 +445,8 @@ describe('offline client queue helpers', () => {
 		expect(apiFetchMock).toHaveBeenNthCalledWith(1, '/api/wg/ABC%2F123%3Fx%3D1/expenses', {
 			method: 'POST',
 			memberId: 'm1',
-			headers: { 'Idempotency-Key': 'expense:ABC/123?x=1:recurring' },
+			memberToken: TEST_MEMBER_TOKEN,
+			headers: { 'Idempotency-Key': TEST_IDEMPOTENCY_KEY },
 			body: JSON.stringify({
 				description: 'Internet',
 				amountCents: 3290,
@@ -342,6 +460,7 @@ describe('offline client queue helpers', () => {
 			{
 				method: 'PATCH',
 				memberId: 'm1',
+				memberToken: TEST_MEMBER_TOKEN,
 				body: JSON.stringify({
 					id: 'recurring-1',
 					expectedNextDueAt: '2026-05-20T00:00:00.000Z',
@@ -451,6 +570,7 @@ describe('offline client queue helpers', () => {
 		expect(apiFetchMock).toHaveBeenCalledWith('/api/wg/ABC12345/recurring-expenses', {
 			method: 'PATCH',
 			memberId: 'm1',
+			memberToken: TEST_MEMBER_TOKEN,
 			body: JSON.stringify({
 				id: 'recurring-1',
 				expectedNextDueAt: '2026-05-20T00:00:00.000Z',
@@ -462,7 +582,7 @@ describe('offline client queue helpers', () => {
 	it('resolves chore completions when the chore was already completed', async () => {
 		apiFetchMock.mockResolvedValue({
 			ok: false,
-			status: 404,
+			status: 409,
 			error: 'chore_already_completed',
 		});
 		writeOfflineQueue([
@@ -520,10 +640,15 @@ describe('offline client queue helpers', () => {
 					pendingResponses.push(resolve);
 				}),
 		);
+		identityMock.getIdentity.mockImplementation((wgId: string) => ({
+			memberId: wgId === 'wg-2' ? 'm2' : 'm1',
+			memberToken: TEST_MEMBER_TOKEN,
+		}));
 		writeOfflineQueue([
 			{
 				id: 'shopping:ABC12345:first',
 				type: 'shopping.create',
+				wgId: TEST_WG_ID,
 				shareCode: 'ABC12345',
 				memberId: 'm1',
 				createdAt: '2026-05-18T12:00:00.000Z',
@@ -532,6 +657,7 @@ describe('offline client queue helpers', () => {
 			{
 				id: 'shopping:XYZ98765:second',
 				type: 'shopping.create',
+				wgId: 'wg-2',
 				shareCode: 'XYZ98765',
 				memberId: 'm2',
 				createdAt: '2026-05-18T12:00:00.000Z',
@@ -555,13 +681,15 @@ describe('offline client queue helpers', () => {
 		expect(apiFetchMock).toHaveBeenNthCalledWith(1, '/api/wg/ABC12345/shopping', {
 			method: 'POST',
 			memberId: 'm1',
-			headers: { 'Idempotency-Key': 'shopping:ABC12345:first' },
+			memberToken: TEST_MEMBER_TOKEN,
+			headers: { 'Idempotency-Key': TEST_IDEMPOTENCY_KEY },
 			body: JSON.stringify({ name: 'Milch', quantity: null, addedByMemberId: 'm1' }),
 		});
 		expect(apiFetchMock).toHaveBeenNthCalledWith(2, '/api/wg/XYZ98765/shopping', {
 			method: 'POST',
 			memberId: 'm2',
-			headers: { 'Idempotency-Key': 'shopping:XYZ98765:second' },
+			memberToken: TEST_MEMBER_TOKEN,
+			headers: { 'Idempotency-Key': TEST_IDEMPOTENCY_KEY },
 			body: JSON.stringify({ name: 'Kaffee', quantity: null, addedByMemberId: 'm2' }),
 		});
 		expect(readOfflineQueue()).toEqual([]);

@@ -81,19 +81,19 @@ test.describe('Kalender happy path', () => {
 
 		await page.getByRole('button', { name: 'Neuen Termin anlegen' }).click();
 
-		const titleInput = page.locator('#event-title');
+		const titleInput = page.getByRole('textbox', { name: 'z. B. Heizungsablesung' });
 		await expect(titleInput).toBeVisible({ timeout: 10_000 });
 		await titleInput.fill('Heizungsablesung');
 
 		// Future date — 14 days ahead is safely inside the 30-day upcoming window.
 		const future = futureIso(14);
 		const localDate = future.slice(0, 16); // datetime-local format YYYY-MM-DDTHH:mm
-		await page.locator('#event-start').fill(localDate);
+		await page.getByRole('textbox', { name: 'Beginn' }).fill(localDate);
 
 		await page.getByRole('button', { name: 'Termin speichern' }).click();
 
 		// Modal closes after save.
-		await expect(page.locator('#event-title')).toBeHidden({ timeout: 10_000 });
+		await expect(titleInput).toBeHidden({ timeout: 10_000 });
 
 		// Upcoming list now shows the event.
 		const upcomingSection = page.locator('section', { hasText: UPCOMING_HEADING });

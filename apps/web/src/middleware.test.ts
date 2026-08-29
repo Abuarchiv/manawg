@@ -243,7 +243,7 @@ describe('middleware security controls', () => {
 			});
 		});
 
-		it('allows GET /api/wg/<code>', async () => {
+		it('allows GET /api/wg/<code> through the closed share-code limiter', async () => {
 			const { middleware } = await import('./middleware');
 
 			const res = await middleware(
@@ -251,7 +251,38 @@ describe('middleware security controls', () => {
 			);
 
 			expect(res.status).toBe(200);
-			expect(rateLimitMock.checkRateLimit).not.toHaveBeenCalled();
+			expect(rateLimitMock.checkRateLimit).toHaveBeenCalledWith(
+				rateLimitMock.wgShareCodeLookupLimiter,
+				'unknown',
+				'closed',
+			);
+		});
+
+		it.each([
+			[
+				'503 when the limiter is unavailable',
+				{ success: false, remaining: 0, reset: Date.now() + 60_000, limiterUnavailable: true },
+				503,
+			],
+			[
+				'429 when the rate limit is hit',
+				{ success: false, remaining: 0, reset: Date.now() + 30_000 },
+				429,
+			],
+		])('preserves %s for GET /api/wg/<code>', async (_name, result, expectedStatus) => {
+			const { middleware } = await import('./middleware');
+			rateLimitMock.checkRateLimit.mockResolvedValueOnce(result);
+
+			const res = await middleware(
+				new NextRequest('https://mana.test/api/wg/MTE8PZAT', { method: 'GET' }),
+			);
+
+			expect(res.status).toBe(expectedStatus);
+			expect(rateLimitMock.checkRateLimit).toHaveBeenCalledWith(
+				rateLimitMock.wgShareCodeLookupLimiter,
+				'unknown',
+				'closed',
+			);
 		});
 
 		it('allows GET /api/health outside the guard', async () => {

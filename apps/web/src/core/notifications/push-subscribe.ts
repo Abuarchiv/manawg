@@ -32,11 +32,13 @@ async function saveServerPushOptOut(
 	code: string,
 	memberId: string,
 	endpoint?: string,
+	memberToken?: string,
 ): Promise<void> {
 	const encodedCode = encodeURIComponent(code);
 	const saved = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
 		method: endpoint ? 'POST' : 'PATCH',
 		memberId,
+		memberToken,
 		body: endpoint
 			? JSON.stringify({ action: 'push_unsubscribe', endpoint })
 			: JSON.stringify({ pushOptIn: false }),
@@ -57,6 +59,7 @@ async function saveServerPushOptIn(
 	memberId: string,
 	subscription: PushSubscription,
 	createdSubscription = false,
+	memberToken?: string,
 ): Promise<void> {
 	const json = subscription.toJSON() as PushJson;
 	if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) {
@@ -68,6 +71,7 @@ async function saveServerPushOptIn(
 	const saved = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
 		method: 'POST',
 		memberId,
+		memberToken,
 		body: JSON.stringify({
 			action: 'push_subscribe',
 			endpoint: json.endpoint,
@@ -114,11 +118,16 @@ export async function persistExistingWebPushSubscription(
 	code: string,
 	memberId: string,
 	subscription: PushSubscription,
+	memberToken?: string,
 ): Promise<void> {
-	await saveServerPushOptIn(code, memberId, subscription);
+	await saveServerPushOptIn(code, memberId, subscription, false, memberToken);
 }
 
-export async function subscribeWebPush(code: string, memberId: string): Promise<void> {
+export async function subscribeWebPush(
+	code: string,
+	memberId: string,
+	memberToken?: string,
+): Promise<void> {
 	if (!isPushSupported()) {
 		throw new Error('Push wird von diesem Browser nicht unterstützt.');
 	}
@@ -142,22 +151,26 @@ export async function subscribeWebPush(code: string, memberId: string): Promise<
 		});
 		createdSubscription = true;
 	}
-	await saveServerPushOptIn(code, memberId, subscription, createdSubscription);
+	await saveServerPushOptIn(code, memberId, subscription, createdSubscription, memberToken);
 }
 
-export async function unsubscribeWebPush(code: string, memberId: string): Promise<void> {
+export async function unsubscribeWebPush(
+	code: string,
+	memberId: string,
+	memberToken?: string,
+): Promise<void> {
 	if (!('serviceWorker' in navigator) || !navigator.serviceWorker) {
-		await saveServerPushOptOut(code, memberId);
+		await saveServerPushOptOut(code, memberId, undefined, memberToken);
 		return;
 	}
 	const registration = await navigator.serviceWorker.ready;
 	const subscription = await registration.pushManager.getSubscription();
 	const endpoint = subscription?.endpoint;
 	if (!endpoint) {
-		await saveServerPushOptOut(code, memberId);
+		await saveServerPushOptOut(code, memberId, undefined, memberToken);
 		return;
 	}
 
-	await saveServerPushOptOut(code, memberId, endpoint);
+	await saveServerPushOptOut(code, memberId, endpoint, memberToken);
 	await subscription.unsubscribe().catch(() => undefined);
 }

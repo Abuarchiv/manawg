@@ -6,6 +6,20 @@ const rateLimitMock = vi.hoisted(() => ({
 	checkRateLimit: vi.fn(),
 }));
 
+const idempotencyMock = vi.hoisted(() => ({
+	claimResponseSlot: vi.fn(),
+	getCachedResponse: vi.fn(),
+	readIdempotencyKey: vi.fn(),
+	setCachedResponse: vi.fn(),
+}));
+
+vi.mock('@/core/idempotency', () => ({
+	claimResponseSlot: (...args: unknown[]) => idempotencyMock.claimResponseSlot(...args),
+	getCachedResponse: (...args: unknown[]) => idempotencyMock.getCachedResponse(...args),
+	readIdempotencyKey: (...args: unknown[]) => idempotencyMock.readIdempotencyKey(...args),
+	setCachedResponse: (...args: unknown[]) => idempotencyMock.setCachedResponse(...args),
+}));
+
 vi.mock('@/features/pinnwand/announcement-workflow', () => ({
 	ANNOUNCEMENT_KINDS: ['info', 'request', 'event'],
 	ANNOUNCEMENT_SOURCES: ['manual', 'system', 'chore_swap', 'expense', 'shopping'],
@@ -29,6 +43,10 @@ describe('announcements route', () => {
 			member: { memberId: 'member-1', name: 'Ava' },
 		});
 		rateLimitMock.checkRateLimit.mockResolvedValue({ success: true, remaining: 10, reset: 0 });
+		idempotencyMock.readIdempotencyKey.mockReturnValue(null);
+		idempotencyMock.getCachedResponse.mockResolvedValue(null);
+		idempotencyMock.claimResponseSlot.mockResolvedValue(true);
+		idempotencyMock.setCachedResponse.mockResolvedValue(undefined);
 		routeMocks.recordAuditEvent.mockResolvedValue(undefined);
 		routeMocks.dispatchNotification.mockResolvedValue(undefined);
 	});
@@ -94,5 +112,39 @@ describe('announcements route', () => {
 				metadata: expect.objectContaining({ source: 'manual' }),
 			}),
 		);
+	});
+
+	it('replays a cached announcement without creating a duplicate', async () => {
+		const { POST } = await import('./route');
+		const key = '11111111-2222-4333-8444-555555555555';
+		const cached = { announcement: { id: 'announcement-1', content: 'Hausversammlung' } };
+		routeDb.select.mockReturnValue({
+			from: () => ({
+				where: () => ({
+					limit: async () => [{ id: 'wg-1', name: 'Test WG', shareCode: 'MTE8PZAT' }],
+				}),
+			}),
+		});
+		idempotencyMock.readIdempotencyKey.mockReturnValue(key);
+		idempotencyMock.getCachedResponse.mockResolvedValue(cached);
+
+		const res = await POST(
+			new NextRequest('https://mana.test/api/wg/MTE8PZAT/announcements', {
+				method: 'POST',
+				body: JSON.stringify({ content: 'Hausversammlung' }),
+			}),
+			{ params: Promise.resolve({ code: 'MTE8PZAT' }) },
+		);
+
+		expect(res.status).toBe(200);
+		await expect(res.json()).resolves.toEqual(cached);
+		expect(idempotencyMock.getCachedResponse).toHaveBeenCalledWith(
+			'announcements-create:wg-1:member-1',
+			key,
+		);
+		expect(rateLimitMock.checkRateLimit).not.toHaveBeenCalled();
+		expect(routeDb.insert).not.toHaveBeenCalled();
+		expect(routeMocks.recordAuditEvent).not.toHaveBeenCalled();
+		expect(routeMocks.dispatchNotification).not.toHaveBeenCalled();
 	});
 });

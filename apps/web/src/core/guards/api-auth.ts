@@ -1,5 +1,5 @@
 import { db, wgMembers } from '@/core/db';
-import { apiError } from '@/core/errors';
+import { apiError, forbidden } from '@/core/errors';
 import { verifyMemberToken } from '@/core/guards/member-token';
 import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from '@/shared/lib/member-header';
 import { and, eq } from 'drizzle-orm';
@@ -8,6 +8,8 @@ import type { NextRequest, NextResponse } from 'next/server';
 const HTTP_SERVICE_UNAVAILABLE = 503;
 
 const HTTP_UNAUTHORIZED = 401;
+
+const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /**
  * Loose UUID v4-ish shape check. We do not enforce the version nibble strictly
@@ -86,6 +88,9 @@ export async function requireMember(req: NextRequest, wgId: string): Promise<Req
 		}
 		const tokenHeader = req.headers.get(MEMBER_TOKEN_HEADER);
 		const verified = verifyMemberToken(wgId, row.id, tokenHeader);
+		if (!verified && UNSAFE_METHODS.has(req.method.toUpperCase())) {
+			return { ok: false, response: forbidden('member_not_verified', 'member_not_verified') };
+		}
 		return { ok: true, member: { memberId: row.id, name: row.name, verified } };
 	} catch (err) {
 		console.error('[requireMember] db error', err);

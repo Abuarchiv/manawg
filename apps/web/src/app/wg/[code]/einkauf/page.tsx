@@ -184,6 +184,7 @@ export default function EinkaufPage() {
 			const res = await apiFetch<ShoppingItem>(`/api/wg/${encodedShareCode}/shopping`, {
 				method: 'POST',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({
 					name,
 					quantity: newQty.trim() || undefined,
@@ -193,6 +194,7 @@ export default function EinkaufPage() {
 			if (!res.ok) {
 				if (res.status === 0) {
 					const queued = createQueuedShoppingItem({
+						wgId: wg.id,
 						shareCode: wg.shareCode,
 						memberId: identity.memberId,
 						name,
@@ -302,6 +304,7 @@ export default function EinkaufPage() {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({
 					bought: becomingBought,
 					boughtByMemberId: becomingBought ? identity.memberId : null,
@@ -318,6 +321,7 @@ export default function EinkaufPage() {
 				);
 			} else if (res.status === 0) {
 				const queued = createQueuedShoppingUpdate({
+					wgId: wg.id,
 					shareCode: wg.shareCode,
 					memberId: identity.memberId,
 					itemId: item.id,
@@ -369,6 +373,7 @@ export default function EinkaufPage() {
 			{
 				method: 'DELETE',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 			},
 		);
 		if (!res.ok) {
@@ -399,6 +404,7 @@ export default function EinkaufPage() {
 			const res = await apiFetch<{ deleted: number }>(`/api/wg/${encodedShareCode}/shopping`, {
 				method: 'DELETE',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 			});
 			if (res.ok) {
 				setItems((prev) => prev.filter((item) => item.boughtAt === null));

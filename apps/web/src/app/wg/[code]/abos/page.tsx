@@ -194,6 +194,7 @@ export default function AbosPage() {
 			{
 				method: 'POST',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify(values),
 			},
 		);
@@ -216,6 +217,7 @@ export default function AbosPage() {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify(values),
 			},
 		);
@@ -238,6 +240,7 @@ export default function AbosPage() {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({ paused: !isPaused }),
 			},
 		);
@@ -254,7 +257,7 @@ export default function AbosPage() {
 		setPendingId(abo.id);
 		const res = await apiFetch<{ deleted: true }>(
 			`/api/wg/${encodedShareCode}/recurring-expenses/${encodeURIComponent(abo.id)}`,
-			{ method: 'DELETE', memberId: identity.memberId },
+			{ method: 'DELETE', memberId: identity.memberId, memberToken: identity.memberToken },
 		);
 		if (res.ok) {
 			setAbos((current) => current.filter((item) => item.id !== abo.id));

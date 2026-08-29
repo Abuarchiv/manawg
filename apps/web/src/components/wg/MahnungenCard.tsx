@@ -20,6 +20,7 @@ interface BalancesResponse {
 interface Props {
 	shareCode: string;
 	memberId: string;
+	memberToken?: string | undefined;
 }
 
 type LoadState = 'loading' | 'ready' | 'unavailable';
@@ -27,7 +28,7 @@ type RemindState = 'idle' | 'sending' | 'sent' | 'error';
 
 const MAX_DISPLAY_BALANCES = 3;
 
-export function MahnungenCard({ shareCode, memberId }: Props) {
+export function MahnungenCard({ shareCode, memberId, memberToken }: Props) {
 	const encoded = encodeURIComponent(shareCode);
 	const href = `/wg/${encoded}/mahnungen`;
 	const [state, setState] = useState<LoadState>('loading');
@@ -58,6 +59,10 @@ export function MahnungenCard({ shareCode, memberId }: Props) {
 
 	async function handleRemind(debtorId: string): Promise<void> {
 		setReminders((prev) => ({ ...prev, [debtorId]: 'sending' }));
+		if (!memberToken) {
+			setReminders((prev) => ({ ...prev, [debtorId]: 'error' }));
+			return;
+		}
 		try {
 			const res = await fetch(`/api/wg/${encoded}/reminders`, {
 				method: 'POST',
@@ -65,6 +70,7 @@ export function MahnungenCard({ shareCode, memberId }: Props) {
 				headers: {
 					'content-type': 'application/json',
 					'x-manawg-member-id': memberId,
+					...(memberToken ? { 'x-manawg-member-token': memberToken } : {}),
 				},
 				body: JSON.stringify({ debtorMemberId: debtorId, creditorMemberId: memberId }),
 			});

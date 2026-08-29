@@ -97,27 +97,6 @@ body {
 	line-height: 1.5;
 }
 
-/* 7. App container helper with fluid padding */
-.container-app {
-	max-width: 1280px;
-	margin-left: auto;
-	margin-right: auto;
-	padding-left: 1rem;
-	padding-right: 1rem;
-}
-@media (min-width: 640px) {
-	.container-app {
-		padding-left: 1.5rem;
-		padding-right: 1.5rem;
-	}
-}
-@media (min-width: 1024px) {
-	.container-app {
-		padding-left: 2rem;
-		padding-right: 2rem;
-	}
-}
-
 /* ─── END RESPONSIVE FOUNDATIONS ────────────────────────────────────────── */
 
 @layer base {
@@ -449,76 +428,6 @@ body {
 	color: var(--text-1);
 }
 
-.pb-safe {
-	padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-.pt-safe {
-	padding-top: env(safe-area-inset-top, 0px);
-}
-
-/* Main content area in the auth app shell.
-   Clears the fixed MobileHeader (3.5rem) + iOS status bar, and the
-   BottomNav (5rem) + iOS home-indicator.  At lg+ the sidebar takes over
-   and both paddings reset to 0. Done in plain CSS so env() is never
-   parsed by Tailwind's JIT regex (which can misread the fallback comma). */
-.app-main {
-	padding-top: calc(3.5rem + env(safe-area-inset-top, 0px));
-	padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
-}
-@media (min-width: 1024px) {
-	.app-main {
-		padding-top: 0;
-		padding-bottom: 0;
-	}
-}
-
-/* ─── Mesh background — landing only ─── */
-.mesh-bg {
-	position: relative;
-	overflow: hidden;
-	isolation: isolate;
-}
-.mesh-bg::before {
-	content: "";
-	position: absolute;
-	inset: -20%;
-	/* Forest editorial washes — deep pine, sage, honey, sand. Calm, organic.
-	   Soft alphas, blurred — soft transitions through transparent glass. */
-	background: radial-gradient(circle 1100px at 8% 8%, rgba(47, 93, 74, 0.16), transparent 55%),
-		radial-gradient(circle 1000px at 92% 18%, rgba(107, 142, 93, 0.16), transparent 60%),
-		radial-gradient(circle 900px at 18% 92%, rgba(184, 147, 42, 0.14), transparent 55%),
-		radial-gradient(circle 800px at 86% 82%, rgba(196, 168, 117, 0.14), transparent 55%);
-	pointer-events: none;
-	z-index: -1;
-	filter: blur(50px);
-}
-.dark .mesh-bg::before {
-	background: radial-gradient(circle 700px at 20% 20%, rgba(132, 225, 188, 0.18), transparent 50%),
-		radial-gradient(circle 800px at 80% 30%, rgba(74, 125, 101, 0.16), transparent 55%),
-		radial-gradient(circle 700px at 30% 90%, rgba(184, 147, 42, 0.12), transparent 50%),
-		radial-gradient(circle 600px at 90% 80%, rgba(196, 168, 117, 0.1), transparent 50%);
-}
-
-.spotlight {
-	position: relative;
-}
-.spotlight::after {
-	content: "";
-	position: absolute;
-	inset: 0;
-	/* Hero spotlight: forest glow top-center, soft. */
-	background: radial-gradient(ellipse 85% 65% at 50% 0%, rgba(47, 93, 74, 0.18), transparent 65%);
-	pointer-events: none;
-	z-index: 0;
-}
-.dark .spotlight::after {
-	background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(132, 225, 188, 0.22), transparent 65%);
-}
-
-/* Glassmorphism — themed via tokens.
-   Light mode: real frosted glass — translucent + heavy blur over colored mesh
-   creates the lively-but-clean look. Border highlight + soft elevation shadow.
-   Dark mode: original token-driven glass. */
 /* Apple Liquid Glass — TRANSPARENT, refractive, real frosted glass.
    Low alpha (0.18-0.32) lets the colored mesh + 3D scene shine through.
    Heavy blur + 200% saturation pulls color from behind = lively glass.
@@ -592,66 +501,10 @@ body {
 	-webkit-backdrop-filter: blur(20px) saturate(140%);
 	box-shadow: none;
 }
-/* Kill the white specular highlight layers in dark mode — they leak as milky
-   reflections over black surfaces (audit by Aiko). */
+/* Kill white specular highlights in dark mode — they leak as milky reflections over black surfaces. */
 .dark .glass::before,
-.dark .glass::after,
-.dark .glass-strong::before,
-.dark .glass-strong::after {
+.dark .glass::after {
 	display: none;
-}
-/* Apple Liquid Glass — strong variant for nav. Slightly more opacity for legibility. */
-.glass-strong {
-	position: relative;
-	background: linear-gradient(
-		180deg,
-		rgba(255, 255, 255, 0.36) 0%,
-		rgba(255, 255, 255, 0.22) 50%,
-		rgba(255, 255, 255, 0.3) 100%
-	);
-	border: 1px solid rgba(255, 255, 255, 0.55);
-	backdrop-filter: blur(64px) saturate(240%) brightness(1.08);
-	-webkit-backdrop-filter: blur(64px) saturate(240%) brightness(1.08);
-	box-shadow:
-		0 1px 0 rgba(255, 255, 255, 0.95) inset,
-		0 -1px 0 rgba(255, 255, 255, 0.35) inset,
-		0 0 0 0.5px rgba(255, 255, 255, 0.22),
-		0 2px 4px rgba(15, 15, 25, 0.04),
-		0 12px 28px rgba(15, 15, 25, 0.07),
-		0 28px 56px rgba(47, 93, 74, 0.08);
-}
-.glass-strong::before {
-	content: "";
-	position: absolute;
-	inset: 0;
-	border-radius: inherit;
-	background: linear-gradient(
-		135deg,
-		rgba(255, 255, 255, 0.6) 0%,
-		rgba(255, 255, 255, 0.05) 30%,
-		rgba(255, 255, 255, 0) 65%,
-		rgba(255, 255, 255, 0.28) 100%
-	);
-	pointer-events: none;
-	mix-blend-mode: overlay;
-}
-.glass-strong::after {
-	content: "";
-	position: absolute;
-	left: 6%;
-	right: 6%;
-	top: 0;
-	height: 1px;
-	background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 1) 50%, transparent 100%);
-	pointer-events: none;
-	border-radius: inherit;
-}
-.dark .glass-strong {
-	background: var(--surface-strong);
-	border-color: var(--border-strong);
-	backdrop-filter: blur(24px) saturate(160%);
-	-webkit-backdrop-filter: blur(24px) saturate(160%);
-	box-shadow: none;
 }
 
 /* App-internal buttons */
@@ -678,33 +531,6 @@ body {
 }
 .btn-app-primary:disabled {
 	opacity: 0.35;
-	cursor: not-allowed;
-}
-
-.btn-app-secondary {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 8px 14px;
-	border-radius: 10px;
-	font-family: "Geist", sans-serif;
-	font-weight: 600;
-	font-size: 13px;
-	letter-spacing: -0.005em;
-	background: var(--surface);
-	color: var(--text-1);
-	border: 1px solid var(--border);
-	transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
-}
-.btn-app-secondary:hover {
-	background: var(--surface-strong);
-	border-color: var(--border-strong);
-}
-.btn-app-secondary:active {
-	transform: scale(0.98);
-}
-.btn-app-secondary:disabled {
-	opacity: 0.4;
 	cursor: not-allowed;
 }
 
@@ -879,140 +705,6 @@ body {
 	color: var(--text-1);
 }
 
-/* Glow / shadow accents — neutral shadow in light, colored glow in dark only */
-.glow-mint {
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
-}
-.dark .glow-mint {
-	box-shadow: 0 0 0 1px rgba(132, 225, 188, 0.2), 0 8px 32px rgba(132, 225, 188, 0.18), 0 0 80px
-		rgba(132, 225, 188, 0.12);
-}
-.glow-violet {
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
-}
-.dark .glow-violet {
-	box-shadow: 0 0 0 1px rgba(74, 125, 101, 0.3), 0 8px 32px rgba(74, 125, 101, 0.22);
-}
-
-/* Light mode: tonal mint→deep gradient — adds richness, stays on-brand.
-   Dark mode: full vibrant gradient as designed. */
-/* Headline gradient — ink→deep-moss→forest. Soft, organic. */
-.heading-grad {
-	background: linear-gradient(135deg, #1a1f1c 0%, #2c352f 35%, #345c47 75%, #2f5d4a 100%);
-	-webkit-background-clip: text;
-	-webkit-text-fill-color: transparent;
-	background-clip: text;
-	color: transparent;
-}
-.dark .heading-grad {
-	background: linear-gradient(135deg, #ededed 0%, #c8ddd5 35%, #84e1bc 75%, #4a7d65 100%);
-	-webkit-background-clip: text;
-	-webkit-text-fill-color: transparent;
-	background-clip: text;
-	color: transparent;
-}
-/* Accent gradient — forest→sage→honey, soft transition for highlight words. */
-.text-gradient {
-	background: linear-gradient(120deg, #2f5d4a 0%, #4a7d65 50%, #6b8e5d 100%);
-	-webkit-background-clip: text;
-	-webkit-text-fill-color: transparent;
-	background-clip: text;
-	color: transparent;
-}
-.dark .text-gradient {
-	background: linear-gradient(120deg, #b8f5d8 0%, #84e1bc 35%, #b8932a 75%, #c4a875 100%);
-	-webkit-background-clip: text;
-	-webkit-text-fill-color: transparent;
-	background-clip: text;
-	color: transparent;
-}
-.text-gradient-mint {
-	color: var(--text-1);
-}
-.dark .text-gradient-mint {
-	background: linear-gradient(180deg, #f5f5f7 0%, #84e1bc 100%);
-	-webkit-background-clip: text;
-	-webkit-text-fill-color: transparent;
-	background-clip: text;
-	color: transparent;
-}
-
-.grid-pattern {
-	/* Faint violet dot grid over white — reads through glass. */
-	background-image: radial-gradient(rgba(47, 93, 74, 0.16) 1.5px, transparent 1.5px);
-	background-size: 30px 30px;
-	background-position: -1px -1px;
-}
-.dark .grid-pattern {
-	background-image: linear-gradient(var(--border) 1px, transparent 1px),
-		linear-gradient(90deg, var(--border) 1px, transparent 1px);
-}
-.grid-mask {
-	mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 80%);
-	-webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 80%);
-}
-
-@keyframes scroll-x {
-	0% {
-		transform: translateX(0);
-	}
-	100% {
-		transform: translateX(-50%);
-	}
-}
-.animate-scroll-x {
-	animation: scroll-x 40s linear infinite;
-}
-@keyframes float-y {
-	0%,
-	100% {
-		transform: translateY(0);
-	}
-	50% {
-		transform: translateY(-12px);
-	}
-}
-@keyframes float-y-2 {
-	0%,
-	100% {
-		transform: translateY(-4px);
-	}
-	50% {
-		transform: translateY(-20px);
-	}
-}
-.animate-float-y {
-	animation: float-y 6s ease-in-out infinite;
-}
-.animate-float-y-2 {
-	animation: float-y-2 7.5s ease-in-out infinite 0.8s;
-}
-@keyframes pulse-glow {
-	0%,
-	100% {
-		opacity: 0.4;
-		transform: scale(1);
-	}
-	50% {
-		opacity: 0.8;
-		transform: scale(1.05);
-	}
-}
-.animate-pulse-glow {
-	animation: pulse-glow 4s ease-in-out infinite;
-}
-@keyframes aurora {
-	0%,
-	100% {
-		transform: translate3d(0, 0, 0) rotate(0deg);
-	}
-	50% {
-		transform: translate3d(-10%, 5%, 0) rotate(2deg);
-	}
-}
-.animate-aurora {
-	animation: aurora 22s ease-in-out infinite;
-}
 @keyframes shimmer {
 	0% {
 		background-position: -200% 0;
@@ -1048,50 +740,7 @@ body {
 	pointer-events: none;
 }
 
-.label-mono {
-	font-family: "Geist Mono", ui-monospace, monospace;
-	font-size: 11px;
-	font-weight: 600;
-	letter-spacing: 0.14em;
-	text-transform: uppercase;
-	color: var(--text-label);
-	font-variant-numeric: tabular-nums slashed-zero;
-	font-feature-settings: "zero" 1, "ss01" on;
-}
-
-.no-scrollbar::-webkit-scrollbar {
-	display: none;
-}
-.no-scrollbar {
-	-ms-overflow-style: none;
-	scrollbar-width: none;
-}
-
-@keyframes fade-up {
-	0% {
-		opacity: 0;
-		transform: translateY(24px);
-	}
-	100% {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-.animate-fade-up {
-	animation: fade-up 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
 @media (prefers-reduced-motion: reduce) {
-	.animate-fade-up,
-	.animate-float-y,
-	.animate-float-y-2,
-	.animate-pulse-glow,
-	.animate-aurora,
-	.animate-marquee,
-	.animate-scroll-x,
-	.animate-float-1,
-	.animate-float-2,
-	.animate-float-3,
-	.animate-confetti-burst,
 	.animate-toast-progress {
 		animation: none !important;
 		opacity: 1 !important;
@@ -1112,90 +761,6 @@ body {
 	transform-origin: left;
 }
 
-@keyframes confetti-burst {
-	0% {
-		opacity: 1;
-		transform: rotate(var(--tw-rotate, 0deg)) translateY(0px) scale(1);
-	}
-	60% {
-		opacity: 1;
-		transform: rotate(var(--tw-rotate, 0deg)) translateY(-40px) scale(1.2);
-	}
-	100% {
-		opacity: 0;
-		transform: rotate(var(--tw-rotate, 0deg)) translateY(-60px) scale(0.4);
-	}
-}
-.animate-confetti-burst {
-	animation: confetti-burst 0.8s ease-out forwards;
-}
-
-.dot-grid {
-	background-image: radial-gradient(var(--border) 1px, transparent 1px);
-	background-size: 24px 24px;
-}
-.moss-glow {
-	position: relative;
-}
-.moss-glow::before {
-	content: "";
-	position: absolute;
-	inset: 0;
-	background: radial-gradient(
-		ellipse 80% 50% at 50% 0%,
-		rgba(132, 225, 188, 0.18) 0%,
-		transparent 70%
-	);
-	pointer-events: none;
-}
-@keyframes marquee {
-	0% {
-		transform: translateX(0);
-	}
-	100% {
-		transform: translateX(-50%);
-	}
-}
-.animate-marquee {
-	animation: marquee 28s linear infinite;
-}
-@keyframes float-note-1 {
-	0%,
-	100% {
-		transform: rotate(2deg) translateY(0px);
-	}
-	50% {
-		transform: rotate(2deg) translateY(-12px);
-	}
-}
-.animate-float-1 {
-	animation: float-note-1 5s ease-in-out infinite;
-}
-.animate-float-2 {
-	animation: float-note-1 6.5s ease-in-out infinite 0.8s;
-}
-.animate-float-3 {
-	animation: float-note-1 4.5s ease-in-out infinite 1.5s;
-}
-
-/* Card primitive — Vercel-style */
-.card-flat {
-	background: var(--bg-base);
-	border: 1px solid var(--border);
-	border-radius: 12px;
-	transition: border-color 150ms ease, background-color 150ms ease;
-}
-.card-flat:hover {
-	border-color: var(--border-strong);
-}
-
-.card-elevated {
-	background: var(--bg-base);
-	border: 1px solid var(--border);
-	border-radius: 12px;
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
 /* iOS Safari zoom-on-focus fix — inputs must be >= 16px on mobile */
 @media (max-width: 640px) {
 	input[type="text"],
@@ -1209,10 +774,6 @@ body {
 		font-size: 16px;
 	}
 }
-.dark .card-elevated {
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-}
-
 /* Touch device only — strip hover-translate from ModuleCard so the card
    doesn't stick in lifted state after tap (Tobias HIG audit) */
 @media (hover: none) {

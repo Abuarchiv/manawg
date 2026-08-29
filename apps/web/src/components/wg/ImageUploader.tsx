@@ -165,7 +165,12 @@ export function ImageUploader({
 			setError(null);
 			setNotice(null);
 			try {
-				const publicUrl = await uploadPendingImageToken(value, identity.memberId);
+				if (!identity.memberToken) throw new Error('member_not_verified');
+				const publicUrl = await uploadPendingImageToken(
+					value,
+					identity.memberId,
+					identity.memberToken,
+				);
 				onChange(publicUrl);
 			} catch (err) {
 				if (err instanceof Error && err.message === 'pending-image-missing') {
@@ -190,7 +195,7 @@ export function ImageUploader({
 		void syncPending();
 		window.addEventListener('online', syncPending);
 		return () => window.removeEventListener('online', syncPending);
-	}, [identity.memberId, onChange, value]);
+	}, [identity.memberId, identity.memberToken, onChange, value]);
 
 	useEffect(() => {
 		if (!previewOpen || !value) return;
@@ -253,6 +258,11 @@ export function ImageUploader({
 			}
 			return;
 		}
+		if (!identity.memberToken) {
+			await keepPending('Bild vorbereitet. Öffne die WG erneut, um den Upload fortzusetzen.');
+			uploadPendingRef.current = false;
+			return;
+		}
 		setUploading(true);
 		setError(null);
 		setNotice(null);
@@ -261,7 +271,7 @@ export function ImageUploader({
 				method: 'POST',
 				headers: {
 					'content-type': 'application/json',
-					...memberAuthHeader(identity.memberId),
+					...memberAuthHeader(identity.memberId, identity.memberToken),
 				},
 				body: JSON.stringify({ shareCode, purpose, mimeType: file.type, fileSize: file.size }),
 			});

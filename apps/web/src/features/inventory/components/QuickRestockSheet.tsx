@@ -12,6 +12,7 @@ interface QuickRestockSheetProps {
 	items: InventoryItemDto[];
 	shareCode: string;
 	memberId: string;
+	memberToken?: string | undefined;
 	onClose: () => void;
 	onChanged: () => void;
 }
@@ -23,6 +24,7 @@ export function QuickRestockSheet({
 	items,
 	shareCode,
 	memberId,
+	memberToken,
 	onClose,
 	onChanged,
 }: QuickRestockSheetProps) {
@@ -55,6 +57,7 @@ export function QuickRestockSheet({
 			{
 				method: 'PATCH',
 				memberId,
+				memberToken,
 				body: JSON.stringify({ quantityDelta: 1 }),
 			},
 		);

@@ -18,10 +18,17 @@ interface InventoryListProps {
 	items: InventoryItemDto[];
 	shareCode: string;
 	memberId: string;
+	memberToken?: string | undefined;
 	onChanged: () => void;
 }
 
-export function InventoryList({ items, shareCode, memberId, onChanged }: InventoryListProps) {
+export function InventoryList({
+	items,
+	shareCode,
+	memberId,
+	memberToken,
+	onChanged,
+}: InventoryListProps) {
 	const [addOpen, setAddOpen] = useState(false);
 	const [quickOpen, setQuickOpen] = useState(false);
 	const [editing, setEditing] = useState<InventoryItemDto | null>(null);
@@ -72,6 +79,7 @@ export function InventoryList({ items, shareCode, memberId, onChanged }: Invento
 										item={item}
 										shareCode={shareCode}
 										memberId={memberId}
+										memberToken={memberToken}
 										onChanged={onChanged}
 										onEdit={openEdit}
 									/>
@@ -111,6 +119,7 @@ export function InventoryList({ items, shareCode, memberId, onChanged }: Invento
 				open={addOpen || editing !== null}
 				shareCode={shareCode}
 				memberId={memberId}
+				memberToken={memberToken}
 				mode={editing ? 'edit' : 'create'}
 				initial={editing}
 				onClose={() => {
@@ -124,6 +133,7 @@ export function InventoryList({ items, shareCode, memberId, onChanged }: Invento
 				items={items}
 				shareCode={shareCode}
 				memberId={memberId}
+				memberToken={memberToken}
 				onClose={() => setQuickOpen(false)}
 				onChanged={onChanged}
 			/>

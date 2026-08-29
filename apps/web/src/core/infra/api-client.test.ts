@@ -6,6 +6,16 @@ describe('apiFetch', () => {
 		vi.unstubAllGlobals();
 	});
 
+	it('does not send a member mutation without a verified token', async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+
+		await expect(
+			apiFetch('/api/wg/MTE8PZAT/shopping', { method: 'POST', memberId: 'member-1' }),
+		).resolves.toEqual({ ok: false, status: 403, error: 'member_not_verified' });
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
 	it('uses API error codes when the error body has no message field', async () => {
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: false,

@@ -40,6 +40,7 @@ interface DebtRowProps {
 	debt: SimplifiedDebt;
 	shareCode: string;
 	currentMemberId: string;
+	memberToken?: string | undefined;
 	memberColor: (id: string) => string | null;
 	onSettled: () => void;
 }
@@ -51,7 +52,14 @@ interface SettleBatchResponse {
 	reason?: string;
 }
 
-function DebtRow({ debt, shareCode, currentMemberId, memberColor, onSettled }: DebtRowProps) {
+function DebtRow({
+	debt,
+	shareCode,
+	currentMemberId,
+	memberToken,
+	memberColor,
+	onSettled,
+}: DebtRowProps) {
 	const [settling, setSettling] = useState(false);
 	const [settlementMessage, setSettlementMessage] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
@@ -71,6 +79,7 @@ function DebtRow({ debt, shareCode, currentMemberId, memberColor, onSettled }: D
 				{
 					method: 'POST',
 					memberId: currentMemberId,
+					memberToken,
 					body: JSON.stringify({ fromMemberId: debt.fromId, toMemberId: debt.toId }),
 				},
 			);
@@ -177,6 +186,7 @@ interface DebtSummaryProps {
 	summary?: SettlementSummary;
 	shareCode: string;
 	currentMemberId: string;
+	memberToken?: string | undefined;
 	memberColor: (id: string) => string | null;
 	onSettled: () => void;
 }
@@ -186,6 +196,7 @@ export function DebtSummary({
 	summary,
 	shareCode,
 	currentMemberId,
+	memberToken,
 	memberColor,
 	onSettled,
 }: DebtSummaryProps) {
@@ -221,6 +232,7 @@ export function DebtSummary({
 						debt={d}
 						shareCode={shareCode}
 						currentMemberId={currentMemberId}
+						memberToken={memberToken}
 						memberColor={memberColor}
 						onSettled={onSettled}
 					/>

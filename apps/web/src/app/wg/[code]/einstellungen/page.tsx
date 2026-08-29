@@ -179,7 +179,11 @@ export default function EinstellungenPage() {
 					{activeTab === 'profile' && <ProfileTab memberName={identity.name} wgName={wg.name} />}
 
 					{activeTab === 'notifications' && (
-						<NotificationSection code={wg.shareCode} memberId={identity.memberId} />
+						<NotificationSection
+							code={wg.shareCode}
+							memberId={identity.memberId}
+							memberToken={identity.memberToken}
+						/>
 					)}
 
 					{activeTab === 'access' && <AccessTab wg={wg} members={members} identity={identity} />}

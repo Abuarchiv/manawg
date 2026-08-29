@@ -18,6 +18,7 @@ interface InventoryAddModalProps {
 	open: boolean;
 	shareCode: string;
 	memberId: string;
+	memberToken?: string | undefined;
 	mode: 'create' | 'edit';
 	initial?: {
 		id: string;
@@ -52,6 +53,7 @@ export function InventoryAddModal({
 	open,
 	shareCode,
 	memberId,
+	memberToken,
 	mode,
 	initial,
 	onClose,
@@ -107,11 +109,12 @@ export function InventoryAddModal({
 			mode === 'edit' && initial
 				? await apiFetch(
 						`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(initial.id)}`,
-						{ method: 'PATCH', memberId, body: JSON.stringify(body) },
+						{ method: 'PATCH', memberId, memberToken, body: JSON.stringify(body) },
 					)
 				: await apiFetch(`/api/wg/${encodedShareCode}/inventory`, {
 						method: 'POST',
 						memberId,
+						memberToken,
 						body: JSON.stringify(body),
 					});
 		setSaving(false);

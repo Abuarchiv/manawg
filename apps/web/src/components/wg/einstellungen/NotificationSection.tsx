@@ -67,7 +67,15 @@ const NOTIFICATION_PREFERENCES: ReadonlyArray<{
 	{ key: 'notifyEvents', label: 'Termine', description: 'Kalendertermine und Erinnerungen' },
 ];
 
-export function NotificationSection({ code, memberId }: { code: string; memberId: string }) {
+export function NotificationSection({
+	code,
+	memberId,
+	memberToken,
+}: {
+	code: string;
+	memberId: string;
+	memberToken?: string | undefined;
+}) {
 	const [status, setStatus] = useState<NotificationStatus | null>(null);
 	const [pending, setPending] = useState<'push' | 'save' | 'test' | null>(null);
 	const [message, setMessage] = useState<string | null>(null);
@@ -128,7 +136,7 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 			}
 			if (!subscription) return;
 			try {
-				await persistExistingWebPushSubscription(code, memberId, subscription);
+				await persistExistingWebPushSubscription(code, memberId, subscription, memberToken);
 				if (cancelled) return;
 				setStatus((prev) =>
 					prev && prev.pushOptIn === false ? { ...prev, pushOptIn: true } : prev,
@@ -141,7 +149,7 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 		return () => {
 			cancelled = true;
 		};
-	}, [code, memberId, status?.pushOptIn]);
+	}, [code, memberId, memberToken, status?.pushOptIn]);
 
 	async function activatePush() {
 		if (pendingRef.current) return;
@@ -150,7 +158,7 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 		setError(null);
 		setMessage(null);
 		try {
-			await subscribeWebPush(code, memberId);
+			await subscribeWebPush(code, memberId, memberToken);
 			setStatus((prev) => (prev ? { ...prev, pushOptIn: true } : prev));
 			setMessage('Web Push ist aktiv.');
 		} catch (err) {
@@ -167,7 +175,7 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 		setPending('push');
 		setError(null);
 		try {
-			await unsubscribeWebPush(code, memberId);
+			await unsubscribeWebPush(code, memberId, memberToken);
 			setStatus((prev) => (prev ? { ...prev, pushOptIn: false } : prev));
 			setMessage('Web Push ist deaktiviert.');
 		} catch (err) {
@@ -190,6 +198,7 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 			const res = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
 				method: 'PATCH',
 				memberId,
+				memberToken,
 				body: JSON.stringify({ [key]: next }),
 			});
 			if (!res.ok) {
@@ -213,6 +222,7 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 			const res = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
 				method: 'PATCH',
 				memberId,
+				memberToken,
 				body: JSON.stringify({ quietStartHour: startHour, quietEndHour: endHour }),
 			});
 			if (!res.ok) {
@@ -235,6 +245,7 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 			const res = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
 				method: 'POST',
 				memberId,
+				memberToken,
 				body: JSON.stringify({ action: 'test_notification' }),
 			});
 			if (res.ok) {

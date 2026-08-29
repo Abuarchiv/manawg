@@ -95,6 +95,33 @@ describe('checkEnv', () => {
 		expect(result.ok).toBe(true);
 	});
 
+	it('allows the exact database-down fixture mode outside production', () => {
+		const result = checkEnv({
+			CI: 'true',
+			NEXT_PUBLIC_DB_DOWN: 'true',
+			POSTGRES_URL: '',
+			DATABASE_URL: '',
+		});
+
+		expect(result.missingRequired).toEqual([]);
+		expect(result.ok).toBe(true);
+	});
+
+	it('keeps production strict even when the database-down fixture flags are set', () => {
+		const result = checkEnv({
+			VERCEL_ENV: 'production',
+			CI: 'true',
+			NEXT_PUBLIC_DB_DOWN: 'true',
+			POSTGRES_URL: '',
+			DATABASE_URL: '',
+			CRON_SECRET: 'secret',
+			MEMBER_SESSION_SECRET: 'member-secret',
+		});
+
+		expect(result.missingRequired).toEqual(['POSTGRES_URL']);
+		expect(result.ok).toBe(false);
+	});
+
 	it('lists every degraded feature outside production without failing', () => {
 		const result = checkEnv({ POSTGRES_URL: 'postgres://localhost/manawg' });
 

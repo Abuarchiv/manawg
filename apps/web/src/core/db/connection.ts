@@ -8,6 +8,16 @@ export function resolveConnectionString(): string {
 	return url;
 }
 
+export function resolveTransactionConnectionString(): string {
+	const url =
+		process.env.DATABASE_MIGRATION_URL ||
+		process.env.POSTGRES_URL_NON_POOLING ||
+		process.env.DATABASE_URL_UNPOOLED ||
+		resolveConnectionString();
+	validateDatabaseUrl(url, 'withTransaction connection (set DATABASE_MIGRATION_URL)');
+	return url;
+}
+
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', 'host.docker.internal']);
 
 export function validateDatabaseUrl(url: string, label: string): void {

@@ -20,8 +20,11 @@ import { isUuid, requireMember } from './api-auth';
 const WG_ID = '989ac820-58b7-431f-9c65-28721264f333';
 const MEMBER_ID = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
 
-const requestWith = (headers?: Record<string, string>): NextRequest =>
-	new NextRequest('https://manawg.test/api/wg/MTE8PZAT/expenses', headers ? { headers } : {});
+const requestWith = (headers?: Record<string, string>, method = 'GET'): NextRequest =>
+	new NextRequest('https://manawg.test/api/wg/MTE8PZAT/expenses', {
+		method,
+		...(headers ? { headers } : {}),
+	});
 
 describe('isUuid', () => {
 	it('accepts a well-formed uuid regardless of case', () => {
@@ -155,6 +158,34 @@ describe('requireMember', () => {
 	});
 
 	describe('token verification', () => {
+		it.each([undefined, 'deadbeef'.repeat(8)])(
+			'rejects an unsafe request when its token is %s',
+			async (token) => {
+				vi.stubEnv('MEMBER_SESSION_SECRET', 'test-secret');
+				findFirst.mockResolvedValue({ id: MEMBER_ID, name: 'Mina' });
+
+				const result = await requireMember(
+					requestWith(
+						{
+							[MEMBER_ID_HEADER]: MEMBER_ID,
+							...(token ? { [MEMBER_TOKEN_HEADER]: token } : {}),
+						},
+						'POST',
+					),
+					WG_ID,
+				);
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.response.status).toBe(403);
+					await expect(result.response.json()).resolves.toMatchObject({
+						error: 'member_not_verified',
+					});
+				}
+				vi.unstubAllEnvs();
+			},
+		);
+
 		it('marks the member verified when a valid signed token is supplied', async () => {
 			vi.stubEnv('MEMBER_SESSION_SECRET', 'test-secret');
 			findFirst.mockResolvedValue({ id: MEMBER_ID, name: 'Mina' });
@@ -167,6 +198,20 @@ describe('requireMember', () => {
 
 			expect(result.ok).toBe(true);
 			if (result.ok) expect(result.member.verified).toBe(true);
+			vi.unstubAllEnvs();
+		});
+
+		it('accepts an unsafe request with a valid signed token', async () => {
+			vi.stubEnv('MEMBER_SESSION_SECRET', 'test-secret');
+			findFirst.mockResolvedValue({ id: MEMBER_ID, name: 'Mina' });
+			const token = deriveMemberToken(WG_ID, MEMBER_ID);
+
+			const result = await requireMember(
+				requestWith({ [MEMBER_ID_HEADER]: MEMBER_ID, [MEMBER_TOKEN_HEADER]: token ?? '' }, 'PATCH'),
+				WG_ID,
+			);
+
+			expect(result.ok).toBe(true);
 			vi.unstubAllEnvs();
 		});
 

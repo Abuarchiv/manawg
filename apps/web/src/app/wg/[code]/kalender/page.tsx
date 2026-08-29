@@ -170,6 +170,7 @@ export default function KalenderPage() {
 		const res = await apiFetch<{ event: CalendarEvent }>(`/api/wg/${encodedShareCode}/events`, {
 			method: 'POST',
 			memberId: identity.memberId,
+			memberToken: identity.memberToken,
 			body: JSON.stringify(payload),
 		});
 		if (!res.ok) {
@@ -186,6 +187,7 @@ export default function KalenderPage() {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify(payload),
 			},
 		);
@@ -202,6 +204,7 @@ export default function KalenderPage() {
 			{
 				method: 'DELETE',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 			},
 		);
 		if (!res.ok) {

@@ -5,3 +5,4 @@
 .agents
 supabase/.temp
 skills-lock.json
+.env*

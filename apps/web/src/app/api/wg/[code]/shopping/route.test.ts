@@ -6,13 +6,26 @@ import {
 	routeMocks,
 	tableNameOf,
 } from '@/test/route-harness';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // This suite asserts both a 200 and a 429 for the same rate limit, so it
 // stubs checkRateLimit itself; the harness leaves it real (fail-open) for
 // suites that never look at it.
 const rateLimitMock = vi.hoisted(() => ({ checkRateLimit: vi.fn() }));
+const idempotencyMock = vi.hoisted(() => ({
+	claimResponseSlot: vi.fn(),
+	getCachedResponse: vi.fn(),
+	readIdempotencyKey: vi.fn(),
+	setCachedResponse: vi.fn(),
+}));
+
+vi.mock('@/core/idempotency', () => ({
+	claimResponseSlot: (...args: unknown[]) => idempotencyMock.claimResponseSlot(...args),
+	getCachedResponse: (...args: unknown[]) => idempotencyMock.getCachedResponse(...args),
+	readIdempotencyKey: (...args: unknown[]) => idempotencyMock.readIdempotencyKey(...args),
+	setCachedResponse: (...args: unknown[]) => idempotencyMock.setCachedResponse(...args),
+}));
 
 vi.mock('@/core/rate-limit', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/core/rate-limit')>()),
@@ -36,6 +49,10 @@ describe('shopping route', () => {
 	beforeEach(() => {
 		resetRouteHarness();
 		rateLimitMock.checkRateLimit.mockResolvedValue({ success: true, remaining: 9, reset: 0 });
+		idempotencyMock.readIdempotencyKey.mockReturnValue(null);
+		idempotencyMock.getCachedResponse.mockResolvedValue(null);
+		idempotencyMock.claimResponseSlot.mockResolvedValue(true);
+		idempotencyMock.setCachedResponse.mockResolvedValue(undefined);
 	});
 
 	it('returns field-specific validation errors when creating shopping items', async () => {
@@ -110,6 +127,30 @@ describe('shopping route', () => {
 				sourcePath: `/einkauf?highlight=${itemId}`,
 			}),
 		);
+	});
+
+	it('does not mutate when the shared guard rejects a spoofed write', async () => {
+		const { POST } = await import('./route');
+		queueSelects([WG_ROW]);
+		routeMocks.requireMember.mockResolvedValue({
+			ok: false,
+			response: NextResponse.json(
+				{ error: 'member_not_verified', code: 'member_not_verified' },
+				{ status: 403 },
+			),
+		});
+
+		const res = await POST(
+			new NextRequest(`https://mana.test/api/wg/${SHARE_CODE}/shopping`, {
+				method: 'POST',
+				body: JSON.stringify({ name: 'Milch' }),
+			}),
+			{ params: Promise.resolve({ code: SHARE_CODE }) },
+		);
+
+		expect(res.status).toBe(403);
+		expect(routeDb.insert).not.toHaveBeenCalled();
+		expect(rateLimitMock.checkRateLimit).not.toHaveBeenCalled();
 	});
 
 	it('returns 429 when creating a shopping item is rate-limited', async () => {
@@ -192,5 +233,31 @@ describe('shopping route', () => {
 				metadata: expect.objectContaining({ count: 2, items: ['Milch', 'Brot'] }),
 			}),
 		);
+	});
+
+	it('replays a cached shopping item after authenticating the caller', async () => {
+		const { POST } = await import('./route');
+		const key = '11111111-2222-4333-8444-555555555555';
+		const cached = { item: { id: 'shopping-item-1', name: 'Milch' } };
+		authenticate();
+		idempotencyMock.readIdempotencyKey.mockReturnValue(key);
+		idempotencyMock.getCachedResponse.mockResolvedValue(cached);
+
+		const res = await POST(
+			new NextRequest(`https://mana.test/api/wg/${SHARE_CODE}/shopping`, {
+				method: 'POST',
+				body: JSON.stringify({ name: 'Milch' }),
+			}),
+			{ params: Promise.resolve({ code: SHARE_CODE }) },
+		);
+
+		expect(res.status).toBe(200);
+		await expect(res.json()).resolves.toEqual(cached);
+		expect(idempotencyMock.getCachedResponse).toHaveBeenCalledWith(
+			`shopping-create:${WG_ID}:${CALLER_ID}`,
+			key,
+		);
+		expect(rateLimitMock.checkRateLimit).not.toHaveBeenCalled();
+		expect(routeDb.insert).not.toHaveBeenCalled();
 	});
 });

@@ -73,9 +73,6 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 				{ status: 503, headers: { 'Retry-After': retryAfter } },
 			);
 		}
-		if (/^\/api\/wg\/[^/]+$/.test(path) && req.method === 'GET') {
-			return NextResponse.next();
-		}
 		if (!READ_METHODS.has(req.method)) {
 			const retryAfter = '300';
 			return NextResponse.json(

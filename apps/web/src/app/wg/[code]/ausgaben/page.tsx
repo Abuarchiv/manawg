@@ -175,6 +175,7 @@ export default function AusgabenPage() {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({
 					id: templateId,
 					...(expectedNextDueAt ? { expectedNextDueAt } : {}),
@@ -385,6 +386,7 @@ export default function AusgabenPage() {
 		const res = await apiFetch<Expense | { expense: Expense }>(url, {
 			method: isEdit ? 'PATCH' : 'POST',
 			memberId: identity.memberId,
+			memberToken: identity.memberToken,
 			body: JSON.stringify({
 				paidByMemberId,
 				amountCents,
@@ -402,6 +404,7 @@ export default function AusgabenPage() {
 					: null;
 				const queuedCount = enqueueOfflineAction(
 					createQueuedExpense({
+						wgId: wg.id,
 						shareCode: wg.shareCode,
 						memberId: identity.memberId,
 						description: desc,
@@ -512,6 +515,7 @@ export default function AusgabenPage() {
 			{
 				method: editingRecurringExpense ? 'PATCH' : 'POST',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({
 					id: editingRecurringExpense?.id,
 					description: desc,
@@ -526,6 +530,7 @@ export default function AusgabenPage() {
 		if (!res.ok) {
 			if (res.status === 0 && !editingRecurringExpense) {
 				const queued = createQueuedRecurring({
+					wgId: wg.id,
 					shareCode: wg.shareCode,
 					memberId: identity.memberId,
 					description: desc,
@@ -626,6 +631,7 @@ export default function AusgabenPage() {
 		const createRes = await apiFetch<{ expense: Expense }>(`/api/wg/${encodedShareCode}/expenses`, {
 			method: 'POST',
 			memberId: identity.memberId,
+			memberToken: identity.memberToken,
 			body: JSON.stringify({
 				description: template.description,
 				amountCents: template.amountCents,
@@ -637,6 +643,7 @@ export default function AusgabenPage() {
 			if (createRes.status === 0) {
 				const queuedCount = enqueueOfflineAction(
 					createQueuedExpense({
+						wgId: wg.id,
 						shareCode: wg.shareCode,
 						memberId: identity.memberId,
 						description: template.description,
@@ -685,6 +692,7 @@ export default function AusgabenPage() {
 			{
 				method: 'DELETE',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 			},
 		);
 
@@ -717,6 +725,7 @@ export default function AusgabenPage() {
 		const res = await apiFetch<unknown>(`/api/wg/${encodedShareCode}/recurring-expenses`, {
 			method: 'DELETE',
 			memberId: identity.memberId,
+			memberToken: identity.memberToken,
 			body: JSON.stringify({ id: template.id }),
 		});
 
@@ -754,6 +763,7 @@ export default function AusgabenPage() {
 			{
 				method: 'POST',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({ settled }),
 			},
 		);
@@ -959,6 +969,7 @@ export default function AusgabenPage() {
 					summary={settlementSummary}
 					shareCode={wg.shareCode}
 					currentMemberId={identity.memberId}
+					memberToken={identity.memberToken}
 					memberColor={memberColor}
 					onSettled={() => void load(false)}
 				/>

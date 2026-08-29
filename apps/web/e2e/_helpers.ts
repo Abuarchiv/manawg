@@ -23,7 +23,7 @@ export async function setupMember(page: Page): Promise<void> {
 		({ wgId, memberId, memberName }) => {
 			localStorage.setItem(
 				`manawg_identity:${wgId}`,
-				JSON.stringify({ memberId, name: memberName }),
+				JSON.stringify({ memberId, name: memberName, memberToken: 'fixture-member-token' }),
 			);
 			// Wipe any stale offline queue from previous specs.
 			localStorage.removeItem('manawg:offline-actions');

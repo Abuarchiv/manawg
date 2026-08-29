@@ -13,7 +13,10 @@ export type OfflineActionType =
 
 export interface OfflineAction {
 	id: string;
+	/** Stable UUID used exclusively for server-side replay protection. */
+	idempotencyKey?: string;
 	type: OfflineActionType;
+	wgId?: string;
 	shareCode: string;
 	memberId: string;
 	createdAt: string;
@@ -64,51 +67,45 @@ interface OfflineActionHandler {
 	risk(action: OfflineAction): OfflineActionRisk;
 }
 
-interface QueuedShoppingInput {
+interface QueuedIdentityInput {
+	wgId?: string;
 	shareCode: string;
 	memberId: string;
+}
+
+interface QueuedShoppingInput extends QueuedIdentityInput {
 	name: string;
 	quantity: string | null;
 	now?: number;
 }
 
-interface QueuedShoppingUpdateInput {
-	shareCode: string;
-	memberId: string;
+interface QueuedShoppingUpdateInput extends QueuedIdentityInput {
 	itemId: string;
 	name: string;
 	bought: boolean;
 	now?: number;
 }
 
-interface QueuedAnnouncementInput {
-	shareCode: string;
-	memberId: string;
+interface QueuedAnnouncementInput extends QueuedIdentityInput {
 	content: string;
 	kind: string;
 	imageUrl?: string | null;
 	now?: number;
 }
 
-interface QueuedChoreCompletionInput {
-	shareCode: string;
-	memberId: string;
+interface QueuedChoreCompletionInput extends QueuedIdentityInput {
 	choreId: string;
 	now?: number;
 }
 
-interface QueuedChoreInput {
-	shareCode: string;
-	memberId: string;
+interface QueuedChoreInput extends QueuedIdentityInput {
 	title: string;
 	intervalDays: number;
 	assignedMemberId: string | null;
 	now?: number;
 }
 
-interface QueuedAbsenceInput {
-	shareCode: string;
-	memberId: string;
+interface QueuedAbsenceInput extends QueuedIdentityInput {
 	absenceMemberId: string;
 	startDate: string;
 	endDate: string;
@@ -116,9 +113,7 @@ interface QueuedAbsenceInput {
 	now?: number;
 }
 
-interface QueuedExpenseInput {
-	shareCode: string;
-	memberId: string;
+interface QueuedExpenseInput extends QueuedIdentityInput {
 	description: string;
 	amountCents: number;
 	paidByMemberId: string;
@@ -129,9 +124,7 @@ interface QueuedExpenseInput {
 	now?: number;
 }
 
-interface QueuedRecurringInput {
-	shareCode: string;
-	memberId: string;
+interface QueuedRecurringInput extends QueuedIdentityInput {
 	description: string;
 	amountCents: number;
 	paidByMemberId: string;
@@ -139,6 +132,22 @@ interface QueuedRecurringInput {
 	nextDueAt: string;
 	splits: Array<{ debtorMemberId: string; amountCents: number }>;
 	now?: number;
+}
+
+const OFFLINE_IDEMPOTENCY_KEY_PATTERN =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isOfflineIdempotencyKey(value: unknown): value is string {
+	return typeof value === 'string' && OFFLINE_IDEMPOTENCY_KEY_PATTERN.test(value);
+}
+
+export function createOfflineIdempotencyKey(): string | null {
+	try {
+		const key = crypto.randomUUID();
+		return isOfflineIdempotencyKey(key) ? key : null;
+	} catch {
+		return null;
+	}
 }
 
 function slug(value: string): string {
@@ -158,14 +167,18 @@ function pathSegment(value: unknown): string {
 function createQueuedAction(
 	id: string,
 	type: OfflineAction['type'],
+	wgId: string | undefined,
 	shareCode: string,
 	memberId: string,
 	payload: OfflineAction['payload'],
 	now: number,
 ): OfflineAction {
+	const idempotencyKey = createOfflineIdempotencyKey();
 	return {
 		id,
+		...(idempotencyKey ? { idempotencyKey } : {}),
 		type,
+		...(wgId ? { wgId } : {}),
 		shareCode,
 		memberId,
 		createdAt: new Date(now).toISOString(),
@@ -178,6 +191,7 @@ export function createQueuedShoppingItem(input: QueuedShoppingInput): OfflineAct
 	return createQueuedAction(
 		`shopping:${input.shareCode}:${now}:${slug(input.name)}`,
 		'shopping.create',
+		input.wgId,
 		input.shareCode,
 		input.memberId,
 		{ name: input.name, quantity: input.quantity },
@@ -190,6 +204,7 @@ export function createQueuedShoppingUpdate(input: QueuedShoppingUpdateInput): Of
 	return createQueuedAction(
 		`shopping-update:${input.shareCode}:${now}:${input.itemId}`,
 		'shopping.update',
+		input.wgId,
 		input.shareCode,
 		input.memberId,
 		{ itemId: input.itemId, name: input.name, bought: input.bought },
@@ -202,6 +217,7 @@ export function createQueuedAnnouncement(input: QueuedAnnouncementInput): Offlin
 	return createQueuedAction(
 		`announcement:${input.shareCode}:${now}:${slug(input.content)}`,
 		'announcement.create',
+		input.wgId,
 		input.shareCode,
 		input.memberId,
 		{ content: input.content, kind: input.kind, imageUrl: input.imageUrl ?? null },
@@ -214,6 +230,7 @@ export function createQueuedChoreCompletion(input: QueuedChoreCompletionInput): 
 	return createQueuedAction(
 		`chore:${input.shareCode}:${now}:${input.choreId}`,
 		'chore.complete',
+		input.wgId,
 		input.shareCode,
 		input.memberId,
 		{ choreId: input.choreId },
@@ -226,6 +243,7 @@ export function createQueuedChore(input: QueuedChoreInput): OfflineAction {
 	return createQueuedAction(
 		`chore-create:${input.shareCode}:${now}:${slug(input.title)}`,
 		'chore.create',
+		input.wgId,
 		input.shareCode,
 		input.memberId,
 		{
@@ -242,6 +260,7 @@ export function createQueuedAbsence(input: QueuedAbsenceInput): OfflineAction {
 	return createQueuedAction(
 		`absence:${input.shareCode}:${now}:${input.absenceMemberId}`,
 		'absence.create',
+		input.wgId,
 		input.shareCode,
 		input.memberId,
 		{
@@ -259,6 +278,7 @@ export function createQueuedExpense(input: QueuedExpenseInput): OfflineAction {
 	return createQueuedAction(
 		`expense:${input.shareCode}:${now}:${slug(input.description)}`,
 		'expense.create',
+		input.wgId,
 		input.shareCode,
 		input.memberId,
 		{
@@ -281,6 +301,7 @@ export function createQueuedRecurring(input: QueuedRecurringInput): OfflineActio
 	return createQueuedAction(
 		`recurring:${input.shareCode}:${now}:${slug(input.description)}`,
 		'recurring.create',
+		input.wgId,
 		input.shareCode,
 		input.memberId,
 		{

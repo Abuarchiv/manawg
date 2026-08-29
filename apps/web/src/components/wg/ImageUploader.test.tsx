@@ -7,10 +7,17 @@ const imageStoreMock = vi.hoisted(() => ({
 	storePendingImage: vi.fn(),
 	uploadPendingImageToken: vi.fn(),
 }));
+const wgContextMock = vi.hoisted(() => ({
+	identity: {
+		memberId: 'member-1',
+		memberToken: 'member-token-1' as string | undefined,
+		name: 'Ava',
+	},
+}));
 
 vi.mock('@/components/wg/WgContextProvider', () => ({
 	useWg: () => ({
-		identity: { memberId: 'member-1', name: 'Ava' },
+		identity: wgContextMock.identity,
 	}),
 }));
 
@@ -26,6 +33,7 @@ vi.mock('@/core/offline/offline-images', () => ({
 describe('ImageUploader', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		wgContextMock.identity.memberToken = 'member-token-1';
 		Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
 		imageStoreMock.readPendingImage.mockResolvedValue(null);
 		imageStoreMock.uploadPendingImageToken.mockRejectedValue(new Error('network down'));
@@ -483,11 +491,41 @@ describe('ImageUploader', () => {
 		);
 
 		await waitFor(() => expect(imageStoreMock.uploadPendingImageToken).toHaveBeenCalledTimes(1));
+		expect(imageStoreMock.uploadPendingImageToken).toHaveBeenCalledWith(
+			'manawg-pending-image:receipt-3',
+			'member-1',
+			'member-token-1',
+		);
 
 		window.dispatchEvent(new Event('online'));
 		window.dispatchEvent(new Event('online'));
 
 		expect(imageStoreMock.uploadPendingImageToken).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps uploads pending until a tokenless legacy identity reloads the WG', async () => {
+		wgContextMock.identity.memberToken = undefined;
+		imageStoreMock.storePendingImage.mockResolvedValue('manawg-pending-image:legacy');
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+
+		render(
+			<ImageUploader
+				shareCode="MTE8PZAT"
+				purpose="expense"
+				value={null}
+				onChange={() => undefined}
+			/>,
+		);
+
+		fireEvent.change(screen.getByLabelText(/Bild hinzufügen/), {
+			target: { files: [new File(['image'], 'receipt.png', { type: 'image/png' })] },
+		});
+
+		expect(await screen.findByRole('status')).toHaveTextContent(
+			'Bild vorbereitet. Öffne die WG erneut, um den Upload fortzusetzen.',
+		);
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
 	it('keeps pending image removal disabled while the background upload is running', async () => {

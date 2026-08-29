@@ -34,7 +34,6 @@ import { getAbsentMemberIds } from '@/features/chores/absence';
 import type { AbsenceInput } from '@/features/chores/absence';
 import { absenceSaveErrorMessage, choreCreateErrorMessage } from '@/features/chores/chore-errors';
 import { buildChoreFairness } from '@/features/chores/chore-fairness';
-import { getChoreHighlightPath } from '@/features/chores/chore-links';
 import {
 	getChorePlanHealth,
 	getChoreRepairHint,
@@ -296,6 +295,7 @@ export default function PutzenPage() {
 			const result = await apiFetch<ChoreListResponse>(`/api/wg/${encodedShareCode}/chores`, {
 				method: 'POST',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({
 					title,
 					intervalDays: newInterval,
@@ -307,6 +307,7 @@ export default function PutzenPage() {
 			if (!result.ok) {
 				if (result.status === 0) {
 					const queued = createQueuedChore({
+						wgId: wg.id,
 						shareCode: wg.shareCode,
 						memberId: identity.memberId,
 						title,
@@ -382,6 +383,7 @@ export default function PutzenPage() {
 				{
 					method: 'POST',
 					memberId: identity.memberId,
+					memberToken: identity.memberToken,
 					body: JSON.stringify({
 						memberId: absenceMemberId,
 						startDate,
@@ -393,6 +395,7 @@ export default function PutzenPage() {
 			if (!result.ok) {
 				if (result.status === 0) {
 					const queued = createQueuedAbsence({
+						wgId: wg.id,
 						shareCode: wg.shareCode,
 						memberId: identity.memberId,
 						absenceMemberId,
@@ -457,6 +460,7 @@ export default function PutzenPage() {
 				{
 					method: 'DELETE',
 					memberId: identity.memberId,
+					memberToken: identity.memberToken,
 				},
 			);
 			if (!result.ok) {
@@ -497,6 +501,7 @@ export default function PutzenPage() {
 			{
 				method: 'POST',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({ completedByMemberId: identity.memberId }),
 			},
 		);
@@ -505,6 +510,7 @@ export default function PutzenPage() {
 			if (result.status === 0) {
 				const queuedCount = enqueueOfflineAction(
 					createQueuedChoreCompletion({
+						wgId: wg.id,
 						shareCode: wg.shareCode,
 						memberId: identity.memberId,
 						choreId: chore.id,
@@ -595,10 +601,11 @@ export default function PutzenPage() {
 			{
 				method: 'POST',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({
 					kind: 'request',
 					source: 'chore_swap',
-					sourcePath: getChoreHighlightPath(chore.id),
+					sourcePath: `/putzen?highlight=${encodeURIComponent(chore.id)}`,
 					content: `${identity.name} bittet um Tausch: "${chore.title}" ist ${status.label}. Bitte nachholen, übernehmen oder kurz absprechen.`,
 				}),
 			},
@@ -637,6 +644,7 @@ export default function PutzenPage() {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({ assignedMemberId: memberId }),
 			},
 		);
@@ -682,6 +690,7 @@ export default function PutzenPage() {
 			{
 				method: 'DELETE',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 			},
 		);
 

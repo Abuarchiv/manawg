@@ -1,7 +1,7 @@
 const MEMBER_ID_HEADER = 'x-manawg-member-id';
 const MEMBER_TOKEN_HEADER = 'x-manawg-member-token';
 
-type ApiFetchInit = RequestInit & { memberId?: string; memberToken?: string };
+type ApiFetchInit = RequestInit & { memberId?: string; memberToken?: string | undefined };
 
 type ApiFetchResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
 
@@ -21,6 +21,9 @@ export async function apiFetch<T>(
 	}
 
 	const method = (rest.method ?? 'GET').toUpperCase();
+	if (memberId && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && !memberToken) {
+		return { ok: false, status: 403, error: 'member_not_verified' };
+	}
 	const hasBody = rest.body !== undefined && rest.body !== null;
 	if (hasBody && ['POST', 'PUT', 'PATCH'].includes(method)) {
 		headers.set('content-type', 'application/json');

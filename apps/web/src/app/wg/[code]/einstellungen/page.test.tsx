@@ -38,7 +38,7 @@ vi.mock('@/components/wg/WgContextProvider', () => ({
 			shareCodeRotatedAt: null,
 		},
 		members: [{ id: 'member-1', name: 'Ava', color: null }],
-		identity: { memberId: 'member-1', name: 'Ava' },
+		identity: { memberId: 'member-1', memberToken: 'member-token-1', name: 'Ava' },
 	}),
 }));
 
@@ -179,6 +179,7 @@ describe('EinstellungenPage', () => {
 				{
 					method: 'PATCH',
 					memberId: 'member-1',
+					memberToken: 'member-token-1',
 					body: JSON.stringify({ notifyReminders: true }),
 				},
 			),
@@ -212,6 +213,7 @@ describe('EinstellungenPage', () => {
 			'WG/123?X=1',
 			'member-1',
 			subscription,
+			'member-token-1',
 		);
 		expect(pushSubscribeMock.subscribeWebPush).not.toHaveBeenCalled();
 		expect(screen.getByRole('button', { name: /Web Push/ })).toHaveAttribute(
@@ -519,6 +521,11 @@ describe('EinstellungenPage', () => {
 		render(<EinstellungenPage />);
 
 		fireEvent.click(await screen.findByRole('button', { name: /Web Push/ }));
+		expect(pushSubscribeMock.unsubscribeWebPush).toHaveBeenCalledWith(
+			'WG/123?X=1',
+			'member-1',
+			'member-token-1',
+		);
 
 		expect(
 			await screen.findByText('Push-Abo konnte nicht deaktiviert werden: Tritt der WG erneut bei.'),

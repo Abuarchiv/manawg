@@ -65,6 +65,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
+				memberToken: identity.memberToken,
 				body: JSON.stringify({ active: true }),
 			},
 		);
@@ -550,6 +551,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 					encodedShareCode={encodedShareCode}
 					member={memberToDeactivate}
 					viewerMemberId={identity.memberId}
+					viewerMemberToken={identity.memberToken}
 					onClose={() => setMemberToDeactivate(null)}
 					onDeactivated={handleMemberDeactivated}
 				/>

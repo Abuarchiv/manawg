@@ -42,6 +42,20 @@ const rateLimitMock = vi.hoisted(() => ({
 	wgWriteLimiter: { name: 'wg-write-limiter' },
 }));
 
+const idempotencyMock = vi.hoisted(() => ({
+	claimResponseSlot: vi.fn(),
+	getCachedResponse: vi.fn(),
+	readIdempotencyKey: vi.fn(),
+	setCachedResponse: vi.fn(),
+}));
+
+vi.mock('@/core/idempotency', () => ({
+	claimResponseSlot: (...args: unknown[]) => idempotencyMock.claimResponseSlot(...args),
+	getCachedResponse: (...args: unknown[]) => idempotencyMock.getCachedResponse(...args),
+	readIdempotencyKey: (...args: unknown[]) => idempotencyMock.readIdempotencyKey(...args),
+	setCachedResponse: (...args: unknown[]) => idempotencyMock.setCachedResponse(...args),
+}));
+
 vi.mock('@/core/rate-limit', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/core/rate-limit')>();
 	return {
@@ -75,6 +89,10 @@ describe('chore complete route', () => {
 		fairnessMock.computeOpenGapsByMember.mockReturnValue(new Map());
 		routeMocks.recordAuditEvent.mockResolvedValue(undefined);
 		rateLimitMock.checkRateLimit.mockResolvedValue({ success: true, remaining: 10, reset: 0 });
+		idempotencyMock.readIdempotencyKey.mockReturnValue(null);
+		idempotencyMock.getCachedResponse.mockResolvedValue(null);
+		idempotencyMock.claimResponseSlot.mockResolvedValue(true);
+		idempotencyMock.setCachedResponse.mockResolvedValue(undefined);
 	});
 
 	it('does not audit or report success when the completion log insert returns no row', async () => {
@@ -300,6 +318,42 @@ describe('chore complete route', () => {
 
 		expect(res.status).toBe(500);
 		expect(fairnessMock.chooseNextAvailableMember).not.toHaveBeenCalled();
+		expect(routeDb.update).not.toHaveBeenCalled();
+		expect(routeDb.insert).not.toHaveBeenCalled();
+		expect(routeMocks.recordAuditEvent).not.toHaveBeenCalled();
+	});
+
+	it('replays a cached chore completion without rotating twice', async () => {
+		const { POST } = await import('./route');
+		const choreId = '492a85d5-3232-4faf-a2dc-552165aa4dec';
+		const key = '44444444-5555-4666-8777-888888888888';
+		const cached = { chore: { id: choreId, assignedMemberId: 'member-2' } };
+		routeDb.select.mockReturnValue({
+			from: () => ({
+				innerJoin: () => ({
+					where: () => ({
+						limit: async () => [{ id: choreId, wgId: 'wg-1' }],
+					}),
+				}),
+			}),
+		});
+		idempotencyMock.readIdempotencyKey.mockReturnValue(key);
+		idempotencyMock.getCachedResponse.mockResolvedValue(cached);
+
+		const res = await POST(
+			new NextRequest(`https://mana.test/api/wg/ABCDEFGH/chores/${choreId}/complete`, {
+				method: 'POST',
+			}),
+			{ params: Promise.resolve({ code: 'ABCDEFGH', id: choreId }) },
+		);
+
+		expect(res.status).toBe(200);
+		await expect(res.json()).resolves.toEqual(cached);
+		expect(idempotencyMock.getCachedResponse).toHaveBeenCalledWith(
+			`chores-complete:wg-1:member-1:${choreId}`,
+			key,
+		);
+		expect(rateLimitMock.checkRateLimit).not.toHaveBeenCalled();
 		expect(routeDb.update).not.toHaveBeenCalled();
 		expect(routeDb.insert).not.toHaveBeenCalled();
 		expect(routeMocks.recordAuditEvent).not.toHaveBeenCalled();

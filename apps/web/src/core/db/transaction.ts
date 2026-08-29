@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgQueryResultHKT } from 'drizzle-orm/node-postgres';
 import type { PgTransaction } from 'drizzle-orm/pg-core';
 import { Pool } from 'pg';
-import { resolveConnectionString } from './connection';
+import { resolveTransactionConnectionString } from './connection';
 import * as schema from './schema';
 
 export { TransactionAbort } from './transaction-abort';
@@ -21,7 +21,7 @@ interface TransactionalDb {
 let cachedDb: TransactionalDb | null = null;
 
 function buildTransactionalDb(): TransactionalDb {
-	const url = resolveConnectionString();
+	const url = resolveTransactionConnectionString();
 	const pool = new Pool({ connectionString: url, max: 1 });
 	pool.on('error', (err: unknown) => console.error('[db/transaction] pool error', err));
 	return drizzle(pool, { schema }) as unknown as TransactionalDb;

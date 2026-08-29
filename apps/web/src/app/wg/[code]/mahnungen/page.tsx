@@ -218,6 +218,7 @@ export default function MahnungenPage() {
 											debtorMemberId={row.debtorId}
 											creditorMemberId={row.creditorId}
 											currentMemberId={identity.memberId}
+											memberToken={identity.memberToken}
 											cooldownActive={!cooldown.allowed}
 											cooldownLabel={cooldownLabel}
 											onSent={() => void load(false)}
