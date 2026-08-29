@@ -2,3 +2,6 @@
 .env*.local
 .next-e2e-*
 .next-e2e-tsconfig-*.json
+.agents
+supabase/.temp
+skills-lock.json
