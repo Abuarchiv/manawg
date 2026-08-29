@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SHARE_CODE, generateShareCode, isValidShareCode, normalizeShareCode } from '../share-code';
 
 const ITERATIONS = 100;
+const SAMPLE_SIZE = 500;
 const CONFUSABLE_CHARS = ['I', 'L', 'O', 'U'];
 
 describe('generateShareCode', () => {
@@ -36,6 +37,15 @@ describe('generateShareCode', () => {
 		}
 		// 100 draws from ~1.1T combos — collisions are vanishingly unlikely.
 		expect(seen.size).toBe(ITERATIONS);
+	});
+
+	it('never emits a character outside the declared alphabet', () => {
+		const outside = Array.from({ length: SAMPLE_SIZE }, () => generateShareCode())
+			.join('')
+			.split('')
+			.filter((char) => !SHARE_CODE.ALPHABET.includes(char));
+
+		expect(outside).toEqual([]);
 	});
 });
 
@@ -129,6 +139,32 @@ describe('normalizeShareCode', () => {
 	it('leaves valid codes unchanged after normalization', () => {
 		expect(normalizeShareCode('ABCDEFGH')).toBe('ABCDEFGH');
 		expect(normalizeShareCode('23456789')).toBe('23456789');
+	});
+
+	it('is idempotent: normalizing an already-valid code twice changes nothing further', () => {
+		const code = generateShareCode();
+
+		expect(normalizeShareCode(code)).toBe(code);
+		expect(normalizeShareCode(normalizeShareCode(code))).toBe(code);
+	});
+
+	/**
+	 * Documents current behaviour rather than endorsing it.
+	 *
+	 * The look-alike substitution maps I/L to `1` and O to `0` — but neither `0`
+	 * nor `1` is in the alphabet, so the "correction" can only ever produce an
+	 * invalid code. Typing `O` where the real code has `Q` fails either way, so
+	 * nothing is broken; the mapping simply cannot do the job it looks like it
+	 * is doing. Fixing it means either dropping the substitution or adding 0/1
+	 * to the alphabet, and both change user-visible behaviour.
+	 */
+	it('cannot rescue a code containing I or O — the substitutes are not in the alphabet', () => {
+		expect(isValidShareCode(normalizeShareCode('MTE8PZAI'))).toBe(false);
+		expect(isValidShareCode(normalizeShareCode('MTE8PZAO'))).toBe(false);
+	});
+
+	it('does rescue U, because V is in the alphabet', () => {
+		expect(isValidShareCode(normalizeShareCode('MTE8PZAU'))).toBe(true);
 	});
 });
 

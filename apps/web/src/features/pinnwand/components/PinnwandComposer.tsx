@@ -1,7 +1,7 @@
 'use client';
 import { ALERT_DANGER } from '@/components/ui/styles';
 import { ImageUploader } from '@/components/wg/ImageUploader';
-import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
+import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import type { AnnouncementKind } from '@/features/pinnwand/components/announcement-types';
 import { CONTENT_MAX, KIND_OPTIONS } from '@/features/pinnwand/components/constants';
 import { Loader2, Send, X } from 'lucide-react';

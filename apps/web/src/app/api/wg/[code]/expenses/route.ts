@@ -16,6 +16,7 @@ import type { RouteCtx } from '@/core/infra/api-types';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema } from '@/core/validators/image-url';
+import { AMOUNT_MAX_CENTS, AMOUNT_MIN_CENTS } from '@/features/expenses/expense-constants';
 import {
 	checkPaidByGuard,
 	findExpenseMemberIds,
@@ -28,8 +29,6 @@ import { desc, eq, inArray } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const AMOUNT_MIN_CENTS = 1;
-const AMOUNT_MAX_CENTS = 100_000_000;
 const DESCRIPTION_MIN = 1;
 const DESCRIPTION_MAX = 200;
 const MAX_SPLITS = 50;

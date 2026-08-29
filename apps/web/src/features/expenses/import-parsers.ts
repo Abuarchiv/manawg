@@ -1,5 +1,5 @@
 import { CENTS_PER_EURO } from '@/core/utils/money';
-const AMOUNT_MAX_CENTS = 100_000_000;
+import { AMOUNT_MAX_CENTS } from '@/features/expenses/expense-constants';
 const FUZZY_MATCH_MAX_DISTANCE = 2;
 const CUSTOM_SPLIT_MAX_DRIFT_CENTS = 2;
 const MIN_PLAUSIBLE_YEAR = 2000;

@@ -1,4 +1,3 @@
-import { QueryProvider } from '@/providers/QueryProvider';
 import { InstallPrompt } from '@manawg/shared/components/install-prompt';
 import { PwaRegister } from '@manawg/shared/components/pwa-register';
 import { ThemeProvider } from '@manawg/shared/components/theme/ThemeProvider';
@@ -172,7 +171,7 @@ export default function RootLayout({
 					Zum Hauptinhalt springen
 				</a>
 				<ThemeProvider>
-					<QueryProvider>{children}</QueryProvider>
+					{children}
 					<PwaRegister />
 					<InstallPrompt />
 				</ThemeProvider>

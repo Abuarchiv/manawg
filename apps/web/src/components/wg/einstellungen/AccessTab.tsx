@@ -1,10 +1,10 @@
 'use client';
 
+import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
 import { ShareWgCard } from '@/components/wg/ShareWgCard';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
 import { Section } from '@/components/wg/einstellungen/Section';
 import {
 	accessErrorMessage,

@@ -1,6 +1,6 @@
 'use client';
 
-import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
+import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useDismissableMenu } from '@/core/hooks/useDismissableMenu';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { haptic } from '@manawg/shared/lib/haptics';

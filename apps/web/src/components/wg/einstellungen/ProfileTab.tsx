@@ -1,6 +1,6 @@
 'use client';
 
-import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
+import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { ThemeOption } from '@/components/wg/einstellungen/ThemeOption';
 import { useTheme } from '@manawg/shared/components/theme/ThemeProvider';

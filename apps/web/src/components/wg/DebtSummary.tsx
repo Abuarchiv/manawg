@@ -1,6 +1,6 @@
 'use client';
 
-import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
+import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';

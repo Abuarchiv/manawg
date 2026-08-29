@@ -1,8 +1,8 @@
 'use client';
 
 import { ImageUploader } from '@/components/wg/ImageUploader';
+import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import type { Member } from '@/components/wg/WgContextProvider';
-import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
 import { ManualSplitSummary } from '@/features/expenses/components/ausgaben/ManualSplitSummary';
 import { TextField } from '@/features/expenses/components/ausgaben/TextField';
 import {

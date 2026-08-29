@@ -2,6 +2,7 @@
 
 import { ChatTopBarLink } from '@/components/wg/ChatTopBarLink';
 import { DashboardGrid } from '@/components/wg/DashboardGrid';
+import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { ActivityFeed } from '@/components/wg/dashboard/ActivityFeed';
 import { BalanceBars } from '@/components/wg/dashboard/BalanceBars';
@@ -11,7 +12,6 @@ import {
 	BalanceSkeleton,
 	ChoreSkeleton,
 } from '@/components/wg/dashboard/DashboardSkeletons';
-import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
 import { ModuleCard } from '@/components/wg/dashboard/ModuleCard';
 import { Panel } from '@/components/wg/dashboard/Panel';
 import { Sparkline } from '@/components/wg/dashboard/Sparkline';

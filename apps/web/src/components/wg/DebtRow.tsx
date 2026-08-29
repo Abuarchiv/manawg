@@ -1,6 +1,6 @@
 'use client';
 
-import { MemberAvatar } from '@/components/wg/dashboard/MemberAvatar';
+import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
 import { ArrowRight } from 'lucide-react';
 import type { ReactNode } from 'react';
