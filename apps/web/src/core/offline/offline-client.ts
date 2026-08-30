@@ -255,7 +255,7 @@ export function enqueueOfflineAction(action: OfflineAction): number {
 async function resolvePendingImages(action: OfflineAction): Promise<OfflineAction> {
 	const imageUrl = action.payload.imageUrl;
 	if (typeof imageUrl !== 'string' || !isPendingImageToken(imageUrl)) return action;
-	const publicUrl = await uploadPendingImageToken(imageUrl);
+	const publicUrl = await uploadPendingImageToken(imageUrl, action.memberId);
 	return {
 		...action,
 		payload: {

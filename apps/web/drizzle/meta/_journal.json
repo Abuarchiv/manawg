@@ -50,6 +50,13 @@
       "when": 1788112575655,
       "tag": "0006_cool_mathemanic",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788112576655,
+      "tag": "0007_data_api_security",
+      "breakpoints": true
     }
   ]
 }

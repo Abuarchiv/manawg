@@ -121,9 +121,28 @@ describe('ImageUploader', () => {
 		expect(imageStoreMock.storePendingImage).toHaveBeenCalledWith({
 			file,
 			shareCode: 'MTE8PZAT',
+			memberId: 'member-1',
 			purpose: 'expense',
 		});
 		expect(onChange).toHaveBeenCalledWith('manawg-pending-image:receipt-1');
+	});
+
+	it('only reads a pending image for the active member', async () => {
+		render(
+			<ImageUploader
+				shareCode="MTE8PZAT"
+				purpose="expense"
+				value="manawg-pending-image:receipt-1"
+				onChange={() => undefined}
+			/>,
+		);
+
+		await waitFor(() =>
+			expect(imageStoreMock.readPendingImage).toHaveBeenCalledWith(
+				'manawg-pending-image:receipt-1',
+				'member-1',
+			),
+		);
 	});
 
 	it('explains stale membership when the upload signature is denied', async () => {
@@ -493,6 +512,7 @@ describe('ImageUploader', () => {
 		await waitFor(() => expect(imageStoreMock.uploadPendingImageToken).toHaveBeenCalledTimes(1));
 		expect(imageStoreMock.uploadPendingImageToken).toHaveBeenCalledWith(
 			'manawg-pending-image:receipt-3',
+			'member-1',
 		);
 
 		window.dispatchEvent(new Event('online'));

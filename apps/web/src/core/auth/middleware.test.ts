@@ -12,19 +12,35 @@ describe('refreshSupabaseSession', () => {
 		vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_test');
 	});
 
-	it('refreshes the verified session and returns replacement cookies to the browser', async () => {
-		const getUser = vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
-		createServerClient.mockReturnValue({ auth: { getUser } });
+	it('passes a refreshed cookie to the next handler and preserves response headers', async () => {
+		let cookieOptions:
+			| {
+					cookies: {
+						setAll: (cookies: Array<{ name: string; value: string; options: object }>) => void;
+					};
+			  }
+			| undefined;
+		const getUser = vi.fn(async () => {
+			cookieOptions?.cookies.setAll([
+				{ name: 'sb-session', value: 'fresh', options: { httpOnly: true } },
+			]);
+			return { data: { user: { id: 'user-1' } }, error: null };
+		});
+		createServerClient.mockImplementation((_url, _key, options) => {
+			cookieOptions = options;
+			return { auth: { getUser } };
+		});
 		const { refreshSupabaseSession } = await import('./middleware');
 		const request = new NextRequest('https://manawg.test/wg/MTE8PZAT');
 		const response = NextResponse.next();
+		response.headers.set('Content-Security-Policy', "default-src 'self'");
 
 		const refreshed = await refreshSupabaseSession(request, response);
-		const options = createServerClient.mock.calls[0]?.[2];
-		if (!options) throw new Error('missing Supabase cookie options');
-		options.cookies.setAll([{ name: 'sb-session', value: 'fresh', options: { httpOnly: true } }]);
 
 		expect(getUser).toHaveBeenCalledOnce();
+		expect(refreshed).not.toBe(response);
 		expect(refreshed.cookies.get('sb-session')?.value).toBe('fresh');
+		expect(refreshed.headers.get('Content-Security-Policy')).toBe("default-src 'self'");
+		expect(refreshed.headers.get('x-middleware-request-cookie')).toContain('sb-session=fresh');
 	});
 });

@@ -54,4 +54,16 @@ describe('createSupabaseBrowserClient', () => {
 			},
 		});
 	});
+
+	it('ends the browser session on explicit account logout', async () => {
+		vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://project.supabase.co');
+		vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_test');
+		const signOut = vi.fn().mockResolvedValue({ error: null });
+		createBrowserClient.mockReturnValue({ auth: { signOut } });
+		const { signOutSocialAccount } = await import('./client');
+
+		await signOutSocialAccount();
+
+		expect(signOut).toHaveBeenCalledOnce();
+	});
 });

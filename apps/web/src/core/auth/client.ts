@@ -29,3 +29,8 @@ export async function linkSocialIdentity(provider: SocialProvider, next: string)
 	});
 	if (error) throw error;
 }
+
+export async function signOutSocialAccount(): Promise<void> {
+	const { error } = await createSupabaseBrowserClient().auth.signOut();
+	if (error) throw error;
+}

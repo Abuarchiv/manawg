@@ -80,6 +80,7 @@ describe('offline client queue helpers', () => {
 		await expect(syncOfflineActions('ABC12345', { force: true })).resolves.toBe(1);
 		expect(offlineImageMock.uploadPendingImageToken).toHaveBeenCalledWith(
 			'manawg-pending-image:img1',
+			'm1',
 		);
 		expect(apiFetchMock).toHaveBeenCalledWith(
 			'/api/wg/ABC12345/announcements',

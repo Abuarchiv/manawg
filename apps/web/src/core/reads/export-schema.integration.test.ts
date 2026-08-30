@@ -12,12 +12,18 @@
  * `route.integration.test.ts` (apps/web/src/app/api/wg) for how the
  * `db-integration` CI job activates this file.
  */
-import { MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 import { generateShareCode } from '@/shared/lib/share-code';
 import { NextRequest } from 'next/server';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+const authMock = vi.hoisted(() => ({ getAuthenticatedUser: vi.fn() }));
+
+vi.mock('@/core/auth/server', () => ({
+	getAuthenticatedUser: (...args: unknown[]) => authMock.getAuthenticatedUser(...args),
+}));
 
 const hasRealDb = Boolean(process.env.POSTGRES_URL || process.env.DATABASE_URL);
+const AUTH_USER_ID = 'b827e8e7-d6dd-464d-af89-28ddb7911565';
 
 describe.skipIf(!hasRealDb)('GET /api/wg/[code]/export (real database)', () => {
 	let wgId: string;
@@ -25,6 +31,7 @@ describe.skipIf(!hasRealDb)('GET /api/wg/[code]/export (real database)', () => {
 	let memberId: string;
 
 	beforeAll(async () => {
+		authMock.getAuthenticatedUser.mockResolvedValue({ id: AUTH_USER_ID });
 		const {
 			db,
 			wgs,
@@ -49,7 +56,10 @@ describe.skipIf(!hasRealDb)('GET /api/wg/[code]/export (real database)', () => {
 		if (!wg) throw new Error('failed to seed wg');
 		wgId = wg.id;
 
-		const [member] = await db.insert(wgMembers).values({ wgId, name: 'Export Tester' }).returning();
+		const [member] = await db
+			.insert(wgMembers)
+			.values({ wgId, name: 'Export Tester', authUserId: AUTH_USER_ID })
+			.returning();
 		if (!member) throw new Error('failed to seed member');
 		memberId = member.id;
 
@@ -131,9 +141,7 @@ describe.skipIf(!hasRealDb)('GET /api/wg/[code]/export (real database)', () => {
 	it('round-trips one row per exportable section', async () => {
 		const { GET } = await import('../../app/api/wg/[code]/export/route');
 
-		const req = new NextRequest(`https://mana.test/api/wg/${shareCode}/export?format=json`, {
-			headers: { [MEMBER_ID_HEADER]: memberId },
-		});
+		const req = new NextRequest(`https://mana.test/api/wg/${shareCode}/export?format=json`);
 		const res = await GET(req, { params: Promise.resolve({ code: shareCode }) });
 		expect(res.status).toBe(200);
 		const data = await res.json();

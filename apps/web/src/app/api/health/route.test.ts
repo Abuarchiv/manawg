@@ -14,6 +14,8 @@ describe('health route', () => {
 		dbMock.execute.mockReset().mockResolvedValue([{ '?column?': 1 }]);
 		vi.stubEnv('POSTGRES_URL', 'postgres://localhost/manawg');
 		vi.stubEnv('MEMBER_SESSION_SECRET', 'test-member-session-secret');
+		vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://project.supabase.co');
+		vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_test');
 	});
 
 	afterEach(() => {

@@ -121,12 +121,15 @@ test.describe('ManaWG core flows', () => {
 			page.getByRole('link', { name: '1 Offline-Aktion wartet auf Synchronisierung.' }),
 		).toBeVisible({ timeout: 30_000 });
 
-		await page.evaluate(() => {
-			localStorage.setItem(
-				'manawg:draft:MTE8PZAT:expense',
-				JSON.stringify({ description: 'Alter Entwurf', amountStr: '1,00' }),
-			);
-		});
+		await page.evaluate(
+			({ memberId }) => {
+				localStorage.setItem(
+					`manawg:draft:MTE8PZAT:${memberId}:expense`,
+					JSON.stringify({ description: 'Alter Entwurf', amountStr: '1,00' }),
+				);
+			},
+			{ memberId },
+		);
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben?desc=Internet&amount=32,90');
 		await expect(page.locator('#f-beschreibung')).toHaveValue('Internet', {
 			timeout: 30_000,
@@ -155,12 +158,15 @@ test.describe('ManaWG core flows', () => {
 		await expect(page.getByRole('button', { name: 'Putzaufgabe erfassen' })).toBeVisible({
 			timeout: 30_000,
 		});
-		await page.evaluate(() => {
-			localStorage.setItem(
-				'manawg:draft:MTE8PZAT:chore',
-				JSON.stringify({ title: 'Alter Putzplan' }),
-			);
-		});
+		await page.evaluate(
+			({ memberId }) => {
+				localStorage.setItem(
+					`manawg:draft:MTE8PZAT:${memberId}:chore`,
+					JSON.stringify({ title: 'Alter Putzplan' }),
+				);
+			},
+			{ memberId },
+		);
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen?title=Bad%20putzen');
 		await expect(
 			page.getByRole('button', { name: /^(Putzaufgabe erfassen|Putzaufgabe-Formular schließen)$/ }),
@@ -200,12 +206,15 @@ test.describe('ManaWG core flows', () => {
 		await expect(page.locator(`#absence-${absenceId}`)).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByText(/Urlaub/)).toBeVisible({ timeout: 30_000 });
 
-		await page.evaluate(() => {
-			localStorage.setItem(
-				'manawg:draft:MTE8PZAT:shopping',
-				JSON.stringify({ name: 'Alter Einkauf', quantity: '99' }),
-			);
-		});
+		await page.evaluate(
+			({ memberId }) => {
+				localStorage.setItem(
+					`manawg:draft:MTE8PZAT:${memberId}:shopping`,
+					JSON.stringify({ name: 'Alter Einkauf', quantity: '99' }),
+				);
+			},
+			{ memberId },
+		);
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einkauf?name=Milch');
 		await expect(page.getByPlaceholder('Was brauchen wir?')).toHaveValue('Milch', {
 			timeout: 30_000,
@@ -220,12 +229,15 @@ test.describe('ManaWG core flows', () => {
 			'aria-pressed',
 			'true',
 		);
-		await page.evaluate(() => {
-			localStorage.setItem(
-				'manawg:draft:MTE8PZAT:announcement',
-				JSON.stringify({ content: 'Alter Beitrag', kind: 'info' }),
-			);
-		});
+		await page.evaluate(
+			({ memberId }) => {
+				localStorage.setItem(
+					`manawg:draft:MTE8PZAT:${memberId}:announcement`,
+					JSON.stringify({ content: 'Alter Beitrag', kind: 'info' }),
+				);
+			},
+			{ memberId },
+		);
 		await gotoWithRetry(page, '/wg/MTE8PZAT/pinnwand?content=Paket%20im%20Flur&kind=question');
 		await expect(
 			page.getByRole('button', { name: /^(Beitrag erstellen|Beitragsformular schließen)$/ }),
@@ -255,14 +267,17 @@ test.describe('ManaWG core flows', () => {
 		});
 
 		// The earlier prefill assertion (line 133) left its own draft behind in
-		// 'manawg:draft:MTE8PZAT:expense'. OfflineQueueSection.edit() correctly
+		// `manawg:draft:MTE8PZAT:${memberId}:expense`. OfflineQueueSection.edit() correctly
 		// refuses to silently clobber ANY unsaved draft with queue-edit data
 		// (see its comment), so that leftover would otherwise block the
 		// queue-edit assertion below with an unrelated conflict note — clear it
 		// so this step tests queue-editing in isolation.
-		await page.evaluate(() => {
-			localStorage.removeItem('manawg:draft:MTE8PZAT:expense');
-		});
+		await page.evaluate(
+			({ memberId }) => {
+				localStorage.removeItem(`manawg:draft:MTE8PZAT:${memberId}:expense`);
+			},
+			{ memberId },
+		);
 
 		await page.evaluate(
 			({ memberId }) => {

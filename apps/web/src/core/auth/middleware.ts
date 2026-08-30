@@ -1,5 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
-import type { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { getSupabaseEnv, hasSupabaseEnv } from './env';
 
 /** Refreshes an existing social-login session without making auth configuration mandatory for guests. */
@@ -10,14 +10,23 @@ export async function refreshSupabaseSession(
 	if (!hasSupabaseEnv()) return response;
 
 	const { url, publishableKey } = getSupabaseEnv();
+	let refreshedResponse = response;
 	const supabase = createServerClient(url, publishableKey, {
 		cookies: {
 			getAll: () => request.cookies.getAll(),
 			setAll: (cookiesToSet) => {
-				for (const { name, value, options } of cookiesToSet) {
+				for (const { name, value } of cookiesToSet) {
 					request.cookies.set(name, value);
-					response.cookies.set(name, value, options);
 				}
+				const nextResponse = NextResponse.next({ request });
+				refreshedResponse.headers.forEach((value, name) => {
+					if (name.toLowerCase() !== 'set-cookie') nextResponse.headers.set(name, value);
+				});
+				for (const cookie of refreshedResponse.cookies.getAll()) nextResponse.cookies.set(cookie);
+				for (const { name, value, options } of cookiesToSet) {
+					nextResponse.cookies.set(name, value, options);
+				}
+				refreshedResponse = nextResponse;
 			},
 		},
 	});
@@ -27,5 +36,5 @@ export async function refreshSupabaseSession(
 	} catch {
 		// Route handlers still reject unverified writes; a transient auth refresh must not break public pages.
 	}
-	return response;
+	return refreshedResponse;
 }

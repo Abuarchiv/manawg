@@ -11,6 +11,8 @@ const PRODUCTION_ENV = {
 	VAPID_SUBJECT: 'mailto:ops@example.com',
 	CRON_SECRET: 'secret',
 	MEMBER_SESSION_SECRET: 'member-secret',
+	NEXT_PUBLIC_SUPABASE_URL: 'https://project.supabase.co',
+	NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
 	AWS_ACCESS_KEY_ID: 'key',
 	AWS_SECRET_ACCESS_KEY: 'secret',
 	AWS_REGION: 'eu-central-1',
@@ -88,14 +90,25 @@ describe('checkEnv', () => {
 		expect(result.ok).toBe(false);
 	});
 
-	it('requires nothing but the database and the member-session secret outside production', () => {
+	it('requires the database, member-session secret, and Supabase configuration outside production', () => {
 		const result = checkEnv({
 			POSTGRES_URL: 'postgres://localhost/manawg',
 			MEMBER_SESSION_SECRET: 'member-secret',
+			NEXT_PUBLIC_SUPABASE_URL: 'https://project.supabase.co',
+			NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
 		});
 
 		expect(result.missingRequired).toEqual([]);
 		expect(result.ok).toBe(true);
+	});
+
+	it('fails closed when either Supabase browser setting is missing', () => {
+		const { NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, ...withoutKey } = PRODUCTION_ENV;
+
+		const result = checkEnv(withoutKey);
+
+		expect(result.missingRequired).toContain('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
+		expect(result.ok).toBe(false);
 	});
 
 	it('flags a missing member-session secret as required outside production too', () => {
@@ -130,12 +143,21 @@ describe('checkEnv', () => {
 			MEMBER_SESSION_SECRET: 'member-secret',
 		});
 
-		expect(result.missingRequired).toEqual(['POSTGRES_URL']);
+		expect(result.missingRequired).toEqual([
+			'POSTGRES_URL',
+			'NEXT_PUBLIC_SUPABASE_URL',
+			'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+		]);
 		expect(result.ok).toBe(false);
 	});
 
 	it('lists every degraded feature outside production without failing', () => {
-		const result = checkEnv({ POSTGRES_URL: 'postgres://localhost/manawg' });
+		const result = checkEnv({
+			POSTGRES_URL: 'postgres://localhost/manawg',
+			MEMBER_SESSION_SECRET: 'member-secret',
+			NEXT_PUBLIC_SUPABASE_URL: 'https://project.supabase.co',
+			NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
+		});
 
 		const features = result.degraded.map((entry) => entry.feature);
 		expect(features).toContain('rate-limiting');

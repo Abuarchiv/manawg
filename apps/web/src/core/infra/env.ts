@@ -67,7 +67,11 @@ const PRODUCTION_REQUIRED = ['CRON_SECRET'] as const;
  * server-side 403 on every write with no client-visible cause, so it has to
  * be loud at boot the same way a missing database is.
  */
-const ALWAYS_REQUIRED = ['MEMBER_SESSION_SECRET'] as const;
+const ALWAYS_REQUIRED = [
+	'MEMBER_SESSION_SECRET',
+	'NEXT_PUBLIC_SUPABASE_URL',
+	'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+] as const;
 
 function isSet(env: EnvSource, name: string): boolean {
 	return (env[name] ?? '').trim().length > 0;

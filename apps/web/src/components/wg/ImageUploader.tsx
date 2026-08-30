@@ -1,5 +1,6 @@
 'use client';
 
+import { useWg } from '@/components/wg/WgContextProvider';
 import {
 	isPendingImageToken,
 	readPendingImage,
@@ -101,6 +102,7 @@ export function ImageUploader({
 	disabled = false,
 	imageLabel,
 }: Props) {
+	const { identity } = useWg();
 	const [uploading, setUploading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
@@ -123,7 +125,7 @@ export function ImageUploader({
 				return;
 			}
 			try {
-				const record = await readPendingImage(value);
+				const record = await readPendingImage(value, identity.memberId);
 				if (cancelled) return;
 				if (!record) {
 					setLocalPreview(null);
@@ -149,7 +151,7 @@ export function ImageUploader({
 			cancelled = true;
 			if (objectUrl) URL.revokeObjectURL(objectUrl);
 		};
-	}, [onChange, value]);
+	}, [identity.memberId, onChange, value]);
 
 	useEffect(() => {
 		if (!isPendingImageToken(value)) return;
@@ -162,7 +164,7 @@ export function ImageUploader({
 			setError(null);
 			setNotice(null);
 			try {
-				const publicUrl = await uploadPendingImageToken(value);
+				const publicUrl = await uploadPendingImageToken(value, identity.memberId);
 				onChange(publicUrl);
 			} catch (err) {
 				if (err instanceof Error && err.message === 'pending-image-missing') {
@@ -187,7 +189,7 @@ export function ImageUploader({
 		void syncPending();
 		window.addEventListener('online', syncPending);
 		return () => window.removeEventListener('online', syncPending);
-	}, [onChange, value]);
+	}, [identity.memberId, onChange, value]);
 
 	useEffect(() => {
 		if (!previewOpen || !value) return;
@@ -229,7 +231,12 @@ export function ImageUploader({
 		uploadPendingRef.current = true;
 		async function keepPending(message: string): Promise<boolean> {
 			try {
-				const token = await storePendingImage({ file, shareCode, purpose });
+				const token = await storePendingImage({
+					file,
+					shareCode,
+					memberId: identity.memberId,
+					purpose,
+				});
 				onChange(token);
 				setError(null);
 				setNotice(message);
@@ -351,7 +358,7 @@ export function ImageUploader({
 							onClick={() => {
 								if (disabled) return;
 								if (uploading) return;
-								if (pending) void removePendingImage(value);
+								if (pending) void removePendingImage(value, identity.memberId);
 								setNotice(null);
 								setError(null);
 								onChange(null);

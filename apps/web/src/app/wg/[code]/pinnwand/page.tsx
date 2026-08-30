@@ -117,7 +117,7 @@ export default function PinnwandPage(): React.ReactElement {
 	const loadRequestIdRef = useRef(0);
 	const initialLoadStartedRef = useRef(false);
 	const itemCount = items.length;
-	const draftKey = buildDraftKey(wg.shareCode, 'announcement');
+	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'announcement');
 	const prefillKey = `${prefillContent ?? ''}|${prefillKind ?? ''}|${prefillImageUrl ?? ''}`;
 
 	const { isPending, start, end } = usePendingSet();
