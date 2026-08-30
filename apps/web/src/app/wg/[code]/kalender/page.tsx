@@ -1,9 +1,11 @@
 'use client';
 
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ALERT_DANGER } from '@/components/ui/styles';
 import { BackLink } from '@/components/wg/BackLink';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
+import { copyText } from '@/core/utils/clipboard';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { CalendarMonth } from '@/features/events/components/CalendarMonth';
@@ -24,7 +26,16 @@ import {
 	getMonthBounds,
 } from '@/features/events/events';
 import { haptic } from '@/shared/lib/haptics';
-import { CalendarDays, List, Plus, RotateCcw } from 'lucide-react';
+import {
+	CalendarDays,
+	ExternalLink,
+	List,
+	Loader2,
+	Plus,
+	RefreshCw,
+	RotateCcw,
+	Trash2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -43,6 +54,16 @@ interface ChoreSummary {
 	id: string;
 	title: string;
 	nextDueAt: string;
+}
+
+interface CalendarSubscription {
+	feedUrl: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+interface CalendarSubscriptionResponse {
+	subscription: CalendarSubscription | null;
 }
 
 type ViewMode = 'month' | 'list';
@@ -98,6 +119,14 @@ export default function KalenderPage() {
 	const [createOpen, setCreateOpen] = useState(false);
 	const [editing, setEditing] = useState<EditableEvent | null>(null);
 	const [actionError, setActionError] = useState<string | null>(null);
+	const [subscription, setSubscription] = useState<CalendarSubscription | null>(null);
+	const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+	const [subscriptionBusy, setSubscriptionBusy] = useState(false);
+	const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+	const [subscriptionNotice, setSubscriptionNotice] = useState<string | null>(null);
+	const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+	const [subscriptionConfirm, setSubscriptionConfirm] = useState<'rotate' | 'revoke' | null>(null);
+	const subscriptionEndpoint = `/api/wg/${encodedShareCode}/calendar-subscription`;
 
 	const load = useCallback(
 		async (isInitial: boolean): Promise<void> => {
@@ -142,6 +171,25 @@ export default function KalenderPage() {
 	useEffect(() => {
 		void load(true);
 	}, [load]);
+
+	const loadSubscription = useCallback(async (): Promise<void> => {
+		setSubscriptionLoading(true);
+		const res = await apiFetch<CalendarSubscriptionResponse>(subscriptionEndpoint, {
+			memberId: identity.memberId,
+			memberToken: identity.memberToken,
+		});
+		if (res.ok) {
+			setSubscription(res.data.subscription ?? null);
+			setSubscriptionError(null);
+		} else {
+			setSubscriptionError('Kalender-Feed konnte nicht geladen werden.');
+		}
+		setSubscriptionLoading(false);
+	}, [identity.memberId, identity.memberToken, subscriptionEndpoint]);
+
+	useEffect(() => {
+		void loadSubscription();
+	}, [loadSubscription]);
 
 	const monthOccurrences = useMemo<EventOccurrence[]>(() => {
 		const bounds = getMonthBounds(month);
@@ -216,6 +264,49 @@ export default function KalenderPage() {
 		}
 		setEvents((current) => current.filter((event) => event.id !== id));
 		setEditing(null);
+	}
+
+	async function saveSubscription(method: 'POST' | 'PATCH', message: string): Promise<void> {
+		setSubscriptionBusy(true);
+		setSubscriptionError(null);
+		setSubscriptionNotice(null);
+		const res = await apiFetch<CalendarSubscriptionResponse>(subscriptionEndpoint, {
+			method,
+			memberId: identity.memberId,
+			memberToken: identity.memberToken,
+		});
+		if (res.ok && res.data.subscription) {
+			setSubscription(res.data.subscription);
+			setCopyState('idle');
+			setSubscriptionNotice(message);
+		} else {
+			setSubscriptionError('Kalender-Feed konnte nicht gespeichert werden.');
+		}
+		setSubscriptionBusy(false);
+	}
+
+	async function revokeSubscription(): Promise<void> {
+		setSubscriptionBusy(true);
+		setSubscriptionError(null);
+		setSubscriptionNotice(null);
+		const res = await apiFetch<unknown>(subscriptionEndpoint, {
+			method: 'DELETE',
+			memberId: identity.memberId,
+			memberToken: identity.memberToken,
+		});
+		if (res.ok) {
+			setSubscription(null);
+			setCopyState('idle');
+			setSubscriptionNotice('Kalender-Feed widerrufen.');
+		} else {
+			setSubscriptionError('Kalender-Feed konnte nicht widerrufen werden.');
+		}
+		setSubscriptionBusy(false);
+	}
+
+	async function copySubscriptionUrl(): Promise<void> {
+		if (!subscription) return;
+		setCopyState((await copyText(subscription.feedUrl)) ? 'copied' : 'failed');
 	}
 
 	function changeMonth(delta: number): void {
@@ -330,6 +421,130 @@ export default function KalenderPage() {
 				</div>
 			)}
 
+			<section
+				aria-labelledby="calendar-subscription-heading"
+				className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface)]/40 p-4"
+			>
+				<div>
+					<h2
+						id="calendar-subscription-heading"
+						className="text-[14px] font-semibold text-[var(--text-1)]"
+					>
+						Kalender abonnieren
+					</h2>
+					<p className="mt-1 text-[12.5px] text-[var(--text-3)]">
+						Neue WG-Termine automatisch in Apple Kalender oder Google Kalender erhalten.
+					</p>
+				</div>
+				{subscriptionError && (
+					<div role="alert" className={ALERT_DANGER}>
+						{subscriptionError}
+					</div>
+				)}
+				{subscriptionLoading ? (
+					<p className="text-[12.5px] text-[var(--text-3)]">Feed wird geladen…</p>
+				) : subscription ? (
+					<div className="space-y-3">
+						<label
+							htmlFor="calendar-feed-url"
+							className="block text-[12px] font-medium text-[var(--text-2)]"
+						>
+							Persönlicher Feed-Link
+						</label>
+						<div className="flex gap-2">
+							<input
+								id="calendar-feed-url"
+								type="url"
+								readOnly
+								value={subscription.feedUrl}
+								className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-[12px] text-[var(--text-2)] outline-none"
+							/>
+							<button
+								type="button"
+								onClick={() => void copySubscriptionUrl()}
+								className="inline-flex h-11 shrink-0 items-center rounded-md border border-[var(--border)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+							>
+								{copyState === 'copied' ? 'Kopiert' : 'Link kopieren'}
+							</button>
+						</div>
+						<div className="flex flex-wrap gap-2">
+							<a
+								href={subscription.feedUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="inline-flex h-11 items-center gap-2 rounded-md bg-[var(--text-1)] px-3 text-[12px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+							>
+								<ExternalLink className="h-3.5 w-3.5" aria-hidden />
+								Feed öffnen
+							</a>
+							<button
+								type="button"
+								disabled={subscriptionBusy}
+								onClick={() => setSubscriptionConfirm('rotate')}
+								className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--border)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
+							>
+								<RefreshCw className="h-3.5 w-3.5" aria-hidden />
+								Link erneuern
+							</button>
+							<button
+								type="button"
+								disabled={subscriptionBusy}
+								onClick={() => setSubscriptionConfirm('revoke')}
+								className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--danger)]/30 px-3 text-[12px] font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:opacity-50"
+							>
+								<Trash2 className="h-3.5 w-3.5" aria-hidden />
+								Abo widerrufen
+							</button>
+						</div>
+						{copyState === 'failed' && (
+							<p role="alert" className="text-[12px] text-[var(--danger)]">
+								Kopieren fehlgeschlagen. Markiere den Link und kopiere ihn manuell.
+							</p>
+						)}
+						<details className="rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2">
+							<summary className="cursor-pointer text-[12.5px] font-medium text-[var(--text-1)]">
+								Apple- und Android-Anleitung
+							</summary>
+							<div className="mt-3 space-y-3 text-[12.5px] leading-relaxed text-[var(--text-2)]">
+								<div>
+									<p className="font-medium text-[var(--text-1)]">Apple (iPhone/iPad)</p>
+									<p>
+										Einstellungen → Kalender → Accounts → Account hinzufügen → Andere → Kalenderabo
+										hinzufügen. Den Feed-Link einfügen.
+									</p>
+								</div>
+								<div>
+									<p className="font-medium text-[var(--text-1)]">Android (Google Kalender)</p>
+									<p>
+										Google Kalender im Browser öffnen → Weitere Kalender → Über URL hinzufügen. Den
+										Feed-Link einfügen.
+									</p>
+								</div>
+							</div>
+						</details>
+						<p className="text-[11.5px] text-[var(--text-3)]">
+							Der Feed enthält WG-Termine. Putzplan-Aufgaben bleiben in ManaWG und werden nicht
+							exportiert.
+						</p>
+					</div>
+				) : (
+					<button
+						type="button"
+						disabled={subscriptionBusy}
+						onClick={() => void saveSubscription('POST', 'Kalender-Feed erstellt.')}
+						className="inline-flex h-11 items-center gap-2 rounded-md bg-[var(--text-1)] px-3 text-[12px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
+					>
+						{subscriptionBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
+						Kalender-Feed erstellen
+					</button>
+				)}
+				{subscriptionNotice && (
+					<output className="block text-[12px] text-[var(--accent)]" aria-live="polite">
+						{subscriptionNotice}
+					</output>
+				)}
+			</section>
+
 			{view === 'month' ? (
 				<CalendarMonth
 					month={month}
@@ -353,7 +568,8 @@ export default function KalenderPage() {
 			</section>
 
 			<p className="text-center text-[12px] text-[var(--text-3)]">
-				Putzplan-Aufgaben erscheinen automatisch in dieser Liste.
+				Putzplan-Aufgaben erscheinen automatisch in dieser Liste, werden aber nicht in den
+				Kalender-Feed übernommen.
 				<Link
 					href={`${wgBaseHref}/putzen`}
 					className="ml-1 inline-flex min-h-11 items-center rounded-sm underline transition-colors hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
@@ -373,6 +589,28 @@ export default function KalenderPage() {
 				onClose={() => setEditing(null)}
 				onUpdate={handleUpdate}
 				onDelete={handleDelete}
+			/>
+			<ConfirmDialog
+				open={subscriptionConfirm !== null}
+				onClose={() => setSubscriptionConfirm(null)}
+				onConfirm={() => {
+					if (subscriptionConfirm === 'rotate') {
+						void saveSubscription('PATCH', 'Kalender-Feed erneuert.');
+					} else {
+						void revokeSubscription();
+					}
+				}}
+				title={
+					subscriptionConfirm === 'rotate' ? 'Feed-Link erneuern?' : 'Kalender-Feed widerrufen?'
+				}
+				description={
+					subscriptionConfirm === 'rotate'
+						? 'Der bisherige Link wird sofort ungültig. Kalender-Apps müssen mit dem neuen Link aktualisiert werden.'
+						: 'Der bisherige Link funktioniert sofort nicht mehr. Du kannst später einen neuen Feed erstellen.'
+				}
+				confirmLabel={subscriptionConfirm === 'rotate' ? 'Link erneuern' : 'Widerrufen'}
+				variant={subscriptionConfirm === 'revoke' ? 'danger' : 'default'}
+				icon={subscriptionConfirm === 'revoke' ? Trash2 : RefreshCw}
 			/>
 		</div>
 	);

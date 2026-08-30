@@ -1,5 +1,5 @@
 import type { EventOccurrence } from '@/features/events/events';
-import { occurrenceToIcs } from '@/features/events/ics';
+import { calendarFeedToIcs, occurrenceToIcs } from '@/features/events/ics';
 import { describe, expect, it } from 'vitest';
 
 function occurrence(overrides: Partial<EventOccurrence> = {}): EventOccurrence {
@@ -64,5 +64,64 @@ describe('occurrenceToIcs', () => {
 		}
 		const unfolded = ics.replace(/\r\n /g, '');
 		expect(unfolded).toContain(`SUMMARY:${longTitle}`);
+	});
+});
+
+describe('calendarFeedToIcs', () => {
+	it('emits stable UIDs, update metadata, and correctly escapes UTF-8 text', () => {
+		const ics = calendarFeedToIcs(
+			[
+				occurrence({
+					title: 'WG; Küche, groß\r\nPlan',
+					description: 'Notiz',
+					location: 'Küche',
+					createdAt: '2026-08-01T10:11:12.000Z',
+					updatedAt: '2026-08-02T10:11:12.000Z',
+				}),
+			],
+			'Küche & Freunde',
+			'2026-08-03T10:11:12.000Z',
+		);
+		expect(ics).toContain('X-WR-CALNAME:Küche & Freunde');
+		expect(ics).toContain('UID:evt-1-0@manawg.app');
+		expect(ics).toContain('DTSTAMP:20260801T101112Z');
+		expect(ics).toContain('LAST-MODIFIED:20260802T101112Z');
+		expect(ics).toContain('SEQUENCE:1785665472');
+		expect(ics).toContain('SUMMARY:WG\\; Küche\\, groß\\nPlan');
+		expect(ics).toContain('DESCRIPTION:Notiz');
+		expect(ics).toContain('LOCATION:Küche');
+	});
+
+	it('uses an inclusive all-day end date as the exclusive DATE end', () => {
+		const ics = calendarFeedToIcs(
+			[
+				occurrence({
+					allDay: true,
+					startsAt: '2026-09-01T00:00:00.000Z',
+					endsAt: '2026-09-03T00:00:00.000Z',
+					createdAt: '2026-08-01T00:00:00.000Z',
+					updatedAt: '2026-08-01T00:00:00.000Z',
+				}),
+			],
+			'ManaWG',
+		);
+		expect(ics).toContain('DTSTART;VALUE=DATE:20260901');
+		expect(ics).toContain('DTEND;VALUE=DATE:20260904');
+	});
+
+	it('folds Unicode lines at 75 UTF-8 octets', () => {
+		const ics = calendarFeedToIcs(
+			[
+				occurrence({
+					title: 'ä'.repeat(80),
+					createdAt: '2026-08-01T00:00:00.000Z',
+					updatedAt: '2026-08-01T00:00:00.000Z',
+				}),
+			],
+			'ManaWG',
+		);
+		for (const line of ics.split('\r\n')) {
+			expect(new TextEncoder().encode(line).byteLength).toBeLessThanOrEqual(75);
+		}
 	});
 });

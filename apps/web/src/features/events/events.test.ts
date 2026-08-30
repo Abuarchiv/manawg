@@ -248,6 +248,20 @@ describe('expandRecurrence', () => {
 		expect(days.every((d) => d === 1 || d === 3 || d === 5)).toBe(true);
 	});
 
+	it('keeps WEEKLY BYDAY occurrence indexes stable when fast-forwarding', () => {
+		const occ = expandRecurrence(
+			{
+				...BASE_EVENT,
+				startsAt: '2025-01-01T08:00:00.000Z',
+				endsAt: null,
+				recurrence: 'FREQ=WEEKLY;BYDAY=MO',
+			},
+			new Date('2025-03-01T00:00:00.000Z'),
+			new Date('2025-03-31T23:59:59.000Z'),
+		);
+		expect(occ.map((item) => item.occurrenceIndex)).toEqual([8, 9, 10, 11, 12]);
+	});
+
 	it('regression: COUNT-limited DAILY event that already ended before the window returns empty, not a false positive', () => {
 		const occ = expandRecurrence(
 			{

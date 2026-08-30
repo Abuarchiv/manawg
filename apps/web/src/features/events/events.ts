@@ -24,6 +24,8 @@ export interface EventInput {
 	allDay: boolean;
 	location: string | null;
 	recurrence: string | null;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 export interface EventOccurrence {
@@ -36,6 +38,8 @@ export interface EventOccurrence {
 	location: string | null;
 	recurring: boolean;
 	occurrenceIndex: number;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 const FREQS: ReadonlySet<RecurrenceFreq> = new Set(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']);
@@ -164,6 +168,8 @@ function buildOccurrence(
 		location: event.location,
 		recurring: isRecurring,
 		occurrenceIndex,
+		...(event.createdAt !== undefined ? { createdAt: event.createdAt } : {}),
+		...(event.updatedAt !== undefined ? { updatedAt: event.updatedAt } : {}),
 	};
 }
 
@@ -228,7 +234,15 @@ function computeForwardSkip(
 		if (weekBlocks <= 0) return noSkip;
 		const skippedMs = anchorWeekStartMs + weekBlocks * rule.interval * 7 * MS_PER_DAY;
 		if (skippedMs <= startMs) return noSkip;
-		return { startMs: skippedMs, index: weekBlocks * weeklyAllowedDays.size };
+		// The anchor week can be partial: iteration starts at the event's
+		// weekday, not at Sunday. Count that prefix separately so fast-forwarding
+		// preserves COUNT and stable occurrence UIDs.
+		const anchorWeekday = new Date(startMs).getUTCDay();
+		const anchorWeekCount = [...weeklyAllowedDays].filter((day) => day >= anchorWeekday).length;
+		return {
+			startMs: skippedMs,
+			index: anchorWeekCount + Math.max(0, weekBlocks - 1) * weeklyAllowedDays.size,
+		};
 	}
 
 	if (rule.freq === 'MONTHLY' || rule.freq === 'YEARLY') {

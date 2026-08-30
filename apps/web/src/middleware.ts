@@ -14,6 +14,7 @@ function isRateLimitedApiPath(path: string): boolean {
 	return (
 		path === '/api/wg' ||
 		path.startsWith('/api/wg/') ||
+		path.startsWith('/api/calendar/') ||
 		path.startsWith('/api/upload/') ||
 		path.startsWith('/api/cron/')
 	);
@@ -138,6 +139,7 @@ export const config = {
 		'/((?!api|_next/static|_next/image|favicon.ico|manifest.json|.*\\..*).*)',
 		'/api/wg',
 		'/api/wg/:path*',
+		'/api/calendar/:path*',
 		'/api/upload/:path*',
 		'/api/cron/:path*',
 	],

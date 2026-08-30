@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import KalenderPage from './page';
 
@@ -19,7 +19,7 @@ vi.mock('@/components/wg/WgContextProvider', () => ({
 			joiningEnabled: true,
 		},
 		members: [{ id: 'member-1', name: 'Ava', color: null }],
-		identity: { memberId: 'member-1', name: 'Ava' },
+		identity: { memberId: 'member-1', name: 'Ava', memberToken: 'member-token' },
 	}),
 }));
 
@@ -79,6 +79,39 @@ describe('KalenderPage', () => {
 		expect(btn).toHaveClass('h-11', 'w-11');
 	});
 
+	it('creates and shows a feed link with platform instructions', async () => {
+		const feedUrl = 'https://mana.test/api/calendar/feed-id/feed-token';
+		apiClientMock.apiFetch.mockImplementation((url: string, init?: { method?: string }) => {
+			if (url.includes('/calendar-subscription')) {
+				return Promise.resolve(
+					init?.method === 'POST'
+						? {
+								ok: true,
+								data: {
+									subscription: {
+										feedUrl,
+										createdAt: '2026-08-01T10:00:00.000Z',
+										updatedAt: '2026-08-01T10:00:00.000Z',
+									},
+								},
+							}
+						: { ok: true, data: { subscription: null } },
+				);
+			}
+			if (url.includes('/events')) {
+				return Promise.resolve({ ok: true, data: { events: [] } });
+			}
+			return Promise.resolve({ ok: true, data: { chores: [] } });
+		});
+
+		render(<KalenderPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'Kalender-Feed erstellen' }));
+
+		expect(await screen.findByDisplayValue(feedUrl)).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Feed öffnen' })).toHaveAttribute('href', feedUrl);
+		expect(screen.getByText('Apple- und Android-Anleitung')).toBeInTheDocument();
+	});
+
 	it('shows a partial error when chores fail to load', async () => {
 		apiClientMock.apiFetch.mockImplementation((url: string) =>
 			Promise.resolve(
@@ -88,8 +121,8 @@ describe('KalenderPage', () => {
 			),
 		);
 		render(<KalenderPage />);
-		expect(await screen.findByRole('alert')).toHaveTextContent(
-			'Putzplan-Aufgaben konnten nicht geladen werden.',
-		);
+		expect(
+			await screen.findByText('Putzplan-Aufgaben konnten nicht geladen werden.'),
+		).toBeInTheDocument();
 	});
 });

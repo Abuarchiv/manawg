@@ -43,6 +43,13 @@
       "when": 1787961803374,
       "tag": "0005_add_money_and_enum_check_constraints",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788124544433,
+      "tag": "0006_perpetual_the_renegades",
+      "breakpoints": true
     }
   ]
 }

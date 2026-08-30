@@ -454,6 +454,28 @@ export const wgEvents = pgTable(
 	}),
 );
 
+export const calendarSubscriptions = pgTable(
+	'calendar_subscriptions',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		wgId: uuid('wg_id')
+			.notNull()
+			.references(() => wgs.id, { onDelete: 'cascade' }),
+		memberId: uuid('member_id')
+			.notNull()
+			.references(() => wgMembers.id, { onDelete: 'cascade' }),
+		// The bearer token is derived from this random seed and the server secret;
+		// the usable token never sits in the database.
+		tokenSeed: text('token_seed').notNull(),
+		revokedAt: timestamp('revoked_at', { withTimezone: true }),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+	},
+	(t) => ({
+		wgMemberIdx: uniqueIndex('calendar_subscriptions_wg_member_idx').on(t.wgId, t.memberId),
+	}),
+);
+
 export const wgInventoryItems = pgTable(
 	'wg_inventory_items',
 	{
@@ -661,6 +683,7 @@ export const wgsRelations = relations(wgs, ({ many }) => ({
 	auditEvents: many(auditEvents),
 	expenseReminders: many(expenseReminders),
 	chatMessages: many(wgChatMessages),
+	calendarSubscriptions: many(calendarSubscriptions),
 }));
 
 export const expenseRemindersRelations = relations(expenseReminders, ({ one }) => ({
@@ -688,6 +711,11 @@ export const wgEventsRelations = relations(wgEvents, ({ one }) => ({
 		fields: [wgEvents.createdByMemberId],
 		references: [wgMembers.id],
 	}),
+}));
+
+export const calendarSubscriptionsRelations = relations(calendarSubscriptions, ({ one }) => ({
+	wg: one(wgs, { fields: [calendarSubscriptions.wgId], references: [wgs.id] }),
+	member: one(wgMembers, { fields: [calendarSubscriptions.memberId], references: [wgMembers.id] }),
 }));
 
 export const wgInventoryItemsRelations = relations(wgInventoryItems, ({ one, many }) => ({
@@ -758,6 +786,7 @@ export const wgMembersRelations = relations(wgMembers, ({ one, many }) => ({
 	paidExpenses: many(expenses),
 	debts: many(expenseSplits),
 	pushSubscriptions: many(pushSubscriptions),
+	calendarSubscriptions: many(calendarSubscriptions),
 }));
 
 export const pushSubscriptionsRelations = relations(pushSubscriptions, ({ one }) => ({
@@ -844,6 +873,8 @@ export type MemberAbsence = typeof memberAbsences.$inferSelect;
 export type RecurringExpense = typeof recurringExpenses.$inferSelect;
 export type WgEvent = typeof wgEvents.$inferSelect;
 export type NewWgEvent = typeof wgEvents.$inferInsert;
+export type CalendarSubscription = typeof calendarSubscriptions.$inferSelect;
+export type NewCalendarSubscription = typeof calendarSubscriptions.$inferInsert;
 export type WgInventoryItem = typeof wgInventoryItems.$inferSelect;
 export type NewWgInventoryItem = typeof wgInventoryItems.$inferInsert;
 export type WgInventoryLogEntry = typeof wgInventoryLog.$inferSelect;
