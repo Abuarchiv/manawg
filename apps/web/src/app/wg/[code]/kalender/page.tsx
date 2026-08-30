@@ -509,15 +509,16 @@ export default function KalenderPage() {
 								<div>
 									<p className="font-medium text-[var(--text-1)]">Apple (iPhone/iPad)</p>
 									<p>
-										Einstellungen → Kalender → Accounts → Account hinzufügen → Andere → Kalenderabo
-										hinzufügen. Den Feed-Link einfügen.
+										Kalender-App → Kalender → Kalender hinzufügen → Abonnementkalender hinzufügen.
+										Den Feed-Link einfügen.
 									</p>
 								</div>
 								<div>
 									<p className="font-medium text-[var(--text-1)]">Android (Google Kalender)</p>
 									<p>
-										Google Kalender im Browser öffnen → Weitere Kalender → Über URL hinzufügen. Den
-										Feed-Link einfügen.
+										Google Kalender am Computer im Browser öffnen → Weitere Kalender → + → Über URL.
+										Den Feed-Link einfügen; die Android-App unterstützt das Hinzufügen per URL nicht
+										direkt.
 									</p>
 								</div>
 							</div>
