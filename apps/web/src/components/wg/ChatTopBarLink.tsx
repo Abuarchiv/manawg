@@ -57,10 +57,10 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 			className={
 				className ??
 				[
-					'relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-base)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2',
+					'relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--bg-base)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2',
 					isActive
 						? 'text-[var(--accent)] hover:text-[var(--accent)]'
-						: 'text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]',
+						: 'text-[var(--text-2)] hover:text-[var(--text-1)]',
 				].join(' ')
 			}
 		>

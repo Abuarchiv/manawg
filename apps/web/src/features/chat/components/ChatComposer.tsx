@@ -1,7 +1,7 @@
 'use client';
 
 import { haptic } from '@/shared/lib/haptics';
-import { Image as ImageIcon, Loader2, Send, X } from 'lucide-react';
+import { Loader2, Send, X } from 'lucide-react';
 import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
 	MentionAutocomplete,
@@ -28,7 +28,6 @@ interface ChatComposerProps {
 		mentionMemberIds: string[];
 		replyToMessageId: string | null;
 	}) => Promise<boolean>;
-	onPickImage?: () => void;
 }
 
 interface MentionTrigger {
@@ -52,7 +51,6 @@ export function ChatComposer({
 	replyToSenderName,
 	onClearReply,
 	onSend,
-	onPickImage,
 }: ChatComposerProps) {
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const [draft, setDraft] = useState('');
@@ -196,16 +194,6 @@ export function ChatComposer({
 				onHoverIndex={setMentionActiveIndex}
 			/>
 			<div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-3 py-2 sm:px-4">
-				{onPickImage && (
-					<button
-						type="button"
-						onClick={onPickImage}
-						aria-label="Bild hinzufügen"
-						className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-					>
-						<ImageIcon className="h-4 w-4" aria-hidden />
-					</button>
-				)}
 				<textarea
 					ref={textareaRef}
 					value={draft}

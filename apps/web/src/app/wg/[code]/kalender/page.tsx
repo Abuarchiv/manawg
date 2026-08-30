@@ -24,7 +24,7 @@ import {
 	getMonthBounds,
 } from '@/features/events/events';
 import { haptic } from '@/shared/lib/haptics';
-import { CalendarDays, List, Plus } from 'lucide-react';
+import { CalendarDays, List, Plus, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -271,15 +271,16 @@ export default function KalenderPage() {
 					</p>
 				</div>
 				<div className="flex shrink-0 items-center gap-1.5">
-					{/* Heute: jump back when navigated away from current month */}
+					{/* Zurück zum aktuellen Monat */}
 					{!isCurrentMonth && (
 						<button
 							type="button"
 							onClick={handleJumpToToday}
 							aria-label="Zum aktuellen Monat springen"
-							className="inline-flex h-11 min-w-[44px] items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2 text-[12px] font-medium text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]"
+							title="Heute"
+							className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
 						>
-							Heute
+							<RotateCcw className="h-4 w-4" aria-hidden />
 						</button>
 					)}
 					{/* View toggle: 44px tap target */}

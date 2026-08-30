@@ -1,6 +1,7 @@
 'use client';
 
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
+import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { useDismissableMenu } from '@/core/hooks/useDismissableMenu';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { haptic } from '@/shared/lib/haptics';
@@ -66,6 +67,7 @@ export function MessageBubble({
 	const [editing, setEditing] = useState(false);
 	const [draft, setDraft] = useState(message.body ?? '');
 	const [pending, setPending] = useState(false);
+	const { confirmId, request: requestDelete, cancel: cancelDelete } = useConfirmDelete();
 
 	useEffect(() => {
 		if (!menuOpen || !menuTriggerRef.current) return;
@@ -76,7 +78,10 @@ export function MessageBubble({
 
 	useDismissableMenu({
 		open: menuOpen,
-		onClose: () => setMenuOpen(false),
+		onClose: () => {
+			setMenuOpen(false);
+			cancelDelete();
+		},
 		triggerRef: menuTriggerRef,
 		menuRef,
 	});
@@ -105,6 +110,7 @@ export function MessageBubble({
 
 	const senderName = sender?.name ?? 'Unbekannt';
 	const senderColor = sender?.color ?? null;
+	const deleteArmed = confirmId === message.id;
 
 	const actionBtnCls =
 		'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-[var(--text-3)] opacity-70 transition-colors transition-opacity hover:bg-[var(--surface)] hover:text-[var(--text-1)] hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-1';
@@ -324,7 +330,10 @@ export function MessageBubble({
 										<button
 											ref={menuTriggerRef}
 											type="button"
-											onClick={() => setMenuOpen((v) => !v)}
+											onClick={() => {
+												cancelDelete();
+												setMenuOpen((v) => !v);
+											}}
 											aria-label={`Aktionen für Nachricht von ${senderName} (${formatRelativeTime(message.createdAt)})`}
 											aria-haspopup="dialog"
 											aria-expanded={menuOpen}
@@ -361,13 +370,19 @@ export function MessageBubble({
 													<button
 														type="button"
 														onClick={() => {
+															if (!requestDelete(message.id)) return;
 															setMenuOpen(false);
 															void handleDelete();
 														}}
-														className="flex min-h-[44px] w-full items-center gap-2 px-3 text-left text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--danger)]"
+														aria-label={deleteArmed ? 'Nachricht endgültig löschen' : 'Löschen'}
+														className={`flex min-h-[44px] w-full items-center gap-2 px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--danger)] ${
+															deleteArmed
+																? 'bg-[var(--danger)] text-[var(--danger-fg)] hover:opacity-90'
+																: 'text-[var(--danger)] hover:bg-[var(--danger)]/5'
+														}`}
 													>
 														<Trash2 className="h-3.5 w-3.5" aria-hidden />
-														Löschen
+														{deleteArmed ? 'Jetzt löschen' : 'Löschen'}
 													</button>
 												)}
 											</div>

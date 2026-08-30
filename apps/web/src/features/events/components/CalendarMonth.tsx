@@ -283,7 +283,7 @@ export function CalendarMonth({
 												e.stopPropagation();
 												onSelectOccurrence(occ);
 											}}
-											className="block w-full truncate rounded-sm bg-[var(--accent)]/15 px-1 py-0.5 text-left text-[11px] font-medium text-[var(--accent)]"
+											className="flex min-h-11 w-full items-center truncate rounded-sm bg-[var(--accent)]/15 px-1 text-left text-[11px] font-medium text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
 										>
 											{occ.title}
 										</button>

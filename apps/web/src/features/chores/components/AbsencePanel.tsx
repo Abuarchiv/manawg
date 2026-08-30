@@ -1,4 +1,5 @@
 'use client';
+import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { type AbsenceInput, formatAbsenceRange } from '@/features/chores/absence';
 import type { ChoreMember } from '@/features/chores/components/chore-types';
 import { Loader2, Plus, X } from 'lucide-react';
@@ -54,6 +55,7 @@ export function AbsencePanel({
 	// dauerhaft offen mitten auf der Seite. Der Bestand bleibt sichtbar, das
 	// Formular kommt auf Anforderung — bzw. sofort, wenn der Deep-Link herführt.
 	const [formOpen, setFormOpen] = useState(active);
+	const { confirmId, request: requestRemove } = useConfirmDelete();
 
 	return (
 		<section
@@ -185,12 +187,18 @@ export function AbsencePanel({
 							</div>
 							<button
 								type="button"
-								onClick={() => onRemove(absence.id)}
+								onClick={() => {
+									if (requestRemove(absence.id)) onRemove(absence.id);
+								}}
 								disabled={isPending(`absence:${absence.id}:remove`)}
-								aria-label={`Abwesenheit von ${absence.memberName} (${formatAbsenceRange(absence.startDate, absence.endDate)}) entfernen`}
+								aria-label={`Abwesenheit von ${absence.memberName} (${formatAbsenceRange(absence.startDate, absence.endDate)}) ${confirmId === absence.id ? 'endgültig entfernen' : 'entfernen'}`}
 								className="h-11 rounded-md px-3 text-[12px] text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2"
 							>
-								{isPending(`absence:${absence.id}:remove`) ? '...' : 'Entfernen'}
+								{isPending(`absence:${absence.id}:remove`)
+									? '...'
+									: confirmId === absence.id
+										? 'Wirklich entfernen?'
+										: 'Entfernen'}
 							</button>
 						</li>
 					))}

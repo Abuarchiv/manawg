@@ -264,6 +264,8 @@ describe('EinstellungenPage', () => {
 		expect(screen.getByRole('tab', { name: 'Profil' })).toHaveClass('h-11');
 		expect(screen.getByRole('tab', { name: 'Benachrichtigungen' })).toHaveClass('h-11');
 		expect(screen.getByRole('tab', { name: 'Daten' })).toHaveClass('h-11');
+		expect(screen.getByRole('tablist')).toHaveClass('grid-cols-2');
+		expect(screen.getByRole('tab', { name: 'Benachrichtigungen' })).toHaveClass('w-full');
 	});
 
 	it('explains export server errors as retryable failures', async () => {

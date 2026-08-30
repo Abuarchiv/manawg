@@ -16,7 +16,6 @@ describe('ChatComposer', () => {
 				replyToSenderName={null}
 				onClearReply={vi.fn()}
 				onSend={onSend}
-				onPickImage={vi.fn()}
 			/>,
 		);
 
@@ -44,7 +43,6 @@ describe('ChatComposer', () => {
 				replyToSenderName={null}
 				onClearReply={vi.fn()}
 				onSend={onSend}
-				onPickImage={vi.fn()}
 			/>,
 		);
 
@@ -58,7 +56,7 @@ describe('ChatComposer', () => {
 		);
 	});
 
-	it('does not render an image action without an image handler', () => {
+	it('does not render an image action before image uploads exist', () => {
 		render(
 			<ChatComposer
 				members={[]}

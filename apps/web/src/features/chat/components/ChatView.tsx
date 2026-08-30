@@ -4,7 +4,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
 import { haptic } from '@/shared/lib/haptics';
-import { ChevronDown, MessageCircle } from 'lucide-react';
+import { ChevronDown, Loader2, MessageCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useChatChannel } from '../chat-channel';
 import { mergePagedMessagesById, mergePagedReactions, previewBody } from '../chat-pure';
@@ -81,6 +81,8 @@ export function ChatView({
 	const [messages, setMessages] = useState<ChatMessageDto[]>(initialMessages);
 	const [reactionRows, setReactionRows] = useState<InitialReactionRow[]>(initialReactions);
 	const [hasMoreOlder, setHasMoreOlder] = useState(initialMessages.length >= PAGE_SIZE);
+	const [bootstrapping, setBootstrapping] = useState(initialMessages.length === 0);
+	const [bootstrapError, setBootstrapError] = useState(false);
 	const [loadingOlder, setLoadingOlder] = useState(false);
 	const [replyToId, setReplyToId] = useState<string | null>(null);
 	// Boolean instead of a continuous offset: a numeric scroll state re-rendered
@@ -162,14 +164,14 @@ export function ChatView({
 		return () => observer.disconnect();
 	}, [markLatestRead]);
 
-	const refresh = useCallback(async () => {
+	const refresh = useCallback(async (): Promise<boolean> => {
 		const res = await apiFetch<{ messages: ChatMessageDto[]; reactions: InitialReactionRow[] }>(
 			`/api/wg/${encodedShareCode}/chat/messages?limit=${PAGE_SIZE}`,
 			{ memberId: identity.memberId },
 		);
 		if (!res.ok) {
 			toast.error('Chat konnte nicht aktualisiert werden.');
-			return;
+			return false;
 		}
 		const refreshedMessageIds = new Set(res.data.messages.map((message) => message.id));
 		setMessages((prev) => [
@@ -194,6 +196,7 @@ export function ChatView({
 		// older pages were already loaded. loadOlder() clears the flag when the
 		// history is exhausted.
 		setHasMoreOlder((prev) => prev || res.data.messages.length >= PAGE_SIZE);
+		return true;
 	}, [encodedShareCode, identity.memberId, toast]);
 
 	const { mode } = useChatChannel(wgId, {
@@ -206,11 +209,18 @@ export function ChatView({
 	// Bootstrap through the gated API when the RSC passed no messages (the
 	// server render intentionally loads none — see chat/page.tsx).
 	const bootstrappedRef = useRef(initialMessages.length > 0);
+	const loadInitialMessages = useCallback(async () => {
+		setBootstrapError(false);
+		setBootstrapping(true);
+		const loaded = await refresh();
+		setBootstrapError(!loaded);
+		setBootstrapping(false);
+	}, [refresh]);
 	useEffect(() => {
 		if (bootstrappedRef.current) return;
 		bootstrappedRef.current = true;
-		void refresh();
-	}, [refresh]);
+		void loadInitialMessages();
+	}, [loadInitialMessages]);
 
 	async function loadOlder(): Promise<void> {
 		if (loadingOlder || !hasMoreOlder) return;
@@ -426,7 +436,28 @@ export function ChatView({
 				data-scroll-y
 				className="flex-1 overflow-y-auto bg-[var(--bg-base)] scroll-hide-mobile"
 			>
-				{messages.length === 0 && !hasMoreOlder ? (
+				{bootstrapping ? (
+					<output className="flex h-full items-center justify-center">
+						<Loader2 className="h-5 w-5 animate-spin text-[var(--text-3)]" aria-hidden />
+						<span className="sr-only">Nachrichten werden geladen</span>
+					</output>
+				) : bootstrapError ? (
+					<div className="mx-auto flex h-full w-full max-w-3xl items-center justify-center px-3 sm:px-4">
+						<div
+							role="alert"
+							className="rounded-2xl border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-6 py-5 text-center"
+						>
+							<p className="text-[13px] text-[var(--danger)]">Chat konnte nicht geladen werden.</p>
+							<button
+								type="button"
+								onClick={() => void loadInitialMessages()}
+								className="mt-3 min-h-11 rounded-md border border-[var(--border)] px-3 text-[12px] font-medium text-[var(--text-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+							>
+								Erneut laden
+							</button>
+						</div>
+					</div>
+				) : messages.length === 0 && !hasMoreOlder ? (
 					<div className="mx-auto flex h-full w-full max-w-3xl flex-col justify-end px-3 pb-6 pt-6 sm:px-4">
 						<div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)]/45 px-6 py-8 text-center">
 							<MessageCircle className="h-8 w-8 text-[var(--text-3)]" aria-hidden />

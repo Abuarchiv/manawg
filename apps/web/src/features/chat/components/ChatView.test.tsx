@@ -148,6 +148,29 @@ describe('ChatView', () => {
 		expect(screen.queryByText('Diese Nachricht wurde gelöscht.')).not.toBeInTheDocument();
 	});
 
+	it('shows a retry instead of an empty chat when the initial load fails', async () => {
+		apiMock.apiFetch.mockResolvedValueOnce({ ok: false, status: 503, error: 'offline' });
+
+		render(
+			<ChatView
+				wgId="wg-1"
+				shareCode="MTE8PZAT"
+				initialMessages={[]}
+				initialReactions={[]}
+				initialMentions={[]}
+			/>,
+		);
+
+		expect(await screen.findByText('Chat konnte nicht geladen werden.')).toBeVisible();
+		expect(
+			screen.queryByText('Noch keine Nachrichten. Schreibe die erste!'),
+		).not.toBeInTheDocument();
+
+		apiMock.apiFetch.mockResolvedValueOnce({ ok: true, data: { messages: [], reactions: [] } });
+		fireEvent.click(screen.getByRole('button', { name: 'Erneut laden' }));
+		expect(await screen.findByText('Noch keine Nachrichten. Schreibe die erste!')).toBeVisible();
+	});
+
 	it('RED BUG-554: appends a sent message before the refresh round-trip finishes', async () => {
 		type ChatRefreshResponse = {
 			ok: true;

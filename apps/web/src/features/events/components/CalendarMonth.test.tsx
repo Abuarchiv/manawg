@@ -31,6 +31,7 @@ describe('CalendarMonth', () => {
 		);
 
 		const eventButton = screen.getByRole('button', { name: 'Termin öffnen: Heizungsablesung' });
+		expect(eventButton).toHaveClass('min-h-11');
 		fireEvent.click(eventButton);
 		expect(onSelectOccurrence).toHaveBeenCalledWith(occurrence);
 

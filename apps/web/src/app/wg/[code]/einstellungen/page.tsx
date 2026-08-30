@@ -138,7 +138,7 @@ export default function EinstellungenPage() {
 							document.getElementById(`tab-${target.id}`)?.focus();
 						});
 					}}
-					className="sticky z-10 flex gap-2 overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-1 shadow-sm"
+					className="sticky z-10 grid grid-cols-2 gap-1 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-1 shadow-sm sm:flex sm:gap-2"
 					style={{ top: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
 				>
 					{SETTINGS_TABS.map((tab) => {
@@ -156,7 +156,7 @@ export default function EinstellungenPage() {
 									window.history.replaceState(null, '', tab.hash);
 									setActiveTab(tab.id);
 								}}
-								className={`h-11 shrink-0 rounded-md px-3 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+								className={`h-11 w-full rounded-md px-2 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 sm:w-auto sm:shrink-0 sm:px-3 ${
 									isActive
 										? 'bg-[var(--text-1)] text-[var(--bg-base)]'
 										: 'text-[var(--text-2)] hover:bg-[var(--surface)] hover:text-[var(--text-1)]'

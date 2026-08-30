@@ -1,16 +1,10 @@
 'use client';
 
+import { ICON_BUTTON, ICON_BUTTON_BORDERED } from '@/components/ui/styles';
 import { CalendarDays, Plus, Settings, X } from 'lucide-react';
 import Link from 'next/link';
 
 /** Shared actions for the responsive headers of the three list pages. */
-
-/**
- * Ausgaben had the focus ring on its settings link, Pinnwand and Putzen did
- * not. Keeping it: a keyboard user must be able to see where they are.
- */
-const ICON_BUTTON_BORDERED_LINK =
-	'inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2';
 
 interface FormToggleButtonProps {
 	open: boolean;
@@ -63,7 +57,7 @@ export function SettingsLink({ wgBaseHref }: { wgBaseHref: string }) {
 		<Link
 			href={`${wgBaseHref}/einstellungen`}
 			aria-label="WG-Einstellungen öffnen"
-			className={ICON_BUTTON_BORDERED_LINK}
+			className={ICON_BUTTON}
 		>
 			<Settings className="h-4 w-4" aria-hidden />
 		</Link>
@@ -76,7 +70,7 @@ export function CalendarLink({ wgBaseHref }: { wgBaseHref: string }) {
 			href={`${wgBaseHref}/kalender`}
 			aria-label="Kalender"
 			title="Kalender"
-			className={ICON_BUTTON_BORDERED_LINK}
+			className={ICON_BUTTON_BORDERED}
 		>
 			<CalendarDays className="h-4 w-4" aria-hidden />
 		</Link>

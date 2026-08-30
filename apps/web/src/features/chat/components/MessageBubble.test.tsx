@@ -86,6 +86,34 @@ describe('MessageBubble', () => {
 		expect(screen.getByRole('button', { name: 'Löschen' })).toBeInTheDocument();
 	});
 
+	it('requires a second click before deleting a message', async () => {
+		const onDelete = vi.fn().mockResolvedValue(undefined);
+		render(
+			<MessageBubble
+				message={buildMessage()}
+				sender={{ name: 'Anna', color: null }}
+				currentMemberId="member-1"
+				isAdmin={false}
+				isOwn
+				reactions={[]}
+				replyTo={null}
+				replyToSender={null}
+				onReact={vi.fn()}
+				onUnreact={vi.fn()}
+				onEdit={vi.fn().mockResolvedValue(undefined)}
+				onDelete={onDelete}
+				onReply={vi.fn()}
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole('button', { name: /Aktionen für Nachricht/ }));
+		fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+		expect(onDelete).not.toHaveBeenCalled();
+
+		fireEvent.click(screen.getByRole('button', { name: 'Nachricht endgültig löschen' }));
+		expect(onDelete).toHaveBeenCalledOnce();
+	});
+
 	it("does not offer delete on another member's message when the viewer is not admin", () => {
 		render(
 			<MessageBubble
