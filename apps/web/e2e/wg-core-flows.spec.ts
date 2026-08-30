@@ -116,7 +116,7 @@ test.describe('ManaWG core flows', () => {
 			.catch(() => undefined);
 		await gotoWithRetry(page, '/wg/MTE8PZAT');
 		await dashboardResponse;
-		await expect(page.getByText('Saldo pro Mitglied')).toBeVisible({ timeout: 60_000 });
+		await expect(page.getByText('Deine Bilanz')).toBeVisible({ timeout: 60_000 });
 		await expect(
 			page.getByRole('link', { name: '1 Offline-Aktion wartet auf Synchronisierung.' }),
 		).toBeVisible({ timeout: 30_000 });
@@ -172,9 +172,9 @@ test.describe('ManaWG core flows', () => {
 		}
 		await expect(page.locator('#chore-title')).toHaveValue('Bad putzen', { timeout: 60_000 });
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen?filter=overdue');
-		// Kein eigener Reparaturblock mehr — der Deep-Link landet auf der Liste.
+		// Der Deep-Link behält den bereits geöffneten Entwurf bei.
 		await expect(page.getByText('Putzlücken-Fokus')).toHaveCount(0);
-		await expect(page.locator('#chore-list')).toBeVisible({ timeout: 30_000 });
+		await expect(page.locator('#chore-title')).toBeVisible({ timeout: 30_000 });
 		const absenceId = '11111111-1111-4111-8111-111111111111';
 		await page.route('**/api/wg/MTE8PZAT/absences', async (route) => {
 			if (route.request().method() !== 'GET') return route.fallback();

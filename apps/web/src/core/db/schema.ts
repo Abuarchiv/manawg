@@ -52,6 +52,7 @@ export const wgMembers = pgTable(
 		wgId: uuid('wg_id')
 			.notNull()
 			.references(() => wgs.id, { onDelete: 'cascade' }),
+		authUserId: uuid('auth_user_id'),
 		name: text('name').notNull(),
 		color: text('color'),
 		pushOptIn: boolean('push_opt_in').notNull().default(false),
@@ -77,6 +78,9 @@ export const wgMembers = pgTable(
 	(t) => ({
 		wgIdx: index('wg_members_wg_idx').on(t.wgId),
 		uniqueNamePerWg: uniqueIndex('wg_members_unique_name_per_wg').on(t.wgId, t.name),
+		uniqueWgAuthUser: uniqueIndex('wg_members_wg_auth_user_unique_idx')
+			.on(t.wgId, t.authUserId)
+			.where(sql`${t.authUserId} IS NOT NULL`),
 	}),
 );
 

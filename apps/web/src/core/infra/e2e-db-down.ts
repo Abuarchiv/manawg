@@ -32,6 +32,8 @@ export interface E2EWgFixture {
 
 export function isE2EDbDownMode(): boolean {
 	return (
+		(process.env.E2E_FIXTURE_MODE === 'true' || process.env.NODE_ENV === 'test') &&
+		process.env.VERCEL_ENV !== 'production' &&
 		process.env.NEXT_PUBLIC_DB_DOWN === 'true' &&
 		process.env.CI === 'true' &&
 		!process.env.POSTGRES_URL &&

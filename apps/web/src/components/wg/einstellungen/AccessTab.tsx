@@ -1,11 +1,13 @@
 'use client';
 
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
 import { ShareWgCard } from '@/components/wg/ShareWgCard';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { Section } from '@/components/wg/einstellungen/Section';
+import { linkSocialIdentity } from '@/core/auth/client';
 import {
 	accessErrorMessage,
 	deleteWgErrorMessage,
@@ -233,6 +235,19 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 						shareCode={wg.shareCode}
 						hideHeader
 						joiningEnabled={joiningEnabled}
+					/>
+				</div>
+			</Section>
+
+			<Section
+				title="Anmeldemethoden"
+				hint="Verknüpfe einen weiteren Anbieter, damit dein Zugang auch bei Gerätewechsel erhalten bleibt."
+			>
+				<div className="p-4">
+					<SocialLoginButtons
+						variant="link"
+						next={`/wg/${encodedShareCode}/einstellungen#zugang`}
+						onOAuthStart={linkSocialIdentity}
 					/>
 				</div>
 			</Section>

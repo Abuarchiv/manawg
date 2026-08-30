@@ -31,6 +31,14 @@ const queuedShoppingAction = {
 describe('formatOfflineAge', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue({
+				ok: true,
+				status: 200,
+				json: async () => ({ wgs: [{ code: 'MTE8PZAT', memberId: 'member-1' }] }),
+			}),
+		);
 		Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
 	});
 
@@ -216,7 +224,10 @@ describe('formatOfflineAge', () => {
 		fireEvent.click(screen.getByRole('button', { name: 'Offline-Aktionen jetzt synchronisieren' }));
 
 		await waitFor(() => {
-			expect(offlineClientMock.syncOfflineActions).toHaveBeenCalledWith(undefined, { force: true });
+			expect(offlineClientMock.syncOfflineActions).toHaveBeenCalledWith('MTE8PZAT', {
+				force: true,
+				memberId: 'member-1',
+			});
 		});
 		expect(await screen.findByRole('status')).toHaveTextContent('1 Aktion synchronisiert.');
 		expect(screen.getByText('Keine wartenden Aktionen.')).toBeVisible();
@@ -340,7 +351,7 @@ describe('formatOfflineAge', () => {
 		).toBeEnabled();
 	});
 
-	it('does not start duplicate page syncs from repeated clicks', () => {
+	it('does not start duplicate page syncs from repeated clicks', async () => {
 		identityMock.getKnownWgs.mockReturnValue([
 			{ code: 'MTE8PZAT', name: 'Test WG', lastVisitedAt: Date.now() },
 		]);
@@ -355,7 +366,7 @@ describe('formatOfflineAge', () => {
 		fireEvent.click(syncButton);
 		fireEvent.click(syncButton);
 
-		expect(offlineClientMock.syncOfflineActions).toHaveBeenCalledTimes(1);
+		await waitFor(() => expect(offlineClientMock.syncOfflineActions).toHaveBeenCalledTimes(1));
 		expect(
 			screen.getByRole('button', { name: 'Offline-Aktionen werden synchronisiert' }),
 		).toBeDisabled();

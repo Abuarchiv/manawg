@@ -5,6 +5,7 @@ import { AccessTab } from './AccessTab';
 const routerMock = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 const useWgMock = vi.hoisted(() => vi.fn());
 const apiClientMock = vi.hoisted(() => ({ apiFetch: vi.fn() }));
+const authClientMock = vi.hoisted(() => ({ linkSocialIdentity: vi.fn() }));
 
 vi.mock('next/navigation', () => ({
 	useRouter: () => routerMock,
@@ -16,6 +17,10 @@ vi.mock('@/components/wg/WgContextProvider', () => ({
 
 vi.mock('@/core/infra/api-client', () => ({
 	apiFetch: (...args: unknown[]) => apiClientMock.apiFetch(...args),
+}));
+
+vi.mock('@/core/auth/client', () => ({
+	linkSocialIdentity: (...args: unknown[]) => authClientMock.linkSocialIdentity(...args),
 }));
 
 const wg = {
@@ -50,5 +55,12 @@ describe('AccessTab', () => {
 		render(<AccessTab wg={wg} members={members} identity={identity} />);
 
 		expect(screen.getByRole('button', { name: 'Ben ausziehen' })).toBeInTheDocument();
+	});
+
+	it('offers additional social identities for device-independent recovery', () => {
+		render(<AccessTab wg={wg} members={members} identity={identity} />);
+
+		expect(screen.getByText('Anmeldemethoden')).toBeVisible();
+		expect(screen.getByRole('button', { name: 'Google verknüpfen' })).toBeVisible();
 	});
 });

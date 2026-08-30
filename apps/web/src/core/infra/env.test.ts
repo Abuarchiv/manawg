@@ -107,6 +107,7 @@ describe('checkEnv', () => {
 
 	it('allows the exact database-down fixture mode outside production', () => {
 		const result = checkEnv({
+			E2E_FIXTURE_MODE: 'true',
 			CI: 'true',
 			NEXT_PUBLIC_DB_DOWN: 'true',
 			POSTGRES_URL: '',
@@ -120,6 +121,7 @@ describe('checkEnv', () => {
 	it('keeps production strict even when the database-down fixture flags are set', () => {
 		const result = checkEnv({
 			VERCEL_ENV: 'production',
+			E2E_FIXTURE_MODE: 'true',
 			CI: 'true',
 			NEXT_PUBLIC_DB_DOWN: 'true',
 			POSTGRES_URL: '',

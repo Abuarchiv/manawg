@@ -7,6 +7,11 @@ const rateLimitMock = vi.hoisted(() => ({
 	clientIpKey: vi.fn(),
 	wgWriteLimiter: { name: 'wgWriteLimiter' },
 }));
+const authMock = vi.hoisted(() => ({ getAuthenticatedUser: vi.fn() }));
+
+vi.mock('@/core/auth/server', () => ({
+	getAuthenticatedUser: (...args: unknown[]) => authMock.getAuthenticatedUser(...args),
+}));
 
 vi.mock('@/core/errors', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/core/errors')>();
@@ -68,6 +73,27 @@ describe('members route RED regressions', () => {
 		routeMocks.recordAuditEvent.mockResolvedValue(undefined);
 		rateLimitMock.clientIpKey.mockReturnValue('198.51.100.9');
 		rateLimitMock.checkRateLimit.mockResolvedValue({ success: true, remaining: 1, reset: 0 });
+		authMock.getAuthenticatedUser.mockResolvedValue({ id: 'auth-user-1' });
+	});
+
+	it('requires a verified account before joining', async () => {
+		authMock.getAuthenticatedUser.mockResolvedValue(null);
+		const { POST } = await import('./route');
+
+		const response = await POST(
+			new NextRequest('https://mana.test/api/wg/MTE8PZAT/members', {
+				method: 'POST',
+				body: JSON.stringify({ name: 'Max' }),
+			}),
+			{ params: Promise.resolve({ code: 'MTE8PZAT' }) },
+		);
+
+		expect(response.status).toBe(401);
+		await expect(response.json()).resolves.toEqual({
+			error: 'auth_required',
+			code: 'auth_required',
+		});
+		expect(routeDb.insert).not.toHaveBeenCalled();
 	});
 
 	it('RED BUG-013: concurrent joins with the same name do not both insert members', async () => {
@@ -77,8 +103,8 @@ describe('members route RED regressions', () => {
 		const insertedMemberNames = new Set<string>();
 		routeDb.select.mockImplementation(() => {
 			selectCall += 1;
-			// For both requests: member count below limit, name not found.
-			return chainRows(selectCall % 2 === 1 ? Array.from({ length: 19 }, (_, id) => ({ id })) : []);
+			// Per request: no account match, 19 existing members, then no name match.
+			return chainRows(selectCall % 3 === 2 ? Array.from({ length: 19 }, (_, id) => ({ id })) : []);
 		});
 		routeDb.insert.mockImplementation((table: unknown) => ({
 			values: vi.fn((values: { name?: string; wgId?: string } = {}) => ({
@@ -125,7 +151,7 @@ describe('members route RED regressions', () => {
 		let selectCall = 0;
 		routeDb.select.mockImplementation(() => {
 			selectCall += 1;
-			return chainRows(selectCall % 2 === 1 ? Array.from({ length: 19 }, (_, id) => ({ id })) : []);
+			return chainRows(selectCall % 3 === 2 ? Array.from({ length: 19 }, (_, id) => ({ id })) : []);
 		});
 		routeDb.insert.mockImplementation(() => ({
 			values: vi.fn(() => ({

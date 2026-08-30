@@ -85,7 +85,7 @@ test.describe('Abos happy path', () => {
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/abos`);
 		await dismissOnboarding(page);
 
-		await expect(page.getByRole('heading', { name: 'Abos' })).toBeVisible({
+		await expect(page.getByRole('heading', { name: 'Fixkosten' })).toBeVisible({
 			timeout: 30_000,
 		});
 

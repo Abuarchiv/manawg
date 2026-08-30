@@ -55,6 +55,25 @@ function wgHref(code: string, suffix = ''): string {
 	return `/wg/${encodeURIComponent(code)}${suffix}`;
 }
 
+type AccountMembership = { code: string; memberId: string };
+
+async function getAccountMemberships(): Promise<AccountMembership[] | null> {
+	const res = await fetch('/api/wg/mine', { cache: 'no-store' });
+	if (res.status === 401) return null;
+	if (!res.ok) throw new Error('account_wgs_failed');
+	const data: unknown = await res.json();
+	if (!data || typeof data !== 'object' || !Array.isArray((data as { wgs?: unknown }).wgs)) {
+		throw new Error('account_wgs_invalid');
+	}
+	return (data as { wgs: unknown[] }).wgs.filter(
+		(wg): wg is AccountMembership =>
+			typeof wg === 'object' &&
+			wg !== null &&
+			typeof (wg as AccountMembership).code === 'string' &&
+			typeof (wg as AccountMembership).memberId === 'string',
+	);
+}
+
 export function OfflineClient() {
 	const [online, setOnline] = useState(true);
 	const [knownWgs, setKnownWgs] = useState<KnownWg[]>([]);
@@ -96,7 +115,22 @@ export function OfflineClient() {
 		setSyncing(true);
 		setMessage(null);
 		try {
-			const synced = await syncOfflineActions(undefined, { force: true });
+			const memberships = await getAccountMemberships();
+			if (!memberships) {
+				setMessage('Melde dich an, bevor du Offline-Aktionen synchronisierst.');
+				return;
+			}
+			const queuedMemberships = memberships.filter(({ code, memberId }) =>
+				queue.some((action) => action.shareCode === code && action.memberId === memberId),
+			);
+			if (queuedMemberships.length === 0) {
+				setMessage('Für diese Aktionen fehlt die passende Konto-WG. Sie bleiben gespeichert.');
+				return;
+			}
+			let synced = 0;
+			for (const { code, memberId } of queuedMemberships) {
+				synced += await syncOfflineActions(code, { force: true, memberId });
+			}
 			const nextQueue = refresh();
 			setMessage(formatManualOfflineSyncResult(synced, nextQueue.length, { offlineLabel: false }));
 		} catch {

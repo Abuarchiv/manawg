@@ -1,6 +1,5 @@
 'use client';
 
-import { useWg } from '@/components/wg/WgContextProvider';
 import {
 	isPendingImageToken,
 	readPendingImage,
@@ -8,7 +7,6 @@ import {
 	storePendingImage,
 	uploadPendingImageToken,
 } from '@/core/offline/offline-images';
-import { memberAuthHeader } from '@/shared/lib/identity';
 import { AlertTriangle, ImagePlus, Loader2, Maximize2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -103,7 +101,6 @@ export function ImageUploader({
 	disabled = false,
 	imageLabel,
 }: Props) {
-	const { identity } = useWg();
 	const [uploading, setUploading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
@@ -165,12 +162,7 @@ export function ImageUploader({
 			setError(null);
 			setNotice(null);
 			try {
-				if (!identity.memberToken) throw new Error('member_not_verified');
-				const publicUrl = await uploadPendingImageToken(
-					value,
-					identity.memberId,
-					identity.memberToken,
-				);
+				const publicUrl = await uploadPendingImageToken(value);
 				onChange(publicUrl);
 			} catch (err) {
 				if (err instanceof Error && err.message === 'pending-image-missing') {
@@ -195,7 +187,7 @@ export function ImageUploader({
 		void syncPending();
 		window.addEventListener('online', syncPending);
 		return () => window.removeEventListener('online', syncPending);
-	}, [identity.memberId, identity.memberToken, onChange, value]);
+	}, [onChange, value]);
 
 	useEffect(() => {
 		if (!previewOpen || !value) return;
@@ -258,11 +250,6 @@ export function ImageUploader({
 			}
 			return;
 		}
-		if (!identity.memberToken) {
-			await keepPending('Bild vorbereitet. Öffne die WG erneut, um den Upload fortzusetzen.');
-			uploadPendingRef.current = false;
-			return;
-		}
 		setUploading(true);
 		setError(null);
 		setNotice(null);
@@ -271,7 +258,6 @@ export function ImageUploader({
 				method: 'POST',
 				headers: {
 					'content-type': 'application/json',
-					...memberAuthHeader(identity.memberId, identity.memberToken),
 				},
 				body: JSON.stringify({ shareCode, purpose, mimeType: file.type, fileSize: file.size }),
 			});

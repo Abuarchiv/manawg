@@ -1,7 +1,5 @@
 'use client';
 
-import { memberAuthHeader } from '@/shared/lib/identity';
-
 const DB_NAME = 'manawg-offline-images';
 const STORE_NAME = 'images';
 const DB_VERSION = 1;
@@ -112,18 +110,13 @@ export async function removePendingImage(token: string): Promise<void> {
 	await withStore('readwrite', (store) => store.delete(pendingImageIdFromToken(token)));
 }
 
-export async function uploadPendingImageToken(
-	token: string,
-	memberId: string,
-	memberToken: string,
-): Promise<string> {
+export async function uploadPendingImageToken(token: string): Promise<string> {
 	const record = await readPendingImage(token);
 	if (!record) throw new Error('pending-image-missing');
 	const sigRes = await fetch('/api/upload/sign', {
 		method: 'POST',
 		headers: {
 			'content-type': 'application/json',
-			...memberAuthHeader(memberId, memberToken),
 		},
 		body: JSON.stringify({
 			shareCode: record.shareCode,

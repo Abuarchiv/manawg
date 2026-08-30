@@ -6,14 +6,18 @@ describe('apiFetch', () => {
 		vi.unstubAllGlobals();
 	});
 
-	it('does not send a member mutation without a verified token', async () => {
-		const fetchMock = vi.fn();
+	it('sends a member mutation without a local token because the server uses the session cookie', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			headers: new Headers({ 'content-type': 'application/json' }),
+			json: async () => ({ ok: true }),
+		});
 		vi.stubGlobal('fetch', fetchMock);
 
 		await expect(
 			apiFetch('/api/wg/MTE8PZAT/shopping', { method: 'POST', memberId: 'member-1' }),
-		).resolves.toEqual({ ok: false, status: 403, error: 'member_not_verified' });
-		expect(fetchMock).not.toHaveBeenCalled();
+		).resolves.toEqual({ ok: true, data: { ok: true } });
+		expect(fetchMock).toHaveBeenCalledOnce();
 	});
 
 	it('uses API error codes when the error body has no message field', async () => {

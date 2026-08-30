@@ -77,6 +77,7 @@ export function checkEnv(env: EnvSource): EnvCheckResult {
 	const isProduction = env.VERCEL_ENV === 'production';
 	const isFixtureE2EDbDown =
 		!isProduction &&
+		env.E2E_FIXTURE_MODE === 'true' &&
 		env.CI === 'true' &&
 		env.NEXT_PUBLIC_DB_DOWN === 'true' &&
 		!isSet(env, 'POSTGRES_URL') &&
