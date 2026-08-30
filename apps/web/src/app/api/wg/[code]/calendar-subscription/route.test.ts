@@ -37,6 +37,12 @@ function request(method = 'GET'): NextRequest {
 	return new NextRequest('https://mana.test/api/wg/MTE8PZAT/calendar-subscription', { method });
 }
 
+function calendarSubscriptionQuery() {
+	const query = routeDb.query.calendarSubscriptions;
+	if (!query) throw new Error('calendar subscription query unavailable');
+	return query;
+}
+
 describe('calendar subscription route', () => {
 	beforeEach(() => {
 		resetRouteHarness();
@@ -49,7 +55,7 @@ describe('calendar subscription route', () => {
 	afterEach(() => vi.unstubAllEnvs());
 
 	it('only exposes the current URL to a verified member', async () => {
-		routeDb.query.calendarSubscriptions!.findFirst.mockResolvedValue(row());
+		calendarSubscriptionQuery().findFirst.mockResolvedValue(row());
 		const { GET } = await import('./route');
 
 		const res = await GET(request(), { params: Promise.resolve({ code: 'MTE8PZAT' }) });
@@ -68,7 +74,7 @@ describe('calendar subscription route', () => {
 
 	it('creates a member-scoped feed and records an audit entry', async () => {
 		const created = row('created-seed');
-		routeDb.query.calendarSubscriptions!.findFirst.mockResolvedValue(undefined);
+		calendarSubscriptionQuery().findFirst.mockResolvedValue(undefined);
 		routeDb.insert.mockReturnValue({
 			values: (values: Record<string, unknown>) => {
 				expect(values).toMatchObject({ wgId: WG_ID, memberId: MEMBER_ID });

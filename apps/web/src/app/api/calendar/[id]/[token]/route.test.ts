@@ -46,6 +46,12 @@ function request(token: string): NextRequest {
 	return new NextRequest(`https://mana.test/api/calendar/${SUBSCRIPTION_ID}/${token}`);
 }
 
+function calendarSubscriptionQuery() {
+	const query = routeDb.query.calendarSubscriptions;
+	if (!query) throw new Error('calendar subscription query unavailable');
+	return query;
+}
+
 describe('public calendar feed route', () => {
 	beforeEach(() => {
 		resetRouteHarness();
@@ -63,7 +69,7 @@ describe('public calendar feed route', () => {
 		vi.setSystemTime(new Date('2026-08-01T12:00:00.000Z'));
 		const token = deriveCalendarFeedToken(SUBSCRIPTION_ID, subscription.tokenSeed);
 		if (!token) throw new Error('expected feed token');
-		routeDb.query.calendarSubscriptions!.findFirst.mockResolvedValue(subscription);
+		calendarSubscriptionQuery().findFirst.mockResolvedValue(subscription);
 		let eventWhere: unknown;
 		routeDb.select.mockReturnValue(
 			chainOf([event], {
@@ -91,7 +97,7 @@ describe('public calendar feed route', () => {
 	it('returns the same not-found response for an invalid or revoked capability', async () => {
 		const token = deriveCalendarFeedToken(SUBSCRIPTION_ID, subscription.tokenSeed);
 		if (!token) throw new Error('expected feed token');
-		routeDb.query.calendarSubscriptions!.findFirst.mockResolvedValue({
+		calendarSubscriptionQuery().findFirst.mockResolvedValue({
 			...subscription,
 			revokedAt: new Date('2026-08-01T00:00:00.000Z'),
 		});
