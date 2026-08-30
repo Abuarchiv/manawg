@@ -18,7 +18,7 @@ export function AusgabenHeader({
 	onToggleForm,
 }: AusgabenHeaderProps): React.ReactElement {
 	return (
-		<header className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+		<header className="flex items-center justify-between gap-3">
 			<div className="min-w-0">
 				<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">Ausgaben</h1>
 				<p
@@ -30,7 +30,7 @@ export function AusgabenHeader({
 				</p>
 			</div>
 			<div
-				className="flex w-full items-center justify-end gap-1.5 sm:w-auto"
+				className="flex shrink-0 items-center gap-1.5"
 				role="toolbar"
 				aria-label="Ausgaben-Aktionen"
 			>
