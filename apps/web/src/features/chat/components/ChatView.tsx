@@ -476,7 +476,6 @@ export function ChatView({
 				replyToSenderName={replyToSender?.name ?? null}
 				onClearReply={() => setReplyToId(null)}
 				onSend={sendMessage}
-				onPickImage={() => undefined}
 			/>
 		</div>
 	);

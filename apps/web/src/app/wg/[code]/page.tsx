@@ -366,7 +366,7 @@ export default function WgHomePage() {
 				{/* Nur zeigen, wenn etwas zu tun ist — 6 Null-Kacheln bei ruhiger WG sind Rauschen. */}
 				{data && data.wgHealth.score < 100 && (
 					<details className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-4">
-						<summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+						<summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
 							<span>
 								<span className="block text-sm font-semibold text-[var(--text-1)]">
 									WG-Gesundheit
@@ -544,7 +544,7 @@ export default function WgHomePage() {
 				{/* ─── ACTIVITY ─── */}
 				<section>
 					<details className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-5">
-						<summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+						<summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
 							<span className="text-sm font-semibold text-[var(--text-1)]">Letzte Aktivität</span>
 							<ChevronDown className="h-4 w-4 text-[var(--text-3)]" aria-hidden />
 						</summary>

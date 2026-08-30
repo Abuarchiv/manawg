@@ -99,10 +99,10 @@ function ChatPageContent({
 
 	return (
 		<div
-			className="flex flex-col"
+			className="flex min-h-0 flex-col"
 			style={{
-				minHeight:
-					'calc(100dvh - 3.5rem - 4.25rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
+				height:
+					'calc(100dvh - 4.25rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
 			}}
 		>
 			<header className="sticky top-0 z-20 flex items-center gap-3 border-b border-[var(--border)] bg-[var(--bg)] px-3 py-2">

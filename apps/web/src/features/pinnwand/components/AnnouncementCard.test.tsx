@@ -99,4 +99,39 @@ describe('AnnouncementCard comment editing', () => {
 			'Neuer Kommentartext von woanders',
 		);
 	});
+
+	it('requires a second click before deleting from the mobile actions menu', () => {
+		const onDelete = vi.fn();
+		const announcement = buildAnnouncement();
+		render(
+			<ul>
+				<AnnouncementCard
+					announcement={announcement}
+					author={{ name: 'Anna', color: null }}
+					deletePending={false}
+					pinPending={false}
+					statusPending={false}
+					reactionPending={() => false}
+					onDelete={onDelete}
+					onTogglePinned={vi.fn()}
+					onToggleStatus={vi.fn()}
+					onToggleReaction={vi.fn()}
+					onAddComment={vi.fn().mockResolvedValue(true)}
+					onUpdateComment={vi.fn().mockResolvedValue(true)}
+					onDeleteComment={vi.fn().mockResolvedValue(true)}
+					currentMemberId="member-1"
+					shareCode="test-wg"
+					highlighted={false}
+				/>
+			</ul>,
+		);
+
+		fireEvent.click(screen.getByRole('button', { name: /Beitragsaktionen/ }));
+		const remove = screen.getByRole('menuitem', { name: /Beitrag entfernen:/ });
+		fireEvent.click(remove);
+		expect(onDelete).not.toHaveBeenCalled();
+		expect(remove).toHaveTextContent('Bestätigen');
+		fireEvent.click(remove);
+		expect(onDelete).toHaveBeenCalledTimes(1);
+	});
 });

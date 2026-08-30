@@ -57,4 +57,20 @@ describe('ChatComposer', () => {
 			expect.objectContaining({ mentionMemberIds: ['member-2'] }),
 		);
 	});
+
+	it('does not render an image action without an image handler', () => {
+		render(
+			<ChatComposer
+				members={[]}
+				currentMemberId="member-1"
+				replyToMessageId={null}
+				replyToPreview={null}
+				replyToSenderName={null}
+				onClearReply={vi.fn()}
+				onSend={vi.fn().mockResolvedValue(true)}
+			/>,
+		);
+
+		expect(screen.queryByRole('button', { name: 'Bild hinzufügen' })).not.toBeInTheDocument();
+	});
 });

@@ -150,7 +150,11 @@ export function IdentityPicker({ wgId, wgShareCode, wgName, members, onPicked }:
 	}
 
 	return (
-		<div className="flex min-h-svh items-center justify-center bg-[var(--bg-base)] px-4 py-10">
+		<main
+			id="main"
+			tabIndex={-1}
+			className="flex min-h-svh items-center justify-center bg-[var(--bg-base)] px-4 py-10 focus:outline-none"
+		>
 			<div className="w-full max-w-sm">
 				<header className="mb-7 text-center">
 					<p className="text-[11.5px] font-medium uppercase tracking-[0.18em] text-[var(--text-3)]">
@@ -292,6 +296,6 @@ export function IdentityPicker({ wgId, wgShareCode, wgName, members, onPicked }:
 					Kein Login. Daten bleiben lokal an dieses Gerät gebunden.
 				</p>
 			</div>
-		</div>
+		</main>
 	);
 }

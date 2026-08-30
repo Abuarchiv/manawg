@@ -48,7 +48,7 @@ export function ReactionPicker({ onSelect, triggerLabel }: ReactionPickerProps) 
 				aria-label={triggerLabel ?? 'Reaktion hinzufügen'}
 				aria-haspopup="dialog"
 				aria-expanded={open}
-				className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+				className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
 			>
 				<Smile className="h-4 w-4" aria-hidden />
 			</button>

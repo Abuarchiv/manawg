@@ -1987,3 +1987,66 @@ test.describe('Chores recovery', () => {
 		).toBeVisible({ timeout: 30_000 });
 	});
 });
+
+test.describe('Chore actions on mobile', () => {
+	test.use({
+		viewport: { width: 390, height: 844 },
+		isMobile: true,
+		hasTouch: true,
+	});
+
+	test('keeps every three-dot action visible on a narrow screen', async ({ page }) => {
+		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
+		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
+
+		await page.addInitScript(
+			({ wgId, memberId }) => {
+				localStorage.setItem(`manawg_identity:${wgId}`, JSON.stringify({ memberId, name: 'dsaf' }));
+			},
+			{ wgId, memberId },
+		);
+		await page.route('**/api/wg/MTE8PZAT/absences', async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ absences: [] }),
+			});
+		});
+		await page.route('**/api/wg/MTE8PZAT/chores', async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					chores: [
+						{
+							id: 'chore-bath',
+							title: 'Bad putzen',
+							intervalDays: 7,
+							nextDueAt: new Date().toISOString(),
+							assignedMemberId: memberId,
+							lastCompletedAt: null,
+							lastCompletedByName: null,
+							openGapCountForAssignee: 0,
+						},
+					],
+				}),
+			});
+		});
+
+		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
+		await page.getByRole('button', { name: 'Aufgabenaktionen: Bad putzen' }).click();
+
+		const menuItems = page
+			.getByRole('menu', { name: 'Aufgabenaktionen: Bad putzen' })
+			.getByRole('menuitem');
+		await expect(menuItems).toHaveText(['Ich übernehme', 'Tausch anfragen', 'Entfernen']);
+		const fullyVisible = await menuItems.evaluateAll((items) =>
+			items.every((item) => {
+				const rect = item.getBoundingClientRect();
+				const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+				return hit === item || item.contains(hit);
+			}),
+		);
+		expect(fullyVisible).toBe(true);
+	});
+});

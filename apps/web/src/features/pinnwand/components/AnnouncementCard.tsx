@@ -3,6 +3,7 @@
 import { DeleteConfirmButton } from '@/components/ui/DeleteConfirmButton';
 import { CHIP_BUTTON, ICON_BUTTON } from '@/components/ui/styles';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
+import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { useDismissableMenu } from '@/core/hooks/useDismissableMenu';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import type {
@@ -131,6 +132,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	const commentPendingRef = useRef(false);
 	const [touchedReactions, setTouchedReactions] = useState<ReactionKey[]>([]);
 	const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+	const mobileDelete = useConfirmDelete();
 	const mobileActionsTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const mobileActionsMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -159,6 +161,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 				? 'wartet'
 				: 'offen';
 	const prefill = buildPinnwandPrefill(bodyText);
+	const mobileDeleteConfirming = mobileDelete.confirmId === announcement.id;
 
 	// Eine gesetzte Reaktion bleibt sichtbar, auch wenn sie nicht die zur Art
 	// passende ist — sonst verschwindet die eigene Antwort beim Antippen. Und
@@ -416,14 +419,15 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 								role="menuitem"
 								type="button"
 								onClick={() => {
+									if (!mobileDelete.request(announcement.id)) return;
 									setMobileActionsOpen(false);
 									onDelete();
 								}}
-								aria-label={`Beitrag entfernen: ${actionSubject}`}
+								aria-label={`${mobileDeleteConfirming ? 'Beitrag entfernen bestätigen' : 'Beitrag entfernen'}: ${actionSubject}`}
 								className="flex h-11 w-full items-center gap-2 px-3 text-left text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--danger)]"
 							>
 								<Trash2 className="h-3.5 w-3.5" aria-hidden />
-								Entfernen
+								{mobileDeleteConfirming ? 'Bestätigen' : 'Entfernen'}
 							</button>
 						</div>
 					)}

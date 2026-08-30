@@ -127,12 +127,6 @@ function WgShell({
 					paddingBottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))',
 				}}
 			>
-				<a
-					href="#main"
-					className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:inline-flex focus:h-11 focus:items-center focus:rounded-md focus:border focus:border-[var(--accent)] focus:bg-[var(--bg-base)] focus:px-4 focus:text-[13px] focus:font-medium focus:text-[var(--accent)] focus:shadow-md focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2"
-				>
-					Zum Inhalt springen
-				</a>
 				<OfflineBanner />
 				{/* WCAG 1.3.1 / 2.4.1 — single <main> landmark.
 				    tabIndex={-1} lets the skip-link target receive programmatic focus. */}

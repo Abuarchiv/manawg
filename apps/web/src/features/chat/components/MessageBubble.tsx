@@ -107,7 +107,7 @@ export function MessageBubble({
 	const senderColor = sender?.color ?? null;
 
 	const actionBtnCls =
-		'inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-full text-[var(--text-3)] opacity-70 transition-colors transition-opacity hover:bg-[var(--surface)] hover:text-[var(--text-1)] hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-1';
+		'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-[var(--text-3)] opacity-70 transition-colors transition-opacity hover:bg-[var(--surface)] hover:text-[var(--text-1)] hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-1';
 
 	async function saveEdit(): Promise<void> {
 		const text = draft.trim();
@@ -224,7 +224,7 @@ export function MessageBubble({
 										setDraft(message.body ?? '');
 									}}
 									disabled={pending}
-									className="min-h-[36px] rounded-md px-3 text-[12px] transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+									className="min-h-11 rounded-md px-3 text-[12px] transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
 								>
 									Abbrechen
 								</button>
@@ -232,7 +232,7 @@ export function MessageBubble({
 									type="button"
 									onClick={() => void saveEdit()}
 									disabled={pending || draft.trim().length === 0}
-									className="inline-flex min-h-[36px] items-center gap-1 rounded-md bg-[var(--accent)]/20 px-3 text-[12px] font-medium transition-colors hover:bg-[var(--accent)]/30 disabled:opacity-50"
+									className="inline-flex min-h-11 items-center gap-1 rounded-md bg-[var(--accent)]/20 px-3 text-[12px] font-medium transition-colors hover:bg-[var(--accent)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
 								>
 									{pending && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />}
 									Speichern
@@ -273,7 +273,6 @@ export function MessageBubble({
 					// Bug 3: gap-0.5 to reduce spacing between reaction chips
 					<div className="mt-1 flex flex-wrap items-center gap-0.5">
 						{reactions.map((r) => (
-							// Bug 1: reduced to min-h-[36px] min-w-[36px]
 							<button
 								key={r.emoji}
 								type="button"
@@ -287,7 +286,7 @@ export function MessageBubble({
 								}}
 								aria-pressed={r.mine}
 								aria-label={`Reaktion ${r.emoji} (${r.count}) ${r.mine ? 'entfernen' : 'hinzufügen'} — Nachricht von ${senderName}`}
-								className={`inline-flex min-h-[36px] min-w-[36px] items-center justify-center gap-1 rounded-full border px-2 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+								className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full border px-2 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
 									r.mine
 										? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
 										: 'border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] hover:border-[var(--border-strong)]'

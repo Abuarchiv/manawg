@@ -119,7 +119,7 @@ export function CalendarMonth({
 	useEffect(() => {
 		if (!shouldFocusRef.current) return;
 		shouldFocusRef.current = false;
-		const cells = gridRef.current?.querySelectorAll<HTMLButtonElement>('button[data-day-cell]');
+		const cells = gridRef.current?.querySelectorAll<HTMLElement>('[data-day-cell]');
 		cells?.[focusedIndex]?.focus();
 	}, [focusedIndex]);
 
@@ -176,9 +176,9 @@ export function CalendarMonth({
 
 	const handleGridClick = useCallback(
 		(e: React.MouseEvent<HTMLDivElement>) => {
-			const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-day-cell]');
-			if (!btn) return;
-			const iso = btn.dataset.dayDate;
+			const cell = (e.target as HTMLElement).closest<HTMLElement>('[data-day-cell]');
+			if (!cell) return;
+			const iso = cell.dataset.dayDate;
 			if (!iso) return;
 			onSelectDay(new Date(iso));
 		},
@@ -228,14 +228,19 @@ export function CalendarMonth({
 						? 'text-[var(--text-1)]'
 						: 'text-[var(--text-3)] opacity-60';
 					return (
-						<button
+						<div
 							key={day.date.toISOString()}
-							// biome-ignore lint/a11y/useSemanticElements: ARIA grid pattern — gridcell role required for date-grid roving-tabindex keyboard nav; no semantic HTML element models this
-							type="button"
+							// biome-ignore lint/a11y/useSemanticElements: ARIA grid pattern — a gridcell must contain separately focusable event controls
 							role="gridcell"
 							data-day-cell
 							data-day-date={day.date.toISOString()}
 							tabIndex={isFocused ? 0 : -1}
+							onKeyDown={(event) => {
+								if (event.key === 'Enter' || event.key === ' ') {
+									event.preventDefault();
+									onSelectDay(day.date);
+								}
+							}}
 							aria-label={
 								FULL_DATE_FORMATTER.format(day.date) +
 								(day.occurrences.length > 0
@@ -244,7 +249,7 @@ export function CalendarMonth({
 							}
 							aria-current={isToday ? 'date' : undefined}
 							aria-selected={isSelected || undefined}
-							className={`flex min-h-[48px] flex-col items-stretch gap-1 rounded-md border px-1.5 py-1 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+							className={`flex min-h-[48px] cursor-pointer flex-col items-stretch gap-1 rounded-md border px-1.5 py-1 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
 								isSelected
 									? 'border-[var(--accent)] bg-[var(--accent)]/10'
 									: isToday
@@ -268,11 +273,12 @@ export function CalendarMonth({
 										.join(', ')}
 								</span>
 							)}
-							<ul aria-hidden="true" className="space-y-0.5">
+							<ul className="space-y-0.5">
 								{day.occurrences.slice(0, 2).map((occ) => (
 									<li key={`${occ.eventId}-${occ.occurrenceIndex}`}>
-										{/* biome-ignore lint/a11y/useKeyWithClickEvents: decorative preview inside an aria-hidden list — keyboard users select the day via the parent grid button (sr-only summary above lists the events) */}
-										<span
+										<button
+											type="button"
+											aria-label={`Termin öffnen: ${occ.title}`}
 											onClick={(e) => {
 												e.stopPropagation();
 												onSelectOccurrence(occ);
@@ -280,7 +286,7 @@ export function CalendarMonth({
 											className="block w-full truncate rounded-sm bg-[var(--accent)]/15 px-1 py-0.5 text-left text-[11px] font-medium text-[var(--accent)]"
 										>
 											{occ.title}
-										</span>
+										</button>
 									</li>
 								))}
 								{day.occurrences.length > 2 && (
@@ -289,7 +295,7 @@ export function CalendarMonth({
 									</li>
 								)}
 							</ul>
-						</button>
+						</div>
 					);
 				})}
 			</div>

@@ -883,7 +883,7 @@ export default function PutzenPage() {
 					</>
 				)
 			) : (
-				<ul id="chore-list" className={LIST_CARD}>
+				<ul id="chore-list" className={LIST_CARD} style={{ overflow: 'visible' }}>
 					{sortedItems.map((c) => (
 						<ChoreRow
 							key={c.id}

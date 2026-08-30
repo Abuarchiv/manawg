@@ -17,7 +17,9 @@ function TestMenu() {
 			</button>
 			{open && (
 				<div ref={menuRef} role="menu">
-					<button type="button">Menüpunkt</button>
+					<button type="button" role="menuitem">
+						Menüpunkt
+					</button>
 				</div>
 			)}
 			<button type="button">Außerhalb</button>
@@ -49,8 +51,44 @@ describe('useDismissableMenu', () => {
 		render(<TestMenu />);
 		fireEvent.click(screen.getByRole('button', { name: 'Öffnen' }));
 
-		fireEvent.mouseDown(screen.getByRole('button', { name: 'Menüpunkt' }));
+		fireEvent.mouseDown(screen.getByRole('menuitem', { name: 'Menüpunkt' }));
 
 		expect(screen.getByRole('menu')).toBeInTheDocument();
+	});
+
+	it('moves focus through menu items with the keyboard', () => {
+		function MultiItemMenu() {
+			const [open, setOpen] = useState(false);
+			const triggerRef = useRef<HTMLButtonElement>(null);
+			const menuRef = useRef<HTMLDivElement>(null);
+			useDismissableMenu({ open, onClose: () => setOpen(false), triggerRef, menuRef });
+			return (
+				<div>
+					<button ref={triggerRef} type="button" onClick={() => setOpen(true)}>
+						Öffnen
+					</button>
+					{open && (
+						<div ref={menuRef} role="menu">
+							<button type="button" role="menuitem">
+								Erster
+							</button>
+							<button type="button" role="menuitem">
+								Zweiter
+							</button>
+						</div>
+					)}
+				</div>
+			);
+		}
+
+		render(<MultiItemMenu />);
+		fireEvent.click(screen.getByRole('button', { name: 'Öffnen' }));
+		const first = screen.getByRole('menuitem', { name: 'Erster' });
+		const second = screen.getByRole('menuitem', { name: 'Zweiter' });
+		first.focus();
+		fireEvent.keyDown(document, { key: 'ArrowDown' });
+		expect(second).toHaveFocus();
+		fireEvent.keyDown(document, { key: 'Home' });
+		expect(first).toHaveFocus();
 	});
 });

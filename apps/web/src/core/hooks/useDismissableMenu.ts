@@ -23,6 +23,12 @@ export function useDismissableMenu({
 }: UseDismissableMenuOptions): void {
 	useEffect(() => {
 		if (!open) return;
+		const getMenuItems = (): HTMLElement[] => {
+			if (menuRef.current?.getAttribute('role') !== 'menu') return [];
+			return Array.from(menuRef.current.querySelectorAll<HTMLElement>('[role="menuitem"]')).filter(
+				(item) => !(item as HTMLButtonElement).disabled,
+			);
+		};
 		const closeAndRestoreFocus = (): void => {
 			onClose();
 			requestAnimationFrame(() => triggerRef.current?.focus());
@@ -31,6 +37,22 @@ export function useDismissableMenu({
 			if (event.key === 'Escape') {
 				event.preventDefault();
 				closeAndRestoreFocus();
+				return;
+			}
+			const items = getMenuItems();
+			if (items.length === 0) return;
+			const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+			let nextIndex: number | null = null;
+			if (event.key === 'ArrowDown')
+				nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+			if (event.key === 'ArrowUp')
+				nextIndex =
+					currentIndex < 0 ? items.length - 1 : (currentIndex - 1 + items.length) % items.length;
+			if (event.key === 'Home') nextIndex = 0;
+			if (event.key === 'End') nextIndex = items.length - 1;
+			if (nextIndex !== null) {
+				event.preventDefault();
+				items[nextIndex]?.focus();
 			}
 		};
 		const handlePointer = (event: MouseEvent): void => {
@@ -41,7 +63,9 @@ export function useDismissableMenu({
 		};
 		document.addEventListener('keydown', handleKey);
 		document.addEventListener('mousedown', handlePointer);
+		const focusFirstItem = requestAnimationFrame(() => getMenuItems()[0]?.focus());
 		return () => {
+			cancelAnimationFrame(focusFirstItem);
 			document.removeEventListener('keydown', handleKey);
 			document.removeEventListener('mousedown', handlePointer);
 		};

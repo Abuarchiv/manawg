@@ -107,4 +107,18 @@ describe('EventEditModal', () => {
 
 		await waitFor(() => expect(onDelete).toHaveBeenCalledWith('evt-1'));
 	});
+
+	it('keeps the delete confirmation open when Escape is pressed', async () => {
+		const onClose = vi.fn();
+		render(
+			<EventEditModal event={baseEvent} onClose={onClose} onUpdate={vi.fn()} onDelete={vi.fn()} />,
+		);
+
+		fireEvent.click(screen.getByRole('button', { name: 'Termin löschen' }));
+		await screen.findByRole('dialog', { name: 'Termin löschen?' });
+		fireEvent.keyDown(document, { key: 'Escape' });
+
+		expect(onClose).not.toHaveBeenCalled();
+		expect(screen.getByRole('dialog', { name: 'Termin löschen?' })).toBeInTheDocument();
+	});
 });

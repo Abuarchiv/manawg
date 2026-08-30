@@ -1,6 +1,5 @@
 'use client';
 
-import { useToast } from '@/components/ui/Toast';
 import { haptic } from '@/shared/lib/haptics';
 import { Image as ImageIcon, Loader2, Send, X } from 'lucide-react';
 import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
@@ -29,7 +28,7 @@ interface ChatComposerProps {
 		mentionMemberIds: string[];
 		replyToMessageId: string | null;
 	}) => Promise<boolean>;
-	onPickImage: () => void;
+	onPickImage?: () => void;
 }
 
 interface MentionTrigger {
@@ -53,7 +52,6 @@ export function ChatComposer({
 	replyToSenderName,
 	onClearReply,
 	onSend,
-	// biome-ignore lint/correctness/noUnusedVariables: kept for future image picker integration
 	onPickImage,
 }: ChatComposerProps) {
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -62,8 +60,6 @@ export function ChatComposer({
 	const [mention, setMention] = useState<MentionTrigger | null>(null);
 	const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
 	const mentionListboxId = 'mention-listbox';
-	const toast = useToast();
-
 	const visibleMembers = useMemo(
 		() => members.filter((m) => m.id !== currentMemberId),
 		[members, currentMemberId],
@@ -186,7 +182,7 @@ export function ChatComposer({
 						type="button"
 						onClick={onClearReply}
 						aria-label="Antwort abbrechen"
-						className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+						className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
 					>
 						<X className="h-3.5 w-3.5" aria-hidden />
 					</button>
@@ -200,17 +196,16 @@ export function ChatComposer({
 				onHoverIndex={setMentionActiveIndex}
 			/>
 			<div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-3 py-2 sm:px-4">
-				<button
-					type="button"
-					onClick={() => {
-						haptic('light');
-						toast.info('Bildversand kommt bald 📸');
-					}}
-					aria-label="Bild hinzufügen"
-					className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-				>
-					<ImageIcon className="h-4 w-4" aria-hidden />
-				</button>
+				{onPickImage && (
+					<button
+						type="button"
+						onClick={onPickImage}
+						aria-label="Bild hinzufügen"
+						className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+					>
+						<ImageIcon className="h-4 w-4" aria-hidden />
+					</button>
+				)}
 				<textarea
 					ref={textareaRef}
 					value={draft}

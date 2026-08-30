@@ -72,11 +72,11 @@ export function EventEditModal({ event, onClose, onUpdate, onDelete }: EventEdit
 	useEffect(() => {
 		if (!event) return;
 		const handleKey = (e: KeyboardEvent): void => {
-			if (e.key === 'Escape') onClose();
+			if (e.key === 'Escape' && !confirmingDelete) onClose();
 		};
 		document.addEventListener('keydown', handleKey);
 		return () => document.removeEventListener('keydown', handleKey);
-	}, [event, onClose]);
+	}, [event, onClose, confirmingDelete]);
 
 	if (!event) return null;
 

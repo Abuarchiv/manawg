@@ -130,7 +130,7 @@ export default function KalenderPage() {
 						nextDueAt: chore.nextDueAt,
 					})),
 				);
-			}
+			} else if (!nextError) nextError = 'Putzplan-Aufgaben konnten nicht geladen werden.';
 			setLoadError(nextError);
 			if (isInitial) setLoading(false);
 		},
@@ -300,7 +300,7 @@ export default function KalenderPage() {
 						type="button"
 						onClick={handleFabClick}
 						aria-label="Neuen Termin anlegen"
-						className="fab-mobile"
+						className="fab-mobile inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--text-1)] text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
 					>
 						<Plus className="h-5 w-5" aria-hidden />
 					</button>

@@ -77,6 +77,15 @@ test.describe('Chat happy path', () => {
 
 		const composer = page.getByLabel('Chat-Nachricht');
 		await expect(composer).toBeVisible({ timeout: 30_000 });
+		const composerBox = await composer.boundingBox();
+		const navigationBox = await page
+			.getByRole('navigation', { name: 'WG Hauptnavigation' })
+			.boundingBox();
+		expect(composerBox).not.toBeNull();
+		expect(navigationBox).not.toBeNull();
+		expect(
+			(composerBox?.y ?? Number.POSITIVE_INFINITY) + (composerBox?.height ?? 0),
+		).toBeLessThanOrEqual(navigationBox?.y ?? 0);
 		await composer.fill('Hallo zusammen');
 		await page.getByRole('button', { name: 'Nachricht senden' }).click();
 

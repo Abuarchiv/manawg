@@ -76,5 +76,20 @@ describe('KalenderPage', () => {
 		render(<KalenderPage />);
 		const btn = await screen.findByRole('button', { name: 'Neuen Termin anlegen' });
 		expect(btn).toBeInTheDocument();
+		expect(btn).toHaveClass('h-11', 'w-11');
+	});
+
+	it('shows a partial error when chores fail to load', async () => {
+		apiClientMock.apiFetch.mockImplementation((url: string) =>
+			Promise.resolve(
+				url.includes('/events')
+					? { ok: true, data: { events: [] } }
+					: { ok: false, error: 'offline' },
+			),
+		);
+		render(<KalenderPage />);
+		expect(await screen.findByRole('alert')).toHaveTextContent(
+			'Putzplan-Aufgaben konnten nicht geladen werden.',
+		);
 	});
 });
