@@ -252,13 +252,10 @@ export function enqueueOfflineAction(action: OfflineAction): number {
 	return writeOfflineQueue(next) ? next.length : 0;
 }
 
-async function resolvePendingImages(
-	action: OfflineAction,
-	memberToken: string,
-): Promise<OfflineAction> {
+async function resolvePendingImages(action: OfflineAction): Promise<OfflineAction> {
 	const imageUrl = action.payload.imageUrl;
 	if (typeof imageUrl !== 'string' || !isPendingImageToken(imageUrl)) return action;
-	const publicUrl = await uploadPendingImageToken(imageUrl, action.memberId, memberToken);
+	const publicUrl = await uploadPendingImageToken(imageUrl, action.memberId);
 	return {
 		...action,
 		payload: {
@@ -410,7 +407,8 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 			continue;
 		}
 		const identity = action.wgId ? getIdentity(action.wgId) : null;
-		if (!identity?.memberToken || identity.memberId !== action.memberId) {
+		const activeMemberId = options?.memberId ?? identity?.memberId;
+		if (!activeMemberId || activeMemberId !== action.memberId) {
 			remaining.push({
 				...action,
 				attempts: (action.attempts ?? 0) + 1,
@@ -420,12 +418,12 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 			continue;
 		}
 		try {
-			const readyAction = await resolvePendingImages(action, identity.memberToken);
+			const readyAction = await resolvePendingImages(action);
 			const request = getOfflineActionRequest(readyAction);
 			const res = await apiFetch<unknown>(request.path, {
 				method: request.method,
 				memberId: readyAction.memberId,
-				memberToken: identity.memberToken,
+				...(identity?.memberToken ? { memberToken: identity.memberToken } : {}),
 				body: JSON.stringify(request.body),
 				// Server deduplicates POSTs by this header — without it a lost
 				// response (status 0) would be retried into a duplicate mutation.
@@ -441,7 +439,7 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 							{
 								method: 'PATCH',
 								memberId: readyAction.memberId,
-								memberToken: identity.memberToken,
+								...(identity?.memberToken ? { memberToken: identity.memberToken } : {}),
 								body: JSON.stringify(recurringAdvance),
 							},
 						);

@@ -68,7 +68,7 @@ export default function EinkaufPage() {
 	const clearingBoughtRef = useRef(false);
 	const nameInputRef = useRef<HTMLInputElement>(null);
 
-	const draftKey = buildDraftKey(wg.shareCode, 'shopping');
+	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'shopping');
 	const appliedPrefillRef = useRef<string | null>(null);
 	const loadRequestIdRef = useRef(0);
 

@@ -1,6 +1,6 @@
 import { InviteStep } from '@/components/neu/InviteStep';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NeuClient } from './NeuClient';
 
 const routerMock = vi.hoisted(() => ({
@@ -19,6 +19,10 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	window.localStorage.clear();
 	window.history.pushState({}, '', '/neu');
+});
+
+afterEach(() => {
+	vi.unstubAllGlobals();
 });
 
 describe('InviteStep', () => {
@@ -163,6 +167,32 @@ describe('InviteStep', () => {
 	});
 });
 
+describe('NeuClient account setup', () => {
+	it('offers social login and restored WGs without local device data', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue({
+				ok: true,
+				json: async () => ({ wgs: [{ id: 'wg-1', code: 'MTE8PZAT', name: 'Küche 4' }] }),
+			}),
+		);
+
+		render(<NeuClient />);
+
+		expect(await screen.findByRole('button', { name: 'Mit Google anmelden' })).toBeVisible();
+		expect(await screen.findByRole('button', { name: 'Küche 4' })).toBeVisible();
+	});
+
+	it('offers Google, Apple and Facebook before creating a WG', async () => {
+		render(<NeuClient />);
+		fireEvent.click(await screen.findByRole('button', { name: /Neue WG erstellen/ }));
+
+		expect(screen.getByRole('button', { name: 'Mit Google anmelden' })).toBeVisible();
+		expect(screen.getByRole('button', { name: 'Mit Apple anmelden' })).toBeVisible();
+		expect(screen.getByRole('button', { name: 'Mit Facebook anmelden' })).toBeVisible();
+	});
+});
+
 describe('NeuClient', () => {
 	it('restores a started WG creation draft after reload', async () => {
 		window.localStorage.setItem(
@@ -258,7 +288,7 @@ describe('NeuClient', () => {
 		expect(window.localStorage.getItem('manawg:draft:neu')).toBeNull();
 	});
 
-	it('keeps the invite code visible when local profile storage fails after WG creation', async () => {
+	it('creates a WG without writing a local member identity', async () => {
 		vi.stubGlobal(
 			'fetch',
 			vi.fn().mockResolvedValue({
@@ -276,31 +306,13 @@ describe('NeuClient', () => {
 		fireEvent.change(screen.getByLabelText('WG-Name'), { target: { value: 'Test WG' } });
 		fireEvent.change(screen.getByLabelText('Dein Name'), { target: { value: 'Ava' } });
 		await waitFor(() => expect(window.localStorage.getItem('manawg:draft:neu')).not.toBeNull());
-		const originalSetItem = Storage.prototype.setItem;
-		const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
-			this: Storage,
-			key,
-			value,
-		) {
-			if (key === 'manawg_identity:wg-1') throw new Error('blocked');
-			return originalSetItem.call(this, key, value);
-		});
 		const form = screen.getByRole('button', { name: 'WG erstellen' }).closest('form');
 		if (!form) throw new Error('form missing');
 
-		try {
-			fireEvent.submit(form);
+		fireEvent.submit(form);
 
-			expect(await screen.findByText('Test WG ist live.')).toBeVisible();
-			expect(
-				screen.getByText(
-					'WG wurde erstellt, aber dein Profil konnte auf diesem Gerät nicht gespeichert werden. Sichere den WG-Code MTE8PZAT und tritt damit erneut bei.',
-				),
-			).toBeVisible();
-			expect(screen.queryByText('Netzwerkfehler.')).not.toBeInTheDocument();
-		} finally {
-			setItemSpy.mockRestore();
-		}
+		expect(await screen.findByText('Test WG ist live.')).toBeVisible();
+		expect(window.localStorage.getItem('manawg_identity:wg-1')).toBeNull();
 	});
 
 	it('does not send duplicate WG creation requests from repeated submits', async () => {
@@ -327,7 +339,7 @@ describe('NeuClient', () => {
 		fireEvent.submit(form);
 		fireEvent.submit(form);
 
-		expect(fetch).toHaveBeenCalledTimes(1);
+		expect(fetch).toHaveBeenCalledTimes(2);
 	});
 
 	it('explains invalid WG creation responses without raw API codes', async () => {
@@ -367,6 +379,7 @@ describe('NeuClient', () => {
 			'fetch',
 			vi
 				.fn()
+				.mockResolvedValueOnce({ ok: false, status: 401 })
 				.mockResolvedValueOnce({
 					ok: false,
 					status: 400,
@@ -595,7 +608,7 @@ describe('NeuClient', () => {
 		fireEvent.submit(form);
 		fireEvent.submit(form);
 
-		expect(fetch).toHaveBeenCalledTimes(1);
+		expect(fetch).toHaveBeenCalledTimes(2);
 	});
 
 	it('uses API error codes while checking a WG code', async () => {
@@ -692,17 +705,10 @@ describe('NeuClient', () => {
 		).toBeVisible();
 		expect(screen.queryByRole('button', { name: 'WG beitreten' })).not.toBeInTheDocument();
 		expect(window.localStorage.getItem('manawg_known_wgs')).toBeNull();
-		expect(fetch).toHaveBeenCalledTimes(1);
+		expect(fetch).toHaveBeenCalledTimes(2);
 	});
 
-	it('encodes API-provided WG codes when an existing identity can re-enter directly', async () => {
-		window.localStorage.setItem(
-			'manawg_identity:wg-1',
-			JSON.stringify({
-				memberId: '123e4567-e89b-42d3-a456-426614174000',
-				name: 'Samira',
-			}),
-		);
+	it('encodes API-provided WG codes when the account already belongs to the WG', async () => {
 		vi.stubGlobal(
 			'fetch',
 			vi.fn().mockResolvedValue({
@@ -714,6 +720,7 @@ describe('NeuClient', () => {
 						name: 'Test WG',
 						joiningEnabled: true,
 					},
+					currentMember: { memberId: 'member-1', name: 'Samira' },
 				}),
 			}),
 		);
@@ -764,11 +771,12 @@ describe('NeuClient', () => {
 		});
 	});
 
-	it('explains when local profile storage fails after joining an existing WG', async () => {
+	it('joins an existing WG without writing a local member identity', async () => {
 		vi.stubGlobal(
 			'fetch',
 			vi
 				.fn()
+				.mockResolvedValueOnce({ ok: false, status: 401 })
 				.mockResolvedValueOnce({
 					ok: true,
 					json: async () => ({
@@ -798,32 +806,12 @@ describe('NeuClient', () => {
 
 		await screen.findByRole('button', { name: 'WG beitreten' });
 		fireEvent.change(screen.getByLabelText('Dein Name'), { target: { value: 'Samira' } });
-		const originalSetItem = Storage.prototype.setItem;
-		const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
-			this: Storage,
-			key,
-			value,
-		) {
-			if (key === 'manawg_identity:wg-1') throw new Error('blocked');
-			return originalSetItem.call(this, key, value);
-		});
 		form = screen.getByRole('button', { name: 'WG beitreten' }).closest('form');
 		if (!form) throw new Error('join form missing');
 
-		try {
-			fireEvent.submit(form);
+		fireEvent.submit(form);
 
-			expect(
-				await screen.findByText(
-					'Samira wurde in der WG angelegt, aber dein Profil konnte auf diesem Gerät nicht gespeichert werden. Öffne die WG mit Code MTE8PZAT und wähle dein Profil aus.',
-				),
-			).toBeVisible();
-			expect(
-				screen.queryByText('Netzwerkfehler. Bitte nochmal versuchen.'),
-			).not.toBeInTheDocument();
-			expect(routerMock.push).not.toHaveBeenCalled();
-		} finally {
-			setItemSpy.mockRestore();
-		}
+		await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith('/wg/MTE8PZAT'));
+		expect(window.localStorage.getItem('manawg_identity:wg-1')).toBeNull();
 	});
 });

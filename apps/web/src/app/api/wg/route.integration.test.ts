@@ -17,9 +17,16 @@
 import { db, wgMembers, wgs } from '@/core/db';
 import { eq } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const authMock = vi.hoisted(() => ({ getAuthenticatedUser: vi.fn() }));
+
+vi.mock('@/core/auth/server', () => ({
+	getAuthenticatedUser: (...args: unknown[]) => authMock.getAuthenticatedUser(...args),
+}));
 
 const hasRealDb = Boolean(process.env.POSTGRES_URL || process.env.DATABASE_URL);
+const AUTH_USER_ID = 'ea1d8a8d-6e28-4206-b6d5-2f9ae44e915a';
 
 function postWgRequest(body: unknown): NextRequest {
 	return new NextRequest('https://mana.test/api/wg', {
@@ -31,6 +38,10 @@ function postWgRequest(body: unknown): NextRequest {
 
 describe.skipIf(!hasRealDb)('POST /api/wg (real database)', () => {
 	const createdWgIds: string[] = [];
+
+	beforeEach(() => {
+		authMock.getAuthenticatedUser.mockResolvedValue({ id: AUTH_USER_ID });
+	});
 
 	afterAll(async () => {
 		// Deleting `wgs` alone is enough: `wgMembers.wgId` (and every other
@@ -63,6 +74,7 @@ describe.skipIf(!hasRealDb)('POST /api/wg (real database)', () => {
 		expect(memberRows).toHaveLength(1);
 		expect(memberRows[0]?.name).toBe(creatorName);
 		expect(memberRows[0]?.id).toBe(json.creator.id);
+		expect(memberRows[0]?.authUserId).toBe(AUTH_USER_ID);
 	});
 
 	it('generates a unique share code across repeated creations', async () => {

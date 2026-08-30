@@ -81,7 +81,7 @@ test.describe('Kalender happy path', () => {
 
 		await page.getByRole('button', { name: 'Neuen Termin anlegen' }).click();
 
-		const titleInput = page.getByRole('textbox', { name: 'z. B. Heizungsablesung' });
+		const titleInput = page.getByRole('textbox', { name: 'Titel' });
 		await expect(titleInput).toBeVisible({ timeout: 10_000 });
 		await titleInput.fill('Heizungsablesung');
 

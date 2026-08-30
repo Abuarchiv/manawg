@@ -11,8 +11,16 @@ import {
 } from './drafts';
 
 describe('draft helpers', () => {
-	it('uses stable per-WG draft keys', () => {
-		expect(buildDraftKey('ABC12345', 'expense')).toBe('manawg:draft:ABC12345:expense');
+	it('uses stable per-member draft keys', () => {
+		expect(buildDraftKey('ABC12345', 'member-1', 'expense')).toBe(
+			'manawg:draft:ABC12345:member-1:expense',
+		);
+	});
+
+	it('keeps two members of the same WG in separate draft namespaces', () => {
+		expect(buildDraftKey('ABC12345', 'member-1', 'expense')).not.toBe(
+			buildDraftKey('ABC12345', 'member-2', 'expense'),
+		);
 	});
 
 	it('builds encoded edit links for queued action modules', () => {
@@ -32,7 +40,7 @@ describe('draft helpers', () => {
 	});
 
 	it('reads, writes, and removes drafts through safe storage helpers', () => {
-		const key = buildDraftKey('ABC12345', 'shopping');
+		const key = buildDraftKey('ABC12345', 'member-1', 'shopping');
 
 		expect(writeDraft(key, { name: 'Milch', quantity: '2x' })).toBe(true);
 		expect(readDraft<{ name: string; quantity: string }>(key)).toEqual({

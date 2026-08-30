@@ -1,0 +1,2 @@
+ALTER TABLE "wg_members" ADD COLUMN "auth_user_id" uuid;--> statement-breakpoint
+CREATE UNIQUE INDEX "wg_members_wg_auth_user_unique_idx" ON "wg_members" USING btree ("wg_id","auth_user_id") WHERE "wg_members"."auth_user_id" IS NOT NULL;

@@ -1,11 +1,11 @@
 import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
+import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers } from '@/core/db';
 import { LIMITS } from '@/core/db/schema';
 import { withTransaction } from '@/core/db/transaction';
 import { HTTP, apiError, badRequest, forbidden, notFound, tooMany } from '@/core/errors';
 import { isVerifiedWgAdmin } from '@/core/guards/admin';
-import { deriveMemberToken } from '@/core/guards/member-token';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
@@ -96,6 +96,8 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 	if (!limit.success) {
 		return tooMany('join_rate_limited', 'join_rate_limited');
 	}
+	const user = await getAuthenticatedUser(req);
+	if (!user) return apiError('auth_required', 401, 'auth_required');
 	const wg = await resolveJoinableWg(code);
 	if (!wg) return notFound('wg_not_found');
 	if (!wg.joiningEnabled) return forbidden('joining_disabled', 'joining_disabled');
@@ -109,9 +111,15 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 			tx,
 		): Promise<
 			| { ok: true; member: typeof wgMembers.$inferSelect }
-			| { ok: false; reason: 'limit' | 'name_taken' }
+			| { ok: false; reason: 'limit' | 'name_taken' | 'already_joined' }
 		> => {
 			await tx.execute(sql`select id from wgs where id = ${wg.id} for update`);
+			const existingForUser = await tx
+				.select({ id: wgMembers.id })
+				.from(wgMembers)
+				.where(and(eq(wgMembers.wgId, wg.id), eq(wgMembers.authUserId, user.id)))
+				.limit(1);
+			if (existingForUser.length > 0) return { ok: false, reason: 'already_joined' };
 			const memberCount = await tx
 				.select({ id: wgMembers.id })
 				.from(wgMembers)
@@ -132,7 +140,7 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 			try {
 				[inserted] = await tx
 					.insert(wgMembers)
-					.values({ wgId: wg.id, name, color })
+					.values({ wgId: wg.id, name, color, authUserId: user.id })
 					.onConflictDoNothing({ target: [wgMembers.wgId, wgMembers.name] })
 					.returning();
 			} catch (insertErr) {
@@ -149,10 +157,12 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 		if (joinResult.reason === 'limit') {
 			return apiError('member_limit_reached', HTTP.CONFLICT, 'member_limit_reached');
 		}
+		if (joinResult.reason === 'already_joined') {
+			return apiError('already_joined', HTTP.CONFLICT, 'already_joined');
+		}
 		return apiError('name_taken', HTTP.CONFLICT, 'name_taken');
 	}
 	const member = joinResult.member;
-	const memberWithToken = { ...member, token: deriveMemberToken(wg.id, member.id) };
 	await recordAuditEvent({
 		wgId: wg.id,
 		memberId: member.id,
@@ -170,5 +180,5 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 		sourcePath: '/',
 		content: `${member.name} ist der WG beigetreten.`,
 	});
-	return NextResponse.json({ member: memberWithToken });
+	return NextResponse.json({ member });
 });

@@ -2,7 +2,6 @@ import { recordAuditEvent } from '@/core/audit';
 import { db, wgMembers, wgs } from '@/core/db';
 import { badRequest, notFound, serverError } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
-import { deriveMemberToken } from '@/core/guards/member-token';
 import { requireWgAdmin } from '@/core/guards/require-wg-admin';
 import { readShareCode } from '@/core/guards/route-preamble';
 import type { RouteCtx } from '@/core/infra/api-types';
@@ -89,22 +88,12 @@ export async function GET(
 			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
 			.from(wgMembers)
 			.where(eq(wgMembers.wgId, wg.id));
-		// currentMember carries the caller's own session token so legacy
-		// clients (identity stored before MEMBER_SESSION_SECRET existed) can
-		// self-heal into "verified" auth. Never attach a token to entries in
-		// `members` — those are for display only and belong to other users.
-		// CRITICAL: only mint a token when the caller already proved this
-		// identity via a valid token — otherwise any WG member could claim an
-		// arbitrary memberId (e.g. the admin's) via the spoofable header and
-		// receive that member's real session token back.
 		return NextResponse.json({
 			wg,
 			members,
 			currentMember: {
 				memberId: auth.member.memberId,
-				...(auth.member.verified
-					? { memberToken: deriveMemberToken(wg.id, auth.member.memberId) }
-					: {}),
+				name: auth.member.name,
 			},
 		});
 	} catch (err) {

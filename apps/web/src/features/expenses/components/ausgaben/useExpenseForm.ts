@@ -103,7 +103,7 @@ export function useExpenseForm({
 	const [recurringNextDueAt, setRecurringNextDueAt] = useState<string | null>(null);
 	const [draftHydrated, setDraftHydrated] = useState(false);
 
-	const draftKey = buildDraftKey(shareCode, 'expense');
+	const draftKey = buildDraftKey(shareCode, identityMemberId, 'expense');
 	const hasUrlPrefill = Boolean(prefillDescription || prefillAmount || recurringId);
 	// Both prefill sources apply once per distinct URL. Without these guards,
 	// re-renders (or a reload that re-resolves the template) would keep

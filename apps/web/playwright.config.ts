@@ -14,9 +14,9 @@ const e2eTsconfigPath = `.next-e2e-tsconfig-${serverPort}.json`;
 const isolatedNextEnv = `NEXT_DIST_DIR=${e2eDistDir} NEXT_TSCONFIG_PATH=${e2eTsconfigPath}`;
 const prepareIsolatedNext = `cp tsconfig.json ${e2eTsconfigPath}`;
 const webServerCommand = useBuiltServer
-	? `${prepareIsolatedNext} && CI=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next build && CI=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next start --port ${serverPort}`
+	? `${prepareIsolatedNext} && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next build && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next start --port ${serverPort}`
 	: process.env.NEXT_PUBLIC_DB_DOWN === 'true'
-		? `${prepareIsolatedNext} && CI=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next dev --port ${serverPort}`
+		? `${prepareIsolatedNext} && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next dev --port ${serverPort}`
 		: `${prepareIsolatedNext} && if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next dev --port ${serverPort}`;
 
 export default defineConfig({

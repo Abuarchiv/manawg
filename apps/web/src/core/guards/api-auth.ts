@@ -1,15 +1,12 @@
+import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers } from '@/core/db';
-import { apiError, forbidden } from '@/core/errors';
-import { verifyMemberToken } from '@/core/guards/member-token';
-import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from '@/shared/lib/member-header';
+import { apiError } from '@/core/errors';
 import { and, eq } from 'drizzle-orm';
 import type { NextRequest, NextResponse } from 'next/server';
 
 const HTTP_SERVICE_UNAVAILABLE = 503;
 
 const HTTP_UNAUTHORIZED = 401;
-
-const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /**
  * Loose UUID v4-ish shape check. We do not enforce the version nibble strictly
@@ -25,13 +22,7 @@ export function isUuid(value: unknown): value is string {
 export interface VerifiedMember {
 	memberId: string;
 	name: string;
-	/**
-	 * `true` when the request carried a valid `x-manawg-member-token` HMAC
-	 * for this (wgId, memberId) pair. `false` means "legacy" auth — the
-	 * memberId header matched a real row, but there was no (or an invalid)
-	 * token. Non-destructive routes may accept legacy requests; admin-gated
-	 * mutations must require `verified === true` (see `checkWgAdminAccess`).
-	 */
+	/** True because this member was resolved from a verified Supabase user. */
 	verified: boolean;
 }
 
@@ -52,30 +43,15 @@ function unauthorized(code: string): NextResponse {
 }
 
 /**
- * Verify the caller is a member of the given WG.
- *
- * The client must send `x-manawg-member-id: <uuid>` on every mutating request.
- * The header value is checked against the `wg_members` table scoped to `wgId`.
- *
- * Returns either:
- *   - `{ ok: true, member }` when the header is present and matches a row
- *   - `{ ok: false, response }` carrying a 401 NextResponse the caller must return
+ * Resolve the caller's active membership from their server-verified Supabase
+ * identity. Client-supplied member headers are deliberately not consulted.
  */
 export async function requireMember(req: NextRequest, wgId: string): Promise<RequireMemberResult> {
-	const headerValue = req.headers.get(MEMBER_ID_HEADER);
-	const memberId =
-		typeof headerValue === 'string' && headerValue.trim().length > 0 ? headerValue.trim() : null;
-
-	if (!memberId) {
-		return { ok: false, response: unauthorized('member_id_required') };
-	}
-	if (!UUID_PATTERN.test(memberId)) {
-		return { ok: false, response: unauthorized('member_id_invalid') };
-	}
-
 	try {
+		const user = await getAuthenticatedUser(req);
+		if (!user) return { ok: false, response: unauthorized('auth_required') };
 		const row = await db.query.wgMembers.findFirst({
-			where: and(eq(wgMembers.id, memberId), eq(wgMembers.wgId, wgId)),
+			where: and(eq(wgMembers.wgId, wgId), eq(wgMembers.authUserId, user.id)),
 			columns: { id: true, name: true, deactivatedAt: true },
 		});
 		if (!row) {
@@ -86,12 +62,7 @@ export async function requireMember(req: NextRequest, wgId: string): Promise<Req
 		if (row.deactivatedAt) {
 			return { ok: false, response: unauthorized('member_deactivated') };
 		}
-		const tokenHeader = req.headers.get(MEMBER_TOKEN_HEADER);
-		const verified = verifyMemberToken(wgId, row.id, tokenHeader);
-		if (!verified && UNSAFE_METHODS.has(req.method.toUpperCase())) {
-			return { ok: false, response: forbidden('member_not_verified', 'member_not_verified') };
-		}
-		return { ok: true, member: { memberId: row.id, name: row.name, verified } };
+		return { ok: true, member: { memberId: row.id, name: row.name, verified: true } };
 	} catch (err) {
 		console.error('[requireMember] db error', err);
 		return { ok: false, response: apiError('db_error', HTTP_SERVICE_UNAVAILABLE) };

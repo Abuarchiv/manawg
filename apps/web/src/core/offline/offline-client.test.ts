@@ -55,7 +55,7 @@ describe('offline client queue helpers', () => {
 		});
 	});
 
-	it('resolves the stored token for mutations and pending-image signing', async () => {
+	it('uses the active account member for mutations and pending-image signing', async () => {
 		identityMock.getIdentity.mockReturnValue({ memberId: 'm1', memberToken: 'signed-token' });
 		offlineImageMock.uploadPendingImageToken.mockResolvedValue('https://cdn.test/image.jpg');
 		apiFetchMock.mockImplementation(() => {
@@ -81,7 +81,6 @@ describe('offline client queue helpers', () => {
 		expect(offlineImageMock.uploadPendingImageToken).toHaveBeenCalledWith(
 			'manawg-pending-image:img1',
 			'm1',
-			'signed-token',
 		);
 		expect(apiFetchMock).toHaveBeenCalledWith(
 			'/api/wg/ABC12345/announcements',

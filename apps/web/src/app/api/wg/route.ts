@@ -1,8 +1,9 @@
 import { recordAuditEvent } from '@/core/audit';
+import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
 import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { badRequest, serverError, tooMany } from '@/core/errors';
+import { apiError, badRequest, serverError, tooMany } from '@/core/errors';
 import { deriveMemberToken } from '@/core/guards/member-token';
 import { E2E_CREATED_WG, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { checkRateLimit, clientIpKey, registerLimiter } from '@/core/rate-limit';
@@ -90,6 +91,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		});
 	}
 
+	let user: { id: string } | null;
+	try {
+		user = await getAuthenticatedUser(req);
+	} catch (err) {
+		console.error('[api/wg POST] auth lookup failed', err);
+		return serverError('auth_unavailable');
+	}
+	if (!user) return apiError('auth_required', 401, 'auth_required');
+
 	let shareCode = '';
 	for (let attempt = 0; attempt < SHARE_CODE_RETRIES; attempt += 1) {
 		const candidate = generateShareCode();
@@ -132,7 +142,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 					const [createdMember] = await tx
 						.insert(wgMembers)
-						.values({ wgId: createdWg.id, name: creatorName })
+						.values({ wgId: createdWg.id, name: creatorName, authUserId: user.id })
 						.returning();
 					if (!createdMember) throw new TransactionAbort('member_insert_failed');
 
@@ -158,7 +168,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					creator: {
 						id: member.id,
 						name: member.name,
-						token: deriveMemberToken(wg.id, member.id),
 					},
 				});
 			} catch (err) {

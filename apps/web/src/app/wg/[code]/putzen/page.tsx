@@ -88,7 +88,7 @@ export default function PutzenPage() {
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [queueEditId, setQueueEditId] = useState<string | null>(null);
 	const [draftHydrated, setDraftHydrated] = useState(false);
-	const draftKey = buildDraftKey(wg.shareCode, 'chore');
+	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'chore');
 	const appliedPrefillRef = useRef<string | null>(null);
 	const initialLoadStartedRef = useRef(false);
 	const loadRequestIdRef = useRef(0);

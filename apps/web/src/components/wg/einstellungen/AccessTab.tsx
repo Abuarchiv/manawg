@@ -1,11 +1,13 @@
 'use client';
 
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
 import { ShareWgCard } from '@/components/wg/ShareWgCard';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { Section } from '@/components/wg/einstellungen/Section';
+import { linkSocialIdentity, signOutSocialAccount } from '@/core/auth/client';
 import {
 	accessErrorMessage,
 	deleteWgErrorMessage,
@@ -35,6 +37,8 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	const [accessError, setAccessError] = useState<string | null>(null);
 	const [rotateConfirm, setRotateConfirm] = useState(false);
 	const [confirmLeave, setConfirmLeave] = useState(false);
+	const [accountSignOutPending, setAccountSignOutPending] = useState(false);
+	const [accountSignOutError, setAccountSignOutError] = useState<string | null>(null);
 	const [deleteStage, setDeleteStage] = useState<'idle' | 'confirm' | 'pending'>('idle');
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const [confirmText, setConfirmText] = useState('');
@@ -88,6 +92,22 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 		clearIdentity(wg.id);
 		forgetWg(wg.shareCode);
 		router.push('/');
+	}
+
+	async function handleAccountSignOut(): Promise<void> {
+		if (accountSignOutPending) return;
+		setAccountSignOutPending(true);
+		setAccountSignOutError(null);
+		try {
+			await signOutSocialAccount();
+			clearIdentity(wg.id);
+			forgetWg(wg.shareCode);
+			router.push('/');
+		} catch {
+			setAccountSignOutError('Konto konnte nicht abgemeldet werden. Bitte erneut versuchen.');
+		} finally {
+			setAccountSignOutPending(false);
+		}
 	}
 
 	function openLeaveConfirm(): void {
@@ -233,6 +253,19 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 						shareCode={wg.shareCode}
 						hideHeader
 						joiningEnabled={joiningEnabled}
+					/>
+				</div>
+			</Section>
+
+			<Section
+				title="Anmeldemethoden"
+				hint="Verknüpfe einen weiteren Anbieter, damit dein Zugang auch bei Gerätewechsel erhalten bleibt."
+			>
+				<div className="p-4">
+					<SocialLoginButtons
+						variant="link"
+						next={`/wg/${encodedShareCode}/einstellungen#zugang`}
+						onOAuthStart={linkSocialIdentity}
 					/>
 				</div>
 			</Section>
@@ -409,6 +442,44 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 						Diese Aktionen sind teilweise oder vollständig unwiderruflich.
 					</p>
 				</div>
+
+				<section
+					aria-label="Konto abmelden"
+					className="overflow-hidden rounded-lg border border-[var(--danger)]/25 bg-[var(--bg-base)]"
+				>
+					<div className="border-b border-[var(--border)] bg-[var(--danger)]/[0.03] px-4 py-2.5">
+						<h3 className="text-[12px] font-semibold uppercase tracking-wide text-[var(--danger)]/70">
+							Konto abmelden
+						</h3>
+						<p className="mt-0.5 text-[11.5px] text-[var(--text-3)]">
+							Meldet dein Social-Konto auf diesem Gerät ab.
+						</p>
+					</div>
+					<button
+						type="button"
+						onClick={() => void handleAccountSignOut()}
+						disabled={accountSignOutPending}
+						aria-label="Konto abmelden"
+						className="flex min-h-[44px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--danger)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-60"
+					>
+						<span className="text-[14px] text-[var(--danger)]">
+							{accountSignOutPending ? 'Melde ab…' : 'Konto abmelden'}
+						</span>
+						{accountSignOutPending ? (
+							<Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--danger)]" aria-hidden />
+						) : (
+							<LogOut className="h-4 w-4 shrink-0 text-[var(--danger)]" aria-hidden />
+						)}
+					</button>
+					{accountSignOutError && (
+						<p
+							role="alert"
+							className="border-t border-[var(--border)] px-4 py-2 text-[12.5px] text-[var(--danger)]"
+						>
+							{accountSignOutError}
+						</p>
+					)}
+				</section>
 
 				{/* Leave WG */}
 				<section
