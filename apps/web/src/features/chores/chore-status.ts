@@ -35,7 +35,6 @@ interface ChorePlanHealth {
 	dueToday: number;
 	escalated: number;
 	nextLabel: string;
-	text: string;
 }
 
 export interface ChoreAssigneeMember {
@@ -115,7 +114,6 @@ export function getChorePlanHealth(items: ChoreHealthInput[], now = Date.now()):
 			dueToday: 0,
 			escalated: 0,
 			nextLabel: 'keine',
-			text: 'Noch keine Aufgaben im Plan',
 		};
 	}
 
@@ -124,8 +122,6 @@ export function getChorePlanHealth(items: ChoreHealthInput[], now = Date.now()):
 	const dueToday = statuses.filter((status) => status.state === 'due').length;
 	const escalated = statuses.filter((status) => status.escalated).length;
 	const nextLabel = statuses[0]?.label ?? 'keine';
-	const gapText = gaps === 1 ? '1 Lücke' : `${gaps} Lücken`;
-	const clarifyText = escalated > 0 ? ` · ${escalated} klären` : '';
 
 	return {
 		total: items.length,
@@ -133,7 +129,6 @@ export function getChorePlanHealth(items: ChoreHealthInput[], now = Date.now()):
 		dueToday,
 		escalated,
 		nextLabel,
-		text: `${items.length} Aufgaben offen · ${gapText}${clarifyText} · nächste Fälligkeit ${nextLabel}`,
 	};
 }
 

@@ -81,23 +81,11 @@ describe('EinkaufPage', () => {
 			'h-11',
 			'w-11',
 		);
-		expect(screen.getByRole('link', { name: 'WG-Einstellungen öffnen' })).toHaveAttribute(
-			'href',
-			'/wg/WG%2F123%3Fx%3D1/einstellungen',
-		);
 	});
 
 	it('renders header actions as touch-sized controls', async () => {
 		render(<EinkaufPage />);
 
-		expect(screen.getByRole('button', { name: 'Einkaufsliste aktualisieren' })).toHaveClass(
-			'h-11',
-			'w-11',
-		);
-		expect(screen.getByRole('link', { name: 'WG-Einstellungen öffnen' })).toHaveClass(
-			'h-11',
-			'w-11',
-		);
 		expect(
 			await screen.findByRole('link', { name: 'Milch & Brot als Ausgabe übernehmen' }),
 		).toBeInTheDocument();

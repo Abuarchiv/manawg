@@ -83,38 +83,10 @@ describe('AusgabenPage', () => {
 			'/api/wg/WG%2F123%3Fx%3D1/recurring-expenses',
 			{ memberId: 'member-1' },
 		);
-		expect(screen.getByRole('link', { name: 'Verlauf' })).toHaveAttribute(
+		expect(screen.getByRole('link', { name: 'Kalender' })).toHaveAttribute(
 			'href',
-			'/wg/WG%2F123%3Fx%3D1/aktivitaet',
+			'/wg/WG%2F123%3Fx%3D1/kalender',
 		);
-		expect(screen.getByRole('button', { name: 'Ausgaben aktualisieren' })).toHaveClass(
-			'h-11',
-			'w-11',
-		);
-		expect(screen.getByRole('link', { name: 'Verlauf' })).toHaveClass('h-11');
-		expect(screen.getByRole('link', { name: 'WG-Einstellungen öffnen' })).toHaveAttribute(
-			'href',
-			'/wg/WG%2F123%3Fx%3D1/einstellungen',
-		);
-		expect(screen.getByRole('link', { name: 'WG-Einstellungen öffnen' })).toHaveClass(
-			'h-11',
-			'w-11',
-		);
-	});
-
-	it('announces manual refresh progress as a polite status update', async () => {
-		render(<AusgabenPage />);
-
-		const refreshButton = await screen.findByRole('button', { name: 'Ausgaben aktualisieren' });
-		await waitFor(() => expect(refreshButton).not.toBeDisabled());
-
-		apiClientMock.apiFetch.mockImplementation(() => new Promise(() => {}));
-
-		fireEvent.click(refreshButton);
-
-		const status = await screen.findByRole('status', { name: 'Aktualisieren…' });
-		expect(status).toHaveAttribute('aria-live', 'polite');
-		expect(status).toHaveAttribute('aria-atomic', 'true');
 	});
 
 	it('renders the load retry action as a touch-sized control', async () => {
@@ -140,6 +112,45 @@ describe('AusgabenPage', () => {
 		expect(await screen.findByRole('button', { name: 'Neue Ausgabe vorbereiten' })).toHaveClass(
 			'h-11',
 		);
+		expect(screen.getByText('Wiederkehrende Kosten').closest('details')).toHaveAttribute('open');
+	});
+
+	it('renders member balances on the expenses page', async () => {
+		apiClientMock.apiFetch.mockImplementation((url: string) => {
+			if (url.endsWith('/recurring-expenses')) {
+				return Promise.resolve({ ok: true, data: { recurringExpenses: [] } });
+			}
+			return Promise.resolve({
+				ok: true,
+				data: {
+					expenses: [
+						{
+							id: 'expense-1',
+							description: 'Internet',
+							amountCents: 1000,
+							currency: 'EUR',
+							paidByMemberId: 'member-1',
+							imageUrl: null,
+							occurredAt: '2026-05-20T10:00:00.000Z',
+							createdAt: '2026-05-20T10:00:00.000Z',
+							updatedAt: '2026-05-20T10:00:00.000Z',
+							splits: [
+								{ id: 'split-1', debtorMemberId: 'member-1', amountCents: 500, settledAt: null },
+								{ id: 'split-2', debtorMemberId: 'member-2', amountCents: 500, settledAt: null },
+							],
+						},
+					],
+				},
+			});
+		});
+
+		render(<AusgabenPage />);
+
+		expect(await screen.findByText('Saldo pro Mitglied')).toBeVisible();
+		expect(screen.getByText(/\+5,00/)).toBeVisible();
+		expect(screen.getByText('Eingetragene Ausgaben').closest('details')).not.toHaveAttribute(
+			'open',
+		);
 	});
 
 	it('renders empty expense quick-start actions as touch-sized controls', async () => {
@@ -158,6 +169,7 @@ describe('AusgabenPage', () => {
 
 		expect(screen.getByRole('button', { name: 'Aufteilung: Gleichmäßig' })).toHaveClass('h-11');
 		expect(screen.getByRole('button', { name: 'Aufteilung: Manuell' })).toHaveClass('h-11');
+		fireEvent.click(screen.getByRole('button', { name: 'Fixkosten-Vorlage' }));
 		expect(screen.getByRole('button', { name: '1 Monat' })).toHaveClass('h-11');
 		expect(screen.getByRole('button', { name: '2 Monate' })).toHaveClass('h-11');
 		expect(screen.getByRole('button', { name: 'Quartal' })).toHaveClass('h-11');

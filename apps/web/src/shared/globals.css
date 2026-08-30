@@ -102,128 +102,150 @@ body {
 @layer base {
 	:root {
 		color-scheme: light;
-		/* LIGHT (default) — Vercel Geist palette, darkened secondary text
-		   for readability. Default Geist greys (#6e6e6e / #737373) at small
-		   letterspaced label sizes are too washed on pure white. */
-		--bg-base: #ffffff;
+		/* App-shell frame width (Priority-1 desktop-browser follow-up, 2026-08-30):
+		   the whole app is capped to a phone-like column at this width and centered,
+		   same pattern as WhatsApp Web/Telegram Web — a "boxed app" instead of a
+		   stretched website when opened in a wide desktop browser tab. Below this
+		   width (real mobile devices) it's a no-op: plain max-width, no media query,
+		   so there is exactly one mobile layout, never a tablet/desktop variant. */
+		--app-frame-width: 480px;
+		/* Backdrop shown in the margins outside the frame on wide viewports. Same
+		   role in both themes: distinct enough from --bg-base to read as "outside
+		   the app", subtle enough not to compete with it. Never visible at mobile
+		   widths — the frame fills 100% of the viewport there. Vercel recessed-bg
+		   value (#EBEBEB is also Vercel's ghost-button hover fill) reused here. */
+		--app-backdrop: #ebebeb;
+		/* LIGHT (default) — Vercel Design Language palette (2026-08-30 retune).
+		   Values taken directly from the Vercel reference table: bg #FAFAFA,
+		   text #171717/#4D4D4D/#8F8F8F, accent #0072F5, border ~8% black. */
+		--bg-base: #fafafa;
 		--bg-1: rgba(255, 255, 255, 0.72);
 		--bg-2: rgba(255, 255, 255, 0.5);
-		--surface: rgba(255, 255, 255, 0.65);
-		--surface-strong: rgba(255, 255, 255, 0.85);
-		--border: rgba(20, 20, 30, 0.08);
-		--border-strong: rgba(20, 20, 30, 0.14);
+		--surface: #ffffff;
+		--surface-strong: #ffffff;
+		--border: rgba(0, 0, 0, 0.08);
+		--border-strong: rgba(0, 0, 0, 0.14);
 
-		--text-1: #1a1f1c;
-		--text-2: #3a4340; /* WCAG AA ≥4.5:1 on --bg-base */
-		--text-3: #4a5450;
-		--text-label: #2f5d4a;
+		--text-1: #171717;
+		--text-2: #4d4d4d; /* WCAG AA ≥4.5:1 on --bg-base */
+		--text-3: #8f8f8f;
+		--text-label: #0072f5;
 
-		/* Signature accent: deep forest pine. Sophisticated, calm, German-natural.
-		   Not violet, not coral — distinctly editorial. */
-		--accent: #2f5d4a;
-		--accent-bright: #4a7d65;
-		--accent-deep: #1f3d30;
-		--accent-soft: rgba(47, 93, 74, 0.12);
+		/* Vercel interactive accent + focus-ring blue. Same hex in both themes
+		   (see .dark below) — Vercel's #0072F5 button blue reads well with white
+		   text on both a near-white and a near-black surface (~4.45:1 contrast). */
+		--accent: #0072f5;
+		--accent-bright: #338ef7;
+		--accent-deep: #005fcc; /* Vercel's documented focus-ring color */
+		--accent-soft: rgba(0, 114, 245, 0.12);
 
-		--success: #2f5d4a;
-		--warning: #b8792a;
-		--danger: #a83a2c;
+		--success: #1f7a34;
+		--warning: #a15c00;
+		--danger: #c6362c;
 		/* Foreground tokens used on var(--accent) and var(--danger) chips/buttons.
-		   In dark mode these flip from white→dark because the bg gets brighter. */
+		   --accent-fg stays white in both themes now (same accent hex both places).
+		   --danger-fg still flips: light danger is dark enough for white text,
+		   dark-mode danger is brightened for on-black readability and needs dark text. */
 		--danger-fg: #ffffff;
 		/* State chip/banner tokens — bg/border/fg trios for success/warning/danger/info
 		   panels. Replaces hardcoded emerald-50/amber-50 Tailwind palette so banners
 		   stay consistent in both light and dark mode. */
 		--success-fg: #14532d;
 		--success-bg: #ecfdf5;
-		--success-border: rgba(47, 93, 74, 0.25);
+		--success-border: rgba(31, 122, 52, 0.25);
 		--warning-fg: #7c2d12;
 		--warning-bg: #fef3c7;
-		--warning-border: rgba(184, 121, 42, 0.3);
+		--warning-border: rgba(161, 92, 0, 0.3);
 		--danger-bg: #fef2f2;
-		--danger-border: rgba(168, 58, 44, 0.3);
+		--danger-border: rgba(198, 54, 44, 0.3);
 		--info-fg: #0c4a6e;
 		--info-bg: #f0f9ff;
-		--info-border: rgba(74, 93, 107, 0.25);
-		--chart-1: #2f5d4a;
-		--chart-2: #6b8e5d;
-		--chart-3: #b8932a;
-		--chart-4: #a83a2c;
-		--chart-5: #4a5d6b;
-		--chart-6: #7d8a76;
+		--info-border: rgba(0, 114, 245, 0.25);
+		--chart-1: #0062d1;
+		--chart-2: #398e4a;
+		--chart-3: #ff990a;
+		--chart-4: #e5484d;
+		--chart-5: #7820bc;
+		--chart-6: #067a6e;
 
-		/* Forest Editorial base tones — the two still referenced by components. */
+		/* Base tones — the two still referenced by components. */
 		--clay: #a85638;
-		--ink: #1a1f1c;
+		--ink: #171717;
 
 		/* Legacy beige-theme tokens still used by older components. Each one below
 		   has live consumers; the unused rest of the set was removed. */
-		--bg: #f7f3ec;
-		--bg-raised: #ede7da;
-		--paper: #f4efe6;
-		--ink-2: #4a5450;
-		--ink-3: #6e7872;
-		--accent-fg: #fdfbf6;
-		--red: #a03b2d;
+		--bg: #fafafa;
+		--bg-raised: #ebebeb;
+		--paper: #ffffff;
+		--ink-2: #4d4d4d;
+		--ink-3: #8f8f8f;
+		--accent-fg: #ffffff;
+		--red: #c6362c;
 	}
 
 	.dark {
 		color-scheme: dark;
-		--bg-base: #000000;
-		--bg-1: #0a0a0a;
-		--bg-2: #111111;
-		--surface: #0a0a0a;
+		/* DARK — same Vercel philosophy, no reference table given for it (the
+		   product owner's spec is light-mode only), so this derives a matching
+		   dark counterpart: dark bg, light text, the SAME blue accent, and the
+		   shadow-as-border technique adjusted to a white-on-black border. */
+		--app-backdrop: #000000;
+		--bg-base: #0a0a0a;
+		--bg-1: #111111;
+		--bg-2: #1a1a1a;
+		--surface: #111111;
 		--surface-strong: #1a1a1a;
-		--border: #2a2a2a;
-		--border-strong: #3a3a3a;
+		--border: rgba(255, 255, 255, 0.1);
+		--border-strong: rgba(255, 255, 255, 0.16);
 
 		--text-1: #ededed;
 		--text-2: #a1a1a1;
-		/* #9ca3af, not #8b8b8b: a second, later --text-3 declaration used to override
-		   this one further down the same block. Kept the value that actually applied. */
-		--text-3: #9ca3af;
-		--text-label: #b8f5d8;
+		--text-3: #707070;
+		--text-label: #0072f5;
 
-		--accent: #84e1bc;
-		--accent-bright: #b8f5d8;
-		--accent-deep: #4a7d65;
-		--accent-soft: rgba(132, 225, 188, 0.15);
+		/* Same accent hex as light mode — Vercel's button blue holds up on both
+		   a near-white and a near-black surface. */
+		--accent: #0072f5;
+		--accent-bright: #3291ff;
+		--accent-deep: #005fcc;
+		--accent-soft: rgba(0, 114, 245, 0.18);
 
-		--success: #84e1bc;
-		--warning: #d4a84a;
-		--danger: #d97864;
-		--success-fg: #b8f5d8;
-		--success-bg: rgba(132, 225, 188, 0.1);
-		--success-border: rgba(132, 225, 188, 0.25);
-		--warning-fg: #fcd34d;
-		--warning-bg: rgba(212, 168, 74, 0.12);
-		--warning-border: rgba(212, 168, 74, 0.3);
-		--danger-bg: rgba(217, 120, 100, 0.12);
-		--danger-border: rgba(217, 120, 100, 0.3);
-		--info-fg: #93c5fd;
-		--info-bg: rgba(96, 165, 250, 0.1);
-		--info-border: rgba(96, 165, 250, 0.25);
-		--chart-1: #84e1bc;
-		--chart-2: #4a7d65;
-		--chart-3: #d4a84a;
-		--chart-4: #d97864;
-		--chart-5: #6b8e5d;
-		--chart-6: #c4a875;
+		--success: #45a557;
+		--warning: #ff990a;
+		--danger: #e5484d;
+		--success-fg: #6cda75;
+		--success-bg: rgba(69, 165, 87, 0.12);
+		--success-border: rgba(69, 165, 87, 0.3);
+		--warning-fg: #ffb84d;
+		--warning-bg: rgba(255, 153, 10, 0.12);
+		--warning-border: rgba(255, 153, 10, 0.3);
+		--danger-bg: rgba(229, 72, 77, 0.12);
+		--danger-border: rgba(229, 72, 77, 0.3);
+		--info-fg: #52aeff;
+		--info-bg: rgba(0, 114, 245, 0.1);
+		--info-border: rgba(0, 114, 245, 0.25);
+		--chart-1: #52aeff;
+		--chart-2: #6cda75;
+		--chart-3: #ff990a;
+		--chart-4: #e5484d;
+		--chart-5: #bf89ec;
+		--chart-6: #45dec5;
 
 		/* Compat token overrides — map legacy beige theme tokens onto Geist dark.
 		   Without these, components using var(--ink)/var(--bg)/var(--paper) keep
 		   light-mode warm values and become unreadable on the black background. */
-		--bg: #000000;
-		--bg-raised: #111111;
-		--paper: #0a0a0a;
+		--bg: #0a0a0a;
+		--bg-raised: #1a1a1a;
+		--paper: #111111;
 		--ink: #ededed;
 		--ink-2: #a1a1a1;
 		--ink-3: #707070;
-		/* Dark mode: accent is pale mint, danger is light coral — flip text to dark
-		   so labels stay readable (white-on-mint and white-on-coral both fail AA). */
-		--accent-fg: #0a0a0a;
+		/* --accent-fg stays white — same accent hex both themes now, so no flip
+		   needed. --danger-fg still flips: dark-mode danger is brightened for
+		   on-black readability, so white-on-danger fails AA there; dark text passes. */
+		--accent-fg: #ffffff;
 		--danger-fg: #0a0a0a;
-		--red: #f87171;
+		--red: #e5484d;
 	}
 
 	* {
@@ -232,7 +254,7 @@ body {
 
 	html {
 		-webkit-tap-highlight-color: transparent;
-		background-color: var(--bg-base);
+		background-color: var(--app-backdrop);
 	}
 
 	@media (prefers-reduced-motion: no-preference) {
@@ -242,7 +264,7 @@ body {
 	}
 
 	body {
-		background-color: var(--bg-base);
+		background-color: var(--app-backdrop);
 		color: var(--text-1);
 		font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
 		font-feature-settings: "kern" on, "ss01" on, "cv11" on;
@@ -257,9 +279,13 @@ body {
 		color: #ffffff;
 	}
 
+	/* Vercel double-ring focus style: a bg-colored inner gap ring so the outer
+	   accent ring never touches the element, composed as box-shadow (shadow-as-
+	   border technique — zero layout shift, no outline clipped by overflow:hidden
+	   ancestors). Elements with their own Tailwind ring-* focus style override this. */
 	:focus-visible {
-		outline: 2px solid var(--accent);
-		outline-offset: 2px;
+		outline: none;
+		box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--accent);
 		border-radius: 6px;
 	}
 
@@ -627,7 +653,7 @@ body {
 	padding: 0.9rem 1.7rem;
 	border-radius: 999px;
 	font-family: "Geist", sans-serif;
-	font-weight: 650;
+	font-weight: 600;
 	font-size: 14px;
 	letter-spacing: -0.01em;
 	background: linear-gradient(180deg, #ffffff 0%, #f7f7f4 100%);

@@ -1,9 +1,11 @@
 'use client';
 
 import { ALERT_DANGER } from '@/components/ui/styles';
+import { BackLink } from '@/components/wg/BackLink';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
 import { MS_PER_DAY } from '@/core/utils/time';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { CalendarMonth } from '@/features/events/components/CalendarMonth';
 import { CalendarUpcomingList } from '@/features/events/components/CalendarUpcomingList';
 import {
@@ -22,7 +24,7 @@ import {
 	getMonthBounds,
 } from '@/features/events/events';
 import { haptic } from '@/shared/lib/haptics';
-import { CalendarDays, List, Plus, RotateCw } from 'lucide-react';
+import { CalendarDays, List, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -84,9 +86,10 @@ export default function KalenderPage() {
 	const [events, setEvents] = useState<CalendarEvent[]>([]);
 	const [chores, setChores] = useState<ChoreSummary[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [refreshing, setRefreshing] = useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
-	const [view, setView] = useState<ViewMode>('month');
+	// Liste als Default: eine WG hat selten mehr als eine Handvoll Termine im
+	// Monat — das Grid ist die Ausnahme-Ansicht, nicht der Einstieg.
+	const [view, setView] = useState<ViewMode>('list');
 	const [month, setMonth] = useState<Date>(() => {
 		const now = new Date();
 		return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -99,7 +102,6 @@ export default function KalenderPage() {
 	const load = useCallback(
 		async (isInitial: boolean): Promise<void> => {
 			if (isInitial) setLoading(true);
-			else setRefreshing(true);
 			const bounds = getMonthBounds(month);
 			const upcomingTo = new Date(Date.now() + UPCOMING_DAYS * MS_PER_DAY);
 			const fromParam = bounds.start.toISOString();
@@ -131,11 +133,12 @@ export default function KalenderPage() {
 			}
 			setLoadError(nextError);
 			if (isInitial) setLoading(false);
-			else setRefreshing(false);
 		},
 		[encodedShareCode, identity.memberId, month],
 	);
 
+	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
+	useVisibilityPausedInterval(() => void load(false), 30_000);
 	useEffect(() => {
 		void load(true);
 	}, [load]);
@@ -258,7 +261,8 @@ export default function KalenderPage() {
 	return (
 		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
 			<header className="flex items-center justify-between gap-3">
-				<div>
+				<BackLink href={`${wgBaseHref}/pinnwand`} label="Pinnwand" />
+				<div className="min-w-0 flex-1">
 					<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">
 						Kalender
 					</h1>
@@ -267,19 +271,6 @@ export default function KalenderPage() {
 					</p>
 				</div>
 				<div className="flex shrink-0 items-center gap-1.5">
-					{/* Refresh: secondary chrome, hidden on mobile */}
-					<button
-						type="button"
-						onClick={() => void load(false)}
-						disabled={loading || refreshing}
-						aria-label="Kalender aktualisieren"
-						className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
-					>
-						<RotateCw
-							className={`h-4 w-4 ${loading || refreshing ? 'animate-spin' : ''}`}
-							aria-hidden
-						/>
-					</button>
 					{/* Heute: jump back when navigated away from current month */}
 					{!isCurrentMonth && (
 						<button
@@ -361,7 +352,7 @@ export default function KalenderPage() {
 			</section>
 
 			<p className="text-center text-[12px] text-[var(--text-3)]">
-				Tipp: Putzplan-Aufgaben erscheinen automatisch in der Liste —
+				Putzplan-Aufgaben erscheinen automatisch in dieser Liste.
 				<Link
 					href={`${wgBaseHref}/putzen`}
 					className="ml-1 inline-flex min-h-11 items-center rounded-sm underline transition-colors hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"

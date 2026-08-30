@@ -5,6 +5,7 @@ import type { DbTransaction } from '@/core/db/transaction';
 import { withTransaction } from '@/core/db/transaction';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { formatEuroCents } from '@/core/utils/money';
+import { settledAtForOwnShare } from '@/features/expenses/split-math';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { ImportSource, ParsedExpense } from './import-parsers';
 
@@ -213,6 +214,7 @@ async function writeImport(tx: DbTransaction, input: CommitInput): Promise<Impor
 				expenseId: row.id,
 				debtorMemberId: s.debtorMemberId,
 				amountCents: s.amountCents,
+				settledAt: settledAtForOwnShare(s.debtorMemberId, prepared.paidByMemberId),
 			})),
 		);
 		inserted += 1;

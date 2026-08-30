@@ -134,7 +134,6 @@ describe('getChorePlanHealth', () => {
 			dueToday: 1,
 			escalated: 1,
 			nextLabel: '2 T. überfällig',
-			text: '3 Aufgaben offen · 1 Lücke · 1 klären · nächste Fälligkeit 2 T. überfällig',
 		});
 	});
 
@@ -145,7 +144,6 @@ describe('getChorePlanHealth', () => {
 			dueToday: 0,
 			escalated: 0,
 			nextLabel: 'Datum prüfen',
-			text: '1 Aufgaben offen · 0 Lücken · nächste Fälligkeit Datum prüfen',
 		});
 	});
 
@@ -156,7 +154,6 @@ describe('getChorePlanHealth', () => {
 			dueToday: 0,
 			escalated: 0,
 			nextLabel: 'keine',
-			text: 'Noch keine Aufgaben im Plan',
 		});
 	});
 });

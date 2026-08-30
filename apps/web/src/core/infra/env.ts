@@ -9,7 +9,9 @@
  *
  * Split into two severities:
  *   - `missingRequired` — the app cannot serve correctly at all (no database,
- *     unprotected cron routes). Fatal in production.
+ *     no signed member sessions so every write is rejected, unprotected cron
+ *     routes). The database and member-session secret are checked in every
+ *     environment; unprotected cron routes are only fatal in production.
  *   - `degraded` — a named feature is off, everything else works. Logged loud,
  *     never fatal, so a missing optional key can't take the whole app down.
  */
@@ -53,8 +55,19 @@ const OPTIONAL_FEATURES: readonly FeatureSpec[] = [
 	},
 ] as const;
 
-/** Production-only requirements. The database is required everywhere. */
-const PRODUCTION_REQUIRED = ['CRON_SECRET', 'MEMBER_SESSION_SECRET'] as const;
+/** Production-only requirements. */
+const PRODUCTION_REQUIRED = ['CRON_SECRET'] as const;
+
+/**
+ * Required in every environment, alongside the database. Unlike the
+ * production-only list above, going without `MEMBER_SESSION_SECRET` doesn't
+ * degrade a named feature — every member token derives to `null`
+ * (`deriveMemberToken`), so `requireMember` rejects every mutating request
+ * with `member_not_verified` (`src/core/guards/api-auth.ts`). That's a
+ * server-side 403 on every write with no client-visible cause, so it has to
+ * be loud at boot the same way a missing database is.
+ */
+const ALWAYS_REQUIRED = ['MEMBER_SESSION_SECRET'] as const;
 
 function isSet(env: EnvSource, name: string): boolean {
 	return (env[name] ?? '').trim().length > 0;
@@ -72,6 +85,11 @@ export function checkEnv(env: EnvSource): EnvCheckResult {
 	const missingRequired: string[] = [];
 	if (!isFixtureE2EDbDown && !isSet(env, 'POSTGRES_URL') && !isSet(env, 'DATABASE_URL')) {
 		missingRequired.push('POSTGRES_URL');
+	}
+	if (!isFixtureE2EDbDown) {
+		for (const name of ALWAYS_REQUIRED) {
+			if (!isSet(env, name)) missingRequired.push(name);
+		}
 	}
 	if (isProduction) {
 		for (const name of PRODUCTION_REQUIRED) {

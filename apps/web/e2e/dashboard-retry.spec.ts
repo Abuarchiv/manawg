@@ -133,7 +133,7 @@ test.describe('Dashboard recovery', () => {
 		failDashboard = false;
 		await page.getByRole('button', { name: 'Dashboard erneut laden' }).click();
 
-		await expect(page.getByText('WG-Gesundheit')).toBeVisible({ timeout: 30_000 });
+		await expect(page.getByText('Saldo pro Mitglied')).toBeVisible({ timeout: 30_000 });
 		await expect(
 			page.getByText('Dashboard konnte nicht geladen werden: Versuche es gleich erneut.'),
 		).toBeHidden();
@@ -163,58 +163,6 @@ test.describe('Dashboard recovery', () => {
 			page.getByText('Dashboard konnte nicht geladen werden: Tritt der WG erneut bei.'),
 		).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByText('Dashboard konnte nicht geladen werden.')).toHaveCount(0);
-	});
-
-	test('keeps dashboard refresh disabled while a refresh request is pending', async ({ page }) => {
-		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
-		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
-		let requests = 0;
-		let delayNextDashboard = false;
-		let releaseRefresh: () => void = () => undefined;
-		const refreshCanFinish = new Promise<void>((resolve) => {
-			releaseRefresh = resolve;
-		});
-
-		await page.addInitScript(
-			({ wgId, memberId }) => {
-				localStorage.setItem(`manawg_identity:${wgId}`, JSON.stringify({ memberId, name: 'dsaf' }));
-			},
-			{ wgId, memberId },
-		);
-		await page.route('**/api/wg/MTE8PZAT/dashboard', async (route) => {
-			requests += 1;
-			if (delayNextDashboard) {
-				await refreshCanFinish;
-				await route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: JSON.stringify(dashboardResponseBody({ openShoppingTop: ['Frischer Kaffee'] })),
-				});
-				return;
-			}
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(dashboardResponseBody({ openShoppingTop: ['Hafermilch'] })),
-			});
-		});
-
-		await gotoWithRetry(page, '/wg/MTE8PZAT');
-		await expect(page.getByText('WG-Gesundheit')).toBeVisible({ timeout: 30_000 });
-		const refreshButton = page.getByRole('button', { name: 'Dashboard aktualisieren' });
-		await expect(refreshButton).toBeEnabled();
-		delayNextDashboard = true;
-		const requestsBeforeRefresh = requests;
-		await refreshButton.click();
-		await expect(refreshButton).toBeDisabled();
-		await refreshButton.click({ force: true });
-		await expect.poll(() => requests).toBe(requestsBeforeRefresh + 1);
-
-		releaseRefresh();
-		await expect(page.getByRole('link', { name: /Einkauf offen 1 Frischer Kaffee/ })).toBeVisible({
-			timeout: 30_000,
-		});
-		await expect(refreshButton).toBeEnabled();
 	});
 
 	test('does not show setup onboarding links on the dashboard', async ({ page }) => {

@@ -88,11 +88,21 @@ describe('checkEnv', () => {
 		expect(result.ok).toBe(false);
 	});
 
-	it('requires nothing but the database outside production', () => {
-		const result = checkEnv({ POSTGRES_URL: 'postgres://localhost/manawg' });
+	it('requires nothing but the database and the member-session secret outside production', () => {
+		const result = checkEnv({
+			POSTGRES_URL: 'postgres://localhost/manawg',
+			MEMBER_SESSION_SECRET: 'member-secret',
+		});
 
 		expect(result.missingRequired).toEqual([]);
 		expect(result.ok).toBe(true);
+	});
+
+	it('flags a missing member-session secret as required outside production too', () => {
+		const result = checkEnv({ POSTGRES_URL: 'postgres://localhost/manawg' });
+
+		expect(result.missingRequired).toContain('MEMBER_SESSION_SECRET');
+		expect(result.ok).toBe(false);
 	});
 
 	it('allows the exact database-down fixture mode outside production', () => {

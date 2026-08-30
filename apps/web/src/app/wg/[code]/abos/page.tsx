@@ -11,12 +11,15 @@ import {
 	ActionNoticeBanner,
 	type ActionNoticeTone,
 } from '@/components/wg/ActionNoticeBanner';
+import { BackLink } from '@/components/wg/BackLink';
+import { FormToggleButton } from '@/components/wg/PageHeaderActions';
 import { useWg } from '@/components/wg/WgContextProvider';
 import type { Abo, AboFilter } from '@/components/wg/abos-types';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { apiFetch } from '@/core/infra/api-client';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { haptic } from '@/shared/lib/haptics';
-import { Plus, RotateCw, Trash2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface RecurringExpensesResponse {
@@ -182,6 +185,8 @@ export default function AbosPage() {
 	useEffect(() => {
 		void load(true);
 	}, [load]);
+	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
+	useVisibilityPausedInterval(() => void load(false), 30_000);
 
 	function setNoticeMessage(tone: ActionNoticeTone, message: string): void {
 		setNotice({ tone, message });
@@ -272,34 +277,29 @@ export default function AbosPage() {
 
 	return (
 		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-			<header className="flex items-center justify-between gap-3">
-				<div>
-					<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">Abos</h1>
+			<header className="flex items-center gap-3">
+				<BackLink href={`/wg/${encodedShareCode}/ausgaben`} label="Ausgaben" />
+				<div className="min-w-0 flex-1">
+					<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">
+						Fixkosten
+					</h1>
 					<p className="mt-0.5 text-[13px] text-[var(--text-3)]" aria-live="polite">
 						{loading ? '' : `${activeCount} aktiv · ${abos.length} insgesamt`}
+						{refreshing && (
+							<Loader2
+								className="ml-1.5 inline-block h-3 w-3 animate-spin opacity-50"
+								aria-hidden
+							/>
+						)}
 					</p>
 				</div>
 				<div className="flex shrink-0 items-center gap-1.5">
-					<button
-						type="button"
-						onClick={() => void load(false)}
-						disabled={loading || refreshing}
-						aria-label={refreshing ? 'Abos werden aktualisiert' : 'Abos aktualisieren'}
-						aria-busy={loading || refreshing}
-						className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
-					>
-						<RotateCw
-							className={`h-4 w-4 ${loading || refreshing ? 'animate-spin' : ''}`}
-							aria-hidden
-						/>
-					</button>
-					<button
-						type="button"
-						onClick={() => setShowCreate(true)}
-						className="hidden sm:inline-flex h-11 items-center gap-1 rounded-md bg-[var(--text-1)] px-3 text-[12.5px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-					>
-						<Plus className="h-4 w-4" aria-hidden /> Neues Abo
-					</button>
+					<FormToggleButton
+						open={showCreate}
+						onToggle={() => setShowCreate((current) => !current)}
+						openLabel="Neues Abo"
+						closeLabel="Abo-Formular schließen"
+					/>
 				</div>
 			</header>
 
@@ -344,18 +344,6 @@ export default function AbosPage() {
 					onSubmit={(values) => void handleEdit(values)}
 				/>
 			)}
-
-			<button
-				type="button"
-				onClick={() => {
-					haptic('light');
-					setShowCreate(true);
-				}}
-				aria-label="Neues Abo anlegen"
-				className="fab-mobile sm:hidden inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--text-1)] text-[var(--bg-base)] shadow-lg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-			>
-				<Plus className="h-6 w-6" aria-hidden />
-			</button>
 
 			<ConfirmDialog
 				open={deleteCandidate !== null}

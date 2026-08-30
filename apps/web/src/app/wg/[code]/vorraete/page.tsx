@@ -1,9 +1,11 @@
 'use client';
 
-import { ALERT_DANGER_ROW, ICON_BUTTON_BORDERED } from '@/components/ui/styles';
+import { ALERT_DANGER_ROW } from '@/components/ui/styles';
+import { BackLink } from '@/components/wg/BackLink';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { apiFetch } from '@/core/infra/api-client';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { InventoryList } from '@/features/inventory/components/InventoryList';
 import type { InventoryCategory, InventoryItemDto } from '@/features/inventory/inventory';
 import { Loader2, RotateCw } from 'lucide-react';
@@ -49,11 +51,14 @@ export default function VorraetePage() {
 	useEffect(() => {
 		void load(false);
 	}, [load]);
+	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
+	useVisibilityPausedInterval(() => void load(true), 30_000);
 
 	return (
 		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-			<header className="flex items-start justify-between gap-3">
-				<div>
+			<header className="flex items-center gap-3">
+				<BackLink href={`/wg/${encodedShareCode}/einkauf`} label="Einkaufsliste" />
+				<div className="min-w-0 flex-1">
 					<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">Vorräte</h1>
 					<p className="mt-0.5 text-[13px] text-[var(--text-3)]">
 						{items.length === 0
@@ -61,15 +66,6 @@ export default function VorraetePage() {
 							: `${items.length} Artikel im Bestand.`}
 					</p>
 				</div>
-				<button
-					type="button"
-					onClick={() => void load(false)}
-					disabled={initialLoading}
-					aria-label="Vorräte aktualisieren"
-					className={ICON_BUTTON_BORDERED}
-				>
-					<RotateCw className={`h-4 w-4 ${initialLoading ? 'animate-spin' : ''}`} aria-hidden />
-				</button>
 			</header>
 
 			{loadError && (

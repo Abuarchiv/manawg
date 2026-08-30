@@ -4,6 +4,7 @@ import { haptic } from '@/shared/lib/haptics';
 import {
 	Bell,
 	CalendarDays,
+	Clock3,
 	Home,
 	ListChecks,
 	type LucideIcon,
@@ -12,6 +13,8 @@ import {
 	Package,
 	Receipt,
 	RefreshCw,
+	Search,
+	Settings,
 	Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -27,7 +30,10 @@ export type NavIconKey =
 	| 'vorraete'
 	| 'abos'
 	| 'mahnungen'
-	| 'chat';
+	| 'chat'
+	| 'suche'
+	| 'aktivitaet'
+	| 'einstellungen';
 
 const ICONS: Record<NavIconKey, LucideIcon> = {
 	home: Home,
@@ -40,6 +46,9 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
 	abos: RefreshCw,
 	mahnungen: Bell,
 	chat: MessageCircle,
+	suche: Search,
+	aktivitaet: Clock3,
+	einstellungen: Settings,
 };
 
 interface NavItemProps {
@@ -84,7 +93,7 @@ export function NavItem({ href, label, iconKey, badgeCount }: NavItemProps) {
 							aria-label={`${badgeCount} ungelesen`}
 							aria-live="polite"
 							aria-atomic="true"
-							className="absolute -right-2 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[9px] font-bold leading-none text-[var(--danger-fg)]"
+							className="absolute -right-2 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[9px] font-semibold leading-none text-[var(--danger-fg)]"
 						>
 							{badgeText}
 						</span>

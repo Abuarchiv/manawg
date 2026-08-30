@@ -93,21 +93,13 @@ describe('PutzenPage', () => {
 				memberId: 'member-1',
 			});
 		});
-		expect(screen.getByRole('link', { name: 'Verlauf' })).toHaveAttribute(
-			'href',
-			'/wg/WG%2F123%3Fx%3D1/aktivitaet',
-		);
-		expect(screen.getByRole('link', { name: 'WG-Einstellungen öffnen' })).toHaveAttribute(
-			'href',
-			'/wg/WG%2F123%3Fx%3D1/einstellungen',
-		);
 		expect(screen.getByRole('link', { name: 'Alle 5 Abwesenheiten anzeigen' })).toHaveAttribute(
 			'href',
 			'/wg/WG%2F123%3Fx%3D1/putzen?panel=absences',
 		);
-		expect(screen.getByRole('link', { name: 'Alle 5 Putzlücken anzeigen' })).toHaveAttribute(
+		expect(screen.getByRole('link', { name: 'Kalender' })).toHaveAttribute(
 			'href',
-			'/wg/WG%2F123%3Fx%3D1/putzen?filter=overdue',
+			'/wg/WG%2F123%3Fx%3D1/kalender',
 		);
 	});
 
@@ -158,15 +150,15 @@ describe('PutzenPage', () => {
 	it('renders the absence save action as a touch-sized control', async () => {
 		render(<PutzenPage />);
 
-		expect(await screen.findByRole('button', { name: 'Abwesenheit speichern' })).toHaveClass(
-			'h-11',
-		);
+		fireEvent.click(await screen.findByRole('button', { name: 'Abwesenheit eintragen' }));
+		expect(screen.getByRole('button', { name: 'Abwesenheit speichern' })).toHaveClass('h-11');
 	});
 
 	it('renders absence form inputs as touch-sized controls', async () => {
 		render(<PutzenPage />);
 
-		expect(await screen.findByLabelText('Abwesendes Mitglied')).toHaveClass('h-11');
+		fireEvent.click(await screen.findByRole('button', { name: 'Abwesenheit eintragen' }));
+		expect(screen.getByLabelText('Abwesendes Mitglied')).toHaveClass('h-11');
 		expect(screen.getByLabelText('Abwesenheit von')).toHaveClass('h-11');
 		expect(screen.getByLabelText('Abwesenheit bis')).toHaveClass('h-11');
 		expect(screen.getByPlaceholderText('Grund optional')).toHaveClass('h-11');
@@ -178,22 +170,19 @@ describe('PutzenPage', () => {
 		expect(await screen.findByRole('link', { name: 'Alle 5 Abwesenheiten anzeigen' })).toHaveClass(
 			'h-11',
 		);
-		expect(screen.getByRole('link', { name: 'Alle 5 Putzlücken anzeigen' })).toHaveClass('h-11');
 	});
 
-	it('renders repair actions as touch-sized controls', async () => {
+	it('renders repair actions in the chore row itself', async () => {
 		render(<PutzenPage />);
 
-		const suggestedAssignButtons = await screen.findAllByRole('button', {
-			name: /Aufgabe .* zuweisen: Aufgabe/,
-		});
-		expect(suggestedAssignButtons[0]).toHaveClass('h-11');
+		// Übernehmen steht direkt an der Aufgabe, nicht mehr in einem zweiten
+		// Kartenblock, der dieselben Aufgaben nochmal auflistet.
 		expect(
-			screen.getByRole('button', { name: 'Aufgabe selbst übernehmen: Aufgabe 2' }),
+			await screen.findByRole('button', { name: 'Aufgabe übernehmen: Aufgabe 2' }),
+		).toHaveClass('min-h-11');
+		expect(
+			screen.getByRole('button', { name: 'Überfällige Aufgabe nachholen: Aufgabe 2' }),
 		).toHaveClass('h-11');
-		expect(screen.getByRole('button', { name: 'Aufgabe erledigen: Aufgabe 2' })).toHaveClass(
-			'h-11',
-		);
 	});
 
 	it('explains when a completed chore was rotated but the completion log could not be saved', async () => {
@@ -247,7 +236,8 @@ describe('PutzenPage', () => {
 
 		render(<PutzenPage />);
 
-		fireEvent.click(await screen.findByRole('button', { name: 'Tausch anfragen: Aufgabe 1' }));
+		fireEvent.click(await screen.findByRole('button', { name: 'Aufgabenaktionen: Aufgabe 1' }));
+		fireEvent.click(screen.getByRole('menuitem', { name: 'Tausch anfragen: Aufgabe 1' }));
 
 		expect(await screen.findByRole('alert')).toHaveTextContent(
 			'Tauschanfrage konnte nicht gepostet werden: Versuche es gleich erneut.',
@@ -273,13 +263,27 @@ describe('PutzenPage', () => {
 
 		render(<PutzenPage />);
 
-		fireEvent.click(
-			await screen.findByRole('button', { name: 'Aufgabe selbst übernehmen: Aufgabe 2' }),
-		);
+		fireEvent.click(await screen.findByRole('button', { name: 'Aufgabe übernehmen: Aufgabe 2' }));
 
 		expect(await screen.findByRole('alert')).toHaveTextContent(
 			'Aufgabe konnte nicht übernommen werden: Versuche es gleich erneut.',
 		);
 		expect(screen.queryByText('Aufgabe konnte nicht übernommen werden.')).not.toBeInTheDocument();
+	});
+
+	it('collapses the Faire-Rotation score board by default and expands it on tap', async () => {
+		render(<PutzenPage />);
+
+		const toggle = await screen.findByRole('button', { name: /Faire Rotation/ });
+		expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		// Rules chips + per-member score rows stay hidden until expanded — the
+		// insight/next-assignee summary in the button itself is the only thing
+		// visible on first paint (Priorität 3: Informationsdichte).
+		expect(screen.queryByText(/Score/)).not.toBeInTheDocument();
+
+		fireEvent.click(toggle);
+
+		expect(toggle).toHaveAttribute('aria-expanded', 'true');
+		expect(await screen.findAllByText(/Score/)).not.toHaveLength(0);
 	});
 });

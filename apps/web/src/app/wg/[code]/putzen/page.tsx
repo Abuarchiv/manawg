@@ -30,6 +30,7 @@ import {
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { MS_PER_DAY } from '@/core/utils/time';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import type { AbsenceInput } from '@/features/chores/absence';
 import { absenceSaveErrorMessage, choreCreateErrorMessage } from '@/features/chores/chore-errors';
@@ -38,11 +39,9 @@ import {
 	getChorePlanHealth,
 	getChoreRepairHint,
 	getChoreStatus,
-	suggestChoreAssignee,
 } from '@/features/chores/chore-status';
 import { AbsencePanel } from '@/features/chores/components/AbsencePanel';
 import { ChoreForm } from '@/features/chores/components/ChoreForm';
-import { ChoreRepairFocus } from '@/features/chores/components/ChoreRepairFocus';
 import { ChoreRow } from '@/features/chores/components/ChoreRow';
 import { FairnessPanel } from '@/features/chores/components/FairnessPanel';
 import { HealthStrip } from '@/features/chores/components/HealthStrip';
@@ -158,6 +157,8 @@ export default function PutzenPage() {
 		initialLoadStartedRef.current = true;
 		void load(true);
 	}, [load]);
+	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
+	useVisibilityPausedInterval(() => void load(false), 30_000);
 
 	useEffect(() => {
 		if (prefillTitle) {
@@ -253,7 +254,7 @@ export default function PutzenPage() {
 	useEffect(() => {
 		if (!overdueFilterActive) return;
 		window.setTimeout(() => {
-			document.getElementById('chore-repair-focus')?.scrollIntoView({
+			document.getElementById('chore-list')?.scrollIntoView({
 				block: 'start',
 				behavior: 'smooth',
 			});
@@ -731,13 +732,13 @@ export default function PutzenPage() {
 
 	const showSkeleton = initialLoading && items.length === 0;
 	const health = getChorePlanHealth(items);
-	const repairItems = items.filter((item) => getChoreRepairHint(item) !== null);
-	const visibleRepairItems = overdueFilterActive ? repairItems : repairItems.slice(0, 4);
-	const hiddenRepairCount = repairItems.length - visibleRepairItems.length;
-	const suggestedAssignee = suggestChoreAssignee({
-		members: activeMembers.map((member) => ({ id: member.id, name: member.name })),
-		chores: items,
-	});
+	// Der Block "Lücken reparieren" zeigte genau diese Aufgaben als zweite
+	// Kartenreihe, 200px über der Liste, in der sie ohnehin stehen. Statt sie zu
+	// verdoppeln stehen die reparaturbedürftigen jetzt einfach oben.
+	const sortedItems = useMemo(() => {
+		const needsRepair = (item: Chore) => (getChoreRepairHint(item) !== null ? 0 : 1);
+		return [...items].sort((a, b) => needsRepair(a) - needsRepair(b));
+	}, [items]);
 	const absentMemberIds = getAbsentMemberIds(absences);
 	const selectedAbsence = useMemo(
 		() => absences.find((absence) => absence.id === absenceId) ?? null,
@@ -805,56 +806,13 @@ export default function PutzenPage() {
 			<PutzenHeader
 				itemCount={items.length}
 				refreshing={refreshing}
-				busy={initialLoading || refreshing}
 				showForm={showForm}
 				wgBaseHref={wgBaseHref}
-				onRefresh={() => void load(false)}
 				onToggleForm={() => setShowForm((s) => !s)}
 			/>
 
-			{!showSkeleton && <HealthStrip health={health} />}
-
-			{!showSkeleton && (
-				<AbsencePanel
-					active={absencesPanelActive}
-					absentCount={absentMemberIds.length}
-					members={activeMembers}
-					memberId={absenceMemberId}
-					onMemberIdChange={setAbsenceMemberId}
-					start={absenceStart}
-					onStartChange={setAbsenceStart}
-					end={absenceEnd}
-					onEndChange={setAbsenceEnd}
-					reason={absenceReason}
-					onReasonChange={setAbsenceReason}
-					pending={absenceAddPending}
-					onAdd={() => void addAbsence()}
-					hiddenCount={hiddenAbsenceCount}
-					totalCount={absences.length}
-					allAbsencesHref={`${wgBaseHref}/putzen?panel=absences`}
-					visibleAbsences={visibleAbsences}
-					highlightedAbsenceId={absenceId}
-					onRemove={(id) => void removeAbsence(id)}
-					isPending={isPending}
-				/>
-			)}
-
-			{!showSkeleton && <FairnessPanel fairness={fairness} />}
-
-			{(repairItems.length > 0 || overdueFilterActive) && (
-				<ChoreRepairFocus
-					repairCount={repairItems.length}
-					overdueFilterActive={overdueFilterActive}
-					hiddenRepairCount={hiddenRepairCount}
-					allRepairsHref={`${wgBaseHref}/putzen?filter=overdue`}
-					items={visibleRepairItems}
-					suggestedAssignee={suggestedAssignee}
-					onAssignTo={(chore, memberId, notice) => void handleAssignTo(chore, memberId, notice)}
-					onTakeOver={(chore) => void handleTakeOver(chore)}
-					onComplete={(chore) => void handleComplete(chore)}
-					isPending={isPending}
-				/>
-			)}
+			{/* HealthStrip nur bei vorhandenem Plan — 0/0/0 über leerem Plan ist Rauschen. */}
+			{!showSkeleton && items.length > 0 && <HealthStrip health={health} />}
 
 			{showForm && (
 				<ChoreForm
@@ -901,29 +859,32 @@ export default function PutzenPage() {
 			) : loadError && items.length === 0 ? (
 				<p className={EMPTY_PLACEHOLDER}>Noch keine Aufgaben geladen. Versuche es erneut.</p>
 			) : items.length === 0 && !initialLoading ? (
-				<>
-					<EmptyState
-						icon={<Sparkles className="h-5 w-5" strokeWidth={1.5} aria-hidden />}
-						headline="Noch keine Aufgaben"
-						sub="Starte mit einer typischen WG-Aufgabe:"
-						cta={{ label: 'Neue Aufgabe', onClick: () => setShowForm(true) }}
-					/>
-					<div className="-mt-4 flex flex-wrap justify-center gap-2">
-						{QUICK_CHORE_TEMPLATES.map((t) => (
-							<button
-								key={t.title}
-								type="button"
-								onClick={() => applyQuickChore(t)}
-								className="inline-flex min-h-11 items-center rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-1.5 text-[13px] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)]"
-							>
-								{t.title}
-							</button>
-						))}
-					</div>
-				</>
+				// Formular offen → Empty-State samt Templates ausblenden (doppelte CTAs).
+				showForm ? null : (
+					<>
+						<EmptyState
+							icon={<Sparkles className="h-5 w-5" strokeWidth={1.5} aria-hidden />}
+							headline="Noch keine Aufgaben"
+							sub="Starte mit einer typischen WG-Aufgabe:"
+							cta={{ label: 'Neue Aufgabe', onClick: () => setShowForm(true) }}
+						/>
+						<div className="-mt-4 flex flex-wrap justify-center gap-2">
+							{QUICK_CHORE_TEMPLATES.map((t) => (
+								<button
+									key={t.title}
+									type="button"
+									onClick={() => applyQuickChore(t)}
+									className="inline-flex min-h-11 items-center rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-1.5 text-[13px] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)]"
+								>
+									{t.title}
+								</button>
+							))}
+						</div>
+					</>
+				)
 			) : (
-				<ul className={LIST_CARD}>
-					{items.map((c) => (
+				<ul id="chore-list" className={LIST_CARD}>
+					{sortedItems.map((c) => (
 						<ChoreRow
 							key={c.id}
 							chore={c}
@@ -940,6 +901,35 @@ export default function PutzenPage() {
 					))}
 				</ul>
 			)}
+
+			{/* Verwaltung (Abwesenheiten, Rotation) unter den Aufgaben — sie ist der
+			    Ausnahmefall, nicht der Einstieg. Bei leerem Plan nur per Deep-Link. */}
+			{!showSkeleton && (items.length > 0 || absences.length > 0 || absencesPanelActive) && (
+				<AbsencePanel
+					active={absencesPanelActive}
+					absentCount={absentMemberIds.length}
+					members={activeMembers}
+					memberId={absenceMemberId}
+					onMemberIdChange={setAbsenceMemberId}
+					start={absenceStart}
+					onStartChange={setAbsenceStart}
+					end={absenceEnd}
+					onEndChange={setAbsenceEnd}
+					reason={absenceReason}
+					onReasonChange={setAbsenceReason}
+					pending={absenceAddPending}
+					onAdd={() => void addAbsence()}
+					hiddenCount={hiddenAbsenceCount}
+					totalCount={absences.length}
+					allAbsencesHref={`${wgBaseHref}/putzen?panel=absences`}
+					visibleAbsences={visibleAbsences}
+					highlightedAbsenceId={absenceId}
+					onRemove={(id) => void removeAbsence(id)}
+					isPending={isPending}
+				/>
+			)}
+
+			{!showSkeleton && items.length > 0 && <FairnessPanel fairness={fairness} />}
 		</div>
 	);
 }

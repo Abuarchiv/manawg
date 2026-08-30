@@ -484,10 +484,28 @@ describe('expense item route', () => {
 		);
 
 		expect(changedAmountRes.status).toBe(200);
-		expect(insertedValues).toEqual([
-			{ expenseId, debtorMemberId: memberId, amountCents: 1600, settledAt: null },
-			{ expenseId, debtorMemberId: otherMemberId, amountCents: 1690, settledAt: null },
-		]);
+		// memberId is the payer (paidByMemberId above) — their own share is never
+		// a debt, so a changed amount still lands auto-settled instead of `null`
+		// (settledAtForOwnShare), while the other debtor's changed split resets
+		// to unsettled as before.
+		const changedRows =
+			changedAmountRes.status === 200
+				? (insertedValues as Array<{
+						debtorMemberId: string;
+						amountCents: number;
+						settledAt: Date | null;
+					}>)
+				: [];
+		const ownRow = changedRows.find((r) => r.debtorMemberId === memberId);
+		const otherRow = changedRows.find((r) => r.debtorMemberId === otherMemberId);
+		expect(ownRow).toMatchObject({ expenseId, amountCents: 1600 });
+		expect(ownRow?.settledAt).toBeInstanceOf(Date);
+		expect(otherRow).toEqual({
+			expenseId,
+			debtorMemberId: otherMemberId,
+			amountCents: 1690,
+			settledAt: null,
+		});
 	});
 
 	it('does not audit or report success when replacing expense splits returns no rows', async () => {

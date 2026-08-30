@@ -145,7 +145,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					eventType: 'wg.created',
 					entityType: 'wg',
 					entityId: wg.id,
-					summary: `${member.name} hat die WG ${wg.name} erstellt.`,
+					summary: `${member.name} hat die WG erstellt.`,
 					metadata: { name: wg.name, shareCode: wg.shareCode },
 				});
 

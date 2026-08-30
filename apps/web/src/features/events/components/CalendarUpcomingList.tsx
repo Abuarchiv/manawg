@@ -2,7 +2,8 @@
 
 import { EMPTY_PLACEHOLDER, LIST_CARD } from '@/components/ui/styles';
 import { type EventOccurrence, formatEventTimeRange } from '@/features/events/events';
-import { CalendarClock, Pencil, Sparkles } from 'lucide-react';
+import { occurrenceToIcs } from '@/features/events/ics';
+import { CalendarClock, CalendarPlus, Pencil, Sparkles } from 'lucide-react';
 
 interface CalendarUpcomingListProps {
 	occurrences: EventOccurrence[];
@@ -22,6 +23,19 @@ const DATE_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 	hour: '2-digit',
 	minute: '2-digit',
 });
+
+function downloadOccurrenceIcs(occ: EventOccurrence): void {
+	const blob = new Blob([occurrenceToIcs(occ)], { type: 'text/calendar;charset=utf-8' });
+	const href = window.URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = href;
+	a.download = `${occ.title.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'termin'}.ics`;
+	a.style.display = 'none';
+	document.body.appendChild(a);
+	a.click();
+	a.remove();
+	window.setTimeout(() => window.URL.revokeObjectURL(href), 0);
+}
 
 export function CalendarUpcomingList({
 	occurrences,
@@ -59,6 +73,14 @@ export function CalendarUpcomingList({
 								{occ.location ? ` · ${occ.location}` : ''}
 							</p>
 						</div>
+						<button
+							type="button"
+							onClick={() => downloadOccurrenceIcs(occ)}
+							aria-label={`Zum Kalender hinzufügen: ${occ.title}`}
+							className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--text-3)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+						>
+							<CalendarPlus className="h-3.5 w-3.5" aria-hidden />
+						</button>
 						<button
 							type="button"
 							onClick={() => onSelect(occ)}

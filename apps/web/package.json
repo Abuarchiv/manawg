@@ -14,7 +14,7 @@
 		"test:coverage": "NODE_OPTIONS=--no-experimental-webstorage vitest run --coverage",
 		"test:e2e": "playwright test",
 		"test:e2e:ui": "playwright test --ui",
-		"test:e2e:fixtures": "CI=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= PLAYWRIGHT_USE_BUILD=true playwright test kalender.spec.ts vorraete.spec.ts abos.spec.ts mahnungen.spec.ts import.spec.ts chat.spec.ts",
+		"test:e2e:fixtures": "CI=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= PLAYWRIGHT_USE_BUILD=true playwright test kalender.spec.ts vorraete.spec.ts abos.spec.ts mahnungen.spec.ts import.spec.ts chat.spec.ts mobile-shell.spec.ts wg-core-flows.spec.ts",
 		"analyze": "ANALYZE=true next build",
 		"bundle:check": "node scripts/check-bundle-budget.mjs",
 		"db:generate": "drizzle-kit generate",

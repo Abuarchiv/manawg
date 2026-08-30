@@ -5,7 +5,10 @@ import { ALERT_DANGER_ROW, EMPTY_PLACEHOLDER, LIST_CARD } from '@/components/ui/
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { DebtSummary } from '@/components/wg/DebtSummary';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
+import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { BalanceBars } from '@/components/wg/dashboard/BalanceBars';
+import { Panel } from '@/components/wg/dashboard/Panel';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
@@ -31,6 +34,7 @@ import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import { parseTimestamp } from '@/core/utils/time';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { AusgabenHeader } from '@/features/expenses/components/ausgaben/AusgabenHeader';
 import { ExpenseFormSection } from '@/features/expenses/components/ausgaben/ExpenseFormSection';
 import { ExpenseRow } from '@/features/expenses/components/ausgaben/ExpenseRow';
@@ -48,7 +52,11 @@ import type {
 	RecurringExpense,
 } from '@/features/expenses/components/ausgaben/expense-types';
 import { useExpenseForm } from '@/features/expenses/components/ausgaben/useExpenseForm';
-import { buildSettlementSummary, computeDirectDebts } from '@/features/expenses/debt-reduction';
+import {
+	buildSettlementSummary,
+	computeDirectDebts,
+	computeNetBalances,
+} from '@/features/expenses/debt-reduction';
 import {
 	expenseActionErrorMessage,
 	expenseSaveErrorMessage,
@@ -65,7 +73,7 @@ import {
 } from '@/features/expenses/expense-split-input';
 import { addMonths } from '@/features/expenses/recurring-expenses';
 import { haptic } from '@/shared/lib/haptics';
-import { Loader2, Receipt, RotateCw } from 'lucide-react';
+import { Bell, ChevronDown, Loader2, Receipt, RefreshCw, RotateCw } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -279,6 +287,8 @@ export default function AusgabenPage() {
 		initialLoadStartedRef.current = true;
 		void load(true);
 	}, [load]);
+	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
+	useVisibilityPausedInterval(() => void load(false), 30_000);
 
 	function clearEditedQueueItem(expectedTypes?: OfflineActionType[]): boolean {
 		if (!queueEditId) return true;
@@ -811,6 +821,18 @@ export default function AusgabenPage() {
 			),
 		[expenses, members],
 	);
+	const memberBalances = useMemo(
+		() =>
+			computeNetBalances(
+				expenses,
+				members.map((member) => ({
+					id: member.id,
+					name: member.name,
+					color: member.color ?? null,
+				})),
+			).map(({ cents, ...member }) => ({ ...member, balanceCents: cents })),
+		[expenses, members],
+	);
 	const settlementSummary = useMemo(
 		() =>
 			buildSettlementSummary(
@@ -849,10 +871,8 @@ export default function AusgabenPage() {
 			<AusgabenHeader
 				expenseCount={expenses.length}
 				initialLoading={initialLoading}
-				refreshing={refreshing}
-				wgBaseHref={wgBaseHref}
 				showForm={showForm}
-				onRefresh={() => void load(false)}
+				wgBaseHref={wgBaseHref}
 				onToggleForm={() => {
 					if (showForm) {
 						resetForm();
@@ -862,6 +882,27 @@ export default function AusgabenPage() {
 						setShowForm(true);
 					}
 				}}
+			/>
+
+			{/* Fixkosten und Mahnungen sind keine eigenen Bereiche, sondern zwei
+			    Sichten auf dieselben Ausgaben — deshalb hängen sie hier und nicht
+			    im Mehr-Menü. */}
+			<SubNav
+				label="Unterbereiche der Ausgaben"
+				items={[
+					{
+						href: `${wgBaseHref}/abos`,
+						label: 'Fixkosten',
+						icon: RefreshCw,
+						count: recurringExpenses.length,
+					},
+					{
+						href: `${wgBaseHref}/mahnungen`,
+						label: 'Mahnungen',
+						icon: Bell,
+						count: directDebts.length,
+					},
+				]}
 			/>
 
 			{showForm && (
@@ -963,6 +1004,12 @@ export default function AusgabenPage() {
 				/>
 			)}
 
+			{!showSkeleton && expenses.length > 0 && (
+				<Panel title="Saldo pro Mitglied">
+					<BalanceBars balances={memberBalances} currentMemberId={identity.memberId} />
+				</Panel>
+			)}
+
 			{!showSkeleton && (
 				<DebtSummary
 					debts={directDebts}
@@ -980,45 +1027,62 @@ export default function AusgabenPage() {
 			) : loadError && expenses.length === 0 ? (
 				<p className={EMPTY_PLACEHOLDER}>Noch keine Ausgaben geladen. Versuche es erneut.</p>
 			) : expenses.length === 0 && !initialLoading ? (
-				<>
-					<EmptyState
-						icon={<Receipt className="h-5 w-5" strokeWidth={1.5} aria-hidden />}
-						headline="Noch keine Ausgaben"
-						sub="Leg die erste Ausgabe an oder starte mit einer typischen WG-Ausgabe."
-						cta={{ label: 'Erste Ausgabe', onClick: () => setShowForm(true) }}
-					/>
-					<div className="-mt-4 flex flex-wrap justify-center gap-2">
-						{QUICK_EXPENSE_TEMPLATES.map((t) => (
-							<button
-								key={t.label}
-								type="button"
-								onClick={() => applyQuickExpense(t)}
-								className="inline-flex min-h-11 items-center rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-1.5 text-[13px] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)]"
-							>
-								{t.label}
-							</button>
-						))}
-					</div>
-				</>
-			) : (
-				<ul className={LIST_CARD}>
-					{expenses.map((e) => (
-						<ExpenseRow
-							key={e.id}
-							expense={e}
-							expanded={expanded.has(e.id)}
-							onToggleExpand={toggleExpand}
-							onDelete={deleteExpense}
-							onEdit={startEdit}
-							onToggleSettle={toggleSettle}
-							isPending={isPending}
-							memberName={memberName}
-							memberColor={memberColor}
-							currentMemberId={identity.memberId}
-							highlighted={highlightedId === e.id}
+				// Formular offen → Empty-State samt Template-Buttons ausblenden,
+				// sonst stehen zwei konkurrierende CTAs unter dem Formular.
+				showForm ? null : (
+					<>
+						<EmptyState
+							icon={<Receipt className="h-5 w-5" strokeWidth={1.5} aria-hidden />}
+							headline="Noch keine Ausgaben"
+							sub="Leg die erste Ausgabe an oder starte mit einer typischen WG-Ausgabe."
+							cta={{ label: 'Erste Ausgabe', onClick: () => setShowForm(true) }}
 						/>
-					))}
-				</ul>
+						<div className="-mt-4 flex flex-wrap justify-center gap-2">
+							{QUICK_EXPENSE_TEMPLATES.map((t) => (
+								<button
+									key={t.label}
+									type="button"
+									onClick={() => applyQuickExpense(t)}
+									className="inline-flex min-h-11 items-center rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-1.5 text-[13px] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)]"
+								>
+									{t.label}
+								</button>
+							))}
+						</div>
+					</>
+				)
+			) : (
+				<details className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-4">
+					<summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+						<span className="text-sm font-semibold text-[var(--text-1)]">
+							Eingetragene Ausgaben
+						</span>
+						<span className="flex items-center gap-2">
+							<span className="rounded-full border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-3)]">
+								{expenses.length}
+							</span>
+							<ChevronDown className="h-4 w-4 text-[var(--text-3)]" aria-hidden />
+						</span>
+					</summary>
+					<ul className={`${LIST_CARD} mt-3`}>
+						{expenses.map((e) => (
+							<ExpenseRow
+								key={e.id}
+								expense={e}
+								expanded={expanded.has(e.id)}
+								onToggleExpand={toggleExpand}
+								onDelete={deleteExpense}
+								onEdit={startEdit}
+								onToggleSettle={toggleSettle}
+								isPending={isPending}
+								memberName={memberName}
+								memberColor={memberColor}
+								currentMemberId={identity.memberId}
+								highlighted={highlightedId === e.id}
+							/>
+						))}
+					</ul>
+				</details>
 			)}
 		</div>
 	);

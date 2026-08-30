@@ -25,7 +25,7 @@ export function EntryClient() {
 	// spinner: on a warm launch it would flash, and on a cold one the text
 	// explains what is happening.
 	return (
-		<div className="min-h-screen bg-[var(--bg-base)] flex flex-col items-center justify-center px-4 text-center">
+		<div className="min-h-svh bg-[var(--bg-base)] flex flex-col items-center justify-center px-4 text-center">
 			<p className="text-6xl mb-4">🏠</p>
 			<p className="text-[var(--text-2)]" aria-live="polite">
 				ManaWG wird geöffnet …

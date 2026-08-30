@@ -1,7 +1,11 @@
 'use client';
 
 import { useWg } from '@/components/wg/WgContextProvider';
-import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
+import {
+	countOfflineActions,
+	getSyncedCountForWg,
+	syncOfflineActions,
+} from '@/core/offline/offline-client';
 import {
 	formatManualOfflineSyncResult,
 	formatQueuedOfflineActions,
@@ -14,16 +18,6 @@ import { useEffect, useRef, useState } from 'react';
 function formatQueuedActions(count: number): string {
 	if (count === 1) return '1 Aktion wartet.';
 	return `${count} Aktionen warten.`;
-}
-
-function getSyncedCountForWg(event: Event, shareCode: string): number {
-	if (!(event instanceof CustomEvent)) return 0;
-	const syncedByShareCode = event.detail?.syncedByShareCode;
-	if (syncedByShareCode && typeof syncedByShareCode === 'object') {
-		const scoped = syncedByShareCode[shareCode];
-		return typeof scoped === 'number' ? scoped : 0;
-	}
-	return typeof event.detail?.synced === 'number' ? event.detail.synced : 0;
 }
 
 function isScopedSyncEventForOtherWg(event: Event, shareCode: string): boolean {

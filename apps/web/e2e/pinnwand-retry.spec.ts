@@ -258,65 +258,6 @@ test.describe('Pinnwand recovery', () => {
 			'true',
 		);
 	});
-
-	test('keeps pinnwand refresh disabled while a refresh request is pending', async ({ page }) => {
-		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
-		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
-		let gets = 0;
-		let releaseRefresh: (() => void) | null = null;
-
-		await page.addInitScript(
-			({ wgId, memberId }) => {
-				localStorage.setItem(`manawg_identity:${wgId}`, JSON.stringify({ memberId, name: 'dsaf' }));
-			},
-			{ wgId, memberId },
-		);
-		await page.route('**/api/wg/MTE8PZAT/announcements', async (route) => {
-			if (route.request().method() !== 'GET') return route.fallback();
-			gets += 1;
-			if (gets === 1) {
-				await route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: JSON.stringify(announcementBody(memberId, 'announcement-start', 'Start Notiz')),
-				});
-				return;
-			}
-			if (gets === 2) {
-				await new Promise<void>((resolve) => {
-					releaseRefresh = resolve;
-				});
-				await route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: JSON.stringify(
-						announcementBody(memberId, 'announcement-fresh', 'Frischer Pinnwand-Stand'),
-					),
-				});
-				return;
-			}
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(
-					announcementBody(memberId, 'announcement-fresh', 'Frischer Pinnwand-Stand'),
-				),
-			});
-		});
-
-		await gotoWithRetry(page, '/wg/MTE8PZAT/pinnwand');
-		await expect(page.getByText('Start Notiz')).toBeVisible({ timeout: 30_000 });
-
-		const refreshButton = page.getByRole('button', { name: 'Pinnwand aktualisieren' });
-		await refreshButton.click();
-
-		await expect(refreshButton).toBeDisabled();
-		await expect.poll(() => gets).toBe(2);
-		releaseRefresh?.();
-		await expect(page.getByText('Frischer Pinnwand-Stand')).toBeVisible({ timeout: 30_000 });
-		await expect(page.getByText('Start Notiz')).toBeHidden();
-	});
-
 	test('does not create duplicate posts from rapid submit taps', async ({ page }) => {
 		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
 		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';

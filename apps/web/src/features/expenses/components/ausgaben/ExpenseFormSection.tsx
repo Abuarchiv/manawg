@@ -12,7 +12,7 @@ import {
 import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
 import type { SplitMode } from '@/features/expenses/components/ausgaben/useExpenseForm';
 import { ChevronDown, Loader2 } from 'lucide-react';
-import type { Dispatch, SetStateAction } from 'react';
+import { type Dispatch, type SetStateAction, useState } from 'react';
 
 interface ExpenseFormSectionProps {
 	description: string;
@@ -81,6 +81,11 @@ export function ExpenseFormSection({
 	onCancel,
 	onSubmit,
 }: ExpenseFormSectionProps): React.ReactElement {
+	// Fixkosten sind der Ausnahmefall — eingeklappt halten, damit die normale
+	// Ausgabe ein kurzes Formular bleibt. Beim Bearbeiten einer Vorlage offen.
+	const [showRecurring, setShowRecurring] = useState(false);
+	const recurringOpen =
+		showRecurring || editingRecurringExpense !== null || isEditingQueuedRecurring;
 	return (
 		// pb-36 sm:pb-5: mobile gets ~144px bottom-padding so the
 		// sticky save/abbrechen panel below doesn't visually cover
@@ -162,27 +167,54 @@ export function ExpenseFormSection({
 			</div>
 
 			<div>
-				<div className="mb-1.5 text-[13px] font-medium text-[var(--text-1)]">
-					Fixkosten-Intervall
-				</div>
-				<div className="grid grid-cols-2 gap-1 rounded-md border border-[var(--border)] p-0.5 sm:grid-cols-4">
-					{RECURRING_INTERVAL_OPTIONS.map(({ value, label }) => (
-						<button
-							key={value}
-							type="button"
-							onClick={() => setRecurringIntervalMonths(value)}
-							disabled={formSaving}
-							aria-pressed={recurringIntervalMonths === value}
-							className={`h-11 rounded-md px-2 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-								recurringIntervalMonths === value
-									? 'bg-[var(--text-1)] text-[var(--bg-base)]'
-									: 'text-[var(--text-2)] hover:text-[var(--text-1)]'
-							}`}
-						>
-							{label}
-						</button>
-					))}
-				</div>
+				<button
+					type="button"
+					onClick={() => setShowRecurring((v) => !v)}
+					disabled={formSaving || editingRecurringExpense !== null || isEditingQueuedRecurring}
+					aria-expanded={recurringOpen}
+					className="inline-flex min-h-[44px] items-center gap-1.5 text-[13px] font-medium text-[var(--text-2)] transition-colors hover:text-[var(--text-1)] disabled:cursor-not-allowed"
+				>
+					<ChevronDown
+						className={`h-4 w-4 transition-transform ${recurringOpen ? 'rotate-180' : ''}`}
+						aria-hidden
+					/>
+					Fixkosten-Vorlage
+				</button>
+				{recurringOpen && (
+					<div className="mt-1.5 space-y-2">
+						<div className="grid grid-cols-2 gap-1 rounded-md border border-[var(--border)] p-0.5 sm:grid-cols-4">
+							{RECURRING_INTERVAL_OPTIONS.map(({ value, label }) => (
+								<button
+									key={value}
+									type="button"
+									onClick={() => setRecurringIntervalMonths(value)}
+									disabled={formSaving}
+									aria-pressed={recurringIntervalMonths === value}
+									className={`h-11 rounded-md px-2 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+										recurringIntervalMonths === value
+											? 'bg-[var(--text-1)] text-[var(--bg-base)]'
+											: 'text-[var(--text-2)] hover:text-[var(--text-1)]'
+									}`}
+								>
+									{label}
+								</button>
+							))}
+						</div>
+						{!isEditingQueuedExpense && !isEditingQueuedRecurring && !editingRecurringExpense && (
+							<button
+								type="button"
+								onClick={onSaveRecurringTemplate}
+								disabled={formSaving}
+								className="inline-flex min-h-[44px] w-full items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[13px] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+							>
+								{savingRecurringTemplate && (
+									<Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+								)}
+								Als Vorlage merken
+							</button>
+						)}
+					</div>
+				)}
 			</div>
 
 			{splitMode === 'manual' && (
@@ -266,7 +298,7 @@ export function ExpenseFormSection({
 
 			{/* Mobile: sticky actions above bottom nav; sm+: right-aligned row. Min 44px tap targets. */}
 			<div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] -mx-4 flex flex-col gap-2 border-t border-[var(--border)] bg-[var(--bg-base)] px-4 py-3 sm:static sm:mx-0 sm:flex-row sm:justify-end sm:border-0 sm:bg-transparent sm:p-0 sm:pt-1">
-				{!isEditingQueuedExpense && !isEditingQueuedRecurring && (
+				{editingRecurringExpense && !isEditingQueuedExpense && !isEditingQueuedRecurring && (
 					<button
 						type="button"
 						onClick={onSaveRecurringTemplate}
@@ -276,7 +308,7 @@ export function ExpenseFormSection({
 						{savingRecurringTemplate && (
 							<Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
 						)}
-						{editingRecurringExpense ? 'Vorlage speichern' : 'Als Vorlage merken'}
+						Vorlage speichern
 					</button>
 				)}
 				<button

@@ -139,3 +139,17 @@ export function splitValidationErrorCode(
 			return 'splits_invalid';
 	}
 }
+
+/**
+ * The payer's own share of an expense is never a debt: `computeBalances`
+ * (debts.ts) already skips any split where the debtor is also the creditor.
+ * Every insert site (manual create, recurring advance, import commit) should
+ * write that split as already settled, otherwise it sits at `settledAt: null`
+ * forever unless someone manually toggles it — showing the payer's own share
+ * as a permanently "Offen" line with a settle button that has zero effect on
+ * any balance, and undercounting the "X/Y beglichen" progress next to every
+ * expense.
+ */
+export function settledAtForOwnShare(debtorMemberId: string, paidByMemberId: string): Date | null {
+	return debtorMemberId === paidByMemberId ? new Date() : null;
+}

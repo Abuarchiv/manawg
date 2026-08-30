@@ -18,6 +18,27 @@ describe('time formatting', () => {
 		).toBe('vor 5 Min');
 	});
 
+	it('formats future timestamps (e.g. a mahnung cooldown) as time-until, not "gerade eben"', () => {
+		const now = new Date('2026-05-19T11:00:00.000Z').getTime();
+
+		expect(formatRelativeTime('2026-05-21T11:00:00.000Z', now)).toBe('in 2 Tagen');
+		expect(formatRelativeTime('2026-05-19T13:00:00.000Z', now)).toBe('in 2 Std');
+		expect(formatRelativeTime('2026-05-19T11:05:00.000Z', now)).toBe('in 5 Min');
+		expect(formatRelativeTime('2026-05-20T11:00:00.000Z', now)).toBe('morgen');
+	});
+
+	it('treats a timestamp under a minute ahead as "gerade eben", not a future countdown', () => {
+		// A just-sent chat message's `createdAt` routinely lands a few hundred
+		// ms ahead of the reading client's `now` (ordinary clock skew plus the
+		// round-trip before the optimistic render). That must still read as
+		// "just now", not "in 0 Min" / "gleich" — regressed once already (see
+		// the mahnung-cooldown fix above), which is why this has its own case.
+		const now = new Date('2026-05-19T11:00:00.000Z').getTime();
+
+		expect(formatRelativeTime('2026-05-19T11:00:00.900Z', now)).toBe('gerade eben');
+		expect(formatRelativeTime('2026-05-19T11:00:59.000Z', now)).toBe('gerade eben');
+	});
+
 	it('falls back gracefully for invalid timestamps', () => {
 		expect(formatRelativeTime('not-a-date')).toBe('Zeit unbekannt');
 		expect(formatTimeFull('not-a-date')).toBe('Zeit unbekannt');

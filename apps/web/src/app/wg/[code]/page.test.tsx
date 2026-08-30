@@ -3,10 +3,6 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import WgHomePage from './page';
 
-const apiClientMock = vi.hoisted(() => ({
-	apiFetch: vi.fn(),
-}));
-
 vi.mock('@/components/wg/WgContextProvider', () => ({
 	useWg: () => ({
 		wg: {
@@ -18,14 +14,6 @@ vi.mock('@/components/wg/WgContextProvider', () => ({
 		members: [{ id: 'member-1', name: 'Ava', color: null }],
 		identity: { memberId: 'member-1', name: 'Ava' },
 	}),
-}));
-
-vi.mock('@/shared/components/theme/ThemeToggle', () => ({
-	ThemeToggle: () => <button type="button">Theme</button>,
-}));
-
-vi.mock('@/core/infra/api-client', () => ({
-	apiFetch: (...args: unknown[]) => apiClientMock.apiFetch(...args),
 }));
 
 function createDashboardData(overrides: Partial<DashboardData> = {}): DashboardData {
@@ -67,7 +55,6 @@ function createDashboardData(overrides: Partial<DashboardData> = {}): DashboardD
 describe('WgHomePage', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		apiClientMock.apiFetch.mockReturnValue(new Promise(() => {}));
 		vi.stubGlobal(
 			'fetch',
 			vi.fn(() => new Promise(() => {})),
@@ -85,11 +72,6 @@ describe('WgHomePage', () => {
 			expect(fetch).toHaveBeenCalledWith('/api/wg/WG%2F123%3Fx%3D1/dashboard', {
 				cache: 'no-store',
 				headers: { 'x-manawg-member-id': 'member-1' },
-			}),
-		);
-		await waitFor(() =>
-			expect(apiClientMock.apiFetch).toHaveBeenCalledWith('/api/wg/WG%2F123%3Fx%3D1/activity', {
-				memberId: 'member-1',
 			}),
 		);
 	});
@@ -110,17 +92,28 @@ describe('WgHomePage', () => {
 		);
 	});
 
-	it('renders the onboarding next action as a touch-sized control', async () => {
+	it('removes setup, sharing, and reminder blocks and collapses WG health', async () => {
 		vi.mocked(fetch).mockResolvedValue({
 			ok: true,
-			json: async () => createDashboardData(),
+			json: async () =>
+				createDashboardData({
+					wgHealth: {
+						score: 80,
+						label: 'Ein paar Dinge offen',
+						items: [],
+					},
+				}),
 		} as Response);
 
 		render(<WgHomePage />);
 
-		const inviteActions = await screen.findAllByRole('link', { name: 'Mitglieder einladen' });
-
-		expect(inviteActions[0]).toHaveClass('h-11');
+		const health = await screen.findByText('WG-Gesundheit');
+		expect(health.closest('details')).not.toHaveAttribute('open');
+		expect(screen.getByText('Letzte Aktivität').closest('details')).not.toHaveAttribute('open');
+		expect(screen.queryByText('Saldo pro Mitglied')).not.toBeInTheDocument();
+		expect(screen.queryByText('WG einrichten')).not.toBeInTheDocument();
+		expect(screen.queryByText('Kurz klären')).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /WG-Code .* teilen/ })).not.toBeInTheDocument();
 	});
 
 	it('renders my open announcement shortcuts as touch-sized controls', async () => {
@@ -166,30 +159,5 @@ describe('WgHomePage', () => {
 		expect(await screen.findByRole('link', { name: /Hafermilch fehlt noch/ })).toHaveClass(
 			'min-h-[48px]',
 		);
-	});
-
-	it('renders reminder shortcuts as touch-sized controls', async () => {
-		vi.mocked(fetch).mockResolvedValue({
-			ok: true,
-			json: async () =>
-				createDashboardData({ setup: { ...createDashboardData().setup, hasExpense: true } }),
-		} as Response);
-		apiClientMock.apiFetch.mockResolvedValue({
-			ok: true,
-			data: {
-				reminders: [
-					{
-						kind: 'announcement',
-						title: 'Badplan klären',
-						detail: 'Pinnwand offen',
-						href: '/pinnwand#announcement-1',
-					},
-				],
-			},
-		});
-
-		render(<WgHomePage />);
-
-		expect(await screen.findByRole('link', { name: /Badplan klären/ })).toHaveClass('min-h-[48px]');
 	});
 });

@@ -71,17 +71,6 @@ describe('VorraetePage', () => {
 		).toBeInTheDocument();
 	});
 
-	it('renders the refresh button as a touch-sized control', async () => {
-		render(<VorraetePage />);
-		expect(screen.getByRole('button', { name: 'Vorräte aktualisieren' })).toHaveClass(
-			'h-11',
-			'w-11',
-		);
-		expect(
-			await screen.findByRole('button', { name: 'Klopapier um eins verringern' }),
-		).toBeInTheDocument();
-	});
-
 	it('shows the empty-state CTA when no items exist', async () => {
 		apiClientMock.apiFetch.mockResolvedValue({
 			ok: true,

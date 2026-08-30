@@ -7,10 +7,17 @@ const offlineMock = vi.hoisted(() => ({
 	syncOfflineActions: vi.fn(),
 }));
 
-vi.mock('@/core/offline/offline-client', () => ({
-	countOfflineActions: (...args: unknown[]) => offlineMock.countOfflineActions(...args),
-	syncOfflineActions: (...args: unknown[]) => offlineMock.syncOfflineActions(...args),
-}));
+vi.mock('@/core/offline/offline-client', async (importOriginal) => {
+	// `getSyncedCountForWg` is pure (just reads `event.detail`) — keep the real
+	// implementation so these tests exercise the same parsing the hook does in
+	// production, instead of a hand-rolled copy that could silently drift.
+	const actual = await importOriginal<typeof import('./offline-client')>();
+	return {
+		...actual,
+		countOfflineActions: (...args: unknown[]) => offlineMock.countOfflineActions(...args),
+		syncOfflineActions: (...args: unknown[]) => offlineMock.syncOfflineActions(...args),
+	};
+});
 
 const captureExceptionMock = vi.hoisted(() => vi.fn());
 vi.mock('@/core/infra/observability', () => ({
@@ -69,8 +76,19 @@ describe('useOfflineQueueSync', () => {
 		expect(screen.getByTestId('queued')).toHaveTextContent('5');
 	});
 
-	it('flushes the queue and reloads when coming back online with pending actions', async () => {
-		offlineMock.syncOfflineActions.mockResolvedValue(2);
+	it('flushes the queue when coming back online, and reloads once the real sync dispatches its event', async () => {
+		// The real `syncOfflineActions` reports success by dispatching
+		// `manawg:offline-synced` on `window` (see offline-client.ts) — the mock
+		// does the same here so this exercises the hook's actual listener
+		// instead of a since-removed direct call on the sync promise.
+		offlineMock.syncOfflineActions.mockImplementation(async () => {
+			window.dispatchEvent(
+				new CustomEvent('manawg:offline-synced', {
+					detail: { synced: 2, syncedByShareCode: { MTE8PZAT: 2 } },
+				}),
+			);
+			return 2;
+		});
 		const onSynced = vi.fn();
 		render(<Probe onSynced={onSynced} />);
 
@@ -95,6 +113,41 @@ describe('useOfflineQueueSync', () => {
 		expect(onSynced).not.toHaveBeenCalled();
 	});
 
+	it('reloads on a sync triggered elsewhere (e.g. the "Jetzt senden" button), not just its own online-triggered sync', () => {
+		// OfflineBanner's manual retry calls `syncOfflineActions` directly,
+		// bypassing this hook's own `sync()` entirely — the only thing that
+		// reaches this hook is the `manawg:offline-synced` event the shared
+		// function dispatches. Without listening for it, a manual retry would
+		// leave this page showing pre-sync data.
+		const onSynced = vi.fn();
+		render(<Probe onSynced={onSynced} />);
+
+		act(() => {
+			window.dispatchEvent(
+				new CustomEvent('manawg:offline-synced', {
+					detail: { synced: 1, syncedByShareCode: { MTE8PZAT: 1 } },
+				}),
+			);
+		});
+
+		expect(onSynced).toHaveBeenCalledTimes(1);
+	});
+
+	it('ignores a sync event for a different WG', () => {
+		const onSynced = vi.fn();
+		render(<Probe onSynced={onSynced} />);
+
+		act(() => {
+			window.dispatchEvent(
+				new CustomEvent('manawg:offline-synced', {
+					detail: { synced: 1, syncedByShareCode: { 'OTHER-WG': 1 } },
+				}),
+			);
+		});
+
+		expect(onSynced).not.toHaveBeenCalled();
+	});
+
 	it('does not reload after the page unmounted mid-sync', async () => {
 		let resolveSync: (value: number) => void = () => {};
 		offlineMock.syncOfflineActions.mockReturnValue(
@@ -111,6 +164,11 @@ describe('useOfflineQueueSync', () => {
 		unmount();
 		await act(async () => {
 			resolveSync(2);
+			window.dispatchEvent(
+				new CustomEvent('manawg:offline-synced', {
+					detail: { synced: 2, syncedByShareCode: { MTE8PZAT: 2 } },
+				}),
+			);
 		});
 
 		expect(onSynced).not.toHaveBeenCalled();

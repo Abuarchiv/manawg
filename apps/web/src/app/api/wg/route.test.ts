@@ -88,7 +88,7 @@ describe('WG create route', () => {
 			eventType: 'wg.created',
 			entityType: 'wg',
 			entityId: 'wg-1',
-			summary: 'Ava hat die WG Test WG erstellt.',
+			summary: 'Ava hat die WG erstellt.',
 			metadata: { name: 'Test WG', shareCode: 'ABCD2345' },
 		});
 	});

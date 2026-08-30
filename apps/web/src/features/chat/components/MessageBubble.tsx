@@ -141,8 +141,11 @@ export function MessageBubble({
 					<MemberAvatar name={senderName} color={senderColor} size={28} />
 				</div>
 			)}
+			{/* Breite relativ zum Container, nicht zum Viewport: der App-Frame ist auf
+			    --app-frame-width gedeckelt, 100vw wäre auf Desktop ein Vielfaches davon
+			    und die Blase liefe aus ihrer Zeile heraus. */}
 			<div
-				className={`max-w-[calc(100vw-5rem)] sm:max-w-[78%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}
+				className={`min-w-0 max-w-[calc(100%-2.5rem)] sm:max-w-[78%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}
 			>
 				<div className="mb-0.5 flex items-baseline gap-2 text-[11px] text-[var(--text-3)]">
 					{!isOwn && (
@@ -167,7 +170,7 @@ export function MessageBubble({
 					{message.editedAt && <span>· bearbeitet</span>}
 				</div>
 				<div
-					className={`relative rounded-2xl px-3 py-2 text-[14px] shadow-sm ${
+					className={`relative min-w-0 max-w-full rounded-2xl px-3 py-2 text-[14px] shadow-sm ${
 						isOwn
 							? 'bg-[var(--accent)] text-[var(--accent-fg)]'
 							: 'bg-[var(--surface)] text-[var(--text-1)]'
@@ -181,7 +184,10 @@ export function MessageBubble({
 							}`}
 						>
 							<div className="truncate font-semibold">↪ {replyToSender?.name ?? 'Unbekannt'}</div>
-							<div className="line-clamp-2 break-words whitespace-pre-wrap">
+							{/* anywhere statt break-words: nur `anywhere` senkt auch die
+							    min-content-Breite, sonst bläht ein einzelnes überlanges Wort
+							    die ganze Blase über ihre Zeile hinaus auf. */}
+							<div className="line-clamp-2 whitespace-pre-wrap [overflow-wrap:anywhere]">
 								{replyTo.body ?? (replyTo.imageUrl ? 'Bild' : '…')}
 							</div>
 						</div>

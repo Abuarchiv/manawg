@@ -13,6 +13,7 @@ describe('health route', () => {
 	beforeEach(() => {
 		dbMock.execute.mockReset().mockResolvedValue([{ '?column?': 1 }]);
 		vi.stubEnv('POSTGRES_URL', 'postgres://localhost/manawg');
+		vi.stubEnv('MEMBER_SESSION_SECRET', 'test-member-session-secret');
 	});
 
 	afterEach(() => {

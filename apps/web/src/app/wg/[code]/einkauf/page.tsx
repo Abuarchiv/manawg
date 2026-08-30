@@ -1,12 +1,8 @@
 'use client';
 import { useToast } from '@/components/ui/Toast';
-import {
-	ALERT_DANGER,
-	EMPTY_PLACEHOLDER,
-	ICON_BUTTON_BORDERED,
-	LIST_CARD,
-} from '@/components/ui/styles';
+import { ALERT_DANGER, EMPTY_PLACEHOLDER, LIST_CARD } from '@/components/ui/styles';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
+import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
@@ -27,6 +23,7 @@ import {
 } from '@/core/offline/offline-copy';
 import { createQueuedShoppingItem, createQueuedShoppingUpdate } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { ListSkeleton } from '@/features/shopping/components/ListSkeleton';
 import { ShoppingItemRow } from '@/features/shopping/components/ShoppingItemRow';
 import {
@@ -40,8 +37,7 @@ import {
 	shoppingActionErrorMessage,
 	shoppingAddErrorMessage,
 } from '@/features/shopping/shopping-errors';
-import { ListChecks, Loader2, Plus, RotateCw, Settings, Trash2 } from 'lucide-react';
-import Link from 'next/link';
+import { ListChecks, Loader2, Package, Plus, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -50,7 +46,6 @@ export default function EinkaufPage() {
 	const { wg, members, identity } = useWg();
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
-	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const searchParams = useSearchParams();
 	const highlightedId = searchParams.get('highlight');
 	const prefillName = searchParams.get('name');
@@ -114,6 +109,8 @@ export default function EinkaufPage() {
 	useEffect(() => {
 		void load(false);
 	}, [load]);
+	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
+	useVisibilityPausedInterval(() => void load(true), 30_000);
 
 	useEffect(() => {
 		if (prefillName) {
@@ -444,29 +441,20 @@ export default function EinkaufPage() {
 						{open.length} offen{done.length > 0 ? ` · ${done.length} erledigt` : ''}
 					</p>
 				</div>
-				<div
-					className="flex shrink-0 items-center gap-1.5"
-					role="toolbar"
-					aria-label="Einkaufslisten-Aktionen"
-				>
-					<button
-						type="button"
-						onClick={() => void load(false)}
-						disabled={initialLoading}
-						aria-label="Einkaufsliste aktualisieren"
-						className={ICON_BUTTON_BORDERED}
-					>
-						<RotateCw className={`h-4 w-4 ${initialLoading ? 'animate-spin' : ''}`} aria-hidden />
-					</button>
-					<Link
-						href={`${wgBaseHref}/einstellungen`}
-						aria-label="WG-Einstellungen öffnen"
-						className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-					>
-						<Settings className="h-4 w-4" aria-hidden />
-					</Link>
-				</div>
 			</header>
+
+			{/* Vorräte sind die andere Hälfte desselben Themas: was zur Neige geht,
+			    landet hier auf der Liste. Deshalb hier verlinkt statt im Mehr-Menü. */}
+			<SubNav
+				label="Unterbereiche des Einkaufs"
+				items={[
+					{
+						href: `/wg/${encodeURIComponent(wg.shareCode)}/vorraete`,
+						label: 'Vorräte',
+						icon: Package,
+					},
+				]}
+			/>
 
 			<form
 				onSubmit={(e) => {

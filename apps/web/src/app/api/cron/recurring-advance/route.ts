@@ -10,6 +10,7 @@ import {
 	parseRecurringSplits,
 	recurringSplitsMatchAmount,
 } from '@/features/expenses/recurring-expenses';
+import { settledAtForOwnShare } from '@/features/expenses/split-math';
 import { and, eq, isNull, lte } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -63,6 +64,7 @@ async function createExpenseForDueAt(
 					expenseId: inserted.id,
 					debtorMemberId: split.debtorMemberId,
 					amountCents: split.amountCents,
+					settledAt: settledAtForOwnShare(split.debtorMemberId, template.paidByMemberId),
 				})),
 			);
 

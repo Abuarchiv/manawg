@@ -71,32 +71,46 @@ test.describe('Mobile WG shell', () => {
 			'aria-current',
 			'page',
 		);
-		const quickNav = page.getByRole('navigation', { name: 'WG Schnellzugriff' });
-		await expect(quickNav).toBeVisible({
-			timeout: 30_000,
-		});
-		await expect(quickNav.getByRole('link', { name: 'WG durchsuchen' })).toBeVisible({
-			timeout: 30_000,
-		});
-		await expect(quickNav.getByRole('link', { name: 'Aktivitätschronik öffnen' })).toBeVisible({
-			timeout: 30_000,
-		});
-		await quickNav.getByRole('link', { name: 'Aktivitätschronik öffnen' }).click();
-		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/aktivitaet$/, { timeout: 60_000 });
-		await expect(page.getByRole('heading', { name: 'Aktivität' })).toBeVisible({
-			timeout: 30_000,
-		});
-		await expect(quickNav.getByRole('link', { name: 'Aktivitätschronik öffnen' })).toHaveAttribute(
-			'aria-current',
-			'page',
-		);
+		await expect(page.getByRole('navigation', { name: 'WG Schnellzugriff' })).toHaveCount(0);
 
-		await gotoWithRetry(page, '/wg/MTE8PZAT/suche');
-		await expect(page.getByRole('navigation', { name: 'WG Schnellzugriff' })).toBeVisible();
-		await expect(quickNav.getByRole('link', { name: 'WG durchsuchen' })).toHaveAttribute(
-			'aria-current',
-			'page',
-		);
+		// Kein Sammelmenü mehr: jeder Nebenbereich hängt an seiner Modulseite.
+		await expect(bottomNav.getByRole('button', { name: 'Mehr-Menü öffnen' })).toHaveCount(0);
+
+		// Pinnwand → Kalender und wieder zurück.
+		await page
+			.getByRole('navigation', { name: 'Unterbereiche der Pinnwand' })
+			.getByRole('link', { name: /^Kalender$/ })
+			.click();
+		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/kalender$/, { timeout: 60_000 });
+		await expect(page.getByRole('heading', { name: 'Kalender' })).toBeVisible({
+			timeout: 30_000,
+		});
+		await page.getByRole('link', { name: 'Zurück zu Pinnwand' }).click();
+		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/pinnwand$/, { timeout: 60_000 });
+
+		// Einkauf → Vorräte.
+		await bottomNav.getByRole('link', { name: /^Einkauf$/ }).click();
+		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/einkauf$/, { timeout: 60_000 });
+		await page
+			.getByRole('navigation', { name: 'Unterbereiche des Einkaufs' })
+			.getByRole('link', { name: /^Vorräte$/ })
+			.click();
+		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/vorraete$/, { timeout: 60_000 });
+		await expect(page.getByRole('heading', { name: 'Vorräte' })).toBeVisible({
+			timeout: 30_000,
+		});
+
+		// Ausgaben → Fixkosten und Mahnungen.
+		await bottomNav.getByRole('link', { name: /^Ausgaben$/ }).click();
+		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/ausgaben$/, { timeout: 60_000 });
+		const ausgabenSubNav = page.getByRole('navigation', { name: 'Unterbereiche der Ausgaben' });
+		await expect(ausgabenSubNav.getByRole('link', { name: /^Fixkosten/ })).toBeVisible({
+			timeout: 30_000,
+		});
+		await ausgabenSubNav.getByRole('link', { name: /^Mahnungen/ }).click();
+		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/mahnungen$/, { timeout: 60_000 });
+		await page.getByRole('link', { name: 'Zurück zu Ausgaben' }).click();
+		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/ausgaben$/, { timeout: 60_000 });
 
 		await expectNoHorizontalOverflow(page);
 	});
@@ -126,15 +140,10 @@ test.describe('Mobile WG shell', () => {
 			await expect(page.getByRole('navigation', { name: 'WG Hauptnavigation' })).toBeVisible({
 				timeout: 30_000,
 			});
-			if (
-				[
-					'/wg/MTE8PZAT',
-					'/wg/MTE8PZAT/ausgaben',
-					'/wg/MTE8PZAT/einkauf',
-					'/wg/MTE8PZAT/pinnwand',
-					'/wg/MTE8PZAT/putzen',
-				].includes(path)
-			) {
+			if (path !== '/wg/MTE8PZAT') {
+				await expect(page.getByRole('navigation', { name: 'WG Schnellzugriff' })).toHaveCount(0);
+			}
+			if (path === '/wg/MTE8PZAT') {
 				await expect(page.getByRole('link', { name: 'WG-Einstellungen öffnen' })).toBeVisible({
 					timeout: 30_000,
 				});

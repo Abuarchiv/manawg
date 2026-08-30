@@ -18,10 +18,17 @@ vi.mock('@/components/wg/WgContextProvider', () => ({
 	}),
 }));
 
-vi.mock('@/core/offline/offline-client', () => ({
-	countOfflineActions: (...args: unknown[]) => offlineClientMock.countOfflineActions(...args),
-	syncOfflineActions: (...args: unknown[]) => offlineClientMock.syncOfflineActions(...args),
-}));
+vi.mock('@/core/offline/offline-client', async (importOriginal) => {
+	// `getSyncedCountForWg` is pure (just reads `event.detail`) — keep the real
+	// implementation so these tests exercise the same parsing the component
+	// uses in production, instead of a hand-rolled copy that could drift.
+	const actual = await importOriginal<typeof import('@/core/offline/offline-client')>();
+	return {
+		...actual,
+		countOfflineActions: (...args: unknown[]) => offlineClientMock.countOfflineActions(...args),
+		syncOfflineActions: (...args: unknown[]) => offlineClientMock.syncOfflineActions(...args),
+	};
+});
 
 describe('OfflineBanner', () => {
 	beforeEach(() => {

@@ -110,7 +110,14 @@ describe('IdentityPicker', () => {
 		expect(screen.getByRole('button', { name: 'WG betreten' })).toHaveClass('h-11');
 	});
 
-	it('stores an existing picked member without a network request', () => {
+	it('warns that picking an existing member is read-only before storing it, then stores it on confirm', () => {
+		// Picking an existing member never carries a session token (only
+		// `createNew`'s join response does) — every write from this profile
+		// will be rejected server-side until the person rejoins as themselves.
+		// This must be surfaced — and require acknowledgement — before the
+		// identity takes effect, not discovered later as an unexplained failed
+		// save (a message shown only up to the moment `onPicked` swaps this
+		// screen out for the WG content would never actually be seen).
 		const onPicked = vi.fn();
 		render(
 			<IdentityPicker
@@ -124,12 +131,40 @@ describe('IdentityPicker', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: /Ava/ }));
 
+		expect(identityMock.setIdentity).not.toHaveBeenCalled();
+		expect(onPicked).not.toHaveBeenCalled();
+		expect(fetch).not.toHaveBeenCalled();
+		const notice = screen.getByText(/nicht als/);
+		expect(notice).toHaveTextContent('Ava');
+
+		fireEvent.click(screen.getByRole('button', { name: 'Nur ansehen' }));
+
 		expect(identityMock.setIdentity).toHaveBeenCalledWith('wg-1', {
 			memberId: 'member-1',
 			name: 'Ava',
 		});
 		expect(onPicked).toHaveBeenCalledWith({ memberId: 'member-1', name: 'Ava' });
 		expect(fetch).not.toHaveBeenCalled();
+	});
+
+	it('lets the read-only warning be dismissed without picking the member', () => {
+		const onPicked = vi.fn();
+		render(
+			<IdentityPicker
+				wgId="wg-1"
+				wgShareCode="MTE8PZAT"
+				wgName="Test WG"
+				members={[{ id: 'member-1', name: 'Ava', color: null }]}
+				onPicked={onPicked}
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole('button', { name: /Ava/ }));
+		fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+
+		expect(identityMock.setIdentity).not.toHaveBeenCalled();
+		expect(onPicked).not.toHaveBeenCalled();
+		expect(screen.queryByText(/nicht als/)).not.toBeInTheDocument();
 	});
 
 	it('keeps existing-member picking retryable when browser storage is blocked', () => {
@@ -149,6 +184,7 @@ describe('IdentityPicker', () => {
 		);
 
 		fireEvent.click(screen.getByRole('button', { name: /Ava/ }));
+		fireEvent.click(screen.getByRole('button', { name: 'Nur ansehen' }));
 
 		expect(onPicked).not.toHaveBeenCalled();
 		expect(screen.getByRole('alert')).toHaveTextContent(

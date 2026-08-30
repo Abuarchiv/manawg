@@ -144,7 +144,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 			// biome-ignore lint/a11y/useSemanticElements: native <dialog> UA display:none kills CSS transitions (see native-dialog-css-transition-kill skill)
 			role="dialog"
 			aria-modal="true"
-			aria-labelledby="event-create-title"
+			aria-labelledby="event-create-heading"
 			className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
 		>
 			<form
@@ -154,7 +154,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 			>
 				<span className="sheet-handle" aria-hidden />
 				<div className="flex items-center justify-between">
-					<h2 id="event-create-title" className="text-base font-semibold text-[var(--text-1)]">
+					<h2 id="event-create-heading" className="text-base font-semibold text-[var(--text-1)]">
 						Neuer Termin
 					</h2>
 					<button type="button" onClick={onClose} aria-label="Schließen" className={ICON_BUTTON}>

@@ -7,6 +7,7 @@ import { isUuid } from '@/core/guards/api-auth';
 import type { ResolvedWg } from '@/core/guards/resolve';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { formatEuroCents } from '@/core/utils/money';
+import { settledAtForOwnShare } from '@/features/expenses/split-math';
 import { and, eq, inArray } from 'drizzle-orm';
 
 interface ExpenseSplitInput {
@@ -112,6 +113,7 @@ export async function insertExpenseWithSplits(
 				expenseId: created.id,
 				debtorMemberId: s.debtorMemberId,
 				amountCents: s.amountCents,
+				settledAt: settledAtForOwnShare(s.debtorMemberId, input.paidByMemberId),
 			})),
 		)
 		.returning();

@@ -143,6 +143,29 @@ describe('expandRecurrence', () => {
 		]);
 	});
 
+	it('keeps WEEKLY BYDAY occurrences at the same Berlin wall time across the fall-back DST transition (2026-10-25)', () => {
+		const occ = expandRecurrence(
+			{
+				...BASE_EVENT,
+				startsAt: '2026-06-01T18:00:00.000Z', // Monday 20:00 Berlin (CEST)
+				endsAt: '2026-06-01T18:30:00.000Z',
+				recurrence: 'FREQ=WEEKLY;BYDAY=MO,TH',
+			},
+			new Date('2026-10-19T00:00:00.000Z'),
+			new Date('2026-10-30T00:00:00.000Z'),
+		);
+		// Before the transition: 20:00 Berlin = 18:00Z (CEST, UTC+2).
+		// After it: 20:00 Berlin = 19:00Z (CET, UTC+1) — same wall clock time,
+		// different UTC instant. A bug here would leave every post-transition
+		// occurrence an hour off (still 18:00Z) or double-shift it (20:00Z).
+		expect(occ.map((o) => o.startsAt)).toEqual([
+			'2026-10-19T18:00:00.000Z',
+			'2026-10-22T18:00:00.000Z',
+			'2026-10-26T19:00:00.000Z',
+			'2026-10-29T19:00:00.000Z',
+		]);
+	});
+
 	it('honors UNTIL bound', () => {
 		const occ = expandRecurrence(
 			{

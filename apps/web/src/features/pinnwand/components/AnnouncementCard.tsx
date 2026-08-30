@@ -8,6 +8,7 @@ import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import type {
 	Announcement,
 	AnnouncementComment,
+	AnnouncementKind,
 	AnnouncementSource,
 	ReactionKey,
 } from '@/features/pinnwand/components/announcement-types';
@@ -43,7 +44,6 @@ interface AnnouncementCardProps {
 	pinPending: boolean;
 	statusPending: boolean;
 	reactionPending: (reaction: ReactionKey) => boolean;
-	compact: boolean;
 	onDelete: () => void;
 	onTogglePinned: () => void;
 	onToggleStatus: () => void;
@@ -76,6 +76,22 @@ const REACTIONS: ReadonlyArray<{
 	{ key: 'ok', label: 'Passt', icon: ThumbsUp },
 ];
 
+/**
+ * Die eine Reaktion, die zur Beitragsart passt und deshalb sichtbar bleibt.
+ * Alle drei nebeneinander zwingen zu einer Wahl, die niemand treffen will:
+ * bei "Klopapier ist alle" ist "Übernehme ich" gemeint, nicht "Gesehen".
+ */
+const PRIMARY_REACTION: Record<AnnouncementKind, ReactionKey> = {
+	info: 'seen',
+	question: 'seen',
+	problem: 'take',
+	request: 'take',
+	decision: 'ok',
+};
+
+const MENU_ITEM =
+	'flex h-11 w-full items-center gap-2 px-3 text-left text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)] disabled:opacity-50';
+
 function actionLabelSubject(value: string, fallback: string): string {
 	const normalized = value.trim().replace(/\s+/g, ' ');
 	if (normalized.length === 0) return fallback;
@@ -89,7 +105,6 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	pinPending,
 	statusPending,
 	reactionPending,
-	compact,
 	onDelete,
 	onTogglePinned,
 	onToggleStatus,
@@ -114,6 +129,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	const [commentDraft, setCommentDraft] = useState('');
 	const [commentPending, setCommentPending] = useState(false);
 	const commentPendingRef = useRef(false);
+	const [touchedReactions, setTouchedReactions] = useState<ReactionKey[]>([]);
 	const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
 	const mobileActionsTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const mobileActionsMenuRef = useRef<HTMLDivElement | null>(null);
@@ -144,6 +160,36 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 				: 'offen';
 	const prefill = buildPinnwandPrefill(bodyText);
 
+	// Eine gesetzte Reaktion bleibt sichtbar, auch wenn sie nicht die zur Art
+	// passende ist — sonst verschwindet die eigene Antwort beim Antippen. Und
+	// einmal angefasst bleibt sie stehen: nimmt man sie zurück, darf der Knopf
+	// nicht unter dem Finger wegspringen.
+	const primaryReactionKey = PRIMARY_REACTION[announcement.kind];
+	const visibleReactions = REACTIONS.filter(
+		({ key }) =>
+			key === primaryReactionKey ||
+			announcement.myReactions.includes(key) ||
+			touchedReactions.includes(key),
+	);
+	const hiddenReactions = REACTIONS.filter(
+		({ key }) => !visibleReactions.some((reaction) => reaction.key === key),
+	);
+
+	// "Als Einkauf/Aufgabe/Ausgabe übernehmen" ergibt nur bei selbst
+	// geschriebenen Beiträgen Sinn: an "X ist der WG beigetreten" ist nichts
+	// zu übernehmen.
+	const conversionTargets = isSystem
+		? []
+		: ([
+				{ target: 'shopping', label: 'Als Einkauf', icon: ListChecks },
+				{ target: 'chore', label: 'Als Aufgabe', icon: Sparkles },
+				{ target: 'expense', label: 'Als Ausgabe', icon: Receipt },
+			] as const);
+
+	function rememberReaction(key: ReactionKey): void {
+		setTouchedReactions((current) => (current.includes(key) ? current : [...current, key]));
+	}
+
 	async function submitComment(): Promise<void> {
 		const text = commentDraft.trim();
 		if (!text) return;
@@ -165,9 +211,9 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	return (
 		<li
 			id={`announcement-${announcement.id}`}
-			className={`group scroll-mt-24 overflow-hidden rounded-lg border ${
+			className={`group scroll-mt-24 rounded-lg border ${
 				isSystem
-					? 'border-[var(--accent)]/25 bg-[var(--accent)]/[0.04]'
+					? 'border-[var(--border)] bg-[var(--accent)]/[0.04]'
 					: 'border-[var(--border)] bg-[var(--bg-base)]'
 			} ${isResolved ? 'opacity-80' : ''} ${
 				highlighted
@@ -263,7 +309,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 						ariaLabelConfirm={`Beitrag entfernen bestätigen: ${actionSubject}`}
 					/>
 				</div>
-				<div className="relative shrink-0 sm:hidden">
+				<div className="relative shrink-0">
 					<button
 						ref={mobileActionsTriggerRef}
 						type="button"
@@ -280,8 +326,54 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							ref={mobileActionsMenuRef}
 							role="menu"
 							aria-label={`Beitragsaktionen: ${actionSubject}`}
-							className="absolute right-0 top-11 z-10 min-w-40 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-base)] py-1 text-[13px] shadow-lg"
+							className="absolute right-0 top-11 z-10 min-w-48 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-base)] py-1 text-[13px] shadow-lg"
 						>
+							{sourceHref && (
+								<Link
+									role="menuitem"
+									href={sourceHref}
+									onClick={() => setMobileActionsOpen(false)}
+									aria-label={`Quelle öffnen: ${actionSubject}`}
+									className={MENU_ITEM}
+								>
+									<ExternalLink className="h-3.5 w-3.5" aria-hidden />
+									Quelle öffnen
+								</Link>
+							)}
+							{conversionTargets.map(({ target, label, icon: Icon }) => (
+								<Link
+									key={target}
+									role="menuitem"
+									href={getPinnwandPrefillHref(shareCode, target, prefill)}
+									onClick={() => setMobileActionsOpen(false)}
+									aria-label={`${label} übernehmen: ${actionSubject}`}
+									className={MENU_ITEM}
+								>
+									<Icon className="h-3.5 w-3.5" aria-hidden />
+									{label} übernehmen
+								</Link>
+							))}
+							{hiddenReactions.map(({ key, label, icon: Icon }) => (
+								<button
+									key={key}
+									role="menuitem"
+									type="button"
+									onClick={() => {
+										setMobileActionsOpen(false);
+										rememberReaction(key);
+										onToggleReaction(key);
+									}}
+									disabled={reactionPending(key)}
+									aria-label={`${label}-Reaktion setzen: ${actionSubject}`}
+									className={MENU_ITEM}
+								>
+									<Icon className="h-3.5 w-3.5" aria-hidden />
+									{label}
+								</button>
+							))}
+							{(sourceHref || conversionTargets.length > 0 || hiddenReactions.length > 0) && (
+								<span aria-hidden className="my-1 block border-t border-[var(--border)]" />
+							)}
 							<button
 								role="menuitem"
 								type="button"
@@ -338,7 +430,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 				</div>
 			</header>
 
-			{hasImage && announcement.imageUrl && !compact && (
+			{hasImage && announcement.imageUrl && (
 				// eslint-disable-next-line @next/next/no-img-element
 				<img
 					src={announcement.imageUrl}
@@ -350,16 +442,16 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 			)}
 
 			{bodyText.length > 0 && (
-				<div className={`px-4 sm:px-5 ${compact ? 'pb-3 pt-1' : 'pb-4 pt-3'}`}>
+				<div className="px-4 pb-3 pt-1 sm:px-5">
 					<p
 						id={`announcement-body-${announcement.id}`}
 						className={`whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--text-1)] ${
-							(isLong && !expanded) || compact ? 'line-clamp-3' : ''
+							isLong && !expanded ? 'line-clamp-3' : ''
 						}`}
 					>
 						{bodyText}
 					</p>
-					{isLong && !compact && (
+					{isLong && (
 						<button
 							type="button"
 							onClick={() => setExpanded((v) => !v)}
@@ -387,7 +479,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 			)}
 
 			{takerLabel && (
-				<div className="flex flex-wrap gap-1.5 border-t border-[var(--border)]/60 px-4 py-2.5 sm:px-5">
+				<div className="flex flex-wrap gap-1.5 border-t border-[var(--border)] px-4 py-2.5 sm:px-5">
 					<span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 text-[12px] font-medium text-[var(--accent)]">
 						<Hand className="h-3.5 w-3.5" aria-hidden />
 						{takerLabel}
@@ -395,42 +487,12 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 				</div>
 			)}
 
-			<footer className="flex flex-wrap gap-1.5 border-t border-[var(--border)]/70 px-4 py-3 sm:px-5">
-				{sourceHref && (
-					<Link
-						href={sourceHref}
-						aria-label={`Quelle öffnen: ${actionSubject}`}
-						className={CHIP_BUTTON}
-					>
-						<ExternalLink className="h-3.5 w-3.5" aria-hidden />
-						Öffnen
-					</Link>
-				)}
-				<Link
-					href={getPinnwandPrefillHref(shareCode, 'shopping', prefill)}
-					aria-label={`Als Einkaufsartikel übernehmen: ${actionSubject}`}
-					className={CHIP_BUTTON}
-				>
-					<ListChecks className="h-3.5 w-3.5" aria-hidden />
-					Einkauf
-				</Link>
-				<Link
-					href={getPinnwandPrefillHref(shareCode, 'chore', prefill)}
-					aria-label={`Als Putzaufgabe übernehmen: ${actionSubject}`}
-					className={CHIP_BUTTON}
-				>
-					<Sparkles className="h-3.5 w-3.5" aria-hidden />
-					Aufgabe
-				</Link>
-				<Link
-					href={getPinnwandPrefillHref(shareCode, 'expense', prefill)}
-					aria-label={`Als Ausgabe übernehmen: ${actionSubject}`}
-					className={CHIP_BUTTON}
-				>
-					<Receipt className="h-3.5 w-3.5" aria-hidden />
-					Ausgabe
-				</Link>
-				{REACTIONS.map(({ key, label, icon: Icon }) => {
+			{/* Sichtbar bleibt nur, was zur Beitragsart passt. Acht gleich aussehende
+			    Knöpfe unter jedem Beitrag zwingen zu einer Wahl, die niemand treffen
+			    will, und sind höher als der Beitragstext selbst. Die übrigen
+			    Reaktionen und die vier Übernehmen-Wege stehen im ⋯-Menü. */}
+			<footer className="flex flex-wrap gap-1.5 border-t border-[var(--border)] px-4 py-3 sm:px-5">
+				{visibleReactions.map(({ key, label, icon: Icon }) => {
 					const active = announcement.myReactions.includes(key);
 					const count = announcement.reactionCounts[key] ?? 0;
 					const displayLabel =
@@ -439,7 +501,10 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 						<button
 							key={key}
 							type="button"
-							onClick={() => onToggleReaction(key)}
+							onClick={() => {
+								rememberReaction(key);
+								onToggleReaction(key);
+							}}
 							disabled={reactionPending(key)}
 							aria-pressed={active}
 							aria-label={
@@ -529,7 +594,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 			{commentsOpen && (
 				<section
 					id={`announcement-comments-${announcement.id}`}
-					className="space-y-3 border-t border-[var(--border)]/70 bg-[var(--surface)]/40 px-4 py-3 sm:px-5"
+					className="space-y-3 border-t border-[var(--border)] bg-[var(--surface)]/40 px-4 py-3 sm:px-5"
 				>
 					{announcement.comments.length > 0 && (
 						<ul className="space-y-2">

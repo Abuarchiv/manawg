@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, Settings, X } from 'lucide-react';
+import { CalendarDays, Plus, Settings, X } from 'lucide-react';
 import Link from 'next/link';
 
 /**
@@ -74,6 +74,20 @@ export function SettingsLink({ wgBaseHref }: { wgBaseHref: string }) {
 			className={ICON_BUTTON_BORDERED_LINK}
 		>
 			<Settings className="h-4 w-4" aria-hidden />
+		</Link>
+	);
+}
+
+export function CalendarLink({ wgBaseHref }: { wgBaseHref: string }) {
+	return (
+		<Link
+			href={`${wgBaseHref}/kalender`}
+			aria-label="Kalender"
+			title="Kalender"
+			style={{ bottom: 'calc(4.75rem + env(safe-area-inset-bottom, 0px))' }}
+			className={`${ICON_BUTTON_BORDERED_LINK} fixed right-[5.5rem] z-30 sm:static sm:bottom-auto sm:right-auto`}
+		>
+			<CalendarDays className="h-4 w-4" aria-hidden />
 		</Link>
 	);
 }

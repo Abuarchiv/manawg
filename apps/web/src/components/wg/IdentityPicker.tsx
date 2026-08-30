@@ -58,6 +58,7 @@ export function IdentityPicker({ wgId, wgShareCode, wgName, members, onPicked }:
 	const [newName, setNewName] = useState('');
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [readOnlyConfirm, setReadOnlyConfirm] = useState<Member | null>(null);
 	const submittingRef = useRef(false);
 
 	function persistIdentity(identity: StoredIdentity): boolean {
@@ -72,9 +73,22 @@ export function IdentityPicker({ wgId, wgShareCode, wgName, members, onPicked }:
 		}
 	}
 
+	// Picking an existing member never carries a session token — that's only
+	// issued at the moment someone joins (see `createNew` below and
+	// NeuClient.tsx), and `deriveMemberToken`'s secret never reaches the
+	// client, so there's no way to re-derive one here. Every write from this
+	// profile would be rejected server-side as `member_not_verified` until the
+	// person joins again as themselves. Ask for a confirmation first — a
+	// message shown only up to the moment `onPicked` swaps this screen out for
+	// the WG content would never actually be seen.
 	function selectExisting(member: Member): void {
-		const identity: StoredIdentity = { memberId: member.id, name: member.name };
 		setError(null);
+		setReadOnlyConfirm(member);
+	}
+
+	function confirmReadOnly(member: Member): void {
+		const identity: StoredIdentity = { memberId: member.id, name: member.name };
+		setReadOnlyConfirm(null);
 		if (!persistIdentity(identity)) return;
 		onPicked(identity);
 	}
@@ -157,6 +171,32 @@ export function IdentityPicker({ wgId, wgShareCode, wgName, members, onPicked }:
 					>
 						{error}
 					</p>
+				)}
+
+				{readOnlyConfirm && (
+					<div className="mb-4 space-y-3 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-[13px] text-[var(--text-2)]">
+						<p>
+							Dieses Gerät wurde nicht als <strong>{readOnlyConfirm.name}</strong> bestätigt. Du
+							kannst {readOnlyConfirm.name}s Profil nur lesend ansehen — Ausgaben, Chat-Nachrichten
+							und Häkchen lassen sich damit nicht speichern.
+						</p>
+						<div className="flex items-center justify-end gap-2">
+							<button
+								type="button"
+								onClick={() => setReadOnlyConfirm(null)}
+								className="inline-flex h-11 items-center rounded-md px-3 text-[13px] text-[var(--text-2)] transition-colors hover:bg-[var(--bg-base)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+							>
+								Abbrechen
+							</button>
+							<button
+								type="button"
+								onClick={() => confirmReadOnly(readOnlyConfirm)}
+								className="inline-flex h-11 items-center rounded-md bg-[var(--text-1)] px-3 text-[13px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+							>
+								Nur ansehen
+							</button>
+						</div>
+					</div>
 				)}
 
 				{mode === 'pick' && members.length > 0 && (

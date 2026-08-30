@@ -42,6 +42,21 @@ function rememberDismissed(): void {
 }
 
 /**
+ * True while the user has an input/textarea/contentEditable focused — e.g.
+ * typing a chat message. The prompt is fixed just above the BottomNav, which
+ * is exactly where feature composers (chat, pinnwand) sit, so popping up
+ * unconditionally can slide the prompt over an in-progress keystroke and eat
+ * the tap meant for the composer's send button.
+ */
+function isEditingTarget(): boolean {
+	const active = document.activeElement;
+	return (
+		active instanceof HTMLElement &&
+		(active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)
+	);
+}
+
+/**
  * Floating install prompt — appears only after user has scrolled past the hero
  * (so it never blocks the CTAs). Honors a 14-day dismissal cooldown via
  * localStorage which is checked before any event handlers are registered.
@@ -73,6 +88,7 @@ export function InstallPrompt() {
 
 		const showWhenReady = () => {
 			if (!hasScrolled.current && !inWgApp) return;
+			if (isEditingTarget()) return;
 			if (event) {
 				setHidden(false);
 				return;
@@ -93,7 +109,12 @@ export function InstallPrompt() {
 				document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
 			if (distToBottom < 600) {
 				setHidden(true);
-			} else if (hasScrolled.current && (event || isSafari) && !isDismissed()) {
+			} else if (
+				hasScrolled.current &&
+				(event || isSafari) &&
+				!isDismissed() &&
+				!isEditingTarget()
+			) {
 				setHidden(false);
 			}
 		};
@@ -105,9 +126,19 @@ export function InstallPrompt() {
 			}
 		}, 1200);
 
+		// Covers the reverse ordering: the prompt is already showing (from an
+		// earlier trigger) when the user then taps into a composer — retract it
+		// immediately instead of leaving it sitting over the input.
+		const onFocusIn = (e: FocusEvent) => {
+			if (e.target instanceof HTMLElement && isEditingTarget()) {
+				setHidden(true);
+			}
+		};
+		window.addEventListener('focusin', onFocusIn);
+
 		const unsub = subscribeInstall((ev) => {
 			setEvent(ev);
-			if (ev && hasScrolled.current && !isDismissed()) {
+			if (ev && hasScrolled.current && !isDismissed() && !isEditingTarget()) {
 				setHidden(false);
 			}
 			if (!ev && isAppInstalled()) {
@@ -118,6 +149,7 @@ export function InstallPrompt() {
 
 		return () => {
 			window.removeEventListener('scroll', onScroll);
+			window.removeEventListener('focusin', onFocusIn);
 			window.clearTimeout(timer);
 			unsub();
 		};
@@ -147,7 +179,10 @@ export function InstallPrompt() {
 			role="status"
 			aria-live="polite"
 			aria-label="App installieren"
-			className="fixed left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-1rem)] max-w-lg animate-in slide-in-from-bottom-4 fade-in duration-300"
+			// Breite an den App-Frame gekoppelt: max-w-lg (32rem) war breiter als
+			// --app-frame-width, das Banner ragte auf Desktop beidseitig über die
+			// App-Spalte hinaus — dieselbe Deckelung wie bei der Bottom-Nav.
+			className="fixed left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-1rem)] max-w-[calc(var(--app-frame-width)-1rem)] animate-in slide-in-from-bottom-4 fade-in duration-300"
 			style={{
 				// In /wg/* the bottom nav is fixed (NavItem min-h 48px + safe-area).
 				// Lift the prompt above it; outside the WG app stick close to the edge.

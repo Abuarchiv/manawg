@@ -1,25 +1,20 @@
 'use client';
-import { FormToggleButton, SettingsLink } from '@/components/wg/PageHeaderActions';
-import { Loader2, RotateCw } from 'lucide-react';
-import Link from 'next/link';
+import { CalendarLink, FormToggleButton } from '@/components/wg/PageHeaderActions';
+import { Loader2 } from 'lucide-react';
 
 interface PutzenHeaderProps {
 	itemCount: number;
 	refreshing: boolean;
-	busy: boolean;
 	showForm: boolean;
 	wgBaseHref: string;
-	onRefresh: () => void;
 	onToggleForm: () => void;
 }
 
 export function PutzenHeader({
 	itemCount,
 	refreshing,
-	busy,
 	showForm,
 	wgBaseHref,
-	onRefresh,
 	onToggleForm,
 }: PutzenHeaderProps) {
 	return (
@@ -36,21 +31,7 @@ export function PutzenHeader({
 				</p>
 			</div>
 			<div className="flex shrink-0 items-center gap-1.5">
-				<button
-					type="button"
-					onClick={onRefresh}
-					disabled={busy}
-					aria-label="Putzplan aktualisieren"
-					className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] disabled:cursor-not-allowed disabled:opacity-50"
-				>
-					<RotateCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden />
-				</button>
-				<Link
-					href={`${wgBaseHref}/aktivitaet`}
-					className="hidden h-11 items-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12.5px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] sm:inline-flex"
-				>
-					Verlauf
-				</Link>
+				<CalendarLink wgBaseHref={wgBaseHref} />
 				<FormToggleButton
 					open={showForm}
 					onToggle={onToggleForm}
@@ -58,7 +39,6 @@ export function PutzenHeader({
 					openLabel="Putzaufgabe erfassen"
 					closeLabel="Putzaufgabe-Formular schließen"
 				/>
-				<SettingsLink wgBaseHref={wgBaseHref} />
 			</div>
 		</header>
 	);

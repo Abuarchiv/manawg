@@ -45,7 +45,6 @@ function renderCard(announcement: Announcement) {
 				pinPending={false}
 				statusPending={false}
 				reactionPending={() => false}
-				compact={false}
 				onDelete={vi.fn()}
 				onTogglePinned={vi.fn()}
 				onToggleStatus={vi.fn()}
@@ -80,7 +79,6 @@ describe('AnnouncementCard comment editing', () => {
 					pinPending={false}
 					statusPending={false}
 					reactionPending={() => false}
-					compact={false}
 					onDelete={vi.fn()}
 					onTogglePinned={vi.fn()}
 					onToggleStatus={vi.fn()}

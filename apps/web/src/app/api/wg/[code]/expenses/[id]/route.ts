@@ -17,7 +17,11 @@ import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema } from '@/core/validators/image-url';
 import { AMOUNT_MAX_CENTS, AMOUNT_MIN_CENTS } from '@/features/expenses/expense-constants';
-import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
+import {
+	settledAtForOwnShare,
+	splitValidationErrorCode,
+	validateSplits,
+} from '@/features/expenses/split-math';
 import { and, eq, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -246,7 +250,8 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 						debtorMemberId: s.debtorMemberId,
 						amountCents: s.amountCents,
 						settledAt:
-							settledAtByUnchangedSplit.get(`${s.debtorMemberId}:${s.amountCents}`) ?? null,
+							settledAtByUnchangedSplit.get(`${s.debtorMemberId}:${s.amountCents}`) ??
+							settledAtForOwnShare(s.debtorMemberId, row.paidByMemberId),
 					})),
 				)
 				.returning({ expenseId: expenseSplits.expenseId });

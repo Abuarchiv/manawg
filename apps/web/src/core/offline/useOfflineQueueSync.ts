@@ -2,7 +2,7 @@
 
 import { captureException } from '@/core/infra/observability';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { countOfflineActions, syncOfflineActions } from './offline-client';
+import { countOfflineActions, getSyncedCountForWg, syncOfflineActions } from './offline-client';
 
 interface UseOfflineQueueSyncOptions {
 	shareCode: string;
@@ -20,8 +20,14 @@ interface UseOfflineQueueSyncOptions {
  * Keeps the offline-action queue in sync with the server and reports how many
  * actions are still waiting.
  *
- * Flushes on `online` and refreshes the count on `manawg:offline-queue`, the
- * event the offline client dispatches whenever the queue changes.
+ * Flushes on `online`, refreshes the count on `manawg:offline-queue` (the
+ * event the offline client dispatches whenever the queue changes), and also
+ * calls `onSynced` on `manawg:offline-synced` — the event a sync dispatches
+ * on success regardless of what triggered it. Without that second listener,
+ * a flush triggered by the "Jetzt senden" button in `OfflineBanner` (which
+ * calls `syncOfflineActions` directly, not through this hook's own `sync`)
+ * would leave the page showing pre-sync data until a manual reload, even
+ * though the server already has the change.
  *
  * Extracted from four pages (ausgaben, einkauf, putzen, pinnwand) that each
  * carried a character-identical copy — except that only ausgaben cancelled its
@@ -63,22 +69,33 @@ export function useOfflineQueueSync({
 		};
 		updateCount();
 
+		// Only updates the count here — `onSynced` fires from the
+		// `manawg:offline-synced` listener below, which `syncOfflineActions`
+		// dispatches on success regardless of caller. Calling it here too would
+		// double-fire it for this hook's own `online`-triggered syncs, since
+		// that dispatch reaches this same listener.
 		const sync = (): void => {
 			syncOfflineActions(shareCode, { memberId })
-				.then((synced) => {
+				.then(() => {
 					if (!active) return;
 					updateCount();
-					if (synced > 0) onSyncedRef.current();
 				})
 				.catch((err) => captureException(err, { action: 'syncOfflineActions', page }));
+		};
+		const onExternalSync = (event: Event): void => {
+			if (!active) return;
+			updateCount();
+			if (getSyncedCountForWg(event, shareCode) > 0) onSyncedRef.current();
 		};
 
 		window.addEventListener('online', sync);
 		window.addEventListener('manawg:offline-queue', updateCount);
+		window.addEventListener('manawg:offline-synced', onExternalSync);
 		return () => {
 			active = false;
 			window.removeEventListener('online', sync);
 			window.removeEventListener('manawg:offline-queue', updateCount);
+			window.removeEventListener('manawg:offline-synced', onExternalSync);
 		};
 	}, [shareCode, memberId, page]);
 

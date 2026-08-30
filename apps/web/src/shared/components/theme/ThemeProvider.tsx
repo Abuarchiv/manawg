@@ -63,7 +63,7 @@ function applyResolved(next: ResolvedTheme): void {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-	const [theme, setThemeState] = useState<Theme>('light');
+	const [theme, setThemeState] = useState<Theme>('system');
 	const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
 
 	useEffect(() => {

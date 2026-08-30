@@ -1,5 +1,6 @@
 'use client';
 
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ALERT_DANGER, FIELD_INPUT, ICON_BUTTON } from '@/components/ui/styles';
 import { EventFormFields } from '@/features/events/components/EventFormFields';
 import { validateEventForm } from '@/features/events/events';
@@ -52,6 +53,7 @@ export function EventEditModal({ event, onClose, onUpdate, onDelete }: EventEdit
 	const [recurrence, setRecurrence] = useState('');
 	const [saving, setSaving] = useState(false);
 	const [deleting, setDeleting] = useState(false);
+	const [confirmingDelete, setConfirmingDelete] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -64,6 +66,7 @@ export function EventEditModal({ event, onClose, onUpdate, onDelete }: EventEdit
 		setLocation(event.location ?? '');
 		setRecurrence(event.recurrence ?? '');
 		setError(null);
+		setConfirmingDelete(false);
 	}, [event]);
 
 	useEffect(() => {
@@ -125,7 +128,7 @@ export function EventEditModal({ event, onClose, onUpdate, onDelete }: EventEdit
 			// biome-ignore lint/a11y/useSemanticElements: native <dialog> UA display:none kills CSS transitions (see native-dialog-css-transition-kill skill)
 			role="dialog"
 			aria-modal="true"
-			aria-labelledby="event-edit-title"
+			aria-labelledby="event-edit-heading"
 			className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
 		>
 			<form
@@ -135,7 +138,7 @@ export function EventEditModal({ event, onClose, onUpdate, onDelete }: EventEdit
 			>
 				<span className="sheet-handle" aria-hidden />
 				<div className="flex items-center justify-between">
-					<h2 id="event-edit-title" className="text-base font-semibold text-[var(--text-1)]">
+					<h2 id="event-edit-heading" className="text-base font-semibold text-[var(--text-1)]">
 						Termin bearbeiten
 					</h2>
 					<button type="button" onClick={onClose} aria-label="Schließen" className={ICON_BUTTON}>
@@ -183,7 +186,7 @@ export function EventEditModal({ event, onClose, onUpdate, onDelete }: EventEdit
 				<div className="flex flex-wrap items-center justify-between gap-2">
 					<button
 						type="button"
-						onClick={() => void handleDelete()}
+						onClick={() => setConfirmingDelete(true)}
 						disabled={deleting}
 						aria-label="Termin löschen"
 						className="inline-flex h-11 items-center gap-2 rounded-xl border border-[var(--danger)]/30 px-4 text-[13px] font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:opacity-50"
@@ -214,6 +217,21 @@ export function EventEditModal({ event, onClose, onUpdate, onDelete }: EventEdit
 					</div>
 				</div>
 			</form>
+			<ConfirmDialog
+				open={confirmingDelete}
+				onClose={() => setConfirmingDelete(false)}
+				onConfirm={() => void handleDelete()}
+				title="Termin löschen?"
+				description={
+					event.recurrence
+						? `„${event.title}" wird unwiderruflich entfernt — das löscht die gesamte Serie inklusive aller zukünftigen Termine.`
+						: `„${event.title}" wird unwiderruflich entfernt.`
+				}
+				confirmLabel="Löschen"
+				cancelLabel="Abbrechen"
+				variant="danger"
+				icon={Trash2}
+			/>
 		</div>
 	);
 }

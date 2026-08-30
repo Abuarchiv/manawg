@@ -34,6 +34,7 @@ import {
 	getAnnouncementHash,
 	getMyOpenAnnouncements,
 	getNewAnnouncementCount,
+	mergeBackgroundAnnouncements,
 } from '@/features/pinnwand/announcement-workflow';
 import { AnnouncementCard } from '@/features/pinnwand/components/AnnouncementCard';
 import { AnnouncementSkeleton } from '@/features/pinnwand/components/AnnouncementSkeleton';
@@ -106,7 +107,6 @@ export default function PinnwandPage(): React.ReactElement {
 		pinnedOnly: false,
 		query: '',
 	});
-	const [compact, setCompact] = useState(false);
 	const [highlightedId, setHighlightedId] = useState<string | null>(null);
 	const [pendingRemoteItems, setPendingRemoteItems] = useState<Announcement[] | null>(null);
 	const [newCount, setNewCount] = useState(0);
@@ -215,6 +215,7 @@ export default function PinnwandPage(): React.ReactElement {
 					);
 				const currentItems = itemsRef.current;
 				if (mode === 'background' && currentItems.length > 0) {
+					setItems(mergeBackgroundAnnouncements(currentItems, res.data.announcements));
 					const count = getNewAnnouncementCount(currentItems, res.data.announcements);
 					if (count > 0) {
 						setPendingRemoteItems(res.data.announcements);
@@ -715,21 +716,16 @@ export default function PinnwandPage(): React.ReactElement {
 			<PinnwandHeader
 				itemCount={items.length}
 				refreshing={refreshing}
-				wgBaseHref={wgBaseHref}
 				composerOpen={composerOpen}
+				wgBaseHref={wgBaseHref}
 				onToggleComposer={() => {
 					setComposerOpen((value) => !value);
 					setNotice(null);
 				}}
 			/>
-			<PinnwandFilterBar
-				filter={filter}
-				onFilterChange={setFilter}
-				compact={compact}
-				onToggleCompact={() => setCompact((value) => !value)}
-				refreshing={refreshing}
-				onRefresh={() => void load()}
-			/>
+
+			{/* Filter erst zeigen, wenn es etwas zu filtern gibt. */}
+			{items.length > 0 && <PinnwandFilterBar filter={filter} onFilterChange={setFilter} />}
 			{statusFocusActive && (
 				<section className="rounded-md border border-[var(--accent)] bg-[var(--accent)]/5 px-3 py-2 text-[13px] text-[var(--accent)]">
 					{statusParamFilter === 'open'
@@ -834,7 +830,9 @@ export default function PinnwandPage(): React.ReactElement {
 					Keine passenden Beiträge.
 				</EmptyState>
 			) : (
-				<ul className="space-y-5">
+				// space-y-3 statt -5: System-Ereignisse sind jetzt einzeilig, mit
+				// 20px Abstand stünden sie weiter auseinander als sie hoch sind.
+				<ul className="space-y-3">
 					{filteredItems.map((a) => {
 						const author = memberLookup(a.authorMemberId);
 						return (
@@ -846,7 +844,6 @@ export default function PinnwandPage(): React.ReactElement {
 								pinPending={isPending(`${a.id}:pin`)}
 								statusPending={isPending(`${a.id}:status`)}
 								reactionPending={(reaction) => isPending(`${a.id}:reaction:${reaction}`)}
-								compact={compact}
 								onDelete={() => remove(a.id)}
 								onTogglePinned={() => togglePinned(a)}
 								onToggleStatus={() => toggleStatus(a)}

@@ -367,62 +367,6 @@ test.describe('Shopping recovery', () => {
 		await expect(page.getByText('Kaffee')).toBeVisible();
 		await expect(clearButton).toBeEnabled();
 	});
-
-	test('keeps shopping refresh disabled while a refresh request is pending', async ({ page }) => {
-		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
-		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
-		let requests = 0;
-		let delayNextShopping = false;
-		let releaseRefresh: () => void = () => undefined;
-		const refreshCanFinish = new Promise<void>((resolve) => {
-			releaseRefresh = resolve;
-		});
-
-		await page.addInitScript(
-			({ wgId, memberId }) => {
-				localStorage.setItem(`manawg_identity:${wgId}`, JSON.stringify({ memberId, name: 'dsaf' }));
-			},
-			{ wgId, memberId },
-		);
-		await page.route('**/api/wg/MTE8PZAT/shopping', async (route) => {
-			requests += 1;
-			if (delayNextShopping) await refreshCanFinish;
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify({
-					items: [
-						{
-							id: `shopping-${requests}`,
-							addedByMemberId: memberId,
-							name: delayNextShopping ? 'Frischer Kaffee' : 'Hafermilch',
-							quantity: null,
-							boughtAt: null,
-							boughtByMemberId: null,
-							createdAt: new Date().toISOString(),
-						},
-					],
-				}),
-			});
-		});
-
-		await gotoWithRetry(page, '/wg/MTE8PZAT/einkauf');
-		await expect(page.getByText('Hafermilch')).toBeVisible({ timeout: 30_000 });
-		const refreshButton = page.getByRole('button', { name: 'Einkaufsliste aktualisieren' });
-		await expect(refreshButton).toBeEnabled();
-		delayNextShopping = true;
-		const requestsBeforeRefresh = requests;
-		await refreshButton.click();
-		await expect(refreshButton).toBeDisabled();
-		await refreshButton.click({ force: true });
-		await expect.poll(() => requests).toBe(requestsBeforeRefresh + 1);
-
-		releaseRefresh();
-
-		await expect(page.getByText('Frischer Kaffee')).toBeVisible({ timeout: 30_000 });
-		await expect(refreshButton).toBeEnabled();
-	});
-
 	test('prefills the add form from empty-list suggestions', async ({ page }) => {
 		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
 		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';

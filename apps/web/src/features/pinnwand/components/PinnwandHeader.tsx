@@ -1,22 +1,21 @@
 'use client';
-import { FormToggleButton, SettingsLink } from '@/components/wg/PageHeaderActions';
+import { CalendarLink, FormToggleButton } from '@/components/wg/PageHeaderActions';
 import { Loader2 } from 'lucide-react';
-import Link from 'next/link';
 import type React from 'react';
 
 interface PinnwandHeaderProps {
 	itemCount: number;
 	refreshing: boolean;
-	wgBaseHref: string;
 	composerOpen: boolean;
+	wgBaseHref: string;
 	onToggleComposer: () => void;
 }
 
 export function PinnwandHeader({
 	itemCount,
 	refreshing,
-	wgBaseHref,
 	composerOpen,
+	wgBaseHref,
 	onToggleComposer,
 }: PinnwandHeaderProps): React.ReactElement {
 	return (
@@ -33,12 +32,7 @@ export function PinnwandHeader({
 				</p>
 			</div>
 			<div className="flex shrink-0 items-center gap-1.5">
-				<Link
-					href={`${wgBaseHref}/aktivitaet`}
-					className="hidden h-11 items-center rounded-md border border-[var(--border)] px-3 text-[12.5px] font-medium text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 sm:inline-flex"
-				>
-					Verlauf
-				</Link>
+				<CalendarLink wgBaseHref={wgBaseHref} />
 				<FormToggleButton
 					open={composerOpen}
 					onToggle={onToggleComposer}
@@ -46,7 +40,6 @@ export function PinnwandHeader({
 					openLabel="Beitrag erstellen"
 					closeLabel="Beitragsformular schließen"
 				/>
-				<SettingsLink wgBaseHref={wgBaseHref} />
 			</div>
 		</header>
 	);

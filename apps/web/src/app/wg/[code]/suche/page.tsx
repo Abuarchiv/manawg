@@ -104,6 +104,8 @@ export default function SuchePage() {
 	useEffect(() => {
 		void load(query);
 	}, [load, query]);
+	// Bewusst kein Auto-Refresh: die Trefferliste würde unter der lesenden oder
+	// tippenden Person neu sortiert. Eine Suche lädt neu, wenn die Query sich ändert.
 
 	const visibleResults = useMemo(
 		() =>
@@ -193,23 +195,28 @@ export default function SuchePage() {
 					</div>
 				)}
 
-				<div className="flex flex-wrap gap-2" aria-label="Schnellfilter">
+				{/* "Schnellfilter:" steckt in legend/aria-label statt im sichtbaren Text —
+				    sichtbar wiederholt es sich sechsmal und treibt die Chips über drei
+				    Zeilen. fieldset gruppiert die Chips für Screenreader. */}
+				<fieldset className="flex flex-wrap gap-2 border-0 p-0">
+					<legend className="sr-only">Schnellfilter</legend>
 					{QUICK_FILTERS.map((filter) => (
 						<button
 							key={filter.id}
 							type="button"
 							onClick={() => setQuickFilter(filter.id)}
 							aria-pressed={quickFilter === filter.id}
+							aria-label={`Schnellfilter: ${filter.label}`}
 							className={`inline-flex h-11 items-center rounded-full border px-3 text-[12.5px] font-medium transition ${
 								quickFilter === filter.id
 									? 'border-[var(--text-1)] bg-[var(--text-1)] text-[var(--bg-base)]'
 									: 'border-[var(--border)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]'
 							}`}
 						>
-							Schnellfilter: {filter.label}
+							{filter.label}
 						</button>
 					))}
-				</div>
+				</fieldset>
 
 				<div
 					className="flex flex-wrap gap-2 border-t border-[var(--border)] pt-3"

@@ -981,84 +981,6 @@ test.describe('Expenses recovery', () => {
 		await expect(page.getByText('splits_invalid')).toBeHidden();
 	});
 
-	test('keeps expense refresh disabled while a refresh request is pending', async ({ page }) => {
-		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
-		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
-		let expenseGets = 0;
-		let releaseRefresh: (() => void) | null = null;
-
-		const expenseBody = (id: string, description: string) => ({
-			expenses: [
-				{
-					id,
-					paidByMemberId: memberId,
-					amountCents: 1299,
-					currency: 'EUR',
-					description,
-					imageUrl: null,
-					occurredAt: new Date().toISOString(),
-					createdAt: new Date().toISOString(),
-					updatedAt: new Date().toISOString(),
-					splits: [],
-				},
-			],
-		});
-
-		await page.addInitScript(
-			({ wgId, memberId }) => {
-				localStorage.setItem(`manawg_identity:${wgId}`, JSON.stringify({ memberId, name: 'dsaf' }));
-			},
-			{ wgId, memberId },
-		);
-		await page.route('**/api/wg/MTE8PZAT/recurring-expenses', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify({ recurringExpenses: [] }),
-			});
-		});
-		await page.route('**/api/wg/MTE8PZAT/expenses', async (route) => {
-			if (route.request().method() !== 'GET') return route.fallback();
-			expenseGets += 1;
-			if (expenseGets === 1) {
-				await route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: JSON.stringify(expenseBody('expense-start', 'Start Milch')),
-				});
-				return;
-			}
-			if (expenseGets === 2) {
-				await new Promise<void>((resolve) => {
-					releaseRefresh = resolve;
-				});
-				await route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: JSON.stringify(expenseBody('expense-fresh', 'Frischer Einkauf')),
-				});
-				return;
-			}
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(expenseBody('expense-fresh', 'Frischer Einkauf')),
-			});
-		});
-
-		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
-		await expect(page.getByText('Start Milch')).toBeVisible({ timeout: 30_000 });
-
-		const refreshButton = page.getByRole('button', { name: 'Ausgaben aktualisieren' });
-		await refreshButton.click();
-
-		await expect(refreshButton).toBeDisabled();
-		await expect.poll(() => expenseGets).toBe(2);
-		releaseRefresh?.();
-		await expect(page.getByText('Frischer Einkauf')).toBeVisible({ timeout: 30_000 });
-		await expect(page.getByText('Start Milch')).toBeHidden();
-	});
-
 	test('restores amount-only expense drafts by opening the form', async ({ page }) => {
 		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
 		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
@@ -1203,7 +1125,6 @@ test.describe('Expenses recovery', () => {
 		await page.getByRole('button', { name: 'Ausgabe speichern' }).click();
 
 		await expect(page.getByRole('button', { name: 'Ausgabe speichern' })).toBeDisabled();
-		await expect(page.getByRole('button', { name: 'Als Vorlage merken' })).toBeDisabled();
 		await expect(page.getByRole('button', { name: 'Ausgabe abbrechen' })).toBeDisabled();
 		await expect(page.getByLabel('Beschreibung')).toBeDisabled();
 		await expect(page.getByLabel('Betrag')).toBeDisabled();
@@ -1391,6 +1312,7 @@ test.describe('Expenses recovery', () => {
 		await page.getByRole('button', { name: 'Ausgabe erfassen' }).click();
 		await page.getByLabel('Beschreibung').fill('Internet');
 		await page.getByLabel('Betrag').fill('35,00');
+		await page.getByRole('button', { name: 'Fixkosten-Vorlage' }).click();
 		await page.getByRole('button', { name: 'Als Vorlage merken' }).click();
 
 		await expect(
@@ -1436,6 +1358,7 @@ test.describe('Expenses recovery', () => {
 		await page.getByRole('button', { name: 'Ausgabe erfassen' }).click();
 		await page.getByLabel('Beschreibung').fill('Internet');
 		await page.getByLabel('Betrag').fill('35,00');
+		await page.getByRole('button', { name: 'Fixkosten-Vorlage' }).click();
 		await page.getByRole('button', { name: 'Als Vorlage merken' }).click();
 
 		await expect(
@@ -1482,6 +1405,7 @@ test.describe('Expenses recovery', () => {
 		await page.getByRole('button', { name: 'Ausgabe erfassen' }).click();
 		await page.getByLabel('Beschreibung').fill('Internet');
 		await page.getByLabel('Betrag').fill('35,00');
+		await page.getByRole('button', { name: 'Fixkosten-Vorlage' }).click();
 		await page.getByRole('button', { name: 'Als Vorlage merken' }).click();
 
 		await expect(

@@ -4,6 +4,7 @@ import {
 	getAnnouncementHash,
 	getMyOpenAnnouncements,
 	getNewAnnouncementCount,
+	mergeBackgroundAnnouncements,
 	summarizeAnnouncementReactions,
 } from './announcement-workflow';
 
@@ -140,5 +141,40 @@ describe('getNewAnnouncementCount', () => {
 				[{ id: 'a0' }, { id: 'a1' }, { id: 'a2' }],
 			),
 		).toBe(1);
+	});
+});
+
+describe('mergeBackgroundAnnouncements', () => {
+	it('refreshes fields on already-visible items from the remote copy', () => {
+		const current = [
+			{ id: 'a1', status: 'open' },
+			{ id: 'a2', status: 'open' },
+		];
+		const remote = [
+			{ id: 'a1', status: 'resolved' },
+			{ id: 'a2', status: 'open' },
+		];
+
+		expect(mergeBackgroundAnnouncements(current, remote)).toEqual([
+			{ id: 'a1', status: 'resolved' },
+			{ id: 'a2', status: 'open' },
+		]);
+	});
+
+	it('keeps the current order/length, never inserting brand-new remote items', () => {
+		const current = [{ id: 'a1', status: 'open' }];
+		const remote = [
+			{ id: 'a0', status: 'open' },
+			{ id: 'a1', status: 'resolved' },
+		];
+
+		expect(mergeBackgroundAnnouncements(current, remote)).toEqual([
+			{ id: 'a1', status: 'resolved' },
+		]);
+	});
+
+	it('leaves an item untouched when it is missing from the remote copy', () => {
+		const current = [{ id: 'a1', status: 'open' }];
+		expect(mergeBackgroundAnnouncements(current, [])).toEqual([{ id: 'a1', status: 'open' }]);
 	});
 });

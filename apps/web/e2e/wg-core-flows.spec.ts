@@ -116,13 +116,10 @@ test.describe('ManaWG core flows', () => {
 			.catch(() => undefined);
 		await gotoWithRetry(page, '/wg/MTE8PZAT');
 		await dashboardResponse;
-		await expect(page.getByText('WG-Gesundheit')).toBeVisible({ timeout: 60_000 });
+		await expect(page.getByText('Saldo pro Mitglied')).toBeVisible({ timeout: 60_000 });
 		await expect(
 			page.getByRole('link', { name: '1 Offline-Aktion wartet auf Synchronisierung.' }),
 		).toBeVisible({ timeout: 30_000 });
-		await expect(page.getByRole('link', { name: /Fixkosten fällig/ })).toBeVisible({
-			timeout: 30_000,
-		});
 
 		await page.evaluate(() => {
 			localStorage.setItem(
@@ -137,7 +134,7 @@ test.describe('ManaWG core flows', () => {
 		await expect(page.locator('#f-betrag')).toHaveValue('32,90', {
 			timeout: 30_000,
 		});
-		await expect(page.locator('button').filter({ hasText: 'Als Vorlage merken' })).toBeVisible({
+		await expect(page.getByRole('button', { name: 'Fixkosten-Vorlage' })).toBeVisible({
 			timeout: 30_000,
 		});
 
@@ -175,7 +172,9 @@ test.describe('ManaWG core flows', () => {
 		}
 		await expect(page.locator('#chore-title')).toHaveValue('Bad putzen', { timeout: 60_000 });
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen?filter=overdue');
-		await expect(page.getByText('Putzlücken-Fokus')).toBeVisible({ timeout: 30_000 });
+		// Kein eigener Reparaturblock mehr — der Deep-Link landet auf der Liste.
+		await expect(page.getByText('Putzlücken-Fokus')).toHaveCount(0);
+		await expect(page.locator('#chore-list')).toBeVisible({ timeout: 30_000 });
 		const absenceId = '11111111-1111-4111-8111-111111111111';
 		await page.route('**/api/wg/MTE8PZAT/absences', async (route) => {
 			if (route.request().method() !== 'GET') return route.fallback();
@@ -253,6 +252,16 @@ test.describe('ManaWG core flows', () => {
 		await gotoWithRetry(page, '/wg/MTE8PZAT/suche');
 		await expect(page.getByRole('button', { name: 'Abwesenheiten' })).toBeVisible({
 			timeout: 30_000,
+		});
+
+		// The earlier prefill assertion (line 133) left its own draft behind in
+		// 'manawg:draft:MTE8PZAT:expense'. OfflineQueueSection.edit() correctly
+		// refuses to silently clobber ANY unsaved draft with queue-edit data
+		// (see its comment), so that leftover would otherwise block the
+		// queue-edit assertion below with an unrelated conflict note — clear it
+		// so this step tests queue-editing in isolation.
+		await page.evaluate(() => {
+			localStorage.removeItem('manawg:draft:MTE8PZAT:expense');
 		});
 
 		await page.evaluate(

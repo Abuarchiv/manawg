@@ -1873,7 +1873,7 @@ test.describe('Chores recovery', () => {
 		}
 	});
 
-	test('shows every overdue chore in repair focus mode', async ({ page }) => {
+	test('lists every overdue chore in the plan itself', async ({ page }) => {
 		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
 		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
 		const overdueDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
@@ -1913,20 +1913,22 @@ test.describe('Chores recovery', () => {
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
 
-		await expect(page.getByRole('link', { name: 'Alle 5 Putzlücken anzeigen' })).toBeVisible({
-			timeout: 30_000,
-		});
-		await expect(
-			page.getByRole('button', { name: 'Aufgabe selbst übernehmen: Fenster' }),
-		).toBeHidden();
-
-		await page.getByRole('link', { name: 'Alle 5 Putzlücken anzeigen' }).click();
-
-		await expect(page.getByText('Putzlücken-Fokus')).toBeVisible({ timeout: 30_000 });
+		// Es gibt keinen Reparaturblock mehr, der die Aufgaben ein zweites Mal
+		// auflistet und dabei auf vier deckelt: alle überfälligen stehen direkt
+		// in der Liste, nach oben sortiert.
+		await expect(page.getByText('Putzlücken-Fokus')).toHaveCount(0);
 		for (const title of titles) {
-			await expect(
-				page.getByRole('button', { name: `Aufgabe selbst übernehmen: ${title}` }),
-			).toBeVisible();
+			await expect(page.getByRole('button', { name: `Aufgabe übernehmen: ${title}` })).toBeVisible({
+				timeout: 30_000,
+			});
+		}
+
+		// Der Deep-Link vom Dashboard führt weiterhin auf dieselbe Liste.
+		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen?filter=overdue');
+		for (const title of titles) {
+			await expect(page.getByRole('button', { name: `Aufgabe übernehmen: ${title}` })).toBeVisible({
+				timeout: 30_000,
+			});
 		}
 	});
 
@@ -1983,64 +1985,5 @@ test.describe('Chores recovery', () => {
 				hasText: /^1 Offline-Aktion wartet auf Synchronisierung\.$/,
 			}),
 		).toBeVisible({ timeout: 30_000 });
-	});
-
-	test('keeps chore refresh disabled while a refresh request is pending', async ({ page }) => {
-		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
-		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
-		let choreRequests = 0;
-		let releaseRefresh: () => void = () => undefined;
-		const refreshCanFinish = new Promise<void>((resolve) => {
-			releaseRefresh = resolve;
-		});
-
-		await page.addInitScript(
-			({ wgId, memberId }) => {
-				localStorage.setItem(`manawg_identity:${wgId}`, JSON.stringify({ memberId, name: 'dsaf' }));
-			},
-			{ wgId, memberId },
-		);
-		await page.route('**/api/wg/MTE8PZAT/absences', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify({ absences: [] }),
-			});
-		});
-		await page.route('**/api/wg/MTE8PZAT/chores', async (route) => {
-			choreRequests += 1;
-			const isRefresh = choreRequests > 1;
-			const title = isRefresh ? 'Frische Küche' : 'Altes Bad';
-			if (isRefresh) await refreshCanFinish;
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify({
-					chores: [
-						{
-							id: `chore-${choreRequests}`,
-							title,
-							intervalDays: 7,
-							nextDueAt: new Date().toISOString(),
-							assignedMemberId: memberId,
-							lastCompletedAt: null,
-							lastCompletedByName: null,
-							openGapCountForAssignee: 0,
-						},
-					],
-				}),
-			});
-		});
-
-		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
-		await expect(page.getByText('Altes Bad')).toBeVisible({ timeout: 30_000 });
-		const refreshButton = page.getByRole('button', { name: 'Putzplan aktualisieren' });
-		await refreshButton.click();
-		await expect(refreshButton).toBeDisabled();
-
-		await expect.poll(() => choreRequests).toBe(2);
-		releaseRefresh();
-		await expect(page.getByText('Frische Küche')).toBeVisible();
-		await expect(page.getByText('Altes Bad')).toBeHidden();
 	});
 });

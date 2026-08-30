@@ -254,7 +254,7 @@ export function CalendarMonth({
 						>
 							<span
 								className={`text-[12px] ${baseClass} ${
-									isToday ? 'font-bold text-[var(--accent)]' : 'font-medium'
+									isToday ? 'font-semibold text-[var(--accent)]' : 'font-medium'
 								}`}
 							>
 								{day.date.getDate()}

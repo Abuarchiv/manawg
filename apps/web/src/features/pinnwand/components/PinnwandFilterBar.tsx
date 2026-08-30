@@ -1,25 +1,17 @@
 'use client';
 import type { AnnouncementFilter } from '@/features/pinnwand/announcement-workflow';
 import { KIND_OPTIONS, STATUS_FILTERS } from '@/features/pinnwand/components/constants';
-import { Pin, RefreshCw, SlidersHorizontal } from 'lucide-react';
+import { Pin } from 'lucide-react';
 import type React from 'react';
 
 interface PinnwandFilterBarProps {
 	filter: AnnouncementFilter;
 	onFilterChange: React.Dispatch<React.SetStateAction<AnnouncementFilter>>;
-	compact: boolean;
-	onToggleCompact: () => void;
-	refreshing: boolean;
-	onRefresh: () => void;
 }
 
 export function PinnwandFilterBar({
 	filter,
 	onFilterChange,
-	compact,
-	onToggleCompact,
-	refreshing,
-	onRefresh,
 }: PinnwandFilterBarProps): React.ReactElement {
 	return (
 		<div className="flex flex-wrap items-center justify-between gap-2">
@@ -86,31 +78,6 @@ export function PinnwandFilterBar({
 				>
 					<Pin className="h-3.5 w-3.5" aria-hidden />
 					Fixiert
-				</button>
-			</div>
-			<div className="flex items-center gap-1.5">
-				<button
-					type="button"
-					onClick={onToggleCompact}
-					aria-pressed={compact}
-					aria-label="Kompakte Ansicht"
-					className={`inline-flex h-11 w-11 items-center justify-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-						compact
-							? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
-							: 'border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] hover:text-[var(--text-1)]'
-					}`}
-				>
-					<SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
-				</button>
-				<button
-					type="button"
-					onClick={onRefresh}
-					disabled={refreshing}
-					aria-label="Pinnwand aktualisieren"
-					className="inline-flex h-11 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] shadow-sm transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-60"
-				>
-					<RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} aria-hidden />
-					Aktualisieren
 				</button>
 			</div>
 		</div>

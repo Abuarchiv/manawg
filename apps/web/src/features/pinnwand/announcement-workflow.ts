@@ -109,3 +109,20 @@ export function getNewAnnouncementCount(
 	const currentIds = new Set(currentItems.map((item) => item.id));
 	return remoteItems.filter((item) => !currentIds.has(item.id)).length;
 }
+
+/**
+ * Refresh already-visible announcements in place from a background poll,
+ * without inserting/removing/reordering rows (that stays gated behind the
+ * "N new posts" banner via `getNewAnnouncementCount`, so a growing list never
+ * jumps under the reader). Without this, a background poll that finds no
+ * brand-new post silently drops the whole response — reactions, comments,
+ * taker lists and resolved status on already-loaded posts would never
+ * update on their own, only on a manual reload or full refresh.
+ */
+export function mergeBackgroundAnnouncements<T extends { id: string }>(
+	currentItems: readonly T[],
+	remoteItems: readonly T[],
+): T[] {
+	const remoteById = new Map(remoteItems.map((item) => [item.id, item]));
+	return currentItems.map((item) => remoteById.get(item.id) ?? item);
+}

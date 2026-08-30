@@ -1,9 +1,7 @@
 import { ToastContainer } from '@/components/ui/Toast';
-import { BottomNavMore } from '@/components/wg/BottomNavMore';
 import { NavItem } from '@/components/wg/NavItem';
 import { OfflineBanner } from '@/components/wg/OfflineBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
-import { WgTopBar } from '@/components/wg/WgTopBar';
 import { db, wgMembers } from '@/core/db';
 import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
@@ -136,7 +134,6 @@ function WgShell({
 					Zum Inhalt springen
 				</a>
 				<OfflineBanner />
-				<WgTopBar code={code} />
 				{/* WCAG 1.3.1 / 2.4.1 — single <main> landmark.
 				    tabIndex={-1} lets the skip-link target receive programmatic focus. */}
 				<main id="main" tabIndex={-1} className="app-page-enter focus:outline-none">
@@ -146,7 +143,7 @@ function WgShell({
 			<nav
 				aria-label="WG Hauptnavigation"
 				data-app-chrome
-				className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--border)] bg-[var(--bg-base)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--bg-base)]/85"
+				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] border-t border-[var(--border)] bg-[var(--bg-base)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--bg-base)]/85"
 			>
 				<ul
 					className="mx-auto flex max-w-2xl [&>li]:min-w-0 [&>li]:flex-1"
@@ -157,14 +154,12 @@ function WgShell({
 					<NavItem href={`${wgBaseHref}/einkauf`} label="Einkauf" iconKey="einkauf" />
 					<NavItem href={`${wgBaseHref}/pinnwand`} label="Pinnwand" iconKey="pinnwand" />
 					<NavItem href={`${wgBaseHref}/putzen`} label="Putzen" iconKey="putzen" />
-					<BottomNavMore
-						items={[
-							{ href: `${wgBaseHref}/kalender`, label: 'Kalender', iconKey: 'kalender' },
-							{ href: `${wgBaseHref}/vorraete`, label: 'Vorräte', iconKey: 'vorraete' },
-							{ href: `${wgBaseHref}/abos`, label: 'Abos', iconKey: 'abos' },
-							{ href: `${wgBaseHref}/mahnungen`, label: 'Mahnungen', iconKey: 'mahnungen' },
-						]}
-					/>
+					{/* Kein Mehr-Menü. Jeder übrige Bereich hängt an der Seite, zu der
+					    er inhaltlich gehört, und wird dort verlinkt: Fixkosten und
+					    Mahnungen unter Ausgaben, Vorräte unter Einkauf, Kalender unter
+					    Pinnwand, Aktivität in der Dashboard-Sektion "Letzte Aktivität".
+					    Ein zweiter Weg über ein Sammelmenü macht sie nicht auffindbarer,
+					    sondern lässt offen, wo der Bereich eigentlich wohnt. */}
 				</ul>
 			</nav>
 		</WgContextProvider>

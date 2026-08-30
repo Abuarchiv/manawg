@@ -508,3 +508,18 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 	}
 	return synced;
 }
+
+/**
+ * How many of a `manawg:offline-synced` event's flushed actions belonged to
+ * this WG. Shared by every listener that needs to react per-WG (e.g. refresh
+ * this page's data, or show a per-WG toast) instead of on any sync anywhere.
+ */
+export function getSyncedCountForWg(event: Event, shareCode: string): number {
+	if (!(event instanceof CustomEvent)) return 0;
+	const syncedByShareCode = event.detail?.syncedByShareCode;
+	if (syncedByShareCode && typeof syncedByShareCode === 'object') {
+		const scoped = syncedByShareCode[shareCode];
+		return typeof scoped === 'number' ? scoped : 0;
+	}
+	return typeof event.detail?.synced === 'number' ? event.detail.synced : 0;
+}

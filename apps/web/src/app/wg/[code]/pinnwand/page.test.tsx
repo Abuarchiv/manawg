@@ -84,17 +84,15 @@ describe('PinnwandPage', () => {
 				{ memberId: 'member-1' },
 			),
 		);
-		expect(screen.getByRole('link', { name: 'Verlauf' })).toHaveAttribute(
+		fireEvent.click(await screen.findByRole('button', { name: 'Beitragsaktionen: Milch kaufen' }));
+		expect(screen.getByRole('menuitem', { name: 'Quelle öffnen: Milch kaufen' })).toHaveAttribute(
 			'href',
-			'/wg/WG%2F123%3Fx%3D1/aktivitaet',
+			'/wg/WG%2F123%3Fx%3D1/einkauf?highlight=shopping-1',
 		);
-		expect(screen.getByRole('link', { name: 'WG-Einstellungen öffnen' })).toHaveAttribute(
+		expect(screen.getByRole('link', { name: 'Kalender' })).toHaveAttribute(
 			'href',
-			'/wg/WG%2F123%3Fx%3D1/einstellungen',
+			'/wg/WG%2F123%3Fx%3D1/kalender',
 		);
-		expect(
-			await screen.findByRole('link', { name: 'Quelle öffnen: Milch kaufen' }),
-		).toHaveAttribute('href', '/wg/WG%2F123%3Fx%3D1/einkauf?highlight=shopping-1');
 	});
 
 	it('renders the load retry action as a touch-sized control', async () => {
@@ -122,8 +120,9 @@ describe('PinnwandPage', () => {
 			'h-11',
 		);
 		expect(screen.getByRole('button', { name: 'Fixiert' })).toHaveClass('h-11');
-		expect(screen.getByRole('button', { name: 'Kompakte Ansicht' })).toHaveClass('h-11', 'w-11');
-		expect(screen.getByRole('button', { name: 'Pinnwand aktualisieren' })).toHaveClass('h-11');
+		// Den "Kompakte Ansicht"-Umschalter gibt es nicht mehr: die kompakte
+		// Darstellung ist der einzige Modus.
+		expect(screen.queryByRole('button', { name: 'Kompakte Ansicht' })).toBeNull();
 	});
 
 	it('renders empty pinnwand quick-start actions as touch-sized controls', async () => {
@@ -223,27 +222,32 @@ describe('PinnwandPage', () => {
 	it('renders announcement footer actions as touch-sized controls', async () => {
 		render(<PinnwandPage />);
 
-		expect(await screen.findByRole('link', { name: 'Quelle öffnen: Milch kaufen' })).toHaveClass(
-			'h-11',
-		);
+		// Sichtbar in der Fußzeile: nur die zur Beitragsart passende Reaktion
+		// (bei kind "request" ist das "Übernehme ich") und Antworten.
 		expect(
-			screen.getByRole('link', { name: 'Als Einkaufsartikel übernehmen: Milch kaufen' }),
-		).toHaveClass('h-11');
-		expect(
-			screen.getByRole('link', { name: 'Als Putzaufgabe übernehmen: Milch kaufen' }),
-		).toHaveClass('h-11');
-		expect(screen.getByRole('link', { name: 'Als Ausgabe übernehmen: Milch kaufen' })).toHaveClass(
-			'h-11',
-		);
-		expect(
-			screen.getByRole('button', { name: 'Gesehen-Reaktion setzen: Milch kaufen' }),
-		).toHaveClass('h-11');
-		expect(
-			screen.getByRole('button', { name: 'Übernehme ich-Reaktion setzen: Milch kaufen' }),
+			await screen.findByRole('button', { name: 'Übernehme ich-Reaktion setzen: Milch kaufen' }),
 		).toHaveClass('h-11');
 		expect(screen.getByRole('button', { name: 'Antworten anzeigen: Milch kaufen' })).toHaveClass(
 			'h-11',
 		);
+		expect(
+			screen.queryByRole('link', { name: 'Als Einkaufsartikel übernehmen: Milch kaufen' }),
+		).toBeNull();
+
+		// Der Rest steckt im Aktionsmenü.
+		fireEvent.click(screen.getByRole('button', { name: 'Beitragsaktionen: Milch kaufen' }));
+		expect(screen.getByRole('menuitem', { name: 'Quelle öffnen: Milch kaufen' })).toHaveClass(
+			'h-11',
+		);
+		expect(
+			screen.getByRole('menuitem', { name: 'Gesehen-Reaktion setzen: Milch kaufen' }),
+		).toHaveClass('h-11');
+		// Dieser Beitrag stammt aus dem Einkauf (source "shopping") und lässt sich
+		// nicht in einen Einkaufsartikel zurückverwandeln — die Übernehmen-Wege
+		// gibt es nur bei selbst geschriebenen Beiträgen.
+		expect(
+			screen.queryByRole('menuitem', { name: 'Als Einkauf übernehmen: Milch kaufen' }),
+		).toBeNull();
 	});
 
 	it('renders editable comment actions as touch-sized controls', async () => {

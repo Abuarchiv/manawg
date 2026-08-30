@@ -1,6 +1,5 @@
 'use client';
-
-import { ICON_BUTTON_BORDERED } from '@/components/ui/styles';
+import { BackLink } from '@/components/wg/BackLink';
 import { DebtRow } from '@/components/wg/DebtRow';
 import { RemindButton } from '@/components/wg/RemindButton';
 import { ReminderHistory, type ReminderHistoryItem } from '@/components/wg/ReminderHistory';
@@ -8,15 +7,14 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatRelativeTime } from '@/core/utils/time';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import {
 	type DebtExpenseInput,
 	computeBalances,
 	computeOldestDebtAges,
 } from '@/features/expenses/debts';
 import { REMINDER_COOLDOWN_HOURS, canSendReminder } from '@/features/expenses/reminders';
-import { haptic } from '@/shared/lib/haptics';
 import { AlertCircle, Loader2, RotateCw } from 'lucide-react';
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface ExpenseSplitDto {
@@ -81,6 +79,8 @@ export default function MahnungenPage() {
 	useEffect(() => {
 		void load(true);
 	}, [load]);
+	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
+	useVisibilityPausedInterval(() => void load(false), 30_000);
 
 	const memberName = useCallback(
 		(id: string) => members.find((m) => m.id === id)?.name ?? '?',
@@ -128,37 +128,15 @@ export default function MahnungenPage() {
 
 	return (
 		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-			<header className="flex items-center justify-between gap-3">
-				<div className="min-w-0">
+			<header className="flex items-center gap-3">
+				<BackLink href={`${wgBaseHref}/ausgaben`} label="Ausgaben" />
+				<div className="min-w-0 flex-1">
 					<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">
 						Mahnungen
 					</h1>
-					<p className="mt-0.5 truncate text-[13px] text-[var(--text-3)]">
-						Cooldown: {REMINDER_COOLDOWN_HOURS} h pro Paar
+					<p className="mt-0.5 text-[13px] text-[var(--text-3)]">
+						Max. alle {REMINDER_COOLDOWN_HOURS} Stunden pro Person
 					</p>
-				</div>
-				<div className="flex shrink-0 items-center gap-1.5">
-					<button
-						type="button"
-						onClick={() => {
-							haptic('selection');
-							void load(false);
-						}}
-						disabled={loading || refreshing}
-						aria-label="Mahnungen aktualisieren"
-						className={ICON_BUTTON_BORDERED}
-					>
-						<RotateCw
-							className={`h-4 w-4 ${loading || refreshing ? 'animate-spin' : ''}`}
-							aria-hidden
-						/>
-					</button>
-					<Link
-						href={`${wgBaseHref}/ausgaben`}
-						className="hidden sm:inline-flex h-11 items-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12.5px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-					>
-						Ausgaben
-					</Link>
 				</div>
 			</header>
 

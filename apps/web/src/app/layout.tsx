@@ -118,9 +118,11 @@ export const viewport: Viewport = {
 	width: 'device-width',
 	initialScale: 1,
 	viewportFit: 'cover',
+	// Muss zum einzigen App-Accent passen (--accent in globals.css, Vercel-Blau
+	// #0072F5, in beiden Themes identisch) — vorher hartkodiertes Alt-Grün.
 	themeColor: [
-		{ media: '(prefers-color-scheme: light)', color: '#2f5d4a' },
-		{ media: '(prefers-color-scheme: dark)', color: '#2f5d4a' },
+		{ media: '(prefers-color-scheme: light)', color: '#0072f5' },
+		{ media: '(prefers-color-scheme: dark)', color: '#0072f5' },
 	],
 };
 
@@ -152,7 +154,7 @@ export default function RootLayout({
             Safe: no dynamic data interpolated, only reads from localStorage.
             Pattern used by next-themes and every major theme library. */}
 				<Script id="manawg-theme-bootstrap" strategy="beforeInteractive">
-					{`(function(){try{var t=localStorage.getItem('manawg-theme');var s=t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(t==='dark'||s){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`}
+					{`(function(){try{var t=localStorage.getItem('manawg-theme');var s=t!=='light'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(t==='dark'||s){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`}
 				</Script>
 				{/* Organization + SoftwareApplication JSON-LD for rich results. Content is static JSON.stringify of trusted constants — no XSS surface. */}
 				<Script
@@ -171,9 +173,19 @@ export default function RootLayout({
 					Zum Hauptinhalt springen
 				</a>
 				<ThemeProvider>
-					{children}
-					<PwaRegister />
-					<InstallPrompt />
+					{/* App-shell frame (Priority-1 follow-up, 2026-08-30): caps the whole
+					    app to a phone-like column, centered, on wide desktop browser tabs —
+					    same pattern as WhatsApp Web/Telegram Web. Plain max-width + mx-auto,
+					    no breakpoint: a no-op below --app-frame-width (every real mobile
+					    device), so there is only ever the one mobile layout. Fixed-position
+					    chrome that spans edge-to-edge (WgShell's bottom nav, its "Mehr"
+					    sheet) caps itself to the same width separately, since `fixed`
+					    positions against the real viewport, not this wrapper. */}
+					<div className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] bg-[var(--bg-base)]">
+						{children}
+						<PwaRegister />
+						<InstallPrompt />
+					</div>
 				</ThemeProvider>
 				<Analytics />
 				<SpeedInsights />

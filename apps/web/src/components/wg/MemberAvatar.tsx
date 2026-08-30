@@ -7,7 +7,11 @@ interface MemberAvatarProps {
 
 const DEFAULT_SIZE = 28;
 const HIDE_INITIALS_BELOW = 18;
-const PALETTE = ['#5a6660', '#6b8e5d', '#4a5d6b', '#7d8a76', '#345c47', '#7d8a4d'];
+// Zwei Ausreißer korrigiert (#5a6660, #7d8a76 hatten nur ~6-8% Sättigung statt
+// der ~18-28% der übrigen vier Töne und wirkten dadurch fast grau statt
+// erdig-grün/-blau wie der Rest der Palette). Farbton je Slot unverändert,
+// nur Sättigung an die anderen Werte angeglichen.
+const PALETTE = ['#4b7560', '#6b8e5d', '#4a5d6b', '#789c64', '#345c47', '#7d8a4d'];
 
 function hashCode(s: string): number {
 	let h = 0;
@@ -39,7 +43,7 @@ export function MemberAvatar({
 	className = '',
 }: MemberAvatarProps) {
 	const safeColor = color && color.length > 0 ? color : null;
-	const resolved = safeColor ?? PALETTE[hashCode(name) % PALETTE.length] ?? '#5a6660';
+	const resolved = safeColor ?? PALETTE[hashCode(name) % PALETTE.length] ?? '#4b7560';
 	const showInitials = size >= HIDE_INITIALS_BELOW;
 	const fontSize = Math.round(size * 0.42);
 

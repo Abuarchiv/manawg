@@ -1,12 +1,21 @@
 'use client';
 
-import { DeleteConfirmButton } from '@/components/ui/DeleteConfirmButton';
+import { ICON_BUTTON } from '@/components/ui/styles';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
+import { useDismissableMenu } from '@/core/hooks/useDismissableMenu';
 import { formatRelativeTime } from '@/core/utils/time';
 import { getChoreRepairHint, getChoreStatus } from '@/features/chores/chore-status';
 import type { Chore, MemberInfo, RecurrenceType } from '@/features/chores/components/chore-types';
-import { AlertTriangle, Check, History, Loader2, MessageSquareMore } from 'lucide-react';
-import { type ReactElement, memo } from 'react';
+import {
+	Check,
+	Hand,
+	History,
+	Loader2,
+	MessageSquareMore,
+	MoreHorizontal,
+	Trash2,
+} from 'lucide-react';
+import { type ReactElement, memo, useRef, useState } from 'react';
 
 interface ChoreRowProps {
 	chore: Chore;
@@ -20,6 +29,9 @@ interface ChoreRowProps {
 	onRemove: (id: string) => void;
 	highlighted: boolean;
 }
+
+const MENU_ITEM =
+	'flex h-11 w-full items-center gap-2 px-3 text-left text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)] disabled:opacity-50';
 
 function formatChoreCadence(interval: number, type: RecurrenceType): string {
 	if (interval <= 0) return 'einmalig';
@@ -48,9 +60,20 @@ export const ChoreRow = memo(function ChoreRow({
 	onRemove,
 	highlighted,
 }: ChoreRowProps): ReactElement {
+	const [menuOpen, setMenuOpen] = useState(false);
+	const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
+	const menuRef = useRef<HTMLDivElement | null>(null);
+	useDismissableMenu({
+		open: menuOpen,
+		onClose: () => setMenuOpen(false),
+		triggerRef: menuTriggerRef,
+		menuRef,
+	});
+
 	const status = getChoreStatus(chore.nextDueAt);
-	const repairHint = getChoreRepairHint(chore);
-	const hasAssigneeGaps = chore.openGapCountForAssignee > 0;
+	// getChoreRepairHint liefert nur noch das Ob, nicht mehr den Text: seine
+	// Formulierung war die fünfte Wiederholung desselben Status in einer Karte.
+	const needsTakeOver = getChoreRepairHint(chore) !== null;
 
 	return (
 		<li
@@ -62,15 +85,7 @@ export const ChoreRow = memo(function ChoreRow({
 			}`}
 		>
 			<div className="min-w-0 flex-1 space-y-1">
-				<div className="flex min-w-0 items-center gap-2">
-					<div className="truncate text-[15px] font-medium text-[var(--text-1)]">{chore.title}</div>
-					{status.escalationLabel && (
-						<span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--danger)]/10 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.02em] text-[var(--danger)]">
-							<AlertTriangle className="h-3 w-3" aria-hidden />
-							{status.escalationLabel}
-						</span>
-					)}
-				</div>
+				<div className="truncate text-[15px] font-medium text-[var(--text-1)]">{chore.title}</div>
 				<div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12.5px] text-[var(--text-3)]">
 					<MemberAvatar name={assignee.name} color={assignee.color} size={20} />
 					<span className="truncate">{assignee.name}</span>
@@ -88,32 +103,17 @@ export const ChoreRow = memo(function ChoreRow({
 					</span>
 					<span aria-hidden>·</span>
 					<span>{formatChoreCadence(chore.intervalDays, chore.recurrenceType)}</span>
-					{hasAssigneeGaps && (
-						<>
-							<span aria-hidden>·</span>
-							<span>
-								{chore.openGapCountForAssignee} offene Lücke
-								{chore.openGapCountForAssignee === 1 ? '' : 'n'}
-							</span>
-						</>
-					)}
 				</div>
-				{status.state === 'overdue' && (
-					<p className="text-[12.5px] font-medium text-[var(--danger)]">{status.detail}</p>
-				)}
-				{repairHint && (
-					<div className="flex flex-wrap items-center gap-2 rounded-md border border-[var(--danger)]/20 bg-[var(--danger)]/5 px-2 py-1.5 text-[12.5px]">
-						<span className="font-medium text-[var(--danger)]">{repairHint.title}</span>
-						<button
-							type="button"
-							onClick={() => onTakeOver(chore)}
-							disabled={isPending}
-							aria-label={`Aufgabe übernehmen: ${chore.title}`}
-							className="rounded-sm font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
-						>
-							Ich übernehme
-						</button>
-					</div>
+				{needsTakeOver && (
+					<button
+						type="button"
+						onClick={() => onTakeOver(chore)}
+						disabled={isPending}
+						aria-label={`Aufgabe übernehmen: ${chore.title}`}
+						className="inline-flex min-h-11 items-center text-[12.5px] font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
+					>
+						Ich übernehme
+					</button>
 				)}
 				<div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-[var(--text-3)]">
 					<History className="h-3.5 w-3.5" aria-hidden />
@@ -127,28 +127,11 @@ export const ChoreRow = memo(function ChoreRow({
 				</div>
 			</div>
 
-			<div
-				className={`flex shrink-0 items-center gap-1.5 ${
-					status.state === 'overdue' ? 'flex-col sm:flex-row' : ''
-				}`}
-			>
-				{status.state === 'overdue' && (
-					<button
-						type="button"
-						onClick={() => onSwapRequest(chore)}
-						disabled={isPending || isSwapPending}
-						aria-label={`Tausch anfragen: ${chore.title}`}
-						className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-2)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 hover:bg-[var(--surface)] hover:text-[var(--text-1)] disabled:opacity-50"
-					>
-						{isSwapPending ? (
-							<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-						) : (
-							<MessageSquareMore className="h-4 w-4" aria-hidden />
-						)}
-					</button>
-				)}
-
-				{/* Complete button — armed on first tap, commits on second */}
+			<div className="flex shrink-0 items-center gap-1.5">
+				{/* Nur der Haken bleibt sichtbar — das ist die Aktion, die man an einer
+				    Putzaufgabe fast immer will. Tausch anfragen und Entfernen standen
+				    vorher gleichrangig daneben, Löschen einen Fingerbreit neben
+				    Erledigen. */}
 				{isCompleteArmed ? (
 					<button
 						type="button"
@@ -186,13 +169,75 @@ export const ChoreRow = memo(function ChoreRow({
 					</button>
 				)}
 
-				<DeleteConfirmButton
-					id={chore.id}
-					onConfirm={() => onRemove(chore.id)}
-					pending={isPending}
-					ariaLabel={`Aufgabe entfernen: ${chore.title}`}
-					ariaLabelConfirm={`Aufgabe entfernen bestätigen: ${chore.title}`}
-				/>
+				<div className="relative shrink-0">
+					<button
+						ref={menuTriggerRef}
+						type="button"
+						onClick={() => setMenuOpen((value) => !value)}
+						aria-expanded={menuOpen}
+						aria-haspopup="menu"
+						aria-label={`Aufgabenaktionen: ${chore.title}`}
+						className={ICON_BUTTON}
+					>
+						<MoreHorizontal className="h-4 w-4" aria-hidden />
+					</button>
+					{menuOpen && (
+						<div
+							ref={menuRef}
+							role="menu"
+							aria-label={`Aufgabenaktionen: ${chore.title}`}
+							className="absolute right-0 top-11 z-10 min-w-44 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-base)] py-1 text-[13px] shadow-lg"
+						>
+							<button
+								role="menuitem"
+								type="button"
+								onClick={() => {
+									setMenuOpen(false);
+									onTakeOver(chore);
+								}}
+								disabled={isPending}
+								aria-label={`Aufgabe übernehmen: ${chore.title}`}
+								className={MENU_ITEM}
+							>
+								<Hand className="h-3.5 w-3.5" aria-hidden />
+								Ich übernehme
+							</button>
+							<button
+								role="menuitem"
+								type="button"
+								onClick={() => {
+									setMenuOpen(false);
+									onSwapRequest(chore);
+								}}
+								disabled={isPending || isSwapPending}
+								aria-label={`Tausch anfragen: ${chore.title}`}
+								className={MENU_ITEM}
+							>
+								{isSwapPending ? (
+									<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+								) : (
+									<MessageSquareMore className="h-3.5 w-3.5" aria-hidden />
+								)}
+								Tausch anfragen
+							</button>
+							<span aria-hidden className="my-1 block border-t border-[var(--border)]" />
+							<button
+								role="menuitem"
+								type="button"
+								onClick={() => {
+									setMenuOpen(false);
+									onRemove(chore.id);
+								}}
+								disabled={isPending}
+								aria-label={`Aufgabe entfernen: ${chore.title}`}
+								className={`${MENU_ITEM} text-[var(--danger)] hover:bg-[var(--danger)]/5`}
+							>
+								<Trash2 className="h-3.5 w-3.5" aria-hidden />
+								Entfernen
+							</button>
+						</div>
+					)}
+				</div>
 			</div>
 		</li>
 	);

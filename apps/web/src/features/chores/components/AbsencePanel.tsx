@@ -1,8 +1,9 @@
 'use client';
 import { type AbsenceInput, formatAbsenceRange } from '@/features/chores/absence';
 import type { ChoreMember } from '@/features/chores/components/chore-types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus, X } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
 
 interface AbsencePanelProps {
 	active: boolean;
@@ -49,6 +50,11 @@ export function AbsencePanel({
 	onRemove,
 	isPending,
 }: AbsencePanelProps) {
+	// Fünf Eingabefelder für etwas, das man ein paar Mal im Jahr braucht, standen
+	// dauerhaft offen mitten auf der Seite. Der Bestand bleibt sichtbar, das
+	// Formular kommt auf Anforderung — bzw. sofort, wenn der Deep-Link herführt.
+	const [formOpen, setFormOpen] = useState(active);
+
 	return (
 		<section
 			id="absences-panel"
@@ -67,69 +73,89 @@ export function AbsencePanel({
 							: 'Wer nicht da ist, wird bei der fairen Rotation übersprungen.'}
 					</p>
 				</div>
-				<span className="rounded-full border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-3)]">
-					{absentCount} aktiv
-				</span>
+				<div className="flex shrink-0 items-center gap-2">
+					<span className="rounded-full border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-3)]">
+						{absentCount} aktiv
+					</span>
+					<button
+						type="button"
+						onClick={() => setFormOpen((value) => !value)}
+						aria-expanded={formOpen}
+						aria-controls="absence-form"
+						aria-label={formOpen ? 'Abwesenheitsformular schließen' : 'Abwesenheit eintragen'}
+						className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+					>
+						{formOpen ? (
+							<X className="h-4 w-4" aria-hidden />
+						) : (
+							<Plus className="h-4 w-4" aria-hidden />
+						)}
+					</button>
+				</div>
 			</div>
-			<div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr]">
-				<select
-					value={memberId}
-					onChange={(e) => onMemberIdChange(e.target.value)}
-					disabled={pending}
-					className="h-11 appearance-none rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[13px] text-[var(--text-1)] transition-colors focus-visible:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-					aria-label="Abwesendes Mitglied"
-				>
-					{members.map((member) => (
-						<option key={member.id} value={member.id}>
-							{member.name}
-						</option>
-					))}
-				</select>
-				<input
-					type="date"
-					value={start}
-					onChange={(e) => onStartChange(e.target.value)}
-					disabled={pending}
-					className="h-11 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] transition-colors focus-visible:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-					aria-label="Abwesenheit von"
-				/>
-				<input
-					type="date"
-					value={end}
-					onChange={(e) => onEndChange(e.target.value)}
-					disabled={pending}
-					className="h-11 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] transition-colors focus-visible:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-					aria-label="Abwesenheit bis"
-				/>
-			</div>
-			<div className="mt-2 flex gap-2">
-				<input
-					type="text"
-					value={reason}
-					onChange={(e) => onReasonChange(e.target.value)}
-					maxLength={120}
-					placeholder="Grund optional"
-					aria-label="Abwesenheitsgrund"
-					disabled={pending}
-					className="h-11 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] transition-colors focus-visible:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-				/>
-				<button
-					type="button"
-					onClick={onAdd}
-					disabled={!start || !end || pending}
-					aria-label="Abwesenheit speichern"
-					className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--text-1)] px-3 text-[12.5px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
-				>
-					{pending ? (
-						<>
-							<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-							Speichert…
-						</>
-					) : (
-						'Speichern'
-					)}
-				</button>
-			</div>
+			{formOpen && (
+				<div id="absence-form">
+					<div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr]">
+						<select
+							value={memberId}
+							onChange={(e) => onMemberIdChange(e.target.value)}
+							disabled={pending}
+							className="h-11 appearance-none rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[13px] text-[var(--text-1)] transition-colors focus-visible:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+							aria-label="Abwesendes Mitglied"
+						>
+							{members.map((member) => (
+								<option key={member.id} value={member.id}>
+									{member.name}
+								</option>
+							))}
+						</select>
+						<input
+							type="date"
+							value={start}
+							onChange={(e) => onStartChange(e.target.value)}
+							disabled={pending}
+							className="h-11 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] transition-colors focus-visible:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+							aria-label="Abwesenheit von"
+						/>
+						<input
+							type="date"
+							value={end}
+							onChange={(e) => onEndChange(e.target.value)}
+							disabled={pending}
+							className="h-11 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] transition-colors focus-visible:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+							aria-label="Abwesenheit bis"
+						/>
+					</div>
+					<div className="mt-2 flex gap-2">
+						<input
+							type="text"
+							value={reason}
+							onChange={(e) => onReasonChange(e.target.value)}
+							maxLength={120}
+							placeholder="Grund optional"
+							aria-label="Abwesenheitsgrund"
+							disabled={pending}
+							className="h-11 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] transition-colors focus-visible:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+						/>
+						<button
+							type="button"
+							onClick={onAdd}
+							disabled={!start || !end || pending}
+							aria-label="Abwesenheit speichern"
+							className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--text-1)] px-3 text-[12.5px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
+						>
+							{pending ? (
+								<>
+									<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+									Speichert…
+								</>
+							) : (
+								'Speichern'
+							)}
+						</button>
+					</div>
+				</div>
+			)}
 			{hiddenCount > 0 && (
 				<Link
 					href={allAbsencesHref}

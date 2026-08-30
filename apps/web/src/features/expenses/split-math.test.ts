@@ -3,6 +3,7 @@ import {
 	buildEqualSplits,
 	distributeCentsEqually,
 	rotateDebtors,
+	settledAtForOwnShare,
 	validateSplits,
 } from './split-math';
 
@@ -181,5 +182,16 @@ describe('validateSplits', () => {
 			{ debtorMemberId: 'b', amountCents: 0 },
 		]);
 		expect(result.ok).toBe(true);
+	});
+});
+
+describe('settledAtForOwnShare', () => {
+	it('marks the payer own share as settled immediately — it is never a debt', () => {
+		const result = settledAtForOwnShare('anna', 'anna');
+		expect(result).toBeInstanceOf(Date);
+	});
+
+	it('leaves another debtor share unsettled', () => {
+		expect(settledAtForOwnShare('ben', 'anna')).toBeNull();
 	});
 });
