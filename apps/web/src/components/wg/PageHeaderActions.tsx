@@ -3,14 +3,7 @@
 import { CalendarDays, Plus, Settings, X } from 'lucide-react';
 import Link from 'next/link';
 
-/**
- * The two controls every list page's header ends with: the form toggle that
- * doubles as a mobile floating action button, and the settings link.
- *
- * Pinnwand, Putzen and Ausgaben each carried an identical copy, down to the
- * safe-area inset and the responsive switch from a round FAB to an inline
- * button.
- */
+/** Shared actions for the responsive headers of the three list pages. */
 
 /**
  * Ausgaben had the focus ring on its settings link, Pinnwand and Putzen did
@@ -48,8 +41,7 @@ export function FormToggleButton({
 			aria-expanded={open}
 			{...(controls ? { 'aria-controls': controls } : {})}
 			aria-label={open ? closeLabel : openLabel}
-			style={{ bottom: 'calc(4.75rem + env(safe-area-inset-bottom, 0px))' }}
-			className="btn-app-primary fixed right-4 z-30 h-14 w-14 justify-center rounded-full p-0 shadow-lg shadow-black/15 sm:static sm:bottom-auto sm:h-11 sm:w-auto sm:justify-start sm:rounded-md sm:px-3 sm:shadow-none"
+			className="btn-app-primary inline-flex h-11 w-11 shrink-0 justify-center rounded-md p-0 sm:w-auto sm:justify-start sm:px-3"
 		>
 			{open ? (
 				<>
@@ -84,8 +76,7 @@ export function CalendarLink({ wgBaseHref }: { wgBaseHref: string }) {
 			href={`${wgBaseHref}/kalender`}
 			aria-label="Kalender"
 			title="Kalender"
-			style={{ bottom: 'calc(4.75rem + env(safe-area-inset-bottom, 0px))' }}
-			className={`${ICON_BUTTON_BORDERED_LINK} fixed right-[5.5rem] z-30 sm:static sm:bottom-auto sm:right-auto`}
+			className={ICON_BUTTON_BORDERED_LINK}
 		>
 			<CalendarDays className="h-4 w-4" aria-hidden />
 		</Link>

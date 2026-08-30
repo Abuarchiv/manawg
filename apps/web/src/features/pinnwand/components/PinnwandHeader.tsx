@@ -19,8 +19,8 @@ export function PinnwandHeader({
 	onToggleComposer,
 }: PinnwandHeaderProps): React.ReactElement {
 	return (
-		<header className="flex items-center justify-between gap-3">
-			<div>
+		<header className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+			<div className="min-w-0">
 				<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">Pinnwand</h1>
 				<p className="mt-0.5 text-[13px] text-[var(--text-3)]">
 					{itemCount === 0
@@ -31,7 +31,7 @@ export function PinnwandHeader({
 					)}
 				</p>
 			</div>
-			<div className="flex shrink-0 items-center gap-1.5">
+			<div className="flex w-full items-center justify-end gap-1.5 sm:w-auto">
 				<CalendarLink wgBaseHref={wgBaseHref} />
 				<FormToggleButton
 					open={composerOpen}
