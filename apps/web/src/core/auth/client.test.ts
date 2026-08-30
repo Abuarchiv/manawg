@@ -65,5 +65,6 @@ describe('createSupabaseBrowserClient', () => {
 		await signOutSocialAccount();
 
 		expect(signOut).toHaveBeenCalledOnce();
+		expect(signOut).toHaveBeenCalledWith({ scope: 'local' });
 	});
 });

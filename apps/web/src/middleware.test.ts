@@ -7,6 +7,11 @@ const rateLimitMock = vi.hoisted(() => ({
 	wgShareCodeLookupLimiter: { name: 'share-code' },
 	wgWriteLimiter: { name: 'write' },
 }));
+const supabaseMock = vi.hoisted(() => ({ createServerClient: vi.fn() }));
+
+vi.mock('@supabase/ssr', () => ({
+	createServerClient: (...args: unknown[]) => supabaseMock.createServerClient(...args),
+}));
 
 vi.mock('@/core/rate-limit', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/core/rate-limit')>();
@@ -36,6 +41,10 @@ describe('middleware security controls', () => {
 		});
 	});
 
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
 	it('includes cron routes in the middleware matcher', async () => {
 		const { config } = await import('./middleware');
 
@@ -51,6 +60,57 @@ describe('middleware security controls', () => {
 		expect(csp).toContain("script-src 'self' 'unsafe-inline'");
 		expect(csp).toContain("style-src 'self' 'unsafe-inline'");
 		expect(rateLimitMock.checkRateLimit).not.toHaveBeenCalled();
+	});
+
+	it('forwards refreshed auth cookies and no-cache headers through the page override path', async () => {
+		vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://project.supabase.co');
+		vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_test');
+		let cookieOptions:
+			| {
+					cookies: {
+						setAll: (
+							cookies: Array<{ name: string; value: string; options: object }>,
+							headers: Record<string, string>,
+						) => void;
+					};
+			  }
+			| undefined;
+		const getUser = vi.fn(async () => {
+			cookieOptions?.cookies.setAll(
+				[{ name: 'sb-session', value: 'fresh', options: { httpOnly: true } }],
+				{
+					'Cache-Control': 'private, no-cache, no-store, must-revalidate, max-age=0',
+					Expires: '0',
+					Pragma: 'no-cache',
+				},
+			);
+			return { data: { user: { id: 'user-1' } }, error: null };
+		});
+		supabaseMock.createServerClient.mockImplementation((_url, _key, options) => {
+			cookieOptions = options;
+			return { auth: { getUser } };
+		});
+		const { middleware } = await import('./middleware');
+
+		const res = await middleware(
+			new NextRequest('https://mana.test/wg/MTE8PZAT', {
+				headers: { cookie: 'sb-session=stale; preference=keep' },
+			}),
+		);
+
+		expect(res.headers.get('x-middleware-request-cookie')).toContain('sb-session=fresh');
+		expect(res.headers.get('x-middleware-request-cookie')).not.toContain('sb-session=stale');
+		expect(res.headers.get('x-middleware-request-content-security-policy')).toBe(
+			res.headers.get('Content-Security-Policy'),
+		);
+		expect(res.headers.get('x-middleware-override-headers')?.split(',')).toEqual(
+			expect.arrayContaining(['content-security-policy', 'cookie']),
+		);
+		expect(res.headers.get('Cache-Control')).toBe(
+			'private, no-cache, no-store, must-revalidate, max-age=0',
+		);
+		expect(res.headers.get('Expires')).toBe('0');
+		expect(res.headers.get('Pragma')).toBe('no-cache');
 	});
 
 	it('allows the OCR import flow to load Tesseract assets from jsDelivr', async () => {
