@@ -65,6 +65,7 @@ import {
 	recurringTemplateSaveErrorMessage,
 	splitInputErrorMessage,
 } from '@/features/expenses/expense-errors';
+import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
 import {
 	type SplitInputResult,
 	buildSplitsFromForm,
@@ -98,6 +99,7 @@ export default function AusgabenPage() {
 	const recurringFilterActive = searchParams.get('filter') === 'recurring';
 
 	const [expenses, setExpenses] = useState<Expense[]>([]);
+	const [payments, setPayments] = useState<ExpensePaymentInput[]>([]);
 	const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
 	const [initialLoading, setInitialLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
@@ -222,9 +224,10 @@ export default function AusgabenPage() {
 			if (isInitial) setInitialLoading(true);
 			else setRefreshing(true);
 
-			const res = await apiFetch<{ expenses: Expense[] }>(`/api/wg/${encodedShareCode}/expenses`, {
-				memberId: identity.memberId,
-			});
+			const res = await apiFetch<{
+				expenses: Expense[];
+				payments?: ExpensePaymentInput[];
+			}>(`/api/wg/${encodedShareCode}/expenses`, { memberId: identity.memberId });
 			const recurringRes = await apiFetch<{ recurringExpenses: RecurringExpense[] }>(
 				`/api/wg/${encodedShareCode}/recurring-expenses`,
 				{ memberId: identity.memberId },
@@ -240,6 +243,7 @@ export default function AusgabenPage() {
 
 			if (res.ok) {
 				setExpenses(res.data.expenses);
+				setPayments(res.data.payments ?? []);
 				syncOfflineActions(wg.shareCode, { memberId: identity.memberId })
 					.then((synced) => {
 						if (!mountedRef.current) return;
@@ -339,6 +343,10 @@ export default function AusgabenPage() {
 
 	function memberColor(id: string): string | null {
 		return members.find((m) => m.id === id)?.color ?? null;
+	}
+
+	function memberPayPalMerchantId(id: string): string | null {
+		return members.find((m) => m.id === id)?.paypalMerchantId ?? null;
 	}
 
 	// A member who moved out ("Auszug") drops out of every picker, while the
@@ -818,8 +826,9 @@ export default function AusgabenPage() {
 					name: member.name,
 					color: member.color ?? null,
 				})),
+				payments,
 			),
-		[expenses, members],
+		[expenses, members, payments],
 	);
 	const memberBalances = useMemo(
 		() =>
@@ -830,8 +839,9 @@ export default function AusgabenPage() {
 					name: member.name,
 					color: member.color ?? null,
 				})),
+				payments,
 			).map(({ cents, ...member }) => ({ ...member, balanceCents: cents })),
-		[expenses, members],
+		[expenses, members, payments],
 	);
 	const settlementSummary = useMemo(
 		() =>
@@ -842,8 +852,9 @@ export default function AusgabenPage() {
 					name: member.name,
 					color: member.color ?? null,
 				})),
+				payments,
 			),
-		[expenses, members],
+		[expenses, members, payments],
 	);
 	const selectedRecurringExpense = useMemo(
 		() => recurringExpenses.find((item) => item.id === recurringId) ?? null,
@@ -1018,6 +1029,7 @@ export default function AusgabenPage() {
 					currentMemberId={identity.memberId}
 					memberToken={identity.memberToken}
 					memberColor={memberColor}
+					memberPayPalMerchantId={memberPayPalMerchantId}
 					onSettled={() => void load(false)}
 				/>
 			)}

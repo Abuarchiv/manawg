@@ -1,0 +1,162 @@
+'use client';
+
+import { apiFetch } from '@/core/infra/api-client';
+import { formatEuroCents } from '@/core/utils/money';
+import { useEffect, useRef, useState } from 'react';
+
+interface PayPalButtonsInstance {
+	render(container: HTMLElement): Promise<void>;
+	close?(): Promise<void>;
+}
+
+interface PayPalNamespace {
+	Buttons(options: {
+		createOrder: () => Promise<string>;
+		onApprove: (data: { orderID: string }) => Promise<void>;
+		onCancel?: () => void;
+		onError: (error: unknown) => void;
+	}): PayPalButtonsInstance;
+}
+
+declare global {
+	interface Window {
+		[key: string]: unknown;
+	}
+}
+
+const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+const PAYPAL_PARTNER_ATTRIBUTION_ID = process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID;
+const PAYPAL_ERROR = 'Fehler';
+const payPalSdkLoads = new Map<string, Promise<void>>();
+
+function sdkNamespace(merchantId: string): string {
+	return `p${merchantId}`;
+}
+
+function paypalFor(merchantId: string): PayPalNamespace | undefined {
+	return window[sdkNamespace(merchantId)] as PayPalNamespace | undefined;
+}
+
+function loadPayPalSdk(merchantId: string): Promise<void> {
+	if (paypalFor(merchantId)) return Promise.resolve();
+	const pending = payPalSdkLoads.get(merchantId);
+	if (pending) return pending;
+	const load = new Promise<void>((resolve, reject) => {
+		const script = document.createElement('script');
+		script.src = `https://www.paypal.com/sdk/js?${new URLSearchParams({
+			'client-id': PAYPAL_CLIENT_ID ?? '',
+			'merchant-id': merchantId,
+			currency: 'EUR',
+		})}`;
+		script.dataset.namespace = sdkNamespace(merchantId);
+		script.dataset.partnerAttributionId = PAYPAL_PARTNER_ATTRIBUTION_ID ?? '';
+		script.async = true;
+		script.onload = () => resolve();
+		script.onerror = () => {
+			payPalSdkLoads.delete(merchantId);
+			reject(new Error());
+		};
+		document.head.appendChild(script);
+	});
+	payPalSdkLoads.set(merchantId, load);
+	return load;
+}
+
+interface PayPalPaymentButtonProps {
+	shareCode: string;
+	currentMemberId: string;
+	memberToken?: string | undefined;
+	fromMemberId: string;
+	toMemberId: string;
+	payeeMerchantId: string;
+	amountCents: number;
+	onPaid: () => void;
+}
+
+export function PayPalPaymentButton({
+	shareCode,
+	currentMemberId,
+	memberToken,
+	fromMemberId,
+	toMemberId,
+	payeeMerchantId,
+	amountCents,
+	onPaid,
+}: PayPalPaymentButtonProps) {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const onPaidRef = useRef(onPaid);
+	const [error, setError] = useState<string | null>(null);
+	onPaidRef.current = onPaid;
+
+	useEffect(() => {
+		if (!PAYPAL_CLIENT_ID || !PAYPAL_PARTNER_ATTRIBUTION_ID || !containerRef.current) return;
+		let cancelled = false;
+		let buttons: PayPalButtonsInstance | undefined;
+
+		const createOrder = async (): Promise<string> => {
+			const result = await apiFetch<{ orderId: string }>(
+				`/api/wg/${encodeURIComponent(shareCode)}/paypal/order`,
+				{
+					method: 'POST',
+					memberId: currentMemberId,
+					memberToken,
+					body: JSON.stringify({ fromMemberId, toMemberId }),
+				},
+			);
+			if (!result.ok) throw new Error(result.error);
+			return result.data.orderId;
+		};
+
+		const onApprove = async (data: { orderID: string }): Promise<void> => {
+			for (let attempt = 0; attempt < 2; attempt++) {
+				const result = await apiFetch<{ status: string }>(
+					`/api/wg/${encodeURIComponent(shareCode)}/paypal/capture`,
+					{
+						method: 'POST',
+						memberId: currentMemberId,
+						memberToken,
+						body: JSON.stringify({ orderId: data.orderID }),
+					},
+				);
+				if (result.ok && result.data.status === 'COMPLETED') {
+					onPaidRef.current();
+					return;
+				}
+				if (result.ok || (result.status > 0 && result.status < 500)) break;
+			}
+			throw new Error();
+		};
+
+		void loadPayPalSdk(payeeMerchantId)
+			.then(() => {
+				const paypal = paypalFor(payeeMerchantId);
+				if (cancelled || !containerRef.current || !paypal) return;
+				buttons = paypal.Buttons({
+					createOrder,
+					onApprove,
+					onError: () => setError(PAYPAL_ERROR),
+				});
+				return buttons.render(containerRef.current);
+			})
+			.catch(() => {
+				if (!cancelled) setError(PAYPAL_ERROR);
+			});
+
+		return () => {
+			cancelled = true;
+			void buttons?.close?.();
+		};
+	}, [currentMemberId, fromMemberId, memberToken, payeeMerchantId, shareCode, toMemberId]);
+
+	if (!PAYPAL_CLIENT_ID || !PAYPAL_PARTNER_ATTRIBUTION_ID) return null;
+	return (
+		<div className="mt-2">
+			<div ref={containerRef} aria-label={`PayPal ${formatEuroCents(amountCents)} zahlen`} />
+			{error && (
+				<p role="alert" className="mt-1 text-[12px] text-[var(--danger)]">
+					{error}
+				</p>
+			)}
+		</div>
+	);
+}

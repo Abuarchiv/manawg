@@ -45,6 +45,7 @@ export const GET = withWgRoute(
 				id: wgMembers.id,
 				name: wgMembers.name,
 				color: wgMembers.color,
+				paypalMerchantId: wgMembers.paypalMerchantId,
 				deactivatedAt: wgMembers.deactivatedAt,
 			})
 			.from(wgMembers)

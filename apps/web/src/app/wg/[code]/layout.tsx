@@ -82,6 +82,7 @@ export default async function WgLayout({ children, params }: Props) {
 			id: wgMembers.id,
 			name: wgMembers.name,
 			color: wgMembers.color,
+			paypalMerchantId: wgMembers.paypalMerchantId,
 			deactivatedAt: wgMembers.deactivatedAt,
 		})
 		.from(wgMembers)
@@ -112,7 +113,13 @@ function WgShell({
 		joiningEnabled: boolean;
 		shareCodeRotatedAt?: string | Date | null;
 	};
-	members: Array<{ id: string; name: string; color?: string | null; active: boolean }>;
+	members: Array<{
+		id: string;
+		name: string;
+		color?: string | null;
+		paypalMerchantId?: string | null;
+		active: boolean;
+	}>;
 	children: ReactNode;
 }) {
 	const wgBaseHref = `/wg/${encodeURIComponent(code)}`;

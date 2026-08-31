@@ -1,9 +1,20 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, wgs } from '@/core/db';
-import { badRequest, forbidden, notFound, requireVerifiedMember, tooMany } from '@/core/errors';
+import {
+	badRequest,
+	conflict,
+	forbidden,
+	notFound,
+	requireVerifiedMember,
+	tooMany,
+} from '@/core/errors';
 import { UUID_PATTERN, requireMember } from '@/core/guards/api-auth';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import {
+	hasActiveExpensePayment,
+	withExpensePaymentLock,
+} from '@/features/expenses/expense-payments';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
@@ -81,17 +92,23 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 		// overwrites the other's result. With the guard, a stale toggle (the
 		// state already changed since our read above) matches zero rows and
 		// becomes a no-op instead of clobbering the newer state.
-		const [updated] = await db
-			.update(expenseSplits)
-			.set({ settledAt: settled ? new Date() : null })
-			.where(
-				and(
-					eq(expenseSplits.id, splitId),
-					eq(expenseSplits.expenseId, id),
-					settled ? isNull(expenseSplits.settledAt) : isNotNull(expenseSplits.settledAt),
-				),
-			)
-			.returning();
+		const change = await withExpensePaymentLock(expense.wgId, async (tx) => {
+			if (await hasActiveExpensePayment(tx, expense.wgId)) return { blocked: true as const };
+			const [updated] = await tx
+				.update(expenseSplits)
+				.set({ settledAt: settled ? new Date() : null })
+				.where(
+					and(
+						eq(expenseSplits.id, splitId),
+						eq(expenseSplits.expenseId, id),
+						settled ? isNull(expenseSplits.settledAt) : isNotNull(expenseSplits.settledAt),
+					),
+				)
+				.returning();
+			return { blocked: false as const, updated };
+		});
+		if (change.blocked) return conflict('paypal_payment_pending');
+		const updated = change.updated;
 		if (!updated) return NextResponse.json({ split });
 		await recordAuditEvent({
 			wgId: expense.wgId,

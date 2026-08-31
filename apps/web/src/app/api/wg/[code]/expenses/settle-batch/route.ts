@@ -1,12 +1,17 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
-import { badRequest, forbidden, requireVerifiedMember, tooMany } from '@/core/errors';
+import { badRequest, conflict, forbidden, requireVerifiedMember, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { claimIdempotencySlot, readIdempotencyKey } from '@/core/idempotency';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { computeNetBalances, simplifyDebts } from '@/features/expenses/debt-reduction';
+import {
+	hasActiveExpensePayment,
+	loadCompletedExpensePayments,
+	withExpensePaymentLock,
+} from '@/features/expenses/expense-payments';
 import { groupSplitsByExpense } from '@/features/expenses/open-expenses';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -34,7 +39,7 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 	if (!auth.ok) return auth.response;
 	const wgRow = auth.wg;
 
-	const [members, expenseRows] = await Promise.all([
+	const [members, expenseRows, payments] = await Promise.all([
 		db
 			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
 			.from(wgMembers)
@@ -47,6 +52,7 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 			})
 			.from(expenses)
 			.where(eq(expenses.wgId, wgRow.id)),
+		loadCompletedExpensePayments(wgRow.id),
 	]);
 	const memberIds = new Set(members.map((member) => member.id));
 	if (!memberIds.has(fromMemberId) || !memberIds.has(toMemberId)) {
@@ -101,6 +107,7 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 				splits: splitsByExpense.get(expense.id) ?? [],
 			})),
 			members,
+			payments,
 		),
 	).find((debt) => debt.fromId === fromMemberId && debt.toId === toMemberId);
 
@@ -158,17 +165,23 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 	}
 
 	// Settle only direct splits that fit into the simplified net debt.
-	const settled = await db
-		.update(expenseSplits)
-		.set({ settledAt: new Date() })
-		.where(
-			and(
-				eq(expenseSplits.debtorMemberId, fromMemberId),
-				isNull(expenseSplits.settledAt),
-				inArray(expenseSplits.id, splitIdsToSettle),
-			),
-		)
-		.returning({ id: expenseSplits.id });
+	const settlement = await withExpensePaymentLock(wgRow.id, async (tx) => {
+		if (await hasActiveExpensePayment(tx, wgRow.id)) return { blocked: true as const, rows: [] };
+		const rows = await tx
+			.update(expenseSplits)
+			.set({ settledAt: new Date() })
+			.where(
+				and(
+					eq(expenseSplits.debtorMemberId, fromMemberId),
+					isNull(expenseSplits.settledAt),
+					inArray(expenseSplits.id, splitIdsToSettle),
+				),
+			)
+			.returning({ id: expenseSplits.id });
+		return { blocked: false as const, rows };
+	});
+	if (settlement.blocked) return conflict('paypal_payment_pending');
+	const settled = settlement.rows;
 	const expectedSettledIds = new Set(splitIdsToSettle);
 	const settledIds = settled.map((item) => item.id).filter((id) => expectedSettledIds.has(id));
 	const centsBySplitId = new Map(splitRows.map((split) => [split.id, split.amountCents]));

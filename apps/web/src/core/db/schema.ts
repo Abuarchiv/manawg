@@ -54,6 +54,7 @@ export const wgMembers = pgTable(
 			.references(() => wgs.id, { onDelete: 'cascade' }),
 		name: text('name').notNull(),
 		color: text('color'),
+		paypalMerchantId: text('paypal_merchant_id'),
 		pushOptIn: boolean('push_opt_in').notNull().default(false),
 		notifyAnnouncements: boolean('notify_announcements').notNull().default(true),
 		notifyChores: boolean('notify_chores').notNull().default(true),
@@ -193,6 +194,48 @@ export const expenseSplits = pgTable(
 		// NOT VALID — see the amount_cents_check comment on `expenses` above for
 		// why pre-existing rows aren't force-validated here.
 		amountCheck: check('expense_splits_amount_cents_check', sql`${t.amountCents} >= 0`),
+	}),
+);
+
+export const expensePayments = pgTable(
+	'expense_payments',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		wgId: uuid('wg_id')
+			.notNull()
+			.references(() => wgs.id, { onDelete: 'cascade' }),
+		fromMemberId: uuid('from_member_id')
+			.notNull()
+			.references(() => wgMembers.id, { onDelete: 'restrict' }),
+		toMemberId: uuid('to_member_id')
+			.notNull()
+			.references(() => wgMembers.id, { onDelete: 'restrict' }),
+		amountCents: integer('amount_cents').notNull(),
+		currency: text('currency').notNull().default('EUR'),
+		provider: text('provider').notNull().default('paypal'),
+		providerOrderId: text('provider_order_id').notNull(),
+		payeeMerchantId: text('payee_merchant_id').notNull(),
+		status: text('status').notNull().default('created'),
+		expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+		completedAt: timestamp('completed_at', { withTimezone: true }),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	},
+	(t) => ({
+		wgIdx: index('expense_payments_wg_idx').on(t.wgId, t.createdAt),
+		orderIdx: uniqueIndex('expense_payments_provider_order_idx').on(t.providerOrderId),
+		activePairIdx: uniqueIndex('expense_payments_active_pair_idx')
+			.on(t.wgId, t.fromMemberId, t.toMemberId)
+			.where(sql`${t.status} in ('created', 'capturing')`),
+		amountCheck: check('expense_payments_amount_cents_check', sql`${t.amountCents} > 0`),
+		membersCheck: check(
+			'expense_payments_members_check',
+			sql`${t.fromMemberId} <> ${t.toMemberId}`,
+		),
+		providerCheck: check('expense_payments_provider_check', sql`${t.provider} = 'paypal'`),
+		statusCheck: check(
+			'expense_payments_status_check',
+			sql`${t.status} in ('created', 'capturing', 'completed', 'failed')`,
+		),
 	}),
 );
 
@@ -675,6 +718,7 @@ export const wgChatMentions = pgTable(
 export const wgsRelations = relations(wgs, ({ many }) => ({
 	members: many(wgMembers),
 	expenses: many(expenses),
+	expensePayments: many(expensePayments),
 	shoppingItems: many(shoppingItems),
 	announcements: many(announcements),
 	chores: many(chores),
@@ -785,6 +829,8 @@ export const wgMembersRelations = relations(wgMembers, ({ one, many }) => ({
 	wg: one(wgs, { fields: [wgMembers.wgId], references: [wgs.id] }),
 	paidExpenses: many(expenses),
 	debts: many(expenseSplits),
+	expensePaymentsFrom: many(expensePayments, { relationName: 'paymentFrom' }),
+	expensePaymentsTo: many(expensePayments, { relationName: 'paymentTo' }),
 	pushSubscriptions: many(pushSubscriptions),
 	calendarSubscriptions: many(calendarSubscriptions),
 }));
@@ -829,6 +875,20 @@ export const expenseSplitsRelations = relations(expenseSplits, ({ one }) => ({
 	}),
 }));
 
+export const expensePaymentsRelations = relations(expensePayments, ({ one }) => ({
+	wg: one(wgs, { fields: [expensePayments.wgId], references: [wgs.id] }),
+	fromMember: one(wgMembers, {
+		fields: [expensePayments.fromMemberId],
+		references: [wgMembers.id],
+		relationName: 'paymentFrom',
+	}),
+	toMember: one(wgMembers, {
+		fields: [expensePayments.toMemberId],
+		references: [wgMembers.id],
+		relationName: 'paymentTo',
+	}),
+}));
+
 export type Wg = typeof wgs.$inferSelect;
 export type NewWg = typeof wgs.$inferInsert;
 export type WgMember = typeof wgMembers.$inferSelect;
@@ -838,6 +898,8 @@ export type Expense = typeof expenses.$inferSelect;
 export type NewExpense = typeof expenses.$inferInsert;
 export type ExpenseSplit = typeof expenseSplits.$inferSelect;
 export type NewExpenseSplit = typeof expenseSplits.$inferInsert;
+export type ExpensePayment = typeof expensePayments.$inferSelect;
+export type NewExpensePayment = typeof expensePayments.$inferInsert;
 export type ExpenseImport = typeof expenseImports.$inferSelect;
 export type NewExpenseImport = typeof expenseImports.$inferInsert;
 export type ShoppingItem = typeof shoppingItems.$inferSelect;

@@ -2,6 +2,7 @@ import { db, wgMembers } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { computeBalances, computeOldestDebtAges } from '@/features/expenses/debts';
+import { loadCompletedExpensePayments } from '@/features/expenses/expense-payments';
 import { loadOpenExpenses } from '@/features/expenses/open-expenses';
 import { inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -20,8 +21,11 @@ export const GET = withWgRoute(
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
 
-		const openExpenses = await loadOpenExpenses(wgId);
-		const allBalances = computeBalances(openExpenses);
+		const [openExpenses, payments] = await Promise.all([
+			loadOpenExpenses(wgId),
+			loadCompletedExpensePayments(wgId),
+		]);
+		const allBalances = computeBalances(openExpenses, payments);
 		const myCredits = allBalances.filter((p) => p.creditorId === auth.member.memberId);
 
 		if (myCredits.length === 0) return NextResponse.json({ balances: [] });

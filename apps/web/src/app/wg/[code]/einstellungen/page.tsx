@@ -176,7 +176,15 @@ export default function EinstellungenPage() {
 					tabIndex={0}
 					className="space-y-8 outline-none"
 				>
-					{activeTab === 'profile' && <ProfileTab memberName={identity.name} wgName={wg.name} />}
+					{activeTab === 'profile' && (
+						<ProfileTab
+							memberName={identity.name}
+							wgName={wg.name}
+							shareCode={wg.shareCode}
+							memberId={identity.memberId}
+							memberToken={identity.memberToken}
+						/>
+					)}
 
 					{activeTab === 'notifications' && (
 						<NotificationSection

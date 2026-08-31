@@ -13,6 +13,7 @@ import {
 	computeOldestDebtAgeDays,
 	findPairBalance,
 } from '@/features/expenses/debts';
+import { loadCompletedExpensePayments } from '@/features/expenses/expense-payments';
 import { loadOpenExpenses } from '@/features/expenses/open-expenses';
 import {
 	REMINDER_COOLDOWN_HOURS,
@@ -97,8 +98,11 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 	const rl = await checkRateLimit(reminderSendLimiter, `reminder:${auth.member.memberId}`);
 	if (!rl.success) return tooMany('reminder_rate_limited', 'reminder_rate_limited');
 
-	const openExpenses = await loadOpenExpenses(wg.id);
-	const balances = computeBalances(openExpenses);
+	const [openExpenses, payments] = await Promise.all([
+		loadOpenExpenses(wg.id),
+		loadCompletedExpensePayments(wg.id),
+	]);
+	const balances = computeBalances(openExpenses, payments);
 	const pair = findPairBalance(balances, debtorMemberId, creditorMemberId);
 	if (!pair || pair.amountCents <= 0) {
 		return apiError('no_open_debt', 409, 'no_open_debt');

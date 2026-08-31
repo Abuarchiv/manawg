@@ -1,6 +1,7 @@
 'use client';
 
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
+import { PayPalPaymentButton } from '@/components/wg/PayPalPaymentButton';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';
@@ -42,6 +43,8 @@ interface DebtRowProps {
 	currentMemberId: string;
 	memberToken?: string | undefined;
 	memberColor: (id: string) => string | null;
+	memberPayPalMerchantId: (id: string) => string | null;
+	payPalEligible: boolean;
 	onSettled: () => void;
 }
 
@@ -58,6 +61,8 @@ function DebtRow({
 	currentMemberId,
 	memberToken,
 	memberColor,
+	memberPayPalMerchantId,
+	payPalEligible,
 	onSettled,
 }: DebtRowProps) {
 	const [settling, setSettling] = useState(false);
@@ -66,6 +71,9 @@ function DebtRow({
 	const [error, setError] = useState<string | null>(null);
 	const settlingRef = useRef(false);
 	const canSettle = debt.fromId === currentMemberId || debt.toId === currentMemberId;
+	const payeeMerchantId = memberPayPalMerchantId(debt.toId);
+	const canPayWithPayPal =
+		debt.fromId === currentMemberId && payeeMerchantId !== null && payPalEligible;
 
 	async function settle(): Promise<void> {
 		if (settlingRef.current) return;
@@ -151,20 +159,34 @@ function DebtRow({
 					</span>
 				</div>
 				{canSettle && (
-					<button
-						type="button"
-						onClick={() => void settle()}
-						disabled={settling}
-						aria-label={`${debt.fromName} hat ${debt.toName} ${formatEuroCents(debt.cents)} bezahlt`}
-						className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-md border border-[var(--border)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50 sm:w-auto"
-					>
-						{settling ? (
-							<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-						) : (
-							<Check className="h-3.5 w-3.5" aria-hidden />
-						)}
-						Beglichen
-					</button>
+					<div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+						{canPayWithPayPal ? (
+							<PayPalPaymentButton
+								shareCode={shareCode}
+								currentMemberId={currentMemberId}
+								memberToken={memberToken}
+								fromMemberId={debt.fromId}
+								toMemberId={debt.toId}
+								payeeMerchantId={payeeMerchantId}
+								amountCents={debt.cents}
+								onPaid={onSettled}
+							/>
+						) : null}
+						<button
+							type="button"
+							onClick={() => void settle()}
+							disabled={settling}
+							aria-label={`${debt.fromName} hat ${debt.toName} ${formatEuroCents(debt.cents)} bezahlt`}
+							className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-md border border-[var(--border)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50 sm:w-auto"
+						>
+							{settling ? (
+								<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+							) : (
+								<Check className="h-3.5 w-3.5" aria-hidden />
+							)}
+							Beglichen
+						</button>
+					</div>
 				)}
 			</div>
 			{notice ? (
@@ -188,6 +210,7 @@ interface DebtSummaryProps {
 	currentMemberId: string;
 	memberToken?: string | undefined;
 	memberColor: (id: string) => string | null;
+	memberPayPalMerchantId: (id: string) => string | null;
 	onSettled: () => void;
 }
 
@@ -198,6 +221,7 @@ export function DebtSummary({
 	currentMemberId,
 	memberToken,
 	memberColor,
+	memberPayPalMerchantId,
 	onSettled,
 }: DebtSummaryProps) {
 	if (debts.length === 0) return null;
@@ -234,6 +258,14 @@ export function DebtSummary({
 						currentMemberId={currentMemberId}
 						memberToken={memberToken}
 						memberColor={memberColor}
+						memberPayPalMerchantId={memberPayPalMerchantId}
+						payPalEligible={
+							summary === undefined ||
+							debts.some(
+								(direct) =>
+									direct.fromId === d.fromId && direct.toId === d.toId && direct.cents >= d.cents,
+							)
+						}
 						onSettled={onSettled}
 					/>
 				))}

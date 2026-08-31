@@ -17,6 +17,7 @@ import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema } from '@/core/validators/image-url';
 import { AMOUNT_MAX_CENTS, AMOUNT_MIN_CENTS } from '@/features/expenses/expense-constants';
+import { loadCompletedExpensePayments } from '@/features/expenses/expense-payments';
 import {
 	checkPaidByGuard,
 	findExpenseMemberIds,
@@ -80,10 +81,10 @@ export const GET = withWgRoute(
 		if (rows.length === 0) return NextResponse.json({ expenses: [] });
 
 		const expenseIds = rows.map((r) => r.id);
-		const splits = await db
-			.select()
-			.from(expenseSplits)
-			.where(inArray(expenseSplits.expenseId, expenseIds));
+		const [splits, payments] = await Promise.all([
+			db.select().from(expenseSplits).where(inArray(expenseSplits.expenseId, expenseIds)),
+			loadCompletedExpensePayments(wgId),
+		]);
 
 		const splitsByExpense = new Map<string, typeof splits>();
 		for (const s of splits) {
@@ -97,6 +98,7 @@ export const GET = withWgRoute(
 				...e,
 				splits: splitsByExpense.get(e.id) ?? [],
 			})),
+			payments,
 		});
 	},
 	{

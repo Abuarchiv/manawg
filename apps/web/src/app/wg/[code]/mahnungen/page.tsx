@@ -13,6 +13,7 @@ import {
 	computeBalances,
 	computeOldestDebtAges,
 } from '@/features/expenses/debts';
+import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
 import { REMINDER_COOLDOWN_HOURS, canSendReminder } from '@/features/expenses/reminders';
 import { AlertCircle, Loader2, RotateCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -38,6 +39,7 @@ export default function MahnungenPage() {
 	const wgBaseHref = `/wg/${encodedShareCode}`;
 
 	const [expenses, setExpenses] = useState<ExpenseDto[]>([]);
+	const [payments, setPayments] = useState<ExpensePaymentInput[]>([]);
 	const [reminders, setReminders] = useState<ReminderHistoryItem[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
@@ -49,17 +51,22 @@ export default function MahnungenPage() {
 			else setRefreshing(true);
 
 			const [expensesRes, remindersRes] = await Promise.all([
-				apiFetch<{ expenses: ExpenseDto[] }>(`/api/wg/${encodedShareCode}/expenses`, {
-					memberId: identity.memberId,
-				}),
+				apiFetch<{ expenses: ExpenseDto[]; payments?: ExpensePaymentInput[] }>(
+					`/api/wg/${encodedShareCode}/expenses`,
+					{
+						memberId: identity.memberId,
+					},
+				),
 				apiFetch<{ reminders: ReminderHistoryItem[] }>(`/api/wg/${encodedShareCode}/reminders`, {
 					memberId: identity.memberId,
 				}),
 			]);
 
 			let nextError: string | null = null;
-			if (expensesRes.ok) setExpenses(expensesRes.data.expenses);
-			else
+			if (expensesRes.ok) {
+				setExpenses(expensesRes.data.expenses);
+				setPayments(expensesRes.data.payments ?? []);
+			} else
 				nextError = getWgLoadErrorMessage('Ausgaben', expensesRes.status, expensesRes.error, {
 					verb: 'konnten',
 				});
@@ -105,7 +112,7 @@ export default function MahnungenPage() {
 		[expenses],
 	);
 
-	const balances = useMemo(() => computeBalances(debtExpenses), [debtExpenses]);
+	const balances = useMemo(() => computeBalances(debtExpenses, payments), [debtExpenses, payments]);
 
 	const rows = useMemo(() => {
 		const oldestAges = computeOldestDebtAges(balances, debtExpenses);

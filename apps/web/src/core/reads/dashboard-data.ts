@@ -4,6 +4,7 @@ import {
 	auditEvents,
 	chores,
 	db,
+	expensePayments,
 	expenseSplits,
 	expenses,
 	memberAbsences,
@@ -150,6 +151,7 @@ export function computeMemberBalances(
 	members: Array<{ id: string; name: string; color: string | null }>,
 	expenses: Array<{ paidByMemberId: string; amountCents: number }>,
 	splits: Array<{ debtorMemberId: string; amountCents: number; settledAt: Date | null }>,
+	payments: Array<{ fromMemberId: string; toMemberId: string; amountCents: number }> = [],
 ): MemberBalance[] {
 	const balanceMap = new Map<string, MemberBalance>();
 	for (const m of members) {
@@ -173,6 +175,12 @@ export function computeMemberBalances(
 		if (s.settledAt) continue;
 		const b = balanceMap.get(s.debtorMemberId);
 		if (b) b.owedCents += s.amountCents;
+	}
+	for (const payment of payments) {
+		const payer = balanceMap.get(payment.fromMemberId);
+		const payee = balanceMap.get(payment.toMemberId);
+		if (payer) payer.paidCents += payment.amountCents;
+		if (payee) payee.owedCents += payment.amountCents;
 	}
 	for (const b of balanceMap.values()) {
 		b.balanceCents = b.paidCents - b.owedCents;
@@ -230,75 +238,90 @@ export async function loadDashboardData(
 	const weekStart = berlinDaysAgoStart(todayStart, 6);
 	const monthStart = berlinDaysAgoStart(todayStart, 29);
 
-	const [memberRows, expenseRows, splitRows, shoppingRows, choreRows, announcementRows] =
-		await Promise.all([
-			db
-				.select({
-					id: wgMembers.id,
-					name: wgMembers.name,
-					color: wgMembers.color,
-				})
-				.from(wgMembers)
-				.where(eq(wgMembers.wgId, wgId)),
-			db
-				.select({
-					id: expenses.id,
-					paidByMemberId: expenses.paidByMemberId,
-					amountCents: expenses.amountCents,
-					description: expenses.description,
-					occurredAt: expenses.occurredAt,
-				})
-				.from(expenses)
-				.where(eq(expenses.wgId, wgId))
-				.orderBy(desc(expenses.occurredAt)),
-			db
-				.select({
-					expenseId: expenseSplits.expenseId,
-					debtorMemberId: expenseSplits.debtorMemberId,
-					amountCents: expenseSplits.amountCents,
-					settledAt: expenseSplits.settledAt,
-				})
-				.from(expenseSplits)
-				.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
-				.where(eq(expenses.wgId, wgId)),
-			db
-				.select({
-					id: shoppingItems.id,
-					name: shoppingItems.name,
-					quantity: shoppingItems.quantity,
-					addedByMemberId: shoppingItems.addedByMemberId,
-					createdAt: shoppingItems.createdAt,
-					boughtAt: shoppingItems.boughtAt,
-				})
-				.from(shoppingItems)
-				.where(eq(shoppingItems.wgId, wgId))
-				.orderBy(desc(shoppingItems.createdAt)),
-			db
-				.select({
-					id: chores.id,
-					title: chores.title,
-					nextDueAt: chores.nextDueAt,
-					assignedMemberId: chores.assignedMemberId,
-				})
-				.from(chores)
-				.where(eq(chores.wgId, wgId)),
-			db
-				.select({
-					id: announcements.id,
-					content: announcements.content,
-					authorMemberId: announcements.authorMemberId,
-					source: announcements.source,
-					status: announcements.status,
-					createdAt: announcements.createdAt,
-				})
-				.from(announcements)
-				.where(eq(announcements.wgId, wgId))
-				.orderBy(desc(announcements.createdAt)),
-		]);
+	const [
+		memberRows,
+		expenseRows,
+		splitRows,
+		paymentRows,
+		shoppingRows,
+		choreRows,
+		announcementRows,
+	] = await Promise.all([
+		db
+			.select({
+				id: wgMembers.id,
+				name: wgMembers.name,
+				color: wgMembers.color,
+			})
+			.from(wgMembers)
+			.where(eq(wgMembers.wgId, wgId)),
+		db
+			.select({
+				id: expenses.id,
+				paidByMemberId: expenses.paidByMemberId,
+				amountCents: expenses.amountCents,
+				description: expenses.description,
+				occurredAt: expenses.occurredAt,
+			})
+			.from(expenses)
+			.where(eq(expenses.wgId, wgId))
+			.orderBy(desc(expenses.occurredAt)),
+		db
+			.select({
+				expenseId: expenseSplits.expenseId,
+				debtorMemberId: expenseSplits.debtorMemberId,
+				amountCents: expenseSplits.amountCents,
+				settledAt: expenseSplits.settledAt,
+			})
+			.from(expenseSplits)
+			.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
+			.where(eq(expenses.wgId, wgId)),
+		db
+			.select({
+				fromMemberId: expensePayments.fromMemberId,
+				toMemberId: expensePayments.toMemberId,
+				amountCents: expensePayments.amountCents,
+			})
+			.from(expensePayments)
+			.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed'))),
+		db
+			.select({
+				id: shoppingItems.id,
+				name: shoppingItems.name,
+				quantity: shoppingItems.quantity,
+				addedByMemberId: shoppingItems.addedByMemberId,
+				createdAt: shoppingItems.createdAt,
+				boughtAt: shoppingItems.boughtAt,
+			})
+			.from(shoppingItems)
+			.where(eq(shoppingItems.wgId, wgId))
+			.orderBy(desc(shoppingItems.createdAt)),
+		db
+			.select({
+				id: chores.id,
+				title: chores.title,
+				nextDueAt: chores.nextDueAt,
+				assignedMemberId: chores.assignedMemberId,
+			})
+			.from(chores)
+			.where(eq(chores.wgId, wgId)),
+		db
+			.select({
+				id: announcements.id,
+				content: announcements.content,
+				authorMemberId: announcements.authorMemberId,
+				source: announcements.source,
+				status: announcements.status,
+				createdAt: announcements.createdAt,
+			})
+			.from(announcements)
+			.where(eq(announcements.wgId, wgId))
+			.orderBy(desc(announcements.createdAt)),
+	]);
 
 	const memberById = new Map(memberRows.map((m) => [m.id, m]));
 
-	const balances = computeMemberBalances(memberRows, expenseRows, splitRows);
+	const balances = computeMemberBalances(memberRows, expenseRows, splitRows, paymentRows);
 
 	const spendBuckets = new Map<string, number>();
 	let bucketDay = sparklineStart;

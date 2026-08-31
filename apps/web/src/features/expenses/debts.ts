@@ -1,7 +1,9 @@
 import { MS_PER_DAY } from '@/core/utils/time';
+import type { ExpensePaymentInput } from './expense-payments';
 
 export interface DebtExpenseInput {
 	paidByMemberId: string;
+	currency?: string;
 	occurredAt: string;
 	splits: Array<{
 		debtorMemberId: string;
@@ -23,7 +25,10 @@ interface PairBalance {
  * paid Alice back, we return a single { debtor: Ben, creditor: Alice, 15€ } row.
  * Pairs with zero balance are omitted.
  */
-export function computeBalances(expenses: ReadonlyArray<DebtExpenseInput>): PairBalance[] {
+export function computeBalances(
+	expenses: ReadonlyArray<DebtExpenseInput>,
+	payments: ReadonlyArray<ExpensePaymentInput> = [],
+): PairBalance[] {
 	const totals = new Map<string, PairBalance>();
 
 	for (const expense of expenses) {
@@ -44,6 +49,20 @@ export function computeBalances(expenses: ReadonlyArray<DebtExpenseInput>): Pair
 					amountCents: split.amountCents,
 				});
 			}
+		}
+	}
+	for (const payment of payments) {
+		if (payment.amountCents <= 0 || payment.fromMemberId === payment.toMemberId) continue;
+		const key = `${payment.fromMemberId}:${payment.toMemberId}`;
+		const current = totals.get(key);
+		if (current) {
+			current.amountCents -= payment.amountCents;
+		} else {
+			totals.set(key, {
+				creditorId: payment.toMemberId,
+				debtorId: payment.fromMemberId,
+				amountCents: -payment.amountCents,
+			});
 		}
 	}
 

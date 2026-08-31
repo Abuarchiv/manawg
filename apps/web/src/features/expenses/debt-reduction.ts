@@ -1,3 +1,5 @@
+import type { ExpensePaymentInput } from './expense-payments';
+
 export interface SimplifiedDebt {
 	fromId: string;
 	fromName: string;
@@ -39,6 +41,7 @@ interface MemberInput {
 export function computeDirectDebts(
 	expenses: ExpenseInput[],
 	members: MemberInput[],
+	payments: readonly ExpensePaymentInput[] = [],
 ): SimplifiedDebt[] {
 	const memberNames = new Map(members.map((m) => [m.id, m.name]));
 	const totals = new Map<string, SimplifiedDebt>();
@@ -71,15 +74,35 @@ export function computeDirectDebts(
 			}
 		}
 	}
+	for (const payment of payments) {
+		if (payment.amountCents <= 0 || payment.fromMemberId === payment.toMemberId) continue;
+		const fromName = memberNames.get(payment.fromMemberId);
+		const toName = memberNames.get(payment.toMemberId);
+		if (!fromName || !toName) continue;
+		const key = `${payment.fromMemberId}:${payment.toMemberId}`;
+		const current = totals.get(key);
+		if (current) {
+			current.cents -= payment.amountCents;
+		} else {
+			totals.set(key, {
+				fromId: payment.fromMemberId,
+				fromName,
+				toId: payment.toMemberId,
+				toName,
+				cents: -payment.amountCents,
+			});
+		}
+	}
 
-	return Array.from(totals.values()).sort(
-		(a, b) => b.cents - a.cents || a.fromName.localeCompare(b.fromName),
-	);
+	return Array.from(totals.values())
+		.filter((debt) => debt.cents > 0)
+		.sort((a, b) => b.cents - a.cents || a.fromName.localeCompare(b.fromName));
 }
 
 export function computeNetBalances(
 	expenses: ExpenseInput[],
 	members: MemberInput[],
+	payments: readonly ExpensePaymentInput[] = [],
 ): BalanceEntry[] {
 	const known = new Set(members.map((m) => m.id));
 	const cents = new Map<string, number>(members.map((m) => [m.id, 0]));
@@ -98,6 +121,12 @@ export function computeNetBalances(
 			cents.set(e.paidByMemberId, (cents.get(e.paidByMemberId) ?? 0) + s.amountCents);
 			cents.set(s.debtorMemberId, (cents.get(s.debtorMemberId) ?? 0) - s.amountCents);
 		}
+	}
+	for (const payment of payments) {
+		if (payment.amountCents <= 0 || payment.fromMemberId === payment.toMemberId) continue;
+		if (!known.has(payment.fromMemberId) || !known.has(payment.toMemberId)) continue;
+		cents.set(payment.fromMemberId, (cents.get(payment.fromMemberId) ?? 0) + payment.amountCents);
+		cents.set(payment.toMemberId, (cents.get(payment.toMemberId) ?? 0) - payment.amountCents);
 	}
 
 	return members.map((m) => ({
@@ -146,9 +175,10 @@ export function simplifyDebts(balances: BalanceEntry[]): SimplifiedDebt[] {
 export function buildSettlementSummary(
 	expenses: ExpenseInput[],
 	members: MemberInput[],
+	payments: readonly ExpensePaymentInput[] = [],
 ): SettlementSummary {
-	const direct = computeDirectDebts(expenses, members);
-	const simplified = simplifyDebts(computeNetBalances(expenses, members));
+	const direct = computeDirectDebts(expenses, members, payments);
+	const simplified = simplifyDebts(computeNetBalances(expenses, members, payments));
 	return {
 		directCount: direct.length,
 		simplifiedCount: simplified.length,

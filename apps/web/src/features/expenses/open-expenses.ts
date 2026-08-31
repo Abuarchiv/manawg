@@ -14,6 +14,7 @@ export async function loadOpenExpenses(wgId: string): Promise<DebtExpenseInput[]
 		.select({
 			id: expenses.id,
 			paidByMemberId: expenses.paidByMemberId,
+			currency: expenses.currency,
 			occurredAt: expenses.occurredAt,
 		})
 		.from(expenses)
@@ -35,6 +36,7 @@ export async function loadOpenExpenses(wgId: string): Promise<DebtExpenseInput[]
 
 	return expenseRows.map((row) => ({
 		paidByMemberId: row.paidByMemberId,
+		...(row.currency ? { currency: row.currency } : {}),
 		occurredAt:
 			row.occurredAt instanceof Date ? row.occurredAt.toISOString() : String(row.occurredAt),
 		splits: splitsByExpense.get(row.id) ?? [],

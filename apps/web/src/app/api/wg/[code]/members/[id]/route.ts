@@ -1,16 +1,19 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgMembers } from '@/core/db';
-import { badRequest, notFound, tooMany } from '@/core/errors';
+import { badRequest, forbidden, notFound, requireVerifiedMember, tooMany } from '@/core/errors';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { computeBalances } from '@/features/expenses/debts';
+import { loadCompletedExpensePayments } from '@/features/expenses/expense-payments';
 import { loadOpenExpenses } from '@/features/expenses/open-expenses';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+
+const PAYPAL_MERCHANT_ID_PATTERN = /^[2-9A-HJ-NP-Z]{13}$/;
 
 /** One open debt of the member being viewed, from their own perspective. */
 interface OpenBalanceDto {
@@ -38,13 +41,18 @@ export const GET = withWgRoute<{ id: string }>('members/[id] GET', async (req, {
 			id: wgMembers.id,
 			name: wgMembers.name,
 			deactivatedAt: wgMembers.deactivatedAt,
+			paypalMerchantId: wgMembers.paypalMerchantId,
 		})
 		.from(wgMembers)
 		.where(and(eq(wgMembers.id, id), eq(wgMembers.wgId, wgId)))
 		.limit(1);
 	if (!target) return notFound('member_not_found');
 
-	const balances = computeBalances(await loadOpenExpenses(wgId));
+	const [openExpenses, payments] = await Promise.all([
+		loadOpenExpenses(wgId),
+		loadCompletedExpensePayments(wgId),
+	]);
+	const balances = computeBalances(openExpenses, payments);
 	const involved = balances.filter((b) => b.debtorId === id || b.creditorId === id);
 
 	let openBalances: OpenBalanceDto[] = [];
@@ -73,12 +81,30 @@ export const GET = withWgRoute<{ id: string }>('members/[id] GET', async (req, {
 	}
 
 	return NextResponse.json({
-		member: { id: target.id, name: target.name, active: target.deactivatedAt === null },
+		member: {
+			id: target.id,
+			name: target.name,
+			active: target.deactivatedAt === null,
+			...(auth.member.memberId === target.id && auth.member.verified
+				? { paypalMerchantId: target.paypalMerchantId }
+				: {}),
+		},
 		openBalances,
 	});
 });
 
-const patchSchema = z.object({ active: z.boolean() });
+const patchSchema = z
+	.object({
+		active: z.boolean().optional(),
+		paypalMerchantId: z
+			.string()
+			.trim()
+			.toUpperCase()
+			.regex(PAYPAL_MERCHANT_ID_PATTERN)
+			.nullable()
+			.optional(),
+	})
+	.refine((value) => value.active !== undefined || value.paypalMerchantId !== undefined);
 
 /**
  * PATCH toggles a member between active and deactivated ("Auszug"). Deactivation
@@ -98,15 +124,28 @@ export const PATCH = withWgRoute<{ id: string }>(
 			return badRequest('invalid_json');
 		}
 		const parsed = patchSchema.safeParse(raw);
-		if (!parsed.success) return badRequest('active_invalid');
-		const { active } = parsed.data;
+		if (!parsed.success) {
+			return badRequest(
+				parsed.error.issues.some((issue) => issue.path[0] === 'paypalMerchantId')
+					? 'paypal_merchant_id_invalid'
+					: 'active_invalid',
+			);
+		}
+		const { active, paypalMerchantId } = parsed.data;
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
+		if (paypalMerchantId !== undefined) {
+			const verified = requireVerifiedMember(auth.member);
+			if (verified) return verified;
+			if (auth.member.memberId !== id) {
+				return forbidden('paypal_merchant_id_owner_only', 'paypal_merchant_id_owner_only');
+			}
+		}
 
 		const limited = await checkRateLimit(
 			wgWriteLimiter,
-			`member-status:${wgId}:${auth.member.memberId}`,
+			`member-update:${wgId}:${auth.member.memberId}`,
 		);
 		if (!limited.success) return tooMany();
 
@@ -115,6 +154,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				id: wgMembers.id,
 				name: wgMembers.name,
 				deactivatedAt: wgMembers.deactivatedAt,
+				paypalMerchantId: wgMembers.paypalMerchantId,
 			})
 			.from(wgMembers)
 			.where(and(eq(wgMembers.id, id), eq(wgMembers.wgId, wgId)))
@@ -127,40 +167,68 @@ export const PATCH = withWgRoute<{ id: string }>(
 		// expenses, ...). A bare x-manawg-member-id is spoofable (any current
 		// member can read every id via GET /members), so without this a non-admin
 		// member could deactivate any flatmate, including the admin.
-		const denied = await requireOwnerOrAdmin(wgId, auth.member, id);
-		if (denied) return denied;
+		if (active !== undefined) {
+			const denied = await requireOwnerOrAdmin(wgId, auth.member, id);
+			if (denied) return denied;
+		}
 
 		// Idempotent: if already in the requested state, report success without a
 		// redundant write or audit entry.
-		if (active === (target.deactivatedAt === null)) {
-			return NextResponse.json({ member: { id: target.id, name: target.name, active } });
+		const activeUnchanged = active === undefined || active === (target.deactivatedAt === null);
+		const paypalUnchanged =
+			paypalMerchantId === undefined || paypalMerchantId === (target.paypalMerchantId ?? null);
+		if (activeUnchanged && paypalUnchanged) {
+			return NextResponse.json({
+				member: {
+					id: target.id,
+					name: target.name,
+					active: target.deactivatedAt === null,
+					...(auth.member.memberId === target.id && auth.member.verified
+						? { paypalMerchantId: target.paypalMerchantId }
+						: {}),
+				},
+			});
 		}
 
+		const updateValues = {
+			...(active !== undefined ? { deactivatedAt: active ? null : new Date() } : {}),
+			...(paypalMerchantId !== undefined ? { paypalMerchantId } : {}),
+		};
 		const [updated] = await db
 			.update(wgMembers)
-			.set({ deactivatedAt: active ? null : new Date() })
+			.set(updateValues)
 			.where(and(eq(wgMembers.id, id), eq(wgMembers.wgId, wgId)))
 			.returning({
 				id: wgMembers.id,
 				name: wgMembers.name,
 				deactivatedAt: wgMembers.deactivatedAt,
+				paypalMerchantId: wgMembers.paypalMerchantId,
 			});
 		if (!updated) return notFound('member_not_found');
 
-		await recordAuditEvent({
-			wgId,
-			memberId: auth.member.memberId,
-			eventType: active ? 'member.reactivated' : 'member.deactivated',
-			entityType: 'member',
-			entityId: updated.id,
-			summary: active
-				? `${auth.member.name} hat ${updated.name} wieder aktiviert.`
-				: `${auth.member.name} hat ${updated.name} als ausgezogen markiert.`,
-			metadata: { name: updated.name },
-		});
+		if (active !== undefined && active !== (target.deactivatedAt === null)) {
+			await recordAuditEvent({
+				wgId,
+				memberId: auth.member.memberId,
+				eventType: active ? 'member.reactivated' : 'member.deactivated',
+				entityType: 'member',
+				entityId: updated.id,
+				summary: active
+					? `${auth.member.name} hat ${updated.name} wieder aktiviert.`
+					: `${auth.member.name} hat ${updated.name} als ausgezogen markiert.`,
+				metadata: { name: updated.name },
+			});
+		}
 
 		return NextResponse.json({
-			member: { id: updated.id, name: updated.name, active: updated.deactivatedAt === null },
+			member: {
+				id: updated.id,
+				name: updated.name,
+				active: updated.deactivatedAt === null,
+				...(auth.member.memberId === updated.id && auth.member.verified
+					? { paypalMerchantId: updated.paypalMerchantId }
+					: {}),
+			},
 		});
 	},
 );
