@@ -121,9 +121,28 @@ describe('ImageUploader', () => {
 		expect(imageStoreMock.storePendingImage).toHaveBeenCalledWith({
 			file,
 			shareCode: 'MTE8PZAT',
+			memberId: 'member-1',
 			purpose: 'expense',
 		});
 		expect(onChange).toHaveBeenCalledWith('manawg-pending-image:receipt-1');
+	});
+
+	it('only reads a pending image for the active member', async () => {
+		render(
+			<ImageUploader
+				shareCode="MTE8PZAT"
+				purpose="expense"
+				value="manawg-pending-image:receipt-1"
+				onChange={() => undefined}
+			/>,
+		);
+
+		await waitFor(() =>
+			expect(imageStoreMock.readPendingImage).toHaveBeenCalledWith(
+				'manawg-pending-image:receipt-1',
+				'member-1',
+			),
+		);
 	});
 
 	it('explains stale membership when the upload signature is denied', async () => {
@@ -494,7 +513,6 @@ describe('ImageUploader', () => {
 		expect(imageStoreMock.uploadPendingImageToken).toHaveBeenCalledWith(
 			'manawg-pending-image:receipt-3',
 			'member-1',
-			'member-token-1',
 		);
 
 		window.dispatchEvent(new Event('online'));
@@ -503,7 +521,7 @@ describe('ImageUploader', () => {
 		expect(imageStoreMock.uploadPendingImageToken).toHaveBeenCalledTimes(1);
 	});
 
-	it('keeps uploads pending until a tokenless legacy identity reloads the WG', async () => {
+	it('uploads with the signed-in session when an old local token is absent', async () => {
 		wgContextMock.identity.memberToken = undefined;
 		imageStoreMock.storePendingImage.mockResolvedValue('manawg-pending-image:legacy');
 		const fetchMock = vi.fn();
@@ -523,9 +541,18 @@ describe('ImageUploader', () => {
 		});
 
 		expect(await screen.findByRole('status')).toHaveTextContent(
-			'Bild vorbereitet. Öffne die WG erneut, um den Upload fortzusetzen.',
+			'Bild vorbereitet. Der Upload startet automatisch, sobald das Netz wieder stabil ist.',
 		);
-		expect(fetchMock).not.toHaveBeenCalled();
+		expect(fetchMock).toHaveBeenCalledWith('/api/upload/sign', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				shareCode: 'MTE8PZAT',
+				purpose: 'expense',
+				mimeType: 'image/png',
+				fileSize: 5,
+			}),
+		});
 	});
 
 	it('keeps pending image removal disabled while the background upload is running', async () => {

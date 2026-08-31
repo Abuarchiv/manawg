@@ -1,6 +1,6 @@
 {
-  "id": "94f37bb2-f682-43ea-a7fe-9d8b0a9b0b97",
-  "prevId": "b2051ab2-b0f1-4d97-a021-8d1fa123cf0a",
+  "id": "d31f3cef-2513-4d03-9bfa-51e0c0014c3a",
+  "prevId": "5860779a-17e0-4c20-96d2-9baed74d2fe7",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1199,8 +1199,8 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
           "where": "\"expense_payments\".\"status\" in ('created', 'capturing')",
+          "concurrently": false,
           "method": "btree",
           "with": {}
         }
@@ -3423,6 +3423,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "auth_user_id": {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "name": {
           "name": "name",
           "type": "text",
@@ -3556,6 +3562,28 @@
             }
           ],
           "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "wg_members_wg_auth_user_unique_idx": {
+          "name": "wg_members_wg_auth_user_unique_idx",
+          "columns": [
+            {
+              "expression": "wg_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "auth_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"wg_members\".\"auth_user_id\" IS NOT NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}

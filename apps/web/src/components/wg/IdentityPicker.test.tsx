@@ -3,11 +3,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IdentityPicker } from './IdentityPicker';
 
 const identityMock = vi.hoisted(() => ({
+	clearIdentity: vi.fn(),
+	memberAuthHeader: vi.fn(
+		(_memberId: string, _memberToken?: string) =>
+			({ 'x-manawg-member-id': 'member-1', 'x-manawg-member-token': 'token' }) as Record<
+				string,
+				string
+			>,
+	),
 	setIdentity: vi.fn(),
 }));
 
 vi.mock('@/shared/lib/identity', () => ({
-	setIdentity: (...args: unknown[]) => identityMock.setIdentity(...args),
+	clearIdentity: (...args: unknown[]) => identityMock.clearIdentity(...args),
+	memberAuthHeader: (memberId: string, memberToken?: string) =>
+		identityMock.memberAuthHeader(memberId, memberToken),
 }));
 
 describe('IdentityPicker', () => {
@@ -110,14 +120,7 @@ describe('IdentityPicker', () => {
 		expect(screen.getByRole('button', { name: 'WG betreten' })).toHaveClass('h-11');
 	});
 
-	it('warns that picking an existing member is read-only before storing it, then stores it on confirm', () => {
-		// Picking an existing member never carries a session token (only
-		// `createNew`'s join response does) — every write from this profile
-		// will be rejected server-side until the person rejoins as themselves.
-		// This must be surfaced — and require acknowledgement — before the
-		// identity takes effect, not discovered later as an unexplained failed
-		// save (a message shown only up to the moment `onPicked` swaps this
-		// screen out for the WG content would never actually be seen).
+	it('refuses to claim an existing profile without the old device proof', () => {
 		const onPicked = vi.fn();
 		render(
 			<IdentityPicker
@@ -131,23 +134,16 @@ describe('IdentityPicker', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: /Ava/ }));
 
-		expect(identityMock.setIdentity).not.toHaveBeenCalled();
 		expect(onPicked).not.toHaveBeenCalled();
 		expect(fetch).not.toHaveBeenCalled();
-		const notice = screen.getByText(/nicht als/);
-		expect(notice).toHaveTextContent('Ava');
-
-		fireEvent.click(screen.getByRole('button', { name: 'Nur ansehen' }));
-
-		expect(identityMock.setIdentity).toHaveBeenCalledWith('wg-1', {
-			memberId: 'member-1',
-			name: 'Ava',
-		});
-		expect(onPicked).toHaveBeenCalledWith({ memberId: 'member-1', name: 'Ava' });
-		expect(fetch).not.toHaveBeenCalled();
+		expect(screen.getByRole('alert')).toHaveTextContent('auf dem alten Gerät');
 	});
 
-	it('lets the read-only warning be dismissed without picking the member', () => {
+	it('claims the matching legacy profile only after the server accepts its old token', async () => {
+		vi.mocked(fetch).mockResolvedValue({
+			ok: true,
+			json: async () => ({ member: { id: 'member-1', name: 'Ava' } }),
+		} as Response);
 		const onPicked = vi.fn();
 		render(
 			<IdentityPicker
@@ -155,48 +151,40 @@ describe('IdentityPicker', () => {
 				wgShareCode="MTE8PZAT"
 				wgName="Test WG"
 				members={[{ id: 'member-1', name: 'Ava', color: null }]}
+				legacyIdentity={{ memberId: 'member-1', name: 'Ava', memberToken: 'token' }}
 				onPicked={onPicked}
 			/>,
 		);
 
 		fireEvent.click(screen.getByRole('button', { name: /Ava/ }));
-		fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
 
-		expect(identityMock.setIdentity).not.toHaveBeenCalled();
-		expect(onPicked).not.toHaveBeenCalled();
-		expect(screen.queryByText(/nicht als/)).not.toBeInTheDocument();
+		await waitFor(() =>
+			expect(onPicked).toHaveBeenCalledWith({ memberId: 'member-1', name: 'Ava' }),
+		);
+		expect(identityMock.clearIdentity).toHaveBeenCalledWith('wg-1');
+		expect(fetch).toHaveBeenCalledWith('/api/wg/MTE8PZAT/members/member-1/claim', {
+			method: 'POST',
+			headers: { 'x-manawg-member-id': 'member-1', 'x-manawg-member-token': 'token' },
+		});
 	});
 
-	it('keeps existing-member picking retryable when browser storage is blocked', () => {
-		identityMock.setIdentity.mockImplementation(() => {
-			throw new Error('storage blocked');
-		});
-		const onPicked = vi.fn();
-
+	it('offers all three login providers before creating or claiming a profile', () => {
 		render(
 			<IdentityPicker
 				wgId="wg-1"
 				wgShareCode="MTE8PZAT"
 				wgName="Test WG"
 				members={[{ id: 'member-1', name: 'Ava', color: null }]}
-				onPicked={onPicked}
+				onPicked={() => undefined}
 			/>,
 		);
 
-		fireEvent.click(screen.getByRole('button', { name: /Ava/ }));
-		fireEvent.click(screen.getByRole('button', { name: 'Nur ansehen' }));
-
-		expect(onPicked).not.toHaveBeenCalled();
-		expect(screen.getByRole('alert')).toHaveTextContent(
-			'Profil konnte auf diesem Gerät nicht gespeichert werden.',
-		);
-		expect(fetch).not.toHaveBeenCalled();
+		expect(screen.getByRole('button', { name: 'Mit Google anmelden' })).toBeVisible();
+		expect(screen.getByRole('button', { name: 'Mit Apple anmelden' })).toBeVisible();
+		expect(screen.getByRole('button', { name: 'Mit Facebook anmelden' })).toBeVisible();
 	});
 
-	it('separates member creation success from local identity storage failure', async () => {
-		identityMock.setIdentity.mockImplementation(() => {
-			throw new Error('storage blocked');
-		});
+	it('uses the newly server-bound member without writing a local identity', async () => {
 		vi.mocked(fetch).mockResolvedValue({
 			ok: true,
 			status: 200,
@@ -220,11 +208,8 @@ describe('IdentityPicker', () => {
 		fireEvent.submit(form);
 
 		await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
-		expect(onPicked).not.toHaveBeenCalled();
-		expect(await screen.findByRole('alert')).toHaveTextContent(
-			'Profil konnte auf diesem Gerät nicht gespeichert werden.',
-		);
-		expect(screen.queryByText('Netzwerkfehler.')).not.toBeInTheDocument();
+		expect(onPicked).toHaveBeenCalledWith({ memberId: 'member-2', name: 'Noah' });
+		expect(identityMock.clearIdentity).not.toHaveBeenCalled();
 	});
 
 	it('explains when direct member creation is blocked because joining is disabled', async () => {

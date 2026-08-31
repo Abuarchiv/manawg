@@ -1,7 +1,8 @@
 'use client';
 
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
-import { type StoredIdentity, setIdentity } from '@/shared/lib/identity';
+import { type StoredIdentity, clearIdentity, memberAuthHeader } from '@/shared/lib/identity';
 import { ArrowLeft, Loader2, UserPlus } from 'lucide-react';
 import { useRef, useState } from 'react';
 
@@ -16,6 +17,7 @@ interface Props {
 	wgShareCode: string;
 	wgName: string;
 	members: Member[];
+	legacyIdentity?: StoredIdentity | null;
 	onPicked: (identity: StoredIdentity) => void;
 }
 
@@ -53,44 +55,60 @@ function createMemberErrorMessage(status: number, error: string): string {
 	return 'Konnte Mitglied nicht anlegen.';
 }
 
-export function IdentityPicker({ wgId, wgShareCode, wgName, members, onPicked }: Props) {
+export function IdentityPicker({
+	wgId,
+	wgShareCode,
+	wgName,
+	members,
+	legacyIdentity = null,
+	onPicked,
+}: Props) {
 	const [mode, setMode] = useState<'pick' | 'new'>(members.length > 0 ? 'pick' : 'new');
 	const [newName, setNewName] = useState('');
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [readOnlyConfirm, setReadOnlyConfirm] = useState<Member | null>(null);
 	const submittingRef = useRef(false);
+	const returnPath = `/wg/${encodeURIComponent(wgShareCode)}`;
 
-	function persistIdentity(identity: StoredIdentity): boolean {
+	async function selectExisting(member: Member): Promise<void> {
+		if (submittingRef.current) return;
+		if (legacyIdentity?.memberId !== member.id || !legacyIdentity.memberToken) {
+			setError(
+				'Um dieses bestehende Profil zu übernehmen, melde dich an und öffne ManaWG auf dem alten Gerät noch einmal.',
+			);
+			return;
+		}
+		submittingRef.current = true;
+		setSubmitting(true);
+		setError(null);
 		try {
-			setIdentity(wgId, identity);
-			return true;
+			const res = await fetch(
+				`/api/wg/${encodeURIComponent(wgShareCode)}/members/${encodeURIComponent(member.id)}/claim`,
+				{
+					method: 'POST',
+					headers: memberAuthHeader(legacyIdentity.memberId, legacyIdentity.memberToken),
+				},
+			);
+			if (!res.ok) {
+				const apiError = await readCreateMemberError(res);
+				setError(
+					apiError === 'auth_required'
+						? 'Melde dich zuerst mit Google, Apple oder Facebook an.'
+						: 'Dieses Profil konnte nicht übernommen werden. Prüfe, ob du auf dem alten Gerät angemeldet bist.',
+				);
+				return;
+			}
+			const data = (await res.json()) as { member: { id: string; name: string } };
+			clearIdentity(wgId);
+			onPicked({ memberId: data.member.id, name: data.member.name });
 		} catch {
 			setError(
-				'Profil konnte auf diesem Gerät nicht gespeichert werden. Prüfe den Browser-Speicher und versuche es erneut.',
+				'Profil konnte nicht übernommen werden. Prüfe deine Verbindung und versuche es erneut.',
 			);
-			return false;
+		} finally {
+			submittingRef.current = false;
+			setSubmitting(false);
 		}
-	}
-
-	// Picking an existing member never carries a session token — that's only
-	// issued at the moment someone joins (see `createNew` below and
-	// NeuClient.tsx), and `deriveMemberToken`'s secret never reaches the
-	// client, so there's no way to re-derive one here. Every write from this
-	// profile would be rejected server-side as `member_not_verified` until the
-	// person joins again as themselves. Ask for a confirmation first — a
-	// message shown only up to the moment `onPicked` swaps this screen out for
-	// the WG content would never actually be seen.
-	function selectExisting(member: Member): void {
-		setError(null);
-		setReadOnlyConfirm(member);
-	}
-
-	function confirmReadOnly(member: Member): void {
-		const identity: StoredIdentity = { memberId: member.id, name: member.name };
-		setReadOnlyConfirm(null);
-		if (!persistIdentity(identity)) return;
-		onPicked(identity);
 	}
 
 	async function createNew(): Promise<void> {
@@ -135,9 +153,7 @@ export function IdentityPicker({ wgId, wgShareCode, wgName, members, onPicked }:
 			const identity: StoredIdentity = {
 				memberId: data.member.id,
 				name: data.member.name,
-				...(data.member.token ? { memberToken: data.member.token } : {}),
 			};
-			if (!persistIdentity(identity)) return;
 			onPicked(identity);
 		} catch {
 			setError(
@@ -177,31 +193,18 @@ export function IdentityPicker({ wgId, wgShareCode, wgName, members, onPicked }:
 					</p>
 				)}
 
-				{readOnlyConfirm && (
-					<div className="mb-4 space-y-3 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-[13px] text-[var(--text-2)]">
-						<p>
-							Dieses Gerät wurde nicht als <strong>{readOnlyConfirm.name}</strong> bestätigt. Du
-							kannst {readOnlyConfirm.name}s Profil nur lesend ansehen — Ausgaben, Chat-Nachrichten
-							und Häkchen lassen sich damit nicht speichern.
-						</p>
-						<div className="flex items-center justify-end gap-2">
-							<button
-								type="button"
-								onClick={() => setReadOnlyConfirm(null)}
-								className="inline-flex h-11 items-center rounded-md px-3 text-[13px] text-[var(--text-2)] transition-colors hover:bg-[var(--bg-base)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-							>
-								Abbrechen
-							</button>
-							<button
-								type="button"
-								onClick={() => confirmReadOnly(readOnlyConfirm)}
-								className="inline-flex h-11 items-center rounded-md bg-[var(--text-1)] px-3 text-[13px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-							>
-								Nur ansehen
-							</button>
-						</div>
-					</div>
-				)}
+				<div className="mb-5 space-y-2">
+					<p className="text-center text-[13px] text-[var(--text-2)]">
+						Melde dich an, damit dieses Profil auf jedem Gerät verfügbar ist.
+					</p>
+					<SocialLoginButtons
+						next={returnPath}
+						onOAuthStart={async (provider, next) => {
+							const { startSocialLogin } = await import('@/core/auth/client');
+							await startSocialLogin(provider, next);
+						}}
+					/>
+				</div>
 
 				{mode === 'pick' && members.length > 0 && (
 					<div className="space-y-2">
@@ -210,7 +213,7 @@ export function IdentityPicker({ wgId, wgShareCode, wgName, members, onPicked }:
 								<li key={m.id} className={i > 0 ? 'border-t border-[var(--border)]' : ''}>
 									<button
 										type="button"
-										onClick={() => selectExisting(m)}
+										onClick={() => void selectExisting(m)}
 										className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
 									>
 										<MemberAvatar name={m.name} color={m.color ?? null} size={32} />
@@ -293,7 +296,7 @@ export function IdentityPicker({ wgId, wgShareCode, wgName, members, onPicked }:
 				)}
 
 				<p className="mt-8 text-center text-[12px] text-[var(--text-3)]">
-					Kein Login. Daten bleiben lokal an dieses Gerät gebunden.
+					Deine WG-Daten sind an dein Konto gebunden, nicht an dieses Gerät.
 				</p>
 			</div>
 		</main>

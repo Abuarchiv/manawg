@@ -1,7 +1,5 @@
 'use client';
 
-import { memberAuthHeader } from '@/shared/lib/identity';
-
 const DB_NAME = 'manawg-offline-images';
 const STORE_NAME = 'images';
 const DB_VERSION = 1;
@@ -14,6 +12,7 @@ interface PendingImageRecord {
 	type: string;
 	size: number;
 	shareCode: string;
+	memberId: string;
 	purpose: 'expense' | 'announcement';
 	createdAt: string;
 }
@@ -83,6 +82,7 @@ async function withStore<T>(
 export async function storePendingImage(input: {
 	file: File;
 	shareCode: string;
+	memberId: string;
 	purpose: 'expense' | 'announcement';
 }): Promise<string> {
 	const id = `${input.shareCode}:${input.purpose}:${Date.now()}:${crypto.randomUUID()}`;
@@ -93,6 +93,7 @@ export async function storePendingImage(input: {
 		type: input.file.type,
 		size: input.file.size,
 		shareCode: input.shareCode,
+		memberId: input.memberId,
 		purpose: input.purpose,
 		createdAt: new Date().toISOString(),
 	};
@@ -100,30 +101,28 @@ export async function storePendingImage(input: {
 	return createPendingImageToken(id);
 }
 
-export async function readPendingImage(token: string): Promise<PendingImageRecord | null> {
+export async function readPendingImage(
+	token: string,
+	memberId: string,
+): Promise<PendingImageRecord | null> {
 	if (!isPendingImageToken(token)) return null;
-	return (
-		(await withStore('readonly', (store) => store.get(pendingImageIdFromToken(token)))) ?? null
-	);
+	const record = await withStore('readonly', (store) => store.get(pendingImageIdFromToken(token)));
+	return record?.memberId === memberId ? record : null;
 }
 
-export async function removePendingImage(token: string): Promise<void> {
+export async function removePendingImage(token: string, memberId: string): Promise<void> {
 	if (!isPendingImageToken(token)) return;
+	if (!(await readPendingImage(token, memberId))) return;
 	await withStore('readwrite', (store) => store.delete(pendingImageIdFromToken(token)));
 }
 
-export async function uploadPendingImageToken(
-	token: string,
-	memberId: string,
-	memberToken: string,
-): Promise<string> {
-	const record = await readPendingImage(token);
+export async function uploadPendingImageToken(token: string, memberId: string): Promise<string> {
+	const record = await readPendingImage(token, memberId);
 	if (!record) throw new Error('pending-image-missing');
 	const sigRes = await fetch('/api/upload/sign', {
 		method: 'POST',
 		headers: {
 			'content-type': 'application/json',
-			...memberAuthHeader(memberId, memberToken),
 		},
 		body: JSON.stringify({
 			shareCode: record.shareCode,
@@ -145,6 +144,6 @@ export async function uploadPendingImageToken(
 		headers: { 'Content-Type': record.type },
 	});
 	if (!uploadRes.ok) throw new Error(`upload-failed:${uploadRes.status}`);
-	await removePendingImage(token);
+	await removePendingImage(token, memberId);
 	return sig.publicUrl;
 }

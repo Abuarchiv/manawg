@@ -1,5 +1,5 @@
 {
-  "id": "b2051ab2-b0f1-4d97-a021-8d1fa123cf0a",
+  "id": "5860779a-17e0-4c20-96d2-9baed74d2fe7",
   "prevId": "b1b8f53b-d5e3-4c31-bb4a-e35e8f1c8abd",
   "version": "7",
   "dialect": "postgresql",
@@ -563,113 +563,6 @@
             "id"
           ],
           "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.calendar_subscriptions": {
-      "name": "calendar_subscriptions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "wg_id": {
-          "name": "wg_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "member_id": {
-          "name": "member_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "token_seed": {
-          "name": "token_seed",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "revoked_at": {
-          "name": "revoked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "calendar_subscriptions_wg_member_idx": {
-          "name": "calendar_subscriptions_wg_member_idx",
-          "columns": [
-            {
-              "expression": "wg_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "member_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "calendar_subscriptions_wg_id_wgs_id_fk": {
-          "name": "calendar_subscriptions_wg_id_wgs_id_fk",
-          "tableFrom": "calendar_subscriptions",
-          "tableTo": "wgs",
-          "columnsFrom": [
-            "wg_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "calendar_subscriptions_member_id_wg_members_id_fk": {
-          "name": "calendar_subscriptions_member_id_wg_members_id_fk",
-          "tableFrom": "calendar_subscriptions",
-          "tableTo": "wg_members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -3205,6 +3098,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "auth_user_id": {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "name": {
           "name": "name",
           "type": "text",
@@ -3332,6 +3231,28 @@
             }
           ],
           "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "wg_members_wg_auth_user_unique_idx": {
+          "name": "wg_members_wg_auth_user_unique_idx",
+          "columns": [
+            {
+              "expression": "wg_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "auth_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"wg_members\".\"auth_user_id\" IS NOT NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}

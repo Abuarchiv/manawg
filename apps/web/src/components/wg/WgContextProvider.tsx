@@ -1,17 +1,12 @@
 'use client';
 
-import { IdentityPicker } from '@/components/wg/IdentityPicker';
 import { apiFetch } from '@/core/infra/api-client';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
+import { type StoredIdentity, getIdentity, rememberWg } from '@/shared/lib/identity';
 import {
-	type StoredIdentity,
-	clearIdentity,
-	getIdentity,
-	rememberWg,
-	setIdentity,
-} from '@/shared/lib/identity';
-import {
+	Suspense,
 	createContext,
+	lazy,
 	useCallback,
 	useContext,
 	useEffect,
@@ -20,6 +15,12 @@ import {
 	useState,
 } from 'react';
 import type { ReactNode } from 'react';
+
+const IdentityPicker = lazy(() =>
+	import('@/components/wg/IdentityPicker').then(({ IdentityPicker }) => ({
+		default: IdentityPicker,
+	})),
+);
 
 export interface WgSummary {
 	id: string;
@@ -63,71 +64,65 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 	const [members, setMembers] = useState<Member[]>(initialMembers);
 	const [isAdmin, setIsAdmin] = useState(false);
 	const [identity, setStateIdentity] = useState<StoredIdentity | null>(null);
+	const [legacyIdentity, setLegacyIdentity] = useState<StoredIdentity | null>(null);
 	const [hydrated, setHydrated] = useState(false);
 	const syncingRef = useRef(false);
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 
 	useEffect(() => {
-		const stored = getIdentity(wg.id);
-		setStateIdentity(stored);
+		const storedIdentity = getIdentity(wg.id);
+		setLegacyIdentity(storedIdentity);
+		// The database-free Playwright fixture has no Supabase session by design.
+		// It only exists in CI and keeps its old local identity setup working.
+		if (
+			process.env.NEXT_PUBLIC_DB_DOWN === 'true' &&
+			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true' &&
+			storedIdentity
+		) {
+			setStateIdentity(storedIdentity);
+		}
 		setHydrated(true);
 		rememberWg({ code: wg.shareCode, name: wg.name, lastVisitedAt: Date.now() });
 	}, [wg.id, wg.shareCode, wg.name]);
 
-	// Self-heal: identities stored before MEMBER_SESSION_SECRET / the token
-	// flow existed (or picked via "select existing member", which has no
-	// token to hand over) have no memberToken and stay "legacy" — fine for
-	// everyday actions, but blocked from admin-gated mutations (WG
-	// delete/rename). GET /api/wg/[code] always returns the caller's own
-	// current token, so silently backfill it once per missing-token session.
 	useEffect(() => {
-		if (!identity || identity.memberToken) return;
 		let cancelled = false;
-		const heal = async () => {
+		const loadSessionMember = async () => {
 			const res = await apiFetch<{
-				currentMember?: { memberId: string; memberToken?: string | null };
-			}>(`/api/wg/${encodedShareCode}`, { memberId: identity.memberId });
+				currentMember?: { memberId: string; name: string };
+			}>(`/api/wg/${encodedShareCode}`);
 			if (cancelled || !res.ok) return;
-			const token = res.data.currentMember?.memberToken;
-			if (!token || res.data.currentMember?.memberId !== identity.memberId) return;
-			const healed: StoredIdentity = { ...identity, memberToken: token };
-			setIdentity(wg.id, healed);
-			setStateIdentity(healed);
+			const member = res.data.currentMember;
+			if (!member) return;
+			setStateIdentity({ memberId: member.memberId, name: member.name });
 		};
-		void heal();
+		if (hydrated) void loadSessionMember();
 		return () => {
 			cancelled = true;
 		};
-	}, [identity, wg.id, encodedShareCode]);
+	}, [hydrated, encodedShareCode]);
 
-	const refreshMembers = useCallback(
-		async (memberIdOverride?: string) => {
-			const memberId = memberIdOverride ?? identity?.memberId;
-			if (!memberId) return;
-			try {
-				const res = await apiFetch<{
-					members: Array<Member & { active?: boolean }>;
-					viewerIsAdmin?: boolean;
-				}>(`/api/wg/${encodedShareCode}/members`, { memberId });
-				// Normalize defensively: an omitted flag (e.g. E2E fixtures) means active.
-				if (res.ok) {
-					setMembers(res.data.members.map((m) => ({ ...m, active: m.active !== false })));
-					setIsAdmin(res.data.viewerIsAdmin === true);
-				} else if (
-					res.status === 401 &&
-					(res.error === 'not_a_member' ||
-						res.error === 'member_id_invalid' ||
-						res.error === 'member_id_required')
-				) {
-					clearIdentity(wg.id);
-					setStateIdentity(null);
-				}
-			} catch {
-				// Network blip — ignore; next refresh will retry.
+	const refreshMembers = useCallback(async () => {
+		if (!identity) return;
+		try {
+			const res = await apiFetch<{
+				members: Array<Member & { active?: boolean }>;
+				viewerIsAdmin?: boolean;
+			}>(`/api/wg/${encodedShareCode}/members`);
+			// Normalize defensively: an omitted flag (e.g. E2E fixtures) means active.
+			if (res.ok) {
+				setMembers(res.data.members.map((m) => ({ ...m, active: m.active !== false })));
+				setIsAdmin(res.data.viewerIsAdmin === true);
+			} else if (
+				res.status === 401 &&
+				(res.error === 'not_a_member' || res.error === 'auth_required')
+			) {
+				setStateIdentity(null);
 			}
-		},
-		[encodedShareCode, identity?.memberId, wg.id],
-	);
+		} catch {
+			// Network blip — ignore; next refresh will retry.
+		}
+	}, [encodedShareCode, identity]);
 
 	function onPicked(picked: StoredIdentity): void {
 		setStateIdentity(picked);
@@ -140,7 +135,7 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 
 	useEffect(() => {
 		if (!identity) return;
-		void refreshMembers(identity.memberId);
+		void refreshMembers();
 	}, [identity, refreshMembers]);
 
 	useEffect(() => {
@@ -197,13 +192,16 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 
 	if (!identity) {
 		return (
-			<IdentityPicker
-				wgId={wg.id}
-				wgShareCode={wg.shareCode}
-				wgName={wg.name}
-				members={members.filter((m) => m.active)}
-				onPicked={onPicked}
-			/>
+			<Suspense fallback={<div className="min-h-svh bg-[var(--bg-base)]" aria-busy="true" />}>
+				<IdentityPicker
+					wgId={wg.id}
+					wgShareCode={wg.shareCode}
+					wgName={wg.name}
+					members={members.filter((m) => m.active)}
+					legacyIdentity={legacyIdentity}
+					onPicked={onPicked}
+				/>
+			</Suspense>
 		);
 	}
 

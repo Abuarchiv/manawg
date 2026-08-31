@@ -1,6 +1,3 @@
-const MEMBER_ID_HEADER = 'x-manawg-member-id';
-const MEMBER_TOKEN_HEADER = 'x-manawg-member-token';
-
 type ApiFetchInit = RequestInit & { memberId?: string; memberToken?: string | undefined };
 
 type ApiFetchResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
@@ -9,21 +6,10 @@ export async function apiFetch<T>(
 	path: string,
 	init: ApiFetchInit = {},
 ): Promise<ApiFetchResult<T>> {
-	const { memberId, memberToken, ...rest } = init;
+	const { memberId: _memberId, memberToken: _memberToken, ...rest } = init;
+	const method = rest.method ?? 'GET';
 
 	const headers = new Headers(rest.headers as HeadersInit | undefined);
-
-	if (memberId) {
-		headers.set(MEMBER_ID_HEADER, memberId);
-	}
-	if (memberToken) {
-		headers.set(MEMBER_TOKEN_HEADER, memberToken);
-	}
-
-	const method = (rest.method ?? 'GET').toUpperCase();
-	if (memberId && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && !memberToken) {
-		return { ok: false, status: 403, error: 'member_not_verified' };
-	}
 	const hasBody = rest.body !== undefined && rest.body !== null;
 	if (hasBody && ['POST', 'PUT', 'PATCH'].includes(method)) {
 		headers.set('content-type', 'application/json');
@@ -33,6 +19,7 @@ export async function apiFetch<T>(
 		const res = await fetch(path, {
 			cache: 'no-store',
 			...rest,
+			method,
 			headers,
 		});
 

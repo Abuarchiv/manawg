@@ -106,7 +106,7 @@ export function OfflineQueueSection({
 	}
 
 	function edit(item: OfflineAction, draft: QueueEditDraft): void {
-		const key = buildDraftKey(shareCode, draft.module);
+		const key = buildDraftKey(shareCode, memberId, draft.module);
 		// Never clobber an unsaved form draft with queue-edit data — it would
 		// be lost without any hint. Ask the user to resolve the form first.
 		const existing = readDraft<Record<string, unknown>>(key);

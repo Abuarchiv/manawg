@@ -8,8 +8,8 @@ export interface QueueEditDraft {
 	draft: Record<string, unknown> & { queueEditId: string; queueEditType: OfflineActionType };
 }
 
-export function buildDraftKey(shareCode: string, module: DraftModule): string {
-	return `manawg:draft:${shareCode}:${module}`;
+export function buildDraftKey(shareCode: string, memberId: string, module: DraftModule): string {
+	return `manawg:draft:${shareCode}:${memberId}:${module}`;
 }
 
 export function buildQueueEditHref(

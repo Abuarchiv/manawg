@@ -8,11 +8,11 @@ import { useExpenseForm } from './useExpenseForm';
 type FormOptions = Parameters<typeof useExpenseForm>[0];
 
 const SHARE_CODE = 'test-wg';
-const DRAFT_KEY = `manawg:draft:${SHARE_CODE}:expense`;
 
 const ANNA = { id: 'member-anna' };
 const BEN = { id: 'member-ben' };
 const CARLA = { id: 'member-carla' };
+const DRAFT_KEY = `manawg:draft:${SHARE_CODE}:${ANNA.id}:expense`;
 /**
  * Module-level so the reference stays stable across re-renders — the payer
  * fallback effect depends on `members` and would loop on a fresh array.
@@ -84,6 +84,18 @@ describe('useExpenseForm', () => {
 	});
 
 	describe('draft persistence', () => {
+		it('does not restore a draft that belongs to another member on this device', () => {
+			window.localStorage.setItem(
+				`manawg:draft:${SHARE_CODE}:${BEN.id}:expense`,
+				JSON.stringify({ description: 'Bens Beleg', amountStr: '3,50' }),
+			);
+
+			const { result } = renderForm();
+
+			expect(result.current.showForm).toBe(false);
+			expect(result.current.description).toBe('');
+		});
+
 		it('restores a stored draft and opens the form for it', () => {
 			storeDraft({ description: 'Pfand', amountStr: '3,50', paidByMemberId: BEN.id });
 

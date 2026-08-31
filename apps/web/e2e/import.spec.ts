@@ -124,6 +124,10 @@ test.describe('Import happy path', () => {
 		await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/ausgaben`), {
 			timeout: 15_000,
 		});
-		await expect(page.getByText('Pizza')).toBeVisible({ timeout: 15_000 });
+		const enteredExpenses = page.locator('details').filter({ hasText: 'Eingetragene Ausgaben' });
+		await enteredExpenses.locator('summary').click();
+		await expect(enteredExpenses.getByText('Pizza', { exact: true }).first()).toBeVisible({
+			timeout: 15_000,
+		});
 	});
 });

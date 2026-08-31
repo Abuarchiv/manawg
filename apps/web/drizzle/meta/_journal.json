@@ -47,15 +47,22 @@
     {
       "idx": 6,
       "version": "7",
-      "when": 1788124544433,
-      "tag": "0006_perpetual_the_renegades",
+      "when": 1788112575655,
+      "tag": "0006_cool_mathemanic",
       "breakpoints": true
     },
     {
       "idx": 7,
       "version": "7",
-      "when": 1788125294261,
-      "tag": "0007_opposite_silver_samurai",
+      "when": 1788112576655,
+      "tag": "0007_data_api_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788150977176,
+      "tag": "0008_calendar_and_paypal",
       "breakpoints": true
     }
   ]

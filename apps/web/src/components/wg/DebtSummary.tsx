@@ -210,7 +210,7 @@ interface DebtSummaryProps {
 	currentMemberId: string;
 	memberToken?: string | undefined;
 	memberColor: (id: string) => string | null;
-	memberPayPalMerchantId: (id: string) => string | null;
+	memberPayPalMerchantId?: (id: string) => string | null;
 	onSettled: () => void;
 }
 
@@ -221,7 +221,7 @@ export function DebtSummary({
 	currentMemberId,
 	memberToken,
 	memberColor,
-	memberPayPalMerchantId,
+	memberPayPalMerchantId = () => null,
 	onSettled,
 }: DebtSummaryProps) {
 	if (debts.length === 0) return null;

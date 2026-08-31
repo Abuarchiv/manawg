@@ -1,3 +1,4 @@
+import { refreshSupabaseSession } from '@/core/auth/middleware';
 import {
 	checkRateLimit,
 	clientIpKey,
@@ -20,7 +21,7 @@ function isRateLimitedApiPath(path: string): boolean {
 	);
 }
 
-function withPageSecurityHeaders(req: NextRequest): NextResponse {
+async function withPageSecurityHeaders(req: NextRequest): Promise<NextResponse> {
 	const csp = contentSecurityPolicy();
 	const requestHeaders = new Headers(req.headers);
 	requestHeaders.set('Content-Security-Policy', csp);
@@ -31,7 +32,7 @@ function withPageSecurityHeaders(req: NextRequest): NextResponse {
 		},
 	});
 	res.headers.set('Content-Security-Policy', csp);
-	return res;
+	return refreshSupabaseSession(req, res);
 }
 
 function getClientIp(req: NextRequest): string {
@@ -60,12 +61,12 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 		return withPageSecurityHeaders(req);
 	}
 	if (!isRateLimitedApiPath(path)) {
-		return NextResponse.next();
+		return refreshSupabaseSession(req, NextResponse.next());
 	}
 
 	if (process.env.MIGRATION_READ_ONLY === 'true') {
 		if (path === '/api/health') {
-			return NextResponse.next();
+			return refreshSupabaseSession(req, NextResponse.next());
 		}
 		if (path.startsWith('/api/cron/')) {
 			const retryAfter = '300';
@@ -128,7 +129,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 		);
 	}
 
-	return NextResponse.next();
+	return refreshSupabaseSession(req, NextResponse.next());
 }
 
 export const config = {

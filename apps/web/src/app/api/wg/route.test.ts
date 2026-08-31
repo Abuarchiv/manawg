@@ -5,6 +5,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const shareCodeMock = vi.hoisted(() => ({ generateShareCode: vi.fn() }));
 
 const rateLimitMock = vi.hoisted(() => ({ checkRateLimit: vi.fn() }));
+const authMock = vi.hoisted(() => ({ getAuthenticatedUser: vi.fn() }));
+
+vi.mock('@/core/auth/server', () => ({
+	getAuthenticatedUser: (...args: unknown[]) => authMock.getAuthenticatedUser(...args),
+}));
 
 // Only the generator is stubbed, so the created WG's share code is
 // deterministic; validation stays real.
@@ -63,8 +68,25 @@ describe('WG create route', () => {
 		});
 		routeMocks.recordAuditEvent.mockResolvedValue(undefined);
 		rateLimitMock.checkRateLimit.mockResolvedValue({ success: true, remaining: -1, reset: 0 });
+		authMock.getAuthenticatedUser.mockResolvedValue({ id: 'auth-user-1' });
 		txMock.committed = false;
 		txMock.rolledBack = false;
+	});
+
+	it('requires a verified account before creating a WG', async () => {
+		authMock.getAuthenticatedUser.mockResolvedValue(null);
+		const { POST } = await import('./route');
+
+		const res = await POST(
+			new NextRequest('https://mana.test/api/wg', {
+				method: 'POST',
+				body: JSON.stringify({ name: 'Test WG', creatorName: 'Ava' }),
+			}),
+		);
+
+		expect(res.status).toBe(401);
+		await expect(res.json()).resolves.toEqual({ error: 'auth_required', code: 'auth_required' });
+		expect(routeDb.insert).not.toHaveBeenCalled();
 	});
 
 	it('records the WG creation audit event with the creator as actor', async () => {

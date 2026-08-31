@@ -1,3 +1,13 @@
+CREATE TABLE "calendar_subscriptions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"wg_id" uuid NOT NULL,
+	"member_id" uuid NOT NULL,
+	"token_seed" text NOT NULL,
+	"revoked_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "expense_payments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"wg_id" uuid NOT NULL,
@@ -19,9 +29,12 @@ CREATE TABLE "expense_payments" (
 );
 --> statement-breakpoint
 ALTER TABLE "wg_members" ADD COLUMN "paypal_merchant_id" text;--> statement-breakpoint
+ALTER TABLE "calendar_subscriptions" ADD CONSTRAINT "calendar_subscriptions_wg_id_wgs_id_fk" FOREIGN KEY ("wg_id") REFERENCES "public"."wgs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "calendar_subscriptions" ADD CONSTRAINT "calendar_subscriptions_member_id_wg_members_id_fk" FOREIGN KEY ("member_id") REFERENCES "public"."wg_members"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "expense_payments" ADD CONSTRAINT "expense_payments_wg_id_wgs_id_fk" FOREIGN KEY ("wg_id") REFERENCES "public"."wgs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "expense_payments" ADD CONSTRAINT "expense_payments_from_member_id_wg_members_id_fk" FOREIGN KEY ("from_member_id") REFERENCES "public"."wg_members"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "expense_payments" ADD CONSTRAINT "expense_payments_to_member_id_wg_members_id_fk" FOREIGN KEY ("to_member_id") REFERENCES "public"."wg_members"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "calendar_subscriptions_wg_member_idx" ON "calendar_subscriptions" USING btree ("wg_id","member_id");--> statement-breakpoint
 CREATE INDEX "expense_payments_wg_idx" ON "expense_payments" USING btree ("wg_id","created_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "expense_payments_provider_order_idx" ON "expense_payments" USING btree ("provider_order_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "expense_payments_active_pair_idx" ON "expense_payments" USING btree ("wg_id","from_member_id","to_member_id") WHERE "expense_payments"."status" in ('created', 'capturing');
