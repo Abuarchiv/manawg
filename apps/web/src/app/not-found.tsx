@@ -8,7 +8,11 @@ export const metadata: Metadata = {
 // craftsman-ignore: TS002 — Next.js App Router requires default export for pages
 export default function NotFound() {
 	return (
-		<div className="min-h-svh bg-[var(--bg-base)] flex flex-col items-center justify-center px-4 text-center">
+		<main
+			id="main"
+			tabIndex={-1}
+			className="min-h-svh bg-[var(--bg-base)] flex flex-col items-center justify-center px-4 text-center focus:outline-none"
+		>
 			<p className="text-6xl mb-4">🏠</p>
 			<h1 className="text-2xl font-semibold text-[var(--text-1)] mb-2">Seite nicht gefunden</h1>
 			<p className="text-[var(--text-2)] mb-6 max-w-sm">
@@ -20,6 +24,6 @@ export default function NotFound() {
 			>
 				Zur Startseite
 			</Link>
-		</div>
+		</main>
 	);
 }

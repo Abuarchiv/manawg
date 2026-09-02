@@ -120,6 +120,16 @@ test.describe('ManaWG launch smoke', () => {
 		await expect.poll(() => memberPostRequests).toBe(0);
 	});
 
+	test('404 page provides a valid keyboard skip target', async ({ page }) => {
+		await gotoWithRetry(page, '/this-page-does-not-exist');
+		await expect(page.getByRole('heading', { name: 'Seite nicht gefunden' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Zum Hauptinhalt springen' })).toHaveAttribute(
+			'href',
+			'#main',
+		);
+		await expect(page.locator('main#main')).toHaveCount(1);
+	});
+
 	test('create WG → redirect to /wg/<code> → dashboard renders module tiles', async ({ page }) => {
 		if (!qaAuthConfig) {
 			if (!requiresRealProductAuth) {
