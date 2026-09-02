@@ -77,11 +77,11 @@ test.describe('Mobile WG shell', () => {
 		await expect(bottomNav.getByRole('button', { name: 'Mehr-Menü öffnen' })).toHaveCount(0);
 
 		// Pinnwand → Kalender und wieder zurück.
-		const calendarLink = page.getByRole('link', { name: 'Kalender' });
+		const calendarLink = page.getByRole('link', { name: 'Kalender', exact: true });
 		await expect(calendarLink).toBeVisible({ timeout: 30_000 });
 		await calendarLink.click();
 		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/kalender$/, { timeout: 60_000 });
-		await expect(page.getByRole('heading', { name: 'Kalender' })).toBeVisible({
+		await expect(page.getByRole('heading', { name: 'Kalender', exact: true })).toBeVisible({
 			timeout: 30_000,
 		});
 		await page.getByRole('link', { name: 'Zurück zu Pinnwand' }).click();

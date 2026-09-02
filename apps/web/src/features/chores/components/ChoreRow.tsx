@@ -2,6 +2,7 @@
 
 import { ICON_BUTTON } from '@/components/ui/styles';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
+import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { useDismissableMenu } from '@/core/hooks/useDismissableMenu';
 import { formatRelativeTime } from '@/core/utils/time';
 import { getChoreRepairHint, getChoreStatus } from '@/features/chores/chore-status';
@@ -63,9 +64,14 @@ export const ChoreRow = memo(function ChoreRow({
 	const [menuOpen, setMenuOpen] = useState(false);
 	const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const menuRef = useRef<HTMLDivElement | null>(null);
+	const removeConfirm = useConfirmDelete();
+	const closeMenu = (): void => {
+		setMenuOpen(false);
+		removeConfirm.cancel();
+	};
 	useDismissableMenu({
 		open: menuOpen,
-		onClose: () => setMenuOpen(false),
+		onClose: closeMenu,
 		triggerRef: menuTriggerRef,
 		menuRef,
 	});
@@ -192,7 +198,7 @@ export const ChoreRow = memo(function ChoreRow({
 								role="menuitem"
 								type="button"
 								onClick={() => {
-									setMenuOpen(false);
+									closeMenu();
 									onTakeOver(chore);
 								}}
 								disabled={isPending}
@@ -206,7 +212,7 @@ export const ChoreRow = memo(function ChoreRow({
 								role="menuitem"
 								type="button"
 								onClick={() => {
-									setMenuOpen(false);
+									closeMenu();
 									onSwapRequest(chore);
 								}}
 								disabled={isPending || isSwapPending}
@@ -225,15 +231,16 @@ export const ChoreRow = memo(function ChoreRow({
 								role="menuitem"
 								type="button"
 								onClick={() => {
-									setMenuOpen(false);
+									if (!removeConfirm.request(chore.id)) return;
+									closeMenu();
 									onRemove(chore.id);
 								}}
 								disabled={isPending}
-								aria-label={`Aufgabe entfernen: ${chore.title}`}
+								aria-label={`${removeConfirm.confirmId === chore.id ? 'Aufgabe entfernen bestätigen' : 'Aufgabe entfernen'}: ${chore.title}`}
 								className={`${MENU_ITEM} text-[var(--danger)] hover:bg-[var(--danger)]/5`}
 							>
 								<Trash2 className="h-3.5 w-3.5" aria-hidden />
-								Entfernen
+								{removeConfirm.confirmId === chore.id ? 'Wirklich entfernen?' : 'Entfernen'}
 							</button>
 						</div>
 					)}

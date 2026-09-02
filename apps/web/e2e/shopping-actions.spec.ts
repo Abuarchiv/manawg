@@ -35,7 +35,7 @@ test.describe('Shopping actions', () => {
 			({ wgId, memberId }) => {
 				localStorage.setItem(`manawg_identity:${wgId}`, JSON.stringify({ memberId, name: 'dsaf' }));
 				localStorage.setItem(
-					'manawg:draft:MTE8PZAT:shopping',
+					`manawg:draft:MTE8PZAT:${memberId}:shopping`,
 					JSON.stringify({ name: '', quantity: '2 Packungen' }),
 				);
 			},

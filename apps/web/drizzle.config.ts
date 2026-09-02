@@ -12,19 +12,10 @@ if (migrationUrl) {
 	url = migrationUrl;
 } else if (pooledUrl) {
 	const direct = pooledUrl.replace(/-pooler\./, '.');
-	let parsed: URL;
-	try {
-		parsed = new URL(direct);
-	} catch {
-		throw new Error('POSTGRES_URL/DATABASE_URL is not a valid URL.');
-	}
-	if (parsed.port === '6543') {
-		throw new Error(
-			'DDL uses a Supabase Transaction Pooler URL on port 6543 without DATABASE_MIGRATION_URL. Set DATABASE_MIGRATION_URL to the direct connection on port 5432.',
-		);
-	}
+	validateDatabaseUrl(direct, 'POSTGRES_URL/DATABASE_URL');
 	url = direct;
 } else if (unpooledUrl) {
+	validateDatabaseUrl(unpooledUrl, 'POSTGRES_URL_NON_POOLING/DATABASE_URL_UNPOOLED');
 	url = unpooledUrl;
 } else {
 	url = 'postgres://placeholder';

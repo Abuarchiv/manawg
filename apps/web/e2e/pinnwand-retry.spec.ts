@@ -198,7 +198,7 @@ test.describe('Pinnwand recovery', () => {
 			({ wgId, memberId }) => {
 				localStorage.setItem(`manawg_identity:${wgId}`, JSON.stringify({ memberId, name: 'dsaf' }));
 				localStorage.setItem(
-					'manawg:draft:MTE8PZAT:announcement',
+					`manawg:draft:MTE8PZAT:${memberId}:announcement`,
 					JSON.stringify({
 						content: '',
 						kind: 'question',
@@ -513,17 +513,18 @@ test.describe('Pinnwand recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/pinnwand');
+		await page.getByRole('button', { name: 'Beitragsaktionen: Bitte Küche wischen' }).click();
 		await expect(
-			page.getByRole('link', { name: 'Als Einkaufsartikel übernehmen: Bitte Küche wischen' }),
+			page.getByRole('menuitem', { name: 'Als Einkauf übernehmen: Bitte Küche wischen' }),
 		).toHaveAttribute('href', /\/wg\/MTE8PZAT\/einkauf/);
 		await expect(
-			page.getByRole('link', { name: 'Als Putzaufgabe übernehmen: Bitte Küche wischen' }),
+			page.getByRole('menuitem', { name: 'Als Aufgabe übernehmen: Bitte Küche wischen' }),
 		).toHaveAttribute('href', /\/wg\/MTE8PZAT\/putzen/);
 		await expect(
-			page.getByRole('link', { name: 'Als Ausgabe übernehmen: Bitte Küche wischen' }),
+			page.getByRole('menuitem', { name: 'Als Ausgabe übernehmen: Bitte Küche wischen' }),
 		).toHaveAttribute('href', /\/wg\/MTE8PZAT\/ausgaben/);
 		await expect(
-			page.getByRole('button', { name: 'Gesehen-Reaktion setzen: Bitte Küche wischen' }),
+			page.getByRole('menuitem', { name: 'Gesehen-Reaktion setzen: Bitte Küche wischen' }),
 		).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: 'Übernehme ich-Reaktion setzen: Bitte Küche wischen' }),

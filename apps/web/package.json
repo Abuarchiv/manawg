@@ -9,16 +9,15 @@
 		"start": "next start",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check . && node scripts/check-feature-boundaries.mjs",
-		"test": "NODE_OPTIONS=--no-experimental-webstorage vitest run",
-		"test:watch": "NODE_OPTIONS=--no-experimental-webstorage vitest",
-		"test:coverage": "NODE_OPTIONS=--no-experimental-webstorage vitest run --coverage",
+		"test": "playwright test",
 		"test:e2e": "playwright test",
 		"test:e2e:ui": "playwright test --ui",
-		"test:e2e:fixtures": "CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= PLAYWRIGHT_USE_BUILD=true playwright test kalender.spec.ts vorraete.spec.ts abos.spec.ts mahnungen.spec.ts import.spec.ts chat.spec.ts mobile-shell.spec.ts wg-core-flows.spec.ts",
+		"test:e2e:fixtures": "CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= PLAYWRIGHT_USE_BUILD=true playwright test",
 		"analyze": "ANALYZE=true next build",
 		"bundle:check": "node scripts/check-bundle-budget.mjs",
 		"db:generate": "drizzle-kit generate",
-		"db:migrate": "node scripts/db-migrate.mjs"
+		"db:migrate": "node scripts/db-migrate.mjs",
+		"db:check": "node scripts/db-migrate.mjs --check"
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.1048.0",
@@ -47,22 +46,16 @@
 	"devDependencies": {
 		"@next/bundle-analyzer": "^16.2.6",
 		"@playwright/test": "^1.52.0",
-		"@testing-library/jest-dom": "^6.9.1",
-		"@testing-library/react": "^16.3.2",
 		"@types/node": "^22",
 		"@types/pg": "^8.20.0",
 		"@types/react": "19.0.8",
 		"@types/react-dom": "19.0.3",
 		"@types/web-push": "^3.6.4",
-		"@vitejs/plugin-react": "^6.0.1",
-		"@vitest/coverage-v8": "^4.1.5",
 		"autoprefixer": "^10.4.21",
 		"dotenv": "^17.4.2",
 		"drizzle-kit": "^0.31.10",
-		"jsdom": "^29.1.1",
 		"postcss": "^8.5.3",
 		"tailwindcss": "^3.4.17",
-		"typescript": "^5.7.0",
-		"vitest": "^4.1.5"
+		"typescript": "^5.7.0"
 	}
 }

@@ -175,7 +175,7 @@ test.describe('WG search recovery', () => {
 		await page.getByPlaceholder('Milch, Bad, Miete...').fill('Miete');
 		await expect(page.getByText('Miete Mai')).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByRole('status')).toHaveText('1 Treffer sichtbar für "Miete".');
-		await expect(page.getByLabel('Schnellfilter', { exact: true })).toBeVisible();
+		await expect(page.getByRole('group', { name: 'Schnellfilter', exact: true })).toBeVisible();
 		await expect(page.getByLabel('Suchbereiche filtern', { exact: true })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Schnellfilter: Alle' })).toHaveAttribute(
 			'aria-pressed',

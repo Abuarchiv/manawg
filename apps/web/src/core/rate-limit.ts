@@ -5,7 +5,16 @@ import { Redis } from '@upstash/redis/cloudflare';
 const url = process.env.UPSTASH_REDIS_REST_URL;
 const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-const redis = url && token ? new Redis({ url, token }) : null;
+export function createConfiguredRedis(): Redis | null {
+	if (!url || !token) return null;
+	try {
+		return new URL(url).protocol === 'https:' ? new Redis({ url, token }) : null;
+	} catch {
+		return null;
+	}
+}
+
+const redis = createConfiguredRedis();
 
 function build(limit: number, windowSec: number, prefix: string): Ratelimit | null {
 	if (!redis) return null;

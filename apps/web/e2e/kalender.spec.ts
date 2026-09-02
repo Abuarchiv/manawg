@@ -75,7 +75,7 @@ test.describe('Kalender happy path', () => {
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
 		await dismissOnboarding(page);
 
-		await expect(page.getByRole('heading', { name: 'Kalender' })).toBeVisible({
+		await expect(page.getByRole('heading', { name: 'Kalender', exact: true })).toBeVisible({
 			timeout: 30_000,
 		});
 

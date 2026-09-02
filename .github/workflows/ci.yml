@@ -4,12 +4,14 @@ on:
   pull_request:
   push:
     branches: [main]
+  deployment_status:
 
 permissions:
   contents: read
 
 jobs:
   validate:
+    if: github.event_name != 'deployment_status'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,44 +26,11 @@ jobs:
       - run: pnpm lint
       - run: pnpm --filter @manawg/web exec node scripts/check-feature-boundaries.mjs
       - run: pnpm typecheck
-      - run: pnpm test
       - run: pnpm build
       - run: pnpm --filter @manawg/web bundle:check
 
-  db-integration:
-    runs-on: ubuntu-latest
-    needs: validate
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: manawg
-          POSTGRES_PASSWORD: manawg
-          POSTGRES_DB: manawg_ci
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U manawg"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      POSTGRES_URL: postgres://manawg:manawg@localhost:5432/manawg_ci
-      DATABASE_MIGRATION_URL: postgres://manawg:manawg@localhost:5432/manawg_ci
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.0.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @manawg/web db:migrate
-      - run: pnpm --filter @manawg/web test
-
   e2e-fixtures:
+    if: github.event_name != 'deployment_status'
     runs-on: ubuntu-latest
     needs: validate
     steps:
@@ -80,28 +49,30 @@ jobs:
           NEXT_PUBLIC_DB_DOWN: 'true'
       - run: pnpm --filter @manawg/web test:e2e:fixtures
 
-  e2e-real-db:
+  db-supabase-preview:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: validate
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: manawg
-          POSTGRES_PASSWORD: manawg
-          POSTGRES_DB: manawg_e2e
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U manawg"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+    environment: Preview
     env:
-      POSTGRES_URL: postgres://manawg:manawg@localhost:5432/manawg_e2e
-      DATABASE_MIGRATION_URL: postgres://manawg:manawg@localhost:5432/manawg_e2e
+      DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
     steps:
       - uses: actions/checkout@v4
+      - name: Require the protected Supabase direct connection
+        env:
+          DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
+        run: |
+          test -n "$DATABASE_MIGRATION_URL"
+          node <<'NODE'
+          const url = new URL(process.env.DATABASE_MIGRATION_URL);
+          if (
+            !['postgres:', 'postgresql:'].includes(url.protocol) ||
+            url.hostname.toLowerCase() !== 'db.sthiwjebcwwiphashgla.supabase.co' ||
+            url.port !== '5432'
+          ) {
+            throw new Error('Preview database checks require the direct ManaWG Preview Supabase connection on port 5432.');
+          }
+          NODE
       - uses: pnpm/action-setup@v4
         with:
           version: 9.0.0
@@ -110,6 +81,96 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @manawg/web db:check
+
+  e2e-preview:
+    if: >-
+      github.event_name == 'deployment_status' &&
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment == 'Preview' &&
+      github.event.deployment.creator.login == 'vercel[bot]' &&
+      github.event.deployment_status.creator.login == 'vercel[bot]' &&
+      startsWith(github.event.deployment_status.target_url, 'https://manawg-') &&
+      endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Never execute an event-supplied deployment SHA in a secrets-bearing job.
+          ref: main
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Validate trusted Vercel Preview target
+        id: preview
+        env:
+          TARGET_URL: ${{ github.event.deployment_status.target_url }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const target = process.env.TARGET_URL;
+          const expectedHost = /^manawg-[a-z0-9-]+-abditubes-projects\.vercel\.app$/;
+          let url;
+          try {
+            url = new URL(target);
+          } catch {
+            throw new Error('Preview target is not a valid URL.');
+          }
+
+          if (
+            url.protocol !== 'https:' ||
+            !expectedHost.test(url.hostname) ||
+            url.username ||
+            url.password ||
+            url.port ||
+            url.pathname !== '/' ||
+            url.search ||
+            url.hash
+          ) {
+            throw new Error('Preview target is not this project\'s Vercel deployment URL.');
+          }
+
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `base_url=${url.origin}\n`);
+          NODE
+      - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @manawg/web exec playwright install --with-deps chromium
-      - run: pnpm --filter @manawg/web db:migrate
-      - run: pnpm --filter @manawg/web exec playwright test smoke-launch.spec.ts
+      - name: Require real Supabase QA credentials
+        env:
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.E2E_SUPABASE_PUBLISHABLE_KEY }}
+          E2E_SUPABASE_TEST_EMAIL: ${{ secrets.E2E_SUPABASE_TEST_EMAIL }}
+          E2E_SUPABASE_TEST_PASSWORD: ${{ secrets.E2E_SUPABASE_TEST_PASSWORD }}
+        run: |
+          test -n "$E2E_SUPABASE_URL"
+          test -n "$E2E_SUPABASE_PUBLISHABLE_KEY"
+          test -n "$E2E_SUPABASE_TEST_EMAIL"
+          test -n "$E2E_SUPABASE_TEST_PASSWORD"
+          node <<'NODE'
+          const url = new URL(process.env.E2E_SUPABASE_URL);
+          if (
+            url.protocol !== 'https:' ||
+            url.hostname.toLowerCase() !== 'sthiwjebcwwiphashgla.supabase.co' ||
+            url.port ||
+            url.pathname !== '/' ||
+            url.search ||
+            url.hash
+          ) {
+            throw new Error('Preview E2E auth must use the ManaWG Preview Supabase project.');
+          }
+          NODE
+      - name: Test the protected Preview deployment
+        env:
+          BASE_URL: ${{ steps.preview.outputs.base_url }}
+          PREVIEW_E2E: 'true'
+          REAL_PRODUCT_E2E: 'true'
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.E2E_SUPABASE_PUBLISHABLE_KEY }}
+          E2E_SUPABASE_TEST_EMAIL: ${{ secrets.E2E_SUPABASE_TEST_EMAIL }}
+          E2E_SUPABASE_TEST_PASSWORD: ${{ secrets.E2E_SUPABASE_TEST_PASSWORD }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: pnpm --filter @manawg/web exec playwright test preview-protection.spec.ts smoke-launch.spec.ts

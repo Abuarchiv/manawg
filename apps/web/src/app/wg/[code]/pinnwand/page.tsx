@@ -76,6 +76,9 @@ function kindFromParam(value: string | null): AnnouncementKind | null {
 	}
 	return null;
 }
+
+type CommentOverride = AnnouncementComment | null;
+
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function PinnwandPage(): React.ReactElement {
 	const { wg, members, identity } = useWg();
@@ -110,6 +113,7 @@ export default function PinnwandPage(): React.ReactElement {
 	const [highlightedId, setHighlightedId] = useState<string | null>(null);
 	const [pendingRemoteItems, setPendingRemoteItems] = useState<Announcement[] | null>(null);
 	const [newCount, setNewCount] = useState(0);
+	const commentOverridesRef = useRef(new Map<string, Map<string, CommentOverride>>());
 	const [queueEditId, setQueueEditId] = useState<string | null>(null);
 	const [draftHydrated, setDraftHydrated] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -215,14 +219,18 @@ export default function PinnwandPage(): React.ReactElement {
 					);
 				const currentItems = itemsRef.current;
 				if (mode === 'background' && currentItems.length > 0) {
-					setItems(mergeBackgroundAnnouncements(currentItems, res.data.announcements));
+					commitItems(
+						mergeBackgroundAnnouncements(currentItems, res.data.announcements).map(
+							applyCommentOverrides,
+						),
+					);
 					const count = getNewAnnouncementCount(currentItems, res.data.announcements);
 					if (count > 0) {
 						setPendingRemoteItems(res.data.announcements);
 						setNewCount(count);
 					}
 				} else {
-					setItems(res.data.announcements);
+					commitItems(res.data.announcements.map(applyCommentOverrides));
 					setPendingRemoteItems(null);
 					setNewCount(0);
 				}
@@ -324,7 +332,7 @@ export default function PinnwandPage(): React.ReactElement {
 
 	function applyPendingItems(): void {
 		if (!pendingRemoteItems) return;
-		setItems(pendingRemoteItems);
+		commitItems(pendingRemoteItems.map(applyCommentOverrides));
 		setPendingRemoteItems(null);
 		setNewCount(0);
 	}
@@ -334,8 +342,59 @@ export default function PinnwandPage(): React.ReactElement {
 		return { name: m?.name ?? '?', color: m?.color ?? null };
 	}
 
+	function commitItems(nextItems: Announcement[]): void {
+		itemsRef.current = nextItems;
+		setItems(nextItems);
+	}
+
+	function rememberCommentOverride(
+		announcementId: string,
+		commentId: string,
+		comment: CommentOverride,
+	): void {
+		const overrides =
+			commentOverridesRef.current.get(announcementId) ?? new Map<string, CommentOverride>();
+		overrides.set(commentId, comment);
+		commentOverridesRef.current.set(announcementId, overrides);
+	}
+
+	function forgetCommentOverride(announcementId: string, commentId: string): void {
+		const overrides = commentOverridesRef.current.get(announcementId);
+		if (!overrides) return;
+		overrides.delete(commentId);
+		if (overrides.size === 0) commentOverridesRef.current.delete(announcementId);
+	}
+
+	function applyCommentOverrides(item: Announcement): Announcement {
+		const overrides = commentOverridesRef.current.get(item.id);
+		if (!overrides || overrides.size === 0) return item;
+		const remoteComments = new Map(item.comments.map((comment) => [comment.id, comment]));
+		const comments = item.comments.flatMap((comment) => {
+			if (!overrides.has(comment.id)) return [comment];
+			const override = overrides.get(comment.id);
+			if (override === null) return [];
+			if (override && override.content === comment.content) {
+				overrides.delete(comment.id);
+				return [comment];
+			}
+			return override ? [override] : [comment];
+		});
+		for (const [commentId, override] of overrides) {
+			if (override === null) {
+				if (!remoteComments.has(commentId)) overrides.delete(commentId);
+				continue;
+			}
+			if (!remoteComments.has(commentId)) comments.push(override);
+		}
+		if (overrides.size === 0) commentOverridesRef.current.delete(item.id);
+		const unchanged =
+			comments.length === item.comments.length &&
+			comments.every((comment, index) => comment === item.comments[index]);
+		return unchanged ? item : { ...item, comments };
+	}
+
 	function updateItem(id: string, updater: (item: Announcement) => Announcement): void {
-		setItems((current) => current.map((item) => (item.id === id ? updater(item) : item)));
+		commitItems(itemsRef.current.map((item) => (item.id === id ? updater(item) : item)));
 	}
 
 	function clearEditedQueueItem(): boolean {
@@ -556,6 +615,7 @@ export default function PinnwandPage(): React.ReactElement {
 			authorName: identity.name,
 			authorColor: members.find((member) => member.id === identity.memberId)?.color ?? null,
 		};
+		rememberCommentOverride(announcement.id, optimisticComment.id, optimisticComment);
 		updateItem(announcement.id, (item) => ({
 			...item,
 			comments: [...item.comments, optimisticComment],
@@ -574,14 +634,18 @@ export default function PinnwandPage(): React.ReactElement {
 		end(pendingKey);
 		if (!res.ok) {
 			if (res.status === 404 && res.error === 'announcement_not_found') {
-				setItems((current) => current.filter((item) => item.id !== announcement.id));
+				commentOverridesRef.current.delete(announcement.id);
+				commitItems(itemsRef.current.filter((item) => item.id !== announcement.id));
 				setActionError('Dieser Pinnwand-Beitrag existiert nicht mehr und wurde entfernt.');
 			} else {
-				setItems(previousItems);
+				forgetCommentOverride(announcement.id, optimisticComment.id);
+				commitItems(previousItems);
 				setActionError(commentActionErrorMessage(res.error));
 			}
 			return false;
 		}
+		forgetCommentOverride(announcement.id, optimisticComment.id);
+		rememberCommentOverride(announcement.id, res.data.comment.id, res.data.comment);
 		updateItem(announcement.id, (item) => ({
 			...item,
 			comments: item.comments.map((comment) =>
@@ -600,6 +664,10 @@ export default function PinnwandPage(): React.ReactElement {
 		const pendingKey = `${commentId}:comment-edit`;
 		if (isPending(pendingKey)) return false;
 		const previousItems = itemsRef.current;
+		const previousComment = announcement.comments.find((comment) => comment.id === commentId);
+		if (previousComment) {
+			rememberCommentOverride(announcement.id, commentId, { ...previousComment, content });
+		}
 		updateItem(announcement.id, (item) => ({
 			...item,
 			comments: item.comments.map((comment) =>
@@ -620,6 +688,7 @@ export default function PinnwandPage(): React.ReactElement {
 		end(pendingKey);
 		if (!res.ok) {
 			if (res.status === 404 && res.error === 'comment_not_found') {
+				forgetCommentOverride(announcement.id, commentId);
 				updateItem(announcement.id, (item) => ({
 					...item,
 					comments: item.comments.filter((comment) => comment.id !== commentId),
@@ -627,10 +696,12 @@ export default function PinnwandPage(): React.ReactElement {
 				setActionError('Dieser Kommentar existiert nicht mehr und wurde entfernt.');
 				return true;
 			}
-			setItems(previousItems);
+			forgetCommentOverride(announcement.id, commentId);
+			commitItems(previousItems);
 			setActionError(commentActionErrorMessage(res.error));
 			return false;
 		}
+		rememberCommentOverride(announcement.id, res.data.comment.id, res.data.comment);
 		updateItem(announcement.id, (item) => ({
 			...item,
 			comments: item.comments.map((comment) =>
@@ -645,6 +716,7 @@ export default function PinnwandPage(): React.ReactElement {
 		const pendingKey = `${commentId}:comment-delete`;
 		if (isPending(pendingKey)) return false;
 		const previousItems = itemsRef.current;
+		rememberCommentOverride(announcement.id, commentId, null);
 		updateItem(announcement.id, (item) => ({
 			...item,
 			comments: item.comments.filter((comment) => comment.id !== commentId),
@@ -664,7 +736,8 @@ export default function PinnwandPage(): React.ReactElement {
 			if (res.status === 404 && res.error === 'comment_not_found') {
 				setActionError('Dieser Kommentar existiert nicht mehr und wurde entfernt.');
 			} else {
-				setItems(previousItems);
+				forgetCommentOverride(announcement.id, commentId);
+				commitItems(previousItems);
 				setActionError(commentActionErrorMessage(res.error));
 			}
 			return false;

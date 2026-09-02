@@ -14,6 +14,35 @@ async function gotoWithRetry(page: Page, path: string) {
 	throw lastError;
 }
 
+async function openChoreActions(page: Page, title: string) {
+	const menuName = `Aufgabenaktionen: ${title}`;
+	const openMenu = page.getByRole('menu').first();
+	if (await openMenu.isVisible()) {
+		await page.getByRole('heading', { name: 'Putzplan', exact: true }).click();
+		await expect(openMenu).toBeHidden();
+	}
+	await page.getByRole('button', { name: menuName }).click({ timeout: 30_000 });
+	const menu = page.getByRole('menu', { name: menuName });
+	await expect(menu).toBeVisible({ timeout: 5000 });
+	return menu;
+}
+
+async function confirmChoreRemoval(page: Page, title: string): Promise<void> {
+	const menu = await openChoreActions(page, title);
+	await menu.getByRole('menuitem', { name: `Aufgabe entfernen: ${title}` }).click();
+	const confirm = page.getByRole('menuitem', {
+		name: `Aufgabe entfernen bestätigen: ${title}`,
+	});
+	await expect(confirm).toBeVisible({ timeout: 5000 });
+	await confirm.click({ timeout: 5000 });
+}
+
+async function openAbsenceForm(page: Page): Promise<void> {
+	const openButton = page.getByRole('button', { name: 'Abwesenheit eintragen' });
+	if (await openButton.isVisible()) await openButton.click();
+	await expect(page.getByLabel('Abwesenheit von')).toBeVisible();
+}
+
 test.describe('Chores recovery', () => {
 	test.setTimeout(300_000);
 
@@ -39,7 +68,7 @@ test.describe('Chores recovery', () => {
 			({ wgId, memberId }) => {
 				localStorage.setItem(`manawg_identity:${wgId}`, JSON.stringify({ memberId, name: 'dsaf' }));
 				localStorage.setItem(
-					'manawg:draft:MTE8PZAT:chore',
+					`manawg:draft:MTE8PZAT:${memberId}:chore`,
 					JSON.stringify({ title: '', intervalDays: 14, assignedMemberId: memberId }),
 				);
 			},
@@ -221,9 +250,10 @@ test.describe('Chores recovery', () => {
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
 
-		await expect(page.getByRole('button', { name: 'Tausch anfragen: Bad putzen' })).toBeVisible({
-			timeout: 30_000,
-		});
+		const bathMenu = await openChoreActions(page, 'Bad putzen');
+		await expect(
+			bathMenu.getByRole('menuitem', { name: 'Tausch anfragen: Bad putzen' }),
+		).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: 'Überfällige Aufgabe nachholen: Bad putzen' }),
 		).toBeVisible();
@@ -233,10 +263,13 @@ test.describe('Chores recovery', () => {
 		await expect(
 			page.getByRole('button', { name: 'Als erledigt markieren: Küche wischen' }),
 		).toBeVisible();
-		await expect(page.getByRole('button', { name: 'Aufgabe entfernen: Bad putzen' })).toBeVisible();
-		await page.getByRole('button', { name: 'Aufgabe entfernen: Küche wischen' }).click();
 		await expect(
-			page.getByRole('button', { name: 'Aufgabe entfernen bestätigen: Küche wischen' }),
+			bathMenu.getByRole('menuitem', { name: 'Aufgabe entfernen: Bad putzen' }),
+		).toBeVisible();
+		const kitchenMenu = await openChoreActions(page, 'Küche wischen');
+		await kitchenMenu.getByRole('menuitem', { name: 'Aufgabe entfernen: Küche wischen' }).click();
+		await expect(
+			page.getByRole('menuitem', { name: 'Aufgabe entfernen bestätigen: Küche wischen' }),
 		).toBeVisible();
 	});
 
@@ -294,20 +327,8 @@ test.describe('Chores recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
-		await expect(
-			page.getByRole('button', { name: 'Aufgabe entfernen: Küche wischen' }),
-		).toBeVisible({ timeout: 30_000 });
-
-		await page
-			.getByRole('button', { name: 'Aufgabe entfernen: Küche wischen' })
-			.click({ timeout: 5000 });
-		await page
-			.getByRole('button', { name: 'Aufgabe entfernen bestätigen: Küche wischen' })
-			.click({ timeout: 5000 });
-
-		await expect(page.getByRole('button', { name: 'Aufgabe entfernen: Küche wischen' })).toBeHidden(
-			{ timeout: 5000 },
-		);
+		await confirmChoreRemoval(page, 'Küche wischen');
+		await expect(page.locator('#chore-chore-delete')).toBeHidden({ timeout: 5000 });
 	});
 
 	test('updates completed chores after a successful completion', async ({ page }) => {
@@ -720,13 +741,8 @@ test.describe('Chores recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
-		await expect(page.getByRole('button', { name: 'Tausch anfragen: Bad putzen' })).toBeVisible({
-			timeout: 30_000,
-		});
-
-		await page.getByRole('button', { name: 'Tausch anfragen: Bad putzen' }).click({
-			timeout: 5000,
-		});
+		const swapMenu = await openChoreActions(page, 'Bad putzen');
+		await swapMenu.getByRole('menuitem', { name: 'Tausch anfragen: Bad putzen' }).click();
 
 		await expect(
 			page.getByText(
@@ -734,7 +750,10 @@ test.describe('Chores recovery', () => {
 			),
 		).toBeVisible({ timeout: 5000 });
 		await expect(page.getByText('Tauschanfrage konnte nicht gepostet werden.')).toHaveCount(0);
-		await expect(page.getByRole('button', { name: 'Tausch anfragen: Bad putzen' })).toBeVisible();
+		const retryMenu = await openChoreActions(page, 'Bad putzen');
+		await expect(
+			retryMenu.getByRole('menuitem', { name: 'Tausch anfragen: Bad putzen' }),
+		).toBeVisible();
 	});
 
 	test('explains server failures when posting a chore swap request fails', async ({ page }) => {
@@ -789,19 +808,17 @@ test.describe('Chores recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
-		await expect(page.getByRole('button', { name: 'Tausch anfragen: Bad putzen' })).toBeVisible({
-			timeout: 30_000,
-		});
-
-		await page.getByRole('button', { name: 'Tausch anfragen: Bad putzen' }).click({
-			timeout: 5000,
-		});
+		const swapMenu = await openChoreActions(page, 'Bad putzen');
+		await swapMenu.getByRole('menuitem', { name: 'Tausch anfragen: Bad putzen' }).click();
 
 		await expect(
 			page.getByText('Tauschanfrage konnte nicht gepostet werden: Versuche es gleich erneut.'),
 		).toBeVisible({ timeout: 5000 });
 		await expect(page.getByText('Tauschanfrage konnte nicht gepostet werden.')).toHaveCount(0);
-		await expect(page.getByRole('button', { name: 'Tausch anfragen: Bad putzen' })).toBeVisible();
+		const retryMenu = await openChoreActions(page, 'Bad putzen');
+		await expect(
+			retryMenu.getByRole('menuitem', { name: 'Tausch anfragen: Bad putzen' }),
+		).toBeVisible();
 	});
 
 	test('updates chore assignee after a successful takeover', async ({ page }) => {
@@ -1125,16 +1142,7 @@ test.describe('Chores recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
-		await expect(page.getByRole('button', { name: 'Aufgabe entfernen: Keller fegen' })).toBeVisible(
-			{ timeout: 30_000 },
-		);
-
-		await page
-			.getByRole('button', { name: 'Aufgabe entfernen: Keller fegen' })
-			.click({ timeout: 5000 });
-		await page
-			.getByRole('button', { name: 'Aufgabe entfernen bestätigen: Keller fegen' })
-			.click({ timeout: 5000 });
+		await confirmChoreRemoval(page, 'Keller fegen');
 
 		await expect(
 			page.getByText('Diese Putzaufgabe existiert nicht mehr und wurde aus dem Plan entfernt.'),
@@ -1189,16 +1197,7 @@ test.describe('Chores recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
-		await expect(page.getByRole('button', { name: 'Aufgabe entfernen: Keller fegen' })).toBeVisible(
-			{ timeout: 30_000 },
-		);
-
-		await page
-			.getByRole('button', { name: 'Aufgabe entfernen: Keller fegen' })
-			.click({ timeout: 5000 });
-		await page
-			.getByRole('button', { name: 'Aufgabe entfernen bestätigen: Keller fegen' })
-			.click({ timeout: 5000 });
+		await confirmChoreRemoval(page, 'Keller fegen');
 
 		await expect(
 			page.getByText('Entfernen fehlgeschlagen: Prüfe deine Verbindung und versuche es erneut.'),
@@ -1537,7 +1536,8 @@ test.describe('Chores recovery', () => {
 			});
 		});
 
-		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
+		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen?panel=absences');
+		await openAbsenceForm(page);
 		await page.getByLabel('Abwesenheit von').fill('2026-05-20');
 		await page.getByLabel('Abwesenheit bis').fill('2026-05-21');
 		await page.getByPlaceholder('Grund optional').fill('Urlaub');
@@ -1590,7 +1590,8 @@ test.describe('Chores recovery', () => {
 			});
 		});
 
-		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
+		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen?panel=absences');
+		await openAbsenceForm(page);
 		await page.getByLabel('Abwesenheit von').fill('2026-05-22');
 		await page.getByLabel('Abwesenheit bis').fill('2026-05-21');
 		await page.getByRole('button', { name: 'Abwesenheit speichern' }).click();
@@ -1636,7 +1637,8 @@ test.describe('Chores recovery', () => {
 			});
 		});
 
-		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
+		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen?panel=absences');
+		await openAbsenceForm(page);
 		await page.getByLabel('Abwesenheit von').fill('2026-05-22');
 		await page.getByLabel('Abwesenheit bis').fill('2026-05-23');
 		await page.getByPlaceholder('Grund optional').fill('Urlaub');
@@ -1682,7 +1684,8 @@ test.describe('Chores recovery', () => {
 			});
 		});
 
-		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
+		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen?panel=absences');
+		await openAbsenceForm(page);
 		await page.getByLabel('Abwesenheit von').fill('2026-05-22');
 		await page.getByLabel('Abwesenheit bis').fill('2026-05-23');
 		await page.getByPlaceholder('Grund optional').fill('Urlaub');
@@ -1750,9 +1753,10 @@ test.describe('Chores recovery', () => {
 			timeout: 30_000,
 		});
 
-		await page
-			.locator('#absence-absence-stale-delete')
-			.getByRole('button', { name: 'Entfernen' })
+		const absenceRow = page.locator('#absence-absence-stale-delete');
+		await absenceRow.getByRole('button', { name: /entfernen$/i }).click({ timeout: 5000 });
+		await absenceRow
+			.getByRole('button', { name: /endgültig entfernen$/i })
 			.click({ timeout: 5000 });
 
 		await expect(
@@ -1809,9 +1813,10 @@ test.describe('Chores recovery', () => {
 			timeout: 30_000,
 		});
 
-		await page
-			.locator('#absence-absence-network-delete')
-			.getByRole('button', { name: 'Entfernen' })
+		const absenceRow = page.locator('#absence-absence-network-delete');
+		await absenceRow.getByRole('button', { name: /entfernen$/i }).click({ timeout: 5000 });
+		await absenceRow
+			.getByRole('button', { name: /endgültig entfernen$/i })
 			.click({ timeout: 5000 });
 
 		await expect(

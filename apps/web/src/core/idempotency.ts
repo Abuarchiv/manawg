@@ -1,16 +1,13 @@
 import { db, idempotencyResponses } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
-import { Redis } from '@upstash/redis/cloudflare';
+import { createConfiguredRedis } from '@/core/rate-limit';
 import { and, eq, gt } from 'drizzle-orm';
-
-const url = process.env.UPSTASH_REDIS_REST_URL;
-const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 // Redis is OPTIONAL — only used for audit-event dedup (claimIdempotencySlot).
 // Response-replay (getCachedResponse/setCachedResponse) ALWAYS uses Postgres
 // because prod env has empty UPSTASH_* strings and silent disablement caused
 // duplicate expense inserts (iter 13 outage).
-const redis = url && token ? new Redis({ url, token }) : null;
+const redis = createConfiguredRedis();
 
 // Queued offline writes can be retried days after a lost response, so the
 // durable response cache must outlive the retry window. Redis still only

@@ -62,6 +62,18 @@ function validateDatabaseUrl(url, label) {
 	}
 }
 
+function validateSupabaseDirectUrl(url, label) {
+	validateDatabaseUrl(url, label);
+	const parsed = new URL(url);
+	if (
+		!['postgres:', 'postgresql:'].includes(parsed.protocol) ||
+		!parsed.hostname.toLowerCase().endsWith('.supabase.co') ||
+		parsed.port !== '5432'
+	) {
+		throw new Error(`${label} must be a direct Supabase PostgreSQL connection on port 5432.`);
+	}
+}
+
 /**
  * Turn a Neon pooled host into its direct one. Neon's pooled endpoint is the
  * direct endpoint with a `-pooler` label inserted:
@@ -89,17 +101,15 @@ function resolveConnectionString() {
 	const pooled = process.env.POSTGRES_URL ?? process.env.DATABASE_URL;
 	if (pooled) {
 		const direct = toDirectEndpoint(pooled);
-		const parsed = new URL(direct);
-		if (parsed.port === '6543') {
-			throw new Error(
-				'DDL uses a Supabase Transaction Pooler URL on port 6543 without DATABASE_MIGRATION_URL. Set DATABASE_MIGRATION_URL to the direct connection on port 5432.',
-			);
-		}
+		validateDatabaseUrl(direct, 'POSTGRES_URL/DATABASE_URL');
 		return direct;
 	}
 
 	const direct = process.env.POSTGRES_URL_NON_POOLING ?? process.env.DATABASE_URL_UNPOOLED;
-	if (direct) return direct;
+	if (direct) {
+		validateDatabaseUrl(direct, 'POSTGRES_URL_NON_POOLING/DATABASE_URL_UNPOOLED');
+		return direct;
+	}
 
 	throw new Error('No database URL. Set DATABASE_MIGRATION_URL, POSTGRES_URL or DATABASE_URL.');
 }
@@ -126,8 +136,9 @@ async function tableExists(client, schema, table) {
 	return rows.length > 0;
 }
 
-export function expectedBaselineSchema() {
-	const snapshotPath = path.join(migrationsFolder, 'meta', '0000_snapshot.json');
+function expectedSchema(snapshotTag) {
+	const snapshotNumber = snapshotTag.split('_', 1)[0];
+	const snapshotPath = path.join(migrationsFolder, 'meta', `${snapshotNumber}_snapshot.json`);
 	const snapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf8'));
 	return Object.entries(snapshot.tables)
 		.filter(([name]) => name.startsWith('public.'))
@@ -142,6 +153,10 @@ export function expectedBaselineSchema() {
 		}));
 }
 
+export function expectedBaselineSchema() {
+	return expectedSchema(BASELINE_TAG);
+}
+
 const normalizeSql = (value) =>
 	String(value ?? '')
 		.toLowerCase()
@@ -151,12 +166,13 @@ const normalizeSql = (value) =>
 
 const normalizeType = (type) => normalizeSql(type).replace('charactervarying', 'varchar');
 const normalizeDefault = (value) => normalizeSql(value).replace(/^\((.*)\)$/, '$1');
-const normalizeCheck = (value) =>
+const normalizeCheck = (value, tableName) =>
 	normalizeSql(value)
+		.replace(/notvalid/g, '')
 		.replace(/^check\((.*)\)$/, '$1')
+		.replaceAll(`${tableName}.`, '')
 		.replace(/(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)in\(([^)]*)\)/g, '$1=any(array[$2])')
-		.replace(/[()]/g, '')
-		.replace(/[a-z_][a-z0-9_]*\./g, '');
+		.replace(/[()]/g, '');
 const sameColumns = (actual, expected) => actual?.join('\u0000') === expected.join('\u0000');
 const foreignKeyAction = {
 	a: 'no action',
@@ -180,7 +196,50 @@ const expectedIndexKeys = (index) =>
 		),
 	);
 
-export async function assertBaselineSchema(client) {
+const ADOPTION_KNOWN_DRIFT = {
+	columnNullability: new Set(['shopping_items.normalized_name']),
+	columnDefaults: new Set(['expense_reminders.channel']),
+	constraints: new Set(['c.expense_reminders.expense_reminders_channel_check']),
+	extraColumns: new Set(['push_subscriptions.last_used_at']),
+};
+
+const LEGACY_DATA_CHECKS = [
+	[
+		'announcements.kind',
+		`select count(*)::int as count from public.announcements where kind not in ('info', 'question', 'problem', 'request', 'decision')`,
+	],
+	[
+		'announcements.status',
+		`select count(*)::int as count from public.announcements where status not in ('open', 'resolved')`,
+	],
+	[
+		'announcements.source',
+		`select count(*)::int as count from public.announcements where source not in ('manual', 'system', 'chore_swap', 'expense', 'shopping')`,
+	],
+	[
+		'chores.recurrence_type',
+		`select count(*)::int as count from public.chores where recurrence_type not in ('days', 'months')`,
+	],
+	[
+		'expense_splits.amount_cents',
+		'select count(*)::int as count from public.expense_splits where amount_cents < 0',
+	],
+	[
+		'expenses.amount_cents',
+		'select count(*)::int as count from public.expenses where amount_cents <= 0',
+	],
+	[
+		'wg_chat_messages.kind',
+		`select count(*)::int as count from public.wg_chat_messages where kind not in ('text', 'image', 'system')`,
+	],
+];
+
+async function assertExpectedSchema(
+	client,
+	snapshotTag,
+	failurePrefix,
+	{ allowKnownAdoptionDrift = false, rejectUnexpected = false } = {},
+) {
 	const { rows: columnRows } =
 		await client.query(`select rel.relname as table_name, attr.attname as column_name,
 		format_type(attr.atttypid, attr.atttypmod) as type, attr.attnotnull as not_null,
@@ -188,7 +247,7 @@ export async function assertBaselineSchema(client) {
 		case when attr.attgenerated = '' then null else pg_get_expr(def.adbin, def.adrelid) end as generation_expr
 		from pg_attribute attr join pg_class rel on rel.oid = attr.attrelid
 		join pg_namespace ns on ns.oid = rel.relnamespace left join pg_attrdef def on def.adrelid = rel.oid and def.adnum = attr.attnum
-		where ns.nspname = 'public' and attr.attnum > 0 and not attr.attisdropped`);
+		where ns.nspname = 'public' and rel.relkind in ('r', 'p') and attr.attnum > 0 and not attr.attisdropped`);
 	const { rows: constraintRows } =
 		await client.query(`select con.conname as constraint_name, con.contype as constraint_type, con.convalidated as is_valid, rel.relname as table_name,
 		array(select attr.attname::text from unnest(con.conkey) with ordinality as key(attnum, ord) join pg_attribute attr on attr.attrelid = con.conrelid and attr.attnum = key.attnum order by key.ord) as columns,
@@ -210,9 +269,34 @@ export async function assertBaselineSchema(client) {
 		join pg_namespace ns on ns.oid = rel.relnamespace join pg_am method on method.oid = index_rel.relam
 		where ns.nspname = 'public' and not exists (select 1 from pg_constraint con where con.conindid = idx.indexrelid)`);
 
-	const expected = expectedBaselineSchema();
+	const expected = expectedSchema(snapshotTag);
+	const requireValidatedConstraints = Number(snapshotTag.split('_', 1)[0]) >= 9;
 	const columns = new Map(columnRows.map((row) => [`${row.table_name}.${row.column_name}`, row]));
+	const expectedTables = new Set(expected.map(({ table }) => table));
+	const expectedColumns = new Map(
+		expected.flatMap((table) =>
+			Object.values(table.columns).map((column) => [`${table.table}.${column.name}`, column]),
+		),
+	);
 	const mismatches = [];
+	if (rejectUnexpected) {
+		for (const tableName of new Set(columnRows.map((row) => row.table_name))) {
+			if (!expectedTables.has(tableName)) mismatches.push(`unexpected table public.${tableName}`);
+		}
+		for (const [key] of columns) {
+			const [tableName, columnName] = key.split('.');
+			if (
+				expectedTables.has(tableName) &&
+				!expectedColumns.has(key) &&
+				!(
+					allowKnownAdoptionDrift &&
+					ADOPTION_KNOWN_DRIFT.extraColumns.has(`${tableName}.${columnName}`)
+				)
+			) {
+				mismatches.push(`unexpected column public.${key}`);
+			}
+		}
+	}
 	for (const table of expected) {
 		for (const column of Object.values(table.columns)) {
 			const actual = columns.get(`${table.table}.${column.name}`);
@@ -223,11 +307,21 @@ export async function assertBaselineSchema(client) {
 			if (normalizeType(actual.type) !== normalizeType(column.type)) {
 				mismatches.push(`column public.${table.table}.${column.name} type`);
 			}
-			if (actual.not_null !== column.notNull)
+			if (
+				actual.not_null !== column.notNull &&
+				!(
+					allowKnownAdoptionDrift &&
+					ADOPTION_KNOWN_DRIFT.columnNullability.has(`${table.table}.${column.name}`)
+				)
+			)
 				mismatches.push(`column public.${table.table}.${column.name} nullability`);
 			if (
 				!column.generated &&
-				normalizeDefault(actual.default_expr) !== normalizeDefault(column.default)
+				normalizeDefault(actual.default_expr) !== normalizeDefault(column.default) &&
+				!(
+					allowKnownAdoptionDrift &&
+					ADOPTION_KNOWN_DRIFT.columnDefaults.has(`${table.table}.${column.name}`)
+				)
 			) {
 				mismatches.push(`column public.${table.table}.${column.name} default`);
 			}
@@ -248,6 +342,44 @@ export async function assertBaselineSchema(client) {
 			row,
 		]),
 	);
+	if (rejectUnexpected) {
+		const expectedNamedConstraints = new Set(
+			expected.flatMap((table) => [
+				...Object.values(table.compositePrimaryKeys).map(
+					(constraint) => `p.${table.table}.${constraint.name}`,
+				),
+				...Object.values(table.uniqueConstraints).map(
+					(constraint) => `u.${table.table}.${constraint.name}`,
+				),
+				...Object.values(table.checkConstraints).map(
+					(constraint) => `c.${table.table}.${constraint.name}`,
+				),
+				...Object.values(table.foreignKeys).map(
+					(constraint) => `f.${table.table}.${constraint.name}`,
+				),
+			]),
+		);
+		for (const row of constraintRows) {
+			const key = `${row.constraint_type}.${row.table_name}.${row.constraint_name}`;
+			const isExpectedSinglePrimaryKey =
+				row.constraint_type === 'p' &&
+				expected.some(
+					(table) =>
+						table.table === row.table_name &&
+						Object.values(table.columns).some(
+							(column) => column.primaryKey && sameColumns(row.columns, [column.name]),
+						),
+				);
+			if (
+				!expectedTables.has(row.table_name) ||
+				(!expectedNamedConstraints.has(key) &&
+					!isExpectedSinglePrimaryKey &&
+					!(allowKnownAdoptionDrift && ADOPTION_KNOWN_DRIFT.constraints.has(key)))
+			) {
+				mismatches.push(`unexpected constraint public.${row.table_name}.${row.constraint_name}`);
+			}
+		}
+	}
 	const primaryKeys = constraintRows.filter((row) => row.constraint_type === 'p');
 	const findConstraint = (type, table, name) => constraints.get(`${type}.${table}.${name}`);
 	for (const table of expected) {
@@ -276,10 +408,17 @@ export async function assertBaselineSchema(client) {
 		}
 		for (const constraint of Object.values(table.checkConstraints)) {
 			const actual = findConstraint('c', table.table, constraint.name);
-			if (
+			const mismatch =
 				!actual ||
-				actual.is_valid !== true ||
-				normalizeCheck(actual.definition) !== normalizeCheck(constraint.value)
+				(requireValidatedConstraints && actual.is_valid !== true) ||
+				normalizeCheck(actual.definition, table.table) !==
+					normalizeCheck(constraint.value, table.table);
+			if (
+				mismatch &&
+				!(
+					allowKnownAdoptionDrift &&
+					ADOPTION_KNOWN_DRIFT.constraints.has(`c.${table.table}.${constraint.name}`)
+				)
 			)
 				mismatches.push(`check constraint public.${table.table}.${constraint.name}`);
 		}
@@ -311,7 +450,7 @@ export async function assertBaselineSchema(client) {
 				actual.is_unique !== index.isUnique ||
 				actual.method !== index.method ||
 				!sameColumns(actual.keys?.map(normalizeIndexPart), expectedIndexKeys(index)) ||
-				normalizeIndexPart(actual.predicate) !== normalizeIndexPart(index.where)
+				normalizeCheck(actual.predicate, table.table) !== normalizeCheck(index.where, table.table)
 			) {
 				mismatches.push(`index public.${table.table}.${index.name}`);
 			}
@@ -319,9 +458,70 @@ export async function assertBaselineSchema(client) {
 	}
 
 	if (mismatches.length) {
-		throw new Error(
-			`Refusing to adopt ${BASELINE_TAG}: baseline schema is incomplete. Mismatches: ${mismatches.join(', ')}. Apply or repair the baseline before retrying.`,
-		);
+		throw new Error(`${failurePrefix} Mismatches: ${mismatches.join(', ')}.`);
+	}
+}
+
+export async function assertBaselineSchema(client) {
+	return assertExpectedSchema(
+		client,
+		BASELINE_TAG,
+		`Refusing to adopt ${BASELINE_TAG}: baseline schema is incomplete. Apply or repair the baseline before retrying.`,
+		{ allowKnownAdoptionDrift: true, rejectUnexpected: true },
+	);
+}
+
+async function assertMigrationLedger(client) {
+	if (!(await tableExists(client, MIGRATIONS_SCHEMA, MIGRATIONS_TABLE))) {
+		throw new Error('Database check failed: Drizzle migration ledger is missing.');
+	}
+	const { rows } = await client.query(`select hash from ${MIGRATIONS_SCHEMA}.${MIGRATIONS_TABLE}`);
+	const appliedHashes = new Set(rows.map(({ hash }) => hash));
+	const missing = JSON.parse(
+		fs.readFileSync(path.join(migrationsFolder, 'meta', '_journal.json'), 'utf8'),
+	)
+		.entries.filter(({ tag }) => !appliedHashes.has(hashMigration(tag)))
+		.map(({ tag }) => tag);
+	if (missing.length) {
+		throw new Error(`Database check failed: missing migrations ${missing.join(', ')}.`);
+	}
+}
+
+async function verifyDatabase(client) {
+	await client.query('select 1');
+	const journal = JSON.parse(
+		fs.readFileSync(path.join(migrationsFolder, 'meta', '_journal.json'), 'utf8'),
+	);
+	const latestTag = journal.entries.at(-1)?.tag;
+	if (!latestTag) throw new Error('Database check failed: migration journal is empty.');
+	await assertExpectedSchema(
+		client,
+		latestTag,
+		`Database check failed: schema does not match ${latestTag}.`,
+		{ rejectUnexpected: true },
+	);
+	await assertMigrationLedger(client);
+	for (const [label, query] of LEGACY_DATA_CHECKS) {
+		const { rows } = await client.query(query);
+		if (Number(rows[0]?.count ?? 0) !== 0) {
+			throw new Error(`Database check failed: existing data violates ${label}.`);
+		}
+	}
+
+	await client.query('begin');
+	try {
+		await client.query('create temporary table manawg_db_check (id integer)');
+		await client.query('insert into manawg_db_check values (1)');
+		await client.query('rollback');
+	} catch (error) {
+		await client.query('rollback').catch(() => undefined);
+		throw error;
+	}
+	const { rows } = await client.query(
+		"select to_regclass('pg_temp.manawg_db_check') is null as rolled_back",
+	);
+	if (rows[0]?.rolled_back !== true) {
+		throw new Error('Database check failed: transaction rollback was not observed.');
 	}
 }
 
@@ -362,12 +562,19 @@ async function adoptBaseline(client) {
 }
 
 async function main() {
-	const pool = new pg.Pool({ connectionString: resolveConnectionString(), max: 1 });
+	const connectionString = resolveConnectionString();
+	validateSupabaseDirectUrl(connectionString, 'Database migration connection');
+	const pool = new pg.Pool({ connectionString, max: 1 });
 	const client = await pool.connect();
 	let locked = false;
 	try {
 		await client.query('select pg_advisory_lock(hashtext($1))', [MIGRATION_LOCK]);
 		locked = true;
+		if (process.argv.includes('--check')) {
+			await verifyDatabase(client);
+			console.error('[migrate] Database check passed.');
+			return;
+		}
 
 		const hasSchema = await tableExists(client, 'public', SENTINEL_TABLE);
 		const baselineHash = hashMigration(BASELINE_TAG);

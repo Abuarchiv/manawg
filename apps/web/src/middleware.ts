@@ -97,10 +97,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 			: wgWriteLimiter;
 
 	const failMode =
-		isShareCodeLookup &&
-		(process.env.NODE_ENV === 'production' ||
-			process.env.NODE_ENV === 'test' ||
-			process.env.VERCEL_ENV === 'production')
+		(process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'development') ||
+		process.env.NODE_ENV === 'test' ||
+		process.env.VERCEL_ENV === 'production'
 			? 'closed'
 			: 'open';
 	const result = await checkRateLimit(limiter, ip, failMode);

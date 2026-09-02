@@ -3,6 +3,24 @@ import { defineConfig, devices } from '@playwright/test';
 
 const DEFAULT_E2E_PORT = process.env.E2E_PORT ?? '3101';
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${DEFAULT_E2E_PORT}`;
+const previewE2E = process.env.PREVIEW_E2E === 'true';
+const automationBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
+const isTrustedPreviewDeployment =
+	/^https:\/\/manawg-[a-z0-9-]+-abditubes-projects\.vercel\.app$/i.test(BASE_URL);
+
+if (previewE2E && (!automationBypassSecret || !isTrustedPreviewDeployment)) {
+	throw new Error(
+		"PREVIEW_E2E requires VERCEL_AUTOMATION_BYPASS_SECRET and this project's trusted Vercel Preview URL.",
+	);
+}
+
+const automationBypassHeaders =
+	previewE2E && automationBypassSecret
+		? {
+				'x-vercel-protection-bypass': automationBypassSecret,
+				'x-vercel-set-bypass-cookie': 'true',
+			}
+		: undefined;
 const parsedBaseUrl = new URL(BASE_URL);
 const isLocalBase = ['localhost', '127.0.0.1', '::1'].includes(parsedBaseUrl.hostname);
 const isRemoteBase = /^https?:\/\//i.test(BASE_URL) && !isLocalBase;
@@ -17,7 +35,7 @@ const webServerCommand = useBuiltServer
 	? `${prepareIsolatedNext} && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next build && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next start --port ${serverPort}`
 	: process.env.NEXT_PUBLIC_DB_DOWN === 'true'
 		? `${prepareIsolatedNext} && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next dev --port ${serverPort}`
-		: `${prepareIsolatedNext} && if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next dev --port ${serverPort}`;
+		: `${prepareIsolatedNext} && if [ "\${CI:-}" != "true" ] && [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next dev --port ${serverPort}`;
 
 export default defineConfig({
 	testDir: './e2e',
@@ -28,11 +46,11 @@ export default defineConfig({
 	workers: 1,
 	use: {
 		baseURL: BASE_URL,
+		extraHTTPHeaders: automationBypassHeaders,
 		trace: 'on-first-retry',
 		screenshot: 'only-on-failure',
-		// Pinned for the same reason the unit suite pins TZ: without it the
-		// browser inherits the host's timezone and locale, so assertions on
-		// rendered dates and amounts pass in CET and fail in CI's UTC. These
+		// Pin timezone and locale so assertions on rendered dates and amounts
+		// pass in CET and do not fail in CI's UTC. These
 		// are the settings the app is actually built for.
 		timezoneId: 'Europe/Berlin',
 		locale: 'de-DE',

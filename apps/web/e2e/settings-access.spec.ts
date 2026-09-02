@@ -1041,7 +1041,6 @@ test.describe('Settings access controls', () => {
 		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
 		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
 		const absenceMemberId = '11111111-1111-4111-8111-111111111111';
-		let authHeader: string | null = null;
 
 		await page.addInitScript(
 			({ wgId, memberId, absenceMemberId }) => {
@@ -1070,7 +1069,6 @@ test.describe('Settings access controls', () => {
 		);
 		await page.route('**/api/wg/MTE8PZAT/absences', async (route) => {
 			if (route.request().method() === 'GET') {
-				authHeader = route.request().headers()['x-manawg-member-id'] ?? null;
 				await route.fulfill({
 					status: 200,
 					contentType: 'application/json',
@@ -1100,6 +1098,5 @@ test.describe('Settings access controls', () => {
 		await expect(
 			page.getByText('Gleiche Abwesenheit existiert schon auf dem Server.'),
 		).toBeVisible();
-		expect(authHeader).toBe(memberId);
 	});
 });

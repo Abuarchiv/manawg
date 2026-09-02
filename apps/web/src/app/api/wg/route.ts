@@ -37,7 +37,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	// Keep production and unit-test behavior fail-closed; local/CI dev servers
 	// have no Upstash service and must still exercise the real DB flow.
 	const failMode =
-		process.env.NODE_ENV === 'production' ||
+		(process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'development') ||
 		process.env.NODE_ENV === 'test' ||
 		process.env.VERCEL_ENV === 'production'
 			? 'closed'

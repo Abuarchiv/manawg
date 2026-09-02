@@ -12,8 +12,8 @@
  *     no signed member sessions so every write is rejected, unprotected cron
  *     routes). The database and member-session secret are checked in every
  *     environment; unprotected cron routes are only fatal in production.
- *   - `degraded` — a named feature is off, everything else works. Logged loud,
- *     never fatal, so a missing optional key can't take the whole app down.
+ *   - `degraded` — a named non-critical feature is off. Logged loud, never
+ *     fatal; production rate limiting is required because API routes fail closed.
  */
 
 type EnvSource = Record<string, string | undefined>;
@@ -77,6 +77,15 @@ function isSet(env: EnvSource, name: string): boolean {
 	return (env[name] ?? '').trim().length > 0;
 }
 
+function isValidHttpsUrl(value: string | undefined): boolean {
+	if (!value?.trim()) return false;
+	try {
+		return new URL(value).protocol === 'https:';
+	} catch {
+		return false;
+	}
+}
+
 export function checkEnv(env: EnvSource): EnvCheckResult {
 	const isProduction = env.VERCEL_ENV === 'production';
 	const isFixtureE2EDbDown =
@@ -100,11 +109,23 @@ export function checkEnv(env: EnvSource): EnvCheckResult {
 		for (const name of PRODUCTION_REQUIRED) {
 			if (!isSet(env, name)) missingRequired.push(name);
 		}
+		if (!isValidHttpsUrl(env.UPSTASH_REDIS_REST_URL)) {
+			missingRequired.push('UPSTASH_REDIS_REST_URL');
+		}
+		if (!isSet(env, 'UPSTASH_REDIS_REST_TOKEN')) {
+			missingRequired.push('UPSTASH_REDIS_REST_TOKEN');
+		}
 	}
 
 	const degraded: DegradedFeature[] = [];
 	for (const spec of OPTIONAL_FEATURES) {
-		const missing = spec.vars.filter((name) => !isSet(env, name));
+		const missing = spec.vars.filter(
+			(name) =>
+				!isSet(env, name) ||
+				(spec.feature === 'rate-limiting' &&
+					name === 'UPSTASH_REDIS_REST_URL' &&
+					!isValidHttpsUrl(env[name])),
+		);
 		if (missing.length > 0) {
 			degraded.push({ feature: spec.feature, missing, impact: spec.impact });
 		}

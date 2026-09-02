@@ -133,7 +133,9 @@ test.describe('Dashboard recovery', () => {
 		failDashboard = false;
 		await page.getByRole('button', { name: 'Dashboard erneut laden' }).click();
 
-		await expect(page.getByText('Saldo pro Mitglied')).toBeVisible({ timeout: 30_000 });
+		await expect(page.getByRole('link', { name: 'Einkauf offen 1 Hafermilch' })).toBeVisible({
+			timeout: 30_000,
+		});
 		await expect(
 			page.getByText('Dashboard konnte nicht geladen werden: Versuche es gleich erneut.'),
 		).toBeHidden();

@@ -18,6 +18,18 @@ async function delay(ms: number) {
 	await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function openRecordedExpenses(page: Page): Promise<void> {
+	const summary = page.getByText('Eingetragene Ausgaben', { exact: true });
+	await expect(summary).toBeVisible({ timeout: 30_000 });
+	await summary.click();
+}
+
+async function openRecurringExpenses(page: Page): Promise<void> {
+	const summary = page.getByText('Wiederkehrende Kosten', { exact: true });
+	await expect(summary).toBeVisible({ timeout: 30_000 });
+	await summary.click();
+}
+
 test.describe('Expenses recovery', () => {
 	test.setTimeout(300_000);
 
@@ -98,6 +110,7 @@ test.describe('Expenses recovery', () => {
 		failExpenses = false;
 		await page.getByRole('button', { name: 'Ausgaben erneut laden' }).click();
 
+		await page.getByText('Eingetragene Ausgaben', { exact: true }).click();
 		await expect(page.getByText('Spülmittel')).toBeVisible({ timeout: 30_000 });
 		await expect(
 			page.getByText('Ausgaben konnten nicht geladen werden: Versuche es gleich erneut.'),
@@ -221,6 +234,7 @@ test.describe('Expenses recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
+		await openRecordedExpenses(page);
 
 		await expect(page.getByRole('button', { name: 'Ausgabe bearbeiten: Milch' })).toBeVisible({
 			timeout: 30_000,
@@ -288,6 +302,7 @@ test.describe('Expenses recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
+		await openRecordedExpenses(page);
 		await expect(page.getByRole('button', { name: 'Ausgabe entfernen: Milch' })).toBeVisible({
 			timeout: 30_000,
 		});
@@ -357,6 +372,7 @@ test.describe('Expenses recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
+		await openRecordedExpenses(page);
 		await expect(page.getByRole('button', { name: 'Ausgabe entfernen: Milch' })).toBeVisible({
 			timeout: 30_000,
 		});
@@ -426,6 +442,7 @@ test.describe('Expenses recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
+		await openRecordedExpenses(page);
 		await expect(page.getByRole('button', { name: 'Ausgabe entfernen: Milch' })).toBeVisible({
 			timeout: 30_000,
 		});
@@ -488,6 +505,7 @@ test.describe('Expenses recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
+		await openRecordedExpenses(page);
 		await expect(page.getByRole('button', { name: 'Ausgabe entfernen: Milch' })).toBeVisible({
 			timeout: 30_000,
 		});
@@ -560,6 +578,7 @@ test.describe('Expenses recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
+		await openRecordedExpenses(page);
 		await expect(page.getByRole('button', { name: 'Ausgabe bearbeiten: Milch' })).toBeVisible({
 			timeout: 30_000,
 		});
@@ -637,6 +656,7 @@ test.describe('Expenses recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
+		await openRecordedExpenses(page);
 		await expect(page.getByText('0/1 beglichen')).toBeVisible({ timeout: 30_000 });
 		await page.getByRole('button', { name: /Milch\s+3,99/ }).click();
 
@@ -712,6 +732,7 @@ test.describe('Expenses recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
+		await openRecordedExpenses(page);
 		await expect(page.getByText('0/1 beglichen')).toBeVisible({ timeout: 30_000 });
 		await page.getByRole('button', { name: /Milch\s+3,99/ }).click();
 
@@ -785,6 +806,7 @@ test.describe('Expenses recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
+		await openRecordedExpenses(page);
 		await expect(page.getByText('0/1 beglichen')).toBeVisible({ timeout: 30_000 });
 		await page.getByRole('button', { name: /Milch\s+3,99/ }).click();
 		await page
@@ -858,6 +880,7 @@ test.describe('Expenses recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
+		await openRecordedExpenses(page);
 		await expect(page.getByText('0/1 beglichen')).toBeVisible({ timeout: 30_000 });
 		await page.getByRole('button', { name: /Milch\s+3,99/ }).click();
 		await page
@@ -929,6 +952,7 @@ test.describe('Expenses recovery', () => {
 
 		await page.getByRole('button', { name: 'Ausgabe speichern' }).click();
 
+		await openRecordedExpenses(page);
 		await expect(page.getByText('Frischer Einkauf')).toBeVisible({ timeout: 1000 });
 	});
 
@@ -989,7 +1013,7 @@ test.describe('Expenses recovery', () => {
 			({ wgId, memberId }) => {
 				localStorage.setItem(`manawg_identity:${wgId}`, JSON.stringify({ memberId, name: 'dsaf' }));
 				localStorage.setItem(
-					'manawg:draft:MTE8PZAT:expense',
+					`manawg:draft:MTE8PZAT:${memberId}:expense`,
 					JSON.stringify({ amountStr: '7,50', splitMode: 'equal' }),
 				);
 			},
@@ -1122,6 +1146,7 @@ test.describe('Expenses recovery', () => {
 		await page.getByRole('button', { name: 'Ausgabe erfassen' }).click();
 		await page.getByLabel('Beschreibung').fill('Spülmittel');
 		await page.getByLabel('Betrag').fill('12,99');
+		await page.getByRole('button', { name: 'Fixkosten-Vorlage' }).click();
 		await page.getByRole('button', { name: 'Ausgabe speichern' }).click();
 
 		await expect(page.getByRole('button', { name: 'Ausgabe speichern' })).toBeDisabled();
@@ -1134,6 +1159,7 @@ test.describe('Expenses recovery', () => {
 		await expect(page.getByLabel('Bild auswählen')).toBeDisabled();
 
 		releasePost?.();
+		await openRecordedExpenses(page);
 		await expect(page.getByText('Spülmittel')).toBeVisible({ timeout: 30_000 });
 	});
 
@@ -1615,6 +1641,7 @@ test.describe('Expenses recovery', () => {
 			.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Internet' })
 			.click();
 
+		await openRecordedExpenses(page);
 		await expect(page.locator('#expense-expense-from-recurring-immediate')).toBeVisible({
 			timeout: 1000,
 		});
@@ -1902,6 +1929,7 @@ test.describe('Expenses recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
+		await openRecurringExpenses(page);
 
 		await expect(page.getByRole('link', { name: 'Alle 5 Fixkosten anzeigen' })).toBeVisible({
 			timeout: 30_000,
