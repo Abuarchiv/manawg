@@ -28,7 +28,8 @@
 - [x] Protect `/wg/*` in the existing auth middleware, preserving session cookies and return paths.
 - [x] Change `EntryClient.tsx`, `NeuClient.tsx`, and `IdentityPicker.tsx` to make social authentication precede onboarding and remove roster-based login.
 - [x] Independently review cookie propagation, redirects, account linking, and signed-out data access with Terra High. A PKCE cleanup finding was fixed; second review approved the merge.
-- [ ] Run Node 22 lint, typecheck, build, and the relevant Playwright gates. Repeat the live tests on the deployed commit and perform a real-browser provider/session check.
+- [x] Run Node 22 lint, typecheck, build, and the seven live Playwright entry/error regressions against the deployed app (all seven passed).
+- [ ] Complete a real-browser provider-to-app session round-trip after provider credentials are configured.
 
 ## Initial evidence
 
@@ -45,3 +46,10 @@
 - Supabase Site URL and callback allowlist were corrected to `https://app.manawg.com`. Google, Apple, and Facebook remain disabled without their provider credentials.
 - Landing Vercel settings were corrected from obsolete `apps/landing` monorepo paths to the standalone repository root, `pnpm build`, and `pnpm install --frozen-lockfile`.
 - An additional live regression reproduced missing PKCE cookie cleanup on the old production callback. The callback now forwards `sb_flow_id` to the SDK and retains cookie/header mutations on error redirects. The suite now contains seven checks.
+
+## Production verification
+
+- App code commit `7d73e03` was pushed to `main`; Vercel deployment `manawg-82jaztfbr-abditubes-projects.vercel.app` is READY with canonical alias `app.manawg.com`.
+- Landing commit `f75e00a` was pushed to `main`; deployment `manawg-landing-hppr7fnnm-abditubes-projects.vercel.app` is READY with canonical alias `manawg.com`.
+- All seven live entry/error/PKCE regressions passed against `https://app.manawg.com` in 6.5 seconds, without a local server or database. Two alert selectors were narrowed to the page's main region to exclude Next.js's separate route announcer.
+- This is not a login-success or whole-product release sign-off: the three OAuth providers remain disabled. No applicable ManaWG web OAuth client exists in the two projects visible in the signed-in Google Cloud account; no unrelated desktop OAuth credentials were reused.

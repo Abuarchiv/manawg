@@ -57,7 +57,7 @@ test.describe('live social-login entry', () => {
 		expect(response.status()).toBe(200);
 		const settings = (await response.json()) as { external: Record<string, boolean> };
 		if (!settings.external.google) {
-			await expect(page.getByRole('alert')).toContainText(
+			await expect(page.getByRole('main').getByRole('alert')).toContainText(
 				'Dieser Anmeldedienst ist gerade nicht verfügbar.',
 			);
 		}
@@ -72,7 +72,7 @@ test.describe('live social-login entry', () => {
 		await page.goto('/auth/callback?error=access_denied&next=%2Fwg%2FZZZZZZZZ%2Fausgaben');
 		await expect(page).toHaveURL(/\/neu\?error=auth_callback/);
 		expect(new URL(page.url()).searchParams.get('next')).toBe('/wg/ZZZZZZZZ/ausgaben');
-		await expect(page.getByRole('alert')).toContainText(
+		await expect(page.getByRole('main').getByRole('alert')).toContainText(
 			'Die Anmeldung konnte nicht abgeschlossen werden.',
 		);
 		await expect(page.getByRole('textbox')).toHaveCount(0);
