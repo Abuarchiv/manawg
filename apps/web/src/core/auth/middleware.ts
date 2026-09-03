@@ -1,13 +1,36 @@
+import { isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 import { getSupabaseEnv, hasSupabaseEnv } from './env';
 
-/** Refreshes an existing social-login session without making auth configuration mandatory for guests. */
+function signInRedirect(request: NextRequest, response: NextResponse): NextResponse {
+	const url = request.nextUrl.clone();
+	url.pathname = '/neu';
+	url.search = '';
+	url.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
+	const redirect = NextResponse.redirect(url);
+	response.headers.forEach((value, name) => {
+		const lowerName = name.toLowerCase();
+		if (
+			lowerName !== 'set-cookie' &&
+			lowerName !== 'location' &&
+			!lowerName.startsWith('x-middleware-')
+		) {
+			redirect.headers.set(name, value);
+		}
+	});
+	for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+	redirect.headers.set('Cache-Control', 'private, no-store');
+	return redirect;
+}
+
+/** Refresh sessions and require social authentication before serving WG pages. */
 export async function refreshSupabaseSession(
 	request: NextRequest,
 	response: NextResponse,
 ): Promise<NextResponse> {
-	if (!hasSupabaseEnv()) return response;
+	const requiresSignIn = request.nextUrl.pathname.startsWith('/wg/') && !isE2EDbDownMode();
+	if (!hasSupabaseEnv()) return requiresSignIn ? signInRedirect(request, response) : response;
 
 	const { url, publishableKey } = getSupabaseEnv();
 	let refreshedResponse = response;
@@ -47,9 +70,11 @@ export async function refreshSupabaseSession(
 	});
 
 	try {
-		await supabase.auth.getUser();
+		const { data, error } = await supabase.auth.getUser();
+		if (requiresSignIn && (error || !data.user)) return signInRedirect(request, refreshedResponse);
 	} catch {
-		// Route handlers still reject unverified writes; a transient auth refresh must not break public pages.
+		if (requiresSignIn) return signInRedirect(request, refreshedResponse);
+		// Public entry pages remain available when Auth cannot be reached.
 	}
 	return refreshedResponse;
 }

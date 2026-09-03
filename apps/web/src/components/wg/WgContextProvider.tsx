@@ -66,6 +66,8 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 	const [identity, setStateIdentity] = useState<StoredIdentity | null>(null);
 	const [legacyIdentity, setLegacyIdentity] = useState<StoredIdentity | null>(null);
 	const [hydrated, setHydrated] = useState(false);
+	const [memberLoaded, setMemberLoaded] = useState(false);
+	const [memberLoadError, setMemberLoadError] = useState(false);
 	const syncingRef = useRef(false);
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 
@@ -88,13 +90,19 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 	useEffect(() => {
 		let cancelled = false;
 		const loadSessionMember = async () => {
+			setMemberLoaded(false);
+			setMemberLoadError(false);
 			const res = await apiFetch<{
 				currentMember?: { memberId: string; name: string };
 			}>(`/api/wg/${encodedShareCode}`);
-			if (cancelled || !res.ok) return;
-			const member = res.data.currentMember;
-			if (!member) return;
-			setStateIdentity({ memberId: member.memberId, name: member.name });
+			if (cancelled) return;
+			if (!res.ok) {
+				setMemberLoadError(true);
+			} else {
+				const member = res.data.currentMember;
+				if (member) setStateIdentity({ memberId: member.memberId, name: member.name });
+			}
+			setMemberLoaded(true);
 		};
 		if (hydrated) void loadSessionMember();
 		return () => {
@@ -113,10 +121,11 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 			if (res.ok) {
 				setMembers(res.data.members.map((m) => ({ ...m, active: m.active !== false })));
 				setIsAdmin(res.data.viewerIsAdmin === true);
-			} else if (
-				res.status === 401 &&
-				(res.error === 'not_a_member' || res.error === 'auth_required')
-			) {
+			} else if (res.status === 401 && res.error === 'auth_required') {
+				window.location.replace(
+					`/neu?next=${encodeURIComponent(window.location.pathname + window.location.search)}`,
+				);
+			} else if (res.status === 401 && res.error === 'not_a_member') {
 				setStateIdentity(null);
 			}
 		} catch {
@@ -172,7 +181,7 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 		};
 	}, [identity, wg.shareCode]);
 
-	if (!hydrated) {
+	if (!hydrated || !memberLoaded) {
 		// Static skeleton shell instead of null: the SSR/first-paint output keeps
 		// the document structure (<main> landmark, app background) while the
 		// identity is read from localStorage. Fully static markup — no dynamic
@@ -187,6 +196,17 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 					</div>
 				</main>
 			</div>
+		);
+	}
+
+	if (memberLoadError) {
+		return (
+			<main id="main" tabIndex={-1} className="mx-auto max-w-md p-6">
+				<p role="alert">Deine WG konnte nicht geladen werden. Bitte versuche es erneut.</p>
+				<button type="button" onClick={() => window.location.reload()}>
+					Erneut versuchen
+				</button>
+			</main>
 		);
 	}
 

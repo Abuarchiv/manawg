@@ -40,8 +40,12 @@ export function SocialLoginButtons({
 		setPendingProvider(provider);
 		try {
 			await onOAuthStart(provider, next);
-		} catch {
-			setError('Anmeldung konnte nicht gestartet werden.');
+		} catch (error) {
+			setError(
+				error instanceof Error && error.message === 'provider_unavailable'
+					? 'Dieser Anmeldedienst ist gerade nicht verfügbar. Bitte versuche es später erneut.'
+					: 'Die Anmeldung ist gerade nicht erreichbar. Bitte prüfe deine Verbindung und versuche es erneut.',
+			);
 		} finally {
 			setPendingProvider(null);
 		}

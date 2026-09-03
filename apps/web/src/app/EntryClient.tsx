@@ -1,6 +1,5 @@
 'use client';
 
-import { getKnownWgs } from '@/shared/lib/identity';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -9,16 +8,12 @@ import { useEffect } from 'react';
  * manifest's start_url, so it is where every PWA launch and every push
  * notification without a deeper target lands.
  *
- * `getKnownWgs()` returns most-recently-visited first and already swallows
- * unavailable/blocked storage by returning [] — so a private window simply
- * falls through to /neu instead of erroring.
  */
 export function EntryClient() {
 	const router = useRouter();
 
 	useEffect(() => {
-		const [lastVisited] = getKnownWgs();
-		router.replace(lastVisited ? `/wg/${encodeURIComponent(lastVisited.code)}` : '/neu');
+		router.replace('/neu');
 	}, [router]);
 
 	// Shown for the one frame before the redirect commits. Deliberately not a

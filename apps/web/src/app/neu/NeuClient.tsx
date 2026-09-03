@@ -5,14 +5,11 @@ import { BackButton } from '@/components/neu/BackButton';
 import { ErrorBox } from '@/components/neu/ErrorBox';
 import { Field } from '@/components/neu/Field';
 import { InviteStep } from '@/components/neu/InviteStep';
-import {
-	getInitialJoinCode,
-	joinErrorMessage,
-	shouldFallbackToDirectJoin,
-} from '@/core/infra/join-flow';
+import { safeNextPath } from '@/core/auth/next-path';
+import { getInitialJoinCode, joinErrorMessage } from '@/core/infra/join-flow';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { LogoMark } from '@/shared/components/ui/LogoMark';
-import { type KnownWg, getKnownWgs, rememberWg } from '@/shared/lib/identity';
+import { rememberWg } from '@/shared/lib/identity';
 import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -47,6 +44,14 @@ interface AccountWg extends JoinWg {}
 
 type StartStep = 'choose' | 'create' | 'join' | 'joinName' | 'invite';
 
+function isNeuPath(path: string): boolean {
+	try {
+		return new URL(path, 'https://manawg.invalid').pathname === '/neu';
+	} catch {
+		return true;
+	}
+}
+
 async function startSocialLogin(provider: SocialProvider, next: string): Promise<void> {
 	const { startSocialLogin } = await import('@/core/auth/client');
 	await startSocialLogin(provider, next);
@@ -80,10 +85,10 @@ function createWgErrorMessage(status: number, error: string): string {
 		return 'WG konnte nicht erstellt werden: Der WG-Name muss 1 bis 100 Zeichen haben.';
 	}
 	if (status === 400 && error === 'creator_name_invalid') {
-		return 'WG konnte nicht erstellt werden: Dein Name muss 1 bis 80 Zeichen haben.';
+		return 'WG konnte nicht erstellt werden: Dein Anzeigename muss 1 bis 80 Zeichen haben.';
 	}
 	if (status === 400 && (error === 'invalid_body' || error === 'invalid_json')) {
-		return 'WG-Name und dein Name müssen ausgefüllt und kurz genug sein.';
+		return 'WG-Name und dein Anzeigename müssen ausgefüllt und kurz genug sein.';
 	}
 	if (error === 'share_code_exhausted') {
 		return 'Gerade konnte kein WG-Code erstellt werden. Bitte versuche es gleich noch einmal.';
@@ -123,8 +128,11 @@ export function NeuClient() {
 	const [joinCode, setJoinCode] = useState('');
 	const [joinName, setJoinName] = useState('');
 	const [joinWg, setJoinWg] = useState<JoinWg | null>(null);
-	const [knownWgs, setKnownWgs] = useState<KnownWg[]>([]);
 	const [accountWgs, setAccountWgs] = useState<AccountWg[]>([]);
+	const [authState, setAuthState] = useState<'loading' | 'signed-out' | 'authenticated' | 'error'>(
+		'loading',
+	);
+	const [authRetryNonce, setAuthRetryNonce] = useState(0);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [createdWg, setCreatedWg] = useState<CreatedWg | null>(null);
@@ -133,7 +141,6 @@ export function NeuClient() {
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: mount-only initializer — reads the saved draft and initial URL params once; adding searchParams would re-run on navigation and clobber in-progress step/draft state.
 	useEffect(() => {
-		setKnownWgs(getKnownWgs());
 		const code = typeof window === 'undefined' ? '' : getInitialJoinCode(window.location.search);
 		const draft = readDraft<StartDraft>(START_DRAFT_KEY);
 		if (draft?.wgName) setWgName(draft.wgName);
@@ -142,6 +149,8 @@ export function NeuClient() {
 		if (code) {
 			setJoinCode(code);
 			setStep('join');
+		} else if (searchParams.get('action') === 'create') {
+			setStep('create');
 		} else {
 			if (draft?.joinCode) setJoinCode(draft.joinCode);
 			if (draft?.step === 'joinName' && isJoinWg(draft.joinWg)) {
@@ -149,7 +158,6 @@ export function NeuClient() {
 				setStep('joinName');
 			} else if (draft?.step === 'create' || draft?.step === 'join') setStep(draft.step);
 			else if (draft?.joinCode) setStep('join');
-			else if (searchParams.get('action') === 'create') setStep('create');
 		}
 		setInteractive(true);
 	}, []);
@@ -158,22 +166,48 @@ export function NeuClient() {
 		if (!interactive) return;
 		let cancelled = false;
 		const loadAccountWgs = async () => {
+			if (authRetryNonce > 0) setError(null);
+			setAuthState('loading');
 			try {
 				const res = await fetch('/api/wg/mine', { cache: 'no-store' });
-				if (!res.ok) return;
-				const data = (await res.json()) as { wgs?: unknown };
-				if (!cancelled && Array.isArray(data.wgs)) {
-					setAccountWgs(data.wgs.filter(isAccountWg));
+				if (cancelled) return;
+				if (res.status === 401) {
+					setAccountWgs([]);
+					setAuthState('signed-out');
+					return;
 				}
+				if (!res.ok) {
+					setAuthState('error');
+					return;
+				}
+				const data: unknown = await res.json();
+				const wgs = Array.isArray(data)
+					? data
+					: data && typeof data === 'object' && Array.isArray(Reflect.get(data, 'wgs'))
+						? Reflect.get(data, 'wgs')
+						: null;
+				if (!wgs) {
+					setAuthState('error');
+					return;
+				}
+				setAccountWgs(wgs.filter(isAccountWg));
+				setAuthState('authenticated');
 			} catch {
-				// Signed-out and offline starts still offer social login below.
+				if (!cancelled) setAuthState('error');
 			}
 		};
 		void loadAccountWgs();
 		return () => {
 			cancelled = true;
 		};
-	}, [interactive]);
+	}, [authRetryNonce, interactive]);
+
+	useEffect(() => {
+		if (authState !== 'authenticated') return;
+		const next = safeNextPath(searchParams.get('next'));
+		if (next === '/' || isNeuPath(next)) return;
+		router.replace(next);
+	}, [authState, router, searchParams]);
 
 	useEffect(() => {
 		if (!interactive) return;
@@ -196,12 +230,31 @@ export function NeuClient() {
 		else removeDraft(START_DRAFT_KEY);
 	}, [creatorName, interactive, joinCode, joinName, joinWg, step, wgName]);
 
+	function loginNextPath(): string {
+		const params = new URLSearchParams();
+		if (step === 'create') params.set('action', 'create');
+		const code = joinCode || joinWg?.code;
+		if ((step === 'join' || step === 'joinName') && code) {
+			params.set('code', normalizeShareCode(code));
+		}
+		const next = safeNextPath(searchParams.get('next'));
+		if (next !== '/' && !isNeuPath(next)) params.set('next', next);
+		const query = params.toString();
+		return query ? `/neu?${query}` : '/neu';
+	}
+
+	function returnToSignIn(): void {
+		setAuthState('signed-out');
+		setError(null);
+		router.replace(loginNextPath());
+	}
+
 	async function createWg(): Promise<void> {
 		if (busyRef.current) return;
 		const trimmedWg = wgName.trim();
 		const trimmedMe = creatorName.trim();
 		if (trimmedWg.length === 0) return setError('WG-Name fehlt.');
-		if (trimmedMe.length === 0) return setError('Dein Name fehlt.');
+		if (trimmedMe.length === 0) return setError('Dein Anzeigename fehlt.');
 		busyRef.current = true;
 		setBusy(true);
 		setError(null);
@@ -211,6 +264,10 @@ export function NeuClient() {
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ name: trimmedWg, creatorName: trimmedMe }),
 			});
+			if (res.status === 401) {
+				returnToSignIn();
+				return;
+			}
 			if (!res.ok) {
 				setError(createWgErrorMessage(res.status, await readStartError(res)));
 				return;
@@ -245,11 +302,11 @@ export function NeuClient() {
 		try {
 			const res = await fetch(`/api/wg/${encodeURIComponent(code)}`, { cache: 'no-store' });
 			if (!res.ok) {
-				const apiError = await readStartError(res);
-				if (shouldFallbackToDirectJoin(res.status, apiError)) {
-					router.push(`/wg/${encodeURIComponent(code)}`);
+				if (res.status === 401) {
+					returnToSignIn();
 					return;
 				}
+				const apiError = await readStartError(res);
 				setError(joinErrorMessage(res.status, apiError));
 				return;
 			}
@@ -279,7 +336,7 @@ export function NeuClient() {
 		const name = joinName.trim();
 		if (!joinWg) return;
 		if (name.length === 0) {
-			setError('Dein Name fehlt.');
+			setError('Dein Anzeigename fehlt.');
 			return;
 		}
 		busyRef.current = true;
@@ -291,6 +348,10 @@ export function NeuClient() {
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ name }),
 			});
+			if (res.status === 401) {
+				returnToSignIn();
+				return;
+			}
 			if (!res.ok) {
 				const apiError = await readStartError(res);
 				setError(
@@ -318,7 +379,69 @@ export function NeuClient() {
 		setJoinWg(null);
 	}
 
-	const recentWg = knownWgs[0] ?? null;
+	const callbackError = searchParams.get('error') === 'auth_callback';
+
+	if (authState !== 'authenticated') {
+		return (
+			<main
+				id="main"
+				tabIndex={-1}
+				className="flex min-h-svh items-center justify-center bg-[var(--bg-base)] px-4 py-10 focus:outline-none"
+				style={{
+					paddingTop: 'calc(2.5rem + env(safe-area-inset-top, 0px))',
+					paddingBottom: 'calc(2.5rem + env(safe-area-inset-bottom, 0px))',
+				}}
+			>
+				<div className="w-full max-w-sm">
+					<header className="mb-7 text-center">
+						<div className="mb-3 flex justify-center">
+							<LogoMark size={48} radius={12} className="shrink-0 rounded-xl shadow-sm" />
+						</div>
+						<p className="text-[11.5px] font-medium uppercase tracking-[0.18em] text-[var(--text-3)]">
+							ManaWG
+						</p>
+						<h1 className="mt-2 text-[22px] font-semibold tracking-tight text-[var(--text-1)]">
+							Mit deinem Account anmelden
+						</h1>
+						<p className="mt-2 text-sm text-[var(--text-2)]">
+							Dein Account macht deine WG auf jedem Gerät verfügbar.
+						</p>
+					</header>
+
+					{callbackError && (
+						<ErrorBox>
+							Die Anmeldung konnte nicht abgeschlossen werden. Bitte versuche es erneut.
+						</ErrorBox>
+					)}
+					{authState === 'error' && (
+						<div className="mb-4 space-y-2">
+							<ErrorBox>Deine Anmeldung konnte gerade nicht geprüft werden.</ErrorBox>
+							<button
+								type="button"
+								onClick={() => setAuthRetryNonce((value) => value + 1)}
+								className="w-full rounded-md border border-[var(--border)] px-3 py-2 text-[13px] font-medium text-[var(--text-1)] transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+							>
+								erneut prüfen
+							</button>
+						</div>
+					)}
+
+					{authState !== 'loading' && (
+						<div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+							<p className="text-[13px] text-[var(--text-2)]">
+								{step === 'create'
+									? 'Melde dich an, danach kannst du deine neue WG erstellen.'
+									: joinCode
+										? 'Melde dich an, danach kannst du mit deinem Einladungscode beitreten.'
+										: 'Melde dich an, um deine WGs wiederherzustellen oder loszulegen.'}
+							</p>
+							<SocialLoginButtons next={loginNextPath()} onOAuthStart={startSocialLogin} />
+						</div>
+					)}
+				</div>
+			</main>
+		);
+	}
 
 	return (
 		<main
@@ -357,15 +480,16 @@ export function NeuClient() {
 								: 'Dein Account macht deine WG auf jedem Gerät verfügbar.'}
 					</p>
 				</header>
+				{callbackError && (
+					<div className="mb-4">
+						<ErrorBox>
+							Die Anmeldung konnte nicht abgeschlossen werden. Bitte versuche es erneut.
+						</ErrorBox>
+					</div>
+				)}
 
 				{step === 'choose' && (
 					<div className="space-y-3">
-						<div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-							<p className="text-[13px] text-[var(--text-2)]">
-								Schon bei ManaWG? Melde dich an, um deine WGs wiederherzustellen.
-							</p>
-							<SocialLoginButtons next="/neu" onOAuthStart={startSocialLogin} />
-						</div>
 						{accountWgs.length > 0 && (
 							<div className="space-y-2">
 								<p className="px-1 text-[12px] font-medium text-[var(--text-3)]">Deine WGs</p>
@@ -383,24 +507,6 @@ export function NeuClient() {
 									</button>
 								))}
 							</div>
-						)}
-						{recentWg && (
-							<button
-								type="button"
-								disabled={!interactive}
-								onClick={() => router.push(`/wg/${encodeURIComponent(recentWg.code)}`)}
-								className="flex w-full items-center justify-between gap-3 rounded-lg border border-[var(--accent)]/25 bg-[var(--accent)]/5 px-4 py-3 text-left transition-colors hover:bg-[var(--accent)]/10 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
-							>
-								<div className="min-w-0">
-									<div className="truncate text-[15px] font-medium text-[var(--text-1)]">
-										Zurück zu {recentWg.name}
-									</div>
-									<div className="mt-0.5 text-[13px] text-[var(--text-3)]">
-										Zuletzt verwendete WG öffnen.
-									</div>
-								</div>
-								<ArrowRight className="h-4 w-4 shrink-0 text-[var(--text-3)]" aria-hidden />
-							</button>
 						)}
 						<div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-base)]">
 							<button
@@ -457,9 +563,8 @@ export function NeuClient() {
 					>
 						<div className="space-y-2">
 							<p className="text-[13px] text-[var(--text-2)]">
-								Melde dich an, damit deine WG auch auf einem neuen Gerät wieder da ist.
+								Dein Anzeigename wird in der WG angezeigt.
 							</p>
-							<SocialLoginButtons next="/neu?action=create" onOAuthStart={startSocialLogin} />
 						</div>
 						<Field
 							id="wg-name"
@@ -472,7 +577,7 @@ export function NeuClient() {
 						/>
 						<Field
 							id="creator-name"
-							label="Dein Name"
+							label="Dein Anzeigename"
 							placeholder="z. B. Anna"
 							value={creatorName}
 							onChange={setCreatorName}
@@ -588,7 +693,7 @@ export function NeuClient() {
 						</div>
 						<Field
 							id="join-name"
-							label="Dein Name"
+							label="Dein Anzeigename"
 							placeholder="z. B. Samira"
 							value={joinName}
 							onChange={(value) => {
@@ -598,12 +703,9 @@ export function NeuClient() {
 							maxLength={NAME_MAX}
 							autoComplete="given-name"
 						/>
-						<div className="space-y-2">
-							<p className="text-[13px] text-[var(--text-2)]">
-								Melde dich an, damit du diese WG später auf jedem Gerät öffnen kannst.
-							</p>
-							<SocialLoginButtons next="/neu" onOAuthStart={startSocialLogin} />
-						</div>
+						<p className="text-[13px] text-[var(--text-2)]">
+							Der Code ist nur der Einladungsschlüssel. Dein Account schützt deinen Beitritt.
+						</p>
 						{error && <ErrorBox>{error}</ErrorBox>}
 						<div className="flex items-center gap-2">
 							<BackButton onClick={() => setStep('join')} />

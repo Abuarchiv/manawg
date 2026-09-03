@@ -15,6 +15,15 @@ export function contentSecurityPolicy(): string {
 		'https://*.vercel-storage.com',
 	];
 	const workerSrc = ["'self'", 'blob:', 'https://cdn.jsdelivr.net'];
+	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+	if (supabaseUrl) {
+		try {
+			const authOrigin = new URL(supabaseUrl);
+			if (authOrigin.protocol === 'https:') connectSrc.push(authOrigin.origin);
+		} catch {
+			// Invalid auth configuration must not widen the policy.
+		}
+	}
 	if (process.env.NODE_ENV === 'development') {
 		scriptSrc.push("'unsafe-eval'");
 	}

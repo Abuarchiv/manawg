@@ -83,6 +83,10 @@ test.describe('ManaWG launch smoke', () => {
 	}) => {
 		let memberPostRequests = 0;
 		await page.addInitScript(() => window.localStorage.clear());
+		// This existing mocked invite-policy test starts after account authentication.
+		await page.route('**/api/wg/mine', (route) =>
+			route.fulfill({ status: 200, contentType: 'application/json', body: '{"wgs":[]}' }),
+		);
 		await page.route('**/api/wg/MTE8PZAT', async (route) => {
 			await route.fulfill({
 				status: 200,
@@ -150,6 +154,7 @@ test.describe('ManaWG launch smoke', () => {
 			await page.addInitScript(() => window.localStorage.clear());
 			await gotoWithRetry(page, '/neu');
 			await authenticateQaUser(page, qaAuthConfig);
+			await page.reload();
 			await expect(page.getByRole('heading', { name: 'Loslegen' })).toBeVisible({
 				timeout: 30_000,
 			});
@@ -171,7 +176,7 @@ test.describe('ManaWG launch smoke', () => {
 
 			// Step 3: Fill WG name + creator name
 			await page.getByLabel('WG-Name').fill('Smoke Test WG');
-			await page.getByLabel('Dein Name').fill('Smoke Tester');
+			await page.getByLabel('Dein Anzeigename').fill('Smoke Tester');
 
 			// Step 4: Submit → invite step with a generated WG code
 			await page.getByRole('button', { name: /^WG erstellen$/i }).click();
