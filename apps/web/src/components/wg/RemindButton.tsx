@@ -1,7 +1,6 @@
 'use client';
 
 import { apiFetch } from '@/core/infra/api-client';
-import posthog from '@/shared/lib/analytics';
 import { Bell, Check, Loader2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 
@@ -69,7 +68,6 @@ export function RemindButton({
 				},
 			);
 			if (res.ok) {
-				posthog.capture('payment_reminder_sent');
 				setStatus('sent');
 				setFeedback('Mahnung gesendet.');
 				onSent?.();

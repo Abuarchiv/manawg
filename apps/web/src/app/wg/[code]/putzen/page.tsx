@@ -55,7 +55,6 @@ import type {
 	RecurrenceType,
 } from '@/features/chores/components/chore-types';
 import { QUICK_CHORE_TEMPLATES, TITLE_MAX } from '@/features/chores/components/constants';
-import posthog from '@/shared/lib/analytics';
 import { Sparkles } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -354,11 +353,6 @@ export default function PutzenPage() {
 				return;
 			}
 
-			posthog.capture('chore_created', {
-				recurrence_type: newRecurrenceType,
-				interval_days: newInterval,
-				has_assignee: newAssigned.length > 0,
-			});
 			setNewTitle('');
 			setNewInterval(7);
 			setNewRecurrenceType('days');
@@ -561,10 +555,6 @@ export default function PutzenPage() {
 			}
 			setActionError('Erledigt-Aktion konnte nicht gespeichert werden: Versuche es gleich erneut.');
 		} else {
-			posthog.capture('chore_completed', {
-				recurrence_type: chore.recurrenceType,
-				interval_days: chore.intervalDays,
-			});
 			const completedAt = new Date().toISOString();
 			// Optimistic next-due approximation. Use ms math for 'days' (cheap +
 			// accurate) and a calendar-month approximation for 'months' so the

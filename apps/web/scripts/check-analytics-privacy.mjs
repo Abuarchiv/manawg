@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import ts from 'typescript';
 
@@ -166,5 +168,50 @@ const captureCalls = [...onboarding.matchAll(/posthog\.capture\(([^)]*)\)/g)].ma
 	(match) => match[1],
 );
 assert.deepEqual(captureCalls, ["'wg_created'", "'wg_joined'"]);
+
+// Minimal analytics contract: only $pageview (autocaptured via
+// capture_pageview, never an explicit capture call) plus the two permitted
+// activation captures wg_created / wg_joined may exist in product source.
+// Scan every product-source capture call so dead events fail closed here
+// even though runtime before_send already drops them.
+const ALLOWED_CAPTURE_EVENTS = new Set(['wg_created', 'wg_joined']);
+const srcDir = fileURLToPath(root);
+async function collectSourceFiles(dir) {
+	const entries = await readdir(dir, { withFileTypes: true });
+	const files = [];
+	for (const entry of entries) {
+		const full = path.join(dir, entry.name);
+		if (entry.isDirectory()) files.push(...(await collectSourceFiles(full)));
+		else if (/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(entry.name)) files.push(full);
+	}
+	return files;
+}
+const sourceFiles = (await collectSourceFiles(srcDir)).filter(
+	(file) => !/\.(test|spec)\./.test(path.basename(file)),
+);
+const allCaptures = [];
+for (const file of sourceFiles) {
+	const content = await readFile(file, 'utf8');
+	for (const match of content.matchAll(/posthog\.capture\(\s*['"]([^'"]+)['"]/g)) {
+		allCaptures.push(`${path.relative(srcDir, file)}: ${match[1]}`);
+	}
+}
+const allEvents = allCaptures.map((item) => item.split(': ', 2)[1]);
+const unexpected = allEvents.filter((event) => !ALLOWED_CAPTURE_EVENTS.has(event));
+assert.deepEqual(
+	[...new Set(allEvents)].sort(),
+	[...ALLOWED_CAPTURE_EVENTS].sort(),
+	`non-activation analytics calls contradict the minimal contract: ${allCaptures.join(', ') || 'none found'}`,
+);
+assert.equal(
+	unexpected.length,
+	0,
+	`non-activation analytics calls contradict the minimal contract: ${allCaptures.join(', ')}`,
+);
+assert.equal(
+	allCaptures.length,
+	ALLOWED_CAPTURE_EVENTS.size,
+	`expected exactly the permitted activation captures, found: ${allCaptures.join(', ')}`,
+);
 
 process.stdout.write('analytics privacy check passed\n');
