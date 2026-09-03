@@ -7,16 +7,17 @@ test.describe('live social-login entry', () => {
 	);
 	test.describe.configure({ retries: 0 });
 
-	test('signed-out creation starts with social authentication', async ({ page }) => {
+	test('signed-out creation starts with account authentication', async ({ page }) => {
 		await page.goto('/neu?action=create');
 		await expect(
 			page.getByRole('button', { name: 'Mit Google anmelden', exact: true }),
 		).toBeVisible();
-		await expect(page.getByRole('textbox')).toHaveCount(0);
+		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
+		await expect(page.getByLabel('Passwort')).toBeVisible();
 		await expect(page.getByRole('button', { name: 'WG erstellen', exact: true })).toHaveCount(0);
 	});
 
-	test('old browser history cannot replace account sign-in', async ({ page }) => {
+	test('old browser history cannot replace the public entry', async ({ page }) => {
 		await page.addInitScript(() => {
 			localStorage.setItem(
 				'manawg_known_wgs',
@@ -26,10 +27,8 @@ test.describe('live social-login entry', () => {
 			);
 		});
 		await page.goto('/');
-		await expect(page).toHaveURL(/\/neu(?:\?|$)/);
-		await expect(
-			page.getByRole('button', { name: 'Mit Google anmelden', exact: true }),
-		).toBeVisible();
+		await expect(page).toHaveURL(new URL('/', process.env.BASE_URL).href);
+		await expect(page.getByRole('link', { name: 'WG erstellen', exact: true })).toBeVisible();
 		await expect(page.getByText('Old browser history')).toHaveCount(0);
 	});
 
@@ -75,7 +74,7 @@ test.describe('live social-login entry', () => {
 		await expect(page.getByRole('main').getByRole('alert')).toContainText(
 			'Die Anmeldung konnte nicht abgeschlossen werden.',
 		);
-		await expect(page.getByRole('textbox')).toHaveCount(0);
+		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
 	});
 
 	test('OAuth error redirects reject external destinations', async ({ request }) => {

@@ -4,9 +4,7 @@ import { apiFetch } from '@/core/infra/api-client';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import { type StoredIdentity, getIdentity, rememberWg } from '@/shared/lib/identity';
 import {
-	Suspense,
 	createContext,
-	lazy,
 	useCallback,
 	useContext,
 	useEffect,
@@ -15,12 +13,6 @@ import {
 	useState,
 } from 'react';
 import type { ReactNode } from 'react';
-
-const IdentityPicker = lazy(() =>
-	import('@/components/wg/IdentityPicker').then(({ IdentityPicker }) => ({
-		default: IdentityPicker,
-	})),
-);
 
 export interface WgSummary {
 	id: string;
@@ -64,7 +56,6 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 	const [members, setMembers] = useState<Member[]>(initialMembers);
 	const [isAdmin, setIsAdmin] = useState(false);
 	const [identity, setStateIdentity] = useState<StoredIdentity | null>(null);
-	const [legacyIdentity, setLegacyIdentity] = useState<StoredIdentity | null>(null);
 	const [hydrated, setHydrated] = useState(false);
 	const [memberLoaded, setMemberLoaded] = useState(false);
 	const [memberLoadError, setMemberLoadError] = useState(false);
@@ -73,7 +64,6 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 
 	useEffect(() => {
 		const storedIdentity = getIdentity(wg.id);
-		setLegacyIdentity(storedIdentity);
 		// The database-free Playwright fixture has no Supabase session by design.
 		// It only exists in CI and keeps its old local identity setup working.
 		if (
@@ -132,10 +122,6 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 			// Network blip — ignore; next refresh will retry.
 		}
 	}, [encodedShareCode, identity]);
-
-	function onPicked(picked: StoredIdentity): void {
-		setStateIdentity(picked);
-	}
 
 	const value = useMemo<WgContextValue | null>(() => {
 		if (!identity) return null;
@@ -212,16 +198,15 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 
 	if (!identity) {
 		return (
-			<Suspense fallback={<div className="min-h-svh bg-[var(--bg-base)]" aria-busy="true" />}>
-				<IdentityPicker
-					wgId={wg.id}
-					wgShareCode={wg.shareCode}
-					wgName={wg.name}
-					members={members.filter((m) => m.active)}
-					legacyIdentity={legacyIdentity}
-					onPicked={onPicked}
-				/>
-			</Suspense>
+			<main id="main" tabIndex={-1} className="mx-auto max-w-md p-6">
+				<p role="alert">Deine Mitgliedschaft konnte nicht bestätigt werden.</p>
+				<a
+					href={`/neu?next=${encodeURIComponent(`/wg/${wg.shareCode}`)}`}
+					className="mt-4 inline-block underline"
+				>
+					Zurück zu deinen WGs
+				</a>
+			</main>
 		);
 	}
 

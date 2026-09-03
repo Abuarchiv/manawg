@@ -15,6 +15,20 @@ export function contentSecurityPolicy(): string {
 		'https://*.vercel-storage.com',
 	];
 	const workerSrc = ["'self'", 'blob:', 'https://cdn.jsdelivr.net'];
+	const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
+	if (posthogHost) {
+		try {
+			const apiOrigin = new URL(posthogHost);
+			if (apiOrigin.protocol === 'https:') {
+				connectSrc.push(apiOrigin.origin);
+				const assetsOrigin = new URL(apiOrigin.origin);
+				assetsOrigin.hostname = apiOrigin.hostname.replace('.i.', '-assets.i.');
+				scriptSrc.push(assetsOrigin.origin);
+			}
+		} catch {
+			// Invalid analytics configuration must not widen the policy.
+		}
+	}
 	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 	if (supabaseUrl) {
 		try {

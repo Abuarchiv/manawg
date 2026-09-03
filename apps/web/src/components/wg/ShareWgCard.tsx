@@ -1,6 +1,7 @@
 'use client';
 
 import { copyViaTextArea } from '@/core/utils/clipboard';
+import posthog from '@/shared/lib/analytics';
 import { Check, Copy, Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
@@ -17,12 +18,12 @@ const COPY_FEEDBACK_MS = 1500;
 
 function buildShareUrl(shareCode: string, explicitAppUrl?: string): string {
 	if (explicitAppUrl) {
-		return `${explicitAppUrl.replace(/\/$/, '')}/neu?code=${encodeURIComponent(shareCode)}`;
+		return `${explicitAppUrl.replace(/\/$/, '')}/?code=${encodeURIComponent(shareCode)}`;
 	}
 	if (typeof window !== 'undefined') {
-		return `${window.location.origin}/neu?code=${encodeURIComponent(shareCode)}`;
+		return `${window.location.origin}/?code=${encodeURIComponent(shareCode)}`;
 	}
-	return `/neu?code=${encodeURIComponent(shareCode)}`;
+	return `/?code=${encodeURIComponent(shareCode)}`;
 }
 
 export function ShareWgCard({
@@ -99,6 +100,7 @@ export function ShareWgCard({
 				text: `Tritt der WG "${wgName}" auf ManaWG bei. Code: ${shareCode}`,
 				url: shareUrl,
 			});
+			posthog.capture('wg_invitation_shared');
 			showCopied('link');
 		} catch (err) {
 			if (err instanceof Error && err.name === 'AbortError') return;

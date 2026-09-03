@@ -17,6 +17,23 @@ async function gotoWithRetry(page: Page, path: string) {
 test.describe('Settings access controls', () => {
 	test.setTimeout(300_000);
 
+	test('shares invitation links through the public entry screen', async ({ page }) => {
+		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
+		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
+
+		await page.addInitScript(
+			({ wgId, memberId }) => {
+				localStorage.setItem(`manawg_identity:${wgId}`, JSON.stringify({ memberId, name: 'dsaf' }));
+			},
+			{ wgId, memberId },
+		);
+
+		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#zugang');
+		const invitationLink = page.getByRole('button', { name: 'Einladungslink kopieren' });
+		await expect(invitationLink).toBeVisible({ timeout: 30_000 });
+		await expect(invitationLink).toContainText(/\/\?code=MTE8PZAT$/);
+	});
+
 	test('recovers when joining toggle fails with a network error', async ({ page }) => {
 		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
 		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';

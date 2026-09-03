@@ -1,0 +1,347 @@
+{
+	"schemaVersion": 1,
+	"modelVersion": "growth-lab-0.1",
+	"snapshotDate": "2026-09-02",
+	"market": {
+		"audienceSegments": [
+			"students",
+			"employed residents",
+			"trainees",
+			"international residents",
+			"other shared households"
+		],
+		"students": {
+			"unit": "people",
+			"min": 2400000,
+			"mode": 2876900,
+			"max": 3200000,
+			"evidence": "observed",
+			"source": "https://www.destatis.de/DE/Presse/Pressemitteilungen/2025/11/PD25_426_21.html",
+			"observedAt": "2026-09-02",
+			"freshnessDays": 365
+		},
+		"wgShare": {
+			"unit": "fraction",
+			"min": 0.2,
+			"mode": 0.279,
+			"max": 0.35,
+			"evidence": "observed",
+			"source": "https://www.studierendenwerke.de/fileadmin/user_upload/SE22_Hauptbericht_barrierefrei.pdf",
+			"observedAt": "2021-01-01",
+			"freshnessDays": 365
+		},
+		"maxActiveWgs": {
+			"unit": "wgs",
+			"min": 100000,
+			"mode": 800000,
+			"max": 1200000,
+			"evidence": "assumed",
+			"source": "https://www.destatis.de/EN/Service/OpenData/api-webservice.html",
+			"observedAt": "2026-09-02",
+			"freshnessDays": 365
+		}
+	},
+	"channels": [
+		{
+			"id": "seo",
+			"name": "First-party SEO",
+			"segment": "WG residents across student, employed, trainee, international, and other shared households",
+			"complianceRisk": "low",
+			"externalAction": false,
+			"reachPerDay": {
+				"unit": "people/day",
+				"min": 600,
+				"mode": 1200,
+				"max": 1800,
+				"evidence": "assumed",
+				"source": "https://developers.google.com/webmaster-tools/v1/searchanalytics/query",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			},
+			"visitRate": {
+				"unit": "fraction",
+				"min": 0.02,
+				"mode": 0.03,
+				"max": 0.05,
+				"evidence": "assumed",
+				"source": "https://developers.google.com/webmaster-tools/v1/searchanalytics/query",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			},
+			"creationRate": {
+				"unit": "fraction",
+				"min": 0.03,
+				"mode": 0.04,
+				"max": 0.06,
+				"evidence": "assumed",
+				"source": "https://developers.google.com/webmaster-tools/v1/searchanalytics/query",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			},
+			"cashCostPerDay": {
+				"unit": "EUR/day",
+				"min": 0,
+				"mode": 0,
+				"max": 0,
+				"evidence": "assumed",
+				"source": "https://developers.google.com/webmaster-tools/v1/searchanalytics/query",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			},
+			"operatorHoursPerDay": {
+				"unit": "hours/day",
+				"min": 0.5,
+				"mode": 1,
+				"max": 2,
+				"evidence": "assumed",
+				"source": "https://developers.google.com/webmaster-tools/v1/searchanalytics/query",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			}
+		},
+		{
+			"id": "community",
+			"name": "Compliant community participation",
+			"segment": "WG residents looking for practical shared-living solutions",
+			"complianceRisk": "medium",
+			"externalAction": true,
+			"reachPerDay": {
+				"unit": "people/day",
+				"min": 200,
+				"mode": 400,
+				"max": 700,
+				"evidence": "assumed",
+				"source": "https://redditinc.com/policies/data-api-terms",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			},
+			"visitRate": {
+				"unit": "fraction",
+				"min": 0.015,
+				"mode": 0.03,
+				"max": 0.05,
+				"evidence": "assumed",
+				"source": "https://redditinc.com/policies/data-api-terms",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			},
+			"creationRate": {
+				"unit": "fraction",
+				"min": 0.03,
+				"mode": 0.05,
+				"max": 0.07,
+				"evidence": "assumed",
+				"source": "https://redditinc.com/policies/data-api-terms",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			},
+			"cashCostPerDay": {
+				"unit": "EUR/day",
+				"min": 0,
+				"mode": 0,
+				"max": 0,
+				"evidence": "assumed",
+				"source": "https://redditinc.com/policies/data-api-terms",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			},
+			"operatorHoursPerDay": {
+				"unit": "hours/day",
+				"min": 1,
+				"mode": 2,
+				"max": 4,
+				"evidence": "assumed",
+				"source": "https://redditinc.com/policies/data-api-terms",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			}
+		},
+		{
+			"id": "paid-social",
+			"name": "Paid social acquisition",
+			"segment": "WG residents with immediate shared-living pain",
+			"complianceRisk": "medium",
+			"externalAction": true,
+			"reachPerDay": {
+				"unit": "people/day",
+				"min": 2000,
+				"mode": 5000,
+				"max": 8000,
+				"evidence": "assumed",
+				"source": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			},
+			"visitRate": {
+				"unit": "fraction",
+				"min": 0.02,
+				"mode": 0.03,
+				"max": 0.05,
+				"evidence": "assumed",
+				"source": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			},
+			"creationRate": {
+				"unit": "fraction",
+				"min": 0.015,
+				"mode": 0.025,
+				"max": 0.04,
+				"evidence": "assumed",
+				"source": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			},
+			"cashCostPerDay": {
+				"unit": "EUR/day",
+				"min": 10,
+				"mode": 25,
+				"max": 50,
+				"evidence": "assumed",
+				"source": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			},
+			"operatorHoursPerDay": {
+				"unit": "hours/day",
+				"min": 0.2,
+				"mode": 0.5,
+				"max": 1,
+				"evidence": "assumed",
+				"source": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing",
+				"observedAt": "2026-09-02",
+				"freshnessDays": 30
+			}
+		}
+	],
+	"funnel": {
+		"membersPerCreatedWg": {
+			"unit": "people/wg",
+			"min": 2.5,
+			"mode": 3.2,
+			"max": 4.5,
+			"evidence": "assumed",
+			"source": "https://vercel.com/docs/analytics/limits-and-pricing",
+			"observedAt": "2026-09-02",
+			"freshnessDays": 90
+		},
+		"actionsWithin7Days": {
+			"unit": "actions/wg",
+			"min": 1.5,
+			"mode": 2.4,
+			"max": 4,
+			"evidence": "assumed",
+			"source": "https://vercel.com/docs/analytics/limits-and-pricing",
+			"observedAt": "2026-09-02",
+			"freshnessDays": 90
+		},
+		"activationProbability": {
+			"unit": "fraction",
+			"min": 0.45,
+			"mode": 0.55,
+			"max": 0.7,
+			"evidence": "assumed",
+			"source": "https://vercel.com/docs/analytics/limits-and-pricing",
+			"observedAt": "2026-09-02",
+			"freshnessDays": 90
+		}
+	},
+	"retention": {
+		"day30": {
+			"unit": "fraction",
+			"min": 0.25,
+			"mode": 0.4,
+			"max": 0.6,
+			"evidence": "assumed",
+			"source": "https://vercel.com/docs/analytics/limits-and-pricing",
+			"observedAt": "2026-09-02",
+			"freshnessDays": 90
+		}
+	},
+	"referral": {
+		"ratePerRetainedWgPer30Days": {
+			"unit": "referrals/wg/30d",
+			"min": 0.01,
+			"mode": 0.04,
+			"max": 0.08,
+			"evidence": "assumed",
+			"source": "https://vercel.com/docs/analytics/limits-and-pricing",
+			"observedAt": "2026-09-02",
+			"freshnessDays": 90
+		},
+		"multiplier": {
+			"unit": "factor",
+			"min": 0.5,
+			"mode": 1,
+			"max": 1.5,
+			"evidence": "assumed",
+			"source": "https://vercel.com/docs/analytics/limits-and-pricing",
+			"observedAt": "2026-09-02",
+			"freshnessDays": 90
+		}
+	},
+	"revenue": {
+		"monthlyPerRetainedWg": {
+			"unit": "EUR/wg/month",
+			"min": 0,
+			"mode": 0.5,
+			"max": 1,
+			"evidence": "assumed",
+			"source": "https://vercel.com/docs/analytics/limits-and-pricing",
+			"observedAt": "2026-09-02",
+			"freshnessDays": 90
+		}
+	},
+	"objective": {
+		"horizons": [30, 90, 365, 1095],
+		"validation": {
+			"targetActivatedWgs": 20,
+			"activationRateMin": 0.4,
+			"day30RetentionMin": 0.3,
+			"maxCashAcquisitionCost": 5,
+			"maxBudgetEur": 100,
+			"maxOperatorHours": 100,
+			"minEvidenceConfidence": 0.05
+		},
+		"weights": {
+			"activatedWgs": 0.3,
+			"day30Retention": 0.2,
+			"cashAcquisitionCost": 0.2,
+			"operatorHours": 0.1,
+			"contributionMargin": 0.1,
+			"evidenceConfidence": 0.1
+		}
+	},
+	"strategies": [
+		{
+			"id": "seo-household-problems",
+			"label": "Search content for recurring WG problems",
+			"channelId": "seo",
+			"actions": [
+				{ "kind": "seo", "reachMultiplier": 1, "cashMultiplier": 1, "hoursMultiplier": 1 }
+			],
+			"budgetEur": 0,
+			"maxHours": 100
+		},
+		{
+			"id": "community-listening",
+			"label": "Human-reviewed community participation",
+			"channelId": "community",
+			"actions": [
+				{ "kind": "community", "reachMultiplier": 1, "cashMultiplier": 1, "hoursMultiplier": 1 }
+			],
+			"budgetEur": 0,
+			"maxHours": 100
+		},
+		{
+			"id": "paid-social-test",
+			"label": "Paid social acquisition test",
+			"channelId": "paid-social",
+			"actions": [
+				{ "kind": "paid_ads", "reachMultiplier": 1, "cashMultiplier": 1, "hoursMultiplier": 1 }
+			],
+			"budgetEur": 100,
+			"maxHours": 50
+		}
+	]
+}

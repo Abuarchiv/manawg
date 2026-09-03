@@ -11,8 +11,9 @@
 // served from cache, and the app has its own offline queue for writes.
 //
 // Bump VERSION to evict every cached shell asset on the next activate.
-const VERSION = 'manawg-app-v1';
+const VERSION = 'manawg-app-v2';
 const SHELL_CACHE = `${VERSION}-shell`;
+const PUBLIC_DOCUMENT_PATHS = new Set(['/', '/offline']);
 
 const SHELL_ASSETS = [
 	'/',
@@ -64,7 +65,11 @@ self.addEventListener('activate', (event) => {
 		caches
 			.keys()
 			.then((keys) =>
-				Promise.all(keys.filter((k) => !k.startsWith(VERSION)).map((k) => caches.delete(k))),
+				Promise.all(
+					keys
+						.filter((k) => k.startsWith('manawg-app-') && k !== SHELL_CACHE)
+						.map((k) => caches.delete(k)),
+				),
 			)
 			.then(() => self.clients.claim()),
 	);
@@ -152,8 +157,7 @@ self.addEventListener('fetch', (event) => {
 		event.respondWith(
 			fetch(request)
 				.then((res) => {
-					const copy = res.clone();
-					cacheResponse(request, copy);
+					if (PUBLIC_DOCUMENT_PATHS.has(url.pathname)) cacheResponse(request, res.clone());
 					return res;
 				})
 				.catch(() =>

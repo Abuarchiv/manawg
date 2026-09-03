@@ -2,10 +2,6 @@
 
 import { useEffect } from 'react';
 
-/**
- * Registers the service worker for PWA installability.
- * Mounted in the root layout — runs once on hydration.
- */
 export function PwaRegister() {
 	useEffect(() => {
 		if (typeof window === 'undefined') return;

@@ -1,5 +1,7 @@
 'use client';
 
+import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
+import { LegacyAccountRecovery } from '@/components/auth/LegacyAccountRecovery';
 import { SocialLoginButtons, type SocialProvider } from '@/components/auth/SocialLoginButtons';
 import { BackButton } from '@/components/neu/BackButton';
 import { ErrorBox } from '@/components/neu/ErrorBox';
@@ -9,9 +11,11 @@ import { safeNextPath } from '@/core/auth/next-path';
 import { getInitialJoinCode, joinErrorMessage } from '@/core/infra/join-flow';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { LogoMark } from '@/shared/components/ui/LogoMark';
+import posthog from '@/shared/lib/analytics';
 import { rememberWg } from '@/shared/lib/identity';
 import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import { ArrowRight, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -24,23 +28,21 @@ interface CreateResponse {
 	creator: { id: string; name: string };
 }
 
-interface WgResponse {
-	wg: { id: string; shareCode: string; name: string; joiningEnabled?: boolean };
-	currentMember?: { memberId: string; name: string };
-}
-
 interface CreatedWg {
 	code: string;
 	name: string;
 }
 
 interface JoinWg {
-	id: string;
 	code: string;
 	name: string;
 }
 
-interface AccountWg extends JoinWg {}
+interface AccountWg {
+	id: string;
+	code: string;
+	name: string;
+}
 
 type StartStep = 'choose' | 'create' | 'join' | 'joinName' | 'invite';
 
@@ -50,6 +52,34 @@ function isNeuPath(path: string): boolean {
 	} catch {
 		return true;
 	}
+}
+
+function getWgCodeFromPath(path: string): string | null {
+	const match = path.match(/^\/wg\/([^/]+)/);
+	if (!match?.[1]) return null;
+	try {
+		const code = normalizeShareCode(decodeURIComponent(match[1]));
+		return isValidShareCode(code) ? code : null;
+	} catch {
+		return null;
+	}
+}
+
+function getNeuIntentFromSearch(search: string): { joinCode: string; create: boolean } {
+	const currentSearch = search.startsWith('?') ? search : `?${search}`;
+	const nested = safeNextPath(new URLSearchParams(currentSearch).get('next'));
+	for (const candidate of [currentSearch, nested]) {
+		const url = new URL(candidate, 'https://manawg.invalid/neu');
+		if (url.pathname !== '/neu') continue;
+		const joinCode = getInitialJoinCode(url.search);
+		if (joinCode) return { joinCode, create: false };
+		if (url.searchParams.get('action') === 'create') return { joinCode: '', create: true };
+	}
+	return { joinCode: '', create: false };
+}
+
+function getJoinCodeFromSearch(search: string): string {
+	return getNeuIntentFromSearch(search).joinCode;
 }
 
 async function startSocialLogin(provider: SocialProvider, next: string): Promise<void> {
@@ -79,7 +109,7 @@ async function readStartError(response: Response): Promise<string> {
 
 function createWgErrorMessage(status: number, error: string): string {
 	if (status === 401 && error === 'auth_required') {
-		return 'Melde dich zuerst mit Google, Apple oder Facebook an.';
+		return 'Melde dich zuerst mit deinem Supabase-Account an.';
 	}
 	if (status === 400 && error === 'name_invalid') {
 		return 'WG konnte nicht erstellt werden: Der WG-Name muss 1 bis 100 Zeichen haben.';
@@ -108,10 +138,13 @@ function createWgErrorMessage(status: number, error: string): string {
 }
 function isJoinWg(value: unknown): value is JoinWg {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+	const code = Reflect.get(value, 'code');
+	const name = Reflect.get(value, 'name');
 	return (
-		typeof Reflect.get(value, 'id') === 'string' &&
-		typeof Reflect.get(value, 'code') === 'string' &&
-		typeof Reflect.get(value, 'name') === 'string'
+		typeof code === 'string' &&
+		isValidShareCode(normalizeShareCode(code)) &&
+		typeof name === 'string' &&
+		name.trim().length > 0
 	);
 }
 
@@ -135,13 +168,18 @@ export function NeuClient() {
 	const [authRetryNonce, setAuthRetryNonce] = useState(0);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [accountSwitchError, setAccountSwitchError] = useState<string | null>(null);
 	const [createdWg, setCreatedWg] = useState<CreatedWg | null>(null);
 	const [interactive, setInteractive] = useState(false);
 	const busyRef = useRef(false);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: mount-only initializer — reads the saved draft and initial URL params once; adding searchParams would re-run on navigation and clobber in-progress step/draft state.
 	useEffect(() => {
-		const code = typeof window === 'undefined' ? '' : getInitialJoinCode(window.location.search);
+		const initialSearch =
+			typeof window === 'undefined' ? searchParams.toString() : window.location.search;
+		const initialParams = new URLSearchParams(initialSearch);
+		const intent = getNeuIntentFromSearch(initialSearch);
+		const code = intent.joinCode;
 		const draft = readDraft<StartDraft>(START_DRAFT_KEY);
 		if (draft?.wgName) setWgName(draft.wgName);
 		if (draft?.creatorName) setCreatorName(draft.creatorName);
@@ -149,12 +187,12 @@ export function NeuClient() {
 		if (code) {
 			setJoinCode(code);
 			setStep('join');
-		} else if (searchParams.get('action') === 'create') {
+		} else if (intent.create || initialParams.get('action') === 'create') {
 			setStep('create');
 		} else {
 			if (draft?.joinCode) setJoinCode(draft.joinCode);
 			if (draft?.step === 'joinName' && isJoinWg(draft.joinWg)) {
-				setJoinWg(draft.joinWg);
+				setJoinWg({ code: normalizeShareCode(draft.joinWg.code), name: 'WG-Einladung' });
 				setStep('joinName');
 			} else if (draft?.step === 'create' || draft?.step === 'join') setStep(draft.step);
 			else if (draft?.joinCode) setStep('join');
@@ -181,16 +219,17 @@ export function NeuClient() {
 					return;
 				}
 				const data: unknown = await res.json();
-				const wgs = Array.isArray(data)
-					? data
-					: data && typeof data === 'object' && Array.isArray(Reflect.get(data, 'wgs'))
+				const wgs =
+					data && typeof data === 'object' && !Array.isArray(data)
 						? Reflect.get(data, 'wgs')
 						: null;
-				if (!wgs) {
+				if (!Array.isArray(wgs) || !wgs.every(isAccountWg)) {
 					setAuthState('error');
 					return;
 				}
-				setAccountWgs(wgs.filter(isAccountWg));
+				setAccountWgs(
+					wgs.map((wg) => ({ ...wg, code: normalizeShareCode(wg.code), name: wg.name.trim() })),
+				);
 				setAuthState('authenticated');
 			} catch {
 				if (!cancelled) setAuthState('error');
@@ -204,10 +243,14 @@ export function NeuClient() {
 
 	useEffect(() => {
 		if (authState !== 'authenticated') return;
+		const intent = getNeuIntentFromSearch(searchParams.toString());
+		if (intent.joinCode || intent.create) return;
 		const next = safeNextPath(searchParams.get('next'));
 		if (next === '/' || isNeuPath(next)) return;
+		const nextWgCode = getWgCodeFromPath(next);
+		if (nextWgCode && !accountWgs.some((accountWg) => accountWg.code === nextWgCode)) return;
 		router.replace(next);
-	}, [authState, router, searchParams]);
+	}, [accountWgs, authState, router, searchParams]);
 
 	useEffect(() => {
 		if (!interactive) return;
@@ -233,7 +276,7 @@ export function NeuClient() {
 	function loginNextPath(): string {
 		const params = new URLSearchParams();
 		if (step === 'create') params.set('action', 'create');
-		const code = joinCode || joinWg?.code;
+		const code = joinCode || getJoinCodeFromSearch(searchParams.toString()) || joinWg?.code;
 		if ((step === 'join' || step === 'joinName') && code) {
 			params.set('code', normalizeShareCode(code));
 		}
@@ -243,10 +286,33 @@ export function NeuClient() {
 		return query ? `/neu?${query}` : '/neu';
 	}
 
+	function explorationHref(): string {
+		const code = getJoinCodeFromSearch(searchParams.toString());
+		return code ? `/?code=${encodeURIComponent(code)}` : '/';
+	}
+
 	function returnToSignIn(): void {
 		setAuthState('signed-out');
 		setError(null);
 		router.replace(loginNextPath());
+	}
+
+	async function switchAccount(): Promise<void> {
+		if (busyRef.current) return;
+		busyRef.current = true;
+		setBusy(true);
+		setAccountSwitchError(null);
+		try {
+			const { signOutSocialAccount } = await import('@/core/auth/client');
+			await signOutSocialAccount();
+			setAccountWgs([]);
+			setAuthState('signed-out');
+		} catch {
+			setAccountSwitchError('Konto konnte nicht abgemeldet werden. Bitte erneut versuchen.');
+		} finally {
+			busyRef.current = false;
+			setBusy(false);
+		}
 	}
 
 	async function createWg(): Promise<void> {
@@ -273,6 +339,7 @@ export function NeuClient() {
 				return;
 			}
 			const data = (await res.json()) as CreateResponse;
+			posthog.capture('wg_created');
 			rememberWg({
 				code: data.wg.shareCode,
 				name: data.wg.name,
@@ -300,28 +367,26 @@ export function NeuClient() {
 		setBusy(true);
 		setError(null);
 		try {
-			const res = await fetch(`/api/wg/${encodeURIComponent(code)}`, { cache: 'no-store' });
-			if (!res.ok) {
-				if (res.status === 401) {
-					returnToSignIn();
+			if (process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true') {
+				// The database-free fixture keeps its existing policy-preview contract;
+				// production never performs this private metadata lookup before joining.
+				const res = await fetch(`/api/wg/${encodeURIComponent(code)}`, { cache: 'no-store' });
+				if (!res.ok) {
+					const apiError = await readStartError(res);
+					setError(joinErrorMessage(res.status, apiError));
 					return;
 				}
-				const apiError = await readStartError(res);
-				setError(joinErrorMessage(res.status, apiError));
-				return;
+				const data = (await res.json()) as {
+					wg: { id: string; shareCode: string; name: string; joiningEnabled?: boolean };
+				};
+				if (data.wg.joiningEnabled === false) {
+					setError(joinErrorMessage(403, 'joining_disabled'));
+					return;
+				}
 			}
-			const data = (await res.json()) as WgResponse;
-			if (data.currentMember) {
-				rememberWg({ code: data.wg.shareCode, name: data.wg.name, lastVisitedAt: Date.now() });
-				router.push(`/wg/${encodeURIComponent(data.wg.shareCode)}`);
-				return;
-			}
-			if (data.wg.joiningEnabled === false) {
-				setError(joinErrorMessage(403, 'joining_disabled'));
-				return;
-			}
-			rememberWg({ code: data.wg.shareCode, name: data.wg.name, lastVisitedAt: Date.now() });
-			setJoinWg({ id: data.wg.id, code: data.wg.shareCode, name: data.wg.name });
+			// A valid code is only a local input checkpoint. The authenticated POST
+			// remains the authority for existence, membership, and invite policy.
+			setJoinWg({ code, name: 'WG-Einladung' });
 			setStep('joinName');
 		} catch {
 			setError(joinErrorMessage(0, ''));
@@ -354,14 +419,20 @@ export function NeuClient() {
 			}
 			if (!res.ok) {
 				const apiError = await readStartError(res);
+				if (res.status === 409 && apiError === 'already_joined') {
+					removeDraft(START_DRAFT_KEY);
+					router.push(`/wg/${encodeURIComponent(joinWg.code)}`);
+					return;
+				}
 				setError(
 					apiError === 'auth_required'
-						? 'Melde dich zuerst mit Google, Apple oder Facebook an.'
+						? 'Melde dich zuerst mit deinem Supabase-Account an.'
 						: joinErrorMessage(res.status, apiError),
 				);
 				return;
 			}
 			await res.json();
+			posthog.capture('wg_joined');
 			rememberWg({ code: joinWg.code, name: joinWg.name, lastVisitedAt: Date.now() });
 			removeDraft(START_DRAFT_KEY);
 			router.push(`/wg/${encodeURIComponent(joinWg.code)}`);
@@ -380,6 +451,11 @@ export function NeuClient() {
 	}
 
 	const callbackError = searchParams.get('error') === 'auth_callback';
+
+	function handleAuthenticated(): void {
+		setAuthState('loading');
+		setAuthRetryNonce((value) => value + 1);
+	}
 
 	if (authState !== 'authenticated') {
 		return (
@@ -435,9 +511,23 @@ export function NeuClient() {
 										? 'Melde dich an, danach kannst du mit deinem Einladungscode beitreten.'
 										: 'Melde dich an, um deine WGs wiederherzustellen oder loszulegen.'}
 							</p>
+							<CredentialsAuth next={loginNextPath()} onAuthenticated={handleAuthenticated} />
+							<div className="flex items-center gap-3 py-1 text-[11px] uppercase tracking-[0.14em] text-[var(--text-3)]">
+								<span className="h-px flex-1 bg-[var(--border)]" />
+								oder
+								<span className="h-px flex-1 bg-[var(--border)]" />
+							</div>
 							<SocialLoginButtons next={loginNextPath()} onOAuthStart={startSocialLogin} />
 						</div>
 					)}
+					<div className="mt-6 text-center">
+						<Link
+							href={explorationHref()}
+							className="text-[13px] text-[var(--text-2)] underline-offset-4 hover:text-[var(--text-1)] hover:underline"
+						>
+							Zurück zur öffentlichen Ansicht
+						</Link>
+					</div>
 				</div>
 			</main>
 		);
@@ -476,9 +566,19 @@ export function NeuClient() {
 						{step === 'invite'
 							? 'Schick den Code — Mitbewohner sind in 10 Sek dabei.'
 							: step === 'joinName' && joinWg
-								? `${joinWg.name} gefunden. Nur noch dein Name.`
+								? 'Einladung erkannt. Nur noch dein Name.'
 								: 'Dein Account macht deine WG auf jedem Gerät verfügbar.'}
 					</p>
+					{authState === 'authenticated' && step !== 'invite' ? (
+						<button
+							type="button"
+							onClick={() => void switchAccount()}
+							disabled={busy}
+							className="mt-3 text-[13px] text-[var(--text-2)] underline-offset-4 hover:text-[var(--text-1)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:opacity-60"
+						>
+							{busy ? 'Melde ab…' : 'Mit anderem Konto anmelden'}
+						</button>
+					) : null}
 				</header>
 				{callbackError && (
 					<div className="mb-4">
@@ -487,6 +587,7 @@ export function NeuClient() {
 						</ErrorBox>
 					</div>
 				)}
+				{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
 
 				{step === 'choose' && (
 					<div className="space-y-3">
@@ -550,6 +651,14 @@ export function NeuClient() {
 						<p className="px-1 text-center text-[12px] text-[var(--text-3)]">
 							Der WG-Code ist euer Einladungsschlüssel. Dein Account sichert deine Daten.
 						</p>
+						<details className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
+							<summary className="cursor-pointer text-[13px] font-medium text-[var(--text-2)] marker:text-[var(--text-3)]">
+								Altes Profil auf diesem Gerät wiederherstellen
+							</summary>
+							<div className="pt-4">
+								<LegacyAccountRecovery />
+							</div>
+						</details>
 					</div>
 				)}
 
@@ -725,6 +834,15 @@ export function NeuClient() {
 						</div>
 					</form>
 				)}
+
+				<div className="mt-6 text-center">
+					<Link
+						href={explorationHref()}
+						className="text-[13px] text-[var(--text-2)] underline-offset-4 hover:text-[var(--text-1)] hover:underline"
+					>
+						Zurück zur öffentlichen Ansicht
+					</Link>
+				</div>
 			</div>
 		</main>
 	);

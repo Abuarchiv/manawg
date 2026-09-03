@@ -61,7 +61,8 @@
 			"skills-lock.json",
 			"supabase",
 			".agents",
-			"graphify-out"
+			"graphify-out",
+			"tools/growth-lab/runs"
 		]
 	}
 }

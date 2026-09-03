@@ -25,6 +25,7 @@ import {
 	expandRecurrence,
 	getMonthBounds,
 } from '@/features/events/events';
+import posthog from '@/shared/lib/analytics';
 import { haptic } from '@/shared/lib/haptics';
 import {
 	CalendarDays,
@@ -227,6 +228,11 @@ export default function KalenderPage() {
 		if (!res.ok) {
 			throw new Error('Termin konnte nicht gespeichert werden.');
 		}
+		posthog.capture('calendar_event_created', {
+			all_day: payload.allDay,
+			has_end_time: payload.endsAt !== null,
+			has_recurrence: payload.recurrence !== null,
+		});
 		haptic('medium');
 		setEvents((current) => [...current, res.data.event]);
 		setCreateOpen(false);
@@ -276,6 +282,7 @@ export default function KalenderPage() {
 			memberToken: identity.memberToken,
 		});
 		if (res.ok && res.data.subscription) {
+			if (method === 'POST') posthog.capture('calendar_subscription_created');
 			setSubscription(res.data.subscription);
 			setCopyState('idle');
 			setSubscriptionNotice(message);

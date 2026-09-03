@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-09-03
+goal: Use current source availability and verifiable extracted values without
+  mutating the baseline snapshot or taking external actions

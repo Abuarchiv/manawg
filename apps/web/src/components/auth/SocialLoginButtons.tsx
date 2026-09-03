@@ -1,9 +1,9 @@
 'use client';
 
-import { Apple, Chrome, Facebook, Loader2, type LucideIcon } from 'lucide-react';
+import { Chrome, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
-export type SocialProvider = 'google' | 'apple' | 'facebook';
+export type SocialProvider = 'google';
 
 export type SocialLoginStart = (provider: SocialProvider, next: string) => Promise<void> | void;
 
@@ -13,15 +13,7 @@ type SocialLoginButtonsProps = {
 	variant?: 'sign-in' | 'link';
 };
 
-const providers: ReadonlyArray<{
-	provider: SocialProvider;
-	name: string;
-	Icon: LucideIcon;
-}> = [
-	{ provider: 'google', name: 'Google', Icon: Chrome },
-	{ provider: 'apple', name: 'Apple', Icon: Apple },
-	{ provider: 'facebook', name: 'Facebook', Icon: Facebook },
-];
+const providers = [{ provider: 'google' as const, name: 'Google', Icon: Chrome }];
 
 export function SocialLoginButtons({
 	next = '/',

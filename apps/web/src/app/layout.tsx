@@ -2,7 +2,6 @@ import { InstallPrompt } from '@/shared/components/install-prompt';
 import { PwaRegister } from '@/shared/components/pwa-register';
 import { ThemeProvider } from '@/shared/components/theme/ThemeProvider';
 import { getAppUrl } from '@/shared/lib/app-url';
-import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
@@ -32,7 +31,7 @@ const instrumentSerif = Instrument_Serif({
 const appUrl = getAppUrl();
 
 const metaDescription =
-	'Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand. In Deutschland gehostet, DSGVO-konform, ohne Tracking.';
+	'Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand. In Deutschland gehostet und datensparsam.';
 
 const organizationSchema = {
 	'@context': 'https://schema.org',
@@ -41,7 +40,7 @@ const organizationSchema = {
 	url: appUrl,
 	logo: `${appUrl}/icon-512.png`,
 	description:
-		'Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand. Kostenlos, kein Account, kein Tracking.',
+		'Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand. Kostenlos und datensparsam.',
 };
 
 const softwareApplicationSchema = {
@@ -49,7 +48,7 @@ const softwareApplicationSchema = {
 	'@type': 'SoftwareApplication',
 	name: 'ManaWG',
 	description:
-		'Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand. Kostenlos, kein Account, kein Tracking.',
+		'Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand. Kostenlos und datensparsam.',
 	url: appUrl,
 	applicationCategory: 'LifestyleApplication',
 	operatingSystem: 'Web, iOS, Android',
@@ -187,7 +186,6 @@ export default function RootLayout({
 						<InstallPrompt />
 					</div>
 				</ThemeProvider>
-				<Analytics />
 				<SpeedInsights />
 			</body>
 		</html>

@@ -88,3 +88,6 @@ graphify-out/
 
 # Graphy index data
 .graphy/
+
+# Growth Lab generated runs (inputs and source remain versioned)
+tools/growth-lab/runs/

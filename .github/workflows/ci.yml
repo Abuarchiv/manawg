@@ -24,6 +24,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - run: pnpm --dir apps/web analytics:check
       - run: pnpm --filter @manawg/web exec node scripts/check-feature-boundaries.mjs
       - run: pnpm typecheck
       - run: pnpm build
@@ -48,6 +49,15 @@ jobs:
         env:
           NEXT_PUBLIC_DB_DOWN: 'true'
       - run: pnpm --filter @manawg/web test:e2e:fixtures
+      - name: Record fixture execution evidence
+        if: always()
+        run: |
+          {
+            printf '%s\n' '### Fixture execution evidence'
+            printf '%s\n' '- execution mode: fixture'
+            printf '%s\n' '- base origin: http://localhost:3101'
+            printf '%s\n' '- result: ${{ job.status }}'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   db-supabase-preview:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -81,23 +91,60 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Apply pending Preview migrations
+        env:
+          DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
+        run: pnpm --filter @manawg/web db:migrate
       - run: pnpm --filter @manawg/web db:check
 
   e2e-preview:
     if: >-
       github.event_name == 'deployment_status' &&
-      github.event.deployment_status.state == 'success' &&
-      github.event.deployment.environment == 'Preview' &&
-      github.event.deployment.creator.login == 'vercel[bot]' &&
-      github.event.deployment_status.creator.login == 'vercel[bot]' &&
-      startsWith(github.event.deployment_status.target_url, 'https://manawg-') &&
-      endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app')
+      github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
+    environment: Preview
     steps:
       - uses: actions/checkout@v4
         with:
           # Never execute an event-supplied deployment SHA in a secrets-bearing job.
           ref: main
+      - name: Require trusted deployment revision
+        env:
+          DEPLOYMENT_SHA: ${{ github.event.deployment.sha }}
+        run: |
+          test -n "$DEPLOYMENT_SHA"
+          test "$DEPLOYMENT_SHA" = "$(git rev-parse HEAD)"
+      - name: Validate trusted Vercel Preview event and target
+        id: preview
+        env:
+          DEPLOYMENT_ENVIRONMENT: ${{ github.event.deployment.environment }}
+          DEPLOYMENT_CREATOR: ${{ github.event.deployment.creator.login }}
+          STATUS_CREATOR: ${{ github.event.deployment_status.creator.login }}
+          TARGET_URL: ${{ github.event.deployment_status.target_url }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          if (
+            process.env.DEPLOYMENT_ENVIRONMENT !== 'Preview' ||
+            process.env.DEPLOYMENT_CREATOR !== 'vercel[bot]' ||
+            process.env.STATUS_CREATOR !== 'vercel[bot]'
+          ) {
+            throw new Error('Preview deployment event is not from the trusted Vercel deployment.');
+          }
+
+          const target = process.env.TARGET_URL;
+          const expectedOrigin = /^https:\/\/manawg-[a-z0-9-]+-abditubes-projects\.vercel\.app$/;
+          if (typeof target !== 'string' || !expectedOrigin.test(target)) {
+            throw new Error('Preview target is not this project\'s canonical Vercel origin.');
+          }
+          const url = new URL(target);
+          if (url.origin !== target) {
+            throw new Error('Preview target must exactly equal its canonical Vercel origin.');
+          }
+
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `base_url=${url.origin}\n`);
+          NODE
       - uses: pnpm/action-setup@v4
         with:
           version: 9.0.0
@@ -105,38 +152,6 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - name: Validate trusted Vercel Preview target
-        id: preview
-        env:
-          TARGET_URL: ${{ github.event.deployment_status.target_url }}
-        run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-
-          const target = process.env.TARGET_URL;
-          const expectedHost = /^manawg-[a-z0-9-]+-abditubes-projects\.vercel\.app$/;
-          let url;
-          try {
-            url = new URL(target);
-          } catch {
-            throw new Error('Preview target is not a valid URL.');
-          }
-
-          if (
-            url.protocol !== 'https:' ||
-            !expectedHost.test(url.hostname) ||
-            url.username ||
-            url.password ||
-            url.port ||
-            url.pathname !== '/' ||
-            url.search ||
-            url.hash
-          ) {
-            throw new Error('Preview target is not this project\'s Vercel deployment URL.');
-          }
-
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `base_url=${url.origin}\n`);
-          NODE
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @manawg/web exec playwright install --with-deps chromium
       - name: Require real Supabase QA credentials
@@ -145,11 +160,13 @@ jobs:
           E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.E2E_SUPABASE_PUBLISHABLE_KEY }}
           E2E_SUPABASE_TEST_EMAIL: ${{ secrets.E2E_SUPABASE_TEST_EMAIL }}
           E2E_SUPABASE_TEST_PASSWORD: ${{ secrets.E2E_SUPABASE_TEST_PASSWORD }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           test -n "$E2E_SUPABASE_URL"
           test -n "$E2E_SUPABASE_PUBLISHABLE_KEY"
           test -n "$E2E_SUPABASE_TEST_EMAIL"
           test -n "$E2E_SUPABASE_TEST_PASSWORD"
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"
           node <<'NODE'
           const url = new URL(process.env.E2E_SUPABASE_URL);
           if (
@@ -173,4 +190,22 @@ jobs:
           E2E_SUPABASE_TEST_EMAIL: ${{ secrets.E2E_SUPABASE_TEST_EMAIL }}
           E2E_SUPABASE_TEST_PASSWORD: ${{ secrets.E2E_SUPABASE_TEST_PASSWORD }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-        run: pnpm --filter @manawg/web exec playwright test preview-protection.spec.ts smoke-launch.spec.ts
+          PUBLIC_ENTRY_E2E: 'true'
+          AUTH_LIVE_E2E: 'true'
+          SUPABASE_AUTH_LIVE_E2E: 'true'
+        run: pnpm --filter @manawg/web exec playwright test --retries=0 preview-protection.spec.ts smoke-launch.spec.ts
+      - name: Record protected Preview execution evidence
+        if: always()
+        env:
+          VALIDATED_TARGET_ORIGIN: ${{ steps.preview.outputs.base_url || 'not-validated' }}
+          DEPLOYMENT_ID: ${{ github.event.deployment.id }}
+          DEPLOYMENT_SHA: ${{ github.event.deployment.sha }}
+        run: |
+          {
+            printf '%s\n' '### Protected Preview execution evidence'
+            printf '%s\n' "- validated target origin: $VALIDATED_TARGET_ORIGIN"
+            printf '%s\n' "- deployment identifier: $DEPLOYMENT_ID"
+            printf '%s\n' "- source revision: $DEPLOYMENT_SHA"
+            printf '%s\n' '- execution mode: protected-preview'
+            printf '%s\n' '- result: ${{ job.status }}'
+          } >> "$GITHUB_STEP_SUMMARY"

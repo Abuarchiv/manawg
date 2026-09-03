@@ -101,7 +101,6 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 	if (!user) return apiError('auth_required', 401, 'auth_required');
 	const wg = await resolveJoinableWg(code);
 	if (!wg) return notFound('wg_not_found');
-	if (!wg.joiningEnabled) return forbidden('joining_disabled', 'joining_disabled');
 
 	// The share code is the invite key. Cap the per-WG member count and keep
 	// names unique so a leaked code cannot flood the WG indefinitely. Count
@@ -112,15 +111,28 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 			tx,
 		): Promise<
 			| { ok: true; member: typeof wgMembers.$inferSelect }
-			| { ok: false; reason: 'limit' | 'name_taken' | 'already_joined' }
+			| {
+					ok: false;
+					reason: 'limit' | 'name_taken' | 'already_joined' | 'not_found' | 'joining_disabled';
+			  }
 		> => {
-			await tx.execute(sql`select id from wgs where id = ${wg.id} for update`);
+			const lockedWgResult = await tx.execute(sql`
+				select share_code as "shareCode", joining_enabled as "joiningEnabled"
+				from wgs
+				where id = ${wg.id}
+				for update
+			`);
+			const lockedWg = lockedWgResult.rows[0] as
+				| { shareCode: string; joiningEnabled: boolean }
+				| undefined;
+			if (!lockedWg || lockedWg.shareCode !== code) return { ok: false, reason: 'not_found' };
 			const existingForUser = await tx
 				.select({ id: wgMembers.id })
 				.from(wgMembers)
 				.where(and(eq(wgMembers.wgId, wg.id), eq(wgMembers.authUserId, user.id)))
 				.limit(1);
 			if (existingForUser.length > 0) return { ok: false, reason: 'already_joined' };
+			if (!lockedWg.joiningEnabled) return { ok: false, reason: 'joining_disabled' };
 			const memberCount = await tx
 				.select({ id: wgMembers.id })
 				.from(wgMembers)
@@ -155,6 +167,10 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 		},
 	);
 	if (!joinResult.ok) {
+		if (joinResult.reason === 'not_found') return notFound('wg_not_found');
+		if (joinResult.reason === 'joining_disabled') {
+			return forbidden('joining_disabled', 'joining_disabled');
+		}
 		if (joinResult.reason === 'limit') {
 			return apiError('member_limit_reached', HTTP.CONFLICT, 'member_limit_reached');
 		}

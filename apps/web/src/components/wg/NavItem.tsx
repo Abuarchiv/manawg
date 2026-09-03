@@ -63,7 +63,7 @@ const BADGE_MAX_DISPLAY = 99;
 export function NavItem({ href, label, iconKey, badgeCount }: NavItemProps) {
 	const pathname = usePathname();
 	const normalizedPath = pathname?.replace(/\/+$/, '') ?? '';
-	const normalizedHref = href.replace(/\/+$/, '');
+	const normalizedHref = new URL(href, 'https://manawg.invalid').pathname.replace(/\/+$/, '');
 	const isActive = normalizedPath === normalizedHref;
 	const Icon = ICONS[iconKey];
 	const normalizedBadge = typeof badgeCount === 'number' && badgeCount > 0 ? badgeCount : null;

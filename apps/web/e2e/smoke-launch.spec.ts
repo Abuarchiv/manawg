@@ -1,6 +1,22 @@
 import { type Page, expect, test } from '@playwright/test';
 import { createServerClient } from '@supabase/ssr';
 
+type CreatedWgResponse = {
+	wg?: { id?: unknown; shareCode?: unknown };
+	creator?: { id?: unknown };
+};
+
+type WgManifestResponse = {
+	wg?: { id?: unknown; shareCode?: unknown };
+	currentMember?: { memberId?: unknown };
+};
+
+type MineWgResponse = {
+	wgs?: Array<{ id?: unknown; memberId?: unknown; name?: unknown; code?: unknown }>;
+};
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 type QaAuthConfig = {
 	url: string;
 	publishableKey: string;
@@ -66,6 +82,12 @@ async function gotoWithRetry(page: Page, path: string) {
 		}
 	}
 	throw lastError;
+}
+
+function getRunNamespace(): string {
+	const runId = process.env.GITHUB_RUN_ID?.trim();
+	const attempt = process.env.GITHUB_RUN_ATTEMPT?.trim();
+	return runId && attempt ? `run-${runId}-${attempt}` : `local-${Date.now()}`;
 }
 
 /**
@@ -148,7 +170,14 @@ test.describe('ManaWG launch smoke', () => {
 			);
 		}
 
+		const runNamespace = getRunNamespace();
+		const wgName = `Smoke Test WG ${runNamespace}`;
 		let createdShareCode: string | null = null;
+		let createdWgId: string | null = null;
+		let createdMemberId: string | null = null;
+		let createClicked = false;
+		let flowError: unknown = null;
+		let cleanupFailure: string | null = null;
 		try {
 			// Step 1: Land on /neu
 			await page.addInitScript(() => window.localStorage.clear());
@@ -175,11 +204,27 @@ test.describe('ManaWG launch smoke', () => {
 			await expect(page.getByLabel('WG-Name')).toBeVisible({ timeout: 30_000 });
 
 			// Step 3: Fill WG name + creator name
-			await page.getByLabel('WG-Name').fill('Smoke Test WG');
+			await page.getByLabel('WG-Name').fill(wgName);
 			await page.getByLabel('Dein Anzeigename').fill('Smoke Tester');
 
 			// Step 4: Submit → invite step with a generated WG code
+			const creationResponse = page.waitForResponse(
+				(response) => response.url().endsWith('/api/wg') && response.request().method() === 'POST',
+				{ timeout: 30_000 },
+			);
+			createClicked = true;
 			await page.getByRole('button', { name: /^WG erstellen$/i }).click();
+			const createdResponse = await creationResponse;
+			expect(createdResponse.status()).toBe(200);
+			const created = (await createdResponse.json()) as CreatedWgResponse;
+			createdShareCode = typeof created.wg?.shareCode === 'string' ? created.wg.shareCode : null;
+			createdWgId = typeof created.wg?.id === 'string' ? created.wg.id : null;
+			createdMemberId = typeof created.creator?.id === 'string' ? created.creator.id : null;
+			expect(createdShareCode).toMatch(/^[A-Z0-9]{8}$/);
+			expect(created.wg?.id).toMatch(UUID_PATTERN);
+			expect(created.creator?.id).toMatch(UUID_PATTERN);
+			expect(created.wg?.shareCode).toBe(createdShareCode);
+
 			await expect(page.getByRole('heading', { name: 'Mitbewohner einladen' })).toBeVisible({
 				timeout: 30_000,
 			});
@@ -187,16 +232,32 @@ test.describe('ManaWG launch smoke', () => {
 			await expect(codeButton).toBeVisible({
 				timeout: 30_000,
 			});
-			createdShareCode =
+			const inviteCode =
 				(await codeButton.getAttribute('aria-label'))?.match(/\b([A-Z0-9]{8})\b/)?.[1] ?? null;
-			expect(createdShareCode).toMatch(/^[A-Z0-9]{8}$/);
+			expect(inviteCode).toBe(createdShareCode);
 
 			// Step 5: Continue to /wg/<8-char-code>; ManaWG share codes are 8 alphanumeric chars.
 			await page.getByRole('button', { name: /direkt zur WG/i }).click();
 			await page.waitForURL(/\/wg\/[A-Z0-9]{8}$/, { timeout: 15_000 });
+			const manifestResponse = await page.request.get(`/api/wg/${createdShareCode}`);
+			expect(manifestResponse.status()).toBe(200);
+			const manifest = (await manifestResponse.json()) as WgManifestResponse;
+			expect(manifest.wg?.id).toBe(createdWgId);
+			expect(manifest.wg?.shareCode).toBe(createdShareCode);
+			expect(manifest.currentMember?.memberId).toBe(createdMemberId);
+
+			const closeJoining = await page.request.patch(`/api/wg/${createdShareCode}`, {
+				data: { joiningEnabled: false },
+			});
+			expect(closeJoining.status()).toBe(200);
+			const existingMemberJoin = await page.request.post(`/api/wg/${createdShareCode}/members`, {
+				data: { name: 'Smoke Tester' },
+			});
+			expect(existingMemberJoin.status()).toBe(409);
+			expect(await existingMemberJoin.json()).toMatchObject({ code: 'already_joined' });
 
 			// Step 6: Verify dashboard renders module tiles (Ausgaben / Einkauf / Pinnwand)
-			await expect(page.getByRole('heading', { name: 'Smoke Test WG' })).toBeVisible({
+			await expect(page.getByRole('heading', { name: wgName })).toBeVisible({
 				timeout: 30_000,
 			});
 			const moduleNavigation = page.getByRole('region', { name: 'Module' });
@@ -209,11 +270,55 @@ test.describe('ManaWG launch smoke', () => {
 			await expect(moduleNavigation.getByRole('link', { name: /^Pinnwand\b/ })).toBeVisible({
 				timeout: 30_000,
 			});
+		} catch (error) {
+			flowError = error;
 		} finally {
+			if (!createdShareCode && createClicked) {
+				try {
+					const mineResponse = await page.request.get('/api/wg/mine');
+					if (mineResponse.ok()) {
+						const mine = (await mineResponse.json()) as MineWgResponse;
+						const recovered = mine.wgs?.find((wg) => wg.name === wgName);
+						if (
+							recovered &&
+							typeof recovered.code === 'string' &&
+							/^[A-Z0-9]{8}$/.test(recovered.code) &&
+							typeof recovered.id === 'string' &&
+							UUID_PATTERN.test(recovered.id) &&
+							typeof recovered.memberId === 'string' &&
+							UUID_PATTERN.test(recovered.memberId)
+						) {
+							createdShareCode = recovered.code;
+							createdWgId = recovered.id;
+							createdMemberId = recovered.memberId;
+						}
+					}
+				} catch {
+					// Cleanup below reports the run namespace without leaking response data.
+				}
+			}
 			if (createdShareCode) {
-				const cleanup = await page.request.delete(`/api/wg/${createdShareCode}`);
-				expect(cleanup.status()).toBe(200);
+				try {
+					const cleanup = await page.request.delete(`/api/wg/${createdShareCode}`);
+					const [wgAfterCleanup, membersAfterCleanup] = await Promise.all([
+						page.request.get(`/api/wg/${createdShareCode}`),
+						page.request.get(`/api/wg/${createdShareCode}/members`),
+					]);
+					const cleanupFailed =
+						cleanup.status() !== 200 ||
+						wgAfterCleanup.status() !== 404 ||
+						membersAfterCleanup.status() !== 404;
+					if (cleanupFailed) {
+						cleanupFailure = `WG cleanup failed for run namespace ${runNamespace}, share code ${createdShareCode}.`;
+					}
+				} catch {
+					cleanupFailure = `WG cleanup failed for run namespace ${runNamespace}, share code ${createdShareCode}.`;
+				}
+			} else if (createClicked) {
+				cleanupFailure = `WG cleanup failed for run namespace ${runNamespace}, share code unavailable.`;
 			}
 		}
+		if (cleanupFailure) throw new Error(cleanupFailure);
+		if (flowError) throw flowError;
 	});
 });

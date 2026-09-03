@@ -73,6 +73,7 @@ import {
 	splitCandidates,
 } from '@/features/expenses/expense-split-input';
 import { addMonths } from '@/features/expenses/recurring-expenses';
+import posthog from '@/shared/lib/analytics';
 import { haptic } from '@/shared/lib/haptics';
 import { Bell, ChevronDown, Loader2, Receipt, RefreshCw, RotateCw } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -476,6 +477,12 @@ export default function AusgabenPage() {
 			finishSubmitting();
 			return;
 		}
+
+		posthog.capture('expense_saved', {
+			action: isEdit ? 'updated' : 'created',
+			split_mode: splitMode,
+			has_receipt: imageUrl !== null,
+		});
 
 		if (!clearEditedQueueItem(['expense.create'])) {
 			finishSubmitting();

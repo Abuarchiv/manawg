@@ -1,7 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { PublicApp } from '@/components/entry/PublicApp';
 
 /**
  * App entry point. On its own origin the app needs a real `/`: it is the
@@ -10,21 +9,5 @@ import { useEffect } from 'react';
  *
  */
 export function EntryClient() {
-	const router = useRouter();
-
-	useEffect(() => {
-		router.replace('/neu');
-	}, [router]);
-
-	// Shown for the one frame before the redirect commits. Deliberately not a
-	// spinner: on a warm launch it would flash, and on a cold one the text
-	// explains what is happening.
-	return (
-		<div className="min-h-svh bg-[var(--bg-base)] flex flex-col items-center justify-center px-4 text-center">
-			<p className="text-6xl mb-4">🏠</p>
-			<p className="text-[var(--text-2)]" aria-live="polite">
-				ManaWG wird geöffnet …
-			</p>
-		</div>
-	);
+	return <PublicApp />;
 }

@@ -15,8 +15,8 @@ export const FIXTURE_WG = {
 } as const;
 
 /**
- * Pre-seeds the chosen identity in localStorage so `WgContextProvider` skips
- * the IdentityPicker overlay and renders the requested feature page directly.
+ * Pre-seeds the CI-only fixture identity so `WgContextProvider` can render the
+ * requested feature page without a Supabase session.
  */
 export async function setupMember(page: Page): Promise<void> {
 	await page.addInitScript(
@@ -62,15 +62,15 @@ export async function navigateToFeature(page: Page, path: string): Promise<void>
 }
 
 /**
- * The IdentityPicker is suppressed by `setupMember`, but if it ever surfaces
- * (e.g. a localStorage write race in a future build) we still want a clear
- * failure rather than a timeout deep inside the feature assertions.
+ * Fixture setup must not fall through to the production access-denied state.
  */
 export async function dismissOnboarding(page: Page): Promise<void> {
-	const picker = page.getByRole('heading', { name: /Wer bist du/i });
-	await expect(picker)
+	const accessDenied = page.getByRole('alert', {
+		name: 'Deine Mitgliedschaft konnte nicht bestätigt werden.',
+	});
+	await expect(accessDenied)
 		.toBeHidden({ timeout: 2_000 })
 		.catch(() => {
-			throw new Error('IdentityPicker visible — setupMember() must run before navigateToFeature()');
+			throw new Error('Fixture identity was not accepted — setupMember() must run first');
 		});
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { WgWelcome } from '@/components/entry/WgWelcome';
 import { ChatTopBarLink } from '@/components/wg/ChatTopBarLink';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -221,6 +222,8 @@ export default function WgHomePage() {
 					</div>
 				)}
 
+				<WgWelcome variant="member" wgName={wg.name} />
+
 				{/* ─── STAT ROW ─── */}
 				<section className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-base)]">
 					<dl className="grid grid-cols-3 divide-x divide-[var(--border)]">
@@ -269,25 +272,6 @@ export default function WgHomePage() {
 						/>
 					</div>
 				</section>
-
-				{activeMembers.length <= 1 && data && !data.setup.hasExpense && (
-					<div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-base)] p-5 text-center">
-						<p className="mb-1 text-[15px] font-semibold text-[var(--text-1)]">
-							Willkommen in deiner WG! 👋
-						</p>
-						<p className="mb-4 text-[13px] text-[var(--text-2)]">
-							Lade zuerst deine Mitbewohner ein, oder leg direkt die erste Ausgabe an.
-						</p>
-						<div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-							<Link
-								href={`${wgBaseHref}/ausgaben`}
-								className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--text-1)] px-5 text-[14px] font-semibold text-[var(--bg-base)] transition-opacity hover:opacity-90"
-							>
-								Erste Ausgabe anlegen
-							</Link>
-						</div>
-					</div>
-				)}
 
 				{/* Kein lg:-Grid: der App-Frame bleibt handybreit, Viewport-Breakpoints
 				    erzeugten am Desktop halb-leere Reihen. */}

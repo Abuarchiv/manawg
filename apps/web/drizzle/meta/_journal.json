@@ -71,6 +71,13 @@
       "when": 1788381000000,
       "tag": "0009_validate_data_constraints",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788436085539,
+      "tag": "0010_enable_public_rls",
+      "breakpoints": true
     }
   ]
 }

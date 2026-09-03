@@ -2,12 +2,13 @@ import { ToastContainer } from '@/components/ui/Toast';
 import { NavItem } from '@/components/wg/NavItem';
 import { OfflineBanner } from '@/components/wg/OfflineBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
-import { db, wgMembers } from '@/core/db';
+import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
+import { db, wgMembers, wgs } from '@/core/db';
 import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 interface Props {
@@ -30,12 +31,22 @@ export async function generateMetadata({
 			robots: { index: false, follow: false },
 		};
 	}
-	const wg = await db.query.wgs.findFirst({
-		where: (w, { eq }) => eq(w.shareCode, code),
-		columns: { name: true },
-	});
+	const user = await getAuthenticatedUserFromCookies();
+	if (!user) return { title: 'WG — ManaWG', robots: { index: false, follow: false } };
+	const [access] = await db
+		.select({ name: wgs.name })
+		.from(wgMembers)
+		.innerJoin(wgs, eq(wgMembers.wgId, wgs.id))
+		.where(
+			and(
+				eq(wgs.shareCode, code),
+				eq(wgMembers.authUserId, user.id),
+				isNull(wgMembers.deactivatedAt),
+			),
+		)
+		.limit(1);
 	return {
-		title: wg ? `${wg.name} — ManaWG` : 'WG — ManaWG',
+		title: access ? `${access.name} — ManaWG` : 'WG — ManaWG',
 		robots: { index: false, follow: false },
 	};
 }
@@ -60,18 +71,29 @@ export default async function WgLayout({ children, params }: Props) {
 		);
 	}
 
-	const wg = await db.query.wgs.findFirst({
-		where: (w, { eq }) => eq(w.shareCode, code),
-		columns: {
-			id: true,
-			name: true,
-			shareCode: true,
-			joiningEnabled: true,
-			shareCodeRotatedAt: true,
-		},
-	});
+	const user = await getAuthenticatedUserFromCookies();
+	if (!user) redirect(`/neu?next=${encodeURIComponent(`/wg/${encodeURIComponent(code)}`)}`);
+
+	const [wg] = await db
+		.select({
+			id: wgs.id,
+			name: wgs.name,
+			shareCode: wgs.shareCode,
+			joiningEnabled: wgs.joiningEnabled,
+			shareCodeRotatedAt: wgs.shareCodeRotatedAt,
+		})
+		.from(wgMembers)
+		.innerJoin(wgs, eq(wgMembers.wgId, wgs.id))
+		.where(
+			and(
+				eq(wgs.shareCode, code),
+				eq(wgMembers.authUserId, user.id),
+				isNull(wgMembers.deactivatedAt),
+			),
+		)
+		.limit(1);
 	if (!wg) {
-		notFound();
+		redirect(`/neu?next=${encodeURIComponent(`/wg/${encodeURIComponent(code)}`)}`);
 	}
 
 	// Load the full roster including deactivated members: history and balances

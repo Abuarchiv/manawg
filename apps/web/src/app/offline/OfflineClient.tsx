@@ -82,24 +82,37 @@ export function OfflineClient() {
 	const [message, setMessage] = useState<string | null>(null);
 	const syncingRef = useRef(false);
 
-	const refresh = useCallback((): OfflineAction[] => {
+	const refresh = useCallback(async (): Promise<OfflineAction[]> => {
 		setOnline(typeof navigator === 'undefined' ? true : navigator.onLine);
-		setKnownWgs(getKnownWgs());
-		const nextQueue = readOfflineQueue();
-		setQueue(nextQueue);
+		setKnownWgs([]);
+		setQueue([]);
 		setMessage(null);
-		return nextQueue;
+		try {
+			const memberships = await getAccountMemberships();
+			if (!memberships) return [];
+			const memberKeys = new Set(memberships.map(({ code, memberId }) => `${code}:${memberId}`));
+			const memberCodes = new Set(memberships.map(({ code }) => code));
+			const nextQueue = readOfflineQueue().filter((action) =>
+				memberKeys.has(`${action.shareCode}:${action.memberId}`),
+			);
+			setKnownWgs(getKnownWgs().filter((wg) => memberCodes.has(wg.code)));
+			setQueue(nextQueue);
+			return nextQueue;
+		} catch {
+			return [];
+		}
 	}, []);
 
 	useEffect(() => {
-		refresh();
-		window.addEventListener('online', refresh);
-		window.addEventListener('offline', refresh);
-		window.addEventListener('manawg:offline-queue', refresh);
+		void refresh();
+		const refreshOnEvent = () => void refresh();
+		window.addEventListener('online', refreshOnEvent);
+		window.addEventListener('offline', refreshOnEvent);
+		window.addEventListener('manawg:offline-queue', refreshOnEvent);
 		return () => {
-			window.removeEventListener('online', refresh);
-			window.removeEventListener('offline', refresh);
-			window.removeEventListener('manawg:offline-queue', refresh);
+			window.removeEventListener('online', refreshOnEvent);
+			window.removeEventListener('offline', refreshOnEvent);
+			window.removeEventListener('manawg:offline-queue', refreshOnEvent);
 		};
 	}, [refresh]);
 
@@ -131,10 +144,10 @@ export function OfflineClient() {
 			for (const { code, memberId } of queuedMemberships) {
 				synced += await syncOfflineActions(code, { force: true, memberId });
 			}
-			const nextQueue = refresh();
+			const nextQueue = await refresh();
 			setMessage(formatManualOfflineSyncResult(synced, nextQueue.length, { offlineLabel: false }));
 		} catch {
-			refresh();
+			await refresh();
 			setMessage(getOfflineSyncFailureMessage());
 		} finally {
 			syncingRef.current = false;
@@ -189,7 +202,7 @@ export function OfflineClient() {
 						</button>
 						<button
 							type="button"
-							onClick={refresh}
+							onClick={() => void refresh()}
 							aria-label="Offline-Status erneut prüfen"
 							className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[var(--border)] px-3 text-sm font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)]"
 						>

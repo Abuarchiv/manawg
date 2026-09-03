@@ -15,6 +15,7 @@
 		"test:e2e:fixtures": "CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= PLAYWRIGHT_USE_BUILD=true playwright test",
 		"analyze": "ANALYZE=true next build",
 		"bundle:check": "node scripts/check-bundle-budget.mjs",
+		"analytics:check": "node scripts/check-analytics-privacy.mjs",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "node scripts/db-migrate.mjs",
 		"db:check": "node scripts/db-migrate.mjs --check"
@@ -26,7 +27,6 @@
 		"@supabase/supabase-js": "2.112.4",
 		"@upstash/ratelimit": "^2.0.0",
 		"@upstash/redis": "^1.34.0",
-		"@vercel/analytics": "^2.0.1",
 		"@vercel/speed-insights": "^2.0.0",
 		"clsx": "^2.1.1",
 		"drizzle-orm": "^0.45.2",
@@ -34,6 +34,7 @@
 		"nanoid": "^5.1.11",
 		"next": "^15.5.23",
 		"pg": "^8.20.0",
+		"posthog-js": "1.425.1",
 		"react": "^19.1.0",
 		"react-dom": "^19.1.0",
 		"react-qr-code": "^2.0.21",

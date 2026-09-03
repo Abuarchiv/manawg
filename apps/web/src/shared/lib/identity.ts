@@ -26,14 +26,7 @@ const knownWgSchema = z.object({
 	lastVisitedAt: z.number().finite(),
 });
 
-/**
- * Build the auth header object for a given member id. Use this in every
- * mutating fetch call so server-side `requireMember` can verify membership.
- *
- * Pass `memberToken` whenever it is known (from `StoredIdentity.memberToken`)
- * so the request is "verified" rather than merely "legacy" — required for
- * admin-gated routes (WG delete/rename/rotate share code).
- */
+/** Legacy-proof headers for the explicit claim endpoint; Supabase owns normal access control. */
 export function memberAuthHeader(memberId: string, memberToken?: string): Record<string, string> {
 	return {
 		[MEMBER_ID_HEADER]: memberId,
@@ -45,6 +38,12 @@ export interface StoredIdentity {
 	memberId: string;
 	name: string;
 	memberToken?: string;
+}
+
+export interface LegacyIdentityCandidate {
+	wgId: string;
+	memberId: string;
+	memberToken: string;
 }
 
 export interface KnownWg {
@@ -76,6 +75,42 @@ export function getIdentity(wgId: string): StoredIdentity | null {
 	} catch {
 		return null;
 	}
+}
+
+/**
+ * Read token-bearing legacy identities only when an explicit recovery flow
+ * asks for them. Names are intentionally not returned to recovery callers.
+ */
+export function getLegacyIdentityCandidates(): LegacyIdentityCandidate[] {
+	const ls = safeLocalStorage();
+	if (!ls) return [];
+
+	const candidates: LegacyIdentityCandidate[] = [];
+	try {
+		for (let index = 0; index < ls.length; index += 1) {
+			const key = ls.key(index);
+			if (!key?.startsWith(STORAGE_PREFIX)) continue;
+			const wgId = key.slice(STORAGE_PREFIX.length);
+			if (!UUID_V4_PATTERN.test(wgId)) continue;
+
+			try {
+				const raw = ls.getItem(key);
+				if (!raw) continue;
+				const parsed = storedIdentitySchema.safeParse(JSON.parse(raw));
+				if (!parsed.success || !parsed.data.memberToken) continue;
+				candidates.push({
+					wgId,
+					memberId: parsed.data.memberId,
+					memberToken: parsed.data.memberToken,
+				});
+			} catch {
+				// Ignore malformed or inaccessible legacy entries.
+			}
+		}
+	} catch {
+		// Storage may become inaccessible between individual reads.
+	}
+	return candidates;
 }
 
 export function setIdentity(wgId: string, identity: StoredIdentity): void {

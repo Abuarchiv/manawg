@@ -15,18 +15,29 @@ function callbackError(request: NextRequest, response?: NextResponse): NextRespo
 export async function GET(request: NextRequest): Promise<NextResponse> {
 	const code = request.nextUrl.searchParams.get('code');
 	const flowId = request.nextUrl.searchParams.get('sb_flow_id');
+	const next = safeNextPath(request.nextUrl.searchParams.get('next'));
 	if (!code) return callbackError(request);
 
-	const response = NextResponse.redirect(
-		new URL(safeNextPath(request.nextUrl.searchParams.get('next')), request.url),
-	);
+	const response = NextResponse.redirect(new URL(next, request.url));
 	try {
 		const supabase = createSupabaseServerClient(request, response);
-		const { error } = await supabase.auth.exchangeCodeForSession(
+		const { data, error } = await supabase.auth.exchangeCodeForSession(
 			code,
 			flowId !== null ? { flowId } : undefined,
 		);
-		return error ? callbackError(request, response) : response;
+		if (error || !data.session) return callbackError(request, response);
+		if (next === '/auth/reset') {
+			response.cookies.set({
+				name: 'manawg_password_recovery',
+				value: data.session.user.id,
+				httpOnly: true,
+				secure: true,
+				sameSite: 'lax',
+				maxAge: 600,
+				path: '/auth/reset',
+			});
+		}
+		return response;
 	} catch {
 		return callbackError(request, response);
 	}

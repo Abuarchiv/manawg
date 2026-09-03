@@ -37,6 +37,8 @@ const MIGRATIONS_TABLE = '__drizzle_migrations';
 const SENTINEL_TABLE = 'wgs';
 const BASELINE_TAG = '0000_baseline';
 const MIGRATION_LOCK = 'manawg:drizzle-migrate';
+const PUBLIC_SCHEMA = 'public';
+const PUBLIC_ROLES = ['anon', 'authenticated'];
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = path.join(scriptDir, '..', 'drizzle');
@@ -114,9 +116,49 @@ function resolveConnectionString() {
 	throw new Error('No database URL. Set DATABASE_MIGRATION_URL, POSTGRES_URL or DATABASE_URL.');
 }
 
-function readJournalEntry(tag) {
+function readMigrationJournal() {
 	const journalPath = path.join(migrationsFolder, 'meta', '_journal.json');
 	const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8'));
+	if (!Array.isArray(journal.entries) || journal.entries.length === 0) {
+		throw new Error('Migration journal must contain entries.');
+	}
+
+	const tags = new Set();
+	let previousWhen = -1;
+	for (const [index, entry] of journal.entries.entries()) {
+		if (!Number.isInteger(entry.idx) || entry.idx !== index) {
+			throw new Error(`Migration journal entry ${index} must use contiguous idx ${index}.`);
+		}
+		if (
+			typeof entry.tag !== 'string' ||
+			!/^\d{4}_[a-z0-9_]+$/.test(entry.tag) ||
+			tags.has(entry.tag) ||
+			!fs.existsSync(path.join(migrationsFolder, `${entry.tag}.sql`))
+		) {
+			throw new Error(
+				`Migration journal entry ${index} has an invalid, duplicate, or missing SQL tag.`,
+			);
+		}
+		if (!Number.isSafeInteger(entry.when) || entry.when <= previousWhen) {
+			throw new Error(
+				`Migration journal entry ${entry.tag} must have a unique increasing timestamp.`,
+			);
+		}
+		tags.add(entry.tag);
+		previousWhen = entry.when;
+	}
+	const sqlTags = fs
+		.readdirSync(migrationsFolder)
+		.filter((file) => file.endsWith('.sql'))
+		.map((file) => file.slice(0, -'.sql'.length));
+	if (sqlTags.length !== tags.size || sqlTags.some((tag) => !tags.has(tag))) {
+		throw new Error('Migration journal must list every SQL migration exactly once.');
+	}
+	return journal;
+}
+
+function readJournalEntry(tag) {
+	const journal = readMigrationJournal();
 	const entry = journal.entries.find((it) => it.tag === tag);
 	if (!entry) throw new Error(`Journal has no entry tagged "${tag}".`);
 	return entry;
@@ -134,6 +176,20 @@ async function tableExists(client, schema, table) {
 		[schema, table],
 	);
 	return rows.length > 0;
+}
+
+function latestAvailableSnapshotTag() {
+	const snapshots = fs
+		.readdirSync(path.join(migrationsFolder, 'meta'))
+		.map((file) => {
+			const match = /^(\d+)_snapshot\.json$/.exec(file);
+			return match ? { number: Number(match[1]), tag: file.slice(0, -'.json'.length) } : null;
+		})
+		.filter(Boolean)
+		.sort((left, right) => left.number - right.number);
+	const latest = snapshots.at(-1);
+	if (!latest) throw new Error('Database check failed: no migration snapshot is available.');
+	return latest.tag;
 }
 
 function expectedSchema(snapshotTag) {
@@ -471,35 +527,246 @@ export async function assertBaselineSchema(client) {
 	);
 }
 
-async function assertMigrationLedger(client) {
+async function assertMigrationLedgerPrefix(client, { requireTable = true } = {}) {
 	if (!(await tableExists(client, MIGRATIONS_SCHEMA, MIGRATIONS_TABLE))) {
-		throw new Error('Database check failed: Drizzle migration ledger is missing.');
+		if (requireTable)
+			throw new Error('Database check failed: Drizzle migration ledger is missing.');
+		return { entries: readMigrationJournal().entries, appliedCount: 0 };
 	}
-	const { rows } = await client.query(`select hash from ${MIGRATIONS_SCHEMA}.${MIGRATIONS_TABLE}`);
-	const appliedHashes = new Set(rows.map(({ hash }) => hash));
-	const missing = JSON.parse(
-		fs.readFileSync(path.join(migrationsFolder, 'meta', '_journal.json'), 'utf8'),
-	)
-		.entries.filter(({ tag }) => !appliedHashes.has(hashMigration(tag)))
-		.map(({ tag }) => tag);
-	if (missing.length) {
-		throw new Error(`Database check failed: missing migrations ${missing.join(', ')}.`);
+	const { rows } = await client.query(
+		`select id, hash, created_at from ${MIGRATIONS_SCHEMA}.${MIGRATIONS_TABLE} order by id asc`,
+	);
+	const { entries } = readMigrationJournal();
+	const canonicalEntries = entries.map((entry) => ({
+		...entry,
+		hash: hashMigration(entry.tag),
+	}));
+	const expectedByHash = new Map();
+	for (const entry of canonicalEntries) {
+		if (expectedByHash.has(entry.hash)) {
+			throw new Error(`Migration journal has duplicate hash for ${entry.tag}.`);
+		}
+		expectedByHash.set(entry.hash, entry);
+	}
+	const baselineWhen = BigInt(readJournalEntry(BASELINE_TAG).when);
+	const appliedHashes = new Set();
+	let appliedCount = 0;
+	let reachedCanonicalPrefix = false;
+	for (const row of rows) {
+		const hash = typeof row.hash === 'string' ? row.hash : '';
+		const createdAt = String(row.created_at ?? '');
+		if (!/^[a-f0-9]{64}$/.test(hash)) {
+			throw new Error(`Database check failed: invalid migration hash in ledger row ${row.id}.`);
+		}
+		if (!/^\d+$/.test(createdAt)) {
+			throw new Error(
+				`Database check failed: invalid migration timestamp in ledger row ${row.id}.`,
+			);
+		}
+
+		const entry = expectedByHash.get(hash);
+		if (!entry) {
+			// Adoption preserves superseded rows only while they predate the baseline.
+			if (!reachedCanonicalPrefix && BigInt(createdAt) < baselineWhen) continue;
+			throw new Error(
+				`Database check failed: unexpected migration row ${row.id} outside the legacy prefix.`,
+			);
+		}
+		reachedCanonicalPrefix = true;
+		if (appliedHashes.has(hash)) {
+			throw new Error(`Database check failed: duplicate migration ${entry.tag}.`);
+		}
+		const expectedEntry = canonicalEntries[appliedCount];
+		if (entry !== expectedEntry) {
+			throw new Error(
+				`Database check failed: migration ledger is not a canonical prefix; expected ${expectedEntry?.tag ?? 'no further migration'} before ${entry.tag}.`,
+			);
+		}
+		if (createdAt !== String(entry.when)) {
+			throw new Error(`Database check failed: timestamp mismatch for migration ${entry.tag}.`);
+		}
+		appliedHashes.add(hash);
+		appliedCount += 1;
+	}
+	return { entries, appliedCount };
+}
+
+async function assertMigrationLedger(client) {
+	const { entries, appliedCount } = await assertMigrationLedgerPrefix(client);
+	if (appliedCount !== entries.length) {
+		throw new Error(
+			`Database check failed: migration ledger is incomplete; missing migrations ${entries
+				.slice(appliedCount)
+				.map(({ tag }) => tag)
+				.join(', ')}.`,
+		);
+	}
+}
+
+async function assertCatalogSecurity(client, expectedTables) {
+	const roleResult = await client.query(
+		'select rolname from pg_roles where rolname = any($1::name[])',
+		[PUBLIC_ROLES],
+	);
+	const presentRoles = new Set(roleResult.rows.map(({ rolname }) => rolname));
+	const missingRoles = PUBLIC_ROLES.filter((role) => !presentRoles.has(role));
+	if (missingRoles.length) {
+		throw new Error(
+			`Database check failed: required Supabase roles are missing: ${missingRoles.join(', ')}.`,
+		);
+	}
+
+	const expectedTableNames = expectedTables.map(({ table }) => table);
+	const { rows: rlsRows } = await client.query(
+		`select rel.relname as table_name, rel.relrowsecurity as rls_enabled
+		 from pg_class rel
+		 join pg_namespace ns on ns.oid = rel.relnamespace
+		 where ns.nspname = $1 and rel.relname = any($2::name[]) and rel.relkind in ('r', 'p')`,
+		[PUBLIC_SCHEMA, expectedTableNames],
+	);
+	const rlsByTable = new Map(rlsRows.map((row) => [row.table_name, row.rls_enabled]));
+	const rlsMismatches = expectedTableNames
+		.filter((table) => rlsByTable.get(table) !== true)
+		.map((table) => `public.${table}${rlsByTable.has(table) ? ' RLS disabled' : ' table missing'}`);
+	if (rlsMismatches.length) {
+		throw new Error(
+			`Database check failed: RLS requirements not met: ${rlsMismatches.join(', ')}.`,
+		);
+	}
+
+	const { rows: tablePrivileges } = await client.query(
+		`select role_name, object_name, privileges
+		 from (
+			select grantee.rolname as role_name, rel.relname as object_name,
+				array(
+					select privilege_values.privilege_name
+					from unnest($2::text[]) as privilege_values(privilege_name)
+					where has_table_privilege(grantee.rolname, rel.oid, privilege_values.privilege_name)
+				) as privileges
+			from pg_roles grantee
+			cross join pg_class rel
+			join pg_namespace ns on ns.oid = rel.relnamespace
+			where grantee.rolname = any($1::name[]) and ns.nspname = $3 and rel.relkind in ('r', 'p')
+		 ) grants
+		 where cardinality(privileges) > 0`,
+		[
+			PUBLIC_ROLES,
+			['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'],
+			PUBLIC_SCHEMA,
+		],
+	);
+	const { rows: sequencePrivileges } = await client.query(
+		`select role_name, object_name, privileges
+		 from (
+			select grantee.rolname as role_name, rel.relname as object_name,
+				array(
+					select privilege_values.privilege_name
+					from unnest($2::text[]) as privilege_values(privilege_name)
+					where has_sequence_privilege(grantee.rolname, rel.oid, privilege_values.privilege_name)
+				) as privileges
+			from pg_roles grantee
+			cross join pg_class rel
+			join pg_namespace ns on ns.oid = rel.relnamespace
+			where grantee.rolname = any($1::name[]) and ns.nspname = $3 and rel.relkind = 'S'
+		 ) grants
+		 where cardinality(privileges) > 0`,
+		[PUBLIC_ROLES, ['USAGE', 'SELECT', 'UPDATE'], PUBLIC_SCHEMA],
+	);
+	const { rows: functionPrivileges } = await client.query(
+		`select role_name, object_name, privileges
+		 from (
+			select grantee.rolname as role_name,
+				format('%s(%s)', proc.proname, pg_get_function_identity_arguments(proc.oid)) as object_name,
+				array(
+					select privilege_values.privilege_name
+					from unnest($2::text[]) as privilege_values(privilege_name)
+					where has_function_privilege(grantee.rolname, proc.oid, privilege_values.privilege_name)
+				) as privileges
+			from pg_roles grantee
+			cross join pg_proc proc
+			join pg_namespace ns on ns.oid = proc.pronamespace
+			where grantee.rolname = any($1::name[]) and ns.nspname = $3
+		 ) grants
+		 where cardinality(privileges) > 0`,
+		[PUBLIC_ROLES, ['EXECUTE'], PUBLIC_SCHEMA],
+	);
+	const privilegeMismatches = [
+		...tablePrivileges.map(
+			({ role_name, object_name, privileges }) =>
+				`${role_name} has ${privileges.join(', ')} on public table ${object_name}`,
+		),
+		...sequencePrivileges.map(
+			({ role_name, object_name, privileges }) =>
+				`${role_name} has ${privileges.join(', ')} on public sequence ${object_name}`,
+		),
+		...functionPrivileges.map(
+			({ role_name, object_name, privileges }) =>
+				`${role_name} has ${privileges.join(', ')} on public function ${object_name}`,
+		),
+	];
+	if (privilegeMismatches.length) {
+		throw new Error(
+			`Database check failed: public role privileges must be empty: ${privilegeMismatches.join('; ')}.`,
+		);
+	}
+
+	const { rows: policies } = await client.query(
+		'select policyname, tablename from pg_policies where schemaname = $1',
+		[PUBLIC_SCHEMA],
+	);
+	const { rows: views } = await client.query(
+		`select relname as object_name, case relkind when 'v' then 'view' when 'm' then 'materialized view' end as object_type
+		 from pg_class rel join pg_namespace ns on ns.oid = rel.relnamespace
+		 where ns.nspname = $1 and rel.relkind in ('v', 'm')`,
+		[PUBLIC_SCHEMA],
+	);
+	const { rows: securityDefiners } = await client.query(
+		`select proc.proname as object_name, pg_get_function_identity_arguments(proc.oid) as arguments
+		 from pg_proc proc join pg_namespace ns on ns.oid = proc.pronamespace
+		 where ns.nspname = $1 and proc.prosecdef`,
+		[PUBLIC_SCHEMA],
+	);
+	const { rows: executablePublicFunctions } = await client.query(
+		`select proc.proname as object_name, pg_get_function_identity_arguments(proc.oid) as arguments
+		 from pg_proc proc join pg_namespace ns on ns.oid = proc.pronamespace
+		 where ns.nspname = $1
+		   and (proc.proacl is null or exists (
+			 select 1 from aclexplode(proc.proacl) privilege
+			 where privilege.grantee = 0 and privilege.privilege_type = 'EXECUTE'
+		   ))`,
+		[PUBLIC_SCHEMA],
+	);
+	const catalogMismatches = [
+		...policies.map(({ policyname, tablename }) => `public policy ${policyname} on ${tablename}`),
+		...views.map(({ object_name, object_type }) => `public ${object_type} ${object_name}`),
+		...securityDefiners.map(
+			({ object_name, arguments: args }) =>
+				`public SECURITY DEFINER function ${object_name}(${args})`,
+		),
+		...executablePublicFunctions.map(
+			({ object_name, arguments: args }) => `executable public function ${object_name}(${args})`,
+		),
+	];
+	if (catalogMismatches.length) {
+		throw new Error(
+			`Database check failed: forbidden public catalog objects: ${catalogMismatches.join('; ')}.`,
+		);
 	}
 }
 
 async function verifyDatabase(client) {
 	await client.query('select 1');
-	const journal = JSON.parse(
-		fs.readFileSync(path.join(migrationsFolder, 'meta', '_journal.json'), 'utf8'),
-	);
-	const latestTag = journal.entries.at(-1)?.tag;
-	if (!latestTag) throw new Error('Database check failed: migration journal is empty.');
+	const { entries } = readMigrationJournal();
+	if (!entries.at(-1)?.tag) throw new Error('Database check failed: migration journal is empty.');
+	const latestSnapshotTag = latestAvailableSnapshotTag();
+	const expected = expectedSchema(latestSnapshotTag);
 	await assertExpectedSchema(
 		client,
-		latestTag,
-		`Database check failed: schema does not match ${latestTag}.`,
+		latestSnapshotTag,
+		`Database check failed: schema does not match ${latestSnapshotTag}.`,
 		{ rejectUnexpected: true },
 	);
+	await assertCatalogSecurity(client, expected);
 	await assertMigrationLedger(client);
 	for (const [label, query] of LEGACY_DATA_CHECKS) {
 		const { rows } = await client.query(query);
@@ -577,6 +844,8 @@ async function main() {
 		}
 
 		const hasSchema = await tableExists(client, 'public', SENTINEL_TABLE);
+		const hasMigrationLedger = await tableExists(client, MIGRATIONS_SCHEMA, MIGRATIONS_TABLE);
+		if (hasMigrationLedger) await assertMigrationLedgerPrefix(client);
 		const baselineHash = hashMigration(BASELINE_TAG);
 		const needsAdoption = hasSchema && !(await ledgerHasBaseline(client, baselineHash));
 
@@ -588,6 +857,7 @@ async function main() {
 			await adoptBaseline(client);
 		}
 
+		if (hasMigrationLedger || needsAdoption) await assertMigrationLedgerPrefix(client);
 		const db = drizzle(client);
 		await migrate(db, { migrationsFolder });
 		console.error('[migrate] Up to date.');

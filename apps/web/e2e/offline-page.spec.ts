@@ -41,6 +41,33 @@ async function seedOfflineState(
 
 test.describe('Offline fallback page', () => {
 	test.setTimeout(300_000);
+	test.beforeEach(async ({ page }) => {
+		await page.route('**/api/wg/mine', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					wgs: [
+						{ code: 'MTE8PZAT', memberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973' },
+						{ code: 'ABCDEFGH', memberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973' },
+					],
+				}),
+			}),
+		);
+	});
+
+	test('does not disclose stored offline data without a current account membership', async ({
+		page,
+	}) => {
+		await page.unroute('**/api/wg/mine');
+		await page.route('**/api/wg/mine', (route) => route.fulfill({ status: 401 }));
+		await gotoWithRetry(page, '/offline');
+		await seedOfflineState(page, [{ code: 'MTE8PZAT', name: 'sadf', lastVisitedAt: Date.now() }]);
+
+		await expect(page.getByText('Keine wartenden Aktionen.')).toBeVisible();
+		await expect(page.getByText('Milch')).toHaveCount(0);
+		await expect(page.getByText('sadf')).toHaveCount(0);
+	});
 
 	test('shows remembered WGs and queued offline actions', async ({ page }) => {
 		await gotoWithRetry(page, '/offline');

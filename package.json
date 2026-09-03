@@ -13,6 +13,9 @@
 		"lint": "biome check .",
 		"format": "biome format --write .",
 		"typecheck": "pnpm -r --if-present run typecheck",
+		"growth:simulate": "node tools/growth-lab/index.mjs",
+		"growth:refresh": "node tools/growth-lab/refresh.mjs",
+		"growth:check": "node tools/growth-lab/self-check.mjs",
 		"clean": "rm -rf apps/web/.next node_modules/.cache",
 		"e2e": "pnpm --filter @manawg/web test:e2e"
 	},

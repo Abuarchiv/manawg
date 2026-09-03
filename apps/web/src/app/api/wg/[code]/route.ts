@@ -80,9 +80,7 @@ export async function GET(
 			return notFound('wg_not_found');
 		}
 		const auth = await requireMember(req, wg.id);
-		if (!auth.ok) {
-			return NextResponse.json({ wg });
-		}
+		if (!auth.ok) return auth.response;
 
 		const members = await db
 			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
