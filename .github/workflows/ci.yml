@@ -194,7 +194,7 @@ jobs:
           PUBLIC_ENTRY_E2E: 'true'
           AUTH_LIVE_E2E: 'true'
           SUPABASE_AUTH_LIVE_E2E: 'true'
-        run: pnpm --filter @manawg/web exec playwright test --retries=0 preview-protection.spec.ts smoke-launch.spec.ts
+        run: pnpm --filter @manawg/web exec playwright test --retries=0 preview-protection.spec.ts smoke-launch.spec.ts public-entry-live.spec.ts social-login-live.spec.ts supabase-auth-live.spec.ts
       - name: Record protected Preview execution evidence
         if: always()
         env:
