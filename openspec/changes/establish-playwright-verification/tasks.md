@@ -23,6 +23,6 @@
 
 ## 5. Integrate and verify the gates
 
-- [ ] 5.1 Wire only the fixture and protected Preview jobs in `.github/workflows/ci.yml`, preserving the concurrent agent's database/release jobs and existing Node 22/pnpm constraints; verify the workflow parses and each job has the expected dependency, environment, exact-SHA ordering, and failure behavior after the release-agent handoff.
-- [ ] 5.2 Run the final local gates from `/Users/abu/Company/manawg-app`: `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm --filter @manawg/web bundle:check`, and `pnpm --filter @manawg/web test:e2e:fixtures`; verify all pass on the final shared snapshot and retain the exact results for review.
+- [x] 5.1 Wire only the fixture and protected Preview jobs in `.github/workflows/ci.yml`, preserving the concurrent agent's database/release jobs and existing Node 22/pnpm constraints; verify the workflow parses and each job has the expected dependency, environment, exact-SHA ordering, and failure behavior after the release-agent handoff.
+- [x] 5.2 Run the final local gates from `/Users/abu/Company/manawg-app`: `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm --filter @manawg/web bundle:check`, and `pnpm --filter @manawg/web test:e2e:fixtures`; verify all pass on the final shared snapshot and retain the exact results for review.
 - [x] 5.3 Validate this change with `openspec validate "establish-playwright-verification" --type change --strict --no-interactive`; verify the command reports the change as valid before marking this task complete.
