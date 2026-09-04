@@ -80,7 +80,7 @@ export function ProfileTab({
 		<>
 			<Section
 				title="Dein Profil"
-				hint="Dein Account verbindet dich mit dieser WG. Entwürfe und Offline-Aktionen bleiben auf diesem Gerät."
+				hint="Dein Account verbindet dich mit dieser WG. Nicht synchronisierte Entwürfe und Offline-Aktionen bleiben auf diesem Gerät."
 			>
 				<div className="flex items-center gap-3 px-4 py-3.5">
 					<MemberAvatar name={memberName} size={40} />

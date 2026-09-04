@@ -31,6 +31,8 @@ interface MemberDeactivateDialogProps {
 	/** Identity of the device performing the action (for the member-id header). */
 	viewerMemberId: string;
 	viewerMemberToken?: string | undefined;
+	/** Use the same balance review for a member leaving their own WG. */
+	selfLeave?: boolean | undefined;
 	onClose: () => void;
 	onDeactivated: (name: string) => void;
 }
@@ -48,6 +50,7 @@ export function MemberDeactivateDialog({
 	member,
 	viewerMemberId,
 	viewerMemberToken,
+	selfLeave = false,
 	onClose,
 	onDeactivated,
 }: MemberDeactivateDialogProps) {
@@ -60,6 +63,7 @@ export function MemberDeactivateDialog({
 	const [openBalances, setOpenBalances] = useState<OpenBalanceDto[]>([]);
 	const [submitting, setSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
+	const submittingRef = useRef(false);
 
 	const dialogRef = useModalDialog({
 		open: true,
@@ -89,7 +93,8 @@ export function MemberDeactivateDialog({
 	}, [encodedShareCode, member.id, viewerMemberId]);
 
 	async function handleConfirm(): Promise<void> {
-		if (submitting) return;
+		if (submittingRef.current) return;
+		submittingRef.current = true;
 		setSubmitting(true);
 		setSubmitError(null);
 		const res = await apiFetch<MemberDeactivateResponse>(
@@ -106,7 +111,12 @@ export function MemberDeactivateDialog({
 			onClose();
 			return;
 		}
-		setSubmitError('Auszug konnte nicht gespeichert werden. Bitte erneut versuchen.');
+		setSubmitError(
+			selfLeave
+				? 'WG konnte nicht verlassen werden. Deine Mitgliedschaft bleibt bestehen. Bitte erneut versuchen.'
+				: 'Auszug konnte nicht gespeichert werden. Bitte erneut versuchen.',
+		);
+		submittingRef.current = false;
 		setSubmitting(false);
 	}
 
@@ -132,15 +142,15 @@ export function MemberDeactivateDialog({
 				<div className="flex items-start gap-3 px-5 pt-6 pb-3">
 					<AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" aria-hidden />
 					<h2 id={titleId} className="text-lg font-semibold text-[var(--text-1)]">
-						{member.name} ausziehen?
+						{selfLeave ? 'Wirklich verlassen?' : `${member.name} ausziehen?`}
 					</h2>
 				</div>
 
 				<div id={descId} className="px-5 pb-2 text-sm leading-relaxed text-[var(--text-2)]">
 					<p>
-						{member.name} verschwindet aus allen Listen (Rotation, Aufteilung, Auswahl), behält aber
-						Zugriff auf dieses Gerät. Historie und Salden bleiben erhalten. Du kannst den Auszug
-						jederzeit rückgängig machen.
+						{selfLeave
+							? 'Deine Mitgliedschaft in dieser WG wird deaktiviert. Deine Einträge und offenen Salden bleiben erhalten. Ein aktives Admin-Mitglied mit der nötigen Berechtigung kann dich später wieder aktivieren.'
+							: `${member.name} verschwindet aus allen Listen (Rotation, Aufteilung, Auswahl), behält aber Zugriff auf dieses Gerät. Historie und Salden bleiben erhalten. Du kannst den Auszug jederzeit rückgängig machen.`}
 					</p>
 
 					<div className="mt-4">
@@ -151,14 +161,17 @@ export function MemberDeactivateDialog({
 							</p>
 						) : loadError ? (
 							<p className="rounded-md border border-[var(--border)] px-3 py-2 text-[13px] text-[var(--text-3)]">
-								{loadError} Der Auszug ist trotzdem möglich.
+								{loadError}{' '}
+								{selfLeave
+									? 'Das Verlassen ist trotzdem möglich.'
+									: 'Der Auszug ist trotzdem möglich.'}
 							</p>
 						) : openBalances.length === 0 ? (
 							<p className="text-[13px] text-[var(--text-3)]">Keine offenen Salden. 🎉</p>
 						) : (
 							<div className="rounded-md border border-[var(--accent)]/30 bg-[var(--accent)]/[0.04] px-3 py-2.5">
 								<p className="text-[12.5px] font-medium text-[var(--text-1)]">
-									Offene Salden bleiben nach dem Auszug bestehen:
+									Offene Salden bleiben nach {selfLeave ? 'dem Verlassen' : 'dem Auszug'} bestehen:
 								</p>
 								<ul className="mt-1.5 space-y-1">
 									{openBalances.map((balance) => (
@@ -181,7 +194,11 @@ export function MemberDeactivateDialog({
 						)}
 					</div>
 
-					{submitError && <p className="mt-3 text-[13px] text-[var(--danger)]">{submitError}</p>}
+					{submitError && (
+						<p role="alert" className="mt-3 text-[13px] text-[var(--danger)]">
+							{submitError}
+						</p>
+					)}
 				</div>
 
 				<div className="flex flex-col gap-2 px-5 pb-6 sm:flex-row sm:justify-end sm:pb-5">
@@ -190,6 +207,7 @@ export function MemberDeactivateDialog({
 						type="button"
 						onClick={onClose}
 						disabled={submitting}
+						aria-label={selfLeave ? 'WG-Verlassen abbrechen' : undefined}
 						className="w-full min-h-11 btn-modern-ghost px-4 py-3 text-sm font-semibold disabled:opacity-50 sm:w-auto sm:py-2.5"
 					>
 						Abbrechen
@@ -198,10 +216,11 @@ export function MemberDeactivateDialog({
 						type="button"
 						onClick={() => void handleConfirm()}
 						disabled={submitting || loading}
+						aria-label={selfLeave ? 'WG auf diesem Gerät verlassen' : undefined}
 						className="inline-flex w-full min-h-11 items-center justify-center gap-1.5 rounded-md bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent-fg)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:py-2.5"
 					>
 						{submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-						Ausziehen
+						{selfLeave ? 'Verlassen' : 'Ausziehen'}
 					</button>
 				</div>
 			</div>

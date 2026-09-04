@@ -49,6 +49,28 @@ test.describe('Account and WG settings experience', () => {
 		await page.route(
 			`**/api/wg/${TWO_MEMBER_WG.code}/members/${TWO_MEMBER_WG.memberId}`,
 			async (route) => {
+				if (route.request().method() === 'GET') {
+					await route.fulfill({
+						status: 200,
+						contentType: 'application/json',
+						body: JSON.stringify({
+							member: {
+								id: TWO_MEMBER_WG.memberId,
+								name: TWO_MEMBER_WG.memberName,
+								active: true,
+							},
+							openBalances: [
+								{
+									member_id: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
+									name: 'Mina',
+									amount_cents: 1_000,
+									direction: 'owed',
+								},
+							],
+						}),
+					});
+					return;
+				}
 				if (route.request().method() !== 'PATCH') return route.fallback();
 				patchRequests += 1;
 				expect(JSON.parse(route.request().postData() ?? '{}')).toEqual({ active: false });
@@ -69,7 +91,16 @@ test.describe('Account and WG settings experience', () => {
 
 		await gotoWithRetry(page, `/wg/${TWO_MEMBER_WG.code}/einstellungen#zugang`);
 		await page.getByRole('button', { name: 'WG auf diesem Gerät verlassen' }).click();
-		const confirm = page.getByRole('button', { name: 'WG auf diesem Gerät verlassen' });
+		await expect(
+			page.getByText('Offene Salden bleiben nach dem Verlassen bestehen:'),
+		).toBeVisible();
+		await expect(page.getByText('Mina schuldet')).toBeVisible();
+		await expect(
+			page.getByText(/aktives Admin-Mitglied mit der nötigen Berechtigung/),
+		).toBeVisible();
+		const confirm = page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'WG auf diesem Gerät verlassen' });
 		await confirm.evaluate((button) => {
 			button.click();
 			button.click();
@@ -111,13 +142,17 @@ test.describe('Account and WG settings experience', () => {
 
 		await gotoWithRetry(page, `/wg/${TWO_MEMBER_WG.code}/einstellungen#zugang`);
 		await page.getByRole('button', { name: 'WG auf diesem Gerät verlassen' }).click();
-		const confirm = page.getByRole('button', { name: 'WG auf diesem Gerät verlassen' });
+		const confirm = page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'WG auf diesem Gerät verlassen' });
 		await confirm.click();
 		await expect(
 			page.getByRole('alert').filter({ hasText: 'WG konnte nicht verlassen werden' }),
 		).toContainText('Deine Mitgliedschaft bleibt bestehen');
 		await expect(page.getByText('Wirklich verlassen?')).toBeVisible();
-		await expect(page.getByRole('button', { name: 'WG auf diesem Gerät verlassen' })).toBeEnabled();
+		await expect(
+			page.getByRole('dialog').getByRole('button', { name: 'WG auf diesem Gerät verlassen' }),
+		).toBeEnabled();
 		expect(
 			await page.evaluate(
 				(wgId) => localStorage.getItem(`manawg_identity:${wgId}`),
@@ -125,7 +160,10 @@ test.describe('Account and WG settings experience', () => {
 			),
 		).not.toBeNull();
 
-		await page.getByRole('button', { name: 'WG auf diesem Gerät verlassen' }).click();
+		await page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'WG auf diesem Gerät verlassen' })
+			.click();
 		await expect.poll(() => patchRequests).toBe(2);
 		await expect(page).toHaveURL(/\/$/);
 	});

@@ -40,9 +40,6 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	const [accessMessage, setAccessMessage] = useState<string | null>(null);
 	const [accessError, setAccessError] = useState<string | null>(null);
 	const [rotateConfirm, setRotateConfirm] = useState(false);
-	const [confirmLeave, setConfirmLeave] = useState(false);
-	const [leavePending, setLeavePending] = useState(false);
-	const [leaveError, setLeaveError] = useState<string | null>(null);
 	const [accountSignOutPending, setAccountSignOutPending] = useState(false);
 	const [accountSignOutError, setAccountSignOutError] = useState<string | null>(null);
 	const [deleteStage, setDeleteStage] = useState<'idle' | 'confirm' | 'pending'>('idle');
@@ -51,16 +48,22 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	const [memberToDeactivate, setMemberToDeactivate] = useState<{
 		id: string;
 		name: string;
+		selfLeave?: boolean;
 	} | null>(null);
 	const [reactivatingId, setReactivatingId] = useState<string | null>(null);
 	const [memberActionMessage, setMemberActionMessage] = useState<string | null>(null);
 	const [memberActionError, setMemberActionError] = useState<string | null>(null);
 	const accessPendingRef = useRef(false);
-	const leavePendingRef = useRef(false);
 	const activeMembers = members.filter((m) => m.active);
 	const inactiveMembers = members.filter((m) => !m.active);
 
 	function handleMemberDeactivated(name: string): void {
+		if (memberToDeactivate?.id === identity.memberId) {
+			clearIdentity(wg.id);
+			forgetWg(wg.shareCode);
+			router.push('/');
+			return;
+		}
 		setMemberActionError(null);
 		setMemberActionMessage(`${name} ist jetzt als ausgezogen markiert.`);
 		void refreshMembers(identity.memberId);
@@ -95,33 +98,6 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 		shareCodeRotatedAt: wg.shareCodeRotatedAt ?? null,
 	});
 
-	async function handleLeave(): Promise<void> {
-		if (leavePendingRef.current) return;
-		leavePendingRef.current = true;
-		setLeavePending(true);
-		setLeaveError(null);
-		const res = await apiFetch<{ member?: { id: string; active: boolean } }>(
-			`/api/wg/${encodedShareCode}/members/${identity.memberId}`,
-			{
-				method: 'PATCH',
-				memberId: identity.memberId,
-				memberToken: identity.memberToken,
-				body: JSON.stringify({ active: false }),
-			},
-		);
-		if (!res.ok) {
-			setLeaveError(
-				'WG konnte nicht verlassen werden. Deine Mitgliedschaft bleibt bestehen. Bitte erneut versuchen.',
-			);
-			leavePendingRef.current = false;
-			setLeavePending(false);
-			return;
-		}
-		clearIdentity(wg.id);
-		forgetWg(wg.shareCode);
-		router.push('/');
-	}
-
 	async function handleAccountSignOut(): Promise<void> {
 		if (accountSignOutPending) return;
 		setAccountSignOutPending(true);
@@ -141,15 +117,14 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 
 	function openLeaveConfirm(): void {
 		if (activeMembers.length <= 1) return;
-		setConfirmLeave(true);
-		setLeaveError(null);
+		setMemberToDeactivate({ id: identity.memberId, name: identity.name, selfLeave: true });
 		setDeleteStage('idle');
 		setDeleteError(null);
 		setConfirmText('');
 	}
 
 	function openDeleteConfirm(): void {
-		setConfirmLeave(false);
+		setMemberToDeactivate(null);
 		setDeleteStage('confirm');
 		setDeleteError(null);
 		setConfirmText('');
@@ -543,44 +518,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 								{accountSignOutPending ? 'Melde ab…' : 'Stattdessen Konto abmelden'}
 							</button>
 						</div>
-					) : confirmLeave ? (
-						<div className="space-y-3 p-4">
-							<p className="text-[13px] text-[var(--text-2)]">
-								Wirklich verlassen? Deine Mitgliedschaft in dieser WG wird deaktiviert. Deine
-								Einträge und offenen Salden bleiben erhalten. Ein aktives WG-Mitglied kann dich
-								später wieder aktivieren.
-							</p>
-							{leaveError && (
-								<p role="alert" className="text-[12.5px] text-[var(--danger)]">
-									{leaveError}
-								</p>
-							)}
-							<div className="flex gap-2">
-								<button
-									type="button"
-									onClick={() => setConfirmLeave(false)}
-									aria-label="WG-Verlassen abbrechen"
-									className="inline-flex h-11 flex-1 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] text-[13px] text-[var(--text-1)] transition-colors hover:border-[var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-								>
-									Abbrechen
-								</button>
-								<button
-									type="button"
-									onClick={() => void handleLeave()}
-									disabled={leavePending}
-									aria-label="WG auf diesem Gerät verlassen"
-									className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-[var(--danger)] text-[13px] font-medium text-[var(--danger-fg)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-								>
-									{leavePending ? (
-										<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-									) : (
-										<LogOut className="h-3.5 w-3.5" aria-hidden />
-									)}
-									{leavePending ? 'Wird gespeichert…' : 'Verlassen'}
-								</button>
-							</div>
-						</div>
-					) : (
+					) : memberToDeactivate?.selfLeave ? null : (
 						<button
 							type="button"
 							onClick={openLeaveConfirm}
@@ -682,6 +620,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				<MemberDeactivateDialog
 					encodedShareCode={encodedShareCode}
 					member={memberToDeactivate}
+					selfLeave={memberToDeactivate.selfLeave}
 					viewerMemberId={identity.memberId}
 					viewerMemberToken={identity.memberToken}
 					onClose={() => setMemberToDeactivate(null)}

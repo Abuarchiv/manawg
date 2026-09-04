@@ -183,15 +183,34 @@ export function computeMemberBalances(
 		payments,
 	);
 	const netByMemberId = new Map(netBalances.map((balance) => [balance.memberId, balance.cents]));
+	const grossByMemberId = new Map(
+		members.map((member) => [member.id, { paidCents: 0, owedCents: 0 }]),
+	);
+	for (const expense of expenses) {
+		const paid = grossByMemberId.get(expense.paidByMemberId);
+		if (paid) paid.paidCents += expense.amountCents;
+	}
+	for (const split of splits) {
+		if (split.settledAt) continue;
+		const owed = grossByMemberId.get(split.debtorMemberId);
+		if (owed) owed.owedCents += split.amountCents;
+	}
+	for (const payment of payments) {
+		const paid = grossByMemberId.get(payment.fromMemberId);
+		const owed = grossByMemberId.get(payment.toMemberId);
+		if (paid) paid.paidCents += payment.amountCents;
+		if (owed) owed.owedCents += payment.amountCents;
+	}
 
 	return members.map((member) => {
 		const balanceCents = netByMemberId.get(member.id) ?? 0;
+		const gross = grossByMemberId.get(member.id);
 		return {
 			memberId: member.id,
 			memberName: member.name,
 			color: member.color,
-			paidCents: Math.max(0, balanceCents),
-			owedCents: Math.max(0, -balanceCents),
+			paidCents: gross?.paidCents ?? 0,
+			owedCents: gross?.owedCents ?? 0,
 			balanceCents,
 		};
 	});

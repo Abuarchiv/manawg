@@ -112,7 +112,17 @@ test.describe('Dashboard balance consistency', () => {
 			],
 		);
 
-		expect(actual.map((row) => row.balanceCents)).toEqual([2_000, -1_000, -1_000]);
+		expect(
+			actual.map(({ paidCents, owedCents, balanceCents }) => ({
+				paidCents,
+				owedCents,
+				balanceCents,
+			})),
+		).toEqual([
+			{ paidCents: 3_000, owedCents: 1_000, balanceCents: 2_000 },
+			{ paidCents: 0, owedCents: 1_000, balanceCents: -1_000 },
+			{ paidCents: 0, owedCents: 1_000, balanceCents: -1_000 },
+		]);
 	});
 
 	test('matches canonical balances for partial and full settlement', () => {
@@ -124,41 +134,66 @@ test.describe('Dashboard balance consistency', () => {
 		];
 
 		const partialSplits = [splits[0], { ...splits[1], settledAt: new Date() }, splits[2]];
+		const partial = expectCanonicalBalance([currentExpense], partialSplits);
 		expect(
-			expectCanonicalBalance([currentExpense], partialSplits).map((row) => row.balanceCents),
-		).toEqual([1_000, 0, -1_000]);
-		expectCanonicalBalance(
+			partial.map(({ paidCents, owedCents, balanceCents }) => ({
+				paidCents,
+				owedCents,
+				balanceCents,
+			})),
+		).toEqual([
+			{ paidCents: 3_000, owedCents: 1_000, balanceCents: 1_000 },
+			{ paidCents: 0, owedCents: 0, balanceCents: 0 },
+			{ paidCents: 0, owedCents: 1_000, balanceCents: -1_000 },
+		]);
+		const full = expectCanonicalBalance(
 			[currentExpense],
 			splits.map((current) => ({ ...current, settledAt: new Date() })),
 		);
 		expect(
-			dashboardBalances(
-				[currentExpense],
-				splits.map((current) => ({ ...current, settledAt: new Date() })),
-			).map((row) => row.balanceCents),
-		).toEqual([0, 0, 0]);
+			full.map(({ paidCents, owedCents, balanceCents }) => ({
+				paidCents,
+				owedCents,
+				balanceCents,
+			})),
+		).toEqual([
+			{ paidCents: 3_000, owedCents: 0, balanceCents: 0 },
+			{ paidCents: 0, owedCents: 0, balanceCents: 0 },
+			{ paidCents: 0, owedCents: 0, balanceCents: 0 },
+		]);
 	});
 
 	test('keeps own shares neutral and applies completed provider transfers', () => {
 		const ownExpense = expense('expense-own', memberA);
-		expectCanonicalBalance([ownExpense], [split(ownExpense.id, memberA, 3_000)]);
+		const own = expectCanonicalBalance([ownExpense], [split(ownExpense.id, memberA, 3_000)]);
 		expect(
-			dashboardBalances([ownExpense], [split(ownExpense.id, memberA, 3_000)]).map(
-				(row) => row.balanceCents,
-			),
-		).toEqual([0, 0, 0]);
+			own.map(({ paidCents, owedCents, balanceCents }) => ({ paidCents, owedCents, balanceCents })),
+		).toEqual([
+			{ paidCents: 3_000, owedCents: 3_000, balanceCents: 0 },
+			{ paidCents: 0, owedCents: 0, balanceCents: 0 },
+			{ paidCents: 0, owedCents: 0, balanceCents: 0 },
+		]);
 
 		const sharedExpense = expense('expense-paid', memberA);
+		const transferred = expectCanonicalBalance(
+			[sharedExpense],
+			[
+				split(sharedExpense.id, memberA, 1_000),
+				split(sharedExpense.id, memberB, 1_000),
+				split(sharedExpense.id, memberC, 1_000),
+			],
+			[{ fromMemberId: memberB, toMemberId: memberA, amountCents: 1_000, currency: 'EUR' }],
+		);
 		expect(
-			expectCanonicalBalance(
-				[sharedExpense],
-				[
-					split(sharedExpense.id, memberA, 1_000),
-					split(sharedExpense.id, memberB, 1_000),
-					split(sharedExpense.id, memberC, 1_000),
-				],
-				[{ fromMemberId: memberB, toMemberId: memberA, amountCents: 1_000, currency: 'EUR' }],
-			).map((row) => row.balanceCents),
-		).toEqual([1_000, 0, -1_000]);
+			transferred.map(({ paidCents, owedCents, balanceCents }) => ({
+				paidCents,
+				owedCents,
+				balanceCents,
+			})),
+		).toEqual([
+			{ paidCents: 3_000, owedCents: 2_000, balanceCents: 1_000 },
+			{ paidCents: 1_000, owedCents: 1_000, balanceCents: 0 },
+			{ paidCents: 0, owedCents: 1_000, balanceCents: -1_000 },
+		]);
 	});
 });
