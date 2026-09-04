@@ -106,6 +106,7 @@ export default function PutzenPage() {
 	const initialLoadStartedRef = useRef(false);
 	const loadRequestIdRef = useRef(0);
 	const titleInputRef = useRef<HTMLInputElement>(null);
+	const assigneeTouchedRef = useRef(false);
 
 	const { isPending, start: startPending, end: endPending } = usePendingSet();
 	const [completeConfirmId, setCompleteConfirmId] = useState<string | null>(null);
@@ -188,14 +189,17 @@ export default function PutzenPage() {
 			setDraftHydrated(true);
 			return;
 		}
-		if (!isEmptyModuleDraft('chore', draft, identity.memberId)) setShowForm(true);
+		if (!isEmptyModuleDraft('chore', draft, identity.memberId)) {
+			assigneeTouchedRef.current = true;
+			setShowForm(true);
+		}
 		if (draft.title) {
 			setNewTitle(draft.title);
 		}
 		if (draft.intervalDays) setNewInterval(draft.intervalDays);
 		if (draft.recurrenceType === 'months' || draft.recurrenceType === 'days')
 			setNewRecurrenceType(draft.recurrenceType);
-		if (draft.assignedMemberId) setNewAssigned(draft.assignedMemberId);
+		if (typeof draft.assignedMemberId === 'string') setNewAssigned(draft.assignedMemberId);
 		if (draft.absenceMemberId) setAbsenceMemberId(draft.absenceMemberId);
 		if (draft.absenceStartDate) setAbsenceStart(draft.absenceStartDate.slice(0, 10));
 		if (draft.absenceEndDate) setAbsenceEnd(draft.absenceEndDate.slice(0, 10));
@@ -206,6 +210,7 @@ export default function PutzenPage() {
 
 	const applyChoreSuggestion = useCallback(
 		(suggestion: ChoreSuggestion): void => {
+			assigneeTouchedRef.current = false;
 			writeDraft(draftKey, {
 				title: suggestion.title,
 				intervalDays: suggestion.intervalDays,
@@ -227,6 +232,7 @@ export default function PutzenPage() {
 		(suggestion: ChoreSuggestion): void => {
 			const draft = readDraft<Record<string, unknown>>(draftKey);
 			if (draft && !isEmptyModuleDraft('chore', draft, identity.memberId)) {
+				assigneeTouchedRef.current = true;
 				setPendingSuggestion(suggestion);
 				setShowForm(true);
 			} else {
@@ -383,6 +389,7 @@ export default function PutzenPage() {
 						setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
+					assigneeTouchedRef.current = false;
 					setShowForm(false);
 					removeDraft(draftKey);
 					setActionNotice(
@@ -402,6 +409,7 @@ export default function PutzenPage() {
 				setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
+			assigneeTouchedRef.current = false;
 			setShowForm(false);
 			removeDraft(draftKey);
 			void load(false);
@@ -810,18 +818,13 @@ export default function PutzenPage() {
 	const choreAddPending = isPending('chore:add');
 	const absenceAddPending = isPending('absence:add');
 
-	// Prefill the fairness suggestion once per form-open. A ref guards against
-	// re-firing when the user explicitly picks "— niemand —" (empty string) or
-	// a background refresh changes the suggestion mid-edit.
-	const assigneeTouchedRef = useRef(false);
+	// A restored choice (including nobody) survives close/keep. Only a fresh
+	// form after saving, or an explicitly accepted suggestion, gets a default.
 	useEffect(() => {
-		if (!showForm) {
-			assigneeTouchedRef.current = false;
-			return;
-		}
+		if (!showForm || !draftHydrated || pendingSuggestion) return;
 		if (assigneeTouchedRef.current || !fairness.suggestedAssignee || newAssigned) return;
 		setNewAssigned(fairness.suggestedAssignee.id);
-	}, [fairness.suggestedAssignee, newAssigned, showForm]);
+	}, [draftHydrated, fairness.suggestedAssignee, newAssigned, pendingSuggestion, showForm]);
 	const handleAssignedMemberIdChange = (value: string): void => {
 		assigneeTouchedRef.current = true;
 		setNewAssigned(value);

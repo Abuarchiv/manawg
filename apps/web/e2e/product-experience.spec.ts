@@ -960,3 +960,106 @@ test('the deferred expense form shows loading and focuses its first field after 
 	}
 	await expect(page.getByLabel('Beschreibung', { exact: true })).toBeFocused();
 });
+
+test.describe('Retained chore assignment', () => {
+	test.setTimeout(120_000);
+	const assignedChore = {
+		id: 'existing-load',
+		title: 'Küche',
+		intervalDays: 7,
+		recurrenceType: 'days',
+		nextDueAt: '2099-01-01T10:00:00Z',
+		assignedMemberId: memberId,
+		lastCompletedAt: null,
+		lastCompletedByName: null,
+		openGapCountForAssignee: 0,
+	};
+
+	test('blocked suggestions preserve an empty assignee and unknown fields through keep and close', async ({
+		page,
+	}) => {
+		await identify(page);
+		const key = `manawg:draft:MTE8PZAT:${memberId}:chore`;
+		const draft = {
+			title: 'Fenster reinigen',
+			intervalDays: 3,
+			recurrenceType: 'months',
+			assignedMemberId: '',
+			absenceMemberId: memberId,
+			absenceStartDate: '',
+			absenceEndDate: '',
+			absenceReason: '',
+			queueEditId: null,
+			customNote: { text: 'Unverändert lassen' },
+		};
+		await page.addInitScript(
+			({ key, draft }) => {
+				if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(draft));
+			},
+			{ key, draft },
+		);
+		await page.route('**/api/wg/MTE8PZAT/chores', (route) =>
+			route.fulfill({ json: { chores: [assignedChore] } }),
+		);
+		await page.route('**/api/wg/MTE8PZAT/absences', (route) =>
+			route.fulfill({ json: { absences: [] } }),
+		);
+		await page.goto(`${base}/putzen?title=Bad%20putzen`);
+		await expect(page.getByText('Dein vorhandener Entwurf bleibt erhalten.')).toBeVisible();
+		await expect(page.getByLabel('Zuständig', { exact: true })).toHaveValue('');
+		const readStored = () =>
+			page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '{}'), key);
+		await expect.poll(readStored).toEqual(draft);
+		const replace = page.getByRole('button', {
+			name: 'Entwurf verwerfen und „Bad putzen“ übernehmen',
+		});
+		await replace.click();
+		await page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'Entwurf behalten', exact: true })
+			.click();
+		await expect(page.getByLabel('Zuständig', { exact: true })).toHaveValue('');
+		await expect.poll(readStored).toEqual(draft);
+		await page.getByRole('button', { name: 'Putzaufgabe-Formular schließen', exact: true }).click();
+		await page.getByRole('button', { name: 'Putzaufgabe erfassen', exact: true }).click();
+		await expect(page.getByLabel('Zuständig', { exact: true })).toHaveValue('');
+		await expect.poll(readStored).toEqual(draft);
+		await replace.click();
+		await page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'Entwurf verwerfen', exact: true })
+			.click();
+		await expect(page.getByRole('textbox', { name: 'Aufgabe', exact: true })).toHaveValue(
+			'Bad putzen',
+		);
+		await expect(page.getByLabel('Zuständig', { exact: true })).toHaveValue(buyerId);
+	});
+
+	test('new tasks use the fairness default while an explicit nobody choice survives reopening', async ({
+		page,
+	}) => {
+		await identify(page);
+		const writes: Record<string, unknown>[] = [];
+		await page.route('**/api/wg/MTE8PZAT/chores', (route) => {
+			if (route.request().method() === 'POST') writes.push(route.request().postDataJSON());
+			return route.fulfill({ json: { chores: [assignedChore] } });
+		});
+		await page.route('**/api/wg/MTE8PZAT/absences', (route) =>
+			route.fulfill({ json: { absences: [] } }),
+		);
+		await page.goto(`${base}/putzen`);
+		await expect(page.getByText('Küche', { exact: true })).toBeVisible();
+		await page.getByRole('button', { name: 'Putzaufgabe erfassen', exact: true }).click();
+		await expect(page.getByLabel('Zuständig', { exact: true })).toHaveValue(buyerId);
+		await page.getByRole('textbox', { name: 'Aufgabe', exact: true }).fill('Noch nicht zuweisen');
+		await page.getByLabel('Zuständig', { exact: true }).selectOption('');
+		await page.getByRole('button', { name: 'Putzaufgabe-Formular schließen', exact: true }).click();
+		await page.getByRole('button', { name: 'Putzaufgabe erfassen', exact: true }).click();
+		await expect(page.getByLabel('Zuständig', { exact: true })).toHaveValue('');
+		await page.getByRole('button', { name: 'Aufgabe hinzufügen', exact: true }).click();
+		await expect.poll(() => writes.length).toBe(1);
+		expect(writes[0]?.assignedMemberId).toBeNull();
+		await page.getByRole('button', { name: 'Putzaufgabe erfassen', exact: true }).click();
+		await expect(page.getByLabel('Zuständig', { exact: true })).toHaveValue(buyerId);
+	});
+});
