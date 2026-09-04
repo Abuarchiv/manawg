@@ -211,7 +211,8 @@ export default function EinstellungenPage() {
 						</p>
 						<p className="mt-0.5">
 							<span className="inline-flex items-center gap-1">
-								<Monitor className="h-3 w-3" aria-hidden /> Daten lokal an Gerät gebunden
+								<Monitor className="h-3 w-3" aria-hidden /> WG-Daten und Mitgliedschaft liegen im
+								Account · Entwürfe und Offline-Aktionen bleiben auf diesem Gerät
 							</span>
 						</p>
 					</div>

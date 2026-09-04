@@ -41,6 +41,8 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	const [accessError, setAccessError] = useState<string | null>(null);
 	const [rotateConfirm, setRotateConfirm] = useState(false);
 	const [confirmLeave, setConfirmLeave] = useState(false);
+	const [leavePending, setLeavePending] = useState(false);
+	const [leaveError, setLeaveError] = useState<string | null>(null);
 	const [accountSignOutPending, setAccountSignOutPending] = useState(false);
 	const [accountSignOutError, setAccountSignOutError] = useState<string | null>(null);
 	const [deleteStage, setDeleteStage] = useState<'idle' | 'confirm' | 'pending'>('idle');
@@ -54,6 +56,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	const [memberActionMessage, setMemberActionMessage] = useState<string | null>(null);
 	const [memberActionError, setMemberActionError] = useState<string | null>(null);
 	const accessPendingRef = useRef(false);
+	const leavePendingRef = useRef(false);
 	const activeMembers = members.filter((m) => m.active);
 	const inactiveMembers = members.filter((m) => !m.active);
 
@@ -92,7 +95,28 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 		shareCodeRotatedAt: wg.shareCodeRotatedAt ?? null,
 	});
 
-	function handleLeave(): void {
+	async function handleLeave(): Promise<void> {
+		if (leavePendingRef.current) return;
+		leavePendingRef.current = true;
+		setLeavePending(true);
+		setLeaveError(null);
+		const res = await apiFetch<{ member?: { id: string; active: boolean } }>(
+			`/api/wg/${encodedShareCode}/members/${identity.memberId}`,
+			{
+				method: 'PATCH',
+				memberId: identity.memberId,
+				memberToken: identity.memberToken,
+				body: JSON.stringify({ active: false }),
+			},
+		);
+		if (!res.ok) {
+			setLeaveError(
+				'WG konnte nicht verlassen werden. Deine Mitgliedschaft bleibt bestehen. Bitte erneut versuchen.',
+			);
+			leavePendingRef.current = false;
+			setLeavePending(false);
+			return;
+		}
 		clearIdentity(wg.id);
 		forgetWg(wg.shareCode);
 		router.push('/');
@@ -116,7 +140,9 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	}
 
 	function openLeaveConfirm(): void {
+		if (activeMembers.length <= 1) return;
 		setConfirmLeave(true);
+		setLeaveError(null);
 		setDeleteStage('idle');
 		setDeleteError(null);
 		setConfirmText('');
@@ -457,7 +483,8 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 							Konto abmelden
 						</h3>
 						<p className="mt-0.5 text-[11.5px] text-[var(--text-3)]">
-							Meldet dein Social-Konto auf diesem Gerät ab.
+							Meldet deine Account-Sitzung auf diesem Gerät ab. WG-Mitgliedschaft und Daten bleiben
+							bestehen.
 						</p>
 					</div>
 					<button
@@ -496,14 +523,38 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 							WG verlassen
 						</h3>
 						<p className="mt-0.5 text-[11.5px] text-[var(--text-3)]">
-							Entfernt dich nur auf diesem Gerät. Deine Einträge bleiben.
+							Entfernt deine Mitgliedschaft aus dieser WG. Deine Einträge und offenen Salden bleiben
+							erhalten.
 						</p>
 					</div>
-					{confirmLeave ? (
+					{activeMembers.length <= 1 ? (
 						<div className="space-y-3 p-4">
 							<p className="text-[13px] text-[var(--text-2)]">
-								Wirklich verlassen? Du musst dich beim nächsten Öffnen neu auswählen.
+								Du bist das letzte aktive Mitglied. Deine Mitgliedschaft bleibt bestehen; die WG
+								bleibt bestehen. Melde dich stattdessen auf diesem Gerät ab.
 							</p>
+							<button
+								type="button"
+								onClick={() => void handleAccountSignOut()}
+								disabled={accountSignOutPending}
+								aria-label="Stattdessen Konto abmelden"
+								className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-[var(--danger)]/40 px-3 py-2.5 text-[13px] font-medium text-[var(--danger)] transition-colors hover:border-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+							>
+								{accountSignOutPending ? 'Melde ab…' : 'Stattdessen Konto abmelden'}
+							</button>
+						</div>
+					) : confirmLeave ? (
+						<div className="space-y-3 p-4">
+							<p className="text-[13px] text-[var(--text-2)]">
+								Wirklich verlassen? Deine Mitgliedschaft in dieser WG wird deaktiviert. Deine
+								Einträge und offenen Salden bleiben erhalten. Ein aktives WG-Mitglied kann dich
+								später wieder aktivieren.
+							</p>
+							{leaveError && (
+								<p role="alert" className="text-[12.5px] text-[var(--danger)]">
+									{leaveError}
+								</p>
+							)}
 							<div className="flex gap-2">
 								<button
 									type="button"
@@ -515,12 +566,17 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 								</button>
 								<button
 									type="button"
-									onClick={handleLeave}
+									onClick={() => void handleLeave()}
+									disabled={leavePending}
 									aria-label="WG auf diesem Gerät verlassen"
-									className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-[var(--danger)] text-[13px] font-medium text-[var(--danger-fg)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2"
+									className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-[var(--danger)] text-[13px] font-medium text-[var(--danger-fg)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
 								>
-									<LogOut className="h-3.5 w-3.5" aria-hidden />
-									Verlassen
+									{leavePending ? (
+										<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+									) : (
+										<LogOut className="h-3.5 w-3.5" aria-hidden />
+									)}
+									{leavePending ? 'Wird gespeichert…' : 'Verlassen'}
 								</button>
 							</div>
 						</div>

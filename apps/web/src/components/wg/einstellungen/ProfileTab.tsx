@@ -78,7 +78,10 @@ export function ProfileTab({
 
 	return (
 		<>
-			<Section title="Dein Profil" hint="Diese Identität ist nur an dieses Gerät gebunden.">
+			<Section
+				title="Dein Profil"
+				hint="Dein Account verbindet dich mit dieser WG. Entwürfe und Offline-Aktionen bleiben auf diesem Gerät."
+			>
 				<div className="flex items-center gap-3 px-4 py-3.5">
 					<MemberAvatar name={memberName} size={40} />
 					<div className="min-w-0 flex-1">
@@ -88,9 +91,13 @@ export function ProfileTab({
 						<div className="mt-0.5 text-[12.5px] text-[var(--text-3)]">in {wgName}</div>
 					</div>
 				</div>
+				<p className="border-t border-[var(--border)] px-4 py-3 text-[12px] leading-relaxed text-[var(--text-3)]">
+					Dein Account ist mit dieser WG-Mitgliedschaft verbunden. Nicht synchronisierte Entwürfe
+					und Offline-Aktionen bleiben auf diesem Gerät.
+				</p>
 			</Section>
 
-			<Section title="PayPal" hint="Damit Mitbewohner dir offene Ausgleiche direkt zahlen können.">
+			<Section title="PayPal" hint="Empfängerkennung für ausdrücklich gestartete PayPal-Zahlungen.">
 				<div className="space-y-3 p-4">
 					<label
 						className="block text-[13px] font-medium text-[var(--text-1)]"
@@ -122,8 +129,9 @@ export function ProfileTab({
 							Speichern
 						</button>
 					</div>
-					<p className="text-[12px] text-[var(--text-3)]">
-						Die Merchant-ID findest du in PayPal unter „Unternehmensinformationen“.
+					<p className="text-[12px] leading-relaxed text-[var(--text-3)]">
+						Die Merchant-ID ist deine PayPal-Empfängerkennung. Das Speichern hinterlegt nur diese
+						Kennung; es überweist kein Geld und bestätigt keine PayPal-Freischaltung.
 					</p>
 					{paypalMessage && (
 						<output

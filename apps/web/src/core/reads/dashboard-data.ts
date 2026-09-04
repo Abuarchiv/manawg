@@ -19,6 +19,8 @@ import {
 	startOfBerlinDay,
 } from '@/core/utils/berlin-day';
 import { getAbsentMemberIds } from '@/features/chores/absence';
+import { computeNetBalances } from '@/features/expenses/debt-reduction';
+import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
 import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
 import { and, desc, eq } from 'drizzle-orm';
 import { type ActivityKind, formatAuditActivityText } from './activity';
@@ -149,43 +151,50 @@ function berlinDaysAgoStart(todayStart: Date, daysAgo: number): Date {
 
 export function computeMemberBalances(
 	members: Array<{ id: string; name: string; color: string | null }>,
-	expenses: Array<{ paidByMemberId: string; amountCents: number }>,
-	splits: Array<{ debtorMemberId: string; amountCents: number; settledAt: Date | null }>,
-	payments: Array<{ fromMemberId: string; toMemberId: string; amountCents: number }> = [],
+	expenses: Array<{ id: string; paidByMemberId: string; amountCents: number }>,
+	splits: Array<{
+		expenseId: string;
+		debtorMemberId: string;
+		amountCents: number;
+		settledAt: Date | null;
+	}>,
+	payments: ExpensePaymentInput[] = [],
 ): MemberBalance[] {
-	const balanceMap = new Map<string, MemberBalance>();
-	for (const m of members) {
-		balanceMap.set(m.id, {
-			memberId: m.id,
-			memberName: m.name,
-			color: m.color,
-			paidCents: 0,
-			owedCents: 0,
-			balanceCents: 0,
+	const splitsByExpense = new Map<
+		string,
+		Array<{ debtorMemberId: string; amountCents: number; settledAt: string | null }>
+	>();
+	for (const split of splits) {
+		const expenseSplits = splitsByExpense.get(split.expenseId) ?? [];
+		expenseSplits.push({
+			debtorMemberId: split.debtorMemberId,
+			amountCents: split.amountCents,
+			settledAt: split.settledAt?.toISOString() ?? null,
 		});
+		splitsByExpense.set(split.expenseId, expenseSplits);
 	}
-	// Ausgeschiedene Mitglieder behalten ihre Saldo-Zeile: die Mahnungen-Seite
-	// (computeBalances) zeigt deren offene Splits weiterhin, also müssen paid
-	// und owed unabhängig vom Aktiv-Status zählen, damit die Summe 0 bleibt.
-	for (const e of expenses) {
-		const b = balanceMap.get(e.paidByMemberId);
-		if (b) b.paidCents += e.amountCents;
-	}
-	for (const s of splits) {
-		if (s.settledAt) continue;
-		const b = balanceMap.get(s.debtorMemberId);
-		if (b) b.owedCents += s.amountCents;
-	}
-	for (const payment of payments) {
-		const payer = balanceMap.get(payment.fromMemberId);
-		const payee = balanceMap.get(payment.toMemberId);
-		if (payer) payer.paidCents += payment.amountCents;
-		if (payee) payee.owedCents += payment.amountCents;
-	}
-	for (const b of balanceMap.values()) {
-		b.balanceCents = b.paidCents - b.owedCents;
-	}
-	return Array.from(balanceMap.values());
+
+	const netBalances = computeNetBalances(
+		expenses.map((expense) => ({
+			paidByMemberId: expense.paidByMemberId,
+			splits: splitsByExpense.get(expense.id) ?? [],
+		})),
+		members,
+		payments,
+	);
+	const netByMemberId = new Map(netBalances.map((balance) => [balance.memberId, balance.cents]));
+
+	return members.map((member) => {
+		const balanceCents = netByMemberId.get(member.id) ?? 0;
+		return {
+			memberId: member.id,
+			memberName: member.name,
+			color: member.color,
+			paidCents: Math.max(0, balanceCents),
+			owedCents: Math.max(0, -balanceCents),
+			balanceCents,
+		};
+	});
 }
 
 export function buildDueChores(
@@ -281,6 +290,7 @@ export async function loadDashboardData(
 				fromMemberId: expensePayments.fromMemberId,
 				toMemberId: expensePayments.toMemberId,
 				amountCents: expensePayments.amountCents,
+				currency: expensePayments.currency,
 			})
 			.from(expensePayments)
 			.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed'))),
