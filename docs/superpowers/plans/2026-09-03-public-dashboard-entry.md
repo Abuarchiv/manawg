@@ -1,5 +1,7 @@
 # Public Dashboard Entry Implementation Plan
 
+> Release planning update (2026-09-04): Public entry and the membership boundary are present in the current app source. The temporary worktree paths and unchecked implementation steps below describe the original delivery, not a fresh instruction to rebuild it. Follow the [consolidated app release plan](2026-09-04-app-release-readiness.md) for current revision evidence, remaining hosted verification, and completion order. Existing source checks do not close the hosted acceptance gate.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let users explore the app before login and use a contextual dashboard block to create or join a WG.
