@@ -36,7 +36,10 @@ export const ExpenseRow = memo(function ExpenseRow({
 	highlighted,
 }: ExpenseRowProps) {
 	const isPayer = expense.paidByMemberId === currentMemberId;
-	const settledCount = expense.splits.filter((s) => s.settledAt !== null).length;
+	const paymentSplits = expense.splits.filter(
+		(split) => split.debtorMemberId !== expense.paidByMemberId && split.amountCents > 0,
+	);
+	const settledCount = paymentSplits.filter((split) => split.settledAt !== null).length;
 
 	return (
 		<li
@@ -59,15 +62,15 @@ export const ExpenseRow = memo(function ExpenseRow({
 					aria-expanded={expanded}
 					aria-controls={`expense-${expense.id}-splits`}
 					aria-label={`Details für ${expense.description} ${formatEuroCents(expense.amountCents)}${
-						expense.splits.length > 0 ? `, ${settledCount}/${expense.splits.length} beglichen` : ''
+						paymentSplits.length > 0 ? `, ${settledCount}/${paymentSplits.length} beglichen` : ''
 					}`}
 					className="-mx-1 flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1 text-left transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
 				>
 					{/* Content column grows, amount column is fixed-width right-aligned */}
 					<div className="min-w-0 flex-1">
-						<div className="flex items-baseline gap-2">
+						<div className="flex flex-wrap items-baseline gap-x-2">
 							{/* description truncates; overflow-hidden is implied by min-w-0 */}
-							<span className="min-w-0 flex-1 truncate text-[14.5px] font-medium text-[var(--text-1)]">
+							<span className="min-w-0 basis-full break-words [overflow-wrap:anywhere] text-[14.5px] font-medium text-[var(--text-1)]">
 								{expense.description}
 							</span>
 							{/* w-24 gives enough room for "1.234,56 €" without layout shift */}
@@ -75,13 +78,13 @@ export const ExpenseRow = memo(function ExpenseRow({
 								{formatEuroCents(expense.amountCents)}
 							</span>
 						</div>
-						<div className="mt-0.5 flex min-w-0 items-center gap-1 text-[12px] text-[var(--text-3)]">
+						<div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 text-[12px] text-[var(--text-3)]">
 							<MemberAvatar
 								name={memberName(expense.paidByMemberId)}
 								color={memberColor(expense.paidByMemberId)}
 								size={14}
 							/>
-							<span className="truncate">{memberName(expense.paidByMemberId)}</span>
+							<span className="break-words">Bezahlt von {memberName(expense.paidByMemberId)}</span>
 							<span className="shrink-0">·</span>
 							<time
 								dateTime={expense.occurredAt}
@@ -90,11 +93,11 @@ export const ExpenseRow = memo(function ExpenseRow({
 							>
 								{formatRelativeTime(expense.occurredAt)}
 							</time>
-							{expense.splits.length > 0 && (
+							{paymentSplits.length > 0 && (
 								<>
 									<span className="shrink-0">·</span>
 									<span className="shrink-0">
-										{settledCount}/{expense.splits.length} beglichen
+										{settledCount}/{paymentSplits.length} beglichen
 									</span>
 								</>
 							)}
@@ -131,10 +134,17 @@ export const ExpenseRow = memo(function ExpenseRow({
 					id={`expense-${expense.id}-splits`}
 					className="space-y-1 border-t border-[var(--border)] bg-[var(--surface)] px-4 py-3"
 				>
+					<li className="pb-2 text-[12px] text-[var(--text-2)]">
+						Anteile für „{expense.description}“, bezahlt von {memberName(expense.paidByMemberId)}.
+						Hier wird kein Geld überwiesen.
+					</li>
 					{expense.splits.map((s) => {
 						const settled = s.settledAt !== null;
 						return (
-							<li key={s.id} className="flex items-center justify-between gap-3 text-[13px]">
+							<li
+								key={s.id}
+								className="flex flex-wrap items-center justify-between gap-3 text-[13px]"
+							>
 								<div className="flex min-w-0 flex-1 items-center gap-1.5">
 									<MemberAvatar
 										name={memberName(s.debtorMemberId)}
@@ -142,7 +152,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 										size={18}
 									/>
 									<span
-										className={`min-w-0 truncate ${
+										className={`min-w-0 break-words ${
 											settled ? 'text-[var(--text-3)] line-through' : 'text-[var(--text-2)]'
 										}`}
 									>
@@ -157,28 +167,34 @@ export const ExpenseRow = memo(function ExpenseRow({
 									</span>
 								</div>
 								{/* min 44px tap target height via py-2.5 + text height */}
-								<button
-									type="button"
-									onClick={() => onToggleSettle(expense.id, s)}
-									disabled={isPending(s.id)}
-									aria-label={
-										settled
-											? `${memberName(s.debtorMemberId)} Zahlung als offen markieren`
-											: `${memberName(s.debtorMemberId)} Zahlung als beglichen markieren`
-									}
-									className={`inline-flex min-h-[44px] min-w-[80px] items-center justify-center gap-1 rounded-md border px-2 text-[11.5px] font-medium transition-colors disabled:opacity-50 ${
-										settled
-											? 'border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent)]'
-											: 'border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]'
-									}`}
-								>
-									{isPending(s.id) ? (
-										<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-									) : (
-										<Check className="h-3 w-3" aria-hidden />
-									)}
-									{settled ? 'Beglichen' : 'Offen'}
-								</button>
+								{s.debtorMemberId === expense.paidByMemberId ? (
+									<span className="text-[12px] text-[var(--text-3)]">Eigener Anteil</span>
+								) : s.amountCents === 0 ? (
+									<span className="text-[12px] text-[var(--text-3)]">Kein Anteil</span>
+								) : (
+									<button
+										type="button"
+										onClick={() => onToggleSettle(expense.id, s)}
+										disabled={isPending(s.id)}
+										aria-label={
+											settled
+												? `${memberName(s.debtorMemberId)} Zahlung als offen markieren`
+												: `${memberName(s.debtorMemberId)} Zahlung als beglichen markieren`
+										}
+										className={`inline-flex min-h-[44px] min-w-[80px] items-center justify-center gap-1 rounded-md border px-2 text-[11.5px] font-medium transition-colors disabled:opacity-50 ${
+											settled
+												? 'border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent)]'
+												: 'border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]'
+										}`}
+									>
+										{isPending(s.id) ? (
+											<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+										) : (
+											<Check className="h-3 w-3" aria-hidden />
+										)}
+										{settled ? 'Wieder öffnen' : 'Als bezahlt eintragen'}
+									</button>
+								)}
 							</li>
 						);
 					})}

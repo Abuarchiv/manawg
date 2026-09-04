@@ -35,17 +35,17 @@ export function FormToggleButton({
 			aria-expanded={open}
 			{...(controls ? { 'aria-controls': controls } : {})}
 			aria-label={open ? closeLabel : openLabel}
-			className="btn-app-primary inline-flex h-11 w-11 shrink-0 justify-center rounded-md p-0 sm:w-auto sm:justify-start sm:px-3"
+			className="btn-app-primary inline-flex min-h-11 min-w-0 justify-center gap-1.5 rounded-md px-3 py-2 text-center"
 		>
 			{open ? (
 				<>
-					<X className="h-5 w-5 sm:h-3.5 sm:w-3.5" aria-hidden />
-					<span className="hidden sm:inline">Schließen</span>
+					<X className="h-4 w-4 shrink-0" aria-hidden />
+					<span>Schließen</span>
 				</>
 			) : (
 				<>
-					<Plus className="h-5 w-5 sm:h-3.5 sm:w-3.5" aria-hidden />
-					<span className="hidden sm:inline">Neu</span>
+					<Plus className="h-4 w-4 shrink-0" aria-hidden />
+					<span>{openLabel}</span>
 				</>
 			)}
 		</button>

@@ -224,14 +224,14 @@ export function getEmptyWgActions(input: EmptyWgActionInput): EmptyWgAction[] {
 		actions.push({
 			id: 'invite',
 			title: 'Mitbewohner einladen',
-			detail: 'Share-Code teilen und WG gemeinsam füllen.',
-			href: `${base}/einstellungen`,
+			detail: 'Einladungslink in den WG-Einstellungen teilen.',
+			href: `${base}/einstellungen#zugang`,
 		});
 	}
 	if (input.choreCount === 0) {
 		actions.push({
 			id: 'chores',
-			title: 'Putzplan starten',
+			title: 'Erste Aufgabe anlegen',
 			detail: 'Beispiel ist vorausgefüllt, damit nichts liegen bleibt.',
 			href: withQuery(`${base}/putzen`, { title: 'Bad putzen' }),
 		});
@@ -240,8 +240,8 @@ export function getEmptyWgActions(input: EmptyWgActionInput): EmptyWgAction[] {
 		actions.push({
 			id: 'expense',
 			title: 'Erste Ausgabe eintragen',
-			detail: 'Internet ist vorausgefüllt und kann direkt angepasst werden.',
-			href: withQuery(`${base}/ausgaben`, { desc: 'Internet', amount: '32,90' }),
+			detail: 'Beschreibung, Betrag und Aufteilung vor dem Speichern prüfen.',
+			href: withQuery(`${base}/ausgaben`, { desc: 'Gemeinsame Ausgabe' }),
 		});
 	}
 	if (!input.hasShoppingItem) {

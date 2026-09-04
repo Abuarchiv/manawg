@@ -113,10 +113,19 @@ function ChatPageContent({
 				>
 					<ArrowLeft className="h-4 w-4" aria-hidden />
 				</Link>
-				<span className="truncate text-[17px] font-semibold text-[var(--text-1)]">
-					{wgRow.name}
-				</span>
+				<div className="min-w-0">
+					<h1 className="text-[17px] font-semibold text-[var(--text-1)]">Chat</h1>
+					<p className="break-words text-[12px] text-[var(--text-2)]">
+						{wgRow.name} · Für schnelle Abstimmung.
+					</p>
+				</div>
 			</header>
+			<Link
+				href={`${wgBaseHref}/pinnwand`}
+				className="flex min-h-11 items-center border-b border-[var(--border)] px-4 text-[12px] text-[var(--text-2)] hover:text-[var(--text-1)]"
+			>
+				Dauerhafte Infos auf die Pinnwand
+			</Link>
 			<ChatView
 				wgId={wgRow.id}
 				shareCode={wgRow.shareCode}

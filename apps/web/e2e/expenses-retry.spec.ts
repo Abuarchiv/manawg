@@ -527,6 +527,7 @@ test.describe('Expenses recovery', () => {
 		const wgId = '989ac820-58b7-431f-9c65-28721264f333';
 		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
 		let deleted = false;
+		let expenseCreates = 0;
 
 		await page.addInitScript(
 			({ wgId, memberId }) => {
@@ -543,6 +544,11 @@ test.describe('Expenses recovery', () => {
 		});
 		await page.route(/\/api\/wg\/MTE8PZAT\/expenses(?:\/|\?|$)/, async (route) => {
 			const request = route.request();
+			if (request.method() === 'POST') {
+				expenseCreates += 1;
+				await route.fulfill({ status: 500, json: { error: 'unexpected_create' } });
+				return;
+			}
 			if (request.method() === 'PATCH' && request.url().endsWith('/expense-stale-edit')) {
 				deleted = true;
 				await route.fulfill({
@@ -593,7 +599,15 @@ test.describe('Expenses recovery', () => {
 		await expect(page.getByRole('button', { name: 'Ausgabe bearbeiten: Milch' })).toBeHidden({
 			timeout: 5000,
 		});
-		await expect(page.getByLabel('Beschreibung')).toBeHidden();
+		await expect(page.getByLabel('Beschreibung')).toHaveValue('Milch und Brot');
+		expect(expenseCreates).toBe(0);
+		await page.reload();
+		await expect(page.getByLabel('Beschreibung')).toHaveValue('Milch und Brot');
+		await page.getByRole('button', { name: 'Ausgabe speichern' }).click();
+		await expect(
+			page.getByText('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.'),
+		).toBeVisible();
+		expect(expenseCreates).toBe(0);
 	});
 
 	test('updates split settlement after a successful toggle', async ({ page }) => {
@@ -644,7 +658,7 @@ test.describe('Expenses recovery', () => {
 							splits: [
 								{
 									id: 'split-1',
-									debtorMemberId: memberId,
+									debtorMemberId: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
 									amountCents: 399,
 									settledAt,
 								},
@@ -720,7 +734,7 @@ test.describe('Expenses recovery', () => {
 									splits: [
 										{
 											id: 'split-stale',
-											debtorMemberId: memberId,
+											debtorMemberId: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
 											amountCents: 399,
 											settledAt: null,
 										},
@@ -794,7 +808,7 @@ test.describe('Expenses recovery', () => {
 							splits: [
 								{
 									id: 'split-forbidden',
-									debtorMemberId: memberId,
+									debtorMemberId: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
 									amountCents: 399,
 									settledAt: null,
 								},
@@ -868,7 +882,7 @@ test.describe('Expenses recovery', () => {
 							splits: [
 								{
 									id: 'split-invalid',
-									debtorMemberId: memberId,
+									debtorMemberId: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
 									amountCents: 399,
 									settledAt: null,
 								},

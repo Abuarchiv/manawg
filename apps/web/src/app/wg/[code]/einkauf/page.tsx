@@ -463,39 +463,58 @@ export default function EinkaufPage() {
 				}}
 				className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-3"
 			>
-				<div className="flex items-center gap-2">
-					<input
-						ref={nameInputRef}
-						type="text"
-						value={newName}
-						onChange={(e) => setNewName(e.target.value)}
-						maxLength={NAME_MAX}
-						placeholder="Was brauchen wir?"
-						aria-label="Artikel-Name"
-						disabled={adding}
-						className="block h-11 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-					/>
-					<input
-						type="text"
-						value={newQty}
-						onChange={(e) => setNewQty(e.target.value)}
-						maxLength={QUANTITY_MAX}
-						placeholder="Menge"
-						aria-label="Menge"
-						disabled={adding}
-						className="block h-11 w-24 shrink-0 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2.5 text-base text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-					/>
+				<div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+					<div className="col-span-2 min-w-0">
+						<label
+							htmlFor="shopping-name"
+							className="mb-1 block text-[12px] font-medium text-[var(--text-2)]"
+						>
+							Artikel
+						</label>
+						<input
+							id="shopping-name"
+							ref={nameInputRef}
+							type="text"
+							value={newName}
+							onChange={(e) => setNewName(e.target.value)}
+							maxLength={NAME_MAX}
+							placeholder="Was brauchen wir?"
+							aria-label="Artikel-Name"
+							disabled={adding}
+							className="block h-11 w-full min-w-0 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+						/>
+					</div>
+					<div className="min-w-0">
+						<label
+							htmlFor="shopping-quantity"
+							className="mb-1 block text-[12px] font-medium text-[var(--text-2)]"
+						>
+							Menge (optional)
+						</label>
+						<input
+							id="shopping-quantity"
+							type="text"
+							value={newQty}
+							onChange={(e) => setNewQty(e.target.value)}
+							maxLength={QUANTITY_MAX}
+							placeholder="Menge"
+							aria-label="Menge"
+							disabled={adding}
+							className="block h-11 w-full min-w-0 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2.5 text-base text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+						/>
+					</div>
 					<button
 						type="submit"
 						disabled={newName.trim().length === 0 || adding}
 						aria-label="Artikel hinzufügen"
-						className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[var(--text-1)] text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+						className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md px-3 text-[13px] font-medium bg-[var(--text-1)] text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
 					>
 						{adding ? (
 							<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
 						) : (
 							<Plus className="h-4 w-4" aria-hidden />
 						)}
+						Artikel hinzufügen
 					</button>
 				</div>
 				{addError && (

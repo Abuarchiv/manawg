@@ -33,13 +33,12 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 }: ShoppingItemRowProps) {
 	const isBought = item.boughtAt !== null;
 	const pending = isPending(item.id);
-	const displayMember = isBought ? buyer : adder;
 	const wgBaseHref = `/wg/${encodeURIComponent(shareCode)}`;
 
 	return (
 		<li
 			id={`shopping-${item.id}`}
-			className={`group flex scroll-mt-24 items-center gap-3 px-3 py-2.5 sm:px-4 ${
+			className={`group grid grid-cols-[auto_minmax(0,1fr)_auto] scroll-mt-24 items-start gap-x-3 gap-y-1 px-3 py-2.5 sm:px-4 ${
 				highlighted ? 'bg-[var(--accent)]/10 ring-2 ring-inset ring-[var(--accent)]' : ''
 			}`}
 		>
@@ -65,9 +64,9 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 			{/* Text content — consistent 2-line structure in both states */}
 			<div className={`min-w-0 flex-1 ${isBought ? 'opacity-60' : ''}`}>
 				{/* Name row — flex so quantity never truncates the name */}
-				<div className="flex min-w-0 items-baseline gap-1.5">
+				<div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
 					<span
-						className={`truncate text-[14px] font-medium ${isBought ? 'text-[var(--text-2)] line-through' : 'text-[var(--text-1)]'}`}
+						className={`break-words [overflow-wrap:anywhere] text-[14px] font-medium ${isBought ? 'text-[var(--text-2)] line-through' : 'text-[var(--text-1)]'}`}
 					>
 						{item.name}
 					</span>
@@ -76,22 +75,17 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 					)}
 				</div>
 
-				{/* Meta row — always rendered to prevent height shift between states */}
-				<div className="mt-0.5 flex items-center gap-1 text-[12px] text-[var(--text-3)]">
-					{displayMember ? (
-						<>
-							<MemberAvatar
-								name={displayMember.name}
-								color={displayMember.color}
-								size={META_AVATAR_SIZE}
-							/>
-							<span>{`von ${displayMember.name}`}</span>
-						</>
-					) : (
-						// Invisible placeholder preserves row height when buyer info is absent
-						<span className="invisible text-[12px]" aria-hidden>
-							&nbsp;
-						</span>
+				<div className="mt-1 space-y-1 text-[12px] text-[var(--text-3)]">
+					<p className="flex items-start gap-1.5">
+						<MemberAvatar name={adder.name} color={adder.color} size={META_AVATAR_SIZE} />
+						<span className="break-words">Hinzugefügt von {adder.name}</span>
+					</p>
+					{isBought && (
+						<p className="break-words">
+							{buyer && item.boughtByMemberId
+								? `Gekauft von ${buyer.name}`
+								: 'Gekauft · Person nicht angegeben'}
+						</p>
 					)}
 				</div>
 			</div>
@@ -105,11 +99,12 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 			/>
 			{isBought && (
 				<Link
-					href={`${wgBaseHref}/ausgaben?desc=${encodeURIComponent(item.name)}`}
+					href={`${wgBaseHref}/ausgaben?${new URLSearchParams({ desc: item.name, source: 'shopping', ...(item.boughtByMemberId ? { paidBy: item.boughtByMemberId } : {}) })}`}
 					aria-label={`${item.name} als Ausgabe übernehmen`}
-					className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+					className="col-start-2 col-end-4 inline-flex min-h-11 items-center gap-1.5 rounded-md text-[12px] font-medium text-[var(--text-2)] transition-colors hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
 				>
-					<Receipt className="h-3.5 w-3.5" aria-hidden />
+					<Receipt className="h-3.5 w-3.5 shrink-0" aria-hidden />
+					Als Ausgabe übernehmen
 				</Link>
 			)}
 		</li>

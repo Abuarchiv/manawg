@@ -95,6 +95,7 @@ export default function AusgabenPage() {
 	const highlightedId = searchParams.get('highlight');
 	const prefillDescription = searchParams.get('desc');
 	const prefillAmount = searchParams.get('amount');
+	const prefillPaidBy = searchParams.get('paidBy');
 	const recurringId = searchParams.get('recurring');
 	const recurringFilterActive = searchParams.get('filter') === 'recurring';
 
@@ -131,6 +132,7 @@ export default function AusgabenPage() {
 		conflictExpenseId,
 		setConflictExpenseId,
 		editingExpense,
+		invalidEditDraft,
 		editingRecurringExpense,
 		setEditingRecurringExpense,
 		queueEditId,
@@ -142,6 +144,8 @@ export default function AusgabenPage() {
 		recurringNextDueAt,
 		setRecurringNextDueAt,
 		draftKey,
+		pendingPrefill,
+		acceptPendingPrefill,
 		resetForm,
 		applyQuickExpense,
 		startEdit,
@@ -152,6 +156,7 @@ export default function AusgabenPage() {
 		identityMemberId: identity.memberId,
 		prefillDescription,
 		prefillAmount,
+		prefillPaidBy,
 		recurringId,
 		recurringExpenses,
 	});
@@ -369,6 +374,12 @@ export default function AusgabenPage() {
 	}
 
 	async function submit(): Promise<void> {
+		if (invalidEditDraft) {
+			setFormError(
+				'Die Zuordnung dieses Entwurfs ist beschädigt. Öffne die ursprüngliche Ausgabe erneut oder verwirf den Entwurf.',
+			);
+			return;
+		}
 		setFormError(null);
 		setConflictExpenseId(null);
 		const desc = description.trim();
@@ -459,8 +470,9 @@ export default function AusgabenPage() {
 				return;
 			}
 			if (isEdit && res.status === 404 && res.error === 'expense_not_found') {
-				resetForm();
-				setShowForm(false);
+				setFormError(
+					'Die ursprüngliche Ausgabe wurde gelöscht. Deine ungespeicherten Änderungen bleiben im Entwurf; du kannst sie kopieren oder den Entwurf verwerfen.',
+				);
 				setExpenses((current) => current.filter((expense) => expense.id !== editingExpense.id));
 				setActionError('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.');
 				void load(false);
@@ -484,6 +496,11 @@ export default function AusgabenPage() {
 		}
 		resetForm();
 		const savedExpense = 'expense' in res.data ? res.data.expense : res.data;
+		setActionSuccess(
+			isEdit
+				? 'Ausgabe aktualisiert. Hier wird kein Geld überwiesen.'
+				: 'Ausgabe gespeichert. Hier wird kein Geld überwiesen.',
+		);
 		setExpenses((current) =>
 			isEdit
 				? current.map((expense) => (expense.id === savedExpense.id ? savedExpense : expense))
@@ -876,6 +893,11 @@ export default function AusgabenPage() {
 	const isEditingQueuedRecurring = queueEditType === 'recurring.create';
 	const formSaving = submitting || savingRecurringTemplate;
 	const recurringActionPending = creatingRecurringId !== null || savingRecurringTemplate;
+	const previewAmount = parseEuroAmount(amountStr);
+	const splitPreview =
+		previewAmount !== null && previewAmount >= AMOUNT_MIN_EUROS && previewAmount <= AMOUNT_MAX_EUROS
+			? buildSplits(Math.round(previewAmount * CENTS_PER_EURO))
+			: null;
 
 	return (
 		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
@@ -886,7 +908,6 @@ export default function AusgabenPage() {
 				wgBaseHref={wgBaseHref}
 				onToggleForm={() => {
 					if (showForm) {
-						resetForm();
 						setShowForm(false);
 					} else {
 						haptic('light');
@@ -918,6 +939,15 @@ export default function AusgabenPage() {
 
 			{showForm && (
 				<ExpenseFormSection
+					previewSplits={splitPreview?.ok ? splitPreview.splits : null}
+					pendingPrefillDescription={pendingPrefill?.description ?? null}
+					onReplacePrefill={acceptPendingPrefill}
+					onDiscard={() => {
+						resetForm();
+						setShowForm(false);
+						removeDraft(draftKey);
+					}}
+					isEditingExpense={editingExpense !== null}
 					description={description}
 					setDescription={setDescription}
 					amountStr={amountStr}
@@ -952,7 +982,6 @@ export default function AusgabenPage() {
 					formSaving={formSaving}
 					onSaveRecurringTemplate={() => void saveRecurringTemplate()}
 					onCancel={() => {
-						resetForm();
 						setShowForm(false);
 					}}
 					onSubmit={() => {
@@ -1023,6 +1052,7 @@ export default function AusgabenPage() {
 
 			{!showSkeleton && (
 				<DebtSummary
+					expenses={expenses}
 					debts={directDebts}
 					summary={settlementSummary}
 					shareCode={wg.shareCode}
@@ -1030,7 +1060,10 @@ export default function AusgabenPage() {
 					memberToken={identity.memberToken}
 					memberColor={memberColor}
 					memberPayPalMerchantId={memberPayPalMerchantId}
-					onSettled={() => void load(false)}
+					onSettled={(message) => {
+						if (message) setActionSuccess(message);
+						void load(false);
+					}}
 				/>
 			)}
 
@@ -1064,7 +1097,10 @@ export default function AusgabenPage() {
 					</>
 				)
 			) : (
-				<details className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-4">
+				<details
+					open={Boolean(highlightedId)}
+					className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-4"
+				>
 					<summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
 						<span className="text-sm font-semibold text-[var(--text-1)]">
 							Eingetragene Ausgaben

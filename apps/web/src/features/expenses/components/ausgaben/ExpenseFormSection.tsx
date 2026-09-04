@@ -1,8 +1,10 @@
 'use client';
 
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ImageUploader } from '@/components/wg/ImageUploader';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import type { Member } from '@/components/wg/WgContextProvider';
+import { formatEuroCents } from '@/core/utils/money';
 import { ManualSplitSummary } from '@/features/expenses/components/ausgaben/ManualSplitSummary';
 import { TextField } from '@/features/expenses/components/ausgaben/TextField';
 import {
@@ -15,6 +17,11 @@ import { ChevronDown, Loader2 } from 'lucide-react';
 import { type Dispatch, type SetStateAction, useState } from 'react';
 
 interface ExpenseFormSectionProps {
+	previewSplits: Array<{ debtorMemberId: string; amountCents: number }> | null;
+	pendingPrefillDescription: string | null;
+	onReplacePrefill: () => void;
+	onDiscard: () => void;
+	isEditingExpense: boolean;
 	description: string;
 	setDescription: Dispatch<SetStateAction<string>>;
 	amountStr: string;
@@ -49,6 +56,11 @@ interface ExpenseFormSectionProps {
 }
 
 export function ExpenseFormSection({
+	previewSplits,
+	pendingPrefillDescription,
+	onReplacePrefill,
+	onDiscard,
+	isEditingExpense,
 	description,
 	setDescription,
 	amountStr,
@@ -84,17 +96,31 @@ export function ExpenseFormSection({
 	// Fixkosten sind der Ausnahmefall — eingeklappt halten, damit die normale
 	// Ausgabe ein kurzes Formular bleibt. Beim Bearbeiten einer Vorlage offen.
 	const [showRecurring, setShowRecurring] = useState(false);
+	const [discardIntent, setDiscardIntent] = useState<'discard' | 'replace' | null>(null);
+	const payerName =
+		members.find((member) => member.id === paidByMemberId)?.name ?? 'die zahlende Person';
 	const recurringOpen =
 		showRecurring || editingRecurringExpense !== null || isEditingQueuedRecurring;
 	return (
-		// pb-36 sm:pb-5: mobile gets ~144px bottom-padding so the
-		// sticky save/abbrechen panel below doesn't visually cover
-		// the LAST form rows (Betrag/Bezahlt-von etc.) when the
-		// form is taller than the viewport. Without this padding,
-		// the opaque sticky panel sits on top of inputs that are
-		// still scrollable but visually obscured — agent A iter10
-		// reported this as P0 on iPhone 375×667.
-		<section className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-5 pb-56 sm:pb-5">
+		<section className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-5">
+			<p className="text-[13px] leading-relaxed text-[var(--text-2)]">
+				{isEditingExpense
+					? 'Änderungen werden erst beim Speichern für die WG übernommen.'
+					: 'Die Ausgabe ist noch nicht gespeichert. Prüfe Betrag und Aufteilung.'}
+			</p>
+			{pendingPrefillDescription && (
+				<div className="space-y-1 rounded-md border border-[var(--border)] p-3 text-[13px] text-[var(--text-2)]">
+					<p>Dein vorhandener Entwurf bleibt erhalten.</p>
+					<button
+						type="button"
+						disabled={formSaving}
+						onClick={() => setDiscardIntent('replace')}
+						className="min-h-11 text-left font-medium text-[var(--text-1)]"
+					>
+						Entwurf verwerfen und „{pendingPrefillDescription}“ übernehmen
+					</button>
+				</div>
+			)}
 			<TextField
 				label="Beschreibung"
 				value={description}
@@ -249,8 +275,33 @@ export function ExpenseFormSection({
 				</div>
 			)}
 
-			<div>
-				<div className="mb-1.5 text-[13px] font-medium text-[var(--text-1)]">Beleg (optional)</div>
+			{previewSplits && (
+				<section
+					aria-label="So wird die Ausgabe aufgeteilt"
+					className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3 text-[13px]"
+				>
+					<h3 className="font-medium text-[var(--text-1)]">So wird die Ausgabe aufgeteilt</h3>
+					<ul className="mt-2 space-y-1 text-[var(--text-2)]">
+						{previewSplits.map((split) => {
+							const name =
+								members.find((member) => member.id === split.debtorMemberId)?.name ?? '?';
+							return (
+								<li key={split.debtorMemberId} className="break-words">
+									{split.debtorMemberId === paidByMemberId
+										? `${name}: eigener Anteil ${formatEuroCents(split.amountCents)}`
+										: `${name} schuldet ${payerName} ${formatEuroCents(split.amountCents)}`}
+								</li>
+							);
+						})}
+					</ul>
+					<p className="mt-2 text-[12px] text-[var(--text-3)]">Hier wird kein Geld überwiesen.</p>
+				</section>
+			)}
+
+			<details open={Boolean(imageUrl)} className="rounded-md border border-[var(--border)] px-3">
+				<summary className="flex min-h-11 cursor-pointer items-center text-[13px] font-medium text-[var(--text-1)]">
+					Beleg (optional)
+				</summary>
 				<ImageUploader
 					shareCode={shareCode}
 					purpose="expense"
@@ -259,7 +310,7 @@ export function ExpenseFormSection({
 					disabled={formSaving}
 					imageLabel="Beleg"
 				/>
-			</div>
+			</details>
 
 			{(isEditingQueuedExpense || isEditingQueuedRecurring) && (
 				<div className="rounded-md border border-[var(--accent)]/25 bg-[var(--accent)]/5 px-3 py-2 text-[12.5px] text-[var(--accent)]">
@@ -296,8 +347,27 @@ export function ExpenseFormSection({
 				</div>
 			)}
 
-			{/* Mobile: sticky actions above bottom nav; sm+: right-aligned row. Min 44px tap targets. */}
-			<div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] -mx-4 flex flex-col gap-2 border-t border-[var(--border)] bg-[var(--bg-base)] px-4 py-3 sm:static sm:mx-0 sm:flex-row sm:justify-end sm:border-0 sm:bg-transparent sm:p-0 sm:pt-1">
+			<div className="text-[12px] text-[var(--text-3)]">
+				<p>Beim Schließen bleiben deine Eingaben als Entwurf erhalten.</p>
+				<button
+					type="button"
+					disabled={formSaving}
+					onClick={() => setDiscardIntent('discard')}
+					className="min-h-11 font-medium text-[var(--text-2)]"
+				>
+					Entwurf verwerfen
+				</button>
+			</div>
+			<ConfirmDialog
+				open={discardIntent !== null}
+				onClose={() => setDiscardIntent(null)}
+				onConfirm={discardIntent === 'replace' ? onReplacePrefill : onDiscard}
+				title="Entwurf verwerfen?"
+				description="Deine ungespeicherten Eingaben werden gelöscht. Bereits gespeicherte Ausgaben bleiben erhalten."
+				confirmLabel="Entwurf verwerfen"
+				cancelLabel="Entwurf behalten"
+			/>
+			<div className="flex flex-col gap-2 border-t border-[var(--border)] pt-3 sm:flex-row sm:justify-end">
 				{editingRecurringExpense && !isEditingQueuedExpense && !isEditingQueuedRecurring && (
 					<button
 						type="button"
@@ -318,7 +388,7 @@ export function ExpenseFormSection({
 					aria-label="Ausgabe abbrechen"
 					className="inline-flex min-h-[44px] w-full items-center justify-center rounded-md px-3 text-[13px] text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
 				>
-					Abbrechen
+					Schließen · Entwurf behalten
 				</button>
 				<button
 					type="button"

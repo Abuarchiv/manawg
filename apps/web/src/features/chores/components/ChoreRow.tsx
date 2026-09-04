@@ -24,6 +24,8 @@ interface ChoreRowProps {
 	isPending: boolean;
 	isSwapPending: boolean;
 	isCompleteArmed: boolean;
+	nextAssigneeName: string | null;
+	onCancelComplete: () => void;
 	onComplete: (chore: Chore) => void;
 	onSwapRequest: (chore: Chore) => void;
 	onTakeOver: (chore: Chore) => void;
@@ -55,6 +57,8 @@ export const ChoreRow = memo(function ChoreRow({
 	isPending,
 	isSwapPending,
 	isCompleteArmed,
+	nextAssigneeName,
+	onCancelComplete,
 	onComplete,
 	onSwapRequest,
 	onTakeOver,
@@ -84,17 +88,21 @@ export const ChoreRow = memo(function ChoreRow({
 	return (
 		<li
 			id={`chore-${chore.id}`}
-			className={`group flex min-h-[76px] scroll-mt-24 items-center gap-3 px-3 py-3 sm:px-4 ${
+			className={`group flex flex-wrap min-h-[76px] scroll-mt-24 items-center gap-3 px-3 py-3 sm:px-4 ${
 				status.tone === 'overdue' ? 'bg-[var(--danger)]/5' : ''
 			} ${status.escalated ? 'border-l-2 border-l-[var(--danger)]' : ''} ${
 				highlighted ? 'ring-2 ring-inset ring-[var(--accent)]' : ''
 			}`}
 		>
 			<div className="min-w-0 flex-1 space-y-1">
-				<div className="truncate text-[15px] font-medium text-[var(--text-1)]">{chore.title}</div>
+				<div className="break-words [overflow-wrap:anywhere] text-[15px] font-medium text-[var(--text-1)]">
+					{chore.title}
+				</div>
 				<div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12.5px] text-[var(--text-3)]">
 					<MemberAvatar name={assignee.name} color={assignee.color} size={20} />
-					<span className="truncate">{assignee.name}</span>
+					<span className="break-words">
+						Zuständig: <span>{assignee.name}</span>
+					</span>
 					<span aria-hidden>·</span>
 					<span
 						className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[11px] font-medium leading-none ${
@@ -138,23 +146,7 @@ export const ChoreRow = memo(function ChoreRow({
 				    Putzaufgabe fast immer will. Tausch anfragen und Entfernen standen
 				    vorher gleichrangig daneben, Löschen einen Fingerbreit neben
 				    Erledigen. */}
-				{isCompleteArmed ? (
-					<button
-						type="button"
-						onClick={() => onComplete(chore)}
-						disabled={isPending}
-						aria-label={`${status.actionLabel} bestätigen: ${chore.title}`}
-						aria-pressed
-						className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-[var(--text-1)] px-3.5 text-[12px] font-medium text-[var(--bg-base)] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
-					>
-						{isPending ? (
-							<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-						) : (
-							<Check className="h-3.5 w-3.5" aria-hidden />
-						)}
-						OK
-					</button>
-				) : (
+				{!isCompleteArmed && (
 					<button
 						type="button"
 						onClick={() => onComplete(chore)}
@@ -246,6 +238,43 @@ export const ChoreRow = memo(function ChoreRow({
 					)}
 				</div>
 			</div>
+			{isCompleteArmed && (
+				<div className="w-full basis-full space-y-2 border-t border-[var(--border)] pt-3 text-[13px] text-[var(--text-2)]">
+					<p>
+						{nextAssigneeName
+							? `Voraussichtlich als Nächstes: ${nextAssigneeName}.`
+							: 'Aktuell ist niemand für die nächste Runde verfügbar.'}
+					</p>
+					<p>Die Rotation berücksichtigt Aufgaben und Abwesenheiten.</p>
+					<p>Der Abschluss bleibt im Verlauf und lässt sich hier nicht zurücknehmen.</p>
+					<div className="flex flex-wrap items-center gap-2">
+						<button
+							type="button"
+							onClick={() => onComplete(chore)}
+							disabled={isPending}
+							aria-label={`${status.actionLabel} bestätigen: ${chore.title}`}
+							aria-pressed
+							className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-[var(--text-1)] px-3.5 text-[12px] font-medium text-[var(--bg-base)] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
+						>
+							{isPending ? (
+								<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+							) : (
+								<Check className="h-3.5 w-3.5" aria-hidden />
+							)}
+							{status.actionLabel} bestätigen
+						</button>
+						<button
+							type="button"
+							disabled={isPending}
+							onClick={onCancelComplete}
+							aria-label={`Erledigen abbrechen: ${chore.title}`}
+							className="min-h-11 font-medium text-[var(--text-1)]"
+						>
+							Abbrechen
+						</button>
+					</div>
+				</div>
+			)}
 		</li>
 	);
 });

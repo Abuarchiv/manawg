@@ -21,6 +21,7 @@ interface ChoreFormProps {
 	members: ChoreMember[];
 	pending: boolean;
 	onSubmit: () => void;
+	onClose: () => void;
 }
 
 export function ChoreForm({
@@ -36,6 +37,7 @@ export function ChoreForm({
 	members,
 	pending,
 	onSubmit,
+	onClose,
 }: ChoreFormProps): React.ReactElement {
 	return (
 		<form
@@ -120,7 +122,8 @@ export function ChoreForm({
 				</div>
 				{recurrenceType === 'months' && (
 					<p className="mt-1.5 text-[11.5px] text-[var(--text-3)]">
-						Kalendergenau: 12× monatlich landet wieder am gleichen Tag — keine 5 Tage Drift.
+						Wiederholt sich im gewählten Monatsabstand. Bei einer späten Erledigung beginnt der
+						Rhythmus neu.
 					</p>
 				)}
 			</div>
@@ -154,7 +157,18 @@ export function ChoreForm({
 				</div>
 			</div>
 
-			<div className="flex justify-end pt-1">
+			<p className="text-[12px] text-[var(--text-3)]">
+				Beim Schließen bleiben deine Eingaben als Entwurf erhalten.
+			</p>
+			<div className="flex flex-wrap justify-end gap-2 pt-1">
+				<button
+					type="button"
+					disabled={pending}
+					onClick={onClose}
+					className="min-h-11 px-3 text-[13px] text-[var(--text-2)]"
+				>
+					Schließen
+				</button>
 				<button
 					type="submit"
 					disabled={title.trim().length === 0 || pending}

@@ -6,7 +6,6 @@ import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
@@ -29,12 +28,12 @@ import {
 	createQueuedChoreCompletion,
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
-import { MS_PER_DAY } from '@/core/utils/time';
+import { formatShortDate, parseTimestamp } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import type { AbsenceInput } from '@/features/chores/absence';
 import { absenceSaveErrorMessage, choreCreateErrorMessage } from '@/features/chores/chore-errors';
-import { buildChoreFairness } from '@/features/chores/chore-fairness';
+import { buildChoreFairness, chooseNextAvailableMember } from '@/features/chores/chore-fairness';
 import {
 	getChorePlanHealth,
 	getChoreRepairHint,
@@ -95,9 +94,7 @@ export default function PutzenPage() {
 	const titleInputRef = useRef<HTMLInputElement>(null);
 
 	const { isPending, start: startPending, end: endPending } = usePendingSet();
-	// Used for delete confirmation
-	// Used for complete confirmation (armed = first tap shows "OK", second tap commits)
-	const completeConfirm = useConfirmDelete();
+	const [completeConfirmId, setCompleteConfirmId] = useState<string | null>(null);
 
 	const load = useCallback(
 		async (initial: boolean): Promise<void> => {
@@ -168,6 +165,7 @@ export default function PutzenPage() {
 		const draft = readDraft<{
 			title?: string;
 			intervalDays?: number;
+			recurrenceType?: RecurrenceType;
 			assignedMemberId?: string;
 			absenceMemberId?: string;
 			absenceStartDate?: string;
@@ -191,6 +189,8 @@ export default function PutzenPage() {
 			setNewTitle(draft.title);
 		}
 		if (draft.intervalDays) setNewInterval(draft.intervalDays);
+		if (draft.recurrenceType === 'months' || draft.recurrenceType === 'days')
+			setNewRecurrenceType(draft.recurrenceType);
 		if (draft.assignedMemberId) setNewAssigned(draft.assignedMemberId);
 		if (draft.absenceMemberId) setAbsenceMemberId(draft.absenceMemberId);
 		if (draft.absenceStartDate) setAbsenceStart(draft.absenceStartDate.slice(0, 10));
@@ -213,6 +213,7 @@ export default function PutzenPage() {
 		if (!draftHydrated) return;
 		writeDraft(draftKey, {
 			title: newTitle,
+			recurrenceType: newRecurrenceType,
 			intervalDays: newInterval,
 			assignedMemberId: newAssigned,
 			absenceMemberId,
@@ -230,6 +231,7 @@ export default function PutzenPage() {
 		draftKey,
 		newAssigned,
 		newInterval,
+		newRecurrenceType,
 		newTitle,
 		queueEditId,
 	]);
@@ -313,6 +315,7 @@ export default function PutzenPage() {
 						memberId: identity.memberId,
 						title,
 						intervalDays: newInterval,
+						recurrenceType: newRecurrenceType,
 						assignedMemberId: newAssigned || null,
 					});
 					if (enqueueOfflineAction(queued) === 0) {
@@ -490,14 +493,16 @@ export default function PutzenPage() {
 		if (isPending(chore.id)) return;
 
 		// First tap → arm; second tap → commit
-		const shouldCommit = completeConfirm.request(chore.id);
-		if (!shouldCommit) return;
+		if (completeConfirmId !== chore.id) {
+			setCompleteConfirmId(chore.id);
+			return;
+		}
 
 		startPending(chore.id);
 		setActionError(null);
 		setActionNotice(null);
 
-		const result = await apiFetch<Record<string, never>>(
+		const result = await apiFetch<{ chore?: Pick<Chore, 'id' | 'nextDueAt' | 'assignedMemberId'> }>(
 			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(chore.id)}/complete`,
 			{
 				method: 'POST',
@@ -525,21 +530,26 @@ export default function PutzenPage() {
 					return;
 				}
 				refreshCount();
-				setActionNotice('Offline gespeichert. Wird synchronisiert, sobald ihr wieder online seid.');
-				completeConfirm.cancel();
+				setActionNotice(
+					'Erledigung offline vorgemerkt. Nächster Termin und Zuständigkeit werden nach der Synchronisierung bestätigt.',
+				);
+				setCompleteConfirmId(null);
 				endPending(chore.id);
 				return;
 			}
 			if (result.status === 404 && result.error === 'chore_not_found') {
 				setItems((current) => current.filter((item) => item.id !== chore.id));
-				completeConfirm.cancel();
+				setCompleteConfirmId(null);
 				setActionError('Diese Putzaufgabe existiert nicht mehr und wurde aus dem Plan entfernt.');
 				void load(false);
 				endPending(chore.id);
 				return;
 			}
-			if (result.status === 404 && result.error === 'chore_already_completed') {
-				completeConfirm.cancel();
+			if (
+				(result.status === 404 || result.status === 409) &&
+				result.error === 'chore_already_completed'
+			) {
+				setCompleteConfirmId(null);
 				setActionNotice('Diese Putzaufgabe wurde bereits erledigt. Der Plan wird aktualisiert.');
 				void load(false);
 				endPending(chore.id);
@@ -555,32 +565,33 @@ export default function PutzenPage() {
 			}
 			setActionError('Erledigt-Aktion konnte nicht gespeichert werden: Versuche es gleich erneut.');
 		} else {
-			const completedAt = new Date().toISOString();
-			// Optimistic next-due approximation. Use ms math for 'days' (cheap +
-			// accurate) and a calendar-month approximation for 'months' so the
-			// UI label doesn't briefly flash a wrong date before refresh.
-			const baseMs = Date.now();
-			const nextDueDate = new Date(baseMs);
-			if (chore.recurrenceType === 'months') {
-				nextDueDate.setMonth(nextDueDate.getMonth() + chore.intervalDays);
+			const updated = result.data.chore;
+			const confirmed = updated?.id === chore.id && parseTimestamp(updated.nextDueAt) !== null;
+			if (confirmed) {
+				setItems((current) =>
+					current.map((item) =>
+						item.id === chore.id
+							? {
+									...item,
+									nextDueAt: updated.nextDueAt,
+									assignedMemberId: updated.assignedMemberId,
+									lastCompletedAt: new Date().toISOString(),
+									lastCompletedByName: identity.name,
+								}
+							: item,
+					),
+				);
+				const nextName = members.find((member) => member.id === updated.assignedMemberId)?.name;
+				setActionNotice(
+					`Erledigt. Nächster Termin: ${formatShortDate(updated.nextDueAt)}; ${nextName ? `${nextName} ist dran (Rotation).` : 'noch niemand zugewiesen.'}`,
+				);
 			} else {
-				nextDueDate.setTime(baseMs + chore.intervalDays * MS_PER_DAY);
+				setActionNotice(
+					'Erledigt. Der bestätigte nächste Termin und die Zuständigkeit werden geladen.',
+				);
 			}
-			const nextDueAt = nextDueDate.toISOString();
-			setItems((current) =>
-				current.map((item) =>
-					item.id === chore.id
-						? {
-								...item,
-								nextDueAt,
-								lastCompletedAt: completedAt,
-								lastCompletedByName: identity.name,
-								openGapCountForAssignee: 0,
-							}
-						: item,
-				),
-			);
-			completeConfirm.cancel();
+
+			setCompleteConfirmId(null);
 			toast.success('Aufgabe erledigt ✓');
 			void load(false);
 		}
@@ -827,6 +838,7 @@ export default function PutzenPage() {
 					onAssignedMemberIdChange={handleAssignedMemberIdChange}
 					members={activeMembers}
 					pending={choreAddPending}
+					onClose={() => setShowForm(false)}
 					onSubmit={() => void add()}
 				/>
 			)}
@@ -891,7 +903,22 @@ export default function PutzenPage() {
 							assignee={memberLookup(c.assignedMemberId)}
 							isPending={isPending(c.id)}
 							isSwapPending={isPending(`${c.id}:swap`)}
-							isCompleteArmed={completeConfirm.confirmId === c.id}
+							isCompleteArmed={completeConfirmId === c.id}
+							nextAssigneeName={
+								completeConfirmId === c.id
+									? (members.find(
+											(member) =>
+												member.id ===
+												chooseNextAvailableMember({
+													members: activeMembers,
+													currentMemberId: c.assignedMemberId,
+													absentMemberIds,
+													chores: items,
+												}),
+										)?.name ?? null)
+									: null
+							}
+							onCancelComplete={() => setCompleteConfirmId(null)}
 							onComplete={handleComplete}
 							onSwapRequest={handleSwapRequest}
 							onTakeOver={handleTakeOver}

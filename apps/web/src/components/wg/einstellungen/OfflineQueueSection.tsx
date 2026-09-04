@@ -7,6 +7,7 @@ import {
 	buildDraftKey,
 	buildQueueEditDraft,
 	buildQueueEditHref,
+	isEmptyModuleDraft,
 	readDraft,
 	writeDraft,
 } from '@/core/offline/drafts';
@@ -110,7 +111,11 @@ export function OfflineQueueSection({
 		// Never clobber an unsaved form draft with queue-edit data — it would
 		// be lost without any hint. Ask the user to resolve the form first.
 		const existing = readDraft<Record<string, unknown>>(key);
-		if (existing && JSON.stringify(existing) !== JSON.stringify(draft.draft)) {
+		if (
+			existing &&
+			!isEmptyModuleDraft(draft.module, existing, memberId) &&
+			JSON.stringify(existing) !== JSON.stringify(draft.draft)
+		) {
 			setConflictNotes((current) => ({
 				...current,
 				[item.id]:

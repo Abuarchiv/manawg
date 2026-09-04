@@ -1,7 +1,7 @@
 const DESCRIPTION_MAX = 200;
 const AMOUNT_MAX = 20;
 
-interface ExpensePrefillDraft {
+export interface ExpensePrefillDraft {
 	description: string;
 	amountStr: string;
 	imageUrl: null;

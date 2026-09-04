@@ -1,6 +1,5 @@
 'use client';
 
-import { WgWelcome } from '@/components/entry/WgWelcome';
 import { ChatTopBarLink } from '@/components/wg/ChatTopBarLink';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -14,6 +13,7 @@ import { TodayIcon } from '@/components/wg/dashboard/TodayIcon';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import type { DashboardData } from '@/core/reads/dashboard-data';
 import {
+	getEmptyWgActions,
 	getTodayFocus,
 	getTodayImportantItems,
 	getTodayListItems,
@@ -95,6 +95,15 @@ export default function WgHomePage() {
 	const [data, setData] = useState<DashboardData | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [inviteDismissed, setInviteDismissed] = useState(false);
+	const inviteDismissKey = `manawg:invite-dismissed:${wg.id}:${identity.memberId}`;
+	useEffect(() => {
+		try {
+			setInviteDismissed(localStorage.getItem(inviteDismissKey) === 'true');
+		} catch {
+			/* Optional preference. */
+		}
+	}, [inviteDismissKey]);
 	const dashboardRequestId = useRef(0);
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
@@ -159,6 +168,17 @@ export default function WgHomePage() {
 		() => getTodayListItems(todayImportant, todayFocus),
 		[todayImportant, todayFocus],
 	);
+	const firstActions = data
+		? getEmptyWgActions({
+				shareCode: wg.shareCode,
+				memberCount: activeMembers.length,
+				...data.setup,
+			})
+				.filter(
+					(action) => action.id !== 'notifications' && !(inviteDismissed && action.id === 'invite'),
+				)
+				.slice(0, 2)
+		: [];
 	return (
 		<>
 			<PushPrimingPrompt
@@ -222,62 +242,47 @@ export default function WgHomePage() {
 					</div>
 				)}
 
-				<WgWelcome variant="member" wgName={wg.name} />
-
-				{/* ─── STAT ROW ─── */}
-				<section className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-base)]">
-					<dl className="grid grid-cols-3 divide-x divide-[var(--border)]">
-						<Stat
-							label="Deine Bilanz"
-							value={data ? formatEuro(myBalance, { signed: true }) : '—'}
-							tone={myBalance > 0 ? 'positive' : myBalance < 0 ? 'negative' : 'neutral'}
-							sub={
-								data
-									? myBalance > 0
-										? 'wird erstattet'
-										: myBalance < 0
-											? 'schulde ich'
-											: 'ausgeglichen'
-									: undefined
-							}
-							subTone={data && myBalance < 0 ? 'danger' : 'neutral'}
-						/>
-						<Stat
-							label="Diese Woche"
-							value={data ? formatEuro(data.weekSpendCents) : '—'}
-							sub="7 Tage"
-						/>
-						<Stat
-							label="Dieser Monat"
-							value={data ? formatEuro(data.monthSpendCents) : '—'}
-							sub="30 Tage"
-						/>
-					</dl>
-					<div className="border-t border-[var(--border)] px-4 py-3 sm:px-5">
-						<div className="mb-2 flex items-baseline justify-between">
-							<span className="text-[12.5px] text-[var(--text-3)]">Ausgaben · 14 Tage</span>
-							<Link
-								href={`${wgBaseHref}/ausgaben`}
-								className="-mx-2 inline-flex min-h-11 items-center px-2 text-[12.5px] text-[var(--text-2)] transition-colors hover:text-[var(--text-1)]"
-							>
-								Alle ansehen →
-							</Link>
-						</div>
-						<Sparkline
-							values={sparkValues}
-							width={800}
-							height={48}
-							className="w-full"
-							aria-label="Ausgaben pro Tag, letzte 14 Tage"
-						/>
-					</div>
-				</section>
-
 				{/* Kein lg:-Grid: der App-Frame bleibt handybreit, Viewport-Breakpoints
 				    erzeugten am Desktop halb-leere Reihen. */}
 				{data && (
 					<section className="grid gap-3">
 						<Panel title="Für dich heute">
+							{!todayFocus && firstActions.length > 0 && (
+								<div className="mb-3 space-y-3">
+									<p className="text-sm text-[var(--text-2)]">
+										Was möchtest du als Nächstes für eure WG organisieren?
+									</p>
+									{firstActions.map((action, index) => (
+										<Link
+											key={action.id}
+											href={action.href}
+											className={
+												index === 0
+													? 'btn-app-primary flex min-h-11 w-full justify-center px-3 py-2 text-center'
+													: 'flex min-h-11 items-center justify-center rounded-md border border-[var(--border)] px-3 py-2 text-center text-sm text-[var(--text-1)]'
+											}
+										>
+											{action.title}
+										</Link>
+									))}
+									{firstActions[0]?.id === 'invite' && (
+										<button
+											type="button"
+											onClick={() => {
+												setInviteDismissed(true);
+												try {
+													localStorage.setItem(inviteDismissKey, 'true');
+												} catch {
+													/* Optional preference. */
+												}
+											}}
+											className="min-h-11 text-sm text-[var(--text-2)]"
+										>
+											Erst einmal alleine starten
+										</button>
+									)}
+								</div>
+							)}
 							{todayFocus && (
 								<Link
 									href={todayFocus.href}
@@ -337,7 +342,7 @@ export default function WgHomePage() {
 										</Link>
 									</li>
 								))}
-								{todayListItems.length === 0 && (
+								{!todayFocus && firstActions.length === 0 && todayListItems.length === 0 && (
 									<li className="rounded-md border border-dashed border-[var(--border)] px-3 py-5 text-center text-[13px] text-[var(--text-3)]">
 										Nichts Dringendes. Deine WG ist gerade ruhig.
 									</li>
@@ -346,6 +351,57 @@ export default function WgHomePage() {
 						</Panel>
 					</section>
 				)}
+
+				{/* ─── STAT ROW ─── */}
+				<section className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-base)]">
+					<dl className="grid grid-cols-3 divide-x divide-[var(--border)]">
+						<Stat
+							label="Deine Bilanz"
+							value={data ? formatEuro(myBalance, { signed: true }) : '—'}
+							tone={myBalance > 0 ? 'positive' : myBalance < 0 ? 'negative' : 'neutral'}
+							sub={
+								data
+									? myBalance > 0
+										? 'wird erstattet'
+										: myBalance < 0
+											? 'schulde ich'
+											: 'ausgeglichen'
+									: undefined
+							}
+							subTone={data && myBalance < 0 ? 'danger' : 'neutral'}
+						/>
+						<Stat
+							label="Diese Woche"
+							value={data ? formatEuro(data.weekSpendCents) : '—'}
+							sub="7 Tage"
+						/>
+						<Stat
+							label="Dieser Monat"
+							value={data ? formatEuro(data.monthSpendCents) : '—'}
+							sub="30 Tage"
+						/>
+					</dl>
+					{data?.setup.hasExpense && (
+						<div className="border-t border-[var(--border)] px-4 py-3 sm:px-5">
+							<div className="mb-2 flex items-baseline justify-between">
+								<span className="text-[12.5px] text-[var(--text-3)]">Ausgaben · 14 Tage</span>
+								<Link
+									href={`${wgBaseHref}/ausgaben`}
+									className="-mx-2 inline-flex min-h-11 items-center px-2 text-[12.5px] text-[var(--text-2)] transition-colors hover:text-[var(--text-1)]"
+								>
+									Alle ansehen →
+								</Link>
+							</div>
+							<Sparkline
+								values={sparkValues}
+								width={800}
+								height={48}
+								className="w-full"
+								aria-label="Ausgaben pro Tag, letzte 14 Tage"
+							/>
+						</div>
+					)}
+				</section>
 
 				{/* Nur zeigen, wenn etwas zu tun ist — 6 Null-Kacheln bei ruhiger WG sind Rauschen. */}
 				{data && data.wgHealth.score < 100 && (

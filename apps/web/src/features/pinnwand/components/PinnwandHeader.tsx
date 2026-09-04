@@ -19,7 +19,7 @@ export function PinnwandHeader({
 	onToggleComposer,
 }: PinnwandHeaderProps): React.ReactElement {
 	return (
-		<header className="flex items-center justify-between gap-3">
+		<header className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<div className="min-w-0">
 				<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">Pinnwand</h1>
 				<p className="mt-0.5 text-[13px] text-[var(--text-3)]">
@@ -30,8 +30,11 @@ export function PinnwandHeader({
 						<Loader2 className="ml-1.5 inline-block h-3 w-3 animate-spin opacity-50" aria-hidden />
 					)}
 				</p>
+				<p className="mt-1 text-[12px] text-[var(--text-2)]">
+					Für Infos, die bleiben. Termine gehören in den Kalender.
+				</p>
 			</div>
-			<div className="flex shrink-0 items-center gap-1.5">
+			<div className="flex items-center justify-end gap-1.5">
 				<CalendarLink wgBaseHref={wgBaseHref} />
 				<FormToggleButton
 					open={composerOpen}
