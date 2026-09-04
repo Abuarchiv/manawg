@@ -5,7 +5,7 @@
 ## 2. Product experience
 
 - [ ] 2.1 Implement first-use and returning-user dashboard orientation with focused Playwright proof.
-- [ ] 2.2 Implement server-enforced reviewed settlement scope and stale-confirmation rejection; verify financial regression cases.
+- [x] 2.2 Implement server-enforced reviewed settlement scope and stale-confirmation rejection; verify financial regression cases.
 - [ ] 2.3 Implement explicit settlement review and expense split/draft context with focused Playwright proof.
 - [ ] 2.4 Improve shopping handoff, metadata, labels, and long-content behavior; verify no automatic accounting write.
 - [ ] 2.5 Improve chore completion feedback and communication/navigation context; verify actual server-confirmed results and cancel/recovery behavior.

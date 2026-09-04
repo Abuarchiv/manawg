@@ -1,6 +1,6 @@
 import { db, expenseSplits, expenses } from '@/core/db';
 import type { Expense, ExpenseSplit } from '@/core/db/schema';
-import { TransactionAbort, withTransaction } from '@/core/db/transaction';
+import { TransactionAbort } from '@/core/db/transaction';
 import { apiError, badRequest, serverError, tooMany } from '@/core/errors';
 import {
 	ReplayCache,
@@ -17,7 +17,10 @@ import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema } from '@/core/validators/image-url';
 import { AMOUNT_MAX_CENTS, AMOUNT_MIN_CENTS } from '@/features/expenses/expense-constants';
-import { loadCompletedExpensePayments } from '@/features/expenses/expense-payments';
+import {
+	loadCompletedExpensePayments,
+	withExpensePaymentLock,
+} from '@/features/expenses/expense-payments';
 import {
 	checkPaidByGuard,
 	findExpenseMemberIds,
@@ -228,7 +231,7 @@ export async function POST(
 		let expense: Expense;
 		let splitRows: ExpenseSplit[];
 		try {
-			const written = await withTransaction((tx) =>
+			const written = await withExpensePaymentLock(wg.id, (tx) =>
 				insertExpenseWithSplits(tx, {
 					wgId: wg.id,
 					paidByMemberId: paidBy,

@@ -111,25 +111,29 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 		if (captureState.kind === 'unavailable') return conflict('paypal_order_unavailable');
 		const capturePayment = captureState.payment;
 
-		const [members, expenses, payments] = await Promise.all([
-			db
-				.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
-				.from(wgMembers)
-				.where(eq(wgMembers.wgId, auth.wg.id)),
-			loadOpenExpenses(auth.wg.id),
-			loadCompletedExpensePayments(auth.wg.id),
-		]);
-		const debt = simplifyDebts(computeNetBalances(expenses, members, payments)).find(
-			(item) =>
-				item.fromId === capturePayment.fromMemberId && item.toId === capturePayment.toMemberId,
-		);
-		if (!debt || debt.cents < capturePayment.amountCents) {
-			await db
+		const debtChanged = await withExpensePaymentLock(auth.wg.id, async (tx) => {
+			const [members, expenses, payments] = await Promise.all([
+				tx
+					.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
+					.from(wgMembers)
+					.where(eq(wgMembers.wgId, auth.wg.id)),
+				loadOpenExpenses(auth.wg.id, tx),
+				loadCompletedExpensePayments(auth.wg.id, tx),
+			]);
+			const debt = simplifyDebts(computeNetBalances(expenses, members, payments)).find(
+				(item) =>
+					item.fromId === capturePayment.fromMemberId && item.toId === capturePayment.toMemberId,
+			);
+			if (debt && debt.cents >= capturePayment.amountCents) return false;
+			await tx
 				.update(expensePayments)
 				.set({ status: 'failed' })
 				.where(
 					and(eq(expensePayments.id, capturePayment.id), eq(expensePayments.status, 'capturing')),
 				);
+			return true;
+		});
+		if (debtChanged) {
 			return conflict('debt_changed');
 		}
 
@@ -152,20 +156,24 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 			return conflict('paypal_payment_not_completed');
 		}
 
-		const [completed] = await db
-			.update(expensePayments)
-			.set({ status: 'completed', completedAt: new Date() })
-			.where(
-				and(eq(expensePayments.id, capturePayment.id), eq(expensePayments.status, 'capturing')),
-			)
-			.returning({ id: expensePayments.id });
-		if (!completed) {
-			const [alreadyCompleted] = await db
+		const completion = await withExpensePaymentLock(auth.wg.id, async (tx) => {
+			const [completed] = await tx
+				.update(expensePayments)
+				.set({ status: 'completed', completedAt: new Date() })
+				.where(
+					and(eq(expensePayments.id, capturePayment.id), eq(expensePayments.status, 'capturing')),
+				)
+				.returning({ id: expensePayments.id });
+			if (completed) return 'completed' as const;
+			const [alreadyCompleted] = await tx
 				.select({ status: expensePayments.status })
 				.from(expensePayments)
 				.where(eq(expensePayments.id, capturePayment.id))
 				.limit(1);
-			if (alreadyCompleted?.status !== 'completed') return serverError('paypal_settlement_failed');
+			return alreadyCompleted?.status === 'completed' ? 'already_completed' : 'failed';
+		});
+		if (completion === 'failed') return serverError('paypal_settlement_failed');
+		if (completion === 'already_completed') {
 			return NextResponse.json({ status: 'COMPLETED', amountCents: capturePayment.amountCents });
 		}
 		try {

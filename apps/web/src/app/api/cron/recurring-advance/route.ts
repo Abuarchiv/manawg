@@ -1,9 +1,10 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, recurringExpenses, wgs } from '@/core/db';
-import { TransactionAbort, withTransaction } from '@/core/db/transaction';
+import { TransactionAbort } from '@/core/db/transaction';
 import { verifyCronSecret } from '@/core/infra/cron-auth';
 import { withCronLogging } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
 import {
 	type RecurringSplit,
 	addMonthsFromAnchor,
@@ -44,7 +45,7 @@ async function createExpenseForDueAt(
 		// delete, but that delete is itself a database call: when it failed the
 		// orphaned expense stayed behind and skewed the balances of a WG that
 		// nobody was watching, because the cron runs unattended.
-		return await withTransaction(async (tx) => {
+		return await withExpensePaymentLock(template.wgId, async (tx) => {
 			const [inserted] = await tx
 				.insert(expenses)
 				.values({

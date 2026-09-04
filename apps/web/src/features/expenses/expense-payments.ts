@@ -11,8 +11,11 @@ export interface ExpensePaymentInput {
 	currency: string;
 }
 
-export async function loadCompletedExpensePayments(wgId: string): Promise<ExpensePaymentInput[]> {
-	return db
+export async function loadCompletedExpensePayments(
+	wgId: string,
+	client: typeof db | DbTransaction = db,
+): Promise<ExpensePaymentInput[]> {
+	return client
 		.select({
 			fromMemberId: expensePayments.fromMemberId,
 			toMemberId: expensePayments.toMemberId,
@@ -51,7 +54,8 @@ export async function withExpensePaymentLock<T>(
 	fn: (tx: DbTransaction) => Promise<T>,
 ): Promise<T> {
 	return withTransaction(async (tx) => {
-		// ponytail: one WG lock keeps settlements coherent; split per pair only if measured contention needs it.
+		// All expense, split, and payment writers use this lock before their
+		// accounting transaction. ponytail: one WG lock; split per pair only if measured contention needs it.
 		await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`expense-payment:${wgId}`}))`);
 		return fn(tx);
 	});

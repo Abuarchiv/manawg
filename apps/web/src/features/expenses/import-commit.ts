@@ -2,9 +2,9 @@ import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseImports, expenseSplits, expenses, wgMembers } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
-import { withTransaction } from '@/core/db/transaction';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { formatEuroCents } from '@/core/utils/money';
+import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { ImportSource, ParsedExpense } from './import-parsers';
@@ -244,8 +244,9 @@ export async function commitImport(input: CommitInput): Promise<CommitResult> {
 	// on top. That repair is itself a database call, and swallowing its failure
 	// meant a half-written import stayed in the WG while the caller only saw an
 	// error and imported the same file again.
-	const { importId, inserted, skipped, errors, totalAmountCents } = await withTransaction((tx) =>
-		writeImport(tx, input),
+	const { importId, inserted, skipped, errors, totalAmountCents } = await withExpensePaymentLock(
+		input.wg.id,
+		(tx) => writeImport(tx, input),
 	);
 
 	// Everything below is deliberately outside the transaction: it informs the

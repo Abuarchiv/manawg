@@ -1,6 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
-import { TransactionAbort, withTransaction } from '@/core/db/transaction';
+import { TransactionAbort } from '@/core/db/transaction';
 import {
 	badRequest,
 	conflict,
@@ -17,6 +17,7 @@ import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema } from '@/core/validators/image-url';
 import { AMOUNT_MAX_CENTS, AMOUNT_MIN_CENTS } from '@/features/expenses/expense-constants';
+import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
 import {
 	settledAtForOwnShare,
 	splitValidationErrorCode,
@@ -89,10 +90,12 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 		return forbidden('not_owner', 'not_owner');
 	}
 
-	const deleted = await db
-		.delete(expenses)
-		.where(and(eq(expenses.id, id), eq(expenses.wgId, wgId)))
-		.returning({ id: expenses.id });
+	const deleted = await withExpensePaymentLock(wgId, (tx) =>
+		tx
+			.delete(expenses)
+			.where(and(eq(expenses.id, id), eq(expenses.wgId, wgId)))
+			.returning({ id: expenses.id }),
+	);
 
 	if (deleted.length === 0) return notFound('expense_not_found');
 	await recordAuditEvent({
@@ -216,7 +219,7 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	// failed — a best-effort repair that left the expense with zero splits,
 	// and every balance wrong, whenever it failed itself.
 	try {
-		await withTransaction(async (tx) => {
+		await withExpensePaymentLock(wgId, async (tx) => {
 			const [updatedMarker] = await tx
 				.update(expenses)
 				.set(updates)
