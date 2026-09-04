@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import {
 	PREVIEW_AUTH_ENV_NAMES,
@@ -9,6 +11,14 @@ import {
 } from '../scripts/release-workflow-gates.mjs';
 
 const SHA = 'a'.repeat(40);
+const CI_WORKFLOW = readFileSync(
+	path.resolve(process.cwd(), '../../.github/workflows/ci.yml'),
+	'utf8',
+);
+const PRODUCTION_WORKFLOW = readFileSync(
+	path.resolve(process.cwd(), '../../.github/workflows/migrate-production.yml'),
+	'utf8',
+);
 
 const validPreviewEvent = {
 	state: 'success',
@@ -35,8 +45,18 @@ const validPreviewJobs = [
 	{ name: 'e2e-preview', status: 'completed', conclusion: 'success' },
 ];
 
+function workflowJob(source: string, name: string): string {
+	const start = source.indexOf(`  ${name}:`);
+	const remainder = source.slice(start + 3);
+	const nextJob = remainder.search(/\n {2}[a-z0-9-]+:/);
+	return source.slice(start, nextJob === -1 ? source.length : start + 3 + nextJob);
+}
+
 test('accepts a trusted successful Preview event and returns its origin', () => {
 	expect(assertPreviewEvent(validPreviewEvent)).toBe(validPreviewEvent.targetUrl);
+	expect(assertPreviewEvent({ ...validPreviewEvent, deploymentRef: 'main' })).toBe(
+		validPreviewEvent.targetUrl,
+	);
 });
 
 test('rejects untrusted Preview actors, refs, and URL shapes', () => {
@@ -76,6 +96,40 @@ test('requires every protected Preview auth variable without exposing values', (
 			'Preview auth',
 		),
 	).toThrow('SUPABASE_AUTH_TEST_MEMBER_NAME');
+});
+
+test('filters trusted Preview statuses before protected environments and keeps push rehearsal', () => {
+	for (const jobName of ['db-supabase-preview', 'e2e-preview']) {
+		const job = workflowJob(CI_WORKFLOW, jobName);
+		expect(job).toContain("github.event.deployment.creator.login == 'vercel[bot]'");
+		expect(job).toContain("github.event.deployment_status.creator.login == 'vercel[bot]'");
+		expect(job).toContain("github.event.deployment.ref == 'main'");
+		expect(job).toContain('github.event.deployment.ref == github.event.deployment.sha');
+		expect(job).toContain(
+			"startsWith(github.event.deployment_status.target_url, 'https://manawg-')",
+		);
+		expect(job).toContain(
+			"endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app')",
+		);
+		expect(job.indexOf('endsWith(')).toBeLessThan(job.indexOf('environment: Preview'));
+	}
+	expect(CI_WORKFLOW).toContain("github.event_name == 'push'");
+	expect(CI_WORKFLOW).toContain("github.ref == 'refs/heads/main'");
+});
+
+test('rechecks current main immediately before the production connection', () => {
+	const recheck = PRODUCTION_WORKFLOW.indexOf(
+		'name: Recheck current main before production connection',
+	);
+	const directConnection = PRODUCTION_WORKFLOW.indexOf(
+		'name: Verify direct Supabase migration connection',
+	);
+	expect(recheck).toBeGreaterThan(-1);
+	expect(directConnection).toBeGreaterThan(recheck);
+	const cutoverBlock = PRODUCTION_WORKFLOW.slice(recheck, directConnection);
+	expect(cutoverBlock).toContain('git ls-remote --exit-code origin refs/heads/main');
+	expect(cutoverBlock).toContain('assertExactRevision');
+	expect(cutoverBlock.match(/\n\s*-\s+name:/g) ?? []).toHaveLength(0);
 });
 
 test('requires the exact main revision and production confirmation', () => {

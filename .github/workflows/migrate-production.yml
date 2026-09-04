@@ -92,6 +92,17 @@ jobs:
             jobs: JSON.parse(readFileSync(process.env.PREVIEW_JOBS_JSON, 'utf8')).jobs,
           });
           NODE
+      - name: Recheck current main before production connection
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          CURRENT_MAIN_SHA="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
+          export CURRENT_MAIN_SHA
+          node --input-type=module <<'NODE'
+          import { assertExactRevision } from './apps/web/scripts/release-workflow-gates.mjs';
+
+          assertExactRevision(process.env.CANDIDATE_SHA, process.env.CURRENT_MAIN_SHA);
+          NODE
       - name: Verify direct Supabase migration connection
         env:
           DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}

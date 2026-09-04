@@ -52,9 +52,14 @@ The production migration workflow requires all of these dispatch inputs:
 
 The dispatch ref must be `main`. A stale candidate, a moved `main`, a missing
 or failed Preview run, a different run SHA, or a missing required confirmation
-stops before the production database secret is used. If `main` advances after
-Preview, pin the new SHA and repeat the full Preview gate; do not reuse the
-older run ID.
+stops before the production database secret is used. Immediately before that
+connection step, the workflow performs a read-only `git ls-remote` check of
+`origin`'s current `refs/heads/main` and compares it with `candidate_sha`.
+This is a cutover check, not a repository freeze: a push after the check can
+still move `main`, so the release owner must keep the migration window quiet
+and treat any such push as stale evidence that requires a new candidate and
+Preview run. If `main` advances after Preview, pin the new SHA and repeat the
+full Preview gate; do not reuse the older run ID.
 
 ## Owner commands and sequence
 
