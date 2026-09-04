@@ -60,14 +60,67 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   db-supabase-preview:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      always() &&
+      (
+        (
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          needs.validate.result == 'success'
+        ) ||
+        (
+          github.event_name == 'deployment_status' &&
+          github.event.deployment_status.state == 'success' &&
+          github.event.deployment.environment == 'Preview'
+        )
+      )
     runs-on: ubuntu-latest
     needs: validate
     environment: Preview
-    env:
-      DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Require the exact source revision
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SOURCE_SHA: ${{ github.sha }}
+          DEPLOYMENT_SHA: ${{ github.event.deployment.sha }}
+        run: |
+          CHECKED_OUT_SHA="$(git rev-parse HEAD)"
+          export CHECKED_OUT_SHA
+          node --input-type=module <<'NODE'
+          import { assertExactRevision } from './apps/web/scripts/release-workflow-gates.mjs';
+
+          const expectedSha = process.env.EVENT_NAME === 'deployment_status'
+            ? process.env.DEPLOYMENT_SHA
+            : process.env.SOURCE_SHA;
+          assertExactRevision(expectedSha, process.env.CHECKED_OUT_SHA);
+          NODE
+      - name: Require a trusted Vercel Preview event
+        if: github.event_name == 'deployment_status'
+        env:
+          DEPLOYMENT_STATUS: ${{ github.event.deployment_status.state }}
+          DEPLOYMENT_REF: ${{ github.event.deployment.ref }}
+          DEPLOYMENT_SHA: ${{ github.event.deployment.sha }}
+          DEPLOYMENT_ENVIRONMENT: ${{ github.event.deployment.environment }}
+          DEPLOYMENT_CREATOR: ${{ github.event.deployment.creator.login }}
+          STATUS_CREATOR: ${{ github.event.deployment_status.creator.login }}
+          TARGET_URL: ${{ github.event.deployment_status.target_url }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { assertPreviewEvent } from './apps/web/scripts/release-workflow-gates.mjs';
+
+          assertPreviewEvent({
+            state: process.env.DEPLOYMENT_STATUS,
+            deploymentRef: process.env.DEPLOYMENT_REF,
+            deploymentSha: process.env.DEPLOYMENT_SHA,
+            environment: process.env.DEPLOYMENT_ENVIRONMENT,
+            deploymentCreator: process.env.DEPLOYMENT_CREATOR,
+            statusCreator: process.env.STATUS_CREATOR,
+            targetUrl: process.env.TARGET_URL,
+          });
+          NODE
       - name: Require the protected Supabase direct connection
         env:
           DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
@@ -95,16 +148,25 @@ jobs:
         env:
           DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
         run: pnpm --filter @manawg/web db:migrate
-      - run: pnpm --filter @manawg/web db:check
+      - name: Verify Preview schema and migration ledger
+        env:
+          DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
+        run: pnpm --filter @manawg/web db:check
 
   e2e-preview:
     if: >-
+      always() &&
       github.event_name == 'deployment_status' &&
       github.event.deployment_status.state == 'success' &&
-      github.event.deployment.ref == 'main'
+      github.event.deployment.environment == 'Preview'
     runs-on: ubuntu-latest
+    needs: db-supabase-preview
     environment: Preview
     steps:
+      - name: Require the same-SHA Preview migration gate
+        env:
+          MIGRATION_GATE_RESULT: ${{ needs.db-supabase-preview.result }}
+        run: test "$MIGRATION_GATE_RESULT" = success
       - uses: actions/checkout@v4
         with:
           # Never execute an event-supplied deployment SHA in a secrets-bearing job.
@@ -113,38 +175,39 @@ jobs:
         env:
           DEPLOYMENT_SHA: ${{ github.event.deployment.sha }}
         run: |
-          test -n "$DEPLOYMENT_SHA"
-          test "$DEPLOYMENT_SHA" = "$(git rev-parse HEAD)"
+          CHECKED_OUT_SHA="$(git rev-parse HEAD)"
+          export CHECKED_OUT_SHA
+          node --input-type=module <<'NODE'
+          import { assertExactRevision } from './apps/web/scripts/release-workflow-gates.mjs';
+
+          assertExactRevision(process.env.DEPLOYMENT_SHA, process.env.CHECKED_OUT_SHA);
+          NODE
       - name: Validate trusted Vercel Preview event and target
         id: preview
         env:
+          DEPLOYMENT_STATUS: ${{ github.event.deployment_status.state }}
+          DEPLOYMENT_REF: ${{ github.event.deployment.ref }}
+          DEPLOYMENT_SHA: ${{ github.event.deployment.sha }}
           DEPLOYMENT_ENVIRONMENT: ${{ github.event.deployment.environment }}
           DEPLOYMENT_CREATOR: ${{ github.event.deployment.creator.login }}
           STATUS_CREATOR: ${{ github.event.deployment_status.creator.login }}
           TARGET_URL: ${{ github.event.deployment_status.target_url }}
         run: |
-          node <<'NODE'
-          const fs = require('node:fs');
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { assertPreviewEvent } from './apps/web/scripts/release-workflow-gates.mjs';
 
-          if (
-            process.env.DEPLOYMENT_ENVIRONMENT !== 'Preview' ||
-            process.env.DEPLOYMENT_CREATOR !== 'vercel[bot]' ||
-            process.env.STATUS_CREATOR !== 'vercel[bot]'
-          ) {
-            throw new Error('Preview deployment event is not from the trusted Vercel deployment.');
-          }
+          const baseUrl = assertPreviewEvent({
+            state: process.env.DEPLOYMENT_STATUS,
+            deploymentRef: process.env.DEPLOYMENT_REF,
+            deploymentSha: process.env.DEPLOYMENT_SHA,
+            environment: process.env.DEPLOYMENT_ENVIRONMENT,
+            deploymentCreator: process.env.DEPLOYMENT_CREATOR,
+            statusCreator: process.env.STATUS_CREATOR,
+            targetUrl: process.env.TARGET_URL,
+          });
 
-          const target = process.env.TARGET_URL;
-          const expectedOrigin = /^https:\/\/manawg-[a-z0-9-]+-abditubes-projects\.vercel\.app$/;
-          if (typeof target !== 'string' || !expectedOrigin.test(target)) {
-            throw new Error('Preview target is not this project\'s canonical Vercel origin.');
-          }
-          const url = new URL(target);
-          if (url.origin !== target) {
-            throw new Error('Preview target must exactly equal its canonical Vercel origin.');
-          }
-
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `base_url=${url.origin}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `base_url=${baseUrl}\n`);
           NODE
       - uses: pnpm/action-setup@v4
         with:
@@ -161,13 +224,27 @@ jobs:
           E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.E2E_SUPABASE_PUBLISHABLE_KEY }}
           E2E_SUPABASE_TEST_EMAIL: ${{ secrets.E2E_SUPABASE_TEST_EMAIL }}
           E2E_SUPABASE_TEST_PASSWORD: ${{ secrets.E2E_SUPABASE_TEST_PASSWORD }}
+          SUPABASE_AUTH_TEST_EMAIL: ${{ secrets.SUPABASE_AUTH_TEST_EMAIL }}
+          SUPABASE_AUTH_TEST_PASSWORD: ${{ secrets.SUPABASE_AUTH_TEST_PASSWORD }}
+          SUPABASE_AUTH_TEST_MEMBER_WG_CODE: ${{ secrets.SUPABASE_AUTH_TEST_MEMBER_WG_CODE }}
+          SUPABASE_AUTH_TEST_MEMBER_NAME: ${{ secrets.SUPABASE_AUTH_TEST_MEMBER_NAME }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
-          test -n "$E2E_SUPABASE_URL"
-          test -n "$E2E_SUPABASE_PUBLISHABLE_KEY"
-          test -n "$E2E_SUPABASE_TEST_EMAIL"
-          test -n "$E2E_SUPABASE_TEST_PASSWORD"
-          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"
+          node --input-type=module <<'NODE'
+          import {
+            PREVIEW_AUTH_ENV_NAMES,
+            assertRequiredEnv,
+          } from './apps/web/scripts/release-workflow-gates.mjs';
+
+          assertRequiredEnv(process.env, [
+            'E2E_SUPABASE_URL',
+            'E2E_SUPABASE_PUBLISHABLE_KEY',
+            'E2E_SUPABASE_TEST_EMAIL',
+            'E2E_SUPABASE_TEST_PASSWORD',
+            'VERCEL_AUTOMATION_BYPASS_SECRET',
+            ...PREVIEW_AUTH_ENV_NAMES,
+          ], 'Protected Preview verification');
+          NODE
           node <<'NODE'
           const url = new URL(process.env.E2E_SUPABASE_URL);
           if (
@@ -190,15 +267,16 @@ jobs:
           E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.E2E_SUPABASE_PUBLISHABLE_KEY }}
           E2E_SUPABASE_TEST_EMAIL: ${{ secrets.E2E_SUPABASE_TEST_EMAIL }}
           E2E_SUPABASE_TEST_PASSWORD: ${{ secrets.E2E_SUPABASE_TEST_PASSWORD }}
+          SUPABASE_AUTH_TEST_EMAIL: ${{ secrets.SUPABASE_AUTH_TEST_EMAIL }}
+          SUPABASE_AUTH_TEST_PASSWORD: ${{ secrets.SUPABASE_AUTH_TEST_PASSWORD }}
+          SUPABASE_AUTH_TEST_MEMBER_WG_CODE: ${{ secrets.SUPABASE_AUTH_TEST_MEMBER_WG_CODE }}
+          SUPABASE_AUTH_TEST_MEMBER_NAME: ${{ secrets.SUPABASE_AUTH_TEST_MEMBER_NAME }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           PUBLIC_ENTRY_E2E: 'true'
           AUTH_LIVE_E2E: 'true'
-        # supabase-auth-live.spec.ts stays out of the pack until the dedicated
-        # QA member secrets (SUPABASE_AUTH_TEST_EMAIL/PASSWORD/MEMBER_WG_CODE/
-        # MEMBER_NAME) are provisioned under external authority; its member
-        # tests fail closed on missing credentials and would turn every main
-        # Preview run red. Re-add together with a Require step for those secrets.
-        run: pnpm --filter @manawg/web exec playwright test --retries=0 preview-protection.spec.ts smoke-launch.spec.ts public-entry-live.spec.ts social-login-live.spec.ts
+          SUPABASE_AUTH_LIVE_E2E: 'true'
+          SUPABASE_AUTH_PASSWORD_RESET_SMOKE: 'true'
+        run: pnpm --filter @manawg/web exec playwright test --retries=0 preview-protection.spec.ts smoke-launch.spec.ts public-entry-live.spec.ts social-login-live.spec.ts supabase-auth-live.spec.ts
       - name: Record protected Preview execution evidence
         if: always()
         env:
