@@ -37,7 +37,6 @@ import {
 	shoppingActionErrorMessage,
 	shoppingAddErrorMessage,
 } from '@/features/shopping/shopping-errors';
-import posthog from '@/shared/lib/analytics';
 import { ListChecks, Loader2, Package, Plus, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -228,9 +227,6 @@ export default function EinkaufPage() {
 				setAddError(shoppingAddErrorMessage(res.error));
 				return;
 			}
-			posthog.capture('shopping_item_added', {
-				has_quantity: newQty.trim().length > 0,
-			});
 			setNewName('');
 			setNewQty('');
 			if (!clearEditedQueueItem()) {
@@ -361,7 +357,6 @@ export default function EinkaufPage() {
 			return;
 		}
 		setItems((prev) => prev.map((current) => (current.id === item.id ? res.data.item : current)));
-		if (becomingBought) posthog.capture('shopping_item_completed');
 		void load(true);
 		end(item.id);
 	}

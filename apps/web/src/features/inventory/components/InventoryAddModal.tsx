@@ -10,7 +10,6 @@ import {
 	type InventoryCategory,
 	type InventoryUnit,
 } from '@/features/inventory/inventory';
-import posthog from '@/shared/lib/analytics';
 import { useFocusTrap } from '@/shared/lib/hooks/useFocusTrap';
 import { Loader2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -120,7 +119,6 @@ export function InventoryAddModal({
 					});
 		setSaving(false);
 		if (res.ok) {
-			posthog.capture('inventory_item_saved', { action: mode, category, unit });
 			onSaved();
 			onClose();
 		} else {

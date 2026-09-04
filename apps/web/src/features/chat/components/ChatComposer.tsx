@@ -1,6 +1,5 @@
 'use client';
 
-import posthog from '@/shared/lib/analytics';
 import { haptic } from '@/shared/lib/haptics';
 import { Loader2, Send, X } from 'lucide-react';
 import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
@@ -124,10 +123,6 @@ export function ChatComposer({
 				replyToMessageId,
 			});
 			if (ok) {
-				posthog.capture('chat_message_sent', {
-					has_reply: replyToMessageId !== null,
-					mention_count: mentionedIds.length,
-				});
 				haptic('medium');
 				setDraft('');
 				setMention(null);
