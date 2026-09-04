@@ -9,7 +9,13 @@ import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
-import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
+import {
+	buildDraftKey,
+	isEmptyModuleDraft,
+	readDraft,
+	removeDraft,
+	writeDraft,
+} from '@/core/offline/drafts';
 import {
 	enqueueOfflineAction,
 	readOfflineQueue,
@@ -55,8 +61,14 @@ import type {
 } from '@/features/chores/components/chore-types';
 import { QUICK_CHORE_TEMPLATES, TITLE_MAX } from '@/features/chores/components/constants';
 import { Sparkles } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+type ChoreSuggestion = { title: string; intervalDays: number; recurrenceType: RecurrenceType };
+const ConfirmDialog = dynamic(() =>
+	import('@/components/ui/ConfirmDialog').then((module) => module.ConfirmDialog),
+);
+
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function PutzenPage() {
 	const { wg, members, identity } = useWg();
@@ -74,6 +86,8 @@ export default function PutzenPage() {
 	const [initialLoading, setInitialLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
 	const [showForm, setShowForm] = useState(false);
+	const [pendingSuggestion, setPendingSuggestion] = useState<ChoreSuggestion | null>(null);
+	const [confirmSuggestion, setConfirmSuggestion] = useState(false);
 	const [newTitle, setNewTitle] = useState('');
 	const [newInterval, setNewInterval] = useState(7);
 	const [newRecurrenceType, setNewRecurrenceType] = useState<RecurrenceType>('days');
@@ -158,10 +172,6 @@ export default function PutzenPage() {
 	useVisibilityPausedInterval(() => void load(false), 30_000);
 
 	useEffect(() => {
-		if (prefillTitle) {
-			setDraftHydrated(true);
-			return;
-		}
 		const draft = readDraft<{
 			title?: string;
 			intervalDays?: number;
@@ -178,13 +188,7 @@ export default function PutzenPage() {
 			setDraftHydrated(true);
 			return;
 		}
-		const hasRestorableChoreDraft =
-			typeof draft.title === 'string' && draft.title.length > 0
-				? true
-				: typeof draft.intervalDays === 'number' && draft.intervalDays !== 7
-					? true
-					: Boolean(draft.assignedMemberId || draft.queueEditId);
-		if (hasRestorableChoreDraft) setShowForm(true);
+		if (!isEmptyModuleDraft('chore', draft, identity.memberId)) setShowForm(true);
 		if (draft.title) {
 			setNewTitle(draft.title);
 		}
@@ -198,20 +202,54 @@ export default function PutzenPage() {
 		if (draft.absenceReason !== undefined) setAbsenceReason(draft.absenceReason);
 		if (draft.queueEditId) setQueueEditId(draft.queueEditId);
 		setDraftHydrated(true);
-	}, [draftKey, prefillTitle]);
+	}, [draftKey, identity.memberId]);
+
+	const applyChoreSuggestion = useCallback(
+		(suggestion: ChoreSuggestion): void => {
+			writeDraft(draftKey, {
+				title: suggestion.title,
+				intervalDays: suggestion.intervalDays,
+				recurrenceType: suggestion.recurrenceType,
+				assignedMemberId: '',
+			});
+			setNewTitle(suggestion.title);
+			setNewInterval(suggestion.intervalDays);
+			setNewRecurrenceType(suggestion.recurrenceType);
+			setNewAssigned('');
+			setQueueEditId(null);
+			setPendingSuggestion(null);
+			setShowForm(true);
+		},
+		[draftKey],
+	);
+
+	const suggestChore = useCallback(
+		(suggestion: ChoreSuggestion): void => {
+			const draft = readDraft<Record<string, unknown>>(draftKey);
+			if (draft && !isEmptyModuleDraft('chore', draft, identity.memberId)) {
+				setPendingSuggestion(suggestion);
+				setShowForm(true);
+			} else {
+				applyChoreSuggestion(suggestion);
+			}
+		},
+		[applyChoreSuggestion, draftKey, identity.memberId],
+	);
 
 	useEffect(() => {
-		if (!prefillTitle) return;
-		if (appliedPrefillRef.current === prefillTitle) return;
+		if (!prefillTitle || appliedPrefillRef.current === prefillTitle) return;
 		appliedPrefillRef.current = prefillTitle;
-		setNewTitle(prefillTitle.slice(0, TITLE_MAX));
-		setQueueEditId(null);
-		setShowForm(true);
-	}, [prefillTitle]);
+		suggestChore({
+			title: prefillTitle.slice(0, TITLE_MAX),
+			intervalDays: 7,
+			recurrenceType: 'days',
+		});
+	}, [prefillTitle, suggestChore]);
 
 	useEffect(() => {
 		if (!draftHydrated) return;
 		writeDraft(draftKey, {
+			...readDraft<Record<string, unknown>>(draftKey),
 			title: newTitle,
 			recurrenceType: newRecurrenceType,
 			intervalDays: newInterval,
@@ -790,11 +828,7 @@ export default function PutzenPage() {
 	};
 
 	function applyQuickChore(template: (typeof QUICK_CHORE_TEMPLATES)[number]): void {
-		setShowForm(true);
-		setNewTitle(template.title);
-		setNewInterval(template.intervalDays);
-		setNewRecurrenceType(template.recurrenceType);
-		setQueueEditId(null);
+		suggestChore(template);
 		window.setTimeout(() => titleInputRef.current?.focus(), 0);
 	}
 
@@ -825,6 +859,31 @@ export default function PutzenPage() {
 			{/* HealthStrip nur bei vorhandenem Plan — 0/0/0 über leerem Plan ist Rauschen. */}
 			{!showSkeleton && items.length > 0 && <HealthStrip health={health} />}
 
+			{showForm && pendingSuggestion && (
+				<div className="rounded-md border border-[var(--border)] p-3 text-[13px] text-[var(--text-2)]">
+					<p>Dein vorhandener Entwurf bleibt erhalten.</p>
+					<button
+						type="button"
+						onClick={() => setConfirmSuggestion(true)}
+						className="min-h-11 text-left font-medium text-[var(--text-1)]"
+					>
+						Entwurf verwerfen und „{pendingSuggestion.title}“ übernehmen
+					</button>
+				</div>
+			)}
+			{confirmSuggestion && (
+				<ConfirmDialog
+					open
+					onClose={() => setConfirmSuggestion(false)}
+					onConfirm={() => {
+						if (pendingSuggestion) applyChoreSuggestion(pendingSuggestion);
+					}}
+					title="Entwurf verwerfen?"
+					description="Der bisherige Aufgabenentwurf wird durch den Vorschlag ersetzt. Bereits gespeicherte Aufgaben bleiben erhalten."
+					confirmLabel="Entwurf verwerfen"
+					cancelLabel="Entwurf behalten"
+				/>
+			)}
 			{showForm && (
 				<ChoreForm
 					title={newTitle}

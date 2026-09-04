@@ -97,6 +97,7 @@ export function isEmptyModuleDraft(
 			queueEditType: null,
 			recurringIntervalMonths: 1,
 			recurringNextDueAt: null,
+			recurringSourceId: null,
 			editingExpense: null,
 		},
 		shopping: { name: '', quantity: '', queueEditId: null },

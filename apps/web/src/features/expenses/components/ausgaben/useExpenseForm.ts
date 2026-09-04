@@ -1,6 +1,12 @@
 'use client';
 
-import { buildDraftKey, readDraft, writeDraft } from '@/core/offline/drafts';
+import {
+	buildDraftKey,
+	isEmptyModuleDraft,
+	readDraft,
+	removeDraft,
+	writeDraft,
+} from '@/core/offline/drafts';
 import type { OfflineActionType } from '@/core/offline/offline-queue';
 import { formatEuroInput } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
@@ -12,6 +18,14 @@ import { DESCRIPTION_MAX, type QUICK_EXPENSE_TEMPLATES } from './constants';
 import type { Expense, RecurringExpense } from './expense-types';
 
 export type SplitMode = 'equal' | 'manual';
+
+type ExpenseSuggestion = Omit<
+	NonNullable<ReturnType<typeof buildExpensePrefillDraft>>,
+	'splitMode'
+> & {
+	splitMode: SplitMode;
+	recurringSourceId: string | null;
+};
 
 /**
  * Only the fields this hook actually reads. Kept structural rather than
@@ -31,6 +45,7 @@ interface FormMember {
  * constraint requires.
  */
 type ExpenseDraft = {
+	recurringSourceId?: string | null;
 	editingExpense?: unknown;
 	description?: string;
 	amountStr?: string;
@@ -104,8 +119,8 @@ export function useExpenseForm({
 	const [recurringNextDueAt, setRecurringNextDueAt] = useState<string | null>(null);
 	const [draftHydrated, setDraftHydrated] = useState(false);
 	const [invalidEditDraft, setInvalidEditDraft] = useState(false);
-	const [pendingPrefill, setPendingPrefill] =
-		useState<ReturnType<typeof buildExpensePrefillDraft>>(null);
+	const [pendingPrefill, setPendingPrefill] = useState<ExpenseSuggestion | null>(null);
+	const [recurringSourceId, setRecurringSourceId] = useState<string | null>(null);
 
 	const draftKey = buildDraftKey(shareCode, identityMemberId, 'expense');
 	// Both prefill sources apply once per distinct URL. Without these guards,
@@ -127,14 +142,7 @@ export function useExpenseForm({
 		// Open the form only for a draft the user would recognize. A draft
 		// holding nothing but defaults would otherwise pop the form open on
 		// every visit.
-		const hasRestorableDraft = Boolean(
-			draft.description ||
-				draft.amountStr ||
-				(draft.imageUrl !== undefined && draft.imageUrl !== null) ||
-				draft.queueEditId ||
-				draft.recurringNextDueAt,
-		);
-		if (hasRestorableDraft) setShowForm(true);
+		if (!isEmptyModuleDraft('expense', draft, identityMemberId)) setShowForm(true);
 		const target = draft.editingExpense;
 		if (target !== undefined && target !== null) {
 			if (
@@ -161,16 +169,19 @@ export function useExpenseForm({
 		if (draft.paidByMemberId) setPaidByMemberId(draft.paidByMemberId);
 		if (draft.splitMode) setSplitMode(draft.splitMode);
 		if (draft.manualSplits) setManualSplits(draft.manualSplits);
+		if (typeof draft.recurringSourceId === 'string') setRecurringSourceId(draft.recurringSourceId);
 		if (draft.queueEditId) setQueueEditId(draft.queueEditId);
 		if (draft.queueEditType) setQueueEditType(draft.queueEditType);
 		if (draft.recurringIntervalMonths) setRecurringIntervalMonths(draft.recurringIntervalMonths);
 		if (draft.recurringNextDueAt) setRecurringNextDueAt(draft.recurringNextDueAt);
 		setDraftHydrated(true);
-	}, [draftKey]);
+	}, [draftKey, identityMemberId]);
 
 	useEffect(() => {
 		if (!draftHydrated) return;
 		writeDraft(draftKey, {
+			...readDraft<ExpenseDraft>(draftKey),
+			recurringSourceId,
 			editingExpense: invalidEditDraft ? { invalid: true } : editingExpense,
 			description,
 			amountStr,
@@ -197,6 +208,7 @@ export function useExpenseForm({
 		queueEditType,
 		recurringIntervalMonths,
 		recurringNextDueAt,
+		recurringSourceId,
 		splitMode,
 	]);
 
@@ -210,7 +222,12 @@ export function useExpenseForm({
 	}, [draftHydrated, identityMemberId, members, paidByMemberId]);
 
 	const applyPrefill = useCallback(
-		(prefill: NonNullable<ReturnType<typeof buildExpensePrefillDraft>>): void => {
+		(prefill: ExpenseSuggestion): void => {
+			writeDraft(draftKey, prefill);
+			setRecurringSourceId(prefill.recurringSourceId);
+			setRecurringIntervalMonths(1);
+			setRecurringNextDueAt(null);
+			setConflictExpenseId(null);
 			setDescription(prefill.description);
 			setAmountStr(prefill.amountStr);
 			setImageUrl(prefill.imageUrl);
@@ -226,11 +243,25 @@ export function useExpenseForm({
 			setPendingPrefill(null);
 			setShowForm(true);
 		},
-		[],
+		[draftKey],
+	);
+
+	const suggestPrefill = useCallback(
+		(prefill: ExpenseSuggestion): void => {
+			const draft = readDraft<ExpenseDraft>(draftKey);
+			if (draft && !isEmptyModuleDraft('expense', draft, identityMemberId)) {
+				setPendingPrefill(prefill);
+				setShowForm(true);
+			} else {
+				applyPrefill(prefill);
+			}
+		},
+		[applyPrefill, draftKey, identityMemberId],
 	);
 
 	// A handoff is a new draft, so it must not overwrite unfinished input.
 	useEffect(() => {
+		if (recurringId) return;
 		const prefill = buildExpensePrefillDraft({
 			description: prefillDescription,
 			amount: prefillAmount,
@@ -238,22 +269,16 @@ export function useExpenseForm({
 		});
 		if (!prefill || appliedPrefillRef.current === prefillKey) return;
 		appliedPrefillRef.current = prefillKey;
-		const draft = readDraft<ExpenseDraft>(draftKey);
-		if (draft && (draft.description || draft.amountStr || draft.imageUrl || draft.queueEditId)) {
-			setPendingPrefill(prefill);
-			setShowForm(true);
-			return;
-		}
-		applyPrefill(prefill);
+		suggestPrefill({ ...prefill, recurringSourceId: null });
 	}, [
-		applyPrefill,
-		draftKey,
+		suggestPrefill,
 		identityMemberId,
 		members,
 		prefillAmount,
 		prefillDescription,
 		prefillPaidBy,
 		prefillKey,
+		recurringId,
 	]);
 
 	// `?recurring=<id>` — turns a due fixed cost into a prefilled one-off
@@ -265,19 +290,20 @@ export function useExpenseForm({
 		const template = recurringExpenses.find((item) => item.id === recurringId);
 		if (!template) return;
 		appliedRecurringRef.current = recurringId;
-		setDescription(template.description);
-		setAmountStr(formatEuroInput(template.amountCents / CENTS_PER_EURO));
-		setPaidByMemberId(template.paidByMemberId);
-		setSplitMode('manual');
-		setManualSplits(splitsToManualInput(template.splits));
-		setQueueEditId(null);
-		setQueueEditType(null);
-		setEditingExpense(null);
-		setInvalidEditDraft(false);
-		setShowForm(true);
-	}, [recurringExpenses, recurringId]);
+		suggestPrefill({
+			description: template.description,
+			amountStr: formatEuroInput(template.amountCents / CENTS_PER_EURO),
+			imageUrl: null,
+			paidByMemberId: template.paidByMemberId,
+			splitMode: 'manual',
+			manualSplits: splitsToManualInput(template.splits),
+			recurringSourceId: recurringId,
+		});
+	}, [suggestPrefill, recurringExpenses, recurringId]);
 
 	function resetForm(): void {
+		removeDraft(draftKey);
+		setRecurringSourceId(null);
 		setDescription('');
 		setAmountStr('');
 		setImageUrl(null);
@@ -297,26 +323,20 @@ export function useExpenseForm({
 	}
 
 	function applyQuickExpense(template: (typeof QUICK_EXPENSE_TEMPLATES)[number]): void {
-		setDescription(template.description.slice(0, DESCRIPTION_MAX));
-		setAmountStr(template.amount);
-		setImageUrl(null);
-		setPaidByMemberId(identityMemberId);
-		setSplitMode('equal');
-		setManualSplits({});
-		setFormError(null);
-		setConflictExpenseId(null);
-		setEditingExpense(null);
-		setInvalidEditDraft(false);
-		setEditingRecurringExpense(null);
-		setQueueEditId(null);
-		setQueueEditType(null);
-		setRecurringIntervalMonths(1);
-		setRecurringNextDueAt(null);
-		setShowForm(true);
-		window.setTimeout(() => document.getElementById('f-beschreibung')?.focus(), 0);
+		suggestPrefill({
+			description: template.description.slice(0, DESCRIPTION_MAX),
+			amountStr: template.amount,
+			imageUrl: null,
+			paidByMemberId: identityMemberId,
+			splitMode: 'equal',
+			manualSplits: {},
+			recurringSourceId: null,
+		});
 	}
 
 	function startEdit(expense: Expense): void {
+		setRecurringSourceId(null);
+		setPendingPrefill(null);
 		setDescription(expense.description);
 		setAmountStr(formatEuroInput(expense.amountCents / CENTS_PER_EURO));
 		setImageUrl(expense.imageUrl);
@@ -353,6 +373,8 @@ export function useExpenseForm({
 	}
 
 	function startRecurringEdit(template: RecurringExpense): void {
+		setRecurringSourceId(null);
+		setPendingPrefill(null);
 		setDescription(template.description);
 		setAmountStr(formatEuroInput(template.amountCents / CENTS_PER_EURO));
 		setImageUrl(null);
@@ -407,6 +429,7 @@ export function useExpenseForm({
 		setRecurringNextDueAt,
 		draftKey,
 		pendingPrefill,
+		recurringSourceId,
 		acceptPendingPrefill: () => {
 			if (pendingPrefill) applyPrefill(pendingPrefill);
 		},

@@ -36,7 +36,6 @@ import { CENTS_PER_EURO } from '@/core/utils/money';
 import { parseTimestamp } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { AusgabenHeader } from '@/features/expenses/components/ausgaben/AusgabenHeader';
-import { ExpenseFormSection } from '@/features/expenses/components/ausgaben/ExpenseFormSection';
 import { ExpenseRow } from '@/features/expenses/components/ausgaben/ExpenseRow';
 import { ExpensesSkeleton } from '@/features/expenses/components/ausgaben/ExpensesSkeleton';
 import { RecurringExpensesSection } from '@/features/expenses/components/ausgaben/RecurringExpensesSection';
@@ -75,8 +74,21 @@ import {
 import { addMonths } from '@/features/expenses/recurring-expenses';
 import { haptic } from '@/shared/lib/haptics';
 import { Bell, ChevronDown, Loader2, Receipt, RefreshCw, RotateCw } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+const ExpenseFormSection = dynamic(
+	() =>
+		import('@/features/expenses/components/ausgaben/ExpenseFormSection').then(
+			(module) => module.ExpenseFormSection,
+		),
+	{
+		loading: () => (
+			<output className="block text-sm text-[var(--text-2)]">Ausgabenformular wird geladen…</output>
+		),
+	},
+);
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -145,6 +157,7 @@ export default function AusgabenPage() {
 		setRecurringNextDueAt,
 		draftKey,
 		pendingPrefill,
+		recurringSourceId,
 		acceptPendingPrefill,
 		resetForm,
 		applyQuickExpense,
@@ -428,8 +441,8 @@ export default function AusgabenPage() {
 
 		if (!res.ok) {
 			if (res.status === 0) {
-				const recurringTemplateForQueuedExpense = recurringId
-					? recurringExpenses.find((item) => item.id === recurringId)
+				const recurringTemplateForQueuedExpense = recurringSourceId
+					? recurringExpenses.find((item) => item.id === recurringSourceId)
 					: null;
 				const queuedCount = enqueueOfflineAction(
 					createQueuedExpense({
@@ -506,9 +519,11 @@ export default function AusgabenPage() {
 				? current.map((expense) => (expense.id === savedExpense.id ? savedExpense : expense))
 				: [savedExpense, ...current.filter((expense) => expense.id !== savedExpense.id)],
 		);
-		if (recurringId) {
-			const recurringTemplateForAdvance = recurringExpenses.find((item) => item.id === recurringId);
-			await advanceRecurringTemplate(recurringId, recurringTemplateForAdvance?.nextDueAt);
+		if (recurringSourceId) {
+			const recurringTemplateForAdvance = recurringExpenses.find(
+				(item) => item.id === recurringSourceId,
+			);
+			await advanceRecurringTemplate(recurringSourceId, recurringTemplateForAdvance?.nextDueAt);
 		}
 		setShowForm(false);
 		finishSubmitting();

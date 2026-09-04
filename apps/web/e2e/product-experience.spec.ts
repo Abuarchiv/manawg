@@ -716,3 +716,247 @@ test('queue editing protects partial and unknown draft data', async ({ page }) =
 		await expect(page).toHaveURL(/einstellungen/);
 	}
 });
+
+test.describe('Suggestion draft preservation', () => {
+	test.setTimeout(120_000);
+
+	test('shopping suggestions preserve partial payer, splits and unknown fields until explicit replacement', async ({
+		page,
+	}) => {
+		await identify(page);
+		await emptyExpenses(page);
+		await page.addInitScript(
+			({ draftKey, memberId, buyerId }) => {
+				localStorage.setItem(
+					draftKey,
+					JSON.stringify({
+						description: '',
+						amountStr: '',
+						paidByMemberId: buyerId,
+						splitMode: 'manual',
+						manualSplits: { [memberId]: '7,00' },
+						customNote: 'Ungespeicherte Details',
+					}),
+				);
+			},
+			{ draftKey, memberId, buyerId },
+		);
+		await page.goto(`${base}/ausgaben?desc=Milch&paidBy=${memberId}&source=shopping`);
+		await expect(page.getByLabel('Bezahlt von')).toHaveValue(buyerId);
+		await expect(page.getByLabel('Anteil dsaf in Euro')).toHaveValue('7,00');
+		await expect(page.getByLabel('Beschreibung', { exact: true })).toHaveValue('');
+		await expect(page.getByText('Dein vorhandener Entwurf bleibt erhalten.')).toBeVisible();
+		expect(
+			await page.evaluate(
+				(key) => JSON.parse(localStorage.getItem(key) ?? '{}').customNote,
+				draftKey,
+			),
+		).toBe('Ungespeicherte Details');
+		const replace = page.getByRole('button', { name: 'Entwurf verwerfen und „Milch“ übernehmen' });
+		await replace.click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Entwurf behalten' }).click();
+		await expect(page.getByLabel('Anteil dsaf in Euro')).toHaveValue('7,00');
+		await replace.click();
+		await page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'Entwurf verwerfen', exact: true })
+			.click();
+		await expect(page.getByLabel('Beschreibung', { exact: true })).toHaveValue('Milch');
+		await expect(page.getByLabel('Bezahlt von')).toHaveValue(memberId);
+		await expect(page.getByRole('button', { name: 'Aufteilung: Gleichmäßig' })).toHaveAttribute(
+			'aria-pressed',
+			'true',
+		);
+		await expect
+			.poll(() =>
+				page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '{}').customNote, draftKey),
+			)
+			.toBeUndefined();
+	});
+
+	for (const accept of [false, true]) {
+		test(accept
+			? 'recurring suggestions replace a draft and advance only after explicit acceptance'
+			: 'saving a retained draft does not advance a blocked recurring suggestion', async ({
+			page,
+		}) => {
+			await identify(page);
+			await page.addInitScript(
+				({ draftKey, memberId }) =>
+					localStorage.setItem(
+						draftKey,
+						JSON.stringify({
+							description: 'Vorhandener Entwurf',
+							amountStr: '20,00',
+							paidByMemberId: memberId,
+							splitMode: 'equal',
+							manualSplits: {},
+						}),
+					),
+				{ draftKey, memberId },
+			);
+			const template = {
+				id: 'recurring-suggestion',
+				description: 'Internet-Vorlage',
+				amountCents: 3990,
+				paidByMemberId: buyerId,
+				intervalMonths: 1,
+				nextDueAt: '2026-09-01T10:00:00Z',
+				lastCreatedAt: null,
+				splits: [
+					{ debtorMemberId: memberId, amountCents: 1995 },
+					{ debtorMemberId: buyerId, amountCents: 1995 },
+				],
+			};
+			const saves: Record<string, unknown>[] = [];
+			let advances = 0;
+			await page.route('**/api/wg/MTE8PZAT/expenses', (route) => {
+				if (route.request().method() !== 'POST') return route.fulfill({ json: { expenses: [] } });
+				const body = route.request().postDataJSON();
+				saves.push(body);
+				return route.fulfill({
+					json: {
+						expense: {
+							...body,
+							id: 'suggestion-save',
+							currency: 'EUR',
+							occurredAt: '2026-09-04T10:00:00Z',
+							createdAt: '2026-09-04T10:00:00Z',
+							updatedAt: '2026-09-04T10:00:00Z',
+							splits: body.splits.map((split: Record<string, unknown>, index: number) => ({
+								...split,
+								id: `saved-share-${index}`,
+								settledAt: null,
+							})),
+						},
+					},
+				});
+			});
+			await page.route('**/api/wg/MTE8PZAT/recurring-expenses', (route) => {
+				if (route.request().method() === 'PATCH') {
+					advances += 1;
+					return route.fulfill({ json: { recurringExpense: template } });
+				}
+				return route.fulfill({ json: { recurringExpenses: [template] } });
+			});
+			await page.goto(`${base}/ausgaben?recurring=recurring-suggestion`);
+			await expect(page.getByText('Dein vorhandener Entwurf bleibt erhalten.')).toBeVisible();
+			await expect(page.getByLabel('Beschreibung', { exact: true })).toHaveValue(
+				'Vorhandener Entwurf',
+			);
+			if (accept) {
+				await page
+					.getByRole('button', { name: 'Entwurf verwerfen und „Internet-Vorlage“ übernehmen' })
+					.click();
+				await page
+					.getByRole('dialog')
+					.getByRole('button', { name: 'Entwurf verwerfen', exact: true })
+					.click();
+				await expect(page.getByLabel('Beschreibung', { exact: true })).toHaveValue(
+					template.description,
+				);
+				await expect(page.getByLabel('Anteil dsaf in Euro')).toHaveValue('19,95');
+			}
+			await page.getByRole('button', { name: 'Ausgabe speichern', exact: true }).click();
+			await expect(page.getByLabel('Beschreibung', { exact: true })).toBeHidden();
+			expect(saves).toHaveLength(1);
+			expect(saves[0]?.description).toBe(accept ? template.description : 'Vorhandener Entwurf');
+			expect(advances).toBe(accept ? 1 : 0);
+		});
+	}
+
+	test('dashboard chore suggestions preserve existing monthly draft and require explicit replacement', async ({
+		page,
+	}) => {
+		await identify(page);
+		const choreDraftKey = `manawg:draft:MTE8PZAT:${memberId}:chore`;
+		await page.addInitScript(
+			({ key, buyerId }) =>
+				localStorage.setItem(
+					key,
+					JSON.stringify({
+						title: 'Fenster reinigen',
+						intervalDays: 3,
+						recurrenceType: 'months',
+						assignedMemberId: buyerId,
+						customNote: 'Nicht verlieren',
+					}),
+				),
+			{ key: choreDraftKey, buyerId },
+		);
+		await page.route('**/api/wg/MTE8PZAT/dashboard', (route) =>
+			route.fulfill({ json: emptyDashboard }),
+		);
+		await page.route('**/api/wg/MTE8PZAT/chores', (route) =>
+			route.fulfill({ json: { chores: [] } }),
+		);
+		await page.route('**/api/wg/MTE8PZAT/absences', (route) =>
+			route.fulfill({ json: { absences: [] } }),
+		);
+		await page.goto(base);
+		await page.getByRole('link', { name: 'Erste Aufgabe anlegen', exact: true }).click();
+		await expect(page.getByRole('textbox', { name: 'Aufgabe', exact: true })).toHaveValue(
+			'Fenster reinigen',
+		);
+		await expect(page.getByRole('button', { name: 'quartalsweise', exact: true })).toHaveAttribute(
+			'aria-pressed',
+			'true',
+		);
+		await expect(page.getByText('Dein vorhandener Entwurf bleibt erhalten.')).toBeVisible();
+		expect(
+			await page.evaluate(
+				(key) => JSON.parse(localStorage.getItem(key) ?? '{}').customNote,
+				choreDraftKey,
+			),
+		).toBe('Nicht verlieren');
+		await page
+			.getByRole('button', { name: 'Entwurf verwerfen und „Bad putzen“ übernehmen' })
+			.click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Entwurf behalten' }).click();
+		await expect(page.getByRole('textbox', { name: 'Aufgabe', exact: true })).toHaveValue(
+			'Fenster reinigen',
+		);
+		await page
+			.getByRole('button', { name: 'Entwurf verwerfen und „Bad putzen“ übernehmen' })
+			.click();
+		await page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'Entwurf verwerfen', exact: true })
+			.click();
+		await expect(page.getByRole('textbox', { name: 'Aufgabe', exact: true })).toHaveValue(
+			'Bad putzen',
+		);
+		await expect(page.getByRole('button', { name: 'wöchentlich', exact: true })).toHaveAttribute(
+			'aria-pressed',
+			'true',
+		);
+	});
+});
+
+test('the deferred expense form shows loading and focuses its first field after the chunk arrives', async ({
+	page,
+}) => {
+	test.setTimeout(120_000);
+	await identify(page);
+	await emptyExpenses(page);
+	await page.goto(`${base}/ausgaben`);
+	await expect(page.getByRole('button', { name: 'Ausgabe erfassen', exact: true })).toBeVisible();
+	let release: (() => void) | undefined;
+	const chunkCanLoad = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	await page.route('**/*.js', async (route) => {
+		await chunkCanLoad;
+		await route.continue();
+	});
+	try {
+		await page.getByRole('button', { name: 'Ausgabe erfassen', exact: true }).click();
+		await expect(
+			page.getByRole('status').filter({ hasText: 'Ausgabenformular wird geladen…' }),
+		).toBeVisible();
+		await expect(page.getByLabel('Beschreibung', { exact: true })).toBeHidden();
+	} finally {
+		release?.();
+	}
+	await expect(page.getByLabel('Beschreibung', { exact: true })).toBeFocused();
+});

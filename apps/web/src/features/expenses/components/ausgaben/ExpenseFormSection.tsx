@@ -14,7 +14,7 @@ import {
 import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
 import type { SplitMode } from '@/features/expenses/components/ausgaben/useExpenseForm';
 import { ChevronDown, Loader2 } from 'lucide-react';
-import { type Dispatch, type SetStateAction, useState } from 'react';
+import { type Dispatch, type SetStateAction, useEffect, useState } from 'react';
 
 interface ExpenseFormSectionProps {
 	previewSplits: Array<{ debtorMemberId: string; amountCents: number }> | null;
@@ -95,6 +95,9 @@ export function ExpenseFormSection({
 }: ExpenseFormSectionProps): React.ReactElement {
 	// Fixkosten sind der Ausnahmefall — eingeklappt halten, damit die normale
 	// Ausgabe ein kurzes Formular bleibt. Beim Bearbeiten einer Vorlage offen.
+	useEffect(() => {
+		document.getElementById('f-beschreibung')?.focus();
+	}, []);
 	const [showRecurring, setShowRecurring] = useState(false);
 	const [discardIntent, setDiscardIntent] = useState<'discard' | 'replace' | null>(null);
 	const payerName =
