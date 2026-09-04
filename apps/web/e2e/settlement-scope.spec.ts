@@ -10,6 +10,8 @@ import {
 const memberA = '11111111-1111-4111-8111-111111111111';
 const memberB = '22222222-2222-4222-8222-222222222222';
 const memberC = '33333333-3333-4333-8333-333333333333';
+const noHttpBaseUrl = 'https://example.invalid';
+const fixtureMemberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
 
 const members: SettlementMemberInput[] = [
 	{ id: memberA, name: 'Anna', color: null },
@@ -231,5 +233,38 @@ test.describe('Settlement scope', () => {
 				extra: 'not-supported',
 			}),
 		).toEqual({ ok: false, reason: 'invalid' });
+	});
+});
+
+test.describe('Settlement HTTP cache policy', () => {
+	test.skip(
+		process.env.BASE_URL === noHttpBaseUrl,
+		'HTTP checks are intentionally skipped for the no-network pure-test run',
+	);
+
+	test('sets no-store on an invalid share-code preamble response', async ({ request }) => {
+		const response = await request.get(
+			`/api/wg/not-a-code/expenses/settle-batch?fromMemberId=${memberA}&toMemberId=${memberB}`,
+		);
+
+		expect(response.status()).toBe(400);
+		expect(response.headers()['cache-control']).toBe('no-store');
+		await expect(response.json()).resolves.toMatchObject({ error: 'invalid_share_code' });
+	});
+
+	test('sets no-store on a withWgRoute caught-error response', async ({ request }) => {
+		test.skip(
+			process.env.CI !== 'true' || process.env.NEXT_PUBLIC_DB_DOWN !== 'true',
+			'the caught-error case requires the local DB-down fixture server',
+		);
+
+		const response = await request.get(
+			`/api/wg/MTE8PZAT/expenses/settle-batch?fromMemberId=${memberA}&toMemberId=${memberB}`,
+			{ headers: { 'x-manawg-member-id': fixtureMemberId } },
+		);
+
+		expect(response.status()).toBe(500);
+		expect(response.headers()['cache-control']).toBe('no-store');
+		await expect(response.json()).resolves.toMatchObject({ error: 'server_error' });
 	});
 });

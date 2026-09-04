@@ -1,7 +1,14 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expensePayments, expenseSplits, expenses, wgMembers } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
-import { badRequest, conflict, forbidden, requireVerifiedMember, tooMany } from '@/core/errors';
+import {
+	apiError,
+	badRequest,
+	conflict,
+	forbidden,
+	requireVerifiedMember,
+	tooMany,
+} from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -159,7 +166,7 @@ function buildSettlementResponse(
 	};
 }
 
-export const GET = withWgRoute('settle-batch GET', async (req, { code }) => {
+const getSettlement = withWgRoute('settle-batch GET', async (req, { code }) => {
 	const fromMemberId = req.nextUrl.searchParams.get('fromMemberId');
 	const toMemberId = req.nextUrl.searchParams.get('toMemberId');
 	if (!fromMemberId || !toMemberId) return noStore(badRequest('member_ids_invalid'));
@@ -189,6 +196,13 @@ export const GET = withWgRoute('settle-batch GET', async (req, { code }) => {
 		),
 	);
 });
+
+// Keep the cache policy outside the route ceremony so preamble and caught-error
+// responses receive the same no-store header as normal handler responses.
+export const GET = async (
+	req: Parameters<typeof getSettlement>[0],
+	ctx: Parameters<typeof getSettlement>[1],
+) => noStore(await getSettlement(req, ctx));
 
 export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 	let raw: unknown;
@@ -223,6 +237,7 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 	if (!limited.success) return tooMany();
 
 	let mutation:
+		| { kind: 'member_deactivated' }
 		| { kind: 'member_not_in_wg' }
 		| { kind: 'blocked' }
 		| { kind: 'changed' }
@@ -234,6 +249,22 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 		  } = { kind: 'member_not_in_wg' };
 	try {
 		mutation = await withExpensePaymentLock(auth.wg.id, async (tx) => {
+			const [activeCaller] = await tx
+				.select({ id: wgMembers.id })
+				.from(wgMembers)
+				.where(
+					and(
+						eq(wgMembers.id, auth.member.memberId),
+						eq(wgMembers.wgId, auth.wg.id),
+						isNull(wgMembers.deactivatedAt),
+					),
+				)
+				.limit(1)
+				.for('update');
+			// The row lock is held through the accounting write: a concurrent
+			// deactivation either wins before this check or waits until settlement commits.
+			if (!activeCaller) return { kind: 'member_deactivated' as const };
+
 			const snapshot = await loadSettlementSnapshot(tx, auth.wg.id);
 			if (!pairIsInWg(snapshot, confirmation.fromMemberId, confirmation.toMemberId)) {
 				return { kind: 'member_not_in_wg' as const };
@@ -285,6 +316,9 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 		throw error;
 	}
 
+	if (mutation.kind === 'member_deactivated') {
+		return apiError('member_deactivated', 401, 'member_deactivated');
+	}
 	if (mutation.kind === 'member_not_in_wg') return badRequest('member_not_in_wg');
 	if (mutation.kind === 'blocked') return conflict('paypal_payment_pending');
 	if (mutation.kind === 'changed') return conflict('settlement_changed');
