@@ -1,5 +1,7 @@
 # Liquid Glass web adoption in the current ManaWG update
 
+> Superseded by [the bottom-only screenshot correction](./2026-09-05-bottom-glass-screenshot-correction.md): this plan's broad header, section-navigation, CTA, auth-tab and dropdown composition is retained only in history. The current implementation keeps the adapter on the two bottom main navigations.
+
 **Goal:** Implement an existing Liquid-Glass web material across shared ManaWG navigation and appropriate controls now, following Apple's published iOS27 design guidance while preserving the original neutral shadcn components and existing behavior.
 
 **Authority:** The user explicitly selected "Jetzt in ManaWG einbauen" and requested readiness for "ios27/28". iOS27 is a verified Apple preview; no verified iOS28 design/API contract is available. Do not invent or claim iOS28 compatibility. The central material adapter is the update point when real guidance changes. No separate future-version infrastructure is needed.

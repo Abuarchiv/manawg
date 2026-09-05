@@ -184,3 +184,7 @@ The authorized first slice keeps `PublicApp({ activeModule?: string })`, existin
 ### Liquid Glass implementation follow-up — 2026-09-05
 
 The authorized material adapter uses the inspected MIT `simple-liquid-glass@4.1.0` core around existing semantic controls. `mode="preset"`, `effectMode="blur"` and `mobileFallback="css-only"` are fixed upstream settings so SSR and hydration share one deterministic CSS-glass path; no custom palette, gradient, pointer effect or native Apple API is added. An opaque `var(--background)` fallback covers unsupported `backdrop-filter`, forced colors, increased contrast and reduced transparency media features. Chromium/iOS/Safari/Firefox behavior remains subject to the package's documented web fallback limits and is verified separately by the controller.
+
+### Bottom-only Glass correction — 2026-09-05
+
+The screenshot correction supersedes the broad material composition above. The same pinned adapter and semantic fallback remain, but `LiquidGlassSurface` is now composed only around the public and private four-destination bottom main navigations. Public/WG headers, `EntryFrame`, `SubNav`, the compact create/join action, auth `TabsList` and dropdown popups use their original Base Nova / Neutral shadcn surfaces and variants again. Each navigation row uses 4px inner padding, 56px link hit areas and rounded-full active links inside the outer material capsule; the page reserves 72px plus the safe-area inset for the 64px navigation bar and its minimum 8px clearance.

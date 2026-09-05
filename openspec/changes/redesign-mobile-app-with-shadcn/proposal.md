@@ -46,3 +46,7 @@ The first implementation slice is limited to the public entry, discovery preview
 ## Authorized Liquid Glass web follow-up — 2026-09-05
 
 The current shared-surface follow-up adds the exact MIT `simple-liquid-glass@4.1.0` core around existing public/private navigation, toolbars, SubNav, public CTA, auth TabsList and dropdown popups. The adapter uses the upstream `mode="preset"`, deterministic `effectMode="blur"` and `mobileFallback="css-only"` settings to avoid server/client effect selection drift; data cards and forms remain original opaque shadcn surfaces. This is a web frosted/glass material with documented browser limits, not a native or iOS 27/28 compatibility claim.
+
+## Bottom-only Glass correction — 2026-09-05
+
+The user's screenshot review supersedes the broad shared-surface composition. Keep the exact pinned web material only on the public/private four-link bottom main navigations. Restore original shadcn presentation for headers, `EntryFrame`, `SubNav`, public CTA, auth tabs and dropdown popups. Keep routing, active state, auth and membership behavior unchanged while ensuring the active navigation capsule sits inside the outer material surface and content reserves the full 64px bar plus 8px clearance.

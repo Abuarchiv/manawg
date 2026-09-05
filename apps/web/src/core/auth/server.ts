@@ -6,6 +6,15 @@ import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { getSupabaseEnv, hasSupabaseEnv } from './env';
 
+const SUPABASE_AUTH_TOKEN_COOKIE = /^sb-[A-Za-z0-9-]+-auth-token(?:\.\d+)?$/;
+
+function hasSupabaseAuthAttempt(request: NextRequest): boolean {
+	return (
+		request.headers.has('authorization') ||
+		request.cookies.getAll().some(({ name }) => SUPABASE_AUTH_TOKEN_COOKIE.test(name))
+	);
+}
+
 export function createSupabaseServerClient(request: NextRequest, response: NextResponse) {
 	const { url, publishableKey } = getSupabaseEnv();
 
@@ -25,6 +34,7 @@ export function createSupabaseServerClient(request: NextRequest, response: NextR
 }
 
 export async function getAuthenticatedUser(request: NextRequest): Promise<Pick<User, 'id'> | null> {
+	if (!hasSupabaseAuthAttempt(request)) return null;
 	const supabase = createSupabaseServerClient(request, NextResponse.next());
 	const { data, error } = await supabase.auth.getUser();
 

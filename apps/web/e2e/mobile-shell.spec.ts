@@ -52,7 +52,7 @@ test.describe('Mobile WG shell', () => {
 			timeout: 30_000,
 		});
 		await expect(bottomNav.locator('[data-liquid-glass]')).toHaveCount(1);
-		await expect(page.locator('header [data-liquid-glass]')).toHaveCount(1);
+		await expect(page.locator('header [data-liquid-glass]')).toHaveCount(0);
 		await expect(bottomNav.getByRole('link', { name: /^Start$/ })).toHaveAttribute(
 			'aria-current',
 			'page',
@@ -108,7 +108,7 @@ test.describe('Mobile WG shell', () => {
 		await expect(ausgabenSubNav.getByRole('link', { name: /^Fixkosten/ })).toBeVisible({
 			timeout: 30_000,
 		});
-		await expect(ausgabenSubNav.locator('[data-liquid-glass]')).toHaveCount(1);
+		await expect(ausgabenSubNav.locator('[data-liquid-glass]')).toHaveCount(0);
 		await ausgabenSubNav.getByRole('link', { name: /^Mahnungen/ }).click();
 		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/mahnungen$/, { timeout: 60_000 });
 		await page.getByRole('link', { name: 'Zurück zu Ausgaben' }).click();

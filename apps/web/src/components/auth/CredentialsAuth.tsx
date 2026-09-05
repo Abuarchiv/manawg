@@ -4,7 +4,6 @@ import { ErrorBox } from '@/components/neu/ErrorBox';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { LiquidGlassSurface } from '@/components/ui/liquid-glass-surface';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion, useReducedMotion } from 'motion/react';
@@ -172,16 +171,14 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 
 	return (
 		<Tabs defaultValue="email" aria-busy={busy !== null} className="gap-4">
-			<LiquidGlassSurface>
-				<TabsList variant="line" className="min-h-12 w-full">
-					<TabsTrigger value="email" disabled={busy !== null} className="min-h-11">
-						E-Mail
-					</TabsTrigger>
-					<TabsTrigger value="phone" disabled={busy !== null} className="min-h-11">
-						Telefon / SMS
-					</TabsTrigger>
-				</TabsList>
-			</LiquidGlassSurface>
+			<TabsList className="min-h-12 w-full">
+				<TabsTrigger value="email" disabled={busy !== null} className="min-h-11">
+					E-Mail
+				</TabsTrigger>
+				<TabsTrigger value="phone" disabled={busy !== null} className="min-h-11">
+					Telefon / SMS
+				</TabsTrigger>
+			</TabsList>
 			<TabsContent
 				value="email"
 				aria-labelledby="email-auth-heading"

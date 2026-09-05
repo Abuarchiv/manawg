@@ -194,7 +194,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 			className="min-h-svh bg-background"
 			style={{
 				paddingTop: 'env(safe-area-inset-top, 0px)',
-				paddingBottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))',
+				paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))',
 			}}
 		>
 			<main
@@ -208,27 +208,25 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 					className="flex min-w-0 flex-col gap-6"
 				>
 					<header className="flex flex-col gap-3">
-						<LiquidGlassSurface>
-							<div className="flex items-center justify-between gap-3">
-								<Link
-									href={publicHref('/')}
-									className="flex min-h-11 items-center gap-2"
-									aria-label="ManaWG Startseite"
-								>
-									<LogoMark size={28} radius={7} />
-									<span className="text-sm font-medium">ManaWG</span>
-								</Link>
-								<Link
-									href={publicHref('/neu')}
-									className={cn(
-										buttonVariants({ variant: 'link' }),
-										'min-h-11 px-0 text-muted-foreground',
-									)}
-								>
-									Anmelden
-								</Link>
-							</div>
-						</LiquidGlassSurface>
+						<div className="flex items-center justify-between gap-3">
+							<Link
+								href={publicHref('/')}
+								className="flex min-h-11 items-center gap-2"
+								aria-label="ManaWG Startseite"
+							>
+								<LogoMark size={28} radius={7} />
+								<span className="text-sm font-medium">ManaWG</span>
+							</Link>
+							<Link
+								href={publicHref('/neu')}
+								className={cn(
+									buttonVariants({ variant: 'link' }),
+									'min-h-11 px-0 text-muted-foreground',
+								)}
+							>
+								Anmelden
+							</Link>
+						</div>
 						<div className="flex flex-col gap-1">
 							<h1 className="text-2xl font-semibold tracking-tight">
 								{module?.title ?? 'Euer WG-Alltag. Gemeinsam geregelt.'}
@@ -314,7 +312,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
 			>
 				<LiquidGlassSurface>
-					<ul className="flex gap-1 px-0 pt-1 [&>li]:min-w-0 [&>li]:flex-1">
+					<ul className="flex gap-1 p-1 [&>li]:min-w-0 [&>li]:flex-1">
 						<NavItem
 							href={publicHref('/')}
 							label="Start"

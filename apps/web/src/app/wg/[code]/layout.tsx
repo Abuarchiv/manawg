@@ -154,7 +154,7 @@ function WgShell({
 				className="group/wg-shell min-h-svh bg-background"
 				style={{
 					paddingTop: 'env(safe-area-inset-top, 0px)',
-					paddingBottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))',
+					paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))',
 				}}
 			>
 				<OfflineBanner />
@@ -171,7 +171,7 @@ function WgShell({
 				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
 			>
 				<LiquidGlassSurface>
-					<ul className="flex gap-1 px-0 pt-1 [&>li]:min-w-0 [&>li]:flex-1">
+					<ul className="flex gap-1 p-1 [&>li]:min-w-0 [&>li]:flex-1">
 						<NavItem
 							href={wgBaseHref}
 							label="Start"
