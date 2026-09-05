@@ -1013,7 +1013,8 @@ body {
 }
 
 /* Bottom-nav active-state animation — gentle scale + opacity for engaged tab */
-[data-bottom-nav-item][aria-current="page"] {
+[data-bottom-nav-item][aria-current="page"],
+[data-bottom-nav-item][aria-current="location"] {
 	animation: nav-tab-pop 220ms ease-out;
 }
 @keyframes nav-tab-pop {
@@ -1028,7 +1029,8 @@ body {
 	}
 }
 @media (prefers-reduced-motion: reduce) {
-	[data-bottom-nav-item][aria-current="page"] {
+	[data-bottom-nav-item][aria-current="page"],
+	[data-bottom-nav-item][aria-current="location"] {
 		animation: none;
 	}
 }

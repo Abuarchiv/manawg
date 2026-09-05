@@ -1,8 +1,11 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiFetch } from '@/core/infra/api-client';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
+import { cn } from '@/shared/lib/cn';
 import { type StoredIdentity, getIdentity, rememberWg } from '@/shared/lib/identity';
 import {
 	createContext,
@@ -107,7 +110,7 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 			const res = await apiFetch<{
 				members: Array<Member & { active?: boolean }>;
 				viewerIsAdmin?: boolean;
-			}>(`/api/wg/${encodedShareCode}/members`);
+			}>(`/api/wg/${encodedShareCode}/members`, { memberId: identity.memberId });
 			// Normalize defensively: an omitted flag (e.g. E2E fixtures) means active.
 			if (res.ok) {
 				setMembers(res.data.members.map((m) => ({ ...m, active: m.active !== false })));
@@ -189,10 +192,20 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 	if (memberLoadError) {
 		return (
 			<main id="main" tabIndex={-1} className="mx-auto max-w-md p-6">
-				<p role="alert">Deine WG konnte nicht geladen werden. Bitte versuche es erneut.</p>
-				<button type="button" onClick={() => window.location.reload()}>
-					Erneut versuchen
-				</button>
+				<Alert variant="destructive">
+					<AlertDescription className="text-current">
+						Deine WG konnte nicht geladen werden. Bitte versuche es erneut.
+					</AlertDescription>
+					<Button
+						type="button"
+						variant="outline"
+						size="lg"
+						className="mt-3 min-h-11"
+						onClick={() => window.location.reload()}
+					>
+						Erneut versuchen
+					</Button>
+				</Alert>
 			</main>
 		);
 	}
@@ -200,13 +213,17 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 	if (!identity) {
 		return (
 			<main id="main" tabIndex={-1} className="mx-auto max-w-md p-6">
-				<p role="alert">Deine Mitgliedschaft konnte nicht bestätigt werden.</p>
-				<a
-					href={`/neu?next=${encodeURIComponent(`/wg/${wg.shareCode}`)}`}
-					className="mt-4 inline-block underline"
-				>
-					Zurück zu deinen WGs
-				</a>
+				<Alert variant="destructive">
+					<AlertDescription className="text-current">
+						Deine Mitgliedschaft konnte nicht bestätigt werden.
+					</AlertDescription>
+					<a
+						href={`/neu?next=${encodeURIComponent(`/wg/${wg.shareCode}`)}`}
+						className={cn(buttonVariants({ variant: 'link', size: 'lg' }), 'mt-2 min-h-11 px-0')}
+					>
+						Zurück zu deinen WGs
+					</a>
+				</Alert>
 			</main>
 		);
 	}

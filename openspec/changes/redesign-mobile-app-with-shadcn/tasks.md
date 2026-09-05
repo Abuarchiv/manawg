@@ -126,6 +126,13 @@ git diff --check
 - [x] Update focused glass presence, fallback, link and no-card-takeover regression assertions; no automated browser was launched.
 - [x] Controller: complete public/auth glass, readability and fallback checks in connected Chrome and independent source review; record the pre-existing private fixture membership blocker and device-test limits in [Liquid Glass acceptance](../../../docs/superpowers/plans/2026-09-05-liquid-glass-web-adoption.md). Final graph and evidence updates complete.
 
+## Existing WG app-start consistency follow-up — 2026-09-05
+
+- [x] Replace the WG context membership/error-state native controls with the existing Alert/Button and shadcn link variants while preserving text, reload behavior, destination and guard conditions.
+- [x] Apply the existing bottom-navigation active-state animation to both `aria-current="page"` and grouped `aria-current="location"` states in normal and reduced-motion media rules.
+- [x] Keep database-down fixture bootstrap aligned with the existing member-header guard: expose fixture `currentMember`, send the existing member header for the members refresh, and cover missing/valid/invalid headers plus dashboard access in the request-only API regression.
+- [ ] Controller: confirm the existing Test-WG runtime and connected-Chrome startup/error-state presentation after the isolated build; no browser CLI run is part of this slice.
+
 ## Original mobile-redesign evidence — 2026-09-05 (before public-entry follow-up)
 
 - Root lint: 447 files checked.

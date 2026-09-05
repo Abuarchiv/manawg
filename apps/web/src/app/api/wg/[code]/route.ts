@@ -61,6 +61,14 @@ export async function GET(
 				createdAt: new Date().toISOString(),
 			},
 			members: fixture.members,
+			...(fixture.members[0]
+				? {
+						currentMember: {
+							memberId: fixture.members[0].id,
+							name: fixture.members[0].name,
+						},
+					}
+				: {}),
 		});
 	}
 
