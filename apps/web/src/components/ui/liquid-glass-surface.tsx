@@ -18,12 +18,14 @@ export const LiquidGlassSurface = forwardRef<HTMLDivElement, LiquidGlassSurfaceP
 			[ref],
 		);
 
+		// Base Nova --radius-xl: calc(var(--radius) + 4px) = 14px.
 		return (
 			<LiquidGlass
 				{...props}
 				{...(style ? { style } : {})}
 				ref={bridgeRef}
 				mode="preset"
+				radius={14}
 				effectMode="blur"
 				mobileFallback="css-only"
 				className={cn('liquid-glass-surface', className)}

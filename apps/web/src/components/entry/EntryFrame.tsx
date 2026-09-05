@@ -51,11 +51,6 @@ export function EntryFrame({
 				{actions}
 			</header>
 			{children}
-			<footer className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
-				<Link href={backHref} className={cn(buttonVariants({ variant: 'link' }), 'min-h-11 px-0')}>
-					Öffentliche Ansicht
-				</Link>
-			</footer>
 		</main>
 	);
 }

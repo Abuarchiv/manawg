@@ -119,7 +119,7 @@ export function NavItem({
 				}}
 				className={cn(
 					buttonVariants({ variant: isActive ? 'secondary' : 'ghost' }),
-					'h-auto min-h-14 w-full rounded-full flex-col gap-1 px-1 py-2',
+					'h-auto min-h-14 w-full flex-col gap-1 px-1 py-2',
 				)}
 			>
 				<span className="relative">
