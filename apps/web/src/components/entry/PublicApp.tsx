@@ -311,7 +311,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 			<nav
 				aria-label="Öffentliche Hauptnavigation"
 				data-app-chrome
-				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] px-2 pb-[env(safe-area-inset-bottom,0px)]"
+				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
 			>
 				<LiquidGlassSurface>
 					<ul className="flex gap-1 px-0 pt-1 [&>li]:min-w-0 [&>li]:flex-1">
