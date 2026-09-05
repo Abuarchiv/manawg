@@ -38,7 +38,7 @@ const PREVIEW_COPY: Record<string, PreviewCopy> = {
 	},
 	putzen: { title: 'Bad putzen', detail: 'Samira · heute', meta: 'Offen · als Nächstes dran' },
 	pinnwand: {
-		title: 'Wohnungsübergabe am Freitag',
+		title: 'Übergabe am Freitag',
 		detail: 'Alex · gestern',
 		meta: 'Schlüssel liegen im Flur bereit.',
 	},
@@ -183,9 +183,7 @@ function PreviewRows({
 						<Megaphone aria-hidden />
 					</ItemMedia>
 					<ItemContent className="min-w-0">
-						<ItemTitle className="line-clamp-none break-words">
-							Wohnungsübergabe am Freitag
-						</ItemTitle>
+						<ItemTitle className="line-clamp-none break-words">Übergabe am Freitag</ItemTitle>
 						<ItemDescription className="line-clamp-none break-words">
 							Alex · gestern · Schlüssel liegen im Flur bereit.
 						</ItemDescription>
