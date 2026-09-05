@@ -116,7 +116,7 @@ git diff --check
 - [x] Keep the fictional public previews and contracts while using original Card/Item/Badge/Avatar variants and readable layout-only wrapping at narrow widths.
 - [x] Add the documented `motion/react` route-content opacity entry transition with `useReducedMotion()` immediate rendering; do not replace the compatible existing auth Tabs solely to showcase animation.
 - [x] Update focused public-entry assertions for semantic preset colors, reduced-motion rendering and complete preview content.
-- [ ] Controller: verify original neutral light/dark rendering, route entry motion and reduced-motion behavior through the connected Chrome Extension, then complete the independent review and final gates.
+- [x] Controller: verify original neutral light/dark rendering, public/auth Motion and reduced-motion behavior through the connected Chrome Extension; complete independent review and final gates. See [correction acceptance](../../../docs/superpowers/plans/2026-09-05-original-shadcn-motion-correction.md).
 
 ## Original mobile-redesign evidence — 2026-09-05 (before public-entry follow-up)
 
