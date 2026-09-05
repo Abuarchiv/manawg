@@ -1,5 +1,14 @@
 'use client';
-import { ALERT_DANGER, EMPTY_PLACEHOLDER } from '@/components/ui/styles';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -81,7 +90,7 @@ type CommentOverride = AnnouncementComment | null;
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function PinnwandPage(): React.ReactElement {
-	const { wg, members, identity } = useWg();
+	const { wg, members, identity, isAdmin } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const searchParams = useSearchParams();
@@ -172,13 +181,18 @@ export default function PinnwandPage(): React.ReactElement {
 	}, [composerOpen, content, imageUrl]);
 
 	function closeComposer(): void {
+		if (submittingRef.current) return;
 		setComposerOpen(false);
 		setError(null);
 		setNotice(null);
-		setKind('info');
 	}
 
 	function applyQuickAnnouncement(template: (typeof QUICK_ANNOUNCEMENT_TEMPLATES)[number]): void {
+		if (content.trim() || imageUrl || queueEditId || kind !== 'info') {
+			setComposerOpen(true);
+			setNotice('Dein Entwurf ist noch da. Du kannst ihn weiterbearbeiten.');
+			return;
+		}
 		setComposerOpen(true);
 		setKind(template.kind);
 		setContent(template.content.slice(0, CONTENT_MAX));
@@ -645,11 +659,12 @@ export default function PinnwandPage(): React.ReactElement {
 			return false;
 		}
 		forgetCommentOverride(announcement.id, optimisticComment.id);
-		rememberCommentOverride(announcement.id, res.data.comment.id, res.data.comment);
+		const confirmedComment = { ...optimisticComment, ...res.data.comment };
+		rememberCommentOverride(announcement.id, confirmedComment.id, confirmedComment);
 		updateItem(announcement.id, (item) => ({
 			...item,
 			comments: item.comments.map((comment) =>
-				comment.id === optimisticComment.id ? res.data.comment : comment,
+				comment.id === optimisticComment.id ? confirmedComment : comment,
 			),
 		}));
 		void load('background');
@@ -701,11 +716,12 @@ export default function PinnwandPage(): React.ReactElement {
 			setActionError(commentActionErrorMessage(res.error));
 			return false;
 		}
-		rememberCommentOverride(announcement.id, res.data.comment.id, res.data.comment);
+		const confirmedComment = { ...previousComment, ...res.data.comment };
+		rememberCommentOverride(announcement.id, confirmedComment.id, confirmedComment);
 		updateItem(announcement.id, (item) => ({
 			...item,
 			comments: item.comments.map((comment) =>
-				comment.id === commentId ? res.data.comment : comment,
+				comment.id === commentId ? confirmedComment : comment,
 			),
 		}));
 		void load('background');
@@ -746,8 +762,8 @@ export default function PinnwandPage(): React.ReactElement {
 		return true;
 	}
 
-	async function remove(id: string): Promise<void> {
-		if (isPending(id)) return;
+	async function remove(id: string): Promise<boolean> {
+		if (isPending(id)) return false;
 		start(id);
 		setActionError(null);
 		const res = await apiFetch<Record<string, never>>(
@@ -766,14 +782,15 @@ export default function PinnwandPage(): React.ReactElement {
 			} else {
 				const msg =
 					res.status === 403
-						? 'Nur der/die Autor:in kann diesen Beitrag entfernen.'
+						? 'Nur Autor:in oder WG-Admin können diesen Beitrag entfernen.'
 						: announcementActionErrorMessage(res.error);
 				setActionError(msg);
 			}
-			return;
+			return false;
 		}
 		setItems((current) => current.filter((item) => item.id !== id));
 		void load();
+		return true;
 	}
 
 	const showSkeleton = initialLoading && items.length === 0;
@@ -782,17 +799,22 @@ export default function PinnwandPage(): React.ReactElement {
 		[filter, identity.memberId, items],
 	);
 	const myOpenItems = useMemo(() => getMyOpenAnnouncements(items), [items]);
-	const statusFocusActive = statusParamFilter !== 'all';
+	const statusFocusActive = filter.status !== 'all';
 
 	return (
-		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+		<div className="mx-auto flex w-full max-w-lg flex-col gap-5 px-4 py-5">
 			<PinnwandHeader
 				itemCount={items.length}
 				refreshing={refreshing}
 				composerOpen={composerOpen}
+				composerBusy={submitting}
+				loading={initialLoading}
+				hasDraft={Boolean(content.trim() || imageUrl || queueEditId || kind !== 'info')}
 				wgBaseHref={wgBaseHref}
 				onToggleComposer={() => {
-					setComposerOpen((value) => !value);
+					if (submittingRef.current) return;
+					if (composerOpen) closeComposer();
+					else setComposerOpen(true);
 					setNotice(null);
 				}}
 			/>
@@ -800,20 +822,24 @@ export default function PinnwandPage(): React.ReactElement {
 			{/* Filter erst zeigen, wenn es etwas zu filtern gibt. */}
 			{items.length > 0 && <PinnwandFilterBar filter={filter} onFilterChange={setFilter} />}
 			{statusFocusActive && (
-				<section className="rounded-md border border-[var(--accent)] bg-[var(--accent)]/5 px-3 py-2 text-[13px] text-[var(--accent)]">
-					{statusParamFilter === 'open'
-						? 'Aktiver Filter: Nur offene Beiträge'
-						: 'Aktiver Filter: Nur geklärte Beiträge'}
-				</section>
+				<Alert>
+					<AlertDescription>
+						{filter.status === 'open'
+							? 'Aktiver Filter: Nur offene Beiträge'
+							: 'Aktiver Filter: Nur geklärte Beiträge'}
+					</AlertDescription>
+				</Alert>
 			)}
 			{newCount > 0 && (
-				<button
+				<Button
 					type="button"
 					onClick={applyPendingItems}
-					className="flex w-full items-center justify-center rounded-md border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 py-2 text-[13px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+					variant="secondary"
+					className="min-h-11 w-full"
+					aria-live="polite"
 				>
 					{newCount} neue Beitr{newCount === 1 ? 'ag' : 'äge'}
-				</button>
+				</Button>
 			)}
 			<OfflineQueueNotice queuedCount={queuedCount} />
 			{loadError && (
@@ -828,7 +854,7 @@ export default function PinnwandPage(): React.ReactElement {
 				<MyOpenAnnouncements
 					items={myOpenItems}
 					onSelect={(id) => {
-						window.history.replaceState(null, '', getAnnouncementHash(id));
+						window.history.replaceState(window.history.state, '', getAnnouncementHash(id));
 						scrollToAnnouncement(id);
 					}}
 				/>
@@ -837,7 +863,6 @@ export default function PinnwandPage(): React.ReactElement {
 			{composerOpen && (
 				<PinnwandComposer
 					authorName={identity.name}
-					authorColor={members.find((m) => m.id === identity.memberId)?.color ?? null}
 					submitting={submitting}
 					kind={kind}
 					onKindChange={setKind}
@@ -854,47 +879,50 @@ export default function PinnwandPage(): React.ReactElement {
 			)}
 
 			{notice && (
-				<output
-					className="rounded-md border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-3 py-2 text-[13px] text-[var(--accent)]"
-					aria-live="polite"
-				>
-					{notice}
-				</output>
+				<Alert aria-live="polite">
+					<AlertDescription>{notice}</AlertDescription>
+				</Alert>
 			)}
 
 			{actionError && (
-				<div role="alert" className={ALERT_DANGER}>
-					{actionError}
-				</div>
+				<Alert variant="destructive">
+					<AlertDescription>{actionError}</AlertDescription>
+				</Alert>
 			)}
 
 			{showSkeleton ? (
 				<AnnouncementSkeleton />
 			) : loadError && items.length === 0 ? (
-				<p className={EMPTY_PLACEHOLDER}>Noch keine Beiträge geladen. Versuche es erneut.</p>
+				<EmptyState
+					icon={Megaphone}
+					hint="Versuche es erneut, sobald die Verbindung wieder da ist."
+				>
+					Noch keine Beiträge geladen.
+				</EmptyState>
 			) : items.length === 0 ? (
-				<div className="rounded-lg border border-dashed border-[var(--border)] px-5 py-10 text-center sm:px-6">
-					<Megaphone
-						className="mx-auto mb-3 h-7 w-7 text-[var(--text-3)]"
-						strokeWidth={1.5}
-						aria-hidden
-					/>
-					<p className="mx-auto max-w-[28ch] text-[13.5px] leading-relaxed text-[var(--text-2)]">
-						Pinnwand ist leer. Starte mit einem typischen WG-Beitrag.
-					</p>
-					<div className="mx-auto mt-4 flex max-w-xl flex-wrap justify-center gap-2">
+				<Empty className="border border-dashed">
+					<EmptyHeader>
+						<EmptyMedia variant="icon">
+							<Megaphone aria-hidden />
+						</EmptyMedia>
+						<EmptyTitle>Noch keine Beiträge</EmptyTitle>
+						<EmptyDescription>Starte mit einem typischen WG-Beitrag.</EmptyDescription>
+					</EmptyHeader>
+					<EmptyContent className="flex-row flex-wrap justify-center gap-2">
 						{QUICK_ANNOUNCEMENT_TEMPLATES.map((template) => (
-							<button
+							<Button
 								key={template.label}
 								type="button"
 								onClick={() => applyQuickAnnouncement(template)}
-								className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[13px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+								variant="outline"
+								className="min-h-11"
+								disabled={submitting}
 							>
 								{template.label}
-							</button>
+							</Button>
 						))}
-					</div>
-				</div>
+					</EmptyContent>
+				</Empty>
 			) : filteredItems.length === 0 ? (
 				<EmptyState
 					icon={Megaphone}
@@ -903,14 +931,12 @@ export default function PinnwandPage(): React.ReactElement {
 					Keine passenden Beiträge.
 				</EmptyState>
 			) : (
-				// space-y-3 statt -5: System-Ereignisse sind jetzt einzeilig, mit
-				// 20px Abstand stünden sie weiter auseinander als sie hoch sind.
-				<ul className="space-y-3">
+				<ul className="flex flex-col gap-4" aria-label="Pinnwand-Beiträge">
 					{filteredItems.map((a) => {
 						const author = memberLookup(a.authorMemberId);
 						return (
 							<AnnouncementCard
-								key={a.id}
+								key={`${identity.memberId}:${a.id}`}
 								announcement={a}
 								author={author}
 								deletePending={isPending(a.id)}
@@ -927,6 +953,7 @@ export default function PinnwandPage(): React.ReactElement {
 								onUpdateComment={(commentId, content) => updateComment(a, commentId, content)}
 								onDeleteComment={(commentId) => deleteComment(a, commentId)}
 								currentMemberId={identity.memberId}
+								isAdmin={isAdmin}
 								shareCode={wg.shareCode}
 								highlighted={highlightedId === a.id}
 							/>

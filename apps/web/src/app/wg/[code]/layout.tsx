@@ -150,13 +150,14 @@ function WgShell({
 		<WgContextProvider wg={wg} members={members}>
 			<ToastContainer />
 			<div
-				className="min-h-svh bg-[var(--bg-base)]"
+				className="group/wg-shell min-h-svh bg-background"
 				style={{
 					paddingTop: 'env(safe-area-inset-top, 0px)',
 					paddingBottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))',
 				}}
 			>
 				<OfflineBanner />
+				<WgAppHeader />
 				{/* WCAG 1.3.1 / 2.4.1 — single <main> landmark.
 				    tabIndex={-1} lets the skip-link target receive programmatic focus. */}
 				<main id="main" tabIndex={-1} className="app-page-enter focus:outline-none">
@@ -166,25 +167,36 @@ function WgShell({
 			<nav
 				aria-label="WG Hauptnavigation"
 				data-app-chrome
-				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] border-t border-[var(--border)] bg-[var(--bg-base)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--bg-base)]/85"
+				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85"
 			>
 				<ul
-					className="mx-auto flex max-w-2xl [&>li]:min-w-0 [&>li]:flex-1"
+					className="flex gap-1 px-2 pt-1 [&>li]:min-w-0 [&>li]:flex-1"
 					style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
 				>
-					<NavItem href={wgBaseHref} label="Start" iconKey="home" />
-					<NavItem href={`${wgBaseHref}/ausgaben`} label="Ausgaben" iconKey="ausgaben" />
-					<NavItem href={`${wgBaseHref}/einkauf`} label="Einkauf" iconKey="einkauf" />
-					<NavItem href={`${wgBaseHref}/pinnwand`} label="Pinnwand" iconKey="pinnwand" />
-					<NavItem href={`${wgBaseHref}/putzen`} label="Putzen" iconKey="putzen" />
-					{/* Kein Mehr-Menü. Jeder übrige Bereich hängt an der Seite, zu der
-					    er inhaltlich gehört, und wird dort verlinkt: Fixkosten und
-					    Mahnungen unter Ausgaben, Vorräte unter Einkauf, Kalender unter
-					    Pinnwand, Aktivität in der Dashboard-Sektion "Letzte Aktivität".
-					    Ein zweiter Weg über ein Sammelmenü macht sie nicht auffindbarer,
-					    sondern lässt offen, wo der Bereich eigentlich wohnt. */}
+					<NavItem
+						href={wgBaseHref}
+						label="Start"
+						iconKey="home"
+						activePrefixes={[`${wgBaseHref}/aktivitaet`]}
+					/>
+					{WG_SECTIONS.map((section) => (
+						<NavItem
+							key={section.label}
+							href={`${wgBaseHref}/${section.pages[0].slug}`}
+							label={section.label}
+							iconKey={section.iconKey}
+							activePrefixes={section.pages.map((page) => `${wgBaseHref}/${page.slug}`)}
+						/>
+					))}
+					{/* Vier Ziele nach Candidate A: Start, Haushalt (Einkauf/Vorräte/
+					    Putzen/Kalender), Finanzen (Ausgaben/Fixkosten/Mahnungen/Import),
+					    Austausch (Pinnwand/Chat). Alle bisherigen Deep Links lösen
+					    weiter auf; Suche/Aktivität/Einstellungen bleiben über
+					    Header- und Start-Verlinkungen erreichbar. */}
 				</ul>
 			</nav>
 		</WgContextProvider>
 	);
 }
+import { WgAppHeader } from '@/components/app/WgAppHeader';
+import { WG_SECTIONS } from '@/components/app/navigation';

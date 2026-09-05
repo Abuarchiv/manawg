@@ -1,5 +1,9 @@
 'use client';
 
+import { FieldLabel, Field as FieldPrimitive } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/shared/lib/cn';
+
 interface FieldProps {
 	id: string;
 	label: string;
@@ -8,6 +12,8 @@ interface FieldProps {
 	onChange: (v: string) => void;
 	maxLength: number;
 	autoComplete?: string;
+	invalid?: boolean;
+	describedBy?: string | undefined;
 }
 
 export function Field({
@@ -18,26 +24,28 @@ export function Field({
 	onChange,
 	maxLength,
 	autoComplete,
+	invalid = false,
+	describedBy,
 }: FieldProps) {
 	const nearLimit = value.length >= maxLength - 8;
+	const describedByProps = describedBy === undefined ? {} : { 'aria-describedby': describedBy };
 	return (
-		<div>
-			<div className="mb-1.5 flex items-baseline justify-between gap-2">
-				<label htmlFor={id} className="block text-[13px] font-medium text-[var(--text-1)]">
-					{label}
-				</label>
+		<FieldPrimitive data-invalid={invalid}>
+			<div className="flex items-baseline justify-between gap-2">
+				<FieldLabel htmlFor={id}>{label}</FieldLabel>
 				{nearLimit && (
 					<span
 						aria-live="polite"
-						className={`text-[11px] tabular-nums ${
-							value.length >= maxLength ? 'text-[var(--danger)]' : 'text-[var(--text-3)]'
-						}`}
+						className={cn(
+							'text-xs tabular-nums',
+							value.length >= maxLength ? 'text-destructive' : 'text-muted-foreground',
+						)}
 					>
 						{value.length}/{maxLength}
 					</span>
 				)}
 			</div>
-			<input
+			<Input
 				id={id}
 				type="text"
 				value={value}
@@ -45,8 +53,10 @@ export function Field({
 				maxLength={maxLength}
 				placeholder={placeholder}
 				autoComplete={autoComplete}
-				className="block h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-base)] px-3.5 text-base text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition-all duration-200 focus-visible:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+				aria-invalid={invalid}
+				{...describedByProps}
+				className="min-h-11 text-base md:text-base"
 			/>
-		</div>
+		</FieldPrimitive>
 	);
 }

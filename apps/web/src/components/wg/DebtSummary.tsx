@@ -1,11 +1,36 @@
 'use client';
 
-import { MemberAvatar } from '@/components/wg/MemberAvatar';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+	Item,
+	ItemContent,
+	ItemDescription,
+	ItemFooter,
+	ItemGroup,
+	ItemTitle,
+} from '@/components/ui/item';
+import { Spinner } from '@/components/ui/spinner';
 import { PayPalPaymentButton } from '@/components/wg/PayPalPaymentButton';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
+import { formatShortDate } from '@/core/utils/time';
+import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';
-import { ArrowRight, Bell, Check, CheckCircle2, Loader2 } from 'lucide-react';
+import { Bell, CheckCircle2, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 
@@ -34,15 +59,58 @@ function settlementErrorMessage(error: string): string {
 	if (error === 'same_member' || error === 'member_ids_invalid' || error === 'invalid_json') {
 		return 'Ausgleich konnte nicht gespeichert werden: Die Anfrage war ungültig.';
 	}
+	if (error === 'paypal_payment_pending')
+		return 'Eine PayPal-Zahlung läuft noch. Warte auf deren Abschluss.';
 	return 'Ausgleich konnte nicht gespeichert werden.';
+}
+
+interface SettlementRecord {
+	id: string;
+	description: string;
+	occurredAt: string;
+	amountCents: number;
+}
+
+// Read-only preview of settle-batch's oldest-first, whole-direct-share scope.
+// The response remains authoritative if another resident changes an expense.
+function settlementRecords(expenses: readonly Expense[], debt: SimplifiedDebt): SettlementRecord[] {
+	const candidates = expenses
+		.flatMap((expense) =>
+			expense.paidByMemberId !== debt.toId
+				? []
+				: expense.splits
+						.filter(
+							(split) =>
+								split.debtorMemberId === debt.fromId &&
+								split.settledAt === null &&
+								split.amountCents > 0,
+						)
+						.map((split) => ({
+							id: split.id,
+							amountCents: split.amountCents,
+							description: expense.description,
+							occurredAt: expense.occurredAt,
+						})),
+		)
+		.sort(
+			(a, b) =>
+				new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime() ||
+				a.id.localeCompare(b.id),
+		);
+	let remaining = debt.cents;
+	return candidates.filter((record) => {
+		if (record.amountCents > remaining) return false;
+		remaining -= record.amountCents;
+		return true;
+	});
 }
 
 interface DebtRowProps {
 	debt: SimplifiedDebt;
+	records: SettlementRecord[];
 	shareCode: string;
 	currentMemberId: string;
 	memberToken?: string | undefined;
-	memberColor: (id: string) => string | null;
 	memberPayPalMerchantId: (id: string) => string | null;
 	payPalEligible: boolean;
 	onSettled: () => void;
@@ -57,10 +125,10 @@ interface SettleBatchResponse {
 
 function DebtRow({
 	debt,
+	records,
 	shareCode,
 	currentMemberId,
 	memberToken,
-	memberColor,
 	memberPayPalMerchantId,
 	payPalEligible,
 	onSettled,
@@ -69,14 +137,16 @@ function DebtRow({
 	const [settlementMessage, setSettlementMessage] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [reviewOpen, setReviewOpen] = useState(false);
 	const settlingRef = useRef(false);
 	const canSettle = debt.fromId === currentMemberId || debt.toId === currentMemberId;
 	const payeeMerchantId = memberPayPalMerchantId(debt.toId);
 	const canPayWithPayPal =
 		debt.fromId === currentMemberId && payeeMerchantId !== null && payPalEligible;
+	const supportedCents = records.reduce((total, record) => total + record.amountCents, 0);
 
 	async function settle(): Promise<void> {
-		if (settlingRef.current) return;
+		if (settlingRef.current || records.length === 0) return;
 		settlingRef.current = true;
 		setError(null);
 		setNotice(null);
@@ -98,21 +168,22 @@ function DebtRow({
 					// is nothing to mark settled between exactly these two. Keep the
 					// row visible instead of pretending the pair is even.
 					setNotice(
-						`${formatEuroCents(remainingCents ?? debt.cents)} zwischen ${debt.fromName} und ${debt.toName} sind über andere Mitglieder verrechnet. Begleicht dafür die zugehörigen Ausgaben direkt.`,
+						`Keine passenden Direktanteile geändert. ${formatEuroCents(remainingCents ?? debt.cents)} bleiben offen; prüfe die einzelnen Ausgaben.`,
 					);
 					return;
 				}
 				if (settled > 0 && remainingCents && remainingCents > 0) {
 					setNotice(
-						`Teilweise beglichen: ${formatEuroCents(settledCents ?? 0)} gespeichert, ${formatEuroCents(remainingCents)} sind über andere Mitglieder verrechnet.`,
+						`Teilweise verbucht: ${formatEuroCents(settledCents ?? 0)} in ${settled} Anteilen. ${formatEuroCents(remainingCents)} bleiben offen.`,
 					);
+					setReviewOpen(false);
 					onSettled();
 					return;
 				}
 				setSettlementMessage(
 					settled > 0
-						? `Ausgleich gespeichert: ${debt.fromName} hat ${debt.toName} ${formatEuroCents(settledCents ?? debt.cents)} bezahlt.`
-						: `Kein offener Ausgleich mehr: ${debt.fromName} und ${debt.toName} sind bereits ausgeglichen.`,
+						? `${settled} Anteile als beglichen vermerkt${settledCents !== undefined ? `: ${formatEuroCents(settledCents)}` : ''}. Es wurde kein Geld überwiesen.`
+						: 'Keine Anteile geändert. Die aktuellen Ausgaben werden neu geladen.',
 				);
 				onSettled();
 				return;
@@ -126,86 +197,158 @@ function DebtRow({
 		}
 	}
 
-	if (settlementMessage) {
-		return (
-			<li className="py-3 first:pt-0 last:pb-0">
-				<output
-					className="flex items-center gap-1.5 text-[12.5px] text-[var(--success)]"
-					aria-live="polite"
-					aria-atomic="true"
-				>
-					<CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
-					<span>{settlementMessage}</span>
-				</output>
-			</li>
-		);
-	}
-
 	return (
-		<li className="py-3 first:pt-0 last:pb-0">
-			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-				<div className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_auto_auto_minmax(0,1fr)_auto] items-center gap-2 text-[13.5px]">
-					<MemberAvatar name={debt.fromName} color={memberColor(debt.fromId)} size={20} />
-					<span className="truncate font-medium text-[var(--text-1)]">{debt.fromName}</span>
-					<ArrowRight className="h-3.5 w-3.5 shrink-0 text-[var(--text-3)]" aria-hidden />
-					<MemberAvatar name={debt.toName} color={memberColor(debt.toId)} size={20} />
-					<span className="truncate font-medium text-[var(--text-1)]">{debt.toName}</span>
-					<span
-						className="shrink-0 whitespace-nowrap tabular-nums text-[var(--danger)]"
-						aria-label={`Offen: ${formatEuroCents(debt.cents)}`}
-					>
-						<span aria-hidden="true">−</span>
-						{formatEuroCents(debt.cents)}
-					</span>
-				</div>
-				{canSettle && (
-					<div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
-						{canPayWithPayPal ? (
-							<PayPalPaymentButton
-								shareCode={shareCode}
-								currentMemberId={currentMemberId}
-								memberToken={memberToken}
-								fromMemberId={debt.fromId}
-								toMemberId={debt.toId}
-								payeeMerchantId={payeeMerchantId}
-								amountCents={debt.cents}
-								onPaid={onSettled}
-							/>
-						) : null}
-						<button
-							type="button"
+		<Item variant="outline" className="items-start">
+			<ItemContent className="min-w-0">
+				<ItemTitle className="line-clamp-none break-words">
+					{debt.fromId === currentMemberId ? 'Du' : debt.fromName}{' '}
+					{debt.fromId === currentMemberId ? 'schuldest' : 'schuldet'}{' '}
+					{debt.toId === currentMemberId ? 'dir' : debt.toName}
+				</ItemTitle>
+				<ItemDescription>Aus euren offenen Ausgaben verrechnet</ItemDescription>
+			</ItemContent>
+			<Badge variant="secondary" className="tabular-nums">
+				{formatEuroCents(debt.cents)}
+			</Badge>
+			{settlementMessage ? (
+				<ItemFooter>
+					<Alert>
+						<CheckCircle2 />
+						<AlertDescription>{settlementMessage}</AlertDescription>
+					</Alert>
+				</ItemFooter>
+			) : (
+				canSettle && (
+					<ItemFooter className="flex-col items-stretch">
+						{records.length > 0 ? (
+							<Button
+								variant="outline"
+								className="min-h-11"
+								disabled={settling}
+								onClick={() => setReviewOpen(true)}
+							>
+								Bereits bezahlt? Zahlung verbuchen
+							</Button>
+						) : (
+							<p className="text-sm text-muted-foreground">
+								Hier ist kein vollständiger Direktanteil verbuchbar. Prüfe die zugehörigen Ausgaben
+								oben.
+							</p>
+						)}
+						{canPayWithPayPal && (
+							<Collapsible>
+								<CollapsibleTrigger
+									render={<Button variant="outline" className="min-h-11 w-full justify-between" />}
+								>
+									Mit PayPal zahlen
+									<ChevronDown data-icon="inline-end" />
+								</CollapsibleTrigger>
+								<CollapsibleContent>
+									<PayPalPaymentButton
+										shareCode={shareCode}
+										currentMemberId={currentMemberId}
+										memberToken={memberToken}
+										fromMemberId={debt.fromId}
+										toMemberId={debt.toId}
+										payeeMerchantId={payeeMerchantId}
+										amountCents={debt.cents}
+										onPaid={onSettled}
+									/>
+								</CollapsibleContent>
+							</Collapsible>
+						)}
+					</ItemFooter>
+				)
+			)}
+			{notice && (
+				<ItemFooter>
+					<Alert>
+						<AlertDescription>{notice}</AlertDescription>
+					</Alert>
+				</ItemFooter>
+			)}
+			{error && !reviewOpen && (
+				<ItemFooter>
+					<Alert variant="destructive">
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+				</ItemFooter>
+			)}
+			<AlertDialog
+				open={reviewOpen}
+				onOpenChange={(open) => {
+					if (!settling) setReviewOpen(open);
+				}}
+			>
+				<AlertDialogContent className="max-h-[90dvh] overflow-y-auto">
+					<AlertDialogHeader>
+						<AlertDialogTitle>Zahlung verbuchen</AlertDialogTitle>
+						<AlertDialogDescription>
+							{debt.fromName} hat {debt.toName} {formatEuroCents(supportedCents)} bereits bezahlt.
+							Nur die unten aufgeführten Direktanteile werden als beglichen vermerkt. Es wird kein
+							Geld überwiesen.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<ItemGroup aria-label="Unterstützte Ausgabenanteile">
+						{records.map((record) => (
+							<Item key={record.id} variant="muted" size="xs">
+								<ItemContent className="min-w-0">
+									<ItemTitle className="line-clamp-none break-words">
+										{record.description}
+									</ItemTitle>
+									<ItemDescription>{formatShortDate(record.occurredAt)}</ItemDescription>
+								</ItemContent>
+								<Badge variant="outline" className="tabular-nums">
+									{formatEuroCents(record.amountCents)}
+								</Badge>
+							</Item>
+						))}
+					</ItemGroup>
+					{supportedCents < debt.cents && (
+						<Alert>
+							<AlertDescription>
+								{formatEuroCents(debt.cents - supportedCents)} des verrechneten Saldos sind mit
+								diesen Anteilen nicht verbuchbar und bleiben offen.
+							</AlertDescription>
+						</Alert>
+					)}
+					<p className="text-xs text-muted-foreground">
+						Stand der geladenen Ausgaben. Bei zwischenzeitlichen Änderungen zählt das Ergebnis des
+						Speicherns.
+					</p>
+					{notice && (
+						<Alert>
+							<AlertDescription>{notice}</AlertDescription>
+						</Alert>
+					)}
+					{error && (
+						<Alert variant="destructive">
+							<AlertDescription>{error}</AlertDescription>
+						</Alert>
+					)}
+					<AlertDialogFooter className="flex-col sm:flex-col">
+						<AlertDialogCancel className="min-h-11" disabled={settling}>
+							Abbrechen
+						</AlertDialogCancel>
+						<AlertDialogAction
+							className="min-h-11"
+							disabled={settling || records.length === 0}
 							onClick={() => void settle()}
-							disabled={settling}
-							aria-label={`${debt.fromName} hat ${debt.toName} ${formatEuroCents(debt.cents)} bezahlt`}
-							className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-md border border-[var(--border)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50 sm:w-auto"
 						>
-							{settling ? (
-								<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-							) : (
-								<Check className="h-3.5 w-3.5" aria-hidden />
-							)}
-							Beglichen
-						</button>
-					</div>
-				)}
-			</div>
-			{notice ? (
-				<output aria-live="polite" className="mt-2 block text-[12px] text-[var(--text-2)]">
-					{notice}
-				</output>
-			) : null}
-			{error ? (
-				<p role="alert" className="mt-2 text-[12px] text-[var(--danger)]">
-					{error}
-				</p>
-			) : null}
-		</li>
+							{settling && <Spinner data-icon="inline-start" />}
+							{formatEuroCents(supportedCents)} verbuchen
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</Item>
 	);
 }
 
 interface DebtSummaryProps {
 	debts: SimplifiedDebt[];
 	summary?: SettlementSummary;
+	expenses: readonly Expense[];
 	shareCode: string;
 	currentMemberId: string;
 	memberToken?: string | undefined;
@@ -217,59 +360,58 @@ interface DebtSummaryProps {
 export function DebtSummary({
 	debts,
 	summary,
+	expenses,
 	shareCode,
 	currentMemberId,
 	memberToken,
-	memberColor,
 	memberPayPalMerchantId = () => null,
 	onSettled,
 }: DebtSummaryProps) {
 	if (debts.length === 0) return null;
-
 	return (
-		<section className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-[border-color] hover:border-[var(--border-strong)]">
-			<div className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-2.5">
-				<h2 className="text-[13px] font-medium text-[var(--text-2)]">Offene Zahlungen</h2>
-				<Link
-					href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`}
-					className="inline-flex h-11 items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[11.5px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+		<Card>
+			<CardHeader>
+				<CardTitle>Offene Zahlungen</CardTitle>
+				<CardDescription>
+					{summary && summary.savedTransfers > 0
+						? `Minimaler Ausgleich: ${summary.simplifiedCount} statt ${summary.directCount} Überweisungen. Spart ${summary.savedTransfers} Zahlungen.`
+						: 'Wer wem noch Geld schuldet'}
+				</CardDescription>
+				<Button
+					variant="outline"
+					className="min-h-11"
+					render={<Link href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`} />}
+					nativeButton={false}
 				>
-					<Bell className="h-3.5 w-3.5" aria-hidden />
-					Mahnen
-				</Link>
-			</div>
-			{summary && summary.savedTransfers > 0 && (
-				<div className="border-b border-[var(--border)] bg-[var(--accent)]/5 px-4 py-3 text-[12.5px] text-[var(--text-2)]">
-					<p className="font-medium text-[var(--text-1)]">
-						Minimaler Ausgleich: {summary.simplifiedCount} statt {summary.directCount} Überweisung
-						{summary.directCount === 1 ? '' : 'en'}
-					</p>
-					<p className="mt-0.5 text-[var(--text-3)]">
-						Spart {summary.savedTransfers} Zahlung{summary.savedTransfers === 1 ? '' : 'en'}.
-					</p>
-				</div>
-			)}
-			<ul className="divide-y divide-[var(--border)] px-4">
-				{(summary?.simplified.length ? summary.simplified : debts).map((d) => (
-					<DebtRow
-						key={`${d.fromId}-${d.toId}`}
-						debt={d}
-						shareCode={shareCode}
-						currentMemberId={currentMemberId}
-						memberToken={memberToken}
-						memberColor={memberColor}
-						memberPayPalMerchantId={memberPayPalMerchantId}
-						payPalEligible={
-							summary === undefined ||
-							debts.some(
-								(direct) =>
-									direct.fromId === d.fromId && direct.toId === d.toId && direct.cents >= d.cents,
-							)
-						}
-						onSettled={onSettled}
-					/>
-				))}
-			</ul>
-		</section>
+					<Bell data-icon="inline-start" />
+					Mahnungen
+				</Button>
+			</CardHeader>
+			<CardContent>
+				<ItemGroup>
+					{(summary?.simplified.length ? summary.simplified : debts).map((debt) => (
+						<DebtRow
+							key={`${debt.fromId}-${debt.toId}`}
+							debt={debt}
+							records={settlementRecords(expenses, debt)}
+							shareCode={shareCode}
+							currentMemberId={currentMemberId}
+							memberToken={memberToken}
+							memberPayPalMerchantId={memberPayPalMerchantId}
+							payPalEligible={
+								summary === undefined ||
+								debts.some(
+									(direct) =>
+										direct.fromId === debt.fromId &&
+										direct.toId === debt.toId &&
+										direct.cents >= debt.cents,
+								)
+							}
+							onSettled={onSettled}
+						/>
+					))}
+				</ItemGroup>
+			</CardContent>
+		</Card>
 	);
 }

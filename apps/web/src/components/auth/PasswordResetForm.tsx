@@ -1,6 +1,12 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
+import { cn } from '@/shared/lib/cn';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -48,69 +54,66 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 
 	if (state === 'unavailable') {
 		return (
-			<p role="alert" className="text-sm text-[var(--text-2)]">
-				Dieser Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Link an.
-			</p>
+			<div className="flex flex-col gap-4">
+				<Alert variant="destructive">
+					<AlertDescription>
+						Dieser Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Link an.
+					</AlertDescription>
+				</Alert>
+				<Link href="/neu" className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11')}>
+					Neuen Link über die Anmeldung anfordern
+				</Link>
+			</div>
 		);
 	}
 
 	return (
-		<form onSubmit={(event) => void submit(event)} className="space-y-4" noValidate>
-			<div className="space-y-2">
-				<label
-					htmlFor="reset-password"
-					className="block text-[13px] font-medium text-[var(--text-1)]"
+		<form onSubmit={(event) => void submit(event)} noValidate>
+			<FieldGroup>
+				<Field data-invalid={Boolean(error)}>
+					<FieldLabel htmlFor="reset-password">Neues Passwort</FieldLabel>
+					<Input
+						id="reset-password"
+						name="password"
+						type="password"
+						value={password}
+						onChange={(event) => setPassword(event.target.value)}
+						autoComplete="new-password"
+						minLength={6}
+						required
+						aria-describedby={error ? 'reset-password-error' : undefined}
+						aria-invalid={error ? true : undefined}
+						className="min-h-11 text-base md:text-base"
+					/>
+				</Field>
+				<Field data-invalid={Boolean(error)}>
+					<FieldLabel htmlFor="reset-password-confirmation">Passwort bestätigen</FieldLabel>
+					<Input
+						id="reset-password-confirmation"
+						name="passwordConfirmation"
+						type="password"
+						value={confirmation}
+						onChange={(event) => setConfirmation(event.target.value)}
+						autoComplete="new-password"
+						minLength={6}
+						required
+						aria-describedby={error ? 'reset-password-error' : undefined}
+						aria-invalid={error ? true : undefined}
+						className="min-h-11 text-base md:text-base"
+					/>
+				</Field>
+				{error && <FieldError id="reset-password-error">{error}</FieldError>}
+				<Button
+					type="submit"
+					variant="default"
+					size="lg"
+					disabled={state === 'submitting'}
+					className="min-h-11 w-full"
 				>
-					Neues Passwort
-				</label>
-				<input
-					id="reset-password"
-					name="password"
-					type="password"
-					value={password}
-					onChange={(event) => setPassword(event.target.value)}
-					autoComplete="new-password"
-					minLength={6}
-					required
-					aria-describedby={error ? 'reset-password-error' : undefined}
-					aria-invalid={error ? true : undefined}
-					className="block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--text-1)] outline-none focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-				/>
-			</div>
-			<div className="space-y-2">
-				<label
-					htmlFor="reset-password-confirmation"
-					className="block text-[13px] font-medium text-[var(--text-1)]"
-				>
-					Passwort bestätigen
-				</label>
-				<input
-					id="reset-password-confirmation"
-					name="passwordConfirmation"
-					type="password"
-					value={confirmation}
-					onChange={(event) => setConfirmation(event.target.value)}
-					autoComplete="new-password"
-					minLength={6}
-					required
-					aria-describedby={error ? 'reset-password-error' : undefined}
-					aria-invalid={error ? true : undefined}
-					className="block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--text-1)] outline-none focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-				/>
-			</div>
-			{error && (
-				<p id="reset-password-error" role="alert" className="text-sm text-[var(--text-2)]">
-					{error}
-				</p>
-			)}
-			<button
-				type="submit"
-				disabled={state === 'submitting'}
-				className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-[var(--text-1)] px-3 text-[13px] font-semibold text-[var(--bg-base)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-			>
-				{state === 'submitting' && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />}
-				Passwort speichern
-			</button>
+					{state === 'submitting' && <Spinner data-icon="inline-start" aria-hidden />}
+					{state === 'submitting' ? 'Passwort wird gespeichert…' : 'Passwort speichern'}
+				</Button>
+			</FieldGroup>
 		</form>
 	);
 }

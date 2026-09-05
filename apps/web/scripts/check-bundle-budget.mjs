@@ -3,8 +3,9 @@
  * Bundle budget enforcement (gzip sizes, aligned with Next.js build report).
  *
  * Reads `.next/app-build-manifest.json` (App Router) and computes:
- *  - Shared first-load JS = gzip(union of chunks present in EVERY app page)
- *  - Per-route JS         = gzip(page chunks - shared chunks - lazy chunks)
+ *  - Shared first-load JS = gzip(chunks present in EVERY renderable app page)
+ *  - Shared cohorts       = gzip(chunks reused by 2+ renderable app pages)
+ *  - Per-route JS         = gzip(chunks used by only that page - lazy chunks)
  *
  * Budgets:
  *  - Shared first-load JS:  SHARED_JS_BUDGET_KB
@@ -68,6 +69,15 @@ function isLazyChunk(path) {
 	return LAZY_CHUNK_HINTS.some((hint) => path.includes(hint));
 }
 
+function isRenderablePageEntry(entry) {
+	return (
+		entry.endsWith('/page') &&
+		!entry.startsWith('/api/') &&
+		!entry.endsWith('/route') &&
+		!['/layout', '/error', '/loading'].some((suffix) => entry.endsWith(suffix))
+	);
+}
+
 function scanTesseractRawKb() {
 	const chunksDir = join(NEXT_DIR, 'static/chunks');
 	if (!existsSync(chunksDir)) return 0;
@@ -83,10 +93,13 @@ function scanTesseractRawKb() {
 function main() {
 	const appManifest = readJson(APP_MANIFEST);
 	const pages = appManifest.pages ?? {};
-	const pageEntries = Object.entries(pages);
+	const manifestEntries = Object.entries(pages);
+	const pageEntries = manifestEntries.filter(([page]) => isRenderablePageEntry(page));
 	if (pageEntries.length === 0) fail('No pages in app-build-manifest.json');
 
-	// Shared = chunks present in EVERY page (Next.js semantics).
+	info(`Renderable page entries: ${pageEntries.length}/${manifestEntries.length}`);
+
+	// Shared = chunks present in EVERY renderable page (Next.js semantics).
 	const counts = new Map();
 	for (const [, chunks] of pageEntries) {
 		for (const c of new Set(chunks)) {
@@ -97,6 +110,13 @@ function main() {
 	const sharedChunks = new Set(
 		[...counts.entries()].filter(([, n]) => n === totalPages).map(([c]) => c),
 	);
+	const sharedCohorts = new Map();
+	for (const [chunk, count] of counts) {
+		if (count < 2) continue;
+		const cohort = sharedCohorts.get(count) ?? [];
+		cohort.push(chunk);
+		sharedCohorts.set(count, cohort);
+	}
 
 	const sharedKb = sumGzipKb([...sharedChunks]);
 	const failures = [];
@@ -107,10 +127,14 @@ function main() {
 			`Shared first-load JS ${sharedKb.toFixed(1)} kB exceeds ${SHARED_JS_BUDGET_KB} kB`,
 		);
 	}
+	info('Shared cohorts (gzip, reused by 2+ renderable pages):');
+	for (const [count, chunks] of [...sharedCohorts.entries()].sort((a, b) => b[0] - a[0])) {
+		info(`  ${count}/${totalPages} pages: ${sumGzipKb(chunks).toFixed(1)} kB`);
+	}
 
 	const perRouteResults = [];
 	for (const [page, chunks] of pageEntries) {
-		const routeOnly = chunks.filter((c) => !sharedChunks.has(c) && !isLazyChunk(c));
+		const routeOnly = chunks.filter((c) => counts.get(c) === 1 && !isLazyChunk(c));
 		const sizeKb = sumGzipKb(routeOnly);
 		perRouteResults.push({ page, sizeKb });
 		if (sizeKb > PER_ROUTE_BUDGET_KB) {

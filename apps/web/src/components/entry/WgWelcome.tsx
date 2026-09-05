@@ -1,3 +1,6 @@
+import { buttonVariants } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/shared/lib/cn';
 import Link from 'next/link';
 
 export type WgWelcomeVariant = 'create' | 'invitation' | 'member';
@@ -10,10 +13,12 @@ type WgWelcomeProps =
 export function WgWelcome(props: WgWelcomeProps) {
 	if (props.variant === 'member') {
 		return (
-			<section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5">
-				<h2 className="text-base font-semibold text-[var(--text-1)]">Willkommen in deiner WG</h2>
-				<p className="mt-1 text-[15px] text-[var(--text-2)]">{props.wgName}</p>
-			</section>
+			<Card>
+				<CardHeader>
+					<CardTitle>Willkommen in deiner WG</CardTitle>
+					<CardDescription>{props.wgName}</CardDescription>
+				</CardHeader>
+			</Card>
 		);
 	}
 
@@ -23,29 +28,28 @@ export function WgWelcome(props: WgWelcomeProps) {
 		: '/neu?action=create';
 
 	return (
-		<section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5">
-			<h2 className="text-base font-semibold text-[var(--text-1)]">
-				{invitation ? 'Deine Einladung wartet' : 'Deine WG gemeinsam organisieren'}
-			</h2>
-			<p className="mt-1 text-[13px] leading-relaxed text-[var(--text-2)]">
-				{invitation
-					? 'Melde dich an, um dieser bestehenden WG beizutreten.'
-					: 'Ausgaben, Einkauf, Putzen und Pinnwand an einem Ort.'}
-			</p>
-			<div className="mt-4 space-y-2">
-				<Link
-					href={actionHref}
-					className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-[var(--text-1)] px-4 py-3 text-[14px] font-semibold text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-				>
+		<Card>
+			<CardHeader>
+				<CardTitle>
+					<h2>{invitation ? 'Deine Einladung wartet' : 'Deine WG gemeinsam organisieren'}</h2>
+				</CardTitle>
+				<CardDescription>
+					{invitation
+						? 'Melde dich an, um dieser bestehenden WG beizutreten.'
+						: 'Ausgaben, Einkauf, Putzen und Pinnwand an einem Ort.'}
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="flex flex-col gap-2">
+				<Link href={actionHref} className={cn(buttonVariants(), 'min-h-11 w-full')}>
 					{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
 				</Link>
 				<Link
 					href={invitation ? actionHref : '/neu'}
-					className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-[var(--border)] px-4 py-3 text-[14px] font-medium text-[var(--text-1)] transition-colors hover:bg-[var(--bg-base)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+					className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11 w-full')}
 				>
 					Anmelden
 				</Link>
-			</div>
-		</section>
+			</CardContent>
+		</Card>
 	);
 }

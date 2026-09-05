@@ -1,9 +1,19 @@
 'use client';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
-import { ALERT_DANGER, EMPTY_PLACEHOLDER, LIST_CARD } from '@/components/ui/styles';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
+import { ItemGroup } from '@/components/ui/item';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
+import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
@@ -29,7 +39,6 @@ import {
 	createQueuedChoreCompletion,
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
-import { MS_PER_DAY } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import type { AbsenceInput } from '@/features/chores/absence';
@@ -97,7 +106,7 @@ export default function PutzenPage() {
 	const { isPending, start: startPending, end: endPending } = usePendingSet();
 	// Used for delete confirmation
 	// Used for complete confirmation (armed = first tap shows "OK", second tap commits)
-	const completeConfirm = useConfirmDelete();
+	const completeConfirm = useConfirmDelete(60_000);
 
 	const load = useCallback(
 		async (initial: boolean): Promise<void> => {
@@ -497,7 +506,7 @@ export default function PutzenPage() {
 		setActionError(null);
 		setActionNotice(null);
 
-		const result = await apiFetch<Record<string, never>>(
+		const result = await apiFetch<{ chore?: Pick<Chore, 'nextDueAt' | 'assignedMemberId'> }>(
 			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(chore.id)}/complete`,
 			{
 				method: 'POST',
@@ -556,23 +565,14 @@ export default function PutzenPage() {
 			setActionError('Erledigt-Aktion konnte nicht gespeichert werden: Versuche es gleich erneut.');
 		} else {
 			const completedAt = new Date().toISOString();
-			// Optimistic next-due approximation. Use ms math for 'days' (cheap +
-			// accurate) and a calendar-month approximation for 'months' so the
-			// UI label doesn't briefly flash a wrong date before refresh.
-			const baseMs = Date.now();
-			const nextDueDate = new Date(baseMs);
-			if (chore.recurrenceType === 'months') {
-				nextDueDate.setMonth(nextDueDate.getMonth() + chore.intervalDays);
-			} else {
-				nextDueDate.setTime(baseMs + chore.intervalDays * MS_PER_DAY);
-			}
-			const nextDueAt = nextDueDate.toISOString();
+			const completedChore = result.data?.chore;
 			setItems((current) =>
 				current.map((item) =>
 					item.id === chore.id
 						? {
 								...item,
-								nextDueAt,
+								nextDueAt: completedChore?.nextDueAt ?? chore.nextDueAt,
+								assignedMemberId: completedChore?.assignedMemberId ?? chore.assignedMemberId,
 								lastCompletedAt: completedAt,
 								lastCompletedByName: identity.name,
 								openGapCountForAssignee: 0,
@@ -582,7 +582,6 @@ export default function PutzenPage() {
 			);
 			completeConfirm.cancel();
 			toast.success('Aufgabe erledigt ✓');
-			void load(false);
 		}
 
 		endPending(chore.id);
@@ -802,49 +801,46 @@ export default function PutzenPage() {
 	}
 
 	return (
-		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+		<div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-5">
 			<PutzenHeader
 				itemCount={items.length}
 				refreshing={refreshing}
 				showForm={showForm}
 				wgBaseHref={wgBaseHref}
-				onToggleForm={() => setShowForm((s) => !s)}
+				onToggleForm={() => setShowForm((open) => !open)}
 			/>
-
-			{/* HealthStrip nur bei vorhandenem Plan — 0/0/0 über leerem Plan ist Rauschen. */}
+			<SubNav label="Haushalt" items={[]} />
 			{!showSkeleton && items.length > 0 && <HealthStrip health={health} />}
-
-			{showForm && (
-				<ChoreForm
-					title={newTitle}
-					onTitleChange={setNewTitle}
-					titleInputRef={titleInputRef}
-					interval={newInterval}
-					recurrenceType={newRecurrenceType}
-					onRecurrenceUnitToggle={handleRecurrenceUnitToggle}
-					onIntervalPresetSelect={handleIntervalPresetSelect}
-					assignedMemberId={newAssigned}
-					onAssignedMemberIdChange={handleAssignedMemberIdChange}
-					members={activeMembers}
-					pending={choreAddPending}
-					onSubmit={() => void add()}
-				/>
-			)}
-
-			{actionError && (
-				<div role="alert" className={ALERT_DANGER}>
-					{actionError}
-				</div>
+			<ChoreForm
+				open={showForm}
+				onClose={() => setShowForm(false)}
+				error={actionError}
+				title={newTitle}
+				onTitleChange={setNewTitle}
+				titleInputRef={titleInputRef}
+				interval={newInterval}
+				recurrenceType={newRecurrenceType}
+				onRecurrenceUnitToggle={handleRecurrenceUnitToggle}
+				onIntervalPresetSelect={handleIntervalPresetSelect}
+				assignedMemberId={newAssigned}
+				onAssignedMemberIdChange={handleAssignedMemberIdChange}
+				members={activeMembers}
+				pending={choreAddPending}
+				onSubmit={() => void add()}
+			/>
+			{actionError && !showForm && (
+				<Alert variant="destructive">
+					<AlertDescription>{actionError}</AlertDescription>
+				</Alert>
 			)}
 			{actionNotice && (
-				<output
-					aria-live="polite"
-					className="rounded-md border border-[var(--accent)]/25 bg-[var(--accent)]/5 px-3 py-2 text-[13px] text-[var(--accent)]"
-				>
-					{actionNotice}
-				</output>
+				<Alert>
+					<AlertDescription>{actionNotice}</AlertDescription>
+				</Alert>
 			)}
-			<OfflineQueueNotice queuedCount={queuedCount} />
+			<output aria-live="polite">
+				<OfflineQueueNotice queuedCount={queuedCount} />
+			</output>
 			{loadError && (
 				<LoadErrorBanner
 					message={loadError}
@@ -857,53 +853,55 @@ export default function PutzenPage() {
 			{showSkeleton ? (
 				<ListSkeleton />
 			) : loadError && items.length === 0 ? (
-				<p className={EMPTY_PLACEHOLDER}>Noch keine Aufgaben geladen. Versuche es erneut.</p>
+				<Empty>
+					<EmptyHeader>
+						<EmptyTitle>Noch keine Aufgaben geladen</EmptyTitle>
+						<EmptyDescription>Versuche es erneut.</EmptyDescription>
+					</EmptyHeader>
+				</Empty>
 			) : items.length === 0 && !initialLoading ? (
-				// Formular offen → Empty-State samt Templates ausblenden (doppelte CTAs).
-				showForm ? null : (
-					<>
-						<EmptyState
-							icon={<Sparkles className="h-5 w-5" strokeWidth={1.5} aria-hidden />}
-							headline="Noch keine Aufgaben"
-							sub="Starte mit einer typischen WG-Aufgabe:"
-							cta={{ label: 'Neue Aufgabe', onClick: () => setShowForm(true) }}
-						/>
-						<div className="-mt-4 flex flex-wrap justify-center gap-2">
-							{QUICK_CHORE_TEMPLATES.map((t) => (
-								<button
-									key={t.title}
-									type="button"
-									onClick={() => applyQuickChore(t)}
-									className="inline-flex min-h-11 items-center rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-1.5 text-[13px] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)]"
-								>
-									{t.title}
-								</button>
-							))}
-						</div>
-					</>
-				)
+				<Empty>
+					<EmptyHeader>
+						<EmptyMedia variant="icon">
+							<Sparkles aria-hidden />
+						</EmptyMedia>
+						<EmptyTitle>Noch keine Aufgaben</EmptyTitle>
+						<EmptyDescription>Starte mit einer typischen WG-Aufgabe:</EmptyDescription>
+					</EmptyHeader>
+					<EmptyContent className="flex-row flex-wrap justify-center">
+						{QUICK_CHORE_TEMPLATES.map((template) => (
+							<Button
+								key={template.title}
+								variant="outline"
+								onClick={() => applyQuickChore(template)}
+								className="min-h-11"
+							>
+								{template.title}
+							</Button>
+						))}
+					</EmptyContent>
+				</Empty>
 			) : (
-				<ul id="chore-list" className={LIST_CARD} style={{ overflow: 'visible' }}>
-					{sortedItems.map((c) => (
+				<ItemGroup id="chore-list" aria-label="Putzaufgaben">
+					{sortedItems.map((chore) => (
 						<ChoreRow
-							key={c.id}
-							chore={c}
-							assignee={memberLookup(c.assignedMemberId)}
-							isPending={isPending(c.id)}
-							isSwapPending={isPending(`${c.id}:swap`)}
-							isCompleteArmed={completeConfirm.confirmId === c.id}
+							key={chore.id}
+							chore={chore}
+							assignee={memberLookup(chore.assignedMemberId)}
+							isPending={isPending(chore.id)}
+							isSwapPending={isPending(`${chore.id}:swap`)}
+							isTakePending={isPending(`${chore.id}:take`)}
+							isCompleteArmed={completeConfirm.confirmId === chore.id}
+							onCancelComplete={completeConfirm.cancel}
 							onComplete={handleComplete}
 							onSwapRequest={handleSwapRequest}
 							onTakeOver={handleTakeOver}
 							onRemove={handleRemove}
-							highlighted={highlightedId === c.id}
+							highlighted={highlightedId === chore.id}
 						/>
 					))}
-				</ul>
+				</ItemGroup>
 			)}
-
-			{/* Verwaltung (Abwesenheiten, Rotation) unter den Aufgaben — sie ist der
-			    Ausnahmefall, nicht der Einstieg. Bei leerem Plan nur per Deep-Link. */}
 			{!showSkeleton && (items.length > 0 || absences.length > 0 || absencesPanelActive) && (
 				<AbsencePanel
 					active={absencesPanelActive}
@@ -928,7 +926,6 @@ export default function PutzenPage() {
 					isPending={isPending}
 				/>
 			)}
-
 			{!showSkeleton && items.length > 0 && <FairnessPanel fairness={fairness} />}
 		</div>
 	);

@@ -1,11 +1,31 @@
 'use client';
 
+import { Checkbox } from '@/components/animate-ui/components/base/checkbox';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { Spinner } from '@/components/ui/spinner';
+import { Textarea } from '@/components/ui/textarea';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
 import type { ParsedExpense } from '@/features/expenses/import-parsers';
 import { runOcrOnImage } from '@/features/expenses/ocr';
-import { Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMemo, useRef, useState } from 'react';
 import { ImportMemberMapping } from './ImportMemberMapping';
 import { ImportPreviewTable } from './ImportPreviewTable';
@@ -80,6 +100,9 @@ export function ImportWizard() {
 	const [commitResult, setCommitResult] = useState<CommitResponse | null>(null);
 	const [skipDuplicates, setSkipDuplicates] = useState(true);
 	const ocrRunIdRef = useRef(0);
+	const router = useRouter();
+	const [leaveOpen, setLeaveOpen] = useState(false);
+	const [sourceToChange, setSourceToChange] = useState<ImportSourceKind | null>(null);
 
 	const conflicts = useMemo(() => preview?.conflicts ?? [], [preview]);
 	// Import assigns expenses to a member ("aus Listen raus": moved-out members are
@@ -213,122 +236,173 @@ export function ImportWizard() {
 
 	const allMapped = namesNeedingMapping.every((name) => Boolean(mapping[name]));
 
+	const stepNumber = ['source', 'input', 'mapping', 'preview', 'commit'].indexOf(step) + 1;
+	const selectedCount = (preview?.parsed.length ?? 0) - skipIndexes.size;
+	const returnHref = `/wg/${encodedCode}/einstellungen#daten`;
+	function chooseSource(value: ImportSourceKind) {
+		if (value !== source) resetImportState();
+		setSource(value);
+		setStep('input');
+		setError(null);
+	}
+
 	return (
-		<div className="space-y-6">
+		<div className="flex flex-col gap-5">
+			<div className="flex items-center justify-between gap-2">
+				<Link
+					href={returnHref}
+					className={buttonVariants({ variant: 'ghost', className: 'min-h-11' })}
+					aria-disabled={busy || ocrRunning || undefined}
+					tabIndex={busy || ocrRunning ? -1 : undefined}
+					onClick={(event) => {
+						if (busy || ocrRunning) {
+							event.preventDefault();
+							return;
+						}
+						if (rawPayload && commitState !== 'done') {
+							event.preventDefault();
+							setLeaveOpen(true);
+						}
+					}}
+				>
+					<ArrowLeft data-icon="inline-start" />
+					Einstellungen
+				</Link>
+				<Badge variant="secondary">Schritt {stepNumber} von 5</Badge>
+			</div>
+			<Progress value={stepNumber} max={5} aria-label={`Import: Schritt ${stepNumber} von 5`} />
 			{step === 'source' && (
-				<section>
-					<h2 className="mb-2 text-[16px] font-semibold text-[var(--text-1)]">Quelle wählen</h2>
-					<p className="mb-4 text-[12.5px] text-[var(--text-3)]">
-						Wähle, woher die alten Ausgaben kommen.
-					</p>
+				<section className="flex flex-col gap-3">
 					<ImportSourcePicker
 						value={source}
 						onChange={(value) => {
-							if (value !== source) {
-								resetImportState();
-							}
-							setSource(value);
-							setStep('input');
-							setError(null);
+							if (value !== source && rawPayload) setSourceToChange(value);
+							else chooseSource(value);
 						}}
 					/>
 				</section>
 			)}
-
 			{step === 'input' && source && (
-				<section>
-					<h2 className="mb-2 text-[16px] font-semibold text-[var(--text-1)]">
+				<section className="flex flex-col gap-4">
+					<h2 className="text-base font-semibold">
 						{source === 'ocr_screenshot' ? 'Screenshot hochladen' : 'CSV einfügen oder hochladen'}
 					</h2>
-					{source === 'ocr_screenshot' ? (
-						<div className="space-y-3">
-							<input
-								type="file"
-								accept="image/*"
-								aria-label="Screenshot auswählen"
-								onChange={(e) => {
-									const file = e.target.files?.[0];
-									if (file) void handleOcrFile(file);
-								}}
-								className="block w-full text-[13px]"
-							/>
-							{ocrRunning && (
-								<div className="flex items-center gap-2 text-[12.5px] text-[var(--text-3)]">
-									<Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Texterkennung läuft (kann
-									30 Sekunden dauern)...
-								</div>
-							)}
-							{ocrText && (
-								<textarea
-									value={ocrText}
-									onChange={(e) => {
-										setOcrText(e.target.value);
-										setRawPayload(e.target.value);
-									}}
-									aria-label="Erkannter Text"
-									className="block h-48 w-full resize-vertical rounded-md border border-[var(--border)] bg-[var(--bg-base)] p-3 font-mono text-[12px] text-[var(--text-1)] outline-none focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-								/>
-							)}
-						</div>
-					) : (
-						<div className="space-y-3">
-							<input
-								type="file"
-								accept=".csv,text/csv"
-								aria-label="CSV-Datei auswählen"
-								onChange={(e) => {
-									const file = e.target.files?.[0];
-									if (!file) return;
-									if (file.size > MAX_CSV_BYTES) {
-										setError('CSV ist zu groß (max. 5 MB).');
-										return;
-									}
-									void file.text().then(setRawPayload);
-								}}
-								className="block w-full text-[13px]"
-							/>
-							<textarea
-								id="import-csv-textarea"
-								value={rawPayload}
-								onChange={(e) => setRawPayload(e.target.value)}
-								placeholder="...oder CSV-Inhalt hier einfügen"
-								aria-label="CSV-Inhalt"
-								aria-invalid={error !== null}
-								aria-describedby={error ? 'import-error' : undefined}
-								className="block h-48 w-full resize-vertical rounded-md border border-[var(--border)] bg-[var(--bg-base)] p-3 font-mono text-[12px] text-[var(--text-1)] outline-none focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-							/>
-						</div>
-					)}
-					<div className="mt-4 flex gap-2">
-						<button
-							type="button"
+					<FieldGroup>
+						{source === 'ocr_screenshot' ? (
+							<>
+								<Field data-disabled={busy || ocrRunning}>
+									<FieldLabel htmlFor="import-screenshot">Screenshot</FieldLabel>
+									<Input
+										id="import-screenshot"
+										type="file"
+										accept="image/*"
+										aria-label="Screenshot auswählen"
+										disabled={busy || ocrRunning}
+										onChange={(event) => {
+											const file = event.target.files?.[0];
+											if (file) void handleOcrFile(file);
+										}}
+										className="min-h-11 text-base md:text-base"
+									/>
+									<FieldDescription>
+										Bild bis 10 MB. Die Erkennung speichert keine Ausgabe.
+									</FieldDescription>
+								</Field>
+								{ocrRunning && (
+									<Alert>
+										<Spinner />
+										<AlertDescription>
+											Texterkennung läuft. Das kann 30 Sekunden dauern.
+										</AlertDescription>
+									</Alert>
+								)}
+								<Field data-disabled={busy || ocrRunning}>
+									<FieldLabel htmlFor="import-ocr">Erkannter Text</FieldLabel>
+									<Textarea
+										id="import-ocr"
+										value={ocrText}
+										onChange={(event) => {
+											setOcrText(event.target.value);
+											setRawPayload(event.target.value);
+										}}
+										disabled={busy || ocrRunning}
+										aria-label="Erkannter Text"
+										placeholder="Erkannten Text hier prüfen und korrigieren"
+										className="min-h-48 text-base md:text-base"
+									/>
+								</Field>
+							</>
+						) : (
+							<>
+								<Field data-disabled={busy}>
+									<FieldLabel htmlFor="import-csv-file">CSV-Datei</FieldLabel>
+									<Input
+										id="import-csv-file"
+										type="file"
+										accept=".csv,text/csv"
+										aria-label="CSV-Datei auswählen"
+										disabled={busy}
+										className="min-h-11 text-base md:text-base"
+										onChange={(event) => {
+											const file = event.target.files?.[0];
+											if (!file) return;
+											if (file.size > MAX_CSV_BYTES) {
+												setError('CSV ist zu groß (max. 5 MB).');
+												return;
+											}
+											void file
+												.text()
+												.then(setRawPayload)
+												.catch(() =>
+													setError('CSV konnte nicht gelesen werden. Wähle die Datei erneut.'),
+												);
+										}}
+									/>
+									<FieldDescription>CSV bis 5 MB.</FieldDescription>
+								</Field>
+								<Field data-invalid={error !== null} data-disabled={busy}>
+									<FieldLabel htmlFor="import-csv-textarea">CSV-Inhalt</FieldLabel>
+									<Textarea
+										id="import-csv-textarea"
+										value={rawPayload}
+										onChange={(event) => setRawPayload(event.target.value)}
+										placeholder="…oder CSV-Inhalt hier einfügen"
+										aria-label="CSV-Inhalt"
+										aria-invalid={error !== null}
+										aria-describedby={error ? 'import-error' : undefined}
+										disabled={busy}
+										className="min-h-48 text-base md:text-base"
+									/>
+								</Field>
+							</>
+						)}
+					</FieldGroup>
+					<div className="flex gap-2">
+						<Button
+							variant="outline"
+							className="min-h-11"
+							disabled={busy || ocrRunning}
 							onClick={() => setStep('source')}
-							className="h-11 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-4 text-[13px] text-[var(--text-1)] transition-colors hover:border-[var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
 						>
 							Zurück
-						</button>
-						<button
-							type="button"
-							disabled={busy || rawPayload.trim().length === 0}
+						</Button>
+						<Button
+							className="min-h-11 flex-1"
+							disabled={busy || ocrRunning || rawPayload.trim().length === 0}
 							onClick={() => void submitPreview()}
-							className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-4 text-[13px] font-medium text-[var(--accent-fg)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
 						>
-							{busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
-							Vorschau erstellen
-						</button>
+							{busy && <Spinner data-icon="inline-start" />}Vorschau erstellen
+						</Button>
 					</div>
 				</section>
 			)}
-
 			{step === 'mapping' && preview && (
-				<section>
-					<h2 className="mb-2 text-[16px] font-semibold text-[var(--text-1)]">
-						Namen WG-Mitgliedern zuordnen
-					</h2>
-					<p className="mb-3 text-[12.5px] text-[var(--text-3)]">
+				<section className="flex flex-col gap-4">
+					<h2 className="text-base font-semibold">Namen WG-Mitgliedern zuordnen</h2>
+					<p className="text-sm text-muted-foreground">
 						{conflicts.length > 0
-							? 'Ordne die markierten Namen einem WG-Mitglied zu.'
-							: 'Alle Namen wurden automatisch erkannt. Bitte prüfen.'}
+							? 'Ordne die markierten Namen zu.'
+							: 'Alle Namen automatisch erkannt. Bitte prüfen.'}
 					</p>
 					<ImportMemberMapping
 						names={namesNeedingMapping}
@@ -336,31 +410,29 @@ export function ImportWizard() {
 						members={memberOptions}
 						onChange={updateMapping}
 					/>
-					<div className="mt-4 flex gap-2">
-						<button
-							type="button"
-							onClick={() => setStep('input')}
-							className="h-11 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-4 text-[13px] text-[var(--text-1)] transition-colors hover:border-[var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-						>
+					<div className="flex gap-2">
+						<Button variant="outline" className="min-h-11" onClick={() => setStep('input')}>
 							Zurück
-						</button>
-						<button
-							type="button"
+						</Button>
+						<Button
+							className="min-h-11 flex-1"
 							disabled={!allMapped}
 							onClick={() => setStep('preview')}
-							className="h-11 rounded-md bg-[var(--accent)] px-4 text-[13px] font-medium text-[var(--accent-fg)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
 						>
 							Weiter zur Vorschau
-						</button>
+						</Button>
 					</div>
 				</section>
 			)}
-
 			{step === 'preview' && preview && (
-				<section>
-					<h2 className="mb-2 text-[16px] font-semibold text-[var(--text-1)]">Vorschau</h2>
-					<p className="mb-3 text-[12.5px] text-[var(--text-3)]">
-						Hake Einträge ab oder ab, dann importieren.
+				<section className="flex flex-col gap-4">
+					<div className="flex items-center justify-between gap-2">
+						<h2 className="text-base font-semibold">Vorschau</h2>
+						<Badge variant="secondary">{selectedCount} ausgewählt</Badge>
+					</div>
+					<p className="text-sm text-muted-foreground">
+						Prüfe Betrag, Zahler:in und alle Anteile. Wähle Einträge ab, die du nicht übernehmen
+						möchtest.
 					</p>
 					<ImportPreviewTable
 						expenses={preview.parsed}
@@ -368,65 +440,113 @@ export function ImportWizard() {
 						members={memberOptions}
 						skipIndexes={skipIndexes}
 						onToggleSkip={toggleSkip}
+						disabled={busy}
 					/>
-					<label className="mt-4 flex items-center gap-2 text-[12.5px] text-[var(--text-2)]">
-						<input
-							type="checkbox"
-							checked={skipDuplicates}
-							onChange={(e) => setSkipDuplicates(e.target.checked)}
-						/>
-						Duplikate (gleiches Datum/Beschreibung/Betrag/Zahler) überspringen
-					</label>
-					<div className="mt-4 flex gap-2">
-						<button
-							type="button"
+					<FieldGroup>
+						<Field orientation="horizontal" data-disabled={busy}>
+							<Checkbox
+								id="import-duplicates"
+								checked={skipDuplicates}
+								onCheckedChange={(checked) => setSkipDuplicates(checked === true)}
+								disabled={busy}
+							/>
+							<div className="flex flex-col gap-1">
+								<FieldLabel htmlFor="import-duplicates">Duplikate überspringen</FieldLabel>
+								<FieldDescription>
+									Gleiches Datum, Beschreibung, Betrag und Zahler:in.
+								</FieldDescription>
+							</div>
+						</Field>
+					</FieldGroup>
+					<div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] flex gap-2 bg-background py-3">
+						<Button
+							variant="outline"
+							className="min-h-11"
+							disabled={busy}
 							onClick={() => setStep('mapping')}
-							className="h-11 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-4 text-[13px] text-[var(--text-1)] transition-colors hover:border-[var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
 						>
 							Zurück
-						</button>
-						<button
-							type="button"
-							disabled={busy}
+						</Button>
+						<Button
+							className="min-h-11 flex-1"
+							disabled={busy || selectedCount === 0}
 							onClick={() => void submitCommit()}
-							className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-4 text-[13px] font-medium text-[var(--accent-fg)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
 						>
-							{busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
-							Importieren
-						</button>
+							{busy && <Spinner data-icon="inline-start" />}Importieren ({selectedCount})
+						</Button>
 					</div>
 				</section>
 			)}
-
 			{step === 'commit' && commitResult && (
-				<section>
+				<section className="flex flex-col gap-4">
 					<ImportProgress
 						state="done"
 						inserted={commitResult.inserted}
 						skipped={commitResult.skipped}
 						errors={commitResult.errors.length}
 					/>
-					<div className="mt-4">
-						<Link
-							href={`/wg/${encodedCode}/ausgaben`}
-							className="inline-flex h-11 items-center justify-center rounded-md bg-[var(--accent)] px-4 text-[13px] font-medium text-[var(--accent-fg)] transition-opacity hover:opacity-90"
-						>
-							Zu den Ausgaben
-						</Link>
-					</div>
+					{commitResult.errors.length > 0 && (
+						<Alert variant="destructive">
+							<AlertTitle>Nicht übernommene Einträge</AlertTitle>
+							<AlertDescription>
+								<ul className="flex flex-col gap-2">
+									{commitResult.errors.map((item) => (
+										<li key={item.index}>
+											Eintrag {item.index + 1}: {importActionErrorMessage(item.reason)}
+										</li>
+									))}
+								</ul>
+							</AlertDescription>
+						</Alert>
+					)}
+					<Link
+						href={`/wg/${encodedCode}/ausgaben`}
+						className={buttonVariants({ className: 'min-h-11' })}
+					>
+						Zu den Ausgaben
+					</Link>
 				</section>
 			)}
-
 			{commitState === 'pending' && <ImportProgress state="pending" />}
 			{error && (
-				<p
-					id="import-error"
-					role="alert"
-					className="rounded-md bg-[var(--danger)]/10 p-3 text-[13px] text-[var(--danger)]"
-				>
-					{error}
-				</p>
+				<Alert id="import-error" variant="destructive">
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
 			)}
+			<AlertDialog
+				open={leaveOpen || sourceToChange !== null}
+				onOpenChange={(open) => {
+					if (!open) {
+						setLeaveOpen(false);
+						setSourceToChange(null);
+					}
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Import-Eingaben verwerfen?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Die bisher eingegebenen Daten und Zuordnungen gehen verloren. Es werden keine neuen
+							Ausgaben importiert.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel className="min-h-11">Weiterbearbeiten</AlertDialogCancel>
+						<AlertDialogAction
+							variant="destructive"
+							className="min-h-11"
+							onClick={() => {
+								if (sourceToChange) {
+									chooseSource(sourceToChange);
+									setSourceToChange(null);
+								} else router.push(returnHref);
+							}}
+						>
+							Verwerfen
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }

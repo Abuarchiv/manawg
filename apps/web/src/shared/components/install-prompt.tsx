@@ -1,5 +1,14 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import {
+	Card,
+	CardAction,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card';
 import { X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -175,14 +184,7 @@ export function InstallPrompt() {
 
 	return (
 		<div
-			// biome-ignore lint/a11y/useSemanticElements: native <dialog> UA display:none kills CSS transitions (see native-dialog-css-transition-kill skill)
-			role="status"
-			aria-live="polite"
-			aria-label="App installieren"
-			// Breite an den App-Frame gekoppelt: max-w-lg (32rem) war breiter als
-			// --app-frame-width, das Banner ragte auf Desktop beidseitig über die
-			// App-Spalte hinaus — dieselbe Deckelung wie bei der Bottom-Nav.
-			className="fixed left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-1rem)] max-w-[calc(var(--app-frame-width)-1rem)] animate-in slide-in-from-bottom-4 fade-in duration-300"
+			className="fixed inset-x-0 z-40 mx-auto w-[calc(100%-1rem)] max-w-[calc(var(--app-frame-width)-1rem)] animate-in fade-in slide-in-from-bottom-4 duration-300"
 			style={{
 				// In /wg/* the bottom nav is fixed (NavItem min-h 48px + safe-area).
 				// Lift the prompt above it; outside the WG app stick close to the edge.
@@ -191,46 +193,60 @@ export function InstallPrompt() {
 					: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
 			}}
 		>
-			<div className="rounded-3xl border border-[var(--border)] bg-[var(--bg-base)] p-4 text-[var(--text-1)] shadow-2xl sm:p-5">
-				<div className="flex items-start gap-3">
-					<LogoMark size={44} radius={12} className="shrink-0" />
-
-					<div className="flex-1 min-w-0">
-						<p className="text-base font-semibold tracking-[-0.02em] text-[var(--text-1)]">
-							{iosHint ? 'Auf dem Home-Bildschirm installieren' : 'ManaWG als App installieren'}
-						</p>
-						<p className="mt-1.5 text-sm leading-relaxed text-[var(--text-2)]">
+			<section aria-live="polite" aria-label="App installieren">
+				<Card
+					size="sm"
+					className="max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-6rem)] overflow-y-auto"
+				>
+					<CardHeader>
+						<div className="flex min-w-0 items-center gap-3">
+							<LogoMark
+								size={32}
+								radius={12}
+								tileFill="var(--primary)"
+								markFill="var(--primary-foreground)"
+								className="shrink-0"
+							/>
+							<CardTitle>
+								{iosHint ? 'Auf dem Home-Bildschirm installieren' : 'ManaWG als App installieren'}
+							</CardTitle>
+						</div>
+						<CardDescription>
 							{iosHint ? (
 								<>
-									Tippe auf <span className="font-semibold text-[var(--text-1)]">Teilen</span> und
-									dann{' '}
-									<span className="font-semibold text-[var(--text-1)]">Zum Home-Bildschirm</span>.
+									Tippe auf <span className="font-medium text-foreground">Teilen</span> und dann{' '}
+									<span className="font-medium text-foreground">Zum Home-Bildschirm</span>.
 								</>
 							) : (
 								'Wie eine App. Schneller starten, offline-fähig, kein Browser-Tab nötig.'
 							)}
-						</p>
-						{!iosHint && event && (
-							<button
+						</CardDescription>
+						<CardAction>
+							<Button
+								type="button"
+								onClick={dismiss}
+								variant="ghost"
+								size="icon"
+								aria-label="Installationshinweis ausblenden"
+								className="size-11"
+							>
+								<X aria-hidden="true" />
+							</Button>
+						</CardAction>
+					</CardHeader>
+					{!iosHint && event && (
+						<CardFooter>
+							<Button
 								type="button"
 								onClick={install}
-								className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--text-1)] px-4 py-2 text-sm font-semibold text-[var(--bg-base)] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+								className="h-auto min-h-11 w-full whitespace-normal py-2"
 							>
 								Jetzt installieren
-							</button>
-						)}
-					</div>
-
-					<button
-						type="button"
-						onClick={dismiss}
-						aria-label="Installationshinweis ausblenden"
-						className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-[var(--surface)] p-2.5 text-[var(--text-3)] transition hover:bg-[var(--surface-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-					>
-						<X className="h-4 w-4" aria-hidden="true" />
-					</button>
-				</div>
-			</div>
+							</Button>
+						</CardFooter>
+					)}
+				</Card>
+			</section>
 		</div>
 	);
 }

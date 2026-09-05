@@ -1,6 +1,7 @@
 'use client';
+import { Badge } from '@/components/ui/badge';
+import { Spinner } from '@/components/ui/spinner';
 import { CalendarLink, FormToggleButton } from '@/components/wg/PageHeaderActions';
-import { Loader2 } from 'lucide-react';
 
 interface PutzenHeaderProps {
 	itemCount: number;
@@ -20,14 +21,12 @@ export function PutzenHeader({
 	return (
 		<header className="flex items-center justify-between gap-3">
 			<div className="min-w-0">
-				<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">Putzplan</h1>
-				<p className="mt-0.5 text-[13px] text-[var(--text-3)]">
-					<span aria-live="polite" aria-atomic="true">
+				<h1 className="text-xl font-semibold tracking-tight text-foreground">Putzplan</h1>
+				<p className="mt-1 flex items-center gap-1.5" aria-live="polite" aria-atomic="true">
+					<Badge variant="secondary" className="tabular-nums">
 						{itemCount} Aufgabe{itemCount === 1 ? '' : 'n'}
-					</span>
-					{refreshing && (
-						<Loader2 className="ml-1.5 inline-block h-3 w-3 animate-spin opacity-50" aria-hidden />
-					)}
+					</Badge>
+					{refreshing && <Spinner className="size-3 opacity-50" aria-hidden />}
 				</p>
 			</div>
 			<div className="flex shrink-0 items-center gap-1.5">

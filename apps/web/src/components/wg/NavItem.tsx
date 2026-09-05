@@ -1,5 +1,8 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import {
 	Bell,
@@ -33,7 +36,10 @@ export type NavIconKey =
 	| 'chat'
 	| 'suche'
 	| 'aktivitaet'
-	| 'einstellungen';
+	| 'einstellungen'
+	| 'haushalt'
+	| 'finanzen'
+	| 'austausch';
 
 const ICONS: Record<NavIconKey, LucideIcon> = {
 	home: Home,
@@ -49,6 +55,9 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
 	suche: Search,
 	aktivitaet: Clock3,
 	einstellungen: Settings,
+	haushalt: ListChecks,
+	finanzen: Receipt,
+	austausch: Megaphone,
 };
 
 interface NavItemProps {
@@ -56,15 +65,41 @@ interface NavItemProps {
 	label: string;
 	iconKey: NavIconKey;
 	badgeCount?: number;
+	/**
+	 * Explicit active state for grouped destinations (Start/Haushalt/Finanzen/
+	 * Austausch). When omitted, falls back to exact href matching so existing
+	 * callers keep their behavior.
+	 */
+	active?: boolean;
+	/**
+	 * Additional hrefs that mark this item active (parent grouping). Compared
+	 * by exact path or `<prefix>/…` so `/wg/ABC/vorraete` keeps Haushalt
+	 * active while all deep links keep resolving.
+	 */
+	activePrefixes?: string[];
 }
 
 const BADGE_MAX_DISPLAY = 99;
 
-export function NavItem({ href, label, iconKey, badgeCount }: NavItemProps) {
+export function NavItem({
+	href,
+	label,
+	iconKey,
+	badgeCount,
+	active,
+	activePrefixes,
+}: NavItemProps) {
 	const pathname = usePathname();
 	const normalizedPath = pathname?.replace(/\/+$/, '') ?? '';
 	const normalizedHref = new URL(href, 'https://manawg.invalid').pathname.replace(/\/+$/, '');
-	const isActive = normalizedPath === normalizedHref;
+	const normalizedPrefixes = (activePrefixes ?? []).map((prefix) =>
+		new URL(prefix, 'https://manawg.invalid').pathname.replace(/\/+$/, ''),
+	);
+	const prefixActive = normalizedPrefixes.some(
+		(prefix) => normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`),
+	);
+	const isCurrentPage = normalizedPath === normalizedHref;
+	const isActive = active ?? (isCurrentPage || prefixActive);
 	const Icon = ICONS[iconKey];
 	const normalizedBadge = typeof badgeCount === 'number' && badgeCount > 0 ? badgeCount : null;
 	const showBadge = normalizedBadge !== null;
@@ -77,29 +112,31 @@ export function NavItem({ href, label, iconKey, badgeCount }: NavItemProps) {
 		<li>
 			<Link
 				href={href}
-				aria-current={isActive ? 'page' : undefined}
+				aria-current={isActive ? (isCurrentPage ? 'page' : 'location') : undefined}
 				data-bottom-nav-item
 				onClick={() => {
 					if (!isActive) haptic('light');
 				}}
-				className={`flex w-full min-h-[48px] flex-col items-center justify-center gap-1 rounded-md px-1 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-					isActive ? 'text-[var(--text-1)]' : 'text-[var(--text-2)] hover:text-[var(--text-1)]'
-				}`}
+				className={cn(
+					buttonVariants({ variant: isActive ? 'secondary' : 'ghost' }),
+					'h-auto min-h-14 w-full flex-col gap-1 px-1 py-2',
+				)}
 			>
 				<span className="relative">
-					<Icon className="h-5 w-5" strokeWidth={isActive ? 2.25 : 1.75} aria-hidden />
+					<Icon aria-hidden />
 					{showBadge && (
-						<span
+						<Badge
+							variant="destructive"
 							aria-label={`${badgeCount} ungelesen`}
 							aria-live="polite"
 							aria-atomic="true"
-							className="absolute -right-2 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[9px] font-semibold leading-none text-[var(--danger-fg)]"
+							className="absolute -right-3 -top-2 tabular-nums"
 						>
 							{badgeText}
-						</span>
+						</Badge>
 					)}
 				</span>
-				<span className="text-[11px] font-medium leading-none tracking-tight">{label}</span>
+				<span className="text-xs">{label}</span>
 			</Link>
 		</li>
 	);

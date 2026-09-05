@@ -1,23 +1,36 @@
-import { LIST_CARD } from '@/components/ui/styles';
+import { Card, CardContent } from '@/components/ui/card';
+import { Item, ItemContent, ItemMedia } from '@/components/ui/item';
+import { ItemGroup } from '@/components/ui/item';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const SKELETON_KEYS = ['s0', 's1', 's2'];
 
 export function ListSkeleton() {
 	return (
-		<ul className={LIST_CARD}>
-			{SKELETON_KEYS.map((k) => (
-				<li key={k} className="flex min-h-[64px] items-center gap-3 px-3 py-3 sm:px-4">
-					<div className="min-w-0 flex-1 space-y-2">
-						<span className="block h-[15px] w-2/3 animate-pulse rounded bg-[var(--surface-strong)]" />
-						<div className="flex items-center gap-1.5">
-							<span className="block h-5 w-5 animate-pulse rounded-full bg-[var(--surface-strong)]" />
-							<span className="block h-[12.5px] w-1/4 animate-pulse rounded bg-[var(--surface-strong)]" />
-							<span className="block h-[12.5px] w-16 animate-pulse rounded-full bg-[var(--surface-strong)]" />
-						</div>
-					</div>
-					<span className="h-11 w-11 animate-pulse rounded-full bg-[var(--surface-strong)]" />
-				</li>
-			))}
-		</ul>
+		<Card className="py-0">
+			<CardContent className="p-0">
+				<ItemGroup
+					className="gap-0 divide-y divide-border"
+					aria-busy="true"
+					aria-label="Putzplan wird geladen"
+				>
+					{SKELETON_KEYS.map((k) => (
+						<Item key={k} className="px-3 py-3">
+							<ItemContent className="min-w-0 flex-1 space-y-2">
+								<Skeleton className="h-[15px] w-2/3" />
+								<div className="flex items-center gap-1.5">
+									<Skeleton className="size-5 rounded-full" />
+									<Skeleton className="h-3 w-1/4" />
+									<Skeleton className="h-5 w-16 rounded-full" />
+								</div>
+							</ItemContent>
+							<ItemMedia variant="icon" className="self-center">
+								<Skeleton className="size-9 rounded-full" />
+							</ItemMedia>
+						</Item>
+					))}
+				</ItemGroup>
+			</CardContent>
+		</Card>
 	);
 }

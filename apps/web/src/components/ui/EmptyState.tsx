@@ -1,3 +1,12 @@
+import { Button } from '@/components/ui/button';
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
 import { Plus } from 'lucide-react';
 import type React from 'react';
 
@@ -12,32 +21,27 @@ interface EmptyStateProps {
 	};
 }
 
-/**
- * Empty state — mobile-first, centered, consistent across all sections.
- * py-12 on mobile, py-16 on sm+. Icon 48px chip. Responsive text.
- */
+/** Compatibility API for the original empty-state callers. */
 export function EmptyState({ icon, headline, sub, cta }: EmptyStateProps) {
 	return (
-		<div className="py-12 sm:py-16 flex flex-col items-center gap-3 text-center">
-			<div className="w-12 h-12 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--text-3)]">
-				{icon}
-			</div>
-			<div className="space-y-1 max-w-sm">
-				<p className="text-lg sm:text-xl font-semibold text-[var(--text-1)] tracking-[-0.01em]">
-					{headline}
-				</p>
-				<p className="text-sm sm:text-base text-[var(--text-2)] mb-4">{sub}</p>
-			</div>
+		<Empty>
+			<EmptyHeader>
+				<EmptyMedia variant="icon">{icon}</EmptyMedia>
+				<EmptyTitle>{headline}</EmptyTitle>
+				<EmptyDescription>{sub}</EmptyDescription>
+			</EmptyHeader>
 			{cta !== undefined && (
-				<button
-					type="button"
-					onClick={cta.onClick}
-					className="btn-app-primary mt-2 w-full sm:w-auto min-h-11 justify-center"
-				>
-					{cta.icon ?? <Plus className="w-4 h-4" aria-hidden="true" />}
-					{cta.label}
-				</button>
+				<EmptyContent>
+					<Button
+						type="button"
+						onClick={cta.onClick}
+						className="h-auto min-h-11 w-full whitespace-normal py-2"
+					>
+						{cta.icon ?? <Plus data-icon="inline-start" aria-hidden="true" />}
+						{cta.label}
+					</Button>
+				</EmptyContent>
 			)}
-		</div>
+		</Empty>
 	);
 }

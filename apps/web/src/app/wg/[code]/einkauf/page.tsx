@@ -1,6 +1,31 @@
 'use client';
 import { useToast } from '@/components/ui/Toast';
-import { ALERT_DANGER, EMPTY_PLACEHOLDER, LIST_CARD } from '@/components/ui/styles';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { ItemGroup } from '@/components/ui/item';
+import { Spinner } from '@/components/ui/spinner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -37,7 +62,7 @@ import {
 	shoppingActionErrorMessage,
 	shoppingAddErrorMessage,
 } from '@/features/shopping/shopping-errors';
-import { ListChecks, Loader2, Package, Plus, Trash2 } from 'lucide-react';
+import { ListChecks, Plus, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -61,6 +86,7 @@ export default function EinkaufPage() {
 	const [removeError, setRemoveError] = useState<string | null>(null);
 	const [adding, setAdding] = useState(false);
 	const [clearingBought, setClearingBought] = useState(false);
+	const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 	const [queueEditId, setQueueEditId] = useState<string | null>(null);
 	const [draftHydrated, setDraftHydrated] = useState(false);
 	const { isPending, start, end } = usePendingSet();
@@ -418,6 +444,10 @@ export default function EinkaufPage() {
 	const open = items.filter((i) => i.boughtAt === null);
 	const done = items.filter((i) => i.boughtAt !== null);
 
+	// Completion does not change row order while residents tap consecutive items.
+	const orderedItems = [...items].sort(
+		(a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
+	);
 	const actionError = toggleError ?? removeError;
 
 	function applyQuickItem(item: (typeof QUICK_SHOPPING_ITEMS)[number]): void {
@@ -427,104 +457,87 @@ export default function EinkaufPage() {
 	}
 
 	return (
-		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-			<header className="flex items-start justify-between gap-3">
-				<div>
-					<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">
-						Einkaufsliste
-					</h1>
-					<p
-						className="mt-0.5 text-[13px] text-[var(--text-3)]"
-						aria-live="polite"
-						aria-atomic="true"
-					>
-						{open.length} offen{done.length > 0 ? ` · ${done.length} erledigt` : ''}
-					</p>
+		<div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-5">
+			<header className="flex flex-col gap-1">
+				<h1 className="text-xl font-semibold tracking-tight">Einkaufsliste</h1>
+				<div className="flex flex-wrap gap-2" aria-live="polite" aria-atomic="true">
+					<Badge variant="secondary">{open.length} offen</Badge>
+					<Badge variant="outline">{done.length} erledigt</Badge>
 				</div>
 			</header>
+			<SubNav label="Haushalt" items={[]} />
 
-			{/* Vorräte sind die andere Hälfte desselben Themas: was zur Neige geht,
-			    landet hier auf der Liste. Deshalb hier verlinkt statt im Mehr-Menü. */}
-			<SubNav
-				label="Unterbereiche des Einkaufs"
-				items={[
-					{
-						href: `/wg/${encodeURIComponent(wg.shareCode)}/vorraete`,
-						label: 'Vorräte',
-						icon: Package,
-					},
-				]}
-			/>
-
-			<form
-				onSubmit={(e) => {
-					e.preventDefault();
-					void add();
-				}}
-				className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-3"
-			>
-				<div className="flex items-center gap-2">
-					<input
-						ref={nameInputRef}
-						type="text"
-						value={newName}
-						onChange={(e) => setNewName(e.target.value)}
-						maxLength={NAME_MAX}
-						placeholder="Was brauchen wir?"
-						aria-label="Artikel-Name"
-						disabled={adding}
-						className="block h-11 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-					/>
-					<input
-						type="text"
-						value={newQty}
-						onChange={(e) => setNewQty(e.target.value)}
-						maxLength={QUANTITY_MAX}
-						placeholder="Menge"
-						aria-label="Menge"
-						disabled={adding}
-						className="block h-11 w-24 shrink-0 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2.5 text-base text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-					/>
-					<button
-						type="submit"
-						disabled={newName.trim().length === 0 || adding}
-						aria-label="Artikel hinzufügen"
-						className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[var(--text-1)] text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+			<Card size="sm">
+				<CardHeader>
+					<CardTitle>Was brauchen wir?</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<form
+						onSubmit={(event) => {
+							event.preventDefault();
+							void add();
+						}}
+						className="flex flex-col gap-3"
 					>
-						{adding ? (
-							<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-						) : (
-							<Plus className="h-4 w-4" aria-hidden />
+						<FieldGroup className="grid grid-cols-[minmax(0,1fr)_5rem_auto] items-end gap-2">
+							<Field data-disabled={adding} data-invalid={Boolean(addError)}>
+								<FieldLabel htmlFor="shopping-name">Artikel</FieldLabel>
+								<Input
+									id="shopping-name"
+									ref={nameInputRef}
+									value={newName}
+									onChange={(event) => setNewName(event.target.value)}
+									maxLength={NAME_MAX}
+									placeholder="Was brauchen wir?"
+									aria-label="Artikel-Name"
+									disabled={adding}
+									aria-invalid={Boolean(addError)}
+									aria-describedby={addError ? 'shopping-add-error' : undefined}
+									className="min-h-11 text-base"
+								/>
+							</Field>
+							<Field data-disabled={adding}>
+								<FieldLabel htmlFor="shopping-qty">Menge</FieldLabel>
+								<Input
+									id="shopping-qty"
+									value={newQty}
+									onChange={(event) => setNewQty(event.target.value)}
+									maxLength={QUANTITY_MAX}
+									placeholder="1 L"
+									aria-label="Menge"
+									disabled={adding}
+									className="min-h-11 text-base"
+								/>
+							</Field>
+							<Button
+								type="submit"
+								size="icon"
+								disabled={!newName.trim() || adding}
+								aria-label="Artikel hinzufügen"
+								className="size-11"
+							>
+								{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}
+							</Button>
+						</FieldGroup>
+						{addError && (
+							<Alert id="shopping-add-error" variant="destructive">
+								<AlertDescription>{addError}</AlertDescription>
+							</Alert>
 						)}
-					</button>
-				</div>
-				{addError && (
-					<p
-						role="alert"
-						className="mt-2 rounded-md border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-2.5 py-1.5 text-[12.5px] text-[var(--danger)]"
-					>
-						{addError}
-					</p>
-				)}
-				{addNotice && (
-					<output
-						className="mt-2 block rounded-md border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-2.5 py-1.5 text-[12.5px] text-[var(--accent)]"
-						aria-live="polite"
-					>
-						{addNotice}
-					</output>
-				)}
-			</form>
+						{addNotice && (
+							<Alert>
+								<AlertDescription>{addNotice}</AlertDescription>
+							</Alert>
+						)}
+					</form>
+				</CardContent>
+			</Card>
 
 			{queuedCount > 0 && (
-				<output
-					className="block rounded-md border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-3 py-2 text-[13px] text-[var(--accent)]"
-					aria-live="polite"
-				>
-					{formatQueuedOfflineEntries(queuedCount)}
-				</output>
+				<Alert>
+					<AlertDescription>{formatQueuedOfflineEntries(queuedCount)}</AlertDescription>
+				</Alert>
 			)}
-
 			{loadError && (
 				<LoadErrorBanner
 					message={loadError}
@@ -533,118 +546,109 @@ export default function EinkaufPage() {
 					retryLabel="Liste erneut laden"
 				/>
 			)}
-
 			{actionError && (
-				<div role="alert" className={ALERT_DANGER}>
-					{actionError}
-				</div>
+				<Alert variant="destructive">
+					<AlertDescription>{actionError}</AlertDescription>
+				</Alert>
 			)}
-
 			{toggleNotice && (
-				<output
-					className="block rounded-md border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-3 py-2 text-[13px] text-[var(--accent)]"
-					aria-live="polite"
-				>
-					{toggleNotice}
-				</output>
+				<Alert>
+					<AlertDescription>{toggleNotice}</AlertDescription>
+				</Alert>
 			)}
 
 			{initialLoading && items.length === 0 ? (
 				<ListSkeleton />
 			) : loadError && items.length === 0 ? (
-				<p className={EMPTY_PLACEHOLDER}>Noch keine Artikel geladen. Versuche es erneut.</p>
+				<Empty>
+					<EmptyHeader>
+						<EmptyTitle>Noch keine Artikel geladen</EmptyTitle>
+						<EmptyDescription>Versuche es erneut.</EmptyDescription>
+					</EmptyHeader>
+				</Empty>
 			) : items.length === 0 ? (
-				<div className="rounded-lg border border-dashed border-[var(--border)] px-6 py-10 text-center">
-					<ListChecks
-						className="mx-auto mb-3 h-7 w-7 text-[var(--text-3)]"
-						strokeWidth={1.5}
-						aria-hidden
-					/>
-					<p className="mx-auto max-w-[24ch] text-[13.5px] leading-relaxed text-[var(--text-2)]">
-						Noch nichts auf der Liste. Starte mit einem typischen WG-Einkauf.
-					</p>
-					<div className="mt-4 flex flex-wrap justify-center gap-2">
+				<Empty>
+					<EmptyHeader>
+						<EmptyMedia variant="icon">
+							<ListChecks aria-hidden />
+						</EmptyMedia>
+						<EmptyTitle>Noch nichts auf der Liste</EmptyTitle>
+						<EmptyDescription>Was fehlt bei euch?</EmptyDescription>
+					</EmptyHeader>
+					<EmptyContent className="flex-row flex-wrap justify-center">
 						{QUICK_SHOPPING_ITEMS.map((item) => (
-							<button
+							<Button
 								key={item.name}
-								type="button"
+								variant="outline"
 								onClick={() => applyQuickItem(item)}
-								className="inline-flex h-11 items-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)]"
+								className="min-h-11"
 							>
 								{item.name}
-							</button>
+							</Button>
 						))}
-					</div>
-				</div>
+					</EmptyContent>
+				</Empty>
 			) : (
-				<div className="space-y-6">
-					{open.length > 0 && (
-						<section aria-labelledby="open-items-heading" className="space-y-2">
-							<h2 id="open-items-heading" className="sr-only">
-								Offene Artikel
-							</h2>
-							<ul className={LIST_CARD}>
-								{open.map((i) => (
-									<ShoppingItemRow
-										key={i.id}
-										item={i}
-										adder={memberLookup(i.addedByMemberId)}
-										buyer={null}
-										isPending={isPending}
-										onToggle={toggleBought}
-										onRemove={remove}
-										highlighted={highlightedId === i.id}
-										shareCode={wg.shareCode}
-									/>
-								))}
-							</ul>
-						</section>
-					)}
-
+				<section aria-label="Einkaufsartikel" className="flex flex-col gap-2">
+					<ItemGroup className="gap-0">
+						{orderedItems.map((item) => (
+							<ShoppingItemRow
+								key={item.id}
+								item={item}
+								adder={memberLookup(item.addedByMemberId)}
+								buyer={item.boughtByMemberId ? memberLookup(item.boughtByMemberId) : null}
+								isPending={isPending}
+								onToggle={toggleBought}
+								onRemove={remove}
+								canRemove={item.addedByMemberId === identity.memberId}
+								highlighted={highlightedId === item.id}
+								shareCode={wg.shareCode}
+							/>
+						))}
+					</ItemGroup>
 					{done.length > 0 && (
-						<section className="space-y-2" aria-labelledby="done-heading">
-							<div className="flex items-center justify-between">
-								<h2
-									id="done-heading"
-									className="text-[11.5px] font-medium uppercase tracking-[0.14em] text-[var(--text-3)]"
-								>
-									Erledigt
-								</h2>
-								<button
-									type="button"
-									onClick={() => void clearBought()}
-									disabled={clearingBought}
-									aria-label={`Erledigte Artikel entfernen (${done.length})`}
-									aria-busy={clearingBought}
-									className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md px-2 text-[11.5px] text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-40"
-								>
-									{clearingBought ? (
-										<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-									) : (
-										<Trash2 className="h-3 w-3" aria-hidden />
-									)}
-									Erledigte entfernen
-								</button>
-							</div>
-							<ul className="divide-y divide-[var(--border)] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)]">
-								{done.map((i) => (
-									<ShoppingItemRow
-										key={i.id}
-										item={i}
-										adder={memberLookup(i.addedByMemberId)}
-										buyer={memberLookup(i.boughtByMemberId)}
-										isPending={isPending}
-										onToggle={toggleBought}
-										onRemove={remove}
-										highlighted={highlightedId === i.id}
-										shareCode={wg.shareCode}
-									/>
-								))}
-							</ul>
-						</section>
+						<Button
+							variant="outline"
+							onClick={() => setClearConfirmOpen(true)}
+							disabled={clearingBought}
+							aria-label={`Erledigte Artikel entfernen (${done.length})`}
+							className="min-h-11 self-start"
+						>
+							{clearingBought ? (
+								<Spinner data-icon="inline-start" aria-hidden />
+							) : (
+								<Trash2 data-icon="inline-start" aria-hidden />
+							)}
+							Erledigte entfernen
+						</Button>
 					)}
-				</div>
+				</section>
 			)}
+			<AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
+				<AlertDialogContent className="max-w-[calc(100%-2rem)]">
+					<AlertDialogHeader>
+						<AlertDialogTitle>Erledigte Artikel entfernen?</AlertDialogTitle>
+						<AlertDialogDescription>
+							{done.length} erledigte Artikel werden für die ganze WG endgültig entfernt. Offene
+							Artikel bleiben erhalten.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
+						<AlertDialogAction
+							variant="destructive"
+							className="min-h-11"
+							disabled={clearingBought}
+							onClick={() => {
+								setClearConfirmOpen(false);
+								void clearBought();
+							}}
+						>
+							Entfernen
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }

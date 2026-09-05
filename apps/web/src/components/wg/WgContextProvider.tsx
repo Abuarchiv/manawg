@@ -1,5 +1,6 @@
 'use client';
 
+import { Skeleton } from '@/components/ui/skeleton';
 import { apiFetch } from '@/core/infra/api-client';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import { type StoredIdentity, getIdentity, rememberWg } from '@/shared/lib/identity';
@@ -173,12 +174,12 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 		// identity is read from localStorage. Fully static markup — no dynamic
 		// values — so hydration cannot mismatch.
 		return (
-			<div className="min-h-svh bg-[var(--bg-base)]" aria-busy="true">
+			<div className="min-h-svh bg-background" aria-busy="true">
 				<main id="main" tabIndex={-1} className="app-page-enter focus:outline-none">
 					<div className="mx-auto w-full max-w-3xl px-3 pt-6 sm:px-4" aria-label="Wird geladen">
-						<div className="h-7 w-40 animate-pulse rounded-md bg-[var(--surface)]" />
-						<div className="mt-4 h-24 animate-pulse rounded-2xl bg-[var(--surface)]" />
-						<div className="mt-4 h-24 animate-pulse rounded-2xl bg-[var(--surface)]" />
+						<Skeleton className="h-7 w-40" />
+						<Skeleton className="mt-4 h-24 rounded-xl" />
+						<Skeleton className="mt-4 h-24 rounded-xl" />
 					</div>
 				</main>
 			</div>

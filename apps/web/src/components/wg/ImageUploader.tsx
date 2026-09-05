@@ -1,5 +1,9 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import {
 	isPendingImageToken,
@@ -8,7 +12,8 @@ import {
 	storePendingImage,
 	uploadPendingImageToken,
 } from '@/core/offline/offline-images';
-import { AlertTriangle, ImagePlus, Loader2, Maximize2, X } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import { AlertTriangle, ImagePlus, Maximize2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 interface Props {
@@ -320,7 +325,7 @@ export function ImageUploader({
 		const previewSrc = pending ? localPreview : value;
 		return (
 			<>
-				<div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+				<div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg border border-border bg-card">
 					{previewSrc ? (
 						// eslint-disable-next-line @next/next/no-img-element
 						<img
@@ -334,26 +339,33 @@ export function ImageUploader({
 							loading="lazy"
 						/>
 					) : (
-						<div className="flex h-full items-center justify-center text-[13px] text-[var(--text-3)]">
+						<div className="flex h-full items-center justify-center text-[13px] text-muted-foreground">
 							Bild wird vorbereitet…
 						</div>
 					)}
 					{pending && (
-						<div className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-1 text-[11px] font-medium text-white">
+						<Badge
+							variant="secondary"
+							className="absolute left-2 top-2 bg-background/90 text-foreground"
+						>
 							Offline bereit
-						</div>
+						</Badge>
 					)}
 					<div className="absolute right-2 top-2 flex gap-1.5">
-						<button
+						<Button
+							variant="secondary"
+							size="icon-lg"
 							type="button"
 							onClick={() => setPreviewOpen(true)}
 							aria-label={`${accessibleImageLabel} groß anzeigen`}
 							disabled={!previewSrc}
-							className="flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+							className="min-h-11 min-w-11"
 						>
-							<Maximize2 className="h-4 w-4" aria-hidden />
-						</button>
-						<button
+							<Maximize2 aria-hidden />
+						</Button>
+						<Button
+							variant="secondary"
+							size="icon-lg"
 							type="button"
 							onClick={() => {
 								if (disabled) return;
@@ -365,10 +377,10 @@ export function ImageUploader({
 							}}
 							aria-label={`${accessibleImageLabel} entfernen`}
 							disabled={disabled || uploading}
-							className="flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-50"
+							className="min-h-11 min-w-11"
 						>
-							<X className="h-4 w-4" aria-hidden />
-						</button>
+							<X aria-hidden />
+						</Button>
 					</div>
 				</div>
 				{previewOpen && previewSrc && (
@@ -384,15 +396,17 @@ export function ImageUploader({
 						}}
 						className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
 					>
-						<button
+						<Button
+							variant="secondary"
+							size="icon-lg"
 							ref={previewCloseButtonRef}
 							type="button"
 							onClick={() => setPreviewOpen(false)}
 							aria-label={`${accessibleImageLabel}-Vorschau schließen`}
-							className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+							className="absolute right-4 top-4 min-h-11 min-w-11"
 						>
-							<X className="h-5 w-5" aria-hidden />
-						</button>
+							<X aria-hidden />
+						</Button>
 						{/* eslint-disable-next-line @next/next/no-img-element */}
 						<img
 							src={previewSrc}
@@ -402,12 +416,12 @@ export function ImageUploader({
 					</dialog>
 				)}
 				{error && (
-					<p role="alert" className="mt-2 text-[13px] text-[var(--text-2)]">
-						{error}
-					</p>
+					<Alert variant="destructive" className="mt-2">
+						<AlertDescription className="text-current">{error}</AlertDescription>
+					</Alert>
 				)}
 				{notice && (
-					<output className="mt-2 block text-[13px] text-[var(--text-2)]" aria-live="polite">
+					<output className="mt-2 block text-[13px] text-muted-foreground" aria-live="polite">
 						{notice}
 					</output>
 				)}
@@ -417,30 +431,28 @@ export function ImageUploader({
 
 	if (featureDisabled) {
 		return (
-			<p
-				role="alert"
-				className="flex items-start gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-[13px] text-[var(--text-2)]"
-			>
-				<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-3)]" aria-hidden />
-				Bild-Upload ist noch nicht konfiguriert.
-			</p>
+			<Alert>
+				<AlertTriangle aria-hidden />
+				<AlertDescription>Bild-Upload ist noch nicht konfiguriert.</AlertDescription>
+			</Alert>
 		);
 	}
 
 	return (
 		<div>
 			<label
-				className={`flex h-32 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-2)] transition-colors focus-within:outline-none focus-within:ring-2 focus-within:ring-[var(--accent)] focus-within:ring-offset-2 ${
-					disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-[var(--surface)]'
-				}`}
+				className={cn(
+					'flex h-32 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-background text-sm text-muted-foreground transition-colors focus-within:ring-2 focus-within:ring-ring/50',
+					disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-muted/50',
+				)}
 			>
 				{uploading ? (
-					<Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+					<Spinner className="size-6" aria-hidden="true" />
 				) : (
-					<ImagePlus className="h-6 w-6" aria-hidden="true" />
+					<ImagePlus className="size-6" aria-hidden="true" />
 				)}
 				<span aria-live="polite">{uploading ? 'Lade hoch…' : 'Bild hinzufügen'}</span>
-				<span className="text-[11px] text-[var(--text-3)]">JPG, PNG, WebP, HEIC · max. 8 MB</span>
+				<span className="text-[11px] text-muted-foreground">JPG, PNG, WebP, HEIC · max. 8 MB</span>
 				<input
 					type="file"
 					accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
@@ -455,12 +467,12 @@ export function ImageUploader({
 				/>
 			</label>
 			{error && (
-				<p role="alert" className="mt-2 text-[13px] text-[var(--danger)]">
-					{error}
-				</p>
+				<Alert variant="destructive" className="mt-2">
+					<AlertDescription className="text-current">{error}</AlertDescription>
+				</Alert>
 			)}
 			{notice && (
-				<output className="mt-2 block text-[13px] text-[var(--text-2)]" aria-live="polite">
+				<output className="mt-2 block text-[13px] text-muted-foreground" aria-live="polite">
 					{notice}
 				</output>
 			)}

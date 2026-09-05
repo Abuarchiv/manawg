@@ -1,85 +1,127 @@
 'use client';
+
+import {
+	Collapsible,
+	CollapsiblePanel,
+	CollapsibleTrigger,
+} from '@/components/animate-ui/primitives/base/collapsible';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Toggle } from '@/components/ui/toggle';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { AnnouncementFilter } from '@/features/pinnwand/announcement-workflow';
-import { KIND_OPTIONS, STATUS_FILTERS } from '@/features/pinnwand/components/constants';
-import { Pin } from 'lucide-react';
-import type React from 'react';
+import { Pin, Search, SlidersHorizontal } from 'lucide-react';
+import { type Dispatch, type SetStateAction, useState } from 'react';
+import { KIND_OPTIONS, STATUS_FILTERS } from './constants';
 
 interface PinnwandFilterBarProps {
 	filter: AnnouncementFilter;
-	onFilterChange: React.Dispatch<React.SetStateAction<AnnouncementFilter>>;
+	onFilterChange: Dispatch<SetStateAction<AnnouncementFilter>>;
 }
 
-export function PinnwandFilterBar({
-	filter,
-	onFilterChange,
-}: PinnwandFilterBarProps): React.ReactElement {
+export function PinnwandFilterBar({ filter, onFilterChange }: PinnwandFilterBarProps) {
+	const [optionsOpen, setOptionsOpen] = useState(false);
+	const activeOptions =
+		Number(filter.kind !== 'all') +
+		Number(Boolean(filter.ownership && filter.ownership !== 'all')) +
+		Number(filter.pinnedOnly);
+
 	return (
-		<div className="flex flex-wrap items-center justify-between gap-2">
-			<div className="flex flex-wrap items-center gap-1.5">
-				{STATUS_FILTERS.map((option) => (
-					<button
-						key={option.value}
-						type="button"
-						onClick={() => onFilterChange((current) => ({ ...current, status: option.value }))}
-						aria-pressed={filter.status === option.value}
-						className={`inline-flex h-11 items-center rounded-full border px-3 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-							filter.status === option.value
-								? 'border-[var(--text-1)] bg-[var(--text-1)] text-[var(--bg-base)]'
-								: 'border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]'
-						}`}
-					>
-						{option.label}
-					</button>
-				))}
-				<select
-					value={filter.kind}
-					onChange={(e) =>
-						onFilterChange((current) => ({
-							...current,
-							kind: e.target.value as AnnouncementFilter['kind'],
-						}))
+		<Collapsible open={optionsOpen} onOpenChange={setOptionsOpen} className="flex flex-col gap-3">
+			<InputGroup className="min-h-11">
+				<InputGroupAddon>
+					<Search aria-hidden />
+				</InputGroupAddon>
+				<InputGroupInput
+					type="search"
+					value={filter.query ?? ''}
+					aria-label="Beiträge durchsuchen"
+					placeholder="Beiträge durchsuchen"
+					onChange={(event) =>
+						onFilterChange((current) => ({ ...current, query: event.target.value }))
 					}
-					aria-label="Typ filtern"
-					className="h-11 min-w-0 max-w-full rounded-full border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+					className="text-base md:text-base"
+				/>
+			</InputGroup>
+			<div className="flex flex-wrap items-center justify-between gap-2">
+				<ToggleGroup
+					value={[filter.status]}
+					variant="outline"
+					aria-label="Status filtern"
+					onValueChange={(values) => {
+						const status = STATUS_FILTERS.find((option) => option.value === values[0])?.value;
+						if (status) onFilterChange((current) => ({ ...current, status }));
+					}}
 				>
-					<option value="all">Alle Typen</option>
-					{KIND_OPTIONS.map((option) => (
-						<option key={option.value} value={option.value}>
+					{STATUS_FILTERS.map((option) => (
+						<ToggleGroupItem key={option.value} value={option.value} className="min-h-11">
 							{option.label}
-						</option>
+						</ToggleGroupItem>
 					))}
-				</select>
-				<select
-					value={filter.ownership ?? 'all'}
-					onChange={(e) =>
-						onFilterChange((current) => ({
-							...current,
-							ownership: e.target.value as NonNullable<AnnouncementFilter['ownership']>,
-						}))
-					}
-					aria-label="Verantwortlichkeit filtern"
-					className="h-11 min-w-0 max-w-full rounded-full border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-				>
-					<option value="all">Alle Zuständigkeiten</option>
-					<option value="mine">Von mir übernommen</option>
-					<option value="untaken">Noch niemand</option>
-				</select>
-				<button
-					type="button"
-					onClick={() =>
-						onFilterChange((current) => ({ ...current, pinnedOnly: !current.pinnedOnly }))
-					}
-					aria-pressed={filter.pinnedOnly}
-					className={`inline-flex h-11 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-						filter.pinnedOnly
-							? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
-							: 'border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]'
-					}`}
-				>
-					<Pin className="h-3.5 w-3.5" aria-hidden />
-					Fixiert
-				</button>
+				</ToggleGroup>
+				<CollapsibleTrigger render={<Button variant="ghost" className="min-h-11" />}>
+					<SlidersHorizontal data-icon="inline-start" aria-hidden /> Filter
+					{activeOptions > 0 && <Badge variant="secondary">{activeOptions}</Badge>}
+				</CollapsibleTrigger>
 			</div>
-		</div>
+			<CollapsiblePanel keepRendered inert={!optionsOpen}>
+				<FieldGroup className="gap-3">
+					<Field>
+						<FieldLabel htmlFor="announcement-kind-filter">Beitragstyp</FieldLabel>
+						<NativeSelect
+							id="announcement-kind-filter"
+							value={filter.kind}
+							aria-label="Typ filtern"
+							className="w-full [&_select]:min-h-11 [&_select]:text-base"
+							onChange={(event) =>
+								onFilterChange((current) => ({
+									...current,
+									kind: event.target.value as AnnouncementFilter['kind'],
+								}))
+							}
+						>
+							<NativeSelectOption value="all">Alle Typen</NativeSelectOption>
+							{KIND_OPTIONS.map((option) => (
+								<NativeSelectOption key={option.value} value={option.value}>
+									{option.label}
+								</NativeSelectOption>
+							))}
+						</NativeSelect>
+					</Field>
+					<Field>
+						<FieldLabel htmlFor="announcement-owner-filter">Verantwortlichkeit</FieldLabel>
+						<NativeSelect
+							id="announcement-owner-filter"
+							value={filter.ownership ?? 'all'}
+							aria-label="Verantwortlichkeit filtern"
+							className="w-full [&_select]:min-h-11 [&_select]:text-base"
+							onChange={(event) =>
+								onFilterChange((current) => ({
+									...current,
+									ownership: event.target.value as NonNullable<AnnouncementFilter['ownership']>,
+								}))
+							}
+						>
+							<NativeSelectOption value="all">Alle Zuständigkeiten</NativeSelectOption>
+							<NativeSelectOption value="mine">Von mir übernommen</NativeSelectOption>
+							<NativeSelectOption value="untaken">Noch niemand</NativeSelectOption>
+						</NativeSelect>
+					</Field>
+					<Toggle
+						pressed={filter.pinnedOnly}
+						onPressedChange={(pressed) =>
+							onFilterChange((current) => ({ ...current, pinnedOnly: pressed }))
+						}
+						variant="outline"
+						className="min-h-11 self-start"
+					>
+						<Pin data-icon="inline-start" aria-hidden /> Nur fixierte Beiträge
+					</Toggle>
+				</FieldGroup>
+			</CollapsiblePanel>
+		</Collapsible>
 	);
 }

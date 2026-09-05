@@ -1,6 +1,11 @@
 'use client';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 import { copyViaTextArea } from '@/core/utils/clipboard';
+import { cn } from '@/shared/lib/cn';
 import { Check, Copy, Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
@@ -113,45 +118,99 @@ export function ShareWgCard({
 	}
 
 	return (
-		<div
-			className={
-				hideHeader ? '' : 'rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-5'
-			}
-		>
-			{!hideHeader && (
-				<header className="mb-4">
-					<h2 className="text-[13px] font-medium text-[var(--text-1)]">WG teilen</h2>
-					<p className="mt-0.5 text-[12.5px] text-[var(--text-3)]">
-						{joiningEnabled
-							? 'Wer Code oder QR scannt, kommt zum Beitrittsflow.'
-							: 'Beitritte sind gesperrt. Öffne den Zugang, bevor du teilst.'}
-					</p>
-				</header>
+		<div className={hideHeader ? '' : ''}>
+			{!hideHeader ? (
+				<Card>
+					<CardHeader>
+						<CardTitle>WG teilen</CardTitle>
+						<CardDescription>
+							{joiningEnabled
+								? 'Wer Code oder QR scannt, kommt zum Beitrittsflow.'
+								: 'Beitritte sind gesperrt. Öffne den Zugang, bevor du teilst.'}
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<ShareWgBody
+							shareUrl={shareUrl}
+							shareCode={shareCode}
+							wgName={wgName}
+							joiningEnabled={joiningEnabled}
+							copied={copied}
+							copying={copying}
+							copyError={copyError}
+							onCopyCode={() => copy(shareCode, 'code')}
+							onCopyLink={() => copy(shareUrl, 'link')}
+							onShare={nativeShare}
+						/>
+					</CardContent>
+				</Card>
+			) : (
+				<ShareWgBody
+					shareUrl={shareUrl}
+					shareCode={shareCode}
+					wgName={wgName}
+					joiningEnabled={joiningEnabled}
+					copied={copied}
+					copying={copying}
+					copyError={copyError}
+					onCopyCode={() => copy(shareCode, 'code')}
+					onCopyLink={() => copy(shareUrl, 'link')}
+					onShare={nativeShare}
+				/>
 			)}
+		</div>
+	);
+}
 
+function ShareWgBody({
+	shareUrl,
+	shareCode,
+	wgName,
+	joiningEnabled,
+	copied,
+	copying,
+	copyError,
+	onCopyCode,
+	onCopyLink,
+	onShare,
+}: {
+	shareUrl: string;
+	shareCode: string;
+	wgName: string;
+	joiningEnabled: boolean;
+	copied: 'code' | 'link' | null;
+	copying: 'code' | 'link' | 'share' | null;
+	copyError: string | null;
+	onCopyCode: () => void;
+	onCopyLink: () => void;
+	onShare: () => void;
+}) {
+	return (
+		<div>
 			{!joiningEnabled ? (
-				<output
-					aria-live="polite"
-					className="mb-3 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[12.5px] text-[var(--text-2)]"
-				>
-					Neue Beitritte sind gerade gesperrt. Link, QR und Teilen bleiben blockiert.
-				</output>
+				<Alert className="mb-3">
+					<AlertTitle>Beitritte gesperrt</AlertTitle>
+					<AlertDescription>
+						Neue Beitritte sind gerade gesperrt. Link, QR und Teilen bleiben blockiert.
+					</AlertDescription>
+				</Alert>
 			) : null}
 
 			<div
 				role="img"
-				aria-label="QR-Code zum WG-Beitritt"
-				className={`mb-4 flex justify-center rounded-md border border-[var(--border)] bg-white p-3 ${
-					joiningEnabled ? '' : 'opacity-45 grayscale'
-				}`}
+				aria-label={`QR-Code zum Beitritt der WG ${wgName}`}
+				className={cn(
+					'border-border mb-4 flex justify-center rounded-lg border bg-white p-3',
+					joiningEnabled ? '' : 'opacity-45 grayscale',
+				)}
 			>
 				<QRCode value={shareUrl} size={148} level="M" />
 			</div>
 
-			<div className="overflow-hidden rounded-md border border-[var(--border)]">
+			<div className="border-border overflow-hidden rounded-lg border">
 				<button
 					type="button"
-					onClick={() => copy(shareCode, 'code')}
+					onClick={onCopyCode}
 					disabled={!joiningEnabled || copying !== null}
 					aria-label={
 						copying === 'code'
@@ -160,25 +219,27 @@ export function ShareWgCard({
 								? 'Code kopiert'
 								: 'WG-Code kopieren'
 					}
-					className="flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
+					className="hover:bg-muted focus-visible:ring-ring flex min-h-[44px] w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					<div className="min-w-0">
-						<div className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)]">
+					<span className="min-w-0">
+						<span className="text-muted-foreground block text-[11px] font-medium tracking-wider uppercase">
 							Code
-						</div>
-						<div className="mt-0.5 font-mono text-[15px] font-medium tracking-[0.12em] text-[var(--text-1)]">
+						</span>
+						<span className="text-foreground mt-0.5 block font-mono text-base font-medium tracking-[0.12em]">
 							{shareCode}
-						</div>
-					</div>
-					{copied === 'code' ? (
-						<Check className="h-4 w-4 text-[var(--accent)]" aria-hidden />
+						</span>
+					</span>
+					{copying === 'code' ? (
+						<Spinner aria-hidden />
+					) : copied === 'code' ? (
+						<Check className="text-primary h-4 w-4" aria-hidden />
 					) : (
-						<Copy className="h-4 w-4 text-[var(--text-3)]" aria-hidden />
+						<Copy className="text-muted-foreground h-4 w-4" aria-hidden />
 					)}
 				</button>
 				<button
 					type="button"
-					onClick={() => copy(shareUrl, 'link')}
+					onClick={onCopyLink}
 					disabled={!joiningEnabled || copying !== null}
 					aria-label={
 						copying === 'link'
@@ -187,42 +248,44 @@ export function ShareWgCard({
 								? 'Link kopiert'
 								: 'Einladungslink kopieren'
 					}
-					className="flex min-h-11 w-full items-center justify-between gap-3 border-t border-[var(--border)] px-3 py-2.5 text-left transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
+					className="border-border hover:bg-muted focus-visible:ring-ring flex min-h-[44px] w-full items-center justify-between gap-3 border-t px-3 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					<div className="min-w-0">
-						<div className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)]">
+					<span className="min-w-0">
+						<span className="text-muted-foreground block text-[11px] font-medium tracking-wider uppercase">
 							Link
-						</div>
-						<div className="mt-0.5 truncate text-[13px] text-[var(--text-1)]">{shareUrl}</div>
-					</div>
-					{copied === 'link' ? (
-						<Check className="h-4 w-4 shrink-0 text-[var(--accent)]" aria-hidden />
+						</span>
+						<span className="text-foreground mt-0.5 block truncate text-sm">{shareUrl}</span>
+					</span>
+					{copying === 'link' ? (
+						<Spinner aria-hidden />
+					) : copied === 'link' ? (
+						<Check className="text-primary h-4 w-4 shrink-0" aria-hidden />
 					) : (
-						<Copy className="h-4 w-4 shrink-0 text-[var(--text-3)]" aria-hidden />
+						<Copy className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
 					)}
 				</button>
 			</div>
 			{copyError ? (
-				<p role="alert" className="mt-2 text-[12px] text-[var(--danger)]">
-					{copyError}
+				<Alert variant="destructive" className="mt-2">
+					<AlertDescription>{copyError}</AlertDescription>
+				</Alert>
+			) : null}
+			{copied === 'link' && !copyError ? (
+				<p aria-live="polite" className="text-muted-foreground mt-2 block text-xs">
+					Einladungslink bereit.
 				</p>
 			) : null}
-			{copied === 'link' ? (
-				<output aria-live="polite" className="mt-2 block text-[12px] text-[var(--accent)]">
-					Einladungslink bereit.
-				</output>
-			) : null}
 
-			<button
+			<Button
 				type="button"
-				onClick={nativeShare}
+				onClick={onShare}
 				disabled={!joiningEnabled || copying !== null}
 				aria-label={copying === 'share' ? 'WG-Einladung wird geteilt…' : 'WG-Einladung teilen'}
-				className="mt-3 inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-md bg-[var(--text-1)] text-[13px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
+				className="mt-3 h-11 min-h-[44px] w-full"
 			>
-				<Share2 className="h-3.5 w-3.5" aria-hidden />
+				{copying === 'share' ? <Spinner aria-hidden /> : <Share2 aria-hidden />}
 				{copying === 'share' ? 'Teilt…' : 'Teilen'}
-			</button>
+			</Button>
 		</div>
 	);
 }

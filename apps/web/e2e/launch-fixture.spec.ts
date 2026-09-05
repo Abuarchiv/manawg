@@ -79,7 +79,7 @@ test.describe('Fixture launch flow', () => {
 		await page.getByLabel('Dein Anzeigename').fill(FIXTURE.memberName);
 		await page.getByRole('button', { name: /^WG erstellen$/i }).click();
 
-		await expect(page.getByRole('heading', { name: 'Mitbewohner einladen' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: FIXTURE.name })).toBeVisible();
 		await expect(page.getByText(`${FIXTURE.name} ist live.`)).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: `Code ${FIXTURE.shareCode} kopieren` }),
@@ -94,7 +94,8 @@ test.describe('Fixture launch flow', () => {
 		await page.waitForURL(`/wg/${FIXTURE.shareCode}`);
 		await dashboardResponse;
 		await dismissOnboarding(page);
-		await expect(page.getByRole('heading', { name: FIXTURE.name })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Start', exact: true })).toBeVisible();
+		await expect(page.getByText(FIXTURE.name, { exact: true })).toBeVisible();
 
 		const modules = page.getByRole('region', { name: 'Module' });
 		for (const label of ['Ausgaben', 'Einkauf', 'Putzen', 'Pinnwand']) {

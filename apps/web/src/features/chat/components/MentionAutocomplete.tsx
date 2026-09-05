@@ -45,7 +45,7 @@ export function MentionAutocomplete({
 			// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: <ul role="listbox"> is the standard WAI-ARIA combobox popup markup.
 			role="listbox"
 			aria-label="WG-Mitglied erwähnen"
-			className="absolute bottom-[calc(100%+0.5rem)] left-2 right-2 z-10 max-h-48 overflow-y-auto rounded-xl border-t border-[var(--border)] bg-[var(--bg-base)] py-1 shadow-lg"
+			className="absolute right-2 bottom-[calc(100%+0.5rem)] left-2 z-10 max-h-48 overflow-y-auto rounded-xl border border-border bg-popover py-1 text-popover-foreground shadow-md"
 		>
 			{items.map((member, index) => {
 				const isActive = index === activeIndex;
@@ -64,10 +64,8 @@ export function MentionAutocomplete({
 							onSelect(member);
 						}}
 						onMouseEnter={() => onHoverIndex(index)}
-						className={`flex min-h-[44px] cursor-pointer items-center gap-2 px-3 py-2 text-[13px] text-[var(--text-1)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
-							isActive
-								? 'bg-[var(--surface)]'
-								: 'hover:bg-[var(--surface)] active:bg-[var(--surface)]'
+						className={`flex min-h-[44px] cursor-pointer items-center gap-2 px-3 py-2 text-[13px] transition-colors ${
+							isActive ? 'bg-muted' : 'hover:bg-muted active:bg-muted'
 						}`}
 					>
 						<span className="font-medium">@{member.name}</span>

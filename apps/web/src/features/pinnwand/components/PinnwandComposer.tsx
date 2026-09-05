@@ -1,21 +1,39 @@
 'use client';
-import { ALERT_DANGER } from '@/components/ui/styles';
+import {
+	Collapsible,
+	CollapsiblePanel,
+	CollapsibleTrigger,
+} from '@/components/animate-ui/primitives/base/collapsible';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import {
+	Card,
+	CardAction,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Spinner } from '@/components/ui/spinner';
+import { Textarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ImageUploader } from '@/components/wg/ImageUploader';
-import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import type { AnnouncementKind } from '@/features/pinnwand/components/announcement-types';
 import { CONTENT_MAX, KIND_OPTIONS } from '@/features/pinnwand/components/constants';
-import { Loader2, Send, X } from 'lucide-react';
-import type React from 'react';
+import { ChevronDown, ImagePlus, Send, X } from 'lucide-react';
+import { type ReactElement, type RefObject, useState } from 'react';
 
 interface PinnwandComposerProps {
 	authorName: string;
-	authorColor: string | null;
 	submitting: boolean;
 	kind: AnnouncementKind;
 	onKindChange: (kind: AnnouncementKind) => void;
 	content: string;
 	onContentChange: (value: string) => void;
-	textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+	textareaRef: RefObject<HTMLTextAreaElement | null>;
 	imageUrl: string | null;
 	onImageUrlChange: (value: string | null) => void;
 	shareCode: string;
@@ -26,7 +44,6 @@ interface PinnwandComposerProps {
 
 export function PinnwandComposer({
 	authorName,
-	authorColor,
 	submitting,
 	kind,
 	onKindChange,
@@ -39,94 +56,119 @@ export function PinnwandComposer({
 	error,
 	onClose,
 	onSubmit,
-}: PinnwandComposerProps): React.ReactElement {
+}: PinnwandComposerProps): ReactElement {
+	const [attachmentOpen, setAttachmentOpen] = useState(Boolean(imageUrl));
 	return (
-		<section
-			id="announcement-composer"
-			className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-4 sm:p-5"
-		>
-			<div className="flex items-start gap-3">
-				<MemberAvatar name={authorName} color={authorColor} size={32} />
-				<div className="min-w-0 flex-1">
-					<div className="text-[13px] font-semibold text-[var(--text-1)]">{authorName}</div>
-					<div className="text-[12px] text-[var(--text-3)]">Neuer Beitrag</div>
-				</div>
-				<button
-					type="button"
-					onClick={onClose}
-					disabled={submitting}
-					className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--text-3)] transition-colors hover:bg-[var(--surface-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-					aria-label="Beitrag abbrechen"
-				>
-					<X className="h-4 w-4" aria-hidden />
-				</button>
-			</div>
-			{/* biome-ignore lint/a11y/useSemanticElements: button toolbar group; <fieldset> would change layout semantics */}
-			<div className="flex flex-wrap gap-1.5" role="group" aria-label="Beitragstyp">
-				{KIND_OPTIONS.map((option) => (
-					<button
-						key={option.value}
+		<Card id="announcement-composer" aria-busy={submitting}>
+			<CardHeader>
+				<CardTitle className="flex min-w-0 items-center gap-2">
+					<Avatar>
+						<AvatarFallback>{authorName.slice(0, 2).toLocaleUpperCase('de-DE')}</AvatarFallback>
+					</Avatar>
+					<h2>Neuer Beitrag</h2>
+				</CardTitle>
+				<CardDescription>Von {authorName}</CardDescription>
+				<CardAction>
+					<Button
 						type="button"
-						onClick={() => onKindChange(option.value)}
+						variant="ghost"
+						size="icon"
+						onClick={onClose}
 						disabled={submitting}
-						aria-pressed={kind === option.value}
-						className={`inline-flex h-11 items-center rounded-md border px-3 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-							kind === option.value
-								? 'border-[var(--text-1)] bg-[var(--text-1)] text-[var(--bg-base)]'
-								: 'border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]'
-						}`}
+						className="min-h-11 min-w-11 shrink-0"
+						aria-label="Beitrag abbrechen"
 					>
-						{option.label}
-					</button>
-				))}
-			</div>
-			<textarea
-				ref={textareaRef}
-				id="announcement-content"
-				value={content}
-				onChange={(e) => onContentChange(e.target.value)}
-				disabled={submitting}
-				maxLength={CONTENT_MAX}
-				rows={4}
-				aria-label="Beitragstext"
-				placeholder={`Was gibt es Neues, ${authorName}?`}
-				className="block min-h-[110px] w-full resize-y rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3.5 py-2.5 text-[15px] text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-			/>
-			<ImageUploader
-				shareCode={shareCode}
-				purpose="announcement"
-				value={imageUrl}
-				onChange={onImageUrlChange}
-				disabled={submitting}
-				imageLabel="Beitragsbild"
-			/>
-			{error && (
-				<p role="alert" className={ALERT_DANGER}>
-					{error}
-				</p>
-			)}
-			<div className="flex items-center justify-between pt-1">
-				<span
-					className={`text-[12px] tabular-nums transition-colors ${
-						content.length > CONTENT_MAX * 0.9 ? 'text-[var(--danger)]' : 'text-[var(--text-3)]'
-					}`}
-				>
+						<X aria-hidden />
+					</Button>
+				</CardAction>
+			</CardHeader>
+			<CardContent className="flex flex-col gap-3">
+				<FieldGroup>
+					<Field>
+						<FieldLabel id="announcement-kind-label">Beitragstyp</FieldLabel>
+						<ToggleGroup
+							value={[kind]}
+							onValueChange={(values) => {
+								const selected = KIND_OPTIONS.find((option) => option.value === values[0]);
+								if (selected) onKindChange(selected.value);
+							}}
+							disabled={submitting}
+							spacing={1}
+							variant="outline"
+							className="flex-wrap"
+							aria-labelledby="announcement-kind-label"
+						>
+							{KIND_OPTIONS.map((option) => (
+								<ToggleGroupItem key={option.value} value={option.value} className="min-h-11">
+									{option.label}
+								</ToggleGroupItem>
+							))}
+						</ToggleGroup>
+					</Field>
+					<Field data-invalid={Boolean(error)}>
+						<FieldLabel htmlFor="announcement-content">Beitragstext</FieldLabel>
+						<Textarea
+							ref={textareaRef}
+							id="announcement-content"
+							value={content}
+							onChange={(e) => onContentChange(e.target.value)}
+							disabled={submitting}
+							maxLength={CONTENT_MAX}
+							rows={4}
+							aria-label="Beitragstext"
+							aria-invalid={Boolean(error)}
+							aria-describedby={error ? 'announcement-error' : 'announcement-count'}
+							placeholder={`Was gibt es Neues, ${authorName}?`}
+							className="min-h-32 text-base md:text-base"
+						/>
+					</Field>
+				</FieldGroup>
+				<Collapsible open={attachmentOpen || Boolean(imageUrl)} onOpenChange={setAttachmentOpen}>
+					<CollapsibleTrigger
+						render={<Button variant="outline" className="min-h-11" />}
+						disabled={submitting}
+					>
+						<ImagePlus data-icon="inline-start" aria-hidden />
+						{imageUrl ? 'Bild angehängt' : 'Bild anhängen'}
+						<ChevronDown data-icon="inline-end" aria-hidden />
+					</CollapsibleTrigger>
+					<CollapsiblePanel keepRendered inert={!attachmentOpen && !imageUrl}>
+						<div className="pt-3">
+							<ImageUploader
+								shareCode={shareCode}
+								purpose="announcement"
+								value={imageUrl}
+								onChange={onImageUrlChange}
+								disabled={submitting}
+								imageLabel="Beitragsbild"
+							/>
+						</div>
+					</CollapsiblePanel>
+				</Collapsible>
+				{error && (
+					<Alert id="announcement-error" variant="destructive">
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+				)}
+			</CardContent>
+			<CardFooter className="flex-wrap justify-between gap-3">
+				<span id="announcement-count" className="text-xs tabular-nums text-muted-foreground">
 					{content.length}/{CONTENT_MAX}
 				</span>
-				<button
+				<Button
 					type="button"
 					onClick={onSubmit}
 					disabled={submitting || content.trim().length === 0}
-					className="inline-flex h-11 items-center gap-1.5 rounded-md bg-[var(--text-1)] px-4 text-[13px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+					className="min-h-11"
 				>
 					{submitting ? (
-						<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+						<Spinner data-icon="inline-start" aria-hidden />
 					) : (
-						<Send className="h-3.5 w-3.5" aria-hidden />
+						<Send data-icon="inline-start" aria-hidden />
 					)}
-					Posten
-				</button>
-			</div>
-		</section>
+					{submitting ? 'Wird gepostet…' : 'Posten'}
+				</Button>
+			</CardFooter>
+		</Card>
 	);
 }

@@ -64,7 +64,7 @@ test.describe('Offline fallback page', () => {
 		await gotoWithRetry(page, '/offline');
 		await seedOfflineState(page, [{ code: 'MTE8PZAT', name: 'sadf', lastVisitedAt: Date.now() }]);
 
-		await expect(page.getByText('Keine wartenden Aktionen.')).toBeVisible();
+		await expect(page.locator('[data-slot="empty-title"]')).toHaveText('Keine wartenden Aktionen.');
 		await expect(page.getByText('Milch')).toHaveCount(0);
 		await expect(page.getByText('sadf')).toHaveCount(0);
 	});
@@ -73,7 +73,9 @@ test.describe('Offline fallback page', () => {
 		await gotoWithRetry(page, '/offline');
 		await seedOfflineState(page, [{ code: 'MTE8PZAT', name: 'sadf', lastVisitedAt: Date.now() }]);
 
-		await expect(page.getByRole('heading', { name: /offline|verbunden/i })).toBeVisible();
+		await expect(
+			page.locator('[data-slot="card-title"]').filter({ hasText: /offline|verbunden/i }),
+		).toBeVisible();
 		await expect(page.getByText('1 Aktion wartet.')).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: 'Offline-Aktionen jetzt synchronisieren' }),
@@ -81,10 +83,9 @@ test.describe('Offline fallback page', () => {
 		await expect(page.getByText('Einkauf', { exact: true })).toBeVisible();
 		await expect(page.getByText('Milch')).toBeVisible();
 		await expect(page.getByRole('link', { name: /sadf/i })).toBeVisible();
-		await expect(page.getByRole('link', { name: 'Aktionen prüfen' })).toHaveAttribute(
-			'href',
-			'/wg/MTE8PZAT/einstellungen#daten',
-		);
+		await expect(
+			page.getByRole('button', { name: 'Aktionen prüfen', exact: true }),
+		).toHaveAttribute('href', '/wg/MTE8PZAT/einstellungen#daten');
 	});
 
 	test('links the review action to the WG that has queued work', async ({ page }) => {
@@ -94,10 +95,9 @@ test.describe('Offline fallback page', () => {
 			{ code: 'MTE8PZAT', name: 'sadf', lastVisitedAt: Date.now() - 1 },
 		]);
 
-		await expect(page.getByRole('link', { name: 'Aktionen prüfen' })).toHaveAttribute(
-			'href',
-			'/wg/MTE8PZAT/einstellungen#daten',
-		);
+		await expect(
+			page.getByRole('button', { name: 'Aktionen prüfen', exact: true }),
+		).toHaveAttribute('href', '/wg/MTE8PZAT/einstellungen#daten');
 	});
 
 	test('shows review hints for risky queued actions', async ({ page }) => {
@@ -142,9 +142,8 @@ test.describe('Offline fallback page', () => {
 		await expect(page.getByText('Artikel 4')).toBeVisible();
 		await expect(page.getByText('Artikel 5')).toBeHidden();
 		await expect(page.getByText(/\+2 weitere Aktionen/)).toBeVisible();
-		await expect(page.getByRole('link', { name: 'Alle Aktionen prüfen' })).toHaveAttribute(
-			'href',
-			'/wg/MTE8PZAT/einstellungen#daten',
-		);
+		await expect(
+			page.getByRole('button', { name: 'Alle Aktionen prüfen', exact: true }),
+		).toHaveAttribute('href', '/wg/MTE8PZAT/einstellungen#daten');
 	});
 });

@@ -53,6 +53,7 @@ test.describe('Import happy path', () => {
 					],
 					memberMapping: { dsaf: FIXTURE_WG.memberId },
 					conflicts: [],
+					payloadHash: 'fixture-payload-hash',
 					members: [{ id: FIXTURE_WG.memberId, name: FIXTURE_WG.memberName }],
 				}),
 			});
@@ -112,8 +113,10 @@ test.describe('Import happy path', () => {
 		});
 		// Exact, because the row's first cell carries a describing aria-label
 		// ("Eintrag Pizza vom …") that a substring match would also hit.
-		await expect(page.getByRole('cell', { name: 'Pizza', exact: true })).toBeVisible();
-		await page.getByRole('button', { name: 'Importieren' }).click();
+		await expect(
+			page.getByRole('list', { name: 'Import-Vorschau' }).getByText('Pizza', { exact: true }),
+		).toBeVisible();
+		await page.getByRole('button', { name: /Importieren \(1\)/ }).click();
 
 		// Step 5: success — link to Ausgaben.
 		const toExpenses = page.getByRole('link', { name: 'Zu den Ausgaben' });
@@ -124,8 +127,7 @@ test.describe('Import happy path', () => {
 		await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/ausgaben`), {
 			timeout: 15_000,
 		});
-		const enteredExpenses = page.locator('details').filter({ hasText: 'Eingetragene Ausgaben' });
-		await enteredExpenses.locator('summary').click();
+		const enteredExpenses = page.getByRole('region', { name: 'Eingetragene Ausgaben' });
 		await expect(enteredExpenses.getByText('Pizza', { exact: true }).first()).toBeVisible({
 			timeout: 15_000,
 		});

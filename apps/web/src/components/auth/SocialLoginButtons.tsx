@@ -1,6 +1,10 @@
 'use client';
 
-import { Chrome, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { FieldSet } from '@/components/ui/field';
+import { Spinner } from '@/components/ui/spinner';
+import { Chrome } from 'lucide-react';
 import { useState } from 'react';
 
 export type SocialProvider = 'google';
@@ -44,18 +48,15 @@ export function SocialLoginButtons({
 	}
 
 	return (
-		<fieldset
+		<FieldSet
 			aria-label={variant === 'link' ? 'Social Login verknüpfen' : 'Mit Social Login anmelden'}
 			aria-busy={pendingProvider !== null}
-			className="m-0 grid w-full gap-3 border-0 p-0"
+			className="m-0 w-full gap-3 border-0 p-0"
 		>
 			{error && (
-				<p
-					role="alert"
-					className="rounded-md border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-3 py-2 text-[13px] text-[var(--danger)]"
-				>
-					{error}
-				</p>
+				<Alert variant="destructive">
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
 			)}
 
 			{pendingProvider && (
@@ -68,22 +69,24 @@ export function SocialLoginButtons({
 				const loading = pendingProvider === provider;
 				const label = variant === 'link' ? `${name} verknüpfen` : `Mit ${name} anmelden`;
 				return (
-					<button
+					<Button
 						key={provider}
 						type="button"
+						variant="outline"
+						size="lg"
 						onClick={() => void start(provider)}
 						disabled={pendingProvider !== null}
-						className="inline-flex min-h-11 w-full items-center justify-center gap-3 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-4 py-3 text-[14px] font-medium text-[var(--text-1)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+						className="min-h-11 w-full"
 					>
 						{loading ? (
-							<Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+							<Spinner data-icon="inline-start" aria-hidden="true" />
 						) : (
-							<Icon className="h-5 w-5" aria-hidden="true" />
+							<Icon data-icon="inline-start" aria-hidden="true" />
 						)}
 						<span>{label}</span>
-					</button>
+					</Button>
 				);
 			})}
-		</fieldset>
+		</FieldSet>
 	);
 }

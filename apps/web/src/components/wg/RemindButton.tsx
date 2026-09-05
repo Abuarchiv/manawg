@@ -1,7 +1,10 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
-import { Bell, Check, Loader2 } from 'lucide-react';
+import { Bell, Check } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 type RemindButtonStatus = 'idle' | 'sending' | 'sent' | 'error' | 'cooldown' | 'optedOut';
@@ -89,46 +92,39 @@ export function RemindButton({
 		}
 	}
 
-	const heightClass =
-		size === 'sm' ? 'min-h-[44px] h-11 text-[12px]' : 'min-h-[44px] h-11 text-[13px]';
-
 	let label = 'Mahnen';
 	if (status === 'sending') label = 'Sende…';
 	else if (status === 'sent') label = 'Gesendet';
-	else if (status === 'cooldown') label = cooldownLabel ?? 'Cooldown';
-	else if (status === 'optedOut') label = 'Aus';
+	else if (status === 'cooldown') label = cooldownLabel ?? 'Noch gesperrt';
+	else if (status === 'optedOut') label = 'Mahnungen deaktiviert';
 
 	return (
-		<div className="flex flex-col items-end gap-1">
-			<button
+		<div className="flex max-w-full flex-col gap-2">
+			<Button
 				type="button"
+				variant={status === 'sent' ? 'secondary' : 'outline'}
+				size={size === 'sm' ? 'sm' : 'default'}
+				className="h-auto min-h-11 whitespace-normal py-2"
 				onClick={() => void handleClick()}
 				disabled={disabled}
 				aria-label={`Mahnung senden — ${label}`}
-				className={`inline-flex items-center justify-center gap-1.5 rounded-md border px-3 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${heightClass} ${
-					status === 'sent'
-						? 'border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent)]'
-						: status === 'error'
-							? 'border-[var(--danger)]/40 text-[var(--danger)]'
-							: 'border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-1)] hover:border-[var(--border-strong)]'
-				}`}
 			>
 				{status === 'sending' ? (
-					<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+					<Spinner data-icon="inline-start" />
 				) : status === 'sent' ? (
-					<Check className="h-3.5 w-3.5" aria-hidden />
+					<Check data-icon="inline-start" />
 				) : (
-					<Bell className="h-3.5 w-3.5" aria-hidden />
+					<Bell data-icon="inline-start" />
 				)}
 				{label}
-			</button>
+			</Button>
 			{feedback && (
-				<output
-					aria-live="polite"
-					className={`text-[11px] ${status === 'error' ? 'text-[var(--danger)]' : 'text-[var(--text-3)]'}`}
+				<Alert
+					role={status === 'error' ? 'alert' : 'status'}
+					variant={status === 'error' ? 'destructive' : 'default'}
 				>
-					{feedback}
-				</output>
+					<AlertDescription>{feedback}</AlertDescription>
+				</Alert>
 			)}
 		</div>
 	);

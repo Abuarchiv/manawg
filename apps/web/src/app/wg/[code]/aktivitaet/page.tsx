@@ -1,5 +1,23 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
+import { Marker, MarkerContent } from '@/components/ui/marker';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { ActivityFeed } from '@/components/wg/dashboard/ActivityFeed';
@@ -17,7 +35,8 @@ import {
 	getActivityEmptyActionHref,
 	groupActivityItemsByDay,
 } from '@/core/reads/activity';
-import { AlertTriangle, ArrowLeft, ListFilter, Loader2, RotateCw, Search } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import { AlertTriangle, History, ListFilter, RotateCw, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -116,32 +135,30 @@ export default function AktivitaetPage() {
 	}
 
 	return (
-		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-			<header className="flex items-center gap-3">
-				<Link
-					href={wgBaseHref}
-					aria-label="Zurück zum Dashboard"
-					className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-				>
-					<ArrowLeft className="h-4 w-4" aria-hidden />
-				</Link>
+		<div className="mx-auto w-full max-w-md space-y-4 bg-background px-4 py-6 pb-[env(safe-area-inset-bottom)]">
+			<header className="flex items-center gap-2">
+				<BackLink href={wgBaseHref} label="Dashboard" />
 				<div className="min-w-0 flex-1">
-					<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">
-						Aktivität
-					</h1>
-					<p className="mt-0.5 text-[13px] text-[var(--text-3)]">
+					<h1 className="text-xl font-semibold tracking-tight text-foreground">Aktivität</h1>
+					<p className="mt-0.5 text-[13px] text-muted-foreground">
 						Verlauf, Erinnerungen und offene Klärungen.
 					</p>
 				</div>
-				<button
+				<Button
 					type="button"
+					variant="outline"
+					size="icon-lg"
 					onClick={() => void load()}
 					disabled={loading}
 					aria-label="Aktivität aktualisieren"
-					className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+					className="min-h-11 min-w-11"
 				>
-					<RotateCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden />
-				</button>
+					{loading ? (
+						<Spinner className="motion-reduce:animate-none" aria-hidden />
+					) : (
+						<RotateCw aria-hidden />
+					)}
+				</Button>
 			</header>
 
 			{error && (
@@ -154,222 +171,250 @@ export default function AktivitaetPage() {
 			)}
 
 			{data && (
-				<section className="rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/5 p-4">
-					<div className="mb-3 flex items-center justify-between gap-2">
-						<div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-1)]">
-							<AlertTriangle className="h-4 w-4 text-[var(--danger)]" aria-hidden />
-							Inbox
+				<Card>
+					<CardHeader>
+						<div className="flex items-center justify-between gap-2">
+							<CardTitle className="flex items-center gap-2">
+								<AlertTriangle className="h-4 w-4 text-destructive" aria-hidden />
+								Inbox
+							</CardTitle>
+							<Badge variant="secondary">{inboxCountLabel}</Badge>
 						</div>
-						<span className="rounded-full bg-[var(--bg-base)] px-2 py-1 text-[11px] text-[var(--text-3)]">
-							{inboxCountLabel}
-						</span>
-					</div>
-					{inboxItems.length > 0 ? (
-						<ul className="space-y-2">
-							{inboxItems.map((item) => (
-								<li key={item.id}>
-									<Link
-										href={`${wgBaseHref}${item.href}`}
-										className="block min-h-11 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-[13px] transition-colors hover:border-[var(--border-strong)]"
+					</CardHeader>
+					<CardContent>
+						{inboxItems.length > 0 ? (
+							<ItemGroup aria-label="Offene Klärungen">
+								{inboxItems.map((item) => (
+									<Item
+										key={item.id}
+										variant="outline"
+										render={<Link href={`${wgBaseHref}${item.href}`} />}
 									>
-										<span className="flex items-center justify-between gap-2 font-medium text-[var(--text-1)]">
-											<span className="line-clamp-1">{item.title}</span>
-											{item.priority === 'high' && (
-												<span className="shrink-0 text-[11px] text-[var(--danger)]">wichtig</span>
-											)}
-										</span>
-										<span className="mt-0.5 block line-clamp-1 text-[12px] text-[var(--text-3)]">
-											{item.detail}
-										</span>
-									</Link>
-								</li>
-							))}
-						</ul>
-					) : (
-						<p className="rounded-md border border-dashed border-[var(--border)] bg-[var(--bg-base)] px-3 py-4 text-center text-[13px] text-[var(--text-3)]">
-							Keine offenen Klärungen.
-						</p>
-					)}
-				</section>
+										<ItemContent>
+											<ItemTitle>
+												<span className="flex items-center justify-between gap-2">
+													<span className="line-clamp-1">{item.title}</span>
+													{item.priority === 'high' && (
+														<Badge variant="destructive" className="shrink-0">
+															wichtig
+														</Badge>
+													)}
+												</span>
+											</ItemTitle>
+											<ItemDescription className="line-clamp-1">{item.detail}</ItemDescription>
+										</ItemContent>
+									</Item>
+								))}
+							</ItemGroup>
+						) : (
+							<p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[13px] text-muted-foreground">
+								Keine offenen Klärungen.
+							</p>
+						)}
+					</CardContent>
+				</Card>
 			)}
 
-			<section className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-3">
-				<label className="relative block">
-					<span className="sr-only">Aktivität durchsuchen</span>
-					<Search
-						className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-3)]"
-						aria-hidden
-					/>
-					<input
-						type="search"
-						value={filter.query}
-						onChange={(event) => {
-							const query = event.currentTarget.value;
-							setFilter((current) => ({ ...current, query }));
-						}}
-						placeholder="Aktivität durchsuchen"
-						className="h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] pl-9 pr-3 text-[14px] text-[var(--text-1)] outline-none transition-colors placeholder:text-[var(--text-3)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15"
-					/>
-				</label>
-				{/* biome-ignore lint/a11y/useSemanticElements: button toolbar group; <fieldset> would change layout semantics */}
-				<div className="flex flex-wrap gap-2" role="group" aria-label="Aktivitätsumfang filtern">
-					{[
-						['all', 'Alle'],
-						['system', 'System'],
-						['mine', 'Von mir'],
-						['changes', 'Änderungen'],
-						['done', 'Erledigungen'],
-					].map(([value, label]) => (
-						<button
-							key={value}
-							type="button"
-							onClick={() => {
-								setScope(value as ActivityScope);
-								setFilter((current) =>
-									value === 'mine' ? { ...current, mineOnly: false } : current,
-								);
+			<Card>
+				<CardContent className="space-y-3 pt-4">
+					<InputGroup className="min-h-11">
+						<InputGroupAddon align="inline-start">
+							<Search className="h-4 w-4" aria-hidden />
+						</InputGroupAddon>
+						<InputGroupInput
+							type="search"
+							value={filter.query}
+							onChange={(event) => {
+								const query = event.currentTarget.value;
+								setFilter((current) => ({ ...current, query }));
 							}}
-							aria-label={value === 'all' ? 'Aktivitätsumfang: Alle' : undefined}
-							aria-pressed={scope === value}
-							className={`inline-flex h-11 items-center rounded-full border px-3 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-								scope === value
-									? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
-									: 'border-[var(--border)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]'
-							}`}
-						>
-							{label}
-						</button>
-					))}
-				</div>
-				<div
-					// biome-ignore lint/a11y/useSemanticElements: filter toolbar — group role conveys related filter buttons to AT; no semantic HTML element fits
-					className="flex flex-wrap gap-2 border-t border-[var(--border)] pt-3"
-					role="group"
-					aria-label="Aktivitätstyp filtern"
-				>
-					{[
-						['all', 'Alle'],
-						['expense', 'Ausgaben'],
-						['shopping', 'Einkauf'],
-						['announcement', 'Pinnwand'],
-						['chore', 'Putzen'],
-						['recurring', 'Fixkosten'],
-						['absence', 'Abwesenheiten'],
-						['audit', 'Audit'],
-					].map(([value, label]) => (
-						<button
-							key={value}
-							type="button"
-							onClick={() => setKind(value as ActivityKind | 'all')}
-							aria-label={value === 'all' ? 'Aktivitätstyp: Alle' : undefined}
-							aria-pressed={filter.kind === value}
-							className={`inline-flex h-11 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-								filter.kind === value
-									? 'border-[var(--text-1)] bg-[var(--text-1)] text-[var(--bg-base)]'
-									: 'border-[var(--border)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]'
-							}`}
-						>
-							<ListFilter className="h-3.5 w-3.5" aria-hidden />
-							{label}
-						</button>
-					))}
-					<button
-						type="button"
-						onClick={() => setFilter((current) => ({ ...current, mineOnly: !current.mineOnly }))}
-						aria-pressed={filter.mineOnly}
-						className={`inline-flex h-11 items-center rounded-full border px-3 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-							filter.mineOnly
-								? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
-								: 'border-[var(--border)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]'
-						}`}
+							placeholder="Aktivität durchsuchen"
+							aria-label="Aktivität durchsuchen"
+							className="min-h-11 text-base"
+						/>
+					</InputGroup>
+					{/* biome-ignore lint/a11y/useSemanticElements: button toolbar group; <fieldset> would change layout semantics */}
+					<div className="flex flex-wrap gap-2" role="group" aria-label="Aktivitätsumfang filtern">
+						{[
+							['all', 'Alle'],
+							['system', 'System'],
+							['mine', 'Von mir'],
+							['changes', 'Änderungen'],
+							['done', 'Erledigungen'],
+						].map(([value, label]) => (
+							<Button
+								key={value}
+								type="button"
+								variant={scope === value ? 'default' : 'outline'}
+								size="lg"
+								onClick={() => {
+									setScope(value as ActivityScope);
+									setFilter((current) =>
+										value === 'mine' ? { ...current, mineOnly: false } : current,
+									);
+								}}
+								aria-label={value === 'all' ? 'Aktivitätsumfang: Alle' : undefined}
+								aria-pressed={scope === value}
+								className="min-h-11 rounded-full"
+							>
+								{label}
+							</Button>
+						))}
+					</div>
+					<Separator />
+					<div
+						// biome-ignore lint/a11y/useSemanticElements: filter toolbar — group role conveys related filter buttons to AT; no semantic HTML element fits
+						className="flex flex-wrap gap-2"
+						role="group"
+						aria-label="Aktivitätstyp filtern"
 					>
-						Nur ich
-					</button>
-				</div>
-			</section>
+						{[
+							['all', 'Alle'],
+							['expense', 'Ausgaben'],
+							['shopping', 'Einkauf'],
+							['announcement', 'Pinnwand'],
+							['chore', 'Putzen'],
+							['recurring', 'Fixkosten'],
+							['absence', 'Abwesenheiten'],
+							['audit', 'Audit'],
+						].map(([value, label]) => (
+							<Button
+								key={value}
+								type="button"
+								variant={filter.kind === value ? 'secondary' : 'outline'}
+								size="lg"
+								onClick={() => setKind(value as ActivityKind | 'all')}
+								aria-label={value === 'all' ? 'Aktivitätstyp: Alle' : undefined}
+								aria-pressed={filter.kind === value}
+								className="min-h-11 rounded-full"
+							>
+								<ListFilter data-icon="inline-start" aria-hidden />
+								{label}
+							</Button>
+						))}
+						<Button
+							type="button"
+							variant={filter.mineOnly ? 'default' : 'outline'}
+							size="lg"
+							onClick={() => setFilter((current) => ({ ...current, mineOnly: !current.mineOnly }))}
+							aria-pressed={filter.mineOnly}
+							className="min-h-11 rounded-full"
+						>
+							Nur ich
+						</Button>
+					</div>
+				</CardContent>
+			</Card>
 
-			<section className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-5">
-				{data ? (
-					chronicleGroups.length > 0 ? (
-						<div className="space-y-5">
-							<output aria-live="polite" className="block text-[12.5px] text-[var(--text-3)]">
-								{formatVisibleActivityCount(filteredItems.length)}
-							</output>
-							{chronicleGroups.map((group) => (
-								<div key={group.date} className="space-y-2">
-									<div className="flex items-center gap-2">
-										<h2 className="text-[12px] font-semibold uppercase tracking-wide text-[var(--text-3)]">
-											{group.label}
-										</h2>
-										<span className="h-px flex-1 bg-[var(--border)]" aria-hidden />
-										<span className="text-[11px] tabular-nums text-[var(--text-3)]">
-											{group.items.length}
-										</span>
+			<Card>
+				<CardContent className="pt-4">
+					{data ? (
+						chronicleGroups.length > 0 ? (
+							<div className="space-y-5">
+								<output aria-live="polite" className="block text-[13px] text-muted-foreground">
+									{formatVisibleActivityCount(filteredItems.length)}
+								</output>
+								{chronicleGroups.map((group) => (
+									<div key={group.date} className="space-y-2">
+										<Marker variant="separator">
+											<MarkerContent>
+												<span className="font-semibold uppercase tracking-wide">
+													{group.label} · {group.items.length}
+												</span>
+											</MarkerContent>
+										</Marker>
+										<ActivityFeed items={group.items} />
 									</div>
-									<ActivityFeed items={group.items} />
+								))}
+							</div>
+						) : hasActiveFilter ? (
+							<Empty>
+								<EmptyHeader>
+									<EmptyTitle>Keine Aktivität für diesen Filter.</EmptyTitle>
+									<EmptyDescription>
+										<output aria-live="polite">
+											{formatVisibleActivityCount(filteredItems.length)}
+										</output>
+									</EmptyDescription>
+								</EmptyHeader>
+								<EmptyContent>
+									<Button
+										type="button"
+										variant="outline"
+										size="lg"
+										onClick={resetFilters}
+										className="min-h-11"
+									>
+										Filter zurücksetzen
+									</Button>
+								</EmptyContent>
+							</Empty>
+						) : (
+							<Empty>
+								<EmptyHeader>
+									<EmptyMedia variant="icon">
+										<History aria-hidden />
+									</EmptyMedia>
+									<EmptyTitle>Noch keine Aktivität.</EmptyTitle>
+									<EmptyDescription>
+										Sobald jemand etwas einträgt, erledigt oder kommentiert, entsteht hier euer
+										Verlauf.
+									</EmptyDescription>
+								</EmptyHeader>
+								<EmptyContent>
+									<div className="flex flex-wrap justify-center gap-2">
+										<Link
+											href={getActivityEmptyActionHref(wg.shareCode, 'expense', {
+												desc: 'Internet',
+												amount: '32,90',
+											})}
+											className={cn(buttonVariants({ size: 'lg' }), 'min-h-11')}
+										>
+											Ausgabe eintragen
+										</Link>
+										<Link
+											href={getActivityEmptyActionHref(wg.shareCode, 'announcement', {
+												content: 'Paket im Flur',
+												kind: 'question',
+											})}
+											className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11')}
+										>
+											Pinnwand starten
+										</Link>
+										<Link
+											href={getActivityEmptyActionHref(wg.shareCode, 'chore', {
+												title: 'Bad putzen',
+											})}
+											className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11')}
+										>
+											Putzplan anlegen
+										</Link>
+									</div>
+								</EmptyContent>
+							</Empty>
+						)
+					) : loading ? (
+						<div className="space-y-2" aria-label="Aktivität lädt">
+							<div className="flex justify-center py-2">
+								<Spinner className="motion-reduce:animate-none" aria-hidden />
+							</div>
+							{[0, 1, 2].map((index) => (
+								<div key={index} className="flex items-start gap-3 py-2">
+									<Skeleton className="size-8 shrink-0 rounded-full" />
+									<div className="flex-1 space-y-2">
+										<Skeleton className="h-4 w-3/4" />
+										<Skeleton className="h-3 w-1/2" />
+									</div>
 								</div>
 							))}
 						</div>
-					) : hasActiveFilter ? (
-						<div className="rounded-md border border-dashed border-[var(--border)] px-3 py-8 text-center">
-							<output aria-live="polite" className="mb-2 block text-[12.5px] text-[var(--text-3)]">
-								{formatVisibleActivityCount(filteredItems.length)}
-							</output>
-							<p className="text-[13px] text-[var(--text-3)]">Keine Aktivität für diesen Filter.</p>
-							<button
-								type="button"
-								onClick={resetFilters}
-								className="mt-3 inline-flex h-11 items-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-							>
-								Filter zurücksetzen
-							</button>
-						</div>
 					) : (
-						<div className="rounded-md border border-dashed border-[var(--border)] px-3 py-8 text-center">
-							<p className="text-[14px] font-medium text-[var(--text-1)]">Noch keine Aktivität.</p>
-							<p className="mx-auto mt-1 max-w-sm text-[13px] text-[var(--text-3)]">
-								Sobald jemand etwas einträgt, erledigt oder kommentiert, entsteht hier euer Verlauf.
-							</p>
-							<div className="mt-4 flex flex-wrap justify-center gap-2">
-								<Link
-									href={getActivityEmptyActionHref(wg.shareCode, 'expense', {
-										desc: 'Internet',
-										amount: '32,90',
-									})}
-									className="inline-flex h-11 items-center rounded-md bg-[var(--text-1)] px-3 text-[12px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-								>
-									Ausgabe eintragen
-								</Link>
-								<Link
-									href={getActivityEmptyActionHref(wg.shareCode, 'announcement', {
-										content: 'Paket im Flur',
-										kind: 'question',
-									})}
-									className="inline-flex h-11 items-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-								>
-									Pinnwand starten
-								</Link>
-								<Link
-									href={getActivityEmptyActionHref(wg.shareCode, 'chore', {
-										title: 'Bad putzen',
-									})}
-									className="inline-flex h-11 items-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-								>
-									Putzplan anlegen
-								</Link>
-							</div>
-						</div>
-					)
-				) : loading ? (
-					<div className="flex justify-center py-10">
-						<Loader2 className="h-5 w-5 animate-spin text-[var(--text-3)]" aria-hidden />
-					</div>
-				) : (
-					<p className="rounded-md border border-dashed border-[var(--border)] px-3 py-8 text-center text-[13px] text-[var(--text-3)]">
-						Keine Aktivität geladen. Versuche es erneut.
-					</p>
-				)}
-			</section>
+						<p className="rounded-lg border border-dashed border-border px-3 py-8 text-center text-[13px] text-muted-foreground">
+							Keine Aktivität geladen. Versuche es erneut.
+						</p>
+					)}
+				</CardContent>
+			</Card>
 		</div>
 	);
 }

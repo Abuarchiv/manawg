@@ -1,5 +1,7 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import {
 	countOfflineActions,
@@ -11,7 +13,7 @@ import {
 	formatQueuedOfflineActions,
 	getOfflineSyncFailureMessage,
 } from '@/core/offline/offline-copy';
-import { AlertCircle, CheckCircle2, Loader2, WifiOff } from 'lucide-react';
+import { AlertCircle, CheckCircle2, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
@@ -112,7 +114,7 @@ export function OfflineBanner() {
 	if (!online) {
 		return (
 			<output
-				className="sticky top-0 z-20 border-b border-[var(--warning-border)] bg-[var(--warning-bg)] px-4 py-2 text-[12.5px] font-medium text-[var(--warning-fg)]"
+				className="bg-muted text-foreground border-border sticky top-0 z-20 border-b px-4 py-2 text-[13px] font-medium"
 				aria-live="polite"
 			>
 				<div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
@@ -126,7 +128,7 @@ export function OfflineBanner() {
 					<Link
 						href="/offline"
 						aria-label="Offline-Übersicht prüfen"
-						className="inline-flex min-h-11 shrink-0 items-center rounded-md px-2 underline underline-offset-2 transition-colors hover:bg-[var(--warning-fg)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--warning-fg)] focus-visible:ring-offset-2"
+						className="focus-visible:ring-ring inline-flex min-h-[44px] shrink-0 items-center rounded-md px-2 underline underline-offset-2 focus-visible:ring-2 focus-visible:outline-none"
 					>
 						Prüfen
 					</Link>
@@ -140,11 +142,11 @@ export function OfflineBanner() {
 	if (notice && queueCount === 0) {
 		return (
 			<output
-				className="sticky top-0 z-20 border-b border-[var(--success-border)] bg-[var(--success-bg)] px-4 py-2 text-[12.5px] font-medium text-[var(--success-fg)]"
+				className="bg-card text-foreground border-border sticky top-0 z-20 border-b px-4 py-2 text-[13px] font-medium"
 				aria-live="polite"
 			>
 				<div className="mx-auto flex max-w-2xl items-center gap-2">
-					<CheckCircle2 className="h-4 w-4" aria-hidden />
+					<CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
 					{notice.text}
 				</div>
 			</output>
@@ -153,29 +155,30 @@ export function OfflineBanner() {
 
 	return (
 		<output
-			className="sticky top-0 z-20 border-b border-[var(--accent)]/25 bg-[var(--accent)]/10 px-4 py-2 text-[12.5px] font-medium text-[var(--accent)]"
+			className="bg-card text-foreground border-border sticky top-0 z-20 border-b px-4 py-2 text-[13px] font-medium"
 			aria-live="polite"
 		>
 			<div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
-				<Link href={settingsDataHref} className="min-w-0 truncate">
+				<Link href={settingsDataHref} className="min-w-0 flex-1 truncate">
 					{notice ? notice.text : formatQueuedOfflineActions(queueCount)}
 				</Link>
-				<button
+				<Button
 					type="button"
+					variant="outline"
 					onClick={() => void retry()}
 					disabled={syncing}
 					aria-label={
 						syncing ? 'Offline-Aktionen werden gesendet' : 'Offline-Aktionen jetzt senden'
 					}
-					className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-md border border-[var(--accent)]/30 px-3 text-[12px] transition-colors hover:border-[var(--accent)] hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
+					className="h-11 min-h-[44px] shrink-0 text-xs"
 				>
 					{syncing ? (
-						<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+						<Spinner aria-hidden />
 					) : notice?.type === 'warning' ? (
-						<AlertCircle className="h-3 w-3" aria-hidden />
+						<AlertCircle aria-hidden />
 					) : null}
 					Jetzt senden
-				</button>
+				</Button>
 			</div>
 		</output>
 	);

@@ -1,6 +1,29 @@
 'use client';
 
-import { ICON_BUTTON } from '@/components/ui/styles';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import {
+	Drawer,
+	DrawerContent,
+	DrawerDescription,
+	DrawerFooter,
+	DrawerHeader,
+	DrawerTitle,
+} from '@/components/ui/drawer';
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
 import {
 	INVENTORY_CATEGORIES,
@@ -10,8 +33,6 @@ import {
 	type InventoryCategory,
 	type InventoryUnit,
 } from '@/features/inventory/inventory';
-import { useFocusTrap } from '@/shared/lib/hooks/useFocusTrap';
-import { Loader2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface InventoryAddModalProps {
@@ -60,13 +81,13 @@ export function InventoryAddModal({
 	onSaved,
 }: InventoryAddModalProps) {
 	const encodedShareCode = encodeURIComponent(shareCode);
-	const trapRef = useFocusTrap<HTMLDivElement>(open);
 	const [name, setName] = useState('');
 	const [quantity, setQuantity] = useState(0);
 	const [unit, setUnit] = useState<InventoryUnit>(DEFAULT_UNIT);
 	const [threshold, setThreshold] = useState(1);
 	const [category, setCategory] = useState<InventoryCategory>(DEFAULT_CATEGORY);
 	const [saving, setSaving] = useState(false);
+	const [discardOpen, setDiscardOpen] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -79,18 +100,20 @@ export function InventoryAddModal({
 		setError(null);
 	}, [open, initial]);
 
-	useEffect(() => {
-		if (!open) return;
-		const handleKey = (e: KeyboardEvent): void => {
-			if (e.key === 'Escape') onClose();
-		};
-		document.addEventListener('keydown', handleKey);
-		return () => document.removeEventListener('keydown', handleKey);
-	}, [open, onClose]);
-
-	if (!open) return null;
+	function requestClose(): void {
+		if (saving) return;
+		const dirty =
+			name !== (initial?.name ?? '') ||
+			quantity !== (initial?.quantity ?? 0) ||
+			unit !== coerceUnit(initial?.unit) ||
+			threshold !== (initial?.threshold ?? 1) ||
+			category !== coerceCategory(initial?.category);
+		if (dirty) setDiscardOpen(true);
+		else onClose();
+	}
 
 	async function save(): Promise<void> {
+		if (saving) return;
 		const trimmedName = name.trim();
 		if (trimmedName.length === 0) {
 			setError('Bitte gib einen Namen ein.');
@@ -127,133 +150,159 @@ export function InventoryAddModal({
 	}
 
 	return (
-		<div
-			ref={trapRef}
-			// biome-ignore lint/a11y/useSemanticElements: native <dialog> UA display:none kills CSS exit animations on iOS Safari; use <div role="dialog"> (see native-dialog-css-transition-kill skill).
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="inventory-add-title"
-			className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
+		<Drawer
+			open={open}
+			onOpenChange={(next) => {
+				if (!next) requestClose();
+			}}
 		>
-			<div
-				className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-[var(--border)] bg-[var(--bg-base)] p-5 shadow-xl sm:rounded-2xl"
-				style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))' }}
-			>
-				<span className="sheet-handle" aria-hidden />
-				<div className="flex items-start justify-between gap-3">
-					<h2 id="inventory-add-title" className="text-base font-semibold text-[var(--text-1)]">
-						{mode === 'edit' ? 'Vorrat bearbeiten' : 'Neuer Vorrat'}
-					</h2>
-					<button type="button" onClick={onClose} aria-label="Schließen" className={ICON_BUTTON}>
-						<X className="h-4 w-4" aria-hidden />
-					</button>
-				</div>
+			<DrawerContent className="mx-auto w-full max-w-md">
+				<DrawerHeader>
+					<DrawerTitle>{mode === 'edit' ? 'Vorrat bearbeiten' : 'Neuer Vorrat'}</DrawerTitle>
+					<DrawerDescription>
+						{mode === 'edit'
+							? 'Menge, Schwelle, Einheit und Kategorie anpassen.'
+							: 'Name, Menge, Schwelle, Einheit und Kategorie festlegen.'}
+					</DrawerDescription>
+				</DrawerHeader>
 
 				<form
 					onSubmit={(event) => {
 						event.preventDefault();
 						void save();
 					}}
-					className="mt-4 space-y-3"
+					className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4"
+					style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
 				>
-					<label className="block text-[13px] font-medium text-[var(--text-1)]">
-						Name
-						<input
-							type="text"
-							value={name}
-							onChange={(event) => setName(event.target.value)}
-							maxLength={INVENTORY_LIMITS.NAME_MAX}
-							required
-							aria-required="true"
-							aria-invalid={Boolean(error)}
-							aria-describedby={error ? 'inventory-add-error' : undefined}
-							className="mt-1 block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-						/>
-					</label>
-					<div className="flex gap-2">
-						<label className="block flex-1 text-[13px] font-medium text-[var(--text-1)]">
-							Menge
-							<input
-								type="number"
-								inputMode="numeric"
-								value={quantity}
-								min={INVENTORY_LIMITS.QUANTITY_MIN}
-								max={INVENTORY_LIMITS.QUANTITY_MAX}
-								onChange={(event) => setQuantity(Number(event.target.value) || 0)}
-								className="mt-1 block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+					<FieldGroup>
+						<Field data-invalid={Boolean(error)}>
+							<FieldLabel htmlFor="inventory-name">Name</FieldLabel>
+							<Input
+								id="inventory-name"
+								type="text"
+								value={name}
+								onChange={(event) => setName(event.target.value)}
+								maxLength={INVENTORY_LIMITS.NAME_MAX}
+								required
+								aria-required="true"
+								aria-invalid={Boolean(error)}
+								aria-describedby={error ? 'inventory-add-error' : undefined}
+								placeholder="z. B. Nudeln"
+								disabled={saving}
+								className="min-h-11 text-base"
 							/>
-						</label>
-						<label className="block flex-1 text-[13px] font-medium text-[var(--text-1)]">
-							Schwelle
-							<input
-								type="number"
-								inputMode="numeric"
-								value={threshold}
-								min={INVENTORY_LIMITS.THRESHOLD_MIN}
-								max={INVENTORY_LIMITS.THRESHOLD_MAX}
-								onChange={(event) => setThreshold(Number(event.target.value) || 0)}
-								className="mt-1 block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-							/>
-						</label>
-					</div>
-					<div className="flex gap-2">
-						<label className="block flex-1 text-[13px] font-medium text-[var(--text-1)]">
-							Einheit
-							<select
-								value={unit}
-								onChange={(event) => setUnit(event.target.value as InventoryUnit)}
-								className="mt-1 block h-11 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-							>
-								{INVENTORY_UNITS.map((u) => (
-									<option key={u} value={u}>
-										{u}
-									</option>
-								))}
-							</select>
-						</label>
-						<label className="block flex-1 text-[13px] font-medium text-[var(--text-1)]">
-							Kategorie
-							<select
-								value={category}
-								onChange={(event) => setCategory(event.target.value as InventoryCategory)}
-								className="mt-1 block h-11 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-							>
-								{INVENTORY_CATEGORIES.map((cat) => (
-									<option key={cat} value={cat}>
-										{INVENTORY_CATEGORY_LABELS[cat]}
-									</option>
-								))}
-							</select>
-						</label>
-					</div>
+						</Field>
+						<div className="grid grid-cols-2 gap-2">
+							<Field className="min-w-0">
+								<FieldLabel htmlFor="inventory-qty">Menge</FieldLabel>
+								<Input
+									id="inventory-qty"
+									type="number"
+									inputMode="numeric"
+									value={quantity}
+									min={INVENTORY_LIMITS.QUANTITY_MIN}
+									max={INVENTORY_LIMITS.QUANTITY_MAX}
+									onChange={(event) => setQuantity(Number(event.target.value) || 0)}
+									disabled={saving}
+									className="min-h-11 text-base"
+								/>
+							</Field>
+							<Field className="min-w-0">
+								<FieldLabel htmlFor="inventory-threshold">Schwelle</FieldLabel>
+								<Input
+									id="inventory-threshold"
+									type="number"
+									inputMode="numeric"
+									value={threshold}
+									min={INVENTORY_LIMITS.THRESHOLD_MIN}
+									max={INVENTORY_LIMITS.THRESHOLD_MAX}
+									onChange={(event) => setThreshold(Number(event.target.value) || 0)}
+									disabled={saving}
+									className="min-h-11 text-base"
+								/>
+							</Field>
+						</div>
+						<div className="grid grid-cols-2 gap-2">
+							<Field className="min-w-0">
+								<FieldLabel htmlFor="inventory-unit">Einheit</FieldLabel>
+								<NativeSelect
+									id="inventory-unit"
+									value={unit}
+									onChange={(event) => setUnit(event.target.value as InventoryUnit)}
+									disabled={saving}
+									className="w-full [&_select]:min-h-11 [&_select]:text-base"
+								>
+									{INVENTORY_UNITS.map((u) => (
+										<NativeSelectOption key={u} value={u}>
+											{u}
+										</NativeSelectOption>
+									))}
+								</NativeSelect>
+							</Field>
+							<Field className="min-w-0">
+								<FieldLabel htmlFor="inventory-category">Kategorie</FieldLabel>
+								<NativeSelect
+									id="inventory-category"
+									value={category}
+									onChange={(event) => setCategory(event.target.value as InventoryCategory)}
+									disabled={saving}
+									className="w-full [&_select]:min-h-11 [&_select]:text-base"
+								>
+									{INVENTORY_CATEGORIES.map((cat) => (
+										<NativeSelectOption key={cat} value={cat}>
+											{INVENTORY_CATEGORY_LABELS[cat]}
+										</NativeSelectOption>
+									))}
+								</NativeSelect>
+							</Field>
+						</div>
+						<FieldDescription>
+							Beim Verbrauchen bis zur Schwelle wird fehlender Vorrat auf die Einkaufsliste gesetzt.
+						</FieldDescription>
+					</FieldGroup>
 					{error && (
-						<p
-							id="inventory-add-error"
-							role="alert"
-							className="rounded-md border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-2.5 py-1.5 text-[12.5px] text-[var(--danger)]"
-						>
-							{error}
-						</p>
+						<FieldError>
+							<Alert variant="destructive">
+								<AlertDescription>
+									<span id="inventory-add-error">{error}</span>
+								</AlertDescription>
+							</Alert>
+						</FieldError>
 					)}
-					<div className="flex justify-end gap-2 pt-2">
-						<button
-							type="button"
-							onClick={onClose}
-							className="inline-flex h-11 items-center rounded-xl border border-[var(--border)] px-4 text-[13px] font-medium text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-						>
+					<DrawerFooter className="flex-row justify-end gap-2 p-0">
+						<Button type="button" variant="outline" onClick={requestClose} className="min-h-11">
 							Abbrechen
-						</button>
-						<button
-							type="submit"
-							disabled={saving}
-							className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--text-1)] px-4 text-[13px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
-						>
-							{saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-							Speichern
-						</button>
-					</div>
+						</Button>
+						<Button type="submit" disabled={saving} className="min-h-11">
+							{saving && <Spinner aria-hidden />}
+							{saving ? 'Speichert…' : 'Speichern'}
+						</Button>
+					</DrawerFooter>
 				</form>
-			</div>
-		</div>
+				<AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
+					<AlertDialogContent className="w-[calc(100%-2rem)]">
+						<AlertDialogHeader>
+							<AlertDialogTitle>Änderungen verwerfen?</AlertDialogTitle>
+							<AlertDialogDescription>
+								Deine Eingaben wurden noch nicht gespeichert.
+							</AlertDialogDescription>
+						</AlertDialogHeader>
+						<AlertDialogFooter>
+							<AlertDialogCancel className="min-h-11">Weiter bearbeiten</AlertDialogCancel>
+							<AlertDialogAction
+								variant="destructive"
+								className="min-h-11"
+								onClick={() => {
+									setDiscardOpen(false);
+									onClose();
+								}}
+							>
+								Verwerfen
+							</AlertDialogAction>
+						</AlertDialogFooter>
+					</AlertDialogContent>
+				</AlertDialog>
+			</DrawerContent>
+		</Drawer>
 	);
 }

@@ -1,5 +1,8 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/shared/lib/cn';
+
 export type ActionNoticeTone = 'error' | 'warning' | 'success';
 
 export interface ActionNotice {
@@ -8,26 +11,20 @@ export interface ActionNotice {
 }
 
 const TONE_CLASSES: Record<ActionNoticeTone, string> = {
-	success: 'border-[var(--accent)]/30 bg-[var(--accent)]/5 text-[var(--accent)]',
-	warning: 'border-[var(--warning)]/30 bg-[var(--warning)]/5 text-[var(--warning)]',
-	error: 'border-[var(--danger)]/30 bg-[var(--danger)]/5 text-[var(--danger)]',
+	success: 'border-[var(--success-border)] bg-[var(--success-bg)] text-[var(--success-fg)]',
+	warning: 'border-[var(--warning-border)] bg-[var(--warning-bg)] text-[var(--warning-fg)]',
+	error: '',
 };
 
 export function ActionNoticeBanner({ notice }: { notice: ActionNotice }) {
-	const className = `block rounded-md border px-3 py-2 text-[13px] ${TONE_CLASSES[notice.tone]}`;
-
-	// Errors interrupt (role="alert"); success/warning announce politely.
-	if (notice.tone === 'error') {
-		return (
-			<div role="alert" className={className}>
-				{notice.message}
-			</div>
-		);
-	}
-
 	return (
-		<output className={className} aria-live="polite">
-			{notice.message}
-		</output>
+		<Alert
+			variant={notice.tone === 'error' ? 'destructive' : 'default'}
+			role={notice.tone === 'error' ? 'alert' : 'status'}
+			aria-live={notice.tone === 'error' ? undefined : 'polite'}
+			className={cn(TONE_CLASSES[notice.tone])}
+		>
+			<AlertDescription className="text-current">{notice.message}</AlertDescription>
+		</Alert>
 	);
 }

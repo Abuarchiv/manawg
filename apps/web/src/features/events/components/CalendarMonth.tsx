@@ -1,6 +1,18 @@
 'use client';
 
-import type { EventOccurrence } from '@/features/events/events';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+	Item,
+	ItemActions,
+	ItemContent,
+	ItemDescription,
+	ItemGroup,
+	ItemTitle,
+} from '@/components/ui/item';
+import { type EventOccurrence, formatEventTimeRange } from '@/features/events/events';
+import { cn } from '@/shared/lib/cn';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -185,120 +197,131 @@ export function CalendarMonth({
 		[onSelectDay],
 	);
 
+	const selectedOccurrences = selectedDay
+		? occurrences.filter((occurrence) => sameDay(new Date(occurrence.startsAt), selectedDay))
+		: [];
+	const weeks = Array.from({ length: Math.ceil(days.length / 7) }, (_, index) =>
+		days.slice(index * 7, index * 7 + 7),
+	);
+
 	return (
-		<section className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-[border-color] hover:border-[var(--border-strong)] sm:p-4">
-			<header className="mb-3 flex items-center justify-between gap-2">
-				<button
-					type="button"
-					onClick={onPrev}
-					aria-label="Vorheriger Monat"
-					className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+		<Card>
+			<CardHeader>
+				<div className="flex items-center justify-between gap-2">
+					<Button
+						variant="ghost"
+						size="icon"
+						className="size-11"
+						onClick={onPrev}
+						aria-label="Vorheriger Monat"
+					>
+						<ChevronLeft aria-hidden />
+					</Button>
+					<CardTitle>{monthLabel}</CardTitle>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="size-11"
+						onClick={onNext}
+						aria-label="Nächster Monat"
+					>
+						<ChevronRight aria-hidden />
+					</Button>
+				</div>
+			</CardHeader>
+			<CardContent className="flex flex-col gap-4 px-2">
+				<div
+					ref={gridRef}
+					// biome-ignore lint/a11y/useSemanticElements: Calendar uses the existing roving-tabindex grid controller.
+					role="grid"
+					aria-label={`Kalender ${monthLabel}`}
+					onKeyDown={handleKeyDown}
+					onClick={handleGridClick}
 				>
-					<ChevronLeft className="h-4 w-4" aria-hidden />
-				</button>
-				<h2 className="text-[15px] font-semibold capitalize text-[var(--text-1)]">{monthLabel}</h2>
-				<button
-					type="button"
-					onClick={onNext}
-					aria-label="Nächster Monat"
-					className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-				>
-					<ChevronRight className="h-4 w-4" aria-hidden />
-				</button>
-			</header>
-			<div className="grid grid-cols-7 gap-1 text-center text-[11px] uppercase tracking-wide text-[var(--text-3)]">
-				{WEEKDAY_LABELS.map((label) => (
-					<div key={label}>{label}</div>
-				))}
-			</div>
-			<div
-				ref={gridRef}
-				// biome-ignore lint/a11y/useSemanticElements: ARIA grid pattern — no semantic HTML element models a date grid with roving-tabindex keyboard navigation
-				role="grid"
-				aria-label={`Kalender ${monthLabel}`}
-				onKeyDown={handleKeyDown}
-				onClick={handleGridClick}
-				className="mt-1 grid grid-cols-7 gap-1"
-			>
-				{days.map((day, index) => {
-					const isToday = sameDay(day.date, today);
-					const isSelected = selectedDay !== null && sameDay(day.date, selectedDay);
-					const isFocused = index === focusedIndex;
-					const baseClass = day.inCurrentMonth
-						? 'text-[var(--text-1)]'
-						: 'text-[var(--text-3)] opacity-60';
-					return (
-						<div
-							key={day.date.toISOString()}
-							// biome-ignore lint/a11y/useSemanticElements: ARIA grid pattern — a gridcell must contain separately focusable event controls
-							role="gridcell"
-							data-day-cell
-							data-day-date={day.date.toISOString()}
-							tabIndex={isFocused ? 0 : -1}
-							onKeyDown={(event) => {
-								if (event.key === 'Enter' || event.key === ' ') {
-									event.preventDefault();
-									onSelectDay(day.date);
-								}
-							}}
-							aria-label={
-								FULL_DATE_FORMATTER.format(day.date) +
-								(day.occurrences.length > 0
-									? `, ${day.occurrences.length} Termin${day.occurrences.length === 1 ? '' : 'e'}`
-									: '')
-							}
-							aria-current={isToday ? 'date' : undefined}
-							aria-selected={isSelected || undefined}
-							className={`flex min-h-[48px] cursor-pointer flex-col items-stretch gap-1 rounded-md border px-1.5 py-1 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-								isSelected
-									? 'border-[var(--accent)] bg-[var(--accent)]/10'
-									: isToday
-										? 'border-[var(--accent)]/30 ring-1 ring-inset ring-[var(--accent)]/40 hover:bg-[var(--surface)]'
-										: 'border-transparent hover:bg-[var(--surface)]'
-							}`}
-						>
-							<span
-								className={`text-[12px] ${baseClass} ${
-									isToday ? 'font-semibold text-[var(--accent)]' : 'font-medium'
-								}`}
-							>
-								{day.date.getDate()}
-							</span>
-							{day.occurrences.length > 0 && (
-								<span className="sr-only">
-									{day.occurrences.length} Termin{day.occurrences.length === 1 ? '' : 'e'}:{' '}
-									{day.occurrences
-										.slice(0, 3)
-										.map((occ) => occ.title)
-										.join(', ')}
-								</span>
-							)}
-							<ul className="space-y-0.5">
-								{day.occurrences.slice(0, 2).map((occ) => (
-									<li key={`${occ.eventId}-${occ.occurrenceIndex}`}>
-										<button
+					<div className="grid grid-cols-7">
+						{WEEKDAY_LABELS.map((label) => (
+							<div key={label} className="py-2 text-center text-xs text-muted-foreground">
+								{label}
+							</div>
+						))}
+					</div>
+					{weeks.map((week, weekIndex) => (
+						<div key={week[0]?.date.toISOString()} className="grid grid-cols-7">
+							{week.map((day, dayIndex) => {
+								const isToday = sameDay(day.date, today);
+								const isSelected = selectedDay !== null && sameDay(day.date, selectedDay);
+								return (
+									<div aria-selected={isSelected} key={day.date.toISOString()}>
+										<Button
 											type="button"
-											aria-label={`Termin öffnen: ${occ.title}`}
-											onClick={(e) => {
-												e.stopPropagation();
-												onSelectOccurrence(occ);
-											}}
-											className="flex min-h-11 w-full items-center truncate rounded-sm bg-[var(--accent)]/15 px-1 text-left text-[11px] font-medium text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+											variant={isSelected ? 'default' : isToday ? 'secondary' : 'ghost'}
+											data-day-cell
+											data-day-date={day.date.toISOString()}
+											tabIndex={weekIndex * 7 + dayIndex === focusedIndex ? 0 : -1}
+											aria-label={
+												FULL_DATE_FORMATTER.format(day.date) +
+												(day.occurrences.length ? `, ${day.occurrences.length} Termine` : '')
+											}
+											aria-current={isToday ? 'date' : undefined}
+											className={cn(
+												'relative min-h-11 w-full px-0',
+												!day.inCurrentMonth && 'opacity-50',
+											)}
 										>
-											{occ.title}
-										</button>
-									</li>
-								))}
-								{day.occurrences.length > 2 && (
-									<li className="text-[10px] text-[var(--text-3)]">
-										+{day.occurrences.length - 2} weitere
-									</li>
-								)}
-							</ul>
+											{day.date.getDate()}
+											{day.occurrences.length > 0 && (
+												<span
+													aria-hidden
+													className="absolute bottom-1 size-1 rounded-full bg-current"
+												/>
+											)}
+										</Button>
+									</div>
+								);
+							})}
 						</div>
-					);
-				})}
-			</div>
-		</section>
+					))}
+				</div>
+				{selectedDay && (
+					<section aria-label="Termine am ausgewählten Tag" className="flex flex-col gap-2 px-2">
+						<div className="flex flex-wrap items-center gap-2">
+							<h3 className="text-sm font-medium">{FULL_DATE_FORMATTER.format(selectedDay)}</h3>
+							<Badge variant="secondary">{selectedOccurrences.length} Termine</Badge>
+						</div>
+						{selectedOccurrences.length === 0 ? (
+							<p className="text-sm text-muted-foreground">Keine Termine an diesem Tag.</p>
+						) : (
+							<ItemGroup>
+								{selectedOccurrences.map((occurrence) => (
+									<Item
+										key={`${occurrence.eventId}-${occurrence.occurrenceIndex}`}
+										variant="outline"
+									>
+										<ItemContent className="min-w-0 basis-32">
+											<ItemTitle className="line-clamp-none break-words">
+												{occurrence.title}
+											</ItemTitle>
+											<ItemDescription className="line-clamp-none">
+												{formatEventTimeRange(occurrence)}
+											</ItemDescription>
+										</ItemContent>
+										<ItemActions className="ml-auto">
+											<Button
+												variant="outline"
+												onClick={() => onSelectOccurrence(occurrence)}
+												aria-label={`Termin öffnen: ${occurrence.title}`}
+												className="min-h-11"
+											>
+												Öffnen
+											</Button>
+										</ItemActions>
+									</Item>
+								))}
+							</ItemGroup>
+						)}
+					</section>
+				)}
+			</CardContent>
+		</Card>
 	);
 }

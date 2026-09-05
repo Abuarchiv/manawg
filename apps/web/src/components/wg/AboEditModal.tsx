@@ -9,11 +9,19 @@ interface AboEditModalProps {
 	abo: Abo;
 	members: MemberOption[];
 	submitting: boolean;
+	saveError?: string | null | undefined;
 	onClose: () => void;
 	onSubmit: (values: AboFormValues) => void;
 }
 
-export function AboEditModal({ abo, members, submitting, onClose, onSubmit }: AboEditModalProps) {
+export function AboEditModal({
+	abo,
+	members,
+	submitting,
+	saveError,
+	onClose,
+	onSubmit,
+}: AboEditModalProps) {
 	// AboForm resyncs its fields whenever `initial` changes identity (so
 	// switching to a different abo picks up fresh values). A fresh object
 	// literal here would give it a new identity on every re-render of this
@@ -33,16 +41,19 @@ export function AboEditModal({ abo, members, submitting, onClose, onSubmit }: Ab
 	);
 
 	return (
-		<AboModalShell title="Abo bearbeiten" onClose={onClose}>
-			<AboForm
-				mode="edit"
-				members={members}
-				submitting={submitting}
-				defaultPaidByMemberId={abo.paidByMemberId}
-				initial={initial}
-				onCancel={onClose}
-				onSubmit={onSubmit}
-			/>
+		<AboModalShell title="Abo bearbeiten" onClose={onClose} submitting={submitting}>
+			{(requestClose) => (
+				<AboForm
+					mode="edit"
+					members={members}
+					submitting={submitting}
+					saveError={saveError}
+					defaultPaidByMemberId={abo.paidByMemberId}
+					initial={initial}
+					onCancel={requestClose}
+					onSubmit={onSubmit}
+				/>
+			)}
 		</AboModalShell>
 	);
 }

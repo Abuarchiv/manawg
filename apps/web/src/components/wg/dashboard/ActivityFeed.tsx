@@ -1,5 +1,23 @@
+import { Badge } from '@/components/ui/badge';
+import { buttonVariants } from '@/components/ui/button';
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyTitle,
+} from '@/components/ui/empty';
+import {
+	Item,
+	ItemContent,
+	ItemDescription,
+	ItemGroup,
+	ItemMedia,
+	ItemTitle,
+} from '@/components/ui/item';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatCompactRelativeTime } from '@/core/utils/time';
+import { cn } from '@/shared/lib/cn';
 import {
 	CalendarOff,
 	History,
@@ -43,90 +61,95 @@ const kindIcon: Record<ActivityItem['kind'], typeof Receipt> = {
 export function ActivityFeed({ items, emptyHref }: ActivityFeedProps) {
 	if (items.length === 0) {
 		return (
-			<div className="space-y-2">
-				<p className="text-sm text-[var(--text-2)]">
-					Noch keine Aktivität. Lege los — die ersten Einträge erscheinen hier.
-				</p>
+			<Empty>
+				<EmptyHeader>
+					<EmptyTitle>Noch keine Aktivität.</EmptyTitle>
+					<EmptyDescription>Lege los — die ersten Einträge erscheinen hier.</EmptyDescription>
+				</EmptyHeader>
 				{emptyHref && (
-					<Link
-						href={emptyHref}
-						className="inline-flex h-11 items-center rounded-md border border-[var(--border)] px-3 text-[12.5px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-					>
-						Erste Aktion starten
-					</Link>
+					<EmptyContent>
+						<Link
+							href={emptyHref}
+							className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11')}
+						>
+							Erste Aktion starten
+						</Link>
+					</EmptyContent>
 				)}
-			</div>
+			</Empty>
 		);
 	}
 
 	const now = Date.now();
 
 	return (
-		<ol className="divide-y divide-[var(--border)]">
+		<ItemGroup aria-label="Aktivitätsverlauf">
 			{items.map((item) => {
 				const Icon = kindIcon[item.kind];
-				return (
-					<li
-						key={`${item.kind}-${item.timestamp}-${item.text}`}
-						className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0"
-					>
-						<Icon
-							className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-3)]"
-							strokeWidth={1.75}
-							aria-hidden
-						/>
-						<div className="min-w-0 flex-1">
-							<div className="flex items-baseline justify-between gap-2">
-								{item.href ? (
-									<Link
-										href={item.href}
-										className="-my-2 flex min-h-11 min-w-0 flex-1 items-center truncate rounded-sm text-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+				const content = (
+					<>
+						<ItemMedia variant="icon" className="mt-0.5">
+							<Icon strokeWidth={1.75} aria-hidden />
+						</ItemMedia>
+						<ItemContent className="min-w-0">
+							<ItemTitle className="w-full line-clamp-none">
+								<span className="flex min-w-0 flex-1 flex-col gap-1">
+									<ActivityText item={item} />
+									<time
+										dateTime={item.timestamp}
+										className="shrink-0 text-xs text-muted-foreground tabular-nums"
 									>
-										<ActivityText item={item} />
-									</Link>
-								) : (
-									<p className="flex min-h-11 min-w-0 flex-1 items-center truncate text-sm">
-										<ActivityText item={item} />
-									</p>
+										{formatCompactRelativeTime(item.timestamp, now)}
+									</time>
+								</span>
+							</ItemTitle>
+							<div className="flex flex-wrap items-center gap-2">
+								{item.detail && (
+									<ItemDescription className="line-clamp-2" title={item.detail}>
+										{item.detail}
+									</ItemDescription>
 								)}
-								<time
-									dateTime={item.timestamp}
-									className="shrink-0 text-[12px] tabular-nums text-[var(--text-3)]"
-								>
-									{formatCompactRelativeTime(item.timestamp, now)}
-								</time>
+								{item.amountCents !== undefined && (
+									<Badge variant="secondary" className="shrink-0 tabular-nums">
+										{formatEuro(item.amountCents)}
+									</Badge>
+								)}
 							</div>
-							{item.detail && (
-								<p
-									className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-[var(--text-3)]"
-									title={item.detail}
-								>
-									{item.detail}
-								</p>
-							)}
-						</div>
-					</li>
+						</ItemContent>
+					</>
+				);
+				if (item.href) {
+					return (
+						<Item
+							key={`${item.kind}-${item.timestamp}-${item.text}`}
+							variant="outline"
+							render={<Link href={item.href} aria-label={`${item.memberName} ${item.text}`} />}
+							className="min-h-11"
+						>
+							{content}
+						</Item>
+					);
+				}
+				return (
+					<Item key={`${item.kind}-${item.timestamp}-${item.text}`} variant="outline">
+						{content}
+					</Item>
 				);
 			})}
-		</ol>
+		</ItemGroup>
 	);
 }
 
 function ActivityText({ item }: { item: ActivityItem }) {
-	// Wrap in a single block-level span so the parent `<Link className="flex">`
-	// (iter 9 tap-target fix) treats this as ONE flex item. Without the
-	// wrapper, the multiple inner <span>s + JSX text-node space become
-	// separate anonymous flex items with zero gap — the space character
-	// collapses visually and "Abu hat die WG …" renders as "Abuhat die WG …".
+	// Wrap in a single block-level span so the parent flex container treats this
+	// as ONE flex item. Without the wrapper, the multiple inner <span>s + JSX
+	// text-node space become separate anonymous flex items with zero gap — the
+	// space character collapses visually and "Abu hat die WG …" renders as
+	// "Abuhat die WG …". Amount is shown as a Badge beside the detail, not here.
 	return (
-		<span className="truncate">
-			<span className="font-medium text-[var(--text-1)]">{item.memberName}</span>{' '}
-			<span className="text-[var(--text-2)]">{item.text}</span>
-			{item.amountCents !== undefined && (
-				<span className="ml-1.5 tabular-nums text-[var(--text-2)]">
-					· {formatEuro(item.amountCents)}
-				</span>
-			)}
+		<span className="min-w-0 flex-1 break-words">
+			<span className="font-medium text-foreground">{item.memberName}</span>{' '}
+			<span className="text-muted-foreground">{item.text}</span>
 		</span>
 	);
 }

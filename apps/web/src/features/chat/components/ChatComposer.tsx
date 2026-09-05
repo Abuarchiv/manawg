@@ -1,7 +1,17 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupTextarea,
+} from '@/components/ui/input-group';
+import { Spinner } from '@/components/ui/spinner';
+import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { haptic } from '@/shared/lib/haptics';
-import { Loader2, Send, X } from 'lucide-react';
+import { Send, X } from 'lucide-react';
 import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
 	MentionAutocomplete,
@@ -17,12 +27,15 @@ function escapeRegExp(value: string): string {
 }
 
 interface ChatComposerProps {
+	draftKey: string;
+	error: string | null;
 	members: MentionMember[];
 	currentMemberId: string;
 	replyToMessageId: string | null;
 	replyToPreview: string | null;
 	replyToSenderName: string | null;
 	onClearReply: () => void;
+	onRestoreReply: (id: string | null) => void;
 	onSend: (input: {
 		body: string;
 		mentionMemberIds: string[];
@@ -44,17 +57,23 @@ function detectMention(value: string, cursor: number): MentionTrigger | null {
 }
 
 export function ChatComposer({
+	draftKey,
+	error,
 	members,
 	currentMemberId,
 	replyToMessageId,
 	replyToPreview,
 	replyToSenderName,
 	onClearReply,
+	onRestoreReply,
 	onSend,
 }: ChatComposerProps) {
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const [draft, setDraft] = useState('');
 	const [pending, setPending] = useState(false);
+	const pendingRef = useRef(false);
+	const [draftHydrated, setDraftHydrated] = useState(false);
+	const [draftStorageFailed, setDraftStorageFailed] = useState(false);
 	const [mention, setMention] = useState<MentionTrigger | null>(null);
 	const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
 	const mentionListboxId = 'mention-listbox';
@@ -71,6 +90,22 @@ export function ChatComposer({
 	const activeOptionId = mentionOpen
 		? mentionOptionId(mentionListboxId, mentionActiveIndex)
 		: undefined;
+	useEffect(() => {
+		const saved = readDraft<{ body?: string; replyToMessageId?: string }>(draftKey);
+		if (typeof saved?.body === 'string') setDraft(saved.body.slice(0, BODY_MAX));
+		onRestoreReply(typeof saved?.replyToMessageId === 'string' ? saved.replyToMessageId : null);
+		setDraftHydrated(true);
+	}, [draftKey, onRestoreReply]);
+
+	useEffect(() => {
+		if (!draftHydrated) return;
+		if (!draft && !replyToMessageId) {
+			removeDraft(draftKey);
+			setDraftStorageFailed(false);
+			return;
+		}
+		setDraftStorageFailed(!writeDraft(draftKey, { body: draft, replyToMessageId }));
+	}, [draft, draftHydrated, draftKey, replyToMessageId]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: mentionItems identity change is the correct trigger
 	useEffect(() => {
@@ -85,12 +120,13 @@ export function ChatComposer({
 	}
 
 	function insertMention(member: MentionMember): void {
-		if (!mention || !textareaRef.current) return;
+		if (pendingRef.current || !mention || !textareaRef.current) return;
 		const value = textareaRef.current.value;
 		const before = value.slice(0, mention.startIndex);
 		const after = value.slice(mention.startIndex + 1 + mention.query.length);
 		const insertion = `@${member.name} `;
 		const next = `${before}${insertion}${after}`;
+		if (next.length > BODY_MAX) return;
 		setDraft(next);
 		setMention(null);
 		const nextCursor = before.length + insertion.length;
@@ -104,7 +140,8 @@ export function ChatComposer({
 
 	async function submit(): Promise<void> {
 		const text = draft.trim();
-		if (text.length === 0 || pending) return;
+		if (text.length === 0 || text.length > BODY_MAX || pendingRef.current) return;
+		pendingRef.current = true;
 		haptic('selection');
 		setPending(true);
 		// Trailing `\b` misses names ending in a diacritic (e.g. "René"): `\b` only
@@ -129,11 +166,13 @@ export function ChatComposer({
 				onClearReply();
 			}
 		} finally {
+			pendingRef.current = false;
 			setPending(false);
 		}
 	}
 
 	function onKey(e: KeyboardEvent<HTMLTextAreaElement>): void {
+		if (e.nativeEvent.isComposing) return;
 		if (mentionOpen) {
 			if (e.key === 'ArrowDown') {
 				e.preventDefault();
@@ -164,27 +203,40 @@ export function ChatComposer({
 	}
 
 	return (
-		<div
-			className="sticky bottom-0 z-20 border-t border-[var(--border)] bg-[var(--bg-base)]"
-			style={{ paddingBottom: 'env(keyboard-inset-height, 0px)' }}
-		>
+		<div className="relative shrink-0 border-t border-border bg-background" aria-busy={pending}>
 			{replyToMessageId && (
-				<div className="flex items-start gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[12px]">
+				<div className="flex items-start gap-2 border-b border-border bg-muted px-3 py-2 text-xs">
 					<div className="min-w-0 flex-1">
-						<div className="font-medium text-[var(--text-2)]">
+						<div className="font-medium text-foreground">
 							Antwort an {replyToSenderName ?? 'Unbekannt'}
 						</div>
-						<div className="truncate text-[var(--text-3)]">{replyToPreview ?? '…'}</div>
+						<div className="truncate text-muted-foreground">{replyToPreview ?? '…'}</div>
 					</div>
-					<button
+					<Button
 						type="button"
+						variant="ghost"
+						size="icon"
 						onClick={onClearReply}
+						disabled={pending}
 						aria-label="Antwort abbrechen"
-						className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+						className="min-h-11 min-w-11"
 					>
-						<X className="h-3.5 w-3.5" aria-hidden />
-					</button>
+						<X aria-hidden />
+					</Button>
 				</div>
+			)}
+			{error && (
+				<Alert variant="destructive">
+					<AlertDescription>{error} Dein Text ist noch da.</AlertDescription>
+				</Alert>
+			)}
+			{draftStorageFailed && (
+				<Alert>
+					<AlertDescription>
+						Der Entwurf kann auf diesem Gerät nicht gespeichert werden. Lass den Chat bis zum Senden
+						geöffnet.
+					</AlertDescription>
+				</Alert>
 			)}
 			<MentionAutocomplete
 				listboxId={mentionListboxId}
@@ -193,36 +245,44 @@ export function ChatComposer({
 				onSelect={insertMention}
 				onHoverIndex={setMentionActiveIndex}
 			/>
-			<div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-3 py-2 sm:px-4">
-				<textarea
-					ref={textareaRef}
-					value={draft}
-					onChange={handleChange}
-					onKeyDown={onKey}
-					placeholder="Nachricht schreiben"
-					maxLength={BODY_MAX}
-					rows={1}
-					aria-label="Chat-Nachricht"
-					aria-autocomplete="list"
-					aria-controls={mentionOpen ? mentionListboxId : undefined}
-					aria-expanded={mentionOpen}
-					aria-activedescendant={activeOptionId}
-					className="max-h-40 min-h-[44px] flex-1 resize-y rounded-2xl border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-[16px] text-[var(--text-1)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-				/>
-				<button
-					type="button"
-					onClick={() => void submit()}
-					disabled={pending || draft.trim().length === 0}
-					aria-label="Nachricht senden"
-					className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-fg)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-				>
-					{pending ? (
-						<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-					) : (
-						<Send className="h-4 w-4" aria-hidden />
-					)}
-				</button>
+			<div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-3 py-2">
+				<InputGroup className="h-auto min-h-11 items-end">
+					<InputGroupTextarea
+						ref={textareaRef}
+						value={draft}
+						disabled={pending || !draftHydrated}
+						onChange={handleChange}
+						onKeyDown={onKey}
+						placeholder="Nachricht schreiben"
+						maxLength={BODY_MAX}
+						rows={1}
+						aria-label="Chat-Nachricht"
+						aria-autocomplete="list"
+						aria-controls={mentionOpen ? mentionListboxId : undefined}
+						aria-expanded={mentionOpen}
+						aria-activedescendant={activeOptionId}
+						className="max-h-32 min-h-11 flex-1 text-base md:text-base"
+					/>
+					<InputGroupAddon align="inline-end">
+						<InputGroupButton
+							type="button"
+							variant="default"
+							size="icon-sm"
+							onClick={() => void submit()}
+							disabled={pending || !draftHydrated || draft.trim().length === 0}
+							aria-label="Nachricht senden"
+							className="min-h-11 min-w-11 shrink-0"
+						>
+							{pending ? <Spinner aria-hidden /> : <Send aria-hidden />}
+						</InputGroupButton>
+					</InputGroupAddon>
+				</InputGroup>
 			</div>
+			{pending && (
+				<output className="px-3 pb-2 text-xs text-muted-foreground">
+					Nachricht wird gesendet…
+				</output>
+			)}
 		</div>
 	);
 }

@@ -1,14 +1,20 @@
 'use client';
 
-import { ALERT_DANGER_ROW } from '@/components/ui/styles';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Item, ItemContent, ItemGroup } from '@/components/ui/item';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { BackLink } from '@/components/wg/BackLink';
+import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { apiFetch } from '@/core/infra/api-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { InventoryList } from '@/features/inventory/components/InventoryList';
 import type { InventoryCategory, InventoryItemDto } from '@/features/inventory/inventory';
-import { Loader2, RotateCw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface InventoryResponse {
@@ -55,45 +61,59 @@ export default function VorraetePage() {
 	useVisibilityPausedInterval(() => void load(true), 30_000);
 
 	return (
-		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+		<div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-5">
 			<header className="flex items-center gap-3">
-				<BackLink href={`/wg/${encodedShareCode}/einkauf`} label="Einkaufsliste" />
+				<BackLink href={`/wg/${encodedShareCode}/einkauf`} label="Haushalt" />
 				<div className="min-w-0 flex-1">
-					<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">Vorräte</h1>
-					<p className="mt-0.5 text-[13px] text-[var(--text-3)]">
-						{items.length === 0
-							? 'Noch keine Vorräte erfasst.'
-							: `${items.length} Artikel im Bestand.`}
+					<h1 className="text-xl font-semibold tracking-tight text-foreground">Vorräte</h1>
+					<p className="mt-1" aria-live="polite" aria-atomic="true">
+						{items.length === 0 ? (
+							<span className="text-[13px] text-muted-foreground">Noch keine Vorräte erfasst.</span>
+						) : (
+							<Badge variant="secondary" className="tabular-nums">
+								{items.length} Artikel im Bestand
+							</Badge>
+						)}
 					</p>
 				</div>
 			</header>
+			<SubNav label="Haushalt" items={[]} />
 
 			{loadError && (
-				<div role="alert" className={ALERT_DANGER_ROW}>
-					<span>{loadError}</span>
-					<button
-						type="button"
-						onClick={() => void load(false)}
-						disabled={initialLoading}
-						className="inline-flex h-11 items-center gap-1.5 rounded-md border border-[var(--danger)]/30 px-3 text-[12px] font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-					>
-						<RotateCw
-							className={`h-3.5 w-3.5 ${initialLoading ? 'animate-spin' : ''}`}
-							aria-hidden
-						/>
-						{initialLoading ? 'Lädt...' : 'Erneut laden'}
-					</button>
-				</div>
+				<Alert variant="destructive">
+					<AlertTitle>Laden fehlgeschlagen</AlertTitle>
+					<AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+						<span>{loadError}</span>
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							onClick={() => void load(false)}
+							disabled={initialLoading}
+							className="min-h-11"
+						>
+							{initialLoading && <Spinner aria-hidden />}
+							{initialLoading ? 'Lädt…' : 'Erneut laden'}
+						</Button>
+					</AlertDescription>
+				</Alert>
 			)}
 
 			{initialLoading && items.length === 0 ? (
-				<div
-					className="flex h-32 items-center justify-center text-[var(--text-3)]"
-					aria-busy="true"
-				>
-					<Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-					<span className="sr-only">Vorräte werden geladen</span>
-				</div>
+				<Card className="py-0">
+					<CardContent className="p-0">
+						<ItemGroup className="gap-0" aria-busy="true" aria-label="Vorräte werden geladen">
+							{['s0', 's1', 's2'].map((k) => (
+								<Item key={k} className="px-3 py-3">
+									<ItemContent className="flex-1 gap-2">
+										<Skeleton className="h-3.5 w-2/5" />
+										<Skeleton className="h-3 w-3/5" />
+									</ItemContent>
+								</Item>
+							))}
+						</ItemGroup>
+					</CardContent>
+				</Card>
 			) : (
 				<InventoryList
 					items={items}
@@ -103,6 +123,7 @@ export default function VorraetePage() {
 					onChanged={() => void load(true)}
 				/>
 			)}
+			<div aria-hidden className="h-[env(safe-area-inset-bottom,0px)]" />
 		</div>
 	);
 }

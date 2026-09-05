@@ -116,7 +116,7 @@ test.describe('ManaWG core flows', () => {
 			.catch(() => undefined);
 		await gotoWithRetry(page, '/wg/MTE8PZAT');
 		await dashboardResponse;
-		await expect(page.getByText('Deine Bilanz')).toBeVisible({ timeout: 60_000 });
+		await expect(page.getByText('Dein Saldo')).toBeVisible({ timeout: 60_000 });
 		await expect(
 			page.getByRole('link', { name: '1 Offline-Aktion wartet auf Synchronisierung.' }),
 		).toBeVisible({ timeout: 30_000 });
@@ -168,14 +168,9 @@ test.describe('ManaWG core flows', () => {
 			{ memberId },
 		);
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen?title=Bad%20putzen');
-		await expect(
-			page.getByRole('button', { name: /^(Putzaufgabe erfassen|Putzaufgabe-Formular schließen)$/ }),
-		).toBeVisible({
+		await expect(page.getByRole('dialog', { name: 'Neue Putzaufgabe', exact: true })).toBeVisible({
 			timeout: 30_000,
 		});
-		if (await page.getByRole('button', { name: 'Putzaufgabe erfassen' }).isVisible()) {
-			await page.getByRole('button', { name: 'Putzaufgabe erfassen' }).click();
-		}
 		await expect(page.locator('#chore-title')).toHaveValue('Bad putzen', { timeout: 60_000 });
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen?filter=overdue');
 		// Der Deep-Link behält den bereits geöffneten Entwurf bei.
@@ -219,7 +214,7 @@ test.describe('ManaWG core flows', () => {
 		await expect(page.getByPlaceholder('Was brauchen wir?')).toHaveValue('Milch', {
 			timeout: 30_000,
 		});
-		await expect(page.getByPlaceholder('Menge')).toHaveValue('');
+		await expect(page.getByLabel('Menge', { exact: true })).toHaveValue('');
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/pinnwand?status=open');
 		await expect(page.getByRole('heading', { name: 'Pinnwand' })).toBeVisible({
@@ -354,7 +349,9 @@ test.describe('ManaWG core flows', () => {
 			page.getByRole('button', { name: 'Offline-Aktion bearbeiten: Internet' }),
 		).toHaveCount(1);
 		await page.getByRole('button', { name: 'Offline-Aktion bearbeiten: Internet' }).click();
-		await expect(page.getByText('Du bearbeitest eine wartende Fixkosten-Vorlage.')).toBeVisible({
+		await expect(
+			page.getByText('Wartende Fixkosten-Vorlage bearbeiten · noch nicht synchronisiert.'),
+		).toBeVisible({
 			timeout: 30_000,
 		});
 		await expect(page.getByRole('button', { name: 'Vorlage speichern' })).toHaveCount(1);

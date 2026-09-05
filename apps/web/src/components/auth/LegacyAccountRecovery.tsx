@@ -1,13 +1,17 @@
 'use client';
 
 import { ErrorBox } from '@/components/neu/ErrorBox';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import {
 	clearIdentity,
 	getLegacyIdentityCandidates,
 	memberAuthHeader,
 } from '@/shared/lib/identity';
 import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
-import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useRef, useState } from 'react';
 
@@ -77,56 +81,49 @@ export function LegacyAccountRecovery() {
 	}
 
 	return (
-		<section
-			aria-labelledby="legacy-account-recovery-heading"
-			className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5"
-		>
-			<div className="space-y-1">
-				<h2
-					id="legacy-account-recovery-heading"
-					className="text-[15px] font-semibold text-[var(--text-1)]"
-				>
-					Altes Profil wiederherstellen
-				</h2>
-				<p className="text-[13px] leading-5 text-[var(--text-2)]">
+		<Card aria-labelledby="legacy-account-recovery-heading">
+			<CardHeader>
+				<CardTitle id="legacy-account-recovery-heading">Altes Profil wiederherstellen</CardTitle>
+				<CardDescription>
 					Gib den WG-Code ein, um ein gespeichertes Profil nach der Anmeldung zu übernehmen.
-				</p>
-			</div>
+				</CardDescription>
+			</CardHeader>
 
-			<form onSubmit={recover} className="space-y-3" noValidate>
-				<div className="space-y-2">
-					<label
-						htmlFor="legacy-recovery-share-code"
-						className="block text-[13px] font-medium text-[var(--text-1)]"
-					>
-						WG-Code
-					</label>
-					<input
-						id="legacy-recovery-share-code"
-						name="shareCode"
-						type="text"
-						value={shareCode}
-						onChange={(event) => setShareCode(event.target.value)}
-						autoComplete="off"
-						inputMode="text"
-						maxLength={8}
-						aria-describedby={error ? 'legacy-recovery-error' : undefined}
-						aria-invalid={error ? true : undefined}
-						className="block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 font-mono text-base uppercase tracking-[0.18em] text-[var(--text-1)] outline-none focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-					/>
-				</div>
+			<CardContent>
+				<form onSubmit={recover} noValidate>
+					<FieldGroup>
+						<Field data-invalid={Boolean(error)}>
+							<FieldLabel htmlFor="legacy-recovery-share-code">WG-Code</FieldLabel>
+							<Input
+								id="legacy-recovery-share-code"
+								name="shareCode"
+								type="text"
+								value={shareCode}
+								onChange={(event) => setShareCode(event.target.value)}
+								autoComplete="off"
+								inputMode="text"
+								maxLength={8}
+								aria-describedby={error ? 'legacy-recovery-error' : undefined}
+								aria-invalid={error ? true : undefined}
+								className="min-h-11 font-mono text-base uppercase md:text-base"
+							/>
+						</Field>
 
-				{error ? <ErrorBox id="legacy-recovery-error">{error}</ErrorBox> : null}
+						{error ? <ErrorBox id="legacy-recovery-error">{error}</ErrorBox> : null}
 
-				<button
-					type="submit"
-					disabled={submitting}
-					className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-[var(--border-strong)] px-4 py-3 text-[14px] font-semibold text-[var(--text-1)] transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-				>
-					{submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-					{submitting ? 'Wird wiederhergestellt …' : 'Profil wiederherstellen'}
-				</button>
-			</form>
-		</section>
+						<Button
+							type="submit"
+							variant="outline"
+							size="lg"
+							disabled={submitting}
+							className="min-h-11 w-full"
+						>
+							{submitting ? <Spinner data-icon="inline-start" aria-hidden="true" /> : null}
+							{submitting ? 'Wird wiederhergestellt …' : 'Profil wiederherstellen'}
+						</Button>
+					</FieldGroup>
+				</form>
+			</CardContent>
+		</Card>
 	);
 }

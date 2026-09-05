@@ -4,27 +4,19 @@ import { ThemeProvider } from '@/shared/components/theme/ThemeProvider';
 import { getAppUrl } from '@/shared/lib/app-url';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
+import { Geist_Mono, Inter } from 'next/font/google';
 import Script from 'next/script';
 import '@/shared/globals.css';
 
-const geist = Geist({
+const inter = Inter({
 	subsets: ['latin'],
-	variable: '--font-geist',
+	variable: '--font-inter',
 	display: 'swap',
 });
 
 const geistMono = Geist_Mono({
 	subsets: ['latin'],
 	variable: '--font-geist-mono',
-	display: 'swap',
-});
-
-const instrumentSerif = Instrument_Serif({
-	subsets: ['latin'],
-	weight: ['400'],
-	style: ['normal', 'italic'],
-	variable: '--font-instrument-serif',
 	display: 'swap',
 });
 
@@ -132,11 +124,7 @@ export default function RootLayout({
 	children: React.ReactNode;
 }) {
 	return (
-		<html
-			lang="de"
-			suppressHydrationWarning
-			className={`${geist.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
-		>
+		<html lang="de" suppressHydrationWarning className={`${inter.variable} ${geistMono.variable}`}>
 			<head>
 				<meta name="apple-mobile-web-app-capable" content="yes" />
 				<meta name="mobile-web-app-capable" content="yes" />
@@ -180,7 +168,7 @@ export default function RootLayout({
 					    chrome that spans edge-to-edge (WgShell's bottom nav, its "Mehr"
 					    sheet) caps itself to the same width separately, since `fixed`
 					    positions against the real viewport, not this wrapper. */}
-					<div className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] bg-[var(--bg-base)]">
+					<div className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] bg-background">
 						{children}
 						<PwaRegister />
 						<InstallPrompt />

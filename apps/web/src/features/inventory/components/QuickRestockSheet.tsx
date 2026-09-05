@@ -1,11 +1,25 @@
 'use client';
 
-import { ICON_BUTTON } from '@/components/ui/styles';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+	Drawer,
+	DrawerClose,
+	DrawerContent,
+	DrawerDescription,
+	DrawerFooter,
+	DrawerHeader,
+	DrawerTitle,
+} from '@/components/ui/drawer';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
+import { ItemGroup } from '@/components/ui/item';
+import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
 import type { InventoryItemDto } from '@/features/inventory/inventory';
-import { useFocusTrap } from '@/shared/lib/hooks/useFocusTrap';
-import { Loader2, Plus, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
+import { useState } from 'react';
 
 interface QuickRestockSheetProps {
 	open: boolean;
@@ -29,20 +43,8 @@ export function QuickRestockSheet({
 	onChanged,
 }: QuickRestockSheetProps) {
 	const encodedShareCode = encodeURIComponent(shareCode);
-	const trapRef = useFocusTrap<HTMLDivElement>(open);
 	const [pendingId, setPendingId] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
-
-	useEffect(() => {
-		if (!open) return;
-		const handleKey = (e: KeyboardEvent): void => {
-			if (e.key === 'Escape') onClose();
-		};
-		document.addEventListener('keydown', handleKey);
-		return () => document.removeEventListener('keydown', handleKey);
-	}, [open, onClose]);
-
-	if (!open) return null;
 
 	const sorted = [...items]
 		.filter((item) => item.decrementCount30d > 0 || item.lastDecrementedAt !== null)
@@ -50,6 +52,7 @@ export function QuickRestockSheet({
 		.slice(0, QUICK_RESTOCK_LIMIT);
 
 	async function quickRestock(item: InventoryItemDto): Promise<void> {
+		if (pendingId !== null) return;
 		setPendingId(item.id);
 		setError(null);
 		const res = await apiFetch(
@@ -70,78 +73,78 @@ export function QuickRestockSheet({
 	}
 
 	return (
-		<div
-			ref={trapRef}
-			// biome-ignore lint/a11y/useSemanticElements: native <dialog> UA display:none kills CSS exit animations on iOS Safari; use <div role="dialog"> (see native-dialog-css-transition-kill skill).
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="quick-restock-title"
-			className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center sm:p-4"
+		<Drawer
+			open={open}
+			onOpenChange={(next) => {
+				if (!next) onClose();
+			}}
 		>
-			<div
-				className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-[var(--border)] bg-[var(--bg-base)] p-5 shadow-xl sm:rounded-2xl"
-				style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))' }}
-			>
-				<span className="sheet-handle" aria-hidden />
-				<div className="flex items-start justify-between gap-3">
-					<div>
-						<h2 id="quick-restock-title" className="text-base font-semibold text-[var(--text-1)]">
-							Schnell nachfüllen
-						</h2>
-						<p className="mt-0.5 text-[12.5px] text-[var(--text-3)]">
-							Die fünf am häufigsten verbrauchten Vorräte der letzten 30 Tage.
-						</p>
-					</div>
-					<button type="button" onClick={onClose} aria-label="Schließen" className={ICON_BUTTON}>
-						<X className="h-4 w-4" aria-hidden />
-					</button>
+			<DrawerContent className="mx-auto w-full max-w-md">
+				<DrawerHeader>
+					<DrawerTitle>Schnell nachfüllen</DrawerTitle>
+					<DrawerDescription>
+						Die fünf am häufigsten verbrauchten Vorräte der letzten 30 Tage.
+					</DrawerDescription>
+				</DrawerHeader>
+				<div
+					className="flex min-h-0 flex-col gap-3 overflow-y-auto p-4"
+					style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+				>
+					{error && (
+						<Alert variant="destructive">
+							<AlertDescription>{error}</AlertDescription>
+						</Alert>
+					)}
+					{sorted.length === 0 ? (
+						<Empty className="border-dashed">
+							<EmptyHeader>
+								<EmptyTitle>Noch keine Verbrauchs-Daten</EmptyTitle>
+								<EmptyDescription>
+									Sobald Vorräte verbraucht werden, erscheinen hier Vorschläge.
+								</EmptyDescription>
+							</EmptyHeader>
+						</Empty>
+					) : (
+						<Card className="py-0">
+							<CardContent className="p-0">
+								<ItemGroup className="gap-0 divide-y divide-border">
+									{sorted.map((item) => (
+										<Item key={item.id} className="px-3 py-2.5">
+											<ItemContent className="min-w-0 flex-1">
+												<ItemTitle className="w-full min-w-0">
+													<span className="min-w-0 flex-1 truncate text-sm font-medium">
+														{item.name}
+													</span>
+												</ItemTitle>
+												<ItemDescription className="text-xs tabular-nums">
+													{item.quantity} {item.unit} · {item.decrementCount30d}× in 30 Tagen
+												</ItemDescription>
+											</ItemContent>
+											<ItemActions>
+												<Button
+													type="button"
+													onClick={() => void quickRestock(item)}
+													disabled={pendingId !== null}
+													aria-label={`${item.name} um eins erhöhen`}
+													className="min-h-11"
+												>
+													{pendingId === item.id ? <Spinner aria-hidden /> : <Plus aria-hidden />}
+													+1
+												</Button>
+											</ItemActions>
+										</Item>
+									))}
+								</ItemGroup>
+							</CardContent>
+						</Card>
+					)}
 				</div>
-				{error && (
-					<p
-						role="alert"
-						className="mt-3 rounded-md border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-2.5 py-1.5 text-[12.5px] text-[var(--danger)]"
-					>
-						{error}
-					</p>
-				)}
-				{sorted.length === 0 ? (
-					<p className="mt-4 rounded-md border border-dashed border-[var(--border)] px-4 py-6 text-center text-[13px] text-[var(--text-3)]">
-						Noch keine Verbrauchs-Daten vorhanden.
-					</p>
-				) : (
-					<ul className="mt-4 space-y-2">
-						{sorted.map((item) => (
-							<li
-								key={item.id}
-								className="flex items-center gap-3 rounded-md border border-[var(--border)] px-3 py-2"
-							>
-								<div className="min-w-0 flex-1">
-									<p className="truncate text-[14px] font-medium text-[var(--text-1)]">
-										{item.name}
-									</p>
-									<p className="mt-0.5 text-[12px] text-[var(--text-3)]">
-										{item.quantity} {item.unit} · {item.decrementCount30d}× in 30 Tagen
-									</p>
-								</div>
-								<button
-									type="button"
-									onClick={() => void quickRestock(item)}
-									disabled={pendingId === item.id}
-									aria-label={`${item.name} um eins erhöhen`}
-									className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--text-1)] px-3 text-[13px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
-								>
-									{pendingId === item.id ? (
-										<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-									) : (
-										<Plus className="h-4 w-4" aria-hidden />
-									)}
-									+1
-								</button>
-							</li>
-						))}
-					</ul>
-				)}
-			</div>
-		</div>
+				<DrawerFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
+					<DrawerClose render={<Button variant="outline" className="min-h-11" />}>
+						Schließen
+					</DrawerClose>
+				</DrawerFooter>
+			</DrawerContent>
+		</Drawer>
 	);
 }

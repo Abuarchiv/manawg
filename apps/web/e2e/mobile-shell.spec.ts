@@ -62,12 +62,12 @@ test.describe('Mobile WG shell', () => {
 
 		await expectNoHorizontalOverflow(page);
 
-		await bottomNav.getByRole('link', { name: /^Pinnwand$/ }).click();
+		await bottomNav.getByRole('link', { name: /^Austausch$/ }).click();
 		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/pinnwand$/, { timeout: 60_000 });
 		await expect(page.getByRole('heading', { name: 'Pinnwand' })).toBeVisible({
 			timeout: 60_000,
 		});
-		await expect(bottomNav.getByRole('link', { name: /^Pinnwand$/ })).toHaveAttribute(
+		await expect(bottomNav.getByRole('link', { name: /^Austausch$/ })).toHaveAttribute(
 			'aria-current',
 			'page',
 		);
@@ -77,21 +77,21 @@ test.describe('Mobile WG shell', () => {
 		await expect(bottomNav.getByRole('button', { name: 'Mehr-Menü öffnen' })).toHaveCount(0);
 
 		// Pinnwand → Kalender und wieder zurück.
-		const calendarLink = page.getByRole('link', { name: 'Kalender', exact: true });
+		const calendarLink = page.getByRole('link', { name: /Termine im Kalender öffnen/ });
 		await expect(calendarLink).toBeVisible({ timeout: 30_000 });
 		await calendarLink.click();
 		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/kalender$/, { timeout: 60_000 });
 		await expect(page.getByRole('heading', { name: 'Kalender', exact: true })).toBeVisible({
 			timeout: 30_000,
 		});
-		await page.getByRole('link', { name: 'Zurück zu Pinnwand' }).click();
-		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/pinnwand$/, { timeout: 60_000 });
+		await page.getByRole('link', { name: 'Zurück zu Haushalt' }).click();
+		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/einkauf$/, { timeout: 60_000 });
 
 		// Einkauf → Vorräte.
-		await bottomNav.getByRole('link', { name: /^Einkauf$/ }).click();
+		await bottomNav.getByRole('link', { name: /^Haushalt$/ }).click();
 		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/einkauf$/, { timeout: 60_000 });
 		await page
-			.getByRole('navigation', { name: 'Unterbereiche des Einkaufs' })
+			.getByRole('navigation', { name: 'Haushalt' })
 			.getByRole('link', { name: /^Vorräte$/ })
 			.click();
 		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/vorraete$/, { timeout: 60_000 });
@@ -100,9 +100,9 @@ test.describe('Mobile WG shell', () => {
 		});
 
 		// Ausgaben → Fixkosten und Mahnungen.
-		await bottomNav.getByRole('link', { name: /^Ausgaben$/ }).click();
+		await bottomNav.getByRole('link', { name: /^Finanzen$/ }).click();
 		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/ausgaben$/, { timeout: 60_000 });
-		const ausgabenSubNav = page.getByRole('navigation', { name: 'Unterbereiche der Ausgaben' });
+		const ausgabenSubNav = page.getByRole('navigation', { name: 'Unterbereiche der Finanzen' });
 		await expect(ausgabenSubNav.getByRole('link', { name: /^Fixkosten/ })).toBeVisible({
 			timeout: 30_000,
 		});
@@ -148,7 +148,7 @@ test.describe('Mobile WG shell', () => {
 				});
 			}
 			if (path === '/wg/MTE8PZAT/aktivitaet') {
-				await expect(page.getByRole('link', { name: 'Zurück zum Dashboard' })).toBeVisible({
+				await expect(page.getByRole('link', { name: 'Zurück zu Dashboard' })).toBeVisible({
 					timeout: 30_000,
 				});
 			}

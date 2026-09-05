@@ -1,12 +1,44 @@
 'use client';
 
+import { WG_SECTIONS } from '@/components/app/navigation';
 import { WgWelcome } from '@/components/entry/WgWelcome';
 import { ErrorBox } from '@/components/neu/ErrorBox';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
+import {
+	Item,
+	ItemContent,
+	ItemDescription,
+	ItemGroup,
+	ItemMedia,
+	ItemTitle,
+} from '@/components/ui/item';
+import { Skeleton } from '@/components/ui/skeleton';
 import { NavItem } from '@/components/wg/NavItem';
-import { ModuleCard } from '@/components/wg/dashboard/ModuleCard';
+import { SubNav } from '@/components/wg/SubNav';
 import { LogoMark } from '@/shared/components/ui/LogoMark';
+import { cn } from '@/shared/lib/cn';
 import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
-import { ListChecks, type LucideIcon, Megaphone, Receipt, Settings, Sparkles } from 'lucide-react';
+import {
+	CalendarDays,
+	Clock3,
+	ListChecks,
+	type LucideIcon,
+	Megaphone,
+	MessageCircle,
+	Package,
+	Receipt,
+	Settings,
+	Sparkles,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -49,15 +81,15 @@ const OTHER_MODULES: PublicModule[] = [
 		description: 'Offene Beträge nachhalten.',
 		Icon: Receipt,
 	},
-	{ slug: 'vorraete', title: 'Vorräte', description: 'Was noch da ist.', Icon: ListChecks },
-	{ slug: 'kalender', title: 'Kalender', description: 'Gemeinsame Termine.', Icon: Settings },
+	{ slug: 'vorraete', title: 'Vorräte', description: 'Was noch da ist.', Icon: Package },
+	{ slug: 'kalender', title: 'Termine', description: 'Gemeinsame Termine.', Icon: CalendarDays },
 	{
 		slug: 'aktivitaet',
 		title: 'Aktivität',
 		description: 'Was zuletzt passiert ist.',
-		Icon: Settings,
+		Icon: Clock3,
 	},
-	{ slug: 'chat', title: 'Chat', description: 'Kurz etwas klären.', Icon: Megaphone },
+	{ slug: 'chat', title: 'Chat', description: 'Kurz etwas klären.', Icon: MessageCircle },
 	{
 		slug: 'einstellungen',
 		title: 'Einstellungen',
@@ -100,7 +132,14 @@ function withInvitation(path: string, code: string): string {
 
 export function PublicApp(props: { activeModule?: string }) {
 	return (
-		<Suspense fallback={<div className="min-h-svh bg-[var(--bg-base)]" aria-busy="true" />}>
+		<Suspense
+			fallback={
+				<div className="flex min-h-svh flex-col gap-4 bg-background p-4" aria-busy="true">
+					<Skeleton className="h-12 w-full" />
+					<Skeleton className="h-48 w-full" />
+				</div>
+			}
+		>
 			<PublicAppContent {...props} />
 		</Suspense>
 	);
@@ -154,149 +193,204 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 		router.replace(`/wg/${encodeURIComponent(membership.code)}`);
 	}, [inviteCode, memberships, membershipState, module, router]);
 
+	const section = WG_SECTIONS.find((item) =>
+		item.pages.some(
+			(page) =>
+				page.slug === activeModule || (page.slug === 'abos' && activeModule === 'fixkosten'),
+		),
+	);
+	const discoveryHref = (slug: string) =>
+		publicHref(`/entdecken/${slug === 'abos' ? 'fixkosten' : slug}`);
+
 	return (
 		<div
-			className="min-h-svh bg-[var(--bg-base)]"
-			style={{ paddingBottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))' }}
+			className="min-h-svh bg-background"
+			style={{
+				paddingTop: 'env(safe-area-inset-top, 0px)',
+				paddingBottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))',
+			}}
 		>
 			<main
 				id="main"
 				tabIndex={-1}
-				className="app-page-enter mx-auto w-full max-w-4xl px-4 py-6 focus:outline-none sm:px-6 sm:py-8"
+				className="flex w-full min-w-0 flex-col gap-6 px-4 py-5 focus:outline-none"
 			>
-				<header className="mb-6 flex items-start gap-3">
-					<LogoMark size={32} radius={8} className="shrink-0 rounded-lg" />
-					<div className="min-w-0">
-						<p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--text-3)]">
-							ManaWG
-						</p>
-						<h1 className="mt-1 text-[28px] font-semibold leading-tight tracking-tight text-[var(--text-1)]">
-							{module?.title ?? 'Dein WG-Dashboard'}
+				<header className="flex flex-col gap-3">
+					<div className="flex items-center gap-2">
+						<LogoMark size={28} radius={7} />
+						<span className="text-sm font-medium">ManaWG</span>
+					</div>
+					<div className="flex flex-col gap-1">
+						<h1 className="text-2xl font-semibold tracking-tight">
+							{module?.title ?? 'Alles für eure WG'}
 						</h1>
-						<p className="mt-1 text-sm text-[var(--text-2)]">
-							{module?.description ?? 'Gemeinsam wohnen, einfacher organisiert.'}
+						<p className="text-sm text-muted-foreground">
+							{module?.description ?? 'Einkauf, gemeinsame Kosten und Alltag an einem Ort.'}
 						</p>
 					</div>
 				</header>
-
+				{section && (
+					<SubNav
+						label={`${section.label} – entdecken`}
+						items={section.pages
+							.filter((page) => page.slug !== 'import')
+							.map((page) => ({
+								href: discoveryHref(page.slug),
+								label: page.label,
+								icon: page.icon,
+							}))}
+					/>
+				)}
+				{membershipState === 'loading' && (
+					<output aria-live="polite" aria-label="Deine WGs werden geprüft" className="block">
+						<Skeleton className="h-11 w-full" />
+					</output>
+				)}
 				{membershipState === 'error' && (
-					<div className="mb-4 space-y-2">
+					<div className="flex flex-col gap-2">
 						<ErrorBox>Deine WGs konnten gerade nicht geladen werden.</ErrorBox>
-						<button
+						<Button
 							type="button"
+							variant="outline"
 							onClick={() => setRetryNonce((value) => value + 1)}
-							className="min-h-11 rounded-md border border-[var(--border)] px-3 text-[13px] font-medium text-[var(--text-1)] hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+							className="min-h-11"
 						>
 							erneut prüfen
-						</button>
+						</Button>
 					</div>
 				)}
-
 				{membershipState === 'member-list' && memberships.length > 1 && !inviteCode && (
-					<section className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5">
-						<h2 className="text-sm font-semibold text-[var(--text-1)]">Deine WGs</h2>
-						<div className="mt-3 grid gap-2">
-							{memberships.map((membership) => (
-								<Link
-									key={membership.id}
-									href={`/wg/${encodeURIComponent(membership.code)}`}
-									className="flex min-h-11 items-center justify-between rounded-md border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-1)] hover:bg-[var(--bg-base)]"
-								>
-									{membership.name}
-									<span aria-hidden>→</span>
-								</Link>
-							))}
-						</div>
-					</section>
+					<Card>
+						<CardHeader>
+							<CardTitle>
+								<h2>Deine WGs</h2>
+							</CardTitle>
+							<CardDescription>Wo möchtest du weitermachen?</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<ItemGroup>
+								{memberships.map((membership) => (
+									<Item
+										key={membership.id}
+										variant="outline"
+										render={<Link href={`/wg/${encodeURIComponent(membership.code)}`} />}
+									>
+										<ItemContent className="min-w-0">
+											<ItemTitle className="line-clamp-none break-words">
+												{membership.name}
+											</ItemTitle>
+											<ItemDescription>WG öffnen</ItemDescription>
+										</ItemContent>
+									</Item>
+								))}
+							</ItemGroup>
+						</CardContent>
+					</Card>
 				)}
-
 				{inviteCode ? (
 					<WgWelcome variant="invitation" code={inviteCode} />
 				) : (
 					<WgWelcome variant="create" />
 				)}
-
 				{module ? (
-					<section
-						className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5"
-						aria-labelledby="empty-heading"
-					>
-						<h2 id="empty-heading" className="text-lg font-semibold text-[var(--text-1)]">
-							{module.title}
-						</h2>
-						<p className="mt-2 text-sm leading-relaxed text-[var(--text-2)]">
-							Diese öffentliche Ansicht ist read-only. Erstelle eine WG, bevor du hier etwas
-							speicherst.
-						</p>
-						<Link
-							href={inviteCode ? withInvitation('/neu', inviteCode) : '/neu?action=create'}
-							className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-[var(--text-1)] px-4 py-3 text-sm font-semibold text-[var(--bg-base)] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-						>
-							{inviteCode ? 'Dieser WG beitreten' : 'WG erstellen'}
-						</Link>
-						<Link
-							href={publicHref('/')}
-							className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-[var(--border)] px-4 py-3 text-sm font-medium text-[var(--text-1)] hover:bg-[var(--bg-base)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-						>
-							Zurück zum Dashboard
-						</Link>
-					</section>
+					<Empty className="border">
+						<EmptyHeader>
+							<EmptyMedia variant="icon">
+								<module.Icon aria-hidden />
+							</EmptyMedia>
+							<EmptyTitle>Noch keine WG verbunden</EmptyTitle>
+							<EmptyDescription>
+								Hier siehst du später{' '}
+								{module.title === 'Einstellungen'
+									? 'die Einstellungen deiner WG'
+									: 'die Einträge deiner WG'}
+								. Die öffentliche Ansicht zeigt keine privaten Inhalte.
+							</EmptyDescription>
+						</EmptyHeader>
+						<EmptyContent>
+							<Link
+								href={inviteCode ? withInvitation('/neu', inviteCode) : '/neu'}
+								className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11 w-full')}
+							>
+								{inviteCode ? 'Mit Einladung anmelden' : 'Anmelden und WG wählen'}
+							</Link>
+							<Link
+								href={publicHref('/')}
+								className={cn(buttonVariants({ variant: 'link' }), 'min-h-11')}
+							>
+								Zurück zu Start
+							</Link>
+						</EmptyContent>
+					</Empty>
 				) : (
-					<section
-						className="mt-4 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2"
-						aria-labelledby="modules-heading"
-					>
-						<h2 id="modules-heading" className="sr-only">
-							Module
+					<section aria-labelledby="modules-heading" className="flex flex-col gap-3">
+						<h2 id="modules-heading" className="text-base font-semibold">
+							Bereiche entdecken
 						</h2>
-						{PRIMARY_MODULES.map(({ slug, title, description, Icon }) => (
-							<ModuleCard
-								key={slug}
-								href={publicHref(`/entdecken/${slug}`)}
-								Icon={Icon}
-								title={title}
-								primary="Leer"
-								secondary={description}
-							/>
-						))}
+						<ItemGroup>
+							{PRIMARY_MODULES.map(({ slug, title, description, Icon }) => (
+								<Item key={slug} variant="outline" render={<Link href={discoveryHref(slug)} />}>
+									<ItemMedia variant="icon">
+										<Icon aria-hidden />
+									</ItemMedia>
+									<ItemContent className="min-w-0">
+										<ItemTitle>{title}</ItemTitle>
+										<ItemDescription>{description}</ItemDescription>
+									</ItemContent>
+								</Item>
+							))}
+						</ItemGroup>
 					</section>
 				)}
-
-				<section
-					className="mt-8 border-t border-[var(--border)] pt-5"
-					aria-labelledby="other-modules-heading"
-				>
-					<h2 id="other-modules-heading" className="text-sm font-semibold text-[var(--text-1)]">
+				<section aria-labelledby="other-modules-heading" className="flex flex-col gap-3">
+					<h2 id="other-modules-heading" className="text-base font-semibold">
 						Weitere Bereiche
 					</h2>
-					<div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
-						{OTHER_MODULES.map(({ slug, title }) => (
-							<Link
-								key={slug}
-								href={publicHref(`/entdecken/${slug}`)}
-								className="text-[13px] text-[var(--text-2)] underline-offset-4 hover:text-[var(--text-1)] hover:underline"
-							>
-								{title}
-							</Link>
-						))}
-					</div>
+					<ItemGroup>
+						{OTHER_MODULES.filter((item) => item.slug !== activeModule).map(
+							({ slug, title, description, Icon }) => (
+								<Item key={slug} size="sm" render={<Link href={discoveryHref(slug)} />}>
+									<ItemMedia variant="icon">
+										<Icon aria-hidden />
+									</ItemMedia>
+									<ItemContent className="min-w-0">
+										<ItemTitle>{title}</ItemTitle>
+										<ItemDescription>{description}</ItemDescription>
+									</ItemContent>
+								</Item>
+							),
+						)}
+					</ItemGroup>
 				</section>
+				<Link
+					href="/datenschutz"
+					className={cn(buttonVariants({ variant: 'link' }), 'min-h-11 self-start px-0')}
+				>
+					Datenschutz
+				</Link>
 			</main>
 			<nav
 				aria-label="Öffentliche Hauptnavigation"
-				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] border-t border-[var(--border)] bg-[var(--bg-base)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--bg-base)]/85"
+				data-app-chrome
+				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] border-t border-border bg-background/95 backdrop-blur"
 			>
 				<ul
-					className="mx-auto flex max-w-2xl [&>li]:min-w-0 [&>li]:flex-1"
+					className="flex gap-1 px-2 pt-1 [&>li]:min-w-0 [&>li]:flex-1"
 					style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
 				>
-					<NavItem href={publicHref('/')} label="Start" iconKey="home" />
-					{PRIMARY_MODULES.map(({ slug, title }) => (
+					<NavItem
+						href={publicHref('/')}
+						label="Start"
+						iconKey="home"
+						activePrefixes={[discoveryHref('aktivitaet')]}
+					/>
+					{WG_SECTIONS.map((item) => (
 						<NavItem
-							key={slug}
-							href={publicHref(`/entdecken/${slug}`)}
-							label={title}
-							iconKey={slug as 'ausgaben' | 'einkauf' | 'pinnwand' | 'putzen'}
+							key={item.label}
+							href={discoveryHref(item.pages[0].slug)}
+							label={item.label}
+							iconKey={item.iconKey}
+							activePrefixes={item.pages.map((page) => discoveryHref(page.slug))}
 						/>
 					))}
 				</ul>

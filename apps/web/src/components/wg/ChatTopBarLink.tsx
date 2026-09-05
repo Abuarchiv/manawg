@@ -1,8 +1,11 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
+import { buttonVariants } from '@/components/ui/button';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import { MessageCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -56,22 +59,22 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 			onClick={handleClick}
 			className={
 				className ??
-				[
-					'relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--bg-base)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2',
-					isActive
-						? 'text-[var(--accent)] hover:text-[var(--accent)]'
-						: 'text-[var(--text-2)] hover:text-[var(--text-1)]',
-				].join(' ')
+				cn(
+					buttonVariants({ variant: 'outline', size: 'icon' }),
+					'relative size-11',
+					isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+				)
 			}
 		>
 			<MessageCircle className="h-4 w-4" aria-hidden />
 			{count > 0 && (
-				<span
+				<Badge
+					variant="destructive"
 					aria-hidden
-					className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--danger)] px-0.5 text-[9px] font-semibold leading-none text-white"
+					className="absolute -right-1 -top-1 h-4 min-w-4 px-0.5 text-[9px] leading-none"
 				>
 					{badge}
-				</span>
+				</Badge>
 			)}
 			<span className="sr-only" aria-live="polite" aria-atomic="true">
 				{count > 0 ? `${count} ungelesene Nachrichten` : ''}

@@ -1,7 +1,11 @@
 'use client';
 
 import { ErrorBox } from '@/components/neu/ErrorBox';
-import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type ReactElement, useState } from 'react';
 
 const E164_PATTERN = /^\+[1-9]\d{1,14}$/;
@@ -164,244 +168,230 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 	}
 
 	return (
-		<div className="space-y-5" aria-busy={busy !== null}>
-			<section aria-labelledby="email-auth-heading" className="space-y-3">
+		<Tabs defaultValue="email" aria-busy={busy !== null} className="gap-4">
+			<TabsList className="min-h-12 w-full">
+				<TabsTrigger value="email" disabled={busy !== null} className="min-h-11">
+					E-Mail
+				</TabsTrigger>
+				<TabsTrigger value="phone" disabled={busy !== null} className="min-h-11">
+					Telefon / SMS
+				</TabsTrigger>
+			</TabsList>
+			<TabsContent value="email" aria-labelledby="email-auth-heading">
 				<form
 					onSubmit={(event) => {
 						event.preventDefault();
 						void submitEmail('sign-in');
 					}}
-					className="space-y-3"
+					className="flex flex-col gap-4"
 				>
-					<h2 id="email-auth-heading" className="text-[14px] font-semibold text-[var(--text-1)]">
-						Mit E-Mail und Passwort
-					</h2>
-					<div className="space-y-2">
-						<label
-							htmlFor="auth-email"
-							className="block text-[13px] font-medium text-[var(--text-1)]"
-						>
-							E-Mail-Adresse
-						</label>
-						<input
-							id="auth-email"
-							name="email"
-							type="email"
-							value={email}
-							onChange={(event) => setEmail(event.target.value)}
-							autoComplete="email"
-							inputMode="email"
-							required
-							aria-describedby={emailError ? 'auth-email-error' : undefined}
-							aria-invalid={emailError ? true : undefined}
-							className="block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--text-1)] outline-none focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-						/>
-					</div>
-					<div className="space-y-2">
-						<label
-							htmlFor="auth-password"
-							className="block text-[13px] font-medium text-[var(--text-1)]"
-						>
-							Passwort
-						</label>
-						<input
-							id="auth-password"
-							name="password"
-							type="password"
-							value={password}
-							onChange={(event) => setPassword(event.target.value)}
-							autoComplete="current-password"
-							minLength={6}
-							required
-							aria-describedby={emailError ? 'auth-email-error' : undefined}
-							aria-invalid={emailError ? true : undefined}
-							className="block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--text-1)] outline-none focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-						/>
-					</div>
-					<button
-						type="button"
-						onClick={() => void requestPasswordReset()}
-						disabled={busy !== null}
-						className="text-left text-[13px] text-[var(--text-2)] underline-offset-4 hover:text-[var(--text-1)] hover:underline disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-					>
-						{busy === 'password-reset' ? 'Link wird angefordert …' : 'Passwort vergessen?'}
-					</button>
-					{emailError === 'generic' && (
-						<div id="auth-email-error">
-							<GenericAuthError />
-						</div>
-					)}
-					{emailError === 'invalid' && (
-						<div id="auth-email-error">
-							<ErrorBox>
-								Bitte gib eine gültige E-Mail-Adresse und ein Passwort mit mindestens 6 Zeichen ein.
-							</ErrorBox>
-						</div>
-					)}
-					{emailError === 'reset-invalid' && (
-						<div id="auth-email-error">
-							<ErrorBox>Bitte gib eine gültige E-Mail-Adresse ein.</ErrorBox>
-						</div>
-					)}
-					{emailMessage && (
-						<output className="block text-[13px] text-[var(--text-2)]">{emailMessage}</output>
-					)}
-					<div className="grid grid-cols-2 gap-2">
-						<button
-							type="submit"
-							disabled={busy !== null}
-							className="inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--text-1)] px-3 text-[13px] font-semibold text-[var(--bg-base)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-						>
-							{busy === 'email-sign-in' && (
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-							)}
-							Anmelden
-						</button>
-						<button
+					<FieldGroup>
+						<h2 id="email-auth-heading" className="text-[14px] font-semibold text-foreground">
+							Mit E-Mail und Passwort
+						</h2>
+						<Field data-invalid={Boolean(emailError)}>
+							<FieldLabel htmlFor="auth-email">E-Mail-Adresse</FieldLabel>
+							<Input
+								id="auth-email"
+								name="email"
+								type="email"
+								value={email}
+								onChange={(event) => setEmail(event.target.value)}
+								autoComplete="email"
+								inputMode="email"
+								required
+								aria-describedby={emailError ? 'auth-email-error' : undefined}
+								aria-invalid={emailError ? true : undefined}
+								className="min-h-11 text-base md:text-base"
+							/>
+						</Field>
+						<Field data-invalid={Boolean(emailError)}>
+							<FieldLabel htmlFor="auth-password">Passwort</FieldLabel>
+							<Input
+								id="auth-password"
+								name="password"
+								type="password"
+								value={password}
+								onChange={(event) => setPassword(event.target.value)}
+								autoComplete="current-password"
+								minLength={6}
+								required
+								aria-describedby={emailError ? 'auth-email-error' : undefined}
+								aria-invalid={emailError ? true : undefined}
+								className="min-h-11 text-base md:text-base"
+							/>
+						</Field>
+						<Button
 							type="button"
-							onClick={() => void submitEmail('sign-up')}
+							variant="link"
+							onClick={() => void requestPasswordReset()}
 							disabled={busy !== null}
-							className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--border-strong)] px-3 text-[13px] font-semibold text-[var(--text-1)] transition-colors hover:bg-[var(--surface)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+							className="min-h-11 px-0"
 						>
-							{busy === 'email-sign-up' && (
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-							)}
-							Konto erstellen
-						</button>
-					</div>
+							{busy === 'password-reset' ? 'Link wird angefordert …' : 'Passwort vergessen?'}
+						</Button>
+						{emailError === 'generic' && (
+							<div id="auth-email-error">
+								<GenericAuthError />
+							</div>
+						)}
+						{emailError === 'invalid' && (
+							<div id="auth-email-error">
+								<ErrorBox>
+									Bitte gib eine gültige E-Mail-Adresse und ein Passwort mit mindestens 6 Zeichen
+									ein.
+								</ErrorBox>
+							</div>
+						)}
+						{emailError === 'reset-invalid' && (
+							<div id="auth-email-error">
+								<ErrorBox>Bitte gib eine gültige E-Mail-Adresse ein.</ErrorBox>
+							</div>
+						)}
+						{emailMessage && (
+							<output className="block text-[13px] text-muted-foreground">{emailMessage}</output>
+						)}
+						<div className="flex flex-col gap-2">
+							<Button type="submit" variant="default" disabled={busy !== null} className="min-h-11">
+								{busy === 'email-sign-in' && <Spinner data-icon="inline-start" aria-hidden />}
+								Anmelden
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => void submitEmail('sign-up')}
+								disabled={busy !== null}
+								className="min-h-11"
+							>
+								{busy === 'email-sign-up' && <Spinner data-icon="inline-start" aria-hidden />}
+								Konto erstellen
+							</Button>
+						</div>
+					</FieldGroup>
 				</form>
-			</section>
+			</TabsContent>
 
-			<section
-				aria-labelledby="phone-auth-heading"
-				className="space-y-3 border-t border-[var(--border)] pt-5"
-			>
+			<TabsContent value="phone" aria-labelledby="phone-auth-heading">
 				<form
 					onSubmit={(event) => {
 						event.preventDefault();
 						void (otpRequested ? confirmPhoneOtp() : sendPhoneOtp());
 					}}
-					className="space-y-3"
+					className="flex flex-col gap-4"
 				>
-					<h2 id="phone-auth-heading" className="text-[14px] font-semibold text-[var(--text-1)]">
-						Mit Telefon per SMS
-					</h2>
-					<label
-						htmlFor="auth-phone"
-						className="block text-[13px] font-medium text-[var(--text-1)]"
-					>
-						Telefonnummer
-					</label>
-					<input
-						id="auth-phone"
-						name="phone"
-						type="tel"
-						value={phone}
-						onChange={(event) => setPhone(event.target.value)}
-						autoComplete="tel"
-						inputMode="tel"
-						placeholder="+491701234567"
-						aria-describedby={phoneError ? 'auth-phone-hint auth-phone-error' : 'auth-phone-hint'}
-						aria-invalid={phoneError ? true : undefined}
-						disabled={otpRequested || busy !== null}
-						className="block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--text-1)] outline-none focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-					/>
-					<p id="auth-phone-hint" className="text-[12px] text-[var(--text-3)]">
-						Internationales Format mit + und Landesvorwahl (E.164).
-					</p>
-					{otpRequested && (
-						<div className="space-y-2">
-							<label
-								htmlFor="auth-phone-otp"
-								className="block text-[13px] font-medium text-[var(--text-1)]"
-							>
-								6-stelliger SMS-Code
-							</label>
-							<input
-								id="auth-phone-otp"
-								name="otp"
-								type="text"
-								value={otp}
-								onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
-								inputMode="numeric"
-								autoComplete="one-time-code"
-								maxLength={6}
-								pattern="[0-9]{6}"
-								aria-describedby={phoneError ? 'auth-phone-error' : undefined}
+					<FieldGroup>
+						<h2 id="phone-auth-heading" className="text-[14px] font-semibold text-foreground">
+							Mit Telefon per SMS
+						</h2>
+						<Field data-invalid={Boolean(phoneError)} data-disabled={otpRequested || busy !== null}>
+							<FieldLabel htmlFor="auth-phone">Telefonnummer</FieldLabel>
+							<Input
+								id="auth-phone"
+								name="phone"
+								type="tel"
+								value={phone}
+								onChange={(event) => setPhone(event.target.value)}
+								autoComplete="tel"
+								inputMode="tel"
+								placeholder="+491701234567"
+								aria-describedby={
+									phoneError ? 'auth-phone-hint auth-phone-error' : 'auth-phone-hint'
+								}
 								aria-invalid={phoneError ? true : undefined}
-								className="block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-center font-mono text-base tracking-[0.3em] text-[var(--text-1)] outline-none focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+								disabled={otpRequested || busy !== null}
+								className="min-h-11 text-base md:text-base"
 							/>
-						</div>
-					)}
-					{phoneError === 'generic' && (
-						<div id="auth-phone-error">
-							<GenericAuthError />
-						</div>
-					)}
-					{phoneError === 'invalid' && (
-						<div id="auth-phone-error">
-							<ErrorBox>
-								Gib eine Telefonnummer im internationalen E.164-Format ein, zum Beispiel
-								+491701234567.
-							</ErrorBox>
-						</div>
-					)}
-					{phoneError === 'unavailable' && (
-						<div id="auth-phone-error">
-							<ErrorBox>
-								SMS-Anmeldung ist derzeit nicht verfügbar. Bitte nutze E-Mail oder Google.
-							</ErrorBox>
-						</div>
-					)}
-					{phoneMessage && (
-						<output className="block text-[13px] text-[var(--text-2)]">{phoneMessage}</output>
-					)}
-					{otpRequested ? (
-						<div className="grid gap-2 sm:grid-cols-2">
-							<button
+						</Field>
+						<p id="auth-phone-hint" className="text-[12px] text-muted-foreground">
+							Mit + und Landesvorwahl, zum Beispiel +491701234567.
+						</p>
+						{otpRequested && (
+							<Field data-invalid={Boolean(phoneError)}>
+								<FieldLabel htmlFor="auth-phone-otp">6-stelliger SMS-Code</FieldLabel>
+								<Input
+									id="auth-phone-otp"
+									name="otp"
+									type="text"
+									value={otp}
+									onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+									inputMode="numeric"
+									autoComplete="one-time-code"
+									maxLength={6}
+									pattern="[0-9]{6}"
+									aria-describedby={phoneError ? 'auth-phone-error' : undefined}
+									aria-invalid={phoneError ? true : undefined}
+									className="min-h-11 font-mono text-base md:text-base"
+								/>
+							</Field>
+						)}
+						{phoneError === 'generic' && (
+							<div id="auth-phone-error">
+								<GenericAuthError />
+							</div>
+						)}
+						{phoneError === 'invalid' && (
+							<div id="auth-phone-error">
+								<ErrorBox>
+									Gib eine Telefonnummer im internationalen E.164-Format ein, zum Beispiel
+									+491701234567.
+								</ErrorBox>
+							</div>
+						)}
+						{phoneError === 'unavailable' && (
+							<div id="auth-phone-error">
+								<ErrorBox>
+									SMS-Anmeldung ist derzeit nicht verfügbar. Bitte nutze E-Mail oder Google.
+								</ErrorBox>
+							</div>
+						)}
+						{phoneMessage && (
+							<output className="block text-[13px] text-muted-foreground">{phoneMessage}</output>
+						)}
+						{otpRequested ? (
+							<div className="flex flex-col gap-2">
+								<Button
+									type="submit"
+									variant="outline"
+									disabled={busy !== null}
+									className="min-h-11"
+								>
+									{busy === 'phone-verify' && <Spinner data-icon="inline-start" aria-hidden />}
+									Code bestätigen
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => void sendPhoneOtp()}
+									disabled={busy !== null}
+									className="min-h-11"
+								>
+									{busy === 'phone-request' && <Spinner data-icon="inline-start" aria-hidden />}
+									SMS-Code erneut senden
+								</Button>
+								<Button
+									type="button"
+									variant="link"
+									onClick={useAnotherPhoneNumber}
+									disabled={busy !== null}
+									className="min-h-11 px-0"
+								>
+									Andere Telefonnummer verwenden
+								</Button>
+							</div>
+						) : (
+							<Button
 								type="submit"
+								variant="outline"
 								disabled={busy !== null}
-								className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--border-strong)] px-3 text-[13px] font-semibold text-[var(--text-1)] transition-colors hover:bg-[var(--surface)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+								className="min-h-11 w-full"
 							>
-								{busy === 'phone-verify' && (
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-								)}
-								Code bestätigen
-							</button>
-							<button
-								type="button"
-								onClick={() => void sendPhoneOtp()}
-								disabled={busy !== null}
-								className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--border)] px-3 text-[13px] font-semibold text-[var(--text-1)] transition-colors hover:bg-[var(--surface)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-							>
-								{busy === 'phone-request' && (
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-								)}
-								SMS-Code erneut senden
-							</button>
-							<button
-								type="button"
-								onClick={useAnotherPhoneNumber}
-								disabled={busy !== null}
-								className="text-left text-[13px] text-[var(--text-2)] underline-offset-4 hover:text-[var(--text-1)] hover:underline disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								Andere Telefonnummer verwenden
-							</button>
-						</div>
-					) : (
-						<button
-							type="submit"
-							disabled={busy !== null}
-							className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-[var(--border-strong)] px-3 text-[13px] font-semibold text-[var(--text-1)] transition-colors hover:bg-[var(--surface)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-						>
-							{busy === 'phone-request' && (
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-							)}
-							SMS-Code anfordern
-						</button>
-					)}
+								{busy === 'phone-request' && <Spinner data-icon="inline-start" aria-hidden />}
+								SMS-Code anfordern
+							</Button>
+						)}
+					</FieldGroup>
 				</form>
-			</section>
-		</div>
+			</TabsContent>
+		</Tabs>
 	);
 }

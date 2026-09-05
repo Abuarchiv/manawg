@@ -1,14 +1,20 @@
 'use client';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Spinner } from '@/components/ui/spinner';
 import type { WgSummary } from '@/components/wg/WgContextProvider';
 import { LinkRow } from '@/components/wg/einstellungen/LinkRow';
 import { OfflineQueueSection } from '@/components/wg/einstellungen/OfflineQueueSection';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { exportErrorMessage, readResponseErrorCode } from '@/core/guards/settings-errors';
 import type { ExportSectionKey, ExportSectionSummary } from '@/core/reads/export';
+import { cn } from '@/shared/lib/cn';
 import type { StoredIdentity } from '@/shared/lib/identity';
 import { memberAuthHeader } from '@/shared/lib/identity';
-import { Download, Loader2, Upload } from 'lucide-react';
+import { Download, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 
@@ -74,26 +80,29 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 		<>
 			<Section title="Datenexport" hint="Backup und Transparenz für eure WG-Daten.">
 				{exportSummary.length > 0 && (
-					<div className="grid grid-cols-2 gap-2 border-b border-[var(--border)] p-3 text-[12px] text-[var(--text-3)] sm:grid-cols-5">
+					<div className="border-border grid grid-cols-2 gap-2 border-b p-3 text-xs">
 						{exportSummary.map((section) => (
-							<div key={section.key} className="rounded-md bg-[var(--surface)] px-2 py-1.5">
-								<span className="block font-medium text-[var(--text-1)]">{section.count}</span>
-								{section.label}
+							<div key={section.key} className="bg-muted rounded-md px-2 py-1.5">
+								<span className="text-foreground block font-medium tabular-nums">
+									{section.count}
+								</span>
+								<span className="text-muted-foreground">{section.label}</span>
 							</div>
 						))}
 					</div>
 				)}
 				{exportSummaryError && (
-					<output
-						className="block border-b border-[var(--border)] px-4 py-2 text-[12.5px] text-[var(--text-3)]"
+					<p
+						className="text-muted-foreground border-border block border-b px-4 py-2 text-[13px]"
 						aria-live="polite"
 					>
 						{exportSummaryError} Downloads sind trotzdem möglich.
-					</output>
+					</p>
 				)}
-				<div className="grid gap-2 p-3 sm:grid-cols-[1fr_1fr_auto]">
-					<button
+				<div className="grid gap-2 p-4">
+					<Button
 						type="button"
+						variant="outline"
 						onClick={() => void downloadExport('json')}
 						disabled={exportPending !== null}
 						aria-label={
@@ -101,32 +110,30 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 								? 'WG-Daten werden als JSON exportiert'
 								: 'WG-Daten als JSON exportieren'
 						}
-						className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[13px] font-medium text-[var(--text-1)] transition-colors hover:border-[var(--border-strong)] disabled:cursor-not-allowed disabled:opacity-60"
+						className="h-11 min-h-[44px] w-full"
 					>
-						{exportPending === 'json' ? (
-							<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-						) : (
-							<Download className="h-4 w-4" aria-hidden />
-						)}
+						{exportPending === 'json' ? <Spinner aria-hidden /> : <Download aria-hidden />}
 						JSON exportieren
-					</button>
-					<label className="grid gap-1 text-[12px] text-[var(--text-3)]">
-						<span>CSV-Bereich</span>
-						<select
+					</Button>
+					<Field>
+						<FieldLabel htmlFor="csv-export-section">CSV-Bereich</FieldLabel>
+						<NativeSelect
+							id="csv-export-section"
 							value={csvExportSection}
 							disabled={exportPending !== null}
 							onChange={(event) => setCsvExportSection(event.target.value as ExportSectionKey)}
-							className="h-11 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[13px] font-medium text-[var(--text-1)] outline-none focus:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+							className="h-11 min-h-[44px] w-full text-base"
 						>
 							{exportSummary.map((section) => (
-								<option key={section.key} value={section.key}>
+								<NativeSelectOption key={section.key} value={section.key}>
 									{section.label}
-								</option>
+								</NativeSelectOption>
 							))}
-						</select>
-					</label>
-					<button
+						</NativeSelect>
+					</Field>
+					<Button
 						type="button"
+						variant="outline"
 						onClick={() => void downloadExport('csv')}
 						disabled={exportPending !== null}
 						aria-label={
@@ -134,28 +141,26 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 								? `${csvExportLabel} wird als CSV exportiert`
 								: `${csvExportLabel} als CSV exportieren`
 						}
-						className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[13px] font-medium text-[var(--text-1)] transition-colors hover:border-[var(--border-strong)] disabled:cursor-not-allowed disabled:opacity-60"
+						className="h-11 min-h-[44px] w-full"
 					>
-						{exportPending === 'csv' ? (
-							<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-						) : (
-							<Download className="h-4 w-4" aria-hidden />
-						)}
+						{exportPending === 'csv' ? <Spinner aria-hidden /> : <Download aria-hidden />}
 						CSV exportieren
-					</button>
+					</Button>
 				</div>
 				{exportMessage && (
-					<output
-						className="block px-4 pb-3 text-[12.5px] text-[var(--success-fg)]"
-						aria-live="polite"
-					>
-						{exportMessage}
-					</output>
+					<div className="px-4 pb-4">
+						<Alert>
+							<AlertDescription>{exportMessage}</AlertDescription>
+						</Alert>
+					</div>
 				)}
 				{exportError && (
-					<p role="alert" className="px-4 pb-3 text-[12.5px] text-[var(--danger)]">
-						{exportError}
-					</p>
+					<div className="px-4 pb-4">
+						<Alert variant="destructive">
+							<AlertTitle>Export fehlgeschlagen</AlertTitle>
+							<AlertDescription>{exportError}</AlertDescription>
+						</Alert>
+					</div>
 				)}
 			</Section>
 
@@ -166,9 +171,9 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 				<div className="p-4">
 					<Link
 						href={`${wgBaseHref}/import`}
-						className="inline-flex h-11 items-center gap-2 rounded-md bg-[var(--accent)] px-4 text-[13px] font-medium text-[var(--accent-fg)] transition-opacity hover:opacity-90"
+						className={cn(buttonVariants({ variant: 'default' }), 'h-11 min-h-[44px] w-full')}
 					>
-						<Upload className="h-4 w-4" aria-hidden />
+						<Upload aria-hidden />
 						Ausgaben importieren
 					</Link>
 				</div>
@@ -177,7 +182,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 			<OfflineQueueSection shareCode={wg.shareCode} memberId={identity.memberId} />
 
 			<Section title="Rechtliches">
-				<ul className="divide-y divide-[var(--border)]">
+				<ul className="divide-border divide-y">
 					<LinkRow href="/impressum" label="Impressum" />
 					<LinkRow href="/datenschutz" label="Datenschutz" />
 					<LinkRow href="/agb" label="AGB" />

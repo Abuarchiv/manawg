@@ -1,5 +1,6 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
 import { useEffect, useRef, useState } from 'react';
@@ -26,7 +27,8 @@ declare global {
 
 const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
 const PAYPAL_PARTNER_ATTRIBUTION_ID = process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID;
-const PAYPAL_ERROR = 'Fehler';
+const PAYPAL_ERROR =
+	'PayPal konnte die Zahlung nicht bestätigen. Prüfe den Zahlungsstatus bei PayPal, bevor du erneut zahlst oder die Zahlung als beglichen vermerkst.';
 const payPalSdkLoads = new Map<string, Promise<void>>();
 
 function sdkNamespace(merchantId: string): string {
@@ -150,12 +152,16 @@ export function PayPalPaymentButton({
 
 	if (!PAYPAL_CLIENT_ID || !PAYPAL_PARTNER_ATTRIBUTION_ID) return null;
 	return (
-		<div className="mt-2">
+		<div className="flex flex-col gap-3 pt-3">
+			<p className="text-sm text-muted-foreground">
+				PayPal-Zahlung über {formatEuroCents(amountCents)}. Erst bei PayPal bestätigen; ein Abbruch
+				verbucht keinen Ausgleich.
+			</p>
 			<div ref={containerRef} aria-label={`PayPal ${formatEuroCents(amountCents)} zahlen`} />
 			{error && (
-				<p role="alert" className="mt-1 text-[12px] text-[var(--danger)]">
-					{error}
-				</p>
+				<Alert variant="destructive">
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
 			)}
 		</div>
 	);

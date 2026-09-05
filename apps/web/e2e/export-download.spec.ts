@@ -51,9 +51,9 @@ test.describe('Settings export download', () => {
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#daten');
 		await page.getByRole('button', { name: 'WG-Daten als JSON exportieren' }).click();
 
-		await expect(page.getByRole('status')).toContainText(
-			'JSON-Export gestartet. Die Datei wird im Browser-Download gespeichert.',
-		);
+		await expect(
+			page.getByRole('region', { name: 'Datenexport' }).getByRole('alert'),
+		).toContainText('JSON-Export gestartet. Die Datei wird im Browser-Download gespeichert.');
 	});
 
 	test('exports the selected CSV section with a clear status', async ({ page }) => {
@@ -104,7 +104,9 @@ test.describe('Settings export download', () => {
 
 		await expect.poll(() => csvRequestUrl).toContain('format=csv');
 		expect(csvRequestUrl).toContain('section=members');
-		await expect(page.getByRole('status')).toContainText(
+		await expect(
+			page.getByRole('region', { name: 'Datenexport' }).getByRole('alert'),
+		).toContainText(
 			'Mitglieder-Export gestartet. Die CSV-Datei wird im Browser-Download gespeichert.',
 		);
 	});

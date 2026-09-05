@@ -1,13 +1,18 @@
-// craftsman-ignore: TS002 — Next.js App Router requires default export from loading.tsx
-import { Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
+// craftsman-ignore: TS002 — Next.js App Router requires default export.
 export default function ChatLoading() {
 	return (
-		<div className="flex min-h-[calc(100svh-4.25rem)] items-center justify-center px-4">
-			<div className="flex flex-col items-center gap-3 text-[var(--text-3)]">
-				<Loader2 className="h-6 w-6 animate-spin" aria-hidden />
-				<span className="text-[13px]">Chat wird geladen…</span>
-			</div>
-		</div>
+		<output
+			className="flex min-h-80 flex-col gap-5 px-4 py-5"
+			aria-label="Chat wird geladen"
+			aria-busy="true"
+		>
+			<Skeleton className="h-7 w-32" />
+			<Skeleton className="h-11 w-full" />
+			<Skeleton className="h-20 w-3/4" />
+			<Skeleton className="h-16 w-2/3 self-end" />
+			<Skeleton className="mt-auto h-14 w-full" />
+		</output>
 	);
 }

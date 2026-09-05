@@ -1,7 +1,19 @@
 'use client';
 
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { ALERT_DANGER } from '@/components/ui/styles';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { Item, ItemContent, ItemGroup } from '@/components/ui/item';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { AboCreateModal } from '@/components/wg/AboCreateModal';
 import { AboEditModal } from '@/components/wg/AboEditModal';
 import type { AboFormValues } from '@/components/wg/AboForm';
@@ -12,14 +24,14 @@ import {
 	type ActionNoticeTone,
 } from '@/components/wg/ActionNoticeBanner';
 import { BackLink } from '@/components/wg/BackLink';
-import { FormToggleButton } from '@/components/wg/PageHeaderActions';
+import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import type { Abo, AboFilter } from '@/components/wg/abos-types';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { apiFetch } from '@/core/infra/api-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { haptic } from '@/shared/lib/haptics';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface RecurringExpensesResponse {
@@ -276,40 +288,35 @@ export default function AbosPage() {
 	const activeCount = abos.filter((abo) => abo.pausedAt === null).length;
 
 	return (
-		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+		<div className="mx-auto flex w-full max-w-md flex-col gap-5 px-4 py-5">
 			<header className="flex items-center gap-3">
 				<BackLink href={`/wg/${encodedShareCode}/ausgaben`} label="Ausgaben" />
 				<div className="min-w-0 flex-1">
-					<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">
-						Fixkosten
-					</h1>
-					<p className="mt-0.5 text-[13px] text-[var(--text-3)]" aria-live="polite">
+					<h1 className="text-xl font-semibold">Fixkosten</h1>
+					<p className="text-sm text-muted-foreground" aria-live="polite">
 						{loading ? '' : `${activeCount} aktiv · ${abos.length} insgesamt`}
-						{refreshing && (
-							<Loader2
-								className="ml-1.5 inline-block h-3 w-3 animate-spin opacity-50"
-								aria-hidden
-							/>
-						)}
 					</p>
 				</div>
-				<div className="flex shrink-0 items-center gap-1.5">
-					<FormToggleButton
-						open={showCreate}
-						onToggle={() => setShowCreate((current) => !current)}
-						openLabel="Neues Abo"
-						closeLabel="Abo-Formular schließen"
-					/>
-				</div>
+				<Button className="min-h-11" onClick={() => setShowCreate(true)} aria-label="Neues Abo">
+					<Plus data-icon="inline-start" />
+					Neues Abo
+				</Button>
 			</header>
-
+			{refreshing && (
+				<output className="flex items-center gap-2 text-sm text-muted-foreground">
+					<Spinner />
+					Wird aktualisiert…
+				</output>
+			)}
 			{loadError && (
-				<div role="alert" className={ALERT_DANGER}>
-					{loadError}
-				</div>
+				<LoadErrorBanner
+					message={loadError}
+					onRetry={() => void load(true)}
+					busy={loading || refreshing}
+					retryLabel="Abos erneut laden"
+				/>
 			)}
 			{notice && <ActionNoticeBanner notice={notice} />}
-
 			{loading ? (
 				<AbosSkeleton />
 			) : (
@@ -319,69 +326,77 @@ export default function AbosPage() {
 					filter={filter}
 					pendingId={pendingId}
 					onFilterChange={setFilter}
-					onEdit={(abo) => setEditing(abo)}
+					onEdit={setEditing}
 					onTogglePause={(abo) => void handleTogglePause(abo)}
-					onDelete={(abo) => setDeleteCandidate(abo)}
+					onDelete={setDeleteCandidate}
 				/>
 			)}
-
 			{showCreate && (
 				<AboCreateModal
 					members={memberOptions}
 					defaultPaidByMemberId={identity.memberId}
 					submitting={submitting}
+					saveError={notice?.tone === 'error' ? notice.message : null}
 					onClose={() => setShowCreate(false)}
 					onSubmit={(values) => void handleCreate(values)}
 				/>
 			)}
-
 			{editing && (
 				<AboEditModal
 					abo={editing}
 					members={memberOptions}
 					submitting={submitting}
+					saveError={notice?.tone === 'error' ? notice.message : null}
 					onClose={() => setEditing(null)}
 					onSubmit={(values) => void handleEdit(values)}
 				/>
 			)}
-
-			<ConfirmDialog
+			<AlertDialog
 				open={deleteCandidate !== null}
-				onClose={() => setDeleteCandidate(null)}
-				onConfirm={() => {
-					if (deleteCandidate) void handleDelete(deleteCandidate);
+				onOpenChange={(open) => {
+					if (!open) setDeleteCandidate(null);
 				}}
-				title="Abo löschen?"
-				description={
-					deleteCandidate
-						? `Abo „${deleteCandidate.description}" wird unwiderruflich entfernt.`
-						: ''
-				}
-				confirmLabel="Löschen"
-				cancelLabel="Abbrechen"
-				variant="danger"
-				icon={Trash2}
-			/>
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Abo löschen?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Abo „{deleteCandidate?.description}“ wird entfernt. Bereits erfasste Ausgaben bleiben
+							erhalten.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
+						<AlertDialogAction
+							variant="destructive"
+							className="min-h-11"
+							disabled={pendingId !== null}
+							onClick={() => {
+								if (deleteCandidate) void handleDelete(deleteCandidate);
+								setDeleteCandidate(null);
+							}}
+						>
+							Löschen
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }
 
 function AbosSkeleton() {
 	return (
-		<ul className="space-y-2" aria-busy="true" aria-label="Abos werden geladen">
+		<ItemGroup aria-busy="true" aria-label="Abos werden geladen">
 			{['s1', 's2', 's3', 's4'].map((key) => (
-				<li
-					key={key}
-					className="flex items-center gap-3 rounded-md border border-[var(--border)] bg-[var(--bg-base)] p-3"
-				>
-					<span className="h-10 w-10 shrink-0 animate-pulse rounded-md bg-[var(--surface-strong)]" />
-					<div className="flex-1 space-y-1.5">
-						<span className="block h-[14px] w-2/3 animate-pulse rounded bg-[var(--surface-strong)]" />
-						<span className="block h-[12px] w-1/3 animate-pulse rounded bg-[var(--surface-strong)]" />
-					</div>
-					<span className="h-[14px] w-16 shrink-0 animate-pulse rounded bg-[var(--surface-strong)]" />
-				</li>
+				<Item key={key} variant="outline" aria-hidden="true">
+					<ItemContent>
+						<Skeleton className="h-4 w-2/3" />
+						<Skeleton className="h-3 w-1/3" />
+					</ItemContent>
+					<Skeleton className="h-4 w-16" />
+				</Item>
 			))}
-		</ul>
+		</ItemGroup>
 	);
 }

@@ -1,5 +1,12 @@
+'use client';
+
+import { getWgSection } from '@/components/app/navigation';
+import { Badge } from '@/components/ui/badge';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/shared/lib/cn';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export interface SubNavItem {
 	href: string;
@@ -13,6 +20,8 @@ interface SubNavProps {
 	/** Beschreibt der Vorlesesoftware, wozu die Unterbereiche gehören. */
 	label: string;
 	items: SubNavItem[];
+	/** Shell fallback disappears when a page supplies its own local navigation. */
+	fallback?: boolean;
 }
 
 /**
@@ -21,28 +30,56 @@ interface SubNavProps {
  * gestaltet: es sind Orte, keine Aktionen — die Primäraktion der Seite
  * soll die einzige gefüllte Schaltfläche bleiben.
  */
-export function SubNav({ label, items }: SubNavProps) {
-	if (items.length === 0) return null;
+export function SubNav({ label, items, fallback = false }: SubNavProps) {
+	const pathname = usePathname()?.replace(/\/+$/, '') ?? '';
+	const section = getWgSection(pathname);
+	const canonicalItems =
+		section?.pages.map((page) => ({
+			href: `${section.baseHref}/${page.slug}`,
+			label: page.label,
+			icon: page.icon,
+		})) ?? [];
+	const links: SubNavItem[] = canonicalItems.map((item) => ({
+		...item,
+		...items.find((provided) => provided.href === item.href),
+	}));
+	links.push(
+		...items.filter((item) => !canonicalItems.some((canonical) => canonical.href === item.href)),
+	);
+	if (links.length === 0) return null;
 
 	return (
-		<nav aria-label={label} className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-			<ul className="flex w-max gap-2 sm:w-auto sm:flex-wrap">
-				{items.map(({ href, label: itemLabel, icon: Icon, count }) => (
-					<li key={href}>
-						<Link
-							href={href}
-							className="inline-flex h-11 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg-base)] px-3.5 text-[12.5px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-						>
-							<Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-							{itemLabel}
-							{typeof count === 'number' && count > 0 && (
-								<span className="ml-0.5 rounded-full bg-[var(--surface)] px-1.5 text-[11px] tabular-nums text-[var(--text-3)]">
-									{count}
-								</span>
-							)}
-						</Link>
-					</li>
-				))}
+		<nav
+			aria-label={label}
+			data-wg-local-nav={fallback ? undefined : ''}
+			className={cn('min-w-0', fallback && 'group-has-[[data-wg-local-nav]]/wg-shell:hidden')}
+		>
+			<ul className="flex flex-wrap gap-1">
+				{links.map(({ href, label: itemLabel, icon: Icon, count }) => {
+					const target = new URL(href, 'https://manawg.invalid').pathname.replace(/\/+$/, '');
+					const current = pathname === target;
+					const active = current || pathname.startsWith(`${target}/`);
+					return (
+						<li key={href}>
+							<Link
+								href={href}
+								aria-current={active ? (current ? 'page' : 'location') : undefined}
+								className={cn(
+									buttonVariants({ variant: active ? 'secondary' : 'ghost' }),
+									'min-h-11',
+								)}
+							>
+								<Icon data-icon="inline-start" aria-hidden />
+								{itemLabel}
+								{typeof count === 'number' && count > 0 && (
+									<Badge variant="secondary" className="ml-0.5 tabular-nums">
+										{count}
+									</Badge>
+								)}
+							</Link>
+						</li>
+					);
+				})}
 			</ul>
 		</nav>
 	);
