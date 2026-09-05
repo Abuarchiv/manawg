@@ -39,12 +39,7 @@ export function EntryFrame({
 					<ArrowLeft aria-hidden />
 				</Link>
 				<Link href={backHref} className={cn(buttonVariants({ variant: 'ghost' }), 'min-h-11')}>
-					<LogoMark
-						size={24}
-						radius={6}
-						tileFill="var(--primary)"
-						markFill="var(--primary-foreground)"
-					/>
+					<LogoMark size={24} radius={6} />
 					ManaWG
 				</Link>
 			</div>

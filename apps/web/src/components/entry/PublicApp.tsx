@@ -213,12 +213,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 								className="flex min-h-11 items-center gap-2"
 								aria-label="ManaWG Startseite"
 							>
-								<LogoMark
-									size={28}
-									radius={7}
-									tileFill="var(--primary)"
-									markFill="var(--primary-foreground)"
-								/>
+								<LogoMark size={28} radius={7} />
 								<span className="text-sm font-medium">ManaWG</span>
 							</Link>
 							<Link

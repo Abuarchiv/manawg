@@ -8,12 +8,14 @@ test.describe('live social-login entry', () => {
 	test.describe.configure({ retries: 0 });
 
 	test('signed-out creation starts with account authentication', async ({ page }) => {
+		await page.emulateMedia({ reducedMotion: 'reduce' });
 		await page.goto('/neu?action=create');
 		await expect(
 			page.getByRole('button', { name: 'Mit Google anmelden', exact: true }),
 		).toBeVisible();
 		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
 		await expect(page.getByLabel('Passwort')).toBeVisible();
+		await expect(page.locator('[data-slot="tabs-content"]').first()).toHaveCSS('opacity', '1');
 		await expect(page.getByRole('button', { name: 'WG erstellen', exact: true })).toHaveCount(0);
 	});
 

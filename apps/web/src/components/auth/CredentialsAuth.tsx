@@ -6,6 +6,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { motion, useReducedMotion } from 'motion/react';
 import { type ReactElement, useState } from 'react';
 
 const E164_PATTERN = /^\+[1-9]\d{1,14}$/;
@@ -37,6 +38,7 @@ function GenericAuthError(): ReactElement {
 }
 
 export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps) {
+	const reducedMotion = useReducedMotion();
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [phone, setPhone] = useState('');
@@ -177,7 +179,13 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 					Telefon / SMS
 				</TabsTrigger>
 			</TabsList>
-			<TabsContent value="email" aria-labelledby="email-auth-heading">
+			<TabsContent
+				value="email"
+				aria-labelledby="email-auth-heading"
+				render={
+					<motion.div initial={reducedMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} />
+				}
+			>
 				<form
 					onSubmit={(event) => {
 						event.preventDefault();
@@ -271,7 +279,13 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 				</form>
 			</TabsContent>
 
-			<TabsContent value="phone" aria-labelledby="phone-auth-heading">
+			<TabsContent
+				value="phone"
+				aria-labelledby="phone-auth-heading"
+				render={
+					<motion.div initial={reducedMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} />
+				}
+			>
 				<form
 					onSubmit={(event) => {
 						event.preventDefault();
