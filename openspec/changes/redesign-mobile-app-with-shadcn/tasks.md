@@ -124,7 +124,7 @@ git diff --check
 - [x] Add the central deterministic `mode="preset"`, `effectMode="blur"`, `mobileFallback="css-only"` adapter with semantic opaque accessibility fallbacks.
 - [x] Wrap the authorized public/private navigation, header toolbar, SubNav, public CTA, auth TabsList and shared dropdown popup surfaces while leaving content cards/forms and contracts unchanged.
 - [x] Update focused glass presence, fallback, link and no-card-takeover regression assertions; no automated browser was launched.
-- [ ] Controller: verify glass/readability/fallback behavior at 320/390/430 light/dark and private fixture surfaces in connected Chrome, then complete independent review and final graph/evidence updates.
+- [x] Controller: complete public/auth glass, readability and fallback checks in connected Chrome and independent source review; record the pre-existing private fixture membership blocker and device-test limits in [Liquid Glass acceptance](../../../docs/superpowers/plans/2026-09-05-liquid-glass-web-adoption.md). Final graph and evidence updates complete.
 
 ## Original mobile-redesign evidence — 2026-09-05 (before public-entry follow-up)
 
