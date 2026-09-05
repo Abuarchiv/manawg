@@ -493,7 +493,8 @@ export function NeuClient() {
 	if (authState !== 'authenticated') {
 		return (
 			<EntryFrame
-				title="Mit deinem Konto anmelden"
+				title="Anmelden"
+				headingId="auth-heading"
 				description={
 					step === 'create'
 						? 'Melde dich an, danach erstellst du deine neue WG.'
@@ -531,13 +532,10 @@ export function NeuClient() {
 						<span className="sr-only">Anmeldung wird geprüft</span>
 					</output>
 				) : (
-					<Card>
-						<CardHeader>
-							<CardTitle>
-								<h2>Anmelden oder Konto erstellen</h2>
-							</CardTitle>
-							<CardDescription>Wähle deinen Zugang.</CardDescription>
-						</CardHeader>
+					<Card
+						aria-labelledby="auth-heading"
+						className="border-0 bg-card/90 shadow-none ring-1 ring-foreground/10"
+					>
 						<CardContent>
 							<FieldGroup>
 								<SocialLoginButtons next={loginNextPath()} onOAuthStart={startSocialLogin} />

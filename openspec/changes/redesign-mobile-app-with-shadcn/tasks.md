@@ -102,6 +102,14 @@ UPSTASH_REDIS_REST_URL= UPSTASH_REDIS_REST_TOKEN= pnpm --filter @manawg/web run 
 git diff --check
 ```
 
+## Authorized public-entry follow-up — 2026-09-05
+
+- [x] Implement the public start and discovery preview slice with static, clearly fictional read-only content, scoped petrol presentation and compact guest entry while preserving public/auth contracts.
+- [x] Keep membership lookup errors and retry visible, invitation parameters intact and remove repeated public `Weitere Bereiche` catalogs.
+- [x] Update focused public-entry assertions for the approved headline, four previews, active-module content and removed catalog.
+- [ ] Controller: inspect the start, representative module routes, invitation and auth states through the connected Chrome Extension at mobile widths and in both themes.
+- [ ] Controller: complete independent review and final repository gates; no browser or hosted-service evidence is claimed by this implementation slice.
+
 ## Final evidence — 2026-09-05
 
 - Root lint: 447 files checked.

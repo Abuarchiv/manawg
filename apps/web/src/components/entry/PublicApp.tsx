@@ -1,26 +1,16 @@
 'use client';
 
 import { WG_SECTIONS } from '@/components/app/navigation';
+import {
+	PublicModulePreview,
+	PublicModulePreviews,
+	type PublicPreviewModule,
+} from '@/components/entry/PublicModulePreview';
 import { WgWelcome } from '@/components/entry/WgWelcome';
 import { ErrorBox } from '@/components/neu/ErrorBox';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-	Empty,
-	EmptyContent,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyMedia,
-	EmptyTitle,
-} from '@/components/ui/empty';
-import {
-	Item,
-	ItemContent,
-	ItemDescription,
-	ItemGroup,
-	ItemMedia,
-	ItemTitle,
-} from '@/components/ui/item';
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
@@ -31,7 +21,6 @@ import {
 	CalendarDays,
 	Clock3,
 	ListChecks,
-	type LucideIcon,
 	Megaphone,
 	MessageCircle,
 	Package,
@@ -49,12 +38,7 @@ interface AccountWg {
 	name: string;
 }
 
-interface PublicModule {
-	slug: string;
-	title: string;
-	description: string;
-	Icon: LucideIcon;
-}
+type PublicModule = PublicPreviewModule;
 
 const PRIMARY_MODULES: PublicModule[] = [
 	{
@@ -134,7 +118,10 @@ export function PublicApp(props: { activeModule?: string }) {
 	return (
 		<Suspense
 			fallback={
-				<div className="flex min-h-svh flex-col gap-4 bg-background p-4" aria-busy="true">
+				<div
+					className="public-entry-surface flex min-h-svh flex-col gap-4 bg-background p-4"
+					aria-busy="true"
+				>
 					<Skeleton className="h-12 w-full" />
 					<Skeleton className="h-48 w-full" />
 				</div>
@@ -204,7 +191,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 
 	return (
 		<div
-			className="min-h-svh bg-background"
+			className="public-entry-surface min-h-svh bg-background"
 			style={{
 				paddingTop: 'env(safe-area-inset-top, 0px)',
 				paddingBottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))',
@@ -213,19 +200,36 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 			<main
 				id="main"
 				tabIndex={-1}
-				className="flex w-full min-w-0 flex-col gap-6 px-4 py-5 focus:outline-none"
+				className="flex w-full min-w-0 flex-col gap-8 px-4 py-5 focus:outline-none sm:px-5"
 			>
-				<header className="flex flex-col gap-3">
-					<div className="flex items-center gap-2">
-						<LogoMark size={28} radius={7} />
-						<span className="text-sm font-medium">ManaWG</span>
+				<header className="flex flex-col gap-7">
+					<div className="flex items-center justify-between gap-3">
+						<Link
+							href={publicHref('/')}
+							className="flex min-h-11 items-center gap-2"
+							aria-label="ManaWG Startseite"
+						>
+							<LogoMark
+								size={30}
+								radius={8}
+								tileFill="var(--public-accent)"
+								markFill="var(--bg-base)"
+							/>
+							<span className="text-base font-semibold tracking-tight">ManaWG</span>
+						</Link>
+						<Link
+							href={publicHref('/neu')}
+							className="min-h-11 px-0 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+						>
+							Anmelden
+						</Link>
 					</div>
 					<div className="flex flex-col gap-1">
-						<h1 className="text-2xl font-semibold tracking-tight">
-							{module?.title ?? 'Alles für eure WG'}
+						<h1 className="max-w-[18ch] text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">
+							{module?.title ?? 'Euer WG-Alltag. Gemeinsam geregelt.'}
 						</h1>
-						<p className="text-sm text-muted-foreground">
-							{module?.description ?? 'Einkauf, gemeinsame Kosten und Alltag an einem Ort.'}
+						<p className="max-w-[38ch] text-sm leading-6 text-muted-foreground">
+							{module?.description ?? 'Einkäufe planen, Kosten teilen und Aufgaben verteilen.'}
 						</p>
 					</div>
 				</header>
@@ -240,6 +244,16 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 								icon: page.icon,
 							}))}
 					/>
+				)}
+				{inviteCode ? (
+					<WgWelcome variant="invitation" code={inviteCode} compact />
+				) : (
+					<WgWelcome variant="create" compact />
+				)}
+				{module ? (
+					<PublicModulePreview module={module} homeHref={publicHref('/')} />
+				) : (
+					<PublicModulePreviews modules={PRIMARY_MODULES} />
 				)}
 				{membershipState === 'loading' && (
 					<output aria-live="polite" aria-label="Deine WGs werden geprüft" className="block">
@@ -287,83 +301,8 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						</CardContent>
 					</Card>
 				)}
-				{inviteCode ? (
-					<WgWelcome variant="invitation" code={inviteCode} />
-				) : (
-					<WgWelcome variant="create" />
-				)}
-				{module ? (
-					<Empty className="border">
-						<EmptyHeader>
-							<EmptyMedia variant="icon">
-								<module.Icon aria-hidden />
-							</EmptyMedia>
-							<EmptyTitle>Noch keine WG verbunden</EmptyTitle>
-							<EmptyDescription>
-								Hier siehst du später{' '}
-								{module.title === 'Einstellungen'
-									? 'die Einstellungen deiner WG'
-									: 'die Einträge deiner WG'}
-								. Die öffentliche Ansicht zeigt keine privaten Inhalte.
-							</EmptyDescription>
-						</EmptyHeader>
-						<EmptyContent>
-							<Link
-								href={inviteCode ? withInvitation('/neu', inviteCode) : '/neu'}
-								className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11 w-full')}
-							>
-								{inviteCode ? 'Mit Einladung anmelden' : 'Anmelden und WG wählen'}
-							</Link>
-							<Link
-								href={publicHref('/')}
-								className={cn(buttonVariants({ variant: 'link' }), 'min-h-11')}
-							>
-								Zurück zu Start
-							</Link>
-						</EmptyContent>
-					</Empty>
-				) : (
-					<section aria-labelledby="modules-heading" className="flex flex-col gap-3">
-						<h2 id="modules-heading" className="text-base font-semibold">
-							Bereiche entdecken
-						</h2>
-						<ItemGroup>
-							{PRIMARY_MODULES.map(({ slug, title, description, Icon }) => (
-								<Item key={slug} variant="outline" render={<Link href={discoveryHref(slug)} />}>
-									<ItemMedia variant="icon">
-										<Icon aria-hidden />
-									</ItemMedia>
-									<ItemContent className="min-w-0">
-										<ItemTitle>{title}</ItemTitle>
-										<ItemDescription>{description}</ItemDescription>
-									</ItemContent>
-								</Item>
-							))}
-						</ItemGroup>
-					</section>
-				)}
-				<section aria-labelledby="other-modules-heading" className="flex flex-col gap-3">
-					<h2 id="other-modules-heading" className="text-base font-semibold">
-						Weitere Bereiche
-					</h2>
-					<ItemGroup>
-						{OTHER_MODULES.filter((item) => item.slug !== activeModule).map(
-							({ slug, title, description, Icon }) => (
-								<Item key={slug} size="sm" render={<Link href={discoveryHref(slug)} />}>
-									<ItemMedia variant="icon">
-										<Icon aria-hidden />
-									</ItemMedia>
-									<ItemContent className="min-w-0">
-										<ItemTitle>{title}</ItemTitle>
-										<ItemDescription>{description}</ItemDescription>
-									</ItemContent>
-								</Item>
-							),
-						)}
-					</ItemGroup>
-				</section>
 				<Link
-					href="/datenschutz"
+					href={publicHref('/datenschutz')}
 					className={cn(buttonVariants({ variant: 'link' }), 'min-h-11 self-start px-0')}
 				>
 					Datenschutz

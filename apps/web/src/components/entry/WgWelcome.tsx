@@ -6,14 +6,14 @@ import Link from 'next/link';
 export type WgWelcomeVariant = 'create' | 'invitation' | 'member';
 
 type WgWelcomeProps =
-	| { variant: 'create' }
-	| { variant: 'invitation'; code: string }
-	| { variant: 'member'; wgName: string };
+	| { variant: 'create'; compact?: boolean }
+	| { variant: 'invitation'; code: string; compact?: boolean }
+	| { variant: 'member'; wgName: string; compact?: boolean };
 
 export function WgWelcome(props: WgWelcomeProps) {
 	if (props.variant === 'member') {
 		return (
-			<Card>
+			<Card className="border-0 bg-card/90 shadow-none ring-1 ring-foreground/10">
 				<CardHeader>
 					<CardTitle>Willkommen in deiner WG</CardTitle>
 					<CardDescription>{props.wgName}</CardDescription>
@@ -27,25 +27,49 @@ export function WgWelcome(props: WgWelcomeProps) {
 		? `/neu?code=${encodeURIComponent(props.code)}`
 		: '/neu?action=create';
 
+	if (props.compact) {
+		return (
+			<div className="flex flex-col gap-2">
+				{invitation && <p className="text-sm text-muted-foreground">Deine Einladung ist bereit.</p>}
+				<Link
+					href={actionHref}
+					className={cn(
+						buttonVariants(),
+						'min-h-11 w-full bg-[var(--public-accent-strong)] text-[var(--public-accent-foreground)] hover:bg-[var(--public-accent-hover)]',
+					)}
+				>
+					{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
+				</Link>
+			</div>
+		);
+	}
+
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>
-					<h2>{invitation ? 'Deine Einladung wartet' : 'Deine WG gemeinsam organisieren'}</h2>
-				</CardTitle>
+		<Card className="border-0 bg-card/90 shadow-none ring-1 ring-foreground/10">
+			<CardHeader className="gap-2">
+				<CardTitle>{invitation ? 'Deine Einladung wartet' : 'Startet gemeinsam'}</CardTitle>
 				<CardDescription>
 					{invitation
 						? 'Melde dich an, um dieser bestehenden WG beizutreten.'
-						: 'Ausgaben, Einkauf, Putzen und Pinnwand an einem Ort.'}
+						: 'Einkauf, Ausgaben, Putzen und Pinnwand an einem Ort.'}
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-2">
-				<Link href={actionHref} className={cn(buttonVariants(), 'min-h-11 w-full')}>
+				<Link
+					href={actionHref}
+					className={cn(
+						buttonVariants(),
+						'min-h-11 w-full bg-[var(--public-accent-strong)] text-[var(--public-accent-foreground)] hover:bg-[var(--public-accent-hover)]',
+					)}
+				>
 					{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
 				</Link>
 				<Link
 					href={invitation ? actionHref : '/neu'}
-					className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11 w-full')}
+					className={cn(
+						buttonVariants({ variant: 'outline' }),
+						'min-h-11 w-full border-[var(--public-accent-soft)]',
+					)}
 				>
 					Anmelden
 				</Link>

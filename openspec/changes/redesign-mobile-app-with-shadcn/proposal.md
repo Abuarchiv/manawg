@@ -38,3 +38,7 @@ Marketing-site work, a separate desktop/tablet layout, feature deletion, a nativ
 ## Planning status
 
 Implementation authorized on 2026-09-05. The user approved the image's organization and the plan while requiring original GitHub component styling. Implementation comes first, then Luna browser review and final technical verification, followed by a new GitHub branch push for the user's next-day review. No deployment/merge or human usability evidence is implied. Execution ownership and controlling clarifications are in `docs/mobile-redesign-orchestration.md`.
+
+## Authorized public-entry follow-up — 2026-09-05
+
+The first implementation slice is limited to the public entry, discovery previews and authentication presentation. It keeps the existing membership lookup, invitation propagation, account choices, recovery and privacy link contracts, while replacing public empty states with explicitly fictional, read-only module examples. Connected Chrome review and final controller acceptance remain pending; no browser or hosted-service result is claimed here.

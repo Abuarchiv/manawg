@@ -176,3 +176,7 @@ Update generated PWA/browser theme colors to the new theme without unrequested l
 - [W3C: Understandable Controls](https://www.w3.org/WAI/WCAG2/supplemental/objectives/o1-understandable/) and [Clear Content](https://www.w3.org/WAI/WCAG2/supplemental/objectives/o3-clear-content/): cognitive-accessibility guidance, supplemental to WCAG, not a certification claim.
 - [W3C: Consistent Navigation](https://www.w3.org/WAI/WCAG22/Understanding/consistent-navigation.html): repeated navigation retains its relative order.
 - Local evidence: `apps/web/package.json`, root/WG layouts, route inventory, feature components and `apps/web/e2e`. Browser observation in this conversation is design context, not proof that local HEAD matches production.
+
+### Public-entry implementation follow-up — 2026-09-05
+
+The authorized first slice keeps `PublicApp({ activeModule?: string })`, existing discovery URLs, membership lookup states, invitation query propagation and all auth/recovery contracts. Start presents one clear headline, one guest sign-in link, a create/invite action and four read-only `Beispiel-WG` previews. Module routes present a clearly fictional active-module example, including secondary routes, without a public settings/reminders/activity catalog. The implementation is ready for the controller's connected Chrome review; browser acceptance and hosted authentication evidence remain pending.

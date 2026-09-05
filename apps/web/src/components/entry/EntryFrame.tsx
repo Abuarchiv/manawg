@@ -24,7 +24,7 @@ export function EntryFrame({
 		<main
 			id="main"
 			tabIndex={-1}
-			className="flex min-h-svh w-full flex-col gap-6 bg-background px-4 py-6 focus:outline-none"
+			className="public-entry-surface flex min-h-svh w-full flex-col gap-8 bg-background px-4 py-5 focus:outline-none sm:px-5"
 			style={{
 				paddingTop: 'calc(1.5rem + env(safe-area-inset-top, 0px))',
 				paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
@@ -39,12 +39,17 @@ export function EntryFrame({
 					<ArrowLeft aria-hidden />
 				</Link>
 				<Link href={backHref} className={cn(buttonVariants({ variant: 'ghost' }), 'min-h-11')}>
-					<LogoMark size={24} radius={6} />
+					<LogoMark
+						size={24}
+						radius={6}
+						tileFill="var(--public-accent)"
+						markFill="var(--bg-base)"
+					/>
 					ManaWG
 				</Link>
 			</div>
 			<header className="flex flex-col gap-2">
-				<h1 id={headingId} className="text-2xl font-semibold tracking-tight">
+				<h1 id={headingId} className="text-3xl font-semibold tracking-[-0.03em]">
 					{title}
 				</h1>
 				<p className="text-sm text-muted-foreground">{description}</p>
