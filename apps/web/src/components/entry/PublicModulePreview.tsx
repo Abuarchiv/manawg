@@ -1,7 +1,19 @@
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { buttonVariants } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+	Item,
+	ItemActions,
+	ItemContent,
+	ItemDescription,
+	ItemGroup,
+	ItemMedia,
+	ItemTitle,
+} from '@/components/ui/item';
 import { cn } from '@/shared/lib/cn';
 import type { LucideIcon } from 'lucide-react';
+import { ListChecks, Megaphone, Receipt } from 'lucide-react';
 import Link from 'next/link';
 
 export interface PublicPreviewModule {
@@ -18,31 +30,19 @@ interface PreviewCopy {
 }
 
 const PREVIEW_COPY: Record<string, PreviewCopy> = {
-	einkauf: {
-		title: 'Hafermilch',
-		detail: '2 Packungen',
-		meta: 'Noch offen · für alle',
-	},
+	einkauf: { title: 'Hafermilch', detail: '2 Packungen', meta: 'Noch offen · für alle' },
 	ausgaben: {
 		title: 'Pizzaabend',
 		detail: 'Mika bezahlt · 28,40 €',
 		meta: '4 Personen · 7,10 € pro Person',
 	},
-	putzen: {
-		title: 'Bad putzen',
-		detail: 'Samira · heute',
-		meta: 'Offen · als Nächstes dran',
-	},
+	putzen: { title: 'Bad putzen', detail: 'Samira · heute', meta: 'Offen · als Nächstes dran' },
 	pinnwand: {
 		title: 'Wohnungsübergabe am Freitag',
 		detail: 'Alex · gestern',
 		meta: 'Schlüssel liegen im Flur bereit.',
 	},
-	fixkosten: {
-		title: 'Internet',
-		detail: '29,99 € monatlich',
-		meta: 'Nächste Zahlung am 3.',
-	},
+	fixkosten: { title: 'Internet', detail: '29,99 € monatlich', meta: 'Nächste Zahlung am 3.' },
 	mahnungen: {
 		title: 'Noah bekommt 12,50 €',
 		detail: 'Geteilt aus dem Einkauf',
@@ -53,21 +53,13 @@ const PREVIEW_COPY: Record<string, PreviewCopy> = {
 		detail: '2 Packungen vorhanden',
 		meta: 'Mindestbestand: 1 Packung',
 	},
-	kalender: {
-		title: 'Putzplan-Check',
-		detail: 'Freitag · 18:00 Uhr',
-		meta: 'Für die ganze WG',
-	},
+	kalender: { title: 'Putzplan-Check', detail: 'Freitag · 18:00 Uhr', meta: 'Für die ganze WG' },
 	aktivitaet: {
 		title: 'Mara hat Einkauf ergänzt',
 		detail: 'Hafermilch · 2 Packungen',
 		meta: 'Vor 12 Minuten',
 	},
-	chat: {
-		title: 'In der WG',
-		detail: '„Bin um acht wieder da.“',
-		meta: 'Lea · vor 8 Minuten',
-	},
+	chat: { title: 'In der WG', detail: '„Bin um acht wieder da.“', meta: 'Lea · vor 8 Minuten' },
 	einstellungen: {
 		title: 'WG-Mitglieder verwalten',
 		detail: 'Einladungen und Rollen',
@@ -85,7 +77,7 @@ function previewFor(module: PublicPreviewModule): PreviewCopy {
 	);
 }
 
-function ExampleBody({
+function PreviewRows({
 	module,
 	copy,
 	featured,
@@ -94,78 +86,128 @@ function ExampleBody({
 	copy: PreviewCopy;
 	featured: boolean;
 }) {
-	if (featured && module.slug === 'einkauf') {
+	if (!featured) {
 		return (
-			<div className="flex flex-col divide-y divide-border/70 rounded-lg border border-border/70 bg-muted/40 px-3">
+			<ItemGroup className="gap-2">
+				<Item variant="muted" size="sm">
+					<ItemMedia variant="icon">
+						<module.Icon aria-hidden />
+					</ItemMedia>
+					<ItemContent className="min-w-0">
+						<ItemTitle className="line-clamp-none break-words">{copy.title}</ItemTitle>
+						<ItemDescription className="line-clamp-none break-words">{copy.meta}</ItemDescription>
+					</ItemContent>
+				</Item>
+			</ItemGroup>
+		);
+	}
+
+	if (module.slug === 'einkauf') {
+		return (
+			<ItemGroup className="gap-2">
 				{[
-					{ title: 'Hafermilch', detail: '2 Packungen · offen', done: false },
-					{ title: 'Bananen', detail: '6 Stück · offen', done: false },
-					{ title: 'Spülmittel', detail: '1 Flasche · erledigt', done: true },
-				].map(({ title, detail, done }) => (
-					<div key={title} className="flex items-center gap-3 py-3">
-						<span
-							aria-hidden="true"
-							className={cn(
-								'flex size-5 shrink-0 items-center justify-center rounded border text-[10px]',
-								done
-									? 'border-[var(--public-accent)] bg-[var(--public-accent-soft)] text-[var(--public-accent)]'
-									: 'border-foreground/20 text-transparent',
-							)}
-						>
-							{done ? '✓' : '·'}
-						</span>
-						<div className="min-w-0">
-							<p className="font-medium">{title}</p>
-							<p className="text-sm text-muted-foreground">{detail}</p>
-						</div>
-					</div>
+					['Hafermilch', '2 Packungen', 'Offen'],
+					['Bananen', '6 Stück', 'Offen'],
+					['Spülmittel', '1 Flasche', 'Erledigt'],
+				].map(([title, detail, state]) => (
+					<Item key={title} variant="muted" size="sm">
+						<ItemMedia variant="icon">
+							<ListChecks aria-hidden />
+						</ItemMedia>
+						<ItemContent className="min-w-0">
+							<ItemTitle className="line-clamp-none break-words">{title}</ItemTitle>
+							<ItemDescription className="line-clamp-none break-words">{detail}</ItemDescription>
+						</ItemContent>
+						<Badge variant={state === 'Erledigt' ? 'secondary' : 'outline'}>{state}</Badge>
+					</Item>
 				))}
-			</div>
+			</ItemGroup>
 		);
 	}
-	if (featured && module.slug === 'ausgaben') {
+
+	if (module.slug === 'ausgaben') {
 		return (
-			<div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-muted/40 p-3">
-				<div className="flex items-center justify-between gap-3">
-					<p className="font-medium">Pizzaabend</p>
-					<p className="font-semibold tabular-nums">28,40 €</p>
-				</div>
-				<p className="text-sm text-muted-foreground">Mika bezahlt · 4 Personen</p>
-				<p className="text-sm font-medium text-[var(--public-accent)]">7,10 € pro Person</p>
-			</div>
+			<ItemGroup className="gap-2">
+				<Item variant="muted" size="sm">
+					<ItemMedia variant="icon">
+						<Receipt aria-hidden />
+					</ItemMedia>
+					<ItemContent className="min-w-0">
+						<ItemTitle className="line-clamp-none break-words">Pizzaabend</ItemTitle>
+						<ItemDescription className="line-clamp-none break-words">
+							Mika bezahlt · 28,40 €
+						</ItemDescription>
+					</ItemContent>
+					<ItemActions>
+						<Badge variant="outline">4 Personen</Badge>
+					</ItemActions>
+				</Item>
+				<Item variant="muted" size="sm">
+					<ItemContent className="min-w-0">
+						<ItemTitle className="line-clamp-none break-words">Aufteilung</ItemTitle>
+						<ItemDescription className="line-clamp-none break-words">
+							7,10 € pro Person
+						</ItemDescription>
+					</ItemContent>
+				</Item>
+			</ItemGroup>
 		);
 	}
-	if (featured && module.slug === 'putzen') {
+
+	if (module.slug === 'putzen') {
 		return (
-			<div className="flex items-center gap-3 rounded-lg border border-border/70 bg-muted/40 p-3">
-				<span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--public-accent-soft)] text-sm font-semibold text-[var(--public-accent)]">
-					S
-				</span>
-				<div className="min-w-0">
-					<p className="font-medium">Bad putzen</p>
-					<p className="text-sm text-muted-foreground">Samira · heute · offen</p>
-				</div>
-			</div>
+			<ItemGroup className="gap-2">
+				<Item variant="muted" size="sm">
+					<ItemMedia>
+						<Avatar size="sm">
+							<AvatarFallback>S</AvatarFallback>
+						</Avatar>
+					</ItemMedia>
+					<ItemContent className="min-w-0">
+						<ItemTitle className="line-clamp-none break-words">Bad putzen</ItemTitle>
+						<ItemDescription className="line-clamp-none break-words">
+							Samira · heute
+						</ItemDescription>
+					</ItemContent>
+					<Badge variant="outline">Offen</Badge>
+				</Item>
+			</ItemGroup>
 		);
 	}
-	if (featured && module.slug === 'pinnwand') {
+
+	if (module.slug === 'pinnwand') {
 		return (
-			<div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-muted/40 p-3">
-				<p className="font-medium">Wohnungsübergabe am Freitag</p>
-				<p className="text-sm leading-5 text-muted-foreground">
-					„Schlüssel liegen im Flur bereit.“
-				</p>
-				<p className="text-xs text-muted-foreground">Alex · gestern</p>
-			</div>
+			<ItemGroup className="gap-2">
+				<Item variant="muted" size="sm">
+					<ItemMedia variant="icon">
+						<Megaphone aria-hidden />
+					</ItemMedia>
+					<ItemContent className="min-w-0">
+						<ItemTitle className="line-clamp-none break-words">
+							Wohnungsübergabe am Freitag
+						</ItemTitle>
+						<ItemDescription className="line-clamp-none break-words">
+							Alex · gestern · Schlüssel liegen im Flur bereit.
+						</ItemDescription>
+					</ItemContent>
+				</Item>
+			</ItemGroup>
 		);
 	}
 
 	return (
-		<div className="flex flex-col gap-1">
-			<p className={cn('font-medium', featured ? 'text-lg' : 'text-sm')}>{copy.title}</p>
-			<p className="text-sm text-muted-foreground">{copy.detail}</p>
-			<p className="text-xs text-muted-foreground">{copy.meta}</p>
-		</div>
+		<ItemGroup className="gap-2">
+			<Item variant="muted" size="sm">
+				<ItemMedia variant="icon">
+					<module.Icon aria-hidden />
+				</ItemMedia>
+				<ItemContent className="min-w-0">
+					<ItemTitle className="line-clamp-none break-words">{copy.title}</ItemTitle>
+					<ItemDescription className="line-clamp-none break-words">{copy.detail}</ItemDescription>
+				</ItemContent>
+				<Badge variant="outline">Beispiel</Badge>
+			</Item>
+		</ItemGroup>
 	);
 }
 
@@ -174,34 +216,15 @@ function ExampleCard({
 	featured = false,
 }: { module: PublicPreviewModule; featured?: boolean }) {
 	const copy = previewFor(module);
-	const Icon = module.Icon;
-
 	return (
 		<article aria-label={`${module.title}, Beispiel-WG`}>
-			<Card
-				size={featured ? 'default' : 'sm'}
-				className={cn(
-					'border-0 bg-card/90 shadow-none ring-1 ring-foreground/10',
-					featured && 'ring-foreground/15',
-				)}
-			>
-				<CardContent className={cn('flex flex-col gap-4', !featured && 'gap-3')}>
-					{!featured && (
-						<div className="flex items-start justify-between gap-3">
-							<div className="flex min-w-0 items-center gap-3">
-								<span
-									aria-hidden="true"
-									className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--public-accent-soft)] text-[var(--public-accent)]"
-								>
-									<Icon className="size-4" />
-								</span>
-								<div className="min-w-0">
-									<p className="break-words text-sm font-medium">{module.title}</p>
-								</div>
-							</div>
-						</div>
-					)}
-					<ExampleBody module={module} copy={copy} featured={featured} />
+			<Card size={featured ? 'default' : 'sm'} className="h-full">
+				<CardHeader>
+					<CardTitle>{featured ? copy.title : module.title}</CardTitle>
+					<CardDescription>{featured ? module.description : copy.detail}</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<PreviewRows module={module} copy={copy} featured={featured} />
 				</CardContent>
 			</Card>
 		</article>
@@ -224,7 +247,7 @@ export function PublicModulePreviews({ modules }: { modules: PublicPreviewModule
 					Beispiel-WG
 				</Badge>
 			</div>
-			<div className="public-preview-grid">
+			<div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
 				{modules.map((module) => (
 					<ExampleCard key={module.slug} module={module} />
 				))}
@@ -253,7 +276,7 @@ export function PublicModulePreview({
 			<ExampleCard module={module} featured />
 			<Link
 				href={homeHref}
-				className="min-h-11 self-start text-sm font-medium text-[var(--public-accent)] underline-offset-4 hover:underline"
+				className={cn(buttonVariants({ variant: 'link' }), 'min-h-11 self-start px-0')}
 			>
 				Alle Bereiche ansehen
 			</Link>

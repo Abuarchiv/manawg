@@ -28,6 +28,7 @@ import {
 	Settings,
 	Sparkles,
 } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -118,10 +119,7 @@ export function PublicApp(props: { activeModule?: string }) {
 	return (
 		<Suspense
 			fallback={
-				<div
-					className="public-entry-surface flex min-h-svh flex-col gap-4 bg-background p-4"
-					aria-busy="true"
-				>
+				<div className="flex min-h-svh flex-col gap-4 bg-background p-4" aria-busy="true">
 					<Skeleton className="h-12 w-full" />
 					<Skeleton className="h-48 w-full" />
 				</div>
@@ -135,6 +133,7 @@ export function PublicApp(props: { activeModule?: string }) {
 function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	const router = useRouter();
 	const searchParams = useSearchParams();
+	const reducedMotion = useReducedMotion();
 	const [memberships, setMemberships] = useState<AccountWg[]>([]);
 	const [membershipState, setMembershipState] = useState<
 		'loading' | 'signed-out' | 'authenticated-empty' | 'member-list' | 'error'
@@ -191,7 +190,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 
 	return (
 		<div
-			className="public-entry-surface min-h-svh bg-background"
+			className="min-h-svh bg-background"
 			style={{
 				paddingTop: 'env(safe-area-inset-top, 0px)',
 				paddingBottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))',
@@ -200,113 +199,122 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 			<main
 				id="main"
 				tabIndex={-1}
-				className="flex w-full min-w-0 flex-col gap-8 px-4 py-5 focus:outline-none sm:px-5"
+				className="flex w-full min-w-0 flex-col gap-6 px-4 py-5 focus:outline-none"
 			>
-				<header className="flex flex-col gap-7">
-					<div className="flex items-center justify-between gap-3">
-						<Link
-							href={publicHref('/')}
-							className="flex min-h-11 items-center gap-2"
-							aria-label="ManaWG Startseite"
-						>
-							<LogoMark
-								size={30}
-								radius={8}
-								tileFill="var(--public-accent)"
-								markFill="var(--bg-base)"
-							/>
-							<span className="text-base font-semibold tracking-tight">ManaWG</span>
-						</Link>
-						<Link
-							href={publicHref('/neu')}
-							className="min-h-11 px-0 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-						>
-							Anmelden
-						</Link>
-					</div>
-					<div className="flex flex-col gap-1">
-						<h1 className="max-w-[18ch] text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">
-							{module?.title ?? 'Euer WG-Alltag. Gemeinsam geregelt.'}
-						</h1>
-						<p className="max-w-[38ch] text-sm leading-6 text-muted-foreground">
-							{module?.description ?? 'Einkäufe planen, Kosten teilen und Aufgaben verteilen.'}
-						</p>
-					</div>
-				</header>
-				{section && (
-					<SubNav
-						label={`${section.label} – entdecken`}
-						items={section.pages
-							.filter((page) => page.slug !== 'import')
-							.map((page) => ({
-								href: discoveryHref(page.slug),
-								label: page.label,
-								icon: page.icon,
-							}))}
-					/>
-				)}
-				{inviteCode ? (
-					<WgWelcome variant="invitation" code={inviteCode} compact />
-				) : (
-					<WgWelcome variant="create" compact />
-				)}
-				{module ? (
-					<PublicModulePreview module={module} homeHref={publicHref('/')} />
-				) : (
-					<PublicModulePreviews modules={PRIMARY_MODULES} />
-				)}
-				{membershipState === 'loading' && (
-					<output aria-live="polite" aria-label="Deine WGs werden geprüft" className="block">
-						<Skeleton className="h-11 w-full" />
-					</output>
-				)}
-				{membershipState === 'error' && (
-					<div className="flex flex-col gap-2">
-						<ErrorBox>Deine WGs konnten gerade nicht geladen werden.</ErrorBox>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => setRetryNonce((value) => value + 1)}
-							className="min-h-11"
-						>
-							erneut prüfen
-						</Button>
-					</div>
-				)}
-				{membershipState === 'member-list' && memberships.length > 1 && !inviteCode && (
-					<Card>
-						<CardHeader>
-							<CardTitle>
-								<h2>Deine WGs</h2>
-							</CardTitle>
-							<CardDescription>Wo möchtest du weitermachen?</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<ItemGroup>
-								{memberships.map((membership) => (
-									<Item
-										key={membership.id}
-										variant="outline"
-										render={<Link href={`/wg/${encodeURIComponent(membership.code)}`} />}
-									>
-										<ItemContent className="min-w-0">
-											<ItemTitle className="line-clamp-none break-words">
-												{membership.name}
-											</ItemTitle>
-											<ItemDescription>WG öffnen</ItemDescription>
-										</ItemContent>
-									</Item>
-								))}
-							</ItemGroup>
-						</CardContent>
-					</Card>
-				)}
-				<Link
-					href={publicHref('/datenschutz')}
-					className={cn(buttonVariants({ variant: 'link' }), 'min-h-11 self-start px-0')}
+				<motion.div
+					initial={reducedMotion ? false : { opacity: 0 }}
+					animate={{ opacity: 1 }}
+					className="flex min-w-0 flex-col gap-6"
 				>
-					Datenschutz
-				</Link>
+					<header className="flex flex-col gap-3">
+						<div className="flex items-center justify-between gap-3">
+							<Link
+								href={publicHref('/')}
+								className="flex min-h-11 items-center gap-2"
+								aria-label="ManaWG Startseite"
+							>
+								<LogoMark
+									size={28}
+									radius={7}
+									tileFill="var(--primary)"
+									markFill="var(--primary-foreground)"
+								/>
+								<span className="text-sm font-medium">ManaWG</span>
+							</Link>
+							<Link
+								href={publicHref('/neu')}
+								className={cn(
+									buttonVariants({ variant: 'link' }),
+									'min-h-11 px-0 text-muted-foreground',
+								)}
+							>
+								Anmelden
+							</Link>
+						</div>
+						<div className="flex flex-col gap-1">
+							<h1 className="text-2xl font-semibold tracking-tight">
+								{module?.title ?? 'Euer WG-Alltag. Gemeinsam geregelt.'}
+							</h1>
+							<p className="text-sm text-muted-foreground">
+								{module?.description ?? 'Einkäufe planen, Kosten teilen und Aufgaben verteilen.'}
+							</p>
+						</div>
+					</header>
+					{section && (
+						<SubNav
+							label={`${section.label} – entdecken`}
+							items={section.pages
+								.filter((page) => page.slug !== 'import')
+								.map((page) => ({
+									href: discoveryHref(page.slug),
+									label: page.label,
+									icon: page.icon,
+								}))}
+						/>
+					)}
+					{inviteCode ? (
+						<WgWelcome variant="invitation" code={inviteCode} compact />
+					) : (
+						<WgWelcome variant="create" compact />
+					)}
+					{module ? (
+						<PublicModulePreview module={module} homeHref={publicHref('/')} />
+					) : (
+						<PublicModulePreviews modules={PRIMARY_MODULES} />
+					)}
+					{membershipState === 'loading' && (
+						<output aria-live="polite" aria-label="Deine WGs werden geprüft" className="block">
+							<Skeleton className="h-11 w-full" />
+						</output>
+					)}
+					{membershipState === 'error' && (
+						<div className="flex flex-col gap-2">
+							<ErrorBox>Deine WGs konnten gerade nicht geladen werden.</ErrorBox>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setRetryNonce((value) => value + 1)}
+								className="min-h-11"
+							>
+								erneut prüfen
+							</Button>
+						</div>
+					)}
+					{membershipState === 'member-list' && memberships.length > 1 && !inviteCode && (
+						<Card>
+							<CardHeader>
+								<CardTitle>
+									<h2>Deine WGs</h2>
+								</CardTitle>
+								<CardDescription>Wo möchtest du weitermachen?</CardDescription>
+							</CardHeader>
+							<CardContent>
+								<ItemGroup>
+									{memberships.map((membership) => (
+										<Item
+											key={membership.id}
+											variant="outline"
+											render={<Link href={`/wg/${encodeURIComponent(membership.code)}`} />}
+										>
+											<ItemContent className="min-w-0">
+												<ItemTitle className="line-clamp-none break-words">
+													{membership.name}
+												</ItemTitle>
+												<ItemDescription>WG öffnen</ItemDescription>
+											</ItemContent>
+										</Item>
+									))}
+								</ItemGroup>
+							</CardContent>
+						</Card>
+					)}
+					<Link
+						href={publicHref('/datenschutz')}
+						className={cn(buttonVariants({ variant: 'link' }), 'min-h-11 self-start px-0')}
+					>
+						Datenschutz
+					</Link>
+				</motion.div>
 			</main>
 			<nav
 				aria-label="Öffentliche Hauptnavigation"

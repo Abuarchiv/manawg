@@ -13,7 +13,7 @@ type WgWelcomeProps =
 export function WgWelcome(props: WgWelcomeProps) {
 	if (props.variant === 'member') {
 		return (
-			<Card className="border-0 bg-card/90 shadow-none ring-1 ring-foreground/10">
+			<Card>
 				<CardHeader>
 					<CardTitle>Willkommen in deiner WG</CardTitle>
 					<CardDescription>{props.wgName}</CardDescription>
@@ -31,13 +31,7 @@ export function WgWelcome(props: WgWelcomeProps) {
 		return (
 			<div className="flex flex-col gap-2">
 				{invitation && <p className="text-sm text-muted-foreground">Deine Einladung ist bereit.</p>}
-				<Link
-					href={actionHref}
-					className={cn(
-						buttonVariants(),
-						'min-h-11 w-full bg-[var(--public-accent-strong)] text-[var(--public-accent-foreground)] hover:bg-[var(--public-accent-hover)]',
-					)}
-				>
+				<Link href={actionHref} className={cn(buttonVariants(), 'min-h-11 w-full')}>
 					{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
 				</Link>
 			</div>
@@ -45,7 +39,7 @@ export function WgWelcome(props: WgWelcomeProps) {
 	}
 
 	return (
-		<Card className="border-0 bg-card/90 shadow-none ring-1 ring-foreground/10">
+		<Card>
 			<CardHeader className="gap-2">
 				<CardTitle>{invitation ? 'Deine Einladung wartet' : 'Startet gemeinsam'}</CardTitle>
 				<CardDescription>
@@ -55,21 +49,12 @@ export function WgWelcome(props: WgWelcomeProps) {
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-2">
-				<Link
-					href={actionHref}
-					className={cn(
-						buttonVariants(),
-						'min-h-11 w-full bg-[var(--public-accent-strong)] text-[var(--public-accent-foreground)] hover:bg-[var(--public-accent-hover)]',
-					)}
-				>
+				<Link href={actionHref} className={cn(buttonVariants(), 'min-h-11 w-full')}>
 					{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
 				</Link>
 				<Link
 					href={invitation ? actionHref : '/neu'}
-					className={cn(
-						buttonVariants({ variant: 'outline' }),
-						'min-h-11 w-full border-[var(--public-accent-soft)]',
-					)}
+					className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11 w-full')}
 				>
 					Anmelden
 				</Link>

@@ -104,11 +104,19 @@ git diff --check
 
 ## Authorized public-entry follow-up — 2026-09-05
 
-- [x] Implement the public start and discovery preview slice with static, clearly fictional read-only content, scoped petrol presentation and compact guest entry while preserving public/auth contracts.
+- [x] Implement the public start and discovery preview slice with static, clearly fictional read-only content, the original Base Nova / Neutral component presentation and compact guest entry while preserving public/auth contracts.
 - [x] Keep membership lookup errors and retry visible, invitation parameters intact and remove repeated public `Weitere Bereiche` catalogs.
 - [x] Update focused public-entry assertions for the approved headline, four previews, active-module content and removed catalog.
 - [x] Controller: inspect the start, all eleven module routes, invitation and auth controls through the connected Chrome Extension at mobile widths and in both themes.
 - [x] Controller: complete independent review and final repository gates. Public-entry follow-up evidence and explicit hosted-auth limitations are recorded in [the accepted implementation plan](../../../docs/superpowers/plans/2026-09-05-public-entry-visual-polish.md).
+
+## Original shadcn motion correction follow-up — 2026-09-05
+
+- [x] Supersede the public-only petrol exception and remove consumer-level public color, ring, opacity, shadow, radius and typography overrides; restore original Base Nova / Neutral / Inter / Lucide component composition.
+- [x] Keep the fictional public previews and contracts while using original Card/Item/Badge/Avatar variants and readable layout-only wrapping at narrow widths.
+- [x] Add the documented `motion/react` route-content opacity entry transition with `useReducedMotion()` immediate rendering; do not replace the compatible existing auth Tabs solely to showcase animation.
+- [x] Update focused public-entry assertions for semantic preset colors, reduced-motion rendering and complete preview content.
+- [ ] Controller: verify original neutral light/dark rendering, route entry motion and reduced-motion behavior through the connected Chrome Extension, then complete the independent review and final gates.
 
 ## Original mobile-redesign evidence — 2026-09-05 (before public-entry follow-up)
 

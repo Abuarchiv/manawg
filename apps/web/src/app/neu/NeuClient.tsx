@@ -532,10 +532,7 @@ export function NeuClient() {
 						<span className="sr-only">Anmeldung wird geprüft</span>
 					</output>
 				) : (
-					<Card
-						aria-labelledby="auth-heading"
-						className="border-0 bg-card/90 shadow-none ring-1 ring-foreground/10"
-					>
+					<Card aria-labelledby="auth-heading">
 						<CardContent>
 							<FieldGroup>
 								<SocialLoginButtons next={loginNextPath()} onOAuthStart={startSocialLogin} />

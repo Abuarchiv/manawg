@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "../components/entry/public-entry.css";
 
 @theme inline {
 	--font-sans: var(--font-inter);

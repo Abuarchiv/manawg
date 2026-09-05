@@ -100,6 +100,22 @@ test.describe('live public dashboard entry', () => {
 		await expect(page.getByText('Hafermilch', { exact: true })).toBeVisible();
 	});
 
+	test('uses semantic preset colors and respects reduced motion', async ({ page }) => {
+		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await page.goto('/');
+		await expect(
+			page.getByRole('heading', { name: 'Euer WG-Alltag. Gemeinsam geregelt.', exact: true }),
+		).toBeVisible();
+		const customAccent = await page.locator('main').evaluate((element) => {
+			const styles = getComputedStyle(element);
+			return ['--public-accent', '--public-accent-strong', '--public-accent-soft'].some(
+				(name) => styles.getPropertyValue(name).trim().length > 0,
+			);
+		});
+		expect(customAccent).toBe(false);
+		await expect(page.locator('main > div').first()).toHaveCSS('opacity', '1');
+	});
+
 	test('old browser history and private deep links cannot bypass account checks', async ({
 		page,
 	}) => {

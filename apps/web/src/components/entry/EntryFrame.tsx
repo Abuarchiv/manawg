@@ -24,7 +24,7 @@ export function EntryFrame({
 		<main
 			id="main"
 			tabIndex={-1}
-			className="public-entry-surface flex min-h-svh w-full flex-col gap-8 bg-background px-4 py-5 focus:outline-none sm:px-5"
+			className="flex min-h-svh w-full flex-col gap-6 bg-background px-4 py-6 focus:outline-none"
 			style={{
 				paddingTop: 'calc(1.5rem + env(safe-area-inset-top, 0px))',
 				paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
@@ -42,14 +42,14 @@ export function EntryFrame({
 					<LogoMark
 						size={24}
 						radius={6}
-						tileFill="var(--public-accent)"
-						markFill="var(--bg-base)"
+						tileFill="var(--primary)"
+						markFill="var(--primary-foreground)"
 					/>
 					ManaWG
 				</Link>
 			</div>
 			<header className="flex flex-col gap-2">
-				<h1 id={headingId} className="text-3xl font-semibold tracking-[-0.03em]">
+				<h1 id={headingId} className="text-2xl font-semibold tracking-tight">
 					{title}
 				</h1>
 				<p className="text-sm text-muted-foreground">{description}</p>
