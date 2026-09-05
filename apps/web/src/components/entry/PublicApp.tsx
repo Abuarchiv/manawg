@@ -303,12 +303,6 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							</CardContent>
 						</Card>
 					)}
-					<Link
-						href={publicHref('/datenschutz')}
-						className={cn(buttonVariants({ variant: 'link' }), 'min-h-11 self-start px-0')}
-					>
-						Datenschutz
-					</Link>
 				</motion.div>
 			</main>
 			<nav

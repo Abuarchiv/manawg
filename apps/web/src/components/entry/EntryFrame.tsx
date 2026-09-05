@@ -55,12 +55,6 @@ export function EntryFrame({
 				<Link href={backHref} className={cn(buttonVariants({ variant: 'link' }), 'min-h-11 px-0')}>
 					Öffentliche Ansicht
 				</Link>
-				<Link
-					href="/datenschutz"
-					className={cn(buttonVariants({ variant: 'link' }), 'min-h-11 px-0')}
-				>
-					Datenschutz
-				</Link>
 			</footer>
 		</main>
 	);
