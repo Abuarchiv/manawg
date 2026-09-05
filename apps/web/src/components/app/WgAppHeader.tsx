@@ -4,7 +4,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { cn } from '@/shared/lib/cn';
-import { Search, UserRound } from 'lucide-react';
+import { UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getWgSection } from './navigation';
@@ -33,19 +33,11 @@ export function WgAppHeader() {
 					</span>
 				</Link>
 				<Link
-					href={`${baseHref}/suche`}
-					aria-label="WG durchsuchen"
-					className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11')}
-				>
-					<Search aria-hidden />
-				</Link>
-				<Link
 					href={`${baseHref}/einstellungen`}
 					aria-label="Konto und WG-Einstellungen öffnen"
-					className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11')}
+					className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11')}
 				>
-					<UserRound data-icon="inline-start" aria-hidden />
-					Konto & WG
+					<UserRound aria-hidden />
 				</Link>
 			</div>
 			{section && <SubNav label={`${section.label} – Bereiche`} items={[]} fallback />}
