@@ -120,6 +120,25 @@ test.describe('live public dashboard entry', () => {
 		await expect(page.locator('main > div').first()).toHaveCSS('opacity', '1');
 	});
 
+	test('keeps a readable opaque material fallback for high contrast', async ({ page }) => {
+		await page.emulateMedia({ forcedColors: 'active', contrast: 'more' });
+		await page.goto('/');
+		const material = page.locator('[data-liquid-glass]').first();
+		await expect(material).toBeVisible();
+		const fallback = await material.evaluate((element) => {
+			const layer = element.firstElementChild;
+			if (!(layer instanceof HTMLElement)) return null;
+			const styles = getComputedStyle(layer);
+			return {
+				backgroundColor: styles.backgroundColor,
+				backgroundImage: styles.backgroundImage,
+			};
+		});
+		expect(fallback).not.toBeNull();
+		expect(fallback?.backgroundImage).toBe('none');
+		expect(fallback?.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+	});
+
 	test('old browser history and private deep links cannot bypass account checks', async ({
 		page,
 	}) => {

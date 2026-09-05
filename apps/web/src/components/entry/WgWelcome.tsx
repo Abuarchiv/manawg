@@ -33,10 +33,7 @@ export function WgWelcome(props: WgWelcomeProps) {
 			<div className="flex flex-col gap-2">
 				{invitation && <p className="text-sm text-muted-foreground">Deine Einladung ist bereit.</p>}
 				<LiquidGlassSurface>
-					<Link
-						href={actionHref}
-						className={cn(buttonVariants({ variant: 'ghost' }), 'min-h-11 w-full')}
-					>
+					<Link href={actionHref} className={cn(buttonVariants(), 'min-h-11 w-full')}>
 						{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
 					</Link>
 				</LiquidGlassSurface>
