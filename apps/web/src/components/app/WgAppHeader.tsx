@@ -1,6 +1,7 @@
 'use client';
 
 import { buttonVariants } from '@/components/ui/button';
+import { LiquidGlassSurface } from '@/components/ui/liquid-glass-surface';
 import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { cn } from '@/shared/lib/cn';
@@ -17,37 +18,39 @@ export function WgAppHeader() {
 
 	return (
 		<header data-app-chrome className="flex flex-col gap-2 px-4 pt-3">
-			<div className="flex min-w-0 items-center gap-1">
-				<Link
-					href={baseHref}
-					className={cn(
-						buttonVariants({ variant: 'ghost' }),
-						'h-auto min-h-11 min-w-0 flex-1 justify-start px-0',
-					)}
-				>
-					<span className="flex min-w-0 flex-col items-start gap-0.5">
-						<span className="text-xs text-muted-foreground">ManaWG</span>
-						<span className="w-full truncate" title={wg.name}>
-							{wg.name}
+			<LiquidGlassSurface>
+				<div className="flex min-w-0 items-center gap-1">
+					<Link
+						href={baseHref}
+						className={cn(
+							buttonVariants({ variant: 'ghost' }),
+							'h-auto min-h-11 min-w-0 flex-1 justify-start px-0',
+						)}
+					>
+						<span className="flex min-w-0 flex-col items-start gap-0.5">
+							<span className="text-xs text-muted-foreground">ManaWG</span>
+							<span className="w-full truncate" title={wg.name}>
+								{wg.name}
+							</span>
 						</span>
-					</span>
-				</Link>
-				<Link
-					href={`${baseHref}/suche`}
-					aria-label="WG durchsuchen"
-					className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11')}
-				>
-					<Search aria-hidden />
-				</Link>
-				<Link
-					href={`${baseHref}/einstellungen`}
-					aria-label="Konto und WG-Einstellungen öffnen"
-					className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11')}
-				>
-					<UserRound data-icon="inline-start" aria-hidden />
-					Konto & WG
-				</Link>
-			</div>
+					</Link>
+					<Link
+						href={`${baseHref}/suche`}
+						aria-label="WG durchsuchen"
+						className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11')}
+					>
+						<Search aria-hidden />
+					</Link>
+					<Link
+						href={`${baseHref}/einstellungen`}
+						aria-label="Konto und WG-Einstellungen öffnen"
+						className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11')}
+					>
+						<UserRound data-icon="inline-start" aria-hidden />
+						Konto & WG
+					</Link>
+				</div>
+			</LiquidGlassSurface>
 			{section && <SubNav label={`${section.label} – Bereiche`} items={[]} fallback />}
 		</header>
 	);

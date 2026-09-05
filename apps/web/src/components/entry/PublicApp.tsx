@@ -11,6 +11,7 @@ import { ErrorBox } from '@/components/neu/ErrorBox';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
+import { LiquidGlassSurface } from '@/components/ui/liquid-glass-surface';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
@@ -207,25 +208,27 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 					className="flex min-w-0 flex-col gap-6"
 				>
 					<header className="flex flex-col gap-3">
-						<div className="flex items-center justify-between gap-3">
-							<Link
-								href={publicHref('/')}
-								className="flex min-h-11 items-center gap-2"
-								aria-label="ManaWG Startseite"
-							>
-								<LogoMark size={28} radius={7} />
-								<span className="text-sm font-medium">ManaWG</span>
-							</Link>
-							<Link
-								href={publicHref('/neu')}
-								className={cn(
-									buttonVariants({ variant: 'link' }),
-									'min-h-11 px-0 text-muted-foreground',
-								)}
-							>
-								Anmelden
-							</Link>
-						</div>
+						<LiquidGlassSurface>
+							<div className="flex items-center justify-between gap-3">
+								<Link
+									href={publicHref('/')}
+									className="flex min-h-11 items-center gap-2"
+									aria-label="ManaWG Startseite"
+								>
+									<LogoMark size={28} radius={7} />
+									<span className="text-sm font-medium">ManaWG</span>
+								</Link>
+								<Link
+									href={publicHref('/neu')}
+									className={cn(
+										buttonVariants({ variant: 'link' }),
+										'min-h-11 px-0 text-muted-foreground',
+									)}
+								>
+									Anmelden
+								</Link>
+							</div>
+						</LiquidGlassSurface>
 						<div className="flex flex-col gap-1">
 							<h1 className="text-2xl font-semibold tracking-tight">
 								{module?.title ?? 'Euer WG-Alltag. Gemeinsam geregelt.'}
@@ -308,28 +311,27 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 			<nav
 				aria-label="Öffentliche Hauptnavigation"
 				data-app-chrome
-				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] border-t border-border bg-background/95 backdrop-blur"
+				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] px-2 pb-[env(safe-area-inset-bottom,0px)]"
 			>
-				<ul
-					className="flex gap-1 px-2 pt-1 [&>li]:min-w-0 [&>li]:flex-1"
-					style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-				>
-					<NavItem
-						href={publicHref('/')}
-						label="Start"
-						iconKey="home"
-						activePrefixes={[discoveryHref('aktivitaet')]}
-					/>
-					{WG_SECTIONS.map((item) => (
+				<LiquidGlassSurface>
+					<ul className="flex gap-1 px-0 pt-1 [&>li]:min-w-0 [&>li]:flex-1">
 						<NavItem
-							key={item.label}
-							href={discoveryHref(item.pages[0].slug)}
-							label={item.label}
-							iconKey={item.iconKey}
-							activePrefixes={item.pages.map((page) => discoveryHref(page.slug))}
+							href={publicHref('/')}
+							label="Start"
+							iconKey="home"
+							activePrefixes={[discoveryHref('aktivitaet')]}
 						/>
-					))}
-				</ul>
+						{WG_SECTIONS.map((item) => (
+							<NavItem
+								key={item.label}
+								href={discoveryHref(item.pages[0].slug)}
+								label={item.label}
+								iconKey={item.iconKey}
+								activePrefixes={item.pages.map((page) => discoveryHref(page.slug))}
+							/>
+						))}
+					</ul>
+				</LiquidGlassSurface>
 			</nav>
 		</div>
 	);

@@ -1,5 +1,6 @@
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { LiquidGlassSurface } from '@/components/ui/liquid-glass-surface';
 import { cn } from '@/shared/lib/cn';
 import Link from 'next/link';
 
@@ -31,9 +32,14 @@ export function WgWelcome(props: WgWelcomeProps) {
 		return (
 			<div className="flex flex-col gap-2">
 				{invitation && <p className="text-sm text-muted-foreground">Deine Einladung ist bereit.</p>}
-				<Link href={actionHref} className={cn(buttonVariants(), 'min-h-11 w-full')}>
-					{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
-				</Link>
+				<LiquidGlassSurface>
+					<Link
+						href={actionHref}
+						className={cn(buttonVariants({ variant: 'ghost' }), 'min-h-11 w-full')}
+					>
+						{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
+					</Link>
+				</LiquidGlassSurface>
 			</div>
 		);
 	}

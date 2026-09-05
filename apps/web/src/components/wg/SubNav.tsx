@@ -3,6 +3,7 @@
 import { getWgSection } from '@/components/app/navigation';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
+import { LiquidGlassSurface } from '@/components/ui/liquid-glass-surface';
 import { cn } from '@/shared/lib/cn';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -54,33 +55,35 @@ export function SubNav({ label, items, fallback = false }: SubNavProps) {
 			data-wg-local-nav={fallback ? undefined : ''}
 			className={cn('min-w-0', fallback && 'group-has-[[data-wg-local-nav]]/wg-shell:hidden')}
 		>
-			<ul className="flex flex-wrap gap-1">
-				{links.map(({ href, label: itemLabel, icon: Icon, count }) => {
-					const target = new URL(href, 'https://manawg.invalid').pathname.replace(/\/+$/, '');
-					const current = pathname === target;
-					const active = current || pathname.startsWith(`${target}/`);
-					return (
-						<li key={href}>
-							<Link
-								href={href}
-								aria-current={active ? (current ? 'page' : 'location') : undefined}
-								className={cn(
-									buttonVariants({ variant: active ? 'secondary' : 'ghost' }),
-									'min-h-11',
-								)}
-							>
-								<Icon data-icon="inline-start" aria-hidden />
-								{itemLabel}
-								{typeof count === 'number' && count > 0 && (
-									<Badge variant="secondary" className="ml-0.5 tabular-nums">
-										{count}
-									</Badge>
-								)}
-							</Link>
-						</li>
-					);
-				})}
-			</ul>
+			<LiquidGlassSurface>
+				<ul className="flex flex-wrap gap-1 p-1">
+					{links.map(({ href, label: itemLabel, icon: Icon, count }) => {
+						const target = new URL(href, 'https://manawg.invalid').pathname.replace(/\/+$/, '');
+						const current = pathname === target;
+						const active = current || pathname.startsWith(`${target}/`);
+						return (
+							<li key={href}>
+								<Link
+									href={href}
+									aria-current={active ? (current ? 'page' : 'location') : undefined}
+									className={cn(
+										buttonVariants({ variant: active ? 'secondary' : 'ghost' }),
+										'min-h-11',
+									)}
+								>
+									<Icon data-icon="inline-start" aria-hidden />
+									{itemLabel}
+									{typeof count === 'number' && count > 0 && (
+										<Badge variant="secondary" className="ml-0.5 tabular-nums">
+											{count}
+										</Badge>
+									)}
+								</Link>
+							</li>
+						);
+					})}
+				</ul>
+			</LiquidGlassSurface>
 		</nav>
 	);
 }

@@ -2,6 +2,25 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* The material wrapper keeps an opaque semantic surface when the browser or
+   accessibility preference cannot provide readable translucency. */
+@supports not ((backdrop-filter: blur(1px))) {
+	.liquid-glass-surface[data-liquid-glass] > :first-child {
+		background: var(--background) !important;
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
+}
+
+/* biome-ignore lint/correctness/noUnknownMediaFeatureName: these accessibility media features are supported where exposed by the browser. */
+@media (forced-colors: active), (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
+	.liquid-glass-surface[data-liquid-glass] > :first-child {
+		background: var(--background) !important;
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
+}
+
 @theme inline {
 	--font-sans: var(--font-inter);
 	--font-heading: var(--font-inter);

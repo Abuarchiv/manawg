@@ -42,3 +42,7 @@ Implementation authorized on 2026-09-05. The user approved the image's organizat
 ## Authorized public-entry follow-up — 2026-09-05
 
 The first implementation slice is limited to the public entry, discovery previews and authentication presentation. It keeps the existing membership lookup, invitation propagation, account choices, recovery and privacy link contracts, while replacing public empty states with explicitly fictional, read-only module examples. Its former public-only petrol styling is superseded by the user's correction: the installed Base Nova / Neutral / Inter / Lucide components and semantic tokens are authoritative, with a documented Motion transition. Connected Chrome review and final controller acceptance remain pending; no browser or hosted-service result is claimed here.
+
+## Authorized Liquid Glass web follow-up — 2026-09-05
+
+The current shared-surface follow-up adds the exact MIT `simple-liquid-glass@4.1.0` core around existing public/private navigation, toolbars, SubNav, public CTA, auth TabsList and dropdown popups. The adapter uses the upstream `mode="preset"`, deterministic `effectMode="blur"` and `mobileFallback="css-only"` settings to avoid server/client effect selection drift; data cards and forms remain original opaque shadcn surfaces. This is a web frosted/glass material with documented browser limits, not a native or iOS 27/28 compatibility claim.

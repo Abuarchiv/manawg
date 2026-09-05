@@ -1,4 +1,5 @@
 import { buttonVariants } from '@/components/ui/button';
+import { LiquidGlassSurface } from '@/components/ui/liquid-glass-surface';
 import { LogoMark } from '@/shared/components/ui/LogoMark';
 import { cn } from '@/shared/lib/cn';
 import { ArrowLeft } from 'lucide-react';
@@ -30,19 +31,21 @@ export function EntryFrame({
 				paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
 			}}
 		>
-			<div className="flex items-center justify-between gap-3">
-				<Link
-					href={backHref}
-					aria-label="Zurück zur öffentlichen Ansicht"
-					className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11')}
-				>
-					<ArrowLeft aria-hidden />
-				</Link>
-				<Link href={backHref} className={cn(buttonVariants({ variant: 'ghost' }), 'min-h-11')}>
-					<LogoMark size={24} radius={6} />
-					ManaWG
-				</Link>
-			</div>
+			<LiquidGlassSurface>
+				<div className="flex items-center justify-between gap-3">
+					<Link
+						href={backHref}
+						aria-label="Zurück zur öffentlichen Ansicht"
+						className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11')}
+					>
+						<ArrowLeft aria-hidden />
+					</Link>
+					<Link href={backHref} className={cn(buttonVariants({ variant: 'ghost' }), 'min-h-11')}>
+						<LogoMark size={24} radius={6} />
+						ManaWG
+					</Link>
+				</div>
+			</LiquidGlassSurface>
 			<header className="flex flex-col gap-2">
 				<h1 id={headingId} className="text-2xl font-semibold tracking-tight">
 					{title}

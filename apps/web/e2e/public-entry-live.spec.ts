@@ -16,6 +16,8 @@ test.describe('live public dashboard entry', () => {
 		await expect(page.getByRole('link', { name: 'WG erstellen', exact: true })).toBeVisible();
 		const examples = page.getByRole('region', { name: 'So kann euer Alltag aussehen' });
 		await expect(examples).toBeVisible();
+		await expect(page.locator('[data-liquid-glass]')).toHaveCount(3);
+		await expect(page.locator('[data-slot="card"][data-liquid-glass]')).toHaveCount(0);
 		for (const label of ['Einkauf', 'Ausgaben', 'Putzen', 'Pinnwand']) {
 			await expect(examples.getByRole('article', { name: `${label}, Beispiel-WG` })).toBeVisible();
 		}
@@ -29,6 +31,8 @@ test.describe('live public dashboard entry', () => {
 		).toBeVisible();
 		await expect(page.getByRole('article', { name: 'Ausgaben, Beispiel-WG' })).toBeVisible();
 		await expect(page.getByText('Pizzaabend', { exact: true })).toBeVisible();
+		await expect(page.locator('[data-liquid-glass]')).toHaveCount(4);
+		await expect(page.locator('[data-slot="card"][data-liquid-glass]')).toHaveCount(0);
 		await page.reload();
 		await expect(
 			page.getByRole('heading', { name: 'Ausgaben', exact: true, level: 1 }),

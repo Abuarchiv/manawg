@@ -1,4 +1,5 @@
 import { ToastContainer } from '@/components/ui/Toast';
+import { LiquidGlassSurface } from '@/components/ui/liquid-glass-surface';
 import { NavItem } from '@/components/wg/NavItem';
 import { OfflineBanner } from '@/components/wg/OfflineBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
@@ -167,33 +168,32 @@ function WgShell({
 			<nav
 				aria-label="WG Hauptnavigation"
 				data-app-chrome
-				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85"
+				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] px-2 pb-[env(safe-area-inset-bottom,0px)]"
 			>
-				<ul
-					className="flex gap-1 px-2 pt-1 [&>li]:min-w-0 [&>li]:flex-1"
-					style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-				>
-					<NavItem
-						href={wgBaseHref}
-						label="Start"
-						iconKey="home"
-						activePrefixes={[`${wgBaseHref}/aktivitaet`]}
-					/>
-					{WG_SECTIONS.map((section) => (
+				<LiquidGlassSurface>
+					<ul className="flex gap-1 px-0 pt-1 [&>li]:min-w-0 [&>li]:flex-1">
 						<NavItem
-							key={section.label}
-							href={`${wgBaseHref}/${section.pages[0].slug}`}
-							label={section.label}
-							iconKey={section.iconKey}
-							activePrefixes={section.pages.map((page) => `${wgBaseHref}/${page.slug}`)}
+							href={wgBaseHref}
+							label="Start"
+							iconKey="home"
+							activePrefixes={[`${wgBaseHref}/aktivitaet`]}
 						/>
-					))}
-					{/* Vier Ziele nach Candidate A: Start, Haushalt (Einkauf/Vorräte/
+						{WG_SECTIONS.map((section) => (
+							<NavItem
+								key={section.label}
+								href={`${wgBaseHref}/${section.pages[0].slug}`}
+								label={section.label}
+								iconKey={section.iconKey}
+								activePrefixes={section.pages.map((page) => `${wgBaseHref}/${page.slug}`)}
+							/>
+						))}
+						{/* Vier Ziele nach Candidate A: Start, Haushalt (Einkauf/Vorräte/
 					    Putzen/Kalender), Finanzen (Ausgaben/Fixkosten/Mahnungen/Import),
 					    Austausch (Pinnwand/Chat). Alle bisherigen Deep Links lösen
 					    weiter auf; Suche/Aktivität/Einstellungen bleiben über
 					    Header- und Start-Verlinkungen erreichbar. */}
-				</ul>
+					</ul>
+				</LiquidGlassSurface>
 			</nav>
 		</WgContextProvider>
 	);
