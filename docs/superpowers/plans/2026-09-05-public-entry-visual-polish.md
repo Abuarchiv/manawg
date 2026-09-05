@@ -29,16 +29,34 @@
 
 **Interfaces:** Retain `PublicApp({ activeModule?: string })`, invitation URLs and existing auth component contracts. Keep existing `WgWelcome` variants usable by other callers. Read all callers before changing shared props/styles.
 
-- [ ] Inspect source and caller graph before edits; identify styles that can remain scoped to public/auth wrappers. Read the existing tests and relevant skills; keep one implementer owning source files.
-- [ ] Compose start and module previews from static, explicitly labeled data; preserve state branches. Use short German examples (shopping item/quantity, attributed expense with a coherent split, assigned chore, authored notice). Secondary route previews should explain their own feature.
-- [ ] Apply scoped petrol tokens and surface treatment, improve visible logo treatment without replacing brand assets, and simplify auth presentation. Keep private WG screens unaffected.
-- [ ] Update focused regression assertions for public preview visibility, removed catalog, invitation retention, error/retry and layout. Reuse existing Playwright test structure; no new framework.
-- [ ] Run Node-22 lint, typecheck, production build and suitable non-browser checks; record exact commands/results and pre-existing failures. Do not print environment secrets.
-- [ ] Update OpenSpec proposal/design/tasks with this authorized public-only follow-up and truthful validation state. Do not claim browser checks the controller has not completed.
-- [ ] Self-review, commit only this slice locally, and write a concise implementation report with commit, changed files, checks, and any unresolved concerns.
+- [x] Inspect source and caller graph before edits; identify styles that can remain scoped to public/auth wrappers. Read the existing tests and relevant skills; keep one implementer owning source files.
+- [x] Compose start and module previews from static, explicitly labeled data; preserve state branches. Use short German examples (shopping item/quantity, attributed expense with a coherent split, assigned chore, authored notice). Secondary route previews should explain their own feature.
+- [x] Apply scoped petrol tokens and surface treatment, improve visible logo treatment without replacing brand assets, and simplify auth presentation. Keep private WG screens unaffected.
+- [x] Update focused regression assertions for public preview visibility, removed catalog, invitation retention, error/retry and layout. Reuse existing Playwright test structure; no new framework.
+- [x] Run Node-22 lint, typecheck, production build and suitable non-browser checks; record exact commands/results and pre-existing failures. Do not print environment secrets.
+- [x] Update OpenSpec proposal/design/tasks with this authorized public-only follow-up and truthful validation state. Do not claim browser checks the controller has not completed.
+- [x] Self-review, commit only this slice locally, and write a concise implementation report with commit, changed files, checks, and any unresolved concerns.
 
 ## Task 2: Controller acceptance and independent review
 
-- [ ] Inspect start, all representative public previews, invitation and auth screens in connected Chrome; check mobile widths, light/dark and keyboard behavior through supported browser APIs.
-- [ ] Obtain independent spec/code review of the bounded diff; send concrete findings back to the same implementer for fixes.
-- [ ] Confirm applicable checks, refresh the Company Graphify graph after source changes, record final validation and present the verified preview. Keep deployment separate.
+- [x] Inspect start, all representative public previews, invitation and auth screens in connected Chrome; check mobile widths, light/dark and keyboard behavior through supported browser APIs.
+- [x] Obtain independent spec/code review of the bounded diff; send concrete findings back to the same implementer for fixes.
+- [x] Confirm applicable checks, refresh the Company Graphify graph after source changes, record final validation and present the verified preview. Keep deployment separate.
+
+
+## Final acceptance — 2026-09-05
+
+Implementation commit: `a364104` (`feat: polish public entry previews`). Bruna used gpt-5.6-luna xhigh; independent read-only review used gpt-5.6-terra xhigh and passed with no actionable findings. The controller performed the following checks in the connected Chrome Extension on `localhost:3101`.
+
+- All eleven discover routes render explicitly fictional content and no longer show the disconnected-WG empty state.
+- 24 root/discover layout checks at 320 and 430 CSS pixels found no horizontal overflow; representative 390px and desktop 480px-frame checks passed. At 320px the example cards use one column. Light and dark views were inspected.
+- Invitation `ABCD2345` survived public entry, Haushalt navigation, the preview return link, and the join action into `/neu?code=ABCD2345`. No invitation was submitted.
+- The create action reaches `/neu?action=create`. Email/password controls have 16px text and 44px height; the SMS tab exposes its phone field. No authentication or SMS request was submitted.
+- Keyboard navigation reaches the visible skip link. Main CTA contrast measured 9.89:1 in light mode and 8.16:1 in dark mode.
+- The original viewport and system-theme behavior were restored; the final public preview remains open in Chrome.
+- Node 22.23.2 root/web lint, feature boundaries, typecheck, isolated production build, analytics privacy check, OpenSpec validation, and diff whitespace checks passed.
+- The unchanged bundle-budget checker passed against the isolated final production build via a temporary `.next` symlink: shared first-load gzip 101.5 kB / 120 kB; all route budgets passed. The initial check against the active development `.next` directory was not production evidence.
+- Focused Playwright browser assertions were updated and independently reviewed, but the Playwright browser runner was not executed because browser verification is restricted to the connected Chrome Extension. Older full-suite results in the parent OpenSpec task file belong to the preceding redesign baseline.
+- `graphify update .` completed for the worktree and Company graph. The Company scan reports optional SQL parser absence and an unrelated existing syntax error in the social-auth checkout; no unrelated files were repaired.
+
+Remaining external limitation: an anonymous final GET `/api/wg/mine` still returned HTTP 500, matching the pre-change baseline. Its visible retry/error state is preserved; successful hosted authentication and real WG data were not claimed. No push, merge or deployment was performed.

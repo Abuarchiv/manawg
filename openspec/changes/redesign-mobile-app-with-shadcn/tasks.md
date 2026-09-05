@@ -107,10 +107,10 @@ git diff --check
 - [x] Implement the public start and discovery preview slice with static, clearly fictional read-only content, scoped petrol presentation and compact guest entry while preserving public/auth contracts.
 - [x] Keep membership lookup errors and retry visible, invitation parameters intact and remove repeated public `Weitere Bereiche` catalogs.
 - [x] Update focused public-entry assertions for the approved headline, four previews, active-module content and removed catalog.
-- [ ] Controller: inspect the start, representative module routes, invitation and auth states through the connected Chrome Extension at mobile widths and in both themes.
-- [ ] Controller: complete independent review and final repository gates; no browser or hosted-service evidence is claimed by this implementation slice.
+- [x] Controller: inspect the start, all eleven module routes, invitation and auth controls through the connected Chrome Extension at mobile widths and in both themes.
+- [x] Controller: complete independent review and final repository gates. Public-entry follow-up evidence and explicit hosted-auth limitations are recorded in [the accepted implementation plan](../../../docs/superpowers/plans/2026-09-05-public-entry-visual-polish.md).
 
-## Final evidence — 2026-09-05
+## Original mobile-redesign evidence — 2026-09-05 (before public-entry follow-up)
 
 - Root lint: 447 files checked.
 - Web lint and feature boundaries: 438 files, 7 feature boundaries OK.
