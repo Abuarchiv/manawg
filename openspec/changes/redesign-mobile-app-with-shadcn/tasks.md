@@ -131,7 +131,7 @@ git diff --check
 - [x] Replace the WG context membership/error-state native controls with the existing Alert/Button and shadcn link variants while preserving text, reload behavior, destination and guard conditions.
 - [x] Apply the existing bottom-navigation active-state animation to both `aria-current="page"` and grouped `aria-current="location"` states in normal and reduced-motion media rules.
 - [x] Keep database-down fixture bootstrap aligned with the existing member-header guard: expose fixture `currentMember`, send the existing member header for the members refresh, and cover missing/valid/invalid headers plus dashboard access in the request-only API regression.
-- [ ] Controller: confirm the existing Test-WG runtime and connected-Chrome startup/error-state presentation after the isolated build; no browser CLI run is part of this slice.
+- [x] Controller: verified the final Test-WG build in connected Chrome at `http://127.0.0.1:3101/wg/MTE8PZAT`: Start loads without the former membership failure; Einkauf, Ausgaben, opening/cancelling the expense editor and Fixkosten work at 320/390px without horizontal overflow. Glass remains bottom-only. Grouped Finanzen has `aria-current="location"` and the existing animation, which becomes `none` with reduced motion. Dark mode was visually checked; temporary browser emulation was reset. Recovery-state component changes passed source review, not an injected browser-failure test. Data remain fixed fixtures; hosted login, persistent writes and live chat were not verified.
 
 ## Original mobile-redesign evidence — 2026-09-05 (before public-entry follow-up)
 
