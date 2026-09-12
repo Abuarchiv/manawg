@@ -1,5 +1,7 @@
 # Social login repair implementation plan
 
+> Release planning update (2026-09-04): This document records the historical social-login repair and its evidence. The current source includes Google, email/password, and SMS flows; do not use the social-only wording below as the current release scope or treat historical provider settings as live facts. Follow the [consolidated app release plan](2026-09-04-app-release-readiness.md) and reconcile the existing credential-auth specification before further implementation.
+
 > For agentic workers: execute the scoped tasks below and independently review the final diff.
 
 **Goal:** Restore the agreed social-only login on the canonical production app.
