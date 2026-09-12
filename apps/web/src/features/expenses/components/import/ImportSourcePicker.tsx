@@ -1,6 +1,8 @@
 'use client';
 
-import { Check, FileText, FileUp, Image as ImageIcon } from 'lucide-react';
+import { FieldLegend, FieldSet } from '@/components/ui/field';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { FileText, FileUp, Image as ImageIcon } from 'lucide-react';
 
 export type ImportSourceKind = 'splitwise_csv' | 'splid_csv' | 'ocr_screenshot';
 
@@ -37,34 +39,33 @@ const OPTIONS: ReadonlyArray<{
 
 export function ImportSourcePicker({ value, onChange }: Props) {
 	return (
-		<fieldset className="m-0 grid min-w-0 gap-3 border-0 p-0 sm:grid-cols-3">
-			<legend className="sr-only">Importquelle wählen</legend>
-			{OPTIONS.map((option) => {
-				const Icon = option.icon;
-				const active = value === option.id;
-				return (
-					<button
-						key={option.id}
-						type="button"
-						onClick={() => onChange(option.id)}
-						aria-pressed={active}
-						className={`relative flex flex-col items-start gap-2 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-							active
-								? 'border-[var(--accent)] bg-[var(--accent)]/10'
-								: 'border-[var(--border)] hover:border-[var(--border-strong)]'
-						}`}
+		<FieldSet>
+			<FieldLegend>Importquelle wählen</FieldLegend>
+			<ToggleGroup
+				value={value ? [value] : []}
+				onValueChange={(values) => {
+					const next = values[0];
+					if (next === 'splitwise_csv' || next === 'splid_csv' || next === 'ocr_screenshot')
+						onChange(next);
+				}}
+				orientation="vertical"
+				variant="outline"
+				className="w-full"
+			>
+				{OPTIONS.map(({ id, title, hint, icon: Icon }) => (
+					<ToggleGroupItem
+						key={id}
+						value={id}
+						className="h-auto min-h-16 w-full justify-start gap-3 whitespace-normal py-3 text-left"
 					>
-						{active && (
-							<Check className="absolute right-3 top-3 h-4 w-4 text-[var(--accent)]" aria-hidden />
-						)}
-						<Icon className="h-5 w-5 text-[var(--text-2)]" aria-hidden />
-						<div>
-							<div className="text-[14px] font-medium text-[var(--text-1)]">{option.title}</div>
-							<div className="mt-0.5 text-[12px] text-[var(--text-3)]">{option.hint}</div>
-						</div>
-					</button>
-				);
-			})}
-		</fieldset>
+						<Icon />
+						<span className="min-w-0">
+							<span className="block">{title}</span>
+							<span className="block text-xs text-muted-foreground">{hint}</span>
+						</span>
+					</ToggleGroupItem>
+				))}
+			</ToggleGroup>
+		</FieldSet>
 	);
 }

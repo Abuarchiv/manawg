@@ -1,6 +1,7 @@
 'use client';
 
-import { ICON_BUTTON, ICON_BUTTON_BORDERED } from '@/components/ui/styles';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/shared/lib/cn';
 import { CalendarDays, Plus, Settings, X } from 'lucide-react';
 import Link from 'next/link';
 
@@ -29,26 +30,27 @@ export function FormToggleButton({
 	closeLabel,
 }: FormToggleButtonProps) {
 	return (
-		<button
+		<Button
 			type="button"
+			variant="default"
 			onClick={onToggle}
 			aria-expanded={open}
 			{...(controls ? { 'aria-controls': controls } : {})}
 			aria-label={open ? closeLabel : openLabel}
-			className="btn-app-primary inline-flex h-11 w-11 shrink-0 justify-center rounded-md p-0 sm:w-auto sm:justify-start sm:px-3"
+			className="h-auto min-h-11 min-w-11 shrink-0 whitespace-normal"
 		>
 			{open ? (
 				<>
-					<X className="h-5 w-5 sm:h-3.5 sm:w-3.5" aria-hidden />
-					<span className="hidden sm:inline">Schließen</span>
+					<X data-icon="inline-start" aria-hidden />
+					<span>Schließen</span>
 				</>
 			) : (
 				<>
-					<Plus className="h-5 w-5 sm:h-3.5 sm:w-3.5" aria-hidden />
-					<span className="hidden sm:inline">Neu</span>
+					<Plus data-icon="inline-start" aria-hidden />
+					<span>Neu</span>
 				</>
 			)}
-		</button>
+		</Button>
 	);
 }
 
@@ -57,9 +59,10 @@ export function SettingsLink({ wgBaseHref }: { wgBaseHref: string }) {
 		<Link
 			href={`${wgBaseHref}/einstellungen`}
 			aria-label="WG-Einstellungen öffnen"
-			className={ICON_BUTTON}
+			className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11')}
 		>
-			<Settings className="h-4 w-4" aria-hidden />
+			<Settings aria-hidden />
+			<span className="sr-only">WG-Einstellungen öffnen</span>
 		</Link>
 	);
 }
@@ -68,11 +71,11 @@ export function CalendarLink({ wgBaseHref }: { wgBaseHref: string }) {
 	return (
 		<Link
 			href={`${wgBaseHref}/kalender`}
-			aria-label="Kalender"
-			title="Kalender"
-			className={ICON_BUTTON_BORDERED}
+			aria-label="Termine im Kalender öffnen"
+			title="Termine"
+			className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), 'size-11')}
 		>
-			<CalendarDays className="h-4 w-4" aria-hidden />
+			<CalendarDays aria-hidden />
 		</Link>
 	);
 }

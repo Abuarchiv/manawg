@@ -1,6 +1,9 @@
 'use client';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Skeleton } from '@/components/ui/skeleton';
 import { BackLink } from '@/components/wg/BackLink';
 import { DebtRow } from '@/components/wg/DebtRow';
+import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { RemindButton } from '@/components/wg/RemindButton';
 import { ReminderHistory, type ReminderHistoryItem } from '@/components/wg/ReminderHistory';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -15,7 +18,6 @@ import {
 } from '@/features/expenses/debts';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
 import { REMINDER_COOLDOWN_HOURS, canSendReminder } from '@/features/expenses/reminders';
-import { AlertCircle, Loader2, RotateCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface ExpenseSplitDto {
@@ -134,49 +136,48 @@ export default function MahnungenPage() {
 	}
 
 	return (
-		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+		<div className="mx-auto flex w-full max-w-md flex-col gap-5 px-4 py-5">
 			<header className="flex items-center gap-3">
 				<BackLink href={`${wgBaseHref}/ausgaben`} label="Ausgaben" />
-				<div className="min-w-0 flex-1">
-					<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">
-						Mahnungen
-					</h1>
-					<p className="mt-0.5 text-[13px] text-[var(--text-3)]">
+				<div className="min-w-0">
+					<h1 className="text-xl font-semibold">Mahnungen</h1>
+					<p className="text-sm text-muted-foreground">
 						Max. alle {REMINDER_COOLDOWN_HOURS} Stunden pro Person
 					</p>
 				</div>
 			</header>
-
 			{loadError && (
-				<div
-					role="alert"
-					className="flex items-center justify-between gap-3 rounded-md border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-3 py-2 text-[13px] text-[var(--danger)]"
-				>
-					<span>{loadError}</span>
-					<button
-						type="button"
-						onClick={() => void load(true)}
-						disabled={loading || refreshing}
-						className="inline-flex h-11 items-center gap-1.5 rounded-md border border-[var(--danger)]/30 px-3 text-[12px] font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:opacity-50"
-					>
-						<RotateCw className="h-3.5 w-3.5" aria-hidden />
-						Erneut laden
-					</button>
-				</div>
+				<LoadErrorBanner
+					message={loadError}
+					onRetry={() => void load(true)}
+					busy={loading || refreshing}
+					retryLabel="Erneut laden"
+				/>
 			)}
-
-			<section className="space-y-3">
-				<h2 className="text-sm font-semibold text-[var(--text-1)]">Offene Schulden</h2>
+			<section className="flex flex-col gap-3">
+				<h2 className="text-base font-semibold">Offene Schulden</h2>
 				{loading ? (
-					<div className="flex justify-center py-6">
-						<Loader2 className="h-5 w-5 animate-spin text-[var(--text-3)]" aria-hidden />
+					<div
+						className="flex flex-col gap-3"
+						aria-busy="true"
+						aria-label="Offene Schulden werden geladen"
+					>
+						<Skeleton className="h-24 w-full" />
+						<Skeleton className="h-24 w-full" />
 					</div>
 				) : rows.length === 0 ? (
-					<div className="rounded-md border border-dashed border-[var(--border)] px-3 py-6 text-center text-[13px] text-[var(--text-3)]">
-						Alles ausgeglichen — nichts zu mahnen.
-					</div>
+					<Empty>
+						<EmptyHeader>
+							<EmptyTitle>
+								{loadError
+									? 'Schulden noch nicht geladen'
+									: 'Alles ausgeglichen — nichts zu mahnen.'}
+							</EmptyTitle>
+							{loadError && <EmptyDescription>Lade die Daten erneut.</EmptyDescription>}
+						</EmptyHeader>
+					</Empty>
 				) : (
-					<ul className="space-y-2">
+					<ul className="flex flex-col gap-3">
 						{rows.map((row) => {
 							const cooldown = cooldownFor(row.debtorId, row.creditorId);
 							const cooldownLabel = cooldown.nextAllowedAt
@@ -215,13 +216,13 @@ export default function MahnungenPage() {
 					</ul>
 				)}
 			</section>
-
-			<section className="space-y-3">
-				<h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-1)]">
-					<AlertCircle className="h-4 w-4 text-[var(--text-3)]" aria-hidden />
-					Letzte Mahnungen (30 Tage)
-				</h2>
-				<ReminderHistory items={reminders} memberName={memberName} />
+			<section className="flex flex-col gap-3">
+				<h2 className="text-base font-semibold">Letzte Mahnungen (30 Tage)</h2>
+				{loading ? (
+					<Skeleton className="h-20 w-full" />
+				) : (
+					<ReminderHistory items={reminders} memberName={memberName} />
+				)}
 			</section>
 		</div>
 	);

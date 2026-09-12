@@ -1,10 +1,23 @@
 'use client';
 
 import { useToast } from '@/components/ui/Toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from '@/components/ui/empty';
+import {
+	MessageScroller,
+	MessageScrollerButton,
+	MessageScrollerContent,
+	MessageScrollerItem,
+	MessageScrollerProvider,
+	MessageScrollerViewport,
+} from '@/components/ui/message-scroller';
+import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
 import { haptic } from '@/shared/lib/haptics';
-import { ChevronDown, Loader2, MessageCircle } from 'lucide-react';
+import { ChevronDown, MessageCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useChatChannel } from '../chat-channel';
 import { mergePagedMessagesById, mergePagedReactions, previewBody } from '../chat-pure';
@@ -84,12 +97,13 @@ export function ChatView({
 	const [bootstrapping, setBootstrapping] = useState(initialMessages.length === 0);
 	const [bootstrapError, setBootstrapError] = useState(false);
 	const [loadingOlder, setLoadingOlder] = useState(false);
+	const loadingOlderRef = useRef(false);
+	const [olderError, setOlderError] = useState(false);
+	const [sendError, setSendError] = useState<string | null>(null);
+	const [refreshError, setRefreshError] = useState(false);
 	const [replyToId, setReplyToId] = useState<string | null>(null);
-	// Boolean instead of a continuous offset: a numeric scroll state re-rendered
-	// the whole list on every scroll frame.
-	const [showJumpButton, setShowJumpButton] = useState(false);
-	const nearBottomRef = useRef(true);
 	const scrollRef = useRef<HTMLDivElement | null>(null);
+	const chatRootRef = useRef<HTMLDivElement | null>(null);
 	const readSentinelRef = useRef<HTMLDivElement | null>(null);
 	const lastReadSentIdRef = useRef<string | null>(null);
 	const encodedShareCode = encodeURIComponent(shareCode);
@@ -170,9 +184,10 @@ export function ChatView({
 			{ memberId: identity.memberId },
 		);
 		if (!res.ok) {
-			toast.error('Chat konnte nicht aktualisiert werden.');
+			setRefreshError(true);
 			return false;
 		}
+		setRefreshError(false);
 		const refreshedMessageIds = new Set(res.data.messages.map((message) => message.id));
 		setMessages((prev) => [
 			...prev.filter((message) => !refreshedMessageIds.has(message.id)),
@@ -197,7 +212,7 @@ export function ChatView({
 		// history is exhausted.
 		setHasMoreOlder((prev) => prev || res.data.messages.length >= PAGE_SIZE);
 		return true;
-	}, [encodedShareCode, identity.memberId, toast]);
+	}, [encodedShareCode, identity.memberId]);
 
 	const { mode } = useChatChannel(wgId, {
 		onMessageCreated: () => void refresh(),
@@ -223,9 +238,11 @@ export function ChatView({
 	}, [loadInitialMessages]);
 
 	async function loadOlder(): Promise<void> {
-		if (loadingOlder || !hasMoreOlder) return;
+		if (loadingOlderRef.current || !hasMoreOlder) return;
 		const oldest = messages[0];
 		if (!oldest) return;
+		loadingOlderRef.current = true;
+		setOlderError(false);
 		setLoadingOlder(true);
 		try {
 			const res = await apiFetch<{ messages: ChatMessageDto[]; reactions: InitialReactionRow[] }>(
@@ -233,7 +250,7 @@ export function ChatView({
 				{ memberId: identity.memberId },
 			);
 			if (!res.ok) {
-				toast.error('Ältere Nachrichten konnten nicht geladen werden.');
+				setOlderError(true);
 				return;
 			}
 			if (res.data.messages.length === 0) {
@@ -244,6 +261,7 @@ export function ChatView({
 			setReactionRows((prev) => mergePagedReactions(res.data.reactions, prev));
 			setHasMoreOlder(res.data.messages.length >= PAGE_SIZE);
 		} finally {
+			loadingOlderRef.current = false;
 			setLoadingOlder(false);
 		}
 	}
@@ -253,6 +271,7 @@ export function ChatView({
 		mentionMemberIds: string[];
 		replyToMessageId: string | null;
 	}): Promise<boolean> {
+		setSendError(null);
 		const res = await apiFetch<{ message: ChatMessageDto }>(
 			`/api/wg/${encodedShareCode}/chat/messages`,
 			{
@@ -263,7 +282,7 @@ export function ChatView({
 			},
 		);
 		if (!res.ok) {
-			toast.error(explainChatError('send', res.error));
+			setSendError(explainChatError('send', res.error));
 			return false;
 		}
 		setMessages((prev) =>
@@ -275,7 +294,7 @@ export function ChatView({
 		return true;
 	}
 
-	async function react(messageId: string, emoji: string): Promise<void> {
+	async function react(messageId: string, emoji: string): Promise<boolean> {
 		const res = await apiFetch(`/api/wg/${encodedShareCode}/chat/messages/${messageId}/reactions`, {
 			method: 'POST',
 			memberId: identity.memberId,
@@ -284,7 +303,7 @@ export function ChatView({
 		});
 		if (!res.ok) {
 			toast.error(explainChatError('react', res.error));
-			return;
+			return false;
 		}
 		setReactionRows((prev) =>
 			prev.some(
@@ -294,16 +313,17 @@ export function ChatView({
 				? prev
 				: [...prev, { messageId, memberId: identity.memberId, emoji }],
 		);
+		return true;
 	}
 
-	async function unreact(messageId: string, emoji: string): Promise<void> {
+	async function unreact(messageId: string, emoji: string): Promise<boolean> {
 		const res = await apiFetch(
 			`/api/wg/${encodedShareCode}/chat/messages/${messageId}/reactions?emoji=${encodeURIComponent(emoji)}`,
 			{ method: 'DELETE', memberId: identity.memberId, memberToken: identity.memberToken },
 		);
 		if (!res.ok) {
 			toast.error(explainChatError('unreact', res.error));
-			return;
+			return false;
 		}
 		setReactionRows((prev) =>
 			prev.filter(
@@ -315,9 +335,10 @@ export function ChatView({
 					),
 			),
 		);
+		return true;
 	}
 
-	async function editMessage(messageId: string, next: string): Promise<void> {
+	async function editMessage(messageId: string, next: string): Promise<boolean> {
 		const res = await apiFetch<{ message: ChatMessageDto }>(
 			`/api/wg/${encodedShareCode}/chat/messages/${messageId}`,
 			{
@@ -329,7 +350,7 @@ export function ChatView({
 		);
 		if (!res.ok) {
 			toast.error(explainChatError('edit', res.error));
-			return;
+			return false;
 		}
 		setMessages((prev) =>
 			prev.map((m) =>
@@ -345,9 +366,10 @@ export function ChatView({
 					: m,
 			),
 		);
+		return true;
 	}
 
-	async function deleteMessage(messageId: string): Promise<void> {
+	async function deleteMessage(messageId: string): Promise<boolean> {
 		const res = await apiFetch(`/api/wg/${encodedShareCode}/chat/messages/${messageId}`, {
 			method: 'DELETE',
 			memberId: identity.memberId,
@@ -355,7 +377,7 @@ export function ChatView({
 		});
 		if (!res.ok) {
 			toast.error(explainChatError('delete', res.error));
-			return;
+			return false;
 		}
 		setMessages((prev) =>
 			prev.map((m) =>
@@ -364,6 +386,7 @@ export function ChatView({
 					: m,
 			),
 		);
+		return true;
 	}
 
 	const replyTo = replyToId ? (messages.find((m) => m.id === replyToId) ?? null) : null;
@@ -371,133 +394,155 @@ export function ChatView({
 		? (members.find((m) => m.id === replyTo.senderMemberId) ?? null)
 		: null;
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: messages.length is the trigger
+	// Size this route to the visible phone viewport when the keyboard opens.
+	// MessageScroller still owns all message/history scroll positioning.
 	useEffect(() => {
-		const el = scrollRef.current;
-		if (!el) return;
-		if (nearBottomRef.current) el.scrollTop = el.scrollHeight;
-	}, [messages.length]);
-
-	// Initial mount: scroll after first paint so images/layout are measured
-	useEffect(() => {
-		requestAnimationFrame(() => {
-			const el = scrollRef.current;
-			if (el) el.scrollTop = el.scrollHeight;
-		});
+		const frame = chatRootRef.current?.closest<HTMLElement>('[data-chat-frame]');
+		if (!frame) return;
+		const viewport = window.visualViewport;
+		function resize() {
+			if (!frame) return;
+			const top = viewport?.offsetTop ?? 0;
+			const bottom = top + (viewport?.height ?? window.innerHeight);
+			const chrome = document.querySelector<HTMLElement>('nav[data-app-chrome]');
+			const reserved = chrome?.getBoundingClientRect().height ?? 68;
+			frame.style.height = `${Math.max(0, bottom - Math.max(top, frame.getBoundingClientRect().top) - reserved)}px`;
+		}
+		resize();
+		window.addEventListener('resize', resize);
+		viewport?.addEventListener('resize', resize);
+		viewport?.addEventListener('scroll', resize);
+		return () => {
+			window.removeEventListener('resize', resize);
+			viewport?.removeEventListener('resize', resize);
+			viewport?.removeEventListener('scroll', resize);
+		};
 	}, []);
 
-	function onScroll(): void {
-		const el = scrollRef.current;
-		if (!el) return;
-		const fromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-		nearBottomRef.current = fromBottom <= 120;
-		setShowJumpButton(!nearBottomRef.current);
-	}
-
 	function scrollToBottom(): void {
-		const el = scrollRef.current;
-		if (!el) return;
-		el.scrollTop = el.scrollHeight;
-		markLatestRead();
 		haptic('selection');
 	}
 
 	return (
-		<div className="relative flex min-h-0 flex-1 flex-col">
-			<div className="border-b border-[var(--border)] bg-[var(--bg-base)]">
-				<div className="mx-auto flex w-full max-w-3xl items-center justify-between px-3 py-2 sm:px-4">
-					<div className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[var(--text-1)]">
+		<div ref={chatRootRef} className="relative flex min-h-0 flex-1 flex-col bg-background">
+			<div className="border-b border-border bg-background">
+				<div className="mx-auto flex w-full max-w-3xl items-center justify-between px-3 py-2">
+					<div className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground">
 						Chat{' '}
-						<span className="ml-1 inline-flex items-center gap-1 text-[11px] font-normal text-[var(--text-3)]">
-							{mode === 'realtime' ? (
-								<>
-									<span
-										className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)]"
-										aria-hidden
-									/>
-									live
-								</>
-							) : (
-								<>
-									<span
-										className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--text-3)]"
-										aria-hidden
-									/>
-									8s
-								</>
-							)}
-						</span>
+						<Badge
+							variant={mode === 'realtime' ? 'default' : 'secondary'}
+							className="ml-1 gap-1 font-normal"
+						>
+							<span className="inline-block h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+							{mode === 'realtime' ? 'Live' : 'Aktualisiert alle 8 Sek.'}
+						</Badge>
 					</div>
 				</div>
 			</div>
-			<div
-				ref={scrollRef}
-				onScroll={onScroll}
-				data-scroll-y
-				className="flex-1 overflow-y-auto bg-[var(--bg-base)] scroll-hide-mobile"
-			>
-				{bootstrapping ? (
-					<output className="flex h-full items-center justify-center">
-						<Loader2 className="h-5 w-5 animate-spin text-[var(--text-3)]" aria-hidden />
-						<span className="sr-only">Nachrichten werden geladen</span>
-					</output>
-				) : bootstrapError ? (
-					<div className="mx-auto flex h-full w-full max-w-3xl items-center justify-center px-3 sm:px-4">
-						<div
-							role="alert"
-							className="rounded-2xl border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-6 py-5 text-center"
-						>
-							<p className="text-[13px] text-[var(--danger)]">Chat konnte nicht geladen werden.</p>
-							<button
-								type="button"
-								onClick={() => void loadInitialMessages()}
-								className="mt-3 min-h-11 rounded-md border border-[var(--border)] px-3 text-[12px] font-medium text-[var(--text-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-							>
-								Erneut laden
-							</button>
-						</div>
-					</div>
-				) : messages.length === 0 && !hasMoreOlder ? (
-					<div className="mx-auto flex h-full w-full max-w-3xl flex-col justify-end px-3 pb-6 pt-6 sm:px-4">
-						<div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)]/45 px-6 py-8 text-center">
-							<MessageCircle className="h-8 w-8 text-[var(--text-3)]" aria-hidden />
-							{/* craftsman-ignore: TS003 */}
-							<p className="text-[13px] text-[var(--text-3)]">
-								{'Noch keine Nachrichten. Schreibe die erste!'}
-							</p>
-						</div>
-					</div>
-				) : (
-					<MessageList
-						messages={messages}
-						members={members.map((m) => ({ id: m.id, name: m.name, color: m.color ?? null }))}
-						currentMemberId={identity.memberId}
-						isAdmin={isAdmin}
-						reactionsByMessage={reactionsByMessage}
-						hasMoreOlder={hasMoreOlder}
-						loadingOlder={loadingOlder}
-						onLoadOlder={() => void loadOlder()}
-						onReact={(id, emoji) => void react(id, emoji)}
-						onUnreact={(id, emoji) => void unreact(id, emoji)}
-						onEdit={editMessage}
-						onDelete={deleteMessage}
-						onReply={(id) => setReplyToId(id)}
-					/>
-				)}
-				<div ref={readSentinelRef} className="h-px" aria-hidden />
-			</div>
-			<TypingIndicator names={[]} />
-			{showJumpButton && (
-				<button
-					type="button"
-					onClick={scrollToBottom}
-					aria-label="Zum Ende scrollen"
-					className="absolute bottom-24 right-4 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-fg)] shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-				>
-					<ChevronDown className="h-4 w-4" aria-hidden />
-				</button>
+			{refreshError && !bootstrapError && !bootstrapping && (
+				<Alert variant="destructive">
+					<AlertDescription>
+						Aktualisierung fehlgeschlagen. Die zuletzt geladenen Nachrichten bleiben sichtbar.
+						<Button variant="outline" className="min-h-11" onClick={() => void refresh()}>
+							Erneut laden
+						</Button>
+					</AlertDescription>
+				</Alert>
 			)}
+			<MessageScrollerProvider
+				autoScroll
+				defaultScrollPosition="end"
+				scrollEdgeThreshold={120}
+				scrollPreviousItemPeek={0}
+			>
+				<MessageScroller className="flex-1">
+					<MessageScrollerViewport
+						ref={scrollRef}
+						preserveScrollOnPrepend
+						data-scroll-y
+						aria-label="Chat-Nachrichten"
+						className="bg-background"
+					>
+						<MessageScrollerContent className="w-full gap-3 px-3 py-3">
+							{bootstrapping ? (
+								<MessageScrollerItem>
+									<output className="flex min-h-40 items-center justify-center">
+										<Spinner className="size-5" aria-hidden />
+										<span className="sr-only">Nachrichten werden geladen</span>
+									</output>
+								</MessageScrollerItem>
+							) : bootstrapError ? (
+								<MessageScrollerItem className="flex min-h-40 w-full items-center justify-center">
+									<Alert variant="destructive" className="max-w-sm text-center">
+										<AlertTitle>Chat konnte nicht geladen werden.</AlertTitle>
+										<AlertDescription>
+											<Button
+												type="button"
+												variant="outline"
+												size="sm"
+												onClick={() => void loadInitialMessages()}
+												className="mt-3 min-h-11"
+											>
+												Erneut laden
+											</Button>
+										</AlertDescription>
+									</Alert>
+								</MessageScrollerItem>
+							) : messages.length === 0 && !hasMoreOlder ? (
+								<MessageScrollerItem className="py-6">
+									<Empty className="border-dashed">
+										<EmptyHeader>
+											<EmptyMedia>
+												<MessageCircle aria-hidden />
+											</EmptyMedia>
+											<EmptyDescription>
+												{'Noch keine Nachrichten. Schreibe die erste!'}
+											</EmptyDescription>
+										</EmptyHeader>
+									</Empty>
+								</MessageScrollerItem>
+							) : (
+								<MessageList
+									messages={messages}
+									members={members.map((m) => ({ id: m.id, name: m.name, color: m.color ?? null }))}
+									currentMemberId={identity.memberId}
+									shareCode={shareCode}
+									isAdmin={isAdmin}
+									reactionsByMessage={reactionsByMessage}
+									hasMoreOlder={hasMoreOlder}
+									loadingOlder={loadingOlder}
+									olderError={olderError}
+									scrollRef={scrollRef}
+									onLoadOlder={() => void loadOlder()}
+									onReact={react}
+									onUnreact={unreact}
+									onEdit={editMessage}
+									onDelete={deleteMessage}
+									onReply={(id) => setReplyToId(id)}
+								/>
+							)}
+							<MessageScrollerItem>
+								<div ref={readSentinelRef} className="h-px" aria-hidden />
+							</MessageScrollerItem>
+						</MessageScrollerContent>
+					</MessageScrollerViewport>
+					<MessageScrollerButton
+						direction="end"
+						aria-label="Zum Ende scrollen"
+						behavior="auto"
+						className="min-h-11 min-w-11"
+						onClick={scrollToBottom}
+					>
+						<ChevronDown aria-hidden />
+						<span className="sr-only">Zum Ende scrollen</span>
+					</MessageScrollerButton>
+				</MessageScroller>
+			</MessageScrollerProvider>
+			<TypingIndicator names={[]} />
 			<ChatComposer
+				key={`${shareCode}:${identity.memberId}`}
+				draftKey={`manawg:draft:${shareCode}:${identity.memberId}:chat`}
+				error={sendError}
 				members={members.filter((m) => m.active).map((m) => ({ id: m.id, name: m.name }))}
 				currentMemberId={identity.memberId}
 				replyToMessageId={replyToId}
@@ -506,6 +551,7 @@ export function ChatView({
 				}
 				replyToSenderName={replyToSender?.name ?? null}
 				onClearReply={() => setReplyToId(null)}
+				onRestoreReply={setReplyToId}
 				onSend={sendMessage}
 			/>
 		</div>

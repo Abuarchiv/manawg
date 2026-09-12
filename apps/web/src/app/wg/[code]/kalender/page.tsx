@@ -1,8 +1,15 @@
 'use client';
 
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { ALERT_DANGER } from '@/components/ui/styles';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BackLink } from '@/components/wg/BackLink';
+import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
 import { copyText } from '@/core/utils/clipboard';
@@ -25,14 +32,12 @@ import {
 	expandRecurrence,
 	getMonthBounds,
 } from '@/features/events/events';
-import posthog from '@/shared/lib/analytics';
 import { haptic } from '@/shared/lib/haptics';
 import {
 	CalendarDays,
 	ExternalLink,
 	List,
 	Loader2,
-	Plus,
 	RefreshCw,
 	RotateCcw,
 	Trash2,
@@ -228,11 +233,6 @@ export default function KalenderPage() {
 		if (!res.ok) {
 			throw new Error('Termin konnte nicht gespeichert werden.');
 		}
-		posthog.capture('calendar_event_created', {
-			all_day: payload.allDay,
-			has_end_time: payload.endsAt !== null,
-			has_recurrence: payload.recurrence !== null,
-		});
 		haptic('medium');
 		setEvents((current) => [...current, res.data.event]);
 		setCreateOpen(false);
@@ -282,7 +282,6 @@ export default function KalenderPage() {
 			memberToken: identity.memberToken,
 		});
 		if (res.ok && res.data.subscription) {
-			if (method === 'POST') posthog.capture('calendar_subscription_created');
 			setSubscription(res.data.subscription);
 			setCopyState('idle');
 			setSubscriptionNotice(message);
@@ -336,11 +335,6 @@ export default function KalenderPage() {
 		setSelectedDay(day);
 	}
 
-	function handleViewToggle(): void {
-		haptic('light');
-		setView((v) => (v === 'month' ? 'list' : 'month'));
-	}
-
 	function handleFabClick(): void {
 		haptic('light');
 		setCreateOpen(true);
@@ -357,230 +351,237 @@ export default function KalenderPage() {
 	}
 
 	return (
-		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+		<div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-5 sm:px-6 sm:py-8">
 			<header className="flex items-center justify-between gap-3">
-				<BackLink href={`${wgBaseHref}/pinnwand`} label="Pinnwand" />
+				<BackLink href={`${wgBaseHref}/einkauf`} label="Haushalt" />
 				<div className="min-w-0 flex-1">
-					<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">
-						Kalender
-					</h1>
-					<p className="mt-0.5 text-[13px] text-[var(--text-3)]">
-						{loading ? '' : `${events.length} Termin${events.length === 1 ? '' : 'e'}`}
+					<h1 className="text-xl font-semibold tracking-tight">Kalender</h1>
+					<p className="mt-1">
+						<Badge variant="secondary">
+							{loading ? 'Lädt…' : `${events.length} Termin${events.length === 1 ? '' : 'e'}`}
+						</Badge>
 					</p>
 				</div>
 				<div className="flex shrink-0 items-center gap-1.5">
-					{/* Zurück zum aktuellen Monat */}
 					{!isCurrentMonth && (
-						<button
-							type="button"
+						<Button
+							variant="outline"
+							size="icon"
 							onClick={handleJumpToToday}
 							aria-label="Zum aktuellen Monat springen"
 							title="Heute"
-							className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+							className="size-11"
 						>
-							<RotateCcw className="h-4 w-4" aria-hidden />
-						</button>
+							<RotateCcw aria-hidden />
+						</Button>
 					)}
-					{/* View toggle: 44px tap target */}
-					<button
-						type="button"
-						onClick={handleViewToggle}
-						aria-label={view === 'month' ? 'Listenansicht öffnen' : 'Monatsansicht öffnen'}
-						className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-					>
-						{view === 'month' ? (
-							<List className="h-4 w-4" aria-hidden />
-						) : (
-							<CalendarDays className="h-4 w-4" aria-hidden />
-						)}
-					</button>
-					{/* FAB: .fab-mobile primitive handles fixed positioning + safe-area on mobile */}
-					<button
-						type="button"
+					<Button
+						size="icon-lg"
 						onClick={handleFabClick}
 						aria-label="Neuen Termin anlegen"
-						className="fab-mobile inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--text-1)] text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+						className="size-11 rounded-full"
 					>
-						<Plus className="h-5 w-5" aria-hidden />
-					</button>
+						<CalendarDays aria-hidden />
+					</Button>
 				</div>
 			</header>
+			<SubNav label="Haushalt" items={[]} />
 
 			{actionError && (
-				<div role="alert" className={ALERT_DANGER}>
-					{actionError}
-				</div>
+				<Alert variant="destructive">
+					<AlertDescription>{actionError}</AlertDescription>
+				</Alert>
 			)}
 
 			{loadError && (
-				<div
-					role="alert"
-					className="flex items-center justify-between gap-2 rounded-md border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-3 py-2 text-[13px] text-[var(--danger)]"
-				>
-					<span>{loadError}</span>
-					<button
-						type="button"
-						onClick={() => void load(true)}
-						className="inline-flex h-11 items-center rounded-md border border-[var(--danger)]/30 px-3 text-[12px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-					>
-						Erneut laden
-					</button>
-				</div>
+				<Alert variant="destructive">
+					<AlertTitle>Kalender konnte nicht geladen werden</AlertTitle>
+					<AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+						<span>{loadError}</span>
+						<Button
+							type="button"
+							variant="outline"
+							className="min-h-11"
+							onClick={() => void load(true)}
+						>
+							Erneut laden
+						</Button>
+					</AlertDescription>
+				</Alert>
 			)}
 
-			<section
-				aria-labelledby="calendar-subscription-heading"
-				className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface)]/40 p-4"
-			>
-				<div>
-					<h2
-						id="calendar-subscription-heading"
-						className="text-[14px] font-semibold text-[var(--text-1)]"
-					>
-						Kalender abonnieren
-					</h2>
-					<p className="mt-1 text-[12.5px] text-[var(--text-3)]">
+			<Card>
+				<CardHeader>
+					<CardTitle>Kalender abonnieren</CardTitle>
+					<CardDescription>
 						Neue WG-Termine automatisch in Apple Kalender oder Google Kalender erhalten.
-					</p>
-				</div>
-				{subscriptionError && (
-					<div role="alert" className={ALERT_DANGER}>
-						{subscriptionError}
-					</div>
-				)}
-				{subscriptionLoading ? (
-					<p className="text-[12.5px] text-[var(--text-3)]">Feed wird geladen…</p>
-				) : subscription ? (
-					<div className="space-y-3">
-						<label
-							htmlFor="calendar-feed-url"
-							className="block text-[12px] font-medium text-[var(--text-2)]"
-						>
-							Persönlicher Feed-Link
-						</label>
-						<div className="flex gap-2">
-							<input
-								id="calendar-feed-url"
-								type="url"
-								readOnly
-								value={subscription.feedUrl}
-								className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-[12px] text-[var(--text-2)] outline-none"
-							/>
-							<button
-								type="button"
-								onClick={() => void copySubscriptionUrl()}
-								className="inline-flex h-11 shrink-0 items-center rounded-md border border-[var(--border)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-							>
-								{copyState === 'copied' ? 'Kopiert' : 'Link kopieren'}
-							</button>
-						</div>
-						<div className="flex flex-wrap gap-2">
-							<a
-								href={subscription.feedUrl}
-								target="_blank"
-								rel="noopener noreferrer"
-								className="inline-flex h-11 items-center gap-2 rounded-md bg-[var(--text-1)] px-3 text-[12px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-							>
-								<ExternalLink className="h-3.5 w-3.5" aria-hidden />
-								Feed öffnen
-							</a>
-							<button
-								type="button"
-								disabled={subscriptionBusy}
-								onClick={() => setSubscriptionConfirm('rotate')}
-								className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--border)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
-							>
-								<RefreshCw className="h-3.5 w-3.5" aria-hidden />
-								Link erneuern
-							</button>
-							<button
-								type="button"
-								disabled={subscriptionBusy}
-								onClick={() => setSubscriptionConfirm('revoke')}
-								className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--danger)]/30 px-3 text-[12px] font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:opacity-50"
-							>
-								<Trash2 className="h-3.5 w-3.5" aria-hidden />
-								Abo widerrufen
-							</button>
-						</div>
-						{copyState === 'failed' && (
-							<p role="alert" className="text-[12px] text-[var(--danger)]">
-								Kopieren fehlgeschlagen. Markiere den Link und kopiere ihn manuell.
-							</p>
-						)}
-						<details className="rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2">
-							<summary className="cursor-pointer text-[12.5px] font-medium text-[var(--text-1)]">
-								Apple- und Android-Anleitung
-							</summary>
-							<div className="mt-3 space-y-3 text-[12.5px] leading-relaxed text-[var(--text-2)]">
-								<div>
-									<p className="font-medium text-[var(--text-1)]">Apple (iPhone/iPad)</p>
-									<p>
-										Kalender-App → Kalender → Kalender hinzufügen → Abonnementkalender hinzufügen.
-										Den Feed-Link einfügen.
-									</p>
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="flex flex-col gap-3">
+					{subscriptionError && (
+						<Alert variant="destructive">
+							<AlertDescription>{subscriptionError}</AlertDescription>
+						</Alert>
+					)}
+					{subscriptionLoading ? (
+						<p className="text-sm text-muted-foreground">Feed wird geladen…</p>
+					) : subscription ? (
+						<div className="flex flex-col gap-3">
+							<Field>
+								<FieldLabel htmlFor="calendar-feed-url">Persönlicher Feed-Link</FieldLabel>
+								<div className="flex gap-2">
+									<Input
+										id="calendar-feed-url"
+										type="url"
+										readOnly
+										value={subscription.feedUrl}
+										className="min-h-11 min-w-0 flex-1 text-sm"
+									/>
+									<Button
+										type="button"
+										variant="outline"
+										onClick={() => void copySubscriptionUrl()}
+										className="min-h-11 shrink-0"
+									>
+										{copyState === 'copied' ? 'Kopiert' : 'Link kopieren'}
+									</Button>
 								</div>
-								<div>
-									<p className="font-medium text-[var(--text-1)]">Android (Google Kalender)</p>
-									<p>
-										Google Kalender am Computer im Browser öffnen → Weitere Kalender → + → Über URL.
-										Den Feed-Link einfügen; die Android-App unterstützt das Hinzufügen per URL nicht
-										direkt.
-									</p>
-								</div>
+							</Field>
+							<div className="flex flex-wrap gap-2">
+								<Button
+									nativeButton={false}
+									render={
+										<a href={subscription.feedUrl} target="_blank" rel="noopener noreferrer">
+											<ExternalLink data-icon="inline-start" aria-hidden />
+											Feed öffnen
+										</a>
+									}
+									className="min-h-11"
+								/>
+								<Button
+									type="button"
+									variant="outline"
+									disabled={subscriptionBusy}
+									onClick={() => setSubscriptionConfirm('rotate')}
+									className="min-h-11"
+								>
+									<RefreshCw data-icon="inline-start" aria-hidden />
+									Link erneuern
+								</Button>
+								<Button
+									type="button"
+									variant="destructive"
+									disabled={subscriptionBusy}
+									onClick={() => setSubscriptionConfirm('revoke')}
+									className="min-h-11"
+								>
+									<Trash2 data-icon="inline-start" aria-hidden />
+									Abo widerrufen
+								</Button>
 							</div>
-						</details>
-						<p className="text-[11.5px] text-[var(--text-3)]">
-							Der Feed enthält WG-Termine. Putzplan-Aufgaben bleiben in ManaWG und werden nicht
-							exportiert.
-						</p>
-					</div>
-				) : (
-					<button
-						type="button"
-						disabled={subscriptionBusy}
-						onClick={() => void saveSubscription('POST', 'Kalender-Feed erstellt.')}
-						className="inline-flex h-11 items-center gap-2 rounded-md bg-[var(--text-1)] px-3 text-[12px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
-					>
-						{subscriptionBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
-						Kalender-Feed erstellen
-					</button>
-				)}
-				{subscriptionNotice && (
-					<output className="block text-[12px] text-[var(--accent)]" aria-live="polite">
-						{subscriptionNotice}
-					</output>
-				)}
-			</section>
+							{copyState === 'failed' && (
+								<Alert variant="destructive">
+									<AlertDescription>
+										Kopieren fehlgeschlagen. Markiere den Link und kopiere ihn manuell.
+									</AlertDescription>
+								</Alert>
+							)}
+							<details className="rounded-lg border border-border px-3 py-2">
+								<summary className="cursor-pointer text-sm font-medium">
+									Apple- und Android-Anleitung
+								</summary>
+								<div className="mt-3 flex flex-col gap-3 text-sm text-muted-foreground">
+									<div>
+										<p className="font-medium text-foreground">Apple (iPhone/iPad)</p>
+										<p>
+											Kalender-App → Kalender → Kalender hinzufügen → Abonnementkalender hinzufügen.
+											Den Feed-Link einfügen.
+										</p>
+									</div>
+									<div>
+										<p className="font-medium text-foreground">Android (Google Kalender)</p>
+										<p>
+											Google Kalender am Computer im Browser öffnen → Weitere Kalender → + → Über
+											URL. Den Feed-Link einfügen; die Android-App unterstützt das Hinzufügen per
+											URL nicht direkt.
+										</p>
+									</div>
+								</div>
+							</details>
+							<p className="text-xs text-muted-foreground">
+								Der Feed enthält WG-Termine. Putzplan-Aufgaben bleiben in ManaWG und werden nicht
+								exportiert.
+							</p>
+						</div>
+					) : (
+						<Button
+							type="button"
+							disabled={subscriptionBusy}
+							onClick={() => void saveSubscription('POST', 'Kalender-Feed erstellt.')}
+							className="min-h-11 self-start"
+						>
+							{subscriptionBusy ? <Loader2 data-icon="inline-start" aria-hidden /> : null}
+							Kalender-Feed erstellen
+						</Button>
+					)}
+					{subscriptionNotice && (
+						<Alert>
+							<AlertDescription aria-live="polite">{subscriptionNotice}</AlertDescription>
+						</Alert>
+					)}
+				</CardContent>
+			</Card>
 
-			{view === 'month' ? (
-				<CalendarMonth
-					month={month}
-					occurrences={monthOccurrences}
-					onPrev={handlePrevMonth}
-					onNext={handleNextMonth}
-					onSelectDay={handleDaySelect}
-					onSelectOccurrence={handleSelectOccurrence}
-					selectedDay={selectedDay}
-				/>
-			) : null}
+			<Tabs
+				value={view}
+				onValueChange={(value) => {
+					haptic('light');
+					setView(value as ViewMode);
+				}}
+				className="gap-3"
+			>
+				<TabsList className="w-full">
+					<TabsTrigger value="list" className="min-h-11">
+						<List data-icon="inline-start" aria-hidden />
+						Agenda
+					</TabsTrigger>
+					<TabsTrigger value="month" className="min-h-11">
+						<CalendarDays data-icon="inline-start" aria-hidden />
+						Monat
+					</TabsTrigger>
+				</TabsList>
+				<TabsContent value="list" className="flex flex-col gap-3">
+					<section aria-labelledby="calendar-upcoming-heading" className="flex flex-col gap-3">
+						<h2 id="calendar-upcoming-heading" className="text-sm font-semibold">
+							Nächste 30 Tage
+						</h2>
+						<CalendarUpcomingList
+							occurrences={upcomingOccurrences}
+							choreOccurrences={upcomingChoreOccurrences}
+							onSelect={handleSelectOccurrence}
+							wgBaseHref={wgBaseHref}
+						/>
+					</section>
+				</TabsContent>
+				<TabsContent value="month">
+					<CalendarMonth
+						month={month}
+						occurrences={monthOccurrences}
+						onPrev={handlePrevMonth}
+						onNext={handleNextMonth}
+						onSelectDay={handleDaySelect}
+						onSelectOccurrence={handleSelectOccurrence}
+						selectedDay={selectedDay}
+					/>
+				</TabsContent>
+			</Tabs>
 
-			<section className="space-y-3">
-				<h2 className="text-[14px] font-semibold text-[var(--text-1)]">Nächste 30 Tage</h2>
-				<CalendarUpcomingList
-					occurrences={upcomingOccurrences}
-					choreOccurrences={upcomingChoreOccurrences}
-					onSelect={handleSelectOccurrence}
-					wgBaseHref={wgBaseHref}
-				/>
-			</section>
-
-			<p className="text-center text-[12px] text-[var(--text-3)]">
+			<p className="text-center text-xs text-muted-foreground">
 				Putzplan-Aufgaben erscheinen automatisch in dieser Liste, werden aber nicht in den
 				Kalender-Feed übernommen.
 				<Link
 					href={`${wgBaseHref}/putzen`}
-					className="ml-1 inline-flex min-h-11 items-center rounded-sm underline transition-colors hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+					className="ml-1 inline-flex min-h-11 items-center rounded-sm underline transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				>
 					Putzplan öffnen
 				</Link>
@@ -597,6 +598,7 @@ export default function KalenderPage() {
 				onClose={() => setEditing(null)}
 				onUpdate={handleUpdate}
 				onDelete={handleDelete}
+				actionError={actionError}
 			/>
 			<ConfirmDialog
 				open={subscriptionConfirm !== null}

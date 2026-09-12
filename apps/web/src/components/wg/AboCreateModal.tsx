@@ -8,6 +8,7 @@ interface AboCreateModalProps {
 	members: MemberOption[];
 	defaultPaidByMemberId: string;
 	submitting: boolean;
+	saveError?: string | null | undefined;
 	onClose: () => void;
 	onSubmit: (values: AboFormValues) => void;
 }
@@ -16,19 +17,23 @@ export function AboCreateModal({
 	members,
 	defaultPaidByMemberId,
 	submitting,
+	saveError,
 	onClose,
 	onSubmit,
 }: AboCreateModalProps) {
 	return (
-		<AboModalShell title="Neues Abo" onClose={onClose}>
-			<AboForm
-				mode="create"
-				members={members}
-				defaultPaidByMemberId={defaultPaidByMemberId}
-				submitting={submitting}
-				onCancel={onClose}
-				onSubmit={onSubmit}
-			/>
+		<AboModalShell title="Neues Abo" onClose={onClose} submitting={submitting}>
+			{(requestClose) => (
+				<AboForm
+					mode="create"
+					members={members}
+					defaultPaidByMemberId={defaultPaidByMemberId}
+					submitting={submitting}
+					saveError={saveError}
+					onCancel={requestClose}
+					onSubmit={onSubmit}
+				/>
+			)}
 		</AboModalShell>
 	);
 }

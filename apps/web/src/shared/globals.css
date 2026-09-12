@@ -1,6 +1,66 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* The material wrapper keeps an opaque semantic surface when the browser or
+   accessibility preference cannot provide readable translucency. */
+@supports not ((backdrop-filter: blur(1px))) {
+	.liquid-glass-surface[data-liquid-glass] > :first-child {
+		background: var(--background) !important;
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
+}
+
+/* biome-ignore lint/correctness/noUnknownMediaFeatureName: these accessibility media features are supported where exposed by the browser. */
+@media (forced-colors: active), (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
+	.liquid-glass-surface[data-liquid-glass] > :first-child {
+		background: var(--background) !important;
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
+}
+
+@theme inline {
+	--font-sans: var(--font-inter);
+	--font-heading: var(--font-inter);
+	--font-mono: var(--font-geist-mono);
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--color-chart-1: var(--chart-1);
+	--color-chart-2: var(--chart-2);
+	--color-chart-3: var(--chart-3);
+	--color-chart-4: var(--chart-4);
+	--color-chart-5: var(--chart-5);
+	--color-sidebar: var(--sidebar);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-ring: var(--sidebar-ring);
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+}
 
 /* ─── RESPONSIVE FOUNDATIONS ───────────────────────────────────────────────
    Added: iOS text-size fix, reduced-motion, media defaults, form fonts,
@@ -123,7 +183,7 @@ body {
 		--bg-2: rgba(255, 255, 255, 0.5);
 		--surface: #ffffff;
 		--surface-strong: #ffffff;
-		--border: rgba(0, 0, 0, 0.08);
+		--border: oklch(0.922 0 0);
 		--border-strong: rgba(0, 0, 0, 0.14);
 
 		--text-1: #171717;
@@ -134,7 +194,7 @@ body {
 		/* Vercel interactive accent + focus-ring blue. Same hex in both themes
 		   (see .dark below) — Vercel's #0072F5 button blue reads well with white
 		   text on both a near-white and a near-black surface (~4.45:1 contrast). */
-		--accent: #0072f5;
+		--accent: oklch(0.97 0 0);
 		--accent-bright: #338ef7;
 		--accent-deep: #005fcc; /* Vercel's documented focus-ring color */
 		--accent-soft: rgba(0, 114, 245, 0.12);
@@ -161,11 +221,11 @@ body {
 		--info-fg: #0c4a6e;
 		--info-bg: #f0f9ff;
 		--info-border: rgba(0, 114, 245, 0.25);
-		--chart-1: #0062d1;
-		--chart-2: #398e4a;
-		--chart-3: #ff990a;
-		--chart-4: #e5484d;
-		--chart-5: #7820bc;
+		--chart-1: oklch(0.87 0 0);
+		--chart-2: oklch(0.556 0 0);
+		--chart-3: oklch(0.439 0 0);
+		--chart-4: oklch(0.371 0 0);
+		--chart-5: oklch(0.269 0 0);
 		--chart-6: #067a6e;
 
 		/* Base tones — the two still referenced by components. */
@@ -181,6 +241,31 @@ body {
 		--ink-3: #8f8f8f;
 		--accent-fg: #ffffff;
 		--red: #c6362c;
+		--background: oklch(1 0 0);
+		--foreground: oklch(0.145 0 0);
+		--card: oklch(1 0 0);
+		--card-foreground: oklch(0.145 0 0);
+		--popover: oklch(1 0 0);
+		--popover-foreground: oklch(0.145 0 0);
+		--primary: oklch(0.205 0 0);
+		--primary-foreground: oklch(0.985 0 0);
+		--secondary: oklch(0.97 0 0);
+		--secondary-foreground: oklch(0.205 0 0);
+		--muted: oklch(0.97 0 0);
+		--muted-foreground: oklch(0.556 0 0);
+		--accent-foreground: oklch(0.205 0 0);
+		--destructive: oklch(0.577 0.245 27.325);
+		--input: oklch(0.922 0 0);
+		--ring: oklch(0.708 0 0);
+		--radius: 0.625rem;
+		--sidebar: oklch(0.985 0 0);
+		--sidebar-foreground: oklch(0.145 0 0);
+		--sidebar-primary: oklch(0.205 0 0);
+		--sidebar-primary-foreground: oklch(0.985 0 0);
+		--sidebar-accent: oklch(0.97 0 0);
+		--sidebar-accent-foreground: oklch(0.205 0 0);
+		--sidebar-border: oklch(0.922 0 0);
+		--sidebar-ring: oklch(0.708 0 0);
 	}
 
 	.dark {
@@ -195,7 +280,7 @@ body {
 		--bg-2: #1a1a1a;
 		--surface: #111111;
 		--surface-strong: #1a1a1a;
-		--border: rgba(255, 255, 255, 0.1);
+		--border: oklch(1 0 0 / 10%);
 		--border-strong: rgba(255, 255, 255, 0.16);
 
 		--text-1: #ededed;
@@ -205,7 +290,7 @@ body {
 
 		/* Same accent hex as light mode — Vercel's button blue holds up on both
 		   a near-white and a near-black surface. */
-		--accent: #0072f5;
+		--accent: oklch(0.269 0 0);
 		--accent-bright: #3291ff;
 		--accent-deep: #005fcc;
 		--accent-soft: rgba(0, 114, 245, 0.18);
@@ -224,11 +309,11 @@ body {
 		--info-fg: #52aeff;
 		--info-bg: rgba(0, 114, 245, 0.1);
 		--info-border: rgba(0, 114, 245, 0.25);
-		--chart-1: #52aeff;
-		--chart-2: #6cda75;
-		--chart-3: #ff990a;
-		--chart-4: #e5484d;
-		--chart-5: #bf89ec;
+		--chart-1: oklch(0.87 0 0);
+		--chart-2: oklch(0.556 0 0);
+		--chart-3: oklch(0.439 0 0);
+		--chart-4: oklch(0.371 0 0);
+		--chart-5: oklch(0.269 0 0);
 		--chart-6: #45dec5;
 
 		/* Compat token overrides — map legacy beige theme tokens onto Geist dark.
@@ -246,15 +331,41 @@ body {
 		--accent-fg: #ffffff;
 		--danger-fg: #0a0a0a;
 		--red: #e5484d;
+		--background: oklch(0.145 0 0);
+		--foreground: oklch(0.985 0 0);
+		--card: oklch(0.205 0 0);
+		--card-foreground: oklch(0.985 0 0);
+		--popover: oklch(0.205 0 0);
+		--popover-foreground: oklch(0.985 0 0);
+		--primary: oklch(0.922 0 0);
+		--primary-foreground: oklch(0.205 0 0);
+		--secondary: oklch(0.269 0 0);
+		--secondary-foreground: oklch(0.985 0 0);
+		--muted: oklch(0.269 0 0);
+		--muted-foreground: oklch(0.708 0 0);
+		--accent-foreground: oklch(0.985 0 0);
+		--destructive: oklch(0.704 0.191 22.216);
+		--input: oklch(1 0 0 / 15%);
+		--ring: oklch(0.556 0 0);
+		--sidebar: oklch(0.205 0 0);
+		--sidebar-foreground: oklch(0.985 0 0);
+		--sidebar-primary: oklch(0.488 0.243 264.376);
+		--sidebar-primary-foreground: oklch(0.985 0 0);
+		--sidebar-accent: oklch(0.269 0 0);
+		--sidebar-accent-foreground: oklch(0.985 0 0);
+		--sidebar-border: oklch(1 0 0 / 10%);
+		--sidebar-ring: oklch(0.556 0 0);
 	}
 
 	* {
 		box-sizing: border-box;
+		@apply border-border outline-ring/50;
 	}
 
 	html {
 		-webkit-tap-highlight-color: transparent;
 		background-color: var(--app-backdrop);
+		@apply font-sans;
 	}
 
 	@media (prefers-reduced-motion: no-preference) {
@@ -266,12 +377,13 @@ body {
 	body {
 		background-color: var(--app-backdrop);
 		color: var(--text-1);
-		font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+		font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 		font-feature-settings: "kern" on, "ss01" on, "cv11" on;
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
 		min-height: 100dvh;
 		overflow-x: hidden;
+		@apply bg-background text-foreground;
 	}
 
 	::selection {
@@ -901,7 +1013,8 @@ body {
 }
 
 /* Bottom-nav active-state animation — gentle scale + opacity for engaged tab */
-[data-bottom-nav-item][aria-current="page"] {
+[data-bottom-nav-item][aria-current="page"],
+[data-bottom-nav-item][aria-current="location"] {
 	animation: nav-tab-pop 220ms ease-out;
 }
 @keyframes nav-tab-pop {
@@ -916,7 +1029,8 @@ body {
 	}
 }
 @media (prefers-reduced-motion: reduce) {
-	[data-bottom-nav-item][aria-current="page"] {
+	[data-bottom-nav-item][aria-current="page"],
+	[data-bottom-nav-item][aria-current="location"] {
 		animation: none;
 	}
 }

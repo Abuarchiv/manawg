@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
 interface SectionProps {
 	id?: string;
 	title: string;
@@ -9,14 +11,16 @@ interface SectionProps {
 
 export function Section({ id, title, hint, children }: SectionProps) {
 	return (
-		<section id={id} className="scroll-mt-6">
-			<div className="mb-2 px-1">
-				<h2 className="text-sm font-semibold text-[var(--text-1)]">{title}</h2>
-				{hint && <p className="mt-0.5 text-[12px] text-[var(--text-3)]">{hint}</p>}
-			</div>
-			<div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-base)]">
-				{children}
-			</div>
+		<section id={id} aria-label={title} className="scroll-mt-24">
+			<Card className="overflow-hidden">
+				<CardHeader>
+					<CardTitle>{title}</CardTitle>
+					{hint ? <CardDescription>{hint}</CardDescription> : null}
+				</CardHeader>
+				<CardContent className="p-0">
+					<div className="border-border border-t">{children}</div>
+				</CardContent>
+			</Card>
 		</section>
 	);
 }

@@ -1,52 +1,91 @@
 'use client';
 
-import { ICON_BUTTON } from '@/components/ui/styles';
-import { useFocusTrap } from '@/shared/lib/hooks/useFocusTrap';
-import { X } from 'lucide-react';
-import { useEffect } from 'react';
-import type { ReactNode } from 'react';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import { ArrowLeft } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 
 interface AboModalShellProps {
 	title: string;
 	onClose: () => void;
-	children: ReactNode;
+	submitting: boolean;
+	children: (requestClose: () => void) => ReactNode;
 }
 
-export function AboModalShell({ title, onClose, children }: AboModalShellProps) {
-	const trapRef = useFocusTrap<HTMLDivElement>(true);
-
-	useEffect(() => {
-		const handleKey = (event: KeyboardEvent): void => {
-			if (event.key === 'Escape') onClose();
-		};
-		document.addEventListener('keydown', handleKey);
-		return () => document.removeEventListener('keydown', handleKey);
-	}, [onClose]);
-
+export function AboModalShell({ title, onClose, submitting, children }: AboModalShellProps) {
+	const [confirmClose, setConfirmClose] = useState(false);
+	const requestClose = () => {
+		if (!submitting) setConfirmClose(true);
+	};
 	return (
-		<div
-			ref={trapRef}
-			// biome-ignore lint/a11y/useSemanticElements: native <dialog> UA display:none kills CSS exit animations on iOS Safari; use div + role (see native-dialog-css-transition-kill skill).
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="abo-modal-title"
-			className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center sm:p-4"
-		>
-			<div
-				className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-[var(--border)] bg-[var(--bg-base)] p-5 shadow-xl sm:rounded-2xl"
-				style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))' }}
+		<>
+			<Dialog
+				open
+				onOpenChange={(open) => {
+					if (!open) requestClose();
+				}}
 			>
-				<span className="sheet-handle" aria-hidden />
-				<div className="mb-4 flex items-center justify-between gap-3">
-					<h2 id="abo-modal-title" className="text-base font-semibold text-[var(--text-1)]">
-						{title}
-					</h2>
-					<button type="button" onClick={onClose} aria-label="Schließen" className={ICON_BUTTON}>
-						<X className="h-4 w-4" aria-hidden />
-					</button>
-				</div>
-				{children}
-			</div>
-		</div>
+				<DialogContent
+					showCloseButton={false}
+					initialFocus={false}
+					className="top-0 flex h-dvh max-h-dvh w-full max-w-md translate-y-0 flex-col gap-0 rounded-none p-0 sm:max-w-md"
+				>
+					<DialogHeader className="px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+						<div className="flex items-center gap-2">
+							<Button
+								variant="ghost"
+								size="icon"
+								className="size-11"
+								onClick={requestClose}
+								disabled={submitting}
+								aria-label="Abo-Editor schließen"
+							>
+								<ArrowLeft />
+							</Button>
+							<DialogTitle>{title}</DialogTitle>
+						</div>
+						<DialogDescription>Wiederholung, Zahler:in und Anteile festlegen.</DialogDescription>
+					</DialogHeader>
+					<Separator />
+					<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
+						{children(requestClose)}
+					</div>
+				</DialogContent>
+			</Dialog>
+			<AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Eingaben verwerfen?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Ungespeicherte Änderungen an diesem Abo gehen beim Schließen verloren. Es wird nichts
+							gespeichert.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel className="min-h-11">Weiterbearbeiten</AlertDialogCancel>
+						<AlertDialogAction variant="destructive" className="min-h-11" onClick={onClose}>
+							Verwerfen
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
 	);
 }

@@ -1,6 +1,9 @@
 'use client';
 
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
+import { Spinner } from '@/components/ui/spinner';
+import { CheckCircle2 } from 'lucide-react';
 
 interface Props {
 	state: 'idle' | 'pending' | 'done' | 'error';
@@ -13,33 +16,34 @@ interface Props {
 export function ImportProgress({ state, inserted = 0, skipped = 0, errors = 0, message }: Props) {
 	if (state === 'idle') return null;
 	return (
-		<output
-			aria-live="polite"
+		<Alert
+			role={state === 'error' ? 'alert' : 'status'}
+			variant={state === 'error' || errors > 0 ? 'destructive' : 'default'}
 			aria-busy={state === 'pending'}
-			className="block rounded-md border border-[var(--border)] bg-[var(--surface)] p-4"
 		>
-			{state === 'pending' && (
-				<div className="flex items-center gap-2 text-[13px] text-[var(--text-2)]">
-					<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-					Import läuft...
-				</div>
-			)}
-			{state === 'done' && (
-				<div className="flex items-start gap-2">
-					<CheckCircle2 className="mt-0.5 h-5 w-5 text-[var(--success-fg)]" aria-hidden />
-					<div>
-						<div className="text-[14px] font-medium text-[var(--text-1)]">Import abgeschlossen</div>
-						<div className="text-[12.5px] text-[var(--text-3)]">
-							{inserted} importiert · {skipped} übersprungen · {errors} Fehler
-						</div>
-					</div>
-				</div>
-			)}
-			{state === 'error' && (
-				<p className="text-[13px] text-[var(--danger)]" role="alert">
-					{message ?? 'Import fehlgeschlagen.'}
-				</p>
-			)}
-		</output>
+			{state === 'pending' ? (
+				<Spinner />
+			) : state === 'done' && errors === 0 ? (
+				<CheckCircle2 />
+			) : null}
+			<AlertTitle>
+				{state === 'pending'
+					? 'Import läuft…'
+					: state === 'error'
+						? 'Import fehlgeschlagen'
+						: errors > 0
+							? 'Import mit Fehlern abgeschlossen'
+							: 'Import abgeschlossen'}
+			</AlertTitle>
+			<AlertDescription>
+				{state === 'pending' ? (
+					<Progress value={null} aria-label="Import läuft" className="mt-3" />
+				) : state === 'error' ? (
+					(message ?? 'Bitte erneut versuchen.')
+				) : (
+					`${inserted} importiert · ${skipped} übersprungen · ${errors} Fehler`
+				)}
+			</AlertDescription>
+		</Alert>
 	);
 }

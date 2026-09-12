@@ -1,10 +1,15 @@
 'use client';
 
-import { DeleteConfirmButton } from '@/components/ui/DeleteConfirmButton';
-import { ICON_BUTTON } from '@/components/ui/styles';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
+import { Spinner } from '@/components/ui/spinner';
+import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { apiFetch } from '@/core/infra/api-client';
 import { type InventoryItemDto, isBelowThreshold } from '@/features/inventory/inventory';
-import { AlertCircle, Loader2, Minus, Pencil, Plus } from 'lucide-react';
+import { AlertCircle, Minus, Pencil, Plus, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import { memo, useState } from 'react';
 
 interface InventoryItemRowProps {
@@ -28,6 +33,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const lowStock = isBelowThreshold(item);
+	const deleteConfirm = useConfirmDelete();
+	const isDeleteArmed = deleteConfirm.confirmId === item.id;
 
 	async function changeQuantity(delta: number): Promise<void> {
 		if (pending) return;
@@ -88,32 +95,37 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 		}
 	}
 
+	function handleDelete(): void {
+		if (!deleteConfirm.request(item.id)) return;
+		deleteConfirm.cancel();
+		void remove();
+	}
+
 	return (
-		<li className="flex flex-col gap-2 px-3 py-3 sm:px-4" aria-busy={pending}>
-			<div className="flex items-center gap-3">
-				<div className="min-w-0 flex-1">
-					<div className="flex min-w-0 items-baseline gap-2">
-						<span
-							className="truncate text-[14px] font-medium text-[var(--text-1)]"
-							title={item.name}
-						>
+		<Item className="flex-col items-stretch gap-2" aria-busy={pending}>
+			<div className="flex flex-wrap items-center gap-2">
+				<ItemContent className="min-w-0 basis-full">
+					<ItemTitle className="w-full min-w-0 line-clamp-none">
+						<span className="min-w-0 flex-1 break-words" title={item.name}>
 							{item.name}
 						</span>
 						{lowStock && (
-							<span className="inline-flex items-center gap-1 rounded-full bg-[var(--danger)]/10 px-2 py-0.5 text-[11px] font-medium text-[var(--danger)]">
-								<AlertCircle className="h-3 w-3" aria-hidden />
+							<Badge variant="destructive">
+								<AlertCircle aria-hidden />
 								niedrig
-							</span>
+							</Badge>
 						)}
-					</div>
-					<p className="mt-0.5 text-[12px] text-[var(--text-3)]">
+					</ItemTitle>
+					<ItemDescription className="line-clamp-none tabular-nums">
 						{item.quantity} {item.unit} · Schwelle {item.threshold}
-					</p>
-				</div>
+					</ItemDescription>
+				</ItemContent>
 
-				<div className="flex shrink-0 items-center gap-1">
-					<button
+				<ItemActions className="ml-auto flex-wrap gap-1">
+					<Button
 						type="button"
+						variant="outline"
+						size="icon"
 						onClick={() => void changeQuantity(-1)}
 						disabled={pending || item.quantity === 0}
 						aria-label={
@@ -121,48 +133,75 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 								? `${item.name} um eins verringern (Bestand 0)`
 								: `${item.name} um eins verringern`
 						}
-						className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+						className="min-h-11 min-w-11"
 					>
-						{pending ? (
-							<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-						) : (
-							<Minus className="h-4 w-4" aria-hidden />
-						)}
-					</button>
-					<button
+						{pending ? <Spinner aria-hidden /> : <Minus aria-hidden />}
+					</Button>
+					<Button
 						type="button"
+						variant="outline"
+						size="icon"
 						onClick={() => void changeQuantity(1)}
 						disabled={pending}
 						aria-label={`${item.name} um eins erhöhen`}
-						className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+						className="min-h-11 min-w-11"
 					>
-						<Plus className="h-4 w-4" aria-hidden />
-					</button>
-					<button
+						<Plus aria-hidden />
+					</Button>
+					<Button
 						type="button"
+						variant="ghost"
+						size="icon"
 						onClick={() => onEdit(item)}
+						disabled={pending}
 						aria-label={`${item.name} bearbeiten`}
-						className={ICON_BUTTON}
+						className="min-h-11 min-w-11 text-muted-foreground"
 					>
-						<Pencil className="h-4 w-4" aria-hidden />
-					</button>
-					<DeleteConfirmButton
-						id={item.id}
-						onConfirm={() => void remove()}
-						pending={pending}
-						ariaLabel={`${item.name} entfernen`}
-						ariaLabelConfirm={`${item.name} entfernen bestätigen`}
-					/>
-				</div>
+						<Pencil aria-hidden />
+					</Button>
+					{isDeleteArmed ? (
+						<Button
+							type="button"
+							variant="destructive"
+							size="sm"
+							onClick={handleDelete}
+							disabled={pending}
+							aria-label={`${item.name} entfernen bestätigen`}
+							className="min-h-11 px-3.5"
+						>
+							<Trash2 aria-hidden />
+							OK
+						</Button>
+					) : (
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							onClick={handleDelete}
+							disabled={pending}
+							aria-label={`${item.name} entfernen`}
+							className="min-h-11 min-w-11 text-muted-foreground hover:text-destructive"
+						>
+							<Trash2 aria-hidden />
+						</Button>
+					)}
+				</ItemActions>
 			</div>
-			{error && (
-				<p
-					role="alert"
-					className="rounded-md border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-2.5 py-1.5 text-[12.5px] text-[var(--danger)]"
+			{lowStock && (
+				<Button
+					variant="link"
+					nativeButton={false}
+					render={<Link href={`/wg/${encodedShareCode}/einkauf`} />}
+					className="min-h-11 self-start px-0"
 				>
-					{error}
-				</p>
+					Einkaufsliste öffnen
+				</Button>
 			)}
-		</li>
+			{error && (
+				<Alert variant="destructive">
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
+			)}
+		</Item>
 	);
 });

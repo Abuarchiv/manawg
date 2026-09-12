@@ -1,5 +1,7 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { type NavigatorWithShare, copyViaTextArea } from '@/core/utils/clipboard';
 import { AlertTriangle, Check, Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -12,7 +14,7 @@ interface CopyCodeButtonProps {
 	joiningEnabled?: boolean;
 }
 
-type CopyState = 'idle' | 'copied' | 'failed';
+type CopyState = 'idle' | 'shared' | 'copied' | 'failed';
 
 export function CopyCodeButton({ code, wgName, joiningEnabled = true }: CopyCodeButtonProps) {
 	const [state, setState] = useState<CopyState>('idle');
@@ -56,7 +58,7 @@ export function CopyCodeButton({ code, wgName, joiningEnabled = true }: CopyCode
 				| null;
 			if (nav?.share && (!nav.canShare || nav.canShare(shareData))) {
 				await nav.share(shareData);
-				flash('copied');
+				flash('shared');
 				return;
 			}
 			if (nav?.clipboard?.writeText) {
@@ -81,40 +83,59 @@ export function CopyCodeButton({ code, wgName, joiningEnabled = true }: CopyCode
 		? 'Neue Beitritte sind gesperrt'
 		: sharing
 			? 'WG wird geteilt…'
-			: state === 'copied'
-				? 'WG geteilt'
+			: state === 'copied' || state === 'shared'
+				? state === 'copied'
+					? 'Einladung kopiert'
+					: 'WG geteilt'
 				: state === 'failed'
 					? 'Teilen fehlgeschlagen'
 					: `WG-Code ${code} teilen`;
 
 	const statusMessage =
-		state === 'copied' ? 'WG geteilt' : state === 'failed' ? 'Teilen fehlgeschlagen' : '';
+		state === 'shared'
+			? 'WG geteilt'
+			: state === 'copied'
+				? 'Einladung kopiert'
+				: state === 'failed'
+					? 'Teilen fehlgeschlagen'
+					: '';
 
 	return (
 		<>
 			<output aria-live="polite" className="sr-only">
 				{statusMessage}
 			</output>
-			<button
+			<Button
 				type="button"
+				variant="outline"
 				onClick={onClick}
 				disabled={!joiningEnabled || sharing}
-				className="inline-flex h-11 min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-base)] px-2.5 py-1.5 font-mono text-[12.5px] font-medium tracking-wider text-[var(--text-1)] shadow-sm transition-[transform,background-color,border-color] duration-150 hover:border-[var(--border-strong)] hover:bg-[var(--surface-strong)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)] disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:border-[var(--border)] disabled:hover:bg-[var(--bg-base)] sm:w-auto sm:px-2.5"
+				className="h-auto min-h-11 whitespace-normal"
 				aria-label={label}
 			>
-				<span aria-hidden className="hidden sm:inline">
-					{joiningEnabled ? code : 'Gesperrt'}
-				</span>
-				{!joiningEnabled ? (
-					<AlertTriangle className="h-3.5 w-3.5 text-[var(--danger)]" aria-hidden />
-				) : state === 'copied' ? (
-					<Check className="h-3.5 w-3.5 text-[var(--accent)]" aria-hidden />
+				{sharing ? (
+					<Spinner data-icon="inline-start" aria-hidden />
+				) : !joiningEnabled ? (
+					<AlertTriangle data-icon="inline-start" aria-hidden />
+				) : state === 'copied' || state === 'shared' ? (
+					<Check data-icon="inline-start" aria-hidden />
 				) : state === 'failed' ? (
-					<AlertTriangle className="h-3.5 w-3.5 text-[var(--danger)]" aria-hidden />
+					<AlertTriangle data-icon="inline-start" aria-hidden />
 				) : (
-					<Share2 className="h-3.5 w-3.5 text-[var(--text-3)]" aria-hidden />
+					<Share2 data-icon="inline-start" aria-hidden />
 				)}
-			</button>
+				{!joiningEnabled
+					? 'Beitritte gesperrt'
+					: sharing
+						? 'Einladung wird geteilt…'
+						: state === 'copied'
+							? 'Einladung kopiert'
+							: state === 'shared'
+								? 'WG geteilt'
+								: state === 'failed'
+									? 'Erneut teilen'
+									: 'Mitbewohner einladen'}
+			</Button>
 		</>
 	);
 }

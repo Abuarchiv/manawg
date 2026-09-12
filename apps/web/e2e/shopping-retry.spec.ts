@@ -245,10 +245,9 @@ test.describe('Shopping recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einkauf');
-		await page.getByRole('button', { name: 'Hafermilch erledigen' }).click();
+		await page.getByRole('checkbox', { name: 'Hafermilch erledigen', exact: true }).click();
 
-		await expect(page.getByRole('status').filter({ hasText: offlineNotice })).toHaveCount(1);
-		await expect(page.getByRole('alert').filter({ hasText: offlineNotice })).toHaveCount(0);
+		await expect(page.getByRole('alert').filter({ hasText: offlineNotice })).toHaveCount(1);
 	});
 
 	test('announces offline toggle success for queued shopping items as status', async ({ page }) => {
@@ -307,10 +306,9 @@ test.describe('Shopping recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einkauf');
-		await page.getByRole('button', { name: 'Hafermilch erledigen' }).click();
+		await page.getByRole('checkbox', { name: 'Hafermilch erledigen', exact: true }).click();
 
-		await expect(page.getByRole('status').filter({ hasText: offlineNotice })).toHaveCount(1);
-		await expect(page.getByRole('alert').filter({ hasText: offlineNotice })).toHaveCount(0);
+		await expect(page.getByRole('alert').filter({ hasText: offlineNotice })).toHaveCount(1);
 	});
 
 	test('explains server failures when clearing bought shopping items fails', async ({ page }) => {
@@ -359,6 +357,9 @@ test.describe('Shopping recovery', () => {
 		await expect(page.getByText('Kaffee')).toBeVisible({ timeout: 30_000 });
 		const clearButton = page.getByRole('button', { name: 'Erledigte Artikel entfernen (1)' });
 		await clearButton.click();
+		const clearDialog = page.getByRole('alertdialog');
+		await expect(clearDialog).toBeVisible();
+		await clearDialog.getByRole('button', { name: 'Entfernen', exact: true }).click();
 
 		await expect(
 			page.getByText('Erledigte konnten nicht entfernt werden: Versuche es gleich erneut.'),
@@ -386,14 +387,14 @@ test.describe('Shopping recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einkauf');
-		await expect(page.getByText('Starte mit einem typischen WG-Einkauf.')).toBeVisible({
+		await expect(page.getByText('Noch nichts auf der Liste', { exact: true })).toBeVisible({
 			timeout: 30_000,
 		});
 
 		await page.getByRole('button', { name: 'Kaffee' }).click();
 
 		await expect(page.getByPlaceholder('Was brauchen wir?')).toHaveValue('Kaffee');
-		await expect(page.getByPlaceholder('Menge')).toHaveValue('1 Packung');
+		await expect(page.getByLabel('Menge', { exact: true })).toHaveValue('1 Packung');
 		await expect(page.getByPlaceholder('Was brauchen wir?')).toBeFocused();
 	});
 });

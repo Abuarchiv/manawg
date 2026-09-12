@@ -15,22 +15,22 @@ async function gotoWithRetry(page: Page, path: string) {
 }
 
 async function openChoreActions(page: Page, title: string) {
-	const menuName = `Aufgabenaktionen: ${title}`;
-	const openMenu = page.getByRole('menu').first();
-	if (await openMenu.isVisible()) {
-		await page.getByRole('heading', { name: 'Putzplan', exact: true }).click();
-		await expect(openMenu).toBeHidden();
+	const triggerName = `Aufgabenaktionen: ${title}`;
+	const openDialog = page.getByRole('dialog').first();
+	if (await openDialog.isVisible()) {
+		await page.keyboard.press('Escape');
+		await expect(openDialog).toBeHidden({ timeout: 5000 });
 	}
-	await page.getByRole('button', { name: menuName }).click({ timeout: 30_000 });
-	const menu = page.getByRole('menu', { name: menuName });
-	await expect(menu).toBeVisible({ timeout: 5000 });
-	return menu;
+	await page.getByRole('button', { name: triggerName }).click({ timeout: 30_000 });
+	const dialog = page.getByRole('dialog').filter({ hasText: title }).first();
+	await expect(dialog).toBeVisible({ timeout: 5000 });
+	return dialog;
 }
 
 async function confirmChoreRemoval(page: Page, title: string): Promise<void> {
 	const menu = await openChoreActions(page, title);
-	await menu.getByRole('menuitem', { name: `Aufgabe entfernen: ${title}` }).click();
-	const confirm = page.getByRole('menuitem', {
+	await menu.getByRole('button', { name: `Aufgabe entfernen: ${title}` }).click();
+	const confirm = page.getByRole('button', {
 		name: `Aufgabe entfernen bestätigen: ${title}`,
 	});
 	await expect(confirm).toBeVisible({ timeout: 5000 });
@@ -250,10 +250,7 @@ test.describe('Chores recovery', () => {
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
 
-		const bathMenu = await openChoreActions(page, 'Bad putzen');
-		await expect(
-			bathMenu.getByRole('menuitem', { name: 'Tausch anfragen: Bad putzen' }),
-		).toBeVisible();
+		await expect(page.getByText('Bad putzen')).toBeVisible({ timeout: 30_000 });
 		await expect(
 			page.getByRole('button', { name: 'Überfällige Aufgabe nachholen: Bad putzen' }),
 		).toBeVisible();
@@ -263,13 +260,17 @@ test.describe('Chores recovery', () => {
 		await expect(
 			page.getByRole('button', { name: 'Als erledigt markieren: Küche wischen' }),
 		).toBeVisible();
+		const bathMenu = await openChoreActions(page, 'Bad putzen');
 		await expect(
-			bathMenu.getByRole('menuitem', { name: 'Aufgabe entfernen: Bad putzen' }),
+			bathMenu.getByRole('button', { name: 'Tausch anfragen: Bad putzen' }),
+		).toBeVisible();
+		await expect(
+			bathMenu.getByRole('button', { name: 'Aufgabe entfernen: Bad putzen' }),
 		).toBeVisible();
 		const kitchenMenu = await openChoreActions(page, 'Küche wischen');
-		await kitchenMenu.getByRole('menuitem', { name: 'Aufgabe entfernen: Küche wischen' }).click();
+		await kitchenMenu.getByRole('button', { name: 'Aufgabe entfernen: Küche wischen' }).click();
 		await expect(
-			page.getByRole('menuitem', { name: 'Aufgabe entfernen bestätigen: Küche wischen' }),
+			page.getByRole('button', { name: 'Aufgabe entfernen bestätigen: Küche wischen' }),
 		).toBeVisible();
 	});
 
@@ -742,7 +743,7 @@ test.describe('Chores recovery', () => {
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
 		const swapMenu = await openChoreActions(page, 'Bad putzen');
-		await swapMenu.getByRole('menuitem', { name: 'Tausch anfragen: Bad putzen' }).click();
+		await swapMenu.getByRole('button', { name: 'Tausch anfragen: Bad putzen' }).click();
 
 		await expect(
 			page.getByText(
@@ -752,7 +753,7 @@ test.describe('Chores recovery', () => {
 		await expect(page.getByText('Tauschanfrage konnte nicht gepostet werden.')).toHaveCount(0);
 		const retryMenu = await openChoreActions(page, 'Bad putzen');
 		await expect(
-			retryMenu.getByRole('menuitem', { name: 'Tausch anfragen: Bad putzen' }),
+			retryMenu.getByRole('button', { name: 'Tausch anfragen: Bad putzen' }),
 		).toBeVisible();
 	});
 
@@ -809,7 +810,7 @@ test.describe('Chores recovery', () => {
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
 		const swapMenu = await openChoreActions(page, 'Bad putzen');
-		await swapMenu.getByRole('menuitem', { name: 'Tausch anfragen: Bad putzen' }).click();
+		await swapMenu.getByRole('button', { name: 'Tausch anfragen: Bad putzen' }).click();
 
 		await expect(
 			page.getByText('Tauschanfrage konnte nicht gepostet werden: Versuche es gleich erneut.'),
@@ -817,7 +818,7 @@ test.describe('Chores recovery', () => {
 		await expect(page.getByText('Tauschanfrage konnte nicht gepostet werden.')).toHaveCount(0);
 		const retryMenu = await openChoreActions(page, 'Bad putzen');
 		await expect(
-			retryMenu.getByRole('menuitem', { name: 'Tausch anfragen: Bad putzen' }),
+			retryMenu.getByRole('button', { name: 'Tausch anfragen: Bad putzen' }),
 		).toBeVisible();
 	});
 
@@ -2041,11 +2042,18 @@ test.describe('Chore actions on mobile', () => {
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen');
 		await page.getByRole('button', { name: 'Aufgabenaktionen: Bad putzen' }).click();
 
-		const menuItems = page
-			.getByRole('menu', { name: 'Aufgabenaktionen: Bad putzen' })
-			.getByRole('menuitem');
-		await expect(menuItems).toHaveText(['Ich übernehme', 'Tausch anfragen', 'Entfernen']);
-		const fullyVisible = await menuItems.evaluateAll((items) =>
+		const actionButtons = page
+			.getByRole('dialog')
+			.filter({ hasText: 'Bad putzen' })
+			.getByRole('button', {
+				name: /^(Ich übernehme|Tausch anfragen: Bad putzen|Aufgabe entfernen: Bad putzen)$/,
+			});
+		await expect(actionButtons).toHaveText([
+			'Ich übernehme',
+			'Tausch auf der Pinnwand anfragen',
+			'Aufgabe entfernen',
+		]);
+		const fullyVisible = await actionButtons.evaluateAll((items) =>
 			items.every((item) => {
 				const rect = item.getBoundingClientRect();
 				const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);

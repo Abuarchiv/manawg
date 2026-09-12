@@ -6,6 +6,11 @@
 		"node": "22.x",
 		"pnpm": "9.x"
 	},
+	"pnpm": {
+		"overrides": {
+			"postcss@8.4.31": "8.5.26"
+		}
+	},
 	"scripts": {
 		"dev": "pnpm --filter @manawg/web dev",
 		"build": "pnpm --filter @manawg/web build",

@@ -1,16 +1,23 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 
-export function BackButton({ onClick }: { onClick: () => void }) {
+export function BackButton({
+	onClick,
+	disabled = false,
+}: { onClick: () => void; disabled?: boolean }) {
 	return (
-		<button
+		<Button
 			type="button"
+			variant="ghost"
+			size="default"
 			onClick={onClick}
+			disabled={disabled}
 			aria-label="Zurück"
-			className="inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-md px-3 py-2 text-[13px] text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+			className="min-h-[44px] min-w-[44px]"
 		>
-			<ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Zurück
-		</button>
+			<ArrowLeft data-icon="inline-start" aria-hidden /> Zurück
+		</Button>
 	);
 }

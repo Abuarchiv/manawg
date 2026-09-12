@@ -1,43 +1,35 @@
-/**
- * Class strings that appeared verbatim in four or more places.
- *
- * Each of these was a 150-250 character literal repeated across files, which
- * is a large part of why the page components read as walls of text. Naming
- * them means the markup shows *what* an element is rather than how it is
- * painted, and a visual change lands in one place instead of nine.
- *
- * Deliberately plain strings, not a styling abstraction: compose with a
- * template literal where an element needs extra classes.
- */
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/shared/lib/cn';
 
-/** Focus ring shared by every interactive element. */
-const FOCUS_RING_ONLY =
-	'focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2';
-const FOCUS_RING = `focus-visible:outline-none ${FOCUS_RING_ONLY}`;
+/** Transitional string exports. New presentation code composes the lowercase UI components. */
 
 /** Full-width text input / select / datetime field. */
-export const FIELD_INPUT = `block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base outline-none transition-colors focus-visible:border-[var(--accent)] ${FOCUS_RING_ONLY}`;
+export const FIELD_INPUT =
+	'block h-11 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 py-1 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20';
 
 /** Inline error / alert box. */
 export const ALERT_DANGER =
-	'rounded-md border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-3 py-2 text-[13px] text-[var(--danger)]';
+	'rounded-lg border border-border bg-card px-2.5 py-2 text-sm text-destructive';
 
 /** Error box that also holds an action on the right. */
 export const ALERT_DANGER_ROW = `flex flex-wrap items-center justify-between gap-3 ${ALERT_DANGER}`;
 
 /** Bordered list container whose rows are separated by hairlines. */
 export const LIST_CARD =
-	'divide-y divide-[var(--border)] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-base)]';
+	'divide-y divide-border overflow-hidden rounded-lg border border-border bg-card text-card-foreground';
 
 /** Square icon-only button, no border. */
-export const ICON_BUTTON = `inline-flex h-11 w-11 items-center justify-center rounded-md text-[var(--text-3)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] ${FOCUS_RING}`;
+export const ICON_BUTTON = cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11');
 
 /** Square icon-only button with a border, used in toolbars. */
-export const ICON_BUTTON_BORDERED = `inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] ${FOCUS_RING} disabled:cursor-not-allowed disabled:opacity-50`;
+export const ICON_BUTTON_BORDERED = cn(
+	buttonVariants({ variant: 'outline', size: 'icon' }),
+	'size-11',
+);
 
 /** Pill-shaped secondary button, e.g. filter chips. */
-export const CHIP_BUTTON = `inline-flex h-11 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] ${FOCUS_RING}`;
+export const CHIP_BUTTON = cn(buttonVariants({ variant: 'outline' }), 'h-11 px-3');
 
 /** Dashed placeholder shown where a list has no entries yet. */
 export const EMPTY_PLACEHOLDER =
-	'rounded-lg border border-dashed border-[var(--border)] px-4 py-8 text-center text-[13px] text-[var(--text-3)]';
+	'rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground';

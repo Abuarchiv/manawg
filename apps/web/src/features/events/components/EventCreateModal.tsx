@@ -1,14 +1,24 @@
 'use client';
 
-import { ALERT_DANGER, FIELD_INPUT, ICON_BUTTON } from '@/components/ui/styles';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+	Drawer,
+	DrawerContent,
+	DrawerDescription,
+	DrawerFooter,
+	DrawerHeader,
+	DrawerTitle,
+} from '@/components/ui/drawer';
+import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Spinner } from '@/components/ui/spinner';
 import { EventFormFields } from '@/features/events/components/EventFormFields';
 import {
 	type RecurrenceFreq,
 	formatRecurrenceRule,
 	validateEventForm,
 } from '@/features/events/events';
-import { useFocusTrap } from '@/shared/lib/hooks/useFocusTrap';
-import { Loader2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface EventCreateModalProps {
@@ -62,7 +72,6 @@ function buildIsoLocal(date: Date): string {
 }
 
 export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: EventCreateModalProps) {
-	const trapRef = useFocusTrap<HTMLDivElement>(open);
 	const [title, setTitle] = useState('');
 	const [description, setDescription] = useState('');
 	const [startsAt, setStartsAt] = useState('');
@@ -76,21 +85,13 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 	useEffect(() => {
 		if (!open) return;
 		setError(null);
+		if (startsAt) return;
 		const seed = defaultDate ?? new Date();
 		const seeded = new Date(seed);
 		seeded.setMinutes(0, 0, 0);
 		setStartsAt(buildIsoLocal(seeded));
 		setEndsAt('');
-	}, [open, defaultDate]);
-
-	useEffect(() => {
-		if (!open) return;
-		const handleKey = (event: KeyboardEvent): void => {
-			if (event.key === 'Escape') onClose();
-		};
-		document.addEventListener('keydown', handleKey);
-		return () => document.removeEventListener('keydown', handleKey);
-	}, [open, onClose]);
+	}, [open, defaultDate, startsAt]);
 
 	function applyTemplate(template: (typeof QUICK_TEMPLATES)[number]): void {
 		setTitle(template.title);
@@ -101,6 +102,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 
 	async function handleSubmit(e: React.FormEvent): Promise<void> {
 		e.preventDefault();
+		if (submitting) return;
 		setError(null);
 		const validation = validateEventForm({ title, startsAt, endsAt });
 		if (!validation.ok) {
@@ -124,6 +126,8 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 				location: location.trim() || null,
 				recurrence,
 			});
+			setStartsAt('');
+			setEndsAt('');
 			setTitle('');
 			setDescription('');
 			setLocation('');
@@ -136,105 +140,102 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 		}
 	}
 
-	if (!open) return null;
-
 	return (
-		<div
-			ref={trapRef}
-			// biome-ignore lint/a11y/useSemanticElements: native <dialog> UA display:none kills CSS transitions (see native-dialog-css-transition-kill skill)
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="event-create-heading"
-			className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+		<Drawer
+			open={open}
+			onOpenChange={(next) => {
+				if (!next && !submitting) onClose();
+			}}
 		>
-			<form
-				onSubmit={handleSubmit}
-				className="max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-t-2xl border border-[var(--border)] bg-[var(--bg-base)] p-5 shadow-xl sm:rounded-2xl"
-				style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))' }}
-			>
-				<span className="sheet-handle" aria-hidden />
-				<div className="flex items-center justify-between">
-					<h2 id="event-create-heading" className="text-base font-semibold text-[var(--text-1)]">
-						Neuer Termin
-					</h2>
-					<button type="button" onClick={onClose} aria-label="Schließen" className={ICON_BUTTON}>
-						<X className="h-4 w-4" aria-hidden />
-					</button>
-				</div>
-				<fieldset className="m-0 flex min-w-0 flex-wrap gap-1.5 border-0 p-0">
-					<legend className="sr-only">Schnellvorlagen</legend>
-					{QUICK_TEMPLATES.map((tpl) => (
-						<button
-							key={tpl.label}
-							type="button"
-							onClick={() => applyTemplate(tpl)}
-							className="inline-flex h-11 items-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-						>
-							{tpl.label}
-						</button>
-					))}
-				</fieldset>
-				<EventFormFields
-					idPrefix="event-create"
-					title={title}
-					onTitleChange={setTitle}
-					startsAt={startsAt}
-					onStartsAtChange={setStartsAt}
-					endsAt={endsAt}
-					onEndsAtChange={setEndsAt}
-					allDay={allDay}
-					onAllDayChange={setAllDay}
-					location={location}
-					onLocationChange={setLocation}
-					description={description}
-					onDescriptionChange={setDescription}
-					recurrenceField={
-						<div>
-							<label
-								htmlFor="event-recurrence"
-								className="mb-1.5 block text-[13px] font-medium text-[var(--text-1)]"
-							>
-								Wiederholung
-							</label>
-							<select
-								id="event-recurrence"
-								value={recurrenceFreq}
-								onChange={(e) => setRecurrenceFreq(e.target.value)}
-								className={FIELD_INPUT}
-							>
-								{RECURRENCE_OPTIONS.map((opt) => (
-									<option key={opt.value} value={opt.value}>
-										{opt.label}
-									</option>
-								))}
-							</select>
+			<DrawerContent className="mx-auto w-full max-w-md">
+				<DrawerHeader>
+					<DrawerTitle>Neuer Termin</DrawerTitle>
+					<DrawerDescription>
+						Für eure WG · Datum und Uhrzeit wie auf deinem Gerät.
+					</DrawerDescription>
+				</DrawerHeader>
+				<form
+					onSubmit={handleSubmit}
+					className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+				>
+					<FieldSet disabled={submitting}>
+						<FieldLegend variant="label">Schnellvorlagen</FieldLegend>
+						<div className="flex flex-wrap gap-2">
+							{QUICK_TEMPLATES.map((template) => (
+								<Button
+									key={template.label}
+									type="button"
+									variant="outline"
+									onClick={() => applyTemplate(template)}
+									disabled={submitting}
+									className="min-h-11"
+								>
+									{template.label}
+								</Button>
+							))}
 						</div>
-					}
-				/>
-				{error && (
-					<div role="alert" className={ALERT_DANGER}>
-						{error}
-					</div>
-				)}
-				<div className="flex justify-end gap-2">
-					<button
-						type="button"
-						onClick={onClose}
-						className="inline-flex h-11 items-center rounded-xl border border-[var(--border)] px-4 text-[13px] text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-					>
-						Abbrechen
-					</button>
-					<button
-						type="submit"
+					</FieldSet>
+					<EventFormFields
+						idPrefix="event-create"
+						title={title}
+						onTitleChange={setTitle}
+						startsAt={startsAt}
+						onStartsAtChange={setStartsAt}
+						endsAt={endsAt}
+						onEndsAtChange={setEndsAt}
+						allDay={allDay}
+						onAllDayChange={setAllDay}
+						location={location}
+						onLocationChange={setLocation}
+						description={description}
+						onDescriptionChange={setDescription}
 						disabled={submitting}
-						aria-label="Termin speichern"
-						className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--text-1)] px-4 text-[13px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
-					>
-						{submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
-						Speichern
-					</button>
-				</div>
-			</form>
-		</div>
+						recurrenceField={
+							<Field data-disabled={submitting}>
+								<FieldLabel htmlFor="event-recurrence">Wiederholung</FieldLabel>
+								<NativeSelect
+									id="event-recurrence"
+									value={recurrenceFreq}
+									onChange={(event) => setRecurrenceFreq(event.target.value)}
+									disabled={submitting}
+									className="w-full [&_select]:min-h-11 [&_select]:text-base"
+								>
+									{RECURRENCE_OPTIONS.map((option) => (
+										<NativeSelectOption key={option.value} value={option.value}>
+											{option.label}
+										</NativeSelectOption>
+									))}
+								</NativeSelect>
+							</Field>
+						}
+					/>
+					{error && (
+						<Alert variant="destructive">
+							<AlertDescription>{error}</AlertDescription>
+						</Alert>
+					)}
+					<DrawerFooter className="p-0">
+						<Button
+							type="submit"
+							disabled={submitting}
+							aria-label="Termin speichern"
+							className="min-h-11"
+						>
+							{submitting && <Spinner data-icon="inline-start" aria-hidden />}
+							{submitting ? 'Speichert…' : 'Termin speichern'}
+						</Button>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={onClose}
+							disabled={submitting}
+							className="min-h-11"
+						>
+							Schließen · Entwurf behalten
+						</Button>
+					</DrawerFooter>
+				</form>
+			</DrawerContent>
+		</Drawer>
 	);
 }

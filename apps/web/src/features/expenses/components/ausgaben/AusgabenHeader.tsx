@@ -20,11 +20,11 @@ export function AusgabenHeader({
 	return (
 		<header className="flex items-center justify-between gap-3">
 			<div className="min-w-0">
-				<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">Ausgaben</h1>
+				<h1 className="text-[22px] font-semibold tracking-tight text-foreground">Ausgaben</h1>
 				<p
 					aria-live="polite"
 					aria-atomic="true"
-					className="mt-0.5 text-[13px] text-[var(--text-3)]"
+					className="mt-0.5 text-[13px] text-muted-foreground"
 				>
 					{initialLoading ? '' : `${expenseCount} ${expenseCount === 1 ? 'Eintrag' : 'Einträge'}`}
 				</p>

@@ -53,7 +53,7 @@ test.describe('Settings access controls', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#zugang');
-		const toggle = page.getByRole('button', { name: 'Neue Beitritte sperren' });
+		const toggle = page.getByRole('switch', { name: /Neue Beitritte (sperren|erlauben)/ });
 		await expect(toggle).toBeVisible({ timeout: 30_000 });
 
 		await toggle.click();
@@ -65,7 +65,8 @@ test.describe('Settings access controls', () => {
 		).toBeVisible();
 		await expect(page.getByText('Netzwerkfehler. Zugang wurde nicht geändert.')).toHaveCount(0);
 		await expect(toggle).toBeEnabled();
-		await expect(toggle).toHaveText('Erlaubt');
+		await expect(toggle).toBeChecked();
+		await expect(toggle).toHaveAttribute('aria-checked', 'true');
 	});
 
 	test('explains stale WG links when joining access cannot be changed', async ({ page }) => {
@@ -91,7 +92,7 @@ test.describe('Settings access controls', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#zugang');
-		const toggle = page.getByRole('button', { name: 'Neue Beitritte sperren' });
+		const toggle = page.getByRole('switch', { name: /Neue Beitritte (sperren|erlauben)/ });
 		await expect(toggle).toBeVisible({ timeout: 30_000 });
 
 		await toggle.click();
@@ -101,6 +102,8 @@ test.describe('Settings access controls', () => {
 		).toBeVisible();
 		await expect(page.getByText('Zugang konnte nicht geändert werden.')).toHaveCount(0);
 		await expect(toggle).toBeEnabled();
+		await expect(toggle).toBeChecked();
+		await expect(toggle).toHaveAttribute('aria-checked', 'true');
 	});
 
 	test('explains server failures when joining access cannot be changed', async ({ page }) => {
@@ -126,7 +129,7 @@ test.describe('Settings access controls', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#zugang');
-		const toggle = page.getByRole('button', { name: 'Neue Beitritte sperren' });
+		const toggle = page.getByRole('switch', { name: /Neue Beitritte (sperren|erlauben)/ });
 		await expect(toggle).toBeVisible({ timeout: 30_000 });
 
 		await toggle.click();
@@ -137,6 +140,8 @@ test.describe('Settings access controls', () => {
 		await expect(page.getByText('Zugang konnte nicht geändert werden.')).toHaveCount(0);
 		await expect(page.getByText('unexpected_error')).toBeHidden();
 		await expect(toggle).toBeEnabled();
+		await expect(toggle).toBeChecked();
+		await expect(toggle).toHaveAttribute('aria-checked', 'true');
 	});
 
 	test('does not send duplicate joining toggle requests from rapid clicks', async ({ page }) => {
@@ -173,7 +178,7 @@ test.describe('Settings access controls', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#zugang');
-		const toggle = page.getByRole('button', { name: 'Neue Beitritte sperren' });
+		const toggle = page.getByRole('switch', { name: /Neue Beitritte (sperren|erlauben)/ });
 		await expect(toggle).toBeVisible({ timeout: 30_000 });
 
 		await toggle.evaluate((button) => {
@@ -183,8 +188,11 @@ test.describe('Settings access controls', () => {
 
 		await expect.poll(() => patchRequests).toBe(1);
 		await expect(
-			page.getByRole('status').filter({ hasText: 'Neue Beitritte sind gesperrt.' }),
+			page.getByRole('alert').filter({ hasText: 'Neue Beitritte sind gesperrt.' }),
 		).toBeVisible();
+		await expect(toggle).toBeEnabled();
+		await expect(toggle).not.toBeChecked();
+		await expect(toggle).toHaveAttribute('aria-checked', 'false');
 	});
 
 	test('announces the share-code rotation confirmation step', async ({ page }) => {
@@ -202,9 +210,11 @@ test.describe('Settings access controls', () => {
 		await page.getByRole('button', { name: 'WG-Code erneuern' }).click();
 
 		await expect(page.getByRole('button', { name: 'WG-Code-Erneuerung bestätigen' })).toBeVisible();
-		await expect(page.getByRole('status')).toHaveText(
-			'Klicke erneut auf Bestätigen, um den WG-Code zu erneuern.',
-		);
+		await expect(
+			page.getByRole('alert').filter({
+				hasText: 'Klicke erneut auf Bestätigen, um den WG-Code zu erneuern.',
+			}),
+		).toHaveText('Klicke erneut auf Bestätigen, um den WG-Code zu erneuern.');
 	});
 
 	test('clears stale share-code confirmation when joining access is changed', async ({ page }) => {
@@ -241,7 +251,7 @@ test.describe('Settings access controls', () => {
 		await page.getByRole('button', { name: 'WG-Code erneuern' }).click();
 		await expect(page.getByRole('button', { name: 'WG-Code-Erneuerung bestätigen' })).toBeVisible();
 
-		await page.getByRole('button', { name: 'Neue Beitritte sperren' }).click();
+		await page.getByRole('switch', { name: /Neue Beitritte (sperren|erlauben)/ }).click();
 
 		await expect(page.getByRole('button', { name: 'WG-Code erneuern' })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'WG-Code-Erneuerung bestätigen' })).toHaveCount(
@@ -261,20 +271,30 @@ test.describe('Settings access controls', () => {
 		);
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#zugang');
+		const leaveDialog = page.getByRole('alertdialog', { name: 'WG auf diesem Gerät verlassen?' });
+		const deleteDialog = page.getByRole('alertdialog', { name: 'WG dauerhaft löschen?' });
 		await page.getByRole('button', { name: 'WG auf diesem Gerät verlassen' }).click();
-		await expect(page.getByText('Wirklich verlassen?')).toBeVisible();
-		await expect(page.getByRole('button', { name: 'WG-Verlassen abbrechen' })).toBeVisible();
+		await expect(leaveDialog).toBeVisible();
+		await expect(leaveDialog).toContainText('Wirklich verlassen?');
+		await expect(leaveDialog.getByRole('button', { name: 'Abbrechen' })).toBeVisible();
+		await leaveDialog.getByRole('button', { name: 'Abbrechen' }).click();
+		await expect(leaveDialog).toBeHidden();
 
 		await page.getByRole('button', { name: 'Komplette WG für alle löschen' }).click();
 
-		await expect(page.getByText('Wirklich verlassen?')).toHaveCount(0);
-		await expect(page.getByLabel('WG-Code zur Bestätigung')).toBeVisible();
-		await expect(page.getByRole('button', { name: 'WG-Löschung abbrechen' })).toBeVisible();
+		await expect(leaveDialog).toBeHidden();
+		await expect(deleteDialog).toBeVisible();
+		await expect(deleteDialog.getByLabel('WG-Code zur Bestätigung')).toBeVisible();
+		await expect(deleteDialog.getByRole('button', { name: 'Abbrechen' })).toBeVisible();
+		await deleteDialog.getByRole('button', { name: 'Abbrechen' }).click();
+		await expect(deleteDialog).toBeHidden();
 
 		await page.getByRole('button', { name: 'WG auf diesem Gerät verlassen' }).click();
 
-		await expect(page.getByText('Wirklich verlassen?')).toBeVisible();
-		await expect(page.getByLabel('WG-Code zur Bestätigung')).toHaveCount(0);
+		await expect(leaveDialog).toBeVisible();
+		await expect(leaveDialog).toContainText('Wirklich verlassen?');
+		await expect(deleteDialog).toBeHidden();
+		await expect(deleteDialog.getByLabel('WG-Code zur Bestätigung')).toHaveCount(0);
 	});
 
 	test('explains when deleting an already-missing WG fails', async ({ page }) => {
@@ -300,9 +320,10 @@ test.describe('Settings access controls', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#zugang');
+		const deleteDialog = page.getByRole('alertdialog', { name: 'WG dauerhaft löschen?' });
 		await page.getByRole('button', { name: 'Komplette WG für alle löschen' }).click();
-		await page.getByLabel('WG-Code zur Bestätigung').fill('MTE8PZAT');
-		await page.getByRole('button', { name: 'WG endgültig löschen' }).click();
+		await deleteDialog.getByLabel('WG-Code zur Bestätigung').fill('MTE8PZAT');
+		await deleteDialog.getByRole('button', { name: 'Endgültig löschen' }).click();
 
 		await expect(
 			page.getByText(
@@ -337,9 +358,10 @@ test.describe('Settings access controls', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#zugang');
+		const deleteDialog = page.getByRole('alertdialog', { name: 'WG dauerhaft löschen?' });
 		await page.getByRole('button', { name: 'Komplette WG für alle löschen' }).click();
-		await page.getByLabel('WG-Code zur Bestätigung').fill('MTE8PZAT');
-		await page.getByRole('button', { name: 'WG endgültig löschen' }).click();
+		await deleteDialog.getByLabel('WG-Code zur Bestätigung').fill('MTE8PZAT');
+		await deleteDialog.getByRole('button', { name: 'Endgültig löschen' }).click();
 
 		await expect(
 			page.getByText('WG konnte nicht gelöscht werden: Versuche es gleich erneut.'),
@@ -369,9 +391,10 @@ test.describe('Settings access controls', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#zugang');
+		const deleteDialog = page.getByRole('alertdialog', { name: 'WG dauerhaft löschen?' });
 		await page.getByRole('button', { name: 'Komplette WG für alle löschen' }).click();
-		await page.getByLabel('WG-Code zur Bestätigung').fill('MTE8PZAT');
-		await page.getByRole('button', { name: 'WG endgültig löschen' }).click();
+		await deleteDialog.getByLabel('WG-Code zur Bestätigung').fill('MTE8PZAT');
+		await deleteDialog.getByRole('button', { name: 'Endgültig löschen' }).click();
 
 		await expect(
 			page.getByText(
@@ -379,7 +402,7 @@ test.describe('Settings access controls', () => {
 			),
 		).toBeVisible();
 		await expect(page.getByText('Netzwerkfehler.')).toHaveCount(0);
-		await expect(page.getByRole('button', { name: 'WG endgültig löschen' })).toBeEnabled();
+		await expect(deleteDialog.getByRole('button', { name: 'Endgültig löschen' })).toBeEnabled();
 	});
 
 	test('keeps queued actions visible when discarding cannot be persisted', async ({ page }) => {
@@ -649,8 +672,9 @@ test.describe('Settings access controls', () => {
 
 		await page.getByRole('button', { name: 'Server prüfen: Milch abhaken' }).click();
 
+		const shoppingRow = page.locator('[data-slot="item"]').filter({ hasText: 'Milch abhaken' });
 		await expect(
-			page.getByRole('status').filter({
+			shoppingRow.getByRole('alert').filter({
 				hasText:
 					'Server-Version gefunden. Status dort: offen. Prüfe vor dem erneuten Senden, ob das noch stimmt.',
 			}),
@@ -750,8 +774,9 @@ test.describe('Settings access controls', () => {
 
 		await page.getByRole('button', { name: 'Server prüfen: Kaffee' }).click();
 
+		const shoppingRow = page.locator('[data-slot="item"]').filter({ hasText: 'Kaffee' });
 		await expect(
-			page.getByRole('status').filter({
+			shoppingRow.getByRole('alert').filter({
 				hasText:
 					'Mitglied nicht mehr gültig: Öffne die WG erneut oder tritt mit einem aktuellen Einladungslink bei, bevor du diese Aktion sendest.',
 			}),
@@ -850,8 +875,11 @@ test.describe('Settings access controls', () => {
 
 		await page.getByRole('button', { name: 'Anhang entfernen: Foto vom Zähler' }).click();
 
+		const announcementRow = page
+			.locator('[data-slot="item"]')
+			.filter({ hasText: 'Foto vom Zähler' });
 		await expect(
-			page.getByRole('status').filter({
+			announcementRow.getByRole('alert').filter({
 				hasText: 'Anhang entfernt. Die Offline-Aktion kann wieder synchronisiert werden.',
 			}),
 		).toBeVisible();

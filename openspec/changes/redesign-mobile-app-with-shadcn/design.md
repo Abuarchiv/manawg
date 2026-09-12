@@ -1,6 +1,6 @@
 ## Context
 
-See [proposal.md](proposal.md) for intent and scope. This is a proposal for joint review, dated 2026-09-05; no rendered redesign has been approved yet.
+See [proposal.md](proposal.md) for intent and scope. On 2026-09-05 the user approved the image preview's organization and the plan for implementation, explicitly requiring original shadcn GitHub component styling rather than treating the generated image as a pixel specification. Implementation first, Luna browser/technical verification afterward, and a new-branch push are authorized. Human review and release follow later.
 
 Observed baseline: local `main` is `2c7fc58` and nine commits behind the locally available `origin/main`. Existing uncommitted planning documents belong to ongoing work. The web app uses Next.js 15, React 19, Tailwind 3.4, Node 22 and pnpm 9. There is no app `components.json` or Animate UI integration. Global Codex skills provide instructions, not installed application components.
 
@@ -35,7 +35,7 @@ Alternative considered: an individually customized shadcn-inspired theme. Reject
 
 ### 2. Reorganize destinations around tasks
 
-Candidate A has four persistent bottom destinations. It is an unvalidated hypothesis, not a selected shell. Before implementing navigation across the app, compare its labels and grouping with candidate B, which gives common tasks direct labeled destinations. Both candidates use the same original shadcn styling and content so visual novelty does not decide the comparison.
+The user selected candidate A's four persistent bottom destinations for implementation after reviewing the image. Build this coherent structure using original shadcn components. Luna agents will inspect findability and mobile behavior after implementation; this is AI-assisted verification, not completed representative-user testing.
 
 | Destination | Default existing route | Visible local destinations | Purpose |
 | --- | --- | --- | --- |
@@ -48,7 +48,7 @@ In candidate A, account/WG management opens from the shared profile action. Sear
 
 Primary and route-changing local navigation use real links and current-route state. In-page views can use shadcn Tabs. Do not use a tab widget merely to fake browser navigation. Every existing deep link, prefill query and notification destination continues to resolve. If candidate A is selected, the calendar's parent becomes Haushalt; preserve its URL and change its visible back navigation consistently. No new API endpoint is needed for grouping pages.
 
-Candidate B uses direct task names such as Einkauf, Ausgaben and Putzen; design the remaining destinations to preserve access to communication, calendar and settings. It is a new layout in the same shadcn system, not a return to the old visual design. Compare first destination choice, wrong turns and task completion, including calendar/chat/settings discovery. Labels such as Haushalt and Austausch must earn their place by being understood. An extra tap is acceptable when the route is clear; a smaller menu is not a win if people must guess. Select and record one coherent hierarchy before broad migration. Do not compensate for an unclear hierarchy with scattered duplicate shortcuts or a compulsory tutorial.
+Candidate B (direct-task destinations) remains a documented alternative only if later observation demonstrates problems in the selected structure. Do not delay the authorized implementation for another navigation comparison. Existing canonical routes and meaningful local labels preserve access; do not compensate for an unclear hierarchy with scattered duplicate shortcuts or a compulsory tutorial.
 
 After selection, keep primary destination labels, relative order and common action positions stable between empty/populated states and return visits. Data may update, but navigation must not automatically reorder based on usage or daily recommendations. Keep list content stationary while the resident is tapping or reading; when a refresh changes order, preserve context and make the update apparent.
 
@@ -126,9 +126,9 @@ Animate UI components are not universally drop-in replacements. Its Base Checkbo
 
 ### 6. Implement a real prototype before committing the full composition
 
-After the user starts implementation, create an isolated local/worktree prototype with original registry components and clearly fictional data. Reuse existing test support for data variation where suitable. Do not connect prototype actions to production services.
+The user has started implementation and approved the image's organization. Use the isolated implementation worktree and original registry components directly; a separate throwaway prototype is no longer required. Reuse existing fixture/test support for safe visual verification after implementation. Do not connect validation actions to production services.
 
-First compare the navigation candidates with a lightweight labeled destination exercise and phone prototypes using equivalent tasks. Then the initial component review covers six connected views/states: Start with useful content, Einkauf list, add-item drawer, expense editor with inline split review, save result/return, and an offline or failed save. Show light and dark treatment of the same screen. Include new/empty and established/populated content; a sparse demonstration does not establish suitability for a busy WG.
+The post-implementation Luna review covers six connected views/states: Start with useful content, Einkauf list, add-item drawer, expense editor with inline split review, save result/return, and an offline or failed save. Show light and dark treatment of the same screen. Include new/empty and established/populated content; a sparse demonstration does not establish suitability for a busy WG. This replaces the earlier pre-implementation prototype gate at the user's explicit request.
 
 Separate three kinds of evidence: expert inspection predicts issues; automated checks verify behavior; observation of representative young, smartphone-experienced users establishes first-use/return-use usability evidence. Include first-time and experienced WG roles and the relevant phone platforms. An owner walkthrough is valuable design feedback but does not replace independent first use.
 
@@ -157,14 +157,14 @@ Update generated PWA/browser theme colors to the new theme without unrequested l
 
 ## Migration Plan
 
-1. Reconcile the working base, record the complete feature-to-screen inventory, and create an isolated implementation worktree after the user requests implementation.
-2. Resolve the official preset, verify the Tailwind/browser baseline, compare navigation candidates and construct the six-state component prototype. Review the actual mobile walkthrough and per-screen content contracts together; record which usability evidence remains pending.
-3. Apply the accepted theme, phone shell, shared primitives and animation policy. Run foundation checks before multiple screens depend on it.
+1. Reconcile the working base, record the complete feature-to-screen inventory, and use the isolated implementation worktree. Implementation starts from fetched `origin/main` at `8f845cd`.
+2. Resolve the official preset and verify the Tailwind/browser compatibility metadata. Implement the approved structure with one owner per file. Do not run tests-first or reopen the image's approved organization.
+3. Apply the accepted theme, phone shell, shared primitives and animation policy. Defer test runs to the verification phase as requested; dependency setup and CLI diagnostics are still necessary implementation steps.
 4. Convert the first complete expense flow, including cancel/failure, split review and return. Financial semantics remain a dedicated checkpoint.
 5. Convert public entry/create/join and Start. Then household, communication, secondary finance and account/settings flows in independently verified slices.
 6. Complete remaining secondary states, remove obsolete UI styling, and update the knowledge graph after code changes.
-7. Run the existing Playwright-focused and full technical gates. Produce phone screenshots and a trace of the complete flow. Report fixture, real-device and live-service evidence separately.
-8. Deployment is a later authorized step. Rollback uses the previous coherent frontend release; drafts and stored WG/financial data must remain compatible. Never use a destructive reset of shared work as rollback.
+7. Have Luna agents perform mobile browser click-throughs, run the existing focused/full technical gates, fix regressions and preserve screenshots/traces. Report fixture, real-device and live-service evidence separately.
+8. Push the new branch for the user's review, without merging/deploying. Representative resident studies and the user's release decision remain later product activities. Rollback uses the previous coherent frontend release; drafts and stored WG/financial data must remain compatible. Never use a destructive reset of shared work as rollback.
 
 ## Sources
 
@@ -176,3 +176,15 @@ Update generated PWA/browser theme colors to the new theme without unrequested l
 - [W3C: Understandable Controls](https://www.w3.org/WAI/WCAG2/supplemental/objectives/o1-understandable/) and [Clear Content](https://www.w3.org/WAI/WCAG2/supplemental/objectives/o3-clear-content/): cognitive-accessibility guidance, supplemental to WCAG, not a certification claim.
 - [W3C: Consistent Navigation](https://www.w3.org/WAI/WCAG22/Understanding/consistent-navigation.html): repeated navigation retains its relative order.
 - Local evidence: `apps/web/package.json`, root/WG layouts, route inventory, feature components and `apps/web/e2e`. Browser observation in this conversation is design context, not proof that local HEAD matches production.
+
+### Public-entry implementation follow-up — 2026-09-05
+
+The authorized first slice keeps `PublicApp({ activeModule?: string })`, existing discovery URLs, membership lookup states, invitation query propagation and all auth/recovery contracts. Start presents one clear headline, one guest sign-in link, a create/invite action and four read-only `Beispiel-WG` previews. Module routes present a clearly fictional active-module example, including secondary routes, without a public settings/reminders/activity catalog. The former public-only petrol exception is superseded; the installed Base Nova / Neutral / Inter / Lucide components and semantic tokens define the surface, with a simple documented Motion opacity transition and immediate reduced-motion behavior. Browser acceptance and hosted authentication evidence remain pending until the correction is verified.
+
+### Liquid Glass implementation follow-up — 2026-09-05
+
+The authorized material adapter uses the inspected MIT `simple-liquid-glass@4.1.0` core around existing semantic controls. `mode="preset"`, `effectMode="blur"` and `mobileFallback="css-only"` are fixed upstream settings so SSR and hydration share one deterministic CSS-glass path; no custom palette, gradient, pointer effect or native Apple API is added. An opaque `var(--background)` fallback covers unsupported `backdrop-filter`, forced colors, increased contrast and reduced transparency media features. Chromium/iOS/Safari/Firefox behavior remains subject to the package's documented web fallback limits and is verified separately by the controller.
+
+### Bottom-only Glass correction — 2026-09-05
+
+The screenshot correction supersedes the broad material composition above. The same pinned adapter and semantic fallback remain, but `LiquidGlassSurface` is now composed only around the public and private four-destination bottom main navigations. Public/WG headers, `EntryFrame`, `SubNav`, the compact create/join action, auth `TabsList` and dropdown popups use their original Base Nova / Neutral shadcn surfaces and variants again. Each navigation row uses 4px inner padding, the original `rounded-lg` NavItem radius and the upstream Glass `radius` matching the existing `--radius-xl` token (14px); the page reserves 72px plus the safe-area inset for the 64px navigation bar and its minimum 8px clearance.

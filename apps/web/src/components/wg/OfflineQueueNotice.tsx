@@ -1,5 +1,6 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatQueuedOfflineActions } from '@/core/offline/offline-copy';
 
 /**
@@ -9,11 +10,8 @@ import { formatQueuedOfflineActions } from '@/core/offline/offline-copy';
 export function OfflineQueueNotice({ queuedCount }: { queuedCount: number }) {
 	if (queuedCount <= 0) return null;
 	return (
-		<output
-			className="block rounded-md border border-[var(--accent)]/25 bg-[var(--accent)]/5 px-3 py-2 text-[13px] text-[var(--accent)]"
-			aria-live="polite"
-		>
-			{formatQueuedOfflineActions(queuedCount)}
-		</output>
+		<Alert>
+			<AlertDescription>{formatQueuedOfflineActions(queuedCount)}</AlertDescription>
+		</Alert>
 	);
 }

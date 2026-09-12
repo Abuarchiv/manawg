@@ -1,3 +1,4 @@
+import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 export function LinkRow({ href, label }: { href: string; label: string }) {
@@ -5,12 +6,10 @@ export function LinkRow({ href, label }: { href: string; label: string }) {
 		<li>
 			<Link
 				href={href}
-				className="flex min-h-[44px] items-center justify-between gap-3 px-4 py-3 text-[14px] text-[var(--text-1)] transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+				className="text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring flex min-h-[44px] items-center justify-between gap-3 px-4 py-3 text-sm transition-colors"
 			>
 				<span>{label}</span>
-				<span aria-hidden className="text-[var(--text-3)]">
-					→
-				</span>
+				<ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
 			</Link>
 		</li>
 	);

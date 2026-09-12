@@ -1,12 +1,17 @@
 'use client';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { ThemeOption } from '@/components/wg/einstellungen/ThemeOption';
 import { apiFetch } from '@/core/infra/api-client';
 import { useTheme } from '@/shared/components/theme/ThemeProvider';
 import { haptic } from '@/shared/lib/haptics';
-import { Check, Loader2, Monitor, Moon, Save, Sun } from 'lucide-react';
+import { Check, Monitor, Moon, Save, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface ProfileTabProps {
@@ -79,71 +84,67 @@ export function ProfileTab({
 	return (
 		<>
 			<Section title="Dein Profil" hint="Diese Identität ist nur an dieses Gerät gebunden.">
-				<div className="flex items-center gap-3 px-4 py-3.5">
+				<div className="flex min-h-[44px] items-center gap-3 px-4 py-3.5">
 					<MemberAvatar name={memberName} size={40} />
 					<div className="min-w-0 flex-1">
-						<div className="truncate text-[15px] font-medium text-[var(--text-1)]">
-							{memberName}
-						</div>
-						<div className="mt-0.5 text-[12.5px] text-[var(--text-3)]">in {wgName}</div>
+						<div className="text-foreground truncate text-[15px] font-medium">{memberName}</div>
+						<div className="text-muted-foreground mt-0.5 text-[12.5px]">in {wgName}</div>
 					</div>
 				</div>
 			</Section>
 
 			<Section title="PayPal" hint="Damit Mitbewohner dir offene Ausgleiche direkt zahlen können.">
-				<div className="space-y-3 p-4">
-					<label
-						className="block text-[13px] font-medium text-[var(--text-1)]"
-						htmlFor="paypal-merchant-id"
-					>
-						PayPal Merchant-ID
-					</label>
-					<div className="flex flex-col gap-2 sm:flex-row">
-						<input
-							id="paypal-merchant-id"
-							type="text"
-							value={paypalMerchantId}
-							onChange={(event) => setPaypalMerchantId(event.target.value)}
-							placeholder="13-stellige Merchant-ID"
-							disabled={loadingPayPal || savingPayPal}
-							className="h-11 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[13px] text-[var(--text-1)] outline-none transition-colors placeholder:text-[var(--text-3)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 disabled:opacity-60"
-						/>
-						<button
-							type="button"
-							onClick={() => void savePayPal()}
-							disabled={loadingPayPal || savingPayPal}
-							className="inline-flex h-11 items-center justify-center gap-1.5 rounded-md border border-[var(--border)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50"
-						>
-							{savingPayPal ? (
-								<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-							) : (
-								<Save className="h-3.5 w-3.5" aria-hidden />
-							)}
-							Speichern
-						</button>
-					</div>
-					<p className="text-[12px] text-[var(--text-3)]">
-						Die Merchant-ID findest du in PayPal unter „Unternehmensinformationen“.
-					</p>
+				<div className="p-4">
+					<FieldGroup>
+						<Field>
+							<FieldLabel htmlFor="paypal-merchant-id">PayPal Merchant-ID</FieldLabel>
+							<div className="flex flex-col gap-2">
+								<Input
+									id="paypal-merchant-id"
+									type="text"
+									value={paypalMerchantId}
+									onChange={(event) => setPaypalMerchantId(event.target.value)}
+									placeholder="13-stellige Merchant-ID"
+									disabled={loadingPayPal || savingPayPal}
+									className="h-11 min-h-[44px] text-base"
+									autoComplete="off"
+									inputMode="text"
+								/>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => void savePayPal()}
+									disabled={loadingPayPal || savingPayPal}
+									className="h-11 min-h-[44px] w-full"
+								>
+									{savingPayPal ? <Spinner aria-hidden /> : <Save aria-hidden />}
+									{savingPayPal ? 'Speichert…' : 'Speichern'}
+								</Button>
+							</div>
+							<FieldDescription>
+								Die Merchant-ID findest du in PayPal unter „Unternehmensinformationen“.
+							</FieldDescription>
+						</Field>
+					</FieldGroup>
 					{paypalMessage && (
-						<output
-							className="flex items-center gap-1.5 text-[12px] text-[var(--success)]"
-							aria-live="polite"
-						>
-							<Check className="h-3.5 w-3.5" aria-hidden /> {paypalMessage}
-						</output>
+						<Alert className="mt-3">
+							<Check aria-hidden />
+							<AlertTitle>Gespeichert</AlertTitle>
+							<AlertDescription>{paypalMessage}</AlertDescription>
+						</Alert>
 					)}
 					{paypalError && (
-						<p className="text-[12px] text-[var(--danger)]" role="alert">
-							{paypalError}
-						</p>
+						<Alert variant="destructive" className="mt-3">
+							<AlertTitle>Speichern fehlgeschlagen</AlertTitle>
+							<AlertDescription>{paypalError}</AlertDescription>
+						</Alert>
 					)}
 				</div>
 			</Section>
 
 			<Section title="Darstellung" hint="Hell, Dunkel oder dem System folgen.">
 				{/* Three equally-sized toggle buttons — aria-pressed set, focus rings visible */}
-				<div className="flex gap-2 p-3">
+				<div className="flex gap-2 p-4">
 					<ThemeOption
 						label="Hell"
 						icon={<Sun className="h-4 w-4" aria-hidden />}

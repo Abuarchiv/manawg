@@ -1,5 +1,7 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import { formatEuroCents } from '@/core/utils/money';
@@ -10,6 +12,7 @@ interface ManualSplitSummaryProps {
 	manualSplits: Record<string, string>;
 	members: ReadonlyArray<{ id: string; name: string }>;
 	setManualSplits: Dispatch<SetStateAction<Record<string, string>>>;
+	disabled?: boolean;
 }
 
 export function ManualSplitSummary({
@@ -17,6 +20,7 @@ export function ManualSplitSummary({
 	manualSplits,
 	members,
 	setManualSplits,
+	disabled = false,
 }: ManualSplitSummaryProps) {
 	const totalEuros = parseEuroAmount(amountStr) ?? 0;
 	const totalCents = Math.round(totalEuros * CENTS_PER_EURO);
@@ -26,11 +30,6 @@ export function ManualSplitSummary({
 	}, 0);
 	const remainderCents = totalCents - splitCents;
 	const balanced = totalCents > 0 && remainderCents === 0;
-	const tone = balanced
-		? 'border-[var(--success-border)] bg-[var(--success-bg)] text-[var(--success-fg)]'
-		: remainderCents < 0
-			? 'border-[var(--danger)]/30 bg-[var(--danger)]/5 text-[var(--danger)]'
-			: 'border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)]';
 	const label = balanced
 		? '✓ Ausgeglichen'
 		: remainderCents < 0
@@ -65,22 +64,27 @@ export function ManualSplitSummary({
 	}
 
 	return (
-		<div className="mt-1 space-y-2">
-			<div
+		<div className="flex flex-col gap-2">
+			<Alert
 				aria-live="polite"
-				className={`flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-[12.5px] font-medium tabular-nums ${tone}`}
+				variant={balanced ? undefined : remainderCents < 0 ? 'destructive' : undefined}
 			>
-				<span>Summe: {formatEuroCents(splitCents)}</span>
-				<span>{label}</span>
-			</div>
+				<AlertDescription className="flex items-center justify-between gap-2 tabular-nums">
+					<span>Summe: {formatEuroCents(splitCents)}</span>
+					<span>{label}</span>
+				</AlertDescription>
+			</Alert>
 			{!balanced && totalCents > 0 && (
-				<button
+				<Button
 					type="button"
+					variant="outline"
+					size="lg"
 					onClick={distributeRemainder}
-					className="inline-flex h-11 items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+					disabled={disabled}
+					className="min-h-11"
 				>
 					Rest aufteilen
-				</button>
+				</Button>
 			)}
 		</div>
 	);

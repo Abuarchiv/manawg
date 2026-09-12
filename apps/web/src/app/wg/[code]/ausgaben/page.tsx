@@ -1,14 +1,25 @@
 'use client';
 
-import { EmptyState } from '@/components/ui/EmptyState';
-import { ALERT_DANGER_ROW, EMPTY_PLACEHOLDER, LIST_CARD } from '@/components/ui/styles';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
+import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { DebtSummary } from '@/components/wg/DebtSummary';
+import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { BalanceBars } from '@/components/wg/dashboard/BalanceBars';
-import { Panel } from '@/components/wg/dashboard/Panel';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
@@ -32,7 +43,7 @@ import {
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { parseEuroAmount } from '@/core/utils/amount';
-import { CENTS_PER_EURO } from '@/core/utils/money';
+import { CENTS_PER_EURO, formatEuroCents } from '@/core/utils/money';
 import { parseTimestamp } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { AusgabenHeader } from '@/features/expenses/components/ausgaben/AusgabenHeader';
@@ -73,9 +84,8 @@ import {
 	splitCandidates,
 } from '@/features/expenses/expense-split-input';
 import { addMonths } from '@/features/expenses/recurring-expenses';
-import posthog from '@/shared/lib/analytics';
 import { haptic } from '@/shared/lib/haptics';
-import { Bell, ChevronDown, Loader2, Receipt, RefreshCw, RotateCw } from 'lucide-react';
+import { Bell, ChevronDown, FileInput, Receipt, RefreshCw } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -478,12 +488,6 @@ export default function AusgabenPage() {
 			return;
 		}
 
-		posthog.capture('expense_saved', {
-			action: isEdit ? 'updated' : 'created',
-			split_mode: splitMode,
-			has_receipt: imageUrl !== null,
-		});
-
 		if (!clearEditedQueueItem(['expense.create'])) {
 			finishSubmitting();
 			setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
@@ -884,29 +888,26 @@ export default function AusgabenPage() {
 	const formSaving = submitting || savingRecurringTemplate;
 	const recurringActionPending = creatingRecurringId !== null || savingRecurringTemplate;
 
+	const personalBalance =
+		memberBalances.find((member) => member.memberId === identity.memberId)?.balanceCents ?? 0;
+
 	return (
-		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+		<div className="mx-auto flex w-full max-w-md flex-col gap-5 px-4 py-5">
 			<AusgabenHeader
 				expenseCount={expenses.length}
 				initialLoading={initialLoading}
 				showForm={showForm}
 				wgBaseHref={wgBaseHref}
 				onToggleForm={() => {
-					if (showForm) {
-						resetForm();
-						setShowForm(false);
-					} else {
+					if (showForm) setShowForm(false);
+					else {
 						haptic('light');
 						setShowForm(true);
 					}
 				}}
 			/>
-
-			{/* Fixkosten und Mahnungen sind keine eigenen Bereiche, sondern zwei
-			    Sichten auf dieselben Ausgaben — deshalb hängen sie hier und nicht
-			    im Mehr-Menü. */}
 			<SubNav
-				label="Unterbereiche der Ausgaben"
+				label="Unterbereiche der Finanzen"
 				items={[
 					{
 						href: `${wgBaseHref}/abos`,
@@ -920,11 +921,20 @@ export default function AusgabenPage() {
 						icon: Bell,
 						count: directDebts.length,
 					},
+					{ href: `${wgBaseHref}/import`, label: 'Import', icon: FileInput },
 				]}
 			/>
-
 			{showForm && (
 				<ExpenseFormSection
+					title={
+						editingRecurringExpense
+							? 'Fixkosten-Vorlage bearbeiten'
+							: editingExpense
+								? 'Ausgabe bearbeiten'
+								: 'Ausgabe erfassen'
+					}
+					rotationOffset={expenses.length}
+					notice={actionNotice}
 					description={description}
 					setDescription={setDescription}
 					amountStr={amountStr}
@@ -958,9 +968,11 @@ export default function AusgabenPage() {
 					editingRecurringExpense={editingRecurringExpense}
 					formSaving={formSaving}
 					onSaveRecurringTemplate={() => void saveRecurringTemplate()}
-					onCancel={() => {
+					onCancel={() => setShowForm(false)}
+					onDiscard={() => {
 						resetForm();
 						setShowForm(false);
+						removeDraft(draftKey);
 					}}
 					onSubmit={() => {
 						haptic('medium');
@@ -969,40 +981,73 @@ export default function AusgabenPage() {
 					}}
 				/>
 			)}
-
-			{actionNotice && <ActionNoticeBanner notice={actionNotice} />}
-
+			{actionNotice && !showForm && <ActionNoticeBanner notice={actionNotice} />}
 			{refreshing && (
 				<output
-					className="flex justify-center py-1"
-					aria-label="Aktualisieren…"
+					className="flex items-center gap-2 text-sm text-muted-foreground"
 					aria-live="polite"
-					aria-atomic="true"
 				>
-					<Loader2 className="h-4 w-4 animate-spin text-[var(--text-3)]" aria-hidden />
+					<Spinner />
+					Wird aktualisiert…
 				</output>
 			)}
-
 			<OfflineQueueNotice queuedCount={queuedCount} />
-
 			{loadError && (
-				<div role="alert" className={ALERT_DANGER_ROW}>
-					<span>{loadError}</span>
-					<button
-						type="button"
-						onClick={() => void load(true)}
-						disabled={initialLoading || refreshing}
-						className="inline-flex h-11 items-center gap-1.5 rounded-md border border-[var(--danger)]/30 px-3 text-[12px] font-medium transition-colors hover:bg-[var(--danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-					>
-						<RotateCw
-							className={`h-3.5 w-3.5 ${initialLoading || refreshing ? 'animate-spin' : ''}`}
-							aria-hidden
-						/>
-						{initialLoading || refreshing ? 'Lädt...' : 'Ausgaben erneut laden'}
-					</button>
-				</div>
+				<LoadErrorBanner
+					message={loadError}
+					onRetry={() => void load(true)}
+					busy={initialLoading || refreshing}
+					retryLabel="Ausgaben erneut laden"
+				/>
 			)}
-
+			{!showSkeleton && expenses.length > 0 && (
+				<Card>
+					<CardHeader>
+						<CardDescription>Dein Saldo</CardDescription>
+						<CardTitle>
+							{personalBalance > 0
+								? `Du bekommst ${formatEuroCents(personalBalance)} zurück`
+								: personalBalance < 0
+									? `Du schuldest ${formatEuroCents(-personalBalance)}`
+									: 'Du bist ausgeglichen'}
+						</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<Collapsible>
+							<CollapsibleTrigger
+								render={<Button variant="ghost" className="min-h-11 w-full justify-between" />}
+							>
+								Saldo pro Mitglied
+								<ChevronDown data-icon="inline-end" />
+							</CollapsibleTrigger>
+							<CollapsibleContent>
+								<ItemGroup className="pt-2">
+									{memberBalances.map((member) => (
+										<Item key={member.memberId} variant="muted" size="xs">
+											<ItemContent className="min-w-0">
+												<ItemTitle className="line-clamp-none break-words">
+													{member.memberName}
+													{member.memberId === identity.memberId ? ' (du)' : ''}
+												</ItemTitle>
+												<ItemDescription>
+													{member.balanceCents > 0
+														? 'Bekommt zurück'
+														: member.balanceCents < 0
+															? 'Schuldet'
+															: 'Ausgeglichen'}
+												</ItemDescription>
+											</ItemContent>
+											<Badge variant="outline" className="tabular-nums">
+												{formatEuroCents(Math.abs(member.balanceCents))}
+											</Badge>
+										</Item>
+									))}
+								</ItemGroup>
+							</CollapsibleContent>
+						</Collapsible>
+					</CardContent>
+				</Card>
+			)}
 			{(recurringExpenses.length > 0 || recurringFilterActive) && (
 				<RecurringExpensesSection
 					recurringExpenses={recurringExpenses}
@@ -1015,80 +1060,61 @@ export default function AusgabenPage() {
 					recurringActionPending={recurringActionPending}
 					creatingRecurringId={creatingRecurringId}
 					isPending={isPending}
+					memberName={memberName}
 					onCreateFromTemplate={(item) => void createFromRecurringTemplate(item)}
 					onEditTemplate={startRecurringEdit}
 					onDeleteTemplate={(item) => void deleteRecurringTemplate(item)}
 					onPrepareNewExpense={() => setShowForm(true)}
 				/>
 			)}
-
-			{!showSkeleton && expenses.length > 0 && (
-				<Panel title="Saldo pro Mitglied">
-					<BalanceBars balances={memberBalances} currentMemberId={identity.memberId} />
-				</Panel>
-			)}
-
-			{!showSkeleton && (
-				<DebtSummary
-					debts={directDebts}
-					summary={settlementSummary}
-					shareCode={wg.shareCode}
-					currentMemberId={identity.memberId}
-					memberToken={identity.memberToken}
-					memberColor={memberColor}
-					memberPayPalMerchantId={memberPayPalMerchantId}
-					onSettled={() => void load(false)}
-				/>
-			)}
-
-			{showSkeleton ? (
-				<ExpensesSkeleton />
-			) : loadError && expenses.length === 0 ? (
-				<p className={EMPTY_PLACEHOLDER}>Noch keine Ausgaben geladen. Versuche es erneut.</p>
-			) : expenses.length === 0 && !initialLoading ? (
-				// Formular offen → Empty-State samt Template-Buttons ausblenden,
-				// sonst stehen zwei konkurrierende CTAs unter dem Formular.
-				showForm ? null : (
-					<>
-						<EmptyState
-							icon={<Receipt className="h-5 w-5" strokeWidth={1.5} aria-hidden />}
-							headline="Noch keine Ausgaben"
-							sub="Leg die erste Ausgabe an oder starte mit einer typischen WG-Ausgabe."
-							cta={{ label: 'Erste Ausgabe', onClick: () => setShowForm(true) }}
-						/>
-						<div className="-mt-4 flex flex-wrap justify-center gap-2">
-							{QUICK_EXPENSE_TEMPLATES.map((t) => (
-								<button
-									key={t.label}
-									type="button"
-									onClick={() => applyQuickExpense(t)}
-									className="inline-flex min-h-11 items-center rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-1.5 text-[13px] text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)]"
-								>
-									{t.label}
-								</button>
-							))}
-						</div>
-					</>
-				)
-			) : (
-				<details className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-4">
-					<summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
-						<span className="text-sm font-semibold text-[var(--text-1)]">
-							Eingetragene Ausgaben
-						</span>
-						<span className="flex items-center gap-2">
-							<span className="rounded-full border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-3)]">
-								{expenses.length}
-							</span>
-							<ChevronDown className="h-4 w-4 text-[var(--text-3)]" aria-hidden />
-						</span>
-					</summary>
-					<ul className={`${LIST_CARD} mt-3`}>
-						{expenses.map((e) => (
+			<section className="flex flex-col gap-3" aria-label="Eingetragene Ausgaben">
+				<div className="flex items-center justify-between gap-2">
+					<h2 className="text-base font-semibold">Eingetragene Ausgaben</h2>
+					<Badge variant="secondary">{expenses.length}</Badge>
+				</div>
+				{showSkeleton ? (
+					<ExpensesSkeleton />
+				) : loadError && expenses.length === 0 ? (
+					<Empty>
+						<EmptyHeader>
+							<EmptyTitle>Noch keine Ausgaben geladen</EmptyTitle>
+							<EmptyDescription>Versuche es erneut, um eure Einträge zu sehen.</EmptyDescription>
+						</EmptyHeader>
+					</Empty>
+				) : expenses.length === 0 && !initialLoading ? (
+					<Empty>
+						<EmptyHeader>
+							<EmptyMedia variant="icon">
+								<Receipt />
+							</EmptyMedia>
+							<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
+							<EmptyDescription>Erfasse eure erste gemeinsame Ausgabe.</EmptyDescription>
+						</EmptyHeader>
+						<EmptyContent>
+							<Button className="min-h-11" onClick={() => setShowForm(true)}>
+								Erste Ausgabe
+							</Button>
+							<div className="flex flex-wrap justify-center gap-2">
+								{QUICK_EXPENSE_TEMPLATES.map((template) => (
+									<Button
+										key={template.label}
+										variant="outline"
+										className="min-h-11"
+										onClick={() => applyQuickExpense(template)}
+									>
+										{template.label}
+									</Button>
+								))}
+							</div>
+						</EmptyContent>
+					</Empty>
+				) : (
+					<ul className="flex flex-col gap-3">
+						{expenses.map((expense) => (
 							<ExpenseRow
-								key={e.id}
-								expense={e}
-								expanded={expanded.has(e.id)}
+								key={expense.id}
+								expense={expense}
+								expanded={expanded.has(expense.id)}
 								onToggleExpand={toggleExpand}
 								onDelete={deleteExpense}
 								onEdit={startEdit}
@@ -1097,11 +1123,24 @@ export default function AusgabenPage() {
 								memberName={memberName}
 								memberColor={memberColor}
 								currentMemberId={identity.memberId}
-								highlighted={highlightedId === e.id}
+								highlighted={highlightedId === expense.id}
 							/>
 						))}
 					</ul>
-				</details>
+				)}
+			</section>
+			{!showSkeleton && (
+				<DebtSummary
+					debts={directDebts}
+					summary={settlementSummary}
+					expenses={expenses}
+					shareCode={wg.shareCode}
+					currentMemberId={identity.memberId}
+					memberToken={identity.memberToken}
+					memberColor={memberColor}
+					memberPayPalMerchantId={memberPayPalMerchantId}
+					onSettled={() => void load(false)}
+				/>
 			)}
 		</div>
 	);

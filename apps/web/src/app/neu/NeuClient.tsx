@@ -1,20 +1,52 @@
 'use client';
 
+import {
+	Collapsible,
+	CollapsiblePanel,
+	CollapsibleTrigger,
+} from '@/components/animate-ui/primitives/base/collapsible';
 import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
 import { LegacyAccountRecovery } from '@/components/auth/LegacyAccountRecovery';
 import { SocialLoginButtons, type SocialProvider } from '@/components/auth/SocialLoginButtons';
+import { EntryFrame } from '@/components/entry/EntryFrame';
 import { BackButton } from '@/components/neu/BackButton';
 import { ErrorBox } from '@/components/neu/ErrorBox';
 import { Field } from '@/components/neu/Field';
 import { InviteStep } from '@/components/neu/InviteStep';
+import { Button } from '@/components/ui/button';
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card';
+import {
+	FieldDescription,
+	FieldGroup,
+	FieldLabel,
+	FieldSeparator,
+	Field as UiField,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import {
+	Item,
+	ItemContent,
+	ItemDescription,
+	ItemGroup,
+	ItemMedia,
+	ItemTitle,
+} from '@/components/ui/item';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { safeNextPath } from '@/core/auth/next-path';
 import { getInitialJoinCode, joinErrorMessage } from '@/core/infra/join-flow';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
-import { LogoMark } from '@/shared/components/ui/LogoMark';
 import posthog from '@/shared/lib/analytics';
 import { rememberWg } from '@/shared/lib/identity';
 import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight, ChevronDown, Home, KeyRound, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -109,7 +141,7 @@ async function readStartError(response: Response): Promise<string> {
 
 function createWgErrorMessage(status: number, error: string): string {
 	if (status === 401 && error === 'auth_required') {
-		return 'Melde dich zuerst mit deinem Supabase-Account an.';
+		return 'Melde dich zuerst mit deinem Konto an.';
 	}
 	if (status === 400 && error === 'name_invalid') {
 		return 'WG konnte nicht erstellt werden: Der WG-Name muss 1 bis 100 Zeichen haben.';
@@ -172,6 +204,7 @@ export function NeuClient() {
 	const [createdWg, setCreatedWg] = useState<CreatedWg | null>(null);
 	const [interactive, setInteractive] = useState(false);
 	const busyRef = useRef(false);
+	const [legacyOpen, setLegacyOpen] = useState(false);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: mount-only initializer — reads the saved draft and initial URL params once; adding searchParams would re-run on navigation and clobber in-progress step/draft state.
 	useEffect(() => {
@@ -426,7 +459,7 @@ export function NeuClient() {
 				}
 				setError(
 					apiError === 'auth_required'
-						? 'Melde dich zuerst mit deinem Supabase-Account an.'
+						? 'Melde dich zuerst mit deinem Konto an.'
 						: joinErrorMessage(res.status, apiError),
 				);
 				return;
@@ -459,391 +492,383 @@ export function NeuClient() {
 
 	if (authState !== 'authenticated') {
 		return (
-			<main
-				id="main"
-				tabIndex={-1}
-				className="flex min-h-svh items-center justify-center bg-[var(--bg-base)] px-4 py-10 focus:outline-none"
-				style={{
-					paddingTop: 'calc(2.5rem + env(safe-area-inset-top, 0px))',
-					paddingBottom: 'calc(2.5rem + env(safe-area-inset-bottom, 0px))',
-				}}
+			<EntryFrame
+				title="Anmelden"
+				headingId="auth-heading"
+				description={
+					step === 'create'
+						? 'Melde dich an, danach erstellst du deine neue WG.'
+						: joinCode
+							? 'Melde dich an, um mit deinem Einladungscode beizutreten.'
+							: 'Dein Konto bringt dich auf jedem Gerät zurück in deine WG.'
+				}
+				backHref={explorationHref()}
 			>
-				<div className="w-full max-w-sm">
-					<header className="mb-7 text-center">
-						<div className="mb-3 flex justify-center">
-							<LogoMark size={48} radius={12} className="shrink-0 rounded-xl shadow-sm" />
-						</div>
-						<p className="text-[11.5px] font-medium uppercase tracking-[0.18em] text-[var(--text-3)]">
-							ManaWG
-						</p>
-						<h1 className="mt-2 text-[22px] font-semibold tracking-tight text-[var(--text-1)]">
-							Mit deinem Account anmelden
-						</h1>
-						<p className="mt-2 text-sm text-[var(--text-2)]">
-							Dein Account macht deine WG auf jedem Gerät verfügbar.
-						</p>
-					</header>
-
-					{callbackError && (
-						<ErrorBox>
-							Die Anmeldung konnte nicht abgeschlossen werden. Bitte versuche es erneut.
-						</ErrorBox>
-					)}
-					{authState === 'error' && (
-						<div className="mb-4 space-y-2">
-							<ErrorBox>Deine Anmeldung konnte gerade nicht geprüft werden.</ErrorBox>
-							<button
-								type="button"
-								onClick={() => setAuthRetryNonce((value) => value + 1)}
-								className="w-full rounded-md border border-[var(--border)] px-3 py-2 text-[13px] font-medium text-[var(--text-1)] transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-							>
-								erneut prüfen
-							</button>
-						</div>
-					)}
-
-					{authState !== 'loading' && (
-						<div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-							<p className="text-[13px] text-[var(--text-2)]">
-								{step === 'create'
-									? 'Melde dich an, danach kannst du deine neue WG erstellen.'
-									: joinCode
-										? 'Melde dich an, danach kannst du mit deinem Einladungscode beitreten.'
-										: 'Melde dich an, um deine WGs wiederherzustellen oder loszulegen.'}
-							</p>
-							<CredentialsAuth next={loginNextPath()} onAuthenticated={handleAuthenticated} />
-							<div className="flex items-center gap-3 py-1 text-[11px] uppercase tracking-[0.14em] text-[var(--text-3)]">
-								<span className="h-px flex-1 bg-[var(--border)]" />
-								oder
-								<span className="h-px flex-1 bg-[var(--border)]" />
-							</div>
-							<SocialLoginButtons next={loginNextPath()} onOAuthStart={startSocialLogin} />
-						</div>
-					)}
-					<div className="mt-6 text-center">
-						<Link
-							href={explorationHref()}
-							className="text-[13px] text-[var(--text-2)] underline-offset-4 hover:text-[var(--text-1)] hover:underline"
+				{callbackError && (
+					<ErrorBox>
+						Die Anmeldung konnte nicht abgeschlossen werden. Bitte versuche es erneut.
+					</ErrorBox>
+				)}
+				{authState === 'error' && (
+					<div className="flex flex-col gap-2">
+						<ErrorBox>Deine Anmeldung konnte gerade nicht geprüft werden.</ErrorBox>
+						<Button
+							variant="outline"
+							onClick={() => setAuthRetryNonce((value) => value + 1)}
+							className="min-h-11"
 						>
-							Zurück zur öffentlichen Ansicht
-						</Link>
+							erneut prüfen
+						</Button>
 					</div>
-				</div>
-			</main>
+				)}
+				{authState === 'loading' ? (
+					<output
+						aria-live="polite"
+						aria-label="Anmeldung wird geprüft"
+						className="flex flex-col gap-4"
+					>
+						<Skeleton className="h-11 w-full" />
+						<Skeleton className="h-40 w-full" />
+						<span className="sr-only">Anmeldung wird geprüft</span>
+					</output>
+				) : (
+					<Card aria-labelledby="auth-heading">
+						<CardContent>
+							<FieldGroup>
+								<SocialLoginButtons next={loginNextPath()} onOAuthStart={startSocialLogin} />
+								<FieldSeparator>oder</FieldSeparator>
+								<CredentialsAuth next={loginNextPath()} onAuthenticated={handleAuthenticated} />
+							</FieldGroup>
+						</CardContent>
+					</Card>
+				)}
+			</EntryFrame>
 		);
 	}
 
 	return (
-		<main
-			id="main"
-			tabIndex={-1}
-			className="flex min-h-svh items-center justify-center bg-[var(--bg-base)] px-4 py-10 focus:outline-none"
-			style={{
-				paddingTop: 'calc(2.5rem + env(safe-area-inset-top, 0px))',
-				paddingBottom: 'calc(2.5rem + env(safe-area-inset-bottom, 0px))',
-			}}
+		<EntryFrame
+			title={
+				step === 'choose'
+					? 'Deine WG'
+					: step === 'create'
+						? 'Neue WG erstellen'
+						: step === 'join'
+							? 'Per Code beitreten'
+							: step === 'joinName'
+								? 'Dein Name in der WG'
+								: (createdWg?.name ?? 'Mitbewohner einladen')
+			}
+			description={
+				step === 'invite'
+					? 'Deine WG ist erstellt. Jetzt kannst du die Einladung teilen.'
+					: step === 'joinName'
+						? 'Mit diesem Namen sehen dich deine Mitbewohner.'
+						: step === 'create'
+							? 'Gib eurer WG einen Namen. Danach erhältst du euren Einladungscode.'
+							: step === 'join'
+								? 'Gib den Einladungscode deiner Mitbewohner ein.'
+								: 'Öffne eine bestehende WG oder starte gemeinsam neu.'
+			}
+			backHref={explorationHref()}
+			actions={
+				step !== 'invite' ? (
+					<Button
+						type="button"
+						variant="link"
+						onClick={() => void switchAccount()}
+						disabled={busy}
+						className="min-h-11 w-fit px-0"
+					>
+						{busy ? 'Bitte warten…' : 'Mit anderem Konto anmelden'}
+					</Button>
+				) : undefined
+			}
 		>
-			<div className="w-full max-w-sm">
-				<header className="mb-7 text-center">
-					<div className="mb-3 flex justify-center">
-						<LogoMark size={48} radius={12} className="shrink-0 rounded-xl shadow-sm" />
-					</div>
-					<p className="text-[11.5px] font-medium uppercase tracking-[0.18em] text-[var(--text-3)]">
-						ManaWG
-					</p>
-					<h1 className="mt-2 text-[22px] font-semibold tracking-tight text-[var(--text-1)]">
-						{step === 'choose'
-							? 'Loslegen'
-							: step === 'create'
-								? 'Neue WG erstellen'
-								: step === 'join'
-									? 'Per Code beitreten'
-									: step === 'joinName'
-										? 'Namen eintragen'
-										: 'Mitbewohner einladen'}
-					</h1>
-					<p className="mt-2 text-sm text-[var(--text-2)]">
-						{step === 'invite'
-							? 'Schick den Code — Mitbewohner sind in 10 Sek dabei.'
-							: step === 'joinName' && joinWg
-								? 'Einladung erkannt. Nur noch dein Name.'
-								: 'Dein Account macht deine WG auf jedem Gerät verfügbar.'}
-					</p>
-					{authState === 'authenticated' && step !== 'invite' ? (
-						<button
-							type="button"
-							onClick={() => void switchAccount()}
-							disabled={busy}
-							className="mt-3 text-[13px] text-[var(--text-2)] underline-offset-4 hover:text-[var(--text-1)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:opacity-60"
-						>
-							{busy ? 'Melde ab…' : 'Mit anderem Konto anmelden'}
-						</button>
-					) : null}
-				</header>
-				{callbackError && (
-					<div className="mb-4">
-						<ErrorBox>
-							Die Anmeldung konnte nicht abgeschlossen werden. Bitte versuche es erneut.
-						</ErrorBox>
-					</div>
-				)}
-				{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
+			{callbackError && (
+				<ErrorBox>
+					Die Anmeldung konnte nicht abgeschlossen werden. Bitte versuche es erneut.
+				</ErrorBox>
+			)}
+			{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
 
-				{step === 'choose' && (
-					<div className="space-y-3">
-						{accountWgs.length > 0 && (
-							<div className="space-y-2">
-								<p className="px-1 text-[12px] font-medium text-[var(--text-3)]">Deine WGs</p>
+			{step === 'choose' && (
+				<div className="flex flex-col gap-4">
+					{accountWgs.length > 0 && (
+						<section aria-labelledby="your-wgs-heading" className="flex flex-col gap-3">
+							<h2 id="your-wgs-heading" className="text-base font-semibold">
+								Deine WGs
+							</h2>
+							<ItemGroup>
 								{accountWgs.map((accountWg) => (
-									<button
+									<Item
 										key={accountWg.id}
-										type="button"
-										onClick={() => router.push(`/wg/${encodeURIComponent(accountWg.code)}`)}
-										className="flex w-full items-center justify-between gap-3 rounded-lg border border-[var(--accent)]/25 bg-[var(--accent)]/5 px-4 py-3 text-left transition-colors hover:bg-[var(--accent)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+										variant="outline"
+										render={<Link href={`/wg/${encodeURIComponent(accountWg.code)}`} />}
 									>
-										<span className="truncate text-[15px] font-medium text-[var(--text-1)]">
-											{accountWg.name}
-										</span>
-										<ArrowRight className="h-4 w-4 shrink-0 text-[var(--accent)]" aria-hidden />
-									</button>
+										<ItemMedia variant="icon">
+											<Home aria-hidden />
+										</ItemMedia>
+										<ItemContent className="min-w-0">
+											<ItemTitle className="line-clamp-none break-words">
+												{accountWg.name}
+											</ItemTitle>
+											<ItemDescription>WG öffnen</ItemDescription>
+										</ItemContent>
+									</Item>
 								))}
-							</div>
-						)}
-						<div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-base)]">
-							<button
-								type="button"
-								disabled={!interactive}
+							</ItemGroup>
+						</section>
+					)}
+					<Card size="sm">
+						<CardHeader>
+							<CardTitle>
+								<h2>Neue WG erstellen</h2>
+							</CardTitle>
+							<CardDescription>Für eine WG, die ManaWG noch nicht nutzt.</CardDescription>
+						</CardHeader>
+						<CardFooter>
+							<Button
+								disabled={!interactive || busy}
 								onClick={() => setStep('create')}
-								className="flex w-full items-center justify-between gap-3 bg-[var(--accent)]/8 px-4 py-4 text-left transition-colors hover:bg-[var(--accent)]/12 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+								className="min-h-11 w-full"
 							>
-								<div className="min-w-0">
-									<div className="flex items-center gap-2">
-										<span className="text-[15px] font-semibold text-[var(--text-1)]">
-											Neue WG erstellen
-										</span>
-										<span className="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--accent-fg)]">
-											Empfohlen
-										</span>
-									</div>
-									<div className="mt-0.5 text-[13px] text-[var(--text-3)]">
-										Du bekommst einen 8-stelligen Code zum Teilen.
-									</div>
-								</div>
-								<ArrowRight className="h-4 w-4 shrink-0 text-[var(--accent)]" aria-hidden />
-							</button>
-							<button
-								type="button"
-								disabled={!interactive}
+								<Plus data-icon="inline-start" aria-hidden /> Neue WG erstellen
+							</Button>
+						</CardFooter>
+					</Card>
+					<Card size="sm">
+						<CardHeader>
+							<CardTitle>
+								<h2>Per Code beitreten</h2>
+							</CardTitle>
+							<CardDescription>Du hast eine Einladung von deinen Mitbewohnern.</CardDescription>
+						</CardHeader>
+						<CardFooter>
+							<Button
+								variant="outline"
+								disabled={!interactive || busy}
 								onClick={() => setStep('join')}
-								className="flex w-full items-center justify-between gap-3 border-t border-[var(--border)] px-4 py-4 text-left transition-colors hover:bg-[var(--surface)] disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+								className="min-h-11 w-full"
 							>
-								<div className="min-w-0">
-									<div className="text-[15px] font-medium text-[var(--text-1)]">
-										Per Code beitreten
-									</div>
-									<div className="mt-0.5 text-[13px] text-[var(--text-3)]">
-										Code von Mitbewohner:in eingeben.
-									</div>
-								</div>
-								<ArrowRight className="h-4 w-4 shrink-0 text-[var(--text-3)]" aria-hidden />
-							</button>
-						</div>
-						<p className="px-1 text-center text-[12px] text-[var(--text-3)]">
-							Der WG-Code ist euer Einladungsschlüssel. Dein Account sichert deine Daten.
-						</p>
-						<details className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
-							<summary className="cursor-pointer text-[13px] font-medium text-[var(--text-2)] marker:text-[var(--text-3)]">
-								Altes Profil auf diesem Gerät wiederherstellen
-							</summary>
-							<div className="pt-4">
+								<KeyRound data-icon="inline-start" aria-hidden /> Per Code beitreten
+							</Button>
+						</CardFooter>
+					</Card>
+					<Collapsible open={legacyOpen} onOpenChange={setLegacyOpen}>
+						<CollapsibleTrigger
+							render={
+								<Button
+									variant="ghost"
+									className="h-auto min-h-11 w-full justify-between whitespace-normal text-left"
+								/>
+							}
+						>
+							Altes Profil auf diesem Gerät wiederherstellen
+							<ChevronDown data-icon="inline-end" aria-hidden />
+						</CollapsibleTrigger>
+						<CollapsiblePanel keepRendered>
+							<div inert={!legacyOpen} className="pt-3">
 								<LegacyAccountRecovery />
 							</div>
-						</details>
-					</div>
-				)}
-
-				{step === 'create' && (
-					<form
-						onSubmit={(e) => {
-							e.preventDefault();
-							void createWg();
-						}}
-						className="space-y-4"
-					>
-						<div className="space-y-2">
-							<p className="text-[13px] text-[var(--text-2)]">
-								Dein Anzeigename wird in der WG angezeigt.
-							</p>
-						</div>
-						<Field
-							id="wg-name"
-							label="WG-Name"
-							placeholder="z. B. WG Kurt-Schumacher"
-							value={wgName}
-							onChange={setWgName}
-							maxLength={WG_NAME_MAX}
-							autoComplete="organization"
-						/>
-						<Field
-							id="creator-name"
-							label="Dein Anzeigename"
-							placeholder="z. B. Anna"
-							value={creatorName}
-							onChange={setCreatorName}
-							maxLength={NAME_MAX}
-							autoComplete="given-name"
-						/>
-						{error && <ErrorBox>{error}</ErrorBox>}
-						{/* Button row: back on left, submit grows to fill remaining space on mobile */}
-						<div className="flex items-center gap-2">
-							<BackButton onClick={backToChoose} />
-							<button
-								type="submit"
-								disabled={busy}
-								aria-label={busy ? 'WG wird erstellt…' : 'WG erstellen'}
-								className="inline-flex h-12 min-w-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--text-1)] px-5 text-[15px] font-semibold text-[var(--bg-base)] transition-all duration-150 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-							>
-								{busy ? (
-									<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-								) : (
-									<ArrowRight className="h-4 w-4" aria-hidden />
-								)}
-								WG erstellen
-							</button>
-						</div>
-					</form>
-				)}
-
-				{step === 'invite' && createdWg && (
-					<InviteStep
-						code={createdWg.code}
-						wgName={createdWg.name}
-						onSkip={() => router.push(`/wg/${encodeURIComponent(createdWg.code)}`)}
-					/>
-				)}
-
-				{step === 'join' && (
-					<form
-						onSubmit={(e) => {
-							e.preventDefault();
-							void verifyJoinCode();
-						}}
-						className="space-y-4"
-					>
-						<div>
-							<label
-								htmlFor="join-code"
-								className="mb-1.5 block text-[13px] font-medium text-[var(--text-1)]"
-							>
-								WG-Code
-							</label>
-							<input
-								id="join-code"
-								type="text"
-								value={joinCode}
-								onChange={(e) => {
-									setJoinCode(e.target.value.toUpperCase());
-									if (error) setError(null);
-								}}
-								maxLength={8}
-								autoComplete="off"
-								autoCapitalize="characters"
-								inputMode="text"
-								placeholder="ABCD1234"
-								aria-describedby={error ? 'join-code-error' : 'join-code-hint'}
-								aria-invalid={error !== null ? true : undefined}
-								className={[
-									'block h-12 w-full rounded-xl border bg-[var(--bg-base)] px-3 text-center font-mono text-[20px] font-medium tracking-[0.18em] text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition-all duration-200',
-									error
-										? 'border-[var(--danger)] focus-visible:border-[var(--danger)] focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2'
-										: 'border-[var(--border)] focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2',
-								].join(' ')}
-							/>
-							<p id="join-code-hint" className="mt-1.5 text-[12px] text-[var(--text-3)]">
-								8 Zeichen, ohne I, L, O und U.
-							</p>
-						</div>
-						{error && <ErrorBox id="join-code-error">{error}</ErrorBox>}
-						{/* Button row: same layout + height as create step */}
-						<div className="flex items-center gap-2">
-							<BackButton onClick={backToChoose} />
-							<button
-								type="submit"
-								disabled={busy}
-								aria-label={busy ? 'WG-Code wird geprüft…' : 'WG-Code prüfen'}
-								className="inline-flex h-12 min-w-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--text-1)] px-5 text-[15px] font-semibold text-[var(--bg-base)] transition-all duration-150 hover:opacity-90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-							>
-								{busy ? (
-									<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-								) : (
-									<ArrowRight className="h-4 w-4" aria-hidden />
-								)}
-								Code prüfen
-							</button>
-						</div>
-					</form>
-				)}
-
-				{step === 'joinName' && joinWg && (
-					<form
-						onSubmit={(e) => {
-							e.preventDefault();
-							void joinExistingWg();
-						}}
-						className="space-y-4"
-					>
-						<div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
-							<div className="truncate text-[15px] font-medium text-[var(--text-1)]">
-								{joinWg.name}
-							</div>
-							<div className="mt-0.5 font-mono text-[12px] tracking-[0.16em] text-[var(--text-3)]">
-								{joinWg.code}
-							</div>
-						</div>
-						<Field
-							id="join-name"
-							label="Dein Anzeigename"
-							placeholder="z. B. Samira"
-							value={joinName}
-							onChange={(value) => {
-								setJoinName(value);
-								if (error) setError(null);
-							}}
-							maxLength={NAME_MAX}
-							autoComplete="given-name"
-						/>
-						<p className="text-[13px] text-[var(--text-2)]">
-							Der Code ist nur der Einladungsschlüssel. Dein Account schützt deinen Beitritt.
-						</p>
-						{error && <ErrorBox>{error}</ErrorBox>}
-						<div className="flex items-center gap-2">
-							<BackButton onClick={() => setStep('join')} />
-							<button
-								type="submit"
-								disabled={busy}
-								aria-label={busy ? 'Du trittst der WG bei…' : 'WG beitreten'}
-								className="inline-flex h-12 min-w-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--text-1)] px-5 text-[15px] font-semibold text-[var(--bg-base)] transition-all duration-150 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-							>
-								{busy ? (
-									<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-								) : (
-									<ArrowRight className="h-4 w-4" aria-hidden />
-								)}
-								Beitreten
-							</button>
-						</div>
-					</form>
-				)}
-
-				<div className="mt-6 text-center">
-					<Link
-						href={explorationHref()}
-						className="text-[13px] text-[var(--text-2)] underline-offset-4 hover:text-[var(--text-1)] hover:underline"
-					>
-						Zurück zur öffentlichen Ansicht
-					</Link>
+						</CollapsiblePanel>
+					</Collapsible>
 				</div>
-			</div>
-		</main>
+			)}
+
+			{step === 'create' && (
+				<Card>
+					<CardHeader>
+						<CardTitle>
+							<h2>WG und Profil</h2>
+						</CardTitle>
+						<CardDescription>
+							Dein Anzeigename ist für die anderen WG-Mitglieder sichtbar.
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<form
+							onSubmit={(event) => {
+								event.preventDefault();
+								void createWg();
+							}}
+							className="flex flex-col gap-5"
+						>
+							<FieldGroup>
+								<Field
+									id="wg-name"
+									label="WG-Name"
+									placeholder="z. B. WG Kurt-Schumacher"
+									value={wgName}
+									onChange={setWgName}
+									maxLength={WG_NAME_MAX}
+									autoComplete="organization"
+									invalid={Boolean(error)}
+									describedBy={error ? 'create-wg-error' : undefined}
+								/>
+								<Field
+									id="creator-name"
+									label="Dein Anzeigename"
+									placeholder="z. B. Anna"
+									value={creatorName}
+									onChange={setCreatorName}
+									maxLength={NAME_MAX}
+									autoComplete="given-name"
+									invalid={Boolean(error)}
+									describedBy={error ? 'create-wg-error' : undefined}
+								/>
+							</FieldGroup>
+							{error && <ErrorBox id="create-wg-error">{error}</ErrorBox>}
+							<div className="flex flex-wrap items-center gap-2">
+								<BackButton onClick={backToChoose} disabled={busy} />
+								<Button
+									type="submit"
+									disabled={busy}
+									aria-label={busy ? 'WG wird erstellt…' : 'WG erstellen'}
+									className="min-h-11 flex-1"
+								>
+									{busy ? (
+										<Spinner data-icon="inline-start" aria-hidden />
+									) : (
+										<ArrowRight data-icon="inline-start" aria-hidden />
+									)}
+									{busy ? 'Wird erstellt…' : 'WG erstellen'}
+								</Button>
+							</div>
+						</form>
+					</CardContent>
+				</Card>
+			)}
+
+			{step === 'invite' && createdWg && (
+				<InviteStep
+					code={createdWg.code}
+					wgName={createdWg.name}
+					onSkip={() => router.push(`/wg/${encodeURIComponent(createdWg.code)}`)}
+				/>
+			)}
+
+			{step === 'join' && (
+				<Card>
+					<CardHeader>
+						<CardTitle>
+							<h2>Deine Einladung</h2>
+						</CardTitle>
+						<CardDescription>Der WG-Code hat acht Zeichen.</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<form
+							onSubmit={(event) => {
+								event.preventDefault();
+								void verifyJoinCode();
+							}}
+							className="flex flex-col gap-5"
+						>
+							<FieldGroup>
+								<UiField data-invalid={Boolean(error)}>
+									<FieldLabel htmlFor="join-code">WG-Code</FieldLabel>
+									<Input
+										id="join-code"
+										type="text"
+										value={joinCode}
+										onChange={(event) => {
+											setJoinCode(event.target.value.toUpperCase());
+											if (error) setError(null);
+										}}
+										maxLength={8}
+										autoComplete="off"
+										autoCapitalize="characters"
+										inputMode="text"
+										placeholder="ABCD1234"
+										aria-describedby={error ? 'join-code-hint join-code-error' : 'join-code-hint'}
+										aria-invalid={Boolean(error)}
+										className="min-h-11 font-mono text-base md:text-base"
+									/>
+									<FieldDescription id="join-code-hint">
+										8 Zeichen, ohne I, L, O und U.
+									</FieldDescription>
+								</UiField>
+							</FieldGroup>
+							{error && <ErrorBox id="join-code-error">{error}</ErrorBox>}
+							<div className="flex flex-wrap items-center gap-2">
+								<BackButton onClick={backToChoose} disabled={busy} />
+								<Button
+									type="submit"
+									disabled={busy}
+									aria-label={busy ? 'WG-Code wird geprüft…' : 'WG-Code prüfen'}
+									className="min-h-11 flex-1"
+								>
+									{busy ? (
+										<Spinner data-icon="inline-start" aria-hidden />
+									) : (
+										<ArrowRight data-icon="inline-start" aria-hidden />
+									)}
+									{busy ? 'Wird geprüft…' : 'Code prüfen'}
+								</Button>
+							</div>
+						</form>
+					</CardContent>
+				</Card>
+			)}
+
+			{step === 'joinName' && joinWg && (
+				<Card>
+					<CardHeader>
+						<CardTitle>
+							<h2>{joinWg.name}</h2>
+						</CardTitle>
+						<CardDescription>
+							Einladungscode: <span className="font-mono">{joinWg.code}</span>
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<form
+							onSubmit={(event) => {
+								event.preventDefault();
+								void joinExistingWg();
+							}}
+							className="flex flex-col gap-5"
+						>
+							<FieldGroup>
+								<Field
+									id="join-name"
+									label="Dein Anzeigename"
+									placeholder="z. B. Samira"
+									value={joinName}
+									onChange={(value) => {
+										setJoinName(value);
+										if (error) setError(null);
+									}}
+									maxLength={NAME_MAX}
+									autoComplete="given-name"
+									invalid={Boolean(error)}
+									describedBy={error ? 'join-name-error' : undefined}
+								/>
+							</FieldGroup>
+							<p className="text-sm text-muted-foreground">
+								Du trittst dieser WG mit deinem angemeldeten Konto bei.
+							</p>
+							{error && <ErrorBox id="join-name-error">{error}</ErrorBox>}
+							<div className="flex flex-wrap items-center gap-2">
+								<BackButton onClick={() => setStep('join')} disabled={busy} />
+								<Button
+									type="submit"
+									disabled={busy}
+									aria-label={busy ? 'Du trittst der WG bei…' : 'WG beitreten'}
+									className="min-h-11 flex-1"
+								>
+									{busy ? (
+										<Spinner data-icon="inline-start" aria-hidden />
+									) : (
+										<ArrowRight data-icon="inline-start" aria-hidden />
+									)}
+									{busy ? 'Wird beigetreten…' : 'Beitreten'}
+								</Button>
+							</div>
+						</form>
+					</CardContent>
+				</Card>
+			)}
+		</EntryFrame>
 	);
 }

@@ -1,3 +1,6 @@
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+
 const CARD_KEYS = ['c0', 'c1', 'c2'] as const;
 
 const BAR_ROWS = [
@@ -13,46 +16,43 @@ export default function WgLoading() {
 			aria-live="polite"
 			aria-busy="true"
 			aria-label="WG-Dashboard wird geladen"
-			className="mx-auto block max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8"
+			className="mx-auto block w-full max-w-md space-y-4 bg-background px-4 py-6"
 		>
 			{/* Header area skeleton */}
 			<header className="flex items-end justify-between gap-3">
 				<div className="space-y-2">
 					<div className="flex items-center gap-2">
-						<span className="h-7 w-7 animate-pulse rounded-xl bg-[var(--surface-strong)]" />
-						<span className="h-6 w-36 animate-pulse rounded-lg bg-[var(--surface-strong)]" />
+						<Skeleton className="size-7 rounded-lg" />
+						<Skeleton className="h-6 w-36" />
 					</div>
-					<span className="block h-3 w-20 animate-pulse rounded bg-[var(--surface-strong)]" />
+					<Skeleton className="h-3 w-20" />
 				</div>
-				<span className="h-10 w-10 animate-pulse rounded-xl bg-[var(--surface-strong)]" />
+				<Skeleton className="size-10 rounded-lg" />
 			</header>
 
 			{/* Placeholder cards */}
 			<ul className="space-y-4">
 				{CARD_KEYS.map((k) => (
-					<li
-						key={k}
-						className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:p-5"
-						aria-hidden
-					>
-						{/* Card header row */}
-						<div className="mb-4 flex items-center gap-3">
-							<span className="h-9 w-9 animate-pulse rounded-full bg-[var(--surface-strong)]" />
-							<div className="flex-1 space-y-1.5">
-								<span className="block h-3.5 w-28 animate-pulse rounded bg-[var(--surface-strong)]" />
-								<span className="block h-2.5 w-16 animate-pulse rounded bg-[var(--surface-strong)]" />
-							</div>
-						</div>
+					<li key={k} aria-hidden>
+						<Card>
+							<CardContent className="space-y-4 pt-4">
+								{/* Card header row */}
+								<div className="flex items-center gap-3">
+									<Skeleton className="size-9 rounded-full" />
+									<div className="flex-1 space-y-1.5">
+										<Skeleton className="h-3.5 w-28" />
+										<Skeleton className="h-2.5 w-16" />
+									</div>
+								</div>
 
-						{/* Content bars */}
-						<div className="space-y-2">
-							{BAR_ROWS.map((r) => (
-								<span
-									key={r.key}
-									className={`block h-3 ${r.width} animate-pulse rounded bg-[var(--surface-strong)]`}
-								/>
-							))}
-						</div>
+								{/* Content bars */}
+								<div className="space-y-2">
+									{BAR_ROWS.map((r) => (
+										<Skeleton key={r.key} className={`h-3 ${r.width}`} />
+									))}
+								</div>
+							</CardContent>
+						</Card>
 					</li>
 				))}
 			</ul>

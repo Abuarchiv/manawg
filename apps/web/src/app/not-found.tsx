@@ -1,3 +1,12 @@
+import { Button } from '@/components/ui/button';
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+} from '@/components/ui/empty';
+import { House } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -11,19 +20,28 @@ export default function NotFound() {
 		<main
 			id="main"
 			tabIndex={-1}
-			className="min-h-svh bg-[var(--bg-base)] flex flex-col items-center justify-center px-4 text-center focus:outline-none"
+			className="flex min-h-svh flex-col items-center justify-center bg-background px-4 pb-[env(safe-area-inset-bottom)] text-center focus:outline-none"
 		>
-			<p className="text-6xl mb-4">🏠</p>
-			<h1 className="text-2xl font-semibold text-[var(--text-1)] mb-2">Seite nicht gefunden</h1>
-			<p className="text-[var(--text-2)] mb-6 max-w-sm">
-				Die Seite existiert nicht — vielleicht hat jemand die Wohnungstür verwechselt.
-			</p>
-			<Link
-				href="/"
-				className="btn-modern inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium"
-			>
-				Zur Startseite
-			</Link>
+			<div className="w-full max-w-md">
+				<Empty>
+					<EmptyHeader>
+						<EmptyMedia variant="icon">
+							<House aria-hidden />
+						</EmptyMedia>
+						<h1 className="font-heading text-sm font-medium tracking-tight">
+							Seite nicht gefunden
+						</h1>
+						<EmptyDescription>
+							Die Seite existiert nicht — vielleicht hat jemand die Wohnungstür verwechselt.
+						</EmptyDescription>
+					</EmptyHeader>
+					<EmptyContent>
+						<Button size="lg" render={<Link href="/" />} nativeButton={false} className="min-h-11">
+							Zur Startseite
+						</Button>
+					</EmptyContent>
+				</Empty>
+			</div>
 		</main>
 	);
 }

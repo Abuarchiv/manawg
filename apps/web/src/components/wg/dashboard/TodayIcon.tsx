@@ -14,5 +14,5 @@ export function TodayIcon({ kind }: { kind: TodayImportantKind }) {
 						: kind === 'absence'
 							? AlertTriangle
 							: Megaphone;
-	return <Icon className="h-3.5 w-3.5 shrink-0 text-[var(--text-3)]" aria-hidden />;
+	return <Icon className="size-4 shrink-0" aria-hidden />;
 }

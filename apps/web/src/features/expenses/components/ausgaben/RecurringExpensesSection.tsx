@@ -1,15 +1,50 @@
 'use client';
 
-import { DeleteConfirmButton } from '@/components/ui/DeleteConfirmButton';
+import {
+	Collapsible,
+	CollapsiblePanel,
+	CollapsibleTrigger,
+} from '@/components/animate-ui/primitives/base/collapsible';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyTitle,
+} from '@/components/ui/empty';
+import {
+	Item,
+	ItemActions,
+	ItemContent,
+	ItemDescription,
+	ItemFooter,
+	ItemGroup,
+	ItemTitle,
+} from '@/components/ui/item';
+import { Spinner } from '@/components/ui/spinner';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime, formatShortDate, parseTimestamp } from '@/core/utils/time';
-import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
 import {
 	getRecurringExpenseHref,
 	wasRecurringExpenseAlreadyCreated,
 } from '@/features/expenses/recurring-expenses';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import { ChevronDown, Pencil, Repeat2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import type { RecurringExpense } from './expense-types';
 
 interface RecurringExpensesSectionProps {
 	recurringExpenses: RecurringExpense[];
@@ -26,6 +61,7 @@ interface RecurringExpensesSectionProps {
 	onEditTemplate: (item: RecurringExpense) => void;
 	onDeleteTemplate: (item: RecurringExpense) => void;
 	onPrepareNewExpense: () => void;
+	memberName: (id: string) => string;
 }
 
 export function RecurringExpensesSection({
@@ -43,146 +79,185 @@ export function RecurringExpensesSection({
 	onEditTemplate,
 	onDeleteTemplate,
 	onPrepareNewExpense,
+	memberName,
 }: RecurringExpensesSectionProps): React.ReactElement {
+	const [open, setOpen] = useState(recurringFilterActive || recurringId !== null);
+	const [deleteCandidate, setDeleteCandidate] = useState<RecurringExpense | null>(null);
+	useEffect(() => {
+		if (recurringFilterActive || recurringId) setOpen(true);
+	}, [recurringFilterActive, recurringId]);
 	return (
-		<details
-			id="recurring-expenses"
-			open={recurringFilterActive || recurringId !== null}
-			className={`rounded-lg border bg-[var(--bg-base)] p-4 ${
-				recurringFilterActive
-					? 'border-[var(--accent)] shadow-[0_0_0_3px_var(--accent-soft)]'
-					: 'border-[var(--border)]'
-			}`}
-		>
-			<summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
-				<span className="min-w-0">
-					<span className="block text-sm font-semibold text-[var(--text-1)]">
-						Wiederkehrende Kosten
-					</span>
-					<span className="mt-0.5 block text-[12px] text-[var(--text-3)]">
-						{recurringFilterActive
-							? 'Fixkosten-Fokus: fällige Vorlagen können direkt übernommen werden.'
-							: 'Fällige Vorlagen können direkt als Ausgabe übernommen werden.'}
-					</span>
-				</span>
-				<span className="rounded-full border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-3)]">
-					{recurringExpenses.length}
-				</span>
-				<ChevronDown className="h-4 w-4 shrink-0 text-[var(--text-3)]" aria-hidden />
-			</summary>
-			<div className="mt-3">
-				{hiddenRecurringCount > 0 && (
-					<Link
-						href={`${wgBaseHref}/ausgaben?filter=recurring`}
-						className="mb-3 inline-flex h-11 items-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-					>
-						Alle {recurringExpenses.length} Fixkosten anzeigen
-					</Link>
-				)}
-				{recurringExpenses.length === 0 ? (
-					<div className="rounded-md border border-dashed border-[var(--border)] px-3 py-4 text-[13px] text-[var(--text-3)]">
-						<p>Es gibt noch keine Fixkosten-Vorlage.</p>
-						<button
-							type="button"
-							onClick={onPrepareNewExpense}
-							className="mt-3 inline-flex h-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-						>
-							Neue Ausgabe vorbereiten
-						</button>
-					</div>
-				) : (
-					<ul className="space-y-2">
-						{visibleRecurringExpenses.map((item) => {
-							const alreadyCreated = wasRecurringExpenseAlreadyCreated(item);
-							const nextDueAt = parseTimestamp(item.nextDueAt);
-							const due = nextDueAt !== null && nextDueAt <= Date.now();
-							const highlighted = item.id === recurringId;
-							return (
-								<li
-									key={item.id}
-									id={`recurring-${item.id}`}
-									className={`group scroll-mt-28 flex flex-col gap-2 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:justify-between ${
-										highlighted
-											? 'border-[var(--accent)] bg-[var(--accent)]/5 ring-2 ring-inset ring-[var(--accent)]'
-											: 'border-[var(--border)]'
-									}`}
-								>
-									<div className="min-w-0">
-										<p className="truncate text-[13px] font-medium text-[var(--text-1)]">
-											{item.description}
-										</p>
-										<p className="text-[12px] text-[var(--text-3)]">
-											{formatEuroCents(item.amountCents)} · fällig {formatShortDate(item.nextDueAt)}
-											{item.lastCreatedAt
-												? ` · zuletzt ${formatRelativeTime(item.lastCreatedAt)}`
-												: ''}
-										</p>
-										{alreadyCreated && (
-											<p className="mt-1 text-[11.5px] text-[var(--accent)]">
-												Für diese Fälligkeit vermutlich schon übernommen.
-											</p>
-										)}
-									</div>
-									<div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:justify-end">
-										{due && !alreadyCreated && (
-											<button
-												type="button"
-												onClick={() => onCreateFromTemplate(item)}
-												disabled={recurringActionPending || isPending(item.id)}
-												aria-label={`Fixkosten-Ausgabe direkt erstellen: ${item.description}`}
-												className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-md bg-[var(--text-1)] px-3 text-[12px] font-medium text-[var(--bg-base)] disabled:opacity-50 sm:w-auto"
-											>
-												{creatingRecurringId === item.id && (
-													<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+		<>
+			<Collapsible
+				id="recurring-expenses"
+				open={open}
+				onOpenChange={setOpen}
+				className="scroll-mt-24"
+			>
+				{recurringFilterActive && <h2 className="text-base font-semibold">Fixkosten-Fokus</h2>}
+				<CollapsibleTrigger
+					render={<Button variant="outline" className="min-h-11 w-full justify-start" />}
+				>
+					<Repeat2 data-icon="inline-start" />
+					Wiederkehrende Kosten<Badge variant="secondary">{recurringExpenses.length}</Badge>
+					<ChevronDown data-icon="inline-end" className={cn('ml-auto', open && 'rotate-180')} />
+				</CollapsibleTrigger>
+				<CollapsiblePanel>
+					<div className="flex flex-col gap-3 pt-3">
+						{hiddenRecurringCount > 0 && (
+							<Link
+								href={`${wgBaseHref}/ausgaben?filter=recurring`}
+								className={buttonVariants({ variant: 'outline', className: 'min-h-11' })}
+							>
+								Alle {recurringExpenses.length} Fixkosten anzeigen
+							</Link>
+						)}
+						{recurringExpenses.length === 0 ? (
+							<Empty>
+								<EmptyHeader>
+									<EmptyTitle>Noch keine Fixkosten-Vorlage</EmptyTitle>
+									<EmptyDescription>Betrag und Aufteilung einmal vorbereiten.</EmptyDescription>
+								</EmptyHeader>
+								<EmptyContent>
+									<Button className="min-h-11" onClick={onPrepareNewExpense}>
+										Neue Ausgabe vorbereiten
+									</Button>
+								</EmptyContent>
+							</Empty>
+						) : (
+							<ItemGroup>
+								{visibleRecurringExpenses.map((item) => {
+									const alreadyCreated = wasRecurringExpenseAlreadyCreated(item);
+									const nextDueAt = parseTimestamp(item.nextDueAt);
+									const due = nextDueAt !== null && nextDueAt <= Date.now();
+									const pending = recurringActionPending || isPending(item.id);
+									return (
+										<Item
+											key={item.id}
+											id={`recurring-${item.id}`}
+											variant="outline"
+											className={cn('scroll-mt-24', item.id === recurringId && 'ring-2 ring-ring')}
+										>
+											<ItemContent className="min-w-0">
+												<ItemTitle className="line-clamp-none break-words">
+													{item.description}
+												</ItemTitle>
+												<ItemDescription className="line-clamp-none">
+													{formatEuroCents(item.amountCents)} · bezahlt von{' '}
+													{memberName(item.paidByMemberId)} · fällig{' '}
+													{formatShortDate(item.nextDueAt)}
+													{item.lastCreatedAt
+														? ` · zuletzt ${formatRelativeTime(item.lastCreatedAt)}`
+														: ''}
+												</ItemDescription>
+												<div className="flex flex-wrap gap-1.5 pt-1">
+													{item.splits.map((split) => (
+														<Badge
+															key={split.debtorMemberId}
+															variant="secondary"
+															className="whitespace-normal"
+														>
+															{memberName(split.debtorMemberId)}:{' '}
+															{formatEuroCents(split.amountCents)}
+														</Badge>
+													))}
+												</div>
+												{alreadyCreated && (
+													<ItemDescription className="line-clamp-none">
+														Für diese Fälligkeit vermutlich schon übernommen.
+													</ItemDescription>
 												)}
-												Direkt erstellen
-											</button>
-										)}
-										<div className="flex gap-2">
-											<button
-												type="button"
-												onClick={() => onEditTemplate(item)}
-												disabled={recurringActionPending || isPending(item.id)}
-												aria-label={`Fixkosten-Vorlage bearbeiten: ${item.description}`}
-												className="inline-flex h-11 flex-1 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
-											>
-												Vorlage
-											</button>
-											<Link
-												href={getRecurringExpenseHref(shareCode, item.id)}
-												aria-disabled={recurringActionPending || isPending(item.id)}
-												aria-label={
-													alreadyCreated
-														? `Fixkosten-Ausgabe prüfen: ${item.description}`
-														: `Fixkosten-Ausgabe manuell erfassen: ${item.description}`
-												}
-												tabIndex={recurringActionPending || isPending(item.id) ? -1 : undefined}
-												onClick={(event) => {
-													if (recurringActionPending || isPending(item.id)) event.preventDefault();
-												}}
-												className={`inline-flex h-11 flex-1 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors sm:flex-none ${
-													recurringActionPending || isPending(item.id)
-														? 'pointer-events-none cursor-not-allowed opacity-50'
-														: ''
-												}`}
-											>
-												{alreadyCreated ? 'Prüfen' : 'Manuell'}
-											</Link>
-											<DeleteConfirmButton
-												id={`recurring-${item.id}`}
-												onConfirm={() => onDeleteTemplate(item)}
-												pending={recurringActionPending || isPending(item.id)}
-												ariaLabel={`Fixkosten-Vorlage löschen: ${item.description}`}
-												ariaLabelConfirm={`Fixkosten-Vorlage wirklich löschen: ${item.description}`}
-											/>
-										</div>
-									</div>
-								</li>
-							);
-						})}
-					</ul>
-				)}
-			</div>
-		</details>
+											</ItemContent>
+											<ItemFooter className="flex-col items-stretch">
+												{due && !alreadyCreated && (
+													<Button
+														className="min-h-11"
+														onClick={() => onCreateFromTemplate(item)}
+														disabled={pending}
+														aria-label={`Fixkosten-Ausgabe direkt erstellen: ${item.description}`}
+													>
+														{creatingRecurringId === item.id && (
+															<Spinner data-icon="inline-start" />
+														)}
+														Direkt erstellen
+													</Button>
+												)}
+												<ItemActions className="w-full">
+													<Button
+														variant="outline"
+														className="min-h-11 flex-1"
+														onClick={() => onEditTemplate(item)}
+														disabled={pending}
+														aria-label={`Fixkosten-Vorlage bearbeiten: ${item.description}`}
+													>
+														<Pencil data-icon="inline-start" />
+														Vorlage
+													</Button>
+													<Link
+														href={getRecurringExpenseHref(shareCode, item.id)}
+														className={cn(
+															buttonVariants({ variant: 'outline', className: 'min-h-11 flex-1' }),
+															pending && 'pointer-events-none opacity-50',
+														)}
+														aria-disabled={pending || undefined}
+														tabIndex={pending ? -1 : undefined}
+														aria-label={`Fixkosten-Ausgabe manuell erfassen: ${item.description}`}
+														onClick={(event) => {
+															if (pending) event.preventDefault();
+														}}
+													>
+														{alreadyCreated ? 'Prüfen' : 'Manuell'}
+													</Link>
+													<Button
+														variant="ghost"
+														size="icon"
+														className="size-11"
+														onClick={() => setDeleteCandidate(item)}
+														disabled={pending}
+														aria-label={`Fixkosten-Vorlage löschen: ${item.description}`}
+													>
+														<Trash2 />
+													</Button>
+												</ItemActions>
+											</ItemFooter>
+										</Item>
+									);
+								})}
+							</ItemGroup>
+						)}
+					</div>
+				</CollapsiblePanel>
+			</Collapsible>
+			<AlertDialog
+				open={deleteCandidate !== null}
+				onOpenChange={(next) => {
+					if (!next) setDeleteCandidate(null);
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Vorlage löschen?</AlertDialogTitle>
+						<AlertDialogDescription>
+							„{deleteCandidate?.description}“ wird entfernt. Bereits erfasste Ausgaben bleiben
+							erhalten.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
+						<AlertDialogAction
+							variant="destructive"
+							className="min-h-11"
+							disabled={recurringActionPending}
+							onClick={() => {
+								if (deleteCandidate) onDeleteTemplate(deleteCandidate);
+								setDeleteCandidate(null);
+							}}
+						>
+							Löschen
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
 	);
 }

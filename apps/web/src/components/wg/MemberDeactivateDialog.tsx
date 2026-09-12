@@ -1,11 +1,22 @@
 'use client';
 
-import { useModalDialog } from '@/core/hooks/useModalDialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogMedia,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
-import { cn } from '@/core/utils/utils';
-import { AlertTriangle, Loader2 } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { TriangleAlert as AlertTriangle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 /** One open debt of the member being moved out, from their own perspective. */
 interface OpenBalanceDto {
@@ -51,21 +62,11 @@ export function MemberDeactivateDialog({
 	onClose,
 	onDeactivated,
 }: MemberDeactivateDialogProps) {
-	const cancelBtnRef = useRef<HTMLButtonElement>(null);
-	const titleId = useId();
-	const descId = useId();
-
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [openBalances, setOpenBalances] = useState<OpenBalanceDto[]>([]);
 	const [submitting, setSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
-
-	const dialogRef = useModalDialog({
-		open: true,
-		onClose,
-		initialFocusRef: cancelBtnRef,
-	});
 
 	// Load the open balances once per opened member.
 	useEffect(() => {
@@ -111,100 +112,83 @@ export function MemberDeactivateDialog({
 	}
 
 	return (
-		// biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click-to-dismiss is a mouse-only convenience; keyboard users dismiss via the native <dialog> cancel/Escape event wired in the effect above.
-		<dialog
-			ref={dialogRef}
-			className="fixed inset-0 z-50 m-0 flex max-h-none max-w-none items-end justify-center border-0 bg-black/40 p-0 backdrop-blur-sm sm:items-center"
-			aria-modal="true"
-			aria-labelledby={titleId}
-			aria-describedby={descId}
-			onClick={(e) => {
-				if (e.target === e.currentTarget && !submitting) onClose();
+		<AlertDialog
+			open
+			onOpenChange={(open) => {
+				if (!open && !submitting) onClose();
 			}}
 		>
-			<div
-				className={cn(
-					'relative w-full glass gradient-border outline-none',
-					'rounded-t-2xl max-h-[70vh] overflow-y-auto',
-					'sm:rounded-2xl sm:max-w-md sm:max-h-[80vh]',
-				)}
-			>
-				<div className="flex items-start gap-3 px-5 pt-6 pb-3">
-					<AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" aria-hidden />
-					<h2 id={titleId} className="text-lg font-semibold text-[var(--text-1)]">
-						{member.name} ausziehen?
-					</h2>
-				</div>
-
-				<div id={descId} className="px-5 pb-2 text-sm leading-relaxed text-[var(--text-2)]">
-					<p>
+			<AlertDialogContent size="default">
+				<AlertDialogHeader>
+					<AlertDialogMedia>
+						<AlertTriangle aria-hidden />
+					</AlertDialogMedia>
+					<AlertDialogTitle>{member.name} ausziehen?</AlertDialogTitle>
+					<AlertDialogDescription>
 						{member.name} verschwindet aus allen Listen (Rotation, Aufteilung, Auswahl), behält aber
 						Zugriff auf dieses Gerät. Historie und Salden bleiben erhalten. Du kannst den Auszug
 						jederzeit rückgängig machen.
-					</p>
+					</AlertDialogDescription>
+				</AlertDialogHeader>
 
-					<div className="mt-4">
-						{loading ? (
-							<p className="flex items-center gap-2 text-[13px] text-[var(--text-3)]">
-								<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-								Offene Salden werden geprüft …
-							</p>
-						) : loadError ? (
-							<p className="rounded-md border border-[var(--border)] px-3 py-2 text-[13px] text-[var(--text-3)]">
-								{loadError} Der Auszug ist trotzdem möglich.
-							</p>
-						) : openBalances.length === 0 ? (
-							<p className="text-[13px] text-[var(--text-3)]">Keine offenen Salden. 🎉</p>
-						) : (
-							<div className="rounded-md border border-[var(--accent)]/30 bg-[var(--accent)]/[0.04] px-3 py-2.5">
-								<p className="text-[12.5px] font-medium text-[var(--text-1)]">
-									Offene Salden bleiben nach dem Auszug bestehen:
-								</p>
-								<ul className="mt-1.5 space-y-1">
+				<div className="grid gap-2">
+					{loading ? (
+						<p className="text-muted-foreground flex min-h-[44px] items-center gap-2 text-[13px]">
+							<Spinner aria-hidden />
+							Offene Salden werden geprüft …
+						</p>
+					) : loadError ? (
+						<Alert>
+							<AlertDescription>{loadError} Der Auszug ist trotzdem möglich.</AlertDescription>
+						</Alert>
+					) : openBalances.length === 0 ? (
+						<p className="text-muted-foreground text-[13px]">Keine offenen Salden.</p>
+					) : (
+						<Alert>
+							<AlertTitle>Offene Salden bleiben nach dem Auszug bestehen:</AlertTitle>
+							<AlertDescription>
+								<ul className="mt-1.5 grid gap-1">
 									{openBalances.map((balance) => (
 										<li
 											key={`${balance.direction}-${balance.member_id}`}
 											className="flex items-center justify-between gap-2 text-[13px]"
 										>
-											<span className="truncate text-[var(--text-2)]">
+											<span className="text-muted-foreground truncate">
 												{balance.direction === 'owes'
 													? `Schuldet ${balance.name}`
 													: `${balance.name} schuldet`}
 											</span>
-											<span className="shrink-0 font-medium tabular-nums text-[var(--text-1)]">
+											<span className="text-foreground shrink-0 font-medium tabular-nums">
 												{formatEuroCents(balance.amount_cents)}
 											</span>
 										</li>
 									))}
 								</ul>
-							</div>
-						)}
-					</div>
+							</AlertDescription>
+						</Alert>
+					)}
 
-					{submitError && <p className="mt-3 text-[13px] text-[var(--danger)]">{submitError}</p>}
+					{submitError && (
+						<Alert variant="destructive">
+							<AlertDescription>{submitError}</AlertDescription>
+						</Alert>
+					)}
 				</div>
 
-				<div className="flex flex-col gap-2 px-5 pb-6 sm:flex-row sm:justify-end sm:pb-5">
-					<button
-						ref={cancelBtnRef}
-						type="button"
-						onClick={onClose}
-						disabled={submitting}
-						className="w-full min-h-11 btn-modern-ghost px-4 py-3 text-sm font-semibold disabled:opacity-50 sm:w-auto sm:py-2.5"
-					>
-						Abbrechen
-					</button>
-					<button
-						type="button"
-						onClick={() => void handleConfirm()}
+				<AlertDialogFooter>
+					<AlertDialogCancel disabled={submitting}>Abbrechen</AlertDialogCancel>
+					<AlertDialogAction
+						onClick={(event) => {
+							event.preventDefault();
+							void handleConfirm();
+						}}
 						disabled={submitting || loading}
-						className="inline-flex w-full min-h-11 items-center justify-center gap-1.5 rounded-md bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent-fg)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:py-2.5"
 					>
-						{submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+						{submitting && <Spinner aria-hidden />}
 						Ausziehen
-					</button>
-				</div>
-			</div>
-		</dialog>
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
 	);
 }

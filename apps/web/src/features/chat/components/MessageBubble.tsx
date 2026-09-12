@@ -1,11 +1,48 @@
 'use client';
 
-import { MemberAvatar } from '@/components/wg/MemberAvatar';
-import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
-import { useDismissableMenu } from '@/core/hooks/useDismissableMenu';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+	Attachment,
+	AttachmentContent,
+	AttachmentDescription,
+	AttachmentMedia,
+	AttachmentTitle,
+	AttachmentTrigger,
+} from '@/components/ui/attachment';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Bubble, BubbleContent, BubbleGroup, BubbleReactions } from '@/components/ui/bubble';
+import { Button } from '@/components/ui/button';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Field, FieldGroup } from '@/components/ui/field';
+import {
+	Message,
+	MessageAvatar,
+	MessageContent,
+	MessageFooter,
+	MessageHeader,
+} from '@/components/ui/message';
+import { Spinner } from '@/components/ui/spinner';
+import { Textarea } from '@/components/ui/textarea';
+import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { haptic } from '@/shared/lib/haptics';
-import { Loader2, MoreVertical, Pencil, Reply, Trash2 } from 'lucide-react';
+import { MoreVertical, Pencil, Reply, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { canDeleteMessage, canEditMessage } from '../chat-pure';
 import { ReactionPicker } from './ReactionPicker';
@@ -21,7 +58,6 @@ export interface BubbleMessage {
 	deletedAt: string | null;
 	replyToMessageId: string | null;
 }
-
 export interface ReactionSummary {
 	emoji: string;
 	count: number;
@@ -34,13 +70,14 @@ interface MessageBubbleProps {
 	currentMemberId: string;
 	isAdmin: boolean;
 	isOwn: boolean;
+	draftKey: string;
 	reactions: ReactionSummary[];
 	replyTo: BubbleMessage | null;
 	replyToSender: { name: string } | null;
-	onReact: (emoji: string) => void;
-	onUnreact: (emoji: string) => void;
-	onEdit: (next: string) => Promise<void>;
-	onDelete: () => Promise<void>;
+	onReact: (emoji: string) => Promise<boolean>;
+	onUnreact: (emoji: string) => Promise<boolean>;
+	onEdit: (next: string) => Promise<boolean>;
+	onDelete: () => Promise<boolean>;
 	onReply: () => void;
 }
 
@@ -50,6 +87,7 @@ export function MessageBubble({
 	currentMemberId,
 	isAdmin,
 	isOwn,
+	draftKey,
 	reactions,
 	replyTo,
 	replyToSender,
@@ -59,346 +97,323 @@ export function MessageBubble({
 	onDelete,
 	onReply,
 }: MessageBubbleProps) {
-	const [menuOpen, setMenuOpen] = useState(false);
-	const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
-	const menuRef = useRef<HTMLDivElement | null>(null);
-	// Bug 8: track whether menu should open upward
-	const [menuAbove, setMenuAbove] = useState(false);
 	const [editing, setEditing] = useState(false);
 	const [draft, setDraft] = useState(message.body ?? '');
+	const [hasDraft, setHasDraft] = useState(false);
 	const [pending, setPending] = useState(false);
-	const { confirmId, request: requestDelete, cancel: cancelDelete } = useConfirmDelete();
+	const [reactionPending, setReactionPending] = useState<string | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [deleteOpen, setDeleteOpen] = useState(false);
+	const pendingRef = useRef(false);
+	const reactionRef = useRef(false);
+	const isDeleted = Boolean(message.deletedAt);
+	const editable = canEditMessage(message, { id: currentMemberId });
+	const deletable = canDeleteMessage(message, {
+		id: currentMemberId,
+		role: isAdmin ? 'admin' : null,
+	});
+	const senderName = sender?.name ?? 'Unbekannt';
+	const align = isOwn ? 'end' : 'start';
 
 	useEffect(() => {
-		if (!menuOpen || !menuTriggerRef.current) return;
-		// Bug 8: determine if trigger is in lower half of viewport
-		const rect = menuTriggerRef.current.getBoundingClientRect();
-		setMenuAbove(rect.top > window.innerHeight / 2);
-	}, [menuOpen]);
-
-	useDismissableMenu({
-		open: menuOpen,
-		onClose: () => {
-			setMenuOpen(false);
-			cancelDelete();
-		},
-		triggerRef: menuTriggerRef,
-		menuRef,
-	});
-
-	const isDeleted = Boolean(message.deletedAt);
-	const editable = canEditMessage(
-		{
-			id: message.id,
-			senderMemberId: message.senderMemberId,
-			kind: message.kind,
-			deletedAt: message.deletedAt,
-			createdAt: message.createdAt,
-		},
-		{ id: currentMemberId },
-	);
-	const deletable = canDeleteMessage(
-		{
-			id: message.id,
-			senderMemberId: message.senderMemberId,
-			kind: message.kind,
-			deletedAt: message.deletedAt,
-			createdAt: message.createdAt,
-		},
-		{ id: currentMemberId, role: isAdmin ? 'admin' : null },
-	);
-
-	const senderName = sender?.name ?? 'Unbekannt';
-	const senderColor = sender?.color ?? null;
-	const deleteArmed = confirmId === message.id;
-
-	const actionBtnCls =
-		'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-[var(--text-3)] opacity-70 transition-colors transition-opacity hover:bg-[var(--surface)] hover:text-[var(--text-1)] hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-1';
-
-	async function saveEdit(): Promise<void> {
+		const saved = readDraft<{ body?: string }>(draftKey);
+		if (typeof saved?.body === 'string') {
+			setDraft(saved.body);
+			setHasDraft(true);
+		}
+	}, [draftKey]);
+	function changeDraft(value: string) {
+		setDraft(value);
+		setHasDraft(true);
+		writeDraft(draftKey, { body: value });
+	}
+	async function saveEdit() {
 		const text = draft.trim();
-		if (text.length === 0 || pending) return;
+		if (!text || pendingRef.current) return;
+		pendingRef.current = true;
 		setPending(true);
+		setError(null);
 		try {
-			await onEdit(text);
-			setEditing(false);
+			if (await onEdit(text)) {
+				setEditing(false);
+				setHasDraft(false);
+				removeDraft(draftKey);
+			} else setError('Änderung nicht gespeichert. Dein Text ist noch da.');
 		} finally {
+			pendingRef.current = false;
 			setPending(false);
 		}
 	}
-
-	async function handleDelete(): Promise<void> {
-		if (pending) return;
+	async function remove() {
+		if (pendingRef.current) return;
+		pendingRef.current = true;
 		setPending(true);
+		setError(null);
 		try {
-			await onDelete();
+			if (await onDelete()) {
+				setDeleteOpen(false);
+				removeDraft(draftKey);
+			} else setError('Nachricht konnte nicht gelöscht werden.');
 		} finally {
+			pendingRef.current = false;
 			setPending(false);
+		}
+	}
+	async function toggleReaction(emoji: string, mine: boolean) {
+		if (reactionRef.current) return false;
+		reactionRef.current = true;
+		setReactionPending(emoji);
+		setError(null);
+		haptic('selection');
+		try {
+			const ok = await (mine ? onUnreact(emoji) : onReact(emoji));
+			if (!ok) setError('Reaktion konnte nicht gespeichert werden.');
+			return ok;
+		} finally {
+			reactionRef.current = false;
+			setReactionPending(null);
 		}
 	}
 
 	return (
-		<div
+		<Message
+			align={align}
 			id={`message-${message.id}`}
-			className={`flex w-full gap-2 px-3 py-1 ${isOwn ? 'justify-end' : 'justify-start'}`}
+			aria-busy={pending || Boolean(reactionPending)}
 		>
-			{!isOwn && (
-				<div className="pt-1">
-					<MemberAvatar name={senderName} color={senderColor} size={28} />
-				</div>
-			)}
-			{/* Breite relativ zum Container, nicht zum Viewport: der App-Frame ist auf
-			    --app-frame-width gedeckelt, 100vw wäre auf Desktop ein Vielfaches davon
-			    und die Blase liefe aus ihrer Zeile heraus. */}
-			<div
-				className={`min-w-0 max-w-[calc(100%-2.5rem)] sm:max-w-[78%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}
-			>
-				<div className="mb-0.5 flex items-baseline gap-2 text-[11px] text-[var(--text-3)]">
-					{!isOwn && (
-						// Bug 4: ensure font-weight 600 and no text-shadow
-						<span
-							className="font-semibold text-[var(--text-2)]"
-							style={
-								senderColor ? { color: senderColor, textShadow: 'none' } : { textShadow: 'none' }
-							}
-						>
-							{senderName}
-						</span>
-					)}
-					{/* Bug 7: cursor-help on time element */}
-					<time
-						dateTime={message.createdAt}
-						title={formatTimeFull(message.createdAt)}
-						className="cursor-help"
-					>
+			<MessageAvatar>
+				<Avatar>
+					<AvatarFallback>{senderName.slice(0, 2).toLocaleUpperCase('de-DE')}</AvatarFallback>
+				</Avatar>
+			</MessageAvatar>
+			<MessageContent>
+				<MessageHeader className="flex-wrap gap-2">
+					{!isOwn && <span className="min-w-0 [overflow-wrap:anywhere]">{senderName}</span>}
+					<time dateTime={message.createdAt} title={formatTimeFull(message.createdAt)}>
 						{formatRelativeTime(message.createdAt)}
 					</time>
 					{message.editedAt && <span>· bearbeitet</span>}
-				</div>
-				<div
-					className={`relative min-w-0 max-w-full rounded-2xl px-3 py-2 text-[14px] shadow-sm ${
-						isOwn
-							? 'bg-[var(--accent)] text-[var(--accent-fg)]'
-							: 'bg-[var(--surface)] text-[var(--text-1)]'
-					} ${isDeleted ? 'italic opacity-70' : ''}`}
-				>
-					{replyTo && (
-						// Bug 6: bg-black/15 for own, surface-strong for others
-						<div
-							className={`mb-1 min-w-0 overflow-hidden rounded-lg px-2 py-1 text-[12px] opacity-90 ${
-								isOwn ? 'bg-white/20' : 'bg-[var(--surface-strong)]'
-							}`}
-						>
-							<div className="truncate font-semibold">↪ {replyToSender?.name ?? 'Unbekannt'}</div>
-							{/* anywhere statt break-words: nur `anywhere` senkt auch die
-							    min-content-Breite, sonst bläht ein einzelnes überlanges Wort
-							    die ganze Blase über ihre Zeile hinaus auf. */}
-							<div className="line-clamp-2 whitespace-pre-wrap [overflow-wrap:anywhere]">
-								{replyTo.body ?? (replyTo.imageUrl ? 'Bild' : '…')}
-							</div>
-						</div>
-					)}
-					{isDeleted ? (
-						<span>Diese Nachricht wurde gelöscht.</span>
-					) : editing ? (
-						<div className="flex flex-col gap-2">
-							{/* Bug 2: min-h-[80px] + resize-none */}
-							<textarea
+				</MessageHeader>
+				{editing ? (
+					<FieldGroup className="gap-2">
+						<Field data-invalid={Boolean(error)}>
+							<Textarea
 								value={draft}
-								onChange={(e) => setDraft(e.target.value)}
-								onKeyDown={(e) => {
-									if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-										e.preventDefault();
+								onChange={(event) => changeDraft(event.target.value)}
+								onKeyDown={(event) => {
+									if (event.nativeEvent.isComposing) return;
+									if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+										event.preventDefault();
 										void saveEdit();
 									}
-									if (e.key === 'Escape') {
-										setEditing(false);
-										setDraft(message.body ?? '');
-									}
+									if (event.key === 'Escape' && !pendingRef.current) setEditing(false);
 								}}
-								rows={2}
+								rows={3}
 								disabled={pending}
 								maxLength={4000}
 								aria-label="Nachricht bearbeiten"
-								className="min-h-[80px] resize-none rounded-md border border-[var(--border)] bg-[var(--surface)] p-2 text-[16px] outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-1"
+								aria-invalid={Boolean(error)}
+								className="min-h-24 text-base md:text-base"
 							/>
-							<div className="flex justify-end gap-1">
-								<button
-									type="button"
-									onClick={() => {
-										setEditing(false);
-										setDraft(message.body ?? '');
-									}}
-									disabled={pending}
-									className="min-h-11 rounded-md px-3 text-[12px] transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-								>
-									Abbrechen
-								</button>
-								<button
-									type="button"
-									onClick={() => void saveEdit()}
-									disabled={pending || draft.trim().length === 0}
-									className="inline-flex min-h-11 items-center gap-1 rounded-md bg-[var(--accent)]/20 px-3 text-[12px] font-medium transition-colors hover:bg-[var(--accent)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
-								>
-									{pending && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />}
-									Speichern
-								</button>
-							</div>
-						</div>
-					) : (
-						<>
-							{message.body && (
-								<p className="min-w-0 break-words whitespace-pre-wrap [overflow-wrap:anywhere]">
-									{message.body}
-								</p>
-							)}
-							{message.imageUrl && (
-								// Bug 5: wrap image in button for click-to-zoom
-								<button
-									type="button"
-									aria-label="Bild in voller Größe öffnen"
-									onClick={() => {
-										if (message.imageUrl)
-											window.open(message.imageUrl, '_blank', 'noopener,noreferrer');
-									}}
-									className="mt-1 block"
-								>
-									{/* eslint-disable-next-line @next/next/no-img-element */}
-									<img
-										src={message.imageUrl}
-										alt={`Bild von ${senderName}`}
-										loading="lazy"
-										className="max-h-72 max-w-full rounded-lg"
-									/>
-								</button>
-							)}
-						</>
-					)}
-				</div>
-				{(reactions.length > 0 || (!isDeleted && !editing)) && (
-					// Bug 3: gap-0.5 to reduce spacing between reaction chips
-					<div className="mt-1 flex flex-wrap items-center gap-0.5">
-						{reactions.map((r) => (
-							<button
-								key={r.emoji}
-								type="button"
-								onClick={() => {
-									haptic('selection');
-									if (r.mine) {
-										onUnreact(r.emoji);
-									} else {
-										onReact(r.emoji);
-									}
-								}}
-								aria-pressed={r.mine}
-								aria-label={`Reaktion ${r.emoji} (${r.count}) ${r.mine ? 'entfernen' : 'hinzufügen'} — Nachricht von ${senderName}`}
-								className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full border px-2 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-									r.mine
-										? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
-										: 'border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-2)] hover:border-[var(--border-strong)]'
-								}`}
+						</Field>
+						<div className="flex flex-wrap justify-end gap-2">
+							<Button
+								variant="outline"
+								className="min-h-11"
+								disabled={pending}
+								onClick={() => setEditing(false)}
 							>
-								<span>{r.emoji}</span>
-								<span className="tabular-nums">{r.count}</span>
-							</button>
-						))}
-						{/* Bug 1: action buttons always rendered; opacity-60 on mobile, visible on sm: hover */}
-						{!isDeleted && !editing && (
-							<>
-								<ReactionPicker
-									onSelect={(emoji) => {
-										haptic('selection');
-										onReact(emoji);
-									}}
-									triggerLabel={`Reaktion zu Nachricht von ${senderName} (${formatRelativeTime(message.createdAt)}) hinzufügen`}
-								/>
-								{/* Bug 1 + Bug 9: Reply button */}
-								<button
-									type="button"
-									onClick={() => {
-										haptic('selection');
-										onReply();
-									}}
-									aria-label={`Auf Nachricht von ${senderName} (${formatRelativeTime(message.createdAt)}) antworten`}
-									className={actionBtnCls}
-								>
-									<Reply className="h-3.5 w-3.5" aria-hidden />
-								</button>
-								{(editable || deletable) && (
-									// Bug 8: relative + transform-gpu for menu positioning
-									<div className="relative transform-gpu">
-										<button
-											ref={menuTriggerRef}
-											type="button"
-											onClick={() => {
-												cancelDelete();
-												setMenuOpen((v) => !v);
-											}}
-											aria-label={`Aktionen für Nachricht von ${senderName} (${formatRelativeTime(message.createdAt)})`}
-											aria-haspopup="dialog"
-											aria-expanded={menuOpen}
-											className={actionBtnCls}
-										>
-											<MoreVertical className="h-3.5 w-3.5" aria-hidden />
-										</button>
-										{menuOpen && (
-											// Bug 8: position above or below based on viewport position
-											<div
-												ref={menuRef}
-												// biome-ignore lint/a11y/useSemanticElements: <dialog> blocks scroll + has UA styling; intentional div+role pattern
-												role="dialog"
-												aria-label={`Aktionen für Nachricht von ${senderName} (${formatRelativeTime(message.createdAt)})`}
-												className={`absolute right-0 z-10 min-w-[9rem] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-base)] py-1 text-[12px] shadow-lg ${
-													menuAbove ? 'bottom-full mb-1' : 'top-full mt-1'
-												}`}
-											>
-												{editable && (
-													<button
-														type="button"
-														onClick={() => {
-															setMenuOpen(false);
-															setDraft(message.body ?? '');
-															setEditing(true);
-														}}
-														className="flex min-h-[44px] w-full items-center gap-2 px-3 text-left text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
-													>
-														<Pencil className="h-3.5 w-3.5" aria-hidden />
-														Bearbeiten
-													</button>
-												)}
-												{deletable && (
-													<button
-														type="button"
-														onClick={() => {
-															if (!requestDelete(message.id)) return;
-															setMenuOpen(false);
-															void handleDelete();
-														}}
-														aria-label={deleteArmed ? 'Nachricht endgültig löschen' : 'Löschen'}
-														className={`flex min-h-[44px] w-full items-center gap-2 px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--danger)] ${
-															deleteArmed
-																? 'bg-[var(--danger)] text-[var(--danger-fg)] hover:opacity-90'
-																: 'text-[var(--danger)] hover:bg-[var(--danger)]/5'
-														}`}
-													>
-														<Trash2 className="h-3.5 w-3.5" aria-hidden />
-														{deleteArmed ? 'Jetzt löschen' : 'Löschen'}
-													</button>
-												)}
-											</div>
-										)}
-									</div>
+								Abbrechen
+							</Button>
+							<Button
+								className="min-h-11"
+								disabled={pending || !draft.trim()}
+								onClick={() => void saveEdit()}
+							>
+								{pending && <Spinner data-icon="inline-start" />}
+								{pending ? 'Wird gespeichert…' : 'Speichern'}
+							</Button>
+						</div>
+					</FieldGroup>
+				) : (
+					<BubbleGroup className="max-w-full">
+						<Bubble
+							variant={isDeleted ? 'muted' : isOwn ? 'default' : 'secondary'}
+							align={align}
+							className="max-w-full"
+						>
+							<BubbleContent>
+								{replyTo && (
+									<blockquote className="mb-2 border-s-2 border-current/30 ps-2">
+										<p className="text-xs font-medium [overflow-wrap:anywhere]">
+											↪ {replyToSender?.name ?? 'Unbekannt'}
+										</p>
+										<p className="line-clamp-2 whitespace-pre-wrap text-xs [overflow-wrap:anywhere]">
+											{replyTo.deletedAt
+												? 'Diese Nachricht wurde gelöscht.'
+												: (replyTo.body ?? (replyTo.imageUrl ? 'Bild' : '…'))}
+										</p>
+									</blockquote>
 								)}
-							</>
+								{isDeleted ? (
+									<p>Diese Nachricht wurde gelöscht.</p>
+								) : (
+									message.body && (
+										<p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.body}</p>
+									)
+								)}
+							</BubbleContent>
+							{reactions.length > 0 && (
+								<BubbleReactions
+									align={align}
+									className="static max-w-full flex-wrap translate-y-0 self-start"
+								>
+									{reactions.map((reaction) => (
+										<Button
+											key={reaction.emoji}
+											variant={reaction.mine ? 'secondary' : 'outline'}
+											size="sm"
+											onClick={() => void toggleReaction(reaction.emoji, reaction.mine)}
+											disabled={isDeleted || Boolean(reactionPending)}
+											aria-pressed={reaction.mine}
+											className="min-h-11 min-w-11"
+											aria-label={`Reaktion ${reaction.emoji} (${reaction.count}) ${reaction.mine ? 'entfernen' : 'hinzufügen'} — Nachricht von ${senderName}`}
+										>
+											{reactionPending === reaction.emoji ? (
+												<Spinner />
+											) : (
+												<span>{reaction.emoji}</span>
+											)}
+											<span className="tabular-nums">{reaction.count}</span>
+										</Button>
+									))}
+								</BubbleReactions>
+							)}
+						</Bubble>
+						{!isDeleted && message.imageUrl && (
+							<Attachment state="done" className="min-w-0 max-w-full">
+								<AttachmentMedia variant="image" className="size-20">
+									{/* eslint-disable-next-line @next/next/no-img-element */}
+									<img src={message.imageUrl} alt={`Bild von ${senderName}`} loading="lazy" />
+								</AttachmentMedia>
+								<AttachmentContent>
+									<AttachmentTitle>Bild</AttachmentTitle>
+									<AttachmentDescription>In voller Größe öffnen</AttachmentDescription>
+								</AttachmentContent>
+								<AttachmentTrigger
+									aria-label="Bild in voller Größe öffnen"
+									render={
+										<a href={message.imageUrl} target="_blank" rel="noopener noreferrer">
+											<span className="sr-only">Bild in voller Größe öffnen</span>
+										</a>
+									}
+								/>
+							</Attachment>
 						)}
-					</div>
+					</BubbleGroup>
 				)}
-			</div>
-			{isOwn && (
-				<div className="pt-1">
-					<MemberAvatar name={senderName} color={senderColor} size={28} />
-				</div>
-			)}
-		</div>
+				{error && !deleteOpen && (
+					<Alert variant="destructive">
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+				)}
+				{!isDeleted && !editing && (
+					<MessageFooter className="flex-wrap gap-1 px-0">
+						<ReactionPicker
+							disabled={Boolean(reactionPending)}
+							onSelect={(emoji) => toggleReaction(emoji, false)}
+							triggerLabel={`Reaktion zu Nachricht von ${senderName} (${formatRelativeTime(message.createdAt)}) hinzufügen`}
+						/>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="min-h-11 min-w-11"
+							onClick={() => {
+								haptic('selection');
+								onReply();
+							}}
+							aria-label={`Auf Nachricht von ${senderName} (${formatRelativeTime(message.createdAt)}) antworten`}
+						>
+							<Reply aria-hidden />
+						</Button>
+						{(editable || deletable) && (
+							<DropdownMenu>
+								<DropdownMenuTrigger
+									render={<Button variant="ghost" size="icon" className="min-h-11 min-w-11" />}
+									disabled={pending}
+									aria-label={`Aktionen für Nachricht von ${senderName} (${formatRelativeTime(message.createdAt)})`}
+								>
+									<MoreVertical aria-hidden />
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end" className="w-48">
+									<DropdownMenuGroup>
+										{editable && (
+											<DropdownMenuItem
+												className="min-h-11"
+												onClick={() => {
+													if (!hasDraft) setDraft(message.body ?? '');
+													setError(null);
+													setEditing(true);
+												}}
+											>
+												<Pencil aria-hidden />{' '}
+												{hasDraft ? 'Entwurf weiterbearbeiten' : 'Bearbeiten'}
+											</DropdownMenuItem>
+										)}
+										{deletable && (
+											<DropdownMenuItem
+												className="min-h-11"
+												variant="destructive"
+												onClick={() => {
+													setError(null);
+													setDeleteOpen(true);
+												}}
+											>
+												<Trash2 aria-hidden /> Löschen
+											</DropdownMenuItem>
+										)}
+									</DropdownMenuGroup>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						)}
+					</MessageFooter>
+				)}
+				<AlertDialog
+					open={deleteOpen}
+					onOpenChange={(open) => {
+						if (!pendingRef.current) setDeleteOpen(open);
+					}}
+				>
+					<AlertDialogContent>
+						<AlertDialogHeader>
+							<AlertDialogTitle>Nachricht löschen?</AlertDialogTitle>
+							<AlertDialogDescription>
+								Der Inhalt wird für alle entfernt. Die Nachricht bleibt als gelöscht markiert.
+							</AlertDialogDescription>
+						</AlertDialogHeader>
+						{error && (
+							<Alert variant="destructive">
+								<AlertDescription>{error}</AlertDescription>
+							</Alert>
+						)}
+						<AlertDialogFooter>
+							<AlertDialogCancel disabled={pending} className="min-h-11">
+								Abbrechen
+							</AlertDialogCancel>
+							<AlertDialogAction
+								disabled={pending}
+								variant="destructive"
+								className="min-h-11"
+								aria-label="Nachricht endgültig löschen"
+								onClick={() => void remove()}
+							>
+								{pending && <Spinner data-icon="inline-start" />}
+								{pending ? 'Wird gelöscht…' : 'Jetzt löschen'}
+							</AlertDialogAction>
+						</AlertDialogFooter>
+					</AlertDialogContent>
+				</AlertDialog>
+			</MessageContent>
+		</Message>
 	);
 }

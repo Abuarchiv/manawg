@@ -1,19 +1,24 @@
 'use client';
 
+import { Switch } from '@/components/animate-ui/components/base/switch';
+import {
+	Collapsible,
+	CollapsiblePanel,
+	CollapsibleTrigger,
+} from '@/components/animate-ui/primitives/base/collapsible';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { Item, ItemContent, ItemDescription, ItemFooter, ItemTitle } from '@/components/ui/item';
 import { AboPausedBadge } from '@/components/wg/AboPausedBadge';
-import { MemberAvatar } from '@/components/wg/MemberAvatar';
-import { ProviderIcon } from '@/components/wg/ProviderIcon';
 import type { Abo, MemberOption } from '@/components/wg/abos-types';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
 import {
-	detectProvider,
 	formatIntervalLabel,
 	previewNextOccurrences,
 } from '@/features/expenses/recurring-expenses';
-import { Loader2, Pause, Pencil, Play, Trash2 } from 'lucide-react';
-
-const PREVIEW_COUNT = 3;
+import { ChevronDown, Pencil, Trash2 } from 'lucide-react';
 
 interface AboRowProps {
 	abo: Abo;
@@ -24,114 +29,112 @@ interface AboRowProps {
 	onDelete: (abo: Abo) => void;
 }
 
-function memberLookup(members: MemberOption[], id: string): MemberOption | null {
-	return members.find((member) => member.id === id) ?? null;
-}
-
 export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete }: AboRowProps) {
-	const provider = detectProvider(abo.description);
-	const payer = memberLookup(members, abo.paidByMemberId);
+	const payer = members.find((member) => member.id === abo.paidByMemberId);
 	const isPaused = abo.pausedAt !== null;
 	const preview = previewNextOccurrences(
 		{ nextDueAt: abo.nextDueAt, intervalMonths: abo.intervalMonths },
-		PREVIEW_COUNT,
+		3,
 	);
-
 	return (
-		<li className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-4">
-			<div className="flex items-start gap-3">
-				<ProviderIcon provider={provider} size={36} />
-				<div className="min-w-0 flex-1">
-					<div className="flex items-baseline gap-2">
-						<h3
-							className="min-w-0 flex-1 truncate text-[14.5px] font-medium text-[var(--text-1)]"
-							title={abo.description}
-						>
-							{abo.description}
-						</h3>
-						<span className="shrink-0 text-[14.5px] font-medium tabular-nums text-[var(--text-1)]">
-							{formatEuroCents(abo.amountCents)}
-						</span>
-					</div>
-					<div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-[var(--text-3)]">
-						<span>{formatIntervalLabel(abo.intervalMonths)}</span>
-						<span aria-hidden>·</span>
-						<span>nächste Fälligkeit: {formatShortDate(abo.nextDueAt)}</span>
-						{isPaused && <AboPausedBadge />}
-					</div>
-					<div className="mt-2 flex items-center gap-1.5 text-[12px] text-[var(--text-3)]">
-						<MemberAvatar name={payer?.name ?? '?'} color={payer?.color ?? null} size={16} />
-						<span className="truncate">bezahlt von {payer?.name ?? 'unbekannt'}</span>
-					</div>
-					{abo.splits.length > 0 && (
-						<ul className="mt-2 flex flex-wrap gap-1.5">
-							{abo.splits.map((split) => {
-								const debtor = memberLookup(members, split.debtorMemberId);
-								const debtorName = debtor?.name ?? 'unbekannt';
-								return (
-									<li
-										key={`${abo.id}-${split.debtorMemberId}`}
-										aria-label={`${debtorName} schuldet ${formatEuroCents(split.amountCents)}`}
-										className="inline-flex items-center gap-1 rounded-full bg-[var(--surface)] px-2 py-0.5 text-[11px] text-[var(--text-2)]"
-									>
-										<MemberAvatar
-											name={debtor?.name ?? '?'}
-											color={debtor?.color ?? null}
-											size={12}
-										/>
-										<span aria-hidden="true">{debtorName}</span>
-										<span aria-hidden="true" className="tabular-nums">
-											{formatEuroCents(split.amountCents)}
-										</span>
-									</li>
-								);
-							})}
-						</ul>
-					)}
-					{preview.length > 0 && !isPaused && (
-						<p className="mt-2 text-[11.5px] text-[var(--text-3)]">
-							Nächste {preview.length} Buchungen:{' '}
-							{preview.map((date) => formatShortDate(date.toISOString())).join(', ')}
-						</p>
-					)}
+		<li>
+			<Item variant="outline" className="items-start">
+				<ItemContent className="min-w-0">
+					<ItemTitle className="line-clamp-none break-words">{abo.description}</ItemTitle>
+					<ItemDescription className="line-clamp-none">
+						{formatIntervalLabel(abo.intervalMonths)} · nächste Fälligkeit:{' '}
+						{formatShortDate(abo.nextDueAt)}
+					</ItemDescription>
+					<ItemDescription className="line-clamp-none">
+						Bezahlt von {payer?.name ?? 'unbekannt'}
+					</ItemDescription>
+				</ItemContent>
+				<div className="flex flex-col items-end gap-2">
+					<Badge variant="outline" className="tabular-nums">
+						{formatEuroCents(abo.amountCents)}
+					</Badge>
+					{isPaused && <AboPausedBadge />}
 				</div>
-			</div>
-			<div className="mt-3 flex flex-wrap justify-end gap-1.5">
-				<button
-					type="button"
-					onClick={() => onTogglePause(abo)}
-					disabled={pending}
-					aria-label={isPaused ? `${abo.description} reaktivieren` : `${abo.description} pausieren`}
-					className="inline-flex h-11 items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-				>
-					{pending ? (
-						<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-					) : isPaused ? (
-						<Play className="h-4 w-4" aria-hidden />
-					) : (
-						<Pause className="h-4 w-4" aria-hidden />
-					)}
-					{isPaused ? 'Reaktivieren' : 'Pausieren'}
-				</button>
-				<button
-					type="button"
-					onClick={() => onEdit(abo)}
-					disabled={pending}
-					aria-label={`${abo.description} bearbeiten`}
-					className="inline-flex h-11 items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-				>
-					<Pencil className="h-4 w-4" aria-hidden /> Bearbeiten
-				</button>
-				<button
-					type="button"
-					onClick={() => onDelete(abo)}
-					disabled={pending}
-					aria-label={`${abo.description} löschen`}
-					className="inline-flex h-11 items-center gap-1 rounded-md border border-[var(--danger)]/40 px-3 text-[12px] font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-				>
-					<Trash2 className="h-4 w-4" aria-hidden /> Löschen
-				</button>
-			</div>
+				<ItemFooter className="flex-col items-stretch gap-3">
+					<Collapsible>
+						<CollapsibleTrigger
+							render={<Button variant="ghost" className="min-h-11 w-full justify-between" />}
+						>
+							Anteile & nächste Termine
+							<ChevronDown data-icon="inline-end" />
+						</CollapsibleTrigger>
+						<CollapsiblePanel>
+							<div className="flex flex-col gap-3 py-2">
+								<ul className="flex flex-col gap-2">
+									{abo.splits.map((split) => {
+										const name =
+											members.find((member) => member.id === split.debtorMemberId)?.name ??
+											'unbekannt';
+										return (
+											<li
+												key={split.debtorMemberId}
+												className="flex items-baseline justify-between gap-3 text-sm"
+											>
+												<span className="min-w-0 break-words">
+													{name}
+													{split.debtorMemberId === abo.paidByMemberId ? ' · eigener Anteil' : ''}
+												</span>
+												<span className="shrink-0 tabular-nums">
+													{formatEuroCents(split.amountCents)}
+												</span>
+											</li>
+										);
+									})}
+								</ul>
+								{preview.length > 0 && !isPaused && (
+									<p className="text-sm text-muted-foreground">
+										Nächste {preview.length} Buchungen:{' '}
+										{preview.map((date) => formatShortDate(date.toISOString())).join(', ')}
+									</p>
+								)}
+							</div>
+						</CollapsiblePanel>
+					</Collapsible>
+					<div className="flex items-center gap-2">
+						<Field orientation="horizontal" className="min-h-11 flex-1" data-disabled={pending}>
+							<Switch
+								id={`abo-active-${abo.id}`}
+								checked={!isPaused}
+								disabled={pending}
+								onCheckedChange={() => onTogglePause(abo)}
+								aria-label={
+									isPaused ? `${abo.description} reaktivieren` : `${abo.description} pausieren`
+								}
+							/>
+							<FieldLabel htmlFor={`abo-active-${abo.id}`}>
+								{isPaused ? 'Pausiert' : 'Aktiv'}
+							</FieldLabel>
+						</Field>
+						<Button
+							variant="outline"
+							size="icon"
+							className="size-11"
+							onClick={() => onEdit(abo)}
+							disabled={pending}
+							aria-label={`${abo.description} bearbeiten`}
+						>
+							<Pencil />
+							<span className="sr-only">{abo.description} bearbeiten</span>
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="size-11"
+							onClick={() => onDelete(abo)}
+							disabled={pending}
+							aria-label={`${abo.description} löschen`}
+						>
+							<Trash2 />
+							<span className="sr-only">{abo.description} löschen</span>
+						</Button>
+					</div>
+				</ItemFooter>
+			</Item>
 		</li>
 	);
 }

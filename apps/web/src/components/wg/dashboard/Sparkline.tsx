@@ -16,7 +16,7 @@ export function Sparkline({
 	height = 40,
 	width = 200,
 	className = '',
-	color = 'var(--accent)',
+	color = 'var(--chart-1)',
 	'aria-label': ariaLabel,
 }: SparklineProps) {
 	if (values.length === 0) {

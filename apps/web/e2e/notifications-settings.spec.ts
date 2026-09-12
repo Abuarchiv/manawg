@@ -65,9 +65,9 @@ test.describe('Notification settings', () => {
 		await expect(
 			page.getByText('Benachrichtigungen konnten nicht geladen werden: Versuche es gleich erneut.'),
 		).toBeVisible();
-		await expect(page.getByRole('button', { name: /Web Push/ })).toBeDisabled();
+		await expect(page.getByRole('switch', { name: /Web Push/ })).toBeDisabled();
 		await expect(page.getByRole('button', { name: 'Testbenachrichtigung senden' })).toBeDisabled();
-		await expect(page.getByRole('checkbox', { name: /Pinnwand/ })).toBeDisabled();
+		await expect(page.getByRole('switch', { name: /Pinnwand/ })).toBeDisabled();
 		await expect(page.getByLabel('Von')).toBeDisabled();
 
 		failStatus = false;
@@ -77,7 +77,7 @@ test.describe('Notification settings', () => {
 
 		await expect(page.getByRole('button', { name: 'Lädt...' })).toBeDisabled();
 		await expect.poll(() => getRequests).toBe(beforeRetryRequests + 1);
-		await expect(page.getByRole('checkbox', { name: /Pinnwand/ })).toBeEnabled({
+		await expect(page.getByRole('switch', { name: /Pinnwand/ })).toBeEnabled({
 			timeout: 30_000,
 		});
 		expect(getRequests).toBe(beforeRetryRequests + 1);
@@ -189,14 +189,14 @@ test.describe('Notification settings', () => {
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#benachrichtigungen');
 
-		const pinnwandToggle = page.getByRole('checkbox', { name: /Pinnwand/ });
+		const pinnwandToggle = page.getByRole('switch', { name: /Pinnwand/ });
 		await expect(pinnwandToggle).toBeVisible();
-		await pinnwandToggle.evaluate((element: HTMLInputElement) => {
+		await pinnwandToggle.evaluate((element: HTMLElement) => {
 			element.click();
 			element.click();
 		});
 
-		await expect(page.getByRole('button', { name: /Web Push/ })).toBeDisabled();
+		await expect(page.getByRole('switch', { name: /Web Push/ })).toBeDisabled();
 		await expect(page.getByRole('button', { name: 'Testbenachrichtigung senden' })).toBeDisabled();
 		await expect(page.getByLabel('Von')).toBeDisabled();
 		await expect.poll(() => patchRequests).toBe(1);
@@ -243,7 +243,7 @@ test.describe('Notification settings', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#benachrichtigungen');
-		await page.getByRole('checkbox', { name: /Pinnwand/ }).click();
+		await page.getByRole('switch', { name: /Pinnwand/ }).click();
 
 		await expect(
 			page.getByText(
@@ -293,7 +293,7 @@ test.describe('Notification settings', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#benachrichtigungen');
-		await page.getByRole('checkbox', { name: /Pinnwand/ }).click();
+		await page.getByRole('switch', { name: /Pinnwand/ }).click();
 
 		await expect(
 			page.getByText(
@@ -345,7 +345,7 @@ test.describe('Notification settings', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#benachrichtigungen');
-		await page.getByRole('checkbox', { name: /Pinnwand/ }).click();
+		await page.getByRole('switch', { name: /Pinnwand/ }).click();
 
 		await expect(
 			page.getByText(
@@ -397,7 +397,7 @@ test.describe('Notification settings', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#benachrichtigungen');
-		await page.getByRole('checkbox', { name: /Pinnwand/ }).click();
+		await page.getByRole('switch', { name: /Pinnwand/ }).click();
 
 		await expect(
 			page.getByText(
@@ -533,9 +533,9 @@ test.describe('Notification settings', () => {
 		await expect.poll(() => resyncRequests).toBe(1);
 		await page.getByRole('button', { name: 'Testbenachrichtigung senden' }).click();
 
-		await expect(page.getByRole('status')).toContainText(
-			'Test wurde ausgelöst. Prüfe Push und WG-Chat.',
-		);
+		await expect(
+			page.getByRole('region', { name: 'Benachrichtigungen' }).getByRole('alert'),
+		).toContainText('Test wurde ausgelöst. Prüfe Push und WG-Chat.');
 		expect(testRequests).toBe(1);
 	});
 

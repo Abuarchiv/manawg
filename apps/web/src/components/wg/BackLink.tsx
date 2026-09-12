@@ -1,3 +1,5 @@
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/shared/lib/cn';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -17,9 +19,10 @@ export function BackLink({ href, label }: BackLinkProps) {
 		<Link
 			href={href}
 			aria-label={`Zurück zu ${label}`}
-			className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+			className={cn(buttonVariants({ variant: 'ghost', size: 'icon-lg' }), 'size-11')}
 		>
-			<ArrowLeft className="h-4 w-4" aria-hidden />
+			<ArrowLeft aria-hidden />
+			<span className="sr-only">Zurück zu {label}</span>
 		</Link>
 	);
 }

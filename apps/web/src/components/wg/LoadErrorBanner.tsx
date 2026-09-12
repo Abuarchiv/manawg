@@ -1,6 +1,8 @@
 'use client';
 
-import { ALERT_DANGER_ROW } from '@/components/ui/styles';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/shared/lib/cn';
 import { RotateCw } from 'lucide-react';
 
 interface LoadErrorBannerProps {
@@ -23,17 +25,19 @@ interface LoadErrorBannerProps {
  */
 export function LoadErrorBanner({ message, onRetry, busy, retryLabel }: LoadErrorBannerProps) {
 	return (
-		<div role="alert" className={ALERT_DANGER_ROW}>
-			<span>{message}</span>
-			<button
+		<Alert variant="destructive" className="flex flex-wrap items-center justify-between gap-3">
+			<AlertDescription className="flex-1 text-current">{message}</AlertDescription>
+			<Button
+				variant="outline"
+				size="lg"
 				type="button"
 				onClick={onRetry}
 				disabled={busy}
-				className="inline-flex h-11 items-center gap-1.5 rounded-md border border-[var(--danger)]/30 px-3 text-[12px] font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+				className="min-h-11"
 			>
-				<RotateCw className={`h-3.5 w-3.5 ${busy ? 'animate-spin' : ''}`} aria-hidden />
+				<RotateCw data-icon="inline-start" className={cn(busy && 'animate-spin')} aria-hidden />
 				{busy ? 'Lädt...' : retryLabel}
-			</button>
-		</div>
+			</Button>
+		</Alert>
 	);
 }

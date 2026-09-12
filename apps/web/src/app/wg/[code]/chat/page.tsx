@@ -1,9 +1,10 @@
+import { Button } from '@/components/ui/button';
 import { db, type wgChatMessages, wgs } from '@/core/db';
 import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { ChatView } from '@/features/chat/components/ChatView';
 import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import { eq } from 'drizzle-orm';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageCircle, StickyNote } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -99,25 +100,51 @@ function ChatPageContent({
 
 	return (
 		<div
+			data-chat-frame
 			className="flex min-h-0 flex-col"
 			style={{
 				height:
 					'calc(100dvh - 4.25rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
 			}}
 		>
-			<header className="sticky top-0 z-20 flex items-center gap-3 border-b border-[var(--border)] bg-[var(--bg)] px-3 py-2">
-				<Link
-					href={wgBaseHref}
-					aria-label="Zurück zur WG"
-					className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)]"
-				>
-					<ArrowLeft className="h-4 w-4" aria-hidden />
-				</Link>
-				<span className="truncate text-[17px] font-semibold text-[var(--text-1)]">
-					{wgRow.name}
-				</span>
+			<header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-3 py-2">
+				<div className="flex items-center gap-2">
+					<Button
+						render={<Link href={`${wgBaseHref}/pinnwand`} />}
+						nativeButton={false}
+						variant="ghost"
+						size="icon"
+						aria-label="Zurück zur Pinnwand"
+						className="min-h-11 min-w-11 shrink-0"
+					>
+						<ArrowLeft aria-hidden />
+					</Button>
+					<div className="min-w-0">
+						<h1 className="text-xl font-semibold">Chat</h1>
+						<p className="truncate text-sm text-muted-foreground">{wgRow.name}</p>
+					</div>
+				</div>
+				<nav aria-label="Austausch" className="grid grid-cols-2 gap-2">
+					<Button
+						variant="ghost"
+						className="min-h-11"
+						nativeButton={false}
+						render={<Link href={`${wgBaseHref}/pinnwand`} />}
+					>
+						<StickyNote data-icon="inline-start" aria-hidden /> Pinnwand
+					</Button>
+					<Button
+						variant="secondary"
+						className="min-h-11"
+						nativeButton={false}
+						render={<Link href={`${wgBaseHref}/chat`} aria-current="page" />}
+					>
+						<MessageCircle data-icon="inline-start" aria-hidden /> Chat
+					</Button>
+				</nav>
 			</header>
 			<ChatView
+				key={wgRow.id}
 				wgId={wgRow.id}
 				shareCode={wgRow.shareCode}
 				initialMessages={messages.map((m) => ({

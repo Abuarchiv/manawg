@@ -1,5 +1,7 @@
 'use client';
-import { cn } from '@/core/utils/utils';
+
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { haptic } from '@/shared/lib/haptics';
 import { CheckCircle, Info, X, XCircle } from 'lucide-react';
 import { create } from 'zustand';
@@ -41,59 +43,36 @@ export function useToast() {
 	};
 }
 
-const variantConfig: Record<
-	ToastVariant,
-	{ icon: typeof CheckCircle; iconClass: string; barClass: string }
-> = {
-	success: {
-		icon: CheckCircle,
-		iconClass: 'text-[var(--success)]',
-		barClass: 'bg-[var(--success)]',
-	},
-	error: {
-		icon: XCircle,
-		iconClass: 'text-[var(--danger)]',
-		barClass: 'bg-[var(--danger)]',
-	},
-	info: {
-		icon: Info,
-		iconClass: 'text-[var(--text-2)]',
-		barClass: 'bg-[var(--text-2)]',
-	},
+const variantIcons: Record<ToastVariant, typeof CheckCircle> = {
+	success: CheckCircle,
+	error: XCircle,
+	info: Info,
 };
 
 function ToastItem({ toast }: { toast: Toast }) {
 	const { removeToast } = useToastStore();
-	const { icon: Icon, iconClass, barClass } = variantConfig[toast.variant];
+	const Icon = variantIcons[toast.variant];
 
 	return (
-		<div
+		<Alert
+			variant={toast.variant === 'error' ? 'destructive' : 'default'}
 			role={toast.variant === 'error' ? 'alert' : 'status'}
 			aria-live={toast.variant === 'error' ? undefined : 'polite'}
-			className="relative flex items-start gap-3 rounded-xl glass border border-[var(--border)] px-4 py-3 overflow-hidden w-[90vw] max-w-sm sm:w-auto"
+			className="flex items-center gap-3"
 		>
-			{/* Farbbalken links */}
-			<div className={cn('absolute left-0 top-0 bottom-0 w-1', barClass)} />
-
-			<Icon className={cn('w-5 h-5 mt-0.5 shrink-0 ml-1', iconClass)} aria-hidden="true" />
-
-			<p className="flex-1 text-sm text-[var(--text-1)] leading-snug">{toast.message}</p>
-
-			<button
+			<Icon className="shrink-0" aria-hidden="true" />
+			<AlertDescription className="min-w-0 flex-1 wrap-anywhere">{toast.message}</AlertDescription>
+			<Button
 				type="button"
 				onClick={() => removeToast(toast.id)}
-				className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--text-3)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+				variant="ghost"
+				size="icon"
+				className="size-11"
 				aria-label="Benachrichtigung schließen"
 			>
-				<X className="w-4 h-4" aria-hidden="true" />
-			</button>
-
-			{/* Auto-dismiss Fortschrittsbalken */}
-			<div
-				className={cn('absolute bottom-0 left-0 h-0.5', barClass, 'animate-toast-progress')}
-				style={{ animationDuration: '4000ms' }}
-			/>
-		</div>
+				<X aria-hidden="true" />
+			</Button>
+		</Alert>
 	);
 }
 
@@ -104,7 +83,7 @@ export function ToastContainer() {
 
 	return (
 		<div
-			className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-0 right-0 z-50 flex flex-col items-center gap-2 px-4 pointer-events-none sm:bottom-6 sm:items-end sm:right-6 sm:left-auto"
+			className="pointer-events-none fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-2 px-4"
 			aria-label="Benachrichtigungen"
 			aria-live="polite"
 			aria-atomic="true"

@@ -1,5 +1,13 @@
 'use client';
 
+import { Switch } from '@/components/animate-ui/components/base/switch';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Field, FieldContent, FieldDescription, FieldTitle } from '@/components/ui/field';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import {
@@ -18,8 +26,8 @@ import {
 	formatPushDeactivationError,
 } from '@/core/notifications/web-push-errors';
 import { haptic } from '@/shared/lib/haptics';
-import { Bell, CheckCircle2, Loader2, Smartphone } from 'lucide-react';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { Bell, CheckCircle2, Smartphone } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => ({
 	value: hour,
@@ -273,40 +281,63 @@ export function NotificationSection({
 			title="Benachrichtigungen"
 			hint="Web Push und der WG-Chat halten dich beim Putzplan und bei WG-Aktivität auf dem Laufenden."
 		>
-			<div className="space-y-4 p-4">
+			<div className="grid gap-4 p-4">
 				{loadingStatus && (
-					<output className="block text-[12.5px] text-[var(--text-3)]" aria-live="polite">
-						Benachrichtigungen werden geladen...
-					</output>
-				)}
-				{!status && error && (
-					<div className="rounded-md border border-[var(--danger)]/30 bg-[var(--danger)]/5 p-3">
-						<p role="alert" className="text-[12.5px] text-[var(--danger)]">
-							{error}
+					<div className="grid gap-2" aria-live="polite">
+						<Skeleton className="h-11 w-full" />
+						<p className="text-muted-foreground text-[13px]">
+							Benachrichtigungen werden geladen...
 						</p>
-						<button
-							type="button"
-							onClick={() => void loadStatus()}
-							disabled={loadingStatus}
-							className="mt-2 inline-flex h-11 items-center justify-center rounded-md border border-[var(--danger)]/30 px-3 text-[12px] font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
-						>
-							{loadingStatus ? 'Lädt...' : 'Erneut laden'}
-						</button>
 					</div>
 				)}
-				<div className="grid gap-2">
-					<ChannelButton
-						icon={<Smartphone className="h-4 w-4" aria-hidden />}
-						title="Web Push"
-						status={!pushConfigured ? 'Nicht konfiguriert' : pushActive ? 'Aktiv' : 'Aktivieren'}
-						active={pushActive}
-						loading={pending === 'push'}
+				{!status && error && (
+					<Alert variant="destructive">
+						<AlertTitle>Laden fehlgeschlagen</AlertTitle>
+						<AlertDescription>{error}</AlertDescription>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => void loadStatus()}
+							disabled={loadingStatus}
+							className="mt-2 h-11 min-h-[44px]"
+						>
+							{loadingStatus ? (
+								<>
+									<Spinner aria-hidden /> Lädt...
+								</>
+							) : (
+								'Erneut laden'
+							)}
+						</Button>
+					</Alert>
+				)}
+				<Field orientation="horizontal">
+					<span className="border-border inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border">
+						{pending === 'push' ? (
+							<Spinner aria-hidden />
+						) : (
+							<Smartphone className="h-4 w-4" aria-hidden />
+						)}
+					</span>
+					<FieldContent>
+						<FieldTitle>
+							Web Push
+							{pushActive && <Bell className="text-muted-foreground h-3.5 w-3.5" aria-hidden />}
+						</FieldTitle>
+						<FieldDescription>
+							{!pushConfigured ? 'Nicht konfiguriert' : pushActive ? 'Aktiv' : 'Aktivieren'}
+						</FieldDescription>
+					</FieldContent>
+					<Switch
+						checked={pushActive}
 						disabled={pushDisabled}
-						onClick={pushActive ? deactivatePush : activatePush}
+						aria-label={pushActive ? 'Web Push deaktivieren' : 'Web Push aktivieren'}
+						onCheckedChange={(checked) => void (checked ? activatePush() : deactivatePush())}
 					/>
-				</div>
-				<button
+				</Field>
+				<Button
 					type="button"
+					variant="outline"
 					onClick={() => void sendTestNotification()}
 					disabled={notificationControlsDisabled || !pushActive}
 					aria-label={
@@ -314,71 +345,54 @@ export function NotificationSection({
 							? 'Testbenachrichtigung wird gesendet'
 							: 'Testbenachrichtigung senden'
 					}
-					className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[13px] font-medium text-[var(--text-1)] transition-colors hover:border-[var(--border-strong)] disabled:opacity-50"
+					className="h-11 min-h-[44px] w-full"
 				>
-					{pending === 'test' && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
+					{pending === 'test' && <Spinner aria-hidden />}
 					Test senden
-				</button>
+				</Button>
 
-				<div className="rounded-md border border-[var(--border)]">
+				<div className="border-border overflow-hidden rounded-lg border">
 					{NOTIFICATION_PREFERENCES.map((pref, index) => (
-						<label
-							key={pref.key}
-							className={`flex cursor-pointer items-center gap-3 px-3 py-3 ${
-								index > 0 ? 'border-t border-[var(--border)]' : ''
-							}`}
-						>
-							<input
-								type="checkbox"
-								checked={status?.[pref.key] ?? true}
-								disabled={notificationControlsDisabled}
-								onChange={() => void togglePreference(pref.key)}
-								className="h-4 w-4 rounded border-[var(--border)] accent-[var(--accent)]"
-							/>
-							<span className="min-w-0 flex-1">
-								<span className="block text-[13.5px] font-medium text-[var(--text-1)]">
-									{pref.label}
-								</span>
-								<span className="block text-[12px] text-[var(--text-3)]">{pref.description}</span>
-							</span>
-						</label>
-					))}
-				</div>
-
-				<div className="grid gap-2 sm:grid-cols-3">
-					{[
-						['Relevant', 'Nur aktivierte Kategorien werden gesendet.'],
-						['Gebündelt', 'Ähnliche WG-Ereignisse werden ruhiger dargestellt.'],
-						['Ruhezeit', 'Nachts bleibt alles in der App statt im Sperrbildschirm.'],
-					].map(([title, detail]) => (
-						<div key={title} className="rounded-md border border-[var(--border)] px-3 py-2">
-							<p className="text-[12.5px] font-medium text-[var(--text-1)]">{title}</p>
-							<p className="mt-0.5 text-[11.5px] text-[var(--text-3)]">{detail}</p>
+						<div key={pref.key}>
+							{index > 0 && <Separator />}
+							<Field orientation="horizontal" className="min-h-[44px] px-3 py-3">
+								<FieldContent>
+									<FieldTitle>{pref.label}</FieldTitle>
+									<FieldDescription>{pref.description}</FieldDescription>
+								</FieldContent>
+								<Switch
+									checked={status?.[pref.key] ?? true}
+									disabled={notificationControlsDisabled}
+									aria-label={pref.label}
+									onCheckedChange={() => void togglePreference(pref.key)}
+								/>
+							</Field>
 						</div>
 					))}
 				</div>
 
-				<div className="rounded-md border border-[var(--border)] p-3">
-					<div className="mb-2 flex items-center justify-between gap-2">
+				<div className="border-border grid gap-2 rounded-lg border p-3">
+					<div className="flex min-h-[44px] items-center justify-between gap-2">
 						<div>
-							<div className="text-[13.5px] font-medium text-[var(--text-1)]">Ruhezeit</div>
-							<div className="text-[12px] text-[var(--text-3)]">
+							<div className="text-foreground text-[13.5px] font-medium">Ruhezeit</div>
+							<div className="text-muted-foreground text-xs">
 								In dieser Zeit werden Push-Benachrichtigungen pausiert.
 							</div>
 						</div>
-						<button
+						<Button
 							type="button"
+							variant="ghost"
 							onClick={() => void saveQuietHours(null, null)}
 							disabled={notificationControlsDisabled}
-							className="text-[12px] font-medium text-[var(--text-2)] transition-colors hover:text-[var(--text-1)] disabled:opacity-50"
+							className="h-11 min-h-[44px]"
 						>
 							Aus
-						</button>
+						</Button>
 					</div>
 					<div className="grid grid-cols-2 gap-2">
-						<label>
-							<span className="mb-1 block text-[12px] text-[var(--text-3)]">Von</span>
-							<select
+						<Field>
+							<FieldTitle>Von</FieldTitle>
+							<NativeSelect
 								value={status?.quietStartHour ?? ''}
 								disabled={notificationControlsDisabled}
 								onChange={(e) => {
@@ -387,19 +401,20 @@ export function NotificationSection({
 										? saveQuietHours(null, null)
 										: saveQuietHours(value, status?.quietEndHour ?? 7));
 								}}
-								className="h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2 text-[13px] text-[var(--text-1)]"
+								aria-label="Ruhezeit von"
+								className="h-11 min-h-[44px] w-full text-base"
 							>
-								<option value="">Aus</option>
+								<NativeSelectOption value="">Aus</NativeSelectOption>
 								{HOUR_OPTIONS.map((option) => (
-									<option key={option.label} value={option.value}>
+									<NativeSelectOption key={option.label} value={option.value}>
 										{option.label}
-									</option>
+									</NativeSelectOption>
 								))}
-							</select>
-						</label>
-						<label>
-							<span className="mb-1 block text-[12px] text-[var(--text-3)]">Bis</span>
-							<select
+							</NativeSelect>
+						</Field>
+						<Field>
+							<FieldTitle>Bis</FieldTitle>
+							<NativeSelect
 								value={status?.quietEndHour ?? ''}
 								disabled={notificationControlsDisabled}
 								onChange={(e) => {
@@ -408,77 +423,32 @@ export function NotificationSection({
 										? saveQuietHours(null, null)
 										: saveQuietHours(status?.quietStartHour ?? 22, value));
 								}}
-								className="h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2 text-[13px] text-[var(--text-1)]"
+								aria-label="Ruhezeit bis"
+								className="h-11 min-h-[44px] w-full text-base"
 							>
-								<option value="">Aus</option>
+								<NativeSelectOption value="">Aus</NativeSelectOption>
 								{HOUR_OPTIONS.map((option) => (
-									<option key={option.label} value={option.value}>
+									<NativeSelectOption key={option.label} value={option.value}>
 										{option.label}
-									</option>
+									</NativeSelectOption>
 								))}
-							</select>
-						</label>
+							</NativeSelect>
+						</Field>
 					</div>
 				</div>
 
 				{message && (
-					<output
-						className="flex items-center gap-1.5 text-[12.5px] text-[var(--success-fg)]"
-						aria-live="polite"
-					>
-						<CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-						{message}
-					</output>
+					<Alert>
+						<CheckCircle2 aria-hidden />
+						<AlertDescription>{message}</AlertDescription>
+					</Alert>
 				)}
 				{status && error && (
-					<p role="alert" className="text-[12.5px] text-[var(--danger)]">
-						{error}
-					</p>
+					<Alert variant="destructive">
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
 				)}
 			</div>
 		</Section>
-	);
-}
-
-function ChannelButton({
-	icon,
-	title,
-	status,
-	active,
-	loading,
-	disabled,
-	onClick,
-}: {
-	icon: ReactNode;
-	title: string;
-	status: string;
-	active: boolean;
-	loading: boolean;
-	disabled?: boolean;
-	onClick: () => void;
-}) {
-	return (
-		<button
-			type="button"
-			onClick={onClick}
-			disabled={disabled ?? loading}
-			aria-pressed={active}
-			className={`flex min-h-[64px] items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-60 ${
-				active
-					? 'border-[var(--success-border)] bg-[var(--success-bg)]'
-					: 'border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)]'
-			}`}
-		>
-			<span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-1)]">
-				{loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : icon}
-			</span>
-			<span className="min-w-0">
-				<span className="flex items-center gap-1.5 text-[14px] font-medium text-[var(--text-1)]">
-					{title}
-					{active && <Bell className="h-3.5 w-3.5 text-[var(--success-fg)]" aria-hidden />}
-				</span>
-				<span className="mt-0.5 block text-[12px] text-[var(--text-3)]">{status}</span>
-			</span>
-		</button>
 	);
 }

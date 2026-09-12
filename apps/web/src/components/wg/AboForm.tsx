@@ -1,10 +1,30 @@
 'use client';
 
-import { ALERT_DANGER } from '@/components/ui/styles';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+	Field,
+	FieldDescription,
+	FieldGroup,
+	FieldLabel,
+	FieldLegend,
+	FieldSet,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupInput,
+	InputGroupText,
+} from '@/components/ui/input-group';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { AboSplit, MemberOption } from '@/components/wg/abos-types';
 import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
-import { Loader2 } from 'lucide-react';
+import { SplitReview } from '@/features/expenses/components/ausgaben/SplitReview';
 import { useEffect, useMemo, useState } from 'react';
 
 const DESCRIPTION_MAX = 200;
@@ -33,6 +53,7 @@ interface AboFormProps {
 	initial?: AboFormValues;
 	defaultPaidByMemberId: string;
 	submitting: boolean;
+	saveError?: string | null | undefined;
 	onCancel: () => void;
 	onSubmit: (values: AboFormValues) => void;
 }
@@ -113,6 +134,7 @@ export function AboForm({
 	initial,
 	defaultPaidByMemberId,
 	submitting,
+	saveError,
 	onCancel,
 	onSubmit,
 }: AboFormProps) {
@@ -227,36 +249,30 @@ export function AboForm({
 		});
 	}
 
+	const splitPreview = buildSplits();
 	return (
-		<form onSubmit={handleSubmit} className="space-y-4">
-			<div>
-				<label
-					htmlFor="abo-description"
-					className="mb-1.5 block text-[13px] font-medium text-[var(--text-1)]"
+		<form onSubmit={handleSubmit} className="flex flex-col gap-5">
+			<FieldGroup>
+				<Field data-disabled={submitting} data-invalid={Boolean(error && !description.trim())}>
+					<FieldLabel htmlFor="abo-description">Beschreibung</FieldLabel>
+					<Input
+						id="abo-description"
+						value={description}
+						maxLength={DESCRIPTION_MAX}
+						onChange={(event) => setDescription(event.target.value)}
+						placeholder="z. B. Netflix"
+						disabled={submitting}
+						className="min-h-11 text-base md:text-base"
+						aria-invalid={Boolean(error && !description.trim())}
+					/>
+				</Field>
+				<Field
+					data-disabled={submitting}
+					data-invalid={Boolean(error && parsedAmountCents === null)}
 				>
-					Beschreibung
-				</label>
-				<input
-					id="abo-description"
-					type="text"
-					value={description}
-					maxLength={DESCRIPTION_MAX}
-					onChange={(event) => setDescription(event.target.value)}
-					placeholder="z. B. Netflix"
-					disabled={submitting}
-					className="block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-70"
-				/>
-			</div>
-			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-				<div>
-					<label
-						htmlFor="abo-amount"
-						className="mb-1.5 block text-[13px] font-medium text-[var(--text-1)]"
-					>
-						Betrag
-					</label>
-					<div className="relative">
-						<input
+					<FieldLabel htmlFor="abo-amount">Betrag</FieldLabel>
+					<InputGroup className="min-h-11">
+						<InputGroupInput
 							id="abo-amount"
 							type="text"
 							inputMode="decimal"
@@ -264,157 +280,154 @@ export function AboForm({
 							onChange={(event) => setAmountStr(event.target.value)}
 							placeholder="0,00"
 							disabled={submitting}
-							className="block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] pl-3 pr-9 text-base text-[var(--text-1)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-70"
+							className="min-h-11 text-base md:text-base"
+							aria-invalid={Boolean(error && parsedAmountCents === null)}
 						/>
-						<span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[var(--text-3)]">
-							€
-						</span>
-					</div>
-				</div>
-				<div>
-					<label
-						htmlFor="abo-interval"
-						className="mb-1.5 block text-[13px] font-medium text-[var(--text-1)]"
+						<InputGroupAddon align="inline-end">
+							<InputGroupText>€</InputGroupText>
+						</InputGroupAddon>
+					</InputGroup>
+				</Field>
+				<Field data-disabled={submitting}>
+					<FieldLabel htmlFor="abo-paid-by">Bezahlt von</FieldLabel>
+					<NativeSelect
+						id="abo-paid-by"
+						value={paidByMemberId}
+						onChange={(event) => setPaidByMemberId(event.target.value)}
+						disabled={submitting}
+						className="w-full [&_select]:h-11 [&_select]:text-base"
 					>
-						Intervall
-					</label>
-					<select
+						{payerOptions.map((member) => (
+							<NativeSelectOption key={member.id} value={member.id}>
+								{member.name}
+							</NativeSelectOption>
+						))}
+					</NativeSelect>
+				</Field>
+				<Field data-disabled={submitting}>
+					<FieldLabel htmlFor="abo-interval">Intervall</FieldLabel>
+					<NativeSelect
 						id="abo-interval"
 						value={intervalMonths}
 						onChange={(event) => setIntervalMonths(Number(event.target.value))}
 						disabled={submitting}
-						className="block h-11 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-70"
+						className="w-full [&_select]:h-11 [&_select]:text-base"
 					>
+						{!INTERVAL_OPTIONS.some((option) => option.value === intervalMonths) && (
+							<NativeSelectOption value={intervalMonths}>
+								{intervalMonths} Monate
+							</NativeSelectOption>
+						)}
 						{INTERVAL_OPTIONS.map((option) => (
-							<option key={option.value} value={option.value}>
+							<NativeSelectOption key={option.value} value={option.value}>
 								{option.label}
-							</option>
+							</NativeSelectOption>
 						))}
-					</select>
-				</div>
-			</div>
-			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-				<div>
-					<label
-						htmlFor="abo-next-due"
-						className="mb-1.5 block text-[13px] font-medium text-[var(--text-1)]"
-					>
-						Erste Fälligkeit
-					</label>
-					<input
+					</NativeSelect>
+				</Field>
+				<Field data-disabled={submitting}>
+					<FieldLabel htmlFor="abo-next-due">
+						{mode === 'create' ? 'Erste Fälligkeit' : 'Nächste Fälligkeit'}
+					</FieldLabel>
+					<Input
 						id="abo-next-due"
 						type="date"
 						value={nextDueAt}
 						onChange={(event) => setNextDueAt(event.target.value)}
 						disabled={submitting}
-						className="block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-70"
+						className="min-h-11 text-base md:text-base"
 					/>
-				</div>
-				<div>
-					<label
-						htmlFor="abo-paid-by"
-						className="mb-1.5 block text-[13px] font-medium text-[var(--text-1)]"
+				</Field>
+				<FieldSet disabled={submitting}>
+					<FieldLegend>Beteiligte & Aufteilung</FieldLegend>
+					<ToggleGroup
+						value={[splitMode]}
+						onValueChange={(values) => {
+							const value = values[0];
+							if (value === 'equal' || value === 'manual') setSplitMode(value);
+						}}
+						variant="outline"
+						spacing={0}
+						className="w-full"
+						aria-label="Abo-Aufteilung"
 					>
-						Bezahlt von
-					</label>
-					<select
-						id="abo-paid-by"
-						value={paidByMemberId}
-						onChange={(event) => setPaidByMemberId(event.target.value)}
-						disabled={submitting}
-						className="block h-11 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-base text-[var(--text-1)] outline-none transition-colors focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-70"
-					>
-						{payerOptions.map((member) => (
-							<option key={member.id} value={member.id}>
-								{member.name}
-							</option>
-						))}
-					</select>
-				</div>
-			</div>
-			<fieldset>
-				<legend className="mb-1.5 text-[13px] font-medium text-[var(--text-1)]">Aufteilung</legend>
-				<div className="flex gap-2">
-					<label className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-[var(--border)] px-3 py-2 text-[13px] text-[var(--text-2)] transition-colors has-[:checked]:border-[var(--text-1)] has-[:checked]:bg-[var(--surface)] has-[:checked]:text-[var(--text-1)] has-[:focus-visible]:outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--accent)] has-[:focus-visible]:ring-offset-2">
-						<input
-							type="radio"
-							name="abo-split"
-							value="equal"
-							checked={splitMode === 'equal'}
-							onChange={() => setSplitMode('equal')}
-							disabled={submitting}
-							className="sr-only"
-						/>
-						Gleichmäßig
-					</label>
-					<label className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-[var(--border)] px-3 py-2 text-[13px] text-[var(--text-2)] transition-colors has-[:checked]:border-[var(--text-1)] has-[:checked]:bg-[var(--surface)] has-[:checked]:text-[var(--text-1)] has-[:focus-visible]:outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--accent)] has-[:focus-visible]:ring-offset-2">
-						<input
-							type="radio"
-							name="abo-split"
-							value="manual"
-							checked={splitMode === 'manual'}
-							onChange={() => setSplitMode('manual')}
-							disabled={submitting}
-							className="sr-only"
-						/>
-						Benutzerdefiniert
-					</label>
-				</div>
-				{splitMode === 'manual' && (
-					<ul className="mt-3 space-y-2">
-						{splitCandidates.map((member) => (
-							<li
-								key={member.id}
-								className="flex items-center justify-between gap-3 rounded-md border border-[var(--border)] px-3 py-2"
-							>
-								<span className="truncate text-[13.5px] text-[var(--text-1)]">{member.name}</span>
-								<div className="relative w-28">
-									<input
-										type="text"
-										inputMode="decimal"
-										value={manualSplits[member.id] ?? ''}
-										onChange={(event) =>
-											setManualSplits((current) => ({
-												...current,
-												[member.id]: event.target.value,
-											}))
-										}
-										placeholder="0,00"
-										aria-label={`Anteil ${member.name} in Euro`}
-										disabled={submitting}
-										className="block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] pl-2 pr-7 text-right text-base text-[var(--text-1)] outline-none focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-70"
-									/>
-									<span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[var(--text-3)]">
-										€
-									</span>
-								</div>
-							</li>
-						))}
-					</ul>
+						<ToggleGroupItem value="equal" className="min-h-11 flex-1">
+							Gleichmäßig
+						</ToggleGroupItem>
+						<ToggleGroupItem value="manual" className="min-h-11 flex-1">
+							Manuell
+						</ToggleGroupItem>
+					</ToggleGroup>
+					{splitMode === 'manual' && (
+						<FieldGroup className="gap-3">
+							{splitCandidates.map((member) => (
+								<Field key={member.id} orientation="horizontal">
+									<FieldLabel
+										htmlFor={`abo-share-${member.id}`}
+										className="min-w-0 flex-1 break-words"
+									>
+										{member.name}
+									</FieldLabel>
+									<InputGroup className="min-h-11 w-32 shrink-0">
+										<InputGroupInput
+											id={`abo-share-${member.id}`}
+											type="text"
+											inputMode="decimal"
+											value={manualSplits[member.id] ?? ''}
+											onChange={(event) =>
+												setManualSplits((current) => ({
+													...current,
+													[member.id]: event.target.value,
+												}))
+											}
+											placeholder="0,00"
+											aria-label={`Anteil ${member.name} in Euro`}
+											disabled={submitting}
+											className="min-h-11 text-base md:text-base"
+										/>
+										<InputGroupAddon align="inline-end">
+											<InputGroupText>€</InputGroupText>
+										</InputGroupAddon>
+									</InputGroup>
+								</Field>
+							))}
+							<FieldDescription>
+								Die Anteile müssen zusammen den Gesamtbetrag ergeben.
+							</FieldDescription>
+						</FieldGroup>
+					)}
+					<SplitReview
+						members={splitCandidates}
+						splits={typeof splitPreview === 'string' ? null : splitPreview}
+						paidByMemberId={paidByMemberId}
+					/>
+				</FieldSet>
+				{(error || saveError) && (
+					<Alert variant="destructive">
+						<AlertDescription>{error ?? saveError}</AlertDescription>
+					</Alert>
 				)}
-			</fieldset>
-			{error && (
-				<p role="alert" className={ALERT_DANGER}>
-					{error}
+			</FieldGroup>
+			<div className="sticky bottom-0 flex flex-col gap-3 bg-popover pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+				<Separator />
+				<p className="text-xs text-muted-foreground">
+					Alle {intervalMonths} Monate · keine automatische Überweisung.
 				</p>
-			)}
-			<div className="flex justify-end gap-2">
-				<button
-					type="button"
-					onClick={onCancel}
-					disabled={submitting}
-					className="inline-flex h-11 items-center rounded-xl border border-[var(--border)] px-4 text-[13px] font-medium text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
-				>
-					Abbrechen
-				</button>
-				<button
-					type="submit"
-					disabled={submitting}
-					className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--text-1)] px-4 text-[13px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-				>
-					{submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
-					{mode === 'create' ? 'Abo anlegen' : 'Speichern'}
-				</button>
+				<div className="flex gap-2">
+					<Button
+						type="button"
+						variant="outline"
+						className="min-h-11"
+						onClick={onCancel}
+						disabled={submitting}
+					>
+						Abbrechen
+					</Button>
+					<Button type="submit" className="min-h-11 flex-1" disabled={submitting}>
+						{submitting && <Spinner data-icon="inline-start" />}
+						{mode === 'create' ? 'Abo anlegen' : 'Speichern'}
+					</Button>
+				</div>
 			</div>
 		</form>
 	);

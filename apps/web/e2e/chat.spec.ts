@@ -75,7 +75,7 @@ test.describe('Chat happy path', () => {
 			)
 			.toBeLessThanOrEqual(2);
 
-		const composer = page.getByLabel('Chat-Nachricht');
+		const composer = page.getByLabel('Chat-Nachricht', { exact: true });
 		await expect(composer).toBeVisible({ timeout: 30_000 });
 		const composerBox = await composer.boundingBox();
 		const navigationBox = await page

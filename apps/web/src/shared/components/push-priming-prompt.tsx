@@ -1,5 +1,8 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 import {
 	PUSH_PRIMING_DISMISS_KEY,
 	isPushPrimingDismissed,
@@ -7,7 +10,7 @@ import {
 	shouldShowPushPriming,
 } from '@/core/notifications/push-priming';
 import { subscribeWebPush } from '@/core/notifications/push-subscribe';
-import { BellRing, Loader2, X } from 'lucide-react';
+import { BellRing, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 function safeLocalStorage(): Storage | null {
@@ -184,40 +187,44 @@ export function PushPrimingPrompt({
 			// ragt das Overlay auf Desktop über die App-Spalte hinaus.
 			className="fixed left-1/2 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] z-[90] w-[calc(100%-1rem)] max-w-[calc(var(--app-frame-width)-1rem)] -translate-x-1/2 animate-in slide-in-from-top-4 fade-in duration-300"
 		>
-			<div className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-base)] p-4 text-[var(--text-1)] shadow-2xl">
-				<span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
-					<BellRing className="h-4 w-4" aria-hidden />
-				</span>
+			<Card className="p-0 shadow-2xl">
+				<CardContent className="flex items-start gap-3 p-4">
+					<span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+						<BellRing className="h-4 w-4" aria-hidden />
+					</span>
 
-				<div className="min-w-0 flex-1">
-					<p className="text-[14px] font-semibold text-[var(--text-1)]">
-						Benachrichtigungen aktivieren (empfohlen)
-					</p>
-					<p className="mt-1 text-[13px] leading-relaxed text-[var(--text-2)]">
-						Alle Kategorien sind schon vorausgewählt — bekomme Bescheid bei neuen Nachrichten,
-						Ausgaben und fälligen Aufgaben, direkt aufs Gerät. Einzelne Kategorien kannst du
-						jederzeit in den Einstellungen abwählen.
-					</p>
-					<button
+					<div className="min-w-0 flex-1">
+						<p className="text-[14px] font-semibold text-card-foreground">
+							Benachrichtigungen aktivieren (empfohlen)
+						</p>
+						<p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+							Alle Kategorien sind schon vorausgewählt — bekomme Bescheid bei neuen Nachrichten,
+							Ausgaben und fälligen Aufgaben, direkt aufs Gerät. Einzelne Kategorien kannst du
+							jederzeit in den Einstellungen abwählen.
+						</p>
+						<Button
+							type="button"
+							onClick={() => void enable()}
+							disabled={busy}
+							className="mt-3 min-h-11 rounded-full px-4 text-[13px]"
+						>
+							{busy && <Spinner className="size-3.5" aria-hidden />}
+							Ja, aktivieren
+						</Button>
+					</div>
+
+					<Button
+						variant="ghost"
+						size="icon-lg"
 						type="button"
-						onClick={() => void enable()}
-						disabled={busy}
-						className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-[var(--text-1)] px-4 text-[13px] font-semibold text-[var(--bg-base)] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-60"
+						onClick={dismiss}
+						aria-label="Hinweis schließen"
+						className="size-11 shrink-0 rounded-full text-muted-foreground"
 					>
-						{busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
-						Ja, aktivieren
-					</button>
-				</div>
-
-				<button
-					type="button"
-					onClick={dismiss}
-					aria-label="Hinweis schließen"
-					className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--text-3)] transition hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-				>
-					<X className="h-4 w-4" aria-hidden />
-				</button>
-			</div>
+						<X className="h-4 w-4" aria-hidden />
+					</Button>
+				</CardContent>
+			</Card>
 		</div>
 	);
 }

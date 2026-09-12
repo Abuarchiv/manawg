@@ -1,5 +1,10 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
+import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { apiFetch } from '@/core/infra/api-client';
 import {
@@ -26,7 +31,6 @@ import {
 	getOfflineActionRisk,
 	getOfflineActionSummary,
 } from '@/core/offline/offline-queue';
-import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function OfflineQueueSection({
@@ -379,13 +383,14 @@ export function OfflineQueueSection({
 			title="Offline-Warteschlange"
 			hint="Aktionen, die ohne Netz vorgemerkt wurden und später synchronisiert werden."
 		>
-			<div className="space-y-3 p-3">
-				<div className="flex items-center justify-between gap-3">
-					<p className="text-[13px] text-[var(--text-2)]">
+			<div className="grid gap-3 p-4">
+				<div className="flex min-h-[44px] items-center justify-between gap-3">
+					<p className="text-muted-foreground text-[13px]">
 						{formatOfflineQueueCount(items.length)}
 					</p>
-					<button
+					<Button
 						type="button"
+						variant="outline"
 						onClick={() => void retry()}
 						disabled={syncing || items.length === 0}
 						aria-label={
@@ -393,14 +398,14 @@ export function OfflineQueueSection({
 								? 'Offline-Warteschlange wird synchronisiert'
 								: 'Offline-Warteschlange erneut synchronisieren'
 						}
-						className="inline-flex h-11 items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--border-strong)] disabled:opacity-50"
+						className="h-11 min-h-[44px] shrink-0"
 					>
-						{syncing && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
+						{syncing && <Spinner aria-hidden />}
 						Erneut versuchen
-					</button>
+					</Button>
 				</div>
 				{items.length > 0 && (
-					<ul className="divide-y divide-[var(--border)] rounded-md border border-[var(--border)]">
+					<ItemGroup className="gap-2">
 						{items.map((item) => {
 							const summary = getOfflineActionSummary(item);
 							const fallback = explainOfflineActionFailure(0);
@@ -410,85 +415,84 @@ export function OfflineQueueSection({
 							const actionLabel = summary.detail || summary.title;
 							const rowBusy = syncing || checkingServerIds.has(item.id);
 							return (
-								<li key={item.id} className="flex items-center justify-between gap-3 px-3 py-2">
-									<div className="min-w-0">
-										<div className="flex items-center gap-2">
-											<p className="truncate text-[13px] font-medium text-[var(--text-1)]">
-												{summary.title}
-											</p>
-											{item.attempts ? (
-												<span className="shrink-0 rounded-full bg-[var(--danger)]/5 px-1.5 py-0.5 text-[11px] text-[var(--danger)]">
-													{item.attempts}x
-												</span>
-											) : null}
-										</div>
-										<p className="truncate text-[12px] text-[var(--text-3)]">{summary.detail}</p>
-										<p className="mt-0.5 line-clamp-2 text-[11.5px] text-[var(--text-3)]">
+								<Item key={item.id} variant="outline" className="items-start">
+									<ItemContent>
+										<ItemTitle>
+											<span className="min-w-0 flex-1 truncate">{summary.title}</span>
+											{item.attempts ? <Badge variant="destructive">{item.attempts}x</Badge> : null}
+										</ItemTitle>
+										<ItemDescription className="line-clamp-none">{summary.detail}</ItemDescription>
+										<p className="text-muted-foreground line-clamp-2 text-xs">
 											{item.lastError ?? fallback.detail}
 										</p>
 										{risk && (
-											<p className="mt-1 rounded-md bg-[var(--accent)]/10 px-2 py-1 text-[11.5px] text-[var(--accent)]">
-												{risk.title}: {risk.detail}
-											</p>
+											<Alert className="mt-1">
+												<AlertDescription>
+													{risk.title}: {risk.detail}
+												</AlertDescription>
+											</Alert>
 										)}
 										{conflictNotes[item.id] && (
-											<output
-												aria-live="polite"
-												className="mt-1 rounded-md border border-[var(--border)] px-2 py-1 text-[11.5px] text-[var(--text-2)]"
-											>
-												{conflictNotes[item.id]}
-											</output>
+											<Alert className="mt-1">
+												<AlertDescription>{conflictNotes[item.id]}</AlertDescription>
+											</Alert>
 										)}
-									</div>
-									<div className="flex shrink-0 flex-col gap-1">
-										<button
-											type="button"
-											aria-label={serverCheckLabel}
-											onClick={() => void checkServer(item)}
-											disabled={rowBusy}
-											className="inline-flex h-11 items-center justify-center gap-1 rounded-md px-3 text-[12px] text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-										>
-											{checkingServerIds.has(item.id) && (
-												<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-											)}
-											{checkingServerIds.has(item.id) ? 'Prüft...' : 'Server prüfen'}
-										</button>
-										{editDraft ? (
-											<button
+										<div className="mt-2 grid gap-2">
+											<Button
 												type="button"
-												aria-label={`Offline-Aktion bearbeiten: ${actionLabel}`}
-												onClick={() => edit(item, editDraft)}
+												variant="outline"
+												size="sm"
+												aria-label={serverCheckLabel}
+												onClick={() => void checkServer(item)}
 												disabled={rowBusy}
-												className="h-11 rounded-md px-3 text-[12px] text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+												className="min-h-[44px] w-full"
 											>
-												Bearbeiten
-											</button>
-										) : null}
-										{item.payload.imageUrl ? (
-											<button
+												{checkingServerIds.has(item.id) && <Spinner aria-hidden />}
+												{checkingServerIds.has(item.id) ? 'Prüft...' : 'Server prüfen'}
+											</Button>
+											{editDraft ? (
+												<Button
+													type="button"
+													variant="ghost"
+													size="sm"
+													aria-label={`Offline-Aktion bearbeiten: ${actionLabel}`}
+													onClick={() => edit(item, editDraft)}
+													disabled={rowBusy}
+													className="min-h-[44px] w-full"
+												>
+													Bearbeiten
+												</Button>
+											) : null}
+											{item.payload.imageUrl ? (
+												<Button
+													type="button"
+													variant="ghost"
+													size="sm"
+													aria-label={`Anhang entfernen: ${actionLabel}`}
+													onClick={() => removeAttachment(item.id)}
+													disabled={rowBusy}
+													className="min-h-[44px] w-full"
+												>
+													Anhang weg
+												</Button>
+											) : null}
+											<Button
 												type="button"
-												aria-label={`Anhang entfernen: ${actionLabel}`}
-												onClick={() => removeAttachment(item.id)}
+												variant="destructive"
+												size="sm"
+												aria-label={`Offline-Aktion verwerfen: ${actionLabel}`}
+												onClick={() => remove(item.id)}
 												disabled={rowBusy}
-												className="h-11 rounded-md px-3 text-[12px] text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+												className="min-h-[44px] w-full"
 											>
-												Anhang weg
-											</button>
-										) : null}
-										<button
-											type="button"
-											aria-label={`Offline-Aktion verwerfen: ${actionLabel}`}
-											onClick={() => remove(item.id)}
-											disabled={rowBusy}
-											className="h-11 rounded-md px-3 text-[12px] text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-										>
-											Verwerfen
-										</button>
-									</div>
-								</li>
+												Verwerfen
+											</Button>
+										</div>
+									</ItemContent>
+								</Item>
 							);
 						})}
-					</ul>
+					</ItemGroup>
 				)}
 			</div>
 		</Section>

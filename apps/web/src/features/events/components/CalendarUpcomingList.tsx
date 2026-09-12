@@ -1,9 +1,27 @@
 'use client';
 
-import { EMPTY_PLACEHOLDER, LIST_CARD } from '@/components/ui/styles';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
+import {
+	Item,
+	ItemActions,
+	ItemContent,
+	ItemDescription,
+	ItemGroup,
+	ItemMedia,
+	ItemTitle,
+} from '@/components/ui/item';
 import { type EventOccurrence, formatEventTimeRange } from '@/features/events/events';
 import { occurrenceToIcs } from '@/features/events/ics';
 import { CalendarClock, CalendarPlus, Pencil, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
 interface CalendarUpcomingListProps {
 	occurrences: EventOccurrence[];
@@ -43,75 +61,112 @@ export function CalendarUpcomingList({
 	onSelect,
 	wgBaseHref,
 }: CalendarUpcomingListProps) {
-	const hasContent = occurrences.length > 0 || choreOccurrences.length > 0;
-	if (!hasContent) {
+	const entries = [
+		...occurrences.map((occurrence) => ({
+			kind: 'event' as const,
+			startsAt: occurrence.startsAt,
+			occurrence,
+		})),
+		...choreOccurrences.map((chore) => ({
+			kind: 'chore' as const,
+			startsAt: chore.startsAt,
+			chore,
+		})),
+	].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+
+	if (entries.length === 0) {
 		return (
-			<div className={EMPTY_PLACEHOLDER}>
-				Keine Termine in den nächsten 30 Tagen. Tippe auf „Neu“, um etwas anzulegen.
-			</div>
+			<Empty>
+				<EmptyHeader>
+					<EmptyMedia variant="icon">
+						<CalendarClock aria-hidden />
+					</EmptyMedia>
+					<EmptyTitle>Die nächsten 30 Tage sind frei</EmptyTitle>
+					<EmptyDescription>Mit „Neu“ trägst du euren nächsten Termin ein.</EmptyDescription>
+				</EmptyHeader>
+			</Empty>
 		);
 	}
+
 	return (
-		<ul className={LIST_CARD}>
-			{occurrences.map((occ) => (
-				<li key={`${occ.eventId}-${occ.occurrenceIndex}`}>
-					<div className="flex items-center gap-3 px-3 py-3 sm:px-4">
-						<span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent)]/15 text-[var(--accent)]">
-							<CalendarClock className="h-4 w-4" aria-hidden />
-						</span>
-						<div className="min-w-0 flex-1">
-							<p className="truncate text-[14.5px] font-medium text-[var(--text-1)]">
-								{occ.title}
-								{occ.recurring && (
-									<span className="ml-2 rounded-full bg-[var(--surface)] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[var(--text-3)]">
-										Wiederholend
-									</span>
-								)}
-							</p>
-							<p className="mt-0.5 text-[12.5px] text-[var(--text-3)]">
-								{formatEventTimeRange(occ)}
-								{occ.location ? ` · ${occ.location}` : ''}
-							</p>
-						</div>
-						<button
-							type="button"
-							onClick={() => downloadOccurrenceIcs(occ)}
-							aria-label={`Zum Kalender hinzufügen: ${occ.title}`}
-							className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--text-3)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-						>
-							<CalendarPlus className="h-3.5 w-3.5" aria-hidden />
-						</button>
-						<button
-							type="button"
-							onClick={() => onSelect(occ)}
-							aria-label={`Termin bearbeiten: ${occ.title}`}
-							className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--text-3)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-						>
-							<Pencil className="h-3.5 w-3.5" aria-hidden />
-						</button>
-					</div>
-				</li>
-			))}
-			{choreOccurrences.map((chore) => (
-				<li key={`chore-${chore.choreId}-${chore.startsAt}`}>
-					<a
-						href={`${wgBaseHref}/putzen?highlight=${encodeURIComponent(chore.choreId)}`}
-						className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)] sm:px-4"
-					>
-						<span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--text-2)]">
-							<Sparkles className="h-4 w-4" aria-hidden />
-						</span>
-						<div className="min-w-0 flex-1">
-							<p className="truncate text-[14.5px] font-medium text-[var(--text-1)]">
-								{chore.title}
-							</p>
-							<p className="mt-0.5 text-[12.5px] text-[var(--text-3)]">
-								Putzplan · {DATE_FORMATTER.format(new Date(chore.startsAt))}
-							</p>
-						</div>
-					</a>
-				</li>
-			))}
-		</ul>
+		<ItemGroup aria-label="Anstehende Termine und Putzaufgaben">
+			{entries.map((entry) => {
+				if (entry.kind === 'chore') {
+					const chore = entry.chore;
+					return (
+						<Item key={`chore-${chore.choreId}-${chore.startsAt}`} variant="outline">
+							<ItemMedia variant="icon">
+								<Sparkles aria-hidden />
+							</ItemMedia>
+							<ItemContent className="min-w-0 basis-32">
+								<ItemTitle className="line-clamp-none break-words">{chore.title}</ItemTitle>
+								<ItemDescription className="line-clamp-none">
+									Putzplan · {DATE_FORMATTER.format(new Date(chore.startsAt))}
+								</ItemDescription>
+							</ItemContent>
+							<ItemActions className="ml-auto">
+								<Button
+									nativeButton={false}
+									render={
+										<Link
+											href={`${wgBaseHref}/putzen?highlight=${encodeURIComponent(chore.choreId)}`}
+										/>
+									}
+									variant="outline"
+									className="min-h-11"
+									aria-label={`Putzaufgabe öffnen: ${chore.title}`}
+								>
+									Öffnen
+								</Button>
+							</ItemActions>
+						</Item>
+					);
+				}
+				const occurrence = entry.occurrence;
+				return (
+					<Item key={`${occurrence.eventId}-${occurrence.occurrenceIndex}`} variant="outline">
+						<ItemMedia variant="icon">
+							<CalendarClock aria-hidden />
+						</ItemMedia>
+						<ItemContent className="min-w-0 basis-40">
+							<ItemTitle className="line-clamp-none break-words">{occurrence.title}</ItemTitle>
+							<ItemDescription className="line-clamp-none">
+								{formatEventTimeRange(occurrence)}
+							</ItemDescription>
+							{occurrence.location && (
+								<ItemDescription className="line-clamp-none break-words">
+									{occurrence.location}
+								</ItemDescription>
+							)}
+							{occurrence.recurring && (
+								<Badge variant="secondary" className="w-fit">
+									Wiederholend
+								</Badge>
+							)}
+						</ItemContent>
+						<ItemActions className="ml-auto">
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => downloadOccurrenceIcs(occurrence)}
+								aria-label={`Zum Kalender hinzufügen: ${occurrence.title}`}
+								className="size-11"
+							>
+								<CalendarPlus aria-hidden />
+							</Button>
+							<Button
+								variant="outline"
+								onClick={() => onSelect(occurrence)}
+								aria-label={`Termin bearbeiten: ${occurrence.title}`}
+								className="min-h-11"
+							>
+								<Pencil data-icon="inline-start" aria-hidden />
+								Bearbeiten
+							</Button>
+						</ItemActions>
+					</Item>
+				);
+			})}
+		</ItemGroup>
 	);
 }

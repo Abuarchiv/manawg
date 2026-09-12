@@ -1,5 +1,4 @@
-'use client';
-
+import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker';
 import { CheckCircle2, Info, LogIn, LogOut, Receipt } from 'lucide-react';
 
 interface SystemMessageProps {
@@ -49,11 +48,13 @@ function SystemRow({
 	text: string;
 }) {
 	return (
-		<div className="my-2 flex justify-center">
-			<span className="inline-flex max-w-[80%] items-center gap-1.5 rounded-full bg-[var(--surface)] px-3 py-1 text-[12px] text-[var(--text-3)] ring-1 ring-inset ring-[var(--border)]">
-				<Icon className="h-3 w-3 shrink-0" aria-hidden />
+		<Marker variant="separator" className="my-2 justify-center text-xs">
+			<MarkerIcon>
+				<Icon aria-hidden />
+			</MarkerIcon>
+			<MarkerContent className="max-w-[80%] rounded-full bg-muted px-3 py-1 text-center">
 				{text}
-			</span>
-		</div>
+			</MarkerContent>
+		</Marker>
 	);
 }

@@ -1,6 +1,40 @@
 'use client';
 
+import { Switch } from '@/components/animate-ui/components/base/switch';
 import { SocialLoginButtons, type SocialProvider } from '@/components/auth/SocialLoginButtons';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogMedia,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+	Field,
+	FieldContent,
+	FieldDescription,
+	FieldLabel,
+	FieldTitle,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import {
+	Item,
+	ItemActions,
+	ItemContent,
+	ItemDescription,
+	ItemGroup,
+	ItemMedia,
+	ItemTitle,
+} from '@/components/ui/item';
+import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
 import { ShareWgCard } from '@/components/wg/ShareWgCard';
@@ -16,7 +50,7 @@ import { apiFetch } from '@/core/infra/api-client';
 import { buildSecurityOverview } from '@/core/infra/security';
 import type { StoredIdentity } from '@/shared/lib/identity';
 import { clearIdentity, forgetWg, memberAuthHeader } from '@/shared/lib/identity';
-import { AlertTriangle, Loader2, LogOut, Trash2, UserMinus, UserPlus } from 'lucide-react';
+import { LogOut, Trash2, UserMinus, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
@@ -279,77 +313,63 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				title="Zugang"
 				hint="Steuert, ob der aktuelle WG-Code neue Mitglieder aufnehmen darf."
 			>
-				<div className="space-y-3 p-4">
-					<div className="flex items-center justify-between gap-3">
-						<div className="min-w-0">
-							<div className="text-[14px] font-medium text-[var(--text-1)]">Neue Beitritte</div>
-							<div className="mt-0.5 text-[12px] text-[var(--text-3)]">
-								{joiningEnabled
-									? 'Mit Code können neue Personen beitreten.'
-									: 'Der Code ist für neue Beitritte gesperrt.'}
-							</div>
-						</div>
-						<button
-							type="button"
-							onClick={() => void toggleJoining()}
-							disabled={accessPending !== null}
-							aria-label={joiningEnabled ? 'Neue Beitritte sperren' : 'Neue Beitritte erlauben'}
-							aria-pressed={joiningEnabled}
-							className={`inline-flex h-11 min-w-28 items-center justify-center rounded-md border px-3 text-[12.5px] font-medium transition-colors disabled:opacity-50 ${
-								joiningEnabled
-									? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
-									: 'border-[var(--border)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]'
-							}`}
-						>
-							{accessPending === 'join' ? (
-								<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-							) : joiningEnabled ? (
-								'Erlaubt'
-							) : (
-								'Gesperrt'
-							)}
-						</button>
-					</div>
-					<div className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
-						<div className="flex items-center justify-between gap-3">
+				<div className="grid gap-3 p-4">
+					<Field orientation="horizontal" className="min-h-[44px]">
+						<FieldContent>
+							<FieldTitle>Neue Beitritte</FieldTitle>
+							<FieldDescription>
+								{accessPending === 'join'
+									? 'Wird gespeichert…'
+									: joiningEnabled
+										? 'Mit Code können neue Personen beitreten.'
+										: 'Der Code ist für neue Beitritte gesperrt.'}
+							</FieldDescription>
+						</FieldContent>
+						{accessPending === 'join' ? (
+							<Spinner aria-hidden />
+						) : (
+							<Switch
+								checked={joiningEnabled}
+								disabled={accessPending !== null}
+								aria-label={joiningEnabled ? 'Neue Beitritte sperren' : 'Neue Beitritte erlauben'}
+								onCheckedChange={() => void toggleJoining()}
+							/>
+						)}
+					</Field>
+					<div className="border-border bg-muted/40 rounded-lg border px-3 py-2.5">
+						<div className="flex min-h-[44px] items-center justify-between gap-3">
 							<div className="min-w-0">
-								<div className="text-[13.5px] font-medium text-[var(--text-1)]">
-									WG-Code erneuern
-								</div>
-								<div className="mt-0.5 text-[12px] text-[var(--text-3)]">
+								<div className="text-foreground text-sm font-medium">WG-Code erneuern</div>
+								<div className="text-muted-foreground mt-0.5 text-xs">
 									Alte Links funktionieren danach nicht mehr.
 								</div>
 							</div>
-							<button
+							<Button
 								type="button"
+								variant={rotateConfirm ? 'destructive' : 'outline'}
 								onClick={() => void rotateShareCode()}
 								disabled={accessPending !== null}
 								aria-label={rotateConfirm ? 'WG-Code-Erneuerung bestätigen' : 'WG-Code erneuern'}
-								className={`inline-flex h-11 min-w-24 items-center justify-center rounded-md px-3 text-[12.5px] font-medium transition disabled:opacity-50 ${
-									rotateConfirm
-										? 'bg-[var(--danger)] text-[var(--danger-fg)] hover:opacity-90'
-										: 'border border-[var(--border)] text-[var(--text-2)] hover:border-[var(--danger)] hover:text-[var(--danger)]'
-								}`}
+								className="h-11 min-h-[44px] shrink-0"
 							>
-								{accessPending === 'rotate' ? (
-									<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-								) : rotateConfirm ? (
-									'Bestätigen'
-								) : (
-									'Erneuern'
-								)}
-							</button>
+								{accessPending === 'rotate' && <Spinner aria-hidden />}
+								{accessPending === 'rotate'
+									? 'Speichert…'
+									: rotateConfirm
+										? 'Bestätigen'
+										: 'Erneuern'}
+							</Button>
 						</div>
 					</div>
 					{accessMessage && (
-						<output className="block text-[12.5px] text-[var(--success-fg)]" aria-live="polite">
-							{accessMessage}
-						</output>
+						<Alert>
+							<AlertDescription>{accessMessage}</AlertDescription>
+						</Alert>
 					)}
 					{accessError && (
-						<p role="alert" className="text-[12.5px] text-[var(--danger)]">
-							{accessError}
-						</p>
+						<Alert variant="destructive">
+							<AlertDescription>{accessError}</AlertDescription>
+						</Alert>
 					)}
 				</div>
 			</Section>
@@ -358,269 +378,256 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				title="Sicherheit & Vertrauen"
 				hint="Schneller Überblick, wer drin ist und wie offen der WG-Code ist."
 			>
-				<div className="grid gap-2 p-3 sm:grid-cols-2">
+				<div className="grid gap-2 p-4">
 					{securityOverview.map((item) => (
-						<div key={item.label} className="rounded-md border border-[var(--border)] px-3 py-2">
-							<p className="text-[11.5px] text-[var(--text-3)]">{item.label}</p>
-							<p className="mt-0.5 text-[13px] font-medium text-[var(--text-1)]">{item.value}</p>
+						<div key={item.label} className="border-border rounded-lg border px-3 py-2">
+							<p className="text-muted-foreground text-xs">{item.label}</p>
+							<p className="text-foreground mt-0.5 text-[13px] font-medium">{item.value}</p>
 						</div>
 					))}
 				</div>
-				<ul className="divide-y divide-[var(--border)] border-t border-[var(--border)] px-3">
+				<Separator />
+				<ItemGroup className="gap-0 px-2 py-1">
 					{activeMembers.map((member) => (
-						<li key={member.id} className="flex items-center gap-2 py-2.5">
-							<MemberAvatar name={member.name} color={member.color ?? null} size={26} />
-							<span className="truncate text-[13px] text-[var(--text-1)]">{member.name}</span>
-							{member.id === identity.memberId ? (
-								<span className="ml-auto rounded-full bg-[var(--surface)] px-2 py-0.5 text-[11px] text-[var(--text-3)]">
-									dieses Gerät
-								</span>
-							) : (
-								isAdmin && (
-									<button
-										type="button"
-										onClick={() => setMemberToDeactivate({ id: member.id, name: member.name })}
-										aria-label={`${member.name} ausziehen`}
-										className="ml-auto inline-flex h-8 items-center gap-1 rounded-md border border-[var(--border)] px-2 text-[11.5px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--danger)] hover:text-[var(--danger)]"
-									>
-										<UserMinus className="h-3.5 w-3.5" aria-hidden />
-										Ausziehen
-									</button>
-								)
-							)}
-						</li>
+						<Item key={member.id} size="sm" className="min-h-[44px]">
+							<ItemMedia>
+								<MemberAvatar name={member.name} color={member.color ?? null} size={26} />
+							</ItemMedia>
+							<ItemContent>
+								<ItemTitle>{member.name}</ItemTitle>
+							</ItemContent>
+							<ItemActions>
+								{member.id === identity.memberId ? (
+									<Badge variant="secondary">dieses Gerät</Badge>
+								) : (
+									isAdmin && (
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											onClick={() => setMemberToDeactivate({ id: member.id, name: member.name })}
+											aria-label={`${member.name} ausziehen`}
+											className="min-h-[44px]"
+										>
+											<UserMinus aria-hidden />
+											Ausziehen
+										</Button>
+									)
+								)}
+							</ItemActions>
+						</Item>
 					))}
-				</ul>
+				</ItemGroup>
 				{inactiveMembers.length > 0 && (
-					<div className="border-t border-[var(--border)] px-3 pb-1 pt-2">
-						<p className="px-0.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-[var(--text-3)]">
+					<div className="px-4 pt-2 pb-1">
+						<p className="text-muted-foreground px-0.5 pb-1 text-[11px] font-medium tracking-wide uppercase">
 							Ausgezogen
 						</p>
-						<ul className="divide-y divide-[var(--border)]">
+						<ItemGroup className="gap-0">
 							{inactiveMembers.map((member) => (
-								<li key={member.id} className="flex items-center gap-2 py-2.5 opacity-70">
-									<MemberAvatar name={member.name} color={member.color ?? null} size={26} />
-									<span className="truncate text-[13px] text-[var(--text-1)]">{member.name}</span>
-									{isAdmin && (
-										<button
-											type="button"
-											onClick={() => void handleReactivate({ id: member.id, name: member.name })}
-											disabled={reactivatingId === member.id}
-											aria-label={`${member.name} aktivieren`}
-											className="ml-auto inline-flex h-8 items-center gap-1 rounded-md border border-[var(--border)] px-2 text-[11.5px] font-medium text-[var(--text-2)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50"
-										>
-											{reactivatingId === member.id ? (
-												<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-											) : (
-												<UserPlus className="h-3.5 w-3.5" aria-hidden />
-											)}
-											Aktivieren
-										</button>
-									)}
-								</li>
+								<Item key={member.id} size="sm" className="min-h-[44px] opacity-70">
+									<ItemMedia>
+										<MemberAvatar name={member.name} color={member.color ?? null} size={26} />
+									</ItemMedia>
+									<ItemContent>
+										<ItemTitle>{member.name}</ItemTitle>
+										<ItemDescription>Ausgezogen, Verlauf bleibt erhalten</ItemDescription>
+									</ItemContent>
+									<ItemActions>
+										{isAdmin && (
+											<Button
+												type="button"
+												variant="outline"
+												size="sm"
+												onClick={() => void handleReactivate({ id: member.id, name: member.name })}
+												disabled={reactivatingId === member.id}
+												aria-label={`${member.name} aktivieren`}
+												className="min-h-[44px]"
+											>
+												{reactivatingId === member.id ? (
+													<Spinner aria-hidden />
+												) : (
+													<UserPlus aria-hidden />
+												)}
+												Aktivieren
+											</Button>
+										)}
+									</ItemActions>
+								</Item>
 							))}
-						</ul>
+						</ItemGroup>
 					</div>
 				)}
 				{memberActionMessage && (
-					<output
-						className="block border-t border-[var(--border)] px-4 py-2 text-[12.5px] text-[var(--success-fg)]"
-						aria-live="polite"
-					>
-						{memberActionMessage}
-					</output>
+					<div className="px-4 pb-3">
+						<Alert>
+							<AlertDescription>{memberActionMessage}</AlertDescription>
+						</Alert>
+					</div>
 				)}
 				{memberActionError && (
-					<p
-						role="alert"
-						className="border-t border-[var(--border)] px-4 py-2 text-[12.5px] text-[var(--danger)]"
-					>
-						{memberActionError}
-					</p>
+					<div className="px-4 pb-3">
+						<Alert variant="destructive">
+							<AlertDescription>{memberActionError}</AlertDescription>
+						</Alert>
+					</div>
 				)}
 			</Section>
 
-			<div className="space-y-4">
+			<div className="grid gap-4">
 				<div className="px-1">
-					<h2 className="text-[13px] font-semibold text-[var(--danger)]">Gefahrenzone</h2>
-					<p className="mt-0.5 text-[12px] text-[var(--text-3)]">
+					<h2 className="text-destructive text-[13px] font-semibold">Gefahrenzone</h2>
+					<p className="text-muted-foreground mt-0.5 text-xs">
 						Diese Aktionen sind teilweise oder vollständig unwiderruflich.
 					</p>
 				</div>
 
-				<section
-					aria-label="Konto abmelden"
-					className="overflow-hidden rounded-lg border border-[var(--danger)]/25 bg-[var(--bg-base)]"
-				>
-					<div className="border-b border-[var(--border)] bg-[var(--danger)]/[0.03] px-4 py-2.5">
-						<h3 className="text-[12px] font-semibold uppercase tracking-wide text-[var(--danger)]/70">
-							Konto abmelden
-						</h3>
-						<p className="mt-0.5 text-[11.5px] text-[var(--text-3)]">
-							Meldet dein Social-Konto auf diesem Gerät ab.
-						</p>
-					</div>
-					<button
-						type="button"
-						onClick={() => void handleAccountSignOut()}
-						disabled={accountSignOutPending}
-						aria-label="Konto abmelden"
-						className="flex min-h-[44px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--danger)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-60"
-					>
-						<span className="text-[14px] text-[var(--danger)]">
+				<Section title="Konto abmelden" hint="Meldet dein Social-Konto auf diesem Gerät ab.">
+					<div className="p-4">
+						<Button
+							type="button"
+							variant="destructive"
+							onClick={() => void handleAccountSignOut()}
+							disabled={accountSignOutPending}
+							aria-label="Konto abmelden"
+							className="h-11 min-h-[44px] w-full"
+						>
+							{accountSignOutPending ? <Spinner aria-hidden /> : <LogOut aria-hidden />}
 							{accountSignOutPending ? 'Melde ab…' : 'Konto abmelden'}
-						</span>
-						{accountSignOutPending ? (
-							<Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--danger)]" aria-hidden />
-						) : (
-							<LogOut className="h-4 w-4 shrink-0 text-[var(--danger)]" aria-hidden />
+						</Button>
+						{accountSignOutError && (
+							<Alert variant="destructive" className="mt-2">
+								<AlertDescription>{accountSignOutError}</AlertDescription>
+							</Alert>
 						)}
-					</button>
-					{accountSignOutError && (
-						<p
-							role="alert"
-							className="border-t border-[var(--border)] px-4 py-2 text-[12.5px] text-[var(--danger)]"
-						>
-							{accountSignOutError}
-						</p>
-					)}
-				</section>
-
-				{/* Leave WG */}
-				<section
-					aria-label="WG verlassen"
-					className="overflow-hidden rounded-lg border border-[var(--danger)]/25 bg-[var(--bg-base)]"
-				>
-					<div className="border-b border-[var(--border)] bg-[var(--danger)]/[0.03] px-4 py-2.5">
-						<h3 className="text-[12px] font-semibold uppercase tracking-wide text-[var(--danger)]/70">
-							WG verlassen
-						</h3>
-						<p className="mt-0.5 text-[11.5px] text-[var(--text-3)]">
-							Entfernt dich nur auf diesem Gerät. Deine Einträge bleiben.
-						</p>
 					</div>
-					{confirmLeave ? (
-						<div className="space-y-3 p-4">
-							<p className="text-[13px] text-[var(--text-2)]">
-								Wirklich verlassen? Du musst dich beim nächsten Öffnen neu auswählen.
-							</p>
-							<div className="flex gap-2">
-								<button
-									type="button"
-									onClick={() => setConfirmLeave(false)}
-									aria-label="WG-Verlassen abbrechen"
-									className="inline-flex h-11 flex-1 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] text-[13px] text-[var(--text-1)] transition-colors hover:border-[var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-								>
-									Abbrechen
-								</button>
-								<button
-									type="button"
-									onClick={handleLeave}
-									aria-label="WG auf diesem Gerät verlassen"
-									className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-[var(--danger)] text-[13px] font-medium text-[var(--danger-fg)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2"
-								>
-									<LogOut className="h-3.5 w-3.5" aria-hidden />
-									Verlassen
-								</button>
-							</div>
-						</div>
-					) : (
-						<button
+				</Section>
+
+				<Section
+					title="WG verlassen"
+					hint="Entfernt dich nur auf diesem Gerät. Deine Einträge bleiben."
+				>
+					<div className="p-4">
+						<Button
 							type="button"
+							variant="destructive"
 							onClick={openLeaveConfirm}
-							className="flex min-h-[44px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--danger)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--danger)]"
+							className="h-11 min-h-[44px] w-full"
 						>
-							<span className="text-[14px] text-[var(--danger)]">
-								WG auf diesem Gerät verlassen
-							</span>
-							<LogOut className="h-4 w-4 shrink-0 text-[var(--danger)]" aria-hidden />
-						</button>
-					)}
-				</section>
-
-				{/* Delete WG */}
-				<section
-					aria-label="WG dauerhaft löschen"
-					className="overflow-hidden rounded-lg border border-[var(--danger)]/25 bg-[var(--bg-base)]"
-				>
-					<div className="border-b border-[var(--border)] bg-[var(--danger)]/[0.03] px-4 py-2.5">
-						<h3 className="text-[12px] font-semibold uppercase tracking-wide text-[var(--danger)]/70">
-							WG dauerhaft löschen
-						</h3>
-						<p className="mt-0.5 text-[11.5px] text-[var(--text-3)]">
-							Entfernt die gesamte WG und alle Daten (Ausgaben, Listen, Pinnwand) unwiderruflich für
-							alle Mitglieder.
-						</p>
+							<LogOut aria-hidden />
+							WG auf diesem Gerät verlassen
+						</Button>
 					</div>
-					{deleteStage === 'idle' ? (
-						<button
+				</Section>
+
+				<Section
+					title="WG dauerhaft löschen"
+					hint="Entfernt die gesamte WG und alle Daten (Ausgaben, Listen, Pinnwand) unwiderruflich für alle Mitglieder."
+				>
+					<div className="p-4">
+						<Button
 							type="button"
+							variant="destructive"
 							onClick={openDeleteConfirm}
-							className="flex min-h-[44px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--danger)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--danger)]"
+							className="h-11 min-h-[44px] w-full"
 						>
-							<span className="text-[14px] text-[var(--danger)]">
-								Komplette WG für alle löschen
-							</span>
-							<Trash2 className="h-4 w-4 shrink-0 text-[var(--danger)]" aria-hidden />
-						</button>
-					) : (
-						<div className="space-y-3 p-4">
-							<div className="flex items-start gap-2 rounded-md border border-[var(--danger)]/30 bg-[var(--danger)]/5 p-3 text-[12.5px] text-[var(--danger)]">
-								<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-								<p id="delete-wg-confirm-hint">
-									Diese Aktion löscht die WG <strong>{wg.name}</strong> für alle Mitglieder
-									unwiderruflich. Tippe zur Bestätigung den WG-Code{' '}
-									<span className="font-mono">{wg.shareCode}</span>.
-								</p>
-							</div>
-							<input
-								type="text"
-								value={confirmText}
-								onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
-								placeholder={wg.shareCode}
-								aria-describedby="delete-wg-confirm-hint"
-								disabled={deleteStage === 'pending'}
-								aria-label="WG-Code zur Bestätigung"
-								className="block h-11 w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-center font-mono text-[15px] tracking-[0.18em] text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition-colors focus-visible:border-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2"
-							/>
-							{deleteError && (
-								<p role="alert" className="text-[12.5px] text-[var(--danger)]">
-									{deleteError}
-								</p>
-							)}
-							<div className="flex gap-2">
-								<button
-									type="button"
-									onClick={() => {
-										setDeleteStage('idle');
-										setDeleteError(null);
-										setConfirmText('');
-									}}
-									disabled={deleteStage === 'pending'}
-									aria-label="WG-Löschung abbrechen"
-									className="inline-flex h-11 flex-1 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-base)] text-[13px] text-[var(--text-1)] transition-colors hover:border-[var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
-								>
-									Abbrechen
-								</button>
-								<button
-									type="button"
-									onClick={() => void handleDelete()}
-									disabled={deleteStage === 'pending' || confirmText !== wg.shareCode}
-									aria-label="WG endgültig löschen"
-									className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-[var(--danger)] text-[13px] font-medium text-[var(--danger-fg)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
-								>
-									{deleteStage === 'pending' ? (
-										<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-									) : (
-										<Trash2 className="h-3.5 w-3.5" aria-hidden />
-									)}
-									Endgültig löschen
-								</button>
-							</div>
-						</div>
-					)}
-				</section>
+							<Trash2 aria-hidden />
+							Komplette WG für alle löschen
+						</Button>
+					</div>
+				</Section>
 			</div>
+
+			<AlertDialog
+				open={confirmLeave}
+				onOpenChange={(open) => {
+					if (!open) setConfirmLeave(false);
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogMedia>
+							<LogOut aria-hidden />
+						</AlertDialogMedia>
+						<AlertDialogTitle>WG auf diesem Gerät verlassen?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Wirklich verlassen? Du musst dich beim nächsten Öffnen neu auswählen. Deine Einträge
+							in der WG bleiben erhalten.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Abbrechen</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={(event) => {
+								event.preventDefault();
+								handleLeave();
+							}}
+						>
+							<LogOut aria-hidden />
+							Verlassen
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			<AlertDialog
+				open={deleteStage !== 'idle'}
+				onOpenChange={(open) => {
+					if (!open && deleteStage !== 'pending') {
+						setDeleteStage('idle');
+						setDeleteError(null);
+						setConfirmText('');
+					}
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogMedia>
+							<Trash2 aria-hidden />
+						</AlertDialogMedia>
+						<AlertDialogTitle>WG dauerhaft löschen?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Diese Aktion löscht die WG {wg.name} für alle Mitglieder unwiderruflich. Tippe zur
+							Bestätigung den WG-Code {wg.shareCode}.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<Field>
+						<FieldLabel htmlFor="delete-wg-confirm">WG-Code zur Bestätigung</FieldLabel>
+						<Input
+							id="delete-wg-confirm"
+							type="text"
+							value={confirmText}
+							onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
+							placeholder={wg.shareCode}
+							aria-describedby="delete-wg-confirm-hint"
+							disabled={deleteStage === 'pending'}
+							className="h-11 min-h-[44px] text-center font-mono text-base tracking-[0.18em]"
+							autoComplete="off"
+						/>
+						<FieldDescription id="delete-wg-confirm-hint">
+							Groß-/Kleinschreibung wird automatisch angeglichen.
+						</FieldDescription>
+					</Field>
+					{deleteError && (
+						<Alert variant="destructive">
+							<AlertDescription>{deleteError}</AlertDescription>
+						</Alert>
+					)}
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={deleteStage === 'pending'}>Abbrechen</AlertDialogCancel>
+						<Button
+							onClick={(event) => {
+								event.preventDefault();
+								void handleDelete();
+							}}
+							disabled={deleteStage === 'pending' || confirmText !== wg.shareCode}
+						>
+							{deleteStage === 'pending' ? <Spinner aria-hidden /> : <Trash2 aria-hidden />}
+							Endgültig löschen
+						</Button>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 
 			{memberToDeactivate && (
 				<MemberDeactivateDialog

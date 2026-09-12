@@ -129,7 +129,7 @@ test.describe('Pinnwand recovery', () => {
 		).toBeVisible({
 			timeout: 30_000,
 		});
-		await expect(page.getByText('Pinnwand ist leer.')).toBeHidden();
+		await expect(page.getByText('Noch keine Beiträge geladen.')).toBeVisible();
 
 		failAnnouncements = false;
 		await page.getByRole('button', { name: 'Pinnwand erneut laden' }).click();
@@ -320,7 +320,7 @@ test.describe('Pinnwand recovery', () => {
 		});
 
 		await expect.poll(() => posts).toBe(1);
-		await expect(page.getByRole('button', { name: 'Posten' })).toBeDisabled();
+		await expect(page.getByRole('button', { name: 'Wird gepostet…' })).toBeDisabled();
 		await expect(page.getByRole('button', { name: 'Beitrag abbrechen' })).toBeDisabled();
 		await expect(page.getByRole('button', { name: 'Frage' })).toBeDisabled();
 		await expect(page.getByPlaceholder(/Was gibt es Neues/)).toBeDisabled();
@@ -434,18 +434,15 @@ test.describe('Pinnwand recovery', () => {
 		await page.getByRole('button', { name: 'Posten' }).click();
 
 		await expect(
-			page.getByRole('status').filter({ hasText: 'Offline gespeichert. Wird synchronisiert' }),
+			page.getByRole('alert').filter({ hasText: 'Offline gespeichert. Wird synchronisiert' }),
 		).toBeVisible();
 		await expect(
-			page.getByRole('link', { name: '1 Offline-Aktion wartet auf Synchronisierung.' }),
-		).toBeVisible();
-		await expect(
-			page.getByRole('status').filter({
+			page.getByRole('alert').filter({
 				hasText: /^1 Offline-Aktion wartet auf Synchronisierung\.$/,
 			}),
 		).toBeVisible();
 		await expect(
-			page.getByRole('alert').filter({ hasText: 'Offline gespeichert. Wird synchronisiert' }),
+			page.getByRole('alert').filter({ hasText: 'Beitrag konnte nicht gespeichert werden' }),
 		).toHaveCount(0);
 	});
 
@@ -529,6 +526,10 @@ test.describe('Pinnwand recovery', () => {
 		await expect(
 			page.getByRole('button', { name: 'Übernehme ich-Reaktion setzen: Bitte Küche wischen' }),
 		).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(
+			page.getByRole('menuitem', { name: 'Als Einkauf übernehmen: Bitte Küche wischen' }),
+		).toBeHidden();
 		await page.getByRole('button', { name: 'Antworten anzeigen: Bitte Küche wischen' }).click();
 		await page.getByPlaceholder('Antwort schreiben').fill('Übernehme ich');
 
@@ -865,6 +866,7 @@ test.describe('Pinnwand recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/pinnwand');
+		await page.getByRole('button', { name: 'Antworten anzeigen: Bitte Küche wischen' }).click();
 		await expect(page.getByText('Ich mache das')).toBeVisible({ timeout: 30_000 });
 		await page.getByRole('button', { name: 'Kommentar bearbeiten: Ich mache das' }).click();
 		const editor = page.locator('textarea').filter({ hasText: 'Ich mache das' });
@@ -873,11 +875,9 @@ test.describe('Pinnwand recovery', () => {
 		await page.getByRole('button', { name: 'Kommentar speichern: Ich mache das' }).click();
 
 		await expect(editor).toBeDisabled();
+		await expect(page.getByRole('button', { name: 'Später' })).toBeDisabled();
 		await expect(
-			page.getByRole('button', { name: 'Kommentar bearbeiten: Ich mache das' }),
-		).toBeDisabled();
-		await expect(
-			page.getByRole('button', { name: 'Kommentar entfernen: Ich mache das' }),
+			page.getByRole('button', { name: 'Kommentar speichern: Ich mache das' }),
 		).toBeDisabled();
 		releasePatch?.();
 		await expect(page.getByText('Ich mache das heute')).toBeVisible({ timeout: 30_000 });
@@ -947,6 +947,7 @@ test.describe('Pinnwand recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/pinnwand');
+		await page.getByRole('button', { name: 'Antworten anzeigen: Bitte Küche wischen' }).click();
 		await expect(page.getByText('Ich mache das')).toBeVisible({ timeout: 30_000 });
 		await page.getByRole('button', { name: 'Kommentar bearbeiten: Ich mache das' }).click();
 		const editor = page.locator('textarea').filter({ hasText: 'Ich mache das' });
@@ -1025,6 +1026,7 @@ test.describe('Pinnwand recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/pinnwand');
+		await page.getByRole('button', { name: 'Antworten anzeigen: Bitte Küche wischen' }).click();
 		await expect(page.getByText('Ich mache das')).toBeVisible({ timeout: 30_000 });
 		await page.getByRole('button', { name: 'Kommentar bearbeiten: Ich mache das' }).click();
 		const editor = page.locator('textarea').filter({ hasText: 'Ich mache das' });
@@ -1100,6 +1102,7 @@ test.describe('Pinnwand recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/pinnwand');
+		await page.getByRole('button', { name: 'Antworten anzeigen: Bitte Küche wischen' }).click();
 		await expect(page.getByText('Ich mache das')).toBeVisible({ timeout: 30_000 });
 		await page.getByRole('button', { name: 'Kommentar bearbeiten: Ich mache das' }).click();
 		const editor = page.locator('textarea').filter({ hasText: 'Ich mache das' });
@@ -1172,15 +1175,13 @@ test.describe('Pinnwand recovery', () => {
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/pinnwand');
 
+		await page.getByRole('button', { name: 'Beitragsaktionen: Bitte Küche wischen' }).click();
 		await expect(
-			page.getByRole('button', { name: 'Als geklärt markieren: Bitte Küche wischen' }),
-		).toBeVisible({ timeout: 30_000 });
-		await expect(
-			page.getByRole('button', { name: 'Beitrag entfernen: Bitte Küche wischen' }),
+			page.getByRole('menuitem', { name: 'Beitrag entfernen: Bitte Küche wischen' }),
 		).toBeVisible();
 
 		await page
-			.getByRole('button', { name: 'Beitrag fixieren: Bitte Küche wischen' })
+			.getByRole('menuitem', { name: 'Beitrag fixieren: Bitte Küche wischen' })
 			.evaluate((button) => {
 				button.click();
 				button.click();
@@ -1222,12 +1223,13 @@ test.describe('Pinnwand recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/pinnwand');
+		await page.getByRole('button', { name: 'Beitragsaktionen: Bitte Küche wischen' }).click();
 		await expect(
-			page.getByRole('button', { name: 'Beitrag fixieren: Bitte Küche wischen' }),
+			page.getByRole('menuitem', { name: 'Beitrag fixieren: Bitte Küche wischen' }),
 		).toBeVisible({ timeout: 30_000 });
 
 		await page
-			.getByRole('button', { name: 'Beitrag fixieren: Bitte Küche wischen' })
+			.getByRole('menuitem', { name: 'Beitrag fixieren: Bitte Küche wischen' })
 			.click({ timeout: 5000 });
 
 		await expect(
@@ -1506,20 +1508,21 @@ test.describe('Pinnwand recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/pinnwand');
+		await page.getByRole('button', { name: 'Beitragsaktionen: Bitte Müll rausbringen' }).click();
 		await expect(
-			page.getByRole('button', { name: 'Beitrag entfernen: Bitte Müll rausbringen' }),
+			page.getByRole('menuitem', { name: 'Beitrag entfernen: Bitte Müll rausbringen' }),
 		).toBeVisible({ timeout: 30_000 });
 
 		await page
-			.getByRole('button', { name: 'Beitrag entfernen: Bitte Müll rausbringen' })
+			.getByRole('menuitem', { name: 'Beitrag entfernen: Bitte Müll rausbringen' })
 			.click({ timeout: 5000 });
 		await page
 			.getByRole('button', { name: 'Beitrag entfernen bestätigen: Bitte Müll rausbringen' })
 			.click({ timeout: 5000 });
 
-		await expect(
-			page.getByRole('button', { name: 'Beitrag entfernen: Bitte Müll rausbringen' }),
-		).toBeHidden({ timeout: 5000 });
+		await expect(page.locator('#announcement-announcement-delete')).toHaveCount(0, {
+			timeout: 5000,
+		});
 	});
 
 	test('removes stale posts when deleting finds them already gone', async ({ page }) => {
@@ -1553,12 +1556,13 @@ test.describe('Pinnwand recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/pinnwand');
+		await page.getByRole('button', { name: 'Beitragsaktionen: Bitte Müll rausbringen' }).click();
 		await expect(
-			page.getByRole('button', { name: 'Beitrag entfernen: Bitte Müll rausbringen' }),
+			page.getByRole('menuitem', { name: 'Beitrag entfernen: Bitte Müll rausbringen' }),
 		).toBeVisible({ timeout: 30_000 });
 
 		await page
-			.getByRole('button', { name: 'Beitrag entfernen: Bitte Müll rausbringen' })
+			.getByRole('menuitem', { name: 'Beitrag entfernen: Bitte Müll rausbringen' })
 			.click({ timeout: 5000 });
 		await page
 			.getByRole('button', { name: 'Beitrag entfernen bestätigen: Bitte Müll rausbringen' })

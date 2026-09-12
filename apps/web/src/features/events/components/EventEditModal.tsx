@@ -1,11 +1,31 @@
 'use client';
 
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { ALERT_DANGER, FIELD_INPUT, ICON_BUTTON } from '@/components/ui/styles';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import {
+	Drawer,
+	DrawerContent,
+	DrawerDescription,
+	DrawerFooter,
+	DrawerHeader,
+	DrawerTitle,
+} from '@/components/ui/drawer';
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import { EventFormFields } from '@/features/events/components/EventFormFields';
 import { validateEventForm } from '@/features/events/events';
-import { useFocusTrap } from '@/shared/lib/hooks/useFocusTrap';
-import { Loader2, Trash2, X } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export interface EditableEvent {
@@ -34,6 +54,7 @@ interface EventEditModalProps {
 	onClose: () => void;
 	onUpdate: (id: string, payload: UpdateEventPayload) => Promise<void>;
 	onDelete: (id: string) => Promise<void>;
+	actionError?: string | null;
 }
 
 function toLocalInputValue(iso: string): string {
@@ -42,8 +63,13 @@ function toLocalInputValue(iso: string): string {
 	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function EventEditModal({ event, onClose, onUpdate, onDelete }: EventEditModalProps) {
-	const trapRef = useFocusTrap<HTMLDivElement>(event !== null);
+export function EventEditModal({
+	event,
+	onClose,
+	onUpdate,
+	onDelete,
+	actionError,
+}: EventEditModalProps) {
 	const [title, setTitle] = useState('');
 	const [description, setDescription] = useState('');
 	const [startsAt, setStartsAt] = useState('');
@@ -54,6 +80,7 @@ export function EventEditModal({ event, onClose, onUpdate, onDelete }: EventEdit
 	const [saving, setSaving] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [confirmingDelete, setConfirmingDelete] = useState(false);
+	const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -67,21 +94,28 @@ export function EventEditModal({ event, onClose, onUpdate, onDelete }: EventEdit
 		setRecurrence(event.recurrence ?? '');
 		setError(null);
 		setConfirmingDelete(false);
+		setConfirmingDiscard(false);
 	}, [event]);
-
-	useEffect(() => {
-		if (!event) return;
-		const handleKey = (e: KeyboardEvent): void => {
-			if (e.key === 'Escape' && !confirmingDelete) onClose();
-		};
-		document.addEventListener('keydown', handleKey);
-		return () => document.removeEventListener('keydown', handleKey);
-	}, [event, onClose, confirmingDelete]);
 
 	if (!event) return null;
 
+	function requestClose(): void {
+		if (!event || saving || deleting) return;
+		const dirty =
+			title !== event.title ||
+			description !== (event.description ?? '') ||
+			startsAt !== toLocalInputValue(event.startsAt) ||
+			endsAt !== (event.endsAt ? toLocalInputValue(event.endsAt) : '') ||
+			allDay !== event.allDay ||
+			location !== (event.location ?? '') ||
+			recurrence !== (event.recurrence ?? '');
+		if (dirty) setConfirmingDiscard(true);
+		else onClose();
+	}
+
 	async function handleSave(e: React.FormEvent): Promise<void> {
 		e.preventDefault();
+		if (saving || deleting) return;
 		setError(null);
 		if (!event) return;
 		const validation = validateEventForm({ title, startsAt, endsAt });
@@ -119,119 +153,149 @@ export function EventEditModal({ event, onClose, onUpdate, onDelete }: EventEdit
 			setError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen.');
 		} finally {
 			setDeleting(false);
+			setConfirmingDelete(false);
 		}
 	}
 
 	return (
-		<div
-			ref={trapRef}
-			// biome-ignore lint/a11y/useSemanticElements: native <dialog> UA display:none kills CSS transitions (see native-dialog-css-transition-kill skill)
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="event-edit-heading"
-			className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+		<Drawer
+			open={event !== null}
+			onOpenChange={(open) => {
+				if (!open && !confirmingDelete && !confirmingDiscard) requestClose();
+			}}
 		>
-			<form
-				onSubmit={handleSave}
-				className="max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-t-2xl border border-[var(--border)] bg-[var(--bg-base)] p-5 shadow-xl sm:rounded-2xl"
-				style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))' }}
-			>
-				<span className="sheet-handle" aria-hidden />
-				<div className="flex items-center justify-between">
-					<h2 id="event-edit-heading" className="text-base font-semibold text-[var(--text-1)]">
-						Termin bearbeiten
-					</h2>
-					<button type="button" onClick={onClose} aria-label="Schließen" className={ICON_BUTTON}>
-						<X className="h-4 w-4" aria-hidden />
-					</button>
-				</div>
-				<EventFormFields
-					idPrefix="event-edit"
-					title={title}
-					onTitleChange={setTitle}
-					startsAt={startsAt}
-					onStartsAtChange={setStartsAt}
-					endsAt={endsAt}
-					onEndsAtChange={setEndsAt}
-					allDay={allDay}
-					onAllDayChange={setAllDay}
-					location={location}
-					onLocationChange={setLocation}
-					description={description}
-					onDescriptionChange={setDescription}
-					recurrenceField={
-						<div>
-							<label
-								htmlFor="event-edit-recurrence"
-								className="mb-1.5 block text-[13px] font-medium text-[var(--text-1)]"
-							>
-								Wiederholung
-							</label>
-							<input
-								id="event-edit-recurrence"
-								type="text"
-								value={recurrence}
-								onChange={(e) => setRecurrence(e.target.value)}
-								placeholder="z. B. FREQ=WEEKLY oder leer für einmalig"
-								className={FIELD_INPUT}
-							/>
-						</div>
-					}
-				/>
-				{error && (
-					<div role="alert" className={ALERT_DANGER}>
-						{error}
-					</div>
-				)}
-				<div className="flex flex-wrap items-center justify-between gap-2">
-					<button
-						type="button"
-						onClick={() => setConfirmingDelete(true)}
-						disabled={deleting}
-						aria-label="Termin löschen"
-						className="inline-flex h-11 items-center gap-2 rounded-xl border border-[var(--danger)]/30 px-4 text-[13px] font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:opacity-50"
-					>
-						{deleting ? (
-							<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-						) : (
-							<Trash2 className="h-3.5 w-3.5" aria-hidden />
-						)}
-						Löschen
-					</button>
-					<div className="flex gap-2">
-						<button
+			<DrawerContent className="mx-auto w-full max-w-md">
+				<DrawerHeader>
+					<DrawerTitle>Termin bearbeiten</DrawerTitle>
+					<DrawerDescription>
+						{event.recurrence
+							? 'Änderungen gelten für die gesamte Terminserie.'
+							: 'Änderungen gelten für diesen WG-Termin.'}
+					</DrawerDescription>
+				</DrawerHeader>
+				<form
+					onSubmit={handleSave}
+					className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+				>
+					<EventFormFields
+						idPrefix="event-edit"
+						title={title}
+						onTitleChange={setTitle}
+						startsAt={startsAt}
+						onStartsAtChange={setStartsAt}
+						endsAt={endsAt}
+						onEndsAtChange={setEndsAt}
+						allDay={allDay}
+						onAllDayChange={setAllDay}
+						location={location}
+						onLocationChange={setLocation}
+						description={description}
+						onDescriptionChange={setDescription}
+						disabled={saving || deleting}
+						recurrenceField={
+							<Field data-disabled={saving || deleting}>
+								<FieldLabel htmlFor="event-edit-recurrence">Wiederholung</FieldLabel>
+								<Input
+									id="event-edit-recurrence"
+									value={recurrence}
+									onChange={(event) => setRecurrence(event.target.value)}
+									placeholder="z. B. FREQ=WEEKLY"
+									disabled={saving || deleting}
+									className="min-h-11 text-base"
+								/>
+								<FieldDescription>
+									Bestehende Regel der Serie. Leer lassen für einen einmaligen Termin.
+								</FieldDescription>
+							</Field>
+						}
+					/>
+					{(error || actionError) && (
+						<Alert variant="destructive">
+							<AlertDescription>{error || actionError}</AlertDescription>
+						</Alert>
+					)}
+					<DrawerFooter className="p-0">
+						<Button type="submit" disabled={saving || deleting} className="min-h-11">
+							{saving && <Spinner data-icon="inline-start" aria-hidden />}
+							{saving ? 'Speichert…' : 'Speichern'}
+						</Button>
+						<Button
 							type="button"
-							onClick={onClose}
-							className="inline-flex h-11 items-center rounded-xl border border-[var(--border)] px-4 text-[13px] text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+							variant="outline"
+							onClick={requestClose}
+							disabled={saving || deleting}
+							className="min-h-11"
 						>
 							Abbrechen
-						</button>
-						<button
-							type="submit"
-							disabled={saving}
-							className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--text-1)] px-4 text-[13px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50"
+						</Button>
+						<Button
+							type="button"
+							variant="destructive"
+							onClick={() => setConfirmingDelete(true)}
+							disabled={saving || deleting}
+							aria-label="Termin löschen"
+							className="min-h-11"
 						>
-							{saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
-							Speichern
-						</button>
-					</div>
-				</div>
-			</form>
-			<ConfirmDialog
-				open={confirmingDelete}
-				onClose={() => setConfirmingDelete(false)}
-				onConfirm={() => void handleDelete()}
-				title="Termin löschen?"
-				description={
-					event.recurrence
-						? `„${event.title}" wird unwiderruflich entfernt — das löscht die gesamte Serie inklusive aller zukünftigen Termine.`
-						: `„${event.title}" wird unwiderruflich entfernt.`
-				}
-				confirmLabel="Löschen"
-				cancelLabel="Abbrechen"
-				variant="danger"
-				icon={Trash2}
-			/>
-		</div>
+							<Trash2 data-icon="inline-start" aria-hidden />
+							Termin löschen
+						</Button>
+					</DrawerFooter>
+				</form>
+				<AlertDialog
+					open={confirmingDelete}
+					onOpenChange={(open) => {
+						if (!deleting) setConfirmingDelete(open);
+					}}
+				>
+					<AlertDialogContent className="w-[calc(100%-2rem)]">
+						<AlertDialogHeader>
+							<AlertDialogTitle>Termin löschen?</AlertDialogTitle>
+							<AlertDialogDescription>
+								{event.recurrence
+									? `„${event.title}“ wird unwiderruflich entfernt – die gesamte Serie inklusive aller zukünftigen Termine.`
+									: `„${event.title}“ wird unwiderruflich entfernt.`}
+							</AlertDialogDescription>
+						</AlertDialogHeader>
+						<AlertDialogFooter>
+							<AlertDialogCancel disabled={deleting} className="min-h-11">
+								Abbrechen
+							</AlertDialogCancel>
+							<AlertDialogAction
+								variant="destructive"
+								onClick={() => void handleDelete()}
+								disabled={deleting}
+								className="min-h-11"
+							>
+								{deleting && <Spinner data-icon="inline-start" aria-hidden />}
+								{deleting ? 'Löscht…' : 'Löschen'}
+							</AlertDialogAction>
+						</AlertDialogFooter>
+					</AlertDialogContent>
+				</AlertDialog>
+				<AlertDialog open={confirmingDiscard} onOpenChange={setConfirmingDiscard}>
+					<AlertDialogContent className="w-[calc(100%-2rem)]">
+						<AlertDialogHeader>
+							<AlertDialogTitle>Änderungen verwerfen?</AlertDialogTitle>
+							<AlertDialogDescription>
+								Deine Eingaben sind noch nicht gespeichert.
+							</AlertDialogDescription>
+						</AlertDialogHeader>
+						<AlertDialogFooter>
+							<AlertDialogCancel className="min-h-11">Weiter bearbeiten</AlertDialogCancel>
+							<AlertDialogAction
+								variant="destructive"
+								className="min-h-11"
+								onClick={() => {
+									setConfirmingDiscard(false);
+									onClose();
+								}}
+							>
+								Verwerfen
+							</AlertDialogAction>
+						</AlertDialogFooter>
+					</AlertDialogContent>
+				</AlertDialog>
+			</DrawerContent>
+		</Drawer>
 	);
 }

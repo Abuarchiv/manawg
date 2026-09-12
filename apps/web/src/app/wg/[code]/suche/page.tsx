@@ -1,5 +1,28 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupInput,
+} from '@/components/ui/input-group';
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
@@ -10,7 +33,8 @@ import {
 	filterSearchResults,
 	filterSearchResultsByQuickFilter,
 } from '@/core/reads/search';
-import { ArrowLeft, Search, X } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import { Search, SearchX, X } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -136,109 +160,109 @@ export default function SuchePage() {
 	}
 
 	return (
-		<div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-			<header className="flex items-center gap-3">
-				<Link
-					href={wgBaseHref}
-					aria-label="Zurück zum Dashboard"
-					className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--text-2)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text-1)]"
-				>
-					<ArrowLeft className="h-4 w-4" aria-hidden />
-				</Link>
+		<div className="mx-auto w-full max-w-md space-y-4 bg-background px-4 py-6 pb-[env(safe-area-inset-bottom)]">
+			<header className="flex items-center gap-2">
+				<BackLink href={wgBaseHref} label="Dashboard" />
 				<div className="min-w-0 flex-1">
-					<h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-1)]">
-						WG durchsuchen
-					</h1>
-					<p className="mt-0.5 text-[13px] text-[var(--text-3)]">
+					<h1 className="text-xl font-semibold tracking-tight text-foreground">WG durchsuchen</h1>
+					<p className="mt-0.5 text-[13px] text-muted-foreground">
 						Finde Pinnwand, Aufgaben, Ausgaben, Einkauf und Abwesenheiten.
 					</p>
 				</div>
 			</header>
 
-			<section className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-3">
-				<label className="block text-[12px] font-semibold uppercase tracking-wide text-[var(--text-3)]">
-					Suchbegriff
-					<span className="mt-2 flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3">
-						<Search className="h-4 w-4 shrink-0 text-[var(--text-3)]" aria-hidden />
-						<input
-							type="search"
-							value={query}
-							onChange={(event) => setQuery(event.target.value)}
-							placeholder="Milch, Bad, Miete..."
-							className="h-11 min-w-0 flex-1 bg-transparent text-[15px] text-[var(--text-1)] outline-none placeholder:text-[var(--text-3)]"
-						/>
-						{query.length > 0 && (
-							<button
-								type="button"
-								onClick={clearSearch}
-								aria-label="Suche leeren"
-								className="inline-flex h-9 w-9 items-center justify-center rounded-md text-[var(--text-3)] transition hover:bg-[var(--bg-base)] hover:text-[var(--text-1)]"
-							>
-								<X className="h-4 w-4" aria-hidden />
-							</button>
+			<Card>
+				<CardContent className="pt-4">
+					<FieldGroup>
+						<Field>
+							<FieldLabel htmlFor="wg-search">Suchbegriff</FieldLabel>
+							<InputGroup className="min-h-11">
+								<InputGroupAddon align="inline-start">
+									<Search className="h-4 w-4" aria-hidden />
+								</InputGroupAddon>
+								<InputGroupInput
+									id="wg-search"
+									type="search"
+									value={query}
+									onChange={(event) => setQuery(event.target.value)}
+									placeholder="Milch, Bad, Miete..."
+									aria-label="Suchbegriff"
+									className="min-h-11 text-base"
+								/>
+								{query.length > 0 && (
+									<InputGroupAddon align="inline-end">
+										<InputGroupButton
+											type="button"
+											onClick={clearSearch}
+											aria-label="Suche leeren"
+											size="icon-sm"
+											className="min-h-11 min-w-11"
+										>
+											<X aria-hidden />
+										</InputGroupButton>
+									</InputGroupAddon>
+								)}
+							</InputGroup>
+						</Field>
+
+						{suggestions.length > 0 && query.length === 0 && (
+							<div className="flex flex-wrap gap-2" aria-label="Suchvorschläge">
+								{suggestions.map((suggestion) => (
+									<Button
+										key={suggestion}
+										type="button"
+										variant="outline"
+										size="lg"
+										onClick={() => setQuery(suggestion)}
+										className="min-h-11 rounded-full"
+									>
+										{suggestion}
+									</Button>
+								))}
+							</div>
 						)}
-					</span>
-				</label>
 
-				{suggestions.length > 0 && query.length === 0 && (
-					<div className="flex flex-wrap gap-2" aria-label="Suchvorschläge">
-						{suggestions.map((suggestion) => (
-							<button
-								key={suggestion}
-								type="button"
-								onClick={() => setQuery(suggestion)}
-								className="inline-flex h-11 items-center rounded-full border border-[var(--border)] px-3 text-[12.5px] font-medium text-[var(--text-2)] transition hover:border-[var(--border-strong)] hover:text-[var(--text-1)]"
-							>
-								{suggestion}
-							</button>
-						))}
-					</div>
-				)}
+						{/* "Schnellfilter:" steckt in legend/aria-label statt im sichtbaren Text —
+						    sichtbar wiederholt es sich sechsmal und treibt die Chips über drei
+						    Zeilen. fieldset gruppiert die Chips für Screenreader. */}
+						<fieldset className="flex flex-wrap gap-2 border-0 p-0">
+							<legend className="sr-only">Schnellfilter</legend>
+							{QUICK_FILTERS.map((filter) => (
+								<Button
+									key={filter.id}
+									type="button"
+									variant={quickFilter === filter.id ? 'default' : 'outline'}
+									size="lg"
+									onClick={() => setQuickFilter(filter.id)}
+									aria-pressed={quickFilter === filter.id}
+									aria-label={`Schnellfilter: ${filter.label}`}
+									className="min-h-11 rounded-full"
+								>
+									{filter.label}
+								</Button>
+							))}
+						</fieldset>
 
-				{/* "Schnellfilter:" steckt in legend/aria-label statt im sichtbaren Text —
-				    sichtbar wiederholt es sich sechsmal und treibt die Chips über drei
-				    Zeilen. fieldset gruppiert die Chips für Screenreader. */}
-				<fieldset className="flex flex-wrap gap-2 border-0 p-0">
-					<legend className="sr-only">Schnellfilter</legend>
-					{QUICK_FILTERS.map((filter) => (
-						<button
-							key={filter.id}
-							type="button"
-							onClick={() => setQuickFilter(filter.id)}
-							aria-pressed={quickFilter === filter.id}
-							aria-label={`Schnellfilter: ${filter.label}`}
-							className={`inline-flex h-11 items-center rounded-full border px-3 text-[12.5px] font-medium transition ${
-								quickFilter === filter.id
-									? 'border-[var(--text-1)] bg-[var(--text-1)] text-[var(--bg-base)]'
-									: 'border-[var(--border)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]'
-							}`}
-						>
-							{filter.label}
-						</button>
-					))}
-				</fieldset>
+						<Separator />
 
-				<div
-					className="flex flex-wrap gap-2 border-t border-[var(--border)] pt-3"
-					aria-label="Suchbereiche filtern"
-				>
-					{MODULE_FILTERS.map((module) => (
-						<button
-							key={module.id}
-							type="button"
-							onClick={() => toggleModule(module.id)}
-							aria-pressed={moduleFilters.includes(module.id)}
-							className={`inline-flex h-11 items-center rounded-full border px-3 text-[12.5px] font-medium transition ${
-								moduleFilters.includes(module.id)
-									? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
-									: 'border-[var(--border)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]'
-							}`}
-						>
-							{module.label}
-						</button>
-					))}
-				</div>
-			</section>
+						<div className="flex flex-wrap gap-2" aria-label="Suchbereiche filtern">
+							{MODULE_FILTERS.map((module) => (
+								<Button
+									key={module.id}
+									type="button"
+									variant={moduleFilters.includes(module.id) ? 'default' : 'outline'}
+									size="lg"
+									onClick={() => toggleModule(module.id)}
+									aria-pressed={moduleFilters.includes(module.id)}
+									className="min-h-11 rounded-full"
+								>
+									{module.label}
+								</Button>
+							))}
+						</div>
+					</FieldGroup>
+				</CardContent>
+			</Card>
 
 			{error && (
 				<LoadErrorBanner
@@ -250,76 +274,106 @@ export default function SuchePage() {
 			)}
 
 			{trimmedQuery.length > 0 && !error && (
-				<output className="text-[13px] text-[var(--text-3)]">
+				<output
+					aria-live="polite"
+					className="flex items-center gap-2 text-[13px] text-muted-foreground"
+				>
+					{loading && <Spinner className="size-4 motion-reduce:animate-none" aria-hidden />}
 					{loading ? 'Suche läuft...' : visibleCountLabel(visibleResults.length, trimmedQuery)}
 				</output>
 			)}
 
+			{loading && trimmedQuery.length > 0 && (
+				<ItemGroup aria-label="Suche lädt">
+					{[0, 1, 2].map((index) => (
+						<Item key={index} variant="outline">
+							<ItemContent>
+								<Skeleton className="h-4 w-3/4" />
+								<Skeleton className="h-3 w-1/2" />
+							</ItemContent>
+						</Item>
+					))}
+				</ItemGroup>
+			)}
+
 			{filtersHideResults && (
-				<div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3 text-[13px] text-[var(--text-2)]">
-					<p>Filter blenden alle Treffer aus.</p>
-					<button
-						type="button"
-						onClick={resetFilters}
-						className="mt-2 inline-flex h-11 items-center rounded-md border border-[var(--border)] px-3 text-[12px] font-medium text-[var(--text-1)]"
-					>
-						Filter zurücksetzen
-					</button>
-				</div>
+				<Card>
+					<CardContent className="pt-4">
+						<p className="text-[13px] text-muted-foreground">Filter blenden alle Treffer aus.</p>
+						<Button
+							type="button"
+							variant="outline"
+							size="lg"
+							onClick={resetFilters}
+							className="mt-3 min-h-11"
+						>
+							Filter zurücksetzen
+						</Button>
+					</CardContent>
+				</Card>
 			)}
 
 			{trimmedQuery.length > 0 && !error && !loading && results.length === 0 && (
-				<section className="rounded-lg border border-dashed border-[var(--border)] p-4 text-center">
-					<h2 className="text-[16px] font-semibold text-[var(--text-1)]">
-						Keine Treffer für "{trimmedQuery}"
-					</h2>
-					<p className="mt-1 text-[13px] text-[var(--text-3)]">
-						Versuche ein kürzeres Wort oder spring direkt in ein Modul.
-					</p>
-					<div className="mt-4 flex flex-wrap justify-center gap-2">
-						<Link
-							href={`${wgBaseHref}/pinnwand`}
-							className="inline-flex h-11 items-center rounded-md border border-[var(--border)] px-3 text-[12.5px] font-medium"
-						>
-							Zur Pinnwand
-						</Link>
-						<button
-							type="button"
-							onClick={clearSearch}
-							className="inline-flex h-11 items-center rounded-md border border-[var(--border)] px-3 text-[12.5px] font-medium"
-						>
-							Suchfeld leeren
-						</button>
-					</div>
-				</section>
+				<Empty>
+					<EmptyHeader>
+						<EmptyMedia variant="icon">
+							<SearchX aria-hidden />
+						</EmptyMedia>
+						<EmptyTitle>Keine Treffer für &quot;{trimmedQuery}&quot;</EmptyTitle>
+						<EmptyDescription>
+							Versuche ein kürzeres Wort oder spring direkt in ein Modul.
+						</EmptyDescription>
+					</EmptyHeader>
+					<EmptyContent>
+						<div className="flex flex-wrap justify-center gap-2">
+							<Link
+								href={`${wgBaseHref}/pinnwand`}
+								className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11')}
+							>
+								Zur Pinnwand
+							</Link>
+							<Button
+								type="button"
+								variant="ghost"
+								size="lg"
+								onClick={clearSearch}
+								className="min-h-11"
+							>
+								Suchfeld leeren
+							</Button>
+						</div>
+					</EmptyContent>
+				</Empty>
 			)}
 
 			{visibleResults.length > 0 && (
-				<ul className="space-y-2">
-					{visibleResults.map((result) => (
-						<li key={`${result.module}:${result.id}`}>
-							<Link
-								href={result.href}
-								className="block rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-4 py-3 transition hover:border-[var(--border-strong)]"
+				<ItemGroup aria-label="Suchergebnisse">
+					{visibleResults.map((result) => {
+						const moduleLabel =
+							MODULE_FILTERS.find((item) => item.id === result.module)?.label ?? result.module;
+						return (
+							<Item
+								key={`${result.module}:${result.id}`}
+								variant="outline"
+								render={<Link href={result.href} aria-label={`${result.title} — ${moduleLabel}`} />}
 							>
-								<span className="block text-[15px] font-medium text-[var(--text-1)]">
-									{result.title}
-								</span>
-								<span className="mt-1 block text-[12.5px] text-[var(--text-3)]">{result.meta}</span>
-							</Link>
-						</li>
-					))}
-				</ul>
+								<ItemContent>
+									<ItemTitle>{result.title}</ItemTitle>
+									<ItemDescription>{result.meta}</ItemDescription>
+								</ItemContent>
+								<Badge variant="secondary" className="shrink-0">
+									{moduleLabel}
+								</Badge>
+							</Item>
+						);
+					})}
+				</ItemGroup>
 			)}
 
 			{hasActiveFilters && visibleResults.length > 0 && (
-				<button
-					type="button"
-					onClick={resetFilters}
-					className="inline-flex h-11 items-center rounded-md border border-[var(--border)] px-3 text-[12.5px] font-medium text-[var(--text-2)]"
-				>
+				<Button type="button" variant="ghost" size="lg" onClick={resetFilters} className="min-h-11">
 					Filter zurücksetzen
-				</button>
+				</Button>
 			)}
 		</div>
 	);

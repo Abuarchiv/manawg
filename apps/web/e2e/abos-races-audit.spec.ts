@@ -84,7 +84,7 @@ async function setupAbos(page: Parameters<typeof test>[0]['page']) {
 
 test('rapid pause clicks send only one PATCH', async ({ page }) => {
 	const counters = await setupAbos(page);
-	await page.getByRole('button', { name: 'Internet pausieren' }).dblclick();
+	await page.getByRole('switch', { name: 'Internet pausieren' }).dblclick();
 	await expect(page.getByText('Abo pausiert.')).toBeVisible();
 	expect(counters.getPatchCount()).toBe(1);
 });
@@ -101,9 +101,10 @@ test('rapid edit submits send only one PATCH', async ({ page }) => {
 test('rapid delete confirmations send only one DELETE', async ({ page }) => {
 	const counters = await setupAbos(page);
 	await page.getByRole('button', { name: 'Internet löschen' }).click();
-	const confirmButton = page
-		.getByRole('dialog')
-		.getByRole('button', { name: 'Löschen', exact: true });
+	const dialog = page.getByRole('alertdialog');
+	await expect(dialog).toBeVisible();
+	const confirmButton = dialog.getByRole('button', { name: 'Löschen', exact: true });
+	await expect(confirmButton).toBeVisible();
 	await confirmButton.dblclick();
 	await expect(page.getByText('Abo gelöscht.')).toBeVisible();
 	expect(counters.getDeleteCount()).toBe(1);

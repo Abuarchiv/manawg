@@ -1,6 +1,17 @@
 'use client';
 
-import { LIST_CARD } from '@/components/ui/styles';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
+import { ItemGroup } from '@/components/ui/item';
 import { InventoryAddModal } from '@/features/inventory/components/InventoryAddModal';
 import { InventoryItemRow } from '@/features/inventory/components/InventoryItemRow';
 import { QuickRestockSheet } from '@/features/inventory/components/QuickRestockSheet';
@@ -40,78 +51,71 @@ export function InventoryList({
 	}
 
 	return (
-		<div className="space-y-6">
+		<div className="flex flex-col gap-4">
+			<div className="flex flex-wrap gap-2">
+				<Button onClick={() => setAddOpen(true)} className="min-h-11">
+					<Plus data-icon="inline-start" aria-hidden />
+					Vorrat hinzufügen
+				</Button>
+				<Button variant="outline" onClick={() => setQuickOpen(true)} className="min-h-11">
+					<Zap data-icon="inline-start" aria-hidden />
+					Schnell nachfüllen
+				</Button>
+			</div>
 			{isEmpty ? (
-				<div className="rounded-lg border border-dashed border-[var(--border)] px-6 py-10 text-center">
-					<Package
-						className="mx-auto mb-3 h-7 w-7 text-[var(--text-3)]"
-						strokeWidth={1.5}
-						aria-hidden
-					/>
-					<p className="mx-auto max-w-[28ch] text-[13.5px] leading-relaxed text-[var(--text-2)]">
-						Noch keine Vorräte erfasst. Beginne mit Klopapier, Spülmittel oder Nudeln.
-					</p>
-					<button
-						type="button"
-						onClick={() => setAddOpen(true)}
-						className="mt-4 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--text-1)] px-4 text-[13px] font-medium text-[var(--bg-base)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-					>
-						<Plus className="h-4 w-4" aria-hidden />
-						Ersten Vorrat anlegen
-					</button>
-				</div>
+				<Empty>
+					<EmptyHeader>
+						<EmptyMedia variant="icon">
+							<Package aria-hidden />
+						</EmptyMedia>
+						<EmptyTitle>Noch keine Vorräte erfasst</EmptyTitle>
+						<EmptyDescription>Beginne mit Klopapier, Spülmittel oder Nudeln.</EmptyDescription>
+					</EmptyHeader>
+					<EmptyContent>
+						<Button type="button" onClick={() => setAddOpen(true)} className="min-h-11">
+							<Plus aria-hidden />
+							Ersten Vorrat anlegen
+						</Button>
+					</EmptyContent>
+				</Empty>
 			) : (
-				<div className="space-y-5">
+				<div className="flex flex-col gap-4">
 					{INVENTORY_CATEGORIES.filter(
 						(category): category is InventoryCategory => grouped[category].length > 0,
 					).map((category) => (
-						<section key={category} aria-labelledby={`inventory-${category}`} className="space-y-2">
+						<section
+							key={category}
+							aria-labelledby={`inventory-${category}`}
+							className="flex flex-col gap-2"
+						>
 							<h2
 								id={`inventory-${category}`}
-								className="text-[11.5px] font-medium uppercase tracking-[0.14em] text-[var(--text-3)]"
+								className="flex items-center gap-2 text-[11.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
 							>
 								{INVENTORY_CATEGORY_LABELS[category]}
+								<Badge variant="secondary" className="tabular-nums">
+									{grouped[category].length}
+								</Badge>
 							</h2>
-							<ul className={LIST_CARD}>
-								{grouped[category].map((item) => (
-									<InventoryItemRow
-										key={item.id}
-										item={item}
-										shareCode={shareCode}
-										memberId={memberId}
-										memberToken={memberToken}
-										onChanged={onChanged}
-										onEdit={openEdit}
-									/>
-								))}
-							</ul>
+							<Card className="py-0">
+								<CardContent className="p-0">
+									<ItemGroup className="gap-0 divide-y divide-border">
+										{grouped[category].map((item) => (
+											<InventoryItemRow
+												key={item.id}
+												item={item}
+												shareCode={shareCode}
+												memberId={memberId}
+												memberToken={memberToken}
+												onChanged={onChanged}
+												onEdit={openEdit}
+											/>
+										))}
+									</ItemGroup>
+								</CardContent>
+							</Card>
 						</section>
 					))}
-				</div>
-			)}
-
-			{!isEmpty && (
-				<div
-					className="fixed right-4 z-30 flex flex-col gap-2 sm:right-6"
-					style={{ bottom: 'calc(4.75rem + env(safe-area-inset-bottom, 0px))' }}
-				>
-					<button
-						type="button"
-						onClick={() => setQuickOpen(true)}
-						aria-label="Klopapier-Quick-Add öffnen"
-						className="inline-flex h-12 items-center gap-2 rounded-full bg-[var(--accent)] px-4 text-[13px] font-medium text-[var(--accent-fg)] shadow-lg shadow-[var(--accent)]/30 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)]"
-					>
-						<Zap className="h-4 w-4" aria-hidden />
-						Quick-Add
-					</button>
-					<button
-						type="button"
-						onClick={() => setAddOpen(true)}
-						aria-label="Vorrat hinzufügen"
-						className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[var(--text-1)] text-[var(--bg-base)] shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)]"
-					>
-						<Plus className="h-5 w-5" aria-hidden />
-					</button>
 				</div>
 			)}
 

@@ -19,15 +19,42 @@ async function delay(ms: number) {
 }
 
 async function openRecordedExpenses(page: Page): Promise<void> {
-	const summary = page.getByText('Eingetragene Ausgaben', { exact: true });
+	const summary = page.getByRole('heading', { name: 'Eingetragene Ausgaben', exact: true });
+	await expect(summary).toBeVisible({ timeout: 30_000 });
+}
+
+async function openRecurringExpenses(page: Page): Promise<void> {
+	const summary = page.getByRole('button', { name: /^Wiederkehrende Kosten \d+$/ });
 	await expect(summary).toBeVisible({ timeout: 30_000 });
 	await summary.click();
 }
 
-async function openRecurringExpenses(page: Page): Promise<void> {
-	const summary = page.getByText('Wiederkehrende Kosten', { exact: true });
-	await expect(summary).toBeVisible({ timeout: 30_000 });
-	await summary.click();
+async function expectExpenseMenu(page: Page, description: string): Promise<void> {
+	await page.getByRole('button', { name: `Aktionen für ${description}` }).click();
+	const menu = page.locator('[role="menu"][data-open]');
+	await expect(menu.getByRole('menuitem', { name: 'Bearbeiten', exact: true })).toBeVisible();
+	await expect(menu.getByRole('menuitem', { name: 'Entfernen', exact: true })).toBeVisible();
+	await page.keyboard.press('Escape');
+}
+
+async function chooseExpenseMenuItem(
+	page: Page,
+	description: string,
+	action: 'Bearbeiten' | 'Entfernen',
+): Promise<void> {
+	await page.getByRole('button', { name: `Aktionen für ${description}` }).click();
+	const item = page
+		.locator('[role="menu"][data-open]')
+		.getByRole('menuitem', { name: action, exact: true });
+	await expect(item).toBeVisible();
+	await item.click();
+}
+
+async function confirmSplitSettlement(page: Page): Promise<void> {
+	await page
+		.getByRole('button', { name: /Zahlung als beglichen markieren/ })
+		.click({ timeout: 5000 });
+	await page.getByRole('alertdialog').getByRole('button', { name: 'Zahlung verbuchen' }).click();
 }
 
 test.describe('Expenses recovery', () => {
@@ -111,7 +138,9 @@ test.describe('Expenses recovery', () => {
 		await page.getByRole('button', { name: 'Ausgaben erneut laden' }).click();
 
 		await page.getByText('Eingetragene Ausgaben', { exact: true }).click();
-		await expect(page.getByText('Spülmittel')).toBeVisible({ timeout: 30_000 });
+		await expect(
+			page.locator('#expense-expense-1').getByText('Spülmittel', { exact: true }),
+		).toBeVisible({ timeout: 30_000 });
 		await expect(
 			page.getByText('Ausgaben konnten nicht geladen werden: Versuche es gleich erneut.'),
 		).toBeHidden();
@@ -236,14 +265,12 @@ test.describe('Expenses recovery', () => {
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
 		await openRecordedExpenses(page);
 
-		await expect(page.getByRole('button', { name: 'Ausgabe bearbeiten: Milch' })).toBeVisible({
-			timeout: 30_000,
-		});
-		await expect(page.getByRole('button', { name: 'Ausgabe bearbeiten: Brot' })).toBeVisible();
-		await expect(page.getByRole('button', { name: 'Ausgabe entfernen: Milch' })).toBeVisible();
-		await page.getByRole('button', { name: 'Ausgabe entfernen: Brot' }).click();
+		await expectExpenseMenu(page, 'Milch');
+		await expectExpenseMenu(page, 'Brot');
+		await chooseExpenseMenuItem(page, 'Brot', 'Entfernen');
+		await expect(page.getByRole('alertdialog')).toBeVisible();
 		await expect(
-			page.getByRole('button', { name: 'Ausgabe entfernen bestätigen: Brot' }),
+			page.getByRole('alertdialog').getByRole('button', { name: 'Entfernen', exact: true }),
 		).toBeVisible();
 	});
 
@@ -303,16 +330,13 @@ test.describe('Expenses recovery', () => {
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
 		await openRecordedExpenses(page);
-		await expect(page.getByRole('button', { name: 'Ausgabe entfernen: Milch' })).toBeVisible({
-			timeout: 30_000,
-		});
-
-		await page.getByRole('button', { name: 'Ausgabe entfernen: Milch' }).click({ timeout: 5000 });
+		await chooseExpenseMenuItem(page, 'Milch', 'Entfernen');
 		await page
-			.getByRole('button', { name: 'Ausgabe entfernen bestätigen: Milch' })
+			.getByRole('alertdialog')
+			.getByRole('button', { name: 'Entfernen', exact: true })
 			.click({ timeout: 5000 });
 
-		await expect(page.getByRole('button', { name: 'Ausgabe entfernen: Milch' })).toBeHidden({
+		await expect(page.locator('#expense-expense-delete')).toBeHidden({
 			timeout: 5000,
 		});
 	});
@@ -373,20 +397,17 @@ test.describe('Expenses recovery', () => {
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
 		await openRecordedExpenses(page);
-		await expect(page.getByRole('button', { name: 'Ausgabe entfernen: Milch' })).toBeVisible({
-			timeout: 30_000,
-		});
-
-		await page.getByRole('button', { name: 'Ausgabe entfernen: Milch' }).click({ timeout: 5000 });
+		await chooseExpenseMenuItem(page, 'Milch', 'Entfernen');
 		await page
-			.getByRole('button', { name: 'Ausgabe entfernen bestätigen: Milch' })
+			.getByRole('alertdialog')
+			.getByRole('button', { name: 'Entfernen', exact: true })
 			.click({ timeout: 5000 });
 
 		await expect(
 			page.getByText('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.'),
 		).toBeVisible({ timeout: 5000 });
 		await expect(page.getByText('expense_not_found')).toBeHidden();
-		await expect(page.getByRole('button', { name: 'Ausgabe entfernen: Milch' })).toBeHidden({
+		await expect(page.locator('#expense-expense-stale-delete')).toBeHidden({
 			timeout: 5000,
 		});
 	});
@@ -443,19 +464,17 @@ test.describe('Expenses recovery', () => {
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
 		await openRecordedExpenses(page);
-		await expect(page.getByRole('button', { name: 'Ausgabe entfernen: Milch' })).toBeVisible({
-			timeout: 30_000,
-		});
-		await page.getByRole('button', { name: 'Ausgabe entfernen: Milch' }).click({ timeout: 5000 });
+		await chooseExpenseMenuItem(page, 'Milch', 'Entfernen');
 		await page
-			.getByRole('button', { name: 'Ausgabe entfernen bestätigen: Milch' })
+			.getByRole('alertdialog')
+			.getByRole('button', { name: 'Entfernen', exact: true })
 			.click({ timeout: 5000 });
 
 		await expect(
 			page.getByText('Diese Ausgabenaktion konnte nicht eindeutig zugeordnet werden.'),
 		).toBeVisible({ timeout: 5000 });
 		await expect(page.getByText('id_invalid')).toBeHidden();
-		await expect(page.getByRole('button', { name: 'Ausgabe entfernen: Milch' })).toBeVisible();
+		await expectExpenseMenu(page, 'Milch');
 	});
 
 	test('explains network failures when deleting an expense fails', async ({ page }) => {
@@ -506,12 +525,10 @@ test.describe('Expenses recovery', () => {
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
 		await openRecordedExpenses(page);
-		await expect(page.getByRole('button', { name: 'Ausgabe entfernen: Milch' })).toBeVisible({
-			timeout: 30_000,
-		});
-		await page.getByRole('button', { name: 'Ausgabe entfernen: Milch' }).click({ timeout: 5000 });
+		await chooseExpenseMenuItem(page, 'Milch', 'Entfernen');
 		await page
-			.getByRole('button', { name: 'Ausgabe entfernen bestätigen: Milch' })
+			.getByRole('alertdialog')
+			.getByRole('button', { name: 'Entfernen', exact: true })
 			.click({ timeout: 5000 });
 
 		await expect(
@@ -520,7 +537,7 @@ test.describe('Expenses recovery', () => {
 			),
 		).toBeVisible({ timeout: 5000 });
 		await expect(page.getByText('Ausgabenaktion fehlgeschlagen.')).toHaveCount(0);
-		await expect(page.getByRole('button', { name: 'Ausgabe entfernen: Milch' })).toBeVisible();
+		await expectExpenseMenu(page, 'Milch');
 	});
 
 	test('removes stale expenses when saving an edit finds them already gone', async ({ page }) => {
@@ -579,10 +596,7 @@ test.describe('Expenses recovery', () => {
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
 		await openRecordedExpenses(page);
-		await expect(page.getByRole('button', { name: 'Ausgabe bearbeiten: Milch' })).toBeVisible({
-			timeout: 30_000,
-		});
-		await page.getByRole('button', { name: 'Ausgabe bearbeiten: Milch' }).click();
+		await chooseExpenseMenuItem(page, 'Milch', 'Bearbeiten');
 		await page.getByLabel('Beschreibung').fill('Milch und Brot');
 		await page.getByRole('button', { name: 'Ausgabe speichern' }).click();
 
@@ -590,7 +604,7 @@ test.describe('Expenses recovery', () => {
 			page.getByText('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.'),
 		).toBeVisible({ timeout: 5000 });
 		await expect(page.getByText('expense_not_found')).toBeHidden();
-		await expect(page.getByRole('button', { name: 'Ausgabe bearbeiten: Milch' })).toBeHidden({
+		await expect(page.locator('#expense-expense-stale-edit')).toBeHidden({
 			timeout: 5000,
 		});
 		await expect(page.getByLabel('Beschreibung')).toBeHidden();
@@ -660,9 +674,7 @@ test.describe('Expenses recovery', () => {
 		await expect(page.getByText('0/1 beglichen')).toBeVisible({ timeout: 30_000 });
 		await page.getByRole('button', { name: /Milch\s+3,99/ }).click();
 
-		await page
-			.getByRole('button', { name: /Zahlung als beglichen markieren/ })
-			.click({ timeout: 5000 });
+		await confirmSplitSettlement(page);
 
 		await expect(page.getByText('1/1 beglichen')).toBeVisible({ timeout: 5000 });
 		await expect(page.getByRole('button', { name: /Zahlung als offen markieren/ })).toBeVisible({
@@ -736,9 +748,7 @@ test.describe('Expenses recovery', () => {
 		await expect(page.getByText('0/1 beglichen')).toBeVisible({ timeout: 30_000 });
 		await page.getByRole('button', { name: /Milch\s+3,99/ }).click();
 
-		await page
-			.getByRole('button', { name: /Zahlung als beglichen markieren/ })
-			.click({ timeout: 5000 });
+		await confirmSplitSettlement(page);
 
 		await expect(
 			page.getByText('Diese Zahlung existiert nicht mehr. Die Ausgabenliste wird aktualisiert.'),
@@ -809,9 +819,7 @@ test.describe('Expenses recovery', () => {
 		await openRecordedExpenses(page);
 		await expect(page.getByText('0/1 beglichen')).toBeVisible({ timeout: 30_000 });
 		await page.getByRole('button', { name: /Milch\s+3,99/ }).click();
-		await page
-			.getByRole('button', { name: /Zahlung als beglichen markieren/ })
-			.click({ timeout: 5000 });
+		await confirmSplitSettlement(page);
 
 		await expect(
 			page.getByText(
@@ -883,9 +891,7 @@ test.describe('Expenses recovery', () => {
 		await openRecordedExpenses(page);
 		await expect(page.getByText('0/1 beglichen')).toBeVisible({ timeout: 30_000 });
 		await page.getByRole('button', { name: /Milch\s+3,99/ }).click();
-		await page
-			.getByRole('button', { name: /Zahlung als beglichen markieren/ })
-			.click({ timeout: 5000 });
+		await confirmSplitSettlement(page);
 
 		await expect(
 			page.getByText('Ausgabenaktion konnte nicht gespeichert werden: Die Anfrage war ungültig.'),
@@ -953,7 +959,9 @@ test.describe('Expenses recovery', () => {
 		await page.getByRole('button', { name: 'Ausgabe speichern' }).click();
 
 		await openRecordedExpenses(page);
-		await expect(page.getByText('Frischer Einkauf')).toBeVisible({ timeout: 1000 });
+		await expect(
+			page.locator('#expense-expense-created-now').getByText('Frischer Einkauf', { exact: true }),
+		).toBeVisible({ timeout: 1000 });
 	});
 
 	test('explains expense split validation errors without raw API codes', async ({ page }) => {
@@ -1068,7 +1076,9 @@ test.describe('Expenses recovery', () => {
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben');
 
 		await expect(
-			page.getByText('Leg die erste Ausgabe an oder starte mit einer typischen WG-Ausgabe.'),
+			page
+				.getByRole('region', { name: 'Eingetragene Ausgaben' })
+				.getByText('Erfasse eure erste gemeinsame Ausgabe.', { exact: true }),
 		).toBeVisible({
 			timeout: 30_000,
 		});
@@ -1147,6 +1157,7 @@ test.describe('Expenses recovery', () => {
 		await page.getByLabel('Beschreibung').fill('Spülmittel');
 		await page.getByLabel('Betrag').fill('12,99');
 		await page.getByRole('button', { name: 'Fixkosten-Vorlage' }).click();
+		await page.getByRole('button', { name: 'Beleg hinzufügen' }).click();
 		await page.getByRole('button', { name: 'Ausgabe speichern' }).click();
 
 		await expect(page.getByRole('button', { name: 'Ausgabe speichern' })).toBeDisabled();
@@ -1155,12 +1166,14 @@ test.describe('Expenses recovery', () => {
 		await expect(page.getByLabel('Betrag')).toBeDisabled();
 		await expect(page.getByLabel('Bezahlt von')).toBeDisabled();
 		await expect(page.getByRole('button', { name: 'Aufteilung: Manuell' })).toBeDisabled();
-		await expect(page.getByRole('button', { name: 'Quartal' })).toBeDisabled();
+		await expect(page.getByLabel('Wiederholung')).toBeDisabled();
 		await expect(page.getByLabel('Bild auswählen')).toBeDisabled();
 
 		releasePost?.();
 		await openRecordedExpenses(page);
-		await expect(page.getByText('Spülmittel')).toBeVisible({ timeout: 30_000 });
+		await expect(
+			page.locator('#expense-expense-saving-lock').getByText('Spülmittel', { exact: true }),
+		).toBeVisible({ timeout: 30_000 });
 	});
 
 	test('explains stale membership when saving an expense is denied', async ({ page }) => {
@@ -1518,7 +1531,9 @@ test.describe('Expenses recovery', () => {
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben?filter=recurring');
 
 		const recurringCard = page.locator(`#recurring-${recurringId}`);
-		await expect(recurringCard.getByText('Internet')).toBeVisible({ timeout: 30_000 });
+		await expect(recurringCard.getByText('Internet', { exact: true })).toBeVisible({
+			timeout: 30_000,
+		});
 		await recurringCard
 			.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Internet' })
 			.click();
@@ -1721,7 +1736,9 @@ test.describe('Expenses recovery', () => {
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben?filter=recurring');
 
 		const recurringCard = page.locator(`#recurring-${recurringId}`);
-		await expect(recurringCard.getByText('Internet')).toBeVisible({ timeout: 30_000 });
+		await expect(recurringCard.getByText('Internet', { exact: true })).toBeVisible({
+			timeout: 30_000,
+		});
 		await recurringCard
 			.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Internet' })
 			.click();
@@ -2082,13 +2099,15 @@ test.describe('Expenses recovery', () => {
 		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben?filter=recurring');
+		await expect(page.getByRole('button', { name: /^Wiederkehrende Kosten \d+$/ })).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: 'Fixkosten-Vorlage löschen: Internet' }),
 		).toBeVisible({ timeout: 30_000 });
 
 		await page.getByRole('button', { name: 'Fixkosten-Vorlage löschen: Internet' }).click();
 		await page
-			.getByRole('button', { name: 'Fixkosten-Vorlage wirklich löschen: Internet' })
+			.getByRole('alertdialog')
+			.getByRole('button', { name: 'Löschen', exact: true })
 			.click();
 
 		await expect.poll(() => deleteRequests).toBe(1);
@@ -2151,7 +2170,8 @@ test.describe('Expenses recovery', () => {
 
 		await page.getByRole('button', { name: 'Fixkosten-Vorlage löschen: Internet' }).click();
 		await page
-			.getByRole('button', { name: 'Fixkosten-Vorlage wirklich löschen: Internet' })
+			.getByRole('alertdialog')
+			.getByRole('button', { name: 'Löschen', exact: true })
 			.click();
 
 		await expect(
@@ -2228,7 +2248,7 @@ test.describe('Expenses recovery', () => {
 			page.getByRole('link', { name: '1 Offline-Aktion wartet auf Synchronisierung.' }),
 		).toBeVisible();
 		await expect(
-			page.getByRole('status').filter({
+			page.getByRole('alert').filter({
 				hasText: /^1 Offline-Aktion wartet auf Synchronisierung\.$/,
 			}),
 		).toBeVisible();

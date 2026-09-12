@@ -12,15 +12,20 @@
  *
  * That leaves one problem: the existing databases already have all 24 tables,
  * but their migration ledger does not record THIS baseline. Some are empty;
- * production still carries the nine rows of the superseded push-era chain.
- * Either way, running the baseline against them would fail on the first CREATE
- * TABLE. So when the schema is already present but the baseline hash is not yet
- * in the ledger, this script records the baseline as applied instead of
- * executing it — the standard "adopt an existing database" move. The baseline's
- * timestamp is newer than any superseded row, so it sorts as the latest entry
- * and drizzle then skips the baseline and runs only the forward migrations. The
- * dead rows are left in place: they reference a chain that no longer exists and
- * changing which migration is "latest" is all that matters.
+ * others may still carry rows of the superseded push-era chain. Either way,
+ * running the baseline against them would fail on the first CREATE TABLE. So
+ * when the schema is already present but the baseline hash is not yet in the
+ * ledger, this script records the baseline as applied instead of executing
+ * it — the standard "adopt an existing database" move.
+ *
+ * The ledger itself stays exact and fail-closed: every row must either match
+ * the canonical journal by hash, timestamp, and prefix order, or match an
+ * entry of LEGACY_LEDGER_ALLOWLIST by exact hash, timestamp, and
+ * leading-prefix position. That allowlist is currently empty because the
+ * superseded chain is no longer verifiable from repository SQL, so unknown
+ * rows — including arbitrary pre-baseline 64-hex values — are rejected before
+ * any adoption. A legacy database must be reviewed and its rows explicitly
+ * documented before it can be adopted.
  */
 
 import crypto from 'node:crypto';
@@ -36,6 +41,15 @@ const MIGRATIONS_TABLE = '__drizzle_migrations';
 /** Any table that only exists once the baseline has been applied. */
 const SENTINEL_TABLE = 'wgs';
 const BASELINE_TAG = '0000_baseline';
+/**
+ * Exact allowlist of tolerated pre-baseline ledger rows, keyed by hash with
+ * its documented created_at and leading-prefix position. The superseded
+ * push-era chain was replaced by `0000_baseline` and its SQL is no longer in
+ * this repository, so no legacy hash is documented here and every unknown row
+ * fails closed. Only add an entry with its reviewed hash, timestamp, and
+ * position; never tolerate arbitrary 64-hex values.
+ */
+const LEGACY_LEDGER_ALLOWLIST = new Map();
 const MIGRATION_LOCK = 'manawg:drizzle-migrate';
 const PUBLIC_SCHEMA = 'public';
 const PUBLIC_ROLES = ['anon', 'authenticated'];
@@ -527,7 +541,7 @@ export async function assertBaselineSchema(client) {
 	);
 }
 
-async function assertMigrationLedgerPrefix(client, { requireTable = true } = {}) {
+export async function assertMigrationLedgerPrefix(client, { requireTable = true } = {}) {
 	if (!(await tableExists(client, MIGRATIONS_SCHEMA, MIGRATIONS_TABLE))) {
 		if (requireTable)
 			throw new Error('Database check failed: Drizzle migration ledger is missing.');
@@ -548,10 +562,10 @@ async function assertMigrationLedgerPrefix(client, { requireTable = true } = {})
 		}
 		expectedByHash.set(entry.hash, entry);
 	}
-	const baselineWhen = BigInt(readJournalEntry(BASELINE_TAG).when);
 	const appliedHashes = new Set();
 	let appliedCount = 0;
-	let reachedCanonicalPrefix = false;
+	let legacySeen = 0;
+	let seenCanonical = false;
 	for (const row of rows) {
 		const hash = typeof row.hash === 'string' ? row.hash : '';
 		const createdAt = String(row.created_at ?? '');
@@ -566,13 +580,26 @@ async function assertMigrationLedgerPrefix(client, { requireTable = true } = {})
 
 		const entry = expectedByHash.get(hash);
 		if (!entry) {
-			// Adoption preserves superseded rows only while they predate the baseline.
-			if (!reachedCanonicalPrefix && BigInt(createdAt) < baselineWhen) continue;
-			throw new Error(
-				`Database check failed: unexpected migration row ${row.id} outside the legacy prefix.`,
-			);
+			// Fail-closed: LEGACY_LEDGER_ALLOWLIST documents every tolerated
+			// pre-baseline row by exact hash, timestamp, and leading-prefix
+			// position. It is currently empty, so any unknown row — including
+			// arbitrary 64-hex values predating the baseline — is rejected
+			// here and never adopted.
+			const legacy = LEGACY_LEDGER_ALLOWLIST.get(hash);
+			if (
+				!legacy ||
+				seenCanonical ||
+				createdAt !== String(legacy.when) ||
+				legacySeen !== Number(legacy.position)
+			) {
+				throw new Error(
+					`Database check failed: unexpected migration row ${row.id} outside the canonical ledger.`,
+				);
+			}
+			legacySeen += 1;
+			continue;
 		}
-		reachedCanonicalPrefix = true;
+		seenCanonical = true;
 		if (appliedHashes.has(hash)) {
 			throw new Error(`Database check failed: duplicate migration ${entry.tag}.`);
 		}

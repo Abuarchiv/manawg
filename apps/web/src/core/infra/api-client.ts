@@ -1,3 +1,5 @@
+import { MEMBER_ID_HEADER } from '@/shared/lib/member-header';
+
 type ApiFetchInit = RequestInit & { memberId?: string; memberToken?: string | undefined };
 
 type ApiFetchResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
@@ -6,10 +8,17 @@ export async function apiFetch<T>(
 	path: string,
 	init: ApiFetchInit = {},
 ): Promise<ApiFetchResult<T>> {
-	const { memberId: _memberId, memberToken: _memberToken, ...rest } = init;
+	const { memberId, memberToken: _memberToken, ...rest } = init;
 	const method = rest.method ?? 'GET';
 
 	const headers = new Headers(rest.headers as HeadersInit | undefined);
+	if (
+		process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true' &&
+		process.env.NEXT_PUBLIC_DB_DOWN === 'true' &&
+		memberId
+	) {
+		headers.set(MEMBER_ID_HEADER, memberId);
+	}
 	const hasBody = rest.body !== undefined && rest.body !== null;
 	if (hasBody && ['POST', 'PUT', 'PATCH'].includes(method)) {
 		headers.set('content-type', 'application/json');
