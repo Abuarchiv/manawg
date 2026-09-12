@@ -92,10 +92,11 @@ test.describe('Mobile WG shell', () => {
 		// Einkauf → Vorräte.
 		await bottomNav.getByRole('link', { name: /^Haushalt$/ }).click();
 		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/einkauf$/, { timeout: 60_000 });
-		await page
-			.getByRole('navigation', { name: 'Haushalt' })
-			.getByRole('link', { name: /^Vorräte$/ })
-			.click();
+		const householdNav = page.locator('nav[data-wg-local-nav]').filter({
+			has: page.getByRole('link', { name: /^Vorräte$/ }),
+		});
+		await expect(householdNav).toBeVisible();
+		await householdNav.getByRole('link', { name: /^Vorräte$/ }).click();
 		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/vorraete$/, { timeout: 60_000 });
 		await expect(page.getByRole('heading', { name: 'Vorräte' })).toBeVisible({
 			timeout: 30_000,

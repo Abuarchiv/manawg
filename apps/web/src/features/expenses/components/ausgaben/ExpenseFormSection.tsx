@@ -160,7 +160,7 @@ export function ExpenseFormSection({
 				<DialogContent
 					showCloseButton={false}
 					className="top-0 flex h-dvh max-h-dvh w-full max-w-md translate-y-0 flex-col gap-0 rounded-none p-0 sm:max-w-md"
-					initialFocus={false}
+					initialFocus={() => document.getElementById('f-beschreibung')}
 				>
 					<DialogHeader className="shrink-0 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
 						<div className="flex items-center gap-2">
@@ -332,6 +332,7 @@ export function ExpenseFormSection({
 										splits={previewSplits}
 										paidByMemberId={paidByMemberId}
 									/>
+									<FieldDescription>Hier wird kein Geld überwiesen.</FieldDescription>
 								</FieldSet>
 								<Separator />
 								<Collapsible open={showReceipt} onOpenChange={setShowReceipt}>

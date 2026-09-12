@@ -11,6 +11,7 @@ import {
 	EmptyTitle,
 } from '@/components/ui/empty';
 import { ItemGroup } from '@/components/ui/item';
+import { ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
@@ -550,6 +551,7 @@ export default function PutzenPage() {
 
 		// First tap → arm; second tap → commit
 		if (completeConfirmId !== chore.id) {
+			setActionError(null);
 			setCompleteConfirmId(chore.id);
 			return;
 		}
@@ -917,16 +919,12 @@ export default function PutzenPage() {
 					/>
 				)}
 			</ChoreForm>
-			{actionError && !showForm && (
+			{actionError && !showForm && !completeConfirmId && (
 				<Alert variant="destructive">
 					<AlertDescription>{actionError}</AlertDescription>
 				</Alert>
 			)}
-			{actionNotice && (
-				<Alert>
-					<AlertDescription>{actionNotice}</AlertDescription>
-				</Alert>
-			)}
+			{actionNotice && <ActionNoticeBanner notice={{ tone: 'success', message: actionNotice }} />}
 			<output aria-live="polite">
 				<OfflineQueueNotice queuedCount={queuedCount} />
 			</output>
@@ -981,6 +979,7 @@ export default function PutzenPage() {
 							isSwapPending={isPending(`${chore.id}:swap`)}
 							isTakePending={isPending(`${chore.id}:take`)}
 							isCompleteArmed={completeConfirmId === chore.id}
+							completeError={actionError}
 							nextAssigneeName={
 								completeConfirmId === chore.id
 									? (members.find(

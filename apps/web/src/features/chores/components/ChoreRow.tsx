@@ -3,7 +3,6 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -40,6 +39,7 @@ interface ChoreRowProps {
 	isSwapPending: boolean;
 	isTakePending: boolean;
 	isCompleteArmed: boolean;
+	completeError: string | null;
 	nextAssigneeName: string | null;
 	onCancelComplete: () => void;
 	onComplete: (chore: Chore) => void;
@@ -71,6 +71,7 @@ export const ChoreRow = memo(function ChoreRow({
 	isSwapPending,
 	isTakePending,
 	isCompleteArmed,
+	completeError,
 	nextAssigneeName,
 	onCancelComplete,
 	onComplete,
@@ -237,7 +238,7 @@ export const ChoreRow = memo(function ChoreRow({
 			<AlertDialog
 				open={isCompleteArmed}
 				onOpenChange={(next) => {
-					if (!next) onCancelComplete();
+					if (!next && !busy) onCancelComplete();
 				}}
 			>
 				<AlertDialogContent className="w-[calc(100%-2rem)]">
@@ -252,16 +253,23 @@ export const ChoreRow = memo(function ChoreRow({
 							lässt sich hier nicht zurücknehmen.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
+					{completeError && (
+						<Alert variant="destructive">
+							<AlertDescription>{completeError}</AlertDescription>
+						</Alert>
+					)}
 					<AlertDialogFooter>
-						<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
-						<AlertDialogAction
+						<AlertDialogCancel disabled={busy} className="min-h-11">
+							Abbrechen
+						</AlertDialogCancel>
+						<Button
 							onClick={() => onComplete(chore)}
 							disabled={busy}
 							className="min-h-11"
 							aria-label={`${status.actionLabel} bestätigen: ${chore.title}`}
 						>
 							{status.actionLabel} bestätigen
-						</AlertDialogAction>
+						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

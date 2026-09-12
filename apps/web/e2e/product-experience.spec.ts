@@ -58,19 +58,21 @@ test.describe('Daily product experience', () => {
 	test.setTimeout(120_000);
 	test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
-	test('puts a useful first action before empty statistics and opens the chore draft', async ({
-		page,
-	}) => {
+	test('puts the Start welcome before the empty balance and opens shopping', async ({ page }) => {
 		await identify(page);
 		await page.route('**/api/wg/MTE8PZAT/dashboard', (route) =>
 			route.fulfill({ json: emptyDashboard }),
 		);
 		await page.goto(base);
-		const action = page.getByRole('link', { name: 'Erste Aufgabe anlegen', exact: true });
+		const action = page.getByRole('link', { name: 'Einkauf öffnen', exact: true });
 		await expect(action).toBeVisible();
-		await expect(page.getByLabel('Ausgaben pro Tag, letzte 14 Tage')).toBeHidden();
+		await expect(
+			page.getByRole('heading', { name: 'Eure WG ist bereit', exact: true }),
+		).toBeVisible();
 		const actionBox = await action.boundingBox();
-		const statBox = await page.getByText('Deine Bilanz', { exact: true }).boundingBox();
+		const statBox = await page
+			.getByRole('heading', { name: 'Dein Saldo', exact: true })
+			.boundingBox();
 		expect(actionBox?.y).toBeLessThan(statBox?.y ?? Number.NEGATIVE_INFINITY);
 		await noHorizontalOverflow(page);
 		await page.screenshot({
@@ -78,10 +80,9 @@ test.describe('Daily product experience', () => {
 			fullPage: true,
 			animations: 'disabled',
 		});
+		await expect(action).toHaveAttribute('href', `${base}/einkauf`);
 		await action.click();
-		await expect(page.getByRole('textbox', { name: 'Aufgabe', exact: true })).toHaveValue(
-			'Bad putzen',
-		);
+		await expect(page).toHaveURL(`${base}/einkauf`);
 	});
 
 	test('puts actual today work before statistics for a returning resident', async ({ page }) => {
@@ -97,13 +98,20 @@ test.describe('Daily product experience', () => {
 			}),
 		);
 		await page.goto(base);
-		const focus = page.getByRole('link').filter({ hasText: 'Hafermilch fehlt noch' });
+		const focus = page.getByRole('region', { name: 'Heute wichtig' });
+		await expect(focus.getByRole('heading', { name: 'Hafermilch fehlt noch' })).toBeVisible();
+		await expect(focus.getByRole('link', { name: 'Einkaufsliste öffnen' })).toHaveAttribute(
+			'href',
+			`${base}/einkauf`,
+		);
 		await expect(focus).toBeVisible();
 		expect((await focus.boundingBox())?.y).toBeLessThan(
-			(await page.getByText('Deine Bilanz', { exact: true }).boundingBox())?.y ??
+			(await page.getByRole('heading', { name: 'Dein Saldo', exact: true }).boundingBox())?.y ??
 				Number.NEGATIVE_INFINITY,
 		);
-		await expect(page.getByText('Willkommen in deiner WG')).toBeHidden();
+		await expect(
+			page.getByRole('heading', { name: 'Eure WG ist bereit', exact: true }),
+		).toBeHidden();
 		await page.screenshot({
 			path: '/tmp/astra-ux-dashboard-return.png',
 			fullPage: true,
@@ -142,7 +150,10 @@ test.describe('Daily product experience', () => {
 		const row = page.locator('#shopping-bought-product');
 		await expect(row.getByText('Hinzugefügt von dsaf')).toBeVisible();
 		await expect(row.getByText('Gekauft von Mina')).toBeVisible();
-		const handoff = row.getByRole('link', { name: `${name} als Ausgabe übernehmen` });
+		await row.getByRole('button', { name: `Artikelaktionen: ${name}` }).click();
+		const handoff = page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'Als Ausgabe übernehmen', exact: true });
 		await expect(handoff).toHaveText('Als Ausgabe übernehmen');
 		await noHorizontalOverflow(page);
 		await page.screenshot({
@@ -157,17 +168,21 @@ test.describe('Daily product experience', () => {
 			page.getByText('Die Ausgabe ist noch nicht gespeichert. Prüfe Betrag und Aufteilung.'),
 		).toBeVisible();
 		await page.getByLabel('Betrag', { exact: true }).fill('30,01');
-		const preview = page.getByRole('region', { name: 'So wird die Ausgabe aufgeteilt' });
-		await expect(preview).toContainText('dsaf schuldet Mina 15,01');
-		await expect(preview).toContainText('Mina: eigener Anteil 15,00');
-		const previewBox = await preview.boundingBox();
-		const saveBox = await page
-			.getByRole('button', { name: 'Ausgabe speichern', exact: true })
-			.boundingBox();
-		expect(saveBox?.y).toBeGreaterThan(
-			(previewBox?.y ?? Number.POSITIVE_INFINITY) + (previewBox?.height ?? 0),
-		);
-		await expect(preview).toContainText('Hier wird kein Geld überwiesen.');
+		const preview = page.getByRole('list', { name: 'Anteile vor dem Speichern' });
+		const debtor = preview.locator('[data-slot="item"]').filter({ hasText: 'dsaf' });
+		const payer = preview
+			.locator('[data-slot="item"]')
+			.filter({ hasText: 'Mina' })
+			.filter({ hasText: 'Eigener Anteil' });
+		await expect(debtor).toContainText('Schuldet Mina diesen Anteil');
+		await expect(debtor).toContainText('15,01');
+		await expect(payer).toContainText('Eigener Anteil · bereits bezahlt');
+		await expect(payer).toContainText('15,00');
+		await preview.scrollIntoViewIfNeeded();
+		await expect(
+			page.getByRole('button', { name: 'Ausgabe speichern', exact: true }),
+		).toBeVisible();
+		await expect(page.getByRole('dialog')).toContainText('Hier wird kein Geld überwiesen.');
 		await page
 			.getByRole('button', { name: 'Ausgabe speichern', exact: true })
 			.scrollIntoViewIfNeeded();
@@ -192,7 +207,14 @@ test.describe('Daily product experience', () => {
 		await page.getByRole('button', { name: 'Ausgabe erfassen', exact: true }).click();
 		await page.getByLabel('Beschreibung', { exact: true }).fill('Mein angefangener Einkauf');
 		await page.getByLabel('Betrag', { exact: true }).fill('19,80');
-		await page.getByRole('button', { name: 'Ausgabenformular schließen', exact: true }).click();
+		await page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'Ausgabe abbrechen', exact: true })
+			.click();
+		await page
+			.getByRole('alertdialog', { name: 'Entwurf behalten?' })
+			.getByRole('button', { name: 'Entwurf behalten', exact: true })
+			.click();
 		await expect(page.getByLabel('Beschreibung', { exact: true })).toBeHidden();
 		await page.getByRole('button', { name: 'Ausgabe erfassen', exact: true }).click();
 		await expect(page.getByLabel('Beschreibung', { exact: true })).toHaveValue(
@@ -213,12 +235,13 @@ test.describe('Daily product experience', () => {
 
 	test('reviews chore completion and uses the confirmed next responsibility', async ({ page }) => {
 		await identify(page);
+		const initialDueAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 		const chore = {
 			id: 'daily-chore',
 			title: 'Bad gründlich reinigen und Handtücher austauschen',
 			intervalDays: 7,
 			recurrenceType: 'days',
-			nextDueAt: '2026-09-05T10:00:00.000Z',
+			nextDueAt: initialDueAt,
 			assignedMemberId: memberId,
 			lastCompletedAt: null,
 			lastCompletedByName: null,
@@ -250,7 +273,10 @@ test.describe('Daily product experience', () => {
 			fullPage: true,
 			animations: 'disabled',
 		});
-		await page.getByRole('button', { name: `Erledigen abbrechen: ${chore.title}` }).click();
+		await page
+			.getByRole('alertdialog')
+			.getByRole('button', { name: 'Abbrechen', exact: true })
+			.click();
 		expect(writes).toBe(0);
 		await page.getByRole('button', { name: `Als erledigt markieren: ${chore.title}` }).click();
 		await page.getByRole('button', { name: `Erledigt bestätigen: ${chore.title}` }).click();
@@ -337,8 +363,8 @@ test.describe('Reviewed settlement', () => {
 			});
 			await page.goto(`${base}/ausgaben`);
 			await page.getByRole('button', { name: 'Bereits erfolgte Zahlung eintragen' }).click();
-			const preview = page.getByRole('region', { name: 'Zahlung prüfen' });
-			await expect(preview).toContainText('Hier wird kein Geld überwiesen.');
+			const preview = page.getByRole('alertdialog', { name: 'Zahlung prüfen' });
+			await expect(preview).toContainText('Es wird kein Geld überwiesen.');
 			await expect(preview).toContainText('Gemeinsamer Einkauf');
 			await expect(preview).toContainText('5,00');
 			await page.setViewportSize({ width: 390, height: 844 });
@@ -348,7 +374,7 @@ test.describe('Reviewed settlement', () => {
 			await expect(confirm).toBeFocused();
 			const confirmBox = await confirm.boundingBox();
 			const navBox = await page
-				.getByRole('navigation', { name: 'WG Hauptnavigation' })
+				.getByRole('navigation', { name: 'WG Hauptnavigation', includeHidden: true })
 				.boundingBox();
 			expect(
 				(confirmBox?.y ?? Number.POSITIVE_INFINITY) + (confirmBox?.height ?? 0),
@@ -384,10 +410,10 @@ test.describe('Reviewed settlement', () => {
 				},
 			});
 			if (changed) {
+				await expect(preview).toBeHidden();
 				await expect(
 					page.getByRole('alert').filter({ hasText: 'Die offenen Beträge haben sich geändert.' }),
 				).toBeVisible();
-				await expect(preview).toBeHidden();
 			} else {
 				await expect(page.getByRole('status').filter({ hasText: '10,00' })).toContainText('5,00');
 			}
@@ -425,7 +451,9 @@ test('the payer’s own share is never an unpaid debt or a self-payment action',
 	);
 	await page.goto(`${base}/ausgaben?highlight=own-share`);
 	await page.getByRole('button', { name: /Details für Wocheneinkauf/ }).click();
-	await expect(page.getByText('Eigener Anteil', { exact: true })).toBeVisible();
+	await expect(
+		page.getByText('Eigener Anteil der zahlenden Person', { exact: true }),
+	).toBeVisible();
 	await expect(page.getByText('0/1 beglichen', { exact: true })).toBeVisible();
 	await expect(
 		page.getByRole('button', { name: 'dsaf Zahlung als beglichen markieren' }),
@@ -470,7 +498,8 @@ test.describe('Draft reload intent', () => {
 			return route.fulfill({ status: 409, json: { error: 'expense_changed' } });
 		});
 		await page.goto(`${base}/ausgaben?highlight=persisted-edit`);
-		await page.getByRole('button', { name: 'Ausgabe bearbeiten: Internet' }).click();
+		await page.getByRole('button', { name: 'Aktionen für Internet', exact: true }).click();
+		await page.getByRole('menuitem', { name: 'Bearbeiten', exact: true }).click();
 		await page.getByLabel('Beschreibung', { exact: true }).fill('Internet September');
 		await page.reload();
 		await expect(page.getByLabel('Beschreibung', { exact: true })).toHaveValue(
@@ -754,11 +783,14 @@ test.describe('Suggestion draft preservation', () => {
 		).toBe('Ungespeicherte Details');
 		const replace = page.getByRole('button', { name: 'Entwurf verwerfen und „Milch“ übernehmen' });
 		await replace.click();
-		await page.getByRole('dialog').getByRole('button', { name: 'Entwurf behalten' }).click();
+		await page
+			.getByRole('alertdialog')
+			.getByRole('button', { name: 'Entwurf behalten', exact: true })
+			.click();
 		await expect(page.getByLabel('Anteil dsaf in Euro')).toHaveValue('7,00');
 		await replace.click();
 		await page
-			.getByRole('dialog')
+			.getByRole('alertdialog')
 			.getByRole('button', { name: 'Entwurf verwerfen', exact: true })
 			.click();
 		await expect(page.getByLabel('Beschreibung', { exact: true })).toHaveValue('Milch');
@@ -849,7 +881,7 @@ test.describe('Suggestion draft preservation', () => {
 					.getByRole('button', { name: 'Entwurf verwerfen und „Internet-Vorlage“ übernehmen' })
 					.click();
 				await page
-					.getByRole('dialog')
+					.getByRole('alertdialog')
 					.getByRole('button', { name: 'Entwurf verwerfen', exact: true })
 					.click();
 				await expect(page.getByLabel('Beschreibung', { exact: true })).toHaveValue(
@@ -865,7 +897,7 @@ test.describe('Suggestion draft preservation', () => {
 		});
 	}
 
-	test('dashboard chore suggestions preserve existing monthly draft and require explicit replacement', async ({
+	test('deep-linked chore suggestions preserve existing monthly draft and require explicit replacement', async ({
 		page,
 	}) => {
 		await identify(page);
@@ -884,17 +916,13 @@ test.describe('Suggestion draft preservation', () => {
 				),
 			{ key: choreDraftKey, buyerId },
 		);
-		await page.route('**/api/wg/MTE8PZAT/dashboard', (route) =>
-			route.fulfill({ json: emptyDashboard }),
-		);
 		await page.route('**/api/wg/MTE8PZAT/chores', (route) =>
 			route.fulfill({ json: { chores: [] } }),
 		);
 		await page.route('**/api/wg/MTE8PZAT/absences', (route) =>
 			route.fulfill({ json: { absences: [] } }),
 		);
-		await page.goto(base);
-		await page.getByRole('link', { name: 'Erste Aufgabe anlegen', exact: true }).click();
+		await page.goto(`${base}/putzen?title=Bad%20putzen`);
 		await expect(page.getByRole('textbox', { name: 'Aufgabe', exact: true })).toHaveValue(
 			'Fenster reinigen',
 		);
@@ -912,7 +940,10 @@ test.describe('Suggestion draft preservation', () => {
 		await page
 			.getByRole('button', { name: 'Entwurf verwerfen und „Bad putzen“ übernehmen' })
 			.click();
-		await page.getByRole('dialog').getByRole('button', { name: 'Entwurf behalten' }).click();
+		await page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'Entwurf behalten', exact: true })
+			.click();
 		await expect(page.getByRole('textbox', { name: 'Aufgabe', exact: true })).toHaveValue(
 			'Fenster reinigen',
 		);
@@ -1020,7 +1051,10 @@ test.describe('Retained chore assignment', () => {
 			.click();
 		await expect(page.getByLabel('Zuständig', { exact: true })).toHaveValue('');
 		await expect.poll(readStored).toEqual(draft);
-		await page.getByRole('button', { name: 'Putzaufgabe-Formular schließen', exact: true }).click();
+		await page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'Schließen · Entwurf behalten', exact: true })
+			.click();
 		await page.getByRole('button', { name: 'Putzaufgabe erfassen', exact: true }).click();
 		await expect(page.getByLabel('Zuständig', { exact: true })).toHaveValue('');
 		await expect.poll(readStored).toEqual(draft);
@@ -1053,7 +1087,10 @@ test.describe('Retained chore assignment', () => {
 		await expect(page.getByLabel('Zuständig', { exact: true })).toHaveValue(buyerId);
 		await page.getByRole('textbox', { name: 'Aufgabe', exact: true }).fill('Noch nicht zuweisen');
 		await page.getByLabel('Zuständig', { exact: true }).selectOption('');
-		await page.getByRole('button', { name: 'Putzaufgabe-Formular schließen', exact: true }).click();
+		await page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'Schließen · Entwurf behalten', exact: true })
+			.click();
 		await page.getByRole('button', { name: 'Putzaufgabe erfassen', exact: true }).click();
 		await expect(page.getByLabel('Zuständig', { exact: true })).toHaveValue('');
 		await page.getByRole('button', { name: 'Aufgabe hinzufügen', exact: true }).click();

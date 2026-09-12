@@ -99,7 +99,7 @@ test.describe('Account and WG settings experience', () => {
 			page.getByText(/aktives Admin-Mitglied mit der nötigen Berechtigung/),
 		).toBeVisible();
 		const confirm = page
-			.getByRole('dialog')
+			.getByRole('alertdialog', { name: 'Wirklich verlassen?' })
 			.getByRole('button', { name: 'WG auf diesem Gerät verlassen' });
 		await confirm.evaluate((button) => {
 			button.click();
@@ -143,7 +143,7 @@ test.describe('Account and WG settings experience', () => {
 		await gotoWithRetry(page, `/wg/${TWO_MEMBER_WG.code}/einstellungen#zugang`);
 		await page.getByRole('button', { name: 'WG auf diesem Gerät verlassen' }).click();
 		const confirm = page
-			.getByRole('dialog')
+			.getByRole('alertdialog', { name: 'Wirklich verlassen?' })
 			.getByRole('button', { name: 'WG auf diesem Gerät verlassen' });
 		await confirm.click();
 		await expect(
@@ -151,7 +151,9 @@ test.describe('Account and WG settings experience', () => {
 		).toContainText('Deine Mitgliedschaft bleibt bestehen');
 		await expect(page.getByText('Wirklich verlassen?')).toBeVisible();
 		await expect(
-			page.getByRole('dialog').getByRole('button', { name: 'WG auf diesem Gerät verlassen' }),
+			page
+				.getByRole('alertdialog', { name: 'Wirklich verlassen?' })
+				.getByRole('button', { name: 'WG auf diesem Gerät verlassen' }),
 		).toBeEnabled();
 		expect(
 			await page.evaluate(
@@ -161,7 +163,7 @@ test.describe('Account and WG settings experience', () => {
 		).not.toBeNull();
 
 		await page
-			.getByRole('dialog')
+			.getByRole('alertdialog', { name: 'Wirklich verlassen?' })
 			.getByRole('button', { name: 'WG auf diesem Gerät verlassen' })
 			.click();
 		await expect.poll(() => patchRequests).toBe(2);

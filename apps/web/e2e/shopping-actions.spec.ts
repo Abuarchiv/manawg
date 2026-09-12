@@ -157,7 +157,11 @@ test.describe('Shopping actions', () => {
 			coffeeDrawer.getByRole('button', { name: 'Als Ausgabe übernehmen', exact: true }),
 		).toBeVisible();
 		await coffeeDrawer.getByRole('button', { name: 'Als Ausgabe übernehmen', exact: true }).click();
-		await page.waitForURL('**/wg/MTE8PZAT/ausgaben?desc=Kaffee');
+		await expect(page).toHaveURL(/\/wg\/MTE8PZAT\/ausgaben\?/);
+		const handoffUrl = new URL(page.url());
+		expect(handoffUrl.searchParams.get('desc')).toBe('Kaffee');
+		expect(handoffUrl.searchParams.get('source')).toBe('shopping');
+		expect(handoffUrl.searchParams.get('paidBy')).toBe(memberId);
 		await expect(coffeeDrawer).toBeHidden();
 
 		await page.goBack();

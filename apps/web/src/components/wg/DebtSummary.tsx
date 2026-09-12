@@ -267,7 +267,13 @@ function DebtRow({
 								<Item key={split.id} variant="muted" size="xs">
 									<ItemContent className="min-w-0">
 										<ItemTitle className="line-clamp-none break-words">
-											{expense?.description ?? 'Ausgabe'}
+											<Link
+												href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?highlight=${encodeURIComponent(split.expenseId)}`}
+												onClick={() => setReviewOpen(false)}
+												className="underline underline-offset-4"
+											>
+												{expense?.description ?? 'Ausgabe'}
+											</Link>
 										</ItemTitle>
 										<ItemDescription>
 											{expense ? formatShortDate(expense.occurredAt) : 'Aktueller offener Anteil'}
@@ -310,16 +316,18 @@ function DebtRow({
 						<AlertDialogCancel className="min-h-11" disabled={settling}>
 							Abbrechen
 						</AlertDialogCancel>
-						<Button
-							className="min-h-11"
-							disabled={settling || !preview || preview.settleableCents <= 0}
-							onClick={() => void settle()}
-						>
-							{settling && <Spinner data-icon="inline-start" />}
-							{settling
-								? 'Speichert…'
-								: `${formatEuroCents(preview?.settleableCents ?? 0)} als bezahlt eintragen`}
-						</Button>
+						{preview && preview.settleableCents > 0 && (
+							<Button
+								className="h-auto min-h-11 whitespace-normal"
+								disabled={settling || !preview || preview.settleableCents <= 0}
+								onClick={() => void settle()}
+							>
+								{settling && <Spinner data-icon="inline-start" />}
+								{settling
+									? 'Speichert…'
+									: `${formatEuroCents(preview?.settleableCents ?? 0)} als bezahlt eintragen`}
+							</Button>
+						)}
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

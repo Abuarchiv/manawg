@@ -136,7 +136,7 @@ test.describe('ManaWG core flows', () => {
 		await expect(page.getByText('Dein vorhandener Entwurf bleibt erhalten.')).toBeVisible();
 		await page.getByRole('button', { name: 'Entwurf verwerfen und „Internet“ übernehmen' }).click();
 		await page
-			.getByRole('dialog')
+			.getByRole('alertdialog')
 			.getByRole('button', { name: 'Entwurf verwerfen', exact: true })
 			.click();
 		await expect(page.locator('#f-beschreibung')).toHaveValue('Internet', {
