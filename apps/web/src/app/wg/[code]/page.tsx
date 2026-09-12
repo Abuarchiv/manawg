@@ -172,14 +172,14 @@ export default function WgHomePage() {
 					<div className="min-w-0 flex-1">
 						<div className="flex min-w-0 items-center gap-2.5">
 							<LogoMark size={24} radius={6} className="shrink-0 rounded-md" />
-							<h1
-								title={wg.name}
-								className="min-w-0 flex-1 break-words line-clamp-2 text-[26px] font-semibold leading-[1.15] tracking-[-0.022em] text-[var(--text-1)] sm:text-[28px]"
-							>
-								{wg.name}
+							<h1 className="min-w-0 flex-1 text-[26px] font-semibold leading-[1.15] tracking-[-0.022em] text-[var(--text-1)] sm:text-[28px]">
+								Start
 							</h1>
 						</div>
-						<p className="mt-1 pl-[34px] text-sm text-[var(--text-2)]">
+						<h2 className="mt-1 break-words text-base font-semibold text-[var(--text-1)] sm:pl-[34px]">
+							{wg.name}
+						</h2>
+						<p className="pl-[34px] text-sm text-[var(--text-2)]">
 							{activeMembers.length} Mitglied{activeMembers.length === 1 ? '' : 'er'}
 						</p>
 					</div>
