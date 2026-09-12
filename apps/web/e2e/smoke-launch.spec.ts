@@ -156,7 +156,9 @@ test.describe('ManaWG launch smoke', () => {
 		await expect(page.locator('main#main')).toHaveCount(1);
 	});
 
-	test('create WG → redirect to /wg/<code> → dashboard renders module tiles', async ({ page }) => {
+	test('create WG → redirect to /wg/<code> → Start overview retains primary navigation', async ({
+		page,
+	}) => {
 		if (!qaAuthConfig) {
 			if (!requiresRealProductAuth) {
 				test.skip(
@@ -256,20 +258,17 @@ test.describe('ManaWG launch smoke', () => {
 			expect(existingMemberJoin.status()).toBe(409);
 			expect(await existingMemberJoin.json()).toMatchObject({ code: 'already_joined' });
 
-			// Step 6: Verify dashboard renders module tiles (Ausgaben / Einkauf / Pinnwand)
-			await expect(page.getByRole('heading', { name: wgName })).toBeVisible({
+			// Step 6: The focused overview retains access to every primary destination.
+			await expect(page.getByRole('heading', { name: /^Start – /, level: 1 })).toBeVisible({
 				timeout: 30_000,
 			});
-			const moduleNavigation = page.getByRole('region', { name: 'Module' });
-			await expect(moduleNavigation.getByRole('link', { name: /^Ausgaben\b/ })).toBeVisible({
-				timeout: 30_000,
-			});
-			await expect(moduleNavigation.getByRole('link', { name: /^Einkauf\b/ })).toBeVisible({
-				timeout: 30_000,
-			});
-			await expect(moduleNavigation.getByRole('link', { name: /^Pinnwand\b/ })).toBeVisible({
-				timeout: 30_000,
-			});
+			await expect(
+				page.getByRole('heading', { name: `Start – ${wgName}`, exact: true }),
+			).toBeVisible();
+			const navigation = page.getByRole('navigation', { name: 'WG Hauptnavigation' });
+			for (const label of ['Start', 'Haushalt', 'Finanzen', 'Austausch']) {
+				await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
+			}
 		} catch (error) {
 			flowError = error;
 		} finally {

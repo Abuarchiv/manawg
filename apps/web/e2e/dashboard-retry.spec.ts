@@ -133,7 +133,7 @@ test.describe('Dashboard recovery', () => {
 		failDashboard = false;
 		await page.getByRole('button', { name: 'Dashboard erneut laden' }).click();
 
-		await expect(page.getByRole('link', { name: 'Einkauf offen 1 Hafermilch' })).toBeVisible({
+		await expect(page.getByRole('link', { name: 'Einkaufsliste öffnen' })).toBeVisible({
 			timeout: 30_000,
 		});
 		await expect(
@@ -244,5 +244,114 @@ test.describe('Dashboard recovery', () => {
 		await expect(page.getByText('WG startklar machen')).toHaveCount(0);
 		await expect(page.getByText('Startpfade')).toHaveCount(0);
 		await expect(page.getByText('Beispiel-Vorschau')).toHaveCount(0);
+	});
+
+	test('prioritizes personal work and expands remaining items without duplicate sections', async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 390, height: 844 });
+		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
+		const dueAt = new Date(Date.now() - 86_400_000).toISOString();
+		const body = {
+			...dashboardResponseBody(),
+			openShoppingCount: 9,
+			openShoppingTop: ['Hafermilch', 'Brot', 'Reis'],
+			dueChores: [
+				...Array.from({ length: 6 }, (_, index) => ({
+					id: `shared-${index}`,
+					title: `Gemeinsame Aufgabe ${index + 1}`,
+					assignedMemberId: 'other-member',
+					assignedMemberName: 'Mina',
+					assignedColor: null,
+					nextDueAt: dueAt,
+					overdue: true,
+				})),
+				{
+					id: 'my-urgent-task',
+					title: 'Meine dringende Aufgabe',
+					assignedMemberId: memberId,
+					assignedMemberName: 'dsaf',
+					assignedColor: null,
+					nextDueAt: dueAt,
+					overdue: true,
+				},
+			],
+		};
+		await page.route('**/api/wg/MTE8PZAT/dashboard', (route) => route.fulfill({ json: body }));
+		await gotoWithRetry(page, '/wg/MTE8PZAT');
+		const focus = page.getByRole('heading', { name: 'Meine dringende Aufgabe' });
+		await expect(focus).toBeVisible({ timeout: 30_000 });
+		const bounds = await focus.boundingBox();
+		expect(bounds).not.toBeNull();
+		if (!bounds) throw new Error('Focus heading has no bounding box');
+		expect(bounds.y + bounds.height).toBeLessThan(600);
+		await expect(page.getByRole('region', { name: 'Module' })).toHaveCount(0);
+		await expect(page.getByRole('heading', { name: 'Anstehende Aufgaben' })).toHaveCount(0);
+		await expect(page.getByText('Gemeinsame Aufgabe 6', { exact: true })).toBeHidden();
+		await page.getByRole('button', { name: /Weitere anzeigen/ }).click();
+		await expect(page.getByText('Gemeinsame Aufgabe 6', { exact: true })).toBeVisible();
+		await expect(page.getByText('9 offene Artikel', { exact: false })).toBeVisible();
+		await expect(page.getByText('Meine dringende Aufgabe', { exact: true })).toHaveCount(1);
+		await page.getByRole('button', { name: /Weniger anzeigen/ }).click();
+		await expect(page.getByText('Gemeinsame Aufgabe 6', { exact: true })).toBeHidden();
+	});
+
+	test('keeps due work visible before the first expense or shopping entry', async ({ page }) => {
+		const body = {
+			...dashboardResponseBody(),
+			openShoppingCount: 0,
+			openShoppingTop: [],
+			setup: {
+				choreCount: 0,
+				hasExpense: false,
+				hasShoppingItem: false,
+				hasAnnouncement: false,
+				notificationsEnabled: true,
+			},
+			dueRecurringExpenses: [
+				{
+					id: 'due-template',
+					description: 'Internet',
+					amountCents: 3290,
+					nextDueAt: new Date(Date.now() - 86_400_000).toISOString(),
+				},
+			],
+		};
+		await page.route('**/api/wg/MTE8PZAT/dashboard', (route) => route.fulfill({ json: body }));
+		await gotoWithRetry(page, '/wg/MTE8PZAT');
+		await expect(page.getByRole('heading', { name: 'Internet ist fällig' })).toBeVisible({
+			timeout: 30_000,
+		});
+		await expect(page.getByRole('heading', { name: 'Eure WG ist bereit' })).toHaveCount(0);
+	});
+
+	test('dismisses the optional welcome per WG and keeps it hidden after reload', async ({
+		page,
+	}) => {
+		const empty = {
+			...dashboardResponseBody(),
+			openShoppingCount: 0,
+			openShoppingTop: [],
+			setup: {
+				choreCount: 0,
+				hasExpense: false,
+				hasShoppingItem: false,
+				hasAnnouncement: false,
+				notificationsEnabled: true,
+			},
+		};
+		await page.route('**/api/wg/*/dashboard', (route) => route.fulfill({ json: empty }));
+		await gotoWithRetry(page, '/wg/MTE8PZAT');
+		await expect(page.getByRole('heading', { name: /^Start – /, level: 1 })).toBeVisible({
+			timeout: 30_000,
+		});
+		await expect(page.getByRole('link', { name: /^Chat öffnen/ })).toHaveCount(1);
+		await page.getByRole('button', { name: 'Einstiegshinweis dauerhaft ausblenden' }).click();
+		await expect(page.getByRole('heading', { name: 'Eure WG ist bereit' })).toHaveCount(0);
+		await page.reload();
+		await expect(page.getByRole('heading', { name: 'Dein Saldo' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Eure WG ist bereit' })).toHaveCount(0);
+		await gotoWithRetry(page, '/wg/SMKETEST');
+		await expect(page.getByRole('heading', { name: 'Eure WG ist bereit' })).toBeVisible();
 	});
 });

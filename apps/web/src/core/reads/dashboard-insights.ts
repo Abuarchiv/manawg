@@ -10,27 +10,32 @@ export type TodayImportantKind =
 	| 'recurring'
 	| 'absence';
 
-interface TodayImportantItem {
+export interface TodayImportantItem {
 	kind: TodayImportantKind;
 	title: string;
 	detail: string;
 	href: string;
 	tone: 'danger' | 'accent' | 'neutral';
+	isPersonal: boolean;
+	entityId?: string;
 }
 
-interface TodayFocusItem extends TodayImportantItem {
+export interface TodayFocusItem extends TodayImportantItem {
 	actionLabel: string;
 }
 
-interface TodayImportantInput {
+export interface TodayImportantInput {
 	shareCode: string;
-	myBalanceCents: number;
+	currentMemberId: string;
+	openShoppingCount: number;
 	openShoppingTop: string[];
 	dueChores: Array<{
 		id: string;
 		title: string;
 		nextDueAt: string;
 		overdue: boolean;
+		assignedMemberId?: string | null;
+		assignedMemberName?: string | null;
 	}>;
 	myOpenAnnouncements: Array<{
 		id: string;
@@ -41,6 +46,7 @@ interface TodayImportantInput {
 		id: string;
 		description: string;
 		amountCents: number;
+		nextDueAt?: string;
 	}>;
 	absentMembers?: Array<{
 		id?: string;
@@ -94,111 +100,200 @@ function withQuery(path: string, params: Record<string, string>): string {
 	return `${path}?${searchParams.toString()}`;
 }
 
-function dueLabel(iso: string, now: number): string {
+function calendarDayDistance(iso: string, now: number): number | null {
 	const dueAt = parseTimestamp(iso);
-	if (dueAt === null) return 'Datum prüfen';
+	if (dueAt === null) return null;
 	// Calendar-day difference in Berlin time — a plain ms/24h rounding put
 	// same-day-evening chores under "morgen" and 13h-overdue items at "1 T.".
 	const dueKey = berlinDayKey(new Date(dueAt));
 	const nowKey = berlinDayKey(new Date(now));
-	const days = Math.round(
+	return Math.round(
 		(Date.parse(`${dueKey}T12:00:00Z`) - Date.parse(`${nowKey}T12:00:00Z`)) / MS_PER_DAY,
 	);
+}
+
+function dueLabel(iso: string, now: number): string {
+	const days = calendarDayDistance(iso, now);
+	if (days === null) return 'Datum prüfen';
 	if (days < 0) return `${Math.abs(days)} T. überfällig`;
 	if (days === 0) return 'heute fällig';
 	if (days === 1) return 'morgen fällig';
 	return `in ${days} Tagen`;
 }
 
+function choreUrgency(iso: string, now: number): number {
+	const days = calendarDayDistance(iso, now);
+	if (days === null) return 4;
+	if (days < 0) return 0;
+	if (days === 0) return 1;
+	if (days <= 3) return 2;
+	return 3;
+}
+
 export function getTodayImportantItems(input: TodayImportantInput): TodayImportantItem[] {
 	const now = input.now ?? Date.now();
 	const base = `/wg/${encodeURIComponent(input.shareCode)}`;
-	const items: TodayImportantItem[] = [];
+	const ranked: Array<{
+		item: TodayImportantItem;
+		urgency: number;
+		isPersonal: boolean;
+		dueAt: number;
+		kindOrder: number;
+		index: number;
+	}> = [];
 
-	for (const chore of input.dueChores.slice(0, 2)) {
-		items.push({
-			kind: 'chore',
-			title: chore.title,
-			detail: dueLabel(chore.nextDueAt, now),
-			href: `${base}/putzen?highlight=${encodeURIComponent(chore.id)}`,
-			tone: chore.overdue ? 'danger' : 'accent',
+	const choreItems = input.dueChores
+		.map((chore, index) => {
+			const urgency = choreUrgency(chore.nextDueAt, now);
+			const isPersonal = chore.assignedMemberId === input.currentMemberId;
+			const due = dueLabel(chore.nextDueAt, now);
+			const ownership = isPersonal
+				? 'Du bist dran'
+				: chore.assignedMemberName
+					? chore.assignedMemberName
+					: 'Noch nicht zugewiesen';
+			return {
+				item: {
+					kind: 'chore' as const,
+					title: chore.title,
+					detail: ownership ? `${ownership} · ${due}` : due,
+					href: `${base}/putzen?highlight=${encodeURIComponent(chore.id)}`,
+					tone: urgency === 0 ? ('danger' as const) : ('accent' as const),
+					isPersonal,
+					entityId: chore.id,
+				},
+				urgency,
+				isPersonal,
+				dueAt: parseTimestamp(chore.nextDueAt) ?? Number.POSITIVE_INFINITY,
+				index,
+			};
+		})
+		.filter(({ urgency }) => urgency !== 3)
+		.map(({ item, urgency, isPersonal, dueAt, index }) => ({
+			item,
+			urgency,
+			isPersonal,
+			dueAt,
+			kindOrder: 0,
+			index,
+		}));
+	ranked.push(...choreItems);
+
+	if (input.openShoppingCount > 0) {
+		ranked.push({
+			item: {
+				kind: 'shopping',
+				title: input.openShoppingTop[0]
+					? `${input.openShoppingTop[0]} fehlt noch`
+					: 'Einkauf offen',
+				detail:
+					input.openShoppingCount === 1
+						? '1 offener Artikel'
+						: `${input.openShoppingCount} offene Artikel`,
+				href: `${base}/einkauf`,
+				tone: 'neutral',
+				isPersonal: false,
+			},
+			urgency: 3,
+			isPersonal: false,
+			dueAt: Number.POSITIVE_INFINITY,
+			kindOrder: 2,
+			index: 0,
 		});
 	}
 
-	if (input.openShoppingTop.length > 0) {
-		items.push({
-			kind: 'shopping',
-			title: `${input.openShoppingTop[0]} fehlt noch`,
-			detail:
-				input.openShoppingTop.length > 1
-					? `${input.openShoppingTop.length} offene Artikel`
-					: '1 offener Artikel',
-			href: `${base}/einkauf`,
-			tone: 'neutral',
+	for (const [index, announcement] of input.myOpenAnnouncements.entries()) {
+		ranked.push({
+			item: {
+				kind: 'announcement',
+				title: announcement.content,
+				detail: announcement.kind === 'request' ? 'Übernahme offen' : 'Pinnwand offen',
+				href: `${base}/pinnwand#announcement-${encodeURIComponent(announcement.id)}`,
+				tone: 'accent',
+				isPersonal: true,
+				entityId: announcement.id,
+			},
+			urgency: 3,
+			isPersonal: true,
+			dueAt: Number.POSITIVE_INFINITY,
+			kindOrder: 1,
+			index,
 		});
 	}
 
-	for (const announcement of input.myOpenAnnouncements.slice(0, 2)) {
-		items.push({
-			kind: 'announcement',
-			title: announcement.content,
-			detail: announcement.kind === 'request' ? 'Übernahme offen' : 'Pinnwand offen',
-			href: `${base}/pinnwand#announcement-${encodeURIComponent(announcement.id)}`,
-			tone: 'accent',
+	for (const [index, recurring] of (input.dueRecurringExpenses ?? []).entries()) {
+		const urgency = recurring.nextDueAt === undefined ? 0 : choreUrgency(recurring.nextDueAt, now);
+		ranked.push({
+			item: {
+				kind: 'recurring',
+				title: `${recurring.description} ist fällig`,
+				detail: recurring.nextDueAt
+					? `${formatEuro(recurring.amountCents)} · ${dueLabel(recurring.nextDueAt, now)}`
+					: formatEuro(recurring.amountCents),
+				href: `${base}/ausgaben?recurring=${encodeURIComponent(recurring.id)}`,
+				tone: urgency === 0 ? 'danger' : 'accent',
+				isPersonal: false,
+				entityId: recurring.id,
+			},
+			urgency,
+			isPersonal: false,
+			dueAt: recurring.nextDueAt
+				? (parseTimestamp(recurring.nextDueAt) ?? Number.POSITIVE_INFINITY)
+				: Number.POSITIVE_INFINITY,
+			kindOrder: 1,
+			index,
 		});
 	}
 
-	for (const recurring of (input.dueRecurringExpenses ?? []).slice(0, 2)) {
-		items.push({
-			kind: 'recurring',
-			title: `${recurring.description} ist fällig`,
-			detail: formatEuro(recurring.amountCents),
-			href: `${base}/ausgaben?recurring=${encodeURIComponent(recurring.id)}`,
-			tone: 'accent',
+	for (const [index, absence] of (input.absentMembers ?? []).entries()) {
+		ranked.push({
+			item: {
+				kind: 'absence',
+				title: absence.isCurrentMember
+					? 'Du bist als abwesend markiert'
+					: `${absence.name} ist abwesend`,
+				detail: `bis ${formatShortDate(absence.endDate)}`,
+				href: absence.id
+					? `${base}/putzen?panel=absences&absence=${encodeURIComponent(absence.id)}`
+					: `${base}/putzen?panel=absences`,
+				tone: 'neutral',
+				isPersonal: absence.isCurrentMember,
+				...(absence.id ? { entityId: absence.id } : {}),
+			},
+			urgency: 3,
+			isPersonal: absence.isCurrentMember,
+			dueAt: Number.POSITIVE_INFINITY,
+			kindOrder: 3,
+			index,
 		});
 	}
 
-	for (const absence of (input.absentMembers ?? []).slice(0, 2)) {
-		items.push({
-			kind: 'absence',
-			title: absence.isCurrentMember
-				? 'Du bist als abwesend markiert'
-				: `${absence.name} ist abwesend`,
-			detail: `bis ${formatShortDate(absence.endDate)}`,
-			href: absence.id
-				? `${base}/putzen?panel=absences&absence=${encodeURIComponent(absence.id)}`
-				: `${base}/putzen?panel=absences`,
-			tone: 'neutral',
-		});
-	}
-
-	if (input.myBalanceCents < 0) {
-		items.push({
-			kind: 'debt',
-			title: `Du schuldest noch ${formatEuro(Math.abs(input.myBalanceCents))}`,
-			detail: 'Ausgaben ausgleichen',
-			href: `${base}/ausgaben`,
-			tone: 'danger',
-		});
-	}
-
-	return items.slice(0, 6);
+	return ranked
+		.sort(
+			(a, b) =>
+				a.urgency - b.urgency ||
+				Number(b.isPersonal) - Number(a.isPersonal) ||
+				a.dueAt - b.dueAt ||
+				a.kindOrder - b.kindOrder ||
+				a.index - b.index,
+		)
+		.map(({ item }) => item);
 }
 
 export function getTodayFocus(items: TodayImportantItem[]): TodayFocusItem | null {
-	const [focus] = [...items].sort((a, b) => {
-		function score(item: TodayImportantItem): number {
-			if (item.tone === 'danger') return 0;
-			if (item.kind === 'recurring' || item.kind === 'chore') return 1;
-			if (item.tone === 'accent') return 2;
-			return 3;
-		}
-		return score(a) - score(b);
-	});
+	const [focus] = items;
 	if (!focus) return null;
 	return {
 		...focus,
-		actionLabel: focus.tone === 'danger' ? 'Jetzt klären' : 'Öffnen',
+		actionLabel:
+			{
+				chore: 'Aufgabe ansehen',
+				shopping: 'Einkaufsliste öffnen',
+				announcement: 'Beitrag ansehen',
+				recurring: 'Buchung prüfen',
+				absence: 'Abwesenheit ansehen',
+				debt: 'Finanzen öffnen',
+			}[focus.kind] ?? 'Öffnen',
 	};
 }
 

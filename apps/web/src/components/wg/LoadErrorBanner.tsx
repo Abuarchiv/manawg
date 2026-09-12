@@ -25,8 +25,8 @@ interface LoadErrorBannerProps {
  */
 export function LoadErrorBanner({ message, onRetry, busy, retryLabel }: LoadErrorBannerProps) {
 	return (
-		<Alert variant="destructive" className="flex flex-wrap items-center justify-between gap-3">
-			<AlertDescription className="flex-1 text-current">{message}</AlertDescription>
+		<Alert variant="destructive" className="gap-3">
+			<AlertDescription className="text-current">{message}</AlertDescription>
 			<Button
 				variant="outline"
 				size="lg"

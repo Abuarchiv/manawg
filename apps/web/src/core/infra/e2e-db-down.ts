@@ -103,6 +103,8 @@ export function buildE2EDashboardData(code: string): DashboardData {
 			{
 				id: 'dc02a93f-59f6-4cf9-80a7-53d4a407cb49',
 				title: 'Bad putzen',
+				assignedMemberId:
+					code === E2E_CREATED_WG.shareCode ? E2E_CREATED_WG.member.id : E2E_EXISTING_WG.member.id,
 				assignedMemberName:
 					code === E2E_CREATED_WG.shareCode ? 'Smoke Tester' : E2E_EXISTING_WG.member.name,
 				assignedColor:

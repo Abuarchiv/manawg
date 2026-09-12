@@ -59,6 +59,7 @@ export interface ActivityItem {
 export interface ChoreDue {
 	id: string;
 	title: string;
+	assignedMemberId: string | null;
 	assignedMemberName: string | null;
 	assignedColor: string | null;
 	nextDueAt: string;
@@ -83,7 +84,12 @@ export interface DashboardData {
 	openShoppingTop: string[];
 	dueChores: ChoreDue[];
 	activity: ActivityItem[];
-	latestAnnouncement: { content: string; authorName: string; createdAt: string } | null;
+	latestAnnouncement: {
+		id?: string;
+		content: string;
+		authorName: string;
+		createdAt: string;
+	} | null;
 	myOpenAnnouncements: Array<{ id: string; kind: string; content: string; createdAt: string }>;
 	wgHealth: WgHealth;
 	dueRecurringExpenses: Array<{
@@ -104,6 +110,7 @@ export interface DashboardData {
 
 export function getLatestManualAnnouncement(
 	announcementRows: Array<{
+		id?: string;
 		content: string;
 		authorMemberId: string;
 		source: string | null;
@@ -114,6 +121,7 @@ export function getLatestManualAnnouncement(
 	const latestManual = announcementRows.find((item) => item.source === 'manual');
 	return latestManual
 		? {
+				...(latestManual.id ? { id: latestManual.id } : {}),
 				content: latestManual.content,
 				authorName: memberById.get(latestManual.authorMemberId)?.name ?? '—',
 				createdAt: latestManual.createdAt.toISOString(),
@@ -204,6 +212,7 @@ export function buildDueChores(
 			return {
 				id: c.id,
 				title: c.title,
+				assignedMemberId: c.assignedMemberId,
 				assignedMemberName: assigned?.name ?? null,
 				assignedColor: assigned?.color ?? null,
 				nextDueAt: c.nextDueAt.toISOString(),
@@ -353,7 +362,7 @@ export async function loadDashboardData(
 		.map((s) => (s.quantity ? `${s.name} (${s.quantity})` : s.name));
 
 	const allDueChores = buildDueChores(choreRows, memberById, now);
-	const dueChores = allDueChores.slice(0, 4);
+	const dueChores = allDueChores;
 
 	const activity: ActivityItem[] = [];
 	const rawActivityByKey = new Map<string, number>();
@@ -465,7 +474,7 @@ export async function loadDashboardData(
 					})
 				: Promise.resolve(null),
 		]);
-	const filteredMyOpenAnnouncements = myOpenAnnouncements.slice(0, 4);
+	const filteredMyOpenAnnouncements = myOpenAnnouncements;
 	const dueRecurringExpenses = getDueRecurringExpenses(
 		recurringRows.map((item) => ({
 			...item,
@@ -568,7 +577,7 @@ export async function loadDashboardData(
 			absentMemberCount: absentMemberIds.length,
 			dueRecurringCount: dueRecurringExpenses.length,
 		}),
-		dueRecurringExpenses: dueRecurringExpenses.slice(0, 3),
+		dueRecurringExpenses,
 		absentMembers,
 		setup: {
 			choreCount: choreRows.length,

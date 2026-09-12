@@ -42,6 +42,7 @@ interface ActivityItem {
 interface ActivityFeedProps {
 	items: ActivityItem[];
 	emptyHref?: string;
+	compact?: boolean;
 }
 
 function formatEuro(cents: number): string {
@@ -58,7 +59,7 @@ const kindIcon: Record<ActivityItem['kind'], typeof Receipt> = {
 	audit: History,
 };
 
-export function ActivityFeed({ items, emptyHref }: ActivityFeedProps) {
+export function ActivityFeed({ items, emptyHref, compact = false }: ActivityFeedProps) {
 	if (items.length === 0) {
 		return (
 			<Empty>
@@ -122,16 +123,20 @@ export function ActivityFeed({ items, emptyHref }: ActivityFeedProps) {
 					return (
 						<Item
 							key={`${item.kind}-${item.timestamp}-${item.text}`}
-							variant="outline"
+							variant={compact ? 'default' : 'outline'}
 							render={<Link href={item.href} aria-label={`${item.memberName} ${item.text}`} />}
-							className="min-h-11"
+							className={cn('min-h-11', compact && 'rounded-none px-0')}
 						>
 							{content}
 						</Item>
 					);
 				}
 				return (
-					<Item key={`${item.kind}-${item.timestamp}-${item.text}`} variant="outline">
+					<Item
+						key={`${item.kind}-${item.timestamp}-${item.text}`}
+						variant={compact ? 'default' : 'outline'}
+						className={cn(compact && 'rounded-none px-0')}
+					>
 						{content}
 					</Item>
 				);
