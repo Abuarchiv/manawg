@@ -79,6 +79,48 @@ export function removeDraft(key: string): void {
 	}
 }
 
+/** Only exact, known initial values are empty; unknown fields stay protected. */
+export function isEmptyModuleDraft(
+	module: DraftModule,
+	draft: Record<string, unknown>,
+	memberId: string,
+): boolean {
+	const defaults: Record<DraftModule, Record<string, unknown>> = {
+		expense: {
+			description: '',
+			amountStr: '',
+			imageUrl: null,
+			paidByMemberId: memberId,
+			splitMode: 'equal',
+			manualSplits: {},
+			queueEditId: null,
+			queueEditType: null,
+			recurringIntervalMonths: 1,
+			recurringNextDueAt: null,
+			recurringSourceId: null,
+			editingExpense: null,
+		},
+		shopping: { name: '', quantity: '', queueEditId: null },
+		announcement: { content: '', kind: 'info', imageUrl: null, queueEditId: null },
+		chore: {
+			title: '',
+			intervalDays: 7,
+			recurrenceType: 'days',
+			assignedMemberId: '',
+			absenceMemberId: memberId,
+			absenceStartDate: '',
+			absenceEndDate: '',
+			absenceReason: '',
+			queueEditId: null,
+		},
+	};
+	return Object.entries(draft).every(
+		([key, value]) =>
+			Object.hasOwn(defaults[module], key) &&
+			JSON.stringify(value) === JSON.stringify(defaults[module][key]),
+	);
+}
+
 export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | null {
 	const rawSplits = action.payload.splits;
 	const manualSplits = Array.isArray(rawSplits)
@@ -142,6 +184,7 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 					queueEditId: action.id,
 					queueEditType: action.type,
 					title: String(action.payload.title ?? ''),
+					recurrenceType: action.payload.recurrenceType === 'months' ? 'months' : 'days',
 					intervalDays:
 						typeof action.payload.intervalDays === 'number' ? action.payload.intervalDays : 7,
 					assignedMemberId:

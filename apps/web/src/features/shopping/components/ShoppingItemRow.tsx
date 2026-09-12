@@ -83,13 +83,23 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 				/>
 			</ItemMedia>
 			<ItemContent className="min-w-0">
-				<ItemTitle className={cn('line-clamp-none break-words', isBought && 'line-through')}>
+				<ItemTitle
+					className={cn(
+						'line-clamp-none break-words [overflow-wrap:anywhere]',
+						isBought && 'line-through',
+					)}
+				>
 					{item.name}
 				</ItemTitle>
 				<ItemDescription className="line-clamp-none break-words">
 					{item.quantity && <span>{item.quantity} · </span>}
-					{isBought ? (buyerName ? `Gekauft von ${buyerName}` : 'Erledigt') : `Von ${adder.name}`}
+					Hinzugefügt von {adder.name}
 				</ItemDescription>
+				{isBought && (
+					<ItemDescription className="line-clamp-none break-words">
+						{buyerName ? `Gekauft von ${buyerName}` : 'Gekauft · Person nicht angegeben'}
+					</ItemDescription>
+				)}
 				{pending && (
 					<output
 						aria-live="polite"
@@ -125,7 +135,11 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 							</Badge>
 							<p className="text-sm text-muted-foreground">
 								Hinzugefügt von {adder.name}
-								{buyerName ? ` · Gekauft von ${buyerName}` : ''}
+								{isBought
+									? buyerName
+										? ` · Gekauft von ${buyerName}`
+										: ' · Gekauft · Person nicht angegeben'
+									: ''}
 							</p>
 							{isBought && (
 								<>
@@ -133,7 +147,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 										nativeButton={false}
 										render={
 											<Link
-												href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?desc=${encodeURIComponent(item.name)}`}
+												href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?${new URLSearchParams({ desc: item.name, source: 'shopping', ...(item.boughtByMemberId ? { paidBy: item.boughtByMemberId } : {}) })}`}
 											/>
 										}
 										className="min-h-11"

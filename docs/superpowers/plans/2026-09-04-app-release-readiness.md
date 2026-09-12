@@ -6,6 +6,8 @@
 
 **Scope correction (2026-09-04):** The user has clarified that the core use case is settled. The main unfinished work is product coherence, UI hierarchy, intuitive interactions, small everyday details, and transitions between modules. The technical release audit below remains relevant later; it is not the main product plan and must not crowd out this work.
 
+**Implementation update (2026-09-05):** The isolated branch `codex/product-experience-20260904` now contains the implemented local UX/backend/workflow changes. Final built fixture result: 247 passed, 20 intentional hosted skips, 0 failed; production build and unchanged bundle budgets passed. See the [implementation and evidence record](../../releases/product-experience-implementation.md) for exact scope, decisions and open gates. The resident study and external production checks below remain open; local source approval does not close them.
+
 **Primary product specification:** [App user experience](../specs/2026-09-04-app-user-experience.md). Its recommendations are a concrete design proposal, not evidence that users have already understood or accepted the design.
 
 ## Product experience comes first

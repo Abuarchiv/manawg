@@ -40,8 +40,9 @@ interface ChoreRowProps {
 	isSwapPending: boolean;
 	isTakePending: boolean;
 	isCompleteArmed: boolean;
-	onComplete: (chore: Chore) => void;
+	nextAssigneeName: string | null;
 	onCancelComplete: () => void;
+	onComplete: (chore: Chore) => void;
 	onSwapRequest: (chore: Chore) => void;
 	onTakeOver: (chore: Chore) => void;
 	onRemove: (id: string) => void;
@@ -70,8 +71,9 @@ export const ChoreRow = memo(function ChoreRow({
 	isSwapPending,
 	isTakePending,
 	isCompleteArmed,
-	onComplete,
+	nextAssigneeName,
 	onCancelComplete,
+	onComplete,
 	onSwapRequest,
 	onTakeOver,
 	onRemove,
@@ -91,9 +93,11 @@ export const ChoreRow = memo(function ChoreRow({
 			aria-busy={busy}
 		>
 			<ItemContent className="min-w-0 basis-40">
-				<ItemTitle className="line-clamp-none break-words">{chore.title}</ItemTitle>
+				<ItemTitle className="line-clamp-none break-words [overflow-wrap:anywhere]">
+					{chore.title}
+				</ItemTitle>
 				<ItemDescription className="line-clamp-none break-words">
-					<span>{assignee.name}</span> ·{' '}
+					Zuständig: <span>{assignee.name}</span> ·{' '}
 					{formatChoreCadence(chore.intervalDays, chore.recurrenceType)}
 				</ItemDescription>
 				<div className="flex flex-wrap gap-1.5">
@@ -240,8 +244,12 @@ export const ChoreRow = memo(function ChoreRow({
 					<AlertDialogHeader>
 						<AlertDialogTitle>„{chore.title}“ erledigt?</AlertDialogTitle>
 						<AlertDialogDescription>
-							Dein Abschluss wird gespeichert. Die Rotation bestimmt anschließend die nächste
-							zuständige Person und Fälligkeit. Es gibt kein Rückgängig.
+							{nextAssigneeName
+								? `Voraussichtlich als Nächstes: ${nextAssigneeName}.`
+								: 'Aktuell ist niemand für die nächste Runde verfügbar.'}{' '}
+							Die Rotation berücksichtigt Aufgaben und Abwesenheiten. Die nächste zuständige Person
+							und Fälligkeit werden beim Speichern bestätigt. Der Abschluss bleibt im Verlauf und
+							lässt sich hier nicht zurücknehmen.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

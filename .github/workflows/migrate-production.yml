@@ -3,12 +3,21 @@ name: Migrate production database
 on:
   workflow_dispatch:
     inputs:
+      candidate_sha:
+        description: Full 40-character SHA of the approved current main candidate.
+        required: true
+        type: string
+      preview_run_id:
+        description: CI run ID whose same-SHA protected Preview gate passed.
+        required: true
+        type: string
       confirmation:
         description: Type MIGRATE_PRODUCTION to run the production migration.
         required: true
         type: string
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -25,6 +34,27 @@ jobs:
           CONFIRMATION: ${{ inputs.confirmation }}
         run: test "$CONFIRMATION" = MIGRATE_PRODUCTION
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Verify the approved current main candidate
+        env:
+          WORKFLOW_REF: ${{ github.ref }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          CHECKED_OUT_SHA="$(git rev-parse HEAD)"
+          export CHECKED_OUT_SHA
+          node --input-type=module <<'NODE'
+          import { assertProductionDispatch } from './apps/web/scripts/release-workflow-gates.mjs';
+
+          assertProductionDispatch({
+            workflowRef: process.env.WORKFLOW_REF,
+            candidateSha: process.env.CANDIDATE_SHA,
+            checkedOutSha: process.env.CHECKED_OUT_SHA,
+            confirmation: process.env.CONFIRMATION,
+          });
+          NODE
       - uses: pnpm/action-setup@v4
         with:
           version: 9.0.0
@@ -33,6 +63,46 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Verify same-SHA protected Preview evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PREVIEW_RUN_ID: ${{ inputs.preview_run_id }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          if ! [[ "$PREVIEW_RUN_ID" =~ ^[1-9][0-9]*$ ]]; then
+            echo 'preview_run_id must be a positive numeric Actions run ID.' >&2
+            exit 1
+          fi
+          gh api --header 'Accept: application/vnd.github+json' \
+            "/repos/$REPOSITORY/actions/runs/$PREVIEW_RUN_ID" > "$RUNNER_TEMP/preview-run.json"
+          gh api --header 'Accept: application/vnd.github+json' \
+            "/repos/$REPOSITORY/actions/runs/$PREVIEW_RUN_ID/jobs?per_page=100" > "$RUNNER_TEMP/preview-jobs.json"
+          export PREVIEW_RUN_JSON="$RUNNER_TEMP/preview-run.json"
+          export PREVIEW_JOBS_JSON="$RUNNER_TEMP/preview-jobs.json"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { assertPreviewEvidence } from './apps/web/scripts/release-workflow-gates.mjs';
+
+          const previewRunId = Number(process.env.PREVIEW_RUN_ID);
+          assertPreviewEvidence({
+            candidateSha: process.env.CANDIDATE_SHA,
+            expectedRunId: previewRunId,
+            run: JSON.parse(readFileSync(process.env.PREVIEW_RUN_JSON, 'utf8')),
+            jobs: JSON.parse(readFileSync(process.env.PREVIEW_JOBS_JSON, 'utf8')).jobs,
+          });
+          NODE
+      - name: Recheck current main before production connection
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          CURRENT_MAIN_SHA="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
+          export CURRENT_MAIN_SHA
+          node --input-type=module <<'NODE'
+          import { assertExactRevision } from './apps/web/scripts/release-workflow-gates.mjs';
+
+          assertExactRevision(process.env.CANDIDATE_SHA, process.env.CURRENT_MAIN_SHA);
+          NODE
       - name: Verify direct Supabase migration connection
         env:
           DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
@@ -56,3 +126,16 @@ jobs:
         env:
           DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
         run: pnpm --filter @manawg/web db:check
+      - name: Record production migration evidence
+        if: always()
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          PREVIEW_RUN_ID: ${{ inputs.preview_run_id }}
+        run: |
+          {
+            printf '%s\n' '### Production migration evidence'
+            printf '%s\n' "candidate main SHA: $CANDIDATE_SHA"
+            printf '%s\n' "same-SHA Preview CI run: $PREVIEW_RUN_ID"
+            printf '%s\n' '- execution mode: protected-production-migration'
+            printf '%s\n' '- result: ${{ job.status }}'
+          } >> "$GITHUB_STEP_SUMMARY"

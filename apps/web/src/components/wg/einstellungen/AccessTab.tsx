@@ -5,7 +5,6 @@ import { SocialLoginButtons, type SocialProvider } from '@/components/auth/Socia
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -74,7 +73,6 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	const [accessMessage, setAccessMessage] = useState<string | null>(null);
 	const [accessError, setAccessError] = useState<string | null>(null);
 	const [rotateConfirm, setRotateConfirm] = useState(false);
-	const [confirmLeave, setConfirmLeave] = useState(false);
 	const [accountSignOutPending, setAccountSignOutPending] = useState(false);
 	const [accountSignOutError, setAccountSignOutError] = useState<string | null>(null);
 	const [deleteStage, setDeleteStage] = useState<'idle' | 'confirm' | 'pending'>('idle');
@@ -83,6 +81,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	const [memberToDeactivate, setMemberToDeactivate] = useState<{
 		id: string;
 		name: string;
+		selfLeave?: boolean;
 	} | null>(null);
 	const [reactivatingId, setReactivatingId] = useState<string | null>(null);
 	const [memberActionMessage, setMemberActionMessage] = useState<string | null>(null);
@@ -92,6 +91,12 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	const inactiveMembers = members.filter((m) => !m.active);
 
 	function handleMemberDeactivated(name: string): void {
+		if (memberToDeactivate?.id === identity.memberId) {
+			clearIdentity(wg.id);
+			forgetWg(wg.shareCode);
+			router.push('/');
+			return;
+		}
 		setMemberActionError(null);
 		setMemberActionMessage(`${name} ist jetzt als ausgezogen markiert.`);
 		void refreshMembers(identity.memberId);
@@ -126,12 +131,6 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 		shareCodeRotatedAt: wg.shareCodeRotatedAt ?? null,
 	});
 
-	function handleLeave(): void {
-		clearIdentity(wg.id);
-		forgetWg(wg.shareCode);
-		router.push('/');
-	}
-
 	async function handleAccountSignOut(): Promise<void> {
 		if (accountSignOutPending) return;
 		setAccountSignOutPending(true);
@@ -150,14 +149,15 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	}
 
 	function openLeaveConfirm(): void {
-		setConfirmLeave(true);
+		if (activeMembers.length <= 1) return;
+		setMemberToDeactivate({ id: identity.memberId, name: identity.name, selfLeave: true });
 		setDeleteStage('idle');
 		setDeleteError(null);
 		setConfirmText('');
 	}
 
 	function openDeleteConfirm(): void {
-		setConfirmLeave(false);
+		setMemberToDeactivate(null);
 		setDeleteStage('confirm');
 		setDeleteError(null);
 		setConfirmText('');
@@ -482,7 +482,10 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 					</p>
 				</div>
 
-				<Section title="Konto abmelden" hint="Meldet dein Social-Konto auf diesem Gerät ab.">
+				<Section
+					title="Konto abmelden"
+					hint="Meldet deine Account-Sitzung auf diesem Gerät ab. WG-Mitgliedschaft und Daten bleiben bestehen."
+				>
 					<div className="p-4">
 						<Button
 							type="button"
@@ -505,18 +508,38 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 
 				<Section
 					title="WG verlassen"
-					hint="Entfernt dich nur auf diesem Gerät. Deine Einträge bleiben."
+					hint="Entfernt deine Mitgliedschaft aus dieser WG. Deine Einträge und offenen Salden bleiben erhalten."
 				>
-					<div className="p-4">
-						<Button
-							type="button"
-							variant="destructive"
-							onClick={openLeaveConfirm}
-							className="h-11 min-h-[44px] w-full"
-						>
-							<LogOut aria-hidden />
-							WG auf diesem Gerät verlassen
-						</Button>
+					<div className="grid gap-3 p-4">
+						{activeMembers.length <= 1 ? (
+							<>
+								<p className="text-muted-foreground text-[13px]">
+									Du bist das letzte aktive Mitglied. Deine Mitgliedschaft bleibt bestehen; die WG
+									bleibt bestehen. Melde dich stattdessen auf diesem Gerät ab.
+								</p>
+								<Button
+									type="button"
+									variant="destructive"
+									onClick={() => void handleAccountSignOut()}
+									disabled={accountSignOutPending}
+									aria-label="Stattdessen Konto abmelden"
+									className="h-11 min-h-[44px] w-full"
+								>
+									{accountSignOutPending ? <Spinner aria-hidden /> : <LogOut aria-hidden />}
+									{accountSignOutPending ? 'Melde ab…' : 'Stattdessen Konto abmelden'}
+								</Button>
+							</>
+						) : memberToDeactivate?.selfLeave ? null : (
+							<Button
+								type="button"
+								variant="destructive"
+								onClick={openLeaveConfirm}
+								className="h-11 min-h-[44px] w-full"
+							>
+								<LogOut aria-hidden />
+								WG auf diesem Gerät verlassen
+							</Button>
+						)}
 					</div>
 				</Section>
 
@@ -537,38 +560,6 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 					</div>
 				</Section>
 			</div>
-
-			<AlertDialog
-				open={confirmLeave}
-				onOpenChange={(open) => {
-					if (!open) setConfirmLeave(false);
-				}}
-			>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogMedia>
-							<LogOut aria-hidden />
-						</AlertDialogMedia>
-						<AlertDialogTitle>WG auf diesem Gerät verlassen?</AlertDialogTitle>
-						<AlertDialogDescription>
-							Wirklich verlassen? Du musst dich beim nächsten Öffnen neu auswählen. Deine Einträge
-							in der WG bleiben erhalten.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel>Abbrechen</AlertDialogCancel>
-						<AlertDialogAction
-							onClick={(event) => {
-								event.preventDefault();
-								handleLeave();
-							}}
-						>
-							<LogOut aria-hidden />
-							Verlassen
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
 
 			<AlertDialog
 				open={deleteStage !== 'idle'}
@@ -633,6 +624,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				<MemberDeactivateDialog
 					encodedShareCode={encodedShareCode}
 					member={memberToDeactivate}
+					selfLeave={memberToDeactivate.selfLeave}
 					viewerMemberId={identity.memberId}
 					viewerMemberToken={identity.memberToken}
 					onClose={() => setMemberToDeactivate(null)}

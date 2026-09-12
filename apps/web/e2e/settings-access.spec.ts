@@ -269,32 +269,44 @@ test.describe('Settings access controls', () => {
 			},
 			{ wgId, memberId },
 		);
+		await page.route(`**/api/wg/MTE8PZAT/members/${memberId}`, async (route) => {
+			if (route.request().method() === 'GET') {
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({
+						member: { id: memberId, name: 'dsaf', active: true },
+						openBalances: [],
+					}),
+				});
+				return;
+			}
+			await route.fallback();
+		});
 
 		await gotoWithRetry(page, '/wg/MTE8PZAT/einstellungen#zugang');
-		const leaveDialog = page.getByRole('alertdialog', { name: 'WG auf diesem Gerät verlassen?' });
+		const leaveDialog = page.getByRole('alertdialog', { name: 'Wirklich verlassen?' });
 		const deleteDialog = page.getByRole('alertdialog', { name: 'WG dauerhaft löschen?' });
 		await page.getByRole('button', { name: 'WG auf diesem Gerät verlassen' }).click();
 		await expect(leaveDialog).toBeVisible();
-		await expect(leaveDialog).toContainText('Wirklich verlassen?');
-		await expect(leaveDialog.getByRole('button', { name: 'Abbrechen' })).toBeVisible();
-		await leaveDialog.getByRole('button', { name: 'Abbrechen' }).click();
+		await expect(deleteDialog).toBeHidden();
+		await expect(page.getByLabel('WG-Code zur Bestätigung')).toHaveCount(0);
+		await leaveDialog.getByRole('button', { name: 'WG-Verlassen abbrechen' }).click();
 		await expect(leaveDialog).toBeHidden();
 
 		await page.getByRole('button', { name: 'Komplette WG für alle löschen' }).click();
-
-		await expect(leaveDialog).toBeHidden();
 		await expect(deleteDialog).toBeVisible();
+		await expect(leaveDialog).toBeHidden();
+		await expect(page.getByRole('alertdialog')).toHaveCount(1);
 		await expect(deleteDialog.getByLabel('WG-Code zur Bestätigung')).toBeVisible();
-		await expect(deleteDialog.getByRole('button', { name: 'Abbrechen' })).toBeVisible();
 		await deleteDialog.getByRole('button', { name: 'Abbrechen' }).click();
 		await expect(deleteDialog).toBeHidden();
 
 		await page.getByRole('button', { name: 'WG auf diesem Gerät verlassen' }).click();
-
 		await expect(leaveDialog).toBeVisible();
-		await expect(leaveDialog).toContainText('Wirklich verlassen?');
+		await expect(page.getByRole('alertdialog')).toHaveCount(1);
 		await expect(deleteDialog).toBeHidden();
-		await expect(deleteDialog.getByLabel('WG-Code zur Bestätigung')).toHaveCount(0);
+		await expect(page.getByLabel('WG-Code zur Bestätigung')).toHaveCount(0);
 	});
 
 	test('explains when deleting an already-missing WG fails', async ({ page }) => {

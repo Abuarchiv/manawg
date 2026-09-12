@@ -40,6 +40,7 @@ interface ChoreFormProps {
 	members: ChoreMember[];
 	pending: boolean;
 	onSubmit: () => void;
+	children?: React.ReactNode;
 }
 
 export function ChoreForm({
@@ -58,6 +59,7 @@ export function ChoreForm({
 	members,
 	pending,
 	onSubmit,
+	children,
 }: ChoreFormProps): React.ReactElement {
 	const presets = recurrenceType === 'months' ? INTERVAL_PRESETS_MONTHS : INTERVAL_PRESETS_DAYS;
 	return (
@@ -80,6 +82,7 @@ export function ChoreForm({
 					}}
 					className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
 				>
+					{children}
 					<FieldGroup>
 						<Field data-disabled={pending}>
 							<FieldLabel htmlFor="chore-title">Aufgabe</FieldLabel>
@@ -135,7 +138,10 @@ export function ChoreForm({
 								))}
 							</ToggleGroup>
 							{recurrenceType === 'months' && (
-								<FieldDescription>Wiederholt sich nach Kalendermonaten.</FieldDescription>
+								<FieldDescription>
+									Wiederholt sich im gewählten Monatsabstand. Bei einer späten Erledigung beginnt
+									der Rhythmus neu.
+								</FieldDescription>
 							)}
 						</Field>
 						<Field data-disabled={pending}>

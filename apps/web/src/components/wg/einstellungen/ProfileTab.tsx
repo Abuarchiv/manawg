@@ -83,7 +83,10 @@ export function ProfileTab({
 
 	return (
 		<>
-			<Section title="Dein Profil" hint="Diese Identität ist nur an dieses Gerät gebunden.">
+			<Section
+				title="Dein Profil"
+				hint="Dein Account verbindet dich mit dieser WG. Nicht synchronisierte Entwürfe und Offline-Aktionen bleiben auf diesem Gerät."
+			>
 				<div className="flex min-h-[44px] items-center gap-3 px-4 py-3.5">
 					<MemberAvatar name={memberName} size={40} />
 					<div className="min-w-0 flex-1">
@@ -91,9 +94,13 @@ export function ProfileTab({
 						<div className="text-muted-foreground mt-0.5 text-[12.5px]">in {wgName}</div>
 					</div>
 				</div>
+				<p className="border-border text-muted-foreground border-t px-4 py-3 text-xs leading-relaxed">
+					Dein Account ist mit dieser WG-Mitgliedschaft verbunden. Nicht synchronisierte Entwürfe
+					und Offline-Aktionen bleiben auf diesem Gerät.
+				</p>
 			</Section>
 
-			<Section title="PayPal" hint="Damit Mitbewohner dir offene Ausgleiche direkt zahlen können.">
+			<Section title="PayPal" hint="Empfängerkennung für ausdrücklich gestartete PayPal-Zahlungen.">
 				<div className="p-4">
 					<FieldGroup>
 						<Field>
@@ -122,7 +129,8 @@ export function ProfileTab({
 								</Button>
 							</div>
 							<FieldDescription>
-								Die Merchant-ID findest du in PayPal unter „Unternehmensinformationen“.
+								Die Merchant-ID ist deine PayPal-Empfängerkennung. Das Speichern hinterlegt nur
+								diese Kennung; es überweist kein Geld und bestätigt keine PayPal-Freischaltung.
 							</FieldDescription>
 						</Field>
 					</FieldGroup>

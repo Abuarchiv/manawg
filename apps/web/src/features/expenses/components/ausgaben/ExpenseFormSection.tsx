@@ -46,9 +46,6 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { ImageUploader } from '@/components/wg/ImageUploader';
 import type { Member } from '@/components/wg/WgContextProvider';
-import { parseEuroAmount } from '@/core/utils/amount';
-import { CENTS_PER_EURO } from '@/core/utils/money';
-import { buildSplitsFromForm } from '@/features/expenses/expense-split-input';
 import { ArrowLeft, ChevronDown, Receipt, Repeat2 } from 'lucide-react';
 import { type Dispatch, type SetStateAction, useState } from 'react';
 import { ManualSplitSummary } from './ManualSplitSummary';
@@ -91,7 +88,10 @@ interface ExpenseFormSectionProps {
 	onCancel: () => void;
 	onDiscard: () => void;
 	title: string;
-	rotationOffset: number;
+	previewSplits: Array<{ debtorMemberId: string; amountCents: number }> | null;
+	pendingPrefillDescription: string | null;
+	onReplacePrefill: () => void;
+	isEditingExpense: boolean;
 	notice: ActionNotice | null;
 	onSubmit: () => void;
 }
@@ -130,26 +130,18 @@ export function ExpenseFormSection({
 	onDiscard,
 	onSubmit,
 	title,
-	rotationOffset,
+	previewSplits,
+	pendingPrefillDescription,
+	onReplacePrefill,
+	isEditingExpense,
 	notice,
 }: ExpenseFormSectionProps): React.ReactElement {
 	const [showRecurring, setShowRecurring] = useState(false);
 	const [showReceipt, setShowReceipt] = useState(Boolean(imageUrl));
 	const [confirmClose, setConfirmClose] = useState(false);
+	const [replaceOpen, setReplaceOpen] = useState(false);
 	const recurringOpen =
 		showRecurring || editingRecurringExpense !== null || isEditingQueuedRecurring;
-	const amount = parseEuroAmount(amountStr);
-	const splitResult =
-		amount !== null && amount > 0
-			? buildSplitsFromForm({
-					splitMode,
-					members,
-					manualSplits,
-					amountCents: Math.round(amount * CENTS_PER_EURO),
-					rotationOffset,
-				})
-			: null;
-
 	function requestClose() {
 		if (formSaving) return;
 		if (description || amountStr || imageUrl || Object.values(manualSplits).some(Boolean))
@@ -199,6 +191,25 @@ export function ExpenseFormSection({
 						<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
 							<FieldGroup>
 								{notice && <ActionNoticeBanner notice={notice} />}
+								<p className="text-sm text-muted-foreground">
+									{isEditingExpense
+										? 'Änderungen werden erst beim Speichern für die WG übernommen.'
+										: 'Die Ausgabe ist noch nicht gespeichert. Prüfe Betrag und Aufteilung.'}
+								</p>
+								{pendingPrefillDescription && (
+									<Alert>
+										<AlertDescription>Dein vorhandener Entwurf bleibt erhalten.</AlertDescription>
+										<Button
+											type="button"
+											variant="outline"
+											className="mt-3 h-auto min-h-11 w-full whitespace-normal"
+											disabled={formSaving}
+											onClick={() => setReplaceOpen(true)}
+										>
+											Entwurf verwerfen und „{pendingPrefillDescription}“ übernehmen
+										</Button>
+									</Alert>
+								)}
 								{(isEditingQueuedExpense || isEditingQueuedRecurring) && (
 									<Alert>
 										<AlertDescription>
@@ -318,7 +329,7 @@ export function ExpenseFormSection({
 									)}
 									<SplitReview
 										members={splitCandidates}
-										splits={splitResult?.ok ? splitResult.splits : null}
+										splits={previewSplits}
 										paidByMemberId={paidByMemberId}
 									/>
 								</FieldSet>
@@ -482,6 +493,28 @@ export function ExpenseFormSection({
 					</form>
 				</DialogContent>
 			</Dialog>
+
+			<AlertDialog open={replaceOpen} onOpenChange={setReplaceOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Entwurf verwerfen?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Deine ungespeicherten Eingaben werden durch „{pendingPrefillDescription}“ ersetzt.
+							Bereits gespeicherte Ausgaben bleiben erhalten.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter className="flex-col sm:flex-col">
+						<AlertDialogCancel className="min-h-11">Entwurf behalten</AlertDialogCancel>
+						<AlertDialogAction
+							variant="destructive"
+							className="min-h-11"
+							onClick={onReplacePrefill}
+						>
+							Entwurf verwerfen
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 			<AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
 				<AlertDialogContent>
 					<AlertDialogHeader>

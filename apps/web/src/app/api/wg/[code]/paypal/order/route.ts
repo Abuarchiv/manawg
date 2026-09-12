@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { db, expensePayments, wgMembers } from '@/core/db';
+import { expensePayments, wgMembers } from '@/core/db';
 import {
 	badRequest,
 	conflict,
@@ -17,6 +17,7 @@ import { computeBalances } from '@/features/expenses/debts';
 import {
 	PAYPAL_ORDER_TTL_MS,
 	loadCompletedExpensePayments,
+	withExpensePaymentLock,
 } from '@/features/expenses/expense-payments';
 import { loadOpenExpenses } from '@/features/expenses/open-expenses';
 import { and, eq, inArray, lte, sql } from 'drizzle-orm';
@@ -56,124 +57,158 @@ export const POST = withWgRoute('paypal order POST', async (req, { code }) => {
 	if (!limited.success) return tooMany();
 
 	try {
-		const [members, expenses, payments] = await Promise.all([
-			db
+		const reservation = await withExpensePaymentLock(auth.wg.id, async (tx) => {
+			const [members, expenses, payments] = await Promise.all([
+				tx
+					.select({
+						id: wgMembers.id,
+						name: wgMembers.name,
+						color: wgMembers.color,
+						paypalMerchantId: wgMembers.paypalMerchantId,
+					})
+					.from(wgMembers)
+					.where(eq(wgMembers.wgId, auth.wg.id)),
+				loadOpenExpenses(auth.wg.id, tx),
+				loadCompletedExpensePayments(auth.wg.id, tx),
+			]);
+			const memberById = new Map(members.map((member) => [member.id, member]));
+			const payee = memberById.get(parsed.data.toMemberId);
+			if (!payee) return { kind: 'response' as const, response: badRequest('member_not_in_wg') };
+			if (!payee.paypalMerchantId) {
+				return { kind: 'response' as const, response: conflict('paypal_recipient_missing') };
+			}
+			if (
+				expenses.some(
+					(expense) =>
+						expense.currency !== undefined &&
+						expense.currency !== 'EUR' &&
+						expense.splits.some((split) => split.settledAt === null && split.amountCents > 0),
+				)
+			) {
+				return { kind: 'response' as const, response: conflict('paypal_currency_unsupported') };
+			}
+
+			const debt = simplifyDebts(computeNetBalances(expenses, members, payments)).find(
+				(item) => item.fromId === parsed.data.fromMemberId && item.toId === parsed.data.toMemberId,
+			);
+			if (!debt || debt.cents <= 0) {
+				return { kind: 'response' as const, response: conflict('no_open_debt') };
+			}
+			const directDebt = computeBalances(expenses, payments).find(
+				(item) =>
+					item.debtorId === parsed.data.fromMemberId && item.creditorId === parsed.data.toMemberId,
+			);
+			if (!directDebt || directDebt.amountCents < debt.cents) {
+				return { kind: 'response' as const, response: conflict('paypal_direct_debt_required') };
+			}
+
+			const now = new Date();
+			const existing = await tx
 				.select({
-					id: wgMembers.id,
-					name: wgMembers.name,
-					color: wgMembers.color,
-					paypalMerchantId: wgMembers.paypalMerchantId,
+					id: expensePayments.id,
+					status: expensePayments.status,
+					orderId: expensePayments.providerOrderId,
+					amountCents: expensePayments.amountCents,
+					expiresAt: expensePayments.expiresAt,
 				})
-				.from(wgMembers)
-				.where(eq(wgMembers.wgId, auth.wg.id)),
-			loadOpenExpenses(auth.wg.id),
-			loadCompletedExpensePayments(auth.wg.id),
-		]);
-		const memberById = new Map(members.map((member) => [member.id, member]));
-		const payee = memberById.get(parsed.data.toMemberId);
-		if (!payee) return badRequest('member_not_in_wg');
-		if (!payee.paypalMerchantId) return conflict('paypal_recipient_missing');
-		if (
-			expenses.some(
-				(expense) =>
-					expense.currency !== undefined &&
-					expense.currency !== 'EUR' &&
-					expense.splits.some((split) => split.settledAt === null && split.amountCents > 0),
-			)
-		) {
-			return conflict('paypal_currency_unsupported');
-		}
-
-		const debt = simplifyDebts(computeNetBalances(expenses, members, payments)).find(
-			(item) => item.fromId === parsed.data.fromMemberId && item.toId === parsed.data.toMemberId,
-		);
-		if (!debt || debt.cents <= 0) return conflict('no_open_debt');
-		const directDebt = computeBalances(expenses, payments).find(
-			(item) =>
-				item.debtorId === parsed.data.fromMemberId && item.creditorId === parsed.data.toMemberId,
-		);
-		if (!directDebt || directDebt.amountCents < debt.cents) {
-			return conflict('paypal_direct_debt_required');
-		}
-
-		const now = new Date();
-		const existing = await db
-			.select({
-				id: expensePayments.id,
-				status: expensePayments.status,
-				orderId: expensePayments.providerOrderId,
-				amountCents: expensePayments.amountCents,
-				expiresAt: expensePayments.expiresAt,
-			})
-			.from(expensePayments)
-			.where(
-				and(
-					eq(expensePayments.wgId, auth.wg.id),
-					eq(expensePayments.fromMemberId, parsed.data.fromMemberId),
-					eq(expensePayments.toMemberId, parsed.data.toMemberId),
-					inArray(expensePayments.status, ['created', 'capturing']),
-				),
-			)
-			.limit(1);
-		const current = existing[0];
-		if (current?.status === 'capturing') return conflict('paypal_order_in_progress');
-		if (current && current.expiresAt > now) {
-			if (current.orderId.startsWith('pending:')) return conflict('paypal_order_creating');
-			return NextResponse.json({ orderId: current.orderId, amountCents: current.amountCents });
-		}
-		if (current) {
-			const expired = await db
-				.update(expensePayments)
-				.set({ status: 'failed' })
+				.from(expensePayments)
 				.where(
 					and(
-						eq(expensePayments.id, current.id),
-						eq(expensePayments.status, 'created'),
-						lte(expensePayments.expiresAt, now),
+						eq(expensePayments.wgId, auth.wg.id),
+						eq(expensePayments.fromMemberId, parsed.data.fromMemberId),
+						eq(expensePayments.toMemberId, parsed.data.toMemberId),
+						inArray(expensePayments.status, ['created', 'capturing']),
 					),
 				)
-				.returning({ id: expensePayments.id });
-			if (expired.length === 0) return conflict('paypal_order_in_progress');
-		}
+				.limit(1);
+			const current = existing[0];
+			if (current?.status === 'capturing') {
+				return { kind: 'response' as const, response: conflict('paypal_order_in_progress') };
+			}
+			if (current && current.expiresAt > now) {
+				if (current.orderId.startsWith('pending:')) {
+					return { kind: 'response' as const, response: conflict('paypal_order_creating') };
+				}
+				return {
+					kind: 'response' as const,
+					response: NextResponse.json({
+						orderId: current.orderId,
+						amountCents: current.amountCents,
+					}),
+				};
+			}
+			if (current) {
+				const expired = await tx
+					.update(expensePayments)
+					.set({ status: 'failed' })
+					.where(
+						and(
+							eq(expensePayments.id, current.id),
+							eq(expensePayments.status, 'created'),
+							lte(expensePayments.expiresAt, now),
+						),
+					)
+					.returning({ id: expensePayments.id });
+				if (expired.length === 0) {
+					return { kind: 'response' as const, response: conflict('paypal_order_in_progress') };
+				}
+			}
 
-		const [payment] = await db
-			.insert(expensePayments)
-			.values({
-				wgId: auth.wg.id,
-				fromMemberId: parsed.data.fromMemberId,
-				toMemberId: parsed.data.toMemberId,
+			const [payment] = await tx
+				.insert(expensePayments)
+				.values({
+					wgId: auth.wg.id,
+					fromMemberId: parsed.data.fromMemberId,
+					toMemberId: parsed.data.toMemberId,
+					amountCents: debt.cents,
+					currency: 'EUR',
+					providerOrderId: `pending:${randomUUID()}`,
+					payeeMerchantId: payee.paypalMerchantId,
+					expiresAt: new Date(now.getTime() + PAYPAL_ORDER_TTL_MS),
+				})
+				.onConflictDoNothing({
+					target: [expensePayments.wgId, expensePayments.fromMemberId, expensePayments.toMemberId],
+					where: sql`${expensePayments.status} in ('created', 'capturing')`,
+				})
+				.returning({ id: expensePayments.id });
+			if (!payment) {
+				return { kind: 'response' as const, response: conflict('paypal_order_in_progress') };
+			}
+
+			return {
+				kind: 'created' as const,
+				paymentId: payment.id,
 				amountCents: debt.cents,
-				currency: 'EUR',
-				providerOrderId: `pending:${randomUUID()}`,
 				payeeMerchantId: payee.paypalMerchantId,
-				expiresAt: new Date(now.getTime() + PAYPAL_ORDER_TTL_MS),
-			})
-			.onConflictDoNothing({
-				target: [expensePayments.wgId, expensePayments.fromMemberId, expensePayments.toMemberId],
-				where: sql`${expensePayments.status} in ('created', 'capturing')`,
-			})
-			.returning({ id: expensePayments.id });
-		if (!payment) return conflict('paypal_order_in_progress');
+				payeeName: payee.name,
+				fromName: memberById.get(parsed.data.fromMemberId)?.name ?? 'Mitglied',
+			};
+		});
+		if (reservation.kind === 'response') return reservation.response;
 
 		try {
 			const order = await createPayPalOrder({
-				amountCents: debt.cents,
+				amountCents: reservation.amountCents,
 				currency: 'EUR',
-				description: `ManaWG-Ausgleich: ${memberById.get(parsed.data.fromMemberId)?.name ?? 'Mitglied'} an ${payee.name}`,
-				payeeMerchantId: payee.paypalMerchantId,
-				customId: `manawg:${auth.wg.id}:${payment.id}`,
+				description: `ManaWG-Ausgleich: ${reservation.fromName} an ${reservation.payeeName}`,
+				payeeMerchantId: reservation.payeeMerchantId,
+				customId: `manawg:${auth.wg.id}:${reservation.paymentId}`,
 			});
 			if (!order.id) throw new Error('paypal_order_id_missing');
-			await db
-				.update(expensePayments)
-				.set({ providerOrderId: order.id })
-				.where(eq(expensePayments.id, payment.id));
-			return NextResponse.json({ orderId: order.id, amountCents: debt.cents });
+			await withExpensePaymentLock(auth.wg.id, (tx) =>
+				tx
+					.update(expensePayments)
+					.set({ providerOrderId: order.id })
+					.where(eq(expensePayments.id, reservation.paymentId)),
+			);
+			return NextResponse.json({ orderId: order.id, amountCents: reservation.amountCents });
 		} catch (err) {
-			await db
-				.update(expensePayments)
-				.set({ status: 'failed' })
-				.where(eq(expensePayments.id, payment.id));
+			await withExpensePaymentLock(auth.wg.id, (tx) =>
+				tx
+					.update(expensePayments)
+					.set({ status: 'failed' })
+					.where(eq(expensePayments.id, reservation.paymentId)),
+			);
 			throw err;
 		}
 	} catch (err) {

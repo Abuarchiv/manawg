@@ -64,7 +64,10 @@ export const ExpenseRow = memo(function ExpenseRow({
 	highlighted,
 }: ExpenseRowProps) {
 	const isPayer = expense.paidByMemberId === currentMemberId;
-	const settledCount = expense.splits.filter((split) => split.settledAt !== null).length;
+	const paymentSplits = expense.splits.filter(
+		(split) => split.debtorMemberId !== expense.paidByMemberId && split.amountCents > 0,
+	);
+	const settledCount = paymentSplits.filter((split) => split.settledAt !== null).length;
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const [settleCandidate, setSettleCandidate] = useState<ExpenseSplit | null>(null);
 	return (
@@ -100,9 +103,9 @@ export const ExpenseRow = memo(function ExpenseRow({
 							</time>
 						</ItemDescription>
 						<div className="flex flex-wrap gap-1.5 pt-1">
-							{expense.splits.length > 0 && (
+							{paymentSplits.length > 0 && (
 								<Badge variant="secondary">
-									{settledCount}/{expense.splits.length} beglichen
+									{settledCount}/{paymentSplits.length} beglichen
 								</Badge>
 							)}
 							{expense.imageUrl && (
@@ -177,25 +180,29 @@ export const ExpenseRow = memo(function ExpenseRow({
 											<ItemDescription>
 												{ownShare
 													? 'Eigener Anteil der zahlenden Person'
-													: settled
-														? 'Als beglichen vermerkt'
-														: `Offen an ${memberName(expense.paidByMemberId)}`}
+													: split.amountCents === 0
+														? 'Kein Anteil'
+														: settled
+															? 'Als beglichen vermerkt'
+															: `Offen an ${memberName(expense.paidByMemberId)}`}
 											</ItemDescription>
 										</ItemContent>
-										<Button
-											variant={settled ? 'secondary' : 'outline'}
-											className="min-h-11"
-											onClick={() => setSettleCandidate(split)}
-											disabled={isPending(split.id)}
-											aria-label={`${memberName(split.debtorMemberId)} Zahlung als ${settled ? 'offen' : 'beglichen'} markieren`}
-										>
-											{isPending(split.id) ? (
-												<Spinner data-icon="inline-start" />
-											) : (
-												<Check data-icon="inline-start" />
-											)}
-											{settled ? 'Beglichen' : 'Offen'}
-										</Button>
+										{!ownShare && split.amountCents > 0 && (
+											<Button
+												variant={settled ? 'secondary' : 'outline'}
+												className="min-h-11"
+												onClick={() => setSettleCandidate(split)}
+												disabled={isPending(split.id)}
+												aria-label={`${memberName(split.debtorMemberId)} Zahlung als ${settled ? 'offen' : 'beglichen'} markieren`}
+											>
+												{isPending(split.id) ? (
+													<Spinner data-icon="inline-start" />
+												) : (
+													<Check data-icon="inline-start" />
+												)}
+												{settled ? 'Wieder öffnen' : 'Als bezahlt eintragen'}
+											</Button>
+										)}
 									</Item>
 								);
 							})}

@@ -1,6 +1,6 @@
 # ManaWG App User Experience Specification
 
-**Status:** Draft for product review. This document defines the intended app experience and the order of UX work; it does not claim that the experience has been validated with residents.
+**Status:** Local implementation completed and source-reviewed on 2026-09-05; resident validation remains open. This document defines the intended experience. See the [implementation record](../../releases/product-experience-implementation.md) for delivered behavior, local proof and remaining limits; no resident satisfaction claim is made.
 
 ## Objective
 

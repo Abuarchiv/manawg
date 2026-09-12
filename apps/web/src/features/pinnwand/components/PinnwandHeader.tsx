@@ -29,7 +29,7 @@ export function PinnwandHeader({
 }: PinnwandHeaderProps): React.ReactElement {
 	return (
 		<header className="flex flex-col gap-4">
-			<div className="flex items-center justify-between gap-3">
+			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div className="min-w-0">
 					<p className="text-xs text-muted-foreground">Austausch</p>
 					<h1 className="text-2xl font-semibold tracking-tight">Pinnwand</h1>
@@ -41,8 +41,11 @@ export function PinnwandHeader({
 								: `${itemCount} Beitr${itemCount === 1 ? 'ag' : 'äge'}`}
 						{refreshing && <Spinner aria-label="Wird aktualisiert" />}
 					</p>
+					<p className="mt-1 text-xs text-muted-foreground">
+						Für Infos, die bleiben. Termine gehören in den Kalender.
+					</p>
 				</div>
-				<div className="flex shrink-0 items-center gap-1.5">
+				<div className="flex shrink-0 items-center justify-end gap-1.5">
 					<CalendarLink wgBaseHref={wgBaseHref} />
 					<Button
 						onClick={onToggleComposer}

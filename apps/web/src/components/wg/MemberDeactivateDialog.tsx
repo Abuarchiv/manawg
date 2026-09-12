@@ -3,7 +3,6 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -12,11 +11,12 @@ import {
 	AlertDialogMedia,
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
 import { TriangleAlert as AlertTriangle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /** One open debt of the member being moved out, from their own perspective. */
 interface OpenBalanceDto {
@@ -42,6 +42,8 @@ interface MemberDeactivateDialogProps {
 	/** Identity of the device performing the action (for the member-id header). */
 	viewerMemberId: string;
 	viewerMemberToken?: string | undefined;
+	/** Use the same balance review for a member leaving their own WG. */
+	selfLeave?: boolean | undefined;
 	onClose: () => void;
 	onDeactivated: (name: string) => void;
 }
@@ -59,6 +61,7 @@ export function MemberDeactivateDialog({
 	member,
 	viewerMemberId,
 	viewerMemberToken,
+	selfLeave = false,
 	onClose,
 	onDeactivated,
 }: MemberDeactivateDialogProps) {
@@ -67,6 +70,7 @@ export function MemberDeactivateDialog({
 	const [openBalances, setOpenBalances] = useState<OpenBalanceDto[]>([]);
 	const [submitting, setSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
+	const submittingRef = useRef(false);
 
 	// Load the open balances once per opened member.
 	useEffect(() => {
@@ -90,7 +94,8 @@ export function MemberDeactivateDialog({
 	}, [encodedShareCode, member.id, viewerMemberId]);
 
 	async function handleConfirm(): Promise<void> {
-		if (submitting) return;
+		if (submittingRef.current) return;
+		submittingRef.current = true;
 		setSubmitting(true);
 		setSubmitError(null);
 		const res = await apiFetch<MemberDeactivateResponse>(
@@ -107,7 +112,12 @@ export function MemberDeactivateDialog({
 			onClose();
 			return;
 		}
-		setSubmitError('Auszug konnte nicht gespeichert werden. Bitte erneut versuchen.');
+		setSubmitError(
+			selfLeave
+				? 'WG konnte nicht verlassen werden. Deine Mitgliedschaft bleibt bestehen. Bitte erneut versuchen.'
+				: 'Auszug konnte nicht gespeichert werden. Bitte erneut versuchen.',
+		);
+		submittingRef.current = false;
 		setSubmitting(false);
 	}
 
@@ -123,11 +133,13 @@ export function MemberDeactivateDialog({
 					<AlertDialogMedia>
 						<AlertTriangle aria-hidden />
 					</AlertDialogMedia>
-					<AlertDialogTitle>{member.name} ausziehen?</AlertDialogTitle>
+					<AlertDialogTitle>
+						{selfLeave ? 'Wirklich verlassen?' : `${member.name} ausziehen?`}
+					</AlertDialogTitle>
 					<AlertDialogDescription>
-						{member.name} verschwindet aus allen Listen (Rotation, Aufteilung, Auswahl), behält aber
-						Zugriff auf dieses Gerät. Historie und Salden bleiben erhalten. Du kannst den Auszug
-						jederzeit rückgängig machen.
+						{selfLeave
+							? 'Deine Mitgliedschaft in dieser WG wird deaktiviert. Deine Einträge und offenen Salden bleiben erhalten. Ein aktives Admin-Mitglied mit der nötigen Berechtigung kann dich später wieder aktivieren.'
+							: `${member.name} verschwindet aus allen Listen (Rotation, Aufteilung, Auswahl), behält aber Zugriff auf dieses Gerät. Historie und Salden bleiben erhalten. Du kannst den Auszug jederzeit rückgängig machen.`}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 
@@ -139,13 +151,20 @@ export function MemberDeactivateDialog({
 						</p>
 					) : loadError ? (
 						<Alert>
-							<AlertDescription>{loadError} Der Auszug ist trotzdem möglich.</AlertDescription>
+							<AlertDescription>
+								{loadError}{' '}
+								{selfLeave
+									? 'Das Verlassen ist trotzdem möglich.'
+									: 'Der Auszug ist trotzdem möglich.'}
+							</AlertDescription>
 						</Alert>
 					) : openBalances.length === 0 ? (
 						<p className="text-muted-foreground text-[13px]">Keine offenen Salden.</p>
 					) : (
 						<Alert>
-							<AlertTitle>Offene Salden bleiben nach dem Auszug bestehen:</AlertTitle>
+							<AlertTitle>
+								Offene Salden bleiben nach {selfLeave ? 'dem Verlassen' : 'dem Auszug'} bestehen:
+							</AlertTitle>
 							<AlertDescription>
 								<ul className="mt-1.5 grid gap-1">
 									{openBalances.map((balance) => (
@@ -176,17 +195,23 @@ export function MemberDeactivateDialog({
 				</div>
 
 				<AlertDialogFooter>
-					<AlertDialogCancel disabled={submitting}>Abbrechen</AlertDialogCancel>
-					<AlertDialogAction
+					<AlertDialogCancel
+						disabled={submitting}
+						aria-label={selfLeave ? 'WG-Verlassen abbrechen' : undefined}
+					>
+						Abbrechen
+					</AlertDialogCancel>
+					<Button
 						onClick={(event) => {
 							event.preventDefault();
 							void handleConfirm();
 						}}
 						disabled={submitting || loading}
+						aria-label={selfLeave ? 'WG auf diesem Gerät verlassen' : undefined}
 					>
 						{submitting && <Spinner aria-hidden />}
-						Ausziehen
-					</AlertDialogAction>
+						{selfLeave ? 'Verlassen' : 'Ausziehen'}
+					</Button>
 				</AlertDialogFooter>
 			</AlertDialogContent>
 		</AlertDialog>

@@ -131,6 +131,14 @@ test.describe('ManaWG core flows', () => {
 			{ memberId },
 		);
 		await gotoWithRetry(page, '/wg/MTE8PZAT/ausgaben?desc=Internet&amount=32,90');
+		await expect(page.locator('#f-beschreibung')).toHaveValue('Alter Entwurf');
+		await expect(page.locator('#f-betrag')).toHaveValue('1,00');
+		await expect(page.getByText('Dein vorhandener Entwurf bleibt erhalten.')).toBeVisible();
+		await page.getByRole('button', { name: 'Entwurf verwerfen und „Internet“ übernehmen' }).click();
+		await page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'Entwurf verwerfen', exact: true })
+			.click();
 		await expect(page.locator('#f-beschreibung')).toHaveValue('Internet', {
 			timeout: 30_000,
 		});
@@ -171,6 +179,15 @@ test.describe('ManaWG core flows', () => {
 		await expect(page.getByRole('dialog', { name: 'Neue Putzaufgabe', exact: true })).toBeVisible({
 			timeout: 30_000,
 		});
+		await expect(page.locator('#chore-title')).toHaveValue('Alter Putzplan');
+		await expect(page.getByText('Dein vorhandener Entwurf bleibt erhalten.')).toBeVisible();
+		await page
+			.getByRole('button', { name: 'Entwurf verwerfen und „Bad putzen“ übernehmen' })
+			.click();
+		await page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'Entwurf verwerfen', exact: true })
+			.click();
 		await expect(page.locator('#chore-title')).toHaveValue('Bad putzen', { timeout: 60_000 });
 		await gotoWithRetry(page, '/wg/MTE8PZAT/putzen?filter=overdue');
 		// Der Deep-Link behält den bereits geöffneten Entwurf bei.

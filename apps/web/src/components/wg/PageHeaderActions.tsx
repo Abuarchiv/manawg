@@ -47,7 +47,7 @@ export function FormToggleButton({
 			) : (
 				<>
 					<Plus data-icon="inline-start" aria-hidden />
-					<span>Neu</span>
+					<span>{openLabel}</span>
 				</>
 			)}
 		</Button>

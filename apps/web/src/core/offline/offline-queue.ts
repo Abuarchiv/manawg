@@ -100,6 +100,7 @@ interface QueuedChoreCompletionInput extends QueuedIdentityInput {
 
 interface QueuedChoreInput extends QueuedIdentityInput {
 	title: string;
+	recurrenceType?: 'days' | 'months';
 	intervalDays: number;
 	assignedMemberId: string | null;
 	now?: number;
@@ -249,6 +250,7 @@ export function createQueuedChore(input: QueuedChoreInput): OfflineAction {
 		{
 			title: input.title,
 			intervalDays: input.intervalDays,
+			recurrenceType: input.recurrenceType ?? 'days',
 			assignedMemberId: input.assignedMemberId,
 		},
 		now,

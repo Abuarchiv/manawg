@@ -47,7 +47,6 @@ import { CENTS_PER_EURO, formatEuroCents } from '@/core/utils/money';
 import { parseTimestamp } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { AusgabenHeader } from '@/features/expenses/components/ausgaben/AusgabenHeader';
-import { ExpenseFormSection } from '@/features/expenses/components/ausgaben/ExpenseFormSection';
 import { ExpenseRow } from '@/features/expenses/components/ausgaben/ExpenseRow';
 import { ExpensesSkeleton } from '@/features/expenses/components/ausgaben/ExpensesSkeleton';
 import { RecurringExpensesSection } from '@/features/expenses/components/ausgaben/RecurringExpensesSection';
@@ -86,8 +85,21 @@ import {
 import { addMonths } from '@/features/expenses/recurring-expenses';
 import { haptic } from '@/shared/lib/haptics';
 import { Bell, ChevronDown, FileInput, Receipt, RefreshCw } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+const ExpenseFormSection = dynamic(
+	() =>
+		import('@/features/expenses/components/ausgaben/ExpenseFormSection').then(
+			(module) => module.ExpenseFormSection,
+		),
+	{
+		loading: () => (
+			<output className="block text-sm text-[var(--text-2)]">Ausgabenformular wird geladen…</output>
+		),
+	},
+);
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -106,6 +118,7 @@ export default function AusgabenPage() {
 	const highlightedId = searchParams.get('highlight');
 	const prefillDescription = searchParams.get('desc');
 	const prefillAmount = searchParams.get('amount');
+	const prefillPaidBy = searchParams.get('paidBy');
 	const recurringId = searchParams.get('recurring');
 	const recurringFilterActive = searchParams.get('filter') === 'recurring';
 
@@ -142,6 +155,7 @@ export default function AusgabenPage() {
 		conflictExpenseId,
 		setConflictExpenseId,
 		editingExpense,
+		invalidEditDraft,
 		editingRecurringExpense,
 		setEditingRecurringExpense,
 		queueEditId,
@@ -153,6 +167,9 @@ export default function AusgabenPage() {
 		recurringNextDueAt,
 		setRecurringNextDueAt,
 		draftKey,
+		pendingPrefill,
+		recurringSourceId,
+		acceptPendingPrefill,
 		resetForm,
 		applyQuickExpense,
 		startEdit,
@@ -163,6 +180,7 @@ export default function AusgabenPage() {
 		identityMemberId: identity.memberId,
 		prefillDescription,
 		prefillAmount,
+		prefillPaidBy,
 		recurringId,
 		recurringExpenses,
 	});
@@ -380,6 +398,12 @@ export default function AusgabenPage() {
 	}
 
 	async function submit(): Promise<void> {
+		if (invalidEditDraft) {
+			setFormError(
+				'Die Zuordnung dieses Entwurfs ist beschädigt. Öffne die ursprüngliche Ausgabe erneut oder verwirf den Entwurf.',
+			);
+			return;
+		}
 		setFormError(null);
 		setConflictExpenseId(null);
 		const desc = description.trim();
@@ -428,8 +452,8 @@ export default function AusgabenPage() {
 
 		if (!res.ok) {
 			if (res.status === 0) {
-				const recurringTemplateForQueuedExpense = recurringId
-					? recurringExpenses.find((item) => item.id === recurringId)
+				const recurringTemplateForQueuedExpense = recurringSourceId
+					? recurringExpenses.find((item) => item.id === recurringSourceId)
 					: null;
 				const queuedCount = enqueueOfflineAction(
 					createQueuedExpense({
@@ -470,8 +494,9 @@ export default function AusgabenPage() {
 				return;
 			}
 			if (isEdit && res.status === 404 && res.error === 'expense_not_found') {
-				resetForm();
-				setShowForm(false);
+				setFormError(
+					'Die ursprüngliche Ausgabe wurde gelöscht. Deine ungespeicherten Änderungen bleiben im Entwurf; du kannst sie kopieren oder den Entwurf verwerfen.',
+				);
 				setExpenses((current) => current.filter((expense) => expense.id !== editingExpense.id));
 				setActionError('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.');
 				void load(false);
@@ -495,14 +520,21 @@ export default function AusgabenPage() {
 		}
 		resetForm();
 		const savedExpense = 'expense' in res.data ? res.data.expense : res.data;
+		setActionSuccess(
+			isEdit
+				? 'Ausgabe aktualisiert. Hier wird kein Geld überwiesen.'
+				: 'Ausgabe gespeichert. Hier wird kein Geld überwiesen.',
+		);
 		setExpenses((current) =>
 			isEdit
 				? current.map((expense) => (expense.id === savedExpense.id ? savedExpense : expense))
 				: [savedExpense, ...current.filter((expense) => expense.id !== savedExpense.id)],
 		);
-		if (recurringId) {
-			const recurringTemplateForAdvance = recurringExpenses.find((item) => item.id === recurringId);
-			await advanceRecurringTemplate(recurringId, recurringTemplateForAdvance?.nextDueAt);
+		if (recurringSourceId) {
+			const recurringTemplateForAdvance = recurringExpenses.find(
+				(item) => item.id === recurringSourceId,
+			);
+			await advanceRecurringTemplate(recurringSourceId, recurringTemplateForAdvance?.nextDueAt);
 		}
 		setShowForm(false);
 		finishSubmitting();
@@ -887,6 +919,11 @@ export default function AusgabenPage() {
 	const isEditingQueuedRecurring = queueEditType === 'recurring.create';
 	const formSaving = submitting || savingRecurringTemplate;
 	const recurringActionPending = creatingRecurringId !== null || savingRecurringTemplate;
+	const previewAmount = parseEuroAmount(amountStr);
+	const splitPreview =
+		previewAmount !== null && previewAmount >= AMOUNT_MIN_EUROS && previewAmount <= AMOUNT_MAX_EUROS
+			? buildSplits(Math.round(previewAmount * CENTS_PER_EURO))
+			: null;
 
 	const personalBalance =
 		memberBalances.find((member) => member.memberId === identity.memberId)?.balanceCents ?? 0;
@@ -933,7 +970,10 @@ export default function AusgabenPage() {
 								? 'Ausgabe bearbeiten'
 								: 'Ausgabe erfassen'
 					}
-					rotationOffset={expenses.length}
+					previewSplits={splitPreview?.ok ? splitPreview.splits : null}
+					pendingPrefillDescription={pendingPrefill?.description ?? null}
+					onReplacePrefill={acceptPendingPrefill}
+					isEditingExpense={editingExpense !== null || invalidEditDraft}
 					notice={actionNotice}
 					description={description}
 					setDescription={setDescription}
@@ -1139,7 +1179,10 @@ export default function AusgabenPage() {
 					memberToken={identity.memberToken}
 					memberColor={memberColor}
 					memberPayPalMerchantId={memberPayPalMerchantId}
-					onSettled={() => void load(false)}
+					onSettled={(message) => {
+						if (message) setActionSuccess(message);
+						void load(false);
+					}}
 				/>
 			)}
 		</div>

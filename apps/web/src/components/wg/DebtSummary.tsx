@@ -3,7 +3,6 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -30,11 +29,15 @@ import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';
-import { Bell, CheckCircle2, ChevronDown } from 'lucide-react';
+import { Bell, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 
 function settlementErrorMessage(error: string): string {
+	if (error === 'settlement_changed')
+		return 'Die offenen Beträge haben sich geändert. Prüfe die Zahlung erneut, bevor du sie einträgst.';
+	if (error === 'settlement_review_required')
+		return 'Prüfe zuerst die betroffenen Ausgaben und den Betrag.';
 	if (error === 'unexpected_error' || error === 'server_error' || error === 'db_error') {
 		return 'Ausgleich konnte nicht gespeichert werden: Versuche es gleich erneut.';
 	}
@@ -64,56 +67,23 @@ function settlementErrorMessage(error: string): string {
 	return 'Ausgleich konnte nicht gespeichert werden.';
 }
 
-interface SettlementRecord {
-	id: string;
-	description: string;
-	occurredAt: string;
-	amountCents: number;
-}
-
-// Read-only preview of settle-batch's oldest-first, whole-direct-share scope.
-// The response remains authoritative if another resident changes an expense.
-function settlementRecords(expenses: readonly Expense[], debt: SimplifiedDebt): SettlementRecord[] {
-	const candidates = expenses
-		.flatMap((expense) =>
-			expense.paidByMemberId !== debt.toId
-				? []
-				: expense.splits
-						.filter(
-							(split) =>
-								split.debtorMemberId === debt.fromId &&
-								split.settledAt === null &&
-								split.amountCents > 0,
-						)
-						.map((split) => ({
-							id: split.id,
-							amountCents: split.amountCents,
-							description: expense.description,
-							occurredAt: expense.occurredAt,
-						})),
-		)
-		.sort(
-			(a, b) =>
-				new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime() ||
-				a.id.localeCompare(b.id),
-		);
-	let remaining = debt.cents;
-	return candidates.filter((record) => {
-		if (record.amountCents > remaining) return false;
-		remaining -= record.amountCents;
-		return true;
-	});
+interface SettlementPreview {
+	netCents: number;
+	settleableCents: number;
+	remainingCents: number;
+	splits: Array<{ id: string; expenseId: string; amountCents: number }>;
+	reason?: string;
 }
 
 interface DebtRowProps {
 	debt: SimplifiedDebt;
-	records: SettlementRecord[];
+	expenses: readonly Expense[];
 	shareCode: string;
 	currentMemberId: string;
 	memberToken?: string | undefined;
 	memberPayPalMerchantId: (id: string) => string | null;
 	payPalEligible: boolean;
-	onSettled: () => void;
+	onSettled: (message?: string) => void;
 }
 
 interface SettleBatchResponse {
@@ -125,7 +95,7 @@ interface SettleBatchResponse {
 
 function DebtRow({
 	debt,
-	records,
+	expenses,
 	shareCode,
 	currentMemberId,
 	memberToken,
@@ -133,62 +103,84 @@ function DebtRow({
 	payPalEligible,
 	onSettled,
 }: DebtRowProps) {
-	const [settling, setSettling] = useState(false);
-	const [settlementMessage, setSettlementMessage] = useState<string | null>(null);
-	const [notice, setNotice] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
 	const [reviewOpen, setReviewOpen] = useState(false);
+	const [settling, setSettling] = useState(false);
+	const [reviewing, setReviewing] = useState(false);
+	const [preview, setPreview] = useState<SettlementPreview | null>(null);
+	const [error, setError] = useState<string | null>(null);
 	const settlingRef = useRef(false);
 	const canSettle = debt.fromId === currentMemberId || debt.toId === currentMemberId;
 	const payeeMerchantId = memberPayPalMerchantId(debt.toId);
 	const canPayWithPayPal =
-		debt.fromId === currentMemberId && payeeMerchantId !== null && payPalEligible;
-	const supportedCents = records.reduce((total, record) => total + record.amountCents, 0);
+		debt.fromId === currentMemberId &&
+		payeeMerchantId !== null &&
+		payPalEligible &&
+		Boolean(
+			process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID &&
+				process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
+		);
+	const endpoint = `/api/wg/${encodeURIComponent(shareCode)}/expenses/settle-batch`;
 
-	async function settle(): Promise<void> {
-		if (settlingRef.current || records.length === 0) return;
+	async function review(): Promise<void> {
+		if (settlingRef.current) return;
 		settlingRef.current = true;
+		setReviewing(true);
 		setError(null);
-		setNotice(null);
-		setSettling(true);
 		try {
-			const res = await apiFetch<SettleBatchResponse>(
-				`/api/wg/${encodeURIComponent(shareCode)}/expenses/settle-batch`,
-				{
-					method: 'POST',
-					memberId: currentMemberId,
-					memberToken,
-					body: JSON.stringify({ fromMemberId: debt.fromId, toMemberId: debt.toId }),
-				},
+			const res = await apiFetch<SettlementPreview>(
+				`${endpoint}?${new URLSearchParams({ fromMemberId: debt.fromId, toMemberId: debt.toId })}`,
+				{ memberId: currentMemberId, memberToken },
 			);
 			if (res.ok) {
-				const { settled, settledCents, remainingCents, reason } = res.data;
-				if (reason === 'no_direct_splits') {
-					// The debt only exists via netting through other members — there
-					// is nothing to mark settled between exactly these two. Keep the
-					// row visible instead of pretending the pair is even.
-					setNotice(
-						`Keine passenden Direktanteile geändert. ${formatEuroCents(remainingCents ?? debt.cents)} bleiben offen; prüfe die einzelnen Ausgaben.`,
-					);
-					return;
-				}
-				if (settled > 0 && remainingCents && remainingCents > 0) {
-					setNotice(
-						`Teilweise verbucht: ${formatEuroCents(settledCents ?? 0)} in ${settled} Anteilen. ${formatEuroCents(remainingCents)} bleiben offen.`,
-					);
+				setPreview(res.data);
+				setReviewOpen(true);
+			} else setError(settlementErrorMessage(res.error));
+		} catch {
+			setError(settlementErrorMessage('Netzwerkfehler'));
+		} finally {
+			settlingRef.current = false;
+			setReviewing(false);
+		}
+	}
+
+	async function settle(): Promise<void> {
+		if (settlingRef.current || !preview || preview.settleableCents <= 0) return;
+		settlingRef.current = true;
+		setSettling(true);
+		setError(null);
+		try {
+			const res = await apiFetch<SettleBatchResponse>(endpoint, {
+				method: 'POST',
+				memberId: currentMemberId,
+				memberToken,
+				body: JSON.stringify({
+					fromMemberId: debt.fromId,
+					toMemberId: debt.toId,
+					expected: {
+						netCents: preview.netCents,
+						settleableCents: preview.settleableCents,
+						splits: preview.splits.map(({ id, amountCents }) => ({ id, amountCents })),
+					},
+				}),
+			});
+			if (!res.ok) {
+				setError(settlementErrorMessage(res.error));
+				if (res.error === 'settlement_changed') {
+					setPreview(null);
 					setReviewOpen(false);
-					onSettled();
-					return;
 				}
-				setSettlementMessage(
-					settled > 0
-						? `${settled} Anteile als beglichen vermerkt${settledCents !== undefined ? `: ${formatEuroCents(settledCents)}` : ''}. Es wurde kein Geld überwiesen.`
-						: 'Keine Anteile geändert. Die aktuellen Ausgaben werden neu geladen.',
-				);
-				onSettled();
 				return;
 			}
-			setError(settlementErrorMessage(res.error));
+			const { settled, settledCents, remainingCents, reason } = res.data;
+			setPreview(null);
+			setReviewOpen(false);
+			const message =
+				reason === 'no_direct_splits'
+					? 'Diese Verrechnung hat keine direkt zuordenbaren Anteile. Prüft die ursprünglichen Ausgaben einzeln.'
+					: settled > 0
+						? `Zahlung eingetragen: ${formatEuroCents(settledCents ?? 0)} von ${debt.fromName} an ${debt.toName}.${remainingCents ? ` ${formatEuroCents(remainingCents)} bleiben in der Verrechnung offen.` : ''}`
+						: 'Keine Zahlung eingetragen. Die offenen Ausgaben werden neu geladen.';
+			onSettled(message);
 		} catch {
 			setError(settlementErrorMessage('Netzwerkfehler'));
 		} finally {
@@ -210,61 +202,40 @@ function DebtRow({
 			<Badge variant="secondary" className="tabular-nums">
 				{formatEuroCents(debt.cents)}
 			</Badge>
-			{settlementMessage ? (
-				<ItemFooter>
-					<Alert>
-						<CheckCircle2 />
-						<AlertDescription>{settlementMessage}</AlertDescription>
-					</Alert>
-				</ItemFooter>
-			) : (
-				canSettle && (
-					<ItemFooter className="flex-col items-stretch">
-						{records.length > 0 ? (
-							<Button
-								variant="outline"
-								className="min-h-11"
-								disabled={settling}
-								onClick={() => setReviewOpen(true)}
+
+			{canSettle && (
+				<ItemFooter className="flex-col items-stretch">
+					<Button
+						variant="outline"
+						className="h-auto min-h-11 whitespace-normal"
+						disabled={reviewing || settling}
+						onClick={() => void review()}
+					>
+						{reviewing && <Spinner data-icon="inline-start" />}
+						{reviewing ? 'Zahlung wird geprüft…' : 'Bereits erfolgte Zahlung eintragen'}
+					</Button>
+					{canPayWithPayPal && (
+						<Collapsible>
+							<CollapsibleTrigger
+								render={<Button variant="outline" className="min-h-11 w-full justify-between" />}
 							>
-								Bereits bezahlt? Zahlung verbuchen
-							</Button>
-						) : (
-							<p className="text-sm text-muted-foreground">
-								Hier ist kein vollständiger Direktanteil verbuchbar. Prüfe die zugehörigen Ausgaben
-								oben.
-							</p>
-						)}
-						{canPayWithPayPal && (
-							<Collapsible>
-								<CollapsibleTrigger
-									render={<Button variant="outline" className="min-h-11 w-full justify-between" />}
-								>
-									Mit PayPal zahlen
-									<ChevronDown data-icon="inline-end" />
-								</CollapsibleTrigger>
-								<CollapsibleContent>
-									<PayPalPaymentButton
-										shareCode={shareCode}
-										currentMemberId={currentMemberId}
-										memberToken={memberToken}
-										fromMemberId={debt.fromId}
-										toMemberId={debt.toId}
-										payeeMerchantId={payeeMerchantId}
-										amountCents={debt.cents}
-										onPaid={onSettled}
-									/>
-								</CollapsibleContent>
-							</Collapsible>
-						)}
-					</ItemFooter>
-				)
-			)}
-			{notice && (
-				<ItemFooter>
-					<Alert>
-						<AlertDescription>{notice}</AlertDescription>
-					</Alert>
+								Mit PayPal zahlen
+								<ChevronDown data-icon="inline-end" />
+							</CollapsibleTrigger>
+							<CollapsibleContent>
+								<PayPalPaymentButton
+									shareCode={shareCode}
+									currentMemberId={currentMemberId}
+									memberToken={memberToken}
+									fromMemberId={debt.fromId}
+									toMemberId={debt.toId}
+									payeeMerchantId={payeeMerchantId}
+									amountCents={debt.cents}
+									onPaid={onSettled}
+								/>
+							</CollapsibleContent>
+						</Collapsible>
+					)}
 				</ItemFooter>
 			)}
 			{error && !reviewOpen && (
@@ -282,43 +253,52 @@ function DebtRow({
 			>
 				<AlertDialogContent className="max-h-[90dvh] overflow-y-auto">
 					<AlertDialogHeader>
-						<AlertDialogTitle>Zahlung verbuchen</AlertDialogTitle>
+						<AlertDialogTitle>Zahlung prüfen</AlertDialogTitle>
 						<AlertDialogDescription>
-							{debt.fromName} hat {debt.toName} {formatEuroCents(supportedCents)} bereits bezahlt.
-							Nur die unten aufgeführten Direktanteile werden als beglichen vermerkt. Es wird kein
-							Geld überwiesen.
+							{debt.fromName} hat {debt.toName} {formatEuroCents(preview?.settleableCents ?? 0)}{' '}
+							bereits bezahlt. Nur die unten aufgeführten Direktanteile werden als beglichen
+							vermerkt. Es wird kein Geld überwiesen.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<ItemGroup aria-label="Unterstützte Ausgabenanteile">
-						{records.map((record) => (
-							<Item key={record.id} variant="muted" size="xs">
-								<ItemContent className="min-w-0">
-									<ItemTitle className="line-clamp-none break-words">
-										{record.description}
-									</ItemTitle>
-									<ItemDescription>{formatShortDate(record.occurredAt)}</ItemDescription>
-								</ItemContent>
-								<Badge variant="outline" className="tabular-nums">
-									{formatEuroCents(record.amountCents)}
-								</Badge>
-							</Item>
-						))}
+						{(preview?.splits ?? []).map((split) => {
+							const expense = expenses.find((item) => item.id === split.expenseId);
+							return (
+								<Item key={split.id} variant="muted" size="xs">
+									<ItemContent className="min-w-0">
+										<ItemTitle className="line-clamp-none break-words">
+											{expense?.description ?? 'Ausgabe'}
+										</ItemTitle>
+										<ItemDescription>
+											{expense ? formatShortDate(expense.occurredAt) : 'Aktueller offener Anteil'}
+										</ItemDescription>
+									</ItemContent>
+									<Badge variant="outline" className="tabular-nums">
+										{formatEuroCents(split.amountCents)}
+									</Badge>
+								</Item>
+							);
+						})}
 					</ItemGroup>
-					{supportedCents < debt.cents && (
+					{preview && preview.remainingCents > 0 && (
 						<Alert>
 							<AlertDescription>
-								{formatEuroCents(debt.cents - supportedCents)} des verrechneten Saldos sind mit
-								diesen Anteilen nicht verbuchbar und bleiben offen.
+								{formatEuroCents(preview.remainingCents)} des verrechneten Saldos sind mit diesen
+								Anteilen nicht verbuchbar und bleiben offen.
 							</AlertDescription>
 						</Alert>
 					)}
 					<p className="text-xs text-muted-foreground">
-						Stand der geladenen Ausgaben. Bei zwischenzeitlichen Änderungen zählt das Ergebnis des
-						Speicherns.
+						Diese Anteile wurden aktuell geprüft. Ändern sie sich zwischenzeitlich, musst du die
+						Zahlung erneut prüfen.
 					</p>
-					{notice && (
+
+					{preview?.splits.length === 0 && (
 						<Alert>
-							<AlertDescription>{notice}</AlertDescription>
+							<AlertDescription>
+								Keine direkt zuordenbaren Anteile. Es wird keine Zahlung eingetragen. Prüft die
+								ursprünglichen Ausgaben einzeln.
+							</AlertDescription>
 						</Alert>
 					)}
 					{error && (
@@ -330,14 +310,16 @@ function DebtRow({
 						<AlertDialogCancel className="min-h-11" disabled={settling}>
 							Abbrechen
 						</AlertDialogCancel>
-						<AlertDialogAction
+						<Button
 							className="min-h-11"
-							disabled={settling || records.length === 0}
+							disabled={settling || !preview || preview.settleableCents <= 0}
 							onClick={() => void settle()}
 						>
 							{settling && <Spinner data-icon="inline-start" />}
-							{formatEuroCents(supportedCents)} verbuchen
-						</AlertDialogAction>
+							{settling
+								? 'Speichert…'
+								: `${formatEuroCents(preview?.settleableCents ?? 0)} als bezahlt eintragen`}
+						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
@@ -354,7 +336,7 @@ interface DebtSummaryProps {
 	memberToken?: string | undefined;
 	memberColor: (id: string) => string | null;
 	memberPayPalMerchantId?: (id: string) => string | null;
-	onSettled: () => void;
+	onSettled: (message?: string) => void;
 }
 
 export function DebtSummary({
@@ -393,7 +375,7 @@ export function DebtSummary({
 						<DebtRow
 							key={`${debt.fromId}-${debt.toId}`}
 							debt={debt}
-							records={settlementRecords(expenses, debt)}
+							expenses={expenses}
 							shareCode={shareCode}
 							currentMemberId={currentMemberId}
 							memberToken={memberToken}

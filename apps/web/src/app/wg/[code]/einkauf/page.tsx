@@ -479,8 +479,8 @@ export default function EinkaufPage() {
 						}}
 						className="flex flex-col gap-3"
 					>
-						<FieldGroup className="grid grid-cols-[minmax(0,1fr)_5rem_auto] items-end gap-2">
-							<Field data-disabled={adding} data-invalid={Boolean(addError)}>
+						<FieldGroup className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+							<Field className="col-span-2" data-disabled={adding} data-invalid={Boolean(addError)}>
 								<FieldLabel htmlFor="shopping-name">Artikel</FieldLabel>
 								<Input
 									id="shopping-name"
@@ -497,7 +497,7 @@ export default function EinkaufPage() {
 								/>
 							</Field>
 							<Field data-disabled={adding}>
-								<FieldLabel htmlFor="shopping-qty">Menge</FieldLabel>
+								<FieldLabel htmlFor="shopping-qty">Menge (optional)</FieldLabel>
 								<Input
 									id="shopping-qty"
 									value={newQty}
@@ -511,12 +511,12 @@ export default function EinkaufPage() {
 							</Field>
 							<Button
 								type="submit"
-								size="icon"
 								disabled={!newName.trim() || adding}
 								aria-label="Artikel hinzufügen"
-								className="size-11"
+								className="min-h-11"
 							>
 								{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}
+								Artikel hinzufügen
 							</Button>
 						</FieldGroup>
 						{addError && (

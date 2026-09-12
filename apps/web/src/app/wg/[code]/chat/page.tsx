@@ -121,7 +121,9 @@ function ChatPageContent({
 					</Button>
 					<div className="min-w-0">
 						<h1 className="text-xl font-semibold">Chat</h1>
-						<p className="truncate text-sm text-muted-foreground">{wgRow.name}</p>
+						<p className="break-words text-sm text-muted-foreground">
+							{wgRow.name} · Für schnelle Abstimmung.
+						</p>
 					</div>
 				</div>
 				<nav aria-label="Austausch" className="grid grid-cols-2 gap-2">
@@ -143,6 +145,12 @@ function ChatPageContent({
 					</Button>
 				</nav>
 			</header>
+			<Link
+				href={`${wgBaseHref}/pinnwand`}
+				className="flex min-h-11 shrink-0 items-center border-b border-border px-4 text-xs text-muted-foreground hover:text-foreground"
+			>
+				Dauerhafte Infos auf die Pinnwand
+			</Link>
 			<ChatView
 				key={wgRow.id}
 				wgId={wgRow.id}

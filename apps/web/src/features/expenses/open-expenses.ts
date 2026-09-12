@@ -1,4 +1,5 @@
 import { db, expenseSplits, expenses } from '@/core/db';
+import type { DbTransaction } from '@/core/db/transaction';
 import type { DebtExpenseInput } from '@/features/expenses/debts';
 import { eq, inArray } from 'drizzle-orm';
 
@@ -9,8 +10,11 @@ import { eq, inArray } from 'drizzle-orm';
  * ones still count. Extracted here so the balances route and the member
  * move-out check share one query instead of drifting apart.
  */
-export async function loadOpenExpenses(wgId: string): Promise<DebtExpenseInput[]> {
-	const expenseRows = await db
+export async function loadOpenExpenses(
+	wgId: string,
+	client: typeof db | DbTransaction = db,
+): Promise<DebtExpenseInput[]> {
+	const expenseRows = await client
 		.select({
 			id: expenses.id,
 			paidByMemberId: expenses.paidByMemberId,
@@ -22,7 +26,7 @@ export async function loadOpenExpenses(wgId: string): Promise<DebtExpenseInput[]
 	if (expenseRows.length === 0) return [];
 
 	const ids = expenseRows.map((row) => row.id);
-	const splitRows = await db
+	const splitRows = await client
 		.select({
 			expenseId: expenseSplits.expenseId,
 			debtorMemberId: expenseSplits.debtorMemberId,

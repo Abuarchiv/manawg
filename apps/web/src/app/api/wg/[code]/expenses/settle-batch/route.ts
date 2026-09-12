@@ -1,226 +1,360 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
-import { badRequest, conflict, forbidden, requireVerifiedMember, tooMany } from '@/core/errors';
+import { db, expensePayments, expenseSplits, expenses, wgMembers } from '@/core/db';
+import type { DbTransaction } from '@/core/db/transaction';
+import {
+	apiError,
+	badRequest,
+	conflict,
+	forbidden,
+	requireVerifiedMember,
+	tooMany,
+} from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { claimIdempotencySlot, readIdempotencyKey } from '@/core/idempotency';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { computeNetBalances, simplifyDebts } from '@/features/expenses/debt-reduction';
 import {
+	type ExpensePaymentInput,
 	hasActiveExpensePayment,
-	loadCompletedExpensePayments,
 	withExpensePaymentLock,
 } from '@/features/expenses/expense-payments';
-import { groupSplitsByExpense } from '@/features/expenses/open-expenses';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import {
+	type SettlementConfirmation,
+	type SettlementExpenseInput,
+	type SettlementMemberInput,
+	type SettlementPreview,
+	type SettlementSplitInput,
+	parseSettlementConfirmation,
+	selectSettlementScope,
+	settlementScopeMatches,
+} from '@/features/expenses/settlement-scope';
+import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
-	let body: { fromMemberId?: unknown; toMemberId?: unknown };
-	try {
-		body = (await req.json()) as { fromMemberId?: unknown; toMemberId?: unknown };
-	} catch {
-		return badRequest('invalid_json');
+type SettlementQueryClient = typeof db | DbTransaction;
+
+interface SettlementSnapshot {
+	members: SettlementMemberInput[];
+	expenses: SettlementExpenseInput[];
+	payments: ExpensePaymentInput[];
+}
+
+class SettlementChangedError extends Error {
+	constructor() {
+		super('settlement_changed');
+		this.name = 'SettlementChangedError';
 	}
+}
 
-	const fromMemberId =
-		typeof body.fromMemberId === 'string' && UUID_PATTERN.test(body.fromMemberId)
-			? body.fromMemberId
-			: null;
-	const toMemberId =
-		typeof body.toMemberId === 'string' && UUID_PATTERN.test(body.toMemberId)
-			? body.toMemberId
-			: null;
+function noStore<T extends NextResponse>(response: T): T {
+	response.headers.set('Cache-Control', 'no-store');
+	return response;
+}
 
-	if (!fromMemberId || !toMemberId) return badRequest('member_ids_invalid');
-	if (fromMemberId === toMemberId) return badRequest('same_member');
-	const auth = await requireWgMember(req, code);
-	if (!auth.ok) return auth.response;
-	const wgRow = auth.wg;
+function noStoreJson<T>(body: T): NextResponse<T> {
+	return NextResponse.json(body, { headers: { 'Cache-Control': 'no-store' } });
+}
 
-	const [members, expenseRows, payments] = await Promise.all([
-		db
+async function loadSettlementSnapshot(
+	client: SettlementQueryClient,
+	wgId: string,
+): Promise<SettlementSnapshot> {
+	const [members, expenseRows] = await Promise.all([
+		client
 			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
 			.from(wgMembers)
-			.where(eq(wgMembers.wgId, wgRow.id)),
-		db
+			.where(eq(wgMembers.wgId, wgId)),
+		client
 			.select({
 				id: expenses.id,
 				paidByMemberId: expenses.paidByMemberId,
 				occurredAt: expenses.occurredAt,
 			})
 			.from(expenses)
-			.where(eq(expenses.wgId, wgRow.id)),
-		loadCompletedExpensePayments(wgRow.id),
+			.where(eq(expenses.wgId, wgId)),
 	]);
-	const memberIds = new Set(members.map((member) => member.id));
-	if (!memberIds.has(fromMemberId) || !memberIds.has(toMemberId)) {
-		return badRequest('member_not_in_wg');
+
+	const expenseIds = expenseRows.map((expense) => expense.id);
+	const [splitRows, paymentRows] = await Promise.all([
+		expenseIds.length === 0
+			? Promise.resolve([] as SettlementSplitInput[])
+			: client
+					.select({
+						id: expenseSplits.id,
+						expenseId: expenseSplits.expenseId,
+						debtorMemberId: expenseSplits.debtorMemberId,
+						amountCents: expenseSplits.amountCents,
+						settledAt: expenseSplits.settledAt,
+					})
+					.from(expenseSplits)
+					.where(inArray(expenseSplits.expenseId, expenseIds)),
+		client
+			.select({
+				fromMemberId: expensePayments.fromMemberId,
+				toMemberId: expensePayments.toMemberId,
+				amountCents: expensePayments.amountCents,
+				currency: expensePayments.currency,
+			})
+			.from(expensePayments)
+			.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed'))),
+	]);
+
+	const splitsByExpense = new Map<string, SettlementSplitInput[]>();
+	for (const split of splitRows) {
+		const list = splitsByExpense.get(split.expenseId) ?? [];
+		list.push(split);
+		splitsByExpense.set(split.expenseId, list);
 	}
 
-	// Money mutation: a bare x-manawg-member-id is spoofable, so require a
-	// verified HMAC token before trusting the caller's claimed identity.
+	return {
+		members,
+		payments: paymentRows,
+		expenses: expenseRows.map((expense) => ({
+			...expense,
+			splits: splitsByExpense.get(expense.id) ?? [],
+		})),
+	};
+}
+
+function validatePair(fromMemberId: string, toMemberId: string): NextResponse | null {
+	if (!UUID_PATTERN.test(fromMemberId) || !UUID_PATTERN.test(toMemberId)) {
+		return badRequest('member_ids_invalid');
+	}
+	if (fromMemberId === toMemberId) return badRequest('same_member');
+	return null;
+}
+
+function pairIsInWg(
+	snapshot: SettlementSnapshot,
+	fromMemberId: string,
+	toMemberId: string,
+): boolean {
+	const memberIds = new Set(snapshot.members.map((member) => member.id));
+	return memberIds.has(fromMemberId) && memberIds.has(toMemberId);
+}
+
+function isParty(authMemberId: string, fromMemberId: string, toMemberId: string): boolean {
+	return authMemberId === fromMemberId || authMemberId === toMemberId;
+}
+
+interface SettlementResponse {
+	settled: number;
+	settledIds: string[];
+	settledCents: number;
+	remainingCents: number;
+	creditor: string;
+	debtor: string;
+	reason?: 'no_direct_splits';
+}
+
+function buildSettlementResponse(
+	preview: SettlementPreview,
+	settledIds: string[],
+	settledCents: number,
+	fromMemberId: string,
+	toMemberId: string,
+): SettlementResponse {
+	return {
+		settled: settledIds.length,
+		settledIds,
+		settledCents,
+		remainingCents: Math.max(0, preview.netCents - settledCents),
+		creditor: toMemberId,
+		debtor: fromMemberId,
+		...(preview.reason ? { reason: preview.reason } : {}),
+	};
+}
+
+const getSettlement = withWgRoute('settle-batch GET', async (req, { code }) => {
+	const fromMemberId = req.nextUrl.searchParams.get('fromMemberId');
+	const toMemberId = req.nextUrl.searchParams.get('toMemberId');
+	if (!fromMemberId || !toMemberId) return noStore(badRequest('member_ids_invalid'));
+	const invalidPair = validatePair(fromMemberId, toMemberId);
+	if (invalidPair) return noStore(invalidPair);
+
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return noStore(auth.response);
+	const unverified = requireVerifiedMember(auth.member);
+	if (unverified) return noStore(unverified);
+	if (!isParty(auth.member.memberId, fromMemberId, toMemberId)) {
+		return noStore(forbidden('not_party_to_debt', 'not_party_to_debt'));
+	}
+
+	const snapshot = await loadSettlementSnapshot(db, auth.wg.id);
+	if (!pairIsInWg(snapshot, fromMemberId, toMemberId)) {
+		return noStore(badRequest('member_not_in_wg'));
+	}
+
+	return noStoreJson(
+		selectSettlementScope(
+			snapshot.expenses,
+			snapshot.members,
+			snapshot.payments,
+			fromMemberId,
+			toMemberId,
+		),
+	);
+});
+
+// Keep the cache policy outside the route ceremony so preamble and caught-error
+// responses receive the same no-store header as normal handler responses.
+export const GET = async (
+	req: Parameters<typeof getSettlement>[0],
+	ctx: Parameters<typeof getSettlement>[1],
+) => noStore(await getSettlement(req, ctx));
+
+export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
+	let raw: unknown;
+	try {
+		raw = await req.json();
+	} catch {
+		return badRequest('invalid_json');
+	}
+
+	const parsed = parseSettlementConfirmation(raw);
+	if (!parsed.ok) {
+		return badRequest(
+			parsed.reason === 'required' ? 'settlement_review_required' : 'settlement_review_invalid',
+		);
+	}
+	const confirmation: SettlementConfirmation = parsed.value;
+	const invalidPair = validatePair(confirmation.fromMemberId, confirmation.toMemberId);
+	if (invalidPair) return invalidPair;
+
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
 	const unverified = requireVerifiedMember(auth.member);
 	if (unverified) return unverified;
-
-	// Only the debtor (from) or the creditor (to) may batch-settle
-	if (auth.member.memberId !== fromMemberId && auth.member.memberId !== toMemberId) {
+	if (!isParty(auth.member.memberId, confirmation.fromMemberId, confirmation.toMemberId)) {
 		return forbidden('not_party_to_debt', 'not_party_to_debt');
 	}
 
 	const limited = await checkRateLimit(
 		wgWriteLimiter,
-		`settle-batch:${wgRow.id}:${auth.member.memberId}`,
+		`settle-batch:${auth.wg.id}:${auth.member.memberId}`,
 	);
 	if (!limited.success) return tooMany();
 
-	if (expenseRows.length === 0) {
-		return NextResponse.json({
-			settled: 0,
-			settledIds: [],
-			settledCents: 0,
-			remainingCents: 0,
-			creditor: toMemberId,
-			debtor: fromMemberId,
-		});
-	}
+	let mutation:
+		| { kind: 'member_deactivated' }
+		| { kind: 'member_not_in_wg' }
+		| { kind: 'blocked' }
+		| { kind: 'changed' }
+		| {
+				kind: 'settled';
+				preview: SettlementPreview;
+				settledIds: string[];
+				settledCents: number;
+		  } = { kind: 'member_not_in_wg' };
+	try {
+		mutation = await withExpensePaymentLock(auth.wg.id, async (tx) => {
+			const [activeCaller] = await tx
+				.select({ id: wgMembers.id })
+				.from(wgMembers)
+				.where(
+					and(
+						eq(wgMembers.id, auth.member.memberId),
+						eq(wgMembers.wgId, auth.wg.id),
+						isNull(wgMembers.deactivatedAt),
+					),
+				)
+				.limit(1)
+				.for('update');
+			// The row lock is held through the accounting write: a concurrent
+			// deactivation either wins before this check or waits until settlement commits.
+			if (!activeCaller) return { kind: 'member_deactivated' as const };
 
-	const expenseIds = expenseRows.map((e) => e.id);
-	const splitRows = await db
-		.select({
-			id: expenseSplits.id,
-			expenseId: expenseSplits.expenseId,
-			debtorMemberId: expenseSplits.debtorMemberId,
-			amountCents: expenseSplits.amountCents,
-			settledAt: expenseSplits.settledAt,
-		})
-		.from(expenseSplits)
-		.where(inArray(expenseSplits.expenseId, expenseIds));
+			const snapshot = await loadSettlementSnapshot(tx, auth.wg.id);
+			if (!pairIsInWg(snapshot, confirmation.fromMemberId, confirmation.toMemberId)) {
+				return { kind: 'member_not_in_wg' as const };
+			}
 
-	const splitsByExpense = groupSplitsByExpense(splitRows);
+			const preview = selectSettlementScope(
+				snapshot.expenses,
+				snapshot.members,
+				snapshot.payments,
+				confirmation.fromMemberId,
+				confirmation.toMemberId,
+			);
+			if (await hasActiveExpensePayment(tx, auth.wg.id)) return { kind: 'blocked' as const };
+			if (!settlementScopeMatches(confirmation.expected, preview)) {
+				return { kind: 'changed' as const };
+			}
+			if (preview.splits.length === 0) {
+				return { kind: 'settled' as const, preview, settledIds: [], settledCents: 0 };
+			}
 
-	const netDebt = simplifyDebts(
-		computeNetBalances(
-			expenseRows.map((expense) => ({
-				paidByMemberId: expense.paidByMemberId,
-				splits: splitsByExpense.get(expense.id) ?? [],
-			})),
-			members,
-			payments,
-		),
-	).find((debt) => debt.fromId === fromMemberId && debt.toId === toMemberId);
-
-	if (!netDebt || netDebt.cents <= 0) {
-		return NextResponse.json({
-			settled: 0,
-			settledIds: [],
-			settledCents: 0,
-			remainingCents: 0,
-			creditor: toMemberId,
-			debtor: fromMemberId,
-		});
-	}
-
-	const paidByByExpense = new Map(
-		expenseRows.map((expense) => [expense.id, expense.paidByMemberId]),
-	);
-	// Settle deterministically, oldest expense first, so repeated runs (and
-	// concurrent requests) always pick the same splits instead of depending
-	// on whatever order Postgres happens to return rows in.
-	const occurredAtByExpense = new Map(
-		expenseRows.map((expense) => [expense.id, new Date(expense.occurredAt).getTime()]),
-	);
-	const orderedSplitRows = [...splitRows].sort((a, b) => {
-		const diff =
-			(occurredAtByExpense.get(a.expenseId) ?? 0) - (occurredAtByExpense.get(b.expenseId) ?? 0);
-		return diff !== 0 ? diff : a.id.localeCompare(b.id);
-	});
-	const splitIdsToSettle: string[] = [];
-	let remainingCents = netDebt.cents;
-	for (const split of orderedSplitRows) {
-		if (remainingCents <= 0) break;
-		if (split.debtorMemberId !== fromMemberId) continue;
-		if (paidByByExpense.get(split.expenseId) !== toMemberId) continue;
-		if (split.settledAt !== null) continue;
-		if (split.amountCents <= 0 || split.amountCents > remainingCents) continue;
-
-		splitIdsToSettle.push(split.id);
-		remainingCents -= split.amountCents;
-	}
-
-	if (splitIdsToSettle.length === 0) {
-		// The simplified net debt exists, but it flows entirely through other
-		// members — there is no direct split to mark settled. Report that
-		// honestly instead of pretending the pair is already even.
-		return NextResponse.json({
-			settled: 0,
-			settledIds: [],
-			settledCents: 0,
-			remainingCents: netDebt.cents,
-			reason: 'no_direct_splits',
-			creditor: toMemberId,
-			debtor: fromMemberId,
-		});
-	}
-
-	// Settle only direct splits that fit into the simplified net debt.
-	const settlement = await withExpensePaymentLock(wgRow.id, async (tx) => {
-		if (await hasActiveExpensePayment(tx, wgRow.id)) return { blocked: true as const, rows: [] };
-		const rows = await tx
-			.update(expenseSplits)
-			.set({ settledAt: new Date() })
-			.where(
+			const exactRows = preview.splits.map((split) =>
 				and(
-					eq(expenseSplits.debtorMemberId, fromMemberId),
+					eq(expenseSplits.id, split.id),
+					eq(expenseSplits.expenseId, split.expenseId),
+					eq(expenseSplits.amountCents, split.amountCents),
 					isNull(expenseSplits.settledAt),
-					inArray(expenseSplits.id, splitIdsToSettle),
 				),
-			)
-			.returning({ id: expenseSplits.id });
-		return { blocked: false as const, rows };
-	});
-	if (settlement.blocked) return conflict('paypal_payment_pending');
-	const settled = settlement.rows;
-	const expectedSettledIds = new Set(splitIdsToSettle);
-	const settledIds = settled.map((item) => item.id).filter((id) => expectedSettledIds.has(id));
-	const centsBySplitId = new Map(splitRows.map((split) => [split.id, split.amountCents]));
-	const settledCents = settledIds.reduce((sum, id) => sum + (centsBySplitId.get(id) ?? 0), 0);
-	if (settledIds.length > 0) {
-		// Without a client key, derive one deterministically from the settled
-		// set — two racing identical batches then share a claim slot, so
-		// only the first writes the audit event.
+			);
+			const rows = await tx
+				.update(expenseSplits)
+				.set({ settledAt: new Date() })
+				.where(or(...exactRows))
+				.returning({ id: expenseSplits.id });
+			if (rows.length !== preview.splits.length) throw new SettlementChangedError();
+
+			const returnedIds = new Set(rows.map((row) => row.id));
+			const settledIds = preview.splits
+				.map((split) => split.id)
+				.filter((id) => returnedIds.has(id));
+			return {
+				kind: 'settled' as const,
+				preview,
+				settledIds,
+				settledCents: preview.settleableCents,
+			};
+		});
+	} catch (error) {
+		if (error instanceof SettlementChangedError) return conflict('settlement_changed');
+		throw error;
+	}
+
+	if (mutation.kind === 'member_deactivated') {
+		return apiError('member_deactivated', 401, 'member_deactivated');
+	}
+	if (mutation.kind === 'member_not_in_wg') return badRequest('member_not_in_wg');
+	if (mutation.kind === 'blocked') return conflict('paypal_payment_pending');
+	if (mutation.kind === 'changed') return conflict('settlement_changed');
+
+	if (mutation.settledIds.length > 0) {
 		const idemKey =
 			readIdempotencyKey(req) ??
-			`derived:settle:${fromMemberId}:${toMemberId}:${[...settledIds].sort().join(',')}`;
-		// Scope the claim by wg+member, not just the raw client-generated key,
-		// so a key collision across different callers can never suppress an
-		// audit event that should have been recorded.
+			`derived:settle:${confirmation.fromMemberId}:${confirmation.toMemberId}:${[...mutation.settledIds].sort().join(',')}`;
 		const shouldAudit = await claimIdempotencySlot(
-			`settle-batch:${wgRow.id}:${auth.member.memberId}`,
+			`settle-batch:${auth.wg.id}:${auth.member.memberId}`,
 			idemKey,
 		);
 		if (shouldAudit) {
 			await recordAuditEvent({
-				wgId: wgRow.id,
+				wgId: auth.wg.id,
 				memberId: auth.member.memberId,
 				eventType: 'expense.debt.settled',
 				entityType: 'expense_debt',
-				entityId: `${fromMemberId}:${toMemberId}`,
-				summary: `${auth.member.name} hat ${settledIds.length} offene Anteil${settledIds.length === 1 ? '' : 'e'} beglichen.`,
-				metadata: { fromMemberId, toMemberId, splitIds: settledIds },
+				entityId: `${confirmation.fromMemberId}:${confirmation.toMemberId}`,
+				summary: `${auth.member.name} hat ${mutation.settledIds.length} offene Anteil${mutation.settledIds.length === 1 ? '' : 'e'} beglichen.`,
+				metadata: {
+					fromMemberId: confirmation.fromMemberId,
+					toMemberId: confirmation.toMemberId,
+					splitIds: mutation.settledIds,
+				},
 			});
 		}
 	}
 
-	return NextResponse.json({
-		settled: settledIds.length,
-		settledIds,
-		settledCents,
-		// Portion of the simplified net debt that only exists via other
-		// members and therefore cannot be marked settled here.
-		remainingCents: Math.max(0, netDebt.cents - settledCents),
-		creditor: toMemberId,
-		debtor: fromMemberId,
-	});
+	return noStoreJson(
+		buildSettlementResponse(
+			mutation.preview,
+			mutation.settledIds,
+			mutation.settledCents,
+			confirmation.fromMemberId,
+			confirmation.toMemberId,
+		),
+	);
 });

@@ -16,11 +16,16 @@ import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
-import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
+import {
+	buildDraftKey,
+	isEmptyModuleDraft,
+	readDraft,
+	removeDraft,
+	writeDraft,
+} from '@/core/offline/drafts';
 import {
 	enqueueOfflineAction,
 	readOfflineQueue,
@@ -39,11 +44,12 @@ import {
 	createQueuedChoreCompletion,
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
+import { formatShortDate, parseTimestamp } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import type { AbsenceInput } from '@/features/chores/absence';
 import { absenceSaveErrorMessage, choreCreateErrorMessage } from '@/features/chores/chore-errors';
-import { buildChoreFairness } from '@/features/chores/chore-fairness';
+import { buildChoreFairness, chooseNextAvailableMember } from '@/features/chores/chore-fairness';
 import {
 	getChorePlanHealth,
 	getChoreRepairHint,
@@ -65,8 +71,14 @@ import type {
 } from '@/features/chores/components/chore-types';
 import { QUICK_CHORE_TEMPLATES, TITLE_MAX } from '@/features/chores/components/constants';
 import { Sparkles } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+type ChoreSuggestion = { title: string; intervalDays: number; recurrenceType: RecurrenceType };
+const ConfirmDialog = dynamic(() =>
+	import('@/components/ui/ConfirmDialog').then((module) => module.ConfirmDialog),
+);
+
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function PutzenPage() {
 	const { wg, members, identity } = useWg();
@@ -84,6 +96,8 @@ export default function PutzenPage() {
 	const [initialLoading, setInitialLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
 	const [showForm, setShowForm] = useState(false);
+	const [pendingSuggestion, setPendingSuggestion] = useState<ChoreSuggestion | null>(null);
+	const [confirmSuggestion, setConfirmSuggestion] = useState(false);
 	const [newTitle, setNewTitle] = useState('');
 	const [newInterval, setNewInterval] = useState(7);
 	const [newRecurrenceType, setNewRecurrenceType] = useState<RecurrenceType>('days');
@@ -102,11 +116,10 @@ export default function PutzenPage() {
 	const initialLoadStartedRef = useRef(false);
 	const loadRequestIdRef = useRef(0);
 	const titleInputRef = useRef<HTMLInputElement>(null);
+	const assigneeTouchedRef = useRef(false);
 
 	const { isPending, start: startPending, end: endPending } = usePendingSet();
-	// Used for delete confirmation
-	// Used for complete confirmation (armed = first tap shows "OK", second tap commits)
-	const completeConfirm = useConfirmDelete(60_000);
+	const [completeConfirmId, setCompleteConfirmId] = useState<string | null>(null);
 
 	const load = useCallback(
 		async (initial: boolean): Promise<void> => {
@@ -170,13 +183,10 @@ export default function PutzenPage() {
 	useVisibilityPausedInterval(() => void load(false), 30_000);
 
 	useEffect(() => {
-		if (prefillTitle) {
-			setDraftHydrated(true);
-			return;
-		}
 		const draft = readDraft<{
 			title?: string;
 			intervalDays?: number;
+			recurrenceType?: RecurrenceType;
 			assignedMemberId?: string;
 			absenceMemberId?: string;
 			absenceStartDate?: string;
@@ -189,39 +199,75 @@ export default function PutzenPage() {
 			setDraftHydrated(true);
 			return;
 		}
-		const hasRestorableChoreDraft =
-			typeof draft.title === 'string' && draft.title.length > 0
-				? true
-				: typeof draft.intervalDays === 'number' && draft.intervalDays !== 7
-					? true
-					: Boolean(draft.assignedMemberId || draft.queueEditId);
-		if (hasRestorableChoreDraft) setShowForm(true);
+		if (!isEmptyModuleDraft('chore', draft, identity.memberId)) {
+			assigneeTouchedRef.current = true;
+			setShowForm(true);
+		}
 		if (draft.title) {
 			setNewTitle(draft.title);
 		}
 		if (draft.intervalDays) setNewInterval(draft.intervalDays);
-		if (draft.assignedMemberId) setNewAssigned(draft.assignedMemberId);
+		if (draft.recurrenceType === 'months' || draft.recurrenceType === 'days')
+			setNewRecurrenceType(draft.recurrenceType);
+		if (typeof draft.assignedMemberId === 'string') setNewAssigned(draft.assignedMemberId);
 		if (draft.absenceMemberId) setAbsenceMemberId(draft.absenceMemberId);
 		if (draft.absenceStartDate) setAbsenceStart(draft.absenceStartDate.slice(0, 10));
 		if (draft.absenceEndDate) setAbsenceEnd(draft.absenceEndDate.slice(0, 10));
 		if (draft.absenceReason !== undefined) setAbsenceReason(draft.absenceReason);
 		if (draft.queueEditId) setQueueEditId(draft.queueEditId);
 		setDraftHydrated(true);
-	}, [draftKey, prefillTitle]);
+	}, [draftKey, identity.memberId]);
+
+	const applyChoreSuggestion = useCallback(
+		(suggestion: ChoreSuggestion): void => {
+			assigneeTouchedRef.current = false;
+			writeDraft(draftKey, {
+				title: suggestion.title,
+				intervalDays: suggestion.intervalDays,
+				recurrenceType: suggestion.recurrenceType,
+				assignedMemberId: '',
+			});
+			setNewTitle(suggestion.title);
+			setNewInterval(suggestion.intervalDays);
+			setNewRecurrenceType(suggestion.recurrenceType);
+			setNewAssigned('');
+			setQueueEditId(null);
+			setPendingSuggestion(null);
+			setShowForm(true);
+		},
+		[draftKey],
+	);
+
+	const suggestChore = useCallback(
+		(suggestion: ChoreSuggestion): void => {
+			const draft = readDraft<Record<string, unknown>>(draftKey);
+			if (draft && !isEmptyModuleDraft('chore', draft, identity.memberId)) {
+				assigneeTouchedRef.current = true;
+				setPendingSuggestion(suggestion);
+				setShowForm(true);
+			} else {
+				applyChoreSuggestion(suggestion);
+			}
+		},
+		[applyChoreSuggestion, draftKey, identity.memberId],
+	);
 
 	useEffect(() => {
-		if (!prefillTitle) return;
-		if (appliedPrefillRef.current === prefillTitle) return;
+		if (!prefillTitle || appliedPrefillRef.current === prefillTitle) return;
 		appliedPrefillRef.current = prefillTitle;
-		setNewTitle(prefillTitle.slice(0, TITLE_MAX));
-		setQueueEditId(null);
-		setShowForm(true);
-	}, [prefillTitle]);
+		suggestChore({
+			title: prefillTitle.slice(0, TITLE_MAX),
+			intervalDays: 7,
+			recurrenceType: 'days',
+		});
+	}, [prefillTitle, suggestChore]);
 
 	useEffect(() => {
 		if (!draftHydrated) return;
 		writeDraft(draftKey, {
+			...readDraft<Record<string, unknown>>(draftKey),
 			title: newTitle,
+			recurrenceType: newRecurrenceType,
 			intervalDays: newInterval,
 			assignedMemberId: newAssigned,
 			absenceMemberId,
@@ -239,6 +285,7 @@ export default function PutzenPage() {
 		draftKey,
 		newAssigned,
 		newInterval,
+		newRecurrenceType,
 		newTitle,
 		queueEditId,
 	]);
@@ -322,6 +369,7 @@ export default function PutzenPage() {
 						memberId: identity.memberId,
 						title,
 						intervalDays: newInterval,
+						recurrenceType: newRecurrenceType,
 						assignedMemberId: newAssigned || null,
 					});
 					if (enqueueOfflineAction(queued) === 0) {
@@ -351,6 +399,7 @@ export default function PutzenPage() {
 						setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
+					assigneeTouchedRef.current = false;
 					setShowForm(false);
 					removeDraft(draftKey);
 					setActionNotice(
@@ -370,6 +419,7 @@ export default function PutzenPage() {
 				setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
+			assigneeTouchedRef.current = false;
 			setShowForm(false);
 			removeDraft(draftKey);
 			void load(false);
@@ -499,14 +549,16 @@ export default function PutzenPage() {
 		if (isPending(chore.id)) return;
 
 		// First tap → arm; second tap → commit
-		const shouldCommit = completeConfirm.request(chore.id);
-		if (!shouldCommit) return;
+		if (completeConfirmId !== chore.id) {
+			setCompleteConfirmId(chore.id);
+			return;
+		}
 
 		startPending(chore.id);
 		setActionError(null);
 		setActionNotice(null);
 
-		const result = await apiFetch<{ chore?: Pick<Chore, 'nextDueAt' | 'assignedMemberId'> }>(
+		const result = await apiFetch<{ chore?: Pick<Chore, 'id' | 'nextDueAt' | 'assignedMemberId'> }>(
 			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(chore.id)}/complete`,
 			{
 				method: 'POST',
@@ -534,21 +586,26 @@ export default function PutzenPage() {
 					return;
 				}
 				refreshCount();
-				setActionNotice('Offline gespeichert. Wird synchronisiert, sobald ihr wieder online seid.');
-				completeConfirm.cancel();
+				setActionNotice(
+					'Erledigung offline vorgemerkt. Nächster Termin und Zuständigkeit werden nach der Synchronisierung bestätigt.',
+				);
+				setCompleteConfirmId(null);
 				endPending(chore.id);
 				return;
 			}
 			if (result.status === 404 && result.error === 'chore_not_found') {
 				setItems((current) => current.filter((item) => item.id !== chore.id));
-				completeConfirm.cancel();
+				setCompleteConfirmId(null);
 				setActionError('Diese Putzaufgabe existiert nicht mehr und wurde aus dem Plan entfernt.');
 				void load(false);
 				endPending(chore.id);
 				return;
 			}
-			if (result.status === 404 && result.error === 'chore_already_completed') {
-				completeConfirm.cancel();
+			if (
+				(result.status === 404 || result.status === 409) &&
+				result.error === 'chore_already_completed'
+			) {
+				setCompleteConfirmId(null);
 				setActionNotice('Diese Putzaufgabe wurde bereits erledigt. Der Plan wird aktualisiert.');
 				void load(false);
 				endPending(chore.id);
@@ -564,24 +621,35 @@ export default function PutzenPage() {
 			}
 			setActionError('Erledigt-Aktion konnte nicht gespeichert werden: Versuche es gleich erneut.');
 		} else {
-			const completedAt = new Date().toISOString();
-			const completedChore = result.data?.chore;
-			setItems((current) =>
-				current.map((item) =>
-					item.id === chore.id
-						? {
-								...item,
-								nextDueAt: completedChore?.nextDueAt ?? chore.nextDueAt,
-								assignedMemberId: completedChore?.assignedMemberId ?? chore.assignedMemberId,
-								lastCompletedAt: completedAt,
-								lastCompletedByName: identity.name,
-								openGapCountForAssignee: 0,
-							}
-						: item,
-				),
-			);
-			completeConfirm.cancel();
+			const updated = result.data.chore;
+			const confirmed = updated?.id === chore.id && parseTimestamp(updated.nextDueAt) !== null;
+			if (confirmed) {
+				setItems((current) =>
+					current.map((item) =>
+						item.id === chore.id
+							? {
+									...item,
+									nextDueAt: updated.nextDueAt,
+									assignedMemberId: updated.assignedMemberId,
+									lastCompletedAt: new Date().toISOString(),
+									lastCompletedByName: identity.name,
+								}
+							: item,
+					),
+				);
+				const nextName = members.find((member) => member.id === updated.assignedMemberId)?.name;
+				setActionNotice(
+					`Erledigt. Nächster Termin: ${formatShortDate(updated.nextDueAt)}; ${nextName ? `${nextName} ist dran (Rotation).` : 'noch niemand zugewiesen.'}`,
+				);
+			} else {
+				setActionNotice(
+					'Erledigt. Der bestätigte nächste Termin und die Zuständigkeit werden geladen.',
+				);
+			}
+
+			setCompleteConfirmId(null);
 			toast.success('Aufgabe erledigt ✓');
+			void load(false);
 		}
 
 		endPending(chore.id);
@@ -760,29 +828,20 @@ export default function PutzenPage() {
 	const choreAddPending = isPending('chore:add');
 	const absenceAddPending = isPending('absence:add');
 
-	// Prefill the fairness suggestion once per form-open. A ref guards against
-	// re-firing when the user explicitly picks "— niemand —" (empty string) or
-	// a background refresh changes the suggestion mid-edit.
-	const assigneeTouchedRef = useRef(false);
+	// A restored choice (including nobody) survives close/keep. Only a fresh
+	// form after saving, or an explicitly accepted suggestion, gets a default.
 	useEffect(() => {
-		if (!showForm) {
-			assigneeTouchedRef.current = false;
-			return;
-		}
+		if (!showForm || !draftHydrated || pendingSuggestion) return;
 		if (assigneeTouchedRef.current || !fairness.suggestedAssignee || newAssigned) return;
 		setNewAssigned(fairness.suggestedAssignee.id);
-	}, [fairness.suggestedAssignee, newAssigned, showForm]);
+	}, [draftHydrated, fairness.suggestedAssignee, newAssigned, pendingSuggestion, showForm]);
 	const handleAssignedMemberIdChange = (value: string): void => {
 		assigneeTouchedRef.current = true;
 		setNewAssigned(value);
 	};
 
 	function applyQuickChore(template: (typeof QUICK_CHORE_TEMPLATES)[number]): void {
-		setShowForm(true);
-		setNewTitle(template.title);
-		setNewInterval(template.intervalDays);
-		setNewRecurrenceType(template.recurrenceType);
-		setQueueEditId(null);
+		suggestChore(template);
 		window.setTimeout(() => titleInputRef.current?.focus(), 0);
 	}
 
@@ -827,7 +886,37 @@ export default function PutzenPage() {
 				members={activeMembers}
 				pending={choreAddPending}
 				onSubmit={() => void add()}
-			/>
+			>
+				{pendingSuggestion && (
+					<Alert>
+						<AlertDescription>
+							<p>Dein vorhandener Entwurf bleibt erhalten.</p>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setConfirmSuggestion(true)}
+								disabled={choreAddPending}
+								className="h-auto min-h-11 whitespace-normal"
+							>
+								Entwurf verwerfen und „{pendingSuggestion.title}“ übernehmen
+							</Button>
+						</AlertDescription>
+					</Alert>
+				)}
+				{confirmSuggestion && (
+					<ConfirmDialog
+						open
+						onClose={() => setConfirmSuggestion(false)}
+						onConfirm={() => {
+							if (pendingSuggestion) applyChoreSuggestion(pendingSuggestion);
+						}}
+						title="Entwurf verwerfen?"
+						description="Der bisherige Aufgabenentwurf wird durch den Vorschlag ersetzt. Bereits gespeicherte Aufgaben bleiben erhalten."
+						confirmLabel="Entwurf verwerfen"
+						cancelLabel="Entwurf behalten"
+					/>
+				)}
+			</ChoreForm>
 			{actionError && !showForm && (
 				<Alert variant="destructive">
 					<AlertDescription>{actionError}</AlertDescription>
@@ -891,8 +980,22 @@ export default function PutzenPage() {
 							isPending={isPending(chore.id)}
 							isSwapPending={isPending(`${chore.id}:swap`)}
 							isTakePending={isPending(`${chore.id}:take`)}
-							isCompleteArmed={completeConfirm.confirmId === chore.id}
-							onCancelComplete={completeConfirm.cancel}
+							isCompleteArmed={completeConfirmId === chore.id}
+							nextAssigneeName={
+								completeConfirmId === chore.id
+									? (members.find(
+											(member) =>
+												member.id ===
+												chooseNextAvailableMember({
+													members: activeMembers,
+													currentMemberId: chore.assignedMemberId,
+													absentMemberIds,
+													chores: items,
+												}),
+										)?.name ?? null)
+									: null
+							}
+							onCancelComplete={() => setCompleteConfirmId(null)}
 							onComplete={handleComplete}
 							onSwapRequest={handleSwapRequest}
 							onTakeOver={handleTakeOver}
