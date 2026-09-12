@@ -57,10 +57,10 @@ test.describe('Mobile WG shell', () => {
 			'aria-current',
 			'page',
 		);
-		const moduleNavigation = page.getByRole('region', { name: 'Module' });
-		await expect(moduleNavigation.getByRole('link', { name: /^Ausgaben\b/ })).toBeVisible({
+		await expect(page.getByRole('heading', { name: 'Heute wichtig' })).toBeVisible({
 			timeout: 30_000,
 		});
+		await expect(page.getByRole('region', { name: 'Module' })).toHaveCount(0);
 
 		await expectNoHorizontalOverflow(page);
 
@@ -146,7 +146,9 @@ test.describe('Mobile WG shell', () => {
 				await expect(page.getByRole('navigation', { name: 'WG Schnellzugriff' })).toHaveCount(0);
 			}
 			if (path === '/wg/MTE8PZAT') {
-				await expect(page.getByRole('link', { name: 'WG-Einstellungen öffnen' })).toBeVisible({
+				await expect(
+					page.getByRole('link', { name: 'Konto und WG-Einstellungen öffnen' }),
+				).toBeVisible({
 					timeout: 30_000,
 				});
 			}

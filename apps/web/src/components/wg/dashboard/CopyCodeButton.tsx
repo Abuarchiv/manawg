@@ -107,7 +107,7 @@ export function CopyCodeButton({ code, wgName, joiningEnabled = true }: CopyCode
 			</output>
 			<Button
 				type="button"
-				variant="outline"
+				variant="ghost"
 				onClick={onClick}
 				disabled={!joiningEnabled || sharing}
 				className="h-auto min-h-11 whitespace-normal"

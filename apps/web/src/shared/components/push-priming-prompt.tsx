@@ -1,7 +1,14 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import {
+	Card,
+	CardAction,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import {
 	PUSH_PRIMING_DISMISS_KEY,
@@ -10,7 +17,7 @@ import {
 	shouldShowPushPriming,
 } from '@/core/notifications/push-priming';
 import { subscribeWebPush } from '@/core/notifications/push-subscribe';
-import { BellRing, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 function safeLocalStorage(): Storage | null {
@@ -49,20 +56,13 @@ function rememberDismissed(): void {
 }
 
 /**
- * A one-time, non-blocking offer to turn on push notifications. Mounted for
- * every member with a resolved identity (see WgContextProvider), so it
+ * A one-time, non-blocking inline offer to turn on push notifications. Mounted
+ * for every member with a resolved identity (see WgContextProvider), so it
  * naturally appears right after the moment a WG is created or joined for a
  * fresh device — without needing every join/create flow to know about it.
  *
- * Deliberately pinned to the TOP of the viewport, not the bottom: the
- * install-prompt banner and every composer (chat, pinnwand) already live
- * near the bottom nav, and a previous bug (see install-prompt.tsx's
- * `isEditingTarget` doc comment) came from a bottom-fixed banner sliding over
- * an in-progress keystroke. Living at the top avoids that class of bug by
- * construction instead of coordinating visibility with InstallPrompt.
- *
  * `Notification.requestPermission()` (inside `subscribeWebPush`) only ever
- * fires from the user's tap on "Ja, aktivieren" — never automatically. Most
+ * fires from the user's tap on "Aktivieren" — never automatically. Most
  * browsers ignore/block an unsolicited call anyway, and a silent grant would
  * be the exact dark pattern app stores reject.
  */
@@ -100,8 +100,8 @@ export function PushPrimingPrompt({
 		const timer = window.setTimeout(() => {
 			if (!isEditingTarget()) setVisible(true);
 		}, 800);
-		// Safety net: retract immediately if the card is already showing when the
-		// user then taps into a composer, instead of sitting over the keystroke.
+		// Safety net: retract immediately if the user starts editing while the
+		// delayed offer is becoming visible.
 		const onFocusIn = () => {
 			if (isEditingTarget()) setVisible(false);
 		};
@@ -183,47 +183,33 @@ export function PushPrimingPrompt({
 			role="status"
 			aria-live="polite"
 			aria-label="Benachrichtigungen aktivieren"
-			// Breite wie beim Install-Banner an --app-frame-width gedeckelt, sonst
-			// ragt das Overlay auf Desktop über die App-Spalte hinaus.
-			className="fixed left-1/2 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] z-[90] w-[calc(100%-1rem)] max-w-[calc(var(--app-frame-width)-1rem)] -translate-x-1/2 animate-in slide-in-from-top-4 fade-in duration-300"
+			className="w-full px-4 pt-3 animate-in fade-in duration-300"
 		>
-			<Card className="p-0 shadow-2xl">
-				<CardContent className="flex items-start gap-3 p-4">
-					<span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-						<BellRing className="h-4 w-4" aria-hidden />
-					</span>
-
-					<div className="min-w-0 flex-1">
-						<p className="text-[14px] font-semibold text-card-foreground">
-							Benachrichtigungen aktivieren (empfohlen)
-						</p>
-						<p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-							Alle Kategorien sind schon vorausgewählt — bekomme Bescheid bei neuen Nachrichten,
-							Ausgaben und fälligen Aufgaben, direkt aufs Gerät. Einzelne Kategorien kannst du
-							jederzeit in den Einstellungen abwählen.
-						</p>
+			<Card>
+				<CardHeader>
+					<CardTitle>Benachrichtigungen</CardTitle>
+					<CardDescription>
+						Erhalte Hinweise zu fälligen Aufgaben und neuen WG-Nachrichten.
+					</CardDescription>
+					<CardAction>
 						<Button
+							variant="ghost"
+							size="icon"
 							type="button"
-							onClick={() => void enable()}
-							disabled={busy}
-							className="mt-3 min-h-11 rounded-full px-4 text-[13px]"
+							onClick={dismiss}
+							aria-label="Hinweis schließen"
+							className="size-11 text-muted-foreground"
 						>
-							{busy && <Spinner className="size-3.5" aria-hidden />}
-							Ja, aktivieren
+							<X aria-hidden />
 						</Button>
-					</div>
-
-					<Button
-						variant="ghost"
-						size="icon-lg"
-						type="button"
-						onClick={dismiss}
-						aria-label="Hinweis schließen"
-						className="size-11 shrink-0 rounded-full text-muted-foreground"
-					>
-						<X className="h-4 w-4" aria-hidden />
+					</CardAction>
+				</CardHeader>
+				<CardFooter>
+					<Button type="button" onClick={() => void enable()} disabled={busy} className="min-h-11">
+						{busy && <Spinner data-icon="inline-start" aria-hidden />}
+						Aktivieren
 					</Button>
-				</CardContent>
+				</CardFooter>
 			</Card>
 		</div>
 	);

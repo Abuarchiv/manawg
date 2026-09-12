@@ -19,7 +19,7 @@ async function fulfillJson(route: Parameters<Parameters<Page['route']>[1]>[0], b
 test.describe('Fixture launch flow', () => {
 	test.setTimeout(180_000);
 
-	test('creates a WG, shows the invite step, and opens the dashboard tiles', async ({ page }) => {
+	test('creates a WG, shows the invite step, and opens the Start overview', async ({ page }) => {
 		await page.addInitScript(({ id: wgId, member: { id: memberId }, memberName }) => {
 			localStorage.clear();
 			localStorage.setItem(
@@ -94,11 +94,11 @@ test.describe('Fixture launch flow', () => {
 		await page.waitForURL(`/wg/${FIXTURE.shareCode}`);
 		await dashboardResponse;
 		await dismissOnboarding(page);
-		await expect(page.getByRole('heading', { name: 'Start', exact: true })).toBeVisible();
+		await expect(page.getByRole('heading', { name: /^Start – /, level: 1 })).toBeVisible();
 		await expect(page.getByText(FIXTURE.name, { exact: true })).toBeVisible();
 
-		const modules = page.getByRole('region', { name: 'Module' });
-		for (const label of ['Ausgaben', 'Einkauf', 'Putzen', 'Pinnwand']) {
+		const modules = page.getByRole('navigation', { name: 'WG Hauptnavigation' });
+		for (const label of ['Start', 'Haushalt', 'Finanzen', 'Austausch']) {
 			await expect(modules.getByRole('link', { name: new RegExp(`^${label}\\b`) })).toBeVisible();
 		}
 	});
