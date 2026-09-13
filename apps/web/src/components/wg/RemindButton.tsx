@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
 import { Bell, Check } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type RemindButtonStatus = 'idle' | 'sending' | 'sent' | 'error' | 'cooldown' | 'optedOut';
 
@@ -51,6 +51,20 @@ export function RemindButton({
 	);
 	const [feedback, setFeedback] = useState<string | null>(null);
 	const sendingRef = useRef(false);
+
+	useEffect(() => {
+		if (sendingRef.current) return;
+		const nextStatus: RemindButtonStatus = debtorOptedOut
+			? 'optedOut'
+			: cooldownActive
+				? 'cooldown'
+				: 'idle';
+		setStatus((current) => {
+			if (current === 'sending' || current === 'sent') return current;
+			return nextStatus;
+		});
+		if (nextStatus === 'idle') setFeedback(null);
+	}, [cooldownActive, debtorOptedOut]);
 
 	const disabled =
 		status === 'sending' || status === 'cooldown' || status === 'optedOut' || status === 'sent';

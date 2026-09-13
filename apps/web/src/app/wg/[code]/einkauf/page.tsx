@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
 	Empty,
 	EmptyContent,
@@ -84,6 +83,7 @@ export default function EinkaufPage() {
 	const [toggleError, setToggleError] = useState<string | null>(null);
 	const [toggleNotice, setToggleNotice] = useState<string | null>(null);
 	const [removeError, setRemoveError] = useState<string | null>(null);
+	const [removeErrorId, setRemoveErrorId] = useState<string | null>(null);
 	const [adding, setAdding] = useState(false);
 	const [clearingBought, setClearingBought] = useState(false);
 	const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
@@ -93,6 +93,8 @@ export default function EinkaufPage() {
 	const addingRef = useRef(false);
 	const clearingBoughtRef = useRef(false);
 	const nameInputRef = useRef<HTMLInputElement>(null);
+	const nameValueRef = useRef('');
+	const quantityValueRef = useRef('');
 
 	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'shopping');
 	const appliedPrefillRef = useRef<string | null>(null);
@@ -164,6 +166,11 @@ export default function EinkaufPage() {
 		writeDraft(draftKey, { name: newName, quantity: newQty, queueEditId });
 	}, [draftHydrated, draftKey, newName, newQty, queueEditId]);
 
+	useEffect(() => {
+		nameValueRef.current = newName;
+		quantityValueRef.current = newQty;
+	}, [newName, newQty]);
+
 	const { queuedCount, refreshCount } = useOfflineQueueSync({
 		shareCode: wg.shareCode,
 		memberId: identity.memberId,
@@ -197,6 +204,8 @@ export default function EinkaufPage() {
 
 	async function add(): Promise<void> {
 		if (addingRef.current) return;
+		const submittedName = newName;
+		const submittedQuantity = newQty;
 		const name = newName.trim();
 		if (name.length === 0) return;
 		addingRef.current = true;
@@ -244,22 +253,26 @@ export default function EinkaufPage() {
 						},
 						...prev,
 					]);
-					setNewName('');
-					setNewQty('');
-					removeDraft(draftKey);
+					const nameUnchanged = nameValueRef.current === submittedName;
+					const quantityUnchanged = quantityValueRef.current === submittedQuantity;
+					if (nameUnchanged) setNewName('');
+					if (quantityUnchanged) setNewQty('');
+					if (nameUnchanged && quantityUnchanged) removeDraft(draftKey);
 					setAddNotice('Offline gespeichert. Wird synchronisiert, sobald ihr wieder online seid.');
 					return;
 				}
 				setAddError(shoppingAddErrorMessage(res.error));
 				return;
 			}
-			setNewName('');
-			setNewQty('');
 			if (!clearEditedQueueItem()) {
 				setAddError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
-			removeDraft(draftKey);
+			const nameUnchanged = nameValueRef.current === submittedName;
+			const quantityUnchanged = quantityValueRef.current === submittedQuantity;
+			if (nameUnchanged) setNewName('');
+			if (quantityUnchanged) setNewQty('');
+			if (nameUnchanged && quantityUnchanged) removeDraft(draftKey);
 			toast.success('Hinzugefügt');
 			void load(true);
 		} finally {
@@ -274,123 +287,107 @@ export default function EinkaufPage() {
 		setToggleError(null);
 		setToggleNotice(null);
 		const becomingBought = item.boughtAt === null;
-		const queuedCreate = readOfflineQueue().find(
-			(queued) =>
-				queued.id === item.id &&
-				queued.shareCode === wg.shareCode &&
-				queued.type === 'shopping.create',
-		);
-		if (queuedCreate) {
-			const now = new Date().toISOString();
-			const saved = writeOfflineQueue(
-				readOfflineQueue().map((queued) =>
-					queued.id === item.id
-						? {
-								...queued,
-								payload: {
-									...queued.payload,
-									bought: becomingBought,
-								},
-							}
-						: queued,
-				),
+		const optimisticItem: ShoppingItem = {
+			...item,
+			boughtAt: becomingBought ? new Date().toISOString() : null,
+			boughtByMemberId: becomingBought ? identity.memberId : null,
+		};
+		setItems((prev) => prev.map((current) => (current.id === item.id ? optimisticItem : current)));
+		const rollback = () =>
+			setItems((prev) => prev.map((current) => (current.id === item.id ? item : current)));
+
+		try {
+			const queuedCreate = readOfflineQueue().find(
+				(queued) =>
+					queued.id === item.id &&
+					queued.shareCode === wg.shareCode &&
+					queued.type === 'shopping.create',
 			);
-			if (!saved) {
-				setToggleError(
-					'Offline-Speicher ist blockiert. Der Einkaufsstatus konnte nicht vorgemerkt werden.',
+			if (queuedCreate) {
+				const saved = writeOfflineQueue(
+					readOfflineQueue().map((queued) =>
+						queued.id === item.id
+							? { ...queued, payload: { ...queued.payload, bought: becomingBought } }
+							: queued,
+					),
 				);
-				end(item.id);
-				return;
-			}
-			refreshCount();
-			setItems((prev) =>
-				prev.map((current) =>
-					current.id === item.id
-						? {
-								...current,
-								boughtAt: becomingBought ? now : null,
-								boughtByMemberId: becomingBought ? identity.memberId : null,
-							}
-						: current,
-				),
-			);
-			setToggleNotice(
-				becomingBought
-					? 'Offline vorgemerkt. Der neue Artikel wird direkt als erledigt synchronisiert.'
-					: 'Offline vorgemerkt. Der neue Artikel wird wieder offen synchronisiert.',
-			);
-			end(item.id);
-			return;
-		}
-		const res = await apiFetch<{ item: ShoppingItem }>(
-			`/api/wg/${encodedShareCode}/shopping/${encodeURIComponent(item.id)}`,
-			{
-				method: 'PATCH',
-				memberId: identity.memberId,
-				memberToken: identity.memberToken,
-				body: JSON.stringify({
-					bought: becomingBought,
-					boughtByMemberId: becomingBought ? identity.memberId : null,
-				}),
-			},
-		);
-		if (!res.ok) {
-			if (res.status === 403) {
-				setToggleError('Nur der/die Autor:in kann dies abhaken.');
-			} else if (res.status === 404 && res.error === 'item_not_found') {
-				setItems((prev) => prev.filter((current) => current.id !== item.id));
-				setToggleError(
-					'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
-				);
-			} else if (res.status === 0) {
-				const queued = createQueuedShoppingUpdate({
-					wgId: wg.id,
-					shareCode: wg.shareCode,
-					memberId: identity.memberId,
-					itemId: item.id,
-					name: item.name,
-					bought: becomingBought,
-				});
-				if (enqueueOfflineAction(queued) === 0) {
+				if (!saved) {
+					rollback();
 					setToggleError(
 						'Offline-Speicher ist blockiert. Der Einkaufsstatus konnte nicht vorgemerkt werden.',
 					);
-					end(item.id);
 					return;
 				}
 				refreshCount();
-				const now = queued.createdAt;
-				setItems((prev) =>
-					prev.map((current) =>
-						current.id === item.id
-							? {
-									...current,
-									boughtAt: becomingBought ? now : null,
-									boughtByMemberId: becomingBought ? identity.memberId : null,
-								}
-							: current,
-					),
-				);
 				setToggleNotice(
 					becomingBought
-						? 'Offline vorgemerkt. Der Artikel wird später als erledigt synchronisiert.'
-						: 'Offline vorgemerkt. Der Artikel wird später wieder geöffnet.',
+						? 'Offline vorgemerkt. Der neue Artikel wird direkt als erledigt synchronisiert.'
+						: 'Offline vorgemerkt. Der neue Artikel wird wieder offen synchronisiert.',
 				);
-			} else {
-				setToggleError(shoppingActionErrorMessage(res.error, 'Abhaken fehlgeschlagen.'));
+				return;
 			}
+
+			const res = await apiFetch<{ item: ShoppingItem }>(
+				`/api/wg/${encodedShareCode}/shopping/${encodeURIComponent(item.id)}`,
+				{
+					method: 'PATCH',
+					memberId: identity.memberId,
+					memberToken: identity.memberToken,
+					body: JSON.stringify({
+						bought: becomingBought,
+						boughtByMemberId: becomingBought ? identity.memberId : null,
+					}),
+				},
+			);
+			if (!res.ok) {
+				if (res.status === 403) {
+					rollback();
+					setToggleError('Nur der/die Autor:in kann dies abhaken.');
+				} else if (res.status === 404 && res.error === 'item_not_found') {
+					setItems((prev) => prev.filter((current) => current.id !== item.id));
+					setToggleError(
+						'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
+					);
+				} else if (res.status === 0) {
+					const queued = createQueuedShoppingUpdate({
+						wgId: wg.id,
+						shareCode: wg.shareCode,
+						memberId: identity.memberId,
+						itemId: item.id,
+						name: item.name,
+						bought: becomingBought,
+					});
+					if (enqueueOfflineAction(queued) === 0) {
+						rollback();
+						setToggleError(
+							'Offline-Speicher ist blockiert. Der Einkaufsstatus konnte nicht vorgemerkt werden.',
+						);
+						return;
+					}
+					refreshCount();
+					setToggleNotice(
+						becomingBought
+							? 'Offline vorgemerkt. Der Artikel wird später als erledigt synchronisiert.'
+							: 'Offline vorgemerkt. Der Artikel wird später wieder geöffnet.',
+					);
+				} else {
+					rollback();
+					setToggleError(shoppingActionErrorMessage(res.error, 'Abhaken fehlgeschlagen.'));
+				}
+				return;
+			}
+			setItems((prev) => prev.map((current) => (current.id === item.id ? res.data.item : current)));
+			void load(true);
+		} finally {
 			end(item.id);
-			return;
 		}
-		setItems((prev) => prev.map((current) => (current.id === item.id ? res.data.item : current)));
-		void load(true);
-		end(item.id);
 	}
 
 	async function remove(id: string): Promise<void> {
 		if (isPending(id)) return;
 		start(id);
 		setRemoveError(null);
+		setRemoveErrorId(null);
 		const res = await apiFetch<unknown>(
 			`/api/wg/${encodedShareCode}/shopping/${encodeURIComponent(id)}`,
 			{
@@ -401,6 +398,7 @@ export default function EinkaufPage() {
 		);
 		if (!res.ok) {
 			if (res.status === 403) {
+				setRemoveErrorId(id);
 				setRemoveError('Nur der/die Autor:in kann diesen Eintrag entfernen.');
 			} else if (res.status === 404 && res.error === 'item_not_found') {
 				setItems((prev) => prev.filter((item) => item.id !== id));
@@ -408,6 +406,7 @@ export default function EinkaufPage() {
 					'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
 				);
 			} else {
+				setRemoveErrorId(id);
 				setRemoveError(shoppingActionErrorMessage(res.error, 'Entfernen fehlgeschlagen.'));
 			}
 			end(id);
@@ -423,6 +422,7 @@ export default function EinkaufPage() {
 		clearingBoughtRef.current = true;
 		setClearingBought(true);
 		setRemoveError(null);
+		setRemoveErrorId(null);
 		try {
 			const res = await apiFetch<{ deleted: number }>(`/api/wg/${encodedShareCode}/shopping`, {
 				method: 'DELETE',
@@ -448,7 +448,7 @@ export default function EinkaufPage() {
 	const orderedItems = [...items].sort(
 		(a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
 	);
-	const actionError = toggleError ?? removeError;
+	const actionError = toggleError ?? (removeErrorId ? null : removeError);
 
 	function applyQuickItem(item: (typeof QUICK_SHOPPING_ITEMS)[number]): void {
 		setNewName(item.name);
@@ -457,9 +457,9 @@ export default function EinkaufPage() {
 	}
 
 	return (
-		<div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-5">
+		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
 			<header className="flex flex-col gap-1">
-				<h1 className="text-xl font-semibold tracking-tight">Einkaufsliste</h1>
+				<h1 className="font-heading text-2xl font-semibold tracking-tight">Einkaufsliste</h1>
 				<div className="flex flex-wrap gap-2" aria-live="polite" aria-atomic="true">
 					<Badge variant="secondary">{open.length} offen</Badge>
 					<Badge variant="outline">{done.length} erledigt</Badge>
@@ -467,71 +467,76 @@ export default function EinkaufPage() {
 			</header>
 			<SubNav label="Haushalt" items={[]} />
 
-			<Card size="sm">
-				<CardHeader>
-					<CardTitle>Was brauchen wir?</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<form
-						onSubmit={(event) => {
-							event.preventDefault();
-							void add();
-						}}
-						className="flex flex-col gap-3"
-					>
-						<FieldGroup className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
-							<Field className="col-span-2" data-disabled={adding} data-invalid={Boolean(addError)}>
-								<FieldLabel htmlFor="shopping-name">Artikel</FieldLabel>
-								<Input
-									id="shopping-name"
-									ref={nameInputRef}
-									value={newName}
-									onChange={(event) => setNewName(event.target.value)}
-									maxLength={NAME_MAX}
-									placeholder="Was brauchen wir?"
-									aria-label="Artikel-Name"
-									disabled={adding}
-									aria-invalid={Boolean(addError)}
-									aria-describedby={addError ? 'shopping-add-error' : undefined}
-									className="min-h-11 text-base"
-								/>
-							</Field>
-							<Field data-disabled={adding}>
-								<FieldLabel htmlFor="shopping-qty">Menge (optional)</FieldLabel>
-								<Input
-									id="shopping-qty"
-									value={newQty}
-									onChange={(event) => setNewQty(event.target.value)}
-									maxLength={QUANTITY_MAX}
-									placeholder="1 L"
-									aria-label="Menge"
-									disabled={adding}
-									className="min-h-11 text-base"
-								/>
-							</Field>
-							<Button
-								type="submit"
-								disabled={!newName.trim() || adding}
-								aria-label="Artikel hinzufügen"
-								className="min-h-11"
-							>
-								{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}
-								Artikel hinzufügen
-							</Button>
-						</FieldGroup>
-						{addError && (
-							<Alert id="shopping-add-error" variant="destructive">
-								<AlertDescription>{addError}</AlertDescription>
-							</Alert>
-						)}
-						{addNotice && (
-							<Alert>
-								<AlertDescription>{addNotice}</AlertDescription>
-							</Alert>
-						)}
-					</form>
-				</CardContent>
-			</Card>
+			<div className="border-b border-border pb-4">
+				<form
+					onSubmit={(event) => {
+						event.preventDefault();
+						void add();
+					}}
+					className="flex flex-col gap-3"
+				>
+					<FieldGroup className="grid grid-cols-[minmax(0,1fr)_4.5rem_2.75rem] items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+						<Field className="sm:col-span-2" data-invalid={Boolean(addError)}>
+							<FieldLabel htmlFor="shopping-name">Artikel</FieldLabel>
+							<Input
+								id="shopping-name"
+								ref={nameInputRef}
+								value={newName}
+								onChange={(event) => {
+									nameValueRef.current = event.target.value;
+									setNewName(event.target.value);
+								}}
+								maxLength={NAME_MAX}
+								placeholder="Was brauchen wir?"
+								aria-label="Artikel-Name"
+								enterKeyHint="done"
+								aria-invalid={Boolean(addError)}
+								aria-describedby={addError ? 'shopping-add-error' : undefined}
+								className="min-h-11 text-base"
+							/>
+						</Field>
+						<Field>
+							<FieldLabel htmlFor="shopping-qty">
+								<span className="sm:hidden">Menge</span>
+								<span className="hidden sm:inline">Menge (optional)</span>
+							</FieldLabel>
+							<Input
+								id="shopping-qty"
+								value={newQty}
+								onChange={(event) => {
+									quantityValueRef.current = event.target.value;
+									setNewQty(event.target.value);
+								}}
+								maxLength={QUANTITY_MAX}
+								placeholder="1 L"
+								aria-label="Menge (optional)"
+								enterKeyHint="done"
+								className="min-h-11 text-base"
+							/>
+						</Field>
+						<Button
+							type="submit"
+							disabled={!newName.trim() || adding}
+							aria-label="Artikel hinzufügen"
+							onPointerDown={(event) => event.preventDefault()}
+							className="min-h-11 px-0 sm:px-3"
+						>
+							{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}
+							<span className="hidden sm:inline">Hinzufügen</span>
+						</Button>
+					</FieldGroup>
+					{addError && (
+						<Alert id="shopping-add-error" variant="destructive">
+							<AlertDescription>{addError}</AlertDescription>
+						</Alert>
+					)}
+					{addNotice && (
+						<Alert>
+							<AlertDescription>{addNotice}</AlertDescription>
+						</Alert>
+					)}
+				</form>
+			</div>
 
 			{queuedCount > 0 && (
 				<Alert>
@@ -579,7 +584,7 @@ export default function EinkaufPage() {
 						{QUICK_SHOPPING_ITEMS.map((item) => (
 							<Button
 								key={item.name}
-								variant="outline"
+								variant="ghost"
 								onClick={() => applyQuickItem(item)}
 								className="min-h-11"
 							>
@@ -600,6 +605,7 @@ export default function EinkaufPage() {
 								isPending={isPending}
 								onToggle={toggleBought}
 								onRemove={remove}
+								removeError={removeErrorId === item.id ? removeError : null}
 								canRemove={item.addedByMemberId === identity.memberId}
 								highlighted={highlightedId === item.id}
 								shareCode={wg.shareCode}
@@ -637,7 +643,7 @@ export default function EinkaufPage() {
 						<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
 						<AlertDialogAction
 							variant="destructive"
-							className="min-h-11"
+							className="min-h-11 min-w-0 max-w-full shrink whitespace-normal"
 							disabled={clearingBought}
 							onClick={() => {
 								setClearConfirmOpen(false);

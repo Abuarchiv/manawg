@@ -1,3 +1,4 @@
+import { berlinDayKey } from '@/core/utils/berlin-day';
 import { MS_PER_DAY, parseTimestamp } from '@/core/utils/time';
 
 type ChoreStatusState = 'planned' | 'due' | 'overdue' | 'unknown';
@@ -11,7 +12,7 @@ interface ChoreStatus {
 	actionLabel: 'Erledigt' | 'Nachholen';
 	overdueDays: number;
 	escalated: boolean;
-	escalationLabel: 'Bitte klären' | null;
+	escalationLabel: 'Klärung offen' | null;
 }
 
 interface ChoreHealthInput {
@@ -48,9 +49,23 @@ interface ChoreAssigneeInput {
 	now?: number;
 }
 
-export function getChoreStatus(iso: string, now = Date.now()): ChoreStatus {
+function berlinCalendarDayMs(key: string): number {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+	if (!match) throw new Error(`Unexpected Berlin day key: ${key}`);
+	return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+function calendarDayDistance(iso: string, now: number): number | null {
 	const dueAt = parseTimestamp(iso);
-	if (dueAt === null) {
+	if (dueAt === null) return null;
+	const dueKey = berlinDayKey(new Date(dueAt));
+	const nowKey = berlinDayKey(new Date(now));
+	return (berlinCalendarDayMs(dueKey) - berlinCalendarDayMs(nowKey)) / MS_PER_DAY;
+}
+
+export function getChoreStatus(iso: string, now = Date.now()): ChoreStatus {
+	const diffDays = calendarDayDistance(iso, now);
+	if (diffDays === null) {
 		return {
 			state: 'unknown',
 			tone: 'soon',
@@ -62,7 +77,6 @@ export function getChoreStatus(iso: string, now = Date.now()): ChoreStatus {
 			escalationLabel: null,
 		};
 	}
-	const diffDays = Math.round((dueAt - now) / MS_PER_DAY);
 
 	if (diffDays < 0) {
 		const overdueDays = Math.abs(diffDays);
@@ -70,14 +84,12 @@ export function getChoreStatus(iso: string, now = Date.now()): ChoreStatus {
 		return {
 			state: 'overdue',
 			tone: 'overdue',
-			label: `${overdueDays} T. überfällig`,
-			detail: `Lücke im Plan: seit ${overdueDays} ${
-				overdueDays === 1 ? 'Tag' : 'Tagen'
-			} offen${escalated ? ' · bitte nachholen oder tauschen' : ''}`,
+			label: `seit ${overdueDays} T. offen`,
+			detail: `Seit ${overdueDays} ${overdueDays === 1 ? 'Tag' : 'Tagen'} offen`,
 			actionLabel: 'Nachholen',
 			overdueDays,
 			escalated,
-			escalationLabel: escalated ? 'Bitte klären' : null,
+			escalationLabel: escalated ? 'Klärung offen' : null,
 		};
 	}
 
@@ -149,8 +161,8 @@ export function getChoreRepairHint(
 
 	return {
 		tone: 'danger',
-		title: `Lücke seit ${status.overdueDays} Tagen`,
-		action: 'Neu zuweisen oder nachholen',
+		title: `Offen seit ${status.overdueDays} Tagen`,
+		action: 'Neu zuweisen oder erledigen',
 	};
 }
 

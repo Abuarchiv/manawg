@@ -45,6 +45,9 @@ export function InventoryList({
 	const [editing, setEditing] = useState<InventoryItemDto | null>(null);
 	const grouped = useMemo(() => groupItemsByCategory(items), [items]);
 	const isEmpty = items.length === 0;
+	const hasQuickRestockItems = items.some(
+		(item) => item.decrementCount30d > 0 || item.lastDecrementedAt !== null,
+	);
 
 	function openEdit(item: InventoryItemDto): void {
 		setEditing(item);
@@ -52,16 +55,29 @@ export function InventoryList({
 
 	return (
 		<div className="flex flex-col gap-4">
-			<div className="flex flex-wrap gap-2">
-				<Button onClick={() => setAddOpen(true)} className="min-h-11">
-					<Plus data-icon="inline-start" aria-hidden />
-					Vorrat hinzufügen
-				</Button>
-				<Button variant="outline" onClick={() => setQuickOpen(true)} className="min-h-11">
-					<Zap data-icon="inline-start" aria-hidden />
-					Schnell nachfüllen
-				</Button>
-			</div>
+			{!isEmpty && (
+				<div className="flex flex-wrap gap-2">
+					<Button
+						type="button"
+						onClick={() => setAddOpen(true)}
+						className="h-auto min-h-11 w-full max-w-full whitespace-normal sm:w-auto"
+					>
+						<Plus data-icon="inline-start" aria-hidden />
+						Vorrat hinzufügen
+					</Button>
+					{hasQuickRestockItems && (
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => setQuickOpen(true)}
+							className="h-auto min-h-11 w-full max-w-full whitespace-normal sm:w-auto"
+						>
+							<Zap data-icon="inline-start" aria-hidden />
+							Schnell nachfüllen
+						</Button>
+					)}
+				</div>
+			)}
 			{isEmpty ? (
 				<Empty>
 					<EmptyHeader>

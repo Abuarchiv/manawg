@@ -18,7 +18,7 @@ export function AusgabenHeader({
 	onToggleForm,
 }: AusgabenHeaderProps): React.ReactElement {
 	return (
-		<header className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+		<header className="flex flex-wrap items-center justify-between gap-2">
 			<div className="min-w-0">
 				<h1 className="text-[22px] font-semibold tracking-tight text-foreground">Ausgaben</h1>
 				<p
@@ -30,11 +30,13 @@ export function AusgabenHeader({
 				</p>
 			</div>
 			<div
-				className="flex items-center justify-end gap-1.5"
+				className="flex min-w-0 flex-wrap items-center justify-end gap-1.5"
 				role="toolbar"
 				aria-label="Ausgaben-Aktionen"
 			>
-				<CalendarLink wgBaseHref={wgBaseHref} />
+				<div className="hidden sm:block">
+					<CalendarLink wgBaseHref={wgBaseHref} />
+				</div>
 				<FormToggleButton
 					open={showForm}
 					onToggle={onToggleForm}

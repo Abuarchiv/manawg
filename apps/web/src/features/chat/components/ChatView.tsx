@@ -2,7 +2,6 @@
 
 import { useToast } from '@/components/ui/Toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from '@/components/ui/empty';
 import {
@@ -102,6 +101,7 @@ export function ChatView({
 	const [sendError, setSendError] = useState<string | null>(null);
 	const [refreshError, setRefreshError] = useState(false);
 	const [replyToId, setReplyToId] = useState<string | null>(null);
+	const [replyFocusRequest, setReplyFocusRequest] = useState(0);
 	const scrollRef = useRef<HTMLDivElement | null>(null);
 	const chatRootRef = useRef<HTMLDivElement | null>(null);
 	const readSentinelRef = useRef<HTMLDivElement | null>(null);
@@ -214,7 +214,7 @@ export function ChatView({
 		return true;
 	}, [encodedShareCode, identity.memberId]);
 
-	const { mode } = useChatChannel(wgId, {
+	useChatChannel(wgId, {
 		onMessageCreated: () => void refresh(),
 		onMessageUpdated: () => void refresh(),
 		onMessageDeleted: () => void refresh(),
@@ -400,19 +400,22 @@ export function ChatView({
 		const frame = chatRootRef.current?.closest<HTMLElement>('[data-chat-frame]');
 		if (!frame) return;
 		const viewport = window.visualViewport;
+		const chrome = document.querySelector<HTMLElement>('nav[data-app-chrome]');
 		function resize() {
 			if (!frame) return;
 			const top = viewport?.offsetTop ?? 0;
 			const bottom = top + (viewport?.height ?? window.innerHeight);
-			const chrome = document.querySelector<HTMLElement>('nav[data-app-chrome]');
 			const reserved = chrome?.getBoundingClientRect().height ?? 68;
 			frame.style.height = `${Math.max(0, bottom - Math.max(top, frame.getBoundingClientRect().top) - reserved)}px`;
 		}
+		const chromeObserver = chrome ? new ResizeObserver(resize) : null;
 		resize();
+		if (chrome && chromeObserver) chromeObserver.observe(chrome);
 		window.addEventListener('resize', resize);
 		viewport?.addEventListener('resize', resize);
 		viewport?.addEventListener('scroll', resize);
 		return () => {
+			chromeObserver?.disconnect();
 			window.removeEventListener('resize', resize);
 			viewport?.removeEventListener('resize', resize);
 			viewport?.removeEventListener('scroll', resize);
@@ -425,26 +428,17 @@ export function ChatView({
 
 	return (
 		<div ref={chatRootRef} className="relative flex min-h-0 flex-1 flex-col bg-background">
-			<div className="border-b border-border bg-background">
-				<div className="mx-auto flex w-full max-w-3xl items-center justify-between px-3 py-2">
-					<div className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground">
-						Chat{' '}
-						<Badge
-							variant={mode === 'realtime' ? 'default' : 'secondary'}
-							className="ml-1 gap-1 font-normal"
-						>
-							<span className="inline-block h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
-							{mode === 'realtime' ? 'Live' : 'Aktualisiert alle 8 Sek.'}
-						</Badge>
-					</div>
-				</div>
-			</div>
 			{refreshError && !bootstrapError && !bootstrapping && (
-				<Alert variant="destructive">
-					<AlertDescription>
-						Aktualisierung fehlgeschlagen. Die zuletzt geladenen Nachrichten bleiben sichtbar.
-						<Button variant="outline" className="min-h-11" onClick={() => void refresh()}>
-							Erneut laden
+				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1">
+					<AlertDescription className="flex flex-row flex-wrap items-center justify-between gap-x-2 gap-y-0 text-xs">
+						Chat gerade nicht aktuell.
+						<Button
+							variant="ghost"
+							size="sm"
+							className="min-h-11 text-xs"
+							onClick={() => void refresh()}
+						>
+							Erneut versuchen
 						</Button>
 					</AlertDescription>
 				</Alert>
@@ -463,7 +457,7 @@ export function ChatView({
 						aria-label="Chat-Nachrichten"
 						className="bg-background"
 					>
-						<MessageScrollerContent className="w-full gap-3 px-3 py-3">
+						<MessageScrollerContent className="mx-auto w-full max-w-3xl gap-3 px-4 py-2">
 							{bootstrapping ? (
 								<MessageScrollerItem>
 									<output className="flex min-h-40 items-center justify-center">
@@ -518,7 +512,10 @@ export function ChatView({
 									onUnreact={unreact}
 									onEdit={editMessage}
 									onDelete={deleteMessage}
-									onReply={(id) => setReplyToId(id)}
+									onReply={(id) => {
+										setReplyToId(id);
+										setReplyFocusRequest((request) => request + 1);
+									}}
 								/>
 							)}
 							<MessageScrollerItem>
@@ -546,6 +543,7 @@ export function ChatView({
 				members={members.filter((m) => m.active).map((m) => ({ id: m.id, name: m.name }))}
 				currentMemberId={identity.memberId}
 				replyToMessageId={replyToId}
+				replyFocusRequest={replyFocusRequest}
 				replyToPreview={
 					replyTo ? previewBody(replyTo.body ?? (replyTo.imageUrl ? 'Bild' : ''), 80) : null
 				}

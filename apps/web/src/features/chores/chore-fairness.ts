@@ -1,4 +1,3 @@
-import { MS_PER_DAY, parseTimestamp } from '@/core/utils/time';
 import { getChoreStatus } from '@/features/chores/chore-status';
 
 interface MemberInput {
@@ -69,10 +68,9 @@ export function buildChoreFairness(input: {
 	const rows = input.members.map<ChoreFairnessRow>((member) => {
 		const assigned = input.chores.filter((chore) => chore.assignedMemberId === member.id);
 		const openGapCount = Math.max(0, ...assigned.map((chore) => chore.openGapCountForAssignee));
-		const overdueCount = assigned.filter((chore) => {
-			const nextDueAt = parseTimestamp(chore.nextDueAt);
-			return nextDueAt !== null && nextDueAt < now - MS_PER_DAY;
-		}).length;
+		const overdueCount = assigned.filter(
+			(chore) => getChoreStatus(chore.nextDueAt, now).state === 'overdue',
+		).length;
 		return {
 			id: member.id,
 			name: member.name,
@@ -93,7 +91,7 @@ export function buildChoreFairness(input: {
 	const insights =
 		busiest && busiest.assignedCount + busiest.openGapCount > 0
 			? [
-					`${busiest.name} hat aktuell ${busiest.assignedCount} Aufgaben und ${busiest.openGapCount} offene Lücken.`,
+					`${busiest.name} hat aktuell ${busiest.assignedCount} Aufgaben und ${busiest.openGapCount} offene Termine.`,
 				]
 			: ['Die Aufgaben sind noch nicht verteilt.'];
 	if (absentCount > 0) {

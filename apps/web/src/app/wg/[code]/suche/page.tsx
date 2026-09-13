@@ -19,7 +19,7 @@ import {
 	InputGroupInput,
 } from '@/components/ui/input-group';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
-import { Separator } from '@/components/ui/separator';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { BackLink } from '@/components/wg/BackLink';
@@ -42,6 +42,8 @@ interface SearchResponse {
 	results: WgSearchResult[];
 	suggestions: string[];
 }
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 const MODULE_FILTERS: Array<{ id: WgSearchModule; label: string }> = [
 	{ id: 'pinnwand', label: 'Pinnwand' },
@@ -93,7 +95,7 @@ export default function SuchePage() {
 	const requestIdRef = useRef(0);
 
 	const load = useCallback(
-		async (nextQuery = query): Promise<void> => {
+		async (nextQuery: string): Promise<void> => {
 			const requestId = requestIdRef.current + 1;
 			requestIdRef.current = requestId;
 			setLoading(true);
@@ -122,11 +124,19 @@ export default function SuchePage() {
 				if (requestId === requestIdRef.current) setLoading(false);
 			}
 		},
-		[encodedShareCode, identity.memberId, query],
+		[encodedShareCode, identity.memberId],
 	);
 
 	useEffect(() => {
-		void load(query);
+		// Invalidate an in-flight request as soon as the query changes. The next
+		// request starts only after typing pauses, so stale results remain visible
+		// without a second set of placeholder rows.
+		requestIdRef.current += 1;
+		setLoading(true);
+		const timeoutId = window.setTimeout(() => {
+			void load(query);
+		}, SEARCH_DEBOUNCE_MS);
+		return () => window.clearTimeout(timeoutId);
 	}, [load, query]);
 	// Bewusst kein Auto-Refresh: die Trefferliste würde unter der lesenden oder
 	// tippenden Person neu sortiert. Eine Suche lädt neu, wenn die Query sich ändert.
@@ -160,20 +170,22 @@ export default function SuchePage() {
 	}
 
 	return (
-		<div className="mx-auto w-full max-w-md space-y-4 bg-background px-4 py-6 pb-[env(safe-area-inset-bottom)]">
+		<div className="mx-auto min-w-0 w-full max-w-3xl space-y-4 bg-background px-4 py-4 pb-[env(safe-area-inset-bottom)]">
 			<header className="flex items-center gap-2">
 				<BackLink href={wgBaseHref} label="Dashboard" />
 				<div className="min-w-0 flex-1">
-					<h1 className="text-xl font-semibold tracking-tight text-foreground">WG durchsuchen</h1>
+					<h1 className="font-heading text-xl font-semibold tracking-tight break-words text-foreground">
+						WG durchsuchen
+					</h1>
 					<p className="mt-0.5 text-[13px] text-muted-foreground">
 						Finde Pinnwand, Aufgaben, Ausgaben, Einkauf und Abwesenheiten.
 					</p>
 				</div>
 			</header>
 
-			<Card>
-				<CardContent className="pt-4">
-					<FieldGroup>
+			<Card className="border-0 bg-transparent py-0 shadow-none">
+				<CardContent className="p-0">
+					<FieldGroup className="gap-3">
 						<Field>
 							<FieldLabel htmlFor="wg-search">Suchbegriff</FieldLabel>
 							<InputGroup className="min-h-11">
@@ -212,7 +224,7 @@ export default function SuchePage() {
 										key={suggestion}
 										type="button"
 										variant="outline"
-										size="lg"
+										size="sm"
 										onClick={() => setQuery(suggestion)}
 										className="min-h-11 rounded-full"
 									>
@@ -222,44 +234,50 @@ export default function SuchePage() {
 							</div>
 						)}
 
-						{/* "Schnellfilter:" steckt in legend/aria-label statt im sichtbaren Text —
-						    sichtbar wiederholt es sich sechsmal und treibt die Chips über drei
-						    Zeilen. fieldset gruppiert die Chips für Screenreader. */}
-						<fieldset className="flex flex-wrap gap-2 border-0 p-0">
-							<legend className="sr-only">Schnellfilter</legend>
-							{QUICK_FILTERS.map((filter) => (
-								<Button
-									key={filter.id}
-									type="button"
-									variant={quickFilter === filter.id ? 'default' : 'outline'}
-									size="lg"
-									onClick={() => setQuickFilter(filter.id)}
-									aria-pressed={quickFilter === filter.id}
-									aria-label={`Schnellfilter: ${filter.label}`}
-									className="min-h-11 rounded-full"
-								>
-									{filter.label}
-								</Button>
-							))}
-						</fieldset>
+						<Field>
+							<FieldLabel htmlFor="search-quick-filter">Status</FieldLabel>
+							<NativeSelect
+								id="search-quick-filter"
+								value={quickFilter}
+								onChange={(event) =>
+									setQuickFilter(event.target.value as WgSearchQuickFilter | 'all')
+								}
+								className="w-full [&_select]:min-h-10"
+							>
+								{QUICK_FILTERS.map((filter) => (
+									<NativeSelectOption key={filter.id} value={filter.id}>
+										{filter.label}
+									</NativeSelectOption>
+								))}
+							</NativeSelect>
+						</Field>
 
-						<Separator />
-
-						<div className="flex flex-wrap gap-2" aria-label="Suchbereiche filtern">
-							{MODULE_FILTERS.map((module) => (
-								<Button
-									key={module.id}
-									type="button"
-									variant={moduleFilters.includes(module.id) ? 'default' : 'outline'}
-									size="lg"
-									onClick={() => toggleModule(module.id)}
-									aria-pressed={moduleFilters.includes(module.id)}
-									className="min-h-11 rounded-full"
-								>
-									{module.label}
-								</Button>
-							))}
-						</div>
+						<details className="border-b border-border">
+							<summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
+								<span>Weitere Filter</span>
+								{moduleFilters.length > 0 && (
+									<span className="text-muted-foreground text-xs font-normal">
+										{moduleFilters.length} ausgewählt
+									</span>
+								)}
+							</summary>
+							<fieldset className="flex flex-wrap gap-2 border-t border-border pt-3">
+								<legend className="sr-only">Suchbereiche filtern</legend>
+								{MODULE_FILTERS.map((module) => (
+									<Button
+										key={module.id}
+										type="button"
+										variant={moduleFilters.includes(module.id) ? 'default' : 'outline'}
+										size="sm"
+										onClick={() => toggleModule(module.id)}
+										aria-pressed={moduleFilters.includes(module.id)}
+										className="min-h-11 rounded-full"
+									>
+										{module.label}
+									</Button>
+								))}
+							</fieldset>
+						</details>
 					</FieldGroup>
 				</CardContent>
 			</Card>
@@ -283,7 +301,7 @@ export default function SuchePage() {
 				</output>
 			)}
 
-			{loading && trimmedQuery.length > 0 && (
+			{loading && trimmedQuery.length > 0 && results.length === 0 && (
 				<ItemGroup aria-label="Suche lädt">
 					{[0, 1, 2].map((index) => (
 						<Item key={index} variant="outline">
@@ -303,7 +321,7 @@ export default function SuchePage() {
 						<Button
 							type="button"
 							variant="outline"
-							size="lg"
+							size="sm"
 							onClick={resetFilters}
 							className="mt-3 min-h-11"
 						>
@@ -314,7 +332,7 @@ export default function SuchePage() {
 			)}
 
 			{trimmedQuery.length > 0 && !error && !loading && results.length === 0 && (
-				<Empty>
+				<Empty className="gap-3 border-0 px-0 py-5">
 					<EmptyHeader>
 						<EmptyMedia variant="icon">
 							<SearchX aria-hidden />
@@ -328,14 +346,14 @@ export default function SuchePage() {
 						<div className="flex flex-wrap justify-center gap-2">
 							<Link
 								href={`${wgBaseHref}/pinnwand`}
-								className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11')}
+								className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'min-h-11')}
 							>
 								Zur Pinnwand
 							</Link>
 							<Button
 								type="button"
 								variant="ghost"
-								size="lg"
+								size="sm"
 								onClick={clearSearch}
 								className="min-h-11"
 							>
@@ -354,12 +372,13 @@ export default function SuchePage() {
 						return (
 							<Item
 								key={`${result.module}:${result.id}`}
-								variant="outline"
+								size="sm"
+								className="rounded-none border-b border-border last:border-0"
 								render={<Link href={result.href} aria-label={`${result.title} — ${moduleLabel}`} />}
 							>
-								<ItemContent>
-									<ItemTitle>{result.title}</ItemTitle>
-									<ItemDescription>{result.meta}</ItemDescription>
+								<ItemContent className="min-w-0">
+									<ItemTitle className="min-w-0 w-full">{result.title}</ItemTitle>
+									<ItemDescription className="min-w-0">{result.meta}</ItemDescription>
 								</ItemContent>
 								<Badge variant="secondary" className="shrink-0">
 									{moduleLabel}
@@ -371,7 +390,7 @@ export default function SuchePage() {
 			)}
 
 			{hasActiveFilters && visibleResults.length > 0 && (
-				<Button type="button" variant="ghost" size="lg" onClick={resetFilters} className="min-h-11">
+				<Button type="button" variant="ghost" size="sm" onClick={resetFilters} className="min-h-11">
 					Filter zurücksetzen
 				</Button>
 			)}

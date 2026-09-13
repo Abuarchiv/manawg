@@ -40,7 +40,7 @@ export function DebtRow({
 					</ItemTitle>
 					<ItemDescription>{ageLabel}</ItemDescription>
 				</ItemContent>
-				<Badge variant="secondary" className="tabular-nums">
+				<Badge variant="secondary" className="font-mono tabular-nums text-destructive">
 					{formatEuroCents(amountCents)}
 				</Badge>
 				{action && <ItemFooter className="justify-end">{action}</ItemFooter>}

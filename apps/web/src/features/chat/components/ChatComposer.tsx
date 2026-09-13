@@ -32,6 +32,7 @@ interface ChatComposerProps {
 	members: MentionMember[];
 	currentMemberId: string;
 	replyToMessageId: string | null;
+	replyFocusRequest?: number;
 	replyToPreview: string | null;
 	replyToSenderName: string | null;
 	onClearReply: () => void;
@@ -62,6 +63,7 @@ export function ChatComposer({
 	members,
 	currentMemberId,
 	replyToMessageId,
+	replyFocusRequest = 0,
 	replyToPreview,
 	replyToSenderName,
 	onClearReply,
@@ -69,6 +71,10 @@ export function ChatComposer({
 	onSend,
 }: ChatComposerProps) {
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+	const draftRef = useRef('');
+	const replyToMessageIdRef = useRef(replyToMessageId);
+	const handledReplyFocusRequestRef = useRef(0);
+	replyToMessageIdRef.current = replyToMessageId;
 	const [draft, setDraft] = useState('');
 	const [pending, setPending] = useState(false);
 	const pendingRef = useRef(false);
@@ -92,10 +98,27 @@ export function ChatComposer({
 		: undefined;
 	useEffect(() => {
 		const saved = readDraft<{ body?: string; replyToMessageId?: string }>(draftKey);
-		if (typeof saved?.body === 'string') setDraft(saved.body.slice(0, BODY_MAX));
+		const restoredDraft = typeof saved?.body === 'string' ? saved.body.slice(0, BODY_MAX) : '';
+		draftRef.current = restoredDraft;
+		setDraft(restoredDraft);
 		onRestoreReply(typeof saved?.replyToMessageId === 'string' ? saved.replyToMessageId : null);
 		setDraftHydrated(true);
 	}, [draftKey, onRestoreReply]);
+
+	useEffect(() => {
+		if (
+			replyFocusRequest === 0 ||
+			!draftHydrated ||
+			handledReplyFocusRequestRef.current === replyFocusRequest
+		)
+			return;
+		const textarea = textareaRef.current;
+		if (!textarea) return;
+		handledReplyFocusRequestRef.current = replyFocusRequest;
+		textarea.focus({ preventScroll: true });
+		const cursor = textarea.value.length;
+		textarea.setSelectionRange(cursor, cursor);
+	}, [draftHydrated, replyFocusRequest]);
 
 	useEffect(() => {
 		if (!draftHydrated) return;
@@ -114,6 +137,7 @@ export function ChatComposer({
 
 	function handleChange(e: ChangeEvent<HTMLTextAreaElement>): void {
 		const value = e.target.value;
+		draftRef.current = value;
 		setDraft(value);
 		const cursor = e.target.selectionStart ?? value.length;
 		setMention(detectMention(value, cursor));
@@ -127,6 +151,7 @@ export function ChatComposer({
 		const insertion = `@${member.name} `;
 		const next = `${before}${insertion}${after}`;
 		if (next.length > BODY_MAX) return;
+		draftRef.current = next;
 		setDraft(next);
 		setMention(null);
 		const nextCursor = before.length + insertion.length;
@@ -139,7 +164,9 @@ export function ChatComposer({
 	}
 
 	async function submit(): Promise<void> {
-		const text = draft.trim();
+		const outgoingDraft = draftRef.current;
+		const outgoingReplyToMessageId = replyToMessageIdRef.current;
+		const text = outgoingDraft.trim();
 		if (text.length === 0 || text.length > BODY_MAX || pendingRef.current) return;
 		pendingRef.current = true;
 		haptic('selection');
@@ -157,13 +184,20 @@ export function ChatComposer({
 			const ok = await onSend({
 				body: text,
 				mentionMemberIds: mentionedIds,
-				replyToMessageId,
+				replyToMessageId: outgoingReplyToMessageId,
 			});
 			if (ok) {
 				haptic('medium');
-				setDraft('');
-				setMention(null);
-				onClearReply();
+				// A user may continue composing while the request is in flight. Only
+				// clear the draft/reply that produced this request.
+				if (draftRef.current === outgoingDraft) {
+					draftRef.current = '';
+					setDraft('');
+					setMention(null);
+				}
+				if (replyToMessageIdRef.current === outgoingReplyToMessageId) {
+					onClearReply();
+				}
 			}
 		} finally {
 			pendingRef.current = false;
@@ -245,12 +279,12 @@ export function ChatComposer({
 				onSelect={insertMention}
 				onHoverIndex={setMentionActiveIndex}
 			/>
-			<div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-3 py-2">
-				<InputGroup className="h-auto min-h-11 items-end">
+			<div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-4 py-2">
+				<InputGroup className="h-auto min-h-10 items-end">
 					<InputGroupTextarea
 						ref={textareaRef}
 						value={draft}
-						disabled={pending || !draftHydrated}
+						disabled={!draftHydrated}
 						onChange={handleChange}
 						onKeyDown={onKey}
 						placeholder="Nachricht schreiben"
@@ -261,13 +295,14 @@ export function ChatComposer({
 						aria-controls={mentionOpen ? mentionListboxId : undefined}
 						aria-expanded={mentionOpen}
 						aria-activedescendant={activeOptionId}
-						className="max-h-32 min-h-11 flex-1 text-base md:text-base"
+						className="max-h-32 min-h-10 flex-1 text-base md:text-base"
 					/>
-					<InputGroupAddon align="inline-end">
+					<InputGroupAddon align="inline-end" className="py-1">
 						<InputGroupButton
 							type="button"
 							variant="default"
 							size="icon-sm"
+							onPointerDown={(event) => event.preventDefault()}
 							onClick={() => void submit()}
 							disabled={pending || !draftHydrated || draft.trim().length === 0}
 							aria-label="Nachricht senden"

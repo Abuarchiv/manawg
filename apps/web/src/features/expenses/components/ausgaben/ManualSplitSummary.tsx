@@ -30,11 +30,7 @@ export function ManualSplitSummary({
 	}, 0);
 	const remainderCents = totalCents - splitCents;
 	const balanced = totalCents > 0 && remainderCents === 0;
-	const label = balanced
-		? '✓ Ausgeglichen'
-		: remainderCents < 0
-			? `Zu viel: ${formatEuroCents(Math.abs(remainderCents))}`
-			: `Offen: ${formatEuroCents(remainderCents)}`;
+	const label = balanced ? '✓ Ausgeglichen' : remainderCents < 0 ? 'Zu viel' : 'Offen';
 
 	function distributeRemainder(): void {
 		if (totalCents <= 0 || remainderCents === 0) return;
@@ -69,9 +65,21 @@ export function ManualSplitSummary({
 				aria-live="polite"
 				variant={balanced ? undefined : remainderCents < 0 ? 'destructive' : undefined}
 			>
-				<AlertDescription className="flex items-center justify-between gap-2 tabular-nums">
-					<span>Summe: {formatEuroCents(splitCents)}</span>
-					<span>{label}</span>
+				<AlertDescription className="flex items-center justify-between gap-2">
+					<span>
+						Summe: <span className="font-mono tabular-nums">{formatEuroCents(splitCents)}</span>
+					</span>
+					<span>
+						{label}
+						{!balanced && (
+							<>
+								:{' '}
+								<span className="font-mono tabular-nums">
+									{formatEuroCents(Math.abs(remainderCents))}
+								</span>
+							</>
+						)}
+					</span>
 				</AlertDescription>
 			</Alert>
 			{!balanced && totalCents > 0 && (

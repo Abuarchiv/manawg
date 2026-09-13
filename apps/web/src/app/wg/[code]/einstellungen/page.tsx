@@ -103,9 +103,9 @@ export default function EinstellungenPage() {
 	}, []);
 
 	return (
-		<div className="mx-auto w-full max-w-md px-4 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
-			<div className="py-6">
-				<header className="mb-6 flex items-center gap-2">
+		<div className="mx-auto min-w-0 w-full max-w-3xl px-4 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
+			<div className="min-w-0 py-4">
+				<header className="mb-4 flex items-center gap-2">
 					<Link
 						href={wgBaseHref}
 						aria-label="Zurück zum Dashboard"
@@ -117,12 +117,13 @@ export default function EinstellungenPage() {
 						<ArrowLeft aria-hidden />
 						<span className="sr-only">Zurück zum Dashboard</span>
 					</Link>
-					<h1 className="text-foreground min-w-0 flex-1 truncate text-xl font-semibold tracking-tight">
+					<h1 className="font-heading min-w-0 flex-1 text-xl font-semibold tracking-tight break-words text-foreground">
 						Einstellungen
 					</h1>
 				</header>
 
 				<Tabs
+					className="min-w-0"
 					value={activeTab}
 					onValueChange={(next) => {
 						const tabId = next as SettingsTab;
@@ -132,7 +133,7 @@ export default function EinstellungenPage() {
 					}}
 				>
 					<TabsList
-						className="sticky z-10 grid w-full grid-cols-2 gap-1 p-1"
+						className="sticky z-10 grid h-auto min-w-0 max-w-full w-full grid-cols-4 gap-1 border border-border bg-background p-1"
 						style={{ top: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
 					>
 						{SETTINGS_TABS.map((tab) => (
@@ -140,14 +141,17 @@ export default function EinstellungenPage() {
 								key={tab.id}
 								value={tab.id}
 								id={`tab-${tab.id}`}
-								className="min-h-[44px] w-full text-xs"
+								className="min-h-[44px] w-full min-w-0 whitespace-normal text-center text-xs"
 							>
-								{tab.label}
+								{tab.id === 'notifications' ? 'Hinweise' : tab.label}
 							</TabsTrigger>
 						))}
 					</TabsList>
 
-					<TabsContent value={activeTab} className="mt-6 grid gap-6 outline-none">
+					<TabsContent
+						value={activeTab}
+						className="mt-4 grid min-w-0 max-w-full gap-4 outline-none"
+					>
 						{activeTab === 'profile' && (
 							<ProfileTab
 								memberName={identity.name}

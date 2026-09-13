@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, type SyntheticEvent, useRef, useState } from 'react';
 
 interface AboModalShellProps {
 	title: string;
@@ -31,8 +31,25 @@ interface AboModalShellProps {
 
 export function AboModalShell({ title, onClose, submitting, children }: AboModalShellProps) {
 	const [confirmClose, setConfirmClose] = useState(false);
+	const dirtyRef = useRef(false);
+	const trackFieldChange = (event: SyntheticEvent<HTMLDivElement>) => {
+		const target = event.target;
+		if (target instanceof Element && target.matches('input, select, textarea'))
+			dirtyRef.current = true;
+	};
+	const trackToggleChange = (event: SyntheticEvent<HTMLDivElement>) => {
+		const target = event.target;
+		if (target instanceof Element && target.closest('[data-slot="toggle-group-item"]')) {
+			dirtyRef.current = true;
+		}
+	};
 	const requestClose = () => {
-		if (!submitting) setConfirmClose(true);
+		if (submitting) return;
+		if (!dirtyRef.current) {
+			onClose();
+			return;
+		}
+		setConfirmClose(true);
 	};
 	return (
 		<>
@@ -64,7 +81,12 @@ export function AboModalShell({ title, onClose, submitting, children }: AboModal
 						<DialogDescription>Wiederholung, Zahler:in und Anteile festlegen.</DialogDescription>
 					</DialogHeader>
 					<Separator />
-					<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
+					<div
+						className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4"
+						onChangeCapture={trackFieldChange}
+						onInputCapture={trackFieldChange}
+						onClickCapture={trackToggleChange}
+					>
 						{children(requestClose)}
 					</div>
 				</DialogContent>

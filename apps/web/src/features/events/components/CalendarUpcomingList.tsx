@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
 	Empty,
+	EmptyContent,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
@@ -31,6 +32,7 @@ interface CalendarUpcomingListProps {
 		startsAt: string;
 	}>;
 	onSelect: (occurrence: EventOccurrence) => void;
+	onCreate: () => void;
 	wgBaseHref: string;
 }
 
@@ -59,6 +61,7 @@ export function CalendarUpcomingList({
 	occurrences,
 	choreOccurrences,
 	onSelect,
+	onCreate,
 	wgBaseHref,
 }: CalendarUpcomingListProps) {
 	const entries = [
@@ -82,8 +85,14 @@ export function CalendarUpcomingList({
 						<CalendarClock aria-hidden />
 					</EmptyMedia>
 					<EmptyTitle>Die nächsten 30 Tage sind frei</EmptyTitle>
-					<EmptyDescription>Mit „Neu“ trägst du euren nächsten Termin ein.</EmptyDescription>
+					<EmptyDescription>Trag euren nächsten Termin ein.</EmptyDescription>
 				</EmptyHeader>
+				<EmptyContent>
+					<Button type="button" onClick={onCreate} className="min-h-11">
+						<CalendarPlus data-icon="inline-start" aria-hidden />
+						Termin hinzufügen
+					</Button>
+				</EmptyContent>
 			</Empty>
 		);
 	}

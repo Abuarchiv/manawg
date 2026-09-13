@@ -19,9 +19,11 @@ export function PutzenHeader({
 	onToggleForm,
 }: PutzenHeaderProps) {
 	return (
-		<header className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+		<header className="flex flex-wrap items-center justify-between gap-2">
 			<div className="min-w-0">
-				<h1 className="text-xl font-semibold tracking-tight text-foreground">Putzplan</h1>
+				<h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
+					Putzplan
+				</h1>
 				<p className="mt-1 flex items-center gap-1.5" aria-live="polite" aria-atomic="true">
 					<Badge variant="secondary" className="tabular-nums">
 						{itemCount} Aufgabe{itemCount === 1 ? '' : 'n'}
@@ -29,8 +31,10 @@ export function PutzenHeader({
 					{refreshing && <Spinner className="size-3 opacity-50" aria-hidden />}
 				</p>
 			</div>
-			<div className="flex items-center justify-end gap-1.5">
-				<CalendarLink wgBaseHref={wgBaseHref} />
+			<div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+				<div className="hidden sm:block">
+					<CalendarLink wgBaseHref={wgBaseHref} />
+				</div>
 				<FormToggleButton
 					open={showForm}
 					onToggle={onToggleForm}

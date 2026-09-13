@@ -80,10 +80,10 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 		<>
 			<Section title="Datenexport" hint="Backup und Transparenz für eure WG-Daten.">
 				{exportSummary.length > 0 && (
-					<div className="border-border grid grid-cols-2 gap-2 border-b p-3 text-xs">
+					<div className="border-border grid grid-cols-2 gap-x-4 gap-y-2 border-b p-3 text-xs">
 						{exportSummary.map((section) => (
-							<div key={section.key} className="bg-muted rounded-md px-2 py-1.5">
-								<span className="text-foreground block font-medium tabular-nums">
+							<div key={section.key} className="flex items-baseline gap-2">
+								<span className="text-foreground font-mono font-medium tabular-nums">
 									{section.count}
 								</span>
 								<span className="text-muted-foreground">{section.label}</span>
@@ -99,7 +99,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 						{exportSummaryError} Downloads sind trotzdem möglich.
 					</p>
 				)}
-				<div className="grid gap-2 p-4">
+				<div className="grid gap-2 p-3">
 					<Button
 						type="button"
 						variant="outline"
@@ -168,7 +168,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 				title="Aus Splitwise oder Splid importieren"
 				hint="Übernehme bestehende Ausgaben per CSV-Export oder Screenshot. Namen werden automatisch zugeordnet."
 			>
-				<div className="p-4">
+				<div className="p-3">
 					<Link
 						href={`${wgBaseHref}/import`}
 						className={cn(buttonVariants({ variant: 'default' }), 'h-11 min-h-[44px] w-full')}

@@ -1,17 +1,8 @@
 'use client';
-
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import {
-	Empty,
-	EmptyContent,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyMedia,
-	EmptyTitle,
-} from '@/components/ui/empty';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
@@ -47,6 +38,10 @@ import { CENTS_PER_EURO, formatEuroCents } from '@/core/utils/money';
 import { parseTimestamp } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { AusgabenHeader } from '@/features/expenses/components/ausgaben/AusgabenHeader';
+import type {
+	ExpenseFormField,
+	ExpenseFormFieldErrors,
+} from '@/features/expenses/components/ausgaben/ExpenseFormSection';
 import { ExpenseRow } from '@/features/expenses/components/ausgaben/ExpenseRow';
 import { ExpensesSkeleton } from '@/features/expenses/components/ausgaben/ExpensesSkeleton';
 import { RecurringExpensesSection } from '@/features/expenses/components/ausgaben/RecurringExpensesSection';
@@ -54,7 +49,6 @@ import {
 	AMOUNT_MAX_EUROS,
 	AMOUNT_MIN_EUROS,
 	DESCRIPTION_MAX,
-	QUICK_EXPENSE_TEMPLATES,
 } from '@/features/expenses/components/ausgaben/constants';
 import type {
 	Expense,
@@ -83,8 +77,9 @@ import {
 	splitCandidates,
 } from '@/features/expenses/expense-split-input';
 import { addMonths } from '@/features/expenses/recurring-expenses';
+import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
-import { Bell, ChevronDown, FileInput, Receipt, RefreshCw } from 'lucide-react';
+import { Bell, ChevronDown, FileInput, RefreshCw } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -130,6 +125,8 @@ export default function AusgabenPage() {
 	const [submitting, setSubmitting] = useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
+	const [fieldErrors, setFieldErrors] = useState<ExpenseFormFieldErrors>({});
+	const [validationAttempt, setValidationAttempt] = useState(0);
 	const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
 	const { isPending, start: startPending, end: endPending } = usePendingSet();
@@ -171,7 +168,6 @@ export default function AusgabenPage() {
 		recurringSourceId,
 		acceptPendingPrefill,
 		resetForm,
-		applyQuickExpense,
 		startEdit,
 		startRecurringEdit,
 	} = useExpenseForm({
@@ -200,6 +196,20 @@ export default function AusgabenPage() {
 
 	function setActionWarning(message: string): void {
 		setActionNotice({ message, tone: 'warning' });
+	}
+
+	function setValidationErrors(errors: ExpenseFormFieldErrors): void {
+		setFieldErrors(errors);
+		setValidationAttempt((attempt) => attempt + 1);
+	}
+
+	function clearFieldError(field: ExpenseFormField): void {
+		setFieldErrors((current) => {
+			if (!current[field]) return current;
+			const next = { ...current };
+			delete next[field];
+			return next;
+		});
 	}
 
 	// Always awaited: a fire-and-forget version of this once existed alongside
@@ -320,6 +330,9 @@ export default function AusgabenPage() {
 		initialLoadStartedRef.current = true;
 		void load(true);
 	}, [load]);
+	useEffect(() => {
+		if (!showForm) setFieldErrors({});
+	}, [showForm]);
 	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
 	useVisibilityPausedInterval(() => void load(false), 30_000);
 
@@ -398,6 +411,7 @@ export default function AusgabenPage() {
 	}
 
 	async function submit(): Promise<void> {
+		setFieldErrors({});
 		if (invalidEditDraft) {
 			setFormError(
 				'Die Zuordnung dieses Entwurfs ist beschädigt. Öffne die ursprüngliche Ausgabe erneut oder verwirf den Entwurf.',
@@ -407,19 +421,23 @@ export default function AusgabenPage() {
 		setFormError(null);
 		setConflictExpenseId(null);
 		const desc = description.trim();
-		if (desc.length === 0 || desc.length > DESCRIPTION_MAX) {
-			setFormError('Beschreibung fehlt.');
-			return;
-		}
 		const amountEuros = parseEuroAmount(amountStr);
+		const validationErrors: ExpenseFormFieldErrors = {};
+		if (desc.length === 0 || desc.length > DESCRIPTION_MAX) {
+			validationErrors.description = 'Beschreibung fehlt.';
+		}
 		if (amountEuros === null || amountEuros < AMOUNT_MIN_EUROS || amountEuros > AMOUNT_MAX_EUROS) {
-			setFormError('Betrag ungültig.');
+			validationErrors.amount = 'Betrag ungültig.';
+		}
+		if (Object.keys(validationErrors).length > 0) {
+			setValidationErrors(validationErrors);
 			return;
 		}
+		if (amountEuros === null) return;
 		const amountCents = Math.round(amountEuros * CENTS_PER_EURO);
 		const splitResult = buildSplits(amountCents);
 		if (!splitResult.ok) {
-			setFormError(splitInputErrorMessage(splitResult.reason));
+			setValidationErrors({ splits: splitInputErrorMessage(splitResult.reason) });
 			return;
 		}
 		const splits = splitResult.splits;
@@ -544,18 +562,23 @@ export default function AusgabenPage() {
 
 	async function saveRecurringTemplate(): Promise<void> {
 		if (savingRecurringTemplateRef.current) return;
+		setFieldErrors({});
 		setFormError(null);
 		const wasEditingQueuedRecurring = queueEditType === 'recurring.create';
 		const desc = description.trim();
 		const amountEuros = parseEuroAmount(amountStr);
-		if (!desc || amountEuros === null || amountEuros <= 0) {
-			setFormError('Beschreibung und Betrag fehlen.');
+		const validationErrors: ExpenseFormFieldErrors = {};
+		if (!desc || desc.length > DESCRIPTION_MAX || amountEuros === null || amountEuros <= 0) {
+			if (!desc || desc.length > DESCRIPTION_MAX)
+				validationErrors.description = 'Beschreibung fehlt.';
+			if (amountEuros === null || amountEuros <= 0) validationErrors.amount = 'Betrag ungültig.';
+			setValidationErrors(validationErrors);
 			return;
 		}
 		const amountCents = Math.round(amountEuros * CENTS_PER_EURO);
 		const splitResult = buildSplits(amountCents);
 		if (!splitResult.ok) {
-			setFormError('Aufteilung zuerst sauber ausfüllen.');
+			setValidationErrors({ splits: splitInputErrorMessage(splitResult.reason) });
 			return;
 		}
 		const splits = splitResult.splits;
@@ -929,7 +952,7 @@ export default function AusgabenPage() {
 		memberBalances.find((member) => member.memberId === identity.memberId)?.balanceCents ?? 0;
 
 	return (
-		<div className="mx-auto flex w-full max-w-md flex-col gap-5 px-4 py-5">
+		<div data-finance-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
 			<AusgabenHeader
 				expenseCount={expenses.length}
 				initialLoading={initialLoading}
@@ -974,6 +997,7 @@ export default function AusgabenPage() {
 					pendingPrefillDescription={pendingPrefill?.description ?? null}
 					onReplacePrefill={acceptPendingPrefill}
 					isEditingExpense={editingExpense !== null || invalidEditDraft}
+					editingExpenseId={editingExpense?.id ?? null}
 					notice={actionNotice}
 					description={description}
 					setDescription={setDescription}
@@ -997,6 +1021,9 @@ export default function AusgabenPage() {
 					isEditingQueuedExpense={isEditingQueuedExpense}
 					isEditingQueuedRecurring={isEditingQueuedRecurring}
 					formError={formError}
+					fieldErrors={fieldErrors}
+					validationAttempt={validationAttempt}
+					onClearFieldError={clearFieldError}
 					conflictExpenseId={conflictExpenseId}
 					onReloadServerVersion={() => {
 						setConflictExpenseId(null);
@@ -1040,53 +1067,98 @@ export default function AusgabenPage() {
 					retryLabel="Ausgaben erneut laden"
 				/>
 			)}
-			{!showSkeleton && expenses.length > 0 && (
-				<Card>
-					<CardHeader>
-						<CardDescription>Dein Saldo</CardDescription>
-						<CardTitle>
-							{personalBalance > 0
-								? `Du bekommst ${formatEuroCents(personalBalance)} zurück`
-								: personalBalance < 0
-									? `Du schuldest ${formatEuroCents(-personalBalance)}`
-									: 'Du bist ausgeglichen'}
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<Collapsible>
-							<CollapsibleTrigger
-								render={<Button variant="ghost" className="min-h-11 w-full justify-between" />}
-							>
-								Saldo pro Mitglied
-								<ChevronDown data-icon="inline-end" />
-							</CollapsibleTrigger>
-							<CollapsibleContent>
-								<ItemGroup className="pt-2">
-									{memberBalances.map((member) => (
-										<Item key={member.memberId} variant="muted" size="xs">
-											<ItemContent className="min-w-0">
-												<ItemTitle className="line-clamp-none break-words">
-													{member.memberName}
-													{member.memberId === identity.memberId ? ' (du)' : ''}
-												</ItemTitle>
-												<ItemDescription>
-													{member.balanceCents > 0
-														? 'Bekommt zurück'
-														: member.balanceCents < 0
-															? 'Schuldet'
-															: 'Ausgeglichen'}
-												</ItemDescription>
-											</ItemContent>
-											<Badge variant="outline" className="tabular-nums">
-												{formatEuroCents(Math.abs(member.balanceCents))}
-											</Badge>
-										</Item>
-									))}
-								</ItemGroup>
-							</CollapsibleContent>
-						</Collapsible>
-					</CardContent>
-				</Card>
+			{!showSkeleton && (expenses.length > 0 || directDebts.length > 0) && (
+				<div className="grid items-start gap-4 lg:grid-cols-2">
+					{expenses.length > 0 && (
+						<Card>
+							<CardHeader>
+								<CardDescription>Dein Saldo</CardDescription>
+								<CardTitle>
+									{personalBalance > 0 ? (
+										<>
+											Du bekommst{' '}
+											<span className="font-mono tabular-nums text-settled">
+												{formatEuroCents(personalBalance, 'EUR', { signed: true })}
+											</span>{' '}
+											zurück
+										</>
+									) : personalBalance < 0 ? (
+										<>
+											Noch offen:{' '}
+											<span className="font-mono tabular-nums text-destructive">
+												{formatEuroCents(personalBalance, 'EUR', { signed: true })}
+											</span>
+										</>
+									) : (
+										<>
+											Du bist ausgeglichen{' '}
+											<span className="font-mono tabular-nums text-foreground">
+												{formatEuroCents(0, 'EUR', { signed: true })}
+											</span>
+										</>
+									)}
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<Collapsible>
+									<CollapsibleTrigger
+										render={<Button variant="ghost" className="min-h-11 w-full justify-between" />}
+									>
+										Saldo pro Mitglied
+										<ChevronDown data-icon="inline-end" />
+									</CollapsibleTrigger>
+									<CollapsibleContent>
+										<ItemGroup className="pt-2">
+											{memberBalances.map((member) => (
+												<Item key={member.memberId} variant="muted" size="xs">
+													<ItemContent className="min-w-0">
+														<ItemTitle className="line-clamp-none break-words">
+															{member.memberName}
+															{member.memberId === identity.memberId ? ' (du)' : ''}
+														</ItemTitle>
+														<ItemDescription>
+															{member.balanceCents > 0
+																? 'Bekommt zurück'
+																: member.balanceCents < 0
+																	? 'Schuldet'
+																	: 'Ausgeglichen'}
+														</ItemDescription>
+													</ItemContent>
+													<span
+														className={cn(
+															'shrink-0 font-mono tabular-nums',
+															member.balanceCents > 0
+																? 'text-settled'
+																: member.balanceCents < 0
+																	? 'text-destructive'
+																	: 'text-foreground',
+														)}
+													>
+														{formatEuroCents(member.balanceCents, 'EUR', { signed: true })}
+													</span>
+												</Item>
+											))}
+										</ItemGroup>
+									</CollapsibleContent>
+								</Collapsible>
+							</CardContent>
+						</Card>
+					)}
+					<DebtSummary
+						debts={directDebts}
+						summary={settlementSummary}
+						expenses={expenses}
+						shareCode={wg.shareCode}
+						currentMemberId={identity.memberId}
+						memberToken={identity.memberToken}
+						memberColor={memberColor}
+						memberPayPalMerchantId={memberPayPalMerchantId}
+						onSettled={(message) => {
+							if (message) setActionSuccess(message);
+							void load(false);
+						}}
+					/>
+				</div>
 			)}
 			{(recurringExpenses.length > 0 || recurringFilterActive) && (
 				<RecurringExpensesSection
@@ -1108,10 +1180,9 @@ export default function AusgabenPage() {
 				/>
 			)}
 			<section className="flex flex-col gap-3" aria-label="Eingetragene Ausgaben">
-				<div className="flex items-center justify-between gap-2">
-					<h2 className="text-base font-semibold">Eingetragene Ausgaben</h2>
-					<Badge variant="secondary">{expenses.length}</Badge>
-				</div>
+				{expenses.length > 0 && (
+					<h2 className="text-sm font-medium text-muted-foreground">Verlauf</h2>
+				)}
 				{showSkeleton ? (
 					<ExpensesSkeleton />
 				) : loadError && expenses.length === 0 ? (
@@ -1124,29 +1195,9 @@ export default function AusgabenPage() {
 				) : expenses.length === 0 && !initialLoading ? (
 					<Empty>
 						<EmptyHeader>
-							<EmptyMedia variant="icon">
-								<Receipt />
-							</EmptyMedia>
 							<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
 							<EmptyDescription>Erfasse eure erste gemeinsame Ausgabe.</EmptyDescription>
 						</EmptyHeader>
-						<EmptyContent>
-							<Button className="min-h-11" onClick={() => setShowForm(true)}>
-								Erste Ausgabe
-							</Button>
-							<div className="flex flex-wrap justify-center gap-2">
-								{QUICK_EXPENSE_TEMPLATES.map((template) => (
-									<Button
-										key={template.label}
-										variant="outline"
-										className="min-h-11"
-										onClick={() => applyQuickExpense(template)}
-									>
-										{template.label}
-									</Button>
-								))}
-							</div>
-						</EmptyContent>
 					</Empty>
 				) : (
 					<ul className="flex flex-col gap-3">
@@ -1169,22 +1220,6 @@ export default function AusgabenPage() {
 					</ul>
 				)}
 			</section>
-			{!showSkeleton && (
-				<DebtSummary
-					debts={directDebts}
-					summary={settlementSummary}
-					expenses={expenses}
-					shareCode={wg.shareCode}
-					currentMemberId={identity.memberId}
-					memberToken={identity.memberToken}
-					memberColor={memberColor}
-					memberPayPalMerchantId={memberPayPalMerchantId}
-					onSettled={(message) => {
-						if (message) setActionSuccess(message);
-						void load(false);
-					}}
-				/>
-			)}
 		</div>
 	);
 }

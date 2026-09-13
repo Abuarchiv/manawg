@@ -40,6 +40,10 @@ export function StartWelcome() {
 
 	if (visibleFor !== storageKey) return null;
 	const baseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
+	const hasRoommates = members.filter((member) => member.active).length >= 2;
+	const primaryAction = hasRoommates
+		? { href: `${baseHref}/einkauf`, label: 'Einkauf öffnen' }
+		: { href: `${baseHref}/einstellungen#zugang`, label: 'Mitbewohner einladen' };
 	return (
 		<section aria-labelledby="new-wg-heading">
 			<Card size="sm">
@@ -48,7 +52,7 @@ export function StartWelcome() {
 						<h2 id="new-wg-heading">Eure WG ist bereit</h2>
 					</CardTitle>
 					<CardDescription>
-						{members.filter((member) => member.active).length < 2
+						{!hasRoommates
 							? 'Lade deine Mitbewohner ein und startet gemeinsam.'
 							: 'Startet mit eurem ersten Eintrag.'}
 					</CardDescription>
@@ -65,8 +69,8 @@ export function StartWelcome() {
 					</CardAction>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-1">
-					<Link href={`${baseHref}/einkauf`} className={cn(buttonVariants(), 'min-h-11')}>
-						Einkauf öffnen
+					<Link href={primaryAction.href} className={cn(buttonVariants(), 'min-h-11')}>
+						{primaryAction.label}
 					</Link>
 					<CopyCodeButton code={wg.shareCode} wgName={wg.name} joiningEnabled={wg.joiningEnabled} />
 					{!wg.joiningEnabled && (

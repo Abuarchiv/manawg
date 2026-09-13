@@ -1,14 +1,6 @@
 'use client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import {
-	Empty,
-	EmptyContent,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyMedia,
-	EmptyTitle,
-} from '@/components/ui/empty';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -59,11 +51,7 @@ import type {
 	AnnouncementStatus,
 	ReactionKey,
 } from '@/features/pinnwand/components/announcement-types';
-import {
-	CONTENT_MAX,
-	QUICK_ANNOUNCEMENT_TEMPLATES,
-	REFRESH_INTERVAL_MS,
-} from '@/features/pinnwand/components/constants';
+import { CONTENT_MAX, REFRESH_INTERVAL_MS } from '@/features/pinnwand/components/constants';
 import { Megaphone } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import type React from 'react';
@@ -187,22 +175,6 @@ export default function PinnwandPage(): React.ReactElement {
 		setNotice(null);
 	}
 
-	function applyQuickAnnouncement(template: (typeof QUICK_ANNOUNCEMENT_TEMPLATES)[number]): void {
-		if (content.trim() || imageUrl || queueEditId || kind !== 'info') {
-			setComposerOpen(true);
-			setNotice('Dein Entwurf ist noch da. Du kannst ihn weiterbearbeiten.');
-			return;
-		}
-		setComposerOpen(true);
-		setKind(template.kind);
-		setContent(template.content.slice(0, CONTENT_MAX));
-		setImageUrl(null);
-		setQueueEditId(null);
-		setNotice(null);
-		setError(null);
-		window.setTimeout(() => textareaRef.current?.focus(), 0);
-	}
-
 	const load = useCallback(
 		async (mode: 'replace' | 'background' = 'replace'): Promise<void> => {
 			const requestId = loadRequestIdRef.current + 1;
@@ -281,13 +253,6 @@ export default function PinnwandPage(): React.ReactElement {
 			setDraftHydrated(true);
 			return;
 		}
-		const hasRestorableDraft =
-			typeof draft?.content === 'string' && draft.content.length > 0
-				? true
-				: draft?.imageUrl !== undefined && draft.imageUrl !== null
-					? true
-					: Boolean(draft?.queueEditId || (draft?.kind && draft.kind !== 'info'));
-		if (hasRestorableDraft) setComposerOpen(true);
 		if (draft?.content) {
 			setContent(draft.content);
 		}
@@ -295,7 +260,6 @@ export default function PinnwandPage(): React.ReactElement {
 		if (draft && 'imageUrl' in draft) setImageUrl(draft.imageUrl ?? null);
 		if (draft?.queueEditId) {
 			setQueueEditId(draft.queueEditId);
-			setComposerOpen(true);
 		}
 		setDraftHydrated(true);
 	}, [draftKey, prefillContent, prefillImageUrl, prefillKind]);
@@ -483,6 +447,7 @@ export default function PinnwandPage(): React.ReactElement {
 				setError(announcementCreateErrorMessage(res.error));
 				return;
 			}
+			const createdAnnouncementId = res.data.announcement.id;
 			setContent('');
 			setKind('info');
 			setImageUrl(null);
@@ -492,7 +457,7 @@ export default function PinnwandPage(): React.ReactElement {
 			}
 			removeDraft(draftKey);
 			setComposerOpen(false);
-			void load();
+			void load().then(() => scrollToAnnouncement(createdAnnouncementId));
 		} finally {
 			submittingRef.current = false;
 			setSubmitting(false);
@@ -802,7 +767,7 @@ export default function PinnwandPage(): React.ReactElement {
 	const statusFocusActive = filter.status !== 'all';
 
 	return (
-		<div className="mx-auto flex w-full max-w-lg flex-col gap-5 px-4 py-5">
+		<div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-4">
 			<PinnwandHeader
 				itemCount={items.length}
 				refreshing={refreshing}
@@ -900,29 +865,9 @@ export default function PinnwandPage(): React.ReactElement {
 					Noch keine Beiträge geladen.
 				</EmptyState>
 			) : items.length === 0 ? (
-				<Empty className="border border-dashed">
-					<EmptyHeader>
-						<EmptyMedia variant="icon">
-							<Megaphone aria-hidden />
-						</EmptyMedia>
-						<EmptyTitle>Noch keine Beiträge</EmptyTitle>
-						<EmptyDescription>Starte mit einem typischen WG-Beitrag.</EmptyDescription>
-					</EmptyHeader>
-					<EmptyContent className="flex-row flex-wrap justify-center gap-2">
-						{QUICK_ANNOUNCEMENT_TEMPLATES.map((template) => (
-							<Button
-								key={template.label}
-								type="button"
-								onClick={() => applyQuickAnnouncement(template)}
-								variant="outline"
-								className="min-h-11"
-								disabled={submitting}
-							>
-								{template.label}
-							</Button>
-						))}
-					</EmptyContent>
-				</Empty>
+				<EmptyState icon={Megaphone} hint="Teile eine Frage oder Info über das Plus oben.">
+					Noch keine Beiträge
+				</EmptyState>
 			) : filteredItems.length === 0 ? (
 				<EmptyState
 					icon={Megaphone}

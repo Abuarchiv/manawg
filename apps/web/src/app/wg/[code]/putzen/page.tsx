@@ -676,7 +676,7 @@ export default function PutzenPage() {
 					kind: 'request',
 					source: 'chore_swap',
 					sourcePath: `/putzen?highlight=${encodeURIComponent(chore.id)}`,
-					content: `${identity.name} bittet um Tausch: "${chore.title}" ist ${status.label}. Bitte nachholen, übernehmen oder kurz absprechen.`,
+					content: `${identity.name} bittet um Tausch: "${chore.title}" ist ${status.label}. Nachholen, übernehmen oder kurz absprechen.`,
 				}),
 			},
 		);
@@ -862,7 +862,7 @@ export default function PutzenPage() {
 	}
 
 	return (
-		<div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-5">
+		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
 			<PutzenHeader
 				itemCount={items.length}
 				refreshing={refreshing}
@@ -925,9 +925,11 @@ export default function PutzenPage() {
 				</Alert>
 			)}
 			{actionNotice && <ActionNoticeBanner notice={{ tone: 'success', message: actionNotice }} />}
-			<output aria-live="polite">
-				<OfflineQueueNotice queuedCount={queuedCount} />
-			</output>
+			{queuedCount > 0 && (
+				<output aria-live="polite">
+					<OfflineQueueNotice queuedCount={queuedCount} />
+				</output>
+			)}
 			{loadError && (
 				<LoadErrorBanner
 					message={loadError}

@@ -30,6 +30,7 @@ import type { Abo, AboFilter } from '@/components/wg/abos-types';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { apiFetch } from '@/core/infra/api-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -288,26 +289,37 @@ export default function AbosPage() {
 	const activeCount = abos.filter((abo) => abo.pausedAt === null).length;
 
 	return (
-		<div className="mx-auto flex w-full max-w-md flex-col gap-5 px-4 py-5">
-			<header className="flex items-center gap-3">
+		<div data-finance-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
+			<header className="flex min-w-0 flex-wrap items-center gap-3">
 				<BackLink href={`/wg/${encodedShareCode}/ausgaben`} label="Ausgaben" />
 				<div className="min-w-0 flex-1">
-					<h1 className="text-xl font-semibold">Fixkosten</h1>
+					<h1 className="font-heading text-2xl font-semibold tracking-tight break-words [overflow-wrap:anywhere]">
+						Fixkosten
+					</h1>
 					<p className="text-sm text-muted-foreground" aria-live="polite">
 						{loading ? '' : `${activeCount} aktiv · ${abos.length} insgesamt`}
 					</p>
+					<output
+						aria-live="polite"
+						aria-hidden={!refreshing}
+						className={cn(
+							'flex min-h-5 items-center gap-2 text-sm text-muted-foreground',
+							!refreshing && 'invisible',
+						)}
+					>
+						<Spinner />
+						Wird aktualisiert…
+					</output>
 				</div>
-				<Button className="min-h-11" onClick={() => setShowCreate(true)} aria-label="Neues Abo">
+				<Button
+					className="size-11 shrink-0 px-0 sm:w-auto sm:px-3"
+					onClick={() => setShowCreate(true)}
+					aria-label="Neues Abo"
+				>
 					<Plus data-icon="inline-start" />
-					Neues Abo
+					<span className="hidden sm:inline">Neues Abo</span>
 				</Button>
 			</header>
-			{refreshing && (
-				<output className="flex items-center gap-2 text-sm text-muted-foreground">
-					<Spinner />
-					Wird aktualisiert…
-				</output>
-			)}
 			{loadError && (
 				<LoadErrorBanner
 					message={loadError}
@@ -325,6 +337,7 @@ export default function AbosPage() {
 					members={memberOptions}
 					filter={filter}
 					pendingId={pendingId}
+					loadError={loadError}
 					onFilterChange={setFilter}
 					onEdit={setEditing}
 					onTogglePause={(abo) => void handleTogglePause(abo)}

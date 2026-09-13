@@ -218,7 +218,8 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 		({ key }) =>
 			key === PRIMARY_REACTION[announcement.kind] ||
 			announcement.myReactions.includes(key) ||
-			touchedReactions.includes(key),
+			touchedReactions.includes(key) ||
+			(announcement.reactionCounts[key] ?? 0) > 0,
 	);
 	const hiddenReactions = REACTIONS.filter(
 		({ key }) => !visibleReactions.some((reaction) => reaction.key === key),
@@ -383,7 +384,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							<p
 								id={`announcement-body-${announcement.id}`}
 								className={cn(
-									'whitespace-pre-wrap leading-relaxed [overflow-wrap:anywhere]',
+									'text-base whitespace-pre-wrap leading-relaxed [overflow-wrap:anywhere]',
 									isLong && !expanded && 'line-clamp-3',
 								)}
 							>

@@ -64,7 +64,7 @@ function Switch({
 				render={
 					<motion.button
 						data-slot="switch"
-						whileTap="tap"
+						data-pressed={isPressed ? '' : undefined}
 						initial={false}
 						onTapStart={() => setIsPressed(true)}
 						onTapCancel={() => setIsPressed(false)}
@@ -79,26 +79,37 @@ function Switch({
 
 type SwitchThumbProps = Omit<React.ComponentProps<typeof SwitchPrimitives.Thumb>, 'render'> &
 	HTMLMotionProps<'div'> & {
+		pressedWidth?: number;
 		pressedAnimation?: TargetAndTransition | VariantLabels | boolean | LegacyAnimationControls;
 	};
 
 function SwitchThumb({
-	pressedAnimation,
-	transition = { type: 'spring', stiffness: 300, damping: 25 },
+	pressedWidth = 59,
+	pressedAnimation: _pressedAnimation,
+	transition: _transition,
 	...props
 }: SwitchThumbProps) {
-	const { isPressed } = useSwitch();
+	const { isChecked, isPressed } = useSwitch();
+	const pressedShadow = isChecked
+		? 'inset 0.5px 0.5px 0 rgba(0,0,0,0.42), inset -1px -1px 0 var(--primary-foreground), inset -2px 4px 4px rgba(0,0,0,0.08), inset -1px 1.5px 0.5px var(--primary), inset -1.5px -2px 0.5px var(--primary), inset -1.75px -2.75px 1px color-mix(in oklch, var(--primary), var(--foreground) 35%), 0.5px 0.5px 2px rgba(0,0,0,0.03), 0 2px 32px rgba(10,10,10,0.2)'
+		: 'inset 0.5px 0.5px 0 rgba(0,0,0,0.18), inset -1px -1px 0 var(--primary-foreground), inset -2px 4px 4px rgba(0,0,0,0.08), inset -1px 1.5px 0.5px var(--input), inset -1.5px -2px 0.5px var(--input), inset -1.75px -2.75px 1px color-mix(in oklch, var(--input), var(--foreground) 5%), 0.5px 0.5px 2px rgba(0,0,0,0.03), 0 2px 32px rgba(10,10,10,0.1)';
+	const thumbStyle = {
+		...props.style,
+		left: isPressed ? (isChecked ? 17 : -8) : isChecked ? 27.5 : 2.5,
+		top: isPressed ? 2.5 : 9.5,
+		width: isPressed ? pressedWidth : 38,
+		height: isPressed ? 39 : 25,
+		boxShadow: isPressed ? pressedShadow : '0.5px 0.5px 2px rgba(0,0,0,0.03)',
+	};
 
 	return (
 		<SwitchPrimitives.Thumb
 			render={
 				<motion.div
 					data-slot="switch-thumb"
-					whileTap="tab"
-					layout
-					transition={transition}
-					{...(isPressed && pressedAnimation !== undefined ? { animate: pressedAnimation } : {})}
+					data-pressed={isPressed ? '' : undefined}
 					{...props}
+					style={thumbStyle}
 				/>
 			}
 		/>
@@ -113,7 +124,7 @@ type SwitchIconProps = HTMLMotionProps<'div'> & {
 
 function SwitchIcon({
 	position,
-	transition = { type: 'spring', bounce: 0 },
+	transition = { duration: 0.28, ease: 'easeOut' },
 	...props
 }: SwitchIconProps) {
 	const { isChecked } = useSwitch();

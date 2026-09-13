@@ -388,7 +388,7 @@ export function OfflineQueueSection({
 			title="Offline-Warteschlange"
 			hint="Aktionen, die ohne Netz vorgemerkt wurden und später synchronisiert werden."
 		>
-			<div className="grid gap-3 p-4">
+			<div className="grid gap-3 p-3">
 				<div className="flex min-h-[44px] items-center justify-between gap-3">
 					<p className="text-muted-foreground text-[13px]">
 						{formatOfflineQueueCount(items.length)}
@@ -421,7 +421,7 @@ export function OfflineQueueSection({
 							const rowBusy = syncing || checkingServerIds.has(item.id);
 							return (
 								<Item key={item.id} variant="outline" className="items-start">
-									<ItemContent>
+									<ItemContent className="min-w-0">
 										<ItemTitle>
 											<span className="min-w-0 flex-1 truncate">{summary.title}</span>
 											{item.attempts ? <Badge variant="destructive">{item.attempts}x</Badge> : null}
@@ -442,7 +442,7 @@ export function OfflineQueueSection({
 												<AlertDescription>{conflictNotes[item.id]}</AlertDescription>
 											</Alert>
 										)}
-										<div className="mt-2 grid gap-2">
+										<div className="mt-2 flex flex-wrap gap-2">
 											<Button
 												type="button"
 												variant="outline"
@@ -450,7 +450,7 @@ export function OfflineQueueSection({
 												aria-label={serverCheckLabel}
 												onClick={() => void checkServer(item)}
 												disabled={rowBusy}
-												className="min-h-[44px] w-full"
+												className="min-h-[44px]"
 											>
 												{checkingServerIds.has(item.id) && <Spinner aria-hidden />}
 												{checkingServerIds.has(item.id) ? 'Prüft...' : 'Server prüfen'}
@@ -463,7 +463,7 @@ export function OfflineQueueSection({
 													aria-label={`Offline-Aktion bearbeiten: ${actionLabel}`}
 													onClick={() => edit(item, editDraft)}
 													disabled={rowBusy}
-													className="min-h-[44px] w-full"
+													className="min-h-[44px]"
 												>
 													Bearbeiten
 												</Button>
@@ -476,7 +476,7 @@ export function OfflineQueueSection({
 													aria-label={`Anhang entfernen: ${actionLabel}`}
 													onClick={() => removeAttachment(item.id)}
 													disabled={rowBusy}
-													className="min-h-[44px] w-full"
+													className="min-h-[44px]"
 												>
 													Anhang weg
 												</Button>
@@ -488,7 +488,7 @@ export function OfflineQueueSection({
 												aria-label={`Offline-Aktion verwerfen: ${actionLabel}`}
 												onClick={() => remove(item.id)}
 												disabled={rowBusy}
-												className="min-h-[44px] w-full"
+												className="min-h-[44px]"
 											>
 												Verwerfen
 											</Button>

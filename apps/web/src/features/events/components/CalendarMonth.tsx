@@ -72,7 +72,7 @@ function buildDays(month: Date, occurrences: EventOccurrence[]): DayCell[] {
 	const gridStart = startOfWeekMonday(first);
 	const days: DayCell[] = [];
 	const cursor = new Date(gridStart);
-	while (cursor < last || days.length % 7 !== 0 || days.length === 0) {
+	while (cursor <= last || days.length % 7 !== 0 || days.length === 0) {
 		const dayDate = new Date(cursor);
 		const dayOcc = occurrences.filter((occ) => sameDay(new Date(occ.startsAt), dayDate));
 		days.push({

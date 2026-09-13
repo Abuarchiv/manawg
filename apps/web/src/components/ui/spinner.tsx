@@ -1,13 +1,16 @@
+import { LogoMark } from '@/shared/components/ui/LogoMark';
 import { cn } from '@/shared/lib/cn';
-import { Loader2Icon } from 'lucide-react';
 
 function Spinner({ className, ...props }: React.ComponentProps<'svg'>) {
 	return (
-		<Loader2Icon
+		<LogoMark
+			tile={false}
+			loading
+			size={20}
 			data-slot="spinner"
 			role="status"
-			aria-label="Loading"
-			className={cn('size-4 animate-spin', className)}
+			aria-label="Wird geladen"
+			className={cn('size-4', className)}
 			{...props}
 		/>
 	);

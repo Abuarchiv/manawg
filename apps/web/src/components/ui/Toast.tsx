@@ -83,7 +83,7 @@ export function ToastContainer() {
 
 	return (
 		<div
-			className="pointer-events-none fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-2 px-4"
+			className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--app-nav-height,5rem)+0.5rem)] z-50 mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-2 px-4"
 			aria-label="Benachrichtigungen"
 			aria-live="polite"
 			aria-atomic="true"

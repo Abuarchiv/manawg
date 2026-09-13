@@ -20,19 +20,19 @@ const OPTIONS: ReadonlyArray<{
 	{
 		id: 'splitwise_csv',
 		title: 'Splitwise CSV',
-		hint: 'Export aus Splitwise (Date,Description,Cost,...)',
+		hint: 'Datei aus Splitwise',
 		icon: FileText,
 	},
 	{
 		id: 'splid_csv',
 		title: 'Splid CSV',
-		hint: 'Export aus Splid (Datum;Beschreibung;Betrag;...)',
+		hint: 'Datei aus Splid',
 		icon: FileUp,
 	},
 	{
 		id: 'ocr_screenshot',
 		title: 'Screenshot',
-		hint: 'Foto oder Screenshot aus Splitwise/Splid (OCR)',
+		hint: 'Foto oder Bildschirmfoto',
 		icon: ImageIcon,
 	},
 ];
@@ -40,7 +40,7 @@ const OPTIONS: ReadonlyArray<{
 export function ImportSourcePicker({ value, onChange }: Props) {
 	return (
 		<FieldSet>
-			<FieldLegend>Importquelle wählen</FieldLegend>
+			<FieldLegend className="sr-only">Importquelle wählen</FieldLegend>
 			<ToggleGroup
 				value={value ? [value] : []}
 				onValueChange={(values) => {
@@ -50,16 +50,16 @@ export function ImportSourcePicker({ value, onChange }: Props) {
 				}}
 				orientation="vertical"
 				variant="outline"
-				className="w-full"
+				className="w-full min-w-0"
 			>
 				{OPTIONS.map(({ id, title, hint, icon: Icon }) => (
 					<ToggleGroupItem
 						key={id}
 						value={id}
-						className="h-auto min-h-16 w-full justify-start gap-3 whitespace-normal py-3 text-left"
+						className="h-auto min-h-16 w-full min-w-0 justify-start gap-3 whitespace-normal py-3 text-left"
 					>
 						<Icon />
-						<span className="min-w-0">
+						<span className="min-w-0 flex-1 break-words">
 							<span className="block">{title}</span>
 							<span className="block text-xs text-muted-foreground">{hint}</span>
 						</span>

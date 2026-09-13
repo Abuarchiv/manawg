@@ -279,9 +279,9 @@ export function NotificationSection({
 		<Section
 			id="benachrichtigungen"
 			title="Benachrichtigungen"
-			hint="Web Push und der WG-Chat halten dich beim Putzplan und bei WG-Aktivität auf dem Laufenden."
+			hint="Wähle, worüber du informiert wirst."
 		>
-			<div className="grid gap-4 p-4">
+			<div className="grid min-w-0 gap-3 p-3">
 				{loadingStatus && (
 					<div className="grid gap-2" aria-live="polite">
 						<Skeleton className="h-11 w-full" />
@@ -345,17 +345,17 @@ export function NotificationSection({
 							? 'Testbenachrichtigung wird gesendet'
 							: 'Testbenachrichtigung senden'
 					}
-					className="h-11 min-h-[44px] w-full"
+					className="min-h-11 justify-self-start"
 				>
 					{pending === 'test' && <Spinner aria-hidden />}
 					Test senden
 				</Button>
 
-				<div className="border-border overflow-hidden rounded-lg border">
+				<div className="min-w-0 max-w-full">
 					{NOTIFICATION_PREFERENCES.map((pref, index) => (
 						<div key={pref.key}>
 							{index > 0 && <Separator />}
-							<Field orientation="horizontal" className="min-h-[44px] px-3 py-3">
+							<Field orientation="horizontal" className="min-h-[44px] py-2">
 								<FieldContent>
 									<FieldTitle>{pref.label}</FieldTitle>
 									<FieldDescription>{pref.description}</FieldDescription>
@@ -371,9 +371,9 @@ export function NotificationSection({
 					))}
 				</div>
 
-				<div className="border-border grid gap-2 rounded-lg border p-3">
+				<div className="border-border grid min-w-0 max-w-full gap-2 border-t pt-3">
 					<div className="flex min-h-[44px] items-center justify-between gap-2">
-						<div>
+						<div className="min-w-0">
 							<div className="text-foreground text-[13.5px] font-medium">Ruhezeit</div>
 							<div className="text-muted-foreground text-xs">
 								In dieser Zeit werden Push-Benachrichtigungen pausiert.
@@ -389,8 +389,8 @@ export function NotificationSection({
 							Aus
 						</Button>
 					</div>
-					<div className="grid grid-cols-2 gap-2">
-						<Field>
+					<div className="grid min-w-0 grid-cols-2 gap-2">
+						<Field className="min-w-0">
 							<FieldTitle>Von</FieldTitle>
 							<NativeSelect
 								value={status?.quietStartHour ?? ''}
@@ -412,7 +412,7 @@ export function NotificationSection({
 								))}
 							</NativeSelect>
 						</Field>
-						<Field>
+						<Field className="min-w-0">
 							<FieldTitle>Bis</FieldTitle>
 							<NativeSelect
 								value={status?.quietEndHour ?? ''}

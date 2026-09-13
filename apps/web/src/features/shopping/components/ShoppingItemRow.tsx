@@ -37,6 +37,7 @@ interface ShoppingItemRowProps {
 	isPending: (id: string) => boolean;
 	onToggle: (item: ShoppingItem) => void;
 	onRemove: (id: string) => void;
+	removeError?: string | null;
 	highlighted: boolean;
 	shareCode: string;
 	canRemove: boolean;
@@ -49,6 +50,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	isPending,
 	onToggle,
 	onRemove,
+	removeError = null,
 	highlighted,
 	shareCode,
 	canRemove,
@@ -91,24 +93,23 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 				>
 					{item.name}
 				</ItemTitle>
-				<ItemDescription className="line-clamp-none break-words">
+				<ItemDescription className="line-clamp-none flex min-h-5 flex-wrap items-center gap-1 break-words">
 					{item.quantity && <span>{item.quantity} · </span>}
-					Hinzugefügt von {adder.name}
+					{pending ? (
+						<output aria-live="polite" className="inline-flex items-center gap-1">
+							<Spinner aria-hidden />
+							Speichert…
+						</output>
+					) : isBought ? (
+						buyerName ? (
+							`Hinzugefügt von ${adder.name} · Gekauft von ${buyerName}`
+						) : (
+							`Hinzugefügt von ${adder.name} · Gekauft`
+						)
+					) : (
+						`Hinzugefügt von ${adder.name}`
+					)}
 				</ItemDescription>
-				{isBought && (
-					<ItemDescription className="line-clamp-none break-words">
-						{buyerName ? `Gekauft von ${buyerName}` : 'Gekauft · Person nicht angegeben'}
-					</ItemDescription>
-				)}
-				{pending && (
-					<output
-						aria-live="polite"
-						className="flex items-center gap-1 text-xs text-muted-foreground"
-					>
-						<Spinner aria-hidden />
-						Speichert…
-					</output>
-				)}
 			</ItemContent>
 			<ItemActions>
 				<Drawer onOpenChange={() => deleteConfirm.cancel()}>
@@ -166,6 +167,11 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 									<AlertDescription>
 										„{item.name}“ endgültig entfernen? Das lässt sich nicht rückgängig machen.
 									</AlertDescription>
+								</Alert>
+							)}
+							{removeError && (
+								<Alert variant="destructive">
+									<AlertDescription>{removeError}</AlertDescription>
 								</Alert>
 							)}
 						</div>

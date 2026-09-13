@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { CalendarLink } from '@/components/wg/PageHeaderActions';
-import { MessageCircle, Plus, StickyNote, X } from 'lucide-react';
+import { MessageCircle, Plus, X } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
 
@@ -28,30 +28,37 @@ export function PinnwandHeader({
 	onToggleComposer,
 }: PinnwandHeaderProps): React.ReactElement {
 	return (
-		<header className="flex flex-col gap-4">
-			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<div className="min-w-0">
-					<p className="text-xs text-muted-foreground">Austausch</p>
-					<h1 className="text-2xl font-semibold tracking-tight">Pinnwand</h1>
-					<p className="flex items-center gap-2 text-sm text-muted-foreground">
-						{loading
-							? 'Beiträge werden geladen…'
-							: itemCount === 0
-								? 'Noch keine Beiträge'
+		<header className="flex flex-col gap-3">
+			<div className="flex flex-wrap items-start justify-between gap-2">
+				<div className="min-w-0 flex-1">
+					<h1 className="text-xl font-semibold tracking-tight">Pinnwand</h1>
+					{(loading || itemCount > 0 || refreshing) && (
+						<p className="flex items-center gap-2 text-xs text-muted-foreground">
+							{loading
+								? 'Beiträge werden geladen…'
 								: `${itemCount} Beitr${itemCount === 1 ? 'ag' : 'äge'}`}
-						{refreshing && <Spinner aria-label="Wird aktualisiert" />}
-					</p>
-					<p className="mt-1 text-xs text-muted-foreground">
-						Für Infos, die bleiben. Termine gehören in den Kalender.
-					</p>
+							{refreshing && <Spinner aria-label="Wird aktualisiert" />}
+						</p>
+					)}
 				</div>
-				<div className="flex shrink-0 items-center justify-end gap-1.5">
-					<CalendarLink wgBaseHref={wgBaseHref} />
+				<div className="flex shrink-0 items-center justify-end gap-1">
+					<div className="hidden sm:block">
+						<CalendarLink wgBaseHref={wgBaseHref} />
+					</div>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="size-11"
+						nativeButton={false}
+						render={<Link href={`${wgBaseHref}/chat`} aria-label="Chat öffnen" />}
+					>
+						<MessageCircle aria-hidden />
+					</Button>
 					<Button
 						onClick={onToggleComposer}
 						disabled={composerBusy || loading}
 						variant={composerOpen ? 'outline' : 'default'}
-						className="min-h-11"
+						className="size-11 px-0 sm:w-auto sm:px-3"
 						aria-expanded={composerOpen}
 						aria-controls="announcement-composer"
 						aria-label={
@@ -67,28 +74,13 @@ export function PinnwandHeader({
 						) : (
 							<Plus data-icon="inline-start" aria-hidden />
 						)}
-						{composerOpen ? 'Schließen' : hasDraft ? 'Entwurf' : 'Beitrag'}
+						<span className="hidden sm:inline">
+							{composerOpen ? 'Schließen' : hasDraft ? 'Entwurf' : 'Beitrag'}
+						</span>
 					</Button>
 				</div>
 			</div>
-			<nav aria-label="Austausch" className="grid grid-cols-2 gap-2">
-				<Button
-					variant="secondary"
-					className="min-h-11"
-					nativeButton={false}
-					render={<Link href={`${wgBaseHref}/pinnwand`} aria-current="page" />}
-				>
-					<StickyNote data-icon="inline-start" aria-hidden /> Pinnwand
-				</Button>
-				<Button
-					variant="ghost"
-					className="min-h-11"
-					nativeButton={false}
-					render={<Link href={`${wgBaseHref}/chat`} />}
-				>
-					<MessageCircle data-icon="inline-start" aria-hidden /> Chat
-				</Button>
-			</nav>
+			{/* The page title identifies Pinnwand; Chat is a single header action. */}
 		</header>
 	);
 }

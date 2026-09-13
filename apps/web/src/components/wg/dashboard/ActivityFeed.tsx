@@ -82,6 +82,51 @@ export function ActivityFeed({ items, emptyHref, compact = false }: ActivityFeed
 	}
 
 	const now = Date.now();
+	if (compact) {
+		return (
+			<ul aria-label="Aktivitätsverlauf" className="divide-y divide-border/60">
+				{items.map((item) => {
+					const Icon = kindIcon[item.kind];
+					const content = (
+						<>
+							<Icon
+								className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+								strokeWidth={1.5}
+								aria-hidden
+							/>
+							<div className="min-w-0 flex-1">
+								<p className="text-sm leading-5">
+									<ActivityText item={item} />
+								</p>
+								<time dateTime={item.timestamp} className="text-xs text-muted-foreground">
+									{formatCompactRelativeTime(item.timestamp, now)}
+								</time>
+							</div>
+							{item.amountCents !== undefined && (
+								<span className="shrink-0 font-mono text-xs tabular-nums">
+									{formatEuro(item.amountCents)}
+								</span>
+							)}
+						</>
+					);
+					return (
+						<li key={`${item.kind}-${item.timestamp}-${item.text}`}>
+							{item.href ? (
+								<Link
+									href={item.href}
+									className="flex min-h-14 items-start gap-3 py-3 rounded-lg focus-visible:outline-2 focus-visible:outline-ring active:bg-muted"
+								>
+									{content}
+								</Link>
+							) : (
+								<div className="flex min-h-14 items-start gap-3 py-3">{content}</div>
+							)}
+						</li>
+					);
+				})}
+			</ul>
+		);
+	}
 
 	return (
 		<ItemGroup aria-label="Aktivitätsverlauf">

@@ -50,7 +50,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 					</ItemDescription>
 				</ItemContent>
 				<div className="flex flex-col items-end gap-2">
-					<Badge variant="outline" className="tabular-nums">
+					<Badge variant="outline" className="font-mono tabular-nums">
 						{formatEuroCents(abo.amountCents)}
 					</Badge>
 					{isPaused && <AboPausedBadge />}
@@ -79,7 +79,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 													{name}
 													{split.debtorMemberId === abo.paidByMemberId ? ' · eigener Anteil' : ''}
 												</span>
-												<span className="shrink-0 tabular-nums">
+												<span className="shrink-0 font-mono tabular-nums">
 													{formatEuroCents(split.amountCents)}
 												</span>
 											</li>
@@ -92,10 +92,34 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 										{preview.map((date) => formatShortDate(date.toISOString())).join(', ')}
 									</p>
 								)}
+								<div className="flex flex-wrap items-center gap-2 border-t pt-3">
+									<Button
+										variant="outline"
+										size="icon"
+										className="size-11"
+										onClick={() => onEdit(abo)}
+										disabled={pending}
+										aria-label={`${abo.description} bearbeiten`}
+									>
+										<Pencil />
+										<span className="sr-only">{abo.description} bearbeiten</span>
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="size-11"
+										onClick={() => onDelete(abo)}
+										disabled={pending}
+										aria-label={`${abo.description} löschen`}
+									>
+										<Trash2 />
+										<span className="sr-only">{abo.description} löschen</span>
+									</Button>
+								</div>
 							</div>
 						</CollapsiblePanel>
 					</Collapsible>
-					<div className="flex items-center gap-2">
+					<div className="flex min-w-0 flex-wrap items-center gap-2">
 						<Field orientation="horizontal" className="min-h-11 flex-1" data-disabled={pending}>
 							<Switch
 								id={`abo-active-${abo.id}`}
@@ -110,28 +134,6 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 								{isPaused ? 'Pausiert' : 'Aktiv'}
 							</FieldLabel>
 						</Field>
-						<Button
-							variant="outline"
-							size="icon"
-							className="size-11"
-							onClick={() => onEdit(abo)}
-							disabled={pending}
-							aria-label={`${abo.description} bearbeiten`}
-						>
-							<Pencil />
-							<span className="sr-only">{abo.description} bearbeiten</span>
-						</Button>
-						<Button
-							variant="ghost"
-							size="icon"
-							className="size-11"
-							onClick={() => onDelete(abo)}
-							disabled={pending}
-							aria-label={`${abo.description} löschen`}
-						>
-							<Trash2 />
-							<span className="sr-only">{abo.description} löschen</span>
-						</Button>
 					</div>
 				</ItemFooter>
 			</Item>

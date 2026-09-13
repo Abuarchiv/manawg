@@ -34,7 +34,8 @@ export function ProfileTab({
 	const [loadingPayPal, setLoadingPayPal] = useState(true);
 	const [savingPayPal, setSavingPayPal] = useState(false);
 	const [paypalMessage, setPaypalMessage] = useState<string | null>(null);
-	const [paypalError, setPaypalError] = useState<string | null>(null);
+	const [paypalLoadError, setPaypalLoadError] = useState<string | null>(null);
+	const [paypalSaveError, setPaypalSaveError] = useState<string | null>(null);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -43,8 +44,12 @@ export function ProfileTab({
 			{ memberId, memberToken },
 		).then((res) => {
 			if (cancelled) return;
-			if (res.ok) setPaypalMerchantId(res.data.member?.paypalMerchantId ?? '');
-			else setPaypalError('PayPal-Einstellung konnte nicht geladen werden.');
+			if (res.ok) {
+				setPaypalMerchantId(res.data.member?.paypalMerchantId ?? '');
+				setPaypalLoadError(null);
+			} else {
+				setPaypalLoadError('PayPal-Einstellung konnte nicht geladen werden.');
+			}
 			setLoadingPayPal(false);
 		});
 		return () => {
@@ -56,7 +61,7 @@ export function ProfileTab({
 		if (savingPayPal) return;
 		setSavingPayPal(true);
 		setPaypalMessage(null);
-		setPaypalError(null);
+		setPaypalSaveError(null);
 		const res = await apiFetch<{ member: { paypalMerchantId?: string | null } }>(
 			`/api/wg/${encodeURIComponent(shareCode)}/members/${memberId}`,
 			{
@@ -69,8 +74,9 @@ export function ProfileTab({
 		if (res.ok) {
 			setPaypalMerchantId(res.data.member.paypalMerchantId ?? '');
 			setPaypalMessage('PayPal Merchant-ID gespeichert.');
+			setPaypalLoadError(null);
 		} else {
-			setPaypalError(
+			setPaypalSaveError(
 				res.error === 'member_not_verified'
 					? 'Gerät noch nicht bestätigt. Lade die App neu und versuche es erneut.'
 					: res.error === 'paypal_merchant_id_invalid'
@@ -83,76 +89,19 @@ export function ProfileTab({
 
 	return (
 		<>
-			<Section
-				title="Dein Profil"
-				hint="Dein Account verbindet dich mit dieser WG. Nicht synchronisierte Entwürfe und Offline-Aktionen bleiben auf diesem Gerät."
-			>
-				<div className="flex min-h-[44px] items-center gap-3 px-4 py-3.5">
-					<MemberAvatar name={memberName} size={40} />
+			<Section title="Dein Profil">
+				<div className="flex min-h-[44px] items-center gap-3 px-3 py-2">
+					<MemberAvatar name={memberName} size={32} />
 					<div className="min-w-0 flex-1">
 						<div className="text-foreground truncate text-[15px] font-medium">{memberName}</div>
 						<div className="text-muted-foreground mt-0.5 text-[12.5px]">in {wgName}</div>
 					</div>
 				</div>
-				<p className="border-border text-muted-foreground border-t px-4 py-3 text-xs leading-relaxed">
-					Dein Account ist mit dieser WG-Mitgliedschaft verbunden. Nicht synchronisierte Entwürfe
-					und Offline-Aktionen bleiben auf diesem Gerät.
-				</p>
 			</Section>
 
-			<Section title="PayPal" hint="Empfängerkennung für ausdrücklich gestartete PayPal-Zahlungen.">
-				<div className="p-4">
-					<FieldGroup>
-						<Field>
-							<FieldLabel htmlFor="paypal-merchant-id">PayPal Merchant-ID</FieldLabel>
-							<div className="flex flex-col gap-2">
-								<Input
-									id="paypal-merchant-id"
-									type="text"
-									value={paypalMerchantId}
-									onChange={(event) => setPaypalMerchantId(event.target.value)}
-									placeholder="13-stellige Merchant-ID"
-									disabled={loadingPayPal || savingPayPal}
-									className="h-11 min-h-[44px] text-base"
-									autoComplete="off"
-									inputMode="text"
-								/>
-								<Button
-									type="button"
-									variant="outline"
-									onClick={() => void savePayPal()}
-									disabled={loadingPayPal || savingPayPal}
-									className="h-11 min-h-[44px] w-full"
-								>
-									{savingPayPal ? <Spinner aria-hidden /> : <Save aria-hidden />}
-									{savingPayPal ? 'Speichert…' : 'Speichern'}
-								</Button>
-							</div>
-							<FieldDescription>
-								Die Merchant-ID ist deine PayPal-Empfängerkennung. Das Speichern hinterlegt nur
-								diese Kennung; es überweist kein Geld und bestätigt keine PayPal-Freischaltung.
-							</FieldDescription>
-						</Field>
-					</FieldGroup>
-					{paypalMessage && (
-						<Alert className="mt-3">
-							<Check aria-hidden />
-							<AlertTitle>Gespeichert</AlertTitle>
-							<AlertDescription>{paypalMessage}</AlertDescription>
-						</Alert>
-					)}
-					{paypalError && (
-						<Alert variant="destructive" className="mt-3">
-							<AlertTitle>Speichern fehlgeschlagen</AlertTitle>
-							<AlertDescription>{paypalError}</AlertDescription>
-						</Alert>
-					)}
-				</div>
-			</Section>
-
-			<Section title="Darstellung" hint="Hell, Dunkel oder dem System folgen.">
+			<Section title="Darstellung">
 				{/* Three equally-sized toggle buttons — aria-pressed set, focus rings visible */}
-				<div className="flex gap-2 p-4">
+				<div className="flex min-w-0 flex-wrap gap-2 p-2">
 					<ThemeOption
 						label="Hell"
 						icon={<Sun className="h-4 w-4" aria-hidden />}
@@ -180,6 +129,66 @@ export function ProfileTab({
 							setTheme('system');
 						}}
 					/>
+				</div>
+			</Section>
+
+			<Section title="PayPal">
+				<div className="p-3">
+					<FieldGroup>
+						<Field>
+							<FieldLabel htmlFor="paypal-merchant-id">PayPal Merchant-ID</FieldLabel>
+							<div className="flex flex-col gap-2">
+								<Input
+									id="paypal-merchant-id"
+									type="text"
+									value={paypalMerchantId}
+									onChange={(event) => {
+										setPaypalMerchantId(event.target.value);
+										setPaypalMessage(null);
+										setPaypalSaveError(null);
+									}}
+									placeholder="13-stellige Merchant-ID"
+									disabled={loadingPayPal || savingPayPal}
+									className="h-11 min-h-[44px] text-base"
+									autoComplete="off"
+									inputMode="text"
+								/>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => void savePayPal()}
+									disabled={loadingPayPal || savingPayPal}
+									className="min-h-11 self-start"
+								>
+									{savingPayPal ? <Spinner aria-hidden /> : <Save aria-hidden />}
+									{savingPayPal ? 'Speichert…' : 'Speichern'}
+								</Button>
+							</div>
+							<FieldDescription>
+								Die Merchant-ID ist deine PayPal-Empfängerkennung. Das Speichern hinterlegt nur
+								diese Kennung; es überweist kein Geld und bestätigt keine PayPal-Freischaltung.
+							</FieldDescription>
+						</Field>
+					</FieldGroup>
+					{paypalLoadError && (
+						<Alert variant="destructive" className="mt-3">
+							<AlertTitle>Laden fehlgeschlagen</AlertTitle>
+							<AlertDescription>{paypalLoadError}</AlertDescription>
+						</Alert>
+					)}
+					{paypalMessage && (
+						<Alert className="mt-3">
+							<Check aria-hidden />
+							<AlertTitle>Gespeichert</AlertTitle>
+							<AlertDescription>{paypalMessage}</AlertDescription>
+						</Alert>
+					)}
+					{paypalSaveError && (
+						<Alert variant="destructive" className="mt-3">
+							<AlertTitle>Speichern fehlgeschlagen</AlertTitle>
+							<AlertDescription>{paypalSaveError}</AlertDescription>
+						</Alert>
+					)}
 				</div>
 			</Section>
 		</>

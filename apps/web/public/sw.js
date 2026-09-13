@@ -11,7 +11,7 @@
 // served from cache, and the app has its own offline queue for writes.
 //
 // Bump VERSION to evict every cached shell asset on the next activate.
-const VERSION = 'manawg-app-v2';
+const VERSION = 'manawg-app-v3-brandbook';
 const SHELL_CACHE = `${VERSION}-shell`;
 const PUBLIC_DOCUMENT_PATHS = new Set(['/', '/offline']);
 
@@ -36,7 +36,7 @@ const matchFromCache = (request) => caches.match(request).catch(() => undefined)
 
 const fallbackPushData = {
 	body: 'Benachrichtigung konnte nicht gelesen werden.',
-	title: 'manawg',
+	title: 'ManaWG',
 	url: '/',
 };
 
@@ -98,7 +98,7 @@ self.addEventListener('push', (event) => {
 		notificationOptions.tag = data.tag;
 		notificationOptions.renotify = true;
 	}
-	event.waitUntil(self.registration.showNotification(data.title || 'manawg', notificationOptions));
+	event.waitUntil(self.registration.showNotification(data.title || 'ManaWG', notificationOptions));
 });
 
 self.addEventListener('notificationclick', (event) => {

@@ -59,14 +59,7 @@ function Checkbox({
 		<CheckboxProvider value={{ isChecked, setIsChecked, isIndeterminate: indeterminate }}>
 			<CheckboxPrimitive.Root
 				{...rootProps}
-				render={
-					<motion.button
-						data-slot="checkbox"
-						whileTap={{ scale: 0.95 }}
-						whileHover={{ scale: 1.05 }}
-						{...props}
-					/>
-				}
+				render={<motion.button data-slot="checkbox" {...props} />}
 			/>
 		</CheckboxProvider>
 	);

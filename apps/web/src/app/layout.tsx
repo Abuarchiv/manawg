@@ -4,19 +4,28 @@ import { ThemeProvider } from '@/shared/components/theme/ThemeProvider';
 import { getAppUrl } from '@/shared/lib/app-url';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata, Viewport } from 'next';
-import { Geist_Mono, Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 import Script from 'next/script';
 import '@/shared/globals.css';
 
-const inter = Inter({
-	subsets: ['latin'],
+const inter = localFont({
+	src: '../shared/fonts/inter-latin.woff2',
+	weight: '100 900',
 	variable: '--font-inter',
 	display: 'swap',
 });
 
-const geistMono = Geist_Mono({
-	subsets: ['latin'],
-	variable: '--font-geist-mono',
+const interTight = localFont({
+	src: '../shared/fonts/inter-tight-latin.woff2',
+	weight: '100 900',
+	variable: '--font-inter-tight',
+	display: 'swap',
+});
+
+const jetbrainsMono = localFont({
+	src: '../shared/fonts/jetbrains-mono-latin.woff2',
+	weight: '100 800',
+	variable: '--font-jetbrains-mono',
 	display: 'swap',
 });
 
@@ -90,6 +99,8 @@ export const metadata: Metadata = {
 	icons: {
 		icon: [
 			{ url: '/favicon.svg', type: 'image/svg+xml' },
+			{ url: '/favicon-32.png', type: 'image/png', sizes: '32x32' },
+			{ url: '/favicon-16.png', type: 'image/png', sizes: '16x16' },
 			{ url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
 			{ url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
 		],
@@ -109,11 +120,10 @@ export const viewport: Viewport = {
 	width: 'device-width',
 	initialScale: 1,
 	viewportFit: 'cover',
-	// Muss zum einzigen App-Accent passen (--accent in globals.css, Vercel-Blau
-	// #0072F5, in beiden Themes identisch) — vorher hartkodiertes Alt-Grün.
+	// The app icon and system chrome use the brand's Neutral 950.
 	themeColor: [
-		{ media: '(prefers-color-scheme: light)', color: '#0072f5' },
-		{ media: '(prefers-color-scheme: dark)', color: '#0072f5' },
+		{ media: '(prefers-color-scheme: light)', color: '#0a0a0a' },
+		{ media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
 	],
 };
 
@@ -124,7 +134,11 @@ export default function RootLayout({
 	children: React.ReactNode;
 }) {
 	return (
-		<html lang="de" suppressHydrationWarning className={`${inter.variable} ${geistMono.variable}`}>
+		<html
+			lang="de"
+			suppressHydrationWarning
+			className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable}`}
+		>
 			<head>
 				<meta name="apple-mobile-web-app-capable" content="yes" />
 				<meta name="mobile-web-app-capable" content="yes" />
@@ -160,14 +174,9 @@ export default function RootLayout({
 					Zum Hauptinhalt springen
 				</a>
 				<ThemeProvider>
-					{/* App-shell frame (Priority-1 follow-up, 2026-08-30): caps the whole
-					    app to a phone-like column, centered, on wide desktop browser tabs —
-					    same pattern as WhatsApp Web/Telegram Web. Plain max-width + mx-auto,
-					    no breakpoint: a no-op below --app-frame-width (every real mobile
-					    device), so there is only ever the one mobile layout. Fixed-position
-					    chrome that spans edge-to-edge (WgShell's bottom nav, its "Mehr"
-					    sheet) caps itself to the same width separately, since `fixed`
-					    positions against the real viewport, not this wrapper. */}
+					{/* Responsive web canvas capped at the Brandbook's 1240px desktop
+					    width. It remains full-width on phones; bottom navigation keeps
+					    its own compact width on large screens. */}
 					<div className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] bg-background">
 						{children}
 						<PwaRegister />

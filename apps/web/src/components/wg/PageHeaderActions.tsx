@@ -32,22 +32,22 @@ export function FormToggleButton({
 	return (
 		<Button
 			type="button"
-			variant="default"
+			variant={open ? 'ghost' : 'default'}
 			onClick={onToggle}
 			aria-expanded={open}
 			{...(controls ? { 'aria-controls': controls } : {})}
 			aria-label={open ? closeLabel : openLabel}
-			className="h-auto min-h-11 min-w-11 shrink-0 whitespace-normal"
+			className="size-11 shrink-0 px-0 sm:h-auto sm:w-auto sm:px-3"
 		>
 			{open ? (
 				<>
 					<X data-icon="inline-start" aria-hidden />
-					<span>Schließen</span>
+					<span className="hidden sm:inline">Schließen</span>
 				</>
 			) : (
 				<>
 					<Plus data-icon="inline-start" aria-hidden />
-					<span>{openLabel}</span>
+					<span className="hidden sm:inline">{openLabel}</span>
 				</>
 			)}
 		</Button>

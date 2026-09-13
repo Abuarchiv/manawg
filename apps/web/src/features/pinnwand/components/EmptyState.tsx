@@ -1,10 +1,3 @@
-import {
-	Empty,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyMedia,
-	EmptyTitle,
-} from '@/components/ui/empty';
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
@@ -14,14 +7,12 @@ export function EmptyState({
 	children,
 }: { icon: LucideIcon; hint?: string; children: ReactNode }) {
 	return (
-		<Empty className="border border-dashed">
-			<EmptyHeader>
-				<EmptyMedia variant="icon">
-					<Icon aria-hidden />
-				</EmptyMedia>
-				<EmptyTitle>{children}</EmptyTitle>
-				{hint && <EmptyDescription>{hint}</EmptyDescription>}
-			</EmptyHeader>
-		</Empty>
+		<div className="flex items-start gap-3 py-4">
+			<Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+			<div className="min-w-0 space-y-1">
+				<p className="text-sm font-medium">{children}</p>
+				{hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+			</div>
+		</div>
 	);
 }

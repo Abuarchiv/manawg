@@ -38,8 +38,14 @@ export function EntryFrame({
 				>
 					<ArrowLeft aria-hidden />
 				</Link>
-				<Link href={backHref} className={cn(buttonVariants({ variant: 'ghost' }), 'min-h-11')}>
-					<LogoMark size={24} radius={6} />
+				<Link
+					href={backHref}
+					className={cn(
+						buttonVariants({ variant: 'ghost' }),
+						'min-h-11 gap-2 font-heading font-semibold',
+					)}
+				>
+					<LogoMark size={24} tile={false} aria-hidden />
 					ManaWG
 				</Link>
 			</div>

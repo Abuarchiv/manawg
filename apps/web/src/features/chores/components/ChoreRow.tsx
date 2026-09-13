@@ -16,7 +16,6 @@ import {
 	Drawer,
 	DrawerClose,
 	DrawerContent,
-	DrawerDescription,
 	DrawerFooter,
 	DrawerHeader,
 	DrawerTitle,
@@ -89,6 +88,7 @@ export const ChoreRow = memo(function ChoreRow({
 	return (
 		<Item
 			id={`chore-${chore.id}`}
+			render={<li />}
 			variant="outline"
 			className={cn('scroll-mt-24', highlighted && 'ring-2 ring-inset ring-ring')}
 			aria-busy={busy}
@@ -102,9 +102,7 @@ export const ChoreRow = memo(function ChoreRow({
 					{formatChoreCadence(chore.intervalDays, chore.recurrenceType)}
 				</ItemDescription>
 				<div className="flex flex-wrap gap-1.5">
-					<Badge variant={status.tone === 'overdue' ? 'destructive' : 'secondary'}>
-						{status.label}
-					</Badge>
+					<Badge variant="outline">{status.label}</Badge>
 					{status.escalationLabel && <Badge variant="outline">{status.escalationLabel}</Badge>}
 				</div>
 				{chore.lastCompletedAt && (
@@ -112,16 +110,14 @@ export const ChoreRow = memo(function ChoreRow({
 						Nächste Fälligkeit: {new Date(chore.nextDueAt).toLocaleDateString('de-DE')}
 					</ItemDescription>
 				)}
-				<div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground">
-					<History className="size-3.5" aria-hidden />
-					{chore.lastCompletedAt && chore.lastCompletedByName ? (
+				{chore.lastCompletedAt && chore.lastCompletedByName && (
+					<div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground">
+						<History className="size-3.5" aria-hidden />
 						<span>
 							Zuletzt {formatRelativeTime(chore.lastCompletedAt)} von {chore.lastCompletedByName}
 						</span>
-					) : (
-						<span>Noch kein Verlauf</span>
-					)}
-				</div>
+					</div>
+				)}
 				{needsTakeOver && (
 					<Button
 						variant="link"
@@ -141,7 +137,7 @@ export const ChoreRow = memo(function ChoreRow({
 					className="min-h-11"
 					aria-label={
 						status.actionLabel === 'Nachholen'
-							? `Überfällige Aufgabe nachholen: ${chore.title}`
+							? `Aufgabe nachholen: ${chore.title}`
 							: `Als erledigt markieren: ${chore.title}`
 					}
 				>
@@ -171,14 +167,11 @@ export const ChoreRow = memo(function ChoreRow({
 					>
 						<MoreHorizontal aria-hidden />
 					</DrawerTrigger>
-					<DrawerContent className="mx-auto h-dvh max-h-dvh w-full max-w-md data-ending-style:transform-none data-starting-style:transform-none">
+					<DrawerContent className="mx-auto w-full max-w-md data-ending-style:transform-none data-starting-style:transform-none">
 						<DrawerHeader>
 							<DrawerTitle className="break-words">{chore.title}</DrawerTitle>
-							<DrawerDescription>
-								{assignee.name} · {status.label}
-							</DrawerDescription>
 						</DrawerHeader>
-						<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain p-4">
+						<div className="flex flex-col gap-3 overflow-y-auto overscroll-contain p-4">
 							<Button
 								variant="outline"
 								disabled={busy}

@@ -286,7 +286,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				}
 			>
 				{/* ShareWgCard already centres QR and aligns copy buttons */}
-				<div className="p-4">
+				<div className="p-3">
 					<ShareWgCard
 						wgName={wg.name}
 						shareCode={wg.shareCode}
@@ -300,7 +300,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				title="Anmeldemethoden"
 				hint="Verknüpfe einen weiteren Anbieter, damit dein Zugang auch bei Gerätewechsel erhalten bleibt."
 			>
-				<div className="p-4">
+				<div className="p-3">
 					<SocialLoginButtons
 						variant="link"
 						next={`/wg/${encodedShareCode}/einstellungen#zugang`}
@@ -313,9 +313,9 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				title="Zugang"
 				hint="Steuert, ob der aktuelle WG-Code neue Mitglieder aufnehmen darf."
 			>
-				<div className="grid gap-3 p-4">
+				<div className="grid gap-3 p-3">
 					<Field orientation="horizontal" className="min-h-[44px]">
-						<FieldContent>
+						<FieldContent className="min-w-0">
 							<FieldTitle>Neue Beitritte</FieldTitle>
 							<FieldDescription>
 								{accessPending === 'join'
@@ -336,7 +336,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 							/>
 						)}
 					</Field>
-					<div className="border-border bg-muted/40 rounded-lg border px-3 py-2.5">
+					<div className="border-border border-t pt-2">
 						<div className="flex min-h-[44px] items-center justify-between gap-3">
 							<div className="min-w-0">
 								<div className="text-foreground text-sm font-medium">WG-Code erneuern</div>
@@ -378,9 +378,9 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				title="Sicherheit & Vertrauen"
 				hint="Schneller Überblick, wer drin ist und wie offen der WG-Code ist."
 			>
-				<div className="grid gap-2 p-4">
+				<div className="grid grid-cols-2 gap-3 p-3">
 					{securityOverview.map((item) => (
-						<div key={item.label} className="border-border rounded-lg border px-3 py-2">
+						<div key={item.label} className="min-w-0">
 							<p className="text-muted-foreground text-xs">{item.label}</p>
 							<p className="text-foreground mt-0.5 text-[13px] font-medium">{item.value}</p>
 						</div>
@@ -393,12 +393,12 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 							<ItemMedia>
 								<MemberAvatar name={member.name} color={member.color ?? null} size={26} />
 							</ItemMedia>
-							<ItemContent>
+							<ItemContent className="min-w-0">
 								<ItemTitle>{member.name}</ItemTitle>
 							</ItemContent>
 							<ItemActions>
 								{member.id === identity.memberId ? (
-									<Badge variant="secondary">dieses Gerät</Badge>
+									<Badge variant="secondary">Du</Badge>
 								) : (
 									isAdmin && (
 										<Button
@@ -429,7 +429,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 									<ItemMedia>
 										<MemberAvatar name={member.name} color={member.color ?? null} size={26} />
 									</ItemMedia>
-									<ItemContent>
+									<ItemContent className="min-w-0">
 										<ItemTitle>{member.name}</ItemTitle>
 										<ItemDescription>Ausgezogen, Verlauf bleibt erhalten</ItemDescription>
 									</ItemContent>
@@ -474,61 +474,49 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				)}
 			</Section>
 
-			<div className="grid gap-4">
+			<Section
+				title="Konto abmelden"
+				hint="Meldet dein Konto auf diesem Gerät ab. WG-Mitgliedschaft und Daten bleiben erhalten."
+			>
+				<div className="p-3">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => void handleAccountSignOut()}
+						disabled={accountSignOutPending}
+						aria-label="Konto abmelden"
+						className="h-11 min-h-[44px] w-full"
+					>
+						{accountSignOutPending ? <Spinner aria-hidden /> : <LogOut aria-hidden />}
+						{accountSignOutPending ? 'Melde ab…' : 'Konto abmelden'}
+					</Button>
+					{accountSignOutError && (
+						<Alert variant="destructive" className="mt-2">
+							<AlertDescription>{accountSignOutError}</AlertDescription>
+						</Alert>
+					)}
+				</div>
+			</Section>
+
+			<div className="grid gap-3">
 				<div className="px-1">
 					<h2 className="text-destructive text-[13px] font-semibold">Gefahrenzone</h2>
 					<p className="text-muted-foreground mt-0.5 text-xs">
-						Diese Aktionen sind teilweise oder vollständig unwiderruflich.
+						WG verlassen oder dauerhaft löschen.
 					</p>
 				</div>
 
 				<Section
-					title="Konto abmelden"
-					hint="Meldet deine Account-Sitzung auf diesem Gerät ab. WG-Mitgliedschaft und Daten bleiben bestehen."
-				>
-					<div className="p-4">
-						<Button
-							type="button"
-							variant="destructive"
-							onClick={() => void handleAccountSignOut()}
-							disabled={accountSignOutPending}
-							aria-label="Konto abmelden"
-							className="h-11 min-h-[44px] w-full"
-						>
-							{accountSignOutPending ? <Spinner aria-hidden /> : <LogOut aria-hidden />}
-							{accountSignOutPending ? 'Melde ab…' : 'Konto abmelden'}
-						</Button>
-						{accountSignOutError && (
-							<Alert variant="destructive" className="mt-2">
-								<AlertDescription>{accountSignOutError}</AlertDescription>
-							</Alert>
-						)}
-					</div>
-				</Section>
-
-				<Section
 					title="WG verlassen"
-					hint="Entfernt deine Mitgliedschaft aus dieser WG. Deine Einträge und offenen Salden bleiben erhalten."
+					hint="Deaktiviert deine Mitgliedschaft. Einträge und offene Salden bleiben erhalten."
 				>
-					<div className="grid gap-3 p-4">
+					<div className="grid gap-3 p-3">
 						{activeMembers.length <= 1 ? (
-							<>
-								<p className="text-muted-foreground text-[13px]">
-									Du bist das letzte aktive Mitglied. Deine Mitgliedschaft bleibt bestehen; die WG
-									bleibt bestehen. Melde dich stattdessen auf diesem Gerät ab.
-								</p>
-								<Button
-									type="button"
-									variant="destructive"
-									onClick={() => void handleAccountSignOut()}
-									disabled={accountSignOutPending}
-									aria-label="Stattdessen Konto abmelden"
-									className="h-11 min-h-[44px] w-full"
-								>
-									{accountSignOutPending ? <Spinner aria-hidden /> : <LogOut aria-hidden />}
-									{accountSignOutPending ? 'Melde ab…' : 'Stattdessen Konto abmelden'}
-								</Button>
-							</>
+							<p className="text-muted-foreground text-[13px]">
+								Du bist das letzte aktive Mitglied. Die WG kann erst verlassen werden, wenn ein
+								weiteres Mitglied aktiv ist. Wenn du nur dieses Gerät abmelden möchtest, nutze oben
+								„Konto abmelden“.
+							</p>
 						) : memberToDeactivate?.selfLeave ? null : (
 							<Button
 								type="button"
@@ -537,7 +525,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 								className="h-11 min-h-[44px] w-full"
 							>
 								<LogOut aria-hidden />
-								WG auf diesem Gerät verlassen
+								WG verlassen
 							</Button>
 						)}
 					</div>
@@ -547,7 +535,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 					title="WG dauerhaft löschen"
 					hint="Entfernt die gesamte WG und alle Daten (Ausgaben, Listen, Pinnwand) unwiderruflich für alle Mitglieder."
 				>
-					<div className="p-4">
+					<div className="p-3">
 						<Button
 							type="button"
 							variant="destructive"

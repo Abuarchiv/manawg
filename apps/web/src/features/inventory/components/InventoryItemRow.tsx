@@ -21,6 +21,8 @@ interface InventoryItemRowProps {
 	onEdit: (item: InventoryItemDto) => void;
 }
 
+type PendingAction = 'decrement' | 'increment' | 'delete';
+
 export const InventoryItemRow = memo(function InventoryItemRow({
 	item,
 	shareCode,
@@ -30,72 +32,80 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	onEdit,
 }: InventoryItemRowProps) {
 	const encodedShareCode = encodeURIComponent(shareCode);
-	const [pending, setPending] = useState(false);
+	const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const lowStock = isBelowThreshold(item);
 	const deleteConfirm = useConfirmDelete();
 	const isDeleteArmed = deleteConfirm.confirmId === item.id;
+	const pending = pendingAction !== null;
 
 	async function changeQuantity(delta: number): Promise<void> {
 		if (pending) return;
-		setPending(true);
+		setPendingAction(delta < 0 ? 'decrement' : 'increment');
 		setError(null);
-		if (delta < 0) {
-			const res = await apiFetch<{ item: InventoryItemDto; clamped: boolean }>(
-				`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}/consume`,
-				{
-					method: 'POST',
-					memberId,
-					memberToken,
-					body: JSON.stringify({ delta }),
-				},
-			);
-			if (res.ok) {
-				if (res.data.clamped) setError('Bestand kann nicht unter 0 fallen.');
-				onChanged();
-			} else if (res.status === 429) {
-				setError('Zu viele Änderungen in kurzer Zeit. Bitte später erneut versuchen.');
+		try {
+			if (delta < 0) {
+				const res = await apiFetch<{ item: InventoryItemDto; clamped: boolean }>(
+					`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}/consume`,
+					{
+						method: 'POST',
+						memberId,
+						memberToken,
+						body: JSON.stringify({ delta }),
+					},
+				);
+				if (res.ok) {
+					if (res.data.clamped) setError('Bestand kann nicht unter 0 fallen.');
+					onChanged();
+				} else if (res.status === 429) {
+					setError('Zu viele Änderungen in kurzer Zeit. Bitte später erneut versuchen.');
+				} else {
+					setError('Aktualisierung fehlgeschlagen.');
+				}
 			} else {
-				setError('Aktualisierung fehlgeschlagen.');
+				const res = await apiFetch<{ item: InventoryItemDto }>(
+					`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}`,
+					{
+						method: 'PATCH',
+						memberId,
+						memberToken,
+						body: JSON.stringify({ quantityDelta: delta }),
+					},
+				);
+				if (res.ok) {
+					onChanged();
+				} else if (res.status === 429) {
+					setError('Zu viele Änderungen in kurzer Zeit. Bitte später erneut versuchen.');
+				} else {
+					setError('Aktualisierung fehlgeschlagen.');
+				}
 			}
-		} else {
-			const res = await apiFetch<{ item: InventoryItemDto }>(
-				`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}`,
-				{
-					method: 'PATCH',
-					memberId,
-					memberToken,
-					body: JSON.stringify({ quantityDelta: delta }),
-				},
-			);
-			if (res.ok) {
-				onChanged();
-			} else if (res.status === 429) {
-				setError('Zu viele Änderungen in kurzer Zeit. Bitte später erneut versuchen.');
-			} else {
-				setError('Aktualisierung fehlgeschlagen.');
-			}
+		} finally {
+			setPendingAction(null);
 		}
-		setPending(false);
 	}
 
 	async function remove(): Promise<void> {
 		if (pending) return;
-		setPending(true);
+		setPendingAction('delete');
 		setError(null);
-		const res = await apiFetch(
-			`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}`,
-			{ method: 'DELETE', memberId, memberToken },
-		);
-		if (res.ok) {
-			onChanged();
-		} else {
-			setError('Löschen fehlgeschlagen.');
-			setPending(false);
+		try {
+			const res = await apiFetch(
+				`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}`,
+				{ method: 'DELETE', memberId, memberToken },
+			);
+			if (res.ok) {
+				onChanged();
+			} else {
+				setError('Löschen fehlgeschlagen.');
+			}
+		} finally {
+			setPendingAction(null);
 		}
 	}
 
 	function handleDelete(): void {
+		if (pending) return;
 		if (!deleteConfirm.request(item.id)) return;
 		deleteConfirm.cancel();
 		void remove();
@@ -117,7 +127,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						)}
 					</ItemTitle>
 					<ItemDescription className="line-clamp-none tabular-nums">
-						{item.quantity} {item.unit} · Schwelle {item.threshold}
+						{item.quantity} {item.unit} · Nachkaufen ab {item.threshold}
 					</ItemDescription>
 				</ItemContent>
 
@@ -128,6 +138,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						size="icon"
 						onClick={() => void changeQuantity(-1)}
 						disabled={pending || item.quantity === 0}
+						aria-busy={pendingAction === 'decrement'}
 						aria-label={
 							item.quantity === 0
 								? `${item.name} um eins verringern (Bestand 0)`
@@ -135,7 +146,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						}
 						className="min-h-11 min-w-11"
 					>
-						{pending ? <Spinner aria-hidden /> : <Minus aria-hidden />}
+						{pendingAction === 'decrement' ? <Spinner aria-hidden /> : <Minus aria-hidden />}
 					</Button>
 					<Button
 						type="button"
@@ -143,10 +154,11 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						size="icon"
 						onClick={() => void changeQuantity(1)}
 						disabled={pending}
+						aria-busy={pendingAction === 'increment'}
 						aria-label={`${item.name} um eins erhöhen`}
 						className="min-h-11 min-w-11"
 					>
-						<Plus aria-hidden />
+						{pendingAction === 'increment' ? <Spinner aria-hidden /> : <Plus aria-hidden />}
 					</Button>
 					<Button
 						type="button"
@@ -159,18 +171,19 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 					>
 						<Pencil aria-hidden />
 					</Button>
-					{isDeleteArmed ? (
+					{isDeleteArmed || pendingAction === 'delete' ? (
 						<Button
 							type="button"
 							variant="destructive"
 							size="sm"
 							onClick={handleDelete}
 							disabled={pending}
-							aria-label={`${item.name} entfernen bestätigen`}
+							aria-busy={pendingAction === 'delete'}
+							aria-label={`${item.name} endgültig entfernen`}
 							className="min-h-11 px-3.5"
 						>
-							<Trash2 aria-hidden />
-							OK
+							{pendingAction === 'delete' ? <Spinner aria-hidden /> : <Trash2 aria-hidden />}
+							Endgültig entfernen
 						</Button>
 					) : (
 						<Button

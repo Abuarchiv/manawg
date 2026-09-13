@@ -1,12 +1,9 @@
-import { Button } from '@/components/ui/button';
 import { db, type wgChatMessages, wgs } from '@/core/db';
 import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { ChatView } from '@/features/chat/components/ChatView';
 import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import { eq } from 'drizzle-orm';
-import { ArrowLeft, MessageCircle, StickyNote } from 'lucide-react';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 interface PageProps {
@@ -96,61 +93,24 @@ function ChatPageContent({
 	reactions?: ReactionRow[];
 	mentions?: MentionRow[];
 }) {
-	const wgBaseHref = `/wg/${encodeURIComponent(wgRow.shareCode)}`;
-
 	return (
 		<div
 			data-chat-frame
 			className="flex min-h-0 flex-col"
 			style={{
-				height:
-					'calc(100dvh - 4.25rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
+				height: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
 			}}
 		>
-			<header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-3 py-2">
-				<div className="flex items-center gap-2">
-					<Button
-						render={<Link href={`${wgBaseHref}/pinnwand`} />}
-						nativeButton={false}
-						variant="ghost"
-						size="icon"
-						aria-label="Zurück zur Pinnwand"
-						className="min-h-11 min-w-11 shrink-0"
-					>
-						<ArrowLeft aria-hidden />
-					</Button>
+			<header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-4 py-2">
+				<div className="mx-auto flex w-full max-w-3xl items-center gap-2">
+					{/* The bottom navigation already owns the route escape. A second
+					    Pinnwand/Chat switcher repeats the same destination and steals
+					    message space on phones. */}
 					<div className="min-w-0">
-						<h1 className="text-xl font-semibold">Chat</h1>
-						<p className="break-words text-sm text-muted-foreground">
-							{wgRow.name} · Für schnelle Abstimmung.
-						</p>
+						<h1 className="font-heading text-xl font-semibold tracking-tight">Chat</h1>
 					</div>
 				</div>
-				<nav aria-label="Austausch" className="grid grid-cols-2 gap-2">
-					<Button
-						variant="ghost"
-						className="min-h-11"
-						nativeButton={false}
-						render={<Link href={`${wgBaseHref}/pinnwand`} />}
-					>
-						<StickyNote data-icon="inline-start" aria-hidden /> Pinnwand
-					</Button>
-					<Button
-						variant="secondary"
-						className="min-h-11"
-						nativeButton={false}
-						render={<Link href={`${wgBaseHref}/chat`} aria-current="page" />}
-					>
-						<MessageCircle data-icon="inline-start" aria-hidden /> Chat
-					</Button>
-				</nav>
 			</header>
-			<Link
-				href={`${wgBaseHref}/pinnwand`}
-				className="flex min-h-11 shrink-0 items-center border-b border-border px-4 text-xs text-muted-foreground hover:text-foreground"
-			>
-				Dauerhafte Infos auf die Pinnwand
-			</Link>
 			<ChatView
 				key={wgRow.id}
 				wgId={wgRow.id}

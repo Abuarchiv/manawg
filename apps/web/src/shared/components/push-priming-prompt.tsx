@@ -77,6 +77,7 @@ export function PushPrimingPrompt({
 }) {
 	const [visible, setVisible] = useState(false);
 	const [busy, setBusy] = useState(false);
+	const [activationError, setActivationError] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
@@ -85,8 +86,8 @@ export function PushPrimingPrompt({
 			safeLocalStorage()?.getItem(PUSH_PRIMING_DISMISS_KEY) ?? null,
 		);
 		// editingTarget is checked again at show-time and live below — typing can
-		// start or stop between mount and the delayed show, so a single
-		// mount-time snapshot isn't enough.
+		// start or stop between mount and the initial show, so a single mount-time
+		// snapshot isn't enough.
 		const eligible = shouldShowPushPriming({
 			supported,
 			configured: !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
@@ -95,19 +96,13 @@ export function PushPrimingPrompt({
 			editingTarget: false,
 		});
 		if (!eligible) return;
-		// Small delay so it doesn't fight with whatever else the page is
-		// animating in on first paint.
-		const timer = window.setTimeout(() => {
-			if (!isEditingTarget()) setVisible(true);
-		}, 800);
-		// Safety net: retract immediately if the user starts editing while the
-		// delayed offer is becoming visible.
+		if (!isEditingTarget()) setVisible(true);
+		// Retract immediately if the user starts editing while the offer is visible.
 		const onFocusIn = () => {
 			if (isEditingTarget()) setVisible(false);
 		};
 		window.addEventListener('focusin', onFocusIn);
 		return () => {
-			window.clearTimeout(timer);
 			window.removeEventListener('focusin', onFocusIn);
 		};
 	}, []);
@@ -162,16 +157,17 @@ export function PushPrimingPrompt({
 	async function enable(): Promise<void> {
 		if (busy) return;
 		setBusy(true);
+		setActivationError(null);
 		try {
 			await subscribeWebPush(code, memberId, memberToken);
-		} catch {
-			// Denied, a mid-flight network hiccup, or push just isn't configured —
-			// Einstellungen still offers a manual retry with a real error message;
-			// no need to duplicate that UI in a one-shot priming card.
-		} finally {
-			setBusy(false);
 			rememberDismissed();
 			setVisible(false);
+		} catch {
+			setActivationError(
+				'Aktivierung fehlgeschlagen. Prüfe die Browser-Einstellungen und versuche es erneut.',
+			);
+		} finally {
+			setBusy(false);
 		}
 	}
 
@@ -183,7 +179,7 @@ export function PushPrimingPrompt({
 			role="status"
 			aria-live="polite"
 			aria-label="Benachrichtigungen aktivieren"
-			className="w-full px-4 pt-3 animate-in fade-in duration-300"
+			className="w-full animate-in fade-in duration-300"
 		>
 			<Card>
 				<CardHeader>
@@ -191,6 +187,11 @@ export function PushPrimingPrompt({
 					<CardDescription>
 						Erhalte Hinweise zu fälligen Aufgaben und neuen WG-Nachrichten.
 					</CardDescription>
+					{activationError && (
+						<p role="alert" className="text-sm text-destructive">
+							{activationError}
+						</p>
+					)}
 					<CardAction>
 						<Button
 							variant="ghost"

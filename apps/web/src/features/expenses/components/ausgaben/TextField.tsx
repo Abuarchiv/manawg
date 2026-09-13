@@ -1,12 +1,13 @@
 'use client';
 
-import { Field, FieldLabel } from '@/components/ui/field';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import {
 	InputGroup,
 	InputGroupAddon,
 	InputGroupInput,
 	InputGroupText,
 } from '@/components/ui/input-group';
+import { cn } from '@/shared/lib/cn';
 
 interface TextFieldProps {
 	label: string;
@@ -17,6 +18,7 @@ interface TextFieldProps {
 	inputMode?: 'text' | 'decimal' | 'numeric';
 	suffix?: string;
 	disabled?: boolean;
+	error?: string | undefined;
 }
 
 export function TextField({
@@ -28,10 +30,12 @@ export function TextField({
 	inputMode = 'text',
 	suffix,
 	disabled = false,
+	error,
 }: TextFieldProps) {
 	const id = `f-${label.toLowerCase().replace(/\s+/g, '-')}`;
+	const errorId = `${id}-error`;
 	return (
-		<Field data-disabled={disabled}>
+		<Field data-disabled={disabled} data-invalid={Boolean(error)}>
 			<FieldLabel htmlFor={id}>{label}</FieldLabel>
 			<InputGroup className="min-h-11">
 				<InputGroupInput
@@ -43,7 +47,12 @@ export function TextField({
 					maxLength={maxLength}
 					placeholder={placeholder}
 					disabled={disabled}
-					className="min-h-11 text-base md:text-base"
+					aria-invalid={error ? true : undefined}
+					aria-describedby={error ? errorId : undefined}
+					className={cn(
+						'min-h-11 text-base md:text-base',
+						inputMode === 'decimal' && 'font-mono tabular-nums',
+					)}
 				/>
 				{suffix && (
 					<InputGroupAddon align="inline-end">
@@ -51,6 +60,7 @@ export function TextField({
 					</InputGroupAddon>
 				)}
 			</InputGroup>
+			{error && <FieldError id={errorId}>{error}</FieldError>}
 		</Field>
 	);
 }

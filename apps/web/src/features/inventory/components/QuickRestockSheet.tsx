@@ -111,8 +111,8 @@ export function QuickRestockSheet({
 									{sorted.map((item) => (
 										<Item key={item.id} className="px-3 py-2.5">
 											<ItemContent className="min-w-0 flex-1">
-												<ItemTitle className="w-full min-w-0">
-													<span className="min-w-0 flex-1 truncate text-sm font-medium">
+												<ItemTitle className="w-full min-w-0 line-clamp-none">
+													<span className="min-w-0 flex-1 break-words text-sm font-medium">
 														{item.name}
 													</span>
 												</ItemTitle>
@@ -125,6 +125,7 @@ export function QuickRestockSheet({
 													type="button"
 													onClick={() => void quickRestock(item)}
 													disabled={pendingId !== null}
+													aria-busy={pendingId === item.id}
 													aria-label={`${item.name} um eins erhöhen`}
 													className="min-h-11"
 												>

@@ -16,7 +16,7 @@ test.describe('live public dashboard entry', () => {
 		await expect(page.getByRole('link', { name: 'WG erstellen', exact: true })).toBeVisible();
 		const examples = page.getByRole('region', { name: 'So kann euer Alltag aussehen' });
 		await expect(examples).toBeVisible();
-		await expect(page.locator('[data-liquid-glass]')).toHaveCount(1);
+		await expect(page.locator('[data-liquid-glass]')).toHaveCount(0);
 		await expect(page.locator('[data-slot="card"][data-liquid-glass]')).toHaveCount(0);
 		for (const label of ['Einkauf', 'Ausgaben', 'Putzen', 'Pinnwand']) {
 			await expect(examples.getByRole('article', { name: `${label}, Beispiel-WG` })).toBeVisible();
@@ -31,7 +31,7 @@ test.describe('live public dashboard entry', () => {
 		).toBeVisible();
 		await expect(page.getByRole('article', { name: 'Ausgaben, Beispiel-WG' })).toBeVisible();
 		await expect(page.getByText('Pizzaabend', { exact: true })).toBeVisible();
-		await expect(page.locator('[data-liquid-glass]')).toHaveCount(1);
+		await expect(page.locator('[data-liquid-glass]')).toHaveCount(0);
 		await expect(page.locator('[data-slot="card"][data-liquid-glass]')).toHaveCount(0);
 		await page.reload();
 		await expect(
@@ -120,10 +120,10 @@ test.describe('live public dashboard entry', () => {
 		await expect(page.locator('main > div').first()).toHaveCSS('opacity', '1');
 	});
 
-	test('keeps a readable opaque material fallback for high contrast', async ({ page }) => {
+	test('keeps web navigation opaque in high contrast', async ({ page }) => {
 		await page.emulateMedia({ forcedColors: 'active', contrast: 'more' });
 		await page.goto('/');
-		const material = page.locator('[data-liquid-glass]').first();
+		const material = page.getByRole('navigation', { name: 'Öffentliche Hauptnavigation' });
 		await expect(material).toBeVisible();
 		const fallback = await material.evaluate((element) => {
 			const layer = element.firstElementChild;

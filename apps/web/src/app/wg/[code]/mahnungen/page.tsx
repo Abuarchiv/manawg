@@ -1,6 +1,7 @@
 'use client';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { BackLink } from '@/components/wg/BackLink';
 import { DebtRow } from '@/components/wg/DebtRow';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
@@ -18,6 +19,7 @@ import {
 } from '@/features/expenses/debts';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
 import { REMINDER_COOLDOWN_HOURS, canSendReminder } from '@/features/expenses/reminders';
+import { cn } from '@/shared/lib/cn';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface ExpenseSplitDto {
@@ -46,6 +48,8 @@ export default function MahnungenPage() {
 	const [loading, setLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
+	const [expensesLoadFailed, setExpensesLoadFailed] = useState(false);
+	const [remindersLoadFailed, setRemindersLoadFailed] = useState(false);
 
 	const load = useCallback(
 		async (initial: boolean): Promise<void> => {
@@ -68,15 +72,23 @@ export default function MahnungenPage() {
 			if (expensesRes.ok) {
 				setExpenses(expensesRes.data.expenses);
 				setPayments(expensesRes.data.payments ?? []);
-			} else
+				setExpensesLoadFailed(false);
+			} else {
+				setExpensesLoadFailed(true);
 				nextError = getWgLoadErrorMessage('Ausgaben', expensesRes.status, expensesRes.error, {
 					verb: 'konnten',
 				});
-			if (remindersRes.ok) setReminders(remindersRes.data.reminders);
-			else if (!nextError) {
-				nextError = getWgLoadErrorMessage('Mahnungen', remindersRes.status, remindersRes.error, {
-					verb: 'konnten',
-				});
+			}
+			if (remindersRes.ok) {
+				setReminders(remindersRes.data.reminders);
+				setRemindersLoadFailed(false);
+			} else {
+				setRemindersLoadFailed(true);
+				if (!nextError) {
+					nextError = getWgLoadErrorMessage('Mahnungen', remindersRes.status, remindersRes.error, {
+						verb: 'konnten',
+					});
+				}
 			}
 			setLoadError(nextError);
 			if (initial) setLoading(false);
@@ -136,14 +148,27 @@ export default function MahnungenPage() {
 	}
 
 	return (
-		<div className="mx-auto flex w-full max-w-md flex-col gap-5 px-4 py-5">
-			<header className="flex items-center gap-3">
+		<div data-finance-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
+			<header className="flex min-w-0 items-center gap-3">
 				<BackLink href={`${wgBaseHref}/ausgaben`} label="Ausgaben" />
-				<div className="min-w-0">
-					<h1 className="text-xl font-semibold">Mahnungen</h1>
+				<div className="min-w-0 flex-1">
+					<h1 className="font-heading text-2xl font-semibold tracking-tight break-words">
+						Mahnungen
+					</h1>
 					<p className="text-sm text-muted-foreground">
 						Max. alle {REMINDER_COOLDOWN_HOURS} Stunden pro Person
 					</p>
+					<output
+						aria-live="polite"
+						aria-hidden={!refreshing}
+						className={cn(
+							'flex min-h-5 items-center gap-2 text-sm text-muted-foreground',
+							!refreshing && 'invisible',
+						)}
+					>
+						<Spinner />
+						Wird aktualisiert…
+					</output>
 				</div>
 			</header>
 			{loadError && (
@@ -165,15 +190,17 @@ export default function MahnungenPage() {
 						<Skeleton className="h-24 w-full" />
 						<Skeleton className="h-24 w-full" />
 					</div>
+				) : expensesLoadFailed && rows.length === 0 ? (
+					<Empty>
+						<EmptyHeader>
+							<EmptyTitle>Schulden noch nicht geladen</EmptyTitle>
+							<EmptyDescription>Lade die Daten erneut.</EmptyDescription>
+						</EmptyHeader>
+					</Empty>
 				) : rows.length === 0 ? (
 					<Empty>
 						<EmptyHeader>
-							<EmptyTitle>
-								{loadError
-									? 'Schulden noch nicht geladen'
-									: 'Alles ausgeglichen — nichts zu mahnen.'}
-							</EmptyTitle>
-							{loadError && <EmptyDescription>Lade die Daten erneut.</EmptyDescription>}
+							<EmptyTitle>Alles ausgeglichen — nichts zu mahnen.</EmptyTitle>
 						</EmptyHeader>
 					</Empty>
 				) : (
@@ -220,6 +247,13 @@ export default function MahnungenPage() {
 				<h2 className="text-base font-semibold">Letzte Mahnungen (30 Tage)</h2>
 				{loading ? (
 					<Skeleton className="h-20 w-full" />
+				) : remindersLoadFailed && reminders.length === 0 ? (
+					<Empty>
+						<EmptyHeader>
+							<EmptyTitle>Mahnungen noch nicht geladen</EmptyTitle>
+							<EmptyDescription>Lade die Daten erneut.</EmptyDescription>
+						</EmptyHeader>
+					</Empty>
 				) : (
 					<ReminderHistory items={reminders} memberName={memberName} />
 				)}

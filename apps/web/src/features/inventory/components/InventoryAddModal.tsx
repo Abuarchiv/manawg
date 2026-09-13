@@ -88,7 +88,8 @@ export function InventoryAddModal({
 	const [category, setCategory] = useState<InventoryCategory>(DEFAULT_CATEGORY);
 	const [saving, setSaving] = useState(false);
 	const [discardOpen, setDiscardOpen] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+	const [nameError, setNameError] = useState<string | null>(null);
+	const [serverError, setServerError] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (!open) return;
@@ -97,7 +98,8 @@ export function InventoryAddModal({
 		setUnit(coerceUnit(initial?.unit));
 		setThreshold(initial?.threshold ?? 1);
 		setCategory(coerceCategory(initial?.category));
-		setError(null);
+		setNameError(null);
+		setServerError(null);
 	}, [open, initial]);
 
 	function requestClose(): void {
@@ -116,11 +118,13 @@ export function InventoryAddModal({
 		if (saving) return;
 		const trimmedName = name.trim();
 		if (trimmedName.length === 0) {
-			setError('Bitte gib einen Namen ein.');
+			setNameError('Bitte gib einen Namen ein.');
+			setServerError(null);
 			return;
 		}
 		setSaving(true);
-		setError(null);
+		setNameError(null);
+		setServerError(null);
 		const body = {
 			name: trimmedName,
 			quantity,
@@ -144,8 +148,10 @@ export function InventoryAddModal({
 		if (res.ok) {
 			onSaved();
 			onClose();
+		} else if (res.error === 'name_invalid') {
+			setNameError('Bitte gib einen gültigen Namen ein.');
 		} else {
-			setError('Speichern fehlgeschlagen.');
+			setServerError('Speichern fehlgeschlagen. Bitte versuche es erneut.');
 		}
 	}
 
@@ -161,8 +167,8 @@ export function InventoryAddModal({
 					<DrawerTitle>{mode === 'edit' ? 'Vorrat bearbeiten' : 'Neuer Vorrat'}</DrawerTitle>
 					<DrawerDescription>
 						{mode === 'edit'
-							? 'Menge, Schwelle, Einheit und Kategorie anpassen.'
-							: 'Name, Menge, Schwelle, Einheit und Kategorie festlegen.'}
+							? 'Menge, Einheit, Kategorie und „Nachkaufen ab“ anpassen.'
+							: 'Name, Menge, Einheit, Kategorie und „Nachkaufen ab“ festlegen.'}
 					</DrawerDescription>
 				</DrawerHeader>
 
@@ -175,22 +181,26 @@ export function InventoryAddModal({
 					style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
 				>
 					<FieldGroup>
-						<Field data-invalid={Boolean(error)}>
+						<Field data-invalid={Boolean(nameError)}>
 							<FieldLabel htmlFor="inventory-name">Name</FieldLabel>
 							<Input
 								id="inventory-name"
 								type="text"
 								value={name}
-								onChange={(event) => setName(event.target.value)}
+								onChange={(event) => {
+									setName(event.target.value);
+									if (nameError) setNameError(null);
+								}}
 								maxLength={INVENTORY_LIMITS.NAME_MAX}
 								required
 								aria-required="true"
-								aria-invalid={Boolean(error)}
-								aria-describedby={error ? 'inventory-add-error' : undefined}
+								aria-invalid={Boolean(nameError)}
+								aria-describedby={nameError ? 'inventory-name-error' : undefined}
 								placeholder="z. B. Nudeln"
 								disabled={saving}
 								className="min-h-11 text-base"
 							/>
+							{nameError && <FieldError id="inventory-name-error">{nameError}</FieldError>}
 						</Field>
 						<div className="grid grid-cols-2 gap-2">
 							<Field className="min-w-0">
@@ -208,7 +218,7 @@ export function InventoryAddModal({
 								/>
 							</Field>
 							<Field className="min-w-0">
-								<FieldLabel htmlFor="inventory-threshold">Schwelle</FieldLabel>
+								<FieldLabel htmlFor="inventory-threshold">Nachkaufen ab</FieldLabel>
 								<Input
 									id="inventory-threshold"
 									type="number"
@@ -222,7 +232,7 @@ export function InventoryAddModal({
 								/>
 							</Field>
 						</div>
-						<div className="grid grid-cols-2 gap-2">
+						<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
 							<Field className="min-w-0">
 								<FieldLabel htmlFor="inventory-unit">Einheit</FieldLabel>
 								<NativeSelect
@@ -257,23 +267,20 @@ export function InventoryAddModal({
 							</Field>
 						</div>
 						<FieldDescription>
-							Beim Verbrauchen bis zur Schwelle wird fehlender Vorrat auf die Einkaufsliste gesetzt.
+							Wenn der Bestand diesen Wert erreicht, wird der Vorrat als niedrig markiert und auf
+							die Einkaufsliste gesetzt.
 						</FieldDescription>
 					</FieldGroup>
-					{error && (
-						<FieldError>
-							<Alert variant="destructive">
-								<AlertDescription>
-									<span id="inventory-add-error">{error}</span>
-								</AlertDescription>
-							</Alert>
-						</FieldError>
+					{serverError && (
+						<Alert id="inventory-save-error" variant="destructive">
+							<AlertDescription>{serverError}</AlertDescription>
+						</Alert>
 					)}
 					<DrawerFooter className="flex-row justify-end gap-2 p-0">
 						<Button type="button" variant="outline" onClick={requestClose} className="min-h-11">
 							Abbrechen
 						</Button>
-						<Button type="submit" disabled={saving} className="min-h-11">
+						<Button type="submit" disabled={saving} aria-busy={saving} className="min-h-11">
 							{saving && <Spinner aria-hidden />}
 							{saving ? 'Speichert…' : 'Speichern'}
 						</Button>

@@ -1,5 +1,5 @@
+import { AppBottomNav } from '@/components/app/AppBottomNav';
 import { ToastContainer } from '@/components/ui/Toast';
-import { LiquidGlassSurface } from '@/components/ui/liquid-glass-surface';
 import { NavItem } from '@/components/wg/NavItem';
 import { OfflineBanner } from '@/components/wg/OfflineBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
@@ -154,23 +154,23 @@ function WgShell({
 				className="group/wg-shell min-h-svh bg-background"
 				style={{
 					paddingTop: 'env(safe-area-inset-top, 0px)',
-					paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))',
+					paddingBottom: 'calc(var(--app-nav-height, 5rem) + 0.5rem)',
 				}}
 			>
 				<OfflineBanner />
 				<WgAppHeader />
 				{/* WCAG 1.3.1 / 2.4.1 — single <main> landmark.
 				    tabIndex={-1} lets the skip-link target receive programmatic focus. */}
-				<main id="main" tabIndex={-1} className="app-page-enter focus:outline-none">
+				<main id="main" tabIndex={-1} className="focus:outline-none">
 					{children}
 				</main>
 			</div>
-			<nav
+			<AppBottomNav
 				aria-label="WG Hauptnavigation"
 				data-app-chrome
-				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
+				className="fixed inset-x-0 bottom-0 z-30 mx-0 w-[100dvw] min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] min-[576px]:mx-auto"
 			>
-				<LiquidGlassSurface>
+				<div className="rounded-[20px] border border-border bg-background">
 					<ul className="flex gap-1 p-1 [&>li]:min-w-0 [&>li]:flex-1">
 						<NavItem
 							href={wgBaseHref}
@@ -193,8 +193,8 @@ function WgShell({
 					    weiter auf; Suche/Aktivität/Einstellungen bleiben über
 					    Header- und Start-Verlinkungen erreichbar. */}
 					</ul>
-				</LiquidGlassSurface>
-			</nav>
+				</div>
+			</AppBottomNav>
 		</WgContextProvider>
 	);
 }

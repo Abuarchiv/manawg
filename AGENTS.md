@@ -26,3 +26,11 @@ artifacts in the repository so work survives a chat session.
 
 - Keep the WG header free of search controls. The user explicitly removed the search icon; restore a header search entry only on a new explicit user request. This supersedes older design plans that place search in the header.
 - Show account/settings as an original shadcn ghost icon button with a 44px touch target and an accessible label. Keep the visible control icon-only, without the text "Konto & WG".
+
+## Brandbook
+
+For UI, typography, icons, motion, or product wording, read
+[the design contract](docs/brand/design-language.md) and the relevant chapter of
+[Brandbook v1.0](docs/brand/brandbook.html) before editing. This source supersedes
+older visual-design documents. Verify the changed view in light/dark and at a
+320px viewport; retain the header accessibility rules above.

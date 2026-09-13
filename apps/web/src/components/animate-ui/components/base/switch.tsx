@@ -17,7 +17,7 @@ type SwitchProps = SwitchPrimitiveProps & {
 
 function Switch({
 	className,
-	pressedWidth = 19,
+	pressedWidth = 59,
 	startIcon,
 	endIcon,
 	thumbIcon,
@@ -26,17 +26,17 @@ function Switch({
 	return (
 		<SwitchPrimitive
 			className={cn(
-				'relative peer focus-visible:border-ring focus-visible:ring-ring/50 flex h-5 w-8 px-px shrink-0 items-center justify-start rounded-full border border-transparent shadow-xs outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
-				'data-[checked]:bg-primary data-[unchecked]:bg-input dark:data-[unchecked]:bg-input/80 data-[checked]:justify-end',
+				'group/switch relative peer inline-flex h-11 w-[68px] shrink-0 items-center rounded-[22px] border border-transparent bg-transparent px-0 outline-none before:absolute before:inset-x-0 before:top-1/2 before:h-[30px] before:-translate-y-1/2 before:pointer-events-none before:rounded-[15px] before:bg-input before:content-[""] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
+				'data-[checked]:before:bg-primary data-[unchecked]:before:bg-input',
 				className,
 			)}
 			{...props}
 		>
 			<SwitchThumbPrimitive
 				className={cn(
-					'relative z-10 bg-background dark:data-[unchecked]:bg-foreground dark:data-[checked]:bg-primary-foreground pointer-events-none block size-4 rounded-full ring-0',
+					'pointer-events-none absolute z-10 block rounded-[12.5px] bg-background transition-[left,top,width,height,box-shadow] duration-[280ms] ease-[cubic-bezier(0.34,1.28,0.64,1)] dark:data-[checked]:bg-primary-foreground dark:data-[unchecked]:bg-foreground',
 				)}
-				pressedAnimation={{ width: pressedWidth }}
+				pressedWidth={pressedWidth}
 			>
 				{thumbIcon && (
 					<SwitchIconPrimitive

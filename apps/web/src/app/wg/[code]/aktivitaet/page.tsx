@@ -1,7 +1,7 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
 	Empty,
@@ -14,7 +14,7 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { Marker, MarkerContent } from '@/components/ui/marker';
-import { Separator } from '@/components/ui/separator';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { BackLink } from '@/components/wg/BackLink';
@@ -32,11 +32,9 @@ import {
 	buildActivityInbox,
 	filterActivityByScope,
 	filterActivityItems,
-	getActivityEmptyActionHref,
 	groupActivityItemsByDay,
 } from '@/core/reads/activity';
-import { cn } from '@/shared/lib/cn';
-import { AlertTriangle, History, ListFilter, RotateCw, Search } from 'lucide-react';
+import { AlertTriangle, History, RotateCw, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -135,11 +133,13 @@ export default function AktivitaetPage() {
 	}
 
 	return (
-		<div className="mx-auto w-full max-w-md space-y-4 bg-background px-4 py-6 pb-[env(safe-area-inset-bottom)]">
+		<div className="mx-auto min-w-0 w-full max-w-3xl space-y-4 bg-background px-4 py-4 pb-[env(safe-area-inset-bottom)]">
 			<header className="flex items-center gap-2">
 				<BackLink href={wgBaseHref} label="Dashboard" />
 				<div className="min-w-0 flex-1">
-					<h1 className="text-xl font-semibold tracking-tight text-foreground">Aktivität</h1>
+					<h1 className="font-heading text-xl font-semibold tracking-tight text-foreground">
+						Aktivität
+					</h1>
 					<p className="mt-0.5 text-[13px] text-muted-foreground">
 						Verlauf, Erinnerungen und offene Klärungen.
 					</p>
@@ -170,15 +170,17 @@ export default function AktivitaetPage() {
 				/>
 			)}
 
-			{data && (
+			{data && inboxItems.length > 0 && (
 				<Card>
 					<CardHeader>
-						<div className="flex items-center justify-between gap-2">
-							<CardTitle className="flex items-center gap-2">
+						<div className="flex min-w-0 items-center justify-between gap-2">
+							<CardTitle className="flex min-w-0 items-center gap-2">
 								<AlertTriangle className="h-4 w-4 text-destructive" aria-hidden />
 								Inbox
 							</CardTitle>
-							<Badge variant="secondary">{inboxCountLabel}</Badge>
+							<Badge variant="secondary" className="shrink-0">
+								{inboxCountLabel}
+							</Badge>
 						</div>
 					</CardHeader>
 					<CardContent>
@@ -187,11 +189,12 @@ export default function AktivitaetPage() {
 								{inboxItems.map((item) => (
 									<Item
 										key={item.id}
-										variant="outline"
+										size="sm"
+										className="rounded-none border-b border-border last:border-0"
 										render={<Link href={`${wgBaseHref}${item.href}`} />}
 									>
-										<ItemContent>
-											<ItemTitle>
+										<ItemContent className="min-w-0">
+											<ItemTitle className="min-w-0 w-full">
 												<span className="flex items-center justify-between gap-2">
 													<span className="line-clamp-1">{item.title}</span>
 													{item.priority === 'high' && (
@@ -201,22 +204,22 @@ export default function AktivitaetPage() {
 													)}
 												</span>
 											</ItemTitle>
-											<ItemDescription className="line-clamp-1">{item.detail}</ItemDescription>
+											<ItemDescription className="min-w-0 line-clamp-1">
+												{item.detail}
+											</ItemDescription>
 										</ItemContent>
 									</Item>
 								))}
 							</ItemGroup>
 						) : (
-							<p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[13px] text-muted-foreground">
-								Keine offenen Klärungen.
-							</p>
+							<p className="py-1 text-[13px] text-muted-foreground">Keine offenen Klärungen.</p>
 						)}
 					</CardContent>
 				</Card>
 			)}
 
-			<Card>
-				<CardContent className="space-y-3 pt-4">
+			<Card className="border-0 bg-transparent py-0 shadow-none">
+				<CardContent className="space-y-3 p-0">
 					<InputGroup className="min-h-11">
 						<InputGroupAddon align="inline-start">
 							<Search className="h-4 w-4" aria-hidden />
@@ -233,81 +236,46 @@ export default function AktivitaetPage() {
 							className="min-h-11 text-base"
 						/>
 					</InputGroup>
-					{/* biome-ignore lint/a11y/useSemanticElements: button toolbar group; <fieldset> would change layout semantics */}
-					<div className="flex flex-wrap gap-2" role="group" aria-label="Aktivitätsumfang filtern">
-						{[
-							['all', 'Alle'],
-							['system', 'System'],
-							['mine', 'Von mir'],
-							['changes', 'Änderungen'],
-							['done', 'Erledigungen'],
-						].map(([value, label]) => (
-							<Button
-								key={value}
-								type="button"
-								variant={scope === value ? 'default' : 'outline'}
-								size="lg"
-								onClick={() => {
-									setScope(value as ActivityScope);
-									setFilter((current) =>
-										value === 'mine' ? { ...current, mineOnly: false } : current,
-									);
-								}}
-								aria-label={value === 'all' ? 'Aktivitätsumfang: Alle' : undefined}
-								aria-pressed={scope === value}
-								className="min-h-11 rounded-full"
+					<div className="grid grid-cols-2 gap-2">
+						<label htmlFor="activity-scope" className="grid min-w-0 gap-1 text-xs font-medium">
+							Umfang
+							<NativeSelect
+								id="activity-scope"
+								value={scope}
+								onChange={(event) => setScope(event.target.value as ActivityScope)}
+								className="w-full [&_select]:min-h-10"
 							>
-								{label}
-							</Button>
-						))}
-					</div>
-					<Separator />
-					<div
-						// biome-ignore lint/a11y/useSemanticElements: filter toolbar — group role conveys related filter buttons to AT; no semantic HTML element fits
-						className="flex flex-wrap gap-2"
-						role="group"
-						aria-label="Aktivitätstyp filtern"
-					>
-						{[
-							['all', 'Alle'],
-							['expense', 'Ausgaben'],
-							['shopping', 'Einkauf'],
-							['announcement', 'Pinnwand'],
-							['chore', 'Putzen'],
-							['recurring', 'Fixkosten'],
-							['absence', 'Abwesenheiten'],
-							['audit', 'Audit'],
-						].map(([value, label]) => (
-							<Button
-								key={value}
-								type="button"
-								variant={filter.kind === value ? 'secondary' : 'outline'}
-								size="lg"
-								onClick={() => setKind(value as ActivityKind | 'all')}
-								aria-label={value === 'all' ? 'Aktivitätstyp: Alle' : undefined}
-								aria-pressed={filter.kind === value}
-								className="min-h-11 rounded-full"
+								<NativeSelectOption value="all">Alle</NativeSelectOption>
+								<NativeSelectOption value="system">System</NativeSelectOption>
+								<NativeSelectOption value="mine">Von mir</NativeSelectOption>
+								<NativeSelectOption value="changes">Änderungen</NativeSelectOption>
+								<NativeSelectOption value="done">Erledigungen</NativeSelectOption>
+							</NativeSelect>
+						</label>
+						<label htmlFor="activity-kind" className="grid min-w-0 gap-1 text-xs font-medium">
+							Bereich
+							<NativeSelect
+								id="activity-kind"
+								value={filter.kind}
+								onChange={(event) => setKind(event.target.value as ActivityKind | 'all')}
+								className="w-full [&_select]:min-h-10"
 							>
-								<ListFilter data-icon="inline-start" aria-hidden />
-								{label}
-							</Button>
-						))}
-						<Button
-							type="button"
-							variant={filter.mineOnly ? 'default' : 'outline'}
-							size="lg"
-							onClick={() => setFilter((current) => ({ ...current, mineOnly: !current.mineOnly }))}
-							aria-pressed={filter.mineOnly}
-							className="min-h-11 rounded-full"
-						>
-							Nur ich
-						</Button>
+								<NativeSelectOption value="all">Alle</NativeSelectOption>
+								<NativeSelectOption value="expense">Ausgaben</NativeSelectOption>
+								<NativeSelectOption value="shopping">Einkauf</NativeSelectOption>
+								<NativeSelectOption value="announcement">Pinnwand</NativeSelectOption>
+								<NativeSelectOption value="chore">Putzen</NativeSelectOption>
+								<NativeSelectOption value="recurring">Fixkosten</NativeSelectOption>
+								<NativeSelectOption value="absence">Abwesenheiten</NativeSelectOption>
+								<NativeSelectOption value="audit">Audit</NativeSelectOption>
+							</NativeSelect>
+						</label>
 					</div>
 				</CardContent>
 			</Card>
 
-			<Card>
-				<CardContent className="pt-4">
+			<Card className="border-0 bg-transparent py-0 shadow-none">
+				<CardContent className="p-0">
 					{data ? (
 						chronicleGroups.length > 0 ? (
 							<div className="space-y-5">
@@ -328,7 +296,7 @@ export default function AktivitaetPage() {
 								))}
 							</div>
 						) : hasActiveFilter ? (
-							<Empty>
+							<Empty className="gap-3 border-0 px-0 py-5">
 								<EmptyHeader>
 									<EmptyTitle>Keine Aktivität für diesen Filter.</EmptyTitle>
 									<EmptyDescription>
@@ -341,7 +309,7 @@ export default function AktivitaetPage() {
 									<Button
 										type="button"
 										variant="outline"
-										size="lg"
+										size="sm"
 										onClick={resetFilters}
 										className="min-h-11"
 									>
@@ -350,47 +318,14 @@ export default function AktivitaetPage() {
 								</EmptyContent>
 							</Empty>
 						) : (
-							<Empty>
+							<Empty className="gap-3 border-0 px-0 py-5">
 								<EmptyHeader>
 									<EmptyMedia variant="icon">
 										<History aria-hidden />
 									</EmptyMedia>
 									<EmptyTitle>Noch keine Aktivität.</EmptyTitle>
-									<EmptyDescription>
-										Sobald jemand etwas einträgt, erledigt oder kommentiert, entsteht hier euer
-										Verlauf.
-									</EmptyDescription>
+									<EmptyDescription>Neue Einträge und Änderungen erscheinen hier.</EmptyDescription>
 								</EmptyHeader>
-								<EmptyContent>
-									<div className="flex flex-wrap justify-center gap-2">
-										<Link
-											href={getActivityEmptyActionHref(wg.shareCode, 'expense', {
-												desc: 'Internet',
-												amount: '32,90',
-											})}
-											className={cn(buttonVariants({ size: 'lg' }), 'min-h-11')}
-										>
-											Ausgabe eintragen
-										</Link>
-										<Link
-											href={getActivityEmptyActionHref(wg.shareCode, 'announcement', {
-												content: 'Paket im Flur',
-												kind: 'question',
-											})}
-											className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11')}
-										>
-											Pinnwand starten
-										</Link>
-										<Link
-											href={getActivityEmptyActionHref(wg.shareCode, 'chore', {
-												title: 'Bad putzen',
-											})}
-											className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11')}
-										>
-											Putzplan anlegen
-										</Link>
-									</div>
-								</EmptyContent>
 							</Empty>
 						)
 					) : loading ? (
@@ -409,7 +344,7 @@ export default function AktivitaetPage() {
 							))}
 						</div>
 					) : (
-						<p className="rounded-lg border border-dashed border-border px-3 py-8 text-center text-[13px] text-muted-foreground">
+						<p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[13px] text-muted-foreground">
 							Keine Aktivität geladen. Versuche es erneut.
 						</p>
 					)}

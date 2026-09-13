@@ -143,8 +143,10 @@ export function RecurringExpensesSection({
 													{item.description}
 												</ItemTitle>
 												<ItemDescription className="line-clamp-none">
-													{formatEuroCents(item.amountCents)} · bezahlt von{' '}
-													{memberName(item.paidByMemberId)} · fällig{' '}
+													<span className="font-mono tabular-nums">
+														{formatEuroCents(item.amountCents)}
+													</span>{' '}
+													· bezahlt von {memberName(item.paidByMemberId)} · fällig{' '}
 													{formatShortDate(item.nextDueAt)}
 													{item.lastCreatedAt
 														? ` · zuletzt ${formatRelativeTime(item.lastCreatedAt)}`
@@ -158,7 +160,9 @@ export function RecurringExpensesSection({
 															className="whitespace-normal"
 														>
 															{memberName(split.debtorMemberId)}:{' '}
-															{formatEuroCents(split.amountCents)}
+															<span className="font-mono tabular-nums">
+																{formatEuroCents(split.amountCents)}
+															</span>
 														</Badge>
 													))}
 												</div>

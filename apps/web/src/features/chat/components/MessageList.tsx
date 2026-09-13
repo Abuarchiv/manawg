@@ -33,6 +33,26 @@ const DAY_FORMAT = new Intl.DateTimeFormat('de-DE', {
 	day: '2-digit',
 	month: 'long',
 });
+const MESSAGE_GROUP_WINDOW_MS = 5 * 60 * 1000;
+
+function groupsWithPreviousMessage(
+	previous: BubbleMessage | undefined,
+	current: BubbleMessage,
+): boolean {
+	const previousTime = previous ? Date.parse(previous.createdAt) : Number.NaN;
+	const currentTime = Date.parse(current.createdAt);
+	return Boolean(
+		previous &&
+			previous.kind !== 'system' &&
+			current.kind !== 'system' &&
+			previous.senderMemberId &&
+			previous.senderMemberId === current.senderMemberId &&
+			Number.isFinite(previousTime) &&
+			Number.isFinite(currentTime) &&
+			currentTime >= previousTime &&
+			currentTime - previousTime <= MESSAGE_GROUP_WINDOW_MS,
+	);
+}
 
 export function MessageList({
 	messages,
@@ -85,6 +105,7 @@ export function MessageList({
 	// scrollAnchor stays false: this is a live group chat, not an anchored AI turn.
 	return groups.flatMap((group) =>
 		group.messages.map((message, index) => {
+			const grouped = groupsWithPreviousMessage(group.messages[index - 1], message);
 			const sender = message.senderMemberId
 				? (memberLookup.get(message.senderMemberId) ?? null)
 				: null;
@@ -95,7 +116,11 @@ export function MessageList({
 				? (memberLookup.get(replyTo.senderMemberId) ?? null)
 				: null;
 			return (
-				<MessageScrollerItem key={message.id} messageId={message.id}>
+				<MessageScrollerItem
+					key={message.id}
+					messageId={message.id}
+					className={grouped ? '-mt-2' : undefined}
+				>
 					{message.id === oldestId && hasMoreOlder && (
 						<div className="flex flex-col items-center gap-2 pb-3">
 							<div ref={topSentinelRef} className="h-1" aria-hidden />
@@ -120,7 +145,7 @@ export function MessageList({
 						</div>
 					)}
 					{index === 0 && (
-						<Marker variant="separator" className="py-3">
+						<Marker variant="separator" className="py-2 text-[11px]">
 							<MarkerContent>{DAY_FORMAT.format(group.day)}</MarkerContent>
 						</Marker>
 					)}
@@ -139,6 +164,7 @@ export function MessageList({
 								message={message}
 								sender={sender}
 								currentMemberId={currentMemberId}
+								grouped={grouped}
 								isAdmin={isAdmin}
 								isOwn={message.senderMemberId === currentMemberId}
 								draftKey={`manawg:draft:${shareCode}:${currentMemberId}:chat:edit:${message.id}`}

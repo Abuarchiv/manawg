@@ -12,6 +12,13 @@ interface SplitReviewProps {
 
 // The caller supplies the exact split result used by its existing save handler.
 export function SplitReview({ members, splits, paidByMemberId }: SplitReviewProps) {
+	if (!splits) {
+		return (
+			<p className="text-xs text-muted-foreground">
+				Die Anteile erscheinen, sobald der Betrag gültig ist.
+			</p>
+		);
+	}
 	const payer = members.find((member) => member.id === paidByMemberId)?.name ?? 'Zahler:in';
 	return (
 		<ItemGroup aria-label="Anteile vor dem Speichern" aria-live="polite" className="gap-1">
@@ -31,7 +38,7 @@ export function SplitReview({ members, splits, paidByMemberId }: SplitReviewProp
 											: `Schuldet ${payer} diesen Anteil`}
 							</ItemDescription>
 						</ItemContent>
-						<Badge variant="outline" className="tabular-nums">
+						<Badge variant="outline" className="font-mono tabular-nums">
 							{splits ? formatEuroCents(share?.amountCents ?? 0) : '—'}
 						</Badge>
 					</Item>

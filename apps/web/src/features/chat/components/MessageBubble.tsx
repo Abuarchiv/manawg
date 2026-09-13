@@ -70,6 +70,7 @@ interface MessageBubbleProps {
 	currentMemberId: string;
 	isAdmin: boolean;
 	isOwn: boolean;
+	grouped?: boolean;
 	draftKey: string;
 	reactions: ReactionSummary[];
 	replyTo: BubbleMessage | null;
@@ -87,6 +88,7 @@ export function MessageBubble({
 	currentMemberId,
 	isAdmin,
 	isOwn,
+	grouped = false,
 	draftKey,
 	reactions,
 	replyTo,
@@ -181,19 +183,29 @@ export function MessageBubble({
 			id={`message-${message.id}`}
 			aria-busy={pending || Boolean(reactionPending)}
 		>
-			<MessageAvatar>
-				<Avatar>
+			<MessageAvatar
+				className={grouped ? 'invisible' : undefined}
+				aria-hidden={grouped || undefined}
+			>
+				<Avatar className="size-7 text-xs">
 					<AvatarFallback>{senderName.slice(0, 2).toLocaleUpperCase('de-DE')}</AvatarFallback>
 				</Avatar>
 			</MessageAvatar>
-			<MessageContent>
-				<MessageHeader className="flex-wrap gap-2">
+			<MessageContent className="gap-1">
+				<MessageHeader
+					className={grouped ? 'sr-only' : 'flex-wrap gap-x-1.5 gap-y-0 px-2 text-[11px]'}
+				>
 					{!isOwn && <span className="min-w-0 [overflow-wrap:anywhere]">{senderName}</span>}
 					<time dateTime={message.createdAt} title={formatTimeFull(message.createdAt)}>
 						{formatRelativeTime(message.createdAt)}
 					</time>
 					{message.editedAt && <span>· bearbeitet</span>}
 				</MessageHeader>
+				{grouped && message.editedAt && (
+					<span className="px-1 text-xs text-muted-foreground" aria-hidden>
+						bearbeitet
+					</span>
+				)}
 				{editing ? (
 					<FieldGroup className="gap-2">
 						<Field data-invalid={Boolean(error)}>
@@ -242,7 +254,7 @@ export function MessageBubble({
 							align={align}
 							className="max-w-full"
 						>
-							<BubbleContent>
+							<BubbleContent className="px-2.5 py-1.5 leading-snug">
 								{replyTo && (
 									<blockquote className="mb-2 border-s-2 border-current/30 ps-2">
 										<p className="text-xs font-medium [overflow-wrap:anywhere]">
@@ -318,7 +330,7 @@ export function MessageBubble({
 					</Alert>
 				)}
 				{!isDeleted && !editing && (
-					<MessageFooter className="flex-wrap gap-1 px-0">
+					<MessageFooter className="flex-wrap gap-0 px-0 [&_svg]:size-3.5">
 						<ReactionPicker
 							disabled={Boolean(reactionPending)}
 							onSelect={(emoji) => toggleReaction(emoji, false)}

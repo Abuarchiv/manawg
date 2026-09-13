@@ -17,6 +17,7 @@ interface AbosListProps {
 	members: MemberOption[];
 	filter: AboFilter;
 	pendingId: string | null;
+	loadError?: string | null;
 	onFilterChange: (next: AboFilter) => void;
 	onEdit: (abo: Abo) => void;
 	onTogglePause: (abo: Abo) => void;
@@ -40,6 +41,7 @@ export function AbosList({
 	members,
 	filter,
 	pendingId,
+	loadError,
 	onFilterChange,
 	onEdit,
 	onTogglePause,
@@ -76,14 +78,18 @@ export function AbosList({
 							<RefreshCw />
 						</EmptyMedia>
 						<EmptyTitle>
-							{abos.length === 0
-								? 'Noch keine Abos angelegt'
-								: `Keine ${filter === 'paused' ? 'pausierten' : 'aktiven'} Abos`}
+							{loadError && abos.length === 0
+								? 'Abos noch nicht geladen'
+								: abos.length === 0
+									? 'Noch keine Abos angelegt'
+									: `Keine ${filter === 'paused' ? 'pausierten' : 'aktiven'} Abos`}
 						</EmptyTitle>
 						<EmptyDescription>
-							{abos.length === 0
-								? 'Mit „Neues Abo“ regelmäßige Ausgaben vorbereiten.'
-								: 'Wähle einen anderen Filter.'}
+							{loadError && abos.length === 0
+								? 'Versuche es erneut.'
+								: abos.length === 0
+									? 'Mit „Neues Abo“ regelmäßige Ausgaben vorbereiten.'
+									: 'Wähle einen anderen Filter.'}
 						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>

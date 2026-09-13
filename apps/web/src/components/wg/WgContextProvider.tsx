@@ -178,7 +178,7 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 		// values — so hydration cannot mismatch.
 		return (
 			<div className="min-h-svh bg-background" aria-busy="true">
-				<main id="main" tabIndex={-1} className="app-page-enter focus:outline-none">
+				<main id="main" tabIndex={-1} className="focus:outline-none">
 					<div className="mx-auto w-full max-w-3xl px-3 pt-6 sm:px-4" aria-label="Wird geladen">
 						<Skeleton className="h-7 w-40" />
 						<Skeleton className="mt-4 h-24 rounded-xl" />

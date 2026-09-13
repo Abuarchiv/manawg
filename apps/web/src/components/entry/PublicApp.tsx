@@ -1,5 +1,6 @@
 'use client';
 
+import { AppBottomNav } from '@/components/app/AppBottomNav';
 import { WG_SECTIONS } from '@/components/app/navigation';
 import {
 	PublicModulePreview,
@@ -11,7 +12,6 @@ import { ErrorBox } from '@/components/neu/ErrorBox';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
-import { LiquidGlassSurface } from '@/components/ui/liquid-glass-surface';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
@@ -29,7 +29,6 @@ import {
 	Settings,
 	Sparkles,
 } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -134,7 +133,6 @@ export function PublicApp(props: { activeModule?: string }) {
 function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const reducedMotion = useReducedMotion();
 	const [memberships, setMemberships] = useState<AccountWg[]>([]);
 	const [membershipState, setMembershipState] = useState<
 		'loading' | 'signed-out' | 'authenticated-empty' | 'member-list' | 'error'
@@ -194,7 +192,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 			className="min-h-svh bg-background"
 			style={{
 				paddingTop: 'env(safe-area-inset-top, 0px)',
-				paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))',
+				paddingBottom: 'calc(var(--app-nav-height, 5rem) + 0.5rem)',
 			}}
 		>
 			<main
@@ -202,11 +200,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 				tabIndex={-1}
 				className="flex w-full min-w-0 flex-col gap-6 px-4 py-5 focus:outline-none"
 			>
-				<motion.div
-					initial={reducedMotion ? false : { opacity: 0 }}
-					animate={{ opacity: 1 }}
-					className="flex min-w-0 flex-col gap-6"
-				>
+				<div className="flex min-w-0 flex-col gap-6">
 					<header className="flex flex-col gap-3">
 						<div className="flex items-center justify-between gap-3">
 							<Link
@@ -214,8 +208,10 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 								className="flex min-h-11 items-center gap-2"
 								aria-label="ManaWG Startseite"
 							>
-								<LogoMark size={28} radius={7} />
-								<span className="text-sm font-medium">ManaWG</span>
+								<LogoMark size={24} tile={false} aria-hidden />
+								<span className="font-heading text-xl font-semibold tracking-[-0.03em]">
+									ManaWG
+								</span>
 							</Link>
 							<Link
 								href={publicHref('/neu')}
@@ -304,14 +300,14 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							</CardContent>
 						</Card>
 					)}
-				</motion.div>
+				</div>
 			</main>
-			<nav
+			<AppBottomNav
 				aria-label="Öffentliche Hauptnavigation"
 				data-app-chrome
-				className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[var(--app-frame-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
+				className="fixed inset-x-0 bottom-0 z-30 mx-0 w-[100dvw] min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] min-[576px]:mx-auto"
 			>
-				<LiquidGlassSurface>
+				<div className="rounded-[20px] border border-border bg-background text-foreground">
 					<ul className="flex gap-1 p-1 [&>li]:min-w-0 [&>li]:flex-1">
 						<NavItem
 							href={publicHref('/')}
@@ -329,8 +325,8 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							/>
 						))}
 					</ul>
-				</LiquidGlassSurface>
-			</nav>
+				</div>
+			</AppBottomNav>
 		</div>
 	);
 }

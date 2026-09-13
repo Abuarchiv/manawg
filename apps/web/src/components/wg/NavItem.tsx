@@ -119,11 +119,11 @@ export function NavItem({
 				}}
 				className={cn(
 					buttonVariants({ variant: isActive ? 'secondary' : 'ghost' }),
-					'h-auto min-h-14 w-full flex-col gap-1 px-1 py-2',
+					'h-auto min-h-12 w-full flex-col gap-0.5 rounded-xl px-0 py-1 sm:min-h-14 sm:gap-1 sm:rounded-[16px] sm:py-2',
 				)}
 			>
 				<span className="relative">
-					<Icon aria-hidden />
+					<Icon aria-hidden className="size-5 sm:size-6" />
 					{showBadge && (
 						<Badge
 							variant="destructive"
@@ -136,7 +136,9 @@ export function NavItem({
 						</Badge>
 					)}
 				</span>
-				<span className="text-xs">{label}</span>
+				<span className="max-w-full break-words whitespace-normal text-center text-[0.6875rem] leading-4 sm:text-xs">
+					{label}
+				</span>
 			</Link>
 		</li>
 	);

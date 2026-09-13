@@ -33,7 +33,7 @@ export function LoadErrorBanner({ message, onRetry, busy, retryLabel }: LoadErro
 				type="button"
 				onClick={onRetry}
 				disabled={busy}
-				className="min-h-11"
+				className="min-h-11 max-w-full whitespace-normal sm:w-auto"
 			>
 				<RotateCw data-icon="inline-start" className={cn(busy && 'animate-spin')} aria-hidden />
 				{busy ? 'Lädt...' : retryLabel}

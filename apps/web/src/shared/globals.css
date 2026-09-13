@@ -2,29 +2,159 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* The material wrapper keeps an opaque semantic surface when the browser or
-   accessibility preference cannot provide readable translucency. */
-@supports not ((backdrop-filter: blur(1px))) {
-	.liquid-glass-surface[data-liquid-glass] > :first-child {
-		background: var(--background) !important;
-		backdrop-filter: none !important;
-		-webkit-backdrop-filter: none !important;
+/* Home density is tuned for phone screens, without changing browser zoom or
+   the user's root text size. Desktop and other routes retain their sizing. */
+@media (max-width: 639px) {
+	[data-home-header] {
+		padding-top: 0.75rem;
+	}
+	[data-home-header] h1 {
+		font-size: 1.125rem;
+		line-height: 1.5rem;
+	}
+	[data-home-header] p {
+		font-size: 0.75rem;
+		line-height: 1.125rem;
+	}
+	[data-home-content] {
+		gap: 1.25rem;
+		padding-top: 1rem;
+		padding-bottom: 1rem;
+	}
+	[data-home-content] > div.flex {
+		gap: 1.25rem;
+	}
+	[data-home-content] section {
+		gap: 0.5rem;
+	}
+	[data-home-content] h2 {
+		font-size: 0.8125rem;
+		line-height: 1.25rem;
+	}
+	[data-home-content] [data-slot="card-title"] {
+		font-size: 0.9375rem;
+		line-height: 1.25rem;
+	}
+	[data-home-content] [data-slot="item-title"],
+	[data-home-content] [data-slot="item-description"],
+	[data-home-content] p.text-sm {
+		font-size: 0.8125rem;
+		line-height: 1.125rem;
+	}
+	[data-home-content] [data-slot="item"] {
+		padding-top: 0.5rem;
+		padding-bottom: 0.5rem;
+		min-height: 3.5rem;
+	}
+	[data-home-content] [data-slot="item-content"] {
+		gap: 0.125rem;
 	}
 }
 
-/* biome-ignore lint/correctness/noUnknownMediaFeatureName: these accessibility media features are supported where exposed by the browser. */
-@media (forced-colors: active), (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
-	.liquid-glass-surface[data-liquid-glass] > :first-child {
-		background: var(--background) !important;
-		backdrop-filter: none !important;
-		-webkit-backdrop-filter: none !important;
+/* Household pages share the accepted phone density from Home. Native inputs
+   retain 16px text to avoid Safari's automatic focus zoom. */
+@media (max-width: 639px) {
+	:is([data-household-content], [data-finance-content]) {
+		gap: 1rem;
+		padding-block: 1rem;
+	}
+	:is([data-household-content], [data-finance-content]) h1 {
+		font-size: 1.25rem;
+		line-height: 1.625rem;
+	}
+	:is([data-household-content], [data-finance-content]) h2,
+	:is([data-household-content], [data-finance-content]) [data-slot="card-title"] {
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+	}
+	:is([data-household-content], [data-finance-content]) [data-slot="item-title"],
+	:is([data-household-content], [data-finance-content]) [data-slot="item-description"],
+	:is([data-household-content], [data-finance-content]) [data-slot="card-description"],
+	:is([data-household-content], [data-finance-content]) [data-slot="field-label"],
+	:is([data-household-content], [data-finance-content]) [data-slot="empty-title"],
+	:is([data-household-content], [data-finance-content]) [data-slot="empty-description"],
+	:is([data-household-content], [data-finance-content]) p.text-sm,
+	:is([data-household-content], [data-finance-content]) button,
+	:is([data-household-content], [data-finance-content]) nav a {
+		font-size: 0.8125rem;
+		line-height: 1.125rem;
+	}
+	:is([data-household-content], [data-finance-content]) [data-slot="card"] {
+		--card-spacing: 0.75rem;
+	}
+	:is([data-household-content], [data-finance-content]) [data-slot="field"] {
+		gap: 0.375rem;
+	}
+	:is([data-household-content], [data-finance-content]) [data-slot="item-content"] {
+		gap: 0.125rem;
+	}
+	:is([data-household-content], [data-finance-content]) [data-slot="item"] {
+		padding-block: 0.5rem;
+	}
+	:is([data-household-content], [data-finance-content]) [data-slot="empty"] {
+		gap: 0.75rem;
+		padding: 1.25rem 0.75rem;
+	}
+}
+
+/* Compact visible controls; enlarged button hit areas do not enlarge the box.
+   Apply to WG dialogs too, since they render in portals outside main. */
+@media (max-width: 639px) {
+	body:has(.group\/wg-shell) [data-slot="button"]:not([data-bottom-nav-item]) {
+		min-height: 2.25rem;
+		min-width: 2.75rem;
+		height: auto;
+		font-size: 0.8125rem;
+		line-height: 1.125rem;
+		padding-top: 0.25rem;
+		padding-bottom: 0.25rem;
+		border-radius: var(--radius-lg);
+	}
+	body:has(.group\/wg-shell) [data-slot="button"]:not([data-bottom-nav-item])::after {
+		content: "";
+		position: absolute;
+		inset: -0.25rem 0;
+		min-height: 2.75rem;
+	}
+	body:has(.group\/wg-shell) [data-slot="input"]:not([type="file"]),
+	body:has(.group\/wg-shell) [data-slot="native-select"] {
+		min-height: 2.5rem;
+		height: 2.5rem;
+		font-size: 1rem;
+		background-color: transparent;
+	}
+	body:has(.group\/wg-shell) [data-slot="input-group"]:not(:has(textarea)) {
+		min-height: 2.5rem;
+		height: 2.5rem;
+	}
+	body:has(.group\/wg-shell) [data-slot="input-group-control"]:not(textarea) {
+		min-height: 0;
+		height: 100%;
+	}
+	body:has(.group\/wg-shell) [data-slot="card"] {
+		--card-spacing: 0.75rem;
+	}
+	body:has(.group\/wg-shell) [data-slot="empty"] {
+		padding: 1rem 0;
+		gap: 0.5rem;
+	}
+	body:has(.group\/wg-shell) [data-slot="field-group"] {
+		gap: 0.75rem;
+	}
+	body:has(.group\/wg-shell) [data-slot="field-label"] {
+		font-size: 0.75rem;
+		line-height: 1rem;
 	}
 }
 
 @theme inline {
 	--font-sans: var(--font-inter);
-	--font-heading: var(--font-inter);
-	--font-mono: var(--font-geist-mono);
+	--font-heading: var(--font-inter-tight);
+	--font-mono: var(--font-jetbrains-mono);
+	--text-lg: 1.0625rem;
+	--text-2xl: 1.625rem;
+	--text-3xl: 2.125rem;
+	--text-5xl: 3.125rem;
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
@@ -39,6 +169,7 @@
 	--color-muted-foreground: var(--muted-foreground);
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);
+	--color-settled: var(--settled);
 	--color-destructive: var(--destructive);
 	--color-border: var(--border);
 	--color-input: var(--input);
@@ -56,10 +187,13 @@
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
-	--radius-sm: calc(var(--radius) - 4px);
-	--radius-md: calc(var(--radius) - 2px);
+	--radius-sm: calc(var(--radius) * 0.6);
+	--radius-md: calc(var(--radius) * 0.8);
 	--radius-lg: var(--radius);
-	--radius-xl: calc(var(--radius) + 4px);
+	--radius-xl: calc(var(--radius) * 1.4);
+	--radius-2xl: calc(var(--radius) * 1.8);
+	--radius-3xl: calc(var(--radius) * 2.2);
+	--radius-4xl: calc(var(--radius) * 2.6);
 }
 
 /* ─── RESPONSIVE FOUNDATIONS ───────────────────────────────────────────────
@@ -143,18 +277,13 @@ video {
 	height: auto;
 }
 
-/* 5. Form elements inherit document font (browsers default to system UI) */
-input,
-textarea,
-button,
-select {
-	font-family: inherit;
-}
+/* Preflight supplies inherited form fonts in @layer base, so font-mono
+   utilities on amount inputs can override them. */
 
 /* 6. Mobile body baseline — 16px prevents iOS zoom on focused inputs */
 body {
 	font-size: 16px;
-	line-height: 1.5;
+	line-height: 1.6;
 }
 
 /* ─── END RESPONSIVE FOUNDATIONS ────────────────────────────────────────── */
@@ -162,85 +291,72 @@ body {
 @layer base {
 	:root {
 		color-scheme: light;
-		/* App-shell frame width (Priority-1 desktop-browser follow-up, 2026-08-30):
-		   the whole app is capped to a phone-like column at this width and centered,
-		   same pattern as WhatsApp Web/Telegram Web — a "boxed app" instead of a
-		   stretched website when opened in a wide desktop browser tab. Below this
-		   width (real mobile devices) it's a no-op: plain max-width, no media query,
-		   so there is exactly one mobile layout, never a tablet/desktop variant. */
-		--app-frame-width: 480px;
-		/* Backdrop shown in the margins outside the frame on wide viewports. Same
-		   role in both themes: distinct enough from --bg-base to read as "outside
-		   the app", subtle enough not to compete with it. Never visible at mobile
-		   widths — the frame fills 100% of the viewport there. Vercel recessed-bg
-		   value (#EBEBEB is also Vercel's ghost-button hover fill) reused here. */
-		--app-backdrop: #ebebeb;
-		/* LIGHT (default) — Vercel Design Language palette (2026-08-30 retune).
-		   Values taken directly from the Vercel reference table: bg #FAFAFA,
-		   text #171717/#4D4D4D/#8F8F8F, accent #0072F5, border ~8% black. */
-		--bg-base: #fafafa;
-		--bg-1: rgba(255, 255, 255, 0.72);
-		--bg-2: rgba(255, 255, 255, 0.5);
-		--surface: #ffffff;
-		--surface-strong: #ffffff;
+		/* Brandbook chapter 15: the web shell uses the available twelve-column
+		   canvas and caps it at 1240px. Mobile remains full-width through the
+		   existing width:100% wrapper. */
+		--app-frame-width: 1240px;
+		/* Navigation stays a compact floating control on wide screens while
+		   expanding naturally to the viewport on phones. */
+		--app-nav-width: 36rem;
+		--app-nav-height: 5rem;
+		/* Backdrop shown in the margins outside the centered app frame. */
+		--app-backdrop: var(--secondary);
+		/* Chapter 10: exact shadcn Neutral light tokens. */
+		--bg-base: var(--background);
+		--bg-1: var(--card);
+		--bg-2: var(--secondary);
+		--surface: var(--card);
+		--surface-strong: var(--secondary);
 		--border: oklch(0.922 0 0);
-		--border-strong: rgba(0, 0, 0, 0.14);
+		--border-strong: oklch(0.145 0 0 / 14%);
 
-		--text-1: #171717;
-		--text-2: #4d4d4d; /* WCAG AA ≥4.5:1 on --bg-base */
-		--text-3: #8f8f8f;
-		--text-label: #0072f5;
+		--text-1: var(--foreground);
+		--text-2: oklch(0.439 0 0);
+		--text-3: oklch(0.556 0 0);
+		--text-label: var(--foreground);
 
-		/* Vercel interactive accent + focus-ring blue. Same hex in both themes
-		   (see .dark below) — Vercel's #0072F5 button blue reads well with white
-		   text on both a near-white and a near-black surface (~4.45:1 contrast). */
 		--accent: oklch(0.97 0 0);
-		--accent-bright: #338ef7;
-		--accent-deep: #005fcc; /* Vercel's documented focus-ring color */
-		--accent-soft: rgba(0, 114, 245, 0.12);
+		--accent-bright: var(--foreground);
+		--accent-deep: var(--primary);
+		--accent-soft: var(--secondary);
 
-		--success: #1f7a34;
-		--warning: #a15c00;
-		--danger: #c6362c;
-		/* Foreground tokens used on var(--accent) and var(--danger) chips/buttons.
-		   --accent-fg stays white in both themes now (same accent hex both places).
-		   --danger-fg still flips: light danger is dark enough for white text,
-		   dark-mode danger is brightened for on-black readability and needs dark text. */
-		--danger-fg: #ffffff;
-		/* State chip/banner tokens — bg/border/fg trios for success/warning/danger/info
-		   panels. Replaces hardcoded emerald-50/amber-50 Tailwind palette so banners
-		   stay consistent in both light and dark mode. */
-		--success-fg: #14532d;
-		--success-bg: #ecfdf5;
-		--success-border: rgba(31, 122, 52, 0.25);
-		--warning-fg: #7c2d12;
-		--warning-bg: #fef3c7;
-		--warning-border: rgba(161, 92, 0, 0.3);
-		--danger-bg: #fef2f2;
-		--danger-border: rgba(198, 54, 44, 0.3);
-		--info-fg: #0c4a6e;
-		--info-bg: #f0f9ff;
-		--info-border: rgba(0, 114, 245, 0.25);
-		--chart-1: oklch(0.87 0 0);
-		--chart-2: oklch(0.556 0 0);
-		--chart-3: oklch(0.439 0 0);
-		--chart-4: oklch(0.371 0 0);
-		--chart-5: oklch(0.269 0 0);
-		--chart-6: #067a6e;
+		--success: var(--settled);
+		--warning: var(--muted-foreground);
+		--danger: var(--destructive);
+		--info: var(--muted-foreground);
+		/* Foreground tokens retained for legacy state consumers. */
+		--danger-fg: var(--primary-foreground);
+		/* State surfaces stay neutral; only settled and destructive carry meaning. */
+		--success-fg: var(--foreground);
+		--success-bg: color-mix(in oklch, var(--settled) 12%, var(--background));
+		--success-border: color-mix(in oklch, var(--settled) 35%, var(--border));
+		--warning-fg: var(--foreground);
+		--warning-bg: var(--secondary);
+		--warning-border: var(--border);
+		--danger-bg: color-mix(in oklch, var(--destructive) 12%, var(--background));
+		--danger-border: color-mix(in oklch, var(--destructive) 35%, var(--border));
+		--info-fg: var(--foreground);
+		--info-bg: var(--secondary);
+		--info-border: var(--border);
+		--chart-1: oklch(0.205 0 0);
+		--chart-2: oklch(0.372 0 0);
+		--chart-3: oklch(0.556 0 0);
+		--chart-4: oklch(0.708 0 0);
+		--chart-5: oklch(0.87 0 0);
+		--chart-6: oklch(0.145 0 0);
 
-		/* Base tones — the two still referenced by components. */
-		--clay: #a85638;
-		--ink: #171717;
+		/* Legacy aliases map to the Neutral scale. */
+		--clay: var(--foreground);
+		--ink: var(--foreground);
 
-		/* Legacy beige-theme tokens still used by older components. Each one below
-		   has live consumers; the unused rest of the set was removed. */
-		--bg: #fafafa;
-		--bg-raised: #ebebeb;
-		--paper: #ffffff;
-		--ink-2: #4d4d4d;
-		--ink-3: #8f8f8f;
-		--accent-fg: #ffffff;
-		--red: #c6362c;
+		/* Legacy aliases retained for older consumers. */
+		--bg: var(--background);
+		--bg-raised: var(--secondary);
+		--paper: var(--card);
+		--ink-2: oklch(0.439 0 0);
+		--ink-3: oklch(0.556 0 0);
+		--accent-fg: var(--accent-foreground);
+		--red: var(--destructive);
 		--background: oklch(1 0 0);
 		--foreground: oklch(0.145 0 0);
 		--card: oklch(1 0 0);
@@ -258,6 +374,7 @@ body {
 		--input: oklch(0.922 0 0);
 		--ring: oklch(0.708 0 0);
 		--radius: 0.625rem;
+		--settled: oklch(0.55 0.13 155);
 		--sidebar: oklch(0.985 0 0);
 		--sidebar-foreground: oklch(0.145 0 0);
 		--sidebar-primary: oklch(0.205 0 0);
@@ -270,67 +387,59 @@ body {
 
 	.dark {
 		color-scheme: dark;
-		/* DARK — same Vercel philosophy, no reference table given for it (the
-		   product owner's spec is light-mode only), so this derives a matching
-		   dark counterpart: dark bg, light text, the SAME blue accent, and the
-		   shadow-as-border technique adjusted to a white-on-black border. */
-		--app-backdrop: #000000;
-		--bg-base: #0a0a0a;
-		--bg-1: #111111;
-		--bg-2: #1a1a1a;
-		--surface: #111111;
-		--surface-strong: #1a1a1a;
+		/* Chapter 10: exact shadcn Neutral dark tokens. */
+		--app-backdrop: var(--background);
+		--bg-base: var(--background);
+		--bg-1: var(--card);
+		--bg-2: var(--secondary);
+		--surface: var(--card);
+		--surface-strong: var(--secondary);
 		--border: oklch(1 0 0 / 10%);
-		--border-strong: rgba(255, 255, 255, 0.16);
+		--border-strong: oklch(0.985 0 0 / 16%);
 
-		--text-1: #ededed;
-		--text-2: #a1a1a1;
-		--text-3: #707070;
-		--text-label: #0072f5;
+		--text-1: var(--foreground);
+		--text-2: var(--muted-foreground);
+		--text-3: var(--muted-foreground);
+		--text-label: var(--foreground);
 
-		/* Same accent hex as light mode — Vercel's button blue holds up on both
-		   a near-white and a near-black surface. */
 		--accent: oklch(0.269 0 0);
-		--accent-bright: #3291ff;
-		--accent-deep: #005fcc;
-		--accent-soft: rgba(0, 114, 245, 0.18);
+		--accent-bright: var(--foreground);
+		--accent-deep: var(--primary);
+		--accent-soft: var(--secondary);
 
-		--success: #45a557;
-		--warning: #ff990a;
-		--danger: #e5484d;
-		--success-fg: #6cda75;
-		--success-bg: rgba(69, 165, 87, 0.12);
-		--success-border: rgba(69, 165, 87, 0.3);
-		--warning-fg: #ffb84d;
-		--warning-bg: rgba(255, 153, 10, 0.12);
-		--warning-border: rgba(255, 153, 10, 0.3);
-		--danger-bg: rgba(229, 72, 77, 0.12);
-		--danger-border: rgba(229, 72, 77, 0.3);
-		--info-fg: #52aeff;
-		--info-bg: rgba(0, 114, 245, 0.1);
-		--info-border: rgba(0, 114, 245, 0.25);
-		--chart-1: oklch(0.87 0 0);
-		--chart-2: oklch(0.556 0 0);
-		--chart-3: oklch(0.439 0 0);
-		--chart-4: oklch(0.371 0 0);
-		--chart-5: oklch(0.269 0 0);
-		--chart-6: #45dec5;
+		--success: var(--settled);
+		--warning: var(--muted-foreground);
+		--danger: var(--destructive);
+		--info: var(--muted-foreground);
+		--success-fg: var(--foreground);
+		--success-bg: color-mix(in oklch, var(--settled) 12%, var(--background));
+		--success-border: color-mix(in oklch, var(--settled) 35%, var(--border));
+		--warning-fg: var(--foreground);
+		--warning-bg: var(--secondary);
+		--warning-border: var(--border);
+		--danger-bg: color-mix(in oklch, var(--destructive) 12%, var(--background));
+		--danger-border: color-mix(in oklch, var(--destructive) 35%, var(--border));
+		--info-fg: var(--foreground);
+		--info-bg: var(--secondary);
+		--info-border: var(--border);
+		--chart-1: oklch(0.985 0 0);
+		--chart-2: oklch(0.87 0 0);
+		--chart-3: oklch(0.708 0 0);
+		--chart-4: oklch(0.556 0 0);
+		--chart-5: oklch(0.372 0 0);
+		--chart-6: oklch(0.985 0 0);
 
-		/* Compat token overrides — map legacy beige theme tokens onto Geist dark.
-		   Without these, components using var(--ink)/var(--bg)/var(--paper) keep
-		   light-mode warm values and become unreadable on the black background. */
-		--bg: #0a0a0a;
-		--bg-raised: #1a1a1a;
-		--paper: #111111;
-		--ink: #ededed;
-		--ink-2: #a1a1a1;
-		--ink-3: #707070;
-		/* --accent-fg stays white — same accent hex both themes now, so no flip
-		   needed. --danger-fg still flips: dark-mode danger is brightened for
-		   on-black readability, so white-on-danger fails AA there; dark text passes. */
-		--accent-fg: #ffffff;
-		--danger-fg: #0a0a0a;
-		--red: #e5484d;
+		/* Dark-mode compatibility aliases. */
+		--bg: var(--background);
+		--bg-raised: var(--secondary);
+		--paper: var(--card);
+		--ink: var(--foreground);
+		--ink-2: var(--muted-foreground);
+		--ink-3: var(--muted-foreground);
+		--accent-fg: var(--accent-foreground);
+		--danger-fg: var(--primary-foreground);
+		--red: var(--destructive);
+		--settled: oklch(0.7 0.14 155);
 		--background: oklch(0.145 0 0);
 		--foreground: oklch(0.985 0 0);
 		--card: oklch(0.205 0 0);
@@ -349,8 +458,8 @@ body {
 		--ring: oklch(0.556 0 0);
 		--sidebar: oklch(0.205 0 0);
 		--sidebar-foreground: oklch(0.985 0 0);
-		--sidebar-primary: oklch(0.488 0.243 264.376);
-		--sidebar-primary-foreground: oklch(0.985 0 0);
+		--sidebar-primary: oklch(0.922 0 0);
+		--sidebar-primary-foreground: oklch(0.205 0 0);
 		--sidebar-accent: oklch(0.269 0 0);
 		--sidebar-accent-foreground: oklch(0.985 0 0);
 		--sidebar-border: oklch(1 0 0 / 10%);
@@ -386,19 +495,35 @@ body {
 		@apply bg-background text-foreground;
 	}
 
-	::selection {
-		background-color: var(--accent);
-		color: #ffffff;
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		font-family: var(--font-inter-tight), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+		font-weight: 600;
 	}
 
-	/* Vercel double-ring focus style: a bg-colored inner gap ring so the outer
-	   accent ring never touches the element, composed as box-shadow (shadow-as-
-	   border technique — zero layout shift, no outline clipped by overflow:hidden
-	   ancestors). Elements with their own Tailwind ring-* focus style override this. */
+	.font-mono {
+		font-variant-numeric: tabular-nums;
+		font-weight: 500;
+	}
+
+	/* Chapter 12's icon rule narrows the broader chapter 9 showcase value. */
+	svg.lucide {
+		stroke-width: 1.5;
+	}
+
+	::selection {
+		background-color: var(--primary);
+		color: var(--primary-foreground);
+	}
+
+	/* Visible focus for native links; shared controls keep their shadcn ring. */
 	:focus-visible {
-		outline: none;
-		box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--accent);
-		border-radius: 6px;
+		outline: 2px solid var(--ring);
+		outline-offset: 2px;
 	}
 
 	/* WCAG 2.4.1 — keyboard-accessible skip link.
@@ -410,9 +535,9 @@ body {
 		z-index: 100;
 		transform: translateY(-200%);
 		padding: 0.75rem 1rem;
-		background-color: var(--accent);
-		color: #ffffff;
-		border-radius: 0 0 0.5rem 0;
+		background-color: var(--primary);
+		color: var(--primary-foreground);
+		border-radius: 0 0 var(--radius-lg) 0;
 		font-weight: 600;
 		font-size: 0.875rem;
 		text-decoration: none;
@@ -424,458 +549,6 @@ body {
 		outline: 2px solid var(--accent-bright, var(--accent));
 		outline-offset: 2px;
 	}
-}
-
-/* ─── LEGACY UI COMPONENT CLASSES (auth/dashboard pages) ─── */
-@layer components {
-	.btn-primary {
-		background-color: #3d5a3d;
-		color: #fdfbf6;
-		@apply px-4 py-2 rounded-lg font-medium text-base transition-colors duration-150 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
-	}
-	.btn-primary:hover:not(:disabled) {
-		background-color: #2f4630;
-	}
-
-	.btn-ghost {
-		color: var(--ink-2);
-		@apply px-4 py-2 rounded-lg font-medium text-base transition-colors duration-150 flex items-center justify-center gap-2 bg-transparent;
-	}
-	.btn-ghost:hover {
-		background-color: var(--bg-raised);
-		color: var(--ink);
-	}
-
-	.btn-outline {
-		color: var(--ink);
-		border: 1px solid var(--border-strong);
-		background-color: transparent;
-		@apply px-4 py-2 rounded-lg font-medium text-base transition-colors duration-150 flex items-center justify-center gap-2;
-	}
-	.btn-outline:hover {
-		background-color: var(--bg-raised);
-	}
-
-	.btn-danger {
-		background-color: var(--red);
-		color: #fdfbf6;
-		@apply px-4 py-2 rounded-lg font-medium text-base transition-colors duration-150 flex items-center justify-center gap-2;
-	}
-	.btn-danger:hover {
-		filter: brightness(0.92);
-	}
-
-	.input-field {
-		background-color: #fdfbf6;
-		color: var(--ink);
-		border: 1px solid #ddd4c2;
-		@apply w-full px-3 py-2 rounded-lg text-base transition-colors duration-150 outline-none;
-	}
-	.input-field::placeholder {
-		color: var(--ink-3);
-	}
-	.input-field:focus {
-		border-color: #3d5a3d;
-		outline: none;
-	}
-
-	.input-error {
-		border-color: var(--red);
-	}
-	.input-error:focus {
-		border-color: var(--red);
-	}
-
-	.card {
-		background-color: #fdfbf6;
-		border: 1px solid #ddd4c2;
-		@apply rounded-xl p-4 transition-colors duration-150;
-	}
-
-	.amount-positive {
-		color: #3d5a3d;
-		@apply font-semibold;
-	}
-	.amount-negative {
-		color: var(--red);
-		@apply font-semibold;
-	}
-	.amount-neutral {
-		color: var(--ink);
-		@apply font-medium;
-	}
-}
-
-/* ─── DARK MODE LEGACY OVERRIDES ───────────────────────────────────────────
-   The legacy component classes above hardcode beige/light values
-   (#fdfbf6, #ddd4c2, #3d5a3d). When .dark is active they keep those
-   values and break contrast. These rules swap them to Geist dark
-   equivalents while leaving light mode untouched.
-   ──────────────────────────────────────────────────────────────────────── */
-.dark .btn-primary {
-	background-color: var(--text-1);
-	color: var(--bg-base);
-}
-.dark .btn-primary:hover:not(:disabled) {
-	background-color: var(--text-1);
-	opacity: 0.85;
-}
-
-.dark .btn-ghost {
-	color: var(--text-2);
-}
-.dark .btn-ghost:hover {
-	background-color: var(--surface-strong);
-	color: var(--text-1);
-}
-
-.dark .btn-outline {
-	color: var(--text-1);
-	border-color: var(--border-strong);
-}
-.dark .btn-outline:hover {
-	background-color: var(--surface-strong);
-}
-
-.dark .btn-danger {
-	background-color: var(--danger);
-	color: #0a0a0a;
-}
-
-.dark .input-field {
-	background-color: var(--surface);
-	color: var(--text-1);
-	border-color: var(--border);
-}
-.dark .input-field::placeholder {
-	color: var(--text-3);
-}
-.dark .input-field:focus {
-	border-color: var(--accent);
-}
-
-.dark .card {
-	background-color: var(--surface);
-	border-color: var(--border);
-}
-
-.dark .amount-positive {
-	color: var(--success);
-}
-.dark .amount-neutral {
-	color: var(--text-1);
-}
-
-/* Apple Liquid Glass — TRANSPARENT, refractive, real frosted glass.
-   Low alpha (0.18-0.32) lets the colored mesh + 3D scene shine through.
-   Heavy blur + 200% saturation pulls color from behind = lively glass.
-   Multi-layer drop shadows = real 3D lift off the page. */
-.glass {
-	position: relative;
-	background: linear-gradient(
-		180deg,
-		rgba(255, 255, 255, 0.18) 0%,
-		rgba(255, 255, 255, 0.08) 50%,
-		rgba(255, 255, 255, 0.14) 100%
-	);
-	border: 1px solid rgba(255, 255, 255, 0.4);
-	backdrop-filter: blur(56px) saturate(240%) brightness(1.08);
-	-webkit-backdrop-filter: blur(56px) saturate(240%) brightness(1.08);
-	box-shadow:
-		0 1px 0 rgba(255, 255, 255, 0.85) inset,
-		0 -1px 0 rgba(255, 255, 255, 0.3) inset,
-		0 0 0 0.5px rgba(255, 255, 255, 0.18),
-		0 2px 4px rgba(15, 15, 25, 0.05),
-		0 8px 16px rgba(15, 15, 25, 0.06),
-		0 20px 40px rgba(47, 93, 74, 0.1),
-		0 40px 80px rgba(47, 93, 74, 0.08);
-	transform: translateZ(0);
-	transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.4s
-		cubic-bezier(0.22, 1, 0.36, 1);
-}
-.glass:hover {
-	transform: translateY(-4px) translateZ(0);
-	box-shadow:
-		0 1px 0 rgba(255, 255, 255, 0.9) inset,
-		0 -1px 0 rgba(255, 255, 255, 0.32) inset,
-		0 0 0 0.5px rgba(255, 255, 255, 0.22),
-		0 4px 8px rgba(15, 15, 25, 0.06),
-		0 16px 32px rgba(15, 15, 25, 0.08),
-		0 32px 60px rgba(47, 93, 74, 0.14),
-		0 56px 100px rgba(47, 93, 74, 0.1);
-}
-.glass::before {
-	content: "";
-	position: absolute;
-	inset: 0;
-	border-radius: inherit;
-	background: linear-gradient(
-		135deg,
-		rgba(255, 255, 255, 0.55) 0%,
-		rgba(255, 255, 255, 0.08) 30%,
-		rgba(255, 255, 255, 0) 55%,
-		rgba(255, 255, 255, 0.05) 75%,
-		rgba(255, 255, 255, 0.28) 100%
-	);
-	pointer-events: none;
-	mix-blend-mode: overlay;
-}
-/* Top edge specular highlight — the "Apple shine" */
-.glass::after {
-	content: "";
-	position: absolute;
-	left: 8%;
-	right: 8%;
-	top: 0;
-	height: 1px;
-	background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.9) 50%, transparent 100%);
-	pointer-events: none;
-	border-radius: inherit;
-}
-.dark .glass {
-	background: var(--surface);
-	border-color: var(--border);
-	backdrop-filter: blur(20px) saturate(140%);
-	-webkit-backdrop-filter: blur(20px) saturate(140%);
-	box-shadow: none;
-}
-/* Kill white specular highlights in dark mode — they leak as milky reflections over black surfaces. */
-.dark .glass::before,
-.dark .glass::after {
-	display: none;
-}
-
-/* App-internal buttons */
-.btn-app-primary {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 8px 14px;
-	border-radius: 10px;
-	font-family: "Geist", sans-serif;
-	font-weight: 600;
-	font-size: 13px;
-	letter-spacing: -0.005em;
-	background: var(--text-1);
-	color: var(--bg-base);
-	border: 1px solid var(--text-1);
-	transition: opacity 150ms ease, transform 150ms ease;
-}
-.btn-app-primary:hover {
-	opacity: 0.85;
-}
-.btn-app-primary:active {
-	transform: scale(0.98);
-}
-.btn-app-primary:disabled {
-	opacity: 0.35;
-	cursor: not-allowed;
-}
-
-/* Primary CTA pill.
-   Light mode: solid ink (Vercel-style minimal).
-   Dark mode: original mint glow gradient. */
-/* Apple Liquid Glass — primary action. Tinted coral glass, real transparent. */
-.btn-modern {
-	position: relative;
-	display: inline-flex;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 14px 28px;
-	border-radius: 999px;
-	font-family: "Geist", sans-serif;
-	font-weight: 600;
-	font-size: 14px;
-	letter-spacing: -0.01em;
-	background: linear-gradient(
-		180deg,
-		rgba(47, 93, 74, 0.92) 0%,
-		rgba(31, 61, 48, 0.92) 55%,
-		rgba(20, 45, 33, 0.95) 100%
-	);
-	color: #ffffff;
-	border: 1px solid rgba(255, 255, 255, 0.28);
-	backdrop-filter: blur(20px) saturate(180%) brightness(1.04);
-	-webkit-backdrop-filter: blur(20px) saturate(180%) brightness(1.04);
-	box-shadow:
-		0 1px 0 rgba(255, 255, 255, 0.65) inset,
-		0 -1px 0 rgba(0, 0, 0, 0.12) inset,
-		0 0 0 0.5px rgba(255, 255, 255, 0.22),
-		0 2px 4px rgba(20, 40, 30, 0.12),
-		0 10px 28px rgba(47, 93, 74, 0.28),
-		0 24px 48px rgba(47, 93, 74, 0.14);
-	text-shadow: 0 1px 2px rgba(20, 40, 30, 0.35);
-	overflow: hidden;
-	transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-}
-.btn-modern::before {
-	content: "";
-	position: absolute;
-	inset: 0;
-	border-radius: inherit;
-	background: linear-gradient(
-		135deg,
-		rgba(255, 255, 255, 0.4) 0%,
-		rgba(255, 255, 255, 0.05) 35%,
-		rgba(255, 255, 255, 0) 60%,
-		rgba(255, 255, 255, 0.18) 100%
-	);
-	pointer-events: none;
-	mix-blend-mode: overlay;
-}
-.btn-modern::after {
-	content: "";
-	position: absolute;
-	left: 8%;
-	right: 8%;
-	top: 0;
-	height: 1px;
-	background: linear-gradient(
-		90deg,
-		transparent 0%,
-		rgba(255, 255, 255, 0.95) 50%,
-		transparent 100%
-	);
-	pointer-events: none;
-	border-radius: inherit;
-}
-.btn-modern > * {
-	position: relative;
-	z-index: 1;
-}
-.btn-modern:hover {
-	transform: translateY(-2px);
-	filter: brightness(1.06);
-	box-shadow:
-		0 1px 0 rgba(255, 255, 255, 0.7) inset,
-		0 -1px 0 rgba(0, 0, 0, 0.14) inset,
-		0 0 0 0.5px rgba(255, 255, 255, 0.28),
-		0 4px 8px rgba(20, 40, 30, 0.14),
-		0 16px 36px rgba(47, 93, 74, 0.38),
-		0 32px 60px rgba(47, 93, 74, 0.2);
-}
-.btn-modern:active {
-	transform: scale(0.98);
-}
-.install-home-button {
-	position: relative;
-	display: inline-flex;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 0.9rem 1.7rem;
-	border-radius: 999px;
-	font-family: "Geist", sans-serif;
-	font-weight: 600;
-	font-size: 14px;
-	letter-spacing: -0.01em;
-	background: linear-gradient(180deg, #ffffff 0%, #f7f7f4 100%);
-	color: #11130f;
-	border: 1px solid rgba(17, 19, 15, 0.12);
-	box-shadow: 0 1px 0 rgba(255, 255, 255, 0.95) inset, 0 -1px 0 rgba(17, 19, 15, 0.06) inset, 0 10px
-		28px rgba(17, 19, 15, 0.1);
-	transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-}
-.install-home-button:hover {
-	transform: translateY(-2px);
-	box-shadow: 0 1px 0 rgba(255, 255, 255, 1) inset, 0 -1px 0 rgba(17, 19, 15, 0.08) inset, 0 14px
-		34px rgba(17, 19, 15, 0.14);
-}
-.install-home-button:active {
-	transform: scale(0.98);
-}
-.dark .install-home-button {
-	background: linear-gradient(180deg, #ffffff 0%, #e8e8e3 100%);
-	color: #07070a;
-	border-color: rgba(255, 255, 255, 0.24);
-	box-shadow: 0 10px 32px rgba(255, 255, 255, 0.12);
-}
-.dark .btn-modern {
-	background: linear-gradient(180deg, #b8f5d8 0%, #84e1bc 100%);
-	color: #0a1f15;
-	border: 1px solid rgba(132, 225, 188, 0.4);
-	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 4px 24px rgba(74, 125, 101, 0.45), 0 0 0 1px
-		rgba(132, 225, 188, 0.2);
-	transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.dark .btn-modern:hover {
-	transform: translateY(-1px);
-	opacity: 1;
-	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 8px 32px rgba(74, 125, 101, 0.6), 0 0 0 1px
-		rgba(132, 225, 188, 0.3);
-}
-/* Apple Liquid Glass — ghost button variant. */
-.btn-modern-ghost {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 0.9rem 1.7rem;
-	border-radius: 999px;
-	font-family: "Geist", sans-serif;
-	font-weight: 500;
-	font-size: 14px;
-	color: var(--text-1);
-	border: 1px solid rgba(0, 0, 0, 0.12);
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.5) 100%);
-	backdrop-filter: blur(24px) saturate(200%) brightness(1.04);
-	-webkit-backdrop-filter: blur(24px) saturate(200%) brightness(1.04);
-	box-shadow:
-		0 1px 0 rgba(255, 255, 255, 0.95) inset,
-		0 -1px 0 rgba(255, 255, 255, 0.4) inset, 0 0 0 0.5px rgba(255, 255, 255, 0.3),
-		0 2px 4px rgba(15, 15, 25, 0.04), 0 8px 20px rgba(47, 93, 74, 0.1);
-	transition: all 0.2s ease;
-}
-.btn-modern-ghost:hover {
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.65) 100%);
-	box-shadow:
-		0 1px 0 rgba(255, 255, 255, 1) inset, 0 -1px 0 rgba(255, 255, 255, 0.5) inset,
-		0 0 0 0.5px rgba(255, 255, 255, 0.4), 0 2px 4px rgba(15, 15, 25, 0.05),
-		0 12px 24px rgba(47, 93, 74, 0.16);
-	transform: translateY(-1px);
-}
-.dark .btn-modern-ghost {
-	color: var(--text-1);
-	border-color: var(--border);
-	background: var(--surface);
-}
-.dark .btn-modern-ghost:hover {
-	background: var(--surface-strong);
-	border-color: var(--border-strong);
-	color: var(--text-1);
-}
-
-@keyframes shimmer {
-	0% {
-		background-position: -200% 0;
-	}
-	100% {
-		background-position: 200% 0;
-	}
-}
-
-.gradient-border {
-	position: relative;
-	border-radius: 1.5rem;
-}
-/* Decorative neon edge — dark mode only. Off-brand on clean white. */
-.dark .gradient-border {
-	background: linear-gradient(180deg, var(--surface), transparent);
-}
-.dark .gradient-border::before {
-	content: "";
-	position: absolute;
-	inset: 0;
-	border-radius: inherit;
-	padding: 1px;
-	background: linear-gradient(
-		160deg,
-		rgba(132, 225, 188, 0.4),
-		rgba(184, 147, 42, 0.22) 50%,
-		transparent 80%
-	);
-	-webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-	-webkit-mask-composite: xor;
-	mask-composite: exclude;
-	pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -912,39 +585,9 @@ body {
 		font-size: 16px;
 	}
 }
-/* Touch device only — strip hover-translate from ModuleCard so the card
-   doesn't stick in lifted state after tap (Tobias HIG audit) */
-@media (hover: none) {
-	.module-card:hover {
-		transform: none !important;
-		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
-		border-color: var(--border) !important;
-	}
-
-	/* Global tactile feedback on touch devices.
-	   Tiny brief scale gives users haptic-like confirmation on tap.
-	   Excludes disabled state and respects prefers-reduced-motion. */
-	button:not(:disabled):active,
-	[role="button"]:not([aria-disabled="true"]):active,
-	a[href]:active,
-	label[for]:active {
-		transform: scale(0.97);
-		transition: transform 80ms ease-out;
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	button:active,
-	[role="button"]:active,
-	a[href]:active,
-	label[for]:active {
-		transform: none !important;
-	}
-}
-
 /* ─── NATIVE-APP POLISH ──────────────────────────────────────────────────
-   Bottom-sheet drag handle, skeleton loader, app-page transition, keyboard-
-   aware FAB. Mobile-only fragments so desktop stays unchanged.
+   Bottom-sheet drag handle, skeleton loader, keyboard-aware FAB. Mobile-only
+   fragments so desktop stays unchanged.
    ────────────────────────────────────────────────────────────────────── */
 
 /* Drag handle for bottom-sheet modals — pure visual cue, no actual drag yet.
@@ -988,50 +631,6 @@ body {
 	.skeleton {
 		animation: none;
 		opacity: 0.7;
-	}
-}
-
-/* Page-route fade for inner WG views — gives navigation an app-y feel
-   without committing to a full Framer Motion transition system. */
-.app-page-enter {
-	animation: app-page-fade-in 180ms ease-out;
-}
-@keyframes app-page-fade-in {
-	from {
-		opacity: 0;
-		transform: translateY(4px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-@media (prefers-reduced-motion: reduce) {
-	.app-page-enter {
-		animation: none;
-	}
-}
-
-/* Bottom-nav active-state animation — gentle scale + opacity for engaged tab */
-[data-bottom-nav-item][aria-current="page"],
-[data-bottom-nav-item][aria-current="location"] {
-	animation: nav-tab-pop 220ms ease-out;
-}
-@keyframes nav-tab-pop {
-	0% {
-		transform: scale(0.92);
-	}
-	60% {
-		transform: scale(1.06);
-	}
-	100% {
-		transform: scale(1);
-	}
-}
-@media (prefers-reduced-motion: reduce) {
-	[data-bottom-nav-item][aria-current="page"],
-	[data-bottom-nav-item][aria-current="location"] {
-		animation: none;
 	}
 }
 

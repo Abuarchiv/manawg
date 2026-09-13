@@ -85,36 +85,38 @@ export const ExpenseRow = memo(function ExpenseRow({
 									className="h-auto min-h-11 w-full justify-start whitespace-normal px-0 text-left"
 								/>
 							}
-							aria-label={`Details für ${expense.description} ${formatEuroCents(expense.amountCents)}`}
 						>
-							<span className="min-w-0 flex-1 break-words">{expense.description}</span>
+							<span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 sm:flex sm:flex-col">
+								<span className="sr-only">Details öffnen:</span>
+								<span className="break-words font-medium leading-snug">{expense.description}</span>
+								<span className="font-mono tabular-nums text-foreground">
+									{formatEuroCents(expense.amountCents)}
+								</span>
+								<span className="col-span-2 text-left text-xs leading-normal font-normal text-muted-foreground sm:text-sm">
+									Bezahlt von {memberName(expense.paidByMemberId)} ·{' '}
+									<time dateTime={expense.occurredAt} title={formatTimeFull(expense.occurredAt)}>
+										{formatRelativeTime(expense.occurredAt)}
+									</time>
+								</span>
+								<span className="col-span-2 flex flex-wrap gap-1.5 pt-1">
+									{paymentSplits.length > 0 && (
+										<Badge variant="secondary">
+											{settledCount}/{paymentSplits.length} beglichen
+										</Badge>
+									)}
+									{expense.imageUrl && (
+										<Badge variant="outline">
+											<Receipt />
+											Beleg
+										</Badge>
+									)}
+								</span>
+							</span>
 							<ChevronDown
 								data-icon="inline-end"
 								className={cn('shrink-0', expanded && 'rotate-180')}
 							/>
 						</CollapsibleTrigger>
-						<ItemTitle className="line-clamp-none tabular-nums">
-							{formatEuroCents(expense.amountCents)}
-						</ItemTitle>
-						<ItemDescription className="line-clamp-none">
-							Bezahlt von {memberName(expense.paidByMemberId)} ·{' '}
-							<time dateTime={expense.occurredAt} title={formatTimeFull(expense.occurredAt)}>
-								{formatRelativeTime(expense.occurredAt)}
-							</time>
-						</ItemDescription>
-						<div className="flex flex-wrap gap-1.5 pt-1">
-							{paymentSplits.length > 0 && (
-								<Badge variant="secondary">
-									{settledCount}/{paymentSplits.length} beglichen
-								</Badge>
-							)}
-							{expense.imageUrl && (
-								<Badge variant="outline">
-									<Receipt />
-									Beleg
-								</Badge>
-							)}
-						</div>
 					</ItemContent>
 					<ItemActions>
 						<DropdownMenu>
@@ -175,7 +177,10 @@ export const ExpenseRow = memo(function ExpenseRow({
 									<Item key={split.id} variant="muted" size="xs">
 										<ItemContent className="min-w-0">
 											<ItemTitle className="line-clamp-none break-words">
-												{memberName(split.debtorMemberId)} · {formatEuroCents(split.amountCents)}
+												{memberName(split.debtorMemberId)} ·{' '}
+												<span className="font-mono tabular-nums">
+													{formatEuroCents(split.amountCents)}
+												</span>
 											</ItemTitle>
 											<ItemDescription>
 												{ownShare
@@ -218,8 +223,9 @@ export const ExpenseRow = memo(function ExpenseRow({
 					<AlertDialogHeader>
 						<AlertDialogTitle>Ausgabe entfernen?</AlertDialogTitle>
 						<AlertDialogDescription>
-							„{expense.description}“ mit {formatEuroCents(expense.amountCents)} und den zugehörigen
-							Anteilen wird entfernt.
+							„{expense.description}“ mit{' '}
+							<span className="font-mono tabular-nums">{formatEuroCents(expense.amountCents)}</span>{' '}
+							und den zugehörigen Anteilen wird entfernt.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -250,8 +256,19 @@ export const ExpenseRow = memo(function ExpenseRow({
 							{settleCandidate?.settledAt ? 'Zahlung wieder öffnen?' : 'Bereits bezahlt?'}
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							{settleCandidate &&
-								`${memberName(settleCandidate.debtorMemberId)} · ${formatEuroCents(settleCandidate.amountCents)} für „${expense.description}“, bezahlt von ${memberName(expense.paidByMemberId)}. ${settleCandidate.settledAt ? 'Dieser Anteil wird wieder als offen vermerkt.' : 'Dieser Anteil wird als beglichen vermerkt.'} Es wird kein Geld überwiesen.`}
+							{settleCandidate && (
+								<>
+									{memberName(settleCandidate.debtorMemberId)} ·{' '}
+									<span className="font-mono tabular-nums">
+										{formatEuroCents(settleCandidate.amountCents)}
+									</span>{' '}
+									für „{expense.description}“, bezahlt von {memberName(expense.paidByMemberId)}.{' '}
+									{settleCandidate.settledAt
+										? 'Dieser Anteil wird wieder als offen vermerkt.'
+										: 'Dieser Anteil wird als beglichen vermerkt.'}{' '}
+									Es wird kein Geld überwiesen.
+								</>
+							)}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

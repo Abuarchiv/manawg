@@ -4,7 +4,6 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -38,6 +37,7 @@ import {
 	ExternalLink,
 	List,
 	Loader2,
+	Plus,
 	RefreshCw,
 	RotateCcw,
 	Trash2,
@@ -138,8 +138,11 @@ export default function KalenderPage() {
 		async (isInitial: boolean): Promise<void> => {
 			if (isInitial) setLoading(true);
 			const bounds = getMonthBounds(month);
-			const upcomingTo = new Date(Date.now() + UPCOMING_DAYS * MS_PER_DAY);
-			const fromParam = bounds.start.toISOString();
+			const upcomingFrom = new Date();
+			const upcomingTo = new Date(upcomingFrom.getTime() + UPCOMING_DAYS * MS_PER_DAY);
+			const fromParam = new Date(
+				Math.min(bounds.start.getTime(), upcomingFrom.getTime()),
+			).toISOString();
 			const toParam = new Date(Math.max(bounds.end.getTime(), upcomingTo.getTime())).toISOString();
 
 			const [eventsRes, choreRes] = await Promise.all([
@@ -351,18 +354,23 @@ export default function KalenderPage() {
 	}
 
 	return (
-		<div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-5 sm:px-6 sm:py-8">
-			<header className="flex items-center justify-between gap-3">
+		<div
+			data-household-content
+			className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8"
+		>
+			<header className="flex flex-wrap items-center gap-3">
 				<BackLink href={`${wgBaseHref}/einkauf`} label="Haushalt" />
 				<div className="min-w-0 flex-1">
-					<h1 className="text-xl font-semibold tracking-tight">Kalender</h1>
+					<h1 className="font-heading text-2xl font-semibold tracking-tight break-words [overflow-wrap:anywhere]">
+						Kalender
+					</h1>
 					<p className="mt-1">
 						<Badge variant="secondary">
 							{loading ? 'Lädt…' : `${events.length} Termin${events.length === 1 ? '' : 'e'}`}
 						</Badge>
 					</p>
 				</div>
-				<div className="flex shrink-0 items-center gap-1.5">
+				<div className="flex shrink-0 items-center justify-end gap-1.5">
 					{!isCurrentMonth && (
 						<Button
 							variant="outline"
@@ -376,12 +384,13 @@ export default function KalenderPage() {
 						</Button>
 					)}
 					<Button
-						size="icon-lg"
+						size="lg"
 						onClick={handleFabClick}
-						aria-label="Neuen Termin anlegen"
-						className="size-11 rounded-full"
+						aria-label="Termin hinzufügen"
+						className="size-11 px-0 sm:w-auto sm:px-3"
 					>
-						<CalendarDays aria-hidden />
+						<Plus aria-hidden />
+						<span className="hidden sm:inline">Termin hinzufügen</span>
 					</Button>
 				</div>
 			</header>
@@ -410,14 +419,65 @@ export default function KalenderPage() {
 				</Alert>
 			)}
 
-			<Card>
-				<CardHeader>
-					<CardTitle>Kalender abonnieren</CardTitle>
-					<CardDescription>
+			<Tabs
+				value={view}
+				onValueChange={(value) => {
+					haptic('light');
+					setView(value as ViewMode);
+				}}
+				className="gap-3"
+			>
+				<TabsList className="w-full">
+					<TabsTrigger value="list" className="min-h-11">
+						<List data-icon="inline-start" aria-hidden />
+						Agenda
+					</TabsTrigger>
+					<TabsTrigger value="month" className="min-h-11">
+						<CalendarDays data-icon="inline-start" aria-hidden />
+						Monat
+					</TabsTrigger>
+				</TabsList>
+				<TabsContent value="list" className="flex flex-col gap-3">
+					<section aria-labelledby="calendar-upcoming-heading" className="flex flex-col gap-3">
+						<h2 id="calendar-upcoming-heading" className="text-sm font-semibold">
+							Nächste 30 Tage
+						</h2>
+						{loading ? (
+							<output aria-live="polite" className="block text-sm text-muted-foreground">
+								Agenda wird geladen…
+							</output>
+						) : loadError ? null : (
+							<CalendarUpcomingList
+								occurrences={upcomingOccurrences}
+								choreOccurrences={upcomingChoreOccurrences}
+								onSelect={handleSelectOccurrence}
+								onCreate={handleFabClick}
+								wgBaseHref={wgBaseHref}
+							/>
+						)}
+					</section>
+				</TabsContent>
+				<TabsContent value="month">
+					<CalendarMonth
+						month={month}
+						occurrences={monthOccurrences}
+						onPrev={handlePrevMonth}
+						onNext={handleNextMonth}
+						onSelectDay={handleDaySelect}
+						onSelectOccurrence={handleSelectOccurrence}
+						selectedDay={selectedDay}
+					/>
+				</TabsContent>
+			</Tabs>
+
+			<details className="rounded-xl border border-border">
+				<summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
+					Kalender abonnieren
+				</summary>
+				<div className="flex flex-col gap-3 border-t border-border px-4 py-4">
+					<p className="text-sm text-muted-foreground">
 						Neue WG-Termine automatisch in Apple Kalender oder Google Kalender erhalten.
-					</CardDescription>
-				</CardHeader>
-				<CardContent className="flex flex-col gap-3">
+					</p>
 					{subscriptionError && (
 						<Alert variant="destructive">
 							<AlertDescription>{subscriptionError}</AlertDescription>
@@ -429,7 +489,7 @@ export default function KalenderPage() {
 						<div className="flex flex-col gap-3">
 							<Field>
 								<FieldLabel htmlFor="calendar-feed-url">Persönlicher Feed-Link</FieldLabel>
-								<div className="flex gap-2">
+								<div className="flex min-w-0 flex-wrap gap-2">
 									<Input
 										id="calendar-feed-url"
 										type="url"
@@ -441,7 +501,7 @@ export default function KalenderPage() {
 										type="button"
 										variant="outline"
 										onClick={() => void copySubscriptionUrl()}
-										className="min-h-11 shrink-0"
+										className="min-h-11 max-w-full shrink whitespace-normal"
 									>
 										{copyState === 'copied' ? 'Kopiert' : 'Link kopieren'}
 									</Button>
@@ -518,7 +578,7 @@ export default function KalenderPage() {
 							type="button"
 							disabled={subscriptionBusy}
 							onClick={() => void saveSubscription('POST', 'Kalender-Feed erstellt.')}
-							className="min-h-11 self-start"
+							className="min-h-11 max-w-full self-start whitespace-normal text-left"
 						>
 							{subscriptionBusy ? <Loader2 data-icon="inline-start" aria-hidden /> : null}
 							Kalender-Feed erstellen
@@ -529,52 +589,8 @@ export default function KalenderPage() {
 							<AlertDescription aria-live="polite">{subscriptionNotice}</AlertDescription>
 						</Alert>
 					)}
-				</CardContent>
-			</Card>
-
-			<Tabs
-				value={view}
-				onValueChange={(value) => {
-					haptic('light');
-					setView(value as ViewMode);
-				}}
-				className="gap-3"
-			>
-				<TabsList className="w-full">
-					<TabsTrigger value="list" className="min-h-11">
-						<List data-icon="inline-start" aria-hidden />
-						Agenda
-					</TabsTrigger>
-					<TabsTrigger value="month" className="min-h-11">
-						<CalendarDays data-icon="inline-start" aria-hidden />
-						Monat
-					</TabsTrigger>
-				</TabsList>
-				<TabsContent value="list" className="flex flex-col gap-3">
-					<section aria-labelledby="calendar-upcoming-heading" className="flex flex-col gap-3">
-						<h2 id="calendar-upcoming-heading" className="text-sm font-semibold">
-							Nächste 30 Tage
-						</h2>
-						<CalendarUpcomingList
-							occurrences={upcomingOccurrences}
-							choreOccurrences={upcomingChoreOccurrences}
-							onSelect={handleSelectOccurrence}
-							wgBaseHref={wgBaseHref}
-						/>
-					</section>
-				</TabsContent>
-				<TabsContent value="month">
-					<CalendarMonth
-						month={month}
-						occurrences={monthOccurrences}
-						onPrev={handlePrevMonth}
-						onNext={handleNextMonth}
-						onSelectDay={handleDaySelect}
-						onSelectOccurrence={handleSelectOccurrence}
-						selectedDay={selectedDay}
-					/>
-				</TabsContent>
-			</Tabs>
+				</div>
+			</details>
 
 			<p className="text-center text-xs text-muted-foreground">
 				Putzplan-Aufgaben erscheinen automatisch in dieser Liste, werden aber nicht in den

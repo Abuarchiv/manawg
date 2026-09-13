@@ -13,35 +13,43 @@ interface Props {
 	mapping: Readonly<Record<string, string | null>>;
 	members: readonly MemberOption[];
 	onChange: (name: string, memberId: string | null) => void;
+	showErrors?: boolean;
 }
 
-export function ImportMemberMapping({ names, mapping, members, onChange }: Props) {
+export function ImportMemberMapping({
+	names,
+	mapping,
+	members,
+	onChange,
+	showErrors = false,
+}: Props) {
 	if (names.length === 0)
 		return <p className="text-sm text-muted-foreground">Keine Namen erkannt.</p>;
 	return (
 		<FieldGroup>
 			{names.map((name, index) => {
 				const value = mapping[name] ?? '';
+				const invalid = showErrors && !value;
 				return (
-					<Field key={name} data-invalid={!value}>
+					<Field key={name} data-invalid={invalid || undefined}>
 						<FieldLabel htmlFor={`import-map-${index}`}>{name}</FieldLabel>
 						<NativeSelect
 							id={`import-map-${index}`}
 							value={value}
 							onChange={(event) => onChange(name, event.target.value || null)}
 							aria-label={`Mitglied für ${name} wählen`}
-							aria-invalid={!value}
-							aria-describedby={!value ? `import-map-error-${index}` : undefined}
+							aria-invalid={invalid || undefined}
+							aria-describedby={invalid ? `import-map-error-${index}` : undefined}
 							className="w-full [&_select]:h-11 [&_select]:text-base"
 						>
-							<NativeSelectOption value="">WG-Mitglied auswählen</NativeSelectOption>
+							<NativeSelectOption value="">Noch zuordnen</NativeSelectOption>
 							{members.map((member) => (
 								<NativeSelectOption key={member.id} value={member.id}>
 									{member.name}
 								</NativeSelectOption>
 							))}
 						</NativeSelect>
-						{!value && (
+						{invalid && (
 							<FieldError id={`import-map-error-${index}`}>Bitte WG-Mitglied auswählen.</FieldError>
 						)}
 					</Field>

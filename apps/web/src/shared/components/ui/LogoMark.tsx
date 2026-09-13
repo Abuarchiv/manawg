@@ -1,44 +1,70 @@
-import { BRAND } from '../../lib/brand';
+'use client';
 
-interface LogoMarkProps {
+import { type ComponentProps, useId } from 'react';
+import { BRAND } from '../../lib/brand';
+import geometry from '../../lib/brand-mark.json';
+import { cn } from '../../lib/cn';
+import styles from './brand-mark.module.css';
+
+interface LogoMarkProps extends ComponentProps<'svg'> {
 	size?: number;
 	tile?: boolean;
-	className?: string;
 	tileFill?: string;
 	markFill?: string;
-	radius?: number;
+	radius?: ComponentProps<'svg'>['radius'];
+	loading?: boolean;
 }
 
-/**
- * Brand mark — Schlüsselloch/Person hybrid ("Schlüssel zur WG").
- * Tile pulls from --accent (forest light, mint dark); mark is cut out with
- * --bg-base so the negative space matches the page surface exactly — no
- * cream, no off-color. Explicit tile/markFill props win for fixed colorways.
- */
+/** The supplied eight-body organism. Unique mask IDs allow multiple marks per page. */
 export function LogoMark({
 	size = 40,
 	tile = true,
 	className,
-	tileFill = 'var(--accent)',
-	markFill = 'var(--bg-base)',
-	radius = 44,
+	tileFill = 'var(--primary)',
+	markFill,
+	radius = 0,
+	loading = false,
+	...props
 }: LogoMarkProps) {
+	const id = useId().replace(/:/g, '');
+	const filterId = `mana-goo-${id}`;
+	const maskId = `mana-hole-${id}`;
+	const aperture = size <= 20 ? 34 : size <= 32 ? 26 : geometry.aperture.r;
 	return (
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
 			width={size}
-			height={size}
-			viewBox="0 0 200 200"
+			height={tile ? size : (size * geometry.height) / geometry.width}
+			viewBox={tile ? '0 0 512 512' : '0 0 416 346'}
 			role="img"
 			aria-label={BRAND.wordmark}
-			className={className}
+			data-brand-mark="organism"
+			className={cn('shrink-0', loading && styles.loading, className)}
+			{...props}
 		>
-			{tile && <rect width="200" height="200" rx={radius} fill={tileFill} />}
-			<path
-				d="M 36 20 h 128 a 22 22 0 0 1 22 22 v 116 a 22 22 0 0 1 -22 22 h -128 a 22 22 0 0 1 -22 -22 v -116 a 22 22 0 0 1 22 -22 z M 100 70 m -18 0 a 18 18 0 1 0 36 0 a 18 18 0 1 0 -36 0 z M 86 96 l -8 44 h 44 l -8 -44 z"
-				fill={markFill}
-				fillRule="evenodd"
-			/>
+			<defs>
+				<filter id={filterId} x="-12%" y="-12%" width="124%" height="124%">
+					<feGaussianBlur stdDeviation={geometry.blur} />
+					<feColorMatrix type="matrix" values={geometry.matrix} />
+				</filter>
+				<mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="416" height="346">
+					<g filter={`url(#${filterId})`} fill="white">
+						{geometry.bodies.map((body) => (
+							<circle key={body.cx} {...body} className={loading ? styles.body : undefined} />
+						))}
+					</g>
+					<circle cx={geometry.aperture.cx} cy={geometry.aperture.cy} r={aperture} fill="black" />
+				</mask>
+			</defs>
+			{tile && <rect width="512" height="512" rx={radius} fill={tileFill} />}
+			<g transform={tile ? 'translate(97.28 123.98) scale(0.763077)' : undefined}>
+				<rect
+					width="416"
+					height="346"
+					fill={markFill ?? (tile ? 'var(--primary-foreground)' : 'currentColor')}
+					mask={`url(#${maskId})`}
+				/>
+			</g>
 		</svg>
 	);
 }
@@ -49,15 +75,14 @@ interface BrandLockupProps {
 	wordmarkClassName?: string;
 }
 
-/** Horizontal lockup: mark + wordmark. Drop-in replacement for landing nav. */
 export function BrandLockup({
 	size = 28,
 	className = 'flex items-center gap-2',
-	wordmarkClassName = 'text-xl font-semibold tracking-[-0.02em] text-[var(--text-1)]',
+	wordmarkClassName = 'font-heading text-xl font-semibold tracking-[-0.03em] text-foreground',
 }: BrandLockupProps) {
 	return (
 		<span className={className}>
-			<LogoMark size={size} radius={10} />
+			<LogoMark size={size} tile={false} aria-hidden="true" />
 			<span className={wordmarkClassName}>{BRAND.wordmark}</span>
 		</span>
 	);

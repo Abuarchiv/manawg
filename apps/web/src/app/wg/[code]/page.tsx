@@ -6,7 +6,7 @@ import {
 	CollapsibleTrigger,
 } from '@/components/animate-ui/primitives/base/collapsible';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import {
 	Item,
 	ItemContent,
@@ -46,10 +46,6 @@ const PushPrimingPrompt = dynamic(
 const REFRESH_INTERVAL_MS = 30_000;
 
 type PendingAnnouncement = DashboardData['myOpenAnnouncements'][number];
-
-function formatEuro(cents: number): string {
-	return formatEuroCents(cents, 'EUR');
-}
 
 async function readDashboardError(response: Response): Promise<string | null> {
 	try {
@@ -181,19 +177,19 @@ export default function WgHomePage() {
 
 	return (
 		<>
-			<PushPrimingPrompt
-				code={wg.shareCode}
-				memberId={identity.memberId}
-				memberToken={identity.memberToken}
-			/>
-			<div className="flex w-full min-w-0 flex-col gap-6 px-4 py-5">
+			<div
+				data-home-content
+				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-12"
+			>
 				{error && (
-					<LoadErrorBanner
-						message={data ? `${error} Die angezeigten Daten können veraltet sein.` : error}
-						onRetry={() => void load()}
-						busy={loading}
-						retryLabel="Dashboard erneut laden"
-					/>
+					<div className="lg:col-span-12">
+						<LoadErrorBanner
+							message={data ? `${error} Die angezeigten Daten können veraltet sein.` : error}
+							onRetry={() => void load()}
+							busy={loading}
+							retryLabel="Dashboard erneut laden"
+						/>
+					</div>
 				)}
 				{loading && data && (
 					<output aria-live="polite" className="sr-only">
@@ -202,29 +198,51 @@ export default function WgHomePage() {
 				)}
 
 				{!isNewWg && (
-					<section aria-labelledby="today-heading" className="flex flex-col gap-3">
-						<h2 id="today-heading" className="text-base font-semibold">
+					<section
+						aria-labelledby="today-heading"
+						className="flex min-w-0 flex-col gap-3 lg:col-span-8"
+					>
+						<h2 id="today-heading" className="text-sm font-medium text-muted-foreground">
 							Heute wichtig
 						</h2>
 						{data ? (
 							todayFocus ? (
 								<Card>
-									<CardHeader>
-										<CardTitle className="flex items-start gap-2">
-											<TodayIcon kind={todayFocus.kind} />
-											<h3 className="min-w-0 break-words">{todayFocus.title}</h3>
-										</CardTitle>
-										<p className="text-xs font-medium text-muted-foreground">
-											{todayFocus.isPersonal ? 'Für dich' : 'Für eure WG'}
-										</p>
-										<p className="text-sm text-muted-foreground">{todayFocus.detail}</p>
-									</CardHeader>
-									<CardFooter className="justify-end">
-										<Link href={todayFocus.href} className={cn(buttonVariants(), 'min-h-11')}>
-											{todayFocus.actionLabel}
+									<CardContent className="flex flex-wrap items-center gap-4">
+										<div className="min-w-36 flex-1">
+											<CardTitle className="flex items-start gap-2 font-semibold">
+												<TodayIcon kind={todayFocus.kind} />
+												<h3 className="min-w-0 break-words">{todayFocus.title}</h3>
+											</CardTitle>
+											<p className="text-xs font-medium text-muted-foreground">
+												{todayFocus.isPersonal ? 'Für dich' : 'Für eure WG'}
+											</p>
+											<p
+												className={cn(
+													'text-sm text-muted-foreground',
+													todayFocus.kind === 'recurring' && 'font-mono tabular-nums',
+												)}
+											>
+												{todayFocus.detail}
+											</p>
+										</div>
+										<Link
+											href={todayFocus.href}
+											aria-label={todayFocus.actionLabel}
+											className={cn(
+												buttonVariants({ size: 'sm', variant: 'secondary' }),
+												'ml-auto min-h-11 shrink-0',
+											)}
+										>
+											<span aria-hidden className="sm:hidden">
+												{todayFocus.kind === 'recurring' ? 'Prüfen' : 'Öffnen'}
+											</span>
+											<span aria-hidden className="hidden sm:inline">
+												{todayFocus.actionLabel}
+											</span>
 											<ChevronRight data-icon="inline-end" aria-hidden />
 										</Link>
-									</CardFooter>
+									</CardContent>
 								</Card>
 							) : (
 								<p className="text-sm text-muted-foreground">Gerade gibt es nichts Dringendes.</p>
@@ -243,15 +261,23 @@ export default function WgHomePage() {
 							</Card>
 						)}
 						{data && todaySecondary.length > 0 && (
-							<ItemGroup>
+							<ItemGroup className="gap-0 divide-y divide-border/60">
 								{todaySecondary.map((item) => (
-									<Item key={`${item.kind}:${item.href}`} render={<Link href={item.href} />}>
+									<Item
+										key={`${item.kind}:${item.href}`}
+										className="rounded-none px-0"
+										render={<Link href={item.href} />}
+									>
 										<ItemMedia variant="icon">
 											<TodayIcon kind={item.kind} />
 										</ItemMedia>
 										<ItemContent className="min-w-0">
 											<ItemTitle className="line-clamp-none break-words">{item.title}</ItemTitle>
-											<ItemDescription>{item.detail}</ItemDescription>
+											<ItemDescription
+												className={item.kind === 'recurring' ? 'font-mono tabular-nums' : undefined}
+											>
+												{item.detail}
+											</ItemDescription>
 										</ItemContent>
 									</Item>
 								))}
@@ -291,99 +317,121 @@ export default function WgHomePage() {
 					</section>
 				)}
 
-				{isNewWg && <StartWelcome />}
+				<div className="flex min-w-0 flex-col gap-6 lg:col-span-4">
+					{isNewWg && <StartWelcome />}
 
-				<section aria-labelledby="balance-heading" className="flex flex-col gap-3">
-					<h2 id="balance-heading" className="text-base font-semibold">
-						Dein Saldo
-					</h2>
-					{data ? (
-						<ItemGroup>
-							<Item variant="muted" render={<Link href={`${wgBaseHref}/ausgaben`} />}>
-								<ItemMedia variant="icon">
-									<Receipt aria-hidden />
-								</ItemMedia>
-								<ItemContent className="min-w-0">
-									<ItemTitle className="tabular-nums">{formatEuro(Math.abs(myBalance))}</ItemTitle>
-									<ItemDescription>
-										{myBalance > 0
-											? 'Du bekommst Geld zurück.'
-											: myBalance < 0
-												? 'Du schuldest der WG Geld.'
-												: 'Du bist ausgeglichen.'}
-									</ItemDescription>
-								</ItemContent>
-								<ChevronRight className="size-4 text-muted-foreground" aria-hidden />
-							</Item>
-						</ItemGroup>
-					) : error ? (
-						<p className="text-sm text-muted-foreground">Dein Saldo ist gerade nicht verfügbar.</p>
-					) : (
-						<Item variant="muted" aria-label="Saldo wird geladen">
-							<ItemContent className="gap-2">
-								<Skeleton className="h-4 w-24" />
-								<Skeleton className="h-4 w-40" />
-							</ItemContent>
-						</Item>
-					)}
-				</section>
-
-				<section aria-labelledby="wg-now-heading" className="flex flex-col gap-3">
-					<div className="flex items-center justify-between gap-2">
-						<h2 id="wg-now-heading" className="text-base font-semibold">
-							Neu in deiner WG
+					<section aria-labelledby="balance-heading" className="flex min-w-0 flex-col gap-3">
+						<h2 id="balance-heading" className="text-sm font-medium text-muted-foreground">
+							Dein Saldo
 						</h2>
-						<Link
-							href={`${wgBaseHref}/aktivitaet`}
-							className={cn(buttonVariants({ variant: 'ghost' }), 'min-h-11')}
-						>
-							Ganze Chronik <ChevronRight data-icon="inline-end" aria-hidden />
-						</Link>
-					</div>
-					{data ? (
-						<div className="flex flex-col gap-2">
-							{latestAnnouncement && !latestIsPending && (
-								<Item
-									variant="muted"
-									render={
-										<Link
-											href={
-												latestAnnouncement.id
-													? getDashboardAnnouncementHref(wg.shareCode, latestAnnouncement.id)
-													: `${wgBaseHref}/pinnwand`
-											}
-										/>
-									}
-								>
+						{data ? (
+							<ItemGroup>
+								<Item variant="muted" render={<Link href={`${wgBaseHref}/ausgaben`} />}>
 									<ItemMedia variant="icon">
-										<Megaphone aria-hidden />
+										<Receipt aria-hidden />
 									</ItemMedia>
 									<ItemContent className="min-w-0">
-										<ItemTitle>Neu an der Pinnwand</ItemTitle>
+										<ItemTitle
+											className={cn(
+												'font-mono tabular-nums',
+												myBalance > 0 && 'text-settled',
+												myBalance < 0 && 'text-destructive',
+											)}
+										>
+											{formatEuroCents(myBalance, 'EUR', { signed: true })}
+										</ItemTitle>
 										<ItemDescription>
-											{latestAnnouncement.authorName}: {latestAnnouncement.content}
+											{myBalance > 0
+												? 'Du bekommst Geld zurück.'
+												: myBalance < 0
+													? 'Du schuldest der WG Geld.'
+													: 'Du bist ausgeglichen.'}
 										</ItemDescription>
 									</ItemContent>
+									<ChevronRight className="size-4 text-muted-foreground" aria-hidden />
 								</Item>
-							)}
-							{activityItems.length > 0 ? (
-								<ActivityFeed items={activityItems} compact />
-							) : !latestAnnouncement || latestIsPending ? (
-								<p className="text-sm text-muted-foreground">Noch keine neuen Einträge.</p>
-							) : null}
+							</ItemGroup>
+						) : error ? (
+							<p className="text-sm text-muted-foreground">
+								Dein Saldo ist gerade nicht verfügbar.
+							</p>
+						) : (
+							<Item variant="muted" aria-label="Saldo wird geladen">
+								<ItemContent className="gap-2">
+									<Skeleton className="h-4 w-24" />
+									<Skeleton className="h-4 w-40" />
+								</ItemContent>
+							</Item>
+						)}
+					</section>
+
+					<section aria-labelledby="wg-now-heading" className="flex min-w-0 flex-col gap-3">
+						<div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+							<h2 id="wg-now-heading" className="text-sm font-medium text-muted-foreground">
+								Neu in deiner WG
+							</h2>
+							<Link
+								href={`${wgBaseHref}/aktivitaet`}
+								className={cn(
+									buttonVariants({ variant: 'ghost' }),
+									'min-h-11 min-w-0 max-w-full shrink whitespace-normal px-0 text-xs text-muted-foreground text-right leading-snug',
+								)}
+							>
+								Ganze Chronik <ChevronRight data-icon="inline-end" aria-hidden />
+							</Link>
 						</div>
-					) : error ? (
-						<p className="text-sm text-muted-foreground">
-							Neuigkeiten konnten noch nicht geladen werden.
-						</p>
-					) : (
-						<div className="flex flex-col gap-2" aria-label="Neuigkeiten werden geladen">
-							<Skeleton className="h-16 w-full" />
-							<Skeleton className="h-11 w-full" />
-							<Skeleton className="h-11 w-full" />
-						</div>
-					)}
-				</section>
+						{data ? (
+							<div className="flex flex-col gap-2">
+								{latestAnnouncement && !latestIsPending && (
+									<Item
+										variant="muted"
+										render={
+											<Link
+												href={
+													latestAnnouncement.id
+														? getDashboardAnnouncementHref(wg.shareCode, latestAnnouncement.id)
+														: `${wgBaseHref}/pinnwand`
+												}
+											/>
+										}
+									>
+										<ItemMedia variant="icon">
+											<Megaphone aria-hidden />
+										</ItemMedia>
+										<ItemContent className="min-w-0">
+											<ItemTitle>Neu an der Pinnwand</ItemTitle>
+											<ItemDescription>
+												{latestAnnouncement.authorName}: {latestAnnouncement.content}
+											</ItemDescription>
+										</ItemContent>
+									</Item>
+								)}
+								{activityItems.length > 0 ? (
+									<ActivityFeed items={activityItems} compact />
+								) : !latestAnnouncement || latestIsPending ? (
+									<p className="text-sm text-muted-foreground">Noch keine neuen Einträge.</p>
+								) : null}
+							</div>
+						) : error ? (
+							<p className="text-sm text-muted-foreground">
+								Neuigkeiten konnten noch nicht geladen werden.
+							</p>
+						) : (
+							<div className="flex flex-col gap-2" aria-label="Neuigkeiten werden geladen">
+								<Skeleton className="h-16 w-full" />
+								<Skeleton className="h-11 w-full" />
+								<Skeleton className="h-11 w-full" />
+							</div>
+						)}
+					</section>
+				</div>
+				<div className="lg:col-span-12">
+					<PushPrimingPrompt
+						code={wg.shareCode}
+						memberId={identity.memberId}
+						memberToken={identity.memberToken}
+					/>
+				</div>
 			</div>
 		</>
 	);

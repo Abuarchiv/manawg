@@ -52,7 +52,8 @@ export function FairnessPanel({ fairness }: { fairness: ChoreFairness }) {
 											<ItemTitle className="line-clamp-none break-words">{row.name}</ItemTitle>
 											<ItemDescription className="line-clamp-none">
 												{row.assignedCount} Aufgabe{row.assignedCount === 1 ? '' : 'n'} ·{' '}
-												{row.openGapCount} Lücke{row.openGapCount === 1 ? '' : 'n'} · Score{' '}
+												{row.openGapCount}{' '}
+												{row.openGapCount === 1 ? 'offener Termin' : 'offene Termine'} · Score{' '}
 												{row.score}
 											</ItemDescription>
 										</ItemContent>

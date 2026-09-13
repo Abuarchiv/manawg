@@ -28,6 +28,7 @@ import {
 import {
 	Field,
 	FieldDescription,
+	FieldError,
 	FieldGroup,
 	FieldLabel,
 	FieldLegend,
@@ -47,13 +48,16 @@ import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNot
 import { ImageUploader } from '@/components/wg/ImageUploader';
 import type { Member } from '@/components/wg/WgContextProvider';
 import { ArrowLeft, ChevronDown, Receipt, Repeat2 } from 'lucide-react';
-import { type Dispatch, type SetStateAction, useState } from 'react';
+import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
 import { ManualSplitSummary } from './ManualSplitSummary';
 import { SplitReview } from './SplitReview';
 import { TextField } from './TextField';
 import { DESCRIPTION_MAX, RECURRING_INTERVAL_OPTIONS } from './constants';
 import type { RecurringExpense } from './expense-types';
 import type { SplitMode } from './useExpenseForm';
+
+export type ExpenseFormField = 'description' | 'amount' | 'splits';
+export type ExpenseFormFieldErrors = Partial<Record<ExpenseFormField, string>>;
 
 interface ExpenseFormSectionProps {
 	description: string;
@@ -78,6 +82,9 @@ interface ExpenseFormSectionProps {
 	isEditingQueuedExpense: boolean;
 	isEditingQueuedRecurring: boolean;
 	formError: string | null;
+	fieldErrors: ExpenseFormFieldErrors;
+	validationAttempt: number;
+	onClearFieldError: (field: ExpenseFormField) => void;
 	conflictExpenseId: string | null;
 	onReloadServerVersion: () => void;
 	onKeepDraft: () => void;
@@ -92,6 +99,7 @@ interface ExpenseFormSectionProps {
 	pendingPrefillDescription: string | null;
 	onReplacePrefill: () => void;
 	isEditingExpense: boolean;
+	editingExpenseId: string | null;
 	notice: ActionNotice | null;
 	onSubmit: () => void;
 }
@@ -119,6 +127,9 @@ export function ExpenseFormSection({
 	isEditingQueuedExpense,
 	isEditingQueuedRecurring,
 	formError,
+	fieldErrors,
+	validationAttempt,
+	onClearFieldError,
 	conflictExpenseId,
 	onReloadServerVersion,
 	onKeepDraft,
@@ -134,18 +145,62 @@ export function ExpenseFormSection({
 	pendingPrefillDescription,
 	onReplacePrefill,
 	isEditingExpense,
+	editingExpenseId,
 	notice,
 }: ExpenseFormSectionProps): React.ReactElement {
 	const [showRecurring, setShowRecurring] = useState(false);
 	const [showReceipt, setShowReceipt] = useState(Boolean(imageUrl));
 	const [confirmClose, setConfirmClose] = useState(false);
 	const [replaceOpen, setReplaceOpen] = useState(false);
+	const formRef = useRef<HTMLFormElement>(null);
 	const recurringOpen =
 		showRecurring || editingRecurringExpense !== null || isEditingQueuedRecurring;
+	const formModeKey = editingRecurringExpense
+		? `recurring:${editingRecurringExpense.id}`
+		: isEditingExpense
+			? `expense:${editingExpenseId ?? 'invalid'}`
+			: 'new';
+	const formStateKey = JSON.stringify({
+		description,
+		amountStr,
+		paidByMemberId,
+		splitMode,
+		manualSplits: Object.entries(manualSplits).sort(([left], [right]) => left.localeCompare(right)),
+		imageUrl,
+		recurringIntervalMonths,
+	});
+	const emptyFormStateKey = JSON.stringify({
+		description: '',
+		amountStr: '',
+		paidByMemberId: identityMemberId,
+		splitMode: 'equal',
+		manualSplits: [],
+		imageUrl: null,
+		recurringIntervalMonths: 1,
+	});
+	const initialStateKey =
+		isEditingExpense || editingRecurringExpense !== null ? formStateKey : emptyFormStateKey;
+	const initialFormStateRef = useRef({ formModeKey, formStateKey: initialStateKey });
+
+	useEffect(() => {
+		if (initialFormStateRef.current.formModeKey === formModeKey) return;
+		initialFormStateRef.current = { formModeKey, formStateKey: initialStateKey };
+	}, [formModeKey, initialStateKey]);
+
+	useEffect(() => {
+		if (validationAttempt === 0) return;
+		formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+	}, [validationAttempt]);
+
+	const isDirty = initialFormStateRef.current.formStateKey !== formStateKey;
+	const splitErrorId = 'expense-splits-error';
+	const firstSplitMemberId = splitCandidates[0]?.id;
+	const splitErrorTargetsMode =
+		Boolean(fieldErrors.splits) && (splitMode !== 'manual' || firstSplitMemberId === undefined);
+
 	function requestClose() {
 		if (formSaving) return;
-		if (description || amountStr || imageUrl || Object.values(manualSplits).some(Boolean))
-			setConfirmClose(true);
+		if (isDirty) setConfirmClose(true);
 		else onCancel();
 	}
 
@@ -176,12 +231,11 @@ export function ExpenseFormSection({
 							</Button>
 							<DialogTitle>{title}</DialogTitle>
 						</div>
-						<DialogDescription>
-							Betrag, Zahler:in und Anteile prüfen. Speichern löst keine Überweisung aus.
-						</DialogDescription>
+						<DialogDescription>Speichern löst keine Überweisung aus.</DialogDescription>
 					</DialogHeader>
 					<Separator />
 					<form
+						ref={formRef}
 						className="flex min-h-0 flex-1 flex-col"
 						onSubmit={(event) => {
 							event.preventDefault();
@@ -191,11 +245,6 @@ export function ExpenseFormSection({
 						<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
 							<FieldGroup>
 								{notice && <ActionNoticeBanner notice={notice} />}
-								<p className="text-sm text-muted-foreground">
-									{isEditingExpense
-										? 'Änderungen werden erst beim Speichern für die WG übernommen.'
-										: 'Die Ausgabe ist noch nicht gespeichert. Prüfe Betrag und Aufteilung.'}
-								</p>
 								{pendingPrefillDescription && (
 									<Alert>
 										<AlertDescription>Dein vorhandener Entwurf bleibt erhalten.</AlertDescription>
@@ -223,19 +272,28 @@ export function ExpenseFormSection({
 								<TextField
 									label="Beschreibung"
 									value={description}
-									onChange={setDescription}
+									onChange={(value) => {
+										setDescription(value);
+										onClearFieldError('description');
+									}}
 									maxLength={DESCRIPTION_MAX}
 									placeholder="z. B. Wocheneinkauf"
 									disabled={formSaving}
+									error={fieldErrors.description}
 								/>
 								<TextField
 									label="Betrag"
 									value={amountStr}
-									onChange={setAmountStr}
+									onChange={(value) => {
+										setAmountStr(value);
+										onClearFieldError('amount');
+										onClearFieldError('splits');
+									}}
 									inputMode="decimal"
 									placeholder="0,00"
 									suffix="€"
 									disabled={formSaving}
+									error={fieldErrors.amount}
 								/>
 								<Field data-disabled={formSaving}>
 									<FieldLabel htmlFor="paid-by">Bezahlt von</FieldLabel>
@@ -254,11 +312,12 @@ export function ExpenseFormSection({
 										))}
 									</NativeSelect>
 								</Field>
-								<FieldSet disabled={formSaving}>
+								<FieldSet disabled={formSaving} data-invalid={Boolean(fieldErrors.splits)}>
 									<FieldLegend>Beteiligte & Aufteilung</FieldLegend>
 									<ToggleGroup
 										value={[splitMode]}
 										onValueChange={(values) => {
+											onClearFieldError('splits');
 											const value = values[0];
 											if (value === 'equal' || value === 'manual') setSplitMode(value);
 										}}
@@ -266,6 +325,8 @@ export function ExpenseFormSection({
 										spacing={0}
 										className="w-full"
 										aria-label="Aufteilung"
+										aria-invalid={splitErrorTargetsMode ? true : undefined}
+										aria-describedby={splitErrorTargetsMode ? splitErrorId : undefined}
 									>
 										<ToggleGroupItem
 											value="equal"
@@ -282,10 +343,20 @@ export function ExpenseFormSection({
 											Manuell
 										</ToggleGroupItem>
 									</ToggleGroup>
+									{fieldErrors.splits && (
+										<FieldError id={splitErrorId}>{fieldErrors.splits}</FieldError>
+									)}
 									{splitMode === 'manual' && (
 										<FieldGroup className="gap-3">
 											{splitCandidates.map((member) => (
-												<Field key={member.id} orientation="horizontal" data-disabled={formSaving}>
+												<Field
+													key={member.id}
+													orientation="horizontal"
+													data-disabled={formSaving}
+													data-invalid={
+														Boolean(fieldErrors.splits) && member.id === firstSplitMemberId
+													}
+												>
 													<FieldLabel
 														htmlFor={`share-${member.id}`}
 														className="min-w-0 flex-1 break-words"
@@ -298,16 +369,27 @@ export function ExpenseFormSection({
 															type="text"
 															inputMode="decimal"
 															value={manualSplits[member.id] ?? ''}
-															onChange={(event) =>
+															onChange={(event) => {
 																setManualSplits((previous) => ({
 																	...previous,
 																	[member.id]: event.target.value,
-																}))
-															}
+																}));
+																onClearFieldError('splits');
+															}}
 															placeholder="0,00"
 															disabled={formSaving}
 															aria-label={`Anteil ${member.name} in Euro`}
-															className="min-h-11 text-base md:text-base"
+															aria-invalid={
+																Boolean(fieldErrors.splits) && member.id === firstSplitMemberId
+																	? true
+																	: undefined
+															}
+															aria-describedby={
+																Boolean(fieldErrors.splits) && member.id === firstSplitMemberId
+																	? splitErrorId
+																	: undefined
+															}
+															className="min-h-11 font-mono tabular-nums text-base md:text-base"
 														/>
 														<InputGroupAddon align="inline-end">
 															<InputGroupText>€</InputGroupText>
@@ -322,9 +404,12 @@ export function ExpenseFormSection({
 												setManualSplits={setManualSplits}
 												disabled={formSaving}
 											/>
-											<FieldDescription>
-												Für einzelne Personen 0 € eintragen oder das Feld leer lassen.
-											</FieldDescription>
+											{!fieldErrors.splits && (
+												<FieldDescription>
+													Für einzelne Personen <span className="font-mono tabular-nums">0 €</span>{' '}
+													eintragen oder das Feld leer lassen.
+												</FieldDescription>
+											)}
 										</FieldGroup>
 									)}
 									<SplitReview
@@ -332,7 +417,6 @@ export function ExpenseFormSection({
 										splits={previewSplits}
 										paidByMemberId={paidByMemberId}
 									/>
-									<FieldDescription>Hier wird kein Geld überwiesen.</FieldDescription>
 								</FieldSet>
 								<Separator />
 								<Collapsible open={showReceipt} onOpenChange={setShowReceipt}>

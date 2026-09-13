@@ -46,7 +46,11 @@ export function SubNav({ label, items, fallback = false }: SubNavProps) {
 	links.push(
 		...items.filter((item) => !canonicalItems.some((canonical) => canonical.href === item.href)),
 	);
-	if (links.length === 0) return null;
+	const visibleLinks = links.filter((item) => {
+		const target = new URL(item.href, 'https://manawg.invalid').pathname.replace(/\/+$/, '');
+		return pathname !== target;
+	});
+	if (visibleLinks.length === 0) return null;
 
 	return (
 		<nav
@@ -55,7 +59,7 @@ export function SubNav({ label, items, fallback = false }: SubNavProps) {
 			className={cn('min-w-0', fallback && 'group-has-[[data-wg-local-nav]]/wg-shell:hidden')}
 		>
 			<ul className="flex flex-wrap gap-1">
-				{links.map(({ href, label: itemLabel, icon: Icon, count }) => {
+				{visibleLinks.map(({ href, label: itemLabel, icon: Icon, count }) => {
 					const target = new URL(href, 'https://manawg.invalid').pathname.replace(/\/+$/, '');
 					const current = pathname === target;
 					const active = current || pathname.startsWith(`${target}/`);

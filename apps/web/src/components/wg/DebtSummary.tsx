@@ -199,7 +199,7 @@ function DebtRow({
 				</ItemTitle>
 				<ItemDescription>Aus euren offenen Ausgaben verrechnet</ItemDescription>
 			</ItemContent>
-			<Badge variant="secondary" className="tabular-nums">
+			<Badge variant="secondary" className="font-mono tabular-nums text-destructive">
 				{formatEuroCents(debt.cents)}
 			</Badge>
 
@@ -279,7 +279,7 @@ function DebtRow({
 											{expense ? formatShortDate(expense.occurredAt) : 'Aktueller offener Anteil'}
 										</ItemDescription>
 									</ItemContent>
-									<Badge variant="outline" className="tabular-nums">
+									<Badge variant="outline" className="font-mono tabular-nums">
 										{formatEuroCents(split.amountCents)}
 									</Badge>
 								</Item>
@@ -361,7 +361,9 @@ export function DebtSummary({
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Offene Zahlungen</CardTitle>
+				<CardTitle>
+					<h2>Offene Zahlungen</h2>
+				</CardTitle>
 				<CardDescription>
 					{summary && summary.savedTransfers > 0
 						? `Minimaler Ausgleich: ${summary.simplifiedCount} statt ${summary.directCount} Überweisungen. Spart ${summary.savedTransfers} Zahlungen.`
