@@ -75,9 +75,7 @@ export default function VorraetePage() {
 							<span className="text-[13px] text-muted-foreground">
 								Vorräte derzeit nicht verfügbar.
 							</span>
-						) : items.length === 0 ? (
-							<span className="text-[13px] text-muted-foreground">Noch keine Vorräte erfasst.</span>
-						) : (
+						) : items.length === 0 ? null : (
 							<Badge variant="secondary" className="tabular-nums">
 								{items.length} Artikel im Bestand
 							</Badge>

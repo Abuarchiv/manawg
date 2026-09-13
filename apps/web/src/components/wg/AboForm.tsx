@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import {
 	Field,
 	FieldDescription,
+	FieldError,
 	FieldGroup,
 	FieldLabel,
 	FieldLegend,
@@ -176,6 +177,12 @@ export function AboForm({
 		if (euros === null || euros < AMOUNT_MIN_EUROS || euros > AMOUNT_MAX_EUROS) return null;
 		return Math.round(euros * CENTS_PER_EURO);
 	}, [amountStr]);
+	const descriptionError =
+		error && (description.trim().length === 0 || description.trim().length > DESCRIPTION_MAX)
+			? 'Beschreibung fehlt.'
+			: null;
+	const amountError = error && parsedAmountCents === null ? 'Betrag ungültig.' : null;
+	const formError = error && !descriptionError && !amountError ? error : null;
 
 	// Payer dropdown offers active members, but keeps the currently selected
 	// payer visible even if they moved out — otherwise saving would silently
@@ -253,7 +260,7 @@ export function AboForm({
 	return (
 		<form onSubmit={handleSubmit} className="flex flex-col gap-5">
 			<FieldGroup>
-				<Field data-disabled={submitting} data-invalid={Boolean(error && !description.trim())}>
+				<Field data-disabled={submitting} data-invalid={Boolean(descriptionError)}>
 					<FieldLabel htmlFor="abo-description">Beschreibung</FieldLabel>
 					<Input
 						id="abo-description"
@@ -263,13 +270,12 @@ export function AboForm({
 						placeholder="z. B. Netflix"
 						disabled={submitting}
 						className="min-h-11 text-base md:text-base"
-						aria-invalid={Boolean(error && !description.trim())}
+						aria-invalid={Boolean(descriptionError)}
+						aria-describedby={descriptionError ? 'abo-description-error' : undefined}
 					/>
+					<FieldError id="abo-description-error">{descriptionError}</FieldError>
 				</Field>
-				<Field
-					data-disabled={submitting}
-					data-invalid={Boolean(error && parsedAmountCents === null)}
-				>
+				<Field data-disabled={submitting} data-invalid={Boolean(amountError)}>
 					<FieldLabel htmlFor="abo-amount">Betrag</FieldLabel>
 					<InputGroup className="min-h-11">
 						<InputGroupInput
@@ -281,12 +287,14 @@ export function AboForm({
 							placeholder="0,00"
 							disabled={submitting}
 							className="min-h-11 text-base md:text-base"
-							aria-invalid={Boolean(error && parsedAmountCents === null)}
+							aria-invalid={Boolean(amountError)}
+							aria-describedby={amountError ? 'abo-amount-error' : undefined}
 						/>
 						<InputGroupAddon align="inline-end">
 							<InputGroupText>€</InputGroupText>
 						</InputGroupAddon>
 					</InputGroup>
+					<FieldError id="abo-amount-error">{amountError}</FieldError>
 				</Field>
 				<Field data-disabled={submitting}>
 					<FieldLabel htmlFor="abo-paid-by">Bezahlt von</FieldLabel>
@@ -396,36 +404,33 @@ export function AboForm({
 							</FieldDescription>
 						</FieldGroup>
 					)}
-					<SplitReview
-						members={splitCandidates}
-						splits={typeof splitPreview === 'string' ? null : splitPreview}
-						paidByMemberId={paidByMemberId}
-					/>
+					{splitMode !== 'manual' && (
+						<SplitReview
+							members={splitCandidates}
+							splits={typeof splitPreview === 'string' ? null : splitPreview}
+							paidByMemberId={paidByMemberId}
+						/>
+					)}
 				</FieldSet>
-				{(error || saveError) && (
+				{(formError || saveError) && (
 					<Alert variant="destructive">
-						<AlertDescription>{error ?? saveError}</AlertDescription>
+						<AlertDescription>{formError ?? saveError}</AlertDescription>
 					</Alert>
 				)}
 			</FieldGroup>
 			<div className="sticky bottom-0 flex flex-col gap-3 bg-popover pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
 				<Separator />
 				<p className="text-xs text-muted-foreground">
-					Alle {intervalMonths} Monate · keine automatische Überweisung.
+					{intervalMonths === 1 ? 'Monatlich' : `Alle ${intervalMonths} Monate`} · keine
+					automatische Überweisung.
 				</p>
 				<div className="flex gap-2">
-					<Button
-						type="button"
-						variant="outline"
-						className="min-h-11"
-						onClick={onCancel}
-						disabled={submitting}
-					>
-						Abbrechen
-					</Button>
-					<Button type="submit" className="min-h-11 flex-1" disabled={submitting}>
+					<Button type="submit" className="flex-1" disabled={submitting}>
 						{submitting && <Spinner data-icon="inline-start" />}
 						{mode === 'create' ? 'Abo anlegen' : 'Speichern'}
+					</Button>
+					<Button type="button" variant="ghost" onClick={onCancel} disabled={submitting}>
+						Abbrechen
 					</Button>
 				</div>
 			</div>

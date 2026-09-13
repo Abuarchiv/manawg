@@ -41,14 +41,13 @@ export function PinnwandHeader({
 						</p>
 					)}
 				</div>
-				<div className="flex shrink-0 items-center justify-end gap-1">
+				<div className="flex shrink-0 items-center justify-end gap-2">
 					<div className="hidden sm:block">
 						<CalendarLink wgBaseHref={wgBaseHref} />
 					</div>
 					<Button
 						variant="ghost"
 						size="icon"
-						className="size-11"
 						nativeButton={false}
 						render={<Link href={`${wgBaseHref}/chat`} aria-label="Chat öffnen" />}
 					>
@@ -58,7 +57,7 @@ export function PinnwandHeader({
 						onClick={onToggleComposer}
 						disabled={composerBusy || loading}
 						variant={composerOpen ? 'outline' : 'default'}
-						className="size-11 px-0 sm:w-auto sm:px-3"
+						className="w-9 shrink-0 px-0 sm:w-auto sm:px-3"
 						aria-expanded={composerOpen}
 						aria-controls="announcement-composer"
 						aria-label={

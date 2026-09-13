@@ -9,6 +9,7 @@ import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { ThemeOption } from '@/components/wg/einstellungen/ThemeOption';
 import { apiFetch } from '@/core/infra/api-client';
+import { InstallButton } from '@/shared/components/install-button';
 import { useTheme } from '@/shared/components/theme/ThemeProvider';
 import { haptic } from '@/shared/lib/haptics';
 import { Check, Monitor, Moon, Save, Sun } from 'lucide-react';
@@ -94,7 +95,7 @@ export function ProfileTab({
 					<MemberAvatar name={memberName} size={32} />
 					<div className="min-w-0 flex-1">
 						<div className="text-foreground truncate text-[15px] font-medium">{memberName}</div>
-						<div className="text-muted-foreground mt-0.5 text-[12.5px]">in {wgName}</div>
+						<div className="text-muted-foreground mt-0.5 text-[13px]">in {wgName}</div>
 					</div>
 				</div>
 			</Section>
@@ -129,6 +130,9 @@ export function ProfileTab({
 							setTheme('system');
 						}}
 					/>
+				</div>
+				<div className="px-2 pb-2">
+					<InstallButton label="App installieren" />
 				</div>
 			</Section>
 
@@ -165,8 +169,8 @@ export function ProfileTab({
 								</Button>
 							</div>
 							<FieldDescription>
-								Die Merchant-ID ist deine PayPal-Empfängerkennung. Das Speichern hinterlegt nur
-								diese Kennung; es überweist kein Geld und bestätigt keine PayPal-Freischaltung.
+								Hinterlegt nur deine PayPal-Empfängerkennung. Keine Zahlung oder
+								PayPal-Freischaltung.
 							</FieldDescription>
 						</Field>
 					</FieldGroup>

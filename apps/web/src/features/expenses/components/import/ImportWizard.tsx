@@ -540,11 +540,11 @@ export function ImportWizard() {
 										</AlertDescription>
 									</Alert>
 								)}
-								<details className="rounded-lg border border-border">
-									<summary className="flex min-h-11 cursor-pointer items-center px-3 text-sm font-medium">
+								<details>
+									<summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">
 										Ergebnis prüfen oder korrigieren
 									</summary>
-									<div className="border-t border-border p-3">
+									<div className="pt-2">
 										<Field
 											data-invalid={inputStatus === 'error'}
 											data-disabled={busy || ocrRunning}
@@ -559,7 +559,7 @@ export function ImportWizard() {
 												aria-invalid={inputStatus === 'error' || undefined}
 												aria-describedby={inputStatus === 'error' ? 'import-error' : undefined}
 												placeholder="Ergebnis hier prüfen und korrigieren"
-												className="min-h-48 text-base md:text-base"
+												className="min-h-32 text-base md:text-base"
 											/>
 										</Field>
 									</div>
@@ -584,11 +584,11 @@ export function ImportWizard() {
 									/>
 									<FieldDescription>Export-Datei bis 5 MB.</FieldDescription>
 								</Field>
-								<details className="rounded-lg border border-border">
-									<summary className="flex min-h-11 cursor-pointer items-center px-3 text-sm font-medium">
+								<details>
+									<summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">
 										Oder Inhalt einfügen
 									</summary>
-									<div className="border-t border-border p-3">
+									<div className="pt-2">
 										<Field
 											data-invalid={inputStatus === 'error'}
 											data-disabled={busy || inputStatus === 'reading'}
@@ -603,7 +603,7 @@ export function ImportWizard() {
 												aria-invalid={inputStatus === 'error' || undefined}
 												aria-describedby={inputStatus === 'error' ? 'import-error' : undefined}
 												disabled={busy || inputStatus === 'reading'}
-												className="min-h-48 text-base md:text-base"
+												className="min-h-32 text-base md:text-base"
 											/>
 										</Field>
 									</div>
@@ -613,14 +613,6 @@ export function ImportWizard() {
 					</FieldGroup>
 					<div className="flex gap-2">
 						<Button
-							variant="outline"
-							className="min-h-11"
-							disabled={busy || ocrRunning}
-							onClick={() => setStep('source')}
-						>
-							Zurück
-						</Button>
-						<Button
 							className="min-h-11 flex-1"
 							disabled={
 								busy || ocrRunning || inputStatus !== 'ready' || rawPayload.trim().length === 0
@@ -628,6 +620,17 @@ export function ImportWizard() {
 							onClick={() => void submitPreview()}
 						>
 							{busy && <Spinner data-icon="inline-start" />}Vorschau erstellen
+						</Button>
+						<Button
+							variant="outline"
+							className="min-h-11"
+							disabled={busy || ocrRunning}
+							onClick={() => {
+								clearImportError();
+								setStep('source');
+							}}
+						>
+							Zurück
 						</Button>
 					</div>
 				</section>
@@ -654,11 +657,11 @@ export function ImportWizard() {
 						showErrors={mappingValidated}
 					/>
 					<div className="flex gap-2">
-						<Button variant="outline" className="min-h-11" onClick={() => setStep('input')}>
-							Zurück
-						</Button>
 						<Button className="min-h-11 flex-1" onClick={continueFromMapping}>
 							Weiter zur Vorschau
+						</Button>
+						<Button variant="outline" className="min-h-11" onClick={() => setStep('input')}>
+							Zurück
 						</Button>
 					</div>
 				</section>
@@ -705,19 +708,19 @@ export function ImportWizard() {
 					</FieldGroup>
 					<div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] flex gap-2 bg-background py-3">
 						<Button
+							className="min-h-11 flex-1"
+							disabled={busy || selectedCount === 0}
+							onClick={() => void submitCommit()}
+						>
+							{busy && <Spinner data-icon="inline-start" />}Importieren ({selectedCount})
+						</Button>
+						<Button
 							variant="outline"
 							className="min-h-11"
 							disabled={busy}
 							onClick={() => setStep('mapping')}
 						>
 							Zurück
-						</Button>
-						<Button
-							className="min-h-11 flex-1"
-							disabled={busy || selectedCount === 0}
-							onClick={() => void submitCommit()}
-						>
-							{busy && <Spinner data-icon="inline-start" />}Importieren ({selectedCount})
 						</Button>
 					</div>
 				</section>

@@ -370,7 +370,7 @@ export default function KalenderPage() {
 						</Badge>
 					</p>
 				</div>
-				<div className="flex shrink-0 items-center justify-end gap-1.5">
+				<div className="flex shrink-0 items-center justify-end gap-2">
 					{!isCurrentMonth && (
 						<Button
 							variant="outline"
@@ -378,16 +378,15 @@ export default function KalenderPage() {
 							onClick={handleJumpToToday}
 							aria-label="Zum aktuellen Monat springen"
 							title="Heute"
-							className="size-11"
 						>
 							<RotateCcw aria-hidden />
 						</Button>
 					)}
 					<Button
-						size="lg"
+						size="default"
 						onClick={handleFabClick}
 						aria-label="Termin hinzufügen"
-						className="size-11 px-0 sm:w-auto sm:px-3"
+						className="w-9 shrink-0 px-0 sm:w-auto sm:px-3"
 					>
 						<Plus aria-hidden />
 						<span className="hidden sm:inline">Termin hinzufügen</span>

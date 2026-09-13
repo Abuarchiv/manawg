@@ -119,7 +119,7 @@ export function NavItem({
 				}}
 				className={cn(
 					buttonVariants({ variant: isActive ? 'secondary' : 'ghost' }),
-					'h-auto min-h-12 w-full flex-col gap-0.5 rounded-xl px-0 py-1 sm:min-h-14 sm:gap-1 sm:rounded-[16px] sm:py-2',
+					'h-auto min-h-12 w-full flex-col gap-0.5 rounded-[16px] px-0 py-1 sm:min-h-14 sm:gap-1 sm:py-2',
 				)}
 			>
 				<span className="relative">
@@ -136,7 +136,7 @@ export function NavItem({
 						</Badge>
 					)}
 				</span>
-				<span className="max-w-full break-words whitespace-normal text-center text-[0.6875rem] leading-4 sm:text-xs">
+				<span className="max-w-full break-words whitespace-normal text-center text-[13px] leading-4">
 					{label}
 				</span>
 			</Link>

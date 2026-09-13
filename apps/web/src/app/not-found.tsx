@@ -28,12 +28,10 @@ export default function NotFound() {
 						<EmptyMedia variant="icon">
 							<House aria-hidden />
 						</EmptyMedia>
-						<h1 className="font-heading text-sm font-medium tracking-tight">
+						<h1 className="font-heading text-[20px] leading-[26px] font-semibold tracking-tight">
 							Seite nicht gefunden
 						</h1>
-						<EmptyDescription>
-							Die Seite existiert nicht — vielleicht hat jemand die Wohnungstür verwechselt.
-						</EmptyDescription>
+						<EmptyDescription>Die angeforderte Seite wurde nicht gefunden.</EmptyDescription>
 					</EmptyHeader>
 					<EmptyContent>
 						<Button size="lg" render={<Link href="/" />} nativeButton={false} className="min-h-11">

@@ -3,14 +3,6 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-	Empty,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyMedia,
-	EmptyTitle,
-} from '@/components/ui/empty';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
@@ -26,7 +18,7 @@ import {
 } from '@/core/offline/offline-queue';
 import { parseTimestamp } from '@/core/utils/time';
 import { type KnownWg, getKnownWgs } from '@/shared/lib/identity';
-import { ArrowRight, CheckCircle2, CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
+import { ArrowRight, CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -175,32 +167,45 @@ export function OfflineClient() {
 			tabIndex={-1}
 			className="min-h-svh bg-background px-4 py-6 text-foreground focus:outline-none"
 		>
-			<div className="mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-md flex-col justify-center gap-4 pb-[env(safe-area-inset-bottom)]">
-				<Card>
-					<CardHeader>
-						<div className="flex items-start gap-3">
-							<span className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-muted">
+			<div className="mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-md flex-col justify-center gap-5 pb-[env(safe-area-inset-bottom)]">
+				<header className="flex flex-col gap-3" aria-labelledby="offline-heading">
+					<div className="flex items-center justify-between gap-3">
+						<div className="flex min-w-0 items-center gap-2">
+							<span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted">
 								{online ? (
 									<Wifi className="h-5 w-5 text-primary" aria-hidden />
 								) : (
 									<CloudOff className="h-5 w-5 text-muted-foreground" aria-hidden />
 								)}
 							</span>
-							<div className="min-w-0 flex-1">
-								<Badge variant={online ? 'secondary' : 'outline'}>
-									{online ? 'Wieder online' : 'Offline-Modus'}
-								</Badge>
-								<CardTitle className="mt-2 text-xl" aria-live="polite">
-									{online ? 'Du bist wieder verbunden.' : 'Du bist gerade offline.'}
-								</CardTitle>
-								<CardDescription className="mt-1">
-									ManaWG speichert vorbereitete Aktionen auf diesem Gerät. Sobald das Netz zurück
-									ist, kannst du sie synchronisieren und in deine WG zurückspringen.
-								</CardDescription>
-							</div>
+							<Badge variant={online ? 'secondary' : 'outline'}>
+								{online ? 'Wieder online' : 'Offline-Modus'}
+							</Badge>
 						</div>
-					</CardHeader>
-					<CardContent className="grid grid-cols-1 gap-2">
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							onClick={() => void refresh()}
+							aria-label="Offline-Status erneut prüfen"
+							className="min-h-11 shrink-0"
+						>
+							<RotateCw data-icon="inline-start" aria-hidden />
+							Prüfen
+						</Button>
+					</div>
+					<h1
+						id="offline-heading"
+						className="font-heading text-[20px] leading-[26px] font-semibold tracking-tight"
+						aria-live="polite"
+					>
+						{online ? 'Du bist wieder verbunden.' : 'Du bist gerade offline.'}
+					</h1>
+					<p className="text-sm text-muted-foreground">
+						ManaWG speichert vorbereitete Aktionen auf diesem Gerät. Sobald das Netz zurück ist,
+						kannst du sie synchronisieren und in deine WG zurückspringen.
+					</p>
+					{queue.length > 0 && (
 						<Button
 							type="button"
 							onClick={syncNow}
@@ -220,111 +225,96 @@ export function OfflineClient() {
 							)}
 							Jetzt synchronisieren
 						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							size="lg"
-							onClick={() => void refresh()}
-							aria-label="Offline-Status erneut prüfen"
-							className="min-h-11 w-full"
-						>
-							<RotateCw data-icon="inline-start" aria-hidden />
-							Prüfen
-						</Button>
-					</CardContent>
-					{message && (
-						<CardContent>
-							<Alert>
-								<AlertTitle>Synchronisation</AlertTitle>
-								<AlertDescription>
-									<output aria-live="polite">{message}</output>
-								</AlertDescription>
-							</Alert>
-						</CardContent>
 					)}
-				</Card>
+					{message && (
+						<Alert>
+							<AlertTitle>Synchronisation</AlertTitle>
+							<AlertDescription>
+								<output aria-live="polite">{message}</output>
+							</AlertDescription>
+						</Alert>
+					)}
+				</header>
 
-				<Card>
-					<CardHeader>
-						<div className="flex items-center justify-between gap-3">
-							<div>
-								<CardTitle className="text-base">Warteschlange</CardTitle>
-								<CardDescription>{formatQueuedActionCount(queue.length)}</CardDescription>
-							</div>
-							{queue.length === 0 && <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden />}
+				<section
+					aria-labelledby="offline-queue-heading"
+					className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
+				>
+					<div className="flex items-start justify-between gap-3">
+						<div>
+							<h2
+								id="offline-queue-heading"
+								className="font-heading text-base leading-5 font-semibold"
+							>
+								Warteschlange
+							</h2>
+							<p className="mt-1 text-sm text-muted-foreground">
+								{formatQueuedActionCount(queue.length)}
+							</p>
 						</div>
-					</CardHeader>
-					<CardContent>
-						{recentQueue.length > 0 ? (
-							<ItemGroup aria-label="Wartende Offline-Aktionen">
-								{recentQueue.map((item) => {
-									const summary = getOfflineActionSummary(item);
-									const risk = getOfflineActionRisk(item);
-									return (
-										<Item key={item.id} variant="outline">
-											<ItemContent>
-												<ItemTitle>{summary.title}</ItemTitle>
-												<ItemDescription className="truncate">{summary.detail}</ItemDescription>
-												{item.lastError && (
-													<p className="mt-1 text-xs text-destructive">{item.lastError}</p>
-												)}
-												{risk && (
-													<p className="mt-1 text-xs text-muted-foreground">
-														{risk.title}: {risk.detail}
-													</p>
-												)}
-											</ItemContent>
-											<span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-												{formatOfflineAge(item.createdAt)}
-											</span>
-										</Item>
-									);
-								})}
-							</ItemGroup>
-						) : (
-							<Empty>
-								<EmptyHeader>
-									<EmptyMedia variant="icon">
-										<CheckCircle2 aria-hidden />
-									</EmptyMedia>
-									<EmptyTitle>Keine wartenden Aktionen.</EmptyTitle>
-									<EmptyDescription>
-										Vorbereitete Offline-Aktionen erscheinen hier, bis sie synchronisiert sind.
-									</EmptyDescription>
-								</EmptyHeader>
-							</Empty>
-						)}
-						{hiddenQueueCount > 0 && (
-							<>
-								<Separator className="my-3" />
-								<p className="text-sm text-muted-foreground">
-									+{hiddenQueueCount} weitere Aktion
-									{hiddenQueueCount === 1 ? '' : 'en'} in der Warteschlange.{' '}
-									{primaryWg ? (
-										<Button
-											variant="link"
-											size="lg"
-											render={<Link href={wgHref(primaryWg.code, '/einstellungen#daten')} />}
-											nativeButton={false}
-											className="min-h-11 px-0"
-										>
-											Alle Aktionen prüfen
-										</Button>
-									) : (
-										'Alle Aktionen prüfen'
-									)}{' '}
-									öffnet die vollständige Liste.
-								</p>
-							</>
-						)}
-					</CardContent>
-				</Card>
+					</div>
+					{recentQueue.length > 0 && (
+						<ItemGroup className="gap-2" aria-label="Wartende Offline-Aktionen">
+							{recentQueue.map((item) => {
+								const summary = getOfflineActionSummary(item);
+								const risk = getOfflineActionRisk(item);
+								return (
+									<Item key={item.id} variant="outline">
+										<ItemContent>
+											<ItemTitle>{summary.title}</ItemTitle>
+											<ItemDescription className="truncate">{summary.detail}</ItemDescription>
+											{item.lastError && (
+												<p className="mt-1 text-xs text-destructive">{item.lastError}</p>
+											)}
+											{risk && (
+												<p className="mt-1 text-xs text-muted-foreground">
+													{risk.title}: {risk.detail}
+												</p>
+											)}
+										</ItemContent>
+										<span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+											{formatOfflineAge(item.createdAt)}
+										</span>
+									</Item>
+								);
+							})}
+						</ItemGroup>
+					)}
+					{hiddenQueueCount > 0 && (
+						<>
+							<Separator />
+							<p className="text-sm text-muted-foreground">
+								+{hiddenQueueCount} weitere Aktion
+								{hiddenQueueCount === 1 ? '' : 'en'} in der Warteschlange.{' '}
+								{primaryWg ? (
+									<Button
+										variant="link"
+										size="lg"
+										render={<Link href={wgHref(primaryWg.code, '/einstellungen#daten')} />}
+										nativeButton={false}
+										className="min-h-11 px-0"
+									>
+										Alle Aktionen prüfen
+									</Button>
+								) : (
+									'Alle Aktionen prüfen'
+								)}{' '}
+								öffnet die vollständige Liste.
+							</p>
+						</>
+					)}
+				</section>
 
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-base">Zurück in deine WG</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-2">
+				<section
+					aria-labelledby="known-wgs-heading"
+					className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
+				>
+					<div>
+						<h2 id="known-wgs-heading" className="font-heading text-base leading-5 font-semibold">
+							Zurück in deine WG
+						</h2>
+					</div>
+					<div className="space-y-2">
 						{knownWgs.length === 0 ? (
 							<p className="text-sm leading-relaxed text-muted-foreground">
 								Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du mit
@@ -372,8 +362,8 @@ export function OfflineClient() {
 								Code eingeben
 							</Button>
 						</div>
-					</CardContent>
-				</Card>
+					</div>
+				</section>
 
 				<p className="text-center text-xs leading-relaxed text-muted-foreground">
 					{queue.length > 0

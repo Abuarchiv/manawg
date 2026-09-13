@@ -179,10 +179,10 @@ export default function WgHomePage() {
 		<>
 			<div
 				data-home-content
-				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-12"
+				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-6 px-4 py-6 md:grid-cols-12"
 			>
 				{error && (
-					<div className="lg:col-span-12">
+					<div className="md:col-span-12">
 						<LoadErrorBanner
 							message={data ? `${error} Die angezeigten Daten können veraltet sein.` : error}
 							onRetry={() => void load()}
@@ -200,7 +200,7 @@ export default function WgHomePage() {
 				{!isNewWg && (
 					<section
 						aria-labelledby="today-heading"
-						className="flex min-w-0 flex-col gap-3 lg:col-span-8"
+						className="flex min-w-0 flex-col gap-3 md:col-span-6 lg:col-span-8"
 					>
 						<h2 id="today-heading" className="text-sm font-medium text-muted-foreground">
 							Heute wichtig
@@ -234,10 +234,10 @@ export default function WgHomePage() {
 												'ml-auto min-h-11 shrink-0',
 											)}
 										>
-											<span aria-hidden className="sm:hidden">
+											<span aria-hidden className="lg:hidden">
 												{todayFocus.kind === 'recurring' ? 'Prüfen' : 'Öffnen'}
 											</span>
-											<span aria-hidden className="hidden sm:inline">
+											<span aria-hidden className="hidden lg:inline">
 												{todayFocus.actionLabel}
 											</span>
 											<ChevronRight data-icon="inline-end" aria-hidden />
@@ -317,7 +317,7 @@ export default function WgHomePage() {
 					</section>
 				)}
 
-				<div className="flex min-w-0 flex-col gap-6 lg:col-span-4">
+				<div className="flex min-w-0 flex-col gap-6 md:col-span-6 lg:col-span-4">
 					{isNewWg && <StartWelcome />}
 
 					<section aria-labelledby="balance-heading" className="flex min-w-0 flex-col gap-3">
@@ -374,7 +374,7 @@ export default function WgHomePage() {
 								href={`${wgBaseHref}/aktivitaet`}
 								className={cn(
 									buttonVariants({ variant: 'ghost' }),
-									'min-h-11 min-w-0 max-w-full shrink whitespace-normal px-0 text-xs text-muted-foreground text-right leading-snug',
+									'min-h-11 min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground text-right leading-snug',
 								)}
 							>
 								Ganze Chronik <ChevronRight data-icon="inline-end" aria-hidden />
@@ -425,7 +425,7 @@ export default function WgHomePage() {
 						)}
 					</section>
 				</div>
-				<div className="lg:col-span-12">
+				<div className="md:col-span-12">
 					<PushPrimingPrompt
 						code={wg.shareCode}
 						memberId={identity.memberId}

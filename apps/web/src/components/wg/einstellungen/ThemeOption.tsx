@@ -17,7 +17,7 @@ export function ThemeOption({ label, icon, active, onClick }: ThemeOptionProps) 
 			variant={active ? 'default' : 'outline'}
 			aria-pressed={active}
 			onClick={onClick}
-			className="h-11 min-h-[44px] min-w-0 flex-1 whitespace-normal text-sm"
+			className="min-h-11 min-w-max flex-1 gap-1 whitespace-nowrap px-2 text-[13px]"
 		>
 			{icon}
 			{label}

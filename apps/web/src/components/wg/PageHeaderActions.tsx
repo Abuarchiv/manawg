@@ -37,7 +37,7 @@ export function FormToggleButton({
 			aria-expanded={open}
 			{...(controls ? { 'aria-controls': controls } : {})}
 			aria-label={open ? closeLabel : openLabel}
-			className="size-11 shrink-0 px-0 sm:h-auto sm:w-auto sm:px-3"
+			className="w-9 shrink-0 px-0 sm:w-auto sm:px-3"
 		>
 			{open ? (
 				<>
@@ -59,7 +59,7 @@ export function SettingsLink({ wgBaseHref }: { wgBaseHref: string }) {
 		<Link
 			href={`${wgBaseHref}/einstellungen`}
 			aria-label="WG-Einstellungen öffnen"
-			className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11')}
+			className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
 		>
 			<Settings aria-hidden />
 			<span className="sr-only">WG-Einstellungen öffnen</span>
@@ -73,7 +73,7 @@ export function CalendarLink({ wgBaseHref }: { wgBaseHref: string }) {
 			href={`${wgBaseHref}/kalender`}
 			aria-label="Termine im Kalender öffnen"
 			title="Termine"
-			className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), 'size-11')}
+			className={cn(buttonVariants({ variant: 'outline', size: 'icon' }))}
 		>
 			<CalendarDays aria-hidden />
 		</Link>

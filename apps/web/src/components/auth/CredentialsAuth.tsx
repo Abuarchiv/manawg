@@ -167,6 +167,11 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 		resetPhoneFeedback();
 	}
 
+	const emailFieldInvalid =
+		emailError === 'reset-invalid' ||
+		(emailError === 'invalid' && !isValidEmail(email.trim().toLowerCase()));
+	const passwordFieldInvalid = emailError === 'invalid' && password.length < 6;
+
 	return (
 		<Tabs defaultValue="email" aria-busy={busy !== null} className="gap-4">
 			<TabsList className="min-h-12 w-full">
@@ -177,7 +182,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 					Telefon / SMS
 				</TabsTrigger>
 			</TabsList>
-			<TabsContent value="email" aria-labelledby="email-auth-heading">
+			<TabsContent value="email" aria-label="Mit E-Mail und Passwort">
 				<form
 					onSubmit={(event) => {
 						event.preventDefault();
@@ -186,10 +191,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 					className="flex flex-col gap-4"
 				>
 					<FieldGroup>
-						<h2 id="email-auth-heading" className="text-[14px] font-semibold text-foreground">
-							Mit E-Mail und Passwort
-						</h2>
-						<Field data-invalid={Boolean(emailError)}>
+						<Field data-invalid={emailFieldInvalid}>
 							<FieldLabel htmlFor="auth-email">E-Mail-Adresse</FieldLabel>
 							<Input
 								id="auth-email"
@@ -200,12 +202,12 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								autoComplete="email"
 								inputMode="email"
 								required
-								aria-describedby={emailError ? 'auth-email-error' : undefined}
-								aria-invalid={emailError ? true : undefined}
+								aria-describedby={emailFieldInvalid ? 'auth-email-error' : undefined}
+								aria-invalid={emailFieldInvalid || undefined}
 								className="min-h-11 text-base md:text-base"
 							/>
 						</Field>
-						<Field data-invalid={Boolean(emailError)}>
+						<Field data-invalid={passwordFieldInvalid}>
 							<FieldLabel htmlFor="auth-password">Passwort</FieldLabel>
 							<Input
 								id="auth-password"
@@ -216,8 +218,8 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								autoComplete="current-password"
 								minLength={6}
 								required
-								aria-describedby={emailError ? 'auth-email-error' : undefined}
-								aria-invalid={emailError ? true : undefined}
+								aria-describedby={passwordFieldInvalid ? 'auth-email-error' : undefined}
+								aria-invalid={passwordFieldInvalid || undefined}
 								className="min-h-11 text-base md:text-base"
 							/>
 						</Field>

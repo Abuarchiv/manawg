@@ -98,7 +98,7 @@ export function ActivityFeed({ items, emptyHref, compact = false }: ActivityFeed
 								<p className="text-sm leading-5">
 									<ActivityText item={item} />
 								</p>
-								<time dateTime={item.timestamp} className="text-xs text-muted-foreground">
+								<time dateTime={item.timestamp} className="text-[13px] text-muted-foreground">
 									{formatCompactRelativeTime(item.timestamp, now)}
 								</time>
 							</div>

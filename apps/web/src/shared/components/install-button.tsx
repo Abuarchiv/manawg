@@ -51,7 +51,11 @@ export function InstallButton({
 		}
 
 		const ua = window.navigator.userAgent.toLowerCase();
-		if (/iphone|ipad|ipod/.test(ua)) setPlatform('ios');
+		if (
+			/iphone|ipad|ipod/.test(ua) ||
+			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+		)
+			setPlatform('ios');
 		else if (/android/.test(ua)) setPlatform('android');
 		else setPlatform('desktop');
 
@@ -160,7 +164,7 @@ function IosSteps() {
 	return (
 		<ItemGroup aria-label="Installationsschritte für iOS">
 			<Step num={1}>
-				In Safari unten auf <span className="font-medium text-foreground">Teilen</span> tippen.
+				In Safari auf <span className="font-medium text-foreground">Teilen</span> tippen.
 			</Step>
 			<Step num={2}>
 				Nach unten scrollen und{' '}

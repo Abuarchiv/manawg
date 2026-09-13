@@ -155,6 +155,9 @@ export function ExpenseFormSection({
 	const formRef = useRef<HTMLFormElement>(null);
 	const recurringOpen =
 		showRecurring || editingRecurringExpense !== null || isEditingQueuedRecurring;
+	const editingTemplate = Boolean(
+		editingRecurringExpense && !isEditingQueuedExpense && !isEditingQueuedRecurring,
+	);
 	const formModeKey = editingRecurringExpense
 		? `recurring:${editingRecurringExpense.id}`
 		: isEditingExpense
@@ -199,7 +202,7 @@ export function ExpenseFormSection({
 		Boolean(fieldErrors.splits) && (splitMode !== 'manual' || firstSplitMemberId === undefined);
 
 	function requestClose() {
-		if (formSaving) return;
+		if (formSaving || savingRecurringTemplate) return;
 		if (isDirty) setConfirmClose(true);
 		else onCancel();
 	}
@@ -214,7 +217,7 @@ export function ExpenseFormSection({
 			>
 				<DialogContent
 					showCloseButton={false}
-					className="top-0 flex h-dvh max-h-dvh w-full max-w-md translate-y-0 flex-col gap-0 rounded-none p-0 sm:max-w-md"
+					className="top-0 flex h-dvh max-h-dvh w-full max-w-md translate-y-0 flex-col gap-0 rounded-none p-0 sm:top-1/2 sm:h-auto sm:max-h-[calc(100dvh-3rem)] sm:max-w-lg sm:-translate-y-1/2 sm:rounded-xl"
 					initialFocus={() => document.getElementById('f-beschreibung')}
 				>
 					<DialogHeader className="shrink-0 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
@@ -239,7 +242,9 @@ export function ExpenseFormSection({
 						className="flex min-h-0 flex-1 flex-col"
 						onSubmit={(event) => {
 							event.preventDefault();
-							if (!formSaving) onSubmit();
+							if (formSaving || savingRecurringTemplate) return;
+							if (editingTemplate) onSaveRecurringTemplate();
+							else onSubmit();
 						}}
 					>
 						<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
@@ -412,11 +417,13 @@ export function ExpenseFormSection({
 											)}
 										</FieldGroup>
 									)}
-									<SplitReview
-										members={splitCandidates}
-										splits={previewSplits}
-										paidByMemberId={paidByMemberId}
-									/>
+									{splitMode !== 'manual' && (
+										<SplitReview
+											members={splitCandidates}
+											splits={previewSplits}
+											paidByMemberId={paidByMemberId}
+										/>
+									)}
 								</FieldSet>
 								<Separator />
 								<Collapsible open={showReceipt} onOpenChange={setShowReceipt}>
@@ -464,7 +471,11 @@ export function ExpenseFormSection({
 										<Repeat2 data-icon="inline-start" />
 										Fixkosten-Vorlage
 										{recurringOpen && (
-											<Badge variant="secondary">Alle {recurringIntervalMonths} Monate</Badge>
+											<Badge variant="secondary">
+												{recurringIntervalMonths === 1
+													? 'Monatlich'
+													: `Alle ${recurringIntervalMonths} Monate`}
+											</Badge>
 										)}
 										<ChevronDown data-icon="inline-end" className="ml-auto" />
 									</CollapsibleTrigger>
@@ -537,43 +548,45 @@ export function ExpenseFormSection({
 						</div>
 						<Separator />
 						<div className="flex shrink-0 flex-col gap-2 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-							{editingRecurringExpense && !isEditingQueuedExpense && !isEditingQueuedRecurring && (
-								<Button
-									type="button"
-									variant="outline"
-									className="min-h-11"
-									disabled={formSaving}
-									onClick={onSaveRecurringTemplate}
-								>
-									{savingRecurringTemplate && <Spinner data-icon="inline-start" />}Vorlage speichern
-								</Button>
-							)}
 							<div className="flex gap-2">
 								<Button
-									type="button"
-									variant="outline"
-									className="min-h-11"
-									onClick={requestClose}
-									disabled={formSaving}
-								>
-									Abbrechen
-								</Button>
-								<Button
 									type="submit"
-									className="min-h-11 flex-1"
-									disabled={formSaving}
+									className="flex-1"
+									disabled={formSaving || savingRecurringTemplate}
 									aria-label={
-										isEditingQueuedRecurring ? 'Fixkosten-Vorlage speichern' : 'Ausgabe speichern'
+										isEditingQueuedRecurring || editingTemplate
+											? 'Fixkosten-Vorlage speichern'
+											: 'Ausgabe speichern'
 									}
 								>
-									{formSaving && <Spinner data-icon="inline-start" />}
-									{isEditingQueuedRecurring
+									{(formSaving || savingRecurringTemplate) && <Spinner data-icon="inline-start" />}
+									{isEditingQueuedRecurring || editingTemplate
 										? 'Vorlage speichern'
 										: editingRecurringExpense
 											? 'Als Ausgabe speichern'
 											: 'Speichern'}
 								</Button>
+								<Button
+									type="button"
+									variant="ghost"
+									onClick={requestClose}
+									disabled={formSaving || savingRecurringTemplate}
+								>
+									Abbrechen
+								</Button>
 							</div>
+							{editingTemplate && (
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="self-start"
+									disabled={formSaving || savingRecurringTemplate}
+									onClick={onSubmit}
+								>
+									Als Ausgabe speichern
+								</Button>
+							)}
 						</div>
 					</form>
 				</DialogContent>

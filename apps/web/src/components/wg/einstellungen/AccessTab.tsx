@@ -275,6 +275,12 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 		}
 	}
 
+	function cancelRotateConfirm(): void {
+		setRotateConfirm(false);
+		setAccessError(null);
+		setAccessMessage(null);
+	}
+
 	return (
 		<>
 			<Section
@@ -337,28 +343,55 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 						)}
 					</Field>
 					<div className="border-border border-t pt-2">
-						<div className="flex min-h-[44px] items-center justify-between gap-3">
-							<div className="min-w-0">
+						<div className="flex min-h-[44px] flex-wrap items-center justify-between gap-3">
+							<div className="min-w-0 flex-1 basis-40">
 								<div className="text-foreground text-sm font-medium">WG-Code erneuern</div>
 								<div className="text-muted-foreground mt-0.5 text-xs">
 									Alte Links funktionieren danach nicht mehr.
 								</div>
 							</div>
-							<Button
-								type="button"
-								variant={rotateConfirm ? 'destructive' : 'outline'}
-								onClick={() => void rotateShareCode()}
-								disabled={accessPending !== null}
-								aria-label={rotateConfirm ? 'WG-Code-Erneuerung bestätigen' : 'WG-Code erneuern'}
-								className="h-11 min-h-[44px] shrink-0"
-							>
-								{accessPending === 'rotate' && <Spinner aria-hidden />}
-								{accessPending === 'rotate'
-									? 'Speichert…'
-									: rotateConfirm
-										? 'Bestätigen'
-										: 'Erneuern'}
-							</Button>
+							{rotateConfirm ? (
+								<div className="flex shrink-0 items-center gap-2">
+									<Button
+										type="button"
+										variant="ghost"
+										onClick={cancelRotateConfirm}
+										disabled={accessPending !== null}
+										aria-label="WG-Code-Erneuerung abbrechen"
+										className="h-9 min-h-9 shrink-0 px-2.5"
+									>
+										Abbrechen
+									</Button>
+									<Button
+										type="button"
+										variant="destructive"
+										onClick={() => void rotateShareCode()}
+										disabled={accessPending !== null}
+										aria-label="WG-Code-Erneuerung bestätigen"
+										className="h-9 min-h-9 shrink-0 px-2.5"
+									>
+										{accessPending === 'rotate' ? (
+											<>
+												<Spinner aria-hidden />
+												Speichert…
+											</>
+										) : (
+											'Bestätigen'
+										)}
+									</Button>
+								</div>
+							) : (
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => void rotateShareCode()}
+									disabled={accessPending !== null}
+									aria-label="WG-Code erneuern"
+									className="h-11 min-h-[44px] shrink-0"
+								>
+									Erneuern
+								</Button>
+							)}
 						</div>
 					</div>
 					{accessMessage && (

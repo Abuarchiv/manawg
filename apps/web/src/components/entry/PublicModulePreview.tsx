@@ -89,7 +89,7 @@ function PreviewRows({
 	if (!featured) {
 		return (
 			<ItemGroup className="gap-2">
-				<Item variant="muted" size="sm">
+				<Item size="sm" className="rounded-none px-0">
 					<ItemMedia variant="icon">
 						<module.Icon aria-hidden />
 					</ItemMedia>
@@ -110,7 +110,7 @@ function PreviewRows({
 					['Bananen', '6 Stück', 'Offen'],
 					['Spülmittel', '1 Flasche', 'Erledigt'],
 				].map(([title, detail, state]) => (
-					<Item key={title} variant="muted" size="sm">
+					<Item key={title} size="sm" className="rounded-none px-0">
 						<ItemMedia variant="icon">
 							<ListChecks aria-hidden />
 						</ItemMedia>
@@ -128,7 +128,7 @@ function PreviewRows({
 	if (module.slug === 'ausgaben') {
 		return (
 			<ItemGroup className="gap-2">
-				<Item variant="muted" size="sm">
+				<Item size="sm" className="rounded-none px-0">
 					<ItemMedia variant="icon">
 						<Receipt aria-hidden />
 					</ItemMedia>
@@ -142,7 +142,7 @@ function PreviewRows({
 						<Badge variant="outline">4 Personen</Badge>
 					</ItemActions>
 				</Item>
-				<Item variant="muted" size="sm">
+				<Item size="sm" className="rounded-none px-0">
 					<ItemContent className="min-w-0">
 						<ItemTitle className="line-clamp-none break-words">Aufteilung</ItemTitle>
 						<ItemDescription className="line-clamp-none break-words">
@@ -157,7 +157,7 @@ function PreviewRows({
 	if (module.slug === 'putzen') {
 		return (
 			<ItemGroup className="gap-2">
-				<Item variant="muted" size="sm">
+				<Item size="sm" className="rounded-none px-0">
 					<ItemMedia>
 						<Avatar size="sm">
 							<AvatarFallback>S</AvatarFallback>
@@ -178,7 +178,7 @@ function PreviewRows({
 	if (module.slug === 'pinnwand') {
 		return (
 			<ItemGroup className="gap-2">
-				<Item variant="muted" size="sm">
+				<Item size="sm" className="rounded-none px-0">
 					<ItemMedia variant="icon">
 						<Megaphone aria-hidden />
 					</ItemMedia>
@@ -195,7 +195,7 @@ function PreviewRows({
 
 	return (
 		<ItemGroup className="gap-2">
-			<Item variant="muted" size="sm">
+			<Item size="sm" className="rounded-none px-0">
 				<ItemMedia variant="icon">
 					<module.Icon aria-hidden />
 				</ItemMedia>
@@ -217,10 +217,12 @@ function ExampleCard({
 	return (
 		<article aria-label={`${module.title}, Beispiel-WG`}>
 			<Card size={featured ? 'default' : 'sm'} className="h-full">
-				<CardHeader>
-					<CardTitle>{featured ? copy.title : module.title}</CardTitle>
-					<CardDescription>{featured ? module.description : copy.detail}</CardDescription>
-				</CardHeader>
+				{!featured && (
+					<CardHeader>
+						<CardTitle>{module.title}</CardTitle>
+						<CardDescription>{copy.detail}</CardDescription>
+					</CardHeader>
+				)}
 				<CardContent>
 					<PreviewRows module={module} copy={copy} featured={featured} />
 				</CardContent>
@@ -245,7 +247,7 @@ export function PublicModulePreviews({ modules }: { modules: PublicPreviewModule
 					Beispiel-WG
 				</Badge>
 			</div>
-			<div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 				{modules.map((module) => (
 					<ExampleCard key={module.slug} module={module} />
 				))}
@@ -262,11 +264,8 @@ export function PublicModulePreview({
 	homeHref?: string;
 }) {
 	return (
-		<section aria-labelledby="public-module-preview-heading" className="flex flex-col gap-3">
-			<div className="flex items-center justify-between gap-3">
-				<h2 id="public-module-preview-heading" className="text-base font-semibold">
-					{module.title}
-				</h2>
+		<section aria-label={`Beispielansicht für ${module.title}`} className="flex flex-col gap-3">
+			<div className="flex justify-end">
 				<Badge variant="secondary" className="shrink-0">
 					Beispiel-WG · fiktiv
 				</Badge>

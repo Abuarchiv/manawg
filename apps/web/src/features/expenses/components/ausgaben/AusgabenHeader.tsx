@@ -20,7 +20,7 @@ export function AusgabenHeader({
 	return (
 		<header className="flex flex-wrap items-center justify-between gap-2">
 			<div className="min-w-0">
-				<h1 className="text-[22px] font-semibold tracking-tight text-foreground">Ausgaben</h1>
+				<h1 className="text-xl font-semibold tracking-tight text-foreground">Ausgaben</h1>
 				<p
 					aria-live="polite"
 					aria-atomic="true"
@@ -30,7 +30,7 @@ export function AusgabenHeader({
 				</p>
 			</div>
 			<div
-				className="flex min-w-0 flex-wrap items-center justify-end gap-1.5"
+				className="flex min-w-0 flex-wrap items-center justify-end gap-2"
 				role="toolbar"
 				aria-label="Ausgaben-Aktionen"
 			>

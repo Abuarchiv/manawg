@@ -1,14 +1,6 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import {
-	Card,
-	CardAction,
-	CardDescription,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import {
 	PUSH_PRIMING_DISMISS_KEY,
@@ -179,39 +171,41 @@ export function PushPrimingPrompt({
 			role="status"
 			aria-live="polite"
 			aria-label="Benachrichtigungen aktivieren"
-			className="w-full animate-in fade-in duration-300"
+			className="flex w-full flex-wrap items-center gap-3 border-t border-border pt-4"
 		>
-			<Card>
-				<CardHeader>
-					<CardTitle>Benachrichtigungen</CardTitle>
-					<CardDescription>
-						Erhalte Hinweise zu fälligen Aufgaben und neuen WG-Nachrichten.
-					</CardDescription>
-					{activationError && (
-						<p role="alert" className="text-sm text-destructive">
-							{activationError}
-						</p>
-					)}
-					<CardAction>
-						<Button
-							variant="ghost"
-							size="icon"
-							type="button"
-							onClick={dismiss}
-							aria-label="Hinweis schließen"
-							className="size-11 text-muted-foreground"
-						>
-							<X aria-hidden />
-						</Button>
-					</CardAction>
-				</CardHeader>
-				<CardFooter>
-					<Button type="button" onClick={() => void enable()} disabled={busy} className="min-h-11">
-						{busy && <Spinner data-icon="inline-start" aria-hidden />}
-						Aktivieren
-					</Button>
-				</CardFooter>
-			</Card>
+			<div className="min-w-0 flex-1 basis-48">
+				<p className="text-sm font-medium">Benachrichtigungen</p>
+				<p className="text-[13px] text-muted-foreground">
+					Erhalte Hinweise zu fälligen Aufgaben und neuen WG-Nachrichten.
+				</p>
+				{activationError && (
+					<p role="alert" className="text-sm text-destructive">
+						{activationError}
+					</p>
+				)}
+			</div>
+			<div className="flex items-center gap-2">
+				<Button
+					type="button"
+					variant="outline"
+					size="sm"
+					onClick={() => void enable()}
+					disabled={busy}
+				>
+					{busy && <Spinner data-icon="inline-start" aria-hidden />}
+					Aktivieren
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon"
+					type="button"
+					onClick={dismiss}
+					aria-label="Hinweis schließen"
+					className="size-11 text-muted-foreground"
+				>
+					<X aria-hidden />
+				</Button>
+			</div>
 		</div>
 	);
 }

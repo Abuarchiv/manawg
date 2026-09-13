@@ -226,7 +226,7 @@ export default function SuchePage() {
 										variant="outline"
 										size="sm"
 										onClick={() => setQuery(suggestion)}
-										className="min-h-11 rounded-full"
+										className="min-h-11 rounded-lg"
 									>
 										{suggestion}
 									</Button>
@@ -271,7 +271,7 @@ export default function SuchePage() {
 										size="sm"
 										onClick={() => toggleModule(module.id)}
 										aria-pressed={moduleFilters.includes(module.id)}
-										className="min-h-11 rounded-full"
+										className="min-h-11 rounded-lg"
 									>
 										{module.label}
 									</Button>

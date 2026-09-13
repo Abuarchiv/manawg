@@ -2,7 +2,7 @@
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/shared/lib/cn';
+import { Spinner } from '@/components/ui/spinner';
 import { RotateCw } from 'lucide-react';
 
 interface LoadErrorBannerProps {
@@ -25,17 +25,19 @@ interface LoadErrorBannerProps {
  */
 export function LoadErrorBanner({ message, onRetry, busy, retryLabel }: LoadErrorBannerProps) {
 	return (
-		<Alert variant="destructive" className="gap-3">
-			<AlertDescription className="text-current">{message}</AlertDescription>
+		<Alert variant="destructive" className="flex flex-wrap items-center gap-x-3 gap-y-2">
+			<AlertDescription className="min-w-0 flex-1 basis-48 text-current">
+				{message}
+			</AlertDescription>
 			<Button
 				variant="outline"
-				size="lg"
+				size="sm"
 				type="button"
 				onClick={onRetry}
 				disabled={busy}
-				className="min-h-11 max-w-full whitespace-normal sm:w-auto"
+				className="max-w-full shrink-0 whitespace-normal"
 			>
-				<RotateCw data-icon="inline-start" className={cn(busy && 'animate-spin')} aria-hidden />
+				{busy ? <Spinner aria-hidden /> : <RotateCw data-icon="inline-start" aria-hidden />}
 				{busy ? 'Lädt...' : retryLabel}
 			</Button>
 		</Alert>

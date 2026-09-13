@@ -44,20 +44,19 @@ export function WgAppHeader() {
 					</h1>
 					<p className="truncate text-sm text-muted-foreground">Hallo, {identity.name}.</p>
 				</div>
-				<ChatTopBarLink
-					href={`${baseHref}/chat`}
-					className={cn(
-						buttonVariants({ variant: 'ghost', size: 'icon' }),
-						'relative size-11 shrink-0',
-					)}
-				/>
-				<Link
-					href={`${baseHref}/einstellungen`}
-					aria-label="Konto und WG-Einstellungen öffnen"
-					className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11 shrink-0')}
-				>
-					<UserRound aria-hidden />
-				</Link>
+				<div className="flex shrink-0 items-center gap-2">
+					<ChatTopBarLink
+						href={`${baseHref}/chat`}
+						className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'relative shrink-0')}
+					/>
+					<Link
+						href={`${baseHref}/einstellungen`}
+						aria-label="Konto und WG-Einstellungen öffnen"
+						className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'shrink-0')}
+					>
+						<UserRound aria-hidden />
+					</Link>
+				</div>
 			</div>
 		</header>
 	);

@@ -9,12 +9,12 @@
 		padding-top: 0.75rem;
 	}
 	[data-home-header] h1 {
-		font-size: 1.125rem;
-		line-height: 1.5rem;
+		font-size: 1.25rem;
+		line-height: 1.625rem;
 	}
 	[data-home-header] p {
-		font-size: 0.75rem;
-		line-height: 1.125rem;
+		font-size: 0.8125rem;
+		line-height: 1.25rem;
 	}
 	[data-home-content] {
 		gap: 1.25rem;
@@ -70,12 +70,9 @@
 	:is([data-household-content], [data-finance-content]) [data-slot="item-title"],
 	:is([data-household-content], [data-finance-content]) [data-slot="item-description"],
 	:is([data-household-content], [data-finance-content]) [data-slot="card-description"],
-	:is([data-household-content], [data-finance-content]) [data-slot="field-label"],
 	:is([data-household-content], [data-finance-content]) [data-slot="empty-title"],
 	:is([data-household-content], [data-finance-content]) [data-slot="empty-description"],
-	:is([data-household-content], [data-finance-content]) p.text-sm,
-	:is([data-household-content], [data-finance-content]) button,
-	:is([data-household-content], [data-finance-content]) nav a {
+	:is([data-household-content], [data-finance-content]) p.text-sm {
 		font-size: 0.8125rem;
 		line-height: 1.125rem;
 	}
@@ -97,40 +94,7 @@
 	}
 }
 
-/* Compact visible controls; enlarged button hit areas do not enlarge the box.
-   Apply to WG dialogs too, since they render in portals outside main. */
 @media (max-width: 639px) {
-	body:has(.group\/wg-shell) [data-slot="button"]:not([data-bottom-nav-item]) {
-		min-height: 2.25rem;
-		min-width: 2.75rem;
-		height: auto;
-		font-size: 0.8125rem;
-		line-height: 1.125rem;
-		padding-top: 0.25rem;
-		padding-bottom: 0.25rem;
-		border-radius: var(--radius-lg);
-	}
-	body:has(.group\/wg-shell) [data-slot="button"]:not([data-bottom-nav-item])::after {
-		content: "";
-		position: absolute;
-		inset: -0.25rem 0;
-		min-height: 2.75rem;
-	}
-	body:has(.group\/wg-shell) [data-slot="input"]:not([type="file"]),
-	body:has(.group\/wg-shell) [data-slot="native-select"] {
-		min-height: 2.5rem;
-		height: 2.5rem;
-		font-size: 1rem;
-		background-color: transparent;
-	}
-	body:has(.group\/wg-shell) [data-slot="input-group"]:not(:has(textarea)) {
-		min-height: 2.5rem;
-		height: 2.5rem;
-	}
-	body:has(.group\/wg-shell) [data-slot="input-group-control"]:not(textarea) {
-		min-height: 0;
-		height: 100%;
-	}
 	body:has(.group\/wg-shell) [data-slot="card"] {
 		--card-spacing: 0.75rem;
 	}
@@ -140,10 +104,6 @@
 	}
 	body:has(.group\/wg-shell) [data-slot="field-group"] {
 		gap: 0.75rem;
-	}
-	body:has(.group\/wg-shell) [data-slot="field-label"] {
-		font-size: 0.75rem;
-		line-height: 1rem;
 	}
 }
 
@@ -572,19 +532,6 @@ body {
 	transform-origin: left;
 }
 
-/* iOS Safari zoom-on-focus fix — inputs must be >= 16px on mobile */
-@media (max-width: 640px) {
-	input[type="text"],
-	input[type="email"],
-	input[type="password"],
-	input[type="number"],
-	input[type="tel"],
-	input[type="search"],
-	textarea,
-	select {
-		font-size: 16px;
-	}
-}
 /* ─── NATIVE-APP POLISH ──────────────────────────────────────────────────
    Bottom-sheet drag handle, skeleton loader, keyboard-aware FAB. Mobile-only
    fragments so desktop stays unchanged.

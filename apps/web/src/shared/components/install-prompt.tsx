@@ -88,6 +88,9 @@ export function InstallPrompt() {
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
+		// In-app forms and navigation must remain unobstructed. Installation is
+		// available on demand in settings; the automatic prompt is for entry only.
+		if (inWgApp) return;
 		if (isDismissed()) return;
 		if (isAppInstalled()) return;
 
@@ -179,7 +182,7 @@ export function InstallPrompt() {
 		}
 	};
 
-	if (hidden) return null;
+	if (hidden || inWgApp) return null;
 	if (!event && !iosHint) return null;
 
 	return (

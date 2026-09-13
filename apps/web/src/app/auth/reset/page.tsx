@@ -15,21 +15,29 @@ export default async function PasswordResetPage() {
 	return (
 		<EntryFrame
 			title="Passwort zurücksetzen"
-			description="Lege ein neues Passwort für dein Konto fest."
+			description={
+				recoveryRequested
+					? 'Lege ein neues Passwort für dein Konto fest.'
+					: 'Fordere einen neuen Link an, wenn dein bisheriger abgelaufen ist.'
+			}
 			headingId="password-reset-heading"
 			backHref="/neu"
 		>
-			<Card>
-				<CardHeader>
-					<CardTitle>
-						<h2>Neues Passwort</h2>
-					</CardTitle>
-					<CardDescription>Mindestens sechs Zeichen.</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<PasswordResetForm recoveryRequested={recoveryRequested} />
-				</CardContent>
-			</Card>
+			{recoveryRequested ? (
+				<Card>
+					<CardHeader>
+						<CardTitle>
+							<h2 className="text-base leading-5">Neues Passwort</h2>
+						</CardTitle>
+						<CardDescription>Mindestens sechs Zeichen.</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<PasswordResetForm recoveryRequested />
+					</CardContent>
+				</Card>
+			) : (
+				<PasswordResetForm recoveryRequested={false} />
+			)}
 		</EntryFrame>
 	);
 }

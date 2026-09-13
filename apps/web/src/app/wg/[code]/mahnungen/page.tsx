@@ -1,5 +1,5 @@
 'use client';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { BackLink } from '@/components/wg/BackLink';
@@ -19,7 +19,6 @@ import {
 } from '@/features/expenses/debts';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
 import { REMINDER_COOLDOWN_HOURS, canSendReminder } from '@/features/expenses/reminders';
-import { cn } from '@/shared/lib/cn';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface ExpenseSplitDto {
@@ -47,7 +46,10 @@ export default function MahnungenPage() {
 	const [reminders, setReminders] = useState<ReminderHistoryItem[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
-	const [loadError, setLoadError] = useState<string | null>(null);
+	const [loadErrors, setLoadErrors] = useState<{
+		expenses: string | null;
+		reminders: string | null;
+	}>({ expenses: null, reminders: null });
 	const [expensesLoadFailed, setExpensesLoadFailed] = useState(false);
 	const [remindersLoadFailed, setRemindersLoadFailed] = useState(false);
 
@@ -68,29 +70,40 @@ export default function MahnungenPage() {
 				}),
 			]);
 
-			let nextError: string | null = null;
+			const nextErrors: { expenses: string | null; reminders: string | null } = {
+				expenses: null,
+				reminders: null,
+			};
 			if (expensesRes.ok) {
 				setExpenses(expensesRes.data.expenses);
 				setPayments(expensesRes.data.payments ?? []);
 				setExpensesLoadFailed(false);
 			} else {
 				setExpensesLoadFailed(true);
-				nextError = getWgLoadErrorMessage('Ausgaben', expensesRes.status, expensesRes.error, {
-					verb: 'konnten',
-				});
+				nextErrors.expenses = getWgLoadErrorMessage(
+					'Ausgaben',
+					expensesRes.status,
+					expensesRes.error,
+					{
+						verb: 'konnten',
+					},
+				);
 			}
 			if (remindersRes.ok) {
 				setReminders(remindersRes.data.reminders);
 				setRemindersLoadFailed(false);
 			} else {
 				setRemindersLoadFailed(true);
-				if (!nextError) {
-					nextError = getWgLoadErrorMessage('Mahnungen', remindersRes.status, remindersRes.error, {
+				nextErrors.reminders = getWgLoadErrorMessage(
+					'Mahnungen',
+					remindersRes.status,
+					remindersRes.error,
+					{
 						verb: 'konnten',
-					});
-				}
+					},
+				);
 			}
-			setLoadError(nextError);
+			setLoadErrors(nextErrors);
 			if (initial) setLoading(false);
 			else setRefreshing(false);
 		},
@@ -158,29 +171,22 @@ export default function MahnungenPage() {
 					<p className="text-sm text-muted-foreground">
 						Max. alle {REMINDER_COOLDOWN_HOURS} Stunden pro Person
 					</p>
-					<output
-						aria-live="polite"
-						aria-hidden={!refreshing}
-						className={cn(
-							'flex min-h-5 items-center gap-2 text-sm text-muted-foreground',
-							!refreshing && 'invisible',
-						)}
-					>
+					<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
 						<Spinner />
 						Wird aktualisiert…
 					</output>
 				</div>
 			</header>
-			{loadError && (
-				<LoadErrorBanner
-					message={loadError}
-					onRetry={() => void load(true)}
-					busy={loading || refreshing}
-					retryLabel="Erneut laden"
-				/>
-			)}
 			<section className="flex flex-col gap-3">
 				<h2 className="text-base font-semibold">Offene Schulden</h2>
+				{loadErrors.expenses && (
+					<LoadErrorBanner
+						message={loadErrors.expenses}
+						onRetry={() => void load(true)}
+						busy={loading || refreshing}
+						retryLabel="Erneut laden"
+					/>
+				)}
 				{loading ? (
 					<div
 						className="flex flex-col gap-3"
@@ -190,14 +196,7 @@ export default function MahnungenPage() {
 						<Skeleton className="h-24 w-full" />
 						<Skeleton className="h-24 w-full" />
 					</div>
-				) : expensesLoadFailed && rows.length === 0 ? (
-					<Empty>
-						<EmptyHeader>
-							<EmptyTitle>Schulden noch nicht geladen</EmptyTitle>
-							<EmptyDescription>Lade die Daten erneut.</EmptyDescription>
-						</EmptyHeader>
-					</Empty>
-				) : rows.length === 0 ? (
+				) : expensesLoadFailed && rows.length === 0 ? null : rows.length === 0 ? (
 					<Empty>
 						<EmptyHeader>
 							<EmptyTitle>Alles ausgeglichen — nichts zu mahnen.</EmptyTitle>
@@ -245,16 +244,17 @@ export default function MahnungenPage() {
 			</section>
 			<section className="flex flex-col gap-3">
 				<h2 className="text-base font-semibold">Letzte Mahnungen (30 Tage)</h2>
+				{loadErrors.reminders && (
+					<LoadErrorBanner
+						message={loadErrors.reminders}
+						onRetry={() => void load(true)}
+						busy={loading || refreshing}
+						retryLabel="Erneut laden"
+					/>
+				)}
 				{loading ? (
 					<Skeleton className="h-20 w-full" />
-				) : remindersLoadFailed && reminders.length === 0 ? (
-					<Empty>
-						<EmptyHeader>
-							<EmptyTitle>Mahnungen noch nicht geladen</EmptyTitle>
-							<EmptyDescription>Lade die Daten erneut.</EmptyDescription>
-						</EmptyHeader>
-					</Empty>
-				) : (
+				) : remindersLoadFailed && reminders.length === 0 ? null : (
 					<ReminderHistory items={reminders} memberName={memberName} />
 				)}
 			</section>

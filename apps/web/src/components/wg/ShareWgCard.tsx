@@ -200,7 +200,7 @@ function ShareWgBody({
 				role="img"
 				aria-label={`QR-Code zum Beitritt der WG ${wgName}`}
 				className={cn(
-					'border-border mb-4 flex justify-center rounded-lg border bg-white p-3',
+					'mx-auto mb-4 flex w-fit justify-center rounded-lg bg-white p-3',
 					joiningEnabled ? '' : 'opacity-45 grayscale',
 				)}
 			>

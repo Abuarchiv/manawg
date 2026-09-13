@@ -312,7 +312,7 @@ export default function AbosPage() {
 					</output>
 				</div>
 				<Button
-					className="size-11 shrink-0 px-0 sm:w-auto sm:px-3"
+					className="w-9 shrink-0 px-0 sm:w-auto sm:px-3"
 					onClick={() => setShowCreate(true)}
 					aria-label="Neues Abo"
 				>

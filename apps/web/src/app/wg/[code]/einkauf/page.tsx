@@ -475,8 +475,8 @@ export default function EinkaufPage() {
 					}}
 					className="flex flex-col gap-3"
 				>
-					<FieldGroup className="grid grid-cols-[minmax(0,1fr)_4.5rem_2.75rem] items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-						<Field className="sm:col-span-2" data-invalid={Boolean(addError)}>
+					<FieldGroup className="grid grid-cols-[minmax(0,1fr)_4.5rem_2.75rem] items-end gap-2 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
+						<Field data-invalid={Boolean(addError)}>
 							<FieldLabel htmlFor="shopping-name">Artikel</FieldLabel>
 							<Input
 								id="shopping-name"

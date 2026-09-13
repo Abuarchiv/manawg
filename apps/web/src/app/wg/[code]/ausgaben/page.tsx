@@ -690,7 +690,8 @@ export default function AusgabenPage() {
 			finishSavingRecurringTemplate();
 			return;
 		}
-		if (wasEditingQueuedRecurring) {
+		// A completed template edit must not turn the still-open form into a new expense.
+		if (wasEditingQueuedRecurring || editingRecurringExpense) {
 			resetForm();
 			setShowForm(false);
 			removeDraft(draftKey);
