@@ -185,7 +185,7 @@ export function selectSettlementScope(
 	const selected: SettlementPreview['splits'] = [];
 	let remainingCents = netCents;
 	for (const split of orderedSplits) {
-		if (remainingCents <= 0) break;
+		if (remainingCents <= 0 || selected.length >= MAX_SETTLEMENT_SPLITS) break;
 		if (split.debtorMemberId !== fromMemberId) continue;
 		if (split.paidByMemberId !== toMemberId) continue;
 		if (split.settledAt !== null) continue;

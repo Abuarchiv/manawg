@@ -97,6 +97,42 @@ test.describe('Settlement scope', () => {
 		});
 	});
 
+	test('caps a 51-split scope and selects the remaining split on the follow-up', () => {
+		const expenses = Array.from({ length: 51 }, (_, index) =>
+			expense(`expense-${String(index).padStart(2, '0')}`, memberA, '2026-09-01T10:00:00.000Z', [
+				{ id: memberB, amountCents: 1 },
+			]),
+		);
+
+		const firstScope = selectSettlementScope(expenses, members, [], memberB, memberA);
+
+		expect(firstScope.splits).toHaveLength(50);
+		expect(firstScope.settleableCents).toBe(50);
+		expect(firstScope.remainingCents).toBe(1);
+
+		const firstSplitIds = new Set(firstScope.splits.map((split) => split.id));
+		const followUpScope = selectSettlementScope(
+			expenses.map((currentExpense) => ({
+				...currentExpense,
+				splits: currentExpense.splits.map((split) => ({
+					...split,
+					settledAt: firstSplitIds.has(split.id) ? '2026-09-02T10:00:00.000Z' : split.settledAt,
+				})),
+			})),
+			members,
+			[],
+			memberB,
+			memberA,
+		);
+
+		expect(followUpScope).toEqual({
+			netCents: 1,
+			settleableCents: 1,
+			remainingCents: 0,
+			splits: [{ id: 'expense-50-split-2222', expenseId: 'expense-50', amountCents: 1 }],
+		});
+	});
+
 	test('reports a net-only debt when no direct split exists', () => {
 		const actual = selectSettlementScope(
 			[
