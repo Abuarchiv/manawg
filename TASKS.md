@@ -2,8 +2,8 @@
 
 Stand: 2026-09-19, Europe/Berlin  
 Scope: `/Users/abu/Company/manawg-app`  
-Base commit: `cf357456b0078df0fbe7f5c64d86a2f0135d4d86` (`main`)  
-Working tree: uncommitted existing work; no release SHA is frozen.
+Current commit: `7bb5a091bcc26f966c12f5cc4f489455aaa943bc` (`main`)
+Working tree: one uncommitted release-evidence edit; no release SHA is frozen.
 
 Statuswerte: `offen` · `in Arbeit` · `erledigt` · `blockiert`
 

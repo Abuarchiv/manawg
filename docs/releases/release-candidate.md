@@ -3,8 +3,8 @@
 Status: BLOCKED — kein freigegebener Release-Kandidat
 Stand: 2026-09-19, Europe/Berlin
 Checkout: /Users/abu/Company/manawg-app
-Basis-Commit: cf357456b0078df0fbe7f5c64d86a2f0135d4d86
-Arbeitsbaum: uncommitted; dieser Nachweis ist kein Deployment- oder Produktionsfreigabeprotokoll.
+Aktueller Commit: 7bb5a091bcc26f966c12f5cc4f489455aaa943bc
+Arbeitsbaum: eine uncommitted Evidence-Dokumentänderung; dieser Nachweis ist kein Deployment- oder Produktionsfreigabeprotokoll.
 
 ## Aktuell verifiziert
 
