@@ -41,13 +41,10 @@ Use the exact component path `@/components/ui/<name>`.
 | `@/components/ui/avatar` | `Avatar`, `AvatarImage`, `AvatarFallback` |
 | `@/components/ui/separator` | `Separator` |
 | `@/components/ui/tabs` | `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent`, `tabsListVariants` |
-| `@/components/ui/select` | `Select`, `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectGroup`, `SelectLabel`, `SelectItem`, `SelectSeparator`, `SelectScrollUpButton`, `SelectScrollDownButton` |
 | `@/components/ui/native-select` | `NativeSelect`, `NativeSelectOptGroup`, `NativeSelectOption` |
 | `@/components/ui/toggle-group` | `ToggleGroup`, `ToggleGroupItem` |
 | `@/components/ui/toggle` | `Toggle`, `toggleVariants` |
-| `@/components/ui/radio-group` | `RadioGroup`, `RadioGroupItem` |
 | `@/components/ui/checkbox` | `Checkbox` |
-| `@/components/ui/switch` | `Switch` |
 | `@/components/ui/drawer` | `Drawer`, `DrawerPortal`, `DrawerOverlay`, `DrawerSwipeHandle`, `DrawerTrigger`, `DrawerClose`, `DrawerContent`, `DrawerHeader`, `DrawerFooter`, `DrawerTitle`, `DrawerDescription` |
 | `@/components/ui/dialog` | `Dialog`, `DialogTrigger`, `DialogPortal`, `DialogClose`, `DialogOverlay`, `DialogContent`, `DialogHeader`, `DialogFooter`, `DialogTitle`, `DialogDescription` |
 | `@/components/ui/alert-dialog` | `AlertDialog`, `AlertDialogTrigger`, `AlertDialogPortal`, `AlertDialogOverlay`, `AlertDialogContent`, `AlertDialogHeader`, `AlertDialogFooter`, `AlertDialogMedia`, `AlertDialogTitle`, `AlertDialogDescription`, `AlertDialogAction`, `AlertDialogCancel` |
@@ -58,7 +55,6 @@ Use the exact component path `@/components/ui/<name>`.
 | `@/components/ui/progress` | `Progress`, `ProgressTrack`, `ProgressIndicator`, `ProgressLabel`, `ProgressValue` |
 | `@/components/ui/collapsible` | `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` |
 | `@/components/ui/dropdown-menu` | `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuPortal`, `DropdownMenuGroup`, `DropdownMenuSub`, `DropdownMenuRadioGroup`, `DropdownMenuSubTrigger`, `DropdownMenuSubContent`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuCheckboxItem`, `DropdownMenuRadioItem`, `DropdownMenuLabel`, `DropdownMenuSeparator`, `DropdownMenuShortcut` |
-| `@/components/ui/command` | `Command`, `CommandDialog`, `CommandInput`, `CommandList`, `CommandEmpty`, `CommandGroup`, `CommandItem`, `CommandShortcut`, `CommandSeparator` |
 | `@/components/ui/message` | `MessageGroup`, `Message`, `MessageAvatar`, `MessageContent`, `MessageFooter`, `MessageHeader` |
 | `@/components/ui/bubble` | `BubbleGroup`, `Bubble`, `BubbleContent`, `BubbleReactions` |
 | `@/components/ui/message-scroller` | `MessageScrollerProvider`, `MessageScroller`, `MessageScrollerViewport`, `MessageScrollerContent`, `MessageScrollerItem`, `MessageScrollerButton`, `useMessageScroller`, `useMessageScrollerScrollable`, `useMessageScrollerVisibility` |
@@ -177,9 +173,8 @@ Base UI family. These are the stable consumer paths:
 
 Use the animated checkbox for shopping completion and the animated switch for
 settings transitions. Use the animated collapsible panel for optional fields.
-The official shadcn versions remain available at `@/components/ui/checkbox`,
-`@/components/ui/switch`, and `@/components/ui/collapsible` when no motion is
-needed.
+The official shadcn versions remain available at `@/components/ui/checkbox` and
+`@/components/ui/collapsible` when no motion is needed.
 
 All Animate UI motion is wrapped by the shared theme provider with
 `MotionConfig reducedMotion="user"`; do not add a second motion configuration
@@ -192,10 +187,9 @@ or animate the same lifecycle from two owners.
   support dependencies of the Animate UI and messaging registry items. Feature
   workers should not import these support paths directly unless the component
   contract above exposes the need.
-- `@/components/ui/ConfirmDialog`, `DeleteConfirmButton`, `EmptyState`,
-  `Toast`, and `styles` are legacy compatibility surfaces still used by
-  concurrent feature code. Do not add new consumers; migrate existing callers
-  only in their owning feature slice.
+- `@/components/ui/ConfirmDialog` and `Toast` are legacy compatibility surfaces
+  still used by active feature code. Do not add new consumers; migrate existing
+  callers only in their owning feature slice.
 - The final cleanup of old global presentation aliases remains Foundation work;
   Inter typography is active. No feature page, domain/API route, auth guard, draft,
   offline queue, or payment logic is changed by this contract.
