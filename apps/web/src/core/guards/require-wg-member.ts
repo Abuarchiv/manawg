@@ -41,7 +41,7 @@ function hasSupabaseAuthAttempt(req: NextRequest): boolean {
  *
  * Requests without any Supabase auth attempt return 401 before the WG lookup.
  * Authenticated requests continue through {@link requireMember} once, which
- * preserves membership and member-token verification.
+ * preserves server-side Supabase membership verification.
  *
  * Database errors from the WG lookup are thrown, so callers keep their
  * existing try/catch → `serverError` handling.

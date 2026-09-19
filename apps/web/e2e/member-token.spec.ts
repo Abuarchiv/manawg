@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { deriveMemberToken, verifyMemberToken } from '../src/core/guards/member-token';
 
@@ -29,4 +31,10 @@ test('member token verification rejects trailing non-hex data', () => {
 		if (previousSecret === undefined) Reflect.deleteProperty(process.env, 'MEMBER_SESSION_SECRET');
 		else process.env.MEMBER_SESSION_SECRET = previousSecret;
 	}
+});
+
+test('normal server membership verification does not depend on a browser token', async () => {
+	const source = await readFile(path.resolve(process.cwd(), 'src/core/guards/api-auth.ts'), 'utf8');
+	expect(source).toContain('verified: true');
+	expect(source).not.toContain('verifyMemberToken(');
 });
