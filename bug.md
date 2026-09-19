@@ -1356,3 +1356,293 @@ Generated: 2026-09-19 | Deep scan of all remaining unscanned files: hooks, utils
 - UX/Usability: 8+ bugs (unused parameters, future dates, settings defaults, custom intervals, error messages, copy/paste errors)
 - Configuration/Documentation: 10+ bugs (missing env vars, invalid PostHog config, wrong biome rules, stale dates, regex typos)
 - Fragility: 6+ bugs (hard-coded IDs, brittle parsing, redundant assertions, missing validation, type unsafe casts)
+
+---
+
+# ADDITIONAL BUGS (Deep Scan Round 6 - Final Sweep)
+
+Generated: 2026-09-19 | Deep scan of remaining features, API routes, shared lib, core auth/db/errors, components, e2e tests.
+
+---
+
+## CRITICAL (3)
+
+### C14: recurring-advance cron route uses wrong anchorAt variable
+- **File**: `apps/web/src/app/api/cron/recurring-advance/route.ts` line 119
+- **Category**: Logic Bug / Data Integrity
+- **Description**: When updating the recurring expense template after advancing, `anchorAt` is set to `template.nextDueAt` (the ORIGINAL value from the database), not `nextDueAt` (the local variable that has been updated by the while loop). This means after the first advance, the anchor is never updated, causing month-end due dates to drift over time instead of anchoring to the new due date. Recurring expenses will progressively lose alignment with the intended schedule.
+- **Fix**: Change `...(template.anchorAt ? {} : { anchorAt: template.nextDueAt })` to `...(template.anchorAt ? {} : { anchorAt: nextDueAt })`.
+
+### C15: normalizeShareCode produces invalid characters not in alphabet
+- **File**: `apps/web/src/shared/lib/share-code.ts` line 21
+- **Category**: Logic Bug
+- **Description**: `normalizeShareCode` maps I→'1', L→'1', O→'0', but '1' and '0' are NOT in `SHARE_CODE_ALPHABET` ('23456789ABCDEFGHJKMNPQRSTVWXYZ'). After normalization, codes containing I, L, or O will ALWAYS fail `isValidShareCode` because the regex `^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$` rejects '1' and '0'. This makes normalization counterproductive: user input with look-alike characters like 'ILOU' gets converted to '110V' and rejected instead of accepted. Only U→V works correctly.
+- **Fix**: Either add '1' and '0' to `SHARE_CODE_ALPHABET` and `SHARE_CODE_REGEX`, or map I/L to valid characters already in the alphabet.
+
+### C16: wg/[code]/route.ts DELETE handler leaves orphaned database rows
+- **File**: `apps/web/src/app/api/wg/[code]/route.ts` line 200
+- **Category**: Data Integrity
+- **Description**: The DELETE handler deletes the WG row (`db.delete(wgs)`) but does NOT cascade-delete or clean up any related data — members, expenses, chores, events, audit events, shopping items, member absences, recurring expenses, calendar subscriptions, etc. This leaves orphaned rows in the database and violates referential integrity unless the database has ON DELETE CASCADE constraints on every foreign key. If even one foreign key lacks CASCADE, the delete fails or leaves orphans.
+- **Fix**: Add explicit cascade deletes for all related tables before the WG delete, or verify all foreign keys have ON DELETE CASCADE and prefer explicit cleanup.
+
+---
+
+## HIGH (6)
+
+### H53: event-reminders cron route over-reports sent count
+- **File**: `apps/web/src/app/api/cron/event-reminders/route.ts` line 151
+- **Category**: Logic Bug
+- **Description**: The response returns `sent: pending.length` which counts ALL claimed reminders including those that failed dispatch. The `failedKeys` array is computed and their claims are released, but the returned `sent` count is never decremented. Unlike the chore-reminders route (line 183) which correctly uses `sentChoreIds.length`, this route over-reports successful sends.
+- **Fix**: Change `return NextResponse.json({ ok: true, sent: pending.length })` to `return NextResponse.json({ ok: true, sent: pending.length - failedKeys.length })`.
+
+### H54: PayPalPaymentButton.tsx retry loop silently breaks
+- **File**: `apps/web/src/components/wg/PayPalPaymentButton.tsx` line 127
+- **Category**: Logic Bug
+- **Description**: The retry loop condition `if (result.ok || (result.status > 0 && result.status < 500)) break;` is broken. When `result.ok` is true but `result.data.status !== 'COMPLETED'` (e.g., a 200 response with a non-COMPLETED PayPal status), the loop silently breaks without calling `onPaidRef.current()` and without throwing. Similarly, 4xx client errors silently break. The `throw new Error()` at the end of the loop is never reached for these cases. PayPal payments can fail silently — the user never sees the error and the payment is never confirmed.
+- **Fix**: Replace the condition with proper retry logic: `if (!result.ok && result.status < 500) break;` for client errors, `if (!result.ok && result.status >= 500) continue;` for server errors to retry. Non-COMPLETED 2xx responses should also continue rather than silently breaking.
+
+### H55: AboForm.tsx buildSplits iterates over all members instead of splitCandidates
+- **File**: `apps/web/src/components/wg/AboForm.tsx` line 213
+- **Category**: Data Integrity
+- **Description**: In `buildSplits()` for manual split mode, the function iterates over ALL `members` (`for (const member of members)`) instead of `splitCandidates`. The UI only displays `splitCandidates` (active members plus inactive members with existing manual splits), but `buildSplits()` includes all members. This means inactive members who are not shown in the UI could still appear in the final splits array, causing data inconsistency and potential `splits_mismatch` errors since the sum of splits may not match the parsed amount from the UI-shown values.
+- **Fix**: Change `for (const member of members)` to `for (const member of splitCandidates)` in the manual split branch.
+
+### H56: share-code.ts normalizeShareCode maps to characters not in alphabet
+- **File**: `apps/web/src/shared/lib/share-code.ts` line 21
+- **Category**: Logic Bug
+- **Description**: Same as C15. The normalization maps I→'1', L→'1', O→'0' but these characters are not in the Crockford base32 alphabet used for share codes. After normalization, codes fail validation. This is a critical usability bug that prevents users from joining WGs using share codes with look-alike characters.
+- **Fix**: Same as C15 fix.
+
+### H57: auth/server.ts getAuthenticatedUser cookies lost
+- **File**: `apps/web/src/core/auth/server.ts` line 38
+- **Category**: Auth Bug
+- **Description**: `getAuthenticatedUser` creates a `NextResponse.next()` object and passes it to `createSupabaseServerClient`. When Supabase refreshes the session (e.g., during `getUser()`), the `setAll` callback sets new cookies on this NextResponse object. However, the response is never returned or forwarded to the client — it is a throwaway object. Any refreshed auth cookies set by Supabase are lost, forcing the user to re-authenticate on the next request.
+- **Fix**: Use the actual cookie store (`cookies()`) instead of `NextResponse.next()` for server components, or return the response from `getAuthenticatedUser` so the caller can forward the cookies.
+
+### H58: expense-payments.ts SQL advisory lock uses unvalidated wgId
+- **File**: `apps/web/src/features/expenses/expense-payments.ts` line 59
+- **Category**: Security
+- **Description**: The SQL query constructs an advisory lock string via template literal interpolation of unvalidated `wgId`: `` `expense_payment_lock_${wgId}` ``. If `wgId` contains special characters or is not properly validated before this point, it could lead to SQL injection or lock collision attacks. The `wgId` comes from the route parameter `[code]` and should be validated as a share code format before being used in SQL.
+- **Fix**: Validate `wgId` as a proper share code format before constructing the advisory lock key, or use a parameterized approach.
+
+---
+
+## MEDIUM (18)
+
+### M75: ManualSplitSummary.tsx distributeRemainder can produce negative cents
+- **File**: `apps/web/src/features/expenses/components/ausgaben/ManualSplitSummary.tsx` line 35
+- **Category**: Logic Bug
+- **Description**: `distributeRemainder` can produce negative cent values when user splits exceed the total. If the sum of manual splits is greater than the expense amount, the remainder calculation subtracts from the last split, potentially making it negative. This violates the `amountCents >= 0` constraint and could cause validation errors.
+- **Fix**: Add a check before distributing: if `totalSplits > amountCents`, either cap splits at the total or show a validation error.
+
+### M76: ExpenseFormSection.tsx silent fallback to 'invalid'
+- **File**: `apps/web/src/features/expenses/components/ausgaben/ExpenseFormSection.tsx` line 164
+- **Category**: Logic Bug
+- **Description**: When `isEditingExpense` is true but `editingExpenseId` is null, the code silently falls back to `'invalid'`. This means the form could enter an inconsistent state where it thinks it's editing an expense but has no expense ID. The user might see the form in an editing mode with no actual expense being edited.
+- **Fix**: Add a guard that returns early or shows an error when `isEditingExpense && !editingExpenseId`.
+
+### M77: chat-pure.ts isSingleEmoji regex incomplete
+- **File**: `apps/web/src/features/chat/chat-pure.ts` line 121
+- **Category**: Logic Bug
+- **Description**: `isSingleEmoji` fallback regex only covers `Extended_Pictographic` Unicode category, missing Emoticons, Transport symbols, Dingbats, and other emoji categories. This means some single emojis (like 😀 vs ❤️) might not be recognized, causing incorrect message formatting or display.
+- **Fix**: Use the full emoji regex pattern that covers all Unicode emoji categories, or use a library like `emoji-regex`.
+
+### M78: chat-pure.ts sanitizeMessageBody returns null for oversized messages
+- **File**: `apps/web/src/features/chat/chat-pure.ts` line 126
+- **Category**: Logic Bug
+- **Description**: `sanitizeMessageBody` returns `null` for oversized messages instead of truncating them. This means if a message exceeds the maximum length, it is silently discarded rather than truncated and displayed. The user sees nothing instead of a truncated message.
+- **Fix**: Truncate the message to the maximum length instead of returning null, or show a truncation indicator.
+
+### M79: chat-channel.ts onMessageCreated fires on every poll tick
+- **File**: `apps/web/src/features/chat/chat-channel.ts` line 44
+- **Category**: Performance
+- **Description**: `onMessageCreated` fires on every poll tick unconditionally, causing unnecessary re-fetches every 8 seconds. Even when no new messages exist, the callback triggers a full refresh of all messages, reactions, and typing state. This causes unnecessary API calls and state updates.
+- **Fix**: Make the refresh conditional on actual new data. Have the polling endpoint return only new message IDs and only trigger a full refresh if new IDs are found.
+
+### M80: chore-recurrence.ts addCalendarMonths overflow correction
+- **File**: `apps/web/src/features/chores/chore-recurrence.ts` line 100
+- **Category**: Logic Bug
+- **Description**: `addCalendarMonths` overflow correction uses `setUTCDate(0)` which targets the wrong month. When the target month has fewer days than the original day (e.g., adding 1 month to January 31), `setUTCDate(0)` sets the date to the last day of the PREVIOUS month, not the last day of the target month. Should use `setUTCMonth(expectedMonth, 0)` to get the last day of the target month.
+- **Fix**: Change `setUTCDate(0)` to `setUTCMonth(expectedMonth, 0)`.
+
+### M81: events.ts invalid UNTIL date defaults to Infinity
+- **File**: `apps/web/src/features/events/events.ts` line 312
+- **Category**: Logic Bug
+- **Description**: The `UNTIL` date for recurring events defaults to `Infinity` when not specified. This silently removes the recurrence constraint, meaning the recurring event continues indefinitely without any end date. This could create infinite recurring events that never stop.
+- **Fix**: Either set a reasonable default end date or require an explicit end date for recurring events.
+
+### M82: calendar-subscription.ts Buffer.from with ascii encoding corrupts non-ASCII tokens
+- **File**: `apps/web/src/features/events/calendar-subscription.ts` line 37
+- **Category**: Security Bug
+- **Description**: `Buffer.from(token, 'ascii')` corrupts non-ASCII characters in the token by replacing them with `?` or dropping them. If the token contains non-ASCII characters (which it shouldn't for a valid token), the timing-safe comparison will always fail. More importantly, using 'ascii' encoding means the buffer may not match the original token bytes, breaking the comparison.
+- **Fix**: Use `Buffer.from(token)` (UTF-8 default) instead of `Buffer.from(token, 'ascii')`.
+
+### M83: db/connection.ts misleading validateDatabaseUrl label
+- **File**: `apps/web/src/core/db/connection.ts` line 17
+- **Category**: Configuration Bug
+- **Description**: `validateDatabaseUrl` is called with the label 'withTransaction connection (set DATABASE_MIGRATION_URL)' regardless of whether the URL actually came from `DATABASE_MIGRATION_URL` or fell back to `resolveConnectionString()` (which uses `POSTGRES_URL` or `DATABASE_URL`). If the fallback URL fails validation, the error message tells the developer to set `DATABASE_MIGRATION_URL` even when they already have `POSTGRES_URL` set.
+- **Fix**: Pass a dynamic label that reflects the actual source URL.
+
+### M84: errors.ts serverError(null) swallows null value
+- **File**: `apps/web/src/core/errors.ts` line 120
+- **Category**: Error Handling
+- **Description**: When `errOrMessage` is null (or other falsy non-string, non-undefined values like 0 or false), the condition `typeof errOrMessage === 'string' || errOrMessage === undefined` is false. Execution falls through to `captureException(errOrMessage)` which captures null/0/false instead of a meaningful error object, and then returns `apiError(message, HTTP_SERVER_ERROR, code)` with the default 'server_error' message. This means `serverError(null)` silently swallows the null value without useful error reporting.
+- **Fix**: Add a null/undefined guard at the top of the function.
+
+### M85: idempotency.ts orphaned CLAIM_PLACEHOLDER rows
+- **File**: `apps/web/src/core/idempotency.ts` line 46
+- **Category**: Data Integrity
+- **Description**: `claimResponseSlot` uses `onConflictDoNothing()` with `returning()`. If the insert succeeds (caller wins the slot), `rows.length > 0` returns true. However, if the insert is interrupted (e.g., network error, database restart) after the row was committed but before `returning()`, the function throws the caught error as 'idempotency_claim_failed'. This is intentional (fail-closed), but the row already exists in the database with `CLAIM_PLACEHOLDER`, and no cleanup mechanism exists for orphaned placeholder rows. They accumulate indefinitely.
+- **Fix**: Add a periodic cleanup job or TTL-based expiration for rows with `CLAIM_PLACEHOLDER` that exceed a certain age.
+
+### M86: wg/route.ts failMode logic edge case
+- **File**: `apps/web/src/app/api/wg/route.ts` line 40
+- **Category**: Logic Bug
+- **Description**: The `failMode` logic has a subtle issue: `process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'development'` evaluates to `true` when `VERCEL_ENV` is `'preview'` or `'deployment'`, which may not be the intended behavior. A preview deployment of a production build might legitimately need `failMode: 'open'` if Upstash is available in preview.
+- **Fix**: Consider changing the first condition to `process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === 'production'` to only close failMode for actual production deployments.
+
+### M87: calendar-subscription/route.ts POST returns stale token
+- **File**: `apps/web/src/app/api/wg/[code]/calendar-subscription/route.ts` line 97
+- **Category**: Logic Bug
+- **Description**: When an existing non-revoked subscription is found (`existing && !existing.revokedAt`), the POST handler sets `row = existing` and returns the same subscription data without generating a new token or updating anything. If a user calls POST expecting a fresh token (e.g., after their token expired), they get back the old token. The `responseFor` function generates a token from `row.tokenSeed`, so the same token is returned.
+- **Fix**: Either regenerate the token seed even for existing active subscriptions, or document that POST on an active subscription is a no-op.
+
+### M88: chore-reminders/route.ts circular type predicate
+- **File**: `apps/web/src/app/api/cron/chore-reminders/route.ts` line 128
+- **Category**: Type Safety
+- **Description**: The type predicate `item is typeof item & { assignedMemberId: string }` is syntactically unusual and circular. `typeof item` in a type predicate refers to the type of the variable itself, so this is equivalent to `item is item & { assignedMemberId: string }`. While it compiles and works at runtime due to the `item.assignedMemberId` check, it's misleading and could confuse future maintainers.
+- **Fix**: Replace with a proper type annotation or cast.
+
+### M89: imports/preview/route.ts auth check after body parsing
+- **File**: `apps/web/src/app/api/wg/[code]/imports/preview/route.ts` line 37
+- **Category**: Security Ordering
+- **Description**: The `requireWgMember` auth check (line 37) happens AFTER the JSON body parsing and size validation (lines 29-36). This means an unauthenticated user could send a large payload to consume server resources before being rejected. While the size check limits the damage, the ordering is suboptimal from a security perspective.
+- **Fix**: Move `requireWgMember` before the body parsing and size validation, or at least before the potentially expensive `readImportJsonBody` call.
+
+### M90: package.json lint script references missing biome
+- **File**: `apps/web/package.json` line 11
+- **Category**: Configuration Bug
+- **Description**: The `lint` script runs `biome check .` but `biome` is not listed anywhere in the package.json dependencies or devDependencies. Running `pnpm lint` will fail with a command-not-found error unless biome is installed globally.
+- **Fix**: Add `biome` to devDependencies or remove the biome command from the lint script.
+
+### M91: auth/recovery/route.ts cookie path mismatch
+- **File**: `apps/web/src/app/api/auth/recovery/route.ts` line 12
+- **Category**: Security Bug
+- **Description**: The cookie `manawg_password_recovery` is cleared with `path: '/auth/reset'`. If the cookie was originally set with a different path (e.g., `/` or `/auth`), the browser will NOT clear it because cookie path matching requires the paths to match exactly. The cookie will remain set indefinitely.
+- **Fix**: Ensure the `path` matches the path used when the cookie was originally created. Use `path: '/'` to guarantee it clears.
+
+### M92: AboForm.tsx AboForm.tsx NativeSelect option value type mismatch
+- **File**: `apps/web/src/components/wg/AboForm.tsx` line 324
+- **Category**: Logic Bug
+- **Description**: In the `INTERVAL_OPTIONS` select rendering, when `intervalMonths` doesn't match any predefined option, a custom option is rendered with `intervalMonths` as the value (a number). However, the `NativeSelect` component receives it as a string from the DOM. The `setIntervalMonths(Number(event.target.value))` call converts it back, which works, but the rendered option may not be selected correctly if `intervalMonths` is not one of the predefined values.
+- **Fix**: Use `value={String(intervalMonths)}` instead of `value={intervalMonths}` to match the DOM string value.
+
+---
+
+## LOW (10)
+
+### L37: share-code.ts comment says 32^8 but alphabet has 30 chars
+- **File**: `apps/web/src/shared/lib/share-code.ts` line 6
+- **Category**: Documentation Bug
+- **Description**: The comment says '32^8 ≈ 1.1 trillion combinations' but `SHARE_CODE_ALPHABET` has only 30 characters ('23456789ABCDEFGHJKMNPQRSTVWXYZ'), making it 30^8 ≈ 6.56 trillion combinations. The alphabet excludes 0 and 1 in addition to I, L, O, U (Crockford base32), so it's 30 characters, not 32.
+- **Fix**: Update the comment to say '30^8 ≈ 6.56 trillion combinations' or add 0 and 1 to the alphabet to make it a true 32-character Crockford alphabet.
+
+### L38: paypal.ts payPalAuthAssertion naming inconsistency
+- **File**: `apps/web/src/core/infra/paypal.ts` line 73
+- **Category**: Naming Bug
+- **Description**: The function `payPalAuthAssertion` uses camelCase 'payPal' while the rest of the file uses PascalCase for PayPal-referenced names (`createPayPalOrder`, `capturePayPalOrder`, `PayPalOrderResponse`). This inconsistency could trigger linting rules against inconsistent naming.
+- **Fix**: Rename to `createPayPalAuthAssertion` to match the naming convention.
+
+### L39: api-auth.ts loose UUID pattern accepts any UUID version
+- **File**: `apps/web/src/core/guards/api-auth.ts` line 16
+- **Category**: Security Bug
+- **Description**: `UUID_PATTERN` uses a loose UUID pattern `/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i` which accepts ANY UUID version (not just v4). The comment acknowledges this is intentional ('We do not enforce the version nibble strictly'). However, `idempotency.ts` imports this pattern to validate idempotency keys. If a loosely-typed UUID is accidentally used as an idempotency key, it could cause collisions.
+- **Fix**: This is documented as intentional. If stricter validation is desired, use `UUID_V4_PATTERN` from `identity.ts` instead.
+
+### L40: s3.ts unhoistableHeaders uses lowercase header names
+- **File**: `apps/web/src/core/infra/s3.ts` line 73
+- **Category**: AWS SDK Bug
+- **Description**: `unhoistableHeaders` uses lowercase 'content-length' and 'content-type'. The `@aws-sdk/s3-request-presigner` documentation specifies that `unhoistableHeaders` should use the exact header names as they appear in the command. While the S3 SDK is generally case-insensitive, using non-canonical casing could cause issues with certain SDK versions or S3-compatible services.
+- **Fix**: Use canonical header names 'Content-Length' and 'Content-Type' in the `unhoistableHeaders` Set.
+
+### L41: AppBottomNav.tsx missing 'use client' directive
+- **File**: `apps/web/src/components/app/AppBottomNav.tsx` line 1
+- **Category**: Next.js Bug
+- **Description**: The component uses `useLayoutEffect` and `useRef` from React but is missing the `'use client'` directive. In Next.js App Router, components using client hooks must be marked with `'use client'`. The missing directive may cause hydration warnings or errors in strict mode.
+- **Fix**: Add `'use client';` at the top of the file, before the imports.
+
+### L42: ActionNoticeBanner.tsx error tone has empty CSS class
+- **File**: `apps/web/src/components/wg/ActionNoticeBanner.tsx` line 16
+- **Category**: Styling Bug
+- **Description**: Same as previously reported. `TONE_CLASSES` mapping has `error: ''` — an empty string. When `notice.tone === 'error'`, `cn(TONE_CLASSES[notice.tone])` adds no CSS classes, meaning the error tone has no tone-specific styling.
+- **Fix**: Replace `error: ''` with appropriate error CSS classes matching the pattern of `success` and `warning`.
+
+### L43: ShareWgCard.tsx dead className prop
+- **File**: `apps/web/src/components/wg/ShareWgCard.tsx` line 121
+- **Category**: Dead Code
+- **Description**: Same as previously reported. The conditional `className={hideHeader ? '' : ''}` has identical values in both branches. Always evaluates to an empty string.
+- **Fix**: Remove the ternary or add intended class names.
+
+### L44: NeuClient.tsx hydration mismatch with dual search params source
+- **File**: `apps/web/src/app/neu/NeuClient.tsx` line 243
+- **Category**: Hydration Bug
+- **Description**: The mount-only `useEffect` with `[]` dependency uses `typeof window === 'undefined' ? searchParams.toString() : window.location.search` to determine the initial search string. On the server, `searchParams.toString()` (from `useSearchParams()`) is used, but on the client after hydration, `window.location.search` is used. This can lead to subtle differences in initialization if the two sources differ in encoding or format.
+- **Fix**: Use `searchParams.toString()` consistently on both server and client, or read `window.location.search` directly after confirming `typeof window !== 'undefined'` outside the effect.
+
+### L45: members/route.ts type assertion bypasses type checking
+- **File**: `apps/web/src/app/api/wg/[code]/members/route.ts` line 88
+- **Category**: Type Safety
+- **Description**: `body = (await req.json()) as PostBody` uses a TypeScript type assertion to bypass type checking. If `req.json()` returns unexpected data, the type assertion hides the mismatch. While `PostBody` is loosely typed, this still bypasses compile-time safety.
+- **Fix**: Replace `as PostBody` with proper runtime validation using a zod schema or explicit type checks.
+
+### L46: playwright.config.ts relative path for tsconfig.json
+- **File**: `apps/web/playwright.config.ts` line 33
+- **Category**: Configuration Bug
+- **Description**: `const prepareIsolatedNext = \`cp tsconfig.json \${e2eTsconfigPath}\`;` uses a relative path `tsconfig.json`. If the working directory is not the project root, this copy will fail. The `APP_DIR` variable is computed but `prepareIsolatedNext` doesn't use it.
+- **Fix**: Use an absolute path: \`cp \${APP_DIR}/tsconfig.json \${e2eTsconfigPath}\`.
+
+---
+
+## ADDITIONAL TECHNICAL DEBT
+
+- **`core/reads/dashboard-data.ts`**: `computeMemberBalances` uses `grossByMemberId.get(expense.paidByMemberId)` on line 198 but doesn't check if the member exists in the `members` array before accessing `grossByMemberId`. If a member ID exists in expenses but not in members, this could produce undefined results.
+- **`core/reads/dashboard-insights.ts`**: The `getTodayImportantItems` function filters out `urgency === 3` chores (line 171) but then adds them back as shopping items with `urgency: 3`. This means shopping items always appear with the same urgency as the most urgent chores that were filtered out, which could be misleading.
+- **`features/chores/chore-status.ts`**: `getChorePlanHealth` picks `statuses[0]?.label` for `nextLabel` without sorting by due date, so the "next" label is arbitrary.
+- **`features/events/calendar-subscription.ts`**: The `Buffer.from(..., 'ascii')` issue (M82) also affects the timing-safe comparison logic.
+- **`features/inventory/`**: The increment path in `InventoryItemRow.tsx` lacks an idempotency key (M80 mentioned as separate from the decrement path issue).
+- **Remaining unscanned**: `features/events/components/` subdirectory, `features/chores/components/` subdirectory, `src/app/api/wg/[code]/chat/` routes, `src/app/api/wg/[code]/announcements/` routes, `src/app/api/wg/[code]/activity/route.ts`, `src/app/api/wg/[code]/reminders/` routes.
+
+---
+
+## UPDATED SUMMARY
+
+| Severity | Round 1 | Round 2 | Round 3 | Round 4 | Round 5 | Round 6 | Total |
+|----------|---------|---------|---------|---------|---------|---------|-------|
+| **CRITICAL** | 3 | 4 | 2 | 2 | 2 | 3 | **16** |
+| **HIGH** | 18 | 12 | 8 | 7 | 7 | 6 | **58** |
+| **MEDIUM** | 25 | 10 | 12 | 12 | 15 | 18 | **92** |
+| **LOW** | 10 | 6 | 8 | 6 | 6 | 10 | **46** |
+| **TOTAL** | 56 | 32 | 30 | 27 | 30 | 37 | **212** |
+
+### Top 10 Most Critical Bugs (must fix first):
+1. **C1** - HMAC anti-spoofing entirely non-functional (every route's auth is bypassed)
+2. **C4** - RLS enabled without any policies
+3. **C5** - All database privileges revoked and never granted back
+4. **C10** - `.env.local` contains committed secrets (Upstash API tokens, Vercel JWT)
+5. **C11** - `drizzle.config.ts` has `postgres://placeholder` fallback
+6. **C14** - `recurring-advance` cron route uses wrong `anchorAt` variable, causing date drift
+7. **C15** - `normalizeShareCode` produces invalid characters not in alphabet
+8. **C16** - WG DELETE handler leaves orphaned database rows
+9. **C8** - `instrumentation.ts` throws in production, crashes server
+10. **C7** - `vercel.json` ignoreCommand always fails
+
+### Bug Categories by Count:
+- Security: 35+ bugs (auth bypass, CORS, CSRF, CSP, rate limiting, share code enumeration, access control, committed secrets, SQL injection, open redirect, timing attack, SQL advisory lock, weak UUID)
+- Data Integrity: 28+ bugs (split sums, idempotency, normalization, migration issues, stale state, schema drift, null constraints, orphaned rows, negative splits, date drift)
+- Logic: 40+ bugs (inverted conditions, wrong module mappings, invalid date handling, type mismatches, contradictory fallbacks, filter bugs, hard-coded IDs, retry loops, silent failures)
+- Performance/Resource: 16+ bugs (pool size, Map creation, interval management, connection leaks, unnecessary re-renders, effect re-runs, polling)
+- Reliability: 14+ bugs (error handling, crash on boot, test quality, infinite loops, stale closures, edge cases, cookie cleanup)
+- UX/Usability: 10+ bugs (unused parameters, future dates, settings defaults, custom intervals, error messages, copy/paste errors, invalid share codes)
+- Configuration/Documentation: 12+ bugs (missing env vars, invalid PostHog config, wrong biome rules, stale dates, regex typos, missing deps)
+- Fragility: 8+ bugs (hard-coded IDs, brittle parsing, redundant assertions, missing validation, type unsafe casts, hydration mismatch)
+- Styling: 4+ bugs (empty CSS classes, dead code, type mismatches)
