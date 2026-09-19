@@ -134,6 +134,14 @@ export function previewBody(body: string, max = 120): string {
 	return normalized.length > max ? `${normalized.slice(0, max - 1)}…` : normalized;
 }
 
+export function filterPersistedMentionIds(
+	requestedIds: readonly string[],
+	insertedRows: readonly { mentionedMemberId: string }[],
+): string[] {
+	const persistedIds = new Set(insertedRows.map((row) => row.mentionedMemberId));
+	return requestedIds.filter((id) => persistedIds.has(id));
+}
+
 export function mergePagedMessagesById<T extends { id: string }>(
 	older: readonly T[],
 	existing: readonly T[],

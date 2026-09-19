@@ -9,7 +9,11 @@ import { readJsonBody } from '@/core/http/read-json';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { chatMessageLimiter, checkRateLimit } from '@/core/rate-limit';
 import { imageUrlSchema } from '@/core/validators/image-url';
-import { previewBody, sanitizeMessageBody } from '@/features/chat/chat-pure';
+	import {
+		filterPersistedMentionIds,
+		previewBody,
+		sanitizeMessageBody,
+	} from '@/features/chat/chat-pure';
 import { and, desc, eq, inArray, isNull, lt, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -188,8 +192,9 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 		.returning();
 	if (!inserted) return serverError('insert_failed');
 
+	let persistedMentionIds: string[] = [];
 	if (validMentionIds.length > 0) {
-		await db
+		const insertedMentionRows = await db
 			.insert(wgChatMentions)
 			.values(
 				validMentionIds.map((mentionedMemberId) => ({
@@ -197,7 +202,9 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 					mentionedMemberId,
 				})),
 			)
-			.onConflictDoNothing();
+			.onConflictDoNothing()
+			.returning({ mentionedMemberId: wgChatMentions.mentionedMemberId });
+		persistedMentionIds = filterPersistedMentionIds(validMentionIds, insertedMentionRows);
 	}
 
 	const preview = previewBody(cleanBody ?? (imageUrl ? 'Bild' : ''), PREVIEW_LENGTH);
@@ -214,7 +221,7 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 			excludeMemberId: auth.member.memberId,
 		}),
 	];
-	if (validMentionIds.length > 0) {
+	if (persistedMentionIds.length > 0) {
 		notificationDispatches.push(
 			dispatchNotificationSafely({
 				wg,
@@ -224,7 +231,7 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 					actorName: auth.member.name,
 					preview,
 				},
-				targetMemberIds: validMentionIds,
+			targetMemberIds: persistedMentionIds,
 				excludeMemberId: auth.member.memberId,
 			}),
 		);
@@ -238,7 +245,7 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 		entityType: 'chat_message',
 		entityId: inserted.id,
 		summary: `${auth.member.name} hat im Chat eine Nachricht gesendet.`,
-		metadata: { preview, kind, mentions: validMentionIds.length },
+		metadata: { preview, kind, mentions: persistedMentionIds.length },
 	}).catch(() => undefined);
 
 	const notificationResults = await Promise.all(notificationDispatches);
@@ -250,5 +257,5 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 			? 'notification_delivery_failed'
 			: null;
 
-	return NextResponse.json({ message: inserted, mentions: validMentionIds, warning });
+	return NextResponse.json({ message: inserted, mentions: persistedMentionIds, warning });
 });

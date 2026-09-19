@@ -18,6 +18,7 @@ import {
 	withExpensePaymentLock,
 } from '@/features/expenses/expense-payments';
 import { loadOpenExpenses } from '@/features/expenses/open-expenses';
+import { isPayPalCaptureDebtChanged } from '@/features/expenses/paypal-settlement';
 import { and, eq, gt } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -124,7 +125,7 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 				(item) =>
 					item.fromId === capturePayment.fromMemberId && item.toId === capturePayment.toMemberId,
 			);
-			if (debt && debt.cents >= capturePayment.amountCents) return false;
+			if (!isPayPalCaptureDebtChanged(debt?.cents, capturePayment.amountCents)) return false;
 			await tx
 				.update(expensePayments)
 				.set({ status: 'failed' })

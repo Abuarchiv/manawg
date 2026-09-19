@@ -3,6 +3,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
+import { shouldRetryPayPalCapture } from '@/features/expenses/paypal-settlement';
 import { useEffect, useRef, useState } from 'react';
 
 interface PayPalButtonsInstance {
@@ -124,7 +125,7 @@ export function PayPalPaymentButton({
 					onPaidRef.current();
 					return;
 				}
-				if (result.ok || (result.status > 0 && result.status < 500)) break;
+				if (!shouldRetryPayPalCapture(result)) break;
 			}
 			throw new Error();
 		};
