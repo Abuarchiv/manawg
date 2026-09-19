@@ -124,17 +124,22 @@ export const GET = withCronLogging(
 		if (pending.length === 0) return NextResponse.json({ ok: true, sent: 0 });
 
 		const results = await Promise.allSettled(
-			pending.map((item) =>
-				dispatchNotification({
-					wg: { id: item.wgId, name: item.wgName, shareCode: item.shareCode },
-					event: 'event.upcoming',
-					payload: {
-						eventId: item.id,
-						title: item.title,
-						startsAt: item.occurrenceStartsAt,
-					},
-				}),
-			),
+			pending.map(async (item) => {
+				try {
+					return await dispatchNotification({
+						wg: { id: item.wgId, name: item.wgName, shareCode: item.shareCode },
+						event: 'event.upcoming',
+						payload: {
+							eventId: item.id,
+							title: item.title,
+							startsAt: item.occurrenceStartsAt,
+						},
+					});
+				} catch (err) {
+					console.warn('[event-reminders] notification dispatch failed');
+					return { sent: 0, failures: [err] };
+				}
+			}),
 		);
 
 		// Release claims for failed dispatches or zero-delivery sends so the

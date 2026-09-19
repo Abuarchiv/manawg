@@ -10,7 +10,7 @@ import {
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
-import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { computeOpenGapsByMember } from '@/features/chores/chore-fairness';
@@ -27,7 +27,9 @@ const INTERVAL_MAX_DAYS = 365;
 const INTERVAL_MAX_MONTHS = 60;
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
-type ChoreCreateResponseBody = { chore: unknown };
+type ChoreCreateWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
+
+type ChoreCreateResponseBody = { chore: unknown; warning: ChoreCreateWarning };
 
 const choreCreateReplay = new ReplayCache<ChoreCreateResponseBody>(IDEMPOTENCY_TTL_MS);
 
@@ -224,7 +226,7 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 	try {
 		if (idemScope && idemKey) {
 			const slot = await claimReplaySlotWithRetry<ChoreCreateResponseBody>(idemScope, idemKey);
-			if (!slot.won && slot.cached) {
+			if (!slot.won) {
 				replayReservation?.resolve(slot.cached);
 				return NextResponse.json(slot.cached);
 			}
@@ -261,15 +263,16 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 				nextDueAt: chore.nextDueAt,
 			},
 		});
+		let warning: ChoreCreateWarning = null;
 		if (assignedMemberId && nextDueAt.getTime() <= Date.now() + MS_PER_DAY) {
-			void dispatchNotification({
+			({ warning } = await dispatchNotificationSafely({
 				wg,
 				event: 'chore.due',
 				payload: { title, choreId: chore.id },
 				targetMemberIds: [assignedMemberId],
-			}).catch((err) => console.error('[chores POST] notification failed', err));
+			}));
 		}
-		const responseBody = { chore };
+		const responseBody = { chore, warning };
 		if (idemScope && idemKey && replayReservation?.owned) {
 			replayReservation.resolve(responseBody);
 			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) =>

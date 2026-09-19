@@ -30,6 +30,7 @@ import {
 import {
 	type OfflineActionType,
 	createQueuedExpense,
+	createQueuedExpenseUpdate,
 	createQueuedRecurring,
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
@@ -100,6 +101,20 @@ const ExpenseFormSection = dynamic(
 
 function removeRecurringTemplate(items: RecurringExpense[], id: string): RecurringExpense[] {
 	return items.filter((item) => item.id !== id);
+}
+
+type ExpenseCreateWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
+type ExpenseCreateResponse = { expense: Expense; warning: ExpenseCreateWarning };
+type ExpenseMutationResponse = Expense | ExpenseCreateResponse;
+
+function expensePushWarningMessage(warning: ExpenseCreateWarning): string | null {
+	if (warning === 'notification_delivery_failed') {
+		return 'Gespeichert. Nicht alle Push-Benachrichtigungen konnten versendet werden.';
+	}
+	if (warning === 'notification_delivery_unknown') {
+		return 'Gespeichert. Push-Versand konnte nicht bestätigt werden.';
+	}
+	return null;
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
@@ -454,7 +469,7 @@ export default function AusgabenPage() {
 		const url = isEdit
 			? `/api/wg/${encodedShareCode}/expenses/${encodeURIComponent(editingExpense.id)}`
 			: `/api/wg/${encodedShareCode}/expenses`;
-		const res = await apiFetch<Expense | { expense: Expense }>(url, {
+		const res = await apiFetch<ExpenseMutationResponse>(url, {
 			method: isEdit ? 'PATCH' : 'POST',
 			memberId: identity.memberId,
 			memberToken: identity.memberToken,
@@ -473,31 +488,43 @@ export default function AusgabenPage() {
 				const recurringTemplateForQueuedExpense = recurringSourceId
 					? recurringExpenses.find((item) => item.id === recurringSourceId)
 					: null;
-				const queuedCount = enqueueOfflineAction(
-					createQueuedExpense({
-						wgId: wg.id,
-						shareCode: wg.shareCode,
-						memberId: identity.memberId,
-						description: desc,
-						amountCents,
-						paidByMemberId,
-						splits,
-						imageUrl,
-						...(recurringTemplateForQueuedExpense
-							? {
-									recurringExpenseId: recurringTemplateForQueuedExpense.id,
-									expectedRecurringNextDueAt: recurringTemplateForQueuedExpense.nextDueAt,
-								}
-							: {}),
-					}),
-				);
+				const queuedAction = isEdit
+					? createQueuedExpenseUpdate({
+							expenseId: editingExpense.id,
+							expectedUpdatedAt: editingExpense.updatedAt,
+							wgId: wg.id,
+							shareCode: wg.shareCode,
+							memberId: identity.memberId,
+							description: desc,
+							amountCents,
+							paidByMemberId,
+							splits,
+							imageUrl,
+						})
+					: createQueuedExpense({
+							wgId: wg.id,
+							shareCode: wg.shareCode,
+							memberId: identity.memberId,
+							description: desc,
+							amountCents,
+							paidByMemberId,
+							splits,
+							imageUrl,
+							...(recurringTemplateForQueuedExpense
+								? {
+										recurringExpenseId: recurringTemplateForQueuedExpense.id,
+										expectedRecurringNextDueAt: recurringTemplateForQueuedExpense.nextDueAt,
+									}
+								: {}),
+						});
+				const queuedCount = enqueueOfflineAction(queuedAction);
 				if (queuedCount === 0) {
 					finishSubmitting();
 					setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 					return;
 				}
 				refreshCount();
-				if (!clearEditedQueueItem(['expense.create'])) {
+				if (!clearEditedQueueItem(['expense.create', 'expense.update'])) {
 					finishSubmitting();
 					setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 					return;
@@ -531,18 +558,23 @@ export default function AusgabenPage() {
 			return;
 		}
 
-		if (!clearEditedQueueItem(['expense.create'])) {
+		if (!clearEditedQueueItem(['expense.create', 'expense.update'])) {
 			finishSubmitting();
 			setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
 			return;
 		}
 		resetForm();
 		const savedExpense = 'expense' in res.data ? res.data.expense : res.data;
-		setActionSuccess(
-			isEdit
-				? 'Ausgabe aktualisiert. Hier wird kein Geld überwiesen.'
-				: 'Ausgabe gespeichert. Hier wird kein Geld überwiesen.',
-		);
+		const pushWarning = 'expense' in res.data ? expensePushWarningMessage(res.data.warning) : null;
+		if (pushWarning) {
+			setActionWarning(pushWarning);
+		} else {
+			setActionSuccess(
+				isEdit
+					? 'Ausgabe aktualisiert. Hier wird kein Geld überwiesen.'
+					: 'Ausgabe gespeichert. Hier wird kein Geld überwiesen.',
+			);
+		}
 		setExpenses((current) =>
 			isEdit
 				? current.map((expense) => (expense.id === savedExpense.id ? savedExpense : expense))
@@ -713,17 +745,20 @@ export default function AusgabenPage() {
 		};
 		setCreatingRecurringId(template.id);
 		setActionError(null);
-		const createRes = await apiFetch<{ expense: Expense }>(`/api/wg/${encodedShareCode}/expenses`, {
-			method: 'POST',
-			memberId: identity.memberId,
-			memberToken: identity.memberToken,
-			body: JSON.stringify({
-				description: template.description,
-				amountCents: template.amountCents,
-				paidByMemberId: template.paidByMemberId,
-				splits: template.splits,
-			}),
-		});
+		const createRes = await apiFetch<ExpenseCreateResponse>(
+			`/api/wg/${encodedShareCode}/expenses`,
+			{
+				method: 'POST',
+				memberId: identity.memberId,
+				memberToken: identity.memberToken,
+				body: JSON.stringify({
+					description: template.description,
+					amountCents: template.amountCents,
+					paidByMemberId: template.paidByMemberId,
+					splits: template.splits,
+				}),
+			},
+		);
 		if (!createRes.ok) {
 			if (createRes.status === 0) {
 				const queuedCount = enqueueOfflineAction(
@@ -762,7 +797,11 @@ export default function AusgabenPage() {
 			...current.filter((expense) => expense.id !== createRes.data.expense.id),
 		]);
 		const advanced = await advanceRecurringTemplate(template.id, template.nextDueAt);
-		if (advanced) setActionSuccess('Fixkosten-Ausgabe wurde erstellt.');
+		if (advanced) {
+			const pushWarning = expensePushWarningMessage(createRes.data.warning);
+			if (pushWarning) setActionWarning(pushWarning);
+			else setActionSuccess('Fixkosten-Ausgabe wurde erstellt.');
+		}
 		finishCreatingRecurring();
 		void load(false);
 	}

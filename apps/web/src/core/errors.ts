@@ -7,6 +7,7 @@ const HTTP_NOT_FOUND = 404;
 const HTTP_CONFLICT = 409;
 const HTTP_PAYLOAD_TOO_LARGE = 413;
 const HTTP_TOO_MANY = 429;
+const HTTP_SERVICE_UNAVAILABLE = 503;
 const HTTP_SERVER_ERROR = 500;
 
 export const HTTP = {
@@ -16,6 +17,7 @@ export const HTTP = {
 	CONFLICT: HTTP_CONFLICT,
 	PAYLOAD_TOO_LARGE: HTTP_PAYLOAD_TOO_LARGE,
 	TOO_MANY: HTTP_TOO_MANY,
+	SERVICE_UNAVAILABLE: HTTP_SERVICE_UNAVAILABLE,
 	SERVER_ERROR: HTTP_SERVER_ERROR,
 } as const;
 
@@ -31,6 +33,24 @@ export function apiError(
 ): NextResponse<ApiErrorBody> {
 	const body: ApiErrorBody = code !== undefined ? { error: message, code } : { error: message };
 	return NextResponse.json<ApiErrorBody>(body, { status });
+}
+
+const IDEMPOTENCY_RETRYABLE_CODES = new Set([
+	'idempotency_claim_failed',
+	'idempotency_cache_read_failed',
+	'idempotency_response_pending',
+]);
+
+function isIdempotencyRetryable(value: unknown): boolean {
+	const message = typeof value === 'string' ? value : value instanceof Error ? value.message : null;
+	return message !== null && IDEMPOTENCY_RETRYABLE_CODES.has(message);
+}
+
+function idempotencyRetryableResponse(): NextResponse<ApiErrorBody> {
+	return NextResponse.json<ApiErrorBody>(
+		{ error: 'service_unavailable', code: 'idempotency_retryable' },
+		{ status: HTTP_SERVICE_UNAVAILABLE, headers: { 'Retry-After': '1' } },
+	);
 }
 
 export function badRequest(message = 'bad_request', code?: string): NextResponse<ApiErrorBody> {
@@ -66,8 +86,16 @@ export function tooMany(message = 'too_many_requests', code?: string): NextRespo
 	return apiError(message, HTTP_TOO_MANY, code);
 }
 
+export function payloadTooLarge(
+	message = 'payload_too_large',
+	code = 'payload_too_large',
+): NextResponse<ApiErrorBody> {
+	return apiError(message, HTTP_PAYLOAD_TOO_LARGE, code);
+}
+
 /**
- * Return a 500 server_error response.
+ * Return a server error response. Idempotency safety failures are returned as
+ * an explicit retryable 503 so callers never continue into the mutation.
  *
  * Supports two calling styles (backward-compatible):
  *   - `serverError()` — response-only path, nothing reported
@@ -85,6 +113,10 @@ export function serverError(
 	message = 'server_error',
 	code?: string,
 ): NextResponse<ApiErrorBody> {
+	if (isIdempotencyRetryable(errOrMessage)) {
+		captureException(typeof errOrMessage === 'string' ? new Error(errOrMessage) : errOrMessage);
+		return idempotencyRetryableResponse();
+	}
 	if (typeof errOrMessage === 'string' || errOrMessage === undefined) {
 		const finalMessage = typeof errOrMessage === 'string' ? errOrMessage : message;
 		if (typeof errOrMessage === 'string') {

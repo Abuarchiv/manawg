@@ -37,4 +37,12 @@ export function validateDatabaseUrl(url: string, label: string): void {
 	if (!isLocal && !parsed.port) {
 		throw new Error(`${label} must specify a port for remote connections.`);
 	}
+	if (!isLocal) {
+		const sslmode = parsed.searchParams.get('sslmode')?.toLowerCase();
+		if (!['require', 'verify-ca', 'verify-full'].includes(sslmode ?? '')) {
+			throw new Error(
+				`${label} must require TLS for remote connections (sslmode=require, verify-ca, or verify-full).`,
+			);
+		}
+	}
 }

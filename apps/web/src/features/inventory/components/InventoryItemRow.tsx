@@ -7,10 +7,11 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/co
 import { Spinner } from '@/components/ui/spinner';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { apiFetch } from '@/core/infra/api-client';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { type InventoryItemDto, isBelowThreshold } from '@/features/inventory/inventory';
 import { AlertCircle, Minus, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { memo, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 
 interface InventoryItemRowProps {
 	item: InventoryItemDto;
@@ -22,6 +23,22 @@ interface InventoryItemRowProps {
 }
 
 type PendingAction = 'decrement' | 'increment' | 'delete';
+type ConsumeWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
+type ConsumeResponse = {
+	item: InventoryItemDto;
+	clamped: boolean;
+	warning: ConsumeWarning;
+};
+
+function consumeWarningMessage(warning: ConsumeWarning): string | null {
+	if (warning === 'notification_delivery_failed') {
+		return 'Bestand aktualisiert. Nicht alle Push-Benachrichtigungen konnten versendet werden.';
+	}
+	if (warning === 'notification_delivery_unknown') {
+		return 'Bestand aktualisiert. Push-Versand konnte nicht bestätigt werden.';
+	}
+	return null;
+}
 
 export const InventoryItemRow = memo(function InventoryItemRow({
 	item,
@@ -34,6 +51,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	const encodedShareCode = encodeURIComponent(shareCode);
 	const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const consumeIdempotencyKeyRef = useRef<string | null>(null);
 	const lowStock = isBelowThreshold(item);
 	const deleteConfirm = useConfirmDelete();
 	const isDeleteArmed = deleteConfirm.confirmId === item.id;
@@ -45,21 +63,33 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 		setError(null);
 		try {
 			if (delta < 0) {
-				const res = await apiFetch<{ item: InventoryItemDto; clamped: boolean }>(
+				const idempotencyKey = consumeIdempotencyKeyRef.current ?? createOfflineIdempotencyKey();
+				if (idempotencyKey) consumeIdempotencyKeyRef.current = idempotencyKey;
+				const res = await apiFetch<ConsumeResponse>(
 					`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}/consume`,
 					{
 						method: 'POST',
 						memberId,
 						memberToken,
 						body: JSON.stringify({ delta }),
+						...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
 					},
 				);
 				if (res.ok) {
-					if (res.data.clamped) setError('Bestand kann nicht unter 0 fallen.');
+					consumeIdempotencyKeyRef.current = null;
+					const warningMessage = consumeWarningMessage(res.data.warning);
+					if (res.data.clamped && warningMessage) {
+						setError(`Bestand kann nicht unter 0 fallen. ${warningMessage}`);
+					} else if (res.data.clamped) {
+						setError('Bestand kann nicht unter 0 fallen.');
+					} else if (warningMessage) {
+						setError(warningMessage);
+					}
 					onChanged();
 				} else if (res.status === 429) {
 					setError('Zu viele Änderungen in kurzer Zeit. Bitte später erneut versuchen.');
 				} else {
+					if (res.status > 0 && res.status < 500) consumeIdempotencyKeyRef.current = null;
 					setError('Aktualisierung fehlgeschlagen.');
 				}
 			} else {

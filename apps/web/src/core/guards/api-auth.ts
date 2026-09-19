@@ -1,6 +1,7 @@
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers } from '@/core/db';
 import { apiError } from '@/core/errors';
+import { verifyMemberToken } from '@/core/guards/member-token';
 import { and, eq } from 'drizzle-orm';
 import type { NextRequest, NextResponse } from 'next/server';
 
@@ -44,7 +45,10 @@ function unauthorized(code: string): NextResponse {
 
 /**
  * Resolve the caller's active membership from their server-verified Supabase
- * identity. Client-supplied member headers are deliberately not consulted.
+ * identity. The `x-manawg-member-token` HMAC header is verified against the
+ * expected value for (wgId, memberId). A missing or invalid token yields
+ * `verified: false` — callers that require verified identity (admin gates,
+ * money-mutating routes) must check `member.verified` and reject otherwise.
  */
 export async function requireMember(req: NextRequest, wgId: string): Promise<RequireMemberResult> {
 	try {
@@ -62,7 +66,9 @@ export async function requireMember(req: NextRequest, wgId: string): Promise<Req
 		if (row.deactivatedAt) {
 			return { ok: false, response: unauthorized('member_deactivated') };
 		}
-		return { ok: true, member: { memberId: row.id, name: row.name, verified: true } };
+		const token = req.headers.get('x-manawg-member-token');
+		const verified = verifyMemberToken(wgId, row.id, token);
+		return { ok: true, member: { memberId: row.id, name: row.name, verified } };
 	} catch (err) {
 		console.error('[requireMember] db error', err);
 		return { ok: false, response: apiError('db_error', HTTP_SERVICE_UNAVAILABLE) };

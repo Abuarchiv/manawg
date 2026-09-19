@@ -288,10 +288,10 @@ test.describe('Settlement HTTP cache policy', () => {
 		await expect(response.json()).resolves.toMatchObject({ error: 'invalid_share_code' });
 	});
 
-	test('sets no-store on a withWgRoute caught-error response', async ({ request }) => {
+	test('sets no-store on a withWgRoute authentication rejection', async ({ request }) => {
 		test.skip(
 			process.env.CI !== 'true' || process.env.NEXT_PUBLIC_DB_DOWN !== 'true',
-			'the caught-error case requires the local DB-down fixture server',
+			'the fixture authentication case requires the local DB-down fixture server',
 		);
 
 		const response = await request.get(
@@ -299,8 +299,8 @@ test.describe('Settlement HTTP cache policy', () => {
 			{ headers: { 'x-manawg-member-id': fixtureMemberId } },
 		);
 
-		expect(response.status()).toBe(500);
+		expect(response.status()).toBe(401);
 		expect(response.headers()['cache-control']).toBe('no-store');
-		await expect(response.json()).resolves.toMatchObject({ error: 'server_error' });
+		await expect(response.json()).resolves.toMatchObject({ error: 'auth_required' });
 	});
 });

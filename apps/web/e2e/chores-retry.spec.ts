@@ -25,8 +25,8 @@ test('requires a WG member for chores and absences API data', async ({ request }
 
 	expect(choresResponse.status()).toBe(401);
 	expect(absencesResponse.status()).toBe(401);
-	await expect(choresResponse.json()).resolves.toMatchObject({ error: 'member_id_required' });
+	await expect(choresResponse.json()).resolves.toMatchObject({ error: 'auth_required' });
 	await expect(absencesResponse.json()).resolves.toMatchObject({
-		error: 'member_id_required',
+		error: 'auth_required',
 	});
 });

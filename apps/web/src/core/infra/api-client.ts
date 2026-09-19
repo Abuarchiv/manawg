@@ -1,4 +1,4 @@
-import { MEMBER_ID_HEADER } from '@/shared/lib/member-header';
+import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from '@/shared/lib/member-header';
 
 type ApiFetchInit = RequestInit & { memberId?: string; memberToken?: string | undefined };
 
@@ -8,7 +8,7 @@ export async function apiFetch<T>(
 	path: string,
 	init: ApiFetchInit = {},
 ): Promise<ApiFetchResult<T>> {
-	const { memberId, memberToken: _memberToken, ...rest } = init;
+	const { memberId, memberToken, ...rest } = init;
 	const method = rest.method ?? 'GET';
 
 	const headers = new Headers(rest.headers as HeadersInit | undefined);
@@ -18,6 +18,9 @@ export async function apiFetch<T>(
 		memberId
 	) {
 		headers.set(MEMBER_ID_HEADER, memberId);
+	}
+	if (memberToken) {
+		headers.set(MEMBER_TOKEN_HEADER, memberToken);
 	}
 	const hasBody = rest.body !== undefined && rest.body !== null;
 	if (hasBody && ['POST', 'PUT', 'PATCH'].includes(method)) {

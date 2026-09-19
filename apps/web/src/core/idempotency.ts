@@ -40,7 +40,8 @@ export function readIdempotencyKey(req: Request): string | null {
  * receiving the same Idempotency-Key simultaneously will race on the
  * (scope, key) primary key, and only one wins the insert.
  *
- * Fail-open: a DB error returns `true` so the request still succeeds.
+ * Fail-closed: a DB error leaves claim ownership unknown and MUST abort
+ * the request, even if the insert may have committed before the error.
  */
 export async function claimResponseSlot(scope: string, key: string): Promise<boolean> {
 	try {
@@ -56,8 +57,7 @@ export async function claimResponseSlot(scope: string, key: string): Promise<boo
 			.returning({ scope: idempotencyResponses.scope });
 		return rows.length > 0;
 	} catch (err) {
-		console.error('[idempotency] claimResponseSlot failed, failing open:', err);
-		return true;
+		throw new Error('idempotency_claim_failed', { cause: err });
 	}
 }
 
@@ -97,8 +97,8 @@ export async function claimIdempotencySlot(scope: string, key: string): Promise<
  * Postgres-backed (not Redis) because prod has empty UPSTASH_* env vars and
  * the silent-disablement caused duplicate expense inserts.
  *
- * Fail-closed: a DB error returns `null` so the route falls through to normal
- * processing — a temporary hiccup must never trigger a double-mutation.
+ * Fail-closed: a DB error aborts the request. Only a successful lookup may
+ * return `null`; an unavailable cache is not evidence of a missing response.
  */
 export async function getCachedResponse<T>(scope: string, key: string): Promise<T | null> {
 	try {
@@ -125,8 +125,7 @@ export async function getCachedResponse<T>(scope: string, key: string): Promise<
 		}
 		return first.body as T;
 	} catch (err) {
-		console.error('[idempotency] db getCachedResponse failed, failing closed:', err);
-		return null;
+		throw new Error('idempotency_cache_read_failed', { cause: err });
 	}
 }
 

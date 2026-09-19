@@ -62,6 +62,12 @@ function wgHref(code: string, suffix = ''): string {
 }
 
 type AccountMembership = { code: string; memberId: string };
+type OfflineStatus =
+	| 'checking'
+	| 'browser-offline'
+	| 'server-unreachable'
+	| 'unauthenticated'
+	| 'ready';
 
 async function getAccountMemberships(): Promise<AccountMembership[] | null> {
 	const res = await fetch('/api/wg/mine', { cache: 'no-store' });
@@ -86,16 +92,28 @@ export function OfflineClient() {
 	const [queue, setQueue] = useState<OfflineAction[]>([]);
 	const [syncing, setSyncing] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
+	const [status, setStatus] = useState<OfflineStatus>('checking');
 	const syncingRef = useRef(false);
 
 	const refresh = useCallback(async (): Promise<OfflineAction[]> => {
-		setOnline(typeof navigator === 'undefined' ? true : navigator.onLine);
-		setKnownWgs([]);
-		setQueue([]);
+		const browserOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+		setOnline(!browserOffline);
 		setMessage(null);
+		if (browserOffline) {
+			const localQueue = readOfflineQueue();
+			setKnownWgs(getKnownWgs());
+			setQueue(localQueue);
+			setStatus('browser-offline');
+			return localQueue;
+		}
 		try {
 			const memberships = await getAccountMemberships();
-			if (!memberships) return [];
+			if (!memberships) {
+				setKnownWgs([]);
+				setQueue([]);
+				setStatus('unauthenticated');
+				return [];
+			}
 			const memberKeys = new Set(memberships.map(({ code, memberId }) => `${code}:${memberId}`));
 			const memberCodes = new Set(memberships.map(({ code }) => code));
 			const nextQueue = readOfflineQueue().filter((action) =>
@@ -103,9 +121,14 @@ export function OfflineClient() {
 			);
 			setKnownWgs(getKnownWgs().filter((wg) => memberCodes.has(wg.code)));
 			setQueue(nextQueue);
+			setStatus('ready');
 			return nextQueue;
 		} catch {
-			return [];
+			const localQueue = readOfflineQueue();
+			setKnownWgs(getKnownWgs());
+			setQueue(localQueue);
+			setStatus('server-unreachable');
+			return localQueue;
 		}
 	}, []);
 
@@ -127,6 +150,32 @@ export function OfflineClient() {
 	const hiddenQueueCount = Math.max(0, queue.length - recentQueue.length);
 	const primaryWg =
 		knownWgs.find((wg) => (queueCounts.get(wg.code) ?? 0) > 0) ?? knownWgs[0] ?? null;
+	const statusLabel =
+		status === 'browser-offline'
+			? 'Offline-Modus'
+			: status === 'server-unreachable'
+				? 'Server nicht erreichbar'
+				: status === 'unauthenticated'
+					? 'Anmeldung nötig'
+					: 'Wieder online';
+	const statusHeading =
+		status === 'browser-offline'
+			? 'Du bist gerade offline.'
+			: status === 'server-unreachable'
+				? 'Server gerade nicht erreichbar.'
+				: status === 'unauthenticated'
+					? 'Melde dich an, um Offline-Aktionen zu sehen.'
+					: online
+						? 'Du bist wieder verbunden.'
+						: 'Du bist gerade offline.';
+	const statusDescription =
+		status === 'browser-offline'
+			? 'Deine lokal gespeicherten Aktionen bleiben sichtbar. Sobald du wieder online bist, kannst du sie synchronisieren.'
+			: status === 'server-unreachable'
+				? 'Der Server antwortet gerade nicht. Deine lokal gespeicherten Aktionen bleiben erhalten; versuche es später erneut.'
+				: status === 'unauthenticated'
+					? 'Melde dich an, um deine Offline-Aktionen und gemerkten WGs zu laden.'
+					: 'ManaWG speichert vorbereitete Aktionen auf diesem Gerät. Sobald das Netz zurück ist, kannst du sie synchronisieren und in deine WG zurückspringen.';
 
 	async function syncNow() {
 		if (syncingRef.current || queue.length === 0) return;
@@ -136,6 +185,9 @@ export function OfflineClient() {
 		try {
 			const memberships = await getAccountMemberships();
 			if (!memberships) {
+				setKnownWgs([]);
+				setQueue([]);
+				setStatus('unauthenticated');
 				setMessage('Melde dich an, bevor du Offline-Aktionen synchronisierst.');
 				return;
 			}
@@ -178,8 +230,10 @@ export function OfflineClient() {
 									<CloudOff className="h-5 w-5 text-muted-foreground" aria-hidden />
 								)}
 							</span>
-							<Badge variant={online ? 'secondary' : 'outline'}>
-								{online ? 'Wieder online' : 'Offline-Modus'}
+							<Badge
+								variant={status === 'ready' || status === 'checking' ? 'secondary' : 'outline'}
+							>
+								{statusLabel}
 							</Badge>
 						</div>
 						<Button
@@ -199,12 +253,9 @@ export function OfflineClient() {
 						className="font-heading text-[20px] leading-[26px] font-semibold tracking-tight"
 						aria-live="polite"
 					>
-						{online ? 'Du bist wieder verbunden.' : 'Du bist gerade offline.'}
+						{statusHeading}
 					</h1>
-					<p className="text-sm text-muted-foreground">
-						ManaWG speichert vorbereitete Aktionen auf diesem Gerät. Sobald das Netz zurück ist,
-						kannst du sie synchronisieren und in deine WG zurückspringen.
-					</p>
+					<p className="text-sm text-muted-foreground">{statusDescription}</p>
 					{queue.length > 0 && (
 						<Button
 							type="button"

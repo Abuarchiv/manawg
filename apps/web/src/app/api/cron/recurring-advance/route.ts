@@ -3,7 +3,7 @@ import { db, expenseSplits, expenses, recurringExpenses, wgs } from '@/core/db';
 import { TransactionAbort } from '@/core/db/transaction';
 import { verifyCronSecret } from '@/core/infra/cron-auth';
 import { withCronLogging } from '@/core/infra/observability';
-import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
 import {
 	type RecurringSplit,
@@ -176,7 +176,7 @@ export const GET = withCronLogging(
 						description: template.description,
 					},
 				});
-				await dispatchNotification({
+				await dispatchNotificationSafely({
 					wg: { id: template.wgId, name: template.wgName, shareCode: template.shareCode },
 					event: 'expense.recurring_charged',
 					payload: {

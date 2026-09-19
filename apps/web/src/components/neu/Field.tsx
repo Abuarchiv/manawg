@@ -12,6 +12,8 @@ interface FieldProps {
 	onChange: (v: string) => void;
 	maxLength: number;
 	autoComplete?: string;
+	autoFocus?: boolean;
+	required?: boolean;
 	invalid?: boolean;
 	describedBy?: string | undefined;
 }
@@ -24,6 +26,8 @@ export function Field({
 	onChange,
 	maxLength,
 	autoComplete,
+	autoFocus = false,
+	required = false,
 	invalid = false,
 	describedBy,
 }: FieldProps) {
@@ -51,6 +55,8 @@ export function Field({
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
 				maxLength={maxLength}
+				required={required}
+				autoFocus={autoFocus}
 				placeholder={placeholder}
 				autoComplete={autoComplete}
 				aria-invalid={invalid}

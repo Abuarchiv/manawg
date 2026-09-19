@@ -76,6 +76,8 @@ import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 type ChoreSuggestion = { title: string; intervalDays: number; recurrenceType: RecurrenceType };
+type ChoreCreateWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
+type ChoreCreateResponse = { chore: unknown; warning: ChoreCreateWarning };
 const ConfirmDialog = dynamic(() =>
 	import('@/components/ui/ConfirmDialog').then((module) => module.ConfirmDialog),
 );
@@ -350,7 +352,7 @@ export default function PutzenPage() {
 		setActionNotice(null);
 
 		try {
-			const result = await apiFetch<ChoreListResponse>(`/api/wg/${encodedShareCode}/chores`, {
+			const result = await apiFetch<ChoreCreateResponse>(`/api/wg/${encodedShareCode}/chores`, {
 				method: 'POST',
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
@@ -424,6 +426,13 @@ export default function PutzenPage() {
 			setShowForm(false);
 			removeDraft(draftKey);
 			void load(false);
+			if (result.data.warning === 'notification_delivery_failed') {
+				setActionNotice(
+					'Gespeichert. Nicht alle Push-Benachrichtigungen konnten versendet werden.',
+				);
+			} else if (result.data.warning === 'notification_delivery_unknown') {
+				setActionNotice('Gespeichert. Push-Versand konnte nicht bestätigt werden.');
+			}
 		} finally {
 			endPending(pendingKey);
 		}

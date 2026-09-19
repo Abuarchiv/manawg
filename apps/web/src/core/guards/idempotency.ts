@@ -1,12 +1,11 @@
+import {
+	type ReplaySlotDependencies,
+	type ReplaySlotResult,
+	claimReplaySlot,
+} from '@/core/guards/replay-slot';
 import { claimResponseSlot, getCachedResponse } from '@/core/idempotency';
 
-// Poll up to ~10s with backoff. A slow first winner (cold lambda, slow DB)
-// must not make the retrying loser act as a new winner — that would insert
-// twice despite the shared Idempotency-Key. 100ms flat was ~1.1s total, well
-// under realistic handler durations.
-const POLL_ATTEMPTS = 14;
-const POLL_INTERVAL_MS = 100;
-const POLL_MAX_INTERVAL_MS = 2000;
+export type { ReplaySlotDependencies, ReplaySlotResult } from '@/core/guards/replay-slot';
 
 type ReplayEntry<T> = {
 	expiresAt: number;
@@ -106,8 +105,6 @@ export function replayKey(scope: string, key: string): string {
 	return `${scope}:${key}`;
 }
 
-type ReplaySlotResult<T> = { won: true } | { won: false; cached: T | null };
-
 /**
  * Cross-process response-replay claim with poll-and-retry, backed by the
  * Postgres claim table in `@/core/idempotency` (deliberately not Redis — see
@@ -115,34 +112,23 @@ type ReplaySlotResult<T> = { won: true } | { won: false; cached: T | null };
  * Redis client silently no-opped and let duplicate expense inserts through).
  *
  * Attempts to claim the (scope, key) slot. If lost, checks once immediately
- * (the winner may already be done), then polls every 100ms up to 10 times.
+ * (the winner may already be done), then polls with bounded backoff.
  * Returns:
  *   - `{ won: true }` — caller should perform the mutation and eventually
  *     call `setCachedResponse`.
  *   - `{ won: false, cached: T }` — a completed response to replay as-is.
- *   - `{ won: false, cached: null }` — the other process appears to have
- *     failed (claim never resolved to a cached body); caller falls through
- *     and acts as the new winner.
- *
- * Extracted verbatim (semantics, call sequence, and timing unchanged) from
- * the POST handler in expenses/route.ts.
+ * Throws on claim/cache errors or when polling ends without a response.
+ * A slow/crashed winner or a failed cache write never authorizes a takeover.
  */
 export async function claimReplaySlotWithRetry<T>(
 	scope: string,
 	key: string,
+	dependencies?: ReplaySlotDependencies<T>,
 ): Promise<ReplaySlotResult<T>> {
-	const won = await claimResponseSlot(scope, key);
-	if (won) return { won: true };
-
-	const immediate = await getCachedResponse<T>(scope, key);
-	if (immediate) return { won: false, cached: immediate };
-
-	let delay = POLL_INTERVAL_MS;
-	for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt += 1) {
-		await new Promise((resolve) => setTimeout(resolve, delay));
-		delay = Math.min(delay * 2, POLL_MAX_INTERVAL_MS);
-		const retried = await getCachedResponse<T>(scope, key);
-		if (retried) return { won: false, cached: retried };
-	}
-	return { won: false, cached: null };
+	return claimReplaySlot(scope, key, {
+		claim:
+			dependencies?.claim ?? ((claimScope, claimKey) => claimResponseSlot(claimScope, claimKey)),
+		read: dependencies?.read ?? ((readScope, readKey) => getCachedResponse<T>(readScope, readKey)),
+		...(dependencies?.sleep ? { sleep: dependencies.sleep } : {}),
+	});
 }

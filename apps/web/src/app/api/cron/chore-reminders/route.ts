@@ -147,14 +147,19 @@ export const GET = withCronLogging(
 		}
 
 		const results = await Promise.allSettled(
-			claimed.map((item) =>
-				dispatchNotification({
-					wg: { id: item.wgId, name: item.wgName, shareCode: item.shareCode },
-					event: 'chore.due',
-					payload: { title: item.title, choreId: item.id },
-					targetMemberIds: [item.assignedMemberId],
-				}),
-			),
+			claimed.map(async (item) => {
+				try {
+					return await dispatchNotification({
+						wg: { id: item.wgId, name: item.wgName, shareCode: item.shareCode },
+						event: 'chore.due',
+						payload: { title: item.title, choreId: item.id },
+						targetMemberIds: [item.assignedMemberId],
+					});
+				} catch (err) {
+					console.warn('[chore-reminders] notification dispatch failed');
+					return { sent: 0, failures: [err] };
+				}
+			}),
 		);
 
 		// Only stamp chores whose dispatch actually delivered at least one

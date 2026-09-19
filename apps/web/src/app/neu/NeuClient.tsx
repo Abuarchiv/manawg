@@ -77,6 +77,7 @@ interface AccountWg {
 }
 
 type StartStep = 'choose' | 'create' | 'join' | 'joinName' | 'invite';
+type StartField = 'wgName' | 'creatorName' | 'joinCode' | 'joinName';
 
 function isNeuPath(path: string): boolean {
 	try {
@@ -168,6 +169,20 @@ function createWgErrorMessage(status: number, error: string): string {
 	}
 	return 'Konnte WG nicht erstellen.';
 }
+
+function createWgErrorField(status: number, error: string): StartField | null {
+	if (status === 400 && error === 'name_invalid') return 'wgName';
+	if (status === 400 && error === 'creator_name_invalid') return 'creatorName';
+	return null;
+}
+
+function joinErrorField(status: number, error: string): StartField | null {
+	if (status === 404 || error === 'wg_not_found' || error === 'invalid_share_code') {
+		return 'joinCode';
+	}
+	return null;
+}
+
 function isJoinWg(value: unknown): value is JoinWg {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
 	const code = Reflect.get(value, 'code');
@@ -200,11 +215,27 @@ export function NeuClient() {
 	const [authRetryNonce, setAuthRetryNonce] = useState(0);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [invalidField, setInvalidField] = useState<StartField | null>(null);
 	const [accountSwitchError, setAccountSwitchError] = useState<string | null>(null);
 	const [createdWg, setCreatedWg] = useState<CreatedWg | null>(null);
 	const [interactive, setInteractive] = useState(false);
 	const busyRef = useRef(false);
 	const [legacyOpen, setLegacyOpen] = useState(false);
+
+	function clearError(): void {
+		setError(null);
+		setInvalidField(null);
+	}
+
+	function setFormError(message: string): void {
+		setError(message);
+		setInvalidField(null);
+	}
+
+	function setFieldError(field: StartField, message: string): void {
+		setError(message);
+		setInvalidField(field);
+	}
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: mount-only initializer — reads the saved draft and initial URL params once; adding searchParams would re-run on navigation and clobber in-progress step/draft state.
 	useEffect(() => {
@@ -237,7 +268,10 @@ export function NeuClient() {
 		if (!interactive) return;
 		let cancelled = false;
 		const loadAccountWgs = async () => {
-			if (authRetryNonce > 0) setError(null);
+			if (authRetryNonce > 0) {
+				setError(null);
+				setInvalidField(null);
+			}
 			setAuthState('loading');
 			try {
 				const res = await fetch('/api/wg/mine', { cache: 'no-store' });
@@ -326,7 +360,7 @@ export function NeuClient() {
 
 	function returnToSignIn(): void {
 		setAuthState('signed-out');
-		setError(null);
+		clearError();
 		router.replace(loginNextPath());
 	}
 
@@ -338,6 +372,15 @@ export function NeuClient() {
 		try {
 			const { signOutSocialAccount } = await import('@/core/auth/client');
 			await signOutSocialAccount();
+			removeDraft(START_DRAFT_KEY);
+			setStep('choose');
+			setWgName('');
+			setCreatorName('');
+			setJoinCode('');
+			setJoinName('');
+			setJoinWg(null);
+			setCreatedWg(null);
+			clearError();
 			setAccountWgs([]);
 			setAuthState('signed-out');
 		} catch {
@@ -352,11 +395,11 @@ export function NeuClient() {
 		if (busyRef.current) return;
 		const trimmedWg = wgName.trim();
 		const trimmedMe = creatorName.trim();
-		if (trimmedWg.length === 0) return setError('WG-Name fehlt.');
-		if (trimmedMe.length === 0) return setError('Dein Anzeigename fehlt.');
+		if (trimmedWg.length === 0) return setFieldError('wgName', 'WG-Name fehlt.');
+		if (trimmedMe.length === 0) return setFieldError('creatorName', 'Dein Anzeigename fehlt.');
 		busyRef.current = true;
 		setBusy(true);
-		setError(null);
+		clearError();
 		try {
 			const res = await fetch('/api/wg', {
 				method: 'POST',
@@ -368,7 +411,11 @@ export function NeuClient() {
 				return;
 			}
 			if (!res.ok) {
-				setError(createWgErrorMessage(res.status, await readStartError(res)));
+				const apiError = await readStartError(res);
+				const message = createWgErrorMessage(res.status, apiError);
+				const field = createWgErrorField(res.status, apiError);
+				if (field) setFieldError(field, message);
+				else setFormError(message);
 				return;
 			}
 			const data = (await res.json()) as CreateResponse;
@@ -382,7 +429,9 @@ export function NeuClient() {
 			setCreatedWg({ code: data.wg.shareCode, name: data.wg.name });
 			setStep('invite');
 		} catch {
-			setError('WG konnte nicht erstellt werden: Prüfe deine Verbindung und versuche es erneut.');
+			setFormError(
+				'WG konnte nicht erstellt werden: Prüfe deine Verbindung und versuche es erneut.',
+			);
 		} finally {
 			busyRef.current = false;
 			setBusy(false);
@@ -393,12 +442,15 @@ export function NeuClient() {
 		if (busyRef.current) return;
 		const code = normalizeShareCode(joinCode);
 		if (!isValidShareCode(code)) {
-			setError('Code besteht aus 8 Zeichen (Großbuchstaben/Ziffern, ohne I/L/O/U).');
+			setFieldError(
+				'joinCode',
+				'Code besteht aus 8 Zeichen (Großbuchstaben/Ziffern, ohne I/L/O/U).',
+			);
 			return;
 		}
 		busyRef.current = true;
 		setBusy(true);
-		setError(null);
+		clearError();
 		try {
 			if (process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true') {
 				// The database-free fixture keeps its existing policy-preview contract;
@@ -406,14 +458,17 @@ export function NeuClient() {
 				const res = await fetch(`/api/wg/${encodeURIComponent(code)}`, { cache: 'no-store' });
 				if (!res.ok) {
 					const apiError = await readStartError(res);
-					setError(joinErrorMessage(res.status, apiError));
+					const message = joinErrorMessage(res.status, apiError);
+					const field = joinErrorField(res.status, apiError);
+					if (field) setFieldError(field, message);
+					else setFormError(message);
 					return;
 				}
 				const data = (await res.json()) as {
 					wg: { id: string; shareCode: string; name: string; joiningEnabled?: boolean };
 				};
 				if (data.wg.joiningEnabled === false) {
-					setError(joinErrorMessage(403, 'joining_disabled'));
+					setFormError(joinErrorMessage(403, 'joining_disabled'));
 					return;
 				}
 			}
@@ -422,7 +477,7 @@ export function NeuClient() {
 			setJoinWg({ code, name: 'WG-Einladung' });
 			setStep('joinName');
 		} catch {
-			setError(joinErrorMessage(0, ''));
+			setFormError(joinErrorMessage(0, ''));
 		} finally {
 			busyRef.current = false;
 			setBusy(false);
@@ -434,12 +489,12 @@ export function NeuClient() {
 		const name = joinName.trim();
 		if (!joinWg) return;
 		if (name.length === 0) {
-			setError('Dein Anzeigename fehlt.');
+			setFieldError('joinName', 'Dein Anzeigename fehlt.');
 			return;
 		}
 		busyRef.current = true;
 		setBusy(true);
-		setError(null);
+		clearError();
 		try {
 			const res = await fetch(`/api/wg/${encodeURIComponent(joinWg.code)}/members`, {
 				method: 'POST',
@@ -457,11 +512,15 @@ export function NeuClient() {
 					router.push(`/wg/${encodeURIComponent(joinWg.code)}`);
 					return;
 				}
-				setError(
+				const message =
 					apiError === 'auth_required'
 						? 'Melde dich zuerst mit deinem Konto an.'
-						: joinErrorMessage(res.status, apiError),
-				);
+						: joinErrorMessage(res.status, apiError);
+				if (apiError === 'name_invalid' || (res.status === 409 && apiError === 'name_taken')) {
+					setFieldError('joinName', message);
+				} else {
+					setFormError(message);
+				}
 				return;
 			}
 			await res.json();
@@ -470,7 +529,7 @@ export function NeuClient() {
 			removeDraft(START_DRAFT_KEY);
 			router.push(`/wg/${encodeURIComponent(joinWg.code)}`);
 		} catch {
-			setError(joinErrorMessage(0, ''));
+			setFormError(joinErrorMessage(0, ''));
 		} finally {
 			busyRef.current = false;
 			setBusy(false);
@@ -479,7 +538,7 @@ export function NeuClient() {
 
 	function backToChoose(): void {
 		setStep('choose');
-		setError(null);
+		clearError();
 		setJoinWg(null);
 	}
 
@@ -688,6 +747,7 @@ export function NeuClient() {
 					</CardHeader>
 					<CardContent>
 						<form
+							noValidate
 							onSubmit={(event) => {
 								event.preventDefault();
 								void createWg();
@@ -703,8 +763,10 @@ export function NeuClient() {
 									onChange={setWgName}
 									maxLength={WG_NAME_MAX}
 									autoComplete="organization"
-									invalid={Boolean(error)}
-									describedBy={error ? 'create-wg-error' : undefined}
+									autoFocus
+									required
+									invalid={invalidField === 'wgName'}
+									describedBy={invalidField === 'wgName' ? 'create-wg-error' : undefined}
 								/>
 								<Field
 									id="creator-name"
@@ -714,11 +776,22 @@ export function NeuClient() {
 									onChange={setCreatorName}
 									maxLength={NAME_MAX}
 									autoComplete="given-name"
-									invalid={Boolean(error)}
-									describedBy={error ? 'create-wg-error' : undefined}
+									required
+									invalid={invalidField === 'creatorName'}
+									describedBy={invalidField === 'creatorName' ? 'create-wg-error' : undefined}
 								/>
 							</FieldGroup>
-							{error && <ErrorBox id="create-wg-error">{error}</ErrorBox>}
+							{error && (
+								<ErrorBox
+									id={
+										invalidField === 'wgName' || invalidField === 'creatorName'
+											? 'create-wg-error'
+											: 'create-wg-form-error'
+									}
+								>
+									{error}
+								</ErrorBox>
+							)}
 							<div className="flex flex-wrap items-center gap-2">
 								<BackButton onClick={backToChoose} disabled={busy} />
 								<Button
@@ -758,6 +831,7 @@ export function NeuClient() {
 					</CardHeader>
 					<CardContent>
 						<form
+							noValidate
 							onSubmit={(event) => {
 								event.preventDefault();
 								void verifyJoinCode();
@@ -765,7 +839,7 @@ export function NeuClient() {
 							className="flex flex-col gap-5"
 						>
 							<FieldGroup>
-								<UiField data-invalid={Boolean(error)}>
+								<UiField data-invalid={invalidField === 'joinCode'}>
 									<FieldLabel htmlFor="join-code">WG-Code</FieldLabel>
 									<Input
 										id="join-code"
@@ -773,15 +847,21 @@ export function NeuClient() {
 										value={joinCode}
 										onChange={(event) => {
 											setJoinCode(event.target.value.toUpperCase());
-											if (error) setError(null);
+											if (error) clearError();
 										}}
 										maxLength={8}
+										required
+										autoFocus
 										autoComplete="off"
 										autoCapitalize="characters"
 										inputMode="text"
 										placeholder="ABCD1234"
-										aria-describedby={error ? 'join-code-hint join-code-error' : 'join-code-hint'}
-										aria-invalid={Boolean(error)}
+										aria-describedby={
+											invalidField === 'joinCode'
+												? 'join-code-hint join-code-error'
+												: 'join-code-hint'
+										}
+										aria-invalid={invalidField === 'joinCode'}
 										className="min-h-11 font-mono text-base md:text-base"
 									/>
 									<FieldDescription id="join-code-hint">
@@ -789,7 +869,13 @@ export function NeuClient() {
 									</FieldDescription>
 								</UiField>
 							</FieldGroup>
-							{error && <ErrorBox id="join-code-error">{error}</ErrorBox>}
+							{error && (
+								<ErrorBox
+									id={invalidField === 'joinCode' ? 'join-code-error' : 'join-code-form-error'}
+								>
+									{error}
+								</ErrorBox>
+							)}
 							<div className="flex flex-wrap items-center gap-2">
 								<BackButton onClick={backToChoose} disabled={busy} />
 								<Button
@@ -823,6 +909,7 @@ export function NeuClient() {
 					</CardHeader>
 					<CardContent>
 						<form
+							noValidate
 							onSubmit={(event) => {
 								event.preventDefault();
 								void joinExistingWg();
@@ -837,20 +924,34 @@ export function NeuClient() {
 									value={joinName}
 									onChange={(value) => {
 										setJoinName(value);
-										if (error) setError(null);
+										if (error) clearError();
 									}}
 									maxLength={NAME_MAX}
 									autoComplete="given-name"
-									invalid={Boolean(error)}
-									describedBy={error ? 'join-name-error' : undefined}
+									autoFocus
+									required
+									invalid={invalidField === 'joinName'}
+									describedBy={invalidField === 'joinName' ? 'join-name-error' : undefined}
 								/>
 							</FieldGroup>
 							<p className="text-sm text-muted-foreground">
 								Du trittst dieser WG mit deinem angemeldeten Konto bei.
 							</p>
-							{error && <ErrorBox id="join-name-error">{error}</ErrorBox>}
+							{error && (
+								<ErrorBox
+									id={invalidField === 'joinName' ? 'join-name-error' : 'join-name-form-error'}
+								>
+									{error}
+								</ErrorBox>
+							)}
 							<div className="flex flex-wrap items-center gap-2">
-								<BackButton onClick={() => setStep('join')} disabled={busy} />
+								<BackButton
+									onClick={() => {
+										clearError();
+										setStep('join');
+									}}
+									disabled={busy}
+								/>
 								<Button
 									type="submit"
 									disabled={busy}

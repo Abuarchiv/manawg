@@ -272,15 +272,15 @@ export function ChatView({
 		replyToMessageId: string | null;
 	}): Promise<boolean> {
 		setSendError(null);
-		const res = await apiFetch<{ message: ChatMessageDto }>(
-			`/api/wg/${encodedShareCode}/chat/messages`,
-			{
-				method: 'POST',
-				memberId: identity.memberId,
-				memberToken: identity.memberToken,
-				body: JSON.stringify(input),
-			},
-		);
+		const res = await apiFetch<{
+			message: ChatMessageDto;
+			warning: null | 'notification_delivery_failed' | 'notification_delivery_unknown';
+		}>(`/api/wg/${encodedShareCode}/chat/messages`, {
+			method: 'POST',
+			memberId: identity.memberId,
+			memberToken: identity.memberToken,
+			body: JSON.stringify(input),
+		});
 		if (!res.ok) {
 			setSendError(explainChatError('send', res.error));
 			return false;
@@ -291,6 +291,11 @@ export function ChatView({
 				: [...prev, res.data.message],
 		);
 		void refresh();
+		if (res.data.warning === 'notification_delivery_failed') {
+			toast.info('Gesendet. Nicht alle Push-Benachrichtigungen konnten versendet werden.');
+		} else if (res.data.warning === 'notification_delivery_unknown') {
+			toast.info('Gesendet. Push-Versand konnte nicht bestätigt werden.');
+		}
 		return true;
 	}
 
@@ -484,7 +489,7 @@ export function ChatView({
 								</MessageScrollerItem>
 							) : messages.length === 0 && !hasMoreOlder ? (
 								<MessageScrollerItem className="py-6">
-									<Empty className="border-dashed">
+									<Empty className="border border-dashed">
 										<EmptyHeader>
 											<EmptyMedia>
 												<MessageCircle aria-hidden />

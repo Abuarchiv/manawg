@@ -145,11 +145,8 @@ export async function POST(
 		if (idemScope && idemKey) {
 			const slot = await claimReplaySlotWithRetry<CommitResult>(idemScope, idemKey);
 			if (!slot.won) {
-				if (slot.cached) {
-					replayReservation?.resolve(slot.cached);
-					return NextResponse.json(slot.cached);
-				}
-				// Fall through: the other process failed. We act as the new winner.
+				replayReservation?.resolve(slot.cached);
+				return NextResponse.json(slot.cached);
 			}
 		}
 

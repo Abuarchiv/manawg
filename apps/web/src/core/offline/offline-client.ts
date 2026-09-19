@@ -27,6 +27,7 @@ const OFFLINE_ACTION_TYPES: ReadonlySet<OfflineActionType> = new Set([
 	'chore.create',
 	'chore.complete',
 	'expense.create',
+	'expense.update',
 	'recurring.create',
 	'recurring.advance',
 ]);
@@ -123,6 +124,16 @@ function hasValidPayload(type: OfflineActionType, payload: Record<string, unknow
 			return typeof payload.choreId === 'string';
 		case 'expense.create':
 			return (
+				typeof payload.description === 'string' &&
+				typeof payload.amountCents === 'number' &&
+				typeof payload.paidByMemberId === 'string' &&
+				isSplitArray(payload.splits) &&
+				isOptionalStringOrNull(payload.imageUrl)
+			);
+		case 'expense.update':
+			return (
+				typeof payload.expenseId === 'string' &&
+				typeof payload.expectedUpdatedAt === 'string' &&
 				typeof payload.description === 'string' &&
 				typeof payload.amountCents === 'number' &&
 				typeof payload.paidByMemberId === 'string' &&

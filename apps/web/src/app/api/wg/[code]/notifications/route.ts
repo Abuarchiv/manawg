@@ -1,12 +1,18 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, pushSubscriptions, wgMembers } from '@/core/db';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { badRequest, forbidden, notFound, serverError, tooMany } from '@/core/errors';
+import { forbidden, notFound, serverError, tooMany } from '@/core/errors';
+import { badRequest, payloadTooLarge } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { readJsonBody } from '@/core/http/read-json';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, notifTestLimiter, wgWriteLimiter } from '@/core/rate-limit';
-import { pushEndpointSchema } from '@/core/validators/push-endpoint';
+import {
+	pushAuthKeySchema,
+	pushEndpointSchema,
+	pushP256dhSchema,
+} from '@/core/validators/push-endpoint';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -29,8 +35,8 @@ const postSchema = z.discriminatedUnion('action', [
 	z.object({
 		action: z.literal('push_subscribe'),
 		endpoint: pushEndpointSchema,
-		p256dh: z.string().min(1),
-		authKey: z.string().min(1),
+		p256dh: pushP256dhSchema,
+		authKey: pushAuthKeySchema,
 	}),
 	z.object({
 		action: z.literal('push_unsubscribe'),
@@ -89,12 +95,12 @@ export const GET = withWgRoute('notifications GET', async (req, { code }) => {
 });
 
 export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) => {
-	let raw: unknown;
-	try {
-		raw = await req.json();
-	} catch {
-		return badRequest('invalid_json');
-	}
+	const rawResult = await readJsonBody(req, 16 * 1024);
+	if (!rawResult.ok)
+		return rawResult.reason === 'payload_too_large'
+			? payloadTooLarge()
+			: badRequest('invalid_json');
+	const raw = rawResult.body;
 	const parsed = patchSchema.safeParse(raw);
 	if (!parsed.success) {
 		const { fieldErrors } = parsed.error.flatten();
@@ -179,12 +185,12 @@ export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) =>
 });
 
 export const POST = withWgRoute('notifications POST', async (req, { code }) => {
-	let raw: unknown;
-	try {
-		raw = await req.json();
-	} catch {
-		return badRequest('invalid_json');
-	}
+	const rawResult = await readJsonBody(req, 16 * 1024);
+	if (!rawResult.ok)
+		return rawResult.reason === 'payload_too_large'
+			? payloadTooLarge()
+			: badRequest('invalid_json');
+	const raw = rawResult.body;
 	const parsed = postSchema.safeParse(raw);
 	if (!parsed.success) {
 		const { fieldErrors } = parsed.error.flatten();

@@ -100,10 +100,9 @@ test.describe('ManaWG launch smoke', () => {
 	const requiresRealProductAuth =
 		process.env.PREVIEW_E2E === 'true' || process.env.REAL_PRODUCT_E2E === 'true';
 
-	test('stops invite-code joins before name entry when new joins are disabled', async ({
-		page,
-	}) => {
+	test('shows joining disabled after a member join attempt', async ({ page }) => {
 		let memberPostRequests = 0;
+		const fixtureMode = process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true';
 		await page.addInitScript(() => window.localStorage.clear());
 		// This existing mocked invite-policy test starts after account authentication.
 		await page.route('**/api/wg/mine', (route) =>
@@ -136,14 +135,31 @@ test.describe('ManaWG launch smoke', () => {
 		});
 
 		await gotoWithRetry(page, '/neu?code=MTE8PZAT');
+		if (!fixtureMode) {
+			if (!qaAuthConfig) {
+				test.skip(true, 'non-fixture smoke requires Supabase QA credentials');
+				return;
+			}
+			await authenticateQaUser(page, qaAuthConfig);
+			await page.reload();
+		}
 		await expect(page.getByRole('heading', { name: 'Per Code beitreten' })).toBeVisible({
 			timeout: 30_000,
 		});
 		await page.getByRole('button', { name: 'WG-Code prüfen' }).click();
 
+		if (fixtureMode) {
+			await expect(page.getByText('Diese WG nimmt gerade keine neuen Beitritte an.')).toBeVisible();
+			await expect(page.getByRole('button', { name: 'WG beitreten' })).toHaveCount(0);
+			await expect.poll(() => memberPostRequests).toBe(0);
+			return;
+		}
+
+		await expect(page.getByRole('heading', { name: 'Dein Name in der WG' })).toBeVisible();
+		await page.getByLabel('Dein Anzeigename').fill('Smoke Tester');
+		await page.getByRole('button', { name: 'Beitreten', exact: true }).click();
 		await expect(page.getByText('Diese WG nimmt gerade keine neuen Beitritte an.')).toBeVisible();
-		await expect(page.getByRole('button', { name: 'WG beitreten' })).toHaveCount(0);
-		await expect.poll(() => memberPostRequests).toBe(0);
+		await expect.poll(() => memberPostRequests).toBe(1);
 	});
 
 	test('404 page provides a valid keyboard skip target', async ({ page }) => {

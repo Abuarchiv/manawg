@@ -6,11 +6,14 @@ import {
 	notificationCategoryForEvent,
 	notificationPriorityForEvent,
 } from '@/core/notifications/notifications';
-import { parseWebPushStatusCode } from '@/core/notifications/web-push-errors';
+import {
+	isTransientWebPushStatus,
+	parseWebPushStatusCode,
+} from '@/core/notifications/web-push-errors';
 import { getAppUrl } from '@/shared/lib/app-url';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 
-interface DispatchInput {
+export interface DispatchInput {
 	wg: { id: string; name: string; shareCode: string };
 	event: NotificationEvent;
 	payload: Record<string, unknown>;
@@ -19,10 +22,22 @@ interface DispatchInput {
 	bypassPreferences?: boolean;
 }
 
+export type NotificationDispatchWarning =
+	| null
+	| 'notification_delivery_failed'
+	| 'notification_delivery_unknown';
+
+export interface DispatchNotificationSafelyOptions {
+	timeoutMs?: number;
+	dispatch?: typeof dispatchNotification;
+}
+
 interface WebPushResult {
 	sent: number;
 	failures: unknown[];
 }
+
+const PUSH_RETRY_DELAYS_MS = [100, 300] as const;
 
 export function buildNotificationUrl(shareCode: string, urlPath: string): string {
 	const normalizedPath = urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
@@ -64,19 +79,30 @@ async function sendWebPush(
 	await Promise.allSettled(
 		subs.map(async (sub) => {
 			try {
-				await webPush.sendNotification(
-					{
-						endpoint: sub.endpoint,
-						keys: { p256dh: sub.p256dh, auth: sub.authKey },
-					},
-					JSON.stringify({
-						title: payload.title,
-						body: payload.body,
-						url: payload.url,
-						icon: '/icon-192.png',
-					}),
-				);
-				sent += 1;
+				for (let attempt = 0; ; attempt += 1) {
+					try {
+						await webPush.sendNotification(
+							{
+								endpoint: sub.endpoint,
+								keys: { p256dh: sub.p256dh, auth: sub.authKey },
+							},
+							JSON.stringify({
+								title: payload.title,
+								body: payload.body,
+								url: payload.url,
+								icon: '/icon-192.png',
+							}),
+						);
+						sent += 1;
+						break;
+					} catch (err) {
+						const statusCode = parseWebPushStatusCode(err);
+						if (!isTransientWebPushStatus(statusCode) || attempt >= PUSH_RETRY_DELAYS_MS.length) {
+							throw err;
+						}
+						await new Promise((resolve) => setTimeout(resolve, PUSH_RETRY_DELAYS_MS[attempt]));
+					}
+				}
 			} catch (err) {
 				const statusCode = parseWebPushStatusCode(err);
 				if (statusCode === 404 || statusCode === 410) {
@@ -112,8 +138,10 @@ async function sendWebPush(
 	return { sent, failures };
 }
 
-export async function dispatchNotification(input: DispatchInput): Promise<{ sent: number }> {
-	if (input.targetMemberIds?.length === 0) return { sent: 0 };
+export async function dispatchNotification(
+	input: DispatchInput,
+): Promise<{ sent: number; failures: unknown[] }> {
+	if (input.targetMemberIds?.length === 0) return { sent: 0, failures: [] };
 
 	const rows = await db
 		.select({
@@ -148,7 +176,7 @@ export async function dispatchNotification(input: DispatchInput): Promise<{ sent
 	const url = buildNotificationUrl(input.wg.shareCode, message.urlPath);
 	const category = notificationCategoryForEvent(input.event);
 	const priority = notificationPriorityForEvent(input.event);
-	if (priority === 'silent') return { sent: 0 };
+	if (priority === 'silent') return { sent: 0, failures: [] };
 	const currentHour = new Date().getHours();
 
 	const targetMembers = rows
@@ -179,23 +207,43 @@ export async function dispatchNotification(input: DispatchInput): Promise<{ sent
 		}),
 	);
 
-	if (input.event === 'notification.test') {
-		const fulfilledResults = pushResults
-			.filter((result) => result.status === 'fulfilled')
-			.map((result) => result.value);
-		const sentCount = fulfilledResults.reduce((total, result) => total + result.sent, 0);
-		const providerFailures = fulfilledResults.flatMap((result) => result.failures);
-
-		if (sentCount === 0 && providerFailures.length > 0) {
-			throw providerFailures[0];
-		}
-	}
-
 	const sentTotal = pushResults
 		.filter(
 			(result): result is PromiseFulfilledResult<{ sent: number; failures: unknown[] }> =>
 				result.status === 'fulfilled',
 		)
 		.reduce((total, result) => total + result.value.sent, 0);
-	return { sent: sentTotal };
+	const failures = pushResults.flatMap((result) =>
+		result.status === 'fulfilled' ? result.value.failures : [result.reason],
+	);
+	if (input.event === 'notification.test' && sentTotal === 0) {
+		throw failures[0] ?? new Error('notification_delivery_failed');
+	}
+	return { sent: sentTotal, failures };
+}
+
+const DEFAULT_NOTIFICATION_DISPATCH_TIMEOUT_MS = 5_000;
+
+export async function dispatchNotificationSafely(
+	input: DispatchInput,
+	options: DispatchNotificationSafelyOptions = {},
+): Promise<{ sent: number; warning: NotificationDispatchWarning }> {
+	let timeoutId: ReturnType<typeof setTimeout> | undefined;
+	try {
+		const timeout = new Promise<never>((_, reject) => {
+			timeoutId = setTimeout(
+				() => reject(new Error('notification delivery timed out')),
+				options.timeoutMs ?? DEFAULT_NOTIFICATION_DISPATCH_TIMEOUT_MS,
+			);
+		});
+		const result = await Promise.race([(options.dispatch ?? dispatchNotification)(input), timeout]);
+		return {
+			sent: result.sent,
+			warning: result.failures.length > 0 ? 'notification_delivery_failed' : null,
+		};
+	} catch {
+		return { sent: 0, warning: 'notification_delivery_unknown' };
+	} finally {
+		if (timeoutId !== undefined) clearTimeout(timeoutId);
+	}
 }

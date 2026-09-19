@@ -7,7 +7,7 @@ import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -76,7 +76,13 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 		const member = await db
 			.select({ id: wgMembers.id })
 			.from(wgMembers)
-			.where(and(eq(wgMembers.id, parsed.data.assignedMemberId), eq(wgMembers.wgId, wgId)))
+			.where(
+				and(
+					eq(wgMembers.id, parsed.data.assignedMemberId),
+					eq(wgMembers.wgId, wgId),
+					isNull(wgMembers.deactivatedAt),
+				),
+			)
 			.limit(1);
 		if (member.length === 0) return badRequest('member_not_in_wg');
 	}

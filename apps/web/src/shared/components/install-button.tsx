@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
 	type BeforeInstallEvent,
 	isAppInstalled,
+	isIosLikeDevice,
 	subscribeInstall,
 	triggerInstall,
 } from '../lib/pwa-install';
@@ -51,11 +52,7 @@ export function InstallButton({
 		}
 
 		const ua = window.navigator.userAgent.toLowerCase();
-		if (
-			/iphone|ipad|ipod/.test(ua) ||
-			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-		)
-			setPlatform('ios');
+		if (isIosLikeDevice(window.navigator)) setPlatform('ios');
 		else if (/android/.test(ua)) setPlatform('android');
 		else setPlatform('desktop');
 

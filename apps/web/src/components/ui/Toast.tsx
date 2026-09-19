@@ -85,8 +85,6 @@ export function ToastContainer() {
 		<div
 			className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--app-nav-height,5rem)+0.5rem)] z-50 mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-2 px-4"
 			aria-label="Benachrichtigungen"
-			aria-live="polite"
-			aria-atomic="true"
 		>
 			{toasts.map((toast) => (
 				<div key={toast.id} className="pointer-events-auto">

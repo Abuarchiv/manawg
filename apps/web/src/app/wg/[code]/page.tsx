@@ -32,7 +32,7 @@ import { getDashboardAnnouncementHref } from '@/core/reads/dashboard-links';
 import { formatEuroCents } from '@/core/utils/money';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
-import { ChevronDown, ChevronRight, Megaphone, Receipt } from 'lucide-react';
+import { ChevronDown, ChevronRight, Megaphone, Receipt, Search } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -370,15 +370,29 @@ export default function WgHomePage() {
 							<h2 id="wg-now-heading" className="text-sm font-medium text-muted-foreground">
 								Neu in deiner WG
 							</h2>
-							<Link
-								href={`${wgBaseHref}/aktivitaet`}
-								className={cn(
-									buttonVariants({ variant: 'ghost' }),
-									'min-h-11 min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground text-right leading-snug',
-								)}
-							>
-								Ganze Chronik <ChevronRight data-icon="inline-end" aria-hidden />
-							</Link>
+							<div className="flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
+								{/* The header keeps no search control (AGENTS.md). Search stays
+								    reachable from Start, as the WG shell documents. */}
+								<Link
+									href={`${wgBaseHref}/suche`}
+									className={cn(
+										buttonVariants({ variant: 'ghost' }),
+										'min-h-11 min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground leading-snug',
+									)}
+								>
+									<Search data-icon="inline-start" aria-hidden />
+									WG durchsuchen
+								</Link>
+								<Link
+									href={`${wgBaseHref}/aktivitaet`}
+									className={cn(
+										buttonVariants({ variant: 'ghost' }),
+										'min-h-11 min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground text-right leading-snug',
+									)}
+								>
+									Ganze Chronik <ChevronRight data-icon="inline-end" aria-hidden />
+								</Link>
+							</div>
 						</div>
 						{data ? (
 							<div className="flex flex-col gap-2">

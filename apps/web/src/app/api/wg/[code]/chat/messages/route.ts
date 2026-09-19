@@ -1,10 +1,12 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgChatMentions, wgChatMessages, wgChatReactions, wgMembers } from '@/core/db';
-import { badRequest, serverError, tooMany } from '@/core/errors';
+import { serverError, tooMany } from '@/core/errors';
+import { badRequest, payloadTooLarge } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { readJsonBody } from '@/core/http/read-json';
+import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { chatMessageLimiter, checkRateLimit } from '@/core/rate-limit';
 import { imageUrlSchema } from '@/core/validators/image-url';
 import { previewBody, sanitizeMessageBody } from '@/features/chat/chat-pure';
@@ -114,12 +116,12 @@ export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 });
 
 export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
-	let raw: unknown;
-	try {
-		raw = await req.json();
-	} catch {
-		return badRequest('invalid_json');
-	}
+	const rawResult = await readJsonBody(req, 64 * 1024);
+	if (!rawResult.ok)
+		return rawResult.reason === 'payload_too_large'
+			? payloadTooLarge()
+			: badRequest('invalid_json');
+	const raw = rawResult.body;
 
 	const parsed = createMessageSchema.safeParse(raw);
 	if (!parsed.success) {
@@ -200,29 +202,32 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 
 	const preview = previewBody(cleanBody ?? (imageUrl ? 'Bild' : ''), PREVIEW_LENGTH);
 
-	void dispatchNotification({
-		wg,
-		event: 'chat.message',
-		payload: {
-			messageId: inserted.id,
-			actorName: auth.member.name,
-			preview,
-		},
-		excludeMemberId: auth.member.memberId,
-	}).catch((err) => console.error('[chat POST] notification failed', err));
-
-	if (validMentionIds.length > 0) {
-		void dispatchNotification({
+	const notificationDispatches = [
+		dispatchNotificationSafely({
 			wg,
-			event: 'chat.mention',
+			event: 'chat.message',
 			payload: {
 				messageId: inserted.id,
 				actorName: auth.member.name,
 				preview,
 			},
-			targetMemberIds: validMentionIds,
 			excludeMemberId: auth.member.memberId,
-		}).catch((err) => console.error('[chat POST] mention notification failed', err));
+		}),
+	];
+	if (validMentionIds.length > 0) {
+		notificationDispatches.push(
+			dispatchNotificationSafely({
+				wg,
+				event: 'chat.mention',
+				payload: {
+					messageId: inserted.id,
+					actorName: auth.member.name,
+					preview,
+				},
+				targetMemberIds: validMentionIds,
+				excludeMemberId: auth.member.memberId,
+			}),
+		);
 	}
 
 	// Audit log for traceability — kept lightweight (no full body, only preview).
@@ -236,5 +241,14 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 		metadata: { preview, kind, mentions: validMentionIds.length },
 	}).catch(() => undefined);
 
-	return NextResponse.json({ message: inserted, mentions: validMentionIds });
+	const notificationResults = await Promise.all(notificationDispatches);
+	const warning = notificationResults.some(
+		(result) => result.warning === 'notification_delivery_unknown',
+	)
+		? 'notification_delivery_unknown'
+		: notificationResults.some((result) => result.warning === 'notification_delivery_failed')
+			? 'notification_delivery_failed'
+			: null;
+
+	return NextResponse.json({ message: inserted, mentions: validMentionIds, warning });
 });

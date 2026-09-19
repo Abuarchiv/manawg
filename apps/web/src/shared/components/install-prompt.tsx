@@ -20,6 +20,7 @@ import {
 import {
 	type BeforeInstallEvent,
 	isAppInstalled,
+	isIosLikeDevice,
 	subscribeInstall,
 	triggerInstall,
 } from '../lib/pwa-install';
@@ -95,7 +96,7 @@ export function InstallPrompt() {
 		if (isAppInstalled()) return;
 
 		const ua = window.navigator.userAgent.toLowerCase();
-		const isIos = /iphone|ipad|ipod/.test(ua);
+		const isIos = isIosLikeDevice(window.navigator);
 		const isSafari = isIos && /safari/.test(ua) && !/crios|fxios|edgios/.test(ua);
 
 		const showWhenReady = () => {

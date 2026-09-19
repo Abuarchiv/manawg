@@ -88,6 +88,18 @@ export function isAppInstalled(): boolean {
 	return installed;
 }
 
+export function isIosLikeDevice(input: {
+	userAgent: string;
+	platform?: string;
+	maxTouchPoints?: number;
+}): boolean {
+	const userAgent = input.userAgent.toLowerCase();
+	return (
+		/iphone|ipad|ipod/.test(userAgent) ||
+		(input.platform === 'MacIntel' && (input.maxTouchPoints ?? 0) > 1)
+	);
+}
+
 export function subscribeInstall(fn: Subscriber): () => void {
 	subscribers.add(fn);
 	// Sofort mit aktuellem State callen

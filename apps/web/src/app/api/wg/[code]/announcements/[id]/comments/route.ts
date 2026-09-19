@@ -10,7 +10,10 @@ import { badRequest, notFound, serverError, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import {
+	type NotificationDispatchWarning,
+	dispatchNotificationSafely,
+} from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { findWgAnnouncement } from '@/features/pinnwand/announcement-lookup';
 import { and, asc, eq } from 'drizzle-orm';
@@ -122,8 +125,9 @@ export const POST = withWgRoute<{ id: string }>(
 		const targetMemberIds = Array.from(
 			new Set([announcement.authorMemberId, ...takers.map((taker) => taker.memberId)]),
 		);
+		let warning: NotificationDispatchWarning = null;
 		if (targetMemberIds.length > 0) {
-			void dispatchNotification({
+			const delivery = await dispatchNotificationSafely({
 				wg,
 				event: 'announcement.commented',
 				payload: {
@@ -133,7 +137,8 @@ export const POST = withWgRoute<{ id: string }>(
 				},
 				targetMemberIds,
 				excludeMemberId: auth.member.memberId,
-			}).catch((err) => console.error('[announcement comments POST] notification failed', err));
+			});
+			warning = delivery.warning;
 		}
 
 		return NextResponse.json({
@@ -145,6 +150,7 @@ export const POST = withWgRoute<{ id: string }>(
 						? auth.member.color
 						: null,
 			},
+			warning,
 		});
 	},
 );

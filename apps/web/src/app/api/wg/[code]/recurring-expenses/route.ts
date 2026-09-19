@@ -189,7 +189,13 @@ export async function POST(
 		const memberRows = await db
 			.select({ id: wgMembers.id })
 			.from(wgMembers)
-			.where(and(eq(wgMembers.wgId, wg.id), inArray(wgMembers.id, memberIds)));
+			.where(
+				and(
+					eq(wgMembers.wgId, wg.id),
+					inArray(wgMembers.id, memberIds),
+					isNull(wgMembers.deactivatedAt),
+				),
+			);
 		if (memberRows.length !== memberIds.length) return badRequest('member_not_in_wg');
 
 		const replaySlot = idemReplayKey === null ? null : recurringCreateReplay.reserve(idemReplayKey);
@@ -204,11 +210,8 @@ export async function POST(
 		if (idemScope && idemKey) {
 			const slot = await claimReplaySlotWithRetry<RecurringCreateResponseBody>(idemScope, idemKey);
 			if (!slot.won) {
-				if (slot.cached) {
-					replayReservation?.resolve(slot.cached);
-					return NextResponse.json(slot.cached);
-				}
-				// Fall through: the other process failed. We act as the new winner.
+				replayReservation?.resolve(slot.cached);
+				return NextResponse.json(slot.cached);
 			}
 		}
 
@@ -348,7 +351,13 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 		const memberRows = await db
 			.select({ id: wgMembers.id })
 			.from(wgMembers)
-			.where(and(eq(wgMembers.wgId, wg.id), inArray(wgMembers.id, memberIds)));
+			.where(
+				and(
+					eq(wgMembers.wgId, wg.id),
+					inArray(wgMembers.id, memberIds),
+					isNull(wgMembers.deactivatedAt),
+				),
+			);
 		if (memberRows.length !== memberIds.length) return badRequest('member_not_in_wg');
 		const [updated] = await db
 			.update(recurringExpenses)

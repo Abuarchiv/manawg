@@ -8,5 +8,5 @@ test('requires a WG member for search API results', async ({ request }) => {
 	});
 
 	expect(response.status()).toBe(401);
-	await expect(response.json()).resolves.toMatchObject({ error: 'member_id_required' });
+	await expect(response.json()).resolves.toMatchObject({ error: 'auth_required' });
 });

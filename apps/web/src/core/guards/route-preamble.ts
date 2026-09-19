@@ -70,7 +70,7 @@ export async function resolveE2EFixture(req: NextRequest, code: string): Promise
 	if (!memberId) {
 		return {
 			mode: 'denied',
-			response: apiError('member_id_required', HTTP_UNAUTHORIZED, 'member_id_required'),
+			response: apiError('auth_required', HTTP_UNAUTHORIZED, 'auth_required'),
 		};
 	}
 	if (!fixture.members.some((member) => member.id === memberId)) {

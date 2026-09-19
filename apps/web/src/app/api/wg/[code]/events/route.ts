@@ -3,7 +3,7 @@ import { db, wgEvents } from '@/core/db';
 import { badRequest, serverError, tooMany } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import { computeRecurrenceLookbackStart } from '@/features/events/event-reminder-window';
 import {
@@ -21,6 +21,8 @@ const TITLE_MAX = 200;
 const DESCRIPTION_MAX = 2_000;
 const LOCATION_MAX = 200;
 const RECURRENCE_MAX = 200;
+
+type EventCreateWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
 
 const createSchema = z.object({
 	title: z.string().trim().min(1).max(TITLE_MAX),
@@ -153,8 +155,7 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 		},
 	});
 
-	// Fire-and-forget notification to other members.
-	void dispatchNotification({
+	const { warning }: { warning: EventCreateWarning } = await dispatchNotificationSafely({
 		wg: { id: wg.id, name: wg.name, shareCode: code },
 		event: 'event.created',
 		payload: {
@@ -164,9 +165,7 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 			actorName: auth.member.name,
 		},
 		excludeMemberId: auth.member.memberId,
-	}).catch((err) => {
-		console.warn('[events POST] notification failed', err);
 	});
 
-	return NextResponse.json({ event: serializeWgEvent(row) });
+	return NextResponse.json({ event: serializeWgEvent(row), warning });
 });

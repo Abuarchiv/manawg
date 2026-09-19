@@ -5,7 +5,10 @@ import { isVerifiedWgAdmin, requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import {
+	type NotificationDispatchWarning,
+	dispatchNotificationSafely,
+} from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { ANNOUNCEMENT_KINDS } from '@/features/pinnwand/announcement-workflow';
 import { and, eq } from 'drizzle-orm';
@@ -124,6 +127,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				pinned: updated.pinnedAt !== null,
 			},
 		});
+		let warning: NotificationDispatchWarning = null;
 		if (parsed.data.status === 'resolved') {
 			const takers = await db
 				.select({ memberId: announcementReactions.memberId })
@@ -137,7 +141,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 			const targetMemberIds = Array.from(
 				new Set([row.authorMemberId, ...takers.map((taker) => taker.memberId)]),
 			);
-			void dispatchNotification({
+			const delivery = await dispatchNotificationSafely({
 				wg,
 				event: 'announcement.resolved',
 				payload: {
@@ -147,9 +151,10 @@ export const PATCH = withWgRoute<{ id: string }>(
 				},
 				targetMemberIds,
 				excludeMemberId: auth.member.memberId,
-			}).catch((err) => console.error('[announcement PATCH] notification failed', err));
+			});
+			warning = delivery.warning;
 		}
-		return NextResponse.json({ announcement: updated });
+		return NextResponse.json({ announcement: updated, warning });
 	},
 );
 
