@@ -6,7 +6,7 @@ import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { apiError, badRequest, serverError, tooMany } from '@/core/errors';
 import { deriveMemberToken } from '@/core/guards/member-token';
 import { E2E_CREATED_WG, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
-import { checkRateLimit, clientIpKey, registerLimiter } from '@/core/rate-limit';
+import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
 import { generateShareCode, isValidShareCode } from '@/shared/lib/share-code';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -34,15 +34,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	// (30/min/IP). WG creation is rarer than other writes, so apply the
 	// stricter registerLimiter (3/hour/IP) on top to block WG spam.
 	const ip = clientIpKey(req);
-	// Keep production and unit-test behavior fail-closed; local/CI dev servers
-	// have no Upstash service and must still exercise the real DB flow.
-	const failMode =
-		(process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'development') ||
-		process.env.NODE_ENV === 'test' ||
-		process.env.VERCEL_ENV === 'production'
-			? 'closed'
-			: 'open';
-	const limit = await checkRateLimit(registerLimiter, ip, failMode);
+	// Local/CI dev servers have no Upstash service and must still exercise the
+	// real DB flow; fail-closed deployments reject missing limiter state.
+	const limit = await checkRateLimit(registerLimiter, ip, rateLimitFailMode());
 	if (!limit.success) {
 		if (limit.limiterUnavailable) {
 			const retryAfter = Math.max(1, Math.ceil((limit.reset - Date.now()) / 1000));

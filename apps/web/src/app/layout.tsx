@@ -8,6 +8,8 @@ import localFont from 'next/font/local';
 import Script from 'next/script';
 import '@/shared/globals.css';
 
+export const dynamic = 'force-dynamic';
+
 const inter = localFont({
 	src: '../shared/fonts/inter-latin.woff2',
 	weight: '100 900',

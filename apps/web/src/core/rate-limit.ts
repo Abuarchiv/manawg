@@ -5,11 +5,28 @@ import { Redis } from '@upstash/redis/cloudflare';
 const url = process.env.UPSTASH_REDIS_REST_URL;
 const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
+export function rateLimitFailMode(): 'open' | 'closed' {
+	return process.env.NODE_ENV === 'test' ||
+		process.env.VERCEL_ENV === 'production' ||
+		(process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'development')
+		? 'closed'
+		: 'open';
+}
+
 export function createConfiguredRedis(): Redis | null {
 	if (!url || !token) return null;
 	try {
-		return new URL(url).protocol === 'https:' ? new Redis({ url, token }) : null;
+		if (new URL(url).protocol !== 'https:') {
+			if (rateLimitFailMode() === 'closed') {
+				throw new Error('UPSTASH_REDIS_REST_URL must use https');
+			}
+			return null;
+		}
+		return new Redis({ url, token });
 	} catch {
+		if (rateLimitFailMode() === 'closed') {
+			throw new Error('UPSTASH_REDIS_REST_URL must be a valid https URL');
+		}
 		return null;
 	}
 }
@@ -143,7 +160,7 @@ export function resetOpenStateReporting(): void {
 export async function checkRateLimit(
 	limiter: Ratelimit | null,
 	key: string,
-	failMode: 'open' | 'closed' = 'open',
+	failMode: 'open' | 'closed' = rateLimitFailMode(),
 ): Promise<RateLimitResult> {
 	if (!limiter) {
 		reportOpenState('upstash-not-configured');
