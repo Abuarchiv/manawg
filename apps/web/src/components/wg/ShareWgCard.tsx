@@ -118,7 +118,7 @@ export function ShareWgCard({
 	}
 
 	return (
-		<div className={hideHeader ? '' : ''}>
+		<div>
 			{!hideHeader ? (
 				<Card>
 					<CardHeader>

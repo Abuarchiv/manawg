@@ -37,17 +37,11 @@ interface InitialReactionRow {
 	emoji: string;
 }
 
-interface InitialMentionRow {
-	messageId: string;
-	mentionedMemberId: string;
-}
-
 interface ChatViewProps {
 	wgId: string;
 	shareCode: string;
 	initialMessages: ChatMessageDto[];
 	initialReactions: InitialReactionRow[];
-	initialMentions: InitialMentionRow[];
 }
 
 const PAGE_SIZE = 50;
@@ -81,13 +75,7 @@ function reactionRowKey(row: InitialReactionRow): string {
 	return `${row.messageId}|${row.memberId}|${row.emoji}`;
 }
 
-export function ChatView({
-	wgId,
-	shareCode,
-	initialMessages,
-	initialReactions,
-	initialMentions,
-}: ChatViewProps) {
+export function ChatView({ wgId, shareCode, initialMessages, initialReactions }: ChatViewProps) {
 	const { members, identity, isAdmin } = useWg();
 	const toast = useToast();
 	const [messages, setMessages] = useState<ChatMessageDto[]>(initialMessages);
@@ -107,7 +95,6 @@ export function ChatView({
 	const readSentinelRef = useRef<HTMLDivElement | null>(null);
 	const lastReadSentIdRef = useRef<string | null>(null);
 	const encodedShareCode = encodeURIComponent(shareCode);
-	void initialMentions;
 
 	const reactionsByMessage = useMemo(
 		() => summarizeReactions(reactionRows, identity.memberId),

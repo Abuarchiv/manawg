@@ -12,7 +12,6 @@ interface PageProps {
 
 type MessageRow = typeof wgChatMessages.$inferSelect;
 type ReactionRow = { messageId: string; memberId: string; emoji: string };
-type MentionRow = { messageId: string; mentionedMemberId: string };
 
 export const dynamic = 'force-dynamic';
 
@@ -86,12 +85,10 @@ function ChatPageContent({
 	wgRow,
 	messages,
 	reactions = [],
-	mentions = [],
 }: {
 	wgRow: { id: string; name: string; shareCode: string };
 	messages: MessageRow[];
 	reactions?: ReactionRow[];
-	mentions?: MentionRow[];
 }) {
 	return (
 		<div
@@ -129,7 +126,6 @@ function ChatPageContent({
 						m.deletedAt instanceof Date ? m.deletedAt.toISOString() : (m.deletedAt ?? null),
 				}))}
 				initialReactions={reactions}
-				initialMentions={mentions}
 			/>
 		</div>
 	);

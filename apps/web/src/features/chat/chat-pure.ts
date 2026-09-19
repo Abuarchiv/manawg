@@ -27,6 +27,19 @@ interface ParsedMentions {
 	cleanedBody: string;
 }
 
+export interface MentionTrigger {
+	query: string;
+	startIndex: number;
+}
+
+export function detectMention(value: string, cursor: number): MentionTrigger | null {
+	const upTo = value.slice(0, cursor);
+	const match = /(?:^|\s)@([A-Za-zÄÖÜäöüß0-9_-]{1,40})$/.exec(upTo);
+	if (!match) return null;
+	const start = upTo.length - (match[1]?.length ?? 0) - 1;
+	return { query: match[1] ?? '', startIndex: start };
+}
+
 export function parseMentions(body: string): ParsedMentions {
 	const matches = new Set<string>();
 	if (typeof body !== 'string' || body.length === 0) {

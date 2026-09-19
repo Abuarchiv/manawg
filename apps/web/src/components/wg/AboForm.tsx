@@ -24,6 +24,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { AboSplit, MemberOption } from '@/components/wg/abos-types';
 import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
+import { inputDateToIso } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import { SplitReview } from '@/features/expenses/components/ausgaben/SplitReview';
 import { useEffect, useMemo, useState } from 'react';
@@ -86,17 +87,6 @@ function isoDateToInput(iso: string): string {
 	const month = String(date.getMonth() + 1).padStart(2, '0');
 	const day = String(date.getDate()).padStart(2, '0');
 	return `${year}-${month}-${day}`;
-}
-
-function inputDateToIso(value: string): string {
-	const parts = value.split('-').map((part) => Number.parseInt(part, 10));
-	const year = parts[0];
-	const month = parts[1];
-	const day = parts[2];
-	if (year === undefined || month === undefined || day === undefined) {
-		return new Date().toISOString();
-	}
-	return new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).toISOString();
 }
 
 function initialSplitMode(initial: AboFormValues | undefined, members: MemberOption[]): SplitMode {

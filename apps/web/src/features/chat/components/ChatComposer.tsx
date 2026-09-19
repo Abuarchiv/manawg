@@ -13,6 +13,7 @@ import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { haptic } from '@/shared/lib/haptics';
 import { Send, X } from 'lucide-react';
 import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type MentionTrigger, detectMention } from '../chat-pure';
 import {
 	MentionAutocomplete,
 	type MentionMember,
@@ -42,19 +43,6 @@ interface ChatComposerProps {
 		mentionMemberIds: string[];
 		replyToMessageId: string | null;
 	}) => Promise<boolean>;
-}
-
-interface MentionTrigger {
-	query: string;
-	startIndex: number;
-}
-
-function detectMention(value: string, cursor: number): MentionTrigger | null {
-	const upTo = value.slice(0, cursor);
-	const match = /(?:^|\s)@([A-Za-zÄÖÜäöüß0-9_-]{0,40})$/.exec(upTo);
-	if (!match) return null;
-	const start = upTo.length - (match[1]?.length ?? 0) - 1;
-	return { query: match[1] ?? '', startIndex: start };
 }
 
 export function ChatComposer({

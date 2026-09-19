@@ -32,6 +32,19 @@ export interface ActivityItem {
 	href?: string;
 }
 
+export function activityItemKey(
+	item: Pick<ActivityItem, 'kind' | 'timestamp' | 'memberName' | 'text' | 'href'> & {
+		id?: string;
+	},
+	index: number,
+): string {
+	return (
+		item.id ??
+		item.href ??
+		`${item.kind}:${item.timestamp}:${item.memberName}:${item.text}:${index}`
+	);
+}
+
 interface MemberInput {
 	id: string;
 	name: string;
