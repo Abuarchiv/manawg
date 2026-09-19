@@ -25,7 +25,7 @@ export function shoppingAddErrorMessage(error: string): string {
 		return 'Artikel konnte nicht gespeichert werden: Der Name muss 1 bis 120 Zeichen haben.';
 	}
 	if (error === 'quantity_invalid') {
-		return 'Artikel konnte nicht gespeichert werden: Die Menge darf höchstens 40 Zeichen haben.';
+		return 'Artikel konnte nicht gespeichert werden: Die Menge darf höchstens 40 sein.';
 	}
 	if (error === 'bought_invalid') {
 		return 'Artikel konnte nicht gespeichert werden: Der Status ist ungültig.';

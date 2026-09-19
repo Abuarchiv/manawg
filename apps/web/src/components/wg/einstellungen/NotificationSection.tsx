@@ -41,6 +41,7 @@ interface NotificationStatus {
 	notifyExpenses: boolean;
 	notifyReminders: boolean;
 	notifyShopping: boolean;
+	notifyInventory: boolean;
 	notifyChat: boolean;
 	notifyEvents: boolean;
 	quietStartHour: number | null;
@@ -54,6 +55,7 @@ type NotificationPreferenceKey =
 	| 'notifyExpenses'
 	| 'notifyReminders'
 	| 'notifyShopping'
+	| 'notifyInventory'
 	| 'notifyChat'
 	| 'notifyEvents';
 
@@ -71,6 +73,7 @@ const NOTIFICATION_PREFERENCES: ReadonlyArray<{
 	{ key: 'notifyExpenses', label: 'Ausgaben', description: 'Neue gemeinsame Kosten' },
 	{ key: 'notifyReminders', label: 'Mahnungen', description: 'Erinnerungen an offene Aufgaben' },
 	{ key: 'notifyShopping', label: 'Einkauf', description: 'Neue Einträge auf der Einkaufsliste' },
+	{ key: 'notifyInventory', label: 'Vorräte', description: 'Niedrige Vorratsbestände' },
 	{ key: 'notifyChat', label: 'Chat', description: 'Neue Nachrichten und Erwähnungen' },
 	{ key: 'notifyEvents', label: 'Termine', description: 'Kalendertermine und Erinnerungen' },
 ];

@@ -15,6 +15,18 @@ const REMINDER_THROTTLE_MS = 18 * 60 * 60 * 1000;
 const REMINDER_CLAIM_SCOPE = 'chore-reminders';
 const localReminderClaims = new Set<string>();
 
+interface DueChore {
+	id: string;
+	title: string;
+	assignedMemberId: string | null;
+	lastReminderAt: Date | null;
+	wgId: string;
+	wgName: string;
+	shareCode: string;
+}
+
+type PendingChore = Omit<DueChore, 'assignedMemberId'> & { assignedMemberId: string };
+
 function getReminderClaimTable(): typeof dbSchema.idempotencyResponses | null {
 	return 'idempotencyResponses' in dbSchema ? dbSchema.idempotencyResponses : null;
 }
@@ -87,7 +99,7 @@ export const GET = withCronLogging(
 		const endOfDay = endOfBerlinDay(now);
 		const throttleCutoff = new Date(now.getTime() - REMINDER_THROTTLE_MS);
 
-		const due = await db
+		const due = (await db
 			.select({
 				id: chores.id,
 				title: chores.title,
@@ -108,7 +120,7 @@ export const GET = withCronLogging(
 					// handles reassignment, this only guards stale reminders.
 					isNull(wgMembers.deactivatedAt),
 				),
-			);
+			)) as DueChore[];
 
 		if (due.length === 0) return NextResponse.json({ ok: true, sent: 0 });
 
@@ -125,7 +137,7 @@ export const GET = withCronLogging(
 				),
 			);
 		const completedToday = new Set(completions.map((item) => item.choreId));
-		const pending = due.filter((item): item is typeof item & { assignedMemberId: string } => {
+		const pending = due.filter((item): item is PendingChore => {
 			if (!item.assignedMemberId) return false;
 			if (completedToday.has(item.id)) return false;
 			// Throttle: skip if we already pinged the assignee within the window.

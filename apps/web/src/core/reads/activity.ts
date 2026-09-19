@@ -27,6 +27,7 @@ export interface ActivityItem {
 	memberId?: string | null;
 	memberName: string;
 	text: string;
+	completed: boolean;
 	detail?: string;
 	amountCents?: number;
 	href?: string;
@@ -359,6 +360,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			memberId: item.paidByMemberId,
 			memberName: memberName(members, item.paidByMemberId),
 			text: item.description,
+			completed: false,
 			amountCents: item.amountCents,
 			href: `/ausgaben?highlight=${encodeURIComponent(item.id)}`,
 		});
@@ -372,6 +374,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			memberId: item.addedByMemberId,
 			memberName: memberName(members, item.addedByMemberId),
 			text: item.boughtAt ? `${item.name} gekauft` : `${item.name} hinzugefügt`,
+			completed: item.boughtAt !== null,
 			href: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
 		});
 	}
@@ -384,6 +387,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			memberId: item.authorMemberId,
 			memberName: memberName(members, item.authorMemberId),
 			text: item.content,
+			completed: false,
 			href: `/pinnwand#announcement-${encodeURIComponent(item.id)}`,
 		});
 	}
@@ -396,6 +400,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			memberId: item.completedByMemberId,
 			memberName: memberName(members, item.completedByMemberId),
 			text: `${item.choreTitle} erledigt`,
+			completed: true,
 			href: `/putzen?highlight=${encodeURIComponent(item.choreId)}`,
 		});
 	}
@@ -410,6 +415,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			text: item.lastCreatedAt
 				? `${item.description} aus Vorlage erstellt`
 				: `${item.description} als Fixkosten-Vorlage angelegt`,
+			completed: false,
 			detail: 'Fixkosten',
 			amountCents: item.amountCents,
 			href: `/ausgaben?recurring=${encodeURIComponent(item.id)}`,
@@ -424,6 +430,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			memberId: item.memberId,
 			memberName: memberName(members, item.memberId),
 			text: 'ist abwesend',
+			completed: false,
 			detail: item.reason
 				? `${shortDateRange(item.startDate, item.endDate)} · ${item.reason}`
 				: shortDateRange(item.startDate, item.endDate),
@@ -442,6 +449,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			memberId: item.memberId,
 			memberName: actorName,
 			text: formatAuditActivityText(item.summary, actorName),
+			completed: false,
 			...(detail ? { detail } : {}),
 			...(href ? { href } : {}),
 		});
@@ -538,7 +546,7 @@ export function filterActivityByScope(
 ): ActivityItem[] {
 	if (scope === 'all') return items;
 	return items.filter((item) => {
-		const done = item.kind === 'chore' || /erledigt|gekauft|bezahlt/i.test(item.text);
+		const done = item.completed || /erledigt|gekauft|bezahlt/i.test(item.text);
 		const system = item.memberName === 'System';
 		if (scope === 'system') return system;
 		if (scope === 'mine') return isCurrentMemberActivity(item, currentMemberName, currentMemberId);

@@ -23,6 +23,7 @@ const patchSchema = z.object({
 	notifyChores: z.boolean().optional(),
 	notifyExpenses: z.boolean().optional(),
 	notifyShopping: z.boolean().optional(),
+	notifyInventory: z.boolean().optional(),
 	notifyReminders: z.boolean().optional(),
 	notifyChat: z.boolean().optional(),
 	notifyEvents: z.boolean().optional(),
@@ -50,6 +51,7 @@ const NOTIFICATION_FIELD_LABELS: Record<string, string> = {
 	notifyChores: 'Putzplan',
 	notifyExpenses: 'Ausgaben',
 	notifyShopping: 'Einkauf',
+	notifyInventory: 'Vorräte',
 	notifyReminders: 'Mahnungen',
 	notifyChat: 'Chat',
 	notifyEvents: 'Termine',
@@ -70,6 +72,7 @@ export const GET = withWgRoute('notifications GET', async (req, { code }) => {
 			notifyChores: true,
 			notifyExpenses: true,
 			notifyShopping: true,
+			notifyInventory: true,
 			notifyReminders: true,
 			notifyChat: true,
 			notifyEvents: true,
@@ -85,6 +88,7 @@ export const GET = withWgRoute('notifications GET', async (req, { code }) => {
 		notifyChores: member.notifyChores,
 		notifyExpenses: member.notifyExpenses,
 		notifyShopping: member.notifyShopping,
+		notifyInventory: member.notifyInventory,
 		notifyReminders: member.notifyReminders,
 		notifyChat: member.notifyChat,
 		notifyEvents: member.notifyEvents,
@@ -119,6 +123,7 @@ export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) =>
 		notifyChores?: boolean;
 		notifyExpenses?: boolean;
 		notifyShopping?: boolean;
+		notifyInventory?: boolean;
 		notifyReminders?: boolean;
 		notifyChat?: boolean;
 		notifyEvents?: boolean;
@@ -139,6 +144,9 @@ export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) =>
 	}
 	if (typeof parsed.data.notifyShopping === 'boolean') {
 		update.notifyShopping = parsed.data.notifyShopping;
+	}
+	if (typeof parsed.data.notifyInventory === 'boolean') {
+		update.notifyInventory = parsed.data.notifyInventory;
 	}
 	if (typeof parsed.data.notifyReminders === 'boolean') {
 		update.notifyReminders = parsed.data.notifyReminders;

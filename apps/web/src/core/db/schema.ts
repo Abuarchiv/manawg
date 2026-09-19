@@ -62,6 +62,7 @@ export const wgMembers = pgTable(
 		notifyChores: boolean('notify_chores').notNull().default(true),
 		notifyExpenses: boolean('notify_expenses').notNull().default(true),
 		notifyShopping: boolean('notify_shopping').notNull().default(true),
+		notifyInventory: boolean('notify_inventory').notNull().default(true),
 		notifyReminders: boolean('notify_reminders').notNull().default(true),
 		notifyChat: boolean('notify_chat').notNull().default(true),
 		notifyEvents: boolean('notify_events').notNull().default(true),

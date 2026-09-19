@@ -314,8 +314,10 @@ function getRecurringAdvancePayload(
 	};
 }
 
-function createRecurringAdvanceRetry(action: OfflineAction, now: number): OfflineAction | null {
-	if (action.type !== 'expense.create') return null;
+export function createRecurringAdvanceRetry(
+	action: OfflineAction,
+	now: number,
+): OfflineAction | null {
 	const payload = getRecurringAdvancePayload(action);
 	if (!payload) return null;
 	const idempotencyKey = createOfflineIdempotencyKey();

@@ -67,7 +67,10 @@ export function buildChoreFairness(input: {
 	const absent = new Set(input.absentMemberIds ?? []);
 	const rows = input.members.map<ChoreFairnessRow>((member) => {
 		const assigned = input.chores.filter((chore) => chore.assignedMemberId === member.id);
-		const openGapCount = Math.max(0, ...assigned.map((chore) => chore.openGapCountForAssignee));
+		const openGapCount = assigned.reduce(
+			(sum, chore) => sum + Math.max(0, chore.openGapCountForAssignee),
+			0,
+		);
 		const overdueCount = assigned.filter(
 			(chore) => getChoreStatus(chore.nextDueAt, now).state === 'overdue',
 		).length;

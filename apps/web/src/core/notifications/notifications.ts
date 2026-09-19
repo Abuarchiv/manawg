@@ -23,6 +23,7 @@ type NotificationCategory =
 	| 'chores'
 	| 'expenses'
 	| 'shopping'
+	| 'inventory'
 	| 'events'
 	| 'reminders'
 	| 'chat';
@@ -51,7 +52,7 @@ export function notificationCategoryForEvent(event: NotificationEvent): Notifica
 	if (event.startsWith('expense.') || event === 'import.completed') return 'expenses';
 	if (event.startsWith('chore.')) return 'chores';
 	if (event.startsWith('event.')) return 'events';
-	if (event.startsWith('inventory.')) return 'shopping';
+	if (event.startsWith('inventory.')) return 'inventory';
 	if (event.startsWith('chat.')) return 'chat';
 	return 'shopping';
 }
