@@ -24,11 +24,11 @@ type QaAuthConfig = {
 	password: string;
 };
 
-function getQaAuthConfig(): QaAuthConfig | null {
-	const url = process.env.E2E_SUPABASE_URL?.trim();
-	const publishableKey = process.env.E2E_SUPABASE_PUBLISHABLE_KEY?.trim();
-	const email = process.env.E2E_SUPABASE_TEST_EMAIL?.trim();
-	const password = process.env.E2E_SUPABASE_TEST_PASSWORD;
+function getQaAuthConfig(env: NodeJS.ProcessEnv = process.env): QaAuthConfig | null {
+	const url = env.E2E_SUPABASE_URL?.trim();
+	const publishableKey = env.E2E_SUPABASE_PUBLISHABLE_KEY?.trim();
+	const email = env.E2E_SUPABASE_TEST_EMAIL?.trim();
+	const password = env.E2E_SUPABASE_TEST_PASSWORD?.trim();
 
 	if (!url || !publishableKey || !email || !password) {
 		return null;
@@ -36,6 +36,17 @@ function getQaAuthConfig(): QaAuthConfig | null {
 
 	return { url, publishableKey, email, password };
 }
+
+test('trims the real Supabase QA password loaded from the environment', () => {
+	const config = getQaAuthConfig({
+		E2E_SUPABASE_URL: ' https://example.supabase.co/ ',
+		E2E_SUPABASE_PUBLISHABLE_KEY: ' publishable-key ',
+		E2E_SUPABASE_TEST_EMAIL: ' qa@example.com ',
+		E2E_SUPABASE_TEST_PASSWORD: ' qa-password ',
+	});
+
+	expect(config?.password).toBe('qa-password');
+});
 
 async function authenticateQaUser(
 	page: Page,

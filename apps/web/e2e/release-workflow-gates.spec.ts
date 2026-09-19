@@ -12,11 +12,16 @@ import {
 
 const SHA = 'a'.repeat(40);
 const CI_WORKFLOW = readFileSync(
-	path.resolve(process.cwd(), '../../.github/workflows/ci.yml'),
+	path.resolve(__dirname, '../../../.github/workflows/ci.yml'),
 	'utf8',
 );
 const PRODUCTION_WORKFLOW = readFileSync(
-	path.resolve(process.cwd(), '../../.github/workflows/migrate-production.yml'),
+	path.resolve(__dirname, '../../../.github/workflows/migrate-production.yml'),
+	'utf8',
+);
+const ENV_EXAMPLE = readFileSync(path.resolve(__dirname, '../.env.example'), 'utf8');
+const ANALYTICS_SOURCE = readFileSync(
+	path.resolve(__dirname, '../src/instrumentation-client.ts'),
 	'utf8',
 );
 
@@ -96,6 +101,29 @@ test('requires every protected Preview auth variable without exposing values', (
 			'Preview auth',
 		),
 	).toThrow('SUPABASE_AUTH_TEST_MEMBER_NAME');
+});
+
+test('uses the current PostHog defaults release', () => {
+	expect(ANALYTICS_SOURCE).toContain("defaults: '2026-08-30'");
+	expect(ANALYTICS_SOURCE).not.toContain("defaults: '2026-05-30'");
+});
+
+test('documents the release and QA environment names used by the app', () => {
+	for (const name of [
+		'E2E_SUPABASE_URL',
+		'E2E_SUPABASE_PUBLISHABLE_KEY',
+		'E2E_SUPABASE_TEST_EMAIL',
+		'E2E_SUPABASE_TEST_PASSWORD',
+		'SUPABASE_AUTH_TEST_EMAIL',
+		'SUPABASE_AUTH_TEST_PASSWORD',
+		'SUPABASE_AUTH_TEST_MEMBER_WG_CODE',
+		'SUPABASE_AUTH_TEST_MEMBER_NAME',
+		'VERCEL_AUTOMATION_BYPASS_SECRET',
+		'POSTGRES_URL_NON_POOLING',
+		'DATABASE_URL_UNPOOLED',
+	]) {
+		expect(ENV_EXAMPLE).toMatch(new RegExp(`^${name}=`, 'm'));
+	}
 });
 
 test('filters trusted Preview statuses before protected environments and keeps push rehearsal', () => {
