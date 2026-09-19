@@ -46,16 +46,25 @@ mustMatch(
 	'admin cannot be deactivated',
 );
 
-const latestMigration = journal.entries.at(-1)?.tag ?? '';
-mustMatch(latestMigration, /^0011_/, 'role/data migration is in the journal');
-if (latestMigration && existsSync(join(appRoot, 'drizzle', `${latestMigration}.sql`))) {
-	const migration = read(`drizzle/${latestMigration}.sql`);
+const roleMigration = journal.entries.find((entry) => /^0011_/.test(entry.tag))?.tag ?? '';
+mustMatch(roleMigration, /^0011_/, 'role/data migration is in the journal');
+if (roleMigration && existsSync(join(appRoot, 'drizzle', `${roleMigration}.sql`))) {
+	const migration = read(`drizzle/${roleMigration}.sql`);
 	mustMatch(migration, /ADD COLUMN "role"/, 'role migration adds the role column');
 	mustMatch(migration, /SET "role"\s*=\s*'admin'/, 'role migration preserves current admins');
 	mustMatch(
 		migration,
 		/recurring_expenses.*amount_cents|amount_cents.*recurring_expenses/s,
 		'recurring-expense amount constraint migration',
+	);
+}
+const inventoryMigration = journal.entries.find((entry) => /^0012_/.test(entry.tag))?.tag ?? '';
+mustMatch(inventoryMigration, /^0012_/, 'inventory notification migration is in the journal');
+if (inventoryMigration && existsSync(join(appRoot, 'drizzle', `${inventoryMigration}.sql`))) {
+	mustMatch(
+		read(`drizzle/${inventoryMigration}.sql`),
+		/ADD COLUMN "notify_inventory"/,
+		'inventory notification migration adds the column',
 	);
 }
 
