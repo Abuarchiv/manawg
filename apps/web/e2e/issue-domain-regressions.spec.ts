@@ -3,6 +3,7 @@ import { notificationCategoryForEvent } from '../src/core/notifications/notifica
 import * as offlineClient from '../src/core/offline/offline-client';
 import { type ActivityItem, filterActivityByScope } from '../src/core/reads/activity';
 import { buildChoreFairness } from '../src/features/chores/chore-fairness';
+import { shouldFallbackToDirectJoin } from '../src/core/infra/join-flow';
 import { shoppingAddErrorMessage } from '../src/features/shopping/shopping-errors';
 
 const NOW = Date.parse('2026-09-19T12:00:00.000Z');
@@ -87,4 +88,9 @@ test('sums open gaps across all chores assigned to a member', () => {
 
 test('describes invalid shopping quantity as an item count', () => {
 	expect(shoppingAddErrorMessage('quantity_invalid')).toContain('höchstens 40 sein');
+});
+
+test('does not loop back to direct join for a missing member id', () => {
+	expect(shouldFallbackToDirectJoin(401, 'member_id_required')).toBe(false);
+	expect(shouldFallbackToDirectJoin(401, 'auth_required')).toBe(true);
 });
