@@ -2,6 +2,7 @@ import { refreshSupabaseSession } from '@/core/auth/middleware';
 import {
 	checkRateLimit,
 	clientIpKey,
+	rateLimitFailMode,
 	wgReadLimiter,
 	wgShareCodeLookupLimiter,
 	wgWriteLimiter,
@@ -22,8 +23,10 @@ function isRateLimitedApiPath(path: string): boolean {
 }
 
 async function withPageSecurityHeaders(req: NextRequest): Promise<NextResponse> {
-	const csp = contentSecurityPolicy();
+	const nonce = crypto.randomUUID().replaceAll('-', '');
+	const csp = contentSecurityPolicy(nonce);
 	const requestHeaders = new Headers(req.headers);
+	requestHeaders.set('x-nonce', nonce);
 	requestHeaders.set('Content-Security-Policy', csp);
 
 	const res = NextResponse.next({
@@ -85,7 +88,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 	}
 
 	const ip = getClientIp(req);
-	if (!isRead && !originAllowed(req)) {
+	if (!originAllowed(req)) {
 		return NextResponse.json({ error: 'cross_origin_blocked' }, { status: 403 });
 	}
 
@@ -96,13 +99,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 			? wgReadLimiter
 			: wgWriteLimiter;
 
-	const failMode =
-		(process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'development') ||
-		process.env.NODE_ENV === 'test' ||
-		process.env.VERCEL_ENV === 'production'
-			? 'closed'
-			: 'open';
-	const result = await checkRateLimit(limiter, ip, failMode);
+	const result = await checkRateLimit(limiter, ip, rateLimitFailMode());
 	if (!result.success) {
 		if (result.limiterUnavailable) {
 			const retryAfter = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000));

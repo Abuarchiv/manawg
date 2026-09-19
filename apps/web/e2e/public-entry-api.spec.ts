@@ -31,6 +31,25 @@ test('guest membership lookup ignores unrelated and PKCE cookies', async ({ requ
 	expect(bearer.status()).toBe(500);
 });
 
+test('guest upload signing does not reveal whether a share code exists', async ({ request }) => {
+	const payload = {
+		purpose: 'expense',
+		mimeType: 'image/png',
+		fileSize: 1024,
+	};
+
+	for (const shareCode of ['MTE8PZAT', 'ZZZZZZZZ']) {
+		const response = await request.post('/api/upload/sign', {
+			data: { ...payload, shareCode },
+		});
+		expect(response.status()).toBe(401);
+		expect(await response.json()).toEqual({
+			error: 'auth_required',
+			code: 'auth_required',
+		});
+	}
+});
+
 test('fixture WG bootstrap keeps member guards and current-member metadata', async ({
 	request,
 	baseURL,

@@ -40,11 +40,16 @@ export function isAllowedMimeType(mimeType: string): boolean {
 	return ALLOWED_MIME_TYPES.has(mimeType);
 }
 
+function isSafeS3Key(key: string): boolean {
+	return key.length > 0 && !key.startsWith('/') && !key.includes('..') && !key.includes('\\');
+}
+
 export async function createPresignedUpload(
 	key: string,
 	contentType: string,
 	contentLength: number,
 ): Promise<S3SignatureResponse> {
+	if (!isSafeS3Key(key)) throw new Error('Invalid S3 key');
 	if (!BUCKET) throw new Error('S3_BUCKET env var missing.');
 	if (!isAllowedMimeType(contentType)) throw new Error(`Disallowed content type: ${contentType}`);
 	if (!Number.isInteger(contentLength) || contentLength <= 0) {

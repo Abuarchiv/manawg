@@ -19,6 +19,8 @@ export const SYNCED_IDS_KEY = 'manawg:offline-synced-ids';
 /** How long a "synced but queue-write failed" marker survives reloads. */
 const SYNCED_IDS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const syncedAfterFailedQueueSave = new Set<string>();
+// ponytail: this fallback lasts for the current page only; use IndexedDB if reload-time recovery is required.
+let cachedOfflineQueue: OfflineAction[] | null = null;
 const OFFLINE_ACTION_TYPES: ReadonlySet<OfflineActionType> = new Set([
 	'shopping.create',
 	'shopping.update',
@@ -27,6 +29,7 @@ const OFFLINE_ACTION_TYPES: ReadonlySet<OfflineActionType> = new Set([
 	'chore.create',
 	'chore.complete',
 	'expense.create',
+	'expense.update',
 	'recurring.create',
 	'recurring.advance',
 ]);
@@ -129,6 +132,16 @@ function hasValidPayload(type: OfflineActionType, payload: Record<string, unknow
 				isSplitArray(payload.splits) &&
 				isOptionalStringOrNull(payload.imageUrl)
 			);
+		case 'expense.update':
+			return (
+				typeof payload.expenseId === 'string' &&
+				typeof payload.expectedUpdatedAt === 'string' &&
+				typeof payload.description === 'string' &&
+				typeof payload.amountCents === 'number' &&
+				typeof payload.paidByMemberId === 'string' &&
+				isSplitArray(payload.splits) &&
+				isOptionalStringOrNull(payload.imageUrl)
+			);
 		case 'recurring.create':
 			return (
 				typeof payload.description === 'string' &&
@@ -203,22 +216,32 @@ function persistSyncedIds(ids: string[]): void {
 	}
 }
 
+function filterOfflineQueue(actions: OfflineAction[]): OfflineAction[] {
+	const persistedSynced = new Set(readPersistedSyncedIds());
+	return actions
+		.filter((action) => !syncedAfterFailedQueueSave.has(action.id))
+		.filter((action) => !persistedSynced.has(action.id));
+}
+
+function readCachedOfflineQueue(): OfflineAction[] {
+	return filterOfflineQueue(cachedOfflineQueue ?? []);
+}
+
 export function readOfflineQueue(): OfflineAction[] {
 	const storage = getOfflineStorage();
-	if (!storage) return [];
+	if (!storage) return readCachedOfflineQueue();
 	try {
 		const raw = storage.getItem(OFFLINE_QUEUE_KEY);
-		if (!raw) return [];
+		if (!raw) {
+			cachedOfflineQueue = [];
+			return [];
+		}
 		const parsed = JSON.parse(raw) as unknown;
-		const persistedSynced = new Set(readPersistedSyncedIds());
-		return Array.isArray(parsed)
-			? parsed
-					.filter(isOfflineAction)
-					.filter((action) => !syncedAfterFailedQueueSave.has(action.id))
-					.filter((action) => !persistedSynced.has(action.id))
-			: [];
+		const queue = Array.isArray(parsed) ? filterOfflineQueue(parsed.filter(isOfflineAction)) : [];
+		cachedOfflineQueue = queue;
+		return queue;
 	} catch {
-		return [];
+		return readCachedOfflineQueue();
 	}
 }
 
@@ -239,6 +262,7 @@ export function writeOfflineQueue(actions: OfflineAction[]): boolean {
 		for (const action of actions) {
 			syncedAfterFailedQueueSave.delete(action.id);
 		}
+		cachedOfflineQueue = filterOfflineQueue(actions);
 		window.dispatchEvent(new CustomEvent('manawg:offline-queue'));
 		return true;
 	} catch {
@@ -290,8 +314,10 @@ function getRecurringAdvancePayload(
 	};
 }
 
-function createRecurringAdvanceRetry(action: OfflineAction, now: number): OfflineAction | null {
-	if (action.type !== 'expense.create') return null;
+export function createRecurringAdvanceRetry(
+	action: OfflineAction,
+	now: number,
+): OfflineAction | null {
 	const payload = getRecurringAdvancePayload(action);
 	if (!payload) return null;
 	const idempotencyKey = createOfflineIdempotencyKey();

@@ -13,6 +13,7 @@ import { readShareCode } from '@/core/guards/route-preamble';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
 import type { RouteCtx } from '@/core/infra/api-types';
+import type { NotificationDispatchWarning } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema } from '@/core/validators/image-url';
@@ -38,7 +39,7 @@ const DESCRIPTION_MAX = 200;
 const MAX_SPLITS = 50;
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
-type ExpenseCreateResponseBody = { expense: unknown };
+type ExpenseCreateResponseBody = { expense: unknown; warning: NotificationDispatchWarning };
 
 const expenseCreateReplay = new ReplayCache<ExpenseCreateResponseBody>(IDEMPOTENCY_TTL_MS);
 
@@ -216,11 +217,8 @@ export async function POST(
 		if (idemScope && idemKey) {
 			const slot = await claimReplaySlotWithRetry<ExpenseCreateResponseBody>(idemScope, idemKey);
 			if (!slot.won) {
-				if (slot.cached) {
-					replayReservation?.resolve(slot.cached);
-					return NextResponse.json(slot.cached);
-				}
-				// Fall through: the other process failed. We act as the new winner.
+				replayReservation?.resolve(slot.cached);
+				return NextResponse.json(slot.cached);
 			}
 		}
 
@@ -251,13 +249,13 @@ export async function POST(
 			throw writeErr;
 		}
 
-		await recordExpenseCreatedSideEffects({
+		const warning = await recordExpenseCreatedSideEffects({
 			wg,
 			actor: { memberId: auth.member.memberId, name: auth.member.name },
 			expense,
 		});
 
-		const responseBody = { expense: { ...expense, splits: splitRows ?? [] } };
+		const responseBody = { expense: { ...expense, splits: splitRows ?? [] }, warning };
 		// Cache the exact response body so a retry with the same Idempotency-Key
 		// receives the SAME expense.id rather than triggering a duplicate insert.
 		// Fire-and-forget: a cache hiccup here only loses cross-process dedup;

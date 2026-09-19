@@ -70,7 +70,7 @@ async function getAccessToken(config: {
 	return body.access_token;
 }
 
-function payPalAuthAssertion(clientId: string, merchantId: string): string {
+function createPayPalAuthAssertion(clientId: string, merchantId: string): string {
 	const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
 	return `${encode({ alg: 'none' })}.${encode({ iss: clientId, payer_id: merchantId })}.`;
 }
@@ -90,7 +90,7 @@ async function paypalRequest<T>(
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${accessToken}`,
 			'PayPal-Partner-Attribution-Id': config.partnerAttributionId,
-			'PayPal-Auth-Assertion': payPalAuthAssertion(config.clientId, payeeMerchantId),
+			'PayPal-Auth-Assertion': createPayPalAuthAssertion(config.clientId, payeeMerchantId),
 			...(init.headers ?? {}),
 		},
 	});

@@ -76,6 +76,39 @@ function kindFromParam(value: string | null): AnnouncementKind | null {
 
 type CommentOverride = AnnouncementComment | null;
 
+type NotificationWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
+
+type AnnouncementCreateResponse = {
+	announcement: Announcement;
+	warning: NotificationWarning;
+};
+
+type AnnouncementPatchResponse = {
+	announcement: Announcement;
+	warning: NotificationWarning;
+};
+
+type AnnouncementReactionResponse = {
+	reaction: ReactionKey;
+	active: boolean;
+	warning: NotificationWarning;
+};
+
+type AnnouncementCommentResponse = {
+	comment: AnnouncementComment;
+	warning: NotificationWarning;
+};
+
+function notificationWarningMessage(warning: NotificationWarning): string | null {
+	if (warning === 'notification_delivery_failed') {
+		return 'Gespeichert. Nicht alle Push-Benachrichtigungen konnten versendet werden.';
+	}
+	if (warning === 'notification_delivery_unknown') {
+		return 'Gespeichert. Push-Versand konnte nicht bestätigt werden.';
+	}
+	return null;
+}
+
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function PinnwandPage(): React.ReactElement {
 	const { wg, members, identity, isAdmin } = useWg();
@@ -404,7 +437,7 @@ export default function PinnwandPage(): React.ReactElement {
 		setError(null);
 		setNotice(null);
 		try {
-			const res = await apiFetch<{ announcement: Announcement }>(
+			const res = await apiFetch<AnnouncementCreateResponse>(
 				`/api/wg/${encodedShareCode}/announcements`,
 				{
 					method: 'POST',
@@ -457,6 +490,8 @@ export default function PinnwandPage(): React.ReactElement {
 			}
 			removeDraft(draftKey);
 			setComposerOpen(false);
+			const warningMessage = notificationWarningMessage(res.data.warning);
+			if (warningMessage) setNotice(warningMessage);
 			void load().then(() => scrollToAnnouncement(createdAnnouncementId));
 		} finally {
 			submittingRef.current = false;
@@ -473,7 +508,7 @@ export default function PinnwandPage(): React.ReactElement {
 		if (isPending(pendingKey)) return;
 		start(pendingKey);
 		setActionError(null);
-		const res = await apiFetch<{ announcement: Announcement }>(
+		const res = await apiFetch<AnnouncementPatchResponse>(
 			`/api/wg/${encodedShareCode}/announcements/${encodeURIComponent(id)}`,
 			{
 				method: 'PATCH',
@@ -493,6 +528,8 @@ export default function PinnwandPage(): React.ReactElement {
 			}
 			return;
 		}
+		const warningMessage = notificationWarningMessage(res.data.warning);
+		if (warningMessage) setNotice(warningMessage);
 		void load();
 	}
 
@@ -556,7 +593,7 @@ export default function PinnwandPage(): React.ReactElement {
 		}));
 		start(pendingKey);
 		setActionError(null);
-		const res = await apiFetch<{ reaction: ReactionKey; active: boolean }>(
+		const res = await apiFetch<AnnouncementReactionResponse>(
 			`/api/wg/${encodedShareCode}/announcements/${encodeURIComponent(announcement.id)}/reactions`,
 			{
 				method: 'POST',
@@ -578,6 +615,8 @@ export default function PinnwandPage(): React.ReactElement {
 			}
 			return;
 		}
+		const warningMessage = notificationWarningMessage(res.data.warning);
+		if (warningMessage) setNotice(warningMessage);
 		void load();
 	}
 
@@ -601,7 +640,7 @@ export default function PinnwandPage(): React.ReactElement {
 		}));
 		start(pendingKey);
 		setActionError(null);
-		const res = await apiFetch<{ comment: AnnouncementComment }>(
+		const res = await apiFetch<AnnouncementCommentResponse>(
 			`/api/wg/${encodedShareCode}/announcements/${encodeURIComponent(announcement.id)}/comments`,
 			{
 				method: 'POST',
@@ -632,6 +671,8 @@ export default function PinnwandPage(): React.ReactElement {
 				comment.id === optimisticComment.id ? confirmedComment : comment,
 			),
 		}));
+		const warningMessage = notificationWarningMessage(res.data.warning);
+		if (warningMessage) setNotice(warningMessage);
 		void load('background');
 		return true;
 	}

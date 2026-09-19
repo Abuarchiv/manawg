@@ -86,7 +86,7 @@ export const POST = withWgRoute<{ id: string }>(
 		try {
 			if (idemScope && idemKey) {
 				const slot = await claimReplaySlotWithRetry<ChoreCompleteResponseBody>(idemScope, idemKey);
-				if (!slot.won && slot.cached) {
+				if (!slot.won) {
 					replayReservation?.resolve(slot.cached);
 					return NextResponse.json(slot.cached);
 				}

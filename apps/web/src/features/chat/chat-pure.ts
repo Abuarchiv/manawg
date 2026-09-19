@@ -27,6 +27,19 @@ interface ParsedMentions {
 	cleanedBody: string;
 }
 
+export interface MentionTrigger {
+	query: string;
+	startIndex: number;
+}
+
+export function detectMention(value: string, cursor: number): MentionTrigger | null {
+	const upTo = value.slice(0, cursor);
+	const match = /(?:^|\s)@([A-Za-zÄÖÜäöüß0-9_-]{1,40})$/.exec(upTo);
+	if (!match) return null;
+	const start = upTo.length - (match[1]?.length ?? 0) - 1;
+	return { query: match[1] ?? '', startIndex: start };
+}
+
 export function parseMentions(body: string): ParsedMentions {
 	const matches = new Set<string>();
 	if (typeof body !== 'string' || body.length === 0) {
@@ -132,6 +145,14 @@ export function sanitizeMessageBody(body: unknown, maxLength = 4000): string | n
 export function previewBody(body: string, max = 120): string {
 	const normalized = body.replace(/\s+/g, ' ').trim();
 	return normalized.length > max ? `${normalized.slice(0, max - 1)}…` : normalized;
+}
+
+export function filterPersistedMentionIds(
+	requestedIds: readonly string[],
+	insertedRows: readonly { mentionedMemberId: string }[],
+): string[] {
+	const persistedIds = new Set(insertedRows.map((row) => row.mentionedMemberId));
+	return requestedIds.filter((id) => persistedIds.has(id));
 }
 
 export function mergePagedMessagesById<T extends { id: string }>(

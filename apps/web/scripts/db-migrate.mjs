@@ -59,7 +59,7 @@ const migrationsFolder = path.join(scriptDir, '..', 'drizzle');
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', 'host.docker.internal']);
 
-function validateDatabaseUrl(url, label) {
+export function validateDatabaseUrl(url, label) {
 	let parsed;
 	try {
 		parsed = new URL(url);
@@ -75,6 +75,14 @@ function validateDatabaseUrl(url, label) {
 	const isLocal = LOCAL_HOSTS.has(host) || host.endsWith('.local');
 	if (!isLocal && !parsed.port) {
 		throw new Error(`${label} must specify a port for remote connections.`);
+	}
+	if (!isLocal) {
+		const sslmode = parsed.searchParams.get('sslmode')?.toLowerCase();
+		if (!['require', 'verify-ca', 'verify-full'].includes(sslmode ?? '')) {
+			throw new Error(
+				`${label} must require TLS for remote connections (sslmode=require, verify-ca, or verify-full).`,
+			);
+		}
 	}
 }
 

@@ -5,7 +5,7 @@ import { apiError, badRequest, forbidden, tooMany } from '@/core/errors';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, reminderSendLimiter } from '@/core/rate-limit';
 import { MS_PER_DAY } from '@/core/utils/time';
 import {
@@ -26,6 +26,10 @@ import { z } from 'zod';
 
 const REMINDER_HISTORY_WINDOW_DAYS = 30;
 const REMINDER_PAGE_LIMIT = 50;
+type ReminderResponseWarning =
+	| null
+	| 'notification_delivery_failed'
+	| 'notification_delivery_unknown';
 
 const postSchema = z.object({
 	debtorMemberId: z.string().uuid(),
@@ -168,18 +172,6 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 
 	if (!inserted) return tooMany('reminder_cooldown', 'reminder_cooldown');
 
-	void dispatchNotification({
-		wg,
-		event: 'expense.reminder',
-		payload: {
-			amountCents: pair.amountCents,
-			creditorName: creditor.name,
-			debtorName: debtor.name,
-			oldestDebtAgeDays: inserted.oldestDebtAgeDays,
-		},
-		targetMemberIds: [debtorMemberId],
-	}).catch((err) => console.error('[reminders POST] notification failed', err));
-
 	await recordAuditEvent({
 		wgId: wg.id,
 		memberId: auth.member.memberId,
@@ -194,5 +186,17 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 		},
 	});
 
-	return NextResponse.json({ reminder: inserted });
+	const { warning }: { warning: ReminderResponseWarning } = await dispatchNotificationSafely({
+		wg,
+		event: 'expense.reminder',
+		payload: {
+			amountCents: pair.amountCents,
+			creditorName: creditor.name,
+			debtorName: debtor.name,
+			oldestDebtAgeDays: inserted.oldestDebtAgeDays,
+		},
+		targetMemberIds: [debtorMemberId],
+	});
+
+	return NextResponse.json({ reminder: inserted, warning });
 });

@@ -11,7 +11,7 @@ import {
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
-import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -24,7 +24,12 @@ const SHOPPING_ITEMS_UNIQUE_OPEN_NAME = 'shopping_items_unique_open_name';
 const SHOPPING_ITEMS_LIST_LIMIT = 1000;
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
-type ShoppingCreateResponseBody = { item: unknown };
+type ShoppingCreateWarning =
+	| null
+	| 'notification_delivery_failed'
+	| 'notification_delivery_unknown';
+
+type ShoppingCreateResponseBody = { item: unknown; warning: ShoppingCreateWarning };
 
 const shoppingCreateReplay = new ReplayCache<ShoppingCreateResponseBody>(IDEMPOTENCY_TTL_MS);
 
@@ -122,7 +127,7 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 	try {
 		if (idemScope && idemKey) {
 			const slot = await claimReplaySlotWithRetry<ShoppingCreateResponseBody>(idemScope, idemKey);
-			if (!slot.won && slot.cached) {
+			if (!slot.won) {
 				replayReservation?.resolve(slot.cached);
 				return NextResponse.json(slot.cached);
 			}
@@ -173,13 +178,13 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 			sourcePath: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
 			content: `${auth.member.name} hat ${safeQuantity ? `${name} (${safeQuantity})` : name} auf die Einkaufsliste gesetzt.`,
 		});
-		void dispatchNotification({
+		const { warning } = await dispatchNotificationSafely({
 			wg,
 			event: 'shopping.added',
 			payload: { title: name, actorName: auth.member.name, shoppingItemId: item.id },
 			excludeMemberId: auth.member.memberId,
-		}).catch((err) => console.error('[shopping POST] notification failed', err));
-		const responseBody = { item };
+		});
+		const responseBody = { item, warning };
 		if (idemScope && idemKey && replayReservation?.owned) {
 			replayReservation.resolve(responseBody);
 			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) =>

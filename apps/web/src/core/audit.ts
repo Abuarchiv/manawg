@@ -22,6 +22,9 @@ export async function recordAuditEvent(input: AuditEventInput): Promise<void> {
 			metadataJson: input.metadata ? JSON.stringify(input.metadata) : null,
 		});
 	} catch (err) {
-		console.warn('[audit] event not recorded', err);
+		// Keep mutations best-effort: propagating an audit failure after the
+		// mutation would make clients retry successful writes. Surface the loss
+		// at error level so the platform log can alert on it.
+		console.error('[audit] event not recorded', err);
 	}
 }

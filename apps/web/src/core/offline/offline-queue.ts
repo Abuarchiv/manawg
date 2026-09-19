@@ -8,6 +8,7 @@ export type OfflineActionType =
 	| 'chore.create'
 	| 'chore.complete'
 	| 'expense.create'
+	| 'expense.update'
 	| 'recurring.create'
 	| 'recurring.advance';
 
@@ -123,6 +124,11 @@ interface QueuedExpenseInput extends QueuedIdentityInput {
 	recurringExpenseId?: string;
 	expectedRecurringNextDueAt?: string;
 	now?: number;
+}
+
+interface QueuedExpenseUpdateInput extends QueuedExpenseInput {
+	expenseId: string;
+	expectedUpdatedAt: string;
 }
 
 interface QueuedRecurringInput extends QueuedIdentityInput {
@@ -298,6 +304,27 @@ export function createQueuedExpense(input: QueuedExpenseInput): OfflineAction {
 	);
 }
 
+export function createQueuedExpenseUpdate(input: QueuedExpenseUpdateInput): OfflineAction {
+	const now = input.now ?? Date.now();
+	return createQueuedAction(
+		`expense-update:${input.shareCode}:${now}:${input.expenseId}`,
+		'expense.update',
+		input.wgId,
+		input.shareCode,
+		input.memberId,
+		{
+			expenseId: input.expenseId,
+			expectedUpdatedAt: input.expectedUpdatedAt,
+			description: input.description,
+			amountCents: input.amountCents,
+			paidByMemberId: input.paidByMemberId,
+			splits: input.splits,
+			imageUrl: input.imageUrl,
+		},
+		now,
+	);
+}
+
 export function createQueuedRecurring(input: QueuedRecurringInput): OfflineAction {
 	const now = input.now ?? Date.now();
 	return createQueuedAction(
@@ -451,6 +478,7 @@ const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandler> = {
 				),
 			};
 		},
+
 		summary: (action) => ({
 			title: 'Ausgabe',
 			detail: String(action.payload.description ?? 'Neue Ausgabe'),
@@ -459,6 +487,25 @@ const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandler> = {
 			title: 'Aufteilung prüfen',
 			detail:
 				'Wenn sich Mitglieder oder Beträge geändert haben, bearbeite die Ausgabe vor dem Senden.',
+		}),
+	},
+
+	'expense.update': {
+		buildRequest: (action) => {
+			const { expenseId, ...expensePayload } = action.payload;
+			return {
+				path: `/api/wg/${pathSegment(action.shareCode)}/expenses/${pathSegment(expenseId)}`,
+				method: 'PATCH',
+				body: expensePayload,
+			};
+		},
+		summary: (action) => ({
+			title: 'Ausgabe aktualisieren',
+			detail: String(action.payload.description ?? 'Ausgabe'),
+		}),
+		risk: () => ({
+			title: 'Version prüfen',
+			detail: 'Die Ausgabe wird nur aktualisiert, wenn sie seit dem Bearbeiten unverändert blieb.',
 		}),
 	},
 

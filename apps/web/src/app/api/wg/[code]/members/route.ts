@@ -74,6 +74,10 @@ interface PostBody {
 	color?: unknown;
 }
 
+function isPostBody(value: unknown): value is PostBody {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function isUniqueMemberNameViolation(err: unknown): boolean {
 	if (!err || typeof err !== 'object' || !('code' in err)) return false;
 	if ((err as { code?: unknown }).code !== '23505') return false;
@@ -82,9 +86,10 @@ function isUniqueMemberNameViolation(err: unknown): boolean {
 }
 
 export const POST = withWgRoute('members POST', async (req, { code }) => {
-	let body: PostBody;
+	let body: PostBody = {};
 	try {
-		body = (await req.json()) as PostBody;
+		const raw: unknown = await req.json();
+		if (isPostBody(raw)) body = raw;
 	} catch {
 		return badRequest('invalid_json');
 	}
@@ -153,7 +158,7 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 			try {
 				[inserted] = await tx
 					.insert(wgMembers)
-					.values({ wgId: wg.id, name, color, authUserId: user.id })
+					.values({ wgId: wg.id, name, color, role: 'member', authUserId: user.id })
 					.onConflictDoNothing({ target: [wgMembers.wgId, wgMembers.name] })
 					.returning();
 			} catch (insertErr) {

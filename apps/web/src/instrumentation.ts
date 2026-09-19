@@ -16,16 +16,20 @@ async function reportEnvironment(): Promise<void> {
 	const report = formatEnvReport(result);
 
 	if (!result.ok) {
-		console.error(report);
 		const { captureException } = await import('./core/infra/observability');
 		const error = new Error(
 			`Missing required environment variables: ${result.missingRequired.join(', ')}`,
 		);
-		captureException(error, { area: 'startup', missing: result.missingRequired });
+		captureException(error, {
+			area: 'startup',
+			missing: result.missingRequired,
+			report,
+		});
 		if (result.isProduction) throw error;
 		return;
 	}
-	if (result.degraded.length > 0) console.warn(report);
+	// biome-ignore lint/suspicious/noConsole: degraded startup diagnostics are informational.
+	if (result.degraded.length > 0) console.info(report);
 }
 
 export async function register() {

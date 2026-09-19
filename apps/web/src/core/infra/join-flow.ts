@@ -36,5 +36,5 @@ export function joinErrorMessage(status: number, error: string): string {
 }
 
 export function shouldFallbackToDirectJoin(status: number, error: string): boolean {
-	return status === 401 && error === 'member_id_required';
+	return status === 401 && error !== 'member_id_required';
 }

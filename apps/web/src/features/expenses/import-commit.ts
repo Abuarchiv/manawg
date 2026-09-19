@@ -2,11 +2,14 @@ import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseImports, expenseSplits, expenses, wgMembers } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
-import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import {
+	type NotificationDispatchWarning,
+	dispatchNotificationSafely,
+} from '@/core/notifications/notification-dispatch';
 import { formatEuroCents } from '@/core/utils/money';
 import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { ImportSource, ParsedExpense } from './import-parsers';
 
 interface CommitInput {
@@ -25,6 +28,7 @@ export interface CommitResult {
 	inserted: number;
 	skipped: number;
 	errors: Array<{ index: number; reason: string }>;
+	warning: NotificationDispatchWarning;
 }
 
 function buildDuplicateKey(
@@ -83,7 +87,13 @@ async function assertMembersInWg(input: CommitInput): Promise<void> {
 	const memberRows = await db
 		.select({ id: wgMembers.id })
 		.from(wgMembers)
-		.where(and(eq(wgMembers.wgId, input.wg.id), inArray(wgMembers.id, memberIdsList)));
+		.where(
+			and(
+				eq(wgMembers.wgId, input.wg.id),
+				inArray(wgMembers.id, memberIdsList),
+				isNull(wgMembers.deactivatedAt),
+			),
+		);
 	const validIds = new Set(memberRows.map((m) => m.id));
 	for (const id of memberIdsList) {
 		if (!validIds.has(id)) throw new Error('member_not_in_wg');
@@ -276,7 +286,7 @@ export async function commitImport(input: CommitInput): Promise<CommitResult> {
 		},
 	});
 
-	void dispatchNotification({
+	const { warning } = await dispatchNotificationSafely({
 		wg: input.wg,
 		event: 'import.completed',
 		payload: {
@@ -286,7 +296,7 @@ export async function commitImport(input: CommitInput): Promise<CommitResult> {
 			amountFormatted: formatEuroCents(totalAmountCents),
 		},
 		excludeMemberId: input.importedByMemberId,
-	}).catch((err) => console.error('[import-commit] notification failed', err));
+	});
 
-	return { importId, inserted, skipped, errors };
+	return { importId, inserted, skipped, errors, warning };
 }

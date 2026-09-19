@@ -1,6 +1,7 @@
 'use client';
 
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useToast } from '@/components/ui/Toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,12 @@ interface CalendarEvent {
 	recurrence: string | null;
 }
 
+type CalendarCreateWarning =
+	| null
+	| 'notification_delivery_failed'
+	| 'notification_delivery_unknown';
+type CalendarCreateResponse = { event: CalendarEvent; warning: CalendarCreateWarning };
+
 interface ChoreSummary {
 	id: string;
 	title: string;
@@ -108,6 +115,7 @@ function buildChoreOccurrences(
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function KalenderPage() {
 	const { wg, identity } = useWg();
+	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -227,7 +235,7 @@ export default function KalenderPage() {
 	}
 
 	async function handleCreate(payload: CreateEventPayload): Promise<void> {
-		const res = await apiFetch<{ event: CalendarEvent }>(`/api/wg/${encodedShareCode}/events`, {
+		const res = await apiFetch<CalendarCreateResponse>(`/api/wg/${encodedShareCode}/events`, {
 			method: 'POST',
 			memberId: identity.memberId,
 			memberToken: identity.memberToken,
@@ -239,6 +247,9 @@ export default function KalenderPage() {
 		haptic('medium');
 		setEvents((current) => [...current, res.data.event]);
 		setCreateOpen(false);
+		if (res.data.warning) {
+			toast.info('Termin gespeichert. Push-Versand konnte nicht bestätigt werden.');
+		}
 	}
 
 	async function handleUpdate(id: string, payload: UpdateEventPayload): Promise<void> {

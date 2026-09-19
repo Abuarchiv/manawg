@@ -90,6 +90,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 		return () => mq.removeEventListener('change', onChange);
 	}, [theme]);
 
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+		const onStorage = (event: StorageEvent): void => {
+			if (event.key !== THEME_STORAGE_KEY) return;
+			const next = parseStoredTheme(event.newValue);
+			setThemeState(next);
+			setResolvedTheme(resolve(next));
+		};
+		window.addEventListener('storage', onStorage);
+		return () => window.removeEventListener('storage', onStorage);
+	}, []);
+
 	const setTheme = useCallback((next: Theme) => {
 		setThemeState(next);
 		writeStoredTheme(next);

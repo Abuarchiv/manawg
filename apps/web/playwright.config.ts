@@ -1,4 +1,5 @@
 // craftsman-ignore: TS002
+import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
 const DEFAULT_E2E_PORT = process.env.E2E_PORT ?? '3101';
@@ -25,12 +26,12 @@ const parsedBaseUrl = new URL(BASE_URL);
 const isLocalBase = ['localhost', '127.0.0.1', '::1'].includes(parsedBaseUrl.hostname);
 const isRemoteBase = /^https?:\/\//i.test(BASE_URL) && !isLocalBase;
 const serverPort = parsedBaseUrl.port || (parsedBaseUrl.protocol === 'https:' ? '443' : '80');
-const APP_DIR = process.cwd().endsWith('/apps/web') ? process.cwd() : 'apps/web';
+const APP_DIR = __dirname;
 const useBuiltServer = process.env.PLAYWRIGHT_USE_BUILD === 'true';
 const e2eDistDir = `.next-e2e-${serverPort}`;
 const e2eTsconfigPath = `.next-e2e-tsconfig-${serverPort}.json`;
 const isolatedNextEnv = `NEXT_DIST_DIR=${e2eDistDir} NEXT_TSCONFIG_PATH=${e2eTsconfigPath}`;
-const prepareIsolatedNext = `cp tsconfig.json ${e2eTsconfigPath}`;
+const prepareIsolatedNext = `cp "${path.join(APP_DIR, 'tsconfig.json')}" "${e2eTsconfigPath}"`;
 const webServerCommand = useBuiltServer
 	? `${prepareIsolatedNext} && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next build && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next start --port ${serverPort}`
 	: process.env.NEXT_PUBLIC_DB_DOWN === 'true'

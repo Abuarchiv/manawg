@@ -1,5 +1,7 @@
 'use client';
 
+import { createOfflineIdempotencyKey } from './offline-queue';
+
 const DB_NAME = 'manawg-offline-images';
 const STORE_NAME = 'images';
 const DB_VERSION = 1;
@@ -85,7 +87,11 @@ export async function storePendingImage(input: {
 	memberId: string;
 	purpose: 'expense' | 'announcement';
 }): Promise<string> {
-	const id = `${input.shareCode}:${input.purpose}:${Date.now()}:${crypto.randomUUID()}`;
+	const now = Date.now();
+	// Local IndexedDB key only: prefer UUID, but keep browsers without Web Crypto usable.
+	const suffix =
+		createOfflineIdempotencyKey() ?? `${now.toString(36)}-${Math.random().toString(36).slice(2)}`;
+	const id = `${input.shareCode}:${input.purpose}:${now}:${suffix}`;
 	const record: PendingImageRecord = {
 		id,
 		file: input.file,
@@ -95,7 +101,7 @@ export async function storePendingImage(input: {
 		shareCode: input.shareCode,
 		memberId: input.memberId,
 		purpose: input.purpose,
-		createdAt: new Date().toISOString(),
+		createdAt: new Date(now).toISOString(),
 	};
 	await withStore('readwrite', (store) => store.put(record, id));
 	return createPendingImageToken(id);

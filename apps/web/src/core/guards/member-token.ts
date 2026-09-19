@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
+const MEMBER_TOKEN_PATTERN = /^[0-9a-f]{64}$/i;
+
 /**
  * Deterministic per-member session token.
  *
@@ -47,6 +49,7 @@ export function verifyMemberToken(
 	token: string | null | undefined,
 ): boolean {
 	if (!token) return false;
+	if (!MEMBER_TOKEN_PATTERN.test(token)) return false;
 	const expected = deriveMemberToken(wgId, memberId);
 	if (!expected) return false;
 

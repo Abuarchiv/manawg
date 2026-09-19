@@ -153,6 +153,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 			.select({
 				id: wgMembers.id,
 				name: wgMembers.name,
+				role: wgMembers.role,
 				deactivatedAt: wgMembers.deactivatedAt,
 				paypalMerchantId: wgMembers.paypalMerchantId,
 			})
@@ -170,6 +171,9 @@ export const PATCH = withWgRoute<{ id: string }>(
 		if (active !== undefined) {
 			const denied = await requireOwnerOrAdmin(wgId, auth.member, id);
 			if (denied) return denied;
+		}
+		if (active === false && target.role === 'admin') {
+			return forbidden('admin_required', 'admin_required');
 		}
 
 		// Idempotent: if already in the requested state, report success without a

@@ -1,12 +1,18 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, pushSubscriptions, wgMembers } from '@/core/db';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { badRequest, forbidden, notFound, serverError, tooMany } from '@/core/errors';
+import { forbidden, notFound, serverError, tooMany } from '@/core/errors';
+import { badRequest, payloadTooLarge } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { readJsonBody } from '@/core/http/read-json';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, notifTestLimiter, wgWriteLimiter } from '@/core/rate-limit';
-import { pushEndpointSchema } from '@/core/validators/push-endpoint';
+import {
+	pushAuthKeySchema,
+	pushEndpointSchema,
+	pushP256dhSchema,
+} from '@/core/validators/push-endpoint';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -17,6 +23,7 @@ const patchSchema = z.object({
 	notifyChores: z.boolean().optional(),
 	notifyExpenses: z.boolean().optional(),
 	notifyShopping: z.boolean().optional(),
+	notifyInventory: z.boolean().optional(),
 	notifyReminders: z.boolean().optional(),
 	notifyChat: z.boolean().optional(),
 	notifyEvents: z.boolean().optional(),
@@ -29,8 +36,8 @@ const postSchema = z.discriminatedUnion('action', [
 	z.object({
 		action: z.literal('push_subscribe'),
 		endpoint: pushEndpointSchema,
-		p256dh: z.string().min(1),
-		authKey: z.string().min(1),
+		p256dh: pushP256dhSchema,
+		authKey: pushAuthKeySchema,
 	}),
 	z.object({
 		action: z.literal('push_unsubscribe'),
@@ -44,6 +51,7 @@ const NOTIFICATION_FIELD_LABELS: Record<string, string> = {
 	notifyChores: 'Putzplan',
 	notifyExpenses: 'Ausgaben',
 	notifyShopping: 'Einkauf',
+	notifyInventory: 'Vorräte',
 	notifyReminders: 'Mahnungen',
 	notifyChat: 'Chat',
 	notifyEvents: 'Termine',
@@ -64,6 +72,7 @@ export const GET = withWgRoute('notifications GET', async (req, { code }) => {
 			notifyChores: true,
 			notifyExpenses: true,
 			notifyShopping: true,
+			notifyInventory: true,
 			notifyReminders: true,
 			notifyChat: true,
 			notifyEvents: true,
@@ -79,6 +88,7 @@ export const GET = withWgRoute('notifications GET', async (req, { code }) => {
 		notifyChores: member.notifyChores,
 		notifyExpenses: member.notifyExpenses,
 		notifyShopping: member.notifyShopping,
+		notifyInventory: member.notifyInventory,
 		notifyReminders: member.notifyReminders,
 		notifyChat: member.notifyChat,
 		notifyEvents: member.notifyEvents,
@@ -89,12 +99,12 @@ export const GET = withWgRoute('notifications GET', async (req, { code }) => {
 });
 
 export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) => {
-	let raw: unknown;
-	try {
-		raw = await req.json();
-	} catch {
-		return badRequest('invalid_json');
-	}
+	const rawResult = await readJsonBody(req, 16 * 1024);
+	if (!rawResult.ok)
+		return rawResult.reason === 'payload_too_large'
+			? payloadTooLarge()
+			: badRequest('invalid_json');
+	const raw = rawResult.body;
 	const parsed = patchSchema.safeParse(raw);
 	if (!parsed.success) {
 		const { fieldErrors } = parsed.error.flatten();
@@ -113,6 +123,7 @@ export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) =>
 		notifyChores?: boolean;
 		notifyExpenses?: boolean;
 		notifyShopping?: boolean;
+		notifyInventory?: boolean;
 		notifyReminders?: boolean;
 		notifyChat?: boolean;
 		notifyEvents?: boolean;
@@ -133,6 +144,9 @@ export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) =>
 	}
 	if (typeof parsed.data.notifyShopping === 'boolean') {
 		update.notifyShopping = parsed.data.notifyShopping;
+	}
+	if (typeof parsed.data.notifyInventory === 'boolean') {
+		update.notifyInventory = parsed.data.notifyInventory;
 	}
 	if (typeof parsed.data.notifyReminders === 'boolean') {
 		update.notifyReminders = parsed.data.notifyReminders;
@@ -179,12 +193,12 @@ export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) =>
 });
 
 export const POST = withWgRoute('notifications POST', async (req, { code }) => {
-	let raw: unknown;
-	try {
-		raw = await req.json();
-	} catch {
-		return badRequest('invalid_json');
-	}
+	const rawResult = await readJsonBody(req, 16 * 1024);
+	if (!rawResult.ok)
+		return rawResult.reason === 'payload_too_large'
+			? payloadTooLarge()
+			: badRequest('invalid_json');
+	const raw = rawResult.body;
 	const parsed = postSchema.safeParse(raw);
 	if (!parsed.success) {
 		const { fieldErrors } = parsed.error.flatten();

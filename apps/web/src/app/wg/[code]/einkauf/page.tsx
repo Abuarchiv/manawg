@@ -65,6 +65,13 @@ import { ListChecks, Plus, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+type ShoppingCreateWarning =
+	| null
+	| 'notification_delivery_failed'
+	| 'notification_delivery_unknown';
+
+type ShoppingCreateResponse = { item: ShoppingItem; warning: ShoppingCreateWarning };
+
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function EinkaufPage() {
 	const { wg, members, identity } = useWg();
@@ -213,7 +220,7 @@ export default function EinkaufPage() {
 		setAddError(null);
 		setAddNotice(null);
 		try {
-			const res = await apiFetch<ShoppingItem>(`/api/wg/${encodedShareCode}/shopping`, {
+			const res = await apiFetch<ShoppingCreateResponse>(`/api/wg/${encodedShareCode}/shopping`, {
 				method: 'POST',
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
@@ -274,6 +281,11 @@ export default function EinkaufPage() {
 			if (quantityUnchanged) setNewQty('');
 			if (nameUnchanged && quantityUnchanged) removeDraft(draftKey);
 			toast.success('Hinzugefügt');
+			if (res.data.warning === 'notification_delivery_failed') {
+				toast.info('Gespeichert. Nicht alle Push-Benachrichtigungen konnten versendet werden.');
+			} else if (res.data.warning === 'notification_delivery_unknown') {
+				toast.info('Gespeichert. Push-Versand konnte nicht bestätigt werden.');
+			}
 			void load(true);
 		} finally {
 			addingRef.current = false;

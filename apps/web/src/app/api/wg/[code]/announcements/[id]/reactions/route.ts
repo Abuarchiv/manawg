@@ -4,7 +4,10 @@ import { badRequest, notFound, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import {
+	type NotificationDispatchWarning,
+	dispatchNotificationSafely,
+} from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { findWgAnnouncement } from '@/features/pinnwand/announcement-lookup';
 import { ANNOUNCEMENT_REACTIONS } from '@/features/pinnwand/announcement-workflow';
@@ -68,7 +71,7 @@ export const POST = withWgRoute<{ id: string }>(
 				summary: `${auth.member.name} hat eine Reaktion entfernt.`,
 				metadata: { announcementId: id, reaction: parsed.data.reaction },
 			});
-			return NextResponse.json({ reaction: parsed.data.reaction, active: false });
+			return NextResponse.json({ reaction: parsed.data.reaction, active: false, warning: null });
 		}
 
 		const [reaction] = await db
@@ -81,7 +84,7 @@ export const POST = withWgRoute<{ id: string }>(
 			.onConflictDoNothing()
 			.returning({ id: announcementReactions.id });
 		if (!reaction) {
-			return NextResponse.json({ reaction: parsed.data.reaction, active: true });
+			return NextResponse.json({ reaction: parsed.data.reaction, active: true, warning: null });
 		}
 		await recordAuditEvent({
 			wgId: wg.id,
@@ -92,8 +95,9 @@ export const POST = withWgRoute<{ id: string }>(
 			summary: `${auth.member.name} hat mit ${parsed.data.reaction} reagiert.`,
 			metadata: { announcementId: id, reaction: parsed.data.reaction },
 		});
+		let warning: NotificationDispatchWarning = null;
 		if (announcement.authorMemberId !== auth.member.memberId) {
-			void dispatchNotification({
+			const delivery = await dispatchNotificationSafely({
 				wg,
 				event: 'announcement.reacted',
 				payload: {
@@ -103,8 +107,9 @@ export const POST = withWgRoute<{ id: string }>(
 				},
 				targetMemberIds: [announcement.authorMemberId],
 				excludeMemberId: auth.member.memberId,
-			}).catch((err) => console.error('[announcement reaction POST] notification failed', err));
+			});
+			warning = delivery.warning;
 		}
-		return NextResponse.json({ reaction: parsed.data.reaction, active: true });
+		return NextResponse.json({ reaction: parsed.data.reaction, active: true, warning });
 	},
 );

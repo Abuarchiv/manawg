@@ -12,7 +12,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { and, asc, eq, gte, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, isNull, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -121,7 +121,13 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 	const member = await db
 		.select({ id: wgMembers.id })
 		.from(wgMembers)
-		.where(and(eq(wgMembers.wgId, wg.id), eq(wgMembers.id, parsed.data.memberId)))
+		.where(
+			and(
+				eq(wgMembers.wgId, wg.id),
+				eq(wgMembers.id, parsed.data.memberId),
+				isNull(wgMembers.deactivatedAt),
+			),
+		)
 		.limit(1);
 	if (member.length === 0) return badRequest('member_not_in_wg');
 
@@ -154,7 +160,7 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 	try {
 		if (idemScope && idemKey) {
 			const slot = await claimReplaySlotWithRetry<AbsenceCreateResponseBody>(idemScope, idemKey);
-			if (!slot.won && slot.cached) {
+			if (!slot.won) {
 				replayReservation?.resolve(slot.cached);
 				return NextResponse.json(slot.cached);
 			}

@@ -96,7 +96,7 @@ export function QuickRestockSheet({
 						</Alert>
 					)}
 					{sorted.length === 0 ? (
-						<Empty className="border-dashed">
+						<Empty className="border border-dashed">
 							<EmptyHeader>
 								<EmptyTitle>Noch keine Verbrauchs-Daten</EmptyTitle>
 								<EmptyDescription>

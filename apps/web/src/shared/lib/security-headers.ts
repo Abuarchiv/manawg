@@ -3,9 +3,9 @@
  * can't drift between `web` and `landing` — they serve one origin and must
  * agree on what that origin is allowed to load.
  */
-export function contentSecurityPolicy(): string {
-	const scriptSrc = ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'];
-	const styleSrc = ["'self'", "'unsafe-inline'"];
+export function contentSecurityPolicy(nonce: string): string {
+	const scriptSrc = ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", 'https://cdn.jsdelivr.net'];
+	const styleSrc = ["'self'", `'nonce-${nonce}'`];
 	const connectSrc = [
 		"'self'",
 		'https://cdn.jsdelivr.net',
@@ -45,6 +45,7 @@ export function contentSecurityPolicy(): string {
 		"default-src 'self'",
 		`script-src ${scriptSrc.join(' ')}`,
 		`style-src ${styleSrc.join(' ')}`,
+		"style-src-attr 'unsafe-inline'",
 		"img-src 'self' data: blob: https://*.amazonaws.com",
 		"font-src 'self' data:",
 		`connect-src ${connectSrc.join(' ')}`,

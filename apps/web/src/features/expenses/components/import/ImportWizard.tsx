@@ -46,11 +46,14 @@ interface PreviewResponse {
 	members: Array<{ id: string; name: string }>;
 }
 
+type CommitWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
+
 interface CommitResponse {
 	importId: string;
 	inserted: number;
 	skipped: number;
 	errors: Array<{ index: number; reason: string }>;
+	warning: CommitWarning;
 }
 
 type ImportOperation = 'preview' | 'commit';
@@ -740,6 +743,16 @@ export function ImportWizard() {
 						skipped={commitResult.skipped}
 						errors={commitResult.errors.length}
 					/>
+					{commitResult.warning && (
+						<Alert>
+							<AlertTitle>Hinweis zur Benachrichtigung</AlertTitle>
+							<AlertDescription>
+								{commitResult.warning === 'notification_delivery_failed'
+									? 'Der Import wurde gespeichert, aber die WG-Benachrichtigung konnte nicht an alle zugestellt werden.'
+									: 'Der Import wurde gespeichert, aber die Zustellung der WG-Benachrichtigung konnte nicht bestätigt werden.'}
+							</AlertDescription>
+						</Alert>
+					)}
 					{commitResult.errors.length > 0 && (
 						<Alert variant="destructive">
 							<AlertTitle>Nicht übernommene Einträge</AlertTitle>

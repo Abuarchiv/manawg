@@ -5,10 +5,13 @@ import type { Expense, ExpenseSplit } from '@/core/db/schema';
 import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
 import { isUuid } from '@/core/guards/api-auth';
 import type { ResolvedWg } from '@/core/guards/resolve';
-import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import {
+	type NotificationDispatchWarning,
+	dispatchNotificationSafely,
+} from '@/core/notifications/notification-dispatch';
 import { formatEuroCents } from '@/core/utils/money';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 
 interface ExpenseSplitInput {
 	debtorMemberId: string;
@@ -63,7 +66,13 @@ export async function findExpenseMemberIds(
 	const memberRows = await db
 		.select({ id: wgMembers.id })
 		.from(wgMembers)
-		.where(and(eq(wgMembers.wgId, wgId), inArray(wgMembers.id, memberIds)));
+		.where(
+			and(
+				eq(wgMembers.wgId, wgId),
+				inArray(wgMembers.id, memberIds),
+				isNull(wgMembers.deactivatedAt),
+			),
+		);
 	return new Set(memberRows.map((row) => row.id));
 }
 
@@ -136,7 +145,7 @@ interface ExpenseCreatedSideEffectsInput {
  */
 export async function recordExpenseCreatedSideEffects(
 	input: ExpenseCreatedSideEffectsInput,
-): Promise<void> {
+): Promise<NotificationDispatchWarning> {
 	const { wg, actor, expense } = input;
 	const amount = formatEuroCents(expense.amountCents, expense.currency);
 
@@ -170,7 +179,7 @@ export async function recordExpenseCreatedSideEffects(
 		metadata: { amountCents: expense.amountCents, paidByMemberId: expense.paidByMemberId },
 	});
 
-	void dispatchNotification({
+	const { warning } = await dispatchNotificationSafely({
 		wg,
 		event: 'expense.created',
 		payload: {
@@ -180,5 +189,6 @@ export async function recordExpenseCreatedSideEffects(
 			expenseId: expense.id,
 		},
 		excludeMemberId: actor.memberId,
-	}).catch((err) => console.error('[expenses] notification failed', err));
+	});
+	return warning;
 }

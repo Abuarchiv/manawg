@@ -23,7 +23,7 @@ import {
 	splitValidationErrorCode,
 	validateSplits,
 } from '@/features/expenses/split-math';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -203,7 +203,13 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 		const memberRows = await db
 			.select({ id: wgMembers.id })
 			.from(wgMembers)
-			.where(and(eq(wgMembers.wgId, wgId), inArray(wgMembers.id, debtorIds)));
+			.where(
+				and(
+					eq(wgMembers.wgId, wgId),
+					inArray(wgMembers.id, debtorIds),
+					isNull(wgMembers.deactivatedAt),
+				),
+			);
 		if (memberRows.length !== debtorIds.length) return badRequest('member_not_in_wg');
 	}
 

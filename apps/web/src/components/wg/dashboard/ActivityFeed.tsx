@@ -15,6 +15,7 @@ import {
 	ItemMedia,
 	ItemTitle,
 } from '@/components/ui/item';
+import { activityItemKey } from '@/core/reads/activity';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatCompactRelativeTime } from '@/core/utils/time';
 import { cn } from '@/shared/lib/cn';
@@ -30,6 +31,7 @@ import {
 import Link from 'next/link';
 
 interface ActivityItem {
+	id?: string;
 	kind: 'expense' | 'shopping' | 'announcement' | 'chore' | 'recurring' | 'absence' | 'audit';
 	timestamp: string;
 	memberName: string;
@@ -85,7 +87,7 @@ export function ActivityFeed({ items, emptyHref, compact = false }: ActivityFeed
 	if (compact) {
 		return (
 			<ul aria-label="Aktivitätsverlauf" className="divide-y divide-border/60">
-				{items.map((item) => {
+				{items.map((item, index) => {
 					const Icon = kindIcon[item.kind];
 					const content = (
 						<>
@@ -110,7 +112,7 @@ export function ActivityFeed({ items, emptyHref, compact = false }: ActivityFeed
 						</>
 					);
 					return (
-						<li key={`${item.kind}-${item.timestamp}-${item.text}`}>
+						<li key={activityItemKey(item, index)}>
 							{item.href ? (
 								<Link
 									href={item.href}
@@ -130,7 +132,7 @@ export function ActivityFeed({ items, emptyHref, compact = false }: ActivityFeed
 
 	return (
 		<ItemGroup aria-label="Aktivitätsverlauf">
-			{items.map((item) => {
+			{items.map((item, index) => {
 				const Icon = kindIcon[item.kind];
 				const content = (
 					<>
@@ -167,7 +169,7 @@ export function ActivityFeed({ items, emptyHref, compact = false }: ActivityFeed
 				if (item.href) {
 					return (
 						<Item
-							key={`${item.kind}-${item.timestamp}-${item.text}`}
+							key={activityItemKey(item, index)}
 							variant={compact ? 'default' : 'outline'}
 							render={<Link href={item.href} aria-label={`${item.memberName} ${item.text}`} />}
 							className={cn('min-h-11', compact && 'rounded-none px-0')}
@@ -178,7 +180,7 @@ export function ActivityFeed({ items, emptyHref, compact = false }: ActivityFeed
 				}
 				return (
 					<Item
-						key={`${item.kind}-${item.timestamp}-${item.text}`}
+						key={activityItemKey(item, index)}
 						variant={compact ? 'default' : 'outline'}
 						className={cn(compact && 'rounded-none px-0')}
 					>

@@ -10,6 +10,7 @@ import {
 import { cn } from '@/shared/lib/cn';
 
 interface TextFieldProps {
+	id?: string;
 	label: string;
 	value: string;
 	onChange: (value: string) => void;
@@ -22,6 +23,7 @@ interface TextFieldProps {
 }
 
 export function TextField({
+	id: providedId,
 	label,
 	value,
 	onChange,
@@ -32,7 +34,7 @@ export function TextField({
 	disabled = false,
 	error,
 }: TextFieldProps) {
-	const id = `f-${label.toLowerCase().replace(/\s+/g, '-')}`;
+	const id = providedId ?? `f-${label.toLowerCase().replace(/\s+/g, '-')}`;
 	const errorId = `${id}-error`;
 	return (
 		<Field data-disabled={disabled} data-invalid={Boolean(error)}>

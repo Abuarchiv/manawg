@@ -5,6 +5,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiFetch } from '@/core/infra/api-client';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
 import { type StoredIdentity, getIdentity, rememberWg } from '@/shared/lib/identity';
 import {
@@ -137,39 +138,36 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 		void refreshMembers();
 	}, [identity, refreshMembers]);
 
+	const sync = useCallback(async () => {
+		if (
+			!identity ||
+			syncingRef.current ||
+			countOfflineActions(wg.shareCode, { memberId: identity.memberId }) === 0
+		) {
+			return;
+		}
+		syncingRef.current = true;
+		try {
+			await syncOfflineActions(wg.shareCode, { memberId: identity.memberId });
+		} catch {
+			// Automatic sync retries on the next app event or interval.
+		} finally {
+			syncingRef.current = false;
+		}
+	}, [identity, wg.shareCode]);
+
+	useVisibilityPausedInterval(() => void sync(), identity ? 60_000 : null);
+
 	useEffect(() => {
 		if (!identity) return;
-		const sync = async () => {
-			if (
-				syncingRef.current ||
-				countOfflineActions(wg.shareCode, { memberId: identity.memberId }) === 0
-			) {
-				return;
-			}
-			syncingRef.current = true;
-			try {
-				await syncOfflineActions(wg.shareCode, { memberId: identity.memberId });
-			} catch {
-				// Automatic sync retries on the next app event or interval.
-			} finally {
-				syncingRef.current = false;
-			}
-		};
-		const onVisible = () => {
-			if (document.visibilityState === 'visible') void sync();
-		};
 		void sync();
-		const interval = window.setInterval(() => void sync(), 60_000);
 		window.addEventListener('online', sync);
 		window.addEventListener('focus', sync);
-		document.addEventListener('visibilitychange', onVisible);
 		return () => {
-			window.clearInterval(interval);
 			window.removeEventListener('online', sync);
 			window.removeEventListener('focus', sync);
-			document.removeEventListener('visibilitychange', onVisible);
 		};
-	}, [identity, wg.shareCode]);
+	}, [identity, sync]);
 
 	if (!hydrated || !memberLoaded) {
 		// Static skeleton shell instead of null: the SSR/first-paint output keeps
@@ -179,7 +177,7 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 		return (
 			<div className="min-h-svh bg-background" aria-busy="true">
 				<main id="main" tabIndex={-1} className="focus:outline-none">
-					<div className="mx-auto w-full max-w-3xl px-3 pt-6 sm:px-4" aria-label="Wird geladen">
+					<div className="mx-auto w-full max-w-3xl px-4 pt-6" aria-label="Wird geladen">
 						<Skeleton className="h-7 w-40" />
 						<Skeleton className="mt-4 h-24 rounded-xl" />
 						<Skeleton className="mt-4 h-24 rounded-xl" />

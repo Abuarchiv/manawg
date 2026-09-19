@@ -47,3 +47,7 @@ export function parseWebPushStatusCode(err: unknown): number {
 	if (!Number.isInteger(statusCode)) return 0;
 	return statusCode >= 100 && statusCode <= 599 ? statusCode : 0;
 }
+
+export function isTransientWebPushStatus(statusCode: number): boolean {
+	return statusCode === 408 || statusCode === 429 || statusCode >= 500;
+}

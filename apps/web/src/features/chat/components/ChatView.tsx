@@ -37,17 +37,11 @@ interface InitialReactionRow {
 	emoji: string;
 }
 
-interface InitialMentionRow {
-	messageId: string;
-	mentionedMemberId: string;
-}
-
 interface ChatViewProps {
 	wgId: string;
 	shareCode: string;
 	initialMessages: ChatMessageDto[];
 	initialReactions: InitialReactionRow[];
-	initialMentions: InitialMentionRow[];
 }
 
 const PAGE_SIZE = 50;
@@ -81,13 +75,7 @@ function reactionRowKey(row: InitialReactionRow): string {
 	return `${row.messageId}|${row.memberId}|${row.emoji}`;
 }
 
-export function ChatView({
-	wgId,
-	shareCode,
-	initialMessages,
-	initialReactions,
-	initialMentions,
-}: ChatViewProps) {
+export function ChatView({ wgId, shareCode, initialMessages, initialReactions }: ChatViewProps) {
 	const { members, identity, isAdmin } = useWg();
 	const toast = useToast();
 	const [messages, setMessages] = useState<ChatMessageDto[]>(initialMessages);
@@ -107,7 +95,6 @@ export function ChatView({
 	const readSentinelRef = useRef<HTMLDivElement | null>(null);
 	const lastReadSentIdRef = useRef<string | null>(null);
 	const encodedShareCode = encodeURIComponent(shareCode);
-	void initialMentions;
 
 	const reactionsByMessage = useMemo(
 		() => summarizeReactions(reactionRows, identity.memberId),
@@ -272,15 +259,15 @@ export function ChatView({
 		replyToMessageId: string | null;
 	}): Promise<boolean> {
 		setSendError(null);
-		const res = await apiFetch<{ message: ChatMessageDto }>(
-			`/api/wg/${encodedShareCode}/chat/messages`,
-			{
-				method: 'POST',
-				memberId: identity.memberId,
-				memberToken: identity.memberToken,
-				body: JSON.stringify(input),
-			},
-		);
+		const res = await apiFetch<{
+			message: ChatMessageDto;
+			warning: null | 'notification_delivery_failed' | 'notification_delivery_unknown';
+		}>(`/api/wg/${encodedShareCode}/chat/messages`, {
+			method: 'POST',
+			memberId: identity.memberId,
+			memberToken: identity.memberToken,
+			body: JSON.stringify(input),
+		});
 		if (!res.ok) {
 			setSendError(explainChatError('send', res.error));
 			return false;
@@ -291,6 +278,11 @@ export function ChatView({
 				: [...prev, res.data.message],
 		);
 		void refresh();
+		if (res.data.warning === 'notification_delivery_failed') {
+			toast.info('Gesendet. Nicht alle Push-Benachrichtigungen konnten versendet werden.');
+		} else if (res.data.warning === 'notification_delivery_unknown') {
+			toast.info('Gesendet. Push-Versand konnte nicht bestätigt werden.');
+		}
 		return true;
 	}
 
@@ -484,7 +476,7 @@ export function ChatView({
 								</MessageScrollerItem>
 							) : messages.length === 0 && !hasMoreOlder ? (
 								<MessageScrollerItem className="py-6">
-									<Empty className="border-dashed">
+									<Empty className="border border-dashed">
 										<EmptyHeader>
 											<EmptyMedia>
 												<MessageCircle aria-hidden />

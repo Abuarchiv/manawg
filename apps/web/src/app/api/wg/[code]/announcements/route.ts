@@ -6,7 +6,7 @@ import {
 	db,
 	wgMembers,
 } from '@/core/db';
-import { badRequest, serverError, tooMany } from '@/core/errors';
+import { badRequest, payloadTooLarge, serverError, tooMany } from '@/core/errors';
 import {
 	ReplayCache,
 	type ReplayReservation,
@@ -15,8 +15,9 @@ import {
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { readJsonBody } from '@/core/http/read-json';
 import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
-import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { imageUrlSchema } from '@/core/validators/image-url';
 import {
@@ -34,7 +35,15 @@ const ANNOUNCEMENTS_LIST_LIMIT = 300;
 const announcementKindSchema = z.enum(ANNOUNCEMENT_KINDS);
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
-type AnnouncementCreateResponseBody = { announcement: unknown };
+type AnnouncementCreateWarning =
+	| null
+	| 'notification_delivery_failed'
+	| 'notification_delivery_unknown';
+
+type AnnouncementCreateResponseBody = {
+	announcement: unknown;
+	warning: AnnouncementCreateWarning;
+};
 
 const announcementCreateReplay = new ReplayCache<AnnouncementCreateResponseBody>(
 	IDEMPOTENCY_TTL_MS,
@@ -143,12 +152,12 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 		ReplayReservation<AnnouncementCreateResponseBody>,
 		{ owned: true }
 	> | null = null;
-	let raw: unknown;
-	try {
-		raw = await req.json();
-	} catch {
-		return badRequest('invalid_json');
-	}
+	const rawResult = await readJsonBody(req, 64 * 1024);
+	if (!rawResult.ok)
+		return rawResult.reason === 'payload_too_large'
+			? payloadTooLarge()
+			: badRequest('invalid_json');
+	const raw = rawResult.body;
 
 	const parsed = createAnnouncementSchema.safeParse(raw);
 	if (!parsed.success) {
@@ -203,7 +212,7 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 				idemScope,
 				idemKey,
 			);
-			if (!slot.won && slot.cached) {
+			if (!slot.won) {
 				replayReservation?.resolve(slot.cached);
 				return NextResponse.json(slot.cached);
 			}
@@ -239,7 +248,7 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 				hasImage: Boolean(safeImageUrl),
 			},
 		});
-		void dispatchNotification({
+		const { warning } = await dispatchNotificationSafely({
 			wg,
 			event: 'announcement.posted',
 			payload: {
@@ -248,8 +257,8 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 				actorName: auth.member.name,
 			},
 			excludeMemberId: auth.member.memberId,
-		}).catch((err) => console.error('[announcements POST] notification failed', err));
-		const responseBody = { announcement: item };
+		});
+		const responseBody = { announcement: item, warning };
 		if (idemScope && idemKey && replayReservation?.owned) {
 			replayReservation.resolve(responseBody);
 			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) =>

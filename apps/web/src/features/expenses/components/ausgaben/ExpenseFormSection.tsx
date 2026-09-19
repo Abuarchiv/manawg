@@ -56,6 +56,8 @@ import { DESCRIPTION_MAX, RECURRING_INTERVAL_OPTIONS } from './constants';
 import type { RecurringExpense } from './expense-types';
 import type { SplitMode } from './useExpenseForm';
 
+const EXPENSE_DESCRIPTION_FIELD_ID = 'expense-description';
+
 export type ExpenseFormField = 'description' | 'amount' | 'splits';
 export type ExpenseFormFieldErrors = Partial<Record<ExpenseFormField, string>>;
 
@@ -218,7 +220,7 @@ export function ExpenseFormSection({
 				<DialogContent
 					showCloseButton={false}
 					className="top-0 flex h-dvh max-h-dvh w-full max-w-md translate-y-0 flex-col gap-0 rounded-none p-0 sm:top-1/2 sm:h-auto sm:max-h-[calc(100dvh-3rem)] sm:max-w-lg sm:-translate-y-1/2 sm:rounded-xl"
-					initialFocus={() => document.getElementById('f-beschreibung')}
+					initialFocus={() => document.getElementById(EXPENSE_DESCRIPTION_FIELD_ID)}
 				>
 					<DialogHeader className="shrink-0 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
 						<div className="flex items-center gap-2">
@@ -275,6 +277,7 @@ export function ExpenseFormSection({
 									</Alert>
 								)}
 								<TextField
+									id={EXPENSE_DESCRIPTION_FIELD_ID}
 									label="Beschreibung"
 									value={description}
 									onChange={(value) => {

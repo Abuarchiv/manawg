@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
 const URL_MAX = 2048;
+const P256DH_LENGTH = 87;
+const AUTH_KEY_LENGTH = 22;
+const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 /**
  * The push services browsers actually hand out endpoints for. A subscription
@@ -52,3 +55,13 @@ export const pushEndpointSchema = z
 	.url()
 	.max(URL_MAX)
 	.refine(isAllowedPushEndpoint, { message: 'push_endpoint_not_allowed' });
+
+export const pushP256dhSchema = z
+	.string()
+	.length(P256DH_LENGTH)
+	.regex(BASE64URL_PATTERN, 'p256dh_must_be_base64url');
+
+export const pushAuthKeySchema = z
+	.string()
+	.length(AUTH_KEY_LENGTH)
+	.regex(BASE64URL_PATTERN, 'auth_key_must_be_base64url');

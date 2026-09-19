@@ -14,7 +14,7 @@ export function resolveTransactionConnectionString(): string {
 		process.env.POSTGRES_URL_NON_POOLING ||
 		process.env.DATABASE_URL_UNPOOLED ||
 		resolveConnectionString();
-	validateDatabaseUrl(url, 'withTransaction connection (set DATABASE_MIGRATION_URL)');
+	validateDatabaseUrl(url, 'transaction database connection');
 	return url;
 }
 
@@ -36,5 +36,13 @@ export function validateDatabaseUrl(url: string, label: string): void {
 	const isLocal = LOCAL_HOSTS.has(host) || host.endsWith('.local');
 	if (!isLocal && !parsed.port) {
 		throw new Error(`${label} must specify a port for remote connections.`);
+	}
+	if (!isLocal) {
+		const sslmode = parsed.searchParams.get('sslmode')?.toLowerCase();
+		if (!['require', 'verify-ca', 'verify-full'].includes(sslmode ?? '')) {
+			throw new Error(
+				`${label} must require TLS for remote connections (sslmode=require, verify-ca, or verify-full).`,
+			);
+		}
 	}
 }

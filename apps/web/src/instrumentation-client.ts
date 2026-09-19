@@ -6,7 +6,7 @@ if (key && host === 'https://eu.i.posthog.com') {
 		.then(({ default: posthog }) => {
 			posthog.init(key, {
 				api_host: host,
-				defaults: '2026-05-30',
+				defaults: '2026-08-30',
 				cookieless_mode: 'always',
 				persistence: 'memory',
 				person_profiles: 'never',

@@ -11,9 +11,9 @@ test('requires a WG member for expenses and recurring API data', async ({ reques
 	expect(expensesResponse.status()).toBe(401);
 	expect(recurringResponse.status()).toBe(401);
 	await expect(expensesResponse.json()).resolves.toMatchObject({
-		error: 'member_id_required',
+		error: 'auth_required',
 	});
 	await expect(recurringResponse.json()).resolves.toMatchObject({
-		error: 'member_id_required',
+		error: 'auth_required',
 	});
 });

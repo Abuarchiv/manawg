@@ -8,6 +8,11 @@ import { Bell, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 type RemindButtonStatus = 'idle' | 'sending' | 'sent' | 'error' | 'cooldown' | 'optedOut';
+type RemindResponseWarning =
+	| null
+	| 'notification_delivery_failed'
+	| 'notification_delivery_unknown';
+type RemindResponse = { reminder: { id: string }; warning: RemindResponseWarning };
 
 interface RemindButtonProps {
 	shareCode: string;
@@ -32,6 +37,16 @@ function errorMessage(error: string): string {
 		return 'Mahnung konnte nicht gesendet werden — Verbindung prüfen.';
 	}
 	return 'Mahnung konnte nicht gesendet werden.';
+}
+
+function successMessage(warning: RemindResponseWarning): string {
+	if (warning === 'notification_delivery_failed') {
+		return 'Mahnung gespeichert. Push-Benachrichtigung konnte nicht versendet werden.';
+	}
+	if (warning === 'notification_delivery_unknown') {
+		return 'Mahnung gespeichert. Push-Versand konnte nicht bestätigt werden.';
+	}
+	return 'Mahnung gesendet.';
 }
 
 export function RemindButton({
@@ -75,7 +90,7 @@ export function RemindButton({
 		setStatus('sending');
 		setFeedback(null);
 		try {
-			const res = await apiFetch<{ reminder: { id: string } }>(
+			const res = await apiFetch<RemindResponse>(
 				`/api/wg/${encodeURIComponent(shareCode)}/reminders`,
 				{
 					method: 'POST',
@@ -86,7 +101,7 @@ export function RemindButton({
 			);
 			if (res.ok) {
 				setStatus('sent');
-				setFeedback('Mahnung gesendet.');
+				setFeedback(successMessage(res.data.warning));
 				onSent?.();
 				return;
 			}

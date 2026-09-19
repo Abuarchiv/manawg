@@ -194,6 +194,7 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 				},
 			};
 		case 'expense.create':
+		case 'expense.update':
 		case 'recurring.create':
 			return {
 				module: 'expense',

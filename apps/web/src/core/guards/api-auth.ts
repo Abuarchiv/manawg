@@ -37,6 +37,7 @@ interface MemberFail {
 }
 
 type RequireMemberResult = MemberOk | MemberFail;
+type AuthenticatedUser = NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>>;
 
 function unauthorized(code: string): NextResponse {
 	return apiError(code, HTTP_UNAUTHORIZED, code);
@@ -44,11 +45,18 @@ function unauthorized(code: string): NextResponse {
 
 /**
  * Resolve the caller's active membership from their server-verified Supabase
- * identity. Client-supplied member headers are deliberately not consulted.
+ * identity. The server-side Supabase user-to-membership lookup is the
+ * authoritative identity proof. HMAC member tokens remain limited to the
+ * explicit legacy-claim flow and are not required for normal authenticated
+ * app requests.
  */
-export async function requireMember(req: NextRequest, wgId: string): Promise<RequireMemberResult> {
+export async function requireMember(
+	req: NextRequest,
+	wgId: string,
+	authenticatedUser?: AuthenticatedUser,
+): Promise<RequireMemberResult> {
 	try {
-		const user = await getAuthenticatedUser(req);
+		const user = authenticatedUser ?? (await getAuthenticatedUser(req));
 		if (!user) return { ok: false, response: unauthorized('auth_required') };
 		const row = await db.query.wgMembers.findFirst({
 			where: and(eq(wgMembers.wgId, wgId), eq(wgMembers.authUserId, user.id)),
