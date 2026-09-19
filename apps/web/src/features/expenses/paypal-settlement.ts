@@ -2,7 +2,7 @@ export function isPayPalCaptureDebtChanged(
 	debtCents: number | undefined,
 	captureAmountCents: number,
 ): boolean {
-	return debtCents === undefined || debtCents > captureAmountCents;
+	return debtCents === undefined || debtCents !== captureAmountCents;
 }
 
 export type PayPalCaptureResult =

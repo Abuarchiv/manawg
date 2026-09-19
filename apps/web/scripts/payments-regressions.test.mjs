@@ -19,6 +19,7 @@ test('returns only mention IDs confirmed by the database insert', () => {
 test('accepts a capture that exactly settles the remaining debt', () => {
 	assert.equal(isPayPalCaptureDebtChanged(1_000, 1_000), false);
 	assert.equal(isPayPalCaptureDebtChanged(1_001, 1_000), true);
+	assert.equal(isPayPalCaptureDebtChanged(999, 1_000), true);
 	assert.equal(isPayPalCaptureDebtChanged(undefined, 1_000), true);
 });
 
