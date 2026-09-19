@@ -38,6 +38,7 @@ interface MemberFail {
 }
 
 type RequireMemberResult = MemberOk | MemberFail;
+type AuthenticatedUser = NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>>;
 
 function unauthorized(code: string): NextResponse {
 	return apiError(code, HTTP_UNAUTHORIZED, code);
@@ -50,9 +51,13 @@ function unauthorized(code: string): NextResponse {
  * `verified: false` — callers that require verified identity (admin gates,
  * money-mutating routes) must check `member.verified` and reject otherwise.
  */
-export async function requireMember(req: NextRequest, wgId: string): Promise<RequireMemberResult> {
+export async function requireMember(
+	req: NextRequest,
+	wgId: string,
+	authenticatedUser?: AuthenticatedUser,
+): Promise<RequireMemberResult> {
 	try {
-		const user = await getAuthenticatedUser(req);
+		const user = authenticatedUser ?? (await getAuthenticatedUser(req));
 		if (!user) return { ok: false, response: unauthorized('auth_required') };
 		const row = await db.query.wgMembers.findFirst({
 			where: and(eq(wgMembers.wgId, wgId), eq(wgMembers.authUserId, user.id)),

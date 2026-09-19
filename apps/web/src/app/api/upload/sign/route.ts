@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { getAuthenticatedUser } from '@/core/auth/server';
 import { db } from '@/core/db';
-import { badRequest, notFound, serverError, tooMany } from '@/core/errors';
+import { apiError, badRequest, notFound, serverError, tooMany } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
 import { S3_MAX_UPLOAD_BYTES, createPresignedUpload, isAllowedMimeType } from '@/core/infra/s3';
 import { checkRateLimit, uploadSignLimiter } from '@/core/rate-limit';
@@ -50,14 +51,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	if (!isValidShareCode(code)) return badRequest('invalid_share_code');
 	if (!isAllowedMimeType(mimeType)) return badRequest('invalid_mime_type');
 
+	const authenticatedUser = await getAuthenticatedUser(req);
+	if (!authenticatedUser) return apiError('auth_required', 401, 'auth_required');
+
 	const wg = await db.query.wgs.findFirst({
 		where: (w, { eq }) => eq(w.shareCode, code),
 		columns: { id: true },
 	});
 	if (!wg) return notFound('wg_not_found');
 
-	const auth = await requireMember(req, wg.id);
-	if (!auth.ok) return auth.response;
+	const auth = await requireMember(req, wg.id, authenticatedUser);
+	if (!auth.ok) return auth.response.status === 401 ? notFound('wg_not_found') : auth.response;
 
 	const limited = await checkRateLimit(uploadSignLimiter, `${wg.id}:${auth.member.memberId}`);
 	if (!limited.success) {
