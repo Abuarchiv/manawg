@@ -196,22 +196,20 @@ for (const file of sourceFiles) {
 		allCaptures.push(`${path.relative(srcDir, file)}: ${match[1]}`);
 	}
 }
-const allEvents = allCaptures.map((item) => item.split(': ', 2)[1]);
-const unexpected = allEvents.filter((event) => !ALLOWED_CAPTURE_EVENTS.has(event));
+const allEvents = allCaptures.map((item) => {
+	const delimiter = item.lastIndexOf(': ');
+	return item.slice(delimiter + 2);
+});
+const uniqueEvents = [...new Set(allEvents)].sort();
 assert.deepEqual(
-	[...new Set(allEvents)].sort(),
+	uniqueEvents,
 	[...ALLOWED_CAPTURE_EVENTS].sort(),
 	`non-activation analytics calls contradict the minimal contract: ${allCaptures.join(', ') || 'none found'}`,
 );
 assert.equal(
-	unexpected.length,
-	0,
-	`non-activation analytics calls contradict the minimal contract: ${allCaptures.join(', ')}`,
-);
-assert.equal(
-	allCaptures.length,
-	ALLOWED_CAPTURE_EVENTS.size,
-	`expected exactly the permitted activation captures, found: ${allCaptures.join(', ')}`,
+	allEvents.length,
+	uniqueEvents.length,
+	`duplicate analytics captures are not allowed: ${allCaptures.join(', ')}`,
 );
 
 process.stdout.write('analytics privacy check passed\n');

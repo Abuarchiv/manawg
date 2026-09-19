@@ -117,6 +117,10 @@ export function serverError(
 		captureException(typeof errOrMessage === 'string' ? new Error(errOrMessage) : errOrMessage);
 		return idempotencyRetryableResponse();
 	}
+	if (errOrMessage === null) {
+		captureException(new Error(message));
+		return apiError(message, HTTP_SERVER_ERROR, code);
+	}
 	if (typeof errOrMessage === 'string' || errOrMessage === undefined) {
 		const finalMessage = typeof errOrMessage === 'string' ? errOrMessage : message;
 		if (typeof errOrMessage === 'string') {

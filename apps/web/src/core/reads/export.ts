@@ -117,8 +117,9 @@ function neutralizeCsvFormula(text: string): string {
 }
 
 function escapeCsv(value: unknown): string {
-	const text = neutralizeCsvFormula(formatCsvValue(value));
-	if (!/[",\n\r]/.test(text)) return text;
+	const raw = formatCsvValue(value);
+	const text = neutralizeCsvFormula(raw);
+	if (raw === text && !/[",\n\r]/.test(text)) return text;
 	return `"${text.replace(/"/g, '""')}"`;
 }
 

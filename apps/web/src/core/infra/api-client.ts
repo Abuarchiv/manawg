@@ -55,7 +55,13 @@ export async function apiFetch<T>(
 		// which offline queueing would then replay as a duplicate mutation.
 		const contentType = res.headers.get('content-type') ?? '';
 		if (!contentType.includes('application/json')) {
-			return { ok: true, data: undefined as T };
+			const body = await res.text();
+			if (body.length === 0) return { ok: true, data: undefined as T };
+			return {
+				ok: false,
+				status: res.status,
+				error: res.statusText || 'Unerwartete Serverantwort',
+			};
 		}
 		const data = (await res.json()) as T;
 		return { ok: true, data };

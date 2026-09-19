@@ -26,6 +26,10 @@ const previewSchema = z.object({
 });
 
 export const POST = withWgRoute('imports/preview', async (req, { code }) => {
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wg = auth.wg;
+
 	const raw = await readImportJsonBody(req);
 	if (!raw.ok) return badRequest(raw.error);
 	const parsedBody = previewSchema.safeParse(raw.value);
@@ -34,9 +38,6 @@ export const POST = withWgRoute('imports/preview', async (req, { code }) => {
 	const payloadSize = Buffer.byteLength(payload, 'utf8');
 	const limit = source === 'ocr_text' ? MAX_OCR_BYTES : MAX_CSV_BYTES;
 	if (payloadSize > limit) return badRequest('payload_too_large');
-	const auth = await requireWgMember(req, code);
-	if (!auth.ok) return auth.response;
-	const wg = auth.wg;
 
 	const limited = await checkRateLimit(
 		importLimiter,
