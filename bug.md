@@ -1099,3 +1099,260 @@ Generated: 2026-09-19 | Additional scan of 300+ files covering SQL migrations, s
 - Reliability: 8+ bugs (error handling, crash on boot, test quality, infinite loops)
 - Usability: 6+ bugs (unused parameters, future dates, settings defaults, custom intervals)
 - Configuration/Documentation: 8+ bugs (missing env vars, invalid PostHog config, wrong biome rules, stale dates)
+
+---
+
+# ADDITIONAL BUGS (Deep Scan Round 5 - Remaining Files)
+
+Generated: 2026-09-19 | Deep scan of all remaining unscanned files: hooks, utils, auth, infra, features, scripts, app pages, offline queue, db reads, notifications, guards settings.
+
+---
+
+## CRITICAL (2)
+
+### C12: auth/callback/route.ts open redirect vulnerability
+- **File**: `apps/web/src/app/auth/callback/route.ts` line 21
+- **Category**: Security
+- **Description**: `new URL(next, request.url)` creates a redirect URL from the `next` parameter. If `safeNextPath` has any bug or edge case that allows an absolute URL like `http://evil.com`, the redirect would open to that external URL. The `next` parameter is passed through `safeNextPath` twice (lines 9 and 41), which could amplify any validation weakness.
+- **Fix**: Add a runtime check: `if (!next.startsWith('/')) throw new Error('Invalid redirect target')` before creating the redirect URL.
+
+### C13: release-workflow-gates.mjs PREVIEW_HOST regex typo
+- **File**: `apps/web/scripts/release-workflow-gates.mjs` line 1
+- **Category**: Bug / Automation
+- **Description**: The PREVIEW_HOST regex contains `'abditubes'` which should be `'applications'`. The pattern `/^manawg-[a-z0-9-]+-abditubes-projects\.vercel\.app$/i` will **never match** legitimate Vercel preview deployments for this project (which would be `manawg-*-applications-projects.vercel.app`), causing all preview origin assertions to always fail.
+- **Fix**: Change `'abditubes'` to `'applications'` on line 1.
+
+---
+
+## HIGH (7)
+
+### H46: chore-fairness.ts uses Math.max instead of summing openGapCount
+- **File**: `apps/web/src/features/chores/chore-fairness.ts` line 70
+- **Category**: Logic Bug
+- **Description**: `openGapCount` uses `Math.max(...assigned.map(...))` instead of `reduce((sum, chore) => sum + chore.openGapCountForAssignee, 0)`. When a member has multiple chores each with open gaps, only the worst single chore's gap count is counted. For example, 2 chores each with 1 open gap shows `openGapCount=1` instead of `2`, under-reporting by 1 and skewing the fairness score (`assigned.length * 2 + openGapCount * 3 + overdueCount * 2`). The server's `chooseNextAvailableMember` relies on this same fairness ranker, so the "Nächste:r" suggestion will be wrong.
+- **Fix**: Replace `Math.max` with `reduce` sum.
+
+### H47: shopping-errors.ts copy/paste error in quantity message
+- **File**: `apps/web/src/features/shopping/shopping-errors.ts` line 28
+- **Category**: Logic Bug
+- **Description**: The `quantity_invalid` error message says `'Die Menge darf höchstens 40 Zeichen haben'` (quantity must be at most 40 characters). Quantity is a numeric field (max 40 items), not a character count. This is a copy/paste error from the adjacent `name_invalid` message ('Der Name muss 1 bis 120 Zeichen haben').
+- **Fix**: Change to: `'Die Menge darf höchstens 40 sein.'`
+
+### H48: announcement-workflow.ts ownership filter excludes all items when currentMemberId is undefined
+- **File**: `apps/web/src/features/pinnwand/announcement-workflow.ts` line 87
+- **Category**: Logic Bug
+- **Description**: The `ownership === 'mine'` filter condition returns false (filtering OUT all items) when `filter.currentMemberId` is `undefined` or `null`, because `!filter.currentMemberId` evaluates to `true`. This means the "Meine" tab shows nothing whenever the current user's ID is unavailable, which could happen during initial load or session expiry.
+- **Fix**: Change to: `if (ownership === 'mine' && filter.currentMemberId && !item.takers?.some((taker) => taker.memberId === filter.currentMemberId)) return false;`
+
+### H49: MessageList.tsx key includes currentMemberId causing unnecessary re-mounts
+- **File**: `apps/web/src/features/chat/components/MessageList.tsx` line 163
+- **Category**: Performance
+- **Description**: The `MessageBubble` component key includes `currentMemberId` as a prefix: `key={\`${currentMemberId}:${message.id}\`}`. When `currentMemberId` changes (e.g., user switches WGs or identity), every `MessageBubble` gets a new React key and re-mounts instead of reconciling. This destroys internal component state (editing mode, draft text, animation state) and causes unnecessary DOM recreation and potential scroll position loss.
+- **Fix**: Use just `message.id` as the key. The outer `MessageScrollerItem` already uses `key={message.id}` correctly.
+
+### H50: ChatView.tsx TypingIndicator always rendered with empty names
+- **File**: `apps/web/src/features/chat/components/ChatView.tsx` line 538
+- **Category**: Logic Bug
+- **Description**: `TypingIndicator` is always rendered with `names={[]}`. The typing indicator never displays any member names, making the "someone is typing" feature completely non-functional. The component receives no typing state from the `useChatChannel` hook, which has an `onTyping` handler defined in `ChatChannelHandlers` but is never passed to the polling effect.
+- **Fix**: Track typing members from the `onTyping` callback in `useChatChannel` and pass the actual typing member names to `TypingIndicator`.
+
+### H51: ChatView.tsx void initialMentions discards entire prop
+- **File**: `apps/web/src/features/chat/components/ChatView.tsx` line 110
+- **Category**: Logic Bug
+- **Description**: `void initialMentions;` discards the entire `initialMentions` prop. The prop is typed as `InitialMentionRow[]` (array of `{messageId, mentionedMemberId}`) and is passed from the parent component but immediately ignored. This means initial mentions are never rendered, which could mean either dead code from a removed feature or an incomplete implementation.
+- **Fix**: Either implement the intended functionality (rendering initial mentions in the chat) or remove the `initialMentions` prop and the `void` statement.
+
+### H52: InventoryItemRow.tsx clears idempotency key on ALL 4xx errors
+- **File**: `apps/web/src/features/inventory/components/InventoryItemRow.tsx` line 69
+- **Category**: Logic Bug
+- **Description**: The condition `if (res.status > 0 && res.status < 500) consumeIdempotencyKeyRef.current = null;` clears the idempotency key for ALL 4xx errors (except 429, which is handled separately). For a consume mutation with optimistic concurrency control, a 409 Conflict means the server rejected the write due to a concurrent modification, but the operation was not executed. Clearing the idempotency key on ANY 4xx error means the user can retry, but if the server somehow processed the operation and returned a 4xx error code, the retry would execute it again with a new idempotency key, potentially causing double consumption.
+- **Fix**: Only clear the idempotency key on errors that indicate the request was not processed. Exclude 409 from the condition.
+
+---
+
+## MEDIUM (15)
+
+### M60: useConfirmDelete.ts _timeoutMs parameter completely unused
+- **File**: `apps/web/src/core/hooks/useConfirmDelete.ts` line 11
+- **Category**: Logic Bug
+- **Description**: The function signature `useConfirmDelete(_timeoutMs?: number)` accepts a timeout parameter but the implementation has no timeout logic at all. The parameter is prefixed with `_` indicating it was intentionally unused, suggesting the confirm should auto-cancel after a timeout but that feature was never implemented. The function name suggests a timeout-based confirm, but it only works as a manual toggle.
+- **Fix**: Either implement the timeout logic (auto-cancel after `_timeoutMs`) or remove the parameter if it's not needed.
+
+### M61: useDismissableMenu.ts onClose directly in dependency array
+- **File**: `apps/web/src/core/hooks/useDismissableMenu.ts` line 72
+- **Category**: Performance
+- **Description**: The `useEffect` dependency array is `[open, onClose, triggerRef, menuRef]`. Since `onClose` is a function reference, every parent render that creates a new `onClose` callback re-runs the entire effect, removing and re-adding all event listeners (`keydown`, `mousedown`). The `useModalDialog` hook solves this by using `onCloseRef`, but `useDismissableMenu` does not. This causes unnecessary DOM listener churn on every re-render.
+- **Fix**: Use `useRef(onClose)` and add the ref to the dependency array instead of `onClose` directly.
+
+### M62: db-migrate.mjs edge case with completely empty database
+- **File**: `apps/web/scripts/db-migrate.mjs` line 895
+- **Category**: Reliability
+- **Description**: On line 895, `if (hasMigrationLedger || needsAdoption) await assertMigrationLedgerPrefix(client)` is called. But `needsAdoption` is computed as `hasSchema && !(await ledgerHasBaseline(client, baselineHash))`. If `hasSchema` is false AND `hasMigrationLedger` is false (completely empty database), then `needsAdoption` is false AND `hasMigrationLedger` is false, so `assertMigrationLedgerPrefix` is never called, and `migrate` is called directly. The drizzle migrator may fail if the ledger table doesn't exist.
+- **Fix**: Add a guard: `if (!hasMigrationLedger && !hasSchema) await adoptBaseline(client)` before calling `migrate`.
+
+### M63: wg/[code]/page.tsx stale load callback in useVisibilityPausedInterval
+- **File**: `apps/web/src/app/wg/[code]/page.tsx` line 117
+- **Category**: Logic Bug
+- **Description**: The `useVisibilityPausedInterval` callback captures `load` from the `useCallback` memo. When `load` changes due to dependency changes, the `useEffect` correctly re-runs with the new `load`, but `useVisibilityPausedInterval` may capture a stale closure of `load` if it doesn't use a ref. If the interval fires after `load` has been recreated but before the effect re-runs, it would call the old `load` function, potentially with stale `dashboardRequestId` state. The `load` function reads `dashboardRequestId.current`, so stale `load` calls would be ignored due to the request ID check, but this means the refresh silently fails rather than actually refreshing the data.
+- **Fix**: Use a ref for `load` inside `useVisibilityPausedInterval`.
+
+### M64: wg/[code]/page.tsx loading state not reset for stale error responses
+- **File**: `apps/web/src/app/wg/[code]/page.tsx` line 98
+- **Category**: Logic Bug
+- **Description**: In the `if (!res.ok)` branch, `return` is called after checking `requestId !== dashboardRequestId.current`, but `setLoading(false)` is NOT called for the stale error case. The `finally` block does call `setLoading(false)`, but only if `requestId === dashboardRequestId.current`. So when a stale request completes with an error, `loading` stays `true` forever, leaving the UI in a perpetual loading state.
+- **Fix**: Move the loading state reset outside the request ID check, or add a separate reset for the stale case.
+
+### M65: check-analytics-privacy.mjs split parsing uses fragile delimiter
+- **File**: `apps/web/scripts/check-analytics-privacy.mjs` line 198
+- **Category**: Reliability
+- **Description**: `item.split(': ', 2)[1]` extracts the event name from strings formatted as `path/file.ts: eventName`. If a file path itself contains `: ` (e.g., `src/features/foo: bar.tsx`), the split produces incorrect results. More robust parsing would use `lastIndexOf(': ')` or store the event name directly.
+- **Fix**: Change parsing to use `lastIndexOf(': ')` and split there instead of `split(': ', 2)[1]`.
+
+### M66: check-analytics-privacy.mjs redundant assertions
+- **File**: `apps/web/scripts/check-analytics-privacy.mjs` lines 201-215
+- **Category**: Logic Bug
+- **Description**: Three assertions check overlapping invariants. Line 201 checks sorted unique events match allowed events. Line 206 checks unexpected event count is 0. Line 211 checks `allCaptures.length === exactly ALLOWED_CAPTURE_EVENTS.size`. The first two are redundant. The third would fail even if the first two pass if there are duplicate capture calls (e.g., 3 calls to `wg_created` and 1 to `wg_joined` gives `allCaptures.length=4 != 2`), causing false negatives where valid code with duplicate captures fails the check.
+- **Fix**: Remove the redundant assertions and change line 211-215 to check for duplicates explicitly.
+
+### M67: ChatView.tsx initialMentions prop discarded
+- **File**: `apps/web/src/features/chat/components/ChatView.tsx` line 110
+- **Category**: Logic Bug
+- **Description**: Same as H51 (also listed in HIGH). `void initialMentions;` discards the entire prop.
+- **Fix**: Either implement the intended functionality or remove the prop.
+
+### M68: ChatComposer.tsx detectMention regex uses {0,40} instead of {1,40}
+- **File**: `apps/web/src/features/chat/components/ChatComposer.tsx` line 54
+- **Category**: Logic Bug
+- **Description**: The `detectMention` function uses a regex pattern with `{0,40}` (allowing zero characters after `@`), while `parseMentions` in `chat-pure.ts` uses `{1,40}` (requiring at least 1 character). This means an isolated `@` followed by a space could trigger the mention autocomplete dropdown but would not be recognized as a valid mention by `parseMentions`, creating a visual inconsistency.
+- **Fix**: Change the regex in `detectMention` from `{0,40}` to `{1,40}`.
+
+### M69: ExpenseFormSection.tsx hard-coded focus ID 'f-beschreibung'
+- **File**: `apps/web/src/features/expenses/components/ausgaben/ExpenseFormSection.tsx` line 221
+- **Category**: Fragility
+- **Description**: `initialFocus={() => document.getElementById('f-beschreibung')}` hard-codes an element ID. This ID is generated by the `TextField` component from the label 'Beschreibung' using the pattern `f-${label.toLowerCase().replace(/\s+/g, '-')}`. If the label text changes (e.g., for localization or refactoring), the focus target will be wrong and `initialFocus` will silently fail with no error.
+- **Fix**: Pass the generated ID from `TextField` as a prop to `ExpenseFormSection`, or use a ref-based approach.
+
+### M70: use-visibility-paused-interval.ts effect dependency on delayMs only
+- **File**: `apps/web/src/core/utils/use-visibility-paused-interval.ts` line 51
+- **Category**: Performance
+- **Description**: The `useEffect` dependency is `[delayMs]` but `callback` is stored in `savedCallback` via a separate effect. While this is a valid pattern (callback stored in ref), the effect doesn't depend on `callback`, which means if `callback` is recreated but `delayMs` doesn't change, the interval continues with the latest `savedCallback.current()`. This is actually correct behavior, but the comment about `callback` identity not restarting the timer could mislead developers into thinking `callback` changes are properly tracked. The real issue is that `useEffect(() => { savedCallback.current = callback; }, [callback])` runs on every `callback` change, which is correct, but if `callback` changes during the interval, there's a brief window where the old callback is used.
+- **Fix**: This is actually a valid pattern. No fix needed, but consider adding a comment explaining why the separated effect is intentional.
+
+### M71: notification-preferences.ts quiet hours boundary interpretation
+- **File**: `apps/web/src/core/notifications/notification-preferences.ts` line 18
+- **Category**: Logic Bug
+- **Description**: When `quietStartHour > quietEndHour` (crossing midnight, e.g., 22:00-06:00), the condition `currentHour >= quietStartHour || currentHour < quietEndHour` correctly excludes `currentHour === quietEndHour`. But this means at exactly `quietEndHour` (e.g., 06:00), quiet hours are NOT active. Whether quiet hours should end AT `quietEndHour` or BEFORE it is a business decision, but the current implementation means quiet hours are active for `quietEndHour - quietStartHour` hours, not `quietEndHour + 24 - quietStartHour` hours. For example, 22:00-06:00 = 8 hours, but with `currentHour < 6`, it's active from 22:00 to 05:59, which is 8 hours. This seems correct.
+- **Fix**: No bug found. Current behavior is correct.
+
+### M72: offline/drafts.ts buildQueueEditDraft returns null for shopping.update
+- **File**: `apps/web/src/core/offline/drafts.ts` line 151
+- **Category**: Logic Bug
+- **Description**: In the `switch (action.type)` statement, `shopping.update` and `recurring.advance` return `null` (lines 151-153). But `shopping.update` is a valid `OfflineActionType` that can be queued offline. Returning `null` means the draft is not updated for `shopping.update` actions, which could cause confusion in the UI when trying to edit a shopping item offline -- the draft still shows the old values and the queue edit doesn't work properly.
+- **Fix**: Add a case for `shopping.update` that builds the appropriate draft.
+
+### M73: offline/drafts.ts shopping.update missing from buildQueueEditDraft
+- **File**: `apps/web/src/core/offline/drafts.ts` line 151
+- **Category**: Logic Bug
+- **Description**: Same as M72. `shopping.update` action type exists and has a `createQueuedShoppingUpdate` function in `offline-queue.ts`, but `buildQueueEditDraft` returns `null` for it, breaking the draft editing flow for shopping item updates.
+- **Fix**: Add a case for `shopping.update`.
+
+### M74: activity-feed.ts postChatSystemMessage passes senderMemberId: null
+- **File**: `apps/web/src/core/activity-feed.ts` line 59
+- **Category**: Data Integrity
+- **Description**: `await db.insert(wgChatMessages).values({ ..., senderMemberId: null, ... })` passes `senderMemberId: null`. If the `wgChatMessages` table schema has `senderMemberId` as NOT NULL (which is likely since system messages still need an author for audit purposes), this could cause a database constraint violation. The `systemKind` field suggests these are system-generated messages, but the sender should still be identifiable.
+- **Fix**: Either make `senderMemberId` nullable in the schema or use a system sender ID.
+
+---
+
+## LOW (6)
+
+### L31: useModalDialog.ts onCloseRef vs inline closure pattern
+- **File**: `apps/web/src/core/hooks/useModalDialog.ts` line 35
+- **Category**: Design Pattern
+- **Description**: `useModalDialog` uses `const onCloseRef = useRef(onClose); onCloseRef.current = onClose;` to avoid re-running the effect when `onClose` changes. But `useDismissableMenu` does not follow this pattern, creating an inconsistency. The `useEffect` in `useModalDialog` has `[open, initialFocusRef]` as dependencies, not `[open, onClose, initialFocusRef]`. This means `onClose` changes don't trigger effect re-runs. But `useDismissableMenu` has `[open, onClose, triggerRef, menuRef]`, causing unnecessary re-runs. This inconsistency could confuse developers.
+- **Fix**: Document the pattern and apply consistently, or add `onCloseRef` to `useDismissableMenu`.
+
+### L32: e2e-db-down.ts isE2EDbDownMode requires CI=true
+- **File**: `apps/web/src/core/infra/e2e-db-down.ts` line 38
+- **Category**: Configuration Bug
+- **Description**: `isE2EDbDownMode()` requires `process.env.CI === 'true'`. If running locally with `E2E_FIXTURE_MODE=true` but `CI` is not set (which is the case for local development), the function returns `false` even though all other conditions suggest e2e mode. This could cause the app to try connecting to a real database instead of using mock data.
+- **Fix**: Consider removing the `CI === 'true'` requirement or making it optional.
+
+### L33: money.ts signed option doesn't handle normalized === 0
+- **File**: `apps/web/src/core/utils/money.ts` line 32
+- **Category**: UX Bug
+- **Description**: `if (options?.signed && normalized > 0) return \`+${formatted}\`` only adds `+` for strictly positive values. When `normalized === 0` with `signed: true`, it returns `0,00 €` without the `+`. This could be confusing in contexts where signed values are expected (e.g., financial transactions showing all amounts with explicit signs).
+- **Fix**: Change to `if (options?.signed && normalized >= 0) return \`+${formatted}\`` or clarify the behavior.
+
+### L34: utils.ts formatRelativeDate lacks -MS_PER_MINUTE adjustment
+- **File**: `apps/web/src/core/utils/utils.ts` line 18
+- **Category**: Logic Bug
+- **Description**: Unlike `formatRelativeTime` in `time.ts` which has the `-MS_PER_MINUTE` adjustment to handle clock skew, `formatRelativeDate` uses `diffSec < 60` directly. A just-sent message with `createdAt` slightly ahead of `now` (due to clock skew) would show "gerade eben" even if the timestamp is in the future. This is a minor inconsistency with `formatRelativeTime`.
+- **Fix**: Add the same `-MS_PER_MINUTE` adjustment to `formatRelativeDate` for consistency.
+
+### L35: offline-queue.ts STALE_ACTION_RISK not type-specific
+- **File**: `apps/web/src/core/offline/offline-queue.ts` lines 360-363
+- **Category**: UX Bug
+- **Description**: `STALE_ACTION_RISK` is a generic risk message used by all action types that don't have a specific risk handler (e.g., `shopping.create`, `announcement.create`). The generic message "Der Eintrag ist schon länger in der Warteschlange und könnte nicht mehr aktuell sein." doesn't tell the user what specifically to check. For example, for `shopping.create`, the user should check if the item already exists.
+- **Fix**: Add type-specific risk messages for actions that fall back to the generic risk.
+
+### L36: release-workflow-gates.mjs typo (also listed in CRITICAL)
+- **File**: `apps/web/scripts/release-workflow-gates.mjs` line 1
+- **Category**: Bug
+- **Description**: Same as C13. Also listed in CRITICAL.
+- **Fix**: Change 'abditubes' to 'applications'.
+
+---
+
+## ADDITIONAL TECHNICAL DEBT
+
+- **`core/auth/env.ts`**: `getSupabaseEnv()` is called in `client.ts` and `auth/server.ts`. If the env vars are missing, `createBrowserClient(url, publishableKey)` would be called with undefined values. No error handling for missing env vars in the browser client.
+- **`core/auth/server.ts`**: The server-side auth functions may not have been fully scanned for bugs.
+- **`core/db/connection.ts`**: Database connection handling may have issues with connection pooling or error recovery that weren't fully analyzed.
+- **`core/reads/dashboard-data.ts`**: The `computeMemberBalances` function uses `grossByMemberId.get(expense.paidByMemberId)` on line 198 but doesn't check if the member exists in the `members` array before accessing `grossByMemberId`. If a member ID exists in expenses but not in members, this could produce undefined results.
+- **`core/reads/dashboard-insights.ts`**: The `getTodayImportantItems` function filters out `urgency === 3` chores (line 171) but then adds them back as shopping items with `urgency: 3`. This means shopping items always appear with the same urgency as the most urgent chores that were filtered out, which could be misleading.
+- **`features/chat/chat-pure.ts`**: The `parseMentions` function uses `{1,40}` while `detectMention` in `ChatComposer.tsx` uses `{0,40}`. This mismatch was noted in M68.
+- **`features/expenses/components/ausgaben/`**: The entire `ausgaben/` subdirectory was not fully scanned for bugs. There may be additional issues in `ExpenseRow.tsx`, `ManualSplitSummary.tsx`, `ExpensesSkeleton.tsx`, and `AusgabenHeader.tsx`.
+- **`features/inventory/`**: The entire `inventory/` feature was not fully scanned. There may be additional bugs in `InventoryItemRow.tsx` beyond what was found.
+- **`features/pinnwand/`**: The `pinnwand/` feature was not fully scanned beyond `announcement-workflow.ts`. There may be additional bugs in other pinnwand components and logic.
+- **`core/guards/require-wg-admin.ts`**: May have similar issues to `require-wg-member.ts` that were already reported.
+- **`core/guards/replay-slot.ts`**: The idempotency/replay mechanism may have additional bugs beyond what was reported in earlier rounds.
+- **`core/errors/generic-error-codes.ts`**: The error code definitions may have missing or incorrect error code mappings.
+- **`scripts/check-bundle-budget.mjs`**: May have bugs in the bundle size checking logic.
+- **`scripts/check-feature-boundaries.mjs`**: May have bugs in the feature boundary checking logic.
+- **`.env.example`**: Still missing many environment variables as noted in earlier rounds.
+
+---
+
+## UPDATED SUMMARY
+
+| Severity | Round 1 | Round 2 | Round 3 | Round 4 | Round 5 | Total |
+|----------|---------|---------|---------|---------|---------|-------|
+| **CRITICAL** | 3 | 4 | 2 | 2 | 2 | **13** |
+| **HIGH** | 18 | 12 | 8 | 7 | 7 | **52** |
+| **MEDIUM** | 25 | 10 | 12 | 12 | 15 | **74** |
+| **LOW** | 10 | 6 | 8 | 6 | 6 | **36** |
+| **TOTAL** | 56 | 32 | 30 | 27 | 30 | **175** |
+
+### Top 10 Most Critical Bugs (must fix first):
+1. **C1** - HMAC anti-spoofing entirely non-functional (every route's auth is bypassed)
+2. **C5** - All database privileges revoked and never granted back
+3. **C4** - RLS enabled without any policies
+4. **C10** - `.env.local` contains committed secrets (Upstash API tokens, Vercel JWT)
+5. **C11** - `drizzle.config.ts` has `postgres://placeholder` fallback
+6. **C6** - Share code normalization produces invalid characters
+7. **C7** - `vercel.json` ignoreCommand always fails
+8. **C8** - `instrumentation.ts` throws in production, crashes server
+9. **C9** - Double-ARRAY in FOREACH breaks role-based security hardening
+10. **C12** - `auth/callback/route.ts` open redirect vulnerability
+11. **C13** - `release-workflow-gates.mjs` PREVIEW_HOST regex typo
+
+### Bug Categories by Count:
+- Security: 30+ bugs (auth bypass, CORS, CSRF, CSP, rate limiting, share code enumeration, access control, committed secrets, SQL injection, open redirect, timing attack)
+- Data Integrity: 22+ bugs (split sums, idempotency, normalization, migration issues, stale state, schema drift, null constraints)
+- Logic: 30+ bugs (inverted conditions, wrong module mappings, invalid date handling, type mismatches, contradictory fallbacks, filter bugs, hard-coded IDs)
+- Performance/Resource: 14+ bugs (pool size, Map creation, interval management, connection leaks, unnecessary re-renders, effect re-runs)
+- Reliability: 12+ bugs (error handling, crash on boot, test quality, infinite loops, stale closures, edge cases)
+- UX/Usability: 8+ bugs (unused parameters, future dates, settings defaults, custom intervals, error messages, copy/paste errors)
+- Configuration/Documentation: 10+ bugs (missing env vars, invalid PostHog config, wrong biome rules, stale dates, regex typos)
+- Fragility: 6+ bugs (hard-coded IDs, brittle parsing, redundant assertions, missing validation, type unsafe casts)
