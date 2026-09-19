@@ -60,9 +60,7 @@
 			"drizzle/meta",
 			"skills-lock.json",
 			"supabase",
-			".agents",
-			"graphify-out",
-			"tools/growth-lab/runs"
+			"graphify-out"
 		]
 	}
 }
