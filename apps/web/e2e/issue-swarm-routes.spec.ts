@@ -64,7 +64,7 @@ test('chat responses expose only persisted mentions', async () => {
 
 	expect(source).toContain('const insertedMentionRows =');
 	expect(source).toMatch(/\.onConflictDoNothing\(\)\s*\.returning\(\{/);
-	expect(source).toContain('mentions: mentionIds');
+	expect(source).toContain('mentions: persistedMentionIds');
 });
 
 test('analytics privacy parsing uses the final path delimiter and explicit duplicate check', async () => {
