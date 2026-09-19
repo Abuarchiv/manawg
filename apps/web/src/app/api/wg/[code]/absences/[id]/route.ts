@@ -16,7 +16,7 @@ export const DELETE = withWgRoute<{ id: string }>('absences DELETE', async (req,
 	const wgId = auth.wg.id;
 
 	// Ownership / admin gate: an absence belongs to a specific member, so only
-	// that member may remove their own absence. The WG admin (oldest member)
+	// that member may remove their own absence. The WG admin
 	// can also delete to handle cleanup when a member is unreachable.
 	// Without this check, any member could delete another member's absence
 	// silently (P1 audit finding).

@@ -54,6 +54,7 @@ export const wgMembers = pgTable(
 			.references(() => wgs.id, { onDelete: 'cascade' }),
 		authUserId: uuid('auth_user_id'),
 		name: text('name').notNull(),
+		role: text('role').notNull().default('member'),
 		color: text('color'),
 		paypalMerchantId: text('paypal_merchant_id'),
 		pushOptIn: boolean('push_opt_in').notNull().default(false),
@@ -82,6 +83,10 @@ export const wgMembers = pgTable(
 		uniqueWgAuthUser: uniqueIndex('wg_members_wg_auth_user_unique_idx')
 			.on(t.wgId, t.authUserId)
 			.where(sql`${t.authUserId} IS NOT NULL`),
+		oneAdminPerWg: uniqueIndex('wg_members_one_admin_per_wg_idx')
+			.on(t.wgId)
+			.where(sql`${t.role} = 'admin'`),
+		roleCheck: check('wg_members_role_check', sql`${t.role} in ('admin', 'member')`),
 	}),
 );
 
@@ -471,6 +476,7 @@ export const recurringExpenses = pgTable(
 	},
 	(t) => ({
 		wgIdx: index('recurring_expenses_wg_idx').on(t.wgId, t.nextDueAt),
+		amountCheck: check('recurring_expenses_amount_cents_check', sql`${t.amountCents} > 0`),
 	}),
 );
 

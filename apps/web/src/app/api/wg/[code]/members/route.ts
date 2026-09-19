@@ -153,7 +153,7 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 			try {
 				[inserted] = await tx
 					.insert(wgMembers)
-					.values({ wgId: wg.id, name, color, authUserId: user.id })
+					.values({ wgId: wg.id, name, color, role: 'member', authUserId: user.id })
 					.onConflictDoNothing({ target: [wgMembers.wgId, wgMembers.name] })
 					.returning();
 			} catch (insertErr) {

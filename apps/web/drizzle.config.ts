@@ -6,7 +6,7 @@ const migrationUrl = process.env.DATABASE_MIGRATION_URL;
 const pooledUrl = process.env.POSTGRES_URL ?? process.env.DATABASE_URL;
 const unpooledUrl = process.env.POSTGRES_URL_NON_POOLING ?? process.env.DATABASE_URL_UNPOOLED;
 
-let url: string;
+let url: string | undefined;
 if (migrationUrl) {
 	validateDatabaseUrl(migrationUrl, 'DATABASE_MIGRATION_URL');
 	url = migrationUrl;
@@ -17,17 +17,6 @@ if (migrationUrl) {
 } else if (unpooledUrl) {
 	validateDatabaseUrl(unpooledUrl, 'POSTGRES_URL_NON_POOLING/DATABASE_URL_UNPOOLED');
 	url = unpooledUrl;
-} else {
-	url = 'postgres://placeholder';
-	console.warn(
-		'[drizzle.config] POSTGRES_URL is not set — using placeholder. This is fine for `generate`, but `push` and `migrate` require a real connection. Set DATABASE_MIGRATION_URL.',
-	);
-}
-
-if (url === 'postgres://placeholder') {
-	console.warn(
-		'[drizzle.config] POSTGRES_URL is not set — using placeholder. This is fine for `generate`, but `push` and `migrate` require a real connection. Run `vercel env pull apps/web/.env.local`.',
-	);
 }
 
 // craftsman-ignore: TS002 — drizzle-kit requires default export from drizzle.config.ts
@@ -35,7 +24,7 @@ export default defineConfig({
 	schema: './src/core/db/schema.ts',
 	out: './drizzle',
 	dialect: 'postgresql',
-	dbCredentials: { url },
+	...(url ? { dbCredentials: { url } } : {}),
 	strict: true,
 	verbose: true,
 });

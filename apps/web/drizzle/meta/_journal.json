@@ -78,6 +78,13 @@
       "when": 1788436085539,
       "tag": "0010_enable_public_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789853801660,
+      "tag": "0011_explicit_member_roles",
+      "breakpoints": true
     }
   ]
 }

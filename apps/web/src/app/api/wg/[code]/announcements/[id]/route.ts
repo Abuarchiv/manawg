@@ -172,7 +172,7 @@ export const DELETE = withWgRoute<{ id: string }>(
 		if (!limited.success) return tooMany();
 
 		// Author OR admin may delete an announcement. Authors own their own posts;
-		// the WG admin (oldest member) gets an override so they can moderate
+		// the WG admin gets an override so they can moderate
 		// stale or inappropriate content when the author is unreachable.
 		// Previously this was author-only, which left the WG with no way to
 		// clean up posts from departed members (P1 audit finding).

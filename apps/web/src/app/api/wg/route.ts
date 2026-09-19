@@ -136,7 +136,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 					const [createdMember] = await tx
 						.insert(wgMembers)
-						.values({ wgId: createdWg.id, name: creatorName, authUserId: user.id })
+						.values({
+							wgId: createdWg.id,
+							name: creatorName,
+							role: 'admin',
+							authUserId: user.id,
+						})
 						.returning();
 					if (!createdMember) throw new TransactionAbort('member_insert_failed');
 

@@ -14,7 +14,7 @@ export function resolveTransactionConnectionString(): string {
 		process.env.POSTGRES_URL_NON_POOLING ||
 		process.env.DATABASE_URL_UNPOOLED ||
 		resolveConnectionString();
-	validateDatabaseUrl(url, 'withTransaction connection (set DATABASE_MIGRATION_URL)');
+	validateDatabaseUrl(url, 'transaction database connection');
 	return url;
 }
 

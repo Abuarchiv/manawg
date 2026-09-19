@@ -1,7 +1,7 @@
 import { db, idempotencyResponses } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { createConfiguredRedis } from '@/core/rate-limit';
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, sql } from 'drizzle-orm';
 
 // Redis is OPTIONAL — only used for audit-event dedup (claimIdempotencySlot).
 // Response-replay (getCachedResponse/setCachedResponse) ALWAYS uses Postgres
@@ -53,7 +53,14 @@ export async function claimResponseSlot(scope: string, key: string): Promise<boo
 				responseBody: CLAIM_PLACEHOLDER,
 				expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
 			})
-			.onConflictDoNothing()
+			.onConflictDoUpdate({
+				target: [idempotencyResponses.scope, idempotencyResponses.key],
+				set: {
+					responseBody: CLAIM_PLACEHOLDER,
+					expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
+				},
+				where: sql`${idempotencyResponses.expiresAt} <= now()`,
+			})
 			.returning({ scope: idempotencyResponses.scope });
 		return rows.length > 0;
 	} catch (err) {

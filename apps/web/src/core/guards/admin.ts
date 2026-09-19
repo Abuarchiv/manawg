@@ -1,27 +1,25 @@
 import { db, wgMembers } from '@/core/db';
 import { forbidden } from '@/core/errors';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import type { NextResponse } from 'next/server';
 
 /**
- * Soft admin check until we add a proper `role` column to `wg_members`.
- * The "admin" is the oldest member (smallest createdAt) of the WG —
- * i.e. the original creator. Returns `true` iff `memberId` is that member.
+ * The admin is the active member with the explicit `admin` role.
+ * Returns `true` iff `memberId` holds that role in the WG.
  * Shared by API routes that need to gate destructive/owner-overriding
  * actions (e.g. announcement.delete admin override, chore.delete,
  * absence.delete cross-member). See app/api/wg/[code]/* DELETE handlers.
  *
  * Applies the same active-member policy as the rest of the app
- * (`isNull(wgMembers.deactivatedAt)`): a moved-out member is never the
- * admin, even if they were the original creator — the oldest still-active
- * member takes over. With no active members left there is no admin.
+ * (`isNull(wgMembers.deactivatedAt)`). Membership age never changes the role.
  */
 export async function isWgAdmin(wgId: string, memberId: string): Promise<boolean> {
 	const rows = await db
 		.select({ id: wgMembers.id })
 		.from(wgMembers)
-		.where(and(eq(wgMembers.wgId, wgId), isNull(wgMembers.deactivatedAt)))
-		.orderBy(asc(wgMembers.createdAt))
+		.where(
+			and(eq(wgMembers.wgId, wgId), eq(wgMembers.role, 'admin'), isNull(wgMembers.deactivatedAt)),
+		)
 		.limit(1);
 	return rows[0]?.id === memberId;
 }
@@ -58,7 +56,7 @@ interface WgAdminAccessResult {
  * the `wgs` row for every member), so — unlike `isWgAdmin`, which many
  * lower-stakes admin-override actions still call directly — this requires
  * `verified` (a valid `x-manawg-member-token` HMAC, see
- * `@/core/guards/member-token`) in addition to being the oldest member. A
+ * `@/core/guards/member-token`) in addition to holding the explicit admin role. A
  * request that only matched `x-manawg-member-id` ("legacy") is rejected
  * with `not_verified` even if that id belongs to the real admin — a bare
  * id is spoofable (e.g. harvested from GET /api/wg/[code]/members) and is
