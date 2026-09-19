@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { shouldFallbackToDirectJoin } from '../src/core/infra/join-flow';
 import { notificationCategoryForEvent } from '../src/core/notifications/notifications';
 import * as offlineClient from '../src/core/offline/offline-client';
 import { type ActivityItem, filterActivityByScope } from '../src/core/reads/activity';
 import { buildChoreFairness } from '../src/features/chores/chore-fairness';
-import { shouldFallbackToDirectJoin } from '../src/core/infra/join-flow';
 import { shoppingAddErrorMessage } from '../src/features/shopping/shopping-errors';
 
 const NOW = Date.parse('2026-09-19T12:00:00.000Z');

@@ -151,8 +151,8 @@ export async function dispatchNotification(
 			notifyAnnouncements: wgMembers.notifyAnnouncements,
 			notifyChores: wgMembers.notifyChores,
 			notifyExpenses: wgMembers.notifyExpenses,
-						notifyShopping: wgMembers.notifyShopping,
-						notifyInventory: wgMembers.notifyInventory,
+			notifyShopping: wgMembers.notifyShopping,
+			notifyInventory: wgMembers.notifyInventory,
 			notifyReminders: wgMembers.notifyReminders,
 			notifyChat: wgMembers.notifyChat,
 			notifyEvents: wgMembers.notifyEvents,
@@ -194,8 +194,8 @@ export async function dispatchNotification(
 			if (input.bypassPreferences) return true;
 			if (category === 'announcements') return member.notifyAnnouncements;
 			if (category === 'chores') return member.notifyChores;
-					if (category === 'expenses') return member.notifyExpenses;
-					if (category === 'inventory') return member.notifyInventory;
+			if (category === 'expenses') return member.notifyExpenses;
+			if (category === 'inventory') return member.notifyInventory;
 			if (category === 'events') return member.notifyEvents;
 			if (category === 'reminders') return member.notifyReminders;
 			if (category === 'chat') return member.notifyChat;

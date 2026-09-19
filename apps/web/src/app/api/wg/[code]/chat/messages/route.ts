@@ -9,11 +9,11 @@ import { readJsonBody } from '@/core/http/read-json';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { chatMessageLimiter, checkRateLimit } from '@/core/rate-limit';
 import { imageUrlSchema } from '@/core/validators/image-url';
-	import {
-		filterPersistedMentionIds,
-		previewBody,
-		sanitizeMessageBody,
-	} from '@/features/chat/chat-pure';
+import {
+	filterPersistedMentionIds,
+	previewBody,
+	sanitizeMessageBody,
+} from '@/features/chat/chat-pure';
 import { and, desc, eq, inArray, isNull, lt, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -231,7 +231,7 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 					actorName: auth.member.name,
 					preview,
 				},
-			targetMemberIds: persistedMentionIds,
+				targetMemberIds: persistedMentionIds,
 				excludeMemberId: auth.member.memberId,
 			}),
 		);
