@@ -2,3 +2,10 @@
 apps/web/.next-e2e-*
 apps/web/test-results/
 apps/web/playwright-report/
+# Local agent state and code graphs are not deployment inputs.
+.claude/
+.codex/
+.agents/
+**/graphify-out/
+**/.env.local
+**/.env.*.local
