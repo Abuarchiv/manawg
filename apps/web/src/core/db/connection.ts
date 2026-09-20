@@ -1,3 +1,10 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { SUPABASE_ROOT_CA } from './supabase-ca';
+
+let supabaseRootPath: string | undefined;
+
 export function resolveConnectionString(): string {
 	const url = process.env.POSTGRES_URL || process.env.DATABASE_URL;
 	if (!url) {
@@ -5,20 +12,44 @@ export function resolveConnectionString(): string {
 			'POSTGRES_URL (or DATABASE_URL) is not set. Set a PostgreSQL connection string for the environment.',
 		);
 	}
-	return url;
+	return secureRuntimeConnectionString(url, 'database connection');
 }
 
 export function resolveTransactionConnectionString(): string {
 	const url =
-		process.env.DATABASE_MIGRATION_URL ||
 		process.env.POSTGRES_URL_NON_POOLING ||
 		process.env.DATABASE_URL_UNPOOLED ||
 		resolveConnectionString();
-	validateDatabaseUrl(url, 'transaction database connection');
-	return url;
+	return secureRuntimeConnectionString(url, 'transaction database connection');
 }
 
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', 'host.docker.internal']);
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]', 'host.docker.internal']);
+
+function secureRuntimeConnectionString(url: string, label: string): string {
+	let parsed: URL;
+	try {
+		parsed = new URL(url);
+	} catch {
+		throw new Error(`${label} is not a valid URL.`);
+	}
+	const host = parsed.hostname.toLowerCase();
+	if (!LOCAL_HOSTS.has(host) && !host.endsWith('.local')) {
+		parsed.searchParams.set('sslmode', 'verify-full');
+	}
+	validateDatabaseUrl(parsed.href, label);
+	if (
+		(host.endsWith('.supabase.co') || host.endsWith('.pooler.supabase.com')) &&
+		!parsed.searchParams.has('sslrootcert')
+	) {
+		if (!supabaseRootPath) {
+			const path = join(mkdtempSync(join(tmpdir(), 'manawg-db-ca-')), 'root.crt');
+			writeFileSync(path, SUPABASE_ROOT_CA, { mode: 0o600 });
+			supabaseRootPath = path;
+		}
+		parsed.searchParams.set('sslrootcert', supabaseRootPath);
+	}
+	return parsed.href;
+}
 
 export function validateDatabaseUrl(url: string, label: string): void {
 	let parsed: URL;
@@ -27,11 +58,15 @@ export function validateDatabaseUrl(url: string, label: string): void {
 	} catch {
 		throw new Error(`${label} is not a valid URL.`);
 	}
-	if (parsed.port === '6543') {
-		throw new Error(
-			`${label} must not use port 6543 (Supavisor Transaction Pooler). Use port 5432 or omit the port for local/Direct connections.`,
-		);
+	if (!['postgres:', 'postgresql:'].includes(parsed.protocol) || !parsed.hostname) {
+		throw new Error(`${label} must be a PostgreSQL URL with a host.`);
 	}
+	if (parsed.searchParams.has('host')) {
+		throw new Error(`${label} must not override its host in query parameters.`);
+	}
+	// Drizzle binds BEGIN/COMMIT to one node-postgres client, which supports
+	// Supavisor transaction pooling. Migration/session locks use the separate
+	// direct-connection validator in scripts/db-migrate.mjs.
 	const host = parsed.hostname.toLowerCase();
 	const isLocal = LOCAL_HOSTS.has(host) || host.endsWith('.local');
 	if (!isLocal && !parsed.port) {

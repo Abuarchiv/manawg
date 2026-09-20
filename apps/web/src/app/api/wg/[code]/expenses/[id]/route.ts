@@ -15,7 +15,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
-import { imageUrlSchema } from '@/core/validators/image-url';
+import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import { AMOUNT_MAX_CENTS, AMOUNT_MIN_CENTS } from '@/features/expenses/expense-constants';
 import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
 import {
@@ -164,6 +164,7 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
+	if (!isAllowedImageUrlForWg(imageUrl, wgId)) return badRequest('image_invalid');
 
 	// Money mutation: a bare x-manawg-member-id is spoofable, so require a
 	// verified HMAC token before trusting the caller's claimed identity for

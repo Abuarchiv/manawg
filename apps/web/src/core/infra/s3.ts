@@ -1,19 +1,14 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { PRIVATE_IMAGE_MAX_BYTES, PRIVATE_IMAGE_MIME_TYPES } from './private-image-policy';
 
 const REGION = process.env.AWS_REGION;
 const BUCKET = process.env.S3_BUCKET;
 const PUBLIC_URL = process.env.S3_PUBLIC_URL; // e.g. https://bucket.s3.region.amazonaws.com
 
-const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // 8 MB
+const MAX_UPLOAD_BYTES = PRIVATE_IMAGE_MAX_BYTES;
 const PRESIGN_TTL_SEC = 300;
-const ALLOWED_MIME_TYPES = new Set([
-	'image/jpeg',
-	'image/png',
-	'image/webp',
-	'image/heic',
-	'image/heif',
-]);
+const ALLOWED_MIME_TYPES = new Set<string>(PRIVATE_IMAGE_MIME_TYPES);
 
 interface S3SignatureResponse {
 	presignedUrl: string;
@@ -82,4 +77,4 @@ export async function createPresignedUpload(
 	return { presignedUrl, publicUrl, maxFileSize: MAX_UPLOAD_BYTES };
 }
 
-export const S3_MAX_UPLOAD_BYTES = MAX_UPLOAD_BYTES;
+export const S3_MAX_UPLOAD_BYTES = PRIVATE_IMAGE_MAX_BYTES;

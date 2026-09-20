@@ -23,6 +23,7 @@ interface SignResponse {
 	presignedUrl: string;
 	publicUrl: string;
 	maxFileSize: number;
+	uploadHeaders?: Record<string, string>;
 }
 
 interface ErrorResponse {
@@ -147,7 +148,7 @@ export async function uploadPendingImageToken(token: string, memberId: string): 
 	const uploadRes = await fetch(sig.presignedUrl, {
 		method: 'PUT',
 		body: record.file,
-		headers: { 'Content-Type': record.type },
+		headers: { ...sig.uploadHeaders, 'Content-Type': record.type },
 	});
 	if (!uploadRes.ok) throw new Error(`upload-failed:${uploadRes.status}`);
 	await removePendingImage(token, memberId);

@@ -40,19 +40,26 @@ export function ProfileTab({
 
 	useEffect(() => {
 		let cancelled = false;
-		void apiFetch<{ member?: { paypalMerchantId?: string | null } }>(
-			`/api/wg/${encodeURIComponent(shareCode)}/members/${memberId}`,
-			{ memberId, memberToken },
-		).then((res) => {
-			if (cancelled) return;
-			if (res.ok) {
-				setPaypalMerchantId(res.data.member?.paypalMerchantId ?? '');
-				setPaypalLoadError(null);
-			} else {
-				setPaypalLoadError('PayPal-Einstellung konnte nicht geladen werden.');
+		async function loadPayPal(): Promise<void> {
+			try {
+				const res = await apiFetch<{ member?: { paypalMerchantId?: string | null } }>(
+					`/api/wg/${encodeURIComponent(shareCode)}/members/${memberId}`,
+					{ memberId, memberToken },
+				);
+				if (cancelled) return;
+				if (res.ok) {
+					setPaypalMerchantId(res.data.member?.paypalMerchantId ?? '');
+					setPaypalLoadError(null);
+				} else {
+					setPaypalLoadError('PayPal-Einstellung konnte nicht geladen werden.');
+				}
+			} catch {
+				if (!cancelled) setPaypalLoadError('PayPal-Einstellung konnte nicht geladen werden.');
+			} finally {
+				if (!cancelled) setLoadingPayPal(false);
 			}
-			setLoadingPayPal(false);
-		});
+		}
+		void loadPayPal();
 		return () => {
 			cancelled = true;
 		};

@@ -19,7 +19,7 @@ import { readJsonBody } from '@/core/http/read-json';
 import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { imageUrlSchema } from '@/core/validators/image-url';
+import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import {
 	ANNOUNCEMENT_KINDS,
 	ANNOUNCEMENT_SOURCES,
@@ -179,6 +179,7 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
+	if (!isAllowedImageUrlForWg(safeImageUrl, wg.id)) return badRequest('image_invalid');
 	const idemScope = idemKey
 		? announcementCreateIdempotencyScope(wg.id, auth.member.memberId)
 		: null;

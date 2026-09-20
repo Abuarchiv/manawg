@@ -88,6 +88,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	const [olderError, setOlderError] = useState(false);
 	const [sendError, setSendError] = useState<string | null>(null);
 	const [refreshError, setRefreshError] = useState(false);
+	const [readError, setReadError] = useState(false);
 	const [replyToId, setReplyToId] = useState<string | null>(null);
 	const [replyFocusRequest, setReplyFocusRequest] = useState(0);
 	const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -133,12 +134,16 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 
 	const sendRead = useCallback(
 		async (messageId: string | null) => {
-			await apiFetch(`/api/wg/${encodedShareCode}/chat/read`, {
+			const res = await apiFetch(`/api/wg/${encodedShareCode}/chat/read`, {
 				method: 'POST',
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
 				body: JSON.stringify({ lastReadMessageId: messageId }),
 			});
+			// An older response must not overwrite a newer receipt's state.
+			if (lastReadSentIdRef.current !== messageId) return;
+			setReadError(!res.ok);
+			if (!res.ok) lastReadSentIdRef.current = null;
 		},
 		[encodedShareCode, identity.memberId, identity.memberToken],
 	);
@@ -420,6 +425,16 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 
 	return (
 		<div ref={chatRootRef} className="relative flex min-h-0 flex-1 flex-col bg-background">
+			{readError && (
+				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1">
+					<AlertDescription className="flex flex-row flex-wrap items-center justify-between gap-x-2 gap-y-0 text-xs">
+						Lesestatus konnte nicht gespeichert werden.
+						<Button variant="ghost" size="sm" className="min-h-11 text-xs" onClick={markLatestRead}>
+							Lesestatus erneut speichern
+						</Button>
+					</AlertDescription>
+				</Alert>
+			)}
 			{refreshError && !bootstrapError && !bootstrapping && (
 				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1">
 					<AlertDescription className="flex flex-row flex-wrap items-center justify-between gap-x-2 gap-y-0 text-xs">

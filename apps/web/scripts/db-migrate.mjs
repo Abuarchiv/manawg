@@ -194,7 +194,12 @@ function hashMigration(tag) {
 
 async function tableExists(client, schema, table) {
 	const { rows } = await client.query(
-		'select 1 from information_schema.tables where table_schema = $1 and table_name = $2',
+		`select 1
+		 from pg_catalog.pg_class as c
+		 join pg_catalog.pg_namespace as n on n.oid = c.relnamespace
+		 where n.nspname = $1
+		   and c.relname = $2
+		   and c.relkind in ('r', 'p')`,
 		[schema, table],
 	);
 	return rows.length > 0;
@@ -880,7 +885,12 @@ async function main() {
 
 		const hasSchema = await tableExists(client, 'public', SENTINEL_TABLE);
 		const hasMigrationLedger = await tableExists(client, MIGRATIONS_SCHEMA, MIGRATIONS_TABLE);
-		if (hasMigrationLedger) await assertMigrationLedgerPrefix(client);
+		const ledger = hasMigrationLedger ? await assertMigrationLedgerPrefix(client) : null;
+		if (ledger && ledger.appliedCount === ledger.entries.length) {
+			await verifyDatabase(client);
+			console.error('[migrate] Verified up to date.');
+			return;
+		}
 		const baselineHash = hashMigration(BASELINE_TAG);
 		const needsAdoption = hasSchema && !(await ledgerHasBaseline(client, baselineHash));
 

@@ -4,6 +4,11 @@
 	"installCommand": "cd ../.. && pnpm install --frozen-lockfile",
 	"outputDirectory": ".next",
 	"ignoreCommand": "exit 1",
+	"git": {
+		"deploymentEnabled": {
+			"main": false
+		}
+	},
 	"crons": [
 		{
 			"path": "/api/cron/chore-reminders",

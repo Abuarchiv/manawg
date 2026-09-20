@@ -8,7 +8,7 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { readJsonBody } from '@/core/http/read-json';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { chatMessageLimiter, checkRateLimit } from '@/core/rate-limit';
-import { imageUrlSchema } from '@/core/validators/image-url';
+import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import {
 	filterPersistedMentionIds,
 	previewBody,
@@ -147,6 +147,7 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
+	if (!isAllowedImageUrlForWg(imageUrl, wg.id)) return badRequest('image_invalid');
 
 	const limited = await checkRateLimit(chatMessageLimiter, `chat:${wg.id}:${auth.member.memberId}`);
 	if (!limited.success) return tooMany();

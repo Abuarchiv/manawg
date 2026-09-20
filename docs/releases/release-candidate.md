@@ -1,51 +1,88 @@
 # ManaWG Release Candidate Evidence
 
-Status: BLOCKED — kein freigegebener Release-Kandidat
-Stand: 2026-09-19, Europe/Berlin
-Checkout: /Users/abu/Company/manawg-app
-Aktueller Commit: 7bb5a091bcc26f966c12f5cc4f489455aaa943bc
-Arbeitsbaum: eine uncommitted Evidence-Dokumentänderung; dieser Nachweis ist kein Deployment- oder Produktionsfreigabeprotokoll.
+## Date integrity verification — 2026-09-20
 
-## Aktuell verifiziert
+Subscription due dates now reject empty input rather than silently choosing today. Event drafts retain their dates when a start is cleared or the dialog is reopened. All-day creation/editing uses calendar-day comparison, and agenda/month bounds cover whole days across UTC, Berlin DST, Los Angeles and UTC+14. Existing non-midnight all-day timestamps retain device-local display and unchanged timestamps on metadata-only edits. Exact UTC-midnight values are treated as canonical; indistinguishable historical midnight values cannot recover an original timezone that was never stored. No data migration or bulk rewriting was performed.
 
-Mit Node 22/pnpm 9 und dem aktuellen Arbeitsbaum:
+Final isolated-worktree verification:131 fixture tests passed,26 environment-specific skips,0 failures; main repeated the full run. Lint,typecheck,production build,analytics privacy,feature boundaries and bundle check passed (102.1/120kB). Fresh independent review found no remaining scoped defects;19 existing cases independently passed. Final hosted/CI evidence must still bind to the integrated candidate SHA.
 
-- Lint: Exit 0.
-- Typecheck: Exit 0.
-- Production Build: Exit 0 nach Entfernen eines stale lokalen Testservers und Clean-Build.
-- Bundle-Budget: Exit 0; Shared First-Load JS 102.0 kB bei 120 kB Budget.
+
+## Verified implementation checkpoint — 2026-09-20 20:30 CEST
+
+Candidate implementation: `17e5b9004b655538b0b3b544d4363b1ffaedf95f`, clean isolated worktree. Preview `dpl_J7rjVcXEDPxZhhtQFgNmL4MJTrws`, https://manawg-13gh3ylsk-abditubes-projects.vercel.app. Draft PR #156 is not release approval.
+
+- Clean Node22 fixture run:107 passed,26 environment-specific skips. Focused gate/storage/ledger checks:32 passed. Lint/typecheck/build/bundle passed before this documentation update; bundle102/120kB.
+- Hosted Preview suite:27/27 passed with retries disabled, after fixing invalid temporary share-code generation and incorrect `/api/wg/mine` rate-limit classification. Own/foreign API privacy verified with two synthetic users; protected Preview bootstrap sends no bypass header/cookie to other origins.
+- Private storage: real exact8MiB upload/read SHA256 `55e348d20d20e12c5db5653ac1fad8cff4e340be835951378854db1b523db7c8`; browser decode; private/no-store/nosniff; foreign, anonymous and revoked-member denials; provider oversize/MIME/overwrite rejection, unchanged original content. Boundary tests ran on7640b0c with the identical storage implementation. Real ImageUploader on17e5b90 passed offline IndexedDB persistence, reconnect retry, pending-record removal, online upload, image decode, announcement POST and direct DB readback of its private URL. Owned resources cleaned; explicit readback before the last UI repetition found zero temporary storage users/WGs.
+- Protected GitHub Preview secrets exist in the `Preview` environment (main-only policy), including a read-only DB verifier and dedicated QA fixture. Branch deployment jobs are intentionally rejected by that policy, not evidence of missing secrets. A final trusted same-SHA main Preview CI run is still required; exact SHA gates remain mandatory.
+- Production alias readback remains `dpl_FGgrF9cd319Sm142KnEz3j7KQWiS`. No Production release or data change. Calendar/date UI corrections, exact recovery ACL proof, provider recovery/retention, physical devices and resident acceptance remain open. Fixture/mobile emulation is not those proofs.
+
+
+Status: **BLOCKED — kein freigegebener Release-Kandidat**
+Stand: 2026-09-20, Europe/Berlin
+Checkout: `/Users/abu/Company/manawg-app`
+HEAD: `cae9b0bf3f5e6e4a032933acc82fd7a99a301b96` (`main`)
+Arbeitsbaum: dirty; kein Candidate-SHA eingefroren.
+
+## Lokal verifiziert
+
+Erneut geprüft am 2026-09-20, 16:54 CEST, mit Node 22.23.2 und pnpm 9.0.0:
+
+- Typecheck, Lint und Feature-Boundaries: Exit 0.
+- Production Build: Exit 0.
+- Bundle: 102.0 kB shared first-load JS bei 120 kB Budget.
 - Analytics Privacy: Exit 0.
-- OpenSpec strict: 5/5 Änderungen bestanden.
-- Fixture-E2E: Exit 0 nach dem Fix der Auth-Fehlerprecedence und des Settlement-Cache-Tests.
-- Fokussierte Regressionen: Exit 0.
-- Release-Workflow-Gates: 7/7 bestanden.
-- Playwright-Testdiscover: 77 Tests in 28 Dateien.
-- git diff --check: bestanden.
-- pnpm audit --prod --audit-level high: keine bekannten Schwachstellen.
+- OpenSpec strict: 5/5.
+- Fixture-E2E: 85 bestanden, 25 umgebungsabhängig übersprungen, keine Fehler. Die übersprungenen Live-Tests sind kein Auth-/Provider-Nachweis.
+- Chat-Read-Recovery: 2/2 passed.
+- Social-Login ohne Fixture-Modus: 7/7 bestanden (16:17 CEST), lokaler Server mit öffentlicher Preview-Supabase-Konfiguration; echte Auth-Settings und PKCE-Cleanup geprüft. Kein authentifizierter WG-/Hosted-Nachweis.
+- Release-Workflow-Gates: 9/9 passed.
+- `git diff --check`: Exit 0.
+- Production Dependency Audit: keine bekannten High-Schwachstellen.
+
+Der lokale Gate-Readback auf `cae9b0b` plus dirty Änderungen ist grün.
+
+Unabhängiges Review der Änderungen an ChatView, MemberDeactivateDialog, ProfileTab,
+Rate-Limits und Chat-Retry-Test: keine bestätigten Fehler. GitHub hatte zum Readback
+keine offenen Issues oder Pull Requests. Beides ersetzt die unten offenen Live-Gates nicht.
 
 ## Behobene Root Causes
 
-- Der DB-down-Fixture-Preamble meldete bei anonymen Requests member_id_required statt auth_required; die Guard-Antwort ist jetzt konsistent mit der server-verifizierten Authentifizierung.
-- Der Settlement-Cache-Test erwartete mit einem untrusted Member-Header einen DB-Catch-Fehler. Der Header authentifiziert nicht; der Test prüft jetzt die tatsächlich erreichbare 401-Rejection mit Cache-Control: no-store.
+- Chat-Lesestatus bleibt bei Netzwerk-/503-Fehlern sichtbar und retrybar.
+- Fire-and-forget-Fehler beim Auszug und in den PayPal-Profil-Einstellungen werden sichtbar behandelt.
+- Vercel Preview behandelt fehlendes/ungültiges Upstash optional; Production bleibt fail-closed.
+- Auth-Fehlerprecedence und Settlement-Cache-Header sind durch Regressionen belegt.
+- App-Transaktionen beziehen ihre Verbindung aus Runtime-Variablen, nicht mehr aus DATABASE_MIGRATION_URL. Migrationskonfiguration bleibt unverändert. Vor Deployment müssen bestehende Runtime-Aliase gültige, dauerhafte Verbindungen enthalten.
+- Der Ledger-Existenzcheck nutzt pg_catalog statt der rollenabhängigen information_schema-Sicht; fehlende Rechte können keine Baseline-Adoption auslösen.
+- Drei Resolver- und drei Ledger-Regressionen bestanden. Echter Preview-Schreib-/Rollback-Test mit absichtlich ungültiger Migrations-URL bestand: temporäre Tabelle wurde zurückgerollt, gleiche pg_backend_pid vor/nach dem Fehler bestätigt.
 
-## Nicht freigegeben
+## Preview-Live-Readback
 
-Diese Nachweise fehlen weiterhin und dürfen nicht aus lokalen Fixture-/Source-Checks abgeleitet werden:
+- Supabase Preview `sthiwjebcwwiphashgla`: `ACTIVE_HEALTHY`.
+- Repo-Migrationen `0010_enable_public_rls.sql`, `0011_explicit_member_roles.sql` und `0012_pale_drax.sql` wurden nach dem Restore im Preview angewendet.
+- 26 öffentliche App-Tabellen haben RLS aktiv; direkte `anon`-/`authenticated`-Abfragen auf `public.wgs` werden mit `permission denied` abgewiesen.
+- Keine Preview-Policies oder Rollen-Grants wurden ergänzt; das entspricht dem server-owned Access-Modell.
+- Security Advisor: RLS-ohne-Policy ist INFO für das beabsichtigte Modell; Leaked-Password-Protection bleibt WARN.
+- Exaktes `db:check` am 2026-09-20 16:40 CEST bestanden, einschließlich Schema, Security, Dateninvarianten, kanonischem Ledger und Transaktions-Rollback. Verbindung über autorisierte CLI-Anmeldung mit deren postgres-Rolle und TLS verify-full/Supabase-CA.
+- Drizzle kannte 0000–0009; die bytegenau belegten, bereits über Supabase angewendeten Migrationen 0010–0012 wurden ausschließlich im Ledger ergänzt. Ein Rollback-Probelauf bewies unveränderte ursprüngliche zehn Rows; anschließend wurden genau drei Rows ergänzt.
+- Sechs Hosted-Guest-/Auth-/Reset-Checks bestanden. Synthetischer Account und isolierte Test-WG wurden nach jedem Lauf entfernt; unabhängiger Readback: null Testaccounts und null Test-WGs. Der bisherige Deploy liefert bei POST-Mitgliedschaft 500 statt 409; der lokale Runtime-Fix benötigt einen neuen Preview-Deploy und Hosted-Nachweis. Revoked membership und Zwei-Nutzer-Privacy bleiben offen.
+- Vercel CLI-Preview `https://manawg-qhpaco526-abditubes-projects.vercel.app` aus clean `main`-HEAD ist `Ready`; `vercel curl /api/health` meldet `database=ok`.
+- Korrektur 2026-09-20 17:05 CEST: vercel env pull liefert Redaktionsmarker für sensitive Variablen, keine tatsächlichen Platzhalter. Vorhandene Vercel-Secrets werden im nativen Preview-Deploy genutzt; keine neue DB-Rolle oder Rotation nötig. CLI-Verifikation und dauerhafte CI-Konfiguration bleiben getrennte Nachweise.
 
-- echter Nicht-Fixture-Testlauf gegen DB/Auth;
-- geschützte Preview-Migration und db:check auf demselben eingefrorenen SHA;
-- authentifizierter Preview-Browserlauf, QA-Account, Vercel-Event und Cleanup;
-- anonyme/authentifizierte RLS-Denial- und revoked-membership-Nachweise;
-- reale S3-, Rate-Limit-, Push-, Kalender-, PayPal-, Import/Export- und PWA-Provider-/Geräteprüfungen;
-- Backup/PITR, RPO/RTO, Restore-Drill, Monitoring, Support-Ownership und Rollback;
-- Produktionsmigration, Deployment oder Push.
+## Weiter blockiert
 
-Externe Secrets, Produktionsdaten und irreversible Provider-Aktionen wurden nicht erraten oder ausgeführt.
+- GitHub-Preview-Event/Candidate-SHA fehlt weiterhin: der alte PR-Deploy war SHA `44554575`, `main` ist `cae9b0b`; der neue CLI-Deploy hat kein GitHub-Deployment-Event.
+- Dauerhafte CI-QA-Secrets fehlen; der manuelle Browserlauf verwendete kurzlebige Testaccounts mit anschließendem Cleanup.
+- S3, Push, Kalender, PayPal, Import/Export, PWA und echte iOS-/Android-Geräte fehlen.
+- Backup/PITR, RPO/RTO, Restore-Drill, Monitoring, Support-Ownership und Rollback fehlen.
+- Production bleibt unverändert; dort wurde RLS im direkten Readback noch nicht aktiviert.
 
-## Kontrolllauf
+Keine Production-Migration, kein Push und kein Deployment wurden ausgeführt. Preview-Migrationen wurden ausschließlich im Preview-Projekt angewendet.
 
-Die aktive Automation manawg-release-control-2026-09-19 läuft alle 30 Minuten isoliert in Europe/Berlin mit Astra High, ohne Chat-Zustellung. Sie prüft TASKS.md, verhindert Doppelstarts laut Run-Regel und stoppt erst nach verifizierter Definition of Done.
+## Kontrollautomation
+
+`manawg-release-control-2026-09-19` bleibt aktiv, alle 30 Minuten, isoliert, Astra High, ohne Zustellung. Der Job ist auf read-only umgestellt und darf keine Dateien mehr ändern.
 
 ## Nächster Nachweis
 
-Candidate-SHA einfrieren, danach die geschützte Preview-Kette mit QA-Secrets, Migration, Auth/RLS, Cleanup und denselben Playwright-Gates ausführen. Bis dahin bleibt die Release-Entscheidung BLOCKED.
+Candidate-SHA einfrieren, Preview mit bestehenden serverseitigen Secrets und zentralem Runtime-Fix deployen und vollständige Hosted-Mitgliedschafts-/Privacy-Gates prüfen. Redigierte CLI-Werte sind kein Beleg fehlender Secrets. Kurzlebige CLI-Logins nicht deployen. Provider-, reale Geräte-, Residenten- und Recovery-Nachweise bleiben separate offene Release-Gates.

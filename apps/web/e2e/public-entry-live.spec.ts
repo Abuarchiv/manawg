@@ -75,7 +75,7 @@ test.describe('live public dashboard entry', () => {
 		await page.getByRole('link', { name: 'Dieser WG beitreten', exact: true }).first().click();
 		await expect(page).toHaveURL(`/neu?code=${code}`);
 		await expect(
-			page.getByText('Melde dich an, danach kannst du mit deinem Einladungscode beitreten.'),
+			page.getByText('Melde dich an, um mit deinem Einladungscode beizutreten.'),
 		).toBeVisible();
 	});
 

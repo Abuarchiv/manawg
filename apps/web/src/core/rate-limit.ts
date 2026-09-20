@@ -6,9 +6,10 @@ const url = process.env.UPSTASH_REDIS_REST_URL;
 const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 export function rateLimitFailMode(): 'open' | 'closed' {
+	const standaloneProduction = process.env.NODE_ENV === 'production' && !process.env.VERCEL_ENV;
 	return process.env.NODE_ENV === 'test' ||
 		process.env.VERCEL_ENV === 'production' ||
-		(process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'development')
+		standaloneProduction
 		? 'closed'
 		: 'open';
 }

@@ -9,6 +9,7 @@ import {
 	assertProductionDispatch,
 	assertRequiredEnv,
 } from '../scripts/release-workflow-gates.mjs';
+import { isShareCodeLookup } from '../src/middleware';
 
 const SHA = 'a'.repeat(40);
 const CI_WORKFLOW = readFileSync(
@@ -126,6 +127,13 @@ test('documents the release and QA environment names used by the app', () => {
 	}
 });
 
+test('keeps account membership out of the share-code rate-limit bucket', () => {
+	expect(isShareCodeLookup('/api/wg/mine', 'GET')).toBe(false);
+	expect(isShareCodeLookup('/api/wg/ABCDEFGH', 'GET')).toBe(true);
+	expect(isShareCodeLookup('/api/wg/INVALID', 'GET')).toBe(true);
+	expect(isShareCodeLookup('/api/wg/ABCDEFGH', 'POST')).toBe(false);
+});
+
 test('filters trusted Preview statuses before protected environments and keeps push rehearsal', () => {
 	for (const jobName of ['db-supabase-preview', 'e2e-preview']) {
 		const job = workflowJob(CI_WORKFLOW, jobName);
@@ -226,4 +234,45 @@ test('accepts only successful same-SHA Preview migration and browser evidence', 
 			jobs: validPreviewJobs,
 		}),
 	).toThrow();
+});
+
+test('main Git pushes require an explicit Production deployment', () => {
+	const config = JSON.parse(readFileSync(path.resolve(__dirname, '../vercel.json'), 'utf8'));
+	expect(config.git.deploymentEnabled.main).toBe(false);
+});
+
+test('Preview jobs bind deployments to the exact checked-out main SHA', () => {
+	for (const jobName of ['db-supabase-preview', 'e2e-preview']) {
+		const job = workflowJob(CI_WORKFLOW, jobName);
+		expect(job).toContain('ref: main');
+		expect(job).toContain('CHECKED_OUT_SHA="$(git rev-parse HEAD)"');
+		expect(job).not.toContain('assertMatchingTree');
+	}
+	expect(workflowJob(CI_WORKFLOW, 'db-supabase-preview')).toContain(
+		'assertExactRevision(expectedSha, process.env.CHECKED_OUT_SHA)',
+	);
+	expect(workflowJob(CI_WORKFLOW, 'e2e-preview')).toContain(
+		'assertExactRevision(process.env.DEPLOYMENT_SHA, process.env.CHECKED_OUT_SHA)',
+	);
+});
+
+test('Production evidence passes the candidate SHA and original Preview run to the gate', () => {
+	expect(PRODUCTION_WORKFLOW).toContain('candidateSha: process.env.CANDIDATE_SHA');
+	expect(PRODUCTION_WORKFLOW).toContain(
+		"run: JSON.parse(readFileSync(process.env.PREVIEW_RUN_JSON, 'utf8'))",
+	);
+	expect(PRODUCTION_WORKFLOW).not.toContain('candidateTree:');
+	expect(PRODUCTION_WORKFLOW).not.toContain('runTree:');
+});
+
+test('rejects different Preview commits even when candidate and run trees match', () => {
+	const evidence = {
+		candidateSha: SHA,
+		candidateTree: 'c'.repeat(40),
+		runTree: 'c'.repeat(40),
+		expectedRunId: 123,
+		run: { ...validPreviewRun, head_sha: 'b'.repeat(40) },
+		jobs: validPreviewJobs,
+	};
+	expect(() => assertPreviewEvidence(evidence)).toThrow('Candidate SHA does not match');
 });
