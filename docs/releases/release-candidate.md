@@ -1,5 +1,16 @@
 # ManaWG Release Candidate Evidence
 
+## Verified implementation checkpoint — 2026-09-20 20:30 CEST
+
+Candidate implementation: `17e5b9004b655538b0b3b544d4363b1ffaedf95f`, clean isolated worktree. Preview `dpl_J7rjVcXEDPxZhhtQFgNmL4MJTrws`, https://manawg-13gh3ylsk-abditubes-projects.vercel.app. Draft PR #156 is not release approval.
+
+- Clean Node22 fixture run:107 passed,26 environment-specific skips. Focused gate/storage/ledger checks:32 passed. Lint/typecheck/build/bundle passed before this documentation update; bundle102/120kB.
+- Hosted Preview suite:27/27 passed with retries disabled, after fixing invalid temporary share-code generation and incorrect `/api/wg/mine` rate-limit classification. Own/foreign API privacy verified with two synthetic users; protected Preview bootstrap sends no bypass header/cookie to other origins.
+- Private storage: real exact8MiB upload/read SHA256 `55e348d20d20e12c5db5653ac1fad8cff4e340be835951378854db1b523db7c8`; browser decode; private/no-store/nosniff; foreign, anonymous and revoked-member denials; provider oversize/MIME/overwrite rejection, unchanged original content. Boundary tests ran on7640b0c with the identical storage implementation. Real ImageUploader on17e5b90 passed offline IndexedDB persistence, reconnect retry, pending-record removal, online upload, image decode, announcement POST and direct DB readback of its private URL. Owned resources cleaned; explicit readback before the last UI repetition found zero temporary storage users/WGs.
+- Protected GitHub Preview secrets exist in the `Preview` environment (main-only policy), including a read-only DB verifier and dedicated QA fixture. Branch deployment jobs are intentionally rejected by that policy, not evidence of missing secrets. A final trusted same-SHA main Preview CI run is still required; exact SHA gates remain mandatory.
+- Production alias readback remains `dpl_FGgrF9cd319Sm142KnEz3j7KQWiS`. No Production release or data change. Calendar/date UI corrections, exact recovery ACL proof, provider recovery/retention, physical devices and resident acceptance remain open. Fixture/mobile emulation is not those proofs.
+
+
 Status: **BLOCKED — kein freigegebener Release-Kandidat**
 Stand: 2026-09-20, Europe/Berlin
 Checkout: `/Users/abu/Company/manawg-app`
