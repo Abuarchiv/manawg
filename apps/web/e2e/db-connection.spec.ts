@@ -1,4 +1,7 @@
+import { X509Certificate } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
+import { Client } from 'pg';
 import {
 	resolveConnectionString,
 	resolveTransactionConnectionString,
@@ -66,6 +69,30 @@ test('transaction runtime aliases retain priority and validation', () => {
 			if (previous[key] === undefined) delete process.env[key];
 			else process.env[key] = previous[key];
 		}
+	}
+});
+
+test('Supabase connections use the official CA without disabling verification', () => {
+	const previous = process.env.POSTGRES_URL;
+	try {
+		process.env.POSTGRES_URL =
+			'postgresql://example:example@aws-0-eu-central-1.pooler.supabase.com:6543/postgres';
+		const result = resolveConnectionString();
+		const certPath = new URL(result).searchParams.get('sslrootcert');
+		expect(certPath).toBeTruthy();
+		if (!certPath) throw new Error('Missing Supabase root CA');
+		const cert = new X509Certificate(readFileSync(certPath));
+		expect(cert.fingerprint256).toBe(
+			'80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA',
+		);
+		const ssl = Reflect.get(new Client({ connectionString: result }), 'connectionParameters').ssl;
+		expect(ssl).not.toBe(false);
+		expect(ssl.rejectUnauthorized).not.toBe(false);
+		expect(ssl.ca).toBeTruthy();
+		expect(new URL(resolveConnectionString()).searchParams.get('sslrootcert')).toBe(certPath);
+	} finally {
+		if (previous === undefined) Reflect.deleteProperty(process.env, 'POSTGRES_URL');
+		else process.env.POSTGRES_URL = previous;
 	}
 });
 

@@ -1,3 +1,10 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { SUPABASE_ROOT_CA } from './supabase-ca';
+
+let supabaseRootPath: string | undefined;
+
 export function resolveConnectionString(): string {
 	const url = process.env.POSTGRES_URL || process.env.DATABASE_URL;
 	if (!url) {
@@ -29,9 +36,19 @@ function secureRuntimeConnectionString(url: string, label: string): string {
 	if (!LOCAL_HOSTS.has(host) && !host.endsWith('.local')) {
 		parsed.searchParams.set('sslmode', 'verify-full');
 	}
-	const secured = parsed.href;
-	validateDatabaseUrl(secured, label);
-	return secured;
+	validateDatabaseUrl(parsed.href, label);
+	if (
+		(host.endsWith('.supabase.co') || host.endsWith('.pooler.supabase.com')) &&
+		!parsed.searchParams.has('sslrootcert')
+	) {
+		if (!supabaseRootPath) {
+			const path = join(mkdtempSync(join(tmpdir(), 'manawg-db-ca-')), 'root.crt');
+			writeFileSync(path, SUPABASE_ROOT_CA, { mode: 0o600 });
+			supabaseRootPath = path;
+		}
+		parsed.searchParams.set('sslrootcert', supabaseRootPath);
+	}
+	return parsed.href;
 }
 
 export function validateDatabaseUrl(url: string, label: string): void {
