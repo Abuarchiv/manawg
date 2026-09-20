@@ -2,6 +2,18 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test } from '@playwright/test';
 
+test('migrations still reject transaction-pooler connections', async () => {
+	const { validateDatabaseUrl } = await import(
+		pathToFileURL(path.resolve(process.cwd(), 'scripts/db-migrate.mjs')).href
+	);
+	expect(() =>
+		validateDatabaseUrl(
+			'postgresql://example:example@db.example.test:6543/app?sslmode=verify-full',
+			'migration',
+		),
+	).toThrow('must not use port 6543');
+});
+
 test('rejects unknown pre-baseline ledger rows fail-closed', async () => {
 	const { assertMigrationLedgerPrefix } = await import(
 		pathToFileURL(path.resolve(process.cwd(), 'scripts/db-migrate.mjs')).href

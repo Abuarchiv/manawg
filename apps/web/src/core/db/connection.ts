@@ -26,11 +26,9 @@ export function validateDatabaseUrl(url: string, label: string): void {
 	} catch {
 		throw new Error(`${label} is not a valid URL.`);
 	}
-	if (parsed.port === '6543') {
-		throw new Error(
-			`${label} must not use port 6543 (Supavisor Transaction Pooler). Use port 5432 or omit the port for local/Direct connections.`,
-		);
-	}
+	// Drizzle binds BEGIN/COMMIT to one node-postgres client, which supports
+	// Supavisor transaction pooling. Migration/session locks use the separate
+	// direct-connection validator in scripts/db-migrate.mjs.
 	const host = parsed.hostname.toLowerCase();
 	const isLocal = LOCAL_HOSTS.has(host) || host.endsWith('.local');
 	if (!isLocal && !parsed.port) {

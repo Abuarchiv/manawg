@@ -53,7 +53,7 @@ test('transaction runtime aliases retain priority and validation', () => {
 		expect(() => resolveTransactionConnectionString()).toThrow('not a valid URL');
 		process.env.POSTGRES_URL_NON_POOLING =
 			'postgresql://app:example@db.example.test:6543/app?sslmode=verify-full';
-		expect(() => resolveTransactionConnectionString()).toThrow('must not use port 6543');
+		expect(resolveTransactionConnectionString()).toBe(process.env.POSTGRES_URL_NON_POOLING);
 		process.env.POSTGRES_URL_NON_POOLING = 'postgresql://app:example@db.example.test:5432/app';
 		expect(() => resolveTransactionConnectionString()).toThrow('must require TLS');
 	} finally {
