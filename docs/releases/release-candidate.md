@@ -1,5 +1,14 @@
 # ManaWG Release Candidate Evidence
 
+## Protected CI transport repair — 2026-09-20
+
+The first integrated main run for24cd525 reached the real protected DB step and failed with `ENETUNREACH` on the IPv6-only direct endpoint. Preview CI now validates the original pinned direct verifier URL, then explicitly derives the provider's IPv4 session endpoint on5432 with unchanged credentials and `verify-full`; other projects/roles/databases/query overrides and6543 remain rejected. Only CI enables this mode. The ordinary migration/Production direct guard remains unchanged; no credential rotation or role-rights change is involved. The wrapper suppresses all child output/error objects and fails on errors, signals, timeout or output overflow.
+
+The two Preview checking jobs use native GitHub `environment.deployment:false`. Environment secrets, main branch policies and approval rules remain enforced, but checking jobs no longer create deployment records that collide with Vercel's trusted events. Both trusted-bot checks and every exact-SHA guard remain mandatory. GitHub reference: https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments#using-environments-without-deployments.
+
+Independent code review approved;24 focused tests,lint,typecheck,YAML and36 shell syntax checks passed. This repair still needs a real protected main CI run; no prior failure is relabeled as success.
+
+
 ## Date integrity verification — 2026-09-20
 
 Subscription due dates now reject empty input rather than silently choosing today. Event drafts retain their dates when a start is cleared or the dialog is reopened. All-day creation/editing uses calendar-day comparison, and agenda/month bounds cover whole days across UTC, Berlin DST, Los Angeles and UTC+14. Existing non-midnight all-day timestamps retain device-local display and unchanged timestamps on metadata-only edits. Exact UTC-midnight values are treated as canonical; indistinguishable historical midnight values cannot recover an original timezone that was never stored. No data migration or bulk rewriting was performed.
