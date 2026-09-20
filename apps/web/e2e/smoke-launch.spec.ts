@@ -168,7 +168,7 @@ test.describe('ManaWG launch smoke', () => {
 
 		await expect(page.getByRole('heading', { name: 'Dein Name in der WG' })).toBeVisible();
 		await page.getByLabel('Dein Anzeigename').fill('Smoke Tester');
-		await page.getByRole('button', { name: 'Beitreten', exact: true }).click();
+		await page.getByRole('button', { name: 'WG beitreten', exact: true }).click();
 		await expect(page.getByText('Diese WG nimmt gerade keine neuen Beitritte an.')).toBeVisible();
 		await expect.poll(() => memberPostRequests).toBe(1);
 	});
@@ -213,7 +213,9 @@ test.describe('ManaWG launch smoke', () => {
 			await gotoWithRetry(page, '/neu');
 			await authenticateQaUser(page, qaAuthConfig);
 			await page.reload();
-			await expect(page.getByRole('heading', { name: 'Loslegen' })).toBeVisible({
+			await expect(
+				page.getByRole('heading', { name: 'Deine WG', exact: true, level: 1 }),
+			).toBeVisible({
 				timeout: 30_000,
 			});
 
@@ -254,7 +256,7 @@ test.describe('ManaWG launch smoke', () => {
 			expect(created.creator?.id).toMatch(UUID_PATTERN);
 			expect(created.wg?.shareCode).toBe(createdShareCode);
 
-			await expect(page.getByRole('heading', { name: 'Mitbewohner einladen' })).toBeVisible({
+			await expect(page.getByRole('heading', { name: wgName, exact: true, level: 1 })).toBeVisible({
 				timeout: 30_000,
 			});
 			const codeButton = page.getByRole('button', { name: /Code [A-Z0-9]{8} kopieren/ });

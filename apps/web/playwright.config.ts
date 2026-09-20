@@ -1,4 +1,6 @@
 // craftsman-ignore: TS002
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
@@ -15,13 +17,17 @@ if (previewE2E && (!automationBypassSecret || !isTrustedPreviewDeployment)) {
 	);
 }
 
-const automationBypassHeaders =
-	previewE2E && automationBypassSecret
-		? {
-				'x-vercel-protection-bypass': automationBypassSecret,
-				'x-vercel-set-bypass-cookie': 'true',
-			}
-		: undefined;
+let previewStorageState: string | undefined;
+if (previewE2E) {
+	previewStorageState = process.env.MANAWG_PREVIEW_AUTH_STATE;
+	if (!previewStorageState) {
+		previewStorageState = path.join(
+			mkdtempSync(path.join(tmpdir(), 'manawg-preview-auth-')),
+			'state.json',
+		);
+		process.env.MANAWG_PREVIEW_AUTH_STATE = previewStorageState;
+	}
+}
 const parsedBaseUrl = new URL(BASE_URL);
 const isLocalBase = ['localhost', '127.0.0.1', '::1'].includes(parsedBaseUrl.hostname);
 const isRemoteBase = /^https?:\/\//i.test(BASE_URL) && !isLocalBase;
@@ -39,17 +45,21 @@ const webServerCommand = useBuiltServer
 		: `${prepareIsolatedNext} && if [ "\${CI:-}" != "true" ] && [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next dev --port ${serverPort}`;
 
 export default defineConfig({
+	globalSetup: previewE2E ? path.join(APP_DIR, 'e2e/preview-global-setup.ts') : undefined,
 	testDir: './e2e',
 	fullyParallel: false,
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,
 	reporter: [['html', { open: 'never' }], ['list']],
 	workers: 1,
+	timeout: previewE2E ? 60_000 : 30_000,
 	use: {
 		baseURL: BASE_URL,
-		extraHTTPHeaders: automationBypassHeaders,
-		trace: 'on-first-retry',
-		screenshot: 'only-on-failure',
+		storageState: previewStorageState,
+		// Pace live UI actions to respect the real shared per-IP rate limits.
+		launchOptions: previewE2E ? { slowMo: 500 } : undefined,
+		trace: previewE2E ? 'off' : 'on-first-retry',
+		screenshot: previewE2E ? 'off' : 'only-on-failure',
 		// Pin timezone and locale so assertions on rendered dates and amounts
 		// pass in CET and do not fail in CI's UTC. These
 		// are the settings the app is actually built for.

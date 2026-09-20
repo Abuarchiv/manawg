@@ -92,7 +92,7 @@ test.describe('live social-login entry', () => {
 		expect(destination.searchParams.get('next')).toBe('/');
 	});
 
-	test('a failed OAuth flow clears its PKCE cookies', async ({ request }) => {
+	test('a failed OAuth flow clears its PKCE cookies', async ({ page }) => {
 		const projectRef = new URL(
 			process.env.E2E_SUPABASE_URL ?? 'https://bwsvsvfgbrsonepffqff.supabase.co',
 		).hostname.split('.')[0];
@@ -103,11 +103,14 @@ test.describe('live social-login entry', () => {
 		const encode = (value: unknown) =>
 			`base64-${Buffer.from(JSON.stringify(value)).toString('base64url')}`;
 		// No real account/token: an empty verifier fails before the token exchange.
-		const response = await request.get(
+		await page.context().addCookies([
+			{ name: slot, value: encode(''), url: new URL('/', process.env.BASE_URL).href },
+			{ name: index, value: encode([flowId]), url: new URL('/', process.env.BASE_URL).href },
+		]);
+		const response = await page.request.get(
 			`/auth/callback?code=invalid-release-regression&sb_flow_id=${flowId}`,
 			{
 				maxRedirects: 0,
-				headers: { cookie: `${slot}=${encode('')}; ${index}=${encode([flowId])}` },
 			},
 		);
 		const cookies = response
