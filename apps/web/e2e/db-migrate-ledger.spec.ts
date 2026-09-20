@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test } from '@playwright/test';
@@ -67,4 +69,34 @@ test('propagates permission errors for an existing unreadable migration ledger',
 	await expect(assertMigrationLedgerPrefix(client)).rejects.toThrow(
 		'permission denied for table drizzle.__drizzle_migrations',
 	);
+});
+
+test('recognizes a complete canonical migration ledger without a fixed count', async () => {
+	const { assertMigrationLedgerPrefix } = await import(
+		pathToFileURL(path.resolve(process.cwd(), 'scripts/db-migrate.mjs')).href
+	);
+	const migrationsDir = path.resolve(process.cwd(), 'drizzle');
+	const journal = JSON.parse(
+		readFileSync(path.join(migrationsDir, 'meta', '_journal.json'), 'utf8'),
+	);
+	const client = {
+		query: async (sql: unknown) => {
+			if (String(sql).includes('pg_catalog.pg_class')) return { rows: [{}] };
+			if (String(sql).includes('__drizzle_migrations')) {
+				return {
+					rows: journal.entries.map((entry) => ({
+						id: entry.idx + 1,
+						hash: createHash('sha256')
+							.update(readFileSync(path.join(migrationsDir, `${entry.tag}.sql`), 'utf8'))
+							.digest('hex'),
+						created_at: String(entry.when),
+					})),
+				};
+			}
+			throw new Error(`unexpected query: ${String(sql).slice(0, 80)}`);
+		},
+	};
+
+	const ledger = await assertMigrationLedgerPrefix(client);
+	expect(ledger.appliedCount).toBe(ledger.entries.length);
 });

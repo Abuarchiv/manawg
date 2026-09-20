@@ -885,7 +885,12 @@ async function main() {
 
 		const hasSchema = await tableExists(client, 'public', SENTINEL_TABLE);
 		const hasMigrationLedger = await tableExists(client, MIGRATIONS_SCHEMA, MIGRATIONS_TABLE);
-		if (hasMigrationLedger) await assertMigrationLedgerPrefix(client);
+		const ledger = hasMigrationLedger ? await assertMigrationLedgerPrefix(client) : null;
+		if (ledger && ledger.appliedCount === ledger.entries.length) {
+			await verifyDatabase(client);
+			console.error('[migrate] Verified up to date.');
+			return;
+		}
 		const baselineHash = hashMigration(BASELINE_TAG);
 		const needsAdoption = hasSchema && !(await ledgerHasBaseline(client, baselineHash));
 
