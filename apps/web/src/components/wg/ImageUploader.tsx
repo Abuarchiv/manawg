@@ -29,6 +29,7 @@ interface SignResponse {
 	presignedUrl: string;
 	publicUrl: string;
 	maxFileSize: number;
+	uploadHeaders?: Record<string, string>;
 }
 
 interface ErrorResponse {
@@ -300,7 +301,7 @@ export function ImageUploader({
 			const uploadRes = await fetch(sig.presignedUrl, {
 				method: 'PUT',
 				body: file,
-				headers: { 'Content-Type': file.type },
+				headers: { ...sig.uploadHeaders, 'Content-Type': file.type },
 			});
 			if (!uploadRes.ok) {
 				await keepPending(

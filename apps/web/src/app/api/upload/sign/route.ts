@@ -4,7 +4,13 @@ import { db } from '@/core/db';
 import { apiError, badRequest, notFound, serverError, tooMany } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
 import { S3_MAX_UPLOAD_BYTES, createPresignedUpload, isAllowedMimeType } from '@/core/infra/s3';
+import {
+	ImageStorageConfigurationError,
+	createSupabaseSignedUpload,
+	getImageStorageProvider,
+} from '@/core/infra/supabase-storage';
 import { checkRateLimit, uploadSignLimiter } from '@/core/rate-limit';
+import { getPrivateImageUrl } from '@/core/validators/image-url';
 import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -17,6 +23,11 @@ const signSchema = z.object({
 	mimeType: z.string(),
 	fileSize: z.number().int().positive().max(S3_MAX_UPLOAD_BYTES),
 });
+
+function noStore<T extends NextResponse>(response: T): T {
+	response.headers.set('Cache-Control', 'no-store');
+	return response;
+}
 
 function extFromMime(mime: string): string {
 	const map: Record<string, string> = {
@@ -34,58 +45,76 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	try {
 		raw = await req.json();
 	} catch {
-		return badRequest('invalid_json');
+		return noStore(badRequest('invalid_json'));
 	}
 
 	const parsed = signSchema.safeParse(raw);
 	if (!parsed.success) {
 		const issues = parsed.error.flatten();
-		if (issues.fieldErrors.shareCode) return badRequest('invalid_share_code');
-		if (issues.fieldErrors.purpose) return badRequest('invalid_purpose');
-		if (issues.fieldErrors.mimeType) return badRequest('invalid_mime_type');
-		if (issues.fieldErrors.fileSize) return badRequest('file_too_large');
-		return badRequest('invalid_body');
+		if (issues.fieldErrors.shareCode) return noStore(badRequest('invalid_share_code'));
+		if (issues.fieldErrors.purpose) return noStore(badRequest('invalid_purpose'));
+		if (issues.fieldErrors.mimeType) return noStore(badRequest('invalid_mime_type'));
+		if (issues.fieldErrors.fileSize) return noStore(badRequest('file_too_large'));
+		return noStore(badRequest('invalid_body'));
 	}
 
 	const { shareCode: code, purpose, mimeType, fileSize } = parsed.data;
-	if (!isValidShareCode(code)) return badRequest('invalid_share_code');
-	if (!isAllowedMimeType(mimeType)) return badRequest('invalid_mime_type');
+	if (!isValidShareCode(code)) return noStore(badRequest('invalid_share_code'));
+	if (!isAllowedMimeType(mimeType)) return noStore(badRequest('invalid_mime_type'));
 
 	const authenticatedUser = await getAuthenticatedUser(req);
-	if (!authenticatedUser) return apiError('auth_required', 401, 'auth_required');
+	if (!authenticatedUser) return noStore(apiError('auth_required', 401, 'auth_required'));
 
 	const wg = await db.query.wgs.findFirst({
 		where: (w, { eq }) => eq(w.shareCode, code),
 		columns: { id: true },
 	});
-	if (!wg) return notFound('wg_not_found');
+	if (!wg) return noStore(notFound('wg_not_found'));
 
 	const auth = await requireMember(req, wg.id, authenticatedUser);
-	if (!auth.ok) return auth.response.status === 401 ? notFound('wg_not_found') : auth.response;
+	if (!auth.ok) {
+		return noStore(auth.response.status === 401 ? notFound('wg_not_found') : auth.response);
+	}
 
 	const limited = await checkRateLimit(uploadSignLimiter, `${wg.id}:${auth.member.memberId}`);
 	if (!limited.success) {
-		return tooMany('upload_sign_rate_limited', 'upload_sign_rate_limited');
+		return noStore(tooMany('upload_sign_rate_limited', 'upload_sign_rate_limited'));
 	}
 
 	try {
 		const ext = extFromMime(mimeType);
 		const key = `manawg/${wg.id}/${purpose}/${randomUUID()}.${ext}`;
-		const signature = await createPresignedUpload(key, mimeType, fileSize);
-		return NextResponse.json(signature);
+		const provider = getImageStorageProvider();
+		const signature =
+			provider === 'supabase'
+				? {
+						...(await createSupabaseSignedUpload(key, mimeType)),
+						publicUrl: getPrivateImageUrl(key),
+					}
+				: await createPresignedUpload(key, mimeType, fileSize);
+		return noStore(NextResponse.json(signature));
 	} catch (err) {
+		if (err instanceof ImageStorageConfigurationError) {
+			return noStore(
+				NextResponse.json(
+					{ error: 'feature_disabled', code: 'image_uploads_unavailable' },
+					{ status: 503 },
+				),
+			);
+		}
 		const isConfigMissing =
 			err instanceof Error &&
 			(err.message.includes('S3 credentials missing') ||
 				err.message.includes('S3_BUCKET') ||
 				err.message.includes('S3_PUBLIC_URL'));
 		if (isConfigMissing) {
-			return NextResponse.json(
-				{ error: 'feature_disabled', code: 'image_uploads_unavailable' },
-				{ status: 503 },
+			return noStore(
+				NextResponse.json(
+					{ error: 'feature_disabled', code: 'image_uploads_unavailable' },
+					{ status: 503 },
+				),
 			);
 		}
-		console.error('[upload/sign]', err);
-		return serverError('sign_failed');
+		return noStore(serverError('sign_failed'));
 	}
 }

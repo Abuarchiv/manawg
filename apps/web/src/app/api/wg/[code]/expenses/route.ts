@@ -16,7 +16,7 @@ import type { RouteCtx } from '@/core/infra/api-types';
 import type { NotificationDispatchWarning } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
-import { imageUrlSchema } from '@/core/validators/image-url';
+import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import { AMOUNT_MAX_CENTS, AMOUNT_MIN_CENTS } from '@/features/expenses/expense-constants';
 import {
 	loadCompletedExpensePayments,
@@ -169,6 +169,7 @@ export async function POST(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wg = auth.wg;
+		if (!isAllowedImageUrlForWg(safeImageUrl, wg.id)) return badRequest('image_invalid');
 
 		const idemScope = idemKey ? expenseCreateIdempotencyScope(wg.id, auth.member.memberId) : null;
 		const idemReplayKey = idemScope && idemKey ? replayKey(idemScope, idemKey) : null;

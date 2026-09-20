@@ -37,6 +37,8 @@ interface FeatureSpec {
 	impact: string;
 }
 
+const AWS_IMAGE_VARS = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION', 'S3_BUCKET'];
+
 const OPTIONAL_FEATURES: readonly FeatureSpec[] = [
 	{
 		feature: 'rate-limiting',
@@ -47,11 +49,6 @@ const OPTIONAL_FEATURES: readonly FeatureSpec[] = [
 		feature: 'push-notifications',
 		vars: ['NEXT_PUBLIC_VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'VAPID_SUBJECT'],
 		impact: 'Web-Push is disabled — reminders and mentions never reach devices.',
-	},
-	{
-		feature: 'image-uploads',
-		vars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION', 'S3_BUCKET'],
-		impact: 'S3 signing fails — receipt and announcement images cannot be uploaded.',
 	},
 ] as const;
 
@@ -84,6 +81,30 @@ function isValidHttpsUrl(value: string | undefined): boolean {
 	} catch {
 		return false;
 	}
+}
+
+function privateImageStorageMissing(env: EnvSource): { missing: string[]; impact: string } {
+	const provider = env.IMAGE_STORAGE_PROVIDER?.trim().toLowerCase() || 'aws';
+	if (provider === 'aws') {
+		return {
+			missing: AWS_IMAGE_VARS.filter((name) => !isSet(env, name)),
+			impact: 'S3 signing fails — receipt and announcement images cannot be uploaded.',
+		};
+	}
+	if (provider === 'supabase') {
+		const missing: string[] = [];
+		if (!isValidHttpsUrl(env.NEXT_PUBLIC_SUPABASE_URL)) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+		if (!isSet(env, 'SUPABASE_SERVICE_ROLE_KEY')) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+		if (!isSet(env, 'SUPABASE_STORAGE_BUCKET')) missing.push('SUPABASE_STORAGE_BUCKET');
+		return {
+			missing,
+			impact: 'Private Supabase image storage is unavailable — configure its server-only settings.',
+		};
+	}
+	return {
+		missing: ['IMAGE_STORAGE_PROVIDER'],
+		impact: 'Image uploads are disabled — IMAGE_STORAGE_PROVIDER must be aws or supabase.',
+	};
 }
 
 export function checkEnv(env: EnvSource): EnvCheckResult {
@@ -129,6 +150,10 @@ export function checkEnv(env: EnvSource): EnvCheckResult {
 		if (missing.length > 0) {
 			degraded.push({ feature: spec.feature, missing, impact: spec.impact });
 		}
+	}
+	const imageStorage = privateImageStorageMissing(env);
+	if (imageStorage.missing.length > 0) {
+		degraded.push({ feature: 'image-uploads', ...imageStorage });
 	}
 
 	return {
