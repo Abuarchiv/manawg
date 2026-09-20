@@ -12,8 +12,6 @@ import {
 import { isShareCodeLookup } from '../src/middleware';
 
 const SHA = 'a'.repeat(40);
-const RUN_SHA = 'b'.repeat(40);
-const TREE_SHA = 'c'.repeat(40);
 const CI_WORKFLOW = readFileSync(
 	path.resolve(__dirname, '../../../.github/workflows/ci.yml'),
 	'utf8',
@@ -45,7 +43,7 @@ const validPreviewRun = {
 	event: 'deployment_status',
 	status: 'completed',
 	conclusion: 'success',
-	head_sha: RUN_SHA,
+	head_sha: SHA,
 };
 
 const validPreviewJobs = [

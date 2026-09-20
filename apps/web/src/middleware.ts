@@ -22,6 +22,10 @@ function isRateLimitedApiPath(path: string): boolean {
 	);
 }
 
+export function isShareCodeLookup(path: string, method: string): boolean {
+	return method === 'GET' && path !== '/api/wg/mine' && /^\/api\/wg\/[^/]+$/.test(path);
+}
+
 async function withPageSecurityHeaders(req: NextRequest): Promise<NextResponse> {
 	const nonce = crypto.randomUUID().replaceAll('-', '');
 	const csp = contentSecurityPolicy(nonce);
@@ -92,8 +96,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 		return NextResponse.json({ error: 'cross_origin_blocked' }, { status: 403 });
 	}
 
-	const isShareCodeLookup = /^\/api\/wg\/[^/]+$/.test(path) && req.method === 'GET';
-	const limiter = isShareCodeLookup
+	const isShareCodeLookupRequest = isShareCodeLookup(path, req.method);
+	const limiter = isShareCodeLookupRequest
 		? wgShareCodeLookupLimiter
 		: isRead
 			? wgReadLimiter
