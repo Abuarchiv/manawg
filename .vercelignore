@@ -1,5 +1,5 @@
 # Local Playwright build outputs are recreated by the deployment build.
-apps/web/.next-e2e-*
+apps/web/.next-*
 apps/web/test-results/
 apps/web/playwright-report/
 # Local agent state and code graphs are not deployment inputs.
