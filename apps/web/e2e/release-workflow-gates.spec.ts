@@ -147,7 +147,9 @@ test('filters trusted Preview statuses before protected environments and keeps p
 		expect(job).toContain(
 			"endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app')",
 		);
-		expect(job.indexOf('endsWith(')).toBeLessThan(job.indexOf('environment: Preview'));
+		expect(job.indexOf('endsWith(')).toBeLessThan(job.indexOf('environment:'));
+		expect(job).toContain('name: Preview');
+		expect(job).toContain('deployment: false');
 	}
 	expect(CI_WORKFLOW).toContain("github.event_name == 'push'");
 	expect(CI_WORKFLOW).toContain("github.ref == 'refs/heads/main'");
