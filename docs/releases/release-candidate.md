@@ -1,5 +1,12 @@
 # ManaWG Release Candidate Evidence
 
+## Date integrity verification — 2026-09-20
+
+Subscription due dates now reject empty input rather than silently choosing today. Event drafts retain their dates when a start is cleared or the dialog is reopened. All-day creation/editing uses calendar-day comparison, and agenda/month bounds cover whole days across UTC, Berlin DST, Los Angeles and UTC+14. Existing non-midnight all-day timestamps retain device-local display and unchanged timestamps on metadata-only edits. Exact UTC-midnight values are treated as canonical; indistinguishable historical midnight values cannot recover an original timezone that was never stored. No data migration or bulk rewriting was performed.
+
+Final isolated-worktree verification:131 fixture tests passed,26 environment-specific skips,0 failures; main repeated the full run. Lint,typecheck,production build,analytics privacy,feature boundaries and bundle check passed (102.1/120kB). Fresh independent review found no remaining scoped defects;19 existing cases independently passed. Final hosted/CI evidence must still bind to the integrated candidate SHA.
+
+
 ## Verified implementation checkpoint — 2026-09-20 20:30 CEST
 
 Candidate implementation: `17e5b9004b655538b0b3b544d4363b1ffaedf95f`, clean isolated worktree. Preview `dpl_J7rjVcXEDPxZhhtQFgNmL4MJTrws`, https://manawg-13gh3ylsk-abditubes-projects.vercel.app. Draft PR #156 is not release approval.

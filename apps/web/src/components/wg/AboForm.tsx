@@ -172,7 +172,8 @@ export function AboForm({
 			? 'Beschreibung fehlt.'
 			: null;
 	const amountError = error && parsedAmountCents === null ? 'Betrag ungültig.' : null;
-	const formError = error && !descriptionError && !amountError ? error : null;
+	const nextDueError = error && nextDueAt.trim().length === 0 ? 'Fälligkeit fehlt.' : null;
+	const formError = error && !descriptionError && !amountError && !nextDueError ? error : null;
 
 	// Payer dropdown offers active members, but keeps the currently selected
 	// payer visible even if they moved out — otherwise saving would silently
@@ -226,6 +227,15 @@ export function AboForm({
 			setError('Betrag ungültig.');
 			return;
 		}
+		if (nextDueAt.trim().length === 0) {
+			setError('Fälligkeit fehlt.');
+			return;
+		}
+		const nextDueAtIso = inputDateToIso(nextDueAt);
+		if (nextDueAtIso === null) {
+			setError('Fälligkeit fehlt.');
+			return;
+		}
 		const splits = buildSplits();
 		if (typeof splits === 'string') {
 			if (splits === 'amount_invalid') setError('Betrag ungültig.');
@@ -241,7 +251,7 @@ export function AboForm({
 			amountCents: parsedAmountCents,
 			paidByMemberId,
 			intervalMonths,
-			nextDueAt: inputDateToIso(nextDueAt),
+			nextDueAt: nextDueAtIso,
 			splits,
 		});
 	}
@@ -323,7 +333,7 @@ export function AboForm({
 						))}
 					</NativeSelect>
 				</Field>
-				<Field data-disabled={submitting}>
+				<Field data-disabled={submitting} data-invalid={Boolean(nextDueError)}>
 					<FieldLabel htmlFor="abo-next-due">
 						{mode === 'create' ? 'Erste Fälligkeit' : 'Nächste Fälligkeit'}
 					</FieldLabel>
@@ -333,8 +343,12 @@ export function AboForm({
 						value={nextDueAt}
 						onChange={(event) => setNextDueAt(event.target.value)}
 						disabled={submitting}
+						required
+						aria-invalid={Boolean(nextDueError)}
+						aria-describedby={nextDueError ? 'abo-next-due-error' : undefined}
 						className="min-h-11 text-base md:text-base"
 					/>
+					<FieldError id="abo-next-due-error">{nextDueError}</FieldError>
 				</Field>
 				<FieldSet disabled={submitting}>
 					<FieldLegend>Beteiligte & Aufteilung</FieldLegend>

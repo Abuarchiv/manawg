@@ -4,6 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { normalizeEventDateTime } from '@/features/events/events';
 import type { ReactNode } from 'react';
 
 const TITLE_MAX = 200;
@@ -64,7 +65,14 @@ export function EventFormFields({
 				<Checkbox
 					id={`${idPrefix}-all-day`}
 					checked={allDay}
-					onCheckedChange={onAllDayChange}
+					onCheckedChange={(checked) => {
+						const nextAllDay = checked === true;
+						onAllDayChange(nextAllDay);
+						if (nextAllDay) {
+							onStartsAtChange(normalizeEventDateTime(startsAt, true));
+							onEndsAtChange(normalizeEventDateTime(endsAt, true));
+						}
+					}}
 					disabled={disabled}
 					className="relative after:absolute after:-inset-3"
 				/>

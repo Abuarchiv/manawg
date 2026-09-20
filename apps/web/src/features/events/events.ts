@@ -176,6 +176,7 @@ function buildOccurrence(
 function durationMsFor(event: EventInput, startMs: number): number {
 	if (!event.endsAt) return DEFAULT_DURATION_MS;
 	const endMs = parseTimestamp(event.endsAt);
+	if (event.allDay && endMs === startMs) return 0;
 	if (endMs === null || endMs <= startMs) return DEFAULT_DURATION_MS;
 	return endMs - startMs;
 }
@@ -405,12 +406,34 @@ export function nextOccurrence(event: EventInput, after: Date | string): EventOc
 	return null;
 }
 
+/** Browser agenda: all-day events occupy inclusive local calendar dates, not one hour. */
+export function expandAgendaRecurrence(event: EventInput, from: Date, to: Date): EventOccurrence[] {
+	if (!event.allDay) return expandRecurrence(event, from, to);
+	if (from.getTime() > to.getTime()) return [];
+	// Widen candidate selection for UTC dates, legacy local instants and ongoing spans.
+	const start = getCalendarDayBounds(from).start;
+	start.setTime(start.getTime() - durationMsFor(event, Date.parse(event.startsAt)));
+	return expandRecurrence(event, start, getCalendarDayBounds(to).end).filter((occurrence) => {
+		const first = eventDateForDisplay(occurrence.startsAt, true);
+		first.setHours(0, 0, 0, 0);
+		const endExclusive = eventDateForDisplay(occurrence.endsAt ?? occurrence.startsAt, true);
+		endExclusive.setHours(0, 0, 0, 0);
+		endExclusive.setDate(endExclusive.getDate() + 1);
+		return first.getTime() <= to.getTime() && endExclusive.getTime() > from.getTime();
+	});
+}
+
 const WEEKDAY_FORMATTER = new Intl.DateTimeFormat('de-DE', { weekday: 'short' });
+const ALL_DAY_WEEKDAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
+	weekday: 'short',
+	timeZone: 'UTC',
+});
 const DATE_FORMATTER = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' });
 const DATE_FULL_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 	day: '2-digit',
 	month: '2-digit',
 	year: 'numeric',
+	timeZone: 'UTC',
 });
 const TIME_FORMATTER = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
 
@@ -425,7 +448,9 @@ function isSameDay(a: Date, b: Date): boolean {
 export function formatEventTimeRange(occurrence: EventOccurrence): string {
 	const start = new Date(occurrence.startsAt);
 	if (occurrence.allDay) {
-		return `${WEEKDAY_FORMATTER.format(start)} ${DATE_FULL_FORMATTER.format(start)} · ganztägig`;
+		const display = eventDateForDisplay(occurrence.startsAt, true);
+		const date = new Date(Date.UTC(display.getFullYear(), display.getMonth(), display.getDate()));
+		return `${ALL_DAY_WEEKDAY_FORMATTER.format(date)} ${DATE_FULL_FORMATTER.format(date)} · ganztägig`;
 	}
 	const end = occurrence.endsAt ? new Date(occurrence.endsAt) : null;
 	const startLabel = `${WEEKDAY_FORMATTER.format(start)} ${DATE_FORMATTER.format(start)} ${TIME_FORMATTER.format(
@@ -439,9 +464,44 @@ export function formatEventTimeRange(occurrence: EventOccurrence): string {
 }
 
 export function getMonthBounds(reference: Date): { start: Date; end: Date } {
-	const start = new Date(reference.getFullYear(), reference.getMonth(), 1);
-	const end = new Date(reference.getFullYear(), reference.getMonth() + 1, 1, 0, 0, 0, -1);
+	const year = reference.getFullYear();
+	const month = reference.getMonth();
+	// Include local timed events and UTC calendar dates at either month boundary.
+	const start = new Date(Math.min(new Date(year, month, 1).getTime(), Date.UTC(year, month, 1)));
+	const end = new Date(
+		Math.max(new Date(year, month + 1, 1).getTime(), Date.UTC(year, month + 1, 1)) - 1,
+	);
 	return { start, end };
+}
+
+/** Query both UTC date values and device-local legacy instants for a calendar day. */
+export function getCalendarDayBounds(reference: Date): { start: Date; end: Date } {
+	const year = reference.getFullYear();
+	const month = reference.getMonth();
+	const day = reference.getDate();
+	return {
+		start: new Date(Math.min(new Date(year, month, day).getTime(), Date.UTC(year, month, day))),
+		end: new Date(
+			Math.max(new Date(year, month, day + 1).getTime(), Date.UTC(year, month, day + 1)) - 1,
+		),
+	};
+}
+
+/**
+ * Exact UTC midnight is canonical, including indistinguishable legacy midnight values.
+ * Other all-day timestamps retain the old device-local display. The original timezone
+ * was never stored, so it cannot be recovered or made invariant across viewers.
+ */
+export function eventDateForDisplay(iso: string, allDay: boolean): Date {
+	const date = new Date(iso);
+	const utcMidnight =
+		date.getUTCHours() === 0 &&
+		date.getUTCMinutes() === 0 &&
+		date.getUTCSeconds() === 0 &&
+		date.getUTCMilliseconds() === 0;
+	return allDay && utcMidnight
+		? new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+		: date;
 }
 
 /**
@@ -471,6 +531,11 @@ type EventFormValidation =
 	| { ok: true; startsAt: Date; endsAt: Date | null }
 	| { ok: false; error: string };
 
+export function normalizeEventDateTime(value: string, allDay: boolean): string {
+	if (!allDay || value.length < 10) return value;
+	return `${value.slice(0, 10)}T00:00`;
+}
+
 /**
  * The three checks both event modals ran before submitting, in the order they
  * report them. Pure, so the rules can be tested without rendering a dialog.
@@ -479,14 +544,44 @@ export function validateEventForm(input: {
 	title: string;
 	startsAt: string;
 	endsAt: string;
+	allDay?: boolean;
+	original?: Pick<EventInput, 'startsAt' | 'endsAt' | 'allDay'>;
 }): EventFormValidation {
 	if (input.title.trim().length === 0) return { ok: false, error: 'Titel fehlt.' };
 	if (!input.startsAt) return { ok: false, error: 'Startzeitpunkt fehlt.' };
 
-	const startsAt = new Date(input.startsAt);
-	const endsAt = input.endsAt ? new Date(input.endsAt) : null;
+	const allDay = input.allDay === true;
+	const startsAt = new Date(
+		`${normalizeEventDateTime(input.startsAt, allDay)}${allDay ? 'Z' : ''}`,
+	);
+	const endsAt = input.endsAt
+		? new Date(`${normalizeEventDateTime(input.endsAt, allDay)}${allDay ? 'Z' : ''}`)
+		: null;
 	if (endsAt && endsAt.getTime() < startsAt.getTime()) {
 		return { ok: false, error: 'Endzeit liegt vor Startzeit.' };
+	}
+	const original = input.original;
+	if (
+		allDay &&
+		original?.allDay &&
+		isSameDay(
+			eventDateForDisplay(startsAt.toISOString(), true),
+			eventDateForDisplay(original.startsAt, true),
+		) &&
+		(endsAt && original.endsAt
+			? isSameDay(
+					eventDateForDisplay(endsAt.toISOString(), true),
+					eventDateForDisplay(original.endsAt, true),
+				)
+			: endsAt === null && original.endsAt === null)
+	) {
+		// Preserve both legacy instants when only title/metadata changed. An explicit
+		// date edit writes the pair canonically, avoiding mixed old/new end ordering.
+		return {
+			ok: true,
+			startsAt: new Date(original.startsAt),
+			endsAt: original.endsAt ? new Date(original.endsAt) : null,
+		};
 	}
 	return { ok: true, startsAt, endsAt };
 }

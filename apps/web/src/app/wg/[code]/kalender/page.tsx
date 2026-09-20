@@ -29,7 +29,9 @@ import {
 import {
 	type EventInput,
 	type EventOccurrence,
+	expandAgendaRecurrence,
 	expandRecurrence,
+	getCalendarDayBounds,
 	getMonthBounds,
 } from '@/features/events/events';
 import { haptic } from '@/shared/lib/haptics';
@@ -149,9 +151,11 @@ export default function KalenderPage() {
 			const upcomingFrom = new Date();
 			const upcomingTo = new Date(upcomingFrom.getTime() + UPCOMING_DAYS * MS_PER_DAY);
 			const fromParam = new Date(
-				Math.min(bounds.start.getTime(), upcomingFrom.getTime()),
+				Math.min(bounds.start.getTime(), getCalendarDayBounds(upcomingFrom).start.getTime()),
 			).toISOString();
-			const toParam = new Date(Math.max(bounds.end.getTime(), upcomingTo.getTime())).toISOString();
+			const toParam = new Date(
+				Math.max(bounds.end.getTime(), getCalendarDayBounds(upcomingTo).end.getTime()),
+			).toISOString();
 
 			const [eventsRes, choreRes] = await Promise.all([
 				apiFetch<{ events: CalendarEvent[] }>(
@@ -218,7 +222,7 @@ export default function KalenderPage() {
 	const upcomingOccurrences = useMemo<EventOccurrence[]>(() => {
 		const from = new Date();
 		const to = new Date(from.getTime() + UPCOMING_DAYS * MS_PER_DAY);
-		const all = events.flatMap((event) => expandRecurrence(eventToInput(event), from, to));
+		const all = events.flatMap((event) => expandAgendaRecurrence(eventToInput(event), from, to));
 		return all.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 	}, [events]);
 
