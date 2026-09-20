@@ -10,7 +10,6 @@ export function resolveConnectionString(): string {
 
 export function resolveTransactionConnectionString(): string {
 	const url =
-		process.env.DATABASE_MIGRATION_URL ||
 		process.env.POSTGRES_URL_NON_POOLING ||
 		process.env.DATABASE_URL_UNPOOLED ||
 		resolveConnectionString();

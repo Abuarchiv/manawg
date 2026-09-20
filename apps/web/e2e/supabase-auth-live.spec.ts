@@ -54,7 +54,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 		await expect(page).toHaveURL(hostedUrl('/'));
 		await expect(page.getByRole('link', { name: 'WG erstellen', exact: true })).toBeVisible();
 
-		await page.getByRole('navigation').getByRole('link', { name: 'Ausgaben', exact: true }).click();
+		await page.getByRole('navigation').getByRole('link', { name: 'Finanzen', exact: true }).click();
 		await expect(page).toHaveURL(hostedUrl('/entdecken/ausgaben'));
 		await expect(
 			page.getByRole('heading', { name: 'Ausgaben', exact: true, level: 1 }),
@@ -63,12 +63,16 @@ test.describe('hosted Supabase auth release coverage', () => {
 
 	test('the guest auth screen exposes only the supported Supabase choices', async ({ page }) => {
 		await page.goto('/neu?action=create');
-		await expect(page.getByRole('heading', { name: 'Mit deinem Account anmelden' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Anmelden', exact: true })).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: 'Mit Google anmelden', exact: true }),
 		).toBeVisible();
 		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
 		await expect(page.getByLabel('Passwort')).toBeVisible();
+		await expect(page.getByRole('button', { name: /Apple|Facebook/i })).toHaveCount(0);
+		await expect(page.locator('input[name="name"], input[name="code"]')).toHaveCount(0);
+		await expect(page.getByText(/lokal|Name-Code|Namencode/i)).toHaveCount(0);
+		await page.getByRole('tab', { name: 'Telefon / SMS', exact: true }).click();
 		await expect(page.getByLabel('Telefonnummer')).toBeVisible();
 		await expect(page.getByRole('button', { name: /Apple|Facebook/i })).toHaveCount(0);
 		await expect(page.locator('input[name="name"], input[name="code"]')).toHaveCount(0);
@@ -84,7 +88,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 		const next = new URL(page.url()).searchParams.get('next');
 		expect(next).toBe(`/wg/${privateCode}/ausgaben`);
 
-		await expect(page.getByRole('heading', { name: 'Mit deinem Account anmelden' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Anmelden', exact: true })).toBeVisible();
 		await expect(page.getByText('WG-Einladung')).toHaveCount(0);
 
 		const apiResult = await page.evaluate(async (code) => {
@@ -112,7 +116,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 		});
 
 		await page.getByRole('button', { name: 'Mit anderem Konto anmelden', exact: true }).click();
-		await expect(page.getByRole('heading', { name: 'Mit deinem Account anmelden' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Anmelden', exact: true })).toBeVisible();
 		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
 	});
 
@@ -128,7 +132,9 @@ test.describe('hosted Supabase auth release coverage', () => {
 		});
 
 		await page.goto('/auth/reset');
-		await expect(page.getByRole('alert')).toContainText('ungültig oder abgelaufen');
+		await expect(page.getByRole('main').getByRole('alert')).toContainText(
+			'ungültig oder abgelaufen',
+		);
 		await expect(page.getByLabel('Neues Passwort')).toHaveCount(0);
 		await expect(page.getByRole('button', { name: 'Passwort speichern' })).toHaveCount(0);
 	});
@@ -155,11 +161,13 @@ test.describe('hosted Supabase auth release coverage', () => {
 			timeout: 20_000,
 		});
 		await expect(page.getByRole('button', { name: 'WG erstellen', exact: true })).toHaveCount(0);
-		await expect(page.getByRole('button', { name: 'Beitreten', exact: true })).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'WG beitreten', exact: true })).toHaveCount(0);
 		expect(mutationRequests).toEqual([]);
 
 		await page.getByRole('button', { name: 'WG-Code prüfen', exact: true }).click();
-		await expect(page.getByRole('heading', { name: 'Namen eintragen' })).toBeVisible();
+		await expect(
+			page.getByRole('heading', { name: 'Dein Name in der WG', exact: true }),
+		).toBeVisible();
 		expect(mutationRequests).toEqual([]);
 
 		await page.getByLabel('Dein Anzeigename').fill(memberDisplayName);
@@ -169,10 +177,11 @@ test.describe('hosted Supabase auth release coverage', () => {
 					response.request().method() === 'POST' &&
 					new URL(response.url()).pathname === `/api/wg/${memberWgCode}/members`,
 			),
-			page.getByRole('button', { name: 'Beitreten', exact: true }).click(),
+			page.getByRole('button', { name: 'WG beitreten', exact: true }).click(),
 		]);
-		expect(joinResponse.status()).toBe(409);
-		expect(await joinResponse.json()).toMatchObject({ code: 'already_joined' });
+		const joinBody = await joinResponse.json();
+		expect(joinResponse.status(), `Join error code: ${joinBody.code ?? 'none'}`).toBe(409);
+		expect(joinBody).toMatchObject({ code: 'already_joined' });
 		await expect(page).toHaveURL(hostedUrl(`/wg/${memberWgCode}`));
 	});
 });
@@ -193,7 +202,9 @@ test.describe('hosted password-reset UI smoke', () => {
 		page,
 	}) => {
 		await page.goto('/auth/reset');
-		await expect(page.getByRole('alert')).toContainText('ungültig oder abgelaufen');
+		await expect(page.getByRole('main').getByRole('alert')).toContainText(
+			'ungültig oder abgelaufen',
+		);
 		await expect(page.getByLabel('Neues Passwort')).toHaveCount(0);
 	});
 });

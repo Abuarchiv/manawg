@@ -194,7 +194,12 @@ function hashMigration(tag) {
 
 async function tableExists(client, schema, table) {
 	const { rows } = await client.query(
-		'select 1 from information_schema.tables where table_schema = $1 and table_name = $2',
+		`select 1
+		 from pg_catalog.pg_class as c
+		 join pg_catalog.pg_namespace as n on n.oid = c.relnamespace
+		 where n.nspname = $1
+		   and c.relname = $2
+		   and c.relkind in ('r', 'p')`,
 		[schema, table],
 	);
 	return rows.length > 0;

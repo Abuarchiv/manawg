@@ -77,17 +77,25 @@ export function MemberDeactivateDialog({
 		let cancelled = false;
 		setLoading(true);
 		setLoadError(null);
-		void apiFetch<OpenBalancesResponse>(`/api/wg/${encodedShareCode}/members/${member.id}`, {
-			memberId: viewerMemberId,
-		}).then((res) => {
-			if (cancelled) return;
-			if (res.ok) {
-				setOpenBalances(res.data.openBalances);
-			} else {
-				setLoadError('Offene Salden konnten nicht geladen werden.');
+		async function loadOpenBalances(): Promise<void> {
+			try {
+				const res = await apiFetch<OpenBalancesResponse>(
+					`/api/wg/${encodedShareCode}/members/${member.id}`,
+					{ memberId: viewerMemberId },
+				);
+				if (cancelled) return;
+				if (res.ok) {
+					setOpenBalances(res.data.openBalances);
+				} else {
+					setLoadError('Offene Salden konnten nicht geladen werden.');
+				}
+			} catch {
+				if (!cancelled) setLoadError('Offene Salden konnten nicht geladen werden.');
+			} finally {
+				if (!cancelled) setLoading(false);
 			}
-			setLoading(false);
-		});
+		}
+		void loadOpenBalances();
 		return () => {
 			cancelled = true;
 		};
