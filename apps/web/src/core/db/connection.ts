@@ -5,7 +5,7 @@ export function resolveConnectionString(): string {
 			'POSTGRES_URL (or DATABASE_URL) is not set. Set a PostgreSQL connection string for the environment.',
 		);
 	}
-	return url;
+	return secureRuntimeConnectionString(url, 'database connection');
 }
 
 export function resolveTransactionConnectionString(): string {
@@ -13,11 +13,26 @@ export function resolveTransactionConnectionString(): string {
 		process.env.POSTGRES_URL_NON_POOLING ||
 		process.env.DATABASE_URL_UNPOOLED ||
 		resolveConnectionString();
-	validateDatabaseUrl(url, 'transaction database connection');
-	return url;
+	return secureRuntimeConnectionString(url, 'transaction database connection');
 }
 
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', 'host.docker.internal']);
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]', 'host.docker.internal']);
+
+function secureRuntimeConnectionString(url: string, label: string): string {
+	let parsed: URL;
+	try {
+		parsed = new URL(url);
+	} catch {
+		throw new Error(`${label} is not a valid URL.`);
+	}
+	const host = parsed.hostname.toLowerCase();
+	if (!LOCAL_HOSTS.has(host) && !host.endsWith('.local')) {
+		parsed.searchParams.set('sslmode', 'verify-full');
+	}
+	const secured = parsed.href;
+	validateDatabaseUrl(secured, label);
+	return secured;
+}
 
 export function validateDatabaseUrl(url: string, label: string): void {
 	let parsed: URL;
@@ -25,6 +40,12 @@ export function validateDatabaseUrl(url: string, label: string): void {
 		parsed = new URL(url);
 	} catch {
 		throw new Error(`${label} is not a valid URL.`);
+	}
+	if (!['postgres:', 'postgresql:'].includes(parsed.protocol) || !parsed.hostname) {
+		throw new Error(`${label} must be a PostgreSQL URL with a host.`);
+	}
+	if (parsed.searchParams.has('host')) {
+		throw new Error(`${label} must not override its host in query parameters.`);
 	}
 	// Drizzle binds BEGIN/COMMIT to one node-postgres client, which supports
 	// Supavisor transaction pooling. Migration/session locks use the separate
