@@ -950,6 +950,8 @@ function safeFailureReason(error) {
 	if (/already exists|duplicate key/i.test(text)) return 'duplicate-object';
 	const permission = text.match(/permission denied for (schema|table|sequence|function)/i);
 	if (permission) return `permission-${permission[1].toLowerCase()}`;
+	const owner = text.match(/must be owner of (schema|table|sequence|function|relation)/i);
+	if (owner) return `owner-${owner[1].toLowerCase()}`;
 	if (/permission denied|insufficient privilege/i.test(text)) return 'permission';
 	return 'unclassified';
 }
