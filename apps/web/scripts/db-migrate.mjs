@@ -643,7 +643,7 @@ export async function assertMigrationLedgerPrefix(client, { requireTable = true 
 				legacySeen !== Number(legacy.position)
 			) {
 				throw new Error(
-					`Database check failed: unexpected migration row ${row.id} outside the canonical ledger.`,
+					`Database check failed: unexpected migration row ${row.id} outside the canonical ledger (hash ${hash}, created_at ${createdAt}).`,
 				);
 			}
 			legacySeen += 1;

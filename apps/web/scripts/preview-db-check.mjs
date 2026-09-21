@@ -23,6 +23,10 @@ if (args.length > 1 || (args.length === 1 && args[0] !== '--check')) {
 		const sqlState = output.match(/\[code=([A-Z0-9_]{5,})\]/)?.[1] ?? 'unknown';
 		const stage = output.match(/\[stage=([a-z-]+)\]/)?.[1] ?? 'unknown';
 		const reason = output.match(/\[reason=([a-z-]+)\]/)?.[1] ?? 'unknown';
+		const ledgerMatch = output.match(
+			/unexpected migration row (\d+) outside the canonical ledger \(hash ([a-f0-9]{64}), created_at (\d+)\)/i,
+		);
+		const ledger = ledgerMatch ? `${ledgerMatch[1]}:${ledgerMatch[2]}:${ledgerMatch[3]}` : 'none';
 		const failureClass = /^28/.test(sqlState)
 			? 'authentication'
 			: sqlState === '42501'
@@ -47,7 +51,7 @@ if (args.length > 1 || (args.length === 1 && args[0] !== '--check')) {
 												? 'schema'
 												: 'database';
 		console.error(
-			`[preview-db] ${phase} failed (class=${failureClass}, code=${sqlState}, stage=${stage}, reason=${reason}, exit=${child.status ?? 'none'}, signal=${child.signal ?? 'none'}).`,
+			`[preview-db] ${phase} failed (class=${failureClass}, code=${sqlState}, stage=${stage}, reason=${reason}, ledger=${ledger}, exit=${child.status ?? 'none'}, signal=${child.signal ?? 'none'}).`,
 		);
 		process.exitCode = 1;
 	} else {

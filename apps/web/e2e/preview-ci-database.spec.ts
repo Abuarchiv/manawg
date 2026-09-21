@@ -61,7 +61,7 @@ test('Preview wrapper fails closed without exposing child credentials or error s
 	expect(child.status).toBe(1);
 	expect(child.stdout).toBe('');
 	expect(child.stderr.trim()).toBe(
-		'[preview-db] migration failed (class=configuration, code=unknown, stage=connection-config, reason=unclassified, exit=1, signal=none).',
+		'[preview-db] migration failed (class=configuration, code=unknown, stage=connection-config, reason=unclassified, ledger=none, exit=1, signal=none).',
 	);
 	expect(child.stderr).not.toContain(secret);
 });
