@@ -118,79 +118,89 @@ export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) =>
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
 
-	const update: {
-		pushOptIn?: boolean;
-		notifyAnnouncements?: boolean;
-		notifyChores?: boolean;
-		notifyExpenses?: boolean;
-		notifyShopping?: boolean;
-		notifyInventory?: boolean;
-		notifyReminders?: boolean;
-		notifyChat?: boolean;
-		notifyEvents?: boolean;
-		quietStartHour?: number | null;
-		quietEndHour?: number | null;
-	} = {};
-	if (typeof parsed.data.pushOptIn === 'boolean') {
-		update.pushOptIn = parsed.data.pushOptIn;
-	}
-	if (typeof parsed.data.notifyAnnouncements === 'boolean') {
-		update.notifyAnnouncements = parsed.data.notifyAnnouncements;
-	}
-	if (typeof parsed.data.notifyChores === 'boolean') {
-		update.notifyChores = parsed.data.notifyChores;
-	}
-	if (typeof parsed.data.notifyExpenses === 'boolean') {
-		update.notifyExpenses = parsed.data.notifyExpenses;
-	}
-	if (typeof parsed.data.notifyShopping === 'boolean') {
-		update.notifyShopping = parsed.data.notifyShopping;
-	}
-	if (typeof parsed.data.notifyInventory === 'boolean') {
-		update.notifyInventory = parsed.data.notifyInventory;
-	}
-	if (typeof parsed.data.notifyReminders === 'boolean') {
-		update.notifyReminders = parsed.data.notifyReminders;
-	}
-	if (typeof parsed.data.notifyChat === 'boolean') {
-		update.notifyChat = parsed.data.notifyChat;
-	}
-	if (typeof parsed.data.notifyEvents === 'boolean') {
-		update.notifyEvents = parsed.data.notifyEvents;
-	}
-	if (parsed.data.quietStartHour !== undefined) {
-		update.quietStartHour = parsed.data.quietStartHour;
-	}
-	if (parsed.data.quietEndHour !== undefined) {
-		update.quietEndHour = parsed.data.quietEndHour;
-	}
-	const changedFields = Object.keys(update);
-	if (changedFields.length === 0) return NextResponse.json({ ok: true });
+	return withIdempotentJsonResponse(
+		req,
+		`notification-patch:${wg.id}:${auth.member.memberId}`,
+		async () => {
+			const update: {
+				pushOptIn?: boolean;
+				notifyAnnouncements?: boolean;
+				notifyChores?: boolean;
+				notifyExpenses?: boolean;
+				notifyShopping?: boolean;
+				notifyInventory?: boolean;
+				notifyReminders?: boolean;
+				notifyChat?: boolean;
+				notifyEvents?: boolean;
+				quietStartHour?: number | null;
+				quietEndHour?: number | null;
+			} = {};
+			if (typeof parsed.data.pushOptIn === 'boolean') {
+				update.pushOptIn = parsed.data.pushOptIn;
+			}
+			if (typeof parsed.data.notifyAnnouncements === 'boolean') {
+				update.notifyAnnouncements = parsed.data.notifyAnnouncements;
+			}
+			if (typeof parsed.data.notifyChores === 'boolean') {
+				update.notifyChores = parsed.data.notifyChores;
+			}
+			if (typeof parsed.data.notifyExpenses === 'boolean') {
+				update.notifyExpenses = parsed.data.notifyExpenses;
+			}
+			if (typeof parsed.data.notifyShopping === 'boolean') {
+				update.notifyShopping = parsed.data.notifyShopping;
+			}
+			if (typeof parsed.data.notifyInventory === 'boolean') {
+				update.notifyInventory = parsed.data.notifyInventory;
+			}
+			if (typeof parsed.data.notifyReminders === 'boolean') {
+				update.notifyReminders = parsed.data.notifyReminders;
+			}
+			if (typeof parsed.data.notifyChat === 'boolean') {
+				update.notifyChat = parsed.data.notifyChat;
+			}
+			if (typeof parsed.data.notifyEvents === 'boolean') {
+				update.notifyEvents = parsed.data.notifyEvents;
+			}
+			if (parsed.data.quietStartHour !== undefined) {
+				update.quietStartHour = parsed.data.quietStartHour;
+			}
+			if (parsed.data.quietEndHour !== undefined) {
+				update.quietEndHour = parsed.data.quietEndHour;
+			}
+			const changedFields = Object.keys(update);
+			if (changedFields.length === 0) return NextResponse.json({ ok: true });
 
-	const [updatedMember] = await db
-		.update(wgMembers)
-		.set(update)
-		.where(and(eq(wgMembers.id, auth.member.memberId), eq(wgMembers.wgId, wg.id)))
-		.returning({ id: wgMembers.id });
-	if (!updatedMember) return notFound('member_not_found');
-	if (update.pushOptIn === false) {
-		await db.delete(pushSubscriptions).where(eq(pushSubscriptions.memberId, auth.member.memberId));
-	}
-	await recordAuditEvent({
-		wgId: wg.id,
-		memberId: auth.member.memberId,
-		eventType: 'notification.settings.updated',
-		entityType: 'member',
-		entityId: auth.member.memberId,
-		summary: `${auth.member.name} hat Benachrichtigungseinstellungen geändert.`,
-		metadata: {
-			notificationFields: changedFields.map((field) => NOTIFICATION_FIELD_LABELS[field] ?? field),
-			pushOptIn: typeof update.pushOptIn === 'boolean' ? update.pushOptIn : undefined,
-			quietStartHour: update.quietStartHour,
-			quietEndHour: update.quietEndHour,
+			const [updatedMember] = await db
+				.update(wgMembers)
+				.set(update)
+				.where(and(eq(wgMembers.id, auth.member.memberId), eq(wgMembers.wgId, wg.id)))
+				.returning({ id: wgMembers.id });
+			if (!updatedMember) return notFound('member_not_found');
+			if (update.pushOptIn === false) {
+				await db
+					.delete(pushSubscriptions)
+					.where(eq(pushSubscriptions.memberId, auth.member.memberId));
+			}
+			await recordAuditEvent({
+				wgId: wg.id,
+				memberId: auth.member.memberId,
+				eventType: 'notification.settings.updated',
+				entityType: 'member',
+				entityId: auth.member.memberId,
+				summary: `${auth.member.name} hat Benachrichtigungseinstellungen geändert.`,
+				metadata: {
+					notificationFields: changedFields.map(
+						(field) => NOTIFICATION_FIELD_LABELS[field] ?? field,
+					),
+					pushOptIn: typeof update.pushOptIn === 'boolean' ? update.pushOptIn : undefined,
+					quietStartHour: update.quietStartHour,
+					quietEndHour: update.quietEndHour,
+				},
+			});
+			return NextResponse.json({ ok: true });
 		},
-	});
-	return NextResponse.json({ ok: true });
+	);
 });
 
 export const POST = withWgRoute('notifications POST', async (req, { code }) => {
