@@ -212,7 +212,7 @@ export function RecurringExpensesSection({
 												<ItemActions className="shrink-0">
 													<DropdownMenu>
 														<DropdownMenuTrigger
-															render={<Button variant="ghost" size="icon" className="size-9" />}
+															render={<Button variant="ghost" size="icon" className="size-11" />}
 															disabled={pending}
 															aria-label={`Fixkosten-Aktionen: ${item.description}`}
 														>

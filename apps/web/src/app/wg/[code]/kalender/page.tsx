@@ -433,6 +433,7 @@ export default function KalenderPage() {
 							onClick={handleJumpToToday}
 							aria-label="Zum aktuellen Monat springen"
 							title="Heute"
+							className="min-h-11 min-w-11"
 						>
 							<RotateCcw aria-hidden />
 						</Button>

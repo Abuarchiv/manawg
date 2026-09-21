@@ -50,6 +50,7 @@ export function PinnwandHeader({
 						size="icon"
 						nativeButton={false}
 						render={<Link href={`${wgBaseHref}/chat`} aria-label="Chat öffnen" />}
+						className="min-h-11 min-w-11 shrink-0"
 					>
 						<MessageCircle aria-hidden />
 					</Button>
@@ -57,7 +58,7 @@ export function PinnwandHeader({
 						onClick={onToggleComposer}
 						disabled={composerBusy || loading}
 						variant={composerOpen ? 'outline' : 'default'}
-						className="w-9 shrink-0 px-0 sm:w-auto sm:px-3"
+						className="h-11 w-11 shrink-0 p-0 sm:h-auto sm:w-auto sm:px-3"
 						aria-expanded={composerOpen}
 						aria-controls="announcement-composer"
 						aria-label={
