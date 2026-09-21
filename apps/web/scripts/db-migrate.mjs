@@ -954,9 +954,11 @@ async function main() {
 			return;
 		}
 
-		currentStage = 'inspect';
+		currentStage = 'inspect-schema';
 		const hasSchema = await tableExists(client, 'public', SENTINEL_TABLE);
+		currentStage = 'inspect-ledger-table';
 		const hasMigrationLedger = await tableExists(client, MIGRATIONS_SCHEMA, MIGRATIONS_TABLE);
+		currentStage = 'inspect-ledger';
 		const ledger = hasMigrationLedger ? await assertMigrationLedgerPrefix(client) : null;
 		if (ledger && ledger.appliedCount === ledger.entries.length) {
 			currentStage = 'verify';
@@ -964,7 +966,9 @@ async function main() {
 			console.error('[migrate] Verified up to date.');
 			return;
 		}
+		currentStage = 'inspect-baseline';
 		const baselineHash = hashMigration(BASELINE_TAG);
+		currentStage = 'inspect-baseline-ledger';
 		const needsAdoption = hasSchema && !(await ledgerHasBaseline(client, baselineHash));
 
 		if (needsAdoption) {
