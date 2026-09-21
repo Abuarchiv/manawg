@@ -21,6 +21,7 @@ if (args.length > 1 || (args.length === 1 && args[0] !== '--check')) {
 	if (child.error || child.signal || child.status !== 0) {
 		const output = `${child.error?.message ?? ''}\n${child.stderr?.toString() ?? ''}`;
 		const sqlState = output.match(/\[code=([A-Z0-9_]{5,})\]/)?.[1] ?? 'unknown';
+		const stage = output.match(/\[stage=([a-z-]+)\]/)?.[1] ?? 'unknown';
 		const failureClass = /^28/.test(sqlState)
 			? 'authentication'
 			: sqlState === '42501'
@@ -45,7 +46,7 @@ if (args.length > 1 || (args.length === 1 && args[0] !== '--check')) {
 												? 'schema'
 												: 'database';
 		console.error(
-			`[preview-db] ${phase} failed (class=${failureClass}, code=${sqlState}, exit=${child.status ?? 'none'}, signal=${child.signal ?? 'none'}).`,
+			`[preview-db] ${phase} failed (class=${failureClass}, code=${sqlState}, stage=${stage}, exit=${child.status ?? 'none'}, signal=${child.signal ?? 'none'}).`,
 		);
 		process.exitCode = 1;
 	} else {

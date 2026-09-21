@@ -68,6 +68,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = path.join(scriptDir, '..', 'drizzle');
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', 'host.docker.internal']);
+let currentStage = 'startup';
 
 export function validateDatabaseUrl(url, label) {
 	let parsed;
@@ -931,6 +932,7 @@ async function adoptBaseline(client) {
 }
 
 async function main() {
+	currentStage = 'connection-config';
 	const sourceConnection = resolveConnectionString();
 	validateSupabaseDirectUrl(sourceConnection, 'Database migration connection');
 	const connectionString =
@@ -938,21 +940,26 @@ async function main() {
 			? previewSessionDatabaseUrl(sourceConnection)
 			: sourceConnection;
 	const pool = new pg.Pool({ connectionString, max: 1 });
+	currentStage = 'connect';
 	const client = await pool.connect();
 	let locked = false;
 	try {
+		currentStage = 'lock';
 		await client.query('select pg_advisory_lock(hashtext($1))', [MIGRATION_LOCK]);
 		locked = true;
 		if (process.argv.includes('--check')) {
+			currentStage = 'verify';
 			await verifyDatabase(client);
 			console.error('[migrate] Database check passed.');
 			return;
 		}
 
+		currentStage = 'inspect';
 		const hasSchema = await tableExists(client, 'public', SENTINEL_TABLE);
 		const hasMigrationLedger = await tableExists(client, MIGRATIONS_SCHEMA, MIGRATIONS_TABLE);
 		const ledger = hasMigrationLedger ? await assertMigrationLedgerPrefix(client) : null;
 		if (ledger && ledger.appliedCount === ledger.entries.length) {
+			currentStage = 'verify';
 			await verifyDatabase(client);
 			console.error('[migrate] Verified up to date.');
 			return;
@@ -961,20 +968,27 @@ async function main() {
 		const needsAdoption = hasSchema && !(await ledgerHasBaseline(client, baselineHash));
 
 		if (needsAdoption) {
+			currentStage = 'adoption-verify';
 			await assertBaselineSchema(client);
 			console.error(
 				`[migrate] Existing schema without this baseline in the ledger — recording ${BASELINE_TAG} as applied.`,
 			);
+			currentStage = 'adopt';
 			await adoptBaseline(client);
 		}
 
+		currentStage = 'ledger';
 		if (hasMigrationLedger || needsAdoption) await assertMigrationLedgerPrefix(client);
 		const db = drizzle(client);
+		currentStage = 'migrate';
 		await migrate(db, { migrationsFolder });
 		console.error('[migrate] Up to date.');
 	} finally {
 		try {
-			if (locked) await client.query('select pg_advisory_unlock(hashtext($1))', [MIGRATION_LOCK]);
+			if (locked) {
+				currentStage = 'unlock';
+				await client.query('select pg_advisory_unlock(hashtext($1))', [MIGRATION_LOCK]);
+			}
 		} finally {
 			client.release();
 			await pool.end();
@@ -984,14 +998,18 @@ async function main() {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	main().catch((err) => {
+		const rawErrorCode =
+			err && typeof err === 'object'
+				? (err.code ?? (err.cause && typeof err.cause === 'object' ? err.cause.code : undefined))
+				: undefined;
 		const errorCode =
-			err &&
-			typeof err === 'object' &&
-			typeof err.code === 'string' &&
-			/^[A-Z0-9_]{5,}$/.test(err.code)
-				? ` [code=${err.code}]`
+			typeof rawErrorCode === 'string' && /^[A-Z0-9_]{5,}$/.test(rawErrorCode)
+				? ` [code=${rawErrorCode}]`
 				: '';
-		console.error(`[migrate] Failed${errorCode}:`, err instanceof Error ? err.message : err);
+		console.error(
+			`[migrate] Failed [stage=${currentStage}]${errorCode}:`,
+			err instanceof Error ? err.message : err,
+		);
 		process.exit(1);
 	});
 }
