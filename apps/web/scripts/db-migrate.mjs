@@ -986,8 +986,15 @@ async function main() {
 	} finally {
 		try {
 			if (locked) {
+				const previousStage = currentStage;
 				currentStage = 'unlock';
-				await client.query('select pg_advisory_unlock(hashtext($1))', [MIGRATION_LOCK]);
+				let unlockSucceeded = false;
+				try {
+					await client.query('select pg_advisory_unlock(hashtext($1))', [MIGRATION_LOCK]);
+					unlockSucceeded = true;
+				} finally {
+					if (unlockSucceeded) currentStage = previousStage;
+				}
 			}
 		} finally {
 			client.release();
