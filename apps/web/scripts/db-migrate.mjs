@@ -931,6 +931,22 @@ async function adoptBaseline(client) {
 	);
 }
 
+function safeFailureReason(error) {
+	const text = [error?.message, error?.cause?.message].filter(Boolean).join('\n');
+	if (/unexpected migration row/i.test(text)) return 'unexpected-migration-row';
+	if (/migration ledger is not a canonical prefix/i.test(text)) return 'non-canonical-ledger';
+	if (/timestamp mismatch/i.test(text)) return 'migration-timestamp';
+	if (/invalid migration (?:hash|timestamp)/i.test(text)) return 'invalid-ledger-value';
+	if (/duplicate migration/i.test(text)) return 'duplicate-migration';
+	if (/migration ledger is missing/i.test(text)) return 'missing-ledger';
+	if (/syntax error/i.test(text)) return 'sql-syntax';
+	if (/relation .* does not exist/i.test(text)) return 'missing-relation';
+	if (/column .* does not exist/i.test(text)) return 'missing-column';
+	if (/already exists|duplicate key/i.test(text)) return 'duplicate-object';
+	if (/permission denied|insufficient privilege/i.test(text)) return 'permission';
+	return 'unclassified';
+}
+
 async function main() {
 	currentStage = 'connection-config';
 	const sourceConnection = resolveConnectionString();
@@ -1017,8 +1033,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
 			typeof rawErrorCode === 'string' && /^[A-Z0-9_]{5,}$/.test(rawErrorCode)
 				? ` [code=${rawErrorCode}]`
 				: '';
+		const failureReason = safeFailureReason(err);
 		console.error(
-			`[migrate] Failed [stage=${currentStage}]${errorCode}:`,
+			`[migrate] Failed [stage=${currentStage}] [reason=${failureReason}]${errorCode}:`,
 			err instanceof Error ? err.message : err,
 		);
 		process.exit(1);
