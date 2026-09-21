@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import {
 	INVENTORY_CATEGORIES,
 	INVENTORY_CATEGORY_LABELS,
@@ -33,7 +34,7 @@ import {
 	type InventoryCategory,
 	type InventoryUnit,
 } from '@/features/inventory/inventory';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface InventoryAddModalProps {
 	open: boolean;
@@ -90,6 +91,7 @@ export function InventoryAddModal({
 	const [discardOpen, setDiscardOpen] = useState(false);
 	const [nameError, setNameError] = useState<string | null>(null);
 	const [serverError, setServerError] = useState<string | null>(null);
+	const createRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
 	useEffect(() => {
 		if (!open) return;
@@ -132,6 +134,20 @@ export function InventoryAddModal({
 			threshold,
 			category,
 		};
+		const fingerprint = JSON.stringify(body);
+		const pendingRequest = createRequestRef.current;
+		const idempotencyKey =
+			mode === 'create'
+				? pendingRequest?.fingerprint === fingerprint
+					? pendingRequest.key
+					: createOfflineIdempotencyKey()
+				: null;
+		if (mode === 'create' && !idempotencyKey) {
+			setSaving(false);
+			setServerError('Vorrat konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			return;
+		}
+		if (idempotencyKey) createRequestRef.current = { fingerprint, key: idempotencyKey };
 		const res =
 			mode === 'edit' && initial
 				? await apiFetch(
@@ -142,13 +158,24 @@ export function InventoryAddModal({
 						method: 'POST',
 						memberId,
 						memberToken,
+						headers: { 'Idempotency-Key': idempotencyKey as string },
 						body: JSON.stringify(body),
 					});
 		setSaving(false);
 		if (res.ok) {
+			if (mode === 'create') createRequestRef.current = null;
 			onSaved();
 			onClose();
+		} else if (
+			mode === 'create' &&
+			res.status > 0 &&
+			res.status < 500 &&
+			res.error !== 'name_invalid'
+		) {
+			createRequestRef.current = null;
+			setServerError('Speichern fehlgeschlagen. Bitte versuche es erneut.');
 		} else if (res.error === 'name_invalid') {
+			if (mode === 'create') createRequestRef.current = null;
 			setNameError('Bitte gib einen gültigen Namen ein.');
 		} else {
 			setServerError('Speichern fehlgeschlagen. Bitte versuche es erneut.');

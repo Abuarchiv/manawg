@@ -2,9 +2,9 @@ import { recordAuditEvent } from '@/core/audit';
 import { announcementReactions, db } from '@/core/db';
 import { badRequest, notFound, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
+import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import {
 	type NotificationDispatchWarning,
 	dispatchNotificationSafely,
@@ -49,87 +49,95 @@ export const POST = withWgRoute<{ id: string }>(
 				);
 				if (!limited.success) return tooMany();
 
-		const announcement = await findWgAnnouncement(wg.id, id);
-		if (!announcement) return notFound('announcement_not_found');
+				const announcement = await findWgAnnouncement(wg.id, id);
+				if (!announcement) return notFound('announcement_not_found');
 
-		const existingReaction = await db
-			.select({ id: announcementReactions.id })
-			.from(announcementReactions)
-			.where(
-				and(
-					eq(announcementReactions.announcementId, id),
-					eq(announcementReactions.memberId, auth.member.memberId),
-					eq(announcementReactions.reaction, parsed.data.reaction),
-				),
-			)
-			.limit(1);
-		const wantActive = parsed.data.active ?? !existingReaction[0];
-		if (wantActive && parsed.data.reaction === 'take' && announcement.status === 'resolved') {
-			return badRequest('reaction_invalid');
-		}
+				const existingReaction = await db
+					.select({ id: announcementReactions.id })
+					.from(announcementReactions)
+					.where(
+						and(
+							eq(announcementReactions.announcementId, id),
+							eq(announcementReactions.memberId, auth.member.memberId),
+							eq(announcementReactions.reaction, parsed.data.reaction),
+						),
+					)
+					.limit(1);
+				const wantActive = parsed.data.active ?? !existingReaction[0];
+				if (wantActive && parsed.data.reaction === 'take' && announcement.status === 'resolved') {
+					return badRequest('reaction_invalid');
+				}
 
-		if (!wantActive) {
-			const [deleted] = await db
-				.delete(announcementReactions)
-				.where(
-					and(
-						eq(announcementReactions.announcementId, id),
-						eq(announcementReactions.memberId, auth.member.memberId),
-						eq(announcementReactions.reaction, parsed.data.reaction),
-					),
-				)
-				.returning({ id: announcementReactions.id });
-			if (!deleted)
-				return NextResponse.json({ reaction: parsed.data.reaction, active: false, warning: null });
-			await recordAuditEvent({
-				wgId: wg.id,
-				memberId: auth.member.memberId,
-				eventType: 'announcement.reaction.removed',
-				entityType: 'announcement_reaction',
-				entityId: deleted.id,
-				summary: `${auth.member.name} hat eine Reaktion entfernt.`,
-				metadata: { announcementId: id, reaction: parsed.data.reaction },
-			});
-			return NextResponse.json({ reaction: parsed.data.reaction, active: false, warning: null });
-		}
+				if (!wantActive) {
+					const [deleted] = await db
+						.delete(announcementReactions)
+						.where(
+							and(
+								eq(announcementReactions.announcementId, id),
+								eq(announcementReactions.memberId, auth.member.memberId),
+								eq(announcementReactions.reaction, parsed.data.reaction),
+							),
+						)
+						.returning({ id: announcementReactions.id });
+					if (!deleted)
+						return NextResponse.json({
+							reaction: parsed.data.reaction,
+							active: false,
+							warning: null,
+						});
+					await recordAuditEvent({
+						wgId: wg.id,
+						memberId: auth.member.memberId,
+						eventType: 'announcement.reaction.removed',
+						entityType: 'announcement_reaction',
+						entityId: deleted.id,
+						summary: `${auth.member.name} hat eine Reaktion entfernt.`,
+						metadata: { announcementId: id, reaction: parsed.data.reaction },
+					});
+					return NextResponse.json({
+						reaction: parsed.data.reaction,
+						active: false,
+						warning: null,
+					});
+				}
 
-		const [reaction] = await db
-			.insert(announcementReactions)
-			.values({
-				announcementId: id,
-				memberId: auth.member.memberId,
-				reaction: parsed.data.reaction,
-			})
-			.onConflictDoNothing()
-			.returning({ id: announcementReactions.id });
-		if (!reaction) {
-			return NextResponse.json({ reaction: parsed.data.reaction, active: true, warning: null });
-		}
-		await recordAuditEvent({
-			wgId: wg.id,
-			memberId: auth.member.memberId,
-			eventType: 'announcement.reaction.added',
-			entityType: 'announcement_reaction',
-			entityId: reaction?.id ?? id,
-			summary: `${auth.member.name} hat mit ${parsed.data.reaction} reagiert.`,
-			metadata: { announcementId: id, reaction: parsed.data.reaction },
-		});
-		let warning: NotificationDispatchWarning = null;
-		if (announcement.authorMemberId !== auth.member.memberId) {
-			const delivery = await dispatchNotificationSafely({
-				wg,
-				event: 'announcement.reacted',
-				payload: {
-					announcementId: id,
-					title: announcement.content.slice(0, 120),
-					actorName: auth.member.name,
-				},
-				targetMemberIds: [announcement.authorMemberId],
-				excludeMemberId: auth.member.memberId,
-			});
-			warning = delivery.warning;
-		}
-			return NextResponse.json({ reaction: parsed.data.reaction, active: true, warning });
+				const [reaction] = await db
+					.insert(announcementReactions)
+					.values({
+						announcementId: id,
+						memberId: auth.member.memberId,
+						reaction: parsed.data.reaction,
+					})
+					.onConflictDoNothing()
+					.returning({ id: announcementReactions.id });
+				if (!reaction) {
+					return NextResponse.json({ reaction: parsed.data.reaction, active: true, warning: null });
+				}
+				await recordAuditEvent({
+					wgId: wg.id,
+					memberId: auth.member.memberId,
+					eventType: 'announcement.reaction.added',
+					entityType: 'announcement_reaction',
+					entityId: reaction?.id ?? id,
+					summary: `${auth.member.name} hat mit ${parsed.data.reaction} reagiert.`,
+					metadata: { announcementId: id, reaction: parsed.data.reaction },
+				});
+				let warning: NotificationDispatchWarning = null;
+				if (announcement.authorMemberId !== auth.member.memberId) {
+					const delivery = await dispatchNotificationSafely({
+						wg,
+						event: 'announcement.reacted',
+						payload: {
+							announcementId: id,
+							title: announcement.content.slice(0, 120),
+							actorName: auth.member.name,
+						},
+						targetMemberIds: [announcement.authorMemberId],
+						excludeMemberId: auth.member.memberId,
+					});
+					warning = delivery.warning;
+				}
+				return NextResponse.json({ reaction: parsed.data.reaction, active: true, warning });
 			},
 		);
 	},

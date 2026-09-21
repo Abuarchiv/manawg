@@ -35,7 +35,7 @@ const validPreviewEvent = {
 	environment: 'Preview',
 	deploymentCreator: 'vercel[bot]',
 	statusCreator: 'vercel[bot]',
-	targetUrl: 'https://manawg-feature-abditubes-projects.vercel.app',
+	targetUrl: 'https://manawg-feature-applications-projects.vercel.app',
 };
 
 const validPreviewRun = {
@@ -78,9 +78,12 @@ test('rejects untrusted Preview actors, refs, and URL shapes', () => {
 		{ ...validPreviewEvent, targetUrl: `${validPreviewEvent.targetUrl}#fragment` },
 		{
 			...validPreviewEvent,
-			targetUrl: 'https://user:password@manawg-feature-abditubes-projects.vercel.app',
+			targetUrl: 'https://user:password@manawg-feature-applications-projects.vercel.app',
 		},
-		{ ...validPreviewEvent, targetUrl: 'https://manawg-feature-abditubes-projects.vercel.app:443' },
+		{
+			...validPreviewEvent,
+			targetUrl: 'https://manawg-feature-applications-projects.vercel.app:443',
+		},
 		{ ...validPreviewEvent, targetUrl: 'https://evil.example.test' },
 	]) {
 		expect(() => assertPreviewEvent(invalid)).toThrow();

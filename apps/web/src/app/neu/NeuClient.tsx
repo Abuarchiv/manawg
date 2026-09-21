@@ -43,6 +43,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { safeNextPath } from '@/core/auth/next-path';
 import { getInitialJoinCode, joinErrorMessage } from '@/core/infra/join-flow';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import posthog from '@/shared/lib/analytics';
 import { rememberWg } from '@/shared/lib/identity';
 import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
@@ -220,6 +221,8 @@ export function NeuClient() {
 	const [createdWg, setCreatedWg] = useState<CreatedWg | null>(null);
 	const [interactive, setInteractive] = useState(false);
 	const busyRef = useRef(false);
+	const createRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const joinRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 	const [legacyOpen, setLegacyOpen] = useState(false);
 
 	function clearError(): void {
@@ -400,17 +403,32 @@ export function NeuClient() {
 		busyRef.current = true;
 		setBusy(true);
 		clearError();
+		const body = { name: trimmedWg, creatorName: trimmedMe };
+		const fingerprint = JSON.stringify(body);
+		const pendingRequest = createRequestRef.current;
+		const idempotencyKey =
+			pendingRequest?.fingerprint === fingerprint
+				? pendingRequest.key
+				: createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setFormError('WG konnte nicht sicher erstellt werden. Versuche es erneut.');
+			busyRef.current = false;
+			setBusy(false);
+			return;
+		}
+		createRequestRef.current = { fingerprint, key: idempotencyKey };
 		try {
 			const res = await fetch('/api/wg', {
 				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ name: trimmedWg, creatorName: trimmedMe }),
+				headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
+				body: JSON.stringify(body),
 			});
 			if (res.status === 401) {
 				returnToSignIn();
 				return;
 			}
 			if (!res.ok) {
+				if (res.status > 0 && res.status < 500) createRequestRef.current = null;
 				const apiError = await readStartError(res);
 				const message = createWgErrorMessage(res.status, apiError);
 				const field = createWgErrorField(res.status, apiError);
@@ -418,6 +436,7 @@ export function NeuClient() {
 				else setFormError(message);
 				return;
 			}
+			createRequestRef.current = null;
 			const data = (await res.json()) as CreateResponse;
 			posthog.capture('wg_created');
 			rememberWg({
@@ -495,17 +514,32 @@ export function NeuClient() {
 		busyRef.current = true;
 		setBusy(true);
 		clearError();
+		const body = { name };
+		const fingerprint = JSON.stringify({ code: joinWg.code, ...body });
+		const pendingRequest = joinRequestRef.current;
+		const idempotencyKey =
+			pendingRequest?.fingerprint === fingerprint
+				? pendingRequest.key
+				: createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setFormError('WG-Beitritt konnte nicht sicher gesendet werden. Versuche es erneut.');
+			busyRef.current = false;
+			setBusy(false);
+			return;
+		}
+		joinRequestRef.current = { fingerprint, key: idempotencyKey };
 		try {
 			const res = await fetch(`/api/wg/${encodeURIComponent(joinWg.code)}/members`, {
 				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ name }),
+				headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
+				body: JSON.stringify(body),
 			});
 			if (res.status === 401) {
 				returnToSignIn();
 				return;
 			}
 			if (!res.ok) {
+				if (res.status > 0 && res.status < 500) joinRequestRef.current = null;
 				const apiError = await readStartError(res);
 				if (res.status === 409 && apiError === 'already_joined') {
 					removeDraft(START_DRAFT_KEY);
@@ -523,6 +557,7 @@ export function NeuClient() {
 				}
 				return;
 			}
+			joinRequestRef.current = null;
 			await res.json();
 			posthog.capture('wg_joined');
 			rememberWg({ code: joinWg.code, name: joinWg.name, lastVisitedAt: Date.now() });

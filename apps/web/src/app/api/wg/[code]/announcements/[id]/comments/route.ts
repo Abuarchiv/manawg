@@ -8,8 +8,8 @@ import {
 } from '@/core/db';
 import { badRequest, notFound, serverError, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
-import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
+import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
 	type NotificationDispatchWarning,
@@ -94,69 +94,69 @@ export const POST = withWgRoute<{ id: string }>(
 				);
 				if (!limited.success) return tooMany();
 
-		const announcement = await findWgAnnouncement(wg.id, id);
-		if (!announcement) return notFound('announcement_not_found');
+				const announcement = await findWgAnnouncement(wg.id, id);
+				if (!announcement) return notFound('announcement_not_found');
 
-		const [comment] = await db
-			.insert(announcementComments)
-			.values({
-				announcementId: id,
-				memberId: auth.member.memberId,
-				content: parsed.data.content,
-			})
-			.returning();
-		if (!comment) return serverError('insert_failed');
-		await recordAuditEvent({
-			wgId: wg.id,
-			memberId: auth.member.memberId,
-			eventType: 'announcement.comment.created',
-			entityType: 'announcement_comment',
-			entityId: comment.id,
-			summary: `${auth.member.name} hat einen Kommentar geschrieben.`,
-			metadata: {
-				announcementId: id,
-				contentPreview: parsed.data.content.slice(0, 120),
-			},
-		});
-		const takers = await db
-			.select({ memberId: announcementReactions.memberId })
-			.from(announcementReactions)
-			.where(
-				and(
-					eq(announcementReactions.announcementId, id),
-					eq(announcementReactions.reaction, 'take'),
-				),
-			);
-		const targetMemberIds = Array.from(
-			new Set([announcement.authorMemberId, ...takers.map((taker) => taker.memberId)]),
-		);
-		let warning: NotificationDispatchWarning = null;
-		if (targetMemberIds.length > 0) {
-			const delivery = await dispatchNotificationSafely({
-				wg,
-				event: 'announcement.commented',
-				payload: {
-					announcementId: id,
-					title: parsed.data.content.slice(0, 120),
-					actorName: auth.member.name,
-				},
-				targetMemberIds,
-				excludeMemberId: auth.member.memberId,
-			});
-			warning = delivery.warning;
-		}
+				const [comment] = await db
+					.insert(announcementComments)
+					.values({
+						announcementId: id,
+						memberId: auth.member.memberId,
+						content: parsed.data.content,
+					})
+					.returning();
+				if (!comment) return serverError('insert_failed');
+				await recordAuditEvent({
+					wgId: wg.id,
+					memberId: auth.member.memberId,
+					eventType: 'announcement.comment.created',
+					entityType: 'announcement_comment',
+					entityId: comment.id,
+					summary: `${auth.member.name} hat einen Kommentar geschrieben.`,
+					metadata: {
+						announcementId: id,
+						contentPreview: parsed.data.content.slice(0, 120),
+					},
+				});
+				const takers = await db
+					.select({ memberId: announcementReactions.memberId })
+					.from(announcementReactions)
+					.where(
+						and(
+							eq(announcementReactions.announcementId, id),
+							eq(announcementReactions.reaction, 'take'),
+						),
+					);
+				const targetMemberIds = Array.from(
+					new Set([announcement.authorMemberId, ...takers.map((taker) => taker.memberId)]),
+				);
+				let warning: NotificationDispatchWarning = null;
+				if (targetMemberIds.length > 0) {
+					const delivery = await dispatchNotificationSafely({
+						wg,
+						event: 'announcement.commented',
+						payload: {
+							announcementId: id,
+							title: parsed.data.content.slice(0, 120),
+							actorName: auth.member.name,
+						},
+						targetMemberIds,
+						excludeMemberId: auth.member.memberId,
+					});
+					warning = delivery.warning;
+				}
 
-			return NextResponse.json({
-				comment: {
-					...comment,
-					authorName: auth.member.name,
-					authorColor:
-						'color' in auth.member && typeof auth.member.color === 'string'
-							? auth.member.color
-							: null,
-				},
-				warning,
-			});
+				return NextResponse.json({
+					comment: {
+						...comment,
+						authorName: auth.member.name,
+						authorColor:
+							'color' in auth.member && typeof auth.member.color === 'string'
+								? auth.member.color
+								: null,
+					},
+					warning,
+				});
 			},
 		);
 	},

@@ -25,6 +25,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { PayPalPaymentButton } from '@/components/wg/PayPalPaymentButton';
 import { apiFetch } from '@/core/infra/api-client';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
@@ -112,6 +113,7 @@ function DebtRow({
 	const [preview, setPreview] = useState<SettlementPreview | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const settlingRef = useRef(false);
+	const settlementRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 	const canSettle = debt.fromId === currentMemberId || debt.toId === currentMemberId;
 	const payeeMerchantId = memberPayPalMerchantId(debt.toId);
 	const canPayWithPayPal =
@@ -152,24 +154,40 @@ function DebtRow({
 		settlingRef.current = true;
 		setSettling(true);
 		setError(null);
+		const body = {
+			fromMemberId: debt.fromId,
+			toMemberId: debt.toId,
+			currency: debt.currency ?? 'EUR',
+			expected: {
+				currency: preview.currency,
+				netCents: preview.netCents,
+				settleableCents: preview.settleableCents,
+				splits: preview.splits.map(({ id, amountCents }) => ({ id, amountCents })),
+			},
+		};
+		const fingerprint = JSON.stringify(body);
+		const pendingRequest = settlementRequestRef.current;
+		const idempotencyKey =
+			pendingRequest?.fingerprint === fingerprint
+				? pendingRequest.key
+				: createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setError('Ausgleich konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			settlingRef.current = false;
+			setSettling(false);
+			return;
+		}
+		settlementRequestRef.current = { fingerprint, key: idempotencyKey };
 		try {
 			const res = await apiFetch<SettleBatchResponse>(endpoint, {
 				method: 'POST',
 				memberId: currentMemberId,
 				memberToken,
-				body: JSON.stringify({
-					fromMemberId: debt.fromId,
-					toMemberId: debt.toId,
-					currency: debt.currency ?? 'EUR',
-					expected: {
-						currency: preview.currency,
-						netCents: preview.netCents,
-						settleableCents: preview.settleableCents,
-						splits: preview.splits.map(({ id, amountCents }) => ({ id, amountCents })),
-					},
-				}),
+				headers: { 'Idempotency-Key': idempotencyKey },
+				body: JSON.stringify(body),
 			});
 			if (!res.ok) {
+				if (res.status > 0 && res.status < 500) settlementRequestRef.current = null;
 				setError(settlementErrorMessage(res.error));
 				if (res.error === 'settlement_changed') {
 					setPreview(null);
@@ -177,6 +195,7 @@ function DebtRow({
 				}
 				return;
 			}
+			settlementRequestRef.current = null;
 			const { settled, settledCents, remainingCents, reason } = res.data;
 			setPreview(null);
 			setReviewOpen(false);

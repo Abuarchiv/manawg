@@ -15,6 +15,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { haptic } from '@/shared/lib/haptics';
 import { ChevronDown, MessageCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -87,6 +88,8 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	const loadingOlderRef = useRef(false);
 	const [olderError, setOlderError] = useState(false);
 	const [sendError, setSendError] = useState<string | null>(null);
+	const pendingMessageRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const reactionRequestKeysRef = useRef(new Map<string, string>());
 	const [refreshError, setRefreshError] = useState(false);
 	const [readError, setReadError] = useState(false);
 	const [replyToId, setReplyToId] = useState<string | null>(null);
@@ -264,6 +267,17 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		replyToMessageId: string | null;
 	}): Promise<boolean> {
 		setSendError(null);
+		const fingerprint = JSON.stringify(input);
+		const pendingRequest = pendingMessageRequestRef.current;
+		const idempotencyKey =
+			pendingRequest?.fingerprint === fingerprint
+				? pendingRequest.key
+				: createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setSendError('Nachricht konnte nicht sicher gesendet werden. Versuche es erneut.');
+			return false;
+		}
+		pendingMessageRequestRef.current = { fingerprint, key: idempotencyKey };
 		const res = await apiFetch<{
 			message: ChatMessageDto;
 			warning: null | 'notification_delivery_failed' | 'notification_delivery_unknown';
@@ -271,12 +285,15 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			method: 'POST',
 			memberId: identity.memberId,
 			memberToken: identity.memberToken,
+			headers: { 'Idempotency-Key': idempotencyKey },
 			body: JSON.stringify(input),
 		});
 		if (!res.ok) {
+			if (res.status > 0 && res.status < 500) pendingMessageRequestRef.current = null;
 			setSendError(explainChatError('send', res.error));
 			return false;
 		}
+		pendingMessageRequestRef.current = null;
 		setMessages((prev) =>
 			prev.some((message) => message.id === res.data.message.id)
 				? prev.map((message) => (message.id === res.data.message.id ? res.data.message : message))
@@ -292,16 +309,27 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	}
 
 	async function react(messageId: string, emoji: string): Promise<boolean> {
+		const requestKeyId = `add:${messageId}:${emoji}`;
+		const idempotencyKey =
+			reactionRequestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			toast.error(explainChatError('react', 'Netzwerkfehler'));
+			return false;
+		}
+		reactionRequestKeysRef.current.set(requestKeyId, idempotencyKey);
 		const res = await apiFetch(`/api/wg/${encodedShareCode}/chat/messages/${messageId}/reactions`, {
 			method: 'POST',
 			memberId: identity.memberId,
 			memberToken: identity.memberToken,
+			headers: { 'Idempotency-Key': idempotencyKey },
 			body: JSON.stringify({ emoji }),
 		});
 		if (!res.ok) {
+			if (res.status > 0 && res.status < 500) reactionRequestKeysRef.current.delete(requestKeyId);
 			toast.error(explainChatError('react', res.error));
 			return false;
 		}
+		reactionRequestKeysRef.current.delete(requestKeyId);
 		setReactionRows((prev) =>
 			prev.some(
 				(row) =>
@@ -314,14 +342,29 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	}
 
 	async function unreact(messageId: string, emoji: string): Promise<boolean> {
+		const requestKeyId = `remove:${messageId}:${emoji}`;
+		const idempotencyKey =
+			reactionRequestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			toast.error(explainChatError('unreact', 'Netzwerkfehler'));
+			return false;
+		}
+		reactionRequestKeysRef.current.set(requestKeyId, idempotencyKey);
 		const res = await apiFetch(
 			`/api/wg/${encodedShareCode}/chat/messages/${messageId}/reactions?emoji=${encodeURIComponent(emoji)}`,
-			{ method: 'DELETE', memberId: identity.memberId, memberToken: identity.memberToken },
+			{
+				method: 'DELETE',
+				memberId: identity.memberId,
+				memberToken: identity.memberToken,
+				headers: { 'Idempotency-Key': idempotencyKey },
+			},
 		);
 		if (!res.ok) {
+			if (res.status > 0 && res.status < 500) reactionRequestKeysRef.current.delete(requestKeyId);
 			toast.error(explainChatError('unreact', res.error));
 			return false;
 		}
+		reactionRequestKeysRef.current.delete(requestKeyId);
 		setReactionRows((prev) =>
 			prev.filter(
 				(row) =>

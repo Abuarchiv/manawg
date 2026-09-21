@@ -93,6 +93,7 @@ export function NotificationSection({
 	const [error, setError] = useState<string | null>(null);
 	const [loadingStatus, setLoadingStatus] = useState(true);
 	const pendingRef = useRef(false);
+	const _notificationRequestKeysRef = useRef(new Map<string, string>());
 	const loadStatusRequestIdRef = useRef(0);
 	const pushResyncAttemptedKeyRef = useRef<string | null>(null);
 	const encodedCode = encodeURIComponent(code);

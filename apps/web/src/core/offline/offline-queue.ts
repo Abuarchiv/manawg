@@ -75,6 +75,7 @@ interface QueuedIdentityInput {
 }
 
 interface QueuedShoppingInput extends QueuedIdentityInput {
+	idempotencyKey?: string;
 	name: string;
 	quantity: string | null;
 	now?: number;
@@ -96,11 +97,13 @@ interface QueuedAnnouncementInput extends QueuedIdentityInput {
 }
 
 interface QueuedChoreCompletionInput extends QueuedIdentityInput {
+	idempotencyKey?: string;
 	choreId: string;
 	now?: number;
 }
 
 interface QueuedChoreInput extends QueuedIdentityInput {
+	idempotencyKey?: string;
 	title: string;
 	recurrenceType?: 'days' | 'months';
 	intervalDays: number;
@@ -109,6 +112,7 @@ interface QueuedChoreInput extends QueuedIdentityInput {
 }
 
 interface QueuedAbsenceInput extends QueuedIdentityInput {
+	idempotencyKey?: string;
 	absenceMemberId: string;
 	startDate: string;
 	endDate: string;
@@ -134,6 +138,7 @@ interface QueuedExpenseUpdateInput extends QueuedExpenseInput {
 }
 
 interface QueuedRecurringInput extends QueuedIdentityInput {
+	idempotencyKey?: string;
 	description: string;
 	amountCents: number;
 	paidByMemberId: string;
@@ -181,8 +186,11 @@ function createQueuedAction(
 	memberId: string,
 	payload: OfflineAction['payload'],
 	now: number,
+	idempotencyKeyOverride?: string,
 ): OfflineAction {
-	const idempotencyKey = createOfflineIdempotencyKey();
+	const idempotencyKey = isOfflineIdempotencyKey(idempotencyKeyOverride)
+		? idempotencyKeyOverride
+		: createOfflineIdempotencyKey();
 	return {
 		id,
 		...(idempotencyKey ? { idempotencyKey } : {}),
@@ -205,6 +213,7 @@ export function createQueuedShoppingItem(input: QueuedShoppingInput): OfflineAct
 		input.memberId,
 		{ name: input.name, quantity: input.quantity },
 		now,
+		input.idempotencyKey,
 	);
 }
 
@@ -247,6 +256,7 @@ export function createQueuedChoreCompletion(input: QueuedChoreCompletionInput): 
 		input.memberId,
 		{ choreId: input.choreId },
 		now,
+		input.idempotencyKey,
 	);
 }
 
@@ -265,6 +275,7 @@ export function createQueuedChore(input: QueuedChoreInput): OfflineAction {
 			assignedMemberId: input.assignedMemberId,
 		},
 		now,
+		input.idempotencyKey,
 	);
 }
 
@@ -283,6 +294,7 @@ export function createQueuedAbsence(input: QueuedAbsenceInput): OfflineAction {
 			reason: input.reason,
 		},
 		now,
+		input.idempotencyKey,
 	);
 }
 
@@ -350,6 +362,7 @@ export function createQueuedRecurring(input: QueuedRecurringInput): OfflineActio
 			splits: input.splits,
 		},
 		now,
+		input.idempotencyKey,
 	);
 }
 

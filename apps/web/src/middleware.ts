@@ -98,7 +98,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 	}
 
 	const ip = getClientIp(req);
-	if (!originAllowed(req)) {
+	// Browsers send Origin on mutating fetches, but ordinary GET navigations and
+	// server-to-server reads commonly omit it. Keep the CSRF guard strict for
+	// writes without making cache-safe/read-only API access depend on a browser
+	// header.
+	if (!isRead && !originAllowed(req)) {
 		return NextResponse.json({ error: 'cross_origin_blocked' }, { status: 403 });
 	}
 

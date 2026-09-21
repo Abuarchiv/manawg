@@ -1,6 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgEvents } from '@/core/db';
 import { badRequest, serverError, tooMany } from '@/core/errors';
+import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
@@ -122,50 +123,56 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
 
-	const limit = await checkRateLimit(wgWriteLimiter, `events:${wg.id}:${auth.member.memberId}`);
-	if (!limit.success) return tooMany('rate_limited');
+	return withIdempotentJsonResponse(
+		req,
+		`event-create:${wg.id}:${auth.member.memberId}`,
+		async () => {
+			const limit = await checkRateLimit(wgWriteLimiter, `events:${wg.id}:${auth.member.memberId}`);
+			if (!limit.success) return tooMany('rate_limited');
 
-	const [row] = await db
-		.insert(wgEvents)
-		.values({
-			wgId: wg.id,
-			title: parsed.data.title,
-			description: parsed.data.description ?? null,
-			startsAt,
-			endsAt,
-			allDay: parsed.data.allDay ?? false,
-			location: parsed.data.location ?? null,
-			recurrence,
-			createdByMemberId: auth.member.memberId,
-		})
-		.returning();
-	if (!row) return serverError('insert_failed');
+			const [row] = await db
+				.insert(wgEvents)
+				.values({
+					wgId: wg.id,
+					title: parsed.data.title,
+					description: parsed.data.description ?? null,
+					startsAt,
+					endsAt,
+					allDay: parsed.data.allDay ?? false,
+					location: parsed.data.location ?? null,
+					recurrence,
+					createdByMemberId: auth.member.memberId,
+				})
+				.returning();
+			if (!row) return serverError('insert_failed');
 
-	await recordAuditEvent({
-		wgId: wg.id,
-		memberId: auth.member.memberId,
-		eventType: 'event.created',
-		entityType: 'wg_event',
-		entityId: row.id,
-		summary: `${auth.member.name} hat den Termin „${row.title}“ angelegt.`,
-		metadata: {
-			startsAt: row.startsAt.toISOString(),
-			allDay: row.allDay,
-			recurring: row.recurrence !== null,
+			await recordAuditEvent({
+				wgId: wg.id,
+				memberId: auth.member.memberId,
+				eventType: 'event.created',
+				entityType: 'wg_event',
+				entityId: row.id,
+				summary: `${auth.member.name} hat den Termin „${row.title}“ angelegt.`,
+				metadata: {
+					startsAt: row.startsAt.toISOString(),
+					allDay: row.allDay,
+					recurring: row.recurrence !== null,
+				},
+			});
+
+			const { warning }: { warning: EventCreateWarning } = await dispatchNotificationSafely({
+				wg: { id: wg.id, name: wg.name, shareCode: code },
+				event: 'event.created',
+				payload: {
+					eventId: row.id,
+					title: row.title,
+					startsAt: row.startsAt.toISOString(),
+					actorName: auth.member.name,
+				},
+				excludeMemberId: auth.member.memberId,
+			});
+
+			return NextResponse.json({ event: serializeWgEvent(row), warning });
 		},
-	});
-
-	const { warning }: { warning: EventCreateWarning } = await dispatchNotificationSafely({
-		wg: { id: wg.id, name: wg.name, shareCode: code },
-		event: 'event.created',
-		payload: {
-			eventId: row.id,
-			title: row.title,
-			startsAt: row.startsAt.toISOString(),
-			actorName: auth.member.name,
-		},
-		excludeMemberId: auth.member.memberId,
-	});
-
-	return NextResponse.json({ event: serializeWgEvent(row), warning });
+	);
 });

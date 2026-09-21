@@ -113,7 +113,7 @@ export function PayPalPaymentButton({
 		};
 
 		const onApprove = async (data: { orderID: string }): Promise<void> => {
-			for (let attempt = 0; attempt < 2; attempt++) {
+			for (let attempt = 0; attempt < 3; attempt += 1) {
 				const result = await apiFetch<{ status: string }>(
 					`/api/wg/${encodeURIComponent(shareCode)}/paypal/capture`,
 					{

@@ -206,6 +206,7 @@ export default function AusgabenPage() {
 	const loadRequestIdRef = useRef(0);
 	const initialLoadStartedRef = useRef(false);
 	const mountedRef = useRef(false);
+	const recurringCreateRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
 	function setActionError(message: string | null): void {
 		setActionNotice(message ? { message, tone: 'error' } : null);
@@ -634,6 +635,32 @@ export default function AusgabenPage() {
 			!editingRecurringExpense && queuedNextDueAt === null
 				? addMonths(new Date(), recurringIntervalMonths)
 				: new Date(editingRecurringExpense?.nextDueAt ?? queuedNextDueAt ?? Date.now());
+		const recurringFingerprint = JSON.stringify({
+			description: desc,
+			amountCents,
+			paidByMemberId,
+			intervalMonths: recurringIntervalMonths,
+			nextDueAt: nextDueAt.toISOString(),
+			splits,
+		});
+		const pendingRecurringRequest = recurringCreateRequestRef.current;
+		const idempotencyKey = editingRecurringExpense
+			? null
+			: pendingRecurringRequest?.fingerprint === recurringFingerprint
+				? pendingRecurringRequest.key
+				: createOfflineIdempotencyKey();
+		if (!editingRecurringExpense && !idempotencyKey) {
+			setActionError(
+				'Fixkosten-Vorlage konnte nicht sicher gespeichert werden. Versuche es erneut.',
+			);
+			return;
+		}
+		if (idempotencyKey) {
+			recurringCreateRequestRef.current = {
+				fingerprint: recurringFingerprint,
+				key: idempotencyKey,
+			};
+		}
 		savingRecurringTemplateRef.current = true;
 		const finishSavingRecurringTemplate = () => {
 			savingRecurringTemplateRef.current = false;
@@ -646,6 +673,7 @@ export default function AusgabenPage() {
 				method: editingRecurringExpense ? 'PATCH' : 'POST',
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
+				...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
 				body: JSON.stringify({
 					id: editingRecurringExpense?.id,
 					description: desc,
@@ -658,11 +686,15 @@ export default function AusgabenPage() {
 			},
 		);
 		if (!res.ok) {
+			if (res.status !== 0 && !editingRecurringExpense) {
+				recurringCreateRequestRef.current = null;
+			}
 			if (res.status === 0 && !editingRecurringExpense) {
 				const queued = createQueuedRecurring({
 					wgId: wg.id,
 					shareCode: wg.shareCode,
 					memberId: identity.memberId,
+					...(idempotencyKey ? { idempotencyKey } : {}),
 					description: desc,
 					amountCents,
 					paidByMemberId,
@@ -723,6 +755,7 @@ export default function AusgabenPage() {
 			finishSavingRecurringTemplate();
 			return;
 		}
+		recurringCreateRequestRef.current = null;
 		setRecurringExpenses((current) =>
 			editingRecurringExpense
 				? current.map((item) =>

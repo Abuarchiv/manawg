@@ -158,6 +158,6 @@ export const GET = withCronLogging(
 			.map((item) => reminderClaimKey(item));
 		await Promise.all(failedKeys.map((key) => releaseReminderDispatchClaim(key)));
 
-		return NextResponse.json({ ok: true, sent: pending.length });
+		return NextResponse.json({ ok: true, sent: pending.length - failedKeys.length });
 	},
 );

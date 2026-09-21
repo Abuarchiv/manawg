@@ -33,8 +33,9 @@ test('member token verification rejects trailing non-hex data', () => {
 	}
 });
 
-test('normal server membership verification does not depend on a browser token', async () => {
+test('normal server membership verification derives identity from auth and validates tokens', async () => {
 	const source = await readFile(path.resolve(process.cwd(), 'src/core/guards/api-auth.ts'), 'utf8');
-	expect(source).toContain('verified: true');
-	expect(source).not.toContain('verifyMemberToken(');
+	expect(source).toContain('verified: boolean');
+	expect(source).toContain('const verified = verifyMemberToken(');
+	expect(source).toContain('member: { memberId: row.id, name: row.name, verified }');
 });

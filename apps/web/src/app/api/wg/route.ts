@@ -4,6 +4,7 @@ import { db, wgMembers, wgs } from '@/core/db';
 import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { apiError, badRequest, serverError, tooMany } from '@/core/errors';
+import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { deriveMemberToken } from '@/core/guards/member-token';
 import { E2E_CREATED_WG, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
@@ -93,92 +94,95 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		return serverError('auth_unavailable');
 	}
 	if (!user) return apiError('auth_required', 401, 'auth_required');
+	const authenticatedUser = user;
 
-	let shareCode = '';
-	for (let attempt = 0; attempt < SHARE_CODE_RETRIES; attempt += 1) {
-		const candidate = generateShareCode();
-		if (!isValidShareCode(candidate)) continue;
-		const existing = await db.query.wgs.findFirst({
-			where: (w, { eq }) => eq(w.shareCode, candidate),
-			columns: { id: true },
-		});
-		if (!existing) {
-			shareCode = candidate;
-			break;
-		}
-	}
-	if (!shareCode) {
-		return serverError('share_code_exhausted');
-	}
-
-	try {
-		// The WG and its creator are one write. A WG whose creator row is missing
-		// has a valid share code but no one who can administer it, and the person
-		// who just created it is not a member of it. This used to be repaired
-		// with a delete afterwards, which only covered the case of an insert
-		// returning no row — when the insert threw instead, nothing cleaned up
-		// and the empty WG stayed.
-		//
-		// The share-code uniqueness check happens before the transaction, so the
-		// 23505 on the unique index can still fire inside it — retry with a fresh
-		// code instead of surfacing a raw db_error to a double-clicking user.
-		let lastError: unknown = null;
+	return withIdempotentJsonResponse(req, `wg-create:${authenticatedUser.id}`, async () => {
+		let shareCode = '';
 		for (let attempt = 0; attempt < SHARE_CODE_RETRIES; attempt += 1) {
-			if (attempt > 0) {
-				const candidate = generateShareCode();
-				if (!isValidShareCode(candidate)) continue;
+			const candidate = generateShareCode();
+			if (!isValidShareCode(candidate)) continue;
+			const existing = await db.query.wgs.findFirst({
+				where: (w, { eq }) => eq(w.shareCode, candidate),
+				columns: { id: true },
+			});
+			if (!existing) {
 				shareCode = candidate;
-			}
-			try {
-				const { wg, member } = await withTransaction(async (tx) => {
-					const [createdWg] = await tx.insert(wgs).values({ name, shareCode }).returning();
-					if (!createdWg) throw new TransactionAbort('insert_failed');
-
-					const [createdMember] = await tx
-						.insert(wgMembers)
-						.values({
-							wgId: createdWg.id,
-							name: creatorName,
-							role: 'admin',
-							authUserId: user.id,
-						})
-						.returning();
-					if (!createdMember) throw new TransactionAbort('member_insert_failed');
-
-					return { wg: createdWg, member: createdMember };
-				});
-
-				await recordAuditEvent({
-					wgId: wg.id,
-					memberId: member.id,
-					eventType: 'wg.created',
-					entityType: 'wg',
-					entityId: wg.id,
-					summary: `${member.name} hat die WG erstellt.`,
-					metadata: { name: wg.name, shareCode: wg.shareCode },
-				});
-
-				return NextResponse.json({
-					wg: {
-						id: wg.id,
-						shareCode: wg.shareCode,
-						name: wg.name,
-					},
-					creator: {
-						id: member.id,
-						name: member.name,
-					},
-				});
-			} catch (err) {
-				if (err instanceof TransactionAbort) return serverError(err.code);
-				lastError = err;
-				if (!isUniqueShareCodeViolation(err)) throw err;
+				break;
 			}
 		}
-		console.error('[api/wg POST] share code retries exhausted', lastError);
-		return serverError('share_code_exhausted');
-	} catch (err) {
-		console.error('[api/wg POST] insert failed', err);
-		return serverError('db_error');
-	}
+		if (!shareCode) {
+			return serverError('share_code_exhausted');
+		}
+
+		try {
+			// The WG and its creator are one write. A WG whose creator row is missing
+			// has a valid share code but no one who can administer it, and the person
+			// who just created it is not a member of it. This used to be repaired
+			// with a delete afterwards, which only covered the case of an insert
+			// returning no row — when the insert threw instead, nothing cleaned up
+			// and the empty WG stayed.
+			//
+			// The share-code uniqueness check happens before the transaction, so the
+			// 23505 on the unique index can still fire inside it — retry with a fresh
+			// code instead of surfacing a raw db_error to a double-clicking user.
+			let lastError: unknown = null;
+			for (let attempt = 0; attempt < SHARE_CODE_RETRIES; attempt += 1) {
+				if (attempt > 0) {
+					const candidate = generateShareCode();
+					if (!isValidShareCode(candidate)) continue;
+					shareCode = candidate;
+				}
+				try {
+					const { wg, member } = await withTransaction(async (tx) => {
+						const [createdWg] = await tx.insert(wgs).values({ name, shareCode }).returning();
+						if (!createdWg) throw new TransactionAbort('insert_failed');
+
+						const [createdMember] = await tx
+							.insert(wgMembers)
+							.values({
+								wgId: createdWg.id,
+								name: creatorName,
+								role: 'admin',
+								authUserId: authenticatedUser.id,
+							})
+							.returning();
+						if (!createdMember) throw new TransactionAbort('member_insert_failed');
+
+						return { wg: createdWg, member: createdMember };
+					});
+
+					await recordAuditEvent({
+						wgId: wg.id,
+						memberId: member.id,
+						eventType: 'wg.created',
+						entityType: 'wg',
+						entityId: wg.id,
+						summary: `${member.name} hat die WG erstellt.`,
+						metadata: { name: wg.name, shareCode: wg.shareCode },
+					});
+
+					return NextResponse.json({
+						wg: {
+							id: wg.id,
+							shareCode: wg.shareCode,
+							name: wg.name,
+						},
+						creator: {
+							id: member.id,
+							name: member.name,
+						},
+					});
+				} catch (err) {
+					if (err instanceof TransactionAbort) return serverError(err.code);
+					lastError = err;
+					if (!isUniqueShareCodeViolation(err)) throw err;
+				}
+			}
+			console.error('[api/wg POST] share code retries exhausted', lastError);
+			return serverError('share_code_exhausted');
+		} catch (err) {
+			console.error('[api/wg POST] insert failed', err);
+			return serverError('db_error');
+		}
+	});
 }

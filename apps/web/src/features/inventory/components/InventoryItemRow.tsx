@@ -65,15 +65,19 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 		try {
 			if (delta < 0) {
 				const idempotencyKey = consumeIdempotencyKeyRef.current ?? createOfflineIdempotencyKey();
-				if (idempotencyKey) consumeIdempotencyKeyRef.current = idempotencyKey;
+				if (!idempotencyKey) {
+					setError('Aktualisierung konnte nicht sicher gesendet werden. Versuche es erneut.');
+					return;
+				}
+				consumeIdempotencyKeyRef.current = idempotencyKey;
 				const res = await apiFetch<ConsumeResponse>(
 					`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}/consume`,
 					{
 						method: 'POST',
 						memberId,
 						memberToken,
+						headers: { 'Idempotency-Key': idempotencyKey },
 						body: JSON.stringify({ delta }),
-						...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
 					},
 				);
 				if (res.ok) {
@@ -95,15 +99,19 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				}
 			} else {
 				const idempotencyKey = restockIdempotencyKeyRef.current ?? createOfflineIdempotencyKey();
-				if (idempotencyKey) restockIdempotencyKeyRef.current = idempotencyKey;
+				if (!idempotencyKey) {
+					setError('Aktualisierung konnte nicht sicher gesendet werden. Versuche es erneut.');
+					return;
+				}
+				restockIdempotencyKeyRef.current = idempotencyKey;
 				const res = await apiFetch<{ item: InventoryItemDto }>(
 					`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}`,
 					{
 						method: 'PATCH',
 						memberId,
 						memberToken,
+						headers: { 'Idempotency-Key': idempotencyKey },
 						body: JSON.stringify({ quantityDelta: delta }),
-						...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
 					},
 				);
 				if (res.ok) {

@@ -17,9 +17,10 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/co
 import { ItemGroup } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import type { InventoryItemDto } from '@/features/inventory/inventory';
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 interface QuickRestockSheetProps {
 	open: boolean;
@@ -45,6 +46,7 @@ export function QuickRestockSheet({
 	const encodedShareCode = encodeURIComponent(shareCode);
 	const [pendingId, setPendingId] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const restockRequestRef = useRef<{ itemId: string; key: string } | null>(null);
 
 	const sorted = [...items]
 		.filter((item) => item.decrementCount30d > 0 || item.lastDecrementedAt !== null)
@@ -55,19 +57,31 @@ export function QuickRestockSheet({
 		if (pendingId !== null) return;
 		setPendingId(item.id);
 		setError(null);
+		const pendingRequest = restockRequestRef.current;
+		const idempotencyKey =
+			pendingRequest?.itemId === item.id ? pendingRequest.key : createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setPendingId(null);
+			setError('Aktualisierung konnte nicht sicher gesendet werden. Versuche es erneut.');
+			return;
+		}
+		restockRequestRef.current = { itemId: item.id, key: idempotencyKey };
 		const res = await apiFetch(
 			`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}`,
 			{
 				method: 'PATCH',
 				memberId,
 				memberToken,
+				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({ quantityDelta: 1 }),
 			},
 		);
 		setPendingId(null);
 		if (res.ok) {
+			restockRequestRef.current = null;
 			onChanged();
 		} else {
+			if (res.status > 0 && res.status < 500) restockRequestRef.current = null;
 			setError('Aktualisierung fehlgeschlagen.');
 		}
 	}

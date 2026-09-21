@@ -10,6 +10,7 @@ import {
 	tooMany,
 } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
+import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { claimIdempotencySlot, readIdempotencyKey } from '@/core/idempotency';
@@ -248,127 +249,133 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 	);
 	if (!limited.success) return tooMany();
 
-	let mutation:
-		| { kind: 'member_deactivated' }
-		| { kind: 'member_not_in_wg' }
-		| { kind: 'blocked' }
-		| { kind: 'changed' }
-		| {
-				kind: 'settled';
-				preview: SettlementPreview;
-				settledIds: string[];
-				settledCents: number;
-		  } = { kind: 'member_not_in_wg' };
-	try {
-		mutation = await withExpensePaymentLock(auth.wg.id, async (tx) => {
-			const [activeCaller] = await tx
-				.select({ id: wgMembers.id })
-				.from(wgMembers)
-				.where(
-					and(
-						eq(wgMembers.id, auth.member.memberId),
-						eq(wgMembers.wgId, auth.wg.id),
-						isNull(wgMembers.deactivatedAt),
-					),
-				)
-				.limit(1)
-				.for('update');
-			// The row lock is held through the accounting write: a concurrent
-			// deactivation either wins before this check or waits until settlement commits.
-			if (!activeCaller) return { kind: 'member_deactivated' as const };
+	return withIdempotentJsonResponse(
+		req,
+		`settle-batch:${auth.wg.id}:${auth.member.memberId}`,
+		async () => {
+			let mutation:
+				| { kind: 'member_deactivated' }
+				| { kind: 'member_not_in_wg' }
+				| { kind: 'blocked' }
+				| { kind: 'changed' }
+				| {
+						kind: 'settled';
+						preview: SettlementPreview;
+						settledIds: string[];
+						settledCents: number;
+				  } = { kind: 'member_not_in_wg' };
+			try {
+				mutation = await withExpensePaymentLock(auth.wg.id, async (tx) => {
+					const [activeCaller] = await tx
+						.select({ id: wgMembers.id })
+						.from(wgMembers)
+						.where(
+							and(
+								eq(wgMembers.id, auth.member.memberId),
+								eq(wgMembers.wgId, auth.wg.id),
+								isNull(wgMembers.deactivatedAt),
+							),
+						)
+						.limit(1)
+						.for('update');
+					// The row lock is held through the accounting write: a concurrent
+					// deactivation either wins before this check or waits until settlement commits.
+					if (!activeCaller) return { kind: 'member_deactivated' as const };
 
-			const snapshot = await loadSettlementSnapshot(tx, auth.wg.id);
-			if (!pairIsInWg(snapshot, confirmation.fromMemberId, confirmation.toMemberId)) {
-				return { kind: 'member_not_in_wg' as const };
+					const snapshot = await loadSettlementSnapshot(tx, auth.wg.id);
+					if (!pairIsInWg(snapshot, confirmation.fromMemberId, confirmation.toMemberId)) {
+						return { kind: 'member_not_in_wg' as const };
+					}
+
+					const preview = selectSettlementScope(
+						snapshot.expenses,
+						snapshot.members,
+						snapshot.payments,
+						confirmation.fromMemberId,
+						confirmation.toMemberId,
+						confirmation.currency,
+					);
+					if (await hasActiveExpensePayment(tx, auth.wg.id)) return { kind: 'blocked' as const };
+					if (!settlementScopeMatches(confirmation.expected, preview)) {
+						return { kind: 'changed' as const };
+					}
+					if (preview.splits.length === 0) {
+						return { kind: 'settled' as const, preview, settledIds: [], settledCents: 0 };
+					}
+
+					const exactRows = preview.splits.map((split) =>
+						and(
+							eq(expenseSplits.id, split.id),
+							eq(expenseSplits.expenseId, split.expenseId),
+							eq(expenseSplits.amountCents, split.amountCents),
+							isNull(expenseSplits.settledAt),
+						),
+					);
+					const rows = await tx
+						.update(expenseSplits)
+						.set({ settledAt: new Date() })
+						.where(or(...exactRows))
+						.returning({ id: expenseSplits.id });
+					if (rows.length !== preview.splits.length) throw new SettlementChangedError();
+
+					const returnedIds = new Set(rows.map((row) => row.id));
+					const settledIds = preview.splits
+						.map((split) => split.id)
+						.filter((id) => returnedIds.has(id));
+					return {
+						kind: 'settled' as const,
+						preview,
+						settledIds,
+						settledCents: preview.settleableCents,
+					};
+				});
+			} catch (error) {
+				if (error instanceof SettlementChangedError) return conflict('settlement_changed');
+				throw error;
 			}
 
-			const preview = selectSettlementScope(
-				snapshot.expenses,
-				snapshot.members,
-				snapshot.payments,
-				confirmation.fromMemberId,
-				confirmation.toMemberId,
-				confirmation.currency,
-			);
-			if (await hasActiveExpensePayment(tx, auth.wg.id)) return { kind: 'blocked' as const };
-			if (!settlementScopeMatches(confirmation.expected, preview)) {
-				return { kind: 'changed' as const };
+			if (mutation.kind === 'member_deactivated') {
+				return apiError('member_deactivated', 401, 'member_deactivated');
 			}
-			if (preview.splits.length === 0) {
-				return { kind: 'settled' as const, preview, settledIds: [], settledCents: 0 };
+			if (mutation.kind === 'member_not_in_wg') return badRequest('member_not_in_wg');
+			if (mutation.kind === 'blocked') return conflict('paypal_payment_pending');
+			if (mutation.kind === 'changed') return conflict('settlement_changed');
+
+			if (mutation.settledIds.length > 0) {
+				const idemKey =
+					readIdempotencyKey(req) ??
+					`derived:settle:${confirmation.fromMemberId}:${confirmation.toMemberId}:${[...mutation.settledIds].sort().join(',')}`;
+				const shouldAudit = await claimIdempotencySlot(
+					`settle-batch:${auth.wg.id}:${auth.member.memberId}`,
+					idemKey,
+				);
+				if (shouldAudit) {
+					await recordAuditEvent({
+						wgId: auth.wg.id,
+						memberId: auth.member.memberId,
+						eventType: 'expense.debt.settled',
+						entityType: 'expense_debt',
+						entityId: `${confirmation.fromMemberId}:${confirmation.toMemberId}`,
+						summary: `${auth.member.name} hat ${mutation.settledIds.length} offene Anteil${mutation.settledIds.length === 1 ? '' : 'e'} beglichen.`,
+						metadata: {
+							fromMemberId: confirmation.fromMemberId,
+							toMemberId: confirmation.toMemberId,
+							splitIds: mutation.settledIds,
+						},
+					});
+				}
 			}
 
-			const exactRows = preview.splits.map((split) =>
-				and(
-					eq(expenseSplits.id, split.id),
-					eq(expenseSplits.expenseId, split.expenseId),
-					eq(expenseSplits.amountCents, split.amountCents),
-					isNull(expenseSplits.settledAt),
+			return noStoreJson(
+				buildSettlementResponse(
+					mutation.preview,
+					mutation.settledIds,
+					mutation.settledCents,
+					confirmation.currency,
+					confirmation.fromMemberId,
+					confirmation.toMemberId,
 				),
 			);
-			const rows = await tx
-				.update(expenseSplits)
-				.set({ settledAt: new Date() })
-				.where(or(...exactRows))
-				.returning({ id: expenseSplits.id });
-			if (rows.length !== preview.splits.length) throw new SettlementChangedError();
-
-			const returnedIds = new Set(rows.map((row) => row.id));
-			const settledIds = preview.splits
-				.map((split) => split.id)
-				.filter((id) => returnedIds.has(id));
-			return {
-				kind: 'settled' as const,
-				preview,
-				settledIds,
-				settledCents: preview.settleableCents,
-			};
-		});
-	} catch (error) {
-		if (error instanceof SettlementChangedError) return conflict('settlement_changed');
-		throw error;
-	}
-
-	if (mutation.kind === 'member_deactivated') {
-		return apiError('member_deactivated', 401, 'member_deactivated');
-	}
-	if (mutation.kind === 'member_not_in_wg') return badRequest('member_not_in_wg');
-	if (mutation.kind === 'blocked') return conflict('paypal_payment_pending');
-	if (mutation.kind === 'changed') return conflict('settlement_changed');
-
-	if (mutation.settledIds.length > 0) {
-		const idemKey =
-			readIdempotencyKey(req) ??
-			`derived:settle:${confirmation.fromMemberId}:${confirmation.toMemberId}:${[...mutation.settledIds].sort().join(',')}`;
-		const shouldAudit = await claimIdempotencySlot(
-			`settle-batch:${auth.wg.id}:${auth.member.memberId}`,
-			idemKey,
-		);
-		if (shouldAudit) {
-			await recordAuditEvent({
-				wgId: auth.wg.id,
-				memberId: auth.member.memberId,
-				eventType: 'expense.debt.settled',
-				entityType: 'expense_debt',
-				entityId: `${confirmation.fromMemberId}:${confirmation.toMemberId}`,
-				summary: `${auth.member.name} hat ${mutation.settledIds.length} offene Anteil${mutation.settledIds.length === 1 ? '' : 'e'} beglichen.`,
-				metadata: {
-					fromMemberId: confirmation.fromMemberId,
-					toMemberId: confirmation.toMemberId,
-					splitIds: mutation.settledIds,
-				},
-			});
-		}
-	}
-
-	return noStoreJson(
-		buildSettlementResponse(
-			mutation.preview,
-			mutation.settledIds,
-			mutation.settledCents,
-			confirmation.currency,
-			confirmation.fromMemberId,
-			confirmation.toMemberId,
-		),
+		},
 	);
 });

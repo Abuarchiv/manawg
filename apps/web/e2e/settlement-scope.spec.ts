@@ -60,6 +60,7 @@ test.describe('Settlement scope', () => {
 		);
 
 		expect(actual).toEqual({
+			currency: 'EUR',
 			netCents: 1200,
 			settleableCents: 1200,
 			remainingCents: 0,
@@ -90,6 +91,7 @@ test.describe('Settlement scope', () => {
 		);
 
 		expect(actual).toEqual({
+			currency: 'EUR',
 			netCents: 1500,
 			settleableCents: 1000,
 			remainingCents: 500,
@@ -126,6 +128,7 @@ test.describe('Settlement scope', () => {
 		);
 
 		expect(followUpScope).toEqual({
+			currency: 'EUR',
 			netCents: 1,
 			settleableCents: 1,
 			remainingCents: 0,
@@ -150,6 +153,7 @@ test.describe('Settlement scope', () => {
 		);
 
 		expect(actual).toEqual({
+			currency: 'EUR',
 			netCents: 1000,
 			settleableCents: 0,
 			remainingCents: 1000,
@@ -217,7 +221,9 @@ test.describe('Settlement scope', () => {
 		const validReview = {
 			fromMemberId: memberB,
 			toMemberId: memberA,
+			currency: 'EUR',
 			expected: {
+				currency: 'EUR',
 				netCents: 1000,
 				settleableCents: 1000,
 				splits: [{ id: '44444444-4444-4444-8444-444444444444', amountCents: 1000 }],

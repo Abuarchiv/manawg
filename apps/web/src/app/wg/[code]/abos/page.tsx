@@ -29,11 +29,12 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import type { Abo, AboFilter } from '@/components/wg/abos-types';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { apiFetch } from '@/core/infra/api-client';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import { Plus } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface RecurringExpensesResponse {
 	recurringExpenses: Abo[];
@@ -174,6 +175,7 @@ export default function AbosPage() {
 	const [submitting, setSubmitting] = useState(false);
 	const [pendingId, setPendingId] = useState<string | null>(null);
 	const [deleteCandidate, setDeleteCandidate] = useState<Abo | null>(null);
+	const createRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
 	const load = useCallback(
 		async (initial: boolean): Promise<void> => {
@@ -207,21 +209,36 @@ export default function AbosPage() {
 
 	async function handleCreate(values: AboFormValues): Promise<void> {
 		setSubmitting(true);
+		const fingerprint = JSON.stringify(values);
+		const pendingRequest = createRequestRef.current;
+		const idempotencyKey =
+			pendingRequest?.fingerprint === fingerprint
+				? pendingRequest.key
+				: createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setNoticeMessage('error', 'Abo konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			setSubmitting(false);
+			return;
+		}
+		createRequestRef.current = { fingerprint, key: idempotencyKey };
 		const res = await apiFetch<RecurringExpenseResponse>(
 			`/api/wg/${encodedShareCode}/recurring-expenses`,
 			{
 				method: 'POST',
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
+				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify(values),
 			},
 		);
 		if (res.ok) {
+			createRequestRef.current = null;
 			haptic('medium');
 			setAbos((current) => upsertAbo(current, res.data.recurringExpense));
 			setShowCreate(false);
 			setNoticeMessage('success', 'Abo angelegt.');
 		} else {
+			if (res.status > 0 && res.status < 500) createRequestRef.current = null;
 			setNoticeMessage('error', aboSaveErrorMessage(res.error, 'angelegt'));
 		}
 		setSubmitting(false);

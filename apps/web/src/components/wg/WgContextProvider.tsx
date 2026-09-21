@@ -158,9 +158,12 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 
 	useVisibilityPausedInterval(() => void sync(), identity ? 60_000 : null);
 
+	// Sync on online/focus events in addition to the paused interval above.
+	// These listeners are re-registered when `sync` changes (which happens when
+	// identity or wg.shareCode change), so the cleanup always removes the
+	// listeners bound to the current closure.
 	useEffect(() => {
 		if (!identity) return;
-		void sync();
 		window.addEventListener('online', sync);
 		window.addEventListener('focus', sync);
 		return () => {
