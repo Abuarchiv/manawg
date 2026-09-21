@@ -20,12 +20,10 @@
  *
  * The ledger itself stays exact and fail-closed: every row must either match
  * the canonical journal by hash, timestamp, and prefix order, or match an
- * entry of LEGACY_LEDGER_ALLOWLIST by exact hash, timestamp, and
- * leading-prefix position. That allowlist is currently empty because the
- * superseded chain is no longer verifiable from repository SQL, so unknown
- * rows — including arbitrary pre-baseline 64-hex values — are rejected before
- * any adoption. A legacy database must be reviewed and its rows explicitly
- * documented before it can be adopted.
+ * entry of LEGACY_LEDGER_ALLOWLIST by exact hash, timestamp, and canonical
+ * journal position. Unknown rows — including arbitrary 64-hex values — are
+ * rejected before any adoption. A legacy database must be reviewed and its
+ * rows explicitly documented before it can be adopted.
  */
 
 import crypto from 'node:crypto';
@@ -42,14 +40,18 @@ const MIGRATIONS_TABLE = '__drizzle_migrations';
 const SENTINEL_TABLE = 'wgs';
 const BASELINE_TAG = '0000_baseline';
 /**
- * Exact allowlist of tolerated pre-baseline ledger rows, keyed by hash with
- * its documented created_at and leading-prefix position. The superseded
- * push-era chain was replaced by `0000_baseline` and its SQL is no longer in
- * this repository, so no legacy hash is documented here and every unknown row
- * fails closed. Only add an entry with its reviewed hash, timestamp, and
- * position; never tolerate arbitrary 64-hex values.
+ * Exact allowlist of reviewed historical ledger hashes. A later security fix
+ * changed `0007_data_api_security.sql` after Preview had applied it, so the
+ * database legitimately carries the old hash at the canonical migration
+ * position. The position is zero-based within the current journal; an unknown
+ * hash at any other position still fails closed.
  */
-const LEGACY_LEDGER_ALLOWLIST = new Map();
+const LEGACY_LEDGER_ALLOWLIST = new Map([
+	[
+		'88916329fbe6f5e5f4e4174e5db393aa3d7c4516790c4dbf3d1a41301f335aa0',
+		{ when: 1788112576655, position: 7 },
+	],
+]);
 const MIGRATION_LOCK = 'manawg:drizzle-migrate';
 const PUBLIC_SCHEMA = 'public';
 const PUBLIC_ROLES = ['anon', 'authenticated'];
@@ -614,8 +616,6 @@ export async function assertMigrationLedgerPrefix(client, { requireTable = true 
 	}
 	const appliedHashes = new Set();
 	let appliedCount = 0;
-	let legacySeen = 0;
-	let seenCanonical = false;
 	for (const row of rows) {
 		const hash = typeof row.hash === 'string' ? row.hash : '';
 		const createdAt = String(row.created_at ?? '');
@@ -631,25 +631,26 @@ export async function assertMigrationLedgerPrefix(client, { requireTable = true 
 		const entry = expectedByHash.get(hash);
 		if (!entry) {
 			// Fail-closed: LEGACY_LEDGER_ALLOWLIST documents every tolerated
-			// pre-baseline row by exact hash, timestamp, and leading-prefix
-			// position. It is currently empty, so any unknown row — including
-			// arbitrary 64-hex values predating the baseline — is rejected
-			// here and never adopted.
+			// historical row by exact hash, timestamp, and canonical journal
+			// position. Any unknown row — including arbitrary 64-hex values —
+			// is rejected here and never adopted.
 			const legacy = LEGACY_LEDGER_ALLOWLIST.get(hash);
 			if (
 				!legacy ||
-				seenCanonical ||
 				createdAt !== String(legacy.when) ||
-				legacySeen !== Number(legacy.position)
+				appliedCount !== Number(legacy.position)
 			) {
 				throw new Error(
 					`Database check failed: unexpected migration row ${row.id} outside the canonical ledger (hash ${hash}, created_at ${createdAt}).`,
 				);
 			}
-			legacySeen += 1;
+			if (appliedHashes.has(hash)) {
+				throw new Error(`Database check failed: duplicate legacy migration row ${row.id}.`);
+			}
+			appliedHashes.add(hash);
+			appliedCount += 1;
 			continue;
 		}
-		seenCanonical = true;
 		if (appliedHashes.has(hash)) {
 			throw new Error(`Database check failed: duplicate migration ${entry.tag}.`);
 		}

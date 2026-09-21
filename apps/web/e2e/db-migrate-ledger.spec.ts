@@ -32,8 +32,38 @@ test('rejects unknown pre-baseline ledger rows fail-closed', async () => {
 	};
 
 	await expect(assertMigrationLedgerPrefix(client)).rejects.toThrow(
-		'Database check failed: unexpected migration row 1 outside the canonical ledger.',
+		`Database check failed: unexpected migration row 1 outside the canonical ledger (hash ${arbitraryHash}, created_at 0).`,
 	);
+});
+
+test('accepts the reviewed historical hash at its canonical ledger position', async () => {
+	const { assertMigrationLedgerPrefix } = await import(
+		pathToFileURL(path.resolve(process.cwd(), 'scripts/db-migrate.mjs')).href
+	);
+	const migrationsDir = path.resolve(process.cwd(), 'drizzle');
+	const journal = JSON.parse(
+		readFileSync(path.join(migrationsDir, 'meta', '_journal.json'), 'utf8'),
+	);
+	const rows = journal.entries.map((entry, index) => ({
+		id: index + 1,
+		hash:
+			index === 7
+				? '88916329fbe6f5e5f4e4174e5db393aa3d7c4516790c4dbf3d1a41301f335aa0'
+				: createHash('sha256')
+						.update(readFileSync(path.join(migrationsDir, `${entry.tag}.sql`), 'utf8'))
+						.digest('hex'),
+		created_at: String(entry.when),
+	}));
+	const client = {
+		query: async (sql: unknown) => {
+			if (String(sql).includes('pg_catalog.pg_class')) return { rows: [{}] };
+			if (String(sql).includes('__drizzle_migrations')) return { rows };
+			throw new Error(`unexpected query: ${String(sql).slice(0, 80)}`);
+		},
+	};
+
+	const ledger = await assertMigrationLedgerPrefix(client);
+	expect(ledger.appliedCount).toBe(ledger.entries.length);
 });
 
 test('keeps a missing migration ledger as missing', async () => {
