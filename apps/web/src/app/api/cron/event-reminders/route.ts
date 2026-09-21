@@ -107,12 +107,7 @@ export const GET = withCronLogging(
 		const due: Array<EventRow & { occurrenceStartsAt: string }> = [];
 		for (const row of rows) {
 			if (row.startsAt.getTime() >= horizonStart.getTime()) {
-				const occurrences = expandRecurrence(
-					toEventInput(row),
-					tomorrowStart,
-					tomorrowEnd,
-					'Europe/Berlin',
-				);
+				const occurrences = expandRecurrence(toEventInput(row), tomorrowStart, tomorrowEnd);
 				for (const occ of occurrences) {
 					due.push({ ...row, occurrenceStartsAt: occ.startsAt });
 				}

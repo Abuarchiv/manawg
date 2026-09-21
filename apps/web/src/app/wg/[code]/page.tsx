@@ -261,7 +261,7 @@ export default function WgHomePage() {
 						{data ? (
 							todayFocus ? (
 								<Card>
-									<CardContent className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center">
+									<CardContent className="flex flex-wrap items-center gap-4">
 										<div className="min-w-0 flex-1">
 											<CardTitle className="flex items-start gap-2 font-semibold">
 												<TodayIcon kind={todayFocus.kind} />

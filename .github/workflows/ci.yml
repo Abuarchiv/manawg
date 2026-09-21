@@ -84,7 +84,9 @@ jobs:
       )
     runs-on: ubuntu-latest
     needs: validate
-    environment: Preview
+    environment:
+      name: Preview
+      deployment: false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -185,11 +187,11 @@ jobs:
       - name: Apply pending Preview migrations
         env:
           DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
-        run: pnpm --filter @manawg/web db:migrate
+        run: node apps/web/scripts/preview-db-check.mjs
       - name: Verify Preview schema and migration ledger
         env:
           DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
-        run: pnpm --filter @manawg/web db:check
+        run: node apps/web/scripts/preview-db-check.mjs --check
 
   e2e-preview:
     if: >-
@@ -207,7 +209,9 @@ jobs:
       endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app')
     runs-on: ubuntu-latest
     needs: db-supabase-preview
-    environment: Preview
+    environment:
+      name: Preview
+      deployment: false
     steps:
       - name: Require the tree-matched Preview migration gate
         env:

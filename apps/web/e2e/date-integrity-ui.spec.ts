@@ -171,3 +171,93 @@ test('calendar create keeps date drafts after close and reopen at normal width',
 	await expect(page.getByLabel('Beginn')).toHaveValue(startValue);
 	await expect(page.getByLabel('Ende (optional)')).toHaveValue(endValue);
 });
+
+test('legacy all-day title-only edit preserves the displayed date and both stored timestamps', async ({
+	page,
+}) => {
+	await page.clock.setFixedTime(new Date('2026-09-20T10:00:00Z'));
+	await setupMember(page);
+	const legacy = {
+		id: 'legacy-date',
+		title: 'Alter Geburtstag',
+		description: null,
+		startsAt: '2026-09-21T22:00:00.000Z',
+		endsAt: '2026-09-22T21:00:00.000Z',
+		allDay: true,
+		location: null,
+		recurrence: null,
+	};
+	let saved: unknown;
+	await page.route(`**/api/wg/${SHARE_CODE}/events*`, (route) =>
+		route.fulfill({ json: { events: [legacy] } }),
+	);
+	await page.route(`**/api/wg/${SHARE_CODE}/events/${legacy.id}`, (route) => {
+		saved = route.request().postDataJSON();
+		return route.fulfill({ json: { event: { ...legacy, ...route.request().postDataJSON() } } });
+	});
+	await navigateToFeature(page, `/wg/${SHARE_CODE}/kalender`);
+	await expect(page.getByText('Di 22.09.2026 · ganztägig', { exact: true })).toBeVisible();
+	await page.getByRole('button', { name: 'Termin bearbeiten: Alter Geburtstag' }).click();
+	await expect(page.getByLabel('Beginn')).toHaveValue('2026-09-22');
+	await expect(page.getByLabel('Ende (optional)')).toHaveValue('2026-09-22');
+	await page.getByLabel('Titel').fill('Neuer Titel');
+	await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+	await expect
+		.poll(() => saved)
+		.toMatchObject({
+			title: 'Neuer Titel',
+			startsAt: legacy.startsAt,
+			endsAt: legacy.endsAt,
+		});
+});
+
+for (const timezoneId of ['America/Los_Angeles', 'Pacific/Kiritimati']) {
+	test.describe(`agenda in ${timezoneId}`, () => {
+		test.use({ timezoneId });
+		test('today all-day event remains in the agenda after browsing a future month', async ({
+			page,
+		}) => {
+			await page.clock.setFixedTime(
+				new Date(
+					timezoneId === 'Pacific/Kiritimati' ? '2026-09-21T22:00:00Z' : '2026-09-22T19:00:00Z',
+				),
+			);
+			await setupMember(page);
+			const event = {
+				id: 'today-date',
+				title: 'Heute ganztägig',
+				description: null,
+				startsAt: '2026-09-22T00:00:00.000Z',
+				endsAt: null,
+				allDay: true,
+				location: null,
+				recurrence: null,
+			};
+			const finalDay = {
+				...event,
+				id: 'final-date',
+				title: 'Letzter Agendatag',
+				startsAt: '2026-10-22T00:00:00.000Z',
+			};
+			await page.route(`**/api/wg/${SHARE_CODE}/events*`, (route) => {
+				const query = new URL(route.request().url()).searchParams;
+				const events = [event, finalDay].filter(
+					(row) =>
+						Date.parse(row.startsAt) >= Date.parse(query.get('from') ?? '') &&
+						Date.parse(row.startsAt) <= Date.parse(query.get('to') ?? ''),
+				);
+				return route.fulfill({ json: { events } });
+			});
+			await navigateToFeature(page, `/wg/${SHARE_CODE}/kalender`);
+			await expect(page.getByText(event.title, { exact: true })).toBeVisible();
+			await expect(page.getByText(finalDay.title, { exact: true })).toBeVisible();
+			await page.getByRole('tab', { name: 'Monat', exact: true }).click();
+			const loaded = page.waitForResponse((response) => response.url().includes('/events?'));
+			await page.getByRole('button', { name: 'Nächster Monat', exact: true }).click();
+			await loaded;
+			await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
+			await expect(page.getByText(event.title, { exact: true })).toBeVisible();
+			await expect(page.getByText('Di 22.09.2026 · ganztägig', { exact: true })).toBeVisible();
+		});
+	});
+}

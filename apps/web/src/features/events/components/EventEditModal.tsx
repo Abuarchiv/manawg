@@ -139,7 +139,7 @@ export function EventEditModal({
 		if (saving || deleting) return;
 		setError(null);
 		if (!event) return;
-		const validation = validateEventForm({ title, startsAt, endsAt, allDay });
+		const validation = validateEventForm({ title, startsAt, endsAt, allDay, original: event });
 		if (!validation.ok) {
 			setError(validation.error);
 			return;

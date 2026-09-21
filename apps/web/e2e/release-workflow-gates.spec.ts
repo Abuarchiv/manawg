@@ -159,7 +159,9 @@ test('filters trusted Preview statuses before protected environments and keeps p
 		expect(job).toContain(
 			"endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app')",
 		);
-		expect(job.indexOf('endsWith(')).toBeLessThan(job.indexOf('environment: Preview'));
+		expect(job.indexOf('endsWith(')).toBeLessThan(job.indexOf('environment:'));
+		expect(job).toContain('name: Preview');
+		expect(job).toContain('deployment: false');
 	}
 	expect(CI_WORKFLOW).toContain("github.event_name == 'push'");
 	expect(CI_WORKFLOW).toContain("github.ref == 'refs/heads/main'");
@@ -269,4 +271,47 @@ test('accepts successful Preview evidence when distinct commits share the candid
 			jobs: validPreviewJobs,
 		}),
 	).toThrow();
+});
+
+test('main Git pushes require an explicit Production deployment', () => {
+	const config = JSON.parse(readFileSync(path.resolve(__dirname, '../vercel.json'), 'utf8'));
+	expect(config.git.deploymentEnabled.main).toBe(false);
+});
+
+test('Preview jobs bind deployments to the checked-out main tree', () => {
+	for (const jobName of ['db-supabase-preview', 'e2e-preview']) {
+		const job = workflowJob(CI_WORKFLOW, jobName);
+		expect(job).toContain('ref: main');
+		expect(job).toContain('assertMatchingTree');
+	}
+	expect(workflowJob(CI_WORKFLOW, 'db-supabase-preview')).toContain(
+		'assertMatchingTree(process.env.DEPLOYMENT_TREE, process.env.CHECKED_OUT_TREE)',
+	);
+	expect(workflowJob(CI_WORKFLOW, 'e2e-preview')).toContain(
+		'assertMatchingTree(process.env.DEPLOYMENT_TREE, process.env.CHECKED_OUT_TREE)',
+	);
+});
+
+test('Production evidence passes the candidate SHA and matching Preview tree to the gate', () => {
+	expect(PRODUCTION_WORKFLOW).toContain('candidateSha: process.env.CANDIDATE_SHA');
+	expect(PRODUCTION_WORKFLOW).toContain('candidateTree: process.env.CANDIDATE_TREE');
+	expect(PRODUCTION_WORKFLOW).toContain('runTree: process.env.RUN_TREE');
+	expect(PRODUCTION_WORKFLOW).toContain(
+		"run: JSON.parse(readFileSync(process.env.PREVIEW_RUN_JSON, 'utf8'))",
+	);
+});
+
+test('accepts different Preview commits when candidate and run trees match', () => {
+	const evidence = {
+		candidateSha: SHA,
+		candidateTree: 'c'.repeat(40),
+		runTree: 'c'.repeat(40),
+		expectedRunId: 123,
+		run: { ...validPreviewRun, head_sha: 'b'.repeat(40) },
+		jobs: validPreviewJobs,
+	};
+	expect(assertPreviewEvidence(evidence)).toEqual({
+		deploymentRunId: 123,
+		sourceRevision: 'b'.repeat(40),
+	});
 });

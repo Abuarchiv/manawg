@@ -1,10 +1,5 @@
 import type { wgEvents } from '@/core/db';
-import {
-	berlinDayKey,
-	berlinWallMinutes,
-	instantAtBerlinWallTime,
-	startOfBerlinDay,
-} from '@/core/utils/berlin-day';
+import { berlinDayKey, berlinWallMinutes, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
 import { MS_PER_DAY, parseTimestamp } from '@/core/utils/time';
 
 export const EVENTS_LIST_LIMIT = 1000;
@@ -153,71 +148,12 @@ interface ExpansionWindow {
 	to: number;
 }
 
-type AllDayTimeZone = 'local' | 'Europe/Berlin';
-
 function withinWindow(
 	occurrenceStart: number,
 	occurrenceEnd: number,
 	window: ExpansionWindow,
-	exclusiveEnd = false,
 ): boolean {
-	const overlapsEnd = exclusiveEnd ? occurrenceEnd > window.from : occurrenceEnd >= window.from;
-	return overlapsEnd && occurrenceStart <= window.to;
-}
-
-function utcCalendarDateMarker(instantMs: number): number {
-	const date = new Date(instantMs);
-	return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-}
-
-function berlinDayMarker(date: Date): number {
-	const key = berlinDayKey(date);
-	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
-	if (!match) throw new Error(`Unexpected Berlin day key: ${key}`);
-	return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-}
-
-function calendarDayMarker(date: Date, timeZone: AllDayTimeZone): number {
-	return timeZone === 'Europe/Berlin'
-		? berlinDayMarker(date)
-		: Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function calendarMidnightForUtcDate(instantMs: number, timeZone: AllDayTimeZone): number {
-	const date = new Date(utcCalendarDateMarker(instantMs));
-	if (timeZone === 'Europe/Berlin') {
-		return startOfBerlinDay(
-			new Date(utcCalendarDateMarker(instantMs) + 12 * 60 * 60 * 1000),
-		).getTime();
-	}
-	return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()).getTime();
-}
-
-function occurrenceBounds(
-	event: EventInput,
-	startMs: number,
-	durationMs: number,
-	timeZone: AllDayTimeZone,
-): ExpansionWindow {
-	if (!event.allDay) return { from: startMs, to: startMs + durationMs };
-	const dayCount = Math.max(1, Math.round(durationMs / MS_PER_DAY));
-	return {
-		from: calendarMidnightForUtcDate(startMs, timeZone),
-		to: calendarMidnightForUtcDate(startMs + dayCount * MS_PER_DAY, timeZone),
-	};
-}
-
-function recurrenceSearchFrom(
-	event: EventInput,
-	windowFromMs: number,
-	baseDurationMs: number,
-	startMs: number,
-	timeZone: AllDayTimeZone,
-): number {
-	if (!event.allDay) return Math.max(startMs, windowFromMs - baseDurationMs);
-	const localDayMarkerMs = calendarDayMarker(new Date(windowFromMs), timeZone);
-	const overlapDays = Math.max(0, baseDurationMs - MS_PER_DAY);
-	return Math.max(startMs, localDayMarkerMs - overlapDays);
+	return occurrenceEnd >= window.from && occurrenceStart <= window.to;
 }
 
 function buildOccurrence(
@@ -228,9 +164,7 @@ function buildOccurrence(
 	isRecurring: boolean,
 ): EventOccurrence {
 	const start = new Date(startMs);
-	const end = new Date(
-		startMs + (event.allDay && event.endsAt ? Math.max(0, durationMs - MS_PER_DAY) : durationMs),
-	);
+	const end = new Date(startMs + durationMs);
 	return {
 		eventId: event.id,
 		title: event.title,
@@ -247,15 +181,9 @@ function buildOccurrence(
 }
 
 function durationMsFor(event: EventInput, startMs: number): number {
-	if (event.allDay) {
-		if (!event.endsAt) return MS_PER_DAY;
-		const endMs = parseTimestamp(event.endsAt);
-		if (endMs === null || endMs < startMs) return MS_PER_DAY;
-		// Stored all-day end dates are inclusive calendar dates.
-		return endMs - startMs + MS_PER_DAY;
-	}
 	if (!event.endsAt) return DEFAULT_DURATION_MS;
 	const endMs = parseTimestamp(event.endsAt);
+	if (event.allDay && endMs === startMs) return 0;
 	if (endMs === null || endMs <= startMs) return DEFAULT_DURATION_MS;
 	return endMs - startMs;
 }
@@ -373,7 +301,6 @@ export function expandRecurrence(
 	event: EventInput,
 	from: Date | string,
 	to: Date | string,
-	timeZone: AllDayTimeZone = 'local',
 ): EventOccurrence[] {
 	const startMs = parseTimestamp(event.startsAt);
 	const fromMs = parseTimestamp(from instanceof Date ? from.toISOString() : from);
@@ -385,8 +312,7 @@ export function expandRecurrence(
 	const rule = parseRecurrenceRule(event.recurrence);
 
 	if (!rule) {
-		const bounds = occurrenceBounds(event, startMs, baseDuration, timeZone);
-		if (!withinWindow(bounds.from, bounds.to, window, event.allDay)) return [];
+		if (!withinWindow(startMs, startMs + baseDuration, window)) return [];
 		return [buildOccurrence(event, startMs, baseDuration, 0, false)];
 	}
 
@@ -404,7 +330,7 @@ export function expandRecurrence(
 		rule,
 		startMs,
 		anchorWeekStartMs,
-		recurrenceSearchFrom(event, window.from, baseDuration, startMs, timeZone),
+		window.from,
 		weeklyByDay,
 		weeklyAllowedDays,
 	);
@@ -419,8 +345,7 @@ export function expandRecurrence(
 	while (iterations < MAX_EXPAND_ITERATIONS) {
 		iterations += 1;
 		const occMs = current.getTime();
-		const bounds = occurrenceBounds(event, occMs, baseDuration, timeZone);
-		if (bounds.from > window.to) break;
+		if (occMs > window.to) break;
 		if (untilMs !== null && occMs > untilMs) break;
 		if (rule.count !== undefined && index >= rule.count) break;
 
@@ -439,20 +364,7 @@ export function expandRecurrence(
 				const dayKey = berlinDayKey(current);
 				occurrenceMs = (instantAtBerlinWallTime(dayKey, anchorWallMinutes) ?? current).getTime();
 			}
-			const occurrenceBoundsForWindow = occurrenceBounds(
-				event,
-				occurrenceMs,
-				baseDuration,
-				timeZone,
-			);
-			if (
-				withinWindow(
-					occurrenceBoundsForWindow.from,
-					occurrenceBoundsForWindow.to,
-					window,
-					event.allDay,
-				)
-			) {
+			if (withinWindow(occurrenceMs, occurrenceMs + baseDuration, window)) {
 				occurrences.push(buildOccurrence(event, occurrenceMs, baseDuration, index, true));
 			}
 			index += 1;
@@ -501,6 +413,23 @@ export function nextOccurrence(event: EventInput, after: Date | string): EventOc
 	return null;
 }
 
+/** Browser agenda: all-day events occupy inclusive local calendar dates, not one hour. */
+export function expandAgendaRecurrence(event: EventInput, from: Date, to: Date): EventOccurrence[] {
+	if (!event.allDay) return expandRecurrence(event, from, to);
+	if (from.getTime() > to.getTime()) return [];
+	// Widen candidate selection for UTC dates, legacy local instants and ongoing spans.
+	const start = getCalendarDayBounds(from).start;
+	start.setTime(start.getTime() - durationMsFor(event, Date.parse(event.startsAt)));
+	return expandRecurrence(event, start, getCalendarDayBounds(to).end).filter((occurrence) => {
+		const first = eventDateForDisplay(occurrence.startsAt, true);
+		first.setHours(0, 0, 0, 0);
+		const endExclusive = eventDateForDisplay(occurrence.endsAt ?? occurrence.startsAt, true);
+		endExclusive.setHours(0, 0, 0, 0);
+		endExclusive.setDate(endExclusive.getDate() + 1);
+		return first.getTime() <= to.getTime() && endExclusive.getTime() > from.getTime();
+	});
+}
+
 const WEEKDAY_FORMATTER = new Intl.DateTimeFormat('de-DE', { weekday: 'short' });
 const ALL_DAY_WEEKDAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 	weekday: 'short',
@@ -526,7 +455,9 @@ function isSameDay(a: Date, b: Date): boolean {
 export function formatEventTimeRange(occurrence: EventOccurrence): string {
 	const start = new Date(occurrence.startsAt);
 	if (occurrence.allDay) {
-		return `${ALL_DAY_WEEKDAY_FORMATTER.format(start)} ${DATE_FULL_FORMATTER.format(start)} · ganztägig`;
+		const display = eventDateForDisplay(occurrence.startsAt, true);
+		const date = new Date(Date.UTC(display.getFullYear(), display.getMonth(), display.getDate()));
+		return `${ALL_DAY_WEEKDAY_FORMATTER.format(date)} ${DATE_FULL_FORMATTER.format(date)} · ganztägig`;
 	}
 	const end = occurrence.endsAt ? new Date(occurrence.endsAt) : null;
 	const startLabel = `${WEEKDAY_FORMATTER.format(start)} ${DATE_FORMATTER.format(start)} ${TIME_FORMATTER.format(
@@ -550,10 +481,34 @@ export function getMonthBounds(reference: Date): { start: Date; end: Date } {
 	return { start, end };
 }
 
-/** All-day timestamps carry a UTC calendar date (also used by recurrence and ICS). */
+/** Query both UTC date values and device-local legacy instants for a calendar day. */
+export function getCalendarDayBounds(reference: Date): { start: Date; end: Date } {
+	const year = reference.getFullYear();
+	const month = reference.getMonth();
+	const day = reference.getDate();
+	return {
+		start: new Date(Math.min(new Date(year, month, day).getTime(), Date.UTC(year, month, day))),
+		end: new Date(
+			Math.max(new Date(year, month, day + 1).getTime(), Date.UTC(year, month, day + 1)) - 1,
+		),
+	};
+}
+
+/**
+ * Exact UTC midnight is canonical, including indistinguishable legacy midnight values.
+ * Other all-day timestamps retain the old device-local display. The original timezone
+ * was never stored, so it cannot be recovered or made invariant across viewers.
+ */
 export function eventDateForDisplay(iso: string, allDay: boolean): Date {
 	const date = new Date(iso);
-	return allDay ? new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) : date;
+	const utcMidnight =
+		date.getUTCHours() === 0 &&
+		date.getUTCMinutes() === 0 &&
+		date.getUTCSeconds() === 0 &&
+		date.getUTCMilliseconds() === 0;
+	return allDay && utcMidnight
+		? new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+		: date;
 }
 
 /**
@@ -597,6 +552,7 @@ export function validateEventForm(input: {
 	startsAt: string;
 	endsAt: string;
 	allDay?: boolean;
+	original?: Pick<EventInput, 'startsAt' | 'endsAt' | 'allDay'>;
 }): EventFormValidation {
 	if (input.title.trim().length === 0) return { ok: false, error: 'Titel fehlt.' };
 	if (!input.startsAt) return { ok: false, error: 'Startzeitpunkt fehlt.' };
@@ -610,6 +566,29 @@ export function validateEventForm(input: {
 		: null;
 	if (endsAt && endsAt.getTime() < startsAt.getTime()) {
 		return { ok: false, error: 'Endzeit liegt vor Startzeit.' };
+	}
+	const original = input.original;
+	if (
+		allDay &&
+		original?.allDay &&
+		isSameDay(
+			eventDateForDisplay(startsAt.toISOString(), true),
+			eventDateForDisplay(original.startsAt, true),
+		) &&
+		(endsAt && original.endsAt
+			? isSameDay(
+					eventDateForDisplay(endsAt.toISOString(), true),
+					eventDateForDisplay(original.endsAt, true),
+				)
+			: endsAt === null && original.endsAt === null)
+	) {
+		// Preserve both legacy instants when only title/metadata changed. An explicit
+		// date edit writes the pair canonically, avoiding mixed old/new end ordering.
+		return {
+			ok: true,
+			startsAt: new Date(original.startsAt),
+			endsAt: original.endsAt ? new Date(original.endsAt) : null,
+		};
 	}
 	return { ok: true, startsAt, endsAt };
 }

@@ -1,6 +1,10 @@
 import { type Route, expect, test } from '@playwright/test';
 import { computeTomorrowUtcWindow } from '../src/features/events/event-reminder-window';
-import { type EventInput, expandRecurrence } from '../src/features/events/events';
+import {
+	type EventInput,
+	expandAgendaRecurrence,
+	expandRecurrence,
+} from '../src/features/events/events';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
 
 const ALL_DAY_EVENT: EventInput = {
@@ -14,8 +18,12 @@ const ALL_DAY_EVENT: EventInput = {
 	recurrence: null,
 };
 
+function expandAgenda(event: EventInput, from: string | Date, to: string | Date) {
+	return expandAgendaRecurrence(event, new Date(from), new Date(to));
+}
+
 test('keeps a started all-day event in the evening agenda window', () => {
-	const occurrences = expandRecurrence(
+	const occurrences = expandAgenda(
 		ALL_DAY_EVENT,
 		'2026-09-29T18:00:00.000Z',
 		'2026-09-29T22:00:00.000Z',
@@ -26,7 +34,7 @@ test('keeps a started all-day event in the evening agenda window', () => {
 });
 
 test('keeps inclusive multi-day all-day overlap across the Berlin fall DST date', () => {
-	const occurrences = expandRecurrence(
+	const occurrences = expandAgenda(
 		{
 			...ALL_DAY_EVENT,
 			id: 'multi-day-pilot',
@@ -50,18 +58,18 @@ test('uses Berlin calendar boundaries for all-day overlap and recurrence search'
 	process.env.TZ = 'Europe/Berlin';
 	try {
 		expect(
-			expandRecurrence(ALL_DAY_EVENT, '2026-09-28T22:01:00.000Z', '2026-09-28T23:00:00.000Z'),
+			expandAgenda(ALL_DAY_EVENT, '2026-09-28T22:01:00.000Z', '2026-09-28T23:00:00.000Z'),
 		).toHaveLength(1);
 		expect(
-			expandRecurrence(ALL_DAY_EVENT, '2026-09-29T22:30:00.000Z', '2026-09-29T23:00:00.000Z'),
+			expandAgenda(ALL_DAY_EVENT, '2026-09-29T22:30:00.000Z', '2026-09-29T23:00:00.000Z'),
 		).toHaveLength(0);
 
 		const fallDstEvent = { ...ALL_DAY_EVENT, startsAt: '2026-10-25T00:00:00.000Z' };
 		expect(
-			expandRecurrence(fallDstEvent, '2026-10-24T22:30:00.000Z', '2026-10-24T23:00:00.000Z'),
+			expandAgenda(fallDstEvent, '2026-10-24T22:30:00.000Z', '2026-10-24T23:00:00.000Z'),
 		).toHaveLength(1);
 		expect(
-			expandRecurrence(fallDstEvent, '2026-10-25T23:30:00.000Z', '2026-10-26T00:00:00.000Z'),
+			expandAgenda(fallDstEvent, '2026-10-25T23:30:00.000Z', '2026-10-26T00:00:00.000Z'),
 		).toHaveLength(0);
 
 		const daily = {
@@ -69,7 +77,7 @@ test('uses Berlin calendar boundaries for all-day overlap and recurrence search'
 			recurrence: 'FREQ=DAILY;COUNT=2',
 		};
 		expect(
-			expandRecurrence(daily, '2026-09-29T22:30:00.000Z', '2026-09-29T23:00:00.000Z').map(
+			expandAgenda(daily, '2026-09-29T22:30:00.000Z', '2026-09-29T23:00:00.000Z').map(
 				(occurrence) => occurrence.startsAt,
 			),
 		).toEqual(['2026-09-30T00:00:00.000Z']);
@@ -84,14 +92,14 @@ test('uses the runtime local calendar date before a UTC+14 event marker', () => 
 	process.env.TZ = 'Pacific/Kiritimati';
 	try {
 		expect(
-			expandRecurrence(
+			expandAgenda(
 				{ ...ALL_DAY_EVENT, startsAt: '2026-01-01T00:00:00.000Z' },
 				'2025-12-31T10:30:00.000Z',
 				'2025-12-31T11:00:00.000Z',
 			),
 		).toHaveLength(1);
 		expect(
-			expandRecurrence(
+			expandAgenda(
 				{ ...ALL_DAY_EVENT, startsAt: '2026-01-01T00:00:00.000Z' },
 				'2026-01-01T10:30:00.000Z',
 				'2026-01-01T11:00:00.000Z',
@@ -104,25 +112,9 @@ test('uses the runtime local calendar date before a UTC+14 event marker', () => 
 });
 
 test('cron Berlin window excludes a finished all-day event on a UTC host', () => {
-	const previousTimezone = process.env.TZ;
-	process.env.TZ = 'UTC';
-	try {
-		const window = computeTomorrowUtcWindow(new Date('2026-09-29T09:00:00.000Z'));
-		const expandWithZone = expandRecurrence as unknown as (
-			event: EventInput,
-			from: Date,
-			to: Date,
-			timeZone: 'Europe/Berlin',
-		) => ReturnType<typeof expandRecurrence>;
-
-		expect(window.start.toISOString()).toBe('2026-09-29T22:00:00.000Z');
-		expect(expandWithZone(ALL_DAY_EVENT, window.start, window.end, 'Europe/Berlin')).toHaveLength(
-			0,
-		);
-	} finally {
-		if (previousTimezone === undefined) Reflect.deleteProperty(process.env, 'TZ');
-		else process.env.TZ = previousTimezone;
-	}
+	const window = computeTomorrowUtcWindow(new Date('2026-09-29T09:00:00.000Z'));
+	expect(window.start.toISOString()).toBe('2026-09-29T22:00:00.000Z');
+	expect(expandRecurrence(ALL_DAY_EVENT, window.start, window.end)).toHaveLength(0);
 });
 
 test('edit recurrence uses the canonical select and sends an RFC rule', async ({ page }) => {

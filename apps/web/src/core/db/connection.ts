@@ -12,7 +12,7 @@ export function resolveConnectionString(): string {
 			'POSTGRES_URL (or DATABASE_URL) is not set. Set a PostgreSQL connection string for the environment.',
 		);
 	}
-	return secureRuntimeConnectionString(url, 'POSTGRES_URL/DATABASE_URL database connection');
+	return secureRuntimeConnectionString(url, 'database connection');
 }
 
 export function resolveTransactionConnectionString(): string {

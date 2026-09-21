@@ -108,6 +108,32 @@ function validateSupabaseDirectUrl(url, label) {
 	}
 }
 
+/** Explicit CI transport for the pinned Preview verifier; never a Production fallback. */
+export function previewSessionDatabaseUrl(value) {
+	let url;
+	try {
+		url = new URL(value);
+	} catch {
+		throw new Error('Preview CI database configuration is invalid.');
+	}
+	if (
+		!['postgres:', 'postgresql:'].includes(url.protocol) ||
+		url.hostname !== 'db.sthiwjebcwwiphashgla.supabase.co' ||
+		url.port !== '5432' ||
+		url.pathname !== '/postgres' ||
+		url.username !== 'manawg_preview_ci' ||
+		!url.password ||
+		url.hash ||
+		url.searchParams.size !== 1 ||
+		url.searchParams.get('sslmode') !== 'verify-full'
+	) {
+		throw new Error('Preview CI requires its pinned verifier connection with verified TLS.');
+	}
+	url.hostname = 'aws-0-eu-central-1.pooler.supabase.com';
+	url.username = 'manawg_preview_ci.sthiwjebcwwiphashgla';
+	return url.href;
+}
+
 /**
  * Turn a Neon pooled host into its direct one. Neon's pooled endpoint is the
  * direct endpoint with a `-pooler` label inserted:
@@ -905,8 +931,12 @@ async function adoptBaseline(client) {
 }
 
 async function main() {
-	const connectionString = resolveConnectionString();
-	validateSupabaseDirectUrl(connectionString, 'Database migration connection');
+	const sourceConnection = resolveConnectionString();
+	validateSupabaseDirectUrl(sourceConnection, 'Database migration connection');
+	const connectionString =
+		process.env.MANAWG_PREVIEW_CI_SESSION === 'true'
+			? previewSessionDatabaseUrl(sourceConnection)
+			: sourceConnection;
 	const pool = new pg.Pool({ connectionString, max: 1 });
 	const client = await pool.connect();
 	let locked = false;
