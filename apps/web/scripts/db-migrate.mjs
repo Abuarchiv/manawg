@@ -948,6 +948,8 @@ function safeFailureReason(error) {
 	if (/relation .* does not exist/i.test(text)) return 'missing-relation';
 	if (/column .* does not exist/i.test(text)) return 'missing-column';
 	if (/already exists|duplicate key/i.test(text)) return 'duplicate-object';
+	const permission = text.match(/permission denied for (schema|table|sequence|function)/i);
+	if (permission) return `permission-${permission[1].toLowerCase()}`;
 	if (/permission denied|insufficient privilege/i.test(text)) return 'permission';
 	return 'unclassified';
 }
