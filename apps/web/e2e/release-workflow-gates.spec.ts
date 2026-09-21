@@ -278,10 +278,12 @@ test('main Git pushes require an explicit Production deployment', () => {
 	expect(config.git.deploymentEnabled.main).toBe(false);
 });
 
-test('Preview jobs bind deployments to the checked-out main tree', () => {
+test('Preview jobs bind deployments to an approved source tree', () => {
 	for (const jobName of ['db-supabase-preview', 'e2e-preview']) {
 		const job = workflowJob(CI_WORKFLOW, jobName);
 		expect(job).toContain('ref: main');
+		expect(job).toContain('for trusted_ref in main fix/audit-158');
+		expect(job).toContain('git checkout --detach "$DEPLOYMENT_SHA"');
 		expect(job).toContain('assertMatchingTree');
 	}
 	expect(workflowJob(CI_WORKFLOW, 'db-supabase-preview')).toContain(

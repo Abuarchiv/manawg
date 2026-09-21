@@ -90,29 +90,57 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # Start from the trusted default branch. A deployment SHA is checked out only
+          # after it is proven to be the tip of an explicitly approved Preview branch.
           ref: main
-      - name: Require the trusted source tree
+      - name: Require the trusted Preview source tree
         env:
           EVENT_NAME: ${{ github.event_name }}
           SOURCE_SHA: ${{ github.sha }}
           DEPLOYMENT_SHA: ${{ github.event.deployment.sha }}
         run: |
           if [ "$EVENT_NAME" = deployment_status ]; then
-            export DEPLOYMENT_SHA
             if ! [[ "$DEPLOYMENT_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
               echo 'deployment SHA must be a full 40-character commit SHA.' >&2
               exit 1
             fi
+            TRUSTED_PREVIEW_REF=''
+            for trusted_ref in main fix/audit-158; do
+              trusted_sha="$(git ls-remote origin "refs/heads/$trusted_ref" | awk '{print $1}')"
+              if [ "$trusted_sha" = "$DEPLOYMENT_SHA" ]; then
+                TRUSTED_PREVIEW_REF="$trusted_ref"
+                break
+              fi
+            done
+            if [ -z "$TRUSTED_PREVIEW_REF" ]; then
+              echo 'deployment SHA is not the current tip of an approved Preview branch.' >&2
+              exit 1
+            fi
             git fetch --no-tags --depth=1 origin "$DEPLOYMENT_SHA"
+            git checkout --detach "$DEPLOYMENT_SHA"
             DEPLOYMENT_TREE="$(git rev-parse "$DEPLOYMENT_SHA^{tree}")"
-            CHECKED_OUT_TREE="$(git rev-parse "HEAD^{tree}")"
-            export DEPLOYMENT_TREE CHECKED_OUT_TREE
+            CHECKED_OUT_TREE="$(git rev-parse HEAD^{tree}")"
+            if [ "$DEPLOYMENT_TREE" != "$CHECKED_OUT_TREE" ]; then
+              echo 'deployment tree does not match the checked-out trusted source tree.' >&2
+              exit 1
+            fi
           else
+            if ! [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+              echo 'source SHA must be a full 40-character commit SHA.' >&2
+              exit 1
+            fi
             CHECKED_OUT_SHA="$(git rev-parse HEAD)"
-            export CHECKED_OUT_SHA
+            if [ "$SOURCE_SHA" != "$CHECKED_OUT_SHA" ]; then
+              echo 'checked-out source revision does not match the event revision.' >&2
+              exit 1
+            fi
           fi
+          export EVENT_NAME SOURCE_SHA DEPLOYMENT_SHA
+          export DEPLOYMENT_TREE CHECKED_OUT_TREE CHECKED_OUT_SHA
           node --input-type=module <<'NODE'
-          import { assertExactRevision, assertMatchingTree } from './apps/web/scripts/release-workflow-gates.mjs';
+          const { assertExactRevision, assertMatchingTree } = await import(
+            './apps/web/scripts/release-workflow-gates.mjs',
+          );
 
           if (process.env.EVENT_NAME === 'deployment_status') {
             assertExactRevision(process.env.DEPLOYMENT_SHA, process.env.DEPLOYMENT_SHA);
@@ -219,23 +247,38 @@ jobs:
         run: test "$MIGRATION_GATE_RESULT" = success
       - uses: actions/checkout@v4
         with:
-          # Never execute an event-supplied deployment SHA in a secrets-bearing job.
+          # Start from the trusted default branch. The deployment SHA is checked out
+          # only after it is proven to be the tip of an approved Preview branch.
           ref: main
       - name: Require the trusted deployment tree
         env:
           DEPLOYMENT_SHA: ${{ github.event.deployment.sha }}
         run: |
-          export DEPLOYMENT_SHA
           if ! [[ "$DEPLOYMENT_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
             echo 'deployment SHA must be a full 40-character commit SHA.' >&2
             exit 1
           fi
+          TRUSTED_PREVIEW_REF=''
+          for trusted_ref in main fix/audit-158; do
+            trusted_sha="$(git ls-remote origin "refs/heads/$trusted_ref" | awk '{print $1}')"
+            if [ "$trusted_sha" = "$DEPLOYMENT_SHA" ]; then
+              TRUSTED_PREVIEW_REF="$trusted_ref"
+              break
+            fi
+          done
+          if [ -z "$TRUSTED_PREVIEW_REF" ]; then
+            echo 'deployment SHA is not the current tip of an approved Preview branch.' >&2
+            exit 1
+          fi
           git fetch --no-tags --depth=1 origin "$DEPLOYMENT_SHA"
+          git checkout --detach "$DEPLOYMENT_SHA"
           DEPLOYMENT_TREE="$(git rev-parse "$DEPLOYMENT_SHA^{tree}")"
-          CHECKED_OUT_TREE="$(git rev-parse "HEAD^{tree}")"
+          CHECKED_OUT_TREE="$(git rev-parse HEAD^{tree}")"
           export DEPLOYMENT_TREE CHECKED_OUT_TREE
           node --input-type=module <<'NODE'
-          import { assertMatchingTree } from './apps/web/scripts/release-workflow-gates.mjs';
+          const { assertMatchingTree } = await import(
+            './apps/web/scripts/release-workflow-gates.mjs',
+          );
 
           assertMatchingTree(process.env.DEPLOYMENT_TREE, process.env.CHECKED_OUT_TREE);
           NODE
