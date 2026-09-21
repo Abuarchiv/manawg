@@ -10,6 +10,23 @@ const MEMBER_ID = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
 const WG_ID = '989ac820-58b7-431f-9c65-28721264f333';
 type LayoutRoute = 'home' | 'chores' | 'shopping' | 'inventory';
 
+function fixtureBerlinTodayAtNoon(): string {
+	const parts = new Intl.DateTimeFormat('en-US', {
+		timeZone: 'Europe/Berlin',
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit',
+	}).formatToParts(new Date());
+	const value = (type: string) => parts.find((part) => part.type === type)?.value;
+	const year = value('year');
+	const month = value('month');
+	const day = value('day');
+	if (!year || !month || !day) throw new Error('Could not determine the Berlin fixture date');
+	return `${year}-${month}-${day}T12:00:00.000Z`;
+}
+
+const FIXTURE_DUE_AT = fixtureBerlinTodayAtNoon();
+
 const shoppingItems = [
 	{
 		id: 'shopping-open',
@@ -66,7 +83,7 @@ const chores = [
 		title: 'Bad putzen',
 		intervalDays: 7,
 		recurrenceType: 'days' as const,
-		nextDueAt: '2026-09-21T08:00:00.000Z',
+		nextDueAt: FIXTURE_DUE_AT,
 		assignedMemberId: MEMBER_ID,
 		lastCompletedAt: null,
 		lastCompletedByName: null,
@@ -102,7 +119,7 @@ const dashboardData = {
 			assignedMemberId: MEMBER_ID,
 			assignedMemberName: 'dsaf',
 			assignedColor: '#6d5efc',
-			nextDueAt: '2026-09-21T08:00:00.000Z',
+			nextDueAt: FIXTURE_DUE_AT,
 			overdue: false,
 		},
 	],

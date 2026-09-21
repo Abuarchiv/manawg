@@ -224,9 +224,7 @@ test('keeps complex recurrence on title-only save and replaces it explicitly', a
 	const recurrence = page.locator('#event-edit-recurrence');
 	await expect(recurrence).toHaveValue('__keep__');
 	await recurrence.scrollIntoViewIfNeeded();
-	await page.screenshot({
-		path: '/Users/abu/Company/ManaWG-Visuals/2026-09-21-pilot-fixes/calendar-edit-light.png',
-	});
+	await page.screenshot({ path: test.info().outputPath('calendar-edit-light.png') });
 	await page.evaluate(() => {
 		localStorage.setItem('manawg-theme', 'dark');
 	});
@@ -237,9 +235,7 @@ test('keeps complex recurrence on title-only save and replaces it explicitly', a
 	await expect(page.locator('html')).toHaveClass(/dark/);
 	await expect(recurrence).toHaveValue('__keep__');
 	await recurrence.scrollIntoViewIfNeeded();
-	await page.screenshot({
-		path: '/Users/abu/Company/ManaWG-Visuals/2026-09-21-pilot-fixes/calendar-edit-dark.png',
-	});
+	await page.screenshot({ path: test.info().outputPath('calendar-edit-dark.png') });
 	await page.locator('#event-edit-title').fill('WG-Meeting umbenannt');
 	await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 	await expect.poll(() => patches).toHaveLength(1);
