@@ -51,6 +51,10 @@ const LEGACY_LEDGER_ALLOWLIST = new Map([
 		'88916329fbe6f5e5f4e4174e5db393aa3d7c4516790c4dbf3d1a41301f335aa0',
 		{ when: 1788112576655, position: 7 },
 	],
+	[
+		'fb524f9b63dd0b63b84d8d1bf6d916781e7cc206682bf23bdd0106d9e9dbbb0e',
+		{ when: 1788436085539, position: 10 },
+	],
 ]);
 const MIGRATION_LOCK = 'manawg:drizzle-migrate';
 const PUBLIC_SCHEMA = 'public';

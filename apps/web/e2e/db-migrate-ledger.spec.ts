@@ -49,9 +49,11 @@ test('accepts the reviewed historical hash at its canonical ledger position', as
 		hash:
 			index === 7
 				? '88916329fbe6f5e5f4e4174e5db393aa3d7c4516790c4dbf3d1a41301f335aa0'
-				: createHash('sha256')
-						.update(readFileSync(path.join(migrationsDir, `${entry.tag}.sql`), 'utf8'))
-						.digest('hex'),
+				: index === 10
+					? 'fb524f9b63dd0b63b84d8d1bf6d916781e7cc206682bf23bdd0106d9e9dbbb0e'
+					: createHash('sha256')
+							.update(readFileSync(path.join(migrationsDir, `${entry.tag}.sql`), 'utf8'))
+							.digest('hex'),
 		created_at: String(entry.when),
 	}));
 	const client = {
