@@ -984,7 +984,14 @@ async function main() {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	main().catch((err) => {
-		console.error('[migrate] Failed:', err instanceof Error ? err.message : err);
+		const errorCode =
+			err &&
+			typeof err === 'object' &&
+			typeof err.code === 'string' &&
+			/^[A-Z0-9_]{5,}$/.test(err.code)
+				? ` [code=${err.code}]`
+				: '';
+		console.error(`[migrate] Failed${errorCode}:`, err instanceof Error ? err.message : err);
 		process.exit(1);
 	});
 }
