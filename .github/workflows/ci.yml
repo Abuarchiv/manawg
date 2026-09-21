@@ -118,8 +118,8 @@ jobs:
             fi
             git fetch --no-tags --depth=1 origin "$DEPLOYMENT_SHA"
             git checkout --detach "$DEPLOYMENT_SHA"
-            DEPLOYMENT_TREE="$(git rev-parse "$DEPLOYMENT_SHA^{tree}")"
-            CHECKED_OUT_TREE="$(git rev-parse HEAD^{tree}")"
+            DEPLOYMENT_TREE="$(git rev-parse "${DEPLOYMENT_SHA}^{tree}")"
+            CHECKED_OUT_TREE="$(git rev-parse 'HEAD^{tree}')"
             if [ "$DEPLOYMENT_TREE" != "$CHECKED_OUT_TREE" ]; then
               echo 'deployment tree does not match the checked-out trusted source tree.' >&2
               exit 1
@@ -272,8 +272,8 @@ jobs:
           fi
           git fetch --no-tags --depth=1 origin "$DEPLOYMENT_SHA"
           git checkout --detach "$DEPLOYMENT_SHA"
-          DEPLOYMENT_TREE="$(git rev-parse "$DEPLOYMENT_SHA^{tree}")"
-          CHECKED_OUT_TREE="$(git rev-parse HEAD^{tree}")"
+          DEPLOYMENT_TREE="$(git rev-parse "${DEPLOYMENT_SHA}^{tree}")"
+          CHECKED_OUT_TREE="$(git rev-parse 'HEAD^{tree}')"
           export DEPLOYMENT_TREE CHECKED_OUT_TREE
           node --input-type=module <<'NODE'
           const { assertMatchingTree } = await import(
