@@ -1,4 +1,4 @@
-const PREVIEW_HOST = /^manawg-[a-z0-9-]+-applications-projects\.vercel\.app$/i;
+const PREVIEW_HOST = /^manawg-[a-z0-9-]+-abditubes-projects\.vercel\.app$/i;
 const FULL_SHA = /^[0-9a-f]{40}$/i;
 const CI_WORKFLOW_PATH = /^\.github\/workflows\/ci\.yml(?:@main)?$/;
 

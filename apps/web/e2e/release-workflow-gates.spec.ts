@@ -23,6 +23,7 @@ const PRODUCTION_WORKFLOW = readFileSync(
 	'utf8',
 );
 const ENV_EXAMPLE = readFileSync(path.resolve(__dirname, '../.env.example'), 'utf8');
+const VERCEL_CONFIG = readFileSync(path.resolve(__dirname, '../vercel.json'), 'utf8');
 const ANALYTICS_SOURCE = readFileSync(
 	path.resolve(__dirname, '../src/instrumentation-client.ts'),
 	'utf8',
@@ -35,7 +36,7 @@ const validPreviewEvent = {
 	environment: 'Preview',
 	deploymentCreator: 'vercel[bot]',
 	statusCreator: 'vercel[bot]',
-	targetUrl: 'https://manawg-feature-applications-projects.vercel.app',
+	targetUrl: 'https://manawg-feature-abditubes-projects.vercel.app',
 };
 
 const validPreviewRun = {
@@ -78,11 +79,11 @@ test('rejects untrusted Preview actors, refs, and URL shapes', () => {
 		{ ...validPreviewEvent, targetUrl: `${validPreviewEvent.targetUrl}#fragment` },
 		{
 			...validPreviewEvent,
-			targetUrl: 'https://user:password@manawg-feature-applications-projects.vercel.app',
+			targetUrl: 'https://user:password@manawg-feature-abditubes-projects.vercel.app',
 		},
 		{
 			...validPreviewEvent,
-			targetUrl: 'https://manawg-feature-applications-projects.vercel.app:443',
+			targetUrl: 'https://manawg-feature-abditubes-projects.vercel.app:443',
 		},
 		{ ...validPreviewEvent, targetUrl: 'https://evil.example.test' },
 	]) {
@@ -107,6 +108,12 @@ test('requires every protected Preview auth variable without exposing values', (
 			'Preview auth',
 		),
 	).toThrow('SUPABASE_AUTH_TEST_MEMBER_NAME');
+});
+
+test('keeps Vercel Preview builds active and on the actual team hostname', () => {
+	expect(VERCEL_CONFIG).toContain('"ignoreCommand": "exit 1"');
+	expect(VERCEL_CONFIG).not.toContain('"ignoreCommand": "$CI"');
+	expect(assertPreviewEvent(validPreviewEvent)).toBe(validPreviewEvent.targetUrl);
 });
 
 test('uses the current PostHog defaults release', () => {
@@ -150,7 +157,7 @@ test('filters trusted Preview statuses before protected environments and keeps p
 			"startsWith(github.event.deployment_status.target_url, 'https://manawg-')",
 		);
 		expect(job).toContain(
-			"endsWith(github.event.deployment_status.target_url, '-applications-projects.vercel.app')",
+			"endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app')",
 		);
 		expect(job.indexOf('endsWith(')).toBeLessThan(job.indexOf('environment: Preview'));
 	}

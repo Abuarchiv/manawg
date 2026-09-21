@@ -99,6 +99,13 @@
       "when": 1789855081968,
       "tag": "0013_member_wg_invariants",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789855082968,
+      "tag": "0014_fix_chat_sender_fk",
+      "breakpoints": true
     }
   ]
 }

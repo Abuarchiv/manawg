@@ -53,6 +53,16 @@ const LEGACY_LEDGER_ALLOWLIST = new Map();
 const MIGRATION_LOCK = 'manawg:drizzle-migrate';
 const PUBLIC_SCHEMA = 'public';
 const PUBLIC_ROLES = ['anon', 'authenticated'];
+const MEMBER_WG_INVARIANT_FUNCTIONS = [
+	'manawg_assert_member_belongs_to_wg',
+	'manawg_assert_expense_split_member_wg',
+	'manawg_assert_chore_completion_member_wg',
+	'manawg_assert_announcement_member_wg',
+	'manawg_assert_inventory_log_member_wg',
+	'manawg_assert_chat_member_wg',
+	'manawg_assert_chat_mention_wg',
+];
+const ALLOWED_SECURITY_DEFINER_FUNCTIONS = new Set(MEMBER_WG_INVARIANT_FUNCTIONS);
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = path.join(scriptDir, '..', 'drizzle');
@@ -776,13 +786,39 @@ async function assertCatalogSecurity(client, expectedTables) {
 		   ))`,
 		[PUBLIC_SCHEMA],
 	);
+	const { rows: invariantFunctions } = await client.query(
+		`select proc.proname as object_name,
+				proc.prosecdef as security_definer,
+				coalesce(proc.proconfig, array[]::text[]) as config
+		 from pg_proc proc join pg_namespace ns on ns.oid = proc.pronamespace
+		 where ns.nspname = $1 and proc.proname = any($2::name[])`,
+		[PUBLIC_SCHEMA, MEMBER_WG_INVARIANT_FUNCTIONS],
+	);
+	const invariantByName = new Map(
+		invariantFunctions.map((functionRow) => [functionRow.object_name, functionRow]),
+	);
+	const invariantMismatches = MEMBER_WG_INVARIANT_FUNCTIONS.flatMap((name) => {
+		const functionRow = invariantByName.get(name);
+		if (!functionRow) return [`missing public invariant function ${name}()`];
+		const mismatches = [];
+		if (functionRow.security_definer !== true) {
+			mismatches.push(`public invariant function ${name}() is not SECURITY DEFINER`);
+		}
+		if (!functionRow.config.includes('search_path=public')) {
+			mismatches.push(`public invariant function ${name}() has an unsafe search_path`);
+		}
+		return mismatches;
+	});
 	const catalogMismatches = [
+		...invariantMismatches,
 		...policies.map(({ policyname, tablename }) => `public policy ${policyname} on ${tablename}`),
 		...views.map(({ object_name, object_type }) => `public ${object_type} ${object_name}`),
-		...securityDefiners.map(
-			({ object_name, arguments: args }) =>
-				`public SECURITY DEFINER function ${object_name}(${args})`,
-		),
+		...securityDefiners
+			.filter(({ object_name }) => !ALLOWED_SECURITY_DEFINER_FUNCTIONS.has(object_name))
+			.map(
+				({ object_name, arguments: args }) =>
+					`public SECURITY DEFINER function ${object_name}(${args})`,
+			),
 		...executablePublicFunctions.map(
 			({ object_name, arguments: args }) => `executable public function ${object_name}(${args})`,
 		),
