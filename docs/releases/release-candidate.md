@@ -1,5 +1,16 @@
 # ManaWG Release Candidate Evidence
 
+## Aktualisierung — 2026-09-20 20:10 CEST
+
+Diese Evidenz ersetzt frühere Aussagen über fehlende GitHub-Preview-Secrets oder eine Freigabe anhand gleicher Git-Trees. Geschützte Preview-DB-/QA-Secrets sind eingerichtet; ein finaler vertrauenswürdiger Same-SHA-CI-Lauf fehlt weiterhin.
+
+Storage-Preview: `7640b0c`, `dpl_AMnZJJnwwTRtzKMdJPcUwThdpYob`, https://manawg-m888bn03k-abditubes-projects.vercel.app. Native Vercel-Build mit Node 22 READY. Echte 8-MiB-Datei hochgeladen und byte-/SHA256-identisch gelesen (`55e348d20d20e12c5db5653ac1fad8cff4e340be835951378854db1b523db7c8`); Browser-Bilddekodierung bestanden. Eigener Zugriff erlaubt, andere WG/anonym/deaktiviertes Mitglied abgewiesen; Antworten enthalten nur JSON-Fehler, keine Bildbytes/Redirects. Provider verweigert Übergröße, unerlaubtes MIME und immutable overwrite; ursprünglicher Inhalt unverändert. Online-/Offline-UI-Integration ist damit noch nicht vollständig abgenommen.
+
+Lokale Gates: 18 Storage-/Ledger-Tests bestanden; zuletzt 14 Release-/Limiter-Tests, Lint, Typecheck grün. Build/Bundle vor Middleware-Fix grün (102/120 kB). Hosted-Auth: vier gezielte Problemfälle plus Zwei-Nutzer-Privacy bestanden, Gesamtlauf zuletzt 22/27. Diagnose: ungültige temporäre WG-Codes und falsche Rate-Limiter-Klassifikation für `/api/wg/mine`; finaler erneuter Lauf steht aus.
+
+Recovery-Schema/Daten lokal verifiziert, ACL-Differenz offen. Keine Provider-Recovery-/PITR-, Geräte- oder Residenten-Freigabe behauptet. Production unverändert.
+
+
 Status: **BLOCKED — kein freigegebener Release-Kandidat**
 Stand: 2026-09-20, Europe/Berlin
 Checkout: `/Users/abu/Company/manawg-app`
@@ -68,3 +79,9 @@ Keine Production-Migration, kein Push und kein Deployment wurden ausgeführt. Pr
 ## Nächster Nachweis
 
 Candidate-SHA einfrieren, Preview mit bestehenden serverseitigen Secrets und zentralem Runtime-Fix deployen und vollständige Hosted-Mitgliedschafts-/Privacy-Gates prüfen. Redigierte CLI-Werte sind kein Beleg fehlender Secrets. Kurzlebige CLI-Logins nicht deployen. Provider-, reale Geräte-, Residenten- und Recovery-Nachweise bleiben separate offene Release-Gates.
+
+## Implementierung 2026-09-20 19:28 CEST
+
+- CI-Preview-Gate implementiert: Der Vercel-Commit wird in secrets-bearing Jobs nicht ausgecheckt oder ausgeführt. Nach `git fetch` wird nur sein Tree gegen den vertrauenswürdigen `main`-Tree verglichen; der Merge-Commit-Fall `44554575` → `cae9b0b` ist damit abgedeckt.
+- Verifiziert: Release-Gate-Tests 11/11, Lint, Typecheck, Analytics, Feature-Boundaries, Build, Bundle 102/120 kB, Fixture-E2E Exit 0, Diff-Check 0. Preview: 26/26 Relationen RLS aktiv, `rls_disabled=0`; Vercel Health `status=ok,database=ok`.
+- Release bleibt blockiert, bis `SUPABASE_PREVIEW_DATABASE_MIGRATION_URL` und `SUPABASE_AUTH_TEST_*` als geschützte GitHub-Secrets vorhanden sind. Production wurde nicht verändert.

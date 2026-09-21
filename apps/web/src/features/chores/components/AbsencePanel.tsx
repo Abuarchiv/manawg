@@ -84,14 +84,14 @@ export function AbsencePanel({
 
 	return (
 		<Card id="absences-panel" className={cn('scroll-mt-28', active && 'ring-2 ring-ring')}>
-			<CardHeader>
-				<CardTitle>Abwesenheiten</CardTitle>
-				<CardDescription>
+			<CardHeader className="!flex !flex-col items-start gap-1 sm:!grid sm:!grid-cols-[minmax(0,1fr)_auto]">
+				<CardTitle className="break-normal">Abwesenheiten</CardTitle>
+				<CardDescription className="break-normal">
 					{active
 						? 'Abwesenheits-Fokus: wer nicht da ist, wird bei der Rotation übersprungen.'
 						: 'Wer nicht da ist, wird bei der Rotation übersprungen.'}
 				</CardDescription>
-				<CardAction>
+				<CardAction className="self-start sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:self-start sm:justify-self-end">
 					<Button
 						variant="outline"
 						size="icon"
@@ -106,7 +106,10 @@ export function AbsencePanel({
 				</CardAction>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-3">
-				<Badge variant="secondary" className="w-fit">
+				<Badge
+					variant="secondary"
+					className="h-auto w-fit max-w-full whitespace-normal break-normal"
+				>
 					{absentCount} aktuell abwesend
 				</Badge>
 				<Collapsible open={formOpen}>

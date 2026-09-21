@@ -171,7 +171,7 @@ function WgShell({
 				className="fixed inset-x-0 bottom-0 z-30 mx-0 w-[100dvw] min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] min-[576px]:mx-auto"
 			>
 				<div className="rounded-[20px] border border-border bg-background">
-					<ul className="flex gap-1 p-1 [&>li]:min-w-0 [&>li]:flex-1">
+					<ul className="flex flex-wrap gap-1 p-1 [&>li]:min-w-fit [&>li]:flex-1">
 						<NavItem
 							href={wgBaseHref}
 							label="Start"

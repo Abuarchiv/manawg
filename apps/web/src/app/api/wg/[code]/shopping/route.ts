@@ -13,6 +13,7 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { isOpenShoppingItemDuplicate } from '@/features/shopping/shopping-duplicate';
 import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -20,7 +21,6 @@ import { z } from 'zod';
 const NAME_MIN = 1;
 const NAME_MAX = 120;
 const QUANTITY_MAX = 40;
-const SHOPPING_ITEMS_UNIQUE_OPEN_NAME = 'shopping_items_unique_open_name';
 const SHOPPING_ITEMS_LIST_LIMIT = 1000;
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
@@ -42,12 +42,6 @@ const createShoppingItemSchema = z.object({
 	quantity: z.string().trim().max(QUANTITY_MAX).optional().nullable(),
 	bought: z.boolean().optional(),
 });
-
-function isOpenShoppingItemDuplicate(err: unknown): boolean {
-	if (!err || typeof err !== 'object' || !('code' in err)) return false;
-	if ((err as { code?: unknown }).code !== '23505') return false;
-	return (err as { constraint?: unknown }).constraint === SHOPPING_ITEMS_UNIQUE_OPEN_NAME;
-}
 
 export const GET = withWgRoute(
 	'shopping GET',

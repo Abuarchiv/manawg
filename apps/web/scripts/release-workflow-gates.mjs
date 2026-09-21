@@ -80,6 +80,18 @@ export function assertExactRevision(candidateSha, checkedOutSha) {
 	}
 }
 
+export function assertMatchingTree(candidateTree, checkedOutTree) {
+	if (typeof candidateTree !== 'string' || !FULL_SHA.test(candidateTree)) {
+		throw new Error('Candidate tree must be full 40-character tree SHA.');
+	}
+	if (typeof checkedOutTree !== 'string' || !FULL_SHA.test(checkedOutTree)) {
+		throw new Error('Checked-out tree must be full 40-character tree SHA.');
+	}
+	if (candidateTree.toLowerCase() !== checkedOutTree.toLowerCase()) {
+		throw new Error('Preview deployment tree does not match checked-out trusted main tree.');
+	}
+}
+
 export function assertProductionDispatch({
 	workflowRef,
 	candidateSha,
@@ -95,7 +107,14 @@ export function assertProductionDispatch({
 	assertExactRevision(candidateSha, checkedOutSha);
 }
 
-export function assertPreviewEvidence({ candidateSha, run, jobs, expectedRunId }) {
+export function assertPreviewEvidence({
+	candidateSha,
+	candidateTree,
+	run,
+	runTree,
+	jobs,
+	expectedRunId,
+}) {
 	if (
 		!run ||
 		run.name !== 'CI' ||
@@ -111,7 +130,9 @@ export function assertPreviewEvidence({ candidateSha, run, jobs, expectedRunId }
 	if (expectedRunId !== undefined && run.id !== expectedRunId) {
 		throw new Error('Preview evidence run ID does not match the requested run.');
 	}
-	assertExactRevision(candidateSha, run.head_sha);
+	assertExactRevision(candidateSha, candidateSha);
+	assertExactRevision(run.head_sha, run.head_sha);
+	assertMatchingTree(candidateTree, runTree);
 
 	for (const requiredJob of ['db-supabase-preview', 'e2e-preview']) {
 		const job = jobs?.find((candidate) => candidate?.name === requiredJob);

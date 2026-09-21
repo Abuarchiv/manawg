@@ -32,7 +32,15 @@ import { getDashboardAnnouncementHref } from '@/core/reads/dashboard-links';
 import { formatEuroCents } from '@/core/utils/money';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
-import { ChevronDown, ChevronRight, Megaphone, Receipt, Search } from 'lucide-react';
+import {
+	ChevronDown,
+	ChevronRight,
+	Megaphone,
+	Receipt,
+	Search,
+	ShoppingBasket,
+	SprayCan,
+} from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -78,6 +86,7 @@ export default function WgHomePage() {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [todayMoreOpen, setTodayMoreOpen] = useState(false);
+	const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 	const dashboardRequestId = useRef(0);
 	const reducedMotion = useReducedMotion();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
@@ -102,6 +111,7 @@ export default function WgHomePage() {
 			const json = (await res.json()) as DashboardData;
 			if (requestId !== dashboardRequestId.current) return;
 			setData(json);
+			setUpdatedAt(new Date());
 			setError(null);
 		} catch {
 			if (requestId !== dashboardRequestId.current) return;
@@ -118,6 +128,9 @@ export default function WgHomePage() {
 
 	const myBalance =
 		data?.balances.find((balance) => balance.memberId === identity.memberId)?.balanceCents ?? 0;
+	const myNextChore = data?.dueChores
+		.filter((chore) => chore.assignedMemberId === identity.memberId)
+		.sort((a, b) => a.nextDueAt.localeCompare(b.nextDueAt))[0];
 	const todayImportant = useMemo(
 		() =>
 			data
@@ -164,7 +177,7 @@ export default function WgHomePage() {
 					item.memberName !== latestAnnouncement.authorName
 				);
 			})
-			.slice(0, 3);
+			.slice(0, latestAnnouncement ? 2 : 3);
 	}, [data, latestAnnouncement, todayImportant, wg.shareCode]);
 	const isNewWg = Boolean(
 		data &&
@@ -181,6 +194,34 @@ export default function WgHomePage() {
 				data-home-content
 				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-6 px-4 py-6 md:grid-cols-12"
 			>
+				<header className="flex min-w-0 flex-col gap-1 md:col-span-12">
+					<h1 className="font-heading text-2xl font-semibold tracking-tight">Deine WG im Blick</h1>
+					<p className="text-sm text-muted-foreground">
+						Was heute für dich und eure WG wichtig ist.
+					</p>
+					{updatedAt && (
+						<p className="text-xs text-muted-foreground">
+							{new Intl.DateTimeFormat('de-DE', {
+								weekday: 'long',
+								day: 'numeric',
+								month: 'long',
+								timeZone: 'Europe/Berlin',
+							}).format(updatedAt)}{' '}
+							· Stand{' '}
+							{new Intl.DateTimeFormat('de-DE', {
+								hour: '2-digit',
+								minute: '2-digit',
+								timeZone: 'Europe/Berlin',
+							}).format(updatedAt)}{' '}
+							Uhr
+						</p>
+					)}
+				</header>
+				{isNewWg && (
+					<div className="md:col-span-12">
+						<StartWelcome />
+					</div>
+				)}
 				{error && (
 					<div className="md:col-span-12">
 						<LoadErrorBanner
@@ -200,7 +241,7 @@ export default function WgHomePage() {
 				{!isNewWg && (
 					<section
 						aria-labelledby="today-heading"
-						className="flex min-w-0 flex-col gap-3 md:col-span-6 lg:col-span-8"
+						className="flex min-w-0 flex-col gap-3 md:col-span-12"
 					>
 						<h2 id="today-heading" className="text-sm font-medium text-muted-foreground">
 							Heute wichtig
@@ -208,8 +249,8 @@ export default function WgHomePage() {
 						{data ? (
 							todayFocus ? (
 								<Card>
-									<CardContent className="flex flex-wrap items-center gap-4">
-										<div className="min-w-36 flex-1">
+									<CardContent className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center">
+										<div className="min-w-0 flex-1">
 											<CardTitle className="flex items-start gap-2 font-semibold">
 												<TodayIcon kind={todayFocus.kind} />
 												<h3 className="min-w-0 break-words">{todayFocus.title}</h3>
@@ -234,10 +275,7 @@ export default function WgHomePage() {
 												'ml-auto min-h-11 shrink-0',
 											)}
 										>
-											<span aria-hidden className="lg:hidden">
-												{todayFocus.kind === 'recurring' ? 'Prüfen' : 'Öffnen'}
-											</span>
-											<span aria-hidden className="hidden lg:inline">
+											<span aria-hidden className="inline">
 												{todayFocus.actionLabel}
 											</span>
 											<ChevronRight data-icon="inline-end" aria-hidden />
@@ -317,126 +355,256 @@ export default function WgHomePage() {
 					</section>
 				)}
 
-				<div className="flex min-w-0 flex-col gap-6 md:col-span-6 lg:col-span-4">
-					{isNewWg && <StartWelcome />}
-
-					<section aria-labelledby="balance-heading" className="flex min-w-0 flex-col gap-3">
-						<h2 id="balance-heading" className="text-sm font-medium text-muted-foreground">
-							Dein Saldo
-						</h2>
-						{data ? (
-							<ItemGroup>
-								<Item variant="muted" render={<Link href={`${wgBaseHref}/ausgaben`} />}>
-									<ItemMedia variant="icon">
-										<Receipt aria-hidden />
-									</ItemMedia>
-									<ItemContent className="min-w-0">
-										<ItemTitle
-											className={cn(
-												'font-mono tabular-nums',
-												myBalance > 0 && 'text-settled',
-												myBalance < 0 && 'text-destructive',
-											)}
-										>
-											{formatEuroCents(myBalance, 'EUR', { signed: true })}
-										</ItemTitle>
-										<ItemDescription>
-											{myBalance > 0
-												? 'Du bekommst Geld zurück.'
-												: myBalance < 0
-													? 'Du schuldest der WG Geld.'
-													: 'Du bist ausgeglichen.'}
-										</ItemDescription>
-									</ItemContent>
-									<ChevronRight className="size-4 text-muted-foreground" aria-hidden />
-								</Item>
-							</ItemGroup>
-						) : error ? (
-							<p className="text-sm text-muted-foreground">
-								Dein Saldo ist gerade nicht verfügbar.
-							</p>
-						) : (
-							<Item variant="muted" aria-label="Saldo wird geladen">
-								<ItemContent className="gap-2">
-									<Skeleton className="h-4 w-24" />
-									<Skeleton className="h-4 w-40" />
-								</ItemContent>
-							</Item>
-						)}
-					</section>
-
-					<section aria-labelledby="wg-now-heading" className="flex min-w-0 flex-col gap-3">
-						<div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-							<h2 id="wg-now-heading" className="text-sm font-medium text-muted-foreground">
-								Neu in deiner WG
+				<div className="flex min-w-0 flex-col gap-6 md:col-span-12">
+					<div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
+						<section
+							aria-labelledby="balance-heading"
+							className="flex min-w-0 flex-col gap-3 rounded-xl border p-4"
+						>
+							<h2 id="balance-heading" className="text-sm font-medium text-muted-foreground">
+								Ausgaben
 							</h2>
-							<div className="flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
-								{/* The header keeps no search control (AGENTS.md). Search stays
-								    reachable from Start, as the WG shell documents. */}
-								<Link
-									href={`${wgBaseHref}/suche`}
-									className={cn(
-										buttonVariants({ variant: 'ghost' }),
-										'min-h-11 min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground leading-snug',
-									)}
-								>
-									<Search data-icon="inline-start" aria-hidden />
-									WG durchsuchen
-								</Link>
-								<Link
-									href={`${wgBaseHref}/aktivitaet`}
-									className={cn(
-										buttonVariants({ variant: 'ghost' }),
-										'min-h-11 min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground text-right leading-snug',
-									)}
-								>
-									Ganze Chronik <ChevronRight data-icon="inline-end" aria-hidden />
-								</Link>
-							</div>
-						</div>
-						{data ? (
-							<div className="flex flex-col gap-2">
-								{latestAnnouncement && !latestIsPending && (
+							{data ? (
+								<ItemGroup>
 									<Item
 										variant="muted"
-										render={
-											<Link
-												href={
-													latestAnnouncement.id
-														? getDashboardAnnouncementHref(wg.shareCode, latestAnnouncement.id)
-														: `${wgBaseHref}/pinnwand`
-												}
-											/>
-										}
+										render={<Link href={`${wgBaseHref}/ausgaben`} />}
+										className="flex-wrap sm:flex-nowrap"
 									>
-										<ItemMedia variant="icon">
-											<Megaphone aria-hidden />
+										<ItemMedia variant="icon" className="order-1 sm:order-none">
+											<Receipt aria-hidden />
 										</ItemMedia>
-										<ItemContent className="min-w-0">
-											<ItemTitle>Neu an der Pinnwand</ItemTitle>
-											<ItemDescription>
-												{latestAnnouncement.authorName}: {latestAnnouncement.content}
+										<ItemContent className="order-3 basis-full min-w-0 sm:order-none sm:basis-auto">
+											<ItemTitle
+												className={cn(
+													'font-mono tabular-nums',
+													myBalance > 0 && 'text-settled',
+													myBalance < 0 && 'text-destructive',
+												)}
+											>
+												{formatEuroCents(myBalance, 'EUR', { signed: true })}
+											</ItemTitle>
+											<ItemDescription className="line-clamp-none break-normal">
+												{myBalance > 0
+													? 'Du bekommst Geld zurück.'
+													: myBalance < 0
+														? 'Du schuldest der WG Geld.'
+														: 'Du bist ausgeglichen.'}
 											</ItemDescription>
 										</ItemContent>
+										<ChevronRight
+											className="order-2 ml-auto size-4 text-muted-foreground sm:order-none"
+											aria-hidden
+										/>
 									</Item>
+								</ItemGroup>
+							) : error ? (
+								<p className="text-sm text-muted-foreground">
+									Dein Saldo ist gerade nicht verfügbar.
+								</p>
+							) : (
+								<Item variant="muted" aria-label="Saldo wird geladen">
+									<ItemContent className="gap-2">
+										<Skeleton className="h-4 w-24" />
+										<Skeleton className="h-4 w-40" />
+									</ItemContent>
+								</Item>
+							)}
+							<Link
+								href={`${wgBaseHref}/ausgaben?new=1`}
+								className={cn(
+									buttonVariants({ variant: 'secondary' }),
+									'mt-auto min-h-11 whitespace-normal break-normal',
 								)}
-								{activityItems.length > 0 ? (
-									<ActivityFeed items={activityItems} compact />
-								) : !latestAnnouncement || latestIsPending ? (
-									<p className="text-sm text-muted-foreground">Noch keine neuen Einträge.</p>
-								) : null}
-							</div>
-						) : error ? (
-							<p className="text-sm text-muted-foreground">
-								Neuigkeiten konnten noch nicht geladen werden.
-							</p>
-						) : (
-							<div className="flex flex-col gap-2" aria-label="Neuigkeiten werden geladen">
-								<Skeleton className="h-16 w-full" />
-								<Skeleton className="h-11 w-full" />
-								<Skeleton className="h-11 w-full" />
-							</div>
-						)}
+							>
+								<span className="min-w-0 break-normal whitespace-normal">Ausgabe hinzufügen</span>
+							</Link>
+						</section>
+
+						<section
+							aria-labelledby="chores-heading"
+							className="flex min-w-0 flex-col gap-3 rounded-xl border p-4"
+						>
+							<h2
+								id="chores-heading"
+								className="flex items-center gap-2 text-sm font-medium text-muted-foreground"
+							>
+								<SprayCan className="size-4" aria-hidden />
+								Putzplan
+							</h2>
+							{data ? (
+								<div className="flex flex-col gap-1">
+									<p className="font-medium break-words">
+										{myNextChore ? myNextChore.title : 'Keine Aufgabe für dich geplant'}
+									</p>
+									<p className="text-sm text-muted-foreground">
+										{myNextChore
+											? `Du bist dran · ${new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short', timeZone: 'Europe/Berlin' }).format(new Date(myNextChore.nextDueAt))}`
+											: data.setup.choreCount === 0
+												? 'Legt euren ersten Putzdienst an.'
+												: 'Den Plan für eure WG findest du hier.'}
+									</p>
+								</div>
+							) : error ? (
+								<p className="text-sm text-muted-foreground">
+									Putzplan ist gerade nicht verfügbar.
+								</p>
+							) : (
+								<div aria-label="Putzplan wird geladen">
+									<Skeleton className="h-5 w-3/4" />
+									<Skeleton className="mt-2 h-4 w-1/2" />
+								</div>
+							)}
+							<Link
+								href={`${wgBaseHref}/putzen`}
+								className={cn(
+									buttonVariants({ variant: 'secondary' }),
+									'mt-auto min-h-11 break-normal',
+								)}
+							>
+								<span className="min-w-0 break-normal whitespace-normal">Putzplan öffnen</span>
+							</Link>
+						</section>
+						<section
+							aria-labelledby="shopping-heading"
+							className="flex min-w-0 flex-col gap-3 rounded-xl border p-4"
+						>
+							<h2
+								id="shopping-heading"
+								className="flex items-center gap-2 text-sm font-medium text-muted-foreground"
+							>
+								<ShoppingBasket className="size-4" aria-hidden />
+								Einkauf
+							</h2>
+							{data ? (
+								<div className="flex flex-col gap-1">
+									<Link
+										href={`${wgBaseHref}/einkauf`}
+										className="font-medium underline-offset-4 hover:underline"
+									>
+										{data.openShoppingCount === 0
+											? 'Alles besorgt'
+											: `${data.openShoppingCount} ${data.openShoppingCount === 1 ? 'offener Artikel' : 'offene Artikel'}`}
+									</Link>
+									<p className="break-words text-sm text-muted-foreground">
+										{data.openShoppingCount > 0
+											? data.openShoppingTop.slice(0, 3).join(', ') ||
+												'Eure Einkaufsliste ist bereit.'
+											: 'Fehlt etwas? Trag es direkt ein.'}
+									</p>
+								</div>
+							) : error ? (
+								<p className="text-sm text-muted-foreground">
+									Einkaufsliste ist gerade nicht verfügbar.
+								</p>
+							) : (
+								<div aria-label="Einkauf wird geladen">
+									<Skeleton className="h-5 w-3/4" />
+									<Skeleton className="mt-2 h-4 w-1/2" />
+								</div>
+							)}
+							<Link
+								href={`${wgBaseHref}/einkauf#shopping-name`}
+								className={cn(
+									buttonVariants({ variant: 'secondary' }),
+									'mt-auto min-h-11 break-normal',
+								)}
+							>
+								<span className="min-w-0 break-normal whitespace-normal">Artikel hinzufügen</span>
+							</Link>
+						</section>
+					</div>
+					<section aria-labelledby="wg-now-heading" className="flex min-w-0 flex-col gap-3">
+						<Collapsible defaultOpen={false}>
+							<h2 id="wg-now-heading">
+								<CollapsibleTrigger
+									render={
+										<Button
+											variant="ghost"
+											className="group min-h-11 w-full justify-between px-0 text-muted-foreground"
+										/>
+									}
+								>
+									Neu in deiner WG
+									<ChevronDown aria-hidden className="size-4 group-aria-expanded:rotate-180" />
+								</CollapsibleTrigger>
+							</h2>
+							<CollapsiblePanel {...(reducedMotion ? { transition: { duration: 0 } } : {})}>
+								<div className="flex min-w-0 flex-col gap-3">
+									<div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+										<div className="flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
+											{/* The header keeps no search control (AGENTS.md). Search stays
+								    reachable from Start, as the WG shell documents. */}
+											<Link
+												href={`${wgBaseHref}/suche`}
+												className={cn(
+													buttonVariants({ variant: 'ghost' }),
+													'min-h-11 min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground leading-snug',
+												)}
+											>
+												<Search data-icon="inline-start" aria-hidden />
+												WG durchsuchen
+											</Link>
+											<Link
+												href={`${wgBaseHref}/aktivitaet`}
+												className={cn(
+													buttonVariants({ variant: 'ghost' }),
+													'min-h-11 min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground text-right leading-snug',
+												)}
+											>
+												Ganze Chronik <ChevronRight data-icon="inline-end" aria-hidden />
+											</Link>
+										</div>
+									</div>
+									{data ? (
+										<div className="flex flex-col gap-2">
+											{latestAnnouncement && !latestIsPending && (
+												<Item
+													variant="muted"
+													render={
+														<Link
+															href={
+																latestAnnouncement.id
+																	? getDashboardAnnouncementHref(
+																			wg.shareCode,
+																			latestAnnouncement.id,
+																		)
+																	: `${wgBaseHref}/pinnwand`
+															}
+														/>
+													}
+												>
+													<ItemMedia variant="icon">
+														<Megaphone aria-hidden />
+													</ItemMedia>
+													<ItemContent className="min-w-0">
+														<ItemTitle>Neu an der Pinnwand</ItemTitle>
+														<ItemDescription>
+															{latestAnnouncement.authorName}: {latestAnnouncement.content}
+														</ItemDescription>
+													</ItemContent>
+												</Item>
+											)}
+											{activityItems.length > 0 ? (
+												<ActivityFeed items={activityItems} compact />
+											) : !latestAnnouncement || latestIsPending ? (
+												<p className="text-sm text-muted-foreground">Noch keine neuen Einträge.</p>
+											) : null}
+										</div>
+									) : error ? (
+										<p className="text-sm text-muted-foreground">
+											Neuigkeiten konnten noch nicht geladen werden.
+										</p>
+									) : (
+										<div className="flex flex-col gap-2" aria-label="Neuigkeiten werden geladen">
+											<Skeleton className="h-16 w-full" />
+											<Skeleton className="h-11 w-full" />
+											<Skeleton className="h-11 w-full" />
+										</div>
+									)}
+								</div>
+							</CollapsiblePanel>
+						</Collapsible>
 					</section>
 				</div>
 				<div className="md:col-span-12">

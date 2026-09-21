@@ -76,7 +76,10 @@ export default function VorraetePage() {
 								Vorräte derzeit nicht verfügbar.
 							</span>
 						) : items.length === 0 ? null : (
-							<Badge variant="secondary" className="tabular-nums">
+							<Badge
+								variant="secondary"
+								className="h-auto max-w-full whitespace-normal break-normal tabular-nums"
+							>
 								{items.length} Artikel im Bestand
 							</Badge>
 						)}

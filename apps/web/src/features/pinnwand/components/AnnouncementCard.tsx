@@ -214,14 +214,15 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 					{ target: 'expense', label: 'Als Ausgabe', icon: Receipt },
 				] as const)
 			: [];
-	const visibleReactions = REACTIONS.filter(
+	const reactionOptions = isResolved ? REACTIONS.filter(({ key }) => key !== 'take') : REACTIONS;
+	const visibleReactions = reactionOptions.filter(
 		({ key }) =>
 			key === PRIMARY_REACTION[announcement.kind] ||
 			announcement.myReactions.includes(key) ||
 			touchedReactions.includes(key) ||
 			(announcement.reactionCounts[key] ?? 0) > 0,
 	);
-	const hiddenReactions = REACTIONS.filter(
+	const hiddenReactions = reactionOptions.filter(
 		({ key }) => !visibleReactions.some((reaction) => reaction.key === key),
 	);
 	const busy =

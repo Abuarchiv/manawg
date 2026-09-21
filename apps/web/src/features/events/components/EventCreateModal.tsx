@@ -15,11 +15,12 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Spinner } from '@/components/ui/spinner';
 import { EventFormFields } from '@/features/events/components/EventFormFields';
 import {
+	RECURRENCE_OPTIONS,
 	type RecurrenceFreq,
 	formatRecurrenceRule,
 	validateEventForm,
 } from '@/features/events/events';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface EventCreateModalProps {
 	open: boolean;
@@ -56,14 +57,6 @@ const QUICK_TEMPLATES: ReadonlyArray<{
 	{ label: 'Müll raus', title: 'Müll raus', recurrence: 'FREQ=WEEKLY', allDay: false },
 ];
 
-const RECURRENCE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-	{ value: '', label: 'Einmalig' },
-	{ value: 'DAILY', label: 'Täglich' },
-	{ value: 'WEEKLY', label: 'Wöchentlich' },
-	{ value: 'MONTHLY', label: 'Monatlich' },
-	{ value: 'YEARLY', label: 'Jährlich' },
-];
-
 function buildIsoLocal(date: Date): string {
 	const pad = (n: number) => n.toString().padStart(2, '0');
 	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
@@ -81,17 +74,18 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 	const [recurrenceFreq, setRecurrenceFreq] = useState<string>('');
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const draftInitializedRef = useRef(false);
 
 	useEffect(() => {
-		if (!open) return;
+		if (!open || draftInitializedRef.current) return;
+		draftInitializedRef.current = true;
 		setError(null);
-		if (startsAt) return;
 		const seed = defaultDate ?? new Date();
 		const seeded = new Date(seed);
 		seeded.setMinutes(0, 0, 0);
 		setStartsAt(buildIsoLocal(seeded));
 		setEndsAt('');
-	}, [open, defaultDate, startsAt]);
+	}, [open, defaultDate]);
 
 	function applyTemplate(template: (typeof QUICK_TEMPLATES)[number]): void {
 		setTitle(template.title);
@@ -104,7 +98,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 		e.preventDefault();
 		if (submitting) return;
 		setError(null);
-		const validation = validateEventForm({ title, startsAt, endsAt });
+		const validation = validateEventForm({ title, startsAt, endsAt, allDay });
 		if (!validation.ok) {
 			setError(validation.error);
 			return;
@@ -126,6 +120,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 				location: location.trim() || null,
 				recurrence,
 			});
+			draftInitializedRef.current = false;
 			setStartsAt('');
 			setEndsAt('');
 			setTitle('');

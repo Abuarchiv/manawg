@@ -268,6 +268,9 @@ export default function EinkaufPage() {
 					setAddNotice('Offline gespeichert. Wird synchronisiert, sobald ihr wieder online seid.');
 					return;
 				}
+				if (res.status === 409 && res.error === 'shopping_item_duplicate') {
+					await load(true);
+				}
 				setAddError(shoppingAddErrorMessage(res.error));
 				return;
 			}
@@ -487,7 +490,7 @@ export default function EinkaufPage() {
 					}}
 					className="flex flex-col gap-3"
 				>
-					<FieldGroup className="grid grid-cols-[minmax(0,1fr)_4.5rem_2.75rem] items-end gap-2 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
+					<FieldGroup className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
 						<Field data-invalid={Boolean(addError)}>
 							<FieldLabel htmlFor="shopping-name">Artikel</FieldLabel>
 							<Input
@@ -531,7 +534,7 @@ export default function EinkaufPage() {
 							disabled={!newName.trim() || adding}
 							aria-label="Artikel hinzufügen"
 							onPointerDown={(event) => event.preventDefault()}
-							className="min-h-11 px-0 sm:px-3"
+							className="min-h-11 w-full px-0 sm:w-auto sm:px-3"
 						>
 							{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}
 							<span className="hidden sm:inline">Hinzufügen</span>

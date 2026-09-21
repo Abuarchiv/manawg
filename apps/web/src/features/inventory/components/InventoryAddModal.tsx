@@ -162,7 +162,7 @@ export function InventoryAddModal({
 				if (!next) requestClose();
 			}}
 		>
-			<DrawerContent className="mx-auto w-full max-w-md">
+			<DrawerContent className="mx-auto w-[100dvw] max-w-[100dvw] sm:w-full sm:max-w-md">
 				<DrawerHeader>
 					<DrawerTitle>{mode === 'edit' ? 'Vorrat bearbeiten' : 'Neuer Vorrat'}</DrawerTitle>
 					<DrawerDescription>
@@ -202,7 +202,7 @@ export function InventoryAddModal({
 							/>
 							{nameError && <FieldError id="inventory-name-error">{nameError}</FieldError>}
 						</Field>
-						<div className="grid grid-cols-2 gap-2">
+						<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
 							<Field className="min-w-0">
 								<FieldLabel htmlFor="inventory-qty">Menge</FieldLabel>
 								<Input
@@ -276,11 +276,21 @@ export function InventoryAddModal({
 							<AlertDescription>{serverError}</AlertDescription>
 						</Alert>
 					)}
-					<DrawerFooter className="flex-row justify-end gap-2 p-0">
-						<Button type="button" variant="outline" onClick={requestClose} className="min-h-11">
+					<DrawerFooter className="flex-col items-stretch gap-2 p-0 sm:flex-row sm:justify-end">
+						<Button
+							type="button"
+							variant="outline"
+							onClick={requestClose}
+							className="min-h-11 w-full break-normal sm:w-auto"
+						>
 							Abbrechen
 						</Button>
-						<Button type="submit" disabled={saving} aria-busy={saving} className="min-h-11">
+						<Button
+							type="submit"
+							disabled={saving}
+							aria-busy={saving}
+							className="min-h-11 w-full break-normal sm:w-auto"
+						>
 							{saving && <Spinner aria-hidden />}
 							{saving ? 'Speichert…' : 'Speichern'}
 						</Button>

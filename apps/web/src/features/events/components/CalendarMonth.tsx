@@ -11,7 +11,11 @@ import {
 	ItemGroup,
 	ItemTitle,
 } from '@/components/ui/item';
-import { type EventOccurrence, formatEventTimeRange } from '@/features/events/events';
+import {
+	type EventOccurrence,
+	eventDateForDisplay,
+	formatEventTimeRange,
+} from '@/features/events/events';
 import { cn } from '@/shared/lib/cn';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -74,7 +78,9 @@ function buildDays(month: Date, occurrences: EventOccurrence[]): DayCell[] {
 	const cursor = new Date(gridStart);
 	while (cursor <= last || days.length % 7 !== 0 || days.length === 0) {
 		const dayDate = new Date(cursor);
-		const dayOcc = occurrences.filter((occ) => sameDay(new Date(occ.startsAt), dayDate));
+		const dayOcc = occurrences.filter((occ) =>
+			sameDay(eventDateForDisplay(occ.startsAt, occ.allDay), dayDate),
+		);
 		days.push({
 			date: dayDate,
 			inCurrentMonth: dayDate.getMonth() === month.getMonth(),
@@ -198,7 +204,9 @@ export function CalendarMonth({
 	);
 
 	const selectedOccurrences = selectedDay
-		? occurrences.filter((occurrence) => sameDay(new Date(occurrence.startsAt), selectedDay))
+		? occurrences.filter((occurrence) =>
+				sameDay(eventDateForDisplay(occurrence.startsAt, occurrence.allDay), selectedDay),
+			)
 		: [];
 	const weeks = Array.from({ length: Math.ceil(days.length / 7) }, (_, index) =>
 		days.slice(index * 7, index * 7 + 7),

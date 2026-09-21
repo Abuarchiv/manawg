@@ -1,5 +1,13 @@
 # ManaWG Release Readiness
 
+## Aktueller Implementierungsstand — 2026-09-20 20:10 CEST
+
+- Frühere Claims über fehlende Preview-Secrets und Tree-Gleichheit sind überholt: dedizierte QA-/DB-Secrets liegen im geschützten GitHub-Environment `Preview`; finale Release-Gates bleiben an exakte Commit-SHAs gebunden.
+- Private Storage-Implementierung committed (`0fa9755`), sauberes Preview `7640b0c` / `dpl_AMnZJJnwwTRtzKMdJPcUwThdpYob` READY. Echt bestanden: 8-MiB-Upload/Hash-Readback, Browser-Dekodierung, Fremd-/Gast-/Revocation-Denials, Provider-Größen-/MIME-/Overwrite-Schutz. Offline-UI-Replay bleibt offen.
+- 14 gezielte Release-/Limiter-Tests, Lint und Typecheck bestanden. Gesamter Hosted-Lauf zuletzt 22/27: temporärer Codegenerator enthielt verbotene Zeichen; `/api/wg/mine` wurde irrtümlich dem 20/min-Code-Limiter zugeordnet. Generator korrigiert, Middleware-Fix lokal geprüft; erneuter Hosted-Nachweis ausstehend.
+- Recovery: Schema und Daten lokal identisch; ACL-Differenz noch nicht erklärt. Provider-PITR/Retention, echte Geräte und Residenten-Abnahme bleiben offene Pflichtnachweise. Kein Production-Release.
+
+
 Stand: 2026-09-20, Europe/Berlin
 Scope: `/Users/abu/Company/manawg-app`
 HEAD: `cae9b0bf3f5e6e4a032933acc82fd7a99a301b96` (`main`)
@@ -133,3 +141,6 @@ Candidate-SHA einfrieren und nativen Preview-Deploy mit den bestehenden Vercel-S
 - Statuszähler: lokale Fixture-Suite 85 bestanden, 25 übersprungen, 0 Fehler; sechs Hosted-Checks bestanden.
 - Ergebnis: Build/Lint/Typecheck grün; DB-Ledger repariert, db:check und echter Transaktions-Rollback bestanden; Testdaten-Cleanup bestätigt.
 - Nächster Schritt: dauerhafte Preview-Konfiguration herstellen und Runtime-Fix auf einem neuen Candidate end-to-end prüfen.
+- Implementierung 2026-09-20 19:28 CEST: CI-Preview-Gate korrigiert. Bei `deployment_status` wird der Vercel-Commit nicht mit Secrets ausgeführt; sein Git-Tree wird vor dem Preview-Gate gegen den vertrauenswürdigen `main`-Tree geprüft. Merge-Commit-SHA-Differenzen blockieren damit nicht mehr bei bytegleichem Code.
+- Nachweis: Release-Gate-Tests 11/11, Lint, Typecheck, Analytics, Feature-Boundaries, Build, Bundle 102/120 kB, Fixture-E2E Exit 0, `git diff --check` 0; Supabase CLI Preview 26/26 RLS, `rls_disabled=0`; Vercel `/api/health` `status=ok,database=ok`.
+- Weiter blockiert: GitHub-Secret `SUPABASE_PREVIEW_DATABASE_MIGRATION_URL` und `SUPABASE_AUTH_TEST_*` fehlen weiterhin; kein echter Hosted-Auth-/Privacy-/Cleanup-Nachweis. Production unverändert.

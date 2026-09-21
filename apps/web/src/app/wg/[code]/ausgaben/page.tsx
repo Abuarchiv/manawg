@@ -126,6 +126,7 @@ export default function AusgabenPage() {
 	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const searchParams = useSearchParams();
 	const highlightedId = searchParams.get('highlight');
+	const openNewExpense = searchParams.get('new') === '1';
 	const prefillDescription = searchParams.get('desc');
 	const prefillAmount = searchParams.get('amount');
 	const prefillPaidBy = searchParams.get('paidBy');
@@ -212,6 +213,10 @@ export default function AusgabenPage() {
 	function setActionWarning(message: string): void {
 		setActionNotice({ message, tone: 'warning' });
 	}
+
+	useEffect(() => {
+		if (openNewExpense) setShowForm(true);
+	}, [openNewExpense, setShowForm]);
 
 	function setValidationErrors(errors: ExpenseFormFieldErrors): void {
 		setFieldErrors(errors);
@@ -1118,15 +1123,15 @@ export default function AusgabenPage() {
 										<>
 											Du bekommst{' '}
 											<span className="font-mono tabular-nums text-settled">
-												{formatEuroCents(personalBalance, 'EUR', { signed: true })}
+												{formatEuroCents(Math.abs(personalBalance))}
 											</span>{' '}
 											zurück
 										</>
 									) : personalBalance < 0 ? (
 										<>
-											Noch offen:{' '}
+											Du schuldest noch{' '}
 											<span className="font-mono tabular-nums text-destructive">
-												{formatEuroCents(personalBalance, 'EUR', { signed: true })}
+												{formatEuroCents(Math.abs(personalBalance))}
 											</span>
 										</>
 									) : (

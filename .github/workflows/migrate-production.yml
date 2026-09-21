@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       preview_run_id:
-        description: CI run ID whose same-SHA protected Preview gate passed.
+        description: CI run ID whose protected Preview gate passed with a matching candidate tree.
         required: true
         type: string
       confirmation:
@@ -63,7 +63,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Verify same-SHA protected Preview evidence
+      - name: Verify tree-matched protected Preview evidence
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
@@ -80,6 +80,24 @@ jobs:
             "/repos/$REPOSITORY/actions/runs/$PREVIEW_RUN_ID/jobs?per_page=100" > "$RUNNER_TEMP/preview-jobs.json"
           export PREVIEW_RUN_JSON="$RUNNER_TEMP/preview-run.json"
           export PREVIEW_JOBS_JSON="$RUNNER_TEMP/preview-jobs.json"
+          if ! [[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo 'candidate_sha must be a full 40-character commit SHA.' >&2
+            exit 1
+          fi
+          RUN_HEAD_SHA="$(node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+
+          const run = JSON.parse(readFileSync(process.env.PREVIEW_RUN_JSON, 'utf8'));
+          if (typeof run.head_sha !== 'string' || !/^[0-9a-fA-F]{40}$/.test(run.head_sha)) {
+            throw new Error('Preview CI run must expose a full 40-character head SHA.');
+          }
+          process.stdout.write(run.head_sha);
+          NODE
+          )"
+          CANDIDATE_TREE="$(git rev-parse "$CANDIDATE_SHA^{tree}")"
+          git fetch --no-tags --depth=1 origin "$RUN_HEAD_SHA"
+          RUN_TREE="$(git rev-parse "$RUN_HEAD_SHA^{tree}")"
+          export CANDIDATE_TREE RUN_TREE
           node --input-type=module <<'NODE'
           import { readFileSync } from 'node:fs';
           import { assertPreviewEvidence } from './apps/web/scripts/release-workflow-gates.mjs';
@@ -87,8 +105,10 @@ jobs:
           const previewRunId = Number(process.env.PREVIEW_RUN_ID);
           assertPreviewEvidence({
             candidateSha: process.env.CANDIDATE_SHA,
+            candidateTree: process.env.CANDIDATE_TREE,
             expectedRunId: previewRunId,
             run: JSON.parse(readFileSync(process.env.PREVIEW_RUN_JSON, 'utf8')),
+            runTree: process.env.RUN_TREE,
             jobs: JSON.parse(readFileSync(process.env.PREVIEW_JOBS_JSON, 'utf8')).jobs,
           });
           NODE
@@ -135,7 +155,7 @@ jobs:
           {
             printf '%s\n' '### Production migration evidence'
             printf '%s\n' "candidate main SHA: $CANDIDATE_SHA"
-            printf '%s\n' "same-SHA Preview CI run: $PREVIEW_RUN_ID"
+                printf '%s\n' "tree-matched Preview CI run: $PREVIEW_RUN_ID"
             printf '%s\n' '- execution mode: protected-production-migration'
             printf '%s\n' '- result: ${{ job.status }}'
           } >> "$GITHUB_STEP_SUMMARY"

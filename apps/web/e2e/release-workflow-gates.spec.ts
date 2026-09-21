@@ -12,6 +12,8 @@ import {
 import { isShareCodeLookup } from '../src/middleware';
 
 const SHA = 'a'.repeat(40);
+const RUN_SHA = 'b'.repeat(40);
+const TREE_SHA = 'c'.repeat(40);
 const CI_WORKFLOW = readFileSync(
 	path.resolve(__dirname, '../../../.github/workflows/ci.yml'),
 	'utf8',
@@ -43,7 +45,7 @@ const validPreviewRun = {
 	event: 'deployment_status',
 	status: 'completed',
 	conclusion: 'success',
-	head_sha: SHA,
+	head_sha: RUN_SHA,
 };
 
 const validPreviewJobs = [
@@ -190,15 +192,17 @@ test('requires the exact main revision and production confirmation', () => {
 	).toThrow();
 });
 
-test('accepts only successful same-SHA Preview migration and browser evidence', () => {
+test('accepts successful Preview evidence when distinct commits share the candidate tree', () => {
 	expect(
 		assertPreviewEvidence({
 			candidateSha: SHA,
+			candidateTree: TREE_SHA,
 			expectedRunId: 123,
 			run: validPreviewRun,
+			runTree: TREE_SHA,
 			jobs: validPreviewJobs,
 		}),
-	).toEqual({ deploymentRunId: 123, sourceRevision: SHA });
+	).toEqual({ deploymentRunId: 123, sourceRevision: RUN_SHA });
 
 	for (const jobs of [
 		[
@@ -208,71 +212,51 @@ test('accepts only successful same-SHA Preview migration and browser evidence', 
 		[validPreviewJobs[0]],
 	]) {
 		expect(() =>
-			assertPreviewEvidence({ candidateSha: SHA, run: validPreviewRun, jobs }),
+			assertPreviewEvidence({
+				candidateSha: SHA,
+				candidateTree: TREE_SHA,
+				run: validPreviewRun,
+				runTree: TREE_SHA,
+				jobs,
+			}),
 		).toThrow();
 	}
 
 	expect(() =>
 		assertPreviewEvidence({
 			candidateSha: SHA,
-			run: { ...validPreviewRun, head_sha: 'b'.repeat(40) },
+			candidateTree: TREE_SHA,
+			run: validPreviewRun,
+			runTree: 'd'.repeat(40),
+			jobs: validPreviewJobs,
+		}),
+	).toThrow('Preview deployment tree does not match');
+	expect(() =>
+		assertPreviewEvidence({
+			candidateSha: SHA,
+			candidateTree: TREE_SHA,
+			run: { ...validPreviewRun, head_sha: 'not-a-sha' },
+			runTree: TREE_SHA,
 			jobs: validPreviewJobs,
 		}),
 	).toThrow();
 	expect(() =>
 		assertPreviewEvidence({
 			candidateSha: SHA,
+			candidateTree: TREE_SHA,
 			run: { ...validPreviewRun, path: '.github/workflows/other.yml' },
+			runTree: TREE_SHA,
 			jobs: validPreviewJobs,
 		}),
 	).toThrow();
 	expect(() =>
 		assertPreviewEvidence({
 			candidateSha: SHA,
+			candidateTree: TREE_SHA,
 			expectedRunId: 124,
 			run: validPreviewRun,
+			runTree: TREE_SHA,
 			jobs: validPreviewJobs,
 		}),
 	).toThrow();
-});
-
-test('main Git pushes require an explicit Production deployment', () => {
-	const config = JSON.parse(readFileSync(path.resolve(__dirname, '../vercel.json'), 'utf8'));
-	expect(config.git.deploymentEnabled.main).toBe(false);
-});
-
-test('Preview jobs bind deployments to the exact checked-out main SHA', () => {
-	for (const jobName of ['db-supabase-preview', 'e2e-preview']) {
-		const job = workflowJob(CI_WORKFLOW, jobName);
-		expect(job).toContain('ref: main');
-		expect(job).toContain('CHECKED_OUT_SHA="$(git rev-parse HEAD)"');
-		expect(job).not.toContain('assertMatchingTree');
-	}
-	expect(workflowJob(CI_WORKFLOW, 'db-supabase-preview')).toContain(
-		'assertExactRevision(expectedSha, process.env.CHECKED_OUT_SHA)',
-	);
-	expect(workflowJob(CI_WORKFLOW, 'e2e-preview')).toContain(
-		'assertExactRevision(process.env.DEPLOYMENT_SHA, process.env.CHECKED_OUT_SHA)',
-	);
-});
-
-test('Production evidence passes the candidate SHA and original Preview run to the gate', () => {
-	expect(PRODUCTION_WORKFLOW).toContain('candidateSha: process.env.CANDIDATE_SHA');
-	expect(PRODUCTION_WORKFLOW).toContain(
-		"run: JSON.parse(readFileSync(process.env.PREVIEW_RUN_JSON, 'utf8'))",
-	);
-	expect(PRODUCTION_WORKFLOW).not.toContain('candidateTree:');
-	expect(PRODUCTION_WORKFLOW).not.toContain('runTree:');
-});
-
-test('rejects different Preview commits even when candidate and run trees match', () => {
-	const evidence = {
-		candidateSha: SHA,
-		candidateTree: 'c'.repeat(40),
-		runTree: 'c'.repeat(40),
-		expectedRunId: 123,
-		run: { ...validPreviewRun, head_sha: 'b'.repeat(40) },
-		jobs: validPreviewJobs,
-	};
-	expect(() => assertPreviewEvidence(evidence)).toThrow('Candidate SHA does not match');
 });

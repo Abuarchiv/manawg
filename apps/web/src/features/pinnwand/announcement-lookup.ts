@@ -5,6 +5,7 @@ interface AnnouncementRef {
 	id: string;
 	authorMemberId: string;
 	content: string;
+	status: string;
 }
 
 /**
@@ -23,6 +24,7 @@ export async function findWgAnnouncement(
 			id: announcements.id,
 			authorMemberId: announcements.authorMemberId,
 			content: announcements.content,
+			status: announcements.status,
 		})
 		.from(announcements)
 		.where(and(eq(announcements.id, announcementId), eq(announcements.wgId, wgId)))

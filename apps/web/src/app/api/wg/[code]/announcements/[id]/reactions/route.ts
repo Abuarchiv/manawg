@@ -55,6 +55,13 @@ export const POST = withWgRoute<{ id: string }>(
 				),
 			)
 			.limit(1);
+		if (
+			parsed.data.reaction === 'take' &&
+			announcement.status === 'resolved' &&
+			!existingReaction[0]
+		) {
+			return badRequest('reaction_invalid');
+		}
 
 		if (existingReaction[0]) {
 			const [deleted] = await db

@@ -20,13 +20,22 @@ import {
 	DrawerHeader,
 	DrawerTitle,
 } from '@/components/ui/drawer';
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
 import { EventFormFields } from '@/features/events/components/EventFormFields';
-import { validateEventForm } from '@/features/events/events';
+import {
+	RECURRENCE_OPTIONS,
+	type RecurrenceFreq,
+	eventDateForDisplay,
+	formatRecurrenceRule,
+	parseRecurrenceRule,
+	validateEventForm,
+} from '@/features/events/events';
 import { Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
+const KEEP_EXISTING_RECURRENCE = '__keep__';
 
 export interface EditableEvent {
 	id: string;
@@ -57,8 +66,8 @@ interface EventEditModalProps {
 	actionError?: string | null;
 }
 
-function toLocalInputValue(iso: string): string {
-	const d = new Date(iso);
+function toLocalInputValue(iso: string, allDay: boolean): string {
+	const d = eventDateForDisplay(iso, allDay);
 	const pad = (n: number) => n.toString().padStart(2, '0');
 	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -87,8 +96,8 @@ export function EventEditModal({
 		if (!event) return;
 		setTitle(event.title);
 		setDescription(event.description ?? '');
-		setStartsAt(toLocalInputValue(event.startsAt));
-		setEndsAt(event.endsAt ? toLocalInputValue(event.endsAt) : '');
+		setStartsAt(toLocalInputValue(event.startsAt, event.allDay));
+		setEndsAt(event.endsAt ? toLocalInputValue(event.endsAt, event.allDay) : '');
 		setAllDay(event.allDay);
 		setLocation(event.location ?? '');
 		setRecurrence(event.recurrence ?? '');
@@ -98,14 +107,26 @@ export function EventEditModal({
 	}, [event]);
 
 	if (!event) return null;
+	const parsedRecurrence = parseRecurrenceRule(recurrence);
+	const isSimpleRecurrence =
+		parsedRecurrence !== null &&
+		parsedRecurrence.interval === 1 &&
+		parsedRecurrence.byDay === undefined &&
+		parsedRecurrence.count === undefined &&
+		parsedRecurrence.until === undefined;
+	const recurrenceOption = recurrence
+		? isSimpleRecurrence
+			? parsedRecurrence.freq
+			: KEEP_EXISTING_RECURRENCE
+		: '';
 
 	function requestClose(): void {
 		if (!event || saving || deleting) return;
 		const dirty =
 			title !== event.title ||
 			description !== (event.description ?? '') ||
-			startsAt !== toLocalInputValue(event.startsAt) ||
-			endsAt !== (event.endsAt ? toLocalInputValue(event.endsAt) : '') ||
+			startsAt !== toLocalInputValue(event.startsAt, event.allDay) ||
+			endsAt !== (event.endsAt ? toLocalInputValue(event.endsAt, event.allDay) : '') ||
 			allDay !== event.allDay ||
 			location !== (event.location ?? '') ||
 			recurrence !== (event.recurrence ?? '');
@@ -118,7 +139,7 @@ export function EventEditModal({
 		if (saving || deleting) return;
 		setError(null);
 		if (!event) return;
-		const validation = validateEventForm({ title, startsAt, endsAt });
+		const validation = validateEventForm({ title, startsAt, endsAt, allDay });
 		if (!validation.ok) {
 			setError(validation.error);
 			return;
@@ -195,17 +216,35 @@ export function EventEditModal({
 						recurrenceField={
 							<Field data-disabled={saving || deleting}>
 								<FieldLabel htmlFor="event-edit-recurrence">Wiederholung</FieldLabel>
-								<Input
+								<NativeSelect
 									id="event-edit-recurrence"
-									value={recurrence}
-									onChange={(event) => setRecurrence(event.target.value)}
-									placeholder="z. B. FREQ=WEEKLY"
+									value={recurrenceOption}
+									onChange={(event) =>
+										event.target.value === KEEP_EXISTING_RECURRENCE
+											? undefined
+											: setRecurrence(
+													event.target.value
+														? formatRecurrenceRule({
+																freq: event.target.value as RecurrenceFreq,
+																interval: 1,
+															})
+														: '',
+												)
+									}
 									disabled={saving || deleting}
-									className="min-h-11 text-base"
-								/>
-								<FieldDescription>
-									Bestehende Regel der Serie. Leer lassen für einen einmaligen Termin.
-								</FieldDescription>
+									className="w-full [&_select]:min-h-11 [&_select]:text-base"
+								>
+									{recurrence && !isSimpleRecurrence && (
+										<NativeSelectOption value={KEEP_EXISTING_RECURRENCE}>
+											Bestehende Serie
+										</NativeSelectOption>
+									)}
+									{RECURRENCE_OPTIONS.map((option) => (
+										<NativeSelectOption key={option.value} value={option.value}>
+											{option.label}
+										</NativeSelectOption>
+									))}
+								</NativeSelect>
 							</Field>
 						}
 					/>

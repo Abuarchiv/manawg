@@ -62,6 +62,10 @@ export function ChoreForm({
 	children,
 }: ChoreFormProps): React.ReactElement {
 	const presets = recurrenceType === 'months' ? INTERVAL_PRESETS_MONTHS : INTERVAL_PRESETS_DAYS;
+	const firstDue =
+		recurrenceType === 'months'
+			? `in ${interval} ${interval === 1 ? 'Monat' : 'Monaten'}`
+			: `in ${interval} ${interval === 1 ? 'Tag' : 'Tagen'}`;
 	return (
 		<Drawer
 			open={open}
@@ -137,12 +141,10 @@ export function ChoreForm({
 									</ToggleGroupItem>
 								))}
 							</ToggleGroup>
-							{recurrenceType === 'months' && (
-								<FieldDescription>
-									Wiederholt sich im gewählten Monatsabstand. Bei einer späten Erledigung beginnt
-									der Rhythmus neu.
-								</FieldDescription>
-							)}
+							<FieldDescription>
+								Erste Fälligkeit: {firstDue}. Bei früher Erledigung bleibt die bestehende Fälligkeit
+								die Basis; bei später Erledigung beginnt der nächste Rhythmus am Abschluss.
+							</FieldDescription>
 						</Field>
 						<Field data-disabled={pending}>
 							<FieldLabel htmlFor="chore-assigned">Zuständig</FieldLabel>

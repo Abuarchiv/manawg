@@ -28,7 +28,9 @@ import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
+import { getDebtOverview } from '@/features/expenses/debt-overview';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';
+import { cn } from '@/shared/lib/cn';
 import { Bell, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
@@ -199,7 +201,17 @@ function DebtRow({
 				</ItemTitle>
 				<ItemDescription>Aus euren offenen Ausgaben verrechnet</ItemDescription>
 			</ItemContent>
-			<Badge variant="secondary" className="font-mono tabular-nums text-destructive">
+			<Badge
+				variant="secondary"
+				className={cn(
+					'font-mono tabular-nums',
+					debt.fromId === currentMemberId
+						? 'text-destructive'
+						: debt.toId === currentMemberId
+							? 'text-settled'
+							: 'text-foreground',
+				)}
+			>
 				{formatEuroCents(debt.cents)}
 			</Badge>
 
@@ -253,11 +265,11 @@ function DebtRow({
 			>
 				<AlertDialogContent className="max-h-[90dvh] overflow-y-auto">
 					<AlertDialogHeader>
-						<AlertDialogTitle>Zahlung prüfen</AlertDialogTitle>
+						<AlertDialogTitle>Bereits erfolgte Zahlung bestätigen</AlertDialogTitle>
 						<AlertDialogDescription>
-							{debt.fromName} hat {debt.toName} {formatEuroCents(preview?.settleableCents ?? 0)}{' '}
-							bereits bezahlt. Nur die unten aufgeführten Direktanteile werden als beglichen
-							vermerkt. Es wird kein Geld überwiesen.
+							Bestätige nur, wenn {debt.fromName} {debt.toName}{' '}
+							{formatEuroCents(preview?.settleableCents ?? 0)} bereits bezahlt hat. Nur die unten
+							aufgeführten Anteile werden als beglichen vermerkt. Es wird kein Geld überwiesen.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<ItemGroup aria-label="Unterstützte Ausgabenanteile">
@@ -357,52 +369,94 @@ export function DebtSummary({
 	memberPayPalMerchantId = () => null,
 	onSettled,
 }: DebtSummaryProps) {
-	if (debts.length === 0) return null;
+	const { personal, others } = getDebtOverview(debts, currentMemberId, summary);
+	if (debts.length === 0 && personal.length === 0 && others.length === 0) return null;
+
+	function renderDebt(debt: SimplifiedDebt) {
+		return (
+			<DebtRow
+				key={`${debt.fromId}-${debt.toId}`}
+				debt={debt}
+				expenses={expenses}
+				shareCode={shareCode}
+				currentMemberId={currentMemberId}
+				memberToken={memberToken}
+				memberPayPalMerchantId={memberPayPalMerchantId}
+				payPalEligible={
+					summary === undefined ||
+					debts.some(
+						(direct) =>
+							direct.fromId === debt.fromId &&
+							direct.toId === debt.toId &&
+							direct.cents >= debt.cents,
+					)
+				}
+				onSettled={onSettled}
+			/>
+		);
+	}
+
 	return (
 		<Card>
 			<CardHeader>
 				<CardTitle>
-					<h2>Offene Zahlungen</h2>
+					<h2>Deine offenen Zahlungen</h2>
 				</CardTitle>
 				<CardDescription>
 					{summary && summary.savedTransfers > 0
-						? `Minimaler Ausgleich: ${summary.simplifiedCount} statt ${summary.directCount} Überweisungen. Spart ${summary.savedTransfers} Zahlungen.`
-						: 'Wer wem noch Geld schuldet'}
+						? `Gegenseitige Schulden sind verrechnet. ${summary.simplifiedCount} ${summary.simplifiedCount === 1 ? 'Zahlung bleibt' : 'Zahlungen bleiben'} in der WG übrig.`
+						: 'Wer dir Geld schuldet und wem du noch Geld schuldest'}
 				</CardDescription>
-				<Button
-					variant="outline"
-					className="min-h-11"
-					render={<Link href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`} />}
-					nativeButton={false}
-				>
-					<Bell data-icon="inline-start" />
-					Mahnungen
-				</Button>
 			</CardHeader>
-			<CardContent>
-				<ItemGroup>
-					{(summary?.simplified.length ? summary.simplified : debts).map((debt) => (
-						<DebtRow
-							key={`${debt.fromId}-${debt.toId}`}
-							debt={debt}
-							expenses={expenses}
-							shareCode={shareCode}
-							currentMemberId={currentMemberId}
-							memberToken={memberToken}
-							memberPayPalMerchantId={memberPayPalMerchantId}
-							payPalEligible={
-								summary === undefined ||
-								debts.some(
-									(direct) =>
-										direct.fromId === debt.fromId &&
-										direct.toId === debt.toId &&
-										direct.cents >= debt.cents,
-								)
+			<CardContent className="flex flex-col gap-4">
+				{personal.length > 0 ? (
+					<ItemGroup aria-label="Deine offenen Zahlungen">{personal.map(renderDebt)}</ItemGroup>
+				) : (
+					<div className="flex flex-col gap-1">
+						<p className="font-medium">
+							{others.length === 0
+								? 'Rechnerisch ausgeglichen'
+								: 'Für dich ist keine Zahlung offen.'}
+						</p>
+						{others.length === 0 && (
+							<p className="text-sm text-muted-foreground">
+								Keine Überweisung nötig. Die einzelnen Anteile im Verlauf sind dadurch nicht als
+								bezahlt markiert.
+							</p>
+						)}
+					</div>
+				)}
+				{others.length > 0 && (
+					<Collapsible>
+						<CollapsibleTrigger
+							render={
+								<Button
+									variant="ghost"
+									className="group h-auto min-h-11 w-full justify-between whitespace-normal text-left"
+								/>
 							}
-							onSettled={onSettled}
-						/>
-					))}
-				</ItemGroup>
+						>
+							Weitere Zahlungen in der WG ({others.length})
+							<ChevronDown aria-hidden className="size-4 shrink-0 group-aria-expanded:rotate-180" />
+						</CollapsibleTrigger>
+						<CollapsibleContent>
+							<ItemGroup className="pt-2" aria-label="Weitere Zahlungen in der WG">
+								{others.map(renderDebt)}
+							</ItemGroup>
+						</CollapsibleContent>
+					</Collapsible>
+				)}
+				{personal.length > 0 && (
+					<Button
+						variant="ghost"
+						className="min-h-11 self-start"
+						render={<Link href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`} />}
+						nativeButton={false}
+					>
+						<Bell data-icon="inline-start" />
+						Mahnungen
+					</Button>
+				)}
 			</CardContent>
 		</Card>
 	);
