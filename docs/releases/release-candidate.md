@@ -2,15 +2,19 @@
 
 ## Aktualisierung — 2026-09-22, Europe/Berlin
 
-Der Release-Workflow ist auf den aktuellen Branch `fix/audit-158` gepusht. Candidate-Stand ist `c0bb58883ec1a9cb4f76e7e2cc73e77baeebd83f`; Pull Request #300 ist mergeable, aber wegen der geschützten Preview-Gates noch nicht freigabefähig. Die Vercel-Preview `https://manawg-a2go0v6zl-abditubes-projects.vercel.app` (`dpl_F6yE6u16i8DAkuAHF8SRFyTZa6Dj`) ist mit Node 22 READY.
+Der Release-Workflow ist auf den aktuellen Branch `fix/audit-158` gepusht. Anwendung/Test-Candidate ist `3abc5d9a1fefe55603067d872f476981289ee71f`; der spätere Branch-Tip enthält nur diese Evidenz-Aktualisierung. Pull Request #300 ist mergeable, aber wegen der geschützten Preview-Gates noch nicht freigabefähig. Die Vercel-Preview `https://manawg-eqqk2dsld-abditubes-projects.vercel.app` (`dpl_uwtuk6ewXfC1BdRXERmvXLxxjx2j`) ist mit Node 22 READY.
 
 - GitHub-Preview-Secrets sind vorhanden; Werte wurden nicht ausgegeben.
-- Der Node-22-`validate`-Job für den Candidate-Stand ist erfolgreich (`35660883855`). Fixture-E2E lief separat; ein Fixture-Erfolg ersetzt keine Hosted-Evidenz.
-- Der vertrauenswürdige Deployment-Status-Lauf `35661034883` stoppt korrekt vor Hosted-E2E: `db-supabase-preview` erreicht die Migration, scheitert aber mit SQLSTATE `42501` (fehlende DDL-Berechtigung). `e2e-preview` bleibt deshalb fail-closed übersprungen.
+- Der Node-22-`validate`-Job für den Candidate-Stand ist erfolgreich (`35663607827`); die Fixture-Suite ist mit 180 bestanden und 28 übersprungen grün. Fixture-E2E lief separat; ein Fixture-Erfolg ersetzt keine Hosted-Evidenz.
+- Der vertrauenswürdige Deployment-Status-Lauf `35663737497` stoppt korrekt vor Hosted-E2E: `db-supabase-preview` erreicht die Migration, scheitert aber mit SQLSTATE `42501` (fehlende DDL-Berechtigung). `e2e-preview` bleibt deshalb fail-closed übersprungen.
 - Read-only Supabase-Katalogprüfung für Preview bestätigt: `manawg_preview_ci` hat `schema_create=false` auf `public` und `db_create=false`; bestehende Tabelle `public.wg_chat_messages` gehört `postgres`. Es wurde dabei keine SQL-Mutation ausgeführt.
 - Die zwei historischen, bytegenau belegten Ledger-Hashes für 0007 und 0010 sind jetzt nur an ihren exakten Journalpositionen allowlisted; unbekannte Ledger-Zeilen bleiben fail-closed.
 
 **Aktueller Blocker:** Für die geschützte Preview-Migration fehlt ein autorisierter DDL-/Owner-Migrationszugang. Nicht durch zusätzliche Grants, Rollenrotation oder manuelle Ledger-Manipulation umgehen; der Release-Eigentümer muss den vorgesehenen direkten Preview-Migrationszugang bereitstellen bzw. freigeben. Production bleibt unverändert: keine Production-Migration, kein Production-Deployment und keine Production-Datenänderung.
+
+## Aktualisierung — 2026-09-22, nach dem Fixture-Gate-Fix
+
+Die CI-Regressionen waren testseitig: feste vergangene Chore-Zeitpunkte machten die Berlin-Fälligkeits-/Aktionsassertionen nach Mitternacht falsch, und ein visueller Screenshot nutzte einen lokalen absoluten Pfad. Die Fixtures verwenden jetzt den aktuellen Berlin-Kalendertag und Playwright-Artefaktpfade; der exakte Candidate-Lauf ist mit 180 Tests bestanden und 28 übersprungen grün. Die Anwendung bleibt unverändert blockiert durch die fehlende Preview-Owner-DDL-Berechtigung.
 
 ## Aktualisierung — 2026-09-20 20:10 CEST
 

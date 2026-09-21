@@ -2,16 +2,16 @@
 
 ## Aktueller Implementierungsstand — 2026-09-22, Europe/Berlin
 
-- Branch `fix/audit-158` ist bis `c0bb58883ec1a9cb4f76e7e2cc73e77baeebd83f` gepusht; PR #300 ist mergeable, aber wegen geschützter Preview-Gates noch nicht freigabefähig.
-- Vercel Preview `https://manawg-a2go0v6zl-abditubes-projects.vercel.app` (`dpl_F6yE6u16i8DAkuAHF8SRFyTZa6Dj`) ist mit Node 22 READY. GitHub Preview-/QA-Secrets sind vorhanden; keine Werte wurden ausgegeben.
-- GitHub-Node-22-`validate` ist erfolgreich (`35660883855`). Fixture-E2E und lokale Regressionen sind getrennte Evidenz und kein Hosted-Produktionsnachweis.
-- Protected Preview run `35661034883` scheitert fail-closed in `db-supabase-preview`: SQLSTATE `42501` beim Anwenden von Migrationen. Supabase-Read-only-Katalogprüfung bestätigt `manawg_preview_ci.schema_create=false`, `db_create=false`; bestehende Tabellen gehören `postgres`.
+- Branch `fix/audit-158` enthält den geprüften Anwendungs-/Teststand `3abc5d9a1fefe55603067d872f476981289ee71f`; der aktuelle Dokumentations-Tip ergänzt nur diese Evidenz. PR #300 ist mergeable, aber wegen geschützter Preview-Gates noch nicht freigabefähig.
+- Vercel Preview `https://manawg-eqqk2dsld-abditubes-projects.vercel.app` (`dpl_uwtuk6ewXfC1BdRXERmvXLxxjx2j`) ist mit Node 22 READY. GitHub Preview-/QA-Secrets sind vorhanden; keine Werte wurden ausgegeben.
+- GitHub-Node-22-`validate` ist erfolgreich (`35663607827`); die exakte Fixture-Suite ist mit 180 bestanden und 28 übersprungen grün. Fixture-E2E und lokale Regressionen sind getrennte Evidenz und kein Hosted-Produktionsnachweis.
+- Protected Preview run `35663737497` scheitert fail-closed in `db-supabase-preview`: SQLSTATE `42501` beim Anwenden von Migrationen. Supabase-Read-only-Katalogprüfung bestätigt `manawg_preview_ci.schema_create=false`, `db_create=false`; bestehende Tabellen gehören `postgres`.
 - Nächste autorisierte Aktion: einen vorgesehenen direkten Preview-DDL-/Owner-Migrationszugang bereitstellen/freigeben. Keine zusätzlichen Grants, Rollenrotation oder manuelle Ledger-Manipulation als Umgehung. Production bleibt unverändert.
 - Storage, Provider, Geräte, Recovery, authentifizierte Privacy-/Revocation-Abnahme und Production-Gates bleiben offen.
 
 Stand: 2026-09-22, Europe/Berlin
 Scope: `/Users/abu/Company/manawg-app`
-HEAD: `c0bb58883ec1a9cb4f76e7e2cc73e77baeebd83f` (`fix/audit-158`)
+HEAD: `3abc5d9a1fefe55603067d872f476981289ee71f` (`fix/audit-158`; documentation-only refresh follows)
 Arbeitsbaum: dirty durch eine uncommitted Benutzeränderung in `apps/web/src/app/layout.tsx`; kein Production-Release.
 
 ## Historischer Implementierungsstand — 2026-09-20 20:10 CEST
@@ -56,7 +56,7 @@ Status: erledigt
 Abnahme: lokale Gates wurden nach dem aktuellen HEAD `cae9b0b` und den dirty Änderungen erneut ausgeführt.
 
 - [x] Historischer Lauf: Typecheck, Lint, Build, Bundle, Analytics, OpenSpec 5/5, Fixture-E2E 80/24/0, Chat 2/2, Workflow-Gates 9/9, Audit ohne High-Schwachstellen.
-- [x] Finaler Readback: Typecheck, Lint, Build, Bundle, Analytics, OpenSpec 5/5, Release-Workflow-Gates 9/9 und Fixture-E2E Exit 0.
+- [x] Finaler Readback: Typecheck, Lint, Build, Bundle, Analytics, OpenSpec 5/5, Release-Workflow-Gates 9/9 und Fixture-E2E Exit 0; exact-tree CI fixture run `35663607827` meldet 180 bestanden und 28 übersprungen.
 
 ### T4 — Backend, Auth und Datenintegrität
 
@@ -99,7 +99,7 @@ Abnahme: gleicher Candidate-SHA, Preview-Migration/db:check, Vercel-Event, QA-Au
 - [x] Fehlende Ledger-Einträge 0010–0012 nach bytegenauem Vergleich mit bereits angewendeter Supabase-Historie ergänzt; Rollback vorher bewiesen. Keine Schema-/App-Datenänderung.
 - [x] Sechs echte Hosted-Auth-/Guest-/Reset-Checks bestanden; synthetischer Account und isolierte Test-WG jeweils entfernt.
 - [x] Zentraler Runtime-Fix: App-Transaktionen ignorieren Migrations-Credentials; sechs Resolver-/Ledger-Regressionen und echter Preview-Schreib-/Rollback-Test in derselben DB-Sitzung bestanden.
-- [ ] Current protected run `35661034883`: Migration reaches the pending migrations but fails with SQLSTATE `42501`; `e2e-preview` fails closed.
+- [ ] Current protected run `35663737497`: Migration reaches the pending migrations but fails with SQLSTATE `42501`; `e2e-preview` fails closed.
 - [ ] Authorize the intended direct Preview DDL/owner migration credential, then rerun migration, `db:check`, authenticated browser, revoked membership, Privacy and cleanup gates for the exact candidate tree.
 - [ ] Authentifizierter Browserlauf, revoked membership, Privacy und Cleanup.
 
