@@ -18,6 +18,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 	const next = safeNextPath(request.nextUrl.searchParams.get('next'));
 	if (!code) return callbackError(request);
 
+	// Defense in depth: safeNextPath should already reject absolute URLs,
+	// but verify at the redirect boundary so a future regression cannot
+	// produce an open redirect.
+	if (!next.startsWith('/')) {
+		return callbackError(request);
+	}
+
 	const response = NextResponse.redirect(new URL(next, request.url));
 	try {
 		const supabase = createSupabaseServerClient(request, response);

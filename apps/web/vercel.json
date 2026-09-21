@@ -3,7 +3,7 @@
 	"buildCommand": "cd ../.. && pnpm build",
 	"installCommand": "cd ../.. && pnpm install --frozen-lockfile",
 	"outputDirectory": ".next",
-	"ignoreCommand": "exit 1",
+	"ignoreCommand": "$CI",
 	"git": {
 		"deploymentEnabled": {
 			"main": false

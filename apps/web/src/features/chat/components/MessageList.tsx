@@ -5,7 +5,7 @@ import { Marker, MarkerContent } from '@/components/ui/marker';
 import { MessageGroup } from '@/components/ui/message';
 import { MessageScrollerItem } from '@/components/ui/message-scroller';
 import { Spinner } from '@/components/ui/spinner';
-import { type RefObject, useEffect, useRef } from 'react';
+import { type RefObject, useEffect, useMemo, useRef } from 'react';
 import { groupMessagesByDay } from '../chat-pure';
 import { type BubbleMessage, MessageBubble, type ReactionSummary } from './MessageBubble';
 import { SystemMessage } from './SystemMessage';
@@ -95,9 +95,15 @@ export function MessageList({
 		return () => observer.disconnect();
 	}, [hasMoreOlder, loadingOlder, olderError, onLoadOlder, scrollRef]);
 
-	const messagesById = new Map(messages.map((message) => [message.id, message]));
-	const memberLookup = new Map(members.map((member) => [member.id, member]));
-	const groups = groupMessagesByDay(messages);
+	const messagesById = useMemo(
+		() => new Map(messages.map((message) => [message.id, message])),
+		[messages],
+	);
+	const memberLookup = useMemo(
+		() => new Map(members.map((member) => [member.id, member])),
+		[members],
+	);
+	const groups = useMemo(() => groupMessagesByDay(messages), [messages]);
 	const oldestId = messages[0]?.id;
 
 	// Each message is a direct, stable child of MessageScrollerContent. Inserting

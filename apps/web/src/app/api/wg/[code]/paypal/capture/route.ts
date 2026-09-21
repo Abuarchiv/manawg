@@ -10,7 +10,12 @@ import {
 } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { capturePayPalOrder, isPayPalConfigured } from '@/core/infra/paypal';
+import {
+	type PayPalOrderResponse,
+	capturePayPalOrder,
+	getPayPalOrder,
+	isPayPalConfigured,
+} from '@/core/infra/paypal';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { computeNetBalances, simplifyDebts } from '@/features/expenses/debt-reduction';
 import {
@@ -63,7 +68,11 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 			return forbidden('not_party_to_debt', 'not_party_to_debt');
 		}
 		if (payment.status === 'completed') {
-			return NextResponse.json({ status: 'COMPLETED', amountCents: payment.amountCents });
+			return NextResponse.json({
+				status: 'COMPLETED',
+				amountCents: payment.amountCents,
+				currency: payment.currency,
+			});
 		}
 
 		const captureState = await withExpensePaymentLock(auth.wg.id, async (tx) => {
@@ -105,6 +114,7 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 			return NextResponse.json({
 				status: 'COMPLETED',
 				amountCents: captureState.payment.amountCents,
+				currency: captureState.payment.currency,
 			});
 		}
 		if (captureState.kind === 'expired') return conflict('paypal_order_expired');
@@ -123,7 +133,9 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 			]);
 			const debt = simplifyDebts(computeNetBalances(expenses, members, payments)).find(
 				(item) =>
-					item.fromId === capturePayment.fromMemberId && item.toId === capturePayment.toMemberId,
+					item.fromId === capturePayment.fromMemberId &&
+					item.toId === capturePayment.toMemberId &&
+					(item.currency ?? 'EUR') === capturePayment.currency,
 			);
 			if (!isPayPalCaptureDebtChanged(debt?.cents, capturePayment.amountCents)) return false;
 			await tx
@@ -138,19 +150,44 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 			return conflict('debt_changed');
 		}
 
-		const order = await capturePayPalOrder(
-			capturePayment.providerOrderId,
-			capturePayment.payeeMerchantId,
-		);
+		let order: PayPalOrderResponse | undefined;
+		try {
+			order = await capturePayPalOrder(
+				capturePayment.providerOrderId,
+				capturePayment.payeeMerchantId,
+			);
+		} catch (captureError) {
+			// A network/5xx response does not tell us whether PayPal captured the
+			// order. Re-read the order before returning so an approved capture can
+			// still be committed locally without creating a second payment.
+			try {
+				order = await getPayPalOrder(
+					capturePayment.providerOrderId,
+					capturePayment.payeeMerchantId,
+				);
+			} catch (statusError) {
+				console.error('[paypal capture] status recovery failed', { captureError, statusError });
+				return conflict('paypal_capture_pending');
+			}
+		}
 		const capture = order.purchase_units
 			?.flatMap((unit) => unit.payments?.captures ?? [])
 			.find((item) => item.status === 'COMPLETED');
 		const capturedCents = capture?.amount?.value
 			? Math.round(Number(capture.amount.value) * 100)
 			: 0;
+		if (order.status !== 'COMPLETED' || !capture) {
+			await withExpensePaymentLock(auth.wg.id, (tx) =>
+				tx
+					.update(expensePayments)
+					.set({ status: 'failed' })
+					.where(
+						and(eq(expensePayments.id, capturePayment.id), eq(expensePayments.status, 'capturing')),
+					),
+			);
+			return conflict('paypal_payment_not_completed');
+		}
 		if (
-			order.status !== 'COMPLETED' ||
-			!capture ||
 			capturedCents !== capturePayment.amountCents ||
 			capture.amount?.currency_code !== capturePayment.currency
 		) {
@@ -175,7 +212,11 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 		});
 		if (completion === 'failed') return serverError('paypal_settlement_failed');
 		if (completion === 'already_completed') {
-			return NextResponse.json({ status: 'COMPLETED', amountCents: capturePayment.amountCents });
+			return NextResponse.json({
+				status: 'COMPLETED',
+				amountCents: capturePayment.amountCents,
+				currency: capturePayment.currency,
+			});
 		}
 		try {
 			await recordAuditEvent({
@@ -184,7 +225,7 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 				eventType: 'expense.debt.paid.paypal',
 				entityType: 'expense_payment',
 				entityId: capturePayment.id,
-				summary: `${auth.member.name} hat ${capturePayment.amountCents / 100} EUR per PayPal beglichen.`,
+				summary: `${auth.member.name} hat ${capturePayment.amountCents / 100} ${capturePayment.currency} per PayPal beglichen.`,
 				metadata: {
 					fromMemberId: capturePayment.fromMemberId,
 					toMemberId: capturePayment.toMemberId,
@@ -196,7 +237,11 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 			console.error('[paypal capture] audit failed', auditError);
 		}
 
-		return NextResponse.json({ status: 'COMPLETED', amountCents: capturePayment.amountCents });
+		return NextResponse.json({
+			status: 'COMPLETED',
+			amountCents: capturePayment.amountCents,
+			currency: capturePayment.currency,
+		});
 	} catch (err) {
 		console.error('[paypal capture]', err);
 		return serverError('paypal_capture_failed');

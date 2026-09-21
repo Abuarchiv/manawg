@@ -83,7 +83,7 @@ function isNeuPath(path: string): boolean {
 	try {
 		return new URL(path, 'https://manawg.invalid').pathname === '/neu';
 	} catch {
-		return true;
+		return false;
 	}
 }
 

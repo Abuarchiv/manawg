@@ -29,6 +29,7 @@ import {
 } from '@/core/offline/offline-copy';
 import {
 	type OfflineActionType,
+	createOfflineIdempotencyKey,
 	createQueuedExpense,
 	createQueuedExpenseUpdate,
 	createQueuedRecurring,
@@ -471,6 +472,12 @@ export default function AusgabenPage() {
 		setSubmitting(true);
 
 		const isEdit = editingExpense !== null;
+		const idempotencyKey = isEdit ? null : createOfflineIdempotencyKey();
+		if (!isEdit && !idempotencyKey) {
+			setActionError('Ausgabe konnte nicht sicher gesendet werden. Versuche es erneut.');
+			finishSubmitting();
+			return;
+		}
 		const url = isEdit
 			? `/api/wg/${encodedShareCode}/expenses/${encodeURIComponent(editingExpense.id)}`
 			: `/api/wg/${encodedShareCode}/expenses`;
@@ -478,6 +485,7 @@ export default function AusgabenPage() {
 			method: isEdit ? 'PATCH' : 'POST',
 			memberId: identity.memberId,
 			memberToken: identity.memberToken,
+			...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
 			body: JSON.stringify({
 				paidByMemberId,
 				amountCents,
@@ -510,6 +518,7 @@ export default function AusgabenPage() {
 							wgId: wg.id,
 							shareCode: wg.shareCode,
 							memberId: identity.memberId,
+							...(idempotencyKey ? { idempotencyKey } : {}),
 							description: desc,
 							amountCents,
 							paidByMemberId,
@@ -750,12 +759,19 @@ export default function AusgabenPage() {
 		};
 		setCreatingRecurringId(template.id);
 		setActionError(null);
+		const idempotencyKey = createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setActionError('Fixkosten-Ausgabe konnte nicht sicher gesendet werden. Versuche es erneut.');
+			finishCreatingRecurring();
+			return;
+		}
 		const createRes = await apiFetch<ExpenseCreateResponse>(
 			`/api/wg/${encodedShareCode}/expenses`,
 			{
 				method: 'POST',
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
+				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({
 					description: template.description,
 					amountCents: template.amountCents,
@@ -771,6 +787,7 @@ export default function AusgabenPage() {
 						wgId: wg.id,
 						shareCode: wg.shareCode,
 						memberId: identity.memberId,
+						idempotencyKey,
 						description: template.description,
 						amountCents: template.amountCents,
 						paidByMemberId: template.paidByMemberId,
@@ -993,8 +1010,11 @@ export default function AusgabenPage() {
 			? buildSplits(Math.round(previewAmount * CENTS_PER_EURO))
 			: null;
 
-	const personalBalance =
-		memberBalances.find((member) => member.memberId === identity.memberId)?.balanceCents ?? 0;
+	const personalBalances = memberBalances.filter((member) => member.memberId === identity.memberId);
+	const primaryPersonalBalance =
+		personalBalances.find((member) => member.currency === 'EUR') ?? personalBalances[0] ?? null;
+	const personalBalance = primaryPersonalBalance?.balanceCents ?? 0;
+	const personalBalanceCurrency = primaryPersonalBalance?.currency ?? 'EUR';
 
 	return (
 		<div data-finance-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
@@ -1119,11 +1139,25 @@ export default function AusgabenPage() {
 							<CardHeader>
 								<CardDescription>Dein Saldo</CardDescription>
 								<CardTitle>
-									{personalBalance > 0 ? (
+									{personalBalances.length > 1 ? (
+										<>
+											Offene Salden{' '}
+											<span className="font-mono tabular-nums">
+												{personalBalances
+													.filter((balance) => balance.balanceCents !== 0)
+													.map((balance) =>
+														formatEuroCents(balance.balanceCents, balance.currency, {
+															signed: true,
+														}),
+													)
+													.join(' · ') || formatEuroCents(0, 'EUR', { signed: true })}
+											</span>
+										</>
+									) : personalBalance > 0 ? (
 										<>
 											Du bekommst{' '}
 											<span className="font-mono tabular-nums text-settled">
-												{formatEuroCents(Math.abs(personalBalance))}
+												{formatEuroCents(Math.abs(personalBalance), personalBalanceCurrency)}
 											</span>{' '}
 											zurück
 										</>
@@ -1131,14 +1165,14 @@ export default function AusgabenPage() {
 										<>
 											Du schuldest noch{' '}
 											<span className="font-mono tabular-nums text-destructive">
-												{formatEuroCents(Math.abs(personalBalance))}
+												{formatEuroCents(Math.abs(personalBalance), personalBalanceCurrency)}
 											</span>
 										</>
 									) : (
 										<>
 											Du bist ausgeglichen{' '}
 											<span className="font-mono tabular-nums text-foreground">
-												{formatEuroCents(0, 'EUR', { signed: true })}
+												{formatEuroCents(0, personalBalanceCurrency, { signed: true })}
 											</span>
 										</>
 									)}
@@ -1155,7 +1189,11 @@ export default function AusgabenPage() {
 									<CollapsibleContent>
 										<ItemGroup className="pt-2">
 											{memberBalances.map((member) => (
-												<Item key={member.memberId} variant="muted" size="xs">
+												<Item
+													key={`${member.currency}-${member.memberId}`}
+													variant="muted"
+													size="xs"
+												>
 													<ItemContent className="min-w-0">
 														<ItemTitle className="line-clamp-none break-words">
 															{member.memberName}
@@ -1179,7 +1217,9 @@ export default function AusgabenPage() {
 																	: 'text-foreground',
 														)}
 													>
-														{formatEuroCents(member.balanceCents, 'EUR', { signed: true })}
+														{formatEuroCents(member.balanceCents, member.currency, {
+															signed: true,
+														})}
 													</span>
 												</Item>
 											))}

@@ -90,7 +90,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 								<span className="sr-only">Details öffnen:</span>
 								<span className="break-words font-medium leading-snug">{expense.description}</span>
 								<span className="font-mono tabular-nums text-foreground">
-									{formatEuroCents(expense.amountCents)}
+									{formatEuroCents(expense.amountCents, expense.currency)}
 								</span>
 								<span className="col-span-2 text-left text-xs leading-normal font-normal text-muted-foreground sm:text-sm">
 									Bezahlt von {memberName(expense.paidByMemberId)} ·{' '}
@@ -224,7 +224,9 @@ export const ExpenseRow = memo(function ExpenseRow({
 						<AlertDialogTitle>Ausgabe entfernen?</AlertDialogTitle>
 						<AlertDialogDescription>
 							„{expense.description}“ mit{' '}
-							<span className="font-mono tabular-nums">{formatEuroCents(expense.amountCents)}</span>{' '}
+							<span className="font-mono tabular-nums">
+								{formatEuroCents(expense.amountCents, expense.currency)}
+							</span>{' '}
 							und den zugehörigen Anteilen wird entfernt.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
@@ -260,7 +262,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 								<>
 									{memberName(settleCandidate.debtorMemberId)} ·{' '}
 									<span className="font-mono tabular-nums">
-										{formatEuroCents(settleCandidate.amountCents)}
+										{formatEuroCents(settleCandidate.amountCents, expense.currency)}
 									</span>{' '}
 									für „{expense.description}“, bezahlt von {memberName(expense.paidByMemberId)}.{' '}
 									{settleCandidate.settledAt

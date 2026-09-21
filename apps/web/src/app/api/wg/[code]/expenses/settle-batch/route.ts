@@ -69,6 +69,7 @@ async function loadSettlementSnapshot(
 			.select({
 				id: expenses.id,
 				paidByMemberId: expenses.paidByMemberId,
+				currency: expenses.currency,
 				occurredAt: expenses.occurredAt,
 			})
 			.from(expenses)
@@ -117,6 +118,11 @@ async function loadSettlementSnapshot(
 	};
 }
 
+function validateCurrency(currency: string | null | undefined): string | NextResponse {
+	const normalized = currency?.trim().toUpperCase() || 'EUR';
+	return /^[A-Z]{3}$/.test(normalized) ? normalized : badRequest('currency_invalid');
+}
+
 function validatePair(fromMemberId: string, toMemberId: string): NextResponse | null {
 	if (!UUID_PATTERN.test(fromMemberId) || !UUID_PATTERN.test(toMemberId)) {
 		return badRequest('member_ids_invalid');
@@ -139,6 +145,7 @@ function isParty(authMemberId: string, fromMemberId: string, toMemberId: string)
 }
 
 interface SettlementResponse {
+	currency: string;
 	settled: number;
 	settledIds: string[];
 	settledCents: number;
@@ -152,6 +159,7 @@ function buildSettlementResponse(
 	preview: SettlementPreview,
 	settledIds: string[],
 	settledCents: number,
+	currency: string,
 	fromMemberId: string,
 	toMemberId: string,
 ): SettlementResponse {
@@ -159,6 +167,7 @@ function buildSettlementResponse(
 		settled: settledIds.length,
 		settledIds,
 		settledCents,
+		currency,
 		remainingCents: Math.max(0, preview.netCents - settledCents),
 		creditor: toMemberId,
 		debtor: fromMemberId,
@@ -169,7 +178,9 @@ function buildSettlementResponse(
 const getSettlement = withWgRoute('settle-batch GET', async (req, { code }) => {
 	const fromMemberId = req.nextUrl.searchParams.get('fromMemberId');
 	const toMemberId = req.nextUrl.searchParams.get('toMemberId');
+	const currency = validateCurrency(req.nextUrl.searchParams.get('currency'));
 	if (!fromMemberId || !toMemberId) return noStore(badRequest('member_ids_invalid'));
+	if (currency instanceof NextResponse) return noStore(currency);
 	const invalidPair = validatePair(fromMemberId, toMemberId);
 	if (invalidPair) return noStore(invalidPair);
 
@@ -193,6 +204,7 @@ const getSettlement = withWgRoute('settle-batch GET', async (req, { code }) => {
 			snapshot.payments,
 			fromMemberId,
 			toMemberId,
+			currency,
 		),
 	);
 });
@@ -276,6 +288,7 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 				snapshot.payments,
 				confirmation.fromMemberId,
 				confirmation.toMemberId,
+				confirmation.currency,
 			);
 			if (await hasActiveExpensePayment(tx, auth.wg.id)) return { kind: 'blocked' as const };
 			if (!settlementScopeMatches(confirmation.expected, preview)) {
@@ -353,6 +366,7 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 			mutation.preview,
 			mutation.settledIds,
 			mutation.settledCents,
+			confirmation.currency,
 			confirmation.fromMemberId,
 			confirmation.toMemberId,
 		),

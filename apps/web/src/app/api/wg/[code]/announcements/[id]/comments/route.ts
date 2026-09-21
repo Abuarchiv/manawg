@@ -9,6 +9,7 @@ import {
 import { badRequest, notFound, serverError, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
+import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
 	type NotificationDispatchWarning,
@@ -83,11 +84,15 @@ export const POST = withWgRoute<{ id: string }>(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wg = auth.wg;
-		const limited = await checkRateLimit(
-			wgWriteLimiter,
-			`comment:${wg.id}:${auth.member.memberId}`,
-		);
-		if (!limited.success) return tooMany();
+		return withIdempotentJsonResponse(
+			req,
+			`announcement-comment:${wg.id}:${auth.member.memberId}:${id}`,
+			async () => {
+				const limited = await checkRateLimit(
+					wgWriteLimiter,
+					`comment:${wg.id}:${auth.member.memberId}`,
+				);
+				if (!limited.success) return tooMany();
 
 		const announcement = await findWgAnnouncement(wg.id, id);
 		if (!announcement) return notFound('announcement_not_found');
@@ -141,16 +146,18 @@ export const POST = withWgRoute<{ id: string }>(
 			warning = delivery.warning;
 		}
 
-		return NextResponse.json({
-			comment: {
-				...comment,
-				authorName: auth.member.name,
-				authorColor:
-					'color' in auth.member && typeof auth.member.color === 'string'
-						? auth.member.color
-						: null,
+			return NextResponse.json({
+				comment: {
+					...comment,
+					authorName: auth.member.name,
+					authorColor:
+						'color' in auth.member && typeof auth.member.color === 'string'
+							? auth.member.color
+							: null,
+				},
+				warning,
+			});
 			},
-			warning,
-		});
+		);
 	},
 );

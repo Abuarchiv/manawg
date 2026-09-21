@@ -43,6 +43,7 @@ export const GET = withWgRoute(
 					paidByMemberId: expenses.paidByMemberId,
 					description: expenses.description,
 					amountCents: expenses.amountCents,
+					currency: expenses.currency,
 					occurredAt: expenses.occurredAt,
 				})
 				.from(expenses)

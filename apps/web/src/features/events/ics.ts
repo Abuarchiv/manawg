@@ -1,3 +1,4 @@
+import { berlinDayKey } from '@/core/utils/berlin-day';
 import type { EventOccurrence } from '@/features/events/events';
 
 const UTF8_ENCODER = new TextEncoder();
@@ -53,8 +54,20 @@ function toIcsUtc(iso: string): string {
 		.replace(/\.\d{3}Z$/, 'Z');
 }
 
+function berlinDayToIcsDate(day: string): string {
+	return day.replace(/-/g, '');
+}
+
 function toIcsDate(iso: string): string {
-	return new Date(iso).toISOString().slice(0, 10).replace(/-/g, '');
+	return berlinDayToIcsDate(berlinDayKey(new Date(iso)));
+}
+
+function toIcsExclusiveDate(iso: string): string {
+	const day = berlinDayKey(new Date(iso));
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+	if (!match) return toIcsDate(iso);
+	const next = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + 1));
+	return next.toISOString().slice(0, 10).replace(/-/g, '');
 }
 
 function occurrenceUid(occ: EventOccurrence): string {
@@ -85,10 +98,10 @@ function eventLines(
 	}
 	if (occ.allDay) {
 		lines.push(`DTSTART;VALUE=DATE:${toIcsDate(occ.startsAt)}`);
-		// ICS all-day DTEND is exclusive; the app's end date is inclusive.
-		const endExclusive = new Date(occ.endsAt ?? occ.startsAt);
-		endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
-		lines.push(`DTEND;VALUE=DATE:${toIcsDate(endExclusive.toISOString())}`);
+		// ICS all-day DTEND is exclusive; the app's end date is an inclusive
+		// Berlin calendar date. Add a calendar day, not 24 elapsed hours, so
+		// DST boundaries cannot shift the exported date.
+		lines.push(`DTEND;VALUE=DATE:${toIcsExclusiveDate(occ.endsAt ?? occ.startsAt)}`);
 	} else {
 		lines.push(`DTSTART:${toIcsUtc(occ.startsAt)}`);
 		if (occ.endsAt) lines.push(`DTEND:${toIcsUtc(occ.endsAt)}`);

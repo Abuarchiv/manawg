@@ -1,6 +1,8 @@
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers } from '@/core/db';
 import { apiError } from '@/core/errors';
+import { verifyMemberToken } from '@/core/guards/member-token';
+import { MEMBER_TOKEN_HEADER } from '@/shared/lib/member-header';
 import { and, eq } from 'drizzle-orm';
 import type { NextRequest, NextResponse } from 'next/server';
 
@@ -46,9 +48,10 @@ function unauthorized(code: string): NextResponse {
 /**
  * Resolve the caller's active membership from their server-verified Supabase
  * identity. The server-side Supabase user-to-membership lookup is the
- * authoritative identity proof. HMAC member tokens remain limited to the
- * explicit legacy-claim flow and are not required for normal authenticated
- * app requests.
+ * authoritative identity proof. The HMAC member token from
+ * `x-manawg-member-token` is verified when present; members who present a
+ * valid token are `verified: true`, everyone else is `verified: false` and
+ * must use the legacy claim flow to obtain a token.
  */
 export async function requireMember(
 	req: NextRequest,
@@ -70,7 +73,13 @@ export async function requireMember(
 		if (row.deactivatedAt) {
 			return { ok: false, response: unauthorized('member_deactivated') };
 		}
-		return { ok: true, member: { memberId: row.id, name: row.name, verified: true } };
+		// Verify the HMAC member token when present. Fails closed: an absent,
+		// malformed, or mismatched token yields `verified: false`, forcing the
+		// caller through the legacy claim flow rather than trusting a bare
+		// `x-manawg-member-id`.
+		const memberToken = req.headers.get(MEMBER_TOKEN_HEADER);
+		const verified = verifyMemberToken(wgId, row.id, memberToken);
+		return { ok: true, member: { memberId: row.id, name: row.name, verified } };
 	} catch (err) {
 		console.error('[requireMember] db error', err);
 		return { ok: false, response: apiError('db_error', HTTP_SERVICE_UNAVAILABLE) };

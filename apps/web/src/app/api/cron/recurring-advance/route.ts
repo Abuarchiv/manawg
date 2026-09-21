@@ -116,7 +116,7 @@ async function advanceTemplate(template: DueRecurring): Promise<CreatedAdvance[]
 				nextDueAt,
 				lastCreatedAt: now,
 				updatedAt: now,
-				...(template.anchorAt ? {} : { anchorAt: template.nextDueAt }),
+				...(template.anchorAt ? {} : { anchorAt: nextDueAt }),
 			})
 			.where(eq(recurringExpenses.id, template.id));
 	}

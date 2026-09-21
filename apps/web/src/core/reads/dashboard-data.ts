@@ -39,6 +39,7 @@ export interface MemberBalance {
 	memberId: string;
 	memberName: string;
 	color: string | null;
+	currency: string;
 	paidCents: number;
 	owedCents: number;
 	balanceCents: number;
@@ -55,6 +56,7 @@ export interface ActivityItem {
 	memberName: string;
 	text: string;
 	amountCents?: number;
+	currency?: string;
 	href?: string;
 }
 
@@ -159,7 +161,12 @@ function berlinDaysAgoStart(todayStart: Date, daysAgo: number): Date {
 
 export function computeMemberBalances(
 	members: Array<{ id: string; name: string; color: string | null }>,
-	expenses: Array<{ id: string; paidByMemberId: string; amountCents: number }>,
+	expenses: Array<{
+		id: string;
+		paidByMemberId: string;
+		amountCents: number;
+		currency?: string;
+	}>,
 	splits: Array<{
 		expenseId: string;
 		debtorMemberId: string;
@@ -182,46 +189,69 @@ export function computeMemberBalances(
 		splitsByExpense.set(split.expenseId, expenseSplits);
 	}
 
+	const normalizedExpenses = expenses.map((expense) => ({
+		...expense,
+		currency: expense.currency?.trim().toUpperCase() || 'EUR',
+	}));
 	const netBalances = computeNetBalances(
-		expenses.map((expense) => ({
+		normalizedExpenses.map((expense) => ({
 			paidByMemberId: expense.paidByMemberId,
+			currency: expense.currency,
 			splits: splitsByExpense.get(expense.id) ?? [],
 		})),
 		members,
 		payments,
 	);
-	const netByMemberId = new Map(netBalances.map((balance) => [balance.memberId, balance.cents]));
-	const grossByMemberId = new Map(
-		members.map((member) => [member.id, { paidCents: 0, owedCents: 0 }]),
-	);
-	for (const expense of expenses) {
-		const paid = grossByMemberId.get(expense.paidByMemberId);
-		if (paid) paid.paidCents += expense.amountCents;
+	const grossByKey = new Map<string, { paidCents: number; owedCents: number }>();
+	const currencies = new Set<string>(netBalances.map((balance) => balance.currency));
+	for (const expense of normalizedExpenses) {
+		currencies.add(expense.currency);
+		const key = `${expense.currency}:${expense.paidByMemberId}`;
+		const paid = grossByKey.get(key) ?? { paidCents: 0, owedCents: 0 };
+		paid.paidCents += expense.amountCents;
+		grossByKey.set(key, paid);
 	}
+	const currencyByExpenseId = new Map(
+		normalizedExpenses.map((expense) => [expense.id, expense.currency]),
+	);
 	for (const split of splits) {
 		if (split.settledAt) continue;
-		const owed = grossByMemberId.get(split.debtorMemberId);
-		if (owed) owed.owedCents += split.amountCents;
+		const currency = currencyByExpenseId.get(split.expenseId) ?? 'EUR';
+		const key = `${currency}:${split.debtorMemberId}`;
+		const owed = grossByKey.get(key) ?? { paidCents: 0, owedCents: 0 };
+		owed.owedCents += split.amountCents;
+		grossByKey.set(key, owed);
 	}
 	for (const payment of payments) {
-		const paid = grossByMemberId.get(payment.fromMemberId);
-		const owed = grossByMemberId.get(payment.toMemberId);
-		if (paid) paid.paidCents += payment.amountCents;
-		if (owed) owed.owedCents += payment.amountCents;
+		const currency = payment.currency?.trim().toUpperCase() || 'EUR';
+		currencies.add(currency);
+		const paidKey = `${currency}:${payment.fromMemberId}`;
+		const owedKey = `${currency}:${payment.toMemberId}`;
+		const paid = grossByKey.get(paidKey) ?? { paidCents: 0, owedCents: 0 };
+		const owed = grossByKey.get(owedKey) ?? { paidCents: 0, owedCents: 0 };
+		paid.paidCents += payment.amountCents;
+		owed.owedCents += payment.amountCents;
+		grossByKey.set(paidKey, paid);
+		grossByKey.set(owedKey, owed);
 	}
 
-	return members.map((member) => {
-		const balanceCents = netByMemberId.get(member.id) ?? 0;
-		const gross = grossByMemberId.get(member.id);
-		return {
-			memberId: member.id,
-			memberName: member.name,
-			color: member.color,
-			paidCents: gross?.paidCents ?? 0,
-			owedCents: gross?.owedCents ?? 0,
-			balanceCents,
-		};
-	});
+	return [...currencies].sort().flatMap((currency) =>
+		members.map((member) => {
+			const net = netBalances.find(
+				(balance) => balance.memberId === member.id && balance.currency === currency,
+			);
+			const gross = grossByKey.get(`${currency}:${member.id}`);
+			return {
+				memberId: member.id,
+				memberName: member.name,
+				color: member.color,
+				currency,
+				paidCents: gross?.paidCents ?? 0,
+				owedCents: gross?.owedCents ?? 0,
+				balanceCents: net?.cents ?? 0,
+			};
+		}),
+	);
 }
 
 export function buildDueChores(
@@ -297,6 +327,7 @@ export async function loadDashboardData(
 				id: expenses.id,
 				paidByMemberId: expenses.paidByMemberId,
 				amountCents: expenses.amountCents,
+				currency: expenses.currency,
 				description: expenses.description,
 				occurredAt: expenses.occurredAt,
 			})
@@ -402,6 +433,7 @@ export async function loadDashboardData(
 			memberName: memberById.get(e.paidByMemberId)?.name ?? '—',
 			text: e.description,
 			amountCents: e.amountCents,
+			currency: e.currency,
 			href: getDashboardActivityHref(shareCode, 'expense', e.id),
 		});
 		rawActivityByKey.set(`expense:${e.id}`, new Date(e.occurredAt).getTime());
@@ -531,6 +563,7 @@ export async function loadDashboardData(
 				? `${recurring.description} aus Vorlage erstellt`
 				: `${recurring.description} als Vorlage angelegt`,
 			amountCents: recurring.amountCents,
+			currency: 'EUR',
 			href: getDashboardActivityHref(shareCode, 'recurring', recurring.id),
 		});
 		rawActivityByKey.set(`recurring:${recurring.id}`, recurringTs);

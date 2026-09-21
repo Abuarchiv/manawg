@@ -88,6 +88,7 @@ interface QueuedShoppingUpdateInput extends QueuedIdentityInput {
 }
 
 interface QueuedAnnouncementInput extends QueuedIdentityInput {
+	idempotencyKey?: string;
 	content: string;
 	kind: string;
 	imageUrl?: string | null;
@@ -116,6 +117,7 @@ interface QueuedAbsenceInput extends QueuedIdentityInput {
 }
 
 interface QueuedExpenseInput extends QueuedIdentityInput {
+	idempotencyKey?: string;
 	description: string;
 	amountCents: number;
 	paidByMemberId: string;
@@ -221,7 +223,7 @@ export function createQueuedShoppingUpdate(input: QueuedShoppingUpdateInput): Of
 
 export function createQueuedAnnouncement(input: QueuedAnnouncementInput): OfflineAction {
 	const now = input.now ?? Date.now();
-	return createQueuedAction(
+	const action = createQueuedAction(
 		`announcement:${input.shareCode}:${now}:${slug(input.content)}`,
 		'announcement.create',
 		input.wgId,
@@ -230,6 +232,9 @@ export function createQueuedAnnouncement(input: QueuedAnnouncementInput): Offlin
 		{ content: input.content, kind: input.kind, imageUrl: input.imageUrl ?? null },
 		now,
 	);
+	return input.idempotencyKey && isOfflineIdempotencyKey(input.idempotencyKey)
+		? { ...action, idempotencyKey: input.idempotencyKey }
+		: action;
 }
 
 export function createQueuedChoreCompletion(input: QueuedChoreCompletionInput): OfflineAction {
@@ -283,7 +288,7 @@ export function createQueuedAbsence(input: QueuedAbsenceInput): OfflineAction {
 
 export function createQueuedExpense(input: QueuedExpenseInput): OfflineAction {
 	const now = input.now ?? Date.now();
-	return createQueuedAction(
+	const action = createQueuedAction(
 		`expense:${input.shareCode}:${now}:${slug(input.description)}`,
 		'expense.create',
 		input.wgId,
@@ -302,6 +307,9 @@ export function createQueuedExpense(input: QueuedExpenseInput): OfflineAction {
 		},
 		now,
 	);
+	return input.idempotencyKey && isOfflineIdempotencyKey(input.idempotencyKey)
+		? { ...action, idempotencyKey: input.idempotencyKey }
+		: action;
 }
 
 export function createQueuedExpenseUpdate(input: QueuedExpenseUpdateInput): OfflineAction {

@@ -85,6 +85,7 @@ export function buildE2EDashboardData(code: string): DashboardData {
 					code === E2E_CREATED_WG.shareCode
 						? E2E_CREATED_WG.member.color
 						: E2E_EXISTING_WG.member.color,
+				currency: 'EUR',
 				paidCents: 3290,
 				owedCents: 0,
 				balanceCents: 3290,

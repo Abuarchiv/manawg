@@ -40,8 +40,9 @@ export function deriveMemberToken(wgId: string, memberId: string): string | null
 /**
  * Constant-time verification of a client-supplied token against the
  * expected value for (wgId, memberId). Fails closed: a missing token, a
- * missing/unset secret, or a length mismatch all verify as `false` rather
- * than throwing or short-circuiting into a timing side-channel.
+ * missing/unset secret, a length mismatch, or an invalid hex token all
+ * verify as `false` rather than throwing or short-circuiting into a timing
+ * side-channel.
  */
 export function verifyMemberToken(
 	wgId: string,

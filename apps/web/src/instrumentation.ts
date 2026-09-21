@@ -25,7 +25,10 @@ async function reportEnvironment(): Promise<void> {
 			missing: result.missingRequired,
 			report,
 		});
-		if (result.isProduction) throw error;
+		// Fail open: a missing env var degrades the affected feature, but
+		// crashing the entire server boot leaves every tenant without service.
+		// The captured exception surfaces the problem in the observability
+		// pipeline so operators can fix it without a global outage.
 		return;
 	}
 	// biome-ignore lint/suspicious/noConsole: degraded startup diagnostics are informational.

@@ -2,8 +2,15 @@ import { recordAuditEvent } from '@/core/audit';
 import { db, wgInventoryItems, wgInventoryLog } from '@/core/db';
 import { badRequest, conflict, notFound, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
+import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import {
+	getCachedResponse,
+	readIdempotencyKey,
+	replayKey,
+	setCachedResponse,
+} from '@/core/idempotency';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	INVENTORY_CATEGORIES,
@@ -94,6 +101,22 @@ export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, 
 	const existing = existingRows[0];
 	if (!existing) return notFound('item_not_found');
 
+	const rawIdempotencyKey = readIdempotencyKey(req);
+	const replayScope = `inventory-patch:${wgId}:${auth.member.memberId}:${id}`;
+	const replayKeyValue = rawIdempotencyKey ? replayKey(replayScope, rawIdempotencyKey) : null;
+	if (rawIdempotencyKey && replayKeyValue) {
+		const cached = await getCachedResponse<{ item: typeof existing }>(
+			replayScope,
+			rawIdempotencyKey,
+		);
+		if (cached) return NextResponse.json(cached);
+		const slot = await claimReplaySlotWithRetry<{ item: typeof existing }>(
+			replayScope,
+			rawIdempotencyKey,
+		);
+		if (!slot.won) return NextResponse.json(slot.cached);
+	}
+
 	const updates: Partial<typeof wgInventoryItems.$inferInsert> = { updatedAt: new Date() };
 	let nextQuantity = existing.quantity;
 
@@ -163,7 +186,11 @@ export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, 
 		},
 	});
 
-	return NextResponse.json({ item: updated });
+	const responseBody = { item: updated };
+	if (rawIdempotencyKey && replayKeyValue) {
+		await setCachedResponse(replayScope, rawIdempotencyKey, responseBody);
+	}
+	return NextResponse.json(responseBody);
 });
 
 export const DELETE = withWgRoute<{ id: string }>('inventory DELETE', async (req, { code, id }) => {

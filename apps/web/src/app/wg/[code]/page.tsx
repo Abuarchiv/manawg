@@ -126,8 +126,20 @@ export default function WgHomePage() {
 	}, [load]);
 	useVisibilityPausedInterval(() => void load(), REFRESH_INTERVAL_MS);
 
-	const myBalance =
-		data?.balances.find((balance) => balance.memberId === identity.memberId)?.balanceCents ?? 0;
+	const myBalances =
+		data?.balances.filter((balance) => balance.memberId === identity.memberId) ?? [];
+	const primaryBalance =
+		myBalances.find((balance) => balance.currency === 'EUR') ?? myBalances[0] ?? null;
+	const myBalance = primaryBalance?.balanceCents ?? 0;
+	const myBalanceText =
+		myBalances.length > 0
+			? myBalances
+					.filter((balance) => balance.balanceCents !== 0 || myBalances.length === 1)
+					.map((balance) =>
+						formatEuroCents(balance.balanceCents, balance.currency, { signed: true }),
+					)
+					.join(' · ')
+			: formatEuroCents(0, 'EUR', { signed: true });
 	const myNextChore = data?.dueChores
 		.filter((chore) => chore.assignedMemberId === identity.memberId)
 		.sort((a, b) => a.nextDueAt.localeCompare(b.nextDueAt))[0];
@@ -382,14 +394,17 @@ export default function WgHomePage() {
 													myBalance < 0 && 'text-destructive',
 												)}
 											>
-												{formatEuroCents(myBalance, 'EUR', { signed: true })}
+												{myBalanceText}
 											</ItemTitle>
 											<ItemDescription className="line-clamp-none break-normal">
-												{myBalance > 0
-													? 'Du bekommst Geld zurück.'
-													: myBalance < 0
-														? 'Du schuldest der WG Geld.'
-														: 'Du bist ausgeglichen.'}
+												{myBalances.some((balance) => balance.balanceCents > 0) &&
+												myBalances.some((balance) => balance.balanceCents < 0)
+													? 'Offene Salden in mehreren Währungen.'
+													: myBalance > 0
+														? 'Du bekommst Geld zurück.'
+														: myBalance < 0
+															? 'Du schuldest der WG Geld.'
+															: 'Du bist ausgeglichen.'}
 											</ItemDescription>
 										</ItemContent>
 										<ChevronRight

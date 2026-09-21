@@ -52,6 +52,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const consumeIdempotencyKeyRef = useRef<string | null>(null);
+	const restockIdempotencyKeyRef = useRef<string | null>(null);
 	const lowStock = isBelowThreshold(item);
 	const deleteConfirm = useConfirmDelete();
 	const isDeleteArmed = deleteConfirm.confirmId === item.id;
@@ -93,6 +94,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 					setError('Aktualisierung fehlgeschlagen.');
 				}
 			} else {
+				const idempotencyKey = restockIdempotencyKeyRef.current ?? createOfflineIdempotencyKey();
+				if (idempotencyKey) restockIdempotencyKeyRef.current = idempotencyKey;
 				const res = await apiFetch<{ item: InventoryItemDto }>(
 					`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}`,
 					{
@@ -100,13 +103,16 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						memberId,
 						memberToken,
 						body: JSON.stringify({ quantityDelta: delta }),
+						...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
 					},
 				);
 				if (res.ok) {
+					restockIdempotencyKeyRef.current = null;
 					onChanged();
 				} else if (res.status === 429) {
 					setError('Zu viele Änderungen in kurzer Zeit. Bitte später erneut versuchen.');
 				} else {
+					if (res.status > 0 && res.status < 500) restockIdempotencyKeyRef.current = null;
 					setError('Aktualisierung fehlgeschlagen.');
 				}
 			}

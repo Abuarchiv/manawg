@@ -30,6 +30,7 @@ export interface ActivityItem {
 	completed: boolean;
 	detail?: string;
 	amountCents?: number;
+	currency?: string;
 	href?: string;
 }
 
@@ -58,6 +59,7 @@ interface ActivityTimelineInput {
 		paidByMemberId: string;
 		description: string;
 		amountCents: number;
+		currency?: string;
 		occurredAt: string;
 	}>;
 	shoppingItems: Array<{
@@ -85,6 +87,7 @@ interface ActivityTimelineInput {
 		id: string;
 		description: string;
 		amountCents: number;
+		currency?: string;
 		paidByMemberId: string;
 		createdAt: string;
 		lastCreatedAt: string | null;
@@ -362,6 +365,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			text: item.description,
 			completed: false,
 			amountCents: item.amountCents,
+			currency: item.currency ?? 'EUR',
 			href: `/ausgaben?highlight=${encodeURIComponent(item.id)}`,
 		});
 	}
@@ -418,6 +422,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			completed: false,
 			detail: 'Fixkosten',
 			amountCents: item.amountCents,
+			currency: item.currency ?? 'EUR',
 			href: `/ausgaben?recurring=${encodeURIComponent(item.id)}`,
 		});
 	}

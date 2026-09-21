@@ -70,6 +70,7 @@ function settlementErrorMessage(error: string): string {
 }
 
 interface SettlementPreview {
+	currency: string;
 	netCents: number;
 	settleableCents: number;
 	remainingCents: number;
@@ -114,6 +115,7 @@ function DebtRow({
 	const canSettle = debt.fromId === currentMemberId || debt.toId === currentMemberId;
 	const payeeMerchantId = memberPayPalMerchantId(debt.toId);
 	const canPayWithPayPal =
+		(debt.currency ?? 'EUR') === 'EUR' &&
 		debt.fromId === currentMemberId &&
 		payeeMerchantId !== null &&
 		payPalEligible &&
@@ -130,7 +132,7 @@ function DebtRow({
 		setError(null);
 		try {
 			const res = await apiFetch<SettlementPreview>(
-				`${endpoint}?${new URLSearchParams({ fromMemberId: debt.fromId, toMemberId: debt.toId })}`,
+				`${endpoint}?${new URLSearchParams({ fromMemberId: debt.fromId, toMemberId: debt.toId, currency: debt.currency ?? 'EUR' })}`,
 				{ memberId: currentMemberId, memberToken },
 			);
 			if (res.ok) {
@@ -158,7 +160,9 @@ function DebtRow({
 				body: JSON.stringify({
 					fromMemberId: debt.fromId,
 					toMemberId: debt.toId,
+					currency: debt.currency ?? 'EUR',
 					expected: {
+						currency: preview.currency,
 						netCents: preview.netCents,
 						settleableCents: preview.settleableCents,
 						splits: preview.splits.map(({ id, amountCents }) => ({ id, amountCents })),
@@ -180,7 +184,7 @@ function DebtRow({
 				reason === 'no_direct_splits'
 					? 'Diese Verrechnung hat keine direkt zuordenbaren Anteile. Prüft die ursprünglichen Ausgaben einzeln.'
 					: settled > 0
-						? `Zahlung eingetragen: ${formatEuroCents(settledCents ?? 0)} von ${debt.fromName} an ${debt.toName}.${remainingCents ? ` ${formatEuroCents(remainingCents)} bleiben in der Verrechnung offen.` : ''}`
+						? `Zahlung eingetragen: ${formatEuroCents(settledCents ?? 0, debt.currency)} von ${debt.fromName} an ${debt.toName}.${remainingCents ? ` ${formatEuroCents(remainingCents, debt.currency)} bleiben in der Verrechnung offen.` : ''}`
 						: 'Keine Zahlung eingetragen. Die offenen Ausgaben werden neu geladen.';
 			onSettled(message);
 		} catch {
@@ -212,7 +216,7 @@ function DebtRow({
 							: 'text-foreground',
 				)}
 			>
-				{formatEuroCents(debt.cents)}
+				{formatEuroCents(debt.cents, debt.currency)}
 			</Badge>
 
 			{canSettle && (
@@ -243,6 +247,7 @@ function DebtRow({
 									toMemberId={debt.toId}
 									payeeMerchantId={payeeMerchantId}
 									amountCents={debt.cents}
+									currency={debt.currency ?? 'EUR'}
 									onPaid={onSettled}
 								/>
 							</CollapsibleContent>
@@ -268,8 +273,9 @@ function DebtRow({
 						<AlertDialogTitle>Bereits erfolgte Zahlung bestätigen</AlertDialogTitle>
 						<AlertDialogDescription>
 							Bestätige nur, wenn {debt.fromName} {debt.toName}{' '}
-							{formatEuroCents(preview?.settleableCents ?? 0)} bereits bezahlt hat. Nur die unten
-							aufgeführten Anteile werden als beglichen vermerkt. Es wird kein Geld überwiesen.
+							{formatEuroCents(preview?.settleableCents ?? 0, debt.currency)} bereits bezahlt hat.
+							Nur die unten aufgeführten Anteile werden als beglichen vermerkt. Es wird kein Geld
+							überwiesen.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<ItemGroup aria-label="Unterstützte Ausgabenanteile">
@@ -292,7 +298,7 @@ function DebtRow({
 										</ItemDescription>
 									</ItemContent>
 									<Badge variant="outline" className="font-mono tabular-nums">
-										{formatEuroCents(split.amountCents)}
+										{formatEuroCents(split.amountCents, debt.currency)}
 									</Badge>
 								</Item>
 							);
@@ -301,8 +307,8 @@ function DebtRow({
 					{preview && preview.remainingCents > 0 && (
 						<Alert>
 							<AlertDescription>
-								{formatEuroCents(preview.remainingCents)} des verrechneten Saldos sind mit diesen
-								Anteilen nicht verbuchbar und bleiben offen.
+								{formatEuroCents(preview.remainingCents, debt.currency)} des verrechneten Saldos
+								sind mit diesen Anteilen nicht verbuchbar und bleiben offen.
 							</AlertDescription>
 						</Alert>
 					)}
@@ -337,7 +343,7 @@ function DebtRow({
 								{settling && <Spinner data-icon="inline-start" />}
 								{settling
 									? 'Speichert…'
-									: `${formatEuroCents(preview?.settleableCents ?? 0)} als bezahlt eintragen`}
+									: `${formatEuroCents(preview?.settleableCents ?? 0, debt.currency)} als bezahlt eintragen`}
 							</Button>
 						)}
 					</AlertDialogFooter>
@@ -375,7 +381,7 @@ export function DebtSummary({
 	function renderDebt(debt: SimplifiedDebt) {
 		return (
 			<DebtRow
-				key={`${debt.fromId}-${debt.toId}`}
+				key={`${debt.currency ?? 'EUR'}-${debt.fromId}-${debt.toId}`}
 				debt={debt}
 				expenses={expenses}
 				shareCode={shareCode}

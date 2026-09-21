@@ -8,7 +8,7 @@ interface ConfirmDelete {
 	cancel: () => void;
 }
 
-export function useConfirmDelete(_timeoutMs?: number): ConfirmDelete {
+export function useConfirmDelete(): ConfirmDelete {
 	const [confirmId, setConfirmId] = useState<string | null>(null);
 
 	function request(id: string): boolean {

@@ -49,7 +49,12 @@ function getClientIp(req: NextRequest): string {
 
 function originAllowed(req: NextRequest): boolean {
 	const origin = req.headers.get('origin');
-	if (!origin) return true;
+	// Fail closed for cross-origin writes: a missing Origin header on a
+	// mutating request means the caller is not a same-origin browser page.
+	// Read requests (GET/HEAD/OPTIONS) without Origin are still allowed —
+	// they are served from server-side fetches, CDN edge functions, and
+	// legitimate non-browser clients that cannot set Origin.
+	if (!origin) return req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS';
 	const host = req.headers.get('host');
 	if (!host) return false;
 	try {
@@ -89,6 +94,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 				{ status: 503, headers: { 'Retry-After': retryAfter } },
 			);
 		}
+		return refreshSupabaseSession(req, NextResponse.next());
 	}
 
 	const ip = getClientIp(req);
