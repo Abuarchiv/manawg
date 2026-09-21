@@ -33,6 +33,9 @@ export function shoppingAddErrorMessage(error: string): string {
 	if (error === 'invalid_json' || error === 'invalid_body') {
 		return 'Artikel konnte nicht gespeichert werden: Die Anfrage war ungültig.';
 	}
+	if (error === 'shopping_item_duplicate') {
+		return 'Dieser Artikel steht bereits offen auf der Einkaufsliste. Prüfe den vorhandenen Eintrag; seine Menge bleibt unverändert.';
+	}
 	if (error === 'insert_failed') {
 		return 'Artikel konnte nicht gespeichert werden: Prüfe die Einkaufsliste und versuche es erneut.';
 	}

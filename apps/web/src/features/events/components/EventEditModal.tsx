@@ -20,13 +20,22 @@ import {
 	DrawerHeader,
 	DrawerTitle,
 } from '@/components/ui/drawer';
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
 import { EventFormFields } from '@/features/events/components/EventFormFields';
-import { eventDateForDisplay, validateEventForm } from '@/features/events/events';
+import {
+	RECURRENCE_OPTIONS,
+	type RecurrenceFreq,
+	eventDateForDisplay,
+	formatRecurrenceRule,
+	parseRecurrenceRule,
+	validateEventForm,
+} from '@/features/events/events';
 import { Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
+const KEEP_EXISTING_RECURRENCE = '__keep__';
 
 export interface EditableEvent {
 	id: string;
@@ -98,6 +107,18 @@ export function EventEditModal({
 	}, [event]);
 
 	if (!event) return null;
+	const parsedRecurrence = parseRecurrenceRule(recurrence);
+	const isSimpleRecurrence =
+		parsedRecurrence !== null &&
+		parsedRecurrence.interval === 1 &&
+		parsedRecurrence.byDay === undefined &&
+		parsedRecurrence.count === undefined &&
+		parsedRecurrence.until === undefined;
+	const recurrenceOption = recurrence
+		? isSimpleRecurrence
+			? parsedRecurrence.freq
+			: KEEP_EXISTING_RECURRENCE
+		: '';
 
 	function requestClose(): void {
 		if (!event || saving || deleting) return;
@@ -195,17 +216,35 @@ export function EventEditModal({
 						recurrenceField={
 							<Field data-disabled={saving || deleting}>
 								<FieldLabel htmlFor="event-edit-recurrence">Wiederholung</FieldLabel>
-								<Input
+								<NativeSelect
 									id="event-edit-recurrence"
-									value={recurrence}
-									onChange={(event) => setRecurrence(event.target.value)}
-									placeholder="z. B. FREQ=WEEKLY"
+									value={recurrenceOption}
+									onChange={(event) =>
+										event.target.value === KEEP_EXISTING_RECURRENCE
+											? undefined
+											: setRecurrence(
+													event.target.value
+														? formatRecurrenceRule({
+																freq: event.target.value as RecurrenceFreq,
+																interval: 1,
+															})
+														: '',
+												)
+									}
 									disabled={saving || deleting}
-									className="min-h-11 text-base"
-								/>
-								<FieldDescription>
-									Bestehende Regel der Serie. Leer lassen für einen einmaligen Termin.
-								</FieldDescription>
+									className="w-full [&_select]:min-h-11 [&_select]:text-base"
+								>
+									{recurrence && !isSimpleRecurrence && (
+										<NativeSelectOption value={KEEP_EXISTING_RECURRENCE}>
+											Bestehende Serie
+										</NativeSelectOption>
+									)}
+									{RECURRENCE_OPTIONS.map((option) => (
+										<NativeSelectOption key={option.value} value={option.value}>
+											{option.label}
+										</NativeSelectOption>
+									))}
+								</NativeSelect>
 							</Field>
 						}
 					/>

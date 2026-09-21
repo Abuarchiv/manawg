@@ -34,8 +34,12 @@ export function FairnessPanel({ fairness }: { fairness: ChoreFairness }) {
 					</p>
 				)}
 				<Collapsible>
-					<CollapsibleTrigger render={<Button variant="outline" className="min-h-11 w-full" />}>
-						Verteilung und Regeln
+					<CollapsibleTrigger
+						render={<Button variant="outline" className="min-h-11 w-full break-normal" />}
+					>
+						<span className="min-w-0 flex-1 text-left break-normal whitespace-normal">
+							Verteilung und Regeln
+						</span>
 						<ChevronDown data-icon="inline-end" aria-hidden />
 					</CollapsibleTrigger>
 					<CollapsiblePanel>

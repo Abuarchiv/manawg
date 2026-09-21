@@ -71,10 +71,13 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 		<Item
 			data-shopping-row
 			id={`shopping-${item.id}`}
-			className={cn('scroll-mt-24 flex-nowrap', highlighted && 'ring-2 ring-inset ring-ring')}
+			className={cn(
+				'scroll-mt-24 flex-wrap sm:flex-nowrap',
+				highlighted && 'ring-2 ring-inset ring-ring',
+			)}
 			aria-busy={pending}
 		>
-			<ItemMedia className="size-11 self-center">
+			<ItemMedia className="order-1 size-11 self-center sm:order-none">
 				<Checkbox
 					checked={isBought}
 					onCheckedChange={() => onToggle(item)}
@@ -84,10 +87,10 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 					aria-label={isBought ? `${item.name} wieder öffnen` : `${item.name} erledigen`}
 				/>
 			</ItemMedia>
-			<ItemContent className="min-w-0">
+			<ItemContent className="order-3 basis-full min-w-0 sm:order-none sm:basis-auto">
 				<ItemTitle
 					className={cn(
-						'line-clamp-none break-words [overflow-wrap:anywhere]',
+						'w-full line-clamp-none break-words [overflow-wrap:anywhere]',
 						isBought && 'line-through',
 					)}
 				>
@@ -111,7 +114,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 					)}
 				</ItemDescription>
 			</ItemContent>
-			<ItemActions>
+			<ItemActions className="order-2 ml-auto basis-auto justify-end sm:order-none">
 				<Drawer onOpenChange={() => deleteConfirm.cancel()}>
 					<DrawerTrigger
 						render={

@@ -218,7 +218,7 @@ export function ChatComposer({
 				return;
 			}
 		}
-		if (e.key === 'Enter' && !e.shiftKey) {
+		if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
 			e.preventDefault();
 			void submit();
 		}

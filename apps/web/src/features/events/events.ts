@@ -44,6 +44,13 @@ export interface EventOccurrence {
 
 const FREQS: ReadonlySet<RecurrenceFreq> = new Set(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']);
 const BYDAYS: ReadonlySet<RecurrenceByDay> = new Set(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']);
+export const RECURRENCE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+	{ value: '', label: 'Einmalig' },
+	{ value: 'DAILY', label: 'Täglich' },
+	{ value: 'WEEKLY', label: 'Wöchentlich' },
+	{ value: 'MONTHLY', label: 'Monatlich' },
+	{ value: 'YEARLY', label: 'Jährlich' },
+];
 const BYDAY_TO_INDEX: Record<RecurrenceByDay, number> = {
 	SU: 0,
 	MO: 1,

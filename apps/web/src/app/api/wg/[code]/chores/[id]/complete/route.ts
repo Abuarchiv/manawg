@@ -1,5 +1,13 @@
 import { recordAuditEvent } from '@/core/audit';
-import { choreCompletions, chores, db, memberAbsences, wgMembers, wgs } from '@/core/db';
+import {
+	announcements,
+	choreCompletions,
+	chores,
+	db,
+	memberAbsences,
+	wgMembers,
+	wgs,
+} from '@/core/db';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
 import { UUID_PATTERN, requireMember } from '@/core/guards/api-auth';
@@ -219,6 +227,23 @@ export const POST = withWgRoute<{ id: string }>(
 						})
 						.returning({ id: choreCompletions.id });
 					if (!completion) throw new TransactionAbort('completion_insert_failed');
+
+					await tx
+						.update(announcements)
+						.set({
+							status: 'resolved',
+							resolvedAt: completedAt,
+							resolvedByMemberId: completedBy,
+							updatedAt: completedAt,
+						})
+						.where(
+							and(
+								eq(announcements.wgId, c.wgId),
+								eq(announcements.status, 'open'),
+								eq(announcements.source, 'chore_swap'),
+								eq(announcements.sourcePath, `/putzen?highlight=${encodeURIComponent(c.id)}`),
+							),
+						);
 
 					return { raced: false as const, chore: updated };
 				});

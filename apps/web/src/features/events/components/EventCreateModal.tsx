@@ -15,6 +15,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Spinner } from '@/components/ui/spinner';
 import { EventFormFields } from '@/features/events/components/EventFormFields';
 import {
+	RECURRENCE_OPTIONS,
 	type RecurrenceFreq,
 	formatRecurrenceRule,
 	validateEventForm,
@@ -54,14 +55,6 @@ const QUICK_TEMPLATES: ReadonlyArray<{
 	{ label: 'Stromableser', title: 'Stromableser kommt', recurrence: null, allDay: false },
 	{ label: 'WG-Meeting', title: 'WG-Meeting', recurrence: 'FREQ=WEEKLY;BYDAY=MO', allDay: false },
 	{ label: 'Müll raus', title: 'Müll raus', recurrence: 'FREQ=WEEKLY', allDay: false },
-];
-
-const RECURRENCE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-	{ value: '', label: 'Einmalig' },
-	{ value: 'DAILY', label: 'Täglich' },
-	{ value: 'WEEKLY', label: 'Wöchentlich' },
-	{ value: 'MONTHLY', label: 'Monatlich' },
-	{ value: 'YEARLY', label: 'Jährlich' },
 ];
 
 function buildIsoLocal(date: Date): string {

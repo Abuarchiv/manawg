@@ -1,0 +1,471 @@
+import { type Locator, type Page, expect, test } from '@playwright/test';
+import { dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+
+test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+test.setTimeout(120_000);
+test.use({ hasTouch: true, isMobile: true });
+
+const SHARE_CODE = 'MTE8PZAT';
+const MEMBER_ID = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
+const WG_ID = '989ac820-58b7-431f-9c65-28721264f333';
+type LayoutRoute = 'home' | 'chores' | 'shopping' | 'inventory';
+
+const shoppingItems = [
+	{
+		id: 'shopping-open',
+		addedByMemberId: MEMBER_ID,
+		name: 'Ungesüßte Hafermilch',
+		quantity: '1 Packung',
+		boughtAt: null,
+		boughtByMemberId: null,
+		createdAt: '2026-09-20T08:00:00.000Z',
+	},
+	{
+		id: 'shopping-done',
+		addedByMemberId: MEMBER_ID,
+		name: 'Vollkornnudeln',
+		quantity: '2 Packungen',
+		boughtAt: '2026-09-20T09:00:00.000Z',
+		boughtByMemberId: MEMBER_ID,
+		createdAt: '2026-09-20T09:01:00.000Z',
+	},
+];
+
+const inventoryItems = [
+	{
+		id: 'inventory-milk',
+		wgId: WG_ID,
+		name: 'Ungesüßte Hafermilch',
+		quantity: 1,
+		unit: 'Packung',
+		threshold: 2,
+		category: 'kueche',
+		lastDecrementedAt: null,
+		decrementCount30d: 0,
+		createdAt: '2026-09-20T08:00:00.000Z',
+		updatedAt: '2026-09-20T08:00:00.000Z',
+	},
+	{
+		id: 'inventory-paper',
+		wgId: WG_ID,
+		name: 'Recycling Toilettenpapier',
+		quantity: 4,
+		unit: 'Rolle',
+		threshold: 2,
+		category: 'bad',
+		lastDecrementedAt: null,
+		decrementCount30d: 0,
+		createdAt: '2026-09-20T08:01:00.000Z',
+		updatedAt: '2026-09-20T08:01:00.000Z',
+	},
+];
+
+const chores = [
+	{
+		id: 'chore-bath',
+		title: 'Bad putzen',
+		intervalDays: 7,
+		recurrenceType: 'days' as const,
+		nextDueAt: '2026-09-21T08:00:00.000Z',
+		assignedMemberId: MEMBER_ID,
+		lastCompletedAt: null,
+		lastCompletedByName: null,
+		openGapCountForAssignee: 0,
+	},
+];
+
+const dashboardData = {
+	balances: [
+		{
+			memberId: MEMBER_ID,
+			memberName: 'dsaf',
+			color: '#6d5efc',
+			paidCents: 3290,
+			owedCents: 0,
+			balanceCents: 3290,
+		},
+	],
+	spendByDay: [],
+	totalSpendCents: 3290,
+	weekSpendCents: 3290,
+	monthSpendCents: 3290,
+	openShoppingCount: 1,
+	openShoppingTop: ['Ungesüßte Hafermilch'],
+	dueChores: [
+		{
+			id: 'chore-bath',
+			title: 'Bad putzen',
+			assignedMemberId: MEMBER_ID,
+			assignedMemberName: 'dsaf',
+			assignedColor: '#6d5efc',
+			nextDueAt: '2026-09-21T08:00:00.000Z',
+			overdue: false,
+		},
+	],
+	activity: [
+		{
+			kind: 'expense',
+			timestamp: '2026-09-21T08:00:00.000Z',
+			memberName: 'dsaf',
+			text: 'Internet',
+			amountCents: 3290,
+		},
+	],
+	latestAnnouncement: null,
+	myOpenAnnouncements: [],
+	wgHealth: {
+		shareCode: SHARE_CODE,
+		openShoppingCount: 1,
+		overdueChoreCount: 0,
+		openDebtCents: 0,
+		openAnnouncementCount: 0,
+		absentMemberCount: 0,
+		dueRecurringCount: 0,
+	},
+	dueRecurringExpenses: [],
+	absentMembers: [],
+	setup: {
+		choreCount: 1,
+		hasExpense: true,
+		hasShoppingItem: true,
+		hasAnnouncement: false,
+		notificationsEnabled: true,
+	},
+};
+
+async function mockLayoutApis(page: Page): Promise<void> {
+	await page.route(`**/api/wg/${SHARE_CODE}/dashboard*`, (route) => {
+		if (route.request().method() !== 'GET') return route.continue();
+		return route.fulfill({ json: dashboardData });
+	});
+	await page.route(`**/api/wg/${SHARE_CODE}/shopping*`, (route) => {
+		if (route.request().method() !== 'GET') return route.continue();
+		return route.fulfill({ json: { items: shoppingItems } });
+	});
+	await page.route(`**/api/wg/${SHARE_CODE}/inventory*`, (route) => {
+		if (route.request().method() !== 'GET') return route.continue();
+		return route.fulfill({ json: { items: inventoryItems, grouped: {} } });
+	});
+	await page.route(`**/api/wg/${SHARE_CODE}/chores*`, (route) => {
+		if (route.request().method() !== 'GET') return route.continue();
+		return route.fulfill({ json: { chores } });
+	});
+	await page.route(`**/api/wg/${SHARE_CODE}/absences*`, (route) => {
+		if (route.request().method() !== 'GET') return route.continue();
+		return route.fulfill({ json: { absences: [] } });
+	});
+}
+
+async function assertNav(page: Page, width: number) {
+	const nav = page.locator('nav[data-app-chrome]').last();
+	const navBox = await measureBox(nav);
+	expect(navBox).not.toBeNull();
+	if (!navBox) throw new Error('bottom navigation is missing');
+	expect(navBox.x).toBeGreaterThanOrEqual(0);
+	expect(navBox.x + navBox.width).toBeLessThanOrEqual(width + 1);
+
+	const labels = ['Start', 'Haushalt', 'Finanzen', 'Austausch'] as const;
+	expect(await nav.getByRole('link').count()).toBe(labels.length);
+	for (const label of labels) {
+		const link = nav.getByRole('link', { name: label, exact: true });
+		await expect(link).toHaveCount(1);
+		const linkBox = await link.boundingBox();
+		const labelNode = link.locator('span').last();
+		const labelBox = await labelNode.boundingBox();
+		const labelMetrics = await labelNode.evaluate((element) => {
+			const style = getComputedStyle(element);
+			return {
+				lineHeight: Number.parseFloat(style.lineHeight),
+				height: element.getBoundingClientRect().height,
+				scrollWidth: element.scrollWidth,
+				clientWidth: element.clientWidth,
+			};
+		});
+		expect(linkBox).not.toBeNull();
+		expect(labelBox).not.toBeNull();
+		if (!linkBox || !labelBox) continue;
+		expect(linkBox.width).toBeGreaterThanOrEqual(44);
+		expect(linkBox.height).toBeGreaterThanOrEqual(44);
+		expect(labelMetrics.height).toBeLessThanOrEqual(labelMetrics.lineHeight + 1);
+		expect(labelMetrics.scrollWidth).toBeLessThanOrEqual(labelMetrics.clientWidth + 1);
+		expect(labelBox.x).toBeGreaterThanOrEqual(linkBox.x);
+		expect(labelBox.x + labelBox.width).toBeLessThanOrEqual(linkBox.x + linkBox.width + 1);
+	}
+	return { nav, navBox };
+}
+
+async function measureBox(locator: Locator) {
+	if ((await locator.count()) !== 1) return null;
+	return locator.evaluate((element) => {
+		const box = element.getBoundingClientRect();
+		return {
+			x: box.x,
+			y: box.y,
+			width: box.width,
+			height: box.height,
+			scrollWidth: element.scrollWidth,
+			clientWidth: element.clientWidth,
+		};
+	});
+}
+
+async function assertInventoryModal(page: Page, width: number): Promise<void> {
+	expect(await page.evaluate(() => window.innerWidth)).toBe(width);
+	await expect(page.getByRole('heading', { name: 'Neuer Vorrat' })).toBeVisible();
+	for (const [label, control] of [
+		['Name', page.locator('#inventory-name')],
+		['Menge', page.locator('#inventory-qty')],
+		['Nachkaufen ab', page.locator('#inventory-threshold')],
+		['Einheit', page.locator('#inventory-unit')],
+		['Kategorie', page.locator('#inventory-category')],
+	] as const) {
+		const box = await measureBox(control);
+		expect(box).not.toBeNull();
+		if (!box) continue;
+		expect(box.width, label).toBeGreaterThanOrEqual(240);
+		expect(box.x + box.width, label).toBeLessThanOrEqual(width - 16 + 1);
+		expect(box.height, label).toBeGreaterThanOrEqual(44);
+	}
+	const help = page.getByText(
+		'Wenn der Bestand diesen Wert erreicht, wird der Vorrat als niedrig markiert und auf die Einkaufsliste gesetzt.',
+		{ exact: true },
+	);
+	const helpBox = await measureBox(help);
+	expect(helpBox).not.toBeNull();
+	if (helpBox) {
+		expect(helpBox.x).toBeGreaterThanOrEqual(16);
+		expect(helpBox.x + helpBox.width).toBeLessThanOrEqual(width - 16 + 1);
+	}
+	for (const label of ['Abbrechen', 'Speichern']) {
+		const button = page.getByRole('button', { name: label, exact: true });
+		const box = await measureBox(button);
+		expect(box).not.toBeNull();
+		if (!box) continue;
+		expect(box.width).toBeGreaterThanOrEqual(240);
+		expect(box.height).toBeGreaterThanOrEqual(44);
+		expect(box.x + box.width).toBeLessThanOrEqual(width - 16 + 1);
+		expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth + 1);
+	}
+}
+
+async function assertViewportLayout(page: Page, route: LayoutRoute): Promise<void> {
+	const viewportWidth = page.viewportSize()?.width ?? 320;
+	const metrics = await page.evaluate(() => ({
+		innerWidth: window.innerWidth,
+		scrollWidth: document.documentElement.scrollWidth,
+	}));
+	expect(metrics.innerWidth).toBe(viewportWidth);
+	const overflow = await page.evaluate(() =>
+		[...document.querySelectorAll<HTMLElement>('*')]
+			.map((element) => ({
+				tag: element.tagName,
+				id: element.id,
+				slot: element.dataset.slot,
+				className: element.className,
+				rect: element.getBoundingClientRect().toJSON(),
+			}))
+			.filter(({ rect }) => rect.left < -1 || rect.right > window.innerWidth + 1)
+			.slice(0, 10),
+	);
+	expect(metrics.scrollWidth, `${route} overflow: ${JSON.stringify(overflow)}`).toBeLessThanOrEqual(
+		viewportWidth,
+	);
+	const { nav } = await assertNav(page, viewportWidth);
+
+	if (route === 'shopping') {
+		for (const control of [
+			page.locator('#shopping-name'),
+			page.locator('#shopping-qty'),
+			page.getByRole('button', { name: 'Artikel hinzufügen' }),
+		]) {
+			const box = await control.boundingBox();
+			expect(box).not.toBeNull();
+			if (!box) continue;
+			expect(box.width).toBeGreaterThanOrEqual(240);
+			expect(box.x + box.width).toBeLessThanOrEqual(viewportWidth - 16 + 1);
+			expect(box.height).toBeGreaterThanOrEqual(44);
+		}
+		const row = page.locator('[data-shopping-row]').first();
+		const title = row.locator('[data-slot="item-title"]');
+		const actions = row.locator('[data-slot="item-actions"]');
+		const rowBox = await row.boundingBox();
+		const titleBox = await title.boundingBox();
+		const actionsBox = await actions.boundingBox();
+		expect(rowBox).not.toBeNull();
+		expect(titleBox).not.toBeNull();
+		expect(actionsBox).not.toBeNull();
+		if (rowBox && titleBox && actionsBox) {
+			const titleMetrics = await title.evaluate((element) => {
+				const rowElement = element.closest('[data-shopping-row]');
+				if (!rowElement) throw new Error('shopping row missing');
+				const style = getComputedStyle(rowElement);
+				const innerWidth =
+					rowElement.getBoundingClientRect().width -
+					Number.parseFloat(style.paddingLeft) -
+					Number.parseFloat(style.paddingRight) -
+					Number.parseFloat(style.borderLeftWidth) -
+					Number.parseFloat(style.borderRightWidth);
+				const textNode = [...element.childNodes].find((node) => node.nodeType === Node.TEXT_NODE);
+				if (!textNode) throw new Error('shopping title text node missing');
+				const value = textNode.textContent ?? '';
+				const wordLines = ['Ungesüßte', 'Hafermilch'].map((word) => {
+					const start = value.indexOf(word);
+					const range = document.createRange();
+					range.setStart(textNode, start);
+					range.setEnd(textNode, start + word.length);
+					return { word, lineCount: range.getClientRects().length };
+				});
+				return { innerWidth, titleWidth: element.getBoundingClientRect().width, wordLines };
+			});
+			expect(Math.abs(titleMetrics.titleWidth - titleMetrics.innerWidth)).toBeLessThanOrEqual(2);
+			for (const word of titleMetrics.wordLines) expect(word.lineCount, word.word).toBe(1);
+			expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
+			expect(actionsBox.x + actionsBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
+			expect(titleBox.y).toBeGreaterThanOrEqual(actionsBox.y + actionsBox.height - 1);
+		}
+	} else if (route === 'inventory') {
+		const row = page
+			.locator('[data-slot="item"]')
+			.filter({ hasText: 'Ungesüßte Hafermilch' })
+			.first();
+		const rowBox = await row.boundingBox();
+		const titleBox = await row.locator('[data-slot="item-title"]').boundingBox();
+		expect(rowBox).not.toBeNull();
+		expect(titleBox).not.toBeNull();
+		if (rowBox && titleBox)
+			expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
+	} else if (route === 'chores') {
+		const row = page.locator('[data-slot="item"]').filter({ hasText: 'Bad putzen' }).first();
+		expect(await row.count()).toBe(1);
+		for (const button of await row.getByRole('button').all()) {
+			const box = await button.boundingBox();
+			expect(box).not.toBeNull();
+			if (!box) continue;
+			expect(box.height).toBeGreaterThanOrEqual(44);
+			expect(box.x + box.width).toBeLessThanOrEqual(viewportWidth + 1);
+		}
+	} else {
+		const contentBox = await page.locator('[data-home-content]').boundingBox();
+		expect(contentBox).not.toBeNull();
+		if (contentBox) expect(contentBox.x + contentBox.width).toBeLessThanOrEqual(viewportWidth + 1);
+		const detail = page.getByText('Du bist dran · heute fällig', { exact: true });
+		await expect(detail).toHaveCount(1);
+		const detailMetrics = await detail.evaluate((element) => {
+			const card = element.closest('[data-slot="card"]');
+			if (!card) throw new Error('Home focus card missing');
+			const cardStyle = getComputedStyle(card);
+			const cardInnerWidth =
+				card.getBoundingClientRect().width -
+				Number.parseFloat(cardStyle.paddingLeft) -
+				Number.parseFloat(cardStyle.paddingRight) -
+				Number.parseFloat(cardStyle.borderLeftWidth) -
+				Number.parseFloat(cardStyle.borderRightWidth);
+			const textNode = [...element.childNodes].find((node) => node.nodeType === Node.TEXT_NODE);
+			if (!textNode) throw new Error('Home focus detail text missing');
+			const value = textNode.textContent ?? '';
+			const words = ['heute', 'fällig'].map((word) => {
+				const start = value.indexOf(word);
+				const range = document.createRange();
+				range.setStart(textNode, start);
+				range.setEnd(textNode, start + word.length);
+				return { word, lineCount: range.getClientRects().length };
+			});
+			return { cardInnerWidth, detailWidth: element.getBoundingClientRect().width, words };
+		});
+		expect(detailMetrics.detailWidth).toBeLessThanOrEqual(detailMetrics.cardInnerWidth + 1);
+		for (const word of detailMetrics.words) expect(word.lineCount, word.word).toBe(1);
+	}
+
+	await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+	await page.waitForTimeout(50);
+	const lastAction =
+		route === 'shopping'
+			? page.getByRole('button', { name: /Erledigte Artikel entfernen/ })
+			: route === 'inventory'
+				? page.locator('a').filter({ hasText: 'Einkaufsliste öffnen' }).last()
+				: route === 'chores'
+					? page.getByRole('button', { name: /Als erledigt markieren: Bad putzen/ })
+					: page.locator('[data-home-content] a').last();
+	await expect(lastAction).toHaveCount(1);
+	const lastActionBox = await lastAction.boundingBox();
+	const finalNavBox = await nav.boundingBox();
+	expect(lastActionBox).not.toBeNull();
+	expect(finalNavBox).not.toBeNull();
+	if (lastActionBox && finalNavBox) {
+		expect(lastActionBox.y + lastActionBox.height).toBeLessThanOrEqual(finalNavBox.y - 4);
+	}
+}
+
+for (const route of ['home', 'chores', 'shopping', 'inventory'] as const) {
+	for (const colorScheme of ['light', 'dark'] as const) {
+		for (const textScale of ['normal', '200%'] as const) {
+			test(`${route} remains readable at 320px (${colorScheme}, ${textScale} text)`, async ({
+				page,
+			}) => {
+				await page.setViewportSize({ width: 320, height: 740 });
+				await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+				await setupMember(page);
+				await mockLayoutApis(page);
+				await navigateToFeature(
+					page,
+					route === 'home'
+						? `/wg/${SHARE_CODE}`
+						: `/wg/${SHARE_CODE}/${route === 'chores' ? 'putzen' : route === 'shopping' ? 'einkauf' : 'vorraete'}`,
+				);
+				await dismissOnboarding(page);
+				await expect(
+					page.getByRole('heading', {
+						name:
+							route === 'home'
+								? 'Heute wichtig'
+								: route === 'chores'
+									? 'Putzplan'
+									: route === 'shopping'
+										? 'Einkaufsliste'
+										: 'Vorräte',
+					}),
+				).toBeVisible({ timeout: 30_000 });
+				expect(await page.evaluate(() => navigator.maxTouchPoints)).toBeGreaterThan(0);
+				if (textScale === '200%') {
+					await page.evaluate(() => {
+						document.documentElement.style.fontSize = '200%';
+					});
+					await page.setViewportSize({ width: 320, height: 740 });
+					await page.waitForTimeout(100);
+				}
+				if (route === 'inventory') {
+					await page
+						.getByRole('button', { name: 'Vorrat hinzufügen', exact: true })
+						.first()
+						.click();
+					await assertInventoryModal(page, page.viewportSize()?.width ?? 320);
+					await page.screenshot({
+						path: test
+							.info()
+							.outputPath(`inventory-modal-${colorScheme}-${textScale.replace('%', '')}.png`),
+						fullPage: true,
+					});
+					const modalForm = page.locator('[data-slot="drawer-content"] form').last();
+					await modalForm.evaluate((form) => form.scrollTo(0, form.scrollHeight));
+					await page.waitForTimeout(100);
+					await page.screenshot({
+						path: test
+							.info()
+							.outputPath(
+								`inventory-modal-bottom-${colorScheme}-${textScale.replace('%', '')}.png`,
+							),
+						fullPage: true,
+					});
+					await page.getByRole('button', { name: 'Abbrechen', exact: true }).click({ force: true });
+					await expect(page.getByRole('heading', { name: 'Neuer Vorrat' })).toBeHidden();
+					await page.waitForTimeout(500);
+				}
+				await assertViewportLayout(page, route);
+				await page.screenshot({
+					path: test.info().outputPath(`${route}-${colorScheme}-${textScale.replace('%', '')}.png`),
+					fullPage: true,
+				});
+			});
+		}
+	}
+}

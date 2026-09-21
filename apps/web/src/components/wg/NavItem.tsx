@@ -136,7 +136,7 @@ export function NavItem({
 						</Badge>
 					)}
 				</span>
-				<span className="max-w-full break-words whitespace-normal text-center text-[13px] leading-4">
+				<span className="max-w-full whitespace-nowrap text-center text-[13px] leading-4">
 					{label}
 				</span>
 			</Link>
