@@ -67,7 +67,8 @@ export function ManualSplitSummary({
 			>
 				<AlertDescription className="flex items-center justify-between gap-2">
 					<span>
-						Summe: <span className="font-mono tabular-nums">{formatEuroCents(splitCents)}</span>
+						Summe:{' '}
+						<span className="font-mono tabular-nums">{formatEuroCents(splitCents, 'EUR')}</span>
 					</span>
 					<span>
 						{label}
@@ -75,7 +76,7 @@ export function ManualSplitSummary({
 							<>
 								:{' '}
 								<span className="font-mono tabular-nums">
-									{formatEuroCents(Math.abs(remainderCents))}
+									{formatEuroCents(Math.abs(remainderCents), 'EUR')}
 								</span>
 							</>
 						)}

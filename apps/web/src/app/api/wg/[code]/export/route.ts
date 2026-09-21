@@ -168,6 +168,7 @@ function mapRecurringRows(
 		id: item.id,
 		description: item.description,
 		amountCents: item.amountCents,
+		currency: 'EUR',
 		paidBy: memberById.get(item.paidByMemberId) ?? '',
 		intervalMonths: item.intervalMonths,
 		nextDueAt: item.nextDueAt.toISOString(),

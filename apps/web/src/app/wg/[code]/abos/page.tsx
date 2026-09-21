@@ -81,6 +81,9 @@ function aboSaveErrorMessage(error: string, action: 'angelegt' | 'aktualisiert')
 	if (error === 'amount_invalid') {
 		return `${prefix}: Prüfe den Betrag.`;
 	}
+	if (error === 'recurring_currency_unsupported') {
+		return `${prefix}: Fixkosten werden derzeit nur in Euro unterstützt.`;
+	}
 	if (error === 'description_invalid') {
 		return `${prefix}: Gib eine Beschreibung ein.`;
 	}
@@ -117,6 +120,9 @@ function aboActionErrorMessage(error: string): string {
 	}
 	if (error === 'recurring_expense_not_found') {
 		return 'Dieses Abo existiert nicht mehr. Lade die Abos neu.';
+	}
+	if (error === 'recurring_currency_unsupported') {
+		return 'Abo-Aktion fehlgeschlagen: Fixkosten werden derzeit nur in Euro unterstützt.';
 	}
 	if (error === 'invalid_body' || error === 'invalid_json') {
 		return 'Abo-Aktion fehlgeschlagen: Die Anfrage war ungültig.';

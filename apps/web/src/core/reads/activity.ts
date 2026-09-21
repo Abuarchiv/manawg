@@ -250,7 +250,8 @@ function auditDetail(metadataJson?: string | null): string | undefined {
 			parts.push(metadata.reason);
 		}
 		if (typeof metadata.amountCents === 'number') {
-			parts.push(formatEuroCents(metadata.amountCents));
+			const currency = typeof metadata.currency === 'string' ? metadata.currency : 'EUR';
+			parts.push(formatEuroCents(metadata.amountCents, currency));
 		}
 		if (typeof metadata.splitCount === 'number') {
 			parts.push(`${metadata.splitCount} Aufteilungen`);

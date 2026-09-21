@@ -714,6 +714,7 @@ export default function AusgabenPage() {
 						id: queued.id,
 						description: desc,
 						amountCents,
+						currency: 'EUR',
 						paidByMemberId,
 						intervalMonths: recurringIntervalMonths,
 						nextDueAt: nextDueAt.toISOString(),

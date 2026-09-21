@@ -167,6 +167,7 @@ export const GET = withWgRoute(
 				})),
 				recurringExpenses: recurringRows.map((item) => ({
 					...item,
+					currency: 'EUR',
 					createdAt: item.createdAt.toISOString(),
 					lastCreatedAt: item.lastCreatedAt?.toISOString() ?? null,
 				})),

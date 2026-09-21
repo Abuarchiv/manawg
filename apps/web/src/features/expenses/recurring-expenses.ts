@@ -4,6 +4,7 @@ interface RecurringExpenseInput {
 	id: string;
 	description: string;
 	amountCents: number;
+	currency: string;
 	nextDueAt: string;
 }
 

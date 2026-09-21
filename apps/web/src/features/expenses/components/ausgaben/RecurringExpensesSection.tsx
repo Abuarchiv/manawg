@@ -151,7 +151,7 @@ export function RecurringExpensesSection({
 												</ItemTitle>
 												<ItemDescription className="line-clamp-none">
 													<span className="font-mono tabular-nums">
-														{formatEuroCents(item.amountCents)}
+														{formatEuroCents(item.amountCents, item.currency)}
 													</span>{' '}
 													· bezahlt von {memberName(item.paidByMemberId)} · fällig{' '}
 													{formatShortDate(item.nextDueAt)}
@@ -168,7 +168,7 @@ export function RecurringExpensesSection({
 														>
 															{memberName(split.debtorMemberId)}:{' '}
 															<span className="font-mono tabular-nums">
-																{formatEuroCents(split.amountCents)}
+																{formatEuroCents(split.amountCents, item.currency)}
 															</span>
 														</Badge>
 													))}

@@ -39,7 +39,7 @@ export function SplitReview({ members, splits, paidByMemberId }: SplitReviewProp
 							</ItemDescription>
 						</ItemContent>
 						<Badge variant="outline" className="font-mono tabular-nums">
-							{splits ? formatEuroCents(share?.amountCents ?? 0) : '—'}
+							{splits ? formatEuroCents(share?.amountCents ?? 0, 'EUR') : '—'}
 						</Badge>
 					</Item>
 				);

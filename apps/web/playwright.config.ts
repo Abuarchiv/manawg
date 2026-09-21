@@ -9,7 +9,7 @@ const BASE_URL = process.env.BASE_URL ?? `http://localhost:${DEFAULT_E2E_PORT}`;
 const previewE2E = process.env.PREVIEW_E2E === 'true';
 const automationBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
 const isTrustedPreviewDeployment =
-	/^https:\/\/manawg-[a-z0-9-]+-abditubes-projects\.vercel\.app$/i.test(BASE_URL);
+	/^https:\/\/manawg-[a-z0-9-]+-applications-projects\.vercel\.app$/i.test(BASE_URL);
 
 if (previewE2E && (!automationBypassSecret || !isTrustedPreviewDeployment)) {
 	throw new Error(

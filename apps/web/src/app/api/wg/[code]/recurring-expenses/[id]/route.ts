@@ -6,6 +6,7 @@ import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { currencySchema } from '@/core/validators/currency';
 import {
 	parseRecurringSplits,
 	recurringSplitsMatchAmount,
@@ -22,6 +23,7 @@ const splitSchema = z.object({
 const patchSchema = z.object({
 	description: z.string().trim().min(1).max(200).optional(),
 	amountCents: z.number().int().min(1).max(100_000_000).optional(),
+	currency: currencySchema.optional(),
 	paidByMemberId: z.string().uuid().optional(),
 	intervalMonths: z.number().int().min(1).max(24).optional(),
 	nextDueAt: z.string().datetime({ offset: true }).optional(),
@@ -32,6 +34,7 @@ const patchSchema = z.object({
 function serialize(row: typeof recurringExpenses.$inferSelect) {
 	return {
 		...row,
+		currency: 'EUR',
 		nextDueAt: row.nextDueAt.toISOString(),
 		lastCreatedAt: row.lastCreatedAt?.toISOString() ?? null,
 		pausedAt: row.pausedAt?.toISOString() ?? null,
@@ -82,6 +85,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 		if (!parsed.success) {
 			const issues = parsed.error.flatten();
 			if (issues.fieldErrors.amountCents) return badRequest('amount_invalid');
+			if (issues.fieldErrors.currency) return badRequest('currency_invalid');
 			if (issues.fieldErrors.description) return badRequest('description_invalid');
 			if (issues.fieldErrors.paidByMemberId) return badRequest('member_id_invalid');
 			if (issues.fieldErrors.intervalMonths) return badRequest('interval_invalid');
@@ -91,9 +95,13 @@ export const PATCH = withWgRoute<{ id: string }>(
 			return badRequest('invalid_body');
 		}
 
+		if (parsed.data.currency !== undefined && parsed.data.currency !== 'EUR') {
+			return badRequest('recurring_currency_unsupported');
+		}
 		const hasAnyField =
 			parsed.data.description !== undefined ||
 			parsed.data.amountCents !== undefined ||
+			parsed.data.currency !== undefined ||
 			parsed.data.paidByMemberId !== undefined ||
 			parsed.data.intervalMonths !== undefined ||
 			parsed.data.nextDueAt !== undefined ||
@@ -161,6 +169,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 			parsed.data.paused !== undefined &&
 			parsed.data.description === undefined &&
 			parsed.data.amountCents === undefined &&
+			parsed.data.currency === undefined &&
 			parsed.data.paidByMemberId === undefined &&
 			parsed.data.intervalMonths === undefined &&
 			parsed.data.nextDueAt === undefined &&
@@ -233,6 +242,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 			metadata: {
 				description: updated.description,
 				amountCents: updated.amountCents,
+				currency: 'EUR',
 				intervalMonths: updated.intervalMonths,
 				nextDueAt: updated.nextDueAt.toISOString(),
 				pausedAt: updated.pausedAt?.toISOString() ?? null,
@@ -289,6 +299,7 @@ export const DELETE = withWgRoute<{ id: string }>(
 			metadata: {
 				description: template.description,
 				amountCents: template.amountCents,
+				currency: 'EUR',
 				intervalMonths: template.intervalMonths,
 				nextDueAt: template.nextDueAt.toISOString(),
 			},

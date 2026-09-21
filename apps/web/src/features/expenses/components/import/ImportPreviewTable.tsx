@@ -86,7 +86,7 @@ export function ImportPreviewTable({
 							</ItemDescription>
 						</ItemContent>
 						<Badge variant="outline" className="font-mono tabular-nums">
-							{formatEuroCents(parsed.amountCents)}
+							{formatEuroCents(parsed.amountCents, 'EUR')}
 						</Badge>
 						<ItemFooter className="flex-col items-stretch">
 							<ul className="flex w-full flex-col gap-1 text-sm" aria-label="Aufteilung">
@@ -99,7 +99,7 @@ export function ImportPreviewTable({
 											{resolveName(mapping, members, split.memberName)}
 										</span>
 										<span className="shrink-0 font-mono tabular-nums">
-											{formatEuroCents(split.amountCents)}
+											{formatEuroCents(split.amountCents, 'EUR')}
 										</span>
 									</li>
 								))}

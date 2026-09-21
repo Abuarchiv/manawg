@@ -50,6 +50,7 @@ function buildE2ESearchResponse(code: string, currentMemberId: string, rawQuery:
 				id: 'e2e-expense-miete',
 				description: 'Miete Mai',
 				amountCents: 95000,
+				currency: 'EUR',
 				occurredAt: new Date().toISOString(),
 				paidByMemberId: currentMemberId,
 				splits: [{ settledAt: null }],
@@ -59,6 +60,7 @@ function buildE2ESearchResponse(code: string, currentMemberId: string, rawQuery:
 			id: expense.id,
 			description: expense.description,
 			amountCents: expense.amountCents,
+			currency: expense.currency,
 			intervalMonths: 1,
 			nextDueAt: expense.nextDueAt,
 			paidByMemberId: currentMemberId,
@@ -142,6 +144,7 @@ async function buildDbSearchResponse(
 				paidByMemberId: expenses.paidByMemberId,
 				description: expenses.description,
 				amountCents: expenses.amountCents,
+				currency: expenses.currency,
 				imageUrl: expenses.imageUrl,
 				occurredAt: expenses.occurredAt,
 			})
@@ -225,6 +228,7 @@ async function buildDbSearchResponse(
 		})),
 		recurringExpenses: recurringRows.map((item) => ({
 			...item,
+			currency: 'EUR',
 			nextDueAt: iso(item.nextDueAt),
 		})),
 		shoppingItems: shoppingRows.map((item) => ({

@@ -19,6 +19,7 @@ interface RemindButtonProps {
 	shareCode: string;
 	debtorMemberId: string;
 	creditorMemberId: string;
+	currency: string;
 	currentMemberId: string;
 	memberToken?: string | undefined;
 	cooldownActive?: boolean;
@@ -54,6 +55,7 @@ export function RemindButton({
 	shareCode,
 	debtorMemberId,
 	creditorMemberId,
+	currency,
 	currentMemberId,
 	memberToken,
 	cooldownActive,
@@ -107,7 +109,7 @@ export function RemindButton({
 					memberId: currentMemberId,
 					memberToken,
 					headers: { 'Idempotency-Key': idempotencyKey },
-					body: JSON.stringify({ debtorMemberId, creditorMemberId }),
+					body: JSON.stringify({ debtorMemberId, creditorMemberId, currency }),
 				},
 			);
 			if (res.ok) {

@@ -179,7 +179,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 											<ItemTitle className="line-clamp-none break-words">
 												{memberName(split.debtorMemberId)} ·{' '}
 												<span className="font-mono tabular-nums">
-													{formatEuroCents(split.amountCents)}
+													{formatEuroCents(split.amountCents, expense.currency)}
 												</span>
 											</ItemTitle>
 											<ItemDescription>

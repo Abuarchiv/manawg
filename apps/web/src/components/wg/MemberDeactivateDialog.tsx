@@ -23,6 +23,7 @@ interface OpenBalanceDto {
 	member_id: string;
 	name: string;
 	amount_cents: number;
+	currency: string;
 	direction: 'owes' | 'owed';
 }
 
@@ -177,7 +178,7 @@ export function MemberDeactivateDialog({
 								<ul className="mt-1.5 grid gap-1">
 									{openBalances.map((balance) => (
 										<li
-											key={`${balance.direction}-${balance.member_id}`}
+											key={`${balance.currency}-${balance.direction}-${balance.member_id}`}
 											className="flex items-center justify-between gap-2 text-[13px]"
 										>
 											<span className="text-muted-foreground truncate">
@@ -186,7 +187,7 @@ export function MemberDeactivateDialog({
 													: `${balance.name} schuldet`}
 											</span>
 											<span className="text-foreground shrink-0 font-medium tabular-nums">
-												{formatEuroCents(balance.amount_cents)}
+												{formatEuroCents(balance.amount_cents, balance.currency)}
 											</span>
 										</li>
 									))}

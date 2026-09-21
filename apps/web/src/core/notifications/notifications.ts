@@ -35,10 +35,11 @@ interface NotificationMessage {
 	urlPath: string;
 }
 
-function money(amountCents: unknown): string {
+function money(amountCents: unknown, currency: unknown): string {
 	const cents = typeof amountCents === 'number' && Number.isFinite(amountCents) ? amountCents : 0;
+	const code = typeof currency === 'string' && currency.trim().length > 0 ? currency : 'EUR';
 	// Replace non-breaking spaces (Intl uses U+00A0) with regular spaces for plain-text channels (push, SMS).
-	return formatEuroCents(cents).replace(/\u00a0/g, ' ');
+	return formatEuroCents(cents, code).replace(/\u00a0/g, ' ');
 }
 
 function text(value: unknown, fallback: string): string {
@@ -134,7 +135,7 @@ export function formatNotificationMessage(
 			const title = text(payload.title, 'eine Ausgabe');
 			return {
 				title: 'Neue Ausgabe',
-				body: `${actorName} hat in ${wgName} ${title} für ${money(payload.amountCents)} eingetragen.`,
+				body: `${actorName} hat in ${wgName} ${title} für ${money(payload.amountCents, payload.currency)} eingetragen.`,
 				urlPath: expenseUrlPath(payload),
 			};
 		}
@@ -142,7 +143,7 @@ export function formatNotificationMessage(
 			const description = text(payload.description, 'Ein Abo');
 			return {
 				title: 'Neue Abo-Buchung',
-				body: `Neue Abo-Buchung: ${description} ${money(payload.amountCents)}`,
+				body: `Neue Abo-Buchung: ${description} ${money(payload.amountCents, payload.currency)}`,
 				urlPath: expenseUrlPath(payload),
 			};
 		}
@@ -153,7 +154,7 @@ export function formatNotificationMessage(
 				rawDays >= 1 ? ` (ältester Posten ${rawDays} ${rawDays === 1 ? 'Tag' : 'Tage'} alt)` : '';
 			return {
 				title: 'Mahnung',
-				body: `Du schuldest ${creditor} noch ${money(payload.amountCents)}${dayClause} — bitte zeitnah ausgleichen.`,
+				body: `Du schuldest ${creditor} noch ${money(payload.amountCents, payload.currency)}${dayClause} — bitte zeitnah ausgleichen.`,
 				urlPath: '/mahnungen',
 			};
 		}

@@ -293,7 +293,7 @@ export async function commitImport(input: CommitInput): Promise<CommitResult> {
 			actorName: input.importedByName,
 			inserted,
 			totalAmountCents,
-			amountFormatted: formatEuroCents(totalAmountCents),
+			amountFormatted: formatEuroCents(totalAmountCents, 'EUR'),
 		},
 		excludeMemberId: input.importedByMemberId,
 	});

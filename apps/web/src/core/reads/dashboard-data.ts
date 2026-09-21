@@ -35,6 +35,19 @@ const SPARKLINE_DAYS = 14;
 const ACTIVITY_LIMIT = 6;
 const AUDIT_DEDUPE_WINDOW_MS = 60_000;
 
+function normalizeCurrency(currency: string | undefined): string {
+	return currency?.trim().toUpperCase() || 'EUR';
+}
+
+function addCurrencyTotal(totals: CurrencyTotals, currency: string, cents: number): void {
+	totals[currency] = (totals[currency] ?? 0) + cents;
+}
+
+function singleCurrencyTotal(totals: Readonly<CurrencyTotals>): number | null {
+	const currencies = Object.keys(totals).filter((currency) => totals[currency] !== 0);
+	return currencies.length <= 1 ? (currencies[0] ? (totals[currencies[0]] ?? 0) : 0) : null;
+}
+
 export interface MemberBalance {
 	memberId: string;
 	memberName: string;
@@ -47,7 +60,20 @@ export interface MemberBalance {
 
 export interface DaySpend {
 	date: string;
+	currency: string;
 	cents: number;
+}
+
+export type CurrencyTotals = Record<string, number>;
+
+export interface DashboardSpendSummary {
+	spendByDay: DaySpend[];
+	totalSpendByCurrency: CurrencyTotals;
+	weekSpendByCurrency: CurrencyTotals;
+	monthSpendByCurrency: CurrencyTotals;
+	totalSpendCents: number | null;
+	weekSpendCents: number | null;
+	monthSpendCents: number | null;
 }
 
 export interface ActivityItem {
@@ -81,9 +107,13 @@ export interface DashboardSetup {
 export interface DashboardData {
 	balances: MemberBalance[];
 	spendByDay: DaySpend[];
-	totalSpendCents: number;
-	weekSpendCents: number;
-	monthSpendCents: number;
+	totalSpendByCurrency: CurrencyTotals;
+	weekSpendByCurrency: CurrencyTotals;
+	monthSpendByCurrency: CurrencyTotals;
+	/** Legacy scalar fields are null when more than one currency is present. */
+	totalSpendCents: number | null;
+	weekSpendCents: number | null;
+	monthSpendCents: number | null;
 	openShoppingCount: number;
 	openShoppingTop: string[];
 	dueChores: ChoreDue[];
@@ -100,6 +130,7 @@ export interface DashboardData {
 		id: string;
 		description: string;
 		amountCents: number;
+		currency: string;
 		nextDueAt: string;
 	}>;
 	absentMembers: Array<{
@@ -159,6 +190,56 @@ function berlinDaysAgoStart(todayStart: Date, daysAgo: number): Date {
 	return day;
 }
 
+export function summarizeDashboardSpend(
+	expenses: ReadonlyArray<{
+		amountCents: number;
+		currency?: string;
+		occurredAt: Date | string;
+	}>,
+	now = new Date(),
+): DashboardSpendSummary {
+	const todayStart = startOfBerlinDay(now);
+	const sparklineStart = berlinDaysAgoStart(todayStart, SPARKLINE_DAYS - 1);
+	const weekStart = berlinDaysAgoStart(todayStart, 6);
+	const monthStart = berlinDaysAgoStart(todayStart, 29);
+	const spendBuckets = new Map<string, CurrencyTotals>();
+	let bucketDay = sparklineStart;
+	for (let i = 0; i < SPARKLINE_DAYS; i++) {
+		spendBuckets.set(berlinDayKey(bucketDay), {});
+		bucketDay = nextBerlinDayStart(bucketDay);
+	}
+	const totalSpendByCurrency: CurrencyTotals = {};
+	const weekSpendByCurrency: CurrencyTotals = {};
+	const monthSpendByCurrency: CurrencyTotals = {};
+	for (const expense of expenses) {
+		const currency = normalizeCurrency(expense.currency);
+		addCurrencyTotal(totalSpendByCurrency, currency, expense.amountCents);
+		const occurredAt =
+			expense.occurredAt instanceof Date ? expense.occurredAt : new Date(expense.occurredAt);
+		if (occurredAt >= weekStart)
+			addCurrencyTotal(weekSpendByCurrency, currency, expense.amountCents);
+		if (occurredAt >= monthStart)
+			addCurrencyTotal(monthSpendByCurrency, currency, expense.amountCents);
+		const bucket = spendBuckets.get(berlinDayKey(occurredAt));
+		if (bucket) addCurrencyTotal(bucket, currency, expense.amountCents);
+	}
+	const spendByDay: DaySpend[] = Array.from(spendBuckets.entries()).flatMap(([date, totals]) => {
+		const entries = Object.entries(totals).sort(([left], [right]) => left.localeCompare(right));
+		return entries.length > 0
+			? entries.map(([currency, cents]) => ({ date, currency, cents }))
+			: [{ date, currency: 'EUR', cents: 0 }];
+	});
+	return {
+		spendByDay,
+		totalSpendByCurrency,
+		weekSpendByCurrency,
+		monthSpendByCurrency,
+		totalSpendCents: singleCurrencyTotal(totalSpendByCurrency),
+		weekSpendCents: singleCurrencyTotal(weekSpendByCurrency),
+		monthSpendCents: singleCurrencyTotal(monthSpendByCurrency),
+	};
+}
+
 export function computeMemberBalances(
 	members: Array<{ id: string; name: string; color: string | null }>,
 	expenses: Array<{
@@ -191,7 +272,7 @@ export function computeMemberBalances(
 
 	const normalizedExpenses = expenses.map((expense) => ({
 		...expense,
-		currency: expense.currency?.trim().toUpperCase() || 'EUR',
+		currency: normalizeCurrency(expense.currency),
 	}));
 	const netBalances = computeNetBalances(
 		normalizedExpenses.map((expense) => ({
@@ -297,13 +378,6 @@ export async function loadDashboardData(
 	shareCode = '',
 ): Promise<DashboardData> {
 	const now = new Date();
-	// Windows are anchored to Berlin calendar days: stepping via
-	// prevBerlinDayStart stays correct across DST days (23h/25h), where fixed
-	// 24h arithmetic would drift the boundary by an hour.
-	const todayStart = startOfBerlinDay(now);
-	const sparklineStart = berlinDaysAgoStart(todayStart, SPARKLINE_DAYS - 1);
-	const weekStart = berlinDaysAgoStart(todayStart, 6);
-	const monthStart = berlinDaysAgoStart(todayStart, 29);
 
 	const [
 		memberRows,
@@ -392,29 +466,7 @@ export async function loadDashboardData(
 
 	const balances = computeMemberBalances(memberRows, expenseRows, splitRows, paymentRows);
 
-	const spendBuckets = new Map<string, number>();
-	let bucketDay = sparklineStart;
-	for (let i = 0; i < SPARKLINE_DAYS; i++) {
-		spendBuckets.set(berlinDayKey(bucketDay), 0);
-		bucketDay = nextBerlinDayStart(bucketDay);
-	}
-	let totalSpend = 0;
-	let weekSpend = 0;
-	let monthSpend = 0;
-	for (const e of expenseRows) {
-		totalSpend += e.amountCents;
-		const d = new Date(e.occurredAt);
-		if (d >= weekStart) weekSpend += e.amountCents;
-		if (d >= monthStart) monthSpend += e.amountCents;
-		const key = berlinDayKey(d);
-		if (spendBuckets.has(key)) {
-			spendBuckets.set(key, (spendBuckets.get(key) ?? 0) + e.amountCents);
-		}
-	}
-	const spendByDay: DaySpend[] = Array.from(spendBuckets.entries()).map(([date, cents]) => ({
-		date,
-		cents,
-	}));
+	const spendSummary = summarizeDashboardSpend(expenseRows, now);
 
 	const openShopping = shoppingRows.filter((s) => !s.boughtAt);
 	const openShoppingTop = openShopping
@@ -539,6 +591,7 @@ export async function loadDashboardData(
 	const dueRecurringExpenses = getDueRecurringExpenses(
 		recurringRows.map((item) => ({
 			...item,
+			currency: 'EUR',
 			nextDueAt: item.nextDueAt.toISOString(),
 		})),
 		now.getTime(),
@@ -606,10 +659,13 @@ export async function loadDashboardData(
 			};
 		})
 		.filter((item): item is NonNullable<typeof item> => item !== null);
-	const openDebtCents = balances.reduce(
-		(sum, balance) => sum + Math.max(0, -balance.balanceCents),
-		0,
-	);
+	const openDebtByCurrency: CurrencyTotals = {};
+	for (const balance of balances) {
+		if (balance.balanceCents < 0) {
+			addCurrencyTotal(openDebtByCurrency, balance.currency, -balance.balanceCents);
+		}
+	}
+	const openDebtCents = singleCurrencyTotal(openDebtByCurrency);
 	const openAnnouncementCount = countOpenManualAnnouncements(announcementRows);
 	const hasAnnouncement = announcementRows.some((item) => item.source === 'manual');
 	const overdueChoreCount = allDueChores.filter((item) => item.overdue).length;
@@ -617,10 +673,7 @@ export async function loadDashboardData(
 
 	return {
 		balances: [...balances].sort((a, b) => Math.abs(b.balanceCents) - Math.abs(a.balanceCents)),
-		spendByDay,
-		totalSpendCents: totalSpend,
-		weekSpendCents: weekSpend,
-		monthSpendCents: monthSpend,
+		...spendSummary,
 		openShoppingCount: openShopping.length,
 		openShoppingTop,
 		dueChores,
@@ -634,7 +687,8 @@ export async function loadDashboardData(
 			shareCode,
 			openShoppingCount: openShopping.length,
 			overdueChoreCount,
-			openDebtCents,
+			openDebtCents: openDebtCents ?? 0,
+			openDebtByCurrency,
 			openAnnouncementCount,
 			absentMemberCount: absentMemberIds.length,
 			dueRecurringCount: dueRecurringExpenses.length,

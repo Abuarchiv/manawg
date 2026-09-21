@@ -7,7 +7,10 @@ export default async function setupPreview(config: FullConfig) {
 	const origin = process.env.BASE_URL ?? '';
 	const secret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
 	const statePath = config.projects[0]?.use.storageState;
-	if (!/^https:\/\/manawg-[a-z0-9-]+-abditubes-projects\.vercel\.app$/i.test(origin) || !secret) {
+	if (
+		!/^https:\/\/manawg-[a-z0-9-]+-applications-projects\.vercel\.app$/i.test(origin) ||
+		!secret
+	) {
 		throw new Error(
 			'Preview bootstrap requires the trusted deployment origin and bypass credential.',
 		);

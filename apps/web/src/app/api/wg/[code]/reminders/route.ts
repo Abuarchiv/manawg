@@ -9,6 +9,7 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, reminderSendLimiter } from '@/core/rate-limit';
 import { MS_PER_DAY } from '@/core/utils/time';
+import { currencySchema } from '@/core/validators/currency';
 import {
 	computeBalances,
 	computeOldestDebtAgeDays,
@@ -35,6 +36,7 @@ type ReminderResponseWarning =
 const postSchema = z.object({
 	debtorMemberId: z.string().uuid(),
 	creditorMemberId: z.string().uuid(),
+	currency: currencySchema.optional().default('EUR'),
 	channel: z.enum(['push', 'inapp']).optional().default('push'),
 });
 
@@ -68,11 +70,12 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 		if (fieldErrors.debtorMemberId || fieldErrors.creditorMemberId) {
 			return badRequest('member_ids_invalid');
 		}
+		if (fieldErrors.currency) return badRequest('currency_invalid');
 		if (fieldErrors.channel) return badRequest('channel_invalid');
 		return badRequest('invalid_body');
 	}
 
-	const { debtorMemberId, creditorMemberId, channel } = parsed.data;
+	const { debtorMemberId, creditorMemberId, currency, channel } = parsed.data;
 	if (debtorMemberId === creditorMemberId) return badRequest('same_member');
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
@@ -108,7 +111,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 		loadCompletedExpensePayments(wg.id),
 	]);
 	const balances = computeBalances(openExpenses, payments);
-	const pair = findPairBalance(balances, debtorMemberId, creditorMemberId);
+	const pair = findPairBalance(balances, debtorMemberId, creditorMemberId, currency);
 	if (!pair || pair.amountCents <= 0) {
 		return apiError('no_open_debt', 409, 'no_open_debt');
 	}
@@ -116,7 +119,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 	const recentSince = new Date(Date.now() - REMINDER_COOLDOWN_HOURS * 60 * 60 * 1000);
 	return withIdempotentJsonResponse(
 		req,
-		`reminder:${wg.id}:${auth.member.memberId}:${debtorMemberId}:${creditorMemberId}:${channel}`,
+		`reminder:${wg.id}:${auth.member.memberId}:${debtorMemberId}:${creditorMemberId}:${currency}:${channel}`,
 		async () => {
 			// Cooldown check + insert must be atomic: two parallel requests would
 			// both pass the JS check and send double push. A transaction-scoped
@@ -128,6 +131,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 					.select({
 						debtorMemberId: expenseReminders.debtorMemberId,
 						creditorMemberId: expenseReminders.creditorMemberId,
+						currency: expenseReminders.currency,
 						sentAt: expenseReminders.sentAt,
 					})
 					.from(expenseReminders)
@@ -136,6 +140,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 							eq(expenseReminders.wgId, wg.id),
 							eq(expenseReminders.debtorMemberId, debtorMemberId),
 							eq(expenseReminders.creditorMemberId, creditorMemberId),
+							eq(expenseReminders.currency, currency),
 							gte(expenseReminders.sentAt, recentSince),
 						),
 					)
@@ -145,12 +150,25 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 				const history = recent.map((row) => ({
 					debtorMemberId: row.debtorMemberId,
 					creditorMemberId: row.creditorMemberId,
+					currency: row.currency,
 					sentAt: row.sentAt instanceof Date ? row.sentAt.toISOString() : String(row.sentAt),
 				}));
-				const cooldown = canSendReminder(debtorMemberId, creditorMemberId, history);
+				const cooldown = canSendReminder(
+					debtorMemberId,
+					creditorMemberId,
+					history,
+					new Date(),
+					currency,
+				);
 				if (!cooldown.allowed) return null;
 
-				const oldestAge = computeOldestDebtAgeDays(debtorMemberId, creditorMemberId, openExpenses);
+				const oldestAge = computeOldestDebtAgeDays(
+					debtorMemberId,
+					creditorMemberId,
+					openExpenses,
+					new Date(),
+					currency,
+				);
 				const message = formatReminderMessage({
 					debtorName: debtor.name,
 					creditorName: creditor.name,
@@ -165,7 +183,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 						debtorMemberId,
 						creditorMemberId,
 						amountCents: pair.amountCents,
-						currency: 'EUR',
+						currency,
 						sentByMemberId: auth.member.memberId,
 						channel,
 						message,
@@ -186,6 +204,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 				summary: `${auth.member.name} hat ${debtor.name} an offene Schulden bei ${creditor.name} erinnert.`,
 				metadata: {
 					amountCents: pair.amountCents,
+					currency,
 					oldestDebtAgeDays: inserted.oldestDebtAgeDays,
 					channel,
 				},
@@ -196,6 +215,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 				event: 'expense.reminder',
 				payload: {
 					amountCents: pair.amountCents,
+					currency,
 					creditorName: creditor.name,
 					debtorName: debtor.name,
 					oldestDebtAgeDays: inserted.oldestDebtAgeDays,
