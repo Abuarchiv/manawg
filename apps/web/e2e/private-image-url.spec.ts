@@ -222,16 +222,12 @@ test.describe('private image URL contract', () => {
 		const complete = checkEnv(productionEnv());
 		expect(complete.ok).toBe(true);
 
-		const missingRegion = checkEnv(
-			(({ AWS_REGION: _dropped, ...rest }) => rest)(productionEnv()),
-		);
+		const missingRegion = checkEnv((({ AWS_REGION: _dropped, ...rest }) => rest)(productionEnv()));
 		expect(missingRegion.ok).toBe(false);
 		expect(missingRegion.missingRequired).toContain('AWS_REGION');
 		// Production reports the missing variable as required instead of
 		// downgrading it to a degraded feature.
-		expect(missingRegion.degraded.some((entry) => entry.feature === 'image-uploads')).toBe(
-			false,
-		);
+		expect(missingRegion.degraded.some((entry) => entry.feature === 'image-uploads')).toBe(false);
 
 		const supabase = checkEnv({
 			...productionEnv(),

@@ -3,8 +3,8 @@ import { getAuthenticatedUser } from '@/core/auth/server';
 import { db } from '@/core/db';
 import { apiError, badRequest, notFound, serverError, tooMany } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
-import { S3_MAX_UPLOAD_BYTES, createPresignedUpload, isAllowedMimeType } from '@/core/infra/s3';
 import { PRIVATE_IMAGE_MIME_TYPES } from '@/core/infra/private-image-policy';
+import { S3_MAX_UPLOAD_BYTES, createPresignedUpload, isAllowedMimeType } from '@/core/infra/s3';
 import {
 	ImageStorageConfigurationError,
 	createSupabaseSignedUpload,

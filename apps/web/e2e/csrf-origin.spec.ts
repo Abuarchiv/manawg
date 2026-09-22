@@ -55,7 +55,9 @@ test('treats an explicit default port as same-origin and still rejects others', 
 		originAllowed(request({ host: 'app.example.com', origin: 'https://app.example.com:443' })),
 	).toBe(true);
 	expect(
-		originAllowed(request({ host: 'app.example.com:3000', origin: 'https://app.example.com:3000' })),
+		originAllowed(
+			request({ host: 'app.example.com:3000', origin: 'https://app.example.com:3000' }),
+		),
 	).toBe(true);
 	expect(
 		originAllowed(request({ host: 'app.example.com', origin: 'https://app.example.com:3000' })),

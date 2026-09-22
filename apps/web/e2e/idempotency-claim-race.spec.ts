@@ -1,8 +1,5 @@
 import { expect, test } from '@playwright/test';
-import {
-	type ReplaySlotDependencies,
-	claimReplaySlot,
-} from '../src/core/guards/replay-slot';
+import { type ReplaySlotDependencies, claimReplaySlot } from '../src/core/guards/replay-slot';
 
 type CachedResponse = { status: number; body: { id: string } };
 
@@ -56,8 +53,7 @@ function dependencies(
 ): ReplaySlotDependencies<CachedResponse> {
 	return {
 		claim: async (claimScope, claimKey) => store.claim(claimScope, claimKey),
-		read: async (readScope, readKey) =>
-			store.read(readScope, readKey) as CachedResponse | null,
+		read: async (readScope, readKey) => store.read(readScope, readKey) as CachedResponse | null,
 		...(sleep ? { sleep } : {}),
 	};
 }
@@ -73,11 +69,7 @@ test('concurrent requests for one idempotency key mutate exactly once and replay
 	let sequence = 0;
 
 	const handleRequest = async (): Promise<CachedResponse> => {
-		const slot = await claimReplaySlot<CachedResponse>(
-			SCOPE,
-			KEY,
-			dependencies(store, fastPoll),
-		);
+		const slot = await claimReplaySlot<CachedResponse>(SCOPE, KEY, dependencies(store, fastPoll));
 		if (!slot.won) return slot.cached;
 
 		mutations += 1;
@@ -108,11 +100,7 @@ test('a crashed winner keeps the slot taken until its claim lease expires', asyn
 	const store = new ClaimSlotStore();
 	let mutations = 0;
 
-	const winner = await claimReplaySlot<CachedResponse>(
-		SCOPE,
-		KEY,
-		dependencies(store, noWait),
-	);
+	const winner = await claimReplaySlot<CachedResponse>(SCOPE, KEY, dependencies(store, noWait));
 	expect(winner).toEqual({ won: true });
 	mutations += 1;
 
@@ -131,18 +119,14 @@ test('a crashed winner keeps the slot taken until its claim lease expires', asyn
 
 	// After the lease expires the slot is claimable again.
 	store.advance(2000);
-	const reclaim = await claimReplaySlot<CachedResponse>(
-		SCOPE,
-		KEY,
-		dependencies(store, noWait),
-	);
+	const reclaim = await claimReplaySlot<CachedResponse>(SCOPE, KEY, dependencies(store, noWait));
 	expect(reclaim).toEqual({ won: true });
 	mutations += 1;
 	expect(mutations).toBe(2);
 });
 
 test('a failed claim aborts the request before any mutation', async () => {
-	let mutations = 0;
+	const mutations = 0;
 	const failing: ReplaySlotDependencies<CachedResponse> = {
 		claim: async () => {
 			throw new Error('idempotency_claim_failed');
@@ -151,9 +135,9 @@ test('a failed claim aborts the request before any mutation', async () => {
 		sleep: noWait,
 	};
 
-	await expect(
-		claimReplaySlot<CachedResponse>(SCOPE, KEY, failing),
-	).rejects.toMatchObject({ message: 'idempotency_claim_failed' });
+	await expect(claimReplaySlot<CachedResponse>(SCOPE, KEY, failing)).rejects.toMatchObject({
+		message: 'idempotency_claim_failed',
+	});
 	expect(mutations).toBe(0);
 });
 
