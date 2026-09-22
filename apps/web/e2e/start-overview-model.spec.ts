@@ -110,7 +110,7 @@ test.describe('Start overview read model', () => {
 		expect(items.some((item) => item.entityId === 'later')).toBe(false);
 		expect(items[0]).toMatchObject({
 			isPersonal: true,
-			detail: expect.stringContaining('Du bist dran'),
+			detail: expect.stringContaining('Für dich'),
 			href: '/wg/WG%2F1/putzen?highlight=own-overdue',
 		});
 		expect(items[1]).toMatchObject({

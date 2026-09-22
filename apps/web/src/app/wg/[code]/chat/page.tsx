@@ -1,3 +1,4 @@
+import { SubNav } from '@/components/wg/SubNav';
 import { db, type wgChatMessages, wgs } from '@/core/db';
 import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { ChatView } from '@/features/chat/components/ChatView';
@@ -100,12 +101,10 @@ function ChatPageContent({
 		>
 			<header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-4 py-2">
 				<div className="mx-auto flex w-full max-w-3xl items-center gap-2">
-					{/* The bottom navigation already owns the route escape. A second
-					    Pinnwand/Chat switcher repeats the same destination and steals
-					    message space on phones. */}
-					<div className="min-w-0">
-						<h1 className="font-heading text-xl font-semibold tracking-tight">Chat</h1>
-					</div>
+					{/* Das Segment ersetzt den sichtbaren Titel, damit der Chat keine
+					    zusätzliche Höhe verliert. */}
+					<h1 className="sr-only">Chat</h1>
+					<SubNav className="flex-1" />
 				</div>
 			</header>
 			<ChatView

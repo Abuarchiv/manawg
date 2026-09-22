@@ -186,7 +186,7 @@ export function MemberDeactivateDialog({
 													? `Schuldet ${balance.name}`
 													: `${balance.name} schuldet`}
 											</span>
-											<span className="text-foreground shrink-0 font-medium tabular-nums">
+											<span className="text-foreground shrink-0 font-mono font-medium tabular-nums">
 												{formatEuroCents(balance.amount_cents, balance.currency)}
 											</span>
 										</li>

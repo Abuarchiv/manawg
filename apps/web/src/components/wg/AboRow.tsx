@@ -1,6 +1,5 @@
 'use client';
 
-import { Switch } from '@/components/animate-ui/components/base/switch';
 import {
 	Collapsible,
 	CollapsiblePanel,
@@ -8,7 +7,6 @@ import {
 } from '@/components/animate-ui/primitives/base/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Field, FieldLabel } from '@/components/ui/field';
 import { Item, ItemContent, ItemDescription, ItemFooter, ItemTitle } from '@/components/ui/item';
 import { AboPausedBadge } from '@/components/wg/AboPausedBadge';
 import type { Abo, MemberOption } from '@/components/wg/abos-types';
@@ -18,7 +16,7 @@ import {
 	formatIntervalLabel,
 	previewNextOccurrences,
 } from '@/features/expenses/recurring-expenses';
-import { ChevronDown, Pencil, Trash2 } from 'lucide-react';
+import { ChevronDown, Pause, Pencil, Play, Trash2 } from 'lucide-react';
 
 interface AboRowProps {
 	abo: Abo;
@@ -60,7 +58,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 						<CollapsibleTrigger
 							render={<Button variant="ghost" className="min-h-11 w-full justify-between" />}
 						>
-							Anteile & nächste Termine
+							Anteile, Termine & Aktionen
 							<ChevronDown data-icon="inline-end" />
 						</CollapsibleTrigger>
 						<CollapsiblePanel>
@@ -93,6 +91,23 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 									</p>
 								)}
 								<div className="flex flex-wrap items-center gap-2 border-t pt-3">
+									{/* Pausieren liegt bewusst hier statt als Schalter in der Zeile: kein versehentliches Antippen. */}
+									<Button
+										variant="outline"
+										className="min-h-11"
+										onClick={() => onTogglePause(abo)}
+										disabled={pending}
+										aria-label={
+											isPaused ? `${abo.description} fortsetzen` : `${abo.description} pausieren`
+										}
+									>
+										{isPaused ? (
+											<Play data-icon="inline-start" />
+										) : (
+											<Pause data-icon="inline-start" />
+										)}
+										{isPaused ? 'Fortsetzen' : 'Pausieren'}
+									</Button>
 									<Button
 										variant="outline"
 										size="icon"
@@ -119,22 +134,6 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 							</div>
 						</CollapsiblePanel>
 					</Collapsible>
-					<div className="flex min-w-0 flex-wrap items-center gap-2">
-						<Field orientation="horizontal" className="min-h-11 flex-1" data-disabled={pending}>
-							<Switch
-								id={`abo-active-${abo.id}`}
-								checked={!isPaused}
-								disabled={pending}
-								onCheckedChange={() => onTogglePause(abo)}
-								aria-label={
-									isPaused ? `${abo.description} reaktivieren` : `${abo.description} pausieren`
-								}
-							/>
-							<FieldLabel htmlFor={`abo-active-${abo.id}`}>
-								{isPaused ? 'Pausiert' : 'Aktiv'}
-							</FieldLabel>
-						</Field>
-					</div>
 				</ItemFooter>
 			</Item>
 		</li>

@@ -50,24 +50,24 @@ const PRIMARY_MODULES: PublicModule[] = [
 	},
 	{
 		slug: 'einkauf',
-		title: 'Einkauf',
+		title: 'Einkäufe',
 		description: 'Die nächste Einkaufsliste.',
 		Icon: ListChecks,
 	},
 	{ slug: 'pinnwand', title: 'Pinnwand', description: 'Infos für alle.', Icon: Megaphone },
-	{ slug: 'putzen', title: 'Putzen', description: 'Aufgaben fair verteilen.', Icon: Sparkles },
+	{ slug: 'putzen', title: 'Putzplan', description: 'Aufgaben fair verteilen.', Icon: Sparkles },
 ];
 
 const OTHER_MODULES: PublicModule[] = [
 	{ slug: 'fixkosten', title: 'Fixkosten', description: 'Regelmäßige Kosten.', Icon: Receipt },
 	{
 		slug: 'mahnungen',
-		title: 'Mahnungen',
+		title: 'Erinnerungen',
 		description: 'Offene Beträge nachhalten.',
 		Icon: Receipt,
 	},
 	{ slug: 'vorraete', title: 'Vorräte', description: 'Was noch da ist.', Icon: Package },
-	{ slug: 'kalender', title: 'Termine', description: 'Gemeinsame Termine.', Icon: CalendarDays },
+	{ slug: 'kalender', title: 'Kalender', description: 'Gemeinsame Termine.', Icon: CalendarDays },
 	{
 		slug: 'aktivitaet',
 		title: 'Aktivität',
@@ -178,11 +178,12 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 		router.replace(`/wg/${encodeURIComponent(membership.code)}`);
 	}, [inviteCode, memberships, membershipState, module, router]);
 
-	const section = WG_SECTIONS.find((item) =>
-		item.pages.some(
-			(page) =>
-				page.slug === activeModule || (page.slug === 'abos' && activeModule === 'fixkosten'),
-		),
+	const section = WG_SECTIONS.find(
+		(item) =>
+			item.pages.some(
+				(page) =>
+					page.slug === activeModule || (page.slug === 'abos' && activeModule === 'fixkosten'),
+			) || item.related.some((slug) => slug === activeModule),
 	);
 	const discoveryHref = (slug: string) =>
 		publicHref(`/entdecken/${slug === 'abos' ? 'fixkosten' : slug}`);
@@ -235,13 +236,11 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 					{section && (
 						<SubNav
 							label={`${section.label} – entdecken`}
-							items={section.pages
-								.filter((page) => page.slug !== 'import')
-								.map((page) => ({
-									href: discoveryHref(page.slug),
-									label: page.label,
-									icon: page.icon,
-								}))}
+							items={section.pages.map((page) => ({
+								href: discoveryHref(page.slug),
+								label: page.label,
+								icon: page.icon,
+							}))}
 						/>
 					)}
 					{inviteCode ? (
@@ -305,7 +304,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 			<AppBottomNav
 				aria-label="Öffentliche Hauptnavigation"
 				data-app-chrome
-				className="fixed inset-x-0 bottom-0 z-30 mx-0 w-[100dvw] min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] min-[576px]:mx-auto"
+				className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
 			>
 				<div className="rounded-[20px] border border-border bg-background text-foreground">
 					<ul className="flex flex-wrap gap-1 p-1 [&>li]:min-w-fit [&>li]:flex-1">
@@ -321,7 +320,9 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 								href={discoveryHref(item.pages[0].slug)}
 								label={item.label}
 								iconKey={item.iconKey}
-								activePrefixes={item.pages.map((page) => discoveryHref(page.slug))}
+								activePrefixes={[...item.pages.map((page) => page.slug), ...item.related].map(
+									discoveryHref,
+								)}
 							/>
 						))}
 					</ul>

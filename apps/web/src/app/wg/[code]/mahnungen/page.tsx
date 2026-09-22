@@ -37,7 +37,7 @@ interface ExpenseDto {
 }
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
-export default function MahnungenPage() {
+export default function ErinnerungenPage() {
 	const { wg, members, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
@@ -96,7 +96,7 @@ export default function MahnungenPage() {
 			} else {
 				setRemindersLoadFailed(true);
 				nextErrors.reminders = getWgLoadErrorMessage(
-					'Mahnungen',
+					'Erinnerungen',
 					remindersRes.status,
 					remindersRes.error,
 					{
@@ -171,7 +171,7 @@ export default function MahnungenPage() {
 				<BackLink href={`${wgBaseHref}/ausgaben`} label="Ausgaben" />
 				<div className="min-w-0 flex-1">
 					<h1 className="font-heading text-2xl font-semibold tracking-tight break-words">
-						Mahnungen
+						Erinnerungen
 					</h1>
 					<p className="text-sm text-muted-foreground">
 						Max. alle {REMINDER_COOLDOWN_HOURS} Stunden pro Person
@@ -206,7 +206,7 @@ export default function MahnungenPage() {
 				) : expensesLoadFailed && rows.length === 0 ? null : rows.length === 0 ? (
 					<Empty>
 						<EmptyHeader>
-							<EmptyTitle>Alles ausgeglichen — nichts zu mahnen.</EmptyTitle>
+							<EmptyTitle>Alles ausgeglichen. Nichts offen.</EmptyTitle>
 						</EmptyHeader>
 					</Empty>
 				) : (
@@ -252,7 +252,7 @@ export default function MahnungenPage() {
 				)}
 			</section>
 			<section className="flex flex-col gap-3">
-				<h2 className="text-base font-semibold">Letzte Mahnungen (30 Tage)</h2>
+				<h2 className="text-base font-semibold">Letzte Erinnerungen (30 Tage)</h2>
 				{loadErrors.reminders && (
 					<LoadErrorBanner
 						message={loadErrors.reminders}

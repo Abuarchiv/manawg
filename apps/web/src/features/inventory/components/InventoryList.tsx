@@ -1,7 +1,7 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
 	Empty,
@@ -21,8 +21,11 @@ import {
 	type InventoryCategory,
 	type InventoryItemDto,
 	groupItemsByCategory,
+	isBelowThreshold,
 } from '@/features/inventory/inventory';
-import { Package, Plus, Zap } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import { Package, Plus, ShoppingBasket, Zap } from 'lucide-react';
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
 interface InventoryListProps {
@@ -43,7 +46,12 @@ export function InventoryList({
 	const [addOpen, setAddOpen] = useState(false);
 	const [quickOpen, setQuickOpen] = useState(false);
 	const [editing, setEditing] = useState<InventoryItemDto | null>(null);
-	const grouped = useMemo(() => groupItemsByCategory(items), [items]);
+	// Knappe Vorräte stehen gesammelt oben, der Rest bleibt nach Kategorie sortiert.
+	const lowItems = useMemo(() => items.filter(isBelowThreshold), [items]);
+	const grouped = useMemo(
+		() => groupItemsByCategory(items.filter((item) => !isBelowThreshold(item))),
+		[items],
+	);
 	const isEmpty = items.length === 0;
 	const hasQuickRestockItems = items.some(
 		(item) => item.decrementCount30d > 0 || item.lastDecrementedAt !== null,
@@ -96,6 +104,43 @@ export function InventoryList({
 				</Empty>
 			) : (
 				<div className="flex flex-col gap-4">
+					{lowItems.length > 0 && (
+						<section aria-labelledby="inventory-low" className="flex flex-col gap-2">
+							<h2
+								id="inventory-low"
+								className="flex items-center gap-2 font-mono text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground"
+							>
+								Bald leer
+								<Badge variant="secondary" className="tabular-nums">
+									{lowItems.length}
+								</Badge>
+							</h2>
+							<Card className="py-0">
+								<CardContent className="p-0">
+									<ItemGroup className="gap-0 divide-y divide-border">
+										{lowItems.map((item) => (
+											<InventoryItemRow
+												key={item.id}
+												item={item}
+												shareCode={shareCode}
+												memberId={memberId}
+												memberToken={memberToken}
+												onChanged={onChanged}
+												onEdit={openEdit}
+											/>
+										))}
+									</ItemGroup>
+								</CardContent>
+							</Card>
+							<Link
+								href={`/wg/${encodeURIComponent(shareCode)}/einkauf`}
+								className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11 self-start')}
+							>
+								<ShoppingBasket data-icon="inline-start" aria-hidden />
+								Einkaufsliste öffnen
+							</Link>
+						</section>
+					)}
 					{INVENTORY_CATEGORIES.filter(
 						(category): category is InventoryCategory => grouped[category].length > 0,
 					).map((category) => (

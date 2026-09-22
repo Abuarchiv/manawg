@@ -8,7 +8,6 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/u
 import { Item, ItemContent, ItemGroup } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
-import { BackLink } from '@/components/wg/BackLink';
 import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
@@ -62,8 +61,8 @@ export default function VorraetePage() {
 
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
+			<SubNav />
 			<header className="flex items-center gap-3">
-				<BackLink href={`/wg/${encodedShareCode}/einkauf`} label="Haushalt" />
 				<div className="min-w-0 flex-1">
 					<h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
 						Vorräte
@@ -86,7 +85,6 @@ export default function VorraetePage() {
 					</p>
 				</div>
 			</header>
-			<SubNav label="Haushalt" items={[]} />
 
 			{loadError && (
 				<Alert variant="destructive">

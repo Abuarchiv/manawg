@@ -126,7 +126,7 @@ function calendarDayDistance(iso: string, now: number): number | null {
 function dueLabel(iso: string, now: number): string {
 	const days = calendarDayDistance(iso, now);
 	if (days === null) return 'Datum prüfen';
-	if (days < 0) return `${Math.abs(days)} T. überfällig`;
+	if (days < 0) return `seit ${Math.abs(days)} T. offen`;
 	if (days === 0) return 'heute fällig';
 	if (days === 1) return 'morgen fällig';
 	return `in ${days} Tagen`;
@@ -159,7 +159,7 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 			const isPersonal = chore.assignedMemberId === input.currentMemberId;
 			const due = dueLabel(chore.nextDueAt, now);
 			const ownership = isPersonal
-				? 'Du bist dran'
+				? 'Für dich'
 				: chore.assignedMemberName
 					? chore.assignedMemberName
 					: 'Noch nicht zugewiesen';

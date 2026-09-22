@@ -53,6 +53,8 @@ import type { AbsenceInput } from '@/features/chores/absence';
 import { absenceSaveErrorMessage, choreCreateErrorMessage } from '@/features/chores/chore-errors';
 import { buildChoreFairness, chooseNextAvailableMember } from '@/features/chores/chore-fairness';
 import {
+	CHORE_GROUPS,
+	getChoreGroup,
 	getChorePlanHealth,
 	getChoreRepairHint,
 	getChoreStatus,
@@ -96,6 +98,7 @@ export default function PutzenPage() {
 	const absencesPanelActive = searchParams.get('panel') === 'absences';
 	const absenceId = searchParams.get('absence');
 	const [items, setItems] = useState<Chore[]>([]);
+	const [monthCompletions, setMonthCompletions] = useState<Record<string, number>>({});
 	const [absences, setAbsences] = useState<AbsenceInput[]>([]);
 	const [initialLoading, setInitialLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
@@ -153,6 +156,7 @@ export default function PutzenPage() {
 			let nextLoadError: string | null = null;
 			if (result.ok) {
 				setItems(result.data.chores);
+				setMonthCompletions(result.data.monthCompletions ?? {});
 				syncOfflineActions(wg.shareCode, { memberId: identity.memberId })
 					.then((synced) => {
 						if (!mountedRef.current) return;
@@ -885,6 +889,16 @@ export default function PutzenPage() {
 		const needsRepair = (item: Chore) => (getChoreRepairHint(item) !== null ? 0 : 1);
 		return [...items].sort((a, b) => needsRepair(a) - needsRepair(b));
 	}, [items]);
+	const choreGroups = useMemo(
+		() =>
+			CHORE_GROUPS.map((group) => ({
+				...group,
+				chores: sortedItems.filter(
+					(chore) => getChoreGroup(chore, identity.memberId) === group.key,
+				),
+			})).filter((group) => group.chores.length > 0),
+		[identity.memberId, sortedItems],
+	);
 	const absentMemberIds = getAbsentMemberIds(absences);
 	const selectedAbsence = useMemo(
 		() => absences.find((absence) => absence.id === absenceId) ?? null,
@@ -940,6 +954,7 @@ export default function PutzenPage() {
 
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
+			<SubNav />
 			<PutzenHeader
 				itemCount={items.length}
 				refreshing={refreshing}
@@ -947,7 +962,6 @@ export default function PutzenPage() {
 				wgBaseHref={wgBaseHref}
 				onToggleForm={() => setShowForm((open) => !open)}
 			/>
-			<SubNav label="Haushalt" items={[]} />
 			{!showSkeleton && items.length > 0 && <HealthStrip health={health} />}
 			<ChoreForm
 				open={showForm}
@@ -1048,40 +1062,57 @@ export default function PutzenPage() {
 					</EmptyContent>
 				</Empty>
 			) : (
-				<ItemGroup id="chore-list" aria-label="Putzaufgaben">
-					{sortedItems.map((chore) => (
-						<ChoreRow
-							key={chore.id}
-							chore={chore}
-							assignee={memberLookup(chore.assignedMemberId)}
-							isPending={isPending(chore.id)}
-							isSwapPending={isPending(`${chore.id}:swap`)}
-							isTakePending={isPending(`${chore.id}:take`)}
-							isCompleteArmed={completeConfirmId === chore.id}
-							completeError={actionError}
-							nextAssigneeName={
-								completeConfirmId === chore.id
-									? (members.find(
-											(member) =>
-												member.id ===
-												chooseNextAvailableMember({
-													members: activeMembers,
-													currentMemberId: chore.assignedMemberId,
-													absentMemberIds,
-													chores: items,
-												}),
-										)?.name ?? null)
-									: null
-							}
-							onCancelComplete={() => setCompleteConfirmId(null)}
-							onComplete={handleComplete}
-							onSwapRequest={handleSwapRequest}
-							onTakeOver={handleTakeOver}
-							onRemove={handleRemove}
-							highlighted={highlightedId === chore.id}
-						/>
+				<div id="chore-list" className="flex flex-col gap-5">
+					{choreGroups.map((group) => (
+						<section
+							key={group.key}
+							aria-labelledby={`chore-group-${group.key}`}
+							className="flex flex-col gap-2"
+						>
+							<h2
+								id={`chore-group-${group.key}`}
+								className="text-sm font-medium text-muted-foreground"
+							>
+								{group.label} ({group.chores.length})
+							</h2>
+							<ItemGroup aria-label={group.label}>
+								{group.chores.map((chore) => (
+									<ChoreRow
+										key={chore.id}
+										chore={chore}
+										isMine={group.key === 'mine'}
+										assignee={memberLookup(chore.assignedMemberId)}
+										isPending={isPending(chore.id)}
+										isSwapPending={isPending(`${chore.id}:swap`)}
+										isTakePending={isPending(`${chore.id}:take`)}
+										isCompleteArmed={completeConfirmId === chore.id}
+										completeError={actionError}
+										nextAssigneeName={
+											completeConfirmId === chore.id
+												? (members.find(
+														(member) =>
+															member.id ===
+															chooseNextAvailableMember({
+																members: activeMembers,
+																currentMemberId: chore.assignedMemberId,
+																absentMemberIds,
+																chores: items,
+															}),
+													)?.name ?? null)
+												: null
+										}
+										onCancelComplete={() => setCompleteConfirmId(null)}
+										onComplete={handleComplete}
+										onSwapRequest={handleSwapRequest}
+										onTakeOver={handleTakeOver}
+										onRemove={handleRemove}
+										highlighted={highlightedId === chore.id}
+									/>
+								))}
+							</ItemGroup>
+						</section>
 					))}
-				</ItemGroup>
+				</div>
 			)}
 			{!showSkeleton && (items.length > 0 || absences.length > 0 || absencesPanelActive) && (
 				<AbsencePanel
@@ -1107,7 +1138,13 @@ export default function PutzenPage() {
 					isPending={isPending}
 				/>
 			)}
-			{!showSkeleton && items.length > 0 && <FairnessPanel fairness={fairness} />}
+			{!showSkeleton && items.length > 0 && (
+				<FairnessPanel
+					fairness={fairness}
+					monthCompletions={monthCompletions}
+					members={members.map((member) => ({ id: member.id, name: member.name }))}
+				/>
+			)}
 		</div>
 	);
 }

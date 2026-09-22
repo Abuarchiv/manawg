@@ -186,3 +186,25 @@ export function suggestChoreAssignee(input: ChoreAssigneeInput): ChoreAssigneeMe
 		})[0] ?? null
 	);
 }
+
+export type ChoreGroupKey = 'mine' | 'overdue' | 'week' | 'later';
+
+export const CHORE_GROUPS: { key: ChoreGroupKey; label: string }[] = [
+	{ key: 'mine', label: 'Für dich' },
+	{ key: 'overdue', label: 'Noch offen' },
+	{ key: 'week', label: 'Diese Woche' },
+	{ key: 'later', label: 'Später' },
+];
+
+/** Eigene Aufgaben bis morgen stehen oben, fremde nach Dringlichkeit darunter. */
+export function getChoreGroup(
+	chore: ChoreRepairInput,
+	currentMemberId: string,
+	now = Date.now(),
+): ChoreGroupKey {
+	const days = calendarDayDistance(chore.nextDueAt, now);
+	if (days === null) return 'later';
+	if (chore.assignedMemberId === currentMemberId && days <= 1) return 'mine';
+	if (days < 0) return 'overdue';
+	return days <= 7 ? 'week' : 'later';
+}

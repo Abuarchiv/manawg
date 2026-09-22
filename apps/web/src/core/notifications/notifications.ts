@@ -153,7 +153,7 @@ export function formatNotificationMessage(
 			const dayClause =
 				rawDays >= 1 ? ` (ältester Posten ${rawDays} ${rawDays === 1 ? 'Tag' : 'Tage'} alt)` : '';
 			return {
-				title: 'Mahnung',
+				title: 'Erinnerung',
 				body: `Du schuldest ${creditor} noch ${money(payload.amountCents, payload.currency)}${dayClause} — bitte zeitnah ausgleichen.`,
 				urlPath: '/mahnungen',
 			};

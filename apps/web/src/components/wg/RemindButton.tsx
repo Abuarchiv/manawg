@@ -31,24 +31,24 @@ interface RemindButtonProps {
 
 function errorMessage(error: string): string {
 	if (error === 'reminder_cooldown') return 'Bitte etwas warten (48 h pro Person).';
-	if (error === 'reminder_rate_limited') return 'Zu viele Mahnungen — bitte später erneut.';
-	if (error === 'debtor_opted_out') return 'Diese Person erhält keine Mahnungen.';
+	if (error === 'reminder_rate_limited') return 'Zu viele Erinnerungen — bitte später erneut.';
+	if (error === 'debtor_opted_out') return 'Diese Person erhält keine Erinnerungen.';
 	if (error === 'no_open_debt') return 'Keine offene Schuld zwischen euch.';
 	if (error === 'not_a_member') return 'Bitte erneut der WG beitreten.';
 	if (error === 'Failed to fetch' || error === 'Netzwerkfehler') {
-		return 'Mahnung konnte nicht gesendet werden — Verbindung prüfen.';
+		return 'Erinnerung konnte nicht gesendet werden — Verbindung prüfen.';
 	}
-	return 'Mahnung konnte nicht gesendet werden.';
+	return 'Erinnerung konnte nicht gesendet werden.';
 }
 
 function successMessage(warning: RemindResponseWarning): string {
 	if (warning === 'notification_delivery_failed') {
-		return 'Mahnung gespeichert. Push-Benachrichtigung konnte nicht versendet werden.';
+		return 'Erinnerung gespeichert. Push-Benachrichtigung konnte nicht versendet werden.';
 	}
 	if (warning === 'notification_delivery_unknown') {
-		return 'Mahnung gespeichert. Push-Versand konnte nicht bestätigt werden.';
+		return 'Erinnerung gespeichert. Push-Versand konnte nicht bestätigt werden.';
 	}
-	return 'Mahnung gesendet.';
+	return 'Erinnerung gesendet.';
 }
 
 export function RemindButton({
@@ -140,11 +140,11 @@ export function RemindButton({
 		}
 	}
 
-	let label = 'Mahnen';
+	let label = 'Erinnern';
 	if (status === 'sending') label = 'Sende…';
 	else if (status === 'sent') label = 'Gesendet';
 	else if (status === 'cooldown') label = cooldownLabel ?? 'Noch gesperrt';
-	else if (status === 'optedOut') label = 'Mahnungen deaktiviert';
+	else if (status === 'optedOut') label = 'Erinnerungen deaktiviert';
 
 	return (
 		<div className="flex max-w-full flex-col gap-2">
@@ -155,7 +155,7 @@ export function RemindButton({
 				className="h-auto min-h-11 whitespace-normal py-2"
 				onClick={() => void handleClick()}
 				disabled={disabled}
-				aria-label={`Mahnung senden — ${label}`}
+				aria-label={`Erinnerung senden: ${label}`}
 			>
 				{status === 'sending' ? (
 					<Spinner data-icon="inline-start" />

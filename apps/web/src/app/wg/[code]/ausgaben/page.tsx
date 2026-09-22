@@ -1,9 +1,5 @@
 'use client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { DebtSummary } from '@/components/wg/DebtSummary';
@@ -36,8 +32,8 @@ import {
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { parseEuroAmount } from '@/core/utils/amount';
-import { CENTS_PER_EURO, formatEuroCents } from '@/core/utils/money';
-import { parseTimestamp } from '@/core/utils/time';
+import { CENTS_PER_EURO } from '@/core/utils/money';
+import { formatWeekLabel, parseTimestamp, parseValidDate, startOfWeek } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { AusgabenHeader } from '@/features/expenses/components/ausgaben/AusgabenHeader';
 import type {
@@ -79,9 +75,7 @@ import {
 	splitCandidates,
 } from '@/features/expenses/expense-split-input';
 import { addMonths } from '@/features/expenses/recurring-expenses';
-import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
-import { Bell, ChevronDown, FileInput, RefreshCw } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -979,6 +973,19 @@ export default function AusgabenPage() {
 	}
 
 	const showSkeleton = initialLoading && expenses.length === 0;
+	// Verlauf nach Kalenderwoche; die API liefert neueste zuerst.
+	const expenseWeeks = useMemo(() => {
+		const weeks: Array<{ label: string; items: typeof expenses }> = [];
+		const now = new Date();
+		for (const expense of expenses) {
+			const date = parseValidDate(expense.occurredAt);
+			const label = date ? formatWeekLabel(startOfWeek(date), now) : 'Datum unbekannt';
+			const current = weeks.at(-1);
+			if (current?.label === label) current.items.push(expense);
+			else weeks.push({ label, items: [expense] });
+		}
+		return weeks;
+	}, [expenses]);
 	const directDebts = useMemo(
 		() =>
 			computeDirectDebts(
@@ -1044,14 +1051,9 @@ export default function AusgabenPage() {
 			? buildSplits(Math.round(previewAmount * CENTS_PER_EURO))
 			: null;
 
-	const personalBalances = memberBalances.filter((member) => member.memberId === identity.memberId);
-	const primaryPersonalBalance =
-		personalBalances.find((member) => member.currency === 'EUR') ?? personalBalances[0] ?? null;
-	const personalBalance = primaryPersonalBalance?.balanceCents ?? 0;
-	const personalBalanceCurrency = primaryPersonalBalance?.currency ?? 'EUR';
-
 	return (
 		<div data-finance-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
+			<SubNav />
 			<AusgabenHeader
 				expenseCount={expenses.length}
 				initialLoading={initialLoading}
@@ -1064,24 +1066,6 @@ export default function AusgabenPage() {
 						setShowForm(true);
 					}
 				}}
-			/>
-			<SubNav
-				label="Unterbereiche der Finanzen"
-				items={[
-					{
-						href: `${wgBaseHref}/abos`,
-						label: 'Fixkosten',
-						icon: RefreshCw,
-						count: recurringExpenses.length,
-					},
-					{
-						href: `${wgBaseHref}/mahnungen`,
-						label: 'Mahnungen',
-						icon: Bell,
-						count: directDebts.length,
-					},
-					{ href: `${wgBaseHref}/import`, label: 'Import', icon: FileInput },
-				]}
 			/>
 			{showForm && (
 				<ExpenseFormSection
@@ -1167,105 +1151,11 @@ export default function AusgabenPage() {
 				/>
 			)}
 			{!showSkeleton && (expenses.length > 0 || directDebts.length > 0) && (
-				<div className="grid items-start gap-4 lg:grid-cols-2">
-					{expenses.length > 0 && (
-						<Card>
-							<CardHeader>
-								<CardDescription>Dein Saldo</CardDescription>
-								<CardTitle>
-									{personalBalances.length > 1 ? (
-										<>
-											Offene Salden{' '}
-											<span className="font-mono tabular-nums">
-												{personalBalances
-													.filter((balance) => balance.balanceCents !== 0)
-													.map((balance) =>
-														formatEuroCents(balance.balanceCents, balance.currency, {
-															signed: true,
-														}),
-													)
-													.join(' · ') || formatEuroCents(0, 'EUR', { signed: true })}
-											</span>
-										</>
-									) : personalBalance > 0 ? (
-										<>
-											Du bekommst{' '}
-											<span className="font-mono tabular-nums text-settled">
-												{formatEuroCents(Math.abs(personalBalance), personalBalanceCurrency)}
-											</span>{' '}
-											zurück
-										</>
-									) : personalBalance < 0 ? (
-										<>
-											Du schuldest noch{' '}
-											<span className="font-mono tabular-nums text-destructive">
-												{formatEuroCents(Math.abs(personalBalance), personalBalanceCurrency)}
-											</span>
-										</>
-									) : (
-										<>
-											Du bist ausgeglichen{' '}
-											<span className="font-mono tabular-nums text-foreground">
-												{formatEuroCents(0, personalBalanceCurrency, { signed: true })}
-											</span>
-										</>
-									)}
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<Collapsible>
-									<CollapsibleTrigger
-										render={<Button variant="ghost" className="min-h-11 w-full justify-between" />}
-									>
-										Saldo pro Mitglied
-										<ChevronDown data-icon="inline-end" />
-									</CollapsibleTrigger>
-									<CollapsibleContent>
-										<ItemGroup className="pt-2">
-											{memberBalances.map((member) => (
-												<Item
-													key={`${member.currency}-${member.memberId}`}
-													variant="muted"
-													size="xs"
-												>
-													<ItemContent className="min-w-0">
-														<ItemTitle className="line-clamp-none break-words">
-															{member.memberName}
-															{member.memberId === identity.memberId ? ' (du)' : ''}
-														</ItemTitle>
-														<ItemDescription>
-															{member.balanceCents > 0
-																? 'Bekommt zurück'
-																: member.balanceCents < 0
-																	? 'Schuldet'
-																	: 'Ausgeglichen'}
-														</ItemDescription>
-													</ItemContent>
-													<span
-														className={cn(
-															'shrink-0 font-mono tabular-nums',
-															member.balanceCents > 0
-																? 'text-settled'
-																: member.balanceCents < 0
-																	? 'text-destructive'
-																	: 'text-foreground',
-														)}
-													>
-														{formatEuroCents(member.balanceCents, member.currency, {
-															signed: true,
-														})}
-													</span>
-												</Item>
-											))}
-										</ItemGroup>
-									</CollapsibleContent>
-								</Collapsible>
-							</CardContent>
-						</Card>
-					)}
+				<div className="grid items-start gap-4">
 					<DebtSummary
 						debts={directDebts}
 						summary={settlementSummary}
+						balances={memberBalances}
 						expenses={expenses}
 						shareCode={wg.shareCode}
 						currentMemberId={identity.memberId}
@@ -1319,24 +1209,31 @@ export default function AusgabenPage() {
 						</EmptyHeader>
 					</Empty>
 				) : (
-					<ul className="flex flex-col gap-3">
-						{expenses.map((expense) => (
-							<ExpenseRow
-								key={expense.id}
-								expense={expense}
-								expanded={expanded.has(expense.id)}
-								onToggleExpand={toggleExpand}
-								onDelete={deleteExpense}
-								onEdit={startEdit}
-								onToggleSettle={toggleSettle}
-								isPending={isPending}
-								memberName={memberName}
-								memberColor={memberColor}
-								currentMemberId={identity.memberId}
-								highlighted={highlightedId === expense.id}
-							/>
+					<div className="flex flex-col gap-5">
+						{expenseWeeks.map((week) => (
+							<section key={week.label} aria-label={week.label} className="flex flex-col gap-2">
+								<h3 className="text-xs font-medium text-muted-foreground">{week.label}</h3>
+								<ul className="flex flex-col gap-3">
+									{week.items.map((expense) => (
+										<ExpenseRow
+											key={expense.id}
+											expense={expense}
+											expanded={expanded.has(expense.id)}
+											onToggleExpand={toggleExpand}
+											onDelete={deleteExpense}
+											onEdit={startEdit}
+											onToggleSettle={toggleSettle}
+											isPending={isPending}
+											memberName={memberName}
+											memberColor={memberColor}
+											currentMemberId={identity.memberId}
+											highlighted={highlightedId === expense.id}
+										/>
+									))}
+								</ul>
+							</section>
 						))}
-					</ul>
+					</div>
 				)}
 			</section>
 		</div>

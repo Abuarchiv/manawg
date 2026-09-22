@@ -18,7 +18,7 @@ test.describe('live public dashboard entry', () => {
 		await expect(examples).toBeVisible();
 		await expect(page.locator('[data-liquid-glass]')).toHaveCount(0);
 		await expect(page.locator('[data-slot="card"][data-liquid-glass]')).toHaveCount(0);
-		for (const label of ['Einkauf', 'Ausgaben', 'Putzen', 'Pinnwand']) {
+		for (const label of ['Einkäufe', 'Ausgaben', 'Putzplan', 'Pinnwand']) {
 			await expect(examples.getByRole('article', { name: `${label}, Beispiel-WG` })).toBeVisible();
 		}
 		await expect(page.getByText('Weitere Bereiche', { exact: true })).toHaveCount(0);

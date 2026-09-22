@@ -83,6 +83,7 @@ export const GET = withWgRoute(
 			.select({
 				choreId: choreCompletions.choreId,
 				completedAt: choreCompletions.completedAt,
+				completedByMemberId: choreCompletions.completedByMemberId,
 				completedByName: wgMembers.name,
 			})
 			.from(choreCompletions)
@@ -103,6 +104,17 @@ export const GET = withWgRoute(
 		}
 
 		const now = Date.now();
+		// ponytail: Monatsbeginn in Serverzeit, Berlin-Grenze nur bei Bedarf.
+		const monthStart = new Date(now);
+		monthStart.setDate(1);
+		monthStart.setHours(0, 0, 0, 0);
+		const monthCompletions: Record<string, number> = {};
+		for (const row of completionRows) {
+			if (row.completedAt < monthStart) continue;
+			monthCompletions[row.completedByMemberId] =
+				(monthCompletions[row.completedByMemberId] ?? 0) + 1;
+		}
+
 		const openGapsByMember = computeOpenGapsByMember(
 			items.map((item) => ({
 				assignedMemberId: item.assignedMemberId,
@@ -112,6 +124,7 @@ export const GET = withWgRoute(
 		);
 
 		return NextResponse.json({
+			monthCompletions,
 			chores: items.map((item) => {
 				const latest = latestCompletionByChore.get(item.id) ?? null;
 				return {

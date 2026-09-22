@@ -69,7 +69,7 @@ export function WgRouteErrorBoundary({
 									// biome-ignore lint/a11y/useSemanticElements: <pre> must stay a preformatted block; role="region" names its scroll area.
 									role="region"
 									aria-label="Fehlerdetails"
-									className="max-w-full overflow-auto rounded-lg border border-border bg-muted px-3 py-2 text-left text-xs text-muted-foreground"
+									className="max-w-full overflow-auto rounded-lg border border-border bg-muted px-3 py-2 text-left text-xs text-foreground/75"
 								>
 									{error.message}
 								</pre>

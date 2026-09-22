@@ -559,7 +559,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 												<MessageCircle aria-hidden />
 											</EmptyMedia>
 											<EmptyDescription>
-												{'Noch keine Nachrichten. Schreibe die erste!'}
+												{'Noch keine Nachrichten. Schreib die erste.'}
 											</EmptyDescription>
 										</EmptyHeader>
 									</Empty>

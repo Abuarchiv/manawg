@@ -3,6 +3,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
+import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
@@ -870,6 +871,7 @@ export default function PinnwandPage(): React.ReactElement {
 
 	return (
 		<div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-4">
+			<SubNav />
 			<PinnwandHeader
 				itemCount={items.length}
 				refreshing={refreshing}

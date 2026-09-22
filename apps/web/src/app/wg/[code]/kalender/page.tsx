@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BackLink } from '@/components/wg/BackLink';
 import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
@@ -17,7 +16,10 @@ import { copyText } from '@/core/utils/clipboard';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { CalendarMonth } from '@/features/events/components/CalendarMonth';
-import { CalendarUpcomingList } from '@/features/events/components/CalendarUpcomingList';
+import {
+	CalendarUpcomingList,
+	downloadOccurrenceIcs,
+} from '@/features/events/components/CalendarUpcomingList';
 import {
 	type CreateEventPayload,
 	EventCreateModal,
@@ -38,6 +40,7 @@ import {
 import { haptic } from '@/shared/lib/haptics';
 import {
 	CalendarDays,
+	ChevronRight,
 	ExternalLink,
 	List,
 	Loader2,
@@ -136,6 +139,7 @@ export default function KalenderPage() {
 	const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 	const [createOpen, setCreateOpen] = useState(false);
 	const [editing, setEditing] = useState<EditableEvent | null>(null);
+	const [editingOccurrence, setEditingOccurrence] = useState<EventOccurrence | null>(null);
 	const [actionError, setActionError] = useState<string | null>(null);
 	const [subscription, setSubscription] = useState<CalendarSubscription | null>(null);
 	const [subscriptionLoading, setSubscriptionLoading] = useState(true);
@@ -238,6 +242,7 @@ export default function KalenderPage() {
 	function handleSelectOccurrence(occ: EventOccurrence): void {
 		const event = events.find((e) => e.id === occ.eventId);
 		if (!event) return;
+		setEditingOccurrence(occ);
 		setEditing(event);
 	}
 
@@ -417,8 +422,8 @@ export default function KalenderPage() {
 			data-household-content
 			className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8"
 		>
+			<SubNav />
 			<header className="flex flex-wrap items-center gap-3">
-				<BackLink href={`${wgBaseHref}/einkauf`} label="Haushalt" />
 				<div className="min-w-0 flex-1">
 					<h1 className="font-heading text-2xl font-semibold tracking-tight break-words [overflow-wrap:anywhere]">
 						Kalender
@@ -453,7 +458,6 @@ export default function KalenderPage() {
 					</Button>
 				</div>
 			</header>
-			<SubNav label="Haushalt" items={[]} />
 
 			{actionError && (
 				<Alert variant="destructive">
@@ -529,9 +533,13 @@ export default function KalenderPage() {
 				</TabsContent>
 			</Tabs>
 
-			<details className="rounded-xl border border-border">
-				<summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
+			<details className="group rounded-xl border border-border">
+				<summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
 					Kalender abonnieren
+					<ChevronRight
+						aria-hidden
+						className="size-4 text-muted-foreground transition-transform group-open:rotate-90"
+					/>
 				</summary>
 				<div className="flex flex-col gap-3 border-t border-border px-4 py-4">
 					<p className="text-sm text-muted-foreground">
@@ -656,7 +664,7 @@ export default function KalenderPage() {
 				Kalender-Feed übernommen.
 				<Link
 					href={`${wgBaseHref}/putzen`}
-					className="ml-1 inline-flex min-h-11 items-center rounded-sm underline transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+					className="mx-auto flex min-h-11 w-fit items-center rounded-sm underline transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				>
 					Putzplan öffnen
 				</Link>
@@ -674,6 +682,7 @@ export default function KalenderPage() {
 				onUpdate={handleUpdate}
 				onDelete={handleDelete}
 				actionError={actionError}
+				onExportIcs={editingOccurrence ? () => downloadOccurrenceIcs(editingOccurrence) : undefined}
 			/>
 			<ConfirmDialog
 				open={subscriptionConfirm !== null}

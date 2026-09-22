@@ -19,7 +19,20 @@ const FAIRNESS_RULES = [
 	'Abwesenheiten überspringen, sobald hinterlegt',
 ];
 
-export function FairnessPanel({ fairness }: { fairness: ChoreFairness }) {
+export function FairnessPanel({
+	fairness,
+	monthCompletions,
+	members,
+}: {
+	fairness: ChoreFairness;
+	monthCompletions: Record<string, number>;
+	members: { id: string; name: string }[];
+}) {
+	const shares = members
+		.map((member) => ({ ...member, count: monthCompletions[member.id] ?? 0 }))
+		.filter((member) => member.count > 0)
+		.sort((a, b) => b.count - a.count);
+	const total = shares.reduce((sum, member) => sum + member.count, 0);
 	return (
 		<Card>
 			<CardHeader>
@@ -27,6 +40,36 @@ export function FairnessPanel({ fairness }: { fairness: ChoreFairness }) {
 				<CardDescription>{fairness.insights[0]}</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-3">
+				<div className="flex flex-col gap-2">
+					<p className="text-sm font-medium">Anteil diesen Monat</p>
+					{total === 0 ? (
+						<p className="text-sm text-muted-foreground">
+							Diesen Monat wurde noch nichts erledigt.
+						</p>
+					) : (
+						<>
+							<div aria-hidden className="flex h-2 overflow-hidden rounded-full bg-muted">
+								{shares.map((member, index) => (
+									<span
+										key={member.id}
+										className="h-full border-background border-r-2 last:border-r-0"
+										style={{
+											width: `${(member.count / total) * 100}%`,
+											backgroundColor: `color-mix(in oklab, var(--primary) ${100 - index * 25}%, transparent)`,
+										}}
+									/>
+								))}
+							</div>
+							<ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+								{shares.map((member) => (
+									<li key={member.id}>
+										{member.name}: {Math.round((member.count / total) * 100)} % ({member.count})
+									</li>
+								))}
+							</ul>
+						</>
+					)}
+				</div>
 				{fairness.suggestedAssignee && (
 					<p className="text-sm">
 						Vorschlag für die nächste Aufgabe:{' '}

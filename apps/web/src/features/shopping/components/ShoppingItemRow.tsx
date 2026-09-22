@@ -26,9 +26,12 @@ import { Spinner } from '@/components/ui/spinner';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import type { MemberInfo, ShoppingItem } from '@/features/shopping/components/shopping-types';
 import { cn } from '@/shared/lib/cn';
-import { MoreHorizontal, Receipt, Trash2 } from 'lucide-react';
+import { Check, MoreHorizontal, Receipt, RotateCcw, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { memo } from 'react';
+import { memo, useRef, useState } from 'react';
+
+// Ab dieser Wischstrecke nach rechts gilt der Artikel als abgehakt (bzw. wieder offen).
+const SWIPE_TOGGLE_PX = 72;
 
 interface ShoppingItemRowProps {
 	item: ShoppingItem;
@@ -60,6 +63,14 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	const deleteConfirm = useConfirmDelete();
 	const isDeleteArmed = deleteConfirm.confirmId === item.id;
 	const buyerName = item.boughtByMemberId ? buyer?.name : null;
+	const swipeStartX = useRef<number | null>(null);
+	const [swipeX, setSwipeX] = useState(0);
+
+	function endSwipe(): void {
+		if (swipeStartX.current !== null && swipeX >= SWIPE_TOGGLE_PX && !pending) onToggle(item);
+		swipeStartX.current = null;
+		setSwipeX(0);
+	}
 
 	function handleDelete(): void {
 		if (!deleteConfirm.request(item.id)) return;
@@ -68,142 +79,176 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	}
 
 	return (
-		<Item
-			data-shopping-row
-			id={`shopping-${item.id}`}
-			className={cn(
-				'scroll-mt-24 flex-wrap sm:flex-nowrap',
-				highlighted && 'ring-2 ring-inset ring-ring',
-			)}
-			aria-busy={pending}
-		>
-			<ItemMedia className="order-1 size-11 self-center sm:order-none">
-				<Checkbox
-					checked={isBought}
-					onCheckedChange={() => onToggle(item)}
-					disabled={pending}
-					size="lg"
-					className="relative after:absolute after:-inset-2.5"
-					aria-label={isBought ? `${item.name} wieder öffnen` : `${item.name} erledigen`}
-				/>
-			</ItemMedia>
-			<ItemContent className="order-3 basis-full min-w-0 sm:order-none sm:basis-auto">
-				<ItemTitle
-					className={cn(
-						'w-full line-clamp-none break-words [overflow-wrap:anywhere]',
-						isBought && 'line-through',
-					)}
-				>
-					{item.name}
-				</ItemTitle>
-				<ItemDescription className="line-clamp-none flex min-h-5 flex-wrap items-center gap-1 break-words">
-					{item.quantity && <span>{item.quantity} · </span>}
-					{pending ? (
-						<output aria-live="polite" className="inline-flex items-center gap-1">
-							<Spinner aria-hidden />
-							Speichert…
-						</output>
-					) : isBought ? (
-						buyerName ? (
-							`Hinzugefügt von ${adder.name} · Gekauft von ${buyerName}`
-						) : (
-							`Hinzugefügt von ${adder.name} · Gekauft`
-						)
-					) : (
-						`Hinzugefügt von ${adder.name}`
-					)}
-				</ItemDescription>
-			</ItemContent>
-			<ItemActions className="order-2 ml-auto basis-auto justify-end sm:order-none">
-				<Drawer onOpenChange={() => deleteConfirm.cancel()}>
-					<DrawerTrigger
-						render={
-							<Button
-								variant="ghost"
-								size="icon"
-								className="size-11"
-								aria-label={`Artikelaktionen: ${item.name}`}
-							/>
-						}
+		<li className="relative overflow-hidden">
+			<div
+				aria-hidden
+				className={cn(
+					'absolute inset-0 flex items-center gap-2 bg-muted px-4 text-sm font-medium',
+					swipeX === 0 && 'invisible',
+				)}
+			>
+				{isBought ? <RotateCcw className="size-4" /> : <Check className="size-4" />}
+				{isBought ? 'Wieder offen' : 'Gekauft'}
+			</div>
+			<Item
+				data-shopping-row
+				id={`shopping-${item.id}`}
+				className={cn(
+					'relative touch-pan-y scroll-mt-24 bg-background',
+					swipeX === 0 && 'transition-transform',
+					highlighted && 'ring-2 ring-inset ring-ring',
+				)}
+				style={swipeX > 0 ? { transform: `translateX(${swipeX}px)` } : undefined}
+				aria-busy={pending}
+				onPointerDown={(event) => {
+					// Maus bleibt beim Klicken; Wischen ist eine Touch-Geste.
+					if (event.pointerType !== 'mouse') swipeStartX.current = event.clientX;
+				}}
+				onPointerMove={(event) => {
+					if (swipeStartX.current === null) return;
+					setSwipeX(Math.min(Math.max(0, event.clientX - swipeStartX.current), 120));
+				}}
+				onPointerUp={endSwipe}
+				onPointerCancel={() => {
+					swipeStartX.current = null;
+					setSwipeX(0);
+				}}
+			>
+				<ItemMedia className="size-11 self-center">
+					<Checkbox
+						checked={isBought}
+						onCheckedChange={() => onToggle(item)}
+						disabled={pending}
+						size="lg"
+						className="relative after:absolute after:-inset-2.5"
+						aria-label={isBought ? `${item.name} wieder öffnen` : `${item.name} erledigen`}
+					/>
+				</ItemMedia>
+				<ItemContent className="min-w-0 basis-32">
+					<ItemTitle
+						className={cn(
+							'block line-clamp-none break-words [overflow-wrap:anywhere]',
+							isBought && 'text-muted-foreground line-through',
+						)}
 					>
-						<MoreHorizontal aria-hidden />
-					</DrawerTrigger>
-					<DrawerContent className="mx-auto w-full max-w-md">
-						<DrawerHeader>
-							<DrawerTitle className="break-words">{item.name}</DrawerTitle>
-							<DrawerDescription>{item.quantity || 'Keine Menge angegeben'}</DrawerDescription>
-						</DrawerHeader>
-						<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
-							<Badge variant="secondary" className="w-fit">
-								{isBought ? 'Erledigt' : 'Offen'}
-							</Badge>
-							<p className="text-sm text-muted-foreground">
-								Hinzugefügt von {adder.name}
-								{isBought
-									? buyerName
-										? ` · Gekauft von ${buyerName}`
-										: ' · Gekauft · Person nicht angegeben'
-									: ''}
-							</p>
-							{isBought && (
-								<>
-									<Button
-										nativeButton={false}
-										render={
-											<Link
-												href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?${new URLSearchParams({ desc: item.name, source: 'shopping', ...(item.boughtByMemberId ? { paidBy: item.boughtByMemberId } : {}) })}`}
-											/>
-										}
-										className="min-h-11"
-									>
-										<Receipt data-icon="inline-start" aria-hidden />
-										Als Ausgabe übernehmen
-									</Button>
-									<p className="text-sm text-muted-foreground">
-										Nur dieser Artikel wird vorausgefüllt. Betrag und Aufteilung prüfst du vor dem
-										Speichern.
-									</p>
-								</>
-							)}
-							{canRemove && isDeleteArmed && (
-								<Alert>
-									<AlertDescription>
-										„{item.name}“ endgültig entfernen? Das lässt sich nicht rückgängig machen.
-									</AlertDescription>
-								</Alert>
-							)}
-							{removeError && (
-								<Alert variant="destructive">
-									<AlertDescription>{removeError}</AlertDescription>
-								</Alert>
-							)}
-						</div>
-						<DrawerFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
-							{canRemove && (
+						{item.name}
+						{item.quantity && (
+							<>
+								{' '}
+								<span className="font-normal whitespace-nowrap text-muted-foreground">
+									· {item.quantity}
+								</span>
+							</>
+						)}
+					</ItemTitle>
+					<ItemDescription className="line-clamp-1">
+						{pending ? (
+							<output aria-live="polite" className="inline-flex items-center gap-1">
+								<Spinner aria-hidden />
+								Speichert…
+							</output>
+						) : isBought ? (
+							buyerName ? (
+								`Gekauft von ${buyerName}`
+							) : (
+								'Gekauft'
+							)
+						) : (
+							`von ${adder.name}`
+						)}
+					</ItemDescription>
+				</ItemContent>
+				<ItemActions className="ml-auto">
+					<Drawer onOpenChange={() => deleteConfirm.cancel()}>
+						<DrawerTrigger
+							render={
 								<Button
-									type="button"
-									variant="destructive"
-									onClick={handleDelete}
-									disabled={pending}
-									className="min-h-11"
-									aria-label={`${item.name} entfernen${isDeleteArmed ? ' bestätigen' : ''}`}
-								>
-									<Trash2 data-icon="inline-start" aria-hidden />
-									{isDeleteArmed ? 'Endgültig entfernen' : 'Artikel entfernen'}
-								</Button>
-							)}
-							{!canRemove && (
+									variant="ghost"
+									size="icon"
+									className="size-11"
+									aria-label={`Artikelaktionen: ${item.name}`}
+								/>
+							}
+						>
+							<MoreHorizontal aria-hidden />
+						</DrawerTrigger>
+						<DrawerContent className="mx-auto w-full max-w-md">
+							<DrawerHeader>
+								<DrawerTitle className="break-words">{item.name}</DrawerTitle>
+								<DrawerDescription>{item.quantity || 'Keine Menge angegeben'}</DrawerDescription>
+							</DrawerHeader>
+							<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
+								<Badge variant="secondary" className="w-fit">
+									{isBought ? 'Erledigt' : 'Offen'}
+								</Badge>
 								<p className="text-sm text-muted-foreground">
-									Nur die Person, die den Artikel hinzugefügt hat, kann ihn entfernen.
+									Hinzugefügt von {adder.name}
+									{isBought
+										? buyerName
+											? ` · Gekauft von ${buyerName}`
+											: ' · Gekauft · Person nicht angegeben'
+										: ''}
 								</p>
-							)}
-							<DrawerClose render={<Button variant="outline" className="min-h-11" />}>
-								Schließen
-							</DrawerClose>
-						</DrawerFooter>
-					</DrawerContent>
-				</Drawer>
-			</ItemActions>
-		</Item>
+								{isBought && (
+									<>
+										<Button
+											nativeButton={false}
+											render={
+												<Link
+													href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?${new URLSearchParams({ desc: item.name, source: 'shopping', ...(item.boughtByMemberId ? { paidBy: item.boughtByMemberId } : {}) })}`}
+												/>
+											}
+											className="min-h-11"
+										>
+											<Receipt data-icon="inline-start" aria-hidden />
+											Als Ausgabe übernehmen
+										</Button>
+										<p className="text-sm text-muted-foreground">
+											Nur dieser Artikel wird vorausgefüllt. Betrag und Aufteilung prüfst du vor dem
+											Speichern.
+										</p>
+									</>
+								)}
+								{canRemove && isDeleteArmed && (
+									<Alert>
+										<AlertDescription>
+											„{item.name}“ endgültig entfernen? Das lässt sich nicht rückgängig machen.
+										</AlertDescription>
+									</Alert>
+								)}
+								{removeError && (
+									<Alert variant="destructive">
+										<AlertDescription>{removeError}</AlertDescription>
+									</Alert>
+								)}
+							</div>
+							<DrawerFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
+								{canRemove && (
+									<Button
+										type="button"
+										variant="destructive"
+										onClick={handleDelete}
+										disabled={pending}
+										className="min-h-11"
+										aria-label={`${item.name} entfernen${isDeleteArmed ? ' bestätigen' : ''}`}
+									>
+										<Trash2 data-icon="inline-start" aria-hidden />
+										{isDeleteArmed ? 'Endgültig entfernen' : 'Artikel entfernen'}
+									</Button>
+								)}
+								{!canRemove && (
+									<p className="text-sm text-muted-foreground">
+										Nur die Person, die den Artikel hinzugefügt hat, kann ihn entfernen.
+									</p>
+								)}
+								<DrawerClose render={<Button variant="outline" className="min-h-11" />}>
+									Schließen
+								</DrawerClose>
+							</DrawerFooter>
+						</DrawerContent>
+					</Drawer>
+				</ItemActions>
+			</Item>
+		</li>
 	);
 });

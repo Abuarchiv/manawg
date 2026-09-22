@@ -72,11 +72,15 @@ const NOTIFICATION_PREFERENCES: ReadonlyArray<{
 	},
 	{ key: 'notifyChores', label: 'Putzplan', description: 'Fällige Aufgaben und Erinnerungen' },
 	{ key: 'notifyExpenses', label: 'Ausgaben', description: 'Neue gemeinsame Kosten' },
-	{ key: 'notifyReminders', label: 'Mahnungen', description: 'Erinnerungen an offene Aufgaben' },
-	{ key: 'notifyShopping', label: 'Einkauf', description: 'Neue Einträge auf der Einkaufsliste' },
+	{
+		key: 'notifyReminders',
+		label: 'Erinnerungen',
+		description: 'Wenn dich jemand an einen offenen Betrag erinnert',
+	},
+	{ key: 'notifyShopping', label: 'Einkäufe', description: 'Neue Einträge auf der Einkaufsliste' },
 	{ key: 'notifyInventory', label: 'Vorräte', description: 'Niedrige Vorratsbestände' },
 	{ key: 'notifyChat', label: 'Chat', description: 'Neue Nachrichten und Erwähnungen' },
-	{ key: 'notifyEvents', label: 'Termine', description: 'Kalendertermine und Erinnerungen' },
+	{ key: 'notifyEvents', label: 'Kalender', description: 'Kalendertermine und Erinnerungen' },
 ];
 
 export function NotificationSection({
@@ -428,7 +432,7 @@ export function NotificationSection({
 				<div className="border-border grid min-w-0 max-w-full gap-2 border-t pt-3">
 					<div className="flex min-h-[44px] items-center justify-between gap-2">
 						<div className="min-w-0">
-							<div className="text-foreground text-[13.5px] font-medium">Ruhezeit</div>
+							<div className="text-foreground text-sm font-medium">Ruhezeit</div>
 							<div className="text-muted-foreground text-xs">
 								In dieser Zeit werden Push-Benachrichtigungen pausiert.
 							</div>

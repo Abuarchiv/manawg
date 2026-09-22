@@ -294,17 +294,16 @@ async function assertViewportLayout(page: Page, route: LayoutRoute): Promise<voi
 	const { nav } = await assertNav(page, viewportWidth);
 
 	if (route === 'shopping') {
-		for (const control of [
-			page.locator('#shopping-name'),
-			page.locator('#shopping-qty'),
-			page.getByRole('button', { name: 'Artikel hinzufügen' }),
-		]) {
-			const box = await control.boundingBox();
-			expect(box).not.toBeNull();
-			if (!box) continue;
-			expect(box.width).toBeGreaterThanOrEqual(240);
-			expect(box.x + box.width).toBeLessThanOrEqual(viewportWidth - 16 + 1);
-			expect(box.height).toBeGreaterThanOrEqual(44);
+		const input = await page.locator('#shopping-name').boundingBox();
+		const submit = await page.getByRole('button', { name: 'Artikel hinzufügen' }).boundingBox();
+		expect(input).not.toBeNull();
+		expect(submit).not.toBeNull();
+		if (input && submit) {
+			// Eine Eingabezeile; erst bei großer Schrift rutscht der Knopf darunter.
+			expect(input.width).toBeGreaterThanOrEqual(200);
+			expect(input.height).toBeGreaterThanOrEqual(44);
+			expect(submit.height).toBeGreaterThanOrEqual(44);
+			expect(submit.x + submit.width).toBeLessThanOrEqual(viewportWidth - 16 + 1);
 		}
 		const row = page.locator('[data-shopping-row]').first();
 		const title = row.locator('[data-slot="item-title"]');
@@ -316,33 +315,25 @@ async function assertViewportLayout(page: Page, route: LayoutRoute): Promise<voi
 		expect(titleBox).not.toBeNull();
 		expect(actionsBox).not.toBeNull();
 		if (rowBox && titleBox && actionsBox) {
-			const titleMetrics = await title.evaluate((element) => {
-				const rowElement = element.closest('[data-shopping-row]');
-				if (!rowElement) throw new Error('shopping row missing');
-				const style = getComputedStyle(rowElement);
-				const innerWidth =
-					rowElement.getBoundingClientRect().width -
-					Number.parseFloat(style.paddingLeft) -
-					Number.parseFloat(style.paddingRight) -
-					Number.parseFloat(style.borderLeftWidth) -
-					Number.parseFloat(style.borderRightWidth);
+			const wordLines = await title.evaluate((element) => {
 				const textNode = [...element.childNodes].find((node) => node.nodeType === Node.TEXT_NODE);
 				if (!textNode) throw new Error('shopping title text node missing');
 				const value = textNode.textContent ?? '';
-				const wordLines = ['Ungesüßte', 'Hafermilch'].map((word) => {
+				return ['Ungesüßte', 'Hafermilch'].map((word) => {
 					const start = value.indexOf(word);
 					const range = document.createRange();
 					range.setStart(textNode, start);
 					range.setEnd(textNode, start + word.length);
 					return { word, lineCount: range.getClientRects().length };
 				});
-				return { innerWidth, titleWidth: element.getBoundingClientRect().width, wordLines };
 			});
-			expect(Math.abs(titleMetrics.titleWidth - titleMetrics.innerWidth)).toBeLessThanOrEqual(2);
-			for (const word of titleMetrics.wordLines) expect(word.lineCount, word.word).toBe(1);
-			expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
+			for (const word of wordLines) expect(word.lineCount, word.word).toBe(1);
+			// Name und Aktionen überlappen nie: nebeneinander oder (bei großer Schrift) untereinander.
+			expect(
+				titleBox.x + titleBox.width <= actionsBox.x + 1 ||
+					titleBox.y + titleBox.height <= actionsBox.y + 1,
+			).toBe(true);
 			expect(actionsBox.x + actionsBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
-			expect(titleBox.y).toBeGreaterThanOrEqual(actionsBox.y + actionsBox.height - 1);
 		}
 	} else if (route === 'inventory') {
 		const row = page
@@ -369,11 +360,11 @@ async function assertViewportLayout(page: Page, route: LayoutRoute): Promise<voi
 		const contentBox = await page.locator('[data-home-content]').boundingBox();
 		expect(contentBox).not.toBeNull();
 		if (contentBox) expect(contentBox.x + contentBox.width).toBeLessThanOrEqual(viewportWidth + 1);
-		const detail = page.getByText('Du bist dran · heute fällig', { exact: true });
+		const detail = page.getByText('Für dich · heute fällig', { exact: true });
 		await expect(detail).toHaveCount(1);
 		const detailMetrics = await detail.evaluate((element) => {
-			const card = element.closest('[data-slot="card"]');
-			if (!card) throw new Error('Home focus card missing');
+			const card = element.closest('li');
+			if (!card) throw new Error('Home today row missing');
 			const cardStyle = getComputedStyle(card);
 			const cardInnerWidth =
 				card.getBoundingClientRect().width -
@@ -397,6 +388,7 @@ async function assertViewportLayout(page: Page, route: LayoutRoute): Promise<voi
 		for (const word of detailMetrics.words) expect(word.lineCount, word.word).toBe(1);
 	}
 
+	if (route === 'shopping') await page.getByText(/^Erledigt \(/).click();
 	await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
 	await page.waitForTimeout(50);
 	const lastAction =
@@ -408,13 +400,17 @@ async function assertViewportLayout(page: Page, route: LayoutRoute): Promise<voi
 					? page.getByRole('button', { name: /Als erledigt markieren: Bad putzen/ })
 					: page.locator('[data-home-content] a').last();
 	await expect(lastAction).toHaveCount(1);
-	const lastActionBox = await lastAction.boundingBox();
-	const finalNavBox = await nav.boundingBox();
-	expect(lastActionBox).not.toBeNull();
-	expect(finalNavBox).not.toBeNull();
-	if (lastActionBox && finalNavBox) {
-		expect(lastActionBox.y + lastActionBox.height).toBeLessThanOrEqual(finalNavBox.y - 4);
-	}
+	// Aufgeklappte Abschnitte und smooth scroll brauchen einen Moment, bis das Layout steht.
+	await expect(async () => {
+		await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+		const lastActionBox = await lastAction.boundingBox();
+		const finalNavBox = await nav.boundingBox();
+		expect(lastActionBox).not.toBeNull();
+		expect(finalNavBox).not.toBeNull();
+		if (lastActionBox && finalNavBox) {
+			expect(lastActionBox.y + lastActionBox.height).toBeLessThanOrEqual(finalNavBox.y - 4);
+		}
+	}).toPass({ timeout: 5000 });
 }
 
 for (const route of ['home', 'chores', 'shopping', 'inventory'] as const) {
@@ -438,7 +434,7 @@ for (const route of ['home', 'chores', 'shopping', 'inventory'] as const) {
 					page.getByRole('heading', {
 						name:
 							route === 'home'
-								? 'Heute wichtig'
+								? 'Heute für dich'
 								: route === 'chores'
 									? 'Putzplan'
 									: route === 'shopping'

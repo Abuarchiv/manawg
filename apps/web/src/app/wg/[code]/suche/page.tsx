@@ -34,7 +34,7 @@ import {
 	filterSearchResultsByQuickFilter,
 } from '@/core/reads/search';
 import { cn } from '@/shared/lib/cn';
-import { Search, SearchX, X } from 'lucide-react';
+import { ChevronRight, Search, SearchX, X } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -47,11 +47,11 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 const MODULE_FILTERS: Array<{ id: WgSearchModule; label: string }> = [
 	{ id: 'pinnwand', label: 'Pinnwand' },
-	{ id: 'putzen', label: 'Putzen' },
+	{ id: 'putzen', label: 'Putzplan' },
 	{ id: 'abwesenheiten', label: 'Abwesenheiten' },
 	{ id: 'ausgaben', label: 'Ausgaben' },
 	{ id: 'fixkosten', label: 'Fixkosten' },
-	{ id: 'einkauf', label: 'Einkauf' },
+	{ id: 'einkauf', label: 'Einkäufe' },
 ];
 
 const QUICK_FILTERS: Array<{ id: WgSearchQuickFilter | 'all'; label: string }> = [
@@ -59,7 +59,7 @@ const QUICK_FILTERS: Array<{ id: WgSearchQuickFilter | 'all'; label: string }> =
 	{ id: 'open', label: 'Offen' },
 	{ id: 'mine', label: 'Meine' },
 	{ id: 'withImage', label: 'Mit Bild' },
-	{ id: 'overdue', label: 'Überfällig' },
+	{ id: 'overdue', label: 'Noch offen' },
 	{ id: 'unpaid', label: 'Unbezahlt' },
 ];
 
@@ -187,7 +187,9 @@ export default function SuchePage() {
 				<CardContent className="p-0">
 					<FieldGroup className="gap-3">
 						<Field>
-							<FieldLabel htmlFor="wg-search">Suchbegriff</FieldLabel>
+							<FieldLabel htmlFor="wg-search" className="sr-only">
+								Suchbegriff
+							</FieldLabel>
 							<InputGroup className="min-h-11">
 								<InputGroupAddon align="inline-start">
 									<Search className="h-4 w-4" aria-hidden />
@@ -254,16 +256,20 @@ export default function SuchePage() {
 							</NativeSelect>
 						</Field>
 
-						<details className="border-b border-border">
-							<summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
-								<span>Weitere Filter</span>
+						<details className="group">
+							<summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
+								<ChevronRight
+									aria-hidden
+									className="size-4 text-muted-foreground transition-transform group-open:rotate-90"
+								/>
+								<span className="flex-1">Bereiche eingrenzen</span>
 								{moduleFilters.length > 0 && (
 									<span className="text-muted-foreground text-xs font-normal">
 										{moduleFilters.length} ausgewählt
 									</span>
 								)}
 							</summary>
-							<fieldset className="flex flex-wrap gap-2 border-t border-border pt-3">
+							<fieldset className="flex flex-wrap gap-2 pt-1">
 								<legend className="sr-only">Suchbereiche filtern</legend>
 								{MODULE_FILTERS.map((module) => (
 									<Button

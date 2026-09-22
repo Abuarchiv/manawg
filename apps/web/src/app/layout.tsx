@@ -122,6 +122,10 @@ export const viewport: Viewport = {
 	width: 'device-width',
 	initialScale: 1,
 	viewportFit: 'cover',
+	// Keep fixed bottom chrome (chat composer, bottom nav) above the Android
+	// keyboard by resizing the whole layout, matching iOS keyboard behavior.
+	// Default 'resizes-visual' would let the keyboard overlay them.
+	interactiveWidget: 'resizes-content',
 	// The app icon and system chrome use the brand's Neutral 950.
 	themeColor: [
 		{ media: '(prefers-color-scheme: light)', color: '#0a0a0a' },
@@ -176,10 +180,9 @@ export default function RootLayout({
 					Zum Hauptinhalt springen
 				</a>
 				<ThemeProvider>
-					{/* Responsive web canvas capped at the Brandbook's 1240px desktop
-					    width. It remains full-width on phones; bottom navigation keeps
-					    its own compact width on large screens. */}
-					<div className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] bg-background">
+					{/* Phone column on every screen; wider viewports show backdrop
+					    and a hairline edge around it. */}
+					<div className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] bg-background min-[30rem]:border-x">
 						{children}
 						<PwaRegister />
 						<InstallPrompt />

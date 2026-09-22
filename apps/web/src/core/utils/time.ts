@@ -116,3 +116,20 @@ export function formatTimeFull(iso: string): string {
 		minute: '2-digit',
 	}).format(date);
 }
+
+/** Monday 00:00 (local time) of the week containing `date`. */
+export function startOfWeek(date: Date): Date {
+	const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+	start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+	return start;
+}
+
+/** "Diese Woche", "Letzte Woche" or "Woche ab 08.09." for list section headers. */
+export function formatWeekLabel(weekStart: Date, now = new Date()): string {
+	const weeksAgo = Math.round(
+		(startOfWeek(now).getTime() - weekStart.getTime()) / (7 * MS_PER_DAY),
+	);
+	if (weeksAgo === 0) return 'Diese Woche';
+	if (weeksAgo === 1) return 'Letzte Woche';
+	return `Woche ab ${formatShortDate(weekStart.toISOString())}`;
+}
