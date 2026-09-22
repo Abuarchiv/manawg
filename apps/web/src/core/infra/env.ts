@@ -74,6 +74,22 @@ function isSet(env: EnvSource, name: string): boolean {
 	return (env[name] ?? '').trim().length > 0;
 }
 
+/**
+ * Read a bounded positive-integer row limit for list endpoints.
+ *
+ * List routes cap how many rows one request may materialise, so the cap has to
+ * stay a cap: operators can tune it per deployment, but the parsed value is
+ * clamped to `[1, max]` and anything unparsable falls back to `fallback`,
+ * which keeps a typo in the environment from disabling the protection.
+ */
+export function readListLimit(env: EnvSource, name: string, fallback: number, max: number): number {
+	const raw = (env[name] ?? '').trim();
+	if (raw.length === 0) return fallback;
+	const parsed = Number(raw);
+	if (!Number.isInteger(parsed)) return fallback;
+	return Math.min(Math.max(parsed, 1), max);
+}
+
 function isValidHttpsUrl(value: string | undefined): boolean {
 	if (!value?.trim()) return false;
 	try {

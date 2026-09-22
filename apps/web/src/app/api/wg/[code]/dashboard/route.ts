@@ -2,6 +2,7 @@ import { serverError } from '@/core/errors';
 import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { buildE2EDashboardData } from '@/core/infra/e2e-db-down';
+import { logApiError } from '@/core/infra/observability';
 import { type NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -35,7 +36,7 @@ export async function GET(
 			headers: { 'Cache-Control': 'private, no-store' },
 		});
 	} catch (err) {
-		console.error('[dashboard GET]', err);
+		logApiError('[dashboard GET]', err);
 		return serverError(err);
 	}
 }

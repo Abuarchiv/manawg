@@ -2,6 +2,7 @@ import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers } from '@/core/db';
 import { apiError } from '@/core/errors';
 import { verifyMemberToken } from '@/core/guards/member-token';
+import { logApiError } from '@/core/infra/observability';
 import { MEMBER_TOKEN_HEADER } from '@/shared/lib/member-header';
 import { and, eq } from 'drizzle-orm';
 import type { NextRequest, NextResponse } from 'next/server';
@@ -11,11 +12,16 @@ const HTTP_SERVICE_UNAVAILABLE = 503;
 const HTTP_UNAUTHORIZED = 401;
 
 /**
- * Loose UUID v4-ish shape check. We do not enforce the version nibble strictly
- * because Postgres `uuid` accepts any well-formed UUID. We only want to reject
- * obvious garbage before hitting the database.
+ * Strict UUID v4 shape check: version nibble `4` plus the RFC 4122 variant
+ * bits `8|9|a|b`. Every id this app validates is generated as v4
+ * (`gen_random_uuid()`, `crypto.randomUUID()`, Supabase auth ids), so
+ * requiring the version keeps predictable v1 ids — timestamp and node derived
+ * — out of path params and body-supplied member ids, where a guessable id
+ * would address another member's row. Garbage is still rejected before the
+ * database.
  */
-export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const UUID_PATTERN =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function isUuid(value: unknown): value is string {
 	return typeof value === 'string' && UUID_PATTERN.test(value);
@@ -81,7 +87,7 @@ export async function requireMember(
 		const verified = verifyMemberToken(wgId, row.id, memberToken);
 		return { ok: true, member: { memberId: row.id, name: row.name, verified } };
 	} catch (err) {
-		console.error('[requireMember] db error', err);
+		logApiError('[requireMember] db error', err);
 		return { ok: false, response: apiError('db_error', HTTP_SERVICE_UNAVAILABLE) };
 	}
 }

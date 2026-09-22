@@ -7,6 +7,7 @@ import { apiError, badRequest, serverError, tooMany } from '@/core/errors';
 import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { deriveMemberToken } from '@/core/guards/member-token';
 import { E2E_CREATED_WG, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
+import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
 import { generateShareCode, isValidShareCode } from '@/shared/lib/share-code';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	try {
 		user = await getAuthenticatedUser(req);
 	} catch (err) {
-		console.error('[api/wg POST] auth lookup failed', err);
+		logApiError('[api/wg POST] auth lookup failed', err);
 		return serverError('auth_unavailable');
 	}
 	if (!user) return apiError('auth_required', 401, 'auth_required');
@@ -178,10 +179,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					if (!isUniqueShareCodeViolation(err)) throw err;
 				}
 			}
-			console.error('[api/wg POST] share code retries exhausted', lastError);
+			logApiError('[api/wg POST] share code retries exhausted', lastError);
 			return serverError('share_code_exhausted');
 		} catch (err) {
-			console.error('[api/wg POST] insert failed', err);
+			logApiError('[api/wg POST] insert failed', err);
 			return serverError('db_error');
 		}
 	});

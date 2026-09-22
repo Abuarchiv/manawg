@@ -98,7 +98,8 @@ export function payloadTooLarge(
  * an explicit retryable 503 so callers never continue into the mutation.
  *
  * Supports two calling styles (backward-compatible):
- *   - `serverError()` — response-only path, nothing reported
+ *   - `serverError()` — reports `server_error`, so bare calls are still
+ *     visible to error monitoring instead of failing silently
  *   - `serverError('share_code_exhausted')` — response message, also reported
  *   - `serverError(err, 'message')` — reports the caught error, then returns 500
  *
@@ -123,9 +124,7 @@ export function serverError(
 	}
 	if (typeof errOrMessage === 'string' || errOrMessage === undefined) {
 		const finalMessage = typeof errOrMessage === 'string' ? errOrMessage : message;
-		if (typeof errOrMessage === 'string') {
-			captureException(new Error(finalMessage));
-		}
+		captureException(new Error(finalMessage));
 		return apiError(finalMessage, HTTP_SERVER_ERROR, code);
 	}
 

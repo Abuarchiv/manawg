@@ -49,7 +49,11 @@ export function parseMentions(body: string): ParsedMentions {
 		const name = match[2];
 		if (typeof name === 'string' && name.length > 0) matches.add(name);
 	}
-	return { mentions: [...matches], cleanedBody: body.trim() };
+	// The `@name` markers are parsing input, not message text: strip them so
+	// the cleaned body only carries what the author actually wrote, and normalize
+	// the whitespace the removal leaves behind.
+	const cleanedBody = body.replace(MENTION_PATTERN, '$1').replace(/\s+/g, ' ').trim();
+	return { mentions: [...matches], cleanedBody };
 }
 
 function toDate(value: Date | string): Date {
@@ -142,7 +146,8 @@ export function sanitizeMessageBody(body: unknown, maxLength = 4000): string | n
 	return trimmed.length > maxLength ? null : trimmed;
 }
 
-export function previewBody(body: string, max = 120): string {
+export function previewBody(body: string | null | undefined, max = 120): string {
+	if (typeof body !== 'string') return '';
 	const normalized = body.replace(/\s+/g, ' ').trim();
 	return normalized.length > max ? `${normalized.slice(0, max - 1)}…` : normalized;
 }

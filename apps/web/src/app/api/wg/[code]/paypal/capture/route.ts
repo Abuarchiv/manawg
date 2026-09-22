@@ -10,6 +10,7 @@ import {
 } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { logApiError } from '@/core/infra/observability';
 import {
 	type PayPalOrderResponse,
 	capturePayPalOrder,
@@ -166,7 +167,7 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 					capturePayment.payeeMerchantId,
 				);
 			} catch (statusError) {
-				console.error('[paypal capture] status recovery failed', { captureError, statusError });
+				logApiError('[paypal capture] status recovery failed', captureError, statusError);
 				return conflict('paypal_capture_pending');
 			}
 		}
@@ -234,7 +235,7 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 				},
 			});
 		} catch (auditError) {
-			console.error('[paypal capture] audit failed', auditError);
+			logApiError('[paypal capture] audit failed', auditError);
 		}
 
 		return NextResponse.json({
@@ -243,7 +244,7 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 			currency: capturePayment.currency,
 		});
 	} catch (err) {
-		console.error('[paypal capture]', err);
+		logApiError('[paypal capture]', err);
 		return serverError('paypal_capture_failed');
 	}
 });

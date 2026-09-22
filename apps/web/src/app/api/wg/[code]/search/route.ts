@@ -14,6 +14,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { buildE2EDashboardData } from '@/core/infra/e2e-db-down';
+import { logApiError } from '@/core/infra/observability';
 import { getSearchSuggestions, searchWgItems } from '@/core/reads/search';
 import { desc, eq, inArray } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -284,7 +285,7 @@ export async function GET(
 			{ headers: { 'Cache-Control': 'private, no-store' } },
 		);
 	} catch (err) {
-		console.error('[search GET]', err);
+		logApiError('[search GET]', err);
 		return serverError(err);
 	}
 }

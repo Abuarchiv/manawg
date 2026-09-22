@@ -14,6 +14,7 @@ import { badRequest, serverError, tooMany } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
 import type { RouteCtx } from '@/core/infra/api-types';
+import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgExportLimiter } from '@/core/rate-limit';
 import {
 	type ExportSectionKey,
@@ -490,7 +491,7 @@ export async function GET(
 
 		return NextResponse.json(data);
 	} catch (err) {
-		console.error('[export GET]', err);
+		logApiError('[export GET]', err);
 		return serverError(err);
 	}
 }

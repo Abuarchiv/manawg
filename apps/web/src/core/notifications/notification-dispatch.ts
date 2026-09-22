@@ -196,7 +196,7 @@ export async function dispatchNotification(
 	const targetMembers = rows
 		.filter((member) => member.id !== input.excludeMemberId)
 		// Moved-out members never receive push, even when explicitly targeted.
-		.filter((member) => member.deactivatedAt == null)
+		.filter((member) => member.deactivatedAt === null)
 		.filter(
 			(member) =>
 				input.bypassPreferences ||

@@ -12,6 +12,7 @@ import {
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
+import { readListLimit } from '@/core/infra/env';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { isOpenShoppingItemDuplicate } from '@/features/shopping/shopping-duplicate';
@@ -23,6 +24,8 @@ const NAME_MIN = 1;
 const NAME_MAX = 120;
 const QUANTITY_MAX = 40;
 const SHOPPING_ITEMS_LIST_LIMIT = 1000;
+/** Hard ceiling for `SHOPPING_ITEMS_LIST_LIMIT` — env can lower or raise, never unbound. */
+const SHOPPING_ITEMS_LIST_LIMIT_MAX = 5000;
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
 type ShoppingCreateWarning =
@@ -50,12 +53,18 @@ export const GET = withWgRoute(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
+		const listLimit = readListLimit(
+			process.env,
+			'SHOPPING_ITEMS_LIST_LIMIT',
+			SHOPPING_ITEMS_LIST_LIMIT,
+			SHOPPING_ITEMS_LIST_LIMIT_MAX,
+		);
 		const items = await db
 			.select()
 			.from(shoppingItems)
 			.where(eq(shoppingItems.wgId, wgId))
 			.orderBy(asc(shoppingItems.boughtAt), asc(shoppingItems.createdAt))
-			.limit(SHOPPING_ITEMS_LIST_LIMIT);
+			.limit(listLimit);
 		return NextResponse.json({ items });
 	},
 	{ fixture: () => NextResponse.json({ items: [] }) },
@@ -182,9 +191,11 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 		const responseBody = { item, warning };
 		if (idemScope && idemKey && replayReservation?.owned) {
 			replayReservation.resolve(responseBody);
-			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) =>
-				console.warn('[shopping POST] idem cache write failed', err),
-			);
+			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) => {
+				if (process.env.NODE_ENV === 'development') {
+					console.warn('[shopping POST] idem cache write failed', err);
+				}
+			});
 		}
 		return NextResponse.json(responseBody);
 	} catch (err) {

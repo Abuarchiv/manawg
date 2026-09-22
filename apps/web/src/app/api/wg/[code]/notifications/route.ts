@@ -7,6 +7,7 @@ import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { readJsonBody } from '@/core/http/read-json';
+import { logApiError } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, notifTestLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
@@ -247,7 +248,7 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 						bypassPreferences: true,
 					});
 				} catch (err) {
-					console.error('[notifications POST] test notification failed', err);
+					logApiError('[notifications POST] test notification failed', err);
 					return serverError(err, 'unexpected_error');
 				}
 				return NextResponse.json({ ok: true });
@@ -311,7 +312,7 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 						if (subscribeErr.code === 'member_not_found') return notFound('member_not_found');
 						return forbidden('endpoint_owned', 'endpoint_owned');
 					}
-					console.error('[notifications POST] push subscribe failed', subscribeErr);
+					logApiError('[notifications POST] push subscribe failed', subscribeErr);
 					return serverError(subscribeErr, 'unexpected_error');
 				}
 				await recordAuditEvent({

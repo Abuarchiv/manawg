@@ -220,9 +220,11 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 		};
 		if (idemScope && idemKey && replayReservation?.owned) {
 			replayReservation.resolve(responseBody);
-			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) =>
-				console.warn('[absences POST] idem cache write failed', err),
-			);
+			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) => {
+				if (process.env.NODE_ENV === 'development') {
+					console.warn('[absences POST] idem cache write failed', err);
+				}
+			});
 		}
 		return NextResponse.json(responseBody);
 	} catch (err) {

@@ -2,6 +2,7 @@ import { calendarSubscriptions, db, wgEvents } from '@/core/db';
 import { notFound, serverError, tooMany } from '@/core/errors';
 import { isUuid } from '@/core/guards/api-auth';
 import type { RouteCtx } from '@/core/infra/api-types';
+import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgReadLimiter } from '@/core/rate-limit';
 import { MS_PER_DAY } from '@/core/utils/time';
 import {
@@ -73,7 +74,7 @@ export async function GET(
 			},
 		});
 	} catch (err) {
-		console.error('[calendar feed GET]', err);
+		logApiError('[calendar feed GET]', err);
 		return serverError('db_error');
 	}
 }
