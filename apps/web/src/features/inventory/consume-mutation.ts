@@ -1,6 +1,5 @@
 import { shoppingItems, wgInventoryItems, wgInventoryLog } from '@/core/db';
 import type { WgInventoryItem, WgMember } from '@/core/db/schema';
-import type { DbTransaction } from '@/core/db/transaction';
 import {
 	buildShoppingPushPayload,
 	clampQuantity,
@@ -16,8 +15,44 @@ export type ConsumeInventoryMutationInput = {
 	delta: number;
 };
 
+export interface ConsumeInventoryTransaction {
+	select(): {
+		from(table: typeof wgInventoryItems): {
+			where(condition: unknown): {
+				limit(count: number): PromiseLike<WgInventoryItem[]>;
+			};
+		};
+	};
+	select(fields: {
+		id: typeof shoppingItems.id;
+		name: typeof shoppingItems.name;
+	}): {
+		from(table: typeof shoppingItems): {
+			where(condition: unknown): PromiseLike<Array<{ id: string; name: string }>>;
+		};
+	};
+	update(table: typeof wgInventoryItems): {
+		set(values: Partial<WgInventoryItem>): {
+			where(condition: unknown): {
+				returning(): PromiseLike<WgInventoryItem[]>;
+			};
+		};
+	};
+	insert(table: typeof shoppingItems | typeof wgInventoryLog): {
+		values(
+			values: typeof shoppingItems.$inferInsert | typeof wgInventoryLog.$inferInsert,
+		): PromiseLike<unknown> & {
+			onConflictDoNothing(config?: { target?: unknown; where?: unknown }): {
+				returning(fields: {
+					id: typeof shoppingItems.id;
+				}): PromiseLike<Array<{ id: string }>>;
+			};
+		};
+	};
+}
+
 export async function consumeInventoryMutation(
-	tx: DbTransaction,
+	tx: ConsumeInventoryTransaction,
 	input: ConsumeInventoryMutationInput,
 ) {
 	const existingRows = await tx

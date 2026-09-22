@@ -1,25 +1,15 @@
 import { expect, test } from '@playwright/test';
 import { shoppingItems, wgInventoryItems, wgInventoryLog } from '../src/core/db';
-import type { DbTransaction } from '../src/core/db/transaction';
+import type { WgInventoryItem } from '../src/core/db/schema';
 import { type ReplaySlotDependencies, claimReplaySlot } from '../src/core/guards/replay-slot';
 import {
 	type ConsumeInventoryMutationInput,
+	type ConsumeInventoryTransaction,
 	consumeInventoryMutation,
 } from '../src/features/inventory/consume-mutation';
 
 type InventoryState = {
-	item: {
-		id: string;
-		wgId: string;
-		name: string;
-		quantity: number;
-		unit: string;
-		threshold: number;
-		category: string;
-		lastDecrementedAt: Date | null;
-		createdAt: Date;
-		updatedAt: Date;
-	};
+	item: WgInventoryItem;
 	logs: Array<Record<string, unknown>>;
 	shopping: Array<{ id: string; name: string; boughtAt: Date | null }>;
 	updateCount: number;
@@ -53,7 +43,7 @@ function createState(): InventoryState {
 	};
 }
 
-function createFakeTransaction(state: InventoryState): DbTransaction {
+function createFakeTransaction(state: InventoryState): ConsumeInventoryTransaction {
 	const select = (..._fields: unknown[]) => {
 		let table: unknown;
 		const query = {
@@ -68,7 +58,12 @@ function createFakeTransaction(state: InventoryState): DbTransaction {
 				return Promise.resolve(table === wgInventoryItems ? [state.item] : []);
 			},
 			// biome-ignore lint/suspicious/noThenProperty: Drizzle queries are thenable; this fake mirrors that contract.
-			then(onFulfilled: (value: unknown[]) => unknown, onRejected?: (reason: unknown) => unknown) {
+			then<TResult1 = { id: string; name: string }[], TResult2 = never>(
+				onFulfilled?:
+					| ((value: { id: string; name: string }[]) => TResult1 | PromiseLike<TResult1>)
+					| null,
+				onRejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+			): PromiseLike<TResult1 | TResult2> {
 				return Promise.resolve(table === shoppingItems ? state.shopping : []).then(
 					onFulfilled,
 					onRejected,
@@ -79,9 +74,9 @@ function createFakeTransaction(state: InventoryState): DbTransaction {
 	};
 
 	const update = (table: unknown) => {
-		let values: Record<string, unknown> = {};
+		let values: Partial<WgInventoryItem> = {};
 		const query = {
-			set(nextValues: Record<string, unknown>) {
+			set(nextValues: Partial<WgInventoryItem>) {
 				values = nextValues;
 				return query;
 			},
@@ -128,14 +123,17 @@ function createFakeTransaction(state: InventoryState): DbTransaction {
 				return Promise.resolve(execute());
 			},
 			// biome-ignore lint/suspicious/noThenProperty: Drizzle queries are thenable; this fake mirrors that contract.
-			then(onFulfilled: (value: unknown[]) => unknown, onRejected?: (reason: unknown) => unknown) {
+			then<TResult1 = unknown, TResult2 = never>(
+				onFulfilled?: ((value: unknown) => TResult1 | PromiseLike<TResult1>) | null,
+				onRejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+			): PromiseLike<TResult1 | TResult2> {
 				return Promise.resolve(execute()).then(onFulfilled, onRejected);
 			},
 		};
 		return query;
 	};
 
-	return { select, update, insert } as unknown as DbTransaction;
+	return { select, update, insert };
 }
 
 type ReplayBody = { quantity: number };

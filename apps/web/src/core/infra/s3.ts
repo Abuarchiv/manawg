@@ -16,9 +16,21 @@ interface S3SignatureResponse {
 	maxFileSize: number;
 }
 
+/**
+ * Thrown for missing S3 configuration only. Callers must branch on this type —
+ * matching the error message would silently reclassify any error whose text
+ * happens to contain a config keyword as a 503.
+ */
+export class S3ConfigurationError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'S3ConfigurationError';
+	}
+}
+
 function getClient(): S3Client {
 	if (!REGION || !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-		throw new Error(
+		throw new S3ConfigurationError(
 			'S3 credentials missing. Set AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY.',
 		);
 	}
@@ -27,7 +39,8 @@ function getClient(): S3Client {
 
 function getPublicBase(): string {
 	if (PUBLIC_URL) return PUBLIC_URL.replace(/\/$/, '');
-	if (!BUCKET || !REGION) throw new Error('S3_PUBLIC_URL or (S3_BUCKET + AWS_REGION) must be set.');
+	if (!BUCKET || !REGION)
+		throw new S3ConfigurationError('S3_PUBLIC_URL or (S3_BUCKET + AWS_REGION) must be set.');
 	return `https://${BUCKET}.s3.${REGION}.amazonaws.com`;
 }
 
@@ -45,7 +58,7 @@ export async function createPresignedUpload(
 	contentLength: number,
 ): Promise<S3SignatureResponse> {
 	if (!isSafeS3Key(key)) throw new Error('Invalid S3 key');
-	if (!BUCKET) throw new Error('S3_BUCKET env var missing.');
+	if (!BUCKET) throw new S3ConfigurationError('S3_BUCKET env var missing.');
 	if (!isAllowedMimeType(contentType)) throw new Error(`Disallowed content type: ${contentType}`);
 	if (!Number.isInteger(contentLength) || contentLength <= 0) {
 		throw new Error(`Invalid contentLength: ${contentLength}`);
