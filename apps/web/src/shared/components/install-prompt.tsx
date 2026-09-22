@@ -101,6 +101,7 @@ export function InstallPrompt() {
 
 		const showWhenReady = () => {
 			if (!hasScrolled.current && !inWgApp) return;
+			if (isDismissed()) return;
 			if (isEditingTarget()) return;
 			if (event) {
 				setHidden(false);
@@ -133,7 +134,9 @@ export function InstallPrompt() {
 		};
 		window.addEventListener('scroll', onScroll, { passive: true });
 		const timer = window.setTimeout(() => {
-			if (inWgApp) {
+			// The user may have dismissed the prompt while this timer was
+			// pending — re-showing it 1.2s later would undo that dismissal.
+			if (inWgApp && !isDismissed()) {
 				hasScrolled.current = true;
 				showWhenReady();
 			}
