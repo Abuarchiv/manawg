@@ -10,6 +10,7 @@ import {
 } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { logApiError } from '@/core/infra/observability';
 import { createPayPalOrder, isPayPalConfigured } from '@/core/infra/paypal';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
@@ -210,7 +211,7 @@ export const POST = withWgRoute('paypal order POST', async (req, { code }) => {
 			throw err;
 		}
 	} catch (err) {
-		console.error('[paypal order]', err);
+		logApiError('[paypal order]', err);
 		return serverError('paypal_order_failed');
 	}
 });

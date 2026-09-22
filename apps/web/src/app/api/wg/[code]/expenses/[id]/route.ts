@@ -13,6 +13,7 @@ import {
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
@@ -283,7 +284,7 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 				return conflict('expense_changed', 'expense_conflict');
 			return serverError(writeErr.code);
 		}
-		console.error('[expense PATCH] update failed', writeErr);
+		logApiError('[expense PATCH] update failed', writeErr);
 		return serverError('split_insert_failed');
 	}
 

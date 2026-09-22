@@ -2,6 +2,7 @@ import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, recurringExpenses, wgs } from '@/core/db';
 import { TransactionAbort } from '@/core/db/transaction';
 import { verifyCronSecret } from '@/core/infra/cron-auth';
+import { logApiError } from '@/core/infra/observability';
 import { withCronLogging } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
@@ -78,7 +79,7 @@ async function createExpenseForDueAt(
 		const code =
 			err && typeof err === 'object' && 'code' in err ? (err as { code?: string }).code : null;
 		if (code === '23505') return 'duplicate';
-		console.error('[cron/recurring-advance] insert failed', err);
+		logApiError('[cron/recurring-advance] insert failed', err);
 		return null;
 	}
 }

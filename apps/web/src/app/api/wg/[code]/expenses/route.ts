@@ -13,6 +13,7 @@ import { readShareCode } from '@/core/guards/route-preamble';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
 import type { RouteCtx } from '@/core/infra/api-types';
+import { logApiError } from '@/core/infra/observability';
 import type { NotificationDispatchWarning } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
@@ -270,7 +271,7 @@ export async function POST(
 		return NextResponse.json(responseBody);
 	} catch (err) {
 		replayReservation?.reject(err);
-		console.error('[expenses POST]', err);
+		logApiError('[expenses POST]', err);
 		return serverError(err);
 	}
 }

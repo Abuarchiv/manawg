@@ -2,6 +2,7 @@ import { serverError } from '@/core/errors';
 import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
 import type { RouteCtx } from '@/core/infra/api-types';
 import type { E2EWgFixture } from '@/core/infra/e2e-db-down';
+import { logApiError } from '@/core/infra/observability';
 import type { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -50,7 +51,7 @@ export function withWgRoute<P extends Record<string, string> = Record<never, nev
 		try {
 			return await handler(req, params as { code: string } & P);
 		} catch (err) {
-			console.error(`[${label}]`, err);
+			logApiError(`[${label}]`, err);
 			return serverError(err);
 		}
 	};

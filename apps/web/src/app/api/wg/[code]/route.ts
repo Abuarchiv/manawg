@@ -17,6 +17,7 @@ import { requireWgAdmin } from '@/core/guards/require-wg-admin';
 import { readShareCode } from '@/core/guards/route-preamble';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
+import { logApiError } from '@/core/infra/observability';
 import { generateShareCode } from '@/shared/lib/share-code';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -114,7 +115,7 @@ export async function GET(
 			},
 		});
 	} catch (err) {
-		console.error('[api/wg/[code] GET] failed', err);
+		logApiError('[api/wg/[code] GET] failed', err);
 		return serverError('db_error');
 	}
 }
@@ -190,7 +191,7 @@ export async function PATCH(
 		});
 		return NextResponse.json({ wg: updated });
 	} catch (err) {
-		console.error('[api/wg/[code] PATCH] failed', err);
+		logApiError('[api/wg/[code] PATCH] failed', err);
 		return serverError('db_error');
 	}
 }
@@ -237,7 +238,7 @@ export async function DELETE(
 		}
 		return NextResponse.json({ deleted: true });
 	} catch (err) {
-		console.error('[api/wg/[code] DELETE] failed', err);
+		logApiError('[api/wg/[code] DELETE] failed', err);
 		return serverError('db_error');
 	}
 }

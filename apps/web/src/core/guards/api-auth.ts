@@ -2,6 +2,7 @@ import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers } from '@/core/db';
 import { apiError } from '@/core/errors';
 import { verifyMemberToken } from '@/core/guards/member-token';
+import { logApiError } from '@/core/infra/observability';
 import { MEMBER_TOKEN_HEADER } from '@/shared/lib/member-header';
 import { and, eq } from 'drizzle-orm';
 import type { NextRequest, NextResponse } from 'next/server';
@@ -86,7 +87,7 @@ export async function requireMember(
 		const verified = verifyMemberToken(wgId, row.id, memberToken);
 		return { ok: true, member: { memberId: row.id, name: row.name, verified } };
 	} catch (err) {
-		console.error('[requireMember] db error', err);
+		logApiError('[requireMember] db error', err);
 		return { ok: false, response: apiError('db_error', HTTP_SERVICE_UNAVAILABLE) };
 	}
 }

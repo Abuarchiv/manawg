@@ -19,6 +19,7 @@ import {
 } from '@/core/guards/idempotency';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
+import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import {
@@ -250,11 +251,11 @@ export const POST = withWgRoute<{ id: string }>(
 			} catch (err) {
 				if (err instanceof TransactionAbort) {
 					replayReservation?.reject(err);
-					console.error('[chore complete POST] completion insert failed', err);
+					logApiError('[chore complete POST] completion insert failed', err);
 					return serverError(err.code);
 				}
 				replayReservation?.reject(err);
-				console.error('[chore complete POST] transaction failed', err);
+				logApiError('[chore complete POST] transaction failed', err);
 				return serverError('completion_insert_failed');
 			}
 
