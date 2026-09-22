@@ -63,10 +63,15 @@ interface AboFormProps {
 type SplitMode = 'equal' | 'manual';
 
 function buildEqualSplits(members: MemberOption[], amountCents: number): AboSplit[] {
-	if (members.length === 0) return [];
-	const base = Math.floor(amountCents / members.length);
-	const remainder = amountCents - base * members.length;
-	return members.map((member, index) => ({
+	// Only active members carry a share of a new equal split; members who
+	// moved out stay in history but must not divide the amount.
+	const participants = members.some((member) => member.active)
+		? members.filter((member) => member.active)
+		: members;
+	if (participants.length === 0) return [];
+	const base = Math.floor(amountCents / participants.length);
+	const remainder = amountCents - base * participants.length;
+	return participants.map((member, index) => ({
 		debtorMemberId: member.id,
 		amountCents: base + (index < remainder ? 1 : 0),
 	}));
