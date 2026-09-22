@@ -13,6 +13,7 @@ import {
 import { withTransaction } from '@/core/db/transaction';
 import { badRequest, notFound, serverError } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
+import { deriveMemberToken } from '@/core/guards/member-token';
 import { requireWgAdmin } from '@/core/guards/require-wg-admin';
 import { readShareCode } from '@/core/guards/route-preamble';
 import type { RouteCtx } from '@/core/infra/api-types';
@@ -101,6 +102,7 @@ export async function GET(
 		}
 		const auth = await requireMember(req, wg.id);
 		if (!auth.ok) return auth.response;
+		const memberToken = deriveMemberToken(wg.id, auth.member.memberId);
 
 		const members = await db
 			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
@@ -112,6 +114,7 @@ export async function GET(
 			currentMember: {
 				memberId: auth.member.memberId,
 				name: auth.member.name,
+				...(memberToken ? { memberToken } : {}),
 			},
 		});
 	} catch (err) {

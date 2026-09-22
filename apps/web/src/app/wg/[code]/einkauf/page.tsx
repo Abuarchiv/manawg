@@ -264,7 +264,7 @@ export default function EinkaufPage() {
 		setAdding(true);
 		setAddError(null);
 		setAddNotice(null);
-		const fingerprint = JSON.stringify({ name, quantity });
+		const fingerprint = JSON.stringify({ name, quantity: newQty.trim() || null });
 		const pendingRequest = addIdempotencyKeyRef.current;
 		const idempotencyKey =
 			pendingRequest?.fingerprint === fingerprint

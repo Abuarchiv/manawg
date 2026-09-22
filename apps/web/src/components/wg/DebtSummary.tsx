@@ -249,6 +249,19 @@ function DebtRow({
 					</span>
 				</ItemTitle>
 			</ItemContent>
+			<Badge
+				variant="secondary"
+				className={cn(
+					'font-mono tabular-nums',
+					debt.fromId === currentMemberId
+						? 'text-destructive'
+						: debt.toId === currentMemberId
+							? 'text-settled'
+							: 'text-foreground',
+				)}
+			>
+				{formatEuroCents(debt.cents, debt.currency)}
+			</Badge>
 
 			{canSettle && (
 				<ItemFooter className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
@@ -455,23 +468,23 @@ export function DebtSummary({
 		<Card>
 			<CardHeader>
 				<CardTitle>
-					<h2>Saldo</h2>
+					<h2>Deine offenen Zahlungen</h2>
 				</CardTitle>
-				{summary && summary.savedTransfers > 0 && (
-					<CardDescription>
-						Gegenseitige Schulden sind verrechnet. {summary.simplifiedCount}{' '}
-						{summary.simplifiedCount === 1 ? 'Zahlung bleibt' : 'Zahlungen bleiben'} in der WG
-						übrig.
-					</CardDescription>
-				)}
+				<CardDescription>
+					{summary && summary.savedTransfers > 0
+						? `Gegenseitige Schulden sind verrechnet. ${summary.simplifiedCount} ${summary.simplifiedCount === 1 ? 'Zahlung bleibt' : 'Zahlungen bleiben'} in der WG übrig.`
+						: 'Wer dir Geld schuldet und wem du noch Geld schuldest'}
+				</CardDescription>
 			</CardHeader>
-			<CardContent className="flex flex-col gap-3">
+			<CardContent className="flex flex-col gap-4">
 				{personal.length > 0 ? (
 					<ItemGroup aria-label="Deine offenen Zahlungen">{personal.map(renderDebt)}</ItemGroup>
 				) : (
 					<div className="flex flex-col gap-1">
 						<p className="font-medium">
-							{others.length === 0 ? 'Alles ausgeglichen' : 'Du bist ausgeglichen'}
+							{others.length === 0
+								? 'Rechnerisch ausgeglichen'
+								: 'Für dich ist keine Zahlung offen.'}
 						</p>
 						{others.length === 0 && (
 							<p className="text-sm text-muted-foreground">

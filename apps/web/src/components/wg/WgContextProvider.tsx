@@ -89,14 +89,20 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 			setMemberLoaded(false);
 			setMemberLoadError(false);
 			const res = await apiFetch<{
-				currentMember?: { memberId: string; name: string };
+				currentMember?: { memberId: string; name: string; memberToken?: string };
 			}>(`/api/wg/${encodedShareCode}`);
 			if (cancelled) return;
 			if (!res.ok) {
 				setMemberLoadError(true);
 			} else {
 				const member = res.data.currentMember;
-				if (member) setStateIdentity({ memberId: member.memberId, name: member.name });
+				if (member) {
+					setStateIdentity({
+						memberId: member.memberId,
+						name: member.name,
+						...(member.memberToken ? { memberToken: member.memberToken } : {}),
+					});
+				}
 			}
 			setMemberLoaded(true);
 		};
