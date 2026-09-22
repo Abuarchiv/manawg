@@ -1,7 +1,7 @@
 import { db, idempotencyResponses } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { createConfiguredRedis } from '@/core/rate-limit';
-import { and, eq, gt, sql } from 'drizzle-orm';
+import { and, eq, gt, lte, sql } from 'drizzle-orm';
 
 // Redis is OPTIONAL — only used for audit-event dedup (claimIdempotencySlot).
 // Response-replay (getCachedResponse/setCachedResponse) ALWAYS uses Postgres
@@ -174,6 +174,28 @@ export async function releaseResponseSlot(scope: string, key: string): Promise<v
 			);
 	} catch (err) {
 		console.error('[idempotency] db releaseResponseSlot failed:', err);
+	}
+}
+
+/**
+ * Deletes idempotency rows whose `expiresAt` has passed.
+ *
+ * Query-time filters (`gt(expiresAt, now)`) have always hidden expired rows,
+ * but nothing ever removed them, so the table grew without bound. Runs from
+ * the maintenance cron; the `idempotency_responses_expires_idx` index keeps
+ * the delete cheap. Only ever removes rows no reader can still see — a row is
+ * only deleted once its expiry is in the past.
+ */
+export async function purgeExpiredIdempotencyResponses(now: Date = new Date()): Promise<number> {
+	try {
+		const deleted = await db
+			.delete(idempotencyResponses)
+			.where(lte(idempotencyResponses.expiresAt, now))
+			.returning({ key: idempotencyResponses.key });
+		return deleted.length;
+	} catch (err) {
+		console.error('[idempotency] purge of expired rows failed:', err);
+		return 0;
 	}
 }
 

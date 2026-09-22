@@ -10,11 +10,28 @@ import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
-import { and, eq, sql } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
+import { and, asc, count, eq, sql } from 'drizzle-orm';
+import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const MAX_MEMBERS_PER_WG = 20;
+// GET pagination: WG member counts are small, but the listing must never
+// degenerate into an unbounded SELECT. Default high enough that existing
+// clients keep receiving the full roster; explicit limit/offset enables
+// paging for WGs that predate the join cap.
+const MEMBERS_PAGE_LIMIT_DEFAULT = 100;
+const MEMBERS_PAGE_LIMIT_MAX = 500;
+
+function readPageParams(req: NextRequest): { limit: number; offset: number } {
+	const params = req.nextUrl.searchParams;
+	const rawLimit = Number.parseInt(params.get('limit') ?? '', 10);
+	const rawOffset = Number.parseInt(params.get('offset') ?? '', 10);
+	const limit = Number.isFinite(rawLimit)
+		? Math.min(Math.max(rawLimit, 1), MEMBERS_PAGE_LIMIT_MAX)
+		: MEMBERS_PAGE_LIMIT_DEFAULT;
+	const offset = Number.isFinite(rawOffset) ? Math.max(rawOffset, 0) : 0;
+	return { limit, offset };
+}
 
 export const GET = withWgRoute(
 	'members GET',
@@ -32,16 +49,23 @@ export const GET = withWgRoute(
 		// (see POST below and GET /api/wg/[code] currentMember), never to other
 		// joined members who could otherwise use it to impersonate them on
 		// admin-gated routes.
-		const rows = await db
-			.select({
-				id: wgMembers.id,
-				name: wgMembers.name,
-				color: wgMembers.color,
-				paypalMerchantId: wgMembers.paypalMerchantId,
-				deactivatedAt: wgMembers.deactivatedAt,
-			})
-			.from(wgMembers)
-			.where(eq(wgMembers.wgId, wgId));
+		const { limit, offset } = readPageParams(req);
+		const [rows, totalRows] = await Promise.all([
+			db
+				.select({
+					id: wgMembers.id,
+					name: wgMembers.name,
+					color: wgMembers.color,
+					paypalMerchantId: wgMembers.paypalMerchantId,
+					deactivatedAt: wgMembers.deactivatedAt,
+				})
+				.from(wgMembers)
+				.where(eq(wgMembers.wgId, wgId))
+				.orderBy(asc(wgMembers.createdAt), asc(wgMembers.id))
+				.limit(limit)
+				.offset(offset),
+			db.select({ total: count() }).from(wgMembers).where(eq(wgMembers.wgId, wgId)),
+		]);
 
 		const members = rows.map(({ deactivatedAt, ...member }) => ({
 			...member,
@@ -52,7 +76,11 @@ export const GET = withWgRoute(
 		// server-side, so a stale/spoofed value here can't grant real access.
 		const viewerIsAdmin = await isVerifiedWgAdmin(wgId, auth.member.memberId, auth.member.verified);
 
-		return NextResponse.json({ members, viewerIsAdmin });
+		return NextResponse.json({
+			members,
+			viewerIsAdmin,
+			pagination: { total: totalRows[0]?.total ?? 0, limit, offset },
+		});
 	},
 	{
 		fixture: (fixture) => {

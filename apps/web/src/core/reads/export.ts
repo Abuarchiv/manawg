@@ -1,4 +1,4 @@
-type ExportRow = Record<string, unknown>;
+export type ExportRow = Record<string, unknown>;
 
 interface WgExportInput {
 	wg: { name: string; shareCode: string };

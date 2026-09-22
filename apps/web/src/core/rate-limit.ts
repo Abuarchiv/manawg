@@ -99,6 +99,12 @@ interface RateLimitResult {
 const FAIL_OPEN_PRODUCTION_LOG =
 	'[rate-limit] Upstash Redis not configured in production — failing open';
 const OPEN_STATE_REPORT_INTERVAL_MS = 5 * 60 * 1000;
+// Both maps below are keyed by `cause`. Causes are internal literals today,
+// but nothing stops a future caller from passing request-derived text — and
+// in a long-lived serverless instance an unbounded module-level Map is a
+// textbook memory leak. Once the cap is reached only already-known causes
+// keep their entries, so memory stays bounded while the signal survives.
+const MAX_TRACKED_CAUSES = 32;
 const lastReportedAt = new Map<string, number>();
 
 // Monotonic fail-open tally. Failing open is deliberate, but it must be
@@ -122,6 +128,12 @@ export function getFailOpenStats(): {
 	return { total, byCause };
 }
 
+function trackCause(map: Map<string, number>, cause: string, value: number): boolean {
+	if (!map.has(cause) && map.size >= MAX_TRACKED_CAUSES) return false;
+	map.set(cause, value);
+	return true;
+}
+
 /**
  * Failing open is deliberate, but it must not be invisible: an unthrottled API
  * looks perfectly healthy from the outside while every limit is off. Reported
@@ -130,7 +142,8 @@ export function getFailOpenStats(): {
  */
 function reportOpenState(cause: string, error?: unknown): void {
 	// Count every fail-open event, independent of the alert throttle below.
-	failOpenTotals.set(cause, (failOpenTotals.get(cause) ?? 0) + 1);
+	// Capped at MAX_TRACKED_CAUSES so the tally can never grow without bound.
+	trackCause(failOpenTotals, cause, (failOpenTotals.get(cause) ?? 0) + 1);
 
 	const isProduction = process.env.VERCEL_ENV === 'production';
 
@@ -146,7 +159,10 @@ function reportOpenState(cause: string, error?: unknown): void {
 	const now = Date.now();
 	const previous = lastReportedAt.get(cause);
 	if (previous !== undefined && now - previous < OPEN_STATE_REPORT_INTERVAL_MS) return;
-	lastReportedAt.set(cause, now);
+	// Unknown causes beyond the tracking cap are logged above but never
+	// captured here — without a stored timestamp they would bypass the
+	// throttle and fire on every request.
+	if (!trackCause(lastReportedAt, cause, now)) return;
 
 	captureException(
 		error instanceof Error ? error : new Error(`rate-limit failing open: ${cause}`),

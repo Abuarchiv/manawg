@@ -160,8 +160,19 @@ export const GET = withCronLogging(
 
 		if (due.length === 0) return NextResponse.json({ ok: true, charged: 0 });
 
-		const results = await Promise.all(due.map((template) => advanceTemplate(template)));
-		const created = results.flat();
+		// allSettled, not all: one corrupt template (DB error, constraint
+		// violation) must not block advancing every other WG's templates.
+		const settled = await Promise.allSettled(due.map((template) => advanceTemplate(template)));
+		const created: CreatedAdvance[] = [];
+		let failedTemplates = 0;
+		for (const result of settled) {
+			if (result.status === 'fulfilled') {
+				created.push(...result.value);
+			} else {
+				failedTemplates += 1;
+				console.error('[cron/recurring-advance] template advance failed', result.reason);
+			}
+		}
 
 		await Promise.allSettled(
 			created.map(async ({ template, expenseId }) => {
@@ -192,6 +203,10 @@ export const GET = withCronLogging(
 			}),
 		);
 
-		return NextResponse.json({ ok: true, charged: created.length });
+		return NextResponse.json({
+			ok: failedTemplates === 0,
+			charged: created.length,
+			failedTemplates,
+		});
 	},
 );

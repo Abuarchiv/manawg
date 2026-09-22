@@ -16,7 +16,7 @@ import type { RouteCtx } from '@/core/infra/api-types';
 import { buildE2EDashboardData } from '@/core/infra/e2e-db-down';
 import { logApiError } from '@/core/infra/observability';
 import { getSearchSuggestions, searchWgItems } from '@/core/reads/search';
-import { desc, eq, inArray } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const SEARCH_PAGE_LIMIT = 120;
@@ -110,6 +110,7 @@ async function buildDbSearchResponse(
 		recurringRows,
 		shoppingRows,
 		absenceRows,
+		splitRows,
 	] = await Promise.all([
 		db
 			.select({ id: wgMembers.id, name: wgMembers.name })
@@ -151,7 +152,7 @@ async function buildDbSearchResponse(
 			})
 			.from(expenses)
 			.where(eq(expenses.wgId, wgId))
-			.orderBy(desc(expenses.occurredAt))
+			.orderBy(desc(expenses.occurredAt), desc(expenses.id))
 			.limit(SEARCH_PAGE_LIMIT),
 		db
 			.select({
@@ -190,19 +191,26 @@ async function buildDbSearchResponse(
 			.where(eq(memberAbsences.wgId, wgId))
 			.orderBy(desc(memberAbsences.startDate))
 			.limit(SEARCH_PAGE_LIMIT),
+		// The splits belong to exactly the expense page above. They used to be a
+		// second, sequential round trip; the correlated subquery keeps them in
+		// the same parallel batch while selecting the identical row set (same
+		// ordering, same limit — `id` as tiebreaker so both stay deterministic).
+		db
+			.select({
+				expenseId: expenseSplits.expenseId,
+				settledAt: expenseSplits.settledAt,
+			})
+			.from(expenseSplits)
+			.where(
+				sql`${expenseSplits.expenseId} in (
+					select ${expenses.id} from ${expenses}
+					where ${expenses.wgId} = ${wgId}
+					order by ${expenses.occurredAt} desc, ${expenses.id} desc
+					limit ${SEARCH_PAGE_LIMIT}
+				)`,
+			),
 	]);
 
-	const expenseIds = expenseRows.map((expense) => expense.id);
-	const splitRows =
-		expenseIds.length === 0
-			? []
-			: await db
-					.select({
-						expenseId: expenseSplits.expenseId,
-						settledAt: expenseSplits.settledAt,
-					})
-					.from(expenseSplits)
-					.where(inArray(expenseSplits.expenseId, expenseIds));
 	const splitsByExpenseId = new Map<string, Array<{ settledAt: string | null }>>();
 	for (const split of splitRows) {
 		const list = splitsByExpenseId.get(split.expenseId) ?? [];

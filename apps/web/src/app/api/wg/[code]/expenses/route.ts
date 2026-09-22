@@ -56,19 +56,36 @@ const splitSchema = z.object({
 		.min(0, 'amountCents must not be negative'),
 });
 
-const createExpenseSchema = z.object({
-	paidByMemberId: z.string().uuid().optional(),
-	amountCents: z
-		.number()
-		.int('amountCents must be an integer')
-		.min(AMOUNT_MIN_CENTS)
-		.max(AMOUNT_MAX_CENTS),
-	currency: currencySchema.optional().default('EUR'),
-	description: z.string().trim().min(DESCRIPTION_MIN).max(DESCRIPTION_MAX),
-	imageUrl: imageUrlSchema,
-	occurredAt: z.string().datetime({ offset: true }).optional(),
-	splits: z.array(splitSchema).min(1).max(MAX_SPLITS),
-});
+const createExpenseSchema = z
+	.object({
+		paidByMemberId: z.string().uuid().optional(),
+		amountCents: z
+			.number()
+			.int('amountCents must be an integer')
+			.min(AMOUNT_MIN_CENTS)
+			.max(AMOUNT_MAX_CENTS),
+		currency: currencySchema.optional().default('EUR'),
+		description: z.string().trim().min(DESCRIPTION_MIN).max(DESCRIPTION_MAX),
+		imageUrl: imageUrlSchema,
+		occurredAt: z.string().datetime({ offset: true }).optional(),
+		splits: z.array(splitSchema).min(1).max(MAX_SPLITS),
+	})
+	.superRefine((value, ctx) => {
+		// Structural shape alone would accept splits whose total does not match
+		// the expense. The runtime validateSplits call below stays the source of
+		// truth for duplicates/invalid amounts, but a bypassed or reordered
+		// check can no longer produce a money-mismatched expense: the schema
+		// itself refuses it and reports the same error code the runtime check
+		// would have returned.
+		const sum = value.splits.reduce((total, split) => total + split.amountCents, 0);
+		if (sum !== value.amountCents) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'splits_sum_mismatch',
+				path: ['splits'],
+			});
+		}
+	});
 
 export const GET = withWgRoute(
 	'expenses GET',
@@ -144,7 +161,14 @@ export async function POST(
 		if (issues.fieldErrors.currency) return badRequest('currency_invalid');
 		if (issues.fieldErrors.imageUrl) return badRequest('image_invalid');
 		if (issues.fieldErrors.occurredAt) return badRequest('occurred_at_invalid');
-		if (issues.fieldErrors.splits) return badRequest('splits_invalid');
+		if (issues.fieldErrors.splits) {
+			// The schema-level sum check uses the runtime error code as its
+			// message, so the API contract stays identical for clients.
+			if (issues.fieldErrors.splits[0] === 'splits_sum_mismatch') {
+				return badRequest('splits_sum_mismatch');
+			}
+			return badRequest('splits_invalid');
+		}
 		return badRequest('invalid_body');
 	}
 
