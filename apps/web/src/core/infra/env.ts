@@ -11,7 +11,10 @@
  *   - `missingRequired` — the app cannot serve correctly at all (no database,
  *     no signed member sessions so every write is rejected, unprotected cron
  *     routes). The database and member-session secret are checked in every
- *     environment; unprotected cron routes are only fatal in production.
+ *     environment; unprotected cron routes and the image-storage variables of
+ *     the configured provider (e.g. `AWS_REGION` for the AWS default) are only
+ *     fatal in production, where a silently broken upload path is invisible
+ *     until a user hits it.
  *   - `degraded` — a named non-critical feature is off. Logged loud, never
  *     fatal; production rate limiting is required because API routes fail closed.
  */
@@ -142,6 +145,11 @@ export function checkEnv(env: EnvSource): EnvCheckResult {
 			if (!isSet(env, name)) missingRequired.push(name);
 		}
 	}
+	// Production-only requirements. Image storage is checked through
+	// `privateImageStorageMissing` below instead of a hardcoded name list, so
+	// `AWS_REGION` (and its siblings) are caught at boot for the AWS provider
+	// while a Supabase-storage deployment is judged by its own variables.
+	const imageStorage = privateImageStorageMissing(env);
 	if (isProduction) {
 		for (const name of PRODUCTION_REQUIRED) {
 			if (!isSet(env, name)) missingRequired.push(name);
@@ -152,6 +160,7 @@ export function checkEnv(env: EnvSource): EnvCheckResult {
 		if (!isSet(env, 'UPSTASH_REDIS_REST_TOKEN')) {
 			missingRequired.push('UPSTASH_REDIS_REST_TOKEN');
 		}
+		missingRequired.push(...imageStorage.missing);
 	}
 
 	const degraded: DegradedFeature[] = [];
@@ -167,8 +176,7 @@ export function checkEnv(env: EnvSource): EnvCheckResult {
 			degraded.push({ feature: spec.feature, missing, impact: spec.impact });
 		}
 	}
-	const imageStorage = privateImageStorageMissing(env);
-	if (imageStorage.missing.length > 0) {
+	if (imageStorage.missing.length > 0 && !isProduction) {
 		degraded.push({ feature: 'image-uploads', ...imageStorage });
 	}
 

@@ -176,13 +176,22 @@ jobs:
       - name: Require the protected Supabase direct connection
         env:
           DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
+          # Repository variable (not a secret): pins the Preview Supabase
+          # project hostname so a project migration is a variable update
+          # instead of a hardcoded check that silently rejects the real URL.
+          SUPABASE_PREVIEW_PROJECT_HOST: ${{ vars.SUPABASE_PREVIEW_PROJECT_HOST }}
         run: |
           test -n "$DATABASE_MIGRATION_URL"
+          if [ -z "$SUPABASE_PREVIEW_PROJECT_HOST" ]; then
+            echo 'Set the SUPABASE_PREVIEW_PROJECT_HOST repository variable to the Preview Supabase project hostname (e.g. project.supabase.co).' >&2
+            exit 1
+          fi
           node <<'NODE'
+          const projectHost = process.env.SUPABASE_PREVIEW_PROJECT_HOST.toLowerCase();
           const url = new URL(process.env.DATABASE_MIGRATION_URL);
           if (
             !['postgres:', 'postgresql:'].includes(url.protocol) ||
-            url.hostname.toLowerCase() !== 'db.sthiwjebcwwiphashgla.supabase.co' ||
+            url.hostname.toLowerCase() !== `db.${projectHost}` ||
             url.port !== '5432'
           ) {
             throw new Error('Preview database checks require the direct ManaWG Preview Supabase connection on port 5432.');
@@ -320,6 +329,7 @@ jobs:
       - run: pnpm --filter @manawg/web exec playwright install --with-deps chromium
       - name: Require real Supabase QA credentials
         env:
+          SUPABASE_PREVIEW_PROJECT_HOST: ${{ vars.SUPABASE_PREVIEW_PROJECT_HOST }}
           E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
           E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.E2E_SUPABASE_PUBLISHABLE_KEY }}
           E2E_SUPABASE_TEST_EMAIL: ${{ secrets.E2E_SUPABASE_TEST_EMAIL }}
@@ -346,10 +356,16 @@ jobs:
           ], 'Protected Preview verification');
           NODE
           node <<'NODE'
+          const projectHost = process.env.SUPABASE_PREVIEW_PROJECT_HOST;
+          if (!projectHost) {
+            throw new Error(
+              'Set the SUPABASE_PREVIEW_PROJECT_HOST repository variable to the Preview Supabase project hostname (e.g. project.supabase.co).',
+            );
+          }
           const url = new URL(process.env.E2E_SUPABASE_URL);
           if (
             url.protocol !== 'https:' ||
-            url.hostname.toLowerCase() !== 'sthiwjebcwwiphashgla.supabase.co' ||
+            url.hostname.toLowerCase() !== projectHost.toLowerCase() ||
             url.port ||
             url.pathname !== '/' ||
             url.search ||

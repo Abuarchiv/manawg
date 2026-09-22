@@ -47,7 +47,7 @@ function getClientIp(req: NextRequest): string {
 	return key === 'anonymous' ? 'unknown' : key;
 }
 
-function originAllowed(req: NextRequest): boolean {
+export function originAllowed(req: NextRequest): boolean {
 	const origin = req.headers.get('origin');
 	// Fail closed for cross-origin writes: a missing Origin header on a
 	// mutating request means the caller is not a same-origin browser page.

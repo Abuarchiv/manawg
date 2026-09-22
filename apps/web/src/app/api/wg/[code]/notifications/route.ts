@@ -227,6 +227,21 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 			? 'test'
 			: `${parsed.data.action}:${parsed.data.endpoint}`;
 
+	// Throttled BEFORE the idempotent wrapper runs: the wrapper claims a
+	// response slot in Postgres for every request, so a subscribe flood would
+	// cost one claim row per request even when the callback never executes —
+	// enough to fill the subscriptions table's write path ahead of the limiter.
+	// Same 30/min ceiling as the middleware, keyed per member on top of it so
+	// one member cannot rotate IPs to hammer the subscriptions table. Far above
+	// any real opt-in cadence.
+	if (parsed.data.action === 'push_subscribe') {
+		const subscribeLimit = await checkRateLimit(
+			wgWriteLimiter,
+			`push-subscribe:${wg.id}:${auth.member.memberId}`,
+		);
+		if (!subscribeLimit.success) return tooMany();
+	}
+
 	return withIdempotentJsonResponse(
 		req,
 		`notification:${wg.id}:${auth.member.memberId}:${actionScope}`,
@@ -255,15 +270,6 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 			}
 
 			if (parsed.data.action === 'push_subscribe') {
-				// Per-member write cap on top of the middleware's per-IP limit, so one
-				// member cannot rotate IPs to hammer the subscriptions table. Same
-				// 30/min ceiling as the middleware — far above any real opt-in cadence.
-				const subscribeLimit = await checkRateLimit(
-					wgWriteLimiter,
-					`push-subscribe:${wg.id}:${auth.member.memberId}`,
-				);
-				if (!subscribeLimit.success) return tooMany();
-
 				// Opting in and storing the endpoint are one action, so they are
 				// written in one transaction. Previously the flag was set first and
 				// undone with a second update when the insert failed — a repair that
