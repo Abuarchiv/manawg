@@ -4,7 +4,12 @@ import { db } from '@/core/db';
 import { apiError, badRequest, notFound, serverError, tooMany } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
 import { PRIVATE_IMAGE_MIME_TYPES } from '@/core/infra/private-image-policy';
-import { S3_MAX_UPLOAD_BYTES, createPresignedUpload, isAllowedMimeType } from '@/core/infra/s3';
+import {
+	S3ConfigurationError,
+	S3_MAX_UPLOAD_BYTES,
+	createPresignedUpload,
+	isAllowedMimeType,
+} from '@/core/infra/s3';
 import {
 	ImageStorageConfigurationError,
 	createSupabaseSignedUpload,
@@ -95,20 +100,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				: await createPresignedUpload(key, mimeType, fileSize);
 		return noStore(NextResponse.json(signature));
 	} catch (err) {
-		if (err instanceof ImageStorageConfigurationError) {
-			return noStore(
-				NextResponse.json(
-					{ error: 'feature_disabled', code: 'image_uploads_unavailable' },
-					{ status: 503 },
-				),
-			);
-		}
-		const isConfigMissing =
-			err instanceof Error &&
-			(err.message.includes('S3 credentials missing') ||
-				err.message.includes('S3_BUCKET') ||
-				err.message.includes('S3_PUBLIC_URL'));
-		if (isConfigMissing) {
+		if (err instanceof ImageStorageConfigurationError || err instanceof S3ConfigurationError) {
 			return noStore(
 				NextResponse.json(
 					{ error: 'feature_disabled', code: 'image_uploads_unavailable' },
