@@ -123,8 +123,7 @@ async function sendWebPush(
 			} catch (err) {
 				const statusCode = parseWebPushStatusCode(err);
 				if (statusCode === 404 || statusCode === 410) {
-					await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
-					deletedStaleSubscription = true;
+					staleSubscriptionIds.push(sub.id);
 				} else {
 					failures.push(err);
 					console.error('[notifications] web push failed', err);
@@ -133,7 +132,10 @@ async function sendWebPush(
 		}),
 	);
 
+	const deletedStaleSubscription = staleSubscriptionIds.length > 0;
 	if (deletedStaleSubscription) {
+		// Single batched delete, strictly after every push attempt settled.
+		await db.delete(pushSubscriptions).where(inArray(pushSubscriptions.id, staleSubscriptionIds));
 		const remainingSubscriptions = await db
 			.select({ id: pushSubscriptions.id })
 			.from(pushSubscriptions)
