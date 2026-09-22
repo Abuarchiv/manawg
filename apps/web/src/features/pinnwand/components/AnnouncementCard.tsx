@@ -555,7 +555,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 									</ul>
 								)}
 								{commentError && (
-									<Alert variant="destructive">
+									<Alert id={`announcement-comment-error-${announcement.id}`} variant="destructive">
 										<AlertDescription>
 											Antwort nicht gespeichert. Dein Text bleibt zum erneuten Senden erhalten.
 										</AlertDescription>
@@ -568,6 +568,9 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 											onChange={(event) => commentDraft.change(event.target.value)}
 											disabled={commentPending}
 											aria-invalid={commentError}
+											aria-describedby={
+												commentError ? `announcement-comment-error-${announcement.id}` : undefined
+											}
 											maxLength={600}
 											rows={2}
 											aria-label={`Antwort verfassen: ${actionSubject}`}
@@ -728,6 +731,7 @@ function CommentRow({
 								rows={2}
 								aria-label="Kommentar bearbeiten"
 								aria-invalid={error}
+								aria-describedby={error ? `comment-edit-error-${comment.id}` : undefined}
 								className="text-base md:text-base"
 							/>
 						</Field>
@@ -755,7 +759,7 @@ function CommentRow({
 					<p className="whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">{comment.content}</p>
 				)}
 				{error && (
-					<Alert variant="destructive">
+					<Alert id={`comment-edit-error-${comment.id}`} variant="destructive">
 						<AlertDescription>
 							Kommentar konnte nicht gespeichert oder entfernt werden. Versuche es erneut.
 						</AlertDescription>

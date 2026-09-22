@@ -176,6 +176,7 @@ export function PayPalPaymentButton({
 			<div
 				ref={containerRef}
 				aria-label={`PayPal ${formatEuroCents(amountCents, currency)} zahlen`}
+				role="group"
 			/>
 			{error && (
 				<Alert variant="destructive">

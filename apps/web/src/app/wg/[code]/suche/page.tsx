@@ -195,6 +195,7 @@ export default function SuchePage() {
 								<InputGroupInput
 									id="wg-search"
 									type="search"
+									maxLength={80}
 									value={query}
 									onChange={(event) => setQuery(event.target.value)}
 									placeholder="Milch, Bad, Miete..."
@@ -218,7 +219,8 @@ export default function SuchePage() {
 						</Field>
 
 						{suggestions.length > 0 && query.length === 0 && (
-							<div className="flex flex-wrap gap-2" aria-label="Suchvorschläge">
+							// biome-ignore lint/a11y/useSemanticElements: role="group" names the suggestion chips; <fieldset> would change the layout semantics.
+							<div className="flex flex-wrap gap-2" aria-label="Suchvorschläge" role="group">
 								{suggestions.map((suggestion) => (
 									<Button
 										key={suggestion}
@@ -297,7 +299,9 @@ export default function SuchePage() {
 					className="flex items-center gap-2 text-[13px] text-muted-foreground"
 				>
 					{loading && <Spinner className="size-4 motion-reduce:animate-none" aria-hidden />}
-					{loading ? 'Suche läuft...' : visibleCountLabel(visibleResults.length, trimmedQuery)}
+					<span className="min-w-0 [overflow-wrap:anywhere]">
+						{loading ? 'Suche läuft...' : visibleCountLabel(visibleResults.length, trimmedQuery)}
+					</span>
 				</output>
 			)}
 

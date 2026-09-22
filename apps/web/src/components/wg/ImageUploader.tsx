@@ -453,7 +453,7 @@ export function ImageUploader({
 					<ImagePlus className="size-6" aria-hidden="true" />
 				)}
 				<span aria-live="polite">{uploading ? 'Lade hoch…' : 'Bild hinzufügen'}</span>
-				<span className="text-[11px] text-muted-foreground">JPG, PNG, WebP, HEIC · max. 8 MB</span>
+				<span className="text-xs text-muted-foreground">JPG, PNG, WebP, HEIC · max. 8 MB</span>
 				<input
 					type="file"
 					accept="image/jpeg,image/png,image/webp,image/heic,image/heif"

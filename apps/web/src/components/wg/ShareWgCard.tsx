@@ -226,7 +226,7 @@ function ShareWgBody({
 					className="hover:bg-muted focus-visible:ring-ring flex min-h-[44px] w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					<span className="min-w-0">
-						<span className="text-muted-foreground block text-[11px] font-medium tracking-wider uppercase">
+						<span className="text-muted-foreground block text-xs font-medium tracking-wider uppercase">
 							Code
 						</span>
 						<span className="text-foreground mt-0.5 block font-mono text-base font-medium tracking-[0.12em]">
@@ -255,7 +255,7 @@ function ShareWgBody({
 					className="border-border hover:bg-muted focus-visible:ring-ring flex min-h-[44px] w-full items-center justify-between gap-3 border-t px-3 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					<span className="min-w-0">
-						<span className="text-muted-foreground block text-[11px] font-medium tracking-wider uppercase">
+						<span className="text-muted-foreground block text-xs font-medium tracking-wider uppercase">
 							Link
 						</span>
 						<span className="text-foreground mt-0.5 block truncate text-sm">{shareUrl}</span>

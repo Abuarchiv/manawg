@@ -151,7 +151,7 @@ export function MessageList({
 						</div>
 					)}
 					{index === 0 && (
-						<Marker variant="separator" className="py-2 text-[11px]">
+						<Marker variant="separator" className="py-2 text-xs">
 							<MarkerContent>{DAY_FORMAT.format(group.day)}</MarkerContent>
 						</Marker>
 					)}

@@ -197,6 +197,8 @@ export default function MahnungenPage() {
 						className="flex flex-col gap-3"
 						aria-busy="true"
 						aria-label="Offene Schulden werden geladen"
+						// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
+						role="status"
 					>
 						<Skeleton className="h-24 w-full" />
 						<Skeleton className="h-24 w-full" />

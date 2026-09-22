@@ -30,6 +30,7 @@ import {
 } from '@/core/reads/dashboard-insights';
 import { getDashboardAnnouncementHref } from '@/core/reads/dashboard-links';
 import { formatEuroCents } from '@/core/utils/money';
+import { parseValidDate } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
 import {
@@ -52,6 +53,17 @@ const PushPrimingPrompt = dynamic(
 );
 
 const REFRESH_INTERVAL_MS = 30_000;
+
+const NEXT_DUE_FORMATTER = new Intl.DateTimeFormat('de-DE', {
+	day: 'numeric',
+	month: 'short',
+	timeZone: 'Europe/Berlin',
+});
+
+function formatNextDue(nextDueAt: string | null | undefined): string {
+	const date = nextDueAt ? parseValidDate(nextDueAt) : null;
+	return date ? `Du bist dran · ${NEXT_DUE_FORMATTER.format(date)}` : 'Du bist dran';
+}
 
 type PendingAnnouncement = DashboardData['myOpenAnnouncements'][number];
 
@@ -457,7 +469,7 @@ export default function WgHomePage() {
 									</p>
 									<p className="text-sm text-muted-foreground">
 										{myNextChore
-											? `Du bist dran · ${new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short', timeZone: 'Europe/Berlin' }).format(new Date(myNextChore.nextDueAt))}`
+											? formatNextDue(myNextChore.nextDueAt)
 											: data.setup.choreCount === 0
 												? 'Legt euren ersten Putzdienst an.'
 												: 'Den Plan für eure WG findest du hier.'}
@@ -468,7 +480,8 @@ export default function WgHomePage() {
 									Putzplan ist gerade nicht verfügbar.
 								</p>
 							) : (
-								<div aria-label="Putzplan wird geladen">
+								// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
+								<div aria-label="Putzplan wird geladen" role="status">
 									<Skeleton className="h-5 w-3/4" />
 									<Skeleton className="mt-2 h-4 w-1/2" />
 								</div>
@@ -516,7 +529,8 @@ export default function WgHomePage() {
 									Einkaufsliste ist gerade nicht verfügbar.
 								</p>
 							) : (
-								<div aria-label="Einkauf wird geladen">
+								// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
+								<div aria-label="Einkauf wird geladen" role="status">
 									<Skeleton className="h-5 w-3/4" />
 									<Skeleton className="mt-2 h-4 w-1/2" />
 								</div>
@@ -614,7 +628,12 @@ export default function WgHomePage() {
 											Neuigkeiten konnten noch nicht geladen werden.
 										</p>
 									) : (
-										<div className="flex flex-col gap-2" aria-label="Neuigkeiten werden geladen">
+										<div
+											className="flex flex-col gap-2"
+											aria-label="Neuigkeiten werden geladen"
+											// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
+											role="status"
+										>
 											<Skeleton className="h-16 w-full" />
 											<Skeleton className="h-11 w-full" />
 											<Skeleton className="h-11 w-full" />

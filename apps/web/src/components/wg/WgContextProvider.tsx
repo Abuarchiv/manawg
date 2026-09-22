@@ -184,7 +184,12 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 		return (
 			<div className="min-h-svh bg-background" aria-busy="true">
 				<main id="main" tabIndex={-1} className="focus:outline-none">
-					<div className="mx-auto w-full max-w-3xl px-4 pt-6" aria-label="Wird geladen">
+					<div
+						className="mx-auto w-full max-w-3xl px-4 pt-6"
+						aria-label="Wird geladen"
+						// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
+						role="status"
+					>
 						<Skeleton className="h-7 w-40" />
 						<Skeleton className="mt-4 h-24 rounded-xl" />
 						<Skeleton className="mt-4 h-24 rounded-xl" />

@@ -272,7 +272,7 @@ export function CalendarMonth({
 											}
 											aria-current={isToday ? 'date' : undefined}
 											className={cn(
-												'relative min-h-11 w-full px-0',
+												'relative min-h-11 w-full px-0 after:min-w-0',
 												!day.inCurrentMonth && 'opacity-50',
 											)}
 										>
@@ -294,7 +294,11 @@ export function CalendarMonth({
 					<section aria-label="Termine am ausgewählten Tag" className="flex flex-col gap-2 px-2">
 						<div className="flex flex-wrap items-center gap-2">
 							<h3 className="text-sm font-medium">{FULL_DATE_FORMATTER.format(selectedDay)}</h3>
-							<Badge variant="secondary">{selectedOccurrences.length} Termine</Badge>
+							<Badge variant="secondary">
+								{selectedOccurrences.length === 1
+									? '1 Termin'
+									: `${selectedOccurrences.length} Termine`}
+							</Badge>
 						</div>
 						{selectedOccurrences.length === 0 ? (
 							<p className="text-sm text-muted-foreground">Keine Termine an diesem Tag.</p>

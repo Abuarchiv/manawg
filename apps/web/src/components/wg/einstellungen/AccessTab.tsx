@@ -51,7 +51,7 @@ import type { StoredIdentity } from '@/shared/lib/identity';
 import { clearIdentity, forgetWg, memberAuthHeader } from '@/shared/lib/identity';
 import { LogOut, Trash2, UserMinus, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface AccessTabProps {
 	wg: WgSummary;
@@ -69,6 +69,10 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	const router = useRouter();
 	const { refreshMembers, isAdmin } = useWg();
 	const [joiningEnabled, setJoiningEnabled] = useState(wg.joiningEnabled);
+
+	useEffect(() => {
+		setJoiningEnabled(wg.joiningEnabled);
+	}, [wg.joiningEnabled]);
 	const [accessPending, setAccessPending] = useState<'join' | 'rotate' | null>(null);
 	const [accessMessage, setAccessMessage] = useState<string | null>(null);
 	const [accessError, setAccessError] = useState<string | null>(null);
@@ -453,7 +457,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				</ItemGroup>
 				{inactiveMembers.length > 0 && (
 					<div className="px-4 pt-2 pb-1">
-						<p className="text-muted-foreground px-0.5 pb-1 text-[11px] font-medium tracking-wide uppercase">
+						<p className="text-muted-foreground px-0.5 pb-1 text-xs font-medium tracking-wide uppercase">
 							Ausgezogen
 						</p>
 						<ItemGroup className="gap-0">

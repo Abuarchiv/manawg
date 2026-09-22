@@ -7,7 +7,7 @@ export function parseTimestamp(value: string | Date): number | null {
 	return Number.isNaN(timestamp) ? null : timestamp;
 }
 
-function parseValidDate(value: string | Date): Date | null {
+export function parseValidDate(value: string | Date): Date | null {
 	const timestamp = parseTimestamp(value);
 	return timestamp === null ? null : new Date(timestamp);
 }
@@ -77,6 +77,15 @@ export function formatCompactRelativeTime(iso: string, now = Date.now()): string
 	const date = parseValidDate(iso);
 	if (!date) return 'unbekannt';
 	const diff = now - date.getTime();
+
+	if (diff <= -MS_PER_MINUTE) {
+		const until = -diff;
+		if (until < MS_PER_HOUR) return `in ${Math.floor(until / MS_PER_MINUTE)} Min.`;
+		if (until < MS_PER_DAY) return `in ${Math.floor(until / MS_PER_HOUR)} Std.`;
+		const days = Math.floor(until / MS_PER_DAY);
+		if (days < 7) return days === 1 ? 'morgen' : `in ${days} T.`;
+		return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' }).format(date);
+	}
 
 	if (diff < MS_PER_MINUTE) return 'jetzt';
 	if (diff < MS_PER_HOUR) return `${Math.round(diff / MS_PER_MINUTE)} Min.`;

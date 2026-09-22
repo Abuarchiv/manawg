@@ -24,7 +24,7 @@ import {
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
-import { formatRelativeTime } from '@/core/utils/time';
+import { formatRelativeTime, parseValidDate } from '@/core/utils/time';
 import { getChoreRepairHint, getChoreStatus } from '@/features/chores/chore-status';
 import type { Chore, MemberInfo, RecurrenceType } from '@/features/chores/components/chore-types';
 import { cn } from '@/shared/lib/cn';
@@ -107,7 +107,8 @@ export const ChoreRow = memo(function ChoreRow({
 				</div>
 				{chore.lastCompletedAt && (
 					<ItemDescription className="line-clamp-none">
-						Nächste Fälligkeit: {new Date(chore.nextDueAt).toLocaleDateString('de-DE')}
+						Nächste Fälligkeit:{' '}
+						{parseValidDate(chore.nextDueAt)?.toLocaleDateString('de-DE') ?? 'unbekannt'}
 					</ItemDescription>
 				)}
 				{chore.lastCompletedAt && chore.lastCompletedByName && (

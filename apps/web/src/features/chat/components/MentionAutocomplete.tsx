@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 export interface MentionMember {
 	id: string;
 	name: string;
@@ -35,12 +37,23 @@ export function MentionAutocomplete({
 	onSelect,
 	onHoverIndex,
 }: MentionAutocompleteProps) {
+	const listRef = useRef<HTMLUListElement>(null);
+
+	useEffect(() => {
+		if (activeIndex < 0) return;
+		const option = listRef.current?.querySelector(
+			`[id="${mentionOptionId(listboxId, activeIndex)}"]`,
+		);
+		option?.scrollIntoView({ block: 'nearest' });
+	}, [activeIndex, listboxId]);
+
 	if (items.length === 0) return null;
 
 	return (
 		// biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA combobox listbox — focus stays on the parent textarea via aria-activedescendant, so the listbox itself is intentionally not focusable.
 		<ul
 			id={listboxId}
+			ref={listRef}
 			// biome-ignore lint/a11y/useSemanticElements: no native HTML listbox element exists; role="listbox" is the correct ARIA pattern for a combobox popup.
 			// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: <ul role="listbox"> is the standard WAI-ARIA combobox popup markup.
 			role="listbox"

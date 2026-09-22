@@ -694,7 +694,7 @@ export function ImportWizard() {
 						disabled={busy}
 					/>
 					<FieldGroup>
-						<Field orientation="horizontal" data-disabled={busy}>
+						<Field orientation="horizontal" className="min-h-11" data-disabled={busy}>
 							<Checkbox
 								id="import-duplicates"
 								checked={skipDuplicates}
@@ -709,7 +709,7 @@ export function ImportWizard() {
 							</div>
 						</Field>
 					</FieldGroup>
-					<div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] flex gap-2 bg-background py-3">
+					<div className="sticky bottom-[calc(var(--app-nav-height,5rem)+env(safe-area-inset-bottom))] flex gap-2 bg-background py-3">
 						<Button
 							className="min-h-11 flex-1"
 							disabled={busy || selectedCount === 0}

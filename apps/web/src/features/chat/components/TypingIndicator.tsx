@@ -9,7 +9,7 @@ export function TypingIndicator({ names }: TypingIndicatorProps) {
 	const text = names.length === 1 ? `${names[0]} tippt` : `${names.length} tippen`;
 	return (
 		<div
-			className="absolute bottom-0 left-0 flex items-center gap-1 bg-background/80 px-3 py-1 text-[11px] text-muted-foreground"
+			className="absolute bottom-0 left-0 flex items-center gap-1 bg-background/80 px-3 py-1 text-xs text-muted-foreground"
 			aria-live="polite"
 			aria-atomic="true"
 		>

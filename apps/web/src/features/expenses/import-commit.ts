@@ -262,12 +262,13 @@ export async function commitImport(input: CommitInput): Promise<CommitResult> {
 	// Everything below is deliberately outside the transaction: it informs the
 	// WG about an import that already happened, so a failure here must not undo
 	// the import itself.
+	const importedLabel = `${inserted} ${inserted === 1 ? 'Ausgabe' : 'Ausgaben'}`;
 	await postSystemNotice({
 		wgId: input.wg.id,
 		authorMemberId: input.importedByMemberId,
 		kind: 'info',
 		source: 'expense',
-		content: `${input.importedByName} hat ${inserted} Ausgaben importiert (${input.source}).`,
+		content: `${input.importedByName} hat ${importedLabel} importiert (${input.source}).`,
 	});
 
 	await recordAuditEvent({
@@ -276,7 +277,7 @@ export async function commitImport(input: CommitInput): Promise<CommitResult> {
 		eventType: 'import.completed',
 		entityType: 'expense_import',
 		entityId: importId,
-		summary: `${input.importedByName} hat ${inserted} Ausgaben importiert.`,
+		summary: `${input.importedByName} hat ${importedLabel} importiert.`,
 		metadata: {
 			source: input.source,
 			inserted,

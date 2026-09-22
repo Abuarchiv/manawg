@@ -42,7 +42,14 @@ export default function WgError({ error, reset }: WgErrorProps) {
 						</EmptyHeader>
 						<EmptyContent>
 							{process.env.NODE_ENV === 'development' && (
-								<pre className="max-w-full overflow-auto rounded-lg border border-border bg-muted px-3 py-2 text-left text-xs text-muted-foreground">
+								<pre
+									// biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable error details must be focusable so keyboard users can scroll them.
+									tabIndex={0}
+									// biome-ignore lint/a11y/useSemanticElements: <pre> must stay a preformatted block; role="region" names its scroll area.
+									role="region"
+									aria-label="Fehlerdetails"
+									className="max-w-full overflow-auto rounded-lg border border-border bg-muted px-3 py-2 text-left text-xs text-muted-foreground"
+								>
 									{error.message}
 								</pre>
 							)}

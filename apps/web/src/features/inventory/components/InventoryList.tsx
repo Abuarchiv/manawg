@@ -106,7 +106,7 @@ export function InventoryList({
 						>
 							<h2
 								id={`inventory-${category}`}
-								className="flex items-center gap-2 text-[11.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
+								className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground"
 							>
 								{INVENTORY_CATEGORY_LABELS[category]}
 								<Badge variant="secondary" className="tabular-nums">

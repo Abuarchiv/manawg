@@ -93,7 +93,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
 		const onStorage = (event: StorageEvent): void => {
-			if (event.key !== THEME_STORAGE_KEY) return;
+			if (event.key !== null && event.key !== THEME_STORAGE_KEY) return;
 			const next = parseStoredTheme(event.newValue);
 			setThemeState(next);
 			setResolvedTheme(resolve(next));
