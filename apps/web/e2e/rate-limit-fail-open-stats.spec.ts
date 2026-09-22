@@ -37,12 +37,12 @@ function pinEnv(values: Partial<Record<(typeof ENV_KEYS)[number], string>>): () 
 	const saved = ENV_KEYS.map((key) => [key, process.env[key]] as const);
 	for (const key of ENV_KEYS) delete process.env[key];
 	for (const [key, value] of Object.entries(values)) {
-		if (value !== undefined) process.env[key] = value;
+		if (value !== undefined) Reflect.set(process.env, key, value);
 	}
 	return () => {
 		for (const [key, value] of saved) {
 			if (value === undefined) delete process.env[key];
-			else process.env[key] = value;
+			else Reflect.set(process.env, key, value);
 		}
 	};
 }
@@ -135,10 +135,15 @@ test('the fail-open tally counts every production event while monitoring stays t
 		expect(productionAlerts).toHaveLength(3);
 
 		expect(capture.captured).toHaveLength(1);
-		expect((capture.captured[0][0] as Error).message).toBe(
+		const throttledCapture = capture.captured[0];
+		expect(throttledCapture?.[0]).toBeInstanceOf(Error);
+		expect((throttledCapture?.[0] as Error).message).toBe(
 			'rate-limit failing open: upstash-not-configured',
 		);
-		expect(capture.captured[0][1]).toEqual({ area: 'rate-limit', cause: 'upstash-not-configured' });
+		expect(throttledCapture?.[1]).toEqual({
+			area: 'rate-limit',
+			cause: 'upstash-not-configured',
+		});
 	} finally {
 		spy.restore();
 		restore();
@@ -162,10 +167,11 @@ test('a throwing limiter is reported with its original error on every call', asy
 			(args) => args[0] === '[rate-limit] limiter call failed, failing open:',
 		);
 		expect(limiterFailures).toHaveLength(2);
-		expect((limiterFailures[0][1] as Error).message).toBe('upstash unreachable');
+		expect(limiterFailures[0]?.[1]).toBeInstanceOf(Error);
+		expect((limiterFailures[0]?.[1] as Error).message).toBe('upstash unreachable');
 		expect(spy.calls.some((args) => args[0] === FAIL_OPEN_PRODUCTION_LOG)).toBe(false);
 		expect(capture.captured).toHaveLength(1);
-		expect((capture.captured[0][0] as Error).message).toBe('upstash unreachable');
+		expect((capture.captured[0]?.[0] as Error).message).toBe('upstash unreachable');
 	} finally {
 		spy.restore();
 		restore();

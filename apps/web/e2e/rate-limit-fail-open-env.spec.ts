@@ -37,12 +37,12 @@ function pinEnv(values: Partial<Record<(typeof ENV_KEYS)[number], string>>): () 
 	const saved = ENV_KEYS.map((key) => [key, process.env[key]] as const);
 	for (const key of ENV_KEYS) delete process.env[key];
 	for (const [key, value] of Object.entries(values)) {
-		if (value !== undefined) process.env[key] = value;
+		if (value !== undefined) Reflect.set(process.env, key, value);
 	}
 	return () => {
 		for (const [key, value] of saved) {
 			if (value === undefined) delete process.env[key];
-			else process.env[key] = value;
+			else Reflect.set(process.env, key, value);
 		}
 	};
 }
