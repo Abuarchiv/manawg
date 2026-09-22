@@ -1,5 +1,9 @@
 'use client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { DebtSummary } from '@/components/wg/DebtSummary';
@@ -32,7 +36,7 @@ import {
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { parseEuroAmount } from '@/core/utils/amount';
-import { CENTS_PER_EURO } from '@/core/utils/money';
+import { CENTS_PER_EURO, formatEuroCents } from '@/core/utils/money';
 import { formatWeekLabel, parseTimestamp, parseValidDate, startOfWeek } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { AusgabenHeader } from '@/features/expenses/components/ausgaben/AusgabenHeader';
@@ -75,7 +79,9 @@ import {
 	splitCandidates,
 } from '@/features/expenses/expense-split-input';
 import { addMonths } from '@/features/expenses/recurring-expenses';
+import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
+import { ChevronDown } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
