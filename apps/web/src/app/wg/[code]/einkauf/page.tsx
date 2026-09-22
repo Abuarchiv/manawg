@@ -110,6 +110,7 @@ export default function EinkaufPage() {
 
 	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'shopping');
 	const appliedPrefillRef = useRef<string | null>(null);
+	const mountedRef = useRef(false);
 	const loadRequestIdRef = useRef(0);
 
 	const load = useCallback(
@@ -132,6 +133,8 @@ export default function EinkaufPage() {
 				setItems(res.data.items);
 				syncOfflineActions(wg.shareCode, { memberId: identity.memberId })
 					.then((synced) => {
+						if (!mountedRef.current) return;
+						if (requestId !== loadRequestIdRef.current) return;
 						refreshCount();
 						if (synced > 0) void load(true);
 					})
@@ -145,6 +148,13 @@ export default function EinkaufPage() {
 		[encodedShareCode, identity.memberId, wg.shareCode],
 	);
 	const itemCount = items.length;
+
+	useEffect(() => {
+		mountedRef.current = true;
+		return () => {
+			mountedRef.current = false;
+		};
+	}, []);
 
 	useEffect(() => {
 		void load(false);
