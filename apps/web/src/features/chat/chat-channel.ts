@@ -41,14 +41,40 @@ export function useChatChannel(
 
 	useEffect(() => {
 		if (!wgId) return;
-		const pollTimer = setInterval(() => {
-			if (typeof document !== 'undefined' && document.hidden) return;
+		let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+		// Start/stop around the page being visible — no timer ticks (and no
+		// catch-up refetch) while the tab is hidden.
+		const start = (): void => {
+			if (pollTimer !== null) return;
+			pollTimer = setInterval(() => {
+				handlersRef.current.onMessageCreated?.();
+				setTick((value) => value + 1);
+			}, pollIntervalMs);
+		};
+		const stop = (): void => {
+			if (pollTimer === null) return;
+			clearInterval(pollTimer);
+			pollTimer = null;
+		};
+		const onVisibilityChange = (): void => {
+			if (typeof document === 'undefined') return;
+			if (document.visibilityState === 'hidden') {
+				stop();
+				return;
+			}
+			// Catch up immediately on return instead of waiting a full interval.
+			start();
 			handlersRef.current.onMessageCreated?.();
 			setTick((value) => value + 1);
-		}, pollIntervalMs);
+		};
+
+		if (typeof document === 'undefined' || document.visibilityState !== 'hidden') start();
+		document.addEventListener('visibilitychange', onVisibilityChange);
 
 		return () => {
-			clearInterval(pollTimer);
+			document.removeEventListener('visibilitychange', onVisibilityChange);
+			stop();
 		};
 	}, [wgId, pollIntervalMs]);
 
