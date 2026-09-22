@@ -16,6 +16,12 @@ artifacts in the repository so work survives a chat session.
 - Do not deploy, change production data, send public messages, or spend money without explicit approval.
 - Treat secrets and environment files as local-only; never print or request their values.
 
+## Current development and environment separation
+
+- Current development (2026-09-22) is tracked in `fix/audit-158` / PR #300 (`fix: resolve 14 critical/high bugs from manawg-app audit`). Keep unfinished agent work in its own branch or worktree; the existence of a branch is not merge approval. Do not merge all agent branches together.
+- Preview and Production are separate environments and must remain separate. Branches separate development work; credentials, deployment checks, and explicit workflow gates separate environments. Preview is for exact-SHA validation with Preview-only credentials and data. Production changes only through `.github/workflows/migrate-production.yml` on `main`, using the exact `candidate_sha`, a matching successful `preview_run_id`, and `MIGRATE_PRODUCTION`.
+- Never treat local, fixture, or Preview success as Production proof. Never use Production credentials or data in Preview. If Preview/Auth/RLS or migration gates fail, keep the PR open and report the external blocker; do not bypass required checks.
+
 ## Project commands
 
 - OpenSpec: `openspec list --json`, `openspec status`, `openspec validate`
