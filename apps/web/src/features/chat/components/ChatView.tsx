@@ -439,7 +439,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	useEffect(() => {
 		const viewport = window.visualViewport;
 		const resolveFrame = (): HTMLElement | null =>
-			chatRootRef.current?.closest<HTMLElement>('[data-chat-frame]');
+			chatRootRef.current?.closest<HTMLElement>('[data-chat-frame]') ?? null;
 		let frame = resolveFrame();
 		if (!frame) return;
 		let chrome: HTMLElement | null = null;
