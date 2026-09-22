@@ -1,7 +1,8 @@
 import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, shoppingItems } from '@/core/db';
-import { badRequest, conflict, serverError, tooMany } from '@/core/errors';
+import { badRequest, conflict, forbidden, serverError, tooMany } from '@/core/errors';
+import { isWgAdmin } from '@/core/guards/admin';
 import {
 	ReplayCache,
 	type ReplayReservation,
@@ -196,6 +197,17 @@ export const DELETE = withWgRoute('shopping DELETE', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
+	// SECURITY: this clears every bought row of the whole WG (unlike the
+	// item-level DELETE, which is limited to the item's own adder), so it is
+	// admin-only like the other bulk/override mutations (chores DELETE,
+	// announcement override). The caller's identity is resolved from the
+	// Supabase session by requireWgMember, so the explicit DB role check
+	// (`isWgAdmin`) is the sound proof here — `isVerifiedWgAdmin` would also
+	// demand the legacy HMAC token, which no flow issues since the Supabase
+	// migration and would lock every admin out of this action.
+	if (!(await isWgAdmin(wgId, auth.member.memberId))) {
+		return forbidden('not_admin', 'not_admin');
+	}
 
 	const limited = await checkRateLimit(
 		wgWriteLimiter,
