@@ -180,7 +180,7 @@ export function resetOpenStateReporting(): void {
 }
 
 export async function checkRateLimit(
-	limiter: Ratelimit | null,
+	limiter: Pick<Ratelimit, 'limit'> | null,
 	key: string,
 	failMode: 'open' | 'closed' = rateLimitFailMode(),
 ): Promise<RateLimitResult> {
