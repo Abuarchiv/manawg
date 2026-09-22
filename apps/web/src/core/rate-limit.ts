@@ -2,8 +2,27 @@ import { captureException } from '@/core/infra/observability';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis/cloudflare';
 
-const url = process.env.UPSTASH_REDIS_REST_URL;
-const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+/**
+ * An empty or whitespace-only variable is *configured but unusable* — a typo
+ * in the deployment environment, not an intentional "no Redis" choice. Read it
+ * as unset so the documented fail-open/fail-closed handling still applies, but
+ * name the exact variable instead of failing open without a trace: `checkEnv`
+ * only reports these two as generically "degraded" at boot.
+ */
+function readUpstashSetting(name: string, value: string | undefined): string | undefined {
+	if (value === undefined) return undefined;
+	const trimmed = value.trim();
+	if (trimmed.length === 0) {
+		console.warn(
+			`[rate-limit] ${name} is set but empty — rate limiting stays disabled until it holds a value.`,
+		);
+		return undefined;
+	}
+	return trimmed;
+}
+
+const url = readUpstashSetting('UPSTASH_REDIS_REST_URL', process.env.UPSTASH_REDIS_REST_URL);
+const token = readUpstashSetting('UPSTASH_REDIS_REST_TOKEN', process.env.UPSTASH_REDIS_REST_TOKEN);
 
 export function rateLimitFailMode(): 'open' | 'closed' {
 	const standaloneProduction = process.env.NODE_ENV === 'production' && !process.env.VERCEL_ENV;
