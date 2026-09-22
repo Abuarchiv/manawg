@@ -276,12 +276,21 @@ test.describe('ManaWG launch smoke', () => {
 			expect(manifest.wg?.id).toBe(createdWgId);
 			expect(manifest.wg?.shareCode).toBe(createdShareCode);
 			expect(manifest.currentMember?.memberId).toBe(createdMemberId);
+			const memberId =
+				typeof manifest.currentMember?.memberId === 'string'
+					? manifest.currentMember.memberId
+					: null;
 			const memberToken =
 				typeof manifest.currentMember?.memberToken === 'string'
 					? manifest.currentMember.memberToken
 					: null;
-			if (!memberToken) throw new Error('created WG member token was not returned');
-			const memberHeaders = { 'x-manawg-member-token': memberToken };
+			if (!memberId || !memberToken) {
+				throw new Error('created WG member proof was not returned');
+			}
+			const memberHeaders = {
+				'x-manawg-member-id': memberId,
+				'x-manawg-member-token': memberToken,
+			};
 
 			const closeJoining = await page.request.patch(`/api/wg/${createdShareCode}`, {
 				headers: memberHeaders,
@@ -355,7 +364,7 @@ test.describe('ManaWG launch smoke', () => {
 				cleanupFailure = `WG cleanup failed for run namespace ${runNamespace}, share code unavailable.`;
 			}
 		}
-		if (cleanupFailure) throw new Error(cleanupFailure);
 		if (flowError) throw flowError;
+		if (cleanupFailure) throw new Error(cleanupFailure);
 	});
 });
