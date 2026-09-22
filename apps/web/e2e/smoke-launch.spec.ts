@@ -8,7 +8,7 @@ type CreatedWgResponse = {
 
 type WgManifestResponse = {
 	wg?: { id?: unknown; shareCode?: unknown };
-	currentMember?: { memberId?: unknown };
+	currentMember?: { memberId?: unknown; memberToken?: unknown };
 };
 
 type MineWgResponse = {
@@ -276,8 +276,15 @@ test.describe('ManaWG launch smoke', () => {
 			expect(manifest.wg?.id).toBe(createdWgId);
 			expect(manifest.wg?.shareCode).toBe(createdShareCode);
 			expect(manifest.currentMember?.memberId).toBe(createdMemberId);
+			const memberToken =
+				typeof manifest.currentMember?.memberToken === 'string'
+					? manifest.currentMember.memberToken
+					: null;
+			if (!memberToken) throw new Error('created WG member token was not returned');
+			const memberHeaders = { 'x-manawg-member-token': memberToken };
 
 			const closeJoining = await page.request.patch(`/api/wg/${createdShareCode}`, {
+				headers: memberHeaders,
 				data: { joiningEnabled: false },
 			});
 			expect(closeJoining.status()).toBe(200);
@@ -327,7 +334,9 @@ test.describe('ManaWG launch smoke', () => {
 			}
 			if (createdShareCode) {
 				try {
-					const cleanup = await page.request.delete(`/api/wg/${createdShareCode}`);
+					const cleanup = await page.request.delete(`/api/wg/${createdShareCode}`, {
+						headers: memberHeaders,
+					});
 					const [wgAfterCleanup, membersAfterCleanup] = await Promise.all([
 						page.request.get(`/api/wg/${createdShareCode}`),
 						page.request.get(`/api/wg/${createdShareCode}/members`),
