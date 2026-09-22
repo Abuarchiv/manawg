@@ -12,6 +12,7 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 const MAX_MEMBERS_PER_WG = 20;
 
@@ -70,14 +71,14 @@ export const GET = withWgRoute(
 	},
 );
 
-interface PostBody {
-	name?: unknown;
-	color?: unknown;
-}
-
-function isPostBody(value: unknown): value is PostBody {
+function isPostBody(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
+
+const joinMemberSchema = z.object({
+	name: z.string().trim().min(1).max(LIMITS.NAME_MAX),
+	color: z.string().trim().max(16).nullish(),
+});
 
 function isUniqueMemberNameViolation(err: unknown): boolean {
 	if (!err || typeof err !== 'object' || !('code' in err)) return false;
@@ -87,18 +88,21 @@ function isUniqueMemberNameViolation(err: unknown): boolean {
 }
 
 export const POST = withWgRoute('members POST', async (req, { code }) => {
-	let body: PostBody = {};
+	let raw: unknown;
 	try {
-		const raw: unknown = await req.json();
-		if (isPostBody(raw)) body = raw;
+		raw = await req.json();
 	} catch {
 		return badRequest('invalid_json');
 	}
-	const name = typeof body.name === 'string' ? body.name.trim() : '';
-	const color = typeof body.color === 'string' ? body.color.trim().slice(0, 16) : null;
-	if (name.length < 1 || name.length > LIMITS.NAME_MAX) {
-		return badRequest('name_invalid');
+	if (!isPostBody(raw)) return badRequest('invalid_body');
+	const parsed = joinMemberSchema.safeParse(raw);
+	if (!parsed.success) {
+		const issues = parsed.error.flatten();
+		if (issues.fieldErrors.name) return badRequest('name_invalid');
+		return badRequest('invalid_body');
 	}
+	const { name } = parsed.data;
+	const color = parsed.data.color ?? null;
 	const limit = await checkRateLimit(wgWriteLimiter, `join:${clientIpKey(req)}`);
 	if (!limit.success) {
 		return tooMany('join_rate_limited', 'join_rate_limited');
