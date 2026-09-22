@@ -134,8 +134,13 @@ export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, 
 	if (parsed.data.unit !== undefined) updates.unit = parsed.data.unit;
 	if (parsed.data.category !== undefined) updates.category = parsed.data.category;
 
+	// Optimistic concurrency for every non-absolute update: the WHERE clause
+	// re-checks the quantity snapshot the changes were computed against, so a
+	// concurrent write between read and write surfaces as a 409 instead of
+	// silently mixing stale and fresh fields. Absolute `quantity` writes are
+	// exempt — they deliberately overwrite whatever is there.
 	const updateWhere =
-		parsed.data.quantity === undefined && parsed.data.quantityDelta !== undefined
+		parsed.data.quantity === undefined
 			? and(
 					eq(wgInventoryItems.id, id),
 					eq(wgInventoryItems.wgId, wgId),
@@ -145,10 +150,10 @@ export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, 
 
 	const [updated] = await db.update(wgInventoryItems).set(updates).where(updateWhere).returning();
 	if (!updated) {
-		// Delta update affected 0 rows: concurrent write changed the quantity
+		// Guarded update affected 0 rows: concurrent write changed the quantity
 		// between read and write. Distinguish from genuine deletion like the
 		// consume route does.
-		if (parsed.data.quantity === undefined && parsed.data.quantityDelta !== undefined) {
+		if (parsed.data.quantity === undefined) {
 			const stillExistsRows = await db
 				.select({ id: wgInventoryItems.id })
 				.from(wgInventoryItems)

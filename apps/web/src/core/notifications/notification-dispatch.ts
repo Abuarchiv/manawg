@@ -86,7 +86,11 @@ async function sendWebPush(
 		.from(pushSubscriptions)
 		.where(eq(pushSubscriptions.memberId, memberId));
 	let sent = 0;
-	let deletedStaleSubscription = false;
+	// Stale subscriptions are collected first and deleted in ONE statement
+	// after the fan-out below. Deleting inside the concurrent callbacks made
+	// the follow-up pushOptIn check race against deletions that had not
+	// committed yet.
+	const staleSubscriptionIds: string[] = [];
 	const failures: unknown[] = [];
 
 	await Promise.allSettled(
