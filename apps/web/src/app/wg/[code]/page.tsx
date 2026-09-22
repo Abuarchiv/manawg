@@ -174,9 +174,12 @@ export default function WgHomePage() {
 				samePendingAnnouncement(latestAnnouncement, item, identity.name),
 			),
 	);
+	const pendingHrefs = useMemo(
+		() => new Set(todayImportant.map((item) => item.href)),
+		[todayImportant],
+	);
 	const activityItems = useMemo(() => {
 		if (!data) return [];
-		const pendingHrefs = new Set(todayImportant.map((item) => item.href));
 		return data.activity
 			.filter((item) => !item.href || !pendingHrefs.has(item.href))
 			.filter((item) => {
@@ -190,7 +193,7 @@ export default function WgHomePage() {
 				);
 			})
 			.slice(0, latestAnnouncement ? 2 : 3);
-	}, [data, latestAnnouncement, todayImportant, wg.shareCode]);
+	}, [data, latestAnnouncement, pendingHrefs, wg.shareCode]);
 	const isNewWg = Boolean(
 		data &&
 			!data.setup.hasExpense &&
