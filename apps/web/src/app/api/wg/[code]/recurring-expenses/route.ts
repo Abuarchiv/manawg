@@ -1,5 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, recurringExpenses, wgMembers } from '@/core/db';
+import { TransactionAbort } from '@/core/db/transaction';
 import { badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import {
@@ -27,6 +28,12 @@ import { z } from 'zod';
 
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 const RECURRING_EXPENSES_LIST_LIMIT = 500;
+// nextDueAt drives the cron's catch-up loop (one iteration per missed
+// interval). An unbounded past date used to translate into an unbounded
+// charge storm, and a nonsensical far-future date silently parked the
+// template — both now rejected at the schema.
+const MAX_PAST_DAYS = 366;
+const MAX_FUTURE_DAYS = 3650;
 
 type RecurringCreateResponseBody = { recurringExpense: unknown };
 
@@ -47,7 +54,18 @@ const createRecurringSchema = z.object({
 	currency: currencySchema.optional().default('EUR'),
 	paidByMemberId: z.string().uuid(),
 	intervalMonths: z.number().int().min(1).max(24).default(1),
-	nextDueAt: z.string().datetime({ offset: true }),
+	nextDueAt: z
+		.string()
+		.datetime({ offset: true })
+		.refine(
+			(value) => {
+				const parsed = Date.parse(value);
+				if (Number.isNaN(parsed)) return false;
+				const skew = Date.now() - parsed;
+				return skew <= MAX_PAST_DAYS * 86_400_000 && skew >= -MAX_FUTURE_DAYS * 86_400_000;
+			},
+			{ message: 'due_date_out_of_range' },
+		),
 	splits: z.array(splitSchema).min(1).max(50),
 });
 
@@ -266,14 +284,24 @@ export async function POST(
 		const responseBody = { recurringExpense: serialize(template) };
 		if (idemScope && idemKey && replayReservation?.owned) {
 			replayReservation.resolve(responseBody);
-			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) =>
-				console.warn('[recurring-expenses POST] idem cache write failed', err),
-			);
+			// Awaited, not fire-and-forget: a dropped cache write would leave a
+			// claimed slot without a response, so the next retry with the same
+			// Idempotency-Key could not replay and would re-run the mutation.
+			await setCachedResponse(idemScope, idemKey, responseBody);
 		}
 		return NextResponse.json(responseBody);
 	} catch (err) {
 		replayReservation?.reject(err);
-		console.error('[recurring-expenses POST]', err);
+		if (err instanceof TransactionAbort) {
+			console.error('[recurring-expenses POST] transaction aborted');
+			return serverError('transaction_aborted');
+		}
+		// Log the message only — the full error object can carry SQL
+		// parameters (description, amounts) into the log stream.
+		console.error(
+			'[recurring-expenses POST]',
+			err instanceof Error ? `${err.name}: ${err.message}` : 'unknown error',
+		);
 		return serverError(err);
 	}
 }
