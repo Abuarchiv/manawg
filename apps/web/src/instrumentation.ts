@@ -29,6 +29,8 @@ async function reportEnvironment(): Promise<void> {
 		// crashing the entire server boot leaves every tenant without service.
 		// The captured exception surfaces the problem in the observability
 		// pipeline so operators can fix it without a global outage.
+		//
+		console.error(report);
 		return;
 	}
 	// biome-ignore lint/suspicious/noConsole: degraded startup diagnostics are informational.
