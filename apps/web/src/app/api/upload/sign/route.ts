@@ -4,6 +4,7 @@ import { db } from '@/core/db';
 import { apiError, badRequest, notFound, serverError, tooMany } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
 import { S3_MAX_UPLOAD_BYTES, createPresignedUpload, isAllowedMimeType } from '@/core/infra/s3';
+import { PRIVATE_IMAGE_MIME_TYPES } from '@/core/infra/private-image-policy';
 import {
 	ImageStorageConfigurationError,
 	createSupabaseSignedUpload,
@@ -20,7 +21,7 @@ const ALLOWED_PURPOSES = ['expense', 'announcement'] as const;
 const signSchema = z.object({
 	shareCode: z.string().transform((v) => normalizeShareCode(v)),
 	purpose: z.enum(ALLOWED_PURPOSES),
-	mimeType: z.string(),
+	mimeType: z.enum(PRIVATE_IMAGE_MIME_TYPES),
 	fileSize: z.number().int().positive().max(S3_MAX_UPLOAD_BYTES),
 });
 
