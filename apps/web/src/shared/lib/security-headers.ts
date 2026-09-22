@@ -25,7 +25,11 @@ function s3UploadOrigins(): string[] {
 export function contentSecurityPolicy(nonce: string): string {
 	const scriptSrc = ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", 'https://cdn.jsdelivr.net'];
 	const styleSrc = ["'self'", `'nonce-${nonce}'`];
-	const connectSrc = ["'self'", 'https://cdn.jsdelivr.net', ...s3UploadOrigins()];
+	// cdn.jsdelivr.net deliberately stays out of connect-src: it is a script
+	// and worker source (script-src/worker-src below), never a fetch/XHR/
+	// WebSocket target. Listing it here would let a compromised CDN also
+	// receive exfiltrated data.
+	const connectSrc = ["'self'", ...s3UploadOrigins()];
 	const workerSrc = ["'self'", 'blob:', 'https://cdn.jsdelivr.net'];
 	const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 	if (posthogHost) {
