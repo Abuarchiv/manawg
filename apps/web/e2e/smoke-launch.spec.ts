@@ -204,6 +204,7 @@ test.describe('ManaWG launch smoke', () => {
 		let createdShareCode: string | null = null;
 		let createdWgId: string | null = null;
 		let createdMemberId: string | null = null;
+		let memberHeaders: Record<string, string> | null = null;
 		let createClicked = false;
 		let flowError: unknown = null;
 		let cleanupFailure: string | null = null;
@@ -287,7 +288,7 @@ test.describe('ManaWG launch smoke', () => {
 			if (!memberId || !memberToken) {
 				throw new Error('created WG member proof was not returned');
 			}
-			const memberHeaders = {
+			memberHeaders = {
 				'x-manawg-member-id': memberId,
 				'x-manawg-member-token': memberToken,
 				origin: new URL(page.url()).origin,
@@ -345,19 +346,23 @@ test.describe('ManaWG launch smoke', () => {
 			}
 			if (createdShareCode) {
 				try {
-					const cleanup = await page.request.delete(`/api/wg/${createdShareCode}`, {
-						headers: memberHeaders,
-					});
-					const [wgAfterCleanup, membersAfterCleanup] = await Promise.all([
-						page.request.get(`/api/wg/${createdShareCode}`),
-						page.request.get(`/api/wg/${createdShareCode}/members`),
-					]);
-					const cleanupFailed =
-						cleanup.status() !== 200 ||
-						wgAfterCleanup.status() !== 404 ||
-						membersAfterCleanup.status() !== 404;
-					if (cleanupFailed) {
-						cleanupFailure = `WG cleanup failed for run namespace ${runNamespace}, share code ${createdShareCode}.`;
+					if (!memberHeaders) {
+						cleanupFailure = `WG cleanup failed run namespace ${runNamespace}, share code ${createdShareCode}.`;
+					} else {
+						const cleanup = await page.request.delete(`/api/wg/${createdShareCode}`, {
+							headers: memberHeaders,
+						});
+						const [wgAfterCleanup, membersAfterCleanup] = await Promise.all([
+							page.request.get(`/api/wg/${createdShareCode}`),
+							page.request.get(`/api/wg/${createdShareCode}/members`),
+						]);
+						const cleanupFailed =
+							cleanup.status() !== 200 ||
+							wgAfterCleanup.status() !== 404 ||
+							membersAfterCleanup.status() !== 404;
+						if (cleanupFailed) {
+							cleanupFailure = `WG cleanup failed for run namespace ${runNamespace}, share code ${createdShareCode}.`;
+						}
 					}
 				} catch {
 					cleanupFailure = `WG cleanup failed for run namespace ${runNamespace}, share code ${createdShareCode}.`;
