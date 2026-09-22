@@ -72,6 +72,7 @@ export function RemindButton({
 	const requestKeyRef = useRef<string | null>(null);
 
 	useEffect(() => {
+		// A request is genuinely in flight — its own result sets the status.
 		if (sendingRef.current) return;
 		const nextStatus: RemindButtonStatus = debtorOptedOut
 			? 'optedOut'
@@ -79,7 +80,10 @@ export function RemindButton({
 				? 'cooldown'
 				: 'idle';
 		setStatus((current) => {
-			if (current === 'sending' || current === 'sent') return current;
+			// 'sent' is terminal, but a leftover 'sending' without an in-flight
+			// request must not stick — otherwise the button stays on "Sende…"
+			// forever with no way to retry after the conditions changed.
+			if (current === 'sent') return current;
 			return nextStatus;
 		});
 		if (nextStatus === 'idle') setFeedback(null);

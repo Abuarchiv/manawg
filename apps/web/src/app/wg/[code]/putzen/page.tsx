@@ -118,6 +118,7 @@ export default function PutzenPage() {
 	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'chore');
 	const appliedPrefillRef = useRef<string | null>(null);
 	const initialLoadStartedRef = useRef(false);
+	const mountedRef = useRef(false);
 	const loadRequestIdRef = useRef(0);
 	const titleInputRef = useRef<HTMLInputElement>(null);
 	const assigneeTouchedRef = useRef(false);
@@ -154,6 +155,8 @@ export default function PutzenPage() {
 				setItems(result.data.chores);
 				syncOfflineActions(wg.shareCode, { memberId: identity.memberId })
 					.then((synced) => {
+						if (!mountedRef.current) return;
+						if (requestId !== loadRequestIdRef.current) return;
 						refreshCount();
 						if (synced > 0) void load(false);
 					})
@@ -180,6 +183,13 @@ export default function PutzenPage() {
 		[encodedShareCode, identity.memberId, wg.shareCode],
 	);
 	const itemCount = items.length;
+
+	useEffect(() => {
+		mountedRef.current = true;
+		return () => {
+			mountedRef.current = false;
+		};
+	}, []);
 
 	useEffect(() => {
 		if (initialLoadStartedRef.current) return;

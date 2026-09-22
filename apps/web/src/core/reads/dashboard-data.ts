@@ -12,6 +12,7 @@ import {
 	shoppingItems,
 	wgMembers,
 } from '@/core/db';
+import { captureException } from '@/core/infra/observability';
 import {
 	berlinDayKey,
 	nextBerlinDayStart,
@@ -372,6 +373,15 @@ export function isDuplicateAuditActivity(
 	return rawMs !== undefined && Math.abs(timestampMs - rawMs) <= AUDIT_DEDUPE_WINDOW_MS;
 }
 
+// One failing dashboard query degrades its own section instead of taking
+// down the whole dashboard — every query reports and falls back individually.
+function withFallback<T>(label: string, query: Promise<T>, fallback: () => T): Promise<T> {
+	return query.catch((err: unknown) => {
+		captureException(err, { action: 'loadDashboardData', query: label });
+		return fallback();
+	});
+}
+
 export async function loadDashboardData(
 	wgId: string,
 	currentMemberId?: string | null,
@@ -388,78 +398,106 @@ export async function loadDashboardData(
 		choreRows,
 		announcementRows,
 	] = await Promise.all([
-		db
-			.select({
-				id: wgMembers.id,
-				name: wgMembers.name,
-				color: wgMembers.color,
-			})
-			.from(wgMembers)
-			.where(eq(wgMembers.wgId, wgId)),
-		db
-			.select({
-				id: expenses.id,
-				paidByMemberId: expenses.paidByMemberId,
-				amountCents: expenses.amountCents,
-				currency: expenses.currency,
-				description: expenses.description,
-				occurredAt: expenses.occurredAt,
-			})
-			.from(expenses)
-			.where(eq(expenses.wgId, wgId))
-			.orderBy(desc(expenses.occurredAt)),
-		db
-			.select({
-				expenseId: expenseSplits.expenseId,
-				debtorMemberId: expenseSplits.debtorMemberId,
-				amountCents: expenseSplits.amountCents,
-				settledAt: expenseSplits.settledAt,
-			})
-			.from(expenseSplits)
-			.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
-			.where(eq(expenses.wgId, wgId)),
-		db
-			.select({
-				fromMemberId: expensePayments.fromMemberId,
-				toMemberId: expensePayments.toMemberId,
-				amountCents: expensePayments.amountCents,
-				currency: expensePayments.currency,
-			})
-			.from(expensePayments)
-			.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed'))),
-		db
-			.select({
-				id: shoppingItems.id,
-				name: shoppingItems.name,
-				quantity: shoppingItems.quantity,
-				addedByMemberId: shoppingItems.addedByMemberId,
-				createdAt: shoppingItems.createdAt,
-				boughtAt: shoppingItems.boughtAt,
-			})
-			.from(shoppingItems)
-			.where(eq(shoppingItems.wgId, wgId))
-			.orderBy(desc(shoppingItems.createdAt)),
-		db
-			.select({
-				id: chores.id,
-				title: chores.title,
-				nextDueAt: chores.nextDueAt,
-				assignedMemberId: chores.assignedMemberId,
-			})
-			.from(chores)
-			.where(eq(chores.wgId, wgId)),
-		db
-			.select({
-				id: announcements.id,
-				content: announcements.content,
-				authorMemberId: announcements.authorMemberId,
-				source: announcements.source,
-				status: announcements.status,
-				createdAt: announcements.createdAt,
-			})
-			.from(announcements)
-			.where(eq(announcements.wgId, wgId))
-			.orderBy(desc(announcements.createdAt)),
+		withFallback(
+			'members',
+			db
+				.select({
+					id: wgMembers.id,
+					name: wgMembers.name,
+					color: wgMembers.color,
+				})
+				.from(wgMembers)
+				.where(eq(wgMembers.wgId, wgId)),
+			() => [],
+		),
+		withFallback(
+			'expenses',
+			db
+				.select({
+					id: expenses.id,
+					paidByMemberId: expenses.paidByMemberId,
+					amountCents: expenses.amountCents,
+					currency: expenses.currency,
+					description: expenses.description,
+					occurredAt: expenses.occurredAt,
+				})
+				.from(expenses)
+				.where(eq(expenses.wgId, wgId))
+				.orderBy(desc(expenses.occurredAt)),
+			() => [],
+		),
+		withFallback(
+			'expenseSplits',
+			db
+				.select({
+					expenseId: expenseSplits.expenseId,
+					debtorMemberId: expenseSplits.debtorMemberId,
+					amountCents: expenseSplits.amountCents,
+					settledAt: expenseSplits.settledAt,
+				})
+				.from(expenseSplits)
+				.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
+				.where(eq(expenses.wgId, wgId)),
+			() => [],
+		),
+		withFallback(
+			'expensePayments',
+			db
+				.select({
+					fromMemberId: expensePayments.fromMemberId,
+					toMemberId: expensePayments.toMemberId,
+					amountCents: expensePayments.amountCents,
+					currency: expensePayments.currency,
+				})
+				.from(expensePayments)
+				.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed'))),
+			() => [],
+		),
+		withFallback(
+			'shoppingItems',
+			db
+				.select({
+					id: shoppingItems.id,
+					name: shoppingItems.name,
+					quantity: shoppingItems.quantity,
+					addedByMemberId: shoppingItems.addedByMemberId,
+					createdAt: shoppingItems.createdAt,
+					boughtAt: shoppingItems.boughtAt,
+				})
+				.from(shoppingItems)
+				.where(eq(shoppingItems.wgId, wgId))
+				.orderBy(desc(shoppingItems.createdAt)),
+			() => [],
+		),
+		withFallback(
+			'chores',
+			db
+				.select({
+					id: chores.id,
+					title: chores.title,
+					nextDueAt: chores.nextDueAt,
+					assignedMemberId: chores.assignedMemberId,
+				})
+				.from(chores)
+				.where(eq(chores.wgId, wgId)),
+			() => [],
+		),
+		withFallback(
+			'announcements',
+			db
+				.select({
+					id: announcements.id,
+					content: announcements.content,
+					authorMemberId: announcements.authorMemberId,
+					source: announcements.source,
+					status: announcements.status,
+					createdAt: announcements.createdAt,
+				})
+				.from(announcements)
+				.where(eq(announcements.wgId, wgId))
+				.orderBy(desc(announcements.createdAt)),
+			() => [],
+		),
 	]);
 
 	const memberById = new Map(memberRows.map((m) => [m.id, m]));
@@ -522,70 +560,90 @@ export async function loadDashboardData(
 	const latestAnnouncement = getLatestManualAnnouncement(announcementRows, memberById);
 	const [myOpenAnnouncements, absenceRows, recurringRows, auditRows, currentMemberNotification] =
 		await Promise.all([
-			currentMemberId
-				? db
-						.select({
-							id: announcements.id,
-							kind: announcements.kind,
-							content: announcements.content,
-							createdAt: announcements.createdAt,
-						})
-						.from(announcements)
-						.innerJoin(
-							announcementReactions,
-							eq(announcementReactions.announcementId, announcements.id),
-						)
-						.where(
-							and(
-								eq(announcements.wgId, wgId),
-								eq(announcements.status, 'open'),
-								eq(announcementReactions.memberId, currentMemberId),
-								eq(announcementReactions.reaction, 'take'),
-							),
-						)
-						.orderBy(desc(announcements.createdAt))
-				: Promise.resolve([]),
-			db
-				.select({
-					id: memberAbsences.id,
-					memberId: memberAbsences.memberId,
-					startDate: memberAbsences.startDate,
-					endDate: memberAbsences.endDate,
-				})
-				.from(memberAbsences)
-				.where(eq(memberAbsences.wgId, wgId)),
-			db
-				.select({
-					id: recurringExpenses.id,
-					description: recurringExpenses.description,
-					amountCents: recurringExpenses.amountCents,
-					nextDueAt: recurringExpenses.nextDueAt,
-					lastCreatedAt: recurringExpenses.lastCreatedAt,
-					createdAt: recurringExpenses.createdAt,
-				})
-				.from(recurringExpenses)
-				.where(eq(recurringExpenses.wgId, wgId)),
-			db
-				.select({
-					id: auditEvents.id,
-					memberId: auditEvents.memberId,
-					eventType: auditEvents.eventType,
-					entityType: auditEvents.entityType,
-					entityId: auditEvents.entityId,
-					metadataJson: auditEvents.metadataJson,
-					summary: auditEvents.summary,
-					createdAt: auditEvents.createdAt,
-				})
-				.from(auditEvents)
-				.where(eq(auditEvents.wgId, wgId))
-				.orderBy(desc(auditEvents.createdAt))
-				.limit(ACTIVITY_LIMIT),
-			currentMemberId
-				? db.query.wgMembers.findFirst({
-						where: and(eq(wgMembers.id, currentMemberId), eq(wgMembers.wgId, wgId)),
-						columns: { pushOptIn: true },
+			withFallback(
+				'myOpenAnnouncements',
+				currentMemberId
+					? db
+							.select({
+								id: announcements.id,
+								kind: announcements.kind,
+								content: announcements.content,
+								createdAt: announcements.createdAt,
+							})
+							.from(announcements)
+							.innerJoin(
+								announcementReactions,
+								eq(announcementReactions.announcementId, announcements.id),
+							)
+							.where(
+								and(
+									eq(announcements.wgId, wgId),
+									eq(announcements.status, 'open'),
+									eq(announcementReactions.memberId, currentMemberId),
+									eq(announcementReactions.reaction, 'take'),
+								),
+							)
+							.orderBy(desc(announcements.createdAt))
+					: Promise.resolve([]),
+				() => [],
+			),
+			withFallback(
+				'memberAbsences',
+				db
+					.select({
+						id: memberAbsences.id,
+						memberId: memberAbsences.memberId,
+						startDate: memberAbsences.startDate,
+						endDate: memberAbsences.endDate,
 					})
-				: Promise.resolve(null),
+					.from(memberAbsences)
+					.where(eq(memberAbsences.wgId, wgId)),
+				() => [],
+			),
+			withFallback(
+				'recurringExpenses',
+				db
+					.select({
+						id: recurringExpenses.id,
+						description: recurringExpenses.description,
+						amountCents: recurringExpenses.amountCents,
+						nextDueAt: recurringExpenses.nextDueAt,
+						lastCreatedAt: recurringExpenses.lastCreatedAt,
+						createdAt: recurringExpenses.createdAt,
+					})
+					.from(recurringExpenses)
+					.where(eq(recurringExpenses.wgId, wgId)),
+				() => [],
+			),
+			withFallback(
+				'auditEvents',
+				db
+					.select({
+						id: auditEvents.id,
+						memberId: auditEvents.memberId,
+						eventType: auditEvents.eventType,
+						entityType: auditEvents.entityType,
+						entityId: auditEvents.entityId,
+						metadataJson: auditEvents.metadataJson,
+						summary: auditEvents.summary,
+						createdAt: auditEvents.createdAt,
+					})
+					.from(auditEvents)
+					.where(eq(auditEvents.wgId, wgId))
+					.orderBy(desc(auditEvents.createdAt))
+					.limit(ACTIVITY_LIMIT),
+				() => [],
+			),
+			withFallback(
+				'currentMemberPushOptIn',
+				currentMemberId
+					? db.query.wgMembers.findFirst({
+							where: and(eq(wgMembers.id, currentMemberId), eq(wgMembers.wgId, wgId)),
+							columns: { pushOptIn: true },
+						})
+					: Promise.resolve(null),
+				() => null,
+			),
 		]);
 	const filteredMyOpenAnnouncements = myOpenAnnouncements;
 	const dueRecurringExpenses = getDueRecurringExpenses(

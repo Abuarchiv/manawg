@@ -17,16 +17,24 @@ export const FIXTURE_WG = {
 /**
  * Pre-seeds the CI-only fixture identity so `WgContextProvider` can render the
  * requested feature page without a Supabase session.
+ *
+ * Flags blocked storage on `window` so `navigateToFeature` fails with a clear
+ * cause instead of an opaque "identity not accepted" assertion later.
  */
 export async function setupMember(page: Page): Promise<void> {
 	await page.addInitScript(
 		({ wgId, memberId, memberName }) => {
-			localStorage.setItem(
-				`manawg_identity:${wgId}`,
-				JSON.stringify({ memberId, name: memberName, memberToken: 'fixture-member-token' }),
-			);
-			// Wipe any stale offline queue from previous specs.
-			localStorage.removeItem('manawg:offline-actions');
+			try {
+				localStorage.setItem(
+					`manawg_identity:${wgId}`,
+					JSON.stringify({ memberId, name: memberName, memberToken: 'fixture-member-token' }),
+				);
+				// Wipe any stale offline queue from previous specs.
+				localStorage.removeItem('manawg:offline-actions');
+			} catch {
+				window.__manawgStorageBlocked = true;
+				document.documentElement?.setAttribute('data-manawg-storage-blocked', 'true');
+			}
 		},
 		{
 			wgId: FIXTURE_WG.id,
@@ -45,6 +53,12 @@ export async function navigateToFeature(page: Page, path: string): Promise<void>
 	for (let attempt = 0; attempt < 3; attempt += 1) {
 		try {
 			await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 120_000 });
+			const storageBlocked = await page.evaluate(() => Boolean(window.__manawgStorageBlocked));
+			if (storageBlocked) {
+				throw new Error(
+					'localStorage is blocked in this browser context (private mode?) — fixture identity was not written',
+				);
+			}
 			const body = await page.locator('body').innerText();
 			if (body.includes('Internal Server Error')) {
 				throw new Error('Next dev server returned Internal Server Error');

@@ -37,7 +37,12 @@ function sdkNamespace(merchantId: string): string {
 }
 
 function paypalFor(merchantId: string): PayPalNamespace | undefined {
-	return window[sdkNamespace(merchantId)] as PayPalNamespace | undefined;
+	// The namespace is written by PayPal's injected script — treat it as
+	// untrusted input instead of casting blindly.
+	const candidate: unknown = window[sdkNamespace(merchantId)];
+	if (typeof candidate !== 'object' || candidate === null) return undefined;
+	if (typeof (candidate as { Buttons?: unknown }).Buttons !== 'function') return undefined;
+	return candidate as PayPalNamespace;
 }
 
 function loadPayPalSdk(merchantId: string): Promise<void> {

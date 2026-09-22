@@ -67,7 +67,7 @@ import {
 } from '@/features/shopping/shopping-errors';
 import { ListChecks, Plus, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type ShoppingCreateWarning =
 	| null
@@ -75,6 +75,16 @@ type ShoppingCreateWarning =
 	| 'notification_delivery_unknown';
 
 type ShoppingCreateResponse = { item: ShoppingItem; warning: ShoppingCreateWarning };
+
+const UNKNOWN_MEMBER: MemberInfo = { name: '?', color: null };
+
+// Keeps the same array reference when nothing actually changed, so memoized
+// rows do not re-render on unrelated state updates (typing, error banners).
+function keepItems(prev: ShoppingItem[], next: ShoppingItem[]): ShoppingItem[] {
+	const unchanged =
+		prev.length === next.length && prev.every((item, index) => item === next[index]);
+	return unchanged ? prev : next;
+}
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function EinkaufPage() {
@@ -110,6 +120,7 @@ export default function EinkaufPage() {
 
 	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'shopping');
 	const appliedPrefillRef = useRef<string | null>(null);
+	const mountedRef = useRef(false);
 	const loadRequestIdRef = useRef(0);
 
 	const load = useCallback(
@@ -132,6 +143,8 @@ export default function EinkaufPage() {
 				setItems(res.data.items);
 				syncOfflineActions(wg.shareCode, { memberId: identity.memberId })
 					.then((synced) => {
+						if (!mountedRef.current) return;
+						if (requestId !== loadRequestIdRef.current) return;
 						refreshCount();
 						if (synced > 0) void load(true);
 					})
@@ -145,6 +158,13 @@ export default function EinkaufPage() {
 		[encodedShareCode, identity.memberId, wg.shareCode],
 	);
 	const itemCount = items.length;
+
+	useEffect(() => {
+		mountedRef.current = true;
+		return () => {
+			mountedRef.current = false;
+		};
+	}, []);
 
 	useEffect(() => {
 		void load(false);
@@ -200,11 +220,21 @@ export default function EinkaufPage() {
 		}, 80);
 	}, [highlightedId, itemCount]);
 
-	function memberLookup(id: string | null): MemberInfo {
-		if (!id) return { name: '?', color: null };
-		const m = members.find((x) => x.id === id);
-		return { name: m?.name ?? '?', color: m?.color ?? null };
-	}
+	const memberInfoById = useMemo(() => {
+		const map = new Map<string, MemberInfo>();
+		for (const member of members) {
+			map.set(member.id, { name: member.name, color: member.color ?? null });
+		}
+		return map;
+	}, [members]);
+
+	const memberLookup = useCallback(
+		(id: string | null): MemberInfo => {
+			if (!id) return UNKNOWN_MEMBER;
+			return memberInfoById.get(id) ?? UNKNOWN_MEMBER;
+		},
+		[memberInfoById],
+	);
 
 	function clearEditedQueueItem(): boolean {
 		if (!queueEditId) return true;
@@ -318,83 +348,48 @@ export default function EinkaufPage() {
 		}
 	}
 
-	async function toggleBought(item: ShoppingItem): Promise<void> {
-		if (isPending(item.id)) return;
-		start(item.id);
-		setToggleError(null);
-		setToggleNotice(null);
-		const becomingBought = item.boughtAt === null;
-		const optimisticItem: ShoppingItem = {
-			...item,
-			boughtAt: becomingBought ? new Date().toISOString() : null,
-			boughtByMemberId: becomingBought ? identity.memberId : null,
-		};
-		setItems((prev) => prev.map((current) => (current.id === item.id ? optimisticItem : current)));
-		const rollback = () =>
-			setItems((prev) => prev.map((current) => (current.id === item.id ? item : current)));
-
-		try {
-			const queuedCreate = readOfflineQueue().find(
-				(queued) =>
-					queued.id === item.id &&
-					queued.shareCode === wg.shareCode &&
-					queued.type === 'shopping.create',
+	const toggleBought = useCallback(
+		async (item: ShoppingItem): Promise<void> => {
+			if (isPending(item.id)) return;
+			start(item.id);
+			setToggleError(null);
+			setToggleNotice(null);
+			const becomingBought = item.boughtAt === null;
+			const optimisticItem: ShoppingItem = {
+				...item,
+				boughtAt: becomingBought ? new Date().toISOString() : null,
+				boughtByMemberId: becomingBought ? identity.memberId : null,
+			};
+			setItems((prev) =>
+				keepItems(
+					prev,
+					prev.map((current) => (current.id === item.id ? optimisticItem : current)),
+				),
 			);
-			if (queuedCreate) {
-				const saved = writeOfflineQueue(
-					readOfflineQueue().map((queued) =>
-						queued.id === item.id
-							? { ...queued, payload: { ...queued.payload, bought: becomingBought } }
-							: queued,
+			const rollback = () =>
+				setItems((prev) =>
+					keepItems(
+						prev,
+						prev.map((current) => (current.id === item.id ? item : current)),
 					),
 				);
-				if (!saved) {
-					rollback();
-					setToggleError(
-						'Offline-Speicher ist blockiert. Der Einkaufsstatus konnte nicht vorgemerkt werden.',
-					);
-					return;
-				}
-				refreshCount();
-				setToggleNotice(
-					becomingBought
-						? 'Offline vorgemerkt. Der neue Artikel wird direkt als erledigt synchronisiert.'
-						: 'Offline vorgemerkt. Der neue Artikel wird wieder offen synchronisiert.',
-				);
-				return;
-			}
 
-			const res = await apiFetch<{ item: ShoppingItem }>(
-				`/api/wg/${encodedShareCode}/shopping/${encodeURIComponent(item.id)}`,
-				{
-					method: 'PATCH',
-					memberId: identity.memberId,
-					memberToken: identity.memberToken,
-					body: JSON.stringify({
-						bought: becomingBought,
-						boughtByMemberId: becomingBought ? identity.memberId : null,
-					}),
-				},
-			);
-			if (!res.ok) {
-				if (res.status === 403) {
-					rollback();
-					setToggleError('Nur der/die Autor:in kann dies abhaken.');
-				} else if (res.status === 404 && res.error === 'item_not_found') {
-					setItems((prev) => prev.filter((current) => current.id !== item.id));
-					setToggleError(
-						'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
+			try {
+				const queuedCreate = readOfflineQueue().find(
+					(queued) =>
+						queued.id === item.id &&
+						queued.shareCode === wg.shareCode &&
+						queued.type === 'shopping.create',
+				);
+				if (queuedCreate) {
+					const saved = writeOfflineQueue(
+						readOfflineQueue().map((queued) =>
+							queued.id === item.id
+								? { ...queued, payload: { ...queued.payload, bought: becomingBought } }
+								: queued,
+						),
 					);
-				} else if (res.status === 0) {
-					const queued = createQueuedShoppingUpdate({
-						wgId: wg.id,
-						shareCode: wg.shareCode,
-						memberId: identity.memberId,
-						itemId: item.id,
-						name: item.name,
-						bought: becomingBought,
-					});
-					if (enqueueOfflineAction(queued) === 0) {
+					if (!saved) {
 						rollback();
 						setToggleError(
 							'Offline-Speicher ist blockiert. Der Einkaufsstatus konnte nicht vorgemerkt werden.',
@@ -404,55 +399,137 @@ export default function EinkaufPage() {
 					refreshCount();
 					setToggleNotice(
 						becomingBought
-							? 'Offline vorgemerkt. Der Artikel wird später als erledigt synchronisiert.'
-							: 'Offline vorgemerkt. Der Artikel wird später wieder geöffnet.',
+							? 'Offline vorgemerkt. Der neue Artikel wird direkt als erledigt synchronisiert.'
+							: 'Offline vorgemerkt. Der neue Artikel wird wieder offen synchronisiert.',
+					);
+					return;
+				}
+
+				const res = await apiFetch<{ item: ShoppingItem }>(
+					`/api/wg/${encodedShareCode}/shopping/${encodeURIComponent(item.id)}`,
+					{
+						method: 'PATCH',
+						memberId: identity.memberId,
+						memberToken: identity.memberToken,
+						body: JSON.stringify({
+							bought: becomingBought,
+							boughtByMemberId: becomingBought ? identity.memberId : null,
+						}),
+					},
+				);
+				if (!res.ok) {
+					if (res.status === 403) {
+						rollback();
+						setToggleError('Nur der/die Autor:in kann dies abhaken.');
+					} else if (res.status === 404 && res.error === 'item_not_found') {
+						setItems((prev) =>
+							keepItems(
+								prev,
+								prev.filter((current) => current.id !== item.id),
+							),
+						);
+						setToggleError(
+							'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
+						);
+					} else if (res.status === 0) {
+						const queued = createQueuedShoppingUpdate({
+							wgId: wg.id,
+							shareCode: wg.shareCode,
+							memberId: identity.memberId,
+							itemId: item.id,
+							name: item.name,
+							bought: becomingBought,
+						});
+						if (enqueueOfflineAction(queued) === 0) {
+							rollback();
+							setToggleError(
+								'Offline-Speicher ist blockiert. Der Einkaufsstatus konnte nicht vorgemerkt werden.',
+							);
+							return;
+						}
+						refreshCount();
+						setToggleNotice(
+							becomingBought
+								? 'Offline vorgemerkt. Der Artikel wird später als erledigt synchronisiert.'
+								: 'Offline vorgemerkt. Der Artikel wird später wieder geöffnet.',
+						);
+					} else {
+						rollback();
+						setToggleError(shoppingActionErrorMessage(res.error, 'Abhaken fehlgeschlagen.'));
+					}
+					return;
+				}
+				setItems((prev) =>
+					keepItems(
+						prev,
+						prev.map((current) => (current.id === item.id ? res.data.item : current)),
+					),
+				);
+				void load(true);
+			} finally {
+				end(item.id);
+			}
+		},
+		[
+			end,
+			encodedShareCode,
+			identity.memberId,
+			identity.memberToken,
+			isPending,
+			load,
+			refreshCount,
+			start,
+			wg.id,
+			wg.shareCode,
+		],
+	);
+
+	const remove = useCallback(
+		async (id: string): Promise<void> => {
+			if (isPending(id)) return;
+			start(id);
+			setRemoveError(null);
+			setRemoveErrorId(null);
+			const res = await apiFetch<unknown>(
+				`/api/wg/${encodedShareCode}/shopping/${encodeURIComponent(id)}`,
+				{
+					method: 'DELETE',
+					memberId: identity.memberId,
+					memberToken: identity.memberToken,
+				},
+			);
+			if (!res.ok) {
+				if (res.status === 403) {
+					setRemoveErrorId(id);
+					setRemoveError('Nur der/die Autor:in kann diesen Eintrag entfernen.');
+				} else if (res.status === 404 && res.error === 'item_not_found') {
+					setItems((prev) =>
+						keepItems(
+							prev,
+							prev.filter((item) => item.id !== id),
+						),
+					);
+					setRemoveError(
+						'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
 					);
 				} else {
-					rollback();
-					setToggleError(shoppingActionErrorMessage(res.error, 'Abhaken fehlgeschlagen.'));
+					setRemoveErrorId(id);
+					setRemoveError(shoppingActionErrorMessage(res.error, 'Entfernen fehlgeschlagen.'));
 				}
+				end(id);
 				return;
 			}
-			setItems((prev) => prev.map((current) => (current.id === item.id ? res.data.item : current)));
+			setItems((prev) =>
+				keepItems(
+					prev,
+					prev.filter((item) => item.id !== id),
+				),
+			);
 			void load(true);
-		} finally {
-			end(item.id);
-		}
-	}
-
-	async function remove(id: string): Promise<void> {
-		if (isPending(id)) return;
-		start(id);
-		setRemoveError(null);
-		setRemoveErrorId(null);
-		const res = await apiFetch<unknown>(
-			`/api/wg/${encodedShareCode}/shopping/${encodeURIComponent(id)}`,
-			{
-				method: 'DELETE',
-				memberId: identity.memberId,
-				memberToken: identity.memberToken,
-			},
-		);
-		if (!res.ok) {
-			if (res.status === 403) {
-				setRemoveErrorId(id);
-				setRemoveError('Nur der/die Autor:in kann diesen Eintrag entfernen.');
-			} else if (res.status === 404 && res.error === 'item_not_found') {
-				setItems((prev) => prev.filter((item) => item.id !== id));
-				setRemoveError(
-					'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
-				);
-			} else {
-				setRemoveErrorId(id);
-				setRemoveError(shoppingActionErrorMessage(res.error, 'Entfernen fehlgeschlagen.'));
-			}
 			end(id);
-			return;
-		}
-		setItems((prev) => prev.filter((item) => item.id !== id));
-		void load(true);
-		end(id);
-	}
+		},
+		[end, encodedShareCode, identity.memberId, identity.memberToken, isPending, load, start],
+	);
 
 	async function clearBought(): Promise<void> {
 		if (clearingBoughtRef.current) return;
@@ -467,7 +544,12 @@ export default function EinkaufPage() {
 				memberToken: identity.memberToken,
 			});
 			if (res.ok) {
-				setItems((prev) => prev.filter((item) => item.boughtAt === null));
+				setItems((prev) =>
+					keepItems(
+						prev,
+						prev.filter((item) => item.boughtAt === null),
+					),
+				);
 				void load(true);
 			} else {
 				setRemoveError(clearBoughtErrorMessage(res.status, res.error));

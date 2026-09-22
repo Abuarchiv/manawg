@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Spinner } from '@/components/ui/spinner';
 import { copyViaTextArea } from '@/core/utils/clipboard';
 import { cn } from '@/shared/lib/cn';
+import { isValidShareCode } from '@/shared/lib/share-code';
 import { Check, Copy, Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
@@ -21,6 +22,9 @@ interface Props {
 const COPY_FEEDBACK_MS = 1500;
 
 function buildShareUrl(shareCode: string, explicitAppUrl?: string): string {
+	// Never embed a code we cannot trust into link or QR code — a malformed
+	// value would otherwise produce a join URL that fails silently.
+	if (!isValidShareCode(shareCode)) return '/';
 	if (explicitAppUrl) {
 		return `${explicitAppUrl.replace(/\/$/, '')}/?code=${encodeURIComponent(shareCode)}`;
 	}

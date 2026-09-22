@@ -74,7 +74,7 @@ export function OfflineBanner() {
 			window.removeEventListener('manawg:offline-queue', updateFromEvent);
 			window.removeEventListener('manawg:offline-synced', onSynced);
 		};
-	}, [identity.memberId, wg.shareCode]);
+	}, [identity, wg.shareCode]);
 
 	async function retry(): Promise<void> {
 		if (syncingRef.current) return;
