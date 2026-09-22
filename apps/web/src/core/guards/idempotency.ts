@@ -3,7 +3,13 @@ import {
 	type ReplaySlotResult,
 	claimReplaySlot,
 } from '@/core/guards/replay-slot';
-import { claimResponseSlot, getCachedResponse } from '@/core/idempotency';
+import {
+	claimResponseSlot,
+	getCachedResponse,
+	readIdempotencyKey,
+	setCachedResponse,
+} from '@/core/idempotency';
+import { NextResponse } from 'next/server';
 
 export type { ReplaySlotDependencies, ReplaySlotResult } from '@/core/guards/replay-slot';
 
@@ -131,4 +137,37 @@ export async function claimReplaySlotWithRetry<T>(
 		read: dependencies?.read ?? ((readScope, readKey) => getCachedResponse<T>(readScope, readKey)),
 		...(dependencies?.sleep ? { sleep: dependencies.sleep } : {}),
 	});
+}
+
+interface CachedJsonResponse {
+	status: number;
+	body: unknown;
+}
+
+/** Replay a JSON mutation response after the caller has authenticated and
+ * established a tenant/member-scoped replay scope. */
+export async function withIdempotentJsonResponse(
+	req: Request,
+	scope: string,
+	handler: () => Promise<NextResponse>,
+): Promise<NextResponse> {
+	const key = readIdempotencyKey(req);
+	if (!key) return handler();
+
+	const cached = await getCachedResponse<CachedJsonResponse>(scope, key);
+	if (cached) return NextResponse.json(cached.body, { status: cached.status });
+
+	const slot = await claimReplaySlotWithRetry<CachedJsonResponse>(scope, key);
+	if (!slot.won) return NextResponse.json(slot.cached.body, { status: slot.cached.status });
+
+	const response = await handler();
+	let body: unknown = null;
+	try {
+		body = await response.clone().json();
+	} catch {
+		// Mutation routes covered by this helper are JSON responses. Keep a
+		// replayable null body if a future route returns an empty success.
+	}
+	await setCachedResponse(scope, key, { status: response.status, body });
+	return response;
 }

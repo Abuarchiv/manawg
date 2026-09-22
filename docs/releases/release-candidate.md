@@ -1,30 +1,30 @@
 # ManaWG Release Candidate Evidence
 
-## Protected CI transport repair — 2026-09-20
+## Aktualisierung — 2026-09-22, Europe/Berlin
 
-The first integrated main run for24cd525 reached the real protected DB step and failed with `ENETUNREACH` on the IPv6-only direct endpoint. Preview CI now validates the original pinned direct verifier URL, then explicitly derives the provider's IPv4 session endpoint on5432 with unchanged credentials and `verify-full`; other projects/roles/databases/query overrides and6543 remain rejected. Only CI enables this mode. The ordinary migration/Production direct guard remains unchanged; no credential rotation or role-rights change is involved. The wrapper suppresses all child output/error objects and fails on errors, signals, timeout or output overflow.
+Der Release-Workflow ist auf den aktuellen Branch `fix/audit-158` gepusht. Anwendung/Test-Candidate ist `3abc5d9a1fefe55603067d872f476981289ee71f`; der spätere Branch-Tip enthält nur diese Evidenz-Aktualisierung. Pull Request #300 ist mergeable, aber wegen der geschützten Preview-Gates noch nicht freigabefähig. Die Vercel-Preview `https://manawg-eqqk2dsld-abditubes-projects.vercel.app` (`dpl_uwtuk6ewXfC1BdRXERmvXLxxjx2j`) ist mit Node 22 READY.
 
-The two Preview checking jobs use native GitHub `environment.deployment:false`. Environment secrets, main branch policies and approval rules remain enforced, but checking jobs no longer create deployment records that collide with Vercel's trusted events. Both trusted-bot checks and every exact-SHA guard remain mandatory. GitHub reference: https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments#using-environments-without-deployments.
+- GitHub-Preview-Secrets sind vorhanden; Werte wurden nicht ausgegeben.
+- Der Node-22-`validate`-Job für den Candidate-Stand ist erfolgreich (`35663607827`); die Fixture-Suite ist mit 180 bestanden und 28 übersprungen grün. Fixture-E2E lief separat; ein Fixture-Erfolg ersetzt keine Hosted-Evidenz.
+- Der vertrauenswürdige Deployment-Status-Lauf `35663737497` stoppt korrekt vor Hosted-E2E: `db-supabase-preview` erreicht die Migration, scheitert aber mit SQLSTATE `42501` (fehlende DDL-Berechtigung). `e2e-preview` bleibt deshalb fail-closed übersprungen.
+- Read-only Supabase-Katalogprüfung für Preview bestätigt: `manawg_preview_ci` hat `schema_create=false` auf `public` und `db_create=false`; bestehende Tabelle `public.wg_chat_messages` gehört `postgres`. Es wurde dabei keine SQL-Mutation ausgeführt.
+- Die zwei historischen, bytegenau belegten Ledger-Hashes für 0007 und 0010 sind jetzt nur an ihren exakten Journalpositionen allowlisted; unbekannte Ledger-Zeilen bleiben fail-closed.
 
-Independent code review approved;24 focused tests,lint,typecheck,YAML and36 shell syntax checks passed. This repair still needs a real protected main CI run; no prior failure is relabeled as success.
+**Aktueller Blocker:** Für die geschützte Preview-Migration fehlt ein autorisierter DDL-/Owner-Migrationszugang. Nicht durch zusätzliche Grants, Rollenrotation oder manuelle Ledger-Manipulation umgehen; der Release-Eigentümer muss den vorgesehenen direkten Preview-Migrationszugang bereitstellen bzw. freigeben. Production bleibt unverändert: keine Production-Migration, kein Production-Deployment und keine Production-Datenänderung.
 
+## Aktualisierung — 2026-09-22, nach dem Fixture-Gate-Fix
 
-## Date integrity verification — 2026-09-20
+Die CI-Regressionen waren testseitig: feste vergangene Chore-Zeitpunkte machten die Berlin-Fälligkeits-/Aktionsassertionen nach Mitternacht falsch, und ein visueller Screenshot nutzte einen lokalen absoluten Pfad. Die Fixtures verwenden jetzt den aktuellen Berlin-Kalendertag und Playwright-Artefaktpfade; der exakte Candidate-Lauf ist mit 180 Tests bestanden und 28 übersprungen grün. Die Anwendung bleibt unverändert blockiert durch die fehlende Preview-Owner-DDL-Berechtigung.
 
-Subscription due dates now reject empty input rather than silently choosing today. Event drafts retain their dates when a start is cleared or the dialog is reopened. All-day creation/editing uses calendar-day comparison, and agenda/month bounds cover whole days across UTC, Berlin DST, Los Angeles and UTC+14. Existing non-midnight all-day timestamps retain device-local display and unchanged timestamps on metadata-only edits. Exact UTC-midnight values are treated as canonical; indistinguishable historical midnight values cannot recover an original timezone that was never stored. No data migration or bulk rewriting was performed.
+## Aktualisierung — 2026-09-20 20:10 CEST
 
-Final isolated-worktree verification:131 fixture tests passed,26 environment-specific skips,0 failures; main repeated the full run. Lint,typecheck,production build,analytics privacy,feature boundaries and bundle check passed (102.1/120kB). Fresh independent review found no remaining scoped defects;19 existing cases independently passed. Final hosted/CI evidence must still bind to the integrated candidate SHA.
+Diese Evidenz ersetzt frühere Aussagen über fehlende GitHub-Preview-Secrets oder eine Freigabe anhand gleicher Git-Trees. Geschützte Preview-DB-/QA-Secrets sind eingerichtet; ein finaler vertrauenswürdiger Same-SHA-CI-Lauf fehlt weiterhin.
 
+Storage-Preview: `7640b0c`, `dpl_AMnZJJnwwTRtzKMdJPcUwThdpYob`, https://manawg-m888bn03k-abditubes-projects.vercel.app. Native Vercel-Build mit Node 22 READY. Echte 8-MiB-Datei hochgeladen und byte-/SHA256-identisch gelesen (`55e348d20d20e12c5db5653ac1fad8cff4e340be835951378854db1b523db7c8`); Browser-Bilddekodierung bestanden. Eigener Zugriff erlaubt, andere WG/anonym/deaktiviertes Mitglied abgewiesen; Antworten enthalten nur JSON-Fehler, keine Bildbytes/Redirects. Provider verweigert Übergröße, unerlaubtes MIME und immutable overwrite; ursprünglicher Inhalt unverändert. Online-/Offline-UI-Integration ist damit noch nicht vollständig abgenommen.
 
-## Verified implementation checkpoint — 2026-09-20 20:30 CEST
+Lokale Gates: 18 Storage-/Ledger-Tests bestanden; zuletzt 14 Release-/Limiter-Tests, Lint, Typecheck grün. Build/Bundle vor Middleware-Fix grün (102/120 kB). Hosted-Auth: vier gezielte Problemfälle plus Zwei-Nutzer-Privacy bestanden, Gesamtlauf zuletzt 22/27. Diagnose: ungültige temporäre WG-Codes und falsche Rate-Limiter-Klassifikation für `/api/wg/mine`; finaler erneuter Lauf steht aus.
 
-Candidate implementation: `17e5b9004b655538b0b3b544d4363b1ffaedf95f`, clean isolated worktree. Preview `dpl_J7rjVcXEDPxZhhtQFgNmL4MJTrws`, https://manawg-13gh3ylsk-abditubes-projects.vercel.app. Draft PR #156 is not release approval.
-
-- Clean Node22 fixture run:107 passed,26 environment-specific skips. Focused gate/storage/ledger checks:32 passed. Lint/typecheck/build/bundle passed before this documentation update; bundle102/120kB.
-- Hosted Preview suite:27/27 passed with retries disabled, after fixing invalid temporary share-code generation and incorrect `/api/wg/mine` rate-limit classification. Own/foreign API privacy verified with two synthetic users; protected Preview bootstrap sends no bypass header/cookie to other origins.
-- Private storage: real exact8MiB upload/read SHA256 `55e348d20d20e12c5db5653ac1fad8cff4e340be835951378854db1b523db7c8`; browser decode; private/no-store/nosniff; foreign, anonymous and revoked-member denials; provider oversize/MIME/overwrite rejection, unchanged original content. Boundary tests ran on7640b0c with the identical storage implementation. Real ImageUploader on17e5b90 passed offline IndexedDB persistence, reconnect retry, pending-record removal, online upload, image decode, announcement POST and direct DB readback of its private URL. Owned resources cleaned; explicit readback before the last UI repetition found zero temporary storage users/WGs.
-- Protected GitHub Preview secrets exist in the `Preview` environment (main-only policy), including a read-only DB verifier and dedicated QA fixture. Branch deployment jobs are intentionally rejected by that policy, not evidence of missing secrets. A final trusted same-SHA main Preview CI run is still required; exact SHA gates remain mandatory.
-- Production alias readback remains `dpl_FGgrF9cd319Sm142KnEz3j7KQWiS`. No Production release or data change. Calendar/date UI corrections, exact recovery ACL proof, provider recovery/retention, physical devices and resident acceptance remain open. Fixture/mobile emulation is not those proofs.
+Recovery-Schema/Daten lokal verifiziert, ACL-Differenz offen. Keine Provider-Recovery-/PITR-, Geräte- oder Residenten-Freigabe behauptet. Production unverändert.
 
 
 Status: **BLOCKED — kein freigegebener Release-Kandidat**
@@ -95,3 +95,9 @@ Keine Production-Migration, kein Push und kein Deployment wurden ausgeführt. Pr
 ## Nächster Nachweis
 
 Candidate-SHA einfrieren, Preview mit bestehenden serverseitigen Secrets und zentralem Runtime-Fix deployen und vollständige Hosted-Mitgliedschafts-/Privacy-Gates prüfen. Redigierte CLI-Werte sind kein Beleg fehlender Secrets. Kurzlebige CLI-Logins nicht deployen. Provider-, reale Geräte-, Residenten- und Recovery-Nachweise bleiben separate offene Release-Gates.
+
+## Implementierung 2026-09-20 19:28 CEST
+
+- CI-Preview-Gate implementiert: Der Vercel-Commit wird in secrets-bearing Jobs nicht ausgecheckt oder ausgeführt. Nach `git fetch` wird nur sein Tree gegen den vertrauenswürdigen `main`-Tree verglichen; der Merge-Commit-Fall `44554575` → `cae9b0b` ist damit abgedeckt.
+- Verifiziert: Release-Gate-Tests 11/11, Lint, Typecheck, Analytics, Feature-Boundaries, Build, Bundle 102/120 kB, Fixture-E2E Exit 0, Diff-Check 0. Preview: 26/26 Relationen RLS aktiv, `rls_disabled=0`; Vercel Health `status=ok,database=ok`.
+- Release bleibt blockiert, bis `SUPABASE_PREVIEW_DATABASE_MIGRATION_URL` und `SUPABASE_AUTH_TEST_*` als geschützte GitHub-Secrets vorhanden sind. Production wurde nicht verändert.

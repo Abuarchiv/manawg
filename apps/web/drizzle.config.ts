@@ -17,6 +17,10 @@ if (migrationUrl) {
 } else if (unpooledUrl) {
 	validateDatabaseUrl(unpooledUrl, 'POSTGRES_URL_NON_POOLING/DATABASE_URL_UNPOOLED');
 	url = unpooledUrl;
+} else {
+	throw new Error(
+		'No database URL configured. Set DATABASE_MIGRATION_URL, POSTGRES_URL, or DATABASE_URL.',
+	);
 }
 
 // craftsman-ignore: TS002 — drizzle-kit requires default export from drizzle.config.ts

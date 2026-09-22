@@ -46,6 +46,7 @@ export interface TodayImportantInput {
 		id: string;
 		description: string;
 		amountCents: number;
+		currency?: string;
 		nextDueAt?: string;
 	}>;
 	absentMembers?: Array<{
@@ -79,7 +80,8 @@ interface WgHealthInput {
 	shareCode: string;
 	openShoppingCount: number;
 	overdueChoreCount: number;
-	openDebtCents: number;
+	openDebtCents?: number;
+	openDebtByCurrency?: Readonly<Record<string, number>>;
 	openAnnouncementCount: number;
 	absentMemberCount: number;
 	dueRecurringCount: number;
@@ -91,8 +93,17 @@ export interface WgHealth {
 	items: Array<{ label: string; value: string; tone: 'ok' | 'warn' | 'danger'; href: string }>;
 }
 
-function formatEuro(cents: number): string {
-	return formatEuroCents(cents);
+function formatEuro(cents: number, currency = 'EUR'): string {
+	return formatEuroCents(cents, currency);
+}
+
+function formatCurrencyTotals(totals: Readonly<Record<string, number>>): string {
+	const entries = Object.entries(totals)
+		.filter(([, cents]) => cents !== 0)
+		.sort(([left], [right]) => left.localeCompare(right));
+	return entries.length > 0
+		? entries.map(([currency, cents]) => formatEuro(cents, currency)).join(' · ')
+		: formatEuro(0);
 }
 
 function withQuery(path: string, params: Record<string, string>): string {
@@ -228,8 +239,8 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 				kind: 'recurring',
 				title: `${recurring.description} ist fällig`,
 				detail: recurring.nextDueAt
-					? `${formatEuro(recurring.amountCents)} · ${dueLabel(recurring.nextDueAt, now)}`
-					: formatEuro(recurring.amountCents),
+					? `${formatEuro(recurring.amountCents, recurring.currency)} · ${dueLabel(recurring.nextDueAt, now)}`
+					: formatEuro(recurring.amountCents, recurring.currency),
 				href: `${base}/ausgaben?recurring=${encodeURIComponent(recurring.id)}`,
 				tone: urgency === 0 ? 'danger' : 'accent',
 				isPersonal: false,
@@ -369,10 +380,23 @@ export function getEmptyWgActions(input: EmptyWgActionInput): EmptyWgAction[] {
 
 export function getWgHealth(input: WgHealthInput): WgHealth {
 	const base = `/wg/${encodeURIComponent(input.shareCode)}`;
+	const openDebtByCurrency =
+		input.openDebtByCurrency ??
+		(input.openDebtCents !== undefined ? { EUR: input.openDebtCents } : {});
+	const openDebtCurrencies = Object.entries(openDebtByCurrency).filter(([, cents]) => cents > 0);
+	// Never add cents from different currencies. The score penalty is a count of
+	// outstanding debt bands, not a pretend converted monetary total.
+	const openDebtPenalty = Math.min(
+		25,
+		openDebtCurrencies.reduce(
+			(penalty, [, cents]) => penalty + Math.min(Math.ceil(cents / 2500) * 5, 25),
+			0,
+		),
+	);
 	const penalties =
 		Math.min(input.overdueChoreCount * 18, 36) +
 		Math.min(input.openShoppingCount * 4, 16) +
-		Math.min(Math.ceil(input.openDebtCents / 2500) * 5, 25) +
+		openDebtPenalty +
 		Math.min(input.openAnnouncementCount * 6, 18) +
 		Math.min(input.dueRecurringCount * 10, 20);
 	const score = Math.max(0, 100 - penalties);
@@ -388,8 +412,8 @@ export function getWgHealth(input: WgHealthInput): WgHealth {
 			},
 			{
 				label: 'Offene Schulden',
-				value: formatEuro(input.openDebtCents),
-				tone: input.openDebtCents > 0 ? 'warn' : 'ok',
+				value: formatCurrencyTotals(openDebtByCurrency),
+				tone: openDebtCurrencies.length > 0 ? 'warn' : 'ok',
 				href: `${base}/ausgaben`,
 			},
 			{

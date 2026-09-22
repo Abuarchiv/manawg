@@ -138,3 +138,14 @@ export async function capturePayPalOrder(
 		},
 	);
 }
+
+export async function getPayPalOrder(
+	orderId: string,
+	payeeMerchantId: string,
+): Promise<PayPalOrderResponse> {
+	return paypalRequest<PayPalOrderResponse>(
+		`/v2/checkout/orders/${encodeURIComponent(orderId)}`,
+		payeeMerchantId,
+		{ method: 'GET' },
+	);
+}

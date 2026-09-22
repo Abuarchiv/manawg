@@ -73,6 +73,7 @@ interface PayPalPaymentButtonProps {
 	toMemberId: string;
 	payeeMerchantId: string;
 	amountCents: number;
+	currency: string;
 	onPaid: () => void;
 }
 
@@ -84,6 +85,7 @@ export function PayPalPaymentButton({
 	toMemberId,
 	payeeMerchantId,
 	amountCents,
+	currency,
 	onPaid,
 }: PayPalPaymentButtonProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -103,7 +105,7 @@ export function PayPalPaymentButton({
 					method: 'POST',
 					memberId: currentMemberId,
 					memberToken,
-					body: JSON.stringify({ fromMemberId, toMemberId }),
+					body: JSON.stringify({ fromMemberId, toMemberId, currency }),
 				},
 			);
 			if (!result.ok) throw new Error(result.error);
@@ -111,7 +113,7 @@ export function PayPalPaymentButton({
 		};
 
 		const onApprove = async (data: { orderID: string }): Promise<void> => {
-			for (let attempt = 0; attempt < 2; attempt++) {
+			for (let attempt = 0; attempt < 3; attempt += 1) {
 				const result = await apiFetch<{ status: string }>(
 					`/api/wg/${encodeURIComponent(shareCode)}/paypal/capture`,
 					{
@@ -149,16 +151,27 @@ export function PayPalPaymentButton({
 			cancelled = true;
 			void buttons?.close?.();
 		};
-	}, [currentMemberId, fromMemberId, memberToken, payeeMerchantId, shareCode, toMemberId]);
+	}, [
+		currentMemberId,
+		currency,
+		fromMemberId,
+		memberToken,
+		payeeMerchantId,
+		shareCode,
+		toMemberId,
+	]);
 
 	if (!PAYPAL_CLIENT_ID || !PAYPAL_PARTNER_ATTRIBUTION_ID) return null;
 	return (
 		<div className="flex flex-col gap-3 pt-3">
 			<p className="text-sm text-muted-foreground">
-				PayPal-Zahlung über {formatEuroCents(amountCents)}. Erst bei PayPal bestätigen; ein Abbruch
-				verbucht keinen Ausgleich.
+				PayPal-Zahlung über {formatEuroCents(amountCents, currency)}. Erst bei PayPal bestätigen;
+				ein Abbruch verbucht keinen Ausgleich.
 			</p>
-			<div ref={containerRef} aria-label={`PayPal ${formatEuroCents(amountCents)} zahlen`} />
+			<div
+				ref={containerRef}
+				aria-label={`PayPal ${formatEuroCents(amountCents, currency)} zahlen`}
+			/>
 			{error && (
 				<Alert variant="destructive">
 					<AlertDescription>{error}</AlertDescription>

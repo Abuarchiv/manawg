@@ -61,6 +61,12 @@ export function useOfflineQueueSync({
 	const onSyncedRef = useRef(onSynced);
 	onSyncedRef.current = onSynced;
 
+	// `page` only tags captured sync failures. Keeping it in a ref keeps the
+	// listeners below alive across in-WG navigation instead of tearing them
+	// down and re-adding them on every page change.
+	const pageRef = useRef(page);
+	pageRef.current = page;
+
 	useEffect(() => {
 		let active = true;
 		const updateCount = (): void => {
@@ -80,7 +86,9 @@ export function useOfflineQueueSync({
 					if (!active) return;
 					updateCount();
 				})
-				.catch((err) => captureException(err, { action: 'syncOfflineActions', page }));
+				.catch((err) =>
+					captureException(err, { action: 'syncOfflineActions', page: pageRef.current }),
+				);
 		};
 		const onExternalSync = (event: Event): void => {
 			if (!active) return;
@@ -97,7 +105,7 @@ export function useOfflineQueueSync({
 			window.removeEventListener('manawg:offline-queue', updateCount);
 			window.removeEventListener('manawg:offline-synced', onExternalSync);
 		};
-	}, [shareCode, memberId, page]);
+	}, [shareCode, memberId]);
 
 	return { queuedCount, refreshCount };
 }

@@ -640,7 +640,7 @@ export const wgChatMessages = pgTable(
 			.notNull()
 			.references(() => wgs.id, { onDelete: 'cascade' }),
 		senderMemberId: uuid('sender_member_id').references(() => wgMembers.id, {
-			onDelete: 'set null',
+			onDelete: 'cascade',
 		}),
 		kind: text('kind').notNull(),
 		body: text('body'),

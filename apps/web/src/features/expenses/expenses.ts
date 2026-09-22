@@ -176,7 +176,11 @@ export async function recordExpenseCreatedSideEffects(
 		entityType: 'expense',
 		entityId: expense.id,
 		summary: `${actor.name} hat ${expense.description} eingetragen.`,
-		metadata: { amountCents: expense.amountCents, paidByMemberId: expense.paidByMemberId },
+		metadata: {
+			amountCents: expense.amountCents,
+			currency: expense.currency,
+			paidByMemberId: expense.paidByMemberId,
+		},
 	});
 
 	const { warning } = await dispatchNotificationSafely({
@@ -185,6 +189,7 @@ export async function recordExpenseCreatedSideEffects(
 		payload: {
 			title: expense.description,
 			amountCents: expense.amountCents,
+			currency: expense.currency,
 			actorName: actor.name,
 			expenseId: expense.id,
 		},

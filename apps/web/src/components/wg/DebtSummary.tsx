@@ -25,10 +25,13 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { PayPalPaymentButton } from '@/components/wg/PayPalPaymentButton';
 import { apiFetch } from '@/core/infra/api-client';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
+import { getDebtOverview } from '@/features/expenses/debt-overview';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';
+import { cn } from '@/shared/lib/cn';
 import { Bell, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
@@ -68,6 +71,7 @@ function settlementErrorMessage(error: string): string {
 }
 
 interface SettlementPreview {
+	currency: string;
 	netCents: number;
 	settleableCents: number;
 	remainingCents: number;
@@ -109,9 +113,11 @@ function DebtRow({
 	const [preview, setPreview] = useState<SettlementPreview | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const settlingRef = useRef(false);
+	const settlementRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 	const canSettle = debt.fromId === currentMemberId || debt.toId === currentMemberId;
 	const payeeMerchantId = memberPayPalMerchantId(debt.toId);
 	const canPayWithPayPal =
+		(debt.currency ?? 'EUR') === 'EUR' &&
 		debt.fromId === currentMemberId &&
 		payeeMerchantId !== null &&
 		payPalEligible &&
@@ -128,7 +134,7 @@ function DebtRow({
 		setError(null);
 		try {
 			const res = await apiFetch<SettlementPreview>(
-				`${endpoint}?${new URLSearchParams({ fromMemberId: debt.fromId, toMemberId: debt.toId })}`,
+				`${endpoint}?${new URLSearchParams({ fromMemberId: debt.fromId, toMemberId: debt.toId, currency: debt.currency ?? 'EUR' })}`,
 				{ memberId: currentMemberId, memberToken },
 			);
 			if (res.ok) {
@@ -148,22 +154,40 @@ function DebtRow({
 		settlingRef.current = true;
 		setSettling(true);
 		setError(null);
+		const body = {
+			fromMemberId: debt.fromId,
+			toMemberId: debt.toId,
+			currency: debt.currency ?? 'EUR',
+			expected: {
+				currency: preview.currency,
+				netCents: preview.netCents,
+				settleableCents: preview.settleableCents,
+				splits: preview.splits.map(({ id, amountCents }) => ({ id, amountCents })),
+			},
+		};
+		const fingerprint = JSON.stringify(body);
+		const pendingRequest = settlementRequestRef.current;
+		const idempotencyKey =
+			pendingRequest?.fingerprint === fingerprint
+				? pendingRequest.key
+				: createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setError('Ausgleich konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			settlingRef.current = false;
+			setSettling(false);
+			return;
+		}
+		settlementRequestRef.current = { fingerprint, key: idempotencyKey };
 		try {
 			const res = await apiFetch<SettleBatchResponse>(endpoint, {
 				method: 'POST',
 				memberId: currentMemberId,
 				memberToken,
-				body: JSON.stringify({
-					fromMemberId: debt.fromId,
-					toMemberId: debt.toId,
-					expected: {
-						netCents: preview.netCents,
-						settleableCents: preview.settleableCents,
-						splits: preview.splits.map(({ id, amountCents }) => ({ id, amountCents })),
-					},
-				}),
+				headers: { 'Idempotency-Key': idempotencyKey },
+				body: JSON.stringify(body),
 			});
 			if (!res.ok) {
+				if (res.status > 0 && res.status < 500) settlementRequestRef.current = null;
 				setError(settlementErrorMessage(res.error));
 				if (res.error === 'settlement_changed') {
 					setPreview(null);
@@ -171,6 +195,7 @@ function DebtRow({
 				}
 				return;
 			}
+			settlementRequestRef.current = null;
 			const { settled, settledCents, remainingCents, reason } = res.data;
 			setPreview(null);
 			setReviewOpen(false);
@@ -178,7 +203,7 @@ function DebtRow({
 				reason === 'no_direct_splits'
 					? 'Diese Verrechnung hat keine direkt zuordenbaren Anteile. Prüft die ursprünglichen Ausgaben einzeln.'
 					: settled > 0
-						? `Zahlung eingetragen: ${formatEuroCents(settledCents ?? 0)} von ${debt.fromName} an ${debt.toName}.${remainingCents ? ` ${formatEuroCents(remainingCents)} bleiben in der Verrechnung offen.` : ''}`
+						? `Zahlung eingetragen: ${formatEuroCents(settledCents ?? 0, debt.currency)} von ${debt.fromName} an ${debt.toName}.${remainingCents ? ` ${formatEuroCents(remainingCents, debt.currency)} bleiben in der Verrechnung offen.` : ''}`
 						: 'Keine Zahlung eingetragen. Die offenen Ausgaben werden neu geladen.';
 			onSettled(message);
 		} catch {
@@ -199,8 +224,18 @@ function DebtRow({
 				</ItemTitle>
 				<ItemDescription>Aus euren offenen Ausgaben verrechnet</ItemDescription>
 			</ItemContent>
-			<Badge variant="secondary" className="font-mono tabular-nums text-destructive">
-				{formatEuroCents(debt.cents)}
+			<Badge
+				variant="secondary"
+				className={cn(
+					'font-mono tabular-nums',
+					debt.fromId === currentMemberId
+						? 'text-destructive'
+						: debt.toId === currentMemberId
+							? 'text-settled'
+							: 'text-foreground',
+				)}
+			>
+				{formatEuroCents(debt.cents, debt.currency)}
 			</Badge>
 
 			{canSettle && (
@@ -231,6 +266,7 @@ function DebtRow({
 									toMemberId={debt.toId}
 									payeeMerchantId={payeeMerchantId}
 									amountCents={debt.cents}
+									currency={debt.currency ?? 'EUR'}
 									onPaid={onSettled}
 								/>
 							</CollapsibleContent>
@@ -253,11 +289,12 @@ function DebtRow({
 			>
 				<AlertDialogContent className="max-h-[90dvh] overflow-y-auto">
 					<AlertDialogHeader>
-						<AlertDialogTitle>Zahlung prüfen</AlertDialogTitle>
+						<AlertDialogTitle>Bereits erfolgte Zahlung bestätigen</AlertDialogTitle>
 						<AlertDialogDescription>
-							{debt.fromName} hat {debt.toName} {formatEuroCents(preview?.settleableCents ?? 0)}{' '}
-							bereits bezahlt. Nur die unten aufgeführten Direktanteile werden als beglichen
-							vermerkt. Es wird kein Geld überwiesen.
+							Bestätige nur, wenn {debt.fromName} {debt.toName}{' '}
+							{formatEuroCents(preview?.settleableCents ?? 0, debt.currency)} bereits bezahlt hat.
+							Nur die unten aufgeführten Anteile werden als beglichen vermerkt. Es wird kein Geld
+							überwiesen.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<ItemGroup aria-label="Unterstützte Ausgabenanteile">
@@ -280,7 +317,7 @@ function DebtRow({
 										</ItemDescription>
 									</ItemContent>
 									<Badge variant="outline" className="font-mono tabular-nums">
-										{formatEuroCents(split.amountCents)}
+										{formatEuroCents(split.amountCents, debt.currency)}
 									</Badge>
 								</Item>
 							);
@@ -289,8 +326,8 @@ function DebtRow({
 					{preview && preview.remainingCents > 0 && (
 						<Alert>
 							<AlertDescription>
-								{formatEuroCents(preview.remainingCents)} des verrechneten Saldos sind mit diesen
-								Anteilen nicht verbuchbar und bleiben offen.
+								{formatEuroCents(preview.remainingCents, debt.currency)} des verrechneten Saldos
+								sind mit diesen Anteilen nicht verbuchbar und bleiben offen.
 							</AlertDescription>
 						</Alert>
 					)}
@@ -325,7 +362,7 @@ function DebtRow({
 								{settling && <Spinner data-icon="inline-start" />}
 								{settling
 									? 'Speichert…'
-									: `${formatEuroCents(preview?.settleableCents ?? 0)} als bezahlt eintragen`}
+									: `${formatEuroCents(preview?.settleableCents ?? 0, debt.currency)} als bezahlt eintragen`}
 							</Button>
 						)}
 					</AlertDialogFooter>
@@ -357,52 +394,94 @@ export function DebtSummary({
 	memberPayPalMerchantId = () => null,
 	onSettled,
 }: DebtSummaryProps) {
-	if (debts.length === 0) return null;
+	const { personal, others } = getDebtOverview(debts, currentMemberId, summary);
+	if (debts.length === 0 && personal.length === 0 && others.length === 0) return null;
+
+	function renderDebt(debt: SimplifiedDebt) {
+		return (
+			<DebtRow
+				key={`${debt.currency ?? 'EUR'}-${debt.fromId}-${debt.toId}`}
+				debt={debt}
+				expenses={expenses}
+				shareCode={shareCode}
+				currentMemberId={currentMemberId}
+				memberToken={memberToken}
+				memberPayPalMerchantId={memberPayPalMerchantId}
+				payPalEligible={
+					summary === undefined ||
+					debts.some(
+						(direct) =>
+							direct.fromId === debt.fromId &&
+							direct.toId === debt.toId &&
+							direct.cents >= debt.cents,
+					)
+				}
+				onSettled={onSettled}
+			/>
+		);
+	}
+
 	return (
 		<Card>
 			<CardHeader>
 				<CardTitle>
-					<h2>Offene Zahlungen</h2>
+					<h2>Deine offenen Zahlungen</h2>
 				</CardTitle>
 				<CardDescription>
 					{summary && summary.savedTransfers > 0
-						? `Minimaler Ausgleich: ${summary.simplifiedCount} statt ${summary.directCount} Überweisungen. Spart ${summary.savedTransfers} Zahlungen.`
-						: 'Wer wem noch Geld schuldet'}
+						? `Gegenseitige Schulden sind verrechnet. ${summary.simplifiedCount} ${summary.simplifiedCount === 1 ? 'Zahlung bleibt' : 'Zahlungen bleiben'} in der WG übrig.`
+						: 'Wer dir Geld schuldet und wem du noch Geld schuldest'}
 				</CardDescription>
-				<Button
-					variant="outline"
-					className="min-h-11"
-					render={<Link href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`} />}
-					nativeButton={false}
-				>
-					<Bell data-icon="inline-start" />
-					Mahnungen
-				</Button>
 			</CardHeader>
-			<CardContent>
-				<ItemGroup>
-					{(summary?.simplified.length ? summary.simplified : debts).map((debt) => (
-						<DebtRow
-							key={`${debt.fromId}-${debt.toId}`}
-							debt={debt}
-							expenses={expenses}
-							shareCode={shareCode}
-							currentMemberId={currentMemberId}
-							memberToken={memberToken}
-							memberPayPalMerchantId={memberPayPalMerchantId}
-							payPalEligible={
-								summary === undefined ||
-								debts.some(
-									(direct) =>
-										direct.fromId === debt.fromId &&
-										direct.toId === debt.toId &&
-										direct.cents >= debt.cents,
-								)
+			<CardContent className="flex flex-col gap-4">
+				{personal.length > 0 ? (
+					<ItemGroup aria-label="Deine offenen Zahlungen">{personal.map(renderDebt)}</ItemGroup>
+				) : (
+					<div className="flex flex-col gap-1">
+						<p className="font-medium">
+							{others.length === 0
+								? 'Rechnerisch ausgeglichen'
+								: 'Für dich ist keine Zahlung offen.'}
+						</p>
+						{others.length === 0 && (
+							<p className="text-sm text-muted-foreground">
+								Keine Überweisung nötig. Die einzelnen Anteile im Verlauf sind dadurch nicht als
+								bezahlt markiert.
+							</p>
+						)}
+					</div>
+				)}
+				{others.length > 0 && (
+					<Collapsible>
+						<CollapsibleTrigger
+							render={
+								<Button
+									variant="ghost"
+									className="group h-auto min-h-11 w-full justify-between whitespace-normal text-left"
+								/>
 							}
-							onSettled={onSettled}
-						/>
-					))}
-				</ItemGroup>
+						>
+							Weitere Zahlungen in der WG ({others.length})
+							<ChevronDown aria-hidden className="size-4 shrink-0 group-aria-expanded:rotate-180" />
+						</CollapsibleTrigger>
+						<CollapsibleContent>
+							<ItemGroup className="pt-2" aria-label="Weitere Zahlungen in der WG">
+								{others.map(renderDebt)}
+							</ItemGroup>
+						</CollapsibleContent>
+					</Collapsible>
+				)}
+				{personal.length > 0 && (
+					<Button
+						variant="ghost"
+						className="min-h-11 self-start"
+						render={<Link href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`} />}
+						nativeButton={false}
+					>
+						<Bell data-icon="inline-start" />
+						Mahnungen
+					</Button>
+				)}
 			</CardContent>
 		</Card>
 	);

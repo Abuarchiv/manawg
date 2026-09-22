@@ -43,6 +43,7 @@ export const GET = withWgRoute(
 					paidByMemberId: expenses.paidByMemberId,
 					description: expenses.description,
 					amountCents: expenses.amountCents,
+					currency: expenses.currency,
 					occurredAt: expenses.occurredAt,
 				})
 				.from(expenses)
@@ -166,6 +167,7 @@ export const GET = withWgRoute(
 				})),
 				recurringExpenses: recurringRows.map((item) => ({
 					...item,
+					currency: 'EUR',
 					createdAt: item.createdAt.toISOString(),
 					lastCreatedAt: item.lastCreatedAt?.toISOString() ?? null,
 				})),

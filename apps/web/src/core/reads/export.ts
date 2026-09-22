@@ -62,6 +62,7 @@ const SECTION_HEADERS: Record<ExportSectionKey, string[]> = {
 		'id',
 		'description',
 		'amountCents',
+		'currency',
 		'paidBy',
 		'intervalMonths',
 		'nextDueAt',

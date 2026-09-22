@@ -51,7 +51,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 				</ItemContent>
 				<div className="flex flex-col items-end gap-2">
 					<Badge variant="outline" className="font-mono tabular-nums">
-						{formatEuroCents(abo.amountCents)}
+						{formatEuroCents(abo.amountCents, abo.currency)}
 					</Badge>
 					{isPaused && <AboPausedBadge />}
 				</div>
@@ -80,7 +80,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 													{split.debtorMemberId === abo.paidByMemberId ? ' · eigener Anteil' : ''}
 												</span>
 												<span className="shrink-0 font-mono tabular-nums">
-													{formatEuroCents(split.amountCents)}
+													{formatEuroCents(split.amountCents, abo.currency)}
 												</span>
 											</li>
 										);

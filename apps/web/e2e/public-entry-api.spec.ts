@@ -31,7 +31,10 @@ test('guest membership lookup ignores unrelated and PKCE cookies', async ({ requ
 	expect(bearer.status()).toBe(500);
 });
 
-test('guest upload signing does not reveal whether a share code exists', async ({ request }) => {
+test('guest upload signing does not reveal whether a share code exists', async ({
+	request,
+	baseURL,
+}) => {
 	const payload = {
 		purpose: 'expense',
 		mimeType: 'image/png',
@@ -40,6 +43,7 @@ test('guest upload signing does not reveal whether a share code exists', async (
 
 	for (const shareCode of ['MTE8PZAT', 'ZZZZZZZZ']) {
 		const response = await request.post('/api/upload/sign', {
+			headers: { origin: new URL(baseURL).origin },
 			data: { ...payload, shareCode },
 		});
 		expect(response.status()).toBe(401);

@@ -6,22 +6,35 @@ import * as schema from './schema';
 
 type DbInstance = Omit<NodePgDatabase<typeof schema>, 'transaction'>;
 
-let cachedDb: DbInstance | null = null;
+interface CachedDb {
+	db: DbInstance;
+	pool: Pool;
+}
 
-function buildDb(): DbInstance {
-	const url = resolveConnectionString();
-	const pool = new Pool({ connectionString: url, max: 1 });
-	pool.on('error', (err) => {
-		console.error('[db] Pool error:', err.message);
+let cachedDb: CachedDb | null = null;
+
+function invalidateDb(pool: Pool, err: Error): void {
+	if (cachedDb?.pool !== pool) return;
+	cachedDb = null;
+	console.error('[db] Pool error; invalidating connection pool:', err.message);
+	void pool.end().catch((endError: unknown) => {
+		console.error('[db] Pool shutdown failed:', endError);
 	});
-	return drizzle(pool, { schema }) as DbInstance;
+}
+
+function buildDb(): CachedDb {
+	const url = resolveConnectionString();
+	const pool = new Pool({ connectionString: url, max: 5 });
+	const dbInstance = drizzle(pool, { schema }) as DbInstance;
+	pool.on('error', (err) => invalidateDb(pool, err));
+	return { db: dbInstance, pool };
 }
 
 export const db = new Proxy({} as DbInstance, {
 	get(_target, prop) {
 		if (!cachedDb) cachedDb = buildDb();
-		const value = (cachedDb as unknown as Record<string | symbol, unknown>)[prop as string];
-		return typeof value === 'function' ? value.bind(cachedDb) : value;
+		const value = (cachedDb.db as unknown as Record<string | symbol, unknown>)[prop as string];
+		return typeof value === 'function' ? value.bind(cachedDb.db) : value;
 	},
 }) as DbInstance;
 

@@ -15,6 +15,7 @@ interface DebtRowProps {
 	debtor: DebtRowMember;
 	creditor: DebtRowMember;
 	amountCents: number;
+	currency: string;
 	oldestDebtAgeDays: number;
 	action?: ReactNode;
 }
@@ -23,6 +24,7 @@ export function DebtRow({
 	debtor,
 	creditor,
 	amountCents,
+	currency,
 	oldestDebtAgeDays,
 	action,
 }: DebtRowProps) {
@@ -41,7 +43,7 @@ export function DebtRow({
 					<ItemDescription>{ageLabel}</ItemDescription>
 				</ItemContent>
 				<Badge variant="secondary" className="font-mono tabular-nums text-destructive">
-					{formatEuroCents(amountCents)}
+					{formatEuroCents(amountCents, currency)}
 				</Badge>
 				{action && <ItemFooter className="justify-end">{action}</ItemFooter>}
 			</Item>

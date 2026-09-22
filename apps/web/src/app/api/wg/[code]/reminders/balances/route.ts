@@ -4,13 +4,14 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { computeBalances, computeOldestDebtAges } from '@/features/expenses/debts';
 import { loadCompletedExpensePayments } from '@/features/expenses/expense-payments';
 import { loadOpenExpenses } from '@/features/expenses/open-expenses';
-import { inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 interface BalanceDto {
 	debtor_id: string;
 	debtor_name: string;
 	amount_cents: number;
+	currency: string;
 	oldest_age_days: number;
 }
 
@@ -34,20 +35,27 @@ export const GET = withWgRoute(
 		const debtorRows = await db
 			.select({ id: wgMembers.id, name: wgMembers.name })
 			.from(wgMembers)
-			.where(inArray(wgMembers.id, debtorIds));
+			.where(and(eq(wgMembers.wgId, wgId), inArray(wgMembers.id, debtorIds)));
 		const nameById = new Map(debtorRows.map((row) => [row.id, row.name]));
 
 		const oldestAges = computeOldestDebtAges(
-			myCredits.map((pair) => ({ debtorId: pair.debtorId, creditorId: auth.member.memberId })),
+			myCredits.map((pair) => ({
+				debtorId: pair.debtorId,
+				creditorId: auth.member.memberId,
+				currency: pair.currency,
+			})),
 			openExpenses,
 		);
 		const balances: BalanceDto[] = myCredits.map((pair, i) => ({
 			debtor_id: pair.debtorId,
 			debtor_name: nameById.get(pair.debtorId) ?? 'Unbekannt',
 			amount_cents: pair.amountCents,
+			currency: pair.currency,
 			oldest_age_days: oldestAges[i] ?? 0,
 		}));
-		balances.sort((a, b) => b.amount_cents - a.amount_cents);
+		balances.sort(
+			(a, b) => a.currency.localeCompare(b.currency) || b.amount_cents - a.amount_cents,
+		);
 
 		return NextResponse.json({ balances });
 	},

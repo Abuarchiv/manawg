@@ -3,6 +3,7 @@ import { db, wgChatMentions, wgChatMessages, wgChatReactions, wgMembers } from '
 import { serverError, tooMany } from '@/core/errors';
 import { badRequest, payloadTooLarge } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
+import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { readJsonBody } from '@/core/http/read-json';
@@ -149,114 +150,125 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 	const wg = auth.wg;
 	if (!isAllowedImageUrlForWg(imageUrl, wg.id)) return badRequest('image_invalid');
 
-	const limited = await checkRateLimit(chatMessageLimiter, `chat:${wg.id}:${auth.member.memberId}`);
-	if (!limited.success) return tooMany();
+	return withIdempotentJsonResponse(
+		req,
+		`chat-message:${wg.id}:${auth.member.memberId}`,
+		async () => {
+			const limited = await checkRateLimit(
+				chatMessageLimiter,
+				`chat:${wg.id}:${auth.member.memberId}`,
+			);
+			if (!limited.success) return tooMany();
 
-	if (replyToMessageId) {
-		if (!UUID_PATTERN.test(replyToMessageId)) return badRequest('reply_to_invalid');
-		const replyRow = await db
-			.select({ id: wgChatMessages.id })
-			.from(wgChatMessages)
-			.where(
-				and(
-					eq(wgChatMessages.id, replyToMessageId),
-					eq(wgChatMessages.wgId, wg.id),
-					isNull(wgChatMessages.deletedAt),
-				),
+			if (replyToMessageId) {
+				if (!UUID_PATTERN.test(replyToMessageId)) return badRequest('reply_to_invalid');
+				const replyRow = await db
+					.select({ id: wgChatMessages.id })
+					.from(wgChatMessages)
+					.where(
+						and(
+							eq(wgChatMessages.id, replyToMessageId),
+							eq(wgChatMessages.wgId, wg.id),
+							isNull(wgChatMessages.deletedAt),
+						),
+					)
+					.limit(1);
+				if (replyRow.length === 0) return badRequest('reply_to_not_found');
+			}
+
+			const requestedMentionIds = Array.from(
+				new Set((parsed.data.mentionMemberIds ?? []).filter((id) => UUID_PATTERN.test(id))),
+			);
+			let validMentionIds: string[] = [];
+			if (requestedMentionIds.length > 0) {
+				const validRows = await db
+					.select({ id: wgMembers.id })
+					.from(wgMembers)
+					.where(and(eq(wgMembers.wgId, wg.id), inArray(wgMembers.id, requestedMentionIds)));
+				validMentionIds = validRows
+					.map((row) => row.id)
+					.filter((id) => id !== auth.member.memberId);
+			}
+
+			const [inserted] = await db
+				.insert(wgChatMessages)
+				.values({
+					wgId: wg.id,
+					senderMemberId: auth.member.memberId,
+					kind,
+					body: cleanBody,
+					imageUrl,
+					replyToMessageId,
+				})
+				.returning();
+			if (!inserted) return serverError('insert_failed');
+
+			let persistedMentionIds: string[] = [];
+			if (validMentionIds.length > 0) {
+				const insertedMentionRows = await db
+					.insert(wgChatMentions)
+					.values(
+						validMentionIds.map((mentionedMemberId) => ({
+							messageId: inserted.id,
+							mentionedMemberId,
+						})),
+					)
+					.onConflictDoNothing()
+					.returning({ mentionedMemberId: wgChatMentions.mentionedMemberId });
+				persistedMentionIds = filterPersistedMentionIds(validMentionIds, insertedMentionRows);
+			}
+
+			const preview = previewBody(cleanBody ?? (imageUrl ? 'Bild' : ''), PREVIEW_LENGTH);
+
+			const notificationDispatches = [
+				dispatchNotificationSafely({
+					wg,
+					event: 'chat.message',
+					payload: {
+						messageId: inserted.id,
+						actorName: auth.member.name,
+						preview,
+					},
+					excludeMemberId: auth.member.memberId,
+				}),
+			];
+			if (persistedMentionIds.length > 0) {
+				notificationDispatches.push(
+					dispatchNotificationSafely({
+						wg,
+						event: 'chat.mention',
+						payload: {
+							messageId: inserted.id,
+							actorName: auth.member.name,
+							preview,
+						},
+						targetMemberIds: persistedMentionIds,
+						excludeMemberId: auth.member.memberId,
+					}),
+				);
+			}
+
+			// Audit log for traceability — kept lightweight (no full body, only preview).
+			void recordAuditEvent({
+				wgId: wg.id,
+				memberId: auth.member.memberId,
+				eventType: 'chat.message.created',
+				entityType: 'chat_message',
+				entityId: inserted.id,
+				summary: `${auth.member.name} hat im Chat eine Nachricht gesendet.`,
+				metadata: { preview, kind, mentions: persistedMentionIds.length },
+			}).catch(() => undefined);
+
+			const notificationResults = await Promise.all(notificationDispatches);
+			const warning = notificationResults.some(
+				(result) => result.warning === 'notification_delivery_unknown',
 			)
-			.limit(1);
-		if (replyRow.length === 0) return badRequest('reply_to_not_found');
-	}
+				? 'notification_delivery_unknown'
+				: notificationResults.some((result) => result.warning === 'notification_delivery_failed')
+					? 'notification_delivery_failed'
+					: null;
 
-	const requestedMentionIds = Array.from(
-		new Set((parsed.data.mentionMemberIds ?? []).filter((id) => UUID_PATTERN.test(id))),
+			return NextResponse.json({ message: inserted, mentions: persistedMentionIds, warning });
+		},
 	);
-	let validMentionIds: string[] = [];
-	if (requestedMentionIds.length > 0) {
-		const validRows = await db
-			.select({ id: wgMembers.id })
-			.from(wgMembers)
-			.where(and(eq(wgMembers.wgId, wg.id), inArray(wgMembers.id, requestedMentionIds)));
-		validMentionIds = validRows.map((row) => row.id).filter((id) => id !== auth.member.memberId);
-	}
-
-	const [inserted] = await db
-		.insert(wgChatMessages)
-		.values({
-			wgId: wg.id,
-			senderMemberId: auth.member.memberId,
-			kind,
-			body: cleanBody,
-			imageUrl,
-			replyToMessageId,
-		})
-		.returning();
-	if (!inserted) return serverError('insert_failed');
-
-	let persistedMentionIds: string[] = [];
-	if (validMentionIds.length > 0) {
-		const insertedMentionRows = await db
-			.insert(wgChatMentions)
-			.values(
-				validMentionIds.map((mentionedMemberId) => ({
-					messageId: inserted.id,
-					mentionedMemberId,
-				})),
-			)
-			.onConflictDoNothing()
-			.returning({ mentionedMemberId: wgChatMentions.mentionedMemberId });
-		persistedMentionIds = filterPersistedMentionIds(validMentionIds, insertedMentionRows);
-	}
-
-	const preview = previewBody(cleanBody ?? (imageUrl ? 'Bild' : ''), PREVIEW_LENGTH);
-
-	const notificationDispatches = [
-		dispatchNotificationSafely({
-			wg,
-			event: 'chat.message',
-			payload: {
-				messageId: inserted.id,
-				actorName: auth.member.name,
-				preview,
-			},
-			excludeMemberId: auth.member.memberId,
-		}),
-	];
-	if (persistedMentionIds.length > 0) {
-		notificationDispatches.push(
-			dispatchNotificationSafely({
-				wg,
-				event: 'chat.mention',
-				payload: {
-					messageId: inserted.id,
-					actorName: auth.member.name,
-					preview,
-				},
-				targetMemberIds: persistedMentionIds,
-				excludeMemberId: auth.member.memberId,
-			}),
-		);
-	}
-
-	// Audit log for traceability — kept lightweight (no full body, only preview).
-	void recordAuditEvent({
-		wgId: wg.id,
-		memberId: auth.member.memberId,
-		eventType: 'chat.message.created',
-		entityType: 'chat_message',
-		entityId: inserted.id,
-		summary: `${auth.member.name} hat im Chat eine Nachricht gesendet.`,
-		metadata: { preview, kind, mentions: persistedMentionIds.length },
-	}).catch(() => undefined);
-
-	const notificationResults = await Promise.all(notificationDispatches);
-	const warning = notificationResults.some(
-		(result) => result.warning === 'notification_delivery_unknown',
-	)
-		? 'notification_delivery_unknown'
-		: notificationResults.some((result) => result.warning === 'notification_delivery_failed')
-			? 'notification_delivery_failed'
-			: null;
-
-	return NextResponse.json({ message: inserted, mentions: persistedMentionIds, warning });
 });

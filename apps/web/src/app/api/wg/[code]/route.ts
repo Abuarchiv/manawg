@@ -1,7 +1,19 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, wgMembers, wgs } from '@/core/db';
+import {
+	announcements,
+	chores,
+	db,
+	expensePayments,
+	expenses,
+	recurringExpenses,
+	shoppingItems,
+	wgMembers,
+	wgs,
+} from '@/core/db';
+import { withTransaction } from '@/core/db/transaction';
 import { badRequest, notFound, serverError } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
+import { deriveMemberToken } from '@/core/guards/member-token';
 import { requireWgAdmin } from '@/core/guards/require-wg-admin';
 import { readShareCode } from '@/core/guards/route-preamble';
 import type { RouteCtx } from '@/core/infra/api-types';
@@ -89,6 +101,7 @@ export async function GET(
 		}
 		const auth = await requireMember(req, wg.id);
 		if (!auth.ok) return auth.response;
+		const memberToken = deriveMemberToken(wg.id, auth.member.memberId);
 
 		const members = await db
 			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
@@ -100,6 +113,7 @@ export async function GET(
 			currentMember: {
 				memberId: auth.member.memberId,
 				name: auth.member.name,
+				...(memberToken ? { memberToken } : {}),
 			},
 		});
 	} catch (err) {
@@ -195,9 +209,32 @@ export async function DELETE(
 	try {
 		const admin = await requireWgAdmin(req, code, 'wg-settings');
 		if (!admin.ok) return admin.response;
-		const { wg } = admin;
+		const { wg, member } = admin;
 
-		const result = await db.delete(wgs).where(eq(wgs.id, wg.id)).returning({ id: wgs.id });
+		await recordAuditEvent({
+			wgId: wg.id,
+			memberId: member.memberId,
+			eventType: 'wg.deleted',
+			entityType: 'wg',
+			entityId: wg.id,
+			summary: `${member.name} hat die WG gelöscht.`,
+			metadata: { name: wg.name },
+		});
+
+		const result = await withTransaction(async (tx) => {
+			// Several historical/member references intentionally use RESTRICT so a
+			// member cannot be hard-deleted while its accounting history remains.
+			// Whole-WG deletion is the explicit destructive operation, so remove
+			// those WG-owned roots in one transaction and let the remaining WG
+			// cascades clean up comments, splits, logs, and subscriptions.
+			await tx.delete(expenses).where(eq(expenses.wgId, wg.id));
+			await tx.delete(expensePayments).where(eq(expensePayments.wgId, wg.id));
+			await tx.delete(shoppingItems).where(eq(shoppingItems.wgId, wg.id));
+			await tx.delete(announcements).where(eq(announcements.wgId, wg.id));
+			await tx.delete(chores).where(eq(chores.wgId, wg.id));
+			await tx.delete(recurringExpenses).where(eq(recurringExpenses.wgId, wg.id));
+			return tx.delete(wgs).where(eq(wgs.id, wg.id)).returning({ id: wgs.id });
+		});
 		if (result.length === 0) {
 			return notFound('wg_not_found');
 		}

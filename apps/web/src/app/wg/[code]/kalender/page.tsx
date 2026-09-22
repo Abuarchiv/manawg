@@ -12,6 +12,7 @@ import { BackLink } from '@/components/wg/BackLink';
 import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { copyText } from '@/core/utils/clipboard';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
@@ -46,7 +47,7 @@ import {
 	Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface CalendarEvent {
 	id: string;
@@ -121,6 +122,7 @@ export default function KalenderPage() {
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const [events, setEvents] = useState<CalendarEvent[]>([]);
+	const createEventRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 	const [chores, setChores] = useState<ChoreSummary[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -140,6 +142,7 @@ export default function KalenderPage() {
 	const [subscriptionBusy, setSubscriptionBusy] = useState(false);
 	const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
 	const [subscriptionNotice, setSubscriptionNotice] = useState<string | null>(null);
+	const subscriptionRequestKeysRef = useRef(new Map<string, string>());
 	const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
 	const [subscriptionConfirm, setSubscriptionConfirm] = useState<'rotate' | 'revoke' | null>(null);
 	const subscriptionEndpoint = `/api/wg/${encodedShareCode}/calendar-subscription`;
@@ -239,15 +242,24 @@ export default function KalenderPage() {
 	}
 
 	async function handleCreate(payload: CreateEventPayload): Promise<void> {
+		const fingerprint = JSON.stringify(payload);
+		const pending = createEventRequestRef.current;
+		const idempotencyKey =
+			pending?.fingerprint === fingerprint ? pending.key : createOfflineIdempotencyKey();
+		if (!idempotencyKey) throw new Error('Termin konnte nicht sicher gesendet werden.');
+		createEventRequestRef.current = { fingerprint, key: idempotencyKey };
 		const res = await apiFetch<CalendarCreateResponse>(`/api/wg/${encodedShareCode}/events`, {
 			method: 'POST',
 			memberId: identity.memberId,
 			memberToken: identity.memberToken,
+			headers: { 'Idempotency-Key': idempotencyKey },
 			body: JSON.stringify(payload),
 		});
 		if (!res.ok) {
+			if (res.status > 0 && res.status < 500) createEventRequestRef.current = null;
 			throw new Error('Termin konnte nicht gespeichert werden.');
 		}
+		createEventRequestRef.current = null;
 		haptic('medium');
 		setEvents((current) => [...current, res.data.event]);
 		setCreateOpen(false);
@@ -294,16 +306,32 @@ export default function KalenderPage() {
 		setSubscriptionBusy(true);
 		setSubscriptionError(null);
 		setSubscriptionNotice(null);
+		const requestKeyId = `subscription:${method}`;
+		const idempotencyKey =
+			subscriptionRequestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setSubscriptionError(
+				'Kalender-Feed konnte nicht sicher gespeichert werden. Versuche es erneut.',
+			);
+			setSubscriptionBusy(false);
+			return;
+		}
+		subscriptionRequestKeysRef.current.set(requestKeyId, idempotencyKey);
 		const res = await apiFetch<CalendarSubscriptionResponse>(subscriptionEndpoint, {
 			method,
 			memberId: identity.memberId,
 			memberToken: identity.memberToken,
+			headers: { 'Idempotency-Key': idempotencyKey },
 		});
 		if (res.ok && res.data.subscription) {
+			subscriptionRequestKeysRef.current.delete(requestKeyId);
 			setSubscription(res.data.subscription);
 			setCopyState('idle');
 			setSubscriptionNotice(message);
 		} else {
+			if (!res.ok && res.status > 0 && res.status < 500) {
+				subscriptionRequestKeysRef.current.delete(requestKeyId);
+			}
 			setSubscriptionError('Kalender-Feed konnte nicht gespeichert werden.');
 		}
 		setSubscriptionBusy(false);
@@ -313,16 +341,32 @@ export default function KalenderPage() {
 		setSubscriptionBusy(true);
 		setSubscriptionError(null);
 		setSubscriptionNotice(null);
+		const requestKeyId = 'subscription:DELETE';
+		const idempotencyKey =
+			subscriptionRequestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setSubscriptionError(
+				'Kalender-Feed konnte nicht sicher widerrufen werden. Versuche es erneut.',
+			);
+			setSubscriptionBusy(false);
+			return;
+		}
+		subscriptionRequestKeysRef.current.set(requestKeyId, idempotencyKey);
 		const res = await apiFetch<unknown>(subscriptionEndpoint, {
 			method: 'DELETE',
 			memberId: identity.memberId,
 			memberToken: identity.memberToken,
+			headers: { 'Idempotency-Key': idempotencyKey },
 		});
 		if (res.ok) {
+			subscriptionRequestKeysRef.current.delete(requestKeyId);
 			setSubscription(null);
 			setCopyState('idle');
 			setSubscriptionNotice('Kalender-Feed widerrufen.');
 		} else {
+			if (!res.ok && res.status > 0 && res.status < 500) {
+				subscriptionRequestKeysRef.current.delete(requestKeyId);
+			}
 			setSubscriptionError('Kalender-Feed konnte nicht widerrufen werden.');
 		}
 		setSubscriptionBusy(false);
@@ -393,6 +437,7 @@ export default function KalenderPage() {
 							onClick={handleJumpToToday}
 							aria-label="Zum aktuellen Monat springen"
 							title="Heute"
+							className="min-h-11 min-w-11"
 						>
 							<RotateCcw aria-hidden />
 						</Button>

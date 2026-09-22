@@ -53,6 +53,7 @@ interface SearchInput {
 		id: string;
 		description: string;
 		amountCents: number;
+		currency?: string;
 		occurredAt: string;
 		paidByMemberId?: string;
 		imageUrl?: string | null;
@@ -62,6 +63,7 @@ interface SearchInput {
 		id: string;
 		description: string;
 		amountCents: number;
+		currency?: string;
 		intervalMonths: number;
 		nextDueAt: string;
 		paidByMemberId?: string;
@@ -210,7 +212,7 @@ export function searchWgItems(rawQuery: string, input: SearchInput): WgSearchRes
 			id: item.id,
 			module: 'ausgaben',
 			title: item.description,
-			meta: formatEuroCents(item.amountCents),
+			meta: formatEuroCents(item.amountCents, item.currency ?? 'EUR'),
 			href: `${base}/ausgaben?highlight=${encodeURIComponent(item.id)}`,
 			tags: [
 				expenseHasOpenSplit(item) ? 'unpaid' : null,
@@ -229,7 +231,7 @@ export function searchWgItems(rawQuery: string, input: SearchInput): WgSearchRes
 			id: item.id,
 			module: 'fixkosten',
 			title: item.description,
-			meta: `${formatEuroCents(item.amountCents)} · ${intervalLabel}`,
+			meta: `${formatEuroCents(item.amountCents, item.currency ?? 'EUR')} · ${intervalLabel}`,
 			href: `${base}/ausgaben?recurring=${encodeURIComponent(item.id)}`,
 			tags: [
 				isPast(item.nextDueAt) ? 'overdue' : null,

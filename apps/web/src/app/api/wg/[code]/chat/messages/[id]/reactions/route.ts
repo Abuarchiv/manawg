@@ -1,6 +1,7 @@
 import { db, wgChatMessages, wgChatReactions } from '@/core/db';
 import { badRequest, conflict, notFound, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
+import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -51,16 +52,22 @@ export const POST = withWgRoute<{ id: string }>(
 		if (!messageCheck.exists) return notFound('message_not_found');
 		if (messageCheck.deleted) return conflict('message_deleted', 'message_deleted');
 
-		await db
-			.insert(wgChatReactions)
-			.values({
-				messageId: id,
-				memberId: auth.member.memberId,
-				emoji: (emoji as string).trim(),
-			})
-			.onConflictDoNothing();
+		return withIdempotentJsonResponse(
+			req,
+			`chat-reaction-add:${wgId}:${auth.member.memberId}:${id}:${(emoji as string).trim()}`,
+			async () => {
+				await db
+					.insert(wgChatReactions)
+					.values({
+						messageId: id,
+						memberId: auth.member.memberId,
+						emoji: (emoji as string).trim(),
+					})
+					.onConflictDoNothing();
 
-		return NextResponse.json({ ok: true });
+				return NextResponse.json({ ok: true });
+			},
+		);
 	},
 );
 
@@ -86,16 +93,22 @@ export const DELETE = withWgRoute<{ id: string }>(
 		if (!messageCheck.exists) return notFound('message_not_found');
 		if (messageCheck.deleted) return conflict('message_deleted');
 
-		await db
-			.delete(wgChatReactions)
-			.where(
-				and(
-					eq(wgChatReactions.messageId, id),
-					eq(wgChatReactions.memberId, auth.member.memberId),
-					eq(wgChatReactions.emoji, (emoji as string).trim()),
-				),
-			);
+		return withIdempotentJsonResponse(
+			req,
+			`chat-reaction-remove:${wgId}:${auth.member.memberId}:${id}:${(emoji as string).trim()}`,
+			async () => {
+				await db
+					.delete(wgChatReactions)
+					.where(
+						and(
+							eq(wgChatReactions.messageId, id),
+							eq(wgChatReactions.memberId, auth.member.memberId),
+							eq(wgChatReactions.emoji, (emoji as string).trim()),
+						),
+					);
 
-		return NextResponse.json({ ok: true });
+				return NextResponse.json({ ok: true });
+			},
+		);
 	},
 );

@@ -1,7 +1,7 @@
 import { formatEuroInput } from '@/core/utils/amount';
 import type { OfflineAction, OfflineActionType } from './offline-queue';
 
-export type DraftModule = 'announcement' | 'expense' | 'shopping' | 'chore';
+export type DraftModule = 'announcement' | 'expense' | 'shopping' | 'chore' | 'absence';
 
 export interface QueueEditDraft {
 	module: DraftModule;
@@ -21,7 +21,7 @@ export function buildQueueEditHref(
 	if (module === 'shopping') return `/wg/${encodedShareCode}/einkauf`;
 	if (module === 'announcement') return `/wg/${encodedShareCode}/pinnwand`;
 	if (module === 'expense') return `/wg/${encodedShareCode}/ausgaben`;
-	if (module === 'chore' && options?.openAbsencesPanel) {
+	if (module === 'absence' || (module === 'chore' && options?.openAbsencesPanel)) {
 		return `/wg/${encodedShareCode}/putzen?panel=absences`;
 	}
 	return `/wg/${encodedShareCode}/putzen`;
@@ -107,6 +107,9 @@ export function isEmptyModuleDraft(
 			intervalDays: 7,
 			recurrenceType: 'days',
 			assignedMemberId: '',
+			queueEditId: null,
+		},
+		absence: {
 			absenceMemberId: memberId,
 			absenceStartDate: '',
 			absenceEndDate: '',
@@ -148,7 +151,20 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 					quantity: typeof action.payload.quantity === 'string' ? action.payload.quantity : '',
 				},
 			};
-		case 'shopping.update':
+		case 'shopping.update': {
+			const name = String(action.payload.name ?? '');
+			const quantity = typeof action.payload.quantity === 'string' ? action.payload.quantity : '';
+			if (!name && !quantity) return null;
+			return {
+				module: 'shopping',
+				draft: {
+					queueEditId: action.id,
+					queueEditType: action.type,
+					name,
+					quantity,
+				},
+			};
+		}
 		case 'recurring.advance':
 			return null;
 		case 'announcement.create':
@@ -164,7 +180,7 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 			};
 		case 'absence.create':
 			return {
-				module: 'chore',
+				module: 'absence',
 				draft: {
 					queueEditId: action.id,
 					queueEditType: action.type,

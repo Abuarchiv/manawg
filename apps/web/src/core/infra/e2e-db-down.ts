@@ -85,6 +85,7 @@ export function buildE2EDashboardData(code: string): DashboardData {
 					code === E2E_CREATED_WG.shareCode
 						? E2E_CREATED_WG.member.color
 						: E2E_EXISTING_WG.member.color,
+				currency: 'EUR',
 				paidCents: 3290,
 				owedCents: 0,
 				balanceCents: 3290,
@@ -92,8 +93,12 @@ export function buildE2EDashboardData(code: string): DashboardData {
 		],
 		spendByDay: Array.from({ length: 14 }, (_, idx) => ({
 			date: new Date(now - (13 - idx) * day).toISOString().slice(0, 10),
+			currency: 'EUR',
 			cents: idx === 13 ? 3290 : 0,
 		})),
+		totalSpendByCurrency: { EUR: 3290 },
+		weekSpendByCurrency: { EUR: 3290 },
+		monthSpendByCurrency: { EUR: 3290 },
 		totalSpendCents: 3290,
 		weekSpendCents: 3290,
 		monthSpendCents: 3290,
@@ -141,6 +146,7 @@ export function buildE2EDashboardData(code: string): DashboardData {
 				id: 'a1ef32d5-d40a-4df2-9977-7684dce7df3f',
 				description: 'Internet',
 				amountCents: 3290,
+				currency: 'EUR',
 				nextDueAt: new Date(now - day).toISOString(),
 			},
 		],

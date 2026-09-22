@@ -1,9 +1,25 @@
 # ManaWG Release Readiness
 
-Stand: 2026-09-20, Europe/Berlin
+## Aktueller Implementierungsstand — 2026-09-22, Europe/Berlin
+
+- Branch `fix/audit-158` enthält den geprüften Anwendungs-/Teststand `3abc5d9a1fefe55603067d872f476981289ee71f`; der aktuelle Dokumentations-Tip ergänzt nur diese Evidenz. PR #300 ist mergeable, aber wegen geschützter Preview-Gates noch nicht freigabefähig.
+- Vercel Preview `https://manawg-eqqk2dsld-abditubes-projects.vercel.app` (`dpl_uwtuk6ewXfC1BdRXERmvXLxxjx2j`) ist mit Node 22 READY. GitHub Preview-/QA-Secrets sind vorhanden; keine Werte wurden ausgegeben.
+- GitHub-Node-22-`validate` ist erfolgreich (`35663607827`); die exakte Fixture-Suite ist mit 180 bestanden und 28 übersprungen grün. Fixture-E2E und lokale Regressionen sind getrennte Evidenz und kein Hosted-Produktionsnachweis.
+- Protected Preview run `35663737497` scheitert fail-closed in `db-supabase-preview`: SQLSTATE `42501` beim Anwenden von Migrationen. Supabase-Read-only-Katalogprüfung bestätigt `manawg_preview_ci.schema_create=false`, `db_create=false`; bestehende Tabellen gehören `postgres`.
+- Nächste autorisierte Aktion: einen vorgesehenen direkten Preview-DDL-/Owner-Migrationszugang bereitstellen/freigeben. Keine zusätzlichen Grants, Rollenrotation oder manuelle Ledger-Manipulation als Umgehung. Production bleibt unverändert.
+- Storage, Provider, Geräte, Recovery, authentifizierte Privacy-/Revocation-Abnahme und Production-Gates bleiben offen.
+
+Stand: 2026-09-22, Europe/Berlin
 Scope: `/Users/abu/Company/manawg-app`
-HEAD: `cae9b0bf3f5e6e4a032933acc82fd7a99a301b96` (`main`)
-Arbeitsbaum: dirty; kein Release-Candidate-SHA eingefroren.
+HEAD: `3abc5d9a1fefe55603067d872f476981289ee71f` (`fix/audit-158`; documentation-only refresh follows)
+Arbeitsbaum: dirty durch eine uncommitted Benutzeränderung in `apps/web/src/app/layout.tsx`; kein Production-Release.
+
+## Historischer Implementierungsstand — 2026-09-20 20:10 CEST
+
+- Frühere Claims über fehlende Preview-Secrets und Tree-Gleichheit sind überholt: dedizierte QA-/DB-Secrets liegen im geschützten GitHub-Environment `Preview`; finale Release-Gates bleiben an exakte Commit-SHAs gebunden.
+- Private Storage-Implementierung committed (`0fa9755`), sauberes Preview `7640b0c` / `dpl_AMnZJJnwwTRtzKMdJPcUwThdpYob` READY. Echt bestanden: 8-MiB-Upload/Hash-Readback, Browser-Dekodierung, Fremd-/Gast-/Revocation-Denials, Provider-Größen-/MIME-/Overwrite-Schutz. Offline-UI-Replay bleibt offen.
+- 14 gezielte Release-/Limiter-Tests, Lint und Typecheck bestanden. Gesamter Hosted-Lauf zuletzt 22/27: temporärer Codegenerator enthielt verbotene Zeichen; `/api/wg/mine` wurde irrtümlich dem 20/min-Code-Limiter zugeordnet. Generator korrigiert, Middleware-Fix lokal geprüft; erneuter Hosted-Nachweis ausstehend.
+- Recovery: Schema und Daten lokal identisch; ACL-Differenz noch nicht erklärt. Provider-PITR/Retention, echte Geräte und Residenten-Abnahme bleiben offene Pflichtnachweise. Kein Production-Release.
 
 Statuswerte: `offen` · `in Arbeit` · `erledigt` · `blockiert`
 
@@ -40,7 +56,7 @@ Status: erledigt
 Abnahme: lokale Gates wurden nach dem aktuellen HEAD `cae9b0b` und den dirty Änderungen erneut ausgeführt.
 
 - [x] Historischer Lauf: Typecheck, Lint, Build, Bundle, Analytics, OpenSpec 5/5, Fixture-E2E 80/24/0, Chat 2/2, Workflow-Gates 9/9, Audit ohne High-Schwachstellen.
-- [x] Finaler Readback: Typecheck, Lint, Build, Bundle, Analytics, OpenSpec 5/5, Release-Workflow-Gates 9/9 und Fixture-E2E Exit 0.
+- [x] Finaler Readback: Typecheck, Lint, Build, Bundle, Analytics, OpenSpec 5/5, Release-Workflow-Gates 9/9 und Fixture-E2E Exit 0; exact-tree CI fixture run `35663607827` meldet 180 bestanden und 28 übersprungen.
 
 ### T4 — Backend, Auth und Datenintegrität
 
@@ -54,7 +70,7 @@ Abnahme: Auth, WG-Mitgliedschaft, Idempotenz, JSON-Limits, Offline-Reconciliatio
 - [ ] Cross-WG-/Parent-Kombinationen mit authentifizierten Preview-Nutzern.
 - [ ] Revoked-membership und Zwei-Nutzer-Privacy im Preview.
 
-Blocker: QA-Account/Secrets fehlen im Preview-Environment; die Vercel-CLI-Deployment-Prüfung funktioniert, die API-Route ist aber SSO-geschützt.
+Blocker: Der geschützte Preview-Migrationszugang `manawg_preview_ci` darf keine DDL ausführen (`schema_create=false`, `db_create=false`); der Hosted-Auth-Lauf bleibt bis zum erfolgreichen Migration-/Check-Gate downstream.
 
 ### T5 — UX, Accessibility und Kernflüsse
 
@@ -83,7 +99,8 @@ Abnahme: gleicher Candidate-SHA, Preview-Migration/db:check, Vercel-Event, QA-Au
 - [x] Fehlende Ledger-Einträge 0010–0012 nach bytegenauem Vergleich mit bereits angewendeter Supabase-Historie ergänzt; Rollback vorher bewiesen. Keine Schema-/App-Datenänderung.
 - [x] Sechs echte Hosted-Auth-/Guest-/Reset-Checks bestanden; synthetischer Account und isolierte Test-WG jeweils entfernt.
 - [x] Zentraler Runtime-Fix: App-Transaktionen ignorieren Migrations-Credentials; sechs Resolver-/Ledger-Regressionen und echter Preview-Schreib-/Rollback-Test in derselben DB-Sitzung bestanden.
-- [ ] Fix auf neuem Preview-Candidate mit vorhandenen serverseitigen Secrets ausrollen und Mitgliedschafts-409 erneut im Hosted-Browser beweisen. Korrektur 17:05 CEST: env pull liefert Redaktionsmarker für sensible Werte; daraus folgt kein fehlender oder ungültiger Vercel-Zugang.
+- [ ] Current protected run `35663737497`: Migration reaches the pending migrations but fails with SQLSTATE `42501`; `e2e-preview` fails closed.
+- [ ] Authorize the intended direct Preview DDL/owner migration credential, then rerun migration, `db:check`, authenticated browser, revoked membership, Privacy and cleanup gates for the exact candidate tree.
 - [ ] Authentifizierter Browserlauf, revoked membership, Privacy und Cleanup.
 
 ### T7 — Externe Provider und Geräte
@@ -133,3 +150,6 @@ Candidate-SHA einfrieren und nativen Preview-Deploy mit den bestehenden Vercel-S
 - Statuszähler: lokale Fixture-Suite 85 bestanden, 25 übersprungen, 0 Fehler; sechs Hosted-Checks bestanden.
 - Ergebnis: Build/Lint/Typecheck grün; DB-Ledger repariert, db:check und echter Transaktions-Rollback bestanden; Testdaten-Cleanup bestätigt.
 - Nächster Schritt: dauerhafte Preview-Konfiguration herstellen und Runtime-Fix auf einem neuen Candidate end-to-end prüfen.
+- Implementierung 2026-09-20 19:28 CEST: CI-Preview-Gate korrigiert. Bei `deployment_status` wird der Vercel-Commit nicht mit Secrets ausgeführt; sein Git-Tree wird vor dem Preview-Gate gegen den vertrauenswürdigen `main`-Tree geprüft. Merge-Commit-SHA-Differenzen blockieren damit nicht mehr bei bytegleichem Code.
+- Nachweis: Release-Gate-Tests 11/11, Lint, Typecheck, Analytics, Feature-Boundaries, Build, Bundle 102/120 kB, Fixture-E2E Exit 0, `git diff --check` 0; Supabase CLI Preview 26/26 RLS, `rls_disabled=0`; Vercel `/api/health` `status=ok,database=ok`.
+- Weiter blockiert: GitHub-Secret `SUPABASE_PREVIEW_DATABASE_MIGRATION_URL` und `SUPABASE_AUTH_TEST_*` fehlen weiterhin; kein echter Hosted-Auth-/Privacy-/Cleanup-Nachweis. Production unverändert.

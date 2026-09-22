@@ -18,16 +18,31 @@ interface TransactionalDb {
 	transaction<T>(fn: (tx: DbTransaction) => Promise<T>): Promise<T>;
 }
 
-let cachedDb: TransactionalDb | null = null;
+interface CachedTransactionalDb {
+	db: TransactionalDb;
+	pool: Pool;
+}
 
-function buildTransactionalDb(): TransactionalDb {
+let cachedDb: CachedTransactionalDb | null = null;
+
+function invalidateTransactionalDb(pool: Pool, err: Error): void {
+	if (cachedDb?.pool !== pool) return;
+	cachedDb = null;
+	console.error('[db/transaction] Pool error; invalidating connection pool:', err);
+	void pool.end().catch((endError: unknown) => {
+		console.error('[db/transaction] Pool shutdown failed:', endError);
+	});
+}
+
+function buildTransactionalDb(): CachedTransactionalDb {
 	const url = resolveTransactionConnectionString();
-	const pool = new Pool({ connectionString: url, max: 1 });
-	pool.on('error', (err: unknown) => console.error('[db/transaction] pool error', err));
-	return drizzle(pool, { schema }) as unknown as TransactionalDb;
+	const pool = new Pool({ connectionString: url, max: 5 });
+	const dbInstance = drizzle(pool, { schema }) as unknown as TransactionalDb;
+	pool.on('error', (err) => invalidateTransactionalDb(pool, err));
+	return { db: dbInstance, pool };
 }
 
 export async function withTransaction<T>(fn: (tx: DbTransaction) => Promise<T>): Promise<T> {
 	if (!cachedDb) cachedDb = buildTransactionalDb();
-	return cachedDb.transaction(fn);
+	return cachedDb.db.transaction(fn);
 }

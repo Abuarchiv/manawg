@@ -6,6 +6,7 @@ export interface SimplifiedDebt {
 	toId: string;
 	toName: string;
 	cents: number;
+	currency?: string;
 }
 
 export interface SettlementSummary {
@@ -14,6 +15,7 @@ export interface SettlementSummary {
 	savedTransfers: number;
 	totalOpenCents: number;
 	simplified: SimplifiedDebt[];
+	totalOpenByCurrency?: Record<string, number>;
 }
 
 interface BalanceEntry {
@@ -21,10 +23,12 @@ interface BalanceEntry {
 	memberName: string;
 	color: string | null;
 	cents: number;
+	currency: string;
 }
 
 interface ExpenseInput {
 	paidByMemberId: string;
+	currency?: string;
 	splits: Array<{
 		debtorMemberId: string;
 		amountCents: number;
@@ -38,6 +42,25 @@ interface MemberInput {
 	color: string | null;
 }
 
+function normalizeCurrency(currency: string | undefined): string {
+	return currency?.trim().toUpperCase() || 'EUR';
+}
+
+function currencyKey(currency: string, memberId: string): string {
+	return `${currency}:${memberId}`;
+}
+
+function currenciesFor(
+	expenses: readonly ExpenseInput[],
+	payments: readonly ExpensePaymentInput[],
+): string[] {
+	const currencies = new Set<string>();
+	for (const expense of expenses) currencies.add(normalizeCurrency(expense.currency));
+	for (const payment of payments) currencies.add(normalizeCurrency(payment.currency));
+	if (currencies.size === 0) currencies.add('EUR');
+	return [...currencies].sort();
+}
+
 export function computeDirectDebts(
 	expenses: ExpenseInput[],
 	members: MemberInput[],
@@ -47,6 +70,7 @@ export function computeDirectDebts(
 	const totals = new Map<string, SimplifiedDebt>();
 
 	for (const expense of expenses) {
+		const currency = normalizeCurrency(expense.currency);
 		const toId = expense.paidByMemberId;
 		const toName = memberNames.get(toId);
 		if (!toName) continue;
@@ -59,7 +83,7 @@ export function computeDirectDebts(
 			const fromName = memberNames.get(split.debtorMemberId);
 			if (!fromName) continue;
 
-			const key = `${split.debtorMemberId}:${toId}`;
+			const key = currencyKey(currency, `${split.debtorMemberId}:${toId}`);
 			const current = totals.get(key);
 			if (current) {
 				current.cents += split.amountCents;
@@ -70,16 +94,18 @@ export function computeDirectDebts(
 					toId,
 					toName,
 					cents: split.amountCents,
+					currency,
 				});
 			}
 		}
 	}
 	for (const payment of payments) {
 		if (payment.amountCents <= 0 || payment.fromMemberId === payment.toMemberId) continue;
+		const currency = normalizeCurrency(payment.currency);
 		const fromName = memberNames.get(payment.fromMemberId);
 		const toName = memberNames.get(payment.toMemberId);
 		if (!fromName || !toName) continue;
-		const key = `${payment.fromMemberId}:${payment.toMemberId}`;
+		const key = currencyKey(currency, `${payment.fromMemberId}:${payment.toMemberId}`);
 		const current = totals.get(key);
 		if (current) {
 			current.cents -= payment.amountCents;
@@ -90,13 +116,19 @@ export function computeDirectDebts(
 				toId: payment.toMemberId,
 				toName,
 				cents: -payment.amountCents,
+				currency,
 			});
 		}
 	}
 
 	return Array.from(totals.values())
 		.filter((debt) => debt.cents > 0)
-		.sort((a, b) => b.cents - a.cents || a.fromName.localeCompare(b.fromName));
+		.sort(
+			(a, b) =>
+				normalizeCurrency(a.currency).localeCompare(normalizeCurrency(b.currency)) ||
+				b.cents - a.cents ||
+				a.fromName.localeCompare(b.fromName),
+		);
 }
 
 export function computeNetBalances(
@@ -105,9 +137,14 @@ export function computeNetBalances(
 	payments: readonly ExpensePaymentInput[] = [],
 ): BalanceEntry[] {
 	const known = new Set(members.map((m) => m.id));
-	const cents = new Map<string, number>(members.map((m) => [m.id, 0]));
+	const currencies = currenciesFor(expenses, payments);
+	const cents = new Map<string, number>();
+	for (const currency of currencies) {
+		for (const member of members) cents.set(currencyKey(currency, member.id), 0);
+	}
 
 	for (const e of expenses) {
+		const currency = normalizeCurrency(e.currency);
 		// Skip expenses paid by a departed member — their balance is dropped from
 		// the returned roster, so counting it would unbalance the net sum.
 		if (!known.has(e.paidByMemberId)) continue;
@@ -118,26 +155,34 @@ export function computeNetBalances(
 			if (s.debtorMemberId === e.paidByMemberId) continue;
 			// Skip splits owed by a departed member (mirror computeDirectDebts).
 			if (!known.has(s.debtorMemberId)) continue;
-			cents.set(e.paidByMemberId, (cents.get(e.paidByMemberId) ?? 0) + s.amountCents);
-			cents.set(s.debtorMemberId, (cents.get(s.debtorMemberId) ?? 0) - s.amountCents);
+			const payerKey = currencyKey(currency, e.paidByMemberId);
+			const debtorKey = currencyKey(currency, s.debtorMemberId);
+			cents.set(payerKey, (cents.get(payerKey) ?? 0) + s.amountCents);
+			cents.set(debtorKey, (cents.get(debtorKey) ?? 0) - s.amountCents);
 		}
 	}
 	for (const payment of payments) {
 		if (payment.amountCents <= 0 || payment.fromMemberId === payment.toMemberId) continue;
 		if (!known.has(payment.fromMemberId) || !known.has(payment.toMemberId)) continue;
-		cents.set(payment.fromMemberId, (cents.get(payment.fromMemberId) ?? 0) + payment.amountCents);
-		cents.set(payment.toMemberId, (cents.get(payment.toMemberId) ?? 0) - payment.amountCents);
+		const currency = normalizeCurrency(payment.currency);
+		const fromKey = currencyKey(currency, payment.fromMemberId);
+		const toKey = currencyKey(currency, payment.toMemberId);
+		cents.set(fromKey, (cents.get(fromKey) ?? 0) + payment.amountCents);
+		cents.set(toKey, (cents.get(toKey) ?? 0) - payment.amountCents);
 	}
 
-	return members.map((m) => ({
-		memberId: m.id,
-		memberName: m.name,
-		color: m.color,
-		cents: cents.get(m.id) ?? 0,
-	}));
+	return currencies.flatMap((currency) =>
+		members.map((m) => ({
+			memberId: m.id,
+			memberName: m.name,
+			color: m.color,
+			cents: cents.get(currencyKey(currency, m.id)) ?? 0,
+			currency,
+		})),
+	);
 }
 
-export function simplifyDebts(balances: BalanceEntry[]): SimplifiedDebt[] {
+function simplifyCurrencyDebts(balances: BalanceEntry[], currency: string): SimplifiedDebt[] {
 	const creditors = balances
 		.filter((b) => b.cents > 0)
 		.map((b) => ({ ...b }))
@@ -162,6 +207,7 @@ export function simplifyDebts(balances: BalanceEntry[]): SimplifiedDebt[] {
 				toId: creditor.memberId,
 				toName: creditor.memberName,
 				cents: amount,
+				currency,
 			});
 		}
 		debtor.cents += amount;
@@ -172,6 +218,18 @@ export function simplifyDebts(balances: BalanceEntry[]): SimplifiedDebt[] {
 	return result;
 }
 
+export function simplifyDebts(balances: BalanceEntry[]): SimplifiedDebt[] {
+	const currencies = [
+		...new Set(balances.map((balance) => normalizeCurrency(balance.currency))),
+	].sort();
+	return currencies.flatMap((currency) =>
+		simplifyCurrencyDebts(
+			balances.filter((balance) => normalizeCurrency(balance.currency) === currency),
+			currency,
+		),
+	);
+}
+
 export function buildSettlementSummary(
 	expenses: ExpenseInput[],
 	members: MemberInput[],
@@ -179,11 +237,22 @@ export function buildSettlementSummary(
 ): SettlementSummary {
 	const direct = computeDirectDebts(expenses, members, payments);
 	const simplified = simplifyDebts(computeNetBalances(expenses, members, payments));
+	const totalOpenByCurrency = Object.fromEntries(
+		[...new Set(direct.map((debt) => normalizeCurrency(debt.currency)))].map((currency) => [
+			currency,
+			direct
+				.filter((debt) => normalizeCurrency(debt.currency) === currency)
+				.reduce((sum, debt) => sum + debt.cents, 0),
+		]),
+	);
 	return {
 		directCount: direct.length,
 		simplifiedCount: simplified.length,
 		savedTransfers: Math.max(0, direct.length - simplified.length),
+		// Kept for backwards-compatible callers; never use this value to offset
+		// balances. Use totalOpenByCurrency when displaying totals.
 		totalOpenCents: direct.reduce((sum, debt) => sum + debt.cents, 0),
 		simplified,
+		totalOpenByCurrency,
 	};
 }

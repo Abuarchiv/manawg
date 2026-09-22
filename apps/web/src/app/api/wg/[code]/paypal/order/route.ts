@@ -12,6 +12,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { createPayPalOrder, isPayPalConfigured } from '@/core/infra/paypal';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { currencySchema } from '@/core/validators/currency';
 import { computeNetBalances, simplifyDebts } from '@/features/expenses/debt-reduction';
 import { computeBalances } from '@/features/expenses/debts';
 import {
@@ -27,6 +28,7 @@ import { z } from 'zod';
 const orderSchema = z.object({
 	fromMemberId: z.string().uuid(),
 	toMemberId: z.string().uuid(),
+	currency: currencySchema.default('EUR'),
 });
 
 export const POST = withWgRoute('paypal order POST', async (req, { code }) => {
@@ -42,6 +44,7 @@ export const POST = withWgRoute('paypal order POST', async (req, { code }) => {
 	if (!parsed.success || parsed.data.fromMemberId === parsed.data.toMemberId) {
 		return badRequest('member_ids_invalid');
 	}
+	if (parsed.data.currency !== 'EUR') return conflict('paypal_currency_unsupported');
 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
@@ -77,26 +80,21 @@ export const POST = withWgRoute('paypal order POST', async (req, { code }) => {
 			if (!payee.paypalMerchantId) {
 				return { kind: 'response' as const, response: conflict('paypal_recipient_missing') };
 			}
-			if (
-				expenses.some(
-					(expense) =>
-						expense.currency !== undefined &&
-						expense.currency !== 'EUR' &&
-						expense.splits.some((split) => split.settledAt === null && split.amountCents > 0),
-				)
-			) {
-				return { kind: 'response' as const, response: conflict('paypal_currency_unsupported') };
-			}
 
 			const debt = simplifyDebts(computeNetBalances(expenses, members, payments)).find(
-				(item) => item.fromId === parsed.data.fromMemberId && item.toId === parsed.data.toMemberId,
+				(item) =>
+					item.fromId === parsed.data.fromMemberId &&
+					item.toId === parsed.data.toMemberId &&
+					(item.currency ?? 'EUR') === parsed.data.currency,
 			);
 			if (!debt || debt.cents <= 0) {
 				return { kind: 'response' as const, response: conflict('no_open_debt') };
 			}
 			const directDebt = computeBalances(expenses, payments).find(
 				(item) =>
-					item.debtorId === parsed.data.fromMemberId && item.creditorId === parsed.data.toMemberId,
+					item.debtorId === parsed.data.fromMemberId &&
+					item.creditorId === parsed.data.toMemberId &&
+					item.currency === parsed.data.currency,
 			);
 			if (!directDebt || directDebt.amountCents < debt.cents) {
 				return { kind: 'response' as const, response: conflict('paypal_direct_debt_required') };
@@ -161,7 +159,7 @@ export const POST = withWgRoute('paypal order POST', async (req, { code }) => {
 					fromMemberId: parsed.data.fromMemberId,
 					toMemberId: parsed.data.toMemberId,
 					amountCents: debt.cents,
-					currency: 'EUR',
+					currency: parsed.data.currency,
 					providerOrderId: `pending:${randomUUID()}`,
 					payeeMerchantId: payee.paypalMerchantId,
 					expiresAt: new Date(now.getTime() + PAYPAL_ORDER_TTL_MS),
@@ -189,7 +187,7 @@ export const POST = withWgRoute('paypal order POST', async (req, { code }) => {
 		try {
 			const order = await createPayPalOrder({
 				amountCents: reservation.amountCents,
-				currency: 'EUR',
+				currency: parsed.data.currency,
 				description: `ManaWG-Ausgleich: ${reservation.fromName} an ${reservation.payeeName}`,
 				payeeMerchantId: reservation.payeeMerchantId,
 				customId: `manawg:${auth.wg.id}:${reservation.paymentId}`,

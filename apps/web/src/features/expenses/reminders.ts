@@ -7,6 +7,7 @@ const REMINDER_COOLDOWN_MS = REMINDER_COOLDOWN_HOURS * HOURS_TO_MS;
 interface ReminderHistoryEntry {
 	debtorMemberId: string;
 	creditorMemberId: string;
+	currency?: string;
 	sentAt: string | Date;
 }
 
@@ -23,23 +24,35 @@ function toMs(value: string | Date): number {
 	return Number.isNaN(parsed) ? 0 : parsed;
 }
 
+function normalizeCurrency(currency: string | undefined): string {
+	return currency?.trim().toUpperCase() || 'EUR';
+}
+
 /**
  * Returns whether a new reminder may be sent from `creditor` to `debtor`.
  *
- * Cooldown is 48 h per (debtor, creditor) ordered pair — reversing the roles is
- * a different reminder. The most recent entry in `history` wins; entries for
- * other pairs are ignored.
+ * Cooldown is 48 h per (currency, debtor, creditor) ordered pair — reversing the
+ * roles or changing currency is a different reminder. The most recent matching
+ * entry in `history` wins; entries for other pairs are ignored.
  */
 export function canSendReminder(
 	debtorMemberId: string,
 	creditorMemberId: string,
 	history: ReadonlyArray<ReminderHistoryEntry>,
 	now: Date = new Date(),
+	currency?: string,
 ): ReminderCooldownResult {
+	const normalizedCurrency = currency === undefined ? undefined : normalizeCurrency(currency);
 	let lastMs = 0;
 	for (const entry of history) {
 		if (entry.debtorMemberId !== debtorMemberId) continue;
 		if (entry.creditorMemberId !== creditorMemberId) continue;
+		if (
+			normalizedCurrency !== undefined &&
+			normalizeCurrency(entry.currency) !== normalizedCurrency
+		) {
+			continue;
+		}
 		const sentMs = toMs(entry.sentAt);
 		if (sentMs > lastMs) lastMs = sentMs;
 	}

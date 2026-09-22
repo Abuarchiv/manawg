@@ -1,3 +1,4 @@
+import { currencySchema } from '@/core/validators/currency';
 import { z } from 'zod';
 import { computeNetBalances, simplifyDebts } from './debt-reduction';
 import type { ExpensePaymentInput } from './expense-payments';
@@ -14,6 +15,7 @@ export interface SettlementMemberInput {
 export interface SettlementExpenseInput {
 	id: string;
 	paidByMemberId: string;
+	currency?: string;
 	occurredAt: string | Date;
 	splits: readonly SettlementSplitInput[];
 }
@@ -27,6 +29,7 @@ export interface SettlementSplitInput {
 }
 
 export interface SettlementPreview {
+	currency: string;
 	netCents: number;
 	settleableCents: number;
 	remainingCents: number;
@@ -35,6 +38,7 @@ export interface SettlementPreview {
 }
 
 export interface SettlementReview {
+	currency?: string;
 	netCents: number;
 	settleableCents: number;
 	splits: Array<{ id: string; amountCents: number }>;
@@ -43,6 +47,7 @@ export interface SettlementReview {
 export interface SettlementConfirmation {
 	fromMemberId: string;
 	toMemberId: string;
+	currency: string;
 	expected: SettlementReview;
 }
 
@@ -61,6 +66,7 @@ const settlementSplitSchema = z
 
 const settlementExpectedSchema = z
 	.object({
+		currency: currencySchema.default('EUR'),
 		netCents: centsSchema,
 		settleableCents: centsSchema,
 		splits: z.array(settlementSplitSchema).max(MAX_SETTLEMENT_SPLITS),
@@ -93,6 +99,7 @@ const settlementConfirmationSchema = z
 	.object({
 		fromMemberId: z.string().uuid(),
 		toMemberId: z.string().uuid(),
+		currency: currencySchema.default('EUR'),
 		expected: settlementExpectedSchema,
 	})
 	.strict();
@@ -128,6 +135,7 @@ export function settlementScopeMatches(
 	actual: SettlementPreview,
 ): boolean {
 	if (
+		(review.currency ?? 'EUR') !== actual.currency ||
 		review.netCents !== actual.netCents ||
 		review.settleableCents !== actual.settleableCents ||
 		review.splits.length !== actual.splits.length
@@ -152,9 +160,12 @@ export function selectSettlementScope(
 	payments: readonly ExpensePaymentInput[],
 	fromMemberId: string,
 	toMemberId: string,
+	currency = 'EUR',
 ): SettlementPreview {
+	const normalizedCurrency = currency.trim().toUpperCase();
 	const balanceExpenses = expenses.map((expense) => ({
 		paidByMemberId: expense.paidByMemberId,
+		currency: expense.currency ?? 'EUR',
 		splits: expense.splits.map((split) => ({
 			debtorMemberId: split.debtorMemberId,
 			amountCents: split.amountCents,
@@ -162,11 +173,20 @@ export function selectSettlementScope(
 		})),
 	}));
 	const netDebt = simplifyDebts(computeNetBalances(balanceExpenses, [...members], payments)).find(
-		(debt) => debt.fromId === fromMemberId && debt.toId === toMemberId,
+		(debt) =>
+			debt.fromId === fromMemberId &&
+			debt.toId === toMemberId &&
+			(debt.currency ?? 'EUR') === normalizedCurrency,
 	);
 	const netCents = netDebt?.cents ?? 0;
 	if (netCents <= 0) {
-		return { netCents: 0, settleableCents: 0, remainingCents: 0, splits: [] };
+		return {
+			currency: normalizedCurrency,
+			netCents: 0,
+			settleableCents: 0,
+			remainingCents: 0,
+			splits: [],
+		};
 	}
 
 	const orderedSplits = expenses
@@ -174,6 +194,7 @@ export function selectSettlementScope(
 			expense.splits.map((split) => ({
 				...split,
 				paidByMemberId: expense.paidByMemberId,
+				currency: expense.currency,
 				occurredAt: expense.occurredAt,
 			})),
 		)
@@ -188,6 +209,7 @@ export function selectSettlementScope(
 		if (remainingCents <= 0 || selected.length >= MAX_SETTLEMENT_SPLITS) break;
 		if (split.debtorMemberId !== fromMemberId) continue;
 		if (split.paidByMemberId !== toMemberId) continue;
+		if ((split.currency ?? 'EUR').trim().toUpperCase() !== normalizedCurrency) continue;
 		if (split.settledAt !== null) continue;
 		if (split.amountCents <= 0 || split.amountCents > remainingCents) continue;
 		selected.push({ id: split.id, expenseId: split.expenseId, amountCents: split.amountCents });
@@ -195,6 +217,7 @@ export function selectSettlementScope(
 	}
 
 	return {
+		currency: normalizedCurrency,
 		netCents,
 		settleableCents: netCents - remainingCents,
 		remainingCents,

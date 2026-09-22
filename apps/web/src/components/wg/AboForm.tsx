@@ -201,7 +201,7 @@ export function AboForm({
 		}
 		const splits: AboSplit[] = [];
 		let sum = 0;
-		for (const member of members) {
+		for (const member of splitCandidates) {
 			const raw = manualSplits[member.id] ?? '';
 			if (raw.trim().length === 0) continue;
 			const value = parseEuroAmount(raw);

@@ -38,6 +38,7 @@ interface ActivityItem {
 	text: string;
 	detail?: string;
 	amountCents?: number;
+	currency?: string;
 	href?: string;
 }
 
@@ -47,8 +48,8 @@ interface ActivityFeedProps {
 	compact?: boolean;
 }
 
-function formatEuro(cents: number): string {
-	return formatEuroCents(cents);
+function formatEuro(cents: number, currency?: string): string {
+	return formatEuroCents(cents, currency ?? 'EUR');
 }
 
 const kindIcon: Record<ActivityItem['kind'], typeof Receipt> = {
@@ -106,7 +107,7 @@ export function ActivityFeed({ items, emptyHref, compact = false }: ActivityFeed
 							</div>
 							{item.amountCents !== undefined && (
 								<span className="shrink-0 font-mono text-xs tabular-nums">
-									{formatEuro(item.amountCents)}
+									{formatEuro(item.amountCents, item.currency)}
 								</span>
 							)}
 						</>
@@ -159,7 +160,7 @@ export function ActivityFeed({ items, emptyHref, compact = false }: ActivityFeed
 								)}
 								{item.amountCents !== undefined && (
 									<Badge variant="secondary" className="shrink-0 tabular-nums">
-										{formatEuro(item.amountCents)}
+										{formatEuro(item.amountCents, item.currency)}
 									</Badge>
 								)}
 							</div>

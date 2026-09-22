@@ -13,11 +13,16 @@ const redis = createConfiguredRedis();
 // durable response cache must outlive the retry window. Redis still only
 // deduplicates best-effort audit events briefly.
 const RESPONSE_REPLAY_TTL_SECONDS = 7 * 24 * 60 * 60;
+// A claim is only a lease. If the worker dies after inserting the placeholder,
+// another retry must be able to reclaim it instead of being blocked for the
+// entire offline replay window.
+const RESPONSE_CLAIM_LEASE_SECONDS = 15 * 60;
 const AUDIT_DEDUP_TTL_SECONDS = 5 * 60;
 // Cap the cached payload to avoid blowing storage if a route accidentally
 // stuffs huge JSON. 32 KiB easily covers an expense + 50 splits.
 const MAX_CACHED_RESPONSE_BYTES = 32 * 1024;
 const CLAIM_PLACEHOLDER = { _claimed: true };
+const REPLAY_UNAVAILABLE = { _replayUnavailable: true };
 
 export function readIdempotencyKey(req: Request): string | null {
 	const raw = req.headers.get('idempotency-key');
@@ -27,6 +32,15 @@ export function readIdempotencyKey(req: Request): string | null {
 	// (api-auth.ts) instead of an independently maintained copy.
 	if (!UUID_PATTERN.test(trimmed)) return null;
 	return trimmed.toLowerCase();
+}
+
+/**
+ * Deterministic cache key for a replay response, combining the route scope
+ * with the caller's idempotency key. Two requests with the same idempotency
+ * key on different routes never collide because the scope differs.
+ */
+export function replayKey(scope: string, idempotencyKey: string): string {
+	return `${scope}:${idempotencyKey}`;
 }
 
 /**
@@ -51,13 +65,13 @@ export async function claimResponseSlot(scope: string, key: string): Promise<boo
 				scope,
 				key,
 				responseBody: CLAIM_PLACEHOLDER,
-				expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
+				expiresAt: new Date(Date.now() + RESPONSE_CLAIM_LEASE_SECONDS * 1000),
 			})
 			.onConflictDoUpdate({
 				target: [idempotencyResponses.scope, idempotencyResponses.key],
 				set: {
 					responseBody: CLAIM_PLACEHOLDER,
-					expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
+					expiresAt: new Date(Date.now() + RESPONSE_CLAIM_LEASE_SECONDS * 1000),
 				},
 				where: sql`${idempotencyResponses.expiresAt} <= now()`,
 			})
@@ -122,13 +136,18 @@ export async function getCachedResponse<T>(scope: string, key: string): Promise<
 			.limit(1);
 		const first = rows[0];
 		if (!first) return null;
+		if (first.body && typeof first.body === 'object' && '_claimed' in first.body) {
+			// The claim lease is represented by expiresAt. A stale placeholder is
+			// invisible to readers and can be reclaimed by claimResponseSlot.
+			return null;
+		}
 		if (
 			first.body &&
 			typeof first.body === 'object' &&
-			'_claimed' in first.body &&
-			(first.body as { _claimed?: unknown })._claimed === true
+			'_replayUnavailable' in first.body &&
+			(first.body as { _replayUnavailable?: unknown })._replayUnavailable === true
 		) {
-			return null;
+			throw new Error('idempotency_response_unavailable');
 		}
 		return first.body as T;
 	} catch (err) {
@@ -142,6 +161,22 @@ export async function getCachedResponse<T>(scope: string, key: string): Promise<
  * exhaust storage. `ON CONFLICT DO UPDATE` replaces a temporary claim marker
  * written by `claimResponseSlot` with the real response body.
  */
+export async function releaseResponseSlot(scope: string, key: string): Promise<void> {
+	try {
+		await db
+			.delete(idempotencyResponses)
+			.where(
+				and(
+					eq(idempotencyResponses.scope, scope),
+					eq(idempotencyResponses.key, key),
+					sql`${idempotencyResponses.responseBody} @> '{"_claimed": true}'::jsonb`,
+				),
+			);
+	} catch (err) {
+		console.error('[idempotency] db releaseResponseSlot failed:', err);
+	}
+}
+
 export async function setCachedResponse(
 	scope: string,
 	key: string,
@@ -151,8 +186,15 @@ export async function setCachedResponse(
 		const serialized = JSON.stringify(payload);
 		if (serialized.length > MAX_CACHED_RESPONSE_BYTES) {
 			console.warn(
-				`[idempotency] payload for ${scope}:${key} exceeds ${MAX_CACHED_RESPONSE_BYTES} bytes, skipping cache`,
+				`[idempotency] payload for ${scope}:${key} exceeds ${MAX_CACHED_RESPONSE_BYTES} bytes; storing a replay-safe failure marker`,
 			);
+			await db
+				.update(idempotencyResponses)
+				.set({
+					responseBody: REPLAY_UNAVAILABLE,
+					expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
+				})
+				.where(and(eq(idempotencyResponses.scope, scope), eq(idempotencyResponses.key, key)));
 			return;
 		}
 		await db

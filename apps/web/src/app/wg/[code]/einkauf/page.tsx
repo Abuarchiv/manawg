@@ -45,7 +45,11 @@ import {
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 	formatQueuedOfflineEntries,
 } from '@/core/offline/offline-copy';
-import { createQueuedShoppingItem, createQueuedShoppingUpdate } from '@/core/offline/offline-queue';
+import {
+	createOfflineIdempotencyKey,
+	createQueuedShoppingItem,
+	createQueuedShoppingUpdate,
+} from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { ListSkeleton } from '@/features/shopping/components/ListSkeleton';
@@ -98,6 +102,7 @@ export default function EinkaufPage() {
 	const [draftHydrated, setDraftHydrated] = useState(false);
 	const { isPending, start, end } = usePendingSet();
 	const addingRef = useRef(false);
+	const addIdempotencyKeyRef = useRef<{ fingerprint: string; key: string } | null>(null);
 	const clearingBoughtRef = useRef(false);
 	const nameInputRef = useRef<HTMLInputElement>(null);
 	const nameValueRef = useRef('');
@@ -219,11 +224,25 @@ export default function EinkaufPage() {
 		setAdding(true);
 		setAddError(null);
 		setAddNotice(null);
+		const fingerprint = JSON.stringify({ name, quantity: newQty.trim() || null });
+		const pendingRequest = addIdempotencyKeyRef.current;
+		const idempotencyKey =
+			pendingRequest?.fingerprint === fingerprint
+				? pendingRequest.key
+				: createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setAddError('Artikel konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			addingRef.current = false;
+			setAdding(false);
+			return;
+		}
+		addIdempotencyKeyRef.current = { fingerprint, key: idempotencyKey };
 		try {
 			const res = await apiFetch<ShoppingCreateResponse>(`/api/wg/${encodedShareCode}/shopping`, {
 				method: 'POST',
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
+				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({
 					name,
 					quantity: newQty.trim() || undefined,
@@ -231,11 +250,13 @@ export default function EinkaufPage() {
 				}),
 			});
 			if (!res.ok) {
+				if (res.status !== 0) addIdempotencyKeyRef.current = null;
 				if (res.status === 0) {
 					const queued = createQueuedShoppingItem({
 						wgId: wg.id,
 						shareCode: wg.shareCode,
 						memberId: identity.memberId,
+						idempotencyKey,
 						name,
 						quantity: newQty.trim() || null,
 					});
@@ -274,6 +295,7 @@ export default function EinkaufPage() {
 				setAddError(shoppingAddErrorMessage(res.error));
 				return;
 			}
+			addIdempotencyKeyRef.current = null;
 			if (!clearEditedQueueItem()) {
 				setAddError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;

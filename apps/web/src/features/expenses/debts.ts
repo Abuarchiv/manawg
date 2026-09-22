@@ -12,10 +12,15 @@ export interface DebtExpenseInput {
 	}>;
 }
 
-interface PairBalance {
+export interface PairBalance {
 	creditorId: string;
 	debtorId: string;
 	amountCents: number;
+	currency: string;
+}
+
+function normalizeCurrency(currency: string | undefined): string {
+	return currency?.trim().toUpperCase() || 'EUR';
 }
 
 /**
@@ -38,7 +43,8 @@ export function computeBalances(
 			if (split.debtorMemberId === creditorId) continue;
 			if (split.amountCents <= 0) continue;
 
-			const key = `${split.debtorMemberId}:${creditorId}`;
+			const currency = normalizeCurrency(expense.currency);
+			const key = `${currency}:${split.debtorMemberId}:${creditorId}`;
 			const current = totals.get(key);
 			if (current) {
 				totals.set(key, { ...current, amountCents: current.amountCents + split.amountCents });
@@ -47,13 +53,15 @@ export function computeBalances(
 					creditorId,
 					debtorId: split.debtorMemberId,
 					amountCents: split.amountCents,
+					currency,
 				});
 			}
 		}
 	}
 	for (const payment of payments) {
 		if (payment.amountCents <= 0 || payment.fromMemberId === payment.toMemberId) continue;
-		const key = `${payment.fromMemberId}:${payment.toMemberId}`;
+		const currency = normalizeCurrency(payment.currency);
+		const key = `${currency}:${payment.fromMemberId}:${payment.toMemberId}`;
 		const current = totals.get(key);
 		if (current) {
 			current.amountCents -= payment.amountCents;
@@ -62,6 +70,7 @@ export function computeBalances(
 				creditorId: payment.toMemberId,
 				debtorId: payment.fromMemberId,
 				amountCents: -payment.amountCents,
+				currency,
 			});
 		}
 	}
@@ -81,10 +90,17 @@ export function computeOldestDebtAgeDays(
 	creditorId: string,
 	expenses: ReadonlyArray<DebtExpenseInput>,
 	now: Date = new Date(),
+	currency?: string,
 ): number {
 	let oldestTs: number | null = null;
 	for (const expense of expenses) {
 		if (expense.paidByMemberId !== creditorId) continue;
+		if (
+			currency !== undefined &&
+			normalizeCurrency(expense.currency) !== normalizeCurrency(currency)
+		) {
+			continue;
+		}
 		const ts = Date.parse(expense.occurredAt);
 		if (Number.isNaN(ts)) continue;
 		for (const split of expense.splits) {
@@ -109,7 +125,7 @@ export function computeOldestDebtAgeDays(
  * O(pairs × expenses × splits)). Returns ages in the same order as `pairs`.
  */
 export function computeOldestDebtAges(
-	pairs: ReadonlyArray<{ debtorId: string; creditorId: string }>,
+	pairs: ReadonlyArray<{ debtorId: string; creditorId: string; currency?: string }>,
 	expenses: ReadonlyArray<DebtExpenseInput>,
 	now: Date = new Date(),
 ): number[] {
@@ -122,7 +138,8 @@ export function computeOldestDebtAges(
 		for (const split of expense.splits) {
 			if (split.settledAt !== null) continue;
 			if (split.amountCents <= 0) continue;
-			const key = `${split.debtorMemberId}:${creditorId}`;
+			const currency = normalizeCurrency(expense.currency);
+			const key = `${currency}:${split.debtorMemberId}:${creditorId}`;
 			const current = oldestTsByPair.get(key);
 			if (current === undefined || ts < current) oldestTsByPair.set(key, ts);
 		}
@@ -130,7 +147,9 @@ export function computeOldestDebtAges(
 
 	const nowMs = now.getTime();
 	return pairs.map((pair) => {
-		const oldestTs = oldestTsByPair.get(`${pair.debtorId}:${pair.creditorId}`);
+		const oldestTs = oldestTsByPair.get(
+			`${normalizeCurrency(pair.currency)}:${pair.debtorId}:${pair.creditorId}`,
+		);
 		if (oldestTs === undefined) return 0;
 		const diffMs = nowMs - oldestTs;
 		return diffMs <= 0 ? 0 : Math.floor(diffMs / MS_PER_DAY);
@@ -141,6 +160,15 @@ export function findPairBalance(
 	balances: ReadonlyArray<PairBalance>,
 	debtorId: string,
 	creditorId: string,
+	currency?: string,
 ): PairBalance | null {
-	return balances.find((b) => b.debtorId === debtorId && b.creditorId === creditorId) ?? null;
+	const normalizedCurrency = currency === undefined ? undefined : normalizeCurrency(currency);
+	return (
+		balances.find(
+			(b) =>
+				b.debtorId === debtorId &&
+				b.creditorId === creditorId &&
+				(normalizedCurrency === undefined || b.currency === normalizedCurrency),
+		) ?? null
+	);
 }

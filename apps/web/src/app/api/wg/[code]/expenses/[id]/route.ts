@@ -227,12 +227,21 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	// and every balance wrong, whenever it failed itself.
 	try {
 		await withExpensePaymentLock(wgId, async (tx) => {
+			const updateWhere = expectedUpdatedAt
+				? and(
+						eq(expenses.id, id),
+						eq(expenses.wgId, wgId),
+						eq(expenses.updatedAt, new Date(expectedUpdatedAt)),
+					)
+				: and(eq(expenses.id, id), eq(expenses.wgId, wgId));
 			const [updatedMarker] = await tx
 				.update(expenses)
 				.set(updates)
-				.where(and(eq(expenses.id, id), eq(expenses.wgId, wgId)))
+				.where(updateWhere)
 				.returning({ id: expenses.id });
-			if (!updatedMarker) throw new TransactionAbort('expense_not_found');
+			if (!updatedMarker) {
+				throw new TransactionAbort(expectedUpdatedAt ? 'expense_changed' : 'expense_not_found');
+			}
 
 			if (!splits) return;
 
@@ -270,6 +279,8 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	} catch (writeErr) {
 		if (writeErr instanceof TransactionAbort) {
 			if (writeErr.code === 'expense_not_found') return notFound('expense_not_found');
+			if (writeErr.code === 'expense_changed')
+				return conflict('expense_changed', 'expense_conflict');
 			return serverError(writeErr.code);
 		}
 		console.error('[expense PATCH] update failed', writeErr);

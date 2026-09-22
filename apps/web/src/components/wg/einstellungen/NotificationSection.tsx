@@ -25,6 +25,7 @@ import {
 	formatPushActivationError,
 	formatPushDeactivationError,
 } from '@/core/notifications/web-push-errors';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { haptic } from '@/shared/lib/haptics';
 import { Bell, CheckCircle2, Smartphone } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -93,6 +94,7 @@ export function NotificationSection({
 	const [error, setError] = useState<string | null>(null);
 	const [loadingStatus, setLoadingStatus] = useState(true);
 	const pendingRef = useRef(false);
+	const notificationRequestKeysRef = useRef(new Map<string, string>());
 	const loadStatusRequestIdRef = useRef(0);
 	const pushResyncAttemptedKeyRef = useRef<string | null>(null);
 	const encodedCode = encodeURIComponent(code);
@@ -203,6 +205,17 @@ export function NotificationSection({
 		pendingRef.current = true;
 		setPending('save');
 		setError(null);
+		const body = { [key]: !status[key] };
+		const requestKeyId = `patch:${JSON.stringify(body)}`;
+		const idempotencyKey =
+			notificationRequestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			pendingRef.current = false;
+			setPending(null);
+			setError('Einstellung konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			return;
+		}
+		notificationRequestKeysRef.current.set(requestKeyId, idempotencyKey);
 		try {
 			const next = !status[key];
 			setStatus({ ...status, [key]: next });
@@ -210,11 +223,17 @@ export function NotificationSection({
 				method: 'PATCH',
 				memberId,
 				memberToken,
-				body: JSON.stringify({ [key]: next }),
+				headers: { 'Idempotency-Key': idempotencyKey },
+				body: JSON.stringify(body),
 			});
 			if (!res.ok) {
+				if (res.status > 0 && res.status < 500) {
+					notificationRequestKeysRef.current.delete(requestKeyId);
+				}
 				setStatus(status);
 				setError(notificationSaveErrorMessage(res.status, res.error));
+			} else {
+				notificationRequestKeysRef.current.delete(requestKeyId);
 			}
 		} finally {
 			pendingRef.current = false;
@@ -227,6 +246,17 @@ export function NotificationSection({
 		pendingRef.current = true;
 		setPending('save');
 		setError(null);
+		const body = { quietStartHour: startHour, quietEndHour: endHour };
+		const requestKeyId = `patch:${JSON.stringify(body)}`;
+		const idempotencyKey =
+			notificationRequestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			pendingRef.current = false;
+			setPending(null);
+			setError('Ruhezeit konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			return;
+		}
+		notificationRequestKeysRef.current.set(requestKeyId, idempotencyKey);
 		try {
 			const previous = status;
 			setStatus({ ...status, quietStartHour: startHour, quietEndHour: endHour });
@@ -234,11 +264,17 @@ export function NotificationSection({
 				method: 'PATCH',
 				memberId,
 				memberToken,
-				body: JSON.stringify({ quietStartHour: startHour, quietEndHour: endHour }),
+				headers: { 'Idempotency-Key': idempotencyKey },
+				body: JSON.stringify(body),
 			});
 			if (!res.ok) {
+				if (res.status > 0 && res.status < 500) {
+					notificationRequestKeysRef.current.delete(requestKeyId);
+				}
 				setStatus(previous);
 				setError(notificationSaveErrorMessage(res.status, res.error));
+			} else {
+				notificationRequestKeysRef.current.delete(requestKeyId);
 			}
 		} finally {
 			pendingRef.current = false;
@@ -252,16 +288,31 @@ export function NotificationSection({
 		setPending('test');
 		setError(null);
 		setMessage(null);
+		const requestKeyId = 'test_notification';
+		const idempotencyKey =
+			notificationRequestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			pendingRef.current = false;
+			setPending(null);
+			setError('Test konnte nicht sicher gesendet werden. Versuche es erneut.');
+			return;
+		}
+		notificationRequestKeysRef.current.set(requestKeyId, idempotencyKey);
 		try {
 			const res = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
 				method: 'POST',
 				memberId,
 				memberToken,
+				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({ action: 'test_notification' }),
 			});
 			if (res.ok) {
+				notificationRequestKeysRef.current.delete(requestKeyId);
 				setMessage('Test wurde ausgelöst. Prüfe Push und WG-Chat.');
 			} else {
+				if (res.status > 0 && res.status < 500) {
+					notificationRequestKeysRef.current.delete(requestKeyId);
+				}
 				setError(notificationTestErrorMessage(res.status, res.error));
 			}
 		} catch {

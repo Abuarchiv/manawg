@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { Bell, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -18,6 +19,7 @@ interface RemindButtonProps {
 	shareCode: string;
 	debtorMemberId: string;
 	creditorMemberId: string;
+	currency: string;
 	currentMemberId: string;
 	memberToken?: string | undefined;
 	cooldownActive?: boolean;
@@ -53,6 +55,7 @@ export function RemindButton({
 	shareCode,
 	debtorMemberId,
 	creditorMemberId,
+	currency,
 	currentMemberId,
 	memberToken,
 	cooldownActive,
@@ -66,6 +69,7 @@ export function RemindButton({
 	);
 	const [feedback, setFeedback] = useState<string | null>(null);
 	const sendingRef = useRef(false);
+	const requestKeyRef = useRef<string | null>(null);
 
 	useEffect(() => {
 		if (sendingRef.current) return;
@@ -89,6 +93,14 @@ export function RemindButton({
 		sendingRef.current = true;
 		setStatus('sending');
 		setFeedback(null);
+		const idempotencyKey = requestKeyRef.current ?? createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setStatus('error');
+			setFeedback(errorMessage('Netzwerkfehler'));
+			sendingRef.current = false;
+			return;
+		}
+		requestKeyRef.current = idempotencyKey;
 		try {
 			const res = await apiFetch<RemindResponse>(
 				`/api/wg/${encodeURIComponent(shareCode)}/reminders`,
@@ -96,15 +108,18 @@ export function RemindButton({
 					method: 'POST',
 					memberId: currentMemberId,
 					memberToken,
-					body: JSON.stringify({ debtorMemberId, creditorMemberId }),
+					headers: { 'Idempotency-Key': idempotencyKey },
+					body: JSON.stringify({ debtorMemberId, creditorMemberId, currency }),
 				},
 			);
 			if (res.ok) {
+				requestKeyRef.current = null;
 				setStatus('sent');
 				setFeedback(successMessage(res.data.warning));
 				onSent?.();
 				return;
 			}
+			if (res.status > 0 && res.status < 500) requestKeyRef.current = null;
 			if (res.status === 429 && res.error === 'reminder_cooldown') {
 				setStatus('cooldown');
 			} else if (res.status === 403 && res.error === 'debtor_opted_out') {

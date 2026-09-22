@@ -22,6 +22,7 @@ export interface RecurringExpense {
 	id: string;
 	description: string;
 	amountCents: number;
+	currency: string;
 	paidByMemberId: string;
 	intervalMonths: number;
 	nextDueAt: string;

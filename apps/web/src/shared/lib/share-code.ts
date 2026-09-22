@@ -1,12 +1,12 @@
 import { customAlphabet } from 'nanoid';
 
 /**
- * Crockford base32 minus look-alikes (I, L, O, U).
- * 32^8 ≈ 1.1 trillion combinations.
+ * Crockford base32 alphabet. Includes 0 and 1 (excludes I, L, O, U as
+ * look-alikes). 32^8 ≈ 1.1 trillion combinations.
  */
-const SHARE_CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
+const SHARE_CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const SHARE_CODE_LENGTH = 8;
-const SHARE_CODE_REGEX = /^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/;
+const SHARE_CODE_REGEX = /^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/;
 
 const nano = customAlphabet(SHARE_CODE_ALPHABET, SHARE_CODE_LENGTH);
 

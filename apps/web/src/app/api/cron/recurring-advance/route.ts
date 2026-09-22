@@ -52,6 +52,7 @@ async function createExpenseForDueAt(
 					wgId: template.wgId,
 					paidByMemberId: template.paidByMemberId,
 					amountCents: template.amountCents,
+					currency: 'EUR',
 					description: template.description,
 					recurringExpenseId: template.id,
 					recurringDueAt: dueAt,
@@ -116,7 +117,7 @@ async function advanceTemplate(template: DueRecurring): Promise<CreatedAdvance[]
 				nextDueAt,
 				lastCreatedAt: now,
 				updatedAt: now,
-				...(template.anchorAt ? {} : { anchorAt: template.nextDueAt }),
+				...(template.anchorAt ? {} : { anchorAt: nextDueAt }),
 			})
 			.where(eq(recurringExpenses.id, template.id));
 	}
@@ -173,6 +174,7 @@ export const GET = withCronLogging(
 					metadata: {
 						recurringExpenseId: template.id,
 						amountCents: template.amountCents,
+						currency: 'EUR',
 						description: template.description,
 					},
 				});
@@ -182,6 +184,7 @@ export const GET = withCronLogging(
 					payload: {
 						description: template.description,
 						amountCents: template.amountCents,
+						currency: 'EUR',
 						expenseId,
 					},
 				});

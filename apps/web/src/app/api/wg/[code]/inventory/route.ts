@@ -1,6 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgInventoryItems } from '@/core/db';
 import { badRequest, serverError, tooMany } from '@/core/errors';
+import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -90,40 +91,46 @@ export const POST = withWgRoute('inventory POST', async (req, { code }) => {
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
 
-	const limited = await checkRateLimit(
-		wgWriteLimiter,
+	return withIdempotentJsonResponse(
+		req,
 		`inventory-create:${wgId}:${auth.member.memberId}`,
-	);
-	if (!limited.success) return tooMany();
+		async () => {
+			const limited = await checkRateLimit(
+				wgWriteLimiter,
+				`inventory-create:${wgId}:${auth.member.memberId}`,
+			);
+			if (!limited.success) return tooMany();
 
-	const [item] = await db
-		.insert(wgInventoryItems)
-		.values({
-			wgId,
-			name: parsed.data.name,
-			quantity: parsed.data.quantity,
-			unit: parsed.data.unit,
-			threshold: parsed.data.threshold,
-			category: parsed.data.category,
-		})
-		.returning();
-	if (!item) return serverError('insert_failed');
+			const [item] = await db
+				.insert(wgInventoryItems)
+				.values({
+					wgId,
+					name: parsed.data.name,
+					quantity: parsed.data.quantity,
+					unit: parsed.data.unit,
+					threshold: parsed.data.threshold,
+					category: parsed.data.category,
+				})
+				.returning();
+			if (!item) return serverError('insert_failed');
 
-	await recordAuditEvent({
-		wgId,
-		memberId: auth.member.memberId,
-		eventType: 'inventory.created',
-		entityType: 'inventory_item',
-		entityId: item.id,
-		summary: `${auth.member.name} hat ${item.name} zu den Vorräten hinzugefügt.`,
-		metadata: {
-			name: item.name,
-			quantity: item.quantity,
-			unit: item.unit,
-			threshold: item.threshold,
-			category: item.category,
+			await recordAuditEvent({
+				wgId,
+				memberId: auth.member.memberId,
+				eventType: 'inventory.created',
+				entityType: 'inventory_item',
+				entityId: item.id,
+				summary: `${auth.member.name} hat ${item.name} zu den Vorräten hinzugefügt.`,
+				metadata: {
+					name: item.name,
+					quantity: item.quantity,
+					unit: item.unit,
+					threshold: item.threshold,
+					category: item.category,
+				},
+			});
+
+			return NextResponse.json({ item });
 		},
-	});
-
-	return NextResponse.json({ item });
+	);
 });

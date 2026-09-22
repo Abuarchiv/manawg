@@ -31,6 +31,7 @@ interface ExpenseSplitDto {
 interface ExpenseDto {
 	id: string;
 	paidByMemberId: string;
+	currency: string;
 	occurredAt: string;
 	splits: ExpenseSplitDto[];
 }
@@ -129,6 +130,7 @@ export default function MahnungenPage() {
 		() =>
 			expenses.map((expense) => ({
 				paidByMemberId: expense.paidByMemberId,
+				currency: expense.currency,
 				occurredAt: expense.occurredAt,
 				splits: expense.splits.map((split) => ({
 					debtorMemberId: split.debtorMemberId,
@@ -148,15 +150,18 @@ export default function MahnungenPage() {
 			.sort((a, b) => b.amountCents - a.amountCents);
 	}, [balances, debtExpenses]);
 
-	function cooldownFor(debtorId: string, creditorId: string) {
+	function cooldownFor(debtorId: string, creditorId: string, currency: string) {
 		return canSendReminder(
 			debtorId,
 			creditorId,
 			reminders.map((r) => ({
 				debtorMemberId: r.debtorMemberId,
 				creditorMemberId: r.creditorMemberId,
+				currency: r.currency,
 				sentAt: r.sentAt,
 			})),
+			undefined,
+			currency,
 		);
 	}
 
@@ -205,13 +210,13 @@ export default function MahnungenPage() {
 				) : (
 					<ul className="flex flex-col gap-3">
 						{rows.map((row) => {
-							const cooldown = cooldownFor(row.debtorId, row.creditorId);
+							const cooldown = cooldownFor(row.debtorId, row.creditorId, row.currency);
 							const cooldownLabel = cooldown.nextAllowedAt
 								? `Wieder möglich ${formatRelativeTime(cooldown.nextAllowedAt.toISOString())}`
 								: null;
 							return (
 								<DebtRow
-									key={`${row.debtorId}:${row.creditorId}`}
+									key={`${row.currency}:${row.debtorId}:${row.creditorId}`}
 									debtor={{
 										id: row.debtorId,
 										name: memberName(row.debtorId),
@@ -223,12 +228,14 @@ export default function MahnungenPage() {
 										color: memberColor(row.creditorId),
 									}}
 									amountCents={row.amountCents}
+									currency={row.currency}
 									oldestDebtAgeDays={row.oldestAge}
 									action={
 										<RemindButton
 											shareCode={wg.shareCode}
 											debtorMemberId={row.debtorId}
 											creditorMemberId={row.creditorId}
+											currency={row.currency}
 											currentMemberId={identity.memberId}
 											memberToken={identity.memberToken}
 											cooldownActive={!cooldown.allowed}

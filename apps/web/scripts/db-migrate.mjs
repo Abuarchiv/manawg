@@ -20,12 +20,10 @@
  *
  * The ledger itself stays exact and fail-closed: every row must either match
  * the canonical journal by hash, timestamp, and prefix order, or match an
- * entry of LEGACY_LEDGER_ALLOWLIST by exact hash, timestamp, and
- * leading-prefix position. That allowlist is currently empty because the
- * superseded chain is no longer verifiable from repository SQL, so unknown
- * rows — including arbitrary pre-baseline 64-hex values — are rejected before
- * any adoption. A legacy database must be reviewed and its rows explicitly
- * documented before it can be adopted.
+ * entry of LEGACY_LEDGER_ALLOWLIST by exact hash, timestamp, and canonical
+ * journal position. Unknown rows — including arbitrary 64-hex values — are
+ * rejected before any adoption. A legacy database must be reviewed and its
+ * rows explicitly documented before it can be adopted.
  */
 
 import crypto from 'node:crypto';
@@ -42,22 +40,41 @@ const MIGRATIONS_TABLE = '__drizzle_migrations';
 const SENTINEL_TABLE = 'wgs';
 const BASELINE_TAG = '0000_baseline';
 /**
- * Exact allowlist of tolerated pre-baseline ledger rows, keyed by hash with
- * its documented created_at and leading-prefix position. The superseded
- * push-era chain was replaced by `0000_baseline` and its SQL is no longer in
- * this repository, so no legacy hash is documented here and every unknown row
- * fails closed. Only add an entry with its reviewed hash, timestamp, and
- * position; never tolerate arbitrary 64-hex values.
+ * Exact allowlist of reviewed historical ledger hashes. A later security fix
+ * changed `0007_data_api_security.sql` after Preview had applied it, so the
+ * database legitimately carries the old hash at the canonical migration
+ * position. The position is zero-based within the current journal; an unknown
+ * hash at any other position still fails closed.
  */
-const LEGACY_LEDGER_ALLOWLIST = new Map();
+const LEGACY_LEDGER_ALLOWLIST = new Map([
+	[
+		'88916329fbe6f5e5f4e4174e5db393aa3d7c4516790c4dbf3d1a41301f335aa0',
+		{ when: 1788112576655, position: 7 },
+	],
+	[
+		'fb524f9b63dd0b63b84d8d1bf6d916781e7cc206682bf23bdd0106d9e9dbbb0e',
+		{ when: 1788436085539, position: 10 },
+	],
+]);
 const MIGRATION_LOCK = 'manawg:drizzle-migrate';
 const PUBLIC_SCHEMA = 'public';
 const PUBLIC_ROLES = ['anon', 'authenticated'];
+const MEMBER_WG_INVARIANT_FUNCTIONS = [
+	'manawg_assert_member_belongs_to_wg',
+	'manawg_assert_expense_split_member_wg',
+	'manawg_assert_chore_completion_member_wg',
+	'manawg_assert_announcement_member_wg',
+	'manawg_assert_inventory_log_member_wg',
+	'manawg_assert_chat_member_wg',
+	'manawg_assert_chat_mention_wg',
+];
+const ALLOWED_SECURITY_DEFINER_FUNCTIONS = new Set(MEMBER_WG_INVARIANT_FUNCTIONS);
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = path.join(scriptDir, '..', 'drizzle');
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', 'host.docker.internal']);
+let currentStage = 'startup';
 
 export function validateDatabaseUrl(url, label) {
 	let parsed;
@@ -603,8 +620,6 @@ export async function assertMigrationLedgerPrefix(client, { requireTable = true 
 	}
 	const appliedHashes = new Set();
 	let appliedCount = 0;
-	let legacySeen = 0;
-	let seenCanonical = false;
 	for (const row of rows) {
 		const hash = typeof row.hash === 'string' ? row.hash : '';
 		const createdAt = String(row.created_at ?? '');
@@ -620,25 +635,26 @@ export async function assertMigrationLedgerPrefix(client, { requireTable = true 
 		const entry = expectedByHash.get(hash);
 		if (!entry) {
 			// Fail-closed: LEGACY_LEDGER_ALLOWLIST documents every tolerated
-			// pre-baseline row by exact hash, timestamp, and leading-prefix
-			// position. It is currently empty, so any unknown row — including
-			// arbitrary 64-hex values predating the baseline — is rejected
-			// here and never adopted.
+			// historical row by exact hash, timestamp, and canonical journal
+			// position. Any unknown row — including arbitrary 64-hex values —
+			// is rejected here and never adopted.
 			const legacy = LEGACY_LEDGER_ALLOWLIST.get(hash);
 			if (
 				!legacy ||
-				seenCanonical ||
 				createdAt !== String(legacy.when) ||
-				legacySeen !== Number(legacy.position)
+				appliedCount !== Number(legacy.position)
 			) {
 				throw new Error(
-					`Database check failed: unexpected migration row ${row.id} outside the canonical ledger.`,
+					`Database check failed: unexpected migration row ${row.id} outside the canonical ledger (hash ${hash}, created_at ${createdAt}).`,
 				);
 			}
-			legacySeen += 1;
+			if (appliedHashes.has(hash)) {
+				throw new Error(`Database check failed: duplicate legacy migration row ${row.id}.`);
+			}
+			appliedHashes.add(hash);
+			appliedCount += 1;
 			continue;
 		}
-		seenCanonical = true;
 		if (appliedHashes.has(hash)) {
 			throw new Error(`Database check failed: duplicate migration ${entry.tag}.`);
 		}
@@ -802,13 +818,39 @@ async function assertCatalogSecurity(client, expectedTables) {
 		   ))`,
 		[PUBLIC_SCHEMA],
 	);
+	const { rows: invariantFunctions } = await client.query(
+		`select proc.proname as object_name,
+				proc.prosecdef as security_definer,
+				coalesce(proc.proconfig, array[]::text[]) as config
+		 from pg_proc proc join pg_namespace ns on ns.oid = proc.pronamespace
+		 where ns.nspname = $1 and proc.proname = any($2::name[])`,
+		[PUBLIC_SCHEMA, MEMBER_WG_INVARIANT_FUNCTIONS],
+	);
+	const invariantByName = new Map(
+		invariantFunctions.map((functionRow) => [functionRow.object_name, functionRow]),
+	);
+	const invariantMismatches = MEMBER_WG_INVARIANT_FUNCTIONS.flatMap((name) => {
+		const functionRow = invariantByName.get(name);
+		if (!functionRow) return [`missing public invariant function ${name}()`];
+		const mismatches = [];
+		if (functionRow.security_definer !== true) {
+			mismatches.push(`public invariant function ${name}() is not SECURITY DEFINER`);
+		}
+		if (!functionRow.config.includes('search_path=public')) {
+			mismatches.push(`public invariant function ${name}() has an unsafe search_path`);
+		}
+		return mismatches;
+	});
 	const catalogMismatches = [
+		...invariantMismatches,
 		...policies.map(({ policyname, tablename }) => `public policy ${policyname} on ${tablename}`),
 		...views.map(({ object_name, object_type }) => `public ${object_type} ${object_name}`),
-		...securityDefiners.map(
-			({ object_name, arguments: args }) =>
-				`public SECURITY DEFINER function ${object_name}(${args})`,
-		),
+		...securityDefiners
+			.filter(({ object_name }) => !ALLOWED_SECURITY_DEFINER_FUNCTIONS.has(object_name))
+			.map(
+				({ object_name, arguments: args }) =>
+					`public SECURITY DEFINER function ${object_name}(${args})`,
+			),
 		...executablePublicFunctions.map(
 			({ object_name, arguments: args }) => `executable public function ${object_name}(${args})`,
 		),
@@ -894,7 +936,28 @@ async function adoptBaseline(client) {
 	);
 }
 
+function safeFailureReason(error) {
+	const text = [error?.message, error?.cause?.message].filter(Boolean).join('\n');
+	if (/unexpected migration row/i.test(text)) return 'unexpected-migration-row';
+	if (/migration ledger is not a canonical prefix/i.test(text)) return 'non-canonical-ledger';
+	if (/timestamp mismatch/i.test(text)) return 'migration-timestamp';
+	if (/invalid migration (?:hash|timestamp)/i.test(text)) return 'invalid-ledger-value';
+	if (/duplicate migration/i.test(text)) return 'duplicate-migration';
+	if (/migration ledger is missing/i.test(text)) return 'missing-ledger';
+	if (/syntax error/i.test(text)) return 'sql-syntax';
+	if (/relation .* does not exist/i.test(text)) return 'missing-relation';
+	if (/column .* does not exist/i.test(text)) return 'missing-column';
+	if (/already exists|duplicate key/i.test(text)) return 'duplicate-object';
+	const permission = text.match(/permission denied for (schema|table|sequence|function)/i);
+	if (permission) return `permission-${permission[1].toLowerCase()}`;
+	const owner = text.match(/must be owner of (schema|table|sequence|function|relation)/i);
+	if (owner) return `owner-${owner[1].toLowerCase()}`;
+	if (/permission denied|insufficient privilege/i.test(text)) return 'permission';
+	return 'unclassified';
+}
+
 async function main() {
+	currentStage = 'connection-config';
 	const sourceConnection = resolveConnectionString();
 	validateSupabaseDirectUrl(sourceConnection, 'Database migration connection');
 	const connectionString =
@@ -902,43 +965,66 @@ async function main() {
 			? previewSessionDatabaseUrl(sourceConnection)
 			: sourceConnection;
 	const pool = new pg.Pool({ connectionString, max: 1 });
+	currentStage = 'connect';
 	const client = await pool.connect();
 	let locked = false;
 	try {
+		currentStage = 'lock';
 		await client.query('select pg_advisory_lock(hashtext($1))', [MIGRATION_LOCK]);
 		locked = true;
 		if (process.argv.includes('--check')) {
+			currentStage = 'verify';
 			await verifyDatabase(client);
 			console.error('[migrate] Database check passed.');
 			return;
 		}
 
+		currentStage = 'inspect-schema';
 		const hasSchema = await tableExists(client, 'public', SENTINEL_TABLE);
+		currentStage = 'inspect-ledger-table';
 		const hasMigrationLedger = await tableExists(client, MIGRATIONS_SCHEMA, MIGRATIONS_TABLE);
+		currentStage = 'inspect-ledger';
 		const ledger = hasMigrationLedger ? await assertMigrationLedgerPrefix(client) : null;
 		if (ledger && ledger.appliedCount === ledger.entries.length) {
+			currentStage = 'verify';
 			await verifyDatabase(client);
 			console.error('[migrate] Verified up to date.');
 			return;
 		}
+		currentStage = 'inspect-baseline';
 		const baselineHash = hashMigration(BASELINE_TAG);
+		currentStage = 'inspect-baseline-ledger';
 		const needsAdoption = hasSchema && !(await ledgerHasBaseline(client, baselineHash));
 
 		if (needsAdoption) {
+			currentStage = 'adoption-verify';
 			await assertBaselineSchema(client);
 			console.error(
 				`[migrate] Existing schema without this baseline in the ledger — recording ${BASELINE_TAG} as applied.`,
 			);
+			currentStage = 'adopt';
 			await adoptBaseline(client);
 		}
 
+		currentStage = 'ledger';
 		if (hasMigrationLedger || needsAdoption) await assertMigrationLedgerPrefix(client);
 		const db = drizzle(client);
+		currentStage = 'migrate';
 		await migrate(db, { migrationsFolder });
 		console.error('[migrate] Up to date.');
 	} finally {
 		try {
-			if (locked) await client.query('select pg_advisory_unlock(hashtext($1))', [MIGRATION_LOCK]);
+			if (locked) {
+				const previousStage = currentStage;
+				currentStage = 'unlock';
+				let unlockSucceeded = false;
+				try {
+					await client.query('select pg_advisory_unlock(hashtext($1))', [MIGRATION_LOCK]);
+					unlockSucceeded = true;
+				} finally {
+					if (unlockSucceeded) currentStage = previousStage;
+				}
+			}
 		} finally {
 			client.release();
 			await pool.end();
@@ -948,7 +1034,19 @@ async function main() {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	main().catch((err) => {
-		console.error('[migrate] Failed:', err instanceof Error ? err.message : err);
+		const rawErrorCode =
+			err && typeof err === 'object'
+				? (err.code ?? (err.cause && typeof err.cause === 'object' ? err.cause.code : undefined))
+				: undefined;
+		const errorCode =
+			typeof rawErrorCode === 'string' && /^[A-Z0-9_]{5,}$/.test(rawErrorCode)
+				? ` [code=${rawErrorCode}]`
+				: '';
+		const failureReason = safeFailureReason(err);
+		console.error(
+			`[migrate] Failed [stage=${currentStage}] [reason=${failureReason}]${errorCode}:`,
+			err instanceof Error ? err.message : err,
+		);
 		process.exit(1);
 	});
 }

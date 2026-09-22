@@ -1,5 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, memberAbsences, wgMembers } from '@/core/db';
+import { withTransaction } from '@/core/db/transaction';
 import { badRequest, conflict, forbidden, serverError, tooMany } from '@/core/errors';
 import { isVerifiedWgAdmin } from '@/core/guards/admin';
 import {
@@ -10,9 +11,14 @@ import {
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
+import {
+	getCachedResponse,
+	readIdempotencyKey,
+	releaseResponseSlot,
+	setCachedResponse,
+} from '@/core/idempotency';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { and, asc, eq, gte, isNull, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -138,21 +144,6 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 		return forbidden('not_owner', 'not_owner');
 	}
 
-	const overlappingAbsence = await db
-		.select({ id: memberAbsences.id })
-		.from(memberAbsences)
-		.where(
-			and(
-				eq(memberAbsences.wgId, wg.id),
-				eq(memberAbsences.memberId, parsed.data.memberId),
-				lte(memberAbsences.startDate, endDate),
-				gte(memberAbsences.endDate, startDate),
-			),
-		)
-		.limit(1);
-	if (overlappingAbsence.length > 0) {
-		return conflict('absence_overlaps_existing', 'absence_overlaps_existing');
-	}
 	const replaySlot = idemReplayKey === null ? null : absenceCreateReplay.reserve(idemReplayKey);
 	if (replaySlot?.owned === false) return NextResponse.json(await replaySlot.promise);
 	replayReservation = replaySlot;
@@ -165,17 +156,43 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 				return NextResponse.json(slot.cached);
 			}
 		}
-		const [absence] = await db
-			.insert(memberAbsences)
-			.values({
-				wgId: wg.id,
-				memberId: parsed.data.memberId,
-				startDate,
-				endDate,
-				reason: parsed.data.reason || null,
-			})
-			.returning();
-		if (!absence) {
+		const creation = await withTransaction(async (tx) => {
+			await tx.execute(
+				sql`select pg_advisory_xact_lock(hashtext(${`absence:${wg.id}:${parsed.data.memberId}`}))`,
+			);
+			const overlappingAbsence = await tx
+				.select({ id: memberAbsences.id })
+				.from(memberAbsences)
+				.where(
+					and(
+						eq(memberAbsences.wgId, wg.id),
+						eq(memberAbsences.memberId, parsed.data.memberId),
+						lte(memberAbsences.startDate, endDate),
+						gte(memberAbsences.endDate, startDate),
+					),
+				)
+				.limit(1);
+			if (overlappingAbsence.length > 0) return { kind: 'overlap' as const };
+			const [created] = await tx
+				.insert(memberAbsences)
+				.values({
+					wgId: wg.id,
+					memberId: parsed.data.memberId,
+					startDate,
+					endDate,
+					reason: parsed.data.reason || null,
+				})
+				.returning();
+			return created ? { kind: 'created' as const, absence: created } : { kind: 'failed' as const };
+		});
+		if (creation.kind === 'overlap') {
+			const err = new Error('absence_overlaps_existing');
+			replayReservation?.reject(err);
+			if (idemScope && idemKey) await releaseResponseSlot(idemScope, idemKey);
+			return conflict('absence_overlaps_existing', 'absence_overlaps_existing');
+		}
+		const absence = creation.absence;
+		if (creation.kind === 'failed' || !absence) {
 			const err = new Error('insert_failed');
 			replayReservation?.reject(err);
 			return serverError('insert_failed');

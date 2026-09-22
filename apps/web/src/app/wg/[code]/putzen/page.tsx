@@ -40,6 +40,7 @@ import {
 } from '@/core/offline/offline-copy';
 import {
 	type OfflineActionType,
+	createOfflineIdempotencyKey,
 	createQueuedAbsence,
 	createQueuedChore,
 	createQueuedChoreCompletion,
@@ -120,6 +121,9 @@ export default function PutzenPage() {
 	const loadRequestIdRef = useRef(0);
 	const titleInputRef = useRef<HTMLInputElement>(null);
 	const assigneeTouchedRef = useRef(false);
+	const choreCreateRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const absenceCreateRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const completionRequestKeysRef = useRef(new Map<string, string>());
 
 	const { isPending, start: startPending, end: endPending } = usePendingSet();
 	const [completeConfirmId, setCompleteConfirmId] = useState<string | null>(null);
@@ -350,12 +354,30 @@ export default function PutzenPage() {
 		startPending(pendingKey);
 		setActionError(null);
 		setActionNotice(null);
+		const fingerprint = JSON.stringify({
+			title,
+			intervalDays: newInterval,
+			recurrenceType: newRecurrenceType,
+			assignedMemberId: newAssigned || null,
+		});
+		const pendingRequest = choreCreateRequestRef.current;
+		const idempotencyKey =
+			pendingRequest?.fingerprint === fingerprint
+				? pendingRequest.key
+				: createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setActionError('Aufgabe konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			endPending(pendingKey);
+			return;
+		}
+		choreCreateRequestRef.current = { fingerprint, key: idempotencyKey };
 
 		try {
 			const result = await apiFetch<ChoreCreateResponse>(`/api/wg/${encodedShareCode}/chores`, {
 				method: 'POST',
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
+				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({
 					title,
 					intervalDays: newInterval,
@@ -365,11 +387,13 @@ export default function PutzenPage() {
 			});
 
 			if (!result.ok) {
+				if (result.status !== 0) choreCreateRequestRef.current = null;
 				if (result.status === 0) {
 					const queued = createQueuedChore({
 						wgId: wg.id,
 						shareCode: wg.shareCode,
 						memberId: identity.memberId,
+						idempotencyKey,
 						title,
 						intervalDays: newInterval,
 						recurrenceType: newRecurrenceType,
@@ -414,6 +438,7 @@ export default function PutzenPage() {
 				return;
 			}
 
+			choreCreateRequestRef.current = null;
 			setNewTitle('');
 			setNewInterval(7);
 			setNewRecurrenceType('days');
@@ -447,6 +472,23 @@ export default function PutzenPage() {
 		setActionNotice(null);
 		const startDate = new Date(`${absenceStart}T00:00:00`).toISOString();
 		const endDate = new Date(`${absenceEnd}T23:59:59`).toISOString();
+		const fingerprint = JSON.stringify({
+			memberId: absenceMemberId,
+			startDate,
+			endDate,
+			reason: absenceReason.trim() || null,
+		});
+		const pendingRequest = absenceCreateRequestRef.current;
+		const idempotencyKey =
+			pendingRequest?.fingerprint === fingerprint
+				? pendingRequest.key
+				: createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setActionError('Abwesenheit konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			endPending(pendingKey);
+			return;
+		}
+		absenceCreateRequestRef.current = { fingerprint, key: idempotencyKey };
 		try {
 			const result = await apiFetch<{ absence: AbsenceInput | null }>(
 				`/api/wg/${encodedShareCode}/absences`,
@@ -454,6 +496,7 @@ export default function PutzenPage() {
 					method: 'POST',
 					memberId: identity.memberId,
 					memberToken: identity.memberToken,
+					headers: { 'Idempotency-Key': idempotencyKey },
 					body: JSON.stringify({
 						memberId: absenceMemberId,
 						startDate,
@@ -463,11 +506,13 @@ export default function PutzenPage() {
 				},
 			);
 			if (!result.ok) {
+				if (result.status !== 0) absenceCreateRequestRef.current = null;
 				if (result.status === 0) {
 					const queued = createQueuedAbsence({
 						wgId: wg.id,
 						shareCode: wg.shareCode,
 						memberId: identity.memberId,
+						idempotencyKey,
 						absenceMemberId,
 						startDate,
 						endDate,
@@ -505,6 +550,7 @@ export default function PutzenPage() {
 				setActionError(absenceSaveErrorMessage(result.error));
 				return;
 			}
+			absenceCreateRequestRef.current = null;
 			setAbsenceStart('');
 			setAbsenceEnd('');
 			setAbsenceReason('');
@@ -568,6 +614,14 @@ export default function PutzenPage() {
 		startPending(chore.id);
 		setActionError(null);
 		setActionNotice(null);
+		const idempotencyKey =
+			completionRequestKeysRef.current.get(chore.id) ?? createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setActionError('Erledigt-Aktion konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			endPending(chore.id);
+			return;
+		}
+		completionRequestKeysRef.current.set(chore.id, idempotencyKey);
 
 		const result = await apiFetch<{ chore?: Pick<Chore, 'id' | 'nextDueAt' | 'assignedMemberId'> }>(
 			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(chore.id)}/complete`,
@@ -575,17 +629,20 @@ export default function PutzenPage() {
 				method: 'POST',
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
+				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({ completedByMemberId: identity.memberId }),
 			},
 		);
 
 		if (!result.ok) {
+			if (result.status !== 0) completionRequestKeysRef.current.delete(chore.id);
 			if (result.status === 0) {
 				const queuedCount = enqueueOfflineAction(
 					createQueuedChoreCompletion({
 						wgId: wg.id,
 						shareCode: wg.shareCode,
 						memberId: identity.memberId,
+						idempotencyKey,
 						choreId: chore.id,
 					}),
 				);
@@ -632,6 +689,7 @@ export default function PutzenPage() {
 			}
 			setActionError('Erledigt-Aktion konnte nicht gespeichert werden: Versuche es gleich erneut.');
 		} else {
+			completionRequestKeysRef.current.delete(chore.id);
 			const updated = result.data.chore;
 			const confirmed = updated?.id === chore.id && parseTimestamp(updated.nextDueAt) !== null;
 			if (confirmed) {

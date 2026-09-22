@@ -20,6 +20,7 @@ interface OpenBalanceDto {
 	member_id: string;
 	name: string;
 	amount_cents: number;
+	currency: string;
 	// 'owes'  → this member still owes the counterparty
 	// 'owed'  → the counterparty still owes this member
 	direction: 'owes' | 'owed';
@@ -68,16 +69,20 @@ export const GET = withWgRoute<{ id: string }>('members/[id] GET', async (req, {
 						member_id: pair.creditorId,
 						name: nameById.get(pair.creditorId) ?? 'Unbekannt',
 						amount_cents: pair.amountCents,
+						currency: pair.currency,
 						direction: 'owes' as const,
 					}
 				: {
 						member_id: pair.debtorId,
 						name: nameById.get(pair.debtorId) ?? 'Unbekannt',
 						amount_cents: pair.amountCents,
+						currency: pair.currency,
 						direction: 'owed' as const,
 					},
 		);
-		openBalances.sort((a, b) => b.amount_cents - a.amount_cents);
+		openBalances.sort(
+			(a, b) => a.currency.localeCompare(b.currency) || b.amount_cents - a.amount_cents,
+		);
 	}
 
 	return NextResponse.json({

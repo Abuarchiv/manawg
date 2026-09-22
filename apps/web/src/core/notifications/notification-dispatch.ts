@@ -44,6 +44,19 @@ export function buildNotificationUrl(shareCode: string, urlPath: string): string
 	return `${getAppUrl()}/wg/${encodeURIComponent(shareCode)}${normalizedPath}`;
 }
 
+/** Quiet-hour settings are WG-local and use the same Berlin calendar zone as
+ * recurrence and reminders. Never depend on the host process timezone. */
+export function berlinCurrentHour(now = new Date()): number {
+	const hour = new Intl.DateTimeFormat('en-GB', {
+		timeZone: 'Europe/Berlin',
+		hour: '2-digit',
+		hourCycle: 'h23',
+	})
+		.formatToParts(now)
+		.find((part) => part.type === 'hour')?.value;
+	return hour ? Number(hour) : 0;
+}
+
 function resolveVapidSubject(): string {
 	const subject = process.env.VAPID_SUBJECT;
 	if (subject && subject.length > 0) return subject;
@@ -178,7 +191,7 @@ export async function dispatchNotification(
 	const category = notificationCategoryForEvent(input.event);
 	const priority = notificationPriorityForEvent(input.event);
 	if (priority === 'silent') return { sent: 0, failures: [] };
-	const currentHour = new Date().getHours();
+	const currentHour = berlinCurrentHour();
 
 	const targetMembers = rows
 		.filter((member) => member.id !== input.excludeMemberId)

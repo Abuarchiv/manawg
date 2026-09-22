@@ -21,7 +21,10 @@ import {
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 } from '@/core/offline/offline-copy';
 import { isPendingImageToken } from '@/core/offline/offline-images';
-import { createQueuedAnnouncement } from '@/core/offline/offline-queue';
+import {
+	createOfflineIdempotencyKey,
+	createQueuedAnnouncement,
+} from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import {
@@ -128,6 +131,9 @@ export default function PinnwandPage(): React.ReactElement {
 	const [imageUrl, setImageUrl] = useState<string | null>(null);
 	const [submitting, setSubmitting] = useState(false);
 	const submittingRef = useRef(false);
+	const announcementIdempotencyKeyRef = useRef<string | null>(null);
+	const commentIdempotencyKeysRef = useRef(new Map<string, string>());
+	const reactionIdempotencyKeysRef = useRef(new Map<string, { active: boolean; key: string }>());
 	const [error, setError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -436,6 +442,14 @@ export default function PinnwandPage(): React.ReactElement {
 		setSubmitting(true);
 		setError(null);
 		setNotice(null);
+		const idempotencyKey = announcementIdempotencyKeyRef.current ?? createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setError('Beitrag konnte nicht sicher gesendet werden. Versuche es erneut.');
+			setSubmitting(false);
+			submittingRef.current = false;
+			return;
+		}
+		announcementIdempotencyKeyRef.current = idempotencyKey;
 		try {
 			const res = await apiFetch<AnnouncementCreateResponse>(
 				`/api/wg/${encodedShareCode}/announcements`,
@@ -443,6 +457,7 @@ export default function PinnwandPage(): React.ReactElement {
 					method: 'POST',
 					memberId: identity.memberId,
 					memberToken: identity.memberToken,
+					headers: { 'Idempotency-Key': idempotencyKey },
 					body: JSON.stringify({
 						content: text,
 						imageUrl,
@@ -451,11 +466,13 @@ export default function PinnwandPage(): React.ReactElement {
 				},
 			);
 			if (!res.ok) {
+				if (res.status !== 0) announcementIdempotencyKeyRef.current = null;
 				if (res.status === 0) {
 					const queued = createQueuedAnnouncement({
 						wgId: wg.id,
 						shareCode: wg.shareCode,
 						memberId: identity.memberId,
+						idempotencyKey,
 						content: text,
 						kind,
 						imageUrl,
@@ -481,6 +498,7 @@ export default function PinnwandPage(): React.ReactElement {
 				return;
 			}
 			const createdAnnouncementId = res.data.announcement.id;
+			announcementIdempotencyKeyRef.current = null;
 			setContent('');
 			setKind('info');
 			setImageUrl(null);
@@ -593,17 +611,35 @@ export default function PinnwandPage(): React.ReactElement {
 		}));
 		start(pendingKey);
 		setActionError(null);
+		const reactionRequestKey = `${announcement.id}:${reaction}`;
+		const pendingReaction = reactionIdempotencyKeysRef.current.get(reactionRequestKey);
+		const idempotencyKey =
+			pendingReaction?.active === !active ? pendingReaction.key : createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setItems(previousItems);
+			end(pendingKey);
+			setActionError('Reaktion konnte nicht sicher gesendet werden. Versuche es erneut.');
+			return;
+		}
+		reactionIdempotencyKeysRef.current.set(reactionRequestKey, {
+			active: !active,
+			key: idempotencyKey,
+		});
 		const res = await apiFetch<AnnouncementReactionResponse>(
 			`/api/wg/${encodedShareCode}/announcements/${encodeURIComponent(announcement.id)}/reactions`,
 			{
 				method: 'POST',
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
-				body: JSON.stringify({ reaction }),
+				headers: { 'Idempotency-Key': idempotencyKey },
+				body: JSON.stringify({ reaction, active: !active }),
 			},
 		);
 		end(pendingKey);
 		if (!res.ok) {
+			if (res.status > 0 && res.status < 500) {
+				reactionIdempotencyKeysRef.current.delete(reactionRequestKey);
+			}
 			if (res.status === 404 && res.error === 'announcement_not_found') {
 				setItems((current) => current.filter((item) => item.id !== announcement.id));
 				setActionError('Dieser Pinnwand-Beitrag existiert nicht mehr und wurde entfernt.');
@@ -615,6 +651,7 @@ export default function PinnwandPage(): React.ReactElement {
 			}
 			return;
 		}
+		reactionIdempotencyKeysRef.current.delete(reactionRequestKey);
 		const warningMessage = notificationWarningMessage(res.data.warning);
 		if (warningMessage) setNotice(warningMessage);
 		void load();
@@ -640,17 +677,30 @@ export default function PinnwandPage(): React.ReactElement {
 		}));
 		start(pendingKey);
 		setActionError(null);
+		const commentRequestKey = `${announcement.id}:${content}`;
+		const idempotencyKey =
+			commentIdempotencyKeysRef.current.get(commentRequestKey) ?? createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			end(pendingKey);
+			setActionError('Kommentar konnte nicht sicher gesendet werden. Versuche es erneut.');
+			return false;
+		}
+		commentIdempotencyKeysRef.current.set(commentRequestKey, idempotencyKey);
 		const res = await apiFetch<AnnouncementCommentResponse>(
 			`/api/wg/${encodedShareCode}/announcements/${encodeURIComponent(announcement.id)}/comments`,
 			{
 				method: 'POST',
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
+				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({ content }),
 			},
 		);
 		end(pendingKey);
 		if (!res.ok) {
+			if (res.status > 0 && res.status < 500) {
+				commentIdempotencyKeysRef.current.delete(commentRequestKey);
+			}
 			if (res.status === 404 && res.error === 'announcement_not_found') {
 				commentOverridesRef.current.delete(announcement.id);
 				commitItems(itemsRef.current.filter((item) => item.id !== announcement.id));
@@ -662,6 +712,7 @@ export default function PinnwandPage(): React.ReactElement {
 			}
 			return false;
 		}
+		commentIdempotencyKeysRef.current.delete(commentRequestKey);
 		forgetCommentOverride(announcement.id, optimisticComment.id);
 		const confirmedComment = { ...optimisticComment, ...res.data.comment };
 		rememberCommentOverride(announcement.id, confirmedComment.id, confirmedComment);

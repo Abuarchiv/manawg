@@ -8,7 +8,7 @@ type CreatedWgResponse = {
 
 type WgManifestResponse = {
 	wg?: { id?: unknown; shareCode?: unknown };
-	currentMember?: { memberId?: unknown };
+	currentMember?: { memberId?: unknown; memberToken?: unknown };
 };
 
 type MineWgResponse = {
@@ -204,6 +204,7 @@ test.describe('ManaWG launch smoke', () => {
 		let createdShareCode: string | null = null;
 		let createdWgId: string | null = null;
 		let createdMemberId: string | null = null;
+		let memberHeaders: Record<string, string> | null = null;
 		let createClicked = false;
 		let flowError: unknown = null;
 		let cleanupFailure: string | null = null;
@@ -276,12 +277,30 @@ test.describe('ManaWG launch smoke', () => {
 			expect(manifest.wg?.id).toBe(createdWgId);
 			expect(manifest.wg?.shareCode).toBe(createdShareCode);
 			expect(manifest.currentMember?.memberId).toBe(createdMemberId);
+			const memberId =
+				typeof manifest.currentMember?.memberId === 'string'
+					? manifest.currentMember.memberId
+					: null;
+			const memberToken =
+				typeof manifest.currentMember?.memberToken === 'string'
+					? manifest.currentMember.memberToken
+					: null;
+			if (!memberId || !memberToken) {
+				throw new Error('created WG member proof was not returned');
+			}
+			memberHeaders = {
+				'x-manawg-member-id': memberId,
+				'x-manawg-member-token': memberToken,
+				origin: new URL(page.url()).origin,
+			};
 
 			const closeJoining = await page.request.patch(`/api/wg/${createdShareCode}`, {
+				headers: memberHeaders,
 				data: { joiningEnabled: false },
 			});
-			expect(closeJoining.status()).toBe(200);
+			expect(closeJoining.status(), await closeJoining.text()).toBe(200);
 			const existingMemberJoin = await page.request.post(`/api/wg/${createdShareCode}/members`, {
+				headers: memberHeaders,
 				data: { name: 'Smoke Tester' },
 			});
 			expect(existingMemberJoin.status()).toBe(409);
@@ -327,17 +346,23 @@ test.describe('ManaWG launch smoke', () => {
 			}
 			if (createdShareCode) {
 				try {
-					const cleanup = await page.request.delete(`/api/wg/${createdShareCode}`);
-					const [wgAfterCleanup, membersAfterCleanup] = await Promise.all([
-						page.request.get(`/api/wg/${createdShareCode}`),
-						page.request.get(`/api/wg/${createdShareCode}/members`),
-					]);
-					const cleanupFailed =
-						cleanup.status() !== 200 ||
-						wgAfterCleanup.status() !== 404 ||
-						membersAfterCleanup.status() !== 404;
-					if (cleanupFailed) {
-						cleanupFailure = `WG cleanup failed for run namespace ${runNamespace}, share code ${createdShareCode}.`;
+					if (!memberHeaders) {
+						cleanupFailure = `WG cleanup failed run namespace ${runNamespace}, share code ${createdShareCode}.`;
+					} else {
+						const cleanup = await page.request.delete(`/api/wg/${createdShareCode}`, {
+							headers: memberHeaders,
+						});
+						const [wgAfterCleanup, membersAfterCleanup] = await Promise.all([
+							page.request.get(`/api/wg/${createdShareCode}`),
+							page.request.get(`/api/wg/${createdShareCode}/members`),
+						]);
+						const cleanupFailed =
+							cleanup.status() !== 200 ||
+							wgAfterCleanup.status() !== 404 ||
+							membersAfterCleanup.status() !== 404;
+						if (cleanupFailed) {
+							cleanupFailure = `WG cleanup failed for run namespace ${runNamespace}, share code ${createdShareCode}.`;
+						}
 					}
 				} catch {
 					cleanupFailure = `WG cleanup failed for run namespace ${runNamespace}, share code ${createdShareCode}.`;
@@ -346,7 +371,7 @@ test.describe('ManaWG launch smoke', () => {
 				cleanupFailure = `WG cleanup failed for run namespace ${runNamespace}, share code unavailable.`;
 			}
 		}
-		if (cleanupFailure) throw new Error(cleanupFailure);
 		if (flowError) throw flowError;
+		if (cleanupFailure) throw new Error(cleanupFailure);
 	});
 });
