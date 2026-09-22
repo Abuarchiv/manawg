@@ -53,8 +53,9 @@ async function claimReminderDispatch(
 	const key = reminderClaimKey(choreId, startOfDay);
 	const idempotencyResponses = getReminderClaimTable();
 	if (!idempotencyResponses || typeof (db as { insert?: unknown }).insert !== 'function') {
-		if (localReminderClaims.has(key)) return null;
-		localReminderClaims.add(key);
+		const expiresAt = localReminderClaims.get(key);
+		if (expiresAt !== undefined && expiresAt > now.getTime()) return null;
+		localReminderClaims.set(key, now.getTime() + REMINDER_THROTTLE_MS);
 		return key;
 	}
 
@@ -102,6 +103,7 @@ export const GET = withCronLogging(
 		}
 
 		const now = new Date();
+		pruneLocalReminderClaims(now.getTime());
 		// "Today" by the Berlin wall clock, not the UTC day the server runs in —
 		// otherwise chores due "today" and completions since midnight are judged
 		// against a day that starts 1-2 hours late for every member.
