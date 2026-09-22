@@ -26,7 +26,7 @@ function Collapsible(props: CollapsibleProps) {
 	});
 
 	return (
-		<CollapsibleProvider value={{ isOpen, setIsOpen }}>
+		<CollapsibleProvider value={{ isOpen: isOpen ?? false, setIsOpen }}>
 			<CollapsiblePrimitive.Root
 				data-slot="collapsible"
 				{...rootProps}
