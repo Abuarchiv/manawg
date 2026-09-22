@@ -104,8 +104,18 @@ test('fixture WG bootstrap keeps member guards and current-member metadata', asy
 		});
 		expect(normalClient).toMatchObject({ ok: false, status: 401 });
 	} finally {
-		process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE = previousFixtureMode ?? '';
-		process.env.NEXT_PUBLIC_DB_DOWN = previousDbDown ?? '';
+		// Restore exactly: writing '' would leave a defined env var behind, and
+		// assigning undefined would stringify to "undefined" — remove instead.
+		if (previousFixtureMode === undefined) {
+			Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_E2E_FIXTURE_MODE');
+		} else {
+			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE = previousFixtureMode;
+		}
+		if (previousDbDown === undefined) {
+			Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_DB_DOWN');
+		} else {
+			process.env.NEXT_PUBLIC_DB_DOWN = previousDbDown;
+		}
 	}
 
 	const dashboard = await request.get(`/api/wg/${code}/dashboard`, { headers: validHeaders });
