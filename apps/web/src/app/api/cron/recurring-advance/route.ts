@@ -161,9 +161,7 @@ export const GET = withCronLogging(
 
 		// allSettled, not all: one corrupt template (DB error, constraint
 		// violation) must not block advancing every other WG's templates.
-		const settled = await Promise.allSettled(
-			due.map((template) => advanceTemplate(template)),
-		);
+		const settled = await Promise.allSettled(due.map((template) => advanceTemplate(template)));
 		const created: CreatedAdvance[] = [];
 		let failedTemplates = 0;
 		for (const result of settled) {
