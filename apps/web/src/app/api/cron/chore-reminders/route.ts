@@ -13,7 +13,17 @@ import { type NextRequest, NextResponse } from 'next/server';
 // "calendar day" to remain robust against TZ/DST/replay edge cases.
 const REMINDER_THROTTLE_MS = 18 * 60 * 60 * 1000;
 const REMINDER_CLAIM_SCOPE = 'chore-reminders';
-const localReminderClaims = new Set<string>();
+const localReminderClaims = new Map<string, number>(); // claim key -> expiry (epoch ms)
+
+// The Set used to grow forever: keys for every chore ever reminded stayed
+// resident for the lifetime of the process. Claims are only meaningful until
+// the throttle window passes, so entries carry an expiry and are pruned at
+// the start of every run.
+function pruneLocalReminderClaims(now: number): void {
+	for (const [key, expiresAt] of localReminderClaims) {
+		if (expiresAt <= now) localReminderClaims.delete(key);
+	}
+}
 
 interface DueChore {
 	id: string;
