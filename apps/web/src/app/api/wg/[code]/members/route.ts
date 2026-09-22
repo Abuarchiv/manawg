@@ -1,7 +1,7 @@
 import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { getAuthenticatedUser } from '@/core/auth/server';
-import { db, wgMembers } from '@/core/db';
+import { db, wgMembers, wgs } from '@/core/db';
 import { LIMITS } from '@/core/db/schema';
 import { withTransaction } from '@/core/db/transaction';
 import { HTTP, apiError, badRequest, forbidden, notFound, tooMany } from '@/core/errors';
@@ -10,7 +10,7 @@ import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
-import { and, asc, count, eq, sql } from 'drizzle-orm';
+import { and, asc, count, eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -149,15 +149,15 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 						reason: 'limit' | 'name_taken' | 'already_joined' | 'not_found' | 'joining_disabled';
 				  }
 			> => {
-				const lockedWgResult = await tx.execute(sql`
-				select share_code as "shareCode", joining_enabled as "joiningEnabled"
-				from wgs
-				where id = ${wg.id}
-				for update
-			`);
-				const lockedWg = lockedWgResult.rows[0] as
-					| { shareCode: string; joiningEnabled: boolean }
-					| undefined;
+				// Same `select ... for update` row lock as before, expressed with
+				// the query builder like every other read in this file: schema
+				// column names and types instead of hand-aliased raw SQL that a
+				// later edit could copy without the parameterization.
+				const [lockedWg] = await tx
+					.select({ shareCode: wgs.shareCode, joiningEnabled: wgs.joiningEnabled })
+					.from(wgs)
+					.where(eq(wgs.id, wg.id))
+					.for('update');
 				if (!lockedWg || lockedWg.shareCode !== code) return { ok: false, reason: 'not_found' };
 				const existingForUser = await tx
 					.select({ id: wgMembers.id })
