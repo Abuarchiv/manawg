@@ -51,8 +51,12 @@ export function useOfflineQueueSync({
 	onSynced,
 }: UseOfflineQueueSyncOptions): OfflineQueueSync {
 	const [queuedCount, setQueuedCount] = useState(0);
+	// `refreshCount` is handed to pages, which call it from their own `.then()`
+	// handlers after a sync — possibly long after this component unmounted.
+	const mountedRef = useRef(true);
 
 	const refreshCount = useCallback((): void => {
+		if (!mountedRef.current) return;
 		setQueuedCount(countOfflineActions(shareCode, { memberId }));
 	}, [shareCode, memberId]);
 
@@ -69,6 +73,7 @@ export function useOfflineQueueSync({
 
 	useEffect(() => {
 		let active = true;
+		mountedRef.current = true;
 		const updateCount = (): void => {
 			if (!active) return;
 			setQueuedCount(countOfflineActions(shareCode, { memberId }));
@@ -101,6 +106,7 @@ export function useOfflineQueueSync({
 		window.addEventListener('manawg:offline-synced', onExternalSync);
 		return () => {
 			active = false;
+			mountedRef.current = false;
 			window.removeEventListener('online', sync);
 			window.removeEventListener('manawg:offline-queue', updateCount);
 			window.removeEventListener('manawg:offline-synced', onExternalSync);
