@@ -10,6 +10,7 @@ import {
 } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { logApiError } from '@/core/infra/observability';
 import {
 	type PayPalOrderResponse,
 	capturePayPalOrder,
