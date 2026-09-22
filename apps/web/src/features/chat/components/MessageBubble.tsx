@@ -192,9 +192,7 @@ export function MessageBubble({
 				</Avatar>
 			</MessageAvatar>
 			<MessageContent className="gap-1">
-				<MessageHeader
-					className={grouped ? 'sr-only' : 'flex-wrap gap-x-1.5 gap-y-0 px-2 text-[11px]'}
-				>
+				<MessageHeader className={grouped ? 'sr-only' : 'flex-wrap gap-x-1.5 gap-y-0 px-2 text-xs'}>
 					{!isOwn && <span className="min-w-0 [overflow-wrap:anywhere]">{senderName}</span>}
 					<time dateTime={message.createdAt} title={formatTimeFull(message.createdAt)}>
 						{formatRelativeTime(message.createdAt)}
@@ -225,6 +223,7 @@ export function MessageBubble({
 								maxLength={4000}
 								aria-label="Nachricht bearbeiten"
 								aria-invalid={Boolean(error)}
+								aria-describedby={error ? `message-edit-error-${message.id}` : undefined}
 								className="min-h-24 text-base md:text-base"
 							/>
 						</Field>
@@ -325,7 +324,7 @@ export function MessageBubble({
 					</BubbleGroup>
 				)}
 				{error && !deleteOpen && (
-					<Alert variant="destructive">
+					<Alert id={`message-edit-error-${message.id}`} variant="destructive">
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 				)}

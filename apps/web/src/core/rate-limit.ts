@@ -2,8 +2,27 @@ import { captureException } from '@/core/infra/observability';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis/cloudflare';
 
-const url = process.env.UPSTASH_REDIS_REST_URL;
-const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+/**
+ * An empty or whitespace-only variable is *configured but unusable* — a typo
+ * in the deployment environment, not an intentional "no Redis" choice. Read it
+ * as unset so the documented fail-open/fail-closed handling still applies, but
+ * name the exact variable instead of failing open without a trace: `checkEnv`
+ * only reports these two as generically "degraded" at boot.
+ */
+function readUpstashSetting(name: string, value: string | undefined): string | undefined {
+	if (value === undefined) return undefined;
+	const trimmed = value.trim();
+	if (trimmed.length === 0) {
+		console.warn(
+			`[rate-limit] ${name} is set but empty — rate limiting stays disabled until it holds a value.`,
+		);
+		return undefined;
+	}
+	return trimmed;
+}
+
+const url = readUpstashSetting('UPSTASH_REDIS_REST_URL', process.env.UPSTASH_REDIS_REST_URL);
+const token = readUpstashSetting('UPSTASH_REDIS_REST_TOKEN', process.env.UPSTASH_REDIS_REST_TOKEN);
 
 export function rateLimitFailMode(): 'open' | 'closed' {
 	const standaloneProduction = process.env.NODE_ENV === 'production' && !process.env.VERCEL_ENV;
@@ -58,6 +77,11 @@ export const uploadSignLimiter = build(20, 60, 'upload-sign'); // 20 upload sign
 // chat, announcements). The middleware's 120 reads/min is far too generous for
 // that, so it gets its own bucket on top.
 export const wgExportLimiter = build(20, 3600, 'wg-export'); // 20 exports / hour / member
+// The dashboard aggregates the WG's financial state. The middleware's
+// 120 reads/min is per IP and shared with every other GET, so the route gets
+// its own per-member bucket: scraping balances stays throttled even from a
+// rotating pool of IPs.
+export const dashboardLimiter = build(60, 60, 'dashboard'); // 60 dashboard reads / min / member
 export const healthLimiter = build(60, 60, 'health'); // 60 probes / min / IP — outside the middleware matcher
 export const importLimiter = build(10, 3600, 'import-preview'); // 10 preview / hour / member
 export const importCommitLimiter = build(3, 3600, 'import-commit'); // 3 commit / hour / member
@@ -94,6 +118,12 @@ interface RateLimitResult {
 const FAIL_OPEN_PRODUCTION_LOG =
 	'[rate-limit] Upstash Redis not configured in production — failing open';
 const OPEN_STATE_REPORT_INTERVAL_MS = 5 * 60 * 1000;
+// Both maps below are keyed by `cause`. Causes are internal literals today,
+// but nothing stops a future caller from passing request-derived text — and
+// in a long-lived serverless instance an unbounded module-level Map is a
+// textbook memory leak. Once the cap is reached only already-known causes
+// keep their entries, so memory stays bounded while the signal survives.
+const MAX_TRACKED_CAUSES = 32;
 const lastReportedAt = new Map<string, number>();
 
 // Monotonic fail-open tally. Failing open is deliberate, but it must be
@@ -117,6 +147,12 @@ export function getFailOpenStats(): {
 	return { total, byCause };
 }
 
+function trackCause(map: Map<string, number>, cause: string, value: number): boolean {
+	if (!map.has(cause) && map.size >= MAX_TRACKED_CAUSES) return false;
+	map.set(cause, value);
+	return true;
+}
+
 /**
  * Failing open is deliberate, but it must not be invisible: an unthrottled API
  * looks perfectly healthy from the outside while every limit is off. Reported
@@ -125,7 +161,8 @@ export function getFailOpenStats(): {
  */
 function reportOpenState(cause: string, error?: unknown): void {
 	// Count every fail-open event, independent of the alert throttle below.
-	failOpenTotals.set(cause, (failOpenTotals.get(cause) ?? 0) + 1);
+	// Capped at MAX_TRACKED_CAUSES so the tally can never grow without bound.
+	trackCause(failOpenTotals, cause, (failOpenTotals.get(cause) ?? 0) + 1);
 
 	const isProduction = process.env.VERCEL_ENV === 'production';
 
@@ -141,7 +178,10 @@ function reportOpenState(cause: string, error?: unknown): void {
 	const now = Date.now();
 	const previous = lastReportedAt.get(cause);
 	if (previous !== undefined && now - previous < OPEN_STATE_REPORT_INTERVAL_MS) return;
-	lastReportedAt.set(cause, now);
+	// Unknown causes beyond the tracking cap are logged above but never
+	// captured here — without a stored timestamp they would bypass the
+	// throttle and fire on every request.
+	if (!trackCause(lastReportedAt, cause, now)) return;
 
 	captureException(
 		error instanceof Error ? error : new Error(`rate-limit failing open: ${cause}`),
@@ -159,7 +199,7 @@ export function resetOpenStateReporting(): void {
 }
 
 export async function checkRateLimit(
-	limiter: Ratelimit | null,
+	limiter: Pick<Ratelimit, 'limit'> | null,
 	key: string,
 	failMode: 'open' | 'closed' = rateLimitFailMode(),
 ): Promise<RateLimitResult> {

@@ -175,7 +175,7 @@ export default function AktivitaetPage() {
 					<CardHeader>
 						<div className="flex min-w-0 items-center justify-between gap-2">
 							<CardTitle className="flex min-w-0 items-center gap-2">
-								<AlertTriangle className="h-4 w-4 text-destructive" aria-hidden />
+								<AlertTriangle className="h-4 w-4" aria-hidden />
 								Inbox
 							</CardTitle>
 							<Badge variant="secondary" className="shrink-0">
@@ -329,7 +329,8 @@ export default function AktivitaetPage() {
 							</Empty>
 						)
 					) : loading ? (
-						<div className="space-y-2" aria-label="Aktivität lädt">
+						// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
+						<div className="space-y-2" aria-label="Aktivität lädt" role="status">
 							<div className="flex justify-center py-2">
 								<Spinner className="motion-reduce:animate-none" aria-hidden />
 							</div>

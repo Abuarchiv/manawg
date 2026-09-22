@@ -6,15 +6,7 @@ import {
 	CollapsibleTrigger,
 } from '@/components/animate-ui/primitives/base/collapsible';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
-import {
-	Item,
-	ItemContent,
-	ItemDescription,
-	ItemGroup,
-	ItemMedia,
-	ItemTitle,
-} from '@/components/ui/item';
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -22,19 +14,24 @@ import { ActivityFeed } from '@/components/wg/dashboard/ActivityFeed';
 import { StartWelcome } from '@/components/wg/dashboard/StartWelcome';
 import { TodayIcon } from '@/components/wg/dashboard/TodayIcon';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { apiFetch } from '@/core/infra/api-client';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import type { DashboardData } from '@/core/reads/dashboard-data';
-import {
-	getTodayFocus,
-	getTodayImportantItems,
-	getTodayListItems,
-} from '@/core/reads/dashboard-insights';
+import { type TodayImportantItem, getTodayImportantItems } from '@/core/reads/dashboard-insights';
 import { getDashboardAnnouncementHref } from '@/core/reads/dashboard-links';
 import { formatEuroCents } from '@/core/utils/money';
+import { MS_PER_DAY, parseTimestamp, parseValidDate } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
 import {
+	CalendarDays,
+	Check,
 	ChevronDown,
 	ChevronRight,
+	Circle,
+	CircleCheck,
+	Loader2,
+	type LucideIcon,
 	Megaphone,
 	Receipt,
 	Search,
@@ -52,6 +49,44 @@ const PushPrimingPrompt = dynamic(
 );
 
 const REFRESH_INTERVAL_MS = 30_000;
+const TODAY_VISIBLE = 4;
+
+interface StartEvent {
+	id: string;
+	title: string;
+	startsAt: string;
+	allDay: boolean;
+}
+
+const EVENT_DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
+	weekday: 'short',
+	day: 'numeric',
+	month: 'short',
+	timeZone: 'Europe/Berlin',
+});
+const EVENT_TIME_FORMATTER = new Intl.DateTimeFormat('de-DE', {
+	hour: '2-digit',
+	minute: '2-digit',
+	timeZone: 'Europe/Berlin',
+});
+
+function formatEventStart(event: StartEvent): string {
+	const date = parseValidDate(event.startsAt);
+	if (!date) return 'Datum unbekannt';
+	const day = EVENT_DAY_FORMATTER.format(date);
+	return event.allDay ? day : `${day}, ${EVENT_TIME_FORMATTER.format(date)}`;
+}
+
+const NEXT_DUE_FORMATTER = new Intl.DateTimeFormat('de-DE', {
+	day: 'numeric',
+	month: 'short',
+	timeZone: 'Europe/Berlin',
+});
+
+function formatNextDue(nextDueAt: string | null | undefined): string {
+	const date = nextDueAt ? parseValidDate(nextDueAt) : null;
+	return date ? `Für dich · ${NEXT_DUE_FORMATTER.format(date)}` : 'Für dich';
+}
 
 type PendingAnnouncement = DashboardData['myOpenAnnouncements'][number];
 
@@ -86,6 +121,10 @@ export default function WgHomePage() {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [todayMoreOpen, setTodayMoreOpen] = useState(false);
+	const [armedChoreId, setArmedChoreId] = useState<string | null>(null);
+	const [pendingChoreId, setPendingChoreId] = useState<string | null>(null);
+	const [completeNotice, setCompleteNotice] = useState<string | null>(null);
+	const [nextEvent, setNextEvent] = useState<StartEvent | null | undefined>(undefined);
 	const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 	const dashboardRequestId = useRef(0);
 	const reducedMotion = useReducedMotion();
@@ -124,6 +163,62 @@ export default function WgHomePage() {
 	useEffect(() => {
 		void load();
 	}, [load]);
+
+	useEffect(() => {
+		const from = new Date();
+		const to = new Date(from.getTime() + 7 * MS_PER_DAY);
+		void apiFetch<{ events: StartEvent[] }>(
+			`/api/wg/${encodedShareCode}/events?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,
+			{ memberId: identity.memberId },
+		).then((result) => {
+			if (!result.ok) return setNextEvent(null);
+			const now = Date.now();
+			const upcoming = result.data.events
+				.filter((event) => (parseTimestamp(event.startsAt) ?? 0) >= now - MS_PER_DAY)
+				.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+			setNextEvent(upcoming[0] ?? null);
+		});
+	}, [encodedShareCode, identity.memberId]);
+
+	// Nur eigene Putzaufgaben lassen sich direkt abhaken. Erster Tipp merkt vor,
+	// zweiter bestätigt – wie im Putzplan, damit ein versehentlicher Tipp nichts bucht.
+	async function completeChore(item: TodayImportantItem): Promise<void> {
+		const choreId = item.entityId;
+		if (!choreId || pendingChoreId) return;
+		if (armedChoreId !== choreId) {
+			setArmedChoreId(choreId);
+			setCompleteNotice(null);
+			return;
+		}
+		const idempotencyKey = createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			setCompleteNotice('Konnte nicht sicher gespeichert werden. Erledige es im Putzplan.');
+			return;
+		}
+		setPendingChoreId(choreId);
+		const result = await apiFetch(
+			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(choreId)}/complete`,
+			{
+				method: 'POST',
+				memberId: identity.memberId,
+				memberToken: identity.memberToken,
+				headers: { 'Idempotency-Key': idempotencyKey },
+				body: JSON.stringify({ completedByMemberId: identity.memberId }),
+			},
+		);
+		setPendingChoreId(null);
+		setArmedChoreId(null);
+		if (result.ok || result.error === 'chore_already_completed') {
+			setCompleteNotice(`${item.title} erledigt.`);
+			void load();
+			return;
+		}
+		setCompleteNotice(
+			result.status === 0
+				? 'Offline: Öffne den Putzplan, dort wird die Erledigung vorgemerkt.'
+				: 'Erledigt konnte nicht gespeichert werden. Versuche es gleich erneut.',
+		);
+	}
 	useVisibilityPausedInterval(() => void load(), REFRESH_INTERVAL_MS);
 
 	const myBalances =
@@ -159,13 +254,8 @@ export default function WgHomePage() {
 				: [],
 		[data, identity.memberId, wg.shareCode],
 	);
-	const todayFocus = useMemo(() => getTodayFocus(todayImportant), [todayImportant]);
-	const todayRemainder = useMemo(
-		() => getTodayListItems(todayImportant, todayFocus),
-		[todayImportant, todayFocus],
-	);
-	const todaySecondary = todayRemainder.slice(0, 2);
-	const todayMore = todayRemainder.slice(2);
+	const todayVisible = todayImportant.slice(0, TODAY_VISIBLE);
+	const todayMore = todayImportant.slice(TODAY_VISIBLE);
 	const latestAnnouncement = data?.latestAnnouncement;
 	const pendingAnnouncements = data?.myOpenAnnouncements ?? [];
 	const latestIsPending = Boolean(
@@ -174,9 +264,12 @@ export default function WgHomePage() {
 				samePendingAnnouncement(latestAnnouncement, item, identity.name),
 			),
 	);
+	const pendingHrefs = useMemo(
+		() => new Set(todayImportant.map((item) => item.href)),
+		[todayImportant],
+	);
 	const activityItems = useMemo(() => {
 		if (!data) return [];
-		const pendingHrefs = new Set(todayImportant.map((item) => item.href));
 		return data.activity
 			.filter((item) => !item.href || !pendingHrefs.has(item.href))
 			.filter((item) => {
@@ -190,7 +283,7 @@ export default function WgHomePage() {
 				);
 			})
 			.slice(0, latestAnnouncement ? 2 : 3);
-	}, [data, latestAnnouncement, todayImportant, wg.shareCode]);
+	}, [data, latestAnnouncement, pendingHrefs, wg.shareCode]);
 	const isNewWg = Boolean(
 		data &&
 			!data.setup.hasExpense &&
@@ -204,22 +297,20 @@ export default function WgHomePage() {
 		<>
 			<div
 				data-home-content
-				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-6 px-4 py-6 md:grid-cols-12"
+				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-6 px-4 py-6"
 			>
-				<header className="flex min-w-0 flex-col gap-1 md:col-span-12">
-					<h1 className="font-heading text-2xl font-semibold tracking-tight">Deine WG im Blick</h1>
-					<p className="text-sm text-muted-foreground">
-						Was heute für dich und eure WG wichtig ist.
-					</p>
+				<header className="flex min-w-0 flex-col gap-1">
+					<h1 className="font-heading text-2xl font-semibold tracking-tight break-words">
+						{new Intl.DateTimeFormat('de-DE', {
+							weekday: 'long',
+							day: 'numeric',
+							month: 'long',
+							timeZone: 'Europe/Berlin',
+						}).format(updatedAt ?? new Date())}
+					</h1>
 					{updatedAt && (
 						<p className="text-xs text-muted-foreground">
-							{new Intl.DateTimeFormat('de-DE', {
-								weekday: 'long',
-								day: 'numeric',
-								month: 'long',
-								timeZone: 'Europe/Berlin',
-							}).format(updatedAt)}{' '}
-							· Stand{' '}
+							Stand{' '}
 							{new Intl.DateTimeFormat('de-DE', {
 								hour: '2-digit',
 								minute: '2-digit',
@@ -230,12 +321,12 @@ export default function WgHomePage() {
 					)}
 				</header>
 				{isNewWg && (
-					<div className="md:col-span-12">
+					<div>
 						<StartWelcome />
 					</div>
 				)}
 				{error && (
-					<div className="md:col-span-12">
+					<div>
 						<LoadErrorBanner
 							message={data ? `${error} Die angezeigten Daten können veraltet sein.` : error}
 							onRetry={() => void load()}
@@ -251,284 +342,143 @@ export default function WgHomePage() {
 				)}
 
 				{!isNewWg && (
-					<section
-						aria-labelledby="today-heading"
-						className="flex min-w-0 flex-col gap-3 md:col-span-12"
-					>
-						<h2 id="today-heading" className="text-sm font-medium text-muted-foreground">
-							Heute wichtig
+					<section aria-labelledby="today-heading" className="flex min-w-0 flex-col gap-2">
+						<h2 id="today-heading" className="font-heading text-lg font-semibold">
+							Heute für dich
 						</h2>
+						{completeNotice && (
+							<output className="block text-sm text-muted-foreground">{completeNotice}</output>
+						)}
 						{data ? (
-							todayFocus ? (
-								<Card>
-									<CardContent className="flex flex-wrap items-center gap-4">
-										<div className="min-w-0 flex-1">
-											<CardTitle className="flex items-start gap-2 font-semibold">
-												<TodayIcon kind={todayFocus.kind} />
-												<h3 className="min-w-0 break-words">{todayFocus.title}</h3>
-											</CardTitle>
-											<p className="text-xs font-medium text-muted-foreground">
-												{todayFocus.isPersonal ? 'Für dich' : 'Für eure WG'}
-											</p>
-											<p
-												className={cn(
-													'text-sm text-muted-foreground',
-													todayFocus.kind === 'recurring' && 'font-mono tabular-nums',
-												)}
+							todayImportant.length > 0 ? (
+								<>
+									<ul className="flex flex-col divide-y divide-border/60 rounded-xl border">
+										{todayVisible.map((item) => (
+											<TodayRow
+												key={`${item.kind}:${item.href}`}
+												item={item}
+												armed={armedChoreId === item.entityId}
+												pending={pendingChoreId === item.entityId}
+												onCheck={() => void completeChore(item)}
+											/>
+										))}
+									</ul>
+									{todayMore.length > 0 && (
+										<Collapsible open={todayMoreOpen} onOpenChange={setTodayMoreOpen}>
+											<CollapsibleTrigger
+												render={
+													<Button variant="ghost" className="min-h-11 w-full justify-between" />
+												}
 											>
-												{todayFocus.detail}
-											</p>
-										</div>
-										<Link
-											href={todayFocus.href}
-											aria-label={todayFocus.actionLabel}
-											className={cn(
-												buttonVariants({ size: 'sm', variant: 'secondary' }),
-												'ml-auto min-h-11 shrink-0',
-											)}
-										>
-											<span aria-hidden className="inline">
-												{todayFocus.actionLabel}
-											</span>
-											<ChevronRight data-icon="inline-end" aria-hidden />
-										</Link>
-									</CardContent>
-								</Card>
+												<span>
+													{todayMoreOpen
+														? 'Weniger anzeigen'
+														: `Weitere anzeigen (${todayMore.length})`}
+												</span>
+												<ChevronDown data-icon="inline-end" aria-hidden />
+											</CollapsibleTrigger>
+											<CollapsiblePanel {...(reducedMotion ? { transition: { duration: 0 } } : {})}>
+												<ul className="mt-1 flex flex-col divide-y divide-border/60 rounded-xl border">
+													{todayMore.map((item) => (
+														<TodayRow
+															key={`${item.kind}:${item.href}`}
+															item={item}
+															armed={armedChoreId === item.entityId}
+															pending={pendingChoreId === item.entityId}
+															onCheck={() => void completeChore(item)}
+														/>
+													))}
+												</ul>
+											</CollapsiblePanel>
+										</Collapsible>
+									)}
+								</>
 							) : (
-								<p className="text-sm text-muted-foreground">Gerade gibt es nichts Dringendes.</p>
+								<p className="flex items-center gap-2 rounded-xl border p-4 text-sm text-muted-foreground">
+									<Check className="size-4 shrink-0" aria-hidden />
+									Alles erledigt. Gerade gibt es nichts für dich zu tun.
+								</p>
 							)
 						) : error ? (
 							<p className="text-sm text-muted-foreground">
-								Heute wichtige Einträge konnten nicht geladen werden.
+								Deine Aufgaben für heute konnten nicht geladen werden.
 							</p>
 						) : (
-							<Card aria-label="Heute wichtig wird geladen">
-								<CardContent className="flex flex-col gap-3">
-									<Skeleton className="h-5 w-2/3" />
-									<Skeleton className="h-4 w-1/2" />
-									<Skeleton className="h-11 w-32 self-end" />
-								</CardContent>
-							</Card>
-						)}
-						{data && todaySecondary.length > 0 && (
-							<ItemGroup className="gap-0 divide-y divide-border/60">
-								{todaySecondary.map((item) => (
-									<Item
-										key={`${item.kind}:${item.href}`}
-										className="rounded-none px-0"
-										render={<Link href={item.href} />}
-									>
-										<ItemMedia variant="icon">
-											<TodayIcon kind={item.kind} />
-										</ItemMedia>
-										<ItemContent className="min-w-0">
-											<ItemTitle className="line-clamp-none break-words">{item.title}</ItemTitle>
-											<ItemDescription
-												className={item.kind === 'recurring' ? 'font-mono tabular-nums' : undefined}
-											>
-												{item.detail}
-											</ItemDescription>
-										</ItemContent>
-									</Item>
-								))}
-							</ItemGroup>
-						)}
-						{data && todayMore.length > 0 && (
-							<Collapsible open={todayMoreOpen} onOpenChange={setTodayMoreOpen}>
-								<CollapsibleTrigger
-									render={<Button variant="ghost" className="min-h-11 w-full justify-between" />}
-								>
-									<span>
-										{todayMoreOpen ? 'Weniger anzeigen' : `Weitere anzeigen (${todayMore.length})`}
-									</span>
-									<ChevronDown data-icon="inline-end" aria-hidden />
-								</CollapsibleTrigger>
-								<CollapsiblePanel {...(reducedMotion ? { transition: { duration: 0 } } : {})}>
-									<div className="flex flex-col gap-3 pt-1">
-										<ItemGroup>
-											{todayMore.map((item) => (
-												<Item key={`${item.kind}:${item.href}`} render={<Link href={item.href} />}>
-													<ItemMedia variant="icon">
-														<TodayIcon kind={item.kind} />
-													</ItemMedia>
-													<ItemContent className="min-w-0">
-														<ItemTitle className="line-clamp-none break-words">
-															{item.title}
-														</ItemTitle>
-														<ItemDescription>{item.detail}</ItemDescription>
-													</ItemContent>
-												</Item>
-											))}
-										</ItemGroup>
-									</div>
-								</CollapsiblePanel>
-							</Collapsible>
+							<output aria-label="Heute für dich wird geladen" className="flex flex-col gap-2">
+								<Skeleton className="h-14 w-full" />
+								<Skeleton className="h-14 w-full" />
+							</output>
 						)}
 					</section>
 				)}
 
-				<div className="flex min-w-0 flex-col gap-6 md:col-span-12">
-					<div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
-						<section
-							aria-labelledby="balance-heading"
-							className="flex min-w-0 flex-col gap-3 rounded-xl border p-4"
-						>
-							<h2 id="balance-heading" className="text-sm font-medium text-muted-foreground">
-								Ausgaben
-							</h2>
-							{data ? (
-								<ItemGroup>
-									<Item
-										variant="muted"
-										render={<Link href={`${wgBaseHref}/ausgaben`} />}
-										className="flex-wrap sm:flex-nowrap"
-									>
-										<ItemMedia variant="icon" className="order-1 sm:order-none">
-											<Receipt aria-hidden />
-										</ItemMedia>
-										<ItemContent className="order-3 basis-full min-w-0 sm:order-none sm:basis-auto">
-											<ItemTitle
-												className={cn(
-													'font-mono tabular-nums',
-													myBalance > 0 && 'text-settled',
-													myBalance < 0 && 'text-destructive',
-												)}
-											>
-												{myBalanceText}
-											</ItemTitle>
-											<ItemDescription className="line-clamp-none break-normal">
-												{myBalances.some((balance) => balance.balanceCents > 0) &&
-												myBalances.some((balance) => balance.balanceCents < 0)
-													? 'Offene Salden in mehreren Währungen.'
-													: myBalance > 0
-														? 'Du bekommst Geld zurück.'
-														: myBalance < 0
-															? 'Du schuldest der WG Geld.'
-															: 'Du bist ausgeglichen.'}
-											</ItemDescription>
-										</ItemContent>
-										<ChevronRight
-											className="order-2 ml-auto size-4 text-muted-foreground sm:order-none"
-											aria-hidden
-										/>
-									</Item>
-								</ItemGroup>
-							) : error ? (
-								<p className="text-sm text-muted-foreground">
-									Dein Saldo ist gerade nicht verfügbar.
-								</p>
-							) : (
-								<Item variant="muted" aria-label="Saldo wird geladen">
-									<ItemContent className="gap-2">
-										<Skeleton className="h-4 w-24" />
-										<Skeleton className="h-4 w-40" />
-									</ItemContent>
-								</Item>
+				<div className="flex min-w-0 flex-col gap-6">
+					<ul
+						aria-label="Überblick"
+						className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,max(8rem,calc(50%-0.375rem))),1fr))] gap-3"
+					>
+						<StartTile
+							href={`${wgBaseHref}/ausgaben`}
+							icon={Receipt}
+							label="Saldo"
+							loading={!data && !error}
+							value={data ? myBalanceText : '–'}
+							valueClassName={cn(
+								'font-mono tabular-nums',
+								myBalance > 0 && 'text-settled',
+								myBalance < 0 && 'text-destructive',
 							)}
-							<Link
-								href={`${wgBaseHref}/ausgaben?new=1`}
-								className={cn(
-									buttonVariants({ variant: 'secondary' }),
-									'mt-auto min-h-11 whitespace-normal break-normal',
-								)}
-							>
-								<span className="min-w-0 break-normal whitespace-normal">Ausgabe hinzufügen</span>
-							</Link>
-						</section>
-
-						<section
-							aria-labelledby="chores-heading"
-							className="flex min-w-0 flex-col gap-3 rounded-xl border p-4"
-						>
-							<h2
-								id="chores-heading"
-								className="flex items-center gap-2 text-sm font-medium text-muted-foreground"
-							>
-								<SprayCan className="size-4" aria-hidden />
-								Putzplan
-							</h2>
-							{data ? (
-								<div className="flex flex-col gap-1">
-									<p className="font-medium break-words">
-										{myNextChore ? myNextChore.title : 'Keine Aufgabe für dich geplant'}
-									</p>
-									<p className="text-sm text-muted-foreground">
-										{myNextChore
-											? `Du bist dran · ${new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short', timeZone: 'Europe/Berlin' }).format(new Date(myNextChore.nextDueAt))}`
-											: data.setup.choreCount === 0
-												? 'Legt euren ersten Putzdienst an.'
-												: 'Den Plan für eure WG findest du hier.'}
-									</p>
-								</div>
-							) : error ? (
-								<p className="text-sm text-muted-foreground">
-									Putzplan ist gerade nicht verfügbar.
-								</p>
-							) : (
-								<div aria-label="Putzplan wird geladen">
-									<Skeleton className="h-5 w-3/4" />
-									<Skeleton className="mt-2 h-4 w-1/2" />
-								</div>
-							)}
-							<Link
-								href={`${wgBaseHref}/putzen`}
-								className={cn(
-									buttonVariants({ variant: 'secondary' }),
-									'mt-auto min-h-11 break-normal',
-								)}
-							>
-								<span className="min-w-0 break-normal whitespace-normal">Putzplan öffnen</span>
-							</Link>
-						</section>
-						<section
-							aria-labelledby="shopping-heading"
-							className="flex min-w-0 flex-col gap-3 rounded-xl border p-4"
-						>
-							<h2
-								id="shopping-heading"
-								className="flex items-center gap-2 text-sm font-medium text-muted-foreground"
-							>
-								<ShoppingBasket className="size-4" aria-hidden />
-								Einkauf
-							</h2>
-							{data ? (
-								<div className="flex flex-col gap-1">
-									<Link
-										href={`${wgBaseHref}/einkauf`}
-										className="font-medium underline-offset-4 hover:underline"
-									>
-										{data.openShoppingCount === 0
-											? 'Alles besorgt'
-											: `${data.openShoppingCount} ${data.openShoppingCount === 1 ? 'offener Artikel' : 'offene Artikel'}`}
-									</Link>
-									<p className="break-words text-sm text-muted-foreground">
-										{data.openShoppingCount > 0
-											? data.openShoppingTop.slice(0, 3).join(', ') ||
-												'Eure Einkaufsliste ist bereit.'
-											: 'Fehlt etwas? Trag es direkt ein.'}
-									</p>
-								</div>
-							) : error ? (
-								<p className="text-sm text-muted-foreground">
-									Einkaufsliste ist gerade nicht verfügbar.
-								</p>
-							) : (
-								<div aria-label="Einkauf wird geladen">
-									<Skeleton className="h-5 w-3/4" />
-									<Skeleton className="mt-2 h-4 w-1/2" />
-								</div>
-							)}
-							<Link
-								href={`${wgBaseHref}/einkauf#shopping-name`}
-								className={cn(
-									buttonVariants({ variant: 'secondary' }),
-									'mt-auto min-h-11 break-normal',
-								)}
-							>
-								<span className="min-w-0 break-normal whitespace-normal">Artikel hinzufügen</span>
-							</Link>
-						</section>
-					</div>
+							detail={
+								!data
+									? 'Nicht verfügbar'
+									: myBalance > 0
+										? 'Du bekommst zurück'
+										: myBalance < 0
+											? 'Du schuldest'
+											: 'Ausgeglichen'
+							}
+						/>
+						<StartTile
+							href={`${wgBaseHref}/einkauf`}
+							icon={ShoppingBasket}
+							label="Einkäufe"
+							loading={!data && !error}
+							value={
+								!data
+									? '–'
+									: data.openShoppingCount === 0
+										? 'Alles da'
+										: `${data.openShoppingCount} offen`
+							}
+							detail={
+								data && data.openShoppingCount > 0
+									? data.openShoppingTop.slice(0, 2).join(', ') || 'Liste öffnen'
+									: 'Etwas eintragen'
+							}
+						/>
+						<StartTile
+							href={`${wgBaseHref}/putzen`}
+							icon={SprayCan}
+							label="Putzplan"
+							loading={!data && !error}
+							value={myNextChore ? myNextChore.title : 'Nichts fällig'}
+							detail={
+								myNextChore
+									? formatNextDue(myNextChore.nextDueAt)
+									: data?.setup.choreCount === 0
+										? 'Plan anlegen'
+										: 'Für dich'
+							}
+						/>
+						<StartTile
+							href={`${wgBaseHref}/kalender`}
+							icon={CalendarDays}
+							label="Kalender"
+							loading={nextEvent === undefined}
+							value={nextEvent ? nextEvent.title : 'Keine Termine'}
+							detail={nextEvent ? formatEventStart(nextEvent) : 'Nächste 7 Tage'}
+						/>
+					</ul>
 					<section aria-labelledby="wg-now-heading" className="flex min-w-0 flex-col gap-3">
 						<Collapsible defaultOpen={false}>
 							<h2 id="wg-now-heading">
@@ -611,7 +561,12 @@ export default function WgHomePage() {
 											Neuigkeiten konnten noch nicht geladen werden.
 										</p>
 									) : (
-										<div className="flex flex-col gap-2" aria-label="Neuigkeiten werden geladen">
+										<div
+											className="flex flex-col gap-2"
+											aria-label="Neuigkeiten werden geladen"
+											// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
+											role="status"
+										>
 											<Skeleton className="h-16 w-full" />
 											<Skeleton className="h-11 w-full" />
 											<Skeleton className="h-11 w-full" />
@@ -622,7 +577,7 @@ export default function WgHomePage() {
 						</Collapsible>
 					</section>
 				</div>
-				<div className="md:col-span-12">
+				<div>
 					<PushPrimingPrompt
 						code={wg.shareCode}
 						memberId={identity.memberId}
@@ -631,5 +586,106 @@ export default function WgHomePage() {
 				</div>
 			</div>
 		</>
+	);
+}
+
+function TodayRow({
+	item,
+	armed,
+	pending,
+	onCheck,
+}: {
+	item: TodayImportantItem;
+	armed: boolean;
+	pending: boolean;
+	onCheck: () => void;
+}) {
+	const checkable = item.kind === 'chore' && item.isPersonal && Boolean(item.entityId);
+	return (
+		<li className="flex min-w-0 items-center gap-1 pr-1">
+			{checkable ? (
+				<Button
+					variant="ghost"
+					size="icon"
+					className="ml-1 size-11 shrink-0"
+					aria-label={armed ? `Bestätigen: ${item.title} erledigt` : `Abhaken: ${item.title}`}
+					aria-pressed={armed}
+					disabled={pending}
+					onClick={onCheck}
+				>
+					{pending ? (
+						<Loader2 className="animate-spin" aria-hidden />
+					) : armed ? (
+						<CircleCheck aria-hidden />
+					) : (
+						<Circle className="text-muted-foreground" aria-hidden />
+					)}
+				</Button>
+			) : (
+				<span className="ml-1 flex size-11 shrink-0 items-center justify-center">
+					<TodayIcon kind={item.kind} />
+				</span>
+			)}
+			<Link
+				href={item.href}
+				className="flex min-h-14 min-w-0 flex-1 items-center gap-2 rounded-lg py-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+			>
+				<span className="flex min-w-0 flex-1 flex-col">
+					<span className="font-medium break-words">{item.title}</span>
+					<span
+						className={cn(
+							'text-sm text-muted-foreground',
+							item.kind === 'recurring' && 'tabular-nums',
+						)}
+					>
+						{armed ? 'Nochmal tippen zum Bestätigen' : item.detail}
+					</span>
+				</span>
+				<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+			</Link>
+		</li>
+	);
+}
+
+function StartTile({
+	href,
+	icon: Icon,
+	label,
+	value,
+	detail,
+	loading,
+	valueClassName,
+}: {
+	href: string;
+	icon: LucideIcon;
+	label: string;
+	value: string;
+	detail: string;
+	loading: boolean;
+	valueClassName?: string;
+}) {
+	return (
+		<li className="min-w-0">
+			<Link
+				href={href}
+				className="flex h-full min-h-24 min-w-0 flex-col gap-1 rounded-xl border bg-card p-3 outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50 active:bg-muted"
+			>
+				<span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+					<Icon className="size-4 shrink-0" aria-hidden />
+					{label}
+				</span>
+				{loading ? (
+					<>
+						<Skeleton className="h-5 w-3/4" />
+						<Skeleton className="h-4 w-1/2" />
+					</>
+				) : (
+					<>
+						<span className={cn('font-semibold break-words', valueClassName)}>{value}</span>
+						<span className="line-clamp-2 text-xs text-muted-foreground">{detail}</span>
+					</>
+				)}
+			</Link>
+		</li>
 	);
 }

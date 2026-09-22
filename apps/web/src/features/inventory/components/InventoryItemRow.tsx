@@ -10,7 +10,6 @@ import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { type InventoryItemDto, isBelowThreshold } from '@/features/inventory/inventory';
 import { AlertCircle, Minus, Pencil, Plus, Trash2 } from 'lucide-react';
-import Link from 'next/link';
 import { memo, useRef, useState } from 'react';
 
 interface InventoryItemRowProps {
@@ -244,16 +243,6 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 					)}
 				</ItemActions>
 			</div>
-			{lowStock && (
-				<Button
-					variant="link"
-					nativeButton={false}
-					render={<Link href={`/wg/${encodedShareCode}/einkauf`} />}
-					className="min-h-11 self-start px-0"
-				>
-					Einkaufsliste öffnen
-				</Button>
-			)}
 			{error && (
 				<Alert variant="destructive">
 					<AlertDescription>{error}</AlertDescription>

@@ -5,7 +5,28 @@ import { SUPABASE_ROOT_CA } from './supabase-ca';
 
 let supabaseRootPath: string | undefined;
 
+const warnedUrlPairs = new Set<string>();
+
+/**
+ * `POSTGRES_URL`/`DATABASE_URL` (and the non-pooling pair below) are supported
+ * aliases — Vercel sets one, other platforms the other — so a winner is picked
+ * by design. Two non-empty values that *differ* mean the deployment carries
+ * two databases' configuration and one of them is silently ignored, which is
+ * exactly the drift that surfaces as "works in Preview, missing table in
+ * production". Report which variable wins instead.
+ */
+function warnOnAmbiguousUrlPair(primary: string, secondary: string): void {
+	const first = process.env[primary]?.trim();
+	const second = process.env[secondary]?.trim();
+	if (!first || !second || first === second || warnedUrlPairs.has(primary)) return;
+	warnedUrlPairs.add(primary);
+	console.warn(
+		`[db] ${primary} and ${secondary} are both set but differ — ${primary} takes precedence. Unset ${secondary} to remove the ambiguity.`,
+	);
+}
+
 export function resolveConnectionString(): string {
+	warnOnAmbiguousUrlPair('POSTGRES_URL', 'DATABASE_URL');
 	const url = process.env.POSTGRES_URL || process.env.DATABASE_URL;
 	if (!url) {
 		throw new Error(
@@ -16,6 +37,7 @@ export function resolveConnectionString(): string {
 }
 
 export function resolveTransactionConnectionString(): string {
+	warnOnAmbiguousUrlPair('POSTGRES_URL_NON_POOLING', 'DATABASE_URL_UNPOOLED');
 	const url =
 		process.env.POSTGRES_URL_NON_POOLING ||
 		process.env.DATABASE_URL_UNPOOLED ||

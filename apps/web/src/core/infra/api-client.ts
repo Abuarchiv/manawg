@@ -8,10 +8,10 @@ export async function apiFetch<T>(
 	path: string,
 	init: ApiFetchInit = {},
 ): Promise<ApiFetchResult<T>> {
-	const { memberId, memberToken, ...rest } = init;
+	const { memberId, memberToken, signal, ...rest } = init;
 	const method = rest.method ?? 'GET';
 
-	const headers = new Headers(rest.headers as HeadersInit | undefined);
+	const headers = new Headers(rest.headers);
 	if (
 		process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true' &&
 		process.env.NEXT_PUBLIC_DB_DOWN === 'true' &&
@@ -33,6 +33,7 @@ export async function apiFetch<T>(
 			...rest,
 			method,
 			headers,
+			signal: signal ?? AbortSignal.timeout(15_000),
 		});
 
 		if (!res.ok) {

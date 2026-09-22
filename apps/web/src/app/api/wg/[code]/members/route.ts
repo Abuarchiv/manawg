@@ -1,7 +1,7 @@
 import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { getAuthenticatedUser } from '@/core/auth/server';
-import { db, wgMembers } from '@/core/db';
+import { db, wgMembers, wgs } from '@/core/db';
 import { LIMITS } from '@/core/db/schema';
 import { withTransaction } from '@/core/db/transaction';
 import { HTTP, apiError, badRequest, forbidden, notFound, tooMany } from '@/core/errors';
@@ -10,19 +10,27 @@ import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
-import { and, eq, sql } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
+import { and, asc, count, eq } from 'drizzle-orm';
+import { type NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 
 const MAX_MEMBERS_PER_WG = 20;
+// GET pagination: WG member counts are small, but the listing must never
+// degenerate into an unbounded SELECT. Default high enough that existing
+// clients keep receiving the full roster; explicit limit/offset enables
+// paging for WGs that predate the join cap.
+const MEMBERS_PAGE_LIMIT_DEFAULT = 100;
+const MEMBERS_PAGE_LIMIT_MAX = 500;
 
-async function resolveJoinableWg(
-	code: string,
-): Promise<{ id: string; joiningEnabled: boolean } | null> {
-	const wg = await db.query.wgs.findFirst({
-		where: (w, { eq }) => eq(w.shareCode, code),
-		columns: { id: true, joiningEnabled: true },
-	});
-	return wg ?? null;
+function readPageParams(req: NextRequest): { limit: number; offset: number } {
+	const params = req.nextUrl.searchParams;
+	const rawLimit = Number.parseInt(params.get('limit') ?? '', 10);
+	const rawOffset = Number.parseInt(params.get('offset') ?? '', 10);
+	const limit = Number.isFinite(rawLimit)
+		? Math.min(Math.max(rawLimit, 1), MEMBERS_PAGE_LIMIT_MAX)
+		: MEMBERS_PAGE_LIMIT_DEFAULT;
+	const offset = Number.isFinite(rawOffset) ? Math.max(rawOffset, 0) : 0;
+	return { limit, offset };
 }
 
 export const GET = withWgRoute(
@@ -41,16 +49,23 @@ export const GET = withWgRoute(
 		// (see POST below and GET /api/wg/[code] currentMember), never to other
 		// joined members who could otherwise use it to impersonate them on
 		// admin-gated routes.
-		const rows = await db
-			.select({
-				id: wgMembers.id,
-				name: wgMembers.name,
-				color: wgMembers.color,
-				paypalMerchantId: wgMembers.paypalMerchantId,
-				deactivatedAt: wgMembers.deactivatedAt,
-			})
-			.from(wgMembers)
-			.where(eq(wgMembers.wgId, wgId));
+		const { limit, offset } = readPageParams(req);
+		const [rows, totalRows] = await Promise.all([
+			db
+				.select({
+					id: wgMembers.id,
+					name: wgMembers.name,
+					color: wgMembers.color,
+					paypalMerchantId: wgMembers.paypalMerchantId,
+					deactivatedAt: wgMembers.deactivatedAt,
+				})
+				.from(wgMembers)
+				.where(eq(wgMembers.wgId, wgId))
+				.orderBy(asc(wgMembers.createdAt), asc(wgMembers.id))
+				.limit(limit)
+				.offset(offset),
+			db.select({ total: count() }).from(wgMembers).where(eq(wgMembers.wgId, wgId)),
+		]);
 
 		const members = rows.map(({ deactivatedAt, ...member }) => ({
 			...member,
@@ -61,7 +76,11 @@ export const GET = withWgRoute(
 		// server-side, so a stale/spoofed value here can't grant real access.
 		const viewerIsAdmin = await isVerifiedWgAdmin(wgId, auth.member.memberId, auth.member.verified);
 
-		return NextResponse.json({ members, viewerIsAdmin });
+		return NextResponse.json({
+			members,
+			viewerIsAdmin,
+			pagination: { total: totalRows[0]?.total ?? 0, limit, offset },
+		});
 	},
 	{
 		fixture: (fixture) => {
@@ -70,14 +89,14 @@ export const GET = withWgRoute(
 	},
 );
 
-interface PostBody {
-	name?: unknown;
-	color?: unknown;
-}
-
-function isPostBody(value: unknown): value is PostBody {
+function isPostBody(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
+
+const joinMemberSchema = z.object({
+	name: z.string().trim().min(1).max(LIMITS.NAME_MAX),
+	color: z.string().trim().max(16).nullish(),
+});
 
 function isUniqueMemberNameViolation(err: unknown): boolean {
 	if (!err || typeof err !== 'object' || !('code' in err)) return false;
@@ -87,25 +106,31 @@ function isUniqueMemberNameViolation(err: unknown): boolean {
 }
 
 export const POST = withWgRoute('members POST', async (req, { code }) => {
-	let body: PostBody = {};
+	let raw: unknown;
 	try {
-		const raw: unknown = await req.json();
-		if (isPostBody(raw)) body = raw;
+		raw = await req.json();
 	} catch {
 		return badRequest('invalid_json');
 	}
-	const name = typeof body.name === 'string' ? body.name.trim() : '';
-	const color = typeof body.color === 'string' ? body.color.trim().slice(0, 16) : null;
-	if (name.length < 1 || name.length > LIMITS.NAME_MAX) {
-		return badRequest('name_invalid');
+	if (!isPostBody(raw)) return badRequest('invalid_body');
+	const parsed = joinMemberSchema.safeParse(raw);
+	if (!parsed.success) {
+		const issues = parsed.error.flatten();
+		if (issues.fieldErrors.name) return badRequest('name_invalid');
+		return badRequest('invalid_body');
 	}
+	const { name } = parsed.data;
+	const color = parsed.data.color ?? null;
 	const limit = await checkRateLimit(wgWriteLimiter, `join:${clientIpKey(req)}`);
 	if (!limit.success) {
 		return tooMany('join_rate_limited', 'join_rate_limited');
 	}
 	const user = await getAuthenticatedUser(req);
 	if (!user) return apiError('auth_required', 401, 'auth_required');
-	const wg = await resolveJoinableWg(code);
+	const wg = await db.query.wgs.findFirst({
+		where: (w, { eq }) => eq(w.shareCode, code),
+		columns: { id: true, joiningEnabled: true },
+	});
 	if (!wg) return notFound('wg_not_found');
 	const authenticatedUser = user;
 
@@ -124,15 +149,15 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 						reason: 'limit' | 'name_taken' | 'already_joined' | 'not_found' | 'joining_disabled';
 				  }
 			> => {
-				const lockedWgResult = await tx.execute(sql`
-				select share_code as "shareCode", joining_enabled as "joiningEnabled"
-				from wgs
-				where id = ${wg.id}
-				for update
-			`);
-				const lockedWg = lockedWgResult.rows[0] as
-					| { shareCode: string; joiningEnabled: boolean }
-					| undefined;
+				// Same `select ... for update` row lock as before, expressed with
+				// the query builder like every other read in this file: schema
+				// column names and types instead of hand-aliased raw SQL that a
+				// later edit could copy without the parameterization.
+				const [lockedWg] = await tx
+					.select({ shareCode: wgs.shareCode, joiningEnabled: wgs.joiningEnabled })
+					.from(wgs)
+					.where(eq(wgs.id, wg.id))
+					.for('update');
 				if (!lockedWg || lockedWg.shareCode !== code) return { ok: false, reason: 'not_found' };
 				const existingForUser = await tx
 					.select({ id: wgMembers.id })

@@ -138,7 +138,7 @@ export function ActivityFeed({ items, emptyHref, compact = false }: ActivityFeed
 				const content = (
 					<>
 						<ItemMedia variant="icon" className="mt-0.5">
-							<Icon strokeWidth={1.75} aria-hidden />
+							<Icon aria-hidden />
 						</ItemMedia>
 						<ItemContent className="min-w-0">
 							<ItemTitle className="w-full line-clamp-none">

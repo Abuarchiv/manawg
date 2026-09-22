@@ -32,7 +32,7 @@ import {
 	parseRecurrenceRule,
 	validateEventForm,
 } from '@/features/events/events';
-import { Trash2 } from 'lucide-react';
+import { CalendarPlus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const KEEP_EXISTING_RECURRENCE = '__keep__';
@@ -64,6 +64,8 @@ interface EventEditModalProps {
 	onUpdate: (id: string, payload: UpdateEventPayload) => Promise<void>;
 	onDelete: (id: string) => Promise<void>;
 	actionError?: string | null;
+	/** Exportiert den gewählten Termin als .ics für die eigene Kalender-App. */
+	onExportIcs?: (() => void) | undefined;
 }
 
 function toLocalInputValue(iso: string, allDay: boolean): string {
@@ -78,6 +80,7 @@ export function EventEditModal({
 	onUpdate,
 	onDelete,
 	actionError,
+	onExportIcs,
 }: EventEditModalProps) {
 	const [title, setTitle] = useState('');
 	const [description, setDescription] = useState('');
@@ -267,6 +270,12 @@ export function EventEditModal({
 						>
 							Abbrechen
 						</Button>
+						{onExportIcs && (
+							<Button type="button" variant="outline" onClick={onExportIcs} className="min-h-11">
+								<CalendarPlus data-icon="inline-start" aria-hidden />
+								In Kalender-App übernehmen
+							</Button>
+						)}
 						<Button
 							type="button"
 							variant="destructive"

@@ -1,6 +1,10 @@
 'use client';
 
-import { CalendarLink, FormToggleButton } from '@/components/wg/PageHeaderActions';
+import { buttonVariants } from '@/components/ui/button';
+import { FormToggleButton } from '@/components/wg/PageHeaderActions';
+import { cn } from '@/shared/lib/cn';
+import { FileInput } from 'lucide-react';
+import Link from 'next/link';
 
 interface AusgabenHeaderProps {
 	expenseCount: number;
@@ -34,9 +38,14 @@ export function AusgabenHeader({
 				role="toolbar"
 				aria-label="Ausgaben-Aktionen"
 			>
-				<div className="hidden sm:block">
-					<CalendarLink wgBaseHref={wgBaseHref} />
-				</div>
+				<Link
+					href={`${wgBaseHref}/import`}
+					aria-label="Kontoauszug importieren"
+					title="Import"
+					className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
+				>
+					<FileInput aria-hidden />
+				</Link>
 				<FormToggleButton
 					open={showForm}
 					onToggle={onToggleForm}

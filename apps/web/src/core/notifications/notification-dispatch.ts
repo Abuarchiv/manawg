@@ -38,6 +38,27 @@ interface WebPushResult {
 }
 
 const PUSH_RETRY_DELAYS_MS = [100, 300] as const;
+// Fan-out is chunked instead of firing every member's push at once: large
+// WGs would otherwise open one burst of connections and risk provider rate
+// limits. WG membership is capped, so batches stay small either way.
+const PUSH_BATCH_SIZE = 10;
+const PUSH_BATCH_DELAY_MS = 250;
+
+async function mapInBatches<T, R>(
+	items: readonly T[],
+	batchSize: number,
+	fn: (item: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+	const results: PromiseSettledResult<R>[] = [];
+	for (let start = 0; start < items.length; start += batchSize) {
+		const batch = items.slice(start, start + batchSize);
+		results.push(...(await Promise.allSettled(batch.map(fn))));
+		if (start + batchSize < items.length) {
+			await new Promise((resolve) => setTimeout(resolve, PUSH_BATCH_DELAY_MS));
+		}
+	}
+	return results;
+}
 
 export function buildNotificationUrl(shareCode: string, urlPath: string): string {
 	const normalizedPath = urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
@@ -86,7 +107,11 @@ async function sendWebPush(
 		.from(pushSubscriptions)
 		.where(eq(pushSubscriptions.memberId, memberId));
 	let sent = 0;
-	let deletedStaleSubscription = false;
+	// Stale subscriptions are collected first and deleted in ONE statement
+	// after the fan-out below. Deleting inside the concurrent callbacks made
+	// the follow-up pushOptIn check race against deletions that had not
+	// committed yet.
+	const staleSubscriptionIds: string[] = [];
 	const failures: unknown[] = [];
 
 	await Promise.allSettled(
@@ -119,8 +144,7 @@ async function sendWebPush(
 			} catch (err) {
 				const statusCode = parseWebPushStatusCode(err);
 				if (statusCode === 404 || statusCode === 410) {
-					await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
-					deletedStaleSubscription = true;
+					staleSubscriptionIds.push(sub.id);
 				} else {
 					failures.push(err);
 					console.error('[notifications] web push failed', err);
@@ -129,7 +153,10 @@ async function sendWebPush(
 		}),
 	);
 
+	const deletedStaleSubscription = staleSubscriptionIds.length > 0;
 	if (deletedStaleSubscription) {
+		// Single batched delete, strictly after every push attempt settled.
+		await db.delete(pushSubscriptions).where(inArray(pushSubscriptions.id, staleSubscriptionIds));
 		const remainingSubscriptions = await db
 			.select({ id: pushSubscriptions.id })
 			.from(pushSubscriptions)
@@ -196,7 +223,7 @@ export async function dispatchNotification(
 	const targetMembers = rows
 		.filter((member) => member.id !== input.excludeMemberId)
 		// Moved-out members never receive push, even when explicitly targeted.
-		.filter((member) => member.deactivatedAt == null)
+		.filter((member) => member.deactivatedAt === null)
 		.filter(
 			(member) =>
 				input.bypassPreferences ||
@@ -215,12 +242,10 @@ export async function dispatchNotification(
 			return member.notifyShopping;
 		});
 
-	const pushResults = await Promise.allSettled(
-		targetMembers.map(async (member) => {
-			if (!member.pushOptIn) return { sent: 0, failures: [] };
-			return sendWebPush(member.id, { title: message.title, body: message.body, url });
-		}),
-	);
+	const pushResults = await mapInBatches(targetMembers, PUSH_BATCH_SIZE, async (member) => {
+		if (!member.pushOptIn) return { sent: 0, failures: [] };
+		return sendWebPush(member.id, { title: message.title, body: message.body, url });
+	});
 
 	const sentTotal = pushResults
 		.filter(

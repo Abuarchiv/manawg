@@ -101,6 +101,7 @@ export function InstallPrompt() {
 
 		const showWhenReady = () => {
 			if (!hasScrolled.current && !inWgApp) return;
+			if (isDismissed()) return;
 			if (isEditingTarget()) return;
 			if (event) {
 				setHidden(false);
@@ -133,7 +134,9 @@ export function InstallPrompt() {
 		};
 		window.addEventListener('scroll', onScroll, { passive: true });
 		const timer = window.setTimeout(() => {
-			if (inWgApp) {
+			// The user may have dismissed the prompt while this timer was
+			// pending — re-showing it 1.2s later would undo that dismissal.
+			if (inWgApp && !isDismissed()) {
 				hasScrolled.current = true;
 				showWhenReady();
 			}
@@ -188,7 +191,7 @@ export function InstallPrompt() {
 
 	return (
 		<div
-			className="fixed inset-x-0 z-40 mx-auto w-[calc(100%-1rem)] max-w-[calc(var(--app-frame-width)-1rem)] animate-in fade-in slide-in-from-bottom-4 duration-300"
+			className="fixed inset-x-0 z-40 mx-auto w-[calc(100%-1rem)] max-w-[calc(var(--app-frame-width)-1rem)] animate-in fade-in slide-in-from-bottom-2 duration-[220ms]"
 			style={{
 				// In /wg/* the bottom nav is fixed (NavItem min-h 48px + safe-area).
 				// Lift the prompt above it; outside the WG app stick close to the edge.

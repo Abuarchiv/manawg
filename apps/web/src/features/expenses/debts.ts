@@ -75,6 +75,16 @@ export function computeBalances(
 		}
 	}
 
+	// Net opposite directions per pair: A owes B 42,95 € and B owes A 38,52 €
+	// is a single 4,43 € debt from A to B, never two remindable rows.
+	for (const pair of totals.values()) {
+		const reverse = totals.get(`${pair.currency}:${pair.creditorId}:${pair.debtorId}`);
+		if (!reverse || pair.amountCents <= 0 || reverse.amountCents <= 0) continue;
+		const offset = Math.min(pair.amountCents, reverse.amountCents);
+		pair.amountCents -= offset;
+		reverse.amountCents -= offset;
+	}
+
 	return Array.from(totals.values()).filter((pair) => pair.amountCents > 0);
 }
 

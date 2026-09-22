@@ -71,13 +71,13 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 				<Badge
 					variant="destructive"
 					aria-hidden
-					className="absolute -right-1 -top-1 h-4 min-w-4 px-0.5 text-[9px] leading-none"
+					className="absolute -right-1 -top-1 h-4 min-w-4 px-0.5 text-xs leading-none"
 				>
 					{badge}
 				</Badge>
 			)}
 			<span className="sr-only" aria-live="polite" aria-atomic="true">
-				{count > 0 ? `${count} ungelesene Nachrichten` : ''}
+				{count > 0 ? `${count} ungelesene Nachricht${count === 1 ? '' : 'en'}` : ''}
 			</span>
 		</Link>
 	);

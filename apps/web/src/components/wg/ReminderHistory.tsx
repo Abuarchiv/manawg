@@ -37,8 +37,8 @@ export function ReminderHistory({ items, memberName }: ReminderHistoryProps) {
 					<EmptyMedia variant="icon">
 						<Bell />
 					</EmptyMedia>
-					<EmptyTitle>Noch keine Mahnungen</EmptyTitle>
-					<EmptyDescription>Versendete Mahnungen erscheinen hier.</EmptyDescription>
+					<EmptyTitle>Noch keine Erinnerungen</EmptyTitle>
+					<EmptyDescription>Versendete Erinnerungen erscheinen hier.</EmptyDescription>
 				</EmptyHeader>
 			</Empty>
 		);

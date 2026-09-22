@@ -437,20 +437,39 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	// Size this route to the visible phone viewport when the keyboard opens.
 	// MessageScroller still owns all message/history scroll positioning.
 	useEffect(() => {
-		const frame = chatRootRef.current?.closest<HTMLElement>('[data-chat-frame]');
-		if (!frame) return;
 		const viewport = window.visualViewport;
-		const chrome = document.querySelector<HTMLElement>('nav[data-app-chrome]');
+		const resolveFrame = (): HTMLElement | null =>
+			chatRootRef.current?.closest<HTMLElement>('[data-chat-frame]') ?? null;
+		let frame = resolveFrame();
+		if (!frame) return;
+		let chrome: HTMLElement | null = null;
+		let chromeObserver: ResizeObserver | null = null;
+
+		// Re-resolved on every pass: React re-renders and app-chrome swaps must
+		// not leave listeners or observers pointing at detached nodes.
+		function syncChrome(): void {
+			const next = document.querySelector<HTMLElement>('nav[data-app-chrome]');
+			if (next === chrome) return;
+			chromeObserver?.disconnect();
+			chrome = next;
+			if (chrome) {
+				chromeObserver = new ResizeObserver(resize);
+				chromeObserver.observe(chrome);
+			}
+		}
+
 		function resize() {
+			if (!frame?.isConnected) frame = resolveFrame();
 			if (!frame) return;
+			syncChrome();
 			const top = viewport?.offsetTop ?? 0;
 			const bottom = top + (viewport?.height ?? window.innerHeight);
 			const reserved = chrome?.getBoundingClientRect().height ?? 68;
 			frame.style.height = `${Math.max(0, bottom - Math.max(top, frame.getBoundingClientRect().top) - reserved)}px`;
 		}
-		const chromeObserver = chrome ? new ResizeObserver(resize) : null;
+
+		syncChrome();
 		resize();
-		if (chrome && chromeObserver) chromeObserver.observe(chrome);
 		window.addEventListener('resize', resize);
 		viewport?.addEventListener('resize', resize);
 		viewport?.addEventListener('scroll', resize);
@@ -540,7 +559,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 												<MessageCircle aria-hidden />
 											</EmptyMedia>
 											<EmptyDescription>
-												{'Noch keine Nachrichten. Schreibe die erste!'}
+												{'Noch keine Nachrichten. Schreib die erste.'}
 											</EmptyDescription>
 										</EmptyHeader>
 									</Empty>

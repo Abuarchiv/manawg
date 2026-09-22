@@ -24,7 +24,7 @@ import {
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
-import { formatRelativeTime } from '@/core/utils/time';
+import { formatRelativeTime, parseValidDate } from '@/core/utils/time';
 import { getChoreRepairHint, getChoreStatus } from '@/features/chores/chore-status';
 import type { Chore, MemberInfo, RecurrenceType } from '@/features/chores/components/chore-types';
 import { cn } from '@/shared/lib/cn';
@@ -33,6 +33,8 @@ import { type ReactElement, memo, useState } from 'react';
 
 interface ChoreRowProps {
 	chore: Chore;
+	/** Nur eigene fällige Aufgaben bekommen den gefüllten Button. */
+	isMine: boolean;
 	assignee: MemberInfo;
 	isPending: boolean;
 	isSwapPending: boolean;
@@ -65,6 +67,7 @@ function formatChoreCadence(interval: number, type: RecurrenceType): string {
 
 export const ChoreRow = memo(function ChoreRow({
 	chore,
+	isMine,
 	assignee,
 	isPending,
 	isSwapPending,
@@ -107,7 +110,8 @@ export const ChoreRow = memo(function ChoreRow({
 				</div>
 				{chore.lastCompletedAt && (
 					<ItemDescription className="line-clamp-none">
-						Nächste Fälligkeit: {new Date(chore.nextDueAt).toLocaleDateString('de-DE')}
+						Nächste Fälligkeit:{' '}
+						{parseValidDate(chore.nextDueAt)?.toLocaleDateString('de-DE') ?? 'unbekannt'}
 					</ItemDescription>
 				)}
 				{chore.lastCompletedAt && chore.lastCompletedByName && (
@@ -134,6 +138,7 @@ export const ChoreRow = memo(function ChoreRow({
 				<Button
 					onClick={() => onComplete(chore)}
 					disabled={busy}
+					variant={isMine ? 'default' : 'outline'}
 					className="min-h-11"
 					aria-label={
 						status.actionLabel === 'Nachholen'

@@ -107,6 +107,16 @@
 	}
 }
 
+/* No viewport breakpoints: sm:/md:/lg: never switch to a desktop layout.
+   Arbitrary min-[…] variants and container queries still work. */
+@theme {
+	--breakpoint-sm: initial;
+	--breakpoint-md: initial;
+	--breakpoint-lg: initial;
+	--breakpoint-xl: initial;
+	--breakpoint-2xl: initial;
+}
+
 @theme inline {
 	--font-sans: var(--font-inter);
 	--font-heading: var(--font-inter-tight);
@@ -251,13 +261,10 @@ body {
 @layer base {
 	:root {
 		color-scheme: light;
-		/* Brandbook chapter 15: the web shell uses the available twelve-column
-		   canvas and caps it at 1240px. Mobile remains full-width through the
-		   existing width:100% wrapper. */
-		--app-frame-width: 1240px;
-		/* Navigation stays a compact floating control on wide screens while
-		   expanding naturally to the viewport on phones. */
-		--app-nav-width: 36rem;
+		/* Phone-only app: every screen size renders the same phone column.
+		   Wider viewports only add backdrop around it, never a desktop layout. */
+		--app-frame-width: 30rem;
+		--app-nav-width: var(--app-frame-width);
 		--app-nav-height: 5rem;
 		/* Backdrop shown in the margins outside the centered app frame. */
 		--app-backdrop: var(--secondary);

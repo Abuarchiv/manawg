@@ -29,6 +29,32 @@ export function captureException(err: unknown, context?: Record<string, unknown>
 }
 
 /**
+ * Log an API-route failure as a redacted one-line summary.
+ *
+ * Route catch blocks used to hand the raw error object to `console.error`,
+ * which copies stacks, request details, and provider payloads (Postgres,
+ * PayPal) into platform logs that outlive the request. Only the error name
+ * and a whitespace-collapsed, truncated message survive here. Full reporting
+ * still happens through {@link captureException} when a route answers with
+ * `serverError(err)`.
+ */
+export function logApiError(label: string, ...errors: unknown[]): void {
+	try {
+		console.error(label, errors.map(describeThrown).join(' | '));
+	} catch {
+		// Logging must never break the caller.
+	}
+}
+
+function describeThrown(err: unknown): string {
+	if (err instanceof Error) {
+		const message = err.message.replace(/\s+/g, ' ').trim().slice(0, 300);
+		return message.length > 0 ? `${err.name}: ${message}` : err.name;
+	}
+	return `thrown ${typeof err}`;
+}
+
+/**
  * Wrap a cron handler so a thrown error is logged with its job name before it
  * propagates. Without this, a crashing cron job surfaces only as an opaque 500
  * with no indication of which job failed.

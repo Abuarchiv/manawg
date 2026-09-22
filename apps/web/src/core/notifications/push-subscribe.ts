@@ -2,14 +2,6 @@
 
 import { apiFetch } from '@/core/infra/api-client';
 
-interface PushJson {
-	endpoint?: string;
-	keys?: {
-		p256dh?: string;
-		auth?: string;
-	};
-}
-
 function isStaleMembershipError(error: string): boolean {
 	return (
 		error === 'not_a_member' ||
@@ -61,7 +53,10 @@ async function saveServerPushOptIn(
 	createdSubscription = false,
 	memberToken?: string,
 ): Promise<void> {
-	const json = subscription.toJSON() as PushJson;
+	// `toJSON()` already returns `PushSubscriptionJSON`, so the DOM types are
+	// the contract here — no cast that could silently accept a different
+	// serialization shape.
+	const json = subscription.toJSON();
 	if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) {
 		if (createdSubscription) await subscription.unsubscribe().catch(() => undefined);
 		throw new Error('Push-Abo konnte nicht gelesen werden.');

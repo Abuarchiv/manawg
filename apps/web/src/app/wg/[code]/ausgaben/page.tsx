@@ -37,7 +37,7 @@ import {
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO, formatEuroCents } from '@/core/utils/money';
-import { parseTimestamp } from '@/core/utils/time';
+import { formatWeekLabel, parseTimestamp, parseValidDate, startOfWeek } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { AusgabenHeader } from '@/features/expenses/components/ausgaben/AusgabenHeader';
 import type {
@@ -81,7 +81,7 @@ import {
 import { addMonths } from '@/features/expenses/recurring-expenses';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
-import { Bell, ChevronDown, FileInput, RefreshCw } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -979,6 +979,19 @@ export default function AusgabenPage() {
 	}
 
 	const showSkeleton = initialLoading && expenses.length === 0;
+	// Verlauf nach Kalenderwoche; die API liefert neueste zuerst.
+	const expenseWeeks = useMemo(() => {
+		const weeks: Array<{ label: string; items: typeof expenses }> = [];
+		const now = new Date();
+		for (const expense of expenses) {
+			const date = parseValidDate(expense.occurredAt);
+			const label = date ? formatWeekLabel(startOfWeek(date), now) : 'Datum unbekannt';
+			const current = weeks.at(-1);
+			if (current?.label === label) current.items.push(expense);
+			else weeks.push({ label, items: [expense] });
+		}
+		return weeks;
+	}, [expenses]);
 	const directDebts = useMemo(
 		() =>
 			computeDirectDebts(
@@ -1052,6 +1065,7 @@ export default function AusgabenPage() {
 
 	return (
 		<div data-finance-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
+			<SubNav />
 			<AusgabenHeader
 				expenseCount={expenses.length}
 				initialLoading={initialLoading}
@@ -1064,24 +1078,6 @@ export default function AusgabenPage() {
 						setShowForm(true);
 					}
 				}}
-			/>
-			<SubNav
-				label="Unterbereiche der Finanzen"
-				items={[
-					{
-						href: `${wgBaseHref}/abos`,
-						label: 'Fixkosten',
-						icon: RefreshCw,
-						count: recurringExpenses.length,
-					},
-					{
-						href: `${wgBaseHref}/mahnungen`,
-						label: 'Mahnungen',
-						icon: Bell,
-						count: directDebts.length,
-					},
-					{ href: `${wgBaseHref}/import`, label: 'Import', icon: FileInput },
-				]}
 			/>
 			{showForm && (
 				<ExpenseFormSection
@@ -1266,6 +1262,7 @@ export default function AusgabenPage() {
 					<DebtSummary
 						debts={directDebts}
 						summary={settlementSummary}
+						balances={memberBalances}
 						expenses={expenses}
 						shareCode={wg.shareCode}
 						currentMemberId={identity.memberId}
@@ -1319,24 +1316,31 @@ export default function AusgabenPage() {
 						</EmptyHeader>
 					</Empty>
 				) : (
-					<ul className="flex flex-col gap-3">
-						{expenses.map((expense) => (
-							<ExpenseRow
-								key={expense.id}
-								expense={expense}
-								expanded={expanded.has(expense.id)}
-								onToggleExpand={toggleExpand}
-								onDelete={deleteExpense}
-								onEdit={startEdit}
-								onToggleSettle={toggleSettle}
-								isPending={isPending}
-								memberName={memberName}
-								memberColor={memberColor}
-								currentMemberId={identity.memberId}
-								highlighted={highlightedId === expense.id}
-							/>
+					<div className="flex flex-col gap-5">
+						{expenseWeeks.map((week) => (
+							<section key={week.label} aria-label={week.label} className="flex flex-col gap-2">
+								<h3 className="text-xs font-medium text-muted-foreground">{week.label}</h3>
+								<ul className="flex flex-col gap-3">
+									{week.items.map((expense) => (
+										<ExpenseRow
+											key={expense.id}
+											expense={expense}
+											expanded={expanded.has(expense.id)}
+											onToggleExpand={toggleExpand}
+											onDelete={deleteExpense}
+											onEdit={startEdit}
+											onToggleSettle={toggleSettle}
+											isPending={isPending}
+											memberName={memberName}
+											memberColor={memberColor}
+											currentMemberId={identity.memberId}
+											highlighted={highlightedId === expense.id}
+										/>
+									))}
+								</ul>
+							</section>
 						))}
-					</ul>
+					</div>
 				)}
 			</section>
 		</div>

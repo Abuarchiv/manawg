@@ -7,6 +7,7 @@ import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { readJsonBody } from '@/core/http/read-json';
+import { readListLimit } from '@/core/infra/env';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { chatMessageLimiter, checkRateLimit } from '@/core/rate-limit';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
@@ -19,9 +20,15 @@ import { and, desc, eq, inArray, isNull, lt, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const BODY_MAX = 4000;
-const PAGE_DEFAULT = 50;
-const PAGE_MAX = 100;
+// Operator-tunable via CHAT_MESSAGES_* (see .env.example). Every value runs
+// through readListLimit, so an empty, unparsable or out-of-range setting falls
+// back to / clamps to a working limit instead of disabling the bound.
+// The body ceiling stays well under the route's 64 KiB raw-body cap, and the
+// page ceiling matches the members listing, so neither knob can degenerate
+// into an unbounded read or a whole-request payload.
+const BODY_MAX = readListLimit(process.env, 'CHAT_MESSAGES_BODY_MAX', 4000, 10_000);
+const PAGE_MAX = readListLimit(process.env, 'CHAT_MESSAGES_PAGE_MAX', 100, 500);
+const PAGE_DEFAULT = readListLimit(process.env, 'CHAT_MESSAGES_PAGE_DEFAULT', 50, PAGE_MAX);
 const PREVIEW_LENGTH = 120;
 const MENTIONS_MAX = 20;
 

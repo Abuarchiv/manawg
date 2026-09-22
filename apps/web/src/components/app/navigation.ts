@@ -1,7 +1,5 @@
 import {
-	Bell,
 	CalendarDays,
-	Import,
 	ListChecks,
 	Megaphone,
 	MessageCircle,
@@ -16,11 +14,12 @@ export const WG_SECTIONS = [
 		label: 'Haushalt',
 		iconKey: 'haushalt',
 		pages: [
-			{ slug: 'einkauf', label: 'Einkauf', icon: ListChecks },
-			{ slug: 'putzen', label: 'Putzen', icon: Sparkles },
+			{ slug: 'einkauf', label: 'Einkäufe', icon: ListChecks },
+			{ slug: 'putzen', label: 'Putzplan', icon: Sparkles },
 			{ slug: 'vorraete', label: 'Vorräte', icon: Package },
-			{ slug: 'kalender', label: 'Termine', icon: CalendarDays },
+			{ slug: 'kalender', label: 'Kalender', icon: CalendarDays },
 		],
+		related: [],
 	},
 	{
 		label: 'Finanzen',
@@ -28,9 +27,9 @@ export const WG_SECTIONS = [
 		pages: [
 			{ slug: 'ausgaben', label: 'Ausgaben', icon: Receipt },
 			{ slug: 'abos', label: 'Fixkosten', icon: Repeat2 },
-			{ slug: 'mahnungen', label: 'Mahnungen', icon: Bell },
-			{ slug: 'import', label: 'Import', icon: Import },
 		],
+		// Aktionen der Finanzen mit eigener Seite: kein Segment, aber der Tab bleibt aktiv.
+		related: ['mahnungen', 'import'],
 	},
 	{
 		label: 'Austausch',
@@ -39,6 +38,7 @@ export const WG_SECTIONS = [
 			{ slug: 'pinnwand', label: 'Pinnwand', icon: Megaphone },
 			{ slug: 'chat', label: 'Chat', icon: MessageCircle },
 		],
+		related: [],
 	},
 ] as const;
 

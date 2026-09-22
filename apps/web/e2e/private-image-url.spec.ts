@@ -209,4 +209,33 @@ test.describe('private image URL contract', () => {
 			]),
 		);
 	});
+
+	test('makes the configured provider storage variables fatal in production', () => {
+		const productionEnv = (): Record<string, string> => ({
+			...baseEnv(),
+			VERCEL_ENV: 'production',
+			CRON_SECRET: 'cron-secret',
+			UPSTASH_REDIS_REST_URL: 'https://redis.example',
+			UPSTASH_REDIS_REST_TOKEN: 'upstash-token',
+		});
+
+		const complete = checkEnv(productionEnv());
+		expect(complete.ok).toBe(true);
+
+		const missingRegion = checkEnv((({ AWS_REGION: _dropped, ...rest }) => rest)(productionEnv()));
+		expect(missingRegion.ok).toBe(false);
+		expect(missingRegion.missingRequired).toContain('AWS_REGION');
+		// Production reports the missing variable as required instead of
+		// downgrading it to a degraded feature.
+		expect(missingRegion.degraded.some((entry) => entry.feature === 'image-uploads')).toBe(false);
+
+		const supabase = checkEnv({
+			...productionEnv(),
+			IMAGE_STORAGE_PROVIDER: 'supabase',
+			SUPABASE_SERVICE_ROLE_KEY: 'server-key',
+			SUPABASE_STORAGE_BUCKET: '',
+		});
+		expect(supabase.ok).toBe(false);
+		expect(supabase.missingRequired).toContain('SUPABASE_STORAGE_BUCKET');
+	});
 });

@@ -1,6 +1,7 @@
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
 import { apiError, serverError } from '@/core/errors';
+import { logApiError } from '@/core/infra/observability';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 			.orderBy(desc(wgMembers.createdAt));
 		return NextResponse.json({ wgs: memberships });
 	} catch (err) {
-		console.error('[api/wg/mine GET] failed', err);
+		logApiError('[api/wg/mine GET] failed', err);
 		return serverError('db_error');
 	}
 }

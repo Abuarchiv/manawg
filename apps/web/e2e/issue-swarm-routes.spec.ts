@@ -82,6 +82,19 @@ test('members POST validates the JSON value without a PostBody assertion', async
 
 	expect(source).not.toContain('as PostBody');
 	expect(source).toContain('isPostBody');
+	expect(source).toContain('joinMemberSchema.safeParse');
+});
+
+test('bulk shopping clear requires the WG admin role', async () => {
+	const source = await readSource('app/api/wg/[code]/shopping/route.ts');
+
+	expect(source).toContain('isWgAdmin(wgId, auth.member.memberId)');
+});
+
+test('missing required environment variables reach the boot log', async () => {
+	const source = await readSource('instrumentation.ts');
+
+	expect(source).toContain('console.error(report)');
 });
 
 test('imports preview authenticates before reading the capped body', async () => {

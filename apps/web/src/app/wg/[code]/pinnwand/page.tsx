@@ -3,6 +3,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
+import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
@@ -154,6 +155,7 @@ export default function PinnwandPage(): React.ReactElement {
 	const [draftHydrated, setDraftHydrated] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const appliedPrefillRef = useRef<string | null>(null);
+	const mountedRef = useRef(false);
 	const loadRequestIdRef = useRef(0);
 	const initialLoadStartedRef = useRef(false);
 	const itemCount = items.length;
@@ -236,6 +238,8 @@ export default function PinnwandPage(): React.ReactElement {
 				setLoadError(null);
 				syncOfflineActions(wg.shareCode, { memberId: identity.memberId })
 					.then((synced) => {
+						if (!mountedRef.current) return;
+						if (requestId !== loadRequestIdRef.current) return;
 						refreshCount();
 						if (synced > 0) void load('replace');
 					})
@@ -270,6 +274,13 @@ export default function PinnwandPage(): React.ReactElement {
 		},
 		[encodedShareCode, identity.memberId, wg.shareCode],
 	);
+
+	useEffect(() => {
+		mountedRef.current = true;
+		return () => {
+			mountedRef.current = false;
+		};
+	}, []);
 
 	useEffect(() => {
 		if (initialLoadStartedRef.current) return;
@@ -860,6 +871,7 @@ export default function PinnwandPage(): React.ReactElement {
 
 	return (
 		<div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-4">
+			<SubNav />
 			<PinnwandHeader
 				itemCount={items.length}
 				refreshing={refreshing}

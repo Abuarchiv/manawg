@@ -16,6 +16,8 @@ export interface Chore {
 
 export interface ChoreListResponse {
 	chores: Chore[];
+	/** Erledigungen pro Mitglied seit Monatsbeginn. */
+	monthCompletions?: Record<string, number>;
 }
 
 export interface AbsenceListResponse {

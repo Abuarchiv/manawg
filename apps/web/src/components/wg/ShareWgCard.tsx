@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Spinner } from '@/components/ui/spinner';
 import { copyViaTextArea } from '@/core/utils/clipboard';
 import { cn } from '@/shared/lib/cn';
+import { isValidShareCode } from '@/shared/lib/share-code';
 import { Check, Copy, Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
@@ -21,6 +22,9 @@ interface Props {
 const COPY_FEEDBACK_MS = 1500;
 
 function buildShareUrl(shareCode: string, explicitAppUrl?: string): string {
+	// Never embed a code we cannot trust into link or QR code — a malformed
+	// value would otherwise produce a join URL that fails silently.
+	if (!isValidShareCode(shareCode)) return '/';
 	if (explicitAppUrl) {
 		return `${explicitAppUrl.replace(/\/$/, '')}/?code=${encodeURIComponent(shareCode)}`;
 	}
@@ -222,7 +226,7 @@ function ShareWgBody({
 					className="hover:bg-muted focus-visible:ring-ring flex min-h-[44px] w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					<span className="min-w-0">
-						<span className="text-muted-foreground block text-[11px] font-medium tracking-wider uppercase">
+						<span className="text-muted-foreground block text-xs font-medium tracking-wider uppercase">
 							Code
 						</span>
 						<span className="text-foreground mt-0.5 block font-mono text-base font-medium tracking-[0.12em]">
@@ -251,7 +255,7 @@ function ShareWgBody({
 					className="border-border hover:bg-muted focus-visible:ring-ring flex min-h-[44px] w-full items-center justify-between gap-3 border-t px-3 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					<span className="min-w-0">
-						<span className="text-muted-foreground block text-[11px] font-medium tracking-wider uppercase">
+						<span className="text-muted-foreground block text-xs font-medium tracking-wider uppercase">
 							Link
 						</span>
 						<span className="text-foreground mt-0.5 block truncate text-sm">{shareUrl}</span>

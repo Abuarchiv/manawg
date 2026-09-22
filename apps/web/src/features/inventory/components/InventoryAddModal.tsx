@@ -189,7 +189,7 @@ export function InventoryAddModal({
 				if (!next) requestClose();
 			}}
 		>
-			<DrawerContent className="mx-auto w-[100dvw] max-w-[100dvw] sm:w-full sm:max-w-md">
+			<DrawerContent>
 				<DrawerHeader>
 					<DrawerTitle>{mode === 'edit' ? 'Vorrat bearbeiten' : 'Neuer Vorrat'}</DrawerTitle>
 					<DrawerDescription>

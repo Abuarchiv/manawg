@@ -6,9 +6,16 @@ const root = resolve(import.meta.dirname, '..');
 const appRequire = createRequire(resolve(root, 'apps/web/package.json'));
 const nextRequire = createRequire(appRequire.resolve('next/package.json'));
 const sharp = nextRequire('sharp');
-const g = JSON.parse(
-	await readFile(resolve(root, 'apps/web/src/shared/lib/brand-mark.json'), 'utf8'),
-);
+const brandMarkPath = resolve(root, 'apps/web/src/shared/lib/brand-mark.json');
+let g;
+try {
+	g = JSON.parse(await readFile(brandMarkPath, 'utf8'));
+} catch (error) {
+	const reason = error instanceof Error ? error.message : String(error);
+	console.error(`[brand-assets] cannot load ${brandMarkPath}: ${reason}`);
+	console.error('[brand-assets] restore the brand mark source before regenerating the icons.');
+	process.exit(1);
+}
 const publicDir = resolve(root, 'apps/web/public');
 
 function mark(hole = 22) {

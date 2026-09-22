@@ -45,6 +45,26 @@ test.describe('audit #158 accounting invariants', () => {
 		]);
 	});
 
+	test('nets opposite directions into one pair balance', () => {
+		const expenses = [
+			{
+				paidByMemberId: alice,
+				currency: 'EUR',
+				occurredAt: '2026-01-01T12:00:00.000Z',
+				splits: [{ debtorMemberId: ben, amountCents: 4295, settledAt: null }],
+			},
+			{
+				paidByMemberId: ben,
+				currency: 'EUR',
+				occurredAt: '2026-01-02T12:00:00.000Z',
+				splits: [{ debtorMemberId: alice, amountCents: 3852, settledAt: null }],
+			},
+		];
+		expect(computeBalances(expenses)).toEqual([
+			{ debtorId: ben, creditorId: alice, amountCents: 443, currency: 'EUR' },
+		]);
+	});
+
 	test('keeps dashboard gross balances in separate currency rows', () => {
 		const expenses = [
 			{ id: 'eur', paidByMemberId: alice, amountCents: 1000, currency: 'EUR' },

@@ -16,7 +16,7 @@ const securityHeaders = [
 		value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
 	},
 	{ key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-	{ key: 'X-DNS-Prefetch-Control', value: 'on' },
+	{ key: 'X-DNS-Prefetch-Control', value: 'off' },
 ];
 
 // craftsman-ignore: TS002 — Next.js config requires default export

@@ -168,7 +168,7 @@ function WgShell({
 			<AppBottomNav
 				aria-label="WG Hauptnavigation"
 				data-app-chrome
-				className="fixed inset-x-0 bottom-0 z-30 mx-0 w-[100dvw] min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] min-[576px]:mx-auto"
+				className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
 			>
 				<div className="rounded-[20px] border border-border bg-background">
 					<ul className="flex flex-wrap gap-1 p-1 [&>li]:min-w-fit [&>li]:flex-1">
@@ -184,7 +184,9 @@ function WgShell({
 								href={`${wgBaseHref}/${section.pages[0].slug}`}
 								label={section.label}
 								iconKey={section.iconKey}
-								activePrefixes={section.pages.map((page) => `${wgBaseHref}/${page.slug}`)}
+								activePrefixes={[...section.pages.map((page) => page.slug), ...section.related].map(
+									(slug) => `${wgBaseHref}/${slug}`,
+								)}
 							/>
 						))}
 						{/* Vier Ziele nach Candidate A: Start, Haushalt (Einkauf/Vorräte/

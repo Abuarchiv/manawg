@@ -158,7 +158,10 @@ function AttachmentTrigger({
 		props: mergeProps<'button'>(
 			{
 				type: render ? type : (type ?? 'button'),
-				className: cn('absolute inset-0 z-10 outline-none', className),
+				className: cn(
+					'absolute inset-0 z-10 outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring',
+					className,
+				),
 			},
 			props,
 		),

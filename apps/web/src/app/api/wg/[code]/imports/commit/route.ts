@@ -9,6 +9,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { readShareCode } from '@/core/guards/route-preamble';
 import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
 import type { RouteCtx } from '@/core/infra/api-types';
+import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, importCommitLimiter } from '@/core/rate-limit';
 import { MAX_CSV_BYTES, MAX_OCR_BYTES, readImportJsonBody } from '@/features/expenses/import-body';
 import { type CommitResult, commitImport } from '@/features/expenses/import-commit';
@@ -172,9 +173,11 @@ export async function POST(
 		// replays it instead of committing the import again.
 		if (idemScope && idemKey && replayReservation?.owned) {
 			replayReservation.resolve(result);
-			void setCachedResponse(idemScope, idemKey, result).catch((err) =>
-				console.warn('[imports/commit] idem cache write failed', err),
-			);
+			void setCachedResponse(idemScope, idemKey, result).catch((err) => {
+				if (process.env.NODE_ENV === 'development') {
+					console.warn('[imports/commit] idem cache write failed', err);
+				}
+			});
 		}
 		return NextResponse.json(result);
 	} catch (err) {
@@ -182,7 +185,7 @@ export async function POST(
 		if (err instanceof Error && err.message === 'member_not_in_wg') {
 			return badRequest('member_not_in_wg');
 		}
-		console.error('[imports/commit]', err);
+		logApiError('[imports/commit]', err);
 		return serverError(err);
 	}
 }

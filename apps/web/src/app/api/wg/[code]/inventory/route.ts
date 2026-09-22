@@ -4,6 +4,7 @@ import { badRequest, serverError, tooMany } from '@/core/errors';
 import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { readListLimit } from '@/core/infra/env';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	INVENTORY_CATEGORIES,
@@ -17,6 +18,9 @@ import { getRecentDecrementCounts } from '@/features/inventory/inventory-decreme
 import { asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+
+/** Hard ceiling for `INVENTORY_LIST_LIMIT` — env can lower or raise, never unbound. */
+const INVENTORY_LIST_LIMIT_MAX = 5000;
 
 const createInventorySchema = z.object({
 	name: z.string().trim().min(INVENTORY_LIMITS.NAME_MIN).max(INVENTORY_LIMITS.NAME_MAX),
@@ -41,6 +45,12 @@ export const GET = withWgRoute(
 	async (req, { code }) => {
 		const url = new URL(req.url);
 		const lowStockOnly = url.searchParams.get('lowStock') === 'true';
+		const listLimit = readListLimit(
+			process.env,
+			'INVENTORY_LIST_LIMIT',
+			INVENTORY_LIST_LIMIT,
+			INVENTORY_LIST_LIMIT_MAX,
+		);
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
@@ -49,7 +59,7 @@ export const GET = withWgRoute(
 			.from(wgInventoryItems)
 			.where(eq(wgInventoryItems.wgId, wgId))
 			.orderBy(asc(wgInventoryItems.category), asc(wgInventoryItems.name))
-			.limit(INVENTORY_LIST_LIMIT);
+			.limit(listLimit);
 		const filtered = lowStockOnly ? rawItems.filter((item) => isBelowThreshold(item)) : rawItems;
 		const counts = await getRecentDecrementCounts(filtered.map((i) => i.id));
 		const items = filtered.map((item) => ({

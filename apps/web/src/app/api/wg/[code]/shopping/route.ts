@@ -1,7 +1,8 @@
 import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, shoppingItems } from '@/core/db';
-import { badRequest, conflict, serverError, tooMany } from '@/core/errors';
+import { badRequest, conflict, forbidden, serverError, tooMany } from '@/core/errors';
+import { isWgAdmin } from '@/core/guards/admin';
 import {
 	ReplayCache,
 	type ReplayReservation,
@@ -11,6 +12,7 @@ import {
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
+import { readListLimit } from '@/core/infra/env';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { isOpenShoppingItemDuplicate } from '@/features/shopping/shopping-duplicate';
@@ -22,6 +24,8 @@ const NAME_MIN = 1;
 const NAME_MAX = 120;
 const QUANTITY_MAX = 40;
 const SHOPPING_ITEMS_LIST_LIMIT = 1000;
+/** Hard ceiling for `SHOPPING_ITEMS_LIST_LIMIT` — env can lower or raise, never unbound. */
+const SHOPPING_ITEMS_LIST_LIMIT_MAX = 5000;
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
 type ShoppingCreateWarning =
@@ -49,12 +53,18 @@ export const GET = withWgRoute(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
+		const listLimit = readListLimit(
+			process.env,
+			'SHOPPING_ITEMS_LIST_LIMIT',
+			SHOPPING_ITEMS_LIST_LIMIT,
+			SHOPPING_ITEMS_LIST_LIMIT_MAX,
+		);
 		const items = await db
 			.select()
 			.from(shoppingItems)
 			.where(eq(shoppingItems.wgId, wgId))
 			.orderBy(asc(shoppingItems.boughtAt), asc(shoppingItems.createdAt))
-			.limit(SHOPPING_ITEMS_LIST_LIMIT);
+			.limit(listLimit);
 		return NextResponse.json({ items });
 	},
 	{ fixture: () => NextResponse.json({ items: [] }) },
@@ -181,9 +191,11 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 		const responseBody = { item, warning };
 		if (idemScope && idemKey && replayReservation?.owned) {
 			replayReservation.resolve(responseBody);
-			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) =>
-				console.warn('[shopping POST] idem cache write failed', err),
-			);
+			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) => {
+				if (process.env.NODE_ENV === 'development') {
+					console.warn('[shopping POST] idem cache write failed', err);
+				}
+			});
 		}
 		return NextResponse.json(responseBody);
 	} catch (err) {
@@ -196,6 +208,17 @@ export const DELETE = withWgRoute('shopping DELETE', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
+	// SECURITY: this clears every bought row of the whole WG (unlike the
+	// item-level DELETE, which is limited to the item's own adder), so it is
+	// admin-only like the other bulk/override mutations (chores DELETE,
+	// announcement override). The caller's identity is resolved from the
+	// Supabase session by requireWgMember, so the explicit DB role check
+	// (`isWgAdmin`) is the sound proof here — `isVerifiedWgAdmin` would also
+	// demand the legacy HMAC token, which no flow issues since the Supabase
+	// migration and would lock every admin out of this action.
+	if (!(await isWgAdmin(wgId, auth.member.memberId))) {
+		return forbidden('not_admin', 'not_admin');
+	}
 
 	const limited = await checkRateLimit(
 		wgWriteLimiter,

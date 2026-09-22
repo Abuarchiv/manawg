@@ -11,6 +11,7 @@ import {
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Item, ItemContent, ItemGroup } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
@@ -23,13 +24,14 @@ import {
 	ActionNoticeBanner,
 	type ActionNoticeTone,
 } from '@/components/wg/ActionNoticeBanner';
-import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
+import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import type { Abo, AboFilter } from '@/components/wg/abos-types';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { formatEuroCents } from '@/core/utils/money';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
@@ -310,11 +312,23 @@ export default function AbosPage() {
 	}
 
 	const activeCount = abos.filter((abo) => abo.pausedAt === null).length;
+	// Monatliche Last aktiver Fixkosten: jährliche Abos zählen mit 1/12.
+	const monthly = new Map<string, { totalCents: number; mineCents: number }>();
+	for (const abo of abos) {
+		if (abo.pausedAt !== null) continue;
+		const months = Math.max(1, abo.intervalMonths);
+		const entry = monthly.get(abo.currency) ?? { totalCents: 0, mineCents: 0 };
+		entry.totalCents += abo.amountCents / months;
+		entry.mineCents +=
+			(abo.splits.find((split) => split.debtorMemberId === identity.memberId)?.amountCents ?? 0) /
+			months;
+		monthly.set(abo.currency, entry);
+	}
 
 	return (
 		<div data-finance-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
+			<SubNav />
 			<header className="flex min-w-0 flex-wrap items-center gap-3">
-				<BackLink href={`/wg/${encodedShareCode}/ausgaben`} label="Ausgaben" />
 				<div className="min-w-0 flex-1">
 					<h1 className="font-heading text-2xl font-semibold tracking-tight break-words [overflow-wrap:anywhere]">
 						Fixkosten
@@ -352,6 +366,28 @@ export default function AbosPage() {
 				/>
 			)}
 			{notice && <ActionNoticeBanner notice={notice} />}
+			{!loading && monthly.size > 0 && (
+				<Card size="sm">
+					<CardContent className="grid grid-cols-2 gap-3">
+						<div className="min-w-0">
+							<p className="text-sm text-muted-foreground">Pro Monat</p>
+							{[...monthly].map(([currency, { totalCents }]) => (
+								<p key={currency} className="font-mono text-xl font-semibold tabular-nums">
+									{formatEuroCents(Math.round(totalCents), currency)}
+								</p>
+							))}
+						</div>
+						<div className="min-w-0">
+							<p className="text-sm text-muted-foreground">Dein Anteil</p>
+							{[...monthly].map(([currency, { mineCents }]) => (
+								<p key={currency} className="font-mono text-xl font-semibold tabular-nums">
+									{formatEuroCents(Math.round(mineCents), currency)}
+								</p>
+							))}
+						</div>
+					</CardContent>
+				</Card>
+			)}
 			{loading ? (
 				<AbosSkeleton />
 			) : (

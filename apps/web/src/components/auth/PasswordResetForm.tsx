@@ -8,7 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/shared/lib/cn';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type ResetState = 'ready' | 'submitting' | 'unavailable';
 
@@ -22,6 +22,12 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 	const [password, setPassword] = useState('');
 	const [confirmation, setConfirmation] = useState('');
 	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		setState((prev) =>
+			prev === 'submitting' ? prev : recoveryRequested ? 'ready' : 'unavailable',
+		);
+	}, [recoveryRequested]);
 
 	async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
 		event.preventDefault();

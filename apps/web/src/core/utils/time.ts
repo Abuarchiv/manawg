@@ -7,7 +7,7 @@ export function parseTimestamp(value: string | Date): number | null {
 	return Number.isNaN(timestamp) ? null : timestamp;
 }
 
-function parseValidDate(value: string | Date): Date | null {
+export function parseValidDate(value: string | Date): Date | null {
 	const timestamp = parseTimestamp(value);
 	return timestamp === null ? null : new Date(timestamp);
 }
@@ -78,6 +78,15 @@ export function formatCompactRelativeTime(iso: string, now = Date.now()): string
 	if (!date) return 'unbekannt';
 	const diff = now - date.getTime();
 
+	if (diff <= -MS_PER_MINUTE) {
+		const until = -diff;
+		if (until < MS_PER_HOUR) return `in ${Math.floor(until / MS_PER_MINUTE)} Min.`;
+		if (until < MS_PER_DAY) return `in ${Math.floor(until / MS_PER_HOUR)} Std.`;
+		const days = Math.floor(until / MS_PER_DAY);
+		if (days < 7) return days === 1 ? 'morgen' : `in ${days} T.`;
+		return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' }).format(date);
+	}
+
 	if (diff < MS_PER_MINUTE) return 'jetzt';
 	if (diff < MS_PER_HOUR) return `${Math.round(diff / MS_PER_MINUTE)} Min.`;
 	if (diff < MS_PER_DAY) return `${Math.round(diff / MS_PER_HOUR)} Std.`;
@@ -106,4 +115,21 @@ export function formatTimeFull(iso: string): string {
 		hour: '2-digit',
 		minute: '2-digit',
 	}).format(date);
+}
+
+/** Monday 00:00 (local time) of the week containing `date`. */
+export function startOfWeek(date: Date): Date {
+	const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+	start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+	return start;
+}
+
+/** "Diese Woche", "Letzte Woche" or "Woche ab 08.09." for list section headers. */
+export function formatWeekLabel(weekStart: Date, now = new Date()): string {
+	const weeksAgo = Math.round(
+		(startOfWeek(now).getTime() - weekStart.getTime()) / (7 * MS_PER_DAY),
+	);
+	if (weeksAgo === 0) return 'Diese Woche';
+	if (weeksAgo === 1) return 'Letzte Woche';
+	return `Woche ab ${formatShortDate(weekStart.toISOString())}`;
 }

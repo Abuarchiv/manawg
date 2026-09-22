@@ -14,8 +14,10 @@ import { badRequest, serverError, tooMany } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
 import type { RouteCtx } from '@/core/infra/api-types';
+import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgExportLimiter } from '@/core/rate-limit';
 import {
+	type ExportRow,
 	type ExportSectionKey,
 	buildWgExport,
 	formatExpenseSplitsForExport,
@@ -25,7 +27,7 @@ import {
 	parseRecurringSplitsForExport,
 	toCsv,
 } from '@/core/reads/export';
-import { desc, eq, inArray } from 'drizzle-orm';
+import { asc, desc, eq, inArray } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 function getExportFormat(req: NextRequest): 'json' | 'csv' | null {
@@ -33,6 +35,88 @@ function getExportFormat(req: NextRequest): 'json' | 'csv' | null {
 	if (format === null || format === 'json') return 'json';
 	if (format === 'csv') return 'csv';
 	return null;
+}
+
+/** Per-section paging. The sentinel means "no cap" for plain full dumps. */
+interface ExportPage {
+	limit: number;
+	offset: number;
+}
+
+const NO_EXPORT_LIMIT = Number.MAX_SAFE_INTEGER;
+const EXPORT_LIMIT_MAX = 100_000;
+
+/**
+ * Optional `limit`/`offset` params so a huge WG can page through the dump
+ * instead of materialising every row in one response. Without params the
+ * historic full export is preserved byte for byte.
+ * Returns `null` when a param is present but unusable; `explicit` tells the
+ * response whether to echo a `pagination` block.
+ */
+function parseExportPage(req: NextRequest): { page: ExportPage; explicit: boolean } | null {
+	const params = req.nextUrl.searchParams;
+	const rawLimit = params.get('limit');
+	const rawOffset = params.get('offset');
+	const limit = rawLimit === null ? NO_EXPORT_LIMIT : Number.parseInt(rawLimit, 10);
+	const offset = rawOffset === null ? 0 : Number.parseInt(rawOffset, 10);
+	if (!Number.isFinite(limit) || limit < 1 || limit > EXPORT_LIMIT_MAX) return null;
+	if (!Number.isFinite(offset) || offset < 0) return null;
+	return { page: { limit, offset }, explicit: rawLimit !== null || rawOffset !== null };
+}
+
+const ALL_EXPORT_SECTIONS: ExportSectionKey[] = [
+	'members',
+	'expenses',
+	'recurringExpenses',
+	'shoppingItems',
+	'chores',
+	'absences',
+	'announcements',
+	'auditEvents',
+];
+
+/**
+ * Optional `sections=members,expenses` param for the JSON dump: only the
+ * requested sections are fetched, bounding both memory and query load.
+ * Returns `null` when a requested key is unknown.
+ */
+function parseRequestedSections(req: NextRequest): ExportSectionKey[] | null {
+	const raw = req.nextUrl.searchParams.get('sections');
+	if (raw === null) return ALL_EXPORT_SECTIONS;
+	const parts = raw
+		.split(',')
+		.map((part) => part.trim())
+		.filter((part) => part.length > 0);
+	if (parts.length === 0) return null;
+	const sections: ExportSectionKey[] = [];
+	for (const part of parts) {
+		if (!isExportSectionKey(part)) return null;
+		if (!sections.includes(part)) sections.push(part);
+	}
+	return sections;
+}
+
+type SectionResult<T> =
+	| { section: ExportSectionKey; ok: true; value: T }
+	| { section: ExportSectionKey; ok: false };
+
+/**
+ * One section's failure must not sink the export: failures are logged with
+ * the section name and reported per section instead of aborting everything.
+ */
+async function settleSection<T>(
+	section: ExportSectionKey,
+	fn: () => Promise<T>,
+): Promise<SectionResult<T>> {
+	try {
+		return { section, ok: true, value: await fn() };
+	} catch (err) {
+		console.error(
+			`[export GET] section "${section}" failed:`,
+			err instanceof Error ? `${err.name}: ${err.message}` : 'unknown error',
+		);
+		return { section, ok: false };
+	}
 }
 
 function csvExportResponse(
@@ -90,10 +174,14 @@ async function loadSplitsByExpense(expenseIds: string[]): Promise<Map<string, Ex
  */
 
 async function fetchMemberRows(wgId: string) {
+	// Always the FULL roster: members are join-capped (small) and double as
+	// the name directory for every other section — paging is only applied to
+	// the potentially unbounded sections below.
 	return db
 		.select({ id: wgMembers.id, name: wgMembers.name, createdAt: wgMembers.createdAt })
 		.from(wgMembers)
-		.where(eq(wgMembers.wgId, wgId));
+		.where(eq(wgMembers.wgId, wgId))
+		.orderBy(asc(wgMembers.createdAt), asc(wgMembers.id));
 }
 type MemberRows = Awaited<ReturnType<typeof fetchMemberRows>>;
 
@@ -111,7 +199,7 @@ function mapMemberRows(memberRows: MemberRows) {
 	}));
 }
 
-async function fetchExpenseRows(wgId: string) {
+async function fetchExpenseRows(wgId: string, page: ExportPage) {
 	return db
 		.select({
 			id: expenses.id,
@@ -124,7 +212,9 @@ async function fetchExpenseRows(wgId: string) {
 		})
 		.from(expenses)
 		.where(eq(expenses.wgId, wgId))
-		.orderBy(desc(expenses.occurredAt));
+		.orderBy(desc(expenses.occurredAt), desc(expenses.id))
+		.limit(page.limit)
+		.offset(page.offset);
 }
 function mapExpenseRows(
 	expenseRows: Awaited<ReturnType<typeof fetchExpenseRows>>,
@@ -143,7 +233,7 @@ function mapExpenseRows(
 	}));
 }
 
-async function fetchRecurringRows(wgId: string) {
+async function fetchRecurringRows(wgId: string, page: ExportPage) {
 	return db
 		.select({
 			id: recurringExpenses.id,
@@ -158,7 +248,9 @@ async function fetchRecurringRows(wgId: string) {
 		})
 		.from(recurringExpenses)
 		.where(eq(recurringExpenses.wgId, wgId))
-		.orderBy(desc(recurringExpenses.nextDueAt));
+		.orderBy(desc(recurringExpenses.nextDueAt), desc(recurringExpenses.id))
+		.limit(page.limit)
+		.offset(page.offset);
 }
 function mapRecurringRows(
 	recurringRows: Awaited<ReturnType<typeof fetchRecurringRows>>,
@@ -178,7 +270,7 @@ function mapRecurringRows(
 	}));
 }
 
-async function fetchShoppingRows(wgId: string) {
+async function fetchShoppingRows(wgId: string, page: ExportPage) {
 	return db
 		.select({
 			id: shoppingItems.id,
@@ -189,7 +281,9 @@ async function fetchShoppingRows(wgId: string) {
 		})
 		.from(shoppingItems)
 		.where(eq(shoppingItems.wgId, wgId))
-		.orderBy(desc(shoppingItems.createdAt));
+		.orderBy(desc(shoppingItems.createdAt), desc(shoppingItems.id))
+		.limit(page.limit)
+		.offset(page.offset);
 }
 function mapShoppingRows(shoppingRows: Awaited<ReturnType<typeof fetchShoppingRows>>) {
 	return shoppingRows.map((item) => ({
@@ -201,7 +295,7 @@ function mapShoppingRows(shoppingRows: Awaited<ReturnType<typeof fetchShoppingRo
 	}));
 }
 
-async function fetchChoreRows(wgId: string) {
+async function fetchChoreRows(wgId: string, page: ExportPage) {
 	return db
 		.select({
 			id: chores.id,
@@ -212,7 +306,9 @@ async function fetchChoreRows(wgId: string) {
 		})
 		.from(chores)
 		.where(eq(chores.wgId, wgId))
-		.orderBy(desc(chores.nextDueAt));
+		.orderBy(desc(chores.nextDueAt), desc(chores.id))
+		.limit(page.limit)
+		.offset(page.offset);
 }
 function mapChoreRows(
 	choreRows: Awaited<ReturnType<typeof fetchChoreRows>>,
@@ -227,7 +323,7 @@ function mapChoreRows(
 	}));
 }
 
-async function fetchAbsenceRows(wgId: string) {
+async function fetchAbsenceRows(wgId: string, page: ExportPage) {
 	return db
 		.select({
 			id: memberAbsences.id,
@@ -239,7 +335,9 @@ async function fetchAbsenceRows(wgId: string) {
 		})
 		.from(memberAbsences)
 		.where(eq(memberAbsences.wgId, wgId))
-		.orderBy(desc(memberAbsences.startDate));
+		.orderBy(desc(memberAbsences.startDate), desc(memberAbsences.id))
+		.limit(page.limit)
+		.offset(page.offset);
 }
 function mapAbsenceRows(
 	absenceRows: Awaited<ReturnType<typeof fetchAbsenceRows>>,
@@ -255,7 +353,7 @@ function mapAbsenceRows(
 	}));
 }
 
-async function fetchAnnouncementRows(wgId: string) {
+async function fetchAnnouncementRows(wgId: string, page: ExportPage) {
 	return db
 		.select({
 			id: announcements.id,
@@ -268,7 +366,9 @@ async function fetchAnnouncementRows(wgId: string) {
 		})
 		.from(announcements)
 		.where(eq(announcements.wgId, wgId))
-		.orderBy(desc(announcements.createdAt));
+		.orderBy(desc(announcements.createdAt), desc(announcements.id))
+		.limit(page.limit)
+		.offset(page.offset);
 }
 function mapAnnouncementRows(
 	announcementRows: Awaited<ReturnType<typeof fetchAnnouncementRows>>,
@@ -285,7 +385,7 @@ function mapAnnouncementRows(
 	}));
 }
 
-async function fetchAuditRows(wgId: string) {
+async function fetchAuditRows(wgId: string, page: ExportPage) {
 	return db
 		.select({
 			id: auditEvents.id,
@@ -297,7 +397,9 @@ async function fetchAuditRows(wgId: string) {
 		})
 		.from(auditEvents)
 		.where(eq(auditEvents.wgId, wgId))
-		.orderBy(desc(auditEvents.createdAt));
+		.orderBy(desc(auditEvents.createdAt), desc(auditEvents.id))
+		.limit(page.limit)
+		.offset(page.offset);
 }
 function mapAuditRows(
 	auditRows: Awaited<ReturnType<typeof fetchAuditRows>>,
@@ -372,6 +474,10 @@ export async function GET(
 		const limit = await checkRateLimit(wgExportLimiter, `export:${wg.id}:${auth.member.memberId}`);
 		if (!limit.success) return tooMany('rate_limited');
 
+		const parsedPage = parseExportPage(req);
+		if (!parsedPage) return badRequest('pagination_invalid');
+		const { page, explicit: pageExplicit } = parsedPage;
+
 		if (format === 'csv') {
 			const requestedSection = req.nextUrl.searchParams.get('section');
 			if (requestedSection !== null && !isExportSectionKey(requestedSection)) {
@@ -379,118 +485,179 @@ export async function GET(
 			}
 			const section = requestedSection ?? 'expenses';
 
-			if (section === 'members') {
-				return csvExportResponse(
-					wg.shareCode,
-					section,
-					mapMemberRows(await fetchMemberRows(wg.id)),
-				);
-			}
-
-			if (section === 'expenses') {
-				const [memberById, expenseRows] = await Promise.all([
+			// The section's own queries are the only things that can fail here —
+			// a failure is logged with the section name and surfaced as a
+			// section-specific error instead of a generic 500.
+			const settled = await settleSection(section, async () => {
+				if (section === 'members') {
+					return mapMemberRows(await fetchMemberRows(wg.id));
+				}
+				if (section === 'expenses') {
+					const [memberById, expenseRows] = await Promise.all([
+						getMemberById(wg.id),
+						fetchExpenseRows(wg.id, page),
+					]);
+					const splitsByExpense = await loadSplitsByExpense(
+						expenseRows.map((expense) => expense.id),
+					);
+					return mapExpenseRows(expenseRows, memberById, splitsByExpense);
+				}
+				if (section === 'recurringExpenses') {
+					const [memberById, recurringRows] = await Promise.all([
+						getMemberById(wg.id),
+						fetchRecurringRows(wg.id, page),
+					]);
+					return mapRecurringRows(recurringRows, memberById);
+				}
+				if (section === 'shoppingItems') {
+					return mapShoppingRows(await fetchShoppingRows(wg.id, page));
+				}
+				if (section === 'chores') {
+					const [memberById, choreRows] = await Promise.all([
+						getMemberById(wg.id),
+						fetchChoreRows(wg.id, page),
+					]);
+					return mapChoreRows(choreRows, memberById);
+				}
+				if (section === 'absences') {
+					const [memberById, absenceRows] = await Promise.all([
+						getMemberById(wg.id),
+						fetchAbsenceRows(wg.id, page),
+					]);
+					return mapAbsenceRows(absenceRows, memberById);
+				}
+				if (section === 'announcements') {
+					const [memberById, announcementRows] = await Promise.all([
+						getMemberById(wg.id),
+						fetchAnnouncementRows(wg.id, page),
+					]);
+					return mapAnnouncementRows(announcementRows, memberById);
+				}
+				const [memberById, auditRows] = await Promise.all([
 					getMemberById(wg.id),
-					fetchExpenseRows(wg.id),
+					fetchAuditRows(wg.id, page),
 				]);
-				const splitsByExpense = await loadSplitsByExpense(expenseRows.map((expense) => expense.id));
-				return csvExportResponse(
-					wg.shareCode,
-					section,
-					mapExpenseRows(expenseRows, memberById, splitsByExpense),
-				);
-			}
-
-			if (section === 'recurringExpenses') {
-				const [memberById, recurringRows] = await Promise.all([
-					getMemberById(wg.id),
-					fetchRecurringRows(wg.id),
-				]);
-				return csvExportResponse(
-					wg.shareCode,
-					section,
-					mapRecurringRows(recurringRows, memberById),
-				);
-			}
-
-			if (section === 'shoppingItems') {
-				return csvExportResponse(
-					wg.shareCode,
-					section,
-					mapShoppingRows(await fetchShoppingRows(wg.id)),
-				);
-			}
-
-			if (section === 'chores') {
-				const [memberById, choreRows] = await Promise.all([
-					getMemberById(wg.id),
-					fetchChoreRows(wg.id),
-				]);
-				return csvExportResponse(wg.shareCode, section, mapChoreRows(choreRows, memberById));
-			}
-
-			if (section === 'absences') {
-				const [memberById, absenceRows] = await Promise.all([
-					getMemberById(wg.id),
-					fetchAbsenceRows(wg.id),
-				]);
-				return csvExportResponse(wg.shareCode, section, mapAbsenceRows(absenceRows, memberById));
-			}
-
-			if (section === 'announcements') {
-				const [memberById, announcementRows] = await Promise.all([
-					getMemberById(wg.id),
-					fetchAnnouncementRows(wg.id),
-				]);
-				return csvExportResponse(
-					wg.shareCode,
-					section,
-					mapAnnouncementRows(announcementRows, memberById),
-				);
-			}
-
-			const [memberById, auditRows] = await Promise.all([
-				getMemberById(wg.id),
-				fetchAuditRows(wg.id),
-			]);
-			return csvExportResponse(wg.shareCode, section, mapAuditRows(auditRows, memberById));
+				return mapAuditRows(auditRows, memberById);
+			});
+			if (!settled.ok) return serverError(null, `export_section_failed:${section}`);
+			return csvExportResponse(wg.shareCode, section, settled.value);
 		}
 
-		const [
-			memberRows,
-			expenseRows,
-			recurringRows,
-			shoppingRows,
-			choreRows,
-			absenceRows,
-			announcementRows,
-			auditRows,
-		] = await Promise.all([
-			fetchMemberRows(wg.id),
-			fetchExpenseRows(wg.id),
-			fetchRecurringRows(wg.id),
-			fetchShoppingRows(wg.id),
-			fetchChoreRows(wg.id),
-			fetchAbsenceRows(wg.id),
-			fetchAnnouncementRows(wg.id),
-			fetchAuditRows(wg.id),
-		]);
-		const memberById = toMemberById(memberRows);
-		const splitsByExpense = await loadSplitsByExpense(expenseRows.map((expense) => expense.id));
+		const parsedSections = parseRequestedSections(req);
+		if (!parsedSections) return badRequest('section_invalid');
+		const requestedSections = parsedSections;
+
+		// Sections that join member names. The directory fetch is shared and
+		// always covers the full roster; its failure marks exactly those
+		// sections failed that depend on it.
+		const DEPENDENT_ON_MEMBERS: Exclude<ExportSectionKey, 'members'>[] = [
+			'expenses',
+			'recurringExpenses',
+			'chores',
+			'absences',
+			'announcements',
+			'auditEvents',
+		];
+		const needsDirectory = requestedSections.some((section) =>
+			DEPENDENT_ON_MEMBERS.includes(section as Exclude<ExportSectionKey, 'members'>),
+		);
+		const wantsMembers = requestedSections.includes('members');
+		let memberRowsFetched: Awaited<ReturnType<typeof fetchMemberRows>> | null = null;
+		let directoryFailed = false;
+		if (wantsMembers || needsDirectory) {
+			try {
+				memberRowsFetched = await fetchMemberRows(wg.id);
+			} catch (err) {
+				directoryFailed = true;
+				console.error(
+					'[export GET] section "members" failed:',
+					err instanceof Error ? `${err.name}: ${err.message}` : 'unknown error',
+				);
+			}
+		}
+		const memberById = memberRowsFetched
+			? toMemberById(memberRowsFetched)
+			: new Map<string, string>();
+		const requireDirectory = () => {
+			if (directoryFailed) throw new Error('member_directory_unavailable');
+		};
+
+		const loaders: Record<Exclude<ExportSectionKey, 'members'>, () => Promise<ExportRow[]>> = {
+			expenses: async () => {
+				requireDirectory();
+				const expenseRows = await fetchExpenseRows(wg.id, page);
+				const splitsByExpense = await loadSplitsByExpense(expenseRows.map((expense) => expense.id));
+				return mapExpenseRows(expenseRows, memberById, splitsByExpense);
+			},
+			recurringExpenses: async () => {
+				requireDirectory();
+				return mapRecurringRows(await fetchRecurringRows(wg.id, page), memberById);
+			},
+			shoppingItems: async () => mapShoppingRows(await fetchShoppingRows(wg.id, page)),
+			chores: async () => {
+				requireDirectory();
+				return mapChoreRows(await fetchChoreRows(wg.id, page), memberById);
+			},
+			absences: async () => {
+				requireDirectory();
+				return mapAbsenceRows(await fetchAbsenceRows(wg.id, page), memberById);
+			},
+			announcements: async () => {
+				requireDirectory();
+				return mapAnnouncementRows(await fetchAnnouncementRows(wg.id, page), memberById);
+			},
+			auditEvents: async () => {
+				requireDirectory();
+				return mapAuditRows(await fetchAuditRows(wg.id, page), memberById);
+			},
+		};
+
+		const failedSections: string[] = [];
+		const rowsBySection = new Map<ExportSectionKey, ExportRow[]>();
+		if (wantsMembers) {
+			if (directoryFailed || !memberRowsFetched) failedSections.push('members');
+			// Members are never paged (see fetchMemberRows) — the full roster
+			// doubles as the name directory for every other section.
+			else rowsBySection.set('members', mapMemberRows(memberRowsFetched));
+		}
+
+		const dependentKeys = requestedSections.filter(
+			(section): section is Exclude<ExportSectionKey, 'members'> => section !== 'members',
+		);
+		const settledSections = await Promise.all(
+			dependentKeys.map((section) => settleSection(section, loaders[section])),
+		);
+		for (const result of settledSections) {
+			if (result.ok) rowsBySection.set(result.section, result.value);
+			else failedSections.push(result.section);
+		}
+
+		// Only when literally everything failed is the export itself a failure —
+		// otherwise the caller receives the sections that did succeed plus the
+		// list of failed ones instead of a bare 500.
+		if (requestedSections.length > 0 && failedSections.length === requestedSections.length) {
+			return serverError(null, 'export_all_sections_failed');
+		}
+
 		const data = buildWgExport({
 			wg: { name: wg.name, shareCode: wg.shareCode },
-			members: mapMemberRows(memberRows),
-			expenses: mapExpenseRows(expenseRows, memberById, splitsByExpense),
-			recurringExpenses: mapRecurringRows(recurringRows, memberById),
-			shoppingItems: mapShoppingRows(shoppingRows),
-			chores: mapChoreRows(choreRows, memberById),
-			absences: mapAbsenceRows(absenceRows, memberById),
-			announcements: mapAnnouncementRows(announcementRows, memberById),
-			auditEvents: mapAuditRows(auditRows, memberById),
+			members: rowsBySection.get('members') ?? [],
+			expenses: rowsBySection.get('expenses') ?? [],
+			recurringExpenses: rowsBySection.get('recurringExpenses') ?? [],
+			shoppingItems: rowsBySection.get('shoppingItems') ?? [],
+			chores: rowsBySection.get('chores') ?? [],
+			absences: rowsBySection.get('absences') ?? [],
+			announcements: rowsBySection.get('announcements') ?? [],
+			auditEvents: rowsBySection.get('auditEvents') ?? [],
 		});
 
-		return NextResponse.json(data);
+		return NextResponse.json({
+			...data,
+			failedSections,
+			...(pageExplicit ? { pagination: { limit: page.limit, offset: page.offset } } : {}),
+		});
 	} catch (err) {
-		console.error('[export GET]', err);
+		logApiError('[export GET]', err);
 		return serverError(err);
 	}
 }

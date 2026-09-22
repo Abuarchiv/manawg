@@ -85,6 +85,8 @@ export function ToastContainer() {
 		<div
 			className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--app-nav-height,5rem)+0.5rem)] z-50 mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-2 px-4"
 			aria-label="Benachrichtigungen"
+			// biome-ignore lint/a11y/useSemanticElements: role="region" names the fixed toast stack; <section> would add another landmark.
+			role="region"
 		>
 			{toasts.map((toast) => (
 				<div key={toast.id} className="pointer-events-auto">

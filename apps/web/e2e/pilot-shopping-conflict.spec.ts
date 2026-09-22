@@ -75,8 +75,7 @@ test('refreshes the list after a duplicate add and keeps the draft values', asyn
 	await setupMember(page);
 	await navigateToFeature(page, `/wg/${shareCode}/einkauf`);
 	await dismissOnboarding(page);
-	await page.getByLabel('Artikel-Name').fill('Milch');
-	await page.getByLabel('Menge (optional)').fill('2 L');
+	await page.getByLabel('Artikel-Name').fill('2 L Milch');
 	await page.getByRole('button', { name: 'Artikel hinzufügen' }).click();
 
 	await expect(
@@ -86,8 +85,7 @@ test('refreshes the list after a duplicate add and keeps the draft values', asyn
 	).toBeVisible();
 	await expect(page.locator('[data-shopping-row]')).toHaveCount(1);
 	await expect(page.locator('[data-shopping-row]')).toContainText('Milch');
-	await expect(page.getByLabel('Artikel-Name')).toHaveValue('Milch');
-	await expect(page.getByLabel('Menge (optional)')).toHaveValue('2 L');
+	await expect(page.getByLabel('Artikel-Name')).toHaveValue('2 L Milch');
 	expect(postCalls).toBe(1);
 	expect(getCalls).toBeGreaterThanOrEqual(2);
 });

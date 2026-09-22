@@ -37,7 +37,14 @@ function invalidateTransactionalDb(pool: Pool, err: Error): void {
 function buildTransactionalDb(): CachedTransactionalDb {
 	const url = resolveTransactionConnectionString();
 	const pool = new Pool({ connectionString: url, max: 5 });
-	const dbInstance = drizzle(pool, { schema }) as unknown as TransactionalDb;
+	const drizzleDb = drizzle(pool, { schema });
+	// A typed wrapper instead of `as unknown as TransactionalDb`: the cast
+	// used to hide any drift between drizzle's real transaction signature and
+	// this module's expectation. If drizzle changes its API, this assignment
+	// now fails at compile time instead of at runtime.
+	const dbInstance: TransactionalDb = {
+		transaction: (fn) => drizzleDb.transaction(fn),
+	};
 	pool.on('error', (err) => invalidateTransactionalDb(pool, err));
 	return { db: dbInstance, pool };
 }
