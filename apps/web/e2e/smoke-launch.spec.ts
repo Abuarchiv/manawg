@@ -290,6 +290,7 @@ test.describe('ManaWG launch smoke', () => {
 			const memberHeaders = {
 				'x-manawg-member-id': memberId,
 				'x-manawg-member-token': memberToken,
+				origin: new URL(page.url()).origin,
 			};
 
 			const closeJoining = await page.request.patch(`/api/wg/${createdShareCode}`, {
@@ -298,6 +299,7 @@ test.describe('ManaWG launch smoke', () => {
 			});
 			expect(closeJoining.status(), await closeJoining.text()).toBe(200);
 			const existingMemberJoin = await page.request.post(`/api/wg/${createdShareCode}/members`, {
+				headers: memberHeaders,
 				data: { name: 'Smoke Tester' },
 			});
 			expect(existingMemberJoin.status()).toBe(409);
