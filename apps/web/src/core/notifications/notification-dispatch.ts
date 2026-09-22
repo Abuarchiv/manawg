@@ -38,6 +38,27 @@ interface WebPushResult {
 }
 
 const PUSH_RETRY_DELAYS_MS = [100, 300] as const;
+// Fan-out is chunked instead of firing every member's push at once: large
+// WGs would otherwise open one burst of connections and risk provider rate
+// limits. WG membership is capped, so batches stay small either way.
+const PUSH_BATCH_SIZE = 10;
+const PUSH_BATCH_DELAY_MS = 250;
+
+async function mapInBatches<T, R>(
+	items: readonly T[],
+	batchSize: number,
+	fn: (item: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+	const results: PromiseSettledResult<R>[] = [];
+	for (let start = 0; start < items.length; start += batchSize) {
+		const batch = items.slice(start, start + batchSize);
+		results.push(...(await Promise.allSettled(batch.map(fn))));
+		if (start + batchSize < items.length) {
+			await new Promise((resolve) => setTimeout(resolve, PUSH_BATCH_DELAY_MS));
+		}
+	}
+	return results;
+}
 
 export function buildNotificationUrl(shareCode: string, urlPath: string): string {
 	const normalizedPath = urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
@@ -221,12 +242,10 @@ export async function dispatchNotification(
 			return member.notifyShopping;
 		});
 
-	const pushResults = await Promise.allSettled(
-		targetMembers.map(async (member) => {
-			if (!member.pushOptIn) return { sent: 0, failures: [] };
-			return sendWebPush(member.id, { title: message.title, body: message.body, url });
-		}),
-	);
+	const pushResults = await mapInBatches(targetMembers, PUSH_BATCH_SIZE, async (member) => {
+		if (!member.pushOptIn) return { sent: 0, failures: [] };
+		return sendWebPush(member.id, { title: message.title, body: message.body, url });
+	});
 
 	const sentTotal = pushResults
 		.filter(
