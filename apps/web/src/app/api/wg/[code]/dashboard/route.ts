@@ -1,7 +1,8 @@
-import { serverError } from '@/core/errors';
+import { serverError, tooMany } from '@/core/errors';
 import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { buildE2EDashboardData } from '@/core/infra/e2e-db-down';
+import { checkRateLimit, dashboardLimiter } from '@/core/rate-limit';
 import { type NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -29,6 +30,15 @@ export async function GET(
 		]);
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
+
+		// Route-level throttle on top of the middleware's per-IP read limit:
+		// this response is the WG's financial overview, so scraping it gets its
+		// own per-member bucket instead of sharing the general read budget.
+		const limit = await checkRateLimit(
+			dashboardLimiter,
+			`dashboard:${auth.wg.id}:${auth.member.memberId}`,
+		);
+		if (!limit.success) return tooMany('rate_limited');
 
 		const data = await loadDashboardData(auth.wg.id, auth.member.memberId, code);
 		return NextResponse.json(data, {

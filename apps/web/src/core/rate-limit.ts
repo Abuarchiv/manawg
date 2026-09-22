@@ -58,6 +58,11 @@ export const uploadSignLimiter = build(20, 60, 'upload-sign'); // 20 upload sign
 // chat, announcements). The middleware's 120 reads/min is far too generous for
 // that, so it gets its own bucket on top.
 export const wgExportLimiter = build(20, 3600, 'wg-export'); // 20 exports / hour / member
+// The dashboard aggregates the WG's financial state. The middleware's
+// 120 reads/min is per IP and shared with every other GET, so the route gets
+// its own per-member bucket: scraping balances stays throttled even from a
+// rotating pool of IPs.
+export const dashboardLimiter = build(60, 60, 'dashboard'); // 60 dashboard reads / min / member
 export const healthLimiter = build(60, 60, 'health'); // 60 probes / min / IP — outside the middleware matcher
 export const importLimiter = build(10, 3600, 'import-preview'); // 10 preview / hour / member
 export const importCommitLimiter = build(3, 3600, 'import-commit'); // 3 commit / hour / member
