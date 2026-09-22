@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiFetch } from '@/core/infra/api-client';
+import { captureException } from '@/core/infra/observability';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
@@ -123,8 +124,11 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 			} else if (res.status === 401 && res.error === 'not_a_member') {
 				setStateIdentity(null);
 			}
-		} catch {
-			// Network blip — ignore; next refresh will retry.
+		} catch (err) {
+			// Network blip — the paused interval/focus listener retries. Log it
+			// so silently stale member lists stay diagnosable instead of
+			// vanishing into an empty catch block.
+			captureException(err, { action: 'refreshMembers', shareCode: encodedShareCode });
 		}
 	}, [encodedShareCode, identity]);
 
