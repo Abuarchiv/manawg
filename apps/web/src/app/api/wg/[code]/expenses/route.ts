@@ -195,6 +195,7 @@ export async function POST(
 		if (!limited.success) return tooMany();
 
 		const paidBy = resolveExpensePayer(paidByMemberId, auth.member.memberId);
+		if (paidBy === null) return badRequest('member_id_invalid');
 		const debtorIds = Array.from(new Set(validatedSplits.map((s) => s.debtorMemberId)));
 
 		const guard = checkPaidByGuard(paidBy, auth.member.memberId, debtorIds);
@@ -264,9 +265,11 @@ export async function POST(
 		// local same-key retries already share the resolved replay promise.
 		if (idemScope && idemKey && replayReservation?.owned) {
 			replayReservation.resolve(responseBody);
-			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) =>
-				console.warn('[expenses POST] idem cache write failed', err),
-			);
+			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) => {
+				if (process.env.NODE_ENV === 'development') {
+					console.warn('[expenses POST] idem cache write failed', err);
+				}
+			});
 		}
 		return NextResponse.json(responseBody);
 	} catch (err) {

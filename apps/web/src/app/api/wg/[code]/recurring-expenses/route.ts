@@ -267,9 +267,11 @@ export async function POST(
 		const responseBody = { recurringExpense: serialize(template) };
 		if (idemScope && idemKey && replayReservation?.owned) {
 			replayReservation.resolve(responseBody);
-			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) =>
-				console.warn('[recurring-expenses POST] idem cache write failed', err),
-			);
+			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) => {
+				if (process.env.NODE_ENV === 'development') {
+					console.warn('[recurring-expenses POST] idem cache write failed', err);
+				}
+			});
 		}
 		return NextResponse.json(responseBody);
 	} catch (err) {

@@ -22,14 +22,16 @@ interface ExpenseSplitInput {
  * Payer identity comes from the request body so the user can record an
  * expense paid by another roommate (common: someone forgot their phone /
  * asks Lisa to log "Tom paid for pizza"). Falls back to the authenticated
- * caller when the body value is missing or not a valid member id shape.
+ * caller only when the body omits the field; a supplied-but-invalid member id
+ * returns `null` so the route can reject it instead of silently attributing
+ * the expense to the caller.
  */
-export function resolveExpensePayer(bodyPaidByMemberId: unknown, callerId: string): string {
-	const bodyPaidBy =
-		typeof bodyPaidByMemberId === 'string' && isUuid(bodyPaidByMemberId)
-			? bodyPaidByMemberId
-			: null;
-	return bodyPaidBy ?? callerId;
+export function resolveExpensePayer(bodyPaidByMemberId: unknown, callerId: string): string | null {
+	if (bodyPaidByMemberId === undefined || bodyPaidByMemberId === null) return callerId;
+	if (typeof bodyPaidByMemberId === 'string' && isUuid(bodyPaidByMemberId)) {
+		return bodyPaidByMemberId;
+	}
+	return null;
 }
 
 type PaidByGuardResult = { ok: true } | { ok: false; reason: 'paid_by_must_include_caller' };

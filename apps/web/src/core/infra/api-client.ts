@@ -11,7 +11,7 @@ export async function apiFetch<T>(
 	const { memberId, memberToken, ...rest } = init;
 	const method = rest.method ?? 'GET';
 
-	const headers = new Headers(rest.headers as HeadersInit | undefined);
+	const headers = new Headers(rest.headers);
 	if (
 		process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true' &&
 		process.env.NEXT_PUBLIC_DB_DOWN === 'true' &&

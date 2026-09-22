@@ -279,9 +279,11 @@ export const POST = withWgRoute<{ id: string }>(
 			const responseBody = { chore: updated };
 			if (idemScope && idemKey && replayReservation?.owned) {
 				replayReservation.resolve(responseBody);
-				void setCachedResponse(idemScope, idemKey, responseBody).catch((err) =>
-					console.warn('[chore complete POST] idem cache write failed', err),
-				);
+				void setCachedResponse(idemScope, idemKey, responseBody).catch((err) => {
+					if (process.env.NODE_ENV === 'development') {
+						console.warn('[chore complete POST] idem cache write failed', err);
+					}
+				});
 			}
 			return NextResponse.json(responseBody);
 		} catch (err) {

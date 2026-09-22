@@ -58,7 +58,9 @@ function Switch({
 	};
 
 	return (
-		<SwitchProvider value={{ isChecked: isChecked ?? false, setIsChecked, isPressed, setIsPressed }}>
+		<SwitchProvider
+			value={{ isChecked: isChecked ?? false, setIsChecked, isPressed, setIsPressed }}
+		>
 			<SwitchPrimitives.Root
 				{...rootProps}
 				render={

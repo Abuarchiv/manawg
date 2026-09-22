@@ -41,7 +41,7 @@ export async function readShareCode<P extends Record<string, string> = Record<ne
 	const { code: rawCode, ...rest } = await ctx.params;
 	const code = normalizeShareCode(rawCode);
 	if (!isValidShareCode(code)) return { ok: false, response: badRequest('invalid_share_code') };
-	return { ok: true, code, ...(rest as unknown as P) };
+	return { ok: true, code, ...rest };
 }
 
 type E2EFixtureResult =

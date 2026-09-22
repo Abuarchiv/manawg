@@ -173,9 +173,11 @@ export async function POST(
 		// replays it instead of committing the import again.
 		if (idemScope && idemKey && replayReservation?.owned) {
 			replayReservation.resolve(result);
-			void setCachedResponse(idemScope, idemKey, result).catch((err) =>
-				console.warn('[imports/commit] idem cache write failed', err),
-			);
+			void setCachedResponse(idemScope, idemKey, result).catch((err) => {
+				if (process.env.NODE_ENV === 'development') {
+					console.warn('[imports/commit] idem cache write failed', err);
+				}
+			});
 		}
 		return NextResponse.json(result);
 	} catch (err) {

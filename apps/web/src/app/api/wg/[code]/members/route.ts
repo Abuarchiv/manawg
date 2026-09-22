@@ -15,16 +15,6 @@ import { NextResponse } from 'next/server';
 
 const MAX_MEMBERS_PER_WG = 20;
 
-async function resolveJoinableWg(
-	code: string,
-): Promise<{ id: string; joiningEnabled: boolean } | null> {
-	const wg = await db.query.wgs.findFirst({
-		where: (w, { eq }) => eq(w.shareCode, code),
-		columns: { id: true, joiningEnabled: true },
-	});
-	return wg ?? null;
-}
-
 export const GET = withWgRoute(
 	'members GET',
 	async (req, { code }) => {
@@ -105,7 +95,10 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 	}
 	const user = await getAuthenticatedUser(req);
 	if (!user) return apiError('auth_required', 401, 'auth_required');
-	const wg = await resolveJoinableWg(code);
+	const wg = await db.query.wgs.findFirst({
+		where: (w, { eq }) => eq(w.shareCode, code),
+		columns: { id: true, joiningEnabled: true },
+	});
 	if (!wg) return notFound('wg_not_found');
 	const authenticatedUser = user;
 

@@ -22,7 +22,6 @@ async function loadTesseract(): Promise<TesseractModuleLike> {
 		| { default: TesseractModuleLike };
 	return 'createWorker' in mod ? mod : mod.default;
 }
-
 export async function runOcrOnImage(file: Blob | File, runner?: OcrRunner): Promise<string> {
 	if (runner) return runner.recognize(file);
 	const tesseract = await loadTesseract();
