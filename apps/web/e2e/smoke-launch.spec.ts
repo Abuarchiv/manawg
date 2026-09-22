@@ -296,7 +296,7 @@ test.describe('ManaWG launch smoke', () => {
 				headers: memberHeaders,
 				data: { joiningEnabled: false },
 			});
-			expect(closeJoining.status()).toBe(200);
+			expect(closeJoining.status(), await closeJoining.text()).toBe(200);
 			const existingMemberJoin = await page.request.post(`/api/wg/${createdShareCode}/members`, {
 				data: { name: 'Smoke Tester' },
 			});
