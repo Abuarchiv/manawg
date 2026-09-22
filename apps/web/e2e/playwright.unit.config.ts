@@ -5,6 +5,7 @@ export default defineConfig({
 	testMatch: [
 		'e2e/inventory-consume-regression.spec.ts',
 		'e2e/notification-dispatch-contract.spec.ts',
+		'e2e/rate-limit-fail-open-env.spec.ts',
 		'e2e/rate-limit-fail-open-stats.spec.ts',
 		'e2e/upload-sign-s3-config-contract.spec.ts',
 	],
