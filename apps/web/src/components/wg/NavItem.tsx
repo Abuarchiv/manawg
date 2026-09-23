@@ -117,10 +117,10 @@ export function NavItem({
 					if (!isActive) haptic('light');
 				}}
 				className={cn(
-					'flex h-13 w-full flex-col items-center justify-center gap-1 rounded-[16px] text-neutral-50/90 outline-none transition-colors duration-[120ms] select-none focus-visible:ring-2 focus-visible:ring-white/60',
+					'flex h-13 w-full flex-col items-center justify-center gap-1 rounded-[16px] text-foreground/70 outline-none transition-colors duration-[120ms] select-none focus-visible:ring-2 focus-visible:ring-ring',
 					isActive
-						? 'bg-white/9 text-neutral-50 ring-1 ring-inset ring-white/16'
-						: 'active:bg-white/5',
+						? 'bg-foreground/8 text-foreground ring-1 ring-inset ring-foreground/12'
+						: 'active:bg-foreground/5',
 				)}
 			>
 				<span className="relative">
