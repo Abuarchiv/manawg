@@ -171,7 +171,7 @@ export default function SuchePage() {
 
 	return (
 		<div className="mx-auto min-w-0 w-full max-w-3xl space-y-4 bg-background px-4 py-4 pb-[env(safe-area-inset-bottom)]">
-			<header className="flex items-center gap-2">
+			<header className="flex items-start gap-2">
 				<BackLink href={wgBaseHref} label="Dashboard" />
 				<div className="min-w-0 flex-1">
 					<h1 className="font-heading text-xl font-semibold tracking-tight break-words text-foreground">
@@ -183,7 +183,7 @@ export default function SuchePage() {
 				</div>
 			</header>
 
-			<Card className="border-0 bg-transparent py-0 shadow-none">
+			<Card className="overflow-visible border-0 bg-transparent py-0 shadow-none">
 				<CardContent className="p-0">
 					<FieldGroup className="gap-3">
 						<Field>

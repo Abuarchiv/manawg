@@ -103,7 +103,7 @@ export default function EinstellungenPage() {
 	}, []);
 
 	return (
-		<div className="mx-auto min-w-0 w-full max-w-3xl px-4 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
+		<div className="mx-auto min-w-0 w-full max-w-3xl px-4 pb-[env(safe-area-inset-bottom,0px)]">
 			<div className="min-w-0 py-4">
 				<header className="mb-4 flex items-center gap-2">
 					<Link

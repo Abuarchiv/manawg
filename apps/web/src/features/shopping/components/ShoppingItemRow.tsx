@@ -94,7 +94,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 				data-shopping-row
 				id={`shopping-${item.id}`}
 				className={cn(
-					'relative touch-pan-y scroll-mt-24 bg-background',
+					'relative touch-pan-y scroll-mt-24 bg-background px-0',
 					swipeX === 0 && 'transition-transform',
 					highlighted && 'ring-2 ring-inset ring-ring',
 				)}
@@ -114,7 +114,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 					setSwipeX(0);
 				}}
 			>
-				<ItemMedia className="size-11 self-center">
+				<ItemMedia className="size-auto self-center">
 					<Checkbox
 						checked={isBought}
 						onCheckedChange={() => onToggle(item)}
