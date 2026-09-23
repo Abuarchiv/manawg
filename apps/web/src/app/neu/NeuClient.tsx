@@ -606,11 +606,7 @@ export function NeuClient() {
 				{authState === 'error' && (
 					<div className="flex flex-col gap-2">
 						<ErrorBox>Deine Anmeldung konnte gerade nicht geprüft werden.</ErrorBox>
-						<Button
-							variant="outline"
-							onClick={() => setAuthRetryNonce((value) => value + 1)}
-							className="min-h-11"
-						>
+						<Button variant="outline" onClick={() => setAuthRetryNonce((value) => value + 1)}>
 							erneut prüfen
 						</Button>
 					</div>
@@ -672,7 +668,7 @@ export function NeuClient() {
 						variant="link"
 						onClick={() => void switchAccount()}
 						disabled={busy}
-						className="min-h-11 w-fit px-0"
+						className="w-fit px-0"
 					>
 						{busy ? 'Bitte warten…' : 'Mit anderem Konto anmelden'}
 					</Button>
@@ -725,7 +721,7 @@ export function NeuClient() {
 							<Button
 								disabled={!interactive || busy}
 								onClick={() => setStep('create')}
-								className="min-h-11 w-full"
+								className="w-full"
 							>
 								<Plus data-icon="inline-start" aria-hidden /> Neue WG erstellen
 							</Button>
@@ -743,7 +739,7 @@ export function NeuClient() {
 								variant="outline"
 								disabled={!interactive || busy}
 								onClick={() => setStep('join')}
-								className="min-h-11 w-full"
+								className="w-full"
 							>
 								<KeyRound data-icon="inline-start" aria-hidden /> Per Code beitreten
 							</Button>
@@ -754,7 +750,7 @@ export function NeuClient() {
 							render={
 								<Button
 									variant="ghost"
-									className="h-auto min-h-11 w-full justify-between whitespace-normal text-left"
+									className="h-auto w-full justify-between whitespace-normal text-left"
 								/>
 							}
 						>
@@ -833,7 +829,7 @@ export function NeuClient() {
 									type="submit"
 									disabled={busy}
 									aria-label={busy ? 'WG wird erstellt…' : 'WG erstellen'}
-									className="min-h-11 flex-1"
+									className="flex-1"
 								>
 									{busy ? (
 										<Spinner data-icon="inline-start" aria-hidden />
@@ -897,7 +893,7 @@ export function NeuClient() {
 												: 'join-code-hint'
 										}
 										aria-invalid={invalidField === 'joinCode'}
-										className="min-h-11 font-mono text-base md:text-base"
+										className="font-mono text-base md:text-base"
 									/>
 									<FieldDescription id="join-code-hint">
 										8 Zeichen, ohne I, L, O und U.
@@ -917,7 +913,7 @@ export function NeuClient() {
 									type="submit"
 									disabled={busy}
 									aria-label={busy ? 'WG-Code wird geprüft…' : 'WG-Code prüfen'}
-									className="min-h-11 flex-1"
+									className="flex-1"
 								>
 									{busy ? (
 										<Spinner data-icon="inline-start" aria-hidden />
@@ -991,7 +987,7 @@ export function NeuClient() {
 									type="submit"
 									disabled={busy}
 									aria-label={busy ? 'Du trittst der WG bei…' : 'WG beitreten'}
-									className="min-h-11 flex-1"
+									className="flex-1"
 								>
 									{busy ? (
 										<Spinner data-icon="inline-start" aria-hidden />

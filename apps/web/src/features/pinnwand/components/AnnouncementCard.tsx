@@ -276,7 +276,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 					<CardAction>
 						<DropdownMenu>
 							<DropdownMenuTrigger
-								render={<Button variant="ghost" size="icon" className="min-h-11 min-w-11" />}
+								render={<Button variant="ghost" size="icon" />}
 								aria-label={`Beitragsaktionen: ${actionSubject}`}
 								disabled={deletePending}
 							>
@@ -395,10 +395,9 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 								<Button
 									variant="ghost"
 									onClick={() => setExpanded((value) => !value)}
-									className="min-h-11"
 									aria-expanded={expanded}
 									aria-controls={`announcement-body-${announcement.id}`}
-									aria-label={(expanded ? 'Weniger anzeigen: ' : 'Mehr anzeigen: ') + actionSubject}
+									aria-label={(expanded ? 'Weniger anzeigen:' : 'Mehr anzeigen:') + actionSubject}
 								>
 									{expanded ? (
 										<ChevronUp data-icon="inline-start" />
@@ -465,10 +464,9 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 										onClick={() => react(key)}
 										disabled={reactionPending(key)}
 										aria-pressed={active}
-										className="min-h-11"
 										aria-label={
 											label +
-											(active ? '-Reaktion entfernen: ' : '-Reaktion setzen: ') +
+											(active ? '-Reaktion entfernen:' : '-Reaktion setzen:') +
 											actionSubject
 										}
 									>
@@ -485,7 +483,6 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							{!isResolved && takerNames.length > 0 && canResolve && (
 								<Button
 									variant="outline"
-									className="min-h-11"
 									disabled={statusPending}
 									onClick={onToggleStatus}
 									aria-label={`Als erledigt markieren: ${actionSubject}`}
@@ -501,7 +498,6 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							{isResolved && isPinned && canModerate && (
 								<Button
 									variant="outline"
-									className="min-h-11"
 									disabled={pinPending}
 									onClick={onTogglePinned}
 									aria-label={`Fixierung lösen: ${actionSubject}`}
@@ -512,7 +508,6 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							{isResolved && !announcement.myReactions.includes('ok') && (
 								<Button
 									variant="outline"
-									className="min-h-11"
 									disabled={reactionPending('ok')}
 									onClick={() => react('ok')}
 									aria-label={`Danke-Reaktion setzen: ${actionSubject}`}
@@ -521,7 +516,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 								</Button>
 							)}
 							<CollapsibleTrigger
-								render={<Button variant="ghost" className="min-h-11" />}
+								render={<Button variant="ghost" />}
 								aria-label={`Antworten anzeigen: ${actionSubject}`}
 								aria-controls={`announcement-comments-${announcement.id}`}
 							>
@@ -736,18 +731,12 @@ function CommentRow({
 							/>
 						</Field>
 						<div className="flex flex-wrap justify-end gap-2">
-							<Button
-								variant="ghost"
-								disabled={pending}
-								onClick={() => setEditing(false)}
-								className="min-h-11"
-							>
+							<Button variant="ghost" disabled={pending} onClick={() => setEditing(false)}>
 								Später
 							</Button>
 							<Button
 								disabled={pending || !draft.draft.trim()}
 								onClick={() => void save()}
-								className="min-h-11"
 								aria-label={`Kommentar speichern: ${actionSubject}`}
 							>
 								{pending && <Spinner data-icon="inline-start" />}{' '}
@@ -771,7 +760,6 @@ function CommentRow({
 							variant="ghost"
 							size="sm"
 							disabled={pending}
-							className="min-h-11"
 							aria-label={`Kommentar bearbeiten: ${actionSubject}`}
 							onClick={() => {
 								if (!draft.restored) draft.change(comment.content);
@@ -784,7 +772,6 @@ function CommentRow({
 							variant="ghost"
 							size="sm"
 							disabled={pending}
-							className="min-h-11"
 							aria-label={`Kommentar entfernen: ${actionSubject}`}
 							onClick={() => void remove()}
 						>

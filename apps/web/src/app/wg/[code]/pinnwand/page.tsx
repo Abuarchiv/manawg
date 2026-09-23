@@ -904,7 +904,7 @@ export default function PinnwandPage(): React.ReactElement {
 					type="button"
 					onClick={applyPendingItems}
 					variant="secondary"
-					className="min-h-11 w-full"
+					className="w-full"
 					aria-live="polite"
 				>
 					{newCount} neue Beitr{newCount === 1 ? 'ag' : 'äge'}

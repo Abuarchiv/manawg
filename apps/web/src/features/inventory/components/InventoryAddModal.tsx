@@ -225,7 +225,7 @@ export function InventoryAddModal({
 								aria-describedby={nameError ? 'inventory-name-error' : undefined}
 								placeholder="z. B. Nudeln"
 								disabled={saving}
-								className="min-h-11 text-base"
+								className="text-base"
 							/>
 							{nameError && <FieldError id="inventory-name-error">{nameError}</FieldError>}
 						</Field>
@@ -241,7 +241,7 @@ export function InventoryAddModal({
 									max={INVENTORY_LIMITS.QUANTITY_MAX}
 									onChange={(event) => setQuantity(Number(event.target.value) || 0)}
 									disabled={saving}
-									className="min-h-11 text-base"
+									className="text-base"
 								/>
 							</Field>
 							<Field className="min-w-0">
@@ -255,7 +255,7 @@ export function InventoryAddModal({
 									max={INVENTORY_LIMITS.THRESHOLD_MAX}
 									onChange={(event) => setThreshold(Number(event.target.value) || 0)}
 									disabled={saving}
-									className="min-h-11 text-base"
+									className="text-base"
 								/>
 							</Field>
 						</div>
@@ -308,7 +308,7 @@ export function InventoryAddModal({
 							type="button"
 							variant="outline"
 							onClick={requestClose}
-							className="min-h-11 w-full break-normal sm:w-auto"
+							className="w-full break-normal sm:w-auto"
 						>
 							Abbrechen
 						</Button>
@@ -316,7 +316,7 @@ export function InventoryAddModal({
 							type="submit"
 							disabled={saving}
 							aria-busy={saving}
-							className="min-h-11 w-full break-normal sm:w-auto"
+							className="w-full break-normal sm:w-auto"
 						>
 							{saving && <Spinner aria-hidden />}
 							{saving ? 'Speichert…' : 'Speichern'}

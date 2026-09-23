@@ -203,7 +203,7 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 				variant="outline"
 				onClick={onSkip}
 				disabled={sharingBlocked}
-				className="min-h-11 w-full"
+				className="w-full"
 			>
 				Später → direkt zur WG
 			</Button>

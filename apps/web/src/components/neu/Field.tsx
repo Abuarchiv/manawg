@@ -61,7 +61,7 @@ export function Field({
 				autoComplete={autoComplete}
 				aria-invalid={invalid}
 				{...describedByProps}
-				className="min-h-11 text-base md:text-base"
+				className="text-base md:text-base"
 			/>
 		</FieldPrimitive>
 	);

@@ -102,9 +102,7 @@ export function RecurringExpensesSection({
 				className="scroll-mt-24"
 			>
 				{recurringFilterActive && <h2 className="text-base font-semibold">Fixkosten-Fokus</h2>}
-				<CollapsibleTrigger
-					render={<Button variant="outline" className="min-h-11 w-full justify-start" />}
-				>
+				<CollapsibleTrigger render={<Button variant="outline" className="w-full justify-start" />}>
 					<Repeat2 data-icon="inline-start" />
 					Wiederkehrende Kosten<Badge variant="secondary">{recurringExpenses.length}</Badge>
 					<ChevronDown data-icon="inline-end" className={cn('ml-auto', open && 'rotate-180')} />
@@ -126,9 +124,7 @@ export function RecurringExpensesSection({
 									<EmptyDescription>Betrag und Aufteilung einmal vorbereiten.</EmptyDescription>
 								</EmptyHeader>
 								<EmptyContent>
-									<Button className="min-h-11" onClick={onPrepareNewExpense}>
-										Neue Ausgabe vorbereiten
-									</Button>
+									<Button onClick={onPrepareNewExpense}>Neue Ausgabe vorbereiten</Button>
 								</EmptyContent>
 							</Empty>
 						) : (
@@ -182,7 +178,7 @@ export function RecurringExpensesSection({
 											<ItemFooter className="flex-row items-center justify-end gap-2">
 												{due && !alreadyCreated ? (
 													<Button
-														className="min-h-9 flex-1"
+														className="flex-1"
 														onClick={() => onCreateFromTemplate(item)}
 														disabled={pending}
 														aria-label={`Fixkosten-Ausgabe direkt erstellen: ${item.description}`}
@@ -196,7 +192,7 @@ export function RecurringExpensesSection({
 													<Link
 														href={getRecurringExpenseHref(shareCode, item.id)}
 														className={cn(
-															buttonVariants({ variant: 'outline', className: 'min-h-9 flex-1' }),
+															buttonVariants({ variant: 'outline', className: 'flex-1' }),
 															pending && 'pointer-events-none opacity-50',
 														)}
 														aria-disabled={pending || undefined}
@@ -212,7 +208,7 @@ export function RecurringExpensesSection({
 												<ItemActions className="shrink-0">
 													<DropdownMenu>
 														<DropdownMenuTrigger
-															render={<Button variant="ghost" size="icon" className="size-11" />}
+															render={<Button variant="ghost" size="icon" className="size-9" />}
 															disabled={pending}
 															aria-label={`Fixkosten-Aktionen: ${item.description}`}
 														>

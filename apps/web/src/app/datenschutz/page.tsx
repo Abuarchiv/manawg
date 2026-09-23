@@ -16,10 +16,7 @@ export default function DatenschutzPage() {
 				paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
 			}}
 		>
-			<Link
-				href="/"
-				className={cn(buttonVariants({ variant: 'ghost' }), 'min-h-11 self-start px-2')}
-			>
+			<Link href="/" className={cn(buttonVariants({ variant: 'ghost' }), 'self-start px-2')}>
 				<ArrowLeft data-icon="inline-start" aria-hidden /> Zurück zu ManaWG
 			</Link>
 			<Card>
@@ -49,10 +46,7 @@ export default function DatenschutzPage() {
 					</p>
 				</CardContent>
 			</Card>
-			<Link
-				href="/neu"
-				className={cn(buttonVariants({ variant: 'link' }), 'min-h-11 self-start px-0')}
-			>
+			<Link href="/neu" className={cn(buttonVariants({ variant: 'link' }), 'self-start px-0')}>
 				Konto öffnen
 			</Link>
 		</main>

@@ -257,7 +257,7 @@ export function EventEditModal({
 						</Alert>
 					)}
 					<DrawerFooter className="p-0">
-						<Button type="submit" disabled={saving || deleting} className="min-h-11">
+						<Button type="submit" disabled={saving || deleting}>
 							{saving && <Spinner data-icon="inline-start" aria-hidden />}
 							{saving ? 'Speichert…' : 'Speichern'}
 						</Button>
@@ -266,12 +266,11 @@ export function EventEditModal({
 							variant="outline"
 							onClick={requestClose}
 							disabled={saving || deleting}
-							className="min-h-11"
 						>
 							Abbrechen
 						</Button>
 						{onExportIcs && (
-							<Button type="button" variant="outline" onClick={onExportIcs} className="min-h-11">
+							<Button type="button" variant="outline" onClick={onExportIcs}>
 								<CalendarPlus data-icon="inline-start" aria-hidden />
 								In Kalender-App übernehmen
 							</Button>
@@ -282,7 +281,6 @@ export function EventEditModal({
 							onClick={() => setConfirmingDelete(true)}
 							disabled={saving || deleting}
 							aria-label="Termin löschen"
-							className="min-h-11"
 						>
 							<Trash2 data-icon="inline-start" aria-hidden />
 							Termin löschen

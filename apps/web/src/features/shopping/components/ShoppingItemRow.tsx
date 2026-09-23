@@ -165,7 +165,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 								<Button
 									variant="ghost"
 									size="icon"
-									className="size-11"
+									className="size-9"
 									aria-label={`Artikelaktionen: ${item.name}`}
 								/>
 							}
@@ -198,7 +198,6 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 													href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?${new URLSearchParams({ desc: item.name, source: 'shopping', ...(item.boughtByMemberId ? { paidBy: item.boughtByMemberId } : {}) })}`}
 												/>
 											}
-											className="min-h-11"
 										>
 											<Receipt data-icon="inline-start" aria-hidden />
 											Als Ausgabe übernehmen
@@ -229,8 +228,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 										variant="destructive"
 										onClick={handleDelete}
 										disabled={pending}
-										className="min-h-11"
-										aria-label={`${item.name} entfernen${isDeleteArmed ? ' bestätigen' : ''}`}
+										aria-label={`${item.name} entfernen${isDeleteArmed ? 'bestätigen' : ''}`}
 									>
 										<Trash2 data-icon="inline-start" aria-hidden />
 										{isDeleteArmed ? 'Endgültig entfernen' : 'Artikel entfernen'}
@@ -241,9 +239,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 										Nur die Person, die den Artikel hinzugefügt hat, kann ihn entfernen.
 									</p>
 								)}
-								<DrawerClose render={<Button variant="outline" className="min-h-11" />}>
-									Schließen
-								</DrawerClose>
+								<DrawerClose render={<Button variant="outline" />}>Schließen</DrawerClose>
 							</DrawerFooter>
 						</DrawerContent>
 					</Drawer>

@@ -219,7 +219,7 @@ export function CalendarMonth({
 					<Button
 						variant="ghost"
 						size="icon"
-						className="size-11"
+						className="size-9"
 						onClick={onPrev}
 						aria-label="Vorheriger Monat"
 					>
@@ -229,7 +229,7 @@ export function CalendarMonth({
 					<Button
 						variant="ghost"
 						size="icon"
-						className="size-11"
+						className="size-9"
 						onClick={onNext}
 						aria-label="Nächster Monat"
 					>
@@ -272,7 +272,7 @@ export function CalendarMonth({
 											}
 											aria-current={isToday ? 'date' : undefined}
 											className={cn(
-												'relative min-h-11 w-full px-0 after:min-w-0',
+												'relative w-full px-0 after:min-w-0',
 												!day.inCurrentMonth && 'opacity-50',
 											)}
 										>
@@ -322,7 +322,6 @@ export function CalendarMonth({
 												variant="outline"
 												onClick={() => onSelectOccurrence(occurrence)}
 												aria-label={`Termin öffnen: ${occurrence.title}`}
-												className="min-h-11"
 											>
 												Öffnen
 											</Button>

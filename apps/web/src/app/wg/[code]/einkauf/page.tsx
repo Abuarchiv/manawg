@@ -11,7 +11,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
 	Empty,
@@ -659,11 +658,17 @@ export default function EinkaufPage() {
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
 			<SubNav />
-			<header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-				<h1 className="font-heading text-2xl font-semibold tracking-tight">Einkaufsliste</h1>
-				<Badge variant="secondary" aria-live="polite" aria-atomic="true">
+			<header>
+				<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight text-foreground">
+					Einkaufsliste
+				</h1>
+				<p
+					className="mt-0.5 text-[13px] text-muted-foreground tabular-nums"
+					aria-live="polite"
+					aria-atomic="true"
+				>
 					{open.length} offen
-				</Badge>
+				</p>
 			</header>
 
 			<form
@@ -688,7 +693,7 @@ export default function EinkaufPage() {
 						enterKeyHint="done"
 						aria-invalid={Boolean(addError)}
 						aria-describedby={addError ? 'shopping-add-error' : undefined}
-						className="min-h-11 flex-1 basis-48 text-base"
+						className="flex-1 basis-48 text-base"
 					/>
 					<Button
 						type="submit"
@@ -703,7 +708,7 @@ export default function EinkaufPage() {
 				</div>
 				{suggestionGroups.map((group) => (
 					<div key={group.label} className="flex min-w-0 flex-col gap-1.5">
-						<p className="text-xs font-medium text-muted-foreground">{group.label}</p>
+						<p className="text-sm font-medium text-muted-foreground">{group.label}</p>
 						<ul
 							aria-label={group.label}
 							className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]"
@@ -717,7 +722,7 @@ export default function EinkaufPage() {
 										disabled={adding}
 										onClick={() => void add(name)}
 										aria-label={`${name} hinzufügen`}
-										className="min-h-11 max-w-56"
+										className="max-w-56"
 									>
 										<Plus data-icon="inline-start" aria-hidden />
 										<span className="truncate">{name}</span>
@@ -776,11 +781,11 @@ export default function EinkaufPage() {
 										.join(', ')}`,
 								)}`}
 								onClick={dismissReceiptPrompt}
-								className={cn(buttonVariants({ size: 'sm' }), 'min-h-11')}
+								className={cn(buttonVariants({ size: 'sm' }), '')}
 							>
 								Ausgabe erfassen
 							</Link>
-							<Button variant="ghost" size="sm" className="min-h-11" onClick={dismissReceiptPrompt}>
+							<Button variant="ghost" size="sm" onClick={dismissReceiptPrompt}>
 								Nicht jetzt
 							</Button>
 						</span>
@@ -833,7 +838,7 @@ export default function EinkaufPage() {
 								onClick={() => setClearConfirmOpen(true)}
 								disabled={clearingBought}
 								aria-label={`Erledigte Artikel entfernen (${done.length})`}
-								className="mt-2 min-h-11 self-start"
+								className="mt-2 self-start"
 							>
 								{clearingBought ? (
 									<Spinner data-icon="inline-start" aria-hidden />

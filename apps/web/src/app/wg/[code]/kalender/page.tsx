@@ -3,7 +3,6 @@
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/Toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -425,13 +424,11 @@ export default function KalenderPage() {
 			<SubNav />
 			<header className="flex flex-wrap items-center gap-3">
 				<div className="min-w-0 flex-1">
-					<h1 className="font-heading text-2xl font-semibold tracking-tight break-words [overflow-wrap:anywhere]">
+					<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight break-words [overflow-wrap:anywhere]">
 						Kalender
 					</h1>
-					<p className="mt-1">
-						<Badge variant="secondary">
-							{loading ? 'Lädt…' : `${events.length} Termin${events.length === 1 ? '' : 'e'}`}
-						</Badge>
+					<p className="mt-0.5 text-[13px] text-muted-foreground tabular-nums">
+						{loading ? 'Lädt…' : `${events.length} Termin${events.length === 1 ? '' : 'e'}`}
 					</p>
 				</div>
 				<div className="flex shrink-0 items-center justify-end gap-2">
@@ -442,7 +439,6 @@ export default function KalenderPage() {
 							onClick={handleJumpToToday}
 							aria-label="Zum aktuellen Monat springen"
 							title="Heute"
-							className="min-h-11 min-w-11"
 						>
 							<RotateCcw aria-hidden />
 						</Button>
@@ -470,12 +466,7 @@ export default function KalenderPage() {
 					<AlertTitle>Kalender konnte nicht geladen werden</AlertTitle>
 					<AlertDescription className="flex flex-wrap items-center justify-between gap-2">
 						<span>{loadError}</span>
-						<Button
-							type="button"
-							variant="outline"
-							className="min-h-11"
-							onClick={() => void load(true)}
-						>
+						<Button type="button" variant="outline" onClick={() => void load(true)}>
 							Erneut laden
 						</Button>
 					</AlertDescription>
@@ -562,13 +553,13 @@ export default function KalenderPage() {
 										type="url"
 										readOnly
 										value={subscription.feedUrl}
-										className="min-h-11 min-w-0 flex-1 text-sm"
+										className="min-w-0 flex-1 text-sm"
 									/>
 									<Button
 										type="button"
 										variant="outline"
 										onClick={() => void copySubscriptionUrl()}
-										className="min-h-11 max-w-full shrink whitespace-normal"
+										className="max-w-full shrink whitespace-normal"
 									>
 										{copyState === 'copied' ? 'Kopiert' : 'Link kopieren'}
 									</Button>
@@ -583,14 +574,12 @@ export default function KalenderPage() {
 											Feed öffnen
 										</a>
 									}
-									className="min-h-11"
 								/>
 								<Button
 									type="button"
 									variant="outline"
 									disabled={subscriptionBusy}
 									onClick={() => setSubscriptionConfirm('rotate')}
-									className="min-h-11"
 								>
 									<RefreshCw data-icon="inline-start" aria-hidden />
 									Link erneuern
@@ -600,7 +589,6 @@ export default function KalenderPage() {
 									variant="destructive"
 									disabled={subscriptionBusy}
 									onClick={() => setSubscriptionConfirm('revoke')}
-									className="min-h-11"
 								>
 									<Trash2 data-icon="inline-start" aria-hidden />
 									Abo widerrufen
@@ -645,7 +633,7 @@ export default function KalenderPage() {
 							type="button"
 							disabled={subscriptionBusy}
 							onClick={() => void saveSubscription('POST', 'Kalender-Feed erstellt.')}
-							className="min-h-11 max-w-full self-start whitespace-normal text-left"
+							className="max-w-full self-start whitespace-normal text-left"
 						>
 							{subscriptionBusy ? <Loader2 data-icon="inline-start" aria-hidden /> : null}
 							Kalender-Feed erstellen

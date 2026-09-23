@@ -63,7 +63,6 @@ import { AbsencePanel } from '@/features/chores/components/AbsencePanel';
 import { ChoreForm } from '@/features/chores/components/ChoreForm';
 import { ChoreRow } from '@/features/chores/components/ChoreRow';
 import { FairnessPanel } from '@/features/chores/components/FairnessPanel';
-import { HealthStrip } from '@/features/chores/components/HealthStrip';
 import { ListSkeleton } from '@/features/chores/components/ListSkeleton';
 import { PutzenHeader } from '@/features/chores/components/PutzenHeader';
 import type {
@@ -957,12 +956,12 @@ export default function PutzenPage() {
 			<SubNav />
 			<PutzenHeader
 				itemCount={items.length}
+				health={!showSkeleton && items.length > 0 ? health : null}
 				refreshing={refreshing}
 				showForm={showForm}
 				wgBaseHref={wgBaseHref}
 				onToggleForm={() => setShowForm((open) => !open)}
 			/>
-			{!showSkeleton && items.length > 0 && <HealthStrip health={health} />}
 			<ChoreForm
 				open={showForm}
 				onClose={() => setShowForm(false)}
@@ -989,7 +988,7 @@ export default function PutzenPage() {
 								variant="outline"
 								onClick={() => setConfirmSuggestion(true)}
 								disabled={choreAddPending}
-								className="h-auto min-h-11 whitespace-normal"
+								className="h-auto whitespace-normal"
 							>
 								Entwurf verwerfen und „{pendingSuggestion.title}“ übernehmen
 							</Button>
@@ -1054,7 +1053,6 @@ export default function PutzenPage() {
 								key={template.title}
 								variant="outline"
 								onClick={() => applyQuickChore(template)}
-								className="min-h-11"
 							>
 								{template.title}
 							</Button>

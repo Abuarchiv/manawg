@@ -10,7 +10,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
 	Drawer,
@@ -102,12 +101,12 @@ export const ChoreRow = memo(function ChoreRow({
 				</ItemTitle>
 				<ItemDescription className="line-clamp-none break-words">
 					Zuständig: <span>{assignee.name}</span> ·{' '}
-					{formatChoreCadence(chore.intervalDays, chore.recurrenceType)}
+					{formatChoreCadence(chore.intervalDays, chore.recurrenceType)} ·{' '}
+					<span className={cn(status.state === 'overdue' && 'font-medium text-foreground')}>
+						{status.label}
+					</span>
+					{status.escalationLabel && ` · ${status.escalationLabel}`}
 				</ItemDescription>
-				<div className="flex flex-wrap gap-1.5">
-					<Badge variant="outline">{status.label}</Badge>
-					{status.escalationLabel && <Badge variant="outline">{status.escalationLabel}</Badge>}
-				</div>
 				{chore.lastCompletedAt && (
 					<ItemDescription className="line-clamp-none">
 						Nächste Fälligkeit:{' '}
@@ -128,7 +127,7 @@ export const ChoreRow = memo(function ChoreRow({
 						onClick={() => onTakeOver(chore)}
 						disabled={busy}
 						aria-label={`Aufgabe übernehmen: ${chore.title}`}
-						className="min-h-11 self-start px-0"
+						className="self-start px-0"
 					>
 						{isTakePending && <Spinner data-icon="inline-start" aria-hidden />}Ich übernehme
 					</Button>
@@ -139,7 +138,6 @@ export const ChoreRow = memo(function ChoreRow({
 					onClick={() => onComplete(chore)}
 					disabled={busy}
 					variant={isMine ? 'default' : 'outline'}
-					className="min-h-11"
 					aria-label={
 						status.actionLabel === 'Nachholen'
 							? `Aufgabe nachholen: ${chore.title}`
@@ -165,7 +163,7 @@ export const ChoreRow = memo(function ChoreRow({
 							<Button
 								variant="ghost"
 								size="icon"
-								className="size-11"
+								className="size-9"
 								aria-label={`Aufgabenaktionen: ${chore.title}`}
 							/>
 						}
@@ -180,7 +178,6 @@ export const ChoreRow = memo(function ChoreRow({
 							<Button
 								variant="outline"
 								disabled={busy}
-								className="min-h-11"
 								onClick={() => {
 									setActionsOpen(false);
 									onTakeOver(chore);
@@ -192,7 +189,6 @@ export const ChoreRow = memo(function ChoreRow({
 							<Button
 								variant="outline"
 								disabled={busy}
-								className="min-h-11"
 								aria-label={`Tausch anfragen: ${chore.title}`}
 								onClick={() => {
 									setActionsOpen(false);
@@ -212,7 +208,6 @@ export const ChoreRow = memo(function ChoreRow({
 							<Button
 								variant="destructive"
 								disabled={busy}
-								className="min-h-11"
 								aria-label={`${removeConfirm.confirmId === chore.id ? 'Aufgabe entfernen bestätigen' : 'Aufgabe entfernen'}: ${chore.title}`}
 								onClick={() => {
 									if (removeConfirm.request(chore.id)) {
@@ -226,9 +221,7 @@ export const ChoreRow = memo(function ChoreRow({
 							</Button>
 						</div>
 						<DrawerFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
-							<DrawerClose render={<Button variant="outline" className="min-h-11" />}>
-								Schließen
-							</DrawerClose>
+							<DrawerClose render={<Button variant="outline" />}>Schließen</DrawerClose>
 						</DrawerFooter>
 					</DrawerContent>
 				</Drawer>
@@ -263,7 +256,6 @@ export const ChoreRow = memo(function ChoreRow({
 						<Button
 							onClick={() => onComplete(chore)}
 							disabled={busy}
-							className="min-h-11"
 							aria-label={`${status.actionLabel} bestätigen: ${chore.title}`}
 						>
 							{status.actionLabel} bestätigen

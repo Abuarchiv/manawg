@@ -98,18 +98,18 @@ export function ChoreForm({
 								maxLength={TITLE_MAX}
 								placeholder="z. B. Müll rausbringen"
 								disabled={pending}
-								className="min-h-11 text-base"
+								className="text-base"
 							/>
 						</Field>
 						<Field data-disabled={pending}>
 							<FieldLabel id="chore-rhythm-label">Rhythmus</FieldLabel>
 							<ToggleGroup
+								variant="segmented"
 								value={[recurrenceType]}
 								onValueChange={(values) => {
 									const unit = values[0];
 									if (unit === 'days' || unit === 'months') onRecurrenceUnitToggle(unit);
 								}}
-								variant="outline"
 								aria-labelledby="chore-rhythm-label"
 								className="w-full"
 							>
@@ -178,7 +178,6 @@ export function ChoreForm({
 							type="submit"
 							disabled={!title.trim() || pending}
 							aria-label="Aufgabe hinzufügen"
-							className="min-h-11"
 						>
 							{pending ? (
 								<Spinner data-icon="inline-start" aria-hidden />
@@ -187,13 +186,7 @@ export function ChoreForm({
 							)}
 							{pending ? 'Speichert…' : 'Hinzufügen'}
 						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={onClose}
-							disabled={pending}
-							className="min-h-11"
-						>
+						<Button type="button" variant="outline" onClick={onClose} disabled={pending}>
 							Schließen · Entwurf behalten
 						</Button>
 					</DrawerFooter>

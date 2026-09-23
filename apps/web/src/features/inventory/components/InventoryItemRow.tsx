@@ -158,7 +158,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 		<Item className="flex-col items-stretch gap-2" aria-busy={pending}>
 			<div className="flex flex-wrap items-center gap-2">
 				<ItemContent className="min-w-0 basis-full">
-					<ItemTitle className="w-full min-w-0 line-clamp-none">
+					<ItemTitle className="w-full min-w-0 gap-2 line-clamp-none">
 						<span className="min-w-0 flex-1 break-words" title={item.name}>
 							{item.name}
 						</span>
@@ -187,7 +187,6 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 								? `${item.name} um eins verringern (Bestand 0)`
 								: `${item.name} um eins verringern`
 						}
-						className="min-h-11 min-w-11"
 					>
 						{pendingAction === 'decrement' ? <Spinner aria-hidden /> : <Minus aria-hidden />}
 					</Button>
@@ -199,7 +198,6 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						disabled={pending}
 						aria-busy={pendingAction === 'increment'}
 						aria-label={`${item.name} um eins erhöhen`}
-						className="min-h-11 min-w-11"
 					>
 						{pendingAction === 'increment' ? <Spinner aria-hidden /> : <Plus aria-hidden />}
 					</Button>
@@ -210,7 +208,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						onClick={() => onEdit(item)}
 						disabled={pending}
 						aria-label={`${item.name} bearbeiten`}
-						className="min-h-11 min-w-11 text-muted-foreground"
+						className="text-muted-foreground"
 					>
 						<Pencil aria-hidden />
 					</Button>
@@ -223,7 +221,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 							disabled={pending}
 							aria-busy={pendingAction === 'delete'}
 							aria-label={`${item.name} endgültig entfernen`}
-							className="min-h-11 px-3.5"
+							className="px-3.5"
 						>
 							{pendingAction === 'delete' ? <Spinner aria-hidden /> : <Trash2 aria-hidden />}
 							Endgültig entfernen
@@ -236,7 +234,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 							onClick={handleDelete}
 							disabled={pending}
 							aria-label={`${item.name} entfernen`}
-							className="min-h-11 min-w-11 text-muted-foreground hover:text-destructive"
+							className="text-muted-foreground hover:text-destructive"
 						>
 							<Trash2 aria-hidden />
 						</Button>

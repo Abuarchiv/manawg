@@ -267,7 +267,7 @@ function DebtRow({
 				<ItemFooter className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
 					<Button
 						variant={iOwe ? 'default' : 'outline'}
-						className="h-auto min-h-11 whitespace-normal"
+						className="h-auto whitespace-normal"
 						disabled={reviewing || settling}
 						onClick={() => void review()}
 					>
@@ -287,7 +287,7 @@ function DebtRow({
 					{canPayWithPayPal && (
 						<Collapsible className="min-[360px]:col-span-2">
 							<CollapsibleTrigger
-								render={<Button variant="outline" className="min-h-11 w-full justify-between" />}
+								render={<Button variant="outline" className="w-full justify-between" />}
 							>
 								Mit PayPal zahlen
 								<ChevronDown data-icon="inline-end" />
@@ -390,7 +390,7 @@ function DebtRow({
 						</AlertDialogCancel>
 						{preview && preview.settleableCents > 0 && (
 							<Button
-								className="h-auto min-h-11 whitespace-normal"
+								className="h-auto whitespace-normal"
 								disabled={settling || !preview || preview.settleableCents <= 0}
 								onClick={() => void settle()}
 							>
@@ -500,7 +500,7 @@ export function DebtSummary({
 							render={
 								<Button
 									variant="ghost"
-									className="group h-auto min-h-11 w-full justify-between whitespace-normal text-left"
+									className="group h-auto w-full justify-between whitespace-normal text-left"
 								/>
 							}
 						>
@@ -548,7 +548,7 @@ export function DebtSummary({
 							)}
 							<Button
 								variant="ghost"
-								className="min-h-11 self-start"
+								className="self-start"
 								render={<Link href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`} />}
 								nativeButton={false}
 							>

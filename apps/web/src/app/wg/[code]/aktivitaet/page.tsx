@@ -151,7 +151,6 @@ export default function AktivitaetPage() {
 					onClick={() => void load()}
 					disabled={loading}
 					aria-label="Aktivität aktualisieren"
-					className="min-h-11 min-w-11"
 				>
 					{loading ? (
 						<Spinner className="motion-reduce:animate-none" aria-hidden />
@@ -220,7 +219,7 @@ export default function AktivitaetPage() {
 
 			<Card className="border-0 bg-transparent py-0 shadow-none">
 				<CardContent className="space-y-3 p-0">
-					<InputGroup className="min-h-11">
+					<InputGroup>
 						<InputGroupAddon align="inline-start">
 							<Search className="h-4 w-4" aria-hidden />
 						</InputGroupAddon>
@@ -306,13 +305,7 @@ export default function AktivitaetPage() {
 									</EmptyDescription>
 								</EmptyHeader>
 								<EmptyContent>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={resetFilters}
-										className="min-h-11"
-									>
+									<Button type="button" variant="outline" size="sm" onClick={resetFilters}>
 										Filter zurücksetzen
 									</Button>
 								</EmptyContent>

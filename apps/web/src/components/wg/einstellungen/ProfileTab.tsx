@@ -5,15 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { ThemeOption } from '@/components/wg/einstellungen/ThemeOption';
 import { apiFetch } from '@/core/infra/api-client';
 import { InstallButton } from '@/shared/components/install-button';
 import { useTheme } from '@/shared/components/theme/ThemeProvider';
 import { haptic } from '@/shared/lib/haptics';
 import { Check, Monitor, Moon, Save, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
+const THEMES = [
+	{ value: 'light', label: 'Hell', icon: Sun },
+	{ value: 'dark', label: 'Dunkel', icon: Moon },
+	{ value: 'system', label: 'System', icon: Monitor },
+] as const;
 
 interface ProfileTabProps {
 	memberName: string;
@@ -108,35 +114,25 @@ export function ProfileTab({
 			</Section>
 
 			<Section title="Darstellung">
-				{/* Three equally-sized toggle buttons — aria-pressed set, focus rings visible */}
-				<div className="flex min-w-0 flex-wrap gap-2 p-2">
-					<ThemeOption
-						label="Hell"
-						icon={<Sun className="h-4 w-4" aria-hidden />}
-						active={theme === 'light'}
-						onClick={() => {
+				<div className="p-2">
+					<ToggleGroup
+						variant="segmented"
+						value={[theme]}
+						aria-label="Darstellung"
+						onValueChange={(values) => {
+							const next = THEMES.find((option) => option.value === values[0])?.value;
+							if (!next) return;
 							haptic('selection');
-							setTheme('light');
+							setTheme(next);
 						}}
-					/>
-					<ThemeOption
-						label="Dunkel"
-						icon={<Moon className="h-4 w-4" aria-hidden />}
-						active={theme === 'dark'}
-						onClick={() => {
-							haptic('selection');
-							setTheme('dark');
-						}}
-					/>
-					<ThemeOption
-						label="System"
-						icon={<Monitor className="h-4 w-4" aria-hidden />}
-						active={theme === 'system'}
-						onClick={() => {
-							haptic('selection');
-							setTheme('system');
-						}}
-					/>
+					>
+						{THEMES.map(({ value, label, icon: Icon }) => (
+							<ToggleGroupItem key={value} value={value}>
+								<Icon aria-hidden />
+								{label}
+							</ToggleGroupItem>
+						))}
+					</ToggleGroup>
 				</div>
 				<div className="px-2 pb-2">
 					<InstallButton label="App installieren" />
@@ -160,7 +156,7 @@ export function ProfileTab({
 									}}
 									placeholder="13-stellige Merchant-ID"
 									disabled={loadingPayPal || savingPayPal}
-									className="h-11 min-h-[44px] text-base"
+									className="text-base"
 									autoComplete="off"
 									inputMode="text"
 								/>
@@ -169,7 +165,7 @@ export function ProfileTab({
 									variant="outline"
 									onClick={() => void savePayPal()}
 									disabled={loadingPayPal || savingPayPal}
-									className="min-h-11 self-start"
+									className="self-start"
 								>
 									{savingPayPal ? <Spinner aria-hidden /> : <Save aria-hidden />}
 									{savingPayPal ? 'Speichert…' : 'Speichern'}

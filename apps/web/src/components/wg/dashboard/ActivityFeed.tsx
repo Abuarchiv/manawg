@@ -72,10 +72,7 @@ export function ActivityFeed({ items, emptyHref, compact = false }: ActivityFeed
 				</EmptyHeader>
 				{emptyHref && (
 					<EmptyContent>
-						<Link
-							href={emptyHref}
-							className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11')}
-						>
+						<Link href={emptyHref} className={cn(buttonVariants({ variant: 'outline' }), '')}>
 							Erste Aktion starten
 						</Link>
 					</EmptyContent>

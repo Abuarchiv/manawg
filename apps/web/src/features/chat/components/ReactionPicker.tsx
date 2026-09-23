@@ -66,7 +66,7 @@ export function ReactionPicker({ onSelect, triggerLabel, disabled }: ReactionPic
 			}}
 		>
 			<DrawerTrigger
-				render={<Button variant="ghost" size="icon" className="min-h-11 min-w-11" />}
+				render={<Button variant="ghost" size="icon" />}
 				disabled={disabled}
 				aria-label={triggerLabel ?? 'Reaktion hinzufügen'}
 			>
@@ -83,7 +83,6 @@ export function ReactionPicker({ onSelect, triggerLabel, disabled }: ReactionPic
 							<Button
 								key={emoji}
 								variant="outline"
-								className="min-h-11"
 								disabled={pending}
 								aria-label={`Reaktion ${emoji}`}
 								onClick={() => void select(emoji)}
@@ -94,7 +93,7 @@ export function ReactionPicker({ onSelect, triggerLabel, disabled }: ReactionPic
 					</div>
 					<Field>
 						<FieldLabel>Eigene Emoji-Reaktion</FieldLabel>
-						<InputGroup className="min-h-11">
+						<InputGroup>
 							<InputGroupInput
 								value={custom}
 								onChange={(event) => setCustom(event.target.value)}
@@ -127,12 +126,7 @@ export function ReactionPicker({ onSelect, triggerLabel, disabled }: ReactionPic
 							<AlertDescription>Reaktion nicht gespeichert. Versuche es erneut.</AlertDescription>
 						</Alert>
 					)}
-					<Button
-						variant="ghost"
-						disabled={pending}
-						className="min-h-11"
-						onClick={() => setOpen(false)}
-					>
+					<Button variant="ghost" disabled={pending} onClick={() => setOpen(false)}>
 						Schließen
 					</Button>
 				</div>

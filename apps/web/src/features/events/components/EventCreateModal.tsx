@@ -169,7 +169,6 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 										variant="outline"
 										onClick={() => applyTemplate(template)}
 										disabled={submitting}
-										className="min-h-11"
 									>
 										{template.label}
 									</Button>
@@ -217,22 +216,11 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 						</Alert>
 					)}
 					<DrawerFooter className="p-0">
-						<Button
-							type="submit"
-							disabled={submitting}
-							aria-label="Termin speichern"
-							className="min-h-11"
-						>
+						<Button type="submit" disabled={submitting} aria-label="Termin speichern">
 							{submitting && <Spinner data-icon="inline-start" aria-hidden />}
 							{submitting ? 'Speichert…' : 'Termin speichern'}
 						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={onClose}
-							disabled={submitting}
-							className="min-h-11"
-						>
+						<Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
 							Schließen · Entwurf behalten
 						</Button>
 					</DrawerFooter>

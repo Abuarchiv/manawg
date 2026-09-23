@@ -34,7 +34,7 @@ export default function NotFound() {
 						<EmptyDescription>Die angeforderte Seite wurde nicht gefunden.</EmptyDescription>
 					</EmptyHeader>
 					<EmptyContent>
-						<Button size="lg" render={<Link href="/" />} nativeButton={false} className="min-h-11">
+						<Button size="lg" render={<Link href="/" />} nativeButton={false}>
 							Zur Startseite
 						</Button>
 					</EmptyContent>

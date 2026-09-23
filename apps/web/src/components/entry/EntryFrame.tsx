@@ -34,23 +34,23 @@ export function EntryFrame({
 				<Link
 					href={backHref}
 					aria-label="Zurück zur öffentlichen Ansicht"
-					className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11')}
+					className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-9')}
 				>
 					<ArrowLeft aria-hidden />
 				</Link>
 				<Link
 					href={backHref}
-					className={cn(
-						buttonVariants({ variant: 'ghost' }),
-						'min-h-11 gap-2 font-heading font-semibold',
-					)}
+					className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2 font-heading font-semibold')}
 				>
 					<LogoMark size={24} tile={false} aria-hidden />
 					ManaWG
 				</Link>
 			</div>
 			<header className="flex flex-col gap-2">
-				<h1 id={headingId} className="text-2xl font-semibold tracking-tight">
+				<h1
+					id={headingId}
+					className="font-heading text-[26px] leading-8 font-semibold tracking-tight"
+				>
 					{title}
 				</h1>
 				<p className="text-sm text-muted-foreground">{description}</p>

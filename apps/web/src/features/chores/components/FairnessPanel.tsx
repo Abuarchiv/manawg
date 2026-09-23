@@ -77,9 +77,7 @@ export function FairnessPanel({
 					</p>
 				)}
 				<Collapsible>
-					<CollapsibleTrigger
-						render={<Button variant="outline" className="min-h-11 w-full break-normal" />}
-					>
+					<CollapsibleTrigger render={<Button variant="outline" className="w-full break-normal" />}>
 						<span className="min-w-0 flex-1 text-left break-normal whitespace-normal">
 							Verteilung und Regeln
 						</span>

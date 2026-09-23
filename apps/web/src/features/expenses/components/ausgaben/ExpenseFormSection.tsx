@@ -227,7 +227,7 @@ export function ExpenseFormSection({
 							<Button
 								variant="ghost"
 								size="icon"
-								className="size-11"
+								className="size-9"
 								onClick={requestClose}
 								disabled={formSaving}
 								aria-label="Ausgabe abbrechen"
@@ -258,7 +258,7 @@ export function ExpenseFormSection({
 										<Button
 											type="button"
 											variant="outline"
-											className="mt-3 h-auto min-h-11 w-full whitespace-normal"
+											className="mt-3 h-auto w-full whitespace-normal"
 											disabled={formSaving}
 											onClick={() => setReplaceOpen(true)}
 										>
@@ -323,14 +323,13 @@ export function ExpenseFormSection({
 								<FieldSet disabled={formSaving} data-invalid={Boolean(fieldErrors.splits)}>
 									<FieldLegend>Beteiligte & Aufteilung</FieldLegend>
 									<ToggleGroup
+										variant="segmented"
 										value={[splitMode]}
 										onValueChange={(values) => {
 											onClearFieldError('splits');
 											const value = values[0];
 											if (value === 'equal' || value === 'manual') setSplitMode(value);
 										}}
-										variant="outline"
-										spacing={0}
 										className="w-full"
 										aria-label="Aufteilung"
 										aria-invalid={splitErrorTargetsMode ? true : undefined}
@@ -371,7 +370,7 @@ export function ExpenseFormSection({
 													>
 														{member.name}
 													</FieldLabel>
-													<InputGroup className="min-h-11 w-32 shrink-0">
+													<InputGroup className="w-32 shrink-0">
 														<InputGroupInput
 															id={`share-${member.id}`}
 															type="text"
@@ -432,11 +431,7 @@ export function ExpenseFormSection({
 								<Collapsible open={showReceipt} onOpenChange={setShowReceipt}>
 									<CollapsibleTrigger
 										render={
-											<Button
-												type="button"
-												variant="ghost"
-												className="min-h-11 w-full justify-start"
-											/>
+											<Button type="button" variant="ghost" className="w-full justify-start" />
 										}
 										disabled={formSaving}
 									>
@@ -461,11 +456,7 @@ export function ExpenseFormSection({
 								<Collapsible open={recurringOpen} onOpenChange={setShowRecurring}>
 									<CollapsibleTrigger
 										render={
-											<Button
-												type="button"
-												variant="ghost"
-												className="min-h-11 w-full justify-start"
-											/>
+											<Button type="button" variant="ghost" className="w-full justify-start" />
 										}
 										disabled={
 											formSaving || editingRecurringExpense !== null || isEditingQueuedRecurring
@@ -511,7 +502,6 @@ export function ExpenseFormSection({
 													<Button
 														type="button"
 														variant="outline"
-														className="min-h-11"
 														onClick={onSaveRecurringTemplate}
 														disabled={formSaving}
 													>
@@ -527,20 +517,10 @@ export function ExpenseFormSection({
 										<AlertDescription>{formError}</AlertDescription>
 										{conflictExpenseId && (
 											<div className="flex flex-col gap-2 pt-3">
-												<Button
-													type="button"
-													variant="outline"
-													className="min-h-11"
-													onClick={onReloadServerVersion}
-												>
+												<Button type="button" variant="outline" onClick={onReloadServerVersion}>
 													Server-Version laden
 												</Button>
-												<Button
-													type="button"
-													variant="outline"
-													className="min-h-11"
-													onClick={onKeepDraft}
-												>
+												<Button type="button" variant="outline" onClick={onKeepDraft}>
 													Meinen Entwurf behalten
 												</Button>
 											</div>

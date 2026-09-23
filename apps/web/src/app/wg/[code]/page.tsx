@@ -300,7 +300,7 @@ export default function WgHomePage() {
 				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-6 px-4 py-6"
 			>
 				<header className="flex min-w-0 flex-col gap-1">
-					<h1 className="font-heading text-2xl font-semibold tracking-tight break-words">
+					<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight break-words">
 						{new Intl.DateTimeFormat('de-DE', {
 							weekday: 'long',
 							day: 'numeric',
@@ -343,7 +343,7 @@ export default function WgHomePage() {
 
 				{!isNewWg && (
 					<section aria-labelledby="today-heading" className="flex min-w-0 flex-col gap-2">
-						<h2 id="today-heading" className="font-heading text-lg font-semibold">
+						<h2 id="today-heading" className="font-heading text-xl font-semibold">
 							Heute für dich
 						</h2>
 						{completeNotice && (
@@ -366,9 +366,7 @@ export default function WgHomePage() {
 									{todayMore.length > 0 && (
 										<Collapsible open={todayMoreOpen} onOpenChange={setTodayMoreOpen}>
 											<CollapsibleTrigger
-												render={
-													<Button variant="ghost" className="min-h-11 w-full justify-between" />
-												}
+												render={<Button variant="ghost" className="w-full justify-between" />}
 											>
 												<span>
 													{todayMoreOpen
@@ -486,7 +484,7 @@ export default function WgHomePage() {
 									render={
 										<Button
 											variant="ghost"
-											className="group min-h-11 w-full justify-between px-0 text-muted-foreground"
+											className="group w-full justify-between px-0 text-muted-foreground"
 										/>
 									}
 								>
@@ -504,7 +502,7 @@ export default function WgHomePage() {
 												href={`${wgBaseHref}/suche`}
 												className={cn(
 													buttonVariants({ variant: 'ghost' }),
-													'min-h-11 min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground leading-snug',
+													'min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground leading-snug',
 												)}
 											>
 												<Search data-icon="inline-start" aria-hidden />
@@ -514,7 +512,7 @@ export default function WgHomePage() {
 												href={`${wgBaseHref}/aktivitaet`}
 												className={cn(
 													buttonVariants({ variant: 'ghost' }),
-													'min-h-11 min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground text-right leading-snug',
+													'min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground text-right leading-snug',
 												)}
 											>
 												Ganze Chronik <ChevronRight data-icon="inline-end" aria-hidden />
@@ -607,7 +605,7 @@ function TodayRow({
 				<Button
 					variant="ghost"
 					size="icon"
-					className="ml-1 size-11 shrink-0"
+					className="ml-1 size-9 shrink-0"
 					aria-label={armed ? `Bestätigen: ${item.title} erledigt` : `Abhaken: ${item.title}`}
 					aria-pressed={armed}
 					disabled={pending}
@@ -622,7 +620,7 @@ function TodayRow({
 					)}
 				</Button>
 			) : (
-				<span className="ml-1 flex size-11 shrink-0 items-center justify-center">
+				<span className="ml-1 flex size-9 shrink-0 items-center justify-center">
 					<TodayIcon kind={item.kind} />
 				</span>
 			)}

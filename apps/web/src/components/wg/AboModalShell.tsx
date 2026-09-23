@@ -69,7 +69,7 @@ export function AboModalShell({ title, onClose, submitting, children }: AboModal
 							<Button
 								variant="ghost"
 								size="icon"
-								className="size-11"
+								className="size-9"
 								onClick={requestClose}
 								disabled={submitting}
 								aria-label="Abo-Editor schließen"

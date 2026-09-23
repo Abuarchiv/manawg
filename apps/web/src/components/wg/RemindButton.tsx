@@ -152,7 +152,7 @@ export function RemindButton({
 				type="button"
 				variant={status === 'sent' ? 'secondary' : 'outline'}
 				size={size === 'sm' ? 'sm' : 'default'}
-				className="h-auto min-h-11 whitespace-normal py-2"
+				className="h-auto whitespace-normal py-2"
 				onClick={() => void handleClick()}
 				disabled={disabled}
 				aria-label={`Erinnerung senden: ${label}`}

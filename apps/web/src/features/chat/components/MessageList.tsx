@@ -135,12 +135,7 @@ export function MessageList({
 									Ältere Nachrichten konnten nicht geladen werden.
 								</p>
 							)}
-							<Button
-								variant="ghost"
-								disabled={loadingOlder}
-								onClick={onLoadOlder}
-								className="min-h-11"
-							>
+							<Button variant="ghost" disabled={loadingOlder} onClick={onLoadOlder}>
 								{loadingOlder && <Spinner data-icon="inline-start" />}
 								{loadingOlder
 									? 'Ältere Nachrichten werden geladen…'

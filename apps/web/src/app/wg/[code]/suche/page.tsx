@@ -190,7 +190,7 @@ export default function SuchePage() {
 							<FieldLabel htmlFor="wg-search" className="sr-only">
 								Suchbegriff
 							</FieldLabel>
-							<InputGroup className="min-h-11">
+							<InputGroup>
 								<InputGroupAddon align="inline-start">
 									<Search className="h-4 w-4" aria-hidden />
 								</InputGroupAddon>
@@ -230,7 +230,7 @@ export default function SuchePage() {
 										variant="outline"
 										size="sm"
 										onClick={() => setQuery(suggestion)}
-										className="min-h-11 rounded-lg"
+										className="rounded-lg"
 									>
 										{suggestion}
 									</Button>
@@ -279,7 +279,7 @@ export default function SuchePage() {
 										size="sm"
 										onClick={() => toggleModule(module.id)}
 										aria-pressed={moduleFilters.includes(module.id)}
-										className="min-h-11 rounded-lg"
+										className="rounded-lg"
 									>
 										{module.label}
 									</Button>
@@ -333,7 +333,7 @@ export default function SuchePage() {
 							variant="outline"
 							size="sm"
 							onClick={resetFilters}
-							className="mt-3 min-h-11"
+							className="mt-3"
 						>
 							Filter zurücksetzen
 						</Button>
@@ -356,17 +356,11 @@ export default function SuchePage() {
 						<div className="flex flex-wrap justify-center gap-2">
 							<Link
 								href={`${wgBaseHref}/pinnwand`}
-								className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'min-h-11')}
+								className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), '')}
 							>
 								Zur Pinnwand
 							</Link>
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								onClick={clearSearch}
-								className="min-h-11"
-							>
+							<Button type="button" variant="ghost" size="sm" onClick={clearSearch}>
 								Suchfeld leeren
 							</Button>
 						</div>
@@ -400,7 +394,7 @@ export default function SuchePage() {
 			)}
 
 			{hasActiveFilters && visibleResults.length > 0 && (
-				<Button type="button" variant="ghost" size="sm" onClick={resetFilters} className="min-h-11">
+				<Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
 					Filter zurücksetzen
 				</Button>
 			)}

@@ -360,7 +360,6 @@ export function ImageUploader({
 							onClick={() => setPreviewOpen(true)}
 							aria-label={`${accessibleImageLabel} groß anzeigen`}
 							disabled={!previewSrc}
-							className="min-h-11 min-w-11"
 						>
 							<Maximize2 aria-hidden />
 						</Button>
@@ -378,7 +377,6 @@ export function ImageUploader({
 							}}
 							aria-label={`${accessibleImageLabel} entfernen`}
 							disabled={disabled || uploading}
-							className="min-h-11 min-w-11"
 						>
 							<X aria-hidden />
 						</Button>
@@ -404,7 +402,7 @@ export function ImageUploader({
 							type="button"
 							onClick={() => setPreviewOpen(false)}
 							aria-label={`${accessibleImageLabel}-Vorschau schließen`}
-							className="absolute right-4 top-4 min-h-11 min-w-11"
+							className="absolute right-4 top-4"
 						>
 							<X aria-hidden />
 						</Button>

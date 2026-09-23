@@ -109,10 +109,7 @@ export default function EinstellungenPage() {
 					<Link
 						href={wgBaseHref}
 						aria-label="Zurück zum Dashboard"
-						className={cn(
-							buttonVariants({ variant: 'ghost', size: 'icon-lg' }),
-							'min-h-11 min-w-11 shrink-0',
-						)}
+						className={cn(buttonVariants({ variant: 'ghost', size: 'icon-lg' }), 'shrink-0')}
 					>
 						<ArrowLeft aria-hidden />
 						<span className="sr-only">Zurück zum Dashboard</span>
@@ -133,7 +130,7 @@ export default function EinstellungenPage() {
 					}}
 				>
 					<TabsList
-						className="sticky z-10 grid h-auto min-w-0 max-w-full w-full grid-cols-4 gap-1 border border-border bg-background p-1"
+						className="sticky z-10 grid h-auto min-w-0 max-w-full w-full grid-cols-4 gap-1 rounded-xl p-1"
 						style={{ top: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
 					>
 						{SETTINGS_TABS.map((tab) => (

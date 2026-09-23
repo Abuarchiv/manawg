@@ -531,7 +531,7 @@ export function ImportWizard() {
 											const file = event.target.files?.[0];
 											if (file) void handleOcrFile(file);
 										}}
-										className="min-h-11 text-base md:text-base"
+										className="text-base md:text-base"
 									/>
 									<FieldDescription>Foto oder Bildschirmfoto bis 10 MB.</FieldDescription>
 								</Field>
@@ -578,7 +578,7 @@ export function ImportWizard() {
 										accept=".csv,text/csv"
 										aria-label="CSV-Datei auswählen"
 										disabled={busy || inputStatus === 'reading'}
-										className="min-h-11 text-base md:text-base"
+										className="text-base md:text-base"
 										onChange={(event) => {
 											const file = event.target.files?.[0];
 											if (!file) return;
@@ -616,7 +616,7 @@ export function ImportWizard() {
 					</FieldGroup>
 					<div className="flex gap-2">
 						<Button
-							className="min-h-11 flex-1"
+							className="flex-1"
 							disabled={
 								busy || ocrRunning || inputStatus !== 'ready' || rawPayload.trim().length === 0
 							}
@@ -626,7 +626,6 @@ export function ImportWizard() {
 						</Button>
 						<Button
 							variant="outline"
-							className="min-h-11"
 							disabled={busy || ocrRunning}
 							onClick={() => {
 								clearImportError();
@@ -660,10 +659,10 @@ export function ImportWizard() {
 						showErrors={mappingValidated}
 					/>
 					<div className="flex gap-2">
-						<Button className="min-h-11 flex-1" onClick={continueFromMapping}>
+						<Button className="flex-1" onClick={continueFromMapping}>
 							Weiter zur Vorschau
 						</Button>
-						<Button variant="outline" className="min-h-11" onClick={() => setStep('input')}>
+						<Button variant="outline" onClick={() => setStep('input')}>
 							Zurück
 						</Button>
 					</div>
@@ -711,18 +710,13 @@ export function ImportWizard() {
 					</FieldGroup>
 					<div className="sticky bottom-[calc(var(--app-nav-height,5rem)+env(safe-area-inset-bottom))] flex gap-2 bg-background py-3">
 						<Button
-							className="min-h-11 flex-1"
+							className="flex-1"
 							disabled={busy || selectedCount === 0}
 							onClick={() => void submitCommit()}
 						>
 							{busy && <Spinner data-icon="inline-start" />}Importieren ({selectedCount})
 						</Button>
-						<Button
-							variant="outline"
-							className="min-h-11"
-							disabled={busy}
-							onClick={() => setStep('mapping')}
-						>
+						<Button variant="outline" disabled={busy} onClick={() => setStep('mapping')}>
 							Zurück
 						</Button>
 					</div>
@@ -767,7 +761,6 @@ export function ImportWizard() {
 								{commitRecoveryAction && (
 									<Button
 										variant="outline"
-										className="min-h-11"
 										onClick={() => applyRecoveryAction(commitRecoveryAction)}
 									>
 										{commitRecoveryAction.label}
@@ -792,7 +785,6 @@ export function ImportWizard() {
 						{recoveryAction && (
 							<Button
 								variant="outline"
-								className="min-h-11"
 								disabled={busy || ocrRunning}
 								onClick={() => applyRecoveryAction(recoveryAction)}
 							>

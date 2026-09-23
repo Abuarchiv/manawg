@@ -35,7 +35,6 @@ export default function WgNotFound() {
 								size="lg"
 								render={<Link href="/neu" />}
 								nativeButton={false}
-								className="min-h-11"
 							>
 								Neue WG erstellen oder beitreten
 							</Button>

@@ -35,7 +35,7 @@ export default function GlobalError({
 							<EmptyDescription>Bitte lade die Seite neu.</EmptyDescription>
 						</EmptyHeader>
 						<EmptyContent>
-							<Button type="button" size="lg" onClick={() => reset()} className="min-h-11">
+							<Button type="button" size="lg" onClick={() => reset()}>
 								Erneut versuchen
 							</Button>
 						</EmptyContent>

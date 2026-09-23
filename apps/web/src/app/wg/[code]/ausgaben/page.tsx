@@ -1211,7 +1211,7 @@ export default function AusgabenPage() {
 							<CardContent>
 								<Collapsible>
 									<CollapsibleTrigger
-										render={<Button variant="ghost" className="min-h-11 w-full justify-between" />}
+										render={<Button variant="ghost" className="w-full justify-between" />}
 									>
 										Saldo pro Mitglied
 										<ChevronDown data-icon="inline-end" />

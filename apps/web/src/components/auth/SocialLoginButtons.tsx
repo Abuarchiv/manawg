@@ -76,7 +76,7 @@ export function SocialLoginButtons({
 						size="lg"
 						onClick={() => void start(provider)}
 						disabled={pendingProvider !== null}
-						className="min-h-11 w-full"
+						className="w-full"
 					>
 						{loading ? (
 							<Spinner data-icon="inline-start" aria-hidden="true" />

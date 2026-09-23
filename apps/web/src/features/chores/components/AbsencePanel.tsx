@@ -1,7 +1,6 @@
 'use client';
 
 import { Collapsible, CollapsiblePanel } from '@/components/animate-ui/primitives/base/collapsible';
-import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
 	Card,
@@ -84,18 +83,18 @@ export function AbsencePanel({
 
 	return (
 		<Card id="absences-panel" className={cn('scroll-mt-28', active && 'ring-2 ring-ring')}>
-			<CardHeader className="!flex !flex-col items-start gap-1 sm:!grid sm:!grid-cols-[minmax(0,1fr)_auto]">
+			<CardHeader>
 				<CardTitle className="break-normal">Abwesenheiten</CardTitle>
 				<CardDescription className="break-normal">
 					{active
 						? 'Abwesenheits-Fokus: wer nicht da ist, wird bei der Rotation übersprungen.'
 						: 'Wer nicht da ist, wird bei der Rotation übersprungen.'}
 				</CardDescription>
-				<CardAction className="self-start sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:self-start sm:justify-self-end">
+				<CardAction>
 					<Button
 						variant="outline"
 						size="icon"
-						className="size-11"
+						className="size-9"
 						onClick={() => setFormOpen((open) => !open)}
 						aria-label={formOpen ? 'Abwesenheitsformular schließen' : 'Abwesenheit eintragen'}
 						aria-expanded={formOpen}
@@ -106,12 +105,11 @@ export function AbsencePanel({
 				</CardAction>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-3">
-				<Badge
-					variant="secondary"
-					className="h-auto w-fit max-w-full whitespace-normal break-normal"
-				>
-					{absentCount} aktuell abwesend
-				</Badge>
+				{absentCount > 0 && (
+					<p className="text-sm text-muted-foreground tabular-nums">
+						{absentCount} aktuell abwesend
+					</p>
+				)}
 				<Collapsible open={formOpen}>
 					<CollapsiblePanel>
 						<form
@@ -149,7 +147,7 @@ export function AbsencePanel({
 											onChange={(event) => onStartChange(event.target.value)}
 											disabled={pending}
 											aria-label="Abwesenheit von"
-											className="min-h-11 min-w-0 text-base"
+											className="min-w-0 text-base"
 										/>
 									</Field>
 									<Field data-disabled={pending} className="min-w-0">
@@ -161,7 +159,7 @@ export function AbsencePanel({
 											onChange={(event) => onEndChange(event.target.value)}
 											disabled={pending}
 											aria-label="Abwesenheit bis"
-											className="min-h-11 min-w-0 text-base"
+											className="min-w-0 text-base"
 										/>
 									</Field>
 								</FieldGroup>
@@ -175,7 +173,7 @@ export function AbsencePanel({
 										placeholder="Grund optional"
 										disabled={pending}
 										aria-label="Abwesenheitsgrund"
-										className="min-h-11 text-base"
+										className="text-base"
 									/>
 								</Field>
 							</FieldGroup>
@@ -183,7 +181,6 @@ export function AbsencePanel({
 								type="submit"
 								disabled={!start || !end || pending}
 								aria-label="Abwesenheit speichern"
-								className="min-h-11"
 							>
 								{pending && <Spinner data-icon="inline-start" aria-hidden />}
 								{pending ? 'Speichert…' : 'Abwesenheit speichern'}
@@ -223,7 +220,6 @@ export function AbsencePanel({
 										<Button
 											variant={armed ? 'destructive' : 'outline'}
 											disabled={removing}
-											className="min-h-11"
 											onClick={() => {
 												if (requestRemove(absence.id)) onRemove(absence.id);
 											}}

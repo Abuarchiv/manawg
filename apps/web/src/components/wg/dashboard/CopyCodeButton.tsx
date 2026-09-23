@@ -110,7 +110,7 @@ export function CopyCodeButton({ code, wgName, joiningEnabled = true }: CopyCode
 				variant="ghost"
 				onClick={onClick}
 				disabled={!joiningEnabled || sharing}
-				className="h-auto min-h-11 whitespace-normal"
+				className="h-auto whitespace-normal"
 				aria-label={label}
 			>
 				{sharing ? (

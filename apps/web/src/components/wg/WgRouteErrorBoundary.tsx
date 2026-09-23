@@ -75,7 +75,7 @@ export function WgRouteErrorBoundary({
 								</pre>
 							)}
 							<div className="flex w-full flex-col items-stretch gap-2">
-								<Button type="button" size="lg" onClick={reset} className="min-h-11 w-full">
+								<Button type="button" size="lg" onClick={reset} className="w-full">
 									Erneut versuchen
 								</Button>
 								<Button
@@ -83,7 +83,7 @@ export function WgRouteErrorBoundary({
 									size="lg"
 									render={<Link href={`/wg/${code}`} />}
 									nativeButton={false}
-									className="min-h-11 w-full"
+									className="w-full"
 								>
 									Zur Übersicht
 								</Button>

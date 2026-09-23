@@ -66,7 +66,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 						Dieser Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Link an.
 					</AlertDescription>
 				</Alert>
-				<Link href="/neu" className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11')}>
+				<Link href="/neu" className={cn(buttonVariants({ variant: 'outline' }), '')}>
 					Neuen Link über die Anmeldung anfordern
 				</Link>
 			</div>
@@ -89,7 +89,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 						required
 						aria-describedby={error ? 'reset-password-error' : undefined}
 						aria-invalid={error ? true : undefined}
-						className="min-h-11 text-base md:text-base"
+						className="text-base md:text-base"
 					/>
 				</Field>
 				<Field data-invalid={Boolean(error)}>
@@ -105,7 +105,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 						required
 						aria-describedby={error ? 'reset-password-error' : undefined}
 						aria-invalid={error ? true : undefined}
-						className="min-h-11 text-base md:text-base"
+						className="text-base md:text-base"
 					/>
 				</Field>
 				{error && <FieldError id="reset-password-error">{error}</FieldError>}
@@ -114,7 +114,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 					variant="default"
 					size="lg"
 					disabled={state === 'submitting'}
-					className="min-h-11 w-full"
+					className="w-full"
 				>
 					{state === 'submitting' && <Spinner data-icon="inline-start" aria-hidden />}
 					{state === 'submitting' ? 'Passwort wird gespeichert…' : 'Passwort speichern'}

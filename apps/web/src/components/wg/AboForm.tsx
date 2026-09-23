@@ -274,7 +274,7 @@ export function AboForm({
 						onChange={(event) => setDescription(event.target.value)}
 						placeholder="z. B. Netflix"
 						disabled={submitting}
-						className="min-h-11 text-base md:text-base"
+						className="text-base md:text-base"
 						aria-invalid={Boolean(descriptionError)}
 						aria-describedby={descriptionError ? 'abo-description-error' : undefined}
 					/>
@@ -282,7 +282,7 @@ export function AboForm({
 				</Field>
 				<Field data-disabled={submitting} data-invalid={Boolean(amountError)}>
 					<FieldLabel htmlFor="abo-amount">Betrag</FieldLabel>
-					<InputGroup className="min-h-11">
+					<InputGroup>
 						<InputGroupInput
 							id="abo-amount"
 							type="text"
@@ -351,20 +351,19 @@ export function AboForm({
 						required
 						aria-invalid={Boolean(nextDueError)}
 						aria-describedby={nextDueError ? 'abo-next-due-error' : undefined}
-						className="min-h-11 text-base md:text-base"
+						className="text-base md:text-base"
 					/>
 					<FieldError id="abo-next-due-error">{nextDueError}</FieldError>
 				</Field>
 				<FieldSet disabled={submitting}>
 					<FieldLegend>Beteiligte & Aufteilung</FieldLegend>
 					<ToggleGroup
+						variant="segmented"
 						value={[splitMode]}
 						onValueChange={(values) => {
 							const value = values[0];
 							if (value === 'equal' || value === 'manual') setSplitMode(value);
 						}}
-						variant="outline"
-						spacing={0}
 						className="w-full"
 						aria-label="Abo-Aufteilung"
 					>
@@ -385,7 +384,7 @@ export function AboForm({
 									>
 										{member.name}
 									</FieldLabel>
-									<InputGroup className="min-h-11 w-32 shrink-0">
+									<InputGroup className="w-32 shrink-0">
 										<InputGroupInput
 											id={`abo-share-${member.id}`}
 											type="text"

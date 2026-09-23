@@ -39,7 +39,7 @@ export function TextField({
 	return (
 		<Field data-disabled={disabled} data-invalid={Boolean(error)}>
 			<FieldLabel htmlFor={id}>{label}</FieldLabel>
-			<InputGroup className="min-h-11">
+			<InputGroup>
 				<InputGroupInput
 					id={id}
 					type="text"

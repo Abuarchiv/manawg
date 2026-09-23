@@ -228,19 +228,10 @@ export function MessageBubble({
 							/>
 						</Field>
 						<div className="flex flex-wrap justify-end gap-2">
-							<Button
-								variant="outline"
-								className="min-h-11"
-								disabled={pending}
-								onClick={() => setEditing(false)}
-							>
+							<Button variant="outline" disabled={pending} onClick={() => setEditing(false)}>
 								Abbrechen
 							</Button>
-							<Button
-								className="min-h-11"
-								disabled={pending || !draft.trim()}
-								onClick={() => void saveEdit()}
-							>
+							<Button disabled={pending || !draft.trim()} onClick={() => void saveEdit()}>
 								{pending && <Spinner data-icon="inline-start" />}
 								{pending ? 'Wird gespeichert…' : 'Speichern'}
 							</Button>
@@ -287,7 +278,6 @@ export function MessageBubble({
 											onClick={() => void toggleReaction(reaction.emoji, reaction.mine)}
 											disabled={isDeleted || Boolean(reactionPending)}
 											aria-pressed={reaction.mine}
-											className="min-h-11 min-w-11"
 											aria-label={`Reaktion ${reaction.emoji} (${reaction.count}) ${reaction.mine ? 'entfernen' : 'hinzufügen'} — Nachricht von ${senderName}`}
 										>
 											{reactionPending === reaction.emoji ? (
@@ -338,7 +328,6 @@ export function MessageBubble({
 						<Button
 							variant="ghost"
 							size="icon"
-							className="min-h-11 min-w-11"
 							onClick={() => {
 								haptic('selection');
 								onReply();
@@ -350,7 +339,7 @@ export function MessageBubble({
 						{(editable || deletable) && (
 							<DropdownMenu>
 								<DropdownMenuTrigger
-									render={<Button variant="ghost" size="icon" className="min-h-11 min-w-11" />}
+									render={<Button variant="ghost" size="icon" />}
 									disabled={pending}
 									aria-label={`Aktionen für Nachricht von ${senderName} (${formatRelativeTime(message.createdAt)})`}
 								>

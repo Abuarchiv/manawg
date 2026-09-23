@@ -31,7 +31,7 @@ export function WgWelcome(props: WgWelcomeProps) {
 		return (
 			<div className="flex flex-col gap-2">
 				{invitation && <p className="text-sm text-muted-foreground">Deine Einladung ist bereit.</p>}
-				<Link href={actionHref} className={cn(buttonVariants(), 'min-h-11 w-full')}>
+				<Link href={actionHref} className={cn(buttonVariants(), 'w-full')}>
 					{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
 				</Link>
 			</div>
@@ -49,12 +49,12 @@ export function WgWelcome(props: WgWelcomeProps) {
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-2">
-				<Link href={actionHref} className={cn(buttonVariants(), 'min-h-11 w-full')}>
+				<Link href={actionHref} className={cn(buttonVariants(), 'w-full')}>
 					{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
 				</Link>
 				<Link
 					href={invitation ? actionHref : '/neu'}
-					className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11 w-full')}
+					className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}
 				>
 					Anmelden
 				</Link>

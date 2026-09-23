@@ -244,9 +244,14 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 		setAccessPending('join');
 		setRotateConfirm(false);
 		const next = !joiningEnabled;
+		// Optimistisch umschalten, damit der Thumb sofort gleitet; bei Fehler zurück.
+		setJoiningEnabled(next);
 		try {
 			const data = await updateAccess({ joiningEnabled: next });
-			if (!data) return;
+			if (!data) {
+				setJoiningEnabled(!next);
+				return;
+			}
 			setJoiningEnabled(data.wg.joiningEnabled);
 			setAccessMessage(
 				next ? 'Neue Beitritte sind wieder erlaubt.' : 'Neue Beitritte sind gesperrt.',
@@ -335,16 +340,13 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 										: 'Der Code ist für neue Beitritte gesperrt.'}
 							</FieldDescription>
 						</FieldContent>
-						{accessPending === 'join' ? (
-							<Spinner aria-hidden />
-						) : (
-							<Switch
-								checked={joiningEnabled}
-								disabled={accessPending !== null}
-								aria-label={joiningEnabled ? 'Neue Beitritte sperren' : 'Neue Beitritte erlauben'}
-								onCheckedChange={() => void toggleJoining()}
-							/>
-						)}
+						<Switch
+							checked={joiningEnabled}
+							disabled={accessPending === 'rotate'}
+							aria-busy={accessPending === 'join'}
+							aria-label={joiningEnabled ? 'Neue Beitritte sperren' : 'Neue Beitritte erlauben'}
+							onCheckedChange={() => void toggleJoining()}
+						/>
 					</Field>
 					<div className="border-border border-t pt-2">
 						<div className="flex min-h-[44px] flex-wrap items-center justify-between gap-3">
@@ -362,7 +364,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 										onClick={cancelRotateConfirm}
 										disabled={accessPending !== null}
 										aria-label="WG-Code-Erneuerung abbrechen"
-										className="h-9 min-h-9 shrink-0 px-2.5"
+										className="shrink-0 px-2.5"
 									>
 										Abbrechen
 									</Button>
@@ -372,7 +374,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 										onClick={() => void rotateShareCode()}
 										disabled={accessPending !== null}
 										aria-label="WG-Code-Erneuerung bestätigen"
-										className="h-9 min-h-9 shrink-0 px-2.5"
+										className="shrink-0 px-2.5"
 									>
 										{accessPending === 'rotate' ? (
 											<>
@@ -391,7 +393,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 									onClick={() => void rotateShareCode()}
 									disabled={accessPending !== null}
 									aria-label="WG-Code erneuern"
-									className="h-11 min-h-[44px] shrink-0"
+									className="shrink-0"
 								>
 									Erneuern
 								</Button>
@@ -444,7 +446,6 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 											size="sm"
 											onClick={() => setMemberToDeactivate({ id: member.id, name: member.name })}
 											aria-label={`${member.name} ausziehen`}
-											className="min-h-[44px]"
 										>
 											<UserMinus aria-hidden />
 											Ausziehen
@@ -479,7 +480,6 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 												onClick={() => void handleReactivate({ id: member.id, name: member.name })}
 												disabled={reactivatingId === member.id}
 												aria-label={`${member.name} aktivieren`}
-												className="min-h-[44px]"
 											>
 												{reactivatingId === member.id ? (
 													<Spinner aria-hidden />
@@ -522,7 +522,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 						onClick={() => void handleAccountSignOut()}
 						disabled={accountSignOutPending}
 						aria-label="Konto abmelden"
-						className="h-11 min-h-[44px] w-full"
+						className="w-full"
 					>
 						{accountSignOutPending ? <Spinner aria-hidden /> : <LogOut aria-hidden />}
 						{accountSignOutPending ? 'Melde ab…' : 'Konto abmelden'}
@@ -559,7 +559,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 								type="button"
 								variant="destructive"
 								onClick={openLeaveConfirm}
-								className="h-11 min-h-[44px] w-full"
+								className="w-full"
 							>
 								<LogOut aria-hidden />
 								WG verlassen
@@ -577,7 +577,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 							type="button"
 							variant="destructive"
 							onClick={openDeleteConfirm}
-							className="h-11 min-h-[44px] w-full"
+							className="w-full"
 						>
 							<Trash2 aria-hidden />
 							Komplette WG für alle löschen
@@ -617,7 +617,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 							placeholder={wg.shareCode}
 							aria-describedby="delete-wg-confirm-hint"
 							disabled={deleteStage === 'pending'}
-							className="h-11 min-h-[44px] text-center font-mono text-base tracking-[0.18em]"
+							className="text-center font-mono text-base tracking-[0.18em]"
 							autoComplete="off"
 						/>
 						<FieldDescription id="delete-wg-confirm-hint">
