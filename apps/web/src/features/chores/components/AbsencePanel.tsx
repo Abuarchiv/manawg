@@ -137,7 +137,7 @@ export function AbsencePanel({
 										))}
 									</NativeSelect>
 								</Field>
-								<FieldGroup className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+								<FieldGroup className="grid grid-cols-1 gap-2">
 									<Field data-disabled={pending} className="min-w-0">
 										<FieldLabel htmlFor="absence-start">Von</FieldLabel>
 										<Input

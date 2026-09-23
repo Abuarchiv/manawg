@@ -224,7 +224,7 @@ export function MessageBubble({
 								aria-label="Nachricht bearbeiten"
 								aria-invalid={Boolean(error)}
 								aria-describedby={error ? `message-edit-error-${message.id}` : undefined}
-								className="min-h-24 text-base md:text-base"
+								className="min-h-24 text-base"
 							/>
 						</Field>
 						<div className="flex flex-wrap justify-end gap-2">

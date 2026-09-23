@@ -89,7 +89,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 						required
 						aria-describedby={error ? 'reset-password-error' : undefined}
 						aria-invalid={error ? true : undefined}
-						className="text-base md:text-base"
+						className="text-base"
 					/>
 				</Field>
 				<Field data-invalid={Boolean(error)}>
@@ -105,7 +105,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 						required
 						aria-describedby={error ? 'reset-password-error' : undefined}
 						aria-invalid={error ? true : undefined}
-						className="text-base md:text-base"
+						className="text-base"
 					/>
 				</Field>
 				{error && <FieldError id="reset-password-error">{error}</FieldError>}

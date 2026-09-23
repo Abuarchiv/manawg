@@ -105,7 +105,7 @@ export function LegacyAccountRecovery() {
 								maxLength={8}
 								aria-describedby={error ? 'legacy-recovery-error' : undefined}
 								aria-invalid={error ? true : undefined}
-								className="font-mono text-base uppercase md:text-base"
+								className="font-mono text-base uppercase"
 							/>
 						</Field>
 

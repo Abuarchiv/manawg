@@ -531,7 +531,7 @@ export function ImportWizard() {
 											const file = event.target.files?.[0];
 											if (file) void handleOcrFile(file);
 										}}
-										className="text-base md:text-base"
+										className="text-base"
 									/>
 									<FieldDescription>Foto oder Bildschirmfoto bis 10 MB.</FieldDescription>
 								</Field>
@@ -562,7 +562,7 @@ export function ImportWizard() {
 												aria-invalid={inputStatus === 'error' || undefined}
 												aria-describedby={inputStatus === 'error' ? 'import-error' : undefined}
 												placeholder="Ergebnis hier prüfen und korrigieren"
-												className="min-h-32 text-base md:text-base"
+												className="min-h-32 text-base"
 											/>
 										</Field>
 									</div>
@@ -578,7 +578,7 @@ export function ImportWizard() {
 										accept=".csv,text/csv"
 										aria-label="CSV-Datei auswählen"
 										disabled={busy || inputStatus === 'reading'}
-										className="text-base md:text-base"
+										className="text-base"
 										onChange={(event) => {
 											const file = event.target.files?.[0];
 											if (!file) return;
@@ -606,7 +606,7 @@ export function ImportWizard() {
 												aria-invalid={inputStatus === 'error' || undefined}
 												aria-describedby={inputStatus === 'error' ? 'import-error' : undefined}
 												disabled={busy || inputStatus === 'reading'}
-												className="min-h-32 text-base md:text-base"
+												className="min-h-32 text-base"
 											/>
 										</Field>
 									</div>

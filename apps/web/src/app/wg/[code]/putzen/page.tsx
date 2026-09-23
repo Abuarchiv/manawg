@@ -959,7 +959,6 @@ export default function PutzenPage() {
 				health={!showSkeleton && items.length > 0 ? health : null}
 				refreshing={refreshing}
 				showForm={showForm}
-				wgBaseHref={wgBaseHref}
 				onToggleForm={() => setShowForm((open) => !open)}
 			/>
 			<ChoreForm

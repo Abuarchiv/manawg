@@ -106,7 +106,7 @@ export function ReactionPicker({ onSelect, triggerLabel, disabled }: ReactionPic
 								}}
 								aria-label="Eigene Emoji-Reaktion"
 								placeholder="Emoji eingeben"
-								className="text-base md:text-base"
+								className="text-base"
 							/>
 							<InputGroupAddon align="inline-end">
 								<InputGroupButton

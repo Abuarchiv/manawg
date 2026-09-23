@@ -51,10 +51,7 @@ export function TextField({
 					disabled={disabled}
 					aria-invalid={error ? true : undefined}
 					aria-describedby={error ? errorId : undefined}
-					className={cn(
-						'min-h-11 text-base md:text-base',
-						inputMode === 'decimal' && 'font-mono tabular-nums',
-					)}
+					className={cn('min-h-11 text-base', inputMode === 'decimal' && 'font-mono tabular-nums')}
 				/>
 				{suffix && (
 					<InputGroupAddon align="inline-end">

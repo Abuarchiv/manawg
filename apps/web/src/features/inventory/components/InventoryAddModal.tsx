@@ -229,7 +229,7 @@ export function InventoryAddModal({
 							/>
 							{nameError && <FieldError id="inventory-name-error">{nameError}</FieldError>}
 						</Field>
-						<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+						<div className="grid grid-cols-1 gap-2">
 							<Field className="min-w-0">
 								<FieldLabel htmlFor="inventory-qty">Menge</FieldLabel>
 								<Input
@@ -259,7 +259,7 @@ export function InventoryAddModal({
 								/>
 							</Field>
 						</div>
-						<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+						<div className="grid grid-cols-1 gap-2">
 							<Field className="min-w-0">
 								<FieldLabel htmlFor="inventory-unit">Einheit</FieldLabel>
 								<NativeSelect
@@ -303,12 +303,12 @@ export function InventoryAddModal({
 							<AlertDescription>{serverError}</AlertDescription>
 						</Alert>
 					)}
-					<DrawerFooter className="flex-col items-stretch gap-2 p-0 sm:flex-row sm:justify-end">
+					<DrawerFooter className="flex-col items-stretch gap-2 p-0">
 						<Button
 							type="button"
 							variant="outline"
 							onClick={requestClose}
-							className="w-full break-normal sm:w-auto"
+							className="w-full break-normal"
 						>
 							Abbrechen
 						</Button>
@@ -316,7 +316,7 @@ export function InventoryAddModal({
 							type="submit"
 							disabled={saving}
 							aria-busy={saving}
-							className="w-full break-normal sm:w-auto"
+							className="w-full break-normal"
 						>
 							{saving && <Spinner aria-hidden />}
 							{saving ? 'Speichert…' : 'Speichern'}

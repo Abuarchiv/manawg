@@ -274,7 +274,7 @@ export function AboForm({
 						onChange={(event) => setDescription(event.target.value)}
 						placeholder="z. B. Netflix"
 						disabled={submitting}
-						className="text-base md:text-base"
+						className="text-base"
 						aria-invalid={Boolean(descriptionError)}
 						aria-describedby={descriptionError ? 'abo-description-error' : undefined}
 					/>
@@ -291,7 +291,7 @@ export function AboForm({
 							onChange={(event) => setAmountStr(event.target.value)}
 							placeholder="0,00"
 							disabled={submitting}
-							className="min-h-11 text-base md:text-base"
+							className="min-h-11 text-base"
 							aria-invalid={Boolean(amountError)}
 							aria-describedby={amountError ? 'abo-amount-error' : undefined}
 						/>
@@ -351,7 +351,7 @@ export function AboForm({
 						required
 						aria-invalid={Boolean(nextDueError)}
 						aria-describedby={nextDueError ? 'abo-next-due-error' : undefined}
-						className="text-base md:text-base"
+						className="text-base"
 					/>
 					<FieldError id="abo-next-due-error">{nextDueError}</FieldError>
 				</Field>
@@ -399,7 +399,7 @@ export function AboForm({
 											placeholder="0,00"
 											aria-label={`Anteil ${member.name} in Euro`}
 											disabled={submitting}
-											className="min-h-11 text-base md:text-base"
+											className="min-h-11 text-base"
 										/>
 										<InputGroupAddon align="inline-end">
 											<InputGroupText>€</InputGroupText>

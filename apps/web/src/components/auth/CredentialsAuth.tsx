@@ -204,7 +204,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								required
 								aria-describedby={emailFieldInvalid ? 'auth-email-error' : undefined}
 								aria-invalid={emailFieldInvalid || undefined}
-								className="text-base md:text-base"
+								className="text-base"
 							/>
 						</Field>
 						<Field data-invalid={passwordFieldInvalid}>
@@ -220,7 +220,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								required
 								aria-describedby={passwordFieldInvalid ? 'auth-email-error' : undefined}
 								aria-invalid={passwordFieldInvalid || undefined}
-								className="text-base md:text-base"
+								className="text-base"
 							/>
 						</Field>
 						<Button
@@ -300,7 +300,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								}
 								aria-invalid={phoneError ? true : undefined}
 								disabled={otpRequested || busy !== null}
-								className="text-base md:text-base"
+								className="text-base"
 							/>
 						</Field>
 						<p id="auth-phone-hint" className="text-[12px] text-muted-foreground">
@@ -321,7 +321,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 									pattern="[0-9]{6}"
 									aria-describedby={phoneError ? 'auth-phone-error' : undefined}
 									aria-invalid={phoneError ? true : undefined}
-									className="font-mono text-base md:text-base"
+									className="font-mono text-base"
 								/>
 							</Field>
 						)}

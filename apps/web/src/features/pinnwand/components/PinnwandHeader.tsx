@@ -1,7 +1,6 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { CalendarLink } from '@/components/wg/PageHeaderActions';
 import { MessageCircle, Plus, X } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
@@ -44,9 +43,6 @@ export function PinnwandHeader({
 					)}
 				</div>
 				<div className="flex shrink-0 items-center justify-end gap-2">
-					<div className="hidden sm:block">
-						<CalendarLink wgBaseHref={wgBaseHref} />
-					</div>
 					<Button
 						variant="ghost"
 						size="icon"
@@ -60,7 +56,7 @@ export function PinnwandHeader({
 						onClick={onToggleComposer}
 						disabled={composerBusy || loading}
 						variant={composerOpen ? 'outline' : 'default'}
-						className="w-9 shrink-0 p-0 sm:h-auto sm:w-auto sm:px-3"
+						className="w-9 shrink-0 p-0"
 						aria-expanded={composerOpen}
 						aria-controls="announcement-composer"
 						aria-label={
@@ -76,9 +72,6 @@ export function PinnwandHeader({
 						) : (
 							<Plus data-icon="inline-start" aria-hidden />
 						)}
-						<span className="hidden sm:inline">
-							{composerOpen ? 'Schließen' : hasDraft ? 'Entwurf' : 'Beitrag'}
-						</span>
 					</Button>
 				</div>
 			</div>

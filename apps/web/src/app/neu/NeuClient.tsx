@@ -893,7 +893,7 @@ export function NeuClient() {
 												: 'join-code-hint'
 										}
 										aria-invalid={invalidField === 'joinCode'}
-										className="font-mono text-base md:text-base"
+										className="font-mono text-base"
 									/>
 									<FieldDescription id="join-code-hint">
 										8 Zeichen, ohne I, L, O und U.

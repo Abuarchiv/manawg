@@ -570,7 +570,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 											rows={2}
 											aria-label={`Antwort verfassen: ${actionSubject}`}
 											placeholder="Antwort schreiben"
-											className="max-h-40 text-base md:text-base"
+											className="max-h-40 text-base"
 										/>
 										<InputGroupAddon align="block-end" className="justify-end">
 											<InputGroupButton
@@ -727,7 +727,7 @@ function CommentRow({
 								aria-label="Kommentar bearbeiten"
 								aria-invalid={error}
 								aria-describedby={error ? `comment-edit-error-${comment.id}` : undefined}
-								className="text-base md:text-base"
+								className="text-base"
 							/>
 						</Field>
 						<div className="flex flex-wrap justify-end gap-2">

@@ -11,7 +11,7 @@ export function ListSkeleton() {
 			className="overflow-hidden rounded-xl border border-border bg-card"
 		>
 			{SKELETON_KEYS.map((k) => (
-				<Item key={k} className="px-3 py-2.5 sm:px-4">
+				<Item key={k} className="px-3 py-2.5">
 					<ItemMedia variant="icon" className="self-center">
 						<Skeleton className="size-6 rounded-md" />
 					</ItemMedia>

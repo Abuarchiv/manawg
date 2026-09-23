@@ -43,7 +43,7 @@ export function PinnwandFilterBar({ filter, onFilterChange }: PinnwandFilterBarP
 					onChange={(event) =>
 						onFilterChange((current) => ({ ...current, query: event.target.value }))
 					}
-					className="text-base md:text-base"
+					className="text-base"
 				/>
 			</InputGroup>
 			<div className="flex items-center gap-2">

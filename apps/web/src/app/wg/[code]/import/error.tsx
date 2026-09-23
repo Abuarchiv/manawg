@@ -26,7 +26,7 @@ export default function ImportError({ error, reset }: Props) {
 					{process.env.NODE_ENV === 'development' ? error.message : 'Bitte versuche es erneut.'}
 				</AlertDescription>
 			</Alert>
-			<div className="flex flex-col gap-2 sm:flex-row">
+			<div className="flex flex-col gap-2">
 				<Button type="button" className="flex-1" onClick={reset}>
 					Erneut versuchen
 				</Button>

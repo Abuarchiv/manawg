@@ -219,7 +219,7 @@ export function ExpenseFormSection({
 			>
 				<DialogContent
 					showCloseButton={false}
-					className="top-0 flex h-dvh max-h-dvh w-full max-w-md translate-y-0 flex-col gap-0 rounded-none p-0 sm:top-1/2 sm:h-auto sm:max-h-[calc(100dvh-3rem)] sm:max-w-lg sm:-translate-y-1/2 sm:rounded-xl"
+					className="top-0 flex h-dvh max-h-dvh w-full max-w-md translate-y-0 flex-col gap-0 rounded-none p-0"
 					initialFocus={() => document.getElementById(EXPENSE_DESCRIPTION_FIELD_ID)}
 				>
 					<DialogHeader className="shrink-0 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
@@ -396,7 +396,7 @@ export function ExpenseFormSection({
 																	? splitErrorId
 																	: undefined
 															}
-															className="min-h-11 font-mono tabular-nums text-base md:text-base"
+															className="min-h-11 font-mono tabular-nums text-base"
 														/>
 														<InputGroupAddon align="inline-end">
 															<InputGroupText>€</InputGroupText>
@@ -584,7 +584,7 @@ export function ExpenseFormSection({
 							Bereits gespeicherte Ausgaben bleiben erhalten.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
-					<AlertDialogFooter className="flex-col sm:flex-col">
+					<AlertDialogFooter className="flex-col">
 						<AlertDialogCancel className="min-h-11">Entwurf behalten</AlertDialogCancel>
 						<AlertDialogAction
 							variant="destructive"
@@ -605,7 +605,7 @@ export function ExpenseFormSection({
 							oder ausdrücklich verwerfen.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
-					<AlertDialogFooter className="flex-col sm:flex-col">
+					<AlertDialogFooter className="flex-col">
 						<AlertDialogCancel className="min-h-11">Weiterbearbeiten</AlertDialogCancel>
 						<AlertDialogAction variant="destructive" className="min-h-11" onClick={onDiscard}>
 							Entwurf verwerfen

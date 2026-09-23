@@ -119,7 +119,7 @@ export function PinnwandComposer({
 							aria-invalid={Boolean(error)}
 							aria-describedby={error ? 'announcement-error' : 'announcement-count'}
 							placeholder={`Was gibt es Neues, ${authorName}?`}
-							className="min-h-32 text-base md:text-base"
+							className="min-h-32 text-base"
 						/>
 					</Field>
 				</FieldGroup>

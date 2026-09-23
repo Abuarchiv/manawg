@@ -282,7 +282,7 @@ export function ChatComposer({
 						aria-controls={mentionOpen ? mentionListboxId : undefined}
 						aria-expanded={mentionOpen}
 						aria-activedescendant={activeOptionId}
-						className="max-h-32 min-h-11 flex-1 text-base md:text-base"
+						className="max-h-32 min-h-11 flex-1 text-base"
 					/>
 					<InputGroupAddon align="inline-end" className="py-1">
 						<InputGroupButton

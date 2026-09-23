@@ -1,6 +1,6 @@
 'use client';
 import { Spinner } from '@/components/ui/spinner';
-import { CalendarLink, FormToggleButton } from '@/components/wg/PageHeaderActions';
+import { FormToggleButton } from '@/components/wg/PageHeaderActions';
 import type { getChorePlanHealth } from '@/features/chores/chore-status';
 
 interface PutzenHeaderProps {
@@ -8,7 +8,6 @@ interface PutzenHeaderProps {
 	health: ReturnType<typeof getChorePlanHealth> | null;
 	refreshing: boolean;
 	showForm: boolean;
-	wgBaseHref: string;
 	onToggleForm: () => void;
 }
 
@@ -17,7 +16,6 @@ export function PutzenHeader({
 	health,
 	refreshing,
 	showForm,
-	wgBaseHref,
 	onToggleForm,
 }: PutzenHeaderProps) {
 	return (
@@ -43,15 +41,13 @@ export function PutzenHeader({
 				</p>
 			</div>
 			<div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-				<div className="hidden sm:block">
-					<CalendarLink wgBaseHref={wgBaseHref} />
-				</div>
 				<FormToggleButton
 					open={showForm}
 					onToggle={onToggleForm}
 					controls="add-chore-form"
 					openLabel="Putzaufgabe erfassen"
 					closeLabel="Putzaufgabe-Formular schließen"
+					secondary
 				/>
 			</div>
 		</header>
