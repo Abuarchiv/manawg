@@ -14,7 +14,10 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { formatEuroCents } from '@/core/utils/money';
-import { type ParsedExpense, describeParsedExpenseWarning } from '@/features/expenses/import-parsers';
+import {
+	type ParsedExpense,
+	describeParsedExpenseWarning,
+} from '@/features/expenses/import-parsers';
 import { cn } from '@/shared/lib/cn';
 
 interface MemberOption {

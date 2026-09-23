@@ -31,10 +31,7 @@ export type ImportSource = 'splitwise_csv' | 'splid_csv' | 'ocr_screenshot' | 'm
  */
 export function describeParsedExpenseWarning(code: string): string {
 	if (code.startsWith('unknown_columns_ignored:')) {
-		const columns = code
-			.slice('unknown_columns_ignored:'.length)
-			.split('|')
-			.filter(Boolean);
+		const columns = code.slice('unknown_columns_ignored:'.length).split('|').filter(Boolean);
 		return `Spalte${columns.length === 1 ? '' : 'n'} ${columns.map((name) => `„${name}“`).join(', ')} wurde${columns.length === 1 ? '' : 'n'} nicht erkannt und ignoriert.`;
 	}
 	if (code === 'custom_splits_drift_adjusted') {
