@@ -184,7 +184,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 			<Section title="Rechtliches">
 				<ul className="divide-border divide-y">
 					<LinkRow href="https://manawg.com/impressum" label="Impressum" external />
-					<LinkRow href="/datenschutz" label="Datenschutz" />
+					<LinkRow href="https://manawg.com/datenschutz" label="Datenschutz" external />
 					<LinkRow href="https://manawg.com/agb" label="AGB" external />
 				</ul>
 			</Section>
