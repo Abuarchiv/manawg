@@ -711,7 +711,7 @@ export default function EinkaufPage() {
 						<p className="text-sm font-medium text-muted-foreground">{group.label}</p>
 						<ul
 							aria-label={group.label}
-							className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]"
+							className="-mx-4 -my-1.5 flex gap-2 overflow-x-auto px-4 py-1.5 [scrollbar-width:none]"
 						>
 							{group.names.map((name) => (
 								<li key={name} className="shrink-0">

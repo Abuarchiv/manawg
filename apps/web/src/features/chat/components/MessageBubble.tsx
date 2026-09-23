@@ -319,7 +319,7 @@ export function MessageBubble({
 					</Alert>
 				)}
 				{!isDeleted && !editing && (
-					<MessageFooter className="flex-wrap gap-0 px-0 [&_svg]:size-3.5">
+					<MessageFooter className="flex-wrap gap-2 px-0 py-1 [&_svg]:size-3.5">
 						<ReactionPicker
 							disabled={Boolean(reactionPending)}
 							onSelect={(emoji) => toggleReaction(emoji, false)}
