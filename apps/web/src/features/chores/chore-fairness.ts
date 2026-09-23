@@ -94,7 +94,7 @@ export function buildChoreFairness(input: {
 	const insights =
 		busiest && busiest.assignedCount + busiest.openGapCount > 0
 			? [
-					`${busiest.name} hat aktuell ${busiest.assignedCount} Aufgaben und ${busiest.openGapCount} offene Termine.`,
+					`${busiest.name} hat aktuell ${busiest.assignedCount === 1 ? '1 Aufgabe' : `${busiest.assignedCount} Aufgaben`} und ${busiest.openGapCount === 1 ? '1 offenen Termin' : `${busiest.openGapCount} offene Termine`}.`,
 				]
 			: ['Die Aufgaben sind noch nicht verteilt.'];
 	if (absentCount > 0) {

@@ -268,7 +268,11 @@ export function CalendarMonth({
 											tabIndex={weekIndex * 7 + dayIndex === focusedIndex ? 0 : -1}
 											aria-label={
 												FULL_DATE_FORMATTER.format(day.date) +
-												(day.occurrences.length ? `, ${day.occurrences.length} Termine` : '')
+												(day.occurrences.length === 1
+													? ', 1 Termin'
+													: day.occurrences.length
+														? `, ${day.occurrences.length} Termine`
+														: '')
 											}
 											aria-current={isToday ? 'date' : undefined}
 											className={cn(

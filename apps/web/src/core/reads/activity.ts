@@ -275,7 +275,7 @@ function auditDetail(metadataJson?: string | null): string | undefined {
 			parts.push('neuer WG-Code');
 		}
 		if (typeof metadata.intervalDays === 'number') {
-			parts.push(`alle ${metadata.intervalDays} Tage`);
+			parts.push(metadata.intervalDays === 1 ? 'täglich' : `alle ${metadata.intervalDays} Tage`);
 		}
 		if (typeof metadata.intervalMonths === 'number') {
 			parts.push(

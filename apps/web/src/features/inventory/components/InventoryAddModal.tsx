@@ -306,14 +306,6 @@ export function InventoryAddModal({
 					</div>
 					<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
 						<Button
-							type="button"
-							variant="outline"
-							onClick={requestClose}
-							className="w-full break-normal"
-						>
-							Abbrechen
-						</Button>
-						<Button
 							type="submit"
 							disabled={saving}
 							aria-busy={saving}
@@ -321,6 +313,14 @@ export function InventoryAddModal({
 						>
 							{saving && <Spinner aria-hidden />}
 							{saving ? 'Speichert…' : 'Speichern'}
+						</Button>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={requestClose}
+							className="w-full break-normal"
+						>
+							Abbrechen
 						</Button>
 					</DrawerFooter>
 				</form>
