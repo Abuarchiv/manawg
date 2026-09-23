@@ -53,6 +53,7 @@ export function AusgabenHeader({
 					onToggle={onToggleForm}
 					openLabel="Ausgabe erfassen"
 					closeLabel="Ausgabenformular schließen"
+					secondary
 				/>
 			</div>
 		</header>

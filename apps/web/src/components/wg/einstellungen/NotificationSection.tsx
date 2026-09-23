@@ -343,9 +343,7 @@ export function NotificationSection({
 				{loadingStatus && (
 					<div className="grid gap-2" aria-live="polite">
 						<Skeleton className="h-11 w-full" />
-						<p className="text-muted-foreground text-[13px]">
-							Benachrichtigungen werden geladen...
-						</p>
+						<p className="text-muted-foreground text-[13px]">Benachrichtigungen werden geladen…</p>
 					</div>
 				)}
 				{!status && error && (
@@ -361,7 +359,7 @@ export function NotificationSection({
 						>
 							{loadingStatus ? (
 								<>
-									<Spinner aria-hidden /> Lädt...
+									<Spinner aria-hidden /> Lädt…
 								</>
 							) : (
 								'Erneut laden'

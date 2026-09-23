@@ -32,8 +32,6 @@ import { type ReactElement, memo, useState } from 'react';
 
 interface ChoreRowProps {
 	chore: Chore;
-	/** Nur eigene fällige Aufgaben bekommen den gefüllten Button. */
-	isMine: boolean;
 	assignee: MemberInfo;
 	isPending: boolean;
 	isSwapPending: boolean;
@@ -66,7 +64,6 @@ function formatChoreCadence(interval: number, type: RecurrenceType): string {
 
 export const ChoreRow = memo(function ChoreRow({
 	chore,
-	isMine,
 	assignee,
 	isPending,
 	isSwapPending,
@@ -137,7 +134,7 @@ export const ChoreRow = memo(function ChoreRow({
 				<Button
 					onClick={() => onComplete(chore)}
 					disabled={busy}
-					variant={isMine ? 'default' : 'outline'}
+					variant="outline"
 					aria-label={
 						status.actionLabel === 'Nachholen'
 							? `Aufgabe nachholen: ${chore.title}`

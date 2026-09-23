@@ -3,25 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { cn } from '@/shared/lib/cn';
 import Link from 'next/link';
 
-export type WgWelcomeVariant = 'create' | 'invitation' | 'member';
+export type WgWelcomeVariant = 'create' | 'invitation';
 
 type WgWelcomeProps =
 	| { variant: 'create'; compact?: boolean }
-	| { variant: 'invitation'; code: string; compact?: boolean }
-	| { variant: 'member'; wgName: string; compact?: boolean };
+	| { variant: 'invitation'; code: string; compact?: boolean };
 
 export function WgWelcome(props: WgWelcomeProps) {
-	if (props.variant === 'member') {
-		return (
-			<Card>
-				<CardHeader>
-					<CardTitle>Willkommen in deiner WG</CardTitle>
-					<CardDescription>{props.wgName}</CardDescription>
-				</CardHeader>
-			</Card>
-		);
-	}
-
 	const invitation = props.variant === 'invitation';
 	const actionHref = invitation
 		? `/neu?code=${encodeURIComponent(props.code)}`

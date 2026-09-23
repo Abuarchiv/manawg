@@ -23,8 +23,10 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { SubNav } from '@/components/wg/SubNav';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
@@ -92,14 +94,42 @@ export default function EinkaufPage() {
 	const { wg, members, identity } = useWg();
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
+	const {
+		data: cachedShopping,
+		error: shoppingReadError,
+		isLoading: shoppingReadLoading,
+		refresh: refreshShopping,
+		setData: setCachedShopping,
+	} = useCachedFetch<{ items: ShoppingItem[] }>(`/api/wg/${encodedShareCode}/shopping`, {
+		memberId: identity.memberId,
+	});
+	const { data: cachedInventory, refresh: refreshInventory } = useCachedFetch<{
+		items: InventoryItemDto[];
+	}>(`/api/wg/${encodedShareCode}/inventory`, {
+		memberId: identity.memberId,
+	});
 	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const searchParams = useSearchParams();
 	const highlightedId = searchParams.get('highlight');
 	const prefillName = searchParams.get('name');
-	const [items, setItems] = useState<ShoppingItem[]>([]);
-	const [initialLoading, setInitialLoading] = useState(true);
+	const [items, setItems] = useState<ShoppingItem[]>(() => cachedShopping?.items ?? []);
+	const commitItems = useCallback(
+		(update: ShoppingItem[] | ((current: ShoppingItem[]) => ShoppingItem[])) => {
+			setItems(update);
+			setCachedShopping((current) => {
+				const previousItems = current?.items ?? items;
+				const nextItems = typeof update === 'function' ? update(previousItems) : update;
+				if (!current && nextItems === previousItems) return current;
+				return { ...(current ?? { items: previousItems }), items: nextItems };
+			});
+		},
+		[items, setCachedShopping],
+	);
+	const [initialLoading, setInitialLoading] = useState(shoppingReadLoading);
 	const [newName, setNewName] = useState('');
-	const [inventory, setInventory] = useState<InventoryItemDto[]>([]);
+	const [inventory, setInventory] = useState<InventoryItemDto[]>(
+		() => cachedInventory?.items ?? [],
+	);
 	const [doneOpen, setDoneOpen] = useState(false);
 	const [receiptSince, setReceiptSince] = useState<string | null>(null);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -125,18 +155,14 @@ export default function EinkaufPage() {
 	const appliedPrefillRef = useRef<string | null>(null);
 	const mountedRef = useRef(false);
 	const loadRequestIdRef = useRef(0);
+	const hasShoppingCacheRef = useRef(cachedShopping !== undefined);
 
 	const load = useCallback(
 		async (silent = false): Promise<void> => {
 			const requestId = loadRequestIdRef.current + 1;
 			loadRequestIdRef.current = requestId;
-			if (!silent) setInitialLoading(true);
-			const res = await apiFetch<{ items: ShoppingItem[] }>(
-				`/api/wg/${encodedShareCode}/shopping`,
-				{
-					memberId: identity.memberId,
-				},
-			);
+			if (!silent && !hasShoppingCacheRef.current) setInitialLoading(true);
+			const res = await refreshShopping();
 			if (requestId !== loadRequestIdRef.current) {
 				if (!silent) setInitialLoading(false);
 				return;
@@ -145,11 +171,7 @@ export default function EinkaufPage() {
 				setLoadError(null);
 				setItems(res.data.items);
 				// Nur für Vorschläge: ein Fehler hier darf die Liste nicht blockieren.
-				void apiFetch<{ items: InventoryItemDto[] }>(`/api/wg/${encodedShareCode}/inventory`, {
-					memberId: identity.memberId,
-				}).then((inventoryRes) => {
-					if (inventoryRes.ok && mountedRef.current) setInventory(inventoryRes.data.items);
-				});
+				void refreshInventory();
 				syncOfflineActions(wg.shareCode, { memberId: identity.memberId })
 					.then((synced) => {
 						if (!mountedRef.current) return;
@@ -164,8 +186,22 @@ export default function EinkaufPage() {
 			}
 			if (!silent && requestId === loadRequestIdRef.current) setInitialLoading(false);
 		},
-		[encodedShareCode, identity.memberId, wg.shareCode],
+		[identity.memberId, refreshInventory, refreshShopping, wg.shareCode],
 	);
+	useEffect(() => {
+		if (cachedShopping) {
+			hasShoppingCacheRef.current = true;
+			setItems(cachedShopping.items);
+			setLoadError(null);
+			setInitialLoading(false);
+		} else if (shoppingReadError) {
+			setLoadError(
+				getWgLoadErrorMessage('Einkaufsliste', shoppingReadError.status, shoppingReadError.error),
+			);
+			setInitialLoading(false);
+		}
+		if (cachedInventory) setInventory(cachedInventory.items);
+	}, [cachedInventory, cachedShopping, shoppingReadError]);
 	const itemCount = items.length;
 
 	useEffect(() => {
@@ -308,7 +344,7 @@ export default function EinkaufPage() {
 						setAddError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
-					setItems((prev) => [
+					commitItems((prev) => [
 						{
 							id: queued.id,
 							addedByMemberId: identity.memberId,
@@ -367,14 +403,14 @@ export default function EinkaufPage() {
 				boughtAt: becomingBought ? new Date().toISOString() : null,
 				boughtByMemberId: becomingBought ? identity.memberId : null,
 			};
-			setItems((prev) =>
+			commitItems((prev) =>
 				keepItems(
 					prev,
 					prev.map((current) => (current.id === item.id ? optimisticItem : current)),
 				),
 			);
 			const rollback = () =>
-				setItems((prev) =>
+				commitItems((prev) =>
 					keepItems(
 						prev,
 						prev.map((current) => (current.id === item.id ? item : current)),
@@ -429,7 +465,7 @@ export default function EinkaufPage() {
 						rollback();
 						setToggleError('Nur der/die Autor:in kann dies abhaken.');
 					} else if (res.status === 404 && res.error === 'item_not_found') {
-						setItems((prev) =>
+						commitItems((prev) =>
 							keepItems(
 								prev,
 								prev.filter((current) => current.id !== item.id),
@@ -466,7 +502,7 @@ export default function EinkaufPage() {
 					}
 					return;
 				}
-				setItems((prev) =>
+				commitItems((prev) =>
 					keepItems(
 						prev,
 						prev.map((current) => (current.id === item.id ? res.data.item : current)),
@@ -480,6 +516,7 @@ export default function EinkaufPage() {
 		[
 			end,
 			encodedShareCode,
+			commitItems,
 			identity.memberId,
 			identity.memberToken,
 			isPending,
@@ -510,7 +547,7 @@ export default function EinkaufPage() {
 					setRemoveErrorId(id);
 					setRemoveError('Nur der/die Autor:in kann diesen Eintrag entfernen.');
 				} else if (res.status === 404 && res.error === 'item_not_found') {
-					setItems((prev) =>
+					commitItems((prev) =>
 						keepItems(
 							prev,
 							prev.filter((item) => item.id !== id),
@@ -526,7 +563,7 @@ export default function EinkaufPage() {
 				end(id);
 				return;
 			}
-			setItems((prev) =>
+			commitItems((prev) =>
 				keepItems(
 					prev,
 					prev.filter((item) => item.id !== id),
@@ -535,7 +572,16 @@ export default function EinkaufPage() {
 			void load(true);
 			end(id);
 		},
-		[end, encodedShareCode, identity.memberId, identity.memberToken, isPending, load, start],
+		[
+			end,
+			encodedShareCode,
+			commitItems,
+			identity.memberId,
+			identity.memberToken,
+			isPending,
+			load,
+			start,
+		],
 	);
 
 	async function clearBought(): Promise<void> {
@@ -551,7 +597,7 @@ export default function EinkaufPage() {
 				memberToken: identity.memberToken,
 			});
 			if (res.ok) {
-				setItems((prev) =>
+				commitItems((prev) =>
 					keepItems(
 						prev,
 						prev.filter((item) => item.boughtAt === null),
@@ -671,41 +717,7 @@ export default function EinkaufPage() {
 				</p>
 			</header>
 
-			<form
-				onSubmit={(event) => {
-					event.preventDefault();
-					void add();
-				}}
-				className="flex flex-col gap-3"
-			>
-				<div className="flex flex-wrap gap-2">
-					<Input
-						id="shopping-name"
-						ref={nameInputRef}
-						value={newName}
-						onChange={(event) => {
-							nameValueRef.current = event.target.value;
-							setNewName(event.target.value);
-						}}
-						maxLength={NAME_MAX}
-						placeholder="z. B. 2 Hafermilch"
-						aria-label="Artikel-Name"
-						enterKeyHint="done"
-						aria-invalid={Boolean(addError)}
-						aria-describedby={addError ? 'shopping-add-error' : undefined}
-						className="flex-1 basis-48 text-base"
-					/>
-					<Button
-						type="submit"
-						size="icon"
-						disabled={!newName.trim() || adding}
-						aria-label="Artikel hinzufügen"
-						onPointerDown={(event) => event.preventDefault()}
-						className="size-11 shrink-0"
-					>
-						{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}
-					</Button>
-				</div>
+			<div className="flex flex-col gap-3">
 				{suggestionGroups.map((group) => (
 					<div key={group.label} className="flex min-w-0 flex-col gap-1.5">
 						<p className="text-sm font-medium text-muted-foreground">{group.label}</p>
@@ -732,17 +744,7 @@ export default function EinkaufPage() {
 						</ul>
 					</div>
 				))}
-				{addError && (
-					<Alert id="shopping-add-error" variant="destructive">
-						<AlertDescription>{addError}</AlertDescription>
-					</Alert>
-				)}
-				{addNotice && (
-					<Alert>
-						<AlertDescription>{addNotice}</AlertDescription>
-					</Alert>
-				)}
-			</form>
+			</div>
 
 			{queuedCount > 0 && (
 				<Alert>
@@ -851,6 +853,59 @@ export default function EinkaufPage() {
 					)}
 				</section>
 			)}
+			<ThumbAction>
+				<div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-2">
+					<form
+						id="shopping-add-form"
+						onSubmit={(event) => {
+							event.preventDefault();
+							void add();
+						}}
+						className="flex min-w-0 gap-2"
+					>
+						<Input
+							id="shopping-name"
+							ref={nameInputRef}
+							value={newName}
+							onChange={(event) => {
+								nameValueRef.current = event.target.value;
+								setNewName(event.target.value);
+							}}
+							maxLength={NAME_MAX}
+							placeholder="z. B. 2 Hafermilch"
+							aria-label="Artikel-Name"
+							enterKeyHint="done"
+							aria-invalid={Boolean(addError)}
+							aria-describedby={addError ? 'shopping-add-error' : undefined}
+							className="min-w-0 flex-1 text-base"
+						/>
+						<Button
+							type="submit"
+							disabled={!newName.trim() || adding}
+							aria-label="Artikel hinzufügen"
+							onPointerDown={(event) => event.preventDefault()}
+							className="min-h-11 shrink-0"
+						>
+							{adding ? (
+								<Spinner data-icon="inline-start" aria-hidden />
+							) : (
+								<Plus data-icon="inline-start" aria-hidden />
+							)}
+							Hinzufügen
+						</Button>
+					</form>
+					{addError && (
+						<Alert id="shopping-add-error" variant="destructive">
+							<AlertDescription>{addError}</AlertDescription>
+						</Alert>
+					)}
+					{addNotice && (
+						<Alert>
+							<AlertDescription>{addNotice}</AlertDescription>
+						</Alert>
+					)}
+				</div>
+			</ThumbAction>
 			<AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
 				<AlertDialogContent className="max-w-[calc(100%-2rem)]">
 					<AlertDialogHeader>

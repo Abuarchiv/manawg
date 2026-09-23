@@ -14,7 +14,7 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { formatEuroCents } from '@/core/utils/money';
-import type { ParsedExpense } from '@/features/expenses/import-parsers';
+import { type ParsedExpense, describeParsedExpenseWarning } from '@/features/expenses/import-parsers';
 import { cn } from '@/shared/lib/cn';
 
 interface MemberOption {
@@ -106,7 +106,9 @@ export function ImportPreviewTable({
 							</ul>
 							{parsed.warnings.length > 0 && (
 								<Alert>
-									<AlertDescription>Hinweise: {parsed.warnings.join(', ')}</AlertDescription>
+									<AlertDescription>
+										{parsed.warnings.map(describeParsedExpenseWarning).join(' ')}
+									</AlertDescription>
 								</Alert>
 							)}
 							<Field orientation="horizontal" className="min-h-11" data-disabled={disabled}>

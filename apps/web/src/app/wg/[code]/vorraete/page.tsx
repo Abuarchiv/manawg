@@ -7,14 +7,15 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/u
 import { Item, ItemContent, ItemGroup } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
-import { FormToggleButton } from '@/components/wg/PageHeaderActions';
 import { SubNav } from '@/components/wg/SubNav';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { apiFetch } from '@/core/infra/api-client';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { InventoryList } from '@/features/inventory/components/InventoryList';
 import type { InventoryCategory, InventoryItemDto } from '@/features/inventory/inventory';
+import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface InventoryResponse {
@@ -26,20 +27,28 @@ interface InventoryResponse {
 export default function VorraetePage() {
 	const { wg, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
-	const [items, setItems] = useState<InventoryItemDto[]>([]);
-	const [initialLoading, setInitialLoading] = useState(true);
+	const inventoryUrl = `/api/wg/${encodedShareCode}/inventory`;
+	const {
+		data: inventoryData,
+		error: inventoryError,
+		isLoading: inventoryLoading,
+		refresh: refreshInventory,
+	} = useCachedFetch<InventoryResponse>(inventoryUrl, {
+		memberId: identity.memberId,
+	});
+	const [items, setItems] = useState<InventoryItemDto[]>(() => inventoryData?.items ?? []);
+	const [initialLoading, setInitialLoading] = useState(inventoryLoading);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [addOpen, setAddOpen] = useState(false);
 	const requestIdRef = useRef(0);
+	const hasInventoryDataRef = useRef(inventoryData !== undefined);
 
 	const load = useCallback(
 		async (silent = false): Promise<void> => {
 			const requestId = requestIdRef.current + 1;
 			requestIdRef.current = requestId;
-			if (!silent) setInitialLoading(true);
-			const res = await apiFetch<InventoryResponse>(`/api/wg/${encodedShareCode}/inventory`, {
-				memberId: identity.memberId,
-			});
+			if (!silent && !hasInventoryDataRef.current) setInitialLoading(true);
+			const res = await refreshInventory();
 			if (requestId !== requestIdRef.current) {
 				return;
 			}
@@ -51,8 +60,18 @@ export default function VorraetePage() {
 			}
 			setInitialLoading(false);
 		},
-		[encodedShareCode, identity.memberId],
+		[refreshInventory],
 	);
+
+	useEffect(() => {
+		if (inventoryData) {
+			hasInventoryDataRef.current = true;
+			setItems(inventoryData.items);
+			setLoadError(null);
+		} else if (inventoryError) {
+			setLoadError(getWgLoadErrorMessage('Vorräte', inventoryError.status, inventoryError.error));
+		}
+	}, [inventoryData, inventoryError]);
 
 	useEffect(() => {
 		void load(false);
@@ -82,14 +101,6 @@ export default function VorraetePage() {
 									: `${items.length} Artikel im Bestand`}
 					</p>
 				</div>
-				{!(initialLoading && items.length === 0) && !(loadError && items.length === 0) && (
-					<FormToggleButton
-						open={addOpen}
-						onToggle={() => setAddOpen(true)}
-						openLabel="Vorrat hinzufügen"
-						closeLabel="Vorrat hinzufügen"
-					/>
-				)}
 			</header>
 
 			{loadError && (
@@ -145,6 +156,14 @@ export default function VorraetePage() {
 					addOpen={addOpen}
 					onAddOpenChange={setAddOpen}
 				/>
+			)}
+			{!(initialLoading && items.length === 0) && !(loadError && items.length === 0) && (
+				<ThumbAction>
+					<Button type="button" className="min-h-11 w-full" onClick={() => setAddOpen(true)}>
+						<Plus data-icon="inline-start" aria-hidden />
+						Vorrat hinzufügen
+					</Button>
+				</ThumbAction>
 			)}
 			<div aria-hidden className="h-[env(safe-area-inset-bottom,0px)]" />
 		</div>

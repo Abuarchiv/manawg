@@ -1,11 +1,9 @@
 'use client';
 
-import { Button, buttonVariants } from '@/components/ui/button';
-import { cn } from '@/shared/lib/cn';
-import { Plus, Settings, X } from 'lucide-react';
-import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Plus, X } from 'lucide-react';
 
-/** Shared actions for the responsive headers of the three list pages. */
+/** Shared actions for the responsive headers of the list pages. */
 
 interface FormToggleButtonProps {
 	open: boolean;
@@ -47,18 +45,5 @@ export function FormToggleButton({
 				<Plus data-icon="inline-start" aria-hidden />
 			)}
 		</Button>
-	);
-}
-
-export function SettingsLink({ wgBaseHref }: { wgBaseHref: string }) {
-	return (
-		<Link
-			href={`${wgBaseHref}/einstellungen`}
-			aria-label="WG-Einstellungen öffnen"
-			className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
-		>
-			<Settings aria-hidden />
-			<span className="sr-only">WG-Einstellungen öffnen</span>
-		</Link>
 	);
 }

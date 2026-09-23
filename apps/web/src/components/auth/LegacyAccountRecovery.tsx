@@ -99,8 +99,9 @@ export function LegacyAccountRecovery() {
 								name="shareCode"
 								type="text"
 								value={shareCode}
-								onChange={(event) => setShareCode(event.target.value)}
+								onChange={(event) => setShareCode(event.target.value.toUpperCase())}
 								autoComplete="off"
+								autoCapitalize="characters"
 								inputMode="text"
 								maxLength={8}
 								aria-describedby={error ? 'legacy-recovery-error' : undefined}

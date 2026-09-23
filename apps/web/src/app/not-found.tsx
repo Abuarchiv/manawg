@@ -5,6 +5,7 @@ import {
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
+	EmptyTitle,
 } from '@/components/ui/empty';
 import { House } from 'lucide-react';
 import type { Metadata } from 'next';
@@ -28,9 +29,7 @@ export default function NotFound() {
 						<EmptyMedia variant="icon">
 							<House aria-hidden />
 						</EmptyMedia>
-						<h1 className="font-heading text-[20px] leading-[26px] font-semibold tracking-tight">
-							Seite nicht gefunden
-						</h1>
+						<EmptyTitle>Seite nicht gefunden</EmptyTitle>
 						<EmptyDescription>Die angeforderte Seite wurde nicht gefunden.</EmptyDescription>
 					</EmptyHeader>
 					<EmptyContent>

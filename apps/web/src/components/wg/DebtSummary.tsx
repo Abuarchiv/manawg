@@ -1,5 +1,6 @@
 'use client';
 
+import { useToast } from '@/components/ui/Toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -26,6 +27,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { PayPalPaymentButton } from '@/components/wg/PayPalPaymentButton';
 import { RemindButton } from '@/components/wg/RemindButton';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { formatEuroCents } from '@/core/utils/money';
@@ -83,6 +85,7 @@ interface SettlementPreview {
 
 interface DebtRowProps {
 	debt: SimplifiedDebt;
+	primaryAction?: boolean;
 	expenses: readonly Expense[];
 	shareCode: string;
 	currentMemberId: string;
@@ -108,6 +111,7 @@ interface SettleBatchResponse {
 
 function DebtRow({
 	debt,
+	primaryAction = false,
 	expenses,
 	shareCode,
 	currentMemberId,
@@ -116,6 +120,7 @@ function DebtRow({
 	payPalEligible,
 	onSettled,
 }: DebtRowProps) {
+	const toast = useToast();
 	const [reviewOpen, setReviewOpen] = useState(false);
 	const [settling, setSettling] = useState(false);
 	const [reviewing, setReviewing] = useState(false);
@@ -149,9 +154,15 @@ function DebtRow({
 			if (res.ok) {
 				setPreview(res.data);
 				setReviewOpen(true);
-			} else setError(settlementErrorMessage(res.error));
+			} else {
+				const message = settlementErrorMessage(res.error);
+				setError(message);
+				toast.error(message);
+			}
 		} catch {
-			setError(settlementErrorMessage('Netzwerkfehler'));
+			const message = settlementErrorMessage('Netzwerkfehler');
+			setError(message);
+			toast.error(message);
 		} finally {
 			settlingRef.current = false;
 			setReviewing(false);
@@ -181,7 +192,9 @@ function DebtRow({
 				? pendingRequest.key
 				: createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
-			setError('Ausgleich konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			const message = 'Ausgleich konnte nicht sicher gespeichert werden. Versuche es erneut.';
+			setError(message);
+			toast.error(message);
 			settlingRef.current = false;
 			setSettling(false);
 			return;
@@ -197,7 +210,9 @@ function DebtRow({
 			});
 			if (!res.ok) {
 				if (res.status > 0 && res.status < 500) settlementRequestRef.current = null;
-				setError(settlementErrorMessage(res.error));
+				const message = settlementErrorMessage(res.error);
+				setError(message);
+				toast.error(message);
 				if (res.error === 'settlement_changed') {
 					setPreview(null);
 					setReviewOpen(false);
@@ -216,7 +231,9 @@ function DebtRow({
 						: 'Keine Zahlung eingetragen. Die offenen Ausgaben werden neu geladen.';
 			onSettled(message);
 		} catch {
-			setError(settlementErrorMessage('Netzwerkfehler'));
+			const message = settlementErrorMessage('Netzwerkfehler');
+			setError(message);
+			toast.error(message);
 		} finally {
 			settlingRef.current = false;
 			setSettling(false);
@@ -265,15 +282,17 @@ function DebtRow({
 
 			{canSettle && (
 				<ItemFooter className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
-					<Button
-						variant={iOwe ? 'default' : 'outline'}
-						className="h-auto whitespace-normal"
-						disabled={reviewing || settling}
-						onClick={() => void review()}
-					>
-						{reviewing && <Spinner data-icon="inline-start" />}
-						{reviewing ? 'Wird geprüft…' : 'Ausgleichen'}
-					</Button>
+					{!primaryAction && (
+						<Button
+							variant="outline"
+							className="h-auto whitespace-normal"
+							disabled={reviewing || settling}
+							onClick={() => void review()}
+						>
+							{reviewing && <Spinner data-icon="inline-start" />}
+							{reviewing ? 'Wird geprüft…' : 'Ausgleichen'}
+						</Button>
+					)}
 					{owedToMe && (
 						<RemindButton
 							shareCode={shareCode}
@@ -403,6 +422,20 @@ function DebtRow({
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+			{primaryAction && canSettle && (
+				<ThumbAction reserveSpace={false}>
+					<Button
+						type="button"
+						variant="default"
+						className="min-h-11 w-full"
+						disabled={reviewing || settling}
+						onClick={() => void review()}
+					>
+						{reviewing ? <Spinner data-icon="inline-start" /> : null}
+						{reviewing ? 'Wird geprüft…' : 'Ausgleichen'}
+					</Button>
+				</ThumbAction>
+			)}
 		</Item>
 	);
 }
@@ -419,6 +452,7 @@ interface DebtSummaryProps {
 	memberColor: (id: string) => string | null;
 	memberPayPalMerchantId?: (id: string) => string | null;
 	onSettled: (message?: string) => void;
+	onAddExpense?: () => void;
 }
 
 /**
@@ -435,16 +469,18 @@ export function DebtSummary({
 	memberToken,
 	memberPayPalMerchantId = () => null,
 	onSettled,
+	onAddExpense,
 }: DebtSummaryProps) {
 	const { personal, others } = getDebtOverview(debts, currentMemberId, summary);
 	if (debts.length === 0 && personal.length === 0 && others.length === 0 && balances.length === 0)
 		return null;
 
-	function renderDebt(debt: SimplifiedDebt) {
+	function renderDebt(debt: SimplifiedDebt, primaryAction = false) {
 		return (
 			<DebtRow
 				key={`${debt.currency ?? 'EUR'}-${debt.fromId}-${debt.toId}`}
 				debt={debt}
+				primaryAction={primaryAction}
 				expenses={expenses}
 				shareCode={shareCode}
 				currentMemberId={currentMemberId}
@@ -478,7 +514,9 @@ export function DebtSummary({
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
 				{personal.length > 0 ? (
-					<ItemGroup aria-label="Deine offenen Zahlungen">{personal.map(renderDebt)}</ItemGroup>
+					<ItemGroup aria-label="Deine offenen Zahlungen">
+						{personal.map((debt, index) => renderDebt(debt, index === 0))}
+					</ItemGroup>
 				) : (
 					<div className="flex flex-col gap-1">
 						<p className="font-medium">
@@ -493,6 +531,13 @@ export function DebtSummary({
 							</p>
 						)}
 					</div>
+				)}
+				{personal.length === 0 && onAddExpense && (
+					<ThumbAction reserveSpace={false}>
+						<Button type="button" onClick={onAddExpense} className="min-h-11 w-full">
+							Ausgabe erfassen
+						</Button>
+					</ThumbAction>
 				)}
 				{(others.length > 0 || balances.length > 0) && (
 					<Collapsible>
@@ -510,7 +555,7 @@ export function DebtSummary({
 						<CollapsibleContent className="flex flex-col gap-4 pt-2">
 							{others.length > 0 && (
 								<ItemGroup aria-label="Weitere Zahlungen in der WG">
-									{others.map(renderDebt)}
+									{others.map((debt) => renderDebt(debt))}
 								</ItemGroup>
 							)}
 							{balances.length > 0 && (

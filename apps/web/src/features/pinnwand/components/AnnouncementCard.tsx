@@ -130,7 +130,7 @@ const PRIMARY_REACTION: Record<AnnouncementKind, ReactionKey> = {
 
 function actionLabelSubject(value: string, fallback: string): string {
 	const normalized = value.trim().replace(/\s+/g, ' ');
-	return normalized.length > 48 ? `${normalized.slice(0, 45)}...` : normalized || fallback;
+	return normalized.length > 48 ? `${normalized.slice(0, 47)}…` : normalized || fallback;
 }
 
 // Comment input survives hiding a thread, filtering a card, and route changes.

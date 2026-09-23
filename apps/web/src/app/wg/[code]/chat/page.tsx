@@ -56,7 +56,7 @@ function buildE2EChatMessages(wgId: string): MessageRow[] {
 			wgId,
 			senderMemberId: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
 			kind: 'user',
-			body: 'Das ist eine ziemlich lange Chat-Nachricht mit einem_saehr_langen_ununterbrochenen_Wort_das_trotzdem_nicht_die_mobile_Ansicht_sprengen_darf.',
+			body: 'Das ist eine ziemlich lange Chat-Nachricht mit einem_sehr_langen_ununterbrochenen_Wort_das_trotzdem_nicht_die_mobile_Ansicht_sprengen_darf.',
 			imageUrl: null,
 			replyToMessageId: null,
 			systemKind: null,

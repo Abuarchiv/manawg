@@ -22,9 +22,7 @@ export default function WgNotFound() {
 							<EmptyMedia variant="icon">
 								<SearchX aria-hidden />
 							</EmptyMedia>
-							<EmptyTitle className="font-heading text-[20px] leading-[26px] font-semibold tracking-tight">
-								WG nicht gefunden
-							</EmptyTitle>
+							<EmptyTitle>WG nicht gefunden</EmptyTitle>
 							<EmptyDescription>
 								Der 8-stellige Code ist falsch oder die WG wurde gelöscht.
 							</EmptyDescription>

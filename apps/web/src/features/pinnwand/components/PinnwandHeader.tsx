@@ -12,6 +12,7 @@ interface PinnwandHeaderProps {
 	composerBusy: boolean;
 	loading: boolean;
 	hasDraft: boolean;
+	showComposerToggle?: boolean;
 	wgBaseHref: string;
 	onToggleComposer: () => void;
 }
@@ -23,6 +24,7 @@ export function PinnwandHeader({
 	composerBusy,
 	loading,
 	hasDraft,
+	showComposerToggle = true,
 	wgBaseHref,
 	onToggleComposer,
 }: PinnwandHeaderProps): React.ReactElement {
@@ -52,27 +54,29 @@ export function PinnwandHeader({
 					>
 						<MessageCircle aria-hidden />
 					</Button>
-					<Button
-						onClick={onToggleComposer}
-						disabled={composerBusy || loading}
-						variant={composerOpen ? 'outline' : 'default'}
-						className="w-9 shrink-0 p-0"
-						aria-expanded={composerOpen}
-						aria-controls="announcement-composer"
-						aria-label={
-							composerOpen
-								? 'Beitragsformular schließen'
-								: hasDraft
-									? 'Entwurf fortsetzen'
-									: 'Beitrag erstellen'
-						}
-					>
-						{composerOpen ? (
-							<X data-icon="inline-start" aria-hidden />
-						) : (
-							<Plus data-icon="inline-start" aria-hidden />
-						)}
-					</Button>
+					{showComposerToggle && (
+						<Button
+							onClick={onToggleComposer}
+							disabled={composerBusy || loading}
+							variant={composerOpen ? 'outline' : 'default'}
+							className="w-9 shrink-0 p-0"
+							aria-expanded={composerOpen}
+							aria-controls="announcement-composer"
+							aria-label={
+								composerOpen
+									? 'Beitragsformular schließen'
+									: hasDraft
+										? 'Entwurf fortsetzen'
+										: 'Beitrag erstellen'
+							}
+						>
+							{composerOpen ? (
+								<X data-icon="inline-start" aria-hidden />
+							) : (
+								<Plus data-icon="inline-start" aria-hidden />
+							)}
+						</Button>
+					)}
 				</div>
 			</div>
 			{/* The page title identifies Pinnwand; Chat is a single header action. */}

@@ -75,9 +75,9 @@ async function readSearchError(response: Response): Promise<string | null> {
 }
 
 function visibleCountLabel(count: number, query: string): string {
-	if (count === 0) return `Keine sichtbaren Treffer für "${query}".`;
-	if (count === 1) return `1 Treffer sichtbar für "${query}".`;
-	return `${count} Treffer sichtbar für "${query}".`;
+	if (count === 0) return `Keine sichtbaren Treffer für „${query}“.`;
+	if (count === 1) return `1 Treffer sichtbar für „${query}“.`;
+	return `${count} Treffer sichtbar für „${query}“.`;
 }
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
@@ -347,7 +347,7 @@ export default function SuchePage() {
 						<EmptyMedia variant="icon">
 							<SearchX aria-hidden />
 						</EmptyMedia>
-						<EmptyTitle>Keine Treffer für &quot;{trimmedQuery}&quot;</EmptyTitle>
+						<EmptyTitle>Keine Treffer für „{trimmedQuery}“</EmptyTitle>
 						<EmptyDescription>
 							Versuche ein kürzeres Wort oder spring direkt in ein Modul.
 						</EmptyDescription>

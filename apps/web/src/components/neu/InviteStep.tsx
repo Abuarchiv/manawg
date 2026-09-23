@@ -49,7 +49,7 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 				? `${window.location.origin}/neu?code=${code}`
 				: `/neu?code=${code}`;
 		const host = typeof window !== 'undefined' ? window.location.host : '';
-		const text = `Komm in unsere WG "${wgName}" auf ManaWG: ${url}\n(oder mit Code ${code} unter ${host} beitreten)`;
+		const text = `Komm in unsere WG „${wgName}“ auf ManaWG: ${url}\n(oder mit Code ${code} unter ${host} beitreten)`;
 		const shareData = { title: 'ManaWG', text, url };
 		try {
 			const nav = (typeof navigator !== 'undefined' ? navigator : null) as
@@ -86,7 +86,7 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 	}
 
 	const whatsappHref = `https://wa.me/?text=${encodeURIComponent(
-		`Komm in unsere WG "${wgName}" auf ManaWG: ${typeof window !== 'undefined' ? `${window.location.origin}/neu?code=${code}` : `/neu?code=${code}`}\n(oder mit Code ${code} unter ${typeof window !== 'undefined' ? window.location.host : ''} beitreten)`,
+		`Komm in unsere WG „${wgName}“ auf ManaWG: ${typeof window !== 'undefined' ? `${window.location.origin}/neu?code=${code}` : `/neu?code=${code}`}\n(oder mit Code ${code} unter ${typeof window !== 'undefined' ? window.location.host : ''} beitreten)`,
 	)}`;
 
 	const shareLabel =

@@ -640,3 +640,17 @@ body {
 		-ms-overflow-style: none;
 	}
 }
+
+@media (prefers-reduced-motion: no-preference) {
+	a[data-slot="item"],
+	a:has(> [data-slot="card"]),
+	[data-tap-feedback] {
+		transition: color 80ms ease-out, background-color 80ms ease-out, border-color 80ms ease-out,
+			transform 80ms ease-out;
+	}
+	a[data-slot="item"]:active,
+	a:has(> [data-slot="card"]):active,
+	[data-tap-feedback]:active {
+		transform: scale(0.97);
+	}
+}

@@ -1,5 +1,6 @@
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker';
 import { CheckCircle2, Info, LogIn, LogOut, Receipt } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 interface SystemMessageProps {
 	systemKind: string | null;
@@ -25,7 +26,13 @@ export function SystemMessage({ systemKind, payload }: SystemMessageProps) {
 			return (
 				<SystemRow
 					icon={Receipt}
-					text={`${asString(data.actorName, 'Jemand')} hat ${asString(data.description, 'eine Ausgabe')} für ${asString(data.amount, '0€')} eingetragen.`}
+					text={
+						<>
+							{asString(data.actorName, 'Jemand')} hat {asString(data.description, 'eine Ausgabe')}{' '}
+							für <span className="font-mono tabular-nums">{asString(data.amount, '0€')}</span>{' '}
+							eingetragen.
+						</>
+					}
 				/>
 			);
 		case 'chore.completed':
@@ -45,7 +52,7 @@ function SystemRow({
 	text,
 }: {
 	icon: typeof CheckCircle2;
-	text: string;
+	text: ReactNode;
 }) {
 	return (
 		<Marker variant="separator" className="my-2 justify-center text-xs">

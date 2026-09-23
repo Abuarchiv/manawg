@@ -57,7 +57,7 @@ export function ReminderHistory({ items, memberName }: ReminderHistoryProps) {
 							· {item.channel}
 						</ItemDescription>
 					</ItemContent>
-					<Badge variant="outline" className="tabular-nums">
+					<Badge variant="outline" className="font-mono tabular-nums">
 						{formatEuroCents(item.amountCents, item.currency)}
 					</Badge>
 				</Item>

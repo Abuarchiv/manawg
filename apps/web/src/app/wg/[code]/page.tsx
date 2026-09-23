@@ -226,10 +226,13 @@ export default function WgHomePage() {
 	const primaryBalance =
 		myBalances.find((balance) => balance.currency === 'EUR') ?? myBalances[0] ?? null;
 	const myBalance = primaryBalance?.balanceCents ?? 0;
+	// Zeige nur Salden ungleich Null je Währung an — außer es bliebe dadurch
+	// nichts übrig (z. B. alles ausgeglichen), dann zeig den/die vorhandenen
+	// Saldo/Salden trotzdem, statt eine leere Kachel zu rendern.
+	const nonZeroBalances = myBalances.filter((balance) => balance.balanceCents !== 0);
 	const myBalanceText =
 		myBalances.length > 0
-			? myBalances
-					.filter((balance) => balance.balanceCents !== 0 || myBalances.length === 1)
+			? (nonZeroBalances.length > 0 ? nonZeroBalances : myBalances)
 					.map((balance) =>
 						formatEuroCents(balance.balanceCents, balance.currency, { signed: true }),
 					)

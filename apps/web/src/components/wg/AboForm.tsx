@@ -291,7 +291,7 @@ export function AboForm({
 							onChange={(event) => setAmountStr(event.target.value)}
 							placeholder="0,00"
 							disabled={submitting}
-							className="min-h-11 text-base"
+							className="min-h-11 font-mono tabular-nums text-base"
 							aria-invalid={Boolean(amountError)}
 							aria-describedby={amountError ? 'abo-amount-error' : undefined}
 						/>
@@ -399,7 +399,7 @@ export function AboForm({
 											placeholder="0,00"
 											aria-label={`Anteil ${member.name} in Euro`}
 											disabled={submitting}
-											className="min-h-11 text-base"
+											className="min-h-11 font-mono tabular-nums text-base"
 										/>
 										<InputGroupAddon align="inline-end">
 											<InputGroupText>€</InputGroupText>

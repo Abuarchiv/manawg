@@ -15,7 +15,7 @@ export default function WgLoading() {
 		<output
 			aria-live="polite"
 			aria-busy="true"
-			aria-label="WG-Dashboard wird geladen"
+			aria-label="WG-Seite wird geladen"
 			className="mx-auto block w-full max-w-md space-y-4 bg-background px-4 py-6"
 		>
 			{/* Header area skeleton */}
@@ -29,6 +29,13 @@ export default function WgLoading() {
 				</div>
 				<Skeleton className="size-10 rounded-lg" />
 			</header>
+
+			{/* Segment navigation placeholder */}
+			<div aria-hidden className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
+				<Skeleton className="h-10 rounded-lg" />
+				<Skeleton className="h-10 rounded-lg" />
+				<Skeleton className="h-10 rounded-lg" />
+			</div>
 
 			{/* Placeholder cards */}
 			<ul className="space-y-4">

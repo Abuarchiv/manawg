@@ -189,7 +189,7 @@ export function InventoryAddModal({
 				if (!next) requestClose();
 			}}
 		>
-			<DrawerContent>
+			<DrawerContent className="mx-auto w-full max-w-md">
 				<DrawerHeader>
 					<DrawerTitle>{mode === 'edit' ? 'Vorrat bearbeiten' : 'Neuer Vorrat'}</DrawerTitle>
 					<DrawerDescription>
@@ -305,21 +305,11 @@ export function InventoryAddModal({
 						)}
 					</div>
 					<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-						<Button
-							type="submit"
-							disabled={saving}
-							aria-busy={saving}
-							className="w-full break-normal"
-						>
+						<Button type="submit" disabled={saving} aria-busy={saving}>
 							{saving && <Spinner aria-hidden />}
 							{saving ? 'Speichert…' : 'Speichern'}
 						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={requestClose}
-							className="w-full break-normal"
-						>
+						<Button type="button" variant="outline" onClick={requestClose}>
 							Abbrechen
 						</Button>
 					</DrawerFooter>

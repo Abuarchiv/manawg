@@ -1,4 +1,5 @@
 'use client';
+import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -10,8 +11,10 @@ import { DebtSummary } from '@/components/wg/DebtSummary';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
@@ -98,12 +101,6 @@ const ExpenseFormSection = dynamic(
 	},
 );
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-function removeRecurringTemplate(items: RecurringExpense[], id: string): RecurringExpense[] {
-	return items.filter((item) => item.id !== id);
-}
-
 type ExpenseCreateWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
 type ExpenseCreateResponse = { expense: Expense; warning: ExpenseCreateWarning };
 type ExpenseMutationResponse = Expense | ExpenseCreateResponse;
@@ -118,12 +115,73 @@ function expensePushWarningMessage(warning: ExpenseCreateWarning): string | null
 	return null;
 }
 
+function buildOptimisticExpense({
+	id,
+	description,
+	amountCents,
+	paidByMemberId,
+	imageUrl,
+	splits,
+	previous,
+}: {
+	id: string;
+	description: string;
+	amountCents: number;
+	paidByMemberId: string;
+	imageUrl: string | null;
+	splits: Array<{ debtorMemberId: string; amountCents: number }>;
+	previous?: Expense;
+}): Expense {
+	const now = new Date().toISOString();
+	return {
+		id,
+		paidByMemberId,
+		amountCents,
+		currency: previous?.currency ?? 'EUR',
+		description,
+		imageUrl,
+		occurredAt: previous?.occurredAt ?? now,
+		createdAt: previous?.createdAt ?? now,
+		updatedAt: now,
+		splits: splits.map((split, index) => {
+			const existing = previous?.splits.find(
+				(current) => current.debtorMemberId === split.debtorMemberId,
+			);
+			return {
+				id: existing?.id ?? `${id}:split:${index}`,
+				debtorMemberId: split.debtorMemberId,
+				amountCents: split.amountCents,
+				settledAt: existing?.amountCents === split.amountCents ? existing.settledAt : null,
+			};
+		}),
+	};
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function AusgabenPage() {
 	const { wg, members, identity } = useWg();
+	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
+	const {
+		data: cachedExpenses,
+		error: expensesReadError,
+		refresh: refreshExpenses,
+		setData: setCachedExpenses,
+	} = useCachedFetch<{ expenses: Expense[]; payments?: ExpensePaymentInput[] }>(
+		`/api/wg/${encodedShareCode}/expenses`,
+		{ memberId: identity.memberId },
+	);
+	const {
+		data: cachedRecurringExpenses,
+		error: recurringReadError,
+		refresh: refreshRecurringExpenses,
+		setData: setCachedRecurringExpenses,
+	} = useCachedFetch<{ recurringExpenses: RecurringExpense[] }>(
+		`/api/wg/${encodedShareCode}/recurring-expenses`,
+		{ memberId: identity.memberId },
+	);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const searchParams = useSearchParams();
 	const highlightedId = searchParams.get('highlight');
@@ -134,10 +192,14 @@ export default function AusgabenPage() {
 	const recurringId = searchParams.get('recurring');
 	const recurringFilterActive = searchParams.get('filter') === 'recurring';
 
-	const [expenses, setExpenses] = useState<Expense[]>([]);
-	const [payments, setPayments] = useState<ExpensePaymentInput[]>([]);
-	const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
-	const [initialLoading, setInitialLoading] = useState(true);
+	const [expenses, setExpenses] = useState<Expense[]>(() => cachedExpenses?.expenses ?? []);
+	const [payments, setPayments] = useState<ExpensePaymentInput[]>(
+		() => cachedExpenses?.payments ?? [],
+	);
+	const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>(
+		() => cachedRecurringExpenses?.recurringExpenses ?? [],
+	);
+	const [initialLoading, setInitialLoading] = useState(!cachedExpenses && !cachedRecurringExpenses);
 	const [refreshing, setRefreshing] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -208,6 +270,29 @@ export default function AusgabenPage() {
 	const mountedRef = useRef(false);
 	const recurringCreateRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
+	function updateExpenses(update: (current: Expense[]) => Expense[]): void {
+		setExpenses(update);
+		setCachedExpenses((current) => {
+			const previous = current?.expenses ?? expenses;
+			const next = update(previous);
+			if (!current && next === previous) return current;
+			return { ...(current ?? { expenses: previous }), expenses: next };
+		});
+	}
+
+	function updateRecurringExpenses(
+		update: (current: RecurringExpense[]) => RecurringExpense[],
+	): void {
+		setRecurringExpenses(update);
+		setCachedRecurringExpenses((current) => {
+			const previous = current?.recurringExpenses ?? recurringExpenses;
+			const next = update(previous);
+			if (!current && next === previous) return current;
+			return { ...(current ?? { recurringExpenses: previous }), recurringExpenses: next };
+		});
+	}
+	const hasPageCacheRef = useRef(Boolean(cachedExpenses || cachedRecurringExpenses));
+
 	function setActionError(message: string | null): void {
 		setActionNotice(message ? { message, tone: 'error' } : null);
 	}
@@ -254,7 +339,7 @@ export default function AusgabenPage() {
 			},
 		);
 		if (advanceRes.ok) {
-			setRecurringExpenses((current) =>
+			updateRecurringExpenses((current) =>
 				current.map((item) =>
 					item.id === advanceRes.data.recurringExpense.id ? advanceRes.data.recurringExpense : item,
 				),
@@ -282,17 +367,13 @@ export default function AusgabenPage() {
 		async (isInitial: boolean): Promise<void> => {
 			const requestId = loadRequestIdRef.current + 1;
 			loadRequestIdRef.current = requestId;
-			if (isInitial) setInitialLoading(true);
+			if (isInitial && !hasPageCacheRef.current) setInitialLoading(true);
 			else setRefreshing(true);
 
-			const res = await apiFetch<{
-				expenses: Expense[];
-				payments?: ExpensePaymentInput[];
-			}>(`/api/wg/${encodedShareCode}/expenses`, { memberId: identity.memberId });
-			const recurringRes = await apiFetch<{ recurringExpenses: RecurringExpense[] }>(
-				`/api/wg/${encodedShareCode}/recurring-expenses`,
-				{ memberId: identity.memberId },
-			);
+			const [res, recurringRes] = await Promise.all([
+				refreshExpenses(),
+				refreshRecurringExpenses(),
+			]);
 			if (requestId !== loadRequestIdRef.current) {
 				if (isInitial) setInitialLoading(false);
 				else setRefreshing(false);
@@ -336,8 +417,35 @@ export default function AusgabenPage() {
 			if (isInitial) setInitialLoading(false);
 			else setRefreshing(false);
 		},
-		[encodedShareCode, identity.memberId, wg.shareCode],
+		[identity.memberId, refreshExpenses, refreshRecurringExpenses, wg.shareCode],
 	);
+	useEffect(() => {
+		if (cachedExpenses) {
+			hasPageCacheRef.current = true;
+			setExpenses(cachedExpenses.expenses);
+			setPayments(cachedExpenses.payments ?? []);
+			setLoadError(null);
+		}
+		if (cachedRecurringExpenses) {
+			hasPageCacheRef.current = true;
+			setRecurringExpenses(cachedRecurringExpenses.recurringExpenses);
+			setLoadError(null);
+		}
+		if (cachedExpenses || cachedRecurringExpenses) setInitialLoading(false);
+		if (expensesReadError) {
+			setLoadError(
+				getWgLoadErrorMessage('Ausgaben', expensesReadError.status, expensesReadError.error, {
+					verb: 'konnten',
+				}),
+			);
+		} else if (recurringReadError) {
+			setLoadError(
+				getWgLoadErrorMessage('Fixkosten', recurringReadError.status, recurringReadError.error, {
+					verb: 'konnten',
+				}),
+			);
+		}
+	}, [cachedExpenses, cachedRecurringExpenses, expensesReadError, recurringReadError]);
 	const expenseCount = expenses.length;
 
 	useEffect(() => {
@@ -482,6 +590,34 @@ export default function AusgabenPage() {
 		const url = isEdit
 			? `/api/wg/${encodedShareCode}/expenses/${encodeURIComponent(editingExpense.id)}`
 			: `/api/wg/${encodedShareCode}/expenses`;
+		const optimisticId = isEdit ? editingExpense.id : `pending:${idempotencyKey}`;
+		const previousExpense = isEdit
+			? (expenses.find((expense) => expense.id === editingExpense.id) ?? null)
+			: null;
+		const rollbackOptimisticExpense = () =>
+			updateExpenses((current) => {
+				if (!previousExpense) return current.filter((expense) => expense.id !== optimisticId);
+				return current.some((expense) => expense.id === previousExpense.id)
+					? current.map((expense) =>
+							expense.id === previousExpense.id ? previousExpense : expense,
+						)
+					: [previousExpense, ...current];
+			});
+		const optimisticExpense = buildOptimisticExpense({
+			id: optimisticId,
+			description: desc,
+			amountCents,
+			paidByMemberId,
+			imageUrl,
+			splits,
+			...(previousExpense ? { previous: previousExpense } : {}),
+		});
+		startPending(optimisticId);
+		updateExpenses((current) =>
+			isEdit
+				? current.map((expense) => (expense.id === editingExpense.id ? optimisticExpense : expense))
+				: [optimisticExpense, ...current],
+		);
 		const res = await apiFetch<ExpenseMutationResponse>(url, {
 			method: isEdit ? 'PATCH' : 'POST',
 			memberId: identity.memberId,
@@ -534,19 +670,25 @@ export default function AusgabenPage() {
 						});
 				const queuedCount = enqueueOfflineAction(queuedAction);
 				if (queuedCount === 0) {
+					rollbackOptimisticExpense();
+					endPending(optimisticId);
 					finishSubmitting();
 					setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
+					toast.error('Offline-Speicher ist blockiert. Die Ausgabe wurde zurückgesetzt.');
 					return;
 				}
 				refreshCount();
 				if (!clearEditedQueueItem(['expense.create', 'expense.update'])) {
+					endPending(optimisticId);
 					finishSubmitting();
 					setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
+					toast.error(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 					return;
 				}
 				resetForm();
 				setShowForm(false);
 				finishSubmitting();
+				endPending(optimisticId);
 				removeDraft(draftKey);
 				setActionWarning(
 					'Offline gespeichert. Wird synchronisiert, sobald ihr wieder online seid.',
@@ -557,8 +699,10 @@ export default function AusgabenPage() {
 				setFormError(
 					'Die ursprüngliche Ausgabe wurde gelöscht. Deine ungespeicherten Änderungen bleiben im Entwurf; du kannst sie kopieren oder den Entwurf verwerfen.',
 				);
-				setExpenses((current) => current.filter((expense) => expense.id !== editingExpense.id));
+				updateExpenses((current) => current.filter((expense) => expense.id !== editingExpense.id));
+				endPending(optimisticId);
 				setActionError('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.');
+				toast.error('Diese Ausgabe existiert nicht mehr.');
 				void load(false);
 				finishSubmitting();
 				return;
@@ -568,19 +712,34 @@ export default function AusgabenPage() {
 					? 'Diese Ausgabe wurde inzwischen geändert. Lade die Liste neu und entscheide dann, welche Version stimmt.'
 					: expenseSaveErrorMessage(res.error);
 			if (res.status === 409) setConflictExpenseId(editingExpense?.id ?? null);
+			rollbackOptimisticExpense();
+			endPending(optimisticId);
 			setFormError(msg);
+			toast.error(msg);
 			finishSubmitting();
 			return;
 		}
 
+		const savedExpense = 'expense' in res.data ? res.data.expense : res.data;
+		const pushWarning = 'expense' in res.data ? expensePushWarningMessage(res.data.warning) : null;
+		updateExpenses((current) =>
+			isEdit
+				? current.map((expense) => (expense.id === savedExpense.id ? savedExpense : expense))
+				: [
+						savedExpense,
+						...current.filter(
+							(expense) => expense.id !== optimisticId && expense.id !== savedExpense.id,
+						),
+					],
+		);
+		endPending(optimisticId);
 		if (!clearEditedQueueItem(['expense.create', 'expense.update'])) {
 			finishSubmitting();
 			setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
+			toast.error(DRAFT_CLEANUP_FAILED_MESSAGE);
 			return;
 		}
 		resetForm();
-		const savedExpense = 'expense' in res.data ? res.data.expense : res.data;
-		const pushWarning = 'expense' in res.data ? expensePushWarningMessage(res.data.warning) : null;
 		if (pushWarning) {
 			setActionWarning(pushWarning);
 		} else {
@@ -590,11 +749,6 @@ export default function AusgabenPage() {
 					: 'Ausgabe gespeichert. Hier wird kein Geld überwiesen.',
 			);
 		}
-		setExpenses((current) =>
-			isEdit
-				? current.map((expense) => (expense.id === savedExpense.id ? savedExpense : expense))
-				: [savedExpense, ...current.filter((expense) => expense.id !== savedExpense.id)],
-		);
 		if (recurringSourceId) {
 			const recurringTemplateForAdvance = recurringExpenses.find(
 				(item) => item.id === recurringSourceId,
@@ -708,7 +862,7 @@ export default function AusgabenPage() {
 					return;
 				}
 				refreshCount();
-				setRecurringExpenses((current) => [
+				updateRecurringExpenses((current) => [
 					...current,
 					{
 						id: queued.id,
@@ -744,7 +898,7 @@ export default function AusgabenPage() {
 				const staleId = editingRecurringExpense.id;
 				resetForm();
 				setShowForm(false);
-				setRecurringExpenses((current) => current.filter((item) => item.id !== staleId));
+				updateRecurringExpenses((current) => current.filter((item) => item.id !== staleId));
 				setActionError(
 					'Diese Fixkosten-Vorlage existiert nicht mehr und wurde aus der Liste entfernt.',
 				);
@@ -757,7 +911,7 @@ export default function AusgabenPage() {
 			return;
 		}
 		recurringCreateRequestRef.current = null;
-		setRecurringExpenses((current) =>
+		updateRecurringExpenses((current) =>
 			editingRecurringExpense
 				? current.map((item) =>
 						item.id === res.data.recurringExpense.id ? res.data.recurringExpense : item,
@@ -799,6 +953,19 @@ export default function AusgabenPage() {
 			finishCreatingRecurring();
 			return;
 		}
+		const optimisticId = `pending:${idempotencyKey}`;
+		const rollbackOptimisticExpense = () =>
+			updateExpenses((current) => current.filter((expense) => expense.id !== optimisticId));
+		const optimisticExpense = buildOptimisticExpense({
+			id: optimisticId,
+			description: template.description,
+			amountCents: template.amountCents,
+			paidByMemberId: template.paidByMemberId,
+			imageUrl: null,
+			splits: template.splits,
+		});
+		startPending(optimisticId);
+		updateExpenses((current) => [optimisticExpense, ...current]);
 		const createRes = await apiFetch<ExpenseCreateResponse>(
 			`/api/wg/${encodedShareCode}/expenses`,
 			{
@@ -831,9 +998,12 @@ export default function AusgabenPage() {
 					}),
 				);
 				if (queuedCount === 0) {
+					rollbackOptimisticExpense();
+					endPending(optimisticId);
 					setActionError(
 						'Offline-Speicher ist blockiert. Die Fixkosten-Ausgabe konnte nicht vorgemerkt werden.',
 					);
+					toast.error('Die Fixkosten-Ausgabe wurde zurückgesetzt.');
 					finishCreatingRecurring();
 					return;
 				}
@@ -841,17 +1011,25 @@ export default function AusgabenPage() {
 				setActionWarning(
 					'Fixkosten-Ausgabe offline vorgemerkt. Die Vorlage bleibt bis zur Synchronisierung unverändert.',
 				);
+				endPending(optimisticId);
 				finishCreatingRecurring();
 				return;
 			}
-			setActionError('Fixkosten-Ausgabe konnte nicht erstellt werden: Versuche es gleich erneut.');
+			rollbackOptimisticExpense();
+			endPending(optimisticId);
+			const message = 'Fixkosten-Ausgabe konnte nicht erstellt werden: Versuche es gleich erneut.';
+			setActionError(message);
+			toast.error(message);
 			finishCreatingRecurring();
 			return;
 		}
-		setExpenses((current) => [
-			createRes.data.expense,
-			...current.filter((expense) => expense.id !== createRes.data.expense.id),
-		]);
+		updateExpenses((current) => {
+			const withoutOptimistic = current.filter((expense) => expense.id !== optimisticId);
+			return withoutOptimistic.some((expense) => expense.id === createRes.data.expense.id)
+				? withoutOptimistic
+				: [createRes.data.expense, ...withoutOptimistic];
+		});
+		endPending(optimisticId);
 		const advanced = await advanceRecurringTemplate(template.id, template.nextDueAt);
 		if (advanced) {
 			const pushWarning = expensePushWarningMessage(createRes.data.warning);
@@ -866,6 +1044,9 @@ export default function AusgabenPage() {
 		if (isPending(id)) return;
 		startPending(id);
 		setActionError(null);
+		const previousExpenseIndex = expenses.findIndex((expense) => expense.id === id);
+		const previousExpense = expenses[previousExpenseIndex];
+		updateExpenses((current) => current.filter((expense) => expense.id !== id));
 
 		const res = await apiFetch<unknown>(
 			`/api/wg/${encodedShareCode}/expenses/${encodeURIComponent(id)}`,
@@ -880,16 +1061,24 @@ export default function AusgabenPage() {
 		// either way — the only difference from success is that we say so.
 		const alreadyGone = !res.ok && res.status === 404 && res.error === 'expense_not_found';
 		if (!res.ok && !alreadyGone) {
-			setActionError(
+			if (previousExpense) {
+				updateExpenses((current) => {
+					if (current.some((expense) => expense.id === id)) return current;
+					const restored = [...current];
+					restored.splice(Math.min(previousExpenseIndex, restored.length), 0, previousExpense);
+					return restored;
+				});
+			}
+			const message =
 				res.status === 403
 					? 'Nur Zahler:in oder beteiligte Person kann diese Ausgabe entfernen.'
-					: expenseActionErrorMessage(res.error),
-			);
+					: expenseActionErrorMessage(res.error);
+			setActionError(message);
+			toast.error(message);
 			endPending(id);
 			return;
 		}
 
-		setExpenses((current) => current.filter((expense) => expense.id !== id));
 		if (alreadyGone) {
 			setActionError('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.');
 		}
@@ -901,6 +1090,8 @@ export default function AusgabenPage() {
 		if (isPending(template.id)) return;
 		startPending(template.id);
 		setActionError(null);
+		const previousTemplateIndex = recurringExpenses.findIndex((item) => item.id === template.id);
+		updateRecurringExpenses((current) => current.filter((item) => item.id !== template.id));
 
 		const res = await apiFetch<unknown>(`/api/wg/${encodedShareCode}/recurring-expenses`, {
 			method: 'DELETE',
@@ -912,12 +1103,19 @@ export default function AusgabenPage() {
 		const alreadyGone =
 			!res.ok && res.status === 404 && res.error === 'recurring_expense_not_found';
 		if (!res.ok && !alreadyGone) {
-			setActionError(recurringTemplateDeleteErrorMessage(res.error));
+			updateRecurringExpenses((current) => {
+				if (current.some((item) => item.id === template.id)) return current;
+				const restored = [...current];
+				restored.splice(Math.min(previousTemplateIndex, restored.length), 0, template);
+				return restored;
+			});
+			const message = recurringTemplateDeleteErrorMessage(res.error);
+			setActionError(message);
+			toast.error(message);
 			endPending(template.id);
 			return;
 		}
 
-		setRecurringExpenses((current) => removeRecurringTemplate(current, template.id));
 		if (editingRecurringExpense?.id === template.id) {
 			resetForm();
 			setShowForm(false);
@@ -937,6 +1135,20 @@ export default function AusgabenPage() {
 		startPending(split.id);
 		setActionError(null);
 		const settled = split.settledAt === null;
+		const previousSettledAt = split.settledAt;
+		const settledAt = settled ? new Date().toISOString() : null;
+		updateExpenses((current) =>
+			current.map((expense) =>
+				expense.id === expenseId
+					? {
+							...expense,
+							splits: expense.splits.map((currentSplit) =>
+								currentSplit.id === split.id ? { ...currentSplit, settledAt } : currentSplit,
+							),
+						}
+					: expense,
+			),
+		);
 
 		const res = await apiFetch<unknown>(
 			`/api/wg/${encodedShareCode}/expenses/${encodeURIComponent(expenseId)}/splits/${encodeURIComponent(split.id)}/settle`,
@@ -949,29 +1161,33 @@ export default function AusgabenPage() {
 		);
 
 		if (!res.ok) {
-			if (
-				res.status === 404 &&
-				(res.error === 'split_not_found' || res.error === 'expense_not_found')
-			) {
-				setActionError('Diese Zahlung existiert nicht mehr. Die Ausgabenliste wird aktualisiert.');
-				void load(false);
-			} else {
-				setActionError(expenseActionErrorMessage(res.error));
-			}
-		} else {
-			const settledAt = settled ? new Date().toISOString() : null;
-			setExpenses((current) =>
+			updateExpenses((current) =>
 				current.map((expense) =>
 					expense.id === expenseId
 						? {
 								...expense,
 								splits: expense.splits.map((currentSplit) =>
-									currentSplit.id === split.id ? { ...currentSplit, settledAt } : currentSplit,
+									currentSplit.id === split.id
+										? { ...currentSplit, settledAt: previousSettledAt }
+										: currentSplit,
 								),
 							}
 						: expense,
 				),
 			);
+			if (
+				res.status === 404 &&
+				(res.error === 'split_not_found' || res.error === 'expense_not_found')
+			) {
+				setActionError('Diese Zahlung existiert nicht mehr. Die Ausgabenliste wird aktualisiert.');
+				toast.error('Diese Zahlung existiert nicht mehr.');
+				void load(false);
+			} else {
+				const message = expenseActionErrorMessage(res.error);
+				setActionError(message);
+				toast.error(message);
+			}
+		} else {
 			void load(false);
 		}
 
@@ -1162,119 +1378,130 @@ export default function AusgabenPage() {
 					retryLabel="Ausgaben erneut laden"
 				/>
 			)}
-			{!showSkeleton && (expenses.length > 0 || directDebts.length > 0) && (
-				<div className="grid items-start gap-4 lg:grid-cols-2">
-					{expenses.length > 0 && (
-						<Card>
-							<CardHeader>
-								<CardDescription>Dein Saldo</CardDescription>
-								<CardTitle>
-									{personalBalances.length > 1 ? (
-										<>
-											Offene Salden{' '}
-											<span className="font-mono tabular-nums">
-												{personalBalances
-													.filter((balance) => balance.balanceCents !== 0)
-													.map((balance) =>
-														formatEuroCents(balance.balanceCents, balance.currency, {
-															signed: true,
-														}),
-													)
-													.join(' · ') || formatEuroCents(0, 'EUR', { signed: true })}
-											</span>
-										</>
-									) : personalBalance > 0 ? (
-										<>
-											Du bekommst{' '}
-											<span className="font-mono tabular-nums text-settled">
-												{formatEuroCents(Math.abs(personalBalance), personalBalanceCurrency)}
-											</span>{' '}
-											zurück
-										</>
-									) : personalBalance < 0 ? (
-										<>
-											Du schuldest noch{' '}
-											<span className="font-mono tabular-nums text-destructive">
-												{formatEuroCents(Math.abs(personalBalance), personalBalanceCurrency)}
-											</span>
-										</>
-									) : (
-										<>
-											Du bist ausgeglichen{' '}
-											<span className="font-mono tabular-nums text-foreground">
-												{formatEuroCents(0, personalBalanceCurrency, { signed: true })}
-											</span>
-										</>
-									)}
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<Collapsible>
-									<CollapsibleTrigger
-										render={<Button variant="ghost" className="w-full justify-between" />}
-									>
-										Saldo pro Mitglied
-										<ChevronDown data-icon="inline-end" />
-									</CollapsibleTrigger>
-									<CollapsibleContent>
-										<ItemGroup className="pt-2">
-											{memberBalances.map((member) => (
-												<Item
-													key={`${member.currency}-${member.memberId}`}
-													variant="muted"
-													size="xs"
-												>
-													<ItemContent className="min-w-0">
-														<ItemTitle className="line-clamp-none break-words">
-															{member.memberName}
-															{member.memberId === identity.memberId ? ' (du)' : ''}
-														</ItemTitle>
-														<ItemDescription>
-															{member.balanceCents > 0
-																? 'Bekommt zurück'
-																: member.balanceCents < 0
-																	? 'Schuldet'
-																	: 'Ausgeglichen'}
-														</ItemDescription>
-													</ItemContent>
-													<span
-														className={cn(
-															'shrink-0 font-mono tabular-nums',
-															member.balanceCents > 0
-																? 'text-settled'
-																: member.balanceCents < 0
-																	? 'text-destructive'
-																	: 'text-foreground',
-														)}
+			{!showSkeleton &&
+				(expenses.length > 0 || directDebts.length > 0 || memberBalances.length > 0) && (
+					<div className="grid items-start gap-4 lg:grid-cols-2">
+						{expenses.length > 0 && (
+							<Card className="order-2">
+								<CardHeader>
+									<CardDescription>Dein Saldo</CardDescription>
+									<CardTitle>
+										{personalBalances.length > 1 ? (
+											<>
+												Offene Salden{' '}
+												<span className="font-mono tabular-nums">
+													{personalBalances
+														.filter((balance) => balance.balanceCents !== 0)
+														.map((balance) =>
+															formatEuroCents(balance.balanceCents, balance.currency, {
+																signed: true,
+															}),
+														)
+														.join(' · ') || formatEuroCents(0, 'EUR', { signed: true })}
+												</span>
+											</>
+										) : personalBalance > 0 ? (
+											<>
+												Du bekommst{' '}
+												<span className="font-mono tabular-nums text-settled">
+													{formatEuroCents(Math.abs(personalBalance), personalBalanceCurrency)}
+												</span>{' '}
+												zurück
+											</>
+										) : personalBalance < 0 ? (
+											<>
+												Du schuldest noch{' '}
+												<span className="font-mono tabular-nums text-destructive">
+													{formatEuroCents(Math.abs(personalBalance), personalBalanceCurrency)}
+												</span>
+											</>
+										) : (
+											<>
+												Du bist ausgeglichen{' '}
+												<span className="font-mono tabular-nums text-foreground">
+													{formatEuroCents(0, personalBalanceCurrency, { signed: true })}
+												</span>
+											</>
+										)}
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<Collapsible>
+										<CollapsibleTrigger
+											render={<Button variant="ghost" className="w-full justify-between" />}
+										>
+											Saldo pro Mitglied
+											<ChevronDown data-icon="inline-end" />
+										</CollapsibleTrigger>
+										<CollapsibleContent>
+											<ItemGroup className="pt-2">
+												{memberBalances.map((member) => (
+													<Item
+														key={`${member.currency}-${member.memberId}`}
+														variant="muted"
+														size="xs"
 													>
-														{formatEuroCents(member.balanceCents, member.currency, {
-															signed: true,
-														})}
-													</span>
-												</Item>
-											))}
-										</ItemGroup>
-									</CollapsibleContent>
-								</Collapsible>
-							</CardContent>
-						</Card>
-					)}
-					<DebtSummary
-						debts={directDebts}
-						summary={settlementSummary}
-						balances={memberBalances}
-						expenses={expenses}
-						shareCode={wg.shareCode}
-						currentMemberId={identity.memberId}
-						memberToken={identity.memberToken}
-						memberColor={memberColor}
-						memberPayPalMerchantId={memberPayPalMerchantId}
-						onSettled={(message) => {
-							if (message) setActionSuccess(message);
-							void load(false);
-						}}
-					/>
-				</div>
+														<ItemContent className="min-w-0">
+															<ItemTitle className="line-clamp-none break-words">
+																{member.memberName}
+																{member.memberId === identity.memberId ? ' (du)' : ''}
+															</ItemTitle>
+															<ItemDescription>
+																{member.balanceCents > 0
+																	? 'Bekommt zurück'
+																	: member.balanceCents < 0
+																		? 'Schuldet'
+																		: 'Ausgeglichen'}
+															</ItemDescription>
+														</ItemContent>
+														<span
+															className={cn(
+																'shrink-0 font-mono tabular-nums',
+																member.balanceCents > 0
+																	? 'text-settled'
+																	: member.balanceCents < 0
+																		? 'text-destructive'
+																		: 'text-foreground',
+															)}
+														>
+															{formatEuroCents(member.balanceCents, member.currency, {
+																signed: true,
+															})}
+														</span>
+													</Item>
+												))}
+											</ItemGroup>
+										</CollapsibleContent>
+									</Collapsible>
+								</CardContent>
+							</Card>
+						)}
+						<div className="order-1">
+							<DebtSummary
+								debts={directDebts}
+								summary={settlementSummary}
+								balances={memberBalances}
+								expenses={expenses}
+								shareCode={wg.shareCode}
+								currentMemberId={identity.memberId}
+								memberToken={identity.memberToken}
+								memberColor={memberColor}
+								memberPayPalMerchantId={memberPayPalMerchantId}
+								onAddExpense={() => setShowForm(true)}
+								onSettled={(message) => {
+									if (message) setActionSuccess(message);
+									void load(false);
+								}}
+							/>
+						</div>
+					</div>
+				)}
+			{!showSkeleton && memberBalances.length === 0 && (
+				<ThumbAction reserveSpace={false}>
+					<Button type="button" onClick={() => setShowForm(true)} className="min-h-11 w-full">
+						Ausgabe erfassen
+					</Button>
+				</ThumbAction>
 			)}
 			{(recurringExpenses.length > 0 || recurringFilterActive) && (
 				<RecurringExpensesSection
@@ -1343,6 +1570,7 @@ export default function AusgabenPage() {
 					</div>
 				)}
 			</section>
+			<div aria-hidden className="h-14 shrink-0" />
 		</div>
 	);
 }
