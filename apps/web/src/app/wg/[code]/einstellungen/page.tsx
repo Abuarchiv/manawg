@@ -11,7 +11,7 @@ import type { SettingsTab } from '@/core/guards/settings-tabs';
 import { type WgExport, buildEmptyExportSummary, buildExportSummary } from '@/core/reads/export';
 import { cn } from '@/shared/lib/cn';
 import { memberAuthHeader } from '@/shared/lib/identity';
-import { ArrowLeft, Monitor } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -182,12 +182,9 @@ export default function EinstellungenPage() {
 							<p>
 								ManaWG · WG-Code <span className="font-mono">{wg.shareCode}</span>
 							</p>
-							<p className="mt-0.5">
-								<span className="inline-flex items-center gap-1">
-									<Monitor className="h-3 w-3" aria-hidden /> WG-Daten und Mitgliedschaft liegen im
-									Account · Nicht synchronisierte Entwürfe und Offline-Aktionen bleiben auf diesem
-									Gerät
-								</span>
+							<p className="mt-0.5 text-balance">
+								WG-Daten und Mitgliedschaft liegen im Account · Nicht synchronisierte Entwürfe und
+								Offline-Aktionen bleiben auf diesem Gerät
 							</p>
 						</div>
 					</TabsContent>

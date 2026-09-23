@@ -200,7 +200,7 @@ export default function SuchePage() {
 									maxLength={80}
 									value={query}
 									onChange={(event) => setQuery(event.target.value)}
-									placeholder="Milch, Bad, Miete..."
+									placeholder="Milch, Bad, Miete…"
 									aria-label="Suchbegriff"
 									className="min-h-11 text-base"
 								/>
@@ -306,7 +306,7 @@ export default function SuchePage() {
 				>
 					{loading && <Spinner className="size-4 motion-reduce:animate-none" aria-hidden />}
 					<span className="min-w-0 [overflow-wrap:anywhere]">
-						{loading ? 'Suche läuft...' : visibleCountLabel(visibleResults.length, trimmedQuery)}
+						{loading ? 'Suche läuft…' : visibleCountLabel(visibleResults.length, trimmedQuery)}
 					</span>
 				</output>
 			)}

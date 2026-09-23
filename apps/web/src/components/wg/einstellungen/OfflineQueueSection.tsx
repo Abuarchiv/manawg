@@ -452,7 +452,7 @@ export function OfflineQueueSection({
 												disabled={rowBusy}
 											>
 												{checkingServerIds.has(item.id) && <Spinner aria-hidden />}
-												{checkingServerIds.has(item.id) ? 'Prüft...' : 'Server prüfen'}
+												{checkingServerIds.has(item.id) ? 'Prüft…' : 'Server prüfen'}
 											</Button>
 											{editDraft ? (
 												<Button
