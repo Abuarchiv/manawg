@@ -103,7 +103,7 @@ export function ActivityFeed({ items, emptyHref, compact = false }: ActivityFeed
 								</time>
 							</div>
 							{item.amountCents !== undefined && (
-								<span className="shrink-0 font-mono text-xs tabular-nums">
+								<span className="shrink-0 font-mono text-[12px] tabular-nums">
 									{formatEuro(item.amountCents, item.currency)}
 								</span>
 							)}
