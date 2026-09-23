@@ -84,96 +84,99 @@ export function ChoreForm({
 						event.preventDefault();
 						onSubmit();
 					}}
-					className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+					className="flex min-h-0 flex-col"
 				>
-					{children}
-					<FieldGroup>
-						<Field data-disabled={pending}>
-							<FieldLabel htmlFor="chore-title">Aufgabe</FieldLabel>
-							<Input
-								id="chore-title"
-								ref={titleInputRef}
-								value={title}
-								onChange={(event) => onTitleChange(event.target.value)}
-								maxLength={TITLE_MAX}
-								placeholder="z. B. Müll rausbringen"
-								disabled={pending}
-								className="text-base"
-							/>
-						</Field>
-						<Field data-disabled={pending}>
-							<FieldLabel id="chore-rhythm-label">Rhythmus</FieldLabel>
-							<ToggleGroup
-								variant="segmented"
-								value={[recurrenceType]}
-								onValueChange={(values) => {
-									const unit = values[0];
-									if (unit === 'days' || unit === 'months') onRecurrenceUnitToggle(unit);
-								}}
-								aria-labelledby="chore-rhythm-label"
-								className="w-full"
-							>
-								<ToggleGroupItem value="days" disabled={pending} className="min-h-11 flex-1">
-									Tage
-								</ToggleGroupItem>
-								<ToggleGroupItem value="months" disabled={pending} className="min-h-11 flex-1">
-									Monate
-								</ToggleGroupItem>
-							</ToggleGroup>
-							<ToggleGroup
-								value={[String(interval)]}
-								onValueChange={(values) => {
-									const preset = presets.find((entry) => String(entry.interval) === values[0]);
-									if (preset) onIntervalPresetSelect(preset.interval, preset.unit);
-								}}
-								variant="outline"
-								aria-label="Intervall wählen"
-								className="w-full flex-wrap"
-							>
-								{presets.map((preset) => (
-									<ToggleGroupItem
-										key={preset.interval}
-										value={String(preset.interval)}
-										disabled={pending}
-										className="min-h-11"
-									>
-										{preset.label}
+					<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
+						{children}
+						<FieldGroup>
+							<Field data-disabled={pending}>
+								<FieldLabel htmlFor="chore-title">Aufgabe</FieldLabel>
+								<Input
+									id="chore-title"
+									ref={titleInputRef}
+									value={title}
+									onChange={(event) => onTitleChange(event.target.value)}
+									maxLength={TITLE_MAX}
+									placeholder="z. B. Müll rausbringen"
+									disabled={pending}
+									className="text-base"
+								/>
+							</Field>
+							<Field data-disabled={pending}>
+								<FieldLabel id="chore-rhythm-label">Rhythmus</FieldLabel>
+								<ToggleGroup
+									variant="segmented"
+									value={[recurrenceType]}
+									onValueChange={(values) => {
+										const unit = values[0];
+										if (unit === 'days' || unit === 'months') onRecurrenceUnitToggle(unit);
+									}}
+									aria-labelledby="chore-rhythm-label"
+									className="w-full"
+								>
+									<ToggleGroupItem value="days" disabled={pending} className="min-h-11 flex-1">
+										Tage
 									</ToggleGroupItem>
-								))}
-							</ToggleGroup>
-							<FieldDescription>
-								Erste Fälligkeit: {firstDue}. Bei früher Erledigung bleibt die bestehende Fälligkeit
-								die Basis; bei später Erledigung beginnt der nächste Rhythmus am Abschluss.
-							</FieldDescription>
-						</Field>
-						<Field data-disabled={pending}>
-							<FieldLabel htmlFor="chore-assigned">Zuständig</FieldLabel>
-							<NativeSelect
-								id="chore-assigned"
-								value={assignedMemberId}
-								onChange={(event) => onAssignedMemberIdChange(event.target.value)}
-								disabled={pending}
-								className="w-full [&_select]:min-h-11 [&_select]:text-base"
-							>
-								<NativeSelectOption value="">— niemand —</NativeSelectOption>
-								{members.map((member) => (
-									<NativeSelectOption key={member.id} value={member.id}>
-										{member.name}
-									</NativeSelectOption>
-								))}
-							</NativeSelect>
-							<FieldDescription>
-								Nach dem Erledigen wird die Zuständigkeit neu verteilt. Abwesenheiten werden
-								berücksichtigt.
-							</FieldDescription>
-						</Field>
-					</FieldGroup>
-					{error && (
-						<Alert variant="destructive">
-							<AlertDescription>{error}</AlertDescription>
-						</Alert>
-					)}
-					<DrawerFooter className="p-0">
+									<ToggleGroupItem value="months" disabled={pending} className="min-h-11 flex-1">
+										Monate
+									</ToggleGroupItem>
+								</ToggleGroup>
+								<ToggleGroup
+									value={[String(interval)]}
+									onValueChange={(values) => {
+										const preset = presets.find((entry) => String(entry.interval) === values[0]);
+										if (preset) onIntervalPresetSelect(preset.interval, preset.unit);
+									}}
+									variant="outline"
+									aria-label="Intervall wählen"
+									className="w-full flex-wrap"
+								>
+									{presets.map((preset) => (
+										<ToggleGroupItem
+											key={preset.interval}
+											value={String(preset.interval)}
+											disabled={pending}
+											className="min-h-11"
+										>
+											{preset.label}
+										</ToggleGroupItem>
+									))}
+								</ToggleGroup>
+								<FieldDescription>
+									Erste Fälligkeit: {firstDue}. Bei früher Erledigung bleibt die bestehende
+									Fälligkeit die Basis; bei später Erledigung beginnt der nächste Rhythmus am
+									Abschluss.
+								</FieldDescription>
+							</Field>
+							<Field data-disabled={pending}>
+								<FieldLabel htmlFor="chore-assigned">Zuständig</FieldLabel>
+								<NativeSelect
+									id="chore-assigned"
+									value={assignedMemberId}
+									onChange={(event) => onAssignedMemberIdChange(event.target.value)}
+									disabled={pending}
+									className="w-full [&_select]:min-h-11 [&_select]:text-base"
+								>
+									<NativeSelectOption value="">— niemand —</NativeSelectOption>
+									{members.map((member) => (
+										<NativeSelectOption key={member.id} value={member.id}>
+											{member.name}
+										</NativeSelectOption>
+									))}
+								</NativeSelect>
+								<FieldDescription>
+									Nach dem Erledigen wird die Zuständigkeit neu verteilt. Abwesenheiten werden
+									berücksichtigt.
+								</FieldDescription>
+							</Field>
+						</FieldGroup>
+						{error && (
+							<Alert variant="destructive">
+								<AlertDescription>{error}</AlertDescription>
+							</Alert>
+						)}
+					</div>
+					<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
 						<Button
 							type="submit"
 							disabled={!title.trim() || pending}

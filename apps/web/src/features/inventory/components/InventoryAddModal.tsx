@@ -204,106 +204,107 @@ export function InventoryAddModal({
 						event.preventDefault();
 						void save();
 					}}
-					className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4"
-					style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+					className="flex min-h-0 flex-col"
 				>
-					<FieldGroup>
-						<Field data-invalid={Boolean(nameError)}>
-							<FieldLabel htmlFor="inventory-name">Name</FieldLabel>
-							<Input
-								id="inventory-name"
-								type="text"
-								value={name}
-								onChange={(event) => {
-									setName(event.target.value);
-									if (nameError) setNameError(null);
-								}}
-								maxLength={INVENTORY_LIMITS.NAME_MAX}
-								required
-								aria-required="true"
-								aria-invalid={Boolean(nameError)}
-								aria-describedby={nameError ? 'inventory-name-error' : undefined}
-								placeholder="z. B. Nudeln"
-								disabled={saving}
-								className="text-base"
-							/>
-							{nameError && <FieldError id="inventory-name-error">{nameError}</FieldError>}
-						</Field>
-						<div className="grid grid-cols-1 gap-2">
-							<Field className="min-w-0">
-								<FieldLabel htmlFor="inventory-qty">Menge</FieldLabel>
+					<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
+						<FieldGroup>
+							<Field data-invalid={Boolean(nameError)}>
+								<FieldLabel htmlFor="inventory-name">Name</FieldLabel>
 								<Input
-									id="inventory-qty"
-									type="number"
-									inputMode="numeric"
-									value={quantity}
-									min={INVENTORY_LIMITS.QUANTITY_MIN}
-									max={INVENTORY_LIMITS.QUANTITY_MAX}
-									onChange={(event) => setQuantity(Number(event.target.value) || 0)}
+									id="inventory-name"
+									type="text"
+									value={name}
+									onChange={(event) => {
+										setName(event.target.value);
+										if (nameError) setNameError(null);
+									}}
+									maxLength={INVENTORY_LIMITS.NAME_MAX}
+									required
+									aria-required="true"
+									aria-invalid={Boolean(nameError)}
+									aria-describedby={nameError ? 'inventory-name-error' : undefined}
+									placeholder="z. B. Nudeln"
 									disabled={saving}
 									className="text-base"
 								/>
+								{nameError && <FieldError id="inventory-name-error">{nameError}</FieldError>}
 							</Field>
-							<Field className="min-w-0">
-								<FieldLabel htmlFor="inventory-threshold">Nachkaufen ab</FieldLabel>
-								<Input
-									id="inventory-threshold"
-									type="number"
-									inputMode="numeric"
-									value={threshold}
-									min={INVENTORY_LIMITS.THRESHOLD_MIN}
-									max={INVENTORY_LIMITS.THRESHOLD_MAX}
-									onChange={(event) => setThreshold(Number(event.target.value) || 0)}
-									disabled={saving}
-									className="text-base"
-								/>
-							</Field>
-						</div>
-						<div className="grid grid-cols-1 gap-2">
-							<Field className="min-w-0">
-								<FieldLabel htmlFor="inventory-unit">Einheit</FieldLabel>
-								<NativeSelect
-									id="inventory-unit"
-									value={unit}
-									onChange={(event) => setUnit(event.target.value as InventoryUnit)}
-									disabled={saving}
-									className="w-full [&_select]:min-h-11 [&_select]:text-base"
-								>
-									{INVENTORY_UNITS.map((u) => (
-										<NativeSelectOption key={u} value={u}>
-											{u}
-										</NativeSelectOption>
-									))}
-								</NativeSelect>
-							</Field>
-							<Field className="min-w-0">
-								<FieldLabel htmlFor="inventory-category">Kategorie</FieldLabel>
-								<NativeSelect
-									id="inventory-category"
-									value={category}
-									onChange={(event) => setCategory(event.target.value as InventoryCategory)}
-									disabled={saving}
-									className="w-full [&_select]:min-h-11 [&_select]:text-base"
-								>
-									{INVENTORY_CATEGORIES.map((cat) => (
-										<NativeSelectOption key={cat} value={cat}>
-											{INVENTORY_CATEGORY_LABELS[cat]}
-										</NativeSelectOption>
-									))}
-								</NativeSelect>
-							</Field>
-						</div>
-						<FieldDescription>
-							Wenn der Bestand diesen Wert erreicht, wird der Vorrat als niedrig markiert und auf
-							die Einkaufsliste gesetzt.
-						</FieldDescription>
-					</FieldGroup>
-					{serverError && (
-						<Alert id="inventory-save-error" variant="destructive">
-							<AlertDescription>{serverError}</AlertDescription>
-						</Alert>
-					)}
-					<DrawerFooter className="flex-col items-stretch gap-2 p-0">
+							<div className="grid grid-cols-1 gap-2">
+								<Field className="min-w-0">
+									<FieldLabel htmlFor="inventory-qty">Menge</FieldLabel>
+									<Input
+										id="inventory-qty"
+										type="number"
+										inputMode="numeric"
+										value={quantity}
+										min={INVENTORY_LIMITS.QUANTITY_MIN}
+										max={INVENTORY_LIMITS.QUANTITY_MAX}
+										onChange={(event) => setQuantity(Number(event.target.value) || 0)}
+										disabled={saving}
+										className="text-base"
+									/>
+								</Field>
+								<Field className="min-w-0">
+									<FieldLabel htmlFor="inventory-threshold">Nachkaufen ab</FieldLabel>
+									<Input
+										id="inventory-threshold"
+										type="number"
+										inputMode="numeric"
+										value={threshold}
+										min={INVENTORY_LIMITS.THRESHOLD_MIN}
+										max={INVENTORY_LIMITS.THRESHOLD_MAX}
+										onChange={(event) => setThreshold(Number(event.target.value) || 0)}
+										disabled={saving}
+										className="text-base"
+									/>
+								</Field>
+							</div>
+							<div className="grid grid-cols-1 gap-2">
+								<Field className="min-w-0">
+									<FieldLabel htmlFor="inventory-unit">Einheit</FieldLabel>
+									<NativeSelect
+										id="inventory-unit"
+										value={unit}
+										onChange={(event) => setUnit(event.target.value as InventoryUnit)}
+										disabled={saving}
+										className="w-full [&_select]:min-h-11 [&_select]:text-base"
+									>
+										{INVENTORY_UNITS.map((u) => (
+											<NativeSelectOption key={u} value={u}>
+												{u}
+											</NativeSelectOption>
+										))}
+									</NativeSelect>
+								</Field>
+								<Field className="min-w-0">
+									<FieldLabel htmlFor="inventory-category">Kategorie</FieldLabel>
+									<NativeSelect
+										id="inventory-category"
+										value={category}
+										onChange={(event) => setCategory(event.target.value as InventoryCategory)}
+										disabled={saving}
+										className="w-full [&_select]:min-h-11 [&_select]:text-base"
+									>
+										{INVENTORY_CATEGORIES.map((cat) => (
+											<NativeSelectOption key={cat} value={cat}>
+												{INVENTORY_CATEGORY_LABELS[cat]}
+											</NativeSelectOption>
+										))}
+									</NativeSelect>
+								</Field>
+							</div>
+							<FieldDescription>
+								Wenn der Bestand diesen Wert erreicht, wird der Vorrat als niedrig markiert und auf
+								die Einkaufsliste gesetzt.
+							</FieldDescription>
+						</FieldGroup>
+						{serverError && (
+							<Alert id="inventory-save-error" variant="destructive">
+								<AlertDescription>{serverError}</AlertDescription>
+							</Alert>
+						)}
+					</div>
+					<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
 						<Button
 							type="button"
 							variant="outline"

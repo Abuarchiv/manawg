@@ -197,66 +197,65 @@ export function EventEditModal({
 							: 'Änderungen gelten für diesen WG-Termin.'}
 					</DrawerDescription>
 				</DrawerHeader>
-				<form
-					onSubmit={handleSave}
-					className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
-				>
-					<EventFormFields
-						idPrefix="event-edit"
-						title={title}
-						onTitleChange={setTitle}
-						startsAt={startsAt}
-						onStartsAtChange={setStartsAt}
-						endsAt={endsAt}
-						onEndsAtChange={setEndsAt}
-						allDay={allDay}
-						onAllDayChange={setAllDay}
-						location={location}
-						onLocationChange={setLocation}
-						description={description}
-						onDescriptionChange={setDescription}
-						disabled={saving || deleting}
-						recurrenceField={
-							<Field data-disabled={saving || deleting}>
-								<FieldLabel htmlFor="event-edit-recurrence">Wiederholung</FieldLabel>
-								<NativeSelect
-									id="event-edit-recurrence"
-									value={recurrenceOption}
-									onChange={(event) =>
-										event.target.value === KEEP_EXISTING_RECURRENCE
-											? undefined
-											: setRecurrence(
-													event.target.value
-														? formatRecurrenceRule({
-																freq: event.target.value as RecurrenceFreq,
-																interval: 1,
-															})
-														: '',
-												)
-									}
-									disabled={saving || deleting}
-									className="w-full [&_select]:min-h-11 [&_select]:text-base"
-								>
-									{recurrence && !isSimpleRecurrence && (
-										<NativeSelectOption value={KEEP_EXISTING_RECURRENCE}>
-											Bestehende Serie
-										</NativeSelectOption>
-									)}
-									{RECURRENCE_OPTIONS.map((option) => (
-										<NativeSelectOption key={option.value} value={option.value}>
-											{option.label}
-										</NativeSelectOption>
-									))}
-								</NativeSelect>
-							</Field>
-						}
-					/>
-					{(error || actionError) && (
-						<Alert variant="destructive">
-							<AlertDescription>{error || actionError}</AlertDescription>
-						</Alert>
-					)}
-					<DrawerFooter className="p-0">
+				<form onSubmit={handleSave} className="flex min-h-0 flex-col">
+					<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
+						<EventFormFields
+							idPrefix="event-edit"
+							title={title}
+							onTitleChange={setTitle}
+							startsAt={startsAt}
+							onStartsAtChange={setStartsAt}
+							endsAt={endsAt}
+							onEndsAtChange={setEndsAt}
+							allDay={allDay}
+							onAllDayChange={setAllDay}
+							location={location}
+							onLocationChange={setLocation}
+							description={description}
+							onDescriptionChange={setDescription}
+							disabled={saving || deleting}
+							recurrenceField={
+								<Field data-disabled={saving || deleting}>
+									<FieldLabel htmlFor="event-edit-recurrence">Wiederholung</FieldLabel>
+									<NativeSelect
+										id="event-edit-recurrence"
+										value={recurrenceOption}
+										onChange={(event) =>
+											event.target.value === KEEP_EXISTING_RECURRENCE
+												? undefined
+												: setRecurrence(
+														event.target.value
+															? formatRecurrenceRule({
+																	freq: event.target.value as RecurrenceFreq,
+																	interval: 1,
+																})
+															: '',
+													)
+										}
+										disabled={saving || deleting}
+										className="w-full [&_select]:min-h-11 [&_select]:text-base"
+									>
+										{recurrence && !isSimpleRecurrence && (
+											<NativeSelectOption value={KEEP_EXISTING_RECURRENCE}>
+												Bestehende Serie
+											</NativeSelectOption>
+										)}
+										{RECURRENCE_OPTIONS.map((option) => (
+											<NativeSelectOption key={option.value} value={option.value}>
+												{option.label}
+											</NativeSelectOption>
+										))}
+									</NativeSelect>
+								</Field>
+							}
+						/>
+						{(error || actionError) && (
+							<Alert variant="destructive">
+								<AlertDescription>{error || actionError}</AlertDescription>
+							</Alert>
+						)}
+					</div>
+					<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
 						<Button type="submit" disabled={saving || deleting}>
 							{saving && <Spinner data-icon="inline-start" aria-hidden />}
 							{saving ? 'Speichert…' : 'Speichern'}
