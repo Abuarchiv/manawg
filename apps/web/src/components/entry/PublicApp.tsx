@@ -263,7 +263,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 								variant="outline"
 								onClick={() => setRetryNonce((value) => value + 1)}
 							>
-								erneut prüfen
+								Erneut prüfen
 							</Button>
 						</div>
 					)}

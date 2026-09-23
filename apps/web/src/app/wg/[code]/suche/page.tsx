@@ -33,7 +33,6 @@ import {
 	filterSearchResults,
 	filterSearchResultsByQuickFilter,
 } from '@/core/reads/search';
-import { cn } from '@/shared/lib/cn';
 import { ChevronRight, Search, SearchX, X } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -356,7 +355,7 @@ export default function SuchePage() {
 						<div className="flex flex-wrap justify-center gap-2">
 							<Link
 								href={`${wgBaseHref}/pinnwand`}
-								className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), '')}
+								className={buttonVariants({ variant: 'outline', size: 'sm' })}
 							>
 								Zur Pinnwand
 							</Link>

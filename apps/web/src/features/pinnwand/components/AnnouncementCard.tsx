@@ -397,7 +397,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 									onClick={() => setExpanded((value) => !value)}
 									aria-expanded={expanded}
 									aria-controls={`announcement-body-${announcement.id}`}
-									aria-label={(expanded ? 'Weniger anzeigen:' : 'Mehr anzeigen:') + actionSubject}
+									aria-label={(expanded ? 'Weniger anzeigen: ' : 'Mehr anzeigen: ') + actionSubject}
 								>
 									{expanded ? (
 										<ChevronUp data-icon="inline-start" />
@@ -466,7 +466,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 										aria-pressed={active}
 										aria-label={
 											label +
-											(active ? '-Reaktion entfernen:' : '-Reaktion setzen:') +
+											(active ? '-Reaktion entfernen: ' : '-Reaktion setzen: ') +
 											actionSubject
 										}
 									>

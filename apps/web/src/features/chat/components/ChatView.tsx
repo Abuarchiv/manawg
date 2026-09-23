@@ -24,7 +24,6 @@ import { mergePagedMessagesById, mergePagedReactions, previewBody } from '../cha
 import { ChatComposer } from './ChatComposer';
 import type { BubbleMessage, ReactionSummary } from './MessageBubble';
 import { MessageList } from './MessageList';
-import { TypingIndicator } from './TypingIndicator';
 
 interface ChatMessageDto extends BubbleMessage {
 	wgId: string;
@@ -599,7 +598,6 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 					</MessageScrollerButton>
 				</MessageScroller>
 			</MessageScrollerProvider>
-			<TypingIndicator names={[]} />
 			<ChatComposer
 				key={`${shareCode}:${identity.memberId}`}
 				draftKey={`manawg:draft:${shareCode}:${identity.memberId}:chat`}

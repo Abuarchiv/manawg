@@ -234,7 +234,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 							onClick={handleDelete}
 							disabled={pending}
 							aria-label={`${item.name} entfernen`}
-							className="text-muted-foreground hover:text-destructive"
+							className="text-muted-foreground hover:text-destructive active:text-destructive"
 						>
 							<Trash2 aria-hidden />
 						</Button>

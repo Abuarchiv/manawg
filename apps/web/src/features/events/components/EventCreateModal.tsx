@@ -151,29 +151,22 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 				</DrawerHeader>
 				<form onSubmit={handleSubmit} className="flex min-h-0 flex-col">
 					<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
-						<details>
-							<summary className="min-h-11 cursor-pointer py-3 text-xs text-muted-foreground">
-								Vorlage verwenden
-							</summary>
-							<FieldSet disabled={submitting}>
-								<FieldLegend variant="label" className="sr-only">
-									Schnellvorlagen
-								</FieldLegend>
-								<div className="flex flex-wrap gap-2">
-									{QUICK_TEMPLATES.map((template) => (
-										<Button
-											key={template.label}
-											type="button"
-											variant="outline"
-											onClick={() => applyTemplate(template)}
-											disabled={submitting}
-										>
-											{template.label}
-										</Button>
-									))}
-								</div>
-							</FieldSet>
-						</details>
+						<FieldSet disabled={submitting}>
+							<FieldLegend variant="label">Vorlagen</FieldLegend>
+							<div className="flex flex-wrap gap-2">
+								{QUICK_TEMPLATES.map((template) => (
+									<Button
+										key={template.label}
+										type="button"
+										variant="outline"
+										onClick={() => applyTemplate(template)}
+										disabled={submitting}
+									>
+										{template.label}
+									</Button>
+								))}
+							</div>
+						</FieldSet>
 						<EventFormFields
 							idPrefix="event-create"
 							title={title}

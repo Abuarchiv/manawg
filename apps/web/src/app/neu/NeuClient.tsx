@@ -607,7 +607,7 @@ export function NeuClient() {
 					<div className="flex flex-col gap-2">
 						<ErrorBox>Deine Anmeldung konnte gerade nicht geprüft werden.</ErrorBox>
 						<Button variant="outline" onClick={() => setAuthRetryNonce((value) => value + 1)}>
-							erneut prüfen
+							Erneut prüfen
 						</Button>
 					</div>
 				)}

@@ -29,6 +29,17 @@ interface ReminderHistoryProps {
 	memberName: (id: string) => string;
 }
 
+// The API stores internal channel codes ('push' | 'inapp'); an unmapped
+// optimistic label like "Wird gesendet" passes through unchanged.
+const CHANNEL_LABELS: Readonly<Record<string, string>> = {
+	push: 'Push-Benachrichtigung',
+	inapp: 'In der App',
+};
+
+function channelLabel(channel: string): string {
+	return CHANNEL_LABELS[channel] ?? channel;
+}
+
 export function ReminderHistory({ items, memberName }: ReminderHistoryProps) {
 	if (items.length === 0)
 		return (
@@ -54,7 +65,7 @@ export function ReminderHistory({ items, memberName }: ReminderHistoryProps) {
 							<time dateTime={item.sentAt} title={formatTimeFull(item.sentAt)}>
 								{formatRelativeTime(item.sentAt)}
 							</time>{' '}
-							· {item.channel}
+							· {channelLabel(item.channel)}
 						</ItemDescription>
 					</ItemContent>
 					<Badge variant="outline" className="font-mono tabular-nums">

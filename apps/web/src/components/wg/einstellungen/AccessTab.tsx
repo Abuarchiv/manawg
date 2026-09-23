@@ -632,6 +632,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 					<AlertDialogFooter>
 						<AlertDialogCancel disabled={deleteStage === 'pending'}>Abbrechen</AlertDialogCancel>
 						<Button
+							variant="destructive"
 							onClick={(event) => {
 								event.preventDefault();
 								void handleDelete();
