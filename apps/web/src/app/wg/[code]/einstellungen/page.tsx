@@ -11,7 +11,7 @@ import type { SettingsTab } from '@/core/guards/settings-tabs';
 import { type WgExport, buildEmptyExportSummary, buildExportSummary } from '@/core/reads/export';
 import { cn } from '@/shared/lib/cn';
 import { memberAuthHeader } from '@/shared/lib/identity';
-import { ArrowLeft, Monitor } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -103,16 +103,13 @@ export default function EinstellungenPage() {
 	}, []);
 
 	return (
-		<div className="mx-auto min-w-0 w-full max-w-3xl px-4 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
+		<div className="mx-auto min-w-0 w-full max-w-3xl px-4 pb-[env(safe-area-inset-bottom,0px)]">
 			<div className="min-w-0 py-4">
 				<header className="mb-4 flex items-center gap-2">
 					<Link
 						href={wgBaseHref}
 						aria-label="Zurück zum Dashboard"
-						className={cn(
-							buttonVariants({ variant: 'ghost', size: 'icon-lg' }),
-							'min-h-11 min-w-11 shrink-0',
-						)}
+						className={cn(buttonVariants({ variant: 'ghost', size: 'icon-lg' }), 'shrink-0')}
 					>
 						<ArrowLeft aria-hidden />
 						<span className="sr-only">Zurück zum Dashboard</span>
@@ -133,7 +130,7 @@ export default function EinstellungenPage() {
 					}}
 				>
 					<TabsList
-						className="sticky z-10 grid h-auto min-w-0 max-w-full w-full grid-cols-4 gap-1 border border-border bg-background p-1"
+						className="sticky z-10 grid h-auto min-w-0 max-w-full w-full grid-cols-4 gap-1 rounded-xl p-1"
 						style={{ top: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
 					>
 						{SETTINGS_TABS.map((tab) => (
@@ -185,12 +182,9 @@ export default function EinstellungenPage() {
 							<p>
 								ManaWG · WG-Code <span className="font-mono">{wg.shareCode}</span>
 							</p>
-							<p className="mt-0.5">
-								<span className="inline-flex items-center gap-1">
-									<Monitor className="h-3 w-3" aria-hidden /> WG-Daten und Mitgliedschaft liegen im
-									Account · Nicht synchronisierte Entwürfe und Offline-Aktionen bleiben auf diesem
-									Gerät
-								</span>
+							<p className="mt-0.5 text-balance">
+								WG-Daten und Mitgliedschaft liegen im Account · Nicht synchronisierte Entwürfe und
+								Offline-Aktionen bleiben auf diesem Gerät
 							</p>
 						</div>
 					</TabsContent>

@@ -1,5 +1,18 @@
 # ManaWG Release Readiness
 
+## Lokale Entwicklungsrunde — 2026-09-24, Europe/Berlin
+
+- Arbeitsbaum auf `fix/audit-20260922-app` beibehalten; vorhandene WIP-Änderungen nicht zurückgesetzt oder committed.
+- Verifiziert mit Node `v22.23.2`: `lint` (502 Dateien + Feature-Grenzen), beide Typechecks, `test:unit` (79 Node- und 56 Playwright-Tests), Build mit `NEXT_DIST_DIR=.next-final-validation`, `bundle:check` gegen denselben Build und `analytics:check` bestanden.
+- Isolierte Fixture-E2E-Suite: 275 bestanden, 30 übersprungen, auf `E2E_PORT=3240`. Fixture-Build, Next-Webserver und Worker leeren DB-, Supabase-, Upstash-, AWS- und S3-Werte; der Port-Override erzwingt eine lokale `BASE_URL`.
+- Der erste Fixture-Versuch erbte noch lokale Upstash-Zugangsdaten und erhielt HTTP 429; dabei können kurzlebige gemeinsame Rate-Limit-Zähler beeinflusst worden sein. Danach wurde die Fixture-Umgebung isoliert. Es liefen keine DB-Migrationen oder DB-Schreibzugriffe; Redis-Zähler wurden nicht manuell verändert.
+- Lokaler Server läuft mit Node `v22.23.2` auf `http://localhost:3000`; `/api/health` liefert HTTP 200, `database=ok`, `missingRequiredCount=0`. Upstash `/ping` liefert `PONG`; einzig `image-uploads` bleibt degradiert, S3 bleibt deaktiviert.
+- Lokale Review-Runde mit 12 Agentenbereichen; keine Preview-Deployments, DB-Schreibzugriffe oder Migrationen.
+- Fixes: WG-Auth-Reihenfolge/404-Orakel, Rate-Limit-Fehlerredaktion, atomare WG-/Expense-/Recurring-/Event-/Chat-/Chore-/Pinnwand-/Calendar-Replays, Expense-CAS/Split-Prüfung, Berliner Abwesenheitstage, Chat-Mikrosekunden-Cursor, Event-DST/Cron, Inventory/Shopping-Reconciliation und zugängliche Navigation. Alte Claims vor den atomaren Änderungen sind nicht sicher rekonstruierbar.
+- Verbleibende Replay-Grenze: eine externe Testbenachrichtigung kann nach verlorenem Replay-Cache und Ablauf der 15-Minuten-Lease erneut zugestellt werden; genau-einmalige externe Zustellung braucht Outbox und Empfänger-Deduplizierung. Ein älterer Calendar-Key gibt seine ursprüngliche URL wieder, auch wenn eine spätere unabhängige Rotation sie ersetzt.
+- Kalender-GET behält 1.000 Kandidaten. Cron hat ein eigenes 10.000er-Budget, vollständigen Preflight vor Claims/Versand und höchstens 10 parallele Zustellungen; Überlauf bleibt vor Nebenwirkungen bei HTTP 503. Laufzeit für 10.000 Erinnerungen gegen Hosting-Zeitlimit noch messen.
+- Gehostete Freigabe bleibt offen: Preview-DDL-/Owner-Zugang (SQLSTATE `42501`), echte Mehr-WG-/Revoked-Membership-Abnahme, Residenten-/Geräteprüfungen, Backup/Restore/PITR sowie Production-RLS-Migration/Deployment/Rollback. Diese Nachweise sind keine lokalen Build- oder Fixture-Ergebnisse.
+
 ## Aktueller Implementierungsstand — 2026-09-22, Europe/Berlin
 
 - Branch `fix/audit-158` enthält den geprüften Anwendungs-/Teststand `3abc5d9a1fefe55603067d872f476981289ee71f`; der aktuelle Dokumentations-Tip ergänzt nur diese Evidenz. PR #300 ist mergeable, aber wegen geschützter Preview-Gates noch nicht freigabefähig.
@@ -11,8 +24,20 @@
 
 Stand: 2026-09-22, Europe/Berlin
 Scope: `/Users/abu/Company/manawg-app`
-HEAD: `3abc5d9a1fefe55603067d872f476981289ee71f` (`fix/audit-158`; documentation-only refresh follows)
-Arbeitsbaum: dirty durch eine uncommitted Benutzeränderung in `apps/web/src/app/layout.tsx`; kein Production-Release.
+HEAD: `4ebd685` (`fix/audit-20260922-app` incl. Merge von `origin/main`; vorher `3abc5d9a` auf `fix/audit-158`)
+Arbeitsbaum: ca. 116 dirty Dateien durch laufende UI-/Refactor-WIP-Mehrerer; `apps/web/src/app/layout.tsx` ist clean; kein Production-Release.
+
+## Lokaler Dev-Server — 2026-09-23
+
+- Erstmeldung: `http://localhost:3000` antwortete mit HTTP 200; PID `13966`, Log `/tmp/manawg-dev.log`. Node `v26.7.0` war laut Projektvertrag (Node 22.x) nicht unterstützt.
+- `NEXT_PUBLIC_SUPABASE_URL` und `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` sind in der ignorierten `apps/web/.env.local` für `manawg-preview` gesetzt; übrige Einträge blieben erhalten.
+- Das Passwort der Supabase Preview-Datenbank wurde rotiert. `POSTGRES_URL` wurde in Vercel Preview als `sensitive` aktualisiert und lokal ersetzt. `.env.local` bleibt gitignored und ist nur für den Eigentümer lesbar (`0600`). Keine Zugangswerte dokumentiert.
+- Dev-Server neu gestartet: Node `v22.23.2`, HTTP 200; Next-Prozess PID `45324`, Listener PID `45331`, Log `/tmp/manawg-dev.log`.
+- `GET /auth/v1/settings` mit dem lokalen Publishable-Key: HTTP 200. `/api/health`: HTTP 200, `status=ok`, `database=ok`, `missingRequiredCount=0`.
+- Supabase Management-API `SELECT 1` auf `manawg-preview` war ebenfalls erfolgreich.
+- Upstash für Development aktiviert: Die Vercel-Development-Werte werden lokal unter den von der App erwarteten `UPSTASH_REDIS_REST_URL`- und `UPSTASH_REDIS_REST_TOKEN`-Namen verwendet. Redis `/ping` antwortet mit HTTP 200/PONG; `/api/health` meldet kein `rate-limiting`-Degrade.
+- Die vorhandene Redis-Ressource ist für Development, Preview und Production geteilt; Rate-Limit-Zähler sind gemeinsam. S3-Image-Uploads bleiben deaktiviert; `/api/health` meldet nur noch `image-uploads` als degradiert.
+- Bestehende Vercel Preview-Deployments wurden nicht neu erstellt; sie übernehmen die aktualisierte Datenbank-URL erst bei einem neuen Preview-Deployment.
 
 ## Historischer Implementierungsstand — 2026-09-20 20:10 CEST
 
@@ -146,10 +171,7 @@ Candidate-SHA einfrieren und nativen Preview-Deploy mit den bestehenden Vercel-S
 
 ## Kontrolllauf
 
-- Zeitpunkt: 2026-09-20 16:54 CEST; direkter Ausbauauftrag ersetzt den Lock-Kontrolllauf.
-- Statuszähler: lokale Fixture-Suite 85 bestanden, 25 übersprungen, 0 Fehler; sechs Hosted-Checks bestanden.
-- Ergebnis: Build/Lint/Typecheck grün; DB-Ledger repariert, db:check und echter Transaktions-Rollback bestanden; Testdaten-Cleanup bestätigt.
-- Nächster Schritt: dauerhafte Preview-Konfiguration herstellen und Runtime-Fix auf einem neuen Candidate end-to-end prüfen.
-- Implementierung 2026-09-20 19:28 CEST: CI-Preview-Gate korrigiert. Bei `deployment_status` wird der Vercel-Commit nicht mit Secrets ausgeführt; sein Git-Tree wird vor dem Preview-Gate gegen den vertrauenswürdigen `main`-Tree geprüft. Merge-Commit-SHA-Differenzen blockieren damit nicht mehr bei bytegleichem Code.
-- Nachweis: Release-Gate-Tests 11/11, Lint, Typecheck, Analytics, Feature-Boundaries, Build, Bundle 102/120 kB, Fixture-E2E Exit 0, `git diff --check` 0; Supabase CLI Preview 26/26 RLS, `rls_disabled=0`; Vercel `/api/health` `status=ok,database=ok`.
-- Weiter blockiert: GitHub-Secret `SUPABASE_PREVIEW_DATABASE_MIGRATION_URL` und `SUPABASE_AUTH_TEST_*` fehlen weiterhin; kein echter Hosted-Auth-/Privacy-/Cleanup-Nachweis. Production unverändert.
+- Zeitpunkt: 2026-09-23 21:19 CEST; Lock erfolgreich, aktueller SHA `4ebd685`, 120 WIP-Pfade unverändert erhalten.
+- Statuszähler: 2 erledigt, 1 in Arbeit, 6 blockiert, 0 offen.
+- Ergebnis: `/api/health` HTTP 200 mit Datenbank `ok`; Lint, Typecheck und `git diff --check` grün, Image-Uploads degradiert; Preview/Auth/RLS, Provider, Geräte und Recovery bleiben blockiert.
+- Nächster Schritt: autorisierten Preview-DDL-/Owner-Zugang bereitstellen und denselben Candidate-SHA durch `db:check`, Auth, Privacy und Cleanup führen.

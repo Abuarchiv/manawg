@@ -24,7 +24,7 @@ import {
 	splitValidationErrorCode,
 	validateSplits,
 } from '@/features/expenses/split-math';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -64,41 +64,42 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 
 	// Allow deletion by: the original payer OR any debtor in the expense splits.
 	// This lets victims of fake expenses remove them without being the payer.
-	const existing = await db
-		.select({
-			paidByMemberId: expenses.paidByMemberId,
-			description: expenses.description,
-			amountCents: expenses.amountCents,
-		})
-		.from(expenses)
-		.where(and(eq(expenses.id, id), eq(expenses.wgId, wgId)))
-		.limit(1);
-	const row = existing[0];
-	if (!row) return notFound('expense_not_found');
-
-	const callerId = auth.member.memberId;
-	const isAllowed = await (async (): Promise<boolean> => {
-		if (row.paidByMemberId === callerId) return true;
-		const splitRow = await db
-			.select({ debtorMemberId: expenseSplits.debtorMemberId })
-			.from(expenseSplits)
-			.where(and(eq(expenseSplits.expenseId, id), eq(expenseSplits.debtorMemberId, callerId)))
+	const deletion = await withExpensePaymentLock(wgId, async (tx) => {
+		const existing = await tx
+			.select({
+				paidByMemberId: expenses.paidByMemberId,
+				description: expenses.description,
+				amountCents: expenses.amountCents,
+			})
+			.from(expenses)
+			.where(and(eq(expenses.id, id), eq(expenses.wgId, wgId)))
 			.limit(1);
-		return splitRow.length > 0;
-	})();
+		const row = existing[0];
+		if (!row) return { ok: false as const, response: notFound('expense_not_found') };
 
-	if (!isAllowed) {
-		return forbidden('not_owner', 'not_owner');
-	}
+		const callerId = auth.member.memberId;
+		if (row.paidByMemberId !== callerId) {
+			const splitRow = await tx
+				.select({ debtorMemberId: expenseSplits.debtorMemberId })
+				.from(expenseSplits)
+				.where(and(eq(expenseSplits.expenseId, id), eq(expenseSplits.debtorMemberId, callerId)))
+				.limit(1);
+			if (splitRow.length === 0) {
+				return { ok: false as const, response: forbidden('not_owner', 'not_owner') };
+			}
+		}
 
-	const deleted = await withExpensePaymentLock(wgId, (tx) =>
-		tx
+		const deleted = await tx
 			.delete(expenses)
 			.where(and(eq(expenses.id, id), eq(expenses.wgId, wgId)))
-			.returning({ id: expenses.id }),
-	);
-
-	if (deleted.length === 0) return notFound('expense_not_found');
+			.returning({ id: expenses.id });
+		if (deleted.length === 0) {
+			return { ok: false as const, response: notFound('expense_not_found') };
+		}
+		return { ok: true as const, row };
+	});
+	if (!deletion.ok) return deletion.response;
+	const { row } = deletion;
 	await recordAuditEvent({
 		wgId,
 		memberId: auth.member.memberId,
@@ -191,7 +192,8 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	if (row.paidByMemberId !== auth.member.memberId) {
 		return forbidden('not_payer', 'not_payer');
 	}
-	if (expectedUpdatedAt && row.updatedAt.getTime() !== new Date(expectedUpdatedAt).getTime()) {
+	const expectedVersion = expectedUpdatedAt ? new Date(expectedUpdatedAt) : undefined;
+	if (expectedVersion && row.updatedAt.getTime() !== expectedVersion.getTime()) {
 		return conflict('expense_changed', 'expense_conflict');
 	}
 	if (splits) {
@@ -215,7 +217,7 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 		if (memberRows.length !== debtorIds.length) return badRequest('member_not_in_wg');
 	}
 
-	const updates: Partial<typeof expenses.$inferInsert> = { updatedAt: new Date() };
+	const updates: Partial<typeof expenses.$inferInsert> = {};
 	if (description !== undefined) updates.description = description;
 	if (amountCents !== undefined) updates.amountCents = amountCents;
 	if (currency !== undefined) updates.currency = currency;
@@ -228,20 +230,31 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	// and every balance wrong, whenever it failed itself.
 	try {
 		await withExpensePaymentLock(wgId, async (tx) => {
-			const updateWhere = expectedUpdatedAt
-				? and(
-						eq(expenses.id, id),
-						eq(expenses.wgId, wgId),
-						eq(expenses.updatedAt, new Date(expectedUpdatedAt)),
-					)
-				: and(eq(expenses.id, id), eq(expenses.wgId, wgId));
+			const updateConditions = [eq(expenses.id, id), eq(expenses.wgId, wgId)];
+			if (expectedVersion) {
+				updateConditions.push(
+					sql`date_trunc('milliseconds', ${expenses.updatedAt}) = ${expectedVersion}`,
+				);
+			}
+			if (splits && amountCents === undefined) {
+				updateConditions.push(eq(expenses.amountCents, row.amountCents));
+			}
+			const updateWhere = and(...updateConditions);
 			const [updatedMarker] = await tx
 				.update(expenses)
-				.set(updates)
+				.set({
+					...updates,
+					updatedAt: sql`greatest(clock_timestamp(), ${expenses.updatedAt} + interval '1 millisecond')`,
+				})
 				.where(updateWhere)
 				.returning({ id: expenses.id });
 			if (!updatedMarker) {
-				throw new TransactionAbort(expectedUpdatedAt ? 'expense_changed' : 'expense_not_found');
+				const [current] = await tx
+					.select({ id: expenses.id })
+					.from(expenses)
+					.where(and(eq(expenses.id, id), eq(expenses.wgId, wgId)))
+					.limit(1);
+				throw new TransactionAbort(current ? 'expense_changed' : 'expense_not_found');
 			}
 
 			if (!splits) return;

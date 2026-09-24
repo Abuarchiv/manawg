@@ -10,6 +10,8 @@ type RateLimitModule = typeof import('../src/core/rate-limit');
 const RATE_LIMIT_PATH = path.join(process.cwd(), 'src/core/rate-limit.ts');
 const FAIL_OPEN_PRODUCTION_LOG =
 	'[rate-limit] Upstash Redis not configured in production — failing open';
+const FAIL_CLOSED_PRODUCTION_LOG =
+	'[rate-limit] Upstash Redis not configured in production — failing closed';
 const ENV_KEYS = [
 	'UPSTASH_REDIS_REST_URL',
 	'UPSTASH_REDIS_REST_TOKEN',
@@ -133,11 +135,11 @@ for (const { env, failMode, success, productionAlert } of ENV_CASES) {
 				expect(result.remaining).toBe(-1);
 			}
 
-			const alerts = spy.calls.filter((args) => args[0] === FAIL_OPEN_PRODUCTION_LOG);
+			const alerts = spy.calls.filter((args) => args[0] === FAIL_CLOSED_PRODUCTION_LOG);
 			expect(alerts).toHaveLength(productionAlert ? 1 : 0);
 			expect(rateLimit.getFailOpenStats()).toEqual({
-				total: 1,
-				byCause: { 'upstash-not-configured': 1 },
+				total: failMode === 'open' ? 1 : 0,
+				byCause: failMode === 'open' ? { 'upstash-not-configured': 1 } : {},
 			});
 		} finally {
 			spy.restore();
@@ -163,10 +165,29 @@ test('the fail-open decision reads NODE_ENV and VERCEL_ENV at call time', async 
 	}
 });
 
+test('Upstash URL validation rejects embedded credentials and URL parameters', () => {
+	for (const endpoint of [
+		'https://user:password@redis.example.com',
+		'https://redis.example.com/?token=secret-test-sentinel',
+	]) {
+		const restore = pinEnv({
+			UPSTASH_REDIS_REST_URL: endpoint,
+			UPSTASH_REDIS_REST_TOKEN: 'test-token',
+			VERCEL_ENV: 'production',
+		});
+		try {
+			expect(() => loadRateLimit()).toThrow('UPSTASH_REDIS_REST_URL must be a valid https URL');
+		} finally {
+			restore();
+		}
+	}
+});
+
 test('the production alert text is pinned so the test cannot drift with the environment', async () => {
 	const source = await readFile(RATE_LIMIT_PATH, 'utf8');
 
 	expect(source).toContain(FAIL_OPEN_PRODUCTION_LOG);
+	expect(source).toContain(FAIL_CLOSED_PRODUCTION_LOG);
 	expect(source).toContain("process.env.VERCEL_ENV === 'production'");
 	expect(source).toContain("process.env.NODE_ENV === 'test'");
 	expect(source).toContain('!process.env.VERCEL_ENV');

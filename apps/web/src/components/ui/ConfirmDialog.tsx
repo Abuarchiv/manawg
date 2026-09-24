@@ -64,7 +64,7 @@ export function ConfirmDialog({
 					</DialogTitle>
 					<DialogDescription className="wrap-break-word">{description}</DialogDescription>
 				</DialogHeader>
-				<DialogFooter className="flex-col sm:flex-col">
+				<DialogFooter className="flex-col">
 					<Button
 						ref={cancelBtnRef}
 						type="button"

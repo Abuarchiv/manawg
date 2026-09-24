@@ -54,6 +54,7 @@ export function SubNav({ label, items = [], className }: SubNavProps) {
 						<li key={href} className="min-w-0">
 							<Link
 								href={href}
+								prefetch={true}
 								aria-current={active ? (current ? 'page' : 'location') : undefined}
 								className={cn(
 									'flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 text-sm font-medium max-[419px]:px-1 max-[419px]:text-[13px] outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50',

@@ -43,7 +43,23 @@ async function probeDatabase(): Promise<ProbeStatus> {
 export async function GET(req: NextRequest): Promise<NextResponse> {
 	const limit = await checkRateLimit(healthLimiter, `health:${clientIpKey(req)}`);
 	if (!limit.success) {
-		return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+		if (limit.limiterUnavailable) {
+			const retryAfterMs = Math.max(0, limit.reset - Date.now());
+			return NextResponse.json(
+				{ error: 'rate_limiter_unavailable', retryAfterMs },
+				{
+					status: 503,
+					headers: {
+						'Cache-Control': 'no-store',
+						'Retry-After': Math.max(1, Math.ceil(retryAfterMs / 1000)).toString(),
+					},
+				},
+			);
+		}
+		return NextResponse.json(
+			{ error: 'rate_limited' },
+			{ status: 429, headers: { 'Cache-Control': 'no-store' } },
+		);
 	}
 
 	const env = checkEnv(process.env);

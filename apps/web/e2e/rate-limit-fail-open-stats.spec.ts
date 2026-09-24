@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { inspect } from 'node:util';
 import { expect, test } from '@playwright/test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 
@@ -10,6 +11,8 @@ type RateLimitModule = typeof import('../src/core/rate-limit');
 const RATE_LIMIT_PATH = path.join(process.cwd(), 'src/core/rate-limit.ts');
 const FAIL_OPEN_PRODUCTION_LOG =
 	'[rate-limit] Upstash Redis not configured in production — failing open';
+const FAIL_CLOSED_PRODUCTION_LOG =
+	'[rate-limit] Upstash Redis not configured in production — failing closed';
 const ENV_KEYS = [
 	'UPSTASH_REDIS_REST_URL',
 	'UPSTASH_REDIS_REST_TOKEN',
@@ -98,8 +101,8 @@ test('getFailOpenStats counts fail-open events per cause', async () => {
 		expect(denied.limiterUnavailable).toBe(true);
 
 		expect(rateLimit.getFailOpenStats()).toEqual({
-			total: 3,
-			byCause: { 'upstash-not-configured': 2, 'limiter-call-failed': 1 },
+			total: 2,
+			byCause: { 'upstash-not-configured': 2 },
 		});
 
 		rateLimit.resetOpenStateReporting();
@@ -116,15 +119,15 @@ test('getFailOpenStats counts fail-open events per cause', async () => {
 	}
 });
 
-test('the fail-open tally counts every production event while monitoring stays throttled', async () => {
+test('the fail-open tally counts only allowed production events while monitoring stays throttled', async () => {
 	const capture: ObservabilityCapture = { captured: [] };
 	const spy = spyConsoleError();
 	const restore = pinEnv({ VERCEL_ENV: 'production' });
 	try {
 		const rateLimit = loadRateLimit(capture);
-		await rateLimit.checkRateLimit(null, 'wg-1', 'closed');
-		await rateLimit.checkRateLimit(null, 'wg-2', 'closed');
-		await rateLimit.checkRateLimit(null, 'wg-3', 'closed');
+		await rateLimit.checkRateLimit(null, 'wg-1', 'open');
+		await rateLimit.checkRateLimit(null, 'wg-2', 'open');
+		await rateLimit.checkRateLimit(null, 'wg-3', 'open');
 
 		expect(rateLimit.getFailOpenStats()).toEqual({
 			total: 3,
@@ -137,9 +140,7 @@ test('the fail-open tally counts every production event while monitoring stays t
 		expect(capture.captured).toHaveLength(1);
 		const throttledCapture = capture.captured[0];
 		expect(throttledCapture?.[0]).toBeInstanceOf(Error);
-		expect((throttledCapture?.[0] as Error).message).toBe(
-			'rate-limit failing open: upstash-not-configured',
-		);
+		expect((throttledCapture?.[0] as Error).message).toBe('rate-limit failing open');
 		expect(throttledCapture?.[1]).toEqual({
 			area: 'rate-limit',
 			cause: 'upstash-not-configured',
@@ -150,28 +151,33 @@ test('the fail-open tally counts every production event while monitoring stays t
 	}
 });
 
-test('a throwing limiter is reported with its original error on every call', async () => {
+test('a closed limiter failure is reported without logging its thrown message', async () => {
 	const capture: ObservabilityCapture = { captured: [] };
 	const spy = spyConsoleError();
 	const restore = pinEnv({ VERCEL_ENV: 'production' });
 	try {
 		const rateLimit = loadRateLimit(capture);
-		await rateLimit.checkRateLimit(unreachableLimiter, 'wg-1', 'closed');
-		await rateLimit.checkRateLimit(unreachableLimiter, 'wg-2', 'closed');
+		const sensitiveLimiter = {
+			limit: async () => {
+				throw new Error('secret-test-sentinel');
+			},
+		};
+		await rateLimit.checkRateLimit(sensitiveLimiter, 'wg-1', 'closed');
+		await rateLimit.checkRateLimit(sensitiveLimiter, 'wg-2', 'closed');
 
-		expect(rateLimit.getFailOpenStats()).toEqual({
-			total: 2,
-			byCause: { 'limiter-call-failed': 2 },
-		});
+		expect(rateLimit.getFailOpenStats()).toEqual({ total: 0, byCause: {} });
 		const limiterFailures = spy.calls.filter(
-			(args) => args[0] === '[rate-limit] limiter call failed, failing open:',
+			(args) => args[0] === '[rate-limit] limiter call failed, failing closed',
 		);
 		expect(limiterFailures).toHaveLength(2);
-		expect(limiterFailures[0]?.[1]).toBeInstanceOf(Error);
-		expect((limiterFailures[0]?.[1] as Error).message).toBe('upstash unreachable');
+		expect(limiterFailures[0]).toHaveLength(1);
 		expect(spy.calls.some((args) => args[0] === FAIL_OPEN_PRODUCTION_LOG)).toBe(false);
 		expect(capture.captured).toHaveLength(1);
-		expect((capture.captured[0]?.[0] as Error).message).toBe('upstash unreachable');
+		expect((capture.captured[0]?.[0] as Error).message).toBe('rate-limit failing closed');
+		expect(inspect([...spy.calls, ...capture.captured])).not.toContain('secret-test-sentinel');
+
+		await rateLimit.checkRateLimit(null, 'wg-3', 'closed');
+		expect(spy.calls.some((args) => args[0] === FAIL_CLOSED_PRODUCTION_LOG)).toBe(true);
 	} finally {
 		spy.restore();
 		restore();

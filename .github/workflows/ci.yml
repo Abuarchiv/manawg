@@ -27,6 +27,7 @@ jobs:
       - run: pnpm --dir apps/web analytics:check
       - run: pnpm --filter @manawg/web exec node scripts/check-feature-boundaries.mjs
       - run: pnpm typecheck
+      - run: pnpm --filter @manawg/web test:unit
       - run: pnpm build
       - run: pnpm --filter @manawg/web bundle:check
 
@@ -45,9 +46,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @manawg/web exec playwright install --with-deps chromium
-      - run: pnpm build
-        env:
-          NEXT_PUBLIC_DB_DOWN: 'true'
       - run: pnpm --filter @manawg/web test:e2e:fixtures
       - name: Record fixture execution evidence
         if: always()

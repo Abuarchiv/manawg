@@ -8,7 +8,6 @@ import {
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
-	EmptyTitle,
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/observability';
 import { TriangleAlert } from 'lucide-react';
@@ -23,13 +22,22 @@ export default function ErrorBoundary({
 	}, [error]);
 
 	return (
-		<div className="mx-auto flex min-h-[60vh] w-full max-w-md flex-col items-center justify-center bg-background px-4 pb-[env(safe-area-inset-bottom)]">
+		<main
+			id="main"
+			tabIndex={-1}
+			className="mx-auto flex min-h-[60vh] w-full max-w-md flex-col items-center justify-center bg-background px-4 pb-[env(safe-area-inset-bottom)] focus:outline-none"
+		>
 			<Empty>
 				<EmptyHeader>
 					<EmptyMedia variant="icon">
 						<TriangleAlert aria-hidden />
 					</EmptyMedia>
-					<EmptyTitle>Etwas ist schiefgelaufen</EmptyTitle>
+					<h1
+						data-slot="empty-title"
+						className="min-w-0 max-w-full text-base font-semibold [overflow-wrap:anywhere]"
+					>
+						Etwas ist schiefgelaufen
+					</h1>
 					<EmptyDescription>Bitte versuche es erneut.</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
@@ -45,11 +53,11 @@ export default function ErrorBoundary({
 							{error.message}
 						</pre>
 					)}
-					<Button type="button" size="lg" onClick={() => reset()} className="min-h-11">
+					<Button type="button" size="lg" onClick={() => reset()}>
 						Erneut versuchen
 					</Button>
 				</EmptyContent>
 			</Empty>
-		</div>
+		</main>
 	);
 }

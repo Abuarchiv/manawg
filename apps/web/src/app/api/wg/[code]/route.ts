@@ -1,4 +1,5 @@
 import { recordAuditEvent } from '@/core/audit';
+import { getAuthenticatedUser } from '@/core/auth/server';
 import {
 	announcements,
 	chores,
@@ -11,7 +12,7 @@ import {
 	wgs,
 } from '@/core/db';
 import { withTransaction } from '@/core/db/transaction';
-import { badRequest, notFound, serverError } from '@/core/errors';
+import { apiError, badRequest, notFound, serverError } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
 import { deriveMemberToken } from '@/core/guards/member-token';
 import { requireWgAdmin } from '@/core/guards/require-wg-admin';
@@ -86,6 +87,9 @@ export async function GET(
 	}
 
 	try {
+		const user = await getAuthenticatedUser(req);
+		if (!user) return apiError('auth_required', 401, 'auth_required');
+
 		const wg = await db.query.wgs.findFirst({
 			where: (w, { eq }) => eq(w.shareCode, code),
 			columns: {
@@ -100,7 +104,7 @@ export async function GET(
 		if (!wg) {
 			return notFound('wg_not_found');
 		}
-		const auth = await requireMember(req, wg.id);
+		const auth = await requireMember(req, wg.id, user);
 		if (!auth.ok) return auth.response;
 		const memberToken = deriveMemberToken(wg.id, auth.member.memberId);
 

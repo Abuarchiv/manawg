@@ -263,7 +263,11 @@ async function assertInventoryModal(page: Page, width: number): Promise<void> {
 		expect(box).not.toBeNull();
 		if (!box) continue;
 		expect(box.width).toBeGreaterThanOrEqual(240);
-		expect(box.height).toBeGreaterThanOrEqual(44);
+		// Buttons stay 36px visually; the ::after layer carries the 44px hit area.
+		const hitHeight = await button.evaluate(
+			(el) => Number.parseFloat(getComputedStyle(el, '::after').height) || 0,
+		);
+		expect(Math.max(box.height, hitHeight)).toBeGreaterThanOrEqual(44);
 		expect(box.x + box.width).toBeLessThanOrEqual(width - 16 + 1);
 		expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth + 1);
 	}
@@ -299,7 +303,7 @@ async function assertViewportLayout(page: Page, route: LayoutRoute): Promise<voi
 		expect(input).not.toBeNull();
 		expect(submit).not.toBeNull();
 		if (input && submit) {
-			// Eine Eingabezeile; erst bei großer Schrift rutscht der Knopf darunter.
+			// Eine Eingabezeile; bei 200% rutscht die Icon-Aktion darunter.
 			expect(input.width).toBeGreaterThanOrEqual(200);
 			expect(input.height).toBeGreaterThanOrEqual(44);
 			expect(submit.height).toBeGreaterThanOrEqual(44);
@@ -353,7 +357,11 @@ async function assertViewportLayout(page: Page, route: LayoutRoute): Promise<voi
 			const box = await button.boundingBox();
 			expect(box).not.toBeNull();
 			if (!box) continue;
-			expect(box.height).toBeGreaterThanOrEqual(44);
+			// Buttons stay 36px visually; the ::after layer carries the 44px hit area.
+			const hitHeight = await button.evaluate(
+				(el) => Number.parseFloat(getComputedStyle(el, '::after').height) || 0,
+			);
+			expect(Math.max(box.height, hitHeight)).toBeGreaterThanOrEqual(44);
 			expect(box.x + box.width).toBeLessThanOrEqual(viewportWidth + 1);
 		}
 	} else {
@@ -422,6 +430,18 @@ for (const route of ['home', 'chores', 'shopping', 'inventory'] as const) {
 				await page.setViewportSize({ width: 320, height: 740 });
 				await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
 				await setupMember(page);
+				if (route === 'shopping') {
+					// Keep the admin-only clear action present for the layout measurement;
+					// non-admin visibility is covered by the focused authorization test.
+					await page.route(`**/api/wg/${SHARE_CODE}/members*`, (request) =>
+						request.fulfill({
+							json: {
+								members: [{ id: MEMBER_ID, name: 'dsaf', active: true }],
+								viewerIsAdmin: true,
+							},
+						}),
+					);
+				}
 				await mockLayoutApis(page);
 				await navigateToFeature(
 					page,

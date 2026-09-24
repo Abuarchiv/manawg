@@ -12,7 +12,7 @@ const redis = createConfiguredRedis();
 // Queued offline writes can be retried days after a lost response, so the
 // durable response cache must outlive the retry window. Redis still only
 // deduplicates best-effort audit events briefly.
-const RESPONSE_REPLAY_TTL_SECONDS = 7 * 24 * 60 * 60;
+export const RESPONSE_REPLAY_TTL_SECONDS = 7 * 24 * 60 * 60;
 // A claim is only a lease. If the worker dies after inserting the placeholder,
 // another retry must be able to reclaim it instead of being blocked for the
 // entire offline replay window.
@@ -153,6 +153,32 @@ export async function getCachedResponse<T>(scope: string, key: string): Promise<
 	} catch (err) {
 		throw new Error('idempotency_cache_read_failed', { cause: err });
 	}
+}
+
+/** Attach an import warning only to its already-committed replay response. */
+export async function persistImportReplayWarning(
+	scope: string,
+	key: string,
+	importId: string,
+	warning: 'notification_delivery_failed' | 'notification_delivery_unknown',
+): Promise<boolean> {
+	const rows = await db
+		.update(idempotencyResponses)
+		.set({
+			responseBody: sql`jsonb_set(${idempotencyResponses.responseBody}, '{warning}', to_jsonb(${warning}::text))`,
+		})
+		.where(
+			and(
+				eq(idempotencyResponses.scope, scope),
+				eq(idempotencyResponses.key, key),
+				gt(idempotencyResponses.expiresAt, new Date()),
+				sql`${idempotencyResponses.responseBody}->>'importId' = ${importId}`,
+				sql`${idempotencyResponses.responseBody} ? 'warning'`,
+				sql`(${idempotencyResponses.responseBody}->'warning' = 'null'::jsonb OR ${idempotencyResponses.responseBody}->>'warning' = ${warning})`,
+			),
+		)
+		.returning({ scope: idempotencyResponses.scope });
+	return rows.length === 1;
 }
 
 /**

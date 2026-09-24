@@ -1,8 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db } from '@/core/db';
-import { apiError, badRequest, notFound, serverError, tooMany } from '@/core/errors';
+import {
+	apiError,
+	badRequest,
+	notFound,
+	payloadTooLarge,
+	serverError,
+	tooMany,
+} from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
+import { readJsonBody } from '@/core/http/read-json';
 import { PRIVATE_IMAGE_MIME_TYPES } from '@/core/infra/private-image-policy';
 import {
 	S3ConfigurationError,
@@ -22,6 +30,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const ALLOWED_PURPOSES = ['expense', 'announcement'] as const;
+const MAX_SIGN_BODY_BYTES = 16 * 1024;
 
 const signSchema = z.object({
 	shareCode: z.string().transform((v) => normalizeShareCode(v)),
@@ -47,14 +56,14 @@ function extFromMime(mime: string): string {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-	let raw: unknown;
-	try {
-		raw = await req.json();
-	} catch {
-		return noStore(badRequest('invalid_json'));
+	const rawResult = await readJsonBody(req, MAX_SIGN_BODY_BYTES);
+	if (!rawResult.ok) {
+		return noStore(
+			rawResult.reason === 'payload_too_large' ? payloadTooLarge() : badRequest('invalid_json'),
+		);
 	}
 
-	const parsed = signSchema.safeParse(raw);
+	const parsed = signSchema.safeParse(rawResult.body);
 	if (!parsed.success) {
 		const issues = parsed.error.flatten();
 		if (issues.fieldErrors.shareCode) return noStore(badRequest('invalid_share_code'));
@@ -84,6 +93,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 	const limited = await checkRateLimit(uploadSignLimiter, `${wg.id}:${auth.member.memberId}`);
 	if (!limited.success) {
+		if (limited.limiterUnavailable) {
+			const retryAfterMs = Math.max(0, limited.reset - Date.now());
+			return noStore(
+				NextResponse.json(
+					{ error: 'rate_limiter_unavailable', retryAfterMs },
+					{
+						status: 503,
+						headers: { 'Retry-After': Math.max(1, Math.ceil(retryAfterMs / 1000)).toString() },
+					},
+				),
+			);
+		}
 		return noStore(tooMany('upload_sign_rate_limited', 'upload_sign_rate_limited'));
 	}
 

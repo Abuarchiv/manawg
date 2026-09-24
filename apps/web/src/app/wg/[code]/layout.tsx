@@ -170,7 +170,7 @@ function WgShell({
 				data-app-chrome
 				className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
 			>
-				<div className="rounded-[20px] border border-border bg-background">
+				<div className="rounded-[20px] border border-border bg-background text-foreground">
 					<ul className="flex flex-wrap gap-1 p-1 [&>li]:min-w-fit [&>li]:flex-1">
 						<NavItem
 							href={wgBaseHref}

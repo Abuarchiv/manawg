@@ -145,6 +145,19 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	}, [searchParams]);
 	const publicHref = (path: string): string =>
 		inviteCode ? withInvitation(path, inviteCode) : path;
+	const singleWg =
+		membershipState === 'member-list' && memberships.length === 1 ? memberships[0] : null;
+	const accountAction =
+		membershipState === 'member-list'
+			? {
+					href: singleWg ? `/wg/${encodeURIComponent(singleWg.code)}` : '/',
+					label: singleWg ? 'WG öffnen' : 'Deine WGs',
+				}
+			: membershipState === 'authenticated-empty'
+				? inviteCode
+					? { href: publicHref('/neu'), label: 'Dieser WG beitreten' }
+					: { href: '/neu?action=create', label: 'WG erstellen' }
+				: { href: publicHref('/neu'), label: 'Anmelden' };
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: retryNonce deliberately reruns the lookup without affecting its request shape.
 	useEffect(() => {
@@ -215,17 +228,14 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 								</span>
 							</Link>
 							<Link
-								href={publicHref('/neu')}
-								className={cn(
-									buttonVariants({ variant: 'link' }),
-									'min-h-11 px-0 text-muted-foreground',
-								)}
+								href={accountAction.href}
+								className={cn(buttonVariants({ variant: 'link' }), 'px-0 text-muted-foreground')}
 							>
-								Anmelden
+								{accountAction.label}
 							</Link>
 						</div>
 						<div className="flex flex-col gap-1">
-							<h1 className="text-2xl font-semibold tracking-tight">
+							<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight">
 								{module?.title ?? 'Euer WG-Alltag. Gemeinsam geregelt.'}
 							</h1>
 							<p className="text-sm text-muted-foreground">
@@ -265,9 +275,8 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 								type="button"
 								variant="outline"
 								onClick={() => setRetryNonce((value) => value + 1)}
-								className="min-h-11"
 							>
-								erneut prüfen
+								Erneut prüfen
 							</Button>
 						</div>
 					)}

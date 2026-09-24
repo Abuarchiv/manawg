@@ -1,22 +1,15 @@
 import { recordAuditEvent } from '@/core/audit';
-import {
-	announcements,
-	choreCompletions,
-	chores,
-	db,
-	memberAbsences,
-	wgMembers,
-	wgs,
-} from '@/core/db';
+import { announcements, choreCompletions, chores, db, memberAbsences, wgMembers } from '@/core/db';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
-import { UUID_PATTERN, requireMember } from '@/core/guards/api-auth';
+import { UUID_PATTERN } from '@/core/guards/api-auth';
 import {
 	ReplayCache,
 	type ReplayReservation,
 	claimReplaySlotWithRetry,
 	replayKey,
 } from '@/core/guards/idempotency';
+import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
 import { logApiError } from '@/core/infra/observability';
@@ -48,6 +41,8 @@ export const POST = withWgRoute<{ id: string }>(
 			{ owned: true }
 		> | null = null;
 		if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
+		const auth = await requireWgMember(req, code);
+		if (!auth.ok) return auth.response;
 		const chore = await db
 			.select({
 				id: chores.id,
@@ -60,14 +55,10 @@ export const POST = withWgRoute<{ id: string }>(
 				anchorAt: chores.anchorAt,
 			})
 			.from(chores)
-			.innerJoin(wgs, eq(wgs.id, chores.wgId))
-			.where(and(eq(chores.id, id), eq(wgs.shareCode, code)))
+			.where(and(eq(chores.id, id), eq(chores.wgId, auth.wg.id)))
 			.limit(1);
 		const c = chore[0];
 		if (!c) return notFound('chore_not_found');
-
-		const auth = await requireMember(req, c.wgId);
-		if (!auth.ok) return auth.response;
 		const idemKey = readIdempotencyKey(req);
 		const idemScope = idemKey
 			? choreCompleteIdempotencyScope(c.wgId, auth.member.memberId, c.id)
@@ -174,12 +165,8 @@ export const POST = withWgRoute<{ id: string }>(
 				})),
 			});
 
-			// Race protection: double-click should not rotate the assignee twice. We
-			// use optimistic concurrency on (previousAssignee, previousNextDueAt) —
-			// only the click that observes the original snapshot succeeds. nextDueAt
-			// is mutated on every successful completion and therefore also acts as a
-			// version stamp for chores whose previous assignee was NULL (orphaned
-			// chore after a member was deleted).
+			// Only advance the snapshot used for cadence and rotation. A concurrent
+			// completion or edit must be retried against the new state.
 			//
 			// The rotation UPDATE and the choreCompletions INSERT are one atomic
 			// unit: chore-fairness.ts reads choreCompletions to count who did what,
@@ -190,10 +177,14 @@ export const POST = withWgRoute<{ id: string }>(
 			const previousNextDueAt = c.nextDueAt;
 			const assigneeMatch = c.assignedMemberId
 				? eq(chores.assignedMemberId, c.assignedMemberId)
-				: undefined;
-			const guard = assigneeMatch
-				? and(eq(chores.id, c.id), assigneeMatch, eq(chores.nextDueAt, previousNextDueAt))
-				: and(eq(chores.id, c.id), eq(chores.nextDueAt, previousNextDueAt));
+				: isNull(chores.assignedMemberId);
+			const guard = and(
+				eq(chores.id, c.id),
+				assigneeMatch,
+				eq(chores.nextDueAt, previousNextDueAt),
+				eq(chores.intervalDays, c.intervalDays),
+				eq(chores.recurrenceType, c.recurrenceType),
+			);
 			// Reset lastReminderAt whenever assignee actually changes so the new
 			// owner is not silently muted by the old assignee's 18h throttle. Keep
 			// the stamp when assignee is unchanged (single-member WG) to avoid
@@ -278,12 +269,8 @@ export const POST = withWgRoute<{ id: string }>(
 
 			const responseBody = { chore: updated };
 			if (idemScope && idemKey && replayReservation?.owned) {
+				await setCachedResponse(idemScope, idemKey, responseBody);
 				replayReservation.resolve(responseBody);
-				void setCachedResponse(idemScope, idemKey, responseBody).catch((err) => {
-					if (process.env.NODE_ENV === 'development') {
-						console.warn('[chore complete POST] idem cache write failed', err);
-					}
-				});
 			}
 			return NextResponse.json(responseBody);
 		} catch (err) {

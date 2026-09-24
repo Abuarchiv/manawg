@@ -36,7 +36,14 @@ export function rateLimitFailMode(): 'open' | 'closed' {
 export function createConfiguredRedis(): Redis | null {
 	if (!url || !token) return null;
 	try {
-		if (new URL(url).protocol !== 'https:') {
+		const endpoint = new URL(url);
+		if (
+			endpoint.protocol !== 'https:' ||
+			endpoint.username ||
+			endpoint.password ||
+			endpoint.search ||
+			endpoint.hash
+		) {
 			if (rateLimitFailMode() === 'closed') {
 				throw new Error('UPSTASH_REDIS_REST_URL must use https');
 			}
@@ -117,8 +124,11 @@ interface RateLimitResult {
 
 const FAIL_OPEN_PRODUCTION_LOG =
 	'[rate-limit] Upstash Redis not configured in production — failing open';
+const FAIL_CLOSED_PRODUCTION_LOG =
+	'[rate-limit] Upstash Redis not configured in production — failing closed';
 const OPEN_STATE_REPORT_INTERVAL_MS = 5 * 60 * 1000;
-// Both maps below are keyed by `cause`. Causes are internal literals today,
+// Both maps below use `cause` (the report throttle also includes fail mode).
+// Causes are internal literals today,
 // but nothing stops a future caller from passing request-derived text — and
 // in a long-lived serverless instance an unbounded module-level Map is a
 // textbook memory leak. Once the cap is reached only already-known causes
@@ -154,42 +164,45 @@ function trackCause(map: Map<string, number>, cause: string, value: number): boo
 }
 
 /**
- * Failing open is deliberate, but it must not be invisible: an unthrottled API
- * looks perfectly healthy from the outside while every limit is off. Reported
- * at most once per interval per cause, so a sustained Upstash outage
- * produces a signal rather than one event per request.
+ * An unavailable limiter must remain visible in either fail mode. Reported at
+ * most once per interval per cause and mode; never log provider errors because
+ * they can contain credentials or request details.
  */
-function reportOpenState(cause: string, error?: unknown): void {
-	// Count every fail-open event, independent of the alert throttle below.
-	// Capped at MAX_TRACKED_CAUSES so the tally can never grow without bound.
-	trackCause(failOpenTotals, cause, (failOpenTotals.get(cause) ?? 0) + 1);
+function reportUnavailable(
+	cause: string,
+	failMode: 'open' | 'closed',
+	limiterCallFailed = false,
+): void {
+	if (failMode === 'open') {
+		// Count only requests that were allowed without a working limiter.
+		trackCause(failOpenTotals, cause, (failOpenTotals.get(cause) ?? 0) + 1);
+	}
 
 	const isProduction = process.env.VERCEL_ENV === 'production';
+	const state = failMode === 'open' ? 'failing open' : 'failing closed';
 
 	// An unconfigured limiter is only newsworthy in production; a limiter that
 	// throws is a defect anywhere, so it is always logged.
-	if (error !== undefined) {
-		console.error('[rate-limit] limiter call failed, failing open:', error);
+	if (limiterCallFailed) {
+		console.error(`[rate-limit] limiter call failed, ${state}`);
 	} else if (isProduction) {
-		console.error(FAIL_OPEN_PRODUCTION_LOG);
+		console.error(failMode === 'open' ? FAIL_OPEN_PRODUCTION_LOG : FAIL_CLOSED_PRODUCTION_LOG);
 	}
 
 	if (!isProduction) return;
 	const now = Date.now();
-	const previous = lastReportedAt.get(cause);
+	const reportKey = `${failMode}:${cause}`;
+	const previous = lastReportedAt.get(reportKey);
 	if (previous !== undefined && now - previous < OPEN_STATE_REPORT_INTERVAL_MS) return;
 	// Unknown causes beyond the tracking cap are logged above but never
 	// captured here — without a stored timestamp they would bypass the
 	// throttle and fire on every request.
-	if (!trackCause(lastReportedAt, cause, now)) return;
+	if (!trackCause(lastReportedAt, reportKey, now)) return;
 
-	captureException(
-		error instanceof Error ? error : new Error(`rate-limit failing open: ${cause}`),
-		{
-			area: 'rate-limit',
-			cause,
-		},
-	);
+	captureException(new Error(`rate-limit ${state}`), {
+		area: 'rate-limit',
+		cause,
+	});
 }
 
 /** Test seam — the report throttle and fail-open tally are process-global state. */
@@ -204,7 +217,7 @@ export async function checkRateLimit(
 	failMode: 'open' | 'closed' = rateLimitFailMode(),
 ): Promise<RateLimitResult> {
 	if (!limiter) {
-		reportOpenState('upstash-not-configured');
+		reportUnavailable('upstash-not-configured', failMode);
 		if (failMode === 'closed') {
 			return { success: false, remaining: 0, reset: Date.now() + 60_000, limiterUnavailable: true };
 		}
@@ -213,8 +226,8 @@ export async function checkRateLimit(
 	try {
 		const r = await limiter.limit(key);
 		return { success: r.success, remaining: r.remaining, reset: r.reset };
-	} catch (error) {
-		reportOpenState('limiter-call-failed', error);
+	} catch {
+		reportUnavailable('limiter-call-failed', failMode, true);
 		if (failMode === 'closed') {
 			return { success: false, remaining: 0, reset: Date.now() + 60_000, limiterUnavailable: true };
 		}

@@ -71,6 +71,9 @@ export function shoppingActionErrorMessage(error: string, fallback: string): str
 }
 
 export function clearBoughtErrorMessage(status: number, error: string): string {
+	if (status === 403 || error === 'not_admin') {
+		return 'Nur Admins dürfen erledigte Artikel für die ganze WG entfernen.';
+	}
 	if (isNetworkError(error, status)) {
 		return 'Erledigte konnten nicht entfernt werden: Prüfe deine Verbindung und versuche es erneut.';
 	}

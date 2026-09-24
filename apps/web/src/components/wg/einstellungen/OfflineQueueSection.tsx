@@ -403,7 +403,7 @@ export function OfflineQueueSection({
 								? 'Offline-Warteschlange wird synchronisiert'
 								: 'Offline-Warteschlange erneut synchronisieren'
 						}
-						className="h-11 min-h-[44px] shrink-0"
+						className="shrink-0"
 					>
 						{syncing && <Spinner aria-hidden />}
 						Erneut versuchen
@@ -450,10 +450,9 @@ export function OfflineQueueSection({
 												aria-label={serverCheckLabel}
 												onClick={() => void checkServer(item)}
 												disabled={rowBusy}
-												className="min-h-[44px]"
 											>
 												{checkingServerIds.has(item.id) && <Spinner aria-hidden />}
-												{checkingServerIds.has(item.id) ? 'Prüft...' : 'Server prüfen'}
+												{checkingServerIds.has(item.id) ? 'Prüft…' : 'Server prüfen'}
 											</Button>
 											{editDraft ? (
 												<Button
@@ -463,7 +462,6 @@ export function OfflineQueueSection({
 													aria-label={`Offline-Aktion bearbeiten: ${actionLabel}`}
 													onClick={() => edit(item, editDraft)}
 													disabled={rowBusy}
-													className="min-h-[44px]"
 												>
 													Bearbeiten
 												</Button>
@@ -476,7 +474,6 @@ export function OfflineQueueSection({
 													aria-label={`Anhang entfernen: ${actionLabel}`}
 													onClick={() => removeAttachment(item.id)}
 													disabled={rowBusy}
-													className="min-h-[44px]"
 												>
 													Anhang weg
 												</Button>
@@ -488,7 +485,6 @@ export function OfflineQueueSection({
 												aria-label={`Offline-Aktion verwerfen: ${actionLabel}`}
 												onClick={() => remove(item.id)}
 												disabled={rowBusy}
-												className="min-h-[44px]"
 											>
 												Verwerfen
 											</Button>

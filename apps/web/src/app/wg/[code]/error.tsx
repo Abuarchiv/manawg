@@ -9,7 +9,6 @@ import {
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
-	EmptyTitle,
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/observability';
 import { TriangleAlert } from 'lucide-react';
@@ -35,7 +34,12 @@ export default function WgError({ error, reset }: WgErrorProps) {
 							<EmptyMedia variant="icon">
 								<TriangleAlert aria-hidden />
 							</EmptyMedia>
-							<EmptyTitle>Etwas ist schiefgelaufen</EmptyTitle>
+							<h1
+								data-slot="empty-title"
+								className="min-w-0 max-w-full text-base font-semibold [overflow-wrap:anywhere]"
+							>
+								Etwas ist schiefgelaufen
+							</h1>
 							<EmptyDescription>
 								Ein Fehler ist aufgetreten. Bitte versuche es erneut oder gehe zur Startseite.
 							</EmptyDescription>
@@ -54,7 +58,7 @@ export default function WgError({ error, reset }: WgErrorProps) {
 								</pre>
 							)}
 							<div className="flex w-full flex-col items-stretch gap-2">
-								<Button type="button" size="lg" onClick={reset} className="min-h-11 w-full">
+								<Button type="button" size="lg" onClick={reset} className="w-full">
 									Erneut versuchen
 								</Button>
 								<Button
@@ -62,7 +66,7 @@ export default function WgError({ error, reset }: WgErrorProps) {
 									size="lg"
 									render={<Link href="/" />}
 									nativeButton={false}
-									className="min-h-11 w-full"
+									className="w-full"
 								>
 									Zur Startseite
 								</Button>

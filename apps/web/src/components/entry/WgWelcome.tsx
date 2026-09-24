@@ -3,25 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { cn } from '@/shared/lib/cn';
 import Link from 'next/link';
 
-export type WgWelcomeVariant = 'create' | 'invitation' | 'member';
+export type WgWelcomeVariant = 'create' | 'invitation';
 
 type WgWelcomeProps =
 	| { variant: 'create'; compact?: boolean }
-	| { variant: 'invitation'; code: string; compact?: boolean }
-	| { variant: 'member'; wgName: string; compact?: boolean };
+	| { variant: 'invitation'; code: string; compact?: boolean };
 
 export function WgWelcome(props: WgWelcomeProps) {
-	if (props.variant === 'member') {
-		return (
-			<Card>
-				<CardHeader>
-					<CardTitle>Willkommen in deiner WG</CardTitle>
-					<CardDescription>{props.wgName}</CardDescription>
-				</CardHeader>
-			</Card>
-		);
-	}
-
 	const invitation = props.variant === 'invitation';
 	const actionHref = invitation
 		? `/neu?code=${encodeURIComponent(props.code)}`
@@ -31,7 +19,7 @@ export function WgWelcome(props: WgWelcomeProps) {
 		return (
 			<div className="flex flex-col gap-2">
 				{invitation && <p className="text-sm text-muted-foreground">Deine Einladung ist bereit.</p>}
-				<Link href={actionHref} className={cn(buttonVariants(), 'min-h-11 w-full')}>
+				<Link href={actionHref} className={cn(buttonVariants(), 'w-full')}>
 					{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
 				</Link>
 			</div>
@@ -49,12 +37,12 @@ export function WgWelcome(props: WgWelcomeProps) {
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-2">
-				<Link href={actionHref} className={cn(buttonVariants(), 'min-h-11 w-full')}>
+				<Link href={actionHref} className={cn(buttonVariants(), 'w-full')}>
 					{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
 				</Link>
 				<Link
 					href={invitation ? actionHref : '/neu'}
-					className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11 w-full')}
+					className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}
 				>
 					Anmelden
 				</Link>

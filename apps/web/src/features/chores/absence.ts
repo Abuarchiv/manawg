@@ -1,4 +1,11 @@
-import { formatShortDateRange, parseTimestamp } from '@/core/utils/time';
+import { berlinDayKey } from '@/core/utils/berlin-day';
+import { parseTimestamp } from '@/core/utils/time';
+
+const berlinDateFormatter = new Intl.DateTimeFormat('de-DE', {
+	timeZone: 'Europe/Berlin',
+	day: '2-digit',
+	month: '2-digit',
+});
 
 export interface AbsenceInput {
 	id: string;
@@ -36,9 +43,14 @@ export function getAbsentMemberIds(
 function isAbsenceActive(startDate: string, endDate: string, at: number): boolean {
 	const start = parseTimestamp(startDate);
 	const end = parseTimestamp(endDate);
-	return start !== null && end !== null && start <= at && end >= at;
+	if (start === null || end === null) return false;
+	const day = berlinDayKey(new Date(at));
+	return berlinDayKey(new Date(start)) <= day && day <= berlinDayKey(new Date(end));
 }
 
 export function formatAbsenceRange(startDate: string, endDate: string): string {
-	return formatShortDateRange(startDate, endDate);
+	const start = parseTimestamp(startDate);
+	const end = parseTimestamp(endDate);
+	if (start === null || end === null) return 'Datum unbekannt';
+	return `${berlinDateFormatter.format(start)} bis ${berlinDateFormatter.format(end)}`;
 }

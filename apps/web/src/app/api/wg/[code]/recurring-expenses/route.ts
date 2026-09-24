@@ -1,5 +1,5 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, recurringExpenses, wgMembers } from '@/core/db';
+import { db, idempotencyResponses, recurringExpenses, wgMembers } from '@/core/db';
 import { TransactionAbort } from '@/core/db/transaction';
 import { badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
@@ -12,18 +12,23 @@ import {
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { readShareCode } from '@/core/guards/route-preamble';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
+import {
+	RESPONSE_REPLAY_TTL_SECONDS,
+	getCachedResponse,
+	readIdempotencyKey,
+} from '@/core/idempotency';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
+import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
 import {
 	buildRecurringAdvance,
 	parseRecurringSplits,
 	recurringDueDateMatchesExpected,
 } from '@/features/expenses/recurring-expenses';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -241,31 +246,87 @@ export async function POST(
 			}
 		}
 
-		let template: typeof recurringExpenses.$inferSelect | undefined;
+		let written:
+			| { replayed: true; body: RecurringCreateResponseBody }
+			| {
+					replayed: false;
+					template: typeof recurringExpenses.$inferSelect;
+					body: RecurringCreateResponseBody;
+			  };
 		try {
-			[template] = await db
-				.insert(recurringExpenses)
-				.values({
-					wgId: wg.id,
-					createdByMemberId: auth.member.memberId,
-					paidByMemberId: parsed.data.paidByMemberId,
-					description: parsed.data.description,
-					amountCents: parsed.data.amountCents,
-					intervalMonths: parsed.data.intervalMonths,
-					nextDueAt: new Date(parsed.data.nextDueAt),
-					anchorAt: new Date(parsed.data.nextDueAt),
-					splitsJson: JSON.stringify(parsed.data.splits),
-				})
-				.returning();
+			written = await withExpensePaymentLock(wg.id, async (tx) => {
+				if (idemScope && idemKey) {
+					const [slot] = await tx
+						.select({
+							body: idempotencyResponses.responseBody,
+							expiresAt: idempotencyResponses.expiresAt,
+						})
+						.from(idempotencyResponses)
+						.where(
+							and(eq(idempotencyResponses.scope, idemScope), eq(idempotencyResponses.key, idemKey)),
+						)
+						.limit(1)
+						.for('update');
+					if (!slot) throw new TransactionAbort('idempotency_claim_missing');
+					if (slot.body && typeof slot.body === 'object' && 'recurringExpense' in slot.body) {
+						return { replayed: true as const, body: slot.body as RecurringCreateResponseBody };
+					}
+					if (
+						slot.expiresAt <= new Date() ||
+						!slot.body ||
+						typeof slot.body !== 'object' ||
+						Array.isArray(slot.body) ||
+						Object.keys(slot.body).length !== 1 ||
+						(slot.body as Record<string, unknown>)._claimed !== true
+					) {
+						throw new TransactionAbort('idempotency_claim_invalid');
+					}
+				}
+				const [template] = await tx
+					.insert(recurringExpenses)
+					.values({
+						wgId: wg.id,
+						createdByMemberId: auth.member.memberId,
+						paidByMemberId: parsed.data.paidByMemberId,
+						description: parsed.data.description,
+						amountCents: parsed.data.amountCents,
+						intervalMonths: parsed.data.intervalMonths,
+						nextDueAt: new Date(parsed.data.nextDueAt),
+						anchorAt: new Date(parsed.data.nextDueAt),
+						splitsJson: JSON.stringify(parsed.data.splits),
+					})
+					.returning();
+				if (!template) throw new TransactionAbort('insert_failed');
+				const body: RecurringCreateResponseBody = { recurringExpense: serialize(template) };
+				if (idemScope && idemKey) {
+					const rows = await tx
+						.update(idempotencyResponses)
+						.set({
+							responseBody: body,
+							expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
+						})
+						.where(
+							and(
+								eq(idempotencyResponses.scope, idemScope),
+								eq(idempotencyResponses.key, idemKey),
+								gt(idempotencyResponses.expiresAt, new Date()),
+								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
+							),
+						)
+						.returning({ scope: idempotencyResponses.scope });
+					if (rows.length !== 1) throw new TransactionAbort('idempotency_claim_missing');
+				}
+				return { replayed: false as const, template, body };
+			});
 		} catch (writeErr) {
 			replayReservation?.reject(writeErr);
 			throw writeErr;
 		}
-		if (!template) {
-			const err = new Error('insert_failed');
-			replayReservation?.reject(err);
-			return serverError('insert_failed');
+		if (written.replayed) {
+			replayReservation?.resolve(written.body);
+			return NextResponse.json(written.body);
 		}
+		const { template } = written;
 		await recordAuditEvent({
 			wgId: wg.id,
 			memberId: auth.member.memberId,
@@ -282,15 +343,8 @@ export async function POST(
 				splitCount: parsed.data.splits.length,
 			},
 		});
-		const responseBody = { recurringExpense: serialize(template) };
-		if (idemScope && idemKey && replayReservation?.owned) {
-			replayReservation.resolve(responseBody);
-			// Awaited, not fire-and-forget: a dropped cache write would leave a
-			// claimed slot without a response, so the next retry with the same
-			// Idempotency-Key could not replay and would re-run the mutation.
-			await setCachedResponse(idemScope, idemKey, responseBody);
-		}
-		return NextResponse.json(responseBody);
+		replayReservation?.resolve(written.body);
+		return NextResponse.json(written.body);
 	} catch (err) {
 		replayReservation?.reject(err);
 		if (err instanceof TransactionAbort) {

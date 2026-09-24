@@ -66,6 +66,11 @@ export async function navigateToFeature(page: Page, path: string): Promise<void>
 			if (body.includes('Seite nicht gefunden')) {
 				throw new Error('not-found-during-warmup');
 			}
+			if (new URL(page.url()).pathname.startsWith('/neu')) {
+				throw new Error(
+					`redirected to login (${page.url()}) — fixture identity missing? run the fixtures lane, not the live lane`,
+				);
+			}
 			return;
 		} catch (err) {
 			lastError = err;

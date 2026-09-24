@@ -75,7 +75,7 @@ export function PinnwandComposer({
 						size="icon"
 						onClick={onClose}
 						disabled={submitting}
-						className="min-h-11 min-w-11 shrink-0"
+						className="shrink-0"
 						aria-label="Beitrag abbrechen"
 					>
 						<X aria-hidden />
@@ -119,15 +119,12 @@ export function PinnwandComposer({
 							aria-invalid={Boolean(error)}
 							aria-describedby={error ? 'announcement-error' : 'announcement-count'}
 							placeholder={`Was gibt es Neues, ${authorName}?`}
-							className="min-h-32 text-base md:text-base"
+							className="min-h-32 text-base"
 						/>
 					</Field>
 				</FieldGroup>
 				<Collapsible open={attachmentOpen || Boolean(imageUrl)} onOpenChange={setAttachmentOpen}>
-					<CollapsibleTrigger
-						render={<Button variant="outline" className="min-h-11" />}
-						disabled={submitting}
-					>
+					<CollapsibleTrigger render={<Button variant="outline" />} disabled={submitting}>
 						<ImagePlus data-icon="inline-start" aria-hidden />
 						{imageUrl ? 'Bild angehängt' : 'Bild anhängen'}
 						<ChevronDown data-icon="inline-end" aria-hidden />
@@ -159,7 +156,6 @@ export function PinnwandComposer({
 					type="button"
 					onClick={onSubmit}
 					disabled={submitting || content.trim().length === 0}
-					className="min-h-11"
 				>
 					{submitting ? (
 						<Spinner data-icon="inline-start" aria-hidden />

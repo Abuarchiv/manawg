@@ -170,7 +170,7 @@ export function OfflineBanner() {
 					aria-label={
 						syncing ? 'Offline-Aktionen werden gesendet' : 'Offline-Aktionen jetzt senden'
 					}
-					className="h-11 min-h-[44px] shrink-0 text-xs"
+					className="shrink-0 text-xs"
 				>
 					{syncing ? (
 						<Spinner aria-hidden />

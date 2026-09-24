@@ -1,7 +1,9 @@
+import { getAuthenticatedUser } from '@/core/auth/server';
 import { db } from '@/core/db';
-import { forbidden, notFound, tooMany } from '@/core/errors';
+import { apiError, forbidden, notFound, tooMany } from '@/core/errors';
 import { checkWgAdminAccess } from '@/core/guards/admin';
 import { type VerifiedMember, requireMember } from '@/core/guards/api-auth';
+import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import type { NextRequest, NextResponse } from 'next/server';
 
@@ -29,13 +31,22 @@ export async function requireWgAdmin(
 	/** Rate-limit bucket, e.g. `wg-settings`. Scoped by WG and member. */
 	scope: string,
 ): Promise<RequireWgAdminResult> {
+	let user: Awaited<ReturnType<typeof getAuthenticatedUser>>;
+	try {
+		user = await getAuthenticatedUser(req);
+	} catch (err) {
+		logApiError('[requireWgAdmin] auth error', err);
+		return { ok: false, response: apiError('db_error', 503) };
+	}
+	if (!user) return { ok: false, response: apiError('auth_required', 401, 'auth_required') };
+
 	const wg = await db.query.wgs.findFirst({
 		where: (w, { eq }) => eq(w.shareCode, code),
 		columns: { id: true, name: true, joiningEnabled: true },
 	});
 	if (!wg) return { ok: false, response: notFound('wg_not_found') };
 
-	const auth = await requireMember(req, wg.id);
+	const auth = await requireMember(req, wg.id, user);
 	if (!auth.ok) return { ok: false, response: auth.response };
 
 	const access = await checkWgAdminAccess(wg.id, auth.member.memberId, auth.member.verified);

@@ -1,21 +1,45 @@
 import { recordAuditEvent } from '@/core/audit';
 import { getAuthenticatedUser } from '@/core/auth/server';
-import { db, wgMembers, wgs } from '@/core/db';
+import { db, idempotencyResponses, wgMembers, wgs } from '@/core/db';
 import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { apiError, badRequest, serverError, tooMany } from '@/core/errors';
-import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
+import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { deriveMemberToken } from '@/core/guards/member-token';
+import {
+	RESPONSE_REPLAY_TTL_SECONDS,
+	getCachedResponse,
+	readIdempotencyKey,
+} from '@/core/idempotency';
 import { E2E_CREATED_WG, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
 import { generateShareCode, isValidShareCode } from '@/shared/lib/share-code';
+import { and, eq, gt, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const WG_NAME_MIN = 1;
 const WG_NAME_MAX = 100;
 const SHARE_CODE_RETRIES = 5;
+
+type CachedJsonResponse = { status: number; body: unknown };
+
+function isCachedJsonResponse(value: unknown): value is CachedJsonResponse {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+	const row = value as Record<string, unknown>;
+	return (
+		typeof row.status === 'number' &&
+		Number.isInteger(row.status) &&
+		row.status >= 200 &&
+		row.status <= 599 &&
+		'body' in row
+	);
+}
+
+function replayResponse(response: CachedJsonResponse): NextResponse {
+	return NextResponse.json(response.body, { status: response.status });
+}
 
 const createWgSchema = z.object({
 	name: z.string().trim().min(WG_NAME_MIN).max(WG_NAME_MAX),
@@ -96,94 +120,147 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	}
 	if (!user) return apiError('auth_required', 401, 'auth_required');
 	const authenticatedUser = user;
+	const idemKey = readIdempotencyKey(req);
+	const idemScope = `wg-create:${authenticatedUser.id}`;
+	if (idemKey) {
+		const cached = await getCachedResponse<CachedJsonResponse>(idemScope, idemKey);
+		if (cached) return replayResponse(cached);
+	}
 
-	return withIdempotentJsonResponse(req, `wg-create:${authenticatedUser.id}`, async () => {
-		let shareCode = '';
+	let shareCode = '';
+	for (let attempt = 0; attempt < SHARE_CODE_RETRIES; attempt += 1) {
+		const candidate = generateShareCode();
+		if (!isValidShareCode(candidate)) continue;
+		const existing = await db.query.wgs.findFirst({
+			where: (w, { eq }) => eq(w.shareCode, candidate),
+			columns: { id: true },
+		});
+		if (!existing) {
+			shareCode = candidate;
+			break;
+		}
+	}
+	if (!shareCode) {
+		return serverError('share_code_exhausted');
+	}
+	if (idemKey) {
+		const slot = await claimReplaySlotWithRetry<CachedJsonResponse>(idemScope, idemKey);
+		if (!slot.won) return replayResponse(slot.cached);
+	}
+
+	try {
+		// The WG and its creator are one write. A WG whose creator row is missing
+		// has a valid share code but no one who can administer it, and the person
+		// who just created it is not a member of it. This used to be repaired
+		// with a delete afterwards, which only covered the case of an insert
+		// returning no row — when the insert threw instead, nothing cleaned up
+		// and the empty WG stayed.
+		//
+		// The share-code uniqueness check happens before the transaction, so the
+		// 23505 on the unique index can still fire inside it — retry with a fresh
+		// code instead of surfacing a raw db_error to a double-clicking user.
+		let lastError: unknown = null;
 		for (let attempt = 0; attempt < SHARE_CODE_RETRIES; attempt += 1) {
-			const candidate = generateShareCode();
-			if (!isValidShareCode(candidate)) continue;
-			const existing = await db.query.wgs.findFirst({
-				where: (w, { eq }) => eq(w.shareCode, candidate),
-				columns: { id: true },
-			});
-			if (!existing) {
+			if (attempt > 0) {
+				const candidate = generateShareCode();
+				if (!isValidShareCode(candidate)) continue;
 				shareCode = candidate;
-				break;
 			}
-		}
-		if (!shareCode) {
-			return serverError('share_code_exhausted');
-		}
-
-		try {
-			// The WG and its creator are one write. A WG whose creator row is missing
-			// has a valid share code but no one who can administer it, and the person
-			// who just created it is not a member of it. This used to be repaired
-			// with a delete afterwards, which only covered the case of an insert
-			// returning no row — when the insert threw instead, nothing cleaned up
-			// and the empty WG stayed.
-			//
-			// The share-code uniqueness check happens before the transaction, so the
-			// 23505 on the unique index can still fire inside it — retry with a fresh
-			// code instead of surfacing a raw db_error to a double-clicking user.
-			let lastError: unknown = null;
-			for (let attempt = 0; attempt < SHARE_CODE_RETRIES; attempt += 1) {
-				if (attempt > 0) {
-					const candidate = generateShareCode();
-					if (!isValidShareCode(candidate)) continue;
-					shareCode = candidate;
-				}
-				try {
-					const { wg, member } = await withTransaction(async (tx) => {
-						const [createdWg] = await tx.insert(wgs).values({ name, shareCode }).returning();
-						if (!createdWg) throw new TransactionAbort('insert_failed');
-
-						const [createdMember] = await tx
-							.insert(wgMembers)
-							.values({
-								wgId: createdWg.id,
-								name: creatorName,
-								role: 'admin',
-								authUserId: authenticatedUser.id,
+			try {
+				const result = await withTransaction(async (tx) => {
+					if (idemKey) {
+						const [slot] = await tx
+							.select({
+								body: idempotencyResponses.responseBody,
+								expiresAt: idempotencyResponses.expiresAt,
 							})
-							.returning();
-						if (!createdMember) throw new TransactionAbort('member_insert_failed');
+							.from(idempotencyResponses)
+							.where(
+								and(
+									eq(idempotencyResponses.scope, idemScope),
+									eq(idempotencyResponses.key, idemKey),
+								),
+							)
+							.limit(1)
+							.for('update');
+						if (!slot) throw new TransactionAbort('idempotency_claim_missing');
+						if (slot.expiresAt > new Date() && isCachedJsonResponse(slot.body)) {
+							return { replayed: true as const, response: slot.body };
+						}
+						if (
+							slot.expiresAt <= new Date() ||
+							!slot.body ||
+							typeof slot.body !== 'object' ||
+							Array.isArray(slot.body) ||
+							Object.keys(slot.body).length !== 1 ||
+							(slot.body as Record<string, unknown>)._claimed !== true
+						) {
+							throw new TransactionAbort('idempotency_claim_invalid');
+						}
+					}
+					const [createdWg] = await tx.insert(wgs).values({ name, shareCode }).returning();
+					if (!createdWg) throw new TransactionAbort('insert_failed');
 
-						return { wg: createdWg, member: createdMember };
-					});
+					const [createdMember] = await tx
+						.insert(wgMembers)
+						.values({
+							wgId: createdWg.id,
+							name: creatorName,
+							role: 'admin',
+							authUserId: authenticatedUser.id,
+						})
+						.returning();
+					if (!createdMember) throw new TransactionAbort('member_insert_failed');
 
-					await recordAuditEvent({
-						wgId: wg.id,
-						memberId: member.id,
-						eventType: 'wg.created',
-						entityType: 'wg',
-						entityId: wg.id,
-						summary: `${member.name} hat die WG erstellt.`,
-						metadata: { name: wg.name, shareCode: wg.shareCode },
-					});
-
-					return NextResponse.json({
-						wg: {
-							id: wg.id,
-							shareCode: wg.shareCode,
-							name: wg.name,
+					const response: CachedJsonResponse = {
+						status: 200,
+						body: {
+							wg: { id: createdWg.id, shareCode: createdWg.shareCode, name: createdWg.name },
+							creator: { id: createdMember.id, name: createdMember.name },
 						},
-						creator: {
-							id: member.id,
-							name: member.name,
-						},
-					});
-				} catch (err) {
-					if (err instanceof TransactionAbort) return serverError(err.code);
-					lastError = err;
-					if (!isUniqueShareCodeViolation(err)) throw err;
-				}
+					};
+					if (idemKey) {
+						const updated = await tx
+							.update(idempotencyResponses)
+							.set({
+								responseBody: response,
+								expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
+							})
+							.where(
+								and(
+									eq(idempotencyResponses.scope, idemScope),
+									eq(idempotencyResponses.key, idemKey),
+									gt(idempotencyResponses.expiresAt, new Date()),
+									sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
+								),
+							)
+							.returning({ scope: idempotencyResponses.scope });
+						if (updated.length !== 1) throw new TransactionAbort('idempotency_claim_missing');
+					}
+					return { replayed: false as const, wg: createdWg, member: createdMember, response };
+				});
+				if (result.replayed) return replayResponse(result.response);
+
+				await recordAuditEvent({
+					wgId: result.wg.id,
+					memberId: result.member.id,
+					eventType: 'wg.created',
+					entityType: 'wg',
+					entityId: result.wg.id,
+					summary: `${result.member.name} hat die WG erstellt.`,
+					metadata: { name: result.wg.name, shareCode: result.wg.shareCode },
+				});
+				return replayResponse(result.response);
+			} catch (err) {
+				if (err instanceof TransactionAbort) return serverError(err.code);
+				lastError = err;
+				if (!isUniqueShareCodeViolation(err)) throw err;
 			}
-			logApiError('[api/wg POST] share code retries exhausted', lastError);
-			return serverError('share_code_exhausted');
-		} catch (err) {
-			logApiError('[api/wg POST] insert failed', err);
-			return serverError('db_error');
 		}
-	});
+		logApiError('[api/wg POST] share code retries exhausted', lastError);
+		return serverError('share_code_exhausted');
+	} catch (err) {
+		logApiError('[api/wg POST] insert failed', err);
+		return serverError('db_error');
+	}
 }

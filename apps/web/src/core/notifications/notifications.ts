@@ -165,7 +165,7 @@ export function formatNotificationMessage(
 				typeof insertedRaw === 'number' && Number.isFinite(insertedRaw) ? insertedRaw : 0;
 			return {
 				title: 'Import abgeschlossen',
-				body: `${actorName} hat ${inserted} Ausgaben in ${wgName} importiert.`,
+				body: `${actorName} hat ${inserted === 1 ? '1 Ausgabe' : `${inserted} Ausgaben`} in ${wgName} importiert.`,
 				urlPath: '/ausgaben',
 			};
 		}

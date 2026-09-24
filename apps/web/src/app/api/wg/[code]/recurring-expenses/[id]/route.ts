@@ -146,7 +146,13 @@ export const PATCH = withWgRoute<{ id: string }>(
 		const memberRows = await db
 			.select({ id: wgMembers.id })
 			.from(wgMembers)
-			.where(and(eq(wgMembers.wgId, wgId), inArray(wgMembers.id, memberIds)));
+			.where(
+				and(
+					eq(wgMembers.wgId, wgId),
+					inArray(wgMembers.id, memberIds),
+					isNull(wgMembers.deactivatedAt),
+				),
+			);
 		if (memberRows.length !== memberIds.length) return badRequest('member_not_in_wg');
 
 		const pauseTransition =

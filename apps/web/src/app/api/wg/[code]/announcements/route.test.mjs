@@ -1,0 +1,173 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import test from 'node:test';
+import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+
+const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
+const file = path.join(process.cwd(), 'src/app/api/wg/[code]/announcements/route.ts');
+const key = '11111111-1111-4111-8111-111111111111';
+const wgId = '22222222-2222-4222-8222-222222222222';
+const memberId = '33333333-3333-4333-8333-333333333333';
+
+function harness() {
+	const state = {
+		created: [],
+		audits: 0,
+		notifications: 0,
+		warning: null,
+		warningUpdateSucceeds: true,
+		legacy: null,
+	};
+	const cache = new Map();
+	let prior = Promise.resolve();
+	const announcements = { id: 'id' };
+	const withAnnouncementReplay = async (req, scope, mutate, legacyResponse) => {
+		const replayKey = req.headers.get('idempotency-key');
+		const cacheKey = `${scope}:${replayKey}`;
+		const waitFor = prior;
+		let release = () => undefined;
+		prior = new Promise((resolve) => {
+			release = resolve;
+		});
+		await waitFor;
+		try {
+			if (state.legacy) {
+				return { response: legacyResponse(state.legacy), effect: null, key: replayKey };
+			}
+			const cached = cache.get(cacheKey);
+			if (cached) return { response: cached, effect: null, key: replayKey };
+			const tx = {
+				insert: (table) => ({
+					values: (value) => ({
+						returning: async () => {
+							assert.equal(table, announcements);
+							const row = { ...value, id: `announcement-${state.created.length + 1}` };
+							state.created.push(row);
+							return [row];
+						},
+					}),
+				}),
+			};
+			const outcome = await mutate(tx);
+			cache.set(cacheKey, outcome.response);
+			return { ...outcome, key: replayKey };
+		} finally {
+			release();
+		}
+	};
+	const source = transpileModule(readFileSync(file, 'utf8'), {
+		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
+	}).outputText;
+	const module = { exports: {} };
+	const z = requireFromWeb('zod').z;
+	const overrides = {
+		'@/core/audit': { recordAuditEvent: async () => state.audits++ },
+		'@/core/db': {
+			announcements,
+			announcementComments: {},
+			announcementReactions: {},
+			db: {},
+			wgMembers: {},
+		},
+		'@/core/errors': { badRequest: (error) => Response.json({ error }, { status: 400 }) },
+		'@/core/guards/require-wg-member': {
+			requireWgMember: async () => ({
+				ok: true,
+				wg: { id: wgId, name: 'WG', shareCode: 'MTE8PZAT' },
+				member: { memberId, name: 'Member' },
+			}),
+		},
+		'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },
+		'@/core/http/read-json': {
+			readJsonBody: async (req) => ({ ok: true, body: await req.json() }),
+		},
+		'@/core/infra/observability': { logApiError: () => undefined },
+		'@/core/notifications/notification-dispatch': {
+			dispatchNotificationSafely: async () => {
+				assert.equal(state.created.length, 1, 'push must run after create');
+				state.notifications++;
+				return { warning: state.warning };
+			},
+		},
+		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }) },
+		'@/core/validators/image-url': {
+			imageUrlSchema: z.string().nullable().optional(),
+			isAllowedImageUrlForWg: () => true,
+		},
+		'@/features/pinnwand/announcement-replay': {
+			withAnnouncementReplay,
+			persistAnnouncementReplayWarning: async (scope, replayKey, entityId, warning) => {
+				if (!state.warningUpdateSucceeds) return false;
+				const response = cache.get(`${scope}:${replayKey}`);
+				if (response?.entityId !== entityId) return false;
+				response.body.warning = warning;
+				return true;
+			},
+		},
+		'@/features/pinnwand/announcement-workflow': {
+			ANNOUNCEMENT_KINDS: ['info', 'question', 'problem', 'request', 'decision'],
+			ANNOUNCEMENT_SOURCES: ['manual', 'system', 'chore_swap', 'expense', 'shopping'],
+		},
+		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
+	};
+	new Function('require', 'module', 'exports', source)(
+		(name) => (name in overrides ? overrides[name] : requireFromWeb(name)),
+		module,
+		module.exports,
+	);
+	return {
+		state,
+		post: () =>
+			module.exports.POST(
+				new Request('https://example.invalid', {
+					method: 'POST',
+					headers: { 'Idempotency-Key': key },
+					body: JSON.stringify({
+						content: 'Hello',
+						kind: 'info',
+						imageUrl: null,
+						source: 'system',
+					}),
+				}),
+				{ code: 'MTE8PZAT' },
+			),
+	};
+}
+
+test('concurrent create retry returns one announcement and runs push once', async () => {
+	const { state, post } = harness();
+	const [first, replay] = await Promise.all([post(), post()]);
+	assert.deepEqual(await first.json(), await replay.json());
+	assert.equal(state.created.length, 1);
+	assert.equal(state.created[0].authorMemberId, memberId);
+	assert.equal(state.created[0].source, 'manual');
+	assert.equal(state.audits, 1);
+	assert.equal(state.notifications, 1);
+});
+
+test('old flat cached response replays without another create', async () => {
+	const { state, post } = harness();
+	state.legacy = { announcement: { id: 'legacy-id' }, warning: null };
+	assert.deepEqual(await (await post()).json(), state.legacy);
+	assert.equal(state.created.length, 0);
+	assert.equal(state.notifications, 0);
+});
+
+test('warning is returned only when its completed response is updated', async () => {
+	const saved = harness();
+	saved.state.warning = 'notification_delivery_failed';
+	const first = await (await saved.post()).json();
+	const replay = await (await saved.post()).json();
+	assert.equal(first.warning, saved.state.warning);
+	assert.equal(replay.warning, saved.state.warning);
+	assert.equal(saved.state.notifications, 1);
+
+	const failed = harness();
+	failed.state.warning = 'notification_delivery_failed';
+	failed.state.warningUpdateSucceeds = false;
+	assert.equal((await (await failed.post()).json()).warning, null);
+	assert.equal((await (await failed.post()).json()).warning, null);
+	assert.equal(failed.state.created.length, 1);
+});

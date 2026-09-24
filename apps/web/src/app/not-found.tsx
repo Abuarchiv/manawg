@@ -28,13 +28,16 @@ export default function NotFound() {
 						<EmptyMedia variant="icon">
 							<House aria-hidden />
 						</EmptyMedia>
-						<h1 className="font-heading text-[20px] leading-[26px] font-semibold tracking-tight">
+						<h1
+							data-slot="empty-title"
+							className="min-w-0 max-w-full text-base font-semibold [overflow-wrap:anywhere]"
+						>
 							Seite nicht gefunden
 						</h1>
 						<EmptyDescription>Die angeforderte Seite wurde nicht gefunden.</EmptyDescription>
 					</EmptyHeader>
 					<EmptyContent>
-						<Button size="lg" render={<Link href="/" />} nativeButton={false} className="min-h-11">
+						<Button size="lg" render={<Link href="/" />} nativeButton={false}>
 							Zur Startseite
 						</Button>
 					</EmptyContent>

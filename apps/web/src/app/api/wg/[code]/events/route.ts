@@ -1,20 +1,28 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, wgEvents } from '@/core/db';
+import { db, idempotencyResponses, wgEvents } from '@/core/db';
+import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { badRequest, serverError, tooMany } from '@/core/errors';
-import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
+import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import {
+	RESPONSE_REPLAY_TTL_SECONDS,
+	getCachedResponse,
+	readIdempotencyKey,
+} from '@/core/idempotency';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
-import { computeRecurrenceLookbackStart } from '@/features/events/event-reminder-window';
 import {
-	EVENTS_LIST_LIMIT,
+	buildEventsWindowFilter,
+	withEventWindowCandidates,
+} from '@/features/events/event-reminder-window';
+import {
 	type SerializedWgEvent,
 	formatRecurrenceRule,
 	parseRecurrenceRule,
 	serializeWgEvent,
 } from '@/features/events/events';
-import { and, asc, eq, gte, isNotNull, lte, or } from 'drizzle-orm';
+import { and, asc, eq, gt, or, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -24,6 +32,30 @@ const LOCATION_MAX = 200;
 const RECURRENCE_MAX = 200;
 
 type EventCreateWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
+type EventCreateResponseBody = { event: SerializedWgEvent; warning: EventCreateWarning };
+type EventCreateReplayResponse<T = unknown> = { status: number; body: T };
+
+function readEventCreateReplayResponse(value: unknown): EventCreateReplayResponse | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const record = value as Record<string, unknown>;
+	if (
+		typeof record.status === 'number' &&
+		Number.isInteger(record.status) &&
+		record.status >= 200 &&
+		record.status <= 599 &&
+		'body' in record
+	) {
+		return { status: record.status, body: record.body };
+	}
+	return 'event' in record ? { status: 200, body: value as EventCreateResponseBody } : null;
+}
+
+function replayEventCreateResponse(value: unknown): NextResponse {
+	const replay = readEventCreateReplayResponse(value);
+	return replay
+		? NextResponse.json(replay.body, { status: replay.status })
+		: serverError('idempotency_response_invalid');
+}
 
 const createSchema = z.object({
 	title: z.string().trim().min(1).max(TITLE_MAX),
@@ -60,29 +92,31 @@ export const GET = withWgRoute(
 		const wg = auth.wg;
 
 		const wgFilter = eq(wgEvents.wgId, wg.id);
-		const windowFilter =
-			from && to
-				? or(
-						and(gte(wgEvents.startsAt, from), lte(wgEvents.startsAt, to)),
-						// include recurring rows that may produce occurrences in window
-						and(
-							isNotNull(wgEvents.recurrence),
-							lte(wgEvents.startsAt, to),
-							gte(wgEvents.startsAt, computeRecurrenceLookbackStart(from)),
-						),
-					)
-				: undefined;
-		const where = windowFilter ? and(wgFilter, windowFilter) : wgFilter;
-
-		const rows = await db
-			.select()
-			.from(wgEvents)
-			.where(where)
-			.orderBy(asc(wgEvents.startsAt))
-			.limit(EVENTS_LIST_LIMIT);
-
-		const events: SerializedWgEvent[] = rows.map(serializeWgEvent);
-		return NextResponse.json({ events });
+		const windowFilter = buildEventsWindowFilter(from, to);
+		return withEventWindowCandidates(
+			from,
+			async (cursor, pageLimit) => {
+				const cursorFilter = cursor
+					? or(
+							gt(wgEvents.startsAt, cursor.startsAt),
+							and(eq(wgEvents.startsAt, cursor.startsAt), gt(wgEvents.id, cursor.id)),
+						)
+					: undefined;
+				const baseFilter = windowFilter ? and(wgFilter, windowFilter) : wgFilter;
+				const where = cursorFilter ? and(baseFilter, cursorFilter) : baseFilter;
+				return db
+					.select()
+					.from(wgEvents)
+					.where(where)
+					.orderBy(asc(wgEvents.startsAt), asc(wgEvents.id))
+					.limit(pageLimit);
+			},
+			() => NextResponse.json({ error: 'events_window_too_large' }, { status: 503 }),
+			(rows) => {
+				const events: SerializedWgEvent[] = rows.map(serializeWgEvent);
+				return NextResponse.json({ events });
+			},
+		);
 	},
 	{
 		fixture: () => {
@@ -123,56 +157,186 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
 
-	return withIdempotentJsonResponse(
-		req,
-		`event-create:${wg.id}:${auth.member.memberId}`,
-		async () => {
-			const limit = await checkRateLimit(wgWriteLimiter, `events:${wg.id}:${auth.member.memberId}`);
-			if (!limit.success) return tooMany('rate_limited');
+	const idemKey = readIdempotencyKey(req);
+	const idemScope = idemKey ? `event-create:${wg.id}:${auth.member.memberId}` : null;
+	if (idemScope && idemKey) {
+		const cached = await getCachedResponse<unknown>(idemScope, idemKey);
+		if (cached) return replayEventCreateResponse(cached);
+	}
 
-			const [row] = await db
-				.insert(wgEvents)
-				.values({
-					wgId: wg.id,
-					title: parsed.data.title,
-					description: parsed.data.description ?? null,
-					startsAt,
-					endsAt,
-					allDay: parsed.data.allDay ?? false,
-					location: parsed.data.location ?? null,
-					recurrence,
-					createdByMemberId: auth.member.memberId,
-				})
-				.returning();
-			if (!row) return serverError('insert_failed');
+	const limit = await checkRateLimit(wgWriteLimiter, `events:${wg.id}:${auth.member.memberId}`);
+	if (!limit.success) return tooMany('rate_limited');
+	if (idemScope && idemKey) {
+		const slot = await claimReplaySlotWithRetry<unknown>(idemScope, idemKey);
+		if (!slot.won) return replayEventCreateResponse(slot.cached);
+	}
 
-			await recordAuditEvent({
-				wgId: wg.id,
-				memberId: auth.member.memberId,
-				eventType: 'event.created',
-				entityType: 'wg_event',
-				entityId: row.id,
-				summary: `${auth.member.name} hat den Termin „${row.title}“ angelegt.`,
-				metadata: {
-					startsAt: row.startsAt.toISOString(),
-					allDay: row.allDay,
-					recurring: row.recurrence !== null,
-				},
-			});
+	let written:
+		| { replayed: true; response: EventCreateReplayResponse }
+		| {
+				replayed: false;
+				row: typeof wgEvents.$inferSelect;
+				response: EventCreateReplayResponse<EventCreateResponseBody>;
+		  };
+	const rollback = { claimExpiresAt: null as Date | null, failed: false, error: null as unknown };
+	try {
+		written = await withTransaction(async (tx) => {
+			try {
+				if (idemScope && idemKey) {
+					const [slot] = await tx
+						.select({
+							body: idempotencyResponses.responseBody,
+							expiresAt: idempotencyResponses.expiresAt,
+						})
+						.from(idempotencyResponses)
+						.where(
+							and(eq(idempotencyResponses.scope, idemScope), eq(idempotencyResponses.key, idemKey)),
+						)
+						.limit(1)
+						.for('update');
+					if (!slot) throw new TransactionAbort('idempotency_claim_missing');
+					const replay = readEventCreateReplayResponse(slot.body);
+					if (replay) {
+						return { replayed: true as const, response: replay };
+					}
+					if (
+						slot.expiresAt <= new Date() ||
+						!slot.body ||
+						typeof slot.body !== 'object' ||
+						Array.isArray(slot.body) ||
+						Object.keys(slot.body).length !== 1 ||
+						(slot.body as Record<string, unknown>)._claimed !== true
+					) {
+						throw new TransactionAbort('idempotency_claim_invalid');
+					}
+					rollback.claimExpiresAt = slot.expiresAt;
+				}
 
-			const { warning }: { warning: EventCreateWarning } = await dispatchNotificationSafely({
-				wg: { id: wg.id, name: wg.name, shareCode: code },
-				event: 'event.created',
-				payload: {
-					eventId: row.id,
-					title: row.title,
-					startsAt: row.startsAt.toISOString(),
-					actorName: auth.member.name,
-				},
-				excludeMemberId: auth.member.memberId,
-			});
+				const [row] = await tx
+					.insert(wgEvents)
+					.values({
+						wgId: wg.id,
+						title: parsed.data.title,
+						description: parsed.data.description ?? null,
+						startsAt,
+						endsAt,
+						allDay: parsed.data.allDay ?? false,
+						location: parsed.data.location ?? null,
+						recurrence,
+						createdByMemberId: auth.member.memberId,
+					})
+					.returning();
+				if (!row) throw new TransactionAbort('insert_failed');
+				const response: EventCreateReplayResponse<EventCreateResponseBody> = {
+					status: 200,
+					body: { event: serializeWgEvent(row), warning: null },
+				};
+				if (idemScope && idemKey) {
+					const updated = await tx
+						.update(idempotencyResponses)
+						.set({
+							responseBody: response,
+							expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
+						})
+						.where(
+							and(
+								eq(idempotencyResponses.scope, idemScope),
+								eq(idempotencyResponses.key, idemKey),
+								gt(idempotencyResponses.expiresAt, new Date()),
+								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
+							),
+						)
+						.returning({ scope: idempotencyResponses.scope });
+					if (updated.length !== 1) throw new TransactionAbort('idempotency_claim_missing');
+				}
+				return { replayed: false as const, row, response };
+			} catch (err) {
+				rollback.failed = true;
+				rollback.error = err;
+				throw err;
+			}
+		});
+	} catch (err) {
+		if (
+			rollback.failed &&
+			err === rollback.error &&
+			rollback.claimExpiresAt &&
+			idemScope &&
+			idemKey
+		) {
+			try {
+				await db
+					.delete(idempotencyResponses)
+					.where(
+						and(
+							eq(idempotencyResponses.scope, idemScope),
+							eq(idempotencyResponses.key, idemKey),
+							eq(idempotencyResponses.expiresAt, rollback.claimExpiresAt),
+							sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
+						),
+					);
+			} catch {
+				console.warn('[events POST] rolled-back claim release failed');
+			}
+		}
+		if (err instanceof TransactionAbort) return serverError(err.code);
+		throw err;
+	}
+	if (written.replayed) return replayEventCreateResponse(written.response);
 
-			return NextResponse.json({ event: serializeWgEvent(row), warning });
+	const row = written.row;
+	await recordAuditEvent({
+		wgId: wg.id,
+		memberId: auth.member.memberId,
+		eventType: 'event.created',
+		entityType: 'wg_event',
+		entityId: row.id,
+		summary: `${auth.member.name} hat den Termin „${row.title}“ angelegt.`,
+		metadata: {
+			startsAt: row.startsAt.toISOString(),
+			allDay: row.allDay,
+			recurring: row.recurrence !== null,
 		},
-	);
+	});
+
+	const { warning }: { warning: EventCreateWarning } = await dispatchNotificationSafely({
+		wg: { id: wg.id, name: wg.name, shareCode: code },
+		event: 'event.created',
+		payload: {
+			eventId: row.id,
+			title: row.title,
+			startsAt: row.startsAt.toISOString(),
+			actorName: auth.member.name,
+		},
+		excludeMemberId: auth.member.memberId,
+	});
+
+	let response: EventCreateReplayResponse<EventCreateResponseBody> = {
+		...written.response,
+		body: { ...written.response.body, warning },
+	};
+	if (idemScope && idemKey && warning !== null) {
+		try {
+			const updated = await db
+				.update(idempotencyResponses)
+				.set({
+					responseBody: sql`jsonb_set(${idempotencyResponses.responseBody}, '{body,warning}', to_jsonb(${warning}::text))`,
+				})
+				.where(
+					and(
+						eq(idempotencyResponses.scope, idemScope),
+						eq(idempotencyResponses.key, idemKey),
+						gt(idempotencyResponses.expiresAt, new Date()),
+						sql`${idempotencyResponses.responseBody}->'body'->'event'->>'id' = ${row.id}`,
+						sql`${idempotencyResponses.responseBody}->'body'->'warning' = 'null'::jsonb`,
+					),
+				)
+				.returning({ scope: idempotencyResponses.scope });
+			if (updated.length !== 1) response = written.response;
+		} catch {
+			response = written.response;
+			console.warn('[events POST] warning replay update failed');
+		}
+	}
+	return replayEventCreateResponse(response);
 });

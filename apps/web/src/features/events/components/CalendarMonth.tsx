@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/item';
 import {
 	type EventOccurrence,
-	eventDateForDisplay,
+	eventOverlapsCalendarDay,
 	formatEventTimeRange,
 } from '@/features/events/events';
 import { cn } from '@/shared/lib/cn';
@@ -78,9 +78,7 @@ function buildDays(month: Date, occurrences: EventOccurrence[]): DayCell[] {
 	const cursor = new Date(gridStart);
 	while (cursor <= last || days.length % 7 !== 0 || days.length === 0) {
 		const dayDate = new Date(cursor);
-		const dayOcc = occurrences.filter((occ) =>
-			sameDay(eventDateForDisplay(occ.startsAt, occ.allDay), dayDate),
-		);
+		const dayOcc = occurrences.filter((occ) => eventOverlapsCalendarDay(occ, dayDate));
 		days.push({
 			date: dayDate,
 			inCurrentMonth: dayDate.getMonth() === month.getMonth(),
@@ -204,9 +202,7 @@ export function CalendarMonth({
 	);
 
 	const selectedOccurrences = selectedDay
-		? occurrences.filter((occurrence) =>
-				sameDay(eventDateForDisplay(occurrence.startsAt, occurrence.allDay), selectedDay),
-			)
+		? occurrences.filter((occurrence) => eventOverlapsCalendarDay(occurrence, selectedDay))
 		: [];
 	const weeks = Array.from({ length: Math.ceil(days.length / 7) }, (_, index) =>
 		days.slice(index * 7, index * 7 + 7),
@@ -219,7 +215,7 @@ export function CalendarMonth({
 					<Button
 						variant="ghost"
 						size="icon"
-						className="size-11"
+						className="size-9"
 						onClick={onPrev}
 						aria-label="Vorheriger Monat"
 					>
@@ -229,7 +225,7 @@ export function CalendarMonth({
 					<Button
 						variant="ghost"
 						size="icon"
-						className="size-11"
+						className="size-9"
 						onClick={onNext}
 						aria-label="Nächster Monat"
 					>
@@ -268,7 +264,11 @@ export function CalendarMonth({
 											tabIndex={weekIndex * 7 + dayIndex === focusedIndex ? 0 : -1}
 											aria-label={
 												FULL_DATE_FORMATTER.format(day.date) +
-												(day.occurrences.length ? `, ${day.occurrences.length} Termine` : '')
+												(day.occurrences.length === 1
+													? ', 1 Termin'
+													: day.occurrences.length
+														? `, ${day.occurrences.length} Termine`
+														: '')
 											}
 											aria-current={isToday ? 'date' : undefined}
 											className={cn(
@@ -322,7 +322,6 @@ export function CalendarMonth({
 												variant="outline"
 												onClick={() => onSelectOccurrence(occurrence)}
 												aria-label={`Termin öffnen: ${occurrence.title}`}
-												className="min-h-11"
 											>
 												Öffnen
 											</Button>

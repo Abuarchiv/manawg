@@ -141,7 +141,6 @@ export function QuickRestockSheet({
 													disabled={pendingId !== null}
 													aria-busy={pendingId === item.id}
 													aria-label={`${item.name} um eins erhöhen`}
-													className="min-h-11"
 												>
 													{pendingId === item.id ? <Spinner aria-hidden /> : <Plus aria-hidden />}
 													+1
@@ -155,9 +154,7 @@ export function QuickRestockSheet({
 					)}
 				</div>
 				<DrawerFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
-					<DrawerClose render={<Button variant="outline" className="min-h-11" />}>
-						Schließen
-					</DrawerClose>
+					<DrawerClose render={<Button variant="outline" />}>Schließen</DrawerClose>
 				</DrawerFooter>
 			</DrawerContent>
 		</Drawer>

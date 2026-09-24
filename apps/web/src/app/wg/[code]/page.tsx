@@ -124,6 +124,7 @@ export default function WgHomePage() {
 	const [armedChoreId, setArmedChoreId] = useState<string | null>(null);
 	const [pendingChoreId, setPendingChoreId] = useState<string | null>(null);
 	const [completeNotice, setCompleteNotice] = useState<string | null>(null);
+	const completionRequestKeysRef = useRef(new Map<string, string>());
 	const [nextEvent, setNextEvent] = useState<StartEvent | null | undefined>(undefined);
 	const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 	const dashboardRequestId = useRef(0);
@@ -190,11 +191,13 @@ export default function WgHomePage() {
 			setCompleteNotice(null);
 			return;
 		}
-		const idempotencyKey = createOfflineIdempotencyKey();
+		const idempotencyKey =
+			completionRequestKeysRef.current.get(choreId) ?? createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
 			setCompleteNotice('Konnte nicht sicher gespeichert werden. Erledige es im Putzplan.');
 			return;
 		}
+		completionRequestKeysRef.current.set(choreId, idempotencyKey);
 		setPendingChoreId(choreId);
 		const result = await apiFetch(
 			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(choreId)}/complete`,
@@ -209,10 +212,13 @@ export default function WgHomePage() {
 		setPendingChoreId(null);
 		setArmedChoreId(null);
 		if (result.ok || result.error === 'chore_already_completed') {
+			completionRequestKeysRef.current.delete(choreId);
 			setCompleteNotice(`${item.title} erledigt.`);
 			void load();
 			return;
 		}
+		if (result.status > 0 && result.status < 500 && result.status !== 429)
+			completionRequestKeysRef.current.delete(choreId);
 		setCompleteNotice(
 			result.status === 0
 				? 'Offline: Öffne den Putzplan, dort wird die Erledigung vorgemerkt.'
@@ -226,10 +232,13 @@ export default function WgHomePage() {
 	const primaryBalance =
 		myBalances.find((balance) => balance.currency === 'EUR') ?? myBalances[0] ?? null;
 	const myBalance = primaryBalance?.balanceCents ?? 0;
+	// Zeige nur Salden ungleich Null je Währung an — außer es bliebe dadurch
+	// nichts übrig (z. B. alles ausgeglichen), dann zeig den/die vorhandenen
+	// Saldo/Salden trotzdem, statt eine leere Kachel zu rendern.
+	const nonZeroBalances = myBalances.filter((balance) => balance.balanceCents !== 0);
 	const myBalanceText =
 		myBalances.length > 0
-			? myBalances
-					.filter((balance) => balance.balanceCents !== 0 || myBalances.length === 1)
+			? (nonZeroBalances.length > 0 ? nonZeroBalances : myBalances)
 					.map((balance) =>
 						formatEuroCents(balance.balanceCents, balance.currency, { signed: true }),
 					)
@@ -300,7 +309,7 @@ export default function WgHomePage() {
 				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-6 px-4 py-6"
 			>
 				<header className="flex min-w-0 flex-col gap-1">
-					<h1 className="font-heading text-2xl font-semibold tracking-tight break-words">
+					<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight break-words">
 						{new Intl.DateTimeFormat('de-DE', {
 							weekday: 'long',
 							day: 'numeric',
@@ -343,7 +352,7 @@ export default function WgHomePage() {
 
 				{!isNewWg && (
 					<section aria-labelledby="today-heading" className="flex min-w-0 flex-col gap-2">
-						<h2 id="today-heading" className="font-heading text-lg font-semibold">
+						<h2 id="today-heading" className="font-heading text-xl font-semibold">
 							Heute für dich
 						</h2>
 						{completeNotice && (
@@ -366,9 +375,7 @@ export default function WgHomePage() {
 									{todayMore.length > 0 && (
 										<Collapsible open={todayMoreOpen} onOpenChange={setTodayMoreOpen}>
 											<CollapsibleTrigger
-												render={
-													<Button variant="ghost" className="min-h-11 w-full justify-between" />
-												}
+												render={<Button variant="ghost" className="w-full justify-between" />}
 											>
 												<span>
 													{todayMoreOpen
@@ -480,13 +487,24 @@ export default function WgHomePage() {
 						/>
 					</ul>
 					<section aria-labelledby="wg-now-heading" className="flex min-w-0 flex-col gap-3">
+						<div className="flex justify-end">
+							<Link
+								href={`${wgBaseHref}/suche`}
+								className={cn(
+									buttonVariants({ variant: 'ghost' }),
+									'min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground leading-snug',
+								)}
+							>
+								<Search data-icon="inline-start" aria-hidden /> WG durchsuchen
+							</Link>
+						</div>
 						<Collapsible defaultOpen={false}>
 							<h2 id="wg-now-heading">
 								<CollapsibleTrigger
 									render={
 										<Button
 											variant="ghost"
-											className="group min-h-11 w-full justify-between px-0 text-muted-foreground"
+											className="group w-full justify-between px-0 text-muted-foreground"
 										/>
 									}
 								>
@@ -498,23 +516,11 @@ export default function WgHomePage() {
 								<div className="flex min-w-0 flex-col gap-3">
 									<div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
 										<div className="flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
-											{/* The header keeps no search control (AGENTS.md). Search stays
-								    reachable from Start, as the WG shell documents. */}
-											<Link
-												href={`${wgBaseHref}/suche`}
-												className={cn(
-													buttonVariants({ variant: 'ghost' }),
-													'min-h-11 min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground leading-snug',
-												)}
-											>
-												<Search data-icon="inline-start" aria-hidden />
-												WG durchsuchen
-											</Link>
 											<Link
 												href={`${wgBaseHref}/aktivitaet`}
 												className={cn(
 													buttonVariants({ variant: 'ghost' }),
-													'min-h-11 min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground text-right leading-snug',
+													'min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground text-right leading-snug',
 												)}
 											>
 												Ganze Chronik <ChevronRight data-icon="inline-end" aria-hidden />
@@ -607,7 +613,7 @@ function TodayRow({
 				<Button
 					variant="ghost"
 					size="icon"
-					className="ml-1 size-11 shrink-0"
+					className="ml-1 size-9 shrink-0"
 					aria-label={armed ? `Bestätigen: ${item.title} erledigt` : `Abhaken: ${item.title}`}
 					aria-pressed={armed}
 					disabled={pending}
@@ -622,7 +628,7 @@ function TodayRow({
 					)}
 				</Button>
 			) : (
-				<span className="ml-1 flex size-11 shrink-0 items-center justify-center">
+				<span className="ml-1 flex size-9 shrink-0 items-center justify-center">
 					<TodayIcon kind={item.kind} />
 				</span>
 			)}

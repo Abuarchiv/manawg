@@ -61,7 +61,7 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 				className ??
 				cn(
 					buttonVariants({ variant: 'outline', size: 'icon' }),
-					'relative size-11',
+					'relative size-9',
 					isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
 				)
 			}

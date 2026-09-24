@@ -23,6 +23,26 @@ export interface ParsedExpense {
 
 export type ImportSource = 'splitwise_csv' | 'splid_csv' | 'ocr_screenshot' | 'manual';
 
+/**
+ * A parsed row's `warnings` are internal codes (see `parseSplitwiseCsv`), not
+ * UI text. This is the one place that turns them into German sentences for
+ * `ImportPreviewTable`, so a new code can't accidentally leak to the screen
+ * unmapped.
+ */
+export function describeParsedExpenseWarning(code: string): string {
+	if (code.startsWith('unknown_columns_ignored:')) {
+		const columns = code.slice('unknown_columns_ignored:'.length).split('|').filter(Boolean);
+		return `Spalte${columns.length === 1 ? '' : 'n'} ${columns.map((name) => `„${name}“`).join(', ')} wurde${columns.length === 1 ? '' : 'n'} nicht erkannt und ignoriert.`;
+	}
+	if (code === 'custom_splits_drift_adjusted') {
+		return 'Die Aufteilung wich minimal vom Gesamtbetrag ab und wurde automatisch angeglichen.';
+	}
+	if (code === 'custom_splits_discarded') {
+		return 'Die eigene Aufteilung wich zu stark vom Gesamtbetrag ab und wurde verworfen — stattdessen gleichmäßig aufgeteilt.';
+	}
+	return code;
+}
+
 export class UnsupportedCurrencyError extends Error {
 	readonly currency: string;
 	constructor(currency: string) {

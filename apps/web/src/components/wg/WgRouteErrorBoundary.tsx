@@ -9,7 +9,6 @@ import {
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
-	EmptyTitle,
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/observability';
 import { TriangleAlert } from 'lucide-react';
@@ -58,7 +57,12 @@ export function WgRouteErrorBoundary({
 							<EmptyMedia variant="icon">
 								<TriangleAlert aria-hidden />
 							</EmptyMedia>
-							<EmptyTitle>{title}</EmptyTitle>
+							<h1
+								data-slot="empty-title"
+								className="min-w-0 max-w-full text-base font-semibold [overflow-wrap:anywhere]"
+							>
+								{title}
+							</h1>
 							<EmptyDescription>{body}</EmptyDescription>
 						</EmptyHeader>
 						<EmptyContent>
@@ -75,7 +79,7 @@ export function WgRouteErrorBoundary({
 								</pre>
 							)}
 							<div className="flex w-full flex-col items-stretch gap-2">
-								<Button type="button" size="lg" onClick={reset} className="min-h-11 w-full">
+								<Button type="button" size="lg" onClick={reset} className="w-full">
 									Erneut versuchen
 								</Button>
 								<Button
@@ -83,7 +87,7 @@ export function WgRouteErrorBoundary({
 									size="lg"
 									render={<Link href={`/wg/${code}`} />}
 									nativeButton={false}
-									className="min-h-11 w-full"
+									className="w-full"
 								>
 									Zur Übersicht
 								</Button>

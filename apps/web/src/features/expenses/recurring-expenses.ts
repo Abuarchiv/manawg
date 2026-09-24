@@ -1,4 +1,5 @@
 import { parseTimestamp } from '@/core/utils/time';
+import { validateSplits } from '@/features/expenses/split-math';
 
 interface RecurringExpenseInput {
 	id: string;
@@ -42,12 +43,8 @@ export function parseRecurringSplits(splitsJson: string): RecurringSplit[] {
 	}
 }
 
-export function recurringSplitsSum(splits: RecurringSplit[]): number {
-	return splits.reduce((total, split) => total + split.amountCents, 0);
-}
-
 export function recurringSplitsMatchAmount(splits: RecurringSplit[], amountCents: number): boolean {
-	return splits.length > 0 && recurringSplitsSum(splits) === amountCents;
+	return validateSplits(amountCents, splits).ok;
 }
 
 export function getDueRecurringExpenses(

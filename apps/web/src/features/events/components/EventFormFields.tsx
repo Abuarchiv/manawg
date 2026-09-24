@@ -58,7 +58,7 @@ export function EventFormFields({
 					placeholder="z. B. WG-Meeting"
 					required
 					disabled={disabled}
-					className="min-h-11 text-base"
+					className="text-base"
 				/>
 			</Field>
 			<Field orientation="horizontal" data-disabled={disabled} className="min-h-11">
@@ -93,7 +93,7 @@ export function EventFormFields({
 					}
 					required
 					disabled={disabled}
-					className="min-h-11 min-w-0 text-base"
+					className="min-w-0 text-base"
 				/>
 			</Field>
 			<Field data-disabled={disabled} className="min-w-0">
@@ -108,7 +108,7 @@ export function EventFormFields({
 						)
 					}
 					disabled={disabled}
-					className="min-h-11 min-w-0 text-base"
+					className="min-w-0 text-base"
 				/>
 			</Field>
 			<Field data-disabled={disabled}>
@@ -120,7 +120,7 @@ export function EventFormFields({
 					maxLength={LOCATION_MAX}
 					placeholder="z. B. Küche"
 					disabled={disabled}
-					className="min-h-11 text-base"
+					className="text-base"
 				/>
 			</Field>
 			{recurrenceField}

@@ -7,12 +7,16 @@ import {
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { readShareCode } from '@/core/guards/route-preamble';
-import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
+import {
+	getCachedResponse,
+	persistImportReplayWarning,
+	readIdempotencyKey,
+} from '@/core/idempotency';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, importCommitLimiter } from '@/core/rate-limit';
 import { MAX_CSV_BYTES, MAX_OCR_BYTES, readImportJsonBody } from '@/features/expenses/import-body';
-import { type CommitResult, commitImport } from '@/features/expenses/import-commit';
+import { type CommitResult, commitImport, isCommitResult } from '@/features/expenses/import-commit';
 import { hashPayload } from '@/features/expenses/import-hash';
 import {
 	type ParsedExpense,
@@ -95,6 +99,7 @@ export async function POST(
 
 			const cached = await getCachedResponse<CommitResult>(idemScope, idemKey);
 			if (cached) {
+				if (!isCommitResult(cached)) throw new Error('idempotency_response_unavailable');
 				importCommitReplay.remember(idemReplayKey, cached);
 				return NextResponse.json(cached);
 			}
@@ -123,12 +128,15 @@ export async function POST(
 			return badRequest('invalid_skip_indexes');
 		}
 
-		const conflicts = findMappingConflicts(parsedExpenses, memberMapping);
+		const skipSet = new Set(skipIndexes);
+		const conflicts = findMappingConflicts(
+			parsedExpenses.filter((_expense, index) => !skipSet.has(index)),
+			memberMapping,
+		);
 		if (conflicts.length > 0) {
 			return NextResponse.json({ error: 'mapping_incomplete', conflicts }, { status: 400 });
 		}
 
-		const skipSet = new Set(skipIndexes);
 		const items = parsedExpenses.map((parsed, index) => ({
 			parsed,
 			skip: skipSet.has(index),
@@ -146,6 +154,7 @@ export async function POST(
 		if (idemScope && idemKey) {
 			const slot = await claimReplaySlotWithRetry<CommitResult>(idemScope, idemKey);
 			if (!slot.won) {
+				if (!isCommitResult(slot.cached)) throw new Error('idempotency_response_unavailable');
 				replayReservation?.resolve(slot.cached);
 				return NextResponse.json(slot.cached);
 			}
@@ -163,23 +172,36 @@ export async function POST(
 				mapping: memberMapping,
 				skipDuplicates,
 				rawPayloadHash: payloadHash,
+				...(idemScope && idemKey ? { replay: { scope: idemScope, key: idemKey } } : {}),
 			});
 		} catch (writeErr) {
 			replayReservation?.reject(writeErr);
 			throw writeErr;
 		}
 
-		// Cache the exact response so a retry with the same Idempotency-Key
-		// replays it instead of committing the import again.
-		if (idemScope && idemKey && replayReservation?.owned) {
-			replayReservation.resolve(result);
-			void setCachedResponse(idemScope, idemKey, result).catch((err) => {
-				if (process.env.NODE_ENV === 'development') {
-					console.warn('[imports/commit] idem cache write failed', err);
+		let responseResult = result;
+		if (idemScope && idemKey && result.warning !== null) {
+			try {
+				const persisted = await persistImportReplayWarning(
+					idemScope,
+					idemKey,
+					result.importId,
+					result.warning,
+				);
+				if (!persisted) {
+					logApiError(
+						'[imports/commit] replay warning persistence failed',
+						new Error('replay_row_missing'),
+					);
+					responseResult = { ...result, warning: null };
 				}
-			});
+			} catch (warningErr) {
+				logApiError('[imports/commit] replay warning persistence failed', warningErr);
+				responseResult = { ...result, warning: null };
+			}
 		}
-		return NextResponse.json(result);
+		if (replayReservation?.owned) replayReservation.resolve(responseResult);
+		return NextResponse.json(responseResult);
 	} catch (err) {
 		replayReservation?.reject(err);
 		if (err instanceof Error && err.message === 'member_not_in_wg') {

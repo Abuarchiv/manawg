@@ -128,6 +128,27 @@ test('calendar all-day creation keeps start and end on the same calendar day', a
 	await expect(page.getByText('0 Termine', { exact: true })).toBeVisible();
 });
 
+test.describe('absence dates outside Berlin', () => {
+	test.use({ timezoneId: 'America/Los_Angeles' });
+
+	test('uses Berlin day boundaries across the spring clock change', async ({ page }) => {
+		const post = await interceptValidationPost(page, 'absences');
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/putzen?panel=absences`);
+		await dismissOnboarding(page);
+
+		await page.getByLabel('Abwesenheit von').fill('2026-03-29');
+		await page.getByLabel('Abwesenheit bis').fill('2026-03-30');
+		await page.getByRole('button', { name: 'Abwesenheit speichern' }).click();
+		await expect.poll(() => post.bodies.length).toBe(1);
+
+		expect(post.bodies[0]).toMatchObject({
+			startDate: '2026-03-28T23:00:00.000Z',
+			endDate: '2026-03-30T21:59:59.999Z',
+		});
+	});
+});
+
 test('calendar reports a missing start only on save and leaves the end unchanged', async ({
 	page,
 }) => {

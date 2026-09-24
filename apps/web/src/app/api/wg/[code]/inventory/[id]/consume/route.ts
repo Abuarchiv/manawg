@@ -10,11 +10,15 @@ import {
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
+import { getCachedResponse, readIdempotencyKey, releaseResponseSlot } from '@/core/idempotency';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { consumeInventoryMutation } from '@/features/inventory/consume-mutation';
 import { INVENTORY_LIMITS } from '@/features/inventory/inventory';
+import {
+	completeInventoryReplay,
+	persistInventoryReplayWarning,
+} from '@/features/inventory/inventory-mutations';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -62,7 +66,6 @@ export const POST = withWgRoute<{ id: string }>('inventory consume', async (req,
 		if (localReplay) return NextResponse.json(await localReplay);
 		const cached = await getCachedResponse<ConsumeResponseBody>(idemScope, idemKey);
 		if (cached) {
-			consumeReplay.remember(idemReplayKey, cached);
 			return NextResponse.json(cached);
 		}
 	}
@@ -89,21 +92,32 @@ export const POST = withWgRoute<{ id: string }>('inventory consume', async (req,
 			}
 		}
 
-		const transactionResult = await withTransaction((tx) =>
-			consumeInventoryMutation(tx, {
+		const transactionResult = await withTransaction(async (tx) => {
+			const mutation = await consumeInventoryMutation(tx, {
 				itemId: id,
 				wgId: wg.id,
 				memberId: auth.member.memberId,
 				delta: parsed.data.delta,
-			}),
-		);
+			});
+			if (mutation.kind === 'ok' && idemScope && idemKey) {
+				await completeInventoryReplay(tx, idemScope, idemKey, {
+					item: mutation.updated,
+					clamped: mutation.clamped,
+					autoPushedShoppingItemId: mutation.autoPushedShoppingItemId,
+					warning: null,
+				});
+			}
+			return mutation;
+		});
 
 		if (transactionResult.kind === 'not_found') {
+			if (idemScope && idemKey) await releaseResponseSlot(idemScope, idemKey);
 			const err = new Error('item_not_found');
 			replayReservation?.reject(err);
 			return notFound('item_not_found');
 		}
 		if (transactionResult.kind === 'conflict') {
+			if (idemScope && idemKey) await releaseResponseSlot(idemScope, idemKey);
 			const err = new Error('version_conflict');
 			replayReservation?.reject(err);
 			return conflict('version_conflict');
@@ -146,6 +160,20 @@ export const POST = withWgRoute<{ id: string }>('inventory consume', async (req,
 				excludeMemberId: auth.member.memberId,
 			}));
 		}
+		if (idemScope && idemKey && warning !== null) {
+			try {
+				const persisted = await persistInventoryReplayWarning(
+					idemScope,
+					idemKey,
+					updated.id,
+					warning,
+				);
+				if (!persisted) throw new Error('replay_row_missing');
+			} catch (warningError) {
+				console.error('[inventory/consume] replay warning persistence failed:', warningError);
+				warning = null;
+			}
+		}
 
 		const responseBody: ConsumeResponseBody = {
 			item: updated,
@@ -155,7 +183,6 @@ export const POST = withWgRoute<{ id: string }>('inventory consume', async (req,
 		};
 		if (idemScope && idemKey && replayReservation?.owned) {
 			replayReservation.resolve(responseBody);
-			void setCachedResponse(idemScope, idemKey, responseBody);
 		}
 		return NextResponse.json(responseBody);
 	} catch (err) {

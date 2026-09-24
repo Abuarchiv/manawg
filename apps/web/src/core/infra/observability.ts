@@ -11,18 +11,12 @@
  */
 
 /**
- * Report an unexpected error, optionally with structured context.
- *
- * `context` is serialised alongside the error so the log line carries the
- * information needed to place it (route, boundary, monitor slug, ...).
+ * Report an unexpected error with only fixed diagnostic labels. Error messages
+ * and arbitrary context can contain provider responses, SQL, or request data.
  */
 export function captureException(err: unknown, context?: Record<string, unknown>): void {
 	try {
-		if (context) {
-			console.error('[error]', err, context);
-			return;
-		}
-		console.error('[error]', err);
+		console.error('[error]', describeThrown(err), safeContext(context));
 	} catch {
 		// Logging must never break the caller.
 	}
@@ -33,25 +27,60 @@ export function captureException(err: unknown, context?: Record<string, unknown>
  *
  * Route catch blocks used to hand the raw error object to `console.error`,
  * which copies stacks, request details, and provider payloads (Postgres,
- * PayPal) into platform logs that outlive the request. Only the error name
- * and a whitespace-collapsed, truncated message survive here. Full reporting
- * still happens through {@link captureException} when a route answers with
- * `serverError(err)`.
+ * PayPal) into platform logs that outlive the request. Keep the static route
+ * label and error type; discard message and stack contents.
  */
 export function logApiError(label: string, ...errors: unknown[]): void {
 	try {
-		console.error(label, errors.map(describeThrown).join(' | '));
+		console.error(sanitizeLabel(label), errors.map(describeThrown).join(' | '));
 	} catch {
 		// Logging must never break the caller.
 	}
 }
 
+const TRUSTED_ERROR_NAMES = new Set([
+	'Error',
+	'EvalError',
+	'RangeError',
+	'ReferenceError',
+	'SyntaxError',
+	'TypeError',
+	'URIError',
+	'AggregateError',
+]);
+
 function describeThrown(err: unknown): string {
 	if (err instanceof Error) {
-		const message = err.message.replace(/\s+/g, ' ').trim().slice(0, 300);
-		return message.length > 0 ? `${err.name}: ${message}` : err.name;
+		return TRUSTED_ERROR_NAMES.has(err.name) ? err.name : 'Error';
 	}
 	return `thrown ${typeof err}`;
+}
+
+const SAFE_CONTEXT_VALUES: Record<string, ReadonlySet<string>> = {
+	area: new Set(['startup', 'rate-limit']),
+	boundary: new Set(['global', 'root', 'wg-code']),
+	cronJob: new Set(['event-reminders', 'chore-reminders', 'maintenance', 'recurring-advance']),
+	method: new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD']),
+};
+
+function safeContext(context?: Record<string, unknown>): Record<string, string> {
+	const safe: Record<string, string> = {};
+	if (!context) return safe;
+	for (const [key, allowedValues] of Object.entries(SAFE_CONTEXT_VALUES)) {
+		const value = context[key];
+		if (typeof value === 'string' && allowedValues.has(value)) {
+			safe[key] = value;
+		}
+	}
+	return safe;
+}
+
+function sanitizeLabel(label: string): string {
+	return label
+		.replace(/[^A-Za-z0-9 _./:\[\]-]/g, '?')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.slice(0, 160);
 }
 
 /**

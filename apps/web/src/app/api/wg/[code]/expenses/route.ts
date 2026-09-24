@@ -1,5 +1,4 @@
-import { db, expenseSplits, expenses } from '@/core/db';
-import type { Expense, ExpenseSplit } from '@/core/db/schema';
+import { db, expenseSplits, expenses, idempotencyResponses } from '@/core/db';
 import { TransactionAbort } from '@/core/db/transaction';
 import { apiError, badRequest, serverError, tooMany } from '@/core/errors';
 import {
@@ -11,7 +10,11 @@ import {
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { readShareCode } from '@/core/guards/route-preamble';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
+import {
+	RESPONSE_REPLAY_TTL_SECONDS,
+	getCachedResponse,
+	readIdempotencyKey,
+} from '@/core/idempotency';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import type { NotificationDispatchWarning } from '@/core/notifications/notification-dispatch';
@@ -31,7 +34,7 @@ import {
 	resolveExpensePayer,
 } from '@/features/expenses/expenses';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
-import { desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -249,15 +252,44 @@ export async function POST(
 			}
 		}
 
-		// An expense and its splits are one fact, so they are written in one
-		// transaction. The previous two-step insert compensated by deleting the
-		// expense when the splits failed — but that delete is itself a database
-		// call, and when it failed the orphan survived and skewed every balance.
-		let expense: Expense;
-		let splitRows: ExpenseSplit[];
+		// Keep the expense, its splits and its durable replay response in one transaction.
+		let written:
+			| { replayed: true; body: ExpenseCreateResponseBody }
+			| {
+					replayed: false;
+					expense: typeof expenses.$inferSelect;
+					body: ExpenseCreateResponseBody;
+			  };
 		try {
-			const written = await withExpensePaymentLock(wg.id, (tx) =>
-				insertExpenseWithSplits(tx, {
+			written = await withExpensePaymentLock(wg.id, async (tx) => {
+				if (idemScope && idemKey) {
+					const [slot] = await tx
+						.select({
+							body: idempotencyResponses.responseBody,
+							expiresAt: idempotencyResponses.expiresAt,
+						})
+						.from(idempotencyResponses)
+						.where(
+							and(eq(idempotencyResponses.scope, idemScope), eq(idempotencyResponses.key, idemKey)),
+						)
+						.limit(1)
+						.for('update');
+					if (!slot) throw new TransactionAbort('idempotency_claim_missing');
+					if (slot.body && typeof slot.body === 'object' && 'expense' in slot.body) {
+						return { replayed: true as const, body: slot.body as ExpenseCreateResponseBody };
+					}
+					if (
+						slot.expiresAt <= new Date() ||
+						!slot.body ||
+						typeof slot.body !== 'object' ||
+						Array.isArray(slot.body) ||
+						Object.keys(slot.body).length !== 1 ||
+						(slot.body as Record<string, unknown>)._claimed !== true
+					) {
+						throw new TransactionAbort('idempotency_claim_invalid');
+					}
+				}
+				const created = await insertExpenseWithSplits(tx, {
 					wgId: wg.id,
 					paidByMemberId: paidBy,
 					amountCents,
@@ -266,35 +298,78 @@ export async function POST(
 					imageUrl: safeImageUrl,
 					occurredAt,
 					splits: validatedSplits,
-				}),
-			);
-			expense = written.expense;
-			splitRows = written.splits;
+				});
+				const body: ExpenseCreateResponseBody = {
+					expense: { ...created.expense, splits: created.splits },
+					warning: null,
+				};
+				if (idemScope && idemKey) {
+					const rows = await tx
+						.update(idempotencyResponses)
+						.set({
+							responseBody: body,
+							expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
+						})
+						.where(
+							and(
+								eq(idempotencyResponses.scope, idemScope),
+								eq(idempotencyResponses.key, idemKey),
+								gt(idempotencyResponses.expiresAt, new Date()),
+								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
+							),
+						)
+						.returning({ scope: idempotencyResponses.scope });
+					if (rows.length !== 1) throw new TransactionAbort('idempotency_claim_missing');
+				}
+				return { replayed: false as const, expense: created.expense, body };
+			});
 		} catch (writeErr) {
 			replayReservation?.reject(writeErr);
 			if (writeErr instanceof TransactionAbort) return serverError(writeErr.code);
 			throw writeErr;
 		}
+		if (written.replayed) {
+			replayReservation?.resolve(written.body);
+			return NextResponse.json(written.body);
+		}
 
 		const warning = await recordExpenseCreatedSideEffects({
 			wg,
 			actor: { memberId: auth.member.memberId, name: auth.member.name },
-			expense,
+			expense: written.expense,
 		});
 
-		const responseBody = { expense: { ...expense, splits: splitRows ?? [] }, warning };
-		// Cache the exact response body so a retry with the same Idempotency-Key
-		// receives the SAME expense.id rather than triggering a duplicate insert.
-		// Fire-and-forget: a cache hiccup here only loses cross-process dedup;
-		// local same-key retries already share the resolved replay promise.
-		if (idemScope && idemKey && replayReservation?.owned) {
-			replayReservation.resolve(responseBody);
-			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) => {
-				if (process.env.NODE_ENV === 'development') {
-					console.warn('[expenses POST] idem cache write failed', err);
+		let responseBody = { ...written.body, warning };
+		if (idemScope && idemKey && warning !== null) {
+			try {
+				const rows = await db
+					.update(idempotencyResponses)
+					.set({
+						responseBody: sql`jsonb_set(${idempotencyResponses.responseBody}, '{warning}', to_jsonb(${warning}::text))`,
+					})
+					.where(
+						and(
+							eq(idempotencyResponses.scope, idemScope),
+							eq(idempotencyResponses.key, idemKey),
+							gt(idempotencyResponses.expiresAt, new Date()),
+							sql`${idempotencyResponses.responseBody}->'expense'->>'id' = ${written.expense.id}`,
+							sql`${idempotencyResponses.responseBody}->'warning' = 'null'::jsonb`,
+						),
+					)
+					.returning({ scope: idempotencyResponses.scope });
+				if (rows.length !== 1) {
+					responseBody = written.body;
+					logApiError(
+						'[expenses POST] warning replay update missed',
+						new Error('replay_warning_missed'),
+					);
 				}
-			});
+			} catch (err) {
+				responseBody = written.body;
+				logApiError('[expenses POST] warning replay update failed', err);
+			}
 		}
+		replayReservation?.resolve(responseBody);
 		return NextResponse.json(responseBody);
 	} catch (err) {
 		replayReservation?.reject(err);
