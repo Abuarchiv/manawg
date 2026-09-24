@@ -15,6 +15,7 @@ import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/comp
 import { Skeleton } from '@/components/ui/skeleton';
 import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
+import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { LogoMark } from '@/shared/components/ui/LogoMark';
 import { cn } from '@/shared/lib/cn';
 import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
@@ -280,6 +281,8 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							</Button>
 						</div>
 					)}
+					{/* Signed-in users without a WG never reach WG settings, so offer deletion here. */}
+					{membershipState === 'authenticated-empty' && <AccountDeleteSection />}
 					{membershipState === 'member-list' && memberships.length > 1 && !inviteCode && (
 						<Card>
 							<CardHeader>
