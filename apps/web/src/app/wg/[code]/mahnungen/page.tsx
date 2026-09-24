@@ -1,5 +1,4 @@
 'use client';
-import { Button } from '@/components/ui/button';
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
@@ -21,7 +20,6 @@ import {
 } from '@/features/expenses/debts';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
 import { REMINDER_COOLDOWN_HOURS, canSendReminder } from '@/features/expenses/reminders';
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface ExpenseSplitDto {
@@ -390,19 +388,7 @@ export default function ErinnerungenPage() {
 					<ReminderHistory items={reminders} memberName={memberName} />
 				)}
 			</section>
-			<ThumbAction>
-				{primaryReminder ? (
-					reminderButton(primaryReminder, true)
-				) : (
-					<Button
-						render={<Link href={`${wgBaseHref}/ausgaben`} />}
-						variant="outline"
-						className="min-h-11 w-full bg-background"
-					>
-						Ausgaben ansehen
-					</Button>
-				)}
-			</ThumbAction>
+			{primaryReminder && <ThumbAction>{reminderButton(primaryReminder, true)}</ThumbAction>}
 		</div>
 	);
 }
