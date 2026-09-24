@@ -37,7 +37,7 @@ interface ShoppingItemRowProps {
 	item: ShoppingItem;
 	adder: MemberInfo;
 	buyer: MemberInfo | null;
-	isPending: (id: string) => boolean;
+	pending: boolean;
 	onToggle: (item: ShoppingItem) => void;
 	onRemove: (id: string) => void;
 	removeError?: string | null;
@@ -50,7 +50,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	item,
 	adder,
 	buyer,
-	isPending,
+	pending,
 	onToggle,
 	onRemove,
 	removeError = null,
@@ -59,7 +59,6 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	canRemove,
 }: ShoppingItemRowProps) {
 	const isBought = item.boughtAt !== null;
-	const pending = isPending(item.id);
 	const deleteConfirm = useConfirmDelete();
 	const isDeleteArmed = deleteConfirm.confirmId === item.id;
 	const buyerName = item.boughtByMemberId ? buyer?.name : null;
