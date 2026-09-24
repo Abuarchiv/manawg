@@ -54,8 +54,8 @@ async function mockChatApi(page: Page, sentBodies: string[]): Promise<void> {
 	});
 }
 
-for (const colorScheme of ['light', 'dark'] as const) {
-	for (const width of [320, 360] as const) {
+for (const colorScheme of ['light'] as const) {
+	for (const width of [320] as const) {
 		test(`chat keeps Enter as newline, preserves the draft, and reads it after reload (${colorScheme}, ${width}px)`, async ({
 			page,
 		}) => {

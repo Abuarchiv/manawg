@@ -262,17 +262,21 @@ export function advanceChatRefreshSequence(currentRequestId: number): number {
 	return currentRequestId + 1;
 }
 
-export function reconcileChatMessages<T extends { id: string; createdAt: string }>(
+export function reconcileChatMessages<T extends { id: string }>(
 	existing: readonly T[],
 	latestPage: readonly T[],
 	refreshedLoaded: readonly T[],
 ): T[] {
-	const byId = new Map(existing.map((message) => [message.id, message]));
-	for (const message of [...refreshedLoaded, ...latestPage]) byId.set(message.id, message);
-	return [...byId.values()].sort(
-		(left, right) =>
-			Date.parse(left.createdAt) - Date.parse(right.createdAt) || left.id.localeCompare(right.id),
-	);
+	const latestIds = new Set(latestPage.map((message) => message.id));
+	const refreshedById = new Map(refreshedLoaded.map((message) => [message.id, message]));
+	// Both history and the latest page already have the database's exact order.
+	// JS timestamps lose microseconds, so they cannot safely reconstruct it.
+	return [
+		...existing
+			.filter((message) => !latestIds.has(message.id))
+			.map((message) => refreshedById.get(message.id) ?? message),
+		...latestPage,
+	];
 }
 
 export function mergePagedMessagesById<T extends { id: string }>(

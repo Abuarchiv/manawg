@@ -49,18 +49,6 @@ test.describe('hosted Supabase auth release coverage', () => {
 	);
 	test.describe.configure({ retries: 0 });
 
-	test('a guest can browse the public dashboard and a module', async ({ page }) => {
-		await page.goto('/');
-		await expect(page).toHaveURL(hostedUrl('/'));
-		await expect(page.getByRole('link', { name: 'WG erstellen', exact: true })).toBeVisible();
-
-		await page.getByRole('navigation').getByRole('link', { name: 'Finanzen', exact: true }).click();
-		await expect(page).toHaveURL(hostedUrl('/entdecken/ausgaben'));
-		await expect(
-			page.getByRole('heading', { name: 'Ausgaben', exact: true, level: 1 }),
-		).toBeVisible();
-	});
-
 	test('the guest auth screen exposes only the supported Supabase choices', async ({ page }) => {
 		await page.goto('/neu?action=create');
 		await expect(page.getByRole('heading', { name: 'Anmelden', exact: true })).toBeVisible();

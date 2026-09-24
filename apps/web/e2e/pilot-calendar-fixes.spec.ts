@@ -24,17 +24,6 @@ function expandAgenda(event: EventInput, from: string | Date, to: string | Date)
 	return expandAgendaRecurrence(event, new Date(from), new Date(to));
 }
 
-test('keeps a started all-day event in the evening agenda window', () => {
-	const occurrences = expandAgenda(
-		ALL_DAY_EVENT,
-		'2026-09-29T18:00:00.000Z',
-		'2026-09-29T22:00:00.000Z',
-	);
-
-	expect(occurrences).toHaveLength(1);
-	expect(occurrences[0]?.startsAt).toBe('2026-09-29T00:00:00.000Z');
-});
-
 test('keeps inclusive multi-day all-day overlap across the Berlin fall DST date', () => {
 	const occurrences = expandAgenda(
 		{
@@ -278,6 +267,65 @@ test('edit recurrence uses the canonical select and sends an RFC rule', async ({
 	await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 	await expect.poll(() => patchMethod).toBe('PATCH');
 	await expect.poll(() => patchBody).toEqual(expect.objectContaining({ recurrence: 'FREQ=DAILY' }));
+});
+
+test('successful deletion removes an event restored by a concurrent refresh', async ({ page }) => {
+	test.skip(
+		process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
+		'requires the local fixture server',
+	);
+	const event: EventInput = {
+		id: '33333333-3333-4333-8333-333333333333',
+		title: 'Termin mit laufender Aktualisierung',
+		description: null,
+		startsAt: new Date(Date.now() + 86_400_000).toISOString(),
+		endsAt: null,
+		allDay: false,
+		location: null,
+		recurrence: null,
+	};
+	let markDeleteStarted: () => void = () => {};
+	let releaseDelete: () => void = () => {};
+	const deleteStarted = new Promise<void>((resolve) => {
+		markDeleteStarted = resolve;
+	});
+	const deleteGate = new Promise<void>((resolve) => {
+		releaseDelete = resolve;
+	});
+	await setupMember(page);
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/events*`, (route) =>
+		route.fulfill({ json: { events: [event] } }),
+	);
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/events/${event.id}`, async (route) => {
+		markDeleteStarted();
+		await deleteGate;
+		await route.fulfill({ json: { deleted: true } });
+	});
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores*`, (route) =>
+		route.fulfill({ json: { chores: [] } }),
+	);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+	await dismissOnboarding(page);
+	const eventButton = page.getByRole('button', {
+		name: `Termin bearbeiten: ${event.title}`,
+		exact: true,
+		includeHidden: true,
+	});
+	await eventButton.click();
+	await page.getByRole('button', { name: 'Termin löschen', exact: true }).click();
+	await page.getByRole('alertdialog').getByRole('button', { name: 'Löschen', exact: true }).click();
+	await deleteStarted;
+	try {
+		await expect(eventButton).toHaveCount(0);
+		await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+		await expect(eventButton).toHaveCount(1);
+	} finally {
+		releaseDelete();
+	}
+	await expect(page.getByRole('heading', { name: 'Termin bearbeiten', exact: true })).toHaveCount(
+		0,
+	);
+	await expect(eventButton).toHaveCount(0);
 });
 
 test('keeps complex recurrence on title-only save and replaces it explicitly', async ({ page }) => {

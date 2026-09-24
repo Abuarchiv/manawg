@@ -104,6 +104,7 @@ export default function PutzenPage() {
 		data: cachedAbsences,
 		error: absencesReadError,
 		refresh: refreshAbsences,
+		setData: setCachedAbsences,
 	} = useCachedFetch<AbsenceListResponse>(`/api/wg/${encodedShareCode}/absences`, {
 		memberId: identity.memberId,
 	});
@@ -118,7 +119,7 @@ export default function PutzenPage() {
 	const [monthCompletions, setMonthCompletions] = useState<Record<string, number>>(
 		() => cachedChores?.monthCompletions ?? {},
 	);
-	const [absences, setAbsences] = useState<AbsenceInput[]>(() => cachedAbsences?.absences ?? []);
+	const absences = cachedAbsences?.absences ?? [];
 	const [initialLoading, setInitialLoading] = useState(!cachedChores && !cachedAbsences);
 	const [refreshing, setRefreshing] = useState(false);
 	const [showForm, setShowForm] = useState(false);
@@ -163,8 +164,6 @@ export default function PutzenPage() {
 			}
 			const [result, absenceResult] = await Promise.all([refreshChores(), refreshAbsences()]);
 			if (requestId !== loadRequestIdRef.current) {
-				if (initial) setInitialLoading(false);
-				else setRefreshing(false);
 				return;
 			}
 			let nextLoadError: string | null = null;
@@ -182,8 +181,7 @@ export default function PutzenPage() {
 			} else {
 				nextLoadError = getWgLoadErrorMessage('Putzplan', result.status, result.error);
 			}
-			if (absenceResult.ok) setAbsences(absenceResult.data.absences);
-			else if (!nextLoadError) {
+			if (!absenceResult.ok && !nextLoadError) {
 				nextLoadError = getWgLoadErrorMessage(
 					'Abwesenheiten',
 					absenceResult.status,
@@ -192,10 +190,9 @@ export default function PutzenPage() {
 				);
 			}
 			setLoadError(nextLoadError);
-			if (initial) {
-				if (requestId === loadRequestIdRef.current) setInitialLoading(false);
-			} else {
-				if (requestId === loadRequestIdRef.current) setRefreshing(false);
+			if (requestId === loadRequestIdRef.current) {
+				setInitialLoading(false);
+				setRefreshing(false);
 			}
 		},
 		[identity.memberId, refreshAbsences, refreshChores, wg.shareCode],
@@ -206,11 +203,10 @@ export default function PutzenPage() {
 			setItems(cachedChores.chores);
 			setMonthCompletions(cachedChores.monthCompletions ?? {});
 		}
-		if (cachedAbsences) {
-			hasPageCacheRef.current = true;
-			setAbsences(cachedAbsences.absences);
-		}
+	}, [cachedChores]);
+	useEffect(() => {
 		if (cachedChores || cachedAbsences) {
+			hasPageCacheRef.current = true;
 			setInitialLoading(false);
 			setLoadError(null);
 		}
@@ -227,6 +223,13 @@ export default function PutzenPage() {
 		}
 	}, [absencesReadError, cachedAbsences, cachedChores, choresReadError]);
 	const itemCount = items.length;
+
+	function updateAbsences(update: (current: AbsenceInput[]) => AbsenceInput[]): void {
+		setCachedAbsences((current) => ({
+			...(current ?? { absences: [] }),
+			absences: update(current?.absences ?? []),
+		}));
+	}
 
 	function updateChores(update: (current: Chore[]) => Chore[]): void {
 		setItems(update);
@@ -603,7 +606,7 @@ export default function PutzenPage() {
 						return;
 					}
 					refreshCount();
-					setAbsences((current) => [
+					updateAbsences((current) => [
 						{
 							id: queued.id,
 							memberId: absenceMemberId,
@@ -657,7 +660,7 @@ export default function PutzenPage() {
 			);
 			if (!result.ok) {
 				if (result.status === 404 && result.error === 'absence_not_found') {
-					setAbsences((current) => current.filter((absence) => absence.id !== id));
+					updateAbsences((current) => current.filter((absence) => absence.id !== id));
 					setActionError('Diese Abwesenheit existiert nicht mehr und wurde aus dem Plan entfernt.');
 					void load(false);
 					return;
@@ -671,7 +674,7 @@ export default function PutzenPage() {
 				);
 				return;
 			}
-			setAbsences((current) => current.filter((absence) => absence.id !== id));
+			updateAbsences((current) => current.filter((absence) => absence.id !== id));
 		} finally {
 			endPending(pendingKey);
 		}

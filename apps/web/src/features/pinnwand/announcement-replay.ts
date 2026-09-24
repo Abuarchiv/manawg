@@ -91,6 +91,27 @@ export async function withAnnouncementReplay<T>(
 				}
 
 				const mutation = await mutate(tx);
+				if (
+					key &&
+					lockedClaimExpiry &&
+					mutation.response.status === 429 &&
+					mutation.effect === null
+				) {
+					// A rejected write can retry the same key once its rate limit clears.
+					const rows = await tx
+						.delete(idempotencyResponses)
+						.where(
+							and(
+								eq(idempotencyResponses.scope, scope),
+								eq(idempotencyResponses.key, key),
+								eq(idempotencyResponses.expiresAt, lockedClaimExpiry),
+								sql`${idempotencyResponses.responseBody} @> '{"_claimed": true}'::jsonb`,
+							),
+						)
+						.returning({ scope: idempotencyResponses.scope });
+					if (rows.length !== 1) throw new Error('idempotency_claim_missing');
+					return mutation;
+				}
 				if (key) {
 					const rows = await tx
 						.update(idempotencyResponses)

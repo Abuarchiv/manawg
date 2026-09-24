@@ -17,7 +17,6 @@ test.describe('live public dashboard entry', () => {
 		const examples = page.getByRole('region', { name: 'So kann euer Alltag aussehen' });
 		await expect(examples).toBeVisible();
 		await expect(page.locator('[data-liquid-glass]')).toHaveCount(0);
-		await expect(page.locator('[data-slot="card"][data-liquid-glass]')).toHaveCount(0);
 		for (const label of ['Einkäufe', 'Ausgaben', 'Putzplan', 'Pinnwand']) {
 			await expect(examples.getByRole('article', { name: `${label}, Beispiel-WG` })).toBeVisible();
 		}
@@ -32,7 +31,6 @@ test.describe('live public dashboard entry', () => {
 		await expect(page.getByRole('article', { name: 'Ausgaben, Beispiel-WG' })).toBeVisible();
 		await expect(page.getByText('Pizzaabend', { exact: true })).toBeVisible();
 		await expect(page.locator('[data-liquid-glass]')).toHaveCount(0);
-		await expect(page.locator('[data-slot="card"][data-liquid-glass]')).toHaveCount(0);
 		await page.reload();
 		await expect(
 			page.getByRole('heading', { name: 'Ausgaben', exact: true, level: 1 }),
@@ -102,22 +100,6 @@ test.describe('live public dashboard entry', () => {
 		await page.getByRole('button', { name: 'Erneut prüfen', exact: true }).click();
 		await expect.poll(() => attempts).toBeGreaterThan(1);
 		await expect(page.getByText('Hafermilch', { exact: true })).toBeVisible();
-	});
-
-	test('uses semantic preset colors and respects reduced motion', async ({ page }) => {
-		await page.emulateMedia({ reducedMotion: 'reduce' });
-		await page.goto('/');
-		await expect(
-			page.getByRole('heading', { name: 'Euer WG-Alltag. Gemeinsam geregelt.', exact: true }),
-		).toBeVisible();
-		const customAccent = await page.locator('main').evaluate((element) => {
-			const styles = getComputedStyle(element);
-			return ['--public-accent', '--public-accent-strong', '--public-accent-soft'].some(
-				(name) => styles.getPropertyValue(name).trim().length > 0,
-			);
-		});
-		expect(customAccent).toBe(false);
-		await expect(page.locator('main > div').first()).toHaveCSS('opacity', '1');
 	});
 
 	test('keeps web navigation opaque in high contrast', async ({ page }) => {

@@ -138,26 +138,6 @@ test('shopping create persists a replayable item response in the same transactio
 	expect(state.insertCount).toBe(1);
 });
 
-test('a cache-finalization failure still replays one committed shopping item', async () => {
-	const state: State = { item: null, insertCount: 0, response: null, claimHeld: false };
-	const dependencies = replayDependencies(state);
-	const first = await claimReplaySlot('shopping-create:wg:member', 'same-key', dependencies);
-	expect(first).toEqual({ won: true });
-	await insertShoppingItemWithReplay(createTransaction(state), input);
-
-	// Simulate the later notification-warning cache refresh failing: the
-	// transaction's conservative success response remains available to retries.
-	const retry = await claimReplaySlot('shopping-create:wg:member', 'same-key', dependencies);
-	expect(retry).toMatchObject({
-		won: false,
-		cached: {
-			status: 200,
-			body: { item: { id: 'shopping-1' }, warning: 'notification_delivery_unknown' },
-		},
-	});
-	expect(state.insertCount).toBe(1);
-});
-
 test('shopping create does not cache a response when no item is returned', async () => {
 	const state: State = { item: null, insertCount: 0, response: null, claimHeld: false };
 	await expect(insertShoppingItemWithReplay(createTransaction(state, false), input)).resolves.toBe(

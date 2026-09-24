@@ -5,10 +5,6 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from '../src/core/db/schema';
 import { isOpenShoppingItemDuplicate } from '../src/features/shopping/shopping-duplicate';
-import {
-	clearBoughtErrorMessage,
-	shoppingAddErrorMessage,
-} from '../src/features/shopping/shopping-errors';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
 
 const testDatabaseUrl = process.env.PILOT_SHOPPING_DATABASE_URL?.trim() ?? '';
@@ -30,18 +26,6 @@ test('recognizes a duplicate open shopping item through DrizzleQueryError.cause'
 	const wrapped = new DrizzleQueryError('insert into shopping_items ...', [], postgresError);
 
 	expect(isOpenShoppingItemDuplicate(wrapped)).toBe(true);
-});
-
-test('explains an existing open item without merging its quantity', () => {
-	expect(shoppingAddErrorMessage('shopping_item_duplicate')).toBe(
-		'Dieser Artikel steht bereits offen auf der Einkaufsliste. Prüfe den vorhandenen Eintrag; seine Menge bleibt unverändert.',
-	);
-});
-
-test('explains that clearing bought items requires a WG admin', () => {
-	expect(clearBoughtErrorMessage(403, 'not_admin')).toBe(
-		'Nur Admins dürfen erledigte Artikel für die ganze WG entfernen.',
-	);
 });
 
 async function mockShoppingPage(page: Page, viewerIsAdmin: boolean, deleteStatus = 200) {

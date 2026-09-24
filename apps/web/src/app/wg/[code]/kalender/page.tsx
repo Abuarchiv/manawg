@@ -417,6 +417,7 @@ export default function KalenderPage() {
 			toast.error('Termin konnte nicht gelöscht werden.');
 			return;
 		}
+		updateEvents((current) => current.filter((event) => event.id !== id));
 		setEditing(null);
 	}
 

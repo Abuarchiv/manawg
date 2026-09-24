@@ -179,7 +179,6 @@ export async function POST(
 			throw writeErr;
 		}
 
-		let responseResult = result;
 		if (idemScope && idemKey && result.warning !== null) {
 			try {
 				const persisted = await persistImportReplayWarning(
@@ -193,15 +192,13 @@ export async function POST(
 						'[imports/commit] replay warning persistence failed',
 						new Error('replay_row_missing'),
 					);
-					responseResult = { ...result, warning: null };
 				}
 			} catch (warningErr) {
 				logApiError('[imports/commit] replay warning persistence failed', warningErr);
-				responseResult = { ...result, warning: null };
 			}
 		}
-		if (replayReservation?.owned) replayReservation.resolve(responseResult);
-		return NextResponse.json(responseResult);
+		if (replayReservation?.owned) replayReservation.resolve(result);
+		return NextResponse.json(result);
 	} catch (err) {
 		replayReservation?.reject(err);
 		if (err instanceof Error && err.message === 'member_not_in_wg') {

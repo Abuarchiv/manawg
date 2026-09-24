@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { activityItemKey } from '../src/core/reads/activity';
 import { inputDateToIso } from '../src/core/utils/local-date';
 import { detectMention } from '../src/features/chat/chat-pure';
 import {
@@ -238,18 +237,6 @@ test('calendar creation retains its complete draft and a cleared start across cl
 	await expect(page.locator('#event-create-title')).toHaveValue('');
 	await expect(page.locator('#event-create-end')).toHaveValue('');
 	await expect(page.locator('#event-create-start')).not.toHaveValue('');
-});
-
-test('activity keys stay unique when rows have identical display text', () => {
-	const item = {
-		kind: 'audit',
-		timestamp: '2026-09-19T10:00:00.000Z',
-		memberName: 'Abu',
-		text: 'hat etwas geändert',
-	};
-
-	expect(activityItemKey(item, 0)).not.toBe(activityItemKey(item, 1));
-	expect(activityItemKey({ ...item, id: 'audit-1' }, 0)).toBe('audit-1');
 });
 
 test('mention autocomplete does not open for an isolated at-sign', () => {

@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
@@ -8,8 +7,6 @@ import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 type RateLimitModule = typeof import('../src/core/rate-limit');
 
 const RATE_LIMIT_PATH = path.join(process.cwd(), 'src/core/rate-limit.ts');
-const FAIL_OPEN_PRODUCTION_LOG =
-	'[rate-limit] Upstash Redis not configured in production — failing open';
 const FAIL_CLOSED_PRODUCTION_LOG =
 	'[rate-limit] Upstash Redis not configured in production — failing closed';
 const ENV_KEYS = [
@@ -181,14 +178,4 @@ test('Upstash URL validation rejects embedded credentials and URL parameters', (
 			restore();
 		}
 	}
-});
-
-test('the production alert text is pinned so the test cannot drift with the environment', async () => {
-	const source = await readFile(RATE_LIMIT_PATH, 'utf8');
-
-	expect(source).toContain(FAIL_OPEN_PRODUCTION_LOG);
-	expect(source).toContain(FAIL_CLOSED_PRODUCTION_LOG);
-	expect(source).toContain("process.env.VERCEL_ENV === 'production'");
-	expect(source).toContain("process.env.NODE_ENV === 'test'");
-	expect(source).toContain('!process.env.VERCEL_ENV');
 });

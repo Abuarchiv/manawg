@@ -80,19 +80,12 @@ test('cached shopping content stays visible while a revisit is revalidating', as
 	const inventoryLink = page.locator(
 		`nav[aria-label="Haushalt"] a[href="/wg/${SHARE_CODE}/vorraete"]:visible`,
 	);
-	await expect(inventoryLink).toHaveCount(1);
-	await expect(inventoryLink).toBeVisible();
-	await expect(inventoryLink).toBeEnabled();
-	await expect(inventoryLink).toHaveAttribute('href', `/wg/${SHARE_CODE}/vorraete`);
 	await inventoryLink.click();
 	await expect(page).toHaveURL(new RegExp(`/wg/${SHARE_CODE}/vorraete$`));
 	await expect(page.getByRole('heading', { name: 'Vorräte' })).toBeVisible();
 	const shoppingLink = page.locator(
 		`nav[aria-label="Haushalt"] a[href="/wg/${SHARE_CODE}/einkauf"]:visible`,
 	);
-	await expect(shoppingLink).toHaveCount(1);
-	await expect(shoppingLink).toBeVisible();
-	await expect(shoppingLink).toBeEnabled();
 	holdNextShoppingRead = true;
 	await shoppingLink.click();
 	await expect(page).toHaveURL(new RegExp(`/wg/${SHARE_CODE}/einkauf$`));

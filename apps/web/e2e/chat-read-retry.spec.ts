@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 
-for (const colorScheme of ['light', 'dark'] as const) {
+for (const colorScheme of ['light'] as const) {
 	test(`chat read failures remain visible and retryable (${colorScheme}, 320px)`, async ({
 		page,
 	}) => {

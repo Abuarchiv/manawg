@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { PgDialect, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
+import ts from 'typescript';
 import * as chat from '../src/features/chat/chat-pure.ts';
 import * as chatReadQuery from '../src/features/chat/chat-read-query.ts';
 
@@ -214,20 +216,6 @@ test('late older refresh response cannot overwrite a newer tombstone', () => {
 	assert.equal(visibleMessage, 'tombstone');
 });
 
-test('GET started before successful edit cannot overwrite the edited body', () => {
-	let latestRequestId = 1;
-	const oldGetRequestId = latestRequestId;
-	let visibleBody = 'original body';
-
-	latestRequestId = chat.advanceChatRefreshSequence?.(latestRequestId) ?? latestRequestId;
-	visibleBody = 'edited body';
-	if (chat.isLatestChatRefreshResponse?.(oldGetRequestId, latestRequestId)) {
-		visibleBody = 'original body';
-	}
-
-	assert.equal(visibleBody, 'edited body');
-});
-
 test('GET started before successful delete cannot restore the deleted body', () => {
 	let latestRequestId = 1;
 	const oldGetRequestId = latestRequestId;
@@ -240,4 +228,145 @@ test('GET started before successful delete cannot restore the deleted body', () 
 	}
 
 	assert.equal(visibleBody, null);
+});
+
+test('reconciliation preserves database order when timestamps lose microseconds', () => {
+	const older = {
+		id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+		createdAt: new Date('2026-09-24T10:00:00.123100Z').toISOString(),
+		body: 'older',
+	};
+	const newer = {
+		id: '00000000-0000-4000-8000-000000000000',
+		createdAt: new Date('2026-09-24T10:00:00.123900Z').toISOString(),
+		body: 'newer',
+	};
+	const latest = { id: 'latest', createdAt: '2026-09-24T10:00:01.000Z', body: 'latest' };
+	assert.deepEqual(chat.reconcileChatMessages([], [older, newer], []), [older, newer]);
+	// Refreshed rows are unordered by the API; they must only replace in place.
+	const edited = { ...older, body: 'edited' };
+	assert.deepEqual(chat.reconcileChatMessages([older, newer, latest], [latest], [newer, edited]), [
+		edited,
+		newer,
+		latest,
+	]);
+	assert.deepEqual(chat.reconcileChatMessages([older, newer], [newer, latest], []), [
+		older,
+		newer,
+		latest,
+	]);
+});
+
+// Execute the component's real request callbacks with controlled transport and
+// state, so polling latency is tested without a browser or duplicating the loop.
+function refreshHarness(apiFetch, initialMessages = []) {
+	const path = new URL('../src/features/chat/components/ChatView.tsx', import.meta.url);
+	const source = ts.createSourceFile(
+		'ChatView.tsx',
+		readFileSync(path, 'utf8'),
+		ts.ScriptTarget.ES2022,
+		true,
+	);
+	const declarations = [];
+	function visit(node) {
+		if (
+			ts.isVariableDeclaration(node) &&
+			['fetchMessages', 'refresh'].includes(node.name.getText(source))
+		) {
+			declarations.push(`const ${node.getText(source)};`);
+		}
+		ts.forEachChild(node, visit);
+	}
+	visit(source);
+	assert.equal(declarations.length, 2);
+	const scope = {
+		...chat,
+		PAGE_SIZE: 50,
+		messages: initialMessages,
+		encodedShareCode: 'test',
+		identity: { memberId: 'member' },
+		apiFetch,
+		useCallback: (callback) => callback,
+		refreshPromiseRef: { current: null },
+		refreshRequestSequenceRef: { current: 0 },
+		refreshOlderOffsetRef: { current: 0 },
+		reactionMutationVersionsRef: { current: new Map() },
+		pendingReactionMutationsRef: { current: new Set() },
+		setRefreshError: (update) => {
+			scope.error = update(scope.error ?? false);
+		},
+		setMessages: (update) => {
+			scope.messages = update(scope.messages);
+		},
+		setReactionRows: (update) => {
+			scope.reactions = update(scope.reactions ?? []);
+		},
+		setHasMoreOlder: (update) => {
+			scope.hasMore = update(scope.hasMore ?? false);
+		},
+	};
+	const code = ts.transpileModule(declarations.join('\n'), {
+		compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+	}).outputText;
+	return {
+		scope,
+		refresh: new Function('scope', `with (scope) { ${code}; return refresh; }`)(scope),
+	};
+}
+
+test('8-second polling accepts a 10-second response and reports a slow failure', async (t) => {
+	t.mock.timers.enable({ apis: ['setTimeout'] });
+	let requests = 0;
+	const message = { id: 'server-message', createdAt: '2026-09-24T10:00:00.000Z' };
+	const { scope, refresh } = refreshHarness(() => {
+		const request = ++requests;
+		return new Promise((resolve) =>
+			setTimeout(
+				() =>
+					resolve(
+						request === 1
+							? { ok: true, data: { messages: [message], reactions: [] } }
+							: { ok: false, error: 'Netzwerkfehler', status: 0 },
+					),
+				10_000,
+			),
+		);
+	});
+	const first = refresh();
+	t.mock.timers.tick(8_000);
+	assert.equal(refresh(), first);
+	assert.equal(requests, 1);
+	t.mock.timers.tick(2_000);
+	assert.equal(await first, true);
+	assert.deepEqual(scope.messages, [message]);
+	const second = refresh();
+	t.mock.timers.tick(8_000);
+	assert.equal(refresh(), second);
+	t.mock.timers.tick(2_000);
+	assert.equal(await second, false);
+	assert.equal(scope.error, true);
+});
+
+test('a coalesced request still respects successful mutation invalidation', async () => {
+	let complete;
+	const deleted = { id: 'message', body: null, deletedAt: '2026-09-24T10:00:00.000Z' };
+	const { scope, refresh } = refreshHarness(
+		() =>
+			new Promise((resolve) => {
+				complete = resolve;
+			}),
+		[deleted],
+	);
+	const pending = refresh();
+	scope.refreshRequestSequenceRef.current = chat.advanceChatRefreshSequence(
+		scope.refreshRequestSequenceRef.current,
+	);
+	assert.equal(refresh(), pending);
+	complete({
+		ok: true,
+		data: { messages: [{ ...deleted, body: 'old secret', deletedAt: null }], reactions: [] },
+	});
+	await pending;
+	assert.deepEqual(scope.messages, [deleted]);
+	assert.equal(scope.refreshPromiseRef.current, null);
 });

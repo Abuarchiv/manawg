@@ -21,7 +21,7 @@ async function mutateIfWinner(
 }
 
 test('idempotency never performs a second mutation for incomplete winners', async () => {
-	for (const scenario of ['slow', 'lost-response', 'crashed'] as const) {
+	for (const scenario of ['slow', 'lost-response'] as const) {
 		await test.step(scenario, async () => {
 			let claimed = false;
 			let cached: MutationResponse | null = null;

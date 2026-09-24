@@ -342,7 +342,7 @@ export default function EinkaufPage() {
 						return;
 					}
 					refreshCount();
-					if (!clearEditedQueueItem()) {
+					if (fromInput && !clearEditedQueueItem()) {
 						setAddError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
@@ -377,7 +377,7 @@ export default function EinkaufPage() {
 				return;
 			}
 			addIdempotencyKeyRef.current = null;
-			if (!clearEditedQueueItem()) {
+			if (fromInput && !clearEditedQueueItem()) {
 				setAddError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}

@@ -128,6 +128,15 @@ export const PATCH = withWgRoute<{ id: string }>(
 		const denied = await requireOwnerOrAdmin(wgId, auth.member, template.createdByMemberId);
 		if (denied) return denied;
 
+		const onlyPauseRequest =
+			parsed.data.paused !== undefined &&
+			parsed.data.description === undefined &&
+			parsed.data.amountCents === undefined &&
+			parsed.data.currency === undefined &&
+			parsed.data.paidByMemberId === undefined &&
+			parsed.data.intervalMonths === undefined &&
+			parsed.data.nextDueAt === undefined &&
+			parsed.data.splits === undefined;
 		const nextDescription = parsed.data.description ?? template.description;
 		const nextAmountCents = parsed.data.amountCents ?? template.amountCents;
 		const nextPaidByMemberId = parsed.data.paidByMemberId ?? template.paidByMemberId;
@@ -152,7 +161,10 @@ export const PATCH = withWgRoute<{ id: string }>(
 				and(
 					eq(wgMembers.wgId, wgId),
 					inArray(wgMembers.id, memberIds),
-					isNull(wgMembers.deactivatedAt),
+					// Existing subscriptions must remain pausable after a participant leaves.
+					...(onlyPauseRequest && parsed.data.paused === true
+						? []
+						: [isNull(wgMembers.deactivatedAt)]),
 				),
 			);
 		if (memberRows.length !== memberIds.length) return badRequest('member_not_in_wg');
@@ -196,15 +208,6 @@ export const PATCH = withWgRoute<{ id: string }>(
 					? null
 					: template.pausedAt;
 
-		const onlyPauseRequest =
-			parsed.data.paused !== undefined &&
-			parsed.data.description === undefined &&
-			parsed.data.amountCents === undefined &&
-			parsed.data.currency === undefined &&
-			parsed.data.paidByMemberId === undefined &&
-			parsed.data.intervalMonths === undefined &&
-			parsed.data.nextDueAt === undefined &&
-			parsed.data.splits === undefined;
 		if (onlyPauseRequest && pauseTransition === null) {
 			return NextResponse.json({ recurringExpense: serialize(template) });
 		}

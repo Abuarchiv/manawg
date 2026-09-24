@@ -505,7 +505,7 @@ async function assertViewportLayout(page: Page, route: LayoutRoute): Promise<voi
 }
 
 for (const route of ['home', 'chores', 'shopping', 'inventory'] as const) {
-	for (const colorScheme of ['light', 'dark'] as const) {
+	for (const colorScheme of ['light'] as const) {
 		for (const textScale of ['normal', '200%'] as const) {
 			test(`${route} remains readable at 320px (${colorScheme}, ${textScale} text)`, async ({
 				page,

@@ -94,6 +94,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	const loadingOlderRef = useRef(false);
 	const refreshOlderOffsetRef = useRef(0);
 	const refreshRequestSequenceRef = useRef(0);
+	const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
 	const [olderError, setOlderError] = useState(false);
 	const [sendError, setSendError] = useState<string | null>(null);
 	const pendingMessageRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
@@ -185,7 +186,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		return () => observer.disconnect();
 	}, [markLatestRead]);
 
-	const refresh = useCallback(async (): Promise<boolean> => {
+	const fetchMessages = useCallback(async (): Promise<boolean> => {
 		const requestSequence = advanceChatRefreshSequence(refreshRequestSequenceRef.current);
 		refreshRequestSequenceRef.current = requestSequence;
 		const refreshBatch = nextChatRefreshBatch(
@@ -257,6 +258,15 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		);
 		return true;
 	}, [encodedShareCode, identity.memberId, messages]);
+
+	const refresh = useCallback((): Promise<boolean> => {
+		// A poll must not supersede a request that is still loading. Mutations
+		// still invalidate its sequence so a stale snapshot cannot undo them.
+		refreshPromiseRef.current ??= fetchMessages().finally(() => {
+			refreshPromiseRef.current = null;
+		});
+		return refreshPromiseRef.current;
+	}, [fetchMessages]);
 
 	function beginReactionMutation(messageId: string, emoji: string): string {
 		const key = `${messageId}|${identity.memberId}|${emoji}`;
@@ -365,6 +375,9 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			return false;
 		}
 		pendingMessageRequestRef.current = null;
+		refreshRequestSequenceRef.current = advanceChatRefreshSequence(
+			refreshRequestSequenceRef.current,
+		);
 		setMessages((prev) =>
 			prev.some((message) => message.id === res.data.message.id)
 				? prev.map((message) => (message.id === res.data.message.id ? res.data.message : message))

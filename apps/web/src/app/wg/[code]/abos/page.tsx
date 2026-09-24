@@ -222,8 +222,8 @@ export default function AbosPage() {
 			} else {
 				setLoadError(getWgLoadErrorMessage('Abos', res.status, res.error, { verb: 'konnten' }));
 			}
-			if (initial) setLoading(false);
-			else setRefreshing(false);
+			setLoading(false);
+			setRefreshing(false);
 		},
 		[refreshAbos],
 	);

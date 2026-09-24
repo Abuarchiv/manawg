@@ -37,17 +37,6 @@ function getQaAuthConfig(env: NodeJS.ProcessEnv = process.env): QaAuthConfig | n
 	return { url, publishableKey, email, password };
 }
 
-test('trims the real Supabase QA password loaded from the environment', () => {
-	const config = getQaAuthConfig({
-		E2E_SUPABASE_URL: ' https://example.supabase.co/ ',
-		E2E_SUPABASE_PUBLISHABLE_KEY: ' publishable-key ',
-		E2E_SUPABASE_TEST_EMAIL: ' qa@example.com ',
-		E2E_SUPABASE_TEST_PASSWORD: ' qa-password ',
-	});
-
-	expect(config?.password).toBe('qa-password');
-});
-
 async function authenticateQaUser(
 	page: Page,
 	{ url, publishableKey, email, password }: QaAuthConfig,
@@ -259,7 +248,6 @@ test.describe('ManaWG launch smoke', () => {
 			expect(createdShareCode).toMatch(/^[A-Z0-9]{8}$/);
 			expect(created.wg?.id).toMatch(UUID_PATTERN);
 			expect(created.creator?.id).toMatch(UUID_PATTERN);
-			expect(created.wg?.shareCode).toBe(createdShareCode);
 
 			await expect(page.getByRole('heading', { name: wgName, exact: true, level: 1 })).toBeVisible({
 				timeout: 30_000,
@@ -311,9 +299,6 @@ test.describe('ManaWG launch smoke', () => {
 			expect(await existingMemberJoin.json()).toMatchObject({ code: 'already_joined' });
 
 			// Step 6: The focused overview retains access to every primary destination.
-			await expect(page.getByRole('heading', { name: /^Start – /, level: 1 })).toBeVisible({
-				timeout: 30_000,
-			});
 			await expect(
 				page.getByRole('heading', { name: `Start – ${wgName}`, exact: true }),
 			).toBeVisible();

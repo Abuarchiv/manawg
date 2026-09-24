@@ -136,8 +136,8 @@ export default function ErinnerungenPage() {
 				);
 			}
 			setLoadErrors(nextErrors);
-			if (initial) setLoading(false);
-			else setRefreshing(false);
+			setLoading(false);
+			setRefreshing(false);
 		},
 		[refreshExpenses, refreshReminders],
 	);

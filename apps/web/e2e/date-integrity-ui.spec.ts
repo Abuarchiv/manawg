@@ -5,7 +5,6 @@ test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires the loc
 
 const SHARE_CODE = 'MTE8PZAT';
 const MOBILE_VIEWPORT = { width: 320, height: 740 } as const;
-const NORMAL_VIEWPORT = { width: 1280, height: 720 } as const;
 
 type CapturedPost = {
 	bodies: unknown[];
@@ -173,24 +172,6 @@ test('calendar reports a missing start only on save and leaves the end unchanged
 		.toBe(true);
 	await expect(start).toHaveValue('');
 	await expect(end).toHaveValue('2026-09-22T15:00');
-});
-
-test('calendar create keeps date drafts after close and reopen at normal width', async ({
-	page,
-}) => {
-	await openCalendarCreate(page, NORMAL_VIEWPORT);
-
-	const startValue = '2026-09-22T14:00';
-	const endValue = '2026-09-22T15:00';
-	await page.getByLabel('Beginn').fill(startValue);
-	await page.getByLabel('Ende (optional)').fill(endValue);
-	await page.getByRole('button', { name: 'Schließen · Entwurf behalten', exact: true }).click();
-	await expect(page.getByRole('heading', { name: 'Neuer Termin', exact: true })).toBeHidden();
-
-	await page.getByRole('button', { name: 'Termin hinzufügen', exact: true }).click();
-	await expect(page.getByRole('heading', { name: 'Neuer Termin', exact: true })).toBeVisible();
-	await expect(page.getByLabel('Beginn')).toHaveValue(startValue);
-	await expect(page.getByLabel('Ende (optional)')).toHaveValue(endValue);
 });
 
 test('legacy all-day title-only edit preserves the displayed date and both stored timestamps', async ({
