@@ -46,7 +46,7 @@ export function QuickRestockSheet({
 	const encodedShareCode = encodeURIComponent(shareCode);
 	const [pendingId, setPendingId] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const restockRequestRef = useRef<{ itemId: string; key: string } | null>(null);
+	const restockRequestKeysRef = useRef(new Map<string, string>());
 
 	const sorted = [...items]
 		.filter((item) => item.decrementCount30d > 0 || item.lastDecrementedAt !== null)
@@ -57,15 +57,14 @@ export function QuickRestockSheet({
 		if (pendingId !== null) return;
 		setPendingId(item.id);
 		setError(null);
-		const pendingRequest = restockRequestRef.current;
 		const idempotencyKey =
-			pendingRequest?.itemId === item.id ? pendingRequest.key : createOfflineIdempotencyKey();
+			restockRequestKeysRef.current.get(item.id) ?? createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
 			setPendingId(null);
 			setError('Aktualisierung konnte nicht sicher gesendet werden. Versuche es erneut.');
 			return;
 		}
-		restockRequestRef.current = { itemId: item.id, key: idempotencyKey };
+		restockRequestKeysRef.current.set(item.id, idempotencyKey);
 		const res = await apiFetch(
 			`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}`,
 			{
@@ -78,10 +77,10 @@ export function QuickRestockSheet({
 		);
 		setPendingId(null);
 		if (res.ok) {
-			restockRequestRef.current = null;
+			restockRequestKeysRef.current.delete(item.id);
 			onChanged();
 		} else {
-			if (res.status > 0 && res.status < 500) restockRequestRef.current = null;
+			if (res.status > 0 && res.status < 500) restockRequestKeysRef.current.delete(item.id);
 			setError('Aktualisierung fehlgeschlagen.');
 		}
 	}

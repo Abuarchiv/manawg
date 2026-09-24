@@ -1,10 +1,8 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
 	Empty,
-	EmptyContent,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
@@ -16,7 +14,7 @@ import {
 	formatEventTimeRange,
 } from '@/features/events/events';
 import { occurrenceToIcs } from '@/features/events/ics';
-import { CalendarClock, CalendarPlus, ChevronRight, Sparkles } from 'lucide-react';
+import { CalendarClock, ChevronRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 interface CalendarUpcomingListProps {
@@ -27,7 +25,6 @@ interface CalendarUpcomingListProps {
 		startsAt: string;
 	}>;
 	onSelect: (occurrence: EventOccurrence) => void;
-	onCreate: () => void;
 	wgBaseHref: string;
 }
 
@@ -66,7 +63,6 @@ export function CalendarUpcomingList({
 	occurrences,
 	choreOccurrences,
 	onSelect,
-	onCreate,
 	wgBaseHref,
 }: CalendarUpcomingListProps) {
 	const entries = [
@@ -92,12 +88,6 @@ export function CalendarUpcomingList({
 					<EmptyTitle>Die nächsten 30 Tage sind frei</EmptyTitle>
 					<EmptyDescription>Trag euren nächsten Termin ein.</EmptyDescription>
 				</EmptyHeader>
-				<EmptyContent>
-					<Button type="button" onClick={onCreate}>
-						<CalendarPlus data-icon="inline-start" aria-hidden />
-						Termin hinzufügen
-					</Button>
-				</EmptyContent>
 			</Empty>
 		);
 	}

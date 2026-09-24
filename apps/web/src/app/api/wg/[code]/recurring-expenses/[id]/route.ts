@@ -1,12 +1,13 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, recurringExpenses, wgMembers } from '@/core/db';
-import { badRequest, notFound, tooMany } from '@/core/errors';
+import { apiError, badRequest, notFound, tooMany } from '@/core/errors';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
+import { checkPaidByGuard } from '@/features/expenses/expenses';
 import {
 	parseRecurringSplits,
 	recurringSplitsMatchAmount,
@@ -127,12 +128,22 @@ export const PATCH = withWgRoute<{ id: string }>(
 		const denied = await requireOwnerOrAdmin(wgId, auth.member, template.createdByMemberId);
 		if (denied) return denied;
 
+		const onlyPauseRequest =
+			parsed.data.paused !== undefined &&
+			parsed.data.description === undefined &&
+			parsed.data.amountCents === undefined &&
+			parsed.data.currency === undefined &&
+			parsed.data.paidByMemberId === undefined &&
+			parsed.data.intervalMonths === undefined &&
+			parsed.data.nextDueAt === undefined &&
+			parsed.data.splits === undefined;
 		const nextDescription = parsed.data.description ?? template.description;
 		const nextAmountCents = parsed.data.amountCents ?? template.amountCents;
 		const nextPaidByMemberId = parsed.data.paidByMemberId ?? template.paidByMemberId;
 		const nextIntervalMonths = parsed.data.intervalMonths ?? template.intervalMonths;
 		const nextDueAt = parsed.data.nextDueAt ? new Date(parsed.data.nextDueAt) : template.nextDueAt;
-		const nextSplits = parsed.data.splits ?? parseRecurringSplits(template.splitsJson);
+		const templateSplits = parseRecurringSplits(template.splitsJson);
+		const nextSplits = parsed.data.splits ?? templateSplits;
 		if (hasDuplicateSplitDebtors(nextSplits)) {
 			return badRequest('splits_duplicate_debtor');
 		}
@@ -150,10 +161,36 @@ export const PATCH = withWgRoute<{ id: string }>(
 				and(
 					eq(wgMembers.wgId, wgId),
 					inArray(wgMembers.id, memberIds),
-					isNull(wgMembers.deactivatedAt),
+					// Existing subscriptions must remain pausable after a participant leaves.
+					...(onlyPauseRequest && parsed.data.paused === true
+						? []
+						: [isNull(wgMembers.deactivatedAt)]),
 				),
 			);
 		if (memberRows.length !== memberIds.length) return badRequest('member_not_in_wg');
+		const existingSplitAmounts = new Map(
+			templateSplits.map(
+				({ debtorMemberId, amountCents }) => [debtorMemberId, amountCents] as const,
+			),
+		);
+		const hasSplitChange =
+			parsed.data.splits !== undefined &&
+			(nextSplits.length !== templateSplits.length ||
+				nextSplits.some(
+					({ debtorMemberId, amountCents }) =>
+						existingSplitAmounts.get(debtorMemberId) !== amountCents,
+				));
+		const hasFinancialChange =
+			(parsed.data.amountCents !== undefined && parsed.data.amountCents !== template.amountCents) ||
+			(parsed.data.paidByMemberId !== undefined &&
+				parsed.data.paidByMemberId !== template.paidByMemberId) ||
+			hasSplitChange;
+		if (
+			hasFinancialChange &&
+			!checkPaidByGuard(nextPaidByMemberId, auth.member.memberId, nextSplits).ok
+		) {
+			return apiError('paid_by_must_include_caller', 403, 'paid_by_must_include_caller');
+		}
 
 		const pauseTransition =
 			parsed.data.paused === undefined
@@ -171,15 +208,6 @@ export const PATCH = withWgRoute<{ id: string }>(
 					? null
 					: template.pausedAt;
 
-		const onlyPauseRequest =
-			parsed.data.paused !== undefined &&
-			parsed.data.description === undefined &&
-			parsed.data.amountCents === undefined &&
-			parsed.data.currency === undefined &&
-			parsed.data.paidByMemberId === undefined &&
-			parsed.data.intervalMonths === undefined &&
-			parsed.data.nextDueAt === undefined &&
-			parsed.data.splits === undefined;
 		if (onlyPauseRequest && pauseTransition === null) {
 			return NextResponse.json({ recurringExpense: serialize(template) });
 		}

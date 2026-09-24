@@ -303,7 +303,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								className="text-base"
 							/>
 						</Field>
-						<p id="auth-phone-hint" className="text-[12px] text-muted-foreground">
+						<p id="auth-phone-hint" className="text-xs text-muted-foreground">
 							Mit + und Landesvorwahl, zum Beispiel +491701234567.
 						</p>
 						{otpRequested && (

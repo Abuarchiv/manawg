@@ -202,18 +202,18 @@ function importRoute(persist: () => Promise<boolean>) {
 	};
 }
 
-test('immediate response includes warning only after persistence', async () => {
+test('immediate response preserves a known warning when persistence fails', async () => {
 	const saved = importRoute(async () => true);
-	expect((await saved.post()).json()).resolves.toMatchObject({ warning });
+	await expect((await saved.post()).json()).resolves.toMatchObject({ warning });
 	expect(saved.logs()).toBe(0);
 
 	const missing = importRoute(async () => false);
-	expect((await missing.post()).json()).resolves.toMatchObject({ warning: null });
+	await expect((await missing.post()).json()).resolves.toMatchObject({ warning });
 	expect(missing.logs()).toBe(1);
 
 	const failed = importRoute(async () => {
 		throw new Error('db_unavailable');
 	});
-	expect((await failed.post()).json()).resolves.toMatchObject({ warning: null });
+	await expect((await failed.post()).json()).resolves.toMatchObject({ warning });
 	expect(failed.logs()).toBe(1);
 });

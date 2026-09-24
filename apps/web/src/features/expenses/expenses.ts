@@ -38,7 +38,7 @@ type PaidByGuardResult = { ok: true } | { ok: false; reason: 'paid_by_must_inclu
 
 /**
  * Abuse guard: when the caller logs an expense paid by SOMEONE ELSE, require
- * the caller to also bear a share in the split. This prevents pure
+ * the caller to bear a positive share in the split. This prevents pure
  * fabrication ("Alice silently makes Charlie owe Bob 30€") while still
  * allowing the legitimate "log on behalf of" UX where the caller is part of
  * the cost group. Self-paid expenses (paidBy === caller) are unrestricted.
@@ -48,9 +48,12 @@ type PaidByGuardResult = { ok: true } | { ok: false; reason: 'paid_by_must_inclu
 export function checkPaidByGuard(
 	paidByMemberId: string,
 	callerId: string,
-	debtorIds: readonly string[],
+	splits: readonly ExpenseSplitInput[],
 ): PaidByGuardResult {
-	if (paidByMemberId !== callerId && !debtorIds.includes(callerId)) {
+	if (
+		paidByMemberId !== callerId &&
+		!splits.some((split) => split.debtorMemberId === callerId && split.amountCents > 0)
+	) {
 		return { ok: false, reason: 'paid_by_must_include_caller' };
 	}
 	return { ok: true };

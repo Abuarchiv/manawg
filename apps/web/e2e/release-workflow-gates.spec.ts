@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test';
 import {
 	PREVIEW_AUTH_ENV_NAMES,
 	assertExactRevision,
+	assertMainCiEvidence,
 	assertPreviewEvent,
 	assertPreviewEvidence,
 	assertProductionDispatch,
@@ -39,12 +40,28 @@ const validPreviewRun = {
 	event: 'deployment_status',
 	status: 'completed',
 	conclusion: 'success',
-	head_sha: RUN_SHA,
+	head_sha: SHA,
 };
 
 const validPreviewJobs = [
 	{ name: 'db-supabase-preview', status: 'completed', conclusion: 'success' },
 	{ name: 'e2e-preview', status: 'completed', conclusion: 'success' },
+];
+
+const validMainCiRun = {
+	id: 456,
+	name: 'CI',
+	path: '.github/workflows/ci.yml',
+	event: 'push',
+	status: 'completed',
+	conclusion: 'success',
+	head_sha: SHA,
+	head_branch: 'main',
+};
+
+const validMainCiJobs = [
+	{ name: 'validate', status: 'completed', conclusion: 'success' },
+	{ name: 'e2e-fixtures', status: 'completed', conclusion: 'success' },
 ];
 
 function workflowJob(source: string, name: string): string {
@@ -131,6 +148,20 @@ test('filters trusted Preview statuses before protected environments and keeps p
 	expect(CI_WORKFLOW).toContain("github.ref == 'refs/heads/main'");
 });
 
+test('SHA-ref Preview statuses do not depend on github.ref at the job gate', () => {
+	for (const jobName of ['db-supabase-preview', 'e2e-preview']) {
+		const job = workflowJob(CI_WORKFLOW, jobName);
+		const gate = job.slice(0, job.indexOf('    runs-on:'));
+		const deploymentGate = gate.slice(gate.indexOf("github.event_name == 'deployment_status'"));
+		expect(deploymentGate).toContain('github.event.deployment.ref == github.event.deployment.sha');
+		expect(deploymentGate).not.toContain('github.ref ==');
+	}
+	const pushGate = workflowJob(CI_WORKFLOW, 'db-supabase-preview').split(
+		"github.event_name == 'deployment_status'",
+	)[0];
+	expect(pushGate).toContain("github.ref == 'refs/heads/main'");
+});
+
 test('rechecks current main immediately before the production connection', () => {
 	const recheck = PRODUCTION_WORKFLOW.indexOf(
 		'name: Recheck current main before production connection',
@@ -142,6 +173,7 @@ test('rechecks current main immediately before the production connection', () =>
 	expect(directConnection).toBeGreaterThan(recheck);
 	const cutoverBlock = PRODUCTION_WORKFLOW.slice(recheck, directConnection);
 	expect(cutoverBlock).toContain('git ls-remote --exit-code origin refs/heads/main');
+	expect(cutoverBlock).toContain('git rev-parse HEAD');
 	expect(cutoverBlock).toContain('assertExactRevision');
 	expect(cutoverBlock.match(/\n\s*-\s+name:/g) ?? []).toHaveLength(0);
 });
@@ -168,7 +200,81 @@ test('requires the exact main revision and production confirmation', () => {
 	).toThrow();
 });
 
-test('accepts successful Preview evidence when distinct commits share the candidate tree', () => {
+test('accepts successful main push CI evidence for the exact candidate SHA', () => {
+	expect(
+		assertMainCiEvidence({
+			candidateSha: SHA,
+			run: validMainCiRun,
+			jobs: validMainCiJobs,
+		}),
+	).toEqual({ ciRunId: 456, sourceRevision: SHA });
+});
+
+test('rejects missing or malformed candidate SHAs for main CI evidence', () => {
+	for (const candidateSha of [undefined, 'not-a-sha']) {
+		expect(() =>
+			assertMainCiEvidence({
+				candidateSha,
+				run: validMainCiRun,
+				jobs: validMainCiJobs,
+			}),
+		).toThrow('Candidate SHA');
+	}
+});
+
+test('rejects non-push, wrong-main, unsuccessful, or incomplete main CI evidence', () => {
+	for (const evidence of [
+		{ run: undefined, jobs: validMainCiJobs },
+		{ run: { ...validMainCiRun, event: 'deployment_status' }, jobs: validMainCiJobs },
+		{ run: { ...validMainCiRun, head_branch: 'fix/audit-158' }, jobs: validMainCiJobs },
+		{ run: { ...validMainCiRun, head_sha: RUN_SHA }, jobs: validMainCiJobs },
+		{ run: { ...validMainCiRun, path: '.github/workflows/other.yml' }, jobs: validMainCiJobs },
+		{ run: { ...validMainCiRun, status: 'in_progress' }, jobs: validMainCiJobs },
+		{ run: { ...validMainCiRun, conclusion: 'failure' }, jobs: validMainCiJobs },
+		{ candidateSha: RUN_SHA, run: validMainCiRun, jobs: validMainCiJobs },
+		{
+			run: validMainCiRun,
+			jobs: [{ name: 'validate', status: 'completed', conclusion: 'skipped' }, validMainCiJobs[1]],
+		},
+		{
+			run: validMainCiRun,
+			jobs: [{ name: 'validate', status: 'completed', conclusion: 'failure' }, validMainCiJobs[1]],
+		},
+		{
+			run: validMainCiRun,
+			jobs: [
+				validMainCiJobs[0],
+				{ name: 'e2e-fixtures', status: 'completed', conclusion: 'failure' },
+			],
+		},
+		{ run: validMainCiRun, jobs: validMainCiJobs.slice(0, 1) },
+	]) {
+		expect(() =>
+			assertMainCiEvidence({
+				candidateSha: SHA,
+				...evidence,
+			}),
+		).toThrow('Main CI evidence');
+	}
+});
+
+test('gates Production on candidate CI without exposing Production secrets to the preflight', () => {
+	const preflight = workflowJob(PRODUCTION_WORKFLOW, 'verify-candidate-ci');
+	const migration = workflowJob(PRODUCTION_WORKFLOW, 'migrate');
+
+	expect(preflight).toContain(
+		'actions/workflows/ci.yml/runs?head_sha=$CANDIDATE_SHA&branch=main&event=push',
+	);
+	expect(preflight).toContain('/actions/runs/$MAIN_CI_RUN_ID/jobs?per_page=100');
+	expect(preflight).toContain('assertProductionDispatch');
+	expect(preflight).toContain('assertMainCiEvidence');
+	expect(preflight).not.toContain('environment: Production');
+	expect(preflight).not.toContain('secrets.');
+	expect(migration).toContain('needs: verify-candidate-ci');
+	expect(migration).toContain('environment: Production');
+});
+
+test('accepts successful Preview evidence for the exact candidate SHA', () => {
 	expect(
 		assertPreviewEvidence({
 			candidateSha: SHA,
@@ -178,7 +284,7 @@ test('accepts successful Preview evidence when distinct commits share the candid
 			runTree: TREE_SHA,
 			jobs: validPreviewJobs,
 		}),
-	).toEqual({ deploymentRunId: 123, sourceRevision: RUN_SHA });
+	).toEqual({ deploymentRunId: 123, sourceRevision: SHA });
 
 	for (const jobs of [
 		[
@@ -258,6 +364,20 @@ test('Preview jobs bind deployments to an approved source tree', () => {
 	);
 });
 
+test('Preview jobs require the current main SHA before checking out deployment code', () => {
+	const mainReadback =
+		'CURRENT_MAIN_SHA="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"';
+	const mainGuard = 'if [ "$DEPLOYMENT_SHA" != "$CURRENT_MAIN_SHA" ]; then';
+	for (const jobName of ['db-supabase-preview', 'e2e-preview']) {
+		const job = workflowJob(CI_WORKFLOW, jobName);
+		expect(job).toContain(mainReadback);
+		expect(job).toContain(mainGuard);
+		expect(job.indexOf(mainGuard)).toBeLessThan(
+			job.indexOf('git checkout --detach "$DEPLOYMENT_SHA"'),
+		);
+	}
+});
+
 test('Production evidence passes the candidate SHA and matching Preview tree to the gate', () => {
 	expect(PRODUCTION_WORKFLOW).toContain('candidateSha: process.env.CANDIDATE_SHA');
 	expect(PRODUCTION_WORKFLOW).toContain('candidateTree: process.env.CANDIDATE_TREE');
@@ -265,4 +385,16 @@ test('Production evidence passes the candidate SHA and matching Preview tree to 
 	expect(PRODUCTION_WORKFLOW).toContain(
 		"run: JSON.parse(readFileSync(process.env.PREVIEW_RUN_JSON, 'utf8'))",
 	);
+});
+
+test('rejects different Preview commits even when candidate and run trees match', () => {
+	const evidence = {
+		candidateSha: SHA,
+		candidateTree: 'c'.repeat(40),
+		runTree: 'c'.repeat(40),
+		expectedRunId: 123,
+		run: { ...validPreviewRun, head_sha: RUN_SHA },
+		jobs: validPreviewJobs,
+	};
+	expect(() => assertPreviewEvidence(evidence)).toThrow('Candidate SHA does not match');
 });

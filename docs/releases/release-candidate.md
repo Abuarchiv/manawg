@@ -1,20 +1,30 @@
 # ManaWG Release Candidate Evidence
 
+This is a dated evidence log, not a standing release approval. Older branch names, candidate SHAs, and blockers describe only their recorded date.
+
+Production migration requires a successful `push` run of `.github/workflows/ci.yml` for the exact current `main` candidate SHA, with both `validate` and `e2e-fixtures` successful. A read-only Actions API preflight verifies this before the workflow enters the protected Production environment; the separate exact-SHA Preview evidence and explicit confirmation remain required.
+
+## Read-only evidence update — 2026-09-24
+
+For the then-current main candidate `7192dd443efee1b06d5b37942d89800b26d14bd9`, GitHub Actions push-CI run `36021471267` succeeded. `validate`, `e2e-fixtures`, and `db-supabase-preview` succeeded, including both `Apply pending Preview migrations` and `Verify Preview schema and migration ledger`; `e2e-preview` was skipped. This run does not provide hosted browser E2E proof for that candidate. The SQLSTATE `42501` report below is historical and is not evidence of a current Preview DDL blocker; no new `deployment_status` check is claimed here. No Production migration, deployment, or data change was performed.
+
+Lockfile audit on 2026-09-24: `pnpm audit --prod` reported zero advisories; the full audit reported one moderate, dev-only `esbuild@0.18.20` advisory through `drizzle-kit` ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)) and no high/critical findings. The advisory concerns esbuild's development server; no tracked app or CI command starts that server. Do not force a transitive override; review by 2026-10-24 or upon an upstream fix.
+
 ## Aktualisierung — 2026-09-22, Europe/Berlin
 
 Der Release-Workflow ist auf den aktuellen Branch `fix/audit-158` gepusht. Anwendung/Test-Candidate ist `3abc5d9a1fefe55603067d872f476981289ee71f`; der spätere Branch-Tip enthält nur diese Evidenz-Aktualisierung. Pull Request #300 ist mergeable, aber wegen der geschützten Preview-Gates noch nicht freigabefähig. Die Vercel-Preview `https://manawg-eqqk2dsld-abditubes-projects.vercel.app` (`dpl_uwtuk6ewXfC1BdRXERmvXLxxjx2j`) ist mit Node 22 READY.
 
 - GitHub-Preview-Secrets sind vorhanden; Werte wurden nicht ausgegeben.
 - Der Node-22-`validate`-Job für den Candidate-Stand ist erfolgreich (`35663607827`); die Fixture-Suite ist mit 180 bestanden und 28 übersprungen grün. Fixture-E2E lief separat; ein Fixture-Erfolg ersetzt keine Hosted-Evidenz.
-- Der vertrauenswürdige Deployment-Status-Lauf `35663737497` stoppt korrekt vor Hosted-E2E: `db-supabase-preview` erreicht die Migration, scheitert aber mit SQLSTATE `42501` (fehlende DDL-Berechtigung). `e2e-preview` bleibt deshalb fail-closed übersprungen.
+- Der damalige vertrauenswürdige Deployment-Status-Lauf `35663737497` stoppte vor Hosted-E2E: `db-supabase-preview` erreichte die Migration, scheiterte aber mit SQLSTATE `42501` (fehlende DDL-Berechtigung). `e2e-preview` wurde deshalb fail-closed übersprungen.
 - Read-only Supabase-Katalogprüfung für Preview bestätigt: `manawg_preview_ci` hat `schema_create=false` auf `public` und `db_create=false`; bestehende Tabelle `public.wg_chat_messages` gehört `postgres`. Es wurde dabei keine SQL-Mutation ausgeführt.
 - Die zwei historischen, bytegenau belegten Ledger-Hashes für 0007 und 0010 sind jetzt nur an ihren exakten Journalpositionen allowlisted; unbekannte Ledger-Zeilen bleiben fail-closed.
 
-**Aktueller Blocker:** Für die geschützte Preview-Migration fehlt ein autorisierter DDL-/Owner-Migrationszugang. Nicht durch zusätzliche Grants, Rollenrotation oder manuelle Ledger-Manipulation umgehen; der Release-Eigentümer muss den vorgesehenen direkten Preview-Migrationszugang bereitstellen bzw. freigeben. Production bleibt unverändert: keine Production-Migration, kein Production-Deployment und keine Production-Datenänderung.
+**Historischer Befund (2026-09-22; kein aktueller Preview-DDL-Status):** Der damalige Deployment-Status-Lauf `35663737497` scheiterte mit SQLSTATE `42501`; `e2e-preview` wurde übersprungen. Diese historische Fehlermeldung ist kein Nachweis eines aktuellen DDL-Blockers. Siehe den verifizierten Read-only-Push-CI-Lauf vom 2026-09-24 oben: Preview-Migration und Schema-/Ledger-Prüfung waren erfolgreich. Ein neuer `deployment_status`-Nachweis für Hosted-E2E liegt hier nicht vor; Production blieb unverändert.
 
 ## Aktualisierung — 2026-09-22, nach dem Fixture-Gate-Fix
 
-Die CI-Regressionen waren testseitig: feste vergangene Chore-Zeitpunkte machten die Berlin-Fälligkeits-/Aktionsassertionen nach Mitternacht falsch, und ein visueller Screenshot nutzte einen lokalen absoluten Pfad. Die Fixtures verwenden jetzt den aktuellen Berlin-Kalendertag und Playwright-Artefaktpfade; der exakte Candidate-Lauf ist mit 180 Tests bestanden und 28 übersprungen grün. Die Anwendung bleibt unverändert blockiert durch die fehlende Preview-Owner-DDL-Berechtigung.
+Die CI-Regressionen waren testseitig: feste vergangene Chore-Zeitpunkte machten die Berlin-Fälligkeits-/Aktionsassertionen nach Mitternacht falsch, und ein visueller Screenshot nutzte einen lokalen absoluten Pfad. Die Fixtures verwenden jetzt den aktuellen Berlin-Kalendertag und Playwright-Artefaktpfade; der exakte Candidate-Lauf ist mit 180 Tests bestanden und 28 übersprungen grün. Zu diesem damaligen Stand galt die fehlende Preview-Owner-DDL-Berechtigung als Blocker; diese Aussage ist historisch und kein aktueller Preview-DDL-Status (siehe Evidenz-Update vom 2026-09-24 oben).
 
 ## Aktualisierung — 2026-09-20 20:10 CEST
 

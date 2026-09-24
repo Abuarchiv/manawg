@@ -94,6 +94,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	const loadingOlderRef = useRef(false);
 	const refreshOlderOffsetRef = useRef(0);
 	const refreshRequestSequenceRef = useRef(0);
+	const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
 	const [olderError, setOlderError] = useState(false);
 	const [sendError, setSendError] = useState<string | null>(null);
 	const pendingMessageRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
@@ -185,7 +186,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		return () => observer.disconnect();
 	}, [markLatestRead]);
 
-	const refresh = useCallback(async (): Promise<boolean> => {
+	const fetchMessages = useCallback(async (): Promise<boolean> => {
 		const requestSequence = advanceChatRefreshSequence(refreshRequestSequenceRef.current);
 		refreshRequestSequenceRef.current = requestSequence;
 		const refreshBatch = nextChatRefreshBatch(
@@ -257,6 +258,15 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		);
 		return true;
 	}, [encodedShareCode, identity.memberId, messages]);
+
+	const refresh = useCallback((): Promise<boolean> => {
+		// A poll must not supersede a request that is still loading. Mutations
+		// still invalidate its sequence so a stale snapshot cannot undo them.
+		refreshPromiseRef.current ??= fetchMessages().finally(() => {
+			refreshPromiseRef.current = null;
+		});
+		return refreshPromiseRef.current;
+	}, [fetchMessages]);
 
 	function beginReactionMutation(messageId: string, emoji: string): string {
 		const key = `${messageId}|${identity.memberId}|${emoji}`;
@@ -365,6 +375,9 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			return false;
 		}
 		pendingMessageRequestRef.current = null;
+		refreshRequestSequenceRef.current = advanceChatRefreshSequence(
+			refreshRequestSequenceRef.current,
+		);
 		setMessages((prev) =>
 			prev.some((message) => message.id === res.data.message.id)
 				? prev.map((message) => (message.id === res.data.message.id ? res.data.message : message))
@@ -584,7 +597,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	return (
 		<div ref={chatRootRef} className="relative flex min-h-0 flex-1 flex-col bg-background">
 			{readError && (
-				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1">
+				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1.5">
 					<AlertDescription className="flex flex-row flex-wrap items-center justify-between gap-x-2 gap-y-0 text-xs">
 						Lesestatus konnte nicht gespeichert werden.
 						<Button variant="ghost" size="sm" className="text-xs" onClick={markLatestRead}>
@@ -594,7 +607,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 				</Alert>
 			)}
 			{refreshError && !bootstrapError && !bootstrapping && (
-				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1">
+				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1.5">
 					<AlertDescription className="flex flex-row flex-wrap items-center justify-between gap-x-2 gap-y-0 text-xs">
 						Chat gerade nicht aktuell.
 						<Button variant="ghost" size="sm" className="text-xs" onClick={() => void refresh()}>

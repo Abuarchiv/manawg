@@ -373,8 +373,8 @@ export function isDuplicateAuditActivity(
 	return rawMs !== undefined && Math.abs(timestampMs - rawMs) <= AUDIT_DEDUPE_WINDOW_MS;
 }
 
-// One failing dashboard query degrades its own section instead of taking
-// down the whole dashboard — every query reports and falls back individually.
+// Non-financial sections may degrade independently. Financial reads must all
+// succeed: missing expenses, splits, payments or members would fabricate balances.
 function withFallback<T>(label: string, query: Promise<T>, fallback: () => T): Promise<T> {
 	return query.catch((err: unknown) => {
 		captureException(err, { action: 'loadDashboardData', query: label });
@@ -398,61 +398,41 @@ export async function loadDashboardData(
 		choreRows,
 		announcementRows,
 	] = await Promise.all([
-		withFallback(
-			'members',
-			db
-				.select({
-					id: wgMembers.id,
-					name: wgMembers.name,
-					color: wgMembers.color,
-				})
-				.from(wgMembers)
-				.where(eq(wgMembers.wgId, wgId)),
-			() => [],
-		),
-		withFallback(
-			'expenses',
-			db
-				.select({
-					id: expenses.id,
-					paidByMemberId: expenses.paidByMemberId,
-					amountCents: expenses.amountCents,
-					currency: expenses.currency,
-					description: expenses.description,
-					occurredAt: expenses.occurredAt,
-				})
-				.from(expenses)
-				.where(eq(expenses.wgId, wgId))
-				.orderBy(desc(expenses.occurredAt)),
-			() => [],
-		),
-		withFallback(
-			'expenseSplits',
-			db
-				.select({
-					expenseId: expenseSplits.expenseId,
-					debtorMemberId: expenseSplits.debtorMemberId,
-					amountCents: expenseSplits.amountCents,
-					settledAt: expenseSplits.settledAt,
-				})
-				.from(expenseSplits)
-				.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
-				.where(eq(expenses.wgId, wgId)),
-			() => [],
-		),
-		withFallback(
-			'expensePayments',
-			db
-				.select({
-					fromMemberId: expensePayments.fromMemberId,
-					toMemberId: expensePayments.toMemberId,
-					amountCents: expensePayments.amountCents,
-					currency: expensePayments.currency,
-				})
-				.from(expensePayments)
-				.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed'))),
-			() => [],
-		),
+		db
+			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
+			.from(wgMembers)
+			.where(eq(wgMembers.wgId, wgId)),
+		db
+			.select({
+				id: expenses.id,
+				paidByMemberId: expenses.paidByMemberId,
+				amountCents: expenses.amountCents,
+				currency: expenses.currency,
+				description: expenses.description,
+				occurredAt: expenses.occurredAt,
+			})
+			.from(expenses)
+			.where(eq(expenses.wgId, wgId))
+			.orderBy(desc(expenses.occurredAt)),
+		db
+			.select({
+				expenseId: expenseSplits.expenseId,
+				debtorMemberId: expenseSplits.debtorMemberId,
+				amountCents: expenseSplits.amountCents,
+				settledAt: expenseSplits.settledAt,
+			})
+			.from(expenseSplits)
+			.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
+			.where(eq(expenses.wgId, wgId)),
+		db
+			.select({
+				fromMemberId: expensePayments.fromMemberId,
+				toMemberId: expensePayments.toMemberId,
+				amountCents: expensePayments.amountCents,
+				currency: expensePayments.currency,
+			})
+			.from(expensePayments)
+			.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed'))),
 		withFallback(
 			'shoppingItems',
 			db

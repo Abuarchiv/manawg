@@ -1,7 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, idempotencyResponses, recurringExpenses, wgMembers } from '@/core/db';
 import { TransactionAbort } from '@/core/db/transaction';
-import { badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
+import { apiError, badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import {
 	ReplayCache,
@@ -22,6 +22,7 @@ import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
+import { checkPaidByGuard } from '@/features/expenses/expenses';
 import {
 	buildRecurringAdvance,
 	parseRecurringSplits,
@@ -211,6 +212,14 @@ export async function POST(
 			`recurring-expense:${wg.id}:${auth.member.memberId}`,
 		);
 		if (!limited.success) return tooMany();
+		const paidByGuard = checkPaidByGuard(
+			parsed.data.paidByMemberId,
+			auth.member.memberId,
+			parsed.data.splits,
+		);
+		if (!paidByGuard.ok) {
+			return apiError('paid_by_must_include_caller', 403, 'paid_by_must_include_caller');
+		}
 		const memberIds = Array.from(
 			new Set([
 				parsed.data.paidByMemberId,
@@ -422,7 +431,8 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 	if (denied) return denied;
 	if (isTemplateUpdate) {
 		const paidByMemberId = parsed.data.paidByMemberId ?? template.paidByMemberId;
-		const splits = parsed.data.splits ?? parseRecurringSplits(template.splitsJson);
+		const templateSplits = parseRecurringSplits(template.splitsJson);
+		const splits = parsed.data.splits ?? templateSplits;
 		const amountCents = parsed.data.amountCents ?? template.amountCents;
 		const finalSplitCheck = validateSplits(amountCents, splits);
 		if (!finalSplitCheck.ok) {
@@ -450,6 +460,27 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 				),
 			);
 		if (memberRows.length !== memberIds.length) return badRequest('member_not_in_wg');
+		const existingSplitAmounts = new Map(
+			templateSplits.map(
+				({ debtorMemberId, amountCents }) => [debtorMemberId, amountCents] as const,
+			),
+		);
+		const hasSplitChange =
+			parsed.data.splits !== undefined &&
+			(splits.length !== templateSplits.length ||
+				splits.some(
+					({ debtorMemberId, amountCents }) =>
+						existingSplitAmounts.get(debtorMemberId) !== amountCents,
+				));
+		const hasFinancialChange =
+			(parsed.data.amountCents !== undefined && parsed.data.amountCents !== template.amountCents) ||
+			(parsed.data.paidByMemberId !== undefined &&
+				parsed.data.paidByMemberId !== template.paidByMemberId) ||
+			hasSplitChange;
+		if (hasFinancialChange && !checkPaidByGuard(paidByMemberId, auth.member.memberId, splits).ok) {
+			return apiError('paid_by_must_include_caller', 403, 'paid_by_must_include_caller');
+		}
+
 		const [updated] = await db
 			.update(recurringExpenses)
 			.set({

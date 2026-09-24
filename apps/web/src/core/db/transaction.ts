@@ -21,6 +21,7 @@ interface TransactionalDb {
 interface CachedTransactionalDb {
 	db: TransactionalDb;
 	pool: Pool;
+	url: string;
 }
 
 let cachedDb: CachedTransactionalDb | null = null;
@@ -34,8 +35,7 @@ function invalidateTransactionalDb(pool: Pool, err: Error): void {
 	});
 }
 
-function buildTransactionalDb(): CachedTransactionalDb {
-	const url = resolveTransactionConnectionString();
+function buildTransactionalDb(url: string): CachedTransactionalDb {
 	const pool = new Pool({ connectionString: url, max: 5 });
 	const drizzleDb = drizzle(pool, { schema });
 	// A typed wrapper instead of `as unknown as TransactionalDb`: the cast
@@ -46,10 +46,19 @@ function buildTransactionalDb(): CachedTransactionalDb {
 		transaction: (fn) => drizzleDb.transaction(fn),
 	};
 	pool.on('error', (err) => invalidateTransactionalDb(pool, err));
-	return { db: dbInstance, pool };
+	return { db: dbInstance, pool, url };
 }
 
 export async function withTransaction<T>(fn: (tx: DbTransaction) => Promise<T>): Promise<T> {
-	if (!cachedDb) cachedDb = buildTransactionalDb();
+	const url = resolveTransactionConnectionString();
+	if (cachedDb && cachedDb.url !== url) {
+		const stale = cachedDb;
+		cachedDb = null;
+		console.warn('[db/transaction] Connection string changed; rebuilding connection pool.');
+		void stale.pool.end().catch((endError: unknown) => {
+			console.error('[db/transaction] Stale pool shutdown failed:', endError);
+		});
+	}
+	if (!cachedDb) cachedDb = buildTransactionalDb(url);
 	return cachedDb.db.transaction(fn);
 }

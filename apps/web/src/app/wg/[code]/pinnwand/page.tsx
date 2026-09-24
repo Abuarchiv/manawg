@@ -950,7 +950,7 @@ export default function PinnwandPage(): React.ReactElement {
 	const statusFocusActive = filter.status !== 'all';
 
 	return (
-		<div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-4">
+		<div data-exchange-content className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-4">
 			<SubNav />
 			<PinnwandHeader
 				itemCount={items.length}
@@ -1091,25 +1091,22 @@ export default function PinnwandPage(): React.ReactElement {
 					})}
 				</ul>
 			)}
-			<ThumbAction>
-				<Button
-					type="button"
-					variant={composerOpen ? 'outline' : 'default'}
-					className="min-h-11 w-full"
-					disabled={submitting || initialLoading}
-					onClick={() => {
-						if (composerOpen) closeComposer();
-						else setComposerOpen(true);
-						setNotice(null);
-					}}
-				>
-					{composerOpen
-						? 'Formular schließen'
-						: hasDraft
-							? 'Entwurf fortsetzen'
-							: 'Beitrag erstellen'}
-				</Button>
-			</ThumbAction>
+			{/* Offenes Formular hat eigenes Schließen (X) und Posten. */}
+			{!composerOpen && (
+				<ThumbAction>
+					<Button
+						type="button"
+						className="min-h-11 w-full"
+						disabled={submitting || initialLoading}
+						onClick={() => {
+							setComposerOpen(true);
+							setNotice(null);
+						}}
+					>
+						{hasDraft ? 'Entwurf fortsetzen' : 'Beitrag erstellen'}
+					</Button>
+				</ThumbAction>
+			)}
 		</div>
 	);
 }

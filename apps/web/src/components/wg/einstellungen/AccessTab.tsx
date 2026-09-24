@@ -342,7 +342,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 						</FieldContent>
 						<Switch
 							checked={joiningEnabled}
-							disabled={accessPending === 'rotate'}
+							disabled={accessPending !== null}
 							aria-busy={accessPending === 'join'}
 							aria-label={joiningEnabled ? 'Neue Beitritte sperren' : 'Neue Beitritte erlauben'}
 							onCheckedChange={() => void toggleJoining()}

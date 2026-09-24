@@ -57,6 +57,9 @@ jobs:
             printf '%s\n' '- result: ${{ job.status }}'
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # Vercel deployments use commit-SHA refs, so GITHUB_REF can be empty here.
+  # Gate on the provider/status/origin before Preview environment access, then
+  # verify approved branch tips and current main SHA before checkout.
   db-supabase-preview:
     if: >-
       always() &&
@@ -88,8 +91,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Start from the trusted default branch. A deployment SHA is checked out only
-          # after it is proven to be the tip of an explicitly approved Preview branch.
+          # Start from main. Run deployment code only when its SHA is also the
+          # current main tip and the tip of an approved Preview branch.
           ref: main
       - name: Require the trusted Preview source tree
         env:
@@ -112,6 +115,11 @@ jobs:
             done
             if [ -z "$TRUSTED_PREVIEW_REF" ]; then
               echo 'deployment SHA is not the current tip of an approved Preview branch.' >&2
+              exit 1
+            fi
+            CURRENT_MAIN_SHA="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
+            if [ "$DEPLOYMENT_SHA" != "$CURRENT_MAIN_SHA" ]; then
+              echo 'Preview deployment SHA must equal current main SHA.' >&2
               exit 1
             fi
             git fetch --no-tags --depth=1 origin "$DEPLOYMENT_SHA"
@@ -228,6 +236,8 @@ jobs:
           DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
         run: node apps/web/scripts/preview-db-check.mjs --check
 
+  # See the SHA-ref note above: the provider/status/origin gate runs before
+  # Preview environment access; both jobs recheck trusted source revisions.
   e2e-preview:
     if: >-
       always() &&
@@ -254,8 +264,8 @@ jobs:
         run: test "$MIGRATION_GATE_RESULT" = success
       - uses: actions/checkout@v4
         with:
-          # Start from the trusted default branch. The deployment SHA is checked out
-          # only after it is proven to be the tip of an approved Preview branch.
+          # Start from main. Run deployment code only when its SHA is also the
+          # current main tip and the tip of an approved Preview branch.
           ref: main
       - name: Require the trusted deployment tree
         env:
@@ -275,6 +285,11 @@ jobs:
           done
           if [ -z "$TRUSTED_PREVIEW_REF" ]; then
             echo 'deployment SHA is not the current tip of an approved Preview branch.' >&2
+            exit 1
+          fi
+          CURRENT_MAIN_SHA="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
+          if [ "$DEPLOYMENT_SHA" != "$CURRENT_MAIN_SHA" ]; then
+            echo 'Preview deployment SHA must equal current main SHA.' >&2
             exit 1
           fi
           git fetch --no-tags --depth=1 origin "$DEPLOYMENT_SHA"

@@ -375,8 +375,6 @@ export default function AusgabenPage() {
 				refreshRecurringExpenses(),
 			]);
 			if (requestId !== loadRequestIdRef.current) {
-				if (isInitial) setInitialLoading(false);
-				else setRefreshing(false);
 				return;
 			}
 			if (!mountedRef.current) return;
@@ -414,8 +412,8 @@ export default function AusgabenPage() {
 			}
 			setLoadError(nextLoadError);
 
-			if (isInitial) setInitialLoading(false);
-			else setRefreshing(false);
+			setInitialLoading(false);
+			setRefreshing(false);
 		},
 		[identity.memberId, refreshExpenses, refreshRecurringExpenses, wg.shareCode],
 	);

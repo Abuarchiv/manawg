@@ -22,12 +22,14 @@ function harness() {
 		slot: null,
 		rows: [],
 		claims: 0,
+		rateLimited: false,
 		failReplayWrite: false,
 		failCommit: false,
 		warningUpdateSucceeds: true,
 		staleRead: false,
 		warningWhere: '',
 		releaseWhere: '',
+		transientReleaseQuery: null,
 		claimExpiry: new Date('2026-09-25T00:00:00.000Z'),
 	};
 	let prior = Promise.resolve();
@@ -62,6 +64,16 @@ function harness() {
 		const rows = [...state.rows];
 		const tx = {
 			write: () => rows.push('created'),
+			delete: () => ({
+				where: (condition) => ({
+					returning: async () => {
+						state.transientReleaseQuery = new PgDialect().sqlToQuery(condition);
+						if (JSON.stringify(slot) !== '{"_claimed":true}') return [];
+						slot = null;
+						return [{ scope }];
+					},
+				}),
+			}),
 			select: () => ({
 				from: () => ({
 					where: () => ({
@@ -126,6 +138,9 @@ function harness() {
 		headers: { 'Idempotency-Key': claimKey },
 	});
 	const mutate = async (tx) => {
+		if (state.rateLimited) {
+			return { response: { status: 429, body: { error: 'too_many_requests' } }, effect: null };
+		}
 		tx.write();
 		return {
 			response: { status: 200, body: { id: 'comment-1', warning: null }, entityId: 'comment-1' },
@@ -166,6 +181,38 @@ test('replay write failure rolls back and releases the exact claim for retry', a
 	state.failReplayWrite = false;
 	assert.equal((await run()).effect, 'created');
 	assert.equal(state.claims, 2);
+});
+
+test('a rate-limited write releases its exact claim and succeeds with the same key later', async () => {
+	const { state, run } = harness();
+	state.rateLimited = true;
+	assert.equal((await run()).response.status, 429);
+	assert.equal(state.slot, null);
+	assert.deepEqual(state.rows, []);
+	assert.equal(state.releaseWhere, '');
+	assert.match(state.transientReleaseQuery.sql, /expires_at/);
+	assert.match(state.transientReleaseQuery.sql, /_claimed/);
+	assert.deepEqual(state.transientReleaseQuery.params, [
+		scope,
+		claimKey,
+		state.claimExpiry.toISOString(),
+	]);
+	state.rateLimited = false;
+	const success = await run();
+	assert.equal(success.response.status, 200);
+	assert.deepEqual((await run()).response, success.response);
+	assert.deepEqual(state.rows, ['created']);
+	assert.equal(state.claims, 2);
+});
+
+test('an uncertain rate-limit transaction commit does not release the claim outside the transaction', async () => {
+	const { state, run } = harness();
+	state.rateLimited = true;
+	state.failCommit = true;
+	await assert.rejects(run(), /commit_outcome_unknown/);
+	assert.deepEqual(state.slot, { _claimed: true });
+	assert.deepEqual(state.rows, []);
+	assert.equal(state.releaseWhere, '');
 });
 
 test('uncertain COMMIT and malformed claim do not release the claim', async () => {

@@ -386,7 +386,7 @@ export function NotificationSection({
 					</FieldContent>
 					<Switch
 						checked={pushTarget ?? pushActive}
-						disabled={!status || !pushConfigured || (pending !== null && pending !== 'push')}
+						disabled={notificationControlsDisabled || !pushConfigured}
 						aria-busy={pending === 'push'}
 						aria-label={pushActive ? 'Web Push deaktivieren' : 'Web Push aktivieren'}
 						onCheckedChange={(checked) => {
@@ -424,7 +424,7 @@ export function NotificationSection({
 								</FieldContent>
 								<Switch
 									checked={status?.[pref.key] ?? true}
-									disabled={!status || loadingStatus}
+									disabled={notificationControlsDisabled}
 									aria-label={pref.label}
 									onCheckedChange={() => void togglePreference(pref.key)}
 								/>

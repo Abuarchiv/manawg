@@ -59,7 +59,9 @@ function parseExportPage(req: NextRequest): { page: ExportPage; explicit: boolea
 	const rawOffset = params.get('offset');
 	const limit = rawLimit === null ? NO_EXPORT_LIMIT : Number.parseInt(rawLimit, 10);
 	const offset = rawOffset === null ? 0 : Number.parseInt(rawOffset, 10);
-	if (!Number.isFinite(limit) || limit < 1 || limit > EXPORT_LIMIT_MAX) return null;
+	if (!Number.isFinite(limit) || limit < 1 || (rawLimit !== null && limit > EXPORT_LIMIT_MAX)) {
+		return null;
+	}
 	if (!Number.isFinite(offset) || offset < 0) return null;
 	return { page: { limit, offset }, explicit: rawLimit !== null || rawOffset !== null };
 }
@@ -101,8 +103,7 @@ type SectionResult<T> =
 	| { section: ExportSectionKey; ok: false };
 
 /**
- * One section's failure must not sink the export: failures are logged with
- * the section name and reported per section instead of aborting everything.
+ * Log each failed section while allowing the other section reads to settle.
  */
 async function settleSection<T>(
 	section: ExportSectionKey,
@@ -632,11 +633,9 @@ export async function GET(
 			else failedSections.push(result.section);
 		}
 
-		// Only when literally everything failed is the export itself a failure —
-		// otherwise the caller receives the sections that did succeed plus the
-		// list of failed ones instead of a bare 500.
-		if (requestedSections.length > 0 && failedSections.length === requestedSections.length) {
-			return serverError(null, 'export_all_sections_failed');
+		// A downloaded backup must contain every requested section.
+		if (failedSections.length > 0) {
+			return serverError(null, 'export_incomplete');
 		}
 
 		const data = buildWgExport({

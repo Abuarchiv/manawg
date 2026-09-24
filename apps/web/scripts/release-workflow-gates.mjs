@@ -107,6 +107,40 @@ export function assertProductionDispatch({
 	assertExactRevision(candidateSha, checkedOutSha);
 }
 
+export function assertMainCiEvidence({ candidateSha, run, jobs }) {
+	assertExactRevision(candidateSha, candidateSha);
+	if (
+		!run ||
+		run.name !== 'CI' ||
+		!CI_WORKFLOW_PATH.test(run.path ?? '') ||
+		run.event !== 'push' ||
+		run.head_branch !== 'main' ||
+		run.status !== 'completed' ||
+		run.conclusion !== 'success' ||
+		!Number.isInteger(run.id) ||
+		run.id <= 0 ||
+		typeof run.head_sha !== 'string' ||
+		!FULL_SHA.test(run.head_sha) ||
+		run.head_sha.toLowerCase() !== candidateSha.toLowerCase()
+	) {
+		throw new Error(
+			'Main CI evidence must be a completed successful push run for the exact candidate SHA on main.',
+		);
+	}
+
+	if (!Array.isArray(jobs)) {
+		throw new Error('Main CI evidence must include the required successful workflow jobs.');
+	}
+	for (const requiredJob of ['validate', 'e2e-fixtures']) {
+		const job = jobs.find((candidate) => candidate?.name === requiredJob);
+		if (!job || job.status !== 'completed' || job.conclusion !== 'success') {
+			throw new Error(`Main CI evidence is missing a successful ${requiredJob} job.`);
+		}
+	}
+
+	return { ciRunId: run.id, sourceRevision: run.head_sha };
+}
+
 export function assertPreviewEvidence({
 	candidateSha,
 	candidateTree,
@@ -130,8 +164,7 @@ export function assertPreviewEvidence({
 	if (expectedRunId !== undefined && run.id !== expectedRunId) {
 		throw new Error('Preview evidence run ID does not match the requested run.');
 	}
-	assertExactRevision(candidateSha, candidateSha);
-	assertExactRevision(run.head_sha, run.head_sha);
+	assertExactRevision(candidateSha, run.head_sha);
 	assertMatchingTree(candidateTree, runTree);
 
 	for (const requiredJob of ['db-supabase-preview', 'e2e-preview']) {

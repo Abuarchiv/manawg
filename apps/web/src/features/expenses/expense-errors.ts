@@ -48,6 +48,9 @@ export function expenseSaveErrorMessage(error: string): string {
 	if (error === 'splits_duplicate_debtor') {
 		return 'Aufteilung enthält eine Person doppelt — jede Mitbewohner:in darf nur einmal vorkommen.';
 	}
+	if (error === 'paid_by_must_include_caller') {
+		return 'Wenn du für jemand anderen buchst, muss dein eigener Anteil größer als 0 sein.';
+	}
 	if (error === 'member_not_in_wg') {
 		return 'Ausgabe konnte nicht gespeichert werden: Mindestens ein Mitglied ist nicht mehr in dieser WG.';
 	}
@@ -124,6 +127,9 @@ export function recurringTemplateSaveErrorMessage(error: string): string {
 	}
 	if (isAuthInvalidated(error)) {
 		return 'Vorlage konnte nicht gespeichert werden: Tritt der WG erneut bei.';
+	}
+	if (error === 'paid_by_must_include_caller') {
+		return 'Wenn du für jemand anderen buchst, muss dein eigener Anteil größer als 0 sein.';
 	}
 	if (error === 'member_not_in_wg') {
 		return 'Mindestens ein Mitglied der Fixkosten-Vorlage ist nicht mehr in dieser WG.';

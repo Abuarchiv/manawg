@@ -230,6 +230,61 @@ async function measureBox(locator: Locator) {
 	});
 }
 
+async function assertWholeWordsOnSingleLines(text: Locator, words: string[]): Promise<void> {
+	const wordLines = await text.evaluate((element, expectedWords) => {
+		const textNode = [...element.childNodes].find((node) => node.nodeType === Node.TEXT_NODE);
+		if (!textNode) throw new Error('layout title text node missing');
+		const value = textNode.textContent ?? '';
+		const own = element.getBoundingClientRect();
+		const container = element.closest('[data-slot="item-title"]')?.getBoundingClientRect() ?? own;
+		const bounds = {
+			left: Math.max(own.left, container.left),
+			right: Math.min(own.right, container.right),
+			top: Math.max(own.top, container.top),
+			bottom: Math.min(own.bottom, container.bottom),
+		};
+		return expectedWords.map((word) => {
+			const start = value.indexOf(word);
+			if (start < 0) throw new Error(`layout title word missing: ${word}`);
+			const range = document.createRange();
+			range.setStart(textNode, start);
+			range.setEnd(textNode, start + word.length);
+			const rect = range.getBoundingClientRect();
+			return {
+				word,
+				lineCount: range.getClientRects().length,
+				left: rect.left,
+				right: rect.right,
+				top: rect.top,
+				bottom: rect.bottom,
+				boxLeft: bounds.left,
+				boxRight: bounds.right,
+				boxTop: bounds.top,
+				boxBottom: bounds.bottom,
+			};
+		});
+	}, words);
+	for (const word of wordLines) {
+		expect(word.lineCount, word.word).toBe(1);
+		expect(word.left, word.word).toBeGreaterThanOrEqual(word.boxLeft - 1);
+		expect(word.right, word.word).toBeLessThanOrEqual(word.boxRight + 1);
+		expect(word.top, word.word).toBeGreaterThanOrEqual(word.boxTop - 1);
+		expect(word.bottom, word.word).toBeLessThanOrEqual(word.boxBottom + 1);
+	}
+}
+
+function expectRectsNotToOverlap(
+	first: { x: number; y: number; width: number; height: number },
+	second: { x: number; y: number; width: number; height: number },
+): void {
+	expect(
+		first.x < second.x + second.width &&
+			first.x + first.width > second.x &&
+			first.y < second.y + second.height &&
+			first.y + first.height > second.y,
+	).toBe(false);
+}
+
 async function assertInventoryModal(page: Page, width: number): Promise<void> {
 	expect(await page.evaluate(() => window.innerWidth)).toBe(width);
 	await expect(page.getByRole('heading', { name: 'Neuer Vorrat' })).toBeVisible();
@@ -344,15 +399,42 @@ async function assertViewportLayout(page: Page, route: LayoutRoute): Promise<voi
 			.locator('[data-slot="item"]')
 			.filter({ hasText: 'Ungesüßte Hafermilch' })
 			.first();
+		const title = row.locator('[data-slot="item-title"]');
+		const name = title.locator('span[title="Ungesüßte Hafermilch"]');
+		const actions = row.locator('[data-slot="item-actions"]');
 		const rowBox = await row.boundingBox();
-		const titleBox = await row.locator('[data-slot="item-title"]').boundingBox();
+		const titleBox = await title.boundingBox();
+		const actionsBox = await actions.boundingBox();
 		expect(rowBox).not.toBeNull();
 		expect(titleBox).not.toBeNull();
-		if (rowBox && titleBox)
+		expect(actionsBox).not.toBeNull();
+		await assertWholeWordsOnSingleLines(name, ['Ungesüßte', 'Hafermilch']);
+		if (rowBox && titleBox && actionsBox) {
+			expect(titleBox.x).toBeGreaterThanOrEqual(rowBox.x);
 			expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
+			expect(actionsBox.x).toBeGreaterThanOrEqual(rowBox.x);
+			expect(actionsBox.x + actionsBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
+			expectRectsNotToOverlap(titleBox, actionsBox);
+		}
 	} else if (route === 'chores') {
 		const row = page.locator('[data-slot="item"]').filter({ hasText: 'Bad putzen' }).first();
 		expect(await row.count()).toBe(1);
+		const title = row.locator('[data-slot="item-title"]');
+		const actions = row.locator('[data-slot="item-actions"]');
+		const rowBox = await row.boundingBox();
+		const titleBox = await title.boundingBox();
+		const actionsBox = await actions.boundingBox();
+		expect(rowBox).not.toBeNull();
+		expect(titleBox).not.toBeNull();
+		expect(actionsBox).not.toBeNull();
+		await assertWholeWordsOnSingleLines(title, ['Bad', 'putzen']);
+		if (rowBox && titleBox && actionsBox) {
+			expect(titleBox.x).toBeGreaterThanOrEqual(rowBox.x);
+			expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
+			expect(actionsBox.x).toBeGreaterThanOrEqual(rowBox.x);
+			expect(actionsBox.x + actionsBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
+			expectRectsNotToOverlap(titleBox, actionsBox);
+		}
 		for (const button of await row.getByRole('button').all()) {
 			const box = await button.boundingBox();
 			expect(box).not.toBeNull();
@@ -469,6 +551,16 @@ for (const route of ['home', 'chores', 'shopping', 'inventory'] as const) {
 					});
 					await page.setViewportSize({ width: 320, height: 740 });
 					await page.waitForTimeout(100);
+				}
+				const rootFontSize = await page.evaluate(
+					() => getComputedStyle(document.documentElement).fontSize,
+				);
+				// Normale Schrift skaliert auf schmalen Handys fluid (90–100 %), 200 % bleibt exakt.
+				if (textScale === '200%') {
+					expect(rootFontSize).toBe('32px');
+				} else {
+					expect(Number.parseFloat(rootFontSize)).toBeGreaterThanOrEqual(14.4);
+					expect(Number.parseFloat(rootFontSize)).toBeLessThanOrEqual(16);
 				}
 				if (route === 'inventory') {
 					await page

@@ -213,16 +213,11 @@ export async function releaseResponseSlot(scope: string, key: string): Promise<v
  * only deleted once its expiry is in the past.
  */
 export async function purgeExpiredIdempotencyResponses(now: Date = new Date()): Promise<number> {
-	try {
-		const deleted = await db
-			.delete(idempotencyResponses)
-			.where(lte(idempotencyResponses.expiresAt, now))
-			.returning({ key: idempotencyResponses.key });
-		return deleted.length;
-	} catch (err) {
-		console.error('[idempotency] purge of expired rows failed:', err);
-		return 0;
-	}
+	const deleted = await db
+		.delete(idempotencyResponses)
+		.where(lte(idempotencyResponses.expiresAt, now))
+		.returning({ key: idempotencyResponses.key });
+	return deleted.length;
 }
 
 export async function setCachedResponse(
