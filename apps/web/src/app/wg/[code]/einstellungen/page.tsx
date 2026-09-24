@@ -182,10 +182,6 @@ export default function EinstellungenPage() {
 							<p>
 								ManaWG · WG-Code <span className="font-mono">{wg.shareCode}</span>
 							</p>
-							<p className="mt-0.5 text-balance">
-								WG-Daten und Mitgliedschaft liegen im Account · Nicht synchronisierte Entwürfe und
-								Offline-Aktionen bleiben auf diesem Gerät
-							</p>
 						</div>
 					</TabsContent>
 				</Tabs>

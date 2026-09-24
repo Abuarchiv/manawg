@@ -19,7 +19,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
-import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { ActivityFeed } from '@/components/wg/dashboard/ActivityFeed';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
@@ -35,7 +34,8 @@ import {
 	filterActivityItems,
 	groupActivityItemsByDay,
 } from '@/core/reads/activity';
-import { AlertTriangle, History, RotateCw, Search } from 'lucide-react';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { AlertTriangle, History, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -91,6 +91,7 @@ export default function AktivitaetPage() {
 	useEffect(() => {
 		void load();
 	}, [load]);
+	useVisibilityPausedInterval(() => void load(), 30_000);
 
 	useEffect(() => {
 		if (cachedActivity) {
@@ -348,22 +349,6 @@ export default function AktivitaetPage() {
 					)}
 				</CardContent>
 			</Card>
-			<ThumbAction>
-				<Button
-					type="button"
-					variant="outline"
-					onClick={() => void load()}
-					disabled={loading}
-					className="min-h-11 w-full bg-background"
-				>
-					{loading ? (
-						<Spinner className="motion-reduce:animate-none" data-icon="inline-start" aria-hidden />
-					) : (
-						<RotateCw data-icon="inline-start" aria-hidden />
-					)}
-					Aktivität aktualisieren
-				</Button>
-			</ThumbAction>
 		</div>
 	);
 }

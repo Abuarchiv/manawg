@@ -3,7 +3,13 @@ import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyTitle,
+} from '@/components/ui/empty';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
@@ -11,7 +17,6 @@ import { DebtSummary } from '@/components/wg/DebtSummary';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
-import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
@@ -84,7 +89,7 @@ import {
 import { addMonths } from '@/features/expenses/recurring-expenses';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Plus } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1487,7 +1492,6 @@ export default function AusgabenPage() {
 								memberToken={identity.memberToken}
 								memberColor={memberColor}
 								memberPayPalMerchantId={memberPayPalMerchantId}
-								onAddExpense={() => setShowForm(true)}
 								onSettled={(message) => {
 									if (message) setActionSuccess(message);
 									void load(false);
@@ -1496,13 +1500,6 @@ export default function AusgabenPage() {
 						</div>
 					</div>
 				)}
-			{!showSkeleton && memberBalances.length === 0 && (
-				<ThumbAction reserveSpace={false}>
-					<Button type="button" onClick={() => setShowForm(true)} className="min-h-11 w-full">
-						Ausgabe erfassen
-					</Button>
-				</ThumbAction>
-			)}
 			{(recurringExpenses.length > 0 || recurringFilterActive) && (
 				<RecurringExpensesSection
 					recurringExpenses={recurringExpenses}
@@ -1541,6 +1538,14 @@ export default function AusgabenPage() {
 							<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
 							<EmptyDescription>Erfasse eure erste gemeinsame Ausgabe.</EmptyDescription>
 						</EmptyHeader>
+						{!showForm && (
+							<EmptyContent>
+								<Button type="button" onClick={() => setShowForm(true)}>
+									<Plus data-icon="inline-start" aria-hidden />
+									Ausgabe erfassen
+								</Button>
+							</EmptyContent>
+						)}
 					</Empty>
 				) : (
 					<div className="flex flex-col gap-5">

@@ -35,8 +35,6 @@ import {
 	Megaphone,
 	Receipt,
 	Search,
-	ShoppingBasket,
-	SprayCan,
 } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import dynamic from 'next/dynamic';
@@ -75,17 +73,6 @@ function formatEventStart(event: StartEvent): string {
 	if (!date) return 'Datum unbekannt';
 	const day = EVENT_DAY_FORMATTER.format(date);
 	return event.allDay ? day : `${day}, ${EVENT_TIME_FORMATTER.format(date)}`;
-}
-
-const NEXT_DUE_FORMATTER = new Intl.DateTimeFormat('de-DE', {
-	day: 'numeric',
-	month: 'short',
-	timeZone: 'Europe/Berlin',
-});
-
-function formatNextDue(nextDueAt: string | null | undefined): string {
-	const date = nextDueAt ? parseValidDate(nextDueAt) : null;
-	return date ? `Für dich · ${NEXT_DUE_FORMATTER.format(date)}` : 'Für dich';
 }
 
 type PendingAnnouncement = DashboardData['myOpenAnnouncements'][number];
@@ -244,9 +231,6 @@ export default function WgHomePage() {
 					)
 					.join(' · ')
 			: formatEuroCents(0, 'EUR', { signed: true });
-	const myNextChore = data?.dueChores
-		.filter((chore) => chore.assignedMemberId === identity.memberId)
-		.sort((a, b) => a.nextDueAt.localeCompare(b.nextDueAt))[0];
 	const todayImportant = useMemo(
 		() =>
 			data
@@ -446,38 +430,6 @@ export default function WgHomePage() {
 							}
 						/>
 						<StartTile
-							href={`${wgBaseHref}/einkauf`}
-							icon={ShoppingBasket}
-							label="Einkäufe"
-							loading={!data && !error}
-							value={
-								!data
-									? '–'
-									: data.openShoppingCount === 0
-										? 'Alles da'
-										: `${data.openShoppingCount} offen`
-							}
-							detail={
-								data && data.openShoppingCount > 0
-									? data.openShoppingTop.slice(0, 2).join(', ') || 'Liste öffnen'
-									: 'Etwas eintragen'
-							}
-						/>
-						<StartTile
-							href={`${wgBaseHref}/putzen`}
-							icon={SprayCan}
-							label="Putzplan"
-							loading={!data && !error}
-							value={myNextChore ? myNextChore.title : 'Nichts fällig'}
-							detail={
-								myNextChore
-									? formatNextDue(myNextChore.nextDueAt)
-									: data?.setup.choreCount === 0
-										? 'Plan anlegen'
-										: 'Für dich'
-							}
-						/>
-						<StartTile
 							href={`${wgBaseHref}/kalender`}
 							icon={CalendarDays}
 							label="Kalender"
@@ -498,7 +450,7 @@ export default function WgHomePage() {
 								<Search data-icon="inline-start" aria-hidden /> WG durchsuchen
 							</Link>
 						</div>
-						<Collapsible defaultOpen={false}>
+						<Collapsible defaultOpen>
 							<h2 id="wg-now-heading">
 								<CollapsibleTrigger
 									render={

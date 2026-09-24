@@ -173,8 +173,7 @@ export function ProfileTab({
 								</Button>
 							</div>
 							<FieldDescription>
-								Hinterlegt nur deine PayPal-Empfängerkennung. Keine Zahlung oder
-								PayPal-Freischaltung.
+								Damit dir andere offene Beträge direkt per PayPal schicken können.
 							</FieldDescription>
 						</Field>
 					</FieldGroup>

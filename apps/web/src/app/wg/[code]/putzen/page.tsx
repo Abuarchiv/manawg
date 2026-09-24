@@ -15,7 +15,6 @@ import { ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
-import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
@@ -974,13 +973,6 @@ export default function PutzenPage() {
 		const needsRepair = (item: Chore) => (getChoreRepairHint(item) !== null ? 0 : 1);
 		return [...items].sort((a, b) => needsRepair(a) - needsRepair(b));
 	}, [items]);
-	const primaryChore = useMemo(
-		() =>
-			sortedItems.find((chore) => chore.assignedMemberId === identity.memberId) ??
-			sortedItems[0] ??
-			null,
-		[identity.memberId, sortedItems],
-	);
 	const choreGroups = useMemo(
 		() =>
 			CHORE_GROUPS.map((group) => ({
@@ -1233,28 +1225,6 @@ export default function PutzenPage() {
 					monthCompletions={monthCompletions}
 					members={members.map((member) => ({ id: member.id, name: member.name }))}
 				/>
-			)}
-			{!showSkeleton && (
-				<ThumbAction>
-					{primaryChore ? (
-						<Button
-							type="button"
-							className="min-h-11 w-full"
-							disabled={isPending(primaryChore.id)}
-							onClick={() => void handleComplete(primaryChore)}
-						>
-							{isPending(primaryChore.id)
-								? 'Wird erledigt…'
-								: completeConfirmId === primaryChore.id
-									? 'Erledigen bestätigen'
-									: 'Aufgabe erledigen'}
-						</Button>
-					) : (
-						<Button type="button" className="min-h-11 w-full" onClick={() => setShowForm(true)}>
-							Putzaufgabe erfassen
-						</Button>
-					)}
-				</ThumbAction>
 			)}
 		</div>
 	);
