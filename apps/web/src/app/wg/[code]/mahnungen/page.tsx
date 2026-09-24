@@ -394,7 +394,11 @@ export default function ErinnerungenPage() {
 				{primaryReminder ? (
 					reminderButton(primaryReminder, true)
 				) : (
-					<Button render={<Link href={`${wgBaseHref}/ausgaben`} />} className="min-h-11 w-full">
+					<Button
+						render={<Link href={`${wgBaseHref}/ausgaben`} />}
+						variant="outline"
+						className="min-h-11 w-full bg-background"
+					>
 						Ausgaben ansehen
 					</Button>
 				)}

@@ -51,44 +51,55 @@
 	}
 }
 
-/* Household pages share the accepted phone density from Home. Native inputs
+/* Household, finance and exchange pages share the phone density from Home. Native inputs
    retain 16px text to avoid Safari's automatic focus zoom. */
 @media (max-width: 639px) {
-	:is([data-household-content], [data-finance-content]) {
+	:is([data-household-content], [data-finance-content], [data-exchange-content]) {
 		gap: 1rem;
 		padding-block: 1rem;
 	}
-	:is([data-household-content], [data-finance-content]) h1 {
+	:is([data-household-content], [data-finance-content], [data-exchange-content]) h1 {
 		font-size: 1.25rem;
 		line-height: 1.625rem;
 	}
-	:is([data-household-content], [data-finance-content]) h2,
-	:is([data-household-content], [data-finance-content]) [data-slot="card-title"] {
+	:is([data-household-content], [data-finance-content], [data-exchange-content]) h2,
+	:is([data-household-content], [data-finance-content], [data-exchange-content])
+		[data-slot="card-title"] {
 		font-size: 0.875rem;
 		line-height: 1.25rem;
 	}
-	:is([data-household-content], [data-finance-content]) [data-slot="item-title"],
-	:is([data-household-content], [data-finance-content]) [data-slot="item-description"],
-	:is([data-household-content], [data-finance-content]) [data-slot="card-description"],
-	:is([data-household-content], [data-finance-content]) [data-slot="empty-title"],
-	:is([data-household-content], [data-finance-content]) [data-slot="empty-description"],
-	:is([data-household-content], [data-finance-content]) p.text-sm {
+	:is([data-household-content], [data-finance-content], [data-exchange-content])
+		[data-slot="item-title"],
+	:is([data-household-content], [data-finance-content], [data-exchange-content])
+		[data-slot="item-description"],
+	:is([data-household-content], [data-finance-content], [data-exchange-content])
+		[data-slot="card-description"],
+	:is([data-household-content], [data-finance-content], [data-exchange-content])
+		[data-slot="empty-title"],
+	:is([data-household-content], [data-finance-content], [data-exchange-content])
+		[data-slot="empty-description"],
+	:is([data-household-content], [data-finance-content], [data-exchange-content]) p.text-sm {
 		font-size: 0.8125rem;
 		line-height: 1.125rem;
 	}
-	:is([data-household-content], [data-finance-content]) [data-slot="card"] {
+	:is([data-household-content], [data-finance-content], [data-exchange-content])
+		[data-slot="card"] {
 		--card-spacing: 0.75rem;
 	}
-	:is([data-household-content], [data-finance-content]) [data-slot="field"] {
+	:is([data-household-content], [data-finance-content], [data-exchange-content])
+		[data-slot="field"] {
 		gap: 0.375rem;
 	}
-	:is([data-household-content], [data-finance-content]) [data-slot="item-content"] {
+	:is([data-household-content], [data-finance-content], [data-exchange-content])
+		[data-slot="item-content"] {
 		gap: 0.125rem;
 	}
-	:is([data-household-content], [data-finance-content]) [data-slot="item"] {
+	:is([data-household-content], [data-finance-content], [data-exchange-content])
+		[data-slot="item"] {
 		padding-block: 0.5rem;
 	}
-	:is([data-household-content], [data-finance-content]) [data-slot="empty"] {
+	:is([data-household-content], [data-finance-content], [data-exchange-content])
+		[data-slot="empty"] {
 		gap: 0.75rem;
 		padding: 1.25rem 0.75rem;
 	}
