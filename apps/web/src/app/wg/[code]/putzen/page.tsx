@@ -1049,6 +1049,7 @@ export default function PutzenPage() {
 			<SubNav />
 			<PutzenHeader
 				itemCount={items.length}
+				loading={showSkeleton}
 				health={!showSkeleton && items.length > 0 ? health : null}
 				refreshing={refreshing}
 				showForm={showForm}
