@@ -720,7 +720,7 @@ export default function EinkaufPage() {
 					aria-live="polite"
 					aria-atomic="true"
 				>
-					{open.length} offen
+					{initialLoading && items.length === 0 ? 'Lädt…' : `${open.length} offen`}
 				</p>
 			</header>
 

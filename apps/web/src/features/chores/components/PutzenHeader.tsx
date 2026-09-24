@@ -5,6 +5,7 @@ import type { getChorePlanHealth } from '@/features/chores/chore-status';
 
 interface PutzenHeaderProps {
 	itemCount: number;
+	loading: boolean;
 	health: ReturnType<typeof getChorePlanHealth> | null;
 	refreshing: boolean;
 	showForm: boolean;
@@ -13,6 +14,7 @@ interface PutzenHeaderProps {
 
 export function PutzenHeader({
 	itemCount,
+	loading,
 	health,
 	refreshing,
 	showForm,
@@ -29,14 +31,16 @@ export function PutzenHeader({
 					aria-live="polite"
 					aria-atomic="true"
 				>
-					{[
-						`${itemCount} Aufgabe${itemCount === 1 ? '' : 'n'}`,
-						health?.dueToday ? `${health.dueToday} heute fällig` : null,
-						health?.gaps ? `${health.gaps} offen` : null,
-						health?.escalated ? `${health.escalated} Klärung offen` : null,
-					]
-						.filter(Boolean)
-						.join(' · ')}
+					{loading
+						? 'Lädt…'
+						: [
+								`${itemCount} Aufgabe${itemCount === 1 ? '' : 'n'}`,
+								health?.dueToday ? `${health.dueToday} heute fällig` : null,
+								health?.gaps ? `${health.gaps} offen` : null,
+								health?.escalated ? `${health.escalated} Klärung offen` : null,
+							]
+								.filter(Boolean)
+								.join(' · ')}
 					{refreshing && <Spinner className="size-3 opacity-50" aria-hidden />}
 				</p>
 			</div>
