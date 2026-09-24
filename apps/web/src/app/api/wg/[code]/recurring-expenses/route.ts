@@ -1,7 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, idempotencyResponses, recurringExpenses, wgMembers } from '@/core/db';
 import { TransactionAbort } from '@/core/db/transaction';
-import { badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
+import { apiError, badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import {
 	ReplayCache,
@@ -22,6 +22,7 @@ import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
+import { checkPaidByGuard } from '@/features/expenses/expenses';
 import {
 	buildRecurringAdvance,
 	parseRecurringSplits,
@@ -211,6 +212,14 @@ export async function POST(
 			`recurring-expense:${wg.id}:${auth.member.memberId}`,
 		);
 		if (!limited.success) return tooMany();
+		const paidByGuard = checkPaidByGuard(
+			parsed.data.paidByMemberId,
+			auth.member.memberId,
+			parsed.data.splits,
+		);
+		if (!paidByGuard.ok) {
+			return apiError('paid_by_must_include_caller', 403, 'paid_by_must_include_caller');
+		}
 		const memberIds = Array.from(
 			new Set([
 				parsed.data.paidByMemberId,

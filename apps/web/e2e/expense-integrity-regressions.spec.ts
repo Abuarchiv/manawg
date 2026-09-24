@@ -832,3 +832,172 @@ test('import helper does not validate member mappings for skipped rows', async (
 	expect(result.skipped).toBe(1);
 	expect(memberLookups).toBe(0);
 });
+
+test('payer guard failures explain how to correct an expense and recurring template', () => {
+	const messages = loadTs<{
+		expenseSaveErrorMessage: (error: string) => string;
+		recurringTemplateSaveErrorMessage: (error: string) => string;
+	}>(path.join(ROOT, 'src/features/expenses/expense-errors.ts'), {
+		'@/core/errors/generic-error-codes': {
+			isAuthInvalidated: () => false,
+			isInvalidShareCode: () => false,
+			isNetworkError: () => false,
+			isRetryableServerError: () => false,
+		},
+	});
+
+	expect(messages.expenseSaveErrorMessage('paid_by_must_include_caller')).toContain('Anteil');
+	expect(messages.recurringTemplateSaveErrorMessage('paid_by_must_include_caller')).toContain(
+		'Anteil',
+	);
+});
+
+test('recurring expense creation requires the caller to bear a positive share', async () => {
+	let memberRows = [{ id: PAYER_ID }];
+	const recurringExpenses = {};
+	let insertCount = 0;
+	const tx = {
+		insert: () => ({
+			values: (value: Record<string, unknown>) => ({
+				returning: async () => {
+					insertCount += 1;
+					return [
+						{
+							...value,
+							id: EXPENSE_ID,
+							createdAt: new Date(),
+							lastCreatedAt: null,
+							pausedAt: null,
+						},
+					];
+				},
+			}),
+		}),
+	};
+	const expenseFeatures = loadTs<Record<string, unknown>>(
+		path.join(ROOT, 'src/features/expenses/expenses.ts'),
+		{
+			'@/core/activity-feed': {},
+			'@/core/audit': {},
+			'@/core/db': {},
+			'@/core/db/transaction': {},
+			'@/core/guards/api-auth': {},
+			'@/core/notifications/notification-dispatch': {},
+			'@/core/utils/money': {},
+			'@/features/expenses/split-math': {},
+			'drizzle-orm': {},
+		},
+	);
+	const route = loadTs<{
+		POST: (req: Request, ctx: unknown) => Promise<Response>;
+	}>(path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/route.ts'), {
+		'@/core/audit': { recordAuditEvent: async () => undefined },
+		'@/core/db': {
+			db: {
+				select: () => ({ from: () => ({ where: async () => memberRows }) }),
+			},
+			idempotencyResponses: {},
+			recurringExpenses,
+			wgMembers: {},
+		},
+		'@/core/db/transaction': {
+			TransactionAbort: class TransactionAbort extends Error {},
+		},
+		'@/core/errors': {
+			apiError: (code: string, status: number) => responseError(code, status),
+			badRequest: (code: string) => responseError(code, 400),
+			conflict: (code: string) => responseError(code, 409),
+			notFound: (code: string) => responseError(code, 404),
+			serverError: (code: string) => responseError(code, 500),
+			tooMany: () => responseError('too_many', 429),
+		},
+		'@/core/guards/admin': { requireOwnerOrAdmin: async () => null },
+		'@/core/guards/idempotency': {
+			ReplayCache: class {
+				get() {
+					return null;
+				}
+				remember() {}
+				reserve() {
+					return null;
+				}
+			},
+			claimReplaySlotWithRetry: async () => ({ won: true }),
+			replayKey: () => 'replay-key',
+		},
+		'@/core/guards/require-wg-member': {
+			requireWgMember: async () => ({
+				ok: true,
+				wg: { id: WG_ID, name: 'WG', shareCode: 'MTE8PZAT' },
+				member: { memberId: CALLER_ID, name: 'Mina' },
+			}),
+		},
+		'@/core/guards/route-preamble': {
+			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
+		},
+		'@/core/guards/with-wg-route': { withWgRoute: (_name: string, handler: unknown) => handler },
+		'@/core/idempotency': {
+			RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
+			getCachedResponse: async () => null,
+			readIdempotencyKey: () => null,
+		},
+		'@/core/infra/observability': { logApiError: () => undefined },
+		'@/core/rate-limit': {
+			checkRateLimit: async () => ({ success: true }),
+			wgWriteLimiter: {},
+		},
+		'@/core/validators/currency': { currencySchema: z.string() },
+		'@/features/expenses/expense-payments': {
+			withExpensePaymentLock: async (_wgId: string, operation: (tx: unknown) => Promise<unknown>) =>
+				operation(tx),
+		},
+		'@/features/expenses/expenses': expenseFeatures,
+		'@/features/expenses/recurring-expenses': { parseRecurringSplits: JSON.parse },
+		'@/features/expenses/split-math': loadTs(SPLIT_MATH),
+		'drizzle-orm': {
+			and: (...conditions: unknown[]) => conditions,
+			asc: () => undefined,
+			eq: () => undefined,
+			gt: () => undefined,
+			inArray: () => undefined,
+			isNull: () => undefined,
+			sql: () => undefined,
+		},
+	});
+	const post = (splits: Array<{ debtorMemberId: string; amountCents: number }>) =>
+		route.POST(
+			new Request('http://localhost', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					description: 'Miete',
+					amountCents: 1200,
+					paidByMemberId: PAYER_ID,
+					nextDueAt: new Date(Date.now() + 86_400_000).toISOString(),
+					splits,
+				}),
+			}),
+			{ params: Promise.resolve({ code: 'MTE8PZAT' }) },
+		);
+
+	const fabricated = await post([{ debtorMemberId: PAYER_ID, amountCents: 1200 }]);
+	expect(fabricated.status).toBe(403);
+	expect(await fabricated.json()).toEqual({ error: 'paid_by_must_include_caller' });
+	expect(insertCount).toBe(0);
+
+	memberRows = [{ id: PAYER_ID }, { id: CALLER_ID }];
+	const zeroShare = await post([
+		{ debtorMemberId: PAYER_ID, amountCents: 1200 },
+		{ debtorMemberId: CALLER_ID, amountCents: 0 },
+	]);
+	expect(zeroShare.status).toBe(403);
+	expect(await zeroShare.json()).toEqual({ error: 'paid_by_must_include_caller' });
+	expect(insertCount).toBe(0);
+
+	const includedCaller = await post([
+		{ debtorMemberId: PAYER_ID, amountCents: 1199 },
+		{ debtorMemberId: CALLER_ID, amountCents: 1 },
+	]);
+	expect(includedCaller.status).toBe(200);
+	expect(insertCount).toBe(1);
+});

@@ -225,7 +225,7 @@ export async function POST(
 		if (paidBy === null) return badRequest('member_id_invalid');
 		const debtorIds = Array.from(new Set(validatedSplits.map((s) => s.debtorMemberId)));
 
-		const guard = checkPaidByGuard(paidBy, auth.member.memberId, debtorIds);
+		const guard = checkPaidByGuard(paidBy, auth.member.memberId, validatedSplits);
 		if (!guard.ok) {
 			return apiError('paid_by_must_include_caller', 403, 'paid_by_must_include_caller');
 		}
