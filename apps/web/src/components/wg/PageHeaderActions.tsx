@@ -1,11 +1,9 @@
 'use client';
 
-import { Button, buttonVariants } from '@/components/ui/button';
-import { cn } from '@/shared/lib/cn';
-import { CalendarDays, Plus, Settings, X } from 'lucide-react';
-import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Plus, X } from 'lucide-react';
 
-/** Shared actions for the responsive headers of the three list pages. */
+/** Shared actions for the responsive headers of the list pages. */
 
 interface FormToggleButtonProps {
 	open: boolean;
@@ -20,6 +18,7 @@ interface FormToggleButtonProps {
 	openLabel: string;
 	/** e.g. "Ausgabenformular schließen". */
 	closeLabel: string;
+	secondary?: boolean;
 }
 
 export function FormToggleButton({
@@ -28,54 +27,23 @@ export function FormToggleButton({
 	controls,
 	openLabel,
 	closeLabel,
+	secondary = false,
 }: FormToggleButtonProps) {
 	return (
 		<Button
 			type="button"
-			variant={open ? 'ghost' : 'default'}
+			variant={open ? 'ghost' : secondary ? 'outline' : 'default'}
 			onClick={onToggle}
 			aria-expanded={open}
 			{...(controls ? { 'aria-controls': controls } : {})}
 			aria-label={open ? closeLabel : openLabel}
-			className="w-9 shrink-0 px-0 sm:w-auto sm:px-3"
+			className="w-9 shrink-0 px-0"
 		>
 			{open ? (
-				<>
-					<X data-icon="inline-start" aria-hidden />
-					<span className="hidden sm:inline">Schließen</span>
-				</>
+				<X data-icon="inline-start" aria-hidden />
 			) : (
-				<>
-					<Plus data-icon="inline-start" aria-hidden />
-					<span className="hidden sm:inline">{openLabel}</span>
-				</>
+				<Plus data-icon="inline-start" aria-hidden />
 			)}
 		</Button>
-	);
-}
-
-export function SettingsLink({ wgBaseHref }: { wgBaseHref: string }) {
-	return (
-		<Link
-			href={`${wgBaseHref}/einstellungen`}
-			aria-label="WG-Einstellungen öffnen"
-			className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
-		>
-			<Settings aria-hidden />
-			<span className="sr-only">WG-Einstellungen öffnen</span>
-		</Link>
-	);
-}
-
-export function CalendarLink({ wgBaseHref }: { wgBaseHref: string }) {
-	return (
-		<Link
-			href={`${wgBaseHref}/kalender`}
-			aria-label="Termine im Kalender öffnen"
-			title="Termine"
-			className={cn(buttonVariants({ variant: 'outline', size: 'icon' }))}
-		>
-			<CalendarDays aria-hidden />
-		</Link>
 	);
 }

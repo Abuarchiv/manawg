@@ -45,7 +45,7 @@ export default function ErrorBoundary({
 							{error.message}
 						</pre>
 					)}
-					<Button type="button" size="lg" onClick={() => reset()} className="min-h-11">
+					<Button type="button" size="lg" onClick={() => reset()}>
 						Erneut versuchen
 					</Button>
 				</EmptyContent>

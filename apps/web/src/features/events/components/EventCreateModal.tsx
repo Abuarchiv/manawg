@@ -149,18 +149,10 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 						Für eure WG · Datum und Uhrzeit wie auf deinem Gerät.
 					</DrawerDescription>
 				</DrawerHeader>
-				<form
-					onSubmit={handleSubmit}
-					className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
-				>
-					<details>
-						<summary className="min-h-11 cursor-pointer py-3 text-xs text-muted-foreground">
-							Vorlage verwenden
-						</summary>
+				<form onSubmit={handleSubmit} className="flex min-h-0 flex-col">
+					<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
 						<FieldSet disabled={submitting}>
-							<FieldLegend variant="label" className="sr-only">
-								Schnellvorlagen
-							</FieldLegend>
+							<FieldLegend variant="label">Vorlagen</FieldLegend>
 							<div className="flex flex-wrap gap-2">
 								{QUICK_TEMPLATES.map((template) => (
 									<Button
@@ -169,70 +161,58 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 										variant="outline"
 										onClick={() => applyTemplate(template)}
 										disabled={submitting}
-										className="min-h-11"
 									>
 										{template.label}
 									</Button>
 								))}
 							</div>
 						</FieldSet>
-					</details>
-					<EventFormFields
-						idPrefix="event-create"
-						title={title}
-						onTitleChange={setTitle}
-						startsAt={startsAt}
-						onStartsAtChange={setStartsAt}
-						endsAt={endsAt}
-						onEndsAtChange={setEndsAt}
-						allDay={allDay}
-						onAllDayChange={setAllDay}
-						location={location}
-						onLocationChange={setLocation}
-						description={description}
-						onDescriptionChange={setDescription}
-						disabled={submitting}
-						recurrenceField={
-							<Field data-disabled={submitting}>
-								<FieldLabel htmlFor="event-recurrence">Wiederholung</FieldLabel>
-								<NativeSelect
-									id="event-recurrence"
-									value={recurrenceFreq}
-									onChange={(event) => setRecurrenceFreq(event.target.value)}
-									disabled={submitting}
-									className="w-full [&_select]:min-h-11 [&_select]:text-base"
-								>
-									{RECURRENCE_OPTIONS.map((option) => (
-										<NativeSelectOption key={option.value} value={option.value}>
-											{option.label}
-										</NativeSelectOption>
-									))}
-								</NativeSelect>
-							</Field>
-						}
-					/>
-					{error && (
-						<Alert variant="destructive">
-							<AlertDescription>{error}</AlertDescription>
-						</Alert>
-					)}
-					<DrawerFooter className="p-0">
-						<Button
-							type="submit"
+						<EventFormFields
+							idPrefix="event-create"
+							title={title}
+							onTitleChange={setTitle}
+							startsAt={startsAt}
+							onStartsAtChange={setStartsAt}
+							endsAt={endsAt}
+							onEndsAtChange={setEndsAt}
+							allDay={allDay}
+							onAllDayChange={setAllDay}
+							location={location}
+							onLocationChange={setLocation}
+							description={description}
+							onDescriptionChange={setDescription}
 							disabled={submitting}
-							aria-label="Termin speichern"
-							className="min-h-11"
-						>
+							recurrenceField={
+								<Field data-disabled={submitting}>
+									<FieldLabel htmlFor="event-recurrence">Wiederholung</FieldLabel>
+									<NativeSelect
+										id="event-recurrence"
+										value={recurrenceFreq}
+										onChange={(event) => setRecurrenceFreq(event.target.value)}
+										disabled={submitting}
+										className="w-full [&_select]:min-h-11 [&_select]:text-base"
+									>
+										{RECURRENCE_OPTIONS.map((option) => (
+											<NativeSelectOption key={option.value} value={option.value}>
+												{option.label}
+											</NativeSelectOption>
+										))}
+									</NativeSelect>
+								</Field>
+							}
+						/>
+						{error && (
+							<Alert variant="destructive">
+								<AlertDescription>{error}</AlertDescription>
+							</Alert>
+						)}
+					</div>
+					<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+						<Button type="submit" disabled={submitting} aria-label="Termin speichern">
 							{submitting && <Spinner data-icon="inline-start" aria-hidden />}
 							{submitting ? 'Speichert…' : 'Termin speichern'}
 						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={onClose}
-							disabled={submitting}
-							className="min-h-11"
-						>
+						<Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
 							Schließen · Entwurf behalten
 						</Button>
 					</DrawerFooter>

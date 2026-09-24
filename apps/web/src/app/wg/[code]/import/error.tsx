@@ -26,13 +26,13 @@ export default function ImportError({ error, reset }: Props) {
 					{process.env.NODE_ENV === 'development' ? error.message : 'Bitte versuche es erneut.'}
 				</AlertDescription>
 			</Alert>
-			<div className="flex flex-col gap-2 sm:flex-row">
-				<Button type="button" className="min-h-11 flex-1" onClick={reset}>
+			<div className="flex flex-col gap-2">
+				<Button type="button" className="flex-1" onClick={reset}>
 					Erneut versuchen
 				</Button>
 				<Button
 					variant="outline"
-					className="min-h-11 flex-1"
+					className="flex-1"
 					render={<Link href="../einstellungen#daten" />}
 					nativeButton={false}
 				>

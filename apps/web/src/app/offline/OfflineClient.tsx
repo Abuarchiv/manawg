@@ -242,7 +242,7 @@ export function OfflineClient() {
 							size="sm"
 							onClick={() => void refresh()}
 							aria-label="Offline-Status erneut prüfen"
-							className="min-h-11 shrink-0"
+							className="shrink-0"
 						>
 							<RotateCw data-icon="inline-start" aria-hidden />
 							Prüfen
@@ -267,7 +267,7 @@ export function OfflineClient() {
 									: 'Offline-Aktionen jetzt synchronisieren'
 							}
 							size="lg"
-							className="min-h-11 w-full"
+							className="w-full"
 						>
 							{syncing ? (
 								<Spinner className="motion-reduce:animate-none" aria-hidden />
@@ -343,7 +343,7 @@ export function OfflineClient() {
 										size="lg"
 										render={<Link href={wgHref(primaryWg.code, '/einstellungen#daten')} />}
 										nativeButton={false}
-										className="min-h-11 px-0"
+										className="px-0"
 									>
 										Alle Aktionen prüfen
 									</Button>
@@ -398,7 +398,7 @@ export function OfflineClient() {
 									size="lg"
 									render={<Link href={wgHref(primaryWg.code, '/einstellungen#daten')} />}
 									nativeButton={false}
-									className="min-h-11 w-full"
+									className="w-full"
 								>
 									Aktionen prüfen
 								</Button>
@@ -408,7 +408,7 @@ export function OfflineClient() {
 								size="lg"
 								render={<Link href="/neu" />}
 								nativeButton={false}
-								className="min-h-11 w-full"
+								className="w-full"
 							>
 								Code eingeben
 							</Button>

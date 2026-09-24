@@ -13,6 +13,18 @@ Source: [Brandbook v1.0](brandbook.html), supplied by the product owner on 2026-
 - No button scaling, tab bounce, or page entrance animations. Loading uses the organism, 1200ms, and becomes static for reduced motion. No artificial startup delay.
 - Plain German, no guilt, advertising badges or decorative status colors. Labels above fields; visible focus and invalid states retained.
 
+## Explicit handset transition exception
+
+For the requested WG app-feel update, subpage navigation may use a 120 ms opacity-only fade. Reduced-motion preferences skip the fade; sliding, bounce, and startup delay remain disallowed.
+
+## Explicit navigation glass exception
+
+On 2026-09-23 the product owner requested Liquid Glass for the bottom navigation in light and dark mode. `.glass-bar` may use a tinted translucent background with backdrop blur on the navigation layer only, never on content. Reduced-transparency, increased-contrast and browsers without `backdrop-filter` fall back to the opaque bordered bar.
+
+## Explicit handset touch-feedback exception
+
+For the same update, shared buttons and tappable list/card surfaces may scale to 0.97 for an 80 ms pressed state. Reduced-motion preferences disable the scale; 44 px touch targets remain required.
+
 ## Responsive control contract
 
 - Component sizes belong to the shared primitives, not a phone-only global

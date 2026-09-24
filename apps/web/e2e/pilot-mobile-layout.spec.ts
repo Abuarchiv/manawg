@@ -263,7 +263,11 @@ async function assertInventoryModal(page: Page, width: number): Promise<void> {
 		expect(box).not.toBeNull();
 		if (!box) continue;
 		expect(box.width).toBeGreaterThanOrEqual(240);
-		expect(box.height).toBeGreaterThanOrEqual(44);
+		// Buttons stay 36px visually; the ::after layer carries the 44px hit area.
+		const hitHeight = await button.evaluate(
+			(el) => Number.parseFloat(getComputedStyle(el, '::after').height) || 0,
+		);
+		expect(Math.max(box.height, hitHeight)).toBeGreaterThanOrEqual(44);
 		expect(box.x + box.width).toBeLessThanOrEqual(width - 16 + 1);
 		expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth + 1);
 	}
@@ -353,7 +357,11 @@ async function assertViewportLayout(page: Page, route: LayoutRoute): Promise<voi
 			const box = await button.boundingBox();
 			expect(box).not.toBeNull();
 			if (!box) continue;
-			expect(box.height).toBeGreaterThanOrEqual(44);
+			// Buttons stay 36px visually; the ::after layer carries the 44px hit area.
+			const hitHeight = await button.evaluate(
+				(el) => Number.parseFloat(getComputedStyle(el, '::after').height) || 0,
+			);
+			expect(Math.max(box.height, hitHeight)).toBeGreaterThanOrEqual(44);
 			expect(box.x + box.width).toBeLessThanOrEqual(viewportWidth + 1);
 		}
 	} else {

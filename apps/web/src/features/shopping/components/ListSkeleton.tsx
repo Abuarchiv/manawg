@@ -3,15 +3,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const SKELETON_KEYS = ['s0', 's1', 's2', 's3'];
 
+// Mirrors ShoppingItemRow: a flat stacked list, not a bordered card.
 export function ListSkeleton() {
 	return (
-		<ItemGroup
-			aria-busy="true"
-			aria-label="Einkaufsliste wird geladen"
-			className="overflow-hidden rounded-xl border border-border bg-card"
-		>
+		<ItemGroup aria-busy="true" aria-label="Einkaufsliste wird geladen" className="gap-0">
 			{SKELETON_KEYS.map((k) => (
-				<Item key={k} className="px-3 py-2.5 sm:px-4">
+				<Item key={k} className="px-0 py-2.5">
 					<ItemMedia variant="icon" className="self-center">
 						<Skeleton className="size-6 rounded-md" />
 					</ItemMedia>

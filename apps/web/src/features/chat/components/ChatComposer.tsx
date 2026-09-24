@@ -241,7 +241,6 @@ export function ChatComposer({
 						onClick={onClearReply}
 						disabled={pending}
 						aria-label="Antwort abbrechen"
-						className="min-h-11 min-w-11"
 					>
 						<X aria-hidden />
 					</Button>
@@ -268,7 +267,7 @@ export function ChatComposer({
 				onHoverIndex={setMentionActiveIndex}
 			/>
 			<div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-4 py-2">
-				<InputGroup className="h-auto min-h-11 items-end">
+				<InputGroup className="h-auto items-end">
 					<InputGroupTextarea
 						ref={textareaRef}
 						value={draft}
@@ -283,7 +282,7 @@ export function ChatComposer({
 						aria-controls={mentionOpen ? mentionListboxId : undefined}
 						aria-expanded={mentionOpen}
 						aria-activedescendant={activeOptionId}
-						className="max-h-32 min-h-11 flex-1 text-base md:text-base"
+						className="max-h-32 min-h-11 flex-1 text-base"
 					/>
 					<InputGroupAddon align="inline-end" className="py-1">
 						<InputGroupButton

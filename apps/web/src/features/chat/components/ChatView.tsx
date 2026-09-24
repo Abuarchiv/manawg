@@ -24,7 +24,6 @@ import { mergePagedMessagesById, mergePagedReactions, previewBody } from '../cha
 import { ChatComposer } from './ChatComposer';
 import type { BubbleMessage, ReactionSummary } from './MessageBubble';
 import { MessageList } from './MessageList';
-import { TypingIndicator } from './TypingIndicator';
 
 interface ChatMessageDto extends BubbleMessage {
 	wgId: string;
@@ -491,7 +490,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1">
 					<AlertDescription className="flex flex-row flex-wrap items-center justify-between gap-x-2 gap-y-0 text-xs">
 						Lesestatus konnte nicht gespeichert werden.
-						<Button variant="ghost" size="sm" className="min-h-11 text-xs" onClick={markLatestRead}>
+						<Button variant="ghost" size="sm" className="text-xs" onClick={markLatestRead}>
 							Lesestatus erneut speichern
 						</Button>
 					</AlertDescription>
@@ -501,12 +500,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1">
 					<AlertDescription className="flex flex-row flex-wrap items-center justify-between gap-x-2 gap-y-0 text-xs">
 						Chat gerade nicht aktuell.
-						<Button
-							variant="ghost"
-							size="sm"
-							className="min-h-11 text-xs"
-							onClick={() => void refresh()}
-						>
+						<Button variant="ghost" size="sm" className="text-xs" onClick={() => void refresh()}>
 							Erneut versuchen
 						</Button>
 					</AlertDescription>
@@ -544,7 +538,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 												variant="outline"
 												size="sm"
 												onClick={() => void loadInitialMessages()}
-												className="mt-3 min-h-11"
+												className="mt-3"
 											>
 												Erneut laden
 											</Button>
@@ -604,7 +598,6 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 					</MessageScrollerButton>
 				</MessageScroller>
 			</MessageScrollerProvider>
-			<TypingIndicator names={[]} />
 			<ChatComposer
 				key={`${shareCode}:${identity.memberId}`}
 				draftKey={`manawg:draft:${shareCode}:${identity.memberId}:chat`}

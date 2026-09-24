@@ -60,7 +60,7 @@ export function StartWelcome() {
 						<Button
 							variant="ghost"
 							size="icon"
-							className="size-11"
+							className="size-9"
 							onClick={dismiss}
 							aria-label="Einstiegshinweis dauerhaft ausblenden"
 						>
@@ -69,14 +69,14 @@ export function StartWelcome() {
 					</CardAction>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-1">
-					<Link href={primaryAction.href} className={cn(buttonVariants(), 'min-h-11')}>
+					<Link href={primaryAction.href} className={cn(buttonVariants(), '')}>
 						{primaryAction.label}
 					</Link>
 					<CopyCodeButton code={wg.shareCode} wgName={wg.name} joiningEnabled={wg.joiningEnabled} />
 					{!wg.joiningEnabled && (
 						<Link
 							href={`${baseHref}/einstellungen#zugang`}
-							className={cn(buttonVariants({ variant: 'link' }), 'min-h-11')}
+							className={cn(buttonVariants({ variant: 'link' }), '')}
 						>
 							Einladungen verwalten
 						</Link>

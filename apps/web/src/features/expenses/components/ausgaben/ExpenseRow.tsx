@@ -33,7 +33,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { cn } from '@/shared/lib/cn';
-import { Check, ChevronDown, MoreHorizontal, Pencil, Receipt, Trash2 } from 'lucide-react';
+import { Check, MoreHorizontal, Pencil, Receipt, Trash2 } from 'lucide-react';
 import { memo, useState } from 'react';
 import type { Expense, ExpenseSplit } from './expense-types';
 
@@ -82,46 +82,44 @@ export const ExpenseRow = memo(function ExpenseRow({
 							render={
 								<Button
 									variant="ghost"
-									className="h-auto min-h-11 w-full justify-start whitespace-normal px-0 text-left"
+									className="h-auto w-full justify-start whitespace-normal px-0 text-left"
 								/>
 							}
 						>
-							<span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 sm:flex sm:flex-col">
+							<span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-1">
 								<span className="sr-only">Details öffnen:</span>
 								<span className="break-words font-medium leading-snug">{expense.description}</span>
 								<span className="font-mono tabular-nums text-foreground">
 									{formatEuroCents(expense.amountCents, expense.currency)}
 								</span>
-								<span className="col-span-2 text-left text-xs leading-normal font-normal text-muted-foreground sm:text-sm">
+								<span className="col-span-2 text-left text-[13px] leading-normal font-normal text-muted-foreground">
 									Bezahlt von {memberName(expense.paidByMemberId)} ·{' '}
 									<time dateTime={expense.occurredAt} title={formatTimeFull(expense.occurredAt)}>
 										{formatRelativeTime(expense.occurredAt)}
 									</time>
 								</span>
-								<span className="col-span-2 flex flex-wrap gap-1.5 pt-1">
-									{paymentSplits.length > 0 && (
-										<Badge variant="secondary">
-											{settledCount}/{paymentSplits.length} beglichen
-										</Badge>
-									)}
-									{expense.imageUrl && (
-										<Badge variant="outline">
-											<Receipt />
-											Beleg
-										</Badge>
-									)}
-								</span>
+								{(paymentSplits.length > 0 || expense.imageUrl) && (
+									<span className="col-span-2 flex flex-wrap gap-1.5 pt-1">
+										{paymentSplits.length > 0 && (
+											<Badge variant="secondary">
+												{settledCount === paymentSplits.length ? 'Beglichen' : 'Offen'}
+											</Badge>
+										)}
+										{expense.imageUrl && (
+											<Badge variant="outline">
+												<Receipt />
+												Beleg
+											</Badge>
+										)}
+									</span>
+								)}
 							</span>
-							<ChevronDown
-								data-icon="inline-end"
-								className={cn('shrink-0', expanded && 'rotate-180')}
-							/>
 						</CollapsibleTrigger>
 					</ItemContent>
 					<ItemActions>
 						<DropdownMenu>
 							<DropdownMenuTrigger
-								render={<Button variant="ghost" size="icon" className="size-11" />}
+								render={<Button variant="ghost" size="icon" className="size-9" />}
 								aria-label={`Aktionen für ${expense.description}`}
 							>
 								<MoreHorizontal />
@@ -166,7 +164,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 									</a>
 								}
 								nativeButton={false}
-								className="mb-3 min-h-11"
+								className="mb-3"
 							/>
 						)}
 						<ItemGroup aria-label="Ausgabenanteile" className="gap-1">
@@ -195,7 +193,6 @@ export const ExpenseRow = memo(function ExpenseRow({
 										{!ownShare && split.amountCents > 0 && (
 											<Button
 												variant={settled ? 'secondary' : 'outline'}
-												className="min-h-11"
 												onClick={() => setSettleCandidate(split)}
 												disabled={isPending(split.id)}
 												aria-label={`${memberName(split.debtorMemberId)} Zahlung als ${settled ? 'offen' : 'beglichen'} markieren`}

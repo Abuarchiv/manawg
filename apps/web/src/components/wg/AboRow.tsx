@@ -56,7 +56,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 				<ItemFooter className="flex-col items-stretch gap-3">
 					<Collapsible>
 						<CollapsibleTrigger
-							render={<Button variant="ghost" className="min-h-11 w-full justify-between" />}
+							render={<Button variant="ghost" className="w-full justify-between" />}
 						>
 							Anteile, Termine & Aktionen
 							<ChevronDown data-icon="inline-end" />
@@ -94,7 +94,6 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 									{/* Pausieren liegt bewusst hier statt als Schalter in der Zeile: kein versehentliches Antippen. */}
 									<Button
 										variant="outline"
-										className="min-h-11"
 										onClick={() => onTogglePause(abo)}
 										disabled={pending}
 										aria-label={
@@ -111,7 +110,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 									<Button
 										variant="outline"
 										size="icon"
-										className="size-11"
+										className="size-9"
 										onClick={() => onEdit(abo)}
 										disabled={pending}
 										aria-label={`${abo.description} bearbeiten`}
@@ -122,7 +121,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 									<Button
 										variant="ghost"
 										size="icon"
-										className="size-11"
+										className="size-9"
 										onClick={() => onDelete(abo)}
 										disabled={pending}
 										aria-label={`${abo.description} löschen`}

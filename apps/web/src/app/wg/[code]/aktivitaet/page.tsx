@@ -19,10 +19,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { ActivityFeed } from '@/components/wg/dashboard/ActivityFeed';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { apiFetch } from '@/core/infra/api-client';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import {
 	type ActivityFilter,
 	type ActivityItem,
@@ -54,9 +55,17 @@ export default function AktivitaetPage() {
 	const { wg, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
-	const [data, setData] = useState<ActivityResponse | null>(null);
+	const {
+		data: cachedActivity,
+		error: activityError,
+		isLoading: activityLoading,
+		refresh: refreshActivity,
+	} = useCachedFetch<ActivityResponse>(`/api/wg/${encodedShareCode}/activity`, {
+		memberId: identity.memberId,
+	});
+	const [data, setData] = useState<ActivityResponse | null>(cachedActivity ?? null);
 	const [error, setError] = useState<string | null>(null);
-	const [loading, setLoading] = useState(false);
+	const [loading, setLoading] = useState(activityLoading);
 	const [filter, setFilter] = useState<ActivityFilter>({ kind: 'all', mineOnly: false, query: '' });
 	const [scope, setScope] = useState<ActivityScope>('all');
 	const requestIdRef = useRef(0);
@@ -66,9 +75,7 @@ export default function AktivitaetPage() {
 		requestIdRef.current = requestId;
 		setLoading(true);
 		try {
-			const res = await apiFetch<ActivityResponse>(`/api/wg/${encodedShareCode}/activity`, {
-				memberId: identity.memberId,
-			});
+			const res = await refreshActivity();
 			if (requestId !== requestIdRef.current) return;
 			if (res.ok) {
 				setData(res.data);
@@ -79,11 +86,22 @@ export default function AktivitaetPage() {
 		} finally {
 			if (requestId === requestIdRef.current) setLoading(false);
 		}
-	}, [encodedShareCode, identity.memberId]);
+	}, [refreshActivity]);
 
 	useEffect(() => {
 		void load();
 	}, [load]);
+
+	useEffect(() => {
+		if (cachedActivity) {
+			setData(cachedActivity);
+			setError(null);
+			setLoading(false);
+		} else if (activityError) {
+			setError(getWgLoadErrorMessage('Aktivität', activityError.status, activityError.error));
+			setLoading(false);
+		}
+	}, [activityError, cachedActivity]);
 
 	const filteredItems = useMemo(
 		() =>
@@ -134,7 +152,7 @@ export default function AktivitaetPage() {
 
 	return (
 		<div className="mx-auto min-w-0 w-full max-w-3xl space-y-4 bg-background px-4 py-4 pb-[env(safe-area-inset-bottom)]">
-			<header className="flex items-center gap-2">
+			<header className="flex items-start gap-2">
 				<BackLink href={wgBaseHref} label="Dashboard" />
 				<div className="min-w-0 flex-1">
 					<h1 className="font-heading text-xl font-semibold tracking-tight text-foreground">
@@ -144,21 +162,6 @@ export default function AktivitaetPage() {
 						Verlauf, Erinnerungen und offene Klärungen.
 					</p>
 				</div>
-				<Button
-					type="button"
-					variant="outline"
-					size="icon-lg"
-					onClick={() => void load()}
-					disabled={loading}
-					aria-label="Aktivität aktualisieren"
-					className="min-h-11 min-w-11"
-				>
-					{loading ? (
-						<Spinner className="motion-reduce:animate-none" aria-hidden />
-					) : (
-						<RotateCw aria-hidden />
-					)}
-				</Button>
 			</header>
 
 			{error && (
@@ -199,7 +202,7 @@ export default function AktivitaetPage() {
 													<span className="line-clamp-1">{item.title}</span>
 													{item.priority === 'high' && (
 														<Badge variant="destructive" className="shrink-0">
-															wichtig
+															Wichtig
 														</Badge>
 													)}
 												</span>
@@ -218,9 +221,9 @@ export default function AktivitaetPage() {
 				</Card>
 			)}
 
-			<Card className="border-0 bg-transparent py-0 shadow-none">
+			<Card className="overflow-visible border-0 bg-transparent py-0 shadow-none">
 				<CardContent className="space-y-3 p-0">
-					<InputGroup className="min-h-11">
+					<InputGroup>
 						<InputGroupAddon align="inline-start">
 							<Search className="h-4 w-4" aria-hidden />
 						</InputGroupAddon>
@@ -274,7 +277,7 @@ export default function AktivitaetPage() {
 				</CardContent>
 			</Card>
 
-			<Card className="border-0 bg-transparent py-0 shadow-none">
+			<Card className="overflow-visible border-0 bg-transparent py-0 shadow-none">
 				<CardContent className="p-0">
 					{data ? (
 						chronicleGroups.length > 0 ? (
@@ -306,13 +309,7 @@ export default function AktivitaetPage() {
 									</EmptyDescription>
 								</EmptyHeader>
 								<EmptyContent>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={resetFilters}
-										className="min-h-11"
-									>
+									<Button type="button" variant="outline" size="sm" onClick={resetFilters}>
 										Filter zurücksetzen
 									</Button>
 								</EmptyContent>
@@ -351,6 +348,21 @@ export default function AktivitaetPage() {
 					)}
 				</CardContent>
 			</Card>
+			<ThumbAction>
+				<Button
+					type="button"
+					onClick={() => void load()}
+					disabled={loading}
+					className="min-h-11 w-full"
+				>
+					{loading ? (
+						<Spinner className="motion-reduce:animate-none" data-icon="inline-start" aria-hidden />
+					) : (
+						<RotateCw data-icon="inline-start" aria-hidden />
+					)}
+					Aktivität aktualisieren
+				</Button>
+			</ThumbAction>
 		</div>
 	);
 }

@@ -52,13 +52,12 @@ export function AbosList({
 	return (
 		<section className="flex flex-col gap-4">
 			<ToggleGroup
+				variant="segmented"
 				value={[filter]}
 				onValueChange={(values) => {
 					const value = values[0];
 					if (value === 'active' || value === 'paused' || value === 'all') onFilterChange(value);
 				}}
-				variant="outline"
-				spacing={0}
 				className="w-full"
 				aria-label="Abos filtern"
 			>

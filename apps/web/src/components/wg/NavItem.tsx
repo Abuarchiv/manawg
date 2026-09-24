@@ -1,7 +1,6 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import {
@@ -112,18 +111,21 @@ export function NavItem({
 		<li>
 			<Link
 				href={href}
+				prefetch={true}
 				aria-current={isActive ? (isCurrentPage ? 'page' : 'location') : undefined}
 				data-bottom-nav-item
 				onClick={() => {
 					if (!isActive) haptic('light');
 				}}
 				className={cn(
-					buttonVariants({ variant: isActive ? 'secondary' : 'ghost' }),
-					'h-auto min-h-12 w-full flex-col gap-0.5 rounded-[16px] px-0 py-1 sm:min-h-14 sm:gap-1 sm:py-2',
+					'flex h-13 w-full flex-col items-center justify-center gap-1 rounded-[16px] text-foreground/70 outline-none transition-colors duration-[120ms] select-none focus-visible:ring-2 focus-visible:ring-ring',
+					isActive
+						? 'bg-foreground/8 text-foreground ring-1 ring-inset ring-foreground/12'
+						: 'active:bg-foreground/5',
 				)}
 			>
 				<span className="relative">
-					<Icon aria-hidden className="size-5 sm:size-6" />
+					<Icon aria-hidden className="size-5" strokeWidth={1.5} />
 					{showBadge && (
 						<Badge
 							variant="destructive"
@@ -136,7 +138,7 @@ export function NavItem({
 						</Badge>
 					)}
 				</span>
-				<span className="max-w-full whitespace-nowrap text-center text-[13px] leading-4">
+				<span className="max-w-full whitespace-nowrap text-center text-[11px] font-semibold leading-4">
 					{label}
 				</span>
 			</Link>

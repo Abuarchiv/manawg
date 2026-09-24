@@ -38,7 +38,7 @@ export function LoadErrorBanner({ message, onRetry, busy, retryLabel }: LoadErro
 				className="max-w-full shrink-0 whitespace-normal"
 			>
 				{busy ? <Spinner aria-hidden /> : <RotateCw data-icon="inline-start" aria-hidden />}
-				{busy ? 'Lädt...' : retryLabel}
+				{busy ? 'Lädt…' : retryLabel}
 			</Button>
 		</Alert>
 	);

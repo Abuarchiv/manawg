@@ -15,8 +15,10 @@ import { ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
@@ -63,7 +65,6 @@ import { AbsencePanel } from '@/features/chores/components/AbsencePanel';
 import { ChoreForm } from '@/features/chores/components/ChoreForm';
 import { ChoreRow } from '@/features/chores/components/ChoreRow';
 import { FairnessPanel } from '@/features/chores/components/FairnessPanel';
-import { HealthStrip } from '@/features/chores/components/HealthStrip';
 import { ListSkeleton } from '@/features/chores/components/ListSkeleton';
 import { PutzenHeader } from '@/features/chores/components/PutzenHeader';
 import type {
@@ -90,6 +91,21 @@ export default function PutzenPage() {
 	const { wg, members, identity } = useWg();
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
+	const {
+		data: cachedChores,
+		error: choresReadError,
+		refresh: refreshChores,
+		setData: setCachedChores,
+	} = useCachedFetch<ChoreListResponse>(`/api/wg/${encodedShareCode}/chores`, {
+		memberId: identity.memberId,
+	});
+	const {
+		data: cachedAbsences,
+		error: absencesReadError,
+		refresh: refreshAbsences,
+	} = useCachedFetch<AbsenceListResponse>(`/api/wg/${encodedShareCode}/absences`, {
+		memberId: identity.memberId,
+	});
 	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const searchParams = useSearchParams();
 	const highlightedId = searchParams.get('highlight');
@@ -97,10 +113,12 @@ export default function PutzenPage() {
 	const overdueFilterActive = searchParams.get('filter') === 'overdue';
 	const absencesPanelActive = searchParams.get('panel') === 'absences';
 	const absenceId = searchParams.get('absence');
-	const [items, setItems] = useState<Chore[]>([]);
-	const [monthCompletions, setMonthCompletions] = useState<Record<string, number>>({});
-	const [absences, setAbsences] = useState<AbsenceInput[]>([]);
-	const [initialLoading, setInitialLoading] = useState(true);
+	const [items, setItems] = useState<Chore[]>(() => cachedChores?.chores ?? []);
+	const [monthCompletions, setMonthCompletions] = useState<Record<string, number>>(
+		() => cachedChores?.monthCompletions ?? {},
+	);
+	const [absences, setAbsences] = useState<AbsenceInput[]>(() => cachedAbsences?.absences ?? []);
+	const [initialLoading, setInitialLoading] = useState(!cachedChores && !cachedAbsences);
 	const [refreshing, setRefreshing] = useState(false);
 	const [showForm, setShowForm] = useState(false);
 	const [pendingSuggestion, setPendingSuggestion] = useState<ChoreSuggestion | null>(null);
@@ -121,6 +139,7 @@ export default function PutzenPage() {
 	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'chore');
 	const appliedPrefillRef = useRef<string | null>(null);
 	const initialLoadStartedRef = useRef(false);
+	const hasPageCacheRef = useRef(Boolean(cachedChores || cachedAbsences));
 	const mountedRef = useRef(false);
 	const loadRequestIdRef = useRef(0);
 	const titleInputRef = useRef<HTMLInputElement>(null);
@@ -136,18 +155,12 @@ export default function PutzenPage() {
 		async (initial: boolean): Promise<void> => {
 			const requestId = loadRequestIdRef.current + 1;
 			loadRequestIdRef.current = requestId;
-			if (initial) {
+			if (initial && !hasPageCacheRef.current) {
 				setInitialLoading(true);
 			} else {
 				setRefreshing(true);
 			}
-			const result = await apiFetch<ChoreListResponse>(`/api/wg/${encodedShareCode}/chores`, {
-				memberId: identity.memberId,
-			});
-			const absenceResult = await apiFetch<AbsenceListResponse>(
-				`/api/wg/${encodedShareCode}/absences`,
-				{ memberId: identity.memberId },
-			);
+			const [result, absenceResult] = await Promise.all([refreshChores(), refreshAbsences()]);
 			if (requestId !== loadRequestIdRef.current) {
 				if (initial) setInitialLoading(false);
 				else setRefreshing(false);
@@ -184,9 +197,45 @@ export default function PutzenPage() {
 				if (requestId === loadRequestIdRef.current) setRefreshing(false);
 			}
 		},
-		[encodedShareCode, identity.memberId, wg.shareCode],
+		[identity.memberId, refreshAbsences, refreshChores, wg.shareCode],
 	);
+	useEffect(() => {
+		if (cachedChores) {
+			hasPageCacheRef.current = true;
+			setItems(cachedChores.chores);
+			setMonthCompletions(cachedChores.monthCompletions ?? {});
+		}
+		if (cachedAbsences) {
+			hasPageCacheRef.current = true;
+			setAbsences(cachedAbsences.absences);
+		}
+		if (cachedChores || cachedAbsences) {
+			setInitialLoading(false);
+			setLoadError(null);
+		}
+		if (choresReadError) {
+			setLoadError(
+				getWgLoadErrorMessage('Putzplan', choresReadError.status, choresReadError.error),
+			);
+		} else if (absencesReadError) {
+			setLoadError(
+				getWgLoadErrorMessage('Abwesenheiten', absencesReadError.status, absencesReadError.error, {
+					verb: 'konnten',
+				}),
+			);
+		}
+	}, [absencesReadError, cachedAbsences, cachedChores, choresReadError]);
 	const itemCount = items.length;
+
+	function updateChores(update: (current: Chore[]) => Chore[]): void {
+		setItems(update);
+		setCachedChores((current) => {
+			const previous = current?.chores ?? items;
+			const next = update(previous);
+			if (!current && next === previous) return current;
+			return { ...(current ?? { chores: previous }), chores: next };
+		});
+	}
 
 	useEffect(() => {
 		mountedRef.current = true;
@@ -636,6 +685,8 @@ export default function PutzenPage() {
 			return;
 		}
 		completionRequestKeysRef.current.set(chore.id, idempotencyKey);
+		const previousChore = items.find((item) => item.id === chore.id) ?? chore;
+		updateChores((current) => current.filter((item) => item.id !== chore.id));
 
 		const result = await apiFetch<{ chore?: Pick<Chore, 'id' | 'nextDueAt' | 'assignedMemberId'> }>(
 			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(chore.id)}/complete`,
@@ -661,9 +712,15 @@ export default function PutzenPage() {
 					}),
 				);
 				if (queuedCount === 0) {
+					updateChores((current) =>
+						current.some((item) => item.id === chore.id)
+							? current.map((item) => (item.id === chore.id ? previousChore : item))
+							: [...current, previousChore],
+					);
 					setActionError(
 						'Offline-Speicher ist blockiert. Versuche es später erneut, sobald dein Browser wieder speichern kann.',
 					);
+					toast.error('Die Erledigung konnte nicht offline vorgemerkt werden.');
 					endPending(chore.id);
 					return;
 				}
@@ -678,7 +735,9 @@ export default function PutzenPage() {
 			if (result.status === 404 && result.error === 'chore_not_found') {
 				setItems((current) => current.filter((item) => item.id !== chore.id));
 				setCompleteConfirmId(null);
-				setActionError('Diese Putzaufgabe existiert nicht mehr und wurde aus dem Plan entfernt.');
+				const message = 'Diese Putzaufgabe existiert nicht mehr und wurde aus dem Plan entfernt.';
+				setActionError(message);
+				toast.error(message);
 				void load(false);
 				endPending(chore.id);
 				return;
@@ -694,32 +753,44 @@ export default function PutzenPage() {
 				return;
 			}
 			if (result.error === 'completion_insert_failed') {
-				setActionError(
-					'Erledigt-Aktion konnte nicht vollständig gespeichert werden: Lade den Plan neu und prüfe den Verlauf.',
+				updateChores((current) =>
+					current.some((item) => item.id === chore.id)
+						? current.map((item) => (item.id === chore.id ? previousChore : item))
+						: [...current, previousChore],
 				);
+				const message =
+					'Erledigt-Aktion konnte nicht vollständig gespeichert werden: Lade den Plan neu und prüfe den Verlauf.';
+				setActionError(message);
+				toast.error(message);
 				void load(false);
 				endPending(chore.id);
 				return;
 			}
-			setActionError('Erledigt-Aktion konnte nicht gespeichert werden: Versuche es gleich erneut.');
+			updateChores((current) =>
+				current.some((item) => item.id === chore.id)
+					? current.map((item) => (item.id === chore.id ? previousChore : item))
+					: [...current, previousChore],
+			);
+			const message = 'Erledigt-Aktion konnte nicht gespeichert werden: Versuche es gleich erneut.';
+			setActionError(message);
+			toast.error(message);
 		} else {
 			completionRequestKeysRef.current.delete(chore.id);
 			const updated = result.data.chore;
 			const confirmed = updated?.id === chore.id && parseTimestamp(updated.nextDueAt) !== null;
 			if (confirmed) {
-				setItems((current) =>
-					current.map((item) =>
-						item.id === chore.id
-							? {
-									...item,
-									nextDueAt: updated.nextDueAt,
-									assignedMemberId: updated.assignedMemberId,
-									lastCompletedAt: new Date().toISOString(),
-									lastCompletedByName: identity.name,
-								}
-							: item,
-					),
-				);
+				updateChores((current) => {
+					const completed: Chore = {
+						...chore,
+						nextDueAt: updated.nextDueAt,
+						assignedMemberId: updated.assignedMemberId,
+						lastCompletedAt: new Date().toISOString(),
+						lastCompletedByName: identity.name,
+					};
+					return current.some((item) => item.id === chore.id)
+						? current.map((item) => (item.id === chore.id ? completed : item))
+						: [...current, completed];
+				});
 				const nextName = members.find((member) => member.id === updated.assignedMemberId)?.name;
 				setActionNotice(
 					`Erledigt. Nächster Termin: ${formatShortDate(updated.nextDueAt)}; ${nextName ? `${nextName} ist dran (Rotation).` : 'noch niemand zugewiesen.'}`,
@@ -889,6 +960,13 @@ export default function PutzenPage() {
 		const needsRepair = (item: Chore) => (getChoreRepairHint(item) !== null ? 0 : 1);
 		return [...items].sort((a, b) => needsRepair(a) - needsRepair(b));
 	}, [items]);
+	const primaryChore = useMemo(
+		() =>
+			sortedItems.find((chore) => chore.assignedMemberId === identity.memberId) ??
+			sortedItems[0] ??
+			null,
+		[identity.memberId, sortedItems],
+	);
 	const choreGroups = useMemo(
 		() =>
 			CHORE_GROUPS.map((group) => ({
@@ -957,12 +1035,11 @@ export default function PutzenPage() {
 			<SubNav />
 			<PutzenHeader
 				itemCount={items.length}
+				health={!showSkeleton && items.length > 0 ? health : null}
 				refreshing={refreshing}
 				showForm={showForm}
-				wgBaseHref={wgBaseHref}
 				onToggleForm={() => setShowForm((open) => !open)}
 			/>
-			{!showSkeleton && items.length > 0 && <HealthStrip health={health} />}
 			<ChoreForm
 				open={showForm}
 				onClose={() => setShowForm(false)}
@@ -989,7 +1066,7 @@ export default function PutzenPage() {
 								variant="outline"
 								onClick={() => setConfirmSuggestion(true)}
 								disabled={choreAddPending}
-								className="h-auto min-h-11 whitespace-normal"
+								className="h-auto whitespace-normal"
 							>
 								Entwurf verwerfen und „{pendingSuggestion.title}“ übernehmen
 							</Button>
@@ -1054,7 +1131,6 @@ export default function PutzenPage() {
 								key={template.title}
 								variant="outline"
 								onClick={() => applyQuickChore(template)}
-								className="min-h-11"
 							>
 								{template.title}
 							</Button>
@@ -1080,7 +1156,6 @@ export default function PutzenPage() {
 									<ChoreRow
 										key={chore.id}
 										chore={chore}
-										isMine={group.key === 'mine'}
 										assignee={memberLookup(chore.assignedMemberId)}
 										isPending={isPending(chore.id)}
 										isSwapPending={isPending(`${chore.id}:swap`)}
@@ -1144,6 +1219,28 @@ export default function PutzenPage() {
 					monthCompletions={monthCompletions}
 					members={members.map((member) => ({ id: member.id, name: member.name }))}
 				/>
+			)}
+			{!showSkeleton && (
+				<ThumbAction>
+					{primaryChore ? (
+						<Button
+							type="button"
+							className="min-h-11 w-full"
+							disabled={isPending(primaryChore.id)}
+							onClick={() => void handleComplete(primaryChore)}
+						>
+							{isPending(primaryChore.id)
+								? 'Wird erledigt…'
+								: completeConfirmId === primaryChore.id
+									? 'Erledigen bestätigen'
+									: 'Aufgabe erledigen'}
+						</Button>
+					) : (
+						<Button type="button" className="min-h-11 w-full" onClick={() => setShowForm(true)}>
+							Putzaufgabe erfassen
+						</Button>
+					)}
+				</ThumbAction>
 			)}
 		</div>
 	);

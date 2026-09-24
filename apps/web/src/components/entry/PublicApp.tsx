@@ -216,16 +216,13 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							</Link>
 							<Link
 								href={publicHref('/neu')}
-								className={cn(
-									buttonVariants({ variant: 'link' }),
-									'min-h-11 px-0 text-muted-foreground',
-								)}
+								className={cn(buttonVariants({ variant: 'link' }), 'px-0 text-muted-foreground')}
 							>
 								Anmelden
 							</Link>
 						</div>
 						<div className="flex flex-col gap-1">
-							<h1 className="text-2xl font-semibold tracking-tight">
+							<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight">
 								{module?.title ?? 'Euer WG-Alltag. Gemeinsam geregelt.'}
 							</h1>
 							<p className="text-sm text-muted-foreground">
@@ -265,9 +262,8 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 								type="button"
 								variant="outline"
 								onClick={() => setRetryNonce((value) => value + 1)}
-								className="min-h-11"
 							>
-								erneut prüfen
+								Erneut prüfen
 							</Button>
 						</div>
 					)}
@@ -306,7 +302,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 				data-app-chrome
 				className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
 			>
-				<div className="rounded-[20px] border border-border bg-background text-foreground">
+				<div className="glass-bar rounded-[20px]">
 					<ul className="flex flex-wrap gap-1 p-1 [&>li]:min-w-fit [&>li]:flex-1">
 						<NavItem
 							href={publicHref('/')}

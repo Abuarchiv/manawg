@@ -204,7 +204,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								required
 								aria-describedby={emailFieldInvalid ? 'auth-email-error' : undefined}
 								aria-invalid={emailFieldInvalid || undefined}
-								className="min-h-11 text-base md:text-base"
+								className="text-base"
 							/>
 						</Field>
 						<Field data-invalid={passwordFieldInvalid}>
@@ -220,7 +220,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								required
 								aria-describedby={passwordFieldInvalid ? 'auth-email-error' : undefined}
 								aria-invalid={passwordFieldInvalid || undefined}
-								className="min-h-11 text-base md:text-base"
+								className="text-base"
 							/>
 						</Field>
 						<Button
@@ -228,7 +228,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 							variant="link"
 							onClick={() => void requestPasswordReset()}
 							disabled={busy !== null}
-							className="min-h-11 px-0"
+							className="px-0"
 						>
 							{busy === 'password-reset' ? 'Link wird angefordert …' : 'Passwort vergessen?'}
 						</Button>
@@ -254,7 +254,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 							<output className="block text-[13px] text-muted-foreground">{emailMessage}</output>
 						)}
 						<div className="flex flex-col gap-2">
-							<Button type="submit" variant="default" disabled={busy !== null} className="min-h-11">
+							<Button type="submit" variant="default" disabled={busy !== null}>
 								{busy === 'email-sign-in' && <Spinner data-icon="inline-start" aria-hidden />}
 								Anmelden
 							</Button>
@@ -263,7 +263,6 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								variant="outline"
 								onClick={() => void submitEmail('sign-up')}
 								disabled={busy !== null}
-								className="min-h-11"
 							>
 								{busy === 'email-sign-up' && <Spinner data-icon="inline-start" aria-hidden />}
 								Konto erstellen
@@ -301,7 +300,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								}
 								aria-invalid={phoneError ? true : undefined}
 								disabled={otpRequested || busy !== null}
-								className="min-h-11 text-base md:text-base"
+								className="text-base"
 							/>
 						</Field>
 						<p id="auth-phone-hint" className="text-[12px] text-muted-foreground">
@@ -322,7 +321,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 									pattern="[0-9]{6}"
 									aria-describedby={phoneError ? 'auth-phone-error' : undefined}
 									aria-invalid={phoneError ? true : undefined}
-									className="min-h-11 font-mono text-base md:text-base"
+									className="font-mono text-base"
 								/>
 							</Field>
 						)}
@@ -351,12 +350,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 						)}
 						{otpRequested ? (
 							<div className="flex flex-col gap-2">
-								<Button
-									type="submit"
-									variant="outline"
-									disabled={busy !== null}
-									className="min-h-11"
-								>
+								<Button type="submit" variant="outline" disabled={busy !== null}>
 									{busy === 'phone-verify' && <Spinner data-icon="inline-start" aria-hidden />}
 									Code bestätigen
 								</Button>
@@ -365,7 +359,6 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 									variant="outline"
 									onClick={() => void sendPhoneOtp()}
 									disabled={busy !== null}
-									className="min-h-11"
 								>
 									{busy === 'phone-request' && <Spinner data-icon="inline-start" aria-hidden />}
 									SMS-Code erneut senden
@@ -375,18 +368,13 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 									variant="link"
 									onClick={useAnotherPhoneNumber}
 									disabled={busy !== null}
-									className="min-h-11 px-0"
+									className="px-0"
 								>
 									Andere Telefonnummer verwenden
 								</Button>
 							</div>
 						) : (
-							<Button
-								type="submit"
-								variant="outline"
-								disabled={busy !== null}
-								className="min-h-11 w-full"
-							>
+							<Button type="submit" variant="outline" disabled={busy !== null} className="w-full">
 								{busy === 'phone-request' && <Spinner data-icon="inline-start" aria-hidden />}
 								SMS-Code anfordern
 							</Button>

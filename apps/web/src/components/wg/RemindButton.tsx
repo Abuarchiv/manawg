@@ -1,5 +1,6 @@
 'use client';
 
+import { useToast } from '@/components/ui/Toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -25,8 +26,10 @@ interface RemindButtonProps {
 	cooldownActive?: boolean;
 	cooldownLabel?: string | null;
 	debtorOptedOut?: boolean;
-	onSent?: () => void;
+	onSent?: (reminderId: string) => void;
+	onOptimistic?: (() => (() => void) | undefined) | undefined;
 	size?: 'sm' | 'md';
+	primary?: boolean;
 }
 
 function errorMessage(error: string): string {
@@ -62,8 +65,11 @@ export function RemindButton({
 	cooldownLabel,
 	debtorOptedOut,
 	onSent,
+	onOptimistic,
 	size = 'md',
+	primary = false,
 }: RemindButtonProps) {
+	const toast = useToast();
 	const [status, setStatus] = useState<RemindButtonStatus>(
 		debtorOptedOut ? 'optedOut' : cooldownActive ? 'cooldown' : 'idle',
 	);
@@ -97,10 +103,14 @@ export function RemindButton({
 		sendingRef.current = true;
 		setStatus('sending');
 		setFeedback(null);
+		const rollbackOptimistic = onOptimistic?.();
 		const idempotencyKey = requestKeyRef.current ?? createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
+			rollbackOptimistic?.();
+			const message = errorMessage('Netzwerkfehler');
 			setStatus('error');
-			setFeedback(errorMessage('Netzwerkfehler'));
+			setFeedback(message);
+			toast.error(message);
 			sendingRef.current = false;
 			return;
 		}
@@ -120,9 +130,10 @@ export function RemindButton({
 				requestKeyRef.current = null;
 				setStatus('sent');
 				setFeedback(successMessage(res.data.warning));
-				onSent?.();
+				onSent?.(res.data.reminder.id);
 				return;
 			}
+			rollbackOptimistic?.();
 			if (res.status > 0 && res.status < 500) requestKeyRef.current = null;
 			if (res.status === 429 && res.error === 'reminder_cooldown') {
 				setStatus('cooldown');
@@ -131,10 +142,15 @@ export function RemindButton({
 			} else {
 				setStatus('error');
 			}
-			setFeedback(errorMessage(res.error));
+			const message = errorMessage(res.error);
+			setFeedback(message);
+			toast.error(message);
 		} catch (err) {
+			rollbackOptimistic?.();
+			const message = err instanceof Error ? errorMessage(err.message) : errorMessage('unknown');
 			setStatus('error');
-			setFeedback(err instanceof Error ? errorMessage(err.message) : errorMessage('unknown'));
+			setFeedback(message);
+			toast.error(message);
 		} finally {
 			sendingRef.current = false;
 		}
@@ -150,9 +166,13 @@ export function RemindButton({
 		<div className="flex max-w-full flex-col gap-2">
 			<Button
 				type="button"
-				variant={status === 'sent' ? 'secondary' : 'outline'}
+				variant={status === 'sent' ? 'secondary' : primary ? 'default' : 'outline'}
 				size={size === 'sm' ? 'sm' : 'default'}
-				className="h-auto min-h-11 whitespace-normal py-2"
+				className={
+					primary
+						? 'h-auto min-h-11 w-full whitespace-normal py-2'
+						: 'h-auto whitespace-normal py-2'
+				}
 				onClick={() => void handleClick()}
 				disabled={disabled}
 				aria-label={`Erinnerung senden: ${label}`}

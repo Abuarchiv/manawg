@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
@@ -117,16 +119,27 @@ function notificationWarningMessage(warning: NotificationWarning): string | null
 export default function PinnwandPage(): React.ReactElement {
 	const { wg, members, identity, isAdmin } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
+	const {
+		data: cachedAnnouncements,
+		error: announcementsReadError,
+		refresh: refreshAnnouncements,
+		setData: setCachedAnnouncements,
+	} = useCachedFetch<{ announcements: Announcement[] }>(
+		`/api/wg/${encodedShareCode}/announcements`,
+		{ memberId: identity.memberId },
+	);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const searchParams = useSearchParams();
 	const statusParamFilter = statusFilterFromParam(searchParams.get('status'));
 	const prefillContent = searchParams.get('content');
 	const prefillKind = kindFromParam(searchParams.get('kind'));
 	const prefillImageUrl = searchParams.get('imageUrl');
-	const [items, setItems] = useState<Announcement[]>([]);
-	const [initialLoading, setInitialLoading] = useState(true);
-	const isFirstLoad = useRef(true);
-	const itemsRef = useRef<Announcement[]>([]);
+	const [items, setItems] = useState<Announcement[]>(
+		() => cachedAnnouncements?.announcements ?? [],
+	);
+	const [initialLoading, setInitialLoading] = useState(cachedAnnouncements === undefined);
+	const isFirstLoad = useRef(cachedAnnouncements === undefined);
+	const itemsRef = useRef<Announcement[]>(cachedAnnouncements?.announcements ?? []);
 	const [content, setContent] = useState('');
 	const [kind, setKind] = useState<AnnouncementKind>('info');
 	const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -161,6 +174,7 @@ export default function PinnwandPage(): React.ReactElement {
 	const itemCount = items.length;
 	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'announcement');
 	const prefillKey = `${prefillContent ?? ''}|${prefillKind ?? ''}|${prefillImageUrl ?? ''}`;
+	const hasDraft = Boolean(content.trim() || imageUrl || queueEditId || kind !== 'info');
 
 	const { isPending, start, end } = usePendingSet();
 
@@ -193,6 +207,35 @@ export default function PinnwandPage(): React.ReactElement {
 	}, [items]);
 
 	useEffect(() => {
+		if (cachedAnnouncements) {
+			const incoming = cachedAnnouncements.announcements.map(applyCommentOverrides);
+			const current = itemsRef.current;
+			const merged =
+				current.length > 0 ? mergeBackgroundAnnouncements(current, incoming) : incoming;
+			itemsRef.current = merged;
+			setItems(merged);
+			const count = current.length > 0 ? getNewAnnouncementCount(current, incoming) : 0;
+			if (count > 0) {
+				setPendingRemoteItems(cachedAnnouncements.announcements);
+				setNewCount(count);
+			}
+			setLoadError(null);
+			setInitialLoading(false);
+			isFirstLoad.current = false;
+		} else if (announcementsReadError) {
+			setLoadError(
+				getWgLoadErrorMessage(
+					'Pinnwand',
+					announcementsReadError.status,
+					announcementsReadError.error,
+				),
+			);
+			setInitialLoading(false);
+			isFirstLoad.current = false;
+		}
+	}, [announcementsReadError, cachedAnnouncements]);
+
+	useEffect(() => {
 		if (composerOpen) textareaRef.current?.focus();
 	}, [composerOpen]);
 
@@ -221,10 +264,7 @@ export default function PinnwandPage(): React.ReactElement {
 			const requestId = loadRequestIdRef.current + 1;
 			loadRequestIdRef.current = requestId;
 			if (!isFirstLoad.current) setRefreshing(true);
-			const res = await apiFetch<{ announcements: Announcement[] }>(
-				`/api/wg/${encodedShareCode}/announcements`,
-				{ memberId: identity.memberId },
-			);
+			const res = await refreshAnnouncements();
 			if (requestId !== loadRequestIdRef.current) {
 				if (isFirstLoad.current) {
 					isFirstLoad.current = false;
@@ -272,7 +312,7 @@ export default function PinnwandPage(): React.ReactElement {
 			}
 			setRefreshing(false);
 		},
-		[encodedShareCode, identity.memberId, wg.shareCode],
+		[identity.memberId, refreshAnnouncements, wg.shareCode],
 	);
 
 	useEffect(() => {
@@ -373,6 +413,7 @@ export default function PinnwandPage(): React.ReactElement {
 	function commitItems(nextItems: Announcement[]): void {
 		itemsRef.current = nextItems;
 		setItems(nextItems);
+		setCachedAnnouncements({ announcements: nextItems });
 	}
 
 	function rememberCommentOverride(
@@ -878,7 +919,8 @@ export default function PinnwandPage(): React.ReactElement {
 				composerOpen={composerOpen}
 				composerBusy={submitting}
 				loading={initialLoading}
-				hasDraft={Boolean(content.trim() || imageUrl || queueEditId || kind !== 'info')}
+				hasDraft={hasDraft}
+				showComposerToggle={false}
 				wgBaseHref={wgBaseHref}
 				onToggleComposer={() => {
 					if (submittingRef.current) return;
@@ -904,7 +946,7 @@ export default function PinnwandPage(): React.ReactElement {
 					type="button"
 					onClick={applyPendingItems}
 					variant="secondary"
-					className="min-h-11 w-full"
+					className="w-full"
 					aria-live="polite"
 				>
 					{newCount} neue Beitr{newCount === 1 ? 'ag' : 'äge'}
@@ -969,7 +1011,7 @@ export default function PinnwandPage(): React.ReactElement {
 					Noch keine Beiträge geladen.
 				</EmptyState>
 			) : items.length === 0 ? (
-				<EmptyState icon={Megaphone} hint="Teile eine Frage oder Info über das Plus oben.">
+				<EmptyState icon={Megaphone} hint="Teile eine Frage oder Info über den Button unten.">
 					Noch keine Beiträge
 				</EmptyState>
 			) : filteredItems.length === 0 ? (
@@ -1010,6 +1052,25 @@ export default function PinnwandPage(): React.ReactElement {
 					})}
 				</ul>
 			)}
+			<ThumbAction>
+				<Button
+					type="button"
+					variant={composerOpen ? 'outline' : 'default'}
+					className="min-h-11 w-full"
+					disabled={submitting || initialLoading}
+					onClick={() => {
+						if (composerOpen) closeComposer();
+						else setComposerOpen(true);
+						setNotice(null);
+					}}
+				>
+					{composerOpen
+						? 'Formular schließen'
+						: hasDraft
+							? 'Entwurf fortsetzen'
+							: 'Beitrag erstellen'}
+				</Button>
+			</ThumbAction>
 		</div>
 	);
 }

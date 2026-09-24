@@ -94,6 +94,7 @@ export function NotificationSection({
 }) {
 	const [status, setStatus] = useState<NotificationStatus | null>(null);
 	const [pending, setPending] = useState<'push' | 'save' | 'test' | null>(null);
+	const [pushTarget, setPushTarget] = useState<boolean | null>(null);
 	const [message, setMessage] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [loadingStatus, setLoadingStatus] = useState(true);
@@ -331,7 +332,6 @@ export function NotificationSection({
 	const notificationBusy = pending !== null || loadingStatus;
 	const notificationControlsDisabled = !status || notificationBusy;
 	const pushConfigured = status?.pushConfigured !== false;
-	const pushDisabled = notificationControlsDisabled || !pushConfigured;
 
 	return (
 		<Section
@@ -343,9 +343,7 @@ export function NotificationSection({
 				{loadingStatus && (
 					<div className="grid gap-2" aria-live="polite">
 						<Skeleton className="h-11 w-full" />
-						<p className="text-muted-foreground text-[13px]">
-							Benachrichtigungen werden geladen...
-						</p>
+						<p className="text-muted-foreground text-[13px]">Benachrichtigungen werden geladen…</p>
 					</div>
 				)}
 				{!status && error && (
@@ -357,11 +355,11 @@ export function NotificationSection({
 							variant="outline"
 							onClick={() => void loadStatus()}
 							disabled={loadingStatus}
-							className="mt-2 h-11 min-h-[44px]"
+							className="mt-2"
 						>
 							{loadingStatus ? (
 								<>
-									<Spinner aria-hidden /> Lädt...
+									<Spinner aria-hidden /> Lädt…
 								</>
 							) : (
 								'Erneut laden'
@@ -387,10 +385,16 @@ export function NotificationSection({
 						</FieldDescription>
 					</FieldContent>
 					<Switch
-						checked={pushActive}
-						disabled={pushDisabled}
+						checked={pushTarget ?? pushActive}
+						disabled={!status || !pushConfigured || (pending !== null && pending !== 'push')}
+						aria-busy={pending === 'push'}
 						aria-label={pushActive ? 'Web Push deaktivieren' : 'Web Push aktivieren'}
-						onCheckedChange={(checked) => void (checked ? activatePush() : deactivatePush())}
+						onCheckedChange={(checked) => {
+							if (pendingRef.current) return;
+							// Thumb gleitet sofort; nach der Browser-Abfrage zählt der echte Zustand.
+							setPushTarget(checked);
+							void (checked ? activatePush() : deactivatePush()).finally(() => setPushTarget(null));
+						}}
 					/>
 				</Field>
 				<Button
@@ -403,7 +407,7 @@ export function NotificationSection({
 							? 'Testbenachrichtigung wird gesendet'
 							: 'Testbenachrichtigung senden'
 					}
-					className="min-h-11 justify-self-start"
+					className="justify-self-start"
 				>
 					{pending === 'test' && <Spinner aria-hidden />}
 					Test senden
@@ -420,7 +424,7 @@ export function NotificationSection({
 								</FieldContent>
 								<Switch
 									checked={status?.[pref.key] ?? true}
-									disabled={notificationControlsDisabled}
+									disabled={!status || loadingStatus}
 									aria-label={pref.label}
 									onCheckedChange={() => void togglePreference(pref.key)}
 								/>
@@ -442,7 +446,6 @@ export function NotificationSection({
 							variant="ghost"
 							onClick={() => void saveQuietHours(null, null)}
 							disabled={notificationControlsDisabled}
-							className="h-11 min-h-[44px]"
 						>
 							Aus
 						</Button>
@@ -460,7 +463,7 @@ export function NotificationSection({
 										: saveQuietHours(value, status?.quietEndHour ?? 7));
 								}}
 								aria-label="Ruhezeit von"
-								className="h-11 min-h-[44px] w-full text-base"
+								className="w-full text-base"
 							>
 								<NativeSelectOption value="">Aus</NativeSelectOption>
 								{HOUR_OPTIONS.map((option) => (
@@ -482,7 +485,7 @@ export function NotificationSection({
 										: saveQuietHours(status?.quietStartHour ?? 22, value));
 								}}
 								aria-label="Ruhezeit bis"
-								className="h-11 min-h-[44px] w-full text-base"
+								className="w-full text-base"
 							>
 								<NativeSelectOption value="">Aus</NativeSelectOption>
 								{HOUR_OPTIONS.map((option) => (
