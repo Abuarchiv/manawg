@@ -2,6 +2,7 @@
 
 import { AppBottomNav } from '@/components/app/AppBottomNav';
 import { WG_SECTIONS } from '@/components/app/navigation';
+import { LegalLinks } from '@/components/entry/LegalLinks';
 import {
 	PublicModulePreview,
 	PublicModulePreviews,
@@ -309,6 +310,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						</Card>
 					)}
 				</div>
+				<LegalLinks />
 			</main>
 			<AppBottomNav
 				aria-label="Öffentliche Hauptnavigation"
