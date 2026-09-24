@@ -1,6 +1,7 @@
-import { and, asc, eq, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { lockAccount } from './account-deletion';
 import { deleteWgCascade } from './delete-wg';
-import { pushSubscriptions, wgMembers } from './schema';
+import { accountDeletions, calendarSubscriptions, pushSubscriptions, wgMembers, wgs } from './schema';
 import type { DbTransaction } from './transaction';
 
 export type LeftWg = { wgId: string; memberId: string; name: string; newAdminId: string | null };
@@ -16,10 +17,35 @@ export async function removeAccountFromWgs(
 	tx: DbTransaction,
 	authUserId: string,
 ): Promise<{ left: LeftWg[]; deletedWgIds: string[] }> {
+	await lockAccount(tx, authUserId);
+	const [existingDeletion] = await tx
+		.select({ authUserId: accountDeletions.authUserId })
+		.from(accountDeletions)
+		.where(eq(accountDeletions.authUserId, authUserId))
+		.limit(1);
+	if (existingDeletion) return { left: [], deletedWgIds: [] };
+	await tx.insert(accountDeletions).values({ authUserId });
+
+	const membershipWgs = await tx
+		.select({ wgId: wgMembers.wgId })
+		.from(wgMembers)
+		.where(eq(wgMembers.authUserId, authUserId))
+		.orderBy(asc(wgMembers.wgId));
+	const wgIds = [...new Set(membershipWgs.map(({ wgId }) => wgId))];
+	if (wgIds.length > 0) {
+		await tx
+			.select({ id: wgs.id })
+			.from(wgs)
+			.where(inArray(wgs.id, wgIds))
+			.orderBy(asc(wgs.id))
+			.for('update');
+	}
+
 	const memberships = await tx
 		.select({ id: wgMembers.id, wgId: wgMembers.wgId, name: wgMembers.name, role: wgMembers.role })
 		.from(wgMembers)
 		.where(eq(wgMembers.authUserId, authUserId))
+		.orderBy(asc(wgMembers.wgId), asc(wgMembers.id))
 		.for('update');
 	const left: LeftWg[] = [];
 	const deletedWgIds: string[] = [];
@@ -34,13 +60,18 @@ export async function removeAccountFromWgs(
 					isNull(wgMembers.deactivatedAt),
 				),
 			)
-			.orderBy(sql`${wgMembers.authUserId} is null`, asc(wgMembers.createdAt))
+			.orderBy(
+				sql`${wgMembers.authUserId} is null`,
+				asc(wgMembers.createdAt),
+				asc(wgMembers.id),
+			)
 			.limit(1);
 		if (!successor) {
 			await deleteWgCascade(tx, membership.wgId);
 			deletedWgIds.push(membership.wgId);
 			continue;
 		}
+		await tx.delete(calendarSubscriptions).where(eq(calendarSubscriptions.memberId, membership.id));
 		await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.memberId, membership.id));
 		await tx
 			.update(wgMembers)

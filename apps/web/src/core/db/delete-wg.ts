@@ -18,6 +18,8 @@ import type { DbTransaction } from './transaction';
  * cascades clean up comments, splits, logs, and subscriptions.
  */
 export async function deleteWgCascade(tx: DbTransaction, wgId: string): Promise<boolean> {
+	const [wg] = await tx.select({ id: wgs.id }).from(wgs).where(eq(wgs.id, wgId)).for('update');
+	if (!wg) return false;
 	await tx.delete(expenses).where(eq(expenses.wgId, wgId));
 	await tx.delete(expensePayments).where(eq(expensePayments.wgId, wgId));
 	await tx.delete(shoppingItems).where(eq(shoppingItems.wgId, wgId));
