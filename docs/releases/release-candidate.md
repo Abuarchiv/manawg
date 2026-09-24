@@ -1,10 +1,14 @@
 # ManaWG Release Candidate Evidence
 
+This is a dated evidence log, not a standing release approval. Older branch names, candidate SHAs, and blockers describe only their recorded date.
+
 Production migration requires a successful `push` run of `.github/workflows/ci.yml` for the exact current `main` candidate SHA, with both `validate` and `e2e-fixtures` successful. A read-only Actions API preflight verifies this before the workflow enters the protected Production environment; the separate tree-matched Preview evidence and explicit confirmation remain required.
 
 ## Read-only evidence update — 2026-09-24
 
-For main candidate `7192dd443efee1b06d5b37942d89800b26d14bd9`, GitHub Actions push-CI run `36021471267` succeeded. `validate`, `e2e-fixtures`, and `db-supabase-preview` succeeded, including both `Apply pending Preview migrations` and `Verify Preview schema and migration ledger`; `e2e-preview` was skipped. This run does not provide hosted browser E2E proof, which remains missing for this candidate. The SQLSTATE `42501` report below is historical and is not evidence of a current Preview DDL blocker; no new `deployment_status` check is claimed here. No Production migration, deployment, or data change was performed.
+For the then-current main candidate `7192dd443efee1b06d5b37942d89800b26d14bd9`, GitHub Actions push-CI run `36021471267` succeeded. `validate`, `e2e-fixtures`, and `db-supabase-preview` succeeded, including both `Apply pending Preview migrations` and `Verify Preview schema and migration ledger`; `e2e-preview` was skipped. This run does not provide hosted browser E2E proof for that candidate. The SQLSTATE `42501` report below is historical and is not evidence of a current Preview DDL blocker; no new `deployment_status` check is claimed here. No Production migration, deployment, or data change was performed.
+
+Lockfile audit on 2026-09-24: `pnpm audit --prod` reported zero advisories; the full audit reported one moderate, dev-only `esbuild@0.18.20` advisory through `drizzle-kit` ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)) and no high/critical findings. The advisory concerns esbuild's development server; no tracked app or CI command starts that server. Do not force a transitive override; review by 2026-10-24 or upon an upstream fix.
 
 ## Aktualisierung — 2026-09-22, Europe/Berlin
 
