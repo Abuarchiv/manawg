@@ -30,6 +30,25 @@ test('apiFetch rejects non-empty non-JSON success responses', async () => {
 	}
 });
 
+test('apiFetch preserves the HTTP status when a JSON success body is malformed', async () => {
+	const originalFetch = globalThis.fetch;
+	globalThis.fetch = async () =>
+		new Response('{', {
+			status: 200,
+			statusText: 'OK',
+			headers: { 'content-type': 'application/json' },
+		});
+	try {
+		await expect(apiFetch('/api/test')).resolves.toEqual({
+			ok: false,
+			status: 200,
+			error: 'OK',
+		});
+	} finally {
+		globalThis.fetch = originalFetch;
+	}
+});
+
 test('CSV formula guards remain quoted after neutralization', () => {
 	expect(toCsv([{ value: '=1+1' }], ['value'])).toBe('value\n"\'=1+1"');
 });
