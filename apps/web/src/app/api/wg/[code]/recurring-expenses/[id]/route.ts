@@ -133,7 +133,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 		const nextPaidByMemberId = parsed.data.paidByMemberId ?? template.paidByMemberId;
 		const nextIntervalMonths = parsed.data.intervalMonths ?? template.intervalMonths;
 		const nextDueAt = parsed.data.nextDueAt ? new Date(parsed.data.nextDueAt) : template.nextDueAt;
-		const nextSplits = parsed.data.splits ?? parseRecurringSplits(template.splitsJson);
+		const templateSplits = parseRecurringSplits(template.splitsJson);
+		const nextSplits = parsed.data.splits ?? templateSplits;
 		if (hasDuplicateSplitDebtors(nextSplits)) {
 			return badRequest('splits_duplicate_debtor');
 		}
@@ -155,10 +156,23 @@ export const PATCH = withWgRoute<{ id: string }>(
 				),
 			);
 		if (memberRows.length !== memberIds.length) return badRequest('member_not_in_wg');
+		const existingSplitAmounts = new Map(
+			templateSplits.map(
+				({ debtorMemberId, amountCents }) => [debtorMemberId, amountCents] as const,
+			),
+		);
+		const hasSplitChange =
+			parsed.data.splits !== undefined &&
+			(nextSplits.length !== templateSplits.length ||
+				nextSplits.some(
+					({ debtorMemberId, amountCents }) =>
+						existingSplitAmounts.get(debtorMemberId) !== amountCents,
+				));
 		const hasFinancialChange =
-			parsed.data.amountCents !== undefined ||
-			parsed.data.paidByMemberId !== undefined ||
-			parsed.data.splits !== undefined;
+			(parsed.data.amountCents !== undefined && parsed.data.amountCents !== template.amountCents) ||
+			(parsed.data.paidByMemberId !== undefined &&
+				parsed.data.paidByMemberId !== template.paidByMemberId) ||
+			hasSplitChange;
 		if (
 			hasFinancialChange &&
 			!checkPaidByGuard(nextPaidByMemberId, auth.member.memberId, nextSplits).ok

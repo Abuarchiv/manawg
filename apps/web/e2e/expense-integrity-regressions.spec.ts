@@ -554,6 +554,7 @@ test('expense PATCH preserves split integrity with fractional timestamps and con
 });
 
 test('both recurring expense PATCH routes guard financial edits without blocking ordinary changes', async () => {
+	const OTHER_MEMBER_ID = 'd35ea6ee-e297-4a90-b6df-3e78ce47b395';
 	const recurringExpenses = {
 		id: { table: 'recurringExpenses', name: 'id' },
 		wgId: { table: 'recurringExpenses', name: 'wgId' },
@@ -582,6 +583,7 @@ test('both recurring expense PATCH routes guard financial edits without blocking
 	const memberRows = [
 		{ id: CALLER_ID, wgId: WG_ID, deactivatedAt: null },
 		{ id: PAYER_ID, wgId: WG_ID, deactivatedAt: null },
+		{ id: OTHER_MEMBER_ID, wgId: WG_ID, deactivatedAt: null },
 	];
 	let updates = 0;
 	const db = {
@@ -764,14 +766,72 @@ test('both recurring expense PATCH routes guard financial edits without blocking
 		paidByMemberId: CALLER_ID,
 		splits: [{ debtorMemberId: CALLER_ID, amountCents: 1200 }],
 	});
+	const legacySplits = [{ debtorMemberId: PAYER_ID, amountCents: 1200 }];
+	const reorderedLegacySplits = [
+		{ debtorMemberId: PAYER_ID, amountCents: 900 },
+		{ debtorMemberId: OTHER_MEMBER_ID, amountCents: 300 },
+	];
 	Object.assign(template, {
+		amountCents: 1200,
 		paidByMemberId: PAYER_ID,
-		splitsJson: JSON.stringify([{ debtorMemberId: PAYER_ID, amountCents: 1200 }]),
+		splitsJson: JSON.stringify(legacySplits),
 		pausedAt: null,
 	});
-	const unchangedForeignPayerEdits = await Promise.all(
-		endpoints.map((endpoint) => send(endpoint, { id: EXPENSE_ID, amountCents: 1200 })),
-	);
+	const unchangedForeignPayerEdits = [];
+	for (const endpoint of endpoints) {
+		for (const splits of [legacySplits, reorderedLegacySplits]) {
+			Object.assign(template, {
+				description: 'Miete',
+				amountCents: 1200,
+				paidByMemberId: PAYER_ID,
+				splitsJson: JSON.stringify(splits),
+			});
+			unchangedForeignPayerEdits.push(
+				await send(endpoint, {
+					id: EXPENSE_ID,
+					description: 'Miete angepasst',
+					amountCents: 1200,
+					paidByMemberId: PAYER_ID,
+					intervalMonths: 1,
+					nextDueAt: '2026-10-01T00:00:00.000Z',
+					splits: [...splits].reverse(),
+				}),
+			);
+		}
+	}
+	Object.assign(template, {
+		description: 'Miete',
+		amountCents: 1200,
+		paidByMemberId: PAYER_ID,
+		splitsJson: JSON.stringify(legacySplits),
+	});
+	const updatesBeforeRejectedEdits = updates;
+	const rejectedFinancialEdits = [];
+	for (const endpoint of endpoints) {
+		rejectedFinancialEdits.push(
+			await send(endpoint, {
+				id: EXPENSE_ID,
+				amountCents: 1300,
+				paidByMemberId: PAYER_ID,
+				splits: [{ debtorMemberId: PAYER_ID, amountCents: 1300 }],
+			}),
+			await send(endpoint, {
+				id: EXPENSE_ID,
+				amountCents: 1200,
+				paidByMemberId: PAYER_ID,
+				splits: [
+					{ debtorMemberId: PAYER_ID, amountCents: 1000 },
+					{ debtorMemberId: OTHER_MEMBER_ID, amountCents: 200 },
+				],
+			}),
+			await send(endpoint, {
+				id: EXPENSE_ID,
+				amountCents: 1200,
+				paidByMemberId: OTHER_MEMBER_ID,
+				splits: legacySplits,
+			}),
+		);
+	}
 	const ordinaryChanges = [
 		await send(collectionEndpoint, { id: EXPENSE_ID, description: 'Miete angepasst' }),
 		await send(collectionEndpoint, {
@@ -790,14 +850,14 @@ test('both recurring expense PATCH routes guard financial edits without blocking
 
 	expect(positiveCallerShare.status).toBe(200);
 	expect(selfPayer.status).toBe(200);
-	expect(unchangedForeignPayerEdits).toEqual([
-		{ status: 403, body: { error: 'paid_by_must_include_caller' } },
-		{ status: 403, body: { error: 'paid_by_must_include_caller' } },
+	expect(unchangedForeignPayerEdits.map((result) => result.status)).toEqual([200, 200, 200, 200]);
+	expect(rejectedFinancialEdits.map((result) => result.status)).toEqual([
+		403, 403, 403, 403, 403, 403,
 	]);
+	expect(updates).toBe(updatesBeforeRejectedEdits + 7);
 	expect(ordinaryChanges.map((result) => result.status)).toEqual([
 		200, 200, 200, 200, 200, 200, 200,
 	]);
-	expect(updates).toBe(9);
 });
 
 test('recurring expense PATCH rejects an inactive payer', async () => {
