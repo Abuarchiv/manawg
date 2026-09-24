@@ -303,7 +303,8 @@ async function assertInventoryModal(page: Page, width: number): Promise<void> {
 		expect(box.height, label).toBeGreaterThanOrEqual(44);
 	}
 	const help = page.getByText(
-		'Wenn der Bestand diesen Wert erreicht, wird der Vorrat als niedrig markiert und auf die Einkaufsliste gesetzt.',
+		// Default Menge 0 ≤ Nachkaufen ab 1, so the form warns about the automatic shopping entry.
+		'Die Menge liegt nicht über „Nachkaufen ab“ – der Vorrat kommt beim Speichern direkt auf die Einkaufsliste.',
 		{ exact: true },
 	);
 	const helpBox = await measureBox(help);

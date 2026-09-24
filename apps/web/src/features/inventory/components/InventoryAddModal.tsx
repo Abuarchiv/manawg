@@ -34,6 +34,7 @@ import {
 	type InventoryCategory,
 	type InventoryItemDto,
 	type InventoryUnit,
+	isBelowThreshold,
 } from '@/features/inventory/inventory';
 import { useEffect, useRef, useState } from 'react';
 
@@ -345,9 +346,10 @@ export function InventoryAddModal({
 									</NativeSelect>
 								</Field>
 							</div>
-							<FieldDescription>
-								Wenn der Bestand diesen Wert erreicht, wird der Vorrat als niedrig markiert und auf
-								die Einkaufsliste gesetzt.
+							<FieldDescription aria-live="polite">
+								{mode === 'create' && isBelowThreshold({ quantity, threshold })
+									? 'Die Menge liegt nicht über „Nachkaufen ab“ – der Vorrat kommt beim Speichern direkt auf die Einkaufsliste.'
+									: 'Wenn der Bestand diesen Wert erreicht, wird der Vorrat als niedrig markiert und auf die Einkaufsliste gesetzt.'}
 							</FieldDescription>
 						</FieldGroup>
 						{serverError && (
