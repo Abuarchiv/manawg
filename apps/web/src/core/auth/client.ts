@@ -24,7 +24,7 @@ export function createSupabaseBrowserClient() {
 	return createBrowserClient(url, publishableKey);
 }
 
-async function requireEnabledProvider(provider: SocialProvider): Promise<void> {
+export async function isAuthProviderEnabled(provider: SocialProvider | 'phone'): Promise<boolean> {
 	const { url, publishableKey } = getSupabaseEnv();
 	const response = await fetch(new URL('/auth/v1/settings', url), {
 		headers: { apikey: publishableKey },
@@ -33,7 +33,11 @@ async function requireEnabledProvider(provider: SocialProvider): Promise<void> {
 	});
 	if (!response.ok) throw new Error('auth_unavailable');
 	const settings = (await response.json()) as { external?: Record<string, boolean> };
-	if (settings.external?.[provider] !== true) throw new Error('provider_unavailable');
+	return settings.external?.[provider] === true;
+}
+
+async function requireEnabledProvider(provider: SocialProvider): Promise<void> {
+	if (!(await isAuthProviderEnabled(provider))) throw new Error('provider_unavailable');
 }
 
 function authCallbackUrl(next: string): string {
