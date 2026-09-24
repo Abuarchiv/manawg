@@ -555,7 +555,13 @@ for (const route of ['home', 'chores', 'shopping', 'inventory'] as const) {
 				const rootFontSize = await page.evaluate(
 					() => getComputedStyle(document.documentElement).fontSize,
 				);
-				expect(rootFontSize).toBe(textScale === '200%' ? '32px' : '16px');
+				// Normale Schrift skaliert auf schmalen Handys fluid (90–100 %), 200 % bleibt exakt.
+				if (textScale === '200%') {
+					expect(rootFontSize).toBe('32px');
+				} else {
+					expect(Number.parseFloat(rootFontSize)).toBeGreaterThanOrEqual(14.4);
+					expect(Number.parseFloat(rootFontSize)).toBeLessThanOrEqual(16);
+				}
 				if (route === 'inventory') {
 					await page
 						.getByRole('button', { name: 'Vorrat hinzufügen', exact: true })
