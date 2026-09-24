@@ -9,6 +9,7 @@ import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
 import { LegacyAccountRecovery } from '@/components/auth/LegacyAccountRecovery';
 import { SocialLoginButtons, type SocialProvider } from '@/components/auth/SocialLoginButtons';
 import { EntryFrame } from '@/components/entry/EntryFrame';
+import { LegalLinks } from '@/components/entry/LegalLinks';
 import { BackButton } from '@/components/neu/BackButton';
 import { ErrorBox } from '@/components/neu/ErrorBox';
 import { Field } from '@/components/neu/Field';
@@ -621,6 +622,7 @@ export function NeuClient() {
 						<CredentialsAuth next={loginNextPath()} onAuthenticated={handleAuthenticated} />
 					</FieldGroup>
 				)}
+				<LegalLinks consent />
 			</EntryFrame>
 		);
 	}
