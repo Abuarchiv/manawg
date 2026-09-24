@@ -202,6 +202,11 @@ test('PR-branch Preview statuses skip before the protected environment rejects t
 	const preflight = workflowJob(CI_WORKFLOW, 'preview-source');
 	expect(preflight).not.toContain('environment:');
 	expect(preflight).toContain('repos/$GITHUB_REPOSITORY/commits/main');
+	expect(preflight).toContain('needs: validate');
+	const pushGate = workflowJob(CI_WORKFLOW, 'db-supabase-preview').split(
+		"github.event_name == 'deployment_status'",
+	)[0];
+	expect(pushGate).toContain("needs.preview-source.outputs.trusted == 'true'");
 	for (const jobName of ['db-supabase-preview', 'e2e-preview']) {
 		const job = workflowJob(CI_WORKFLOW, jobName);
 		const gate = job.slice(0, job.indexOf('    runs-on:'));
