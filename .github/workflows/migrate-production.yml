@@ -25,18 +25,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  migrate:
-    environment: Production
+  verify-candidate-ci:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify confirmation
-        env:
-          CONFIRMATION: ${{ inputs.confirmation }}
-        run: test "$CONFIRMATION" = MIGRATE_PRODUCTION
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Verify the approved current main candidate
         env:
           WORKFLOW_REF: ${{ github.ref }}
@@ -55,6 +53,61 @@ jobs:
             confirmation: process.env.CONFIRMATION,
           });
           NODE
+      - name: Verify successful exact-candidate push CI evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          # candidate_sha was validated against checked-out main above and is passed through env.
+          gh api --header 'Accept: application/vnd.github+json' --paginate --slurp \
+            "/repos/$REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$CANDIDATE_SHA&branch=main&event=push&per_page=100" > "$RUNNER_TEMP/main-ci-runs.json"
+          export MAIN_CI_RUNS_JSON="$RUNNER_TEMP/main-ci-runs.json"
+          MAIN_CI_RUN_ID="$(node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+
+          const pages = JSON.parse(readFileSync(process.env.MAIN_CI_RUNS_JSON, 'utf8'));
+          const run = pages.flatMap((page) => page.workflow_runs ?? []).find(
+            (candidate) => Number.isInteger(candidate?.id) && candidate.id > 0,
+          );
+          if (!run) {
+            throw new Error('No main push CI run was found for the candidate SHA.');
+          }
+          process.stdout.write(String(run.id));
+          NODE
+          )"
+          if ! [[ "$MAIN_CI_RUN_ID" =~ ^[1-9][0-9]*$ ]]; then
+            echo 'Main CI evidence did not provide a positive Actions run ID.' >&2
+            exit 1
+          fi
+          gh api --header 'Accept: application/vnd.github+json' --paginate --slurp \
+            "/repos/$REPOSITORY/actions/runs/$MAIN_CI_RUN_ID/jobs?per_page=100" > "$RUNNER_TEMP/main-ci-jobs.json"
+          export MAIN_CI_RUN_ID MAIN_CI_JOBS_JSON="$RUNNER_TEMP/main-ci-jobs.json"
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs';
+          import { assertMainCiEvidence } from './apps/web/scripts/release-workflow-gates.mjs';
+
+          const pages = JSON.parse(readFileSync(process.env.MAIN_CI_RUNS_JSON, 'utf8'));
+          const run = pages.flatMap((page) => page.workflow_runs ?? []).find(
+            (candidate) => candidate?.id === Number(process.env.MAIN_CI_RUN_ID),
+          );
+          const jobPages = JSON.parse(readFileSync(process.env.MAIN_CI_JOBS_JSON, 'utf8'));
+          const evidence = assertMainCiEvidence({
+            candidateSha: process.env.CANDIDATE_SHA,
+            run,
+            jobs: jobPages.flatMap((page) => page.jobs ?? []),
+          });
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Main push-CI run (validate + e2e-fixtures): ${evidence.ciRunId}\n`);
+          NODE
+  migrate:
+    needs: verify-candidate-ci
+    environment: Production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
       - uses: pnpm/action-setup@v4
         with:
           version: 9.0.0
@@ -117,10 +170,12 @@ jobs:
           CANDIDATE_SHA: ${{ inputs.candidate_sha }}
         run: |
           CURRENT_MAIN_SHA="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
-          export CURRENT_MAIN_SHA
+          CHECKED_OUT_SHA="$(git rev-parse HEAD)"
+          export CURRENT_MAIN_SHA CHECKED_OUT_SHA
           node --input-type=module <<'NODE'
           import { assertExactRevision } from './apps/web/scripts/release-workflow-gates.mjs';
 
+          assertExactRevision(process.env.CANDIDATE_SHA, process.env.CHECKED_OUT_SHA);
           assertExactRevision(process.env.CANDIDATE_SHA, process.env.CURRENT_MAIN_SHA);
           NODE
       - name: Verify direct Supabase migration connection

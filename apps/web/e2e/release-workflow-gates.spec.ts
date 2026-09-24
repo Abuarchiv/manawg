@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test';
 import {
 	PREVIEW_AUTH_ENV_NAMES,
 	assertExactRevision,
+	assertMainCiEvidence,
 	assertPreviewEvent,
 	assertPreviewEvidence,
 	assertProductionDispatch,
@@ -52,6 +53,22 @@ const validPreviewRun = {
 const validPreviewJobs = [
 	{ name: 'db-supabase-preview', status: 'completed', conclusion: 'success' },
 	{ name: 'e2e-preview', status: 'completed', conclusion: 'success' },
+];
+
+const validMainCiRun = {
+	id: 456,
+	name: 'CI',
+	path: '.github/workflows/ci.yml',
+	event: 'push',
+	status: 'completed',
+	conclusion: 'success',
+	head_sha: SHA,
+	head_branch: 'main',
+};
+
+const validMainCiJobs = [
+	{ name: 'validate', status: 'completed', conclusion: 'success' },
+	{ name: 'e2e-fixtures', status: 'completed', conclusion: 'success' },
 ];
 
 function workflowJob(source: string, name: string): string {
@@ -178,6 +195,7 @@ test('rechecks current main immediately before the production connection', () =>
 	expect(directConnection).toBeGreaterThan(recheck);
 	const cutoverBlock = PRODUCTION_WORKFLOW.slice(recheck, directConnection);
 	expect(cutoverBlock).toContain('git ls-remote --exit-code origin refs/heads/main');
+	expect(cutoverBlock).toContain('git rev-parse HEAD');
 	expect(cutoverBlock).toContain('assertExactRevision');
 	expect(cutoverBlock.match(/\n\s*-\s+name:/g) ?? []).toHaveLength(0);
 });
@@ -202,6 +220,80 @@ test('requires the exact main revision and production confirmation', () => {
 			confirmation: 'MIGRATE_PRODUCTION',
 		}),
 	).toThrow();
+});
+
+test('accepts successful main push CI evidence for the exact candidate SHA', () => {
+	expect(
+		assertMainCiEvidence({
+			candidateSha: SHA,
+			run: validMainCiRun,
+			jobs: validMainCiJobs,
+		}),
+	).toEqual({ ciRunId: 456, sourceRevision: SHA });
+});
+
+test('rejects missing or malformed candidate SHAs for main CI evidence', () => {
+	for (const candidateSha of [undefined, 'not-a-sha']) {
+		expect(() =>
+			assertMainCiEvidence({
+				candidateSha,
+				run: validMainCiRun,
+				jobs: validMainCiJobs,
+			}),
+		).toThrow('Candidate SHA');
+	}
+});
+
+test('rejects non-push, wrong-main, unsuccessful, or incomplete main CI evidence', () => {
+	for (const evidence of [
+		{ run: undefined, jobs: validMainCiJobs },
+		{ run: { ...validMainCiRun, event: 'deployment_status' }, jobs: validMainCiJobs },
+		{ run: { ...validMainCiRun, head_branch: 'fix/audit-158' }, jobs: validMainCiJobs },
+		{ run: { ...validMainCiRun, head_sha: RUN_SHA }, jobs: validMainCiJobs },
+		{ run: { ...validMainCiRun, path: '.github/workflows/other.yml' }, jobs: validMainCiJobs },
+		{ run: { ...validMainCiRun, status: 'in_progress' }, jobs: validMainCiJobs },
+		{ run: { ...validMainCiRun, conclusion: 'failure' }, jobs: validMainCiJobs },
+		{ candidateSha: RUN_SHA, run: validMainCiRun, jobs: validMainCiJobs },
+		{
+			run: validMainCiRun,
+			jobs: [{ name: 'validate', status: 'completed', conclusion: 'skipped' }, validMainCiJobs[1]],
+		},
+		{
+			run: validMainCiRun,
+			jobs: [{ name: 'validate', status: 'completed', conclusion: 'failure' }, validMainCiJobs[1]],
+		},
+		{
+			run: validMainCiRun,
+			jobs: [
+				validMainCiJobs[0],
+				{ name: 'e2e-fixtures', status: 'completed', conclusion: 'failure' },
+			],
+		},
+		{ run: validMainCiRun, jobs: validMainCiJobs.slice(0, 1) },
+	]) {
+		expect(() =>
+			assertMainCiEvidence({
+				candidateSha: SHA,
+				...evidence,
+			}),
+		).toThrow('Main CI evidence');
+	}
+});
+
+test('gates Production on candidate CI without exposing Production secrets to the preflight', () => {
+	const preflight = workflowJob(PRODUCTION_WORKFLOW, 'verify-candidate-ci');
+	const migration = workflowJob(PRODUCTION_WORKFLOW, 'migrate');
+
+	expect(preflight).toContain(
+		'actions/workflows/ci.yml/runs?head_sha=$CANDIDATE_SHA&branch=main&event=push',
+	);
+	expect(preflight).toContain('/actions/runs/$MAIN_CI_RUN_ID/jobs?per_page=100');
+	expect(preflight).toContain('assertProductionDispatch');
+	expect(preflight).toContain('assertMainCiEvidence');
+	expect(preflight).not.toContain('environment: Production');
+	expect(preflight).not.toContain('secrets.');
+	expect(migration).toContain('needs: verify-candidate-ci');
+	expect(migration).toContain('environment: Production');
 });
 
 test('accepts successful Preview evidence when distinct commits share the candidate tree', () => {
