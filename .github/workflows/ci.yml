@@ -57,6 +57,36 @@ jobs:
             printf '%s\n' '- result: ${{ job.status }}'
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # The Preview environment only admits approved branches, and the jobs below
+  # require the deployment SHA to be the current main tip anyway. Check that
+  # here, outside the environment, so PR-branch deployments skip instead of
+  # being rejected by the environment protection rules as a failed job.
+  # Pushes to main that were already superseded skip the same way.
+  preview-source:
+    if: >-
+      always() &&
+      (
+        github.event_name == 'deployment_status' ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      )
+    runs-on: ubuntu-latest
+    # Runs after validate on push so the main-tip check is as late as possible.
+    needs: validate
+    outputs:
+      trusted: ${{ steps.main-tip.outputs.trusted }}
+    steps:
+      - id: main-tip
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.deployment.sha || github.sha }}
+        run: |
+          main_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          if [ "$main_sha" = "$SOURCE_SHA" ]; then
+            echo 'trusted=true' >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$SOURCE_SHA is not the current main tip; skipping Preview gates."
+          fi
+
   # Vercel deployments use commit-SHA refs, so GITHUB_REF can be empty here.
   # Gate on the provider/status/origin before Preview environment access, then
   # verify approved branch tips and current main SHA before checkout.
@@ -67,7 +97,8 @@ jobs:
         (
           github.event_name == 'push' &&
           github.ref == 'refs/heads/main' &&
-          needs.validate.result == 'success'
+          needs.validate.result == 'success' &&
+          needs.preview-source.outputs.trusted == 'true'
         ) ||
         (
           github.event_name == 'deployment_status' &&
@@ -80,11 +111,12 @@ jobs:
             github.event.deployment.ref == github.event.deployment.sha
           ) &&
           startsWith(github.event.deployment_status.target_url, 'https://manawg-') &&
-          endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app')
+          endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app') &&
+          needs.preview-source.outputs.trusted == 'true'
         )
       )
     runs-on: ubuntu-latest
-    needs: validate
+    needs: [validate, preview-source]
     environment:
       name: Preview
       deployment: false
@@ -251,9 +283,10 @@ jobs:
         github.event.deployment.ref == github.event.deployment.sha
       ) &&
       startsWith(github.event.deployment_status.target_url, 'https://manawg-') &&
-      endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app')
+      endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app') &&
+      needs.preview-source.outputs.trusted == 'true'
     runs-on: ubuntu-latest
-    needs: db-supabase-preview
+    needs: [preview-source, db-supabase-preview]
     environment:
       name: Preview
       deployment: false
