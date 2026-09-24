@@ -57,11 +57,9 @@ jobs:
             printf '%s\n' '- result: ${{ job.status }}'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # The Preview environment carries a custom deployment-branch policy that only
-  # admits the trusted preview refs (mirrored in "Require the trusted deployment
-  # tree"). Deployment runs from any other branch are rejected by GitHub before
-  # the first step, which surfaces as a 1-2s job failure with no logs. Skip them
-  # explicitly so only branches the environment accepts can run these gates.
+  # Vercel deployments use commit-SHA refs, so GITHUB_REF can be empty here.
+  # Gate on the provider/status/origin before Preview environment access, then
+  # verify approved branch tips and current main SHA before checkout.
   db-supabase-preview:
     if: >-
       always() &&
@@ -82,11 +80,7 @@ jobs:
             github.event.deployment.ref == github.event.deployment.sha
           ) &&
           startsWith(github.event.deployment_status.target_url, 'https://manawg-') &&
-          endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app') &&
-          (
-            github.ref == 'refs/heads/main' ||
-            github.ref == 'refs/heads/fix/audit-158'
-          )
+          endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app')
         )
       )
     runs-on: ubuntu-latest
@@ -242,8 +236,8 @@ jobs:
           DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
         run: node apps/web/scripts/preview-db-check.mjs --check
 
-  # See the note above db-supabase-preview: untrusted refs are rejected by the
-  # Preview environment protection rules before any step runs.
+  # See the SHA-ref note above: the provider/status/origin gate runs before
+  # Preview environment access; both jobs recheck trusted source revisions.
   e2e-preview:
     if: >-
       always() &&
@@ -257,11 +251,7 @@ jobs:
         github.event.deployment.ref == github.event.deployment.sha
       ) &&
       startsWith(github.event.deployment_status.target_url, 'https://manawg-') &&
-      endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app') &&
-      (
-        github.ref == 'refs/heads/main' ||
-        github.ref == 'refs/heads/fix/audit-158'
-      )
+      endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app')
     runs-on: ubuntu-latest
     needs: db-supabase-preview
     environment:

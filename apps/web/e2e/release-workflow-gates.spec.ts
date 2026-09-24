@@ -184,6 +184,20 @@ test('filters trusted Preview statuses before protected environments and keeps p
 	expect(CI_WORKFLOW).toContain("github.ref == 'refs/heads/main'");
 });
 
+test('SHA-ref Preview statuses do not depend on github.ref at the job gate', () => {
+	for (const jobName of ['db-supabase-preview', 'e2e-preview']) {
+		const job = workflowJob(CI_WORKFLOW, jobName);
+		const gate = job.slice(0, job.indexOf('    runs-on:'));
+		const deploymentGate = gate.slice(gate.indexOf("github.event_name == 'deployment_status'"));
+		expect(deploymentGate).toContain('github.event.deployment.ref == github.event.deployment.sha');
+		expect(deploymentGate).not.toContain('github.ref ==');
+	}
+	const pushGate = workflowJob(CI_WORKFLOW, 'db-supabase-preview').split(
+		"github.event_name == 'deployment_status'",
+	)[0];
+	expect(pushGate).toContain("github.ref == 'refs/heads/main'");
+});
+
 test('rechecks current main immediately before the production connection', () => {
 	const recheck = PRODUCTION_WORKFLOW.indexOf(
 		'name: Recheck current main before production connection',
