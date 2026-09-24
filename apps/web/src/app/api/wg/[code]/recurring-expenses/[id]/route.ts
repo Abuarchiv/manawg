@@ -1,12 +1,13 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, recurringExpenses, wgMembers } from '@/core/db';
-import { badRequest, notFound, tooMany } from '@/core/errors';
+import { apiError, badRequest, notFound, tooMany } from '@/core/errors';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
+import { checkPaidByGuard } from '@/features/expenses/expenses';
 import {
 	parseRecurringSplits,
 	recurringSplitsMatchAmount,
@@ -154,6 +155,16 @@ export const PATCH = withWgRoute<{ id: string }>(
 				),
 			);
 		if (memberRows.length !== memberIds.length) return badRequest('member_not_in_wg');
+		const hasFinancialChange =
+			parsed.data.amountCents !== undefined ||
+			parsed.data.paidByMemberId !== undefined ||
+			parsed.data.splits !== undefined;
+		if (
+			hasFinancialChange &&
+			!checkPaidByGuard(nextPaidByMemberId, auth.member.memberId, nextSplits).ok
+		) {
+			return apiError('paid_by_must_include_caller', 403, 'paid_by_must_include_caller');
+		}
 
 		const pauseTransition =
 			parsed.data.paused === undefined

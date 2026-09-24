@@ -553,6 +553,253 @@ test('expense PATCH preserves split integrity with fractional timestamps and con
 	]);
 });
 
+test('both recurring expense PATCH routes guard financial edits without blocking ordinary changes', async () => {
+	const recurringExpenses = {
+		id: { table: 'recurringExpenses', name: 'id' },
+		wgId: { table: 'recurringExpenses', name: 'wgId' },
+		pausedAt: { table: 'recurringExpenses', name: 'pausedAt' },
+	};
+	const wgMembers = {
+		id: { table: 'wgMembers', name: 'id' },
+		wgId: { table: 'wgMembers', name: 'wgId' },
+		deactivatedAt: { table: 'wgMembers', name: 'deactivatedAt' },
+	};
+	const template = {
+		id: EXPENSE_ID,
+		wgId: WG_ID,
+		createdByMemberId: CALLER_ID,
+		description: 'Miete',
+		amountCents: 1200,
+		paidByMemberId: CALLER_ID,
+		intervalMonths: 1,
+		nextDueAt: new Date('2026-10-01T00:00:00.000Z'),
+		anchorAt: new Date('2026-10-01T00:00:00.000Z'),
+		lastCreatedAt: null,
+		pausedAt: null,
+		splitsJson: JSON.stringify([{ debtorMemberId: CALLER_ID, amountCents: 1200 }]),
+		createdAt: new Date('2026-09-01T00:00:00.000Z'),
+	};
+	const memberRows = [
+		{ id: CALLER_ID, wgId: WG_ID, deactivatedAt: null },
+		{ id: PAYER_ID, wgId: WG_ID, deactivatedAt: null },
+	];
+	let updates = 0;
+	const db = {
+		select: () => {
+			let table: unknown;
+			const query = {
+				from(nextTable: unknown) {
+					table = nextTable;
+					return query;
+				},
+				where(condition: Predicate) {
+					const rows =
+						table === wgMembers ? memberRows.filter((row) => matches(row, condition)) : [template];
+					const result = Promise.resolve(rows) as Promise<unknown[]> & {
+						limit: (count: number) => Promise<unknown[]>;
+					};
+					result.limit = async () => (table === recurringExpenses ? [template] : []);
+					return result;
+				},
+			};
+			return query;
+		},
+		update: () => ({
+			set: (values: Record<string, unknown>) => ({
+				where: () => ({
+					returning: async () => {
+						updates += 1;
+						Object.assign(template, values);
+						return [template];
+					},
+				}),
+			}),
+		}),
+	};
+	const expenseFeatures = loadTs<Record<string, unknown>>(
+		path.join(ROOT, 'src/features/expenses/expenses.ts'),
+		{
+			'@/core/activity-feed': {},
+			'@/core/audit': {},
+			'@/core/db': {},
+			'@/core/db/transaction': {},
+			'@/core/guards/api-auth': {},
+			'@/core/notifications/notification-dispatch': {},
+			'@/core/utils/money': {},
+			'@/features/expenses/split-math': {},
+			'drizzle-orm': {},
+		},
+	);
+	const splitMath = loadTs<Record<string, unknown>>(SPLIT_MATH);
+	const recurringHelpers = loadTs<Record<string, unknown>>(RECURRING_HELPERS, {
+		'@/core/utils/time': { parseTimestamp: (value: string) => Date.parse(value) },
+		'@/features/expenses/split-math': splitMath,
+	});
+	const errors = {
+		apiError: (code: string, status: number) => responseError(code, status),
+		badRequest: (code: string) => responseError(code, 400),
+		conflict: (code: string) => responseError(code, 409),
+		notFound: (code: string) => responseError(code, 404),
+		serverError: (code: string) => responseError(code, 500),
+		tooMany: () => responseError('too_many', 429),
+	};
+	const auth = {
+		requireWgMember: async () => ({
+			ok: true,
+			wg: { id: WG_ID, name: 'WG', shareCode: 'MTE8PZAT' },
+			member: { memberId: CALLER_ID, name: 'Mina' },
+		}),
+	};
+	const operators = {
+		and: (...values: Predicate[]): Predicate => ({ kind: 'and', values }),
+		asc: () => undefined,
+		eq: (column: Column, value: unknown): Predicate => ({ kind: 'eq', column, value }),
+		gt: () => undefined,
+		inArray: (column: Column, values: unknown[]): Predicate => ({ kind: 'in', column, values }),
+		isNotNull: (column: Column): Predicate => ({ kind: 'notNull', column }),
+		isNull: (column: Column): Predicate => ({ kind: 'null', column }),
+		sql: () => undefined,
+	};
+	const common = {
+		'@/core/audit': { recordAuditEvent: async () => undefined },
+		'@/core/db': { db, recurringExpenses, wgMembers },
+		'@/core/errors': errors,
+		'@/core/guards/admin': { requireOwnerOrAdmin: async () => null },
+		'@/core/guards/require-wg-member': auth,
+		'@/core/guards/with-wg-route': { withWgRoute: (_name: string, handler: unknown) => handler },
+		'@/core/rate-limit': {
+			checkRateLimit: async () => ({ success: true }),
+			wgWriteLimiter: {},
+		},
+		'@/core/validators/currency': { currencySchema: z.string() },
+		'@/features/expenses/expenses': expenseFeatures,
+		'@/features/expenses/recurring-expenses': recurringHelpers,
+		'drizzle-orm': operators,
+	};
+	const collectionRoute = loadTs<{
+		PATCH: (req: Request, ctx: unknown) => Promise<Response>;
+	}>(path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/route.ts'), {
+		...common,
+		'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
+		'@/core/guards/idempotency': {
+			ReplayCache: class {
+				get() {
+					return null;
+				}
+				remember() {}
+				reserve() {
+					return null;
+				}
+			},
+			claimReplaySlotWithRetry: async () => ({ won: true }),
+			replayKey: () => 'replay-key',
+		},
+		'@/core/guards/route-preamble': { readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }) },
+		'@/core/idempotency': {
+			RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
+			getCachedResponse: async () => null,
+			readIdempotencyKey: () => null,
+		},
+		'@/core/infra/observability': { logApiError: () => undefined },
+		'@/features/expenses/expense-payments': {
+			withExpensePaymentLock: async (_wgId: string, operation: (tx: unknown) => Promise<unknown>) =>
+				operation({}),
+		},
+		'@/features/expenses/split-math': splitMath,
+	});
+	const itemRoute = loadTs<{
+		PATCH: (req: Request, ctx: unknown) => Promise<Response>;
+	}>(path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/[id]/route.ts'), {
+		...common,
+		'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
+	});
+	const collectionEndpoint = {
+		route: collectionRoute,
+		context: { code: 'MTE8PZAT' },
+	};
+	const itemEndpoint = {
+		route: itemRoute,
+		context: { code: 'MTE8PZAT', id: EXPENSE_ID },
+	};
+	const endpoints = [collectionEndpoint, itemEndpoint];
+	const send = async (endpoint: (typeof endpoints)[number], body: Record<string, unknown>) => {
+		const response = await endpoint.route.PATCH(
+			new Request('http://localhost', {
+				method: 'PATCH',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(body),
+			}),
+			endpoint.context,
+		);
+		return { status: response.status, body: await response.json() };
+	};
+	const results = [];
+	for (const endpoint of endpoints) {
+		results.push(
+			await send(endpoint, {
+				id: EXPENSE_ID,
+				paidByMemberId: PAYER_ID,
+				splits: [{ debtorMemberId: PAYER_ID, amountCents: 1200 }],
+			}),
+		);
+	}
+
+	expect({ results, updates }).toEqual({
+		results: [
+			{ status: 403, body: { error: 'paid_by_must_include_caller' } },
+			{ status: 403, body: { error: 'paid_by_must_include_caller' } },
+		],
+		updates: 0,
+	});
+
+	const positiveCallerShare = await send(collectionEndpoint, {
+		id: EXPENSE_ID,
+		paidByMemberId: PAYER_ID,
+		splits: [
+			{ debtorMemberId: PAYER_ID, amountCents: 1199 },
+			{ debtorMemberId: CALLER_ID, amountCents: 1 },
+		],
+	});
+	const selfPayer = await send(itemEndpoint, {
+		paidByMemberId: CALLER_ID,
+		splits: [{ debtorMemberId: CALLER_ID, amountCents: 1200 }],
+	});
+	Object.assign(template, {
+		paidByMemberId: PAYER_ID,
+		splitsJson: JSON.stringify([{ debtorMemberId: PAYER_ID, amountCents: 1200 }]),
+		pausedAt: null,
+	});
+	const unchangedForeignPayerEdits = await Promise.all(
+		endpoints.map((endpoint) => send(endpoint, { id: EXPENSE_ID, amountCents: 1200 })),
+	);
+	const ordinaryChanges = [
+		await send(collectionEndpoint, { id: EXPENSE_ID, description: 'Miete angepasst' }),
+		await send(collectionEndpoint, {
+			id: EXPENSE_ID,
+			nextDueAt: '2026-11-01T00:00:00.000Z',
+		}),
+		await send(collectionEndpoint, {
+			id: EXPENSE_ID,
+			expectedNextDueAt: template.nextDueAt.toISOString(),
+		}),
+		await send(itemEndpoint, { description: 'Miete angepasst' }),
+		await send(itemEndpoint, { nextDueAt: '2026-12-01T00:00:00.000Z' }),
+		await send(itemEndpoint, { paused: true }),
+		await send(itemEndpoint, { paused: false }),
+	];
+
+	expect(positiveCallerShare.status).toBe(200);
+	expect(selfPayer.status).toBe(200);
+	expect(unchangedForeignPayerEdits).toEqual([
+		{ status: 403, body: { error: 'paid_by_must_include_caller' } },
+		{ status: 403, body: { error: 'paid_by_must_include_caller' } },
+	]);
+	expect(ordinaryChanges.map((result) => result.status)).toEqual([
+		200, 200, 200, 200, 200, 200, 200,
+	]);
+	expect(updates).toBe(9);
+});
+
 test('recurring expense PATCH rejects an inactive payer', async () => {
 	const wgMembers = {
 		id: { table: 'wgMembers', name: 'id' },
@@ -657,6 +904,7 @@ test('recurring expense PATCH rejects an inactive payer', async () => {
 			wgWriteLimiter: {},
 		},
 		'@/core/validators/currency': { currencySchema: z.string() },
+		'@/features/expenses/expenses': { checkPaidByGuard: () => ({ ok: true }) },
 		'@/features/expenses/recurring-expenses': recurringHelpers,
 		'drizzle-orm': operators,
 	}).PATCH(

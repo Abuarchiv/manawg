@@ -459,6 +459,14 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 				),
 			);
 		if (memberRows.length !== memberIds.length) return badRequest('member_not_in_wg');
+		const hasFinancialChange =
+			parsed.data.amountCents !== undefined ||
+			parsed.data.paidByMemberId !== undefined ||
+			parsed.data.splits !== undefined;
+		if (hasFinancialChange && !checkPaidByGuard(paidByMemberId, auth.member.memberId, splits).ok) {
+			return apiError('paid_by_must_include_caller', 403, 'paid_by_must_include_caller');
+		}
+
 		const [updated] = await db
 			.update(recurringExpenses)
 			.set({
