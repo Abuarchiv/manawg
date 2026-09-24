@@ -14,6 +14,7 @@ const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 function isRateLimitedApiPath(path: string): boolean {
 	return (
+		path === '/api/account' ||
 		path === '/api/wg' ||
 		path.startsWith('/api/wg/') ||
 		path.startsWith('/api/calendar/') ||
@@ -148,6 +149,7 @@ export const config = {
 	// Missing it before meant POST /api/wg (create-WG) bypassed all limits.
 	matcher: [
 		'/((?!api|_next/static|_next/image|favicon.ico|manifest.json|.*\\..*).*)',
+		'/api/account',
 		'/api/wg',
 		'/api/wg/:path*',
 		'/api/calendar/:path*',

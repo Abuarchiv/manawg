@@ -1,16 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { getAuthenticatedUser } from '@/core/auth/server';
-import {
-	announcements,
-	chores,
-	db,
-	expensePayments,
-	expenses,
-	recurringExpenses,
-	shoppingItems,
-	wgMembers,
-	wgs,
-} from '@/core/db';
+import { db, wgMembers, wgs } from '@/core/db';
+import { deleteWgCascade } from '@/core/db/delete-wg';
 import { withTransaction } from '@/core/db/transaction';
 import { apiError, badRequest, notFound, serverError } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
@@ -226,21 +217,8 @@ export async function DELETE(
 			metadata: { name: wg.name },
 		});
 
-		const result = await withTransaction(async (tx) => {
-			// Several historical/member references intentionally use RESTRICT so a
-			// member cannot be hard-deleted while its accounting history remains.
-			// Whole-WG deletion is the explicit destructive operation, so remove
-			// those WG-owned roots in one transaction and let the remaining WG
-			// cascades clean up comments, splits, logs, and subscriptions.
-			await tx.delete(expenses).where(eq(expenses.wgId, wg.id));
-			await tx.delete(expensePayments).where(eq(expensePayments.wgId, wg.id));
-			await tx.delete(shoppingItems).where(eq(shoppingItems.wgId, wg.id));
-			await tx.delete(announcements).where(eq(announcements.wgId, wg.id));
-			await tx.delete(chores).where(eq(chores.wgId, wg.id));
-			await tx.delete(recurringExpenses).where(eq(recurringExpenses.wgId, wg.id));
-			return tx.delete(wgs).where(eq(wgs.id, wg.id)).returning({ id: wgs.id });
-		});
-		if (result.length === 0) {
+		const deleted = await withTransaction((tx) => deleteWgCascade(tx, wg.id));
+		if (!deleted) {
 			return notFound('wg_not_found');
 		}
 		return NextResponse.json({ deleted: true });
