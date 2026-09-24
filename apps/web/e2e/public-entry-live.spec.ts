@@ -99,7 +99,7 @@ test.describe('live public dashboard entry', () => {
 		});
 		await page.goto('/');
 		await expect(page.getByText('Deine WGs konnten gerade nicht geladen werden.')).toBeVisible();
-		await page.getByRole('button', { name: 'erneut prüfen', exact: true }).click();
+		await page.getByRole('button', { name: 'Erneut prüfen', exact: true }).click();
 		await expect.poll(() => attempts).toBeGreaterThan(1);
 		await expect(page.getByText('Hafermilch', { exact: true })).toBeVisible();
 	});
