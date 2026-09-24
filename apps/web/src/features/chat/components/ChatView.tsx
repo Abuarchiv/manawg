@@ -487,7 +487,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	return (
 		<div ref={chatRootRef} className="relative flex min-h-0 flex-1 flex-col bg-background">
 			{readError && (
-				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1">
+				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1.5">
 					<AlertDescription className="flex flex-row flex-wrap items-center justify-between gap-x-2 gap-y-0 text-xs">
 						Lesestatus konnte nicht gespeichert werden.
 						<Button variant="ghost" size="sm" className="text-xs" onClick={markLatestRead}>
@@ -497,7 +497,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 				</Alert>
 			)}
 			{refreshError && !bootstrapError && !bootstrapping && (
-				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1">
+				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1.5">
 					<AlertDescription className="flex flex-row flex-wrap items-center justify-between gap-x-2 gap-y-0 text-xs">
 						Chat gerade nicht aktuell.
 						<Button variant="ghost" size="sm" className="text-xs" onClick={() => void refresh()}>
