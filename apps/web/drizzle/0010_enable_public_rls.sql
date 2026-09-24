@@ -7,7 +7,7 @@ DECLARE
 	expected_table text;
 	missing_tables text[] := ARRAY[]::text[];
 BEGIN
-	FOREACH expected_table IN ARRAY[
+	FOREACH expected_table IN ARRAY ARRAY[
 		'announcement_comments',
 		'announcement_reactions',
 		'announcements',
