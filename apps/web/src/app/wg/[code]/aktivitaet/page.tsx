@@ -351,9 +351,10 @@ export default function AktivitaetPage() {
 			<ThumbAction>
 				<Button
 					type="button"
+					variant="outline"
 					onClick={() => void load()}
 					disabled={loading}
-					className="min-h-11 w-full"
+					className="min-h-11 w-full bg-background"
 				>
 					{loading ? (
 						<Spinner className="motion-reduce:animate-none" data-icon="inline-start" aria-hidden />

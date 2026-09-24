@@ -635,7 +635,6 @@ export default function KalenderPage() {
 								occurrences={upcomingOccurrences}
 								choreOccurrences={upcomingChoreOccurrences}
 								onSelect={handleSelectOccurrence}
-								onCreate={handleFabClick}
 								wgBaseHref={wgBaseHref}
 							/>
 						)}
