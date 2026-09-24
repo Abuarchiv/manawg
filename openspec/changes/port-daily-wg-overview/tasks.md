@@ -1,13 +1,13 @@
 ## 1. Derive accurate personal and weekly data
 
-- [ ] 1.1 Confirm the implementation base and selective diff against `fd92cb299db50a7c51c2feb1f8a1469df4b845e5`, read the current brand contract and relevant chapters, and verify no old settings/Auth/financial-query/mutation implementations enter the diff.
+- [x] 1.1 Confirm the implementation base and selective diff against `fd92cb299db50a7c51c2feb1f8a1469df4b845e5`, read the current brand contract and relevant chapters, and verify no old settings/Auth/financial-query/mutation implementations enter the diff.
 - [ ] 1.2 Extend the pure overview model for personal ownership, shared-context notices, and settlement rows with stable counterparty/currency identities; verify own/other chores, several counterparties, multiple currencies, and equality with Ausgaben's existing settlement calculation.
 - [ ] 1.3 Add Berlin calendar-week agenda derivation with separate overdue context and no duplicate own chores; verify all-day/recurring events, Sunday/Monday, month/year boundaries, both DST transitions, and UTC/non-Berlin runtime timezones.
 
 ## 2. Port visible navigation and truthful counts
 
-- [ ] 2.1 Move Kalender to Austausch in `WG_SECTIONS` and retain all primary labels/slugs, especially Ausgaben; verify direct calendar links and both public/authenticated active navigation with all sibling segments visible.
-- [ ] 2.2 Add scoped shared count consumption using the existing cache and one refresh owner per resource; verify loading/error are not numeric zero, confirmed zero hides the badge, stale data is identifiable, 99+ exposes the real count, and subscriptions do not multiply poll requests.
+- [x] 2.1 Move Kalender to Austausch in `WG_SECTIONS` and retain all primary labels/slugs, especially Ausgaben; verify direct calendar links and both public/authenticated active navigation with all sibling segments visible.
+- [x] 2.2 Add scoped shared count consumption using the existing cache and one refresh owner per resource; verify loading/error are not numeric zero, confirmed zero hides the badge, stale data is identifiable, 99+ exposes the real count, and subscriptions do not multiply poll requests.
 - [ ] 2.3 Wire current-module live counts and server-confirmed chat unread refresh without changing ChatView's read semantics; verify successful/rolled-back/offline mutations reconcile counts and a failed read acknowledgement does not clear unread messages just by entering Chat.
 
 ## 3. Integrate Home while preserving existing behavior

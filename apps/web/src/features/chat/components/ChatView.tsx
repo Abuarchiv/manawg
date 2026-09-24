@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/message-scroller';
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { notifyChatReadConfirmed } from '@/components/wg/useWgCounts';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { haptic } from '@/shared/lib/haptics';
@@ -160,8 +161,9 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			if (lastReadSentIdRef.current !== messageId) return;
 			setReadError(!res.ok);
 			if (!res.ok) lastReadSentIdRef.current = null;
+			else notifyChatReadConfirmed(shareCode);
 		},
-		[encodedShareCode, identity.memberId, identity.memberToken],
+		[encodedShareCode, identity.memberId, identity.memberToken, shareCode],
 	);
 
 	const markLatestRead = useCallback(() => {

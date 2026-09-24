@@ -968,6 +968,14 @@ export default function PutzenPage() {
 	const activeMembers = members.filter((m) => m.active);
 
 	const showSkeleton = initialLoading && items.length === 0;
+	const ownDueCount =
+		!initialLoading && !loadError
+			? items.filter(
+					(chore) =>
+						chore.assignedMemberId === identity.memberId &&
+						['due', 'overdue'].includes(getChoreStatus(chore.nextDueAt).state),
+				).length
+			: undefined;
 	const health = getChorePlanHealth(items);
 	// Der Block "Lücken reparieren" zeigte genau diese Aufgaben als zweite
 	// Kartenreihe, 200px über der Liste, in der sie ohnehin stehen. Statt sie zu
@@ -1041,7 +1049,7 @@ export default function PutzenPage() {
 
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
-			<SubNav />
+			<SubNav liveCount={ownDueCount} />
 			<PutzenHeader
 				itemCount={items.length}
 				loading={showSkeleton}

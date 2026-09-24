@@ -36,6 +36,7 @@ import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { formatEuroCents } from '@/core/utils/money';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import { Plus } from 'lucide-react';
@@ -392,6 +393,7 @@ export default function AbosPage() {
 	}
 
 	const activeCount = abos.filter((abo) => abo.pausedAt === null).length;
+	const dueCount = getDueRecurringExpenses(abos.filter((abo) => abo.pausedAt === null)).length;
 	// Monatliche Last aktiver Fixkosten: jährliche Abos zählen mit 1/12.
 	const monthly = new Map<string, { totalCents: number; mineCents: number }>();
 	for (const abo of abos) {
@@ -407,7 +409,7 @@ export default function AbosPage() {
 
 	return (
 		<div data-finance-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
-			<SubNav />
+			<SubNav liveCount={!loading && !loadError ? dueCount : undefined} />
 			<header className="flex min-w-0 flex-wrap items-center gap-3">
 				<div className="min-w-0 flex-1">
 					<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight break-words [overflow-wrap:anywhere]">

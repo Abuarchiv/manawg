@@ -2,15 +2,13 @@
 
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
-import { useWg } from '@/components/wg/WgContextProvider';
-import { apiFetch } from '@/core/infra/api-client';
+import { useChatUnreadCount } from '@/components/wg/useWgCounts';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import { MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
 
 interface ChatTopBarLinkProps {
 	href: string;
@@ -21,40 +19,38 @@ const REFRESH_MS = 30_000;
 const BADGE_MAX = 99;
 
 export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
-	const { wg, identity } = useWg();
 	const pathname = usePathname() ?? '';
-	const [count, setCount] = useState(0);
-	const encodedShareCode = encodeURIComponent(wg.shareCode);
-
-	const refresh = useCallback(async () => {
-		if (!identity.memberId) return;
-		const res = await apiFetch<{ count: number }>(`/api/wg/${encodedShareCode}/chat/unread-count`, {
-			memberId: identity.memberId,
-		});
-		if (res.ok) setCount(res.data.count);
-	}, [encodedShareCode, identity.memberId]);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	useEffect(() => {
-		if (pathname.endsWith('/chat')) setCount(0);
-	}, [pathname]);
-
-	useVisibilityPausedInterval(() => void refresh(), REFRESH_MS);
+	const unread = useChatUnreadCount();
+	useVisibilityPausedInterval(() => void unread.refresh(), REFRESH_MS);
 
 	const isActive = pathname.endsWith('/chat');
-	const badge = count > BADGE_MAX ? `${BADGE_MAX}+` : String(count);
+	const count = unread.data?.count;
+	const countLabel =
+		count === undefined
+			? unread.error
+				? 'Zähler nicht verfügbar'
+				: 'Zähler wird geladen'
+			: unread.data?.overflow
+				? 'mehr als 99 ungelesen'
+				: `${count} ungelesen`;
+	const freshness = count !== undefined && unread.error ? ', Stand möglicherweise veraltet' : '';
+	const badge =
+		count === undefined
+			? '!'
+			: `${unread.error ? '~' : ''}${
+					unread.data?.overflow || count > BADGE_MAX ? `${BADGE_MAX}+` : count
+				}`;
+	const showBadge =
+		count === undefined ? Boolean(unread.error) : count > 0 || Boolean(unread.error);
 
-	function handleClick() {
+	function handleClick(): void {
 		if (!isActive) haptic('light');
 	}
 
 	return (
 		<Link
 			href={href}
-			aria-label={count > 0 ? `Chat öffnen, ${count} ungelesen` : 'Chat öffnen'}
+			aria-label={`Chat öffnen, ${countLabel}${freshness}`}
 			aria-current={isActive ? 'page' : undefined}
 			onClick={handleClick}
 			className={
@@ -67,7 +63,7 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 			}
 		>
 			<MessageCircle className="h-4 w-4" aria-hidden />
-			{count > 0 && (
+			{showBadge && (
 				<Badge
 					variant="destructive"
 					aria-hidden
@@ -77,7 +73,13 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 				</Badge>
 			)}
 			<span className="sr-only" aria-live="polite" aria-atomic="true">
-				{count > 0 ? `${count} ungelesene Nachricht${count === 1 ? '' : 'en'}` : ''}
+				{count === undefined
+					? countLabel
+					: count > 0
+						? unread.data?.overflow
+							? 'Mehr als 99 ungelesene Nachrichten'
+							: `${count} ungelesene Nachricht${count === 1 ? '' : 'en'}`
+						: ''}
 			</span>
 		</Link>
 	);
