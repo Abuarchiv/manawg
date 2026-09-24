@@ -2,7 +2,7 @@
 
 This is a dated evidence log, not a standing release approval. Older branch names, candidate SHAs, and blockers describe only their recorded date.
 
-Production migration requires a successful `push` run of `.github/workflows/ci.yml` for the exact current `main` candidate SHA, with both `validate` and `e2e-fixtures` successful. A read-only Actions API preflight verifies this before the workflow enters the protected Production environment; the separate tree-matched Preview evidence and explicit confirmation remain required.
+Production migration requires a successful `push` run of `.github/workflows/ci.yml` for the exact current `main` candidate SHA, with both `validate` and `e2e-fixtures` successful. A read-only Actions API preflight verifies this before the workflow enters the protected Production environment; the separate exact-SHA Preview evidence and explicit confirmation remain required.
 
 ## Read-only evidence update — 2026-09-24
 

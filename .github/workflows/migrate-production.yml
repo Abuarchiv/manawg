@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       preview_run_id:
-        description: CI run ID whose protected Preview gate passed with a matching candidate tree.
+        description: CI run ID whose protected Preview gate passed for the exact candidate SHA.
         required: true
         type: string
       confirmation:
@@ -116,7 +116,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Verify tree-matched protected Preview evidence
+      - name: Verify exact-SHA protected Preview evidence
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
@@ -210,7 +210,7 @@ jobs:
           {
             printf '%s\n' '### Production migration evidence'
             printf '%s\n' "candidate main SHA: $CANDIDATE_SHA"
-                printf '%s\n' "tree-matched Preview CI run: $PREVIEW_RUN_ID"
+            printf '%s\n' "exact-SHA Preview CI run: $PREVIEW_RUN_ID"
             printf '%s\n' '- execution mode: protected-production-migration'
             printf '%s\n' '- result: ${{ job.status }}'
           } >> "$GITHUB_STEP_SUMMARY"

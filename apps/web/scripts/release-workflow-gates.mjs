@@ -164,8 +164,7 @@ export function assertPreviewEvidence({
 	if (expectedRunId !== undefined && run.id !== expectedRunId) {
 		throw new Error('Preview evidence run ID does not match the requested run.');
 	}
-	assertExactRevision(candidateSha, candidateSha);
-	assertExactRevision(run.head_sha, run.head_sha);
+	assertExactRevision(candidateSha, run.head_sha);
 	assertMatchingTree(candidateTree, runTree);
 
 	for (const requiredJob of ['db-supabase-preview', 'e2e-preview']) {

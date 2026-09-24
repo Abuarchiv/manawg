@@ -47,7 +47,7 @@ const validPreviewRun = {
 	event: 'deployment_status',
 	status: 'completed',
 	conclusion: 'success',
-	head_sha: RUN_SHA,
+	head_sha: SHA,
 };
 
 const validPreviewJobs = [
@@ -296,7 +296,7 @@ test('gates Production on candidate CI without exposing Production secrets to th
 	expect(migration).toContain('environment: Production');
 });
 
-test('accepts successful Preview evidence when distinct commits share the candidate tree', () => {
+test('accepts successful Preview evidence for the exact candidate SHA', () => {
 	expect(
 		assertPreviewEvidence({
 			candidateSha: SHA,
@@ -306,7 +306,7 @@ test('accepts successful Preview evidence when distinct commits share the candid
 			runTree: TREE_SHA,
 			jobs: validPreviewJobs,
 		}),
-	).toEqual({ deploymentRunId: 123, sourceRevision: RUN_SHA });
+	).toEqual({ deploymentRunId: 123, sourceRevision: SHA });
 
 	for (const jobs of [
 		[
@@ -395,17 +395,14 @@ test('Production evidence passes the candidate SHA and matching Preview tree to 
 	);
 });
 
-test('accepts different Preview commits when candidate and run trees match', () => {
+test('rejects different Preview commits even when candidate and run trees match', () => {
 	const evidence = {
 		candidateSha: SHA,
 		candidateTree: 'c'.repeat(40),
 		runTree: 'c'.repeat(40),
 		expectedRunId: 123,
-		run: { ...validPreviewRun, head_sha: 'b'.repeat(40) },
+		run: { ...validPreviewRun, head_sha: RUN_SHA },
 		jobs: validPreviewJobs,
 	};
-	expect(assertPreviewEvidence(evidence)).toEqual({
-		deploymentRunId: 123,
-		sourceRevision: 'b'.repeat(40),
-	});
+	expect(() => assertPreviewEvidence(evidence)).toThrow('Candidate SHA does not match');
 });
