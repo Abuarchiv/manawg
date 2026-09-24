@@ -285,7 +285,7 @@ function ShareWgBody({
 				onClick={onShare}
 				disabled={!joiningEnabled || copying !== null}
 				aria-label={copying === 'share' ? 'WG-Einladung wird geteilt…' : 'WG-Einladung teilen'}
-				className="mt-3 h-11 min-h-[44px] w-full"
+				className="mt-3 w-full"
 			>
 				{copying === 'share' ? <Spinner aria-hidden /> : <Share2 aria-hidden />}
 				{copying === 'share' ? 'Teilt…' : 'Teilen'}

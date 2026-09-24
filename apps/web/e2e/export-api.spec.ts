@@ -11,8 +11,9 @@ test.describe('WG export API', () => {
 			timeout: 120_000,
 		});
 
-		expect(response.ok()).toBe(true);
+		const body = await response.text();
+		expect(response.status(), body).toBe(200);
 		expect(response.headers()['content-disposition']).toContain('MTE8PZAT-members.csv');
-		await expect(response.text()).resolves.toContain('id,name,createdAt');
+		expect(body).toContain('id,name,createdAt');
 	});
 });

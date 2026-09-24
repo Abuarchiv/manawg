@@ -1,5 +1,13 @@
 import { recordAuditEvent } from '@/core/audit';
-import { CHORE_RECURRENCE_TYPES, choreCompletions, chores, db, wgMembers } from '@/core/db';
+import {
+	CHORE_RECURRENCE_TYPES,
+	choreCompletions,
+	chores,
+	db,
+	idempotencyResponses,
+	wgMembers,
+} from '@/core/db';
+import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { badRequest, serverError, tooMany } from '@/core/errors';
 import {
 	ReplayCache,
@@ -9,13 +17,19 @@ import {
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
+import {
+	RESPONSE_REPLAY_TTL_SECONDS,
+	getCachedResponse,
+	readIdempotencyKey,
+} from '@/core/idempotency';
+import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { berlinDayKey, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { computeOpenGapsByMember } from '@/features/chores/chore-fairness';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -104,10 +118,7 @@ export const GET = withWgRoute(
 		}
 
 		const now = Date.now();
-		// ponytail: Monatsbeginn in Serverzeit, Berlin-Grenze nur bei Bedarf.
-		const monthStart = new Date(now);
-		monthStart.setDate(1);
-		monthStart.setHours(0, 0, 0, 0);
+		const monthStart = startOfBerlinDay(new Date(`${berlinDayKey(new Date(now)).slice(0, 7)}-01`));
 		const monthCompletions: Record<string, number> = {};
 		for (const row of completionRows) {
 			if (row.completedAt < monthStart) continue;
@@ -166,6 +177,7 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 		ReplayReservation<ChoreCreateResponseBody>,
 		{ owned: true }
 	> | null = null;
+	let claimedLeaseExpiresAt: Date | null = null;
 	let raw: unknown;
 	try {
 		raw = await req.json();
@@ -244,23 +256,80 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 				return NextResponse.json(slot.cached);
 			}
 		}
-		const [chore] = await db
-			.insert(chores)
-			.values({
-				wgId: wg.id,
-				title,
-				intervalDays,
-				recurrenceType,
-				assignedMemberId,
-				nextDueAt,
-				anchorAt: nextDueAt,
-			})
-			.returning();
-		if (!chore) {
-			const err = new Error('insert_failed');
-			replayReservation?.reject(err);
-			return serverError('insert_failed');
+		const written = await withTransaction(async (tx) => {
+			if (idemScope && idemKey) {
+				const [slot] = await tx
+					.select({
+						body: idempotencyResponses.responseBody,
+						expiresAt: idempotencyResponses.expiresAt,
+					})
+					.from(idempotencyResponses)
+					.where(
+						and(eq(idempotencyResponses.scope, idemScope), eq(idempotencyResponses.key, idemKey)),
+					)
+					.limit(1)
+					.for('update');
+				if (!slot) throw new TransactionAbort('idempotency_claim_missing');
+				if (slot.body && typeof slot.body === 'object' && 'chore' in slot.body) {
+					return { replayed: true as const, body: slot.body as ChoreCreateResponseBody };
+				}
+				if (
+					slot.expiresAt <= new Date() ||
+					!slot.body ||
+					typeof slot.body !== 'object' ||
+					Array.isArray(slot.body) ||
+					Object.keys(slot.body).length !== 1 ||
+					(slot.body as Record<string, unknown>)._claimed !== true
+				) {
+					throw new TransactionAbort('idempotency_claim_invalid');
+				}
+				claimedLeaseExpiresAt = slot.expiresAt;
+			}
+			const [chore] = await tx
+				.insert(chores)
+				.values({
+					wgId: wg.id,
+					title,
+					intervalDays,
+					recurrenceType,
+					assignedMemberId,
+					nextDueAt,
+					anchorAt: nextDueAt,
+				})
+				.returning();
+			if (!chore) throw new TransactionAbort('insert_failed');
+			const body: ChoreCreateResponseBody = { chore, warning: null };
+			if (idemScope && idemKey) {
+				let rows: Array<{ scope: string }>;
+				try {
+					rows = await tx
+						.update(idempotencyResponses)
+						.set({
+							responseBody: body,
+							expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
+						})
+						.where(
+							and(
+								eq(idempotencyResponses.scope, idemScope),
+								eq(idempotencyResponses.key, idemKey),
+								gt(idempotencyResponses.expiresAt, new Date()),
+								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
+							),
+						)
+						.returning({ scope: idempotencyResponses.scope });
+				} catch (err) {
+					logApiError('[chores POST] replay write failed', err);
+					throw new TransactionAbort('idempotency_response_write_failed');
+				}
+				if (rows.length !== 1) throw new TransactionAbort('idempotency_response_write_failed');
+			}
+			return { replayed: false as const, chore, body };
+		});
+		if (written.replayed) {
+			replayReservation?.resolve(written.body);
+			return NextResponse.json(written.body);
 		}
+		const chore = written.chore;
 		await recordAuditEvent({
 			wgId: wg.id,
 			memberId: auth.member.memberId,
@@ -285,18 +354,64 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 				targetMemberIds: [assignedMemberId],
 			}));
 		}
-		const responseBody = { chore, warning };
-		if (idemScope && idemKey && replayReservation?.owned) {
-			replayReservation.resolve(responseBody);
-			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) => {
-				if (process.env.NODE_ENV === 'development') {
-					console.warn('[chores POST] idem cache write failed', err);
+		let responseBody: ChoreCreateResponseBody = { ...written.body, warning };
+		if (idemScope && idemKey && warning !== null) {
+			try {
+				const rows = await db
+					.update(idempotencyResponses)
+					.set({
+						responseBody: sql`jsonb_set(${idempotencyResponses.responseBody}, '{warning}', to_jsonb(${warning}::text))`,
+					})
+					.where(
+						and(
+							eq(idempotencyResponses.scope, idemScope),
+							eq(idempotencyResponses.key, idemKey),
+							gt(idempotencyResponses.expiresAt, new Date()),
+							sql`${idempotencyResponses.responseBody}->'chore'->>'id' = ${chore.id}`,
+							sql`${idempotencyResponses.responseBody}->'warning' = 'null'::jsonb`,
+						),
+					)
+					.returning({ scope: idempotencyResponses.scope });
+				if (rows.length !== 1) {
+					responseBody = written.body;
+					logApiError(
+						'[chores POST] warning replay update missed',
+						new Error('replay_warning_missed'),
+					);
 				}
-			});
+			} catch (err) {
+				responseBody = written.body;
+				logApiError('[chores POST] warning replay update failed', err);
+			}
 		}
+		replayReservation?.resolve(responseBody);
 		return NextResponse.json(responseBody);
 	} catch (err) {
 		replayReservation?.reject(err);
+		if (err instanceof TransactionAbort) {
+			if (
+				idemScope &&
+				idemKey &&
+				claimedLeaseExpiresAt &&
+				['insert_failed', 'idempotency_response_write_failed'].includes(err.code)
+			) {
+				try {
+					await db
+						.delete(idempotencyResponses)
+						.where(
+							and(
+								eq(idempotencyResponses.scope, idemScope),
+								eq(idempotencyResponses.key, idemKey),
+								eq(idempotencyResponses.expiresAt, claimedLeaseExpiresAt),
+								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
+							),
+						);
+				} catch (releaseErr) {
+					logApiError('[chores POST] claim release failed', releaseErr);
+				}
+			}
+			return serverError(err.code);
+		}
 		throw err;
 	}
 });

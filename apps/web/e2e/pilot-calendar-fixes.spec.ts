@@ -1,4 +1,6 @@
 import { type Route, expect, test } from '@playwright/test';
+import type { SQL } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import { computeTomorrowUtcWindow } from '../src/features/events/event-reminder-window';
 import {
 	type EventInput,
@@ -51,6 +53,112 @@ test('keeps inclusive multi-day all-day overlap across the Berlin fall DST date'
 		startsAt: '2026-10-24T00:00:00.000Z',
 		endsAt: '2026-10-25T00:00:00.000Z',
 	});
+});
+
+test('matches event display dates and query windows using inclusive overlap', async () => {
+	const eventHelpers = (await import('../src/features/events/events')) as unknown as {
+		eventOverlapsCalendarDay?: (
+			event: { startsAt: string; endsAt: string | null; allDay: boolean },
+			day: Date,
+		) => boolean;
+	};
+	const windowHelpers = (await import(
+		'../src/features/events/event-reminder-window'
+	)) as unknown as {
+		buildEventsWindowFilter?: (from: Date, to: Date) => SQL | undefined;
+	};
+	const eventOverlapsCalendarDay = eventHelpers.eventOverlapsCalendarDay;
+	const buildEventsWindowFilter = windowHelpers.buildEventsWindowFilter;
+	expect(eventOverlapsCalendarDay).toBeDefined();
+	expect(buildEventsWindowFilter).toBeDefined();
+	if (!eventOverlapsCalendarDay || !buildEventsWindowFilter) return;
+
+	const event = {
+		startsAt: '2026-09-22T00:00:00.000Z',
+		endsAt: '2026-09-24T00:00:00.000Z',
+		allDay: true,
+	};
+	expect(
+		[22, 23, 24, 25].map((day) => eventOverlapsCalendarDay(event, new Date(2026, 8, day))),
+	).toEqual([true, true, true, false]);
+
+	const from = new Date('2026-09-23T12:00:00.000Z');
+	const to = new Date('2026-09-26T00:00:00.000Z');
+	const filter = buildEventsWindowFilter(from, to);
+	expect(filter).toBeDefined();
+	if (!filter) return;
+	const query = new PgDialect().sqlToQuery(filter);
+	const startsAtUpperBound = query.sql.match(/starts_at"\s*<=\s*\$(\d+)/);
+	expect(startsAtUpperBound).not.toBeNull();
+	expect(query.params[Number(startsAtUpperBound?.[1]) - 1]).toBe(to.toISOString());
+	const allDayBoundary = query.sql.match(
+		/"wg_events"\."all_day"\s*=\s*\$(\d+)\s+and\s+"wg_events"\."ends_at"\s*>=\s*\$(\d+)/,
+	);
+	expect(allDayBoundary).not.toBeNull();
+	expect(query.params[Number(allDayBoundary?.[1]) - 1]).toBe(true);
+	expect(query.params[Number(allDayBoundary?.[2]) - 1]).toBe(from.toISOString());
+	const timedBoundary = query.sql.match(
+		/"wg_events"\."all_day"\s*=\s*\$(\d+)\s+and\s+"wg_events"\."ends_at"\s*>\s*\$(\d+)/,
+	);
+	expect(timedBoundary).not.toBeNull();
+	expect(query.params[Number(timedBoundary?.[1]) - 1]).toBe(false);
+	expect(query.params[Number(timedBoundary?.[2]) - 1]).toBe(from.toISOString());
+});
+
+test('shows a fetched multi-day event on every overlapping month-grid day', async ({ page }) => {
+	test.skip(
+		process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
+		'requires the local fixture server',
+	);
+
+	const now = new Date();
+	const year = Number(
+		new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', year: 'numeric' }).format(now),
+	);
+	const month = Number(
+		new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', month: 'numeric' }).format(now),
+	);
+	const startsAt = new Date(Date.UTC(year, month - 1, 2)).toISOString();
+	const endsAt = new Date(Date.UTC(year, month - 1, 4)).toISOString();
+	const selectedDayLabel = new Intl.DateTimeFormat('de-DE', {
+		weekday: 'long',
+		day: 'numeric',
+		month: 'long',
+		year: 'numeric',
+		timeZone: 'Europe/Berlin',
+	}).format(new Date(Date.UTC(year, month - 1, 3)));
+	const event = {
+		id: '33333333-3333-4333-8333-333333333333',
+		title: 'Mehrtagestermin',
+		description: null,
+		startsAt,
+		endsAt,
+		allDay: true,
+		location: null,
+		recurrence: null,
+		wgId: FIXTURE_WG.id,
+		createdByMemberId: FIXTURE_WG.memberId,
+		createdAt: startsAt,
+		updatedAt: startsAt,
+	};
+
+	await setupMember(page);
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/events*`, (route) =>
+		route.fulfill({ json: { events: [event] } }),
+	);
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores*`, (route) =>
+		route.fulfill({ json: { chores: [] } }),
+	);
+
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+	await dismissOnboarding(page);
+	await page.getByRole('tab', { name: 'Monat' }).click();
+	const occupiedDays = page.locator('[data-day-cell][aria-label$=", 1 Termin"]');
+	await expect(occupiedDays).toHaveCount(3);
+	await page.getByRole('button', { name: selectedDayLabel }).click();
+	await expect(
+		page.getByRole('region', { name: 'Termine am ausgewählten Tag' }).getByText('Mehrtagestermin'),
+	).toBeVisible();
 });
 
 test('uses Berlin calendar boundaries for all-day overlap and recurrence search', () => {

@@ -217,6 +217,36 @@ test.describe('Settlement scope', () => {
 		).toBe(false);
 	});
 
+	test('rejects a retry using the review from before its splits were settled', () => {
+		const reviewedExpenses = [
+			expense('expense-first', memberA, '2026-09-01T10:00:00.000Z', [
+				{ id: memberB, amountCents: 500 },
+			]),
+			expense('expense-second', memberA, '2026-09-02T10:00:00.000Z', [
+				{ id: memberB, amountCents: 500 },
+			]),
+		];
+		const preview = selectSettlementScope(reviewedExpenses, members, [], memberB, memberA);
+		const expected = {
+			currency: preview.currency,
+			netCents: preview.netCents,
+			settleableCents: preview.settleableCents,
+			splits: preview.splits.map(({ id, amountCents }) => ({ id, amountCents })),
+		};
+		const afterFirstCommit = reviewedExpenses.map((current) => ({
+			...current,
+			splits: current.splits.map((split) => ({
+				...split,
+				settledAt: new Date('2026-09-03T10:00:00.000Z'),
+			})),
+		}));
+		const retry = selectSettlementScope(afterFirstCommit, members, [], memberB, memberA);
+
+		expect(preview.splits).toHaveLength(2);
+		expect(retry.splits).toEqual([]);
+		expect(settlementScopeMatches(expected, retry)).toBe(false);
+	});
+
 	test('requires a complete strict review and rejects duplicate or invalid records', () => {
 		const validReview = {
 			fromMemberId: memberB,

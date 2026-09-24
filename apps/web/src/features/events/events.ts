@@ -152,8 +152,12 @@ function withinWindow(
 	occurrenceStart: number,
 	occurrenceEnd: number,
 	window: ExpansionWindow,
+	allDay: boolean,
 ): boolean {
-	return occurrenceEnd >= window.from && occurrenceStart <= window.to;
+	return (
+		(allDay ? occurrenceEnd >= window.from : occurrenceEnd > window.from) &&
+		occurrenceStart <= window.to
+	);
 }
 
 function buildOccurrence(
@@ -312,7 +316,7 @@ export function expandRecurrence(
 	const rule = parseRecurrenceRule(event.recurrence);
 
 	if (!rule) {
-		if (!withinWindow(startMs, startMs + baseDuration, window)) return [];
+		if (!withinWindow(startMs, startMs + baseDuration, window, event.allDay)) return [];
 		return [buildOccurrence(event, startMs, baseDuration, 0, false)];
 	}
 
@@ -330,7 +334,7 @@ export function expandRecurrence(
 		rule,
 		startMs,
 		anchorWeekStartMs,
-		window.from,
+		window.from - baseDuration,
 		weeklyByDay,
 		weeklyAllowedDays,
 	);
@@ -345,7 +349,11 @@ export function expandRecurrence(
 	while (iterations < MAX_EXPAND_ITERATIONS) {
 		iterations += 1;
 		const occMs = current.getTime();
-		if (occMs > window.to) break;
+		// Check the displayed wall time: it can move earlier than raw UTC at DST.
+		const occurrenceMs = event.allDay
+			? occMs
+			: (instantAtBerlinWallTime(berlinDayKey(current), anchorWallMinutes) ?? current).getTime();
+		if (occurrenceMs > window.to) break;
 		if (untilMs !== null && occMs > untilMs) break;
 		if (rule.count !== undefined && index >= rule.count) break;
 
@@ -356,15 +364,7 @@ export function expandRecurrence(
 		}
 
 		if (emit) {
-			// Keep the anchor's Berlin wall time so timed occurrences do not
-			// shift by an hour across DST transitions. All-day events carry no
-			// meaningful wall time and stay on their UTC instant.
-			let occurrenceMs = occMs;
-			if (!event.allDay) {
-				const dayKey = berlinDayKey(current);
-				occurrenceMs = (instantAtBerlinWallTime(dayKey, anchorWallMinutes) ?? current).getTime();
-			}
-			if (withinWindow(occurrenceMs, occurrenceMs + baseDuration, window)) {
+			if (withinWindow(occurrenceMs, occurrenceMs + baseDuration, window, event.allDay)) {
 				occurrences.push(buildOccurrence(event, occurrenceMs, baseDuration, index, true));
 			}
 			index += 1;
@@ -509,6 +509,27 @@ export function eventDateForDisplay(iso: string, allDay: boolean): Date {
 	return allDay && utcMidnight
 		? new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
 		: date;
+}
+
+export function eventOverlapsCalendarDay(
+	event: Pick<EventOccurrence, 'startsAt' | 'endsAt' | 'allDay'>,
+	day: Date,
+): boolean {
+	const first = eventDateForDisplay(event.startsAt, event.allDay);
+	const target = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+	if (event.allDay) {
+		const last = eventDateForDisplay(event.endsAt ?? event.startsAt, true);
+		first.setHours(0, 0, 0, 0);
+		last.setHours(0, 0, 0, 0);
+		return first.getTime() <= target.getTime() && target.getTime() <= last.getTime();
+	}
+
+	const end = event.endsAt
+		? new Date(event.endsAt)
+		: new Date(first.getTime() + DEFAULT_DURATION_MS);
+	const nextDay = new Date(target);
+	nextDay.setDate(nextDay.getDate() + 1);
+	return first.getTime() < nextDay.getTime() && end.getTime() > target.getTime();
 }
 
 /**

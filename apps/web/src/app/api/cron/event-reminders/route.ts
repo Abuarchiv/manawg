@@ -4,11 +4,18 @@ import { withCronLogging } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { MS_PER_DAY } from '@/core/utils/time';
 import {
-	computeRecurrenceLookbackStart,
+	EVENT_REMINDER_BUDGET,
+	collectReminderOccurrences,
+	processReminderBatches,
+	startsInReminderWindow,
+} from '@/features/events/event-reminder-dispatch';
+import {
+	buildEventsWindowFilter,
 	computeTomorrowUtcWindow,
+	withEventWindowCandidates,
 } from '@/features/events/event-reminder-window';
 import { type EventInput, expandRecurrence } from '@/features/events/events';
-import { and, eq, gte, lte } from 'drizzle-orm';
+import { and, asc, eq, gt, or } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const REMINDER_CLAIM_SCOPE = 'event-reminders';
@@ -84,75 +91,76 @@ export const GET = withCronLogging(
 
 		const now = new Date();
 		const { start: tomorrowStart, end: tomorrowEnd } = computeTomorrowUtcWindow(now);
-		const horizonStart = computeRecurrenceLookbackStart(now);
 
-		const rows = await db
-			.select({
-				id: wgEvents.id,
-				title: wgEvents.title,
-				description: wgEvents.description,
-				startsAt: wgEvents.startsAt,
-				endsAt: wgEvents.endsAt,
-				allDay: wgEvents.allDay,
-				location: wgEvents.location,
-				recurrence: wgEvents.recurrence,
-				wgId: wgs.id,
-				wgName: wgs.name,
-				shareCode: wgs.shareCode,
-			})
-			.from(wgEvents)
-			.innerJoin(wgs, eq(wgEvents.wgId, wgs.id))
-			.where(and(gte(wgEvents.startsAt, horizonStart), lte(wgEvents.startsAt, tomorrowEnd)));
-
-		const due: Array<EventRow & { occurrenceStartsAt: string }> = [];
-		for (const row of rows) {
-			if (row.startsAt.getTime() >= horizonStart.getTime()) {
-				const occurrences = expandRecurrence(toEventInput(row), tomorrowStart, tomorrowEnd);
-				for (const occ of occurrences) {
-					due.push({ ...row, occurrenceStartsAt: occ.startsAt });
+		return withEventWindowCandidates(
+			tomorrowStart,
+			async (cursor, pageLimit) => {
+				const cursorFilter = cursor
+					? or(
+							gt(wgEvents.startsAt, cursor.startsAt),
+							and(eq(wgEvents.startsAt, cursor.startsAt), gt(wgEvents.id, cursor.id)),
+						)
+					: undefined;
+				const windowFilter = buildEventsWindowFilter(tomorrowStart, tomorrowEnd);
+				const where = cursorFilter ? and(windowFilter, cursorFilter) : windowFilter;
+				return db
+					.select({
+						id: wgEvents.id,
+						title: wgEvents.title,
+						description: wgEvents.description,
+						startsAt: wgEvents.startsAt,
+						endsAt: wgEvents.endsAt,
+						allDay: wgEvents.allDay,
+						location: wgEvents.location,
+						recurrence: wgEvents.recurrence,
+						wgId: wgs.id,
+						wgName: wgs.name,
+						shareCode: wgs.shareCode,
+					})
+					.from(wgEvents)
+					.innerJoin(wgs, eq(wgEvents.wgId, wgs.id))
+					.where(where)
+					.orderBy(asc(wgEvents.startsAt), asc(wgEvents.id))
+					.limit(pageLimit);
+			},
+			() => NextResponse.json({ error: 'events_window_too_large' }, { status: 503 }),
+			async (candidateRows) => {
+				const due = collectReminderOccurrences(candidateRows, (row) =>
+					expandRecurrence(toEventInput(row), tomorrowStart, tomorrowEnd)
+						.filter((occ) => startsInReminderWindow(occ, tomorrowStart, tomorrowEnd))
+						.map((occ) => ({ ...row, occurrenceStartsAt: occ.startsAt })),
+				);
+				if (due === null) {
+					return NextResponse.json({ error: 'events_window_too_large' }, { status: 503 });
 				}
-			}
-		}
 
-		if (due.length === 0) return NextResponse.json({ ok: true, sent: 0 });
+				if (due.length === 0) return NextResponse.json({ ok: true, sent: 0 });
 
-		const pending: typeof due = [];
-		for (const item of due) {
-			if (await claimReminderDispatch(item, now)) pending.push(item);
-		}
+				const sent = await processReminderBatches(
+					due,
+					(item) => claimReminderDispatch(item, now),
+					async (item) => {
+						try {
+							return await dispatchNotification({
+								wg: { id: item.wgId, name: item.wgName, shareCode: item.shareCode },
+								event: 'event.upcoming',
+								payload: {
+									eventId: item.id,
+									title: item.title,
+									startsAt: item.occurrenceStartsAt,
+								},
+							});
+						} catch (err) {
+							console.warn('[event-reminders] notification dispatch failed');
+							return { sent: 0, failures: [err] };
+						}
+					},
+					(item) => releaseReminderDispatchClaim(reminderClaimKey(item)),
+				);
 
-		if (pending.length === 0) return NextResponse.json({ ok: true, sent: 0 });
-
-		const results = await Promise.allSettled(
-			pending.map(async (item) => {
-				try {
-					return await dispatchNotification({
-						wg: { id: item.wgId, name: item.wgName, shareCode: item.shareCode },
-						event: 'event.upcoming',
-						payload: {
-							eventId: item.id,
-							title: item.title,
-							startsAt: item.occurrenceStartsAt,
-						},
-					});
-				} catch (err) {
-					console.warn('[event-reminders] notification dispatch failed');
-					return { sent: 0, failures: [err] };
-				}
-			}),
+				return NextResponse.json({ ok: true, sent });
+			},
+			EVENT_REMINDER_BUDGET,
 		);
-
-		// Release claims for failed dispatches or zero-delivery sends so the
-		// next run retries instead of silently dropping the reminder.
-		const failedKeys = pending
-			.filter((_, idx) => {
-				const result = results[idx];
-				if (result?.status === 'rejected') return true;
-				return result?.status === 'fulfilled' && result.value.sent === 0;
-			})
-			.map((item) => reminderClaimKey(item));
-		await Promise.all(failedKeys.map((key) => releaseReminderDispatchClaim(key)));
-
-		return NextResponse.json({ ok: true, sent: pending.length - failedKeys.length });
 	},
 );

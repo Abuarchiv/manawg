@@ -247,7 +247,7 @@ export function PublicModulePreviews({ modules }: { modules: PublicPreviewModule
 					Beispiel-WG
 				</Badge>
 			</div>
-			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+			<div className="grid grid-cols-1 gap-3">
 				{modules.map((module) => (
 					<ExampleCard key={module.slug} module={module} />
 				))}
@@ -271,10 +271,7 @@ export function PublicModulePreview({
 				</Badge>
 			</div>
 			<ExampleCard module={module} featured />
-			<Link
-				href={homeHref}
-				className={cn(buttonVariants({ variant: 'link' }), 'min-h-11 self-start px-0')}
-			>
+			<Link href={homeHref} className={cn(buttonVariants({ variant: 'link' }), 'self-start px-0')}>
 				Alle Bereiche ansehen
 			</Link>
 		</section>

@@ -1,6 +1,7 @@
 import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, shoppingItems } from '@/core/db';
+import { withTransaction } from '@/core/db/transaction';
 import { badRequest, conflict, forbidden, serverError, tooMany } from '@/core/errors';
 import { isWgAdmin } from '@/core/guards/admin';
 import {
@@ -16,6 +17,21 @@ import { readListLimit } from '@/core/infra/env';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { isOpenShoppingItemDuplicate } from '@/features/shopping/shopping-duplicate';
+import {
+	SHOPPING_CREATE_DUPLICATE_RESPONSE,
+	type ShoppingCreateReplayResponse,
+	ShoppingCreateTransactionRollback,
+	finalizeShoppingCreateDuplicateReplay,
+	handleShoppingCreateTransactionFailure,
+	insertShoppingItemWithReplay,
+	normalizeShoppingCreateReplayOrReject,
+	normalizeShoppingCreateReplayResponse,
+	persistShoppingCreateReplayResponse,
+	releaseShoppingCreateClaim,
+	resolveShoppingCreateReplay,
+	shoppingCreateHttpResponse,
+	withShoppingCreatePostCommitFallback,
+} from '@/features/shopping/shopping-mutation';
 import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -28,14 +44,7 @@ const SHOPPING_ITEMS_LIST_LIMIT = 1000;
 const SHOPPING_ITEMS_LIST_LIMIT_MAX = 5000;
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
-type ShoppingCreateWarning =
-	| null
-	| 'notification_delivery_failed'
-	| 'notification_delivery_unknown';
-
-type ShoppingCreateResponseBody = { item: unknown; warning: ShoppingCreateWarning };
-
-const shoppingCreateReplay = new ReplayCache<ShoppingCreateResponseBody>(IDEMPOTENCY_TTL_MS);
+const shoppingCreateReplay = new ReplayCache<ShoppingCreateReplayResponse>(IDEMPOTENCY_TTL_MS);
 
 function shoppingCreateIdempotencyScope(wgId: string, memberId: string): string {
 	return `shopping-create:${wgId}:${memberId}`;
@@ -72,9 +81,11 @@ export const GET = withWgRoute(
 
 export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 	let replayReservation: Extract<
-		ReplayReservation<ShoppingCreateResponseBody>,
+		ReplayReservation<ShoppingCreateReplayResponse>,
 		{ owned: true }
 	> | null = null;
+	let mutationCommitted = false;
+	let provisionalResponse: ShoppingCreateReplayResponse | null = null;
 	let raw: unknown;
 	try {
 		raw = await req.json();
@@ -101,12 +112,20 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 	const idemReplayKey = idemScope && idemKey ? replayKey(idemScope, idemKey) : null;
 	if (idemScope && idemKey && idemReplayKey) {
 		const localReplay = shoppingCreateReplay.get(idemReplayKey);
-		if (localReplay) return NextResponse.json(await localReplay);
+		if (localReplay) {
+			try {
+				return shoppingCreateHttpResponse(await localReplay);
+			} catch {
+				return serverError('idempotency_response_pending');
+			}
+		}
 
-		const cached = await getCachedResponse<ShoppingCreateResponseBody>(idemScope, idemKey);
-		if (cached) {
+		const cachedPayload = await getCachedResponse<unknown>(idemScope, idemKey);
+		if (cachedPayload) {
+			const cached = normalizeShoppingCreateReplayResponse(cachedPayload);
+			if (!cached) return serverError('idempotency_response_pending');
 			shoppingCreateReplay.remember(idemReplayKey, cached);
-			return NextResponse.json(cached);
+			return shoppingCreateHttpResponse(cached);
 		}
 	}
 
@@ -125,80 +144,167 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 	// member id is ignored to prevent attribution spoofing.
 	const addedBy = auth.member.memberId;
 	const replaySlot = idemReplayKey === null ? null : shoppingCreateReplay.reserve(idemReplayKey);
-	if (replaySlot?.owned === false) return NextResponse.json(await replaySlot.promise);
+	if (replaySlot?.owned === false) {
+		try {
+			return shoppingCreateHttpResponse(await replaySlot.promise);
+		} catch {
+			return serverError('idempotency_response_pending');
+		}
+	}
 	replayReservation = replaySlot;
 
 	try {
 		if (idemScope && idemKey) {
-			const slot = await claimReplaySlotWithRetry<ShoppingCreateResponseBody>(idemScope, idemKey);
+			const slot = await claimReplaySlotWithRetry<ShoppingCreateReplayResponse>(idemScope, idemKey);
 			if (!slot.won) {
-				replayReservation?.resolve(slot.cached);
-				return NextResponse.json(slot.cached);
+				const cached = normalizeShoppingCreateReplayOrReject(slot.cached, replayReservation);
+				if (!cached) return serverError('idempotency_response_pending');
+				resolveShoppingCreateReplay(replayReservation, cached);
+				return shoppingCreateHttpResponse(cached);
 			}
 		}
 
 		let item: typeof shoppingItems.$inferSelect | undefined;
-		try {
-			[item] = await db
-				.insert(shoppingItems)
-				.values({
-					wgId: wg.id,
-					addedByMemberId: addedBy,
-					name,
-					quantity: safeQuantity,
-					boughtAt: bought ? new Date() : null,
-					boughtByMemberId: bought ? addedBy : null,
-				})
-				.returning();
-		} catch (insertErr) {
-			if (isOpenShoppingItemDuplicate(insertErr)) {
-				replayReservation?.reject(insertErr);
-				return conflict('shopping_item_duplicate');
+		if (idemScope && idemKey) {
+			let transactionBodyStarted = false;
+			try {
+				item = await withTransaction(async (tx) => {
+					transactionBodyStarted = true;
+					try {
+						return await insertShoppingItemWithReplay(tx, {
+							wgId: wg.id,
+							addedByMemberId: addedBy,
+							name,
+							quantity: safeQuantity,
+							bought,
+							replay: { scope: idemScope, key: idemKey },
+						});
+					} catch (err) {
+						throw new ShoppingCreateTransactionRollback(err);
+					}
+				});
+			} catch (insertErr) {
+				if (isOpenShoppingItemDuplicate(insertErr)) {
+					const duplicateResponse = await finalizeShoppingCreateDuplicateReplay(replayReservation, {
+						persist: () =>
+							withTransaction((tx) =>
+								persistShoppingCreateReplayResponse(
+									tx,
+									idemScope,
+									idemKey,
+									SHOPPING_CREATE_DUPLICATE_RESPONSE,
+								),
+							),
+						read: async () =>
+							normalizeShoppingCreateReplayResponse(
+								await getCachedResponse<unknown>(idemScope, idemKey),
+							),
+						release: () => releaseShoppingCreateClaim(idemScope, idemKey),
+					});
+					if (!duplicateResponse) return serverError('idempotency_response_pending');
+					return shoppingCreateHttpResponse(duplicateResponse);
+				}
+
+				try {
+					const failure = transactionBodyStarted
+						? insertErr
+						: new ShoppingCreateTransactionRollback(insertErr);
+					await handleShoppingCreateTransactionFailure(replayReservation, failure, () =>
+						releaseShoppingCreateClaim(idemScope, idemKey),
+					);
+				} catch {
+					return serverError('idempotency_response_pending');
+				}
+				return serverError('idempotency_response_pending');
 			}
-			throw insertErr;
+		} else {
+			try {
+				[item] = await db
+					.insert(shoppingItems)
+					.values({
+						wgId: wg.id,
+						addedByMemberId: addedBy,
+						name,
+						quantity: safeQuantity,
+						boughtAt: bought ? new Date() : null,
+						boughtByMemberId: bought ? addedBy : null,
+					})
+					.returning();
+			} catch (insertErr) {
+				if (isOpenShoppingItemDuplicate(insertErr)) {
+					return conflict('shopping_item_duplicate');
+				}
+				throw insertErr;
+			}
 		}
 		if (!item) {
 			const err = new Error('insert_failed');
 			replayReservation?.reject(err);
+			if (idemScope && idemKey) {
+				try {
+					if (!(await releaseShoppingCreateClaim(idemScope, idemKey))) {
+						return serverError('idempotency_response_pending');
+					}
+				} catch {
+					return serverError('idempotency_response_pending');
+				}
+			}
 			return serverError('insert_failed');
 		}
-		await recordAuditEvent({
-			wgId: wg.id,
-			memberId: auth.member.memberId,
-			eventType: 'shopping.created',
-			entityType: 'shopping_item',
-			entityId: item.id,
-			summary: `${auth.member.name} hat ${name} auf die Einkaufsliste gesetzt.`,
-			metadata: {
-				title: name,
-				quantity: safeQuantity,
-			},
-		});
-		await postSystemNotice({
-			wgId: wg.id,
-			authorMemberId: addedBy,
-			kind: 'request',
-			source: 'shopping',
-			sourcePath: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
-			content: `${auth.member.name} hat ${safeQuantity ? `${name} (${safeQuantity})` : name} auf die Einkaufsliste gesetzt.`,
-		});
-		const { warning } = await dispatchNotificationSafely({
-			wg,
-			event: 'shopping.added',
-			payload: { title: name, actorName: auth.member.name, shoppingItemId: item.id },
-			excludeMemberId: auth.member.memberId,
-		});
-		const responseBody = { item, warning };
-		if (idemScope && idemKey && replayReservation?.owned) {
-			replayReservation.resolve(responseBody);
-			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) => {
-				if (process.env.NODE_ENV === 'development') {
-					console.warn('[shopping POST] idem cache write failed', err);
+		mutationCommitted = true;
+		const provisionalReplayResponse: ShoppingCreateReplayResponse = {
+			status: 200,
+			body: { item, warning: 'notification_delivery_unknown' },
+		};
+		provisionalResponse = provisionalReplayResponse;
+		resolveShoppingCreateReplay(replayReservation, provisionalReplayResponse);
+		const responseBody = await withShoppingCreatePostCommitFallback(
+			provisionalReplayResponse,
+			async () => {
+				await recordAuditEvent({
+					wgId: wg.id,
+					memberId: auth.member.memberId,
+					eventType: 'shopping.created',
+					entityType: 'shopping_item',
+					entityId: item.id,
+					summary: `${auth.member.name} hat ${name} auf die Einkaufsliste gesetzt.`,
+					metadata: {
+						title: name,
+						quantity: safeQuantity,
+					},
+				});
+				await postSystemNotice({
+					wgId: wg.id,
+					authorMemberId: addedBy,
+					kind: 'request',
+					source: 'shopping',
+					sourcePath: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
+					content: `${auth.member.name} hat ${safeQuantity ? `${name} (${safeQuantity})` : name} auf die Einkaufsliste gesetzt.`,
+				});
+				const { warning } = await dispatchNotificationSafely({
+					wg,
+					event: 'shopping.added',
+					payload: { title: name, actorName: auth.member.name, shoppingItemId: item.id },
+					excludeMemberId: auth.member.memberId,
+				});
+				const finalResponse: ShoppingCreateReplayResponse = {
+					status: 200,
+					body: { item, warning },
+				};
+				if (idemScope && idemKey && idemReplayKey && replayReservation?.owned) {
+					await setCachedResponse(idemScope, idemKey, finalResponse);
+					shoppingCreateReplay.remember(idemReplayKey, finalResponse);
 				}
-			});
-		}
-		return NextResponse.json(responseBody);
+				return finalResponse;
+			},
+			() => console.error('[shopping POST] post-commit side effect failed'),
+		);
+		return shoppingCreateHttpResponse(responseBody);
 	} catch (err) {
+		if (mutationCommitted && provisionalResponse) {
+			console.error('[shopping POST] post-commit failure; returning provisional response');
+			return shoppingCreateHttpResponse(provisionalResponse);
+		}
 		replayReservation?.reject(err);
 		throw err;
 	}

@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
@@ -38,8 +40,8 @@ import {
 	filterAnnouncements,
 	getAnnouncementHash,
 	getMyOpenAnnouncements,
-	getNewAnnouncementCount,
 	mergeBackgroundAnnouncements,
+	reconcilePendingAnnouncements,
 } from '@/features/pinnwand/announcement-workflow';
 import { AnnouncementCard } from '@/features/pinnwand/components/AnnouncementCard';
 import { AnnouncementSkeleton } from '@/features/pinnwand/components/AnnouncementSkeleton';
@@ -117,22 +119,36 @@ function notificationWarningMessage(warning: NotificationWarning): string | null
 export default function PinnwandPage(): React.ReactElement {
 	const { wg, members, identity, isAdmin } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
+	const {
+		data: cachedAnnouncements,
+		serverData: remoteAnnouncements,
+		serverRevision: announcementsServerRevision,
+		error: announcementsReadError,
+		refresh: refreshAnnouncements,
+		setData: setCachedAnnouncements,
+	} = useCachedFetch<{ announcements: Announcement[] }>(
+		`/api/wg/${encodedShareCode}/announcements`,
+		{ memberId: identity.memberId },
+	);
+	const processedAnnouncementsRevisionRef = useRef(announcementsServerRevision);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const searchParams = useSearchParams();
 	const statusParamFilter = statusFilterFromParam(searchParams.get('status'));
 	const prefillContent = searchParams.get('content');
 	const prefillKind = kindFromParam(searchParams.get('kind'));
 	const prefillImageUrl = searchParams.get('imageUrl');
-	const [items, setItems] = useState<Announcement[]>([]);
-	const [initialLoading, setInitialLoading] = useState(true);
-	const isFirstLoad = useRef(true);
-	const itemsRef = useRef<Announcement[]>([]);
+	const [items, setItems] = useState<Announcement[]>(
+		() => cachedAnnouncements?.announcements ?? [],
+	);
+	const [initialLoading, setInitialLoading] = useState(cachedAnnouncements === undefined);
+	const isFirstLoad = useRef(cachedAnnouncements === undefined);
+	const itemsRef = useRef<Announcement[]>(cachedAnnouncements?.announcements ?? []);
 	const [content, setContent] = useState('');
 	const [kind, setKind] = useState<AnnouncementKind>('info');
 	const [imageUrl, setImageUrl] = useState<string | null>(null);
 	const [submitting, setSubmitting] = useState(false);
 	const submittingRef = useRef(false);
-	const announcementIdempotencyKeyRef = useRef<string | null>(null);
+	const announcementIdempotencyKeyRef = useRef<{ fingerprint: string; key: string } | null>(null);
 	const commentIdempotencyKeysRef = useRef(new Map<string, string>());
 	const reactionIdempotencyKeysRef = useRef(new Map<string, { active: boolean; key: string }>());
 	const [error, setError] = useState<string | null>(null);
@@ -161,6 +177,7 @@ export default function PinnwandPage(): React.ReactElement {
 	const itemCount = items.length;
 	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'announcement');
 	const prefillKey = `${prefillContent ?? ''}|${prefillKind ?? ''}|${prefillImageUrl ?? ''}`;
+	const hasDraft = Boolean(content.trim() || imageUrl || queueEditId || kind !== 'info');
 
 	const { isPending, start, end } = usePendingSet();
 
@@ -193,6 +210,55 @@ export default function PinnwandPage(): React.ReactElement {
 	}, [items]);
 
 	useEffect(() => {
+		if (announcementsReadError) {
+			setLoadError(
+				getWgLoadErrorMessage(
+					'Pinnwand',
+					announcementsReadError.status,
+					announcementsReadError.error,
+				),
+			);
+			setInitialLoading(false);
+			isFirstLoad.current = false;
+			return;
+		}
+		if (cachedAnnouncements) {
+			const current = itemsRef.current;
+			const incoming = cachedAnnouncements.announcements.map(applyCommentOverrides);
+			const merged =
+				current.length > 0 ? mergeBackgroundAnnouncements(current, incoming) : incoming;
+			itemsRef.current = merged;
+			setItems(merged);
+			const pending = remoteAnnouncements
+				? reconcilePendingAnnouncements(
+						current,
+						remoteAnnouncements.announcements,
+						announcementsServerRevision,
+						processedAnnouncementsRevisionRef.current,
+					)
+				: null;
+			if (pending) {
+				processedAnnouncementsRevisionRef.current = pending.serverRevision;
+				setLoadError(null);
+				if (current.length > 0) {
+					setPendingRemoteItems(pending.items);
+					setNewCount(pending.count);
+				} else {
+					setPendingRemoteItems(null);
+					setNewCount(0);
+				}
+			}
+			setInitialLoading(false);
+			isFirstLoad.current = false;
+		}
+	}, [
+		announcementsReadError,
+		announcementsServerRevision,
+		cachedAnnouncements,
+		remoteAnnouncements,
+	]);
+
+	useEffect(() => {
 		if (composerOpen) textareaRef.current?.focus();
 	}, [composerOpen]);
 
@@ -221,10 +287,7 @@ export default function PinnwandPage(): React.ReactElement {
 			const requestId = loadRequestIdRef.current + 1;
 			loadRequestIdRef.current = requestId;
 			if (!isFirstLoad.current) setRefreshing(true);
-			const res = await apiFetch<{ announcements: Announcement[] }>(
-				`/api/wg/${encodedShareCode}/announcements`,
-				{ memberId: identity.memberId },
-			);
+			const res = await refreshAnnouncements();
 			if (requestId !== loadRequestIdRef.current) {
 				if (isFirstLoad.current) {
 					isFirstLoad.current = false;
@@ -253,12 +316,22 @@ export default function PinnwandPage(): React.ReactElement {
 							applyCommentOverrides,
 						),
 					);
-					const count = getNewAnnouncementCount(currentItems, res.data.announcements);
-					if (count > 0) {
-						setPendingRemoteItems(res.data.announcements);
-						setNewCount(count);
+					const pending = reconcilePendingAnnouncements(
+						currentItems,
+						res.serverData?.announcements ?? res.data.announcements,
+						res.serverRevision,
+						processedAnnouncementsRevisionRef.current,
+					);
+					if (pending) {
+						processedAnnouncementsRevisionRef.current = pending.serverRevision;
+						setPendingRemoteItems(pending.items);
+						setNewCount(pending.count);
 					}
 				} else {
+					processedAnnouncementsRevisionRef.current = Math.max(
+						processedAnnouncementsRevisionRef.current,
+						res.serverRevision,
+					);
 					commitItems(res.data.announcements.map(applyCommentOverrides));
 					setPendingRemoteItems(null);
 					setNewCount(0);
@@ -272,7 +345,7 @@ export default function PinnwandPage(): React.ReactElement {
 			}
 			setRefreshing(false);
 		},
-		[encodedShareCode, identity.memberId, wg.shareCode],
+		[identity.memberId, refreshAnnouncements, wg.shareCode],
 	);
 
 	useEffect(() => {
@@ -373,6 +446,7 @@ export default function PinnwandPage(): React.ReactElement {
 	function commitItems(nextItems: Announcement[]): void {
 		itemsRef.current = nextItems;
 		setItems(nextItems);
+		setCachedAnnouncements({ announcements: nextItems });
 	}
 
 	function rememberCommentOverride(
@@ -453,14 +527,19 @@ export default function PinnwandPage(): React.ReactElement {
 		setSubmitting(true);
 		setError(null);
 		setNotice(null);
-		const idempotencyKey = announcementIdempotencyKeyRef.current ?? createOfflineIdempotencyKey();
+		const fingerprint = JSON.stringify({ text, imageUrl, kind });
+		const pendingRequest = announcementIdempotencyKeyRef.current;
+		const idempotencyKey =
+			pendingRequest?.fingerprint === fingerprint
+				? pendingRequest.key
+				: createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
 			setError('Beitrag konnte nicht sicher gesendet werden. Versuche es erneut.');
 			setSubmitting(false);
 			submittingRef.current = false;
 			return;
 		}
-		announcementIdempotencyKeyRef.current = idempotencyKey;
+		announcementIdempotencyKeyRef.current = { fingerprint, key: idempotencyKey };
 		try {
 			const res = await apiFetch<AnnouncementCreateResponse>(
 				`/api/wg/${encodedShareCode}/announcements`,
@@ -477,7 +556,8 @@ export default function PinnwandPage(): React.ReactElement {
 				},
 			);
 			if (!res.ok) {
-				if (res.status !== 0) announcementIdempotencyKeyRef.current = null;
+				if (res.status > 0 && res.status < 500 && res.status !== 429)
+					announcementIdempotencyKeyRef.current = null;
 				if (res.status === 0) {
 					const queued = createQueuedAnnouncement({
 						wgId: wg.id,
@@ -549,10 +629,10 @@ export default function PinnwandPage(): React.ReactElement {
 		end(pendingKey);
 		if (!res.ok) {
 			if (res.status === 404 && res.error === 'announcement_not_found') {
-				setItems((current) => current.filter((item) => item.id !== id));
+				commitItems(itemsRef.current.filter((item) => item.id !== id));
 				setActionError('Dieser Pinnwand-Beitrag existiert nicht mehr und wurde entfernt.');
 			} else {
-				if (rollbackItems) setItems(rollbackItems);
+				if (rollbackItems) commitItems(rollbackItems);
 				setActionError(announcementActionErrorMessage(res.error));
 			}
 			return;
@@ -627,7 +707,7 @@ export default function PinnwandPage(): React.ReactElement {
 		const idempotencyKey =
 			pendingReaction?.active === !active ? pendingReaction.key : createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
-			setItems(previousItems);
+			commitItems(previousItems);
 			end(pendingKey);
 			setActionError('Reaktion konnte nicht sicher gesendet werden. Versuche es erneut.');
 			return;
@@ -648,16 +728,16 @@ export default function PinnwandPage(): React.ReactElement {
 		);
 		end(pendingKey);
 		if (!res.ok) {
-			if (res.status > 0 && res.status < 500) {
+			if (res.status > 0 && res.status < 500 && res.status !== 429) {
 				reactionIdempotencyKeysRef.current.delete(reactionRequestKey);
 			}
 			if (res.status === 404 && res.error === 'announcement_not_found') {
-				setItems((current) => current.filter((item) => item.id !== announcement.id));
+				commitItems(itemsRef.current.filter((item) => item.id !== announcement.id));
 				setActionError('Dieser Pinnwand-Beitrag existiert nicht mehr und wurde entfernt.');
 			} else if (res.status === 404 && res.error === 'reaction_not_found' && active) {
 				setActionError('Diese Reaktion war schon entfernt. Die Pinnwand bleibt aktuell.');
 			} else {
-				setItems(previousItems);
+				commitItems(previousItems);
 				setActionError(announcementActionErrorMessage(res.error));
 			}
 			return;
@@ -709,7 +789,7 @@ export default function PinnwandPage(): React.ReactElement {
 		);
 		end(pendingKey);
 		if (!res.ok) {
-			if (res.status > 0 && res.status < 500) {
+			if (res.status > 0 && res.status < 500 && res.status !== 429) {
 				commentIdempotencyKeysRef.current.delete(commentRequestKey);
 			}
 			if (res.status === 404 && res.error === 'announcement_not_found') {
@@ -845,7 +925,7 @@ export default function PinnwandPage(): React.ReactElement {
 		end(id);
 		if (!res.ok) {
 			if (res.status === 404 && res.error === 'announcement_not_found') {
-				setItems((current) => current.filter((item) => item.id !== id));
+				commitItems(itemsRef.current.filter((item) => item.id !== id));
 				setActionError('Dieser Pinnwand-Beitrag existiert nicht mehr und wurde entfernt.');
 			} else {
 				const msg =
@@ -856,7 +936,7 @@ export default function PinnwandPage(): React.ReactElement {
 			}
 			return false;
 		}
-		setItems((current) => current.filter((item) => item.id !== id));
+		commitItems(itemsRef.current.filter((item) => item.id !== id));
 		void load();
 		return true;
 	}
@@ -878,7 +958,8 @@ export default function PinnwandPage(): React.ReactElement {
 				composerOpen={composerOpen}
 				composerBusy={submitting}
 				loading={initialLoading}
-				hasDraft={Boolean(content.trim() || imageUrl || queueEditId || kind !== 'info')}
+				hasDraft={hasDraft}
+				showComposerToggle={false}
 				wgBaseHref={wgBaseHref}
 				onToggleComposer={() => {
 					if (submittingRef.current) return;
@@ -904,7 +985,7 @@ export default function PinnwandPage(): React.ReactElement {
 					type="button"
 					onClick={applyPendingItems}
 					variant="secondary"
-					className="min-h-11 w-full"
+					className="w-full"
 					aria-live="polite"
 				>
 					{newCount} neue Beitr{newCount === 1 ? 'ag' : 'äge'}
@@ -969,7 +1050,7 @@ export default function PinnwandPage(): React.ReactElement {
 					Noch keine Beiträge geladen.
 				</EmptyState>
 			) : items.length === 0 ? (
-				<EmptyState icon={Megaphone} hint="Teile eine Frage oder Info über das Plus oben.">
+				<EmptyState icon={Megaphone} hint="Teile eine Frage oder Info über den Button unten.">
 					Noch keine Beiträge
 				</EmptyState>
 			) : filteredItems.length === 0 ? (
@@ -1010,6 +1091,25 @@ export default function PinnwandPage(): React.ReactElement {
 					})}
 				</ul>
 			)}
+			<ThumbAction>
+				<Button
+					type="button"
+					variant={composerOpen ? 'outline' : 'default'}
+					className="min-h-11 w-full"
+					disabled={submitting || initialLoading}
+					onClick={() => {
+						if (composerOpen) closeComposer();
+						else setComposerOpen(true);
+						setNotice(null);
+					}}
+				>
+					{composerOpen
+						? 'Formular schließen'
+						: hasDraft
+							? 'Entwurf fortsetzen'
+							: 'Beitrag erstellen'}
+				</Button>
+			</ThumbAction>
 		</div>
 	);
 }

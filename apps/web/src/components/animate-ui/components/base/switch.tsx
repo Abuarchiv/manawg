@@ -34,7 +34,7 @@ function Switch({
 		>
 			<SwitchThumbPrimitive
 				className={cn(
-					'pointer-events-none absolute z-10 block rounded-[12.5px] bg-background transition-[left,top,width,height,box-shadow] duration-[280ms] ease-[cubic-bezier(0.34,1.28,0.64,1)] dark:data-[checked]:bg-primary-foreground dark:data-[unchecked]:bg-foreground',
+					'pointer-events-none absolute z-10 block rounded-[12.5px] bg-background transition-[left,top,width,height,box-shadow,background-color] duration-[280ms] ease-[cubic-bezier(0.34,1.28,0.64,1)] dark:data-[checked]:bg-primary-foreground dark:data-[unchecked]:bg-foreground',
 				)}
 				pressedWidth={pressedWidth}
 			>

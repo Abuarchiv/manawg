@@ -38,7 +38,17 @@ function getClient(): S3Client {
 }
 
 function getPublicBase(): string {
-	if (PUBLIC_URL) return PUBLIC_URL.replace(/\/$/, '');
+	if (PUBLIC_URL?.trim()) {
+		try {
+			const url = new URL(PUBLIC_URL);
+			if (url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash) {
+				return url.href.replace(/\/$/, '');
+			}
+		} catch {
+			// Report malformed storage URLs as unavailable configuration below.
+		}
+		throw new S3ConfigurationError('S3_PUBLIC_URL must be a valid HTTPS URL.');
+	}
 	if (!BUCKET || !REGION)
 		throw new S3ConfigurationError('S3_PUBLIC_URL or (S3_BUCKET + AWS_REGION) must be set.');
 	return `https://${BUCKET}.s3.${REGION}.amazonaws.com`;

@@ -6,20 +6,19 @@ import {
 	db,
 	wgMembers,
 } from '@/core/db';
-import { badRequest, payloadTooLarge, serverError, tooMany } from '@/core/errors';
-import {
-	ReplayCache,
-	type ReplayReservation,
-	claimReplaySlotWithRetry,
-	replayKey,
-} from '@/core/guards/idempotency';
+import { badRequest, payloadTooLarge } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { readJsonBody } from '@/core/http/read-json';
-import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
+import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
+import {
+	type AnnouncementReplayResponse,
+	persistAnnouncementReplayWarning,
+	withAnnouncementReplay,
+} from '@/features/pinnwand/announcement-replay';
 import {
 	ANNOUNCEMENT_KINDS,
 	ANNOUNCEMENT_SOURCES,
@@ -33,24 +32,29 @@ const CONTENT_MIN = 1;
 const CONTENT_MAX = 2000;
 const ANNOUNCEMENTS_LIST_LIMIT = 300;
 const announcementKindSchema = z.enum(ANNOUNCEMENT_KINDS);
-const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
 type AnnouncementCreateWarning =
 	| null
 	| 'notification_delivery_failed'
 	| 'notification_delivery_unknown';
 
-type AnnouncementCreateResponseBody = {
-	announcement: unknown;
-	warning: AnnouncementCreateWarning;
-};
-
-const announcementCreateReplay = new ReplayCache<AnnouncementCreateResponseBody>(
-	IDEMPOTENCY_TTL_MS,
-);
-
 function announcementCreateIdempotencyScope(wgId: string, memberId: string): string {
 	return `announcements-create:${wgId}:${memberId}`;
+}
+
+function legacyCreateReplay(value: unknown): AnnouncementReplayResponse | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const body = value as { announcement?: unknown; warning?: unknown };
+	if (!body.announcement || typeof body.announcement !== 'object') return null;
+	const id = (body.announcement as { id?: unknown }).id;
+	if (typeof id !== 'string') return null;
+	if (
+		body.warning !== null &&
+		body.warning !== 'notification_delivery_failed' &&
+		body.warning !== 'notification_delivery_unknown'
+	)
+		return null;
+	return { status: 200, body: value, entityId: id };
 }
 
 const createAnnouncementSchema = z.object({
@@ -148,10 +152,6 @@ export const GET = withWgRoute(
 );
 
 export const POST = withWgRoute('announcements POST', async (req, { code }) => {
-	let replayReservation: Extract<
-		ReplayReservation<AnnouncementCreateResponseBody>,
-		{ owned: true }
-	> | null = null;
 	const rawResult = await readJsonBody(req, 64 * 1024);
 	if (!rawResult.ok)
 		return rawResult.reason === 'payload_too_large'
@@ -175,81 +175,72 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 		safeSource !== 'manual' && typeof sourcePath === 'string' && sourcePath.startsWith('/')
 			? sourcePath
 			: null;
-	const idemKey = readIdempotencyKey(req);
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
 	if (!isAllowedImageUrlForWg(safeImageUrl, wg.id)) return badRequest('image_invalid');
-	const idemScope = idemKey
-		? announcementCreateIdempotencyScope(wg.id, auth.member.memberId)
-		: null;
-	const idemReplayKey = idemScope && idemKey ? replayKey(idemScope, idemKey) : null;
-	if (idemScope && idemKey && idemReplayKey) {
-		const localReplay = announcementCreateReplay.get(idemReplayKey);
-		if (localReplay) return NextResponse.json(await localReplay);
-		const cached = await getCachedResponse<AnnouncementCreateResponseBody>(idemScope, idemKey);
-		if (cached) {
-			announcementCreateReplay.remember(idemReplayKey, cached);
-			return NextResponse.json(cached);
-		}
-	}
-	const limited = await checkRateLimit(
-		wgWriteLimiter,
-		`announcement:${wg.id}:${auth.member.memberId}`,
-	);
-	if (!limited.success) return tooMany();
+	const scope = announcementCreateIdempotencyScope(wg.id, auth.member.memberId);
 
-	// SECURITY: author is always the authenticated caller. Body-supplied
-	// author ids are ignored to prevent impersonation.
-	const author = auth.member.memberId;
-	const replaySlot =
-		idemReplayKey === null ? null : announcementCreateReplay.reserve(idemReplayKey);
-	if (replaySlot?.owned === false) return NextResponse.json(await replaySlot.promise);
-	replayReservation = replaySlot;
-
-	try {
-		if (idemScope && idemKey) {
-			const slot = await claimReplaySlotWithRetry<AnnouncementCreateResponseBody>(
-				idemScope,
-				idemKey,
+	// SECURITY: author is always the authenticated caller.
+	const outcome = await withAnnouncementReplay(
+		req,
+		scope,
+		async (tx) => {
+			const limited = await checkRateLimit(
+				wgWriteLimiter,
+				`announcement:${wg.id}:${auth.member.memberId}`,
 			);
-			if (!slot.won) {
-				replayReservation?.resolve(slot.cached);
-				return NextResponse.json(slot.cached);
+			if (!limited.success) {
+				return { response: { status: 429, body: { error: 'too_many_requests' } }, effect: null };
 			}
-		}
-		const [item] = await db
-			.insert(announcements)
-			.values({
-				wgId: wg.id,
-				authorMemberId: author,
-				content,
-				imageUrl: safeImageUrl,
-				kind,
-				source: safeSource,
-				sourcePath: safeSourcePath,
-			})
-			.returning();
-		if (!item) {
-			const err = new Error('insert_failed');
-			replayReservation?.reject(err);
-			return serverError('insert_failed');
-		}
-		await recordAuditEvent({
-			wgId: wg.id,
-			memberId: auth.member.memberId,
-			eventType: 'announcement.created',
-			entityType: 'announcement',
-			entityId: item.id,
-			summary: `${auth.member.name} hat einen Pinnwand-Beitrag erstellt.`,
-			metadata: {
-				contentPreview: content.slice(0, 120),
-				kind,
-				source: safeSource,
-				hasImage: Boolean(safeImageUrl),
-			},
-		});
-		const { warning } = await dispatchNotificationSafely({
+
+			const [item] = await tx
+				.insert(announcements)
+				.values({
+					wgId: wg.id,
+					authorMemberId: auth.member.memberId,
+					content,
+					imageUrl: safeImageUrl,
+					kind,
+					source: safeSource,
+					sourcePath: safeSourcePath,
+				})
+				.returning();
+			if (!item) throw new Error('announcement_insert_failed');
+			return {
+				response: {
+					status: 200,
+					body: { announcement: item, warning: null },
+					entityId: item.id,
+				},
+				effect: item,
+			};
+		},
+		legacyCreateReplay,
+	);
+	if (!outcome.effect) {
+		return NextResponse.json(outcome.response.body, { status: outcome.response.status });
+	}
+
+	const item = outcome.effect;
+	void recordAuditEvent({
+		wgId: wg.id,
+		memberId: auth.member.memberId,
+		eventType: 'announcement.created',
+		entityType: 'announcement',
+		entityId: item.id,
+		summary: `${auth.member.name} hat einen Pinnwand-Beitrag erstellt.`,
+		metadata: {
+			contentPreview: content.slice(0, 120),
+			kind,
+			source: safeSource,
+			hasImage: Boolean(safeImageUrl),
+		},
+	}).catch(() => undefined);
+
+	let warning: AnnouncementCreateWarning = null;
+	try {
+		const delivery = await dispatchNotificationSafely({
 			wg,
 			event: 'announcement.posted',
 			payload: {
@@ -259,18 +250,23 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 			},
 			excludeMemberId: auth.member.memberId,
 		});
-		const responseBody = { announcement: item, warning };
-		if (idemScope && idemKey && replayReservation?.owned) {
-			replayReservation.resolve(responseBody);
-			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) => {
-				if (process.env.NODE_ENV === 'development') {
-					console.warn('[announcements POST] idem cache write failed', err);
-				}
-			});
-		}
-		return NextResponse.json(responseBody);
+		warning = delivery.warning;
 	} catch (err) {
-		replayReservation?.reject(err);
-		throw err;
+		logApiError('[announcements POST] post-commit notification failed', err);
 	}
+	if (warning && outcome.key) {
+		try {
+			if (!(await persistAnnouncementReplayWarning(scope, outcome.key, item.id, warning))) {
+				logApiError(
+					'[announcements POST] replay warning persistence failed',
+					new Error('replay_row_missing'),
+				);
+				warning = null;
+			}
+		} catch (err) {
+			logApiError('[announcements POST] replay warning persistence failed', err);
+			warning = null;
+		}
+	}
+	return NextResponse.json({ announcement: item, warning });
 });

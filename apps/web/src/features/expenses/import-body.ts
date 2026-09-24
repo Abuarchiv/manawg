@@ -1,11 +1,11 @@
-import type { NextRequest } from 'next/server';
+import { readJsonBody } from '@/core/http/read-json';
 
 /**
  * Size-capped JSON body reader for the two import routes.
  *
  * Import payloads are whole CSV exports, so they get their own ceiling rather
  * than the platform default, and the check happens twice: once on the
- * Content-Length header to reject early, once on the decoded text because the
+ * Content-Length header to reject early, once on streamed bytes because the
  * header is client-supplied and can lie.
  *
  * Both `imports/preview` and `imports/commit` carried a byte-identical copy of
@@ -21,25 +21,7 @@ type ImportBodyResult =
 	| { ok: true; value: unknown }
 	| { ok: false; error: 'invalid_json' | 'payload_too_large' };
 
-export async function readImportJsonBody(req: NextRequest): Promise<ImportBodyResult> {
-	const contentLength = req.headers.get('content-length');
-	if (contentLength && Number(contentLength) > MAX_IMPORT_BODY_BYTES) {
-		return { ok: false, error: 'payload_too_large' };
-	}
-
-	let text: string;
-	try {
-		text = await req.text();
-	} catch {
-		return { ok: false, error: 'invalid_json' };
-	}
-	if (Buffer.byteLength(text, 'utf8') > MAX_IMPORT_BODY_BYTES) {
-		return { ok: false, error: 'payload_too_large' };
-	}
-
-	try {
-		return { ok: true, value: JSON.parse(text) };
-	} catch {
-		return { ok: false, error: 'invalid_json' };
-	}
+export async function readImportJsonBody(req: Request): Promise<ImportBodyResult> {
+	const result = await readJsonBody(req, MAX_IMPORT_BODY_BYTES);
+	return result.ok ? { ok: true, value: result.body } : { ok: false, error: result.reason };
 }

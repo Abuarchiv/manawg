@@ -93,7 +93,7 @@ export function CalendarUpcomingList({
 					<EmptyDescription>Trag euren nächsten Termin ein.</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
-					<Button type="button" onClick={onCreate} className="min-h-11">
+					<Button type="button" onClick={onCreate}>
 						<CalendarPlus data-icon="inline-start" aria-hidden />
 						Termin hinzufügen
 					</Button>

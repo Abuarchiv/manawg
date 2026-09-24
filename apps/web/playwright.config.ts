@@ -1,15 +1,16 @@
 // craftsman-ignore: TS002
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
+import { parse } from 'dotenv';
 
 const DEFAULT_E2E_PORT = process.env.E2E_PORT ?? '3101';
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${DEFAULT_E2E_PORT}`;
 const previewE2E = process.env.PREVIEW_E2E === 'true';
 const automationBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
 const isTrustedPreviewDeployment =
-	/^https:\/\/manawg-[a-z0-9-]+-applications-projects\.vercel\.app$/i.test(BASE_URL);
+	/^https:\/\/manawg-[a-z0-9-]+-abditubes-projects\.vercel\.app$/i.test(BASE_URL);
 
 if (previewE2E && (!automationBypassSecret || !isTrustedPreviewDeployment)) {
 	throw new Error(
@@ -34,14 +35,34 @@ const isRemoteBase = /^https?:\/\//i.test(BASE_URL) && !isLocalBase;
 const serverPort = parsedBaseUrl.port || (parsedBaseUrl.protocol === 'https:' ? '443' : '80');
 const APP_DIR = __dirname;
 const useBuiltServer = process.env.PLAYWRIGHT_USE_BUILD === 'true';
+if (!isRemoteBase && (useBuiltServer || process.env.NEXT_PUBLIC_DB_DOWN === 'true')) {
+	const storageKeys = new Set([
+		'AWS_ACCESS_KEY_ID',
+		'AWS_SECRET_ACCESS_KEY',
+		'AWS_SESSION_TOKEN',
+		'AWS_REGION',
+		'S3_BUCKET',
+		'S3_PUBLIC_URL',
+	]);
+	for (const key of Object.keys(process.env)) {
+		if (key.startsWith('S3_')) storageKeys.add(key);
+	}
+	for (const file of readdirSync(APP_DIR)) {
+		if (!/^\.env(?:\..+)?$/.test(file)) continue;
+		for (const key of Object.keys(parse(readFileSync(path.join(APP_DIR, file))))) {
+			if (key.startsWith('S3_')) storageKeys.add(key);
+		}
+	}
+	for (const key of storageKeys) process.env[key] = '';
+}
 const e2eDistDir = `.next-e2e-${serverPort}`;
 const e2eTsconfigPath = `.next-e2e-tsconfig-${serverPort}.json`;
 const isolatedNextEnv = `NEXT_DIST_DIR=${e2eDistDir} NEXT_TSCONFIG_PATH=${e2eTsconfigPath}`;
 const prepareIsolatedNext = `cp "${path.join(APP_DIR, 'tsconfig.json')}" "${e2eTsconfigPath}"`;
 const webServerCommand = useBuiltServer
-	? `${prepareIsolatedNext} && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next build && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next start --port ${serverPort}`
+	? `${prepareIsolatedNext} && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= UPSTASH_REDIS_REST_URL= UPSTASH_REDIS_REST_TOKEN= VERCEL_ENV=preview ${isolatedNextEnv} pnpm exec next build && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= UPSTASH_REDIS_REST_URL= UPSTASH_REDIS_REST_TOKEN= VERCEL_ENV=preview ${isolatedNextEnv} pnpm exec next start --port ${serverPort}`
 	: process.env.NEXT_PUBLIC_DB_DOWN === 'true'
-		? `${prepareIsolatedNext} && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next dev --port ${serverPort}`
+		? `${prepareIsolatedNext} && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= UPSTASH_REDIS_REST_URL= UPSTASH_REDIS_REST_TOKEN= VERCEL_ENV=preview ${isolatedNextEnv} pnpm exec next dev --port ${serverPort}`
 		: `${prepareIsolatedNext} && if [ "\${CI:-}" != "true" ] && [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next dev --port ${serverPort}`;
 
 export default defineConfig({

@@ -216,7 +216,7 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 						type="button"
 						variant="outline"
 						size="lg"
-						className="mt-3 min-h-11"
+						className="mt-3"
 						onClick={() => window.location.reload()}
 					>
 						Erneut versuchen
@@ -235,7 +235,7 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 					</AlertDescription>
 					<a
 						href={`/neu?next=${encodeURIComponent(`/wg/${wg.shareCode}`)}`}
-						className={cn(buttonVariants({ variant: 'link', size: 'lg' }), 'mt-2 min-h-11 px-0')}
+						className={cn(buttonVariants({ variant: 'link', size: 'lg' }), 'mt-2 px-0')}
 					>
 						Zurück zu deinen WGs
 					</a>

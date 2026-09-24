@@ -8,7 +8,6 @@ import {
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
-	EmptyTitle,
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/observability';
 import { TriangleAlert } from 'lucide-react';
@@ -31,11 +30,16 @@ export default function GlobalError({
 							<EmptyMedia variant="icon">
 								<TriangleAlert aria-hidden />
 							</EmptyMedia>
-							<EmptyTitle>Etwas ist schiefgelaufen</EmptyTitle>
+							<h1
+								data-slot="empty-title"
+								className="min-w-0 max-w-full text-base font-semibold [overflow-wrap:anywhere]"
+							>
+								Etwas ist schiefgelaufen
+							</h1>
 							<EmptyDescription>Bitte lade die Seite neu.</EmptyDescription>
 						</EmptyHeader>
 						<EmptyContent>
-							<Button type="button" size="lg" onClick={() => reset()} className="min-h-11">
+							<Button type="button" size="lg" onClick={() => reset()}>
 								Erneut versuchen
 							</Button>
 						</EmptyContent>

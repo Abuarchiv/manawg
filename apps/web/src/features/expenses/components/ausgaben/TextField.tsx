@@ -39,7 +39,7 @@ export function TextField({
 	return (
 		<Field data-disabled={disabled} data-invalid={Boolean(error)}>
 			<FieldLabel htmlFor={id}>{label}</FieldLabel>
-			<InputGroup className="min-h-11">
+			<InputGroup>
 				<InputGroupInput
 					id={id}
 					type="text"
@@ -51,10 +51,7 @@ export function TextField({
 					disabled={disabled}
 					aria-invalid={error ? true : undefined}
 					aria-describedby={error ? errorId : undefined}
-					className={cn(
-						'min-h-11 text-base md:text-base',
-						inputMode === 'decimal' && 'font-mono tabular-nums',
-					)}
+					className={cn('min-h-11 text-base', inputMode === 'decimal' && 'font-mono tabular-nums')}
 				/>
 				{suffix && (
 					<InputGroupAddon align="inline-end">

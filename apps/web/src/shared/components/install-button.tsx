@@ -94,7 +94,7 @@ export function InstallButton({
 				type="button"
 				onClick={click}
 				variant={variant === 'solid' ? 'default' : 'outline'}
-				className={cn('h-auto min-h-11 whitespace-normal py-2', className)}
+				className={cn('h-auto whitespace-normal py-2', className)}
 			>
 				<Download data-icon="inline-start" aria-hidden />
 				{label}
@@ -121,7 +121,7 @@ export function InstallButton({
 					variant="ghost"
 					size="icon"
 					aria-label="Installationsdialog schließen"
-					className="absolute top-2 right-2 size-11"
+					className="absolute top-2 right-2 size-9"
 				>
 					<X aria-hidden="true" />
 				</Button>

@@ -27,7 +27,7 @@ export default async function PasswordResetPage() {
 				<Card>
 					<CardHeader>
 						<CardTitle>
-							<h2 className="text-base leading-5">Neues Passwort</h2>
+							<h2>Neues Passwort</h2>
 						</CardTitle>
 						<CardDescription>Mindestens sechs Zeichen.</CardDescription>
 					</CardHeader>

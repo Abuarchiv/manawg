@@ -33,7 +33,6 @@ import {
 	filterSearchResults,
 	filterSearchResultsByQuickFilter,
 } from '@/core/reads/search';
-import { cn } from '@/shared/lib/cn';
 import { ChevronRight, Search, SearchX, X } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -75,9 +74,9 @@ async function readSearchError(response: Response): Promise<string | null> {
 }
 
 function visibleCountLabel(count: number, query: string): string {
-	if (count === 0) return `Keine sichtbaren Treffer für "${query}".`;
-	if (count === 1) return `1 Treffer sichtbar für "${query}".`;
-	return `${count} Treffer sichtbar für "${query}".`;
+	if (count === 0) return `Keine sichtbaren Treffer für „${query}“.`;
+	if (count === 1) return `1 Treffer sichtbar für „${query}“.`;
+	return `${count} Treffer sichtbar für „${query}“.`;
 }
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
@@ -171,7 +170,7 @@ export default function SuchePage() {
 
 	return (
 		<div className="mx-auto min-w-0 w-full max-w-3xl space-y-4 bg-background px-4 py-4 pb-[env(safe-area-inset-bottom)]">
-			<header className="flex items-center gap-2">
+			<header className="flex items-start gap-2">
 				<BackLink href={wgBaseHref} label="Dashboard" />
 				<div className="min-w-0 flex-1">
 					<h1 className="font-heading text-xl font-semibold tracking-tight break-words text-foreground">
@@ -183,14 +182,14 @@ export default function SuchePage() {
 				</div>
 			</header>
 
-			<Card className="border-0 bg-transparent py-0 shadow-none">
+			<Card className="overflow-visible border-0 bg-transparent py-0 shadow-none">
 				<CardContent className="p-0">
 					<FieldGroup className="gap-3">
 						<Field>
 							<FieldLabel htmlFor="wg-search" className="sr-only">
 								Suchbegriff
 							</FieldLabel>
-							<InputGroup className="min-h-11">
+							<InputGroup>
 								<InputGroupAddon align="inline-start">
 									<Search className="h-4 w-4" aria-hidden />
 								</InputGroupAddon>
@@ -200,7 +199,7 @@ export default function SuchePage() {
 									maxLength={80}
 									value={query}
 									onChange={(event) => setQuery(event.target.value)}
-									placeholder="Milch, Bad, Miete..."
+									placeholder="Milch, Bad, Miete…"
 									aria-label="Suchbegriff"
 									className="min-h-11 text-base"
 								/>
@@ -230,7 +229,7 @@ export default function SuchePage() {
 										variant="outline"
 										size="sm"
 										onClick={() => setQuery(suggestion)}
-										className="min-h-11 rounded-lg"
+										className="rounded-lg"
 									>
 										{suggestion}
 									</Button>
@@ -279,7 +278,7 @@ export default function SuchePage() {
 										size="sm"
 										onClick={() => toggleModule(module.id)}
 										aria-pressed={moduleFilters.includes(module.id)}
-										className="min-h-11 rounded-lg"
+										className="rounded-lg"
 									>
 										{module.label}
 									</Button>
@@ -306,7 +305,7 @@ export default function SuchePage() {
 				>
 					{loading && <Spinner className="size-4 motion-reduce:animate-none" aria-hidden />}
 					<span className="min-w-0 [overflow-wrap:anywhere]">
-						{loading ? 'Suche läuft...' : visibleCountLabel(visibleResults.length, trimmedQuery)}
+						{loading ? 'Suche läuft…' : visibleCountLabel(visibleResults.length, trimmedQuery)}
 					</span>
 				</output>
 			)}
@@ -333,7 +332,7 @@ export default function SuchePage() {
 							variant="outline"
 							size="sm"
 							onClick={resetFilters}
-							className="mt-3 min-h-11"
+							className="mt-3"
 						>
 							Filter zurücksetzen
 						</Button>
@@ -347,7 +346,7 @@ export default function SuchePage() {
 						<EmptyMedia variant="icon">
 							<SearchX aria-hidden />
 						</EmptyMedia>
-						<EmptyTitle>Keine Treffer für &quot;{trimmedQuery}&quot;</EmptyTitle>
+						<EmptyTitle>Keine Treffer für „{trimmedQuery}“</EmptyTitle>
 						<EmptyDescription>
 							Versuche ein kürzeres Wort oder spring direkt in ein Modul.
 						</EmptyDescription>
@@ -356,17 +355,11 @@ export default function SuchePage() {
 						<div className="flex flex-wrap justify-center gap-2">
 							<Link
 								href={`${wgBaseHref}/pinnwand`}
-								className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'min-h-11')}
+								className={buttonVariants({ variant: 'outline', size: 'sm' })}
 							>
 								Zur Pinnwand
 							</Link>
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								onClick={clearSearch}
-								className="min-h-11"
-							>
+							<Button type="button" variant="ghost" size="sm" onClick={clearSearch}>
 								Suchfeld leeren
 							</Button>
 						</div>
@@ -400,7 +393,7 @@ export default function SuchePage() {
 			)}
 
 			{hasActiveFilters && visibleResults.length > 0 && (
-				<Button type="button" variant="ghost" size="sm" onClick={resetFilters} className="min-h-11">
+				<Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
 					Filter zurücksetzen
 				</Button>
 			)}

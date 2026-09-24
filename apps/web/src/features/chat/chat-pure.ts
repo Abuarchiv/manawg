@@ -3,6 +3,8 @@ const EDIT_WINDOW_MS_DEFAULT = 15 * 60 * 1000;
 const SYSTEM_MESSAGE_KIND = 'system';
 const TEXT_MESSAGE_KIND = 'text';
 
+export const CHAT_REFRESH_BATCH_SIZE = 100;
+
 export type ChatSystemKind =
 	| 'member.joined'
 	| 'member.left'
@@ -158,6 +160,119 @@ export function filterPersistedMentionIds(
 ): string[] {
 	const persistedIds = new Set(insertedRows.map((row) => row.mentionedMemberId));
 	return requestedIds.filter((id) => persistedIds.has(id));
+}
+
+export function sanitizeChatMessageForRead<
+	T extends {
+		deletedAt: Date | string | null;
+		body: string | null;
+		imageUrl: string | null;
+		systemPayload?: unknown;
+	},
+>(message: T): T {
+	if (!message.deletedAt) return message;
+	return {
+		...message,
+		body: null,
+		imageUrl: null,
+		...('systemPayload' in message ? { systemPayload: null } : {}),
+	} as T;
+}
+
+export function chatMessagesReadPayload<
+	T extends {
+		deletedAt: Date | string | null;
+		body: string | null;
+		imageUrl: string | null;
+		systemPayload?: unknown;
+	},
+>(
+	pageRows: readonly T[],
+	refreshedRows: readonly T[],
+): {
+	messages: T[];
+	refreshedMessages: T[];
+} {
+	return {
+		messages: pageRows.map(sanitizeChatMessageForRead).reverse(),
+		refreshedMessages: refreshedRows.map(sanitizeChatMessageForRead),
+	};
+}
+
+export function reconcileChatReactions<
+	T extends { messageId: string; memberId: string; emoji: string },
+>(
+	existing: readonly T[],
+	server: readonly T[],
+	refreshedMessageIds: ReadonlySet<string>,
+	preservedLocalKeys: ReadonlySet<string>,
+): T[] {
+	const key = (reaction: T): string =>
+		`${reaction.messageId}|${reaction.memberId}|${reaction.emoji}`;
+	return [
+		...existing.filter((reaction) => !refreshedMessageIds.has(reaction.messageId)),
+		...server.filter(
+			(reaction) =>
+				refreshedMessageIds.has(reaction.messageId) && !preservedLocalKeys.has(key(reaction)),
+		),
+		...existing.filter(
+			(reaction) =>
+				refreshedMessageIds.has(reaction.messageId) && preservedLocalKeys.has(key(reaction)),
+		),
+	];
+}
+
+export function reactionKeysToPreserve(
+	mutationVersions: ReadonlyMap<string, { messageId: string; version: number }>,
+	pendingKeys: ReadonlySet<string>,
+	versionsAtRequest: ReadonlyMap<string, number>,
+	refreshedMessageIds: ReadonlySet<string>,
+): Set<string> {
+	const keys = new Set<string>();
+	for (const [key, mutation] of mutationVersions) {
+		if (
+			refreshedMessageIds.has(mutation.messageId) &&
+			(pendingKeys.has(key) || mutation.version !== versionsAtRequest.get(key))
+		) {
+			keys.add(key);
+		}
+	}
+	return keys;
+}
+
+export function nextChatRefreshBatch<T extends { id: string }>(
+	messages: readonly T[],
+	latestPageSize: number,
+	batchLimit: number,
+	offset: number,
+): { ids: string[]; nextOffset: number } {
+	const older = messages.slice(0, Math.max(0, messages.length - latestPageSize));
+	if (older.length === 0 || batchLimit <= 0) return { ids: [], nextOffset: 0 };
+	const start = ((Math.floor(offset) % older.length) + older.length) % older.length;
+	const size = Math.min(Math.floor(batchLimit), older.length - start);
+	const ids = older.slice(start, start + size).map((message) => message.id);
+	return { ids, nextOffset: (start + size) % older.length };
+}
+
+export function isLatestChatRefreshResponse(requestId: number, latestRequestId: number): boolean {
+	return requestId === latestRequestId;
+}
+
+export function advanceChatRefreshSequence(currentRequestId: number): number {
+	return currentRequestId + 1;
+}
+
+export function reconcileChatMessages<T extends { id: string; createdAt: string }>(
+	existing: readonly T[],
+	latestPage: readonly T[],
+	refreshedLoaded: readonly T[],
+): T[] {
+	const byId = new Map(existing.map((message) => [message.id, message]));
+	for (const message of [...refreshedLoaded, ...latestPage]) byId.set(message.id, message);
+	return [...byId.values()].sort(
+		(left, right) =>
+			Date.parse(left.createdAt) - Date.parse(right.createdAt) || left.id.localeCompare(right.id),
+	);
 }
 
 export function mergePagedMessagesById<T extends { id: string }>(

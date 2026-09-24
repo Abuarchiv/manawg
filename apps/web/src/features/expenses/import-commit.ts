@@ -1,7 +1,15 @@
 import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
-import { db, expenseImports, expenseSplits, expenses, wgMembers } from '@/core/db';
+import {
+	db,
+	expenseImports,
+	expenseSplits,
+	expenses,
+	idempotencyResponses,
+	wgMembers,
+} from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
+import { RESPONSE_REPLAY_TTL_SECONDS } from '@/core/idempotency';
 import {
 	type NotificationDispatchWarning,
 	dispatchNotificationSafely,
@@ -21,6 +29,7 @@ interface CommitInput {
 	mapping: Readonly<Record<string, string | null>>;
 	skipDuplicates: boolean;
 	rawPayloadHash: string;
+	replay?: { scope: string; key: string };
 }
 
 export interface CommitResult {
@@ -67,13 +76,13 @@ async function loadDuplicateKeys(tx: DbTransaction, wgId: string): Promise<Set<s
 }
 
 /**
- * Every member the file refers to must belong to this WG. Checked before the
- * import row exists, because a mapping to a stranger is the caller's mistake,
- * not a half-finished import.
+ * Every member in a row that will be imported must belong to this WG. Skipped
+ * preview rows are excluded; validation runs before the import row exists.
  */
 async function assertMembersInWg(input: CommitInput): Promise<void> {
 	const memberIds = new Set<string>();
 	for (const item of input.expenses) {
+		if (item.skip) continue;
 		const paid = input.mapping[item.parsed.paidByName];
 		if (paid) memberIds.add(paid);
 		for (const split of item.parsed.splits) {
@@ -144,13 +153,72 @@ interface ImportWriteResult {
 	totalAmountCents: number;
 }
 
+type ImportTransactionResult =
+	| { replayed: true; result: CommitResult }
+	| { replayed: false; value: ImportWriteResult };
+
+function isClaimPlaceholder(value: unknown): boolean {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		!Array.isArray(value) &&
+		Object.keys(value).length === 1 &&
+		(value as Record<string, unknown>)._claimed === true
+	);
+}
+
+export function isCommitResult(value: unknown): value is CommitResult {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+	const body = value as Record<string, unknown>;
+	return (
+		Object.keys(body).length === 5 &&
+		typeof body.importId === 'string' &&
+		body.importId.length > 0 &&
+		Number.isInteger(body.inserted) &&
+		Number(body.inserted) >= 0 &&
+		Number.isInteger(body.skipped) &&
+		Number(body.skipped) >= 0 &&
+		Array.isArray(body.errors) &&
+		body.errors.every(
+			(error: unknown) =>
+				error !== null &&
+				typeof error === 'object' &&
+				Number.isInteger((error as { index?: unknown }).index) &&
+				typeof (error as { reason?: unknown }).reason === 'string',
+		) &&
+		(body.warning === null ||
+			body.warning === 'notification_delivery_failed' ||
+			body.warning === 'notification_delivery_unknown')
+	);
+}
+
 /**
  * Writes the import row, every accepted expense with its splits and the final
  * counters. Runs inside one transaction, so a failure anywhere leaves the WG
  * exactly as it was: an expense without splits, or expenses without the import
  * row that documents where they came from, would both be wrong balances.
  */
-async function writeImport(tx: DbTransaction, input: CommitInput): Promise<ImportWriteResult> {
+async function writeImport(
+	tx: DbTransaction,
+	input: CommitInput,
+): Promise<ImportTransactionResult> {
+	if (input.replay) {
+		const [slot] = await tx
+			.select({ body: idempotencyResponses.responseBody })
+			.from(idempotencyResponses)
+			.where(
+				and(
+					eq(idempotencyResponses.scope, input.replay.scope),
+					eq(idempotencyResponses.key, input.replay.key),
+				),
+			)
+			.limit(1)
+			.for('update');
+		if (!slot) throw new Error('idempotency_claim_missing');
+		if (isCommitResult(slot.body)) return { replayed: true, result: slot.body };
+		if (!isClaimPlaceholder(slot.body)) throw new Error('idempotency_claim_invalid');
+	}
+
 	const [imp] = await tx
 		.insert(expenseImports)
 		.values({
@@ -242,7 +310,28 @@ async function writeImport(tx: DbTransaction, input: CommitInput): Promise<Impor
 		})
 		.where(eq(expenseImports.id, imp.id));
 
-	return { importId: imp.id, inserted, skipped, errors, totalAmountCents };
+	if (input.replay) {
+		const result: CommitResult = { importId: imp.id, inserted, skipped, errors, warning: null };
+		const rows = await tx
+			.update(idempotencyResponses)
+			.set({
+				responseBody: result,
+				expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
+			})
+			.where(
+				and(
+					eq(idempotencyResponses.scope, input.replay.scope),
+					eq(idempotencyResponses.key, input.replay.key),
+				),
+			)
+			.returning({ scope: idempotencyResponses.scope });
+		if (rows.length !== 1) throw new Error('idempotency_claim_missing');
+	}
+
+	return {
+		replayed: false,
+		value: { importId: imp.id, inserted, skipped, errors, totalAmountCents },
+	};
 }
 
 export async function commitImport(input: CommitInput): Promise<CommitResult> {
@@ -254,10 +343,11 @@ export async function commitImport(input: CommitInput): Promise<CommitResult> {
 	// on top. That repair is itself a database call, and swallowing its failure
 	// meant a half-written import stayed in the WG while the caller only saw an
 	// error and imported the same file again.
-	const { importId, inserted, skipped, errors, totalAmountCents } = await withExpensePaymentLock(
-		input.wg.id,
-		(tx) => writeImport(tx, input),
+	const transactionResult = await withExpensePaymentLock(input.wg.id, (tx) =>
+		writeImport(tx, input),
 	);
+	if (transactionResult.replayed) return transactionResult.result;
+	const { importId, inserted, skipped, errors, totalAmountCents } = transactionResult.value;
 
 	// Everything below is deliberately outside the transaction: it informs the
 	// WG about an import that already happened, so a failure here must not undo

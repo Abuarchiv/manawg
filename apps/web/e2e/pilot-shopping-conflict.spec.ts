@@ -1,12 +1,15 @@
 import { randomUUID } from 'node:crypto';
-import { expect, test } from '@playwright/test';
+import { type Page, expect, test } from '@playwright/test';
 import { DrizzleQueryError } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from '../src/core/db/schema';
 import { isOpenShoppingItemDuplicate } from '../src/features/shopping/shopping-duplicate';
-import { shoppingAddErrorMessage } from '../src/features/shopping/shopping-errors';
-import { dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import {
+	clearBoughtErrorMessage,
+	shoppingAddErrorMessage,
+} from '../src/features/shopping/shopping-errors';
+import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
 
 const testDatabaseUrl = process.env.PILOT_SHOPPING_DATABASE_URL?.trim() ?? '';
 
@@ -33,6 +36,82 @@ test('explains an existing open item without merging its quantity', () => {
 	expect(shoppingAddErrorMessage('shopping_item_duplicate')).toBe(
 		'Dieser Artikel steht bereits offen auf der Einkaufsliste. Prüfe den vorhandenen Eintrag; seine Menge bleibt unverändert.',
 	);
+});
+
+test('explains that clearing bought items requires a WG admin', () => {
+	expect(clearBoughtErrorMessage(403, 'not_admin')).toBe(
+		'Nur Admins dürfen erledigte Artikel für die ganze WG entfernen.',
+	);
+});
+
+async function mockShoppingPage(page: Page, viewerIsAdmin: boolean, deleteStatus = 200) {
+	const { shareCode, memberId, memberName } = FIXTURE_WG;
+	await page.route(`**/api/wg/${shareCode}/members*`, (route) =>
+		route.fulfill({
+			json: {
+				members: [{ id: memberId, name: memberName, active: true }],
+				viewerIsAdmin,
+			},
+		}),
+	);
+	await page.route(`**/api/wg/${shareCode}/shopping*`, (route) => {
+		if (route.request().method() === 'DELETE') {
+			return route.fulfill({
+				status: deleteStatus,
+				json: deleteStatus === 200 ? { deleted: 1 } : { error: 'not_admin' },
+			});
+		}
+		return route.fulfill({
+			json: {
+				items: [
+					{
+						id: 'shopping-done',
+						addedByMemberId: memberId,
+						name: 'Kaffee',
+						quantity: null,
+						boughtAt: '2026-09-22T12:00:00.000Z',
+						boughtByMemberId: memberId,
+						createdAt: '2026-09-22T10:00:00.000Z',
+					},
+				],
+			},
+		});
+	});
+	await page.route(`**/api/wg/${shareCode}/inventory*`, (route) =>
+		route.fulfill({ json: { items: [] } }),
+	);
+}
+
+test('hides clearing bought items from non-admins', async ({ page }) => {
+	test.skip(
+		process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
+		'requires the local fixture server',
+	);
+	await mockShoppingPage(page, false);
+	await setupMember(page);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+	await dismissOnboarding(page);
+	await page.getByText('Erledigt (1)', { exact: true }).click();
+	await expect(page.getByRole('button', { name: 'Erledigte Artikel entfernen (1)' })).toHaveCount(
+		0,
+	);
+});
+
+test('explains the admin requirement when clear-bought returns 403', async ({ page }) => {
+	test.skip(
+		process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
+		'requires the local fixture server',
+	);
+	await mockShoppingPage(page, true, 403);
+	await setupMember(page);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+	await dismissOnboarding(page);
+	await page.getByText('Erledigt (1)', { exact: true }).click();
+	await page.getByRole('button', { name: 'Erledigte Artikel entfernen (1)' }).click();
+	await page.getByRole('button', { name: 'Entfernen', exact: true }).click();
+	await expect(
+		page.getByText('Nur Admins dürfen erledigte Artikel für die ganze WG entfernen.'),
+	).toBeVisible();
 });
 
 test('refreshes the list after a duplicate add and keeps the draft values', async ({ page }) => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { useToast } from '@/components/ui/Toast';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -26,9 +27,11 @@ import {
 } from '@/components/wg/ActionNoticeBanner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { SubNav } from '@/components/wg/SubNav';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import type { Abo, AboFilter } from '@/components/wg/abos-types';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { formatEuroCents } from '@/core/utils/money';
@@ -166,15 +169,27 @@ function aboDeleteErrorMessage(error: string): string {
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function AbosPage() {
 	const { wg, members, identity } = useWg();
+	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
+	const {
+		data: cachedAbos,
+		error: abosReadError,
+		isLoading: abosReadLoading,
+		refresh: refreshAbos,
+		setData: setCachedAbos,
+	} = useCachedFetch<RecurringExpensesResponse>(`/api/wg/${encodedShareCode}/recurring-expenses`, {
+		memberId: identity.memberId,
+	});
 	const memberOptions = useMemo(
 		() => members.map((member) => ({ ...member, color: member.color ?? null })),
 		[members],
 	);
 
-	const [abos, setAbos] = useState<Abo[]>([]);
+	const [abos, setAbos] = useState<Abo[]>(() =>
+		cachedAbos ? sortByNextDue(cachedAbos.recurringExpenses) : [],
+	);
 	const [filter, setFilter] = useState<AboFilter>('active');
-	const [loading, setLoading] = useState(true);
+	const [loading, setLoading] = useState(abosReadLoading);
 	const [refreshing, setRefreshing] = useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<ActionNotice | null>(null);
@@ -184,15 +199,23 @@ export default function AbosPage() {
 	const [pendingId, setPendingId] = useState<string | null>(null);
 	const [deleteCandidate, setDeleteCandidate] = useState<Abo | null>(null);
 	const createRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const hasAbosDataRef = useRef(cachedAbos !== undefined);
+
+	function updateAbos(update: (current: Abo[]) => Abo[]): void {
+		setAbos(update);
+		setCachedAbos((current) => {
+			const previous = current?.recurringExpenses ?? abos;
+			const next = update(previous);
+			if (!current && next === previous) return current;
+			return { ...(current ?? { recurringExpenses: previous }), recurringExpenses: next };
+		});
+	}
 
 	const load = useCallback(
 		async (initial: boolean): Promise<void> => {
-			if (initial) setLoading(true);
+			if (initial && !hasAbosDataRef.current) setLoading(true);
 			else setRefreshing(true);
-			const res = await apiFetch<RecurringExpensesResponse>(
-				`/api/wg/${encodedShareCode}/recurring-expenses`,
-				{ memberId: identity.memberId },
-			);
+			const res = await refreshAbos();
 			if (res.ok) {
 				setAbos(sortByNextDue(res.data.recurringExpenses));
 				setLoadError(null);
@@ -202,8 +225,23 @@ export default function AbosPage() {
 			if (initial) setLoading(false);
 			else setRefreshing(false);
 		},
-		[encodedShareCode, identity.memberId],
+		[refreshAbos],
 	);
+
+	useEffect(() => {
+		if (cachedAbos) {
+			hasAbosDataRef.current = true;
+			setAbos(sortByNextDue(cachedAbos.recurringExpenses));
+			setLoadError(null);
+		} else if (abosReadError) {
+			setLoadError(
+				getWgLoadErrorMessage('Abos', abosReadError.status, abosReadError.error, {
+					verb: 'konnten',
+				}),
+			);
+			setLoading(false);
+		}
+	}, [abosReadError, cachedAbos]);
 
 	useEffect(() => {
 		void load(true);
@@ -229,6 +267,20 @@ export default function AbosPage() {
 			return;
 		}
 		createRequestRef.current = { fingerprint, key: idempotencyKey };
+		const optimisticId = `pending:${idempotencyKey}`;
+		const optimisticAbo: Abo = {
+			id: optimisticId,
+			description: values.description,
+			amountCents: values.amountCents,
+			currency: 'EUR',
+			paidByMemberId: values.paidByMemberId,
+			intervalMonths: values.intervalMonths,
+			nextDueAt: values.nextDueAt,
+			lastCreatedAt: null,
+			pausedAt: null,
+			splits: values.splits,
+		};
+		updateAbos((current) => upsertAbo(current, optimisticAbo));
 		const res = await apiFetch<RecurringExpenseResponse>(
 			`/api/wg/${encodedShareCode}/recurring-expenses`,
 			{
@@ -242,12 +294,20 @@ export default function AbosPage() {
 		if (res.ok) {
 			createRequestRef.current = null;
 			haptic('medium');
-			setAbos((current) => upsertAbo(current, res.data.recurringExpense));
+			updateAbos((current) =>
+				upsertAbo(
+					current.filter((abo) => abo.id !== optimisticId),
+					res.data.recurringExpense,
+				),
+			);
 			setShowCreate(false);
 			setNoticeMessage('success', 'Abo angelegt.');
 		} else {
-			if (res.status > 0 && res.status < 500) createRequestRef.current = null;
-			setNoticeMessage('error', aboSaveErrorMessage(res.error, 'angelegt'));
+			updateAbos((current) => current.filter((abo) => abo.id !== optimisticId));
+			if (res.status > 0 && res.status < 500 && res.status !== 429) createRequestRef.current = null;
+			const message = aboSaveErrorMessage(res.error, 'angelegt');
+			setNoticeMessage('error', message);
+			toast.error(message);
 		}
 		setSubmitting(false);
 	}
@@ -255,6 +315,13 @@ export default function AbosPage() {
 	async function handleEdit(values: AboFormValues): Promise<void> {
 		if (!editing) return;
 		setSubmitting(true);
+		const previousAbo = editing;
+		updateAbos((current) =>
+			upsertAbo(current, {
+				...previousAbo,
+				...values,
+			}),
+		);
 		const res = await apiFetch<RecurringExpenseResponse>(
 			`/api/wg/${encodedShareCode}/recurring-expenses/${encodeURIComponent(editing.id)}`,
 			{
@@ -266,11 +333,14 @@ export default function AbosPage() {
 		);
 		if (res.ok) {
 			haptic('medium');
-			setAbos((current) => upsertAbo(current, res.data.recurringExpense));
+			updateAbos((current) => upsertAbo(current, res.data.recurringExpense));
 			setEditing(null);
 			setNoticeMessage('success', 'Abo aktualisiert.');
 		} else {
-			setNoticeMessage('error', aboSaveErrorMessage(res.error, 'aktualisiert'));
+			updateAbos((current) => upsertAbo(current, previousAbo));
+			const message = aboSaveErrorMessage(res.error, 'aktualisiert');
+			setNoticeMessage('error', message);
+			toast.error(message);
 		}
 		setSubmitting(false);
 	}
@@ -278,6 +348,9 @@ export default function AbosPage() {
 	async function handleTogglePause(abo: Abo): Promise<void> {
 		setPendingId(abo.id);
 		const isPaused = abo.pausedAt !== null;
+		updateAbos((current) =>
+			upsertAbo(current, { ...abo, pausedAt: isPaused ? null : new Date().toISOString() }),
+		);
 		const res = await apiFetch<RecurringExpenseResponse>(
 			`/api/wg/${encodedShareCode}/recurring-expenses/${encodeURIComponent(abo.id)}`,
 			{
@@ -288,25 +361,32 @@ export default function AbosPage() {
 			},
 		);
 		if (res.ok) {
-			setAbos((current) => upsertAbo(current, res.data.recurringExpense));
+			updateAbos((current) => upsertAbo(current, res.data.recurringExpense));
 			setNoticeMessage('success', isPaused ? 'Abo reaktiviert.' : 'Abo pausiert.');
 		} else {
-			setNoticeMessage('error', aboActionErrorMessage(res.error));
+			updateAbos((current) => upsertAbo(current, abo));
+			const message = aboActionErrorMessage(res.error);
+			setNoticeMessage('error', message);
+			toast.error(message);
 		}
 		setPendingId(null);
 	}
 
 	async function handleDelete(abo: Abo): Promise<void> {
 		setPendingId(abo.id);
+		const previousAbo = abos.find((item) => item.id === abo.id) ?? abo;
+		updateAbos((current) => current.filter((item) => item.id !== abo.id));
 		const res = await apiFetch<{ deleted: true }>(
 			`/api/wg/${encodedShareCode}/recurring-expenses/${encodeURIComponent(abo.id)}`,
 			{ method: 'DELETE', memberId: identity.memberId, memberToken: identity.memberToken },
 		);
 		if (res.ok) {
-			setAbos((current) => current.filter((item) => item.id !== abo.id));
 			setNoticeMessage('success', 'Abo gelöscht.');
 		} else {
-			setNoticeMessage('error', aboDeleteErrorMessage(res.error));
+			updateAbos((current) => upsertAbo(current, previousAbo));
+			const message = aboDeleteErrorMessage(res.error);
+			setNoticeMessage('error', message);
+			toast.error(message);
 		}
 		setPendingId(null);
 	}
@@ -330,7 +410,7 @@ export default function AbosPage() {
 			<SubNav />
 			<header className="flex min-w-0 flex-wrap items-center gap-3">
 				<div className="min-w-0 flex-1">
-					<h1 className="font-heading text-2xl font-semibold tracking-tight break-words [overflow-wrap:anywhere]">
+					<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight break-words [overflow-wrap:anywhere]">
 						Fixkosten
 					</h1>
 					<p className="text-sm text-muted-foreground" aria-live="polite">
@@ -348,14 +428,6 @@ export default function AbosPage() {
 						Wird aktualisiert…
 					</output>
 				</div>
-				<Button
-					className="w-9 shrink-0 px-0 sm:w-auto sm:px-3"
-					onClick={() => setShowCreate(true)}
-					aria-label="Neues Abo"
-				>
-					<Plus data-icon="inline-start" />
-					<span className="hidden sm:inline">Neues Abo</span>
-				</Button>
 			</header>
 			{loadError && (
 				<LoadErrorBanner
@@ -453,6 +525,12 @@ export default function AbosPage() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+			<ThumbAction>
+				<Button type="button" className="min-h-11 w-full" onClick={() => setShowCreate(true)}>
+					<Plus data-icon="inline-start" aria-hidden />
+					Neues Abo
+				</Button>
+			</ThumbAction>
 		</div>
 	);
 }

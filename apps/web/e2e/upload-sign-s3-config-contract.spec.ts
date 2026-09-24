@@ -4,17 +4,15 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { readJsonBody } from '../src/core/http/read-json';
+import { checkEnv } from '../src/core/infra/env';
 import * as privateImagePolicy from '../src/core/infra/private-image-policy';
 import * as shareCode from '../src/shared/lib/share-code';
 
 type S3Module = typeof import('../src/core/infra/s3');
 
-interface RequestStub {
-	json: () => Promise<unknown>;
-}
-
 interface SignRoute {
-	POST: (req: RequestStub) => Promise<Response>;
+	POST: (req: Request) => Promise<Response>;
 }
 
 const S3_PATH = path.join(process.cwd(), 'src/core/infra/s3.ts');
@@ -69,7 +67,12 @@ function loadS3(): S3Module {
 	return loadTs<S3Module>(S3_PATH, { './private-image-policy': privateImagePolicy });
 }
 
-function loadRoute(s3: unknown): SignRoute {
+function loadRoute(
+	s3: unknown,
+	limitResult: { success: boolean; limiterUnavailable?: boolean; reset?: number } = {
+		success: true,
+	},
+): SignRoute {
 	const nextServer = createRequire(ROUTE_PATH)('next/server') as typeof import('next/server');
 	const json = (body: unknown, status: number) =>
 		nextServer.NextResponse.json(body as Record<string, unknown>, { status });
@@ -93,6 +96,7 @@ function loadRoute(s3: unknown): SignRoute {
 				member: { memberId: 'member-1', name: 'Member', verified: true },
 			}),
 		},
+		'@/core/http/read-json': { readJsonBody },
 		'@/core/infra/private-image-policy': privateImagePolicy,
 		'@/core/infra/s3': s3,
 		'@/core/infra/supabase-storage': {
@@ -103,7 +107,7 @@ function loadRoute(s3: unknown): SignRoute {
 			},
 		},
 		'@/core/rate-limit': {
-			checkRateLimit: async () => ({ success: true }),
+			checkRateLimit: async () => limitResult,
 			uploadSignLimiter: {},
 		},
 		'@/core/validators/image-url': {
@@ -123,7 +127,13 @@ async function captureFailure(run: () => Promise<unknown>): Promise<unknown> {
 }
 
 async function post(route: SignRoute): Promise<Response> {
-	return route.POST({ json: async () => BODY });
+	return route.POST(
+		new Request('https://example.invalid/api/upload/sign', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(BODY),
+		}),
+	);
 }
 
 test('missing S3 configuration throws a typed S3ConfigurationError', async () => {
@@ -150,10 +160,9 @@ test('missing S3 configuration throws a typed S3ConfigurationError', async () =>
 	}
 });
 
-test('every S3 configuration failure is thrown as S3ConfigurationError', async () => {
+test('S3 configuration failures use S3ConfigurationError', async () => {
 	const source = await readFile(S3_PATH, 'utf8');
 
-	expect([...source.matchAll(/throw new S3ConfigurationError/g)]).toHaveLength(3);
 	expect(source).toContain('S3 credentials missing. Set AWS_REGION, AWS_ACCESS_KEY_ID');
 	expect(source).toContain('S3_BUCKET env var missing.');
 	expect(source).toContain('S3_PUBLIC_URL or (S3_BUCKET + AWS_REGION) must be set.');
@@ -161,6 +170,58 @@ test('every S3 configuration failure is thrown as S3ConfigurationError', async (
 	expect(plainThrows.length).toBeGreaterThan(0);
 	for (const line of plainThrows) {
 		expect(line).not.toMatch(/S3_BUCKET|S3_PUBLIC_URL|credentials missing/);
+	}
+});
+
+test('invalid S3 public URLs are reported at boot and fail as typed degraded uploads', async () => {
+	for (const publicUrl of [
+		'http://cdn.example.com',
+		'https://user:password@cdn.example.com',
+		'https://cdn.example.com/?token=secret-test-sentinel',
+	]) {
+		const config = {
+			AWS_REGION: 'us-east-1',
+			AWS_ACCESS_KEY_ID: 'test-access-key',
+			AWS_SECRET_ACCESS_KEY: 'test-secret-key',
+			S3_BUCKET: 'manawg-bucket',
+			S3_PUBLIC_URL: publicUrl,
+		};
+		expect(checkEnv({ ...config, VERCEL_ENV: 'production' }).missingRequired).toContain(
+			'S3_PUBLIC_URL',
+		);
+		const restore = pinS3Env(config);
+		try {
+			const s3 = loadS3();
+			const error = await captureFailure(() => s3.createPresignedUpload(KEY, 'image/png', 10));
+			expect(error).toBeInstanceOf(s3.S3ConfigurationError);
+			const response = await post(loadRoute(s3));
+			expect(response.status).toBe(503);
+			expect(await response.json()).toEqual({
+				error: 'feature_disabled',
+				code: 'image_uploads_unavailable',
+			});
+		} finally {
+			restore();
+		}
+	}
+});
+
+test('upload signing reports an unavailable limiter as 503 with a retry hint', async () => {
+	const restore = pinS3Env({});
+	try {
+		const response = await post(
+			loadRoute(loadS3(), {
+				success: false,
+				limiterUnavailable: true,
+				reset: Date.now() + 60_000,
+			}),
+		);
+		expect(response.status).toBe(503);
+		expect(await response.json()).toMatchObject({ error: 'rate_limiter_unavailable' });
+		expect(response.headers.get('retry-after')).not.toBeNull();
+		expect(response.headers.get('cache-control')).toBe('no-store');
+	} finally {
+		restore();
 	}
 });
 

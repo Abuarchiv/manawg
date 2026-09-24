@@ -20,11 +20,21 @@ import { haptic } from '@/shared/lib/haptics';
 import { ChevronDown, MessageCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useChatChannel } from '../chat-channel';
-import { mergePagedMessagesById, mergePagedReactions, previewBody } from '../chat-pure';
+import {
+	CHAT_REFRESH_BATCH_SIZE,
+	advanceChatRefreshSequence,
+	isLatestChatRefreshResponse,
+	mergePagedMessagesById,
+	mergePagedReactions,
+	nextChatRefreshBatch,
+	previewBody,
+	reactionKeysToPreserve,
+	reconcileChatMessages,
+	reconcileChatReactions,
+} from '../chat-pure';
 import { ChatComposer } from './ChatComposer';
 import type { BubbleMessage, ReactionSummary } from './MessageBubble';
 import { MessageList } from './MessageList';
-import { TypingIndicator } from './TypingIndicator';
 
 interface ChatMessageDto extends BubbleMessage {
 	wgId: string;
@@ -72,10 +82,6 @@ function summarizeReactions(
 	return result;
 }
 
-function reactionRowKey(row: InitialReactionRow): string {
-	return `${row.messageId}|${row.memberId}|${row.emoji}`;
-}
-
 export function ChatView({ wgId, shareCode, initialMessages, initialReactions }: ChatViewProps) {
 	const { members, identity, isAdmin } = useWg();
 	const toast = useToast();
@@ -86,10 +92,16 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	const [bootstrapError, setBootstrapError] = useState(false);
 	const [loadingOlder, setLoadingOlder] = useState(false);
 	const loadingOlderRef = useRef(false);
+	const refreshOlderOffsetRef = useRef(0);
+	const refreshRequestSequenceRef = useRef(0);
 	const [olderError, setOlderError] = useState(false);
 	const [sendError, setSendError] = useState<string | null>(null);
 	const pendingMessageRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 	const reactionRequestKeysRef = useRef(new Map<string, string>());
+	const reactionMutationVersionsRef = useRef(
+		new Map<string, { messageId: string; version: number }>(),
+	);
+	const pendingReactionMutationsRef = useRef(new Set<string>());
 	const [refreshError, setRefreshError] = useState(false);
 	const [readError, setReadError] = useState(false);
 	const [replyToId, setReplyToId] = useState<string | null>(null);
@@ -174,40 +186,99 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	}, [markLatestRead]);
 
 	const refresh = useCallback(async (): Promise<boolean> => {
-		const res = await apiFetch<{ messages: ChatMessageDto[]; reactions: InitialReactionRow[] }>(
-			`/api/wg/${encodedShareCode}/chat/messages?limit=${PAGE_SIZE}`,
-			{ memberId: identity.memberId },
+		const requestSequence = advanceChatRefreshSequence(refreshRequestSequenceRef.current);
+		refreshRequestSequenceRef.current = requestSequence;
+		const refreshBatch = nextChatRefreshBatch(
+			messages,
+			PAGE_SIZE,
+			CHAT_REFRESH_BATCH_SIZE,
+			refreshOlderOffsetRef.current,
 		);
+		refreshOlderOffsetRef.current = refreshBatch.nextOffset;
+		const params = new URLSearchParams({ limit: `${PAGE_SIZE}` });
+		for (const id of refreshBatch.ids) params.append('refreshId', id);
+		const mutationVersionsAtRequest = new Map(
+			[...reactionMutationVersionsRef.current].map(([key, mutation]) => [key, mutation.version]),
+		);
+		const res = await apiFetch<{
+			messages: ChatMessageDto[];
+			refreshedMessages?: ChatMessageDto[];
+			reactions: InitialReactionRow[];
+		}>(`/api/wg/${encodedShareCode}/chat/messages?${params.toString()}`, {
+			memberId: identity.memberId,
+		});
+		if (!isLatestChatRefreshResponse(requestSequence, refreshRequestSequenceRef.current))
+			return true;
 		if (!res.ok) {
-			setRefreshError(true);
+			setRefreshError((prev) =>
+				isLatestChatRefreshResponse(requestSequence, refreshRequestSequenceRef.current)
+					? true
+					: prev,
+			);
 			return false;
 		}
-		setRefreshError(false);
-		const refreshedMessageIds = new Set(res.data.messages.map((message) => message.id));
-		setMessages((prev) => [
-			...prev.filter((message) => !refreshedMessageIds.has(message.id)),
-			...res.data.messages,
-		]);
+		setRefreshError((prev) =>
+			isLatestChatRefreshResponse(requestSequence, refreshRequestSequenceRef.current)
+				? false
+				: prev,
+		);
+		const refreshedLoadedMessages = res.data.refreshedMessages ?? [];
+		const refreshedMessageIds = new Set(
+			[...res.data.messages, ...refreshedLoadedMessages].map((message) => message.id),
+		);
+		setMessages((prev) =>
+			isLatestChatRefreshResponse(requestSequence, refreshRequestSequenceRef.current)
+				? reconcileChatMessages(prev, res.data.messages, refreshedLoadedMessages)
+				: prev,
+		);
 		setReactionRows((prev) => {
-			const refreshedReactionKeys = new Set(res.data.reactions.map(reactionRowKey));
-			const preservedLocalReactions = prev.filter(
-				(reaction) =>
-					refreshedMessageIds.has(reaction.messageId) &&
-					reaction.memberId === identity.memberId &&
-					!refreshedReactionKeys.has(reactionRowKey(reaction)),
+			if (!isLatestChatRefreshResponse(requestSequence, refreshRequestSequenceRef.current))
+				return prev;
+			const preservedLocalKeys = reactionKeysToPreserve(
+				reactionMutationVersionsRef.current,
+				pendingReactionMutationsRef.current,
+				mutationVersionsAtRequest,
+				refreshedMessageIds,
 			);
-			return [
-				...prev.filter((reaction) => !refreshedMessageIds.has(reaction.messageId)),
-				...res.data.reactions,
-				...preservedLocalReactions,
-			];
+			return reconcileChatReactions(
+				prev,
+				res.data.reactions,
+				refreshedMessageIds,
+				preservedLocalKeys,
+			);
 		});
 		// Only ever grow: the latest page's length says nothing about whether
 		// older pages were already loaded. loadOlder() clears the flag when the
 		// history is exhausted.
-		setHasMoreOlder((prev) => prev || res.data.messages.length >= PAGE_SIZE);
+		setHasMoreOlder((prev) =>
+			isLatestChatRefreshResponse(requestSequence, refreshRequestSequenceRef.current)
+				? prev || res.data.messages.length >= PAGE_SIZE
+				: prev,
+		);
 		return true;
-	}, [encodedShareCode, identity.memberId]);
+	}, [encodedShareCode, identity.memberId, messages]);
+
+	function beginReactionMutation(messageId: string, emoji: string): string {
+		const key = `${messageId}|${identity.memberId}|${emoji}`;
+		const current = reactionMutationVersionsRef.current.get(key);
+		reactionMutationVersionsRef.current.set(key, {
+			messageId,
+			version: (current?.version ?? 0) + 1,
+		});
+		pendingReactionMutationsRef.current.add(key);
+		return key;
+	}
+
+	function finishReactionMutation(key: string, committed: boolean): void {
+		const current = reactionMutationVersionsRef.current.get(key);
+		if (committed && current) {
+			reactionMutationVersionsRef.current.set(key, {
+				...current,
+				version: current.version + 1,
+			});
+		}
+		pendingReactionMutationsRef.current.delete(key);
+	}
 
 	useChatChannel(wgId, {
 		onMessageCreated: () => void refresh(),
@@ -317,28 +388,40 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			return false;
 		}
 		reactionRequestKeysRef.current.set(requestKeyId, idempotencyKey);
-		const res = await apiFetch(`/api/wg/${encodedShareCode}/chat/messages/${messageId}/reactions`, {
-			method: 'POST',
-			memberId: identity.memberId,
-			memberToken: identity.memberToken,
-			headers: { 'Idempotency-Key': idempotencyKey },
-			body: JSON.stringify({ emoji }),
-		});
-		if (!res.ok) {
-			if (res.status > 0 && res.status < 500) reactionRequestKeysRef.current.delete(requestKeyId);
-			toast.error(explainChatError('react', res.error));
-			return false;
+		const mutationKey = beginReactionMutation(messageId, emoji);
+		let committed = false;
+		try {
+			const res = await apiFetch(
+				`/api/wg/${encodedShareCode}/chat/messages/${messageId}/reactions`,
+				{
+					method: 'POST',
+					memberId: identity.memberId,
+					memberToken: identity.memberToken,
+					headers: { 'Idempotency-Key': idempotencyKey },
+					body: JSON.stringify({ emoji }),
+				},
+			);
+			if (!res.ok) {
+				if (res.status > 0 && res.status < 500) reactionRequestKeysRef.current.delete(requestKeyId);
+				toast.error(explainChatError('react', res.error));
+				return false;
+			}
+			committed = true;
+			reactionRequestKeysRef.current.delete(requestKeyId);
+			setReactionRows((prev) =>
+				prev.some(
+					(row) =>
+						row.messageId === messageId &&
+						row.memberId === identity.memberId &&
+						row.emoji === emoji,
+				)
+					? prev
+					: [...prev, { messageId, memberId: identity.memberId, emoji }],
+			);
+			return true;
+		} finally {
+			finishReactionMutation(mutationKey, committed);
 		}
-		reactionRequestKeysRef.current.delete(requestKeyId);
-		setReactionRows((prev) =>
-			prev.some(
-				(row) =>
-					row.messageId === messageId && row.memberId === identity.memberId && row.emoji === emoji,
-			)
-				? prev
-				: [...prev, { messageId, memberId: identity.memberId, emoji }],
-		);
-		return true;
 	}
 
 	async function unreact(messageId: string, emoji: string): Promise<boolean> {
@@ -350,32 +433,39 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			return false;
 		}
 		reactionRequestKeysRef.current.set(requestKeyId, idempotencyKey);
-		const res = await apiFetch(
-			`/api/wg/${encodedShareCode}/chat/messages/${messageId}/reactions?emoji=${encodeURIComponent(emoji)}`,
-			{
-				method: 'DELETE',
-				memberId: identity.memberId,
-				memberToken: identity.memberToken,
-				headers: { 'Idempotency-Key': idempotencyKey },
-			},
-		);
-		if (!res.ok) {
-			if (res.status > 0 && res.status < 500) reactionRequestKeysRef.current.delete(requestKeyId);
-			toast.error(explainChatError('unreact', res.error));
-			return false;
+		const mutationKey = beginReactionMutation(messageId, emoji);
+		let committed = false;
+		try {
+			const res = await apiFetch(
+				`/api/wg/${encodedShareCode}/chat/messages/${messageId}/reactions?emoji=${encodeURIComponent(emoji)}`,
+				{
+					method: 'DELETE',
+					memberId: identity.memberId,
+					memberToken: identity.memberToken,
+					headers: { 'Idempotency-Key': idempotencyKey },
+				},
+			);
+			if (!res.ok) {
+				if (res.status > 0 && res.status < 500) reactionRequestKeysRef.current.delete(requestKeyId);
+				toast.error(explainChatError('unreact', res.error));
+				return false;
+			}
+			committed = true;
+			reactionRequestKeysRef.current.delete(requestKeyId);
+			setReactionRows((prev) =>
+				prev.filter(
+					(row) =>
+						!(
+							row.messageId === messageId &&
+							row.memberId === identity.memberId &&
+							row.emoji === emoji
+						),
+				),
+			);
+			return true;
+		} finally {
+			finishReactionMutation(mutationKey, committed);
 		}
-		reactionRequestKeysRef.current.delete(requestKeyId);
-		setReactionRows((prev) =>
-			prev.filter(
-				(row) =>
-					!(
-						row.messageId === messageId &&
-						row.memberId === identity.memberId &&
-						row.emoji === emoji
-					),
-			),
-		);
-		return true;
 	}
 
 	async function editMessage(messageId: string, next: string): Promise<boolean> {
@@ -392,6 +482,9 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			toast.error(explainChatError('edit', res.error));
 			return false;
 		}
+		refreshRequestSequenceRef.current = advanceChatRefreshSequence(
+			refreshRequestSequenceRef.current,
+		);
 		setMessages((prev) =>
 			prev.map((m) =>
 				m.id === messageId
@@ -419,6 +512,9 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			toast.error(explainChatError('delete', res.error));
 			return false;
 		}
+		refreshRequestSequenceRef.current = advanceChatRefreshSequence(
+			refreshRequestSequenceRef.current,
+		);
 		setMessages((prev) =>
 			prev.map((m) =>
 				m.id === messageId
@@ -491,7 +587,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1">
 					<AlertDescription className="flex flex-row flex-wrap items-center justify-between gap-x-2 gap-y-0 text-xs">
 						Lesestatus konnte nicht gespeichert werden.
-						<Button variant="ghost" size="sm" className="min-h-11 text-xs" onClick={markLatestRead}>
+						<Button variant="ghost" size="sm" className="text-xs" onClick={markLatestRead}>
 							Lesestatus erneut speichern
 						</Button>
 					</AlertDescription>
@@ -501,12 +597,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 				<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1">
 					<AlertDescription className="flex flex-row flex-wrap items-center justify-between gap-x-2 gap-y-0 text-xs">
 						Chat gerade nicht aktuell.
-						<Button
-							variant="ghost"
-							size="sm"
-							className="min-h-11 text-xs"
-							onClick={() => void refresh()}
-						>
+						<Button variant="ghost" size="sm" className="text-xs" onClick={() => void refresh()}>
 							Erneut versuchen
 						</Button>
 					</AlertDescription>
@@ -544,7 +635,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 												variant="outline"
 												size="sm"
 												onClick={() => void loadInitialMessages()}
-												className="mt-3 min-h-11"
+												className="mt-3"
 											>
 												Erneut laden
 											</Button>
@@ -604,7 +695,6 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 					</MessageScrollerButton>
 				</MessageScroller>
 			</MessageScrollerProvider>
-			<TypingIndicator names={[]} />
 			<ChatComposer
 				key={`${shareCode}:${identity.memberId}`}
 				draftKey={`manawg:draft:${shareCode}:${identity.memberId}:chat`}

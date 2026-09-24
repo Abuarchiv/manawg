@@ -65,18 +65,18 @@ test('activity done and changes scopes respect chore completion state', () => {
 	);
 });
 
-test('sums open gaps across all chores assigned to a member', () => {
+test('uses the API-repeated open-gap total once for an assignee', () => {
 	const fairness = buildChoreFairness({
 		members: [{ id: 'member-1', name: 'Abu' }],
 		chores: [
 			{
 				assignedMemberId: 'member-1',
-				openGapCountForAssignee: 1,
+				openGapCountForAssignee: 2,
 				nextDueAt: '2026-09-20T12:00:00.000Z',
 			},
 			{
 				assignedMemberId: 'member-1',
-				openGapCountForAssignee: 1,
+				openGapCountForAssignee: 2,
 				nextDueAt: '2026-09-20T12:00:00.000Z',
 			},
 		],

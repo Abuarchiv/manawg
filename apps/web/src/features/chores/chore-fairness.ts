@@ -67,8 +67,10 @@ export function buildChoreFairness(input: {
 	const absent = new Set(input.absentMemberIds ?? []);
 	const rows = input.members.map<ChoreFairnessRow>((member) => {
 		const assigned = input.chores.filter((chore) => chore.assignedMemberId === member.id);
+		// GET repeats the assignee-wide total on every chore, so count that
+		// snapshot once instead of multiplying it by the assignee's task count.
 		const openGapCount = assigned.reduce(
-			(sum, chore) => sum + Math.max(0, chore.openGapCountForAssignee),
+			(max, chore) => Math.max(max, chore.openGapCountForAssignee),
 			0,
 		);
 		const overdueCount = assigned.filter(
@@ -94,7 +96,7 @@ export function buildChoreFairness(input: {
 	const insights =
 		busiest && busiest.assignedCount + busiest.openGapCount > 0
 			? [
-					`${busiest.name} hat aktuell ${busiest.assignedCount} Aufgaben und ${busiest.openGapCount} offene Termine.`,
+					`${busiest.name} hat aktuell ${busiest.assignedCount === 1 ? '1 Aufgabe' : `${busiest.assignedCount} Aufgaben`} und ${busiest.openGapCount === 1 ? '1 offenen Termin' : `${busiest.openGapCount} offene Termine`}.`,
 				]
 			: ['Die Aufgaben sind noch nicht verteilt.'];
 	if (absentCount > 0) {
@@ -140,20 +142,25 @@ export function chooseNextAvailableMember(input: {
 		const fairness = buildChoreFairness(fairnessInput);
 		const available = fairness.rows.filter((row) => row.available);
 		if (available.length === 0) return null;
-		const minScore = Math.min(...available.map((row) => row.score));
-		const tied = available.filter((row) => row.score === minScore);
+		const withoutCurrent = available.filter((row) => row.id !== input.currentMemberId);
+		const candidates = withoutCurrent.length > 0 ? withoutCurrent : available;
+		const minScore = Math.min(...candidates.map((row) => row.score));
+		const tied = candidates.filter((row) => row.score === minScore);
 		const firstTied = tied[0];
 		if (tied.length === 1 && firstTied) return firstTied.id;
 		// Round-robin tiebreak: pick the next tied member after the current
-		// owner so consecutive completions still cycle visibly.
+		// owner so consecutive completions still cycle visibly. The owner may
+		// be excluded from candidates, so scan the member order from that owner.
 		const tiedIds = new Set(tied.map((row) => row.id));
-		const ordered = input.members.filter((m) => tiedIds.has(m.id));
-		if (ordered.length === 0) return null;
-		const startIdx = input.currentMemberId
-			? ordered.findIndex((m) => m.id === input.currentMemberId)
+		const currentIdx = input.currentMemberId
+			? input.members.findIndex((member) => member.id === input.currentMemberId)
 			: -1;
-		const pick = ordered[startIdx >= 0 ? (startIdx + 1) % ordered.length : 0];
-		return pick ? pick.id : null;
+		for (let offset = 1; offset <= input.members.length; offset += 1) {
+			const idx = (Math.max(currentIdx, -1) + offset) % input.members.length;
+			const member = input.members[idx];
+			if (member && tiedIds.has(member.id)) return member.id;
+		}
+		return firstTied?.id ?? null;
 	}
 
 	const startIndex = input.currentMemberId

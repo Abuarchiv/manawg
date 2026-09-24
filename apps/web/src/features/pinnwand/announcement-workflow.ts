@@ -110,11 +110,26 @@ export function getNewAnnouncementCount(
 	return remoteItems.filter((item) => !currentIds.has(item.id)).length;
 }
 
+export function reconcilePendingAnnouncements<T extends { id: string }>(
+	currentItems: readonly { id: string }[],
+	remoteItems: readonly T[],
+	serverRevision: number,
+	lastProcessedServerRevision: number,
+): { items: T[]; count: number; serverRevision: number } | null {
+	if (serverRevision <= lastProcessedServerRevision) return null;
+	return {
+		items: [...remoteItems],
+		count: currentItems.length > 0 ? getNewAnnouncementCount(currentItems, remoteItems) : 0,
+		serverRevision,
+	};
+}
+
 /**
  * Refresh already-visible announcements in place from a background poll,
- * without inserting/removing/reordering rows (that stays gated behind the
+ * without inserting or reordering rows (new posts stay gated behind the
  * "N new posts" banner via `getNewAnnouncementCount`, so a growing list never
- * jumps under the reader). Without this, a background poll that finds no
+ * jumps under the reader). Posts missing from the server response are removed.
+ * Without this, a background poll that finds no
  * brand-new post silently drops the whole response — reactions, comments,
  * taker lists and resolved status on already-loaded posts would never
  * update on their own, only on a manual reload or full refresh.
@@ -124,5 +139,8 @@ export function mergeBackgroundAnnouncements<T extends { id: string }>(
 	remoteItems: readonly T[],
 ): T[] {
 	const remoteById = new Map(remoteItems.map((item) => [item.id, item]));
-	return currentItems.map((item) => remoteById.get(item.id) ?? item);
+	return currentItems.flatMap((item) => {
+		const remoteItem = remoteById.get(item.id);
+		return remoteItem ? [remoteItem] : [];
+	});
 }

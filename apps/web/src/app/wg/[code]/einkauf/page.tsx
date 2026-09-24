@@ -11,7 +11,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
 	Empty,
@@ -24,8 +23,10 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { SubNav } from '@/components/wg/SubNav';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
@@ -90,17 +91,45 @@ function keepItems(prev: ShoppingItem[], next: ShoppingItem[]): ShoppingItem[] {
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function EinkaufPage() {
-	const { wg, members, identity } = useWg();
+	const { wg, members, identity, isAdmin } = useWg();
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
+	const {
+		data: cachedShopping,
+		error: shoppingReadError,
+		isLoading: shoppingReadLoading,
+		refresh: refreshShopping,
+		setData: setCachedShopping,
+	} = useCachedFetch<{ items: ShoppingItem[] }>(`/api/wg/${encodedShareCode}/shopping`, {
+		memberId: identity.memberId,
+	});
+	const { data: cachedInventory, refresh: refreshInventory } = useCachedFetch<{
+		items: InventoryItemDto[];
+	}>(`/api/wg/${encodedShareCode}/inventory`, {
+		memberId: identity.memberId,
+	});
 	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const searchParams = useSearchParams();
 	const highlightedId = searchParams.get('highlight');
 	const prefillName = searchParams.get('name');
-	const [items, setItems] = useState<ShoppingItem[]>([]);
-	const [initialLoading, setInitialLoading] = useState(true);
+	const [items, setItems] = useState<ShoppingItem[]>(() => cachedShopping?.items ?? []);
+	const commitItems = useCallback(
+		(update: ShoppingItem[] | ((current: ShoppingItem[]) => ShoppingItem[])) => {
+			setItems(update);
+			setCachedShopping((current) => {
+				const previousItems = current?.items ?? items;
+				const nextItems = typeof update === 'function' ? update(previousItems) : update;
+				if (!current && nextItems === previousItems) return current;
+				return { ...(current ?? { items: previousItems }), items: nextItems };
+			});
+		},
+		[items, setCachedShopping],
+	);
+	const [initialLoading, setInitialLoading] = useState(shoppingReadLoading);
 	const [newName, setNewName] = useState('');
-	const [inventory, setInventory] = useState<InventoryItemDto[]>([]);
+	const [inventory, setInventory] = useState<InventoryItemDto[]>(
+		() => cachedInventory?.items ?? [],
+	);
 	const [doneOpen, setDoneOpen] = useState(false);
 	const [receiptSince, setReceiptSince] = useState<string | null>(null);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -126,18 +155,14 @@ export default function EinkaufPage() {
 	const appliedPrefillRef = useRef<string | null>(null);
 	const mountedRef = useRef(false);
 	const loadRequestIdRef = useRef(0);
+	const hasShoppingCacheRef = useRef(cachedShopping !== undefined);
 
 	const load = useCallback(
 		async (silent = false): Promise<void> => {
 			const requestId = loadRequestIdRef.current + 1;
 			loadRequestIdRef.current = requestId;
-			if (!silent) setInitialLoading(true);
-			const res = await apiFetch<{ items: ShoppingItem[] }>(
-				`/api/wg/${encodedShareCode}/shopping`,
-				{
-					memberId: identity.memberId,
-				},
-			);
+			if (!silent && !hasShoppingCacheRef.current) setInitialLoading(true);
+			const res = await refreshShopping();
 			if (requestId !== loadRequestIdRef.current) {
 				if (!silent) setInitialLoading(false);
 				return;
@@ -146,11 +171,7 @@ export default function EinkaufPage() {
 				setLoadError(null);
 				setItems(res.data.items);
 				// Nur für Vorschläge: ein Fehler hier darf die Liste nicht blockieren.
-				void apiFetch<{ items: InventoryItemDto[] }>(`/api/wg/${encodedShareCode}/inventory`, {
-					memberId: identity.memberId,
-				}).then((inventoryRes) => {
-					if (inventoryRes.ok && mountedRef.current) setInventory(inventoryRes.data.items);
-				});
+				void refreshInventory();
 				syncOfflineActions(wg.shareCode, { memberId: identity.memberId })
 					.then((synced) => {
 						if (!mountedRef.current) return;
@@ -165,8 +186,22 @@ export default function EinkaufPage() {
 			}
 			if (!silent && requestId === loadRequestIdRef.current) setInitialLoading(false);
 		},
-		[encodedShareCode, identity.memberId, wg.shareCode],
+		[identity.memberId, refreshInventory, refreshShopping, wg.shareCode],
 	);
+	useEffect(() => {
+		if (cachedShopping) {
+			hasShoppingCacheRef.current = true;
+			setItems(cachedShopping.items);
+			setLoadError(null);
+			setInitialLoading(false);
+		} else if (shoppingReadError) {
+			setLoadError(
+				getWgLoadErrorMessage('Einkaufsliste', shoppingReadError.status, shoppingReadError.error),
+			);
+			setInitialLoading(false);
+		}
+		if (cachedInventory) setInventory(cachedInventory.items);
+	}, [cachedInventory, cachedShopping, shoppingReadError]);
 	const itemCount = items.length;
 
 	useEffect(() => {
@@ -290,7 +325,9 @@ export default function EinkaufPage() {
 				}),
 			});
 			if (!res.ok) {
-				if (res.status !== 0) addIdempotencyKeyRef.current = null;
+				const retryableResponse =
+					res.status === 429 || res.status >= 500 || res.error === 'idempotency_response_pending';
+				if (res.status !== 0 && !retryableResponse) addIdempotencyKeyRef.current = null;
 				if (res.status === 0) {
 					const queued = createQueuedShoppingItem({
 						wgId: wg.id,
@@ -309,7 +346,7 @@ export default function EinkaufPage() {
 						setAddError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
-					setItems((prev) => [
+					commitItems((prev) => [
 						{
 							id: queued.id,
 							addedByMemberId: identity.memberId,
@@ -331,7 +368,12 @@ export default function EinkaufPage() {
 				if (res.status === 409 && res.error === 'shopping_item_duplicate') {
 					await load(true);
 				}
-				setAddError(shoppingAddErrorMessage(res.error));
+				if (retryableResponse) await load(true);
+				setAddError(
+					retryableResponse
+						? 'Speicherstatus unklar. Prüfe die Liste und versuche es bei Bedarf erneut.'
+						: shoppingAddErrorMessage(res.error),
+				);
 				return;
 			}
 			addIdempotencyKeyRef.current = null;
@@ -368,14 +410,14 @@ export default function EinkaufPage() {
 				boughtAt: becomingBought ? new Date().toISOString() : null,
 				boughtByMemberId: becomingBought ? identity.memberId : null,
 			};
-			setItems((prev) =>
+			commitItems((prev) =>
 				keepItems(
 					prev,
 					prev.map((current) => (current.id === item.id ? optimisticItem : current)),
 				),
 			);
 			const rollback = () =>
-				setItems((prev) =>
+				commitItems((prev) =>
 					keepItems(
 						prev,
 						prev.map((current) => (current.id === item.id ? item : current)),
@@ -430,7 +472,7 @@ export default function EinkaufPage() {
 						rollback();
 						setToggleError('Nur der/die Autor:in kann dies abhaken.');
 					} else if (res.status === 404 && res.error === 'item_not_found') {
-						setItems((prev) =>
+						commitItems((prev) =>
 							keepItems(
 								prev,
 								prev.filter((current) => current.id !== item.id),
@@ -467,7 +509,7 @@ export default function EinkaufPage() {
 					}
 					return;
 				}
-				setItems((prev) =>
+				commitItems((prev) =>
 					keepItems(
 						prev,
 						prev.map((current) => (current.id === item.id ? res.data.item : current)),
@@ -481,6 +523,7 @@ export default function EinkaufPage() {
 		[
 			end,
 			encodedShareCode,
+			commitItems,
 			identity.memberId,
 			identity.memberToken,
 			isPending,
@@ -511,7 +554,7 @@ export default function EinkaufPage() {
 					setRemoveErrorId(id);
 					setRemoveError('Nur der/die Autor:in kann diesen Eintrag entfernen.');
 				} else if (res.status === 404 && res.error === 'item_not_found') {
-					setItems((prev) =>
+					commitItems((prev) =>
 						keepItems(
 							prev,
 							prev.filter((item) => item.id !== id),
@@ -527,7 +570,7 @@ export default function EinkaufPage() {
 				end(id);
 				return;
 			}
-			setItems((prev) =>
+			commitItems((prev) =>
 				keepItems(
 					prev,
 					prev.filter((item) => item.id !== id),
@@ -536,7 +579,16 @@ export default function EinkaufPage() {
 			void load(true);
 			end(id);
 		},
-		[end, encodedShareCode, identity.memberId, identity.memberToken, isPending, load, start],
+		[
+			end,
+			encodedShareCode,
+			commitItems,
+			identity.memberId,
+			identity.memberToken,
+			isPending,
+			load,
+			start,
+		],
 	);
 
 	async function clearBought(): Promise<void> {
@@ -552,7 +604,7 @@ export default function EinkaufPage() {
 				memberToken: identity.memberToken,
 			});
 			if (res.ok) {
-				setItems((prev) =>
+				commitItems((prev) =>
 					keepItems(
 						prev,
 						prev.filter((item) => item.boughtAt === null),
@@ -659,51 +711,23 @@ export default function EinkaufPage() {
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
 			<SubNav />
-			<header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-				<h1 className="font-heading text-2xl font-semibold tracking-tight">Einkaufsliste</h1>
-				<Badge variant="secondary" aria-live="polite" aria-atomic="true">
+			<header>
+				<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight text-foreground">
+					Einkaufsliste
+				</h1>
+				<p
+					className="mt-0.5 text-[13px] text-muted-foreground tabular-nums"
+					aria-live="polite"
+					aria-atomic="true"
+				>
 					{open.length} offen
-				</Badge>
+				</p>
 			</header>
 
-			<form
-				onSubmit={(event) => {
-					event.preventDefault();
-					void add();
-				}}
-				className="flex flex-col gap-3"
-			>
-				<div className="flex flex-wrap gap-2">
-					<Input
-						id="shopping-name"
-						ref={nameInputRef}
-						value={newName}
-						onChange={(event) => {
-							nameValueRef.current = event.target.value;
-							setNewName(event.target.value);
-						}}
-						maxLength={NAME_MAX}
-						placeholder="z. B. 2 Hafermilch"
-						aria-label="Artikel-Name"
-						enterKeyHint="done"
-						aria-invalid={Boolean(addError)}
-						aria-describedby={addError ? 'shopping-add-error' : undefined}
-						className="min-h-11 flex-1 basis-48 text-base"
-					/>
-					<Button
-						type="submit"
-						size="icon"
-						disabled={!newName.trim() || adding}
-						aria-label="Artikel hinzufügen"
-						onPointerDown={(event) => event.preventDefault()}
-						className="size-11 shrink-0"
-					>
-						{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}
-					</Button>
-				</div>
+			<div className="flex flex-col gap-3">
 				{suggestionGroups.map((group) => (
 					<div key={group.label} className="flex min-w-0 flex-col gap-1.5">
-						<p className="text-xs font-medium text-muted-foreground">{group.label}</p>
+						<p className="text-sm font-medium text-muted-foreground">{group.label}</p>
 						<ul
 							aria-label={group.label}
 							className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]"
@@ -717,7 +741,7 @@ export default function EinkaufPage() {
 										disabled={adding}
 										onClick={() => void add(name)}
 										aria-label={`${name} hinzufügen`}
-										className="min-h-11 max-w-56"
+										className="max-w-56"
 									>
 										<Plus data-icon="inline-start" aria-hidden />
 										<span className="truncate">{name}</span>
@@ -727,17 +751,7 @@ export default function EinkaufPage() {
 						</ul>
 					</div>
 				))}
-				{addError && (
-					<Alert id="shopping-add-error" variant="destructive">
-						<AlertDescription>{addError}</AlertDescription>
-					</Alert>
-				)}
-				{addNotice && (
-					<Alert>
-						<AlertDescription>{addNotice}</AlertDescription>
-					</Alert>
-				)}
-			</form>
+			</div>
 
 			{queuedCount > 0 && (
 				<Alert>
@@ -776,11 +790,11 @@ export default function EinkaufPage() {
 										.join(', ')}`,
 								)}`}
 								onClick={dismissReceiptPrompt}
-								className={cn(buttonVariants({ size: 'sm' }), 'min-h-11')}
+								className={cn(buttonVariants({ size: 'sm' }))}
 							>
 								Ausgabe erfassen
 							</Link>
-							<Button variant="ghost" size="sm" className="min-h-11" onClick={dismissReceiptPrompt}>
+							<Button variant="ghost" size="sm" onClick={dismissReceiptPrompt}>
 								Nicht jetzt
 							</Button>
 						</span>
@@ -828,49 +842,116 @@ export default function EinkaufPage() {
 								Erledigt ({doneItems.length})
 							</summary>
 							<ul className="flex flex-col">{doneItems.map(renderRow)}</ul>
-							<Button
-								variant="outline"
-								onClick={() => setClearConfirmOpen(true)}
-								disabled={clearingBought}
-								aria-label={`Erledigte Artikel entfernen (${done.length})`}
-								className="mt-2 min-h-11 self-start"
-							>
-								{clearingBought ? (
-									<Spinner data-icon="inline-start" aria-hidden />
-								) : (
-									<Trash2 data-icon="inline-start" aria-hidden />
-								)}
-								Erledigte entfernen
-							</Button>
+							{isAdmin && (
+								<Button
+									variant="outline"
+									onClick={() => setClearConfirmOpen(true)}
+									disabled={clearingBought}
+									aria-label={`Erledigte Artikel entfernen (${done.length})`}
+									className="mt-2 self-start"
+								>
+									{clearingBought ? (
+										<Spinner data-icon="inline-start" aria-hidden />
+									) : (
+										<Trash2 data-icon="inline-start" aria-hidden />
+									)}
+									Erledigte entfernen
+								</Button>
+							)}
 						</details>
 					)}
 				</section>
 			)}
-			<AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
-				<AlertDialogContent className="max-w-[calc(100%-2rem)]">
-					<AlertDialogHeader>
-						<AlertDialogTitle>Erledigte Artikel entfernen?</AlertDialogTitle>
-						<AlertDialogDescription>
-							{done.length} erledigte Artikel werden für die ganze WG endgültig entfernt. Offene
-							Artikel bleiben erhalten.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
-						<AlertDialogAction
-							variant="destructive"
-							className="min-h-11 min-w-0 max-w-full shrink whitespace-normal"
-							disabled={clearingBought}
-							onClick={() => {
-								setClearConfirmOpen(false);
-								void clearBought();
+			<ThumbAction>
+				<div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-2">
+					<form
+						id="shopping-add-form"
+						onSubmit={(event) => {
+							event.preventDefault();
+							void add();
+						}}
+						className="flex min-w-0 flex-wrap gap-2"
+					>
+						<Input
+							id="shopping-name"
+							ref={nameInputRef}
+							value={newName}
+							onChange={(event) => {
+								nameValueRef.current = event.target.value;
+								setNewName(event.target.value);
 							}}
+							maxLength={NAME_MAX}
+							placeholder="z. B. 2 Hafermilch"
+							aria-label="Artikel-Name"
+							enterKeyHint="done"
+							aria-invalid={Boolean(addError)}
+							aria-describedby={addError ? 'shopping-add-error' : undefined}
+							className="min-w-[200px] flex-1 text-base"
+						/>
+						<Button
+							type="submit"
+							size="icon"
+							disabled={!newName.trim() || adding}
+							aria-label="Artikel hinzufügen"
+							onPointerDown={(event) => event.preventDefault()}
+							className="size-11 shrink-0 sm:hidden"
 						>
-							Entfernen
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+							{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}
+						</Button>
+						<Button
+							type="submit"
+							disabled={!newName.trim() || adding}
+							aria-label="Artikel hinzufügen"
+							onPointerDown={(event) => event.preventDefault()}
+							className="hidden min-h-11 shrink-0 sm:inline-flex"
+						>
+							{adding ? (
+								<Spinner data-icon="inline-start" aria-hidden />
+							) : (
+								<Plus data-icon="inline-start" aria-hidden />
+							)}
+							Hinzufügen
+						</Button>
+					</form>
+					{addError && (
+						<Alert id="shopping-add-error" variant="destructive">
+							<AlertDescription>{addError}</AlertDescription>
+						</Alert>
+					)}
+					{addNotice && (
+						<Alert>
+							<AlertDescription>{addNotice}</AlertDescription>
+						</Alert>
+					)}
+				</div>
+			</ThumbAction>
+			{isAdmin && (
+				<AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
+					<AlertDialogContent className="max-w-[calc(100%-2rem)]">
+						<AlertDialogHeader>
+							<AlertDialogTitle>Erledigte Artikel entfernen?</AlertDialogTitle>
+							<AlertDialogDescription>
+								{done.length} erledigte Artikel werden für die ganze WG endgültig entfernt. Offene
+								Artikel bleiben erhalten.
+							</AlertDialogDescription>
+						</AlertDialogHeader>
+						<AlertDialogFooter>
+							<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
+							<AlertDialogAction
+								variant="destructive"
+								className="min-h-11 min-w-0 max-w-full shrink whitespace-normal"
+								disabled={clearingBought}
+								onClick={() => {
+									setClearConfirmOpen(false);
+									void clearBought();
+								}}
+							>
+								Entfernen
+							</AlertDialogAction>
+						</AlertDialogFooter>
+					</AlertDialogContent>
+				</AlertDialog>
+			)}
 		</div>
 	);
 }

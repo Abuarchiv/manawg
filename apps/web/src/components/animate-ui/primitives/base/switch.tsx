@@ -102,6 +102,8 @@ function SwitchThumb({
 		width: isPressed ? pressedWidth : 38,
 		height: isPressed ? 39 : 25,
 		boxShadow: isPressed ? pressedShadow : '0.5px 0.5px 2px rgba(0,0,0,0.03)',
+		// Gedrückt wird der Thumb zu Glas: die Spur scheint durch (Brandbook 11.3).
+		...(isPressed ? { backgroundColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(2px)' } : {}),
 	};
 
 	return (

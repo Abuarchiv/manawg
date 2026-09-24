@@ -201,7 +201,7 @@ export function PushPrimingPrompt({
 					type="button"
 					onClick={dismiss}
 					aria-label="Hinweis schließen"
-					className="size-11 text-muted-foreground"
+					className="size-9 text-muted-foreground"
 				>
 					<X aria-hidden />
 				</Button>

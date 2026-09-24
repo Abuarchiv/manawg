@@ -90,7 +90,6 @@ export function ManualSplitSummary({
 					size="lg"
 					onClick={distributeRemainder}
 					disabled={disabled}
-					className="min-h-11"
 				>
 					Rest aufteilen
 				</Button>

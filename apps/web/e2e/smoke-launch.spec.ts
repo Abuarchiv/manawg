@@ -186,6 +186,10 @@ test.describe('ManaWG launch smoke', () => {
 	test('create WG → redirect to /wg/<code> → Start overview retains primary navigation', async ({
 		page,
 	}) => {
+		test.skip(
+			process.env.E2E_FIXTURE_MODE === 'true',
+			'Requires the real-product smoke job; fixture runs never create a live WG.',
+		);
 		if (!qaAuthConfig) {
 			if (!requiresRealProductAuth) {
 				test.skip(

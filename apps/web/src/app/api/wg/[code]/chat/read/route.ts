@@ -4,7 +4,8 @@ import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { chatReadLimiter, checkRateLimit } from '@/core/rate-limit';
-import { and, eq, sql } from 'drizzle-orm';
+import { buildChatReadMarkerSetWhere } from '@/features/chat/chat-read-query';
+import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -32,35 +33,14 @@ export const POST = withWgRoute('chat read POST', async (req, { code }) => {
 	if (!limited.success) return tooMany();
 
 	const messageId = parsed.data.lastReadMessageId;
-	let messageCreatedAt: Date | null = null;
 	if (messageId) {
 		if (!UUID_PATTERN.test(messageId)) return badRequest('message_id_invalid');
 		const messageRows = await db
-			.select({ id: wgChatMessages.id, createdAt: wgChatMessages.createdAt })
+			.select({ id: wgChatMessages.id })
 			.from(wgChatMessages)
 			.where(and(eq(wgChatMessages.id, messageId), eq(wgChatMessages.wgId, wgId)))
 			.limit(1);
-		const message = messageRows[0];
-		if (!message) return notFound('message_not_found');
-		messageCreatedAt = message.createdAt;
-
-		const readRows = await db
-			.select({ lastReadMessageId: wgChatReads.lastReadMessageId })
-			.from(wgChatReads)
-			.where(and(eq(wgChatReads.wgId, wgId), eq(wgChatReads.memberId, auth.member.memberId)))
-			.limit(1);
-		const currentLastReadMessageId = readRows[0]?.lastReadMessageId ?? null;
-		if (currentLastReadMessageId) {
-			const currentRows = await db
-				.select({ createdAt: wgChatMessages.createdAt })
-				.from(wgChatMessages)
-				.where(and(eq(wgChatMessages.id, currentLastReadMessageId), eq(wgChatMessages.wgId, wgId)))
-				.limit(1);
-			const currentCreatedAt = currentRows[0]?.createdAt ?? null;
-			if (currentCreatedAt && currentCreatedAt.getTime() >= messageCreatedAt.getTime()) {
-				return NextResponse.json({ ok: true });
-			}
-		}
+		if (!messageRows[0]) return notFound('message_not_found');
 	}
 
 	await db
@@ -73,24 +53,7 @@ export const POST = withWgRoute('chat read POST', async (req, { code }) => {
 		.onConflictDoUpdate({
 			target: [wgChatReads.wgId, wgChatReads.memberId],
 			set: { lastReadMessageId: messageId, updatedAt: new Date() },
-			setWhere: sql`
-					${messageId}::uuid is not null
-					and (
-						${wgChatReads.lastReadMessageId} is null
-						or (
-							select candidate.created_at
-							from wg_chat_messages candidate
-							where candidate.id = ${messageId}
-						) >= coalesce(
-							(
-								select current_read.created_at
-								from wg_chat_messages current_read
-								where current_read.id = ${wgChatReads.lastReadMessageId}
-							),
-							'-infinity'::timestamptz
-						)
-					)
-				`,
+			setWhere: buildChatReadMarkerSetWhere(messageId, wgChatReads.lastReadMessageId),
 		});
 
 	return NextResponse.json({ ok: true });

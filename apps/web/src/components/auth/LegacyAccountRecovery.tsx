@@ -99,13 +99,14 @@ export function LegacyAccountRecovery() {
 								name="shareCode"
 								type="text"
 								value={shareCode}
-								onChange={(event) => setShareCode(event.target.value)}
+								onChange={(event) => setShareCode(event.target.value.toUpperCase())}
 								autoComplete="off"
+								autoCapitalize="characters"
 								inputMode="text"
 								maxLength={8}
 								aria-describedby={error ? 'legacy-recovery-error' : undefined}
 								aria-invalid={error ? true : undefined}
-								className="min-h-11 font-mono text-base uppercase md:text-base"
+								className="font-mono text-base uppercase"
 							/>
 						</Field>
 
@@ -116,7 +117,7 @@ export function LegacyAccountRecovery() {
 							variant="outline"
 							size="lg"
 							disabled={submitting}
-							className="min-h-11 w-full"
+							className="w-full"
 						>
 							{submitting ? <Spinner data-icon="inline-start" aria-hidden="true" /> : null}
 							{submitting ? 'Wird wiederhergestellt …' : 'Profil wiederherstellen'}

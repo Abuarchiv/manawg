@@ -30,7 +30,7 @@ export function isUuid(value: unknown): value is string {
 export interface VerifiedMember {
 	memberId: string;
 	name: string;
-	/** True because this member was resolved from a verified Supabase user. */
+	/** True when the authenticated member also supplied a valid member token. */
 	verified: boolean;
 }
 
@@ -55,9 +55,7 @@ function unauthorized(code: string): NextResponse {
  * Resolve the caller's active membership from their server-verified Supabase
  * identity. The server-side Supabase user-to-membership lookup is the
  * authoritative identity proof. The HMAC member token from
- * `x-manawg-member-token` is verified when present; members who present a
- * valid token are `verified: true`, everyone else is `verified: false` and
- * must use the legacy claim flow to obtain a token.
+ * `x-manawg-member-token` grants the additional `verified` flag when valid.
  */
 export async function requireMember(
 	req: NextRequest,

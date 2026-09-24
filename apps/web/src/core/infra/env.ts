@@ -96,7 +96,8 @@ export function readListLimit(env: EnvSource, name: string, fallback: number, ma
 function isValidHttpsUrl(value: string | undefined): boolean {
 	if (!value?.trim()) return false;
 	try {
-		return new URL(value).protocol === 'https:';
+		const url = new URL(value);
+		return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash;
 	} catch {
 		return false;
 	}
@@ -106,7 +107,12 @@ function privateImageStorageMissing(env: EnvSource): { missing: string[]; impact
 	const provider = env.IMAGE_STORAGE_PROVIDER?.trim().toLowerCase() || 'aws';
 	if (provider === 'aws') {
 		return {
-			missing: AWS_IMAGE_VARS.filter((name) => !isSet(env, name)),
+			missing: [
+				...AWS_IMAGE_VARS.filter((name) => !isSet(env, name)),
+				...(isSet(env, 'S3_PUBLIC_URL') && !isValidHttpsUrl(env.S3_PUBLIC_URL)
+					? ['S3_PUBLIC_URL']
+					: []),
+			],
 			impact: 'S3 signing fails — receipt and announcement images cannot be uploaded.',
 		};
 	}

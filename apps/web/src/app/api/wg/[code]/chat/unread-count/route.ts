@@ -1,7 +1,8 @@
 import { db, wgChatMessages, wgChatReads, wgMembers } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { and, count, eq, gt, isNull, ne, or } from 'drizzle-orm';
+import { buildUnreadChatMessagesWhere } from '@/features/chat/chat-unread-query';
+import { and, count, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 const UNREAD_CAP = 99;
@@ -23,13 +24,15 @@ export const GET = withWgRoute(
 
 		const lastReadId = readRow[0]?.lastReadMessageId ?? null;
 		let cutoff: Date | null = null;
+		let cutoffMessageId: string | null = null;
 		if (lastReadId) {
 			const lastMsg = await db
-				.select({ createdAt: wgChatMessages.createdAt })
+				.select({ id: wgChatMessages.id, createdAt: wgChatMessages.createdAt })
 				.from(wgChatMessages)
 				.where(and(eq(wgChatMessages.id, lastReadId), eq(wgChatMessages.wgId, wgId)))
 				.limit(1);
 			cutoff = lastMsg[0]?.createdAt ?? null;
+			cutoffMessageId = lastMsg[0]?.id ?? null;
 		}
 		// First-time-in-chat: never opened it before. Anchor the cutoff to the
 		// member's join date so older history does not flood the unread badge.
@@ -42,14 +45,12 @@ export const GET = withWgRoute(
 			cutoff = memberRow[0]?.createdAt ?? null;
 		}
 
-		const whereExpr = and(
-			eq(wgChatMessages.wgId, wgId),
-			isNull(wgChatMessages.deletedAt),
-			or(
-				ne(wgChatMessages.senderMemberId, auth.member.memberId),
-				isNull(wgChatMessages.senderMemberId),
-			),
-			cutoff ? gt(wgChatMessages.createdAt, cutoff) : undefined,
+		const whereExpr = buildUnreadChatMessagesWhere(
+			wgChatMessages,
+			wgId,
+			auth.member.memberId,
+			cutoff,
+			cutoffMessageId,
 		);
 
 		const rows = await db

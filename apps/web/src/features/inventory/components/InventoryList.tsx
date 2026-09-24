@@ -1,6 +1,5 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -34,6 +33,8 @@ interface InventoryListProps {
 	memberId: string;
 	memberToken?: string | undefined;
 	onChanged: () => void;
+	addOpen: boolean;
+	onAddOpenChange: (open: boolean) => void;
 }
 
 export function InventoryList({
@@ -42,8 +43,9 @@ export function InventoryList({
 	memberId,
 	memberToken,
 	onChanged,
+	addOpen,
+	onAddOpenChange: setAddOpen,
 }: InventoryListProps) {
-	const [addOpen, setAddOpen] = useState(false);
 	const [quickOpen, setQuickOpen] = useState(false);
 	const [editing, setEditing] = useState<InventoryItemDto | null>(null);
 	// Knappe Vorräte stehen gesammelt oben, der Rest bleibt nach Kategorie sortiert.
@@ -63,28 +65,16 @@ export function InventoryList({
 
 	return (
 		<div className="flex flex-col gap-4">
-			{!isEmpty && (
-				<div className="flex flex-wrap gap-2">
-					<Button
-						type="button"
-						onClick={() => setAddOpen(true)}
-						className="h-auto min-h-11 w-full max-w-full whitespace-normal sm:w-auto"
-					>
-						<Plus data-icon="inline-start" aria-hidden />
-						Vorrat hinzufügen
-					</Button>
-					{hasQuickRestockItems && (
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => setQuickOpen(true)}
-							className="h-auto min-h-11 w-full max-w-full whitespace-normal sm:w-auto"
-						>
-							<Zap data-icon="inline-start" aria-hidden />
-							Schnell nachfüllen
-						</Button>
-					)}
-				</div>
+			{!isEmpty && hasQuickRestockItems && (
+				<Button
+					type="button"
+					variant="outline"
+					onClick={() => setQuickOpen(true)}
+					className="self-start"
+				>
+					<Zap data-icon="inline-start" aria-hidden />
+					Schnell nachfüllen
+				</Button>
 			)}
 			{isEmpty ? (
 				<Empty>
@@ -96,7 +86,7 @@ export function InventoryList({
 						<EmptyDescription>Beginne mit Klopapier, Spülmittel oder Nudeln.</EmptyDescription>
 					</EmptyHeader>
 					<EmptyContent>
-						<Button type="button" onClick={() => setAddOpen(true)} className="min-h-11">
+						<Button type="button" onClick={() => setAddOpen(true)}>
 							<Plus aria-hidden />
 							Ersten Vorrat anlegen
 						</Button>
@@ -106,14 +96,8 @@ export function InventoryList({
 				<div className="flex flex-col gap-4">
 					{lowItems.length > 0 && (
 						<section aria-labelledby="inventory-low" className="flex flex-col gap-2">
-							<h2
-								id="inventory-low"
-								className="flex items-center gap-2 font-mono text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground"
-							>
-								Bald leer
-								<Badge variant="secondary" className="tabular-nums">
-									{lowItems.length}
-								</Badge>
+							<h2 id="inventory-low" className="text-sm font-medium text-muted-foreground">
+								Bald leer ({lowItems.length})
 							</h2>
 							<Card className="py-0">
 								<CardContent className="p-0">
@@ -134,7 +118,7 @@ export function InventoryList({
 							</Card>
 							<Link
 								href={`/wg/${encodeURIComponent(shareCode)}/einkauf`}
-								className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11 self-start')}
+								className={cn(buttonVariants({ variant: 'outline' }), 'self-start')}
 							>
 								<ShoppingBasket data-icon="inline-start" aria-hidden />
 								Einkaufsliste öffnen
@@ -151,12 +135,9 @@ export function InventoryList({
 						>
 							<h2
 								id={`inventory-${category}`}
-								className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground"
+								className="text-sm font-medium text-muted-foreground"
 							>
-								{INVENTORY_CATEGORY_LABELS[category]}
-								<Badge variant="secondary" className="tabular-nums">
-									{grouped[category].length}
-								</Badge>
+								{INVENTORY_CATEGORY_LABELS[category]} ({grouped[category].length})
 							</h2>
 							<Card className="py-0">
 								<CardContent className="p-0">
@@ -187,6 +168,7 @@ export function InventoryList({
 				memberToken={memberToken}
 				mode={editing ? 'edit' : 'create'}
 				initial={editing}
+				onItemRefreshed={setEditing}
 				onClose={() => {
 					setAddOpen(false);
 					setEditing(null);

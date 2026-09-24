@@ -110,7 +110,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 								? 'WG-Daten werden als JSON exportiert'
 								: 'WG-Daten als JSON exportieren'
 						}
-						className="h-11 min-h-[44px] w-full"
+						className="w-full"
 					>
 						{exportPending === 'json' ? <Spinner aria-hidden /> : <Download aria-hidden />}
 						JSON exportieren
@@ -122,7 +122,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 							value={csvExportSection}
 							disabled={exportPending !== null}
 							onChange={(event) => setCsvExportSection(event.target.value as ExportSectionKey)}
-							className="h-11 min-h-[44px] w-full text-base"
+							className="w-full text-base"
 						>
 							{exportSummary.map((section) => (
 								<NativeSelectOption key={section.key} value={section.key}>
@@ -141,7 +141,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 								? `${csvExportLabel} wird als CSV exportiert`
 								: `${csvExportLabel} als CSV exportieren`
 						}
-						className="h-11 min-h-[44px] w-full"
+						className="w-full"
 					>
 						{exportPending === 'csv' ? <Spinner aria-hidden /> : <Download aria-hidden />}
 						CSV exportieren
@@ -171,7 +171,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 				<div className="p-3">
 					<Link
 						href={`${wgBaseHref}/import`}
-						className={cn(buttonVariants({ variant: 'default' }), 'h-11 min-h-[44px] w-full')}
+						className={cn(buttonVariants({ variant: 'default' }), 'w-full')}
 					>
 						<Upload aria-hidden />
 						Ausgaben importieren
@@ -184,7 +184,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 			<Section title="Rechtliches">
 				<ul className="divide-border divide-y">
 					<LinkRow href="https://manawg.com/impressum" label="Impressum" external />
-					<LinkRow href="/datenschutz" label="Datenschutz" />
+					<LinkRow href="https://manawg.com/datenschutz" label="Datenschutz" external />
 					<LinkRow href="https://manawg.com/agb" label="AGB" external />
 				</ul>
 			</Section>

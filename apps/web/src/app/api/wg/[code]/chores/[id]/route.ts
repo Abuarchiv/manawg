@@ -1,12 +1,13 @@
 import { recordAuditEvent } from '@/core/audit';
 import { CHORE_RECURRENCE_TYPES, chores, db, wgMembers } from '@/core/db';
 import type { ChoreRecurrenceType } from '@/core/db';
-import { badRequest, forbidden, notFound, tooMany } from '@/core/errors';
+import { badRequest, conflict, forbidden, notFound, tooMany } from '@/core/errors';
 import { isVerifiedWgAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { buildChorePatchUpdate } from '@/features/chores/chore-patch';
 import { and, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -14,10 +15,6 @@ import { z } from 'zod';
 const INTERVAL_MIN = 1;
 const INTERVAL_MAX_DAYS = 365;
 const INTERVAL_MAX_MONTHS = 60;
-
-function recurrenceCap(recurrenceType: ChoreRecurrenceType): number {
-	return recurrenceType === 'months' ? INTERVAL_MAX_MONTHS : INTERVAL_MAX_DAYS;
-}
 
 const patchSchema = z
 	.object({
@@ -86,48 +83,72 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 			.limit(1);
 		if (member.length === 0) return badRequest('member_not_in_wg');
 	}
-	if (parsed.data.intervalDays !== undefined && parsed.data.recurrenceType === undefined) {
+	const cadenceChanged =
+		parsed.data.intervalDays !== undefined || parsed.data.recurrenceType !== undefined;
+	const needsCurrentChore = cadenceChanged || parsed.data.nextDueAt !== undefined;
+	let currentChore: {
+		intervalDays: number;
+		recurrenceType: ChoreRecurrenceType;
+		nextDueAt: Date;
+	} | null = null;
+	if (needsCurrentChore) {
 		const existing = await db
-			.select({ recurrenceType: chores.recurrenceType })
+			.select({
+				intervalDays: chores.intervalDays,
+				recurrenceType: chores.recurrenceType,
+				nextDueAt: chores.nextDueAt,
+			})
 			.from(chores)
 			.where(and(eq(chores.id, id), eq(chores.wgId, wgId)))
 			.limit(1);
 		const row = existing[0];
 		if (!row) return notFound('chore_not_found');
-		if (parsed.data.intervalDays > recurrenceCap(row.recurrenceType)) {
-			return badRequest('interval_invalid');
-		}
+		currentChore = row;
+	}
+	const recurrencePatch = currentChore ? buildChorePatchUpdate(currentChore, parsed.data) : null;
+	if (cadenceChanged && recurrencePatch && !recurrencePatch.validCadence) {
+		return badRequest('interval_invalid');
 	}
 
 	const update: {
 		assignedMemberId?: string | null;
 		nextDueAt?: Date;
+		anchorAt?: Date;
 		intervalDays?: number;
 		recurrenceType?: ChoreRecurrenceType;
 		updatedAt: Date;
 	} = {
 		updatedAt: new Date(),
 	};
+	if (recurrencePatch) Object.assign(update, recurrencePatch.update);
 	if (parsed.data.assignedMemberId !== undefined) {
 		update.assignedMemberId = parsed.data.assignedMemberId;
 	}
-	if (parsed.data.nextDueAt) {
-		update.nextDueAt = new Date(parsed.data.nextDueAt);
-	}
-	if (parsed.data.intervalDays !== undefined) {
-		update.intervalDays = parsed.data.intervalDays;
-	}
-	if (parsed.data.recurrenceType !== undefined) {
-		update.recurrenceType = parsed.data.recurrenceType;
-	}
 
+	const currentMatch = currentChore
+		? and(
+				eq(chores.intervalDays, currentChore.intervalDays),
+				eq(chores.recurrenceType, currentChore.recurrenceType),
+				eq(chores.nextDueAt, currentChore.nextDueAt),
+			)
+		: undefined;
 	const [updated] = await db
 		.update(chores)
 		.set(update)
-		.where(and(eq(chores.id, id), eq(chores.wgId, wgId)))
+		.where(and(eq(chores.id, id), eq(chores.wgId, wgId), currentMatch))
 		.returning();
 
-	if (!updated) return notFound('chore_not_found');
+	if (!updated) {
+		if (currentChore) {
+			const stillExists = await db
+				.select({ id: chores.id })
+				.from(chores)
+				.where(and(eq(chores.id, id), eq(chores.wgId, wgId)))
+				.limit(1);
+			if (stillExists.length > 0) return conflict('chore_changed');
+		}
+		return notFound('chore_not_found');
+	}
 	await recordAuditEvent({
 		wgId,
 		memberId: auth.member.memberId,

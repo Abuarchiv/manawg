@@ -1,4 +1,5 @@
 'use client';
+import { Button } from '@/components/ui/button';
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
@@ -7,9 +8,10 @@ import { DebtRow } from '@/components/wg/DebtRow';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { RemindButton } from '@/components/wg/RemindButton';
 import { ReminderHistory, type ReminderHistoryItem } from '@/components/wg/ReminderHistory';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { apiFetch } from '@/core/infra/api-client';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { formatRelativeTime } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import {
@@ -19,7 +21,8 @@ import {
 } from '@/features/expenses/debts';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
 import { REMINDER_COOLDOWN_HOURS, canSendReminder } from '@/features/expenses/reminders';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface ExpenseSplitDto {
 	id: string;
@@ -40,12 +43,33 @@ interface ExpenseDto {
 export default function ErinnerungenPage() {
 	const { wg, members, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
+	const {
+		data: cachedExpenses,
+		error: expensesReadError,
+		refresh: refreshExpenses,
+	} = useCachedFetch<{ expenses: ExpenseDto[]; payments?: ExpensePaymentInput[] }>(
+		`/api/wg/${encodedShareCode}/expenses`,
+		{ memberId: identity.memberId },
+	);
+	const {
+		data: cachedReminders,
+		error: remindersReadError,
+		refresh: refreshReminders,
+		setData: setCachedReminders,
+	} = useCachedFetch<{ reminders: ReminderHistoryItem[] }>(
+		`/api/wg/${encodedShareCode}/reminders`,
+		{ memberId: identity.memberId },
+	);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
 
-	const [expenses, setExpenses] = useState<ExpenseDto[]>([]);
-	const [payments, setPayments] = useState<ExpensePaymentInput[]>([]);
-	const [reminders, setReminders] = useState<ReminderHistoryItem[]>([]);
-	const [loading, setLoading] = useState(true);
+	const [expenses, setExpenses] = useState<ExpenseDto[]>(() => cachedExpenses?.expenses ?? []);
+	const [payments, setPayments] = useState<ExpensePaymentInput[]>(
+		() => cachedExpenses?.payments ?? [],
+	);
+	const [reminders, setReminders] = useState<ReminderHistoryItem[]>(
+		() => cachedReminders?.reminders ?? [],
+	);
+	const [loading, setLoading] = useState(!cachedExpenses && !cachedReminders);
 	const [refreshing, setRefreshing] = useState(false);
 	const [loadErrors, setLoadErrors] = useState<{
 		expenses: string | null;
@@ -53,22 +77,29 @@ export default function ErinnerungenPage() {
 	}>({ expenses: null, reminders: null });
 	const [expensesLoadFailed, setExpensesLoadFailed] = useState(false);
 	const [remindersLoadFailed, setRemindersLoadFailed] = useState(false);
+	const [primaryReminderKey, setPrimaryReminderKey] = useState<string | null>(null);
+	const hasPageCacheRef = useRef(Boolean(cachedExpenses || cachedReminders));
+
+	function updateReminders(
+		update: (current: ReminderHistoryItem[]) => ReminderHistoryItem[],
+	): void {
+		setReminders(update);
+		setCachedReminders((current) => {
+			const previous = current?.reminders ?? reminders;
+			const next = update(previous);
+			if (!current && next === previous) return current;
+			return { ...(current ?? { reminders: previous }), reminders: next };
+		});
+	}
 
 	const load = useCallback(
 		async (initial: boolean): Promise<void> => {
-			if (initial) setLoading(true);
+			if (initial && !hasPageCacheRef.current) setLoading(true);
 			else setRefreshing(true);
 
 			const [expensesRes, remindersRes] = await Promise.all([
-				apiFetch<{ expenses: ExpenseDto[]; payments?: ExpensePaymentInput[] }>(
-					`/api/wg/${encodedShareCode}/expenses`,
-					{
-						memberId: identity.memberId,
-					},
-				),
-				apiFetch<{ reminders: ReminderHistoryItem[] }>(`/api/wg/${encodedShareCode}/reminders`, {
-					memberId: identity.memberId,
-				}),
+				refreshExpenses(),
+				refreshReminders(),
 			]);
 
 			const nextErrors: { expenses: string | null; reminders: string | null } = {
@@ -108,8 +139,48 @@ export default function ErinnerungenPage() {
 			if (initial) setLoading(false);
 			else setRefreshing(false);
 		},
-		[encodedShareCode, identity.memberId],
+		[refreshExpenses, refreshReminders],
 	);
+	useEffect(() => {
+		if (cachedExpenses) {
+			hasPageCacheRef.current = true;
+			setExpenses(cachedExpenses.expenses);
+			setPayments(cachedExpenses.payments ?? []);
+			setExpensesLoadFailed(false);
+			setLoadErrors((current) => ({ ...current, expenses: null }));
+		}
+		if (cachedReminders) {
+			hasPageCacheRef.current = true;
+			setReminders(cachedReminders.reminders);
+			setRemindersLoadFailed(false);
+			setLoadErrors((current) => ({ ...current, reminders: null }));
+		}
+		if (cachedExpenses || cachedReminders) setLoading(false);
+		if (expensesReadError) {
+			setExpensesLoadFailed(true);
+			setLoadErrors((current) => ({
+				...current,
+				expenses: getWgLoadErrorMessage(
+					'Ausgaben',
+					expensesReadError.status,
+					expensesReadError.error,
+					{ verb: 'konnten' },
+				),
+			}));
+		}
+		if (remindersReadError) {
+			setRemindersLoadFailed(true);
+			setLoadErrors((current) => ({
+				...current,
+				reminders: getWgLoadErrorMessage(
+					'Erinnerungen',
+					remindersReadError.status,
+					remindersReadError.error,
+					{ verb: 'konnten' },
+				),
+			}));
+		}
+	}, [cachedExpenses, cachedReminders, expensesReadError, remindersReadError]);
 
 	useEffect(() => {
 		void load(true);
@@ -165,12 +236,80 @@ export default function ErinnerungenPage() {
 		);
 	}
 
+	const reminderKey = (row: (typeof rows)[number]) =>
+		`${row.currency}:${row.debtorId}:${row.creditorId}`;
+	const primaryReminder =
+		rows.find((row) => reminderKey(row) === primaryReminderKey) ??
+		rows.find((row) => cooldownFor(row.debtorId, row.creditorId, row.currency).allowed) ??
+		rows[0] ??
+		null;
+
+	function reminderButton(row: (typeof rows)[number], primary = false) {
+		const cooldown = cooldownFor(row.debtorId, row.creditorId, row.currency);
+		const cooldownLabel = cooldown.nextAllowedAt
+			? `Wieder möglich ${formatRelativeTime(cooldown.nextAllowedAt.toISOString())}`
+			: null;
+		return (
+			<RemindButton
+				key={reminderKey(row)}
+				shareCode={wg.shareCode}
+				debtorMemberId={row.debtorId}
+				creditorMemberId={row.creditorId}
+				currency={row.currency}
+				currentMemberId={identity.memberId}
+				memberToken={identity.memberToken}
+				cooldownActive={!cooldown.allowed}
+				cooldownLabel={cooldownLabel}
+				onSent={(reminderId) => {
+					if (primary) {
+						setPrimaryReminderKey(null);
+						const pendingPrefix = `pending:${reminderKey(row)}:`;
+						updateReminders((current) => {
+							const optimistic = current.find((item) => item.id.startsWith(pendingPrefix));
+							const withoutPending = current.filter((item) => !item.id.startsWith(pendingPrefix));
+							if (withoutPending.some((item) => item.id === reminderId)) return withoutPending;
+							return optimistic
+								? [{ ...optimistic, id: reminderId, channel: 'push' }, ...withoutPending]
+								: withoutPending;
+						});
+					}
+					void load(false);
+				}}
+				onOptimistic={
+					primary
+						? () => {
+								const key = reminderKey(row);
+								const optimisticId = `pending:${key}:${Date.now()}`;
+								const optimistic: ReminderHistoryItem = {
+									id: optimisticId,
+									debtorMemberId: row.debtorId,
+									creditorMemberId: row.creditorId,
+									amountCents: row.amountCents,
+									currency: row.currency,
+									channel: 'Wird gesendet',
+									sentAt: new Date().toISOString(),
+									oldestDebtAgeDays: row.oldestAge,
+								};
+								setPrimaryReminderKey(key);
+								updateReminders((current) => [optimistic, ...current]);
+								return () => {
+									setPrimaryReminderKey(null);
+									updateReminders((current) => current.filter((item) => item.id !== optimisticId));
+								};
+							}
+						: undefined
+				}
+				primary={primary}
+			/>
+		);
+	}
+
 	return (
 		<div data-finance-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
 			<header className="flex min-w-0 items-center gap-3">
 				<BackLink href={`${wgBaseHref}/ausgaben`} label="Ausgaben" />
 				<div className="min-w-0 flex-1">
-					<h1 className="font-heading text-2xl font-semibold tracking-tight break-words">
+					<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight break-words">
 						Erinnerungen
 					</h1>
 					<p className="text-sm text-muted-foreground">
@@ -212,10 +351,6 @@ export default function ErinnerungenPage() {
 				) : (
 					<ul className="flex flex-col gap-3">
 						{rows.map((row) => {
-							const cooldown = cooldownFor(row.debtorId, row.creditorId, row.currency);
-							const cooldownLabel = cooldown.nextAllowedAt
-								? `Wieder möglich ${formatRelativeTime(cooldown.nextAllowedAt.toISOString())}`
-								: null;
 							return (
 								<DebtRow
 									key={`${row.currency}:${row.debtorId}:${row.creditorId}`}
@@ -232,19 +367,7 @@ export default function ErinnerungenPage() {
 									amountCents={row.amountCents}
 									currency={row.currency}
 									oldestDebtAgeDays={row.oldestAge}
-									action={
-										<RemindButton
-											shareCode={wg.shareCode}
-											debtorMemberId={row.debtorId}
-											creditorMemberId={row.creditorId}
-											currency={row.currency}
-											currentMemberId={identity.memberId}
-											memberToken={identity.memberToken}
-											cooldownActive={!cooldown.allowed}
-											cooldownLabel={cooldownLabel}
-											onSent={() => void load(false)}
-										/>
-									}
+									action={row === primaryReminder ? null : reminderButton(row)}
 								/>
 							);
 						})}
@@ -267,6 +390,15 @@ export default function ErinnerungenPage() {
 					<ReminderHistory items={reminders} memberName={memberName} />
 				)}
 			</section>
+			<ThumbAction>
+				{primaryReminder ? (
+					reminderButton(primaryReminder, true)
+				) : (
+					<Button render={<Link href={`${wgBaseHref}/ausgaben`} />} className="min-h-11 w-full">
+						Ausgaben ansehen
+					</Button>
+				)}
+			</ThumbAction>
 		</div>
 	);
 }

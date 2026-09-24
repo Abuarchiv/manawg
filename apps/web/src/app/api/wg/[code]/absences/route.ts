@@ -1,6 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, memberAbsences, wgMembers } from '@/core/db';
-import { withTransaction } from '@/core/db/transaction';
+import { db, idempotencyResponses, memberAbsences, wgMembers } from '@/core/db';
+import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { badRequest, conflict, forbidden, serverError, tooMany } from '@/core/errors';
 import { isVerifiedWgAdmin } from '@/core/guards/admin';
 import {
@@ -12,13 +12,14 @@ import {
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
+	RESPONSE_REPLAY_TTL_SECONDS,
 	getCachedResponse,
 	readIdempotencyKey,
-	releaseResponseSlot,
-	setCachedResponse,
 } from '@/core/idempotency';
+import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
+import { berlinDayKey, endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
+import { and, asc, eq, gt, gte, isNull, lte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -65,7 +66,12 @@ export const GET = withWgRoute(
 			})
 			.from(memberAbsences)
 			.innerJoin(wgMembers, eq(wgMembers.id, memberAbsences.memberId))
-			.where(and(eq(memberAbsences.wgId, wg.id), gte(memberAbsences.endDate, new Date())))
+			.where(
+				and(
+					eq(memberAbsences.wgId, wg.id),
+					gte(memberAbsences.endDate, startOfBerlinDay(new Date())),
+				),
+			)
 			.orderBy(asc(memberAbsences.startDate));
 
 		return NextResponse.json({
@@ -88,6 +94,7 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 		ReplayReservation<AbsenceCreateResponseBody>,
 		{ owned: true }
 	> | null = null;
+	let claimedLeaseExpiresAt: Date | null = null;
 	let raw: unknown;
 	try {
 		raw = await req.json();
@@ -105,7 +112,7 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 	}
 	const startDate = new Date(parsed.data.startDate);
 	const endDate = new Date(parsed.data.endDate);
-	if (endDate < startDate) return badRequest('date_range_invalid');
+	if (berlinDayKey(endDate) < berlinDayKey(startDate)) return badRequest('date_range_invalid');
 	const idemKey = readIdempotencyKey(req);
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
@@ -157,6 +164,34 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 			}
 		}
 		const creation = await withTransaction(async (tx) => {
+			if (idemScope && idemKey) {
+				const [slot] = await tx
+					.select({
+						body: idempotencyResponses.responseBody,
+						expiresAt: idempotencyResponses.expiresAt,
+					})
+					.from(idempotencyResponses)
+					.where(
+						and(eq(idempotencyResponses.scope, idemScope), eq(idempotencyResponses.key, idemKey)),
+					)
+					.limit(1)
+					.for('update');
+				if (!slot) throw new TransactionAbort('idempotency_claim_missing');
+				if (slot.body && typeof slot.body === 'object' && 'absence' in slot.body) {
+					return { kind: 'replayed' as const, body: slot.body as AbsenceCreateResponseBody };
+				}
+				if (
+					slot.expiresAt <= new Date() ||
+					!slot.body ||
+					typeof slot.body !== 'object' ||
+					Array.isArray(slot.body) ||
+					Object.keys(slot.body).length !== 1 ||
+					(slot.body as Record<string, unknown>)._claimed !== true
+				) {
+					throw new TransactionAbort('idempotency_claim_invalid');
+				}
+				claimedLeaseExpiresAt = slot.expiresAt;
+			}
 			await tx.execute(
 				sql`select pg_advisory_xact_lock(hashtext(${`absence:${wg.id}:${parsed.data.memberId}`}))`,
 			);
@@ -167,8 +202,8 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 					and(
 						eq(memberAbsences.wgId, wg.id),
 						eq(memberAbsences.memberId, parsed.data.memberId),
-						lte(memberAbsences.startDate, endDate),
-						gte(memberAbsences.endDate, startDate),
+						lte(memberAbsences.startDate, endOfBerlinDay(endDate)),
+						gte(memberAbsences.endDate, startOfBerlinDay(startDate)),
 					),
 				)
 				.limit(1);
@@ -183,20 +218,66 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 					reason: parsed.data.reason || null,
 				})
 				.returning();
-			return created ? { kind: 'created' as const, absence: created } : { kind: 'failed' as const };
+			if (!created) throw new TransactionAbort('insert_failed');
+			const body: AbsenceCreateResponseBody = {
+				absence: {
+					...created,
+					startDate: created.startDate.toISOString(),
+					endDate: created.endDate.toISOString(),
+				},
+			};
+			if (idemScope && idemKey) {
+				let rows: Array<{ scope: string }>;
+				try {
+					rows = await tx
+						.update(idempotencyResponses)
+						.set({
+							responseBody: body,
+							expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
+						})
+						.where(
+							and(
+								eq(idempotencyResponses.scope, idemScope),
+								eq(idempotencyResponses.key, idemKey),
+								gt(idempotencyResponses.expiresAt, new Date()),
+								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
+							),
+						)
+						.returning({ scope: idempotencyResponses.scope });
+				} catch (err) {
+					logApiError('[absences POST] replay write failed', err);
+					throw new TransactionAbort('idempotency_response_write_failed');
+				}
+				if (rows.length !== 1) throw new TransactionAbort('idempotency_response_write_failed');
+			}
+			return { kind: 'created' as const, absence: created, body };
 		});
+		if (creation.kind === 'replayed') {
+			replayReservation?.resolve(creation.body);
+			return NextResponse.json(creation.body);
+		}
 		if (creation.kind === 'overlap') {
 			const err = new Error('absence_overlaps_existing');
 			replayReservation?.reject(err);
-			if (idemScope && idemKey) await releaseResponseSlot(idemScope, idemKey);
+			if (idemScope && idemKey && claimedLeaseExpiresAt) {
+				try {
+					await db
+						.delete(idempotencyResponses)
+						.where(
+							and(
+								eq(idempotencyResponses.scope, idemScope),
+								eq(idempotencyResponses.key, idemKey),
+								eq(idempotencyResponses.expiresAt, claimedLeaseExpiresAt),
+								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
+							),
+						);
+				} catch (releaseErr) {
+					logApiError('[absences POST] claim release failed', releaseErr);
+				}
+			}
 			return conflict('absence_overlaps_existing', 'absence_overlaps_existing');
 		}
 		const absence = creation.absence;
-		if (creation.kind === 'failed' || !absence) {
-			const err = new Error('insert_failed');
-			replayReservation?.reject(err);
-			return serverError('insert_failed');
-		}
 		await recordAuditEvent({
 			wgId: wg.id,
 			memberId: auth.member.memberId,
@@ -211,24 +292,34 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 				reason: absence.reason,
 			},
 		});
-		const responseBody = {
-			absence: {
-				...absence,
-				startDate: absence.startDate.toISOString(),
-				endDate: absence.endDate.toISOString(),
-			},
-		};
-		if (idemScope && idemKey && replayReservation?.owned) {
-			replayReservation.resolve(responseBody);
-			void setCachedResponse(idemScope, idemKey, responseBody).catch((err) => {
-				if (process.env.NODE_ENV === 'development') {
-					console.warn('[absences POST] idem cache write failed', err);
-				}
-			});
-		}
-		return NextResponse.json(responseBody);
+		replayReservation?.resolve(creation.body);
+		return NextResponse.json(creation.body);
 	} catch (err) {
 		replayReservation?.reject(err);
+		if (err instanceof TransactionAbort) {
+			if (
+				idemScope &&
+				idemKey &&
+				claimedLeaseExpiresAt &&
+				['insert_failed', 'idempotency_response_write_failed'].includes(err.code)
+			) {
+				try {
+					await db
+						.delete(idempotencyResponses)
+						.where(
+							and(
+								eq(idempotencyResponses.scope, idemScope),
+								eq(idempotencyResponses.key, idemKey),
+								eq(idempotencyResponses.expiresAt, claimedLeaseExpiresAt),
+								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
+							),
+						);
+				} catch (releaseErr) {
+					logApiError('[absences POST] claim release failed', releaseErr);
+				}
+			}
+			return serverError(err.code);
+		}
 		throw err;
 	}
 });

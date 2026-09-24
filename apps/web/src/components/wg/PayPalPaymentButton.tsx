@@ -134,7 +134,7 @@ export function PayPalPaymentButton({
 				}
 				if (!shouldRetryPayPalCapture(result)) break;
 			}
-			throw new Error();
+			throw new Error('PayPal capture failed after retries');
 		};
 
 		void loadPayPalSdk(payeeMerchantId)
@@ -170,8 +170,9 @@ export function PayPalPaymentButton({
 	return (
 		<div className="flex flex-col gap-3 pt-3">
 			<p className="text-sm text-muted-foreground">
-				PayPal-Zahlung über {formatEuroCents(amountCents, currency)}. Erst bei PayPal bestätigen;
-				ein Abbruch verbucht keinen Ausgleich.
+				PayPal-Zahlung über{' '}
+				<span className="font-mono tabular-nums">{formatEuroCents(amountCents, currency)}</span>.
+				Erst bei PayPal bestätigen; ein Abbruch verbucht keinen Ausgleich.
 			</p>
 			<div
 				ref={containerRef}

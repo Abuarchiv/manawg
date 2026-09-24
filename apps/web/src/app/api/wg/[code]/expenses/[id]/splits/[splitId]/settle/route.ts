@@ -1,5 +1,5 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, expenseSplits, expenses, wgs } from '@/core/db';
+import { db, expenseSplits, expenses } from '@/core/db';
 import {
 	badRequest,
 	conflict,
@@ -8,7 +8,8 @@ import {
 	requireVerifiedMember,
 	tooMany,
 } from '@/core/errors';
-import { UUID_PATTERN, requireMember } from '@/core/guards/api-auth';
+import { UUID_PATTERN } from '@/core/guards/api-auth';
+import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
@@ -34,6 +35,9 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 			return badRequest('settled_invalid');
 		}
 		const settled = body.settled ?? true;
+		const auth = await requireWgMember(req, code);
+		if (!auth.ok) return auth.response;
+		const wgId = auth.wg.id;
 		const expenseRow = await db
 			.select({
 				id: expenses.id,
@@ -42,15 +46,10 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 				paidByMemberId: expenses.paidByMemberId,
 			})
 			.from(expenses)
-			.innerJoin(wgs, eq(wgs.id, expenses.wgId))
-			.where(and(eq(expenses.id, id), eq(wgs.shareCode, code)))
+			.where(and(eq(expenses.id, id), eq(expenses.wgId, wgId)))
 			.limit(1);
-		if (expenseRow.length === 0) return notFound('expense_not_found');
-
 		const expense = expenseRow[0];
 		if (!expense) return notFound('expense_not_found');
-		const auth = await requireMember(req, expense.wgId);
-		if (!auth.ok) return auth.response;
 		// Money mutation: a bare x-manawg-member-id is spoofable (harvested from
 		// GET /api/wg/[code]/members), so require a verified HMAC token before
 		// trusting the caller's claimed identity for the debtor/payer check.

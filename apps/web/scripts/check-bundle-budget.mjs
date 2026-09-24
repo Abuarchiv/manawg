@@ -30,7 +30,7 @@ const LAZY_CHUNK_HINTS = ['tesseract', 'three', 'react-three'];
 const TESSERACT_CHUNK_HINT = 'tesseract';
 
 const PROJECT_ROOT = resolve(process.cwd());
-const NEXT_DIR = join(PROJECT_ROOT, '.next');
+const NEXT_DIR = resolve(PROJECT_ROOT, process.env.NEXT_DIST_DIR ?? '.next');
 const APP_MANIFEST = join(NEXT_DIR, 'app-build-manifest.json');
 
 function fail(message) {

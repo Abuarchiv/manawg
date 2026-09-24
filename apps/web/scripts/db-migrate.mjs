@@ -68,6 +68,125 @@ const MEMBER_WG_INVARIANT_FUNCTIONS = [
 	'manawg_assert_chat_member_wg',
 	'manawg_assert_chat_mention_wg',
 ];
+// Keep the catalog contract explicit so a removed migration trigger fails closed.
+const MEMBER_WG_INVARIANT_TRIGGERS = [
+	[
+		'expenses',
+		'expenses_member_wg_same_tenant',
+		'manawg_assert_member_belongs_to_wg',
+		['paid_by_member_id'],
+	],
+	[
+		'expense_imports',
+		'expense_imports_member_wg_same_tenant',
+		'manawg_assert_member_belongs_to_wg',
+		['imported_by_member_id'],
+	],
+	[
+		'expense_payments',
+		'expense_payments_member_wg_same_tenant',
+		'manawg_assert_member_belongs_to_wg',
+		['from_member_id', 'to_member_id'],
+	],
+	[
+		'shopping_items',
+		'shopping_items_member_wg_same_tenant',
+		'manawg_assert_member_belongs_to_wg',
+		['added_by_member_id', 'bought_by_member_id'],
+	],
+	[
+		'announcements',
+		'announcements_member_wg_same_tenant',
+		'manawg_assert_member_belongs_to_wg',
+		['author_member_id', 'resolved_by_member_id'],
+	],
+	[
+		'chores',
+		'chores_member_wg_same_tenant',
+		'manawg_assert_member_belongs_to_wg',
+		['assigned_member_id'],
+	],
+	[
+		'member_absences',
+		'member_absences_member_wg_same_tenant',
+		'manawg_assert_member_belongs_to_wg',
+		['member_id'],
+	],
+	[
+		'recurring_expenses',
+		'recurring_expenses_member_wg_same_tenant',
+		'manawg_assert_member_belongs_to_wg',
+		['created_by_member_id', 'paid_by_member_id'],
+	],
+	[
+		'wg_events',
+		'wg_events_member_wg_same_tenant',
+		'manawg_assert_member_belongs_to_wg',
+		['created_by_member_id'],
+	],
+	[
+		'calendar_subscriptions',
+		'calendar_subscriptions_member_wg_same_tenant',
+		'manawg_assert_member_belongs_to_wg',
+		['member_id'],
+	],
+	[
+		'expense_reminders',
+		'expense_reminders_member_wg_same_tenant',
+		'manawg_assert_member_belongs_to_wg',
+		['debtor_member_id', 'creditor_member_id', 'sent_by_member_id'],
+	],
+	[
+		'audit_events',
+		'audit_events_member_wg_same_tenant',
+		'manawg_assert_member_belongs_to_wg',
+		['member_id'],
+	],
+	[
+		'wg_chat_messages',
+		'wg_chat_messages_member_wg_same_tenant',
+		'manawg_assert_member_belongs_to_wg',
+		['sender_member_id'],
+	],
+	[
+		'wg_chat_reads',
+		'wg_chat_reads_member_wg_same_tenant',
+		'manawg_assert_member_belongs_to_wg',
+		['member_id'],
+	],
+	[
+		'expense_splits',
+		'expense_splits_member_wg_same_tenant',
+		'manawg_assert_expense_split_member_wg',
+	],
+	[
+		'chore_completions',
+		'chore_completions_member_wg_same_tenant',
+		'manawg_assert_chore_completion_member_wg',
+	],
+	[
+		'announcement_reactions',
+		'announcement_reactions_member_wg_same_tenant',
+		'manawg_assert_announcement_member_wg',
+	],
+	[
+		'announcement_comments',
+		'announcement_comments_member_wg_same_tenant',
+		'manawg_assert_announcement_member_wg',
+	],
+	[
+		'wg_inventory_log',
+		'wg_inventory_log_member_wg_same_tenant',
+		'manawg_assert_inventory_log_member_wg',
+	],
+	['wg_chat_reactions', 'wg_chat_reactions_member_wg_same_tenant', 'manawg_assert_chat_member_wg'],
+	['wg_chat_mentions', 'wg_chat_mentions_member_wg_same_tenant', 'manawg_assert_chat_mention_wg'],
+].map(([table_name, trigger_name, function_name, args = []]) => ({
+	table_name,
+	trigger_name,
+	function_name,
+	args,
+}));
 const ALLOWED_SECURITY_DEFINER_FUNCTIONS = new Set(MEMBER_WG_INVARIANT_FUNCTIONS);
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -685,7 +804,7 @@ async function assertMigrationLedger(client) {
 	}
 }
 
-async function assertCatalogSecurity(client, expectedTables) {
+export async function assertCatalogSecurity(client, expectedTables) {
 	const roleResult = await client.query(
 		'select rolname from pg_roles where rolname = any($1::name[])',
 		[PUBLIC_ROLES],
@@ -695,6 +814,23 @@ async function assertCatalogSecurity(client, expectedTables) {
 	if (missingRoles.length) {
 		throw new Error(
 			`Database check failed: required Supabase roles are missing: ${missingRoles.join(', ')}.`,
+		);
+	}
+	const { rows: schemaCreatePrivileges } = await client.query(
+		// has_schema_privilege includes effective grants inherited from PUBLIC and role memberships.
+		`select grantee.rolname as role_name
+		 from pg_roles grantee cross join pg_namespace ns
+		 where grantee.rolname = any($1::name[])
+		   and ns.nspname = $2
+		   and has_schema_privilege(grantee.oid, ns.oid, 'CREATE')`,
+		[PUBLIC_ROLES, PUBLIC_SCHEMA],
+	);
+	const schemaCreateRoles = PUBLIC_ROLES.filter((role) =>
+		schemaCreatePrivileges.some(({ role_name }) => role_name === role),
+	);
+	if (schemaCreateRoles.length) {
+		throw new Error(
+			`Database check failed: public schema CREATE privilege must be empty for anon/authenticated roles; granted effectively to ${schemaCreateRoles.join(', ')}.`,
 		);
 	}
 
@@ -841,6 +977,73 @@ async function assertCatalogSecurity(client, expectedTables) {
 		}
 		return mismatches;
 	});
+	const { rows: invariantTriggers } = await client.query(
+		`select rel.relname as table_name, trg.tgname as trigger_name,
+			function_ns.nspname as function_schema, proc.proname as function_name,
+			trg.tgenabled as trigger_enabled, trg.tgtype as trigger_type,
+			trg.tgqual is not null as has_when, trg.tgattr::text as update_columns,
+			encode(trg.tgargs, 'hex') as arguments_hex
+		 from pg_trigger trg
+		 join pg_class rel on rel.oid = trg.tgrelid
+		 join pg_namespace table_ns on table_ns.oid = rel.relnamespace
+		 join pg_proc proc on proc.oid = trg.tgfoid
+		 join pg_namespace function_ns on function_ns.oid = proc.pronamespace
+		 where table_ns.nspname = $1
+		   and trg.tgname = any($2::name[])
+		   and not trg.tgisinternal`,
+		[PUBLIC_SCHEMA, MEMBER_WG_INVARIANT_TRIGGERS.map(({ trigger_name }) => trigger_name)],
+	);
+	const triggersByName = new Map();
+	for (const trigger of invariantTriggers) {
+		const matches = triggersByName.get(trigger.trigger_name) ?? [];
+		matches.push(trigger);
+		triggersByName.set(trigger.trigger_name, matches);
+	}
+	const triggerMismatches = MEMBER_WG_INVARIANT_TRIGGERS.flatMap((expected) => {
+		const actual = triggersByName.get(expected.trigger_name) ?? [];
+		if (actual.length === 0) {
+			return [`missing public.${expected.table_name}.${expected.trigger_name} trigger`];
+		}
+		if (actual.length > 1) {
+			return [`public trigger ${expected.trigger_name} has multiple catalog bindings`];
+		}
+		const [trigger] = actual;
+		const mismatches = [];
+		if (
+			trigger.table_name !== expected.table_name ||
+			trigger.function_schema !== PUBLIC_SCHEMA ||
+			trigger.function_name !== expected.function_name
+		) {
+			mismatches.push(
+				`public trigger ${expected.trigger_name} is bound to ${trigger.function_schema}.${trigger.table_name} -> ${trigger.function_name}; expected public.${expected.table_name} -> public.${expected.function_name}`,
+			);
+		}
+		// O fires in normal origin sessions; A fires in every session. R and D do not.
+		if (!['O', 'A'].includes(trigger.trigger_enabled)) {
+			mismatches.push(
+				`public trigger ${expected.trigger_name} is not enabled for normal sessions (state ${trigger.trigger_enabled})`,
+			);
+		}
+		const expectedArguments = Buffer.from(expected.args.map((arg) => `${arg}\0`).join('')).toString(
+			'hex',
+		);
+		if (
+			trigger.trigger_type !== 23 || // ROW + BEFORE + INSERT + UPDATE
+			trigger.has_when !== false ||
+			trigger.update_columns !== '' ||
+			trigger.arguments_hex !== expectedArguments
+		) {
+			mismatches.push(
+				`public trigger ${expected.trigger_name} does not cover every inserted or updated row with the expected member columns`,
+			);
+		}
+		return mismatches;
+	});
+	if (triggerMismatches.length) {
+		throw new Error(
+			`Database check failed: member/WG invariant trigger requirements not met: ${triggerMismatches.join('; ')}.`,
+		);
+	}
 	const catalogMismatches = [
 		...invariantMismatches,
 		...policies.map(({ policyname, tablename }) => `public policy ${policyname} on ${tablename}`),

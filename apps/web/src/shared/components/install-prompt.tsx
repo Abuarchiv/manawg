@@ -235,7 +235,7 @@ export function InstallPrompt() {
 								variant="ghost"
 								size="icon"
 								aria-label="Installationshinweis ausblenden"
-								className="size-11"
+								className="size-9"
 							>
 								<X aria-hidden="true" />
 							</Button>
@@ -246,7 +246,7 @@ export function InstallPrompt() {
 							<Button
 								type="button"
 								onClick={install}
-								className="h-auto min-h-11 w-full whitespace-normal py-2"
+								className="h-auto w-full whitespace-normal py-2"
 							>
 								Jetzt installieren
 							</Button>
