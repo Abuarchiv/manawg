@@ -174,7 +174,7 @@ export function OfflineClient() {
 			: status === 'server-unreachable'
 				? 'Der Server antwortet gerade nicht. Deine lokal gespeicherten Aktionen bleiben erhalten; versuche es später erneut.'
 				: status === 'unauthenticated'
-					? 'Melde dich an, um deine Offline-Aktionen und gemerkten WGs zu laden.'
+					? 'Offline-Aktionen und gemerkte WGs hängen an deinem Konto.'
 					: 'ManaWG speichert vorbereitete Aktionen auf diesem Gerät. Sobald das Netz zurück ist, kannst du sie synchronisieren und in deine WG zurückspringen.';
 
 	async function syncNow() {
@@ -404,13 +404,13 @@ export function OfflineClient() {
 								</Button>
 							)}
 							<Button
-								variant="outline"
+								variant={status === 'unauthenticated' ? 'default' : 'outline'}
 								size="lg"
 								render={<Link href="/neu" />}
 								nativeButton={false}
 								className="w-full"
 							>
-								Code eingeben
+								{status === 'unauthenticated' ? 'Anmelden' : 'Code eingeben'}
 							</Button>
 						</div>
 					</div>

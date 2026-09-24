@@ -15,14 +15,6 @@ import { Field } from '@/components/neu/Field';
 import { InviteStep } from '@/components/neu/InviteStep';
 import { Button } from '@/components/ui/button';
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from '@/components/ui/card';
-import {
 	FieldDescription,
 	FieldGroup,
 	FieldLabel,
@@ -623,15 +615,11 @@ export function NeuClient() {
 						<span className="sr-only">Anmeldung wird geprüft</span>
 					</output>
 				) : (
-					<Card aria-labelledby="auth-heading">
-						<CardContent>
-							<FieldGroup>
-								<SocialLoginButtons next={loginNextPath()} onOAuthStart={startSocialLogin} />
-								<FieldSeparator>oder</FieldSeparator>
-								<CredentialsAuth next={loginNextPath()} onAuthenticated={handleAuthenticated} />
-							</FieldGroup>
-						</CardContent>
-					</Card>
+					<FieldGroup>
+						<SocialLoginButtons next={loginNextPath()} onOAuthStart={startSocialLogin} />
+						<FieldSeparator>oder</FieldSeparator>
+						<CredentialsAuth next={loginNextPath()} onAuthenticated={handleAuthenticated} />
+					</FieldGroup>
 				)}
 			</EntryFrame>
 		);
@@ -711,41 +699,25 @@ export function NeuClient() {
 							</ItemGroup>
 						</section>
 					)}
-					<Card size="sm">
-						<CardHeader>
-							<CardTitle>
-								<h2>Neue WG erstellen</h2>
-							</CardTitle>
-							<CardDescription>Für eine WG, die ManaWG noch nicht nutzt.</CardDescription>
-						</CardHeader>
-						<CardFooter>
-							<Button
-								disabled={!interactive || busy}
-								onClick={() => setStep('create')}
-								className="w-full"
-							>
-								<Plus data-icon="inline-start" aria-hidden /> Neue WG erstellen
-							</Button>
-						</CardFooter>
-					</Card>
-					<Card size="sm">
-						<CardHeader>
-							<CardTitle>
-								<h2>Per Code beitreten</h2>
-							</CardTitle>
-							<CardDescription>Du hast eine Einladung von deinen Mitbewohnern.</CardDescription>
-						</CardHeader>
-						<CardFooter>
-							<Button
-								variant="outline"
-								disabled={!interactive || busy}
-								onClick={() => setStep('join')}
-								className="w-full"
-							>
-								<KeyRound data-icon="inline-start" aria-hidden /> Per Code beitreten
-							</Button>
-						</CardFooter>
-					</Card>
+					<div className="flex flex-col gap-2">
+						<Button
+							size="lg"
+							disabled={!interactive || busy}
+							onClick={() => setStep('create')}
+							className="w-full"
+						>
+							<Plus data-icon="inline-start" aria-hidden /> Neue WG erstellen
+						</Button>
+						<Button
+							size="lg"
+							variant="outline"
+							disabled={!interactive || busy}
+							onClick={() => setStep('join')}
+							className="w-full"
+						>
+							<KeyRound data-icon="inline-start" aria-hidden /> Per Code beitreten
+						</Button>
+					</div>
 					<Collapsible open={legacyOpen} onOpenChange={setLegacyOpen}>
 						<CollapsibleTrigger
 							render={
@@ -768,81 +740,69 @@ export function NeuClient() {
 			)}
 
 			{step === 'create' && (
-				<Card>
-					<CardHeader>
-						<CardTitle>
-							<h2>WG und Profil</h2>
-						</CardTitle>
-						<CardDescription>
-							Dein Anzeigename ist für die anderen WG-Mitglieder sichtbar.
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<form
-							noValidate
-							onSubmit={(event) => {
-								event.preventDefault();
-								void createWg();
-							}}
-							className="flex flex-col gap-5"
+				<form
+					noValidate
+					onSubmit={(event) => {
+						event.preventDefault();
+						void createWg();
+					}}
+					className="flex flex-col gap-5"
+				>
+					<FieldGroup>
+						<Field
+							id="wg-name"
+							label="WG-Name"
+							placeholder="z. B. WG Kurt-Schumacher"
+							value={wgName}
+							onChange={setWgName}
+							maxLength={WG_NAME_MAX}
+							autoComplete="organization"
+							autoFocus
+							required
+							invalid={invalidField === 'wgName'}
+							describedBy={invalidField === 'wgName' ? 'create-wg-error' : undefined}
+						/>
+						<Field
+							id="creator-name"
+							label="Dein Anzeigename"
+							placeholder="z. B. Anna"
+							value={creatorName}
+							onChange={setCreatorName}
+							maxLength={NAME_MAX}
+							autoComplete="given-name"
+							required
+							invalid={invalidField === 'creatorName'}
+							describedBy={invalidField === 'creatorName' ? 'create-wg-error' : undefined}
+						/>
+					</FieldGroup>
+					{error && (
+						<ErrorBox
+							id={
+								invalidField === 'wgName' || invalidField === 'creatorName'
+									? 'create-wg-error'
+									: 'create-wg-form-error'
+							}
 						>
-							<FieldGroup>
-								<Field
-									id="wg-name"
-									label="WG-Name"
-									placeholder="z. B. WG Kurt-Schumacher"
-									value={wgName}
-									onChange={setWgName}
-									maxLength={WG_NAME_MAX}
-									autoComplete="organization"
-									autoFocus
-									required
-									invalid={invalidField === 'wgName'}
-									describedBy={invalidField === 'wgName' ? 'create-wg-error' : undefined}
-								/>
-								<Field
-									id="creator-name"
-									label="Dein Anzeigename"
-									placeholder="z. B. Anna"
-									value={creatorName}
-									onChange={setCreatorName}
-									maxLength={NAME_MAX}
-									autoComplete="given-name"
-									required
-									invalid={invalidField === 'creatorName'}
-									describedBy={invalidField === 'creatorName' ? 'create-wg-error' : undefined}
-								/>
-							</FieldGroup>
-							{error && (
-								<ErrorBox
-									id={
-										invalidField === 'wgName' || invalidField === 'creatorName'
-											? 'create-wg-error'
-											: 'create-wg-form-error'
-									}
-								>
-									{error}
-								</ErrorBox>
+							{error}
+						</ErrorBox>
+					)}
+					<div className="flex flex-wrap items-center gap-2">
+						<BackButton onClick={backToChoose} disabled={busy} />
+						<Button
+							type="submit"
+							disabled={busy}
+							aria-label={busy ? 'WG wird erstellt…' : 'WG erstellen'}
+							className="flex-1"
+						>
+							{busy ? (
+								<Spinner data-icon="inline-start" aria-hidden />
+							) : (
+								<ArrowRight data-icon="inline-start" aria-hidden />
 							)}
-							<div className="flex flex-wrap items-center gap-2">
-								<BackButton onClick={backToChoose} disabled={busy} />
-								<Button
-									type="submit"
-									disabled={busy}
-									aria-label={busy ? 'WG wird erstellt…' : 'WG erstellen'}
-									className="flex-1"
-								>
-									{busy ? (
-										<Spinner data-icon="inline-start" aria-hidden />
-									) : (
-										<ArrowRight data-icon="inline-start" aria-hidden />
-									)}
-									{busy ? 'Wird erstellt…' : 'WG erstellen'}
-								</Button>
-							</div>
-						</form>
-					</CardContent>
-				</Card>
+							{busy ? 'Wird erstellt…' : 'WG erstellen'}
+						</Button>
+					</div>
+				</form>
 			)}
 
 			{step === 'invite' && createdWg && (
@@ -854,153 +814,125 @@ export function NeuClient() {
 			)}
 
 			{step === 'join' && (
-				<Card>
-					<CardHeader>
-						<CardTitle>
-							<h2>Deine Einladung</h2>
-						</CardTitle>
-						<CardDescription>Der WG-Code hat acht Zeichen.</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<form
-							noValidate
-							onSubmit={(event) => {
-								event.preventDefault();
-								void verifyJoinCode();
-							}}
-							className="flex flex-col gap-5"
+				<form
+					noValidate
+					onSubmit={(event) => {
+						event.preventDefault();
+						void verifyJoinCode();
+					}}
+					className="flex flex-col gap-5"
+				>
+					<FieldGroup>
+						<UiField data-invalid={invalidField === 'joinCode'}>
+							<FieldLabel htmlFor="join-code">WG-Code</FieldLabel>
+							<Input
+								id="join-code"
+								type="text"
+								value={joinCode}
+								onChange={(event) => {
+									setJoinCode(event.target.value.toUpperCase());
+									if (error) clearError();
+								}}
+								maxLength={8}
+								required
+								autoFocus
+								autoComplete="off"
+								autoCapitalize="characters"
+								inputMode="text"
+								placeholder="ABCD1234"
+								aria-describedby={
+									invalidField === 'joinCode' ? 'join-code-hint join-code-error' : 'join-code-hint'
+								}
+								aria-invalid={invalidField === 'joinCode'}
+								className="font-mono text-base"
+							/>
+							<FieldDescription id="join-code-hint">
+								8 Zeichen, ohne I, L, O und U.
+							</FieldDescription>
+						</UiField>
+					</FieldGroup>
+					{error && (
+						<ErrorBox id={invalidField === 'joinCode' ? 'join-code-error' : 'join-code-form-error'}>
+							{error}
+						</ErrorBox>
+					)}
+					<div className="flex flex-wrap items-center gap-2">
+						<BackButton onClick={backToChoose} disabled={busy} />
+						<Button
+							type="submit"
+							disabled={busy}
+							aria-label={busy ? 'WG-Code wird geprüft…' : 'WG-Code prüfen'}
+							className="flex-1"
 						>
-							<FieldGroup>
-								<UiField data-invalid={invalidField === 'joinCode'}>
-									<FieldLabel htmlFor="join-code">WG-Code</FieldLabel>
-									<Input
-										id="join-code"
-										type="text"
-										value={joinCode}
-										onChange={(event) => {
-											setJoinCode(event.target.value.toUpperCase());
-											if (error) clearError();
-										}}
-										maxLength={8}
-										required
-										autoFocus
-										autoComplete="off"
-										autoCapitalize="characters"
-										inputMode="text"
-										placeholder="ABCD1234"
-										aria-describedby={
-											invalidField === 'joinCode'
-												? 'join-code-hint join-code-error'
-												: 'join-code-hint'
-										}
-										aria-invalid={invalidField === 'joinCode'}
-										className="font-mono text-base"
-									/>
-									<FieldDescription id="join-code-hint">
-										8 Zeichen, ohne I, L, O und U.
-									</FieldDescription>
-								</UiField>
-							</FieldGroup>
-							{error && (
-								<ErrorBox
-									id={invalidField === 'joinCode' ? 'join-code-error' : 'join-code-form-error'}
-								>
-									{error}
-								</ErrorBox>
+							{busy ? (
+								<Spinner data-icon="inline-start" aria-hidden />
+							) : (
+								<ArrowRight data-icon="inline-start" aria-hidden />
 							)}
-							<div className="flex flex-wrap items-center gap-2">
-								<BackButton onClick={backToChoose} disabled={busy} />
-								<Button
-									type="submit"
-									disabled={busy}
-									aria-label={busy ? 'WG-Code wird geprüft…' : 'WG-Code prüfen'}
-									className="flex-1"
-								>
-									{busy ? (
-										<Spinner data-icon="inline-start" aria-hidden />
-									) : (
-										<ArrowRight data-icon="inline-start" aria-hidden />
-									)}
-									{busy ? 'Wird geprüft…' : 'Code prüfen'}
-								</Button>
-							</div>
-						</form>
-					</CardContent>
-				</Card>
+							{busy ? 'Wird geprüft…' : 'Code prüfen'}
+						</Button>
+					</div>
+				</form>
 			)}
 
 			{step === 'joinName' && joinWg && (
-				<Card>
-					<CardHeader>
-						<CardTitle>
-							<h2>{joinWg.name}</h2>
-						</CardTitle>
-						<CardDescription>
-							Einladungscode: <span className="font-mono">{joinWg.code}</span>
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<form
-							noValidate
-							onSubmit={(event) => {
-								event.preventDefault();
-								void joinExistingWg();
+				<form
+					noValidate
+					onSubmit={(event) => {
+						event.preventDefault();
+						void joinExistingWg();
+					}}
+					className="flex flex-col gap-5"
+				>
+					<FieldGroup>
+						<Field
+							id="join-name"
+							label="Dein Anzeigename"
+							placeholder="z. B. Samira"
+							value={joinName}
+							onChange={(value) => {
+								setJoinName(value);
+								if (error) clearError();
 							}}
-							className="flex flex-col gap-5"
+							maxLength={NAME_MAX}
+							autoComplete="given-name"
+							autoFocus
+							required
+							invalid={invalidField === 'joinName'}
+							describedBy={invalidField === 'joinName' ? 'join-name-error' : undefined}
+						/>
+					</FieldGroup>
+					<p className="text-sm text-muted-foreground">
+						Du trittst <span className="font-medium text-foreground">{joinWg.name}</span> bei.
+					</p>
+					{error && (
+						<ErrorBox id={invalidField === 'joinName' ? 'join-name-error' : 'join-name-form-error'}>
+							{error}
+						</ErrorBox>
+					)}
+					<div className="flex flex-wrap items-center gap-2">
+						<BackButton
+							onClick={() => {
+								clearError();
+								setStep('join');
+							}}
+							disabled={busy}
+						/>
+						<Button
+							type="submit"
+							disabled={busy}
+							aria-label={busy ? 'Du trittst der WG bei…' : 'WG beitreten'}
+							className="flex-1"
 						>
-							<FieldGroup>
-								<Field
-									id="join-name"
-									label="Dein Anzeigename"
-									placeholder="z. B. Samira"
-									value={joinName}
-									onChange={(value) => {
-										setJoinName(value);
-										if (error) clearError();
-									}}
-									maxLength={NAME_MAX}
-									autoComplete="given-name"
-									autoFocus
-									required
-									invalid={invalidField === 'joinName'}
-									describedBy={invalidField === 'joinName' ? 'join-name-error' : undefined}
-								/>
-							</FieldGroup>
-							<p className="text-sm text-muted-foreground">
-								Du trittst dieser WG mit deinem angemeldeten Konto bei.
-							</p>
-							{error && (
-								<ErrorBox
-									id={invalidField === 'joinName' ? 'join-name-error' : 'join-name-form-error'}
-								>
-									{error}
-								</ErrorBox>
+							{busy ? (
+								<Spinner data-icon="inline-start" aria-hidden />
+							) : (
+								<ArrowRight data-icon="inline-start" aria-hidden />
 							)}
-							<div className="flex flex-wrap items-center gap-2">
-								<BackButton
-									onClick={() => {
-										clearError();
-										setStep('join');
-									}}
-									disabled={busy}
-								/>
-								<Button
-									type="submit"
-									disabled={busy}
-									aria-label={busy ? 'Du trittst der WG bei…' : 'WG beitreten'}
-									className="flex-1"
-								>
-									{busy ? (
-										<Spinner data-icon="inline-start" aria-hidden />
-									) : (
-										<ArrowRight data-icon="inline-start" aria-hidden />
-									)}
-									{busy ? 'Wird beigetreten…' : 'Beitreten'}
-								</Button>
-							</div>
-						</form>
-					</CardContent>
-				</Card>
+							{busy ? 'Wird beigetreten…' : 'Beitreten'}
+						</Button>
+					</div>
+				</form>
 			)}
 		</EntryFrame>
 	);

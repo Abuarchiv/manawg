@@ -451,7 +451,7 @@ export function ImportWizard() {
 
 	const stepNumber = ['source', 'input', 'mapping', 'preview', 'commit'].indexOf(step) + 1;
 	const selectedCount = (preview?.parsed.length ?? 0) - skipIndexes.size;
-	const returnHref = `/wg/${encodedCode}/einstellungen#daten`;
+	const returnHref = `/wg/${encodedCode}/ausgaben`;
 	function chooseSource(value: ImportSourceKind) {
 		if (value !== source) resetImportState();
 		setSource(value);
@@ -482,7 +482,7 @@ export function ImportWizard() {
 					}}
 				>
 					<ArrowLeft data-icon="inline-start" />
-					Einstellungen
+					Ausgaben
 				</Link>
 				<Badge variant="secondary" className="max-w-full whitespace-normal">
 					Schritt {stepNumber} von 5

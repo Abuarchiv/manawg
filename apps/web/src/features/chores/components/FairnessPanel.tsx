@@ -7,7 +7,7 @@ import {
 } from '@/components/animate-ui/primitives/base/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import type { ChoreFairness } from '@/features/chores/chore-fairness';
 import { ChevronDown } from 'lucide-react';
@@ -36,16 +36,12 @@ export function FairnessPanel({
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Faire Rotation</CardTitle>
-				<CardDescription>{fairness.insights[0]}</CardDescription>
+				<CardTitle>Diesen Monat</CardTitle>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-3">
 				<div className="flex flex-col gap-2">
-					<p className="text-sm font-medium">Anteil diesen Monat</p>
 					{total === 0 ? (
-						<p className="text-sm text-muted-foreground">
-							Diesen Monat wurde noch nichts erledigt.
-						</p>
+						<p className="text-sm text-muted-foreground">Noch nichts erledigt.</p>
 					) : (
 						<>
 							<div aria-hidden className="flex h-2 overflow-hidden rounded-full bg-muted">
@@ -72,14 +68,14 @@ export function FairnessPanel({
 				</div>
 				{fairness.suggestedAssignee && (
 					<p className="text-sm">
-						Vorschlag für die nächste Aufgabe:{' '}
+						Als Nächstes dran:{' '}
 						<span className="font-medium">{fairness.suggestedAssignee.name}</span>
 					</p>
 				)}
 				<Collapsible>
 					<CollapsibleTrigger render={<Button variant="outline" className="w-full break-normal" />}>
 						<span className="min-w-0 flex-1 text-left break-normal whitespace-normal">
-							Verteilung und Regeln
+							So wird verteilt
 						</span>
 						<ChevronDown data-icon="inline-end" aria-hidden />
 					</CollapsibleTrigger>
@@ -98,8 +94,7 @@ export function FairnessPanel({
 											<ItemDescription className="line-clamp-none">
 												{row.assignedCount} Aufgabe{row.assignedCount === 1 ? '' : 'n'} ·{' '}
 												{row.openGapCount}{' '}
-												{row.openGapCount === 1 ? 'offener Termin' : 'offene Termine'} · Score{' '}
-												{row.score}
+												{row.openGapCount === 1 ? 'offener Termin' : 'offene Termine'}
 											</ItemDescription>
 										</ItemContent>
 										{!row.available && <Badge variant="secondary">Abwesend</Badge>}

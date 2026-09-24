@@ -1,8 +1,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { MessageCircle, Plus, X } from 'lucide-react';
-import Link from 'next/link';
+import { Plus, X } from 'lucide-react';
 import type React from 'react';
 
 interface PinnwandHeaderProps {
@@ -13,7 +12,6 @@ interface PinnwandHeaderProps {
 	loading: boolean;
 	hasDraft: boolean;
 	showComposerToggle?: boolean;
-	wgBaseHref: string;
 	onToggleComposer: () => void;
 }
 
@@ -25,7 +23,6 @@ export function PinnwandHeader({
 	loading,
 	hasDraft,
 	showComposerToggle = true,
-	wgBaseHref,
 	onToggleComposer,
 }: PinnwandHeaderProps): React.ReactElement {
 	return (
@@ -45,15 +42,6 @@ export function PinnwandHeader({
 					)}
 				</div>
 				<div className="flex shrink-0 items-center justify-end gap-2">
-					<Button
-						variant="ghost"
-						size="icon"
-						nativeButton={false}
-						render={<Link href={`${wgBaseHref}/chat`} aria-label="Chat öffnen" />}
-						className="shrink-0"
-					>
-						<MessageCircle aria-hidden />
-					</Button>
 					{showComposerToggle && (
 						<Button
 							onClick={onToggleComposer}

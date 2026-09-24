@@ -33,10 +33,10 @@ export default function ImportError({ error, reset }: Props) {
 				<Button
 					variant="outline"
 					className="flex-1"
-					render={<Link href="../einstellungen#daten" />}
+					render={<Link href="../ausgaben" />}
 					nativeButton={false}
 				>
-					Zurück zu Einstellungen
+					Zurück zu Ausgaben
 				</Button>
 			</div>
 		</div>

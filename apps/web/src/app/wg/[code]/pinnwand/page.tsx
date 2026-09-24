@@ -131,7 +131,6 @@ export default function PinnwandPage(): React.ReactElement {
 		{ memberId: identity.memberId },
 	);
 	const processedAnnouncementsRevisionRef = useRef(announcementsServerRevision);
-	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const searchParams = useSearchParams();
 	const statusParamFilter = statusFilterFromParam(searchParams.get('status'));
 	const prefillContent = searchParams.get('content');
@@ -960,7 +959,6 @@ export default function PinnwandPage(): React.ReactElement {
 				loading={initialLoading}
 				hasDraft={hasDraft}
 				showComposerToggle={false}
-				wgBaseHref={wgBaseHref}
 				onToggleComposer={() => {
 					if (submittingRef.current) return;
 					if (composerOpen) closeComposer();

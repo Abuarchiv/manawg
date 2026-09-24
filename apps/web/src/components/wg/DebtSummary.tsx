@@ -452,7 +452,6 @@ interface DebtSummaryProps {
 	memberColor: (id: string) => string | null;
 	memberPayPalMerchantId?: (id: string) => string | null;
 	onSettled: (message?: string) => void;
-	onAddExpense?: () => void;
 }
 
 /**
@@ -469,7 +468,6 @@ export function DebtSummary({
 	memberToken,
 	memberPayPalMerchantId = () => null,
 	onSettled,
-	onAddExpense,
 }: DebtSummaryProps) {
 	const { personal, others } = getDebtOverview(debts, currentMemberId, summary);
 	if (debts.length === 0 && personal.length === 0 && others.length === 0 && balances.length === 0)
@@ -506,11 +504,11 @@ export function DebtSummary({
 				<CardTitle>
 					<h2>Deine offenen Zahlungen</h2>
 				</CardTitle>
-				<CardDescription>
-					{summary && summary.savedTransfers > 0
-						? `Gegenseitige Schulden sind verrechnet. ${summary.simplifiedCount} ${summary.simplifiedCount === 1 ? 'Zahlung bleibt' : 'Zahlungen bleiben'} in der WG übrig.`
-						: 'Wer dir Geld schuldet und wem du noch Geld schuldest'}
-				</CardDescription>
+				{summary && summary.savedTransfers > 0 && (
+					<CardDescription>
+						{`Gegenseitige Schulden sind verrechnet. ${summary.simplifiedCount} ${summary.simplifiedCount === 1 ? 'Zahlung bleibt' : 'Zahlungen bleiben'} übrig.`}
+					</CardDescription>
+				)}
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
 				{personal.length > 0 ? (
@@ -518,26 +516,9 @@ export function DebtSummary({
 						{personal.map((debt, index) => renderDebt(debt, index === 0))}
 					</ItemGroup>
 				) : (
-					<div className="flex flex-col gap-1">
-						<p className="font-medium">
-							{others.length === 0
-								? 'Rechnerisch ausgeglichen'
-								: 'Für dich ist keine Zahlung offen.'}
-						</p>
-						{others.length === 0 && (
-							<p className="text-sm text-muted-foreground">
-								Keine Überweisung nötig. Die einzelnen Anteile im Verlauf sind dadurch nicht als
-								bezahlt markiert.
-							</p>
-						)}
-					</div>
-				)}
-				{personal.length === 0 && onAddExpense && (
-					<ThumbAction reserveSpace={false}>
-						<Button type="button" onClick={onAddExpense} className="min-h-11 w-full">
-							Ausgabe erfassen
-						</Button>
-					</ThumbAction>
+					<p className="font-medium">
+						{others.length === 0 ? 'Alles ausgeglichen' : 'Für dich ist keine Zahlung offen.'}
+					</p>
 				)}
 				{(others.length > 0 || balances.length > 0) && (
 					<Collapsible>
@@ -549,7 +530,7 @@ export function DebtSummary({
 								/>
 							}
 						>
-							Details
+							Alle Salden
 							<ChevronDown aria-hidden className="size-4 shrink-0 group-aria-expanded:rotate-180" />
 						</CollapsibleTrigger>
 						<CollapsibleContent className="flex flex-col gap-4 pt-2">

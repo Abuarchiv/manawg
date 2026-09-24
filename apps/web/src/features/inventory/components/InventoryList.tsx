@@ -4,7 +4,6 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
 	Empty,
-	EmptyContent,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
@@ -23,7 +22,7 @@ import {
 	isBelowThreshold,
 } from '@/features/inventory/inventory';
 import { cn } from '@/shared/lib/cn';
-import { Package, Plus, ShoppingBasket, Zap } from 'lucide-react';
+import { Package, ShoppingBasket, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
@@ -85,12 +84,6 @@ export function InventoryList({
 						<EmptyTitle>Noch keine Vorräte erfasst</EmptyTitle>
 						<EmptyDescription>Beginne mit Klopapier, Spülmittel oder Nudeln.</EmptyDescription>
 					</EmptyHeader>
-					<EmptyContent>
-						<Button type="button" onClick={() => setAddOpen(true)}>
-							<Plus aria-hidden />
-							Ersten Vorrat anlegen
-						</Button>
-					</EmptyContent>
 				</Empty>
 			) : (
 				<div className="flex flex-col gap-4">
