@@ -13,19 +13,25 @@ export function ThumbAction({
 	const actionRef = useRef<HTMLDivElement>(null);
 
 	useLayoutEffect(() => {
-		if (!reserveSpace) return;
-		const spacer = spacerRef.current;
 		const action = actionRef.current;
-		if (!spacer || !action) return;
+		if (!action) return;
+		const root = document.documentElement;
 
+		// Toasts read --thumb-action-space so they stack above this bar instead of covering it.
 		const syncHeight = () => {
-			spacer.style.height = `${action.getBoundingClientRect().height + 12}px`;
+			const height = action.getBoundingClientRect().height;
+			root.style.setProperty('--thumb-action-space', `${height + 8}px`);
+			if (reserveSpace && spacerRef.current) {
+				spacerRef.current.style.height = `${height + 12}px`;
+			}
 		};
 		syncHeight();
-		if (typeof ResizeObserver === 'undefined') return;
-		const observer = new ResizeObserver(syncHeight);
-		observer.observe(action);
-		return () => observer.disconnect();
+		const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncHeight);
+		observer?.observe(action);
+		return () => {
+			observer?.disconnect();
+			root.style.removeProperty('--thumb-action-space');
+		};
 	}, [reserveSpace]);
 
 	return (
