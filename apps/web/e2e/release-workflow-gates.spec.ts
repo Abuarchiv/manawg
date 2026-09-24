@@ -386,6 +386,20 @@ test('Preview jobs bind deployments to an approved source tree', () => {
 	);
 });
 
+test('Preview jobs require the current main SHA before checking out deployment code', () => {
+	const mainReadback =
+		'CURRENT_MAIN_SHA="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"';
+	const mainGuard = 'if [ "$DEPLOYMENT_SHA" != "$CURRENT_MAIN_SHA" ]; then';
+	for (const jobName of ['db-supabase-preview', 'e2e-preview']) {
+		const job = workflowJob(CI_WORKFLOW, jobName);
+		expect(job).toContain(mainReadback);
+		expect(job).toContain(mainGuard);
+		expect(job.indexOf(mainGuard)).toBeLessThan(
+			job.indexOf('git checkout --detach "$DEPLOYMENT_SHA"'),
+		);
+	}
+});
+
 test('Production evidence passes the candidate SHA and matching Preview tree to the gate', () => {
 	expect(PRODUCTION_WORKFLOW).toContain('candidateSha: process.env.CANDIDATE_SHA');
 	expect(PRODUCTION_WORKFLOW).toContain('candidateTree: process.env.CANDIDATE_TREE');

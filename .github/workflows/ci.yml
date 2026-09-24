@@ -97,8 +97,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Start from the trusted default branch. A deployment SHA is checked out only
-          # after it is proven to be the tip of an explicitly approved Preview branch.
+          # Start from main. Run deployment code only when its SHA is also the
+          # current main tip and the tip of an approved Preview branch.
           ref: main
       - name: Require the trusted Preview source tree
         env:
@@ -121,6 +121,11 @@ jobs:
             done
             if [ -z "$TRUSTED_PREVIEW_REF" ]; then
               echo 'deployment SHA is not the current tip of an approved Preview branch.' >&2
+              exit 1
+            fi
+            CURRENT_MAIN_SHA="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
+            if [ "$DEPLOYMENT_SHA" != "$CURRENT_MAIN_SHA" ]; then
+              echo 'Preview deployment SHA must equal current main SHA.' >&2
               exit 1
             fi
             git fetch --no-tags --depth=1 origin "$DEPLOYMENT_SHA"
@@ -269,8 +274,8 @@ jobs:
         run: test "$MIGRATION_GATE_RESULT" = success
       - uses: actions/checkout@v4
         with:
-          # Start from the trusted default branch. The deployment SHA is checked out
-          # only after it is proven to be the tip of an approved Preview branch.
+          # Start from main. Run deployment code only when its SHA is also the
+          # current main tip and the tip of an approved Preview branch.
           ref: main
       - name: Require the trusted deployment tree
         env:
@@ -290,6 +295,11 @@ jobs:
           done
           if [ -z "$TRUSTED_PREVIEW_REF" ]; then
             echo 'deployment SHA is not the current tip of an approved Preview branch.' >&2
+            exit 1
+          fi
+          CURRENT_MAIN_SHA="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
+          if [ "$DEPLOYMENT_SHA" != "$CURRENT_MAIN_SHA" ]; then
+            echo 'Preview deployment SHA must equal current main SHA.' >&2
             exit 1
           fi
           git fetch --no-tags --depth=1 origin "$DEPLOYMENT_SHA"
