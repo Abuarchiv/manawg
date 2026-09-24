@@ -115,6 +115,9 @@
 	--breakpoint-lg: initial;
 	--breakpoint-xl: initial;
 	--breakpoint-2xl: initial;
+	/* Spacing never shrinks with the fluid root size (section 6), so h-11
+	   touch targets stay at least 44px; it still grows with larger text. */
+	--spacing: max(4px, 0.25rem);
 }
 
 @theme inline {
@@ -250,10 +253,23 @@ video {
 /* Preflight supplies inherited form fonts in @layer base, so font-mono
    utilities on amount inputs can override them. */
 
-/* 6. Mobile body baseline — 16px prevents iOS zoom on focused inputs */
+/* 6. Fluid phone scale — the column is designed at 412px. Narrower phones
+      shrink their text proportionally instead of looking zoomed in.
+      Percent bounds keep the user's browser text size as base. */
+html {
+	font-size: clamp(90%, 3.883vw, 100%);
+}
 body {
-	font-size: 16px;
+	font-size: 1rem;
 	line-height: 1.6;
+}
+
+/* 6a. Form fields stay at 16px or more — below that iOS zooms in on focus
+       and the page stays zoomed. */
+input:not([type="checkbox"], [type="radio"]),
+textarea,
+select {
+	font-size: max(16px, 1rem);
 }
 
 /* ─── END RESPONSIVE FOUNDATIONS ────────────────────────────────────────── */
