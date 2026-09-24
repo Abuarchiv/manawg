@@ -47,12 +47,12 @@ test('cached shopping content stays visible while a revisit is revalidating', as
 
 	await navigateToFeature(page, `/wg/${SHARE_CODE}/einkauf`);
 	await dismissOnboarding(page);
-	const item = page.getByText('Ungesüßte Hafermilch', { exact: true }).first();
+	const item = page.getByRole('checkbox', { name: 'Ungesüßte Hafermilch erledigen' });
 	await expect(item).toBeVisible();
 
 	await page.getByRole('link', { name: 'Vorräte' }).click();
 	await expect(page.getByRole('heading', { name: 'Vorräte' })).toBeVisible();
-	await page.getByRole('link', { name: 'Einkauf' }).click();
+	await page.getByRole('link', { name: 'Einkäufe', exact: true }).click();
 	await secondReadStarted;
 
 	try {

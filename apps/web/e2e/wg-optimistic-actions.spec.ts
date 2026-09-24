@@ -7,7 +7,9 @@ test.use({ hasTouch: true, isMobile: true });
 const SHARE_CODE = 'MTE8PZAT';
 const CHORE_ID = 'chore-bath';
 
-test('failed chore completion rolls back the row and shows an error toast', async ({ page }) => {
+test('failed chore completion rolls back the row and shows the error in the dialog', async ({
+	page,
+}) => {
 	await page.setViewportSize({ width: 390, height: 844 });
 	await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
 	await setupMember(page);
@@ -58,9 +60,10 @@ test('failed chore completion rolls back the row and shows an error toast', asyn
 	}
 
 	await expect(row).toBeVisible();
+	// Der Fehler bleibt im noch offenen Bestätigungsdialog, direkt an der Aktion.
 	await expect(
 		page
-			.getByRole('region', { name: 'Benachrichtigungen' })
+			.getByRole('alertdialog')
 			.getByText(
 				'Erledigt-Aktion konnte nicht vollständig gespeichert werden: Lade den Plan neu und prüfe den Verlauf.',
 			),

@@ -861,7 +861,7 @@ export default function EinkaufPage() {
 							event.preventDefault();
 							void add();
 						}}
-						className="flex min-w-0 gap-2"
+						className="flex min-w-0 flex-wrap gap-2"
 					>
 						<Input
 							id="shopping-name"
@@ -877,21 +877,17 @@ export default function EinkaufPage() {
 							enterKeyHint="done"
 							aria-invalid={Boolean(addError)}
 							aria-describedby={addError ? 'shopping-add-error' : undefined}
-							className="min-w-0 flex-1 text-base"
+							className="min-w-0 flex-1 basis-[12.5rem] text-base"
 						/>
 						<Button
 							type="submit"
 							disabled={!newName.trim() || adding}
 							aria-label="Artikel hinzufügen"
 							onPointerDown={(event) => event.preventDefault()}
-							className="min-h-11 shrink-0"
+							size="icon"
+							className="size-11 shrink-0"
 						>
-							{adding ? (
-								<Spinner data-icon="inline-start" aria-hidden />
-							) : (
-								<Plus data-icon="inline-start" aria-hidden />
-							)}
-							Hinzufügen
+							{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}
 						</Button>
 					</form>
 					{addError && (

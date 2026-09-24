@@ -29,7 +29,9 @@ export default function NotFound() {
 						<EmptyMedia variant="icon">
 							<House aria-hidden />
 						</EmptyMedia>
-						<EmptyTitle>Seite nicht gefunden</EmptyTitle>
+						<EmptyTitle role="heading" aria-level={1}>
+							Seite nicht gefunden
+						</EmptyTitle>
 						<EmptyDescription>Die angeforderte Seite wurde nicht gefunden.</EmptyDescription>
 					</EmptyHeader>
 					<EmptyContent>
