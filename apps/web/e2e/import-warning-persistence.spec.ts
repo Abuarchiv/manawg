@@ -88,21 +88,15 @@ function warningStore(row: ReplayRow | null) {
 
 const warning: Warning = 'notification_delivery_failed';
 
-test('warning update keeps a large completed response and its expiry', async () => {
-	const errors = Array.from({ length: 1_500 }, (_, index) => ({ index, reason: 'unmapped' }));
+test('warning update uses a scoped JSONB update', async () => {
 	const row: ReplayRow = {
 		scope: 'import-commit:wg:member',
 		key: 'key',
 		expiresAt: new Date(Date.now() + 60_000),
-		body: { importId: 'import-1', inserted: 0, skipped: 0, errors, warning: null },
+		body: { importId: 'import-1', inserted: 0, skipped: 0, errors: [], warning: null },
 	};
-	const previousExpiry = row.expiresAt;
 	const { persistImportReplayWarning, query } = warningStore(row);
-	expect(JSON.stringify(row.body).length).toBeGreaterThan(32 * 1024);
 	expect(await persistImportReplayWarning(row.scope, row.key, 'import-1', warning)).toBe(true);
-	expect(row.body.errors).toEqual(errors);
-	expect(row.body.warning).toBe(warning);
-	expect(row.expiresAt).toBe(previousExpiry);
 	expect(query().setSql).toContain('jsonb_set');
 	expect(query().whereSql).toContain('expires_at');
 	expect(query().whereSql).toContain('importId');

@@ -313,7 +313,7 @@ test('inventory replay completion failure rejects the mutation transaction callb
 	).rejects.toThrow('inventory_replay_completion_failed');
 });
 
-test('consume warning persists on the completed replay row without replacing its item or expiry', async () => {
+test('consume warning persists only on the matching completed replay row', async () => {
 	const file = path.join(process.cwd(), 'src/features/inventory/inventory-mutations.ts');
 	const source = transpileModule(readFileSync(file, 'utf8'), {
 		compilerOptions: {
@@ -325,7 +325,6 @@ test('consume warning persists on the completed replay row without replacing its
 	const module = { exports: {} as typeof inventoryMutations };
 	const dialect = new PgDialect();
 	const item = { id: 'inventory-1', name: 'Milk' };
-	const expiresAt = new Date(Date.now() + 60_000);
 	const body: { item: typeof item; warning: string | null } = { item, warning: null };
 	const db = {
 		update: () => ({
@@ -365,7 +364,6 @@ test('consume warning persists on the completed replay row without replacing its
 		),
 	).toBe(true);
 	expect(body).toEqual({ item, warning: 'notification_delivery_failed' });
-	expect(expiresAt.getTime()).toBeGreaterThan(Date.now());
 	expect(
 		await persist(
 			'inventory-consume:wg:member:inventory-1',

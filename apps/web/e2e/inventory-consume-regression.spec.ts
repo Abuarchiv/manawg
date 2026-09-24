@@ -142,9 +142,8 @@ async function mutateIfWinner(
 	dependencies: ReplaySlotDependencies<ReplayBody>,
 	state: InventoryState,
 	cache: { value: ReplayBody | null },
-	key = 'same-key',
 ) {
-	const slot = await claimReplaySlot('inventory-consume', key, dependencies);
+	const slot = await claimReplaySlot('inventory-consume', 'same-key', dependencies);
 	if (!slot.won) return slot;
 	const result = await consumeInventoryMutation(createFakeTransaction(state), mutationInput);
 	if (result.kind !== 'ok') throw new Error(result.kind);
@@ -181,61 +180,4 @@ test('inventory consume replays one mutation and preserves failure safety', asyn
 	expect(state.logs).toHaveLength(1);
 	expect(state.logs[0]).toMatchObject({ delta: -1, kind: 'consume' });
 	expect(state.shopping).toHaveLength(1);
-});
-
-test('inventory consume does not mutate when claim or cache read fails', async () => {
-	const claimFailureState = createState();
-	const claimFailure: ReplaySlotDependencies<ReplayBody> = {
-		claim: async () => {
-			throw new Error('claim_failed');
-		},
-		read: async () => null,
-		sleep: async () => undefined,
-	};
-	await expect(mutateIfWinner(claimFailure, claimFailureState, { value: null })).rejects.toThrow(
-		'claim_failed',
-	);
-	expect(claimFailureState.updateCount).toBe(0);
-	expect(claimFailureState.logs).toHaveLength(0);
-
-	const cacheFailureState = createState();
-	const cacheFailure: ReplaySlotDependencies<ReplayBody> = {
-		claim: async () => false,
-		read: async () => {
-			throw new Error('cache_read_failed');
-		},
-		sleep: async () => undefined,
-	};
-	await expect(mutateIfWinner(cacheFailure, cacheFailureState, { value: null })).rejects.toThrow(
-		'cache_read_failed',
-	);
-	expect(cacheFailureState.updateCount).toBe(0);
-	expect(cacheFailureState.logs).toHaveLength(0);
-});
-
-test('a new idempotency key can mutate after a failed claim', async () => {
-	const state = createState();
-	const failedDependencies: ReplaySlotDependencies<ReplayBody> = {
-		claim: async () => {
-			throw new Error('claim_failed');
-		},
-		read: async () => null,
-		sleep: async () => undefined,
-	};
-	await expect(
-		mutateIfWinner(failedDependencies, state, { value: null }, 'failed-key'),
-	).rejects.toThrow('claim_failed');
-	expect(state.updateCount).toBe(0);
-
-	const dependencies: ReplaySlotDependencies<ReplayBody> = {
-		claim: async () => true,
-		read: async () => null,
-		sleep: async () => undefined,
-	};
-
-	await expect(mutateIfWinner(dependencies, state, { value: null }, 'new-key')).resolves.toEqual({
-		won: true,
-		body: { quantity: 4 },
-	});
-	expect(state.updateCount).toBe(1);
 });

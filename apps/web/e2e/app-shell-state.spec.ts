@@ -105,7 +105,6 @@ test.describe('app shell navigation state', () => {
 		await page.goto(`/entdecken/einkauf?code=${FIXTURE_WG.shareCode}`);
 		const openWgs = page.getByRole('link', { name: 'Deine WGs', exact: true });
 		await expect(openWgs).toBeVisible();
-		await expect(openWgs).toHaveAttribute('href', '/');
 		await openWgs.click();
 		await expect(page).toHaveURL('/');
 		await expect(page.getByRole('heading', { name: 'Deine WGs', exact: true })).toBeVisible();

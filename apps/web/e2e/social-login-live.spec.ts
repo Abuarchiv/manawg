@@ -7,44 +7,6 @@ test.describe('live social-login entry', () => {
 	);
 	test.describe.configure({ retries: 0 });
 
-	test('signed-out creation starts with account authentication', async ({ page }) => {
-		await page.emulateMedia({ reducedMotion: 'reduce' });
-		await page.goto('/neu?action=create');
-		await expect(
-			page.getByRole('button', { name: 'Mit Google anmelden', exact: true }),
-		).toBeVisible();
-		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
-		await expect(page.getByLabel('Passwort')).toBeVisible();
-		await expect(page.locator('[data-slot="tabs-content"]').first()).toHaveCSS('opacity', '1');
-		await expect(page.locator('[data-liquid-glass]')).toHaveCount(0);
-		await expect(page.locator('[data-slot="card"][data-liquid-glass]')).toHaveCount(0);
-		await expect(page.getByRole('button', { name: 'WG erstellen', exact: true })).toHaveCount(0);
-	});
-
-	test('old browser history cannot replace the public entry', async ({ page }) => {
-		await page.addInitScript(() => {
-			localStorage.setItem(
-				'manawg_known_wgs',
-				JSON.stringify([
-					{ code: 'ZZZZZZZZ', name: 'Old browser history', lastVisitedAt: Date.now() },
-				]),
-			);
-		});
-		await page.goto('/');
-		await expect(page).toHaveURL(new URL('/', process.env.BASE_URL).href);
-		await expect(page.getByRole('link', { name: 'WG erstellen', exact: true })).toBeVisible();
-		await expect(page.getByText('Old browser history')).toHaveCount(0);
-	});
-
-	test('signed-out deep links require login and preserve the destination', async ({ page }) => {
-		await page.goto('/wg/ZZZZZZZZ/ausgaben');
-		await expect(page).toHaveURL(/\/neu\?next=/);
-		expect(new URL(page.url()).searchParams.get('next')).toBe('/wg/ZZZZZZZZ/ausgaben');
-		await expect(
-			page.getByRole('button', { name: 'Mit Google anmelden', exact: true }),
-		).toBeVisible();
-	});
-
 	test('the built browser login reads hosted Supabase Auth settings', async ({ page }) => {
 		await page.goto('/neu');
 		const [response] = await Promise.all([

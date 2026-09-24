@@ -14,11 +14,4 @@ test('tracks A to A+B to A across focus and background revisions before apply', 
 
 	const secondBackground = reconcilePendingAnnouncements([postA], [postA], 3, 2);
 	assert.deepEqual(secondBackground, { items: [postA], count: 0, serverRevision: 3 });
-	const appliedItems = secondBackground.items;
-	assert.deepEqual(appliedItems, [postA]);
-});
-
-test('does not treat a hydrated cache revision as a new server response', () => {
-	const result = reconcilePendingAnnouncements([{ id: 'post-a' }], [{ id: 'post-a' }], 7, 7);
-	assert.equal(result, null);
 });

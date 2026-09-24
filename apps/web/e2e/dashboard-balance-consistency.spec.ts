@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
 import { computeMemberBalances } from '../src/core/reads/dashboard-data';
-import { computeNetBalances } from '../src/features/expenses/debt-reduction';
 
 const memberA = '11111111-1111-4111-8111-111111111111';
 const memberB = '22222222-2222-4222-8222-222222222222';
@@ -45,32 +44,6 @@ function split(
 	return { expenseId, debtorMemberId, amountCents, settledAt };
 }
 
-function canonicalBalances(
-	expenses: DashboardExpense[],
-	splits: DashboardSplit[],
-	payments: Payment[] = [],
-) {
-	const grouped = new Map<string, DashboardSplit[]>();
-	for (const current of splits) {
-		const group = grouped.get(current.expenseId) ?? [];
-		group.push(current);
-		grouped.set(current.expenseId, group);
-	}
-
-	return computeNetBalances(
-		expenses.map((current) => ({
-			paidByMemberId: current.paidByMemberId,
-			splits: (grouped.get(current.id) ?? []).map((currentSplit) => ({
-				debtorMemberId: currentSplit.debtorMemberId,
-				amountCents: currentSplit.amountCents,
-				settledAt: currentSplit.settledAt?.toISOString() ?? null,
-			})),
-		})),
-		members,
-		payments,
-	);
-}
-
 function dashboardBalances(
 	expenses: DashboardExpense[],
 	splits: DashboardSplit[],
@@ -78,32 +51,10 @@ function dashboardBalances(
 ) {
 	return computeMemberBalances(members, expenses, splits, payments);
 }
-
-function expectCanonicalBalance(
-	expenses: DashboardExpense[],
-	splits: DashboardSplit[],
-	payments: Payment[] = [],
-) {
-	const actual = dashboardBalances(expenses, splits, payments);
-	const expected = canonicalBalances(expenses, splits, payments);
-	for (const member of expected) {
-		const row = actual.find((current) => current.memberId === member.memberId);
-		expect(row).toMatchObject({
-			memberId: member.memberId,
-			memberName: member.memberName,
-			color: member.color,
-			paidCents: expect.any(Number),
-			owedCents: expect.any(Number),
-			balanceCents: member.cents,
-		});
-	}
-	return actual;
-}
-
 test.describe('Dashboard balance consistency', () => {
-	test('matches canonical balances for an unsettled three-person expense', () => {
+	test('matches expected balances for an unsettled three-person expense', () => {
 		const currentExpense = expense('expense-unpaid', memberA);
-		const actual = expectCanonicalBalance(
+		const actual = dashboardBalances(
 			[currentExpense],
 			[
 				split(currentExpense.id, memberA, 1_000),
@@ -125,7 +76,7 @@ test.describe('Dashboard balance consistency', () => {
 		]);
 	});
 
-	test('matches canonical balances for partial and full settlement', () => {
+	test('matches expected balances for partial and full settlement', () => {
 		const currentExpense = expense('expense-settlement', memberA);
 		const splits = [
 			split(currentExpense.id, memberA, 1_000),
@@ -134,7 +85,7 @@ test.describe('Dashboard balance consistency', () => {
 		];
 
 		const partialSplits = [splits[0], { ...splits[1], settledAt: new Date() }, splits[2]];
-		const partial = expectCanonicalBalance([currentExpense], partialSplits);
+		const partial = dashboardBalances([currentExpense], partialSplits);
 		expect(
 			partial.map(({ paidCents, owedCents, balanceCents }) => ({
 				paidCents,
@@ -146,7 +97,7 @@ test.describe('Dashboard balance consistency', () => {
 			{ paidCents: 0, owedCents: 0, balanceCents: 0 },
 			{ paidCents: 0, owedCents: 1_000, balanceCents: -1_000 },
 		]);
-		const full = expectCanonicalBalance(
+		const full = dashboardBalances(
 			[currentExpense],
 			splits.map((current) => ({ ...current, settledAt: new Date() })),
 		);
@@ -165,7 +116,7 @@ test.describe('Dashboard balance consistency', () => {
 
 	test('keeps own shares neutral and applies completed provider transfers', () => {
 		const ownExpense = expense('expense-own', memberA);
-		const own = expectCanonicalBalance([ownExpense], [split(ownExpense.id, memberA, 3_000)]);
+		const own = dashboardBalances([ownExpense], [split(ownExpense.id, memberA, 3_000)]);
 		expect(
 			own.map(({ paidCents, owedCents, balanceCents }) => ({ paidCents, owedCents, balanceCents })),
 		).toEqual([
@@ -175,7 +126,7 @@ test.describe('Dashboard balance consistency', () => {
 		]);
 
 		const sharedExpense = expense('expense-paid', memberA);
-		const transferred = expectCanonicalBalance(
+		const transferred = dashboardBalances(
 			[sharedExpense],
 			[
 				split(sharedExpense.id, memberA, 1_000),

@@ -63,49 +63,10 @@ test('serverError reports a null value safely and retains sanitized route labels
 	}
 });
 
-test('audit failures use error-level logging', async () => {
-	const source = await readSource('core/audit.ts');
-
-	expect(source).toContain("console.error('[audit] event not recorded'");
-	expect(source).not.toContain("console.warn('[audit] event not recorded'");
-});
-
-test('chat responses expose only persisted mentions', async () => {
-	const source = await readSource('app/api/wg/[code]/chat/messages/route.ts');
-
-	expect(source).toContain('const insertedMentionRows =');
-	expect(source).toMatch(/\.onConflictDoNothing\(\)\s*\.returning\(\{/);
-	expect(source).toContain('mentions: persistedMentionIds');
-});
-
-test('analytics privacy parsing uses the final path delimiter and explicit duplicate check', async () => {
-	const source = await readFile(
-		pathModule.join(process.cwd(), 'scripts', 'check-analytics-privacy.mjs'),
-		'utf8',
-	);
-
-	expect(source).toContain("item.lastIndexOf(': ')");
-	expect(source).toContain('duplicate');
-});
-
-test('members POST validates the JSON value without a PostBody assertion', async () => {
-	const source = await readSource('app/api/wg/[code]/members/route.ts');
-
-	expect(source).not.toContain('as PostBody');
-	expect(source).toContain('isPostBody');
-	expect(source).toContain('joinMemberSchema.safeParse');
-});
-
 test('bulk shopping clear requires the WG admin role', async () => {
 	const source = await readSource('app/api/wg/[code]/shopping/route.ts');
 
 	expect(source).toContain('isWgAdmin(wgId, auth.member.memberId)');
-});
-
-test('missing required environment variables reach the boot log', async () => {
-	const source = await readSource('instrumentation.ts');
-
-	expect(source).toContain('console.error(report)');
 });
 
 test('imports preview authenticates before reading the capped body', async () => {

@@ -1,8 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { getChoreStatus } from '../src/features/chores/chore-status';
 
-test.setTimeout(300_000);
-
 test('uses Berlin calendar days instead of rounding elapsed hours', () => {
 	const now = Date.parse('2026-09-05T15:30:00+02:00');
 

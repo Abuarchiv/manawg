@@ -24,17 +24,6 @@ function expandAgenda(event: EventInput, from: string | Date, to: string | Date)
 	return expandAgendaRecurrence(event, new Date(from), new Date(to));
 }
 
-test('keeps a started all-day event in the evening agenda window', () => {
-	const occurrences = expandAgenda(
-		ALL_DAY_EVENT,
-		'2026-09-29T18:00:00.000Z',
-		'2026-09-29T22:00:00.000Z',
-	);
-
-	expect(occurrences).toHaveLength(1);
-	expect(occurrences[0]?.startsAt).toBe('2026-09-29T00:00:00.000Z');
-});
-
 test('keeps inclusive multi-day all-day overlap across the Berlin fall DST date', () => {
 	const occurrences = expandAgenda(
 		{

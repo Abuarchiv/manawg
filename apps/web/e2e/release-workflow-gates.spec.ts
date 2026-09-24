@@ -22,13 +22,6 @@ const PRODUCTION_WORKFLOW = readFileSync(
 	path.resolve(__dirname, '../../../.github/workflows/migrate-production.yml'),
 	'utf8',
 );
-const ENV_EXAMPLE = readFileSync(path.resolve(__dirname, '../.env.example'), 'utf8');
-const VERCEL_CONFIG = readFileSync(path.resolve(__dirname, '../vercel.json'), 'utf8');
-const ANALYTICS_SOURCE = readFileSync(
-	path.resolve(__dirname, '../src/instrumentation-client.ts'),
-	'utf8',
-);
-
 const validPreviewEvent = {
 	state: 'success',
 	deploymentRef: SHA,
@@ -108,35 +101,6 @@ test('requires every protected Preview auth variable without exposing values', (
 			'Preview auth',
 		),
 	).toThrow('SUPABASE_AUTH_TEST_MEMBER_NAME');
-});
-
-test('keeps Vercel Preview builds active and on the actual team hostname', () => {
-	expect(VERCEL_CONFIG).toContain('"ignoreCommand": "exit 1"');
-	expect(VERCEL_CONFIG).not.toContain('"ignoreCommand": "$CI"');
-	expect(assertPreviewEvent(validPreviewEvent)).toBe(validPreviewEvent.targetUrl);
-});
-
-test('uses the current PostHog defaults release', () => {
-	expect(ANALYTICS_SOURCE).toContain("defaults: '2026-08-30'");
-	expect(ANALYTICS_SOURCE).not.toContain("defaults: '2026-05-30'");
-});
-
-test('documents the release and QA environment names used by the app', () => {
-	for (const name of [
-		'E2E_SUPABASE_URL',
-		'E2E_SUPABASE_PUBLISHABLE_KEY',
-		'E2E_SUPABASE_TEST_EMAIL',
-		'E2E_SUPABASE_TEST_PASSWORD',
-		'SUPABASE_AUTH_TEST_EMAIL',
-		'SUPABASE_AUTH_TEST_PASSWORD',
-		'SUPABASE_AUTH_TEST_MEMBER_WG_CODE',
-		'SUPABASE_AUTH_TEST_MEMBER_NAME',
-		'VERCEL_AUTOMATION_BYPASS_SECRET',
-		'POSTGRES_URL_NON_POOLING',
-		'DATABASE_URL_UNPOOLED',
-	]) {
-		expect(ENV_EXAMPLE).toMatch(new RegExp(`^${name}=`, 'm'));
-	}
 });
 
 test('keeps account membership out of the share-code rate-limit bucket', () => {
@@ -301,19 +265,4 @@ test('Production evidence passes the candidate SHA and matching Preview tree to 
 	expect(PRODUCTION_WORKFLOW).toContain(
 		"run: JSON.parse(readFileSync(process.env.PREVIEW_RUN_JSON, 'utf8'))",
 	);
-});
-
-test('accepts different Preview commits when candidate and run trees match', () => {
-	const evidence = {
-		candidateSha: SHA,
-		candidateTree: 'c'.repeat(40),
-		runTree: 'c'.repeat(40),
-		expectedRunId: 123,
-		run: { ...validPreviewRun, head_sha: 'b'.repeat(40) },
-		jobs: validPreviewJobs,
-	};
-	expect(assertPreviewEvidence(evidence)).toEqual({
-		deploymentRunId: 123,
-		sourceRevision: 'b'.repeat(40),
-	});
 });

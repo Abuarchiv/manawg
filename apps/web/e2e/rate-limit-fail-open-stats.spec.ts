@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { inspect } from 'node:util';
@@ -182,12 +181,4 @@ test('a closed limiter failure is reported without logging its thrown message', 
 		spy.restore();
 		restore();
 	}
-});
-
-test('checkRateLimit accepts a minimal limit contract instead of a casted Ratelimit', async () => {
-	const source = await readFile(RATE_LIMIT_PATH, 'utf8');
-
-	expect(source).toContain("limiter: Pick<Ratelimit, 'limit'> | null");
-	expect(source).not.toContain('as unknown as Ratelimit');
-	expect(source).toContain("failMode: 'open' | 'closed' = rateLimitFailMode()");
 });

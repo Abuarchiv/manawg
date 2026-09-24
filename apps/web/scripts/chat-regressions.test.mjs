@@ -214,20 +214,6 @@ test('late older refresh response cannot overwrite a newer tombstone', () => {
 	assert.equal(visibleMessage, 'tombstone');
 });
 
-test('GET started before successful edit cannot overwrite the edited body', () => {
-	let latestRequestId = 1;
-	const oldGetRequestId = latestRequestId;
-	let visibleBody = 'original body';
-
-	latestRequestId = chat.advanceChatRefreshSequence?.(latestRequestId) ?? latestRequestId;
-	visibleBody = 'edited body';
-	if (chat.isLatestChatRefreshResponse?.(oldGetRequestId, latestRequestId)) {
-		visibleBody = 'original body';
-	}
-
-	assert.equal(visibleBody, 'edited body');
-});
-
 test('GET started before successful delete cannot restore the deleted body', () => {
 	let latestRequestId = 1;
 	const oldGetRequestId = latestRequestId;

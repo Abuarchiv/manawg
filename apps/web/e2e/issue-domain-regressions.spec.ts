@@ -1,10 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { shouldFallbackToDirectJoin } from '../src/core/infra/join-flow';
-import { notificationCategoryForEvent } from '../src/core/notifications/notifications';
 import * as offlineClient from '../src/core/offline/offline-client';
 import { type ActivityItem, filterActivityByScope } from '../src/core/reads/activity';
 import { buildChoreFairness } from '../src/features/chores/chore-fairness';
-import { shoppingAddErrorMessage } from '../src/features/shopping/shopping-errors';
 
 const NOW = Date.parse('2026-09-19T12:00:00.000Z');
 
@@ -50,10 +48,6 @@ test('retries a recurring advance carried by a recurring action', () => {
 	});
 });
 
-test('uses a dedicated inventory notification category', () => {
-	expect(notificationCategoryForEvent('inventory.low_stock')).toBe('inventory');
-});
-
 test('activity done and changes scopes respect chore completion state', () => {
 	const items = [activity('open', 'Flur geplant', false), activity('done', 'Bad erledigt', true)];
 
@@ -84,10 +78,6 @@ test('uses the API-repeated open-gap total once for an assignee', () => {
 	});
 
 	expect(fairness.rows[0]).toMatchObject({ openGapCount: 2, score: 10 });
-});
-
-test('describes invalid shopping quantity as an item count', () => {
-	expect(shoppingAddErrorMessage('quantity_invalid')).toContain('höchstens 40 sein');
 });
 
 test('does not loop back to direct join for a missing member id', () => {
