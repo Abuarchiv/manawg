@@ -9,7 +9,7 @@ DO $$
 DECLARE
 	role_name text;
 BEGIN
-	FOREACH role_name IN ARRAY['anon', 'authenticated'] LOOP
+	FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated'] LOOP
 		IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
 			EXECUTE format('REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM %I', role_name);
 			EXECUTE format('REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM %I', role_name);
@@ -32,7 +32,7 @@ BEGIN
 	-- Re-grant the minimal access the Supabase REST API and Auth service need
 	-- to operate. Without these, anon/authenticated roles have zero privileges
 	-- and every API call fails with permission denied.
-	FOREACH role_name IN ARRAY['anon', 'authenticated'] LOOP
+	FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated'] LOOP
 		IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
 			EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', role_name);
 			EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA public TO %I', role_name);

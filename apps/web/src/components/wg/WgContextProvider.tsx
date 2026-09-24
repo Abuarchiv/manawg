@@ -174,6 +174,7 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 	// listeners bound to the current closure.
 	useEffect(() => {
 		if (!identity) return;
+		void sync();
 		window.addEventListener('online', sync);
 		window.addEventListener('focus', sync);
 		return () => {

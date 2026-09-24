@@ -697,7 +697,7 @@ export default function EinkaufPage() {
 				item={item}
 				adder={memberLookup(item.addedByMemberId)}
 				buyer={item.boughtByMemberId ? memberLookup(item.boughtByMemberId) : null}
-				isPending={isPending}
+				pending={isPending(item.id)}
 				onToggle={toggleBought}
 				onRemove={remove}
 				removeError={removeErrorId === item.id ? removeError : null}
