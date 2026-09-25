@@ -2,7 +2,6 @@ import { InstallPrompt } from '@/shared/components/install-prompt';
 import { PwaRegister } from '@/shared/components/pwa-register';
 import { ThemeProvider } from '@/shared/components/theme/ThemeProvider';
 import { getAppUrl } from '@/shared/lib/app-url';
-import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import Script from 'next/script';
@@ -188,7 +187,6 @@ export default function RootLayout({
 						<InstallPrompt />
 					</div>
 				</ThemeProvider>
-				<SpeedInsights />
 			</body>
 		</html>
 	);
