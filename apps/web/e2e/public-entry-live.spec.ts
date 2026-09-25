@@ -53,6 +53,7 @@ test.describe('live public dashboard entry', () => {
 		if (external?.phone === true) {
 			await phoneTab.click();
 			await expect(page.getByLabel('Telefonnummer')).toBeVisible();
+			await page.getByRole('tab', { name: 'E-Mail', exact: true }).click();
 		} else {
 			await expect(phoneTab).toHaveCount(0);
 			await expect(page.getByLabel('Telefonnummer')).toHaveCount(0);
