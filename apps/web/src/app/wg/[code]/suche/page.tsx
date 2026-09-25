@@ -379,7 +379,7 @@ export default function SuchePage() {
 								className="rounded-none border-b border-border last:border-0"
 								render={<Link href={result.href} aria-label={`${result.title} — ${moduleLabel}`} />}
 							>
-								<ItemContent className="min-w-0">
+								<ItemContent className="min-w-0 flex-[1_0_7rem]">
 									<ItemTitle className="min-w-0 w-full">{result.title}</ItemTitle>
 									<ItemDescription className="min-w-0">{result.meta}</ItemDescription>
 								</ItemContent>
