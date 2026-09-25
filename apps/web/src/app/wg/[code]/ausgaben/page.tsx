@@ -1383,7 +1383,7 @@ export default function AusgabenPage() {
 			)}
 			{!showSkeleton &&
 				(expenses.length > 0 || directDebts.length > 0 || memberBalances.length > 0) && (
-					<div className="grid items-start gap-4 lg:grid-cols-2">
+					<div className="flex flex-col gap-4">
 						{expenses.length > 0 && (
 							<Card className="order-2">
 								<CardHeader>
