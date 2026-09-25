@@ -109,6 +109,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 				},
 			},
 			'@/core/guards/api-auth': {},
+			'@/core/infra/observability': load('core/infra/observability.ts', {}, env, logs),
 			'@/core/rate-limit': { createConfiguredRedis: () => null },
 			'drizzle-orm': { lte: () => {} },
 		},

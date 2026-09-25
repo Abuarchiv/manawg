@@ -1,5 +1,6 @@
 import { db, idempotencyResponses } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
+import { logApiError } from '@/core/infra/observability';
 import { createConfiguredRedis } from '@/core/rate-limit';
 import { and, eq, gt, lte, sql } from 'drizzle-orm';
 
@@ -102,7 +103,7 @@ export async function claimIdempotencySlot(scope: string, key: string): Promise<
 		// Upstash returns 'OK' when the key was set, null when NX rejected it.
 		return result === 'OK';
 	} catch (err) {
-		console.error('[idempotency] redis claim failed, failing open:', err);
+		logApiError('[idempotency] redis claim failed, failing open', err);
 		return true;
 	}
 }
@@ -199,7 +200,7 @@ export async function releaseResponseSlot(scope: string, key: string): Promise<v
 				),
 			);
 	} catch (err) {
-		console.error('[idempotency] db releaseResponseSlot failed:', err);
+		logApiError('[idempotency] db releaseResponseSlot failed', err);
 	}
 }
 
@@ -229,7 +230,7 @@ export async function setCachedResponse(
 		const serialized = JSON.stringify(payload);
 		if (serialized.length > MAX_CACHED_RESPONSE_BYTES) {
 			console.warn(
-				`[idempotency] payload for ${scope}:${key} exceeds ${MAX_CACHED_RESPONSE_BYTES} bytes; storing a replay-safe failure marker`,
+				'[idempotency] payload exceeds cache budget; storing replay-safe failure marker',
 			);
 			await db
 				.update(idempotencyResponses)
@@ -256,6 +257,6 @@ export async function setCachedResponse(
 				},
 			});
 	} catch (err) {
-		console.error('[idempotency] db setCachedResponse failed:', err);
+		logApiError('[idempotency] db setCachedResponse failed', err);
 	}
 }

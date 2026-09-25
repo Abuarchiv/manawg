@@ -4,6 +4,14 @@ This is a dated evidence log, not a standing release approval. Older branch name
 
 Production migration requires a successful `push` run of `.github/workflows/ci.yml` for the exact current `main` candidate SHA, with both `validate` and `e2e-fixtures` successful. A read-only Actions API preflight verifies this before the workflow enters the protected Production environment; the separate exact-SHA Preview evidence and explicit confirmation remain required.
 
+## Hosted operations readback — 2026-09-25, 19:05 CEST
+
+At this readback `origin/main` was `519ebc2566bf4410146d8c22eec3b36887200cab`. Its [push CI run 36162244967](https://github.com/Abuarchiv/manawg-app/actions/runs/36162244967) passed `validate`, `e2e-fixtures` (337 passed, 39 hosted cases skipped) and `db-supabase-preview`; `e2e-preview` was skipped. No Vercel Preview deployment of this exact SHA was found. `app.manawg.com` still resolved to READY Production deployment `dpl_7dNFNMGJHbwJy7rYvkxnSHTANxxW`, created before these merges; its exact source tree was not confirmed. Current `main` is not claimed as deployed to Production.
+
+The Production Supabase dashboard showed custom SMTP enabled with host `smtp.resend.com`. A controlled password-reset request through `https://app.manawg.com/neu` reached the owner's Gmail inbox at approximately 19:00 CEST as a message from `manawg.com` titled “Neues Passwort für ManaWG”. No reset link was opened and no password was changed. This proves one real Production reset-mail receipt; it does not prove signup-mail delivery, Preview mail, future deliverability, or an alert. The Preview project showed custom SMTP disabled.
+
+The Vercel project is on Hobby; its Alerts screen offered “Upgrade to Pro” and no verified alarm recipient or test receipt. Read-only Vercel CLI queries returned no error-level or HTTP 500 events in the available seven-day window; this is not alert evidence. Supabase leaked-password protection remains disabled on Free. No paid plan or provider setting was changed.
+
 ## Local review candidate — 2026-09-25, 17:37 CEST
 
 The isolated `fix/release-readiness-20260925` worktree contains the integrated release fixes plus recurring-expense source metadata across online/offline requests, canonical replay of an already booked due period, and Cron row locking/CAS for concurrent template changes. The existing Production/Preview unique index protects `(recurring_expense_id, recurring_due_at)`; this branch adds no migration. Independent reviews found and rechecked the retry, pause, schedule, Drizzle error, and WG-lock ordering paths. No Production deployment or database write was performed for this candidate.
