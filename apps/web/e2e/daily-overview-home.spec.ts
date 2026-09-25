@@ -339,6 +339,50 @@ test('keeps one completion key across 5xx, 429, and offline retries', async ({ p
 	await expect(page.getByText('Bad putzen', { exact: true })).toHaveCount(0);
 });
 
+test('shows a saving label instead of "tap again" while a completion request is in flight', async ({
+	page,
+}) => {
+	await setupMember(page);
+	const chore = {
+		id: 'mine',
+		title: 'Bad putzen',
+		nextDueAt: atBerlin(getBerlinWeekWindow(Date.now()).todayKey, 23 * 60),
+		overdue: false,
+		assignedMemberId: FIXTURE_WG.memberId,
+		assignedMemberName: FIXTURE_WG.memberName,
+		assignedColor: null,
+	};
+	await mockDashboard(page, [chore]);
+	await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
+		route.fulfill({ status: 200, json: { events: [] } }),
+	);
+	let resolveComplete: (() => void) | undefined;
+	const held = new Promise<void>((resolve) => {
+		resolveComplete = resolve;
+	});
+	await page.route(/\/api\/wg\/MTE8PZAT\/chores\/mine\/complete$/, async (route) => {
+		await held;
+		return route.fulfill({ status: 200, json: { ok: true } });
+	});
+
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
+	await dismissOnboarding(page);
+	await page.getByRole('button', { name: 'Abhaken: Bad putzen' }).click();
+	await page.getByRole('button', { name: 'Bestätigen: Bad putzen erledigt' }).click();
+
+	// While the request is in flight the button is disabled (still labelled
+	// as the armed "confirm" action for a11y) but the subtitle must say it is
+	// saving, not repeat the now-stale "tap again to confirm" instruction.
+	await expect(
+		page.getByRole('button', { name: 'Bestätigen: Bad putzen erledigt' }),
+	).toBeDisabled();
+	await expect(page.getByText('Wird gespeichert …')).toBeVisible();
+	await expect(page.getByText('Nochmal tippen zum Bestätigen')).toHaveCount(0);
+
+	resolveComplete?.();
+	await expect(page.getByText('Bad putzen erledigt.')).toBeVisible();
+});
+
 test('does not show a settled or empty state when the dashboard read fails', async ({ page }) => {
 	await setupMember(page);
 	await page.route(`**${BASE}/dashboard`, (route) =>
