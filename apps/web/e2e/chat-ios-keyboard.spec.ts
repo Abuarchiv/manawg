@@ -31,7 +31,9 @@ test('chat composer sits on the iOS keyboard after Safari pans the page', async 
 				__iosKeyboard: { state: { height: number; offsetTop: number }; viewport: EventTarget };
 			}
 		).__iosKeyboard;
-		const field = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Chat-Nachricht"]');
+		const field = document.querySelector<HTMLTextAreaElement>(
+			'textarea[aria-label="Chat-Nachricht"]',
+		);
 		if (!field) throw new Error('composer missing');
 		field.focus();
 		state.height = window.innerHeight - 336;
