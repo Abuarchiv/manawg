@@ -657,6 +657,8 @@ function CommentRow({
 }): ReactElement {
 	const [editing, setEditing] = useState(false);
 	const draft = useCommentDraft(draftKey, comment.content);
+	const editorRef = useRef<HTMLTextAreaElement>(null);
+	const focusEditorOnEditRef = useRef(false);
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState(false);
 	const pendingRef = useRef(false);
@@ -664,6 +666,11 @@ function CommentRow({
 	useEffect(() => {
 		if (draft.restored && canEdit) setEditing(true);
 	}, [draft.restored, canEdit]);
+	useEffect(() => {
+		if (!editing || !focusEditorOnEditRef.current) return;
+		focusEditorOnEditRef.current = false;
+		editorRef.current?.focus();
+	}, [editing]);
 	async function save() {
 		if (!draft.draft.trim() || pendingRef.current) return;
 		pendingRef.current = true;
@@ -719,6 +726,7 @@ function CommentRow({
 					<FieldGroup className="gap-2">
 						<Field data-invalid={error}>
 							<Textarea
+								ref={editorRef}
 								value={draft.draft}
 								onChange={(event) => draft.change(event.target.value)}
 								disabled={pending}
@@ -763,6 +771,7 @@ function CommentRow({
 							aria-label={`Kommentar bearbeiten: ${actionSubject}`}
 							onClick={() => {
 								if (!draft.restored) draft.change(comment.content);
+								focusEditorOnEditRef.current = true;
 								setEditing(true);
 							}}
 						>
