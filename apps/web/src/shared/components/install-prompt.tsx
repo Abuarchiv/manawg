@@ -20,30 +20,6 @@ import {
 import { InstallButton } from './install-button';
 import { LogoMark } from './ui/LogoMark';
 
-// sessionStorage: dismissing hides the prompt until the next app start.
-const INSTALL_DISMISS_KEY = 'manawg:install-dismissed';
-
-function isDismissed(): boolean {
-	return safeSessionStorage()?.getItem(INSTALL_DISMISS_KEY) === '1';
-}
-
-function safeSessionStorage(): Storage | null {
-	if (typeof window === 'undefined') return null;
-	try {
-		return window.sessionStorage;
-	} catch {
-		return null;
-	}
-}
-
-function rememberDismissed(): void {
-	try {
-		safeSessionStorage()?.setItem(INSTALL_DISMISS_KEY, '1');
-	} catch {
-		// If storage is blocked, just hide for this session.
-	}
-}
-
 /**
  * True while the user has an input/textarea/contentEditable focused — e.g.
  * typing a chat message. The prompt is fixed just above the BottomNav, which
@@ -61,7 +37,7 @@ function isEditingTarget(): boolean {
 
 /**
  * Floating install prompt — shown on every app start until ManaWG is installed.
- * Dismissal lasts for the session only. Browsers without a native prompt
+ * Dismissing hides it until the next page load. Browsers without a native prompt
  * (iOS, Firefox) get the manual steps from `InstallButton`. Liest das
  * `beforeinstallprompt`-Event aus dem globalen Pub/Sub-Modul
  * (`../lib/pwa-install`), damit kein Race-Condition mit dem `InstallButton`
@@ -78,13 +54,13 @@ export function InstallPrompt() {
 	const [hidden, setHidden] = useState(true);
 
 	useEffect(() => {
-		if (isDismissed() || isAppInstalled()) return;
+		if (isAppInstalled()) return;
 
 		// Chromium fires beforeinstallprompt only while the app is not installed,
 		// so there we wait for it. Other browsers can only install manually.
 		setManual(!('onbeforeinstallprompt' in window));
 		const timer = window.setTimeout(() => {
-			if (!isDismissed() && !isEditingTarget()) setHidden(false);
+			if (!isEditingTarget()) setHidden(false);
 		}, 1200);
 
 		// Retract the prompt when the user taps into a composer so it never
@@ -106,19 +82,11 @@ export function InstallPrompt() {
 		};
 	}, []);
 
-	const dismiss = () => {
-		rememberDismissed();
-		setHidden(true);
-	};
+	const dismiss = () => setHidden(true);
 
 	const install = async () => {
 		const result = await triggerInstall();
-		if (result === 'accepted') {
-			rememberDismissed();
-			setHidden(true);
-		} else if (result === 'dismissed') {
-			dismiss();
-		}
+		if (result !== 'unavailable') dismiss();
 	};
 
 	if (hidden || (!event && !manual)) return null;
