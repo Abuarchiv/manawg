@@ -86,20 +86,22 @@ export const ExpenseRow = memo(function ExpenseRow({
 								/>
 							}
 						>
-							<span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-1">
+							<span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
 								<span className="sr-only">Details öffnen:</span>
-								<span className="break-words font-medium leading-snug">{expense.description}</span>
-								<span className="font-mono tabular-nums text-foreground">
+								<span className="min-w-0 flex-[1_1_12ch] break-words font-medium leading-snug">
+									{expense.description}
+								</span>
+								<span className="shrink-0 whitespace-nowrap font-mono tabular-nums text-foreground">
 									{formatEuroCents(expense.amountCents, expense.currency)}
 								</span>
-								<span className="col-span-2 text-left text-[13px] leading-normal font-normal text-muted-foreground">
+								<span className="w-full basis-full text-left text-[13px] leading-normal font-normal text-muted-foreground">
 									Bezahlt von {memberName(expense.paidByMemberId)} ·{' '}
 									<time dateTime={expense.occurredAt} title={formatTimeFull(expense.occurredAt)}>
 										{formatRelativeTime(expense.occurredAt)}
 									</time>
 								</span>
 								{(paymentSplits.length > 0 || expense.imageUrl) && (
-									<span className="col-span-2 flex flex-wrap gap-1.5 pt-1">
+									<span className="flex w-full basis-full flex-wrap gap-1.5 pt-1">
 										{paymentSplits.length > 0 && (
 											<Badge variant="secondary">
 												{settledCount === paymentSplits.length ? 'Beglichen' : 'Offen'}
