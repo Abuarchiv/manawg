@@ -7,6 +7,7 @@ import {
 	type TargetAndTransition,
 	type VariantLabels,
 	motion,
+	useReducedMotion,
 } from 'motion/react';
 import * as React from 'react';
 
@@ -39,6 +40,11 @@ function Switch({
 	...props
 }: SwitchProps) {
 	const [isPressed, setIsPressed] = React.useState(false);
+	// A quick tap is over before the glass shows, so every toggle plays it: lift, slide, settle.
+	const [isGliding, setIsGliding] = React.useState(false);
+	const glideTimer = React.useRef<ReturnType<typeof setTimeout>>(undefined);
+	React.useEffect(() => () => clearTimeout(glideTimer.current), []);
+	const reduceMotion = useReducedMotion();
 	const [isChecked, setIsChecked] = useControlledState({
 		...(checked === undefined ? {} : { value: checked }),
 		...(defaultChecked === undefined ? {} : { defaultValue: defaultChecked }),
@@ -48,7 +54,14 @@ function Switch({
 		...(name === undefined ? {} : { name }),
 		...(defaultChecked === undefined ? {} : { defaultChecked }),
 		...(checked === undefined ? {} : { checked }),
-		onCheckedChange: setIsChecked,
+		onCheckedChange: (...args: Parameters<typeof setIsChecked>) => {
+			if (!reduceMotion) {
+				clearTimeout(glideTimer.current);
+				setIsGliding(true);
+				glideTimer.current = setTimeout(() => setIsGliding(false), 320);
+			}
+			setIsChecked(...args);
+		},
 		...(nativeButton === undefined ? {} : { nativeButton }),
 		...(disabled === undefined ? {} : { disabled }),
 		...(readOnly === undefined ? {} : { readOnly }),
@@ -59,7 +72,12 @@ function Switch({
 
 	return (
 		<SwitchProvider
-			value={{ isChecked: isChecked ?? false, setIsChecked, isPressed, setIsPressed }}
+			value={{
+				isChecked: isChecked ?? false,
+				setIsChecked,
+				isPressed: isPressed || isGliding,
+				setIsPressed,
+			}}
 		>
 			<SwitchPrimitives.Root
 				{...rootProps}
@@ -164,7 +182,11 @@ function SwitchThumb({
 							borderRadius: 12.5,
 							background: 'var(--switch-track)',
 							opacity: isPressed ? 1 : 0,
-							transition: 'inherit',
+							// No colour fade: the lens must match the real track, which switches instantly.
+							// The glass clears fast so a dark track doesn't flash grey through the thumb.
+							transitionProperty: 'left, top, opacity',
+							transitionDuration: '280ms, 280ms, 120ms',
+							transitionTimingFunction: 'inherit',
 						}}
 					/>
 					{/* Rim highlights sit above the refracted track. */}

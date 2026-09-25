@@ -42,6 +42,8 @@ test('notification switches reject additional changes until the pending save com
 		.locator('[data-slot="switch-thumb"]')
 		.evaluate((thumb) => getComputedStyle(thumb).left);
 	await chores.click();
+	// A quick tap still plays the liquid-glass lift before the thumb settles.
+	await expect(chores.locator('[data-slot="switch-thumb"]')).toHaveAttribute('data-pressed', '');
 	try {
 		await expect.poll(() => patches.length).toBe(1);
 		await expect(chores).toBeDisabled();
@@ -55,6 +57,7 @@ test('notification switches reject additional changes until the pending save com
 	}
 	await expect(chores).toBeEnabled();
 	await expect(chores).not.toBeChecked();
+	await expect(chores.locator('[data-slot="switch-thumb"]')).not.toHaveAttribute('data-pressed');
 	await expect(expenses).toBeEnabled();
 	await expect(expenses).toBeChecked();
 	await expect(expenses.locator('[data-slot="switch-thumb"]')).toHaveCSS(
