@@ -1537,8 +1537,23 @@ export default function AusgabenPage() {
 			{!showSkeleton &&
 				(expenses.length > 0 || directDebts.length > 0 || memberBalances.length > 0) && (
 					<div className="flex flex-col gap-4">
+						<DebtSummary
+							debts={directDebts}
+							summary={settlementSummary}
+							balances={memberBalances}
+							expenses={expenses}
+							shareCode={wg.shareCode}
+							currentMemberId={identity.memberId}
+							memberToken={identity.memberToken}
+							memberColor={memberColor}
+							memberPayPalMerchantId={memberPayPalMerchantId}
+							onSettled={(message) => {
+								if (message) setActionSuccess(message);
+								void load(false);
+							}}
+						/>
 						{expenses.length > 0 && (
-							<Card className="order-2">
+							<Card>
 								<CardHeader>
 									<CardDescription>Dein Saldo</CardDescription>
 									<CardTitle>
@@ -1632,23 +1647,6 @@ export default function AusgabenPage() {
 								</CardContent>
 							</Card>
 						)}
-						<div className="order-1">
-							<DebtSummary
-								debts={directDebts}
-								summary={settlementSummary}
-								balances={memberBalances}
-								expenses={expenses}
-								shareCode={wg.shareCode}
-								currentMemberId={identity.memberId}
-								memberToken={identity.memberToken}
-								memberColor={memberColor}
-								memberPayPalMerchantId={memberPayPalMerchantId}
-								onSettled={(message) => {
-									if (message) setActionSuccess(message);
-									void load(false);
-								}}
-							/>
-						</div>
 					</div>
 				)}
 			{(recurringExpenses.length > 0 || recurringFilterActive) && (

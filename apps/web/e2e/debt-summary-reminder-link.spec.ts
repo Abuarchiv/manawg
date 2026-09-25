@@ -3,7 +3,7 @@ import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from '.
 
 test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 
-test('keeps the reminder history link visible and keyboard-operable with collapsed balances', async ({
+test('keeps expense summary and debt content in visual and keyboard order with collapsed balances', async ({
 	page,
 }, testInfo) => {
 	const { shareCode, memberId } = FIXTURE_WG;
@@ -60,19 +60,36 @@ test('keeps the reminder history link visible and keyboard-operable with collaps
 
 	await expect(page.getByRole('heading', { name: 'Deine offenen Zahlungen' })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Alle Salden' })).toBeVisible();
+	const balanceLabel = page.getByText('Dein Saldo', { exact: true });
+	const debtHeading = page.getByRole('heading', { name: 'Deine offenen Zahlungen' });
+	await expect(balanceLabel).toBeVisible();
+	const debtPrecedesBalanceInDom = await balanceLabel.evaluate((node) => {
+		const debt = Array.from(document.querySelectorAll('h2')).find(
+			(heading) => heading.textContent?.trim() === 'Deine offenen Zahlungen',
+		);
+		return debt
+			? Boolean(debt.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)
+			: false;
+	});
+	expect(debtPrecedesBalanceInDom).toBe(true);
+	const balanceTrigger = page.getByRole('button', { name: 'Saldo pro Mitglied', exact: true });
 	const reminderLink = page.getByRole('link', { name: 'Alle Erinnerungen' });
 	await expect(reminderLink).toBeVisible();
 	await expect(reminderLink).toHaveAttribute('href', `/wg/${shareCode}/mahnungen`);
 	await reminderLink.focus();
 	await expect(reminderLink).toBeFocused();
 	await page.keyboard.press('Tab');
+	await expect(balanceTrigger).toBeFocused();
 	await page.keyboard.press('Shift+Tab');
 	await expect(reminderLink).toBeFocused();
 	await expect
 		.poll(() => reminderLink.evaluate((node) => node.matches(':focus-visible')))
 		.toBe(true);
+	await page.evaluate(() => {
+		document.documentElement.style.fontSize = '200%';
+	});
 	for (const theme of ['light', 'dark'] as const) {
-		for (const width of [320, 390]) {
+		for (const width of [320, 360]) {
 			await page.setViewportSize({ width, height: 844 });
 			await page.emulateMedia({ colorScheme: theme });
 			const layout = await page.evaluate(() => ({
@@ -80,12 +97,18 @@ test('keeps the reminder history link visible and keyboard-operable with collaps
 				page: document.documentElement.scrollWidth,
 			}));
 			expect(layout.page).toBeLessThanOrEqual(layout.viewport);
+			const balanceBox = await balanceLabel.boundingBox();
+			const debtBox = await debtHeading.boundingBox();
+			if (!balanceBox || !debtBox) throw new Error('Summary headings must have layout boxes');
+			expect(debtBox.y).toBeLessThan(balanceBox.y);
 			await page.screenshot({
 				path: testInfo.outputPath(`reminders-${width}-${theme}.png`),
 				animations: 'disabled',
 			});
 		}
 	}
+	await reminderLink.focus();
+	await expect(reminderLink).toBeFocused();
 	await page.keyboard.press('Enter');
 	await expect(page).toHaveURL(new RegExp(`/wg/${shareCode}/mahnungen$`));
 });
