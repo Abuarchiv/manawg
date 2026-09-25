@@ -87,7 +87,7 @@ async function getAccountMemberships(): Promise<AccountMembership[] | null> {
 }
 
 export function OfflineClient() {
-	const [online, setOnline] = useState(true);
+	const [online, setOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine);
 	const [knownWgs, setKnownWgs] = useState<KnownWg[]>([]);
 	const [queue, setQueue] = useState<OfflineAction[]>([]);
 	const [syncing, setSyncing] = useState(false);
@@ -151,31 +151,37 @@ export function OfflineClient() {
 	const primaryWg =
 		knownWgs.find((wg) => (queueCounts.get(wg.code) ?? 0) > 0) ?? knownWgs[0] ?? null;
 	const statusLabel =
-		status === 'browser-offline'
-			? 'Offline-Modus'
-			: status === 'server-unreachable'
-				? 'Server nicht erreichbar'
-				: status === 'unauthenticated'
-					? 'Anmeldung nötig'
-					: 'Wieder online';
+		status === 'checking'
+			? 'Wird geprüft …'
+			: status === 'browser-offline'
+				? 'Offline-Modus'
+				: status === 'server-unreachable'
+					? 'Server nicht erreichbar'
+					: status === 'unauthenticated'
+						? 'Anmeldung nötig'
+						: 'Wieder online';
 	const statusHeading =
-		status === 'browser-offline'
-			? 'Du bist gerade offline.'
-			: status === 'server-unreachable'
-				? 'Server gerade nicht erreichbar.'
-				: status === 'unauthenticated'
-					? 'Melde dich an, um Offline-Aktionen zu sehen.'
-					: online
-						? 'Du bist wieder verbunden.'
-						: 'Du bist gerade offline.';
+		status === 'checking'
+			? 'Verbindung wird geprüft …'
+			: status === 'browser-offline'
+				? 'Du bist gerade offline.'
+				: status === 'server-unreachable'
+					? 'Server gerade nicht erreichbar.'
+					: status === 'unauthenticated'
+						? 'Melde dich an, um Offline-Aktionen zu sehen.'
+						: online
+							? 'Du bist wieder verbunden.'
+							: 'Du bist gerade offline.';
 	const statusDescription =
-		status === 'browser-offline'
-			? 'Deine lokal gespeicherten Aktionen bleiben sichtbar. Sobald du wieder online bist, kannst du sie synchronisieren.'
-			: status === 'server-unreachable'
-				? 'Der Server antwortet gerade nicht. Deine lokal gespeicherten Aktionen bleiben erhalten; versuche es später erneut.'
-				: status === 'unauthenticated'
-					? 'Offline-Aktionen und gemerkte WGs hängen an deinem Konto.'
-					: 'ManaWG speichert vorbereitete Aktionen auf diesem Gerät. Sobald das Netz zurück ist, kannst du sie synchronisieren und in deine WG zurückspringen.';
+		status === 'checking'
+			? 'Einen Moment, wir prüfen deine Verbindung und dein Konto.'
+			: status === 'browser-offline'
+				? 'Deine lokal gespeicherten Aktionen bleiben sichtbar. Sobald du wieder online bist, kannst du sie synchronisieren.'
+				: status === 'server-unreachable'
+					? 'Der Server antwortet gerade nicht. Deine lokal gespeicherten Aktionen bleiben erhalten; versuche es später erneut.'
+					: status === 'unauthenticated'
+						? 'Offline-Aktionen und gemerkte WGs hängen an deinem Konto.'
+						: 'ManaWG speichert vorbereitete Aktionen auf diesem Gerät. Sobald das Netz zurück ist, kannst du sie synchronisieren und in deine WG zurückspringen.';
 
 	async function syncNow() {
 		if (syncingRef.current || queue.length === 0) return;

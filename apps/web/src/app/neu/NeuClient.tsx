@@ -252,7 +252,8 @@ export function NeuClient() {
 		} else {
 			if (draft?.joinCode) setJoinCode(draft.joinCode);
 			if (draft?.step === 'joinName' && isJoinWg(draft.joinWg)) {
-				setJoinWg({ code: normalizeShareCode(draft.joinWg.code), name: 'WG-Einladung' });
+				const restoredCode = normalizeShareCode(draft.joinWg.code);
+				setJoinWg({ code: restoredCode, name: `WG ${restoredCode}` });
 				setStep('joinName');
 			} else if (draft?.step === 'create' || draft?.step === 'join') setStep(draft.step);
 			else if (draft?.joinCode) setStep('join');
@@ -487,7 +488,9 @@ export function NeuClient() {
 			}
 			// A valid code is only a local input checkpoint. The authenticated POST
 			// remains the authority for existence, membership, and invite policy.
-			setJoinWg({ code, name: 'WG-Einladung' });
+			// The real WG name isn't fetchable pre-join (GET /api/wg/[code] requires
+			// membership), so we show the code itself rather than a fabricated name.
+			setJoinWg({ code, name: `WG ${code}` });
 			setStep('joinName');
 		} catch {
 			setFormError(joinErrorMessage(0, ''));

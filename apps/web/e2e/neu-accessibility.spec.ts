@@ -70,5 +70,10 @@ test.describe('new WG form accessibility fixture', () => {
 		await page.getByRole('button', { name: 'WG-Code prüfen', exact: true }).click();
 		await expect(page.getByLabel('Dein Anzeigename')).toBeFocused();
 		await expect(page.getByLabel('Dein Anzeigename')).toHaveAttribute('required', '');
+
+		// The real WG name can't be fetched before joining (privacy-by-design), so the
+		// confirmation copy must reference the actual code rather than a fabricated name.
+		await expect(page.getByText('Du trittst', { exact: false })).toContainText('MTE8PZAT');
+		await expect(page.getByText('WG-Einladung', { exact: false })).toHaveCount(0);
 	});
 });

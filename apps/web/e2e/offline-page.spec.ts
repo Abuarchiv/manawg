@@ -43,6 +43,28 @@ async function fulfillMembership(route: Route, status = 200): Promise<void> {
 test.describe('Offline fallback page', () => {
 	test.setTimeout(300_000);
 
+	test('shows an honest "checking" state instead of a false reconnected message', async ({
+		page,
+	}) => {
+		let resolveRoute: (() => void) | undefined;
+		const gate = new Promise<void>((resolve) => {
+			resolveRoute = resolve;
+		});
+		await page.route('**/api/wg/mine', async (route) => {
+			await gate;
+			await fulfillMembership(route);
+		});
+		await seedOfflineState(page);
+		const navigation = navigateToFeature(page, '/offline');
+
+		await expect(page.getByRole('heading', { name: 'Verbindung wird geprüft …' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Du bist wieder verbunden.' })).toHaveCount(0);
+
+		resolveRoute?.();
+		await navigation;
+		await expect(page.getByRole('heading', { name: 'Du bist wieder verbunden.' })).toBeVisible();
+	});
+
 	test('keeps queued actions visible when the browser is offline', async ({ page, context }) => {
 		await page.route('**/api/wg/mine', (route) => fulfillMembership(route));
 		await seedOfflineState(page);
