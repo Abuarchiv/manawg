@@ -728,20 +728,29 @@ export default function EinkaufPage() {
 				{suggestionGroups.map((group) => (
 					<div key={group.label} className="flex min-w-0 flex-col gap-1.5">
 						<p className="text-sm font-medium text-muted-foreground">{group.label}</p>
-						<ul
-							aria-label={group.label}
-							className="-mx-4 -my-1.5 flex gap-2 overflow-x-auto px-4 py-1.5 [scrollbar-width:none]"
-						>
+						<ul aria-label={group.label} className="-mx-4 -my-1.5 flex flex-wrap gap-2 px-4 py-1.5">
 							{group.names.map((name) => (
-								<li key={name} className="shrink-0">
+								<li key={name} className="min-w-0 max-w-full">
 									<Button
 										type="button"
 										variant="outline"
 										size="sm"
 										disabled={adding}
 										onClick={() => void add(name)}
+										onFocus={(event) => {
+											const action = document.querySelector<HTMLElement>(
+												'[data-page-primary-action]',
+											);
+											if (
+												action &&
+												event.currentTarget.getBoundingClientRect().bottom >
+													action.getBoundingClientRect().top
+											) {
+												event.currentTarget.scrollIntoView({ block: 'start', inline: 'nearest' });
+											}
+										}}
 										aria-label={`${name} hinzufügen`}
-										className="max-w-56"
+										className="min-w-0 max-w-full"
 									>
 										<Plus data-icon="inline-start" aria-hidden />
 										<span className="truncate">{name}</span>

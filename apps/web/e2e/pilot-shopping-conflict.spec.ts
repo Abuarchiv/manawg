@@ -242,3 +242,111 @@ test('real PostgreSQL partial unique index rejects open duplicates and allows re
 		await pool.end();
 	}
 });
+
+test('wraps quick shopping suggestions at phone widths and large text', async ({ page }) => {
+	test.skip(
+		process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
+		'requires the local fixture server',
+	);
+
+	const { shareCode, memberId, memberName } = FIXTURE_WG;
+	await setupMember(page);
+	await page.route(`**/api/wg/${shareCode}/members*`, (route) =>
+		route.fulfill({
+			json: {
+				members: [{ id: memberId, name: memberName, active: true }],
+				viewerIsAdmin: false,
+			},
+		}),
+	);
+	await page.route(`**/api/wg/${shareCode}/shopping*`, (route) =>
+		route.fulfill({ json: { items: [] } }),
+	);
+	await page.route(`**/api/wg/${shareCode}/inventory*`, (route) =>
+		route.fulfill({ json: { items: [] } }),
+	);
+	await navigateToFeature(page, `/wg/${shareCode}/einkauf`);
+	await dismissOnboarding(page);
+
+	const suggestions = page.locator('ul[aria-label="Vorschläge"]');
+	await expect(suggestions).toBeVisible();
+	expect(await suggestions.locator('button').count()).toBeGreaterThan(1);
+	const assertSuggestionsFit = async (
+		width: number,
+		colorScheme: 'light' | 'dark',
+		fontSize: number,
+	) => {
+		await page.setViewportSize({ width, height: 812 });
+		await page.emulateMedia({ colorScheme });
+		await expect
+			.poll(() => page.locator('html').evaluate((html) => html.classList.contains('dark')))
+			.toBe(colorScheme === 'dark');
+		const state = await page.evaluate(() => ({
+			viewport: document.documentElement.clientWidth,
+			scroll: document.documentElement.scrollWidth,
+			fontSize: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+		}));
+		expect(state.scroll).toBeLessThanOrEqual(state.viewport);
+		expect(state.fontSize).toBe(fontSize);
+		const geometry = await suggestions.evaluate((list) => {
+			const bounds = list.getBoundingClientRect();
+			return {
+				clientWidth: list.clientWidth,
+				scrollWidth: list.scrollWidth,
+				left: bounds.left,
+				right: bounds.right,
+				items: Array.from(list.children).map((item) => {
+					const rect = item.getBoundingClientRect();
+					return { left: rect.left, right: rect.right };
+				}),
+			};
+		});
+		expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth);
+		expect(
+			geometry.items.every(
+				(item) => item.left >= geometry.left - 1 && item.right <= geometry.right + 1,
+			),
+		).toBe(true);
+	};
+	for (const width of [320, 360]) {
+		await page.setViewportSize({ width, height: 812 });
+		const baseFontSize = await page.evaluate(() =>
+			Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+		);
+		for (const colorScheme of ['light', 'dark'] as const) {
+			await assertSuggestionsFit(width, colorScheme, baseFontSize);
+		}
+	}
+
+	await page.route('**/__e2e-font-scale-200.css', (route) =>
+		route.fulfill({ contentType: 'text/css', body: ':root { font-size: 32px !important; }' }),
+	);
+	await page.addStyleTag({
+		url: new URL('/__e2e-font-scale-200.css', page.url()).toString(),
+	});
+	await page.setViewportSize({ width: 320, height: 812 });
+	await page.emulateMedia({ colorScheme: 'light' });
+	const suggestionButtons = suggestions.locator('button');
+	await suggestionButtons.first().focus();
+	for (let index = 0; index < (await suggestionButtons.count()); index += 1) {
+		if (index > 0) await page.keyboard.press('Tab');
+		const button = suggestionButtons.nth(index);
+		await expect(button).toBeFocused();
+		await expect
+			.poll(
+				() =>
+					button.evaluate((element) => {
+						const action = document.querySelector('[data-page-primary-action]');
+						if (!action) throw new Error('Expected the fixed shopping action');
+						return element.getBoundingClientRect().bottom - action.getBoundingClientRect().top;
+					}),
+				{ timeout: 3_000 },
+			)
+			.toBeLessThan(0);
+	}
+	for (const width of [320, 360]) {
+		for (const colorScheme of ['light', 'dark'] as const) {
+			await assertSuggestionsFit(width, colorScheme, 32);
+		}
+	}
+});
