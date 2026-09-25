@@ -104,7 +104,12 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 				aria-busy={pending}
 				onPointerDown={(event) => {
 					// Maus bleibt beim Klicken; Wischen ist eine Touch-Geste.
-					if (event.pointerType !== 'mouse') swipeStartX.current = event.clientX;
+					if (event.pointerType !== 'mouse') {
+						swipeStartX.current = event.clientX;
+						// Ohne Capture würden pointermove/-up bei schnellem Wischen auf ein
+						// Nachbarelement umgeleitet und die Zeile bliebe optisch hängen.
+						event.currentTarget.setPointerCapture(event.pointerId);
+					}
 				}}
 				onPointerMove={(event) => {
 					if (swipeStartX.current === null) return;
