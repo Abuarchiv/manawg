@@ -345,10 +345,10 @@ function DebtRow({
 					<AlertDialogHeader>
 						<AlertDialogTitle>Bereits erfolgte Zahlung bestätigen</AlertDialogTitle>
 						<AlertDialogDescription>
-							Bestätige nur, wenn {debt.fromName} {debt.toName}{' '}
-							{formatEuroCents(preview?.settleableCents ?? 0, debt.currency)} bereits bezahlt hat.
-							Nur die unten aufgeführten Anteile werden als beglichen vermerkt. Es wird kein Geld
-							überwiesen.
+							Bestätige nur, wenn {debt.fromName} den Betrag von{' '}
+							{formatEuroCents(preview?.settleableCents ?? 0, debt.currency)} bereits an{' '}
+							{debt.toName} gezahlt hat. Nur die unten aufgeführten Anteile werden als beglichen
+							vermerkt. Es wird kein Geld überwiesen.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<ItemGroup aria-label="Unterstützte Ausgabenanteile">
