@@ -4,6 +4,10 @@ This is a dated evidence log, not a standing release approval. Older branch name
 
 Production migration requires a successful `push` run of `.github/workflows/ci.yml` for the exact current `main` candidate SHA, with both `validate` and `e2e-fixtures` successful. A read-only Actions API preflight verifies this before the workflow enters the protected Production environment; the separate exact-SHA Preview evidence and explicit confirmation remain required.
 
+## Production release — 2026-09-25
+
+`https://app.manawg.com` serves `main` candidate `8111767`. The `deployment_status` run `36100090000` for that exact SHA succeeded, including `db-supabase-preview` and `e2e-preview`. The Production migration ledger has 16 entries (through `0015`), matching the journal on `main`; these migrations were applied manually, outside `migrate-production.yml`, because the Production environment has no `DATABASE_MIGRATION_URL` secret. `/api/health` returned OK after the deploy. The Supabase organization reports the Free tier. Provider backup/PITR settings, completeness of the reported local export, Resend SMTP configuration, and end-to-end auth mail delivery have not yet been independently verified. The earlier BLOCKED entries below are historical.
+
 ## Read-only evidence update — 2026-09-24
 
 For the then-current main candidate `7192dd443efee1b06d5b37942d89800b26d14bd9`, GitHub Actions push-CI run `36021471267` succeeded. `validate`, `e2e-fixtures`, and `db-supabase-preview` succeeded, including both `Apply pending Preview migrations` and `Verify Preview schema and migration ledger`; `e2e-preview` was skipped. This run does not provide hosted browser E2E proof for that candidate. The SQLSTATE `42501` report below is historical and is not evidence of a current Preview DDL blocker; no new `deployment_status` check is claimed here. No Production migration, deployment, or data change was performed.
