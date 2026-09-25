@@ -58,7 +58,11 @@ export function PinnwandFilterBar({ filter, onFilterChange }: PinnwandFilterBarP
 					}}
 				>
 					{STATUS_FILTERS.map((option) => (
-						<ToggleGroupItem key={option.value} value={option.value} className="min-h-11">
+						<ToggleGroupItem
+							key={option.value}
+							value={option.value}
+							className="min-h-11 whitespace-nowrap"
+						>
 							{option.label}
 						</ToggleGroupItem>
 					))}

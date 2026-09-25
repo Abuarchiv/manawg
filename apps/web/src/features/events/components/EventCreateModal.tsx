@@ -80,12 +80,14 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 		if (!open || draftInitializedRef.current) return;
 		draftInitializedRef.current = true;
 		setError(null);
-		// Start at the next full hour; a picked day keeps that time of day.
+		// Start at the next full hour; a picked day keeps that time of day
+		// (including a day picked in the past — the calendar lets you select
+		// one, so silently discarding it back to "today" would be confusing).
 		const nextHour = new Date();
 		nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
 		const seeded = new Date(defaultDate ?? nextHour);
 		seeded.setHours(nextHour.getHours(), 0, 0, 0);
-		setStartsAt(buildIsoLocal(seeded < nextHour ? nextHour : seeded));
+		setStartsAt(buildIsoLocal(seeded));
 		setEndsAt('');
 	}, [open, defaultDate]);
 
