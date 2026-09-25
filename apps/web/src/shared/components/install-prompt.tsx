@@ -94,8 +94,8 @@ export function InstallPrompt() {
 	return (
 		<div
 			className="fixed inset-x-0 z-40 mx-auto w-[calc(100%-1rem)] max-w-[calc(var(--app-frame-width)-1rem)] animate-in fade-in slide-in-from-bottom-2 duration-[220ms]"
-			// Above the fixed BottomNav (NavItem min-h 48px + safe-area).
-			style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 4.5rem)' }}
+			// Use the measured BottomNav height so wrapped labels and zoomed text leave room.
+			style={{ bottom: 'calc(var(--app-nav-height, 5rem) + 0.5rem)' }}
 		>
 			<section aria-live="polite" aria-label="App installieren">
 				<Card

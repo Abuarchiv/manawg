@@ -1,3 +1,4 @@
+import { writeFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { isIosLikeDevice } from '../src/shared/lib/pwa-install';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
@@ -82,48 +83,125 @@ test('WG install prompt stays above and does not block the bottom navigation', a
 	const measurements: Array<{
 		width: number;
 		theme: 'light' | 'dark';
+		textScale: '100%' | '200%';
 		cardBottom: number;
 		navTop: number;
 		gap: number;
+		sharedNavHeight: number;
 		navItemHeights: number[];
 	}> = [];
-	for (const theme of ['light', 'dark'] as const) {
-		for (const width of [320, 390]) {
-			await page.setViewportSize({ width, height: 844 });
-			await page.emulateMedia({ colorScheme: theme });
-			const [cardBox, navBox, navItemHeights] = await Promise.all([
-				card.boundingBox(),
-				bottomNav.boundingBox(),
-				bottomNav
-					.getByRole('link')
-					.evaluateAll((links) => links.map((link) => link.getBoundingClientRect().height)),
-			]);
-			expect(cardBox).not.toBeNull();
-			expect(navBox).not.toBeNull();
-			if (!cardBox || !navBox)
-				throw new Error('Prompt card or bottom navigation is not measurable');
-			measurements.push({
-				width,
-				theme,
-				cardBottom: cardBox.y + cardBox.height,
-				navTop: navBox.y,
-				gap: navBox.y - (cardBox.y + cardBox.height),
-				navItemHeights,
-			});
-			expect(navItemHeights.length).toBe(4);
-			expect(navItemHeights.every((height) => height >= 44)).toBe(true);
-			for (const label of ['Start', 'Haushalt', 'Finanzen', 'Austausch']) {
-				await bottomNav.getByRole('link', { name: label }).click({ trial: true });
+	for (const textScale of ['100%', '200%'] as const) {
+		await page.evaluate((fontSize) => {
+			document.documentElement.style.fontSize = fontSize;
+		}, textScale);
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const nav = document.querySelector('nav[aria-label="WG Hauptnavigation"]');
+					const sharedHeight = Number.parseFloat(
+						getComputedStyle(document.documentElement).getPropertyValue('--app-nav-height'),
+					);
+					return nav !== null && Math.abs(nav.getBoundingClientRect().height - sharedHeight) < 0.1;
+				}),
+			)
+			.toBe(true);
+		for (const theme of ['light', 'dark'] as const) {
+			for (const width of [320, 390]) {
+				await page.setViewportSize({ width, height: 844 });
+				await page.emulateMedia({ colorScheme: theme });
+				await expect
+					.poll(() =>
+						page.evaluate(() => {
+							const nav = document.querySelector('nav[aria-label="WG Hauptnavigation"]');
+							const sharedHeight = Number.parseFloat(
+								getComputedStyle(document.documentElement).getPropertyValue('--app-nav-height'),
+							);
+							return (
+								nav !== null && Math.abs(nav.getBoundingClientRect().height - sharedHeight) < 0.1
+							);
+						}),
+					)
+					.toBe(true);
+				const [cardBox, navBox, navItemHeights, sharedNavHeight] = await Promise.all([
+					card.boundingBox(),
+					bottomNav.boundingBox(),
+					bottomNav
+						.getByRole('link')
+						.evaluateAll((links) => links.map((link) => link.getBoundingClientRect().height)),
+					page.evaluate(() =>
+						Number.parseFloat(
+							getComputedStyle(document.documentElement).getPropertyValue('--app-nav-height'),
+						),
+					),
+				]);
+				expect(cardBox).not.toBeNull();
+				expect(navBox).not.toBeNull();
+				if (!cardBox || !navBox)
+					throw new Error('Prompt card or bottom navigation is not measurable');
+				measurements.push({
+					width,
+					theme,
+					textScale,
+					cardBottom: cardBox.y + cardBox.height,
+					navTop: navBox.y,
+					gap: navBox.y - (cardBox.y + cardBox.height),
+					sharedNavHeight,
+					navItemHeights,
+				});
+				expect(sharedNavHeight).toBeCloseTo(navBox.height, 2);
+				expect(navItemHeights.length).toBe(4);
+				expect(navItemHeights.every((height) => height >= 44)).toBe(true);
+				for (const label of ['Start', 'Haushalt', 'Finanzen', 'Austausch']) {
+					await bottomNav.getByRole('link', { name: label }).click({ trial: true });
+				}
+				await page.screenshot({
+					path: testInfo.outputPath(
+						`wg-install-${width}-${theme}-text-${textScale === '200%' ? '200' : '100'}.png`,
+					),
+					animations: 'disabled',
+				});
+				if (textScale === '200%') {
+					const dismissButton = prompt.getByRole('button', {
+						name: 'Installationshinweis ausblenden',
+					});
+					const installButton = prompt.getByRole('button', {
+						name: 'So installierst du ManaWG',
+					});
+					await dismissButton.focus();
+					await expect(dismissButton).toBeFocused();
+					await page.keyboard.press('Tab');
+					await expect(installButton).toBeFocused();
+					await expect
+						.poll(() => installButton.evaluate((element) => element.matches(':focus-visible')))
+						.toBe(true);
+					const [installBox, scrolledCardBox] = await Promise.all([
+						installButton.boundingBox(),
+						card.boundingBox(),
+					]);
+					expect(installBox).not.toBeNull();
+					expect(scrolledCardBox).not.toBeNull();
+					if (!installBox || !scrolledCardBox)
+						throw new Error('Install action or scrollable card is not measurable');
+					expect(installBox.y).toBeGreaterThanOrEqual(scrolledCardBox.y);
+					expect(installBox.y + installBox.height).toBeLessThanOrEqual(
+						scrolledCardBox.y + scrolledCardBox.height,
+					);
+					await installButton.click({ trial: true });
+					await page.screenshot({
+						path: testInfo.outputPath(`wg-install-${width}-${theme}-text-200-action.png`),
+						animations: 'disabled',
+					});
+					await dismissButton.focus();
+					await expect(dismissButton).toBeFocused();
+					await expect(dismissButton).toBeVisible();
+					await dismissButton.click({ trial: true });
+				}
 			}
-			await page.screenshot({
-				path: testInfo.outputPath(`wg-install-${width}-${theme}.png`),
-				animations: 'disabled',
-			});
 		}
 	}
-	await testInfo.attach('pwa-bottom-nav-bounds.json', {
-		body: JSON.stringify(measurements, null, 2),
-		contentType: 'application/json',
-	});
+	await writeFile(
+		testInfo.outputPath('pwa-bottom-nav-bounds.json'),
+		JSON.stringify(measurements, null, 2),
+	);
 	expect(measurements.filter((measurement) => measurement.gap < 0)).toEqual([]);
 });
