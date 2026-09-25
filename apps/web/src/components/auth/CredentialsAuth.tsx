@@ -224,8 +224,8 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 					<TabsTrigger value="email" disabled={busy !== null} className="min-h-11">
 						E-Mail
 					</TabsTrigger>
-					<TabsTrigger value="phone" disabled={busy !== null} className="min-h-11">
-						Telefon / SMS
+					<TabsTrigger value="phone" disabled={busy !== null} className="min-h-11 px-0">
+						<span className="whitespace-nowrap">Telefon</span> / SMS
 					</TabsTrigger>
 				</TabsList>
 			)}
