@@ -259,9 +259,11 @@ test('wraps quick shopping suggestions at phone widths and large text', async ({
 			},
 		}),
 	);
-	await page.route(`**/api/wg/${shareCode}/shopping*`, (route) =>
-		route.fulfill({ json: { items: [] } }),
-	);
+	let shoppingPostCount = 0;
+	await page.route(`**/api/wg/${shareCode}/shopping*`, (route) => {
+		if (route.request().method() === 'POST') shoppingPostCount += 1;
+		return route.fulfill({ json: { items: [] } });
+	});
 	await page.route(`**/api/wg/${shareCode}/inventory*`, (route) =>
 		route.fulfill({ json: { items: [] } }),
 	);
@@ -327,6 +329,32 @@ test('wraps quick shopping suggestions at phone widths and large text', async ({
 	await page.setViewportSize({ width: 320, height: 812 });
 	await page.emulateMedia({ colorScheme: 'light' });
 	const suggestionButtons = suggestions.locator('button');
+	const pointerTarget = suggestionButtons.nth(1);
+	const pointerPoint = await pointerTarget.evaluate((button) => {
+		const action = document.querySelector('[data-page-primary-action]');
+		if (!action) throw new Error('Expected the fixed shopping action');
+		const buttonRect = button.getBoundingClientRect();
+		const actionRect = action.getBoundingClientRect();
+		return {
+			x: buttonRect.left + buttonRect.width / 2,
+			y: Math.min(buttonRect.bottom, actionRect.top) - 2,
+			buttonTop: buttonRect.top,
+			buttonBottom: buttonRect.bottom,
+			actionTop: actionRect.top,
+		};
+	});
+	expect(pointerPoint.buttonBottom).toBeGreaterThan(pointerPoint.actionTop);
+	const pointerHitsSuggestion = await pointerTarget.evaluate((button, point) => {
+		const hit = document.elementFromPoint(point.x, point.y);
+		return Boolean(hit && button.contains(hit));
+	}, pointerPoint);
+	expect(pointerHitsSuggestion).toBe(true);
+	await page.mouse.click(pointerPoint.x, pointerPoint.y);
+	await expect.poll(() => shoppingPostCount).toBe(1);
+	await expect
+		.poll(() => pointerTarget.evaluate((button) => button.getBoundingClientRect().top))
+		.toBe(pointerPoint.buttonTop);
+
 	await suggestionButtons.first().focus();
 	for (let index = 0; index < (await suggestionButtons.count()); index += 1) {
 		if (index > 0) await page.keyboard.press('Tab');

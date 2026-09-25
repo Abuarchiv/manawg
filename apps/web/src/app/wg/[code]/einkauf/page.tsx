@@ -738,6 +738,7 @@ export default function EinkaufPage() {
 										disabled={adding}
 										onClick={() => void add(name)}
 										onFocus={(event) => {
+											if (!event.currentTarget.matches(':focus-visible')) return;
 											const action = document.querySelector<HTMLElement>(
 												'[data-page-primary-action]',
 											);
