@@ -358,7 +358,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 								</div>
 							</div>
 							{rotateConfirm ? (
-								<div className="flex shrink-0 items-center gap-2">
+								<div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
 									<Button
 										type="button"
 										variant="ghost"
