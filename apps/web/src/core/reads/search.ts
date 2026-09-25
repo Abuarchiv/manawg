@@ -273,7 +273,8 @@ export function searchWgItems(rawQuery: string, input: SearchInput): WgSearchRes
 		});
 	}
 
-	return results.slice(0, 12);
+	// The API caps each source list; keep its matches intact for client-side filters.
+	return results;
 }
 
 function isPast(iso: string, now = Date.now()): boolean {
