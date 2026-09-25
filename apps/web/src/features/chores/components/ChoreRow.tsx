@@ -181,6 +181,7 @@ export const ChoreRow = memo(function ChoreRow({
 						<div className="flex flex-col gap-3 overflow-y-auto overscroll-contain p-4">
 							<Button
 								variant="outline"
+								className="min-h-11 shrink-0"
 								disabled={busy}
 								onClick={() => {
 									setActionsOpen(false);
@@ -192,6 +193,7 @@ export const ChoreRow = memo(function ChoreRow({
 							</Button>
 							<Button
 								variant="outline"
+								className="min-h-11 shrink-0"
 								disabled={busy}
 								aria-label={`Tausch anfragen: ${chore.title}`}
 								onClick={() => {
@@ -205,7 +207,7 @@ export const ChoreRow = memo(function ChoreRow({
 							{isAdmin && (
 								<>
 									{removeConfirm.confirmId === chore.id && (
-										<Alert>
+										<Alert className="shrink-0">
 											<AlertDescription>
 												Diese Aufgabe endgültig entfernen? Das lässt sich nicht rückgängig machen.
 											</AlertDescription>
@@ -213,6 +215,7 @@ export const ChoreRow = memo(function ChoreRow({
 									)}
 									<Button
 										variant="destructive"
+										className="min-h-11 shrink-0"
 										disabled={busy}
 										aria-label={`${removeConfirm.confirmId === chore.id ? 'Aufgabe entfernen bestätigen' : 'Aufgabe entfernen'}: ${chore.title}`}
 										onClick={() => {

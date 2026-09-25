@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { type Locator, expect, test } from '@playwright/test';
 import { chooseNextAvailableMember } from '../src/features/chores/chore-fairness';
 import { MEMBER_TOKEN_HEADER } from '../src/shared/lib/member-header';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
@@ -79,6 +79,141 @@ async function openPutzen(
 	await expect(shopping).toBeVisible();
 	await expect(shopping).toHaveText('Einkäufe99+');
 }
+
+async function expectNoOverflow(container: Locator) {
+	const hasOverflow = await container.evaluate(
+		(element) =>
+			element.scrollHeight > element.clientHeight + 1 ||
+			element.scrollWidth > element.clientWidth + 1,
+	);
+	expect(hasOverflow).toBe(false);
+}
+
+test('keeps chore action buttons readable and reachable at phone widths and enlarged text', async ({
+	page,
+}) => {
+	test.setTimeout(60_000);
+	const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+	const title = 'Spülmaschinenreinigung mit Entkalkung und gründlicher Küchenhygiene';
+	const rows = [{ ...chore('actions-zoom', viewer.id), title }];
+
+	await openPutzen(page, [viewer], rows, []);
+
+	const row = page.locator('#chore-actions-zoom');
+	const opener = row.getByRole('button', { name: `Aufgabenaktionen: ${title}` });
+	const takeOver = page.getByRole('button', { name: 'Ich übernehme' });
+	const swap = page.getByRole('button', { name: `Tausch anfragen: ${title}` });
+	const close = page.getByRole('button', { name: 'Schließen' });
+
+	for (const theme of ['light', 'dark'] as const) {
+		for (const width of [320, 360]) {
+			for (const rootFontSize of [16, 32]) {
+				await page.setViewportSize({ width, height: 800 });
+				await page.emulateMedia({ colorScheme: theme });
+				await page.evaluate((size) => {
+					document.documentElement.style.fontSize = `${size}px`;
+				}, rootFontSize);
+
+				await opener.click();
+				await expect(takeOver).toBeVisible();
+				await expect(swap).toBeVisible();
+
+				const takeOverBox = await takeOver.boundingBox();
+				const swapBox = await swap.boundingBox();
+				expect(takeOverBox).not.toBeNull();
+				expect(swapBox).not.toBeNull();
+				if (!takeOverBox || !swapBox) throw new Error('Chore action button is not rendered');
+				expect(takeOverBox.height).toBeGreaterThanOrEqual(44);
+				expect(swapBox.height).toBeGreaterThanOrEqual(44);
+				expect(takeOverBox.y + takeOverBox.height).toBeLessThanOrEqual(swapBox.y + 1);
+
+				for (const button of [takeOver, swap]) {
+					await expectNoOverflow(button);
+				}
+
+				await page.keyboard.press('Tab');
+				await expect(takeOver).toBeFocused();
+				await page.keyboard.press('Tab');
+				await expect(swap).toBeFocused();
+				if (width === 320 && rootFontSize === 32) {
+					const scrollState = await swap.evaluate((button) => {
+						const element = button
+							.closest('[data-slot="drawer-content"]')
+							?.querySelector('div.overflow-y-auto');
+						if (!(element instanceof HTMLElement)) return null;
+						const area = element.getBoundingClientRect();
+						const visibleTop = area.top + element.clientTop;
+						const visibleBottom = visibleTop + element.clientHeight;
+						const buttonBounds = button.getBoundingClientRect();
+						return {
+							top: element.scrollTop,
+							clientHeight: element.clientHeight,
+							scrollHeight: element.scrollHeight,
+							visibleHeight: Math.max(
+								0,
+								Math.min(buttonBounds.bottom, visibleBottom) -
+									Math.max(buttonBounds.top, visibleTop),
+							),
+						};
+					});
+					expect(scrollState).not.toBeNull();
+					if (!scrollState) throw new Error('Chore action scroll area is not rendered');
+					expect(scrollState.scrollHeight).toBeGreaterThan(scrollState.clientHeight);
+					expect(scrollState.top).toBeGreaterThan(0);
+					expect(scrollState.visibleHeight).toBeGreaterThanOrEqual(44);
+				}
+				await page.keyboard.press('Tab');
+				await expect(close).toBeFocused();
+				await page.keyboard.press('Escape');
+				await expect(opener).toHaveAttribute('aria-expanded', 'false');
+			}
+		}
+	}
+});
+
+test('keeps the admin remove action and confirmation readable at enlarged text', async ({
+	page,
+}) => {
+	test.setTimeout(60_000);
+	const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+	const title = 'Spülmaschinenreinigung mit Entkalkung und gründlicher Küchenhygiene';
+	const rows = [{ ...chore('actions-admin-zoom', viewer.id), title }];
+
+	await openPutzen(page, [viewer], rows, [], true);
+	await page.setViewportSize({ width: 320, height: 800 });
+	await page.emulateMedia({ colorScheme: 'dark' });
+	await page.evaluate(() => {
+		document.documentElement.style.fontSize = '32px';
+	});
+
+	const row = page.locator('#chore-actions-admin-zoom');
+	await row.getByRole('button', { name: `Aufgabenaktionen: ${title}` }).click();
+
+	const remove = page.getByRole('button', { name: `Aufgabe entfernen: ${title}` });
+	await expect(remove).toBeVisible();
+	const removeBox = await remove.boundingBox();
+	expect(removeBox).not.toBeNull();
+	if (!removeBox) throw new Error('Admin remove action is not rendered');
+	expect(removeBox.height).toBeGreaterThanOrEqual(44);
+	await expectNoOverflow(remove);
+
+	await remove.click();
+	const alert = page.getByRole('alert').filter({ hasText: 'Diese Aufgabe endgültig entfernen?' });
+	await expect(alert).toBeVisible();
+	const confirmation = page.getByRole('button', {
+		name: `Aufgabe entfernen bestätigen: ${title}`,
+	});
+	await expect(confirmation).toBeVisible();
+	const alertBox = await alert.boundingBox();
+	const confirmationBox = await confirmation.boundingBox();
+	expect(alertBox).not.toBeNull();
+	expect(confirmationBox).not.toBeNull();
+	if (!alertBox || !confirmationBox) throw new Error('Admin confirmation is not rendered');
+	expect(alertBox.y + alertBox.height).toBeLessThanOrEqual(confirmationBox.y + 1);
+	expect(confirmationBox.height).toBeGreaterThanOrEqual(44);
+	await expectNoOverflow(alert);
+	await expectNoOverflow(confirmation);
+});
 
 test('hides permanent chore removal from non-admin members', async ({ page }) => {
 	const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
