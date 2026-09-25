@@ -152,7 +152,12 @@ export default function VorraetePage() {
 					shareCode={wg.shareCode}
 					memberId={identity.memberId}
 					memberToken={identity.memberToken}
-					onChanged={() => void load(true)}
+					onChanged={(updated) => {
+						if (updated) {
+							setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+						}
+						void load(true);
+					}}
 					addOpen={addOpen}
 					onAddOpenChange={setAddOpen}
 				/>

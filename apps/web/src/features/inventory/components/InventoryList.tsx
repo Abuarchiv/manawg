@@ -31,7 +31,7 @@ interface InventoryListProps {
 	shareCode: string;
 	memberId: string;
 	memberToken?: string | undefined;
-	onChanged: () => void;
+	onChanged: (item?: InventoryItemDto) => void;
 	addOpen: boolean;
 	onAddOpenChange: (open: boolean) => void;
 }

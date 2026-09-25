@@ -17,7 +17,7 @@ interface InventoryItemRowProps {
 	shareCode: string;
 	memberId: string;
 	memberToken?: string | undefined;
-	onChanged: () => void;
+	onChanged: (item?: InventoryItemDto) => void;
 	onEdit: (item: InventoryItemDto) => void;
 }
 
@@ -89,7 +89,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 					} else if (warningMessage) {
 						setError(warningMessage);
 					}
-					onChanged();
+					onChanged(res.data.item);
 				} else if (res.status === 429) {
 					setError('Zu viele Änderungen in kurzer Zeit. Bitte später erneut versuchen.');
 				} else {
@@ -115,7 +115,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				);
 				if (res.ok) {
 					restockIdempotencyKeyRef.current = null;
-					onChanged();
+					onChanged(res.data.item);
 				} else if (res.status === 429) {
 					setError('Zu viele Änderungen in kurzer Zeit. Bitte später erneut versuchen.');
 				} else {
