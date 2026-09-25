@@ -89,13 +89,16 @@ function SwitchThumb({
 	pressedWidth = 59,
 	pressedAnimation: _pressedAnimation,
 	transition: _transition,
+	children,
 	...props
 }: SwitchThumbProps) {
 	const { isChecked, isPressed } = useSwitch();
+	const left = isPressed ? (isChecked ? 17 : -8) : isChecked ? 27.5 : 2.5;
+	const top = isPressed ? 2.5 : 9.5;
 	// Figma "iOS 26 Toggle (Liquid Glass)", pressed variants; its green is swapped for --primary.
 	const deep = 'color-mix(in oklch, var(--primary), black 55%)';
-	const pressedShadow = [
-		...(isChecked
+	const rimShadow = (
+		isChecked
 			? [
 					`inset 0.5px 0.5px 0 color-mix(in oklch, ${deep} 30%, transparent)`,
 					'inset -1px -1px 0 #fff',
@@ -110,20 +113,34 @@ function SwitchThumb({
 					'inset -2px 4px 4px rgba(0,0,0,0.08)',
 					'inset -3px 2.5px 0.5px var(--input)',
 					'inset -3px -2.5px 0.5px var(--input)',
-				]),
-		'0 0 0 1px rgba(0,0,0,0.05)',
-		'0.5px 0.5px 2px rgba(0,0,0,0.03)',
-		'0 2px 32px color-mix(in oklch, var(--primary) 20%, transparent)',
-	].join(', ');
+				]
+	).join(', ');
 	const thumbStyle = {
 		...props.style,
-		left: isPressed ? (isChecked ? 17 : -8) : isChecked ? 27.5 : 2.5,
-		top: isPressed ? 2.5 : 9.5,
+		left,
+		top,
 		width: isPressed ? pressedWidth : 38,
 		height: isPressed ? 39 : 25,
-		boxShadow: isPressed ? pressedShadow : '0.5px 0.5px 2px rgba(0,0,0,0.03)',
-		// Gedrückt wird der Thumb zu Glas: die Spur scheint scharf durch (Brandbook 11.3).
-		...(isPressed ? { backgroundColor: 'rgba(255,255,255,0.1)' } : {}),
+		overflow: 'hidden',
+		boxShadow: isPressed
+			? [
+					'0 0 0 1px rgba(0,0,0,0.05)',
+					'0.5px 0.5px 2px rgba(0,0,0,0.03)',
+					'0 2px 32px color-mix(in oklch, var(--primary) 20%, transparent)',
+				].join(', ')
+			: '0.5px 0.5px 2px rgba(0,0,0,0.03)',
+		// Gedrückt wird der Thumb zu Glas: deckender Rand, die Spur scheint eingerückt durch (Brandbook 11.3).
+		...(isPressed
+			? {
+					backgroundColor: 'var(--background)',
+					...(isChecked
+						? {
+								backgroundImage:
+									'linear-gradient(180deg, transparent, color-mix(in oklch, var(--primary) 10%, transparent))',
+							}
+						: {}),
+				}
+			: {}),
 	};
 
 	return (
@@ -134,7 +151,35 @@ function SwitchThumb({
 					data-pressed={isPressed ? '' : undefined}
 					{...props}
 					style={thumbStyle}
-				/>
+				>
+					{/* The glass refracts the track 2.5px inward; the offset keeps it fixed while the thumb moves. */}
+					<span
+						aria-hidden="true"
+						style={{
+							position: 'absolute',
+							left: 2.5 - left,
+							top: 9.5 - top,
+							width: 63,
+							height: 25,
+							borderRadius: 12.5,
+							background: 'var(--switch-track)',
+							opacity: isPressed ? 1 : 0,
+							transition: 'inherit',
+						}}
+					/>
+					{/* Rim highlights sit above the refracted track. */}
+					<span
+						aria-hidden="true"
+						style={{
+							position: 'absolute',
+							inset: 0,
+							borderRadius: 'inherit',
+							boxShadow: isPressed ? rimShadow : 'none',
+							transition: 'inherit',
+						}}
+					/>
+					{children}
+				</motion.div>
 			}
 		/>
 	);
