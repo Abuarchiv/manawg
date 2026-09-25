@@ -154,6 +154,21 @@ test('new calendar event starts at the next full hour', async ({ page }) => {
 	await expect(page.getByLabel('Beginn')).toHaveValue('2026-09-22T11:00');
 });
 
+test('picking a past day in the month view keeps that day for the new event', async ({ page }) => {
+	await page.clock.setFixedTime(new Date('2026-09-22T08:20:00Z'));
+	await page.setViewportSize(MOBILE_VIEWPORT);
+	await setupMember(page);
+	await navigateToFeature(page, `/wg/${SHARE_CODE}/kalender`);
+	await dismissOnboarding(page);
+	await page.getByRole('tab', { name: 'Monat', exact: true }).click();
+	await page.getByRole('button', { name: 'Donnerstag, 10. September 2026', exact: false }).click();
+	await page.getByRole('button', { name: 'Termin hinzufügen', exact: true }).click();
+	await expect(page.getByRole('heading', { name: 'Neuer Termin', exact: true })).toBeVisible();
+	// The day picked in the calendar (in the past) must not be silently
+	// discarded back to "today" — only the time-of-day defaults.
+	await expect(page.getByLabel('Beginn')).toHaveValue('2026-09-10T11:00');
+});
+
 test('calendar reports a missing start only on save and leaves the end unchanged', async ({
 	page,
 }) => {
