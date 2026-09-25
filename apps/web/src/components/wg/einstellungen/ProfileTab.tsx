@@ -117,7 +117,7 @@ export function ProfileTab({
 				<div className="p-2">
 					<ToggleGroup
 						variant="segmented"
-						className="w-full"
+						className="w-full flex-wrap"
 						value={[theme]}
 						aria-label="Darstellung"
 						onValueChange={(values) => {
@@ -128,7 +128,7 @@ export function ProfileTab({
 						}}
 					>
 						{THEMES.map(({ value, label, icon: Icon }) => (
-							<ToggleGroupItem key={value} value={value} className="px-1.5">
+							<ToggleGroupItem key={value} value={value} className="min-w-max px-1.5">
 								<Icon aria-hidden />
 								{label}
 							</ToggleGroupItem>
