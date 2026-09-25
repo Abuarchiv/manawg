@@ -270,10 +270,29 @@ export default function AusgabenPage() {
 	const submittingRef = useRef(false);
 	const savingRecurringTemplateRef = useRef(false);
 	const creatingRecurringRef = useRef(false);
+	const expenseCreateRequestRef = useRef<{
+		fingerprint: string;
+		key: string;
+		splits: Array<{ debtorMemberId: string; amountCents: number }>;
+		expectedRecurringNextDueAt?: string;
+	} | null>(null);
+	const recurringExpenseCreateRequestsRef = useRef(
+		new Map<string, { fingerprint: string; key: string; expectedRecurringNextDueAt: string }>(),
+	);
 	const loadRequestIdRef = useRef(0);
 	const initialLoadStartedRef = useRef(false);
 	const mountedRef = useRef(false);
-	const recurringCreateRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const recurringCreateRequestRef = useRef<{
+		fingerprint: string;
+		key: string;
+		nextDueAt: string;
+		splits: Array<{ debtorMemberId: string; amountCents: number }>;
+	} | null>(null);
+
+	function clearPendingCreateRequests(): void {
+		expenseCreateRequestRef.current = null;
+		recurringCreateRequestRef.current = null;
+	}
 
 	function updateExpenses(update: (current: Expense[]) => Expense[]): void {
 		setExpenses(update);
@@ -349,6 +368,10 @@ export default function AusgabenPage() {
 					item.id === advanceRes.data.recurringExpense.id ? advanceRes.data.recurringExpense : item,
 				),
 			);
+			return true;
+		}
+		if (advanceRes.status === 409 && advanceRes.error === 'recurring_expense_already_advanced') {
+			await load(false);
 			return true;
 		}
 		setActionWarning(recurringAdvanceWarningMessage(advanceRes.status, advanceRes.error));
@@ -568,12 +591,47 @@ export default function AusgabenPage() {
 		}
 		if (amountEuros === null) return;
 		const amountCents = Math.round(amountEuros * CENTS_PER_EURO);
-		const splitResult = buildSplits(amountCents);
-		if (!splitResult.ok) {
-			setValidationErrors({ splits: splitInputErrorMessage(splitResult.reason) });
+		const isEdit = editingExpense !== null;
+		const fingerprint = JSON.stringify({
+			recurringSourceId,
+			description: desc,
+			amountCents,
+			paidByMemberId,
+			imageUrl,
+			splitMode,
+			manualSplits:
+				splitMode === 'manual'
+					? Object.entries(manualSplits).sort(([left], [right]) => left.localeCompare(right))
+					: null,
+		});
+		const pendingRequest = expenseCreateRequestRef.current;
+		const reusePendingRequest = !isEdit && pendingRequest?.fingerprint === fingerprint;
+		const recurringTemplateForCreate =
+			!isEdit && recurringSourceId
+				? recurringExpenses.find((item) => item.id === recurringSourceId)
+				: null;
+		const expectedRecurringNextDueAt = recurringSourceId
+			? reusePendingRequest && pendingRequest?.expectedRecurringNextDueAt
+				? pendingRequest.expectedRecurringNextDueAt
+				: recurringTemplateForCreate?.nextDueAt
+			: undefined;
+		if (!isEdit && recurringSourceId && !expectedRecurringNextDueAt) {
+			setActionError(
+				'Fixkosten-Vorlage ist nicht verfügbar. Aktualisiere die Seite und versuche es erneut.',
+			);
 			return;
 		}
-		const splits = splitResult.splits;
+		let splits: Array<{ debtorMemberId: string; amountCents: number }>;
+		if (reusePendingRequest && pendingRequest) {
+			splits = pendingRequest.splits;
+		} else {
+			const splitResult = buildSplits(amountCents);
+			if (!splitResult.ok) {
+				setValidationErrors({ splits: splitInputErrorMessage(splitResult.reason) });
+				return;
+			}
+			splits = splitResult.splits;
+		}
 
 		if (submittingRef.current) return;
 		submittingRef.current = true;
@@ -583,12 +641,37 @@ export default function AusgabenPage() {
 		};
 		setSubmitting(true);
 
-		const isEdit = editingExpense !== null;
-		const idempotencyKey = isEdit ? null : createOfflineIdempotencyKey();
+		const requestBody = {
+			paidByMemberId,
+			amountCents,
+			description: desc,
+			imageUrl,
+			splits,
+			expectedUpdatedAt: editingExpense?.updatedAt,
+			...(recurringSourceId && expectedRecurringNextDueAt
+				? {
+						recurringExpenseId: recurringSourceId,
+						expectedRecurringNextDueAt,
+					}
+				: {}),
+		};
+		const idempotencyKey = isEdit
+			? null
+			: reusePendingRequest && pendingRequest
+				? pendingRequest.key
+				: createOfflineIdempotencyKey();
 		if (!isEdit && !idempotencyKey) {
 			setActionError('Ausgabe konnte nicht sicher gesendet werden. Versuche es erneut.');
 			finishSubmitting();
 			return;
+		}
+		if (!isEdit && idempotencyKey) {
+			expenseCreateRequestRef.current = {
+				fingerprint,
+				key: idempotencyKey,
+				splits,
+				...(expectedRecurringNextDueAt ? { expectedRecurringNextDueAt } : {}),
+			};
 		}
 		const url = isEdit
 			? `/api/wg/${encodedShareCode}/expenses/${encodeURIComponent(editingExpense.id)}`
@@ -626,21 +709,11 @@ export default function AusgabenPage() {
 			memberId: identity.memberId,
 			memberToken: identity.memberToken,
 			...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
-			body: JSON.stringify({
-				paidByMemberId,
-				amountCents,
-				description: desc,
-				imageUrl,
-				splits,
-				expectedUpdatedAt: editingExpense?.updatedAt,
-			}),
+			body: JSON.stringify(requestBody),
 		});
 
 		if (!res.ok) {
 			if (res.status === 0) {
-				const recurringTemplateForQueuedExpense = recurringSourceId
-					? recurringExpenses.find((item) => item.id === recurringSourceId)
-					: null;
 				const queuedAction = isEdit
 					? createQueuedExpenseUpdate({
 							expenseId: editingExpense.id,
@@ -664,10 +737,10 @@ export default function AusgabenPage() {
 							paidByMemberId,
 							splits,
 							imageUrl,
-							...(recurringTemplateForQueuedExpense
+							...(recurringSourceId && expectedRecurringNextDueAt
 								? {
-										recurringExpenseId: recurringTemplateForQueuedExpense.id,
-										expectedRecurringNextDueAt: recurringTemplateForQueuedExpense.nextDueAt,
+										recurringExpenseId: recurringSourceId,
+										expectedRecurringNextDueAt,
 									}
 								: {}),
 						});
@@ -680,6 +753,7 @@ export default function AusgabenPage() {
 					toast.error('Offline-Speicher ist blockiert. Die Ausgabe wurde zurückgesetzt.');
 					return;
 				}
+				if (!isEdit) expenseCreateRequestRef.current = null;
 				refreshCount();
 				if (!clearEditedQueueItem(['expense.create', 'expense.update'])) {
 					endPending(optimisticId);
@@ -697,6 +771,9 @@ export default function AusgabenPage() {
 					'Offline gespeichert. Wird synchronisiert, sobald ihr wieder online seid.',
 				);
 				return;
+			}
+			if (!isEdit && res.status < 500 && res.status !== 429) {
+				expenseCreateRequestRef.current = null;
 			}
 			if (isEdit && res.status === 404 && res.error === 'expense_not_found') {
 				setFormError(
@@ -723,6 +800,7 @@ export default function AusgabenPage() {
 			return;
 		}
 
+		if (!isEdit) expenseCreateRequestRef.current = null;
 		const savedExpense = 'expense' in res.data ? res.data.expense : res.data;
 		const pushWarning = 'expense' in res.data ? expensePushWarningMessage(res.data.warning) : null;
 		updateExpenses((current) =>
@@ -756,7 +834,10 @@ export default function AusgabenPage() {
 			const recurringTemplateForAdvance = recurringExpenses.find(
 				(item) => item.id === recurringSourceId,
 			);
-			await advanceRecurringTemplate(recurringSourceId, recurringTemplateForAdvance?.nextDueAt);
+			await advanceRecurringTemplate(
+				recurringSourceId,
+				expectedRecurringNextDueAt ?? recurringTemplateForAdvance?.nextDueAt,
+			);
 		}
 		setShowForm(false);
 		finishSubmitting();
@@ -780,30 +861,44 @@ export default function AusgabenPage() {
 			return;
 		}
 		const amountCents = Math.round(amountEuros * CENTS_PER_EURO);
-		const splitResult = buildSplits(amountCents);
-		if (!splitResult.ok) {
-			setValidationErrors({ splits: splitInputErrorMessage(splitResult.reason) });
-			return;
-		}
-		const splits = splitResult.splits;
 		const queuedNextDueAt =
 			wasEditingQueuedRecurring && recurringNextDueAt ? parseTimestamp(recurringNextDueAt) : null;
-		const nextDueAt =
-			!editingRecurringExpense && queuedNextDueAt === null
-				? addMonths(new Date(), recurringIntervalMonths)
-				: new Date(editingRecurringExpense?.nextDueAt ?? queuedNextDueAt ?? Date.now());
 		const recurringFingerprint = JSON.stringify({
 			description: desc,
 			amountCents,
 			paidByMemberId,
 			intervalMonths: recurringIntervalMonths,
-			nextDueAt: nextDueAt.toISOString(),
-			splits,
+			queuedNextDueAt: queuedNextDueAt === null ? null : new Date(queuedNextDueAt).toISOString(),
+			splitMode,
+			manualSplits:
+				splitMode === 'manual'
+					? Object.entries(manualSplits).sort(([left], [right]) => left.localeCompare(right))
+					: null,
 		});
 		const pendingRecurringRequest = recurringCreateRequestRef.current;
+		const reuseRecurringRequest =
+			!editingRecurringExpense && pendingRecurringRequest?.fingerprint === recurringFingerprint;
+		let splits: Array<{ debtorMemberId: string; amountCents: number }>;
+		if (reuseRecurringRequest && pendingRecurringRequest) {
+			splits = pendingRecurringRequest.splits;
+		} else {
+			const splitResult = buildSplits(amountCents);
+			if (!splitResult.ok) {
+				setValidationErrors({ splits: splitInputErrorMessage(splitResult.reason) });
+				return;
+			}
+			splits = splitResult.splits;
+		}
+		const nextDueAt = editingRecurringExpense
+			? new Date(editingRecurringExpense.nextDueAt)
+			: queuedNextDueAt !== null
+				? new Date(queuedNextDueAt)
+				: reuseRecurringRequest && pendingRecurringRequest
+					? new Date(pendingRecurringRequest.nextDueAt)
+					: addMonths(new Date(), recurringIntervalMonths);
 		const idempotencyKey = editingRecurringExpense
 			? null
-			: pendingRecurringRequest?.fingerprint === recurringFingerprint
+			: reuseRecurringRequest && pendingRecurringRequest
 				? pendingRecurringRequest.key
 				: createOfflineIdempotencyKey();
 		if (!editingRecurringExpense && !idempotencyKey) {
@@ -816,6 +911,8 @@ export default function AusgabenPage() {
 			recurringCreateRequestRef.current = {
 				fingerprint: recurringFingerprint,
 				key: idempotencyKey,
+				nextDueAt: nextDueAt.toISOString(),
+				splits,
 			};
 		}
 		savingRecurringTemplateRef.current = true;
@@ -864,6 +961,7 @@ export default function AusgabenPage() {
 					finishSavingRecurringTemplate();
 					return;
 				}
+				if (!editingRecurringExpense) recurringCreateRequestRef.current = null;
 				refreshCount();
 				updateRecurringExpenses((current) => [
 					...current,
@@ -919,7 +1017,9 @@ export default function AusgabenPage() {
 				? current.map((item) =>
 						item.id === res.data.recurringExpense.id ? res.data.recurringExpense : item,
 					)
-				: [...current, res.data.recurringExpense],
+				: current.some((item) => item.id === res.data.recurringExpense.id)
+					? current
+					: [...current, res.data.recurringExpense],
 		);
 		setEditingRecurringExpense(null);
 		if (!clearEditedQueueItem(['recurring.create'])) {
@@ -943,6 +1043,22 @@ export default function AusgabenPage() {
 
 	async function createFromRecurringTemplate(template: RecurringExpense): Promise<void> {
 		if (creatingRecurringRef.current) return;
+		const alreadyQueued = readOfflineQueue().some(
+			(action) =>
+				action.shareCode === wg.shareCode &&
+				action.memberId === identity.memberId &&
+				(action.wgId === undefined || action.wgId === wg.id) &&
+				(action.type === 'expense.create' || action.type === 'recurring.advance') &&
+				action.payload.recurringExpenseId === template.id &&
+				action.payload.expectedRecurringNextDueAt === template.nextDueAt,
+		);
+		if (alreadyQueued) {
+			setActionError(null);
+			setActionWarning(
+				'Fixkosten-Ausgabe offline vorgemerkt. Die Vorlage bleibt bis zur Synchronisierung unverändert.',
+			);
+			return;
+		}
 		creatingRecurringRef.current = true;
 		const finishCreatingRecurring = () => {
 			creatingRecurringRef.current = false;
@@ -950,12 +1066,39 @@ export default function AusgabenPage() {
 		};
 		setCreatingRecurringId(template.id);
 		setActionError(null);
-		const idempotencyKey = createOfflineIdempotencyKey();
+		const requestBody = {
+			description: template.description,
+			amountCents: template.amountCents,
+			paidByMemberId: template.paidByMemberId,
+			splits: template.splits,
+		};
+		const fingerprint = JSON.stringify({
+			recurringExpenseId: template.id,
+			...requestBody,
+		});
+		const pendingRequest = recurringExpenseCreateRequestsRef.current.get(template.id);
+		const reusePendingRequest = pendingRequest?.fingerprint === fingerprint;
+		const expectedRecurringNextDueAt =
+			reusePendingRequest && pendingRequest
+				? pendingRequest.expectedRecurringNextDueAt
+				: template.nextDueAt;
+		const idempotencyKey =
+			reusePendingRequest && pendingRequest ? pendingRequest.key : createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
 			setActionError('Fixkosten-Ausgabe konnte nicht sicher gesendet werden. Versuche es erneut.');
 			finishCreatingRecurring();
 			return;
 		}
+		recurringExpenseCreateRequestsRef.current.set(template.id, {
+			fingerprint,
+			key: idempotencyKey,
+			expectedRecurringNextDueAt,
+		});
+		const requestBodyWithRecurringSource = {
+			...requestBody,
+			recurringExpenseId: template.id,
+			expectedRecurringNextDueAt,
+		};
 		const optimisticId = `pending:${idempotencyKey}`;
 		const rollbackOptimisticExpense = () =>
 			updateExpenses((current) => current.filter((expense) => expense.id !== optimisticId));
@@ -976,15 +1119,13 @@ export default function AusgabenPage() {
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
-				body: JSON.stringify({
-					description: template.description,
-					amountCents: template.amountCents,
-					paidByMemberId: template.paidByMemberId,
-					splits: template.splits,
-				}),
+				body: JSON.stringify(requestBodyWithRecurringSource),
 			},
 		);
 		if (!createRes.ok) {
+			if (createRes.status > 0 && createRes.status < 500 && createRes.status !== 429) {
+				recurringExpenseCreateRequestsRef.current.delete(template.id);
+			}
 			if (createRes.status === 0) {
 				const queuedCount = enqueueOfflineAction(
 					createQueuedExpense({
@@ -997,7 +1138,7 @@ export default function AusgabenPage() {
 						paidByMemberId: template.paidByMemberId,
 						splits: template.splits,
 						recurringExpenseId: template.id,
-						expectedRecurringNextDueAt: template.nextDueAt,
+						expectedRecurringNextDueAt,
 					}),
 				);
 				if (queuedCount === 0) {
@@ -1010,6 +1151,7 @@ export default function AusgabenPage() {
 					finishCreatingRecurring();
 					return;
 				}
+				recurringExpenseCreateRequestsRef.current.delete(template.id);
 				refreshCount();
 				setActionWarning(
 					'Fixkosten-Ausgabe offline vorgemerkt. Die Vorlage bleibt bis zur Synchronisierung unverändert.',
@@ -1033,8 +1175,9 @@ export default function AusgabenPage() {
 				: [createRes.data.expense, ...withoutOptimistic];
 		});
 		endPending(optimisticId);
-		const advanced = await advanceRecurringTemplate(template.id, template.nextDueAt);
+		const advanced = await advanceRecurringTemplate(template.id, expectedRecurringNextDueAt);
 		if (advanced) {
+			recurringExpenseCreateRequestsRef.current.delete(template.id);
 			const pushWarning = expensePushWarningMessage(createRes.data.warning);
 			if (pushWarning) setActionWarning(pushWarning);
 			else setActionSuccess('Fixkosten-Ausgabe wurde erstellt.');
@@ -1309,7 +1452,10 @@ export default function AusgabenPage() {
 					}
 					previewSplits={splitPreview?.ok ? splitPreview.splits : null}
 					pendingPrefillDescription={pendingPrefill?.description ?? null}
-					onReplacePrefill={acceptPendingPrefill}
+					onReplacePrefill={() => {
+						clearPendingCreateRequests();
+						acceptPendingPrefill();
+					}}
 					isEditingExpense={editingExpense !== null || invalidEditDraft}
 					editingExpenseId={editingExpense?.id ?? null}
 					notice={actionNotice}
@@ -1351,6 +1497,7 @@ export default function AusgabenPage() {
 					onSaveRecurringTemplate={() => void saveRecurringTemplate()}
 					onCancel={() => setShowForm(false)}
 					onDiscard={() => {
+						clearPendingCreateRequests();
 						resetForm();
 						setShowForm(false);
 						removeDraft(draftKey);
