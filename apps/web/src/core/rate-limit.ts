@@ -73,7 +73,10 @@ function build(limit: number, windowSec: number, prefix: string): Ratelimit | nu
 export const registerLimiter = build(3, 3600, 'reg'); // 3 / hour / IP
 export const wgReadLimiter = build(120, 60, 'wg-read'); // 120 reads / min / IP — WG GET endpoints
 export const wgWriteLimiter = build(30, 60, 'wg-write'); // 30 writes / min / IP — WG mutation endpoints
-export const wgShareCodeLookupLimiter = build(20, 60, 'wg-code-lookup'); // 20 share-code lookups / min / IP — brute-force defense
+// Every full page load of a WG does one lookup, and flatmates share their router's IP,
+// so 20/min locked whole WGs out ("Deine WG konnte nicht geladen werden"). With
+// 32^8 codes, one IP at 120/min still needs ~17,000 years to walk the code space.
+export const wgShareCodeLookupLimiter = build(120, 60, 'wg-code-lookup'); // 120 share-code lookups / min / IP — brute-force defense
 export const notifTestLimiter = build(3, 60, 'notif-test'); // 3 test notifications / min / member — anti-spam
 export const reminderSendLimiter = build(10, 3600, 'reminder-send'); // 10 Mahnungen / hour / member — global anti-spam
 
