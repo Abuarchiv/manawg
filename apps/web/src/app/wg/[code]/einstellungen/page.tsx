@@ -103,7 +103,7 @@ export default function EinstellungenPage() {
 	}, []);
 
 	return (
-		<div className="mx-auto min-w-0 w-full max-w-3xl px-4 pb-[env(safe-area-inset-bottom,0px)]">
+		<div className="mx-auto min-w-0 w-full max-w-3xl px-[16px] pb-[env(safe-area-inset-bottom,0px)]">
 			<div className="min-w-0 py-4">
 				<header className="mb-4 flex items-center gap-2">
 					<Link
@@ -130,7 +130,7 @@ export default function EinstellungenPage() {
 					}}
 				>
 					<TabsList
-						className="sticky z-10 grid h-auto min-w-0 max-w-full w-full grid-cols-4 gap-1 rounded-xl p-1"
+						className="sticky z-10 grid h-auto min-w-0 max-w-full w-full grid-cols-[repeat(auto-fit,minmax(min(100%,4rem),1fr))] gap-1 rounded-xl p-1"
 						style={{ top: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
 					>
 						{SETTINGS_TABS.map((tab) => (
