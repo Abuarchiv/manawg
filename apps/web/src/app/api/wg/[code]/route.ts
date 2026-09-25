@@ -1,18 +1,10 @@
 import { recordAuditEvent } from '@/core/audit';
 import { getAuthenticatedUser } from '@/core/auth/server';
-import {
-	announcements,
-	chores,
-	db,
-	expensePayments,
-	expenses,
-	recurringExpenses,
-	shoppingItems,
-	wgMembers,
-	wgs,
-} from '@/core/db';
+import { db, wgMembers, wgs } from '@/core/db';
+import { lockActiveAccountMember } from '@/core/db/account-deletion';
+import { deleteWgCascade } from '@/core/db/delete-wg';
 import { withTransaction } from '@/core/db/transaction';
-import { apiError, badRequest, notFound, serverError } from '@/core/errors';
+import { apiError, badRequest, forbidden, notFound, serverError } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
 import { deriveMemberToken } from '@/core/guards/member-token';
 import { requireWgAdmin } from '@/core/guards/require-wg-admin';
@@ -134,26 +126,20 @@ export async function PATCH(
 	const codeResult = await readShareCode(ctx);
 	if (!codeResult.ok) return codeResult.response;
 	const { code } = codeResult;
-
 	let raw: unknown;
 	try {
 		raw = await req.json();
 	} catch {
 		return badRequest('invalid_json');
 	}
-
 	const parsed = patchWgSchema.safeParse(raw);
-	if (!parsed.success) {
-		return badRequest('wg_update_invalid');
-	}
-
+	if (!parsed.success) return badRequest('wg_update_invalid');
 	const { name, joiningEnabled, rotateShareCode } = parsed.data;
 
 	try {
 		const admin = await requireWgAdmin(req, code, 'wg-settings');
 		if (!admin.ok) return admin.response;
 		const { wg, member } = admin;
-
 		const updates: {
 			name?: string;
 			joiningEnabled?: boolean;
@@ -169,10 +155,22 @@ export async function PATCH(
 			updates.joiningEnabled = true;
 		}
 
-		const [updated] = await db.update(wgs).set(updates).where(eq(wgs.id, wg.id)).returning();
-		if (!updated) {
-			return notFound('wg_not_found');
-		}
+		const result = await withTransaction(async (tx) => {
+			const actor = await lockActiveAccountMember(tx, wg.id, member.memberId, admin.authUserId);
+			if (!actor || actor.role !== 'admin' || !member.verified) {
+				return { ok: false as const, response: forbidden('not_admin', 'not_admin') };
+			}
+			const [currentWg] = await tx
+				.select({ name: wgs.name, joiningEnabled: wgs.joiningEnabled })
+				.from(wgs)
+				.where(eq(wgs.id, wg.id))
+				.for('update');
+			if (!currentWg) return { ok: false as const, response: notFound('wg_not_found') };
+			const [updated] = await tx.update(wgs).set(updates).where(eq(wgs.id, wg.id)).returning();
+			if (!updated) return { ok: false as const, response: notFound('wg_not_found') };
+			return { ok: true as const, currentWg, updated };
+		});
+		if (!result.ok) return result.response;
 		await recordAuditEvent({
 			wgId: wg.id,
 			memberId: member.memberId,
@@ -185,18 +183,18 @@ export async function PATCH(
 			entityId: wg.id,
 			summary: rotateShareCode
 				? `${member.name} hat den WG-Code rotiert.`
-				: joiningEnabled !== undefined && wg.joiningEnabled !== joiningEnabled
+				: joiningEnabled !== undefined && result.currentWg.joiningEnabled !== joiningEnabled
 					? `${member.name} hat Beitritte ${joiningEnabled ? 'geöffnet' : 'gesperrt'}.`
 					: `${member.name} hat die WG-Einstellungen geändert.`,
 			metadata: {
-				nameBefore: wg.name,
-				nameAfter: updated.name,
-				joiningEnabledBefore: wg.joiningEnabled,
-				joiningEnabledAfter: updated.joiningEnabled,
+				nameBefore: result.currentWg.name,
+				nameAfter: result.updated.name,
+				joiningEnabledBefore: result.currentWg.joiningEnabled,
+				joiningEnabledAfter: result.updated.joiningEnabled,
 				shareCodeRotated: Boolean(rotateShareCode),
 			},
 		});
-		return NextResponse.json({ wg: updated });
+		return NextResponse.json({ wg: result.updated });
 	} catch (err) {
 		logApiError('[api/wg/[code] PATCH] failed', err);
 		return serverError('db_error');
@@ -210,39 +208,19 @@ export async function DELETE(
 	const codeResult = await readShareCode(ctx);
 	if (!codeResult.ok) return codeResult.response;
 	const { code } = codeResult;
-
 	try {
 		const admin = await requireWgAdmin(req, code, 'wg-settings');
 		if (!admin.ok) return admin.response;
 		const { wg, member } = admin;
-
-		await recordAuditEvent({
-			wgId: wg.id,
-			memberId: member.memberId,
-			eventType: 'wg.deleted',
-			entityType: 'wg',
-			entityId: wg.id,
-			summary: `${member.name} hat die WG gelöscht.`,
-			metadata: { name: wg.name },
-		});
-
 		const result = await withTransaction(async (tx) => {
-			// Several historical/member references intentionally use RESTRICT so a
-			// member cannot be hard-deleted while its accounting history remains.
-			// Whole-WG deletion is the explicit destructive operation, so remove
-			// those WG-owned roots in one transaction and let the remaining WG
-			// cascades clean up comments, splits, logs, and subscriptions.
-			await tx.delete(expenses).where(eq(expenses.wgId, wg.id));
-			await tx.delete(expensePayments).where(eq(expensePayments.wgId, wg.id));
-			await tx.delete(shoppingItems).where(eq(shoppingItems.wgId, wg.id));
-			await tx.delete(announcements).where(eq(announcements.wgId, wg.id));
-			await tx.delete(chores).where(eq(chores.wgId, wg.id));
-			await tx.delete(recurringExpenses).where(eq(recurringExpenses.wgId, wg.id));
-			return tx.delete(wgs).where(eq(wgs.id, wg.id)).returning({ id: wgs.id });
+			const actor = await lockActiveAccountMember(tx, wg.id, member.memberId, admin.authUserId);
+			if (!actor || actor.role !== 'admin' || !member.verified) {
+				return { ok: false as const, reason: 'not_admin' as const };
+			}
+			return { ok: true as const, deleted: await deleteWgCascade(tx, wg.id) };
 		});
-		if (result.length === 0) {
-			return notFound('wg_not_found');
-		}
+		if (!result.ok) return forbidden('not_admin', 'not_admin');
+		if (!result.deleted) return notFound('wg_not_found');
 		return NextResponse.json({ deleted: true });
 	} catch (err) {
 		logApiError('[api/wg/[code] DELETE] failed', err);

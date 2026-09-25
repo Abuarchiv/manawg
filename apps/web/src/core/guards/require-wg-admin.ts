@@ -11,6 +11,7 @@ interface WgAdminOk {
 	ok: true;
 	wg: { id: string; name: string; joiningEnabled: boolean };
 	member: VerifiedMember;
+	authUserId: string;
 }
 
 type RequireWgAdminResult = WgAdminOk | { ok: false; response: NextResponse };
@@ -63,5 +64,5 @@ export async function requireWgAdmin(
 	const rate = await checkRateLimit(wgWriteLimiter, `${scope}:${wg.id}:${auth.member.memberId}`);
 	if (!rate.success) return { ok: false, response: tooMany() };
 
-	return { ok: true, wg, member: auth.member };
+	return { ok: true, wg, member: auth.member, authUserId: user.id };
 }

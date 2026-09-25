@@ -20,6 +20,21 @@ const NAME_MAX = 80;
 const TEXT_MAX = 2000;
 const URL_MAX = 500;
 
+export const accountDeletions = pgTable(
+	'account_deletions',
+	{
+		authUserId: uuid('auth_user_id').primaryKey(),
+		requestedAt: timestamp('requested_at', { withTimezone: true }).notNull().defaultNow(),
+		completedAt: timestamp('completed_at', { withTimezone: true }),
+		lastAttemptAt: timestamp('last_attempt_at', { withTimezone: true }),
+	},
+	(t) => ({
+		pendingAttemptIdx: index('account_deletions_pending_attempt_idx')
+			.on(t.lastAttemptAt, t.requestedAt, t.authUserId)
+			.where(sql`${t.completedAt} IS NULL`),
+	}),
+);
+
 export const wgs = pgTable(
 	'wgs',
 	{

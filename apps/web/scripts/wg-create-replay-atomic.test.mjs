@@ -19,7 +19,12 @@ const idempotencyResponses = {
 };
 const condition = (kind, ...parts) => ({ kind, parts });
 
-function harness({ failAt = null, pauseAudit = false, claimBody = { _claimed: true } } = {}) {
+function harness({
+	failAt = null,
+	pauseAudit = false,
+	claimBody = { _claimed: true },
+	accountDeleted = false,
+} = {}) {
 	const state = {
 		wgs: [],
 		members: [],
@@ -29,6 +34,7 @@ function harness({ failAt = null, pauseAudit = false, claimBody = { _claimed: tr
 		events: [],
 		failAt,
 		shareCodeExhausted: false,
+		accountDeleted,
 	};
 	let auditReached;
 	let releaseAudit;
@@ -134,11 +140,17 @@ function harness({ failAt = null, pauseAudit = false, claimBody = { _claimed: tr
 			wgMembers,
 			wgs,
 		},
+		'@/core/db/account-deletion': {
+			assertAccountCanAcquireMembership: async () => {
+				if (state.accountDeleted) throw new TransactionAbort('account_deletion_pending');
+			},
+		},
 		'@/core/db/schema': { LIMITS: { NAME_MAX: 100 } },
 		'@/core/db/transaction': { TransactionAbort, withTransaction },
 		'@/core/errors': {
 			apiError: (code, status) => error(code, status),
 			badRequest: (code) => error(code, 400),
+			conflict: (code) => error(code, 409),
 			serverError: (code) => error(code, 500),
 			tooMany: () => error('rate_limited', 429),
 		},
@@ -257,6 +269,20 @@ test('transaction replays a completed row that appears after claim acquisition',
 	assert.equal(state.wgs.length, 0);
 	assert.equal(state.members.length, 0);
 	assert.equal(state.audits, 0);
+});
+
+test('cached account-creation replay is refused after the account fence', async () => {
+	const { state, post } = harness({ accountDeleted: true });
+	state.slot = {
+		body: { status: 200, body: { wg: { id: 'old-wg' }, creator: { id: 'old-member' } } },
+		expiresAt: new Date(Date.now() + 60_000),
+	};
+	const response = await post();
+	assert.equal(response.status, 409);
+	assert.deepEqual(await response.json(), { error: 'account_deletion_pending' });
+	assert.equal(state.wgs.length, 0);
+	assert.equal(state.members.length, 0);
+	assert.equal(state.claims, 0);
 });
 
 test('a non-claim row never authorizes WG creation', async () => {
