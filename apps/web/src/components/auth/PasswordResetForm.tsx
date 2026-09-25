@@ -1,5 +1,6 @@
 'use client';
 
+import { NEW_PASSWORD_MIN_LENGTH } from '@/components/auth/CredentialsAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -31,10 +32,14 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 
 	async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
 		event.preventDefault();
-		if (state !== 'ready' || password.length < 6 || password !== confirmation) {
+		if (
+			state !== 'ready' ||
+			password.length < NEW_PASSWORD_MIN_LENGTH ||
+			password !== confirmation
+		) {
 			setError(
-				password.length < 6
-					? 'Das Passwort muss mindestens 6 Zeichen lang sein.'
+				password.length < NEW_PASSWORD_MIN_LENGTH
+					? `Das Passwort muss mindestens ${NEW_PASSWORD_MIN_LENGTH} Zeichen lang sein.`
 					: 'Die Passwörter stimmen nicht überein.',
 			);
 			return;
@@ -85,7 +90,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 						value={password}
 						onChange={(event) => setPassword(event.target.value)}
 						autoComplete="new-password"
-						minLength={6}
+						minLength={NEW_PASSWORD_MIN_LENGTH}
 						required
 						aria-describedby={error ? 'reset-password-error' : undefined}
 						aria-invalid={error ? true : undefined}
@@ -101,7 +106,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 						value={confirmation}
 						onChange={(event) => setConfirmation(event.target.value)}
 						autoComplete="new-password"
-						minLength={6}
+						minLength={NEW_PASSWORD_MIN_LENGTH}
 						required
 						aria-describedby={error ? 'reset-password-error' : undefined}
 						aria-invalid={error ? true : undefined}

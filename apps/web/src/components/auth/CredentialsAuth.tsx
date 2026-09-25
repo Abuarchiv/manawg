@@ -8,6 +8,9 @@ import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type ReactElement, useEffect, useState } from 'react';
 
+/** Minimum for passwords chosen now (sign-up, reset); Supabase enforces the same value. */
+export const NEW_PASSWORD_MIN_LENGTH = 8;
+
 const E164_PATTERN = /^\+[1-9]\d{1,14}$/;
 const OTP_PATTERN = /^\d{6}$/;
 
@@ -43,9 +46,9 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 	const [otp, setOtp] = useState('');
 	const [otpRequested, setOtpRequested] = useState(false);
 	const [busy, setBusy] = useState<BusyAction>(null);
-	const [emailError, setEmailError] = useState<'generic' | 'invalid' | 'reset-invalid' | null>(
-		null,
-	);
+	const [emailError, setEmailError] = useState<
+		'generic' | 'invalid' | 'weak-password' | 'reset-invalid' | null
+	>(null);
 	const [emailMessage, setEmailMessage] = useState<string | null>(null);
 	const [phoneError, setPhoneError] = useState<'generic' | 'invalid' | 'unavailable' | null>(null);
 	const [phoneMessage, setPhoneMessage] = useState<string | null>(null);
@@ -79,6 +82,12 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 		if (busy) return;
 		resetEmailFeedback();
 		const normalizedEmail = email.trim().toLowerCase();
+		// Existing accounts may still use 6-character passwords, so only new
+		// passwords have to meet the stricter minimum.
+		if (mode === 'sign-up' && password.length < NEW_PASSWORD_MIN_LENGTH) {
+			setEmailError('weak-password');
+			return;
+		}
 		if (!isValidEmail(normalizedEmail) || password.length < 6) {
 			setEmailError('invalid');
 			return;
@@ -185,7 +194,8 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 	const emailFieldInvalid =
 		emailError === 'reset-invalid' ||
 		(emailError === 'invalid' && !isValidEmail(email.trim().toLowerCase()));
-	const passwordFieldInvalid = emailError === 'invalid' && password.length < 6;
+	const passwordFieldInvalid =
+		(emailError === 'invalid' && password.length < 6) || emailError === 'weak-password';
 
 	return (
 		<Tabs defaultValue="email" aria-busy={busy !== null} className="gap-4">
@@ -262,6 +272,15 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								</ErrorBox>
 							</div>
 						)}
+						{emailError === 'weak-password' && (
+							<div id="auth-email-error">
+								<ErrorBox>
+									Wähle für dein neues Konto ein Passwort mit mindestens {NEW_PASSWORD_MIN_LENGTH}{' '}
+									Zeichen.
+								</ErrorBox>
+							</div>
+						)}
+
 						{emailError === 'reset-invalid' && (
 							<div id="auth-email-error">
 								<ErrorBox>Bitte gib eine gültige E-Mail-Adresse ein.</ErrorBox>

@@ -53,6 +53,7 @@ test.describe('live public dashboard entry', () => {
 		if (external?.phone === true) {
 			await phoneTab.click();
 			await expect(page.getByLabel('Telefonnummer')).toBeVisible();
+			await page.getByRole('tab', { name: 'E-Mail', exact: true }).click();
 		} else {
 			await expect(phoneTab).toHaveCount(0);
 			await expect(page.getByLabel('Telefonnummer')).toHaveCount(0);
@@ -61,6 +62,17 @@ test.describe('live public dashboard entry', () => {
 			page.getByRole('button', { name: 'Mit Google anmelden', exact: true }),
 		).toBeVisible();
 		await expect(page.getByRole('button', { name: 'WG erstellen', exact: true })).toHaveCount(0);
+
+		// New accounts need 8 characters; rejected before any sign-up request.
+		await page.getByLabel('E-Mail-Adresse').fill('kurz@example.invalid');
+		await page.getByLabel('Passwort', { exact: true }).fill('12345');
+		await page.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
+		await expect(page.getByText('mindestens 8 Zeichen', { exact: false })).toBeVisible();
+		await page.reload();
+		await page.getByLabel('E-Mail-Adresse').fill('kurz@example.invalid');
+		await page.getByLabel('Passwort', { exact: true }).fill('1234567');
+		await page.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
+		await expect(page.getByText('mindestens 8 Zeichen', { exact: false })).toBeVisible();
 	});
 
 	test('an invitation survives public navigation and enters join only after selection', async ({
