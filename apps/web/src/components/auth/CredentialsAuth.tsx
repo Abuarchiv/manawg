@@ -199,7 +199,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 					</TabsTrigger>
 				</TabsList>
 			)}
-			<TabsContent value="email" aria-label="Mit E-Mail und Passwort">
+			<TabsContent value="email" aria-label="Mit E-Mail anmelden">
 				<form
 					onSubmit={(event) => {
 						event.preventDefault();

@@ -47,7 +47,7 @@ test.describe('live public dashboard entry', () => {
 		await page.getByRole('link', { name: 'WG erstellen', exact: true }).click();
 		await expect(page).toHaveURL(/\/neu\?action=create$/);
 		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
-		await expect(page.getByLabel('Passwort')).toBeVisible();
+		await expect(page.getByLabel('Passwort', { exact: true })).toBeVisible();
 		const phoneTab = page.getByRole('tab', { name: 'Telefon / SMS', exact: true });
 		const { external } = (await (await authSettings).json()) as { external?: { phone?: boolean } };
 		if (external?.phone === true) {
