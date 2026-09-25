@@ -39,6 +39,53 @@ function createRequestGate() {
 	return { started, gate, markStarted, release };
 }
 
+test('keeps the Pinnwand loading skeleton within a 320px viewport at 200% text', async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 320, height: 720 });
+	await setupMember(page);
+
+	let initialReadPending = true;
+	const initialRead = createRequestGate();
+	await page.route(`**/api/wg/${SHARE_CODE}/announcements*`, async (route) => {
+		if (route.request().method() !== 'GET') return route.continue();
+		if (initialReadPending) {
+			initialReadPending = false;
+			initialRead.markStarted();
+			await initialRead.gate;
+		}
+		return route.fulfill({ json: { announcements: [] } });
+	});
+
+	await navigateToFeature(page, `/wg/${SHARE_CODE}/pinnwand`);
+	await dismissOnboarding(page);
+	await initialRead.started;
+
+	const skeleton = page.getByLabel('Pinnwand wird geladen');
+	await expect(skeleton).toBeVisible();
+	await page.evaluate(() => {
+		document.documentElement.style.setProperty('font-size', '200%', 'important');
+	});
+	const geometry = await skeleton.evaluate((root) => {
+		const viewportWidth = document.documentElement.clientWidth;
+		return {
+			viewportWidth,
+			rootFontSize: getComputedStyle(document.documentElement).fontSize,
+			elements: [...root.querySelectorAll('*')]
+				.filter((element) => element.getBoundingClientRect().right > viewportWidth + 0.5)
+				.map((element) => ({
+					className: element.className.toString(),
+					left: element.getBoundingClientRect().left,
+					right: element.getBoundingClientRect().right,
+				})),
+		};
+	});
+	initialRead.release();
+	await expect(geometry.viewportWidth).toBe(320);
+	await expect(geometry.rootFontSize).toBe('32px');
+	await expect(geometry.elements).toEqual([]);
+});
+
 test('shows refresh error while cached Pinnwand posts stay visible', async ({ page }) => {
 	await setupMember(page);
 	let failNextRead = false;
