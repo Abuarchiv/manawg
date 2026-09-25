@@ -373,8 +373,9 @@ export function isDuplicateAuditActivity(
 	return rawMs !== undefined && Math.abs(timestampMs - rawMs) <= AUDIT_DEDUPE_WINDOW_MS;
 }
 
-// Non-financial sections may degrade independently. Financial reads must all
-// succeed: missing expenses, splits, payments or members would fabricate balances.
+// Reads that drive household counts must succeed; falling back to an empty
+// list would report a false zero. Optional activity sections may still degrade.
+// Financial reads must all succeed or balances would be fabricated.
 function withFallback<T>(label: string, query: Promise<T>, fallback: () => T): Promise<T> {
 	return query.catch((err: unknown) => {
 		captureException(err, { action: 'loadDashboardData', query: label });
@@ -433,35 +434,27 @@ export async function loadDashboardData(
 			})
 			.from(expensePayments)
 			.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed'))),
-		withFallback(
-			'shoppingItems',
-			db
-				.select({
-					id: shoppingItems.id,
-					name: shoppingItems.name,
-					quantity: shoppingItems.quantity,
-					addedByMemberId: shoppingItems.addedByMemberId,
-					createdAt: shoppingItems.createdAt,
-					boughtAt: shoppingItems.boughtAt,
-				})
-				.from(shoppingItems)
-				.where(eq(shoppingItems.wgId, wgId))
-				.orderBy(desc(shoppingItems.createdAt)),
-			() => [],
-		),
-		withFallback(
-			'chores',
-			db
-				.select({
-					id: chores.id,
-					title: chores.title,
-					nextDueAt: chores.nextDueAt,
-					assignedMemberId: chores.assignedMemberId,
-				})
-				.from(chores)
-				.where(eq(chores.wgId, wgId)),
-			() => [],
-		),
+		db
+			.select({
+				id: shoppingItems.id,
+				name: shoppingItems.name,
+				quantity: shoppingItems.quantity,
+				addedByMemberId: shoppingItems.addedByMemberId,
+				createdAt: shoppingItems.createdAt,
+				boughtAt: shoppingItems.boughtAt,
+			})
+			.from(shoppingItems)
+			.where(eq(shoppingItems.wgId, wgId))
+			.orderBy(desc(shoppingItems.createdAt)),
+		db
+			.select({
+				id: chores.id,
+				title: chores.title,
+				nextDueAt: chores.nextDueAt,
+				assignedMemberId: chores.assignedMemberId,
+			})
+			.from(chores)
+			.where(eq(chores.wgId, wgId)),
 		withFallback(
 			'announcements',
 			db

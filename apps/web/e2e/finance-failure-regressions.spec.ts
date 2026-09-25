@@ -35,8 +35,15 @@ function query(result: Promise<unknown>): unknown {
 	return chain;
 }
 
-for (const table of ['wgMembers', 'expenses', 'expenseSplits', 'expensePayments'] as const) {
-	test(`dashboard refuses incomplete financial data when ${table} fails`, async () => {
+for (const table of [
+	'wgMembers',
+	'expenses',
+	'expenseSplits',
+	'expensePayments',
+	'shoppingItems',
+	'chores',
+] as const) {
+	test(`dashboard refuses incomplete required data when ${table} fails`, async () => {
 		const failure = new Error(`${table} unavailable`);
 		const { loadDashboardData } = loadTs<{
 			loadDashboardData: (wgId: string) => Promise<unknown>;
@@ -51,12 +58,20 @@ for (const table of ['wgMembers', 'expenses', 'expenseSplits', 'expensePayments'
 				},
 			},
 			'@/core/infra/observability': { captureException: () => undefined },
-			'@/core/utils/berlin-day': {},
-			'@/features/chores/absence': {},
+			'@/core/utils/berlin-day': {
+				berlinDayKey: (date: Date) => date.toISOString().slice(0, 10),
+				startOfBerlinDay: (date: Date) =>
+					new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())),
+				nextBerlinDayStart: (date: Date) =>
+					new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1)),
+				prevBerlinDayStart: (date: Date) =>
+					new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - 1)),
+			},
+			'@/features/chores/absence': { getAbsentMemberIds: () => [] },
 			'@/features/expenses/debt-reduction': { computeNetBalances: () => [] },
-			'@/features/expenses/recurring-expenses': {},
+			'@/features/expenses/recurring-expenses': { getDueRecurringExpenses: () => [] },
 			'./activity': {},
-			'./dashboard-insights': {},
+			'./dashboard-insights': { buildDueChores: () => [], getWgHealth: () => ({}) },
 			'./dashboard-links': {},
 		});
 		await expect(loadDashboardData('wg')).rejects.toBe(failure);
