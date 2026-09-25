@@ -7,9 +7,15 @@ async function expectDialogFitsNarrowViewports(page: Page, dialog: Locator): Pro
 	await page.evaluate(() => {
 		document.documentElement.style.fontSize = '200%';
 	});
+	expect(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe(
+		'32px',
+	);
 	const cancelButton = page.getByRole('button', { name: 'Abbrechen', exact: true });
 	for (const theme of ['light', 'dark'] as const) {
 		await page.emulateMedia({ colorScheme: theme });
+		await expect
+			.poll(() => page.evaluate(() => document.documentElement.classList.contains('dark')))
+			.toBe(theme === 'dark');
 		for (const width of [320, 360]) {
 			await page.setViewportSize({ width, height: 640 });
 			const layout = await dialog.evaluate((element) => ({
