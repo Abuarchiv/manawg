@@ -65,6 +65,11 @@ test.describe('live public dashboard entry', () => {
 
 		// New accounts need 8 characters; rejected before any sign-up request.
 		await page.getByLabel('E-Mail-Adresse').fill('kurz@example.invalid');
+		await page.getByLabel('Passwort', { exact: true }).fill('12345');
+		await page.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
+		await expect(page.getByText('mindestens 8 Zeichen', { exact: false })).toBeVisible();
+		await page.reload();
+		await page.getByLabel('E-Mail-Adresse').fill('kurz@example.invalid');
 		await page.getByLabel('Passwort', { exact: true }).fill('1234567');
 		await page.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
 		await expect(page.getByText('mindestens 8 Zeichen', { exact: false })).toBeVisible();

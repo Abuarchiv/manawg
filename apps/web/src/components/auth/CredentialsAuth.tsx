@@ -82,14 +82,14 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 		if (busy) return;
 		resetEmailFeedback();
 		const normalizedEmail = email.trim().toLowerCase();
-		if (!isValidEmail(normalizedEmail) || password.length < 6) {
-			setEmailError('invalid');
-			return;
-		}
 		// Existing accounts may still use 6-character passwords, so only new
 		// passwords have to meet the stricter minimum.
 		if (mode === 'sign-up' && password.length < NEW_PASSWORD_MIN_LENGTH) {
 			setEmailError('weak-password');
+			return;
+		}
+		if (!isValidEmail(normalizedEmail) || password.length < 6) {
+			setEmailError('invalid');
 			return;
 		}
 		const action = mode === 'sign-in' ? 'email-sign-in' : 'email-sign-up';
