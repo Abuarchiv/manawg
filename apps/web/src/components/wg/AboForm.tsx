@@ -432,12 +432,18 @@ export function AboForm({
 					{intervalMonths === 1 ? 'Monatlich' : `Alle ${intervalMonths} Monate`} · keine
 					automatische Überweisung.
 				</p>
-				<div className="flex gap-2">
-					<Button type="submit" className="flex-1" disabled={submitting}>
+				<div className="flex flex-col gap-2 sm:flex-row">
+					<Button type="submit" className="w-full sm:flex-1" disabled={submitting}>
 						{submitting && <Spinner data-icon="inline-start" />}
 						{mode === 'create' ? 'Abo anlegen' : 'Speichern'}
 					</Button>
-					<Button type="button" variant="ghost" onClick={onCancel} disabled={submitting}>
+					<Button
+						type="button"
+						variant="ghost"
+						className="w-full sm:w-auto"
+						onClick={onCancel}
+						disabled={submitting}
+					>
 						Abbrechen
 					</Button>
 				</div>

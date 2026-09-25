@@ -531,10 +531,10 @@ export function ExpenseFormSection({
 						</div>
 						<Separator />
 						<div className="flex shrink-0 flex-col gap-2 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-							<div className="flex gap-2">
+							<div className="flex flex-col gap-2 sm:flex-row">
 								<Button
 									type="submit"
-									className="flex-1"
+									className="w-full sm:flex-1"
 									disabled={formSaving || savingRecurringTemplate}
 									aria-label={
 										isEditingQueuedRecurring || editingTemplate
@@ -552,6 +552,7 @@ export function ExpenseFormSection({
 								<Button
 									type="button"
 									variant="ghost"
+									className="w-full sm:w-auto"
 									onClick={requestClose}
 									disabled={formSaving || savingRecurringTemplate}
 								>
