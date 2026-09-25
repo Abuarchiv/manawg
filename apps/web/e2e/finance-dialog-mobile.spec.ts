@@ -160,6 +160,7 @@ test('keeps finance forms in narrow viewports at 200% text size', async ({ page 
 	await expectManualSplitLayout(page, expenseDialog, 'share-');
 	await expectDialogFitsNarrowViewports(page, expenseDialog);
 	await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+	await page.getByRole('alertdialog').getByRole('button', { name: 'Entwurf verwerfen' }).click();
 	await expect(expenseDialog).toBeHidden();
 
 	await page.goto(`/wg/${shareCode}/abos`);
