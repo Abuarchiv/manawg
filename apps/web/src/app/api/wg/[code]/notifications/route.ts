@@ -8,6 +8,7 @@ import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { readJsonBody } from '@/core/http/read-json';
+import { checkEnv } from '@/core/infra/env';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, notifTestLimiter, wgWriteLimiter } from '@/core/rate-limit';
@@ -97,7 +98,9 @@ export const GET = withWgRoute('notifications GET', async (req, { code }) => {
 		notifyEvents: member.notifyEvents,
 		quietStartHour: member.quietStartHour,
 		quietEndHour: member.quietEndHour,
-		pushConfigured: !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+		pushConfigured: !checkEnv(process.env).degraded.some(
+			(entry) => entry.feature === 'push-notifications',
+		),
 	});
 });
 
