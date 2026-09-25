@@ -255,6 +255,62 @@ async function waitForBlockedQuery(client: import('pg').Client, applicationName:
 	return false;
 }
 
+test('a fresh deletion status read waits for the account fence transaction', async () => {
+	const url = process.env.ACCOUNT_DELETE_TEST_URL;
+	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
+	process.env.POSTGRES_URL = url;
+	process.env.DATABASE_MIGRATION_URL = 'placeholder';
+	const { Client } = await import('pg');
+	const { accountDeletions } = await import('../src/core/db/schema');
+	const { lockAccount, readAccountDeletionStatusWithFreshConnection } = await import(
+		'../src/core/db/account-deletion'
+	);
+	const { withTransaction } = await import('../src/core/db/transaction');
+	const { sql } = await import('drizzle-orm');
+	const authUserId = crypto.randomUUID();
+	trackDeletionFixture(authUserId);
+	const observer = new Client({ connectionString: url });
+	await observer.connect();
+	const deletionReady = deferred();
+	const releaseDeletion = deferred();
+	const deletion = withTransaction(async (tx) => {
+		await tx.execute(
+			sql`select set_config('application_name', ${`fence-${crypto.randomUUID()}`}, true)`,
+		);
+		await lockAccount(tx, authUserId);
+		await tx.insert(accountDeletions).values({ authUserId });
+		deletionReady.resolve();
+		await releaseDeletion.promise;
+	});
+	let status: Awaited<ReturnType<typeof readAccountDeletionStatusWithFreshConnection>> | undefined;
+	let statusError: unknown;
+	let statusRead: Promise<void> | undefined;
+	let statusReadBlocked = false;
+	try {
+		await deletionReady.promise;
+		statusRead = readAccountDeletionStatusWithFreshConnection(authUserId).then(
+			(value) => {
+				status = value;
+			},
+			(error: unknown) => {
+				statusError = error;
+			},
+		);
+		statusReadBlocked = await waitForBlockedQuery(observer, 'manawg-account-deletion-status-check');
+	} finally {
+		releaseDeletion.resolve();
+		try {
+			await deletion;
+			await statusRead;
+		} finally {
+			await observer.end();
+		}
+	}
+	expect(statusReadBlocked).toBe(true);
+	expect(statusError).toBeUndefined();
+	expect(status).toEqual({ completedAt: null });
+});
+
 test('a committed deletion fence blocks a stale authenticated membership acquisition', async () => {
 	const url = process.env.ACCOUNT_DELETE_TEST_URL;
 	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');

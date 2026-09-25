@@ -1,6 +1,6 @@
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { accountDeletions, wgMembers, wgs } from './schema';
-import { type DbTransaction, withTransaction } from './transaction';
+import { type DbTransaction, withFreshTransaction, withTransaction } from './transaction';
 import { TransactionAbort } from './transaction-abort';
 
 export const ACCOUNT_DELETION_RETRY_BATCH_SIZE = 5;
@@ -19,6 +19,18 @@ export async function lockAccount(tx: DbTransaction, authUserId: string): Promis
 	await tx.execute(
 		sql`select pg_advisory_xact_lock(hashtextextended('manawg:account-membership:v1:' || ${authUserId}, 0))`,
 	);
+}
+
+export async function readAccountDeletionStatusWithFreshConnection(authUserId: string) {
+	return withFreshTransaction(async (tx) => {
+		await lockAccount(tx, authUserId);
+		const [deletion] = await tx
+			.select({ completedAt: accountDeletions.completedAt })
+			.from(accountDeletions)
+			.where(eq(accountDeletions.authUserId, authUserId))
+			.limit(1);
+		return deletion ?? null;
+	});
 }
 
 export async function assertAccountCanAcquireMembership(

@@ -46,6 +46,28 @@ test('HTTP 202 signs out and announces that Auth deletion is pending', async ({ 
 	);
 });
 
+test('an unconfirmed server outcome is disclosed without claiming deletion failed', async ({
+	page,
+}) => {
+	await page.route('**/api/account', (route) =>
+		route.request().method() === 'DELETE'
+			? route.fulfill({
+					status: 503,
+					contentType: 'application/json',
+					body: JSON.stringify({
+						status: 'unknown',
+						error: 'account_deletion_outcome_unconfirmed',
+					}),
+				})
+			: route.continue(),
+	);
+	await openConfirmation(page);
+	await page.getByRole('button', { name: 'Konto löschen', exact: true }).click();
+	await expect(page.getByText(/Der Server kann den Status nicht bestätigen/)).toBeVisible();
+	await expect(page).toHaveURL('/');
+	await expect(page.getByRole('button', { name: 'Konto löschen', exact: true })).toBeEnabled();
+});
+
 test('a pre-commit server failure stays in the confirmation dialog', async ({ page }) => {
 	await fulfillDeletion(page, 503);
 	await openConfirmation(page);

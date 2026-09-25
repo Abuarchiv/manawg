@@ -20,6 +20,8 @@ import { UserX } from 'lucide-react';
 import { useState } from 'react';
 
 const CONFIRM_WORD = 'LÖSCHEN';
+const UNKNOWN_DELETE_OUTCOME_MESSAGE =
+	'Der Server kann den Status nicht bestätigen. Warte kurz und versuche es erneut; ein bereits angenommener Auftrag wird serverseitig fortgesetzt.';
 
 export function AccountDeleteSection() {
 	const [stage, setStage] = useState<'idle' | 'confirm' | 'pending'>('idle');
@@ -31,6 +33,17 @@ export function AccountDeleteSection() {
 		setError(null);
 		try {
 			const res = await fetch('/api/account', { method: 'DELETE' });
+			if (res.status === 503) {
+				const result = await res.json().catch(() => null);
+				if (
+					result?.status === 'unknown' &&
+					result?.error === 'account_deletion_outcome_unconfirmed'
+				) {
+					setError(UNKNOWN_DELETE_OUTCOME_MESSAGE);
+					setStage('confirm');
+					return;
+				}
+			}
 			if (res.status === 401) {
 				setError('Melde dich erneut an, um dein Konto zu löschen.');
 				setStage('confirm');
@@ -57,9 +70,7 @@ export function AccountDeleteSection() {
 			}
 			window.location.assign(pending ? '/?accountDeletion=pending' : '/');
 		} catch {
-			setError(
-				'Konto konnte nicht gelöscht werden: Prüfe deine Verbindung und versuche es erneut.',
-			);
+			setError(UNKNOWN_DELETE_OUTCOME_MESSAGE);
 			setStage('confirm');
 		}
 	}

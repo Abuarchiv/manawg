@@ -2,7 +2,7 @@ import type { ExtractTablesWithRelations } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgQueryResultHKT } from 'drizzle-orm/node-postgres';
 import type { PgTransaction } from 'drizzle-orm/pg-core';
-import { Pool } from 'pg';
+import { Client, Pool } from 'pg';
 import { resolveTransactionConnectionString } from './connection';
 import * as schema from './schema';
 
@@ -13,6 +13,27 @@ export type DbTransaction = PgTransaction<
 	typeof schema,
 	ExtractTablesWithRelations<typeof schema>
 >;
+
+/**
+ * Open a bounded transaction on a new connection for resolving an uncertain commit.
+ * The fresh connection waits behind the original transaction's advisory lock before reading its durable outcome.
+ */
+export async function withFreshTransaction<T>(fn: (tx: DbTransaction) => Promise<T>): Promise<T> {
+	const client = new Client({
+		connectionString: resolveTransactionConnectionString(),
+		application_name: 'manawg-account-deletion-status-check',
+		connectionTimeoutMillis: 2_000,
+		statement_timeout: 5_000,
+	});
+	await client.connect();
+	try {
+		return await drizzle(client, { schema }).transaction(fn);
+	} finally {
+		await client.end().catch((error: unknown) => {
+			console.warn('[db/transaction] Fresh connection shutdown failed:', error);
+		});
+	}
+}
 
 interface TransactionalDb {
 	transaction<T>(fn: (tx: DbTransaction) => Promise<T>): Promise<T>;

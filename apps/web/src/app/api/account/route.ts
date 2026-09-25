@@ -2,7 +2,10 @@ import { deleteAuthUser } from '@/core/auth/delete-user';
 import { getSupabaseEnv, hasSupabaseEnv } from '@/core/auth/env';
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { accountDeletions, auditEvents } from '@/core/db';
-import { tryCompleteAccountDeletion } from '@/core/db/account-deletion';
+import {
+	readAccountDeletionStatusWithFreshConnection,
+	tryCompleteAccountDeletion,
+} from '@/core/db/account-deletion';
 import { removeAccountFromWgs } from '@/core/db/delete-account';
 import { withTransaction } from '@/core/db/transaction';
 import { apiError, serverError } from '@/core/errors';
@@ -11,6 +14,26 @@ import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const SUPABASE_AUTH_COOKIE = /^sb-[A-Za-z0-9-]+-auth-token(?:\.\d+)?$/;
+
+function acceptedDeletionResponse(
+	req: NextRequest,
+	completed: boolean,
+	deletedWgs?: number,
+): NextResponse {
+	const response = NextResponse.json(
+		{
+			status: completed ? 'completed' : 'pending',
+			...(deletedWgs === undefined ? {} : { deletedWgs }),
+		},
+		{ status: completed ? 200 : 202 },
+	);
+	for (const { name } of req.cookies.getAll()) {
+		if (SUPABASE_AUTH_COOKIE.test(name)) {
+			response.cookies.set({ name, value: '', maxAge: 0, path: '/' });
+		}
+	}
+	return response;
+}
 
 /** Deletes local access first, then completes the Auth request or leaves it retryable. */
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
@@ -51,17 +74,21 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 			(await tryCompleteAccountDeletion(user.id, (authUserId) =>
 				deleteAuthUser(url, serviceRoleKey, authUserId),
 			));
-		const response = NextResponse.json(
-			completed ? { status: 'completed', deletedWgs: local.deletedWgs } : { status: 'pending' },
-			{ status: completed ? 200 : 202 },
-		);
-		for (const { name } of req.cookies.getAll()) {
-			if (SUPABASE_AUTH_COOKIE.test(name))
-				response.cookies.set({ name, value: '', maxAge: 0, path: '/' });
-		}
-		return response;
+		return acceptedDeletionResponse(req, completed, local.deletedWgs);
 	} catch (err) {
 		logApiError('[api/account DELETE] failed', err);
-		return serverError('account_deletion_failed');
+		try {
+			const deletion = await readAccountDeletionStatusWithFreshConnection(user.id);
+			if (deletion) {
+				return acceptedDeletionResponse(req, Boolean(deletion.completedAt));
+			}
+			return serverError('account_deletion_failed');
+		} catch (statusError) {
+			logApiError('[api/account DELETE] outcome could not be confirmed', statusError);
+			return NextResponse.json(
+				{ status: 'unknown', error: 'account_deletion_outcome_unconfirmed' },
+				{ status: 503 },
+			);
+		}
 	}
 }

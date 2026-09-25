@@ -45,3 +45,11 @@
 - Fresh PostgreSQL 17 database `manawg_account_delete_replay_20260925`: the repository `drizzle/` journal replayed all 16 migrations with Drizzle's Node PostgreSQL migrator. `account_deletions` has RLS enabled; `anon` and `authenticated` have no SELECT/INSERT/UPDATE/DELETE table privileges.
 - The product `db:migrate` runner refused the local port-55432 URL with its existing direct-Supabase-port-5432 guard. The guard was left unchanged; the isolated Drizzle migrator was used for the local replay.
 - Final independent review of the test commit is pending (5.3). Hosted exact-SHA Preview/Auth checks are unverified (5.4); no hosted or production system was changed.
+
+## Follow-up verification: ambiguous COMMIT recovery
+
+- Reproduced the P2 before the fix: the route returned HTTP 500 after a committed fence when the COMMIT acknowledgement was lost. The focused regression suite initially failed all four cases.
+- Added a bounded fresh-connection transaction that reacquires the same account advisory lock before reading the durable completion fence. A two-connection PostgreSQL barrier test verifies the status read waits behind that lock.
+- The route now returns 202 for a committed pending fence, 200 for an already completed fence, 500 when the fresh read confirms no fence, and 503 with `status: unknown` when status cannot be confirmed. The UI explains that the outcome is unconfirmed and keeps the confirmation available for retry.
+- Under Node v22.23.2/pnpm 9.0.0, focused route tests (4/4), the full unit suite, the fresh-lock and unknown-outcome Playwright tests, all account-delete DB/UI Playwright specs, typecheck, lint, and production build passed.
+- `graphify update .`, `git diff --check`, and `openspec validate harden-account-deletion --strict` passed. Final independent review of this recovery fix is pending (5.3); hosted exact-SHA Preview/Auth checks remain unverified (5.4).
