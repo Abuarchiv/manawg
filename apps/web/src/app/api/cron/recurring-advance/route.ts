@@ -235,7 +235,7 @@ export const GET = withCronLogging(
 				created.push(...result.value);
 			} else {
 				failedTemplates += 1;
-				console.error('[cron/recurring-advance] template advance failed', result.reason);
+				logApiError('[cron/recurring-advance] template advance failed', result.reason);
 			}
 		}
 
