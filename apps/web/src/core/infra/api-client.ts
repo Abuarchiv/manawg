@@ -64,8 +64,16 @@ export async function apiFetch<T>(
 				error: res.statusText || 'Unerwartete Serverantwort',
 			};
 		}
-		const data = (await res.json()) as T;
-		return { ok: true, data };
+		try {
+			const data = (await res.json()) as T;
+			return { ok: true, data };
+		} catch {
+			return {
+				ok: false,
+				status: res.status,
+				error: res.statusText || 'Unerwartete Serverantwort',
+			};
+		}
 	} catch {
 		return { ok: false, status: 0, error: 'Netzwerkfehler' };
 	}

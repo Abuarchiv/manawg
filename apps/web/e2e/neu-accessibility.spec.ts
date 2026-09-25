@@ -6,6 +6,18 @@ test.describe('new WG form accessibility fixture', () => {
 		'Requires the database-down fixture server.',
 	);
 
+	test('public start page links the legal pages without an account', async ({ page }) => {
+		await page.goto('/');
+		const legal = page.getByRole('navigation', { name: 'Rechtliches' });
+		for (const [name, href] of [
+			['Impressum', 'https://manawg.com/impressum'],
+			['Datenschutz', 'https://manawg.com/datenschutz'],
+			['AGB', 'https://manawg.com/agb'],
+		]) {
+			await expect(legal.getByRole('link', { name, exact: true })).toHaveAttribute('href', href);
+		}
+	});
+
 	test('moves focus between steps and keeps server errors form-level', async ({ page }) => {
 		await page.route('**/api/wg/mine', (route) =>
 			route.fulfill({

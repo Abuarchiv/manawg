@@ -6,7 +6,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { type ReactElement, useState } from 'react';
+import { type ReactElement, useEffect, useState } from 'react';
 
 const E164_PATTERN = /^\+[1-9]\d{1,14}$/;
 const OTP_PATTERN = /^\d{6}$/;
@@ -49,6 +49,21 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 	const [emailMessage, setEmailMessage] = useState<string | null>(null);
 	const [phoneError, setPhoneError] = useState<'generic' | 'invalid' | 'unavailable' | null>(null);
 	const [phoneMessage, setPhoneMessage] = useState<string | null>(null);
+	// Offer SMS only where the Supabase project actually has it switched on.
+	const [phoneEnabled, setPhoneEnabled] = useState(false);
+
+	useEffect(() => {
+		let active = true;
+		import('@/core/auth/client')
+			.then(({ isAuthProviderEnabled }) => isAuthProviderEnabled('phone'))
+			.then((enabled) => {
+				if (active) setPhoneEnabled(enabled);
+			})
+			.catch(() => {});
+		return () => {
+			active = false;
+		};
+	}, []);
 
 	function resetEmailFeedback(): void {
 		setEmailError(null);
@@ -174,14 +189,16 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 
 	return (
 		<Tabs defaultValue="email" aria-busy={busy !== null} className="gap-4">
-			<TabsList className="min-h-12 w-full">
-				<TabsTrigger value="email" disabled={busy !== null} className="min-h-11">
-					E-Mail
-				</TabsTrigger>
-				<TabsTrigger value="phone" disabled={busy !== null} className="min-h-11">
-					Telefon / SMS
-				</TabsTrigger>
-			</TabsList>
+			{phoneEnabled && (
+				<TabsList className="min-h-12 w-full">
+					<TabsTrigger value="email" disabled={busy !== null} className="min-h-11">
+						E-Mail
+					</TabsTrigger>
+					<TabsTrigger value="phone" disabled={busy !== null} className="min-h-11">
+						Telefon / SMS
+					</TabsTrigger>
+				</TabsList>
+			)}
 			<TabsContent value="email" aria-label="Mit E-Mail und Passwort">
 				<form
 					onSubmit={(event) => {
@@ -272,116 +289,121 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 				</form>
 			</TabsContent>
 
-			<TabsContent value="phone" aria-labelledby="phone-auth-heading">
-				<form
-					onSubmit={(event) => {
-						event.preventDefault();
-						void (otpRequested ? confirmPhoneOtp() : sendPhoneOtp());
-					}}
-					className="flex flex-col gap-4"
-				>
-					<FieldGroup>
-						<h2 id="phone-auth-heading" className="text-[14px] font-semibold text-foreground">
-							Mit Telefon per SMS
-						</h2>
-						<Field data-invalid={Boolean(phoneError)} data-disabled={otpRequested || busy !== null}>
-							<FieldLabel htmlFor="auth-phone">Telefonnummer</FieldLabel>
-							<Input
-								id="auth-phone"
-								name="phone"
-								type="tel"
-								value={phone}
-								onChange={(event) => setPhone(event.target.value)}
-								autoComplete="tel"
-								inputMode="tel"
-								placeholder="+491701234567"
-								aria-describedby={
-									phoneError ? 'auth-phone-hint auth-phone-error' : 'auth-phone-hint'
-								}
-								aria-invalid={phoneError ? true : undefined}
-								disabled={otpRequested || busy !== null}
-								className="text-base"
-							/>
-						</Field>
-						<p id="auth-phone-hint" className="text-xs text-muted-foreground">
-							Mit + und Landesvorwahl, zum Beispiel +491701234567.
-						</p>
-						{otpRequested && (
-							<Field data-invalid={Boolean(phoneError)}>
-								<FieldLabel htmlFor="auth-phone-otp">6-stelliger SMS-Code</FieldLabel>
+			{phoneEnabled && (
+				<TabsContent value="phone" aria-labelledby="phone-auth-heading">
+					<form
+						onSubmit={(event) => {
+							event.preventDefault();
+							void (otpRequested ? confirmPhoneOtp() : sendPhoneOtp());
+						}}
+						className="flex flex-col gap-4"
+					>
+						<FieldGroup>
+							<h2 id="phone-auth-heading" className="text-[14px] font-semibold text-foreground">
+								Mit Telefon per SMS
+							</h2>
+							<Field
+								data-invalid={Boolean(phoneError)}
+								data-disabled={otpRequested || busy !== null}
+							>
+								<FieldLabel htmlFor="auth-phone">Telefonnummer</FieldLabel>
 								<Input
-									id="auth-phone-otp"
-									name="otp"
-									type="text"
-									value={otp}
-									onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
-									inputMode="numeric"
-									autoComplete="one-time-code"
-									maxLength={6}
-									pattern="[0-9]{6}"
-									aria-describedby={phoneError ? 'auth-phone-error' : undefined}
+									id="auth-phone"
+									name="phone"
+									type="tel"
+									value={phone}
+									onChange={(event) => setPhone(event.target.value)}
+									autoComplete="tel"
+									inputMode="tel"
+									placeholder="+491701234567"
+									aria-describedby={
+										phoneError ? 'auth-phone-hint auth-phone-error' : 'auth-phone-hint'
+									}
 									aria-invalid={phoneError ? true : undefined}
-									className="font-mono text-base"
+									disabled={otpRequested || busy !== null}
+									className="text-base"
 								/>
 							</Field>
-						)}
-						{phoneError === 'generic' && (
-							<div id="auth-phone-error">
-								<GenericAuthError />
-							</div>
-						)}
-						{phoneError === 'invalid' && (
-							<div id="auth-phone-error">
-								<ErrorBox>
-									Gib eine Telefonnummer im internationalen E.164-Format ein, zum Beispiel
-									+491701234567.
-								</ErrorBox>
-							</div>
-						)}
-						{phoneError === 'unavailable' && (
-							<div id="auth-phone-error">
-								<ErrorBox>
-									SMS-Anmeldung ist derzeit nicht verfügbar. Bitte nutze E-Mail oder Google.
-								</ErrorBox>
-							</div>
-						)}
-						{phoneMessage && (
-							<output className="block text-[13px] text-muted-foreground">{phoneMessage}</output>
-						)}
-						{otpRequested ? (
-							<div className="flex flex-col gap-2">
-								<Button type="submit" variant="outline" disabled={busy !== null}>
-									{busy === 'phone-verify' && <Spinner data-icon="inline-start" aria-hidden />}
-									Code bestätigen
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									onClick={() => void sendPhoneOtp()}
-									disabled={busy !== null}
-								>
+							<p id="auth-phone-hint" className="text-xs text-muted-foreground">
+								Mit + und Landesvorwahl, zum Beispiel +491701234567.
+							</p>
+							{otpRequested && (
+								<Field data-invalid={Boolean(phoneError)}>
+									<FieldLabel htmlFor="auth-phone-otp">6-stelliger SMS-Code</FieldLabel>
+									<Input
+										id="auth-phone-otp"
+										name="otp"
+										type="text"
+										value={otp}
+										onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+										inputMode="numeric"
+										autoComplete="one-time-code"
+										maxLength={6}
+										pattern="[0-9]{6}"
+										aria-describedby={phoneError ? 'auth-phone-error' : undefined}
+										aria-invalid={phoneError ? true : undefined}
+										className="font-mono text-base"
+									/>
+								</Field>
+							)}
+							{phoneError === 'generic' && (
+								<div id="auth-phone-error">
+									<GenericAuthError />
+								</div>
+							)}
+							{phoneError === 'invalid' && (
+								<div id="auth-phone-error">
+									<ErrorBox>
+										Gib eine Telefonnummer im internationalen E.164-Format ein, zum Beispiel
+										+491701234567.
+									</ErrorBox>
+								</div>
+							)}
+							{phoneError === 'unavailable' && (
+								<div id="auth-phone-error">
+									<ErrorBox>
+										SMS-Anmeldung ist derzeit nicht verfügbar. Bitte nutze E-Mail oder Google.
+									</ErrorBox>
+								</div>
+							)}
+							{phoneMessage && (
+								<output className="block text-[13px] text-muted-foreground">{phoneMessage}</output>
+							)}
+							{otpRequested ? (
+								<div className="flex flex-col gap-2">
+									<Button type="submit" variant="outline" disabled={busy !== null}>
+										{busy === 'phone-verify' && <Spinner data-icon="inline-start" aria-hidden />}
+										Code bestätigen
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										onClick={() => void sendPhoneOtp()}
+										disabled={busy !== null}
+									>
+										{busy === 'phone-request' && <Spinner data-icon="inline-start" aria-hidden />}
+										SMS-Code erneut senden
+									</Button>
+									<Button
+										type="button"
+										variant="link"
+										onClick={useAnotherPhoneNumber}
+										disabled={busy !== null}
+										className="px-0"
+									>
+										Andere Telefonnummer verwenden
+									</Button>
+								</div>
+							) : (
+								<Button type="submit" variant="outline" disabled={busy !== null} className="w-full">
 									{busy === 'phone-request' && <Spinner data-icon="inline-start" aria-hidden />}
-									SMS-Code erneut senden
+									SMS-Code anfordern
 								</Button>
-								<Button
-									type="button"
-									variant="link"
-									onClick={useAnotherPhoneNumber}
-									disabled={busy !== null}
-									className="px-0"
-								>
-									Andere Telefonnummer verwenden
-								</Button>
-							</div>
-						) : (
-							<Button type="submit" variant="outline" disabled={busy !== null} className="w-full">
-								{busy === 'phone-request' && <Spinner data-icon="inline-start" aria-hidden />}
-								SMS-Code anfordern
-							</Button>
-						)}
-					</FieldGroup>
-				</form>
-			</TabsContent>
+							)}
+						</FieldGroup>
+					</form>
+				</TabsContent>
+			)}
 		</Tabs>
 	);
 }

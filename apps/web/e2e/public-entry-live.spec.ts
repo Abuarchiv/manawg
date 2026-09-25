@@ -40,13 +40,23 @@ test.describe('live public dashboard entry', () => {
 	test('creation is explicit and exposes credential choices without creating a WG', async ({
 		page,
 	}) => {
+		const authSettings = page.waitForResponse((response) =>
+			response.url().endsWith('/auth/v1/settings'),
+		);
 		await page.goto('/');
 		await page.getByRole('link', { name: 'WG erstellen', exact: true }).click();
 		await expect(page).toHaveURL(/\/neu\?action=create$/);
 		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
 		await expect(page.getByLabel('Passwort')).toBeVisible();
-		await page.getByRole('tab', { name: 'Telefon / SMS', exact: true }).click();
-		await expect(page.getByLabel('Telefonnummer')).toBeVisible();
+		const phoneTab = page.getByRole('tab', { name: 'Telefon / SMS', exact: true });
+		const { external } = (await (await authSettings).json()) as { external?: { phone?: boolean } };
+		if (external?.phone === true) {
+			await phoneTab.click();
+			await expect(page.getByLabel('Telefonnummer')).toBeVisible();
+		} else {
+			await expect(phoneTab).toHaveCount(0);
+			await expect(page.getByLabel('Telefonnummer')).toHaveCount(0);
+		}
 		await expect(
 			page.getByRole('button', { name: 'Mit Google anmelden', exact: true }),
 		).toBeVisible();
