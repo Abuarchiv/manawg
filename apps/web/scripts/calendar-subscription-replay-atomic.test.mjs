@@ -17,8 +17,21 @@ const idempotencyResponses = {
 };
 const condition = (kind, ...parts) => ({ kind, parts });
 
-function harness({ subscription = null, pauseAudit = false, failReplayWrite = false } = {}) {
-	const state = { subscription, slot: null, claims: 0, audits: 0, seeds: 0, failReplayWrite };
+function harness({
+	subscription = null,
+	pauseAudit = false,
+	failReplayWrite = false,
+	memberActive = true,
+} = {}) {
+	const state = {
+		subscription,
+		slot: null,
+		claims: 0,
+		audits: 0,
+		seeds: 0,
+		failReplayWrite,
+		memberActive,
+	};
 	let auditReached;
 	let releaseAudit;
 	const atAudit = new Promise((resolve) => {
@@ -108,6 +121,12 @@ function harness({ subscription = null, pauseAudit = false, failReplayWrite = fa
 			idempotencyResponses,
 		},
 		'@/core/db/transaction': { TransactionAbort, withTransaction },
+		'@/core/db/account-deletion': {
+			lockActiveAccountMember: async (_tx, _wgId, memberId, authUserId) =>
+				state.memberActive
+					? { id: memberId, name: 'Mina', role: 'member', authUserId, deactivatedAt: null }
+					: null,
+		},
 		'@/core/errors': {
 			requireVerifiedMember: () => null,
 			serverError: (code) => Response.json({ error: code }, { status: 500 }),
@@ -127,6 +146,7 @@ function harness({ subscription = null, pauseAudit = false, failReplayWrite = fa
 				ok: true,
 				wg: { id: 'wg-1' },
 				member: { memberId: 'member-1', name: 'Mina', verified: true },
+				authUserId: 'auth-user',
 			}),
 		},
 		'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },
@@ -253,6 +273,19 @@ test('older flat subscription response replays as HTTP 200 without rotating', as
 	const response = await call('POST');
 	assert.equal(response.status, 200);
 	assert.deepEqual(await response.json(), body);
+	assert.equal(state.seeds, 0);
+	assert.equal(state.audits, 0);
+});
+
+test('cached calendar credentials are not replayed after member detachment', async () => {
+	const { state, call } = harness({ subscription: activeSubscription(), memberActive: false });
+	state.slot = {
+		body: { status: 200, body: { subscription: { feedUrl: '/feed/old' } } },
+		expiresAt: new Date(Date.now() + 60_000),
+	};
+	const response = await call('PATCH');
+	assert.equal(response.status, 401);
+	assert.deepEqual(await response.json(), { error: 'member_deactivated' });
 	assert.equal(state.seeds, 0);
 	assert.equal(state.audits, 0);
 });

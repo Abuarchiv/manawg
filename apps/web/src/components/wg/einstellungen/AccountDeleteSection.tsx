@@ -36,21 +36,26 @@ export function AccountDeleteSection() {
 				setStage('confirm');
 				return;
 			}
-			if (!res.ok) {
+			if (res.status !== 200 && res.status !== 202) {
 				setError('Konto konnte nicht gelöscht werden. Bitte später erneut versuchen.');
 				setStage('confirm');
 				return;
 			}
+			const pending = res.status === 202;
 			try {
 				const { signOutSocialAccount } = await import('@/core/auth/client');
 				await signOutSocialAccount();
 			} catch {
-				// The server already removed the user; a stale local session is harmless.
+				// The server already removed WG access; a stale local session is harmless.
 			}
-			for (const key of Object.keys(localStorage)) {
-				if (key.startsWith('manawg')) localStorage.removeItem(key);
+			try {
+				for (const key of Object.keys(localStorage)) {
+					if (key.startsWith('manawg')) localStorage.removeItem(key);
+				}
+			} catch {
+				// Browser storage failure does not change the server's accepted deletion.
 			}
-			window.location.assign('/');
+			window.location.assign(pending ? '/?accountDeletion=pending' : '/');
 		} catch {
 			setError(
 				'Konto konnte nicht gelöscht werden: Prüfe deine Verbindung und versuche es erneut.',

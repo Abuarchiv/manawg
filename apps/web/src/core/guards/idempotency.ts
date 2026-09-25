@@ -150,15 +150,24 @@ export async function withIdempotentJsonResponse(
 	req: Request,
 	scope: string,
 	handler: () => Promise<NextResponse>,
+	beforeReplay?: () => Promise<NextResponse | null>,
 ): Promise<NextResponse> {
 	const key = readIdempotencyKey(req);
 	if (!key) return handler();
 
 	const cached = await getCachedResponse<CachedJsonResponse>(scope, key);
-	if (cached) return NextResponse.json(cached.body, { status: cached.status });
+	if (cached) {
+		const blocked = await beforeReplay?.();
+		if (blocked) return blocked;
+		return NextResponse.json(cached.body, { status: cached.status });
+	}
 
 	const slot = await claimReplaySlotWithRetry<CachedJsonResponse>(scope, key);
-	if (!slot.won) return NextResponse.json(slot.cached.body, { status: slot.cached.status });
+	if (!slot.won) {
+		const blocked = await beforeReplay?.();
+		if (blocked) return blocked;
+		return NextResponse.json(slot.cached.body, { status: slot.cached.status });
+	}
 
 	const response = await handler();
 	let body: unknown = null;

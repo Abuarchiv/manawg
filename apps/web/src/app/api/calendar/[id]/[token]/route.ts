@@ -1,4 +1,5 @@
-import { calendarSubscriptions, db, wgEvents } from '@/core/db';
+import { calendarSubscriptions, wgEvents, wgMembers, wgs } from '@/core/db';
+import { withTransaction } from '@/core/db/transaction';
 import { notFound, serverError, tooMany } from '@/core/errors';
 import { isUuid } from '@/core/guards/api-auth';
 import type { RouteCtx } from '@/core/infra/api-types';
@@ -11,7 +12,7 @@ import {
 } from '@/features/events/calendar-subscription';
 import { type EventInput, expandRecurrence } from '@/features/events/events';
 import { type CalendarFeedOccurrence, calendarFeedToIcs } from '@/features/events/ics';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const FEED_HORIZON_DAYS = 365;
@@ -42,26 +43,49 @@ export async function GET(
 	if (!limit.success) return tooMany('rate_limited');
 
 	try {
-		const subscription = await db.query.calendarSubscriptions.findFirst({
-			where: and(eq(calendarSubscriptions.id, id), isNull(calendarSubscriptions.revokedAt)),
-			columns: { id: true, wgId: true, tokenSeed: true, revokedAt: true },
+		const events = await withTransaction(async (tx) => {
+			const [beforeLock] = await tx
+				.select({ wgId: calendarSubscriptions.wgId })
+				.from(calendarSubscriptions)
+				.where(and(eq(calendarSubscriptions.id, id), isNull(calendarSubscriptions.revokedAt)))
+				.limit(1);
+			if (!beforeLock) return null;
+			const [wg] = await tx
+				.select({ id: wgs.id })
+				.from(wgs)
+				.where(eq(wgs.id, beforeLock.wgId))
+				.for('update');
+			if (!wg) return null;
+
+			const [subscription] = await tx
+				.select({
+					id: calendarSubscriptions.id,
+					wgId: calendarSubscriptions.wgId,
+					tokenSeed: calendarSubscriptions.tokenSeed,
+				})
+				.from(calendarSubscriptions)
+				.innerJoin(wgMembers, eq(wgMembers.id, calendarSubscriptions.memberId))
+				.where(
+					and(
+						eq(calendarSubscriptions.id, id),
+						isNull(calendarSubscriptions.revokedAt),
+						isNull(wgMembers.deactivatedAt),
+						isNotNull(wgMembers.authUserId),
+					),
+				)
+				.limit(1);
+			if (!subscription || !verifyCalendarFeedToken(id, subscription.tokenSeed, token)) return null;
+			return tx
+				.select()
+				.from(wgEvents)
+				.where(eq(wgEvents.wgId, subscription.wgId))
+				.orderBy(asc(wgEvents.startsAt));
 		});
-		if (
-			!subscription ||
-			subscription.revokedAt ||
-			!verifyCalendarFeedToken(id, subscription.tokenSeed, token)
-		) {
-			return notFound('calendar_feed_not_found');
-		}
+		if (!events) return notFound('calendar_feed_not_found');
 
 		const from = new Date();
 		const to = new Date(from.getTime() + FEED_HORIZON_DAYS * MS_PER_DAY);
-		const rows = await db
-			.select()
-			.from(wgEvents)
-			.where(eq(wgEvents.wgId, subscription.wgId))
-			.orderBy(asc(wgEvents.startsAt));
-		const occurrences: CalendarFeedOccurrence[] = rows.flatMap((row) =>
+		const occurrences: CalendarFeedOccurrence[] = events.flatMap((row) =>
 			expandRecurrence(eventToInput(row), from, to),
 		);
 		const body = calendarFeedToIcs(occurrences, 'ManaWG');

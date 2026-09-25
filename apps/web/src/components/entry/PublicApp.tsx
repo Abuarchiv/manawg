@@ -9,6 +9,7 @@ import {
 } from '@/components/entry/PublicModulePreview';
 import { WgWelcome } from '@/components/entry/WgWelcome';
 import { ErrorBox } from '@/components/neu/ErrorBox';
+import { AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
@@ -134,6 +135,7 @@ export function PublicApp(props: { activeModule?: string }) {
 function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	const router = useRouter();
 	const searchParams = useSearchParams();
+	const accountDeletionPending = searchParams.get('accountDeletion') === 'pending';
 	const [memberships, setMemberships] = useState<AccountWg[]>([]);
 	const [membershipState, setMembershipState] = useState<
 		'loading' | 'signed-out' | 'authenticated-empty' | 'member-list' | 'error'
@@ -215,6 +217,17 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 				tabIndex={-1}
 				className="flex w-full min-w-0 flex-col gap-6 px-4 py-5 focus:outline-none"
 			>
+				{accountDeletionPending && (
+					<output
+						aria-live="polite"
+						className="block w-full min-w-0 rounded-lg border border-border bg-card px-2.5 py-2 text-sm text-card-foreground"
+					>
+						<AlertDescription>
+							ManaWG hat deine Zugänge zu allen WGs entfernt. Die Löschung beim Anmeldedienst steht
+							noch aus und wird automatisch erneut versucht.
+						</AlertDescription>
+					</output>
+				)}
 				<div className="flex min-w-0 flex-col gap-6">
 					<header className="flex flex-col gap-3">
 						<div className="flex items-center justify-between gap-3">

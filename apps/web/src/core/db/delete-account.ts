@@ -1,7 +1,13 @@
 import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { lockAccount } from './account-deletion';
 import { deleteWgCascade } from './delete-wg';
-import { accountDeletions, calendarSubscriptions, pushSubscriptions, wgMembers, wgs } from './schema';
+import {
+	accountDeletions,
+	calendarSubscriptions,
+	pushSubscriptions,
+	wgMembers,
+	wgs,
+} from './schema';
 import type { DbTransaction } from './transaction';
 
 export type LeftWg = { wgId: string; memberId: string; name: string; newAdminId: string | null };
@@ -60,11 +66,7 @@ export async function removeAccountFromWgs(
 					isNull(wgMembers.deactivatedAt),
 				),
 			)
-			.orderBy(
-				sql`${wgMembers.authUserId} is null`,
-				asc(wgMembers.createdAt),
-				asc(wgMembers.id),
-			)
+			.orderBy(sql`${wgMembers.authUserId} is null`, asc(wgMembers.createdAt), asc(wgMembers.id))
 			.limit(1);
 		if (!successor) {
 			await deleteWgCascade(tx, membership.wgId);

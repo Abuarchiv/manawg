@@ -1,7 +1,7 @@
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
-import { TransactionAbort } from './transaction-abort';
 import { accountDeletions, wgMembers, wgs } from './schema';
-import { withTransaction, type DbTransaction } from './transaction';
+import { type DbTransaction, withTransaction } from './transaction';
+import { TransactionAbort } from './transaction-abort';
 
 export const ACCOUNT_DELETION_RETRY_BATCH_SIZE = 5;
 
@@ -67,10 +67,7 @@ export async function tryCompleteAccountDeletion(
 				.update(accountDeletions)
 				.set({ lastAttemptAt: new Date() })
 				.where(
-					and(
-						eq(accountDeletions.authUserId, authUserId),
-						isNull(accountDeletions.completedAt),
-					),
+					and(eq(accountDeletions.authUserId, authUserId), isNull(accountDeletions.completedAt)),
 				)
 				.returning({ authUserId: accountDeletions.authUserId });
 			if (attempt) return 'pending' as const;
@@ -117,7 +114,7 @@ export async function tryCompleteAccountDeletion(
 
 export async function retryPendingAccountDeletions(
 	deleteAuthUser: AuthDeletionExecutor | null,
-): Promise<{ attempted: number; completed: number; pending: number }> {
+): Promise<{ attempted: number; completed: number; failed: number; pending: number }> {
 	const countPending = async () => {
 		const [total] = await withTransaction((tx) =>
 			tx
@@ -128,7 +125,7 @@ export async function retryPendingAccountDeletions(
 		return total?.count ?? 0;
 	};
 	if (!deleteAuthUser) {
-		return { attempted: 0, completed: 0, pending: await countPending() };
+		return { attempted: 0, completed: 0, failed: 0, pending: await countPending() };
 	}
 
 	const pending = await withTransaction((tx) =>
@@ -149,6 +146,7 @@ export async function retryPendingAccountDeletions(
 	return {
 		attempted: pending.length,
 		completed: results.filter(Boolean).length,
+		failed: results.filter((completed) => !completed).length,
 		pending: await countPending(),
 	};
 }

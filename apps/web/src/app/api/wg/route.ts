@@ -1,9 +1,10 @@
 import { recordAuditEvent } from '@/core/audit';
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, idempotencyResponses, wgMembers, wgs } from '@/core/db';
+import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { apiError, badRequest, serverError, tooMany } from '@/core/errors';
+import { apiError, badRequest, conflict, serverError, tooMany } from '@/core/errors';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { deriveMemberToken } from '@/core/guards/member-token';
 import {
@@ -122,9 +123,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	const authenticatedUser = user;
 	const idemKey = readIdempotencyKey(req);
 	const idemScope = `wg-create:${authenticatedUser.id}`;
+	const accountDeletionReplayResponse = async () => {
+		try {
+			await withTransaction((tx) => assertAccountCanAcquireMembership(tx, authenticatedUser.id));
+			return null;
+		} catch (err) {
+			if (err instanceof TransactionAbort && err.code === 'account_deletion_pending') {
+				return conflict('account_deletion_pending', 'account_deletion_pending');
+			}
+			logApiError('[api/wg POST] replay fence check failed', err);
+			return serverError('db_error');
+		}
+	};
 	if (idemKey) {
 		const cached = await getCachedResponse<CachedJsonResponse>(idemScope, idemKey);
-		if (cached) return replayResponse(cached);
+		if (cached) {
+			const blocked = await accountDeletionReplayResponse();
+			if (blocked) return blocked;
+			return replayResponse(cached);
+		}
 	}
 
 	let shareCode = '';
@@ -145,7 +162,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	}
 	if (idemKey) {
 		const slot = await claimReplaySlotWithRetry<CachedJsonResponse>(idemScope, idemKey);
-		if (!slot.won) return replayResponse(slot.cached);
+		if (!slot.won) {
+			const blocked = await accountDeletionReplayResponse();
+			if (blocked) return blocked;
+			return replayResponse(slot.cached);
+		}
 	}
 
 	try {
@@ -168,6 +189,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			}
 			try {
 				const result = await withTransaction(async (tx) => {
+					await assertAccountCanAcquireMembership(tx, authenticatedUser.id);
 					if (idemKey) {
 						const [slot] = await tx
 							.select({
@@ -252,7 +274,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				});
 				return replayResponse(result.response);
 			} catch (err) {
-				if (err instanceof TransactionAbort) return serverError(err.code);
+				if (err instanceof TransactionAbort) {
+					if (err.code === 'account_deletion_pending') {
+						return conflict('account_deletion_pending', 'account_deletion_pending');
+					}
+					return serverError(err.code);
+				}
 				lastError = err;
 				if (!isUniqueShareCodeViolation(err)) throw err;
 			}
