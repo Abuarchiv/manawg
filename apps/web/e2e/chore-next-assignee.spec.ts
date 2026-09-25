@@ -60,7 +60,7 @@ async function openPutzen(
 	);
 	await page.route(`**/api/wg/${SHARE_CODE}/dashboard`, (route) =>
 		route.fulfill({
-			json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] },
+			json: { openShoppingCount: 123, dueChores: [], dueRecurringExpenses: [] },
 		}),
 	);
 	await page.route(`**/api/wg/${SHARE_CODE}/chat/unread-count`, (route) =>
@@ -68,6 +68,10 @@ async function openPutzen(
 	);
 	await navigateToFeature(page, `/wg/${SHARE_CODE}/putzen`);
 	await dismissOnboarding(page);
+	const household = page.getByRole('navigation', { name: 'Haushalt' });
+	const shopping = household.getByRole('link', { name: 'Einkäufe, 123 offen' });
+	await expect(shopping).toBeVisible();
+	await expect(shopping).toHaveText('Einkäufe99+');
 }
 
 test('shows the authoritative next member and labels the viewer as du', async ({ page }) => {

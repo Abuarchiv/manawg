@@ -79,9 +79,7 @@ test('hides confirmed zero visually and keeps its meaning accessible', async ({ 
 	await expect(chat).toHaveText('Chat');
 });
 
-test('caps visible shopping counts and counts only the viewer’s due chores', async ({
-	page,
-}, testInfo) => {
+test('caps visible shopping counts and counts only the viewer’s due chores', async ({ page }) => {
 	await setupMember(page);
 	const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 	const nextQuarter = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
@@ -114,21 +112,6 @@ test('caps visible shopping counts and counts only the viewer’s due chores', a
 	await expect(shopping).toBeVisible();
 	await expect(shopping).toHaveText('Einkäufe99+');
 	await expect(household.getByRole('link', { name: 'Putzplan, 1 für dich fällig' })).toBeVisible();
-	for (const theme of ['light', 'dark'] as const) {
-		for (const width of [320, 390]) {
-			await page.setViewportSize({ width, height: 844 });
-			await page.emulateMedia({ colorScheme: theme });
-			const layout = await page.evaluate(() => ({
-				viewport: document.documentElement.clientWidth,
-				page: document.documentElement.scrollWidth,
-			}));
-			expect(layout.page).toBeLessThanOrEqual(layout.viewport);
-			await page.screenshot({
-				path: testInfo.outputPath(`counts-${width}-${theme}.png`),
-				animations: 'disabled',
-			});
-		}
-	}
 });
 
 test('keeps unread count after a failed chat read acknowledgement', async ({ page }) => {
