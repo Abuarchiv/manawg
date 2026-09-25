@@ -380,7 +380,7 @@ export function ExpenseFormSection({
 											{splitCandidates.map((member) => (
 												<Field
 													key={member.id}
-													orientation="horizontal"
+													orientation="responsive"
 													data-disabled={formSaving || (isEditingExpense && !member.active)}
 													data-invalid={
 														Boolean(fieldErrors.splits) && member.id === firstSplitMemberId
@@ -397,7 +397,7 @@ export function ExpenseFormSection({
 															</span>
 														)}
 													</FieldLabel>
-													<InputGroup className="w-32 shrink-0">
+													<InputGroup className="w-full min-w-32 shrink-0 @md/field-group:max-w-32">
 														<InputGroupInput
 															id={`share-${member.id}`}
 															type="text"

@@ -377,14 +377,14 @@ export function AboForm({
 					{splitMode === 'manual' && (
 						<FieldGroup className="gap-3">
 							{splitCandidates.map((member) => (
-								<Field key={member.id} orientation="horizontal">
+								<Field key={member.id} orientation="responsive">
 									<FieldLabel
 										htmlFor={`abo-share-${member.id}`}
 										className="min-w-0 flex-1 break-words"
 									>
 										{member.name}
 									</FieldLabel>
-									<InputGroup className="w-32 shrink-0">
+									<InputGroup className="w-full min-w-32 shrink-0 @md/field-group:max-w-32">
 										<InputGroupInput
 											id={`abo-share-${member.id}`}
 											type="text"
