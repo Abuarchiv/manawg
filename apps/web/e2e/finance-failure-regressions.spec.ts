@@ -42,6 +42,7 @@ for (const table of [
 	'expensePayments',
 	'shoppingItems',
 	'chores',
+	'recurringExpenses',
 ] as const) {
 	test(`dashboard refuses incomplete required data when ${table} fails`, async () => {
 		const failure = new Error(`${table} unavailable`);
@@ -55,6 +56,7 @@ for (const table of [
 						from: (selected: unknown) =>
 							query(selected === schema[table] ? Promise.reject(failure) : Promise.resolve([])),
 					}),
+					query: { wgMembers: { findFirst: async () => null } },
 				},
 			},
 			'@/core/infra/observability': { captureException: () => undefined },
@@ -77,6 +79,116 @@ for (const table of [
 		await expect(loadDashboardData('wg')).rejects.toBe(failure);
 	});
 }
+
+test('dashboard due recurring count matches active Abos and retains paused activity', async () => {
+	const recurringRows = [
+		{
+			id: 'active-recurring',
+			description: 'Internet',
+			amountCents: 3990,
+			nextDueAt: new Date(Date.now() - 86_400_000),
+			lastCreatedAt: null,
+			createdAt: new Date('2026-08-01T10:00:00.000Z'),
+			pausedAt: null,
+		},
+		{
+			id: 'paused-recurring',
+			description: 'Wasser',
+			amountCents: 1800,
+			nextDueAt: new Date(Date.now() - 86_400_000),
+			lastCreatedAt: null,
+			createdAt: new Date('2026-08-02T10:00:00.000Z'),
+			pausedAt: new Date('2026-09-01T10:00:00.000Z'),
+		},
+	];
+	const recurringExpenseModule = loadTs<{
+		getDueRecurringExpenses: (
+			items: Array<{
+				id: string;
+				description: string;
+				amountCents: number;
+				currency: string;
+				nextDueAt: string;
+			}>,
+			now?: number,
+		) => Array<{ id: string }>;
+	}>('features/expenses/recurring-expenses.ts', {
+		'@/core/utils/time': {
+			parseTimestamp: (value: string) => {
+				const timestamp = Date.parse(value);
+				return Number.isNaN(timestamp) ? null : timestamp;
+			},
+		},
+		'@/features/expenses/split-math': { validateSplits: () => ({ ok: true }) },
+	});
+	const { getDueRecurringExpenses } = recurringExpenseModule;
+	const { loadDashboardData } = loadTs<{
+		loadDashboardData: (wgId: string) => Promise<{
+			dueRecurringExpenses: Array<{ id: string }>;
+			wgHealth: { dueRecurringCount: number };
+			activity: Array<{ kind: string; text: string }>;
+		}>;
+	}>('core/reads/dashboard-data.ts', {
+		'@/core/db': {
+			...schema,
+			db: {
+				select: (projection: Record<string, unknown>) => ({
+					from: (selected: unknown) => {
+						if (selected !== schema.recurringExpenses) return query(Promise.resolve([]));
+						const projectedRows = recurringRows.map((row) =>
+							Object.fromEntries(Object.entries(row).filter(([key]) => key in projection)),
+						);
+						return query(Promise.resolve(projectedRows));
+					},
+				}),
+				query: { wgMembers: { findFirst: async () => null } },
+			},
+		},
+		'@/core/infra/observability': { captureException: () => undefined },
+		'@/core/utils/berlin-day': {
+			berlinDayKey: (date: Date) => date.toISOString().slice(0, 10),
+			startOfBerlinDay: (date: Date) =>
+				new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())),
+			nextBerlinDayStart: (date: Date) =>
+				new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1)),
+			prevBerlinDayStart: (date: Date) =>
+				new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - 1)),
+		},
+		'@/features/chores/absence': { getAbsentMemberIds: () => [] },
+		'@/features/expenses/debt-reduction': { computeNetBalances: () => [] },
+		'@/features/expenses/recurring-expenses': { getDueRecurringExpenses },
+		'./activity': {},
+		'./dashboard-insights': {
+			buildDueChores: () => [],
+			getWgHealth: (input: { dueRecurringCount: number }) => ({
+				dueRecurringCount: input.dueRecurringCount,
+			}),
+		},
+		'./dashboard-links': { getDashboardActivityHref: () => '/wg/WG/aktivitaet' },
+	});
+	const dashboard = await loadDashboardData('wg');
+	const abosDue = getDueRecurringExpenses(
+		recurringRows
+			.filter((abo) => abo.pausedAt === null)
+			.map((abo) => ({
+				id: abo.id,
+				description: abo.description,
+				amountCents: abo.amountCents,
+				currency: 'EUR',
+				nextDueAt: abo.nextDueAt.toISOString(),
+			})),
+		Date.now(),
+	);
+
+	expect(dashboard.dueRecurringExpenses.map((abo) => abo.id)).toEqual(abosDue.map((abo) => abo.id));
+	expect(dashboard.wgHealth.dueRecurringCount).toBe(abosDue.length);
+	expect(
+		dashboard.activity
+			.filter((item) => item.kind === 'recurring')
+			.map((item) => item.text)
+			.sort(),
+	).toEqual(['Internet als Vorlage angelegt', 'Wasser als Vorlage angelegt']);
+});
 
 const MEMBER_ID = '11111111-1111-4111-8111-111111111111';
 const DEPARTED_ID = '22222222-2222-4222-8222-222222222222';

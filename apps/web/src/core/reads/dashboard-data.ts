@@ -573,21 +573,18 @@ export async function loadDashboardData(
 					.where(eq(memberAbsences.wgId, wgId)),
 				() => [],
 			),
-			withFallback(
-				'recurringExpenses',
-				db
-					.select({
-						id: recurringExpenses.id,
-						description: recurringExpenses.description,
-						amountCents: recurringExpenses.amountCents,
-						nextDueAt: recurringExpenses.nextDueAt,
-						lastCreatedAt: recurringExpenses.lastCreatedAt,
-						createdAt: recurringExpenses.createdAt,
-					})
-					.from(recurringExpenses)
-					.where(eq(recurringExpenses.wgId, wgId)),
-				() => [],
-			),
+			db
+				.select({
+					id: recurringExpenses.id,
+					description: recurringExpenses.description,
+					amountCents: recurringExpenses.amountCents,
+					nextDueAt: recurringExpenses.nextDueAt,
+					lastCreatedAt: recurringExpenses.lastCreatedAt,
+					createdAt: recurringExpenses.createdAt,
+					pausedAt: recurringExpenses.pausedAt,
+				})
+				.from(recurringExpenses)
+				.where(eq(recurringExpenses.wgId, wgId)),
 			withFallback(
 				'auditEvents',
 				db
@@ -620,11 +617,15 @@ export async function loadDashboardData(
 		]);
 	const filteredMyOpenAnnouncements = myOpenAnnouncements;
 	const dueRecurringExpenses = getDueRecurringExpenses(
-		recurringRows.map((item) => ({
-			...item,
-			currency: 'EUR',
-			nextDueAt: item.nextDueAt.toISOString(),
-		})),
+		recurringRows
+			.filter((item) => item.pausedAt === null)
+			.map((item) => ({
+				id: item.id,
+				description: item.description,
+				amountCents: item.amountCents,
+				currency: 'EUR',
+				nextDueAt: item.nextDueAt.toISOString(),
+			})),
 		now.getTime(),
 	);
 	for (const absence of absenceRows.slice(0, ACTIVITY_LIMIT)) {
