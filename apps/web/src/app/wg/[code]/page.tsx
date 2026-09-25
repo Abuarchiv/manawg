@@ -615,7 +615,9 @@ function TodayRow({
 							item.kind === 'recurring' && 'tabular-nums',
 						)}
 					>
-						{armed ? (
+						{pending ? (
+							'Wird gespeichert …'
+						) : armed ? (
 							'Nochmal tippen zum Bestätigen'
 						) : debtAmount !== undefined ? (
 							<>
