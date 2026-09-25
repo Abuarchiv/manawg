@@ -29,7 +29,7 @@ export default async function PasswordResetPage() {
 						<CardTitle>
 							<h2>Neues Passwort</h2>
 						</CardTitle>
-						<CardDescription>Mindestens sechs Zeichen.</CardDescription>
+						<CardDescription>Mindestens acht Zeichen.</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<PasswordResetForm recoveryRequested />
