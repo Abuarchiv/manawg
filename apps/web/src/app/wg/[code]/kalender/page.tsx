@@ -610,11 +610,11 @@ export default function KalenderPage() {
 				className="gap-3"
 			>
 				<TabsList className="w-full">
-					<TabsTrigger value="list" className="min-h-11">
+					<TabsTrigger value="list" className="min-h-11 min-w-max whitespace-nowrap">
 						<List data-icon="inline-start" aria-hidden />
 						Agenda
 					</TabsTrigger>
-					<TabsTrigger value="month" className="min-h-11">
+					<TabsTrigger value="month" className="min-h-11 min-w-max whitespace-nowrap">
 						<CalendarDays data-icon="inline-start" aria-hidden />
 						Monat
 					</TabsTrigger>
