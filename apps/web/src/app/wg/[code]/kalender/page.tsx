@@ -568,7 +568,7 @@ export default function KalenderPage() {
 						Kalender
 					</h1>
 					<p className="mt-0.5 text-[13px] text-muted-foreground tabular-nums">
-						{loading ? 'Lädt…' : `${events.length} Termin${events.length === 1 ? '' : 'e'}`}
+						{loading ? 'Lädt…' : `${events.length} WG-Termin${events.length === 1 ? '' : 'e'}`}
 					</p>
 				</div>
 				<div className="flex shrink-0 items-center justify-end gap-2">

@@ -33,6 +33,8 @@ test('keeps Kalender in Austausch and shows confirmed unread count', async ({ pa
 		'aria-current',
 		'page',
 	);
+	await expect(page.getByText('0 WG-Termine', { exact: true })).toBeVisible();
+	await expect(page.getByText('Bad putzen', { exact: true })).toBeVisible();
 	await expect(exchange.getByRole('link')).toHaveCount(3);
 	await expect.poll(() => unreadReads).toBe(1);
 	await expect.poll(() => dashboardReads).toBe(0);

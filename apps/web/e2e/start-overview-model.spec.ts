@@ -121,7 +121,7 @@ test.describe('Start overview read model', () => {
 
 		const shopping = items.find((item) => item.kind === 'shopping');
 		expect(shopping).toMatchObject({
-			detail: '7 offene Artikel',
+			detail: 'WG · 7 offene Artikel',
 			href: '/wg/WG%2F1/einkauf',
 		});
 		expect(items.some((item) => item.kind === 'debt')).toBe(false);
