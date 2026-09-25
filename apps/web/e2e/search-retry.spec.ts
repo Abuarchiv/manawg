@@ -122,4 +122,75 @@ test.describe('search errors', () => {
 			await expect(rent).toBeHidden();
 		});
 	}
+
+	test('a late error body cannot hide a newer successful search', async ({ page }) => {
+		await setupMember(page);
+		await page.addInitScript(() => {
+			const clone = Response.prototype.clone;
+			Response.prototype.clone = function () {
+				const copy = clone.call(this);
+				if (new URL(this.url).searchParams.get('q') === 'Milch') {
+					const parse = copy.json.bind(copy);
+					copy.json = async () => {
+						Reflect.set(window, 'slowSearchErrorStarted', true);
+						await new Promise<void>((resolve) =>
+							Reflect.set(window, 'releaseSlowSearchError', resolve),
+						);
+						const body = await parse();
+						Reflect.set(window, 'slowSearchErrorFinished', true);
+						return body;
+					};
+				}
+				return copy;
+			};
+		});
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}`, (route) =>
+			route.fulfill({
+				json: { currentMember: { memberId: FIXTURE_WG.memberId, name: FIXTURE_WG.memberName } },
+			}),
+		);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/search*`, (route) => {
+			const query = new URL(route.request().url()).searchParams.get('q');
+			if (query === 'Milch') {
+				return route.fulfill({ status: 503, json: { error: 'temporarily_unavailable' } });
+			}
+			return route.fulfill({
+				json: {
+					results:
+						query === 'Miete'
+							? [
+									{
+										id: 'rent',
+										module: 'ausgaben',
+										title: 'Miete Dezember',
+										meta: 'Ausgabe der WG',
+										href: `/wg/${FIXTURE_WG.shareCode}/ausgaben`,
+									},
+								]
+							: [],
+					suggestions: [],
+				},
+			});
+		});
+
+		await page.goto(`/wg/${FIXTURE_WG.shareCode}/suche`);
+		const search = page.getByRole('searchbox', { name: 'Suchbegriff' });
+		await search.fill('Milch');
+		await expect
+			.poll(() => page.evaluate(() => Reflect.get(window, 'slowSearchErrorStarted')))
+			.toBe(true);
+		await search.fill('Miete');
+		const rent = page.getByRole('link', { name: 'Miete Dezember — Ausgaben' });
+		await expect(rent).toBeVisible();
+		await page.evaluate(() => {
+			const release = Reflect.get(window, 'releaseSlowSearchError');
+			if (typeof release === 'function') release();
+		});
+		await expect
+			.poll(() => page.evaluate(() => Reflect.get(window, 'slowSearchErrorFinished')))
+			.toBe(true);
+		await page.waitForTimeout(200);
+		await expect(rent).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Suche erneut laden' })).toBeHidden();
+	});
 });
