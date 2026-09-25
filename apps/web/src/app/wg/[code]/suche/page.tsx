@@ -91,6 +91,7 @@ export default function SuchePage() {
 	const [loading, setLoading] = useState(false);
 	const [quickFilter, setQuickFilter] = useState<WgSearchQuickFilter | 'all'>('all');
 	const [moduleFilters, setModuleFilters] = useState<WgSearchModule[]>([]);
+	const searchInputRef = useRef<HTMLInputElement>(null);
 	const requestIdRef = useRef(0);
 
 	const load = useCallback(
@@ -166,6 +167,7 @@ export default function SuchePage() {
 		setResults([]);
 		setError(null);
 		resetFilters();
+		searchInputRef.current?.focus();
 	}
 
 	return (
@@ -195,7 +197,10 @@ export default function SuchePage() {
 								</InputGroupAddon>
 								<InputGroupInput
 									id="wg-search"
-									type="search"
+									ref={searchInputRef}
+									type="text"
+									role="searchbox"
+									enterKeyHint="search"
 									maxLength={80}
 									value={query}
 									onChange={(event) => setQuery(event.target.value)}
