@@ -1,6 +1,36 @@
 import { type Locator, type Page, expect, test } from '@playwright/test';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
 
+async function expectDialogFitsNarrowViewports(page: Page, dialog: Locator): Promise<void> {
+	await page.evaluate(() => {
+		document.documentElement.style.fontSize = '200%';
+	});
+	expect(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe(
+		'32px',
+	);
+	const cancelButton = page.getByRole('button', { name: 'Abbrechen', exact: true });
+	for (const theme of ['light', 'dark'] as const) {
+		await page.emulateMedia({ colorScheme: theme });
+		await expect
+			.poll(() => page.evaluate(() => document.documentElement.classList.contains('dark')))
+			.toBe(theme === 'dark');
+		for (const width of [320, 360]) {
+			await page.setViewportSize({ width, height: 640 });
+			const layout = await dialog.evaluate((element) => ({
+				clientWidth: element.clientWidth,
+				scrollWidth: element.scrollWidth,
+			}));
+			expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+			expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+				width,
+			);
+			const cancelBounds = await cancelButton.boundingBox();
+			expect(cancelBounds).not.toBeNull();
+			if (cancelBounds) expect(cancelBounds.x + cancelBounds.width).toBeLessThanOrEqual(width);
+		}
+	}
+}
+
 test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 
 async function expectManualSplitLayout(
@@ -128,6 +158,9 @@ test('keeps finance forms in narrow viewports at 200% text size', async ({ page 
 	await expect(expenseDialog).toBeVisible();
 	await expenseDialog.getByText('Manuell', { exact: true }).click();
 	await expectManualSplitLayout(page, expenseDialog, 'share-');
+	await expectDialogFitsNarrowViewports(page, expenseDialog);
+	await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+	await expect(expenseDialog).toBeHidden();
 
 	await page.goto(`/wg/${shareCode}/abos`);
 	await dismissOnboarding(page);
@@ -136,4 +169,7 @@ test('keeps finance forms in narrow viewports at 200% text size', async ({ page 
 	await expect(aboDialog).toBeVisible();
 	await aboDialog.getByText('Manuell', { exact: true }).click();
 	await expectManualSplitLayout(page, aboDialog, 'abo-share-');
+	await expectDialogFitsNarrowViewports(page, aboDialog);
+	await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+	await expect(aboDialog).toBeHidden();
 });
