@@ -10,6 +10,7 @@ import { distributeRemainderCents } from './manual-split-distribute';
 
 interface ManualSplitSummaryProps {
 	amountStr: string;
+	currency: string;
 	manualSplits: Record<string, string>;
 	members: ReadonlyArray<{ id: string; name: string }>;
 	setManualSplits: Dispatch<SetStateAction<Record<string, string>>>;
@@ -18,6 +19,7 @@ interface ManualSplitSummaryProps {
 
 export function ManualSplitSummary({
 	amountStr,
+	currency,
 	manualSplits,
 	members,
 	setManualSplits,
@@ -47,7 +49,7 @@ export function ManualSplitSummary({
 				<AlertDescription className="flex items-center justify-between gap-2">
 					<span>
 						Summe:{' '}
-						<span className="font-mono tabular-nums">{formatEuroCents(splitCents, 'EUR')}</span>
+						<span className="font-mono tabular-nums">{formatEuroCents(splitCents, currency)}</span>
 					</span>
 					<span>
 						{label}
@@ -55,7 +57,7 @@ export function ManualSplitSummary({
 							<>
 								:{' '}
 								<span className="font-mono tabular-nums">
-									{formatEuroCents(Math.abs(remainderCents), 'EUR')}
+									{formatEuroCents(Math.abs(remainderCents), currency)}
 								</span>
 							</>
 						)}

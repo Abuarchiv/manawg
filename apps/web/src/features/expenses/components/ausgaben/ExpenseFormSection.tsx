@@ -47,6 +47,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { ImageUploader } from '@/components/wg/ImageUploader';
 import type { Member } from '@/components/wg/WgContextProvider';
+import { formatEuroCents } from '@/core/utils/money';
 import { ArrowLeft, ChevronDown, Receipt, Repeat2 } from 'lucide-react';
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
 import { ManualSplitSummary } from './ManualSplitSummary';
@@ -81,6 +82,7 @@ interface ExpenseFormSectionProps {
 	imageUrl: string | null;
 	setImageUrl: Dispatch<SetStateAction<string | null>>;
 	shareCode: string;
+	currency: string;
 	isEditingQueuedExpense: boolean;
 	isEditingQueuedRecurring: boolean;
 	formError: string | null;
@@ -126,6 +128,7 @@ export function ExpenseFormSection({
 	imageUrl,
 	setImageUrl,
 	shareCode,
+	currency,
 	isEditingQueuedExpense,
 	isEditingQueuedRecurring,
 	formError,
@@ -303,7 +306,7 @@ export function ExpenseFormSection({
 									}}
 									inputMode="decimal"
 									placeholder="0,00"
-									suffix="€"
+									suffix={currency === 'EUR' ? '€' : currency}
 									disabled={formSaving}
 									error={fieldErrors.amount}
 								/>
@@ -409,7 +412,7 @@ export function ExpenseFormSection({
 															}}
 															placeholder="0,00"
 															disabled={formSaving || (isEditingExpense && !member.active)}
-															aria-label={`Anteil ${member.name} in Euro${isEditingExpense && !member.active ? ', ausgezogen. Anteil bleibt unverändert.' : ''}`}
+															aria-label={`Anteil ${member.name} in ${currency === 'EUR' ? 'Euro' : currency}${isEditingExpense && !member.active ? ', ausgezogen. Anteil bleibt unverändert.' : ''}`}
 															aria-invalid={
 																Boolean(fieldErrors.splits) && member.id === firstSplitMemberId
 																	? true
@@ -423,13 +426,14 @@ export function ExpenseFormSection({
 															className="min-h-11 font-mono tabular-nums text-base"
 														/>
 														<InputGroupAddon align="inline-end">
-															<InputGroupText>€</InputGroupText>
+															<InputGroupText>{currency === 'EUR' ? '€' : currency}</InputGroupText>
 														</InputGroupAddon>
 													</InputGroup>
 												</Field>
 											))}
 											<ManualSplitSummary
 												amountStr={amountStr}
+												currency={currency}
 												manualSplits={manualSplits}
 												members={remainderMembers}
 												setManualSplits={setManualSplits}
@@ -437,7 +441,10 @@ export function ExpenseFormSection({
 											/>
 											{!fieldErrors.splits && (
 												<FieldDescription>
-													Für einzelne Personen <span className="font-mono tabular-nums">0 €</span>{' '}
+													Für einzelne Personen{' '}
+													<span className="font-mono tabular-nums">
+														{formatEuroCents(0, currency)}
+													</span>{' '}
 													eintragen oder das Feld leer lassen.
 												</FieldDescription>
 											)}
@@ -448,6 +455,7 @@ export function ExpenseFormSection({
 											members={splitCandidates}
 											splits={previewSplits}
 											paidByMemberId={paidByMemberId}
+											currency={currency}
 										/>
 									)}
 								</FieldSet>

@@ -1424,6 +1424,11 @@ export default function AusgabenPage() {
 		personalBalances.find((member) => member.currency === 'EUR') ?? personalBalances[0] ?? null;
 	const personalBalance = primaryPersonalBalance?.balanceCents ?? 0;
 	const personalBalanceCurrency = primaryPersonalBalance?.currency ?? 'EUR';
+	const formCurrency = editingExpense
+		? (expenses.find((expense) => expense.id === editingExpense.id)?.currency ??
+			editingExpense.currency ??
+			'EUR')
+		: (editingRecurringExpense?.currency ?? 'EUR');
 
 	return (
 		<div data-finance-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
@@ -1458,6 +1463,7 @@ export default function AusgabenPage() {
 					}}
 					isEditingExpense={editingExpense !== null || invalidEditDraft}
 					editingExpenseId={editingExpense?.id ?? null}
+					currency={formCurrency}
 					notice={actionNotice}
 					description={description}
 					setDescription={setDescription}
