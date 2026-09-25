@@ -201,7 +201,7 @@ export default function SuchePage() {
 									onChange={(event) => setQuery(event.target.value)}
 									placeholder="Milch, Bad, Miete…"
 									aria-label="Suchbegriff"
-									className="min-h-11 text-base"
+									className="min-h-11 text-base [&::-webkit-search-cancel-button]:hidden"
 								/>
 								{query.length > 0 && (
 									<InputGroupAddon align="inline-end">
