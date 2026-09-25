@@ -5,6 +5,7 @@ import { PgDialect, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
 import ts from 'typescript';
 import * as chat from '../src/features/chat/chat-pure.ts';
 import * as chatReadQuery from '../src/features/chat/chat-read-query.ts';
+import * as unreadCount from '../src/features/chat/chat-unread-count.ts';
 
 let unreadQuery;
 try {
@@ -159,6 +160,19 @@ test('unread chat query excludes soft-deleted messages', () => {
 		new PgDialect().sqlToQuery(older).sql,
 		/\) < \(\s*select cursor\.created_at, cursor\.id/i,
 	);
+});
+
+test('unread count response preserves the exact total and caps only the visible count', () => {
+	assert.deepEqual(unreadCount.toChatUnreadCountResponse(147), {
+		count: 99,
+		exactCount: 147,
+		overflow: true,
+	});
+	assert.deepEqual(unreadCount.toChatUnreadCountResponse(99), {
+		count: 99,
+		exactCount: 99,
+		overflow: false,
+	});
 });
 
 test('chat read marker advances by timestamp and message id', () => {

@@ -572,10 +572,10 @@ function TodayRow({
 	onCheck: () => void;
 }) {
 	const checkable = item.kind === 'chore' && item.isPersonal && Boolean(item.entityId);
-	const detail =
+	const debtAmount =
 		item.kind === 'debt' && item.amountCents !== undefined
-			? `${item.detail} · ${formatEuroCents(item.amountCents, item.currency, { signed: true })}`
-			: item.detail;
+			? formatEuroCents(item.amountCents, item.currency, { signed: true })
+			: undefined;
 	return (
 		<li className="flex min-w-0 items-center gap-1 pr-1">
 			{checkable ? (
@@ -613,7 +613,16 @@ function TodayRow({
 							item.kind === 'recurring' && 'tabular-nums',
 						)}
 					>
-						{armed ? 'Nochmal tippen zum Bestätigen' : detail}
+						{armed ? (
+							'Nochmal tippen zum Bestätigen'
+						) : debtAmount !== undefined ? (
+							<>
+								{item.detail} ·{' '}
+								<span className="font-mono font-medium tabular-nums">{debtAmount}</span>
+							</>
+						) : (
+							item.detail
+						)}
 					</span>
 				</span>
 				<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />

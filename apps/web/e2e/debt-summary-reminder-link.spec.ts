@@ -65,6 +65,12 @@ test('keeps the reminder history link visible and keyboard-operable with collaps
 	await expect(reminderLink).toHaveAttribute('href', `/wg/${shareCode}/mahnungen`);
 	await reminderLink.focus();
 	await expect(reminderLink).toBeFocused();
+	await page.keyboard.press('Tab');
+	await page.keyboard.press('Shift+Tab');
+	await expect(reminderLink).toBeFocused();
+	await expect
+		.poll(() => reminderLink.evaluate((node) => node.matches(':focus-visible')))
+		.toBe(true);
 	for (const theme of ['light', 'dark'] as const) {
 		for (const width of [320, 390]) {
 			await page.setViewportSize({ width, height: 844 });

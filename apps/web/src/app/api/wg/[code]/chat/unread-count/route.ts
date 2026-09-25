@@ -1,11 +1,10 @@
 import { db, wgChatMessages, wgChatReads, wgMembers } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { toChatUnreadCountResponse } from '@/features/chat/chat-unread-count';
 import { buildUnreadChatMessagesWhere } from '@/features/chat/chat-unread-query';
 import { and, count, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-
-const UNREAD_CAP = 99;
 
 export const GET = withWgRoute(
 	'chat unread-count GET',
@@ -59,15 +58,13 @@ export const GET = withWgRoute(
 			.where(whereExpr);
 
 		const total = Number(rows[0]?.value ?? 0);
-		const capped = total > UNREAD_CAP ? UNREAD_CAP : total;
-		return NextResponse.json({ count: capped, overflow: total > UNREAD_CAP });
+		return NextResponse.json(toChatUnreadCountResponse(total));
 	},
 	{
 		fixture: () => {
-			return NextResponse.json(
-				{ count: 0, overflow: false },
-				{ headers: { 'Cache-Control': 'private, no-store' } },
-			);
+			return NextResponse.json(toChatUnreadCountResponse(0), {
+				headers: { 'Cache-Control': 'private, no-store' },
+			});
 		},
 	},
 );

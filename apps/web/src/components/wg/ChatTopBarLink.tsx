@@ -25,20 +25,24 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 
 	const isActive = pathname.endsWith('/chat');
 	const count = unread.data?.count;
+	const exactCount = unread.data?.exactCount;
+	const accessibleCount = exactCount ?? (unread.data?.overflow ? undefined : count);
 	const countLabel =
 		count === undefined
 			? unread.error
 				? 'Zähler nicht verfügbar'
 				: 'Zähler wird geladen'
-			: unread.data?.overflow
+			: accessibleCount === undefined
 				? 'mehr als 99 ungelesen'
-				: `${count} ungelesen`;
+				: `${accessibleCount} ungelesen`;
 	const freshness = count !== undefined && unread.error ? ', Stand möglicherweise veraltet' : '';
 	const badge =
 		count === undefined
 			? '!'
 			: `${unread.error ? '~' : ''}${
-					unread.data?.overflow || count > BADGE_MAX ? `${BADGE_MAX}+` : count
+					unread.data?.overflow || count > BADGE_MAX || (exactCount ?? 0) > BADGE_MAX
+						? `${BADGE_MAX}+`
+						: count
 				}`;
 	const showBadge =
 		count === undefined ? Boolean(unread.error) : count > 0 || Boolean(unread.error);
@@ -76,9 +80,9 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 				{count === undefined
 					? countLabel
 					: count > 0
-						? unread.data?.overflow
+						? accessibleCount === undefined
 							? 'Mehr als 99 ungelesene Nachrichten'
-							: `${count} ungelesene Nachricht${count === 1 ? '' : 'en'}`
+							: `${accessibleCount} ungelesene Nachricht${accessibleCount === 1 ? '' : 'en'}`
 						: ''}
 			</span>
 		</Link>

@@ -16,6 +16,7 @@ export interface SubNavItem {
 	countHint?: string | undefined;
 	countState?: SegmentCountState | undefined;
 	countOverflow?: boolean | undefined;
+	countExact?: number | undefined;
 }
 
 interface SubNavProps {
@@ -125,6 +126,7 @@ function ChatSubNav({
 					countHint: 'ungelesen',
 					countState: state,
 					countOverflow: chat.data?.overflow,
+					countExact: chat.data?.exactCount,
 				}
 			: {}),
 	}));
@@ -143,13 +145,15 @@ function countSuffix(
 	hint: string | undefined,
 	state: SegmentCountState | undefined,
 	overflow: boolean | undefined,
+	exactCount: number | undefined,
 ): string | null {
 	if (count === undefined) {
 		if (state === 'loading') return 'Zähler wird geladen';
 		if (state === 'unavailable') return 'Zähler nicht verfügbar';
 		return null;
 	}
-	const value = overflow ? 'mehr als 99' : String(count);
+	const value =
+		exactCount !== undefined ? String(exactCount) : overflow ? 'mehr als 99' : String(count);
 	const freshness = state === 'stale' ? ', Stand möglicherweise veraltet' : '';
 	return `${value} ${hint ?? 'offen'}${freshness}`;
 }
@@ -170,11 +174,20 @@ function SegmentList({
 		<nav aria-label={label ?? 'Unterbereiche'} className={cn('min-w-0', className)}>
 			<ul className="grid auto-cols-[minmax(max-content,1fr)] grid-flow-col gap-1 overflow-x-auto rounded-xl bg-muted p-1 [scrollbar-width:none]">
 				{links.map(
-					({ href, label: itemLabel, icon: Icon, count, countHint, countState, countOverflow }) => {
+					({
+						href,
+						label: itemLabel,
+						icon: Icon,
+						count,
+						countHint,
+						countState,
+						countOverflow,
+						countExact,
+					}) => {
 						const target = new URL(href, 'https://manawg.invalid').pathname.replace(/\/+$/, '');
 						const current = pathname === target;
 						const active = current || pathname.startsWith(`${target}/`);
-						const suffix = countSuffix(count, countHint, countState, countOverflow);
+						const suffix = countSuffix(count, countHint, countState, countOverflow, countExact);
 						const marker =
 							countState === 'loading'
 								? '…'
@@ -206,7 +219,7 @@ function SegmentList({
 											className="font-mono text-xs tabular-nums text-muted-foreground"
 										>
 											{marker}
-											{countOverflow || count > 99 ? '99+' : count}
+											{countOverflow || count > 99 || (countExact ?? 0) > 99 ? '99+' : count}
 										</span>
 									)}
 									{!showCount && marker && (

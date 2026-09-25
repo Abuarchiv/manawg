@@ -195,6 +195,14 @@ test('shows personal actions and a separate Berlin week agenda', async ({ page }
 	await expect(personal.getByText('An Anna', { exact: true })).toBeVisible();
 	await expect(personal.getByText('Von Anna', { exact: true })).toBeVisible();
 	await expect(personal.getByText(/12,50/)).toBeVisible();
+	const euroAmount = personal.locator('span.font-mono.tabular-nums').filter({ hasText: '12,50' });
+	const chfAmount = personal.locator('span.font-mono.tabular-nums').filter({ hasText: '3,00' });
+	await expect(euroAmount).toHaveCount(1);
+	await expect(euroAmount).toHaveClass(/font-medium/);
+	await expect(euroAmount).toHaveText(/-12,50\s*€/);
+	await expect(chfAmount).toHaveCount(1);
+	await expect(chfAmount).toHaveClass(/font-medium/);
+	await expect(chfAmount).toHaveText(/\+3,00\s*CHF/);
 
 	const agenda = page.getByRole('region', { name: 'Diese Woche' });
 	await expect(agenda.getByRole('heading', { name: 'Überfällig' })).toBeVisible();
