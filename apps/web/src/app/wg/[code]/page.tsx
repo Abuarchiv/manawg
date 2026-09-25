@@ -40,7 +40,6 @@ import {
 	CircleCheck,
 	Loader2,
 	Megaphone,
-	Search,
 } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import dynamic from 'next/dynamic';
@@ -446,30 +445,19 @@ export default function WgHomePage() {
 							weekAgenda.overdue.length === 0 &&
 							weekAgenda.upcoming.length === 0 && (
 								<p className="rounded-xl border p-4 text-sm text-muted-foreground">
-									Keine gemeinsamen Termine oder Putzaufgaben bis Sonntag.
+									Bis Sonntag keine WG-Termine und keine Putzaufgaben der anderen.
 								</p>
 							)}
 					</section>
 
 					<section aria-labelledby="wg-now-heading" className="flex min-w-0 flex-col gap-3">
-						<div className="flex justify-end">
-							<Link
-								href={`${wgBaseHref}/suche`}
-								className={cn(
-									buttonVariants({ variant: 'ghost' }),
-									'min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground leading-snug',
-								)}
-							>
-								<Search data-icon="inline-start" aria-hidden /> WG durchsuchen
-							</Link>
-						</div>
 						<Collapsible defaultOpen>
 							<h2 id="wg-now-heading">
 								<CollapsibleTrigger
 									render={
 										<Button
 											variant="ghost"
-											className="group w-full justify-between px-0 text-muted-foreground"
+											className="group w-full justify-between px-0 text-muted-foreground aria-expanded:bg-transparent"
 										/>
 									}
 								>

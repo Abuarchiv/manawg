@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Item, ItemContent, ItemDescription, ItemFooter, ItemTitle } from '@/components/ui/item';
 import { AboPausedBadge } from '@/components/wg/AboPausedBadge';
 import type { Abo, MemberOption } from '@/components/wg/abos-types';
+import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
 import {
@@ -30,6 +31,7 @@ interface AboRowProps {
 export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete }: AboRowProps) {
 	const payer = members.find((member) => member.id === abo.paidByMemberId);
 	const isPaused = abo.pausedAt !== null;
+	const isOverdue = !isPaused && berlinDayKey(new Date(abo.nextDueAt)) < berlinDayKey(new Date());
 	const preview = previewNextOccurrences(
 		{ nextDueAt: abo.nextDueAt, intervalMonths: abo.intervalMonths },
 		3,
@@ -40,8 +42,8 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 				<ItemContent className="min-w-0">
 					<ItemTitle className="line-clamp-none break-words">{abo.description}</ItemTitle>
 					<ItemDescription className="line-clamp-none">
-						{formatIntervalLabel(abo.intervalMonths)} · nächste Fälligkeit:{' '}
-						{formatShortDate(abo.nextDueAt)}
+						{formatIntervalLabel(abo.intervalMonths)} ·{' '}
+						{isOverdue ? 'fällig seit' : 'nächste Fälligkeit:'} {formatShortDate(abo.nextDueAt)}
 					</ItemDescription>
 					<ItemDescription className="line-clamp-none">
 						Bezahlt von {payer?.name ?? 'unbekannt'}
@@ -52,6 +54,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 						{formatEuroCents(abo.amountCents, abo.currency)}
 					</Badge>
 					{isPaused && <AboPausedBadge />}
+					{isOverdue && <Badge variant="destructive">Überfällig</Badge>}
 				</div>
 				<ItemFooter className="flex-col items-stretch gap-3">
 					<Collapsible>
