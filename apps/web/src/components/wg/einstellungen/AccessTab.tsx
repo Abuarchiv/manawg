@@ -39,6 +39,7 @@ import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
 import { ShareWgCard } from '@/components/wg/ShareWgCard';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { Section } from '@/components/wg/einstellungen/Section';
 import {
 	accessErrorMessage,
@@ -539,7 +540,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				<div className="px-1">
 					<h2 className="text-destructive text-[13px] font-semibold">Gefahrenzone</h2>
 					<p className="text-muted-foreground mt-0.5 text-xs">
-						WG verlassen oder dauerhaft löschen.
+						WG verlassen, WG löschen oder Konto löschen.
 					</p>
 				</div>
 
@@ -584,6 +585,8 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 						</Button>
 					</div>
 				</Section>
+
+				<AccountDeleteSection />
 			</div>
 
 			<AlertDialog

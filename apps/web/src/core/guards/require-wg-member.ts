@@ -9,6 +9,7 @@ interface WgMemberOk {
 	ok: true;
 	wg: ResolvedWg;
 	member: VerifiedMember;
+	authUserId: string;
 }
 
 interface WgMemberFail {
@@ -61,5 +62,5 @@ export async function requireWgMember(
 	if (!wg) return { ok: false, response: notFound('wg_not_found') };
 	const auth = await requireMember(req, wg.id, user);
 	if (!auth.ok) return { ok: false, response: auth.response };
-	return { ok: true, wg, member: auth.member };
+	return { ok: true, wg, member: auth.member, authUserId: user.id };
 }

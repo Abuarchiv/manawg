@@ -86,10 +86,12 @@ test('transaction pools follow effective URL changes without retrying unknown co
 	assert.equal(attempts, attemptsBefore + 1);
 });
 
-test('maintenance propagates cleanup failure and reports successful cleanup counts', async () => {
+test('maintenance attempts deletion recovery when idempotency cleanup fails', async () => {
 	const env = { CRON_SECRET: 'test-secret' };
 	const logs = [];
 	let deleteError = new Error('database unavailable');
+	const recoveryCalls = [];
+	let recoveryResult = { attempted: 1, completed: 0, failed: 1, pending: 1 };
 	const idempotency = load(
 		'core/idempotency.ts',
 		{
@@ -116,6 +118,14 @@ test('maintenance propagates cleanup failure and reports successful cleanup coun
 	const route = load(
 		'app/api/cron/maintenance/route.ts',
 		{
+			'@/core/auth/env': { hasSupabaseEnv: () => false, getSupabaseEnv: () => null },
+			'@/core/auth/delete-user': { deleteAuthUser: async () => false },
+			'@/core/db/account-deletion': {
+				retryPendingAccountDeletions: async (deleteAuth) => {
+					recoveryCalls.push(deleteAuth);
+					return recoveryResult;
+				},
+			},
 			'@/core/idempotency': idempotency,
 			'@/core/infra/cron-auth': { verifyCronSecret: () => true },
 			'@/core/infra/observability': load('core/infra/observability.ts', {}, env, logs),
@@ -125,10 +135,24 @@ test('maintenance propagates cleanup failure and reports successful cleanup coun
 		logs,
 	);
 	const request = new Request('https://example.com/api/cron/maintenance');
-	await assert.rejects(route.GET(request), (error) => error === deleteError);
-	assert.deepEqual(logs.at(-1), ['[error]', 'Error', { cronJob: 'maintenance' }]);
+	const failedCleanup = await route.GET(request);
+	assert.equal(failedCleanup.status, 503);
+	assert.deepEqual(await failedCleanup.json(), {
+		ok: false,
+		purgedIdempotencyRows: null,
+		accountDeletions: { ...recoveryResult, authAdminAvailable: false },
+	});
+	assert.equal(recoveryCalls.length, 1);
+	assert.equal(recoveryCalls[0], null);
+	assert.deepEqual(logs.at(-1), ['[maintenance] idempotency cleanup failed', 'Error']);
 	deleteError = null;
+	recoveryResult = { attempted: 1, completed: 1, failed: 0, pending: 0 };
 	const response = await route.GET(request);
 	assert.equal(response.status, 200);
-	assert.deepEqual(await response.json(), { ok: true, purgedIdempotencyRows: 1 });
+	assert.deepEqual(await response.json(), {
+		ok: true,
+		purgedIdempotencyRows: 1,
+		accountDeletions: { ...recoveryResult, authAdminAvailable: false },
+	});
+	assert.equal(recoveryCalls.length, 2);
 });

@@ -1,7 +1,15 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgMembers } from '@/core/db';
-import { badRequest, forbidden, notFound, requireVerifiedMember, tooMany } from '@/core/errors';
-import { requireOwnerOrAdmin } from '@/core/guards/admin';
+import { lockActiveAccountMember } from '@/core/db/account-deletion';
+import { withTransaction } from '@/core/db/transaction';
+import {
+	apiError,
+	badRequest,
+	forbidden,
+	notFound,
+	requireVerifiedMember,
+	tooMany,
+} from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -121,7 +129,6 @@ export const PATCH = withWgRoute<{ id: string }>(
 	'members/[id] PATCH',
 	async (req, { code, id }) => {
 		if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
-
 		let raw: unknown;
 		try {
 			raw = await req.json();
@@ -147,95 +154,92 @@ export const PATCH = withWgRoute<{ id: string }>(
 				return forbidden('paypal_merchant_id_owner_only', 'paypal_merchant_id_owner_only');
 			}
 		}
-
 		const limited = await checkRateLimit(
 			wgWriteLimiter,
 			`member-update:${wgId}:${auth.member.memberId}`,
 		);
 		if (!limited.success) return tooMany();
 
-		const [target] = await db
-			.select({
-				id: wgMembers.id,
-				name: wgMembers.name,
-				role: wgMembers.role,
-				deactivatedAt: wgMembers.deactivatedAt,
-				paypalMerchantId: wgMembers.paypalMerchantId,
-			})
-			.from(wgMembers)
-			.where(and(eq(wgMembers.id, id), eq(wgMembers.wgId, wgId)))
-			.limit(1);
-		if (!target) return notFound('member_not_found');
+		const result = await withTransaction(async (tx) => {
+			const actor = await lockActiveAccountMember(tx, wgId, auth.member.memberId, auth.authUserId);
+			if (!actor) return { ok: false as const, response: apiError('member_deactivated', 401) };
+			const [target] = await tx
+				.select({
+					id: wgMembers.id,
+					name: wgMembers.name,
+					role: wgMembers.role,
+					deactivatedAt: wgMembers.deactivatedAt,
+					paypalMerchantId: wgMembers.paypalMerchantId,
+				})
+				.from(wgMembers)
+				.where(and(eq(wgMembers.id, id), eq(wgMembers.wgId, wgId)))
+				.for('update');
+			if (!target) return { ok: false as const, response: notFound('member_not_found') };
 
-		// Only the member themselves (leaving/returning) or a verified admin may
-		// flip someone else's active status — matches the owner/admin gate every
-		// other cross-member mutation uses (absences, events, chat, recurring
-		// expenses, ...). A bare x-manawg-member-id is spoofable (any current
-		// member can read every id via GET /members), so without this a non-admin
-		// member could deactivate any flatmate, including the admin.
-		if (active !== undefined) {
-			const denied = await requireOwnerOrAdmin(wgId, auth.member, id);
-			if (denied) return denied;
-		}
-		if (active === false && target.role === 'admin') {
-			return forbidden('admin_required', 'admin_required');
-		}
+			const verifiedOwner = auth.member.verified && actor.id === target.id;
+			const verifiedAdmin = auth.member.verified && actor.role === 'admin';
+			if (active !== undefined && !verifiedOwner && !verifiedAdmin) {
+				return { ok: false as const, response: forbidden('not_owner', 'not_owner') };
+			}
+			if (paypalMerchantId !== undefined && !verifiedOwner) {
+				return {
+					ok: false as const,
+					response: forbidden('paypal_merchant_id_owner_only', 'paypal_merchant_id_owner_only'),
+				};
+			}
+			if (active === false && target.role === 'admin') {
+				return { ok: false as const, response: forbidden('admin_required', 'admin_required') };
+			}
 
-		// Idempotent: if already in the requested state, report success without a
-		// redundant write or audit entry.
-		const activeUnchanged = active === undefined || active === (target.deactivatedAt === null);
-		const paypalUnchanged =
-			paypalMerchantId === undefined || paypalMerchantId === (target.paypalMerchantId ?? null);
-		if (activeUnchanged && paypalUnchanged) {
-			return NextResponse.json({
-				member: {
-					id: target.id,
-					name: target.name,
-					active: target.deactivatedAt === null,
-					...(auth.member.memberId === target.id && auth.member.verified
-						? { paypalMerchantId: target.paypalMerchantId }
-						: {}),
-				},
-			});
-		}
+			const activeUnchanged = active === undefined || active === (target.deactivatedAt === null);
+			const paypalUnchanged =
+				paypalMerchantId === undefined || paypalMerchantId === (target.paypalMerchantId ?? null);
+			if (activeUnchanged && paypalUnchanged) {
+				return { ok: true as const, changedActive: false, member: target };
+			}
 
-		const updateValues = {
-			...(active !== undefined ? { deactivatedAt: active ? null : new Date() } : {}),
-			...(paypalMerchantId !== undefined ? { paypalMerchantId } : {}),
-		};
-		const [updated] = await db
-			.update(wgMembers)
-			.set(updateValues)
-			.where(and(eq(wgMembers.id, id), eq(wgMembers.wgId, wgId)))
-			.returning({
-				id: wgMembers.id,
-				name: wgMembers.name,
-				deactivatedAt: wgMembers.deactivatedAt,
-				paypalMerchantId: wgMembers.paypalMerchantId,
-			});
-		if (!updated) return notFound('member_not_found');
-
-		if (active !== undefined && active !== (target.deactivatedAt === null)) {
+			const updateValues = {
+				...(active !== undefined ? { deactivatedAt: active ? null : new Date() } : {}),
+				...(paypalMerchantId !== undefined ? { paypalMerchantId } : {}),
+			};
+			const [updated] = await tx
+				.update(wgMembers)
+				.set(updateValues)
+				.where(and(eq(wgMembers.id, id), eq(wgMembers.wgId, wgId)))
+				.returning({
+					id: wgMembers.id,
+					name: wgMembers.name,
+					deactivatedAt: wgMembers.deactivatedAt,
+					paypalMerchantId: wgMembers.paypalMerchantId,
+				});
+			if (!updated) return { ok: false as const, response: notFound('member_not_found') };
+			return {
+				ok: true as const,
+				changedActive: active !== undefined && active !== (target.deactivatedAt === null),
+				member: updated,
+			};
+		});
+		if (!result.ok) return result.response;
+		if (result.changedActive) {
 			await recordAuditEvent({
 				wgId,
 				memberId: auth.member.memberId,
 				eventType: active ? 'member.reactivated' : 'member.deactivated',
 				entityType: 'member',
-				entityId: updated.id,
+				entityId: result.member.id,
 				summary: active
-					? `${auth.member.name} hat ${updated.name} wieder aktiviert.`
-					: `${auth.member.name} hat ${updated.name} als ausgezogen markiert.`,
-				metadata: { name: updated.name },
+					? `${auth.member.name} hat ${result.member.name} wieder aktiviert.`
+					: `${auth.member.name} hat ${result.member.name} als ausgezogen markiert.`,
+				metadata: { name: result.member.name },
 			});
 		}
-
 		return NextResponse.json({
 			member: {
-				id: updated.id,
-				name: updated.name,
-				active: updated.deactivatedAt === null,
-				...(auth.member.memberId === updated.id && auth.member.verified
-					? { paypalMerchantId: updated.paypalMerchantId }
+				id: result.member.id,
+				name: result.member.name,
+				active: result.member.deactivatedAt === null,
+				...(auth.member.memberId === result.member.id && auth.member.verified
+					? { paypalMerchantId: result.member.paypalMerchantId }
 					: {}),
 			},
 		});

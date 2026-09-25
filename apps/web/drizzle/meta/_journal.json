@@ -106,6 +106,13 @@
       "when": 1789855082968,
       "tag": "0014_fix_chat_sender_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790291774454,
+      "tag": "0015_mixed_strong_guy",
+      "breakpoints": true
     }
   ]
 }

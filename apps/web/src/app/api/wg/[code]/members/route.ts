@@ -2,8 +2,9 @@ import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
+import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import { LIMITS } from '@/core/db/schema';
-import { withTransaction } from '@/core/db/transaction';
+import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { HTTP, apiError, badRequest, forbidden, notFound, tooMany } from '@/core/errors';
 import { isVerifiedWgAdmin } from '@/core/guards/admin';
 import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
@@ -134,102 +135,132 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 	if (!wg) return notFound('wg_not_found');
 	const authenticatedUser = user;
 
-	return withIdempotentJsonResponse(req, `wg-join:${wg.id}:${authenticatedUser.id}`, async () => {
-		// The share code is the invite key. Cap the per-WG member count and keep
-		// names unique so a leaked code cannot flood the WG indefinitely. Count
-		// check and insert run in one transaction behind a row lock on the WG —
-		// two concurrent joins would otherwise both pass the cap check (TOCTOU).
-		const joinResult = await withTransaction(
-			async (
-				tx,
-			): Promise<
-				| { ok: true; member: typeof wgMembers.$inferSelect }
-				| {
-						ok: false;
-						reason: 'limit' | 'name_taken' | 'already_joined' | 'not_found' | 'joining_disabled';
-				  }
-			> => {
-				// Same `select ... for update` row lock as before, expressed with
-				// the query builder like every other read in this file: schema
-				// column names and types instead of hand-aliased raw SQL that a
-				// later edit could copy without the parameterization.
-				const [lockedWg] = await tx
-					.select({ shareCode: wgs.shareCode, joiningEnabled: wgs.joiningEnabled })
-					.from(wgs)
-					.where(eq(wgs.id, wg.id))
-					.for('update');
-				if (!lockedWg || lockedWg.shareCode !== code) return { ok: false, reason: 'not_found' };
-				const existingForUser = await tx
-					.select({ id: wgMembers.id })
-					.from(wgMembers)
-					.where(and(eq(wgMembers.wgId, wg.id), eq(wgMembers.authUserId, user.id)))
-					.limit(1);
-				if (existingForUser.length > 0) return { ok: false, reason: 'already_joined' };
-				if (!lockedWg.joiningEnabled) return { ok: false, reason: 'joining_disabled' };
-				const memberCount = await tx
-					.select({ id: wgMembers.id })
-					.from(wgMembers)
-					.where(eq(wgMembers.wgId, wg.id));
-				if (memberCount.length >= MAX_MEMBERS_PER_WG) {
-					return { ok: false, reason: 'limit' };
-				}
+	try {
+		return await withIdempotentJsonResponse(
+			req,
+			`wg-join:${wg.id}:${authenticatedUser.id}`,
+			async () => {
+				// The share code is the invite key. Cap the per-WG member count and keep
+				// names unique so a leaked code cannot flood the WG indefinitely. Count
+				// check and insert run in one transaction behind a row lock on the WG —
+				// two concurrent joins would otherwise both pass the cap check (TOCTOU).
+				const joinResult = await withTransaction(
+					async (
+						tx,
+					): Promise<
+						| { ok: true; member: typeof wgMembers.$inferSelect }
+						| {
+								ok: false;
+								reason:
+									| 'limit'
+									| 'name_taken'
+									| 'already_joined'
+									| 'not_found'
+									| 'joining_disabled';
+						  }
+					> => {
+						await assertAccountCanAcquireMembership(tx, authenticatedUser.id);
+						// Same `select ... for update` row lock as before, expressed with
+						// the query builder like every other read in this file: schema
+						// column names and types instead of hand-aliased raw SQL that a
+						// later edit could copy without the parameterization.
+						const [lockedWg] = await tx
+							.select({ shareCode: wgs.shareCode, joiningEnabled: wgs.joiningEnabled })
+							.from(wgs)
+							.where(eq(wgs.id, wg.id))
+							.for('update');
+						if (!lockedWg || lockedWg.shareCode !== code) return { ok: false, reason: 'not_found' };
+						const existingForUser = await tx
+							.select({ id: wgMembers.id })
+							.from(wgMembers)
+							.where(and(eq(wgMembers.wgId, wg.id), eq(wgMembers.authUserId, user.id)))
+							.limit(1);
+						if (existingForUser.length > 0) return { ok: false, reason: 'already_joined' };
+						if (!lockedWg.joiningEnabled) return { ok: false, reason: 'joining_disabled' };
+						const memberCount = await tx
+							.select({ id: wgMembers.id })
+							.from(wgMembers)
+							.where(eq(wgMembers.wgId, wg.id));
+						if (memberCount.length >= MAX_MEMBERS_PER_WG) {
+							return { ok: false, reason: 'limit' };
+						}
 
-				const existing = await tx
-					.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
-					.from(wgMembers)
-					.where(and(eq(wgMembers.wgId, wg.id), eq(wgMembers.name, name)))
-					.limit(1);
-				if (existing.length > 0) {
-					return { ok: false, reason: 'name_taken' };
-				}
-				let inserted: typeof wgMembers.$inferSelect | undefined;
-				try {
-					[inserted] = await tx
-						.insert(wgMembers)
-						.values({ wgId: wg.id, name, color, role: 'member', authUserId: user.id })
-						.onConflictDoNothing({ target: [wgMembers.wgId, wgMembers.name] })
-						.returning();
-				} catch (insertErr) {
-					if (isUniqueMemberNameViolation(insertErr)) {
-						return { ok: false, reason: 'name_taken' };
+						const existing = await tx
+							.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
+							.from(wgMembers)
+							.where(and(eq(wgMembers.wgId, wg.id), eq(wgMembers.name, name)))
+							.limit(1);
+						if (existing.length > 0) {
+							return { ok: false, reason: 'name_taken' };
+						}
+						let inserted: typeof wgMembers.$inferSelect | undefined;
+						try {
+							[inserted] = await tx
+								.insert(wgMembers)
+								.values({ wgId: wg.id, name, color, role: 'member', authUserId: user.id })
+								.onConflictDoNothing({ target: [wgMembers.wgId, wgMembers.name] })
+								.returning();
+						} catch (insertErr) {
+							if (isUniqueMemberNameViolation(insertErr)) {
+								return { ok: false, reason: 'name_taken' };
+							}
+							throw insertErr;
+						}
+						if (!inserted) return { ok: false, reason: 'name_taken' };
+						return { ok: true, member: inserted };
+					},
+				);
+				if (!joinResult.ok) {
+					if (joinResult.reason === 'not_found') return notFound('wg_not_found');
+					if (joinResult.reason === 'joining_disabled') {
+						return forbidden('joining_disabled', 'joining_disabled');
 					}
-					throw insertErr;
+					if (joinResult.reason === 'limit') {
+						return apiError('member_limit_reached', HTTP.CONFLICT, 'member_limit_reached');
+					}
+					if (joinResult.reason === 'already_joined') {
+						return apiError('already_joined', HTTP.CONFLICT, 'already_joined');
+					}
+					return apiError('name_taken', HTTP.CONFLICT, 'name_taken');
 				}
-				if (!inserted) return { ok: false, reason: 'name_taken' };
-				return { ok: true, member: inserted };
+				const member = joinResult.member;
+				await recordAuditEvent({
+					wgId: wg.id,
+					memberId: member.id,
+					eventType: 'member.joined',
+					entityType: 'member',
+					entityId: member.id,
+					summary: `${member.name} ist der WG beigetreten.`,
+					metadata: { name: member.name },
+				});
+				await postSystemNotice({
+					wgId: wg.id,
+					authorMemberId: member.id,
+					kind: 'info',
+					source: 'system',
+					sourcePath: '/',
+					content: `${member.name} ist der WG beigetreten.`,
+				});
+				return NextResponse.json({ member });
+			},
+			async () => {
+				try {
+					await withTransaction((tx) =>
+						assertAccountCanAcquireMembership(tx, authenticatedUser.id),
+					);
+					return null;
+				} catch (err) {
+					if (err instanceof TransactionAbort && err.code === 'account_deletion_pending') {
+						return apiError('account_deletion_pending', HTTP.CONFLICT, 'account_deletion_pending');
+					}
+					throw err;
+				}
 			},
 		);
-		if (!joinResult.ok) {
-			if (joinResult.reason === 'not_found') return notFound('wg_not_found');
-			if (joinResult.reason === 'joining_disabled') {
-				return forbidden('joining_disabled', 'joining_disabled');
-			}
-			if (joinResult.reason === 'limit') {
-				return apiError('member_limit_reached', HTTP.CONFLICT, 'member_limit_reached');
-			}
-			if (joinResult.reason === 'already_joined') {
-				return apiError('already_joined', HTTP.CONFLICT, 'already_joined');
-			}
-			return apiError('name_taken', HTTP.CONFLICT, 'name_taken');
+	} catch (err) {
+		if (err instanceof TransactionAbort && err.code === 'account_deletion_pending') {
+			return apiError('account_deletion_pending', HTTP.CONFLICT, 'account_deletion_pending');
 		}
-		const member = joinResult.member;
-		await recordAuditEvent({
-			wgId: wg.id,
-			memberId: member.id,
-			eventType: 'member.joined',
-			entityType: 'member',
-			entityId: member.id,
-			summary: `${member.name} ist der WG beigetreten.`,
-			metadata: { name: member.name },
-		});
-		await postSystemNotice({
-			wgId: wg.id,
-			authorMemberId: member.id,
-			kind: 'info',
-			source: 'system',
-			sourcePath: '/',
-			content: `${member.name} ist der WG beigetreten.`,
-		});
-		return NextResponse.json({ member });
-	});
+		throw err;
+	}
 });

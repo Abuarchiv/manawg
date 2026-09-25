@@ -1,5 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { calendarSubscriptions, db, idempotencyResponses } from '@/core/db';
+import { type ActiveAccountMember, lockActiveAccountMember } from '@/core/db/account-deletion';
 import { type DbTransaction, TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { requireVerifiedMember, serverError, tooMany } from '@/core/errors';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
@@ -50,18 +51,29 @@ function replayResponse(response: CachedJsonResponse): NextResponse {
 async function withCalendarMutation(
 	req: NextRequest,
 	scope: string,
-	mutate: (tx: DbTransaction) => Promise<MutationResult>,
+	auth: { wg: { id: string }; member: { memberId: string }; authUserId: string },
+	mutate: (tx: DbTransaction, member: ActiveAccountMember) => Promise<MutationResult>,
 ): Promise<NextResponse> {
 	const key = readIdempotencyKey(req);
+	const currentMember = () =>
+		withTransaction((tx) =>
+			lockActiveAccountMember(tx, auth.wg.id, auth.member.memberId, auth.authUserId),
+		);
 	if (key) {
 		const cached = await getCachedResponse<unknown>(scope, key);
 		if (cached) {
+			if (!(await currentMember())) {
+				return NextResponse.json({ error: 'member_deactivated' }, { status: 401 });
+			}
 			const response = cachedResponse(cached);
 			if (!response) throw new Error('idempotency_response_invalid');
 			return replayResponse(response);
 		}
 		const claim = await claimReplaySlotWithRetry<unknown>(scope, key);
 		if (!claim.won) {
+			if (!(await currentMember())) {
+				return NextResponse.json({ error: 'member_deactivated' }, { status: 401 });
+			}
 			const response = cachedResponse(claim.cached);
 			if (!response) throw new Error('idempotency_response_invalid');
 			return replayResponse(response);
@@ -73,6 +85,12 @@ async function withCalendarMutation(
 		| { replayed: false; outcome: MutationResult };
 	try {
 		result = await withTransaction(async (tx) => {
+			const member = await lockActiveAccountMember(
+				tx,
+				auth.wg.id,
+				auth.member.memberId,
+				auth.authUserId,
+			);
 			if (key) {
 				const [slot] = await tx
 					.select({
@@ -98,7 +116,9 @@ async function withCalendarMutation(
 				)
 					throw new TransactionAbort('idempotency_claim_invalid');
 			}
-			const outcome = await mutate(tx);
+			const outcome = member
+				? await mutate(tx, member)
+				: { response: { status: 401, body: { error: 'member_deactivated' } } };
 			if (key) {
 				const updated = await tx
 					.update(idempotencyResponses)
@@ -190,7 +210,8 @@ export const POST = withWgRoute('calendar subscription POST', async (req, { code
 	return withCalendarMutation(
 		req,
 		`calendar-subscription-create:${auth.wg.id}:${auth.member.memberId}`,
-		async (tx) => {
+		auth,
+		async (tx, member) => {
 			const [existing] = await tx
 				.select()
 				.from(calendarSubscriptions)
@@ -242,7 +263,7 @@ export const POST = withWgRoute('calendar subscription POST', async (req, { code
 								eventType: existing ? 'calendar.feed_rotated' : 'calendar.feed_created',
 								entityType: 'calendar_subscription',
 								entityId: row.id,
-								summary: `${auth.member.name} hat den Kalender-Feed ${existing ? 'erneuert' : 'angelegt'}.`,
+								summary: `${member.name} hat den Kalender-Feed ${existing ? 'erneuert' : 'angelegt'}.`,
 								metadata: { subscriptionId: row.id },
 							} as Parameters<typeof recordAuditEvent>[0],
 						}
@@ -264,7 +285,8 @@ export const PATCH = withWgRoute('calendar subscription PATCH', async (req, { co
 	return withCalendarMutation(
 		req,
 		`calendar-subscription-rotate:${auth.wg.id}:${auth.member.memberId}`,
-		async (tx) => {
+		auth,
+		async (tx, member) => {
 			const now = new Date();
 			const [row] = await tx
 				.update(calendarSubscriptions)
@@ -287,7 +309,7 @@ export const PATCH = withWgRoute('calendar subscription PATCH', async (req, { co
 					eventType: 'calendar.feed_rotated',
 					entityType: 'calendar_subscription',
 					entityId: row.id,
-					summary: `${auth.member.name} hat den Kalender-Feed erneuert.`,
+					summary: `${member.name} hat den Kalender-Feed erneuert.`,
 					metadata: { subscriptionId: row.id },
 				},
 			};
@@ -307,7 +329,8 @@ export const DELETE = withWgRoute('calendar subscription DELETE', async (req, { 
 	return withCalendarMutation(
 		req,
 		`calendar-subscription-revoke:${auth.wg.id}:${auth.member.memberId}`,
-		async (tx) => {
+		auth,
+		async (tx, member) => {
 			const now = new Date();
 			const [row] = await tx
 				.update(calendarSubscriptions)
@@ -330,7 +353,7 @@ export const DELETE = withWgRoute('calendar subscription DELETE', async (req, { 
 					eventType: 'calendar.feed_revoked',
 					entityType: 'calendar_subscription',
 					entityId: row.id,
-					summary: `${auth.member.name} hat den Kalender-Feed widerrufen.`,
+					summary: `${member.name} hat den Kalender-Feed widerrufen.`,
 					metadata: { subscriptionId: row.id },
 				},
 			};
