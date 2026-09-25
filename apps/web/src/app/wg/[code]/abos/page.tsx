@@ -442,11 +442,14 @@ export default function AbosPage() {
 			{notice && <ActionNoticeBanner notice={notice} />}
 			{!loading && monthly.size > 0 && (
 				<Card size="sm">
-					<CardContent className="grid grid-cols-2 gap-3">
+					<CardContent className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7.5rem),1fr))] gap-3">
 						<div className="min-w-0">
 							<p className="text-sm text-muted-foreground">Pro Monat</p>
 							{[...monthly].map(([currency, { totalCents }]) => (
-								<p key={currency} className="font-mono text-xl font-semibold tabular-nums">
+								<p
+									key={currency}
+									className="break-words font-mono text-xl font-semibold tabular-nums"
+								>
 									{formatEuroCents(Math.round(totalCents), currency)}
 								</p>
 							))}
@@ -454,7 +457,10 @@ export default function AbosPage() {
 						<div className="min-w-0">
 							<p className="text-sm text-muted-foreground">Dein Anteil</p>
 							{[...monthly].map(([currency, { mineCents }]) => (
-								<p key={currency} className="font-mono text-xl font-semibold tabular-nums">
+								<p
+									key={currency}
+									className="break-words font-mono text-xl font-semibold tabular-nums"
+								>
 									{formatEuroCents(Math.round(mineCents), currency)}
 								</p>
 							))}
