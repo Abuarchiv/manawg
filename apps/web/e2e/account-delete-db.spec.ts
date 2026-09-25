@@ -388,6 +388,220 @@ test('deletion includes a membership whose join transaction commits first', asyn
 	});
 });
 
+test('an unrelated account joining a solo WG before deletion becomes the successor admin', async () => {
+	const url = process.env.ACCOUNT_DELETE_TEST_URL;
+	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
+	process.env.POSTGRES_URL = url;
+	process.env.DATABASE_MIGRATION_URL = 'placeholder';
+	const { Client } = await import('pg');
+	const { removeAccountFromWgs } = await import('../src/core/db/delete-account');
+	const { assertAccountCanAcquireMembership } = await import('../src/core/db/account-deletion');
+	const { withTransaction } = await import('../src/core/db/transaction');
+	const { eq, sql } = await import('drizzle-orm');
+	const { wgMembers, wgs } = await import('../src/core/db/schema');
+	const deletingUser = crypto.randomUUID();
+	trackDeletionFixture(deletingUser);
+	const joiningUser = crypto.randomUUID();
+	const [wg, departing] = await withTransaction(async (tx) => {
+		const [created] = await tx
+			.insert(wgs)
+			.values({ shareCode: crypto.randomUUID().slice(0, 8).toUpperCase(), name: 'Solo WG race' })
+			.returning({ id: wgs.id });
+		const [member] = await tx
+			.insert(wgMembers)
+			.values({
+				wgId: created.id,
+				name: 'Departing admin',
+				role: 'admin',
+				authUserId: deletingUser,
+			})
+			.returning({ id: wgMembers.id });
+		return [created, member] as const;
+	});
+	const joinApp = `join-${crypto.randomUUID()}`;
+	const deleteApp = `delete-${crypto.randomUUID()}`;
+	const observer = new Client({ connectionString: url });
+	await observer.connect();
+	const joinReady = deferred();
+	const releaseJoin = deferred();
+	let joinedId = '';
+	const join = withTransaction(async (tx) => {
+		await tx.execute(sql`select set_config('application_name', ${joinApp}, true)`);
+		await assertAccountCanAcquireMembership(tx, joiningUser);
+		await tx.select({ id: wgs.id }).from(wgs).where(eq(wgs.id, wg.id)).for('update');
+		const [joined] = await tx
+			.insert(wgMembers)
+			.values({ wgId: wg.id, name: 'Joining account', role: 'member', authUserId: joiningUser })
+			.returning({ id: wgMembers.id });
+		joinedId = joined.id;
+		joinReady.resolve();
+		await releaseJoin.promise;
+	});
+	let deletion:
+		| Promise<{
+				left: Array<{ memberId: string; newAdminId: string | null }>;
+				deletedWgIds: string[];
+		  }>
+		| undefined;
+	let deletionBlockedOnJoin = false;
+	try {
+		await joinReady.promise;
+		const deletionStarted = deferred();
+		deletion = withTransaction(async (tx) => {
+			await tx.execute(sql`select set_config('application_name', ${deleteApp}, true)`);
+			deletionStarted.resolve();
+			return removeAccountFromWgs(tx, deletingUser);
+		});
+		await deletionStarted.promise;
+		deletionBlockedOnJoin = await waitForBlockedQuery(observer, deleteApp);
+	} finally {
+		releaseJoin.resolve();
+		try {
+			await join;
+		} finally {
+			await observer.end();
+		}
+	}
+	expect(deletionBlockedOnJoin).toBe(true);
+	expect(deletion).toBeDefined();
+	if (!deletion) return;
+	const result = await deletion;
+	expect(result.left).toHaveLength(1);
+	expect(result.left[0]).toMatchObject({ memberId: departing.id, newAdminId: joinedId });
+	expect(result.deletedWgIds).toHaveLength(0);
+	await withTransaction(async (tx) => {
+		const members = await tx.select().from(wgMembers).where(eq(wgMembers.wgId, wg.id));
+		expect(members.find((member) => member.id === departing.id)?.deactivatedAt).toBeInstanceOf(
+			Date,
+		);
+		expect(members.find((member) => member.id === departing.id)?.authUserId).toBeNull();
+		expect(members.find((member) => member.id === joinedId)).toMatchObject({
+			authUserId: joiningUser,
+			role: 'admin',
+			deactivatedAt: null,
+		});
+	});
+});
+
+test('admin deletion chooses a fallback after its pending successor moves out', async () => {
+	const url = process.env.ACCOUNT_DELETE_TEST_URL;
+	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
+	process.env.POSTGRES_URL = url;
+	process.env.DATABASE_MIGRATION_URL = 'placeholder';
+	const { Client } = await import('pg');
+	const { lockActiveAccountMember } = await import('../src/core/db/account-deletion');
+	const { removeAccountFromWgs } = await import('../src/core/db/delete-account');
+	const { withTransaction } = await import('../src/core/db/transaction');
+	const { eq, sql } = await import('drizzle-orm');
+	const { wgMembers, wgs } = await import('../src/core/db/schema');
+	const deletingUser = crypto.randomUUID();
+	trackDeletionFixture(deletingUser);
+	const leavingUser = crypto.randomUUID();
+	const fallbackUser = crypto.randomUUID();
+	const [wg, departing, pendingSuccessor, fallback] = await withTransaction(async (tx) => {
+		const [created] = await tx
+			.insert(wgs)
+			.values({
+				shareCode: crypto.randomUUID().slice(0, 8).toUpperCase(),
+				name: 'Successor exit race',
+			})
+			.returning({ id: wgs.id });
+		const [admin, successor, remaining] = await tx
+			.insert(wgMembers)
+			.values([
+				{ wgId: created.id, name: 'Departing admin', role: 'admin', authUserId: deletingUser },
+				{
+					wgId: created.id,
+					name: 'Pending successor',
+					role: 'member',
+					authUserId: leavingUser,
+					createdAt: new Date('2025-01-01T00:00:00.000Z'),
+				},
+				{
+					wgId: created.id,
+					name: 'Fallback successor',
+					role: 'member',
+					authUserId: fallbackUser,
+					createdAt: new Date('2025-01-02T00:00:00.000Z'),
+				},
+			])
+			.returning({ id: wgMembers.id });
+		return [created, admin, successor, remaining] as const;
+	});
+	const leaveApp = `leave-${crypto.randomUUID()}`;
+	const deleteApp = `delete-${crypto.randomUUID()}`;
+	const observer = new Client({ connectionString: url });
+	await observer.connect();
+	const leaveReady = deferred();
+	const releaseLeave = deferred();
+	const leave = withTransaction(async (tx) => {
+		await tx.execute(sql`select set_config('application_name', ${leaveApp}, true)`);
+		const actor = await lockActiveAccountMember(tx, wg.id, pendingSuccessor.id, leavingUser);
+		expect(actor).not.toBeNull();
+		const [member] = await tx
+			.select({ id: wgMembers.id, deactivatedAt: wgMembers.deactivatedAt })
+			.from(wgMembers)
+			.where(eq(wgMembers.id, pendingSuccessor.id))
+			.for('update');
+		expect(member?.deactivatedAt).toBeNull();
+		await tx
+			.update(wgMembers)
+			.set({ deactivatedAt: new Date() })
+			.where(eq(wgMembers.id, pendingSuccessor.id));
+		leaveReady.resolve();
+		await releaseLeave.promise;
+	});
+	let deletion:
+		| Promise<{
+				left: Array<{ memberId: string; newAdminId: string | null }>;
+				deletedWgIds: string[];
+		  }>
+		| undefined;
+	let deletionBlockedOnLeave = false;
+	try {
+		await leaveReady.promise;
+		const deletionStarted = deferred();
+		deletion = withTransaction(async (tx) => {
+			await tx.execute(sql`select set_config('application_name', ${deleteApp}, true)`);
+			deletionStarted.resolve();
+			return removeAccountFromWgs(tx, deletingUser);
+		});
+		await deletionStarted.promise;
+		deletionBlockedOnLeave = await waitForBlockedQuery(observer, deleteApp);
+	} finally {
+		releaseLeave.resolve();
+		try {
+			await leave;
+		} finally {
+			await observer.end();
+		}
+	}
+	expect(deletionBlockedOnLeave).toBe(true);
+	expect(deletion).toBeDefined();
+	if (!deletion) return;
+	const result = await deletion;
+	expect(result.left).toHaveLength(1);
+	expect(result.left[0]).toMatchObject({ memberId: departing.id, newAdminId: fallback.id });
+	expect(result.deletedWgIds).toHaveLength(0);
+	await withTransaction(async (tx) => {
+		const members = await tx.select().from(wgMembers).where(eq(wgMembers.wgId, wg.id));
+		expect(members.find((member) => member.id === departing.id)).toMatchObject({
+			authUserId: null,
+			deactivatedAt: expect.any(Date),
+		});
+		expect(members.find((member) => member.id === pendingSuccessor.id)).toMatchObject({
+			authUserId: leavingUser,
+			role: 'member',
+			deactivatedAt: expect.any(Date),
+		});
+		expect(members.find((member) => member.id === fallback.id)).toMatchObject({
+			authUserId: fallbackUser,
+			role: 'admin',
+			deactivatedAt: null,
+		});
+	});
+});
+
 test('a calendar writer waiting behind account cleanup cannot restore its credential', async () => {
 	const url = process.env.ACCOUNT_DELETE_TEST_URL;
 	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
