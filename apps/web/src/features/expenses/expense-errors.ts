@@ -213,9 +213,11 @@ export function recurringAdvanceWarningMessage(status: number, error: string): s
  * shows. Keyed by the reasons `buildSplitsFromForm` reports.
  */
 export function splitInputErrorMessage(
-	reason: 'splits_empty' | 'splits_mismatch' | 'no_members',
+	reason: 'invalid_share' | 'splits_empty' | 'splits_mismatch' | 'no_members',
 ): string {
 	switch (reason) {
+		case 'invalid_share':
+			return 'Mindestens ein Anteil ist ungültig. Gib einen gültigen Betrag ein oder lasse das Feld leer.';
 		case 'splits_empty':
 			return 'Aufteilung leer — gib mindestens einen Betrag ein.';
 		case 'splits_mismatch':

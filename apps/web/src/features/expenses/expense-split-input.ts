@@ -26,7 +26,7 @@ export type SplitMode = 'equal' | 'manual';
 
 export type SplitInputResult =
 	| { ok: true; splits: DebtorShare[] }
-	| { ok: false; reason: 'splits_empty' | 'splits_mismatch' | 'no_members' };
+	| { ok: false; reason: 'invalid_share' | 'splits_empty' | 'splits_mismatch' | 'no_members' };
 
 interface BuildSplitsInput {
 	splitMode: SplitMode;
@@ -77,7 +77,7 @@ export function buildSplitsFromForm(input: BuildSplitsInput): SplitInputResult {
 		const raw = manualSplits[member.id] ?? '';
 		if (raw.trim().length === 0) continue;
 		const value = parseEuroAmount(raw);
-		if (value === null || value < 0) continue;
+		if (value === null || value < 0) return { ok: false, reason: 'invalid_share' };
 		const cents = Math.round(value * CENTS_PER_EURO);
 		splits.push({ debtorMemberId: member.id, amountCents: cents });
 		sum += cents;
