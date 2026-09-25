@@ -587,6 +587,13 @@ select {
 	}
 }
 
+@media (forced-colors: active) {
+	:focus-visible {
+		outline: 3px solid Highlight;
+		outline-offset: 2px;
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.animate-toast-progress {
 		animation: none !important;
