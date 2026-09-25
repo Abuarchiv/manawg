@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { PgDialect, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { PgDialect, jsonb, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
 import ts from 'typescript';
 import * as chat from '../src/features/chat/chat-pure.ts';
 import * as chatReadQuery from '../src/features/chat/chat-read-query.ts';
@@ -129,6 +129,7 @@ test('unread chat query excludes soft-deleted messages', () => {
 		id: uuid('id'),
 		wgId: uuid('wg_id'),
 		senderMemberId: uuid('sender_member_id'),
+		systemPayload: jsonb('system_payload'),
 		deletedAt: timestamp('deleted_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }),
 	});
@@ -142,6 +143,10 @@ test('unread chat query excludes soft-deleted messages', () => {
 	assert.ok(where, 'unread query builder must provide a filter');
 	const query = new PgDialect().sqlToQuery(where);
 	assert.match(query.sql, /deleted_at" is null/i);
+	assert.match(
+		query.sql,
+		/coalesce\("wg_chat_messages"\."system_payload"->>'actorMemberId', ''\) <> \$/i,
+	);
 	assert.match(query.sql, /\("wg_chat_messages"\."created_at", "wg_chat_messages"\."id"\) > \(/i);
 	assert.match(query.sql, /select cursor\.created_at, cursor\.id/i);
 	assert.ok(!query.params.includes('2026-09-24T00:00:00.000Z'));

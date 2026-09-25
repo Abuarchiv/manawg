@@ -364,13 +364,13 @@ select {
 		--danger-fg: var(--primary-foreground);
 		/* State surfaces stay neutral; only settled and destructive carry meaning. */
 		--success-fg: var(--foreground);
-		--success-bg: color-mix(in oklch, var(--settled) 12%, var(--background));
-		--success-border: color-mix(in oklch, var(--settled) 35%, var(--border));
+		--success-bg: color-mix(in oklab, var(--settled) 12%, var(--background));
+		--success-border: color-mix(in oklab, var(--settled) 35%, var(--border));
 		--warning-fg: var(--foreground);
 		--warning-bg: var(--secondary);
 		--warning-border: var(--border);
-		--danger-bg: color-mix(in oklch, var(--destructive) 12%, var(--background));
-		--danger-border: color-mix(in oklch, var(--destructive) 35%, var(--border));
+		--danger-bg: color-mix(in oklab, var(--destructive) 12%, var(--background));
+		--danger-border: color-mix(in oklab, var(--destructive) 35%, var(--border));
 		--info-fg: var(--foreground);
 		--info-bg: var(--secondary);
 		--info-border: var(--border);
@@ -448,13 +448,13 @@ select {
 		--danger: var(--destructive);
 		--info: var(--muted-foreground);
 		--success-fg: var(--foreground);
-		--success-bg: color-mix(in oklch, var(--settled) 12%, var(--background));
-		--success-border: color-mix(in oklch, var(--settled) 35%, var(--border));
+		--success-bg: color-mix(in oklab, var(--settled) 12%, var(--background));
+		--success-border: color-mix(in oklab, var(--settled) 35%, var(--border));
 		--warning-fg: var(--foreground);
 		--warning-bg: var(--secondary);
 		--warning-border: var(--border);
-		--danger-bg: color-mix(in oklch, var(--destructive) 12%, var(--background));
-		--danger-border: color-mix(in oklch, var(--destructive) 35%, var(--border));
+		--danger-bg: color-mix(in oklab, var(--destructive) 12%, var(--background));
+		--danger-border: color-mix(in oklab, var(--destructive) 35%, var(--border));
 		--info-fg: var(--foreground);
 		--info-bg: var(--secondary);
 		--info-border: var(--border);

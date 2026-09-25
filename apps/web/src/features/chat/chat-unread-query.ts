@@ -22,6 +22,7 @@ interface ChatUnreadColumns {
 	id: AnyPgColumn;
 	wgId: AnyPgColumn;
 	senderMemberId: AnyPgColumn;
+	systemPayload: AnyPgColumn;
 	deletedAt: AnyPgColumn;
 	createdAt: AnyPgColumn;
 }
@@ -36,7 +37,14 @@ export function buildUnreadChatMessagesWhere(
 	return and(
 		eq(messages.wgId, wgId),
 		isNull(messages.deletedAt),
-		or(ne(messages.senderMemberId, memberId), isNull(messages.senderMemberId)),
+		or(
+			ne(messages.senderMemberId, memberId),
+			// System messages about the member's own action are not news to them.
+			and(
+				isNull(messages.senderMemberId),
+				sql`coalesce(${messages.systemPayload}->>'actorMemberId', '') <> ${memberId}`,
+			),
+		),
 		cutoffMessageId
 			? buildChatCursorWhere(messages, wgId, cutoffMessageId, 'after')
 			: cutoff

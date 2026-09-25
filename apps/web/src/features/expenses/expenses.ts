@@ -168,6 +168,7 @@ export async function recordExpenseCreatedSideEffects(
 		kind: 'expense.created',
 		payload: {
 			expenseId: expense.id,
+			actorMemberId: actor.memberId,
 			actorName: actor.name,
 			description: expense.description,
 			amount,
