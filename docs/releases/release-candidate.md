@@ -6,7 +6,7 @@ Production migration requires a successful `push` run of `.github/workflows/ci.y
 
 ## Production release — 2026-09-25
 
-`https://app.manawg.com` serves `main` candidate `8111767`. The `deployment_status` run `36100090000` for that exact SHA succeeded, including `db-supabase-preview` and `e2e-preview`. The Production migration ledger has 16 entries (through `0015`), matching the journal on `main`; these migrations were applied manually, outside `migrate-production.yml`, because the Production environment has no `DATABASE_MIGRATION_URL` secret. `/api/health` returned OK after the deploy. The Supabase project is on the Free plan without provider backups or PITR, so a local JSON export of all Production tables was taken before migrating. Auth mail goes through Resend SMTP from `noreply@manawg.com`; a Supabase-triggered sign-up or reset mail has not yet been verified end to end. The earlier BLOCKED entries below are historical.
+`https://app.manawg.com` serves `main` candidate `8111767`. The `deployment_status` run `36100090000` for that exact SHA succeeded, including `db-supabase-preview` and `e2e-preview`. The Production migration ledger has 16 entries (through `0015`), matching the journal on `main`; these migrations were applied manually, outside `migrate-production.yml`, because the Production environment has no `DATABASE_MIGRATION_URL` secret. `/api/health` returned OK after the deploy. The Supabase organization reports the Free tier. Provider backup/PITR settings, completeness of the reported local export, Resend SMTP configuration, and end-to-end auth mail delivery have not yet been independently verified. The earlier BLOCKED entries below are historical.
 
 ## Read-only evidence update — 2026-09-24
 
