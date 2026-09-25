@@ -5,7 +5,7 @@ import { ChatTopBarLink } from '@/components/wg/ChatTopBarLink';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { LogoMark } from '@/shared/components/ui/LogoMark';
 import { cn } from '@/shared/lib/cn';
-import { Search, UserRound } from 'lucide-react';
+import { UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -45,13 +45,6 @@ export function WgAppHeader() {
 					<p className="truncate text-sm text-muted-foreground">Hallo, {identity.name}.</p>
 				</div>
 				<div className="flex shrink-0 items-center gap-2">
-					<Link
-						href={`${baseHref}/suche`}
-						aria-label="WG durchsuchen"
-						className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'shrink-0')}
-					>
-						<Search aria-hidden />
-					</Link>
 					<ChatTopBarLink
 						href={`${baseHref}/chat`}
 						className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'relative shrink-0')}

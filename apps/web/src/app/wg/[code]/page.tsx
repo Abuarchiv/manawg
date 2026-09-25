@@ -40,6 +40,7 @@ import {
 	CircleCheck,
 	Loader2,
 	Megaphone,
+	Search,
 } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import dynamic from 'next/dynamic';
@@ -451,6 +452,17 @@ export default function WgHomePage() {
 					</section>
 
 					<section aria-labelledby="wg-now-heading" className="flex min-w-0 flex-col gap-3">
+						<div className="flex justify-end">
+							<Link
+								href={`${wgBaseHref}/suche`}
+								className={cn(
+									buttonVariants({ variant: 'ghost' }),
+									'min-w-0 max-w-full shrink whitespace-normal px-0 text-[13px] text-muted-foreground leading-snug',
+								)}
+							>
+								<Search data-icon="inline-start" aria-hidden /> WG durchsuchen
+							</Link>
+						</div>
 						<Collapsible defaultOpen>
 							<h2 id="wg-now-heading">
 								<CollapsibleTrigger
