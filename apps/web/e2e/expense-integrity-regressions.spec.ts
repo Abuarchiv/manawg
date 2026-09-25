@@ -93,6 +93,64 @@ test('expense edit keeps departed historical shares in manual splits', () => {
 	).toBe(true);
 });
 
+test('manual expense splits reject invalid entries and keep blank, zero, and valid shares', () => {
+	const { parseEuroAmount } = loadTs<{
+		parseEuroAmount: (value: string) => number | null;
+	}>(path.join(ROOT, 'src/core/utils/amount.ts'));
+	const splitInput = loadTs<{
+		buildSplitsFromForm: (input: {
+			splitMode: 'equal' | 'manual';
+			members: readonly { id: string; active?: boolean }[];
+			manualSplits: Record<string, string>;
+			amountCents: number;
+			rotationOffset: number;
+		}) => unknown;
+	}>(SPLIT_INPUT, {
+		'@/core/utils/amount': { parseEuroAmount },
+		'@/core/utils/money': { CENTS_PER_EURO: 100 },
+		'@/features/expenses/split-math': loadTs(SPLIT_MATH),
+	});
+	const members = [
+		{ id: CALLER_ID, active: true },
+		{ id: PAYER_ID, active: true },
+	];
+	const build = (manualSplits: Record<string, string>) =>
+		splitInput.buildSplitsFromForm({
+			splitMode: 'manual',
+			members,
+			manualSplits,
+			amountCents: 1000,
+			rotationOffset: 0,
+		});
+
+	expect(build({ [CALLER_ID]: '10', [PAYER_ID]: '-5' })).toEqual({
+		ok: false,
+		reason: 'invalid_share',
+	});
+	expect(build({ [CALLER_ID]: '10', [PAYER_ID]: 'invalid' })).toEqual({
+		ok: false,
+		reason: 'invalid_share',
+	});
+	expect(build({ [CALLER_ID]: '6', [PAYER_ID]: '4' })).toEqual({
+		ok: true,
+		splits: [
+			{ debtorMemberId: CALLER_ID, amountCents: 600 },
+			{ debtorMemberId: PAYER_ID, amountCents: 400 },
+		],
+	});
+	expect(build({ [CALLER_ID]: '10', [PAYER_ID]: '' })).toEqual({
+		ok: true,
+		splits: [{ debtorMemberId: CALLER_ID, amountCents: 1000 }],
+	});
+	expect(build({ [CALLER_ID]: '10', [PAYER_ID]: '0' })).toEqual({
+		ok: true,
+		splits: [
+			{ debtorMemberId: CALLER_ID, amountCents: 1000 },
+			{ debtorMemberId: PAYER_ID, amountCents: 0 },
+		],
+	});
+});
+
 function responseError(code: string, status: number): Response {
 	return Response.json({ error: code }, { status });
 }

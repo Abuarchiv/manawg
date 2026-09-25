@@ -376,7 +376,7 @@ export function ExpenseFormSection({
 										<FieldError id={splitErrorId}>{fieldErrors.splits}</FieldError>
 									)}
 									{splitMode === 'manual' && (
-										<FieldGroup className="gap-3">
+										<FieldGroup className={fieldErrors.splits ? 'block space-y-3' : 'gap-3'}>
 											{splitCandidates.map((member) => (
 												<Field
 													key={member.id}
