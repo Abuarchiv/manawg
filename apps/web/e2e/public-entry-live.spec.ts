@@ -63,16 +63,27 @@ test.describe('live public dashboard entry', () => {
 		).toBeVisible();
 		await expect(page.getByRole('button', { name: 'WG erstellen', exact: true })).toHaveCount(0);
 
-		// New accounts need 8 characters; rejected before any sign-up request.
+		// Short passwords are rejected locally, before any Supabase sign-up request.
+		let signUpRequests = 0;
+		await page.route(
+			(url) => url.pathname === '/auth/v1/signup',
+			async (route) => {
+				signUpRequests += 1;
+				await route.abort();
+			},
+		);
+		const passwordWarning = page.getByRole('alert').filter({ hasText: 'sicheres Passwort' });
 		await page.getByLabel('E-Mail-Adresse').fill('kurz@example.invalid');
 		await page.getByLabel('Passwort', { exact: true }).fill('12345');
 		await page.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
-		await expect(page.getByText('mindestens 8 Zeichen', { exact: false })).toBeVisible();
+		await expect(passwordWarning).toBeVisible();
+		expect(signUpRequests).toBe(0);
 		await page.reload();
 		await page.getByLabel('E-Mail-Adresse').fill('kurz@example.invalid');
 		await page.getByLabel('Passwort', { exact: true }).fill('1234567');
 		await page.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
-		await expect(page.getByText('mindestens 8 Zeichen', { exact: false })).toBeVisible();
+		await expect(passwordWarning).toBeVisible();
+		expect(signUpRequests).toBe(0);
 	});
 
 	test('an invitation survives public navigation and enters join only after selection', async ({
