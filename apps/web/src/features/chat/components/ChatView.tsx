@@ -575,8 +575,12 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			syncChrome();
 			const top = viewport?.offsetTop ?? 0;
 			const bottom = top + (viewport?.height ?? window.innerHeight);
-			const reserved = chrome?.getBoundingClientRect().height ?? 68;
-			frame.style.height = `${Math.max(0, bottom - Math.max(top, frame.getBoundingClientRect().top) - reserved)}px`;
+			// iOS keeps the fixed nav at the layout bottom, behind the keyboard, and
+			// pans the visual viewport: only reserve the nav part that is visible.
+			const nav = chrome?.getBoundingClientRect();
+			const reserved = nav ? Math.max(0, bottom - Math.max(top, nav.top)) : 68;
+			// End the frame at the visible bottom, wherever the pan left its top.
+			frame.style.height = `${Math.max(0, bottom - reserved - frame.getBoundingClientRect().top)}px`;
 		}
 
 		syncChrome();
