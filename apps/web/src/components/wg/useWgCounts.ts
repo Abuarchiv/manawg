@@ -1,0 +1,91 @@
+'use client';
+
+import { useWg } from '@/components/wg/WgContextProvider';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import type { DashboardData } from '@/core/reads/dashboard-data';
+import { getChoreStatus } from '@/features/chores/chore-status';
+import { useCallback, useEffect } from 'react';
+
+export type SegmentCountState = 'ready' | 'loading' | 'unavailable' | 'stale';
+
+export interface SegmentCount {
+	count: number | undefined;
+	hint: string;
+	state: SegmentCountState;
+	overflow?: boolean | undefined;
+}
+
+export interface ChatUnreadCount {
+	count: number;
+	overflow: boolean;
+}
+
+export interface ChatUnreadSnapshot {
+	data: ChatUnreadCount | undefined;
+	error: boolean;
+	refresh: () => void;
+}
+
+const CHAT_READ_CONFIRMED_EVENT = 'manawg:chat-read-confirmed';
+
+/** Refresh the shared unread count only after the read endpoint confirms it. */
+export function notifyChatReadConfirmed(shareCode: string): void {
+	if (typeof window === 'undefined') return;
+	window.dispatchEvent(new CustomEvent(CHAT_READ_CONFIRMED_EVENT, { detail: { shareCode } }));
+}
+
+export function useChatUnreadCount(): ChatUnreadSnapshot {
+	const { wg, identity } = useWg();
+	const encodedShareCode = encodeURIComponent(wg.shareCode);
+	const chat = useCachedFetch<ChatUnreadCount>(`/api/wg/${encodedShareCode}/chat/unread-count`, {
+		memberId: identity.memberId,
+		memberToken: identity.memberToken,
+	});
+	const refresh = useCallback(() => void chat.refresh(), [chat.refresh]);
+
+	useEffect(() => {
+		const refreshAfterRead = (event: Event): void => {
+			const detail = (event as CustomEvent<{ shareCode?: unknown }>).detail;
+			if (detail?.shareCode === wg.shareCode) refresh();
+		};
+		window.addEventListener(CHAT_READ_CONFIRMED_EVENT, refreshAfterRead);
+		return () => window.removeEventListener(CHAT_READ_CONFIRMED_EVENT, refreshAfterRead);
+	}, [refresh, wg.shareCode]);
+
+	return { data: chat.data, error: chat.error !== undefined, refresh };
+}
+
+function countState<T>(data: T | undefined, error: unknown): SegmentCountState {
+	if (data !== undefined) return error ? 'stale' : 'ready';
+	return error ? 'unavailable' : 'loading';
+}
+
+/** Shared, member-scoped dashboard reads for household and finance counts. */
+export function useDashboardCounts(): Record<string, SegmentCount> {
+	const { wg, identity } = useWg();
+	const encodedShareCode = encodeURIComponent(wg.shareCode);
+	const dashboard = useCachedFetch<DashboardData>(`/api/wg/${encodedShareCode}/dashboard`, {
+		memberId: identity.memberId,
+		memberToken: identity.memberToken,
+	});
+
+	const dashboardState = countState(dashboard.data, dashboard.error);
+	const ownDueCount = dashboard.data?.dueChores.filter(
+		(chore) =>
+			chore.assignedMemberId === identity.memberId &&
+			['due', 'overdue'].includes(getChoreStatus(chore.nextDueAt).state),
+	).length;
+	return {
+		einkauf: {
+			count: dashboard.data?.openShoppingCount,
+			hint: 'offen',
+			state: dashboardState,
+		},
+		putzen: { count: ownDueCount, hint: 'für dich fällig', state: dashboardState },
+		abos: {
+			count: dashboard.data?.dueRecurringExpenses.length,
+			hint: 'fällig',
+			state: dashboardState,
+		},
+	};
+}

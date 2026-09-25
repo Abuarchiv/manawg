@@ -14,14 +14,22 @@ import { ActivityFeed } from '@/components/wg/dashboard/ActivityFeed';
 import { StartWelcome } from '@/components/wg/dashboard/StartWelcome';
 import { TodayIcon } from '@/components/wg/dashboard/TodayIcon';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import type { DashboardData } from '@/core/reads/dashboard-data';
-import { type TodayImportantItem, getTodayImportantItems } from '@/core/reads/dashboard-insights';
+import {
+	type TodayImportantItem,
+	type WeekAgendaItem,
+	getBerlinWeekWindow,
+	getForYouItems,
+	getWeekAgenda,
+} from '@/core/reads/dashboard-insights';
 import { getDashboardAnnouncementHref } from '@/core/reads/dashboard-links';
+import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
-import { MS_PER_DAY, parseTimestamp, parseValidDate } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { type SerializedWgEvent, expandRecurrence } from '@/features/events/events';
 import { cn } from '@/shared/lib/cn';
 import {
 	CalendarDays,
@@ -31,9 +39,7 @@ import {
 	Circle,
 	CircleCheck,
 	Loader2,
-	type LucideIcon,
 	Megaphone,
-	Receipt,
 	Search,
 } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
@@ -49,44 +55,7 @@ const PushPrimingPrompt = dynamic(
 const REFRESH_INTERVAL_MS = 30_000;
 const TODAY_VISIBLE = 4;
 
-interface StartEvent {
-	id: string;
-	title: string;
-	startsAt: string;
-	allDay: boolean;
-}
-
-const EVENT_DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
-	weekday: 'short',
-	day: 'numeric',
-	month: 'short',
-	timeZone: 'Europe/Berlin',
-});
-const EVENT_TIME_FORMATTER = new Intl.DateTimeFormat('de-DE', {
-	hour: '2-digit',
-	minute: '2-digit',
-	timeZone: 'Europe/Berlin',
-});
-
-function formatEventStart(event: StartEvent): string {
-	const date = parseValidDate(event.startsAt);
-	if (!date) return 'Datum unbekannt';
-	const day = EVENT_DAY_FORMATTER.format(date);
-	return event.allDay ? day : `${day}, ${EVENT_TIME_FORMATTER.format(date)}`;
-}
-
 type PendingAnnouncement = DashboardData['myOpenAnnouncements'][number];
-
-async function readDashboardError(response: Response): Promise<string | null> {
-	try {
-		const body = (await response.clone().json()) as { code?: unknown; error?: unknown };
-		if (typeof body.code === 'string') return body.code;
-		if (typeof body.error === 'string') return body.error;
-	} catch {
-		return null;
-	}
-	return null;
-}
 
 function samePendingAnnouncement(
 	announcement: NonNullable<DashboardData['latestAnnouncement']>,
@@ -104,69 +73,54 @@ function samePendingAnnouncement(
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function WgHomePage() {
 	const { wg, identity } = useWg();
-	const [data, setData] = useState<DashboardData | null>(null);
-	const [error, setError] = useState<string | null>(null);
-	const [loading, setLoading] = useState(false);
 	const [todayMoreOpen, setTodayMoreOpen] = useState(false);
 	const [armedChoreId, setArmedChoreId] = useState<string | null>(null);
 	const [pendingChoreId, setPendingChoreId] = useState<string | null>(null);
 	const [completeNotice, setCompleteNotice] = useState<string | null>(null);
 	const completionRequestKeysRef = useRef(new Map<string, string>());
-	const [nextEvent, setNextEvent] = useState<StartEvent | null | undefined>(undefined);
 	const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
-	const dashboardRequestId = useRef(0);
+	const [berlinTodayKey, setBerlinTodayKey] = useState(() => berlinDayKey(new Date()));
+	const [agendaNow, setAgendaNow] = useState(() => Date.now());
 	const reducedMotion = useReducedMotion();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
-
-	const load = useCallback(async (): Promise<void> => {
-		const requestId = dashboardRequestId.current + 1;
-		dashboardRequestId.current = requestId;
-		setLoading(true);
-		try {
-			const res = await fetch(`/api/wg/${encodedShareCode}/dashboard`, {
-				cache: 'no-store',
-				headers: { 'x-manawg-member-id': identity.memberId },
-			});
-			if (requestId !== dashboardRequestId.current) return;
-			if (!res.ok) {
-				const responseError = await readDashboardError(res);
-				if (requestId !== dashboardRequestId.current) return;
-				setError(getWgLoadErrorMessage('Dashboard', res.status, responseError));
-				return;
-			}
-			const json = (await res.json()) as DashboardData;
-			if (requestId !== dashboardRequestId.current) return;
-			setData(json);
-			setUpdatedAt(new Date());
-			setError(null);
-		} catch {
-			if (requestId !== dashboardRequestId.current) return;
-			setError(getWgLoadErrorMessage('Dashboard', 0, 'Netzwerkfehler'));
-		} finally {
-			if (requestId === dashboardRequestId.current) setLoading(false);
-		}
-	}, [encodedShareCode, identity.memberId]);
+	const weekWindow = useMemo(
+		() => getBerlinWeekWindow(Date.parse(`${berlinTodayKey}T12:00:00.000Z`)),
+		[berlinTodayKey],
+	);
+	const dashboardRead = useCachedFetch<DashboardData>(`/api/wg/${encodedShareCode}/dashboard`, {
+		memberId: identity.memberId,
+		memberToken: identity.memberToken,
+	});
+	const eventUrl = `/api/wg/${encodedShareCode}/events?from=${encodeURIComponent(weekWindow.from.toISOString())}&to=${encodeURIComponent(weekWindow.to.toISOString())}`;
+	const eventRead = useCachedFetch<{ events: SerializedWgEvent[] }>(eventUrl, {
+		memberId: identity.memberId,
+		memberToken: identity.memberToken,
+	});
+	const data = dashboardRead.data ?? null;
+	const loading = dashboardRead.isLoading;
+	const error = dashboardRead.error
+		? getWgLoadErrorMessage('Dashboard', dashboardRead.error.status, dashboardRead.error.error)
+		: null;
+	const eventOccurrences = useMemo(
+		() =>
+			(eventRead.data?.events ?? []).flatMap((event) =>
+				expandRecurrence(event, weekWindow.from, weekWindow.to),
+			),
+		[eventRead.data, weekWindow],
+	);
+	const load = useCallback(() => {
+		const now = Date.now();
+		setAgendaNow(now);
+		const nextTodayKey = berlinDayKey(new Date(now));
+		if (nextTodayKey !== berlinTodayKey) setBerlinTodayKey(nextTodayKey);
+		else void eventRead.refresh();
+		void dashboardRead.refresh();
+	}, [berlinTodayKey, dashboardRead.refresh, eventRead.refresh]);
 
 	useEffect(() => {
-		void load();
-	}, [load]);
-
-	useEffect(() => {
-		const from = new Date();
-		const to = new Date(from.getTime() + 7 * MS_PER_DAY);
-		void apiFetch<{ events: StartEvent[] }>(
-			`/api/wg/${encodedShareCode}/events?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,
-			{ memberId: identity.memberId },
-		).then((result) => {
-			if (!result.ok) return setNextEvent(null);
-			const now = Date.now();
-			const upcoming = result.data.events
-				.filter((event) => (parseTimestamp(event.startsAt) ?? 0) >= now - MS_PER_DAY)
-				.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-			setNextEvent(upcoming[0] ?? null);
-		});
-	}, [encodedShareCode, identity.memberId]);
+		if (dashboardRead.serverRevision > 0) setUpdatedAt(new Date());
+	}, [dashboardRead.serverRevision]);
 
 	// Nur eigene Putzaufgaben lassen sich direkt abhaken. Erster Tipp merkt vor,
 	// zweiter bestätigt – wie im Putzplan, damit ein versehentlicher Tipp nichts bucht.
@@ -214,27 +168,10 @@ export default function WgHomePage() {
 	}
 	useVisibilityPausedInterval(() => void load(), REFRESH_INTERVAL_MS);
 
-	const myBalances =
-		data?.balances.filter((balance) => balance.memberId === identity.memberId) ?? [];
-	const primaryBalance =
-		myBalances.find((balance) => balance.currency === 'EUR') ?? myBalances[0] ?? null;
-	const myBalance = primaryBalance?.balanceCents ?? 0;
-	// Zeige nur Salden ungleich Null je Währung an — außer es bliebe dadurch
-	// nichts übrig (z. B. alles ausgeglichen), dann zeig den/die vorhandenen
-	// Saldo/Salden trotzdem, statt eine leere Kachel zu rendern.
-	const nonZeroBalances = myBalances.filter((balance) => balance.balanceCents !== 0);
-	const myBalanceText =
-		myBalances.length > 0
-			? (nonZeroBalances.length > 0 ? nonZeroBalances : myBalances)
-					.map((balance) =>
-						formatEuroCents(balance.balanceCents, balance.currency, { signed: true }),
-					)
-					.join(' · ')
-			: formatEuroCents(0, 'EUR', { signed: true });
-	const todayImportant = useMemo(
+	const forYouItems = useMemo(
 		() =>
 			data
-				? getTodayImportantItems({
+				? getForYouItems({
 						shareCode: wg.shareCode,
 						currentMemberId: identity.memberId,
 						openShoppingCount: data.openShoppingCount,
@@ -243,12 +180,26 @@ export default function WgHomePage() {
 						myOpenAnnouncements: data.myOpenAnnouncements,
 						dueRecurringExpenses: data.dueRecurringExpenses,
 						absentMembers: data.absentMembers,
+						balances: data.balances,
 					})
 				: [],
 		[data, identity.memberId, wg.shareCode],
 	);
-	const todayVisible = todayImportant.slice(0, TODAY_VISIBLE);
-	const todayMore = todayImportant.slice(TODAY_VISIBLE);
+	const forYouVisible = forYouItems.slice(0, TODAY_VISIBLE);
+	const forYouMore = forYouItems.slice(TODAY_VISIBLE);
+	const weekAgenda = useMemo(
+		() =>
+			getWeekAgenda({
+				shareCode: wg.shareCode,
+				currentMemberId: identity.memberId,
+				dueChores: data?.dueChores ?? [],
+				events: eventOccurrences,
+				now: agendaNow,
+			}),
+		[data?.dueChores, eventOccurrences, agendaNow, identity.memberId, wg.shareCode],
+	);
+	const overdueVisible = weekAgenda.overdue.slice(0, TODAY_VISIBLE);
+	const upcomingVisible = weekAgenda.upcoming.slice(0, TODAY_VISIBLE);
 	const latestAnnouncement = data?.latestAnnouncement;
 	const pendingAnnouncements = data?.myOpenAnnouncements ?? [];
 	const latestIsPending = Boolean(
@@ -257,10 +208,7 @@ export default function WgHomePage() {
 				samePendingAnnouncement(latestAnnouncement, item, identity.name),
 			),
 	);
-	const pendingHrefs = useMemo(
-		() => new Set(todayImportant.map((item) => item.href)),
-		[todayImportant],
-	);
+	const pendingHrefs = useMemo(() => new Set(forYouItems.map((item) => item.href)), [forYouItems]);
 	const activityItems = useMemo(() => {
 		if (!data) return [];
 		return data.activity
@@ -283,7 +231,7 @@ export default function WgHomePage() {
 			!data.setup.hasShoppingItem &&
 			!data.setup.hasAnnouncement &&
 			data.setup.choreCount === 0 &&
-			todayImportant.length === 0,
+			forYouItems.length === 0,
 	);
 
 	return (
@@ -337,18 +285,18 @@ export default function WgHomePage() {
 				{!isNewWg && (
 					<section aria-labelledby="today-heading" className="flex min-w-0 flex-col gap-2">
 						<h2 id="today-heading" className="font-heading text-xl font-semibold">
-							Heute für dich
+							Für dich
 						</h2>
 						{completeNotice && (
 							<output className="block text-sm text-muted-foreground">{completeNotice}</output>
 						)}
 						{data ? (
-							todayImportant.length > 0 ? (
+							forYouItems.length > 0 ? (
 								<>
 									<ul className="flex flex-col divide-y divide-border/60 rounded-xl border">
-										{todayVisible.map((item) => (
+										{forYouVisible.map((item) => (
 											<TodayRow
-												key={`${item.kind}:${item.href}`}
+												key={`${item.kind}:${item.entityId ?? item.href}`}
 												item={item}
 												armed={armedChoreId === item.entityId}
 												pending={pendingChoreId === item.entityId}
@@ -356,7 +304,7 @@ export default function WgHomePage() {
 											/>
 										))}
 									</ul>
-									{todayMore.length > 0 && (
+									{forYouMore.length > 0 && (
 										<Collapsible open={todayMoreOpen} onOpenChange={setTodayMoreOpen}>
 											<CollapsibleTrigger
 												render={<Button variant="ghost" className="w-full justify-between" />}
@@ -364,15 +312,15 @@ export default function WgHomePage() {
 												<span>
 													{todayMoreOpen
 														? 'Weniger anzeigen'
-														: `Weitere anzeigen (${todayMore.length})`}
+														: `Weitere anzeigen (${forYouMore.length})`}
 												</span>
 												<ChevronDown data-icon="inline-end" aria-hidden />
 											</CollapsibleTrigger>
 											<CollapsiblePanel {...(reducedMotion ? { transition: { duration: 0 } } : {})}>
 												<ul className="mt-1 flex flex-col divide-y divide-border/60 rounded-xl border">
-													{todayMore.map((item) => (
+													{forYouMore.map((item) => (
 														<TodayRow
-															key={`${item.kind}:${item.href}`}
+															key={`${item.kind}:${item.entityId ?? item.href}`}
 															item={item}
 															armed={armedChoreId === item.entityId}
 															pending={pendingChoreId === item.entityId}
@@ -392,10 +340,10 @@ export default function WgHomePage() {
 							)
 						) : error ? (
 							<p className="text-sm text-muted-foreground">
-								Deine Aufgaben für heute konnten nicht geladen werden.
+								Deine persönlichen Aufgaben konnten nicht geladen werden.
 							</p>
 						) : (
-							<output aria-label="Heute für dich wird geladen" className="flex flex-col gap-2">
+							<output aria-label="Für dich wird geladen" className="flex flex-col gap-2">
 								<Skeleton className="h-14 w-full" />
 								<Skeleton className="h-14 w-full" />
 							</output>
@@ -404,40 +352,105 @@ export default function WgHomePage() {
 				)}
 
 				<div className="flex min-w-0 flex-col gap-6">
-					<ul
-						aria-label="Überblick"
-						className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,max(8rem,calc(50%-0.375rem))),1fr))] gap-3"
-					>
-						<StartTile
-							href={`${wgBaseHref}/ausgaben`}
-							icon={Receipt}
-							label="Saldo"
-							loading={!data && !error}
-							value={data ? myBalanceText : '–'}
-							valueClassName={cn(
-								'font-mono tabular-nums',
-								myBalance > 0 && 'text-settled',
-								myBalance < 0 && 'text-destructive',
+					<section aria-labelledby="week-heading" className="flex min-w-0 flex-col gap-3">
+						<div className="flex min-w-0 items-end justify-between gap-3">
+							<div className="min-w-0">
+								<h2 id="week-heading" className="font-heading text-xl font-semibold">
+									Diese Woche
+								</h2>
+								<p className="text-sm text-muted-foreground">
+									{formatAgendaDay(weekAgenda.weekStartKey)} –{' '}
+									{formatAgendaDay(weekAgenda.sundayKey)}
+								</p>
+							</div>
+							<Link
+								href={`${wgBaseHref}/kalender`}
+								className={cn(
+									buttonVariants({ variant: 'ghost' }),
+									'min-h-11 shrink-0 px-2 text-sm',
+								)}
+							>
+								Kalender <ChevronRight data-icon="inline-end" aria-hidden />
+							</Link>
+						</div>
+
+						{eventRead.isLoading && !eventRead.data && (
+							<output className="text-sm text-muted-foreground">Termine werden geladen…</output>
+						)}
+						{eventRead.error && (
+							<output className="text-sm text-muted-foreground">
+								{eventRead.data
+									? 'Termine konnten nicht aktualisiert werden. Angezeigte Einträge können veraltet sein.'
+									: 'Termine konnten nicht geladen werden. Putzplan-Aufgaben bleiben sichtbar.'}
+							</output>
+						)}
+						{!data && !error && (
+							<output className="text-sm text-muted-foreground">
+								Putzplan-Aufgaben werden geladen…
+							</output>
+						)}
+						{!data && error && (
+							<p className="text-sm text-muted-foreground">
+								Putzplan-Aufgaben konnten nicht geladen werden.
+							</p>
+						)}
+
+						{weekAgenda.overdue.length > 0 && (
+							<div className="flex min-w-0 flex-col gap-2">
+								<h3 className="text-sm font-medium text-muted-foreground">Überfällig</h3>
+								<ul className="flex min-w-0 flex-col divide-y divide-border/60 rounded-xl border">
+									{overdueVisible.map((item) => (
+										<AgendaRow key={item.key} item={item} />
+									))}
+								</ul>
+								{weekAgenda.overdue.length > overdueVisible.length && (
+									<Link
+										href={`${wgBaseHref}/putzen?filter=overdue`}
+										className={cn(
+											buttonVariants({ variant: 'ghost' }),
+											'min-h-11 justify-start px-0',
+										)}
+									>
+										Alle überfälligen Aufgaben ({weekAgenda.overdue.length - overdueVisible.length})
+									</Link>
+								)}
+							</div>
+						)}
+
+						{upcomingVisible.length > 0 && (
+							<div className="flex min-w-0 flex-col gap-2">
+								<ul className="flex min-w-0 flex-col divide-y divide-border/60 rounded-xl border">
+									{upcomingVisible.map((item) => (
+										<AgendaRow key={item.key} item={item} />
+									))}
+								</ul>
+								{weekAgenda.upcoming.length > upcomingVisible.length && (
+									<Link
+										href={`${wgBaseHref}/kalender`}
+										className={cn(
+											buttonVariants({ variant: 'ghost' }),
+											'min-h-11 justify-start px-0',
+										)}
+									>
+										Weitere Termine und Aufgaben (
+										{weekAgenda.upcoming.length - upcomingVisible.length})
+									</Link>
+								)}
+							</div>
+						)}
+
+						{data &&
+							!error &&
+							!eventRead.error &&
+							Boolean(eventRead.data) &&
+							weekAgenda.overdue.length === 0 &&
+							weekAgenda.upcoming.length === 0 && (
+								<p className="rounded-xl border p-4 text-sm text-muted-foreground">
+									Keine gemeinsamen Termine oder Putzaufgaben bis Sonntag.
+								</p>
 							)}
-							detail={
-								!data
-									? 'Nicht verfügbar'
-									: myBalance > 0
-										? 'Du bekommst zurück'
-										: myBalance < 0
-											? 'Du schuldest'
-											: 'Ausgeglichen'
-							}
-						/>
-						<StartTile
-							href={`${wgBaseHref}/kalender`}
-							icon={CalendarDays}
-							label="Kalender"
-							loading={nextEvent === undefined}
-							value={nextEvent ? nextEvent.title : 'Keine Termine'}
-							detail={nextEvent ? formatEventStart(nextEvent) : 'Nächste 7 Tage'}
-						/>
-					</ul>
+					</section>
+
 					<section aria-labelledby="wg-now-heading" className="flex min-w-0 flex-col gap-3">
 						<div className="flex justify-end">
 							<Link
@@ -559,6 +572,10 @@ function TodayRow({
 	onCheck: () => void;
 }) {
 	const checkable = item.kind === 'chore' && item.isPersonal && Boolean(item.entityId);
+	const detail =
+		item.kind === 'debt' && item.amountCents !== undefined
+			? `${item.detail} · ${formatEuroCents(item.amountCents, item.currency, { signed: true })}`
+			: item.detail;
 	return (
 		<li className="flex min-w-0 items-center gap-1 pr-1">
 			{checkable ? (
@@ -596,7 +613,7 @@ function TodayRow({
 							item.kind === 'recurring' && 'tabular-nums',
 						)}
 					>
-						{armed ? 'Nochmal tippen zum Bestätigen' : item.detail}
+						{armed ? 'Nochmal tippen zum Bestätigen' : detail}
 					</span>
 				</span>
 				<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -605,44 +622,38 @@ function TodayRow({
 	);
 }
 
-function StartTile({
-	href,
-	icon: Icon,
-	label,
-	value,
-	detail,
-	loading,
-	valueClassName,
-}: {
-	href: string;
-	icon: LucideIcon;
-	label: string;
-	value: string;
-	detail: string;
-	loading: boolean;
-	valueClassName?: string;
-}) {
+const AGENDA_DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
+	weekday: 'short',
+	day: 'numeric',
+	month: 'short',
+	timeZone: 'Europe/Berlin',
+});
+
+function formatAgendaDay(dayKey: string): string {
+	return AGENDA_DAY_FORMATTER.format(new Date(`${dayKey}T12:00:00.000Z`));
+}
+
+function AgendaRow({ item }: { item: WeekAgendaItem }) {
 	return (
-		<li className="min-w-0">
-			<Link
-				href={href}
-				className="flex h-full min-h-24 min-w-0 flex-col gap-1 rounded-xl border bg-card p-3 outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50 active:bg-muted"
-			>
-				<span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-					<Icon className="size-4 shrink-0" aria-hidden />
-					{label}
-				</span>
-				{loading ? (
-					<>
-						<Skeleton className="h-5 w-3/4" />
-						<Skeleton className="h-4 w-1/2" />
-					</>
+		<li className="flex min-w-0 items-center gap-2 px-3">
+			<span className="flex size-9 shrink-0 items-center justify-center text-muted-foreground">
+				{item.kind === 'event' ? (
+					<CalendarDays className="size-4" aria-hidden />
 				) : (
-					<>
-						<span className={cn('font-semibold break-words', valueClassName)}>{value}</span>
-						<span className="line-clamp-2 text-xs text-muted-foreground">{detail}</span>
-					</>
+					<Check className="size-4" aria-hidden />
 				)}
+			</span>
+			<Link
+				href={item.href}
+				className="flex min-h-14 min-w-0 flex-1 items-center gap-2 rounded-lg py-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+			>
+				<span className="flex min-w-0 flex-1 flex-col">
+					<span className="font-medium break-words">{item.title}</span>
+					<span className="text-sm text-muted-foreground">
+						{formatAgendaDay(item.dayKey)} · {item.detail}
+					</span>
+				</span>
+				<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
 			</Link>
 		</li>
 	);

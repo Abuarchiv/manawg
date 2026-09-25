@@ -183,14 +183,16 @@ export function computeNetBalances(
 }
 
 function simplifyCurrencyDebts(balances: BalanceEntry[], currency: string): SimplifiedDebt[] {
+	const compareMemberId = (a: BalanceEntry, b: BalanceEntry): number =>
+		a.memberId < b.memberId ? -1 : a.memberId > b.memberId ? 1 : 0;
 	const creditors = balances
 		.filter((b) => b.cents > 0)
 		.map((b) => ({ ...b }))
-		.sort((a, b) => b.cents - a.cents);
+		.sort((a, b) => b.cents - a.cents || compareMemberId(a, b));
 	const debtors = balances
 		.filter((b) => b.cents < 0)
 		.map((b) => ({ ...b }))
-		.sort((a, b) => a.cents - b.cents);
+		.sort((a, b) => a.cents - b.cents || compareMemberId(a, b));
 
 	const result: SimplifiedDebt[] = [];
 	let i = 0;

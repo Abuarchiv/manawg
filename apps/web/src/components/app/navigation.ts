@@ -17,7 +17,6 @@ export const WG_SECTIONS = [
 			{ slug: 'einkauf', label: 'Einkäufe', icon: ListChecks },
 			{ slug: 'putzen', label: 'Putzplan', icon: Sparkles },
 			{ slug: 'vorraete', label: 'Vorräte', icon: Package },
-			{ slug: 'kalender', label: 'Kalender', icon: CalendarDays },
 		],
 		related: [],
 	},
@@ -37,6 +36,7 @@ export const WG_SECTIONS = [
 		pages: [
 			{ slug: 'pinnwand', label: 'Pinnwand', icon: Megaphone },
 			{ slug: 'chat', label: 'Chat', icon: MessageCircle },
+			{ slug: 'kalender', label: 'Kalender', icon: CalendarDays },
 		],
 		related: [],
 	},

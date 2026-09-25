@@ -968,6 +968,14 @@ export default function PutzenPage() {
 	const activeMembers = members.filter((m) => m.active);
 
 	const showSkeleton = initialLoading && items.length === 0;
+	const ownDueCount =
+		!initialLoading && !loadError
+			? items.filter(
+					(chore) =>
+						chore.assignedMemberId === identity.memberId &&
+						['due', 'overdue'].includes(getChoreStatus(chore.nextDueAt).state),
+				).length
+			: undefined;
 	const health = getChorePlanHealth(items);
 	// Der Block "Lücken reparieren" zeigte genau diese Aufgaben als zweite
 	// Kartenreihe, 200px über der Liste, in der sie ohnehin stehen. Statt sie zu
@@ -1005,6 +1013,21 @@ export default function PutzenPage() {
 		chores: items,
 		absentMemberIds,
 	});
+	const nextAssigneeNameByChoreId = new Map<string, string | null>(
+		items.map((chore): [string, string | null] => {
+			const nextAssigneeId = chooseNextAvailableMember({
+				members: activeMembers,
+				currentMemberId: chore.assignedMemberId,
+				absentMemberIds,
+				chores: items,
+			});
+			if (!nextAssigneeId) return [chore.id, null];
+			return [
+				chore.id,
+				nextAssigneeId === identity.memberId ? 'du' : memberLookup(nextAssigneeId).name,
+			];
+		}),
+	);
 	const choreAddPending = isPending('chore:add');
 	const absenceAddPending = isPending('absence:add');
 
@@ -1041,7 +1064,7 @@ export default function PutzenPage() {
 
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
-			<SubNav />
+			<SubNav liveCount={ownDueCount} />
 			<PutzenHeader
 				itemCount={items.length}
 				loading={showSkeleton}
@@ -1172,20 +1195,7 @@ export default function PutzenPage() {
 										isTakePending={isPending(`${chore.id}:take`)}
 										isCompleteArmed={completeConfirmId === chore.id}
 										completeError={actionError}
-										nextAssigneeName={
-											completeConfirmId === chore.id
-												? (members.find(
-														(member) =>
-															member.id ===
-															chooseNextAvailableMember({
-																members: activeMembers,
-																currentMemberId: chore.assignedMemberId,
-																absentMemberIds,
-																chores: items,
-															}),
-													)?.name ?? null)
-												: null
-										}
+										nextAssigneeName={nextAssigneeNameByChoreId.get(chore.id) ?? null}
 										onCancelComplete={() => setCompleteConfirmId(null)}
 										onComplete={handleComplete}
 										onSwapRequest={handleSwapRequest}

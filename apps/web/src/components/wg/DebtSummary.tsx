@@ -12,7 +12,7 @@ import {
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
@@ -572,18 +572,16 @@ export function DebtSummary({
 									))}
 								</ItemGroup>
 							)}
-							<Button
-								variant="ghost"
-								className="self-start"
-								render={<Link href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`} />}
-								nativeButton={false}
-							>
-								<History data-icon="inline-start" />
-								Alle Erinnerungen
-							</Button>
 						</CollapsibleContent>
 					</Collapsible>
 				)}
+				<Link
+					href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`}
+					className={cn(buttonVariants({ variant: 'ghost' }), 'self-start')}
+				>
+					<History data-icon="inline-start" />
+					Alle Erinnerungen
+				</Link>
 			</CardContent>
 		</Card>
 	);

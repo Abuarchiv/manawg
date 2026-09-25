@@ -373,8 +373,9 @@ export function isDuplicateAuditActivity(
 	return rawMs !== undefined && Math.abs(timestampMs - rawMs) <= AUDIT_DEDUPE_WINDOW_MS;
 }
 
-// Non-financial sections may degrade independently. Financial reads must all
-// succeed: missing expenses, splits, payments or members would fabricate balances.
+// Reads that drive household counts must succeed; falling back to an empty
+// list would report a false zero. Optional activity sections may still degrade.
+// Financial reads must all succeed or balances would be fabricated.
 function withFallback<T>(label: string, query: Promise<T>, fallback: () => T): Promise<T> {
 	return query.catch((err: unknown) => {
 		captureException(err, { action: 'loadDashboardData', query: label });
@@ -433,35 +434,27 @@ export async function loadDashboardData(
 			})
 			.from(expensePayments)
 			.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed'))),
-		withFallback(
-			'shoppingItems',
-			db
-				.select({
-					id: shoppingItems.id,
-					name: shoppingItems.name,
-					quantity: shoppingItems.quantity,
-					addedByMemberId: shoppingItems.addedByMemberId,
-					createdAt: shoppingItems.createdAt,
-					boughtAt: shoppingItems.boughtAt,
-				})
-				.from(shoppingItems)
-				.where(eq(shoppingItems.wgId, wgId))
-				.orderBy(desc(shoppingItems.createdAt)),
-			() => [],
-		),
-		withFallback(
-			'chores',
-			db
-				.select({
-					id: chores.id,
-					title: chores.title,
-					nextDueAt: chores.nextDueAt,
-					assignedMemberId: chores.assignedMemberId,
-				})
-				.from(chores)
-				.where(eq(chores.wgId, wgId)),
-			() => [],
-		),
+		db
+			.select({
+				id: shoppingItems.id,
+				name: shoppingItems.name,
+				quantity: shoppingItems.quantity,
+				addedByMemberId: shoppingItems.addedByMemberId,
+				createdAt: shoppingItems.createdAt,
+				boughtAt: shoppingItems.boughtAt,
+			})
+			.from(shoppingItems)
+			.where(eq(shoppingItems.wgId, wgId))
+			.orderBy(desc(shoppingItems.createdAt)),
+		db
+			.select({
+				id: chores.id,
+				title: chores.title,
+				nextDueAt: chores.nextDueAt,
+				assignedMemberId: chores.assignedMemberId,
+			})
+			.from(chores)
+			.where(eq(chores.wgId, wgId)),
 		withFallback(
 			'announcements',
 			db
@@ -580,21 +573,18 @@ export async function loadDashboardData(
 					.where(eq(memberAbsences.wgId, wgId)),
 				() => [],
 			),
-			withFallback(
-				'recurringExpenses',
-				db
-					.select({
-						id: recurringExpenses.id,
-						description: recurringExpenses.description,
-						amountCents: recurringExpenses.amountCents,
-						nextDueAt: recurringExpenses.nextDueAt,
-						lastCreatedAt: recurringExpenses.lastCreatedAt,
-						createdAt: recurringExpenses.createdAt,
-					})
-					.from(recurringExpenses)
-					.where(eq(recurringExpenses.wgId, wgId)),
-				() => [],
-			),
+			db
+				.select({
+					id: recurringExpenses.id,
+					description: recurringExpenses.description,
+					amountCents: recurringExpenses.amountCents,
+					nextDueAt: recurringExpenses.nextDueAt,
+					lastCreatedAt: recurringExpenses.lastCreatedAt,
+					createdAt: recurringExpenses.createdAt,
+					pausedAt: recurringExpenses.pausedAt,
+				})
+				.from(recurringExpenses)
+				.where(eq(recurringExpenses.wgId, wgId)),
 			withFallback(
 				'auditEvents',
 				db
@@ -627,11 +617,15 @@ export async function loadDashboardData(
 		]);
 	const filteredMyOpenAnnouncements = myOpenAnnouncements;
 	const dueRecurringExpenses = getDueRecurringExpenses(
-		recurringRows.map((item) => ({
-			...item,
-			currency: 'EUR',
-			nextDueAt: item.nextDueAt.toISOString(),
-		})),
+		recurringRows
+			.filter((item) => item.pausedAt === null)
+			.map((item) => ({
+				id: item.id,
+				description: item.description,
+				amountCents: item.amountCents,
+				currency: 'EUR',
+				nextDueAt: item.nextDueAt.toISOString(),
+			})),
 		now.getTime(),
 	);
 	for (const absence of absenceRows.slice(0, ACTIVITY_LIMIT)) {
