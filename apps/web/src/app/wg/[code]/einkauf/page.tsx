@@ -894,23 +894,9 @@ export default function EinkaufPage() {
 							disabled={!newName.trim() || adding}
 							aria-label="Artikel hinzufügen"
 							onPointerDown={(event) => event.preventDefault()}
-							className="size-11 shrink-0 sm:hidden"
+							className="size-11 shrink-0"
 						>
 							{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}
-						</Button>
-						<Button
-							type="submit"
-							disabled={!newName.trim() || adding}
-							aria-label="Artikel hinzufügen"
-							onPointerDown={(event) => event.preventDefault()}
-							className="hidden min-h-11 shrink-0 sm:inline-flex"
-						>
-							{adding ? (
-								<Spinner data-icon="inline-start" aria-hidden />
-							) : (
-								<Plus data-icon="inline-start" aria-hidden />
-							)}
-							Hinzufügen
 						</Button>
 					</form>
 					{addError && (
