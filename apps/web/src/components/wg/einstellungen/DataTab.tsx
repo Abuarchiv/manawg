@@ -80,13 +80,13 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 		<>
 			<Section title="Datenexport" hint="Backup und Transparenz für eure WG-Daten.">
 				{exportSummary.length > 0 && (
-					<div className="border-border grid grid-cols-2 gap-x-4 gap-y-2 border-b p-3 text-xs">
+					<div className="border-border grid grid-cols-1 gap-x-4 gap-y-2 border-b p-3 text-xs lg:grid-cols-2">
 						{exportSummary.map((section) => (
-							<div key={section.key} className="flex items-baseline gap-2">
+							<div key={section.key} className="flex min-w-0 items-baseline gap-2">
 								<span className="text-foreground font-mono font-medium tabular-nums">
 									{section.count}
 								</span>
-								<span className="text-muted-foreground">{section.label}</span>
+								<span className="text-muted-foreground min-w-0 break-words">{section.label}</span>
 							</div>
 						))}
 					</div>
