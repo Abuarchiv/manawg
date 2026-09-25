@@ -28,10 +28,7 @@ async function fireInstallEvent(page: import('@playwright/test').Page) {
 	});
 }
 
-test('install prompt returns on every app start until dismissed for the session', async ({
-	page,
-	context,
-}) => {
+test('dismissed install prompt returns on the next page load', async ({ page }) => {
 	await page.goto('/');
 	await fireInstallEvent(page);
 	const install = page.getByRole('button', { name: 'Jetzt installieren', exact: true });
@@ -39,17 +36,13 @@ test('install prompt returns on every app start until dismissed for the session'
 
 	await page.getByRole('button', { name: 'Installationshinweis ausblenden' }).click();
 	await expect(install).toHaveCount(0);
-	await page.reload();
-	await fireInstallEvent(page);
-	await page.waitForTimeout(1500);
+	await page.getByRole('link', { name: 'Haushalt' }).click();
+	await expect(page).toHaveURL(/entdecken/);
 	await expect(install).toHaveCount(0);
 
-	const nextStart = await context.newPage();
-	await nextStart.goto('/');
-	await fireInstallEvent(nextStart);
-	await expect(
-		nextStart.getByRole('button', { name: 'Jetzt installieren', exact: true }),
-	).toBeVisible();
+	await page.reload();
+	await fireInstallEvent(page);
+	await expect(install).toBeVisible();
 });
 
 test('browsers without a native prompt get the manual install steps', async ({ page }) => {
