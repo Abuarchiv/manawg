@@ -97,13 +97,7 @@ function ChatPageContent({
 			className="flex min-h-0 flex-col"
 			style={{
 				height: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
-				// The WG shell reserves padding-bottom for the fixed bottom nav so
-				// normal scrolling pages don't get content hidden behind it. Chat
-				// already ends exactly above the nav via ChatView's own height calc
-				// (see its resize() effect), so that reserve is redundant here and
-				// otherwise leaves the document taller than the viewport — causing
-				// the whole page (not just the message list) to rubber-band on iOS,
-				// and widening into real scroll slack once the keyboard is open.
+				// ChatView already ends the frame above the nav; cancel the shell's nav padding.
 				marginBottom: 'calc(-1 * (var(--app-nav-height, 5rem) + 0.5rem))',
 			}}
 		>
