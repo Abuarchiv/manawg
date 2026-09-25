@@ -306,6 +306,74 @@ test.describe('ManaWG launch smoke', () => {
 			for (const label of ['Start', 'Haushalt', 'Finanzen', 'Austausch']) {
 				await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
 			}
+
+			// Exercise a real money write and both export formats before the WG is deleted.
+			const expenseDescription = `Smoke Expense ${runNamespace}`;
+			const expenseResponse = await page.request.post(`/api/wg/${createdShareCode}/expenses`, {
+				headers: memberHeaders,
+				data: {
+					amountCents: 1234,
+					currency: 'EUR',
+					description: expenseDescription,
+					splits: [{ debtorMemberId: memberId, amountCents: 1234 }],
+				},
+			});
+			expect(expenseResponse.status(), await expenseResponse.text()).toBe(200);
+			const createdExpense = (await expenseResponse.json()) as {
+				expense?: {
+					id?: string;
+					amountCents?: number;
+					currency?: string;
+					splits?: Array<{ debtorMemberId?: string; amountCents?: number }>;
+				};
+			};
+			expect(createdExpense.expense?.id).toMatch(UUID_PATTERN);
+			expect(createdExpense.expense).toMatchObject({
+				amountCents: 1234,
+				currency: 'EUR',
+				splits: [{ debtorMemberId: memberId, amountCents: 1234 }],
+			});
+
+			const expensesResponse = await page.request.get(`/api/wg/${createdShareCode}/expenses`, {
+				headers: memberHeaders,
+			});
+			expect(expensesResponse.status()).toBe(200);
+			const listed = (await expensesResponse.json()) as {
+				expenses?: Array<{ id?: string; description?: string; amountCents?: number }>;
+			};
+			expect(listed.expenses?.filter((entry) => entry.description === expenseDescription)).toEqual([
+				expect.objectContaining({ id: createdExpense.expense?.id, amountCents: 1234 }),
+			]);
+
+			await gotoWithRetry(page, `/wg/${createdShareCode}/ausgaben`);
+			await expect(page.getByText(expenseDescription, { exact: true })).toBeVisible({
+				timeout: 30_000,
+			});
+			await page.reload();
+			await expect(page.getByText(expenseDescription, { exact: true })).toBeVisible({
+				timeout: 30_000,
+			});
+
+			const exportUrl = `/api/wg/${createdShareCode}/export`;
+			const jsonExport = await page.request.get(`${exportUrl}?format=json`, {
+				headers: memberHeaders,
+			});
+			expect(jsonExport.status()).toBe(200);
+			const backup = (await jsonExport.json()) as {
+				failedSections?: string[];
+				sections?: { expenses?: Array<{ id?: string; amountCents?: number }> };
+			};
+			expect(backup.failedSections).toEqual([]);
+			expect(
+				backup.sections?.expenses?.filter((entry) => entry.id === createdExpense.expense?.id),
+			).toEqual([expect.objectContaining({ amountCents: 1234 })]);
+
+			const csvExport = await page.request.get(`${exportUrl}?format=csv&section=expenses`, {
+				headers: memberHeaders,
+			});
+			expect(csvExport.status()).toBe(200);
+			expect(csvExport.headers()['content-type']).toContain('text/csv');
+			expect(await csvExport.text()).toContain(expenseDescription);
 		} catch (error) {
 			flowError = error;
 		} finally {
