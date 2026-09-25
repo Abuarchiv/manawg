@@ -47,6 +47,23 @@ test('clamps a filled field at zero rather than going negative', () => {
 	assert.equal(next.a, '0,00');
 });
 
+test('redistributes a clamped reduction across the remaining filled fields', () => {
+	const next = distributeRemainderCents({ a: '1,00', b: '99,00' }, members, -5000);
+	assert.equal(next.a, '0,00');
+	assert.equal(next.b, '50,00');
+});
+
+test('leaves inactive shares untouched while redistributing active members', () => {
+	const next = distributeRemainderCents(
+		{ a: '1,00', b: '99,00', inactive: '25,00' },
+		[{ id: 'a' }, { id: 'b' }],
+		-5000,
+	);
+	assert.equal(next.a, '0,00');
+	assert.equal(next.b, '50,00');
+	assert.equal(next.inactive, '25,00');
+});
+
 test('no-op when the remainder is already zero', () => {
 	const current = { a: '10,00', b: '10,00' };
 	const next = distributeRemainderCents(current, members, 0);

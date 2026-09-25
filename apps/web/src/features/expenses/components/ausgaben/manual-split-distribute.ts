@@ -35,17 +35,28 @@ export function distributeRemainderCents(
 				: members;
 	const next = { ...manualSplits };
 	if (targets.length === 0) return next;
-	const perCent = Math.floor(remainderCents / targets.length);
-	let leftover = remainderCents - perCent * targets.length;
-	for (const t of targets) {
-		const curEuros = parseEuroAmount(next[t.id] ?? '') ?? 0;
-		const curCents = Math.round(curEuros * CENTS_PER_EURO);
-		const addCents = perCent + (leftover > 0 ? 1 : leftover < 0 ? -1 : 0);
-		if (leftover > 0) leftover--;
-		else if (leftover < 0) leftover++;
-		// Clamp at zero: a field can only ever hold a non-negative amount.
-		const nextCents = Math.max(0, curCents + addCents);
-		next[t.id] = formatEuroInput(nextCents / CENTS_PER_EURO);
+	let remainingCents = remainderCents;
+	let remainingTargets = targets;
+	// ponytail: repeat the member pass after a cap; sort balances only if household sizes make rescans costly.
+	while (remainingCents !== 0 && remainingTargets.length > 0) {
+		const perCent = Math.floor(remainingCents / remainingTargets.length);
+		let leftover = remainingCents - perCent * remainingTargets.length;
+		let unappliedCents = 0;
+		const nextTargets: { id: string }[] = [];
+		for (const t of remainingTargets) {
+			const curEuros = parseEuroAmount(next[t.id] ?? '') ?? 0;
+			const curCents = Math.round(curEuros * CENTS_PER_EURO);
+			const addCents = perCent + (leftover > 0 ? 1 : leftover < 0 ? -1 : 0);
+			if (leftover > 0) leftover--;
+			else if (leftover < 0) leftover++;
+			// Clamp at zero, then redistribute any reduction that did not fit.
+			const nextCents = Math.max(0, curCents + addCents);
+			unappliedCents += curCents + addCents - nextCents;
+			if (nextCents > 0) nextTargets.push(t);
+			next[t.id] = formatEuroInput(nextCents / CENTS_PER_EURO);
+		}
+		remainingCents = unappliedCents;
+		remainingTargets = nextTargets;
 	}
 	return next;
 }

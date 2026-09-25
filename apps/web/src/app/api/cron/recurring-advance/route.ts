@@ -47,6 +47,42 @@ async function createExpenseForDueAt(
 		// orphaned expense stayed behind and skewed the balances of a WG that
 		// nobody was watching, because the cron runs unattended.
 		return await withExpensePaymentLock(template.wgId, async (tx) => {
+			const [wg] = await tx
+				.select({ id: wgs.id })
+				.from(wgs)
+				.where(eq(wgs.id, template.wgId))
+				.for('key share');
+			if (!wg) return null;
+
+			const [current] = await tx
+				.select({
+					paidByMemberId: recurringExpenses.paidByMemberId,
+					description: recurringExpenses.description,
+					amountCents: recurringExpenses.amountCents,
+					intervalMonths: recurringExpenses.intervalMonths,
+					nextDueAt: recurringExpenses.nextDueAt,
+					anchorAt: recurringExpenses.anchorAt,
+					splitsJson: recurringExpenses.splitsJson,
+					pausedAt: recurringExpenses.pausedAt,
+				})
+				.from(recurringExpenses)
+				.where(
+					and(eq(recurringExpenses.id, template.id), eq(recurringExpenses.wgId, template.wgId)),
+				)
+				.for('update');
+			if (
+				!current ||
+				current.pausedAt !== null ||
+				current.paidByMemberId !== template.paidByMemberId ||
+				current.description !== template.description ||
+				current.amountCents !== template.amountCents ||
+				current.intervalMonths !== template.intervalMonths ||
+				current.nextDueAt.getTime() !== template.nextDueAt.getTime() ||
+				(current.anchorAt?.getTime() ?? null) !== (template.anchorAt?.getTime() ?? null) ||
+				current.splitsJson !== template.splitsJson
+			) {
+				return null;
+			}
 			const [inserted] = await tx
 				.insert(expenses)
 				.values({
@@ -76,9 +112,21 @@ async function createExpenseForDueAt(
 	} catch (err) {
 		if (err instanceof TransactionAbort) return null;
 		// Unique (recurring_expense_id, recurring_due_at) ⇒ already advanced for this window.
-		const code =
-			err && typeof err === 'object' && 'code' in err ? (err as { code?: string }).code : null;
-		if (code === '23505') return 'duplicate';
+		for (const candidate of [err, err instanceof Error ? err.cause : null]) {
+			if (!candidate || typeof candidate !== 'object') continue;
+			const pgError = candidate as {
+				code?: unknown;
+				constraint?: unknown;
+				constraint_name?: unknown;
+			};
+			if (
+				pgError.code === '23505' &&
+				(pgError.constraint === 'expenses_recurring_due_unique_idx' ||
+					pgError.constraint_name === 'expenses_recurring_due_unique_idx')
+			) {
+				return 'duplicate';
+			}
+		}
 		logApiError('[cron/recurring-advance] insert failed', err);
 		return null;
 	}
@@ -112,7 +160,7 @@ async function advanceTemplate(template: DueRecurring): Promise<CreatedAdvance[]
 	}
 
 	if (shouldUpdateTemplate) {
-		await db
+		const [updated] = await db
 			.update(recurringExpenses)
 			.set({
 				nextDueAt,
@@ -120,7 +168,24 @@ async function advanceTemplate(template: DueRecurring): Promise<CreatedAdvance[]
 				updatedAt: now,
 				...(template.anchorAt ? {} : { anchorAt: nextDueAt }),
 			})
-			.where(eq(recurringExpenses.id, template.id));
+			.where(
+				and(
+					eq(recurringExpenses.id, template.id),
+					eq(recurringExpenses.wgId, template.wgId),
+					eq(recurringExpenses.nextDueAt, template.nextDueAt),
+					eq(recurringExpenses.intervalMonths, template.intervalMonths),
+					eq(recurringExpenses.paidByMemberId, template.paidByMemberId),
+					eq(recurringExpenses.amountCents, template.amountCents),
+					eq(recurringExpenses.description, template.description),
+					eq(recurringExpenses.splitsJson, template.splitsJson),
+					isNull(recurringExpenses.pausedAt),
+					template.anchorAt
+						? eq(recurringExpenses.anchorAt, template.anchorAt)
+						: isNull(recurringExpenses.anchorAt),
+				),
+			)
+			.returning({ id: recurringExpenses.id });
+		if (!updated) return created;
 	}
 
 	return created;

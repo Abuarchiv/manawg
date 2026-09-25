@@ -1,5 +1,12 @@
 # ManaWG Release Readiness
 
+## Aktuelle Freigabelage — 2026-09-25
+
+- **Nicht release-ready.** Der isolierte Review-Branch `fix/release-readiness-20260925` enthält lokal geprüfte Korrekturen; für denselben Commit fehlen noch der exakte Hosted-Preview-Nachweis und die externen Abnahmen. Beim letzten Fetch stand `origin/main` auf `7c74176`. Merge und Production-Deploy wurden nicht ausgeführt.
+- Auf dem endgültigen lokalen Code-Stand bestanden mit Node 22: Lint, Typecheck, Produktions-Build, Bundle-Budget, Analytics-Check, 152 Unit-Tests und 321 Fixture-E2E-Tests; 38 Hosted-Fälle wurden übersprungen. Ein früherer Produktionsmodus-Mobilcheck prüfte 20 Kombinationen bei 320/390 px in Hell/Dunkel ohne horizontalen Überlauf oder CSP-Fehler. Fixture- und Mobilbefunde ersetzen keine echten Geräte oder Residenten.
+- Die lokale Production-Sicherung wurde kostenlos exportiert und in einer isolierten PostgreSQL-17-Instanz importiert: 61/61 Datenabschnitte sowie Finanzsummen, Ledger und ausgewählte Referenzen/Rechte stimmten überein. Der Export liegt außerhalb des Repositories auf dem FileVault-geschützten Rechner mit privaten Dateirechten. Supabase Free zeigt keinen auswählbaren Provider-Backup-Punkt und kein PITR; Storage-Objektbytes, externe Kopie, regelmäßige Exporte, **hosted** Restore und genehmigte RPO/RTO sind nicht belegt.
+- T4–T8 offen: aktueller Patch ohne authentifizierte Preview-Privacy-/Mehrnutzer-Abnahme; Auth-Mailzustellung und Alert-Empfang unbelegt; PayPal-Variablen fehlen in Preview und Production. Push/Cron, Storage-Nutzerfluss, Kalender, Import/Export und iOS-/Android-Verhalten brauchen aktuelle Hosted- oder Gerätebelege. Leaked Password Protection ist deaktiviert und erfordert laut Provider Pro oder höher. Der genaue Stand steht in [docs/releases/release-candidate.md](docs/releases/release-candidate.md).
+
 ## Lokale Entwicklungsrunde — 2026-09-24, Europe/Berlin
 
 - Arbeitsbaum auf `fix/audit-20260922-app` beibehalten; vorhandene WIP-Änderungen nicht zurückgesetzt oder committed.

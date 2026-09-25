@@ -486,16 +486,11 @@ const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandler> = {
 
 	'expense.create': {
 		buildRequest: (action) => {
-			const {
-				recurringExpenseId: _recurringExpenseId,
-				expectedRecurringNextDueAt: _expectedRecurringNextDueAt,
-				...expensePayload
-			} = action.payload;
 			return {
 				path: `/api/wg/${pathSegment(action.shareCode)}/expenses`,
 				method: 'POST',
 				body: Object.fromEntries(
-					Object.entries(expensePayload).filter(([, value]) => value !== null),
+					Object.entries(action.payload).filter(([, value]) => value !== null),
 				),
 			};
 		},

@@ -1,6 +1,6 @@
-import { db, expenseSplits, expenses, idempotencyResponses } from '@/core/db';
-import { TransactionAbort } from '@/core/db/transaction';
-import { apiError, badRequest, serverError, tooMany } from '@/core/errors';
+import { db, expenseSplits, expenses, idempotencyResponses, recurringExpenses } from '@/core/db';
+import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
+import { apiError, badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
 import {
 	ReplayCache,
 	type ReplayReservation,
@@ -71,6 +71,8 @@ const createExpenseSchema = z
 		description: z.string().trim().min(DESCRIPTION_MIN).max(DESCRIPTION_MAX),
 		imageUrl: imageUrlSchema,
 		occurredAt: z.string().datetime({ offset: true }).optional(),
+		recurringExpenseId: z.string().uuid().optional(),
+		expectedRecurringNextDueAt: z.string().datetime({ offset: true }).optional(),
 		splits: z.array(splitSchema).min(1).max(MAX_SPLITS),
 	})
 	.superRefine((value, ctx) => {
@@ -89,6 +91,107 @@ const createExpenseSchema = z
 			});
 		}
 	});
+
+async function lockExpenseCreateClaim(
+	tx: DbTransaction,
+	scope: string,
+	key: string,
+): Promise<ExpenseCreateResponseBody | null> {
+	const [slot] = await tx
+		.select({ body: idempotencyResponses.responseBody, expiresAt: idempotencyResponses.expiresAt })
+		.from(idempotencyResponses)
+		.where(and(eq(idempotencyResponses.scope, scope), eq(idempotencyResponses.key, key)))
+		.limit(1)
+		.for('update');
+	if (!slot) throw new TransactionAbort('idempotency_claim_missing');
+	if (slot.body && typeof slot.body === 'object' && 'expense' in slot.body) {
+		return slot.body as ExpenseCreateResponseBody;
+	}
+	if (
+		slot.expiresAt <= new Date() ||
+		!slot.body ||
+		typeof slot.body !== 'object' ||
+		Array.isArray(slot.body) ||
+		Object.keys(slot.body).length !== 1 ||
+		(slot.body as Record<string, unknown>)._claimed !== true
+	) {
+		throw new TransactionAbort('idempotency_claim_invalid');
+	}
+	return null;
+}
+
+async function findRecurringExpense(
+	tx: DbTransaction,
+	wgId: string,
+	recurringExpenseId: string,
+	recurringDueAt: Date,
+): Promise<{
+	expense: typeof expenses.$inferSelect;
+	splits: (typeof expenseSplits.$inferSelect)[];
+} | null> {
+	const [expense] = await tx
+		.select()
+		.from(expenses)
+		.where(
+			and(
+				eq(expenses.wgId, wgId),
+				eq(expenses.recurringExpenseId, recurringExpenseId),
+				eq(expenses.recurringDueAt, recurringDueAt),
+			),
+		)
+		.limit(1);
+	if (!expense) return null;
+	const splits = await tx
+		.select()
+		.from(expenseSplits)
+		.where(eq(expenseSplits.expenseId, expense.id));
+	return { expense, splits };
+}
+
+async function finalizeExpenseCreateClaim(
+	tx: DbTransaction,
+	scope: string,
+	key: string,
+	body: ExpenseCreateResponseBody,
+): Promise<void> {
+	const rows = await tx
+		.update(idempotencyResponses)
+		.set({
+			responseBody: body,
+			expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
+		})
+		.where(
+			and(
+				eq(idempotencyResponses.scope, scope),
+				eq(idempotencyResponses.key, key),
+				gt(idempotencyResponses.expiresAt, new Date()),
+				sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
+			),
+		)
+		.returning({ scope: idempotencyResponses.scope });
+	if (rows.length !== 1) throw new TransactionAbort('idempotency_claim_missing');
+}
+
+function recurringCreateAbortResponse(error: unknown): NextResponse | null {
+	if (!(error instanceof TransactionAbort)) return null;
+	if (error.code === 'recurring_expense_not_found') return notFound('recurring_expense_not_found');
+	if (error.code === 'abo_paused') return badRequest('abo_paused');
+	if (error.code === 'recurring_expense_already_advanced') {
+		return conflict('recurring_expense_already_advanced');
+	}
+	return null;
+}
+
+function isRecurringDueUniqueViolation(error: unknown): boolean {
+	const cause = error instanceof Error && error.cause !== undefined ? error.cause : error;
+	if (!cause || typeof cause !== 'object') return false;
+	const pgError = cause as { code?: unknown; constraint?: unknown; constraint_name?: unknown };
+	return (
+		pgError.code === '23505' &&
+		(pgError.constraint === 'expenses_recurring_due_unique_idx' ||
+			pgError.constraint_name === 'expenses_recurring_due_unique_idx')
+	);
+}
 
 export const GET = withWgRoute(
 	'expenses GET',
@@ -164,6 +267,9 @@ export async function POST(
 		if (issues.fieldErrors.currency) return badRequest('currency_invalid');
 		if (issues.fieldErrors.imageUrl) return badRequest('image_invalid');
 		if (issues.fieldErrors.occurredAt) return badRequest('occurred_at_invalid');
+		if (issues.fieldErrors.recurringExpenseId) return badRequest('recurring_expense_invalid');
+		if (issues.fieldErrors.expectedRecurringNextDueAt)
+			return badRequest('recurring_due_at_invalid');
 		if (issues.fieldErrors.splits) {
 			// The schema-level sum check uses the runtime error code as its
 			// message, so the API contract stays identical for clients.
@@ -174,6 +280,12 @@ export async function POST(
 		}
 		return badRequest('invalid_body');
 	}
+	if (
+		(parsed.data.recurringExpenseId === undefined) !==
+		(parsed.data.expectedRecurringNextDueAt === undefined)
+	) {
+		return badRequest('recurring_expense_fields_required');
+	}
 
 	const {
 		amountCents,
@@ -183,6 +295,8 @@ export async function POST(
 		occurredAt: occurredAtStr,
 		splits: validatedSplits,
 		paidByMemberId,
+		recurringExpenseId,
+		expectedRecurringNextDueAt,
 	} = parsed.data;
 
 	const occurredAt = occurredAtStr ? new Date(occurredAtStr) : new Date();
@@ -263,31 +377,39 @@ export async function POST(
 		try {
 			written = await withExpensePaymentLock(wg.id, async (tx) => {
 				if (idemScope && idemKey) {
-					const [slot] = await tx
-						.select({
-							body: idempotencyResponses.responseBody,
-							expiresAt: idempotencyResponses.expiresAt,
-						})
-						.from(idempotencyResponses)
+					const replay = await lockExpenseCreateClaim(tx, idemScope, idemKey);
+					if (replay) return { replayed: true as const, body: replay };
+				}
+
+				let recurringDueAt: Date | undefined;
+				if (recurringExpenseId && expectedRecurringNextDueAt) {
+					const expectedDueAt = new Date(expectedRecurringNextDueAt);
+					const existing = await findRecurringExpense(tx, wg.id, recurringExpenseId, expectedDueAt);
+					if (existing) {
+						const body: ExpenseCreateResponseBody = {
+							expense: { ...existing.expense, splits: existing.splits },
+							warning: null,
+						};
+						if (idemScope && idemKey) {
+							await finalizeExpenseCreateClaim(tx, idemScope, idemKey, body);
+						}
+						return { replayed: true as const, body };
+					}
+
+					const [template] = await tx
+						.select()
+						.from(recurringExpenses)
 						.where(
-							and(eq(idempotencyResponses.scope, idemScope), eq(idempotencyResponses.key, idemKey)),
+							and(eq(recurringExpenses.id, recurringExpenseId), eq(recurringExpenses.wgId, wg.id)),
 						)
 						.limit(1)
 						.for('update');
-					if (!slot) throw new TransactionAbort('idempotency_claim_missing');
-					if (slot.body && typeof slot.body === 'object' && 'expense' in slot.body) {
-						return { replayed: true as const, body: slot.body as ExpenseCreateResponseBody };
+					if (!template) throw new TransactionAbort('recurring_expense_not_found');
+					if (template.pausedAt) throw new TransactionAbort('abo_paused');
+					if (template.nextDueAt.getTime() !== expectedDueAt.getTime()) {
+						throw new TransactionAbort('recurring_expense_already_advanced');
 					}
-					if (
-						slot.expiresAt <= new Date() ||
-						!slot.body ||
-						typeof slot.body !== 'object' ||
-						Array.isArray(slot.body) ||
-						Object.keys(slot.body).length !== 1 ||
-						(slot.body as Record<string, unknown>)._claimed !== true
-					) {
-						throw new TransactionAbort('idempotency_claim_invalid');
-					}
+					recurringDueAt = template.nextDueAt;
 				}
 				const created = await insertExpenseWithSplits(tx, {
 					wgId: wg.id,
@@ -298,32 +420,69 @@ export async function POST(
 					imageUrl: safeImageUrl,
 					occurredAt,
 					splits: validatedSplits,
+					...(recurringExpenseId && recurringDueAt ? { recurringExpenseId, recurringDueAt } : {}),
 				});
 				const body: ExpenseCreateResponseBody = {
 					expense: { ...created.expense, splits: created.splits },
 					warning: null,
 				};
 				if (idemScope && idemKey) {
-					const rows = await tx
-						.update(idempotencyResponses)
-						.set({
-							responseBody: body,
-							expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
-						})
-						.where(
-							and(
-								eq(idempotencyResponses.scope, idemScope),
-								eq(idempotencyResponses.key, idemKey),
-								gt(idempotencyResponses.expiresAt, new Date()),
-								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-							),
-						)
-						.returning({ scope: idempotencyResponses.scope });
-					if (rows.length !== 1) throw new TransactionAbort('idempotency_claim_missing');
+					await finalizeExpenseCreateClaim(tx, idemScope, idemKey, body);
 				}
 				return { replayed: false as const, expense: created.expense, body };
 			});
 		} catch (writeErr) {
+			if (
+				recurringExpenseId &&
+				expectedRecurringNextDueAt &&
+				isRecurringDueUniqueViolation(writeErr)
+			) {
+				const replayed = await withExpensePaymentLock(wg.id, async (tx) => {
+					if (idemScope && idemKey) {
+						const replay = await lockExpenseCreateClaim(tx, idemScope, idemKey);
+						if (replay) return replay;
+					}
+					const existing = await findRecurringExpense(
+						tx,
+						wg.id,
+						recurringExpenseId,
+						new Date(expectedRecurringNextDueAt),
+					);
+					if (!existing) return null;
+					const body: ExpenseCreateResponseBody = {
+						expense: { ...existing.expense, splits: existing.splits },
+						warning: null,
+					};
+					if (idemScope && idemKey) {
+						await finalizeExpenseCreateClaim(tx, idemScope, idemKey, body);
+					}
+					return body;
+				});
+				if (replayed) {
+					replayReservation?.resolve(replayed);
+					return NextResponse.json(replayed);
+				}
+			}
+
+			const recurringErrorResponse = recurringCreateAbortResponse(writeErr);
+			if (recurringErrorResponse) {
+				if (idemScope && idemKey) {
+					await withExpensePaymentLock(wg.id, async (tx) => {
+						await tx
+							.delete(idempotencyResponses)
+							.where(
+								and(
+									eq(idempotencyResponses.scope, idemScope),
+									eq(idempotencyResponses.key, idemKey),
+									sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
+								),
+							);
+					});
+				}
+				replayReservation?.reject(writeErr);
+				return recurringErrorResponse;
+			}
+
 			replayReservation?.reject(writeErr);
 			if (writeErr instanceof TransactionAbort) return serverError(writeErr.code);
 			throw writeErr;
@@ -373,6 +532,8 @@ export async function POST(
 		return NextResponse.json(responseBody);
 	} catch (err) {
 		replayReservation?.reject(err);
+		const recurringErrorResponse = recurringCreateAbortResponse(err);
+		if (recurringErrorResponse) return recurringErrorResponse;
 		logApiError('[expenses POST]', err);
 		return serverError(err);
 	}
