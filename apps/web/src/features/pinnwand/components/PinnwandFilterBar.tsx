@@ -46,12 +46,12 @@ export function PinnwandFilterBar({ filter, onFilterChange }: PinnwandFilterBarP
 					className="text-base"
 				/>
 			</InputGroup>
-			<div className="flex items-center gap-2">
+			<div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
 				<ToggleGroup
 					variant="segmented"
 					value={[filter.status]}
 					aria-label="Status filtern"
-					className="w-auto min-w-0 flex-1"
+					className="w-full min-w-0 flex-wrap sm:w-auto sm:flex-1 sm:flex-nowrap"
 					onValueChange={(values) => {
 						const status = STATUS_FILTERS.find((option) => option.value === values[0])?.value;
 						if (status) onFilterChange((current) => ({ ...current, status }));
@@ -63,7 +63,9 @@ export function PinnwandFilterBar({ filter, onFilterChange }: PinnwandFilterBarP
 						</ToggleGroupItem>
 					))}
 				</ToggleGroup>
-				<CollapsibleTrigger render={<Button variant="ghost" />}>
+				<CollapsibleTrigger
+					render={<Button variant="ghost" className="w-full justify-start sm:w-auto" />}
+				>
 					<SlidersHorizontal data-icon="inline-start" aria-hidden /> Filter
 					{activeOptions > 0 && <Badge variant="secondary">{activeOptions}</Badge>}
 				</CollapsibleTrigger>
