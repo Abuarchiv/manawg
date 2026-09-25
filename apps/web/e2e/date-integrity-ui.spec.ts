@@ -124,7 +124,7 @@ test('calendar all-day creation keeps start and end on the same calendar day', a
 	expect(berlinCalendarDate(payload.endsAt as string)).toBe('2026-09-22');
 	await expect(page.getByText('Endzeit liegt vor Startzeit.', { exact: true })).toHaveCount(0);
 	await expect(page.getByRole('heading', { name: 'Neuer Termin', exact: true })).toBeVisible();
-	await expect(page.getByText('0 Termine', { exact: true })).toBeVisible();
+	await expect(page.getByText('0 WG-Termine', { exact: true })).toBeVisible();
 });
 
 test.describe('absence dates outside Berlin', () => {

@@ -537,7 +537,7 @@ for (const route of ['home', 'chores', 'shopping', 'inventory'] as const) {
 					page.getByRole('heading', {
 						name:
 							route === 'home'
-								? 'Heute für dich'
+								? 'Für dich'
 								: route === 'chores'
 									? 'Putzplan'
 									: route === 'shopping'
