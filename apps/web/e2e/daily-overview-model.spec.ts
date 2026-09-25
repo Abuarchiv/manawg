@@ -6,7 +6,7 @@ import {
 } from '../src/core/reads/dashboard-insights';
 import type { EventInput, EventOccurrence } from '../src/features/events/events';
 import { expandRecurrence } from '../src/features/events/events';
-import { simplifyDebts } from '../src/features/expenses/debt-reduction';
+import { buildSettlementSummary, simplifyDebts } from '../src/features/expenses/debt-reduction';
 
 const NOW = Date.parse('2026-09-05T22:30:00.000Z');
 
@@ -105,6 +105,86 @@ test('keeps personal settlements distinct by counterparty and currency', () => {
 		])
 		.sort(([left], [right]) => String(left).localeCompare(String(right)));
 	expect(actualByIdentity).toEqual(expectedByIdentity);
+});
+
+test('keeps settlement partners stable when tied balances and members are reordered', () => {
+	const balances = [
+		{ memberId: 'debtor-a', memberName: 'Abu', color: null, cents: -500, currency: 'EUR' },
+		{ memberId: 'creditor-b', memberName: 'Dana', color: null, cents: 500, currency: 'EUR' },
+		{ memberId: 'debtor-b', memberName: 'Bea', color: null, cents: -500, currency: 'EUR' },
+		{ memberId: 'creditor-a', memberName: 'Clara', color: null, cents: 500, currency: 'EUR' },
+	];
+	const reorderedBalances = [balances[0], balances[2], balances[3], balances[1]];
+	const expenses = [
+		{
+			paidByMemberId: 'creditor-a',
+			splits: [
+				{ debtorMemberId: 'debtor-a', amountCents: 250, settledAt: null },
+				{ debtorMemberId: 'debtor-b', amountCents: 250, settledAt: null },
+				{ debtorMemberId: 'creditor-b', amountCents: 250, settledAt: null },
+			],
+		},
+		{
+			paidByMemberId: 'creditor-b',
+			splits: [
+				{ debtorMemberId: 'debtor-a', amountCents: 250, settledAt: null },
+				{ debtorMemberId: 'debtor-b', amountCents: 250, settledAt: null },
+				{ debtorMemberId: 'creditor-a', amountCents: 250, settledAt: null },
+			],
+		},
+	];
+	const members = [
+		{ id: 'debtor-a', name: 'Abu', color: null },
+		{ id: 'creditor-b', name: 'Dana', color: null },
+		{ id: 'debtor-b', name: 'Bea', color: null },
+		{ id: 'creditor-a', name: 'Clara', color: null },
+	];
+	const reorderedMembers = [members[0], members[2], members[3], members[1]];
+	const expectedTransfers = [
+		{
+			fromId: 'debtor-a',
+			fromName: 'Abu',
+			toId: 'creditor-a',
+			toName: 'Clara',
+			cents: 500,
+			currency: 'EUR',
+		},
+		{
+			fromId: 'debtor-b',
+			fromName: 'Bea',
+			toId: 'creditor-b',
+			toName: 'Dana',
+			cents: 500,
+			currency: 'EUR',
+		},
+	];
+	const simplify = (rows: typeof balances) =>
+		simplifyDebts(rows).map(({ fromId, fromName, toId, toName, cents, currency }) => ({
+			fromId,
+			fromName,
+			toId,
+			toName,
+			cents,
+			currency,
+		}));
+	const summary = (roster: typeof members) => buildSettlementSummary(expenses, roster).simplified;
+	const expectedHomeRows = [['settlement:debtor-a:creditor-a:EUR', 'An Clara', -500, 'EUR']];
+	const homeRows = (rows: typeof balances) =>
+		getForYouItems(
+			overview({
+				currentMemberId: 'debtor-a',
+				balances: rows.map(({ cents, ...balance }) => ({ ...balance, balanceCents: cents })),
+			}),
+		)
+			.filter((item) => item.kind === 'debt')
+			.map((item) => [item.entityId, item.title, item.amountCents, item.currency]);
+
+	expect(simplify(balances)).toEqual(expectedTransfers);
+	expect(simplify(reorderedBalances)).toEqual(expectedTransfers);
+	expect(summary(members)).toEqual(expectedTransfers);
+	expect(summary(reorderedMembers)).toEqual(expectedTransfers);
+	expect(homeRows(balances)).toEqual(expectedHomeRows);
+	expect(homeRows(reorderedBalances)).toEqual(expectedHomeRows);
 });
 
 test('builds the Berlin week agenda with separate overdue context and no own duplicates', () => {
