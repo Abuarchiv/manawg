@@ -112,10 +112,7 @@ async function settleSection<T>(
 	try {
 		return { section, ok: true, value: await fn() };
 	} catch (err) {
-		console.error(
-			`[export GET] section "${section}" failed:`,
-			err instanceof Error ? `${err.name}: ${err.message}` : 'unknown error',
-		);
+		logApiError(`[export GET] section ${section} failed`, err);
 		return { section, ok: false };
 	}
 }
@@ -570,10 +567,7 @@ export async function GET(
 				memberRowsFetched = await fetchMemberRows(wg.id);
 			} catch (err) {
 				directoryFailed = true;
-				console.error(
-					'[export GET] section "members" failed:',
-					err instanceof Error ? `${err.name}: ${err.message}` : 'unknown error',
-				);
+				logApiError('[export GET] section members failed', err);
 			}
 		}
 		const memberById = memberRowsFetched

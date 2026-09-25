@@ -40,7 +40,7 @@ function exportRoute(failedTable) {
 			from: (table) => {
 				const rows =
 					table === tables[failedTable]
-						? Promise.reject(new Error('section unavailable'))
+						? Promise.reject(new Error('privateDbPassword123'))
 						: Promise.resolve([]);
 				const query = Object.assign(rows, {
 					where: () => query,
@@ -73,7 +73,7 @@ function exportRoute(failedTable) {
 			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
 			resolveE2EFixture: async () => ({ mode: 'real' }),
 		},
-		'@/core/infra/observability': { logApiError: () => undefined },
+		'@/core/infra/observability': loadTs('src/core/infra/observability.ts'),
 		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }) },
 		'@/core/reads/export': loadTs('src/core/reads/export.ts'),
 		'drizzle-orm': { asc: () => null, desc: () => null, eq: () => null, inArray: () => null },
@@ -103,8 +103,12 @@ test('explicit export limits remain bounded', async () => {
 });
 
 test('one failed JSON section rejects the incomplete backup', async (t) => {
-	t.mock.method(console, 'error', () => undefined);
-	const response = await exportRoute('expenses').get('?limit=20');
-	assert.equal(response.status, 500);
-	assert.equal((await response.json()).error, 'export_incomplete');
+	const logged = [];
+	t.mock.method(console, 'error', (...args) => logged.push(args));
+	for (const section of ['expenses', 'wgMembers']) {
+		const response = await exportRoute(section).get('?limit=20');
+		assert.equal(response.status, 500);
+		assert.equal((await response.json()).error, 'export_incomplete');
+	}
+	assert.equal(JSON.stringify(logged).includes('privateDbPassword123'), false);
 });
