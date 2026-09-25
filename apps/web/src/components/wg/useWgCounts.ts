@@ -18,6 +18,8 @@ export interface SegmentCount {
 export interface ChatUnreadCount {
 	count: number;
 	overflow: boolean;
+	/** Missing only for cached responses created before exact totals were added. */
+	exactCount?: number | undefined;
 }
 
 export interface ChatUnreadSnapshot {
