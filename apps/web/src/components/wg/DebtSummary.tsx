@@ -281,7 +281,7 @@ function DebtRow({
 			</Badge>
 
 			{canSettle && (
-				<ItemFooter className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+				<ItemFooter className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-2 [&>*]:min-w-0 [&_button]:min-w-0 [&_button]:[overflow-wrap:anywhere]">
 					{!primaryAction && (
 						<Button
 							variant="outline"
@@ -304,7 +304,7 @@ function DebtRow({
 						/>
 					)}
 					{canPayWithPayPal && (
-						<Collapsible className="min-[360px]:col-span-2">
+						<Collapsible className="col-span-full">
 							<CollapsibleTrigger
 								render={<Button variant="outline" className="w-full justify-between" />}
 							>
