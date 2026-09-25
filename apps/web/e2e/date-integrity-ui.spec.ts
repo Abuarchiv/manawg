@@ -148,6 +148,12 @@ test.describe('absence dates outside Berlin', () => {
 	});
 });
 
+test('new calendar event starts at the next full hour', async ({ page }) => {
+	await page.clock.setFixedTime(new Date('2026-09-22T08:20:00Z'));
+	await openCalendarCreate(page, MOBILE_VIEWPORT);
+	await expect(page.getByLabel('Beginn')).toHaveValue('2026-09-22T11:00');
+});
+
 test('calendar reports a missing start only on save and leaves the end unchanged', async ({
 	page,
 }) => {

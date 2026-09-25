@@ -80,10 +80,12 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 		if (!open || draftInitializedRef.current) return;
 		draftInitializedRef.current = true;
 		setError(null);
-		const seed = defaultDate ?? new Date();
-		const seeded = new Date(seed);
-		seeded.setMinutes(0, 0, 0);
-		setStartsAt(buildIsoLocal(seeded));
+		// Start at the next full hour; a picked day keeps that time of day.
+		const nextHour = new Date();
+		nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
+		const seeded = new Date(defaultDate ?? nextHour);
+		seeded.setHours(nextHour.getHours(), 0, 0, 0);
+		setStartsAt(buildIsoLocal(seeded < nextHour ? nextHour : seeded));
 		setEndsAt('');
 	}, [open, defaultDate]);
 
