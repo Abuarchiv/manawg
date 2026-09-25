@@ -381,7 +381,9 @@ export default function WgHomePage() {
 							<output className="text-sm text-muted-foreground">
 								{eventRead.data
 									? 'Termine konnten nicht aktualisiert werden. Angezeigte Einträge können veraltet sein.'
-									: 'Termine konnten nicht geladen werden. Putzplan-Aufgaben bleiben sichtbar.'}
+									: data
+										? 'Termine konnten nicht geladen werden. Putzplan-Aufgaben bleiben sichtbar.'
+										: 'Termine konnten nicht geladen werden.'}
 							</output>
 						)}
 						{!data && !error && (
