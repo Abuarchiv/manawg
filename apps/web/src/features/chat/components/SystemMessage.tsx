@@ -29,8 +29,7 @@ export function SystemMessage({ systemKind, payload }: SystemMessageProps) {
 					text={
 						<>
 							{asString(data.actorName, 'Jemand')} hat {asString(data.description, 'eine Ausgabe')}{' '}
-							für <span className="font-mono tabular-nums">{asString(data.amount, '0€')}</span>{' '}
-							eingetragen.
+							für <span className="tabular-nums">{asString(data.amount, '0€')}</span> eingetragen.
 						</>
 					}
 				/>

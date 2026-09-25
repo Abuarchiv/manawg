@@ -557,10 +557,7 @@ export default function KalenderPage() {
 	}
 
 	return (
-		<div
-			data-household-content
-			className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8"
-		>
+		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
 			<SubNav />
 			<header className="flex flex-wrap items-center gap-3">
 				<div className="min-w-0 flex-1">

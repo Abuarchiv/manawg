@@ -48,3 +48,19 @@ test('chat composer sits on the iOS keyboard after Safari pans the page', async 
 	});
 	expect(Math.abs(result.keyboardTop - result.composerBottom)).toBeLessThan(1);
 });
+
+test('chat document does not overshoot the viewport at rest', async ({ page }) => {
+	// The WG shell reserves padding-bottom for the fixed bottom nav so normal
+	// scrolling pages clear it. Chat already ends above the nav via its own
+	// height calc, so that reserve must be cancelled — otherwise the whole
+	// page (not just the message list) rubber-bands on iOS.
+	await page.setViewportSize({ width: 390, height: 844 });
+	await setupMember(page);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/chat`);
+	await dismissOnboarding(page);
+	await expect(page.getByRole('textbox', { name: 'Chat-Nachricht' })).toBeVisible();
+	const overshoot = await page.evaluate(
+		() => document.documentElement.scrollHeight - window.innerHeight,
+	);
+	expect(overshoot).toBeLessThanOrEqual(0);
+});
