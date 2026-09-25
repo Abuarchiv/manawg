@@ -23,6 +23,12 @@ artifacts in the repository so work survives a chat session.
 - Preview and Production are separate environments and must remain separate. Branches separate development work; credentials, deployment checks, and explicit workflow gates separate environments. Preview is for exact-SHA validation with Preview-only credentials and data. Production changes only through `.github/workflows/migrate-production.yml` on `main`, using the exact `candidate_sha`, a matching successful `preview_run_id`, and `MIGRATE_PRODUCTION`.
 - Never treat local, fixture, or Preview success as Production proof. Never use Production credentials or data in Preview. If Preview/Auth/RLS or migration gates fail, keep the PR open and report the external blocker; do not bypass required checks.
 
+## Test account (Production)
+
+- Login on https://app.manawg.com with "E-Mail und Passwort": `testuser@manawg.com` / `Mana-8743778e9c0e-Test`.
+- Supabase project `bwsvsvfgbrsonepffqff`, user id `21d891cd-1bda-428a-84ad-cf9e5392d64e`, e-mail already confirmed, created 2026-09-25.
+- Test-only account without real data; this is the one deliberate exception to the local-only secrets rule. Do not use it in Preview.
+
 ## Project commands
 
 - OpenSpec: `openspec list --json`, `openspec status`, `openspec validate`
