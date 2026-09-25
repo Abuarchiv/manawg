@@ -92,9 +92,29 @@ function SwitchThumb({
 	...props
 }: SwitchThumbProps) {
 	const { isChecked, isPressed } = useSwitch();
-	const pressedShadow = isChecked
-		? 'inset 0.5px 0.5px 0 rgba(0,0,0,0.42), inset -1px -1px 0 var(--primary-foreground), inset -2px 4px 4px rgba(0,0,0,0.08), inset -1px 1.5px 0.5px var(--primary), inset -1.5px -2px 0.5px var(--primary), inset -1.75px -2.75px 1px color-mix(in oklch, var(--primary), var(--foreground) 35%), 0.5px 0.5px 2px rgba(0,0,0,0.03), 0 2px 32px rgba(10,10,10,0.2)'
-		: 'inset 0.5px 0.5px 0 rgba(0,0,0,0.18), inset -1px -1px 0 var(--primary-foreground), inset -2px 4px 4px rgba(0,0,0,0.08), inset -1px 1.5px 0.5px var(--input), inset -1.5px -2px 0.5px var(--input), inset -1.75px -2.75px 1px color-mix(in oklch, var(--input), var(--foreground) 5%), 0.5px 0.5px 2px rgba(0,0,0,0.03), 0 2px 32px rgba(10,10,10,0.1)';
+	// Figma "iOS 26 Toggle (Liquid Glass)", pressed variants; its green is swapped for --primary.
+	const deep = 'color-mix(in oklch, var(--primary), black 55%)';
+	const pressedShadow = [
+		...(isChecked
+			? [
+					`inset 0.5px 0.5px 0 color-mix(in oklch, ${deep} 30%, transparent)`,
+					'inset -1px -1px 0 #fff',
+					'inset -2px 4px 4px rgba(0,0,0,0.08)',
+					'inset -1px 1.5px 0.5px var(--primary)',
+					'inset -1.5px -2px 0.5px var(--primary)',
+					'inset -1.75px -2.75px 1px color-mix(in oklch, var(--primary), white 45%)',
+				]
+			: [
+					`inset 0.5px 0.5px 0 color-mix(in oklch, ${deep} 60%, transparent)`,
+					'inset -1.5px -1.5px 0 #fff',
+					'inset -2px 4px 4px rgba(0,0,0,0.08)',
+					'inset -3px 2.5px 0.5px var(--input)',
+					'inset -3px -2.5px 0.5px var(--input)',
+				]),
+		'0 0 0 1px rgba(0,0,0,0.05)',
+		'0.5px 0.5px 2px rgba(0,0,0,0.03)',
+		'0 2px 32px color-mix(in oklch, var(--primary) 20%, transparent)',
+	].join(', ');
 	const thumbStyle = {
 		...props.style,
 		left: isPressed ? (isChecked ? 17 : -8) : isChecked ? 27.5 : 2.5,
@@ -102,8 +122,8 @@ function SwitchThumb({
 		width: isPressed ? pressedWidth : 38,
 		height: isPressed ? 39 : 25,
 		boxShadow: isPressed ? pressedShadow : '0.5px 0.5px 2px rgba(0,0,0,0.03)',
-		// Gedrückt wird der Thumb zu Glas: die Spur scheint durch (Brandbook 11.3).
-		...(isPressed ? { backgroundColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(2px)' } : {}),
+		// Gedrückt wird der Thumb zu Glas: die Spur scheint scharf durch (Brandbook 11.3).
+		...(isPressed ? { backgroundColor: 'rgba(255,255,255,0.1)' } : {}),
 	};
 
 	return (

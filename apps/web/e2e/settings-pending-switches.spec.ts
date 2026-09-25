@@ -62,4 +62,12 @@ test('notification switches reject additional changes until the pending save com
 		originalThumbPosition,
 	);
 	expect(patches).toEqual([{ notifyChores: false }]);
+	// iOS 26 geometry: checked thumb 2.5px inside the right edge, vertically centred.
+	const [button, thumb] = await Promise.all([
+		expenses.boundingBox(),
+		expenses.locator('[data-slot="switch-thumb"]').boundingBox(),
+	]);
+	if (!button || !thumb) throw new Error('switch not rendered');
+	expect(button.x + button.width - (thumb.x + thumb.width)).toBeCloseTo(2.5, 1);
+	expect(button.y + button.height / 2 - (thumb.y + thumb.height / 2)).toBeCloseTo(0, 1);
 });
