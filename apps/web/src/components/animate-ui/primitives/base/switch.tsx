@@ -62,7 +62,12 @@ function Switch({
 			}
 			setIsChecked(...args);
 		},
-		...(nativeButton === undefined ? {} : { nativeButton }),
+		// The render target below is always a real <button> (motion.button). Base UI's
+		// Switch defaults nativeButton to false, which (a) leaves `type` unset on that
+		// <button> -- defaulting to type="submit", so a Switch dropped inside a <form>
+		// later would submit it on Space/Enter/click -- and (b) logs a dev-mode warning
+		// that the render target doesn't match the (incorrect) nativeButton assumption.
+		nativeButton: nativeButton ?? true,
 		...(disabled === undefined ? {} : { disabled }),
 		...(readOnly === undefined ? {} : { readOnly }),
 		...(required === undefined ? {} : { required }),

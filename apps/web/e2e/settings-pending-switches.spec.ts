@@ -37,6 +37,10 @@ test('notification switches reject additional changes until the pending save com
 	const expenses = page.getByRole('switch', { name: 'Ausgaben', exact: true });
 	const push = page.getByRole('switch', { name: 'Web Push aktivieren', exact: true });
 	await expect(chores).toBeEnabled();
+	// Regression: the switch's <button> render target must declare type="button" (via
+	// nativeButton), otherwise it silently defaults to type="submit" and would submit
+	// any enclosing <form> on activation.
+	await expect(chores).toHaveAttribute('type', 'button');
 	await expect(expenses).toBeChecked();
 	const originalThumbPosition = await expenses
 		.locator('[data-slot="switch-thumb"]')
