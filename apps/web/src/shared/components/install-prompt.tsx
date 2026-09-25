@@ -10,6 +10,7 @@ import {
 	CardTitle,
 } from '@/components/ui/card';
 import { X } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
 	type BeforeInstallEvent,
@@ -36,7 +37,8 @@ function isEditingTarget(): boolean {
 }
 
 /**
- * Floating install prompt — shown on every app start until ManaWG is installed.
+ * Floating install prompt — shown on the start page of every app start until
+ * ManaWG is installed.
  * Dismissing hides it until the next page load. Browsers without a native prompt
  * (iOS, Firefox) get the manual steps from `InstallButton`. Liest das
  * `beforeinstallprompt`-Event aus dem globalen Pub/Sub-Modul
@@ -52,6 +54,10 @@ export function InstallPrompt() {
 	const [event, setEvent] = useState<BeforeInstallEvent | null>(null);
 	const [manual, setManual] = useState(false);
 	const [hidden, setHidden] = useState(true);
+	const pathname = usePathname() ?? '';
+	// Every app start lands on a start page. Feature pages keep their composer
+	// or primary action right above the BottomNav, where the prompt would sit.
+	const onStartPage = pathname === '/' || /^\/wg\/[^/]+\/?$/.test(pathname);
 
 	useEffect(() => {
 		if (isAppInstalled()) return;
@@ -89,7 +95,7 @@ export function InstallPrompt() {
 		if (result !== 'unavailable') dismiss();
 	};
 
-	if (hidden || (!event && !manual)) return null;
+	if (hidden || !onStartPage || (!event && !manual)) return null;
 
 	return (
 		<div

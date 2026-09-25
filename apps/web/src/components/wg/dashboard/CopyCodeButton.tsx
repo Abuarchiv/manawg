@@ -12,11 +12,17 @@ interface CopyCodeButtonProps {
 	code: string;
 	wgName?: string;
 	joiningEnabled?: boolean;
+	variant?: 'default' | 'ghost';
 }
 
 type CopyState = 'idle' | 'shared' | 'copied' | 'failed';
 
-export function CopyCodeButton({ code, wgName, joiningEnabled = true }: CopyCodeButtonProps) {
+export function CopyCodeButton({
+	code,
+	wgName,
+	joiningEnabled = true,
+	variant = 'ghost',
+}: CopyCodeButtonProps) {
 	const [state, setState] = useState<CopyState>('idle');
 	const [sharing, setSharing] = useState(false);
 	const timerRef = useRef<number | null>(null);
@@ -107,7 +113,7 @@ export function CopyCodeButton({ code, wgName, joiningEnabled = true }: CopyCode
 			</output>
 			<Button
 				type="button"
-				variant="ghost"
+				variant={variant}
 				onClick={onClick}
 				disabled={!joiningEnabled || sharing}
 				className="h-auto whitespace-normal"

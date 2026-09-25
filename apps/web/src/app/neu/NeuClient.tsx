@@ -659,7 +659,7 @@ export function NeuClient() {
 						variant="link"
 						onClick={() => void switchAccount()}
 						disabled={busy}
-						className="w-fit px-0"
+						className="w-fit px-0 text-muted-foreground underline underline-offset-4"
 					>
 						{busy ? 'Bitte warten…' : 'Mit anderem Konto anmelden'}
 					</Button>

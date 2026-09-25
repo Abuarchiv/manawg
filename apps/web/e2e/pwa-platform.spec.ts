@@ -42,7 +42,11 @@ test('dismissed install prompt returns on the next page load', async ({ page }) 
 	await expect(page).toHaveURL(/entdecken/);
 	await expect(install).toHaveCount(0);
 
+	// Feature pages keep their bottom actions free; the next start page shows it again.
 	await page.reload();
+	await fireInstallEvent(page);
+	await expect(install).toHaveCount(0);
+	await page.goto('/');
 	await fireInstallEvent(page);
 	await expect(install).toBeVisible();
 });

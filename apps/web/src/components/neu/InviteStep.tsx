@@ -184,18 +184,17 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 						Per WhatsApp teilen
 					</a>
 				</CardContent>
-				<CardFooter>
-					<Badge
-						variant={state === 'failed' ? 'destructive' : 'secondary'}
-						className={cn(state === 'idle' && 'invisible')}
-					>
-						{state === 'shared'
-							? 'Nativ geteilt'
-							: state === 'copied'
-								? 'Link kopiert'
-								: 'Teilen fehlgeschlagen'}
-					</Badge>
-				</CardFooter>
+				{state !== 'idle' && (
+					<CardFooter>
+						<Badge variant={state === 'failed' ? 'destructive' : 'secondary'}>
+							{state === 'shared'
+								? 'Nativ geteilt'
+								: state === 'copied'
+									? 'Link kopiert'
+									: 'Teilen fehlgeschlagen'}
+						</Badge>
+					</CardFooter>
+				)}
 			</Card>
 
 			<Button

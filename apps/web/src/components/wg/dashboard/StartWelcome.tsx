@@ -41,9 +41,6 @@ export function StartWelcome() {
 	if (visibleFor !== storageKey) return null;
 	const baseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
 	const hasRoommates = members.filter((member) => member.active).length >= 2;
-	const primaryAction = hasRoommates
-		? { href: `${baseHref}/einkauf`, label: 'Einkauf öffnen' }
-		: { href: `${baseHref}/einstellungen#zugang`, label: 'Mitbewohner einladen' };
 	return (
 		<section aria-labelledby="new-wg-heading">
 			<Card size="sm">
@@ -69,10 +66,17 @@ export function StartWelcome() {
 					</CardAction>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-1">
-					<Link href={primaryAction.href} className={cn(buttonVariants(), '')}>
-						{primaryAction.label}
-					</Link>
-					<CopyCodeButton code={wg.shareCode} wgName={wg.name} joiningEnabled={wg.joiningEnabled} />
+					{hasRoommates && (
+						<Link href={`${baseHref}/einkauf`} className={cn(buttonVariants(), '')}>
+							Einkauf öffnen
+						</Link>
+					)}
+					<CopyCodeButton
+						code={wg.shareCode}
+						wgName={wg.name}
+						joiningEnabled={wg.joiningEnabled}
+						variant={hasRoommates ? 'ghost' : 'default'}
+					/>
 					{!wg.joiningEnabled && (
 						<Link
 							href={`${baseHref}/einstellungen#zugang`}

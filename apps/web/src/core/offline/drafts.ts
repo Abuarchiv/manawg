@@ -117,10 +117,11 @@ export function isEmptyModuleDraft(
 			queueEditId: null,
 		},
 	};
+	// The Putzplan page keeps its absence form in the same draft as the chore form.
+	const known = module === 'chore' ? { ...defaults.chore, ...defaults.absence } : defaults[module];
 	return Object.entries(draft).every(
 		([key, value]) =>
-			Object.hasOwn(defaults[module], key) &&
-			JSON.stringify(value) === JSON.stringify(defaults[module][key]),
+			Object.hasOwn(known, key) && JSON.stringify(value) === JSON.stringify(known[key]),
 	);
 }
 
