@@ -13,29 +13,25 @@ import { X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import {
-	INSTALL_DISMISS_KEY,
-	createInstallDismissedAt,
-	isInstallDismissed,
-} from '../lib/install-dismissal';
-import {
 	type BeforeInstallEvent,
 	isAppInstalled,
-	isIosLikeDevice,
 	subscribeInstall,
 	triggerInstall,
 } from '../lib/pwa-install';
+import { InstallButton } from './install-button';
 import { LogoMark } from './ui/LogoMark';
 
+// sessionStorage: dismissing hides the prompt until the next app start.
+const INSTALL_DISMISS_KEY = 'manawg:install-dismissed';
+
 function isDismissed(): boolean {
-	const storage = safeLocalStorage();
-	if (!storage) return false;
-	return isInstallDismissed(storage.getItem(INSTALL_DISMISS_KEY));
+	return safeSessionStorage()?.getItem(INSTALL_DISMISS_KEY) === '1';
 }
 
-function safeLocalStorage(): Storage | null {
+function safeSessionStorage(): Storage | null {
 	if (typeof window === 'undefined') return null;
 	try {
-		return window.localStorage;
+		return window.sessionStorage;
 	} catch {
 		return null;
 	}
@@ -43,9 +39,7 @@ function safeLocalStorage(): Storage | null {
 
 function rememberDismissed(): void {
 	try {
-		const storage = safeLocalStorage();
-		if (!storage) return;
-		storage.setItem(INSTALL_DISMISS_KEY, createInstallDismissedAt());
+		safeSessionStorage()?.setItem(INSTALL_DISMISS_KEY, '1');
 	} catch {
 		// If storage is blocked, just hide for this session.
 	}
@@ -67,10 +61,11 @@ function isEditingTarget(): boolean {
 }
 
 /**
- * Floating install prompt — appears only after user has scrolled past the hero
- * (so it never blocks the CTAs). Honors a 14-day dismissal cooldown via
- * localStorage which is checked before any event handlers are registered.
- * iOS users see a manual hint. Liest das `beforeinstallprompt`-Event aus dem
+ * Floating install prompt — shown on every app start until ManaWG is installed.
+ * On the landing page it waits until the user has scrolled past the hero (so it
+ * never blocks the CTAs); inside /wg/* it appears shortly after start. Dismissal
+ * lasts for the session only. Browsers without a native prompt (iOS, Firefox)
+ * get the manual steps from `InstallButton`. Liest das `beforeinstallprompt`-Event aus dem
  * globalen Pub/Sub-Modul (`../lib/pwa-install`), damit kein Race-Condition mit
  * dem Hero-`InstallButton` entsteht.
  *
@@ -82,22 +77,19 @@ function isEditingTarget(): boolean {
 export function InstallPrompt() {
 	const pathname = usePathname();
 	const [event, setEvent] = useState<BeforeInstallEvent | null>(null);
-	const [iosHint, setIosHint] = useState(false);
+	const [manual, setManual] = useState(false);
 	const [hidden, setHidden] = useState(true);
 	const hasScrolled = useRef(false);
 	const inWgApp = pathname?.startsWith('/wg/') ?? false;
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
-		// In-app forms and navigation must remain unobstructed. Installation is
-		// available on demand in settings; the automatic prompt is for entry only.
-		if (inWgApp) return;
 		if (isDismissed()) return;
 		if (isAppInstalled()) return;
 
-		const ua = window.navigator.userAgent.toLowerCase();
-		const isIos = isIosLikeDevice(window.navigator);
-		const isSafari = isIos && /safari/.test(ua) && !/crios|fxios|edgios/.test(ua);
+		// Chromium fires beforeinstallprompt only while the app is not installed,
+		// so there we wait for it. Other browsers can only install manually.
+		const manualOnly = !('onbeforeinstallprompt' in window);
 
 		const showWhenReady = () => {
 			if (!hasScrolled.current && !inWgApp) return;
@@ -107,8 +99,8 @@ export function InstallPrompt() {
 				setHidden(false);
 				return;
 			}
-			if (isSafari) {
-				setIosHint(true);
+			if (manualOnly) {
+				setManual(true);
 				setHidden(false);
 			}
 		};
@@ -121,11 +113,11 @@ export function InstallPrompt() {
 			// Hide near the bottom CTAs so the install prompt does not overlap primary actions.
 			const distToBottom =
 				document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
-			if (distToBottom < 600) {
+			if (!inWgApp && distToBottom < 600) {
 				setHidden(true);
 			} else if (
 				hasScrolled.current &&
-				(event || isSafari) &&
+				(event || manualOnly) &&
 				!isDismissed() &&
 				!isEditingTarget()
 			) {
@@ -186,8 +178,8 @@ export function InstallPrompt() {
 		}
 	};
 
-	if (hidden || inWgApp) return null;
-	if (!event && !iosHint) return null;
+	if (hidden) return null;
+	if (!event && !manual) return null;
 
 	return (
 		<div
@@ -214,19 +206,10 @@ export function InstallPrompt() {
 								markFill="var(--primary-foreground)"
 								className="shrink-0"
 							/>
-							<CardTitle>
-								{iosHint ? 'Auf dem Home-Bildschirm installieren' : 'ManaWG als App installieren'}
-							</CardTitle>
+							<CardTitle>ManaWG als App installieren</CardTitle>
 						</div>
 						<CardDescription>
-							{iosHint ? (
-								<>
-									Tippe auf <span className="font-medium text-foreground">Teilen</span> und dann{' '}
-									<span className="font-medium text-foreground">Zum Home-Bildschirm</span>.
-								</>
-							) : (
-								'Wie eine App. Schneller starten, offline-fähig, kein Browser-Tab nötig.'
-							)}
+							Wie eine App. Schneller starten, offline-fähig, kein Browser-Tab nötig.
 						</CardDescription>
 						<CardAction>
 							<Button
@@ -241,8 +224,8 @@ export function InstallPrompt() {
 							</Button>
 						</CardAction>
 					</CardHeader>
-					{!iosHint && event && (
-						<CardFooter>
+					<CardFooter>
+						{event ? (
 							<Button
 								type="button"
 								onClick={install}
@@ -250,8 +233,10 @@ export function InstallPrompt() {
 							>
 								Jetzt installieren
 							</Button>
-						</CardFooter>
-					)}
+						) : (
+							<InstallButton variant="solid" label="So installierst du ManaWG" className="w-full" />
+						)}
+					</CardFooter>
 				</Card>
 			</section>
 		</div>
