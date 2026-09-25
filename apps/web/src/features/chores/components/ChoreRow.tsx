@@ -104,6 +104,11 @@ export const ChoreRow = memo(function ChoreRow({
 					</span>
 					{status.escalationLabel && ` · ${status.escalationLabel}`}
 				</ItemDescription>
+				<ItemDescription className="line-clamp-none break-words">
+					{nextAssigneeName
+						? `Voraussichtlich als Nächstes: ${nextAssigneeName}.`
+						: 'Für die nächste Runde ist niemand verfügbar.'}
+				</ItemDescription>
 				{chore.lastCompletedAt && (
 					<ItemDescription className="line-clamp-none">
 						Nächste Fälligkeit:{' '}

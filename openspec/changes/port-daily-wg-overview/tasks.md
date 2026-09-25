@@ -18,8 +18,8 @@
 
 ## 4. Add only the remaining targeted view improvements
 
-- [ ] 4.1 Show current and next predicted assignee in Putzplan rows using the existing shared rotation helper and current member/absence/chore inputs; verify agreement with the authoritative algorithm, viewer-as-next wording, absent/deactivated members, and no eligible successor.
-- [ ] 4.2 Move the existing Erinnerungen link outside collapsed balance details without restoring duplicate add-expense or generic chore thumb actions; verify keyboard navigation, the destination URL, and retained "Alle Salden" wording.
+- [x] 4.1 Show current and next predicted assignee in Putzplan rows using the existing shared rotation helper and current member/absence/chore inputs; verify agreement with the authoritative algorithm, viewer-as-next wording, absent/deactivated members, and no eligible successor.
+- [x] 4.2 Move the existing Erinnerungen link outside collapsed balance details without restoring duplicate add-expense or generic chore thumb actions; verify keyboard navigation, the destination URL, and retained "Alle Salden" wording.
 - [ ] 4.3 Review the final touched-file diff for protected main behavior and run relevant regression checks for absence cache, loading headers, toast stacking, settings anchors, legal links, and Auth-provider availability; confirm no settings list/detail rewrite or old cache/ChatView implementation was imported.
 
 ## 5. Prove the final phone-first candidate

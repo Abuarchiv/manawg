@@ -1013,6 +1013,21 @@ export default function PutzenPage() {
 		chores: items,
 		absentMemberIds,
 	});
+	const nextAssigneeNameByChoreId = new Map<string, string | null>(
+		items.map((chore): [string, string | null] => {
+			const nextAssigneeId = chooseNextAvailableMember({
+				members: activeMembers,
+				currentMemberId: chore.assignedMemberId,
+				absentMemberIds,
+				chores: items,
+			});
+			if (!nextAssigneeId) return [chore.id, null];
+			return [
+				chore.id,
+				nextAssigneeId === identity.memberId ? 'du' : memberLookup(nextAssigneeId).name,
+			];
+		}),
+	);
 	const choreAddPending = isPending('chore:add');
 	const absenceAddPending = isPending('absence:add');
 
@@ -1180,20 +1195,7 @@ export default function PutzenPage() {
 										isTakePending={isPending(`${chore.id}:take`)}
 										isCompleteArmed={completeConfirmId === chore.id}
 										completeError={actionError}
-										nextAssigneeName={
-											completeConfirmId === chore.id
-												? (members.find(
-														(member) =>
-															member.id ===
-															chooseNextAvailableMember({
-																members: activeMembers,
-																currentMemberId: chore.assignedMemberId,
-																absentMemberIds,
-																chores: items,
-															}),
-													)?.name ?? null)
-												: null
-										}
+										nextAssigneeName={nextAssigneeNameByChoreId.get(chore.id) ?? null}
 										onCancelComplete={() => setCompleteConfirmId(null)}
 										onComplete={handleComplete}
 										onSwapRequest={handleSwapRequest}
