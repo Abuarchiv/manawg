@@ -211,3 +211,27 @@ test('does not resurrect a deleted post after two pending refreshes', async ({ p
 	await expect(page.getByText('Beitrag A', { exact: true })).toBeVisible();
 	await expect(page.getByText('Beitrag B gelöscht', { exact: true })).toBeHidden();
 });
+
+test('status filter labels stay on one line at 320px', async ({ page }) => {
+	await page.setViewportSize({ width: 320, height: 700 });
+	await setupMember(page);
+	await page.route(`**/api/wg/${SHARE_CODE}/announcements*`, async (route) => {
+		if (route.request().method() !== 'GET') return route.continue();
+		return route.fulfill({
+			json: { announcements: [announcement('post-filterbar', 'Beitrag für Filterleiste')] },
+		});
+	});
+
+	await navigateToFeature(page, `/wg/${SHARE_CODE}/pinnwand`);
+	await dismissOnboarding(page);
+	await expect(page.getByText('Beitrag für Filterleiste', { exact: true })).toBeVisible();
+
+	const geklaert = page.getByRole('button', { name: 'Geklärt', exact: true });
+	await expect(geklaert).toBeVisible();
+	const box = await geklaert.boundingBox();
+	// A wrapped "Geklär" + "t" would push the button taller than one line (44px min touch target).
+	expect(box?.height).toBeLessThanOrEqual(44);
+	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+		true,
+	);
+});
