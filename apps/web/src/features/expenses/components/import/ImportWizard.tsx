@@ -662,7 +662,13 @@ export function ImportWizard() {
 						<Button className="flex-1" onClick={continueFromMapping}>
 							Weiter zur Vorschau
 						</Button>
-						<Button variant="outline" onClick={() => setStep('input')}>
+						<Button
+							variant="outline"
+							onClick={() => {
+								clearImportError();
+								setStep('input');
+							}}
+						>
 							Zurück
 						</Button>
 					</div>
@@ -716,7 +722,14 @@ export function ImportWizard() {
 						>
 							{busy && <Spinner data-icon="inline-start" />}Importieren ({selectedCount})
 						</Button>
-						<Button variant="outline" disabled={busy} onClick={() => setStep('mapping')}>
+						<Button
+							variant="outline"
+							disabled={busy}
+							onClick={() => {
+								clearImportError();
+								setStep('mapping');
+							}}
+						>
 							Zurück
 						</Button>
 					</div>
