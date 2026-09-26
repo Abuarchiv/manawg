@@ -46,4 +46,6 @@ For UI, typography, icons, motion, or product wording, read
 [the design contract](docs/brand/design-language.md) and the relevant chapter of
 [Brandbook v1.0](docs/brand/brandbook.html) before editing. This source supersedes
 older visual-design documents. Verify the changed view in light/dark and at a
-320px viewport; retain the header accessibility rules above.
+320px viewport; retain the header accessibility rules above. Colored member
+avatars (`memberTint` in `MemberAvatar.tsx`) are an intentional, documented
+exception to the monochrome palette; keep them colored.

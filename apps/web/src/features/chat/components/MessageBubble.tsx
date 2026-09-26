@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/message';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
+import { memberTint } from '@/components/wg/MemberAvatar';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { haptic } from '@/shared/lib/haptics';
@@ -200,7 +201,9 @@ export function MessageBubble({
 				aria-hidden={grouped || undefined}
 			>
 				<Avatar className="size-7 text-xs">
-					<AvatarFallback>{senderName.slice(0, 2).toLocaleUpperCase('de-DE')}</AvatarFallback>
+					<AvatarFallback style={memberTint(senderName)}>
+						{senderName.slice(0, 2).toLocaleUpperCase('de-DE')}
+					</AvatarFallback>
 				</Avatar>
 			</MessageAvatar>
 			<MessageContent className="gap-1">
