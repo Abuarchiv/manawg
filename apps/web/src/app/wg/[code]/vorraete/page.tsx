@@ -12,6 +12,7 @@ import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { useDocumentTitle } from '@/core/hooks/useDocumentTitle';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { InventoryList } from '@/features/inventory/components/InventoryList';
 import type { InventoryCategory, InventoryItemDto } from '@/features/inventory/inventory';
@@ -25,6 +26,7 @@ interface InventoryResponse {
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function VorraetePage() {
+	useDocumentTitle('Vorräte — ManaWG');
 	const { wg, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const inventoryUrl = `/api/wg/${encodedShareCode}/inventory`;

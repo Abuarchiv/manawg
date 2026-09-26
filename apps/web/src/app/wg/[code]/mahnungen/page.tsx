@@ -11,6 +11,7 @@ import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { useDocumentTitle } from '@/core/hooks/useDocumentTitle';
 import { formatRelativeTime } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import {
@@ -39,6 +40,7 @@ interface ExpenseDto {
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function ErinnerungenPage() {
+	useDocumentTitle('Erinnerungen — ManaWG');
 	const { wg, members, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const {

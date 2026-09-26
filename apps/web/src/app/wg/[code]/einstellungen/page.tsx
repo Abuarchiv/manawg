@@ -8,6 +8,7 @@ import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { readResponseErrorCode } from '@/core/guards/settings-errors';
 import { SETTINGS_TABS, getSettingsTabFromHash } from '@/core/guards/settings-tabs';
 import type { SettingsTab } from '@/core/guards/settings-tabs';
+import { useDocumentTitle } from '@/core/hooks/useDocumentTitle';
 import { type WgExport, buildEmptyExportSummary, buildExportSummary } from '@/core/reads/export';
 import { cn } from '@/shared/lib/cn';
 import { memberAuthHeader } from '@/shared/lib/identity';
@@ -47,6 +48,7 @@ const DataTab = dynamic(
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function EinstellungenPage() {
+	useDocumentTitle('Einstellungen — ManaWG');
 	const { wg, members, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
