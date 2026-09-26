@@ -407,7 +407,7 @@ function DebtRow({
 							<AlertDescription>{error}</AlertDescription>
 						</Alert>
 					)}
-					<AlertDialogFooter className="flex-col sm:flex-col">
+					<AlertDialogFooter className="flex-col">
 						<AlertDialogCancel className="min-h-11" disabled={settling}>
 							Abbrechen
 						</AlertDialogCancel>
