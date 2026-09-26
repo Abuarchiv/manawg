@@ -223,7 +223,7 @@ export function OfflineClient() {
 		<main
 			id="main"
 			tabIndex={-1}
-			className="min-h-svh bg-background px-4 py-6 text-foreground focus:outline-none"
+			className="min-h-svh bg-background px-4 pt-[max(1.5rem,env(safe-area-inset-top,0px))] pb-6 text-foreground focus:outline-none"
 		>
 			<div className="mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-md flex-col justify-center gap-5 pb-[env(safe-area-inset-bottom)]">
 				<header className="flex flex-col gap-3" aria-labelledby="offline-heading">
