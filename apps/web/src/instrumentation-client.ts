@@ -1,6 +1,10 @@
-import { initializeSentry } from '@/core/infra/sentry';
-
-initializeSentry();
+if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+	import('@/core/infra/sentry')
+		.then(({ initializeSentry }) => initializeSentry())
+		.catch(() => {
+			// Optional error monitoring must not interrupt the app.
+		});
+}
 
 const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
