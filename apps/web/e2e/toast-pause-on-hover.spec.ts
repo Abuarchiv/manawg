@@ -53,6 +53,19 @@ test('a toast pauses its auto-dismiss timer while hovered or focused', async ({ 
 	await expect(toast).toBeVisible();
 	const closeButton = toast.getByRole('button', { name: 'Benachrichtigung schließen' });
 
+	// WCAG 2.4.3 (Focus Order): the toast stack must sit after the bottom nav
+	// in the DOM so Tab reaches a toast's dismiss button right after whatever
+	// the user just did, instead of jumping back to the page top.
+	const navHandle = await page
+		.getByRole('navigation', { name: 'WG Hauptnavigation' })
+		.elementHandle();
+	const toastComesAfterNav = await toast.evaluate((toastEl, navEl) => {
+		// Node.DOCUMENT_POSITION_FOLLOWING = 4: navEl precedes toastEl in the DOM.
+		if (!navEl) return false;
+		return Boolean(navEl.compareDocumentPosition(toastEl) & 4);
+	}, navHandle);
+	expect(toastComesAfterNav).toBe(true);
+
 	// Hover pause: still visible well past the normal auto-dismiss point.
 	await toast.hover();
 	await page.waitForTimeout(PAST_DURATION_MS);
