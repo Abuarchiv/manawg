@@ -92,6 +92,15 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 	let deleteError = new Error('database unavailable');
 	const recoveryCalls = [];
 	let recoveryResult = { attempted: 1, completed: 0, failed: 1, pending: 1 };
+	const observability = load(
+		'core/infra/observability.ts',
+		{
+			'./sentry': { captureSentryException: () => {}, logSentryApiError: () => {} },
+			'./sentry-privacy': load('core/infra/sentry-privacy.ts', {}, env),
+		},
+		env,
+		logs,
+	);
 	const idempotency = load(
 		'core/idempotency.ts',
 		{
@@ -109,7 +118,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 				},
 			},
 			'@/core/guards/api-auth': {},
-			'@/core/infra/observability': load('core/infra/observability.ts', {}, env, logs),
+			'@/core/infra/observability': observability,
 			'@/core/rate-limit': { createConfiguredRedis: () => null },
 			'drizzle-orm': { lte: () => {} },
 		},
@@ -129,7 +138,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 			},
 			'@/core/idempotency': idempotency,
 			'@/core/infra/cron-auth': { verifyCronSecret: () => true },
-			'@/core/infra/observability': load('core/infra/observability.ts', {}, env, logs),
+			'@/core/infra/observability': observability,
 			'next/server': { NextResponse: Response },
 		},
 		env,
