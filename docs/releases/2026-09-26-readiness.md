@@ -4,6 +4,10 @@
 
 The original checkout and its tracked and untracked work were preserved. No production deployment, production migration, provider configuration change, payment, or Auth email was performed during this audit.
 
+## Current-main integration — 2026-09-26, 19:23 CEST
+
+Merged `origin/main` at `36c5b55e099aef36658c4a43342ae5ab36a152a9` into this candidate as `446963182980440a78f0de73dd0185abb1c91ee1`. On Node 22.23.2 and pnpm 9, lint, typecheck, unit tests, production build, bundle budget, analytics privacy, security boundaries, focused browser regressions, and the full fixture browser suite passed. Playwright's final run status was `passed` with no failed tests. An independent code review found no actionable issue in the integrated diff. This is local and fixture evidence; the protected Preview and Production flows remain unverified for this candidate. GitHub Actions jobs for the current main SHA did not start because of the account billing or spending-limit block.
+
 ## Corrections
 
 - Expense creation, recurring-template creation, and direct recurring-expense creation retain the same idempotency key and request body after malformed successful HTTP responses. Only definitive 4xx responses other than 429 release the pending key.
