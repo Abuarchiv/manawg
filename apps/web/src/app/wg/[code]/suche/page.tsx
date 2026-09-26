@@ -109,9 +109,9 @@ export default function SuchePage() {
 				});
 				if (requestId !== requestIdRef.current) return;
 				if (!response.ok) {
-					setError(
-						getWgLoadErrorMessage('Suche', response.status, await readSearchError(response)),
-					);
+					const errorCode = await readSearchError(response);
+					if (requestId !== requestIdRef.current) return;
+					setError(getWgLoadErrorMessage('Suche', response.status, errorCode));
 					return;
 				}
 				const body = (await response.json()) as SearchResponse;
