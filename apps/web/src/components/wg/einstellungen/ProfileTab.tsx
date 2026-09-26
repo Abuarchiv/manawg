@@ -39,7 +39,9 @@ export function ProfileTab({
 }: ProfileTabProps) {
 	const { theme, setTheme } = useTheme();
 	const [paypalMerchantId, setPaypalMerchantId] = useState('');
+	const [paypalLoaded, setPaypalLoaded] = useState(false);
 	const [loadingPayPal, setLoadingPayPal] = useState(true);
+	const [paypalLoadAttempt, setPaypalLoadAttempt] = useState(0);
 	const [savingPayPal, setSavingPayPal] = useState(false);
 	const [paypalMessage, setPaypalMessage] = useState<string | null>(null);
 	const [paypalLoadError, setPaypalLoadError] = useState<string | null>(null);
@@ -47,6 +49,9 @@ export function ProfileTab({
 
 	useEffect(() => {
 		let cancelled = false;
+		setLoadingPayPal(true);
+		setPaypalLoaded(false);
+		if (paypalLoadAttempt > 0) setPaypalLoadError(null);
 		async function loadPayPal(): Promise<void> {
 			try {
 				const res = await apiFetch<{ member?: { paypalMerchantId?: string | null } }>(
@@ -56,12 +61,17 @@ export function ProfileTab({
 				if (cancelled) return;
 				if (res.ok) {
 					setPaypalMerchantId(res.data.member?.paypalMerchantId ?? '');
+					setPaypalLoaded(true);
 					setPaypalLoadError(null);
 				} else {
+					setPaypalLoaded(false);
 					setPaypalLoadError('PayPal-Einstellung konnte nicht geladen werden.');
 				}
 			} catch {
-				if (!cancelled) setPaypalLoadError('PayPal-Einstellung konnte nicht geladen werden.');
+				if (!cancelled) {
+					setPaypalLoaded(false);
+					setPaypalLoadError('PayPal-Einstellung konnte nicht geladen werden.');
+				}
 			} finally {
 				if (!cancelled) setLoadingPayPal(false);
 			}
@@ -70,10 +80,16 @@ export function ProfileTab({
 		return () => {
 			cancelled = true;
 		};
-	}, [memberId, memberToken, shareCode]);
+	}, [memberId, memberToken, shareCode, paypalLoadAttempt]);
+
+	function retryPayPalLoad(): void {
+		if (loadingPayPal) return;
+		setLoadingPayPal(true);
+		setPaypalLoadAttempt((attempt) => attempt + 1);
+	}
 
 	async function savePayPal(): Promise<void> {
-		if (savingPayPal) return;
+		if (savingPayPal || !paypalLoaded) return;
 		setSavingPayPal(true);
 		setPaypalMessage(null);
 		setPaypalSaveError(null);
@@ -157,7 +173,7 @@ export function ProfileTab({
 										setPaypalSaveError(null);
 									}}
 									placeholder="13-stellige Merchant-ID"
-									disabled={loadingPayPal || savingPayPal}
+									disabled={!paypalLoaded || loadingPayPal || savingPayPal}
 									className="text-base"
 									autoComplete="off"
 									inputMode="text"
@@ -166,7 +182,7 @@ export function ProfileTab({
 									type="button"
 									variant="outline"
 									onClick={() => void savePayPal()}
-									disabled={loadingPayPal || savingPayPal}
+									disabled={!paypalLoaded || loadingPayPal || savingPayPal}
 									className="self-start"
 								>
 									{savingPayPal ? <Spinner aria-hidden /> : <Save aria-hidden />}
@@ -178,10 +194,27 @@ export function ProfileTab({
 							</FieldDescription>
 						</Field>
 					</FieldGroup>
+					{loadingPayPal && (
+						<output className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+							<Spinner aria-hidden />
+							PayPal-Einstellung wird geladen…
+						</output>
+					)}
 					{paypalLoadError && (
 						<Alert variant="destructive" className="mt-3">
 							<AlertTitle>Laden fehlgeschlagen</AlertTitle>
-							<AlertDescription>{paypalLoadError}</AlertDescription>
+							<AlertDescription>
+								{paypalLoadError}
+								<Button
+									type="button"
+									variant="outline"
+									onClick={retryPayPalLoad}
+									disabled={loadingPayPal}
+									className="mt-2"
+								>
+									Erneut versuchen
+								</Button>
+							</AlertDescription>
 						</Alert>
 					)}
 					{paypalMessage && (
