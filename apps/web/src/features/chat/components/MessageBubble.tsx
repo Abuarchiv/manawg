@@ -109,6 +109,9 @@ export function MessageBubble({
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const pendingRef = useRef(false);
 	const reactionRef = useRef(false);
+	const editTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+	const actionsTriggerRef = useRef<HTMLButtonElement | null>(null);
+	const wasEditingRef = useRef(false);
 	const isDeleted = Boolean(message.deletedAt);
 	const editable = canEditMessage(message, { id: currentMemberId });
 	const deletable = canDeleteMessage(message, {
@@ -125,6 +128,15 @@ export function MessageBubble({
 			setHasDraft(true);
 		}
 	}, [draftKey]);
+	useEffect(() => {
+		if (editing) {
+			wasEditingRef.current = true;
+			editTextareaRef.current?.focus();
+		} else if (wasEditingRef.current) {
+			wasEditingRef.current = false;
+			actionsTriggerRef.current?.focus();
+		}
+	}, [editing]);
 	function changeDraft(value: string) {
 		setDraft(value);
 		setHasDraft(true);
@@ -211,6 +223,7 @@ export function MessageBubble({
 					<FieldGroup className="gap-2">
 						<Field data-invalid={Boolean(error)}>
 							<Textarea
+								ref={editTextareaRef}
 								value={draft}
 								onChange={(event) => changeDraft(event.target.value)}
 								onKeyDown={(event) => {
@@ -342,6 +355,7 @@ export function MessageBubble({
 						{(editable || deletable) && (
 							<DropdownMenu>
 								<DropdownMenuTrigger
+									ref={actionsTriggerRef}
 									render={<Button variant="ghost" size="icon" />}
 									disabled={pending}
 									aria-label={`Aktionen für Nachricht von ${senderName} (${formatRelativeTime(message.createdAt)})`}
