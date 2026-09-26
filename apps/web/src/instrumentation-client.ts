@@ -1,3 +1,7 @@
+import { initializeSentry } from '@/core/infra/sentry';
+
+initializeSentry();
+
 const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 

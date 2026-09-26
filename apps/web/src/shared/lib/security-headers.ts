@@ -54,6 +54,15 @@ export function contentSecurityPolicy(nonce: string, upgradeInsecureRequests = t
 			// Invalid auth configuration must not widen the policy.
 		}
 	}
+	const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+	if (sentryDsn) {
+		try {
+			const sentryOrigin = new URL(sentryDsn);
+			if (sentryOrigin.protocol === 'https:') connectSrc.push(sentryOrigin.origin);
+		} catch {
+			// Invalid observability configuration must not widen policy.
+		}
+	}
 	if (process.env.NODE_ENV === 'development') {
 		scriptSrc.push("'unsafe-eval'");
 	}
