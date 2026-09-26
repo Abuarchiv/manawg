@@ -199,7 +199,9 @@ test('keeps the admin remove action and confirmation readable at enlarged text',
 	await expectNoOverflow(remove);
 
 	await remove.click();
-	const alert = page.getByRole('alert').filter({ hasText: 'Diese Aufgabe endgültig entfernen?' });
+	// WCAG 4.1.3: this is a confirmation prompt, not an error — it is a polite
+	// status message (role="alert" is reserved for errors).
+	const alert = page.getByRole('status').filter({ hasText: 'Diese Aufgabe endgültig entfernen?' });
 	await expect(alert).toBeVisible();
 	const confirmation = page.getByRole('button', {
 		name: `Aufgabe entfernen bestätigen: ${title}`,

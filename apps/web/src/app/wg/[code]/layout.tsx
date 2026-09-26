@@ -151,7 +151,6 @@ function WgShell({
 
 	return (
 		<WgContextProvider wg={wg} members={members}>
-			<ToastContainer />
 			<div
 				className="group/wg-shell min-h-svh bg-background"
 				style={{
@@ -199,6 +198,9 @@ function WgShell({
 					</ul>
 				</div>
 			</AppBottomNav>
+			{/* Last in the DOM so Tab reaches a toast's dismiss button right after
+			    whatever the user just did, instead of jumping back to the page top. */}
+			<ToastContainer />
 		</WgContextProvider>
 	);
 }
