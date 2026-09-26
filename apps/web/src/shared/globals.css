@@ -196,6 +196,15 @@ html {
 	text-size-adjust: 100%;
 }
 
+/* 1a. WCAG 2.4.11 — while the sticky offline banner is shown, keep focused and
+      scrolled-to content (and other sticky bars) below it. The banner height is
+      its 44px target + py-2 + border. Scoped: a global padding shifts every
+      scroll-into-view and pushes bottom actions behind the navigation. */
+html:has([data-offline-banner]) {
+	--offline-banner-height: calc(44px + 1rem + 1px);
+	scroll-padding-top: calc(var(--offline-banner-height) + 0.5rem);
+}
+
 /* 2. Mobile tap highlight suppressed globally (html already has it for legacy,
       but * catches SVGs, custom elements, and pseudo-elements) */
 * {
@@ -622,26 +631,8 @@ select {
 }
 
 /* ─── NATIVE-APP POLISH ──────────────────────────────────────────────────
-   Bottom-sheet drag handle, skeleton loader, keyboard-aware FAB. Mobile-only
-   fragments so desktop stays unchanged.
+   Skeleton loader.
    ────────────────────────────────────────────────────────────────────── */
-
-/* Drag handle for bottom-sheet modals — pure visual cue, no actual drag yet.
-   Iconography matches iOS/Material bottom-sheet conventions. */
-.sheet-handle {
-	display: block;
-	width: 2.25rem;
-	height: 0.25rem;
-	border-radius: 9999px;
-	background-color: var(--text-3);
-	opacity: 0.4;
-	margin: 0 auto 0.75rem;
-}
-@media (min-width: 640px) {
-	.sheet-handle {
-		display: none;
-	}
-}
 
 /* Skeleton shimmer used by data-loading placeholders */
 .skeleton {
@@ -667,23 +658,6 @@ select {
 	.skeleton {
 		animation: none;
 		opacity: 0.7;
-	}
-}
-
-/* Floating Action Button base — visually distinct, sits above bottom-nav,
-   respects safe-area-inset-bottom, and lifts when virtual keyboard appears
-   thanks to the dynamic viewport unit. */
-.fab-mobile {
-	position: fixed;
-	right: 1rem;
-	bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
-	z-index: 30;
-}
-@media (min-width: 640px) {
-	.fab-mobile {
-		position: static;
-		bottom: auto;
-		right: auto;
 	}
 }
 
