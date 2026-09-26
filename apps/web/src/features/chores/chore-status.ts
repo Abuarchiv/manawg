@@ -38,17 +38,6 @@ interface ChorePlanHealth {
 	nextLabel: string;
 }
 
-export interface ChoreAssigneeMember {
-	id: string;
-	name: string;
-}
-
-interface ChoreAssigneeInput {
-	members: ChoreAssigneeMember[];
-	chores: ChoreRepairInput[];
-	now?: number;
-}
-
 function berlinCalendarDayMs(key: string): number {
 	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
 	if (!match) throw new Error(`Unexpected Berlin day key: ${key}`);
@@ -164,27 +153,6 @@ export function getChoreRepairHint(
 		title: `Offen seit ${status.overdueDays} Tagen`,
 		action: 'Neu zuweisen oder erledigen',
 	};
-}
-
-export function suggestChoreAssignee(input: ChoreAssigneeInput): ChoreAssigneeMember | null {
-	if (input.members.length === 0) return null;
-	const now = input.now ?? Date.now();
-	const scores = new Map(input.members.map((member) => [member.id, 0]));
-
-	for (const chore of input.chores) {
-		if (!chore.assignedMemberId || !scores.has(chore.assignedMemberId)) continue;
-		const status = getChoreStatus(chore.nextDueAt, now);
-		const weight = status.state === 'overdue' ? 4 : status.state === 'due' ? 2 : 1;
-		scores.set(chore.assignedMemberId, (scores.get(chore.assignedMemberId) ?? 0) + weight);
-	}
-
-	return (
-		[...input.members].sort((a, b) => {
-			const scoreDiff = (scores.get(a.id) ?? 0) - (scores.get(b.id) ?? 0);
-			if (scoreDiff !== 0) return scoreDiff;
-			return a.name.localeCompare(b.name, 'de-DE');
-		})[0] ?? null
-	);
 }
 
 export type ChoreGroupKey = 'mine' | 'overdue' | 'week' | 'later';

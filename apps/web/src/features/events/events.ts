@@ -400,19 +400,6 @@ function addFromAnchor(anchor: Date, freq: RecurrenceFreq, totalInterval: number
 	return next;
 }
 
-export function nextOccurrence(event: EventInput, after: Date | string): EventOccurrence | null {
-	const afterMs = parseTimestamp(after instanceof Date ? after.toISOString() : after);
-	if (afterMs === null) return null;
-	const horizonDays = 365 * 2;
-	const horizonMs = afterMs + horizonDays * MS_PER_DAY;
-	const all = expandRecurrence(event, new Date(afterMs), new Date(horizonMs));
-	for (const occ of all) {
-		const ts = parseTimestamp(occ.startsAt);
-		if (ts !== null && ts >= afterMs) return occ;
-	}
-	return null;
-}
-
 /** Browser agenda: all-day events occupy inclusive local calendar dates, not one hour. */
 export function expandAgendaRecurrence(event: EventInput, from: Date, to: Date): EventOccurrence[] {
 	if (!event.allDay) return expandRecurrence(event, from, to);

@@ -120,17 +120,6 @@ export interface ActivityReminder {
 	href: string;
 }
 
-export function getActivityEmptyActionHref(
-	shareCode: string,
-	action: 'expense' | 'announcement' | 'chore',
-	params: Record<string, string>,
-): string {
-	const query = new URLSearchParams(params).toString();
-	const path =
-		action === 'expense' ? 'ausgaben' : action === 'announcement' ? 'pinnwand' : 'putzen';
-	return `/wg/${encodeURIComponent(shareCode)}/${path}${query ? `?${query}` : ''}`;
-}
-
 interface ActivityReminderInput {
 	openShoppingItems: Array<{ id: string; name: string; createdAt: string }>;
 	dueChores: Array<{

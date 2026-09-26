@@ -1,4 +1,3 @@
-const MENTION_PATTERN = /(^|[\s(])@([A-Za-zÄÖÜäöüß0-9_-]{1,40})/g;
 const EDIT_WINDOW_MS_DEFAULT = 15 * 60 * 1000;
 const SYSTEM_MESSAGE_KIND = 'system';
 const TEXT_MESSAGE_KIND = 'text';
@@ -24,11 +23,6 @@ interface ChatMemberLike {
 	role?: string | null;
 }
 
-interface ParsedMentions {
-	mentions: string[];
-	cleanedBody: string;
-}
-
 export interface MentionTrigger {
 	query: string;
 	startIndex: number;
@@ -40,22 +34,6 @@ export function detectMention(value: string, cursor: number): MentionTrigger | n
 	if (!match) return null;
 	const start = upTo.length - (match[1]?.length ?? 0) - 1;
 	return { query: match[1] ?? '', startIndex: start };
-}
-
-export function parseMentions(body: string): ParsedMentions {
-	const matches = new Set<string>();
-	if (typeof body !== 'string' || body.length === 0) {
-		return { mentions: [], cleanedBody: '' };
-	}
-	for (const match of body.matchAll(MENTION_PATTERN)) {
-		const name = match[2];
-		if (typeof name === 'string' && name.length > 0) matches.add(name);
-	}
-	// The `@name` markers are parsing input, not message text: strip them so
-	// the cleaned body only carries what the author actually wrote, and normalize
-	// the whitespace the removal leaves behind.
-	const cleanedBody = body.replace(MENTION_PATTERN, '$1').replace(/\s+/g, ' ').trim();
-	return { mentions: [...matches], cleanedBody };
 }
 
 function toDate(value: Date | string): Date {
@@ -118,12 +96,6 @@ export function canDeleteMessage(message: ChatMessageLike, member: ChatMemberLik
 	if (message.kind === SYSTEM_MESSAGE_KIND) return member.role === 'admin';
 	if (message.senderMemberId === member.id) return true;
 	return member.role === 'admin';
-}
-
-export interface AppendSystemMessageInput {
-	wgId: string;
-	kind: ChatSystemKind;
-	payload: Record<string, unknown>;
 }
 
 export { SYSTEM_MESSAGE_KIND };

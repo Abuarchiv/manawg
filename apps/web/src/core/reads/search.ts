@@ -19,17 +19,6 @@ export interface WgSearchResult {
 	tags?: WgSearchQuickFilter[];
 }
 
-interface WgSearchGroup {
-	module: WgSearchModule;
-	count: number;
-	results: WgSearchResult[];
-}
-
-interface SearchHighlightSegment {
-	text: string;
-	match: boolean;
-}
-
 interface SearchSuggestionInput {
 	openShoppingTop: string[];
 	dueChoreTitles: string[];
@@ -118,40 +107,6 @@ export function filterSearchResultsByQuickFilter(
 ): WgSearchResult[] {
 	if (filter === 'all') return results;
 	return results.filter((result) => result.tags?.includes(filter));
-}
-
-export function groupSearchResults(results: WgSearchResult[]): WgSearchGroup[] {
-	const order: WgSearchModule[] = [
-		'pinnwand',
-		'putzen',
-		'abwesenheiten',
-		'ausgaben',
-		'fixkosten',
-		'einkauf',
-	];
-	return order
-		.map((module) => {
-			const groupResults = results.filter((result) => result.module === module);
-			return { module, count: groupResults.length, results: groupResults };
-		})
-		.filter((group) => group.count > 0);
-}
-
-export function highlightSearchMatch(text: string, rawQuery: string): SearchHighlightSegment[] {
-	const query = rawQuery.trim();
-	if (!query) return [{ text, match: false }];
-	const lowerText = text.toLocaleLowerCase('de-DE');
-	const lowerQuery = query.toLocaleLowerCase('de-DE');
-	const index = lowerText.indexOf(lowerQuery);
-	if (index < 0) return [{ text, match: false }];
-
-	const segments: SearchHighlightSegment[] = [];
-	if (index > 0) segments.push({ text: text.slice(0, index), match: false });
-	segments.push({ text: text.slice(index, index + query.length), match: true });
-	if (index + query.length < text.length) {
-		segments.push({ text: text.slice(index + query.length), match: false });
-	}
-	return segments;
 }
 
 export function getSearchSuggestions(input: SearchSuggestionInput): string[] {

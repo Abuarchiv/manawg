@@ -97,14 +97,6 @@ export async function requestPasswordReset(email: string): Promise<void> {
 	if (error) throw error;
 }
 
-export async function hasAuthenticatedSession(): Promise<boolean> {
-	const {
-		data: { user },
-		error,
-	} = await createSupabaseBrowserClient().auth.getUser();
-	return error === null && user !== null;
-}
-
 export async function updatePassword(password: string): Promise<void> {
 	const { error } = await createSupabaseBrowserClient().auth.updateUser({ password });
 	if (error) throw error;

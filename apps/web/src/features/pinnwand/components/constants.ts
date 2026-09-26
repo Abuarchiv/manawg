@@ -12,25 +12,6 @@ export const KIND_OPTIONS: ReadonlyArray<{ value: AnnouncementKind; label: strin
 	{ value: 'decision', label: 'Entscheidung' },
 ];
 
-export const QUICK_ANNOUNCEMENT_TEMPLATES: ReadonlyArray<{
-	label: string;
-	content: string;
-	kind: AnnouncementKind;
-}> = [
-	{ label: 'Paket im Flur', content: 'Paket im Flur', kind: 'info' },
-	{
-		label: 'Küche kurz klären',
-		content: 'Bitte Küche nach dem Kochen kurz sauber machen.',
-		kind: 'request',
-	},
-	{ label: 'Besuch heute Abend', content: 'Heute Abend kommt Besuch vorbei.', kind: 'info' },
-	{
-		label: 'Wer kann helfen?',
-		content: 'Wer kann kurz helfen?',
-		kind: 'question',
-	},
-];
-
 export const KIND_LABELS: Record<AnnouncementKind, string> = {
 	info: 'Info',
 	question: 'Frage',
