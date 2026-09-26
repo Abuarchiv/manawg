@@ -78,7 +78,10 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	}
 
 	return (
-		<li className="relative overflow-hidden">
+		<li className={cn('relative', swipeX > 0 && 'overflow-hidden')}>
+			{/* overflow-hidden nur während aktiver Wischgeste: sonst schneidet es die
+			    unsichtbare Tap-Fläche der Checkbox (after:-inset-2.5) am linken Rand ab,
+			    weil das Item hier px-0 hat und die Checkbox flächenbündig sitzt. */}
 			<div
 				aria-hidden
 				className={cn(
@@ -101,7 +104,12 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 				aria-busy={pending}
 				onPointerDown={(event) => {
 					// Maus bleibt beim Klicken; Wischen ist eine Touch-Geste.
-					if (event.pointerType !== 'mouse') swipeStartX.current = event.clientX;
+					if (event.pointerType !== 'mouse') {
+						swipeStartX.current = event.clientX;
+						// Ohne Capture würden pointermove/-up bei schnellem Wischen auf ein
+						// Nachbarelement umgeleitet und die Zeile bliebe optisch hängen.
+						event.currentTarget.setPointerCapture(event.pointerId);
+					}
 				}}
 				onPointerMove={(event) => {
 					if (swipeStartX.current === null) return;

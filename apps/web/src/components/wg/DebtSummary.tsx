@@ -338,7 +338,11 @@ function DebtRow({
 			<AlertDialog
 				open={reviewOpen}
 				onOpenChange={(open) => {
-					if (!settling) setReviewOpen(open);
+					if (settling) return;
+					setReviewOpen(open);
+					// A failed settle attempt's error banner lives inside this dialog;
+					// closing it (Cancel/Escape) must not leave it stuck on the row below.
+					if (!open) setError(null);
 				}}
 			>
 				<AlertDialogContent className="max-h-[90dvh] overflow-y-auto">

@@ -555,7 +555,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 								weiteres Mitglied aktiv ist. Wenn du nur dieses Gerät abmelden möchtest, nutze oben
 								„Konto abmelden“.
 							</p>
-						) : memberToDeactivate?.selfLeave ? null : (
+						) : (
 							<Button
 								type="button"
 								variant="destructive"

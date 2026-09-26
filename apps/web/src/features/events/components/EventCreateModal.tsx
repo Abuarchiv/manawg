@@ -87,7 +87,9 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 		nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
 		const seeded = new Date(defaultDate ?? nextHour);
 		seeded.setHours(nextHour.getHours(), 0, 0, 0);
-		setStartsAt(buildIsoLocal(seeded));
+		// Today after 23:00 would seed 00:00 of today, which has already passed.
+		const pickedToday = seeded.toDateString() === new Date().toDateString();
+		setStartsAt(buildIsoLocal(pickedToday && seeded < nextHour ? nextHour : seeded));
 		setEndsAt('');
 	}, [open, defaultDate]);
 

@@ -231,6 +231,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 			)}
 			<TabsContent value="email" aria-label="Mit E-Mail anmelden">
 				<form
+					noValidate
 					onSubmit={(event) => {
 						event.preventDefault();
 						void submitEmail('sign-in');
@@ -328,6 +329,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 			{phoneEnabled && (
 				<TabsContent value="phone" aria-labelledby="phone-auth-heading">
 					<form
+						noValidate
 						onSubmit={(event) => {
 							event.preventDefault();
 							void (otpRequested ? confirmPhoneOtp() : sendPhoneOtp());

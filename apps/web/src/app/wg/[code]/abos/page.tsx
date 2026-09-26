@@ -478,7 +478,10 @@ export default function AbosPage() {
 					pendingId={pendingId}
 					loadError={loadError}
 					onFilterChange={setFilter}
-					onEdit={setEditing}
+					onEdit={(abo) => {
+						setNotice(null);
+						setEditing(abo);
+					}}
 					onTogglePause={(abo) => void handleTogglePause(abo)}
 					onDelete={setDeleteCandidate}
 				/>
@@ -534,7 +537,14 @@ export default function AbosPage() {
 				</AlertDialogContent>
 			</AlertDialog>
 			<ThumbAction>
-				<Button type="button" className="min-h-11 w-full" onClick={() => setShowCreate(true)}>
+				<Button
+					type="button"
+					className="min-h-11 w-full"
+					onClick={() => {
+						setNotice(null);
+						setShowCreate(true);
+					}}
+				>
 					<Plus data-icon="inline-start" aria-hidden />
 					Neues Abo
 				</Button>
