@@ -9,6 +9,16 @@ import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from '.
 
 const testDatabaseUrl = process.env.PILOT_SHOPPING_DATABASE_URL?.trim() ?? '';
 
+type FixtureShoppingItem = {
+	id: string;
+	addedByMemberId: string;
+	name: string;
+	quantity: string | null;
+	boughtAt: string | null;
+	boughtByMemberId: string | null;
+	createdAt: string;
+};
+
 function localTestDatabaseUrl(): string {
 	if (!testDatabaseUrl) {
 		test.skip(true, 'Set PILOT_SHOPPING_DATABASE_URL to an isolated local PostgreSQL database.');
@@ -28,8 +38,25 @@ test('recognizes a duplicate open shopping item through DrizzleQueryError.cause'
 	expect(isOpenShoppingItemDuplicate(wrapped)).toBe(true);
 });
 
-async function mockShoppingPage(page: Page, viewerIsAdmin: boolean, deleteStatus = 200) {
+async function mockShoppingPage(
+	page: Page,
+	viewerIsAdmin: boolean,
+	deleteStatus = 200,
+	items: FixtureShoppingItem[] = [
+		{
+			id: 'shopping-done',
+			addedByMemberId: FIXTURE_WG.memberId,
+			name: 'Kaffee',
+			quantity: null,
+			boughtAt: '2026-09-22T12:00:00.000Z',
+			boughtByMemberId: FIXTURE_WG.memberId,
+			createdAt: '2026-09-22T10:00:00.000Z',
+		},
+	],
+	conflictOnPatch = false,
+) {
 	const { shareCode, memberId, memberName } = FIXTURE_WG;
+	let getCalls = 0;
 	await page.route(`**/api/wg/${shareCode}/members*`, (route) =>
 		route.fulfill({
 			json: {
@@ -38,32 +65,24 @@ async function mockShoppingPage(page: Page, viewerIsAdmin: boolean, deleteStatus
 			},
 		}),
 	);
-	await page.route(`**/api/wg/${shareCode}/shopping*`, (route) => {
-		if (route.request().method() === 'DELETE') {
+	await page.route(new RegExp(`/api/wg/${shareCode}/shopping(?:/[^/?]+)?(?:\\?.*)?$`), (route) => {
+		const method = route.request().method();
+		if (method === 'DELETE') {
 			return route.fulfill({
 				status: deleteStatus,
 				json: deleteStatus === 200 ? { deleted: 1 } : { error: 'not_admin' },
 			});
 		}
-		return route.fulfill({
-			json: {
-				items: [
-					{
-						id: 'shopping-done',
-						addedByMemberId: memberId,
-						name: 'Kaffee',
-						quantity: null,
-						boughtAt: '2026-09-22T12:00:00.000Z',
-						boughtByMemberId: memberId,
-						createdAt: '2026-09-22T10:00:00.000Z',
-					},
-				],
-			},
-		});
+		if (method === 'PATCH' && conflictOnPatch) {
+			return route.fulfill({ status: 409, json: { error: 'shopping_item_duplicate' } });
+		}
+		if (method === 'GET') getCalls += 1;
+		return route.fulfill({ json: { items } });
 	});
 	await page.route(`**/api/wg/${shareCode}/inventory*`, (route) =>
 		route.fulfill({ json: { items: [] } }),
 	);
+	return { getCalls: () => getCalls };
 }
 
 test('hides clearing bought items from non-admins', async ({ page }) => {
@@ -151,6 +170,56 @@ test('refreshes the list after a duplicate add and keeps the draft values', asyn
 	await expect(page.getByLabel('Artikel-Name')).toHaveValue('2 L Milch');
 	expect(postCalls).toBe(1);
 	expect(getCalls).toBeGreaterThanOrEqual(2);
+});
+
+test('reopening a bought duplicate restores both items and explains the conflict at 320px', async ({
+	page,
+}) => {
+	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	const { memberId } = FIXTURE_WG;
+	const items: FixtureShoppingItem[] = [
+		{
+			id: '11111111-1111-4111-8111-111111111111',
+			addedByMemberId: memberId,
+			name: 'Milch',
+			quantity: '1 L',
+			boughtAt: '2026-09-22T12:00:00.000Z',
+			boughtByMemberId: memberId,
+			createdAt: '2026-09-22T10:00:00.000Z',
+		},
+		{
+			id: '22222222-2222-4222-8222-222222222222',
+			addedByMemberId: memberId,
+			name: 'Milch',
+			quantity: '2 L',
+			boughtAt: null,
+			boughtByMemberId: null,
+			createdAt: '2026-09-23T10:00:00.000Z',
+		},
+	];
+	const { getCalls } = await mockShoppingPage(page, true, 200, items, true);
+	const conflictMessage =
+		'Dieser Artikel steht bereits offen auf der Einkaufsliste. Prüfe den vorhandenen Eintrag; seine Menge bleibt unverändert.';
+
+	await page.setViewportSize({ width: 320, height: 800 });
+	await setupMember(page);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+	await dismissOnboarding(page);
+	await page.getByText('Erledigt (1)', { exact: true }).click();
+	const getCallsBeforeReopen = getCalls();
+	await page.getByRole('checkbox', { name: 'Milch wieder öffnen', exact: true }).click();
+
+	await expect(page.getByText(conflictMessage, { exact: true })).toBeVisible();
+	await expect(page.locator('[data-shopping-row]')).toHaveCount(2);
+	await expect(
+		page.getByRole('checkbox', { name: 'Milch wieder öffnen', exact: true }),
+	).toBeChecked();
+	await expect(
+		page.getByRole('checkbox', { name: 'Milch erledigen', exact: true }),
+	).not.toBeChecked();
+	expect(getCalls()).toBeGreaterThan(getCallsBeforeReopen);
+	await page.emulateMedia({ colorScheme: 'dark' });
+	await expect(page.getByText(conflictMessage, { exact: true })).toBeVisible();
 });
 
 test('real PostgreSQL partial unique index rejects open duplicates and allows repurchase', async () => {
@@ -330,6 +399,19 @@ test('wraps quick shopping suggestions at phone widths and large text', async ({
 	await page.emulateMedia({ colorScheme: 'light' });
 	const suggestionButtons = suggestions.locator('button');
 	const pointerTarget = suggestionButtons.nth(1);
+	// Arrange the same partial overlap from the rendered geometry.
+	const overlapViewportHeight = await pointerTarget.evaluate((button) => {
+		const action = document.querySelector('[data-page-primary-action]');
+		if (!action) throw new Error('Expected the fixed shopping action');
+		const buttonRect = button.getBoundingClientRect();
+		return Math.round(
+			window.innerHeight +
+				buttonRect.top +
+				buttonRect.height / 2 -
+				action.getBoundingClientRect().top,
+		);
+	});
+	await page.setViewportSize({ width: 320, height: overlapViewportHeight });
 	const pointerPoint = await pointerTarget.evaluate((button) => {
 		const action = document.querySelector('[data-page-primary-action]');
 		if (!action) throw new Error('Expected the fixed shopping action');

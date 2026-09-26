@@ -1,11 +1,12 @@
 import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, shoppingItems } from '@/core/db';
-import { badRequest, forbidden, notFound, tooMany } from '@/core/errors';
+import { badRequest, conflict, forbidden, notFound, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { isOpenShoppingItemDuplicate } from '@/features/shopping/shopping-duplicate';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -46,15 +47,21 @@ export const PATCH = withWgRoute<{ id: string }>('shopping PATCH', async (req, {
 	// ids are ignored to prevent attribution spoofing.
 	const boughtBy = isBought ? auth.member.memberId : null;
 
-	const [updated] = await db
-		.update(shoppingItems)
-		.set({
-			boughtAt: isBought ? new Date() : null,
-			boughtByMemberId: boughtBy,
-			updatedAt: new Date(),
-		})
-		.where(and(eq(shoppingItems.id, id), eq(shoppingItems.wgId, wgId)))
-		.returning();
+	let updated: typeof shoppingItems.$inferSelect | undefined;
+	try {
+		[updated] = await db
+			.update(shoppingItems)
+			.set({
+				boughtAt: isBought ? new Date() : null,
+				boughtByMemberId: boughtBy,
+				updatedAt: new Date(),
+			})
+			.where(and(eq(shoppingItems.id, id), eq(shoppingItems.wgId, wgId)))
+			.returning();
+	} catch (err) {
+		if (isOpenShoppingItemDuplicate(err)) return conflict('shopping_item_duplicate');
+		throw err;
+	}
 	if (!updated) return notFound('item_not_found');
 	await recordAuditEvent({
 		wgId,

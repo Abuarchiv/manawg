@@ -774,7 +774,7 @@ export default function AusgabenPage() {
 				);
 				return;
 			}
-			if (!isEdit && res.status < 500 && res.status !== 429) {
+			if (!isEdit && res.status >= 400 && res.status < 500 && res.status !== 429) {
 				expenseCreateRequestRef.current = null;
 			}
 			if (isEdit && res.status === 404 && res.error === 'expense_not_found') {
@@ -942,7 +942,7 @@ export default function AusgabenPage() {
 			},
 		);
 		if (!res.ok) {
-			if (res.status > 0 && res.status < 500 && res.status !== 429 && !editingRecurringExpense) {
+			if (!editingRecurringExpense && res.status >= 400 && res.status < 500 && res.status !== 429) {
 				recurringCreateRequestRef.current = null;
 			}
 			if (res.status === 0 && !editingRecurringExpense) {
@@ -1125,7 +1125,7 @@ export default function AusgabenPage() {
 			},
 		);
 		if (!createRes.ok) {
-			if (createRes.status > 0 && createRes.status < 500 && createRes.status !== 429) {
+			if (createRes.status >= 400 && createRes.status < 500 && createRes.status !== 429) {
 				recurringExpenseCreateRequestsRef.current.delete(template.id);
 			}
 			if (createRes.status === 0) {

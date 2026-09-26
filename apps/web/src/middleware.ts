@@ -1,4 +1,5 @@
 import { refreshSupabaseSession } from '@/core/auth/middleware';
+import { isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import {
 	checkRateLimit,
 	clientIpKey,
@@ -29,7 +30,11 @@ export function isShareCodeLookup(path: string, method: string): boolean {
 
 async function withPageSecurityHeaders(req: NextRequest): Promise<NextResponse> {
 	const nonce = crypto.randomUUID().replaceAll('-', '');
-	const csp = contentSecurityPolicy(nonce);
+	const localFixtureHttp =
+		isE2EDbDownMode() &&
+		req.nextUrl.protocol === 'http:' &&
+		['localhost', '127.0.0.1', '[::1]'].includes(req.nextUrl.hostname);
+	const csp = contentSecurityPolicy(nonce, !localFixtureHttp);
 	const requestHeaders = new Headers(req.headers);
 	requestHeaders.set('x-nonce', nonce);
 	requestHeaders.set('Content-Security-Policy', csp);

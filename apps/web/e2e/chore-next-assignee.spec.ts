@@ -118,10 +118,17 @@ test('keeps chore action buttons readable and reachable at phone widths and enla
 				await expect(takeOver).toBeVisible();
 				await expect(swap).toBeVisible();
 
-				const takeOverBox = await takeOver.boundingBox();
-				const swapBox = await swap.boundingBox();
-				expect(takeOverBox).not.toBeNull();
-				expect(swapBox).not.toBeNull();
+				// Read both rectangles in one frame while the drawer animates.
+				const boxes = await takeOver.or(swap).evaluateAll((buttons) =>
+					buttons.map((button) => {
+						const { y, height } = button.getBoundingClientRect();
+						return { text: button.textContent?.replace(/\s+/g, ' ').trim(), y, height };
+					}),
+				);
+				const takeOverBox = boxes.find((box) => box.text === 'Ich übernehme');
+				const swapBox = boxes.find((box) => box.text === 'Tausch auf der Pinnwand anfragen');
+				expect(takeOverBox).toBeDefined();
+				expect(swapBox).toBeDefined();
 				if (!takeOverBox || !swapBox) throw new Error('Chore action button is not rendered');
 				expect(takeOverBox.height).toBeGreaterThanOrEqual(44);
 				expect(swapBox.height).toBeGreaterThanOrEqual(44);
@@ -131,7 +138,7 @@ test('keeps chore action buttons readable and reachable at phone widths and enla
 					await expectNoOverflow(button);
 				}
 
-				await page.keyboard.press('Tab');
+				await takeOver.focus();
 				await expect(takeOver).toBeFocused();
 				await page.keyboard.press('Tab');
 				await expect(swap).toBeFocused();

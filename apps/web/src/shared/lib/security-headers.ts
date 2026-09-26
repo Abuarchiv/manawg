@@ -22,7 +22,7 @@ function s3UploadOrigins(): string[] {
 	return ['https://*.s3.amazonaws.com'];
 }
 
-export function contentSecurityPolicy(nonce: string): string {
+export function contentSecurityPolicy(nonce: string, upgradeInsecureRequests = true): string {
 	const scriptSrc = ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", 'https://cdn.jsdelivr.net'];
 	const styleSrc = ["'self'", `'nonce-${nonce}'`];
 	// cdn.jsdelivr.net deliberately stays out of connect-src: it is a script
@@ -71,6 +71,6 @@ export function contentSecurityPolicy(nonce: string): string {
 		"base-uri 'self'",
 		"form-action 'self'",
 		"object-src 'none'",
-		'upgrade-insecure-requests',
+		...(upgradeInsecureRequests ? ['upgrade-insecure-requests'] : []),
 	].join('; ');
 }
