@@ -7,8 +7,8 @@ import {
 	tryCompleteAccountDeletion,
 } from '@/core/db/account-deletion';
 import { removeAccountFromWgs } from '@/core/db/delete-account';
-import { withTransaction } from '@/core/db/transaction';
-import { apiError, serverError } from '@/core/errors';
+import { TransactionAbort, withTransaction } from '@/core/db/transaction';
+import { apiError, conflict, serverError } from '@/core/errors';
 import { logApiError } from '@/core/infra/observability';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -76,6 +76,9 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 			));
 		return acceptedDeletionResponse(req, completed, local.deletedWgs);
 	} catch (err) {
+		if (err instanceof TransactionAbort && err.code === 'paypal_payment_pending') {
+			return conflict('paypal_payment_pending');
+		}
 		logApiError('[api/account DELETE] failed', err);
 		try {
 			const deletion = await readAccountDeletionStatusWithFreshConnection(user.id);

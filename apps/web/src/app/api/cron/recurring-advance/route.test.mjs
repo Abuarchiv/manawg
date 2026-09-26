@@ -62,6 +62,7 @@ function harness({
 		lockPatchApplied: false,
 		lockReads: 0,
 		lockOrder: [],
+		capturing: false,
 		wgExists: true,
 		loggedErrors: [],
 	};
@@ -237,6 +238,7 @@ function harness({
 			dispatchNotificationSafely: async (notification) => state.notifications.push(notification),
 		},
 		'@/features/expenses/expense-payments': {
+			hasCapturingExpensePayment: async () => state.capturing,
 			withExpensePaymentLock: async (_id, operation) => {
 				if (!state.lockPatchApplied && patchBeforeLock) {
 					state.lockPatchApplied = true;
@@ -293,6 +295,23 @@ async function withCronSecret(run) {
 		else process.env.CRON_SECRET = previousSecret;
 	}
 }
+
+test('recurring charge waits for PayPal capture and advances on retry', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });
+	const { state, get } = harness();
+	const dueAtBeforeCapture = state.template.nextDueAt.toISOString();
+	state.capturing = true;
+	await withCronSecret(async () => {
+		const blocked = await get();
+		assert.equal(blocked.status, 200);
+		assert.equal(state.expenses.length, 0);
+		assert.equal(state.template.nextDueAt.toISOString(), dueAtBeforeCapture);
+		state.capturing = false;
+		const retried = await get();
+		assert.equal(retried.status, 200);
+		assert.equal(state.expenses.length, 1);
+	});
+});
 
 test('a concurrent schedule edit wins while the inserted charge is still notified and counted', async (t) => {
 	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });

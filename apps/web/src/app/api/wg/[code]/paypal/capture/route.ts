@@ -1,5 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expensePayments, wgMembers } from '@/core/db';
+import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import {
 	badRequest,
 	conflict,
@@ -77,6 +78,13 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 		}
 
 		const captureState = await withExpensePaymentLock(auth.wg.id, async (tx) => {
+			const actor = await lockActiveAccountMember(
+				tx,
+				auth.wg.id,
+				auth.member.memberId,
+				auth.authUserId,
+			);
+			if (!actor) return { kind: 'member_inactive' as const };
 			const [current] = await tx
 				.select()
 				.from(expensePayments)
@@ -111,6 +119,7 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 				? { kind: 'capture' as const, payment: capturing }
 				: { kind: 'unavailable' as const };
 		});
+		if (captureState.kind === 'member_inactive') return forbidden('member_deactivated');
 		if (captureState.kind === 'completed') {
 			return NextResponse.json({
 				status: 'COMPLETED',

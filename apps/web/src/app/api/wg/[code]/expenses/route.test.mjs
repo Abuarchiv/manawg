@@ -130,6 +130,7 @@ function defaultBody(overrides = {}) {
 
 function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null } = {}) {
 	const state = {
+		capturing: false,
 		memberId: firstMemberId,
 		body: defaultBody(),
 		template: {
@@ -376,6 +377,7 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 			AMOUNT_MIN_CENTS: 1,
 		},
 		'@/features/expenses/expense-payments': {
+			hasCapturingExpensePayment: async () => state.capturing,
 			loadCompletedExpensePayments: async () => [],
 			withExpensePaymentLock: async (_id, operation) => {
 				const local = {
@@ -500,6 +502,24 @@ test('rejects foreign, stale, and paused recurring templates without creating an
 			'invalid recurrence attempts release their durable claim',
 		);
 	}
+});
+
+test('expense creation waits for capture without leaving an idempotency claim', async () => {
+	const { state, post } = harness();
+	const body = defaultBody({
+		recurringExpenseId: undefined,
+		expectedRecurringNextDueAt: undefined,
+	});
+	state.capturing = true;
+	const blocked = await post({ body });
+	assert.equal(blocked.status, 409);
+	assert.equal((await blocked.json()).error, 'paypal_payment_pending');
+	assert.equal(state.expenses.length, 0);
+	assert.equal(state.idempotency.size, 0);
+	state.capturing = false;
+	const retried = await post({ body });
+	assert.equal(retried.status, 200);
+	assert.equal(state.expenses.length, 1);
 });
 
 test('ordinary expenses remain unlinked to recurring templates', async () => {
