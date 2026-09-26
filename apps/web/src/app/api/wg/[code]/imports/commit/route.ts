@@ -1,4 +1,5 @@
-import { badRequest, serverError, tooMany } from '@/core/errors';
+import { TransactionAbort } from '@/core/db/transaction';
+import { badRequest, conflict, serverError, tooMany } from '@/core/errors';
 import {
 	ReplayCache,
 	type ReplayReservation,
@@ -11,6 +12,7 @@ import {
 	getCachedResponse,
 	persistImportReplayWarning,
 	readIdempotencyKey,
+	releaseResponseSlot,
 } from '@/core/idempotency';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
@@ -176,6 +178,10 @@ export async function POST(
 			});
 		} catch (writeErr) {
 			replayReservation?.reject(writeErr);
+			if (writeErr instanceof TransactionAbort && writeErr.code === 'paypal_payment_pending') {
+				if (idemScope && idemKey) await releaseResponseSlot(idemScope, idemKey);
+				return conflict('paypal_payment_pending');
+			}
 			throw writeErr;
 		}
 

@@ -8,14 +8,17 @@ import {
 	idempotencyResponses,
 	wgMembers,
 } from '@/core/db';
-import type { DbTransaction } from '@/core/db/transaction';
+import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
 import { RESPONSE_REPLAY_TTL_SECONDS } from '@/core/idempotency';
 import {
 	type NotificationDispatchWarning,
 	dispatchNotificationSafely,
 } from '@/core/notifications/notification-dispatch';
 import { formatEuroCents } from '@/core/utils/money';
-import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
+import {
+	hasCapturingExpensePayment,
+	withExpensePaymentLock,
+} from '@/features/expenses/expense-payments';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { ImportSource, ParsedExpense } from './import-parsers';
@@ -219,6 +222,9 @@ async function writeImport(
 		if (!isClaimPlaceholder(slot.body)) throw new Error('idempotency_claim_invalid');
 	}
 
+	if (await hasCapturingExpensePayment(tx, input.wg.id)) {
+		throw new TransactionAbort('paypal_payment_pending');
+	}
 	const [imp] = await tx
 		.insert(expenseImports)
 		.values({

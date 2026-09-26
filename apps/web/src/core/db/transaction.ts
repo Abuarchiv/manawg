@@ -1,4 +1,4 @@
-import type { ExtractTablesWithRelations } from 'drizzle-orm';
+import { type ExtractTablesWithRelations, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgQueryResultHKT } from 'drizzle-orm/node-postgres';
 import type { PgTransaction } from 'drizzle-orm/pg-core';
@@ -13,6 +13,11 @@ export type DbTransaction = PgTransaction<
 	typeof schema,
 	ExtractTablesWithRelations<typeof schema>
 >;
+
+/** Acquire before WG/member row locks so capture, cron, and deletion share one lock order. */
+export async function lockExpensePayments(tx: DbTransaction, wgId: string): Promise<void> {
+	await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`expense-payment:${wgId}`}))`);
+}
 
 /**
  * Open a bounded transaction on a new connection for resolving an uncertain commit.

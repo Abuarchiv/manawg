@@ -5,7 +5,10 @@ import { verifyCronSecret } from '@/core/infra/cron-auth';
 import { logApiError } from '@/core/infra/observability';
 import { withCronLogging } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
-import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
+import {
+	hasCapturingExpensePayment,
+	withExpensePaymentLock,
+} from '@/features/expenses/expense-payments';
 import {
 	type RecurringSplit,
 	addMonthsFromAnchor,
@@ -83,6 +86,7 @@ async function createExpenseForDueAt(
 			) {
 				return null;
 			}
+			if (await hasCapturingExpensePayment(tx, template.wgId)) return null;
 			const [inserted] = await tx
 				.insert(expenses)
 				.values({

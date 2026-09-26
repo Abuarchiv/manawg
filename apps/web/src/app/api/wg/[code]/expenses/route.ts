@@ -23,6 +23,7 @@ import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import { AMOUNT_MAX_CENTS, AMOUNT_MIN_CENTS } from '@/features/expenses/expense-constants';
 import {
+	hasCapturingExpensePayment,
 	loadCompletedExpensePayments,
 	withExpensePaymentLock,
 } from '@/features/expenses/expense-payments';
@@ -172,8 +173,9 @@ async function finalizeExpenseCreateClaim(
 	if (rows.length !== 1) throw new TransactionAbort('idempotency_claim_missing');
 }
 
-function recurringCreateAbortResponse(error: unknown): NextResponse | null {
+function expenseCreateAbortResponse(error: unknown): NextResponse | null {
 	if (!(error instanceof TransactionAbort)) return null;
+	if (error.code === 'paypal_payment_pending') return conflict('paypal_payment_pending');
 	if (error.code === 'recurring_expense_not_found') return notFound('recurring_expense_not_found');
 	if (error.code === 'abo_paused') return badRequest('abo_paused');
 	if (error.code === 'recurring_expense_already_advanced') {
@@ -411,6 +413,9 @@ export async function POST(
 					}
 					recurringDueAt = template.nextDueAt;
 				}
+				if (await hasCapturingExpensePayment(tx, wg.id)) {
+					throw new TransactionAbort('paypal_payment_pending');
+				}
 				const created = await insertExpenseWithSplits(tx, {
 					wgId: wg.id,
 					paidByMemberId: paidBy,
@@ -464,7 +469,7 @@ export async function POST(
 				}
 			}
 
-			const recurringErrorResponse = recurringCreateAbortResponse(writeErr);
+			const recurringErrorResponse = expenseCreateAbortResponse(writeErr);
 			if (recurringErrorResponse) {
 				if (idemScope && idemKey) {
 					await withExpensePaymentLock(wg.id, async (tx) => {
@@ -532,7 +537,7 @@ export async function POST(
 		return NextResponse.json(responseBody);
 	} catch (err) {
 		replayReservation?.reject(err);
-		const recurringErrorResponse = recurringCreateAbortResponse(err);
+		const recurringErrorResponse = expenseCreateAbortResponse(err);
 		if (recurringErrorResponse) return recurringErrorResponse;
 		logApiError('[expenses POST]', err);
 		return serverError(err);

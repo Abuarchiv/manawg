@@ -1,10 +1,10 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgMembers } from '@/core/db';
-import { lockActiveAccountMember } from '@/core/db/account-deletion';
-import { withTransaction } from '@/core/db/transaction';
+import { hasCapturingMemberPayment, lockActiveAccountMember } from '@/core/db/account-deletion';
 import {
 	apiError,
 	badRequest,
+	conflict,
 	forbidden,
 	notFound,
 	requireVerifiedMember,
@@ -15,7 +15,10 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { computeBalances } from '@/features/expenses/debts';
-import { loadCompletedExpensePayments } from '@/features/expenses/expense-payments';
+import {
+	loadCompletedExpensePayments,
+	withExpensePaymentLock,
+} from '@/features/expenses/expense-payments';
 import { loadOpenExpenses } from '@/features/expenses/open-expenses';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -160,7 +163,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 		);
 		if (!limited.success) return tooMany();
 
-		const result = await withTransaction(async (tx) => {
+		const result = await withExpensePaymentLock(wgId, async (tx) => {
 			const actor = await lockActiveAccountMember(tx, wgId, auth.member.memberId, auth.authUserId);
 			if (!actor) return { ok: false as const, response: apiError('member_deactivated', 401) };
 			const [target] = await tx
@@ -191,6 +194,13 @@ export const PATCH = withWgRoute<{ id: string }>(
 				return { ok: false as const, response: forbidden('admin_required', 'admin_required') };
 			}
 
+			if (
+				active === false &&
+				target.deactivatedAt === null &&
+				(await hasCapturingMemberPayment(tx, wgId, id))
+			) {
+				return { ok: false as const, response: conflict('paypal_payment_pending') };
+			}
 			const activeUnchanged = active === undefined || active === (target.deactivatedAt === null);
 			const paypalUnchanged =
 				paypalMerchantId === undefined || paypalMerchantId === (target.paypalMerchantId ?? null);
