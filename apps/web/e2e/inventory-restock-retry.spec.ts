@@ -141,7 +141,7 @@ test('a deleted inventory item disappears before the refetch lands', async ({ pa
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
 	await dismissOnboarding(page);
 	await page.getByRole('button', { name: 'Reis entfernen', exact: true }).click();
-	await page.getByRole('button', { name: 'Reis endgültig entfernen' }).click();
+	await page.getByRole('button', { name: 'Endgültig entfernen: Reis' }).click();
 
 	await expect.poll(() => gets).toBeGreaterThan(1);
 	await expect(page.getByRole('button', { name: 'Reis um eins erhöhen' })).toHaveCount(0);
@@ -179,10 +179,10 @@ test('armed inventory delete can be cancelled without deleting the item', async 
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
 	await dismissOnboarding(page);
 	await page.getByRole('button', { name: 'Reis entfernen', exact: true }).click();
-	await expect(page.getByRole('button', { name: 'Reis endgültig entfernen' })).toBeVisible();
-	await page.getByRole('button', { name: 'Löschen von Reis abbrechen' }).click();
+	await expect(page.getByRole('button', { name: 'Endgültig entfernen: Reis' })).toBeVisible();
+	await page.getByRole('button', { name: 'Abbrechen: Löschen von Reis' }).click();
 
-	await expect(page.getByRole('button', { name: 'Reis endgültig entfernen' })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'Endgültig entfernen: Reis' })).toHaveCount(0);
 	await expect(page.getByRole('button', { name: 'Reis entfernen', exact: true })).toBeVisible();
 	expect(deleteCalls).toBe(0);
 });
