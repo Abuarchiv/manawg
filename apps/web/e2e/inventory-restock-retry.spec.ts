@@ -146,3 +146,43 @@ test('a deleted inventory item disappears before the refetch lands', async ({ pa
 	await expect.poll(() => gets).toBeGreaterThan(1);
 	await expect(page.getByRole('button', { name: 'Reis um eins erhöhen' })).toHaveCount(0);
 });
+
+test('armed inventory delete can be cancelled without deleting the item', async ({ page }) => {
+	const item = {
+		id: '11111111-1111-4111-8111-111111111111',
+		wgId: FIXTURE_WG.id,
+		name: 'Reis',
+		quantity: 5,
+		unit: 'Packung',
+		threshold: 1,
+		category: 'kueche',
+		lastDecrementedAt: null,
+		decrementCount30d: 0,
+		createdAt: '2026-09-20T10:00:00.000Z',
+		updatedAt: '2026-09-23T10:00:00.000Z',
+	};
+	let deleteCalls = 0;
+
+	await setupMember(page);
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/inventory`, async (route) => {
+		if (route.request().method() !== 'GET') return route.continue();
+		await route.fulfill({
+			json: { items: [item], grouped: { bad: [], kueche: [item], putzmittel: [], sonstiges: [] } },
+		});
+	});
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/inventory/${item.id}`, async (route) => {
+		if (route.request().method() !== 'DELETE') return route.continue();
+		deleteCalls += 1;
+		await route.fulfill({ json: { ok: true } });
+	});
+
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
+	await dismissOnboarding(page);
+	await page.getByRole('button', { name: 'Reis entfernen', exact: true }).click();
+	await expect(page.getByRole('button', { name: 'Reis endgültig entfernen' })).toBeVisible();
+	await page.getByRole('button', { name: 'Löschen von Reis abbrechen' }).click();
+
+	await expect(page.getByRole('button', { name: 'Reis endgültig entfernen' })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'Reis entfernen', exact: true })).toBeVisible();
+	expect(deleteCalls).toBe(0);
+});

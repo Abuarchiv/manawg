@@ -218,19 +218,31 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						<Pencil aria-hidden />
 					</Button>
 					{isDeleteArmed || pendingAction === 'delete' ? (
-						<Button
-							type="button"
-							variant="destructive"
-							size="sm"
-							onClick={handleDelete}
-							disabled={pending}
-							aria-busy={pendingAction === 'delete'}
-							aria-label={`${item.name} endgültig entfernen`}
-							className="px-3.5"
-						>
-							{pendingAction === 'delete' ? <Spinner aria-hidden /> : <Trash2 aria-hidden />}
-							Endgültig entfernen
-						</Button>
+						<>
+							<Button
+								type="button"
+								variant="destructive"
+								size="sm"
+								onClick={handleDelete}
+								disabled={pending}
+								aria-busy={pendingAction === 'delete'}
+								aria-label={`${item.name} endgültig entfernen`}
+								className="px-3.5"
+							>
+								{pendingAction === 'delete' ? <Spinner aria-hidden /> : <Trash2 aria-hidden />}
+								Endgültig entfernen
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => deleteConfirm.cancel()}
+								disabled={pending}
+								aria-label={`Löschen von ${item.name} abbrechen`}
+							>
+								Abbrechen
+							</Button>
+						</>
 					) : (
 						<Button
 							type="button"
