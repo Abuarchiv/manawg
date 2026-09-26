@@ -54,6 +54,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
+import { memberTint } from '@/components/wg/MemberAvatar';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { buildPinnwandPrefill, getPinnwandPrefillHref } from '@/features/pinnwand/pinnwand-prefill';
@@ -263,7 +264,9 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 				<CardHeader>
 					<CardTitle className="flex min-w-0 items-center gap-2">
 						<Avatar>
-							<AvatarFallback>{author.name.slice(0, 2).toLocaleUpperCase('de-DE')}</AvatarFallback>
+							<AvatarFallback style={memberTint(author.name)}>
+								{author.name.slice(0, 2).toLocaleUpperCase('de-DE')}
+							</AvatarFallback>
 						</Avatar>
 						<span className="min-w-0 break-words">{author.name}</span>
 					</CardTitle>
@@ -695,7 +698,7 @@ function CommentRow({
 	return (
 		<li className="flex min-w-0 gap-2" aria-busy={pending || comment.id.startsWith('temp-')}>
 			<Avatar size="sm">
-				<AvatarFallback>
+				<AvatarFallback style={memberTint(comment.authorName || '?')}>
 					{(comment.authorName || '?').slice(0, 2).toLocaleUpperCase('de-DE')}
 				</AvatarFallback>
 			</Avatar>

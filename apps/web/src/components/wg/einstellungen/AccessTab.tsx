@@ -431,7 +431,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 					{activeMembers.map((member) => (
 						<Item key={member.id} size="sm" className="min-h-[44px]">
 							<ItemMedia>
-								<MemberAvatar name={member.name} color={member.color ?? null} size={26} />
+								<MemberAvatar name={member.name} size={26} />
 							</ItemMedia>
 							<ItemContent className="min-w-0">
 								<ItemTitle>{member.name}</ItemTitle>
@@ -466,7 +466,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 							{inactiveMembers.map((member) => (
 								<Item key={member.id} size="sm" className="min-h-[44px] opacity-70">
 									<ItemMedia>
-										<MemberAvatar name={member.name} color={member.color ?? null} size={26} />
+										<MemberAvatar name={member.name} size={26} />
 									</ItemMedia>
 									<ItemContent className="min-w-0">
 										<ItemTitle>{member.name}</ItemTitle>
