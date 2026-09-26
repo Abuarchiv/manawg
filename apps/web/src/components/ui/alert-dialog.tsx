@@ -1,13 +1,40 @@
 'use client';
 
 import { cn } from '@/shared/lib/cn';
+import { useDismissOnBack } from '@/shared/lib/use-dismiss-on-back';
 import { AlertDialog as AlertDialogPrimitive } from '@base-ui/react/alert-dialog';
-import type * as React from 'react';
+import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
 
-function AlertDialog({ ...props }: AlertDialogPrimitive.Root.Props) {
-	return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
+function AlertDialog({
+	open: openProp,
+	defaultOpen = false,
+	onOpenChange,
+	actionsRef: _ignoredActionsRef,
+	...props
+}: AlertDialogPrimitive.Root.Props) {
+	// Back-button dismissal needs the primitive's imperative close() action, so
+	// this wrapper always owns actionsRef (no caller uses it today).
+	const actionsRef = React.useRef<AlertDialogPrimitive.Root.Actions>(null);
+	const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
+	const open = openProp ?? uncontrolledOpen;
+
+	useDismissOnBack(open, actionsRef);
+
+	return (
+		<AlertDialogPrimitive.Root
+			data-slot="alert-dialog"
+			open={openProp}
+			defaultOpen={defaultOpen}
+			actionsRef={actionsRef}
+			onOpenChange={(nextOpen, eventDetails) => {
+				setUncontrolledOpen(nextOpen);
+				onOpenChange?.(nextOpen, eventDetails);
+			}}
+			{...props}
+		/>
+	);
 }
 
 function AlertDialogTrigger({ ...props }: AlertDialogPrimitive.Trigger.Props) {
