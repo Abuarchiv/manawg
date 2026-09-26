@@ -197,7 +197,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 												variant={settled ? 'secondary' : 'outline'}
 												onClick={() => setSettleCandidate(split)}
 												disabled={isPending(split.id)}
-												aria-label={`${memberName(split.debtorMemberId)} Zahlung als ${settled ? 'offen' : 'beglichen'} markieren`}
+												aria-label={`${settled ? 'Wieder öffnen' : 'Als bezahlt eintragen'}: ${memberName(split.debtorMemberId)}`}
 											>
 												{isPending(split.id) ? (
 													<Spinner data-icon="inline-start" />

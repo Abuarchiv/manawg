@@ -100,7 +100,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 										onClick={() => onTogglePause(abo)}
 										disabled={pending}
 										aria-label={
-											isPaused ? `${abo.description} fortsetzen` : `${abo.description} pausieren`
+											isPaused ? `Fortsetzen: ${abo.description}` : `Pausieren: ${abo.description}`
 										}
 									>
 										{isPaused ? (

@@ -241,14 +241,17 @@ export default function WgHomePage() {
 				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-6 px-4 py-6"
 			>
 				<header className="flex min-w-0 flex-col gap-1">
-					<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight break-words">
+					{/* WCAG 1.3.1 / 2.4.6 — the page's single <h1> is WgAppHeader's WG-name
+					    heading (rendered by the shared layout above <main>). This date line
+					    is a subheading of that page, not a second top-level heading. */}
+					<h2 className="font-heading text-[26px] leading-8 font-semibold tracking-tight break-words">
 						{new Intl.DateTimeFormat('de-DE', {
 							weekday: 'long',
 							day: 'numeric',
 							month: 'long',
 							timeZone: 'Europe/Berlin',
 						}).format(updatedAt ?? new Date())}
-					</h1>
+					</h2>
 					{updatedAt && (
 						<p className="text-xs text-muted-foreground">
 							Stand{' '}
