@@ -55,9 +55,11 @@ test.describe('search clear control', () => {
 			await expect(search).toBeFocused();
 
 			await search.fill('Bad');
+			await page.selectOption('#search-quick-filter', 'open');
 			await clear.click();
 			await expect(search).toHaveValue('');
 			await expect(search).toBeFocused();
+			await expect(page.locator('#search-quick-filter')).toHaveValue('all');
 		});
 	}
 });

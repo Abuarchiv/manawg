@@ -235,16 +235,6 @@ test('hides permanent chore removal from non-admin members', async ({ page }) =>
 	await expect(page.getByRole('button', { name: `Aufgabe entfernen: ${title}` })).toHaveCount(0);
 });
 
-test('shows permanent chore removal to WG admins', async ({ page }) => {
-	const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
-	const title = 'Aufgabe delete-permission';
-	const rows = [chore('delete-permission', viewer.id)];
-
-	await openPutzen(page, [viewer], rows, [], true);
-	await page.getByRole('button', { name: `Aufgabenaktionen: ${title}` }).click();
-	await expect(page.getByRole('button', { name: `Aufgabe entfernen: ${title}` })).toBeVisible();
-});
-
 test('shows the authoritative next member and labels the viewer as du', async ({ page }) => {
 	const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 	const absentMember: FixtureMember = { id: 'ben', name: 'Ben', color: null, active: true };

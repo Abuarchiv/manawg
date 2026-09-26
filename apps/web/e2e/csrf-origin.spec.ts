@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { NextRequest } from 'next/server';
-import { originAllowed } from '../src/middleware';
+import { middleware, originAllowed } from '../src/middleware';
 
 const WRITE_URL = 'https://app.example.com/api/wg/ABCDEFGH/expenses';
 
@@ -24,7 +24,7 @@ test('fails closed for a write without an Origin header', () => {
 	expect(originAllowed(request({ host: 'app.example.com' }))).toBe(false);
 });
 
-test('rejects cross-origin writes including takeover lookalikes', () => {
+test('rejects cross-origin writes including takeover lookalikes', async () => {
 	const rejected = [
 		'https://evil.example.com',
 		'https://app.example.com.evil.test',
@@ -41,7 +41,9 @@ test('rejects cross-origin writes including takeover lookalikes', () => {
 	];
 
 	for (const origin of rejected) {
-		expect(originAllowed(request({ host: 'app.example.com', origin })), origin).toBe(false);
+		const req = request({ host: 'app.example.com', origin });
+		expect(originAllowed(req), origin).toBe(false);
+		expect((await middleware(req)).status, origin).toBe(403);
 	}
 });
 

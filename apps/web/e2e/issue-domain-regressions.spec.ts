@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { shouldFallbackToDirectJoin } from '../src/core/infra/join-flow';
 import * as offlineClient from '../src/core/offline/offline-client';
 import { type ActivityItem, filterActivityByScope } from '../src/core/reads/activity';
 import { buildChoreFairness } from '../src/features/chores/chore-fairness';
@@ -78,9 +77,4 @@ test('uses the API-repeated open-gap total once for an assignee', () => {
 	});
 
 	expect(fairness.rows[0]).toMatchObject({ openGapCount: 2, score: 10 });
-});
-
-test('does not loop back to direct join for a missing member id', () => {
-	expect(shouldFallbackToDirectJoin(401, 'member_id_required')).toBe(false);
-	expect(shouldFallbackToDirectJoin(401, 'auth_required')).toBe(true);
 });

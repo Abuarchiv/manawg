@@ -113,12 +113,6 @@ export function getLegacyIdentityCandidates(): LegacyIdentityCandidate[] {
 	return candidates;
 }
 
-export function setIdentity(wgId: string, identity: StoredIdentity): void {
-	const ls = safeLocalStorage();
-	if (!ls) return;
-	ls.setItem(STORAGE_PREFIX + wgId, JSON.stringify(identity));
-}
-
 export function clearIdentity(wgId: string): void {
 	const ls = safeLocalStorage();
 	if (!ls) return;
