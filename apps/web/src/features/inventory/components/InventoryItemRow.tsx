@@ -161,7 +161,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 
 	return (
 		<Item className="flex-col items-stretch gap-2" aria-busy={pending}>
-			<div className="flex flex-wrap items-center gap-2">
+			<div className="flex w-full min-w-0 flex-wrap items-center gap-2">
 				<ItemContent className="min-w-0 basis-full">
 					<ItemTitle className="w-full min-w-0 gap-2 line-clamp-none">
 						<span className="min-w-0 flex-1 break-words" title={item.name}>
