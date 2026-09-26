@@ -440,8 +440,12 @@ select {
 		--muted-foreground: oklch(0.556 0 0);
 		--accent-foreground: oklch(0.205 0 0);
 		--destructive: oklch(0.577 0.245 27.325);
-		--input: oklch(0.922 0 0);
-		--ring: oklch(0.708 0 0);
+		/* Darkened from the stock oklch(0.922 0 0)/oklch(0.708 0 0): the shadcn defaults measured
+		   1.26:1 (input/switch-track border) and 2.59:1 (focus ring) against white, both below the
+		   WCAG 1.4.11 non-text-contrast minimum of 3:1. --ring reuses --muted-foreground's lightness
+		   so the focus state stays visibly darker than the resting border. */
+		--input: oklch(0.65 0 0);
+		--ring: oklch(0.556 0 0);
 		--radius: 0.625rem;
 		--settled: oklch(0.55 0.13 155);
 		--sidebar: oklch(0.985 0 0);
