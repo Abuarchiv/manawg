@@ -169,6 +169,116 @@ test('an unbounded 2020 daily series contributes to a 2026 query window', () => 
 	assert.equal(query.params.includes('2024-09-22T00:00:00.000Z'), false);
 });
 
+test('daily timed recurrence advances Berlin dates across the autumn DST change', () => {
+	const event = {
+		id: 'daily-autumn-dst',
+		title: 'Daily series',
+		description: null,
+		startsAt: '2026-10-23T22:30:00.000Z',
+		endsAt: null,
+		allDay: false,
+		location: null,
+		recurrence: 'FREQ=DAILY',
+	};
+	const occurrences = expandRecurrence(event, '2026-10-23', '2026-10-28');
+
+	assert.deepEqual(
+		occurrences.map(({ startsAt }) => startsAt),
+		[
+			'2026-10-23T22:30:00.000Z',
+			'2026-10-24T22:30:00.000Z',
+			'2026-10-25T23:30:00.000Z',
+			'2026-10-26T23:30:00.000Z',
+			'2026-10-27T23:30:00.000Z',
+		],
+	);
+});
+
+test('weekly timed recurrence keeps its Berlin weekday across the autumn DST change', () => {
+	const event = {
+		id: 'weekly-autumn-dst',
+		title: 'Weekly series',
+		description: null,
+		startsAt: '2026-10-23T22:30:00.000Z',
+		endsAt: null,
+		allDay: false,
+		location: null,
+		recurrence: 'FREQ=WEEKLY',
+	};
+	const occurrences = expandRecurrence(event, '2026-10-23', '2026-11-10');
+
+	assert.deepEqual(
+		occurrences.map(({ startsAt }) => startsAt),
+		['2026-10-23T22:30:00.000Z', '2026-10-30T23:30:00.000Z', '2026-11-06T23:30:00.000Z'],
+	);
+});
+
+test('weekly timed recurrence applies UNTIL to the Berlin wall-time instant', () => {
+	const event = {
+		id: 'weekly-autumn-until',
+		title: 'Weekly series',
+		description: null,
+		startsAt: '2026-10-23T22:30:00.000Z',
+		endsAt: null,
+		allDay: false,
+		location: null,
+		recurrence: 'FREQ=WEEKLY;UNTIL=2026-11-06T23:00:00.000Z',
+	};
+	const occurrences = expandRecurrence(event, '2026-10-23', '2026-11-10');
+
+	assert.deepEqual(
+		occurrences.map(({ startsAt }) => startsAt),
+		['2026-10-23T22:30:00.000Z', '2026-10-30T23:30:00.000Z'],
+	);
+});
+
+test('monthly timed recurrence clamps the Berlin day of month at 00:30 and 20:00', () => {
+	const event = {
+		id: 'monthly-clamp-at-midnight',
+		title: 'Monthly series',
+		description: null,
+		startsAt: '2026-01-30T23:30:00.000Z',
+		endsAt: null,
+		allDay: false,
+		location: null,
+		recurrence: 'FREQ=MONTHLY;COUNT=3',
+	};
+	const occurrences = expandRecurrence(event, '2026-01-30', '2026-04-01');
+
+	assert.deepEqual(
+		occurrences.map(({ startsAt }) => startsAt),
+		['2026-01-30T23:30:00.000Z', '2026-02-27T23:30:00.000Z', '2026-03-30T22:30:00.000Z'],
+	);
+	const eveningOccurrences = expandRecurrence(
+		{ ...event, startsAt: '2026-01-31T19:00:00.000Z' },
+		'2026-01-31',
+		'2026-03-01',
+	);
+	assert.deepEqual(
+		eveningOccurrences.map(({ startsAt }) => startsAt),
+		['2026-01-31T19:00:00.000Z', '2026-02-28T19:00:00.000Z'],
+	);
+});
+
+test('all-day recurrence keeps advancing by UTC calendar dates across DST', () => {
+	const event = {
+		id: 'all-day-autumn-dst',
+		title: 'All-day series',
+		description: null,
+		startsAt: '2026-10-23T00:00:00.000Z',
+		endsAt: null,
+		allDay: true,
+		location: null,
+		recurrence: 'FREQ=WEEKLY;COUNT=3',
+	};
+	const occurrences = expandRecurrence(event, '2026-10-23', '2026-11-10');
+
+	assert.deepEqual(
+		occurrences.map(({ startsAt }) => startsAt),
+		['2026-10-23T00:00:00.000Z', '2026-10-30T00:00:00.000Z', '2026-11-06T00:00:00.000Z'],
+	);
+});
+
 test('finite multi-day recurrence keeps an older occurrence overlapping the query', () => {
 	const event = {
 		id: 'multi-day-series',
@@ -252,6 +362,29 @@ test('spring DST wall time is included when its raw UTC recurrence is beyond win
 		new Date('2026-03-29T01:00:00.000Z'),
 		new Date('2026-03-29T02:00:00.000Z'),
 	);
+	assert.deepEqual(
+		occurrences.map(({ startsAt }) => startsAt),
+		['2026-03-29T01:30:00.000Z'],
+	);
+});
+
+test('spring-gap recurrence keeps the existing raw-instant fallback', () => {
+	const event = {
+		id: 'spring-gap-series',
+		title: 'Spring-gap series',
+		description: null,
+		startsAt: '2026-03-22T01:30:00.000Z',
+		endsAt: null,
+		allDay: false,
+		location: null,
+		recurrence: 'FREQ=WEEKLY;COUNT=2',
+	};
+	const occurrences = expandRecurrence(
+		event,
+		new Date('2026-03-29T00:00:00.000Z'),
+		new Date('2026-03-29T02:00:00.000Z'),
+	);
+
 	assert.deepEqual(
 		occurrences.map(({ startsAt }) => startsAt),
 		['2026-03-29T01:30:00.000Z'],
@@ -373,6 +506,45 @@ test('weekly BYDAY UNTIL last start uses Berlin DST wall time and timed-end boun
 		(candidates) => candidates.map(({ id }) => id),
 	);
 	assert.deepEqual(active, ['dst-weekly-until']);
+	assert.deepEqual(expired, []);
+});
+
+test('finite UNTIL pruning uses the last Berlin wall-time occurrence', async () => {
+	const series = eventCandidate(
+		'finite-weekly-until-after-dst',
+		'2026-10-23T22:30:00.000Z',
+		'FREQ=WEEKLY;UNTIL=2026-11-06T23:00:00.000Z',
+	);
+	const result = await withEventWindowCandidates(
+		new Date('2026-11-06T00:15:00.000Z'),
+		eventCandidatePages([series]),
+		() => ({ status: 503, body: 'events_window_too_large' }),
+		(candidates) => candidates.map(({ id }) => id),
+	);
+
+	assert.deepEqual(result, []);
+});
+
+test('finite COUNT pruning keeps the final Berlin wall-time occurrence through its end', async () => {
+	const series = eventCandidate(
+		'finite-weekly-count-after-dst',
+		'2026-10-23T22:30:00.000Z',
+		'FREQ=WEEKLY;COUNT=3',
+	);
+	const active = await withEventWindowCandidates(
+		new Date('2026-11-06T23:45:00.000Z'),
+		eventCandidatePages([series]),
+		() => ({ status: 503, body: 'events_window_too_large' }),
+		(candidates) => candidates.map(({ id }) => id),
+	);
+	const expired = await withEventWindowCandidates(
+		new Date('2026-11-07T00:30:00.000Z'),
+		eventCandidatePages([series]),
+		() => ({ status: 503, body: 'events_window_too_large' }),
+		(candidates) => candidates.map(({ id }) => id),
+	);
+
+	assert.deepEqual(active, ['finite-weekly-count-after-dst']);
 	assert.deepEqual(expired, []);
 });
 
