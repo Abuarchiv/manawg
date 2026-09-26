@@ -481,6 +481,10 @@ export default function EinkaufPage() {
 						setToggleError(
 							'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
 						);
+					} else if (res.status === 409 && res.error === 'shopping_item_duplicate') {
+						rollback();
+						await load(true);
+						setToggleError(shoppingAddErrorMessage(res.error));
 					} else if (res.status === 0) {
 						const queued = createQueuedShoppingUpdate({
 							wgId: wg.id,
