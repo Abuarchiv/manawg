@@ -680,7 +680,7 @@ export default function KalenderPage() {
 										type="url"
 										readOnly
 										value={subscription.feedUrl}
-										className="min-w-0 flex-1 text-sm"
+										className="min-w-0 flex-1 text-base"
 									/>
 									<Button
 										type="button"
