@@ -27,7 +27,7 @@ export function RouteFocusOnNavigate() {
 		if (previousPathname.current === pathname) return;
 		previousPathname.current = pathname;
 		const main = document.getElementById('main');
-		if (main && !main.contains(document.activeElement)) main.focus();
+		if (main && !main.contains(document.activeElement)) main.focus({ preventScroll: true });
 	}, [pathname]);
 
 	return null;
