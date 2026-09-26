@@ -55,15 +55,21 @@ const WgContext = createContext<WgContextValue | null>(null);
 interface Props {
 	wg: WgSummary;
 	members: Member[];
+	initialIdentity?: StoredIdentity | undefined;
 	children: ReactNode;
 }
 
-export function WgContextProvider({ wg, members: initialMembers, children }: Props) {
+export function WgContextProvider({
+	wg,
+	members: initialMembers,
+	initialIdentity,
+	children,
+}: Props) {
 	const [members, setMembers] = useState<Member[]>(initialMembers);
 	const [isAdmin, setIsAdmin] = useState(false);
-	const [identity, setStateIdentity] = useState<StoredIdentity | null>(null);
+	const [identity, setStateIdentity] = useState<StoredIdentity | null>(initialIdentity ?? null);
 	const [hydrated, setHydrated] = useState(false);
-	const [memberLoaded, setMemberLoaded] = useState(false);
+	const [memberLoaded, setMemberLoaded] = useState(initialIdentity !== undefined);
 	const [memberLoadError, setMemberLoadError] = useState(false);
 	const syncingRef = useRef(false);
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
@@ -84,6 +90,7 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 	}, [wg.id, wg.shareCode, wg.name]);
 
 	useEffect(() => {
+		if (initialIdentity) return;
 		let cancelled = false;
 		const loadSessionMember = async () => {
 			setMemberLoaded(false);
@@ -110,7 +117,7 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 		return () => {
 			cancelled = true;
 		};
-	}, [hydrated, encodedShareCode]);
+	}, [hydrated, encodedShareCode, initialIdentity]);
 
 	const refreshMembers = useCallback(async () => {
 		if (!identity) return;
@@ -130,7 +137,10 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 				window.location.replace(
 					`/neu?next=${encodeURIComponent(window.location.pathname + window.location.search)}`,
 				);
-			} else if (res.status === 401 && res.error === 'not_a_member') {
+			} else if (
+				res.status === 401 &&
+				(res.error === 'not_a_member' || res.error === 'member_deactivated')
+			) {
 				setStateIdentity(null);
 			}
 		} catch (err) {
@@ -189,7 +199,7 @@ export function WgContextProvider({ wg, members: initialMembers, children }: Pro
 	if (!hydrated || !memberLoaded) {
 		// Static skeleton shell instead of null: the SSR/first-paint output keeps
 		// the document structure (<main> landmark, app background) while the
-		// identity is read from localStorage. Fully static markup — no dynamic
+		// client hydrates. Fully static markup — no dynamic
 		// values — so hydration cannot mismatch.
 		return (
 			<div className="min-h-svh bg-background" aria-busy="true">

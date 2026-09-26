@@ -8,7 +8,9 @@ import { OfflineBanner } from '@/components/wg/OfflineBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
 import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
+import { deriveMemberToken } from '@/core/guards/member-token';
 import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
+import type { StoredIdentity } from '@/shared/lib/identity';
 import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Metadata } from 'next';
@@ -78,13 +80,15 @@ export default async function WgLayout({ children, params }: Props) {
 	const user = await getAuthenticatedUserFromCookies();
 	if (!user) redirect(`/neu?next=${encodeURIComponent(`/wg/${encodeURIComponent(code)}`)}`);
 
-	const [wg] = await db
+	const [access] = await db
 		.select({
 			id: wgs.id,
 			name: wgs.name,
 			shareCode: wgs.shareCode,
 			joiningEnabled: wgs.joiningEnabled,
 			shareCodeRotatedAt: wgs.shareCodeRotatedAt,
+			memberId: wgMembers.id,
+			memberName: wgMembers.name,
 		})
 		.from(wgMembers)
 		.innerJoin(wgs, eq(wgMembers.wgId, wgs.id))
@@ -96,9 +100,16 @@ export default async function WgLayout({ children, params }: Props) {
 			),
 		)
 		.limit(1);
-	if (!wg) {
+	if (!access) {
 		redirect(`/neu?next=${encodeURIComponent(`/wg/${encodeURIComponent(code)}`)}`);
 	}
+	const { memberId, memberName, ...wg } = access;
+	const memberToken = deriveMemberToken(wg.id, memberId);
+	const initialIdentity: StoredIdentity = {
+		memberId,
+		name: memberName,
+		...(memberToken ? { memberToken } : {}),
+	};
 
 	// Load the full roster including deactivated members: history and balances
 	// need every name. Choice UIs filter on `active` downstream (see
@@ -119,7 +130,7 @@ export default async function WgLayout({ children, params }: Props) {
 	}));
 
 	return (
-		<WgShell code={code} wg={wg} members={members}>
+		<WgShell code={code} wg={wg} members={members} initialIdentity={initialIdentity}>
 			{children}
 		</WgShell>
 	);
@@ -129,6 +140,7 @@ function WgShell({
 	code,
 	wg,
 	members,
+	initialIdentity,
 	children,
 }: {
 	code: string;
@@ -146,12 +158,13 @@ function WgShell({
 		paypalMerchantId?: string | null;
 		active: boolean;
 	}>;
+	initialIdentity?: StoredIdentity;
 	children: ReactNode;
 }) {
 	const wgBaseHref = `/wg/${encodeURIComponent(code)}`;
 
 	return (
-		<WgContextProvider wg={wg} members={members}>
+		<WgContextProvider key={wg.id} wg={wg} members={members} initialIdentity={initialIdentity}>
 			<div
 				className="group/wg-shell min-h-svh bg-background"
 				style={{
