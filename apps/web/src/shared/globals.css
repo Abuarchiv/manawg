@@ -205,6 +205,24 @@ html:has([data-offline-banner]) {
 	scroll-padding-top: calc(var(--offline-banner-height) + 0.5rem);
 }
 
+/* 1b. WCAG 2.4.11 — the settings page's sticky tab strip (TabsList) must not
+      hide content scrolled/focused into view beneath it (e.g. Shift+Tab
+      landing right under it). Scoped via :has() to pages that render this
+      one marked tab list, not every page — a global scroll-padding-top broke
+      e2e/import-wizard-responsive.spec.ts before. --settings-tabs-height is
+      measured in JS (ResizeObserver) so it holds at larger text sizes too;
+      the calc mirrors the strip's own `top` offset so it composes correctly
+      with the offline banner rule above when both are present. */
+html:has([data-sticky-tabs]) {
+	scroll-padding-top: calc(
+		env(safe-area-inset-top, 0px) +
+		var(--offline-banner-height, 0px) +
+		0.5rem +
+		var(--settings-tabs-height, 3.5rem) +
+		0.5rem
+	);
+}
+
 /* 2. Mobile tap highlight suppressed globally (html already has it for legacy,
       but * catches SVGs, custom elements, and pseudo-elements) */
 * {
