@@ -18,6 +18,7 @@ assert.match(scriptSource, /'nonce-security-boundary-test-nonce'/);
 assert.doesNotMatch(scriptSource, /'unsafe-inline'/);
 assert.doesNotMatch(styleSource, /'unsafe-inline'/);
 assert.match(layoutSource, /export const dynamic = 'force-dynamic'/);
-assert.match(middlewareSource, /if \(!originAllowed\(req\)\)/);
-assert.doesNotMatch(middlewareSource, /if \(!isRead && !originAllowed\(req\)\)/);
+// Safe reads may omit Origin; csrf-origin.spec.ts covers the runtime contract.
+assert.match(middlewareSource, /if \(!isRead && !originAllowed\(req\)\)/);
+assert.doesNotMatch(middlewareSource, /if \(!originAllowed\(req\)\)/);
 assert.match(rateLimitSource, /failMode: 'open' \| 'closed' = rateLimitFailMode\(\)/);
