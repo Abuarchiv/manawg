@@ -107,3 +107,42 @@ test('quick restock retry keeps its idempotency key per inventory item', async (
 	expect(keysByItem.get(firstId)?.[1]).toBe(keysByItem.get(firstId)?.[0]);
 	expect(quantities.get(firstId)).toBe(6);
 });
+
+test('a deleted inventory item disappears before the refetch lands', async ({ page }) => {
+	const item = {
+		id: '11111111-1111-4111-8111-111111111111',
+		wgId: FIXTURE_WG.id,
+		name: 'Reis',
+		quantity: 5,
+		unit: 'Packung',
+		threshold: 1,
+		category: 'kueche',
+		lastDecrementedAt: null,
+		decrementCount30d: 0,
+		createdAt: '2026-09-20T10:00:00.000Z',
+		updatedAt: '2026-09-23T10:00:00.000Z',
+	};
+	let gets = 0;
+
+	await setupMember(page);
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/inventory`, async (route) => {
+		if (route.request().method() !== 'GET') return route.continue();
+		// Only the first load answers; the refetch after the delete stays in flight.
+		if (++gets > 1) return;
+		await route.fulfill({
+			json: { items: [item], grouped: { bad: [], kueche: [item], putzmittel: [], sonstiges: [] } },
+		});
+	});
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/inventory/${item.id}`, async (route) => {
+		if (route.request().method() !== 'DELETE') return route.continue();
+		await route.fulfill({ json: { ok: true } });
+	});
+
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
+	await dismissOnboarding(page);
+	await page.getByRole('button', { name: 'Reis entfernen', exact: true }).click();
+	await page.getByRole('button', { name: 'Reis endgültig entfernen' }).click();
+
+	await expect.poll(() => gets).toBeGreaterThan(1);
+	await expect(page.getByRole('button', { name: 'Reis um eins erhöhen' })).toHaveCount(0);
+});

@@ -50,6 +50,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	const encodedShareCode = encodeURIComponent(shareCode);
 	const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	// Hide a deleted row right away; until the refetch lands it would stay tappable.
+	const [removed, setRemoved] = useState(false);
 	const consumeIdempotencyKeyRef = useRef<string | null>(null);
 	const restockIdempotencyKeyRef = useRef<string | null>(null);
 	const lowStock = isBelowThreshold(item);
@@ -138,6 +140,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				{ method: 'DELETE', memberId, memberToken },
 			);
 			if (res.ok) {
+				setRemoved(true);
 				onChanged();
 			} else {
 				setError('Löschen fehlgeschlagen.');
@@ -153,6 +156,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 		deleteConfirm.cancel();
 		void remove();
 	}
+
+	if (removed) return null;
 
 	return (
 		<Item className="flex-col items-stretch gap-2" aria-busy={pending}>
