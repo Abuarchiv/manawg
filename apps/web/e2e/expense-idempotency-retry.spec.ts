@@ -143,6 +143,45 @@ test('expense retries keep the key for the same payload and change it when the p
 	expect(attempts[2]?.key).not.toBe(attempts[1]?.key);
 });
 
+test('expense retries keep the key after malformed JSON in an HTTP 200 response', async ({
+	page,
+}) => {
+	await setupMember(page);
+	await mockReads(page);
+	const attempts: RequestAttempt[] = [];
+	await page.route(`**${API}/expenses`, async (route) => {
+		if (route.request().method() !== 'POST') return route.fallback();
+		attempts.push(recordAttempt(route));
+		if (attempts.length === 1) {
+			return route.fulfill({
+				status: 200,
+				headers: { 'content-type': 'application/json' },
+				body: '{"expense":',
+			});
+		}
+		return route.fulfill({
+			json: { expense: expense('created-expense', 'Wocheneinkauf'), warning: null },
+		});
+	});
+
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?new=1`);
+	await dismissOnboarding(page);
+	const form = page.getByRole('dialog');
+	await form.getByLabel('Beschreibung').fill('Wocheneinkauf');
+	await form.getByLabel('Betrag').fill('12,35');
+	const submit = form.getByRole('button', { name: 'Ausgabe speichern' });
+
+	await submit.click();
+	await expect.poll(() => attempts.length).toBe(1);
+	await expect(form).toBeVisible();
+	await submit.click();
+	await expect.poll(() => attempts.length).toBe(2);
+
+	expect(attempts[0]?.key).toBeTruthy();
+	expect(attempts[1]?.key).toBe(attempts[0]?.key);
+	expect(attempts[1]?.body).toEqual(attempts[0]?.body);
+});
+
 test('discarding an ambiguous expense starts a new request key for identical form data', async ({
 	page,
 }) => {
@@ -242,6 +281,46 @@ test('recurring template retries preserve key, due date, and splits after refres
 	expect(attempts[2]?.key).not.toBe(attempts[1]?.key);
 });
 
+test('recurring template retries keep the key after malformed JSON in an HTTP 200 response', async ({
+	page,
+}) => {
+	await setupMember(page);
+	await mockReads(page);
+	const attempts: RequestAttempt[] = [];
+	await page.route(`**${API}/recurring-expenses`, async (route) => {
+		if (route.request().method() !== 'POST') return route.fallback();
+		attempts.push(recordAttempt(route));
+		if (attempts.length === 1) {
+			return route.fulfill({
+				status: 200,
+				headers: { 'content-type': 'application/json' },
+				body: '{"recurringExpense":',
+			});
+		}
+		return route.fulfill({
+			json: { recurringExpense: recurringExpense({ description: 'Internet' }) },
+		});
+	});
+
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?new=1&filter=recurring`);
+	await dismissOnboarding(page);
+	const form = page.getByRole('dialog');
+	await form.getByLabel('Beschreibung').fill('Internet');
+	await form.getByLabel('Betrag').fill('12,35');
+	await form.getByRole('button', { name: /Fixkosten-Vorlage/ }).click();
+	const saveTemplate = form.getByRole('button', { name: 'Als Vorlage merken' });
+
+	await saveTemplate.click();
+	await expect.poll(() => attempts.length).toBe(1);
+	await expect(form).toBeVisible();
+	await saveTemplate.click();
+	await expect.poll(() => attempts.length).toBe(2);
+
+	expect(attempts[0]?.key).toBeTruthy();
+	expect(attempts[1]?.key).toBe(attempts[0]?.key);
+	expect(attempts[1]?.body).toEqual(attempts[0]?.body);
+});
+
 test('creating an expense from a recurring template reuses its key after a server error', async ({
 	page,
 }) => {
@@ -290,6 +369,42 @@ test('creating an expense from a recurring template reuses its key after a serve
 		recurringExpenseId: 'recurring-rent',
 		expectedRecurringNextDueAt,
 	});
+	expect(attempts[1]?.body).toEqual(attempts[0]?.body);
+});
+
+test('recurring expense retries keep the key after malformed JSON in an HTTP 200 response', async ({
+	page,
+}) => {
+	await setupMember(page);
+	await mockReads(page, [recurringExpense()]);
+	const attempts: RequestAttempt[] = [];
+	await page.route(`**${API}/expenses`, async (route) => {
+		if (route.request().method() !== 'POST') return route.fallback();
+		attempts.push(recordAttempt(route));
+		if (attempts.length === 1) {
+			return route.fulfill({
+				status: 200,
+				headers: { 'content-type': 'application/json' },
+				body: '{"expense":',
+			});
+		}
+		return route.fulfill({
+			json: { expense: expense('created-recurring-expense', 'Miete'), warning: null },
+		});
+	});
+
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
+	await dismissOnboarding(page);
+	const create = page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Miete' });
+
+	await create.click();
+	await expect.poll(() => attempts.length).toBe(1);
+	await expect(create).toBeEnabled();
+	await create.click();
+	await expect.poll(() => attempts.length).toBe(2);
+
+	expect(attempts[0]?.key).toBeTruthy();
+	expect(attempts[1]?.key).toBe(attempts[0]?.key);
 	expect(attempts[1]?.body).toEqual(attempts[0]?.body);
 });
 
