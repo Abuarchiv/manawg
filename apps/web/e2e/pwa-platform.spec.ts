@@ -209,3 +209,44 @@ test('WG install prompt stays above and does not block the bottom navigation', a
 	);
 	expect(measurements.filter((measurement) => measurement.gap < 0)).toEqual([]);
 });
+
+/**
+ * WCAG 2.4.2 (Page Titled): `/wg/[code]/*` feature pages fetch client-side and
+ * cannot export Next.js `metadata`, so without `useDocumentTitle` they all
+ * silently inherit the WG layout's title.
+ */
+test('WG feature pages get distinct, descriptive document titles', async ({ page }) => {
+	await setupMember(page);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/putzen`);
+	await dismissOnboarding(page);
+	await expect.poll(() => page.title()).toBe('Putzplan — ManaWG');
+
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
+	await dismissOnboarding(page);
+	await expect.poll(() => page.title()).toBe('Vorräte — ManaWG');
+});
+
+/**
+ * Guards the round trip: leaving a `useDocumentTitle`-managed feature page via
+ * client-side (soft) navigation must not leave its title stuck on a page that
+ * has none of its own, such as the WG dashboard (title inherited from the
+ * layout only).
+ */
+test('leaving a titled feature page via client-side navigation restores the WG dashboard title', async ({
+	page,
+}) => {
+	await setupMember(page);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
+	await dismissOnboarding(page);
+	// Fixture WG name (E2E_EXISTING_WG.name in e2e-db-down.ts) is "sadf".
+	await expect.poll(() => page.title()).toBe('sadf — ManaWG');
+
+	const bottomNav = page.getByRole('navigation', { name: 'WG Hauptnavigation' });
+	await bottomNav.getByRole('link', { name: 'Finanzen' }).click();
+	await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/ausgaben`));
+	await expect.poll(() => page.title()).toBe('Ausgaben — ManaWG');
+
+	await bottomNav.getByRole('link', { name: 'Start' }).click();
+	await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}$`));
+	await expect.poll(() => page.title()).toBe('sadf — ManaWG');
+});

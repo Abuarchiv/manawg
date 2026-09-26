@@ -278,6 +278,7 @@ export function InventoryAddModal({
 									aria-describedby={nameError ? 'inventory-name-error' : undefined}
 									placeholder="z. B. Nudeln"
 									disabled={saving || conflictNeedsReload}
+									enterKeyHint="next"
 									className="text-base"
 								/>
 								{nameError && <FieldError id="inventory-name-error">{nameError}</FieldError>}

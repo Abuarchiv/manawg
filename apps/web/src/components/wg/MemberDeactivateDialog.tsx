@@ -206,7 +206,7 @@ export function MemberDeactivateDialog({
 				<AlertDialogFooter>
 					<AlertDialogCancel
 						disabled={submitting}
-						aria-label={selfLeave ? 'WG-Verlassen abbrechen' : undefined}
+						aria-label={selfLeave ? 'Abbrechen: WG verlassen' : undefined}
 					>
 						Abbrechen
 					</AlertDialogCancel>
@@ -216,7 +216,7 @@ export function MemberDeactivateDialog({
 							void handleConfirm();
 						}}
 						disabled={submitting || loading}
-						aria-label={selfLeave ? 'WG auf diesem Gerät verlassen' : undefined}
+						aria-label={selfLeave ? 'Verlassen: WG auf diesem Gerät verlassen' : undefined}
 					>
 						{submitting && <Spinner aria-hidden />}
 						{selfLeave ? 'Verlassen' : 'Ausziehen'}

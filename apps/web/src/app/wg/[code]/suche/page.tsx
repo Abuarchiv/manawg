@@ -26,6 +26,7 @@ import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useDocumentTitle } from '@/core/hooks/useDocumentTitle';
 import {
 	type WgSearchModule,
 	type WgSearchQuickFilter,
@@ -81,6 +82,7 @@ function visibleCountLabel(count: number, query: string): string {
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function SuchePage() {
+	useDocumentTitle('WG durchsuchen — ManaWG');
 	const { wg, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;

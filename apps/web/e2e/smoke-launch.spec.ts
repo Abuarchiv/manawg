@@ -300,7 +300,7 @@ test.describe('ManaWG launch smoke', () => {
 
 			// Step 6: The focused overview retains access to every primary destination.
 			await expect(
-				page.getByRole('heading', { name: `Start – ${wgName}`, exact: true }),
+				page.getByRole('heading', { name: `${wgName} – Start`, exact: true }),
 			).toBeVisible();
 			const navigation = page.getByRole('navigation', { name: 'WG Hauptnavigation' });
 			for (const label of ['Start', 'Haushalt', 'Finanzen', 'Austausch']) {

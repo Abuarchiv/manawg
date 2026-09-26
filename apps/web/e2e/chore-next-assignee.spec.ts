@@ -102,7 +102,7 @@ test('keeps chore action buttons readable and reachable at phone widths and enla
 	const row = page.locator('#chore-actions-zoom');
 	const opener = row.getByRole('button', { name: `Aufgabenaktionen: ${title}` });
 	const takeOver = page.getByRole('button', { name: 'Ich übernehme' });
-	const swap = page.getByRole('button', { name: `Tausch anfragen: ${title}` });
+	const swap = page.getByRole('button', { name: `Tausch auf der Pinnwand anfragen: ${title}` });
 	const close = page.getByRole('button', { name: 'Schließen' });
 
 	for (const theme of ['light', 'dark'] as const) {
@@ -206,10 +206,12 @@ test('keeps the admin remove action and confirmation readable at enlarged text',
 	await expectNoOverflow(remove);
 
 	await remove.click();
-	const alert = page.getByRole('alert').filter({ hasText: 'Diese Aufgabe endgültig entfernen?' });
+	// WCAG 4.1.3: this is a confirmation prompt, not an error — it is a polite
+	// status message (role="alert" is reserved for errors).
+	const alert = page.getByRole('status').filter({ hasText: 'Diese Aufgabe endgültig entfernen?' });
 	await expect(alert).toBeVisible();
 	const confirmation = page.getByRole('button', {
-		name: `Aufgabe entfernen bestätigen: ${title}`,
+		name: `Endgültig entfernen: ${title}`,
 	});
 	await expect(confirmation).toBeVisible();
 	const alertBox = await alert.boundingBox();

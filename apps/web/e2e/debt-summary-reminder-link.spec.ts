@@ -96,7 +96,7 @@ test('keeps finance actions and expense summary keyboard-operable at phone sizes
 	await expect(debts).toHaveCount(2);
 	const secondaryDebt = debts.nth(1);
 	const settleButton = secondaryDebt.getByRole('button', { name: 'Ausgleichen' });
-	const remindButton = secondaryDebt.getByRole('button', { name: 'Erinnerung senden: Erinnern' });
+	const remindButton = secondaryDebt.getByRole('button', { name: 'Erinnern', exact: true });
 	await expect(settleButton).toBeVisible();
 	await expect(remindButton).toBeVisible();
 	await settleButton.focus();

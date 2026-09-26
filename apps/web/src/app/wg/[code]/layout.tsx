@@ -1,4 +1,5 @@
 import { AppBottomNav } from '@/components/app/AppBottomNav';
+import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
 import { WgAppHeader } from '@/components/app/WgAppHeader';
 import { WG_SECTIONS } from '@/components/app/navigation';
 import { ToastContainer } from '@/components/ui/Toast';
@@ -151,7 +152,6 @@ function WgShell({
 
 	return (
 		<WgContextProvider wg={wg} members={members}>
-			<ToastContainer />
 			<div
 				className="group/wg-shell min-h-svh bg-background"
 				style={{
@@ -160,6 +160,7 @@ function WgShell({
 				}}
 			>
 				<OfflineBanner />
+				<RouteFocusOnNavigate />
 				<WgAppHeader />
 				{/* WCAG 1.3.1 / 2.4.1 — single <main> landmark.
 				    tabIndex={-1} lets the skip-link target receive programmatic focus. */}
@@ -199,6 +200,9 @@ function WgShell({
 					</ul>
 				</div>
 			</AppBottomNav>
+			{/* Last in the DOM so Tab reaches a toast's dismiss button right after
+			    whatever the user just did, instead of jumping back to the page top. */}
+			<ToastContainer />
 		</WgContextProvider>
 	);
 }

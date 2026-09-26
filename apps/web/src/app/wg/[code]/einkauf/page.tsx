@@ -27,6 +27,7 @@ import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { useDocumentTitle } from '@/core/hooks/useDocumentTitle';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
@@ -91,6 +92,7 @@ function keepItems(prev: ShoppingItem[], next: ShoppingItem[]): ShoppingItem[] {
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function EinkaufPage() {
+	useDocumentTitle('Einkaufsliste — ManaWG');
 	const { wg, members, identity, isAdmin } = useWg();
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);

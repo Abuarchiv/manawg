@@ -295,6 +295,7 @@ export function ExpenseFormSection({
 									placeholder="z. B. Wocheneinkauf"
 									disabled={formSaving}
 									error={fieldErrors.description}
+									enterKeyHint="next"
 								/>
 								<TextField
 									label="Betrag"
@@ -309,6 +310,7 @@ export function ExpenseFormSection({
 									suffix={currency === 'EUR' ? '€' : currency}
 									disabled={formSaving}
 									error={fieldErrors.amount}
+									enterKeyHint="next"
 								/>
 								<Field data-disabled={formSaving}>
 									<FieldLabel htmlFor="paid-by">Bezahlt von</FieldLabel>
@@ -377,7 +379,7 @@ export function ExpenseFormSection({
 									)}
 									{splitMode === 'manual' && (
 										<FieldGroup className={fieldErrors.splits ? 'block space-y-3' : 'gap-3'}>
-											{splitCandidates.map((member) => (
+											{splitCandidates.map((member, index) => (
 												<Field
 													key={member.id}
 													orientation="responsive"
@@ -412,6 +414,7 @@ export function ExpenseFormSection({
 															}}
 															placeholder="0,00"
 															disabled={formSaving || (isEditingExpense && !member.active)}
+															enterKeyHint={index === splitCandidates.length - 1 ? 'done' : 'next'}
 															aria-label={`Anteil ${member.name} in ${currency === 'EUR' ? 'Euro' : currency}${isEditingExpense && !member.active ? ', ausgezogen. Anteil bleibt unverändert.' : ''}`}
 															aria-invalid={
 																Boolean(fieldErrors.splits) && member.id === firstSplitMemberId

@@ -226,7 +226,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 								onClick={handleDelete}
 								disabled={pending}
 								aria-busy={pendingAction === 'delete'}
-								aria-label={`${item.name} endgültig entfernen`}
+								aria-label={`Endgültig entfernen: ${item.name}`}
 								className="px-3.5"
 							>
 								{pendingAction === 'delete' ? <Spinner aria-hidden /> : <Trash2 aria-hidden />}
@@ -238,7 +238,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 								size="sm"
 								onClick={() => deleteConfirm.cancel()}
 								disabled={pending}
-								aria-label={`Löschen von ${item.name} abbrechen`}
+								aria-label={`Abbrechen: Löschen von ${item.name}`}
 							>
 								Abbrechen
 							</Button>

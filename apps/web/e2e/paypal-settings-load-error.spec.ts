@@ -90,8 +90,10 @@ for (const width of [320, 360]) {
 
 			await expect.poll(() => patchBodies.length).toBe(1);
 			expect(patchBodies).toEqual([{ paypalMerchantId: 'existing-merchant-id' }]);
+			// WCAG 4.1.3: a success confirmation is a polite status message, not
+			// an assertive alert — role="alert" is reserved for errors.
 			await expect(
-				page.getByRole('alert').filter({ hasText: 'PayPal Merchant-ID gespeichert.' }),
+				page.getByRole('status').filter({ hasText: 'PayPal Merchant-ID gespeichert.' }),
 			).toBeVisible();
 		});
 	}

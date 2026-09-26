@@ -159,41 +159,50 @@ export function ProfileTab({
 
 			<Section title="PayPal">
 				<div className="p-3">
-					<FieldGroup>
-						<Field>
-							<FieldLabel htmlFor="paypal-merchant-id">PayPal Merchant-ID</FieldLabel>
-							<div className="flex flex-col gap-2">
-								<Input
-									id="paypal-merchant-id"
-									type="text"
-									value={paypalMerchantId}
-									onChange={(event) => {
-										setPaypalMerchantId(event.target.value);
-										setPaypalMessage(null);
-										setPaypalSaveError(null);
-									}}
-									placeholder="13-stellige Merchant-ID"
-									disabled={!paypalLoaded || loadingPayPal || savingPayPal}
-									className="text-base"
-									autoComplete="off"
-									inputMode="text"
-								/>
-								<Button
-									type="button"
-									variant="outline"
-									onClick={() => void savePayPal()}
-									disabled={!paypalLoaded || loadingPayPal || savingPayPal}
-									className="self-start"
-								>
-									{savingPayPal ? <Spinner aria-hidden /> : <Save aria-hidden />}
-									{savingPayPal ? 'Speichert…' : 'Speichern'}
-								</Button>
-							</div>
-							<FieldDescription>
-								Damit dir andere offene Beträge direkt per PayPal schicken können.
-							</FieldDescription>
-						</Field>
-					</FieldGroup>
+					<form
+						onSubmit={(event) => {
+							event.preventDefault();
+							void savePayPal();
+						}}
+					>
+						<FieldGroup>
+							<Field data-invalid={Boolean(paypalSaveError)}>
+								<FieldLabel htmlFor="paypal-merchant-id">PayPal Merchant-ID</FieldLabel>
+								<div className="flex flex-col gap-2">
+									<Input
+										id="paypal-merchant-id"
+										type="text"
+										value={paypalMerchantId}
+										onChange={(event) => {
+											setPaypalMerchantId(event.target.value);
+											setPaypalMessage(null);
+											setPaypalSaveError(null);
+										}}
+										placeholder="13-stellige Merchant-ID"
+										disabled={!paypalLoaded || loadingPayPal || savingPayPal}
+										className="text-base"
+										autoComplete="off"
+										inputMode="text"
+										enterKeyHint="done"
+										aria-invalid={paypalSaveError ? true : undefined}
+										aria-describedby={paypalSaveError ? 'paypal-save-error' : undefined}
+									/>
+									<Button
+										type="submit"
+										variant="outline"
+										disabled={!paypalLoaded || loadingPayPal || savingPayPal}
+										className="self-start"
+									>
+										{savingPayPal ? <Spinner aria-hidden /> : <Save aria-hidden />}
+										{savingPayPal ? 'Speichert…' : 'Speichern'}
+									</Button>
+								</div>
+								<FieldDescription>
+									Damit dir andere offene Beträge direkt per PayPal schicken können.
+								</FieldDescription>
+							</Field>
+						</FieldGroup>
+					</form>
 					{loadingPayPal && (
 						<output className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
 							<Spinner aria-hidden />
@@ -227,7 +236,7 @@ export function ProfileTab({
 					{paypalSaveError && (
 						<Alert variant="destructive" className="mt-3">
 							<AlertTitle>Speichern fehlgeschlagen</AlertTitle>
-							<AlertDescription>{paypalSaveError}</AlertDescription>
+							<AlertDescription id="paypal-save-error">{paypalSaveError}</AlertDescription>
 						</Alert>
 					)}
 				</div>

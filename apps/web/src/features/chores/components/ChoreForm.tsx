@@ -99,6 +99,7 @@ export function ChoreForm({
 									maxLength={TITLE_MAX}
 									placeholder="z. B. Müll rausbringen"
 									disabled={pending}
+									enterKeyHint="done"
 									className="text-base"
 								/>
 							</Field>

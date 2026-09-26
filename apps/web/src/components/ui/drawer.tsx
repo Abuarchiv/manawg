@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/shared/lib/cn';
+import { useDismissOnBack } from '@/shared/lib/use-dismiss-on-back';
 import { Drawer as DrawerPrimitive } from '@base-ui/react/drawer';
 import * as React from 'react';
 
@@ -28,6 +29,10 @@ function Drawer({
 	showSwipeHandle = true,
 	snapPoints,
 	swipeDirection = 'down',
+	open: openProp,
+	defaultOpen = false,
+	onOpenChange,
+	actionsRef: _ignoredActionsRef,
 	...props
 }: DrawerPrimitive.Root.Props & {
 	showSwipeHandle?: boolean;
@@ -38,6 +43,14 @@ function Drawer({
 		[hasSnapPoints, modal, showSwipeHandle, swipeDirection],
 	);
 
+	// Back-button dismissal needs the primitive's imperative close() action, so
+	// this wrapper always owns actionsRef (no caller uses it today).
+	const actionsRef = React.useRef<DrawerPrimitive.Root.Actions>(null);
+	const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
+	const open = openProp ?? uncontrolledOpen;
+
+	useDismissOnBack(open, actionsRef);
+
 	return (
 		<DrawerContext.Provider value={contextValue}>
 			<DrawerPrimitive.Root
@@ -45,6 +58,13 @@ function Drawer({
 				modal={modal}
 				snapPoints={snapPoints}
 				swipeDirection={swipeDirection}
+				open={openProp}
+				defaultOpen={defaultOpen}
+				actionsRef={actionsRef}
+				onOpenChange={(nextOpen, eventDetails) => {
+					setUncontrolledOpen(nextOpen);
+					onOpenChange?.(nextOpen, eventDetails);
+				}}
 				{...props}
 			/>
 		</DrawerContext.Provider>

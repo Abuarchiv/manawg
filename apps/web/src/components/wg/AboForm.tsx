@@ -282,6 +282,7 @@ export function AboForm({
 						onChange={(event) => setDescription(event.target.value)}
 						placeholder="z. B. Netflix"
 						disabled={submitting}
+						enterKeyHint="next"
 						className="text-base"
 						aria-invalid={Boolean(descriptionError)}
 						aria-describedby={descriptionError ? 'abo-description-error' : undefined}
@@ -302,6 +303,7 @@ export function AboForm({
 							}}
 							placeholder="0,00"
 							disabled={submitting}
+							enterKeyHint="next"
 							className="min-h-11 font-mono tabular-nums text-base"
 							aria-invalid={Boolean(amountError)}
 							aria-describedby={amountError ? 'abo-amount-error' : undefined}
@@ -390,7 +392,7 @@ export function AboForm({
 					</ToggleGroup>
 					{splitMode === 'manual' && (
 						<FieldGroup className={splitError ? 'block space-y-3' : 'gap-3'}>
-							{splitCandidates.map((member) => (
+							{splitCandidates.map((member, index) => (
 								<Field key={member.id} orientation="responsive">
 									<FieldLabel
 										htmlFor={`abo-share-${member.id}`}
@@ -412,6 +414,7 @@ export function AboForm({
 												setSplitError(null);
 											}}
 											placeholder="0,00"
+											enterKeyHint={index === splitCandidates.length - 1 ? 'done' : 'next'}
 											aria-label={`Anteil ${member.name} in Euro`}
 											disabled={submitting}
 											aria-invalid={Boolean(splitError)}

@@ -1,6 +1,7 @@
 'use client';
 
 import { AppBottomNav } from '@/components/app/AppBottomNav';
+import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
 import { WG_SECTIONS } from '@/components/app/navigation';
 import { LegalLinks } from '@/components/entry/LegalLinks';
 import {
@@ -213,6 +214,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 				paddingBottom: 'calc(var(--app-nav-height, 5rem) + 0.5rem)',
 			}}
 		>
+			<RouteFocusOnNavigate />
 			<main
 				id="main"
 				tabIndex={-1}

@@ -570,7 +570,7 @@ export type SerializedWgEvent = ReturnType<typeof serializeWgEvent>;
 
 type EventFormValidation =
 	| { ok: true; startsAt: Date; endsAt: Date | null }
-	| { ok: false; error: string };
+	| { ok: false; error: string; field: 'title' | 'startsAt' | 'endsAt' };
 
 export function normalizeEventDateTime(value: string, allDay: boolean): string {
 	if (!allDay || value.length < 10) return value;
@@ -588,8 +588,12 @@ export function validateEventForm(input: {
 	allDay?: boolean;
 	original?: Pick<EventInput, 'startsAt' | 'endsAt' | 'allDay'>;
 }): EventFormValidation {
-	if (input.title.trim().length === 0) return { ok: false, error: 'Titel fehlt.' };
-	if (!input.startsAt) return { ok: false, error: 'Startzeitpunkt fehlt.' };
+	if (input.title.trim().length === 0) {
+		return { ok: false, error: 'Titel fehlt.', field: 'title' };
+	}
+	if (!input.startsAt) {
+		return { ok: false, error: 'Startzeitpunkt fehlt.', field: 'startsAt' };
+	}
 
 	const allDay = input.allDay === true;
 	const startsAt = new Date(
@@ -599,7 +603,7 @@ export function validateEventForm(input: {
 		? new Date(`${normalizeEventDateTime(input.endsAt, allDay)}${allDay ? 'Z' : ''}`)
 		: null;
 	if (endsAt && endsAt.getTime() < startsAt.getTime()) {
-		return { ok: false, error: 'Endzeit liegt vor Startzeit.' };
+		return { ok: false, error: 'Endzeit liegt vor Startzeit.', field: 'endsAt' };
 	}
 	const original = input.original;
 	if (
