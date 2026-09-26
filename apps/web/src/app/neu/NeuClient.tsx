@@ -766,6 +766,7 @@ export function NeuClient() {
 							required
 							invalid={invalidField === 'wgName'}
 							describedBy={invalidField === 'wgName' ? 'create-wg-error' : undefined}
+							enterKeyHint="next"
 						/>
 						<Field
 							id="creator-name"
@@ -778,6 +779,7 @@ export function NeuClient() {
 							required
 							invalid={invalidField === 'creatorName'}
 							describedBy={invalidField === 'creatorName' ? 'create-wg-error' : undefined}
+							enterKeyHint="done"
 						/>
 					</FieldGroup>
 					{error && (
@@ -844,6 +846,7 @@ export function NeuClient() {
 								autoComplete="off"
 								autoCapitalize="characters"
 								inputMode="text"
+								enterKeyHint="done"
 								placeholder="ABCD1234"
 								aria-describedby={
 									invalidField === 'joinCode' ? 'join-code-hint join-code-error' : 'join-code-hint'
@@ -905,6 +908,7 @@ export function NeuClient() {
 							required
 							invalid={invalidField === 'joinName'}
 							describedBy={invalidField === 'joinName' ? 'join-name-error' : undefined}
+							enterKeyHint="done"
 						/>
 					</FieldGroup>
 					<p className="text-sm text-muted-foreground">
