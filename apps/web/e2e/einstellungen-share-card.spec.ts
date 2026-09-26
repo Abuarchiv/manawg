@@ -86,3 +86,26 @@ test('deactivating another member shows their open balances and succeeds', async
 		page.getByText(`${otherMember.name} ist jetzt als ausgezogen markiert.`),
 	).toBeVisible();
 });
+
+test('cancelling "WG verlassen" returns focus to its button', async ({ page }) => {
+	await setupMember(page);
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/members`, async (route) => {
+		if (route.request().method() !== 'GET') return route.fallback();
+		return route.fulfill({
+			json: {
+				members: [
+					{ id: FIXTURE_WG.memberId, name: FIXTURE_WG.memberName, color: null, active: true },
+					{ id: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55', name: 'Mina', color: null, active: true },
+				],
+				viewerIsAdmin: true,
+			},
+		});
+	});
+
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+	const leave = page.getByRole('button', { name: 'WG verlassen', exact: true });
+	await leave.click();
+	await page.getByRole('button', { name: 'Abbrechen' }).click();
+
+	await expect(leave).toBeFocused();
+});
