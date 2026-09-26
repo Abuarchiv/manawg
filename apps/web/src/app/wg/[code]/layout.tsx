@@ -1,4 +1,5 @@
 import { AppBottomNav } from '@/components/app/AppBottomNav';
+import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
 import { WgAppHeader } from '@/components/app/WgAppHeader';
 import { WG_SECTIONS } from '@/components/app/navigation';
 import { ToastContainer } from '@/components/ui/Toast';
@@ -160,6 +161,7 @@ function WgShell({
 				}}
 			>
 				<OfflineBanner />
+				<RouteFocusOnNavigate />
 				<WgAppHeader />
 				{/* WCAG 1.3.1 / 2.4.1 — single <main> landmark.
 				    tabIndex={-1} lets the skip-link target receive programmatic focus. */}

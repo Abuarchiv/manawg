@@ -10,9 +10,9 @@ test('WG-code renewal actions remain visible and usable at phone widths and 200%
 	await setupMember(page);
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
 
-	const trigger = page.getByRole('button', { name: 'WG-Code erneuern', exact: true });
-	const cancel = page.getByRole('button', { name: 'WG-Code-Erneuerung abbrechen' });
-	const confirm = page.getByRole('button', { name: 'WG-Code-Erneuerung bestätigen' });
+	const trigger = page.getByRole('button', { name: 'Erneuern: WG-Code', exact: true });
+	const cancel = page.getByRole('button', { name: 'Abbrechen: WG-Code-Erneuerung' });
+	const confirm = page.getByRole('button', { name: 'Bestätigen: WG-Code-Erneuerung' });
 	await expect(trigger).toBeVisible({ timeout: 30_000 });
 	let rotations = 0;
 	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}`, async (route) => {

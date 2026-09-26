@@ -195,7 +195,7 @@ export const ChoreRow = memo(function ChoreRow({
 								variant="outline"
 								className="min-h-11 shrink-0"
 								disabled={busy}
-								aria-label={`Tausch anfragen: ${chore.title}`}
+								aria-label={`Tausch auf der Pinnwand anfragen: ${chore.title}`}
 								onClick={() => {
 									setActionsOpen(false);
 									onSwapRequest(chore);
@@ -217,7 +217,7 @@ export const ChoreRow = memo(function ChoreRow({
 										variant="destructive"
 										className="min-h-11 shrink-0"
 										disabled={busy}
-										aria-label={`${removeConfirm.confirmId === chore.id ? 'Aufgabe entfernen bestätigen' : 'Aufgabe entfernen'}: ${chore.title}`}
+										aria-label={`${removeConfirm.confirmId === chore.id ? 'Endgültig entfernen' : 'Aufgabe entfernen'}: ${chore.title}`}
 										onClick={() => {
 											if (removeConfirm.request(chore.id)) {
 												setActionsOpen(false);

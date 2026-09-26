@@ -235,7 +235,11 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 										variant="destructive"
 										onClick={handleDelete}
 										disabled={pending}
-										aria-label={`${item.name} entfernen${isDeleteArmed ? ' bestätigen' : ''}`}
+										aria-label={
+											isDeleteArmed
+												? `Endgültig entfernen: ${item.name}`
+												: `Artikel entfernen: ${item.name}`
+										}
 									>
 										<Trash2 data-icon="inline-start" aria-hidden />
 										{isDeleteArmed ? 'Endgültig entfernen' : 'Artikel entfernen'}

@@ -364,7 +364,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 										variant="ghost"
 										onClick={cancelRotateConfirm}
 										disabled={accessPending !== null}
-										aria-label="WG-Code-Erneuerung abbrechen"
+										aria-label="Abbrechen: WG-Code-Erneuerung"
 										className="shrink-0 px-2.5"
 									>
 										Abbrechen
@@ -374,7 +374,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 										variant="destructive"
 										onClick={() => void rotateShareCode()}
 										disabled={accessPending !== null}
-										aria-label="WG-Code-Erneuerung bestätigen"
+										aria-label="Bestätigen: WG-Code-Erneuerung"
 										className="shrink-0 px-2.5"
 									>
 										{accessPending === 'rotate' ? (
@@ -393,7 +393,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 									variant="outline"
 									onClick={() => void rotateShareCode()}
 									disabled={accessPending !== null}
-									aria-label="WG-Code erneuern"
+									aria-label="Erneuern: WG-Code"
 									className="shrink-0"
 								>
 									Erneuern
@@ -446,7 +446,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 											variant="outline"
 											size="sm"
 											onClick={() => setMemberToDeactivate({ id: member.id, name: member.name })}
-											aria-label={`${member.name} ausziehen`}
+											aria-label={`Ausziehen: ${member.name}`}
 										>
 											<UserMinus aria-hidden />
 											Ausziehen
@@ -480,7 +480,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 												size="sm"
 												onClick={() => void handleReactivate({ id: member.id, name: member.name })}
 												disabled={reactivatingId === member.id}
-												aria-label={`${member.name} aktivieren`}
+												aria-label={`Aktivieren: ${member.name}`}
 											>
 												{reactivatingId === member.id ? (
 													<Spinner aria-hidden />
