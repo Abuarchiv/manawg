@@ -209,3 +209,114 @@ test('WG install prompt stays above and does not block the bottom navigation', a
 	);
 	expect(measurements.filter((measurement) => measurement.gap < 0)).toEqual([]);
 });
+
+declare global {
+	interface Window {
+		__fireControllerChange?: () => void;
+		__controllerChangeListenerCount?: number;
+	}
+}
+
+/**
+ * `sw.js` calls skipWaiting()/clients.claim(), so every deploy hands control of
+ * already-open tabs to the new worker in the background. Without a reload, that
+ * tab keeps running old JS that references now-evicted cached chunk URLs. But a
+ * naive "reload on controllerchange" also fires on a tab's very first-ever SW
+ * activation (no controller -> controlled), which would reload every fresh
+ * visitor for no reason. `PwaRegister` must reload only on a genuine update.
+ *
+ * `window.location.reload` cannot be stubbed (browsers keep `Location`
+ * properties non-configurable), so a real reload is let through and detected
+ * via Playwright's `load` event instead of a counter on `window`.
+ */
+test('service worker update reloads the tab once; first-ever activation does not reload', async ({
+	page,
+}) => {
+	let loadCount = 0;
+	page.on('load', () => {
+		loadCount += 1;
+	});
+	await page.addInitScript(() => {
+		const listeners = new Set<() => void>();
+		const controller = window.sessionStorage.getItem('mock-sw-had-controller') ? {} : null;
+		window.__controllerChangeListenerCount = 0;
+		Object.defineProperty(window.navigator, 'serviceWorker', {
+			configurable: true,
+			value: {
+				controller,
+				addEventListener: (type: string, cb: () => void) => {
+					if (type === 'controllerchange') {
+						listeners.add(cb);
+						window.__controllerChangeListenerCount = listeners.size;
+					}
+				},
+				removeEventListener: (_type: string, cb: () => void) => {
+					listeners.delete(cb);
+				},
+				register: async () => ({ scope: '/' }),
+			},
+		});
+		window.__fireControllerChange = () => {
+			for (const cb of listeners) cb();
+		};
+	});
+
+	// Fresh install: no controller yet when the tab loaded -> must not reload.
+	await page.goto('/');
+	await expect.poll(() => page.evaluate(() => window.__controllerChangeListenerCount)).toBe(1);
+	loadCount = 0;
+	await page.evaluate(() => window.__fireControllerChange?.());
+	await page.waitForTimeout(500);
+	expect(loadCount).toBe(0);
+
+	// Genuine update: this tab was already controlled by an older worker on load.
+	await page.evaluate(() => window.sessionStorage.setItem('mock-sw-had-controller', '1'));
+	await page.reload();
+	await expect.poll(() => page.evaluate(() => window.__controllerChangeListenerCount)).toBe(1);
+	loadCount = 0;
+	const sawReload = page.waitForEvent('load', { timeout: 5_000 });
+	await page.evaluate(() => window.__fireControllerChange?.());
+	await sawReload;
+	expect(loadCount).toBe(1);
+});
+
+/**
+ * WCAG 2.4.2 (Page Titled): `/wg/[code]/*` feature pages fetch client-side and
+ * cannot export Next.js `metadata`, so without `useDocumentTitle` they all
+ * silently inherit the WG layout's title.
+ */
+test('WG feature pages get distinct, descriptive document titles', async ({ page }) => {
+	await setupMember(page);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/putzen`);
+	await dismissOnboarding(page);
+	await expect.poll(() => page.title()).toBe('Putzplan — ManaWG');
+
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
+	await dismissOnboarding(page);
+	await expect.poll(() => page.title()).toBe('Vorräte — ManaWG');
+});
+
+/**
+ * Guards the round trip: leaving a `useDocumentTitle`-managed feature page via
+ * client-side (soft) navigation must not leave its title stuck on a page that
+ * has none of its own, such as the WG dashboard (title inherited from the
+ * layout only).
+ */
+test('leaving a titled feature page via client-side navigation restores the WG dashboard title', async ({
+	page,
+}) => {
+	await setupMember(page);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
+	await dismissOnboarding(page);
+	// Fixture WG name (E2E_EXISTING_WG.name in e2e-db-down.ts) is "sadf".
+	await expect.poll(() => page.title()).toBe('sadf — ManaWG');
+
+	const bottomNav = page.getByRole('navigation', { name: 'WG Hauptnavigation' });
+	await bottomNav.getByRole('link', { name: 'Finanzen' }).click();
+	await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/ausgaben`));
+	await expect.poll(() => page.title()).toBe('Ausgaben — ManaWG');
+
+	await bottomNav.getByRole('link', { name: 'Start' }).click();
+	await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}$`));
+	await expect.poll(() => page.title()).toBe('sadf — ManaWG');
+});

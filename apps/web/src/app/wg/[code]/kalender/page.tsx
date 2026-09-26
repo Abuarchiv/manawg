@@ -11,6 +11,7 @@ import { SubNav } from '@/components/wg/SubNav';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { useDocumentTitle } from '@/core/hooks/useDocumentTitle';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { copyText } from '@/core/utils/clipboard';
@@ -121,6 +122,7 @@ function buildChoreOccurrences(
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function KalenderPage() {
+	useDocumentTitle('Kalender — ManaWG');
 	const { wg, identity } = useWg();
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
