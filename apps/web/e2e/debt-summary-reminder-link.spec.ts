@@ -3,7 +3,7 @@ import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from '.
 
 test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 
-test('keeps expense summary and debt content in visual and keyboard order with collapsed balances', async ({
+test('keeps finance actions and expense summary keyboard-operable at phone sizes', async ({
 	page,
 }, testInfo) => {
 	const { shareCode, memberId } = FIXTURE_WG;
@@ -14,7 +14,7 @@ test('keeps expense summary and debt content in visual and keyboard order with c
 			json: {
 				members: [
 					{ id: memberId, name: 'Abu', color: null, active: true },
-					{ id: otherMemberId, name: 'Mina', color: null, active: true },
+					{ id: otherMemberId, name: 'Mustermann-Langname', color: null, active: true },
 				],
 				viewerIsAdmin: false,
 			},
@@ -37,6 +37,23 @@ test('keeps expense summary and debt content in visual and keyboard order with c
 								expenseId: 'expense-rent',
 								debtorMemberId: otherMemberId,
 								amountCents: 1000,
+								settledAt: null,
+							},
+						],
+					},
+					{
+						id: 'expense-chf',
+						paidByMemberId: memberId,
+						amountCents: 24690,
+						currency: 'CHF',
+						description: 'Stromnachzahlung Oktober',
+						occurredAt: '2026-09-02T10:00:00.000Z',
+						splits: [
+							{
+								id: 'split-chf',
+								expenseId: 'expense-chf',
+								debtorMemberId: otherMemberId,
+								amountCents: 12345,
 								settledAt: null,
 							},
 						],
@@ -73,6 +90,18 @@ test('keeps expense summary and debt content in visual and keyboard order with c
 	});
 	expect(debtPrecedesBalanceInDom).toBe(true);
 	const balanceTrigger = page.getByRole('button', { name: 'Saldo pro Mitglied', exact: true });
+	const debts = page
+		.getByRole('list', { name: 'Deine offenen Zahlungen' })
+		.locator('[data-slot="item"]');
+	await expect(debts).toHaveCount(2);
+	const secondaryDebt = debts.nth(1);
+	const settleButton = secondaryDebt.getByRole('button', { name: 'Ausgleichen' });
+	const remindButton = secondaryDebt.getByRole('button', { name: 'Erinnerung senden: Erinnern' });
+	await expect(settleButton).toBeVisible();
+	await expect(remindButton).toBeVisible();
+	await settleButton.focus();
+	await page.keyboard.press('Tab');
+	await expect(remindButton).toBeFocused();
 	const reminderLink = page.getByRole('link', { name: 'Alle Erinnerungen' });
 	await expect(reminderLink).toBeVisible();
 	await expect(reminderLink).toHaveAttribute('href', `/wg/${shareCode}/mahnungen`);
@@ -85,26 +114,74 @@ test('keeps expense summary and debt content in visual and keyboard order with c
 	await expect
 		.poll(() => reminderLink.evaluate((node) => node.matches(':focus-visible')))
 		.toBe(true);
-	await page.evaluate(() => {
-		document.documentElement.style.fontSize = '200%';
-	});
 	for (const theme of ['light', 'dark'] as const) {
-		for (const width of [320, 360]) {
-			await page.setViewportSize({ width, height: 844 });
-			await page.emulateMedia({ colorScheme: theme });
-			const layout = await page.evaluate(() => ({
-				viewport: document.documentElement.clientWidth,
-				page: document.documentElement.scrollWidth,
-			}));
-			expect(layout.page).toBeLessThanOrEqual(layout.viewport);
-			const balanceBox = await balanceLabel.boundingBox();
-			const debtBox = await debtHeading.boundingBox();
-			if (!balanceBox || !debtBox) throw new Error('Summary headings must have layout boxes');
-			expect(debtBox.y).toBeLessThan(balanceBox.y);
-			await page.screenshot({
-				path: testInfo.outputPath(`reminders-${width}-${theme}.png`),
-				animations: 'disabled',
-			});
+		await page.emulateMedia({ colorScheme: theme });
+		for (const textScale of ['100%', '200%'] as const) {
+			await page.evaluate((fontSize) => {
+				document.documentElement.style.setProperty('font-size', fontSize, 'important');
+			}, textScale);
+			for (const width of [390, 360, 320]) {
+				await page.setViewportSize({ width, height: 844 });
+				const metrics = await Promise.all(
+					[settleButton, remindButton].map((button) =>
+						button.evaluate((element) => {
+							const buttonRect = element.getBoundingClientRect();
+							const textRange = document.createRange();
+							textRange.selectNodeContents(element);
+							const textRect = textRange.getBoundingClientRect();
+							const hitTarget = getComputedStyle(element, '::after');
+							return {
+								button: {
+									left: buttonRect.left,
+									right: buttonRect.right,
+									top: buttonRect.top,
+									bottom: buttonRect.bottom,
+								},
+								textFits:
+									textRect.left >= buttonRect.left - 1 && textRect.right <= buttonRect.right + 1,
+								touchWidth: Number.parseFloat(hitTarget.minWidth),
+								touchHeight: Number.parseFloat(hitTarget.height),
+							};
+						}),
+					),
+				);
+				const [settle, remind] = metrics;
+				const buttonsOverlap =
+					settle.button.left < remind.button.right &&
+					remind.button.left < settle.button.right &&
+					settle.button.top < remind.button.bottom &&
+					remind.button.top < settle.button.bottom;
+				const layout = await page.evaluate(() => ({
+					viewport: document.documentElement.clientWidth,
+					scroll: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+				}));
+
+				expect(buttonsOverlap, `${width}px / ${textScale} / ${theme}: action buttons overlap`).toBe(
+					false,
+				);
+				expect(settle.textFits, `${width}px / ${textScale} / ${theme}: settlement text clips`).toBe(
+					true,
+				);
+				expect(remind.textFits, `${width}px / ${textScale} / ${theme}: reminder text clips`).toBe(
+					true,
+				);
+				expect(
+					layout.scroll,
+					`${width}px / ${textScale} / ${theme}: page overflows horizontally`,
+				).toBeLessThanOrEqual(layout.viewport);
+				expect(settle.touchWidth).toBeGreaterThanOrEqual(44);
+				expect(settle.touchHeight).toBeGreaterThanOrEqual(44);
+				if (textScale === '200%') {
+					const balanceBox = await balanceLabel.boundingBox();
+					const debtBox = await debtHeading.boundingBox();
+					if (!balanceBox || !debtBox) throw new Error('Summary headings must have layout boxes');
+					expect(debtBox.y).toBeLessThan(balanceBox.y);
+					await page.screenshot({
+						path: testInfo.outputPath(`reminders-${width}-${theme}.png`),
+						animations: 'disabled',
+					});
+				}
+			}
 		}
 	}
 	await reminderLink.focus();
