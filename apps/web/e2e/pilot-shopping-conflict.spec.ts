@@ -399,6 +399,19 @@ test('wraps quick shopping suggestions at phone widths and large text', async ({
 	await page.emulateMedia({ colorScheme: 'light' });
 	const suggestionButtons = suggestions.locator('button');
 	const pointerTarget = suggestionButtons.nth(1);
+	// Arrange the same partial overlap from the rendered geometry.
+	const overlapViewportHeight = await pointerTarget.evaluate((button) => {
+		const action = document.querySelector('[data-page-primary-action]');
+		if (!action) throw new Error('Expected the fixed shopping action');
+		const buttonRect = button.getBoundingClientRect();
+		return Math.round(
+			window.innerHeight +
+				buttonRect.top +
+				buttonRect.height / 2 -
+				action.getBoundingClientRect().top,
+		);
+	});
+	await page.setViewportSize({ width: 320, height: overlapViewportHeight });
 	const pointerPoint = await pointerTarget.evaluate((button) => {
 		const action = document.querySelector('[data-page-primary-action]');
 		if (!action) throw new Error('Expected the fixed shopping action');
