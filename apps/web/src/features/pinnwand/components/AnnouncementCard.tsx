@@ -454,7 +454,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 					<Collapsible
 						open={commentsOpen}
 						onOpenChange={setCommentsOpen}
-						className="flex flex-col gap-3"
+						className="flex min-w-0 max-w-full flex-col gap-3"
 					>
 						<div className="flex flex-wrap gap-2">
 							{visibleReactions.map(({ key, label, icon: Icon }) => {
@@ -704,7 +704,9 @@ function CommentRow({
 			</Avatar>
 			<div className="flex min-w-0 flex-1 flex-col gap-2">
 				<div className="flex flex-wrap items-center gap-2">
-					<span className="text-sm font-medium">{comment.authorName || 'Unbekannt'}</span>
+					<span className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+						{comment.authorName || 'Unbekannt'}
+					</span>
 					<time
 						dateTime={comment.createdAt}
 						title={formatTimeFull(comment.createdAt)}
@@ -758,7 +760,7 @@ function CommentRow({
 					</Alert>
 				)}
 				{canEdit && !editing && (
-					<div className="flex gap-1">
+					<div className="flex flex-wrap gap-1">
 						<Button
 							variant="ghost"
 							size="sm"
