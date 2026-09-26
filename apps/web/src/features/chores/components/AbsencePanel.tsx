@@ -172,6 +172,7 @@ export function AbsencePanel({
 										maxLength={120}
 										placeholder="Grund optional"
 										disabled={pending}
+										enterKeyHint="done"
 										aria-label="Abwesenheitsgrund"
 										className="text-base"
 									/>
