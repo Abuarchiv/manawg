@@ -248,6 +248,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								value={email}
 								onChange={(event) => setEmail(event.target.value)}
 								autoComplete="email"
+								enterKeyHint="next"
 								inputMode="email"
 								required
 								aria-describedby={emailFieldInvalid ? 'auth-email-error' : undefined}
@@ -264,6 +265,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								value={password}
 								onChange={(event) => setPassword(event.target.value)}
 								autoComplete="current-password"
+								enterKeyHint="go"
 								minLength={6}
 								required
 								aria-describedby={passwordFieldInvalid ? 'auth-email-error' : undefined}
@@ -350,6 +352,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 									onChange={(event) => setPhone(event.target.value)}
 									autoComplete="tel"
 									inputMode="tel"
+									enterKeyHint="send"
 									placeholder="+491701234567"
 									aria-describedby={
 										phoneErrorDescribed ? 'auth-phone-hint auth-phone-error' : 'auth-phone-hint'
@@ -373,6 +376,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 										onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
 										inputMode="numeric"
 										autoComplete="one-time-code"
+										enterKeyHint="done"
 										maxLength={6}
 										aria-describedby={otpErrorDescribed ? 'auth-phone-error' : undefined}
 										aria-invalid={otpFieldInvalid ? true : undefined}
