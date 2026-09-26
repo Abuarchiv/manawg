@@ -212,8 +212,11 @@ test('shows personal actions and a separate Berlin week agenda', async ({ page }
 	await expect(agenda.getByText('WG-Abendessen', { exact: true })).toBeVisible();
 	await expect(agenda.getByText('Bad putzen', { exact: true })).toHaveCount(0);
 
+	const weekDate = agenda.locator('#week-heading + p');
+	const weekHeader = agenda.locator(':scope > div').first();
+	const calendarLink = agenda.getByRole('link', { name: 'Kalender' });
 	for (const theme of ['light', 'dark'] as const) {
-		for (const width of [320, 390]) {
+		for (const width of [320, 360, 390]) {
 			await page.setViewportSize({ width, height: 844 });
 			await page.emulateMedia({ colorScheme: theme });
 			await expect
@@ -225,6 +228,35 @@ test('shows personal actions and a separate Berlin week agenda', async ({ page }
 				page: document.documentElement.scrollWidth,
 			}));
 			expect(layout.page).toBeLessThanOrEqual(layout.viewport);
+			await expect(calendarLink).toBeVisible();
+			const [rootFontSize, normalLineCount, hitTarget] = await Promise.all([
+				page.locator('html').evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize)),
+				weekDate.evaluate((node) => {
+					const range = document.createRange();
+					range.selectNodeContents(node);
+					return new Set(Array.from(range.getClientRects(), (rect) => Math.round(rect.top))).size;
+				}),
+				calendarLink.evaluate((node) => {
+					const target = getComputedStyle(node, '::after');
+					return {
+						height: Number.parseFloat(target.height),
+						minWidth: Number.parseFloat(target.minWidth),
+					};
+				}),
+			]);
+			expect(rootFontSize).toBeLessThan(32);
+			expect(
+				normalLineCount,
+				`${width}px ${theme}: normal week date wraps into ${normalLineCount} lines`,
+			).toBeLessThanOrEqual(2);
+			expect(hitTarget.height).toBeGreaterThanOrEqual(44);
+			expect(hitTarget.minWidth).toBeGreaterThanOrEqual(44);
+			await calendarLink.focus();
+			await expect(calendarLink).toBeFocused();
+			await weekHeader.screenshot({
+				path: testInfo.outputPath(`week-header-${width}-${theme}.png`),
+				animations: 'disabled',
+			});
 			await page.screenshot({
 				path: testInfo.outputPath(`home-${width}-${theme}.png`),
 				animations: 'disabled',
@@ -241,6 +273,63 @@ test('shows personal actions and a separate Berlin week agenda', async ({ page }
 			expect(rowBounds.bottom).toBeLessThanOrEqual(navBounds.top);
 			await page.screenshot({
 				path: testInfo.outputPath(`home-agenda-${width}-${theme}.png`),
+				animations: 'disabled',
+			});
+		}
+	}
+
+	for (const theme of ['light', 'dark'] as const) {
+		for (const width of [320, 360, 390]) {
+			await page.setViewportSize({ width, height: 844 });
+			await page.emulateMedia({ colorScheme: theme });
+			await expect
+				.poll(() => page.locator('html').evaluate((node) => node.classList.contains('dark')))
+				.toBe(theme === 'dark');
+			await page.locator('html').evaluate((node) => {
+				node.style.fontSize = '32px';
+			});
+			await page.evaluate(() => window.scrollTo(0, 0));
+
+			await expect(calendarLink).toBeVisible();
+			await expect(weekDate).toContainText(/–/);
+			const lineCount = await weekDate.evaluate((node) => {
+				const range = document.createRange();
+				range.selectNodeContents(node);
+				return new Set(Array.from(range.getClientRects(), (rect) => Math.round(rect.top))).size;
+			});
+			expect(
+				lineCount,
+				`${width}px ${theme}: week date wraps into ${lineCount} lines`,
+			).toBeLessThanOrEqual(3);
+			const [rootFontSize, dateFontSize, hitTarget] = await Promise.all([
+				page.locator('html').evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize)),
+				weekDate.evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize)),
+				calendarLink.evaluate((node) => {
+					const target = getComputedStyle(node, '::after');
+					return {
+						height: Number.parseFloat(target.height),
+						minWidth: Number.parseFloat(target.minWidth),
+					};
+				}),
+			]);
+			expect(rootFontSize).toBe(32);
+			expect(dateFontSize).toBeGreaterThanOrEqual(26);
+			expect(hitTarget.height).toBeGreaterThanOrEqual(44);
+			expect(hitTarget.minWidth).toBeGreaterThanOrEqual(44);
+			await calendarLink.focus();
+			await expect(calendarLink).toBeFocused();
+
+			const layout = await page.evaluate(() => ({
+				viewport: document.documentElement.clientWidth,
+				page: document.documentElement.scrollWidth,
+			}));
+			expect(layout.page).toBeLessThanOrEqual(layout.viewport);
+			await weekHeader.screenshot({
+				path: testInfo.outputPath(`week-header-32px-${width}-${theme}.png`),
+				animations: 'disabled',
+			});
+			await page.screenshot({
+				path: testInfo.outputPath(`home-32px-${width}-${theme}.png`),
 				animations: 'disabled',
 			});
 		}

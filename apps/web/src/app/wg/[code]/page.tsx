@@ -353,7 +353,7 @@ export default function WgHomePage() {
 
 				<div className="flex min-w-0 flex-col gap-6">
 					<section aria-labelledby="week-heading" className="flex min-w-0 flex-col gap-3">
-						<div className="flex min-w-0 items-end justify-between gap-3">
+						<div className="flex min-w-0 flex-wrap items-end gap-3">
 							<div className="min-w-0">
 								<h2 id="week-heading" className="font-heading text-xl font-semibold">
 									Diese Woche
@@ -367,7 +367,7 @@ export default function WgHomePage() {
 								href={`${wgBaseHref}/kalender`}
 								className={cn(
 									buttonVariants({ variant: 'ghost' }),
-									'min-h-11 shrink-0 px-2 text-sm',
+									'min-h-11 ml-auto shrink-0 px-2 text-sm after:h-[44px] after:min-w-[44px]',
 								)}
 							>
 								Kalender <ChevronRight data-icon="inline-end" aria-hidden />
