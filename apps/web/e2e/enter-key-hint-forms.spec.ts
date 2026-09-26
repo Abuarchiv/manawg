@@ -99,7 +99,12 @@ test('expense description and amount fields hint "next"', async ({ page }) => {
 
 	await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Ausgabe erfassen' }).click();
+	// Scoped to the header toolbar: the empty state below repeats the same
+	// button label, which would make an unscoped query ambiguous.
+	await page
+		.getByRole('toolbar', { name: 'Ausgaben-Aktionen' })
+		.getByRole('button', { name: 'Ausgabe erfassen' })
+		.click();
 
 	await expect(page.locator('#expense-description')).toHaveAttribute('enterkeyhint', 'next');
 	await expect(page.locator('#f-betrag')).toHaveAttribute('enterkeyhint', 'next');
