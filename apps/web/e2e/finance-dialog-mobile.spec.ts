@@ -128,6 +128,9 @@ test('keeps finance forms in narrow viewports at 200% text size', async ({ page 
 	await expect(expenseDialog).toBeVisible();
 	await expenseDialog.getByText('Manuell', { exact: true }).click();
 	await expectManualSplitLayout(page, expenseDialog, 'share-');
+	await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+	await page.getByRole('alertdialog').getByRole('button', { name: 'Entwurf verwerfen' }).click();
+	await expect(expenseDialog).toBeHidden();
 
 	await page.goto(`/wg/${shareCode}/abos`);
 	await dismissOnboarding(page);
@@ -136,4 +139,6 @@ test('keeps finance forms in narrow viewports at 200% text size', async ({ page 
 	await expect(aboDialog).toBeVisible();
 	await aboDialog.getByText('Manuell', { exact: true }).click();
 	await expectManualSplitLayout(page, aboDialog, 'abo-share-');
+	await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+	await expect(aboDialog).toBeHidden();
 });
