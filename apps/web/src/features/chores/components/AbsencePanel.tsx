@@ -76,7 +76,7 @@ export function AbsencePanel({
 	isPending,
 }: AbsencePanelProps) {
 	const [formOpen, setFormOpen] = useState(active || Boolean(start || end || reason));
-	const { confirmId, request: requestRemove } = useConfirmDelete();
+	const { confirmId, request: requestRemove, cancel: cancelRemove } = useConfirmDelete();
 	useEffect(() => {
 		if (active || start || end || reason) setFormOpen(true);
 	}, [active, start, end, reason]);
@@ -216,7 +216,7 @@ export function AbsencePanel({
 											</ItemDescription>
 										)}
 									</ItemContent>
-									<ItemActions className="ml-auto">
+									<ItemActions className="ml-auto gap-2">
 										<Button
 											variant={armed ? 'destructive' : 'outline'}
 											disabled={removing}
@@ -228,6 +228,16 @@ export function AbsencePanel({
 											{removing && <Spinner data-icon="inline-start" aria-hidden />}
 											{armed ? 'Wirklich entfernen?' : 'Entfernen'}
 										</Button>
+										{armed && (
+											<Button
+												variant="outline"
+												disabled={removing}
+												onClick={() => cancelRemove()}
+												aria-label={`Entfernen von Abwesenheit ${absence.memberName} abbrechen`}
+											>
+												Abbrechen
+											</Button>
+										)}
 									</ItemActions>
 								</Item>
 							);
