@@ -148,7 +148,7 @@ export default function SuchePage() {
 	const trimmedQuery = query.trim();
 	const hasActiveFilters = quickFilter !== 'all' || moduleFilters.length > 0;
 	const filtersHideResults =
-		trimmedQuery.length > 0 && results.length > 0 && visibleResults.length === 0;
+		!error && trimmedQuery.length > 0 && results.length > 0 && visibleResults.length === 0;
 
 	function toggleModule(module: WgSearchModule): void {
 		setModuleFilters((current) =>
@@ -367,7 +367,7 @@ export default function SuchePage() {
 				</Empty>
 			)}
 
-			{visibleResults.length > 0 && (
+			{!error && visibleResults.length > 0 && (
 				<ItemGroup aria-label="Suchergebnisse">
 					{visibleResults.map((result) => {
 						const moduleLabel =
@@ -392,7 +392,7 @@ export default function SuchePage() {
 				</ItemGroup>
 			)}
 
-			{hasActiveFilters && visibleResults.length > 0 && (
+			{!error && hasActiveFilters && visibleResults.length > 0 && (
 				<Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
 					Filter zurücksetzen
 				</Button>
