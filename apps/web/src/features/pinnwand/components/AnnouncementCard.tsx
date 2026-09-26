@@ -664,6 +664,7 @@ function CommentRow({
 	const focusEditorOnEditRef = useRef(false);
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState(false);
+	const [confirmOpen, setConfirmOpen] = useState(false);
 	const pendingRef = useRef(false);
 	const actionSubject = actionLabelSubject(comment.content, 'leerer Kommentar');
 	useEffect(() => {
@@ -696,7 +697,10 @@ function CommentRow({
 		setError(false);
 		try {
 			if (!(await onDelete())) setError(true);
-			else draft.clear();
+			else {
+				draft.clear();
+				setConfirmOpen(false);
+			}
 		} finally {
 			pendingRef.current = false;
 			setPending(false);
@@ -787,14 +791,43 @@ function CommentRow({
 							size="sm"
 							disabled={pending}
 							aria-label={`Kommentar entfernen: ${actionSubject}`}
-							onClick={() => void remove()}
+							onClick={() => setConfirmOpen(true)}
 						>
-							{pending ? <Spinner data-icon="inline-start" /> : <Trash2 data-icon="inline-start" />}{' '}
-							Entfernen
+							<Trash2 data-icon="inline-start" /> Entfernen
 						</Button>
 					</div>
 				)}
 			</div>
+			<AlertDialog open={confirmOpen} onOpenChange={(open) => !pending && setConfirmOpen(open)}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Kommentar entfernen?</AlertDialogTitle>
+						<AlertDialogDescription>„{actionSubject}“ wird entfernt.</AlertDialogDescription>
+					</AlertDialogHeader>
+					{error && (
+						<Alert variant="destructive">
+							<AlertDescription>
+								Kommentar konnte nicht entfernt werden. Versuche es erneut.
+							</AlertDescription>
+						</Alert>
+					)}
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={pending} className="min-h-11">
+							Abbrechen
+						</AlertDialogCancel>
+						<AlertDialogAction
+							variant="destructive"
+							disabled={pending}
+							className="min-h-11"
+							aria-label={`Kommentar entfernen bestätigen: ${actionSubject}`}
+							onClick={() => void remove()}
+						>
+							{pending && <Spinner data-icon="inline-start" />}
+							{pending ? 'Wird entfernt…' : 'Entfernen'}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</li>
 	);
 }

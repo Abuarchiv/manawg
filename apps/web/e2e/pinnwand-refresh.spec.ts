@@ -6,7 +6,7 @@ test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local f
 const SHARE_CODE = 'MTE8PZAT';
 const MEMBER_ID = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
 
-function announcement(id: string, content: string) {
+function announcement(id: string, content: string, comments: Record<string, unknown>[] = []) {
 	return {
 		id,
 		authorMemberId: MEMBER_ID,
@@ -23,7 +23,7 @@ function announcement(id: string, content: string) {
 		reactionCounts: {},
 		myReactions: [],
 		takers: [],
-		comments: [],
+		comments,
 	};
 }
 
@@ -210,6 +210,63 @@ test('does not resurrect a deleted post after two pending refreshes', async ({ p
 	await expect(pendingButton).toBeHidden();
 	await expect(page.getByText('Beitrag A', { exact: true })).toBeVisible();
 	await expect(page.getByText('Beitrag B gelöscht', { exact: true })).toBeHidden();
+});
+
+test('comment delete requires confirmation and only removes the comment once confirmed', async ({
+	page,
+}) => {
+	await setupMember(page);
+	const post = announcement('post-with-comment', 'Beitrag mit Kommentar', [
+		{
+			id: 'comment-1',
+			announcementId: 'post-with-comment',
+			memberId: MEMBER_ID,
+			content: 'Testkommentar',
+			createdAt: '2026-09-20T08:05:00.000Z',
+			authorName: 'dsaf',
+			authorColor: null,
+		},
+	]);
+	let deleteRequests = 0;
+	await page.route(`**/api/wg/${SHARE_CODE}/announcements*`, async (route) => {
+		if (route.request().method() !== 'GET') return route.continue();
+		return route.fulfill({ json: { announcements: [post] } });
+	});
+	await page.route(
+		`**/api/wg/${SHARE_CODE}/announcements/post-with-comment/comments/comment-1`,
+		async (route) => {
+			if (route.request().method() !== 'DELETE') return route.continue();
+			deleteRequests += 1;
+			return route.fulfill({ json: {} });
+		},
+	);
+
+	await navigateToFeature(page, `/wg/${SHARE_CODE}/pinnwand`);
+	await dismissOnboarding(page);
+	await expect(page.getByText('Beitrag mit Kommentar', { exact: true })).toBeVisible();
+
+	await page.getByRole('button', { name: /Antworten anzeigen/ }).click();
+	await expect(page.getByText('Testkommentar', { exact: true })).toBeVisible();
+
+	const deleteTrigger = page.getByRole('button', { name: /Kommentar entfernen: Testkommentar/ });
+	await deleteTrigger.click();
+
+	const dialog = page.getByRole('alertdialog', { name: 'Kommentar entfernen?' });
+	await expect(dialog).toBeVisible();
+	await expect(page.getByText('Testkommentar', { exact: true })).toBeVisible();
+
+	// Cancel keeps the comment and never calls the API.
+	await dialog.getByRole('button', { name: 'Abbrechen' }).click();
+	await expect(dialog).toBeHidden();
+	await expect(page.getByText('Testkommentar', { exact: true })).toBeVisible();
+	expect(deleteRequests).toBe(0);
+
+	// Confirming removes the comment and calls the delete endpoint exactly once.
+	await deleteTrigger.click();
+	await expect(dialog).toBeVisible();
+	await dialog.getByRole('button', { name: /Kommentar entfernen bestätigen/ }).click();
+	await expect.poll(() => deleteRequests).toBe(1);
+	await expect(page.getByText('Testkommentar', { exact: true })).toBeHidden();
 });
 
 test('status filter labels stay on one line at 320px', async ({ page }) => {
