@@ -196,13 +196,6 @@ html {
 	text-size-adjust: 100%;
 }
 
-/* 1a. WCAG 2.4.11 — keep scrolled-to/focused elements clear of the sticky
-      OfflineBanner (`sticky top-0 z-20`, ~40px tall). Buffer, never hides
-      content: it only stops native/keyboard scroll-into-view a bit earlier. */
-html {
-	scroll-padding-top: 3rem;
-}
-
 /* 2. Mobile tap highlight suppressed globally (html already has it for legacy,
       but * catches SVGs, custom elements, and pseudo-elements) */
 * {
@@ -300,6 +293,12 @@ textarea,
 		background: var(--glass-solid);
 		-webkit-backdrop-filter: none;
 		backdrop-filter: none;
+	}
+}
+/* Forced colors drop box-shadow, which is the glass edge; keep the bar outlined. */
+@media (forced-colors: active) {
+	.glass-bar {
+		border: 1px solid CanvasText;
 	}
 }
 
