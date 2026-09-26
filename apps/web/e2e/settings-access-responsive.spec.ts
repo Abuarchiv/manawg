@@ -1,0 +1,87 @@
+import { expect, test } from '@playwright/test';
+import { FIXTURE_WG, navigateToFeature, setupMember } from './_helpers';
+
+test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+
+test('WG-code renewal actions remain visible and usable at phone widths and 200% text', async ({
+	page,
+}) => {
+	test.setTimeout(120_000);
+	await setupMember(page);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+
+	const trigger = page.getByRole('button', { name: 'WG-Code erneuern', exact: true });
+	const cancel = page.getByRole('button', { name: 'WG-Code-Erneuerung abbrechen' });
+	const confirm = page.getByRole('button', { name: 'WG-Code-Erneuerung bestätigen' });
+	await expect(trigger).toBeVisible({ timeout: 30_000 });
+	let rotations = 0;
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}`, async (route) => {
+		if (route.request().method() !== 'PATCH') return route.continue();
+		rotations += 1;
+		return route.fulfill({
+			json: { wg: { shareCode: FIXTURE_WG.shareCode, joiningEnabled: true } },
+		});
+	});
+	let expectedRotations = 0;
+
+	for (const width of [320, 360, 390]) {
+		for (const fontSize of [16, 32]) {
+			for (const dark of [false, true]) {
+				await page.setViewportSize({ width, height: 900 });
+				await page.evaluate(
+					({ fontSize: size, dark: useDark }) => {
+						document.documentElement.style.fontSize = `${size}px`;
+						document.documentElement.classList.toggle('dark', useDark);
+					},
+					{ fontSize, dark },
+				);
+				expect(
+					await page.locator('html').evaluate((element) => getComputedStyle(element).fontSize),
+				).toBe(`${fontSize}px`);
+
+				await expect(trigger).toBeVisible();
+				await trigger.click();
+				await expect(cancel).toBeVisible();
+				await expect(confirm).toBeVisible();
+
+				const actions = [cancel, confirm];
+				const actionBounds = await Promise.all(
+					actions.map((action) =>
+						action.evaluate((button) => {
+							const buttonBounds = button.getBoundingClientRect();
+							const sectionBounds = button
+								.closest('section[aria-label="Zugang"]')
+								?.getBoundingClientRect();
+							if (!sectionBounds) throw new Error('Zugang section not found');
+							return {
+								left: buttonBounds.left,
+								right: buttonBounds.right,
+								sectionLeft: sectionBounds.left,
+								sectionRight: sectionBounds.right,
+							};
+						}),
+					),
+				);
+				for (const bounds of actionBounds) {
+					expect(bounds.left).toBeGreaterThanOrEqual(bounds.sectionLeft);
+					expect(bounds.right).toBeLessThanOrEqual(bounds.sectionRight);
+				}
+
+				await cancel.click();
+				await expect(trigger).toBeVisible();
+				await trigger.click();
+				if (width === 320 && fontSize === 32 && dark) {
+					await cancel.focus();
+					await page.keyboard.press('Tab');
+					await expect(confirm).toBeFocused();
+					await page.keyboard.press('Enter');
+				} else {
+					await confirm.click();
+				}
+				expectedRotations += 1;
+				await expect.poll(() => rotations).toBe(expectedRotations);
+				await expect(trigger).toBeVisible();
+			}
+		}
+	}
+});
