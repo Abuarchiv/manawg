@@ -633,6 +633,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 						ref={scrollRef}
 						preserveScrollOnPrepend
 						data-scroll-y
+						role="log"
 						aria-label="Chat-Nachrichten"
 						className="bg-background"
 					>
