@@ -161,7 +161,7 @@ export default function EinstellungenPage() {
 								key={tab.id}
 								value={tab.id}
 								id={`tab-${tab.id}`}
-								className="min-h-[44px] w-full min-w-0 whitespace-normal px-1 text-center text-xs"
+								className="w-full min-w-0 whitespace-normal px-1 text-center text-xs"
 							>
 								{tab.id === 'notifications' ? 'Hinweise' : tab.label}
 							</TabsTrigger>

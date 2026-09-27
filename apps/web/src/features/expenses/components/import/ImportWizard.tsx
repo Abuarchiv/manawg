@@ -484,9 +484,9 @@ export function ImportWizard() {
 					<ArrowLeft data-icon="inline-start" />
 					Ausgaben
 				</Link>
-				<Badge variant="secondary" className="max-w-full whitespace-normal">
+				<span className="text-[13px] text-muted-foreground tabular-nums">
 					Schritt {stepNumber} von 5
-				</Badge>
+				</span>
 			</div>
 			<Progress value={stepNumber} max={5} aria-label={`Import: Schritt ${stepNumber} von 5`} />
 			{step === 'source' && (

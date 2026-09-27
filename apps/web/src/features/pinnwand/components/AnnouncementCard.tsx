@@ -255,7 +255,11 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 			className={cn('scroll-mt-24', highlighted && 'ring-2 ring-inset ring-ring')}
 		>
 			{/* Randlos: die Liste zieht Rahmen und Trennlinien, damit die Pinnwand wie ein Feed liest. */}
-			<Card size="sm" aria-busy={busy} className="rounded-none border-0 bg-transparent">
+			<Card
+				size="sm"
+				aria-busy={busy}
+				className="gap-1.5 rounded-none border-0 bg-transparent pt-2.5"
+			>
 				<CardHeader>
 					<CardTitle className="flex min-w-0 items-center gap-2 font-sans font-normal">
 						<MemberAvatar name={author.name} size={28} />
@@ -369,7 +373,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							<p
 								id={`announcement-body-${announcement.id}`}
 								className={cn(
-									'text-[15px] whitespace-pre-wrap leading-relaxed [overflow-wrap:anywhere]',
+									'text-[15px] whitespace-pre-wrap leading-normal [overflow-wrap:anywhere]',
 									isLong && !expanded && 'line-clamp-4',
 								)}
 							>
@@ -454,7 +458,8 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 									<Button
 										key={key}
 										variant={active ? 'secondary' : 'ghost'}
-										className="gap-1 pr-2 text-sm"
+										size="sm"
+										className="gap-1 pr-2 text-[13px]"
 										onClick={() => react(key)}
 										disabled={reactionPending(key)}
 										aria-pressed={active}
@@ -475,7 +480,9 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 								);
 							})}
 							<CollapsibleTrigger
-								render={<Button variant="ghost" className="ml-auto min-w-10 gap-1 text-sm" />}
+								render={
+									<Button variant="ghost" size="sm" className="ml-auto min-w-9 gap-1 text-[13px]" />
+								}
 								aria-label={`Antworten anzeigen: ${actionSubject}${announcement.comments.length > 0 ? ` (${announcement.comments.length})` : ''}`}
 								aria-controls={`announcement-comments-${announcement.id}`}
 							>
@@ -491,7 +498,8 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 								announcement.kind !== 'decision' && (
 									<Button
 										variant="outline"
-										className="gap-1 pr-2 text-sm"
+										size="sm"
+										className="gap-1 pr-2 text-[13px]"
 										disabled={statusPending}
 										onClick={onToggleStatus}
 										aria-label={`Als erledigt markieren: ${actionSubject}`}

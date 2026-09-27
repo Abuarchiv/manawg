@@ -451,7 +451,7 @@ export default function AbosPage() {
 							{[...monthly].map(([currency, { totalCents }]) => (
 								<p
 									key={currency}
-									className="break-words font-mono text-xl font-semibold tabular-nums"
+									className="break-words font-mono text-lg font-semibold tabular-nums"
 								>
 									{formatEuroCents(Math.round(totalCents), currency)}
 								</p>
@@ -462,7 +462,7 @@ export default function AbosPage() {
 							{[...monthly].map(([currency, { mineCents }]) => (
 								<p
 									key={currency}
-									className="break-words font-mono text-xl font-semibold tabular-nums"
+									className="break-words font-mono text-lg font-semibold tabular-nums"
 								>
 									{formatEuroCents(Math.round(mineCents), currency)}
 								</p>
