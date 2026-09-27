@@ -118,7 +118,7 @@ export function NavItem({
 					if (!isActive) haptic('light');
 				}}
 				className={cn(
-					'flex min-h-13 w-full flex-col items-center justify-center gap-1 rounded-[16px] py-1 text-foreground/70 outline-none transition-colors duration-[120ms] select-none focus-visible:ring-2 focus-visible:ring-ring',
+					'flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-[14px] py-0.5 text-foreground/70 outline-none transition-colors duration-[120ms] select-none focus-visible:ring-2 focus-visible:ring-ring',
 					isActive
 						? 'bg-foreground/8 text-foreground ring-1 ring-inset ring-foreground/12'
 						: 'active:bg-foreground/5',

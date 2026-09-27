@@ -558,13 +558,13 @@ function TodayRow({
 			)}
 			<Link
 				href={item.href}
-				className="flex min-h-14 min-w-0 flex-1 items-center gap-2 rounded-lg py-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+				className="flex min-h-12 min-w-0 flex-1 items-center gap-2 rounded-lg py-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
 			>
 				<span className="flex min-w-0 flex-1 flex-col">
-					<span className="font-medium break-words">{item.title}</span>
+					<span className="text-[15px] font-medium leading-snug break-words">{item.title}</span>
 					<span
 						className={cn(
-							'text-sm text-muted-foreground',
+							'text-[13px] text-muted-foreground',
 							item.kind === 'recurring' && 'tabular-nums',
 						)}
 					>
@@ -611,11 +611,11 @@ function AgendaRow({ item }: { item: WeekAgendaItem }) {
 			</span>
 			<Link
 				href={item.href}
-				className="flex min-h-14 min-w-0 flex-1 items-center gap-2 rounded-lg py-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+				className="flex min-h-12 min-w-0 flex-1 items-center gap-2 rounded-lg py-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
 			>
 				<span className="flex min-w-0 flex-1 flex-col">
-					<span className="font-medium break-words">{item.title}</span>
-					<span className="text-sm text-muted-foreground">
+					<span className="text-[15px] font-medium leading-snug break-words">{item.title}</span>
+					<span className="text-[13px] text-muted-foreground">
 						{formatAgendaDay(item.dayKey)} · {item.detail}
 					</span>
 				</span>

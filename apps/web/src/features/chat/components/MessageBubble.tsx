@@ -35,12 +35,16 @@ import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { memberTint } from '@/components/wg/MemberAvatar';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
-import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
+import { formatTimeFull } from '@/core/utils/time';
+import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
-import { MoreHorizontal, Pencil, Reply, Smile, Trash2 } from 'lucide-react';
+import { Copy, Pencil, Reply, Smile, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { canDeleteMessage, canEditMessage } from '../chat-pure';
 import { ReactionPicker } from './ReactionPicker';
+
+const BUBBLE_TEXT = 'rounded-2xl px-3 py-1.5 text-[15px] leading-snug';
+const TIME_FORMAT = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
 
 export interface BubbleMessage {
 	id: string;
@@ -115,6 +119,15 @@ export function MessageBubble({
 	});
 	const senderName = sender?.name ?? 'Unbekannt';
 	const align = isOwn ? 'end' : 'start';
+	// Uhrzeit klein unten rechts in der Blase wie bei WhatsApp; das Datum steht im Tagestrenner.
+	const timeStamp = (
+		<span className="float-end ms-2 mt-1.5 text-[11px] leading-none tabular-nums opacity-70">
+			{message.editedAt && 'bearbeitet · '}
+			<time dateTime={message.createdAt} title={formatTimeFull(message.createdAt)}>
+				{TIME_FORMAT.format(new Date(message.createdAt))}
+			</time>
+		</span>
+	);
 
 	useEffect(() => {
 		const saved = readDraft<{ body?: string }>(draftKey);
@@ -191,28 +204,21 @@ export function MessageBubble({
 			id={`message-${message.id}`}
 			aria-busy={pending || Boolean(reactionPending)}
 		>
-			<MessageAvatar
-				className={grouped ? 'invisible' : undefined}
-				aria-hidden={grouped || undefined}
-			>
-				<Avatar className="size-7 text-xs">
-					<AvatarFallback style={memberTint(senderName)}>
-						{senderName.slice(0, 2).toLocaleUpperCase('de-DE')}
-					</AvatarFallback>
-				</Avatar>
-			</MessageAvatar>
-			<MessageContent className="gap-1">
-				<MessageHeader className={grouped ? 'sr-only' : 'flex-wrap gap-x-1.5 gap-y-0 px-2 text-xs'}>
-					{!isOwn && <span className="min-w-0 [overflow-wrap:anywhere]">{senderName}</span>}
-					<time dateTime={message.createdAt} title={formatTimeFull(message.createdAt)}>
-						{formatRelativeTime(message.createdAt)}
-					</time>
-					{message.editedAt && <span>· bearbeitet</span>}
-				</MessageHeader>
-				{grouped && message.editedAt && (
-					<span className="px-1 text-xs text-muted-foreground" aria-hidden>
-						bearbeitet
-					</span>
+			{/* Wie WhatsApp: eigene Nachrichten ohne Avatar, fremde mit Avatar und Name nur am Anfang einer Folge. */}
+			{!isOwn && (
+				<MessageAvatar className={grouped ? 'invisible' : undefined} aria-hidden>
+					<Avatar className="size-7 text-xs">
+						<AvatarFallback style={memberTint(senderName)}>
+							{senderName.slice(0, 2).toLocaleUpperCase('de-DE')}
+						</AvatarFallback>
+					</Avatar>
+				</MessageAvatar>
+			)}
+			<MessageContent className="gap-0.5">
+				{!isOwn && !grouped && (
+					<MessageHeader className="px-2.5 text-xs">
+						<span className="min-w-0 [overflow-wrap:anywhere]">{senderName}</span>
+					</MessageHeader>
 				)}
 				{editing ? (
 					<FieldGroup className="gap-2">
@@ -249,146 +255,156 @@ export function MessageBubble({
 						</div>
 					</FieldGroup>
 				) : (
-					// Ein Menü neben der Blase statt drei Icons unter jeder Nachricht.
-					<div className="flex max-w-full min-w-0 items-end gap-0.5 group-data-[align=end]/message:flex-row-reverse group-data-[align=end]/message:self-end">
-						<BubbleGroup className="min-w-0 max-w-full">
-							<Bubble
-								variant={isDeleted ? 'muted' : isOwn ? 'default' : 'secondary'}
-								align={align}
-								className="max-w-full"
-							>
-								<BubbleContent className="px-2.5 py-1.5 leading-snug">
-									{replyTo && (
-										<blockquote className="mb-2 border-s-2 border-current/30 ps-2">
-											<p className="text-xs font-medium [overflow-wrap:anywhere]">
-												↪ {replyToSender?.name ?? 'Unbekannt'}
-											</p>
-											<p className="line-clamp-2 whitespace-pre-wrap text-xs [overflow-wrap:anywhere]">
-												{replyTo.deletedAt
-													? 'Diese Nachricht wurde gelöscht.'
-													: (replyTo.body ?? (replyTo.imageUrl ? 'Bild' : '…'))}
-											</p>
-										</blockquote>
-									)}
-									{isDeleted ? (
-										<p>Diese Nachricht wurde gelöscht.</p>
-									) : (
-										message.body && (
-											<p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.body}</p>
-										)
-									)}
+					<BubbleGroup className="min-w-0 max-w-[85%] group-data-[align=end]/message:self-end">
+						<Bubble
+							variant={isDeleted ? 'muted' : isOwn ? 'default' : 'secondary'}
+							align={align}
+							className="max-w-full"
+						>
+							{isDeleted ? (
+								<BubbleContent className={BUBBLE_TEXT}>
+									<p>
+										Diese Nachricht wurde gelöscht.
+										{timeStamp}
+									</p>
 								</BubbleContent>
-								{reactions.length > 0 && (
-									<BubbleReactions
-										align={align}
-										className="static max-w-full flex-wrap translate-y-0 self-start"
-									>
-										{reactions.map((reaction) => (
-											<Button
-												key={reaction.emoji}
-												variant={reaction.mine ? 'secondary' : 'outline'}
-												size="sm"
-												onClick={() => void toggleReaction(reaction.emoji, reaction.mine)}
-												disabled={isDeleted || Boolean(reactionPending)}
-												aria-pressed={reaction.mine}
-												aria-label={`Reaktion ${reaction.emoji} (${reaction.count}) ${reaction.mine ? 'entfernen' : 'hinzufügen'} — Nachricht von ${senderName}`}
-											>
-												{reactionPending === reaction.emoji ? (
-													<Spinner />
-												) : (
-													<span>{reaction.emoji}</span>
-												)}
-												<span className="tabular-nums">{reaction.count}</span>
-											</Button>
-										))}
-									</BubbleReactions>
-								)}
-							</Bubble>
-							{!isDeleted && message.imageUrl && (
-								<Attachment state="done" className="min-w-0 max-w-full">
-									<AttachmentMedia variant="image" className="size-20">
-										{/* eslint-disable-next-line @next/next/no-img-element */}
-										<img src={message.imageUrl} alt={`Bild von ${senderName}`} loading="lazy" />
-									</AttachmentMedia>
-									<AttachmentContent>
-										<AttachmentTitle>Bild</AttachmentTitle>
-										<AttachmentDescription>In voller Größe öffnen</AttachmentDescription>
-									</AttachmentContent>
-									<AttachmentTrigger
-										aria-label="Bild in voller Größe öffnen"
+							) : (
+								// Tippen auf die Blase öffnet Antworten, Reagieren usw. (wie Telegram) statt eines ⋯ daneben.
+								<DropdownMenu>
+									<DropdownMenuTrigger
+										ref={actionsTriggerRef}
+										disabled={pending}
 										render={
-											<a href={message.imageUrl} target="_blank" rel="noopener noreferrer">
-												<span className="sr-only">Bild in voller Größe öffnen</span>
-											</a>
+											<BubbleContent
+												// Der Trigger setzt sonst data-slot="dropdown-menu-trigger"; die Blasenfarben hängen am Slot.
+												data-slot="bubble-content"
+												render={<button type="button" />}
+												className={cn(BUBBLE_TEXT, 'cursor-pointer')}
+											/>
 										}
-									/>
-								</Attachment>
+									>
+										<span className="sr-only">Aktionen für Nachricht von {senderName}: </span>
+										{replyTo && (
+											<span className="mb-1.5 block rounded-md border-s-2 border-current/40 bg-current/5 px-2 py-1">
+												<span className="block text-xs font-medium [overflow-wrap:anywhere]">
+													↪ {replyToSender?.name ?? 'Unbekannt'}
+												</span>
+												<span className="line-clamp-2 whitespace-pre-wrap text-xs opacity-80 [overflow-wrap:anywhere]">
+													{replyTo.deletedAt
+														? 'Diese Nachricht wurde gelöscht.'
+														: (replyTo.body ?? (replyTo.imageUrl ? 'Bild' : '…'))}
+												</span>
+											</span>
+										)}
+										{/* Spans statt <p>: Absatz-Elemente sind in einem <button> nicht erlaubt. */}
+										<span className="block whitespace-pre-wrap [overflow-wrap:anywhere]">
+											{message.body}
+											{timeStamp}
+										</span>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align={isOwn ? 'end' : 'start'} className="w-48">
+										<DropdownMenuGroup>
+											<DropdownMenuItem
+												className="min-h-11"
+												disabled={Boolean(reactionPending)}
+												onClick={() => setReactOpen(true)}
+											>
+												<Smile aria-hidden /> Reagieren
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												className="min-h-11"
+												onClick={() => {
+													haptic('selection');
+													onReply();
+												}}
+											>
+												<Reply aria-hidden /> Antworten
+											</DropdownMenuItem>
+											{message.body && (
+												<DropdownMenuItem
+													className="min-h-11"
+													onClick={() => void navigator.clipboard?.writeText(message.body ?? '')}
+												>
+													<Copy aria-hidden /> Kopieren
+												</DropdownMenuItem>
+											)}
+											{editable && (
+												<DropdownMenuItem
+													className="min-h-11"
+													onClick={() => {
+														if (!hasDraft) setDraft(message.body ?? '');
+														setError(null);
+														setEditing(true);
+													}}
+												>
+													<Pencil aria-hidden />{' '}
+													{hasDraft ? 'Entwurf weiterbearbeiten' : 'Bearbeiten'}
+												</DropdownMenuItem>
+											)}
+											{deletable && (
+												<DropdownMenuItem
+													className="min-h-11"
+													variant="destructive"
+													onClick={() => {
+														setError(null);
+														setDeleteOpen(true);
+													}}
+												>
+													<Trash2 aria-hidden /> Löschen
+												</DropdownMenuItem>
+											)}
+										</DropdownMenuGroup>
+									</DropdownMenuContent>
+								</DropdownMenu>
 							)}
-						</BubbleGroup>
-						{!isDeleted && (
-							<DropdownMenu>
-								<DropdownMenuTrigger
-									ref={actionsTriggerRef}
-									render={
-										<Button
-											variant="ghost"
-											size="icon"
-											className="size-9 shrink-0 text-muted-foreground"
-										/>
-									}
-									disabled={pending}
-									aria-label={`Aktionen für Nachricht von ${senderName} (${formatRelativeTime(message.createdAt)})`}
+							{reactions.length > 0 && (
+								<BubbleReactions
+									align={align}
+									className="static max-w-full flex-wrap translate-y-0 gap-1 bg-transparent p-0 ring-0 group-data-[align=end]/bubble:self-end has-[button]:p-0"
 								>
-									<MoreHorizontal aria-hidden />
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align={isOwn ? 'end' : 'start'} className="w-48">
-									<DropdownMenuGroup>
-										<DropdownMenuItem
-											className="min-h-11"
-											disabled={Boolean(reactionPending)}
-											onClick={() => setReactOpen(true)}
+									{reactions.map((reaction) => (
+										<Button
+											key={reaction.emoji}
+											variant={reaction.mine ? 'secondary' : 'outline'}
+											size="xs"
+											className="rounded-full"
+											onClick={() => void toggleReaction(reaction.emoji, reaction.mine)}
+											disabled={isDeleted || Boolean(reactionPending)}
+											aria-pressed={reaction.mine}
+											aria-label={`Reaktion ${reaction.emoji} (${reaction.count}) ${reaction.mine ? 'entfernen' : 'hinzufügen'} — Nachricht von ${senderName}`}
 										>
-											<Smile aria-hidden /> Reagieren
-										</DropdownMenuItem>
-										<DropdownMenuItem
-											className="min-h-11"
-											onClick={() => {
-												haptic('selection');
-												onReply();
-											}}
-										>
-											<Reply aria-hidden /> Antworten
-										</DropdownMenuItem>
-										{editable && (
-											<DropdownMenuItem
-												className="min-h-11"
-												onClick={() => {
-													if (!hasDraft) setDraft(message.body ?? '');
-													setError(null);
-													setEditing(true);
-												}}
-											>
-												<Pencil aria-hidden />{' '}
-												{hasDraft ? 'Entwurf weiterbearbeiten' : 'Bearbeiten'}
-											</DropdownMenuItem>
-										)}
-										{deletable && (
-											<DropdownMenuItem
-												className="min-h-11"
-												variant="destructive"
-												onClick={() => {
-													setError(null);
-													setDeleteOpen(true);
-												}}
-											>
-												<Trash2 aria-hidden /> Löschen
-											</DropdownMenuItem>
-										)}
-									</DropdownMenuGroup>
-								</DropdownMenuContent>
-							</DropdownMenu>
+											{reactionPending === reaction.emoji ? (
+												<Spinner />
+											) : (
+												<span>{reaction.emoji}</span>
+											)}
+											<span className="tabular-nums">{reaction.count}</span>
+										</Button>
+									))}
+								</BubbleReactions>
+							)}
+						</Bubble>
+						{!isDeleted && message.imageUrl && (
+							<Attachment state="done" className="min-w-0 max-w-full">
+								<AttachmentMedia variant="image" className="size-20">
+									{/* eslint-disable-next-line @next/next/no-img-element */}
+									<img src={message.imageUrl} alt={`Bild von ${senderName}`} loading="lazy" />
+								</AttachmentMedia>
+								<AttachmentContent>
+									<AttachmentTitle>Bild</AttachmentTitle>
+									<AttachmentDescription>In voller Größe öffnen</AttachmentDescription>
+								</AttachmentContent>
+								<AttachmentTrigger
+									aria-label="Bild in voller Größe öffnen"
+									render={
+										<a href={message.imageUrl} target="_blank" rel="noopener noreferrer">
+											<span className="sr-only">Bild in voller Größe öffnen</span>
+										</a>
+									}
+								/>
+							</Attachment>
 						)}
-					</div>
+					</BubbleGroup>
 				)}
 				{error && !deleteOpen && (
 					<Alert id={`message-edit-error-${message.id}`} variant="destructive">

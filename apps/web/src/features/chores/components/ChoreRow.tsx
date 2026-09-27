@@ -144,7 +144,7 @@ export const ChoreRow = memo(function ChoreRow({
 					disabled={busy}
 					variant={status.state === 'planned' ? 'outline' : 'default'}
 					size="icon"
-					className="size-10 rounded-full"
+					className="size-9 rounded-full"
 					aria-label={
 						status.actionLabel === 'Nachholen'
 							? `Aufgabe nachholen: ${chore.title}`
@@ -165,7 +165,7 @@ export const ChoreRow = memo(function ChoreRow({
 							<Button
 								variant="ghost"
 								size="icon"
-								className="size-10"
+								className="size-9"
 								aria-label={`Aufgabenaktionen: ${chore.title}`}
 							/>
 						}
