@@ -75,14 +75,17 @@ function createPayPalAuthAssertion(clientId: string, merchantId: string): string
 	return `${encode({ alg: 'none' })}.${encode({ iss: clientId, payer_id: merchantId })}.`;
 }
 
-async function paypalRequest<T>(
+export async function requestPayPalApi<T>(
 	path: string,
-	payeeMerchantId: string,
 	init: RequestInit,
+	payeeMerchantId?: string,
 ): Promise<T> {
 	const config = getConfig();
 	if (!config) throw new Error('paypal_not_configured');
 	const accessToken = await getAccessToken(config);
+	const authAssertion = payeeMerchantId
+		? { 'PayPal-Auth-Assertion': createPayPalAuthAssertion(config.clientId, payeeMerchantId) }
+		: {};
 	const response = await fetch(`${config.baseUrl}${path}`, {
 		...init,
 		cache: 'no-store',
@@ -90,7 +93,7 @@ async function paypalRequest<T>(
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${accessToken}`,
 			'PayPal-Partner-Attribution-Id': config.partnerAttributionId,
-			'PayPal-Auth-Assertion': createPayPalAuthAssertion(config.clientId, payeeMerchantId),
+			...authAssertion,
 			...(init.headers ?? {}),
 		},
 	});
@@ -105,37 +108,41 @@ export async function createPayPalOrder(input: {
 	payeeMerchantId: string;
 	customId: string;
 }): Promise<PayPalOrderResponse> {
-	return paypalRequest<PayPalOrderResponse>('/v2/checkout/orders', input.payeeMerchantId, {
-		method: 'POST',
-		headers: { 'PayPal-Request-Id': randomUUID() },
-		body: JSON.stringify({
-			intent: 'CAPTURE',
-			purchase_units: [
-				{
-					custom_id: input.customId,
-					description: input.description,
-					payee: { merchant_id: input.payeeMerchantId },
-					amount: {
-						currency_code: input.currency,
-						value: (input.amountCents / 100).toFixed(2),
+	return requestPayPalApi<PayPalOrderResponse>(
+		'/v2/checkout/orders',
+		{
+			method: 'POST',
+			headers: { 'PayPal-Request-Id': randomUUID() },
+			body: JSON.stringify({
+				intent: 'CAPTURE',
+				purchase_units: [
+					{
+						custom_id: input.customId,
+						description: input.description,
+						payee: { merchant_id: input.payeeMerchantId },
+						amount: {
+							currency_code: input.currency,
+							value: (input.amountCents / 100).toFixed(2),
+						},
 					},
-				},
-			],
-		}),
-	});
+				],
+			}),
+		},
+		input.payeeMerchantId,
+	);
 }
 
 export async function capturePayPalOrder(
 	orderId: string,
 	payeeMerchantId: string,
 ): Promise<PayPalOrderResponse> {
-	return paypalRequest<PayPalOrderResponse>(
+	return requestPayPalApi<PayPalOrderResponse>(
 		`/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`,
-		payeeMerchantId,
 		{
 			method: 'POST',
 			headers: { 'PayPal-Request-Id': orderId },
 		},
+		payeeMerchantId,
 	);
 }
 
@@ -143,9 +150,9 @@ export async function getPayPalOrder(
 	orderId: string,
 	payeeMerchantId: string,
 ): Promise<PayPalOrderResponse> {
-	return paypalRequest<PayPalOrderResponse>(
+	return requestPayPalApi<PayPalOrderResponse>(
 		`/v2/checkout/orders/${encodeURIComponent(orderId)}`,
-		payeeMerchantId,
 		{ method: 'GET' },
+		payeeMerchantId,
 	);
 }

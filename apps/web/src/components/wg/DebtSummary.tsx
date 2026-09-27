@@ -303,6 +303,24 @@ function DebtRow({
 							memberToken={memberToken}
 						/>
 					)}
+					{!payeeMerchantId && owedToMe && (
+						<div className="min-[360px]:col-span-2 min-w-0">
+							<p className="text-sm text-muted-foreground">
+								Verbinde PayPal, damit andere Mitglieder dir Geld senden können.
+							</p>
+							<Link
+								href={`/wg/${encodeURIComponent(shareCode)}/einstellungen`}
+								className={cn(buttonVariants({ variant: 'link' }), 'min-h-11 justify-start px-0')}
+							>
+								PayPal verbinden
+							</Link>
+						</div>
+					)}
+					{!payeeMerchantId && iOwe && (
+						<p className="min-[360px]:col-span-2 text-sm text-muted-foreground">
+							PayPal-Zahlungen sind erst möglich, wenn {debt.toName} PayPal verbunden hat.
+						</p>
+					)}
 					{canPayWithPayPal && (
 						<Collapsible className="min-[360px]:col-span-2">
 							<CollapsibleTrigger

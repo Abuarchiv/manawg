@@ -12,6 +12,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { logApiError } from '@/core/infra/observability';
 import { createPayPalOrder, isPayPalConfigured } from '@/core/infra/paypal';
+import { isPayPalMerchantReady } from '@/core/infra/paypal-onboarding';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { computeNetBalances, simplifyDebts } from '@/features/expenses/debt-reduction';
@@ -186,6 +187,15 @@ export const POST = withWgRoute('paypal order POST', async (req, { code }) => {
 		if (reservation.kind === 'response') return reservation.response;
 
 		try {
+			if (!(await isPayPalMerchantReady(reservation.payeeMerchantId))) {
+				await withExpensePaymentLock(auth.wg.id, (tx) =>
+					tx
+						.update(expensePayments)
+						.set({ status: 'failed' })
+						.where(eq(expensePayments.id, reservation.paymentId)),
+				);
+				return conflict('paypal_onboarding_pending');
+			}
 			const order = await createPayPalOrder({
 				amountCents: reservation.amountCents,
 				currency: parsed.data.currency,
