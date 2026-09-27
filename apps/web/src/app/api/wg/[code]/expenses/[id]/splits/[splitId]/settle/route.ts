@@ -84,13 +84,7 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 		);
 		if (!limited.success) return tooMany();
 
-		// Guard the write on the state we just read: settling requires the split
-		// to currently be unsettled, un-settling requires it to currently be
-		// settled. Without this, two concurrent opposite toggles race to
-		// last-write-wins — whichever request's UPDATE commits last silently
-		// overwrites the other's result. With the guard, a stale toggle (the
-		// state already changed since our read above) matches zero rows and
-		// becomes a no-op instead of clobbering the newer state.
+		// Keep this state predicate in the write as a final stale-toggle guard.
 		const change = await withExpensePaymentLock(expense.wgId, async (tx) => {
 			const [current] = await tx
 				.select({
@@ -124,6 +118,7 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 			if (await hasActiveExpensePayment(tx, expense.wgId)) return { kind: 'blocked' as const };
 
 			if (settled) {
+				// ponytail: scan all WG splits under the lock; add indexed stored balances if this becomes slow.
 				const [members, splitRows, payments] = await Promise.all([
 					tx
 						.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
@@ -152,9 +147,7 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 							debtorMemberId: row.debtorMemberId,
 							amountCents: row.amountCents,
 							settledAt:
-								row.settledAt instanceof Date
-									? row.settledAt.toISOString()
-									: row.settledAt,
+								row.settledAt instanceof Date ? row.settledAt.toISOString() : row.settledAt,
 						},
 					],
 				}));
