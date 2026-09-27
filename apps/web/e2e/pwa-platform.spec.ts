@@ -214,36 +214,42 @@ test('WG install prompt stays above and does not block the bottom navigation', a
 	expect(measurements.filter((measurement) => measurement.gap < 0)).toEqual([]);
 });
 
-/**
- * WCAG 2.4.2 (Page Titled): `/wg/[code]/*` feature pages fetch client-side and
- * cannot export Next.js `metadata`, so without `useDocumentTitle` they all
- * silently inherit the WG layout's title.
- */
+const wgFeatureTitles = [
+	['abos', 'Fixkosten — ManaWG'],
+	['putzen', 'Putzplan — ManaWG'],
+	['suche', 'WG durchsuchen — ManaWG'],
+	['einkauf', 'Einkaufsliste — ManaWG'],
+	['kalender', 'Kalender — ManaWG'],
+	['import', 'Ausgaben importieren — ManaWG'],
+	['ausgaben', 'Ausgaben — ManaWG'],
+	['pinnwand', 'Pinnwand — ManaWG'],
+	['aktivitaet', 'Aktivität — ManaWG'],
+	['mahnungen', 'Erinnerungen — ManaWG'],
+	['einstellungen', 'Einstellungen — ManaWG'],
+	['vorraete', 'Vorräte — ManaWG'],
+] as const;
+
+/** WCAG 2.4.2: each WG feature segment must publish its own descriptive title. */
 test('WG feature pages get distinct, descriptive document titles', async ({ page }) => {
 	await setupMember(page);
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/putzen`);
-	await dismissOnboarding(page);
-	await expect.poll(() => page.title()).toBe('Putzplan — ManaWG');
-
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
-	await dismissOnboarding(page);
-	await expect.poll(() => page.title()).toBe('Vorräte — ManaWG');
+	for (const [feature, title] of wgFeatureTitles) {
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/${feature}`);
+		await dismissOnboarding(page);
+		await expect.poll(() => page.title()).toBe(title);
+	}
 });
 
 /**
- * Guards the round trip: leaving a `useDocumentTitle`-managed feature page via
- * client-side (soft) navigation must not leave its title stuck on a page that
- * has none of its own, such as the WG dashboard (title inherited from the
- * layout only).
+ * Guards metadata replacement through SPA navigation: feature title, another
+ * feature title, then the WG dashboard title from the parent layout.
  */
 test('leaving a titled feature page via client-side navigation restores the WG dashboard title', async ({
 	page,
 }) => {
 	await setupMember(page);
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/putzen`);
 	await dismissOnboarding(page);
-	// Fixture WG name (E2E_EXISTING_WG.name in e2e-db-down.ts) is "sadf".
-	await expect.poll(() => page.title()).toBe('sadf — ManaWG');
+	await expect.poll(() => page.title()).toBe('Putzplan — ManaWG');
 
 	const bottomNav = page.getByRole('navigation', { name: 'WG Hauptnavigation' });
 	await bottomNav.getByRole('link', { name: 'Finanzen' }).click();
@@ -252,5 +258,6 @@ test('leaving a titled feature page via client-side navigation restores the WG d
 
 	await bottomNav.getByRole('link', { name: 'Start' }).click();
 	await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}$`));
+	// Fixture WG name (E2E_EXISTING_WG.name in e2e-db-down.ts) is "sadf".
 	await expect.poll(() => page.title()).toBe('sadf — ManaWG');
 });

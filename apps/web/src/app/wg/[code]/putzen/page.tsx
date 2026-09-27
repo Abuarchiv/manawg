@@ -18,7 +18,6 @@ import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import { useDocumentTitle } from '@/core/hooks/useDocumentTitle';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
@@ -89,7 +88,6 @@ const ConfirmDialog = dynamic(() =>
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function PutzenPage() {
-	useDocumentTitle('Putzplan — ManaWG');
 	const { wg, members, identity, isAdmin } = useWg();
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
