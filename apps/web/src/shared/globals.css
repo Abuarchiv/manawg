@@ -137,8 +137,8 @@
 	--font-mono: var(--font-jetbrains-mono);
 	/* Small text keeps a readable floor under the fluid root size (section 6);
 	   headings and spacing above still scale down on narrow phones. */
-	--text-xs: max(12px, 0.8125rem);
-	--text-sm: max(13px, 0.875rem);
+	--text-xs: max(11.5px, 0.8125rem);
+	--text-sm: max(12.5px, 0.875rem);
 	--text-lg: 1.0625rem;
 	--text-2xl: 1.625rem;
 	--text-3xl: 2.125rem;
@@ -343,7 +343,8 @@ video {
       shrink their text proportionally instead of looking zoomed in.
       Percent bounds keep the user's browser text size as base. */
 html {
-	font-size: clamp(90%, 3.883vw, 100%);
+	/* 90 % (14,4 px) ist die Lesbarkeitsgrenze, die pilot-mobile-layout prüft. */
+	font-size: clamp(90%, 3.5vw, 93.75%);
 }
 body {
 	/* Kompakt wie Messenger-Apps: 16 px mit 1.6 wirkte auf dem Handy aufgeblasen. */

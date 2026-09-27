@@ -125,7 +125,7 @@ export function NavItem({
 				)}
 			>
 				<span className="relative">
-					<Icon aria-hidden className="size-5" strokeWidth={1.5} />
+					<Icon aria-hidden className="size-[18px]" strokeWidth={1.5} />
 					{showBadge && (
 						<Badge
 							variant="destructive"
@@ -138,7 +138,7 @@ export function NavItem({
 						</Badge>
 					)}
 				</span>
-				<span className="max-w-full whitespace-nowrap text-center text-[11px] font-semibold leading-4">
+				<span className="max-w-full whitespace-nowrap text-center text-[10px] font-semibold leading-3.5">
 					{label}
 				</span>
 			</Link>
