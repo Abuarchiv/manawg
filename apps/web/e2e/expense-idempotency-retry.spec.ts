@@ -109,6 +109,70 @@ async function queuedActionCount(page: Page, type: string): Promise<number> {
 	}, type);
 }
 
+const OFFLINE_RETRY_ERROR =
+	'Noch keine Verbindung: Die Aktion bleibt gespeichert und wird erneut versucht, sobald das Netz zurück ist.';
+
+type QueuedRetryState = {
+	idempotencyKey: string | null;
+	attempts: number;
+	lastAttemptAt: string | null;
+	lastError: string | null;
+};
+
+async function queuedRetryState(page: Page, type: string): Promise<QueuedRetryState | null> {
+	return page.evaluate((actionType) => {
+		const queue = JSON.parse(localStorage.getItem('manawg:offline-actions') ?? '[]');
+		const action = queue.find((entry: { type?: string }) => entry.type === actionType);
+		if (!action) return null;
+		return {
+			idempotencyKey: action.idempotencyKey ?? null,
+			attempts: action.attempts ?? 0,
+			lastAttemptAt: action.lastAttemptAt ?? null,
+			lastError: action.lastError ?? null,
+		};
+	}, type);
+}
+
+async function expectOfflineAutoSyncBackoff(
+	page: Page,
+	type: string,
+	blockedAttempts: RequestAttempt[],
+	originalKey: string | null,
+): Promise<void> {
+	await expect.poll(() => blockedAttempts.length).toBeGreaterThan(0);
+	await expect
+		.poll(async () => {
+			const state = await queuedRetryState(page, type);
+			return Boolean(
+				state &&
+					state.idempotencyKey === originalKey &&
+					state.attempts > 0 &&
+					state.lastAttemptAt &&
+					state.lastError === OFFLINE_RETRY_ERROR,
+			);
+		})
+		.toBe(true);
+	expect(blockedAttempts.every((attempt) => attempt.key === originalKey)).toBe(true);
+}
+
+async function sendQueueIfStillPending(
+	page: Page,
+	countQueued: () => Promise<number>,
+): Promise<void> {
+	const sendButton = page.getByRole('button', { name: 'Offline-Aktionen jetzt senden' }).first();
+	await page.evaluate(() => {
+		Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
+		window.dispatchEvent(new Event('online'));
+	});
+	await expect
+		.poll(async () => (await countQueued()) === 0 || sendButton.isVisible().catch(() => false))
+		.toBe(true);
+	if ((await countQueued()) > 0) {
+		await expect(sendButton).toBeVisible();
+		await sendButton.click();
+	}
+}
+
 test('expense retries keep the key for the same payload and change it when the payload changes', async ({
 	page,
 }) => {
@@ -170,6 +234,9 @@ test('an ambiguously acknowledged expense replays its queued request with the or
 		attempts.push(attempt);
 		if (!committedExpense) {
 			committedExpense = expense('created-expense', 'Wocheneinkauf');
+			await page.evaluate(() => {
+				Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+			});
 			return route.fulfill({
 				status: 200,
 				headers: { 'content-type': 'application/json' },
@@ -195,9 +262,13 @@ test('an ambiguously acknowledged expense replays its queued request with the or
 	});
 	await mockReads(replayPage, [], () => (committedExpense ? [committedExpense] : []));
 	let replayEnabled = false;
+	const blockedAttempts: RequestAttempt[] = [];
 	await replayPage.route(`**${API}/expenses`, async (route) => {
 		if (route.request().method() !== 'POST') return route.fallback();
-		if (!replayEnabled) return route.abort();
+		if (!replayEnabled) {
+			blockedAttempts.push(recordAttempt(route));
+			return route.abort();
+		}
 		attempts.push(recordAttempt(route));
 		return route.fulfill({
 			json: {
@@ -209,13 +280,17 @@ test('an ambiguously acknowledged expense replays its queued request with the or
 	await replayPage.goto(`/wg/${FIXTURE_WG.shareCode}/ausgaben`);
 	await dismissOnboarding(replayPage);
 	await expect.poll(() => queuedActionCount(replayPage, 'expense.create')).toBe(1);
-
+	await expectOfflineAutoSyncBackoff(
+		replayPage,
+		'expense.create',
+		blockedAttempts,
+		attempts[0]?.key ?? null,
+	);
+	await expect(replayPage.locator('[data-offline-banner]')).toContainText(
+		'Offline. 1 Aktion wartet.',
+	);
 	replayEnabled = true;
-	await replayPage.evaluate(() => {
-		Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
-		window.dispatchEvent(new Event('online'));
-	});
-	await replayPage.getByRole('button', { name: 'Offline-Aktionen jetzt senden' }).first().click();
+	await sendQueueIfStillPending(replayPage, () => queuedActionCount(replayPage, 'expense.create'));
 	await expect.poll(() => attempts.length).toBe(2);
 	await expect.poll(() => queuedActionCount(replayPage, 'expense.create')).toBe(0);
 	expect(attempts).toHaveLength(2);
@@ -429,6 +504,10 @@ test('malformed recurring-template success queues once across split rotation, dr
 	await restoredPage.route(`**${API}/members`, (route) =>
 		route.fulfill({ json: { members, viewerIsAdmin: false } }),
 	);
+	await restoredPage.route(`**${API}/shopping`, (route) =>
+		route.request().method() === 'GET' ? route.fulfill({ json: { items: [] } }) : route.fallback(),
+	);
+	await restoredPage.route(`**${API}/inventory`, (route) => route.fulfill({ json: { items: [] } }));
 	let replayEnabled = false;
 	const blockedAttempts: RequestAttempt[] = [];
 	await restoredPage.route(`**${API}/recurring-expenses`, async (route) => {
@@ -450,6 +529,12 @@ test('malformed recurring-template success queues once across split rotation, dr
 	await expect(restoredForm).toBeVisible();
 	await expect(restoredForm.getByLabel('Beschreibung')).toHaveValue('Internet');
 	await expect(restoredForm.getByLabel('Betrag')).toHaveValue('12,01');
+	await expectOfflineAutoSyncBackoff(
+		restoredPage,
+		'recurring.create',
+		blockedAttempts,
+		attempts[0]?.key ?? null,
+	);
 	const blockedAttemptCountBeforeClick = blockedAttempts.length;
 	await restoredForm.getByRole('button', { name: /Fixkosten-Vorlage/ }).click();
 	await restoredForm.getByRole('button', { name: 'Als Vorlage merken' }).click();
@@ -464,11 +549,15 @@ test('malformed recurring-template success queues once across split rotation, dr
 	).toBe(true);
 	expect(attempts).toHaveLength(1);
 
+	await navigateToFeature(restoredPage, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+	await expect.poll(() => queuedActionCount(restoredPage, 'recurring.create')).toBe(1);
+	await expect(restoredPage.locator('[data-offline-banner]')).toContainText(
+		'Offline. 1 Aktion wartet.',
+	);
 	replayEnabled = true;
-	await restoredPage.evaluate(() => {
-		Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
-		window.dispatchEvent(new Event('online'));
-	});
+	await sendQueueIfStillPending(restoredPage, () =>
+		queuedActionCount(restoredPage, 'recurring.create'),
+	);
 	await expect.poll(() => attempts.length).toBe(2);
 	await expect.poll(() => queuedActionCount(restoredPage, 'recurring.create')).toBe(0);
 	expect(attempts).toHaveLength(2);
@@ -593,9 +682,13 @@ test('a malformed recurring-expense success replays the queued request with its 
 		() => [currentTemplate],
 	);
 	let replayEnabled = false;
+	const blockedAttempts: RequestAttempt[] = [];
 	await replayPage.route(`**${API}/expenses`, async (route) => {
 		if (route.request().method() !== 'POST') return route.fallback();
-		if (!replayEnabled) return route.abort();
+		if (!replayEnabled) {
+			blockedAttempts.push(recordAttempt(route));
+			return route.abort();
+		}
 		attempts.push(recordAttempt(route));
 		return route.fulfill({
 			json: {
@@ -607,12 +700,18 @@ test('a malformed recurring-expense success replays the queued request with its 
 	await navigateToFeature(replayPage, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
 	await dismissOnboarding(replayPage);
 	await expect.poll(() => queuedRecurringExpenseCount(replayPage)).toBe(1);
+	await expectOfflineAutoSyncBackoff(
+		replayPage,
+		'expense.create',
+		blockedAttempts,
+		attempts[0]?.key ?? null,
+	);
+	await expect(replayPage.locator('[data-offline-banner]')).toContainText(
+		'Offline. 1 Aktion wartet.',
+	);
 
 	replayEnabled = true;
-	await replayPage.evaluate(() => {
-		Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
-		window.dispatchEvent(new Event('online'));
-	});
+	await sendQueueIfStillPending(replayPage, () => queuedRecurringExpenseCount(replayPage));
 	await expect.poll(() => attempts.length).toBe(2);
 	await expect.poll(() => queuedRecurringExpenseCount(replayPage)).toBe(0);
 	expect(attempts).toHaveLength(2);
