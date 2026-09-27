@@ -3,6 +3,7 @@ import {
 	auditEvents,
 	chores,
 	db,
+	expensePayments,
 	expenseSplits,
 	expenses,
 	memberAbsences,
@@ -27,7 +28,7 @@ import {
 	parseRecurringSplitsForExport,
 	toCsv,
 } from '@/core/reads/export';
-import { asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 function getExportFormat(req: NextRequest): 'json' | 'csv' | null {
@@ -49,7 +50,7 @@ const EXPORT_LIMIT_MAX = 100_000;
 /**
  * Optional `limit`/`offset` params so a huge WG can page through the dump
  * instead of materialising every row in one response. Without params the
- * historic full export is preserved byte for byte.
+ * sections are returned without a row cap, as before.
  * Returns `null` when a param is present but unusable; `explicit` tells the
  * response whether to echo a `pagination` block.
  */
@@ -69,6 +70,7 @@ function parseExportPage(req: NextRequest): { page: ExportPage; explicit: boolea
 const ALL_EXPORT_SECTIONS: ExportSectionKey[] = [
 	'members',
 	'expenses',
+	'expensePayments',
 	'recurringExpenses',
 	'shoppingItems',
 	'chores',
@@ -225,9 +227,38 @@ function mapExpenseRows(
 		amountCents: expense.amountCents,
 		currency: expense.currency,
 		paidBy: memberById.get(expense.paidByMemberId) ?? '',
+		paidByMemberId: expense.paidByMemberId,
 		imageUrl: expense.imageUrl ?? '',
 		occurredAt: expense.occurredAt.toISOString(),
 		splits: formatExpenseSplitsForExport(splitsByExpense.get(expense.id) ?? [], memberById),
+	}));
+}
+
+async function fetchExpensePaymentRows(wgId: string, page: ExportPage) {
+	return db
+		.select({
+			id: expensePayments.id,
+			fromMemberId: expensePayments.fromMemberId,
+			toMemberId: expensePayments.toMemberId,
+			amountCents: expensePayments.amountCents,
+			currency: expensePayments.currency,
+			completedAt: expensePayments.completedAt,
+		})
+		.from(expensePayments)
+		.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed')))
+		.orderBy(desc(expensePayments.completedAt), desc(expensePayments.id))
+		.limit(page.limit)
+		.offset(page.offset);
+}
+
+function mapExpensePaymentRows(paymentRows: Awaited<ReturnType<typeof fetchExpensePaymentRows>>) {
+	return paymentRows.map((payment) => ({
+		id: payment.id,
+		fromMemberId: payment.fromMemberId,
+		toMemberId: payment.toMemberId,
+		amountCents: payment.amountCents,
+		currency: payment.currency,
+		completedAt: payment.completedAt?.toISOString() ?? null,
 	}));
 }
 
@@ -436,6 +467,7 @@ export async function GET(
 				createdAt: now,
 			})),
 			expenses: [],
+			expensePayments: [],
 			recurringExpenses: [],
 			shoppingItems: [],
 			chores: [],
@@ -499,6 +531,9 @@ export async function GET(
 						expenseRows.map((expense) => expense.id),
 					);
 					return mapExpenseRows(expenseRows, memberById, splitsByExpense);
+				}
+				if (section === 'expensePayments') {
+					return mapExpensePaymentRows(await fetchExpensePaymentRows(wg.id, page));
 				}
 				if (section === 'recurringExpenses') {
 					const [memberById, recurringRows] = await Promise.all([
@@ -584,6 +619,8 @@ export async function GET(
 				const splitsByExpense = await loadSplitsByExpense(expenseRows.map((expense) => expense.id));
 				return mapExpenseRows(expenseRows, memberById, splitsByExpense);
 			},
+			expensePayments: async () =>
+				mapExpensePaymentRows(await fetchExpensePaymentRows(wg.id, page)),
 			recurringExpenses: async () => {
 				requireDirectory();
 				return mapRecurringRows(await fetchRecurringRows(wg.id, page), memberById);
@@ -627,7 +664,7 @@ export async function GET(
 			else failedSections.push(result.section);
 		}
 
-		// A downloaded backup must contain every requested section.
+		// An export must contain every requested section.
 		if (failedSections.length > 0) {
 			return serverError(null, 'export_incomplete');
 		}
@@ -636,6 +673,7 @@ export async function GET(
 			wg: { name: wg.name, shareCode: wg.shareCode },
 			members: rowsBySection.get('members') ?? [],
 			expenses: rowsBySection.get('expenses') ?? [],
+			expensePayments: rowsBySection.get('expensePayments') ?? [],
 			recurringExpenses: rowsBySection.get('recurringExpenses') ?? [],
 			shoppingItems: rowsBySection.get('shoppingItems') ?? [],
 			chores: rowsBySection.get('chores') ?? [],
