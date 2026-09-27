@@ -22,6 +22,18 @@ function load(relativePath, mocks, env, logs = []) {
 	return module.exports;
 }
 
+function loadObservability(env, logs) {
+	return load(
+		'core/infra/observability.ts',
+		{
+			'./sentry': { captureSentryException() {}, logSentryApiError() {} },
+			'./sentry-privacy': load('core/infra/sentry-privacy.ts', {}, env, logs),
+		},
+		env,
+		logs,
+	);
+}
+
 test('transaction pools follow effective URL changes without retrying unknown commits', async () => {
 	const env = { POSTGRES_URL: 'postgres://localhost/database_a' };
 	const pools = [];
@@ -109,7 +121,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 				},
 			},
 			'@/core/guards/api-auth': {},
-			'@/core/infra/observability': load('core/infra/observability.ts', {}, env, logs),
+			'@/core/infra/observability': loadObservability(env, logs),
 			'@/core/rate-limit': { createConfiguredRedis: () => null },
 			'drizzle-orm': { lte: () => {} },
 		},
@@ -129,7 +141,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 			},
 			'@/core/idempotency': idempotency,
 			'@/core/infra/cron-auth': { verifyCronSecret: () => true },
-			'@/core/infra/observability': load('core/infra/observability.ts', {}, env, logs),
+			'@/core/infra/observability': loadObservability(env, logs),
 			'next/server': { NextResponse: Response },
 		},
 		env,

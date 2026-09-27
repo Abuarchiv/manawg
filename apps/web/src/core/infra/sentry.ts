@@ -11,6 +11,9 @@ export function initializeSentry(): void {
 			dsn,
 			environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT ?? process.env.NODE_ENV,
 			release: process.env.NEXT_PUBLIC_SENTRY_RELEASE,
+			dataCollection: { userInfo: false },
+			integrations: (integrations) =>
+				integrations.filter((integration) => integration.name !== 'BrowserSession'),
 			beforeSend: sanitizeSentryEvent,
 			beforeBreadcrumb: sanitizeSentryBreadcrumb,
 		});
