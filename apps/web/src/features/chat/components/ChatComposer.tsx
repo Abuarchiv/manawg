@@ -268,7 +268,7 @@ export function ChatComposer({
 			/>
 			<div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-4 py-2">
 				{/* Pillenform mit rundem Senden-Knopf wie in gängigen Messengern. */}
-				<InputGroup className="h-auto items-end rounded-3xl bg-muted/60 dark:bg-muted/40">
+				<InputGroup className="h-auto items-end rounded-3xl">
 					<InputGroupTextarea
 						ref={textareaRef}
 						value={draft}

@@ -461,13 +461,12 @@ export function ImportWizard() {
 
 	return (
 		<div className="flex flex-col gap-5">
-			<div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+			{/* Kopf wie auf den anderen Unterseiten: Zurück-Pfeil links neben dem Titel. */}
+			<header className="flex min-w-0 items-center gap-3">
 				<Link
 					href={returnHref}
-					className={buttonVariants({
-						variant: 'ghost',
-						className: 'min-h-11 min-w-0 max-w-full shrink whitespace-normal',
-					})}
+					aria-label="Zurück zu Ausgaben"
+					className={buttonVariants({ variant: 'ghost', size: 'icon' })}
 					aria-disabled={busy || ocrRunning || undefined}
 					tabIndex={busy || ocrRunning ? -1 : undefined}
 					onClick={(event) => {
@@ -481,13 +480,17 @@ export function ImportWizard() {
 						}
 					}}
 				>
-					<ArrowLeft data-icon="inline-start" />
-					Ausgaben
+					<ArrowLeft aria-hidden />
 				</Link>
-				<span className="text-[12px] text-muted-foreground tabular-nums">
-					Schritt {stepNumber} von 5
-				</span>
-			</div>
+				<div className="min-w-0 flex-1">
+					<h1 className="font-heading text-lg font-semibold tracking-tight">
+						Ausgaben importieren
+					</h1>
+					<p className="mt-0.5 text-[12px] text-muted-foreground tabular-nums">
+						Aus Splitwise oder Splid · Schritt {stepNumber} von 5
+					</p>
+				</div>
+			</header>
 			<Progress value={stepNumber} max={5} aria-label={`Import: Schritt ${stepNumber} von 5`} />
 			{step === 'source' && (
 				<section className="flex flex-col gap-3">

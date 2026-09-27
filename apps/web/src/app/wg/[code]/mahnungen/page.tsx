@@ -367,6 +367,7 @@ export default function ErinnerungenPage() {
 									amountCents={row.amountCents}
 									currency={row.currency}
 									oldestDebtAgeDays={row.oldestAge}
+									currentMemberId={identity.memberId}
 									action={row === primaryReminder ? null : reminderButton(row)}
 								/>
 							);

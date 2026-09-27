@@ -26,7 +26,6 @@ import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { type AbsenceInput, formatAbsenceRange } from '@/features/chores/absence';
 import type { ChoreMember } from '@/features/chores/components/chore-types';
 import { cn } from '@/shared/lib/cn';
-import { Plus, X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -93,14 +92,13 @@ export function AbsencePanel({
 				<CardAction>
 					<Button
 						variant="outline"
-						size="icon"
-						className="size-9"
+						size="sm"
 						onClick={() => setFormOpen((open) => !open)}
 						aria-label={formOpen ? 'Abwesenheitsformular schließen' : 'Abwesenheit eintragen'}
 						aria-expanded={formOpen}
 						aria-controls="absence-form"
 					>
-						{formOpen ? <X aria-hidden /> : <Plus aria-hidden />}
+						{formOpen ? 'Schließen' : 'Eintragen'}
 					</Button>
 				</CardAction>
 			</CardHeader>

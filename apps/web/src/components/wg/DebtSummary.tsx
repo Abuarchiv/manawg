@@ -292,7 +292,7 @@ function DebtRow({
 						/>
 					)}
 					{canPayWithPayPal && (
-						<Collapsible className="col-span-full">
+						<Collapsible className="basis-full">
 							<CollapsibleTrigger
 								render={<Button variant="outline" className="w-full justify-between" />}
 							>

@@ -92,43 +92,45 @@ export const ExpenseRow = memo(function ExpenseRow({
 							}
 						>
 							<MemberAvatar name={memberName(expense.paidByMemberId)} size={28} />
-							{/* Wird es eng (320 px, große Schrift), rutscht der Betrag unter den Text. */}
-							<span className="flex min-w-0 flex-1 flex-wrap gap-x-3 gap-y-1">
-								<span className="flex min-w-0 flex-[1_1_7rem] flex-col gap-0.5">
-									<span className="sr-only">Details öffnen:</span>
-									<span className="min-w-0 break-words text-[14px] font-medium leading-snug">
-										{expense.description}
-									</span>
-									<span className="text-[12px] leading-normal font-normal text-muted-foreground">
-										{isPayer ? 'Du zahltest' : `${memberName(expense.paidByMemberId)} zahlte`}{' '}
-										<span className="whitespace-nowrap tabular-nums">
-											{formatEuroCents(expense.amountCents, expense.currency)}
+							{/* Betrag rechts neben dem Text; erst wenn die Zeile zu schmal wird (große Schrift), darunter. */}
+							<span className="@container flex min-w-0 flex-1">
+								<span className="flex min-w-0 flex-1 flex-col gap-1 @[10rem]:flex-row @[10rem]:gap-3">
+									<span className="flex min-w-0 flex-1 flex-col gap-0.5">
+										<span className="sr-only">Details öffnen:</span>
+										<span className="min-w-0 hyphens-auto text-[14px] font-medium leading-snug [overflow-wrap:break-word]">
+											{expense.description}
 										</span>
-										{expense.imageUrl && (
-											<>
-												{' · '}
-												<Receipt aria-hidden className="inline size-3.5 align-[-2px]" />
-												<span className="sr-only">Beleg</span>
-											</>
-										)}
+										<span className="text-[12px] leading-normal font-normal text-muted-foreground">
+											{isPayer ? 'Du zahltest' : `${memberName(expense.paidByMemberId)} zahlte`}{' '}
+											<span className="whitespace-nowrap tabular-nums">
+												{formatEuroCents(expense.amountCents, expense.currency)}
+											</span>
+											{expense.imageUrl && (
+												<>
+													{' · '}
+													<Receipt aria-hidden className="inline size-3.5 align-[-2px]" />
+													<span className="sr-only">Beleg</span>
+												</>
+											)}
+										</span>
 									</span>
-								</span>
-								{/* Wie Splitwise: rechts steht, was die Ausgabe für dich bedeutet. */}
-								<span className="ml-auto flex shrink-0 flex-col items-end gap-0.5 text-right">
-									<span
-										className={cn(
-											'whitespace-nowrap font-mono text-[14px] leading-snug tabular-nums',
-											impact.kind === 'lent'
-												? 'text-settled'
-												: impact.kind === 'owe'
-													? 'text-destructive'
-													: 'text-muted-foreground',
-										)}
-									>
-										{formatEuroCents(impact.cents, expense.currency)}
-									</span>
-									<span className="whitespace-nowrap text-[11px] font-normal text-muted-foreground">
-										{IMPACT_LABEL[impact.kind]}
+									{/* Wie Splitwise: rechts steht, was die Ausgabe für dich bedeutet. */}
+									<span className="flex shrink-0 flex-col gap-0.5 @[10rem]:items-end @[10rem]:text-right">
+										<span
+											className={cn(
+												'whitespace-nowrap font-mono text-[14px] leading-snug tabular-nums',
+												impact.kind === 'lent'
+													? 'text-settled'
+													: impact.kind === 'owe'
+														? 'text-destructive'
+														: 'text-muted-foreground',
+											)}
+										>
+											{formatEuroCents(impact.cents, expense.currency)}
+										</span>
+										<span className="whitespace-nowrap text-[11px] font-normal text-muted-foreground">
+											{IMPACT_LABEL[impact.kind]}
+										</span>
 									</span>
 								</span>
 							</span>
@@ -137,7 +139,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 					<ItemActions>
 						<DropdownMenu>
 							<DropdownMenuTrigger
-								render={<Button variant="ghost" size="icon" className="size-10" />}
+								render={<Button variant="ghost" size="icon" className="size-8" />}
 								aria-label={`Aktionen für ${expense.description}`}
 							>
 								<MoreHorizontal />

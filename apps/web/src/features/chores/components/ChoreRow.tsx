@@ -198,18 +198,21 @@ export const ChoreRow = memo(function ChoreRow({
 									</>
 								)}
 							</dl>
-							<Button
-								variant="outline"
-								className="min-h-11 shrink-0"
-								disabled={busy}
-								onClick={() => {
-									setActionsOpen(false);
-									onTakeOver(chore);
-								}}
-							>
-								<Hand data-icon="inline-start" aria-hidden />
-								Ich übernehme
-							</Button>
+							{/* Bei der eigenen Aufgabe gäbe es nichts zu übernehmen. */}
+							{!isMine && (
+								<Button
+									variant="outline"
+									className="min-h-11 shrink-0"
+									disabled={busy}
+									onClick={() => {
+										setActionsOpen(false);
+										onTakeOver(chore);
+									}}
+								>
+									<Hand data-icon="inline-start" aria-hidden />
+									Ich übernehme
+								</Button>
+							)}
 							<Button
 								variant="outline"
 								className="min-h-11 shrink-0"

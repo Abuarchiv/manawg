@@ -94,10 +94,17 @@ test('keeps chore action buttons readable and reachable at phone widths and enla
 }) => {
 	test.setTimeout(60_000);
 	const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+	const flatmate: FixtureMember = {
+		id: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
+		name: 'Mina',
+		color: null,
+		active: true,
+	};
 	const title = 'Spülmaschinenreinigung mit Entkalkung und gründlicher Küchenhygiene';
-	const rows = [{ ...chore('actions-zoom', viewer.id), title }];
+	// Übernehmen gibt es nur bei Aufgaben anderer.
+	const rows = [{ ...chore('actions-zoom', flatmate.id), title }];
 
-	await openPutzen(page, [viewer], rows, []);
+	await openPutzen(page, [viewer, flatmate], rows, []);
 
 	const row = page.locator('#chore-actions-zoom');
 	const opener = row.getByRole('button', { name: `Aufgabenaktionen: ${title}` });
