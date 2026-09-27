@@ -351,7 +351,7 @@ export function ExpenseFormSection({
 									>
 										<ToggleGroupItem
 											value="equal"
-											className="min-h-11 flex-1"
+											className="flex-1"
 											disabled={hasLockedHistoricalShare}
 											aria-label="Aufteilung: Gleichmäßig"
 											aria-describedby={
@@ -362,7 +362,7 @@ export function ExpenseFormSection({
 										</ToggleGroupItem>
 										<ToggleGroupItem
 											value="manual"
-											className="min-h-11 flex-1"
+											className="flex-1"
 											aria-label="Aufteilung: Manuell"
 										>
 											Manuell

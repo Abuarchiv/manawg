@@ -54,7 +54,6 @@ interface ExpenseRowProps {
 	onToggleSettle: (expenseId: string, split: ExpenseSplit) => void;
 	isPending: (id: string) => boolean;
 	memberName: (id: string) => string;
-	memberColor: (id: string) => string | null;
 	currentMemberId: string;
 	highlighted: boolean;
 }
@@ -88,7 +87,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 							render={
 								<Button
 									variant="ghost"
-									className="h-auto w-full items-start justify-start gap-2.5 whitespace-normal px-0 py-1 text-left hover:bg-transparent"
+									className="h-auto w-full items-start justify-start gap-2.5 whitespace-normal px-0 py-1 text-left hover:bg-transparent aria-expanded:bg-transparent"
 								/>
 							}
 						>
@@ -196,8 +195,8 @@ export const ExpenseRow = memo(function ExpenseRow({
 								const settled = split.settledAt !== null;
 								const ownShare = split.debtorMemberId === expense.paidByMemberId;
 								return (
-									<Item key={split.id} variant="muted" size="xs">
-										<ItemContent className="min-w-0">
+									<Item key={split.id} variant="muted" size="xs" className="flex-wrap">
+										<ItemContent className="min-w-0 flex-[1_1_8rem]">
 											<ItemTitle className="line-clamp-none break-words">
 												{who(split.debtorMemberId)} ·{' '}
 												<span className="font-mono tabular-nums">
@@ -219,6 +218,8 @@ export const ExpenseRow = memo(function ExpenseRow({
 										{!ownShare && split.amountCents > 0 && (
 											<Button
 												variant={settled ? 'secondary' : 'outline'}
+												size="sm"
+												className="ml-auto"
 												onClick={() => setSettleCandidate(split)}
 												disabled={isPending(split.id)}
 												aria-label={`${settled ? 'Wieder öffnen' : 'Als bezahlt eintragen'}: ${memberName(split.debtorMemberId)}`}

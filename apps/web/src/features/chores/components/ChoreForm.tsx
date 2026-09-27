@@ -115,10 +115,10 @@ export function ChoreForm({
 									aria-labelledby="chore-rhythm-label"
 									className="w-full"
 								>
-									<ToggleGroupItem value="days" disabled={pending} className="min-h-11 flex-1">
+									<ToggleGroupItem value="days" disabled={pending} className="flex-1">
 										Tage
 									</ToggleGroupItem>
-									<ToggleGroupItem value="months" disabled={pending} className="min-h-11 flex-1">
+									<ToggleGroupItem value="months" disabled={pending} className="flex-1">
 										Monate
 									</ToggleGroupItem>
 								</ToggleGroup>

@@ -534,10 +534,6 @@ export default function AusgabenPage() {
 		return members.find((m) => m.id === id)?.name ?? '?';
 	}
 
-	function memberColor(id: string): string | null {
-		return members.find((m) => m.id === id)?.color ?? null;
-	}
-
 	function memberPayPalMerchantId(id: string): string | null {
 		return members.find((m) => m.id === id)?.paypalMerchantId ?? null;
 	}
@@ -1522,7 +1518,6 @@ export default function AusgabenPage() {
 						shareCode={wg.shareCode}
 						currentMemberId={identity.memberId}
 						memberToken={identity.memberToken}
-						memberColor={memberColor}
 						memberPayPalMerchantId={memberPayPalMerchantId}
 						onSettled={(message) => {
 							if (message) setActionSuccess(message);
@@ -1587,7 +1582,6 @@ export default function AusgabenPage() {
 											onToggleSettle={toggleSettle}
 											isPending={isPending}
 											memberName={memberName}
-											memberColor={memberColor}
 											currentMemberId={identity.memberId}
 											highlighted={highlightedId === expense.id}
 										/>

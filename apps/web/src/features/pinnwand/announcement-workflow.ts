@@ -55,7 +55,7 @@ export function summarizeAnnouncementReactions(
 }
 
 /** Infos und Entscheidungen brauchen keine Klärung; ohne Pin rutschen sie nach einer Woche ohne Antwort ins Archiv. */
-export const ANNOUNCEMENT_FADE_MS = 7 * 24 * 60 * 60 * 1000;
+const ANNOUNCEMENT_FADE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function isAnnouncementArchived(
 	item: {

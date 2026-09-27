@@ -430,7 +430,6 @@ interface DebtSummaryProps {
 	shareCode: string;
 	currentMemberId: string;
 	memberToken?: string | undefined;
-	memberColor: (id: string) => string | null;
 	memberPayPalMerchantId?: (id: string) => string | null;
 	onSettled: (message?: string) => void;
 }

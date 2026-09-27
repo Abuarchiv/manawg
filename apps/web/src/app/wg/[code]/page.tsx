@@ -477,7 +477,7 @@ export default function WgHomePage() {
 												</Item>
 											)}
 											{activityItems.length > 0 ? (
-												<ActivityFeed items={activityItems} compact />
+												<ActivityFeed items={activityItems} />
 											) : !latestAnnouncement || latestIsPending ? (
 												<p className="text-sm text-muted-foreground">Noch keine neuen Einträge.</p>
 											) : null}

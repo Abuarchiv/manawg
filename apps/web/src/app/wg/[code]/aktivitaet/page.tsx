@@ -299,7 +299,7 @@ export default function AktivitaetPage() {
 										</Marker>
 										{/* Eine umrandete Liste pro Tag statt einer Karte pro Eintrag. */}
 										<div className="rounded-xl border px-3">
-											<ActivityFeed items={group.items} compact />
+											<ActivityFeed items={group.items} />
 										</div>
 									</div>
 								))}

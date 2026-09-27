@@ -383,10 +383,10 @@ export function AboForm({
 						className="w-full"
 						aria-label="Abo-Aufteilung"
 					>
-						<ToggleGroupItem value="equal" className="min-h-11 flex-1">
+						<ToggleGroupItem value="equal" className="flex-1">
 							Gleichmäßig
 						</ToggleGroupItem>
-						<ToggleGroupItem value="manual" className="min-h-11 flex-1">
+						<ToggleGroupItem value="manual" className="flex-1">
 							Manuell
 						</ToggleGroupItem>
 					</ToggleGroup>

@@ -65,7 +65,7 @@ export function AbosList({
 					aria-label="Abos filtern"
 				>
 					{FILTER_OPTIONS.map((option) => (
-						<ToggleGroupItem key={option.value} value={option.value} className="min-h-11 flex-1">
+						<ToggleGroupItem key={option.value} value={option.value} className="flex-1">
 							{option.label}
 						</ToggleGroupItem>
 					))}
