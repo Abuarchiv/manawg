@@ -31,6 +31,14 @@ PayPal entscheidet, welche Konten und Produkte im jeweiligen Land zugelassen sin
 
 Am 27.09.2026 wurden bei Vercel die Namen der Umgebungsvariablen geprüft: Production und Preview enthielten keine `PAYPAL_*` oder `NEXT_PUBLIC_PAYPAL_*`-Konfiguration. Production hatte `NEXT_PUBLIC_APP_URL`, Preview nicht. Lokale Hauptcheckout-Umgebungsdateien enthielten ebenfalls keine der geprüften PayPal-Zugangsvariablen. Werte wurden nicht abgerufen. Ohne diese Einrichtung kann kein echter Provider-Login getestet oder als funktionierend bestätigt werden.
 
+## Betreiber-Zugang am 28.09.2026
+
+Der bestehende Developer-Zugang kann inzwischen die Sandbox-App-Liste und die vorhandene `Default Application` öffnen. Eine erneute persönliche Anmeldung ist deshalb aktuell nicht der Blocker. Es wurden keine App-Einstellungen gespeichert und keine Schlüsselwerte ausgegeben.
+
+Im geprüften Erstellungsformular ist der Typ `Platform` verfügbar. PayPal gibt dafür den Namen `Platform Partner App` fest vor und erzeugt automatisch ein neues Sandbox-Geschäftskonto. Deutschland steht in der dort angebotenen Regionenliste nicht zur Auswahl. Als konkreter, noch ungesendeter Entwurf wurde `United States` gewählt; dessen späterer Sandbox-Nachweis würde keine Deutschland-/Live-Freigabe ersetzen.
+
+`Create App` erzeugt neue API-Zugangsdaten und bestätigt laut Formular das [PayPal Developer Agreement für US-Konten](https://www.paypal.com/us/webapps/mpp/ua/xdeveloper-full). Diese neue Zugangs-/Vertragsaktion benötigt eine ausdrückliche Betreiberfreigabe. Der Button wurde nicht betätigt. Erst danach lassen sich die tatsächliche Partner-API-Freigabe und ein isolierter Sandbox-Ablauf prüfen; die vorhandene Standard-App wird nicht stillschweigend als geeignete Platform-App behandelt.
+
 ## Offizielle Quellen
 
 - [Empfänger vor einer Zahlung verbinden](https://developer.paypal.com/platforms/seller-onboarding/before-payment)
