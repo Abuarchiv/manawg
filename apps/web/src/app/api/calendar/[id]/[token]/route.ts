@@ -5,6 +5,7 @@ import { isUuid } from '@/core/guards/api-auth';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgReadLimiter } from '@/core/rate-limit';
+import { startOfBerlinDay } from '@/core/utils/berlin-day';
 import { MS_PER_DAY } from '@/core/utils/time';
 import {
 	isCalendarFeedToken,
@@ -83,7 +84,7 @@ export async function GET(
 		});
 		if (!events) return notFound('calendar_feed_not_found');
 
-		const from = new Date();
+		const from = startOfBerlinDay(new Date());
 		const to = new Date(from.getTime() + FEED_HORIZON_DAYS * MS_PER_DAY);
 		const occurrences: CalendarFeedOccurrence[] = events.flatMap((row) =>
 			expandRecurrence(eventToInput(row), from, to),

@@ -44,8 +44,11 @@ const {
 	collectReminderOccurrences,
 	EVENT_REMINDER_BUDGET,
 	processReminderBatches,
+	reminderCopyForOccurrence,
 	startsInReminderWindow,
 } = require('../src/features/events/event-reminder-dispatch.ts');
+const { startOfBerlinDay } = require('../src/core/utils/berlin-day.ts');
+const { computeTomorrowUtcWindow } = require('../src/features/events/event-reminder-window.ts');
 
 function eventCandidate(id, startsAt, recurrence, { allDay = false, endsAt = null } = {}) {
 	return {
@@ -712,7 +715,7 @@ test('reminder batches claim only the current batch, limit concurrency, and rele
 	let firstBatchDone = 0;
 	let claimedFutureEarly = false;
 	const released = [];
-	const sent = await processReminderBatches(
+	const result = await processReminderBatches(
 		Array.from({ length: 23 }, (_, index) => index),
 		async (index) => {
 			claims += 1;
@@ -736,7 +739,7 @@ test('reminder batches claim only the current batch, limit concurrency, and rele
 	assert.equal(active, 0);
 	assert.equal(claims, 23);
 	assert.equal(claimedFutureEarly, false);
-	assert.equal(sent, 21);
+	assert.deepEqual(result, { sent: 21, failed: 1 });
 	assert.deepEqual(released, [11, 20]);
 });
 
@@ -762,4 +765,69 @@ test('reminder batch releases earlier claims when a later claim fails', async ()
 	);
 	assert.equal(sends, 0);
 	assert.deepEqual(released, [0]);
+});
+
+test('member occurrence partial failure retries only the failed member', async () => {
+	const items = [
+		{ eventId: 'event-1', occurrenceStartsAt: '2026-10-26T18:00:00.000Z', memberId: 'A' },
+		{ eventId: 'event-1', occurrenceStartsAt: '2026-10-26T18:00:00.000Z', memberId: 'B' },
+	];
+	const claims = new Set();
+	const attempts = new Map();
+	const dispatches = [];
+	const run = () =>
+		processReminderBatches(
+			items,
+			async ({ memberId }) => {
+				if (claims.has(memberId)) return false;
+				claims.add(memberId);
+				return true;
+			},
+			async ({ memberId }) => {
+				dispatches.push(memberId);
+				const attempt = attempts.get(memberId) ?? 0;
+				attempts.set(memberId, attempt + 1);
+				return memberId === 'B' && attempt === 0
+					? { sent: 1, failures: ['one B device failed'] }
+					: { sent: 1, failures: [] };
+			},
+			async ({ memberId }) => claims.delete(memberId),
+		);
+
+	assert.deepEqual(await run(), { sent: 1, failed: 1 });
+	assert.deepEqual([...claims], ['A']);
+	assert.deepEqual(await run(), { sent: 1, failed: 0 });
+	assert.deepEqual(dispatches, ['A', 'B', 'B']);
+	assert.deepEqual([...claims], ['A', 'B']);
+});
+
+test('today reminder selection keeps current all-day spans and excludes stale events', () => {
+	const now = new Date('2026-03-29T10:00:00.000Z');
+	const todayStart = startOfBerlinDay(now);
+	const { start: tomorrowStart, end: tomorrowEnd } = computeTomorrowUtcWindow(now);
+	const occurrence = (startsAt, endsAt, allDay = false) => ({ startsAt, endsAt, allDay });
+	const classify = (value) =>
+		reminderCopyForOccurrence(value, now, todayStart, tomorrowStart, tomorrowEnd);
+
+	assert.equal(
+		classify(occurrence('2026-03-29T11:00:00.000Z', '2026-03-29T12:00:00.000Z')),
+		'today',
+	);
+	assert.equal(classify(occurrence('2026-03-29T08:00:00.000Z', '2026-03-29T09:00:00.000Z')), null);
+	assert.equal(
+		classify(occurrence('2026-03-28T22:00:00.000Z', '2026-03-29T11:00:00.000Z')),
+		'today',
+	);
+	assert.equal(
+		classify(occurrence('2026-03-27T23:00:00.000Z', '2026-03-28T23:00:00.000Z', true)),
+		'today',
+	);
+	assert.equal(
+		classify(occurrence('2026-03-26T23:00:00.000Z', '2026-03-27T23:00:00.000Z', true)),
+		null,
+	);
+	assert.equal(
+		classify(occurrence('2026-03-29T22:30:00.000Z', '2026-03-29T23:30:00.000Z')),
+		'tomorrow',
+	);
 });
