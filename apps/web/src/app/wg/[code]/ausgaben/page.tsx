@@ -1,22 +1,14 @@
 'use client';
 import { useToast } from '@/components/ui/Toast';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import {
-	Empty,
-	EmptyContent,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyTitle,
-} from '@/components/ui/empty';
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { DebtSummary } from '@/components/wg/DebtSummary';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
@@ -45,7 +37,7 @@ import {
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { parseEuroAmount } from '@/core/utils/amount';
-import { CENTS_PER_EURO, formatEuroCents } from '@/core/utils/money';
+import { CENTS_PER_EURO } from '@/core/utils/money';
 import { formatWeekLabel, parseTimestamp, parseValidDate, startOfWeek } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { AusgabenHeader } from '@/features/expenses/components/ausgaben/AusgabenHeader';
@@ -90,8 +82,9 @@ import {
 import { addMonths } from '@/features/expenses/recurring-expenses';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
-import { ChevronDown, Plus } from 'lucide-react';
+import { FileInput, Plus } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -539,10 +532,6 @@ export default function AusgabenPage() {
 
 	function memberName(id: string): string {
 		return members.find((m) => m.id === id)?.name ?? '?';
-	}
-
-	function memberColor(id: string): string | null {
-		return members.find((m) => m.id === id)?.color ?? null;
 	}
 
 	function memberPayPalMerchantId(id: string): string | null {
@@ -1421,11 +1410,6 @@ export default function AusgabenPage() {
 			? buildSplits(Math.round(previewAmount * CENTS_PER_EURO))
 			: null;
 
-	const personalBalances = memberBalances.filter((member) => member.memberId === identity.memberId);
-	const primaryPersonalBalance =
-		personalBalances.find((member) => member.currency === 'EUR') ?? personalBalances[0] ?? null;
-	const personalBalance = primaryPersonalBalance?.balanceCents ?? 0;
-	const personalBalanceCurrency = primaryPersonalBalance?.currency ?? 'EUR';
 	const formCurrency = editingExpense
 		? (expenses.find((expense) => expense.id === editingExpense.id)?.currency ??
 			editingExpense.currency ??
@@ -1435,19 +1419,7 @@ export default function AusgabenPage() {
 	return (
 		<div data-finance-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
 			<SubNav />
-			<AusgabenHeader
-				expenseCount={expenses.length}
-				initialLoading={initialLoading}
-				showForm={showForm}
-				wgBaseHref={wgBaseHref}
-				onToggleForm={() => {
-					if (showForm) setShowForm(false);
-					else {
-						haptic('light');
-						setShowForm(true);
-					}
-				}}
-			/>
+			<AusgabenHeader expenseCount={expenses.length} initialLoading={initialLoading} />
 			{showForm && (
 				<ExpenseFormSection
 					title={
@@ -1537,121 +1509,26 @@ export default function AusgabenPage() {
 				/>
 			)}
 			{!showSkeleton &&
-				(expenses.length > 0 || directDebts.length > 0 || memberBalances.length > 0) && (
-					<div className="flex flex-col gap-4">
-						<DebtSummary
-							debts={directDebts}
-							summary={settlementSummary}
-							balances={memberBalances}
-							expenses={expenses}
-							shareCode={wg.shareCode}
-							currentMemberId={identity.memberId}
-							memberToken={identity.memberToken}
-							memberColor={memberColor}
-							memberPayPalMerchantId={memberPayPalMerchantId}
-							onSettled={(message) => {
-								if (message) setActionSuccess(message);
-								void load(false);
-							}}
-						/>
-						{expenses.length > 0 && (
-							<Card>
-								<CardHeader>
-									<CardDescription>Dein Saldo</CardDescription>
-									<CardTitle>
-										{personalBalances.length > 1 ? (
-											<>
-												Offene Salden{' '}
-												<span className="font-mono tabular-nums">
-													{personalBalances
-														.filter((balance) => balance.balanceCents !== 0)
-														.map((balance) =>
-															formatEuroCents(balance.balanceCents, balance.currency, {
-																signed: true,
-															}),
-														)
-														.join(' · ') || formatEuroCents(0, 'EUR', { signed: true })}
-												</span>
-											</>
-										) : personalBalance > 0 ? (
-											<>
-												Du bekommst{' '}
-												<span className="font-mono tabular-nums text-settled">
-													{formatEuroCents(Math.abs(personalBalance), personalBalanceCurrency)}
-												</span>{' '}
-												zurück
-											</>
-										) : personalBalance < 0 ? (
-											<>
-												Du schuldest noch{' '}
-												<span className="font-mono tabular-nums text-destructive">
-													{formatEuroCents(Math.abs(personalBalance), personalBalanceCurrency)}
-												</span>
-											</>
-										) : (
-											<>
-												Du bist ausgeglichen{' '}
-												<span className="font-mono tabular-nums text-foreground">
-													{formatEuroCents(0, personalBalanceCurrency, { signed: true })}
-												</span>
-											</>
-										)}
-									</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<Collapsible>
-										<CollapsibleTrigger
-											render={<Button variant="ghost" className="w-full justify-between" />}
-										>
-											Saldo pro Mitglied
-											<ChevronDown data-icon="inline-end" />
-										</CollapsibleTrigger>
-										<CollapsibleContent>
-											<ItemGroup className="pt-2">
-												{memberBalances.map((member) => (
-													<Item
-														key={`${member.currency}-${member.memberId}`}
-														variant="muted"
-														size="xs"
-													>
-														<ItemContent className="min-w-0">
-															<ItemTitle className="line-clamp-none break-words">
-																{member.memberName}
-																{member.memberId === identity.memberId ? ' (du)' : ''}
-															</ItemTitle>
-															<ItemDescription>
-																{member.balanceCents > 0
-																	? 'Bekommt zurück'
-																	: member.balanceCents < 0
-																		? 'Schuldet'
-																		: 'Ausgeglichen'}
-															</ItemDescription>
-														</ItemContent>
-														<span
-															className={cn(
-																'shrink-0 font-mono tabular-nums',
-																member.balanceCents > 0
-																	? 'text-settled'
-																	: member.balanceCents < 0
-																		? 'text-destructive'
-																		: 'text-foreground',
-															)}
-														>
-															{formatEuroCents(member.balanceCents, member.currency, {
-																signed: true,
-															})}
-														</span>
-													</Item>
-												))}
-											</ItemGroup>
-										</CollapsibleContent>
-									</Collapsible>
-								</CardContent>
-							</Card>
-						)}
-					</div>
+				(expenses.length > 0 ||
+					directDebts.length > 0 ||
+					memberBalances.some((member) => member.balanceCents !== 0)) && (
+					<DebtSummary
+						debts={directDebts}
+						summary={settlementSummary}
+						balances={memberBalances}
+						expenses={expenses}
+						shareCode={wg.shareCode}
+						currentMemberId={identity.memberId}
+						memberToken={identity.memberToken}
+						memberPayPalMerchantId={memberPayPalMerchantId}
+						onSettled={(message) => {
+							if (message) setActionSuccess(message);
+							void load(false);
+						}}
+					/>
 				)}
-			{(recurringExpenses.length > 0 || recurringFilterActive) && (
+			{/* Fixkosten leben im eigenen Tab; hier nur, wenn ein Link gezielt eine Vorlage öffnet. */}
+			{(recurringFilterActive || (recurringId && recurringExpenses.length > 0)) && (
 				<RecurringExpensesSection
 					recurringExpenses={recurringExpenses}
 					recurringFilterActive={recurringFilterActive}
@@ -1671,9 +1548,7 @@ export default function AusgabenPage() {
 				/>
 			)}
 			<section className="flex flex-col gap-3" aria-label="Eingetragene Ausgaben">
-				{expenses.length > 0 && (
-					<h2 className="text-sm font-medium text-muted-foreground">Verlauf</h2>
-				)}
+				{expenses.length > 0 && <h2 className="sr-only">Verlauf</h2>}
 				{showSkeleton ? (
 					<ExpensesSkeleton />
 				) : loadError && expenses.length === 0 ? (
@@ -1687,23 +1562,17 @@ export default function AusgabenPage() {
 					<Empty>
 						<EmptyHeader>
 							<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
-							<EmptyDescription>Erfasse eure erste gemeinsame Ausgabe.</EmptyDescription>
+							<EmptyDescription>
+								Erfasse eure erste gemeinsame Ausgabe über das Plus unten rechts.
+							</EmptyDescription>
 						</EmptyHeader>
-						{!showForm && (
-							<EmptyContent>
-								<Button type="button" onClick={() => setShowForm(true)}>
-									<Plus data-icon="inline-start" aria-hidden />
-									Ausgabe erfassen
-								</Button>
-							</EmptyContent>
-						)}
 					</Empty>
 				) : (
-					<div className="flex flex-col gap-5">
+					<div className="flex flex-col gap-4">
 						{expenseWeeks.map((week) => (
-							<section key={week.label} aria-label={week.label} className="flex flex-col gap-2">
-								<h3 className="text-xs font-medium text-muted-foreground">{week.label}</h3>
-								<ul className="flex flex-col gap-3">
+							<section key={week.label} aria-label={week.label} className="flex flex-col gap-1.5">
+								<h3 className="px-1 text-[12px] font-medium text-muted-foreground">{week.label}</h3>
+								<ul className="divide-y overflow-hidden rounded-xl border">
 									{week.items.map((expense) => (
 										<ExpenseRow
 											key={expense.id}
@@ -1715,7 +1584,6 @@ export default function AusgabenPage() {
 											onToggleSettle={toggleSettle}
 											isPending={isPending}
 											memberName={memberName}
-											memberColor={memberColor}
 											currentMemberId={identity.memberId}
 											highlighted={highlightedId === expense.id}
 										/>
@@ -1725,8 +1593,33 @@ export default function AusgabenPage() {
 						))}
 					</div>
 				)}
+				{/* Selten gebraucht: Import am Listenende statt als Icon über dem Saldo. */}
+				{!showSkeleton && (
+					<Link
+						href={`${wgBaseHref}/import`}
+						className={cn(
+							buttonVariants({ variant: 'ghost', size: 'sm' }),
+							'self-center text-muted-foreground',
+						)}
+					>
+						<FileInput data-icon="inline-start" aria-hidden />
+						Kontoauszug importieren
+					</Link>
+				)}
 			</section>
-			<div aria-hidden className="h-14 shrink-0" />
+			<ThumbAction>
+				<Button
+					type="button"
+					className="min-h-11 w-full"
+					onClick={() => {
+						haptic('light');
+						setShowForm(true);
+					}}
+				>
+					<Plus data-icon="inline-start" aria-hidden />
+					Ausgabe erfassen
+				</Button>
+			</ThumbAction>
 		</div>
 	);
 }

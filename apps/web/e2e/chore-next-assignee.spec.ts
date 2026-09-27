@@ -94,10 +94,17 @@ test('keeps chore action buttons readable and reachable at phone widths and enla
 }) => {
 	test.setTimeout(60_000);
 	const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+	const flatmate: FixtureMember = {
+		id: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
+		name: 'Mina',
+		color: null,
+		active: true,
+	};
 	const title = 'Spülmaschinenreinigung mit Entkalkung und gründlicher Küchenhygiene';
-	const rows = [{ ...chore('actions-zoom', viewer.id), title }];
+	// Übernehmen gibt es nur bei Aufgaben anderer.
+	const rows = [{ ...chore('actions-zoom', flatmate.id), title }];
 
-	await openPutzen(page, [viewer], rows, []);
+	await openPutzen(page, [viewer, flatmate], rows, []);
 
 	const row = page.locator('#chore-actions-zoom');
 	const opener = row.getByRole('button', { name: `Aufgabenaktionen: ${title}` });
@@ -256,7 +263,7 @@ test('shows the authoritative next member and labels the viewer as du', async ({
 
 	await openPutzen(page, members, chores, absences);
 	const row = page.locator('#chore-viewer-next');
-	await expect(row.getByText('Voraussichtlich als Nächstes: du.')).toBeVisible();
+	await expect(row).toContainText('danach du');
 	await expect(row.getByText('Zuständig: Anna')).toBeVisible();
 });
 
@@ -280,7 +287,7 @@ test('states when no active member is eligible for the next round', async ({ pag
 
 	await openPutzen(page, members, chores, absences);
 	const row = page.locator('#chore-no-successor');
-	await expect(row.getByText('Für die nächste Runde ist niemand verfügbar.')).toBeVisible();
+	await expect(row).not.toContainText('danach');
 	await expect(row.getByText('Dora', { exact: true })).toHaveCount(0);
 });
 
@@ -305,7 +312,7 @@ test('wraps a long predicted name at phone widths in both themes', async ({ page
 
 	await openPutzen(page, members, chores, []);
 	const row = page.locator('#chore-long-next');
-	await expect(row.getByText(`Voraussichtlich als Nächstes: ${longNext.name}.`)).toBeVisible();
+	await expect(row).toContainText(`danach ${longNext.name}`);
 
 	for (const theme of ['light', 'dark'] as const) {
 		for (const width of [320, 390]) {

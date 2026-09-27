@@ -186,7 +186,7 @@ function WgShell({
 				data-app-chrome
 				className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
 			>
-				<div className="glass-bar rounded-[20px]">
+				<div className="glass-bar rounded-[18px]">
 					<ul className="flex flex-wrap gap-1 p-1 [&>li]:min-w-fit [&>li]:flex-1">
 						<NavItem
 							href={wgBaseHref}
@@ -208,7 +208,7 @@ function WgShell({
 						{/* Vier Ziele nach Candidate A: Start, Haushalt (Einkauf/Vorräte/
 					    Putzen/Kalender), Finanzen (Ausgaben/Fixkosten/Mahnungen/Import),
 					    Austausch (Pinnwand/Chat). Alle bisherigen Deep Links lösen
-					    weiter auf; Suche/Aktivität/Einstellungen bleiben über
+					    weiter auf; Aktivität/Einstellungen bleiben über
 					    Header- und Start-Verlinkungen erreichbar. */}
 					</ul>
 				</div>

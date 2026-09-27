@@ -15,6 +15,7 @@ import { ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
@@ -76,7 +77,7 @@ import type {
 	RecurrenceType,
 } from '@/features/chores/components/chore-types';
 import { QUICK_CHORE_TEMPLATES, TITLE_MAX } from '@/features/chores/components/constants';
-import { Sparkles } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -344,7 +345,9 @@ export default function PutzenPage() {
 			title: newTitle,
 			recurrenceType: newRecurrenceType,
 			intervalDays: newInterval,
-			assignedMemberId: newAssigned,
+			// Nur eine selbst gewählte Zuständigkeit ist ein Entwurf. Der automatische Vorschlag
+			// ließ das leere Formular sonst bei jedem Besuch wieder aufspringen.
+			assignedMemberId: assigneeTouchedRef.current ? newAssigned : '',
 			absenceMemberId,
 			absenceStartDate: absenceStart,
 			absenceEndDate: absenceEnd,
@@ -1071,9 +1074,6 @@ export default function PutzenPage() {
 				itemCount={items.length}
 				loading={showSkeleton}
 				health={!showSkeleton && items.length > 0 ? health : null}
-				refreshing={refreshing}
-				showForm={showForm}
-				onToggleForm={() => setShowForm((open) => !open)}
 			/>
 			<ChoreForm
 				open={showForm}
@@ -1173,7 +1173,7 @@ export default function PutzenPage() {
 					</EmptyContent>
 				</Empty>
 			) : (
-				<div id="chore-list" className="flex flex-col gap-5">
+				<div id="chore-list" className="flex flex-col gap-4">
 					{choreGroups.map((group) => (
 						<section
 							key={group.key}
@@ -1182,17 +1182,21 @@ export default function PutzenPage() {
 						>
 							<h2
 								id={`chore-group-${group.key}`}
-								className="text-sm font-medium text-muted-foreground"
+								className="px-1 text-[12px] font-medium text-muted-foreground"
 							>
 								{group.label} ({group.chores.length})
 							</h2>
-							<ItemGroup aria-label={group.label}>
+							<ItemGroup
+								aria-label={group.label}
+								className="gap-0 divide-y overflow-hidden rounded-xl border"
+							>
 								{group.chores.map((chore) => (
 									<ChoreRow
 										key={chore.id}
 										chore={chore}
 										isAdmin={isAdmin}
 										assignee={memberLookup(chore.assignedMemberId)}
+										isMine={chore.assignedMemberId === identity.memberId}
 										isPending={isPending(chore.id)}
 										isSwapPending={isPending(`${chore.id}:swap`)}
 										isTakePending={isPending(`${chore.id}:take`)}
@@ -1211,6 +1215,14 @@ export default function PutzenPage() {
 						</section>
 					))}
 				</div>
+			)}
+			{!showSkeleton && items.length > 0 && (
+				<FairnessPanel
+					fairness={fairness}
+					monthCompletions={monthCompletions}
+					members={members.map((member) => ({ id: member.id, name: member.name }))}
+					currentMemberId={identity.memberId}
+				/>
 			)}
 			{!showSkeleton && (items.length > 0 || absences.length > 0 || absencesPanelActive) && (
 				<AbsencePanel
@@ -1236,13 +1248,12 @@ export default function PutzenPage() {
 					isPending={isPending}
 				/>
 			)}
-			{!showSkeleton && items.length > 0 && (
-				<FairnessPanel
-					fairness={fairness}
-					monthCompletions={monthCompletions}
-					members={members.map((member) => ({ id: member.id, name: member.name }))}
-				/>
-			)}
+			<ThumbAction>
+				<Button type="button" className="min-h-11 w-full" onClick={() => setShowForm(true)}>
+					<Plus data-icon="inline-start" aria-hidden />
+					Putzaufgabe erfassen
+				</Button>
+			</ThumbAction>
 		</div>
 	);
 }

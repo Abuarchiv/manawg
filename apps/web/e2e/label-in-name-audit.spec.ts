@@ -128,7 +128,7 @@ test('subscription pause button names the visible action first, then the subscri
 	);
 
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/abos`);
-	await page.getByRole('button', { name: 'Anteile, Termine & Aktionen' }).click();
+	await page.getByRole('button', { name: /Details öffnen: Musik-Abo/ }).click();
 
 	// WCAG 2.5.3 — "Pausieren"/"Fortsetzen" must lead the accessible name,
 	// disambiguated by the subscription's description.

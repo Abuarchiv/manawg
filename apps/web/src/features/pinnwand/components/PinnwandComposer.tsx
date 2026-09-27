@@ -102,7 +102,7 @@ export function PinnwandComposer({
 							aria-labelledby="announcement-kind-label"
 						>
 							{KIND_OPTIONS.map((option) => (
-								<ToggleGroupItem key={option.value} value={option.value} className="min-h-11">
+								<ToggleGroupItem key={option.value} value={option.value}>
 									{option.label}
 								</ToggleGroupItem>
 							))}

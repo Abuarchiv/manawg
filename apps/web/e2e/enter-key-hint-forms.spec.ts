@@ -33,8 +33,8 @@ test('abo description and amount fields hint "next"', async ({ page }) => {
 
 	await navigateToFeature(page, `/wg/${shareCode}/abos`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Neues Abo' }).click();
-	await expect(page.getByRole('dialog', { name: 'Neues Abo' })).toBeVisible();
+	await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
+	await expect(page.getByRole('dialog', { name: 'Neue Fixkosten' })).toBeVisible();
 
 	await expect(page.locator('#abo-description')).toHaveAttribute('enterkeyhint', 'next');
 	await expect(page.locator('#abo-amount')).toHaveAttribute('enterkeyhint', 'next');
@@ -99,10 +99,9 @@ test('expense description and amount fields hint "next"', async ({ page }) => {
 
 	await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 	await dismissOnboarding(page);
-	// Scoped to the header toolbar: the empty state below repeats the same
-	// button label, which would make an unscoped query ambiguous.
+	// Das Plus unten rechts öffnet das Formular.
 	await page
-		.getByRole('toolbar', { name: 'Ausgaben-Aktionen' })
+		.locator('[data-page-primary-action]')
 		.getByRole('button', { name: 'Ausgabe erfassen' })
 		.click();
 

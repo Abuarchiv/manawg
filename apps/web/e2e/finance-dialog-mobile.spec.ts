@@ -134,7 +134,7 @@ test('keeps finance forms in narrow viewports at 200% text size', async ({ page 
 
 	await page.goto(`/wg/${shareCode}/abos`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Neues Abo' }).click();
+	await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
 	const aboDialog = page.getByRole('dialog');
 	await expect(aboDialog).toBeVisible();
 	await aboDialog.getByText('Manuell', { exact: true }).click();

@@ -381,12 +381,12 @@ export function AboForm({
 							}
 						}}
 						className="w-full"
-						aria-label="Abo-Aufteilung"
+						aria-label="Fixkosten-Aufteilung"
 					>
-						<ToggleGroupItem value="equal" className="min-h-11 flex-1">
+						<ToggleGroupItem value="equal" className="flex-1">
 							Gleichmäßig
 						</ToggleGroupItem>
-						<ToggleGroupItem value="manual" className="min-h-11 flex-1">
+						<ToggleGroupItem value="manual" className="flex-1">
 							Manuell
 						</ToggleGroupItem>
 					</ToggleGroup>
@@ -456,7 +456,7 @@ export function AboForm({
 				<div className="flex flex-col gap-2">
 					<Button type="submit" className="w-full" disabled={submitting}>
 						{submitting && <Spinner data-icon="inline-start" />}
-						{mode === 'create' ? 'Abo anlegen' : 'Speichern'}
+						{mode === 'create' ? 'Fixkosten anlegen' : 'Speichern'}
 					</Button>
 					<Button
 						type="button"

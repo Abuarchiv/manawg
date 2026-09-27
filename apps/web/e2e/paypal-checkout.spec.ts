@@ -93,7 +93,7 @@ test('unlinked recipients can connect PayPal, while debtors keep manual settleme
 		creditorMerchantId: null,
 	});
 
-	await expect(page.getByRole('heading', { name: 'Deine offenen Zahlungen' })).toBeVisible();
+	await expect(page.getByRole('list', { name: 'Deine offenen Zahlungen' })).toBeVisible();
 	await expect(
 		page.getByText('Verbinde PayPal, damit andere Mitglieder dir Geld senden können.'),
 	).toBeVisible();

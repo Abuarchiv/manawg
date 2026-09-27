@@ -42,19 +42,19 @@ test('a failed abo action does not leak its error into a freshly opened create f
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/abos`);
 	await dismissOnboarding(page);
 
-	await page.getByRole('button', { name: /anteile, termine/i }).click();
+	await page.getByRole('button', { name: /^Details öffnen: Netflix/ }).click();
 	await page.getByRole('button', { name: 'Netflix löschen' }).click();
 	await page.getByRole('button', { name: 'Löschen' }).last().click();
 	// Scoped to #main: the identical error is also announced via the transient toast region,
 	// which would make an unscoped getByText match ambiguous.
 	await expect(
-		page.locator('#main').getByText('Abo konnte nicht gelöscht werden', { exact: false }),
+		page.locator('#main').getByText('Fixkosten konnten nicht gelöscht werden', { exact: false }),
 	).toBeVisible();
 
-	await page.getByRole('button', { name: 'Neues Abo' }).click();
-	const dialog = page.getByRole('dialog', { name: 'Neues Abo' });
+	await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Neue Fixkosten' });
 	await expect(dialog).toBeVisible();
-	await expect(dialog.getByText('Abo konnte nicht gelöscht werden', { exact: false })).toHaveCount(
-		0,
-	);
+	await expect(
+		dialog.getByText('Fixkosten konnten nicht gelöscht werden', { exact: false }),
+	).toHaveCount(0);
 });

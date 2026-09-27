@@ -75,24 +75,21 @@ test('keeps finance actions and expense summary keyboard-operable at phone sizes
 	await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 	await dismissOnboarding(page);
 
-	await expect(page.getByRole('heading', { name: 'Deine offenen Zahlungen' })).toBeVisible();
-	await expect(page.getByRole('button', { name: 'Alle Salden' })).toBeVisible();
+	const debtList = page.getByRole('list', { name: 'Deine offenen Zahlungen' });
+	await expect(debtList).toBeVisible();
+	// Salden sind immer sichtbar, nicht mehr hinter „Alle Salden“ versteckt.
+	await expect(page.getByRole('list', { name: 'Saldo pro Mitglied' })).toBeVisible();
 	const balanceLabel = page.getByText('Dein Saldo', { exact: true });
-	const debtHeading = page.getByRole('heading', { name: 'Deine offenen Zahlungen' });
 	await expect(balanceLabel).toBeVisible();
-	const debtPrecedesBalanceInDom = await balanceLabel.evaluate((node) => {
-		const debt = Array.from(document.querySelectorAll('h2')).find(
-			(heading) => heading.textContent?.trim() === 'Deine offenen Zahlungen',
-		);
+	// Der Saldo ist die Überschrift, die offenen Zahlungen stehen direkt darunter.
+	const balancePrecedesDebtsInDom = await balanceLabel.evaluate((node) => {
+		const debt = document.querySelector('[aria-label="Deine offenen Zahlungen"]');
 		return debt
-			? Boolean(debt.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)
+			? Boolean(node.compareDocumentPosition(debt) & Node.DOCUMENT_POSITION_FOLLOWING)
 			: false;
 	});
-	expect(debtPrecedesBalanceInDom).toBe(true);
-	const balanceTrigger = page.getByRole('button', { name: 'Saldo pro Mitglied', exact: true });
-	const debts = page
-		.getByRole('list', { name: 'Deine offenen Zahlungen' })
-		.locator('[data-slot="item"]');
+	expect(balancePrecedesDebtsInDom).toBe(true);
+	const debts = debtList.locator('[data-slot="item"]');
 	await expect(debts).toHaveCount(2);
 	const secondaryDebt = debts.nth(1);
 	const settleButton = secondaryDebt.getByRole('button', { name: 'Ausgleichen' });
@@ -108,7 +105,6 @@ test('keeps finance actions and expense summary keyboard-operable at phone sizes
 	await reminderLink.focus();
 	await expect(reminderLink).toBeFocused();
 	await page.keyboard.press('Tab');
-	await expect(balanceTrigger).toBeFocused();
 	await page.keyboard.press('Shift+Tab');
 	await expect(reminderLink).toBeFocused();
 	await expect
@@ -173,9 +169,9 @@ test('keeps finance actions and expense summary keyboard-operable at phone sizes
 				expect(settle.touchHeight).toBeGreaterThanOrEqual(44);
 				if (textScale === '200%') {
 					const balanceBox = await balanceLabel.boundingBox();
-					const debtBox = await debtHeading.boundingBox();
-					if (!balanceBox || !debtBox) throw new Error('Summary headings must have layout boxes');
-					expect(debtBox.y).toBeLessThan(balanceBox.y);
+					const debtBox = await debtList.boundingBox();
+					if (!balanceBox || !debtBox) throw new Error('Summary must have layout boxes');
+					expect(balanceBox.y).toBeLessThan(debtBox.y);
 					await page.screenshot({
 						path: testInfo.outputPath(`reminders-${width}-${theme}.png`),
 						animations: 'disabled',

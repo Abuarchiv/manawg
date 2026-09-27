@@ -115,7 +115,7 @@ export function OfflineBanner() {
 		return (
 			<output
 				data-offline-banner
-				className="bg-muted text-foreground border-border sticky top-0 z-20 grid min-h-[var(--offline-banner-height)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[13px] font-medium"
+				className="bg-muted text-foreground border-border sticky top-0 z-20 grid min-h-[var(--offline-banner-height)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[12px] font-medium"
 				aria-live="polite"
 			>
 				<div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
@@ -144,7 +144,7 @@ export function OfflineBanner() {
 		return (
 			<output
 				data-offline-banner
-				className="bg-card text-foreground border-border sticky top-0 z-20 grid min-h-[var(--offline-banner-height)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[13px] font-medium"
+				className="bg-card text-foreground border-border sticky top-0 z-20 grid min-h-[var(--offline-banner-height)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[12px] font-medium"
 				aria-live="polite"
 			>
 				<div className="mx-auto flex w-full max-w-2xl items-center gap-2">
@@ -158,7 +158,7 @@ export function OfflineBanner() {
 	return (
 		<output
 			data-offline-banner
-			className="bg-card text-foreground border-border sticky top-0 z-20 grid min-h-[var(--offline-banner-height)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[13px] font-medium"
+			className="bg-card text-foreground border-border sticky top-0 z-20 grid min-h-[var(--offline-banner-height)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[12px] font-medium"
 			aria-live="polite"
 		>
 			<div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">

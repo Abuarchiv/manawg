@@ -210,7 +210,7 @@ test('discarding an ambiguous expense starts a new request key for identical for
 	await page.getByRole('alertdialog').getByRole('button', { name: 'Entwurf verwerfen' }).click();
 	await expect(form).toBeHidden();
 	await page
-		.getByRole('toolbar', { name: 'Ausgaben-Aktionen' })
+		.locator('[data-page-primary-action]')
 		.getByRole('button', { name: 'Ausgabe erfassen' })
 		.click();
 

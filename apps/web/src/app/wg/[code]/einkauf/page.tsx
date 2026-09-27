@@ -717,12 +717,13 @@ export default function EinkaufPage() {
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
 			<SubNav liveCount={!initialLoading && !loadError ? open.length : undefined} />
-			<header>
+			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
+			<header className="sr-only">
 				<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight text-foreground">
 					Einkaufsliste
 				</h1>
 				<p
-					className="mt-0.5 text-[13px] text-muted-foreground tabular-nums"
+					className="mt-0.5 text-[12px] text-muted-foreground tabular-nums"
 					aria-live="polite"
 					aria-atomic="true"
 				>
@@ -840,7 +841,9 @@ export default function EinkaufPage() {
 			) : (
 				<section aria-label="Einkaufsartikel" className="flex flex-col gap-4">
 					{openItems.length > 0 ? (
-						<ul className="flex flex-col">{openItems.map(renderRow)}</ul>
+						<ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
+							{openItems.map(renderRow)}
+						</ul>
 					) : (
 						<p className="text-sm text-muted-foreground">Alles eingekauft.</p>
 					)}
@@ -857,7 +860,9 @@ export default function EinkaufPage() {
 								/>
 								Erledigt ({doneItems.length})
 							</summary>
-							<ul className="flex flex-col">{doneItems.map(renderRow)}</ul>
+							<ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
+								{doneItems.map(renderRow)}
+							</ul>
 							{isAdmin && (
 								<Button
 									variant="outline"

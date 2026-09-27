@@ -390,7 +390,7 @@ export function OfflineQueueSection({
 		>
 			<div className="grid gap-3 p-3">
 				<div className="flex min-h-[44px] flex-wrap items-center justify-between gap-3">
-					<p className="text-muted-foreground text-[13px]">
+					<p className="text-muted-foreground text-[12px]">
 						{formatOfflineQueueCount(items.length)}
 					</p>
 					<Button
