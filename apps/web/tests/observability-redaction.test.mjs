@@ -207,3 +207,31 @@ test('client entrypoint initializes Sentry once lazily and tolerates a failed op
 	await flushOptionalImport();
 	assert.deepEqual(failedLoads, ['loaded']);
 });
+
+test('Vercel config loads the public Sentry config wrapper', () => {
+	const configPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '../next.config.ts');
+	const source = readFileSync(configPath, 'utf8');
+	const compiled = ts.transpileModule(source, {
+		compilerOptions: {
+			module: ts.ModuleKind.CommonJS,
+			target: ts.ScriptTarget.ES2022,
+			esModuleInterop: true,
+		},
+	}).outputText;
+	const module = { exports: {} };
+	const env = {
+		VERCEL: '1',
+		VERCEL_ENV: 'preview',
+		NODE_ENV: 'production',
+		SENTRY_ORG: 'fixture-org',
+		SENTRY_PROJECT: 'fixture-project',
+		SENTRY_AUTH_TOKEN: 'fixture-only-not-a-credential',
+	};
+	new Function('require', 'module', 'exports', 'process', compiled)(
+		require,
+		module,
+		module.exports,
+		{ env },
+	);
+	assert.equal(typeof module.exports.default?.headers, 'function');
+});

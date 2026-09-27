@@ -49,3 +49,8 @@ This implementation is local and isolated. No real payment, provider permission 
 - Builds with Sentry unconfigured and a synthetic configured DSN passed. Shared initial gzip JS: 101.4 kB / 102.2 kB, both below 120 kB; both bundle checks passed.
 - Independent integration/test reviews found no remaining issues; generated next-env.d.ts restored. Graph AST update: 5,088 nodes / 13,860 edges.
 - Hosted CI, deployment and real provider payment are separate from these local results. No production changes or actual funds movement performed.
+
+
+## Hosted build configuration correction — 2026-09-27
+
+The first Preview build exposed a pre-existing Sentry 11 runtime export mismatch: `withSentryConfig` is undefined from the package root. Changed the config import to the supported `@sentry/nextjs/config` entrypoint and added a real config-evaluation smoke test with the Vercel branch enabled. The prior import reproduced the failure; corrected import passes. Full Node 22 unit suite now passes 187 tests; lint, typecheck and diff check pass. No PayPal product logic changed. Hosted results are tracked on PR #488; real phone/payment testing remains deferred.
