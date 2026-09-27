@@ -23,6 +23,12 @@ function s3UploadOrigins(): string[] {
 }
 
 const PAYPAL_FRAME_CONNECT_ORIGINS = ['https://www.paypal.com', 'https://www.sandbox.paypal.com'];
+// Tesseract.js 5.1.1's default German and English model URLs. Keep CDN access
+// pinned to these files rather than allowing all of cdn.jsdelivr.net.
+const TESSERACT_LANGUAGE_DATA_URLS = [
+	'https://cdn.jsdelivr.net/npm/@tesseract.js-data/deu/4.0.0_best_int/deu.traineddata.gz',
+	'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
+];
 
 export function isPayPalSdkEnabled(
 	clientId: string | undefined,
@@ -45,14 +51,18 @@ export function contentSecurityPolicy(
 		process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
 	),
 ): string {
-	const scriptSrc = ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", 'https://cdn.jsdelivr.net'];
+	const scriptSrc = [
+		"'self'",
+		`'nonce-${nonce}'`,
+		"'strict-dynamic'",
+		"'wasm-unsafe-eval'",
+		'https://cdn.jsdelivr.net',
+	];
 	const styleSrc = ["'self'", `'nonce-${nonce}'`];
 	const imgSrc = ["'self'", 'data:', 'blob:', 'https://*.amazonaws.com'];
-	// cdn.jsdelivr.net deliberately stays out of connect-src: it is a script
-	// and worker source (script-src/worker-src below), never a fetch/XHR/
-	// WebSocket target. Listing it here would let a compromised CDN also
-	// receive exfiltrated data.
-	const connectSrc = ["'self'", ...s3UploadOrigins()];
+	// Only the pinned Tesseract language files are CDN fetch targets. Do not add
+	// the broader CDN origin to connect-src, which would permit unrelated fetches.
+	const connectSrc = ["'self'", ...s3UploadOrigins(), ...TESSERACT_LANGUAGE_DATA_URLS];
 	const workerSrc = ["'self'", 'blob:', 'https://cdn.jsdelivr.net'];
 	if (payPalSdkEnabled) {
 		connectSrc.push(...PAYPAL_FRAME_CONNECT_ORIGINS);

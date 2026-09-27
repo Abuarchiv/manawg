@@ -23,7 +23,7 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import type { ParsedExpense } from '@/features/expenses/import-parsers';
-import { runOcrOnImage } from '@/features/expenses/ocr';
+import { OcrInitializationError, runOcrOnImage } from '@/features/expenses/ocr';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -297,7 +297,13 @@ export function ImportWizard() {
 			if (inputRunIdRef.current !== runId) return;
 			console.error('[ImportWizard] OCR failed', err);
 			setInputStatus('error');
-			setError('Texterkennung fehlgeschlagen. Versuche es mit einem klareren Bild.');
+			setError(
+				err instanceof OcrInitializationError
+					? err.requiresReload
+						? 'Texterkennung konnte nicht geladen werden. Prüfe die Internetverbindung und lade die Seite neu, bevor du es erneut versuchst.'
+						: 'Texterkennung konnte nicht initialisiert werden. Prüfe die Internetverbindung und versuche es erneut.'
+					: 'Texterkennung fehlgeschlagen. Versuche es mit einem klareren Bild.',
+			);
 		} finally {
 			if (inputRunIdRef.current === runId) {
 				setOcrRunning(false);
@@ -533,7 +539,9 @@ export function ImportWizard() {
 										}}
 										className="text-base"
 									/>
-									<FieldDescription>Foto oder Bildschirmfoto bis 10 MB.</FieldDescription>
+									<FieldDescription>
+										Foto oder Bildschirmfoto bis 10 MB. Nur Eurobeträge (EUR) werden erkannt.
+									</FieldDescription>
 								</Field>
 								{ocrRunning && (
 									<Alert>

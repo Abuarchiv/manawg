@@ -7,6 +7,10 @@ import {
 } from '../src/shared/lib/security-headers.ts';
 
 const payPalOrigins = ['https://www.paypal.com', 'https://www.sandbox.paypal.com'];
+const ocrLanguageDataUrls = [
+	'https://cdn.jsdelivr.net/npm/@tesseract.js-data/deu/4.0.0_best_int/deu.traineddata.gz',
+	'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
+];
 
 function directives(policy) {
 	return new Map(
@@ -59,4 +63,26 @@ test('PayPal hosts and popup policy stay disabled without both public SDK keys',
 	);
 	assert.equal(crossOriginOpenerPolicy(false), 'same-origin');
 	assert.doesNotMatch(contentSecurityPolicy('request-nonce', true, false), /paypal|venmo/i);
+});
+
+test('Tesseract gets WASM compilation and only its pinned German and English data files', () => {
+	const previousNodeEnv = process.env.NODE_ENV;
+	try {
+		process.env.NODE_ENV = 'production';
+		const policy = directives(contentSecurityPolicy('ocr-nonce', true, false));
+		const scriptSrc = policy.get('script-src');
+		const connectSrc = policy.get('connect-src');
+
+		assert.ok(scriptSrc.includes("'wasm-unsafe-eval'"));
+		assert.ok(!scriptSrc.includes("'unsafe-eval'"));
+		for (const url of ocrLanguageDataUrls)
+			assert.ok(connectSrc.includes(url), `connect-src includes ${url}`);
+		assert.ok(!connectSrc.includes('https://cdn.jsdelivr.net'));
+		assert.equal(
+			connectSrc.filter((source) => source.startsWith('https://cdn.jsdelivr.net')).length,
+			ocrLanguageDataUrls.length,
+		);
+	} finally {
+		process.env.NODE_ENV = previousNodeEnv ?? '';
+	}
 });
