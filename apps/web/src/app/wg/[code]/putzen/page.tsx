@@ -345,7 +345,9 @@ export default function PutzenPage() {
 			title: newTitle,
 			recurrenceType: newRecurrenceType,
 			intervalDays: newInterval,
-			assignedMemberId: newAssigned,
+			// Nur eine selbst gewählte Zuständigkeit ist ein Entwurf. Der automatische Vorschlag
+			// ließ das leere Formular sonst bei jedem Besuch wieder aufspringen.
+			assignedMemberId: assigneeTouchedRef.current ? newAssigned : '',
 			absenceMemberId,
 			absenceStartDate: absenceStart,
 			absenceEndDate: absenceEnd,

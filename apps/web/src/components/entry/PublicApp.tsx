@@ -255,7 +255,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							</Link>
 						</div>
 						<div className="flex flex-col gap-1">
-							<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight">
+							<h1 className="font-heading text-[22px] leading-7 font-semibold tracking-tight">
 								{module?.title ?? 'Euer WG-Alltag. Gemeinsam geregelt.'}
 							</h1>
 							<p className="text-sm text-muted-foreground">

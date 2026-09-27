@@ -124,6 +124,8 @@ export function buildE2EDashboardData(code: string): DashboardData {
 			{
 				kind: 'expense',
 				timestamp: new Date(now).toISOString(),
+				memberId:
+					code === E2E_CREATED_WG.shareCode ? E2E_CREATED_WG.member.id : E2E_EXISTING_WG.member.id,
 				memberName:
 					code === E2E_CREATED_WG.shareCode ? 'Smoke Tester' : E2E_EXISTING_WG.member.name,
 				text: 'Internet',
