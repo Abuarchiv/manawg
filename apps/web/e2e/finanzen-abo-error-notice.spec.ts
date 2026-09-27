@@ -42,7 +42,7 @@ test('a failed abo action does not leak its error into a freshly opened create f
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/abos`);
 	await dismissOnboarding(page);
 
-	await page.getByRole('button', { name: /anteile, termine/i }).click();
+	await page.getByRole('button', { name: /^Details öffnen: Netflix/ }).click();
 	await page.getByRole('button', { name: 'Netflix löschen' }).click();
 	await page.getByRole('button', { name: 'Löschen' }).last().click();
 	// Scoped to #main: the identical error is also announced via the transient toast region,

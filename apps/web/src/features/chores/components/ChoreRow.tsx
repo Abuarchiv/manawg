@@ -96,7 +96,7 @@ export const ChoreRow = memo(function ChoreRow({
 			id={`chore-${chore.id}`}
 			render={<li />}
 			className={cn(
-				'scroll-mt-24 flex-nowrap rounded-none py-2 pr-1.5',
+				'scroll-mt-24 rounded-none py-2 pr-1.5',
 				highlighted && 'ring-2 ring-inset ring-ring',
 			)}
 			aria-busy={busy}
@@ -111,7 +111,8 @@ export const ChoreRow = memo(function ChoreRow({
 					?
 				</span>
 			)}
-			<ItemContent className="gap-0.5">
+			{/* Mindestbreite in rem: bei großer Schrift rutschen die Knöpfe unter den Titel statt ihn zu zerquetschen. */}
+			<ItemContent className="min-w-[7rem] gap-0.5">
 				<ItemTitle className="line-clamp-none w-auto break-words text-[15px] [overflow-wrap:anywhere]">
 					{chore.title}
 				</ItemTitle>

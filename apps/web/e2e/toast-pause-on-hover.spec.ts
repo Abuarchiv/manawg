@@ -42,7 +42,7 @@ test('a toast pauses its auto-dismiss timer while hovered or focused', async ({ 
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/abos`);
 	await dismissOnboarding(page);
 
-	await page.getByRole('button', { name: /anteile, termine/i }).click();
+	await page.getByRole('button', { name: /^Details öffnen: Netflix/ }).click();
 	await page.getByRole('button', { name: 'Netflix löschen' }).click();
 	await page.getByRole('button', { name: 'Löschen' }).last().click();
 
