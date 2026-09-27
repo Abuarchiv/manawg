@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgQueryResultHKT } from 'drizzle-orm/node-postgres';
 import type { PgTransaction } from 'drizzle-orm/pg-core';
 import { Client, Pool } from 'pg';
-import { resolveTransactionConnectionString } from './connection';
+import { closeClientOnQueryTimeout, resolveTransactionConnectionString } from './connection';
 import * as schema from './schema';
 
 export { TransactionAbort } from './transaction-abort';
@@ -28,8 +28,10 @@ export async function withFreshTransaction<T>(fn: (tx: DbTransaction) => Promise
 		connectionString: resolveTransactionConnectionString(),
 		application_name: 'manawg-account-deletion-status-check',
 		connectionTimeoutMillis: 2_000,
+		query_timeout: 5_500,
 		statement_timeout: 5_000,
 	});
+	closeClientOnQueryTimeout(client);
 	await client.connect();
 	try {
 		return await drizzle(client, { schema }).transaction(fn);
@@ -62,7 +64,15 @@ function invalidateTransactionalDb(pool: Pool, err: Error): void {
 }
 
 function buildTransactionalDb(url: string): CachedTransactionalDb {
-	const pool = new Pool({ connectionString: url, max: 5 });
+	const pool = new Pool({
+		connectionString: url,
+		max: 5,
+		connectionTimeoutMillis: 2_000,
+		lock_timeout: 2_000,
+		query_timeout: 5_500,
+		statement_timeout: 5_000,
+	});
+	pool.on('connect', closeClientOnQueryTimeout);
 	const drizzleDb = drizzle(pool, { schema });
 	// A typed wrapper instead of `as unknown as TransactionalDb`: the cast
 	// used to hide any drift between drizzle's real transaction signature and
