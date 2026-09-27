@@ -287,6 +287,7 @@ export default function AusgabenPage() {
 		key: string;
 		nextDueAt: string;
 		splits: Array<{ debtorMemberId: string; amountCents: number }>;
+		queued?: boolean;
 	} | null>(null);
 
 	function clearPendingCreateRequests(): void {
@@ -877,7 +878,9 @@ export default function AusgabenPage() {
 		});
 		const pendingRecurringRequest = recurringCreateRequestRef.current;
 		const reuseRecurringRequest =
-			!editingRecurringExpense && pendingRecurringRequest?.fingerprint === recurringFingerprint;
+			!editingRecurringExpense &&
+			!pendingRecurringRequest?.queued &&
+			pendingRecurringRequest?.fingerprint === recurringFingerprint;
 		let splits: Array<{ debtorMemberId: string; amountCents: number }>;
 		if (reuseRecurringRequest && pendingRecurringRequest) {
 			splits = pendingRecurringRequest.splits;
@@ -888,6 +891,74 @@ export default function AusgabenPage() {
 				return;
 			}
 			splits = splitResult.splits;
+		}
+		const queuedRecurringTemplate = !editingRecurringExpense
+			? readOfflineQueue().find((action) => {
+					if (
+						action.type !== 'recurring.create' ||
+						action.wgId !== wg.id ||
+						action.shareCode !== wg.shareCode ||
+						action.memberId !== identity.memberId
+					) {
+						return false;
+					}
+					const payload = action.payload;
+					const rawSplits: unknown = payload.splits;
+					const isQueuedSplit = (
+						split: unknown,
+					): split is { debtorMemberId: string; amountCents: number } =>
+						typeof split === 'object' &&
+						split !== null &&
+						'debtorMemberId' in split &&
+						typeof split.debtorMemberId === 'string' &&
+						'amountCents' in split &&
+						typeof split.amountCents === 'number';
+					if (
+						typeof payload.description !== 'string' ||
+						typeof payload.amountCents !== 'number' ||
+						typeof payload.paidByMemberId !== 'string' ||
+						typeof payload.intervalMonths !== 'number' ||
+						typeof payload.nextDueAt !== 'string' ||
+						!Array.isArray(rawSplits) ||
+						!rawSplits.every(isQueuedSplit)
+					) {
+						return false;
+					}
+					const queuedSplits = [...rawSplits].sort((left, right) =>
+						left.debtorMemberId.localeCompare(right.debtorMemberId),
+					);
+					const currentSplits = [...splits].sort((left, right) =>
+						left.debtorMemberId.localeCompare(right.debtorMemberId),
+					);
+					const sameSplits =
+						splitMode === 'manual'
+							? JSON.stringify(queuedSplits) === JSON.stringify(currentSplits)
+							: JSON.stringify(queuedSplits.map((split) => split.debtorMemberId)) ===
+									JSON.stringify(currentSplits.map((split) => split.debtorMemberId)) &&
+								queuedSplits.reduce((sum, split) => sum + split.amountCents, 0) === amountCents &&
+								(queuedSplits.length < 2 ||
+									Math.max(...queuedSplits.map((split) => split.amountCents)) -
+										Math.min(...queuedSplits.map((split) => split.amountCents)) <=
+										1);
+					return (
+						payload.description === desc &&
+						payload.amountCents === amountCents &&
+						payload.paidByMemberId === paidByMemberId &&
+						payload.intervalMonths === recurringIntervalMonths &&
+						sameSplits &&
+						(queuedNextDueAt === null ||
+							payload.nextDueAt === new Date(queuedNextDueAt).toISOString())
+					);
+				})
+			: undefined;
+		if (queuedRecurringTemplate) {
+			if (pendingRecurringRequest?.fingerprint === recurringFingerprint) {
+				pendingRecurringRequest.queued = true;
+			}
+			setActionWarning(
+				'Fixkosten-Vorlage ist bereits offline vorgemerkt. Synchronisiere oder löse die bestehende Aktion zuerst.',
+			);
+			return;
 		}
 		const nextDueAt = editingRecurringExpense
 			? new Date(editingRecurringExpense.nextDueAt)
@@ -961,7 +1032,9 @@ export default function AusgabenPage() {
 					finishSavingRecurringTemplate();
 					return;
 				}
-				if (!editingRecurringExpense) recurringCreateRequestRef.current = null;
+				if (recurringCreateRequestRef.current?.fingerprint === recurringFingerprint) {
+					recurringCreateRequestRef.current.queued = true;
+				}
 				refreshCount();
 				updateRecurringExpenses((current) => [
 					...current,
