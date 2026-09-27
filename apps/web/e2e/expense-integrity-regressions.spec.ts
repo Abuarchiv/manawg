@@ -249,6 +249,10 @@ test('expense DELETE rechecks authorization and blocks an active capture under t
 		{
 			'@/core/audit': { recordAuditEvent: async () => undefined },
 			'@/core/db': { db, expenseSplits, expenses, wgMembers: {} },
+			'@/core/db/private-image-deletions': {
+				assertPrivateImageCanBeAttached: async () => undefined,
+				revokePrivateImageIfUnreferenced: async () => undefined,
+			},
 			'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
 			'@/core/errors': {
 				badRequest: (code: string) => responseError(code, 400),
@@ -568,6 +572,10 @@ test('expense PATCH preserves split integrity with fractional timestamps and con
 		{
 			'@/core/audit': { recordAuditEvent: async () => undefined },
 			'@/core/db': { db, expenseSplits, expenses, wgMembers },
+			'@/core/db/private-image-deletions': {
+				assertPrivateImageCanBeAttached: async () => undefined,
+				revokePrivateImageIfUnreferenced: async () => undefined,
+			},
 			'@/core/db/transaction': {
 				TransactionAbort: class TransactionAbort extends Error {
 					constructor(readonly code: string) {

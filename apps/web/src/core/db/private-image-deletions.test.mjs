@@ -180,6 +180,39 @@ test(
 					[wgId, url],
 				);
 			};
+			const rollbackImage = imageUrl('dddddddd-dddd-4ddd-8ddd-dddddddddddd');
+			await insertReference('expenses', rollbackImage.url);
+			await assert.rejects(
+				db.transaction(async (tx) => {
+					await transaction.lockExpensePayments(tx, wgId);
+					await tx
+						.delete(expenses)
+						.where(and(eq(expenses.wgId, wgId), eq(expenses.imageUrl, rollbackImage.url)));
+					await helper.revokePrivateImageIfUnreferenced(tx, wgId, rollbackImage.url);
+					throw new Error('injected_failure_after_private_image_revocation');
+				}),
+				(error) => error.message === 'injected_failure_after_private_image_revocation',
+			);
+			assert.equal(await helper.isPrivateImageKeyRevoked(rollbackImage.key), false);
+			const rollbackReference = await setup.query(
+				`SELECT id FROM ${schemaName}.expenses WHERE wg_id = $1 AND image_url = $2`,
+				[wgId, rollbackImage.url],
+			);
+			assert.equal(
+				rollbackReference.rowCount,
+				1,
+				'the expense reference rolls back with its deletion',
+			);
+			const rollbackTombstone = await setup.query(
+				`SELECT object_key FROM ${schemaName}.private_image_deletions WHERE object_key = $1`,
+				[rollbackImage.key],
+			);
+			assert.equal(
+				rollbackTombstone.rowCount,
+				0,
+				'the tombstone insert rolls back with the mutation',
+			);
+
 			const sharedAnnouncement = imageUrl('33333333-3333-4333-8333-333333333333');
 			await insertReference('expenses', sharedAnnouncement.url);
 			await insertReference('announcements', sharedAnnouncement.url);
