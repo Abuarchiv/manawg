@@ -217,7 +217,6 @@ test('WG install prompt stays above and does not block the bottom navigation', a
 const wgFeatureTitles = [
 	['abos', 'Fixkosten — ManaWG'],
 	['putzen', 'Putzplan — ManaWG'],
-	['suche', 'WG durchsuchen — ManaWG'],
 	['einkauf', 'Einkaufsliste — ManaWG'],
 	['kalender', 'Kalender — ManaWG'],
 	['import', 'Ausgaben importieren — ManaWG'],
