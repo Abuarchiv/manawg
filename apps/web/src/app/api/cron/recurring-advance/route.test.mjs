@@ -21,6 +21,7 @@ function harness({
 	initialIntervalMonths = 1,
 	errorConstraint = null,
 	duplicateErrorShape = 'cause',
+	initialAnchorAt = initialDueAt,
 } = {}) {
 	const recurringExpenses = {
 		id: 'recurringExpenses.id',
@@ -46,7 +47,7 @@ function harness({
 			amountCents: 500,
 			intervalMonths: initialIntervalMonths,
 			nextDueAt: initialDueAt,
-			anchorAt: initialDueAt,
+			anchorAt: initialAnchorAt,
 			splitsJson: JSON.stringify([{ debtorMemberId: memberId, amountCents: 500 }]),
 			pausedAt: null,
 			wgName: 'WG',
@@ -256,8 +257,15 @@ function harness({
 			},
 		},
 		'@/features/expenses/recurring-expenses': {
-			addMonthsFromAnchor: (date, anchorDay, months) =>
-				new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, anchorDay)),
+			addMonthsFromAnchor: (date, anchorDay, months) => {
+				const next = new Date(date);
+				next.setUTCMonth(next.getUTCMonth() + months, 1);
+				const lastDay = new Date(
+					Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0),
+				).getUTCDate();
+				next.setUTCDate(Math.min(anchorDay, lastDay));
+				return next;
+			},
 			parseRecurringSplits: JSON.parse,
 			recurringSplitsMatchAmount: (splits, amount) =>
 				splits.reduce((sum, split) => sum + split.amountCents, 0) === amount,
@@ -452,5 +460,29 @@ test('Cron locks the WG before the recurring row and skips when the WG disappear
 		assert.equal(deletedWg.state.lockReads, 0);
 		assert.equal(deletedWg.state.expenses.length, 0);
 		assert.deepEqual(deletedWg.state.updateResults, []);
+	});
+});
+
+test('legacy month-end anchor survives separate January and February cron runs', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2025-01-31T12:00:00.000Z') });
+	const legacy = harness({
+		initialDueAt: new Date('2025-01-31T00:00:00.000Z'),
+		initialAnchorAt: null,
+		patchAfterInsert: null,
+	});
+
+	await withCronSecret(async () => {
+		await legacy.get();
+		assert.equal(legacy.state.template.nextDueAt.toISOString(), '2025-02-28T00:00:00.000Z');
+
+		t.mock.timers.setTime(Date.parse('2025-02-28T12:00:00.000Z'));
+		await legacy.get();
+
+		assert.deepEqual(
+			legacy.state.expenses.map((expense) => expense.recurringDueAt.toISOString()),
+			['2025-01-31T00:00:00.000Z', '2025-02-28T00:00:00.000Z'],
+		);
+		assert.equal(legacy.state.template.nextDueAt.toISOString(), '2025-03-31T00:00:00.000Z');
+		assert.equal(legacy.state.template.anchorAt.toISOString(), '2025-01-31T00:00:00.000Z');
 	});
 });

@@ -78,7 +78,10 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 
 	return (
 		<>
-			<Section title="Datenexport" hint="Backup und Transparenz für eure WG-Daten.">
+			<Section
+				title="Datenexport"
+				hint="Ausgewählte WG-Daten, inklusive erledigter Zahlungen. Datei-Inhalte und Systemwiederherstellung sind nicht enthalten."
+			>
 				{exportSummary.length > 0 && (
 					<div className="border-border grid grid-cols-2 gap-x-4 gap-y-1.5 border-b p-3 text-xs">
 						{exportSummary.map((section) => (

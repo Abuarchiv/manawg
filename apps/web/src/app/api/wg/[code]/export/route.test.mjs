@@ -20,26 +20,34 @@ function loadTs(file, overrides = {}) {
 	return module.exports;
 }
 
-function loadObservability() {
-	return loadTs('src/core/infra/observability.ts', {
-		'./sentry': { captureSentryException() {}, logSentryApiError() {} },
-		'./sentry-privacy': loadTs('src/core/infra/sentry-privacy.ts'),
-	});
-}
-
 function exportRoute(failedTable) {
 	const tables = Object.fromEntries(
 		[
 			'announcements',
 			'auditEvents',
 			'chores',
+			'expensePayments',
 			'expenseSplits',
 			'expenses',
 			'memberAbsences',
 			'recurringExpenses',
 			'shoppingItems',
 			'wgMembers',
-		].map((name) => [name, {}]),
+		].map((name) => [
+			name,
+			name === 'expensePayments'
+				? {
+						id: {},
+						fromMemberId: {},
+						toMemberId: {},
+						amountCents: {},
+						currency: {},
+						completedAt: {},
+						wgId: {},
+						status: {},
+					}
+				: {},
+		]),
 	);
 	const limits = [];
 	const db = {
@@ -80,10 +88,19 @@ function exportRoute(failedTable) {
 			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
 			resolveE2EFixture: async () => ({ mode: 'real' }),
 		},
-		'@/core/infra/observability': loadObservability(),
+		'@/core/infra/observability': loadTs('src/core/infra/observability.ts', {
+			'./sentry': { captureSentryException() {}, logSentryApiError() {} },
+			'./sentry-privacy': loadTs('src/core/infra/sentry-privacy.ts'),
+		}),
 		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }) },
 		'@/core/reads/export': loadTs('src/core/reads/export.ts'),
-		'drizzle-orm': { asc: () => null, desc: () => null, eq: () => null, inArray: () => null },
+		'drizzle-orm': {
+			and: () => null,
+			asc: () => null,
+			desc: () => null,
+			eq: () => null,
+			inArray: () => null,
+		},
 		'next/server': { NextResponse: Response },
 	});
 	return {

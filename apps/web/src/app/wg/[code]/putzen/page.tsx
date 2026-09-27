@@ -19,7 +19,6 @@ import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import { useDocumentTitle } from '@/core/hooks/useDocumentTitle';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
@@ -90,7 +89,6 @@ const ConfirmDialog = dynamic(() =>
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function PutzenPage() {
-	useDocumentTitle('Putzplan — ManaWG');
 	const { wg, members, identity, isAdmin } = useWg();
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
@@ -715,7 +713,10 @@ export default function PutzenPage() {
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
-				body: JSON.stringify({ completedByMemberId: identity.memberId }),
+				body: JSON.stringify({
+					expectedNextDueAt: chore.nextDueAt,
+					expectedAssignedMemberId: chore.assignedMemberId,
+				}),
 			},
 		);
 
@@ -730,6 +731,8 @@ export default function PutzenPage() {
 						memberId: identity.memberId,
 						idempotencyKey,
 						choreId: chore.id,
+						expectedNextDueAt: chore.nextDueAt,
+						expectedAssignedMemberId: chore.assignedMemberId,
 					}),
 				);
 				if (queuedCount === 0) {
@@ -769,6 +772,15 @@ export default function PutzenPage() {
 			) {
 				setCompleteConfirmId(null);
 				setActionNotice('Diese Putzaufgabe wurde bereits erledigt. Der Plan wird aktualisiert.');
+				void load(false);
+				endPending(chore.id);
+				return;
+			}
+			if (result.status === 409 && result.error === 'chore_occurrence_changed') {
+				setCompleteConfirmId(null);
+				setActionError(
+					'Termin oder Zuständigkeit haben sich geändert. Prüfe den aktualisierten Plan.',
+				);
 				void load(false);
 				endPending(chore.id);
 				return;

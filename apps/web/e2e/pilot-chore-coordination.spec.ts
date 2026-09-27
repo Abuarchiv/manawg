@@ -36,7 +36,12 @@ test('completing a chore resolves only its linked swap post and shows the next d
 		});
 		expect(choreResponse.ok()).toBe(true);
 		const choreBody = (await choreResponse.json()) as {
-			chore: { id: string; nextDueAt: string; createdAt: string };
+			chore: {
+				id: string;
+				nextDueAt: string;
+				assignedMemberId: string | null;
+				createdAt: string;
+			};
 		};
 		choreId = choreBody.chore.id;
 		expect(Date.parse(choreBody.chore.nextDueAt)).toBeGreaterThan(
@@ -69,6 +74,12 @@ test('completing a chore resolves only its linked swap post and shows the next d
 
 		const completeResponse = await request.post(
 			`/api/wg/${shareCode}/chores/${encodeURIComponent(choreId)}/complete`,
+			{
+				data: {
+					expectedNextDueAt: choreBody.chore.nextDueAt,
+					expectedAssignedMemberId: choreBody.chore.assignedMemberId,
+				},
+			},
 		);
 		expect(completeResponse.ok()).toBe(true);
 

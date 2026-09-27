@@ -69,6 +69,9 @@ test('private reads use Supabase after an AWS rollback and re-check membership',
 		'@/core/auth/server': {
 			getAuthenticatedUser: async () => authenticatedUser,
 		},
+		'@/core/db/private-image-deletions': {
+			isPrivateImageKeyRevoked: async () => false,
+		},
 		'@/core/errors': {
 			apiError: (message: string, status: number, code?: string) =>
 				nextServer.NextResponse.json({ error: message, ...(code ? { code } : {}) }, { status }),

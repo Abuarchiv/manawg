@@ -2,9 +2,8 @@
  * Error reporting.
  *
  * Errors go to the platform log (`console.error`), which Vercel captures and
- * retains per its log-retention window. There is no third-party error tracker:
- * nothing is shipped off-platform, which keeps the data-processing surface of
- * the app limited to the host itself.
+ * retains per its log-retention window. Configured Sentry receives sanitized
+ * diagnostics through the shared telemetry helper.
  *
  * Deliberately best-effort: reporting an error must never itself throw and
  * never change control flow at the call site.

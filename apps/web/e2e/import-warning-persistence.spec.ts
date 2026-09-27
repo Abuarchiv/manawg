@@ -6,6 +6,7 @@ import type { SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 import { idempotencyResponses } from '../src/core/db/schema';
+import { RESPONSE_REPLAY_TTL_SECONDS } from '../src/core/offline/replay-retention';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 
@@ -78,6 +79,7 @@ function warningStore(row: ReplayRow | null) {
 	}>(path.join(process.cwd(), 'src/core/idempotency.ts'), {
 		'@/core/db': { db, idempotencyResponses },
 		'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]+$/i },
+		'@/core/offline/replay-retention': { RESPONSE_REPLAY_TTL_SECONDS },
 		'@/core/rate-limit': { createConfiguredRedis: () => null },
 	});
 	return {

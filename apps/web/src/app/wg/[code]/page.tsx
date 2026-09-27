@@ -141,7 +141,10 @@ export default function WgHomePage() {
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
-				body: JSON.stringify({ completedByMemberId: identity.memberId }),
+				body: JSON.stringify({
+					expectedNextDueAt: item.expectedNextDueAt,
+					expectedAssignedMemberId: item.expectedAssignedMemberId,
+				}),
 			},
 		);
 		setPendingChoreId(null);
@@ -149,6 +152,14 @@ export default function WgHomePage() {
 		if (result.ok || result.error === 'chore_already_completed') {
 			completionRequestKeysRef.current.delete(choreId);
 			setCompleteNotice(`${item.title} erledigt.`);
+			void load();
+			return;
+		}
+		if (result.error === 'chore_occurrence_changed') {
+			completionRequestKeysRef.current.delete(choreId);
+			setCompleteNotice(
+				'Termin oder Zuständigkeit haben sich geändert. Der Plan wird aktualisiert.',
+			);
 			void load();
 			return;
 		}

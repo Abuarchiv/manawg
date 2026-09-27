@@ -84,6 +84,36 @@ async function setupDebtPage(
 	await dismissOnboarding(page);
 }
 
+function paypalSdkStubScript(merchantId: string): string {
+	return `
+		window.__paypalCheckoutSdkStubLoaded = true;
+		window[${JSON.stringify(`p${merchantId}`)}] = {
+			Buttons: (options) => ({
+				render: async (container) => {
+					const cancel = document.createElement('button');
+					cancel.type = 'button';
+					cancel.textContent = 'PayPal abbrechen';
+					cancel.onclick = () => options.onCancel?.();
+					container.appendChild(cancel);
+					const approve = document.createElement('button');
+					approve.type = 'button';
+					approve.textContent = 'PayPal bestätigen';
+					approve.onclick = async () => {
+						try {
+							const orderID = await options.createOrder();
+							await options.onApprove({ orderID });
+						} catch (error) {
+							options.onError(error);
+						}
+					};
+					container.appendChild(approve);
+				},
+				close: async () => {},
+			}),
+		};
+	`;
+}
+
 test('unlinked recipients can connect PayPal, while debtors keep manual settlement', async ({
 	page,
 }) => {
@@ -125,55 +155,34 @@ test('PayPal approval changes debt only after server-confirmed capture', async (
 	);
 
 	const merchantId = 'fixture-merchant';
-	await page.addInitScript({
-		content: `
-			window[${JSON.stringify(`p${merchantId}`)}] = {
-				Buttons: (options) => ({
-					render: async (container) => {
-						const cancel = document.createElement('button');
-						cancel.type = 'button';
-						cancel.textContent = 'PayPal abbrechen';
-						cancel.onclick = () => options.onCancel?.();
-						container.appendChild(cancel);
-						const approve = document.createElement('button');
-						approve.type = 'button';
-						approve.textContent = 'PayPal bestätigen';
-						approve.onclick = async () => {
-							try {
-								const orderID = await options.createOrder();
-								await options.onApprove({ orderID });
-							} catch (error) {
-								options.onError(error);
-							}
-						};
-						container.appendChild(approve);
-					},
-					close: async () => {},
-				}),
-			};
-		`,
-	});
-
 	let captureCanComplete = false;
 	let settled = false;
 	let expenseReads = 0;
 	const captureBodies: Array<{ orderId?: string }> = [];
 	const settlementPosts: unknown[] = [];
 	const orderBodies: unknown[] = [];
+	const orderLookups: string[] = [];
+	const sdkRequests: string[] = [];
 	const paypalUrl = `**/api/wg/${FIXTURE_WG.shareCode}/paypal`;
-	await setupDebtPage(page, {
-		debtorId: FIXTURE_WG.memberId,
-		creditorId: OTHER_MEMBER_ID,
-		creditorMerchantId: merchantId,
-		isSettled: () => settled,
-		onReadExpenses: (count) => {
-			expenseReads = count;
+	const orderPath = `/api/wg/${FIXTURE_WG.shareCode}/paypal/order`;
+	const documentPath = `/wg/${FIXTURE_WG.shareCode}/ausgaben`;
+	const documentResponse = page.waitForResponse(
+		(response) =>
+			response.request().resourceType() === 'document' &&
+			new URL(response.url()).pathname === documentPath &&
+			response.status() === 200,
+	);
+	await page.route(
+		(url) => url.pathname === orderPath,
+		async (route) => {
+			if (route.request().method() === 'GET') {
+				orderLookups.push(route.request().url());
+				return route.fulfill({ json: { status: 'NONE' } });
+			}
+			orderBodies.push(route.request().postDataJSON());
+			return route.fulfill({ json: { orderId: `ORDER-${orderBodies.length}` } });
 		},
-	});
-	await page.route(`${paypalUrl}/order`, async (route) => {
-		orderBodies.push(route.request().postDataJSON());
-		return route.fulfill({ json: { orderId: `ORDER-${orderBodies.length}` } });
-	});
+	);
 	await page.route(`${paypalUrl}/capture`, async (route) => {
 		captureBodies.push(route.request().postDataJSON() as { orderId?: string });
 		if (!captureCanComplete) {
@@ -186,12 +195,57 @@ test('PayPal approval changes debt only after server-confirmed capture', async (
 		if (route.request().method() === 'POST') settlementPosts.push(route.request().postDataJSON());
 		return route.fulfill({ json: { settled: 0, settledCents: 0, splits: [] } });
 	});
+	await page.route('https://www.paypal.com/sdk/js**', async (route) => {
+		sdkRequests.push(route.request().url());
+		return route.fulfill({
+			status: 200,
+			contentType: 'application/javascript',
+			body: paypalSdkStubScript(merchantId),
+		});
+	});
+	await setupDebtPage(page, {
+		debtorId: FIXTURE_WG.memberId,
+		creditorId: OTHER_MEMBER_ID,
+		creditorMerchantId: merchantId,
+		isSettled: () => settled,
+		onReadExpenses: (count) => {
+			expenseReads = count;
+		},
+	});
+	const response = await documentResponse;
+	const csp = response.headers()['content-security-policy'] ?? '';
+	const scriptSrc =
+		csp.split(';').find((directive) => directive.trim().startsWith('script-src ')) ?? '';
+	const nonce = scriptSrc.match(/'nonce-([^']+)'/)?.[1];
+	if (!nonce) throw new Error('CSP nonce missing from the original document');
+	expect(scriptSrc).toContain("'strict-dynamic'");
+	expect(scriptSrc).not.toContain("'unsafe-eval'");
+	expect(
+		await page.evaluate(() => document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce),
+	).toBe(nonce);
 
 	await expect(page.getByText(/Du schuldest Mina/)).toBeVisible();
 	await page.getByRole('button', { name: 'Mit PayPal zahlen', exact: true }).click();
 	const cancelButton = page.getByRole('button', { name: 'PayPal abbrechen', exact: true });
 	const approveButton = page.getByRole('button', { name: 'PayPal bestätigen', exact: true });
 	await expect(cancelButton).toBeVisible();
+	const sdkScript = page.locator(`script[data-namespace="p${merchantId}"]`);
+	await expect(sdkScript).toHaveCount(1);
+	expect(sdkRequests).toHaveLength(1);
+	expect(
+		await sdkScript.evaluate((script) => ({
+			nonce: (script as HTMLScriptElement).nonce,
+			cspNonce: script.getAttribute('data-csp-nonce'),
+		})),
+	).toEqual({ nonce, cspNonce: nonce });
+	expect(
+		await page.evaluate(
+			() =>
+				(window as Window & { __paypalCheckoutSdkStubLoaded?: boolean })
+					.__paypalCheckoutSdkStubLoaded,
+		),
+	).toBe(true);
+	expect(orderLookups).toHaveLength(1);
 	await cancelButton.click();
 	await expect(page.getByText(/Du schuldest Mina/)).toBeVisible();
 	expect(orderBodies).toHaveLength(0);
@@ -199,14 +253,26 @@ test('PayPal approval changes debt only after server-confirmed capture', async (
 
 	await approveButton.click();
 	await expect(page.getByText(/PayPal konnte die Zahlung nicht bestätigen/)).toBeVisible();
+	await expect(
+		page.getByText('PayPal verarbeitet diese Zahlung noch. Starte keine weitere Zahlung.'),
+	).toBeVisible();
+	const retryStatusButton = page.getByRole('button', {
+		name: 'Zahlungsstatus prüfen',
+		exact: true,
+	});
+	await expect(retryStatusButton).toBeVisible();
+	await expect(approveButton).toBeHidden();
 	await expect(page.getByText(/Du schuldest Mina/)).toBeVisible();
 	const readsBeforeComplete = expenseReads;
+	expect(captureBodies).toEqual([{ orderId: 'ORDER-1' }]);
+	expect(orderBodies).toHaveLength(1);
 	expect(settlementPosts).toEqual([]);
 
 	captureCanComplete = true;
-	await approveButton.click();
+	await retryStatusButton.click();
 	await expect.poll(() => expenseReads).toBeGreaterThan(readsBeforeComplete);
 	await expect(page.getByText(/Du schuldest Mina/)).toHaveCount(0);
-	expect(captureBodies).toHaveLength(2);
+	expect(captureBodies).toEqual([{ orderId: 'ORDER-1' }, { orderId: 'ORDER-1' }]);
+	expect(orderBodies).toHaveLength(1);
 	expect(settlementPosts).toEqual([]);
 });

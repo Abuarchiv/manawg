@@ -2,7 +2,7 @@ if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
 	import('@/core/infra/sentry')
 		.then(({ initializeSentry }) => initializeSentry())
 		.catch(() => {
-			// Optional error monitoring must not interrupt the app.
+			// Optional telemetry must never prevent the app from starting.
 		});
 }
 

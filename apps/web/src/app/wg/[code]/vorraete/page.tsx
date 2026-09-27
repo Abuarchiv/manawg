@@ -12,10 +12,14 @@ import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import { useDocumentTitle } from '@/core/hooks/useDocumentTitle';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { InventoryList } from '@/features/inventory/components/InventoryList';
-import type { InventoryCategory, InventoryItemDto } from '@/features/inventory/inventory';
+import {
+	type InventoryCategory,
+	type InventoryItemDto,
+	type InventoryMutationItemDto,
+	groupItemsByCategory,
+} from '@/features/inventory/inventory';
 import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -24,9 +28,26 @@ interface InventoryResponse {
 	grouped: Record<InventoryCategory, InventoryItemDto[]>;
 }
 
+function applyInventoryMutation(
+	items: InventoryItemDto[],
+	updated?: InventoryMutationItemDto,
+	deletedId?: string,
+): InventoryItemDto[] {
+	if (deletedId) return items.filter((item) => item.id !== deletedId);
+	if (!updated) return items;
+	const existing = items.find((item) => item.id === updated.id);
+	const merged: InventoryItemDto = {
+		...(existing ?? {}),
+		...updated,
+		decrementCount30d: updated.decrementCount30d ?? existing?.decrementCount30d ?? 0,
+	};
+	return existing
+		? items.map((item) => (item.id === updated.id ? merged : item))
+		: [...items, merged];
+}
+
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function VorraetePage() {
-	useDocumentTitle('Vorräte — ManaWG');
 	const { wg, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const inventoryUrl = `/api/wg/${encodedShareCode}/inventory`;
@@ -35,6 +56,7 @@ export default function VorraetePage() {
 		error: inventoryError,
 		isLoading: inventoryLoading,
 		refresh: refreshInventory,
+		setData: setInventoryData,
 	} = useCachedFetch<InventoryResponse>(inventoryUrl, {
 		memberId: identity.memberId,
 	});
@@ -155,9 +177,17 @@ export default function VorraetePage() {
 					shareCode={wg.shareCode}
 					memberId={identity.memberId}
 					memberToken={identity.memberToken}
-					onChanged={(updated) => {
-						if (updated) {
-							setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+					onChanged={(updated, deletedId) => {
+						if (updated || deletedId) {
+							setItems((prev) => applyInventoryMutation(prev, updated, deletedId));
+							setInventoryData((current) => {
+								if (!current && !updated) return current;
+								const nextItems = applyInventoryMutation(current?.items ?? [], updated, deletedId);
+								return {
+									items: nextItems,
+									grouped: groupItemsByCategory(nextItems),
+								};
+							});
 						}
 						void load(true);
 					}}

@@ -45,7 +45,22 @@ export function safeErrorName(name: unknown): string {
 
 function sanitizeUrl(value: string): string {
 	const [withoutQuery = ''] = value.split(/[?#]/, 1);
-	return withoutQuery.replace(/(\/wg\/)[^/]+/gi, '$1[redacted]');
+	const withoutPrivateRoutes = withoutQuery
+		.replace(/(\/wg\/)[^/]+/gi, '$1[redacted]')
+		.replace(/(\/api\/calendar\/)[^/]+\/[^/]+/gi, '$1[redacted]/[redacted]')
+		.replace(
+			/(\/(?:storage\/v1\/)?object\/(?:upload\/)?sign\/)[^/?#]+(?:\/[^?#]*)?/gi,
+			'$1[redacted]',
+		);
+	if (!/[?&]X-Amz-Signature=/i.test(value)) return withoutPrivateRoutes;
+
+	const withRedactedS3Key = withoutPrivateRoutes.replace(
+		/(\/manawg\/)[^/]+\/([^/]+)\/[^/]+/i,
+		'$1[redacted]/$2/[redacted]',
+	);
+	if (withRedactedS3Key !== withoutPrivateRoutes) return withRedactedS3Key;
+	const origin = withoutPrivateRoutes.match(/^https?:\/\/[^/]+/i)?.[0];
+	return origin ? `${origin}/[redacted]` : '[redacted]';
 }
 
 export function sanitizeSentryBreadcrumb<T>(breadcrumb: T): T | null {

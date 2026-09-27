@@ -32,7 +32,6 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import type { Abo, AboFilter } from '@/components/wg/abos-types';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import { useDocumentTitle } from '@/core/hooks/useDocumentTitle';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { formatEuroCents } from '@/core/utils/money';
@@ -170,7 +169,6 @@ function aboDeleteErrorMessage(error: string): string {
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function AbosPage() {
-	useDocumentTitle('Fixkosten — ManaWG');
 	const { wg, members, identity } = useWg();
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);

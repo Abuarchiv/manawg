@@ -12,7 +12,6 @@ import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import { useDocumentTitle } from '@/core/hooks/useDocumentTitle';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
@@ -160,7 +159,6 @@ function buildOptimisticExpense({
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function AusgabenPage() {
-	useDocumentTitle('Ausgaben — ManaWG');
 	const { wg, members, identity } = useWg();
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
@@ -282,6 +280,7 @@ export default function AusgabenPage() {
 		key: string;
 		nextDueAt: string;
 		splits: Array<{ debtorMemberId: string; amountCents: number }>;
+		queued?: boolean;
 	} | null>(null);
 
 	function clearPendingCreateRequests(): void {
@@ -779,10 +778,12 @@ export default function AusgabenPage() {
 				return;
 			}
 			const msg =
-				res.status === 409
+				res.status === 409 && res.error !== 'image_removed'
 					? 'Diese Ausgabe wurde inzwischen geändert. Lade die Liste neu und entscheide dann, welche Version stimmt.'
 					: expenseSaveErrorMessage(res.error);
-			if (res.status === 409) setConflictExpenseId(editingExpense?.id ?? null);
+			if (res.status === 409 && res.error !== 'image_removed') {
+				setConflictExpenseId(editingExpense?.id ?? null);
+			}
 			rollbackOptimisticExpense();
 			endPending(optimisticId);
 			setFormError(msg);
@@ -868,7 +869,9 @@ export default function AusgabenPage() {
 		});
 		const pendingRecurringRequest = recurringCreateRequestRef.current;
 		const reuseRecurringRequest =
-			!editingRecurringExpense && pendingRecurringRequest?.fingerprint === recurringFingerprint;
+			!editingRecurringExpense &&
+			!pendingRecurringRequest?.queued &&
+			pendingRecurringRequest?.fingerprint === recurringFingerprint;
 		let splits: Array<{ debtorMemberId: string; amountCents: number }>;
 		if (reuseRecurringRequest && pendingRecurringRequest) {
 			splits = pendingRecurringRequest.splits;
@@ -879,6 +882,74 @@ export default function AusgabenPage() {
 				return;
 			}
 			splits = splitResult.splits;
+		}
+		const queuedRecurringTemplate = !editingRecurringExpense
+			? readOfflineQueue().find((action) => {
+					if (
+						action.type !== 'recurring.create' ||
+						action.wgId !== wg.id ||
+						action.shareCode !== wg.shareCode ||
+						action.memberId !== identity.memberId
+					) {
+						return false;
+					}
+					const payload = action.payload;
+					const rawSplits: unknown = payload.splits;
+					const isQueuedSplit = (
+						split: unknown,
+					): split is { debtorMemberId: string; amountCents: number } =>
+						typeof split === 'object' &&
+						split !== null &&
+						'debtorMemberId' in split &&
+						typeof split.debtorMemberId === 'string' &&
+						'amountCents' in split &&
+						typeof split.amountCents === 'number';
+					if (
+						typeof payload.description !== 'string' ||
+						typeof payload.amountCents !== 'number' ||
+						typeof payload.paidByMemberId !== 'string' ||
+						typeof payload.intervalMonths !== 'number' ||
+						typeof payload.nextDueAt !== 'string' ||
+						!Array.isArray(rawSplits) ||
+						!rawSplits.every(isQueuedSplit)
+					) {
+						return false;
+					}
+					const queuedSplits = [...rawSplits].sort((left, right) =>
+						left.debtorMemberId.localeCompare(right.debtorMemberId),
+					);
+					const currentSplits = [...splits].sort((left, right) =>
+						left.debtorMemberId.localeCompare(right.debtorMemberId),
+					);
+					const sameSplits =
+						splitMode === 'manual'
+							? JSON.stringify(queuedSplits) === JSON.stringify(currentSplits)
+							: JSON.stringify(queuedSplits.map((split) => split.debtorMemberId)) ===
+									JSON.stringify(currentSplits.map((split) => split.debtorMemberId)) &&
+								queuedSplits.reduce((sum, split) => sum + split.amountCents, 0) === amountCents &&
+								(queuedSplits.length < 2 ||
+									Math.max(...queuedSplits.map((split) => split.amountCents)) -
+										Math.min(...queuedSplits.map((split) => split.amountCents)) <=
+										1);
+					return (
+						payload.description === desc &&
+						payload.amountCents === amountCents &&
+						payload.paidByMemberId === paidByMemberId &&
+						payload.intervalMonths === recurringIntervalMonths &&
+						sameSplits &&
+						(queuedNextDueAt === null ||
+							payload.nextDueAt === new Date(queuedNextDueAt).toISOString())
+					);
+				})
+			: undefined;
+		if (queuedRecurringTemplate) {
+			if (pendingRecurringRequest?.fingerprint === recurringFingerprint) {
+				pendingRecurringRequest.queued = true;
+			}
+			setActionWarning(
+				'Fixkosten-Vorlage ist bereits offline vorgemerkt. Synchronisiere oder löse die bestehende Aktion zuerst.',
+			);
+			return;
 		}
 		const nextDueAt = editingRecurringExpense
 			? new Date(editingRecurringExpense.nextDueAt)
@@ -952,7 +1023,9 @@ export default function AusgabenPage() {
 					finishSavingRecurringTemplate();
 					return;
 				}
-				if (!editingRecurringExpense) recurringCreateRequestRef.current = null;
+				if (recurringCreateRequestRef.current?.fingerprint === recurringFingerprint) {
+					recurringCreateRequestRef.current.queued = true;
+				}
 				refreshCount();
 				updateRecurringExpenses((current) => [
 					...current,
@@ -1323,6 +1396,7 @@ export default function AusgabenPage() {
 				const message = expenseActionErrorMessage(res.error);
 				setActionError(message);
 				toast.error(message);
+				if (res.error === 'split_already_offset') void load(false);
 			}
 		} else {
 			void load(false);

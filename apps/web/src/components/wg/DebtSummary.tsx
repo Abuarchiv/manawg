@@ -292,7 +292,7 @@ function DebtRow({
 						/>
 					)}
 					{!payeeMerchantId && owedToMe && (
-						<div className="min-[360px]:col-span-2 min-w-0">
+						<div className="col-span-full min-w-0">
 							<p className="text-sm text-muted-foreground">
 								Verbinde PayPal, damit andere Mitglieder dir Geld senden können.
 							</p>
@@ -305,7 +305,7 @@ function DebtRow({
 						</div>
 					)}
 					{!payeeMerchantId && iOwe && (
-						<p className="min-[360px]:col-span-2 text-sm text-muted-foreground">
+						<p className="col-span-full text-sm text-muted-foreground">
 							PayPal-Zahlungen sind erst möglich, wenn {debt.toName} PayPal verbunden hat.
 						</p>
 					)}

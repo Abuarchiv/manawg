@@ -17,6 +17,7 @@ type FixtureShoppingItem = {
 	boughtAt: string | null;
 	boughtByMemberId: string | null;
 	createdAt: string;
+	updatedAt: string;
 };
 
 function localTestDatabaseUrl(): string {
@@ -51,6 +52,7 @@ async function mockShoppingPage(
 			boughtAt: '2026-09-22T12:00:00.000Z',
 			boughtByMemberId: FIXTURE_WG.memberId,
 			createdAt: '2026-09-22T10:00:00.000Z',
+			updatedAt: '2026-09-22T12:00:00.000Z',
 		},
 	],
 	conflictOnPatch = false,
@@ -141,6 +143,7 @@ test('refreshes the list after a duplicate add and keeps the draft values', asyn
 										boughtAt: null,
 										boughtByMemberId: null,
 										createdAt: '2026-09-21T08:00:00.000Z',
+										updatedAt: '2026-09-21T08:00:00.000Z',
 									},
 								]
 							: [],
@@ -186,6 +189,7 @@ test('reopening a bought duplicate restores both items and explains the conflict
 			boughtAt: '2026-09-22T12:00:00.000Z',
 			boughtByMemberId: memberId,
 			createdAt: '2026-09-22T10:00:00.000Z',
+			updatedAt: '2026-09-22T12:00:00.000Z',
 		},
 		{
 			id: '22222222-2222-4222-8222-222222222222',
@@ -195,6 +199,7 @@ test('reopening a bought duplicate restores both items and explains the conflict
 			boughtAt: null,
 			boughtByMemberId: null,
 			createdAt: '2026-09-23T10:00:00.000Z',
+			updatedAt: '2026-09-23T10:00:00.000Z',
 		},
 	];
 	const { getCalls } = await mockShoppingPage(page, true, 200, items, true);

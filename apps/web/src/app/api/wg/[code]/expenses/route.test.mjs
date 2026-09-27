@@ -157,6 +157,7 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 		race: null,
 		raceConstraint: null,
 		raceWinner: null,
+		rejectImageAttachment: false,
 	};
 
 	const claimId = (scope, key) => `${scope}\u0000${key}`;
@@ -313,12 +314,18 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 	};
 
 	const route = loadTypeScript(routePath, {
+		'@/core/db/private-image-deletions': {
+			assertPrivateImageCanBeAttached: async () => {
+				if (state.rejectImageAttachment) throw new TransactionAbort('image_removed');
+			},
+		},
 		'@/core/db/transaction': { TransactionAbort },
 		'@/core/errors': {
 			apiError: (message, status, code) =>
 				Response.json({ error: message, ...(code ? { code } : {}) }, { status }),
 			badRequest: (message = 'bad_request') => Response.json({ error: message }, { status: 400 }),
-			conflict: (message = 'conflict') => Response.json({ error: message }, { status: 409 }),
+			conflict: (message = 'conflict', code = undefined) =>
+				Response.json({ error: message, ...(code ? { code } : {}) }, { status: 409 }),
 			notFound: (message = 'not_found') => Response.json({ error: message }, { status: 404 }),
 			serverError: () => Response.json({ error: 'server_error' }, { status: 500 }),
 			tooMany: () => Response.json({ error: 'too_many' }, { status: 429 }),
@@ -585,6 +592,22 @@ test('does not treat a different PostgreSQL unique constraint as a recurring rep
 	state.traceConstraint = 'expenses_some_other_unique_idx';
 	const response = await post({ key: 'other-unique-key' });
 	assert.equal(response.status, 500);
+	assert.equal(state.expenses.length, 0);
+	assert.equal(state.sideEffects, 0);
+});
+
+test('revoked private image attachment returns 409 without creating an expense', async () => {
+	const { state, post } = harness();
+	state.rejectImageAttachment = true;
+	const response = await post({
+		key: 'revoked-image-key',
+		body: defaultBody({
+			imageUrl:
+				'https://app.example/api/upload/read?key=manawg%2F11111111-1111-4111-8111-111111111111%2Fexpense%2F22222222-2222-4222-8222-222222222222.jpg',
+		}),
+	});
+	assert.equal(response.status, 409);
+	assert.deepEqual(await response.json(), { error: 'image_removed', code: 'image_removed' });
 	assert.equal(state.expenses.length, 0);
 	assert.equal(state.sideEffects, 0);
 });

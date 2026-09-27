@@ -10,19 +10,69 @@ import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const routeFile = path.join(directory, 'route.ts');
-const wrapperFile = path.join(process.cwd(), 'src/core/guards/with-wg-route.ts');
 const itemId = '11111111-1111-4111-8111-111111111111';
 const wgId = '22222222-2222-4222-8222-222222222222';
 const memberId = '33333333-3333-4333-8333-333333333333';
 const shareCode = 'MTE8PZAT';
 
-function json(body, status = 200) {
-	return Response.json(body, { status });
+function json(body, init = {}) {
+	return Response.json(body, typeof init === 'number' ? { status: init } : init);
 }
 
-function harness(returning) {
-	const state = { audits: 0, notices: 0, update: null, loggedErrors: [] };
-	const shoppingItems = { id: 'shopping_items.id', wgId: 'shopping_items.wg_id' };
+function harness(returning = async () => [{ id: itemId }]) {
+	const state = {
+		audits: 0,
+		notices: 0,
+		update: null,
+		current: {
+			id: itemId,
+			wgId,
+			updatedAt: '2026-09-27T10:00:00.123456Z',
+			boughtAt: null,
+			boughtByMemberId: null,
+			name: 'Milch',
+		},
+		loggedErrors: [],
+		patches: 0,
+		transactionAborted: false,
+	};
+	const shoppingItems = {
+		id: 'shopping_items.id',
+		wgId: 'shopping_items.wg_id',
+		updatedAt: 'shopping_items.updated_at',
+		boughtAt: 'shopping_items.bought_at',
+	};
+	const replayCache = new Map();
+	const matches = (conditions) => {
+		const pairs = [];
+		const visit = (value) => {
+			if (value?.truncateMilliseconds === true) {
+				pairs.push(value);
+				return;
+			}
+			if (!Array.isArray(value)) return;
+			if (value.length === 2 && typeof value[0] === 'string') {
+				pairs.push(value);
+				return;
+			}
+			value.forEach(visit);
+		};
+		conditions.forEach(visit);
+		return pairs.every((pair) => {
+			const [column, value] = Array.isArray(pair) ? pair : [pair.column, pair.value];
+			if (column === shoppingItems.updatedAt)
+				return (
+					pair.truncateMilliseconds === true &&
+					new Date(value).getTime() === new Date(state.current.updatedAt).getTime()
+				);
+			if (column === shoppingItems.boughtAt) {
+				const actual = state.current.boughtAt?.getTime() ?? null;
+				const expected = value === null ? null : new Date(value).getTime();
+				return actual === expected;
+			}
+			return true;
+		});
+	};
 	const db = {
 		update(table) {
 			assert.equal(table, shoppingItems);
@@ -30,8 +80,35 @@ function harness(returning) {
 				set(values) {
 					state.update = values;
 					return {
+						where(conditions) {
+							state.patches += 1;
+							return {
+								returning: async () => {
+									if (!matches(conditions)) return [];
+									let rows;
+									try {
+										rows = await returning();
+									} catch (error) {
+										state.transactionAborted = true;
+										throw error;
+									}
+									if (rows.length > 0) state.current = { ...state.current, ...values };
+									return rows;
+								},
+							};
+						},
+					};
+				},
+			};
+		},
+		select() {
+			return {
+				from(table) {
+					assert.equal(table, shoppingItems);
+					return {
 						where() {
-							return { returning };
+							const rows = state.current ? [{ id: state.current.id }] : [];
+							return { limit: async () => rows };
 						},
 					};
 				},
@@ -77,7 +154,40 @@ function harness(returning) {
 			checkRateLimit: async () => ({ success: true }),
 			wgWriteLimiter: {},
 		},
-		'drizzle-orm': { and: (...conditions) => conditions, eq: (...condition) => condition },
+		'drizzle-orm': {
+			and: (...conditions) => conditions,
+			eq: (...condition) => condition,
+			isNull: (column) => [column, null],
+			sql: (strings, column, value) =>
+				strings[0]?.includes('greatest')
+					? new Date('2026-09-27T10:00:00.124Z')
+					: { column, value, truncateMilliseconds: true },
+		},
+		'@/core/idempotency': {
+			readIdempotencyKey: (request) => request.headers.get('idempotency-key'),
+		},
+		'@/features/pinnwand/announcement-replay': {
+			withAnnouncementReplay: async (request, scope, mutate) => {
+				const key = request.headers.get('idempotency-key');
+				const cacheKey = `${scope}:${key}`;
+				if (replayCache.has(cacheKey)) {
+					return { response: replayCache.get(cacheKey), effect: null, key };
+				}
+				let result;
+				try {
+					result = await mutate(db);
+				} catch (error) {
+					state.transactionAborted = false;
+					throw error;
+				}
+				if (state.transactionAborted) {
+					state.transactionAborted = false;
+					throw new Error('transaction_aborted');
+				}
+				if (key) replayCache.set(cacheKey, result.response);
+				return { ...result, key };
+			},
+		},
 		'next/server': { NextResponse: { json } },
 	};
 
@@ -94,7 +204,18 @@ function harness(returning) {
 		const module = { exports: {} };
 		cache.set(file, module);
 		const mockRequire = (name) => {
-			if (name === '@/core/guards/with-wg-route') return loadTypeScript(wrapperFile);
+			if (name === '@/core/guards/with-wg-route') {
+				return {
+					withWgRoute: (_label, handler) => async (request, context) => {
+						try {
+							return await handler(request, await context.params);
+						} catch (error) {
+							state.loggedErrors.push(error);
+							return json({ error: 'server_error' }, 500);
+						}
+					},
+				};
+			}
 			if (name === '@/features/shopping/shopping-duplicate') {
 				return loadTypeScript(
 					path.join(process.cwd(), 'src/features/shopping/shopping-duplicate.ts'),
@@ -110,12 +231,18 @@ function harness(returning) {
 	const route = loadTypeScript(routeFile);
 	return {
 		state,
-		patch: () =>
+		patch: ({
+			body,
+			bought = false,
+			expectedUpdatedAt = new Date(state.current.updatedAt).toISOString(),
+			expectedBoughtAt = null,
+			key = '44444444-4444-4444-8444-444444444444',
+		} = {}) =>
 			route.PATCH(
 				new Request(`https://example.invalid/api/wg/${shareCode}/shopping/${itemId}`, {
 					method: 'PATCH',
-					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify({ bought: false }),
+					headers: { 'content-type': 'application/json', 'idempotency-key': key },
+					body: JSON.stringify(body ?? { bought, expectedUpdatedAt, expectedBoughtAt }),
 				}),
 				{ params: Promise.resolve({ code: shareCode, id: itemId }) },
 			),
@@ -164,4 +291,52 @@ test('other database errors still use the shared 500 handler', async () => {
 	assert.equal(response.status, 500);
 	assert.deepEqual(await response.json(), { error: 'server_error' });
 	assert.equal(state.loggedErrors[0], queryError);
+});
+
+test('stale shopping state conflicts without mutation or notification', async () => {
+	const { patch, state } = harness();
+	state.current.updatedAt = new Date('2026-09-27T11:00:00.000Z');
+
+	const response = await patch({ bought: true, expectedUpdatedAt: '2026-09-27T10:00:00.000Z' });
+
+	assert.equal(response.status, 409);
+	assert.deepEqual(await response.json(), { error: 'shopping_item_changed' });
+	assert.equal(state.audits, 0);
+	assert.equal(state.notices, 0);
+	assert.equal(state.current.boughtAt, null);
+});
+
+test('legacy queued shopping update remains a visible conflict', async () => {
+	const { patch, state } = harness();
+
+	const response = await patch({ body: { bought: true } });
+
+	assert.equal(response.status, 409);
+	assert.deepEqual(await response.json(), { error: 'shopping_item_changed' });
+	assert.equal(state.patches, 0);
+	assert.equal(state.audits, 0);
+	assert.equal(state.notices, 0);
+});
+
+test('retry of a bought PATCH replays after another member reopens the item', async () => {
+	const { patch, state } = harness();
+	const request = {
+		bought: true,
+		expectedUpdatedAt: '2026-09-27T10:00:00.123Z',
+		expectedBoughtAt: null,
+	};
+	const first = await patch(request);
+	assert.equal(first.status, 200);
+	assert.equal(state.current.updatedAt.getTime(), Date.parse('2026-09-27T10:00:00.124Z'));
+	state.current.updatedAt = new Date('2026-09-27T11:00:00.000Z');
+	state.current.boughtAt = null;
+	state.current.boughtByMemberId = null;
+
+	const retry = await patch(request);
+
+	assert.equal(retry.status, 200);
+	assert.equal(state.patches, 1);
+	assert.equal(state.audits, 1);
+	assert.equal(state.notices, 1);
+	assert.equal(state.current.boughtAt, null);
 });

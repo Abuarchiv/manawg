@@ -59,6 +59,17 @@ test('system back closes an open drawer instead of leaving the page', async ({ p
 test('system back closes an open alert dialog instead of leaving the page', async ({ page }) => {
 	await trackCloseWatchers(page);
 	await setupMember(page);
+	await page.route(`**/api/wg/${shareCode}/members`, (route) =>
+		route.fulfill({
+			json: {
+				members: [
+					{ id: FIXTURE_WG.memberId, name: FIXTURE_WG.memberName, color: null, active: true },
+					{ id: 'fixture-other-member', name: 'Mira', color: null, active: true },
+				],
+				viewerIsAdmin: true,
+			},
+		}),
+	);
 	await page.setViewportSize({ width: 320, height: 640 });
 	await navigateToFeature(page, `/wg/${shareCode}/einstellungen#zugang`);
 	await dismissOnboarding(page);

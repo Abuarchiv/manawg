@@ -6,7 +6,9 @@ import {
 	db,
 	wgMembers,
 } from '@/core/db';
-import { badRequest, payloadTooLarge } from '@/core/errors';
+import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
+import { TransactionAbort } from '@/core/db/transaction';
+import { badRequest, conflict, payloadTooLarge } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { readJsonBody } from '@/core/http/read-json';
@@ -182,42 +184,56 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 	const scope = announcementCreateIdempotencyScope(wg.id, auth.member.memberId);
 
 	// SECURITY: author is always the authenticated caller.
-	const outcome = await withAnnouncementReplay(
-		req,
-		scope,
-		async (tx) => {
-			const limited = await checkRateLimit(
-				wgWriteLimiter,
-				`announcement:${wg.id}:${auth.member.memberId}`,
-			);
-			if (!limited.success) {
-				return { response: { status: 429, body: { error: 'too_many_requests' } }, effect: null };
-			}
+	let outcome: {
+		response: AnnouncementReplayResponse;
+		effect: typeof announcements.$inferSelect | null;
+		key: string | null;
+	};
+	try {
+		outcome = await withAnnouncementReplay(
+			req,
+			scope,
+			async (tx) => {
+				const limited = await checkRateLimit(
+					wgWriteLimiter,
+					`announcement:${wg.id}:${auth.member.memberId}`,
+				);
+				if (!limited.success) {
+					return { response: { status: 429, body: { error: 'too_many_requests' } }, effect: null };
+				}
+				await assertPrivateImageCanBeAttached(tx, wg.id, safeImageUrl);
 
-			const [item] = await tx
-				.insert(announcements)
-				.values({
-					wgId: wg.id,
-					authorMemberId: auth.member.memberId,
-					content,
-					imageUrl: safeImageUrl,
-					kind,
-					source: safeSource,
-					sourcePath: safeSourcePath,
-				})
-				.returning();
-			if (!item) throw new Error('announcement_insert_failed');
-			return {
-				response: {
-					status: 200,
-					body: { announcement: item, warning: null },
-					entityId: item.id,
-				},
-				effect: item,
-			};
-		},
-		legacyCreateReplay,
-	);
+				const [item] = await tx
+					.insert(announcements)
+					.values({
+						wgId: wg.id,
+						authorMemberId: auth.member.memberId,
+						content,
+						imageUrl: safeImageUrl,
+						kind,
+						source: safeSource,
+						sourcePath: safeSourcePath,
+					})
+					.returning();
+				if (!item) throw new Error('announcement_insert_failed');
+				return {
+					response: {
+						status: 200,
+						body: { announcement: item, warning: null },
+						entityId: item.id,
+					},
+					effect: item,
+				};
+			},
+			legacyCreateReplay,
+			wg.id,
+		);
+	} catch (error) {
+		if (error instanceof TransactionAbort && error.code === 'image_removed') {
+			return conflict('image_removed', 'image_removed');
+		}
+		throw error;
+	}
 	if (!outcome.effect) {
 		return NextResponse.json(outcome.response.body, { status: outcome.response.status });
 	}

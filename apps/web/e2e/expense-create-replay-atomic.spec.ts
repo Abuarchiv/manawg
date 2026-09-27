@@ -186,6 +186,9 @@ function harness(kind: Kind, warning: null | 'notification_delivery_failed' = nu
 			recurringExpenses,
 			wgMembers,
 		},
+		'@/core/db/private-image-deletions': {
+			assertPrivateImageCanBeAttached: async () => undefined,
+		},
 		'@/core/db/transaction': { TransactionAbort: abort },
 		'@/core/errors': {
 			apiError: (code: string, status: number) => responseError(code, status),

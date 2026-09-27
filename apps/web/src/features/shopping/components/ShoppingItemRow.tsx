@@ -39,6 +39,7 @@ interface ShoppingItemRowProps {
 	adder: MemberInfo;
 	buyer: MemberInfo | null;
 	pending: boolean;
+	queued?: boolean;
 	onToggle: (item: ShoppingItem) => void;
 	onRemove: (id: string) => void;
 	removeError?: string | null;
@@ -52,6 +53,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	adder,
 	buyer,
 	pending,
+	queued = false,
 	onToggle,
 	onRemove,
 	removeError = null,
@@ -74,7 +76,9 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	const [swipeX, setSwipeX] = useState(0);
 
 	function endSwipe(): void {
-		if (swipeStartX.current !== null && swipeX >= SWIPE_TOGGLE_PX && !pending) onToggle(item);
+		if (swipeStartX.current !== null && swipeX >= SWIPE_TOGGLE_PX && !pending && !queued) {
+			onToggle(item);
+		}
 		swipeStartX.current = null;
 		setSwipeX(0);
 	}
@@ -112,7 +116,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 				aria-busy={pending}
 				onPointerDown={(event) => {
 					// Maus bleibt beim Klicken; Wischen ist eine Touch-Geste.
-					if (event.pointerType !== 'mouse') {
+					if (event.pointerType !== 'mouse' && !pending && !queued) {
 						swipeStartX.current = event.clientX;
 						// Ohne Capture würden pointermove/-up bei schnellem Wischen auf ein
 						// Nachbarelement umgeleitet und die Zeile bliebe optisch hängen.
@@ -133,7 +137,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 					<Checkbox
 						checked={isBought}
 						onCheckedChange={() => onToggle(item)}
-						disabled={pending}
+						disabled={pending || queued}
 						size="lg"
 						className="relative after:absolute after:-inset-2.5"
 						aria-label={isBought ? `${item.name} wieder öffnen` : `${item.name} erledigen`}
@@ -162,6 +166,8 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 								<Spinner aria-hidden />
 								Speichert…
 							</output>
+						) : queued ? (
+							<output aria-live="polite">Wartet auf Synchronisierung…</output>
 						) : isBought ? (
 							buyerName ? (
 								`Gekauft von ${buyerName}`

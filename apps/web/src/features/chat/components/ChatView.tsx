@@ -123,6 +123,9 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		action: 'send' | 'react' | 'unreact' | 'edit' | 'delete',
 		error: string,
 	) {
+		if (error === 'image_removed') {
+			return 'Dieses Bild wurde entfernt. Lade es erneut hoch, bevor du die Nachricht sendest.';
+		}
 		if (error === 'Netzwerkfehler' || error === 'Failed to fetch') {
 			switch (action) {
 				case 'send':

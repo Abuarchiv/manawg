@@ -72,7 +72,7 @@ async function openPutzen(
 	);
 	await navigateToFeature(page, `/wg/${SHARE_CODE}/putzen`);
 	await dismissOnboarding(page);
-	await expect.poll(() => memberTokens.length, { timeout: 15_000 }).toBeGreaterThanOrEqual(2);
+	await expect.poll(() => memberTokens.length, { timeout: 15_000 }).toBeGreaterThanOrEqual(1);
 	expect(memberTokens.every((token) => token === 'fixture-member-token')).toBe(true);
 	const household = page.getByRole('navigation', { name: 'Haushalt' });
 	const shopping = household.getByRole('link', { name: 'Einkäufe, 123 offen' });

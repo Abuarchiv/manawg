@@ -2,7 +2,7 @@
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
@@ -17,6 +17,7 @@ import {
 	writeDraft,
 } from '@/core/offline/drafts';
 import {
+	needsManualOfflineResolution,
 	readOfflineQueue,
 	syncOfflineActions,
 	writeOfflineQueue,
@@ -32,6 +33,7 @@ import {
 	getOfflineActionRisk,
 	getOfflineActionSummary,
 } from '@/core/offline/offline-queue';
+import { cn } from '@/shared/lib/cn';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function OfflineQueueSection({
@@ -52,6 +54,7 @@ export function OfflineQueueSection({
 		(item: OfflineAction): boolean => item.shareCode === shareCode && item.memberId === memberId,
 		[memberId, shareCode],
 	);
+	const hasRetryableItems = items.some((item) => !needsManualOfflineResolution(item));
 
 	const refresh = useCallback((): void => {
 		setItems(readOfflineQueue().filter(isActiveMemberItem));
@@ -108,6 +111,17 @@ export function OfflineQueueSection({
 			return buildQueueEditHref(shareCode, 'chore', { openAbsencesPanel: true });
 		}
 		return buildQueueEditHref(shareCode, 'chore');
+	}
+
+	function inspectHref(item: OfflineAction): string {
+		const module = item.type.startsWith('shopping.')
+			? 'einkauf'
+			: item.type === 'announcement.create'
+				? 'pinnwand'
+				: item.type.startsWith('expense.') || item.type.startsWith('recurring.')
+					? 'ausgaben'
+					: 'putzen';
+		return `/wg/${encodeURIComponent(shareCode)}/${module}`;
 	}
 
 	function edit(item: OfflineAction, draft: QueueEditDraft): void {
@@ -371,7 +385,7 @@ export function OfflineQueueSection({
 	}
 
 	async function retry(): Promise<void> {
-		if (syncingRef.current || items.length === 0) return;
+		if (syncingRef.current || !hasRetryableItems) return;
 		syncingRef.current = true;
 		setSyncing(true);
 		try {
@@ -393,20 +407,22 @@ export function OfflineQueueSection({
 					<p className="text-muted-foreground text-[12px]">
 						{formatOfflineQueueCount(items.length)}
 					</p>
-					<Button
-						type="button"
-						variant="outline"
-						onClick={() => void retry()}
-						disabled={syncing || items.length === 0}
-						aria-label={
-							syncing
-								? 'Offline-Warteschlange wird synchronisiert'
-								: 'Offline-Warteschlange erneut synchronisieren'
-						}
-					>
-						{syncing && <Spinner aria-hidden />}
-						Erneut versuchen
-					</Button>
+					{hasRetryableItems && (
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => void retry()}
+							disabled={syncing}
+							aria-label={
+								syncing
+									? 'Offline-Warteschlange wird synchronisiert'
+									: 'Offline-Warteschlange erneut synchronisieren'
+							}
+						>
+							{syncing && <Spinner aria-hidden />}
+							Erneut versuchen
+						</Button>
+					)}
 				</div>
 				{items.length > 0 && (
 					<ItemGroup className="gap-2">
@@ -415,6 +431,8 @@ export function OfflineQueueSection({
 							const fallback = explainOfflineActionFailure(0);
 							const risk = getOfflineActionRisk(item);
 							const editDraft = buildQueueEditDraft(item);
+							const requiresManualReview = item.lastError?.startsWith('Server prüfen:') === true;
+							const requiresManualResolution = needsManualOfflineResolution(item);
 							const serverCheckLabel = `Server prüfen: ${summary.detail || summary.title}`;
 							const actionLabel = summary.detail || summary.title;
 							const rowBusy = syncing || checkingServerIds.has(item.id);
@@ -426,9 +444,15 @@ export function OfflineQueueSection({
 											{item.attempts ? <Badge variant="destructive">{item.attempts}x</Badge> : null}
 										</ItemTitle>
 										<ItemDescription className="line-clamp-none">{summary.detail}</ItemDescription>
-										<p className="text-muted-foreground line-clamp-2 text-xs">
-											{item.lastError ?? fallback.detail}
-										</p>
+										{requiresManualResolution ? (
+											<Alert className="mt-1" variant="destructive">
+												<AlertDescription>{item.lastError}</AlertDescription>
+											</Alert>
+										) : (
+											<p className="text-muted-foreground line-clamp-2 text-xs">
+												{item.lastError ?? fallback.detail}
+											</p>
+										)}
 										{risk && (
 											<Alert className="mt-1">
 												<AlertDescription>
@@ -442,41 +466,56 @@ export function OfflineQueueSection({
 											</Alert>
 										)}
 										<div className="mt-2 flex flex-wrap gap-2">
-											<Button
-												type="button"
-												variant="outline"
-												size="sm"
-												aria-label={serverCheckLabel}
-												onClick={() => void checkServer(item)}
-												disabled={rowBusy}
-											>
-												{checkingServerIds.has(item.id) && <Spinner aria-hidden />}
-												{checkingServerIds.has(item.id) ? 'Prüft…' : 'Server prüfen'}
-											</Button>
-											{editDraft ? (
-												<Button
-													type="button"
-													variant="ghost"
-													size="sm"
-													aria-label={`Offline-Aktion bearbeiten: ${actionLabel}`}
-													onClick={() => edit(item, editDraft)}
-													disabled={rowBusy}
+											{requiresManualReview ? (
+												<a
+													href={inspectHref(item)}
+													className={cn(
+														buttonVariants({ variant: 'outline', size: 'sm' }),
+														'min-h-11',
+													)}
+													aria-label={`WG-Eintrag prüfen: ${actionLabel}`}
 												>
-													Bearbeiten
-												</Button>
-											) : null}
-											{item.payload.imageUrl ? (
-												<Button
-													type="button"
-													variant="ghost"
-													size="sm"
-													aria-label={`Anhang entfernen: ${actionLabel}`}
-													onClick={() => removeAttachment(item.id)}
-													disabled={rowBusy}
-												>
-													Anhang weg
-												</Button>
-											) : null}
+													WG-Eintrag prüfen
+												</a>
+											) : (
+												<>
+													<Button
+														type="button"
+														variant="outline"
+														size="sm"
+														aria-label={serverCheckLabel}
+														onClick={() => void checkServer(item)}
+														disabled={rowBusy}
+													>
+														{checkingServerIds.has(item.id) && <Spinner aria-hidden />}
+														{checkingServerIds.has(item.id) ? 'Prüft…' : 'Server prüfen'}
+													</Button>
+													{editDraft ? (
+														<Button
+															type="button"
+															variant="ghost"
+															size="sm"
+															aria-label={`Offline-Aktion bearbeiten: ${actionLabel}`}
+															onClick={() => edit(item, editDraft)}
+															disabled={rowBusy}
+														>
+															Bearbeiten
+														</Button>
+													) : null}
+													{item.payload.imageUrl ? (
+														<Button
+															type="button"
+															variant="ghost"
+															size="sm"
+															aria-label={`Anhang entfernen: ${actionLabel}`}
+															onClick={() => removeAttachment(item.id)}
+															disabled={rowBusy}
+														>
+															Anhang weg
+														</Button>
+													) : null}
+												</>
+											)}
 											<Button
 												type="button"
 												variant="destructive"

@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 const PAYPAL_SANDBOX_URL = 'https://api-m.sandbox.paypal.com';
 const PAYPAL_LIVE_URL = 'https://api-m.paypal.com';
 
@@ -7,6 +5,7 @@ export interface PayPalOrderResponse {
 	id?: string;
 	status?: string;
 	purchase_units?: Array<{
+		payee?: { merchant_id?: string };
 		payments?: {
 			captures?: Array<{
 				status?: string;
@@ -83,7 +82,7 @@ export async function requestPayPalApi<T>(
 	const config = getConfig();
 	if (!config) throw new Error('paypal_not_configured');
 	const accessToken = await getAccessToken(config);
-	const authAssertion = payeeMerchantId
+	const payeeAssertion = payeeMerchantId
 		? { 'PayPal-Auth-Assertion': createPayPalAuthAssertion(config.clientId, payeeMerchantId) }
 		: {};
 	const response = await fetch(`${config.baseUrl}${path}`, {
@@ -93,12 +92,41 @@ export async function requestPayPalApi<T>(
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${accessToken}`,
 			'PayPal-Partner-Attribution-Id': config.partnerAttributionId,
-			...authAssertion,
+			...payeeAssertion,
 			...(init.headers ?? {}),
 		},
 	});
-	if (!response.ok) throw new Error(`paypal_api_${response.status}`);
+	if (!response.ok) {
+		let issue: string | undefined;
+		if (payeeMerchantId) {
+			try {
+				const body = (await response.json()) as { details?: Array<{ issue?: unknown }> };
+				const payeeIssue = body.details?.find(
+					(detail) => typeof detail.issue === 'string' && detail.issue.startsWith('PAYEE_'),
+				)?.issue;
+				if (typeof payeeIssue === 'string') issue = payeeIssue;
+			} catch {
+				// Keep the HTTP status when PayPal returns a non-JSON error body.
+			}
+		}
+		throw new Error(`paypal_api_${response.status}${issue ? `_${issue}` : ''}`);
+	}
 	return (await response.json()) as T;
+}
+
+async function paypalRequest<T>(
+	path: string,
+	payeeMerchantId: string,
+	init: RequestInit,
+): Promise<T> {
+	return requestPayPalApi<T>(path, init, payeeMerchantId);
+}
+
+export function isTerminalPayPalOrderCreationError(error: unknown): boolean {
+	return (
+		error instanceof Error &&
+		/^paypal_api_(400|401|403|404|422)_PAYEE_[A-Z0-9_]+$/.test(error.message)
+	);
 }
 
 export async function createPayPalOrder(input: {
@@ -107,42 +135,39 @@ export async function createPayPalOrder(input: {
 	description: string;
 	payeeMerchantId: string;
 	customId: string;
+	requestId: string;
 }): Promise<PayPalOrderResponse> {
-	return requestPayPalApi<PayPalOrderResponse>(
-		'/v2/checkout/orders',
-		{
-			method: 'POST',
-			headers: { 'PayPal-Request-Id': randomUUID() },
-			body: JSON.stringify({
-				intent: 'CAPTURE',
-				purchase_units: [
-					{
-						custom_id: input.customId,
-						description: input.description,
-						payee: { merchant_id: input.payeeMerchantId },
-						amount: {
-							currency_code: input.currency,
-							value: (input.amountCents / 100).toFixed(2),
-						},
+	return paypalRequest<PayPalOrderResponse>('/v2/checkout/orders', input.payeeMerchantId, {
+		method: 'POST',
+		headers: { 'PayPal-Request-Id': input.requestId },
+		body: JSON.stringify({
+			intent: 'CAPTURE',
+			purchase_units: [
+				{
+					custom_id: input.customId,
+					description: input.description,
+					payee: { merchant_id: input.payeeMerchantId },
+					amount: {
+						currency_code: input.currency,
+						value: (input.amountCents / 100).toFixed(2),
 					},
-				],
-			}),
-		},
-		input.payeeMerchantId,
-	);
+				},
+			],
+		}),
+	});
 }
 
 export async function capturePayPalOrder(
 	orderId: string,
 	payeeMerchantId: string,
 ): Promise<PayPalOrderResponse> {
-	return requestPayPalApi<PayPalOrderResponse>(
+	return paypalRequest<PayPalOrderResponse>(
 		`/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`,
+		payeeMerchantId,
 		{
 			method: 'POST',
-			headers: { 'PayPal-Request-Id': orderId },
+			headers: { 'PayPal-Request-Id': orderId, Prefer: 'return=representation' },
 		},
-		payeeMerchantId,
 	);
 }
 
@@ -150,9 +175,9 @@ export async function getPayPalOrder(
 	orderId: string,
 	payeeMerchantId: string,
 ): Promise<PayPalOrderResponse> {
-	return requestPayPalApi<PayPalOrderResponse>(
+	return paypalRequest<PayPalOrderResponse>(
 		`/v2/checkout/orders/${encodeURIComponent(orderId)}`,
-		{ method: 'GET' },
 		payeeMerchantId,
+		{ method: 'GET' },
 	);
 }

@@ -23,7 +23,6 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { ActivityFeed } from '@/components/wg/dashboard/ActivityFeed';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import { useDocumentTitle } from '@/core/hooks/useDocumentTitle';
 import {
 	type ActivityFilter,
 	type ActivityItem,
@@ -53,7 +52,6 @@ function formatVisibleActivityCount(count: number): string {
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function AktivitaetPage() {
-	useDocumentTitle('Aktivität — ManaWG');
 	const { wg, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;

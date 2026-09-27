@@ -17,7 +17,7 @@ function activity(id: string, text: string, completed: boolean): ActivityItem {
 	} as ActivityItem;
 }
 
-test('retries a recurring advance carried by a recurring action', () => {
+test('retries a recurring advance carried by an expense action', () => {
 	const createRetry = Reflect.get(offlineClient, 'createRecurringAdvanceRetry') as
 		| ((action: Record<string, unknown>, now: number) => unknown)
 		| undefined;
@@ -26,7 +26,7 @@ test('retries a recurring advance carried by a recurring action', () => {
 	const retry = createRetry?.(
 		{
 			id: 'queued-recurring',
-			type: 'recurring.create',
+			type: 'expense.create',
 			shareCode: 'WGCODE',
 			memberId: 'member-1',
 			createdAt: new Date(NOW).toISOString(),

@@ -27,6 +27,7 @@ async function expectSystemFocusRing(page: Page, target: Locator): Promise<void>
 
 test('keeps keyboard focus visible in Windows high contrast on shared controls and WG actions', async ({
 	page,
+	browserName,
 }) => {
 	await setupMember(page);
 	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores`, (route) =>
@@ -51,6 +52,9 @@ test('keeps keyboard focus visible in Windows high contrast on shared controls a
 	);
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/putzen`);
 	await dismissOnboarding(page);
+	const doneChore = page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' });
+	await expect(doneChore).toBeVisible();
+	await expect(doneChore).toBeEnabled();
 
 	await page.evaluate(() => {
 		const fixture = document.createElement('div');
@@ -66,7 +70,14 @@ test('keeps keyboard focus visible in Windows high contrast on shared controls a
 	const fixtureButton = page.getByTestId('focus-button');
 	await page.emulateMedia({ forcedColors: 'none', colorScheme: 'light' });
 	await page.keyboard.press('Tab');
-	await expect(fixtureButton).toBeFocused();
+	if (browserName === 'webkit') {
+		// WebKit's default macOS Tab order skips buttons and links without Full Keyboard Access.
+		await expect(page.getByTestId('focus-input')).toBeFocused();
+		await fixtureButton.focus();
+		await expect(fixtureButton).toBeFocused();
+	} else {
+		await expect(fixtureButton).toBeFocused();
+	}
 	const lightRing = await fixtureButton.evaluate((element) => getComputedStyle(element).boxShadow);
 	expect(lightRing).not.toBe('none');
 
@@ -80,7 +91,11 @@ test('keeps keyboard focus visible in Windows high contrast on shared controls a
 
 	for (const selector of ['focus-input', 'focus-select', 'focus-link']) {
 		const target = page.getByTestId(selector);
-		await page.keyboard.press('Tab');
+		if (browserName === 'webkit' && selector === 'focus-link') {
+			await target.focus();
+		} else {
+			await page.keyboard.press('Tab');
+		}
 		await expect(target).toBeFocused();
 		await expectSystemFocusRing(page, target);
 		if (selector === 'focus-input' || selector === 'focus-select') {
@@ -91,11 +106,19 @@ test('keeps keyboard focus visible in Windows high contrast on shared controls a
 
 	const choreButton = page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' });
 	let reachedChoreButton = false;
-	for (let i = 0; i < 100; i += 1) {
-		await page.keyboard.press('Tab');
-		if (await choreButton.evaluate((element) => element === document.activeElement)) {
-			reachedChoreButton = true;
-			break;
+	if (browserName === 'webkit') {
+		// WebKit's native Tab order skips buttons and links without Full Keyboard Access.
+		await choreButton.focus();
+		reachedChoreButton = await choreButton.evaluate(
+			(element) => element === document.activeElement,
+		);
+	} else {
+		for (let i = 0; i < 100; i += 1) {
+			await page.keyboard.press('Tab');
+			if (await choreButton.evaluate((element) => element === document.activeElement)) {
+				reachedChoreButton = true;
+				break;
+			}
 		}
 	}
 	expect(reachedChoreButton).toBe(true);

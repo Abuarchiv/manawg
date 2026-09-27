@@ -14,6 +14,7 @@ export type NotificationEvent =
 	| 'shopping.added'
 	| 'event.created'
 	| 'event.upcoming'
+	| 'event.today'
 	| 'inventory.low_stock'
 	| 'chat.message'
 	| 'chat.mention';
@@ -60,7 +61,7 @@ export function notificationCategoryForEvent(event: NotificationEvent): Notifica
 
 export function notificationPriorityForEvent(event: NotificationEvent): NotificationPriority {
 	if (event === 'chore.due') return 'urgent';
-	if (event === 'event.upcoming') return 'urgent';
+	if (event === 'event.upcoming' || event === 'event.today') return 'urgent';
 	if (event === 'announcement.reacted') return 'silent';
 	if (event === 'notification.test') return 'normal';
 	return 'normal';
@@ -105,6 +106,7 @@ function formatEventTime(value: unknown): string {
 		month: '2-digit',
 		hour: '2-digit',
 		minute: '2-digit',
+		timeZone: 'Europe/Berlin',
 	}).format(date);
 }
 
@@ -222,6 +224,20 @@ export function formatNotificationMessage(
 				)}.`,
 				urlPath: eventUrlPath(payload),
 			};
+		case 'event.today': {
+			const title = text(payload.title, 'Termin');
+			const body =
+				payload.allDay === true
+					? `Heute in ${wgName}: „${title}“ ist ganztägig.`
+					: payload.ongoing === true
+						? `Heute in ${wgName}: „${title}“ läuft noch.`
+						: `Heute in ${wgName}: „${title}“ um ${formatEventTime(payload.startsAt)}.`;
+			return {
+				title: 'Termin heute',
+				body,
+				urlPath: eventUrlPath(payload),
+			};
+		}
 		case 'inventory.low_stock': {
 			const itemName = text(payload.title, 'Vorrat');
 			const quantity = quantityNumber(payload.quantity);

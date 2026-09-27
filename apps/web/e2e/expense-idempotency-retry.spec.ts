@@ -80,6 +80,13 @@ function recordAttempt(route: Route): RequestAttempt {
 	};
 }
 
+function normalizeExpenseCreateBody(body: unknown): unknown {
+	if (typeof body !== 'object' || body === null || Array.isArray(body)) return body;
+	const payload = body as Record<string, unknown>;
+	// The expense API accepts missing or null imageUrl and stores both as null.
+	return { ...payload, imageUrl: payload.imageUrl ?? null };
+}
+
 async function queuedRecurringExpenseCount(page: Page): Promise<number> {
 	return page.evaluate(() => {
 		const queue = JSON.parse(localStorage.getItem('manawg:offline-actions') ?? '[]');
@@ -93,6 +100,77 @@ async function queuedRecurringExpenseCount(page: Page): Promise<number> {
 				action.payload.expectedRecurringNextDueAt === '2020-01-01T00:00:00.000Z',
 		).length;
 	});
+}
+
+async function queuedActionCount(page: Page, type: string): Promise<number> {
+	return page.evaluate((actionType) => {
+		const queue = JSON.parse(localStorage.getItem('manawg:offline-actions') ?? '[]');
+		return queue.filter((action: { type?: string }) => action.type === actionType).length;
+	}, type);
+}
+
+const OFFLINE_RETRY_ERROR =
+	'Noch keine Verbindung: Die Aktion bleibt gespeichert und wird erneut versucht, sobald das Netz zurück ist.';
+
+type QueuedRetryState = {
+	idempotencyKey: string | null;
+	attempts: number;
+	lastAttemptAt: string | null;
+	lastError: string | null;
+};
+
+async function queuedRetryState(page: Page, type: string): Promise<QueuedRetryState | null> {
+	return page.evaluate((actionType) => {
+		const queue = JSON.parse(localStorage.getItem('manawg:offline-actions') ?? '[]');
+		const action = queue.find((entry: { type?: string }) => entry.type === actionType);
+		if (!action) return null;
+		return {
+			idempotencyKey: action.idempotencyKey ?? null,
+			attempts: action.attempts ?? 0,
+			lastAttemptAt: action.lastAttemptAt ?? null,
+			lastError: action.lastError ?? null,
+		};
+	}, type);
+}
+
+async function expectOfflineAutoSyncBackoff(
+	page: Page,
+	type: string,
+	blockedAttempts: RequestAttempt[],
+	originalKey: string | null,
+): Promise<void> {
+	await expect.poll(() => blockedAttempts.length).toBeGreaterThan(0);
+	await expect
+		.poll(async () => {
+			const state = await queuedRetryState(page, type);
+			return Boolean(
+				state &&
+					state.idempotencyKey === originalKey &&
+					state.attempts > 0 &&
+					state.lastAttemptAt &&
+					state.lastError === OFFLINE_RETRY_ERROR,
+			);
+		})
+		.toBe(true);
+	expect(blockedAttempts.every((attempt) => attempt.key === originalKey)).toBe(true);
+}
+
+async function sendQueueIfStillPending(
+	page: Page,
+	countQueued: () => Promise<number>,
+): Promise<void> {
+	const sendButton = page.getByRole('button', { name: 'Offline-Aktionen jetzt senden' }).first();
+	await page.evaluate(() => {
+		Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
+		window.dispatchEvent(new Event('online'));
+	});
+	await expect
+		.poll(async () => (await countQueued()) === 0 || sendButton.isVisible().catch(() => false))
+		.toBe(true);
+	if ((await countQueued()) > 0) {
+		await expect(sendButton).toBeVisible();
+		await sendButton.click();
+	}
 }
 
 test('expense retries keep the key for the same payload and change it when the payload changes', async ({
@@ -143,25 +221,29 @@ test('expense retries keep the key for the same payload and change it when the p
 	expect(attempts[2]?.key).not.toBe(attempts[1]?.key);
 });
 
-test('expense retries keep the key after malformed JSON in an HTTP 200 response', async ({
+test('an ambiguously acknowledged expense replays its queued request with the original key', async ({
 	page,
 }) => {
 	await setupMember(page);
-	await mockReads(page);
+	let committedExpense: ReturnType<typeof expense> | null = null;
+	await mockReads(page, [], () => (committedExpense ? [committedExpense] : []));
 	const attempts: RequestAttempt[] = [];
 	await page.route(`**${API}/expenses`, async (route) => {
 		if (route.request().method() !== 'POST') return route.fallback();
-		attempts.push(recordAttempt(route));
-		if (attempts.length === 1) {
+		const attempt = recordAttempt(route);
+		attempts.push(attempt);
+		if (!committedExpense) {
+			committedExpense = expense('created-expense', 'Wocheneinkauf');
+			await page.evaluate(() => {
+				Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+			});
 			return route.fulfill({
 				status: 200,
 				headers: { 'content-type': 'application/json' },
 				body: '{"expense":',
 			});
 		}
-		return route.fulfill({
-			json: { expense: expense('created-expense', 'Wocheneinkauf'), warning: null },
-		});
+		return route.fulfill({ json: { expense: committedExpense, warning: null } });
 	});
 
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?new=1`);
@@ -169,17 +251,55 @@ test('expense retries keep the key after malformed JSON in an HTTP 200 response'
 	const form = page.getByRole('dialog');
 	await form.getByLabel('Beschreibung').fill('Wocheneinkauf');
 	await form.getByLabel('Betrag').fill('12,35');
-	const submit = form.getByRole('button', { name: 'Ausgabe speichern' });
-
-	await submit.click();
+	await form.getByRole('button', { name: 'Ausgabe speichern' }).click();
 	await expect.poll(() => attempts.length).toBe(1);
-	await expect(form).toBeVisible();
-	await submit.click();
+	await expect(form).toBeHidden();
+	await expect.poll(() => queuedActionCount(page, 'expense.create')).toBe(1);
+
+	const replayPage = await page.context().newPage();
+	await replayPage.addInitScript(() => {
+		Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+	});
+	await mockReads(replayPage, [], () => (committedExpense ? [committedExpense] : []));
+	let replayEnabled = false;
+	const blockedAttempts: RequestAttempt[] = [];
+	await replayPage.route(`**${API}/expenses`, async (route) => {
+		if (route.request().method() !== 'POST') return route.fallback();
+		if (!replayEnabled) {
+			blockedAttempts.push(recordAttempt(route));
+			return route.abort();
+		}
+		attempts.push(recordAttempt(route));
+		return route.fulfill({
+			json: {
+				expense: committedExpense ?? expense('created-expense', 'Wocheneinkauf'),
+				warning: null,
+			},
+		});
+	});
+	await replayPage.goto(`/wg/${FIXTURE_WG.shareCode}/ausgaben`);
+	await dismissOnboarding(replayPage);
+	await expect.poll(() => queuedActionCount(replayPage, 'expense.create')).toBe(1);
+	await expectOfflineAutoSyncBackoff(
+		replayPage,
+		'expense.create',
+		blockedAttempts,
+		attempts[0]?.key ?? null,
+	);
+	await expect(replayPage.locator('[data-offline-banner]')).toContainText(
+		'Offline. 1 Aktion wartet.',
+	);
+	replayEnabled = true;
+	await sendQueueIfStillPending(replayPage, () => queuedActionCount(replayPage, 'expense.create'));
 	await expect.poll(() => attempts.length).toBe(2);
+	await expect.poll(() => queuedActionCount(replayPage, 'expense.create')).toBe(0);
+	expect(attempts).toHaveLength(2);
 
 	expect(attempts[0]?.key).toBeTruthy();
 	expect(attempts[1]?.key).toBe(attempts[0]?.key);
-	expect(attempts[1]?.body).toEqual(attempts[0]?.body);
+	expect(normalizeExpenseCreateBody(attempts[1]?.body)).toEqual(
+		normalizeExpenseCreateBody(attempts[0]?.body),
+	);
 });
 
 test('discarding an ambiguous expense starts a new request key for identical form data', async ({
@@ -243,6 +363,9 @@ test('recurring template retries preserve key, due date, and splits after refres
 		attempts.push(attempt);
 		if (attempts.length === 1) {
 			serverCommitted = true;
+			await page.evaluate(() => {
+				Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+			});
 			const body = attempt.body as { nextDueAt: string };
 			committedTemplate = recurringExpense({
 				description: 'Internet',
@@ -281,16 +404,51 @@ test('recurring template retries preserve key, due date, and splits after refres
 	expect(attempts[2]?.key).not.toBe(attempts[1]?.key);
 });
 
-test('recurring template retries keep the key after malformed JSON in an HTTP 200 response', async ({
+test('malformed recurring-template success queues once across split rotation, draft restore, and replay', async ({
 	page,
 }) => {
 	await setupMember(page);
-	await mockReads(page);
+	const members = [
+		{ id: FIXTURE_WG.memberId, name: 'Alexandra Beispiel', color: null, active: true },
+		{ id: FIXTURE_WG.id, name: 'Max Mustermann', color: null, active: true },
+	];
+	await page.route(`**${API}/members`, (route) =>
+		route.fulfill({ json: { members, viewerIsAdmin: false } }),
+	);
+
+	let serverCommitted = false;
+	let committedTemplate: ReturnType<typeof recurringExpense> | null = null;
+	const concurrentExpense = expense('committed-expense', 'Bürobedarf');
+	await mockReads(
+		page,
+		[],
+		() => (serverCommitted ? [concurrentExpense] : []),
+		() => (committedTemplate ? [committedTemplate] : []),
+	);
 	const attempts: RequestAttempt[] = [];
 	await page.route(`**${API}/recurring-expenses`, async (route) => {
 		if (route.request().method() !== 'POST') return route.fallback();
-		attempts.push(recordAttempt(route));
+		const attempt = recordAttempt(route);
+		attempts.push(attempt);
 		if (attempts.length === 1) {
+			serverCommitted = true;
+			await page.evaluate(() => {
+				Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+			});
+			const body = attempt.body as {
+				description: string;
+				amountCents: number;
+				nextDueAt: string;
+				splits: Array<{ debtorMemberId: string; amountCents: number }>;
+			};
+			committedTemplate = {
+				...recurringExpense({
+					description: body.description,
+					amountCents: body.amountCents,
+					nextDueAt: body.nextDueAt,
+				}),
+				splits: body.splits,
+			};
 			return route.fulfill({
 				status: 200,
 				headers: { 'content-type': 'application/json' },
@@ -298,7 +456,9 @@ test('recurring template retries keep the key after malformed JSON in an HTTP 20
 			});
 		}
 		return route.fulfill({
-			json: { recurringExpense: recurringExpense({ description: 'Internet' }) },
+			json: {
+				recurringExpense: committedTemplate ?? recurringExpense({ description: 'Internet' }),
+			},
 		});
 	});
 
@@ -306,15 +466,101 @@ test('recurring template retries keep the key after malformed JSON in an HTTP 20
 	await dismissOnboarding(page);
 	const form = page.getByRole('dialog');
 	await form.getByLabel('Beschreibung').fill('Internet');
-	await form.getByLabel('Betrag').fill('12,35');
+	await form.getByLabel('Betrag').fill('12,01');
 	await form.getByRole('button', { name: /Fixkosten-Vorlage/ }).click();
 	const saveTemplate = form.getByRole('button', { name: 'Als Vorlage merken' });
 
 	await saveTemplate.click();
 	await expect.poll(() => attempts.length).toBe(1);
 	await expect(form).toBeVisible();
+	await expect.poll(() => queuedActionCount(page, 'recurring.create')).toBe(1);
+
+	const originalBody = attempts[0]?.body as {
+		amountCents: number;
+		splits: Array<{ debtorMemberId: string; amountCents: number }>;
+	};
+	expect(originalBody.amountCents).toBe(1201);
+	expect(originalBody.splits.map((split) => split.amountCents).sort()).toEqual([600, 601]);
+	expect(originalBody.splits.map((split) => split.debtorMemberId)).toEqual([
+		FIXTURE_WG.memberId,
+		FIXTURE_WG.id,
+	]);
+
 	await saveTemplate.click();
+	await expect(page.getByText(/Fixkosten-Vorlage ist bereits offline vorgemerkt/)).toBeVisible();
+	await expect.poll(() => queuedActionCount(page, 'recurring.create')).toBe(1);
+	expect(attempts).toHaveLength(1);
+
+	const restoredPage = await page.context().newPage();
+	await restoredPage.addInitScript(() => {
+		Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+	});
+	await mockReads(
+		restoredPage,
+		[],
+		() => [concurrentExpense],
+		() => (committedTemplate ? [committedTemplate] : []),
+	);
+	await restoredPage.route(`**${API}/members`, (route) =>
+		route.fulfill({ json: { members, viewerIsAdmin: false } }),
+	);
+	await restoredPage.route(`**${API}/shopping`, (route) =>
+		route.request().method() === 'GET' ? route.fulfill({ json: { items: [] } }) : route.fallback(),
+	);
+	await restoredPage.route(`**${API}/inventory`, (route) => route.fulfill({ json: { items: [] } }));
+	let replayEnabled = false;
+	const blockedAttempts: RequestAttempt[] = [];
+	await restoredPage.route(`**${API}/recurring-expenses`, async (route) => {
+		if (route.request().method() !== 'POST') return route.fallback();
+		if (!replayEnabled) {
+			blockedAttempts.push(recordAttempt(route));
+			return route.abort();
+		}
+		attempts.push(recordAttempt(route));
+		return route.fulfill({
+			json: {
+				recurringExpense: committedTemplate ?? recurringExpense({ description: 'Internet' }),
+			},
+		});
+	});
+	await navigateToFeature(restoredPage, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
+	await dismissOnboarding(restoredPage);
+	const restoredForm = restoredPage.getByRole('dialog');
+	await expect(restoredForm).toBeVisible();
+	await expect(restoredForm.getByLabel('Beschreibung')).toHaveValue('Internet');
+	await expect(restoredForm.getByLabel('Betrag')).toHaveValue('12,01');
+	await expectOfflineAutoSyncBackoff(
+		restoredPage,
+		'recurring.create',
+		blockedAttempts,
+		attempts[0]?.key ?? null,
+	);
+	const blockedAttemptCountBeforeClick = blockedAttempts.length;
+	await restoredForm.getByRole('button', { name: /Fixkosten-Vorlage/ }).click();
+	await restoredForm.getByRole('button', { name: 'Als Vorlage merken' }).click();
+	await expect(
+		restoredPage.getByText(/Fixkosten-Vorlage ist bereits offline vorgemerkt/),
+	).toBeVisible();
+	await expect.poll(() => queuedActionCount(restoredPage, 'recurring.create')).toBe(1);
+	expect(
+		blockedAttempts
+			.slice(blockedAttemptCountBeforeClick)
+			.every((attempt) => attempt.key === attempts[0]?.key),
+	).toBe(true);
+	expect(attempts).toHaveLength(1);
+
+	await navigateToFeature(restoredPage, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+	await expect.poll(() => queuedActionCount(restoredPage, 'recurring.create')).toBe(1);
+	await expect(restoredPage.locator('[data-offline-banner]')).toContainText(
+		'Offline. 1 Aktion wartet.',
+	);
+	replayEnabled = true;
+	await sendQueueIfStillPending(restoredPage, () =>
+		queuedActionCount(restoredPage, 'recurring.create'),
+	);
 	await expect.poll(() => attempts.length).toBe(2);
+	await expect.poll(() => queuedActionCount(restoredPage, 'recurring.create')).toBe(0);
+	expect(attempts).toHaveLength(2);
 
 	expect(attempts[0]?.key).toBeTruthy();
 	expect(attempts[1]?.key).toBe(attempts[0]?.key);
@@ -372,16 +618,29 @@ test('creating an expense from a recurring template reuses its key after a serve
 	expect(attempts[1]?.body).toEqual(attempts[0]?.body);
 });
 
-test('recurring expense retries keep the key after malformed JSON in an HTTP 200 response', async ({
+test('a malformed recurring-expense success replays the queued request with its original key', async ({
 	page,
 }) => {
 	await setupMember(page);
-	await mockReads(page, [recurringExpense()]);
+	const expectedRecurringNextDueAt = '2020-01-01T00:00:00.000Z';
+	const currentTemplate = recurringExpense({ nextDueAt: expectedRecurringNextDueAt });
+	let committedExpense: ReturnType<typeof expense> | null = null;
+	await mockReads(
+		page,
+		[currentTemplate],
+		() => (committedExpense ? [committedExpense] : []),
+		() => [currentTemplate],
+	);
 	const attempts: RequestAttempt[] = [];
 	await page.route(`**${API}/expenses`, async (route) => {
 		if (route.request().method() !== 'POST') return route.fallback();
-		attempts.push(recordAttempt(route));
+		const attempt = recordAttempt(route);
+		attempts.push(attempt);
 		if (attempts.length === 1) {
+			committedExpense = expense('created-recurring-expense', 'Miete');
+			await page.evaluate(() => {
+				Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+			});
 			return route.fulfill({
 				status: 200,
 				headers: { 'content-type': 'application/json' },
@@ -389,7 +648,10 @@ test('recurring expense retries keep the key after malformed JSON in an HTTP 200
 			});
 		}
 		return route.fulfill({
-			json: { expense: expense('created-recurring-expense', 'Miete'), warning: null },
+			json: {
+				expense: committedExpense ?? expense('created-recurring-expense', 'Miete'),
+				warning: null,
+			},
 		});
 	});
 
@@ -399,12 +661,67 @@ test('recurring expense retries keep the key after malformed JSON in an HTTP 200
 
 	await create.click();
 	await expect.poll(() => attempts.length).toBe(1);
-	await expect(create).toBeEnabled();
+	await expect.poll(() => queuedRecurringExpenseCount(page)).toBe(1);
 	await create.click();
+	await expect(
+		page.getByText(
+			'Fixkosten-Ausgabe offline vorgemerkt. Die Vorlage bleibt bis zur Synchronisierung unverändert.',
+		),
+	).toBeVisible();
+	await expect.poll(() => queuedRecurringExpenseCount(page)).toBe(1);
+	expect(attempts).toHaveLength(1);
+
+	const replayPage = await page.context().newPage();
+	await replayPage.addInitScript(() => {
+		Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+	});
+	await mockReads(
+		replayPage,
+		[currentTemplate],
+		() => (committedExpense ? [committedExpense] : []),
+		() => [currentTemplate],
+	);
+	let replayEnabled = false;
+	const blockedAttempts: RequestAttempt[] = [];
+	await replayPage.route(`**${API}/expenses`, async (route) => {
+		if (route.request().method() !== 'POST') return route.fallback();
+		if (!replayEnabled) {
+			blockedAttempts.push(recordAttempt(route));
+			return route.abort();
+		}
+		attempts.push(recordAttempt(route));
+		return route.fulfill({
+			json: {
+				expense: committedExpense ?? expense('created-recurring-expense', 'Miete'),
+				warning: null,
+			},
+		});
+	});
+	await navigateToFeature(replayPage, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
+	await dismissOnboarding(replayPage);
+	await expect.poll(() => queuedRecurringExpenseCount(replayPage)).toBe(1);
+	await expectOfflineAutoSyncBackoff(
+		replayPage,
+		'expense.create',
+		blockedAttempts,
+		attempts[0]?.key ?? null,
+	);
+	await expect(replayPage.locator('[data-offline-banner]')).toContainText(
+		'Offline. 1 Aktion wartet.',
+	);
+
+	replayEnabled = true;
+	await sendQueueIfStillPending(replayPage, () => queuedRecurringExpenseCount(replayPage));
 	await expect.poll(() => attempts.length).toBe(2);
+	await expect.poll(() => queuedRecurringExpenseCount(replayPage)).toBe(0);
+	expect(attempts).toHaveLength(2);
 
 	expect(attempts[0]?.key).toBeTruthy();
 	expect(attempts[1]?.key).toBe(attempts[0]?.key);
+	expect(attempts[0]?.body).toMatchObject({
+		recurringExpenseId: 'recurring-rent',
+		expectedRecurringNextDueAt,
+	});
 	expect(attempts[1]?.body).toEqual(attempts[0]?.body);
 });
 
