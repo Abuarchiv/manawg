@@ -16,10 +16,20 @@ test('restored expense draft keeps its image preview and can recover after last-
 	page,
 }) => {
 	await setupMember(page);
+	await page.addInitScript(() => {
+		const key = '__e2e_private_attachment_csp_violations';
+		if (sessionStorage.getItem(key) === null) sessionStorage.setItem(key, '[]');
+		window.addEventListener('securitypolicyviolation', (event) => {
+			const violations = JSON.parse(sessionStorage.getItem(key) ?? '[]') as string[];
+			violations.push(`${event.violatedDirective}: ${event.blockedURI}`);
+			sessionStorage.setItem(key, JSON.stringify(violations));
+		});
+	});
 	let uploadCount = 0;
 	let oldImageUrl = '';
 	let revoked = false;
 	const imageReads: string[] = [];
+	const storageUploadRequests: string[] = [];
 	const submitted: Array<Record<string, unknown>> = [];
 
 	await page.route(`**/api/wg/${SHARE_CODE}/expenses**`, async (route) => {
@@ -59,17 +69,25 @@ test('restored expense draft keeps its image preview and can recover after last-
 			`/api/upload/read?key=${encodeURIComponent(key)}`,
 			new URL(request.url()).origin,
 		).toString();
+		const presignedUrl = new URL(
+			`/__fixture_storage/upload-${uploadCount}`,
+			new URL(request.url()).origin,
+		).toString();
 		if (!oldImageUrl) oldImageUrl = publicUrl;
 		return route.fulfill({
 			json: {
-				presignedUrl: `https://storage.example/upload-${uploadCount}`,
+				presignedUrl,
 				publicUrl,
 				maxFileSize: 8 * 1024 * 1024,
 				uploadHeaders: { 'Content-Type': 'image/png' },
 			},
 		});
 	});
-	await page.route('https://storage.example/**', (route) => route.fulfill({ status: 200 }));
+	await page.route('**/__fixture_storage/**', async (route) => {
+		if (route.request().method() !== 'PUT') return route.fallback();
+		storageUploadRequests.push(route.request().url());
+		return route.fulfill({ status: 200 });
+	});
 	await page.route('**/api/upload/read?*', async (route) => {
 		const key = new URL(route.request().url()).searchParams.get('key') ?? '';
 		imageReads.push(key);
@@ -131,4 +149,12 @@ test('restored expense draft keeps its image preview and can recover after last-
 	expect(submitted[0]?.imageUrl).toBe(oldImageUrl);
 	expect(submitted[1]?.imageUrl).not.toBe(oldImageUrl);
 	expect(submitted[1]?.imageUrl).toContain(encodeURIComponent(SECOND_KEY));
+	expect(storageUploadRequests).toHaveLength(2);
+	const cspViolations = await page.evaluate(
+		() =>
+			JSON.parse(
+				sessionStorage.getItem('__e2e_private_attachment_csp_violations') ?? '[]',
+			) as string[],
+	);
+	expect(cspViolations).toEqual([]);
 });
