@@ -1173,7 +1173,7 @@ export default function PutzenPage() {
 					</EmptyContent>
 				</Empty>
 			) : (
-				<div id="chore-list" className="flex flex-col gap-5">
+				<div id="chore-list" className="flex flex-col gap-4">
 					{choreGroups.map((group) => (
 						<section
 							key={group.key}
@@ -1182,17 +1182,21 @@ export default function PutzenPage() {
 						>
 							<h2
 								id={`chore-group-${group.key}`}
-								className="text-sm font-medium text-muted-foreground"
+								className="px-1 text-[13px] font-medium text-muted-foreground"
 							>
 								{group.label} ({group.chores.length})
 							</h2>
-							<ItemGroup aria-label={group.label}>
+							<ItemGroup
+								aria-label={group.label}
+								className="gap-0 divide-y overflow-hidden rounded-xl border"
+							>
 								{group.chores.map((chore) => (
 									<ChoreRow
 										key={chore.id}
 										chore={chore}
 										isAdmin={isAdmin}
 										assignee={memberLookup(chore.assignedMemberId)}
+										isMine={chore.assignedMemberId === identity.memberId}
 										isPending={isPending(chore.id)}
 										isSwapPending={isPending(`${chore.id}:swap`)}
 										isTakePending={isPending(`${chore.id}:take`)}
@@ -1211,6 +1215,13 @@ export default function PutzenPage() {
 						</section>
 					))}
 				</div>
+			)}
+			{!showSkeleton && items.length > 0 && (
+				<FairnessPanel
+					fairness={fairness}
+					monthCompletions={monthCompletions}
+					members={members.map((member) => ({ id: member.id, name: member.name }))}
+				/>
 			)}
 			{!showSkeleton && (items.length > 0 || absences.length > 0 || absencesPanelActive) && (
 				<AbsencePanel
@@ -1234,13 +1245,6 @@ export default function PutzenPage() {
 					highlightedAbsenceId={absenceId}
 					onRemove={(id) => void removeAbsence(id)}
 					isPending={isPending}
-				/>
-			)}
-			{!showSkeleton && items.length > 0 && (
-				<FairnessPanel
-					fairness={fairness}
-					monthCompletions={monthCompletions}
-					members={members.map((member) => ({ id: member.id, name: member.name }))}
 				/>
 			)}
 		</div>

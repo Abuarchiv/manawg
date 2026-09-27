@@ -10,6 +10,10 @@ async function openEditorFromKeyboard(page: import('@playwright/test').Page) {
 	const actions = message.getByRole('button', { name: /Aktionen für Nachricht/ });
 	await actions.focus();
 	await page.keyboard.press('Enter');
+	// Reagieren und Antworten stehen vor Bearbeiten.
+	await expect(page.getByRole('menuitem', { name: 'Reagieren' })).toBeFocused();
+	await page.keyboard.press('ArrowDown');
+	await page.keyboard.press('ArrowDown');
 	const editAction = page.getByRole('menuitem', { name: 'Bearbeiten' });
 	await expect(editAction).toBeFocused();
 	await page.keyboard.press('Enter');

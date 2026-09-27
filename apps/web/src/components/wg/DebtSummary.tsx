@@ -36,7 +36,7 @@ import type { Expense } from '@/features/expenses/components/ausgaben/expense-ty
 import { getDebtOverview } from '@/features/expenses/debt-overview';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import { cn } from '@/shared/lib/cn';
-import { ArrowRight, ChevronDown, History } from 'lucide-react';
+import { ChevronDown, History } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 
@@ -244,14 +244,13 @@ function DebtRow({
 	const owedToMe = debt.toId === currentMemberId;
 
 	return (
-		<Item variant="outline" className="items-start">
-			<ItemContent className="min-w-0 gap-3">
-				<div aria-hidden className="flex items-center gap-2">
-					<MemberAvatar name={debt.fromName} size={36} />
-					<ArrowRight className="size-4 text-muted-foreground" />
-					<MemberAvatar name={debt.toName} size={36} />
-				</div>
-				<ItemTitle className="line-clamp-none text-base break-words">
+		<Item variant="outline" className="items-center">
+			<div aria-hidden className="flex shrink-0 items-center -space-x-2">
+				<MemberAvatar name={debt.fromName} size={32} className="ring-2 ring-card" />
+				<MemberAvatar name={debt.toName} size={32} className="ring-2 ring-card" />
+			</div>
+			<ItemContent className="min-w-0">
+				<ItemTitle className="line-clamp-none text-[15px] break-words">
 					<span>
 						{iOwe ? 'Du' : debt.fromName} {iOwe ? 'schuldest' : 'schuldet'}{' '}
 						{owedToMe ? 'dir' : debt.toName}{' '}
@@ -266,19 +265,6 @@ function DebtRow({
 					</span>
 				</ItemTitle>
 			</ItemContent>
-			<Badge
-				variant="secondary"
-				className={cn(
-					'font-mono tabular-nums',
-					debt.fromId === currentMemberId
-						? 'text-destructive'
-						: debt.toId === currentMemberId
-							? 'text-settled'
-							: 'text-foreground',
-				)}
-			>
-				{formatEuroCents(debt.cents, debt.currency)}
-			</Badge>
 
 			{canSettle && (
 				<ItemFooter className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-2 [&>*]:min-w-0 [&_button]:min-w-0 [&_button]:[overflow-wrap:anywhere]">
@@ -502,90 +488,121 @@ export function DebtSummary({
 		);
 	}
 
+	const ownBalances = balances.filter(
+		(member) => member.memberId === currentMemberId && member.balanceCents !== 0,
+	);
+	const ownBalance = ownBalances.length === 1 ? ownBalances[0] : null;
+
 	return (
-		<Card>
+		<Card size="sm">
 			<CardHeader>
-				<CardTitle>
-					<h2>Deine offenen Zahlungen</h2>
+				<CardDescription>Dein Saldo</CardDescription>
+				<CardTitle className="text-lg">
+					<h2>
+						{ownBalances.length > 1 ? (
+							<>
+								Offene Salden{' '}
+								<span className="font-mono tabular-nums">
+									{ownBalances
+										.map((balance) =>
+											formatEuroCents(balance.balanceCents, balance.currency, { signed: true }),
+										)
+										.join(' · ')}
+								</span>
+							</>
+						) : ownBalance && ownBalance.balanceCents > 0 ? (
+							<>
+								Du bekommst{' '}
+								<span className="font-mono tabular-nums text-settled">
+									{formatEuroCents(ownBalance.balanceCents, ownBalance.currency)}
+								</span>
+							</>
+						) : ownBalance ? (
+							<>
+								Du schuldest{' '}
+								<span className="font-mono tabular-nums text-destructive">
+									{formatEuroCents(Math.abs(ownBalance.balanceCents), ownBalance.currency)}
+								</span>
+							</>
+						) : (
+							'Du bist ausgeglichen'
+						)}
+					</h2>
 				</CardTitle>
 				{summary && summary.savedTransfers > 0 && (
 					<CardDescription>
-						{`Gegenseitige Schulden sind verrechnet. ${summary.simplifiedCount} ${summary.simplifiedCount === 1 ? 'Zahlung bleibt' : 'Zahlungen bleiben'} übrig.`}
+						{`Verrechnet: ${summary.simplifiedCount} ${summary.simplifiedCount === 1 ? 'Zahlung bleibt' : 'Zahlungen bleiben'} übrig.`}
 					</CardDescription>
 				)}
 			</CardHeader>
-			<CardContent className="flex flex-col gap-4">
-				{personal.length > 0 ? (
-					<ItemGroup aria-label="Deine offenen Zahlungen">
+			<CardContent className="flex flex-col gap-3">
+				{personal.length > 0 && (
+					<ItemGroup aria-label="Deine offenen Zahlungen" className="gap-2">
 						{personal.map((debt, index) => renderDebt(debt, index === 0))}
 					</ItemGroup>
-				) : (
-					<p className="font-medium">
-						{others.length === 0 ? 'Alles ausgeglichen' : 'Für dich ist keine Zahlung offen.'}
-					</p>
 				)}
-				{(others.length > 0 || balances.length > 0) && (
-					<Collapsible>
-						<CollapsibleTrigger
-							render={
-								<Button
-									variant="ghost"
-									className="group h-auto w-full justify-between whitespace-normal text-left"
+				<Collapsible>
+					<div className="flex flex-wrap items-center justify-between gap-x-2">
+						{(others.length > 0 || balances.length > 0) && (
+							<CollapsibleTrigger
+								render={<Button variant="ghost" className="group min-h-11 px-0 text-left" />}
+							>
+								Alle Salden
+								<ChevronDown
+									aria-hidden
+									className="size-4 shrink-0 group-aria-expanded:rotate-180"
 								/>
-							}
+							</CollapsibleTrigger>
+						)}
+						<Link
+							href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`}
+							className={cn(buttonVariants({ variant: 'ghost' }), 'ml-auto min-h-11 px-0')}
 						>
-							Alle Salden
-							<ChevronDown aria-hidden className="size-4 shrink-0 group-aria-expanded:rotate-180" />
-						</CollapsibleTrigger>
-						<CollapsibleContent className="flex flex-col gap-4 pt-2">
-							{others.length > 0 && (
-								<ItemGroup aria-label="Weitere Zahlungen in der WG">
-									{others.map((debt) => renderDebt(debt))}
-								</ItemGroup>
-							)}
-							{balances.length > 0 && (
-								<ItemGroup aria-label="Saldo pro Mitglied" className="gap-1">
-									{balances.map((member) => (
-										<Item key={`${member.currency}-${member.memberId}`} variant="muted" size="xs">
-											<ItemContent className="min-w-0">
-												<ItemTitle className="line-clamp-none break-words">
-													{member.memberName}
-													{member.memberId === currentMemberId ? ' (du)' : ''}
-												</ItemTitle>
-												<ItemDescription>
-													{member.balanceCents > 0
-														? 'Bekommt zurück'
-														: member.balanceCents < 0
-															? 'Schuldet'
-															: 'Ausgeglichen'}
-												</ItemDescription>
-											</ItemContent>
-											<span
-												className={cn(
-													'shrink-0 font-mono tabular-nums',
-													member.balanceCents > 0
-														? 'text-settled'
-														: member.balanceCents < 0
-															? 'text-destructive'
-															: 'text-foreground',
-												)}
-											>
-												{formatEuroCents(member.balanceCents, member.currency, { signed: true })}
-											</span>
-										</Item>
-									))}
-								</ItemGroup>
-							)}
-						</CollapsibleContent>
-					</Collapsible>
-				)}
-				<Link
-					href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`}
-					className={cn(buttonVariants({ variant: 'ghost' }), 'self-start')}
-				>
-					<History data-icon="inline-start" />
-					Alle Erinnerungen
-				</Link>
+							<History data-icon="inline-start" />
+							Alle Erinnerungen
+						</Link>
+					</div>
+					<CollapsibleContent className="flex flex-col gap-4 pt-2">
+						{others.length > 0 && (
+							<ItemGroup aria-label="Weitere Zahlungen in der WG">
+								{others.map((debt) => renderDebt(debt))}
+							</ItemGroup>
+						)}
+						{balances.length > 0 && (
+							<ItemGroup aria-label="Saldo pro Mitglied" className="gap-1">
+								{balances.map((member) => (
+									<Item key={`${member.currency}-${member.memberId}`} variant="muted" size="xs">
+										<ItemContent className="min-w-0">
+											<ItemTitle className="line-clamp-none break-words">
+												{member.memberName}
+												{member.memberId === currentMemberId ? ' (du)' : ''}
+											</ItemTitle>
+											<ItemDescription>
+												{member.balanceCents > 0
+													? 'Bekommt zurück'
+													: member.balanceCents < 0
+														? 'Schuldet'
+														: 'Ausgeglichen'}
+											</ItemDescription>
+										</ItemContent>
+										<span
+											className={cn(
+												'shrink-0 font-mono tabular-nums',
+												member.balanceCents > 0
+													? 'text-settled'
+													: member.balanceCents < 0
+														? 'text-destructive'
+														: 'text-foreground',
+											)}
+										>
+											{formatEuroCents(member.balanceCents, member.currency, { signed: true })}
+										</span>
+									</Item>
+								))}
+							</ItemGroup>
+						)}
+					</CollapsibleContent>
+				</Collapsible>
 			</CardContent>
 		</Card>
 	);

@@ -122,7 +122,7 @@ test('completing a chore resolves only its linked swap post and shows the next d
 		});
 
 		await page.goto(`/wg/${shareCode}/putzen`);
-		await expect(page.locator(`li#chore-${choreId}`)).toContainText('Nächste Fälligkeit:');
+		await expect(page.locator(`li#chore-${choreId}`)).toContainText('wöchentlich');
 		await page.getByRole('button', { name: 'Putzaufgabe erfassen' }).click();
 		await expect(page.getByText('Erste Fälligkeit: in 7 Tagen.', { exact: false })).toBeVisible();
 	} finally {

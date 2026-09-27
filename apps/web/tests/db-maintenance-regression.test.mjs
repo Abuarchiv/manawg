@@ -6,6 +6,8 @@ import test from 'node:test';
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
 
+const sentryStub = { captureSentryException() {}, logSentryApiError() {} };
+
 function load(relativePath, mocks, env, logs = []) {
 	const source = readFileSync(new URL(`../src/${relativePath}`, import.meta.url), 'utf8');
 	const compiled = ts.transpileModule(source, {
@@ -109,7 +111,15 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 				},
 			},
 			'@/core/guards/api-auth': {},
-			'@/core/infra/observability': load('core/infra/observability.ts', {}, env, logs),
+			'@/core/infra/observability': load(
+				'core/infra/observability.ts',
+				{
+					'./sentry': sentryStub,
+					'./sentry-privacy': load('core/infra/sentry-privacy.ts', {}, {}),
+				},
+				env,
+				logs,
+			),
 			'@/core/rate-limit': { createConfiguredRedis: () => null },
 			'drizzle-orm': { lte: () => {} },
 		},
@@ -129,7 +139,15 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 			},
 			'@/core/idempotency': idempotency,
 			'@/core/infra/cron-auth': { verifyCronSecret: () => true },
-			'@/core/infra/observability': load('core/infra/observability.ts', {}, env, logs),
+			'@/core/infra/observability': load(
+				'core/infra/observability.ts',
+				{
+					'./sentry': sentryStub,
+					'./sentry-privacy': load('core/infra/sentry-privacy.ts', {}, {}),
+				},
+				env,
+				logs,
+			),
 			'next/server': { NextResponse: Response },
 		},
 		env,

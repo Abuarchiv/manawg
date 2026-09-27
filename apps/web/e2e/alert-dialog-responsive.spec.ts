@@ -172,7 +172,7 @@ test('keeps chore and subscription confirmations usable at phone widths and 200%
 	await page.setViewportSize({ width: 320, height: 740 });
 	await page.goto(`/wg/${shareCode}/abos`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Anteile, Termine & Aktionen' }).click();
+	await page.getByRole('button', { name: /Details öffnen: Musik-Abo/ }).click();
 	const deleteTrigger = page.getByRole('button', { name: 'Musik-Abo löschen' });
 	await expect(deleteTrigger).toBeVisible();
 	await deleteTrigger.focus();

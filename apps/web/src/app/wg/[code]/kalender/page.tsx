@@ -51,7 +51,6 @@ import {
 	RotateCcw,
 	Trash2,
 } from 'lucide-react';
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface CalendarEvent {
@@ -623,7 +622,7 @@ export default function KalenderPage() {
 				</TabsList>
 				<TabsContent value="list" className="flex flex-col gap-3">
 					<section aria-labelledby="calendar-upcoming-heading" className="flex flex-col gap-3">
-						<h2 id="calendar-upcoming-heading" className="text-sm font-semibold">
+						<h2 id="calendar-upcoming-heading" className="sr-only">
 							Nächste 30 Tage
 						</h2>
 						{loading ? (
@@ -776,17 +775,6 @@ export default function KalenderPage() {
 					)}
 				</div>
 			</details>
-
-			<p className="text-center text-xs text-muted-foreground">
-				Putzplan-Aufgaben erscheinen automatisch in dieser Liste, werden aber nicht in den
-				Kalender-Feed übernommen.
-				<Link
-					href={`${wgBaseHref}/putzen`}
-					className="mx-auto flex min-h-11 w-fit items-center rounded-sm underline transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-				>
-					Putzplan öffnen
-				</Link>
-			</p>
 
 			<EventCreateModal
 				open={createOpen}

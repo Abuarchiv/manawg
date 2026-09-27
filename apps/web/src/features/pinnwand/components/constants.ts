@@ -1,4 +1,3 @@
-import type { AnnouncementFilter } from '@/features/pinnwand/announcement-workflow';
 import type { AnnouncementKind } from '@/features/pinnwand/components/announcement-types';
 
 export const CONTENT_MAX = 2000;
@@ -19,10 +18,3 @@ export const KIND_LABELS: Record<AnnouncementKind, string> = {
 	request: 'Bitte',
 	decision: 'Entscheidung',
 };
-
-export const STATUS_FILTERS: ReadonlyArray<{ value: AnnouncementFilter['status']; label: string }> =
-	[
-		{ value: 'all', label: 'Alle' },
-		{ value: 'open', label: 'Offen' },
-		{ value: 'resolved', label: 'Geklärt' },
-	];

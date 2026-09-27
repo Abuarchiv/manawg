@@ -256,7 +256,7 @@ test('shows the authoritative next member and labels the viewer as du', async ({
 
 	await openPutzen(page, members, chores, absences);
 	const row = page.locator('#chore-viewer-next');
-	await expect(row.getByText('Voraussichtlich als Nächstes: du.')).toBeVisible();
+	await expect(row).toContainText('danach du');
 	await expect(row.getByText('Zuständig: Anna')).toBeVisible();
 });
 
@@ -280,7 +280,7 @@ test('states when no active member is eligible for the next round', async ({ pag
 
 	await openPutzen(page, members, chores, absences);
 	const row = page.locator('#chore-no-successor');
-	await expect(row.getByText('Für die nächste Runde ist niemand verfügbar.')).toBeVisible();
+	await expect(row).not.toContainText('danach');
 	await expect(row.getByText('Dora', { exact: true })).toHaveCount(0);
 });
 
@@ -305,7 +305,7 @@ test('wraps a long predicted name at phone widths in both themes', async ({ page
 
 	await openPutzen(page, members, chores, []);
 	const row = page.locator('#chore-long-next');
-	await expect(row.getByText(`Voraussichtlich als Nächstes: ${longNext.name}.`)).toBeVisible();
+	await expect(row).toContainText(`danach ${longNext.name}`);
 
 	for (const theme of ['light', 'dark'] as const) {
 		for (const width of [320, 390]) {

@@ -10,7 +10,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
@@ -28,8 +27,8 @@ import {
 	ItemGroup,
 	ItemTitle,
 } from '@/components/ui/item';
-import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
+import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { cn } from '@/shared/lib/cn';
@@ -67,61 +66,59 @@ export const ExpenseRow = memo(function ExpenseRow({
 	const paymentSplits = expense.splits.filter(
 		(split) => split.debtorMemberId !== expense.paidByMemberId && split.amountCents > 0,
 	);
-	const settledCount = paymentSplits.filter((split) => split.settledAt !== null).length;
+	const allSettled =
+		paymentSplits.length > 0 && paymentSplits.every((split) => split.settledAt !== null);
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const [settleCandidate, setSettleCandidate] = useState<ExpenseSplit | null>(null);
 	return (
 		<li
 			id={`expense-${expense.id}`}
-			className={cn('scroll-mt-24', highlighted && 'rounded-lg ring-2 ring-ring')}
+			className={cn('scroll-mt-24', highlighted && 'ring-2 ring-inset ring-ring')}
 		>
 			<Collapsible open={expanded} onOpenChange={() => onToggleExpand(expense.id)}>
-				<Item variant="outline" className="items-start">
+				<Item className="gap-1 rounded-none py-1 pr-1.5 pl-3">
 					<ItemContent className="min-w-0">
 						<CollapsibleTrigger
 							render={
 								<Button
 									variant="ghost"
-									className="h-auto w-full justify-start whitespace-normal px-0 text-left"
+									className="h-auto w-full justify-start gap-3 whitespace-normal px-0 py-1 text-left hover:bg-transparent"
 								/>
 							}
 						>
-							<span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
-								<span className="sr-only">Details öffnen:</span>
-								<span className="min-w-0 flex-[1_1_12ch] break-words font-medium leading-snug">
-									{expense.description}
+							<MemberAvatar name={memberName(expense.paidByMemberId)} size={32} />
+							<span className="flex min-w-0 flex-1 flex-col gap-0.5">
+								<span className="flex min-w-0 flex-wrap items-baseline gap-x-3">
+									<span className="sr-only">Details öffnen:</span>
+									<span className="min-w-0 flex-[1_1_12ch] break-words text-[15px] font-medium leading-snug">
+										{expense.description}
+									</span>
+									<span className="shrink-0 whitespace-nowrap font-mono tabular-nums text-foreground">
+										{formatEuroCents(expense.amountCents, expense.currency)}
+									</span>
 								</span>
-								<span className="shrink-0 whitespace-nowrap font-mono tabular-nums text-foreground">
-									{formatEuroCents(expense.amountCents, expense.currency)}
-								</span>
-								<span className="w-full basis-full text-left text-[13px] leading-normal font-normal text-muted-foreground">
-									Bezahlt von {memberName(expense.paidByMemberId)} ·{' '}
+								<span className="text-[13px] leading-normal font-normal text-muted-foreground">
+									<span className="sr-only">Bezahlt von </span>
+									{isPayer ? 'du' : memberName(expense.paidByMemberId)} ·{' '}
 									<time dateTime={expense.occurredAt} title={formatTimeFull(expense.occurredAt)}>
 										{formatRelativeTime(expense.occurredAt)}
 									</time>
+									{allSettled && ' · beglichen'}
+									{expense.imageUrl && (
+										<>
+											{' · '}
+											<Receipt aria-hidden className="inline size-3.5 align-[-2px]" />
+											<span className="sr-only">Beleg</span>
+										</>
+									)}
 								</span>
-								{(paymentSplits.length > 0 || expense.imageUrl) && (
-									<span className="flex w-full basis-full flex-wrap gap-1.5 pt-1">
-										{paymentSplits.length > 0 && (
-											<Badge variant="secondary">
-												{settledCount === paymentSplits.length ? 'Beglichen' : 'Offen'}
-											</Badge>
-										)}
-										{expense.imageUrl && (
-											<Badge variant="outline">
-												<Receipt />
-												Beleg
-											</Badge>
-										)}
-									</span>
-								)}
 							</span>
 						</CollapsibleTrigger>
 					</ItemContent>
 					<ItemActions>
 						<DropdownMenu>
 							<DropdownMenuTrigger
-								render={<Button variant="ghost" size="icon" className="size-9" />}
+								render={<Button variant="ghost" size="icon" className="size-10" />}
 								aria-label={`Aktionen für ${expense.description}`}
 							>
 								<MoreHorizontal />
@@ -149,8 +146,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</ItemActions>
-					<CollapsibleContent className="w-full">
-						<Separator className="my-3" />
+					<CollapsibleContent className="w-full pr-1.5 pb-2">
 						{expense.imageUrl && (
 							<Button
 								variant="outline"

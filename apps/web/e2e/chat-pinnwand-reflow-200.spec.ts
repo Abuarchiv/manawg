@@ -22,7 +22,7 @@ function announcement(id: string, content: string) {
 		pinnedAt: null,
 		resolvedAt: null,
 		resolvedByMemberId: null,
-		createdAt: '2026-09-20T08:00:00.000Z',
+		createdAt: new Date().toISOString(),
 		reactionCounts: {},
 		myReactions: [],
 		takers: [],

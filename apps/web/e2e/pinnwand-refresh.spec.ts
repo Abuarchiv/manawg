@@ -19,7 +19,7 @@ function announcement(id: string, content: string, comments: Record<string, unkn
 		pinnedAt: null,
 		resolvedAt: null,
 		resolvedByMemberId: null,
-		createdAt: '2026-09-20T08:00:00.000Z',
+		createdAt: new Date().toISOString(),
 		reactionCounts: {},
 		myReactions: [],
 		takers: [],
@@ -222,7 +222,7 @@ test('comment delete requires confirmation and only removes the comment once con
 			announcementId: 'post-with-comment',
 			memberId: MEMBER_ID,
 			content: 'Testkommentar',
-			createdAt: '2026-09-20T08:05:00.000Z',
+			createdAt: new Date().toISOString(),
 			authorName: 'dsaf',
 			authorColor: null,
 		},
@@ -267,28 +267,4 @@ test('comment delete requires confirmation and only removes the comment once con
 	await dialog.getByRole('button', { name: /Kommentar entfernen bestätigen/ }).click();
 	await expect.poll(() => deleteRequests).toBe(1);
 	await expect(page.getByText('Testkommentar', { exact: true })).toBeHidden();
-});
-
-test('status filter labels stay on one line at 320px', async ({ page }) => {
-	await page.setViewportSize({ width: 320, height: 700 });
-	await setupMember(page);
-	await page.route(`**/api/wg/${SHARE_CODE}/announcements*`, async (route) => {
-		if (route.request().method() !== 'GET') return route.continue();
-		return route.fulfill({
-			json: { announcements: [announcement('post-filterbar', 'Beitrag für Filterleiste')] },
-		});
-	});
-
-	await navigateToFeature(page, `/wg/${SHARE_CODE}/pinnwand`);
-	await dismissOnboarding(page);
-	await expect(page.getByText('Beitrag für Filterleiste', { exact: true })).toBeVisible();
-
-	const geklaert = page.getByRole('button', { name: 'Geklärt', exact: true });
-	await expect(geklaert).toBeVisible();
-	const box = await geklaert.boundingBox();
-	// A wrapped "Geklär" + "t" would push the button taller than one line (44px min touch target).
-	expect(box?.height).toBeLessThanOrEqual(44);
-	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
-		true,
-	);
 });

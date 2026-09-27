@@ -21,7 +21,7 @@ export function PutzenHeader({
 	onToggleForm,
 }: PutzenHeaderProps) {
 	return (
-		<header className="flex flex-wrap items-center justify-between gap-2">
+		<header className="flex items-center justify-between gap-2">
 			<div className="min-w-0">
 				<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight text-foreground">
 					Putzplan
@@ -35,16 +35,15 @@ export function PutzenHeader({
 						? 'Lädt…'
 						: [
 								`${itemCount} Aufgabe${itemCount === 1 ? '' : 'n'}`,
-								health?.dueToday ? `${health.dueToday} heute fällig` : null,
-								health?.gaps ? `${health.gaps} offen` : null,
-								health?.escalated ? `${health.escalated} Klärung offen` : null,
+								health?.gaps ? `${health.gaps} überfällig` : null,
+								health?.dueToday ? `${health.dueToday} heute` : null,
 							]
 								.filter(Boolean)
 								.join(' · ')}
 					{refreshing && <Spinner className="size-3 opacity-50" aria-hidden />}
 				</p>
 			</div>
-			<div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+			<div className="flex shrink-0 items-center justify-end gap-1.5">
 				<FormToggleButton
 					open={showForm}
 					onToggle={onToggleForm}

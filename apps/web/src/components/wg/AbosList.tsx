@@ -47,26 +47,30 @@ export function AbosList({
 	onTogglePause,
 	onDelete,
 }: AbosListProps) {
-	const filtered = applyFilter(abos, filter);
+	// Der Filter lohnt erst, wenn es pausierte Abos gibt.
+	const showFilter = abos.some((abo) => abo.pausedAt !== null);
+	const filtered = applyFilter(abos, showFilter ? filter : 'all');
 
 	return (
 		<section className="flex flex-col gap-4">
-			<ToggleGroup
-				variant="segmented"
-				value={[filter]}
-				onValueChange={(values) => {
-					const value = values[0];
-					if (value === 'active' || value === 'paused' || value === 'all') onFilterChange(value);
-				}}
-				className="w-full"
-				aria-label="Abos filtern"
-			>
-				{FILTER_OPTIONS.map((option) => (
-					<ToggleGroupItem key={option.value} value={option.value} className="min-h-11 flex-1">
-						{option.label}
-					</ToggleGroupItem>
-				))}
-			</ToggleGroup>
+			{showFilter && (
+				<ToggleGroup
+					variant="segmented"
+					value={[filter]}
+					onValueChange={(values) => {
+						const value = values[0];
+						if (value === 'active' || value === 'paused' || value === 'all') onFilterChange(value);
+					}}
+					className="w-full"
+					aria-label="Abos filtern"
+				>
+					{FILTER_OPTIONS.map((option) => (
+						<ToggleGroupItem key={option.value} value={option.value} className="min-h-11 flex-1">
+							{option.label}
+						</ToggleGroupItem>
+					))}
+				</ToggleGroup>
+			)}
 			<output aria-live="polite" className="sr-only">
 				{filtered.length} Abos sichtbar
 			</output>
@@ -93,7 +97,7 @@ export function AbosList({
 					</EmptyHeader>
 				</Empty>
 			) : (
-				<ul className="flex flex-col gap-3">
+				<ul className="divide-y overflow-hidden rounded-xl border">
 					{filtered.map((abo) => (
 						<AboRow
 							key={abo.id}

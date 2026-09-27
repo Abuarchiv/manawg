@@ -34,9 +34,7 @@ export function PinnwandHeader({
 					</h1>
 					{(loading || itemCount > 0 || refreshing) && (
 						<p className="flex items-center gap-2 text-xs text-muted-foreground">
-							{loading
-								? 'Beiträge werden geladen…'
-								: `${itemCount} Beitr${itemCount === 1 ? 'ag' : 'äge'}`}
+							{loading ? 'Beiträge werden geladen…' : `${itemCount} aktuell`}
 							{refreshing && <Spinner aria-label="Wird aktualisiert" />}
 						</p>
 					)}

@@ -30,20 +30,14 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Field, FieldGroup } from '@/components/ui/field';
-import {
-	Message,
-	MessageAvatar,
-	MessageContent,
-	MessageFooter,
-	MessageHeader,
-} from '@/components/ui/message';
+import { Message, MessageAvatar, MessageContent, MessageHeader } from '@/components/ui/message';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { memberTint } from '@/components/wg/MemberAvatar';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { haptic } from '@/shared/lib/haptics';
-import { MoreVertical, Pencil, Reply, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Reply, Smile, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { canDeleteMessage, canEditMessage } from '../chat-pure';
 import { ReactionPicker } from './ReactionPicker';
@@ -107,6 +101,7 @@ export function MessageBubble({
 	const [reactionPending, setReactionPending] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [deleteOpen, setDeleteOpen] = useState(false);
+	const [reactOpen, setReactOpen] = useState(false);
 	const pendingRef = useRef(false);
 	const reactionRef = useRef(false);
 	const editTextareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -254,116 +249,116 @@ export function MessageBubble({
 						</div>
 					</FieldGroup>
 				) : (
-					<BubbleGroup className="max-w-full">
-						<Bubble
-							variant={isDeleted ? 'muted' : isOwn ? 'default' : 'secondary'}
-							align={align}
-							className="max-w-full"
-						>
-							<BubbleContent className="px-2.5 py-1.5 leading-snug">
-								{replyTo && (
-									<blockquote className="mb-2 border-s-2 border-current/30 ps-2">
-										<p className="text-xs font-medium [overflow-wrap:anywhere]">
-											↪ {replyToSender?.name ?? 'Unbekannt'}
-										</p>
-										<p className="line-clamp-2 whitespace-pre-wrap text-xs [overflow-wrap:anywhere]">
-											{replyTo.deletedAt
-												? 'Diese Nachricht wurde gelöscht.'
-												: (replyTo.body ?? (replyTo.imageUrl ? 'Bild' : '…'))}
-										</p>
-									</blockquote>
+					// Ein Menü neben der Blase statt drei Icons unter jeder Nachricht.
+					<div className="flex max-w-full min-w-0 items-end gap-0.5 group-data-[align=end]/message:flex-row-reverse group-data-[align=end]/message:self-end">
+						<BubbleGroup className="min-w-0 max-w-full">
+							<Bubble
+								variant={isDeleted ? 'muted' : isOwn ? 'default' : 'secondary'}
+								align={align}
+								className="max-w-full"
+							>
+								<BubbleContent className="px-2.5 py-1.5 leading-snug">
+									{replyTo && (
+										<blockquote className="mb-2 border-s-2 border-current/30 ps-2">
+											<p className="text-xs font-medium [overflow-wrap:anywhere]">
+												↪ {replyToSender?.name ?? 'Unbekannt'}
+											</p>
+											<p className="line-clamp-2 whitespace-pre-wrap text-xs [overflow-wrap:anywhere]">
+												{replyTo.deletedAt
+													? 'Diese Nachricht wurde gelöscht.'
+													: (replyTo.body ?? (replyTo.imageUrl ? 'Bild' : '…'))}
+											</p>
+										</blockquote>
+									)}
+									{isDeleted ? (
+										<p>Diese Nachricht wurde gelöscht.</p>
+									) : (
+										message.body && (
+											<p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.body}</p>
+										)
+									)}
+								</BubbleContent>
+								{reactions.length > 0 && (
+									<BubbleReactions
+										align={align}
+										className="static max-w-full flex-wrap translate-y-0 self-start"
+									>
+										{reactions.map((reaction) => (
+											<Button
+												key={reaction.emoji}
+												variant={reaction.mine ? 'secondary' : 'outline'}
+												size="sm"
+												onClick={() => void toggleReaction(reaction.emoji, reaction.mine)}
+												disabled={isDeleted || Boolean(reactionPending)}
+												aria-pressed={reaction.mine}
+												aria-label={`Reaktion ${reaction.emoji} (${reaction.count}) ${reaction.mine ? 'entfernen' : 'hinzufügen'} — Nachricht von ${senderName}`}
+											>
+												{reactionPending === reaction.emoji ? (
+													<Spinner />
+												) : (
+													<span>{reaction.emoji}</span>
+												)}
+												<span className="tabular-nums">{reaction.count}</span>
+											</Button>
+										))}
+									</BubbleReactions>
 								)}
-								{isDeleted ? (
-									<p>Diese Nachricht wurde gelöscht.</p>
-								) : (
-									message.body && (
-										<p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.body}</p>
-									)
-								)}
-							</BubbleContent>
-							{reactions.length > 0 && (
-								<BubbleReactions
-									align={align}
-									className="static max-w-full flex-wrap translate-y-0 self-start"
-								>
-									{reactions.map((reaction) => (
-										<Button
-											key={reaction.emoji}
-											variant={reaction.mine ? 'secondary' : 'outline'}
-											size="sm"
-											onClick={() => void toggleReaction(reaction.emoji, reaction.mine)}
-											disabled={isDeleted || Boolean(reactionPending)}
-											aria-pressed={reaction.mine}
-											aria-label={`Reaktion ${reaction.emoji} (${reaction.count}) ${reaction.mine ? 'entfernen' : 'hinzufügen'} — Nachricht von ${senderName}`}
-										>
-											{reactionPending === reaction.emoji ? (
-												<Spinner />
-											) : (
-												<span>{reaction.emoji}</span>
-											)}
-											<span className="tabular-nums">{reaction.count}</span>
-										</Button>
-									))}
-								</BubbleReactions>
+							</Bubble>
+							{!isDeleted && message.imageUrl && (
+								<Attachment state="done" className="min-w-0 max-w-full">
+									<AttachmentMedia variant="image" className="size-20">
+										{/* eslint-disable-next-line @next/next/no-img-element */}
+										<img src={message.imageUrl} alt={`Bild von ${senderName}`} loading="lazy" />
+									</AttachmentMedia>
+									<AttachmentContent>
+										<AttachmentTitle>Bild</AttachmentTitle>
+										<AttachmentDescription>In voller Größe öffnen</AttachmentDescription>
+									</AttachmentContent>
+									<AttachmentTrigger
+										aria-label="Bild in voller Größe öffnen"
+										render={
+											<a href={message.imageUrl} target="_blank" rel="noopener noreferrer">
+												<span className="sr-only">Bild in voller Größe öffnen</span>
+											</a>
+										}
+									/>
+								</Attachment>
 							)}
-						</Bubble>
-						{!isDeleted && message.imageUrl && (
-							<Attachment state="done" className="min-w-0 max-w-full">
-								<AttachmentMedia variant="image" className="size-20">
-									{/* eslint-disable-next-line @next/next/no-img-element */}
-									<img src={message.imageUrl} alt={`Bild von ${senderName}`} loading="lazy" />
-								</AttachmentMedia>
-								<AttachmentContent>
-									<AttachmentTitle>Bild</AttachmentTitle>
-									<AttachmentDescription>In voller Größe öffnen</AttachmentDescription>
-								</AttachmentContent>
-								<AttachmentTrigger
-									aria-label="Bild in voller Größe öffnen"
-									render={
-										<a href={message.imageUrl} target="_blank" rel="noopener noreferrer">
-											<span className="sr-only">Bild in voller Größe öffnen</span>
-										</a>
-									}
-								/>
-							</Attachment>
-						)}
-					</BubbleGroup>
-				)}
-				{error && !deleteOpen && (
-					<Alert id={`message-edit-error-${message.id}`} variant="destructive">
-						<AlertDescription>{error}</AlertDescription>
-					</Alert>
-				)}
-				{!isDeleted && !editing && (
-					<MessageFooter className="flex-wrap gap-2 px-0 py-1 [&_svg]:size-3.5">
-						<ReactionPicker
-							disabled={Boolean(reactionPending)}
-							onSelect={(emoji) => toggleReaction(emoji, false)}
-							triggerLabel={`Reaktion zu Nachricht von ${senderName} (${formatRelativeTime(message.createdAt)}) hinzufügen`}
-						/>
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={() => {
-								haptic('selection');
-								onReply();
-							}}
-							aria-label={`Auf Nachricht von ${senderName} (${formatRelativeTime(message.createdAt)}) antworten`}
-						>
-							<Reply aria-hidden />
-						</Button>
-						{(editable || deletable) && (
+						</BubbleGroup>
+						{!isDeleted && (
 							<DropdownMenu>
 								<DropdownMenuTrigger
 									ref={actionsTriggerRef}
-									render={<Button variant="ghost" size="icon" />}
+									render={
+										<Button
+											variant="ghost"
+											size="icon"
+											className="size-9 shrink-0 text-muted-foreground"
+										/>
+									}
 									disabled={pending}
 									aria-label={`Aktionen für Nachricht von ${senderName} (${formatRelativeTime(message.createdAt)})`}
 								>
-									<MoreVertical aria-hidden />
+									<MoreHorizontal aria-hidden />
 								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end" className="w-48">
+								<DropdownMenuContent align={isOwn ? 'end' : 'start'} className="w-48">
 									<DropdownMenuGroup>
+										<DropdownMenuItem
+											className="min-h-11"
+											disabled={Boolean(reactionPending)}
+											onClick={() => setReactOpen(true)}
+										>
+											<Smile aria-hidden /> Reagieren
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											className="min-h-11"
+											onClick={() => {
+												haptic('selection');
+												onReply();
+											}}
+										>
+											<Reply aria-hidden /> Antworten
+										</DropdownMenuItem>
 										{editable && (
 											<DropdownMenuItem
 												className="min-h-11"
@@ -393,8 +388,19 @@ export function MessageBubble({
 								</DropdownMenuContent>
 							</DropdownMenu>
 						)}
-					</MessageFooter>
+					</div>
 				)}
+				{error && !deleteOpen && (
+					<Alert id={`message-edit-error-${message.id}`} variant="destructive">
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+				)}
+				<ReactionPicker
+					open={reactOpen}
+					onOpenChange={setReactOpen}
+					onSelect={(emoji) => toggleReaction(emoji, false)}
+					returnFocusRef={actionsTriggerRef}
+				/>
 				<AlertDialog
 					open={deleteOpen}
 					onOpenChange={(open) => {
