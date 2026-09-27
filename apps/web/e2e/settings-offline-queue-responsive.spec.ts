@@ -14,6 +14,50 @@ const queuedAction = {
 	payload: { name: 'Milch', quantity: '1L' },
 };
 
+test('manual review explains the uncertain result and opens the WG list', async ({ page }) => {
+	await page.setViewportSize({ width: 320, height: 844 });
+	await setupMember(page);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#daten`);
+	const section = page.getByRole('region', { name: 'Offline-Warteschlange' });
+	await expect(section).toBeVisible();
+	const warning =
+		'Server prüfen: Die erste Version kann bereits gespeichert sein. Die Bearbeitung wurde nicht gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege benötigte Änderungen neu an.';
+	await page.evaluate(
+		({ action, warningText }) => {
+			localStorage.setItem(
+				'manawg:offline-actions',
+				JSON.stringify([
+					{
+						...action,
+						id: `announcement:${action.shareCode}:manual-review`,
+						type: 'announcement.create',
+						lastError: warningText,
+						payload: { content: 'Geänderter Beitrag', kind: 'info', imageUrl: null },
+					},
+				]),
+			);
+			window.dispatchEvent(new Event('manawg:offline-queue'));
+		},
+		{ action: queuedAction, warningText: warning },
+	);
+	const alert = section.getByRole('alert').filter({ hasText: warning });
+	await expect(alert).toBeVisible();
+	await expect(alert).toContainText(warning);
+	const size = await alert.evaluate((element) => ({
+		client: element.clientHeight,
+		scroll: element.scrollHeight,
+	}));
+	expect(size.scroll).toBeLessThanOrEqual(size.client + 1);
+	await expect(
+		section.getByRole('button', { name: 'Offline-Warteschlange erneut synchronisieren' }),
+	).toHaveCount(0);
+	await expect(section.getByRole('button', { name: /Server prüfen:/ })).toHaveCount(0);
+	await expect(section.getByRole('button', { name: /Offline-Aktion bearbeiten:/ })).toHaveCount(0);
+	await expect(section.getByRole('button', { name: /Offline-Aktion verwerfen:/ })).toBeVisible();
+	await section.getByRole('link', { name: /WG-Eintrag prüfen:/ }).click();
+	await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/pinnwand$`));
+});
+
 const width = 320;
 for (const colorScheme of ['light', 'dark'] as const) {
 	for (const textScale of ['normal', '32px'] as const) {

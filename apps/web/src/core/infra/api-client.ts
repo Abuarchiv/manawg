@@ -1,4 +1,8 @@
-import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from '@/shared/lib/member-header';
+import {
+	EXPECTED_MEMBER_ID_HEADER,
+	MEMBER_ID_HEADER,
+	MEMBER_TOKEN_HEADER,
+} from '@/shared/lib/member-header';
 
 type ApiFetchInit = RequestInit & { memberId?: string; memberToken?: string | undefined };
 
@@ -12,6 +16,7 @@ export async function apiFetch<T>(
 	const method = rest.method ?? 'GET';
 
 	const headers = new Headers(rest.headers);
+	if (memberId) headers.set(EXPECTED_MEMBER_ID_HEADER, memberId);
 	if (
 		process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true' &&
 		process.env.NEXT_PUBLIC_DB_DOWN === 'true' &&
@@ -28,12 +33,14 @@ export async function apiFetch<T>(
 	}
 
 	try {
+		const timeoutSignal = AbortSignal.timeout(15_000);
+		const requestSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
 		const res = await fetch(path, {
 			cache: 'no-store',
 			...rest,
 			method,
 			headers,
-			signal: signal ?? AbortSignal.timeout(15_000),
+			signal: requestSignal,
 		});
 
 		if (!res.ok) {
