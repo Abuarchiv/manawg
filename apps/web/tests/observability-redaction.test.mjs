@@ -154,3 +154,84 @@ test('idempotency cache failures never log a push endpoint or provider error', a
 		console.warn = originalWarn;
 	}
 });
+
+const clientEntryPath = path.join(
+	path.dirname(fileURLToPath(import.meta.url)),
+	'../src/instrumentation-client.ts',
+);
+
+function runInstrumentationClient(env, loadSentry) {
+	const source = ts.transpileModule(readFileSync(clientEntryPath, 'utf8'), {
+		compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+	}).outputText;
+	const module = { exports: {} };
+	new Function('require', 'module', 'exports', 'process', source)(
+		(name) => {
+			if (name === '@/core/infra/sentry') return loadSentry();
+			throw new Error(`Unexpected optional import: ${name}`);
+		},
+		module,
+		module.exports,
+		{ env },
+	);
+}
+
+const flushOptionalImport = () => new Promise((resolve) => setImmediate(resolve));
+
+test('client entrypoint does not load Sentry without a configured DSN', async () => {
+	const loads = [];
+	runInstrumentationClient({}, () => loads.push('loaded'));
+	await flushOptionalImport();
+	assert.deepEqual(loads, []);
+});
+
+test('client entrypoint initializes Sentry once lazily and tolerates a failed optional import', async () => {
+	const calls = [];
+	runInstrumentationClient(
+		{ NEXT_PUBLIC_SENTRY_DSN: 'https://public-key@o123.ingest.de.sentry.io/1' },
+		() => {
+			calls.push('loaded');
+			return { initializeSentry: () => calls.push('initialized') };
+		},
+	);
+	assert.deepEqual(calls, []);
+	await flushOptionalImport();
+	assert.deepEqual(calls, ['loaded', 'initialized']);
+
+	const failedLoads = [];
+	runInstrumentationClient({ NEXT_PUBLIC_SENTRY_DSN: 'configured' }, () => {
+		failedLoads.push('loaded');
+		throw new Error('optional Sentry unavailable');
+	});
+	assert.deepEqual(failedLoads, []);
+	await flushOptionalImport();
+	assert.deepEqual(failedLoads, ['loaded']);
+});
+
+test('Vercel config loads the public Sentry config wrapper', () => {
+	const configPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '../next.config.ts');
+	const source = readFileSync(configPath, 'utf8');
+	const compiled = ts.transpileModule(source, {
+		compilerOptions: {
+			module: ts.ModuleKind.CommonJS,
+			target: ts.ScriptTarget.ES2022,
+			esModuleInterop: true,
+		},
+	}).outputText;
+	const module = { exports: {} };
+	const env = {
+		VERCEL: '1',
+		VERCEL_ENV: 'preview',
+		NODE_ENV: 'production',
+		SENTRY_ORG: 'fixture-org',
+		SENTRY_PROJECT: 'fixture-project',
+		SENTRY_AUTH_TOKEN: 'fixture-only-not-a-credential',
+	};
+	new Function('require', 'module', 'exports', 'process', compiled)(
+		require,
+		module,
+		module.exports,
+		{ env },
+	);
+	assert.equal(typeof module.exports.default?.headers, 'function');
+});

@@ -6,8 +6,6 @@ import test from 'node:test';
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
 
-const sentryStub = { captureSentryException() {}, logSentryApiError() {} };
-
 function load(relativePath, mocks, env, logs = []) {
 	const source = readFileSync(new URL(`../src/${relativePath}`, import.meta.url), 'utf8');
 	const compiled = ts.transpileModule(source, {
@@ -22,6 +20,19 @@ function load(relativePath, mocks, env, logs = []) {
 		{ warn: () => {}, error: (...args) => logs.push(args) },
 	);
 	return module.exports;
+}
+
+function loadObservability(env, logs) {
+	const sentryPrivacy = load('core/infra/sentry-privacy.ts', {}, env, logs);
+	return load(
+		'core/infra/observability.ts',
+		{
+			'./sentry': { captureSentryException() {}, logSentryApiError() {} },
+			'./sentry-privacy': sentryPrivacy,
+		},
+		env,
+		logs,
+	);
 }
 
 test('transaction pools follow effective URL changes without retrying unknown commits', async () => {
@@ -111,15 +122,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 				},
 			},
 			'@/core/guards/api-auth': {},
-			'@/core/infra/observability': load(
-				'core/infra/observability.ts',
-				{
-					'./sentry': sentryStub,
-					'./sentry-privacy': load('core/infra/sentry-privacy.ts', {}, {}),
-				},
-				env,
-				logs,
-			),
+			'@/core/infra/observability': loadObservability(env, logs),
 			'@/core/rate-limit': { createConfiguredRedis: () => null },
 			'drizzle-orm': { lte: () => {} },
 		},
@@ -139,15 +142,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 			},
 			'@/core/idempotency': idempotency,
 			'@/core/infra/cron-auth': { verifyCronSecret: () => true },
-			'@/core/infra/observability': load(
-				'core/infra/observability.ts',
-				{
-					'./sentry': sentryStub,
-					'./sentry-privacy': load('core/infra/sentry-privacy.ts', {}, {}),
-				},
-				env,
-				logs,
-			),
+			'@/core/infra/observability': loadObservability(env, logs),
 			'next/server': { NextResponse: Response },
 		},
 		env,

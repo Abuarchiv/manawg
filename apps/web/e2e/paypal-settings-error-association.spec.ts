@@ -3,50 +3,41 @@ import { FIXTURE_WG, navigateToFeature, setupMember } from './_helpers';
 
 test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 
-// Regression: the PayPal Merchant-ID field wasn't wired to its own save error
-// (no aria-invalid/aria-describedby — WCAG 3.3.1) and the "Speichern" button
-// was a plain onClick handler outside any <form>, so pressing Enter in the
-// field did nothing.
-test('PayPal save error is associated with the input and Enter submits from the field', async ({
+test('PayPal status failure is announced and can be retried from the keyboard', async ({
 	page,
 }) => {
 	await setupMember(page);
 
-	await page.route(
-		`**/api/wg/${FIXTURE_WG.shareCode}/members/${FIXTURE_WG.memberId}`,
-		async (route) => {
-			const request = route.request();
-			if (request.method() === 'GET') {
-				await route.fulfill({ status: 200, json: { member: { paypalMerchantId: '' } } });
-				return;
+	let retryRequested = false;
+	let statusGets = 0;
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/paypal/connect`, async (route) => {
+		if (route.request().method() === 'GET') {
+			statusGets += 1;
+			if (!retryRequested) {
+				return route.fulfill({ status: 503, json: { error: 'temporary_failure' } });
 			}
-			if (request.method() === 'PATCH') {
-				await route.fulfill({
-					status: 400,
-					json: { error: 'paypal_merchant_id_invalid' },
-				});
-				return;
-			}
-			await route.continue();
-		},
-	);
+			return route.fulfill({ json: { available: true, connected: false } });
+		}
+		return route.fulfill({ status: 400, json: { error: 'unexpected_action' } });
+	});
 
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen`);
-	const merchantId = page.getByRole('textbox', { name: 'PayPal Merchant-ID' });
-	await expect(merchantId).toBeEnabled();
+	const errorAlert = page.getByRole('alert').filter({
+		hasText: 'PayPal-Verbindung konnte nicht geprüft werden. Bitte versuche es erneut.',
+	});
+	await expect(errorAlert).toBeVisible({ timeout: 30_000 });
+	expect(statusGets).toBeGreaterThan(0);
+	await expect(page.getByRole('textbox', { name: /merchant.?id/i })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'PayPal verbinden', exact: true })).toHaveCount(0);
 
-	await merchantId.fill('not-valid');
-	await merchantId.press('Enter');
+	const retry = page.getByRole('button', { name: 'Verbindung prüfen', exact: true });
+	await expect(retry).toBeVisible();
+	const getsBeforeRetry = statusGets;
+	await retry.focus();
+	retryRequested = true;
+	await page.keyboard.press('Enter');
 
-	const errorAlert = page
-		.getByRole('alert')
-		.filter({ hasText: 'Bitte gib eine gültige PayPal Merchant-ID ein.' });
-	await expect(errorAlert).toBeVisible();
-
-	await expect(merchantId).toHaveAttribute('aria-invalid', 'true');
-	const describedBy = await merchantId.getAttribute('aria-describedby');
-	expect(describedBy).toBe('paypal-save-error');
-	await expect(page.locator(`#${describedBy}`)).toHaveText(
-		'Bitte gib eine gültige PayPal Merchant-ID ein.',
-	);
+	await expect(errorAlert).toBeHidden();
+	await expect(page.getByRole('button', { name: 'PayPal verbinden', exact: true })).toBeEnabled();
+	await expect.poll(() => statusGets).toBeGreaterThan(getsBeforeRetry);
 });
