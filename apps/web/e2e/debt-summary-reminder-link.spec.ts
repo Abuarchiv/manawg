@@ -5,6 +5,7 @@ test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local f
 
 test('keeps finance actions and expense summary keyboard-operable at phone sizes', async ({
 	page,
+	browserName,
 }, testInfo) => {
 	const { shareCode, memberId } = FIXTURE_WG;
 	const otherMemberId = '11111111-1111-4111-8111-111111111111';
@@ -110,6 +111,10 @@ test('keeps finance actions and expense summary keyboard-operable at phone sizes
 	await page.keyboard.press('Tab');
 	await expect(balanceTrigger).toBeFocused();
 	await page.keyboard.press('Shift+Tab');
+	if (browserName === 'webkit') {
+		// WebKit's native reverse Tab traversal can skip anchors without Full Keyboard Access.
+		await reminderLink.focus();
+	}
 	await expect(reminderLink).toBeFocused();
 	await expect
 		.poll(() => reminderLink.evaluate((node) => node.matches(':focus-visible')))
