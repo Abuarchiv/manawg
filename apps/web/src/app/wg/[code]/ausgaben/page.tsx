@@ -1509,7 +1509,9 @@ export default function AusgabenPage() {
 				/>
 			)}
 			{!showSkeleton &&
-				(expenses.length > 0 || directDebts.length > 0 || memberBalances.length > 0) && (
+				(expenses.length > 0 ||
+					directDebts.length > 0 ||
+					memberBalances.some((member) => member.balanceCents !== 0)) && (
 					<DebtSummary
 						debts={directDebts}
 						summary={settlementSummary}

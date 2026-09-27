@@ -52,8 +52,8 @@ async function openAboCreate(
 	await navigateToFeature(page, `/wg/${SHARE_CODE}/abos`);
 	await dismissOnboarding(page);
 	await expect(page.getByRole('heading', { name: 'Fixkosten', exact: true })).toBeVisible();
-	await page.getByRole('button', { name: 'Neues Abo', exact: true }).click();
-	await expect(page.getByRole('heading', { name: 'Neues Abo', exact: true })).toBeVisible();
+	await page.getByRole('button', { name: 'Neue Fixkosten', exact: true }).click();
+	await expect(page.getByRole('heading', { name: 'Neue Fixkosten', exact: true })).toBeVisible();
 }
 
 async function openCalendarCreate(
@@ -77,7 +77,7 @@ test('Abo blocks a missing due date and preserves a valid calendar date', async 
 	await page.getByLabel('Betrag').fill('12,34');
 	const dueDate = page.getByLabel('Erste Fälligkeit');
 	await dueDate.fill('');
-	await page.getByRole('button', { name: 'Abo anlegen', exact: true }).click();
+	await page.getByRole('button', { name: 'Fixkosten anlegen', exact: true }).click();
 
 	expect(post.bodies).toHaveLength(0);
 	await expect(dueDate).toBeFocused();
@@ -88,7 +88,7 @@ test('Abo blocks a missing due date and preserves a valid calendar date', async 
 
 	await dueDate.fill('2026-09-22');
 	await expect(dueDate).toHaveValue('2026-09-22');
-	await page.getByRole('button', { name: 'Abo anlegen', exact: true }).click();
+	await page.getByRole('button', { name: 'Fixkosten anlegen', exact: true }).click();
 	await expect.poll(() => post.bodies.length).toBe(1);
 	await expect.poll(() => post.statuses.length).toBe(1);
 

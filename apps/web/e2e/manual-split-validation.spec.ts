@@ -96,7 +96,7 @@ test('blocks a malformed manual Abo share, then submits the corrected split', as
 
 	await navigateToFeature(page, `/wg/${shareCode}/abos`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Neues Abo' }).click();
+	await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
 	const dialog = page.getByRole('dialog');
 	await dialog.getByLabel('Beschreibung', { exact: true }).fill('Internet');
 	await dialog.getByLabel('Betrag', { exact: true }).fill('10');
@@ -105,7 +105,7 @@ test('blocks a malformed manual Abo share, then submits the corrected split', as
 	const invalidShare = dialog.getByLabel('Anteil Maximilian Mustermann-Langname in Euro');
 	await firstShare.fill('10');
 	await invalidShare.fill('unbekannt');
-	await dialog.getByRole('button', { name: 'Abo anlegen', exact: true }).click();
+	await dialog.getByRole('button', { name: 'Fixkosten anlegen', exact: true }).click();
 	await expect(dialog.getByText(INVALID_SPLIT_MESSAGE, { exact: true })).toBeVisible();
 	await expect(invalidShare).toHaveAttribute('aria-invalid', 'true');
 	await expect(invalidShare).toHaveAttribute('aria-describedby', 'abo-splits-error');
@@ -115,7 +115,7 @@ test('blocks a malformed manual Abo share, then submits the corrected split', as
 
 	await firstShare.fill('6');
 	await invalidShare.fill('4');
-	await dialog.getByRole('button', { name: 'Abo anlegen', exact: true }).click();
+	await dialog.getByRole('button', { name: 'Fixkosten anlegen', exact: true }).click();
 	await expect.poll(() => postCount).toBe(1);
 	expect(submitted?.splits).toEqual([
 		{ debtorMemberId: FIXTURE_WG.memberId, amountCents: 600 },
@@ -142,7 +142,7 @@ test('keeps blank and zero Abo shares opt-out while posting valid shares', async
 
 	await navigateToFeature(page, `/wg/${shareCode}/abos`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Neues Abo' }).click();
+	await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
 	const dialog = page.getByRole('dialog');
 	await dialog.getByLabel('Beschreibung', { exact: true }).fill('Internet');
 	await dialog.getByLabel('Betrag', { exact: true }).fill('10');
@@ -150,15 +150,17 @@ test('keeps blank and zero Abo shares opt-out while posting valid shares', async
 	const firstShare = dialog.getByLabel('Anteil Alexandra Beispielfamilienname in Euro');
 	const optOutShare = dialog.getByLabel('Anteil Maximilian Mustermann-Langname in Euro');
 	await firstShare.fill('10');
-	await dialog.getByRole('button', { name: 'Abo anlegen', exact: true }).click();
+	await dialog.getByRole('button', { name: 'Fixkosten anlegen', exact: true }).click();
 	await expect.poll(() => postCount).toBe(1);
 	expect(submitted?.splits).toEqual([{ debtorMemberId: FIXTURE_WG.memberId, amountCents: 1000 }]);
 
 	submitted = null;
 	postCount = 0;
-	await expect(dialog.getByRole('button', { name: 'Abo anlegen', exact: true })).toBeEnabled();
+	await expect(
+		dialog.getByRole('button', { name: 'Fixkosten anlegen', exact: true }),
+	).toBeEnabled();
 	await optOutShare.fill('0');
-	await dialog.getByRole('button', { name: 'Abo anlegen', exact: true }).click();
+	await dialog.getByRole('button', { name: 'Fixkosten anlegen', exact: true }).click();
 	await expect.poll(() => postCount).toBe(1);
 	expect(submitted?.splits).toEqual([{ debtorMemberId: FIXTURE_WG.memberId, amountCents: 1000 }]);
 });

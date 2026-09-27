@@ -33,8 +33,8 @@ test('abo description and amount fields hint "next"', async ({ page }) => {
 
 	await navigateToFeature(page, `/wg/${shareCode}/abos`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Neues Abo' }).click();
-	await expect(page.getByRole('dialog', { name: 'Neues Abo' })).toBeVisible();
+	await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
+	await expect(page.getByRole('dialog', { name: 'Neue Fixkosten' })).toBeVisible();
 
 	await expect(page.locator('#abo-description')).toHaveAttribute('enterkeyhint', 'next');
 	await expect(page.locator('#abo-amount')).toHaveAttribute('enterkeyhint', 'next');

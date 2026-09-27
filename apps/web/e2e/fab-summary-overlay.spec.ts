@@ -25,9 +25,9 @@ for (const width of [320, 360]) {
 			await dismissOnboarding(page);
 			await expect(page.getByRole('heading', { name: 'Fixkosten', exact: true })).toBeVisible();
 			await expect(page.getByText('Dein Anteil', { exact: true })).toBeVisible();
-			const actionButton = page.getByRole('button', { name: 'Neues Abo', exact: true });
+			const actionButton = page.getByRole('button', { name: 'Neue Fixkosten', exact: true });
 			await expect(actionButton).toBeVisible();
-			await expect(actionButton).toHaveAccessibleName('Neues Abo');
+			await expect(actionButton).toHaveAccessibleName('Neue Fixkosten');
 
 			const geometry = {
 				rootFontSize: await page.evaluate(

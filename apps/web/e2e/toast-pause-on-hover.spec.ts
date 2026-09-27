@@ -49,7 +49,7 @@ test('a toast pauses its auto-dismiss timer while hovered or focused', async ({ 
 	const toast = page
 		.getByRole('region', { name: 'Benachrichtigungen' })
 		.getByRole('alert')
-		.filter({ hasText: 'Abo konnte nicht gelöscht werden' });
+		.filter({ hasText: 'Fixkosten konnten nicht gelöscht werden' });
 	await expect(toast).toBeVisible();
 	const closeButton = toast.getByRole('button', { name: 'Benachrichtigung schließen' });
 
