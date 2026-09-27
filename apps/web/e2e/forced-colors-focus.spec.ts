@@ -51,6 +51,9 @@ test('keeps keyboard focus visible in Windows high contrast on shared controls a
 	);
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/putzen`);
 	await dismissOnboarding(page);
+	const doneChore = page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' });
+	await expect(doneChore).toBeVisible();
+	await expect(doneChore).toBeEnabled();
 
 	await page.evaluate(() => {
 		const fixture = document.createElement('div');
