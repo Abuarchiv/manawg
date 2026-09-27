@@ -292,12 +292,15 @@ export default function AktivitaetPage() {
 									<div key={group.date} className="space-y-2">
 										<Marker variant="separator">
 											<MarkerContent>
-												<span className="font-semibold uppercase tracking-wide">
+												<span className="font-medium">
 													{group.label} · {group.items.length}
 												</span>
 											</MarkerContent>
 										</Marker>
-										<ActivityFeed items={group.items} />
+										{/* Eine umrandete Liste pro Tag statt einer Karte pro Eintrag. */}
+										<div className="rounded-xl border px-3">
+											<ActivityFeed items={group.items} compact />
+										</div>
 									</div>
 								))}
 							</div>

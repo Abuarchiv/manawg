@@ -4,7 +4,7 @@ import { dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
 // Regression for a <44px touch target: ShoppingItemRow's checkbox grows its hit
 // area with an invisible `after:-inset-2.5` pseudo-element, but the swipe-to-toggle
 // row wraps everything in an <li> with `overflow-hidden`. Since the checkbox sits
-// flush against the row's left edge (Item uses px-0), any leftward hit-area
+// flush against the row's left edge (Item used px-0), any leftward hit-area
 // extension used to get clipped by that overflow-hidden, leaving an effective
 // ~34px target. Fix: `overflow-hidden` only applies while a swipe is in progress.
 test('shopping item checkbox keeps its full hit area when not swiping', async ({ page }) => {

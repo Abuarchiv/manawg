@@ -841,7 +841,9 @@ export default function EinkaufPage() {
 			) : (
 				<section aria-label="Einkaufsartikel" className="flex flex-col gap-4">
 					{openItems.length > 0 ? (
-						<ul className="flex flex-col">{openItems.map(renderRow)}</ul>
+						<ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
+							{openItems.map(renderRow)}
+						</ul>
 					) : (
 						<p className="text-sm text-muted-foreground">Alles eingekauft.</p>
 					)}
@@ -858,7 +860,9 @@ export default function EinkaufPage() {
 								/>
 								Erledigt ({doneItems.length})
 							</summary>
-							<ul className="flex flex-col">{doneItems.map(renderRow)}</ul>
+							<ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
+								{doneItems.map(renderRow)}
+							</ul>
 							{isAdmin && (
 								<Button
 									variant="outline"

@@ -23,6 +23,7 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
+import { useWg } from '@/components/wg/WgContextProvider';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import type { MemberInfo, ShoppingItem } from '@/features/shopping/components/shopping-types';
 import { cn } from '@/shared/lib/cn';
@@ -61,7 +62,14 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	const isBought = item.boughtAt !== null;
 	const deleteConfirm = useConfirmDelete();
 	const isDeleteArmed = deleteConfirm.confirmId === item.id;
-	const buyerName = item.boughtByMemberId ? buyer?.name : null;
+	const { identity } = useWg();
+	// Die eigene Person heißt „dir“/„dich“, nicht beim eigenen Namen.
+	const buyerName = item.boughtByMemberId
+		? item.boughtByMemberId === identity.memberId
+			? 'dir'
+			: buyer?.name
+		: null;
+	const adderName = item.addedByMemberId === identity.memberId ? 'dir' : adder.name;
 	const swipeStartX = useRef<number | null>(null);
 	const [swipeX, setSwipeX] = useState(0);
 
@@ -96,7 +104,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 				data-shopping-row
 				id={`shopping-${item.id}`}
 				className={cn(
-					'relative touch-pan-y scroll-mt-24 bg-background px-0',
+					'relative touch-pan-y scroll-mt-24 rounded-none bg-background px-3',
 					swipeX === 0 && 'transition-transform',
 					highlighted && 'ring-2 ring-inset ring-ring',
 				)}
@@ -161,7 +169,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 								'Gekauft'
 							)
 						) : (
-							`von ${adder.name}`
+							`von ${adderName}`
 						)}
 					</ItemDescription>
 				</ItemContent>
@@ -189,7 +197,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 									{isBought ? 'Erledigt' : 'Offen'}
 								</Badge>
 								<p className="text-sm text-muted-foreground">
-									Hinzugefügt von {adder.name}
+									Hinzugefügt von {adderName}
 									{isBought
 										? buyerName
 											? ` · Gekauft von ${buyerName}`

@@ -15,6 +15,7 @@ import {
 	ItemMedia,
 	ItemTitle,
 } from '@/components/ui/item';
+import { useWg } from '@/components/wg/WgContextProvider';
 import { activityItemKey } from '@/core/reads/activity';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatCompactRelativeTime } from '@/core/utils/time';
@@ -34,6 +35,7 @@ interface ActivityItem {
 	id?: string;
 	kind: 'expense' | 'shopping' | 'announcement' | 'chore' | 'recurring' | 'absence' | 'audit';
 	timestamp: string;
+	memberId?: string | null;
 	memberName: string;
 	text: string;
 	detail?: string;
@@ -190,7 +192,14 @@ export function ActivityFeed({ items, emptyHref, compact = false }: ActivityFeed
 	);
 }
 
+// Eigene Einträge in der zweiten Person: „Du hast …“ statt „dsaf hat …“.
+function ownText(text: string): string {
+	return text.replace(/^hat\b/, 'hast').replace(/^ist\b/, 'bist');
+}
+
 function ActivityText({ item }: { item: ActivityItem }) {
+	const { identity } = useWg();
+	const isMe = Boolean(item.memberId) && item.memberId === identity.memberId;
 	// Wrap in a single block-level span so the parent flex container treats this
 	// as ONE flex item. Without the wrapper, the multiple inner <span>s + JSX
 	// text-node space become separate anonymous flex items with zero gap — the
@@ -198,8 +207,8 @@ function ActivityText({ item }: { item: ActivityItem }) {
 	// "Abuhat die WG …". Amount is shown as a Badge beside the detail, not here.
 	return (
 		<span className="min-w-0 flex-1 break-words">
-			<span className="font-medium text-foreground">{item.memberName}</span>{' '}
-			<span className="text-muted-foreground">{item.text}</span>
+			<span className="font-medium text-foreground">{isMe ? 'Du' : item.memberName}</span>{' '}
+			<span className="text-muted-foreground">{isMe ? ownText(item.text) : item.text}</span>
 		</span>
 	);
 }
