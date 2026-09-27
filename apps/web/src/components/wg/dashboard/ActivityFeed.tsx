@@ -21,6 +21,7 @@ interface ActivityItem {
 	memberId?: string | null;
 	memberName: string;
 	text: string;
+	detail?: string;
 	amountCents?: number;
 	currency?: string;
 	href?: string;
@@ -77,11 +78,12 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
 								{sentence && <span className="font-medium">{who} </span>}
 								{text}
 							</p>
-							<p className="text-[12px] text-muted-foreground">
+							<p className="line-clamp-2 text-[12px] text-muted-foreground">
 								{!sentence && `${who} · `}
 								<time dateTime={item.timestamp}>
 									{formatCompactRelativeTime(item.timestamp, now)}
 								</time>
+								{item.detail && ` · ${item.detail}`}
 							</p>
 						</div>
 						{item.amountCents !== undefined && (

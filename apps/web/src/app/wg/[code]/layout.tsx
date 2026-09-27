@@ -208,7 +208,7 @@ function WgShell({
 						{/* Vier Ziele nach Candidate A: Start, Haushalt (Einkauf/Vorräte/
 					    Putzen/Kalender), Finanzen (Ausgaben/Fixkosten/Mahnungen/Import),
 					    Austausch (Pinnwand/Chat). Alle bisherigen Deep Links lösen
-					    weiter auf; Suche/Aktivität/Einstellungen bleiben über
+					    weiter auf; Aktivität/Einstellungen bleiben über
 					    Header- und Start-Verlinkungen erreichbar. */}
 					</ul>
 				</div>

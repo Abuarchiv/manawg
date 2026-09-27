@@ -3,57 +3,14 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
-import {
-	Bell,
-	CalendarDays,
-	Clock3,
-	Home,
-	ListChecks,
-	type LucideIcon,
-	Megaphone,
-	MessageCircle,
-	Package,
-	Receipt,
-	RefreshCw,
-	Search,
-	Settings,
-	Sparkles,
-} from 'lucide-react';
+import { Home, ListChecks, type LucideIcon, Megaphone, Receipt } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export type NavIconKey =
-	| 'home'
-	| 'ausgaben'
-	| 'einkauf'
-	| 'pinnwand'
-	| 'putzen'
-	| 'kalender'
-	| 'vorraete'
-	| 'abos'
-	| 'mahnungen'
-	| 'chat'
-	| 'suche'
-	| 'aktivitaet'
-	| 'einstellungen'
-	| 'haushalt'
-	| 'finanzen'
-	| 'austausch';
+export type NavIconKey = 'home' | 'haushalt' | 'finanzen' | 'austausch';
 
 const ICONS: Record<NavIconKey, LucideIcon> = {
 	home: Home,
-	ausgaben: Receipt,
-	einkauf: ListChecks,
-	pinnwand: Megaphone,
-	putzen: Sparkles,
-	kalender: CalendarDays,
-	vorraete: Package,
-	abos: RefreshCw,
-	mahnungen: Bell,
-	chat: MessageCircle,
-	suche: Search,
-	aktivitaet: Clock3,
-	einstellungen: Settings,
 	haushalt: ListChecks,
 	finanzen: Receipt,
 	austausch: Megaphone,
