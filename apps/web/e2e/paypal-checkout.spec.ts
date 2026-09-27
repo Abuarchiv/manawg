@@ -3,6 +3,10 @@ import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from '.
 
 test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 
+const PAYPAL_CONFIGURED = Boolean(
+	process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID && process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
+);
+
 const OTHER_MEMBER_ID = '11111111-1111-4111-8111-111111111111';
 
 async function setupDebtPage(
@@ -117,6 +121,7 @@ function paypalSdkStubScript(merchantId: string): string {
 test('unlinked recipients can connect PayPal, while debtors keep manual settlement', async ({
 	page,
 }) => {
+	test.skip(!PAYPAL_CONFIGURED, 'PayPal-Hinweise erscheinen nur mit PayPal-Konfiguration');
 	await setupDebtPage(page, {
 		debtorId: OTHER_MEMBER_ID,
 		creditorId: FIXTURE_WG.memberId,
@@ -134,6 +139,7 @@ test('unlinked recipients can connect PayPal, while debtors keep manual settleme
 });
 
 test('debtors see when the recipient has not connected PayPal', async ({ page }) => {
+	test.skip(!PAYPAL_CONFIGURED, 'PayPal-Hinweise erscheinen nur mit PayPal-Konfiguration');
 	await setupDebtPage(page, {
 		debtorId: FIXTURE_WG.memberId,
 		creditorId: OTHER_MEMBER_ID,

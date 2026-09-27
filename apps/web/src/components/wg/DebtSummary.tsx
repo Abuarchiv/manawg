@@ -42,9 +42,16 @@ import type { Expense } from '@/features/expenses/components/ausgaben/expense-ty
 import { getDebtOverview } from '@/features/expenses/debt-overview';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import { cn } from '@/shared/lib/cn';
+import { isPayPalSdkEnabled } from '@/shared/lib/security-headers';
 import { ChevronDown, History } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
+
+// Ohne PayPal-Zugangsdaten gibt es weder Verbinden noch Zahlen; dann keine PayPal-Hinweise.
+const PAYPAL_ENABLED = isPayPalSdkEnabled(
+	process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
+	process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
+);
 
 function settlementErrorMessage(error: string): string {
 	if (error === 'settlement_changed')
@@ -139,10 +146,7 @@ function DebtRow({
 		debt.fromId === currentMemberId &&
 		payeeMerchantId !== null &&
 		payPalEligible &&
-		Boolean(
-			process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID &&
-				process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
-		);
+		PAYPAL_ENABLED;
 	const endpoint = `/api/wg/${encodeURIComponent(shareCode)}/expenses/settle-batch`;
 
 	async function review(): Promise<void> {
@@ -291,7 +295,7 @@ function DebtRow({
 							size="sm"
 						/>
 					)}
-					{!payeeMerchantId && owedToMe && (
+					{PAYPAL_ENABLED && !payeeMerchantId && owedToMe && (
 						<div className="col-span-full min-w-0">
 							<p className="text-sm text-muted-foreground">
 								Verbinde PayPal, damit andere Mitglieder dir Geld senden können.
@@ -304,7 +308,7 @@ function DebtRow({
 							</Link>
 						</div>
 					)}
-					{!payeeMerchantId && iOwe && (
+					{PAYPAL_ENABLED && !payeeMerchantId && iOwe && (
 						<p className="col-span-full text-sm text-muted-foreground">
 							PayPal-Zahlungen sind erst möglich, wenn {debt.toName} PayPal verbunden hat.
 						</p>
