@@ -254,7 +254,8 @@ test('shows personal actions and a separate Berlin week agenda', async ({ page }
 			});
 
 			const lastAgendaRow = agenda.getByText('WG-Abendessen', { exact: true });
-			await lastAgendaRow.scrollIntoViewIfNeeded();
+			// Ganz nach unten scrollen wie ein Nutzer: die Seite hält unten Platz für die Navigation frei.
+			await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
 			const [rowBounds, navBounds] = await Promise.all([
 				lastAgendaRow.evaluate((node) => node.getBoundingClientRect().toJSON()),
 				page

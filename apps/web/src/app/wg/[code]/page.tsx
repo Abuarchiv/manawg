@@ -40,7 +40,6 @@ import {
 	CircleCheck,
 	Loader2,
 	Megaphone,
-	Search,
 } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import dynamic from 'next/dynamic';
@@ -235,16 +234,6 @@ export default function WgHomePage() {
 				data-home-content
 				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-6 px-4 py-6"
 			>
-				{/* Suche als Feld oben statt als verlorener Link zwischen den Abschnitten. */}
-				<Link
-					href={`${wgBaseHref}/suche`}
-					className={cn(
-						buttonVariants({ variant: 'outline' }),
-						'min-h-11 w-full justify-start rounded-xl font-normal text-muted-foreground',
-					)}
-				>
-					<Search data-icon="inline-start" aria-hidden /> WG durchsuchen
-				</Link>
 				{isNewWg && (
 					<div>
 						<StartWelcome />
