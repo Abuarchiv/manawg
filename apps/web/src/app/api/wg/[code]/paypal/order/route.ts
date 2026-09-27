@@ -16,6 +16,7 @@ import {
 	isPayPalConfigured,
 	isTerminalPayPalOrderCreationError,
 } from '@/core/infra/paypal';
+import { isPayPalMerchantReady } from '@/core/infra/paypal-onboarding';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { computeNetBalances, simplifyDebts } from '@/features/expenses/debt-reduction';
@@ -261,6 +262,22 @@ export const POST = withWgRoute('paypal order POST', async (req, { code }) => {
 			};
 		});
 		if (reservation.kind === 'response') return reservation.response;
+
+		if (!(await isPayPalMerchantReady(reservation.payeeMerchantId))) {
+			await withExpensePaymentLock(auth.wg.id, (tx) =>
+				tx
+					.update(expensePayments)
+					.set({ status: 'failed' })
+					.where(
+						and(
+							eq(expensePayments.id, reservation.paymentId),
+							eq(expensePayments.status, 'created'),
+							eq(expensePayments.providerOrderId, reservation.pendingOrderId),
+						),
+					),
+			);
+			return conflict('paypal_onboarding_pending');
+		}
 
 		try {
 			const order = await createPayPalOrder({

@@ -74,14 +74,17 @@ function createPayPalAuthAssertion(clientId: string, merchantId: string): string
 	return `${encode({ alg: 'none' })}.${encode({ iss: clientId, payer_id: merchantId })}.`;
 }
 
-async function paypalRequest<T>(
+export async function requestPayPalApi<T>(
 	path: string,
-	payeeMerchantId: string,
 	init: RequestInit,
+	payeeMerchantId?: string,
 ): Promise<T> {
 	const config = getConfig();
 	if (!config) throw new Error('paypal_not_configured');
 	const accessToken = await getAccessToken(config);
+	const payeeAssertion = payeeMerchantId
+		? { 'PayPal-Auth-Assertion': createPayPalAuthAssertion(config.clientId, payeeMerchantId) }
+		: {};
 	const response = await fetch(`${config.baseUrl}${path}`, {
 		...init,
 		cache: 'no-store',
@@ -89,24 +92,34 @@ async function paypalRequest<T>(
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${accessToken}`,
 			'PayPal-Partner-Attribution-Id': config.partnerAttributionId,
-			'PayPal-Auth-Assertion': createPayPalAuthAssertion(config.clientId, payeeMerchantId),
+			...payeeAssertion,
 			...(init.headers ?? {}),
 		},
 	});
 	if (!response.ok) {
 		let issue: string | undefined;
-		try {
-			const body = (await response.json()) as { details?: Array<{ issue?: unknown }> };
-			const payeeIssue = body.details?.find(
-				(detail) => typeof detail.issue === 'string' && detail.issue.startsWith('PAYEE_'),
-			)?.issue;
-			if (typeof payeeIssue === 'string') issue = payeeIssue;
-		} catch {
-			// Keep the HTTP status when PayPal returns a non-JSON error body.
+		if (payeeMerchantId) {
+			try {
+				const body = (await response.json()) as { details?: Array<{ issue?: unknown }> };
+				const payeeIssue = body.details?.find(
+					(detail) => typeof detail.issue === 'string' && detail.issue.startsWith('PAYEE_'),
+				)?.issue;
+				if (typeof payeeIssue === 'string') issue = payeeIssue;
+			} catch {
+				// Keep the HTTP status when PayPal returns a non-JSON error body.
+			}
 		}
 		throw new Error(`paypal_api_${response.status}${issue ? `_${issue}` : ''}`);
 	}
 	return (await response.json()) as T;
+}
+
+async function paypalRequest<T>(
+	path: string,
+	payeeMerchantId: string,
+	init: RequestInit,
+): Promise<T> {
+	return requestPayPalApi<T>(path, init, payeeMerchantId);
 }
 
 export function isTerminalPayPalOrderCreationError(error: unknown): boolean {
