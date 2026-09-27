@@ -142,9 +142,20 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 		setAccountSignOutError(null);
 		try {
 			const { signOutSocialAccount } = await import('@/core/auth/client');
-			await signOutSocialAccount();
+			const { pushCleanup } = await signOutSocialAccount([
+				{
+					code: wg.shareCode,
+					memberId: identity.memberId,
+					...(identity.memberToken ? { memberToken: identity.memberToken } : {}),
+				},
+			]);
 			clearIdentity(wg.id);
 			forgetWg(wg.shareCode);
+			if (pushCleanup === 'failed') {
+				window.alert(
+					'Du bist abgemeldet, aber Push konnte auf diesem Browser nicht sicher beendet werden. Deaktiviere Website-Benachrichtigungen in den Browsereinstellungen.',
+				);
+			}
 			router.push('/');
 		} catch {
 			setAccountSignOutError('Konto konnte nicht abgemeldet werden. Bitte erneut versuchen.');
@@ -154,7 +165,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	}
 
 	function openLeaveConfirm(): void {
-		if (activeMembers.length <= 1) return;
+		if (isAdmin || activeMembers.length <= 1) return;
 		setMemberToDeactivate({ id: identity.memberId, name: identity.name, selfLeave: true });
 		setDeleteStage('idle');
 		setDeleteError(null);
@@ -162,6 +173,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	}
 
 	function openDeleteConfirm(): void {
+		if (!isAdmin) return;
 		setMemberToDeactivate(null);
 		setDeleteStage('confirm');
 		setDeleteError(null);
@@ -169,6 +181,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	}
 
 	async function handleDelete(): Promise<void> {
+		if (!isAdmin) return;
 		setDeleteStage('pending');
 		setDeleteError(null);
 		try {
@@ -181,7 +194,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				setDeleteError(
 					errorCode === 'member_not_verified'
 						? 'Dein Gerät ist noch nicht bestätigt. Lade die App neu und versuche es erneut.'
-						: 'Nur die erstellende Person kann die WG löschen.',
+						: 'Nur Admins können die WG löschen.',
 				);
 				setDeleteStage('confirm');
 				return;
@@ -206,6 +219,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 		joiningEnabled?: boolean;
 		rotateShareCode?: boolean;
 	}): Promise<{ wg: WgSummary } | null> {
+		if (!isAdmin) return null;
 		setAccessError(null);
 		setAccessMessage(null);
 		try {
@@ -222,7 +236,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				setAccessError(
 					errorCode === 'member_not_verified'
 						? 'Dein Gerät ist noch nicht bestätigt. Lade die App neu und versuche es erneut.'
-						: 'Nur die erstellende Person kann den WG-Zugang ändern.',
+						: 'Nur Admins können den WG-Zugang ändern.',
 				);
 				return null;
 			}
@@ -240,7 +254,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	}
 
 	async function toggleJoining(): Promise<void> {
-		if (accessPendingRef.current) return;
+		if (!isAdmin || accessPendingRef.current) return;
 		accessPendingRef.current = true;
 		setAccessPending('join');
 		setRotateConfirm(false);
@@ -264,6 +278,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	}
 
 	async function rotateShareCode(): Promise<void> {
+		if (!isAdmin) return;
 		if (!rotateConfirm) {
 			setRotateConfirm(true);
 			setAccessError(null);
@@ -327,7 +342,11 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 
 			<Section
 				title="Zugang"
-				hint="Steuert, ob der aktuelle WG-Code neue Mitglieder aufnehmen darf."
+				hint={
+					isAdmin
+						? 'Steuert, ob der aktuelle WG-Code neue Mitglieder aufnehmen darf.'
+						: 'Nur Admins können den WG-Code verwalten.'
+				}
 			>
 				<div className="grid gap-3 p-3">
 					<Field orientation="horizontal" className="min-h-[44px]">
@@ -343,7 +362,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 						</FieldContent>
 						<Switch
 							checked={joiningEnabled}
-							disabled={accessPending !== null}
+							disabled={!isAdmin || accessPending !== null}
 							aria-busy={accessPending === 'join'}
 							aria-label={joiningEnabled ? 'Neue Beitritte sperren' : 'Neue Beitritte erlauben'}
 							onCheckedChange={() => void toggleJoining()}
@@ -373,7 +392,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 										type="button"
 										variant="destructive"
 										onClick={() => void rotateShareCode()}
-										disabled={accessPending !== null}
+										disabled={!isAdmin || accessPending !== null}
 										aria-label="Bestätigen: WG-Code-Erneuerung"
 										className="shrink-0 px-2.5"
 									>
@@ -392,7 +411,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 									type="button"
 									variant="outline"
 									onClick={() => void rotateShareCode()}
-									disabled={accessPending !== null}
+									disabled={!isAdmin || accessPending !== null}
 									aria-label="Erneuern: WG-Code"
 									className="shrink-0"
 								>
@@ -546,10 +565,19 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 
 				<Section
 					title="WG verlassen"
-					hint="Deaktiviert deine Mitgliedschaft. Einträge und offene Salden bleiben erhalten."
+					hint={
+						isAdmin
+							? 'Admins können ihre Mitgliedschaft derzeit nicht beenden.'
+							: 'Deaktiviert deine Mitgliedschaft. Einträge und offene Salden bleiben erhalten.'
+					}
 				>
 					<div className="grid gap-3 p-3">
-						{activeMembers.length <= 1 ? (
+						{isAdmin ? (
+							<p className="text-muted-foreground text-[13px]">
+								Admins können ihre Mitgliedschaft derzeit nicht beenden, weil die Admin-Rolle nicht
+								übertragen werden kann.
+							</p>
+						) : activeMembers.length <= 1 ? (
 							<p className="text-muted-foreground text-[13px]">
 								Du bist das letzte aktive Mitglied. Die WG kann erst verlassen werden, wenn ein
 								weiteres Mitglied aktiv ist. Wenn du nur dieses Gerät abmelden möchtest, nutze oben
@@ -571,13 +599,18 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 
 				<Section
 					title="WG dauerhaft löschen"
-					hint="Entfernt die gesamte WG und alle Daten (Ausgaben, Listen, Pinnwand) unwiderruflich für alle Mitglieder."
+					hint={
+						isAdmin
+							? 'Entfernt die gesamte WG und alle Daten (Ausgaben, Listen, Pinnwand) unwiderruflich für alle Mitglieder.'
+							: 'Nur Admins können die WG löschen.'
+					}
 				>
 					<div className="p-3">
 						<Button
 							type="button"
 							variant="destructive"
 							onClick={openDeleteConfirm}
+							disabled={!isAdmin}
 							className="w-full"
 						>
 							<Trash2 aria-hidden />

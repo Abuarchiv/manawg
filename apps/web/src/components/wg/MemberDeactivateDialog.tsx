@@ -121,6 +121,16 @@ export function MemberDeactivateDialog({
 			onClose();
 			return;
 		}
+		if (res.error === 'admin_required') {
+			setSubmitError(
+				selfLeave
+					? 'Admins können ihre Mitgliedschaft derzeit nicht beenden, weil die Admin-Rolle nicht übertragen werden kann. Wenn du nur dieses Gerät abmelden möchtest, nutze oben „Konto abmelden“.'
+					: 'Nur aktive Admin-Mitglieder können andere Mitglieder deaktivieren. Admin-Mitgliedschaften selbst können nicht deaktiviert werden. Bitte wende dich an ein aktives Admin-Mitglied.',
+			);
+			submittingRef.current = false;
+			setSubmitting(false);
+			return;
+		}
 		setSubmitError(
 			selfLeave
 				? 'WG konnte nicht verlassen werden. Deine Mitgliedschaft bleibt bestehen. Bitte erneut versuchen.'
@@ -148,7 +158,7 @@ export function MemberDeactivateDialog({
 					<AlertDialogDescription>
 						{selfLeave
 							? 'Deine Mitgliedschaft in dieser WG wird deaktiviert. Deine Einträge und offenen Salden bleiben erhalten. Ein aktives Admin-Mitglied mit der nötigen Berechtigung kann dich später wieder aktivieren.'
-							: `${member.name} verschwindet aus allen Listen (Rotation, Aufteilung, Auswahl), behält aber Zugriff auf dieses Gerät. Historie und Salden bleiben erhalten. Du kannst den Auszug jederzeit rückgängig machen.`}
+							: `${member.name} verliert den Zugriff auf diese WG. Historie und offene Salden bleiben erhalten. Ein aktives Admin-Mitglied kann sie später wieder aktivieren.`}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 
