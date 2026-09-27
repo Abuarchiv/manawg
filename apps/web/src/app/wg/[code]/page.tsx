@@ -442,7 +442,7 @@ export default function WgHomePage() {
 										href={`${wgBaseHref}/aktivitaet`}
 										className={cn(
 											buttonVariants({ variant: 'ghost' }),
-											'min-w-0 max-w-full self-end whitespace-normal px-0 text-[13px] text-muted-foreground leading-snug',
+											'min-w-0 max-w-full self-end whitespace-normal px-0 text-[12px] text-muted-foreground leading-snug',
 										)}
 									>
 										Ganze Chronik <ChevronRight data-icon="inline-end" aria-hidden />
@@ -561,10 +561,10 @@ function TodayRow({
 				className="flex min-h-12 min-w-0 flex-1 items-center gap-2 rounded-lg py-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
 			>
 				<span className="flex min-w-0 flex-1 flex-col">
-					<span className="text-[15px] font-medium leading-snug break-words">{item.title}</span>
+					<span className="text-[14px] font-medium leading-snug break-words">{item.title}</span>
 					<span
 						className={cn(
-							'text-[13px] text-muted-foreground',
+							'text-[12px] text-muted-foreground',
 							item.kind === 'recurring' && 'tabular-nums',
 						)}
 					>
@@ -614,8 +614,8 @@ function AgendaRow({ item }: { item: WeekAgendaItem }) {
 				className="flex min-h-12 min-w-0 flex-1 items-center gap-2 rounded-lg py-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
 			>
 				<span className="flex min-w-0 flex-1 flex-col">
-					<span className="text-[15px] font-medium leading-snug break-words">{item.title}</span>
-					<span className="text-[13px] text-muted-foreground">
+					<span className="text-[14px] font-medium leading-snug break-words">{item.title}</span>
+					<span className="text-[12px] text-muted-foreground">
 						{formatAgendaDay(item.dayKey)} · {item.detail}
 					</span>
 				</span>

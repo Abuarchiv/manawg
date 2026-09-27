@@ -43,7 +43,7 @@ import { useEffect, useRef, useState } from 'react';
 import { canDeleteMessage, canEditMessage } from '../chat-pure';
 import { ReactionPicker } from './ReactionPicker';
 
-const BUBBLE_TEXT = 'rounded-2xl px-3 py-1.5 text-[15px] leading-snug';
+const BUBBLE_TEXT = 'rounded-2xl px-3 py-1.5 text-[14px] leading-snug';
 const TIME_FORMAT = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
 
 export interface BubbleMessage {

@@ -177,10 +177,10 @@ export default function SuchePage() {
 			<header className="flex items-start gap-2">
 				<BackLink href={wgBaseHref} label="Dashboard" />
 				<div className="min-w-0 flex-1">
-					<h1 className="font-heading text-xl font-semibold tracking-tight break-words text-foreground">
+					<h1 className="font-heading text-lg font-semibold tracking-tight break-words text-foreground">
 						WG durchsuchen
 					</h1>
-					<p className="mt-0.5 text-[13px] text-muted-foreground">
+					<p className="mt-0.5 text-[12px] text-muted-foreground">
 						Finde Pinnwand, Aufgaben, Ausgaben, Einkauf und Abwesenheiten.
 					</p>
 				</div>
@@ -308,7 +308,7 @@ export default function SuchePage() {
 			{trimmedQuery.length > 0 && !error && (
 				<output
 					aria-live="polite"
-					className="flex items-center gap-2 text-[13px] text-muted-foreground"
+					className="flex items-center gap-2 text-[12px] text-muted-foreground"
 				>
 					{loading && <Spinner className="size-4 motion-reduce:animate-none" aria-hidden />}
 					<span className="min-w-0 [overflow-wrap:anywhere]">
@@ -333,7 +333,7 @@ export default function SuchePage() {
 			{filtersHideResults && (
 				<Card>
 					<CardContent className="pt-4">
-						<p className="text-[13px] text-muted-foreground">Filter blenden alle Treffer aus.</p>
+						<p className="text-[12px] text-muted-foreground">Filter blenden alle Treffer aus.</p>
 						<Button
 							type="button"
 							variant="outline"

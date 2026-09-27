@@ -91,7 +91,7 @@ export default function VorraetePage() {
 						Vorräte
 					</h1>
 					<p
-						className="mt-0.5 text-[13px] text-muted-foreground tabular-nums"
+						className="mt-0.5 text-[12px] text-muted-foreground tabular-nums"
 						aria-live="polite"
 						aria-atomic="true"
 					>

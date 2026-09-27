@@ -419,7 +419,7 @@ function DebtRow({
 }
 
 // Der eigene Saldo ist die wichtigste Zahl der Seite: groß und in eigener Zeile.
-const HERO_AMOUNT = 'block font-mono text-[28px] leading-9 font-semibold tabular-nums';
+const HERO_AMOUNT = 'block font-mono text-[26px] leading-8 font-semibold tabular-nums';
 
 interface DebtSummaryProps {
 	debts: SimplifiedDebt[];
@@ -541,7 +541,7 @@ export function DebtSummary({
 				{/* Salden immer offen: wer vorne und wer hinten liegt, ist der Kern dieser Seite. */}
 				{showBalances && (
 					<section aria-labelledby="balances-heading" className="flex flex-col gap-2">
-						<h3 id="balances-heading" className="text-[13px] font-medium text-muted-foreground">
+						<h3 id="balances-heading" className="text-[12px] font-medium text-muted-foreground">
 							Salden
 						</h3>
 						<ul aria-label="Saldo pro Mitglied" className="flex flex-col gap-2">
@@ -595,7 +595,7 @@ export function DebtSummary({
 				)}
 				{(personal.length > 0 || others.length > 0) && (
 					<section aria-labelledby="settle-heading" className="flex flex-col gap-1">
-						<h3 id="settle-heading" className="text-[13px] font-medium text-muted-foreground">
+						<h3 id="settle-heading" className="text-[12px] font-medium text-muted-foreground">
 							So wird ausgeglichen
 						</h3>
 						{personal.length > 0 && (

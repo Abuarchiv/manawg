@@ -263,7 +263,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 				<CardHeader>
 					<CardTitle className="flex min-w-0 items-center gap-2 font-sans font-normal">
 						<MemberAvatar name={author.name} size={28} />
-						<span className="min-w-0 break-words text-[13px] leading-snug text-muted-foreground">
+						<span className="min-w-0 break-words text-[12px] leading-snug text-muted-foreground">
 							<span className="font-medium text-foreground">{author.name}</span> ·{' '}
 							<time
 								dateTime={announcement.createdAt}
@@ -373,7 +373,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							<p
 								id={`announcement-body-${announcement.id}`}
 								className={cn(
-									'text-[15px] whitespace-pre-wrap leading-normal [overflow-wrap:anywhere]',
+									'text-[14px] whitespace-pre-wrap leading-normal [overflow-wrap:anywhere]',
 									isLong && !expanded && 'line-clamp-4',
 								)}
 							>
@@ -423,7 +423,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 						</Attachment>
 					)}
 					{(takerNames.length > 0 || announcement.resolvedAt || busy) && (
-						<p className="flex flex-wrap items-center gap-x-2 text-[13px] text-muted-foreground [overflow-wrap:anywhere]">
+						<p className="flex flex-wrap items-center gap-x-2 text-[12px] text-muted-foreground [overflow-wrap:anywhere]">
 							{takerNames.length > 0 && (
 								<span className="inline-flex items-center gap-1 text-foreground">
 									<Hand className="size-3.5 shrink-0" aria-hidden />
@@ -459,7 +459,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 										key={key}
 										variant={active ? 'secondary' : 'ghost'}
 										size="sm"
-										className="gap-1 pr-2 text-[13px]"
+										className="gap-1 pr-2 text-[12px]"
 										onClick={() => react(key)}
 										disabled={reactionPending(key)}
 										aria-pressed={active}
@@ -481,7 +481,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							})}
 							<CollapsibleTrigger
 								render={
-									<Button variant="ghost" size="sm" className="ml-auto min-w-9 gap-1 text-[13px]" />
+									<Button variant="ghost" size="sm" className="ml-auto min-w-9 gap-1 text-[12px]" />
 								}
 								aria-label={`Antworten anzeigen: ${actionSubject}${announcement.comments.length > 0 ? ` (${announcement.comments.length})` : ''}`}
 								aria-controls={`announcement-comments-${announcement.id}`}
@@ -499,7 +499,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 									<Button
 										variant="outline"
 										size="sm"
-										className="gap-1 pr-2 text-[13px]"
+										className="gap-1 pr-2 text-[12px]"
 										disabled={statusPending}
 										onClick={onToggleStatus}
 										aria-label={`Als erledigt markieren: ${actionSubject}`}

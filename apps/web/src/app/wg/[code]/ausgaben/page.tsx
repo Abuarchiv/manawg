@@ -1574,7 +1574,7 @@ export default function AusgabenPage() {
 					<div className="flex flex-col gap-4">
 						{expenseWeeks.map((week) => (
 							<section key={week.label} aria-label={week.label} className="flex flex-col gap-1.5">
-								<h3 className="px-1 text-[13px] font-medium text-muted-foreground">{week.label}</h3>
+								<h3 className="px-1 text-[12px] font-medium text-muted-foreground">{week.label}</h3>
 								<ul className="divide-y overflow-hidden rounded-xl border">
 									{week.items.map((expense) => (
 										<ExpenseRow

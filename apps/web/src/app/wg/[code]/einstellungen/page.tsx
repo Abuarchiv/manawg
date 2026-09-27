@@ -134,7 +134,7 @@ export default function EinstellungenPage() {
 						<ArrowLeft aria-hidden />
 						<span className="sr-only">Zurück zum Dashboard</span>
 					</Link>
-					<h1 className="font-heading min-w-0 flex-1 text-xl font-semibold tracking-tight break-words text-foreground">
+					<h1 className="font-heading min-w-0 flex-1 text-lg font-semibold tracking-tight break-words text-foreground">
 						Einstellungen
 					</h1>
 				</header>

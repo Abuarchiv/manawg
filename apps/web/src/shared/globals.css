@@ -59,8 +59,8 @@
 		padding-block: 1rem;
 	}
 	:is([data-household-content], [data-finance-content], [data-exchange-content]) h1 {
-		font-size: 1.25rem;
-		line-height: 1.625rem;
+		font-size: 1.125rem;
+		line-height: 1.5rem;
 	}
 	:is([data-household-content], [data-finance-content], [data-exchange-content]) h2,
 	:is([data-household-content], [data-finance-content], [data-exchange-content])
@@ -346,8 +346,8 @@ html {
 	font-size: clamp(90%, 3.883vw, 100%);
 }
 body {
-	/* 15 px wie iOS-Listen: 16 px mit 1.6 wirkte auf dem Handy aufgeblasen. */
-	font-size: 0.9375rem;
+	/* Kompakt wie Messenger-Apps: 16 px mit 1.6 wirkte auf dem Handy aufgeblasen. */
+	font-size: 0.875rem;
 	line-height: 1.5;
 }
 

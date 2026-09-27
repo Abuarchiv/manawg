@@ -1180,7 +1180,7 @@ export default function PutzenPage() {
 						>
 							<h2
 								id={`chore-group-${group.key}`}
-								className="px-1 text-[13px] font-medium text-muted-foreground"
+								className="px-1 text-[12px] font-medium text-muted-foreground"
 							>
 								{group.label} ({group.chores.length})
 							</h2>

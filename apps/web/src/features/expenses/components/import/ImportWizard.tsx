@@ -484,7 +484,7 @@ export function ImportWizard() {
 					<ArrowLeft data-icon="inline-start" />
 					Ausgaben
 				</Link>
-				<span className="text-[13px] text-muted-foreground tabular-nums">
+				<span className="text-[12px] text-muted-foreground tabular-nums">
 					Schritt {stepNumber} von 5
 				</span>
 			</div>

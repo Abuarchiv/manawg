@@ -46,18 +46,18 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 						/>
 					}
 				>
-					<MemberAvatar name={payerName} size={32} />
+					<MemberAvatar name={payerName} size={28} />
 					<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 						<span className="flex min-w-0 items-baseline gap-3">
 							<span className="sr-only">Details öffnen:</span>
-							<span className="min-w-0 flex-1 break-words text-[15px] font-medium leading-snug">
+							<span className="min-w-0 flex-1 break-words text-[14px] font-medium leading-snug">
 								{abo.description}
 							</span>
 							<span className="shrink-0 whitespace-nowrap font-mono tabular-nums">
 								{formatEuroCents(abo.amountCents, abo.currency)}
 							</span>
 						</span>
-						<span className="text-[13px] leading-normal font-normal text-muted-foreground">
+						<span className="text-[12px] leading-normal font-normal text-muted-foreground">
 							{isPaused ? (
 								'pausiert'
 							) : isOverdue ? (

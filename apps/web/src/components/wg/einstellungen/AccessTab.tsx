@@ -422,7 +422,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 					{securityOverview.map((item) => (
 						<div key={item.label} className="min-w-0">
 							<p className="text-muted-foreground text-xs">{item.label}</p>
-							<p className="text-foreground mt-0.5 text-[13px] font-medium">{item.value}</p>
+							<p className="text-foreground mt-0.5 text-[12px] font-medium">{item.value}</p>
 						</div>
 					))}
 				</div>
@@ -538,7 +538,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 
 			<div className="grid gap-3">
 				<div className="px-1">
-					<h2 className="text-destructive text-[13px] font-semibold">Gefahrenzone</h2>
+					<h2 className="text-destructive text-[12px] font-semibold">Gefahrenzone</h2>
 					<p className="text-muted-foreground mt-0.5 text-xs">
 						WG verlassen, WG löschen oder Konto löschen.
 					</p>
@@ -550,7 +550,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				>
 					<div className="grid gap-3 p-3">
 						{activeMembers.length <= 1 ? (
-							<p className="text-muted-foreground text-[13px]">
+							<p className="text-muted-foreground text-[12px]">
 								Du bist das letzte aktive Mitglied. Die WG kann erst verlassen werden, wenn ein
 								weiteres Mitglied aktiv ist. Wenn du nur dieses Gerät abmelden möchtest, nutze oben
 								„Konto abmelden“.

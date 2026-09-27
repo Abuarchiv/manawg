@@ -139,10 +139,10 @@ export function CalendarUpcomingList({
 											className={ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
-												<span className="text-[15px] font-medium break-words">
+												<span className="text-[14px] font-medium break-words">
 													{entry.chore.title}
 												</span>
-												<span className="inline-flex items-center gap-1 text-[13px] text-muted-foreground">
+												<span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
 													<Sparkles className="size-3.5 shrink-0" aria-hidden />
 													Putzplan
 												</span>
@@ -159,10 +159,10 @@ export function CalendarUpcomingList({
 											className={ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
-												<span className="text-[15px] font-medium break-words">
+												<span className="text-[14px] font-medium break-words">
 													{entry.occurrence.title}
 												</span>
-												<span className="text-[13px] break-words text-muted-foreground">
+												<span className="text-[12px] break-words text-muted-foreground">
 													<CalendarClock
 														className="mr-1 inline size-3.5 align-[-2px]"
 														aria-hidden

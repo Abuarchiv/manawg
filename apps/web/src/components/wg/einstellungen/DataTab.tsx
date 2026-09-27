@@ -93,7 +93,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 				)}
 				{exportSummaryError && (
 					<p
-						className="text-muted-foreground border-border block border-b px-4 py-2 text-[13px]"
+						className="text-muted-foreground border-border block border-b px-4 py-2 text-[12px]"
 						aria-live="polite"
 					>
 						{exportSummaryError} Downloads sind trotzdem möglich.

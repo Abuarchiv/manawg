@@ -154,7 +154,7 @@ export function MemberDeactivateDialog({
 
 				<div className="grid gap-2">
 					{loading ? (
-						<p className="text-muted-foreground flex min-h-[44px] items-center gap-2 text-[13px]">
+						<p className="text-muted-foreground flex min-h-[44px] items-center gap-2 text-[12px]">
 							<Spinner aria-hidden />
 							Offene Salden werden geprüft …
 						</p>
@@ -168,7 +168,7 @@ export function MemberDeactivateDialog({
 							</AlertDescription>
 						</Alert>
 					) : openBalances.length === 0 ? (
-						<p className="text-muted-foreground text-[13px]">Keine offenen Salden.</p>
+						<p className="text-muted-foreground text-[12px]">Keine offenen Salden.</p>
 					) : (
 						<Alert>
 							<AlertTitle>
@@ -179,7 +179,7 @@ export function MemberDeactivateDialog({
 									{openBalances.map((balance) => (
 										<li
 											key={`${balance.currency}-${balance.direction}-${balance.member_id}`}
-											className="flex items-center justify-between gap-2 text-[13px]"
+											className="flex items-center justify-between gap-2 text-[12px]"
 										>
 											<span className="text-muted-foreground truncate">
 												{balance.direction === 'owes'

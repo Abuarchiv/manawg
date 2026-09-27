@@ -91,15 +91,15 @@ export const ExpenseRow = memo(function ExpenseRow({
 								/>
 							}
 						>
-							<MemberAvatar name={memberName(expense.paidByMemberId)} size={32} />
+							<MemberAvatar name={memberName(expense.paidByMemberId)} size={28} />
 							{/* Wird es eng (320 px, große Schrift), rutscht der Betrag unter den Text. */}
 							<span className="flex min-w-0 flex-1 flex-wrap gap-x-3 gap-y-1">
 								<span className="flex min-w-0 flex-[1_1_7rem] flex-col gap-0.5">
 									<span className="sr-only">Details öffnen:</span>
-									<span className="min-w-0 break-words text-[15px] font-medium leading-snug">
+									<span className="min-w-0 break-words text-[14px] font-medium leading-snug">
 										{expense.description}
 									</span>
-									<span className="text-[13px] leading-normal font-normal text-muted-foreground">
+									<span className="text-[12px] leading-normal font-normal text-muted-foreground">
 										{isPayer ? 'Du zahltest' : `${memberName(expense.paidByMemberId)} zahlte`}{' '}
 										<span className="whitespace-nowrap tabular-nums">
 											{formatEuroCents(expense.amountCents, expense.currency)}
@@ -117,7 +117,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 								<span className="ml-auto flex shrink-0 flex-col items-end gap-0.5 text-right">
 									<span
 										className={cn(
-											'whitespace-nowrap font-mono text-[15px] leading-snug tabular-nums',
+											'whitespace-nowrap font-mono text-[14px] leading-snug tabular-nums',
 											impact.kind === 'lent'
 												? 'text-settled'
 												: impact.kind === 'owe'

@@ -102,21 +102,21 @@ export const ChoreRow = memo(function ChoreRow({
 			aria-busy={busy}
 		>
 			{chore.assignedMemberId ? (
-				<MemberAvatar name={assignee.name} size={32} />
+				<MemberAvatar name={assignee.name} size={28} />
 			) : (
 				<span
 					aria-hidden
-					className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-dashed text-muted-foreground"
+					className="inline-flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed text-muted-foreground"
 				>
 					?
 				</span>
 			)}
 			{/* Mindestbreite in rem: bei großer Schrift rutschen die Knöpfe unter den Titel statt ihn zu zerquetschen. */}
 			<ItemContent className="min-w-[7rem] gap-0.5">
-				<ItemTitle className="line-clamp-none w-auto break-words text-[15px] [overflow-wrap:anywhere]">
+				<ItemTitle className="line-clamp-none w-auto break-words text-[14px] [overflow-wrap:anywhere]">
 					{chore.title}
 				</ItemTitle>
-				<ItemDescription className="line-clamp-none break-words text-[13px]">
+				<ItemDescription className="line-clamp-none break-words text-[12px]">
 					<span className="sr-only">Zuständig: {isMine ? 'du' : assignee.name} · </span>
 					<span className={cn(status.state === 'overdue' && 'font-medium text-foreground')}>
 						{status.label}
@@ -132,7 +132,7 @@ export const ChoreRow = memo(function ChoreRow({
 						onClick={() => onTakeOver(chore)}
 						disabled={busy}
 						aria-label={`Aufgabe übernehmen: ${chore.title}`}
-						className="h-auto self-start px-0 text-[13px]"
+						className="h-auto self-start px-0 text-[12px]"
 					>
 						{isTakePending && <Spinner data-icon="inline-start" aria-hidden />}Ich übernehme
 					</Button>
@@ -144,7 +144,7 @@ export const ChoreRow = memo(function ChoreRow({
 					disabled={busy}
 					variant={status.state === 'planned' ? 'outline' : 'default'}
 					size="icon"
-					className="size-9 rounded-full"
+					className="size-8 rounded-full"
 					aria-label={
 						status.actionLabel === 'Nachholen'
 							? `Aufgabe nachholen: ${chore.title}`
@@ -165,7 +165,7 @@ export const ChoreRow = memo(function ChoreRow({
 							<Button
 								variant="ghost"
 								size="icon"
-								className="size-9"
+								className="size-8"
 								aria-label={`Aufgabenaktionen: ${chore.title}`}
 							/>
 						}
