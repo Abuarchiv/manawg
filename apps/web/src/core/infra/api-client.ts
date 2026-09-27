@@ -6,6 +6,7 @@ import {
 
 type ApiFetchInit = RequestInit & { memberId?: string; memberToken?: string | undefined };
 
+/** status 0 means no trustworthy result was received; a write may still have committed. */
 type ApiFetchResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
 
 export async function apiFetch<T>(
@@ -43,6 +44,8 @@ export async function apiFetch<T>(
 			signal: requestSignal,
 		});
 
+		if (res.status === 204) return { ok: true, data: undefined as T };
+
 		if (!res.ok) {
 			let error = res.statusText;
 			try {
@@ -58,17 +61,13 @@ export async function apiFetch<T>(
 			return { ok: false, status: res.status, error };
 		}
 
-		// 204/empty bodies are legitimate success responses — parsing them
-		// would throw and get misreported as a network failure (status 0),
-		// which offline queueing would then replay as a duplicate mutation.
 		const contentType = res.headers.get('content-type') ?? '';
 		if (!contentType.includes('application/json')) {
-			const body = await res.text();
-			if (body.length === 0) return { ok: true, data: undefined as T };
+			await res.text();
 			return {
 				ok: false,
-				status: res.status,
-				error: res.statusText || 'Unerwartete Serverantwort',
+				status: 0,
+				error: 'Unerwartete Serverantwort',
 			};
 		}
 		try {
@@ -77,8 +76,8 @@ export async function apiFetch<T>(
 		} catch {
 			return {
 				ok: false,
-				status: res.status,
-				error: res.statusText || 'Unerwartete Serverantwort',
+				status: 0,
+				error: 'Unerwartete Serverantwort',
 			};
 		}
 	} catch {
