@@ -8,7 +8,11 @@ import { Spinner } from '@/components/ui/spinner';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import { type InventoryItemDto, isBelowThreshold } from '@/features/inventory/inventory';
+import {
+	type InventoryItemDto,
+	type InventoryMutationItemDto,
+	isBelowThreshold,
+} from '@/features/inventory/inventory';
 import { AlertCircle, Minus, Pencil, Plus, Trash2 } from 'lucide-react';
 import { memo, useRef, useState } from 'react';
 
@@ -17,14 +21,14 @@ interface InventoryItemRowProps {
 	shareCode: string;
 	memberId: string;
 	memberToken?: string | undefined;
-	onChanged: (item?: InventoryItemDto) => void;
+	onChanged: (item?: InventoryMutationItemDto, deletedId?: string) => void;
 	onEdit: (item: InventoryItemDto) => void;
 }
 
 type PendingAction = 'decrement' | 'increment' | 'delete';
 type ConsumeWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
 type ConsumeResponse = {
-	item: InventoryItemDto;
+	item: InventoryMutationItemDto;
 	clamped: boolean;
 	warning: ConsumeWarning;
 };
@@ -105,7 +109,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 					return;
 				}
 				restockIdempotencyKeyRef.current = idempotencyKey;
-				const res = await apiFetch<{ item: InventoryItemDto }>(
+				const res = await apiFetch<{ item: InventoryMutationItemDto }>(
 					`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}`,
 					{
 						method: 'PATCH',
@@ -141,7 +145,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 			);
 			if (res.ok) {
 				setRemoved(true);
-				onChanged();
+				onChanged(undefined, item.id);
 			} else {
 				setError('Löschen fehlgeschlagen.');
 			}

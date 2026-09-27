@@ -47,6 +47,10 @@ export interface InventoryItemDto {
 	updatedAt: string;
 }
 
+export type InventoryMutationItemDto = Omit<InventoryItemDto, 'decrementCount30d'> & {
+	decrementCount30d?: number;
+};
+
 interface InventoryItemForThresholdCheck {
 	quantity: number;
 	threshold: number;
