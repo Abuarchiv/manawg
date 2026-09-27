@@ -10,7 +10,7 @@ const queuedAction = {
 	wgId: FIXTURE_WG.id,
 	shareCode: FIXTURE_WG.shareCode,
 	memberId: FIXTURE_WG.memberId,
-	createdAt: '2026-09-25T10:00:00.000Z',
+	createdAt: new Date().toISOString(),
 	payload: { name: 'Milch', quantity: '1L' },
 };
 

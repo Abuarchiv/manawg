@@ -105,6 +105,12 @@ for (const width of [320, 360] as const) {
 				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/import`);
 				await dismissOnboarding(page);
 				if (largeText) await setLargeText(page);
+				await expect(page.getByRole('button', { name: /Splitwise CSV/ })).toBeVisible();
+				await expect
+					.poll(() =>
+						page.locator('html').evaluate((element) => element.classList.contains('dark')),
+					)
+					.toBe(colorScheme === 'dark');
 
 				const isDark = await page
 					.locator('html')
