@@ -5,6 +5,19 @@ const OCR_LANGUAGE_DATA_URLS = [
 	'https://cdn.jsdelivr.net/npm/@tesseract.js-data/deu/4.0.0_best_int/deu.traineddata.gz',
 	'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
 ];
+// Tesseract.js-core 5.1.1 tries an optional fetch of its embedded WASM data URI.
+// WebKit blocks it via connect-src, then successfully falls back to decoding
+// the same bytes. Match only that exact message and WASM magic prefix; do not
+// permit data: URLs in CSP.
+const WEBKIT_WASM_DATA_CSP_MESSAGE =
+	'Refused to connect to data:application/octet-stream;base64,<embedded-wasm> because it does not appear in the connect-src directive of the Content Security Policy.';
+const WEBKIT_WASM_DATA_CSP_PATTERN =
+	/^Refused to connect to data:application\/octet-stream;base64,(AGFzbQE[A-Za-z0-9+/=]*(?:\.{3}[A-Za-z0-9+/=]*)?) because it does not appear in the connect-src directive of the Content Security Policy\.$/;
+
+function isExpectedWebKitWasmDataCsp(message: string): boolean {
+	return WEBKIT_WASM_DATA_CSP_PATTERN.test(message.trimEnd());
+}
+
 const IMPORT_PATH = `/wg/${FIXTURE_WG.shareCode}/import`;
 const FIXTURE_ENV_ENABLED =
 	process.env.E2E_FIXTURE_MODE === 'true' &&
@@ -50,7 +63,14 @@ function observeNetwork(page: Page): NetworkEvidence {
 			message.type() === 'error' &&
 			/Content Security Policy|Refused to (?:compile|load|execute)/i.test(message.text())
 		) {
-			evidence.cspViolations.push(message.text());
+			const text = message.text();
+			if (isExpectedWebKitWasmDataCsp(text)) {
+				evidence.cspViolations.push(WEBKIT_WASM_DATA_CSP_MESSAGE);
+			} else {
+				evidence.cspViolations.push(
+					text.length > 512 ? `${text.slice(0, 256)}…${text.slice(-256)}` : text,
+				);
+			}
 		}
 	});
 	page.on('pageerror', (error) => evidence.pageErrors.push(error.message));
@@ -76,6 +96,13 @@ function expectStrictOcrPolicy(response: Response): void {
 	expect(connectSrc).toContain(OCR_LANGUAGE_DATA_URLS[0]);
 	expect(connectSrc).toContain(OCR_LANGUAGE_DATA_URLS[1]);
 	expect(connectSrc).not.toContain('https://cdn.jsdelivr.net');
+}
+
+function expectOnlyExpectedCspViolations(violations: readonly string[], browserName: string): void {
+	const unexpected = violations.filter(
+		(message) => browserName !== 'webkit' || message !== WEBKIT_WASM_DATA_CSP_MESSAGE,
+	);
+	expect(unexpected).toEqual([]);
 }
 
 async function openOcrImport(page: Page): Promise<Response> {
@@ -141,7 +168,10 @@ function expectTesseractAssets(cdnResponses: Map<string, number>): void {
 	expect(cdnResponses.get(coreUrl ?? '')).toBe(200);
 }
 
-test('real Tesseract recognizes a local receipt under the strict CSP', async ({ page }) => {
+test('real Tesseract recognizes a local receipt under the strict CSP', async ({
+	page,
+	browserName,
+}) => {
 	test.setTimeout(90_000);
 	const evidence = observeNetwork(page);
 	await openOcrImport(page);
@@ -157,12 +187,15 @@ test('real Tesseract recognizes a local receipt under the strict CSP', async ({ 
 	).toHaveCount(0);
 
 	expectTesseractAssets(evidence.cdnResponses);
-	expect(evidence.cspViolations).toEqual([]);
+	expectOnlyExpectedCspViolations(evidence.cspViolations, browserName);
 	expect(evidence.pageErrors).toEqual([]);
 	expect(evidence.apiWrites).toEqual([]);
 });
 
-test('blocked Tesseract language downloads show bounded recovery guidance', async ({ page }) => {
+test('blocked Tesseract language downloads show bounded recovery guidance', async ({
+	page,
+	browserName,
+}) => {
 	test.setTimeout(75_000);
 	const blockedModelRequests: string[] = [];
 	for (const url of OCR_LANGUAGE_DATA_URLS) {
@@ -186,6 +219,6 @@ test('blocked Tesseract language downloads show bounded recovery guidance', asyn
 	).toHaveCount(0);
 
 	expect(blockedModelRequests.length).toBeGreaterThan(0);
-	expect(evidence.cspViolations).toEqual([]);
+	expectOnlyExpectedCspViolations(evidence.cspViolations, browserName);
 	expect(evidence.apiWrites).toEqual([]);
 });
