@@ -66,7 +66,7 @@ function build(limit: number, windowSec: number, prefix: string): Ratelimit | nu
 		redis,
 		limiter: Ratelimit.slidingWindow(limit, `${windowSec} s`),
 		prefix: `manawg:${prefix}`,
-		analytics: true,
+		analytics: false,
 	});
 }
 
@@ -228,6 +228,7 @@ export async function checkRateLimit(
 	}
 	try {
 		const r = await limiter.limit(key);
+		if (r.reason === 'timeout') throw new Error('Upstash rate-limit timed out');
 		return { success: r.success, remaining: r.remaining, reset: r.reset };
 	} catch {
 		reportUnavailable('limiter-call-failed', failMode, true);
