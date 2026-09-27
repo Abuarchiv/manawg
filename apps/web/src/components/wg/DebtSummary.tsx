@@ -13,7 +13,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+	Card,
+	CardAction,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
 	Item,
@@ -27,7 +34,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { PayPalPaymentButton } from '@/components/wg/PayPalPaymentButton';
 import { RemindButton } from '@/components/wg/RemindButton';
-import { ThumbAction } from '@/components/wg/ThumbAction';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { formatEuroCents } from '@/core/utils/money';
@@ -85,7 +91,6 @@ interface SettlementPreview {
 
 interface DebtRowProps {
 	debt: SimplifiedDebt;
-	primaryAction?: boolean;
 	expenses: readonly Expense[];
 	shareCode: string;
 	currentMemberId: string;
@@ -111,7 +116,6 @@ interface SettleBatchResponse {
 
 function DebtRow({
 	debt,
-	primaryAction = false,
 	expenses,
 	shareCode,
 	currentMemberId,
@@ -244,41 +248,38 @@ function DebtRow({
 	const owedToMe = debt.toId === currentMemberId;
 
 	return (
-		<Item variant="outline" className="items-center">
-			<div aria-hidden className="flex shrink-0 items-center -space-x-2">
-				<MemberAvatar name={debt.fromName} size={32} className="ring-2 ring-card" />
-				<MemberAvatar name={debt.toName} size={32} className="ring-2 ring-card" />
+		<Item size="sm" className="items-center gap-x-2.5 px-0 py-1.5">
+			<div aria-hidden className="flex shrink-0 items-center -space-x-1.5">
+				<MemberAvatar name={debt.fromName} size={24} className="ring-2 ring-card" />
+				<MemberAvatar name={debt.toName} size={24} className="ring-2 ring-card" />
 			</div>
 			<ItemContent className="min-w-0">
-				<ItemTitle className="line-clamp-none text-[15px] break-words">
-					<span>
-						{iOwe ? 'Du' : debt.fromName} {iOwe ? 'schuldest' : 'schuldet'}{' '}
-						{owedToMe ? 'dir' : debt.toName}{' '}
-						<span
-							className={cn(
-								'font-mono whitespace-nowrap tabular-nums',
-								iOwe ? 'text-destructive' : owedToMe ? 'text-settled' : 'text-foreground',
-							)}
-						>
-							{formatEuroCents(debt.cents, debt.currency)}
-						</span>
-					</span>
+				<ItemTitle className="line-clamp-none text-sm font-normal break-words">
+					{iOwe ? 'Du' : debt.fromName} {iOwe ? 'schuldest' : 'schuldet'}{' '}
+					{owedToMe ? 'dir' : debt.toName}
 				</ItemTitle>
 			</ItemContent>
+			<span
+				className={cn(
+					'shrink-0 font-mono text-sm whitespace-nowrap tabular-nums',
+					iOwe ? 'text-destructive' : owedToMe ? 'text-settled' : 'text-foreground',
+				)}
+			>
+				{formatEuroCents(debt.cents, debt.currency)}
+			</span>
 
 			{canSettle && (
-				<ItemFooter className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-2 [&>*]:min-w-0 [&_button]:min-w-0 [&_button]:[overflow-wrap:anywhere]">
-					{!primaryAction && (
-						<Button
-							variant="outline"
-							className="h-auto whitespace-normal"
-							disabled={reviewing || settling}
-							onClick={() => void review()}
-						>
-							{reviewing && <Spinner data-icon="inline-start" />}
-							{reviewing ? 'Wird geprüft…' : 'Ausgleichen'}
-						</Button>
-					)}
+				<ItemFooter className="justify-start gap-2 [&>*]:min-w-0">
+					<Button
+						variant={iOwe ? 'default' : 'outline'}
+						size="sm"
+						className="h-auto whitespace-normal"
+						disabled={reviewing || settling}
+						onClick={() => void review()}
+					>
+						{reviewing && <Spinner data-icon="inline-start" />}
+						{reviewing ? 'Wird geprüft…' : 'Ausgleichen'}
+					</Button>
 					{owedToMe && (
 						<RemindButton
 							shareCode={shareCode}
@@ -287,6 +288,7 @@ function DebtRow({
 							currency={debt.currency ?? 'EUR'}
 							currentMemberId={currentMemberId}
 							memberToken={memberToken}
+							size="sm"
 						/>
 					)}
 					{canPayWithPayPal && (
@@ -412,23 +414,12 @@ function DebtRow({
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-			{primaryAction && canSettle && (
-				<ThumbAction reserveSpace={false}>
-					<Button
-						type="button"
-						variant="default"
-						className="min-h-11 w-full"
-						disabled={reviewing || settling}
-						onClick={() => void review()}
-					>
-						{reviewing ? <Spinner data-icon="inline-start" /> : null}
-						{reviewing ? 'Wird geprüft…' : 'Ausgleichen'}
-					</Button>
-				</ThumbAction>
-			)}
 		</Item>
 	);
 }
+
+// Der eigene Saldo ist die wichtigste Zahl der Seite: groß und in eigener Zeile.
+const HERO_AMOUNT = 'block font-mono text-[28px] leading-9 font-semibold tabular-nums';
 
 interface DebtSummaryProps {
 	debts: SimplifiedDebt[];
@@ -463,12 +454,11 @@ export function DebtSummary({
 	if (debts.length === 0 && personal.length === 0 && others.length === 0 && balances.length === 0)
 		return null;
 
-	function renderDebt(debt: SimplifiedDebt, primaryAction = false) {
+	function renderDebt(debt: SimplifiedDebt) {
 		return (
 			<DebtRow
 				key={`${debt.currency ?? 'EUR'}-${debt.fromId}-${debt.toId}`}
 				debt={debt}
-				primaryAction={primaryAction}
 				expenses={expenses}
 				shareCode={shareCode}
 				currentMemberId={currentMemberId}
@@ -492,17 +482,24 @@ export function DebtSummary({
 		(member) => member.memberId === currentMemberId && member.balanceCents !== 0,
 	);
 	const ownBalance = ownBalances.length === 1 ? ownBalances[0] : null;
+	// Balken je Währung auf den größten Betrag skaliert, wie bei Tricount.
+	const maxByCurrency = new Map<string, number>();
+	for (const member of balances) {
+		const abs = Math.abs(member.balanceCents);
+		if (abs > (maxByCurrency.get(member.currency) ?? 0)) maxByCurrency.set(member.currency, abs);
+	}
+	const showBalances = balances.length > 1 && maxByCurrency.size > 0;
 
 	return (
 		<Card size="sm">
 			<CardHeader>
 				<CardDescription>Dein Saldo</CardDescription>
-				<CardTitle className="text-lg">
+				<CardTitle>
 					<h2>
 						{ownBalances.length > 1 ? (
 							<>
 								Offene Salden{' '}
-								<span className="font-mono tabular-nums">
+								<span className={HERO_AMOUNT}>
 									{ownBalances
 										.map((balance) =>
 											formatEuroCents(balance.balanceCents, balance.currency, { signed: true }),
@@ -513,14 +510,14 @@ export function DebtSummary({
 						) : ownBalance && ownBalance.balanceCents > 0 ? (
 							<>
 								Du bekommst{' '}
-								<span className="font-mono tabular-nums text-settled">
+								<span className={cn(HERO_AMOUNT, 'text-settled')}>
 									{formatEuroCents(ownBalance.balanceCents, ownBalance.currency)}
 								</span>
 							</>
 						) : ownBalance ? (
 							<>
 								Du schuldest{' '}
-								<span className="font-mono tabular-nums text-destructive">
+								<span className={cn(HERO_AMOUNT, 'text-destructive')}>
 									{formatEuroCents(Math.abs(ownBalance.balanceCents), ownBalance.currency)}
 								</span>
 							</>
@@ -529,80 +526,90 @@ export function DebtSummary({
 						)}
 					</h2>
 				</CardTitle>
-				{summary && summary.savedTransfers > 0 && (
-					<CardDescription>
-						{`Verrechnet: ${summary.simplifiedCount} ${summary.simplifiedCount === 1 ? 'Zahlung bleibt' : 'Zahlungen bleiben'} übrig.`}
-					</CardDescription>
-				)}
+				<CardAction>
+					<Link
+						href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`}
+						aria-label="Alle Erinnerungen"
+						title="Alle Erinnerungen"
+						className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }))}
+					>
+						<History aria-hidden />
+					</Link>
+				</CardAction>
 			</CardHeader>
-			<CardContent className="flex flex-col gap-3">
-				{personal.length > 0 && (
-					<ItemGroup aria-label="Deine offenen Zahlungen" className="gap-2">
-						{personal.map((debt, index) => renderDebt(debt, index === 0))}
-					</ItemGroup>
-				)}
-				<Collapsible>
-					<div className="flex flex-wrap items-center justify-between gap-x-2">
-						{(others.length > 0 || balances.length > 0) && (
-							<CollapsibleTrigger
-								render={<Button variant="ghost" className="group min-h-11 px-0 text-left" />}
-							>
-								Alle Salden
-								<ChevronDown
-									aria-hidden
-									className="size-4 shrink-0 group-aria-expanded:rotate-180"
-								/>
-							</CollapsibleTrigger>
-						)}
-						<Link
-							href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`}
-							className={cn(buttonVariants({ variant: 'ghost' }), 'ml-auto min-h-11 px-0')}
-						>
-							<History data-icon="inline-start" />
-							Alle Erinnerungen
-						</Link>
-					</div>
-					<CollapsibleContent className="flex flex-col gap-4 pt-2">
-						{others.length > 0 && (
-							<ItemGroup aria-label="Weitere Zahlungen in der WG">
-								{others.map((debt) => renderDebt(debt))}
-							</ItemGroup>
-						)}
-						{balances.length > 0 && (
-							<ItemGroup aria-label="Saldo pro Mitglied" className="gap-1">
-								{balances.map((member) => (
-									<Item key={`${member.currency}-${member.memberId}`} variant="muted" size="xs">
-										<ItemContent className="min-w-0">
-											<ItemTitle className="line-clamp-none break-words">
-												{member.memberName}
-												{member.memberId === currentMemberId ? ' (du)' : ''}
-											</ItemTitle>
-											<ItemDescription>
-												{member.balanceCents > 0
-													? 'Bekommt zurück'
-													: member.balanceCents < 0
-														? 'Schuldet'
-														: 'Ausgeglichen'}
-											</ItemDescription>
-										</ItemContent>
+			<CardContent className="flex flex-col gap-4">
+				{/* Salden immer offen: wer vorne und wer hinten liegt, ist der Kern dieser Seite. */}
+				{showBalances && (
+					<section aria-labelledby="balances-heading" className="flex flex-col gap-2">
+						<h3 id="balances-heading" className="text-[13px] font-medium text-muted-foreground">
+							Salden
+						</h3>
+						<ul aria-label="Saldo pro Mitglied" className="flex flex-col gap-2">
+							{balances.map((member) => {
+								const max = maxByCurrency.get(member.currency) ?? 0;
+								const width = max > 0 ? `${(Math.abs(member.balanceCents) / max) * 100}%` : '0%';
+								const isMe = member.memberId === currentMemberId;
+								return (
+									<li
+										key={`${member.currency}-${member.memberId}`}
+										className="grid grid-cols-[minmax(0,1fr)_minmax(3rem,5rem)_auto] items-center gap-2 text-sm"
+									>
+										<span className="flex min-w-0 items-center gap-2">
+											<MemberAvatar name={member.memberName} size={24} />
+											<span className="truncate">{isMe ? 'Du' : member.memberName}</span>
+										</span>
+										<span aria-hidden className="flex h-1.5 overflow-hidden rounded-full bg-muted">
+											<span className="flex flex-1 justify-end">
+												{member.balanceCents < 0 && (
+													<span
+														className="h-full rounded-l-full bg-destructive"
+														style={{ width }}
+													/>
+												)}
+											</span>
+											<span className="flex flex-1">
+												{member.balanceCents > 0 && (
+													<span className="h-full rounded-r-full bg-settled" style={{ width }} />
+												)}
+											</span>
+										</span>
 										<span
 											className={cn(
-												'shrink-0 font-mono tabular-nums',
+												'text-right font-mono whitespace-nowrap tabular-nums',
 												member.balanceCents > 0
 													? 'text-settled'
 													: member.balanceCents < 0
 														? 'text-destructive'
-														: 'text-foreground',
+														: 'text-muted-foreground',
 											)}
 										>
-											{formatEuroCents(member.balanceCents, member.currency, { signed: true })}
+											{member.balanceCents === 0
+												? 'ausgeglichen'
+												: formatEuroCents(member.balanceCents, member.currency, { signed: true })}
 										</span>
-									</Item>
-								))}
+									</li>
+								);
+							})}
+						</ul>
+					</section>
+				)}
+				{(personal.length > 0 || others.length > 0) && (
+					<section aria-labelledby="settle-heading" className="flex flex-col gap-1">
+						<h3 id="settle-heading" className="text-[13px] font-medium text-muted-foreground">
+							So wird ausgeglichen
+						</h3>
+						{personal.length > 0 && (
+							<ItemGroup aria-label="Deine offenen Zahlungen" className="gap-0 divide-y">
+								{personal.map((debt) => renderDebt(debt))}
 							</ItemGroup>
 						)}
-					</CollapsibleContent>
-				</Collapsible>
+						{others.length > 0 && (
+							<ItemGroup aria-label="Weitere Zahlungen in der WG" className="gap-0 divide-y">
+								{others.map((debt) => renderDebt(debt))}
+							</ItemGroup>
+						)}
+					</section>
+				)}
 			</CardContent>
 		</Card>
 	);

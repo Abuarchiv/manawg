@@ -1,19 +1,14 @@
 'use client';
 import { useToast } from '@/components/ui/Toast';
-import { Button } from '@/components/ui/button';
-import {
-	Empty,
-	EmptyContent,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyTitle,
-} from '@/components/ui/empty';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { DebtSummary } from '@/components/wg/DebtSummary';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
@@ -85,9 +80,11 @@ import {
 	splitCandidates,
 } from '@/features/expenses/expense-split-input';
 import { addMonths } from '@/features/expenses/recurring-expenses';
+import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
-import { Plus } from 'lucide-react';
+import { FileInput, Plus } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -1426,19 +1423,7 @@ export default function AusgabenPage() {
 	return (
 		<div data-finance-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
 			<SubNav />
-			<AusgabenHeader
-				expenseCount={expenses.length}
-				initialLoading={initialLoading}
-				showForm={showForm}
-				wgBaseHref={wgBaseHref}
-				onToggleForm={() => {
-					if (showForm) setShowForm(false);
-					else {
-						haptic('light');
-						setShowForm(true);
-					}
-				}}
-			/>
+			<AusgabenHeader expenseCount={expenses.length} initialLoading={initialLoading} />
 			{showForm && (
 				<ExpenseFormSection
 					title={
@@ -1580,16 +1565,10 @@ export default function AusgabenPage() {
 					<Empty>
 						<EmptyHeader>
 							<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
-							<EmptyDescription>Erfasse eure erste gemeinsame Ausgabe.</EmptyDescription>
+							<EmptyDescription>
+								Erfasse eure erste gemeinsame Ausgabe über das Plus unten rechts.
+							</EmptyDescription>
 						</EmptyHeader>
-						{!showForm && (
-							<EmptyContent>
-								<Button type="button" onClick={() => setShowForm(true)}>
-									<Plus data-icon="inline-start" aria-hidden />
-									Ausgabe erfassen
-								</Button>
-							</EmptyContent>
-						)}
 					</Empty>
 				) : (
 					<div className="flex flex-col gap-4">
@@ -1618,8 +1597,33 @@ export default function AusgabenPage() {
 						))}
 					</div>
 				)}
+				{/* Selten gebraucht: Import am Listenende statt als Icon über dem Saldo. */}
+				{!showSkeleton && (
+					<Link
+						href={`${wgBaseHref}/import`}
+						className={cn(
+							buttonVariants({ variant: 'ghost', size: 'sm' }),
+							'self-center text-muted-foreground',
+						)}
+					>
+						<FileInput data-icon="inline-start" aria-hidden />
+						Kontoauszug importieren
+					</Link>
+				)}
 			</section>
-			<div aria-hidden className="h-14 shrink-0" />
+			<ThumbAction>
+				<Button
+					type="button"
+					className="min-h-11 w-full"
+					onClick={() => {
+						haptic('light');
+						setShowForm(true);
+					}}
+				>
+					<Plus data-icon="inline-start" aria-hidden />
+					Ausgabe erfassen
+				</Button>
+			</ThumbAction>
 		</div>
 	);
 }

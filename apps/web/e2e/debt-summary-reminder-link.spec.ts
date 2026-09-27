@@ -77,8 +77,8 @@ test('keeps finance actions and expense summary keyboard-operable at phone sizes
 
 	const debtList = page.getByRole('list', { name: 'Deine offenen Zahlungen' });
 	await expect(debtList).toBeVisible();
-	const balanceTrigger = page.getByRole('button', { name: 'Alle Salden' });
-	await expect(balanceTrigger).toBeVisible();
+	// Salden sind immer sichtbar, nicht mehr hinter „Alle Salden“ versteckt.
+	await expect(page.getByRole('list', { name: 'Saldo pro Mitglied' })).toBeVisible();
 	const balanceLabel = page.getByText('Dein Saldo', { exact: true });
 	await expect(balanceLabel).toBeVisible();
 	// Der Saldo ist die Überschrift, die offenen Zahlungen stehen direkt darunter.
@@ -104,9 +104,8 @@ test('keeps finance actions and expense summary keyboard-operable at phone sizes
 	await expect(reminderLink).toHaveAttribute('href', `/wg/${shareCode}/mahnungen`);
 	await reminderLink.focus();
 	await expect(reminderLink).toBeFocused();
-	await page.keyboard.press('Shift+Tab');
-	await expect(balanceTrigger).toBeFocused();
 	await page.keyboard.press('Tab');
+	await page.keyboard.press('Shift+Tab');
 	await expect(reminderLink).toBeFocused();
 	await expect
 		.poll(() => reminderLink.evaluate((node) => node.matches(':focus-visible')))

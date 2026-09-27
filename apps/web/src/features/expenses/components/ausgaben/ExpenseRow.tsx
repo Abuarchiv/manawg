@@ -30,11 +30,20 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
-import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
+import { formatTimeFull } from '@/core/utils/time';
+import { type ExpenseImpact, getExpenseImpact } from '@/features/expenses/expense-impact';
 import { cn } from '@/shared/lib/cn';
 import { Check, MoreHorizontal, Pencil, Receipt, Trash2 } from 'lucide-react';
 import { memo, useState } from 'react';
 import type { Expense, ExpenseSplit } from './expense-types';
+
+const IMPACT_LABEL: Record<ExpenseImpact['kind'], string> = {
+	lent: 'bekommst du',
+	owe: 'schuldest du',
+	settled: 'beglichen',
+	own: 'nur für dich',
+	none: 'nicht beteiligt',
+};
 
 interface ExpenseRowProps {
 	expense: Expense;
@@ -63,11 +72,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 	highlighted,
 }: ExpenseRowProps) {
 	const isPayer = expense.paidByMemberId === currentMemberId;
-	const paymentSplits = expense.splits.filter(
-		(split) => split.debtorMemberId !== expense.paidByMemberId && split.amountCents > 0,
-	);
-	const allSettled =
-		paymentSplits.length > 0 && paymentSplits.every((split) => split.settledAt !== null);
+	const impact = getExpenseImpact(expense, currentMemberId);
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const [settleCandidate, setSettleCandidate] = useState<ExpenseSplit | null>(null);
 	return (
@@ -82,35 +87,49 @@ export const ExpenseRow = memo(function ExpenseRow({
 							render={
 								<Button
 									variant="ghost"
-									className="h-auto w-full justify-start gap-3 whitespace-normal px-0 py-1 text-left hover:bg-transparent"
+									className="h-auto w-full items-start justify-start gap-2.5 whitespace-normal px-0 py-1 text-left hover:bg-transparent"
 								/>
 							}
 						>
 							<MemberAvatar name={memberName(expense.paidByMemberId)} size={32} />
-							<span className="flex min-w-0 flex-1 flex-col gap-0.5">
-								<span className="flex min-w-0 flex-wrap items-baseline gap-x-3">
+							{/* Wird es eng (320 px, große Schrift), rutscht der Betrag unter den Text. */}
+							<span className="flex min-w-0 flex-1 flex-wrap gap-x-3 gap-y-1">
+								<span className="flex min-w-0 flex-[1_1_7rem] flex-col gap-0.5">
 									<span className="sr-only">Details öffnen:</span>
-									<span className="min-w-0 flex-[1_1_12ch] break-words text-[15px] font-medium leading-snug">
+									<span className="min-w-0 break-words text-[15px] font-medium leading-snug">
 										{expense.description}
 									</span>
-									<span className="shrink-0 whitespace-nowrap font-mono tabular-nums text-foreground">
-										{formatEuroCents(expense.amountCents, expense.currency)}
+									<span className="text-[13px] leading-normal font-normal text-muted-foreground">
+										{isPayer ? 'Du zahltest' : `${memberName(expense.paidByMemberId)} zahlte`}{' '}
+										<span className="whitespace-nowrap tabular-nums">
+											{formatEuroCents(expense.amountCents, expense.currency)}
+										</span>
+										{expense.imageUrl && (
+											<>
+												{' · '}
+												<Receipt aria-hidden className="inline size-3.5 align-[-2px]" />
+												<span className="sr-only">Beleg</span>
+											</>
+										)}
 									</span>
 								</span>
-								<span className="text-[13px] leading-normal font-normal text-muted-foreground">
-									<span className="sr-only">Bezahlt von </span>
-									{isPayer ? 'du' : memberName(expense.paidByMemberId)} ·{' '}
-									<time dateTime={expense.occurredAt} title={formatTimeFull(expense.occurredAt)}>
-										{formatRelativeTime(expense.occurredAt)}
-									</time>
-									{allSettled && ' · beglichen'}
-									{expense.imageUrl && (
-										<>
-											{' · '}
-											<Receipt aria-hidden className="inline size-3.5 align-[-2px]" />
-											<span className="sr-only">Beleg</span>
-										</>
-									)}
+								{/* Wie Splitwise: rechts steht, was die Ausgabe für dich bedeutet. */}
+								<span className="ml-auto flex shrink-0 flex-col items-end gap-0.5 text-right">
+									<span
+										className={cn(
+											'whitespace-nowrap font-mono text-[15px] leading-snug tabular-nums',
+											impact.kind === 'lent'
+												? 'text-settled'
+												: impact.kind === 'owe'
+													? 'text-destructive'
+													: 'text-muted-foreground',
+										)}
+									>
+										{formatEuroCents(impact.cents, expense.currency)}
+									</span>
+									<span className="whitespace-nowrap text-[11px] font-normal text-muted-foreground">
+										{IMPACT_LABEL[impact.kind]}
+									</span>
 								</span>
 							</span>
 						</CollapsibleTrigger>
@@ -147,6 +166,10 @@ export const ExpenseRow = memo(function ExpenseRow({
 						</DropdownMenu>
 					</ItemActions>
 					<CollapsibleContent className="w-full pr-1.5 pb-2">
+						{/* Die Woche steht schon als Überschrift; der genaue Zeitpunkt nur in den Details. */}
+						<p className="mb-2 text-xs text-muted-foreground">
+							<time dateTime={expense.occurredAt}>{formatTimeFull(expense.occurredAt)}</time>
+						</p>
 						{expense.imageUrl && (
 							<Button
 								variant="outline"

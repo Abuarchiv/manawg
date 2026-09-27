@@ -99,10 +99,9 @@ test('expense description and amount fields hint "next"', async ({ page }) => {
 
 	await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 	await dismissOnboarding(page);
-	// Scoped to the header toolbar: the empty state below repeats the same
-	// button label, which would make an unscoped query ambiguous.
+	// Das Plus unten rechts öffnet das Formular.
 	await page
-		.getByRole('toolbar', { name: 'Ausgaben-Aktionen' })
+		.locator('[data-page-primary-action]')
 		.getByRole('button', { name: 'Ausgabe erfassen' })
 		.click();
 

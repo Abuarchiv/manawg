@@ -200,6 +200,7 @@ test('compact plus actions keep their names and skip nested and text-only action
 		['vorraete', 'Vorrat hinzufügen'],
 		['pinnwand', 'Beitrag erstellen'],
 		['putzen', 'Putzaufgabe erfassen'],
+		['ausgaben', 'Ausgabe erfassen'],
 	] as const) {
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/${feature}`);
 		await useLargeText(page);
@@ -221,7 +222,7 @@ test('compact plus actions keep their names and skip nested and text-only action
 	await itemName.focus();
 	await expect(itemName).toBeFocused();
 
-	// Eine offene Forderung blendet den reinen Text-Button „Ausgleichen“ ein.
+	// Eine offene Forderung blendet auf „Erinnerungen“ den reinen Text-Button „Erinnern“ ein.
 	const createdAt = new Date().toISOString();
 	await page.route(`**/api/wg/${SHARE_CODE}/expenses`, (route) =>
 		route.request().method() === 'GET'
@@ -253,10 +254,14 @@ test('compact plus actions keep their names and skip nested and text-only action
 				})
 			: route.continue(),
 	);
-	await navigateToFeature(page, `/wg/${SHARE_CODE}/ausgaben`);
+	await page.route(`**/api/wg/${SHARE_CODE}/reminders`, (route) =>
+		route.fulfill({ json: { reminders: [] } }),
+	);
+	await navigateToFeature(page, `/wg/${SHARE_CODE}/mahnungen`);
 	await useLargeText(page);
 	await dismissOnboarding(page);
-	const textAction = page.locator('[data-page-primary-action] > button');
+	// RemindButton legt den Button in einen Wrapper; das FAB-CSS greift nur auf direkte Kinder.
+	const textAction = page.locator('[data-page-primary-action] button');
 	await expect(textAction).toHaveCount(1);
 	await expect(textAction).toBeVisible();
 	expect(await textAction.evaluate((button) => getComputedStyle(button).fontSize)).not.toBe('0px');
