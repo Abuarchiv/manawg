@@ -8,7 +8,11 @@ import {
 	wgShareCodeLookupLimiter,
 	wgWriteLimiter,
 } from '@/core/rate-limit';
-import { contentSecurityPolicy } from '@/shared/lib/security-headers';
+import {
+	contentSecurityPolicy,
+	crossOriginOpenerPolicy,
+	isPayPalSdkEnabled,
+} from '@/shared/lib/security-headers';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -34,7 +38,11 @@ async function withPageSecurityHeaders(req: NextRequest): Promise<NextResponse> 
 		isE2EDbDownMode() &&
 		req.nextUrl.protocol === 'http:' &&
 		['localhost', '127.0.0.1', '[::1]'].includes(req.nextUrl.hostname);
-	const csp = contentSecurityPolicy(nonce, !localFixtureHttp);
+	const payPalSdkEnabled = isPayPalSdkEnabled(
+		process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
+		process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
+	);
+	const csp = contentSecurityPolicy(nonce, !localFixtureHttp, payPalSdkEnabled);
 	const requestHeaders = new Headers(req.headers);
 	requestHeaders.set('x-nonce', nonce);
 	requestHeaders.set('Content-Security-Policy', csp);
@@ -45,7 +53,14 @@ async function withPageSecurityHeaders(req: NextRequest): Promise<NextResponse> 
 		},
 	});
 	res.headers.set('Content-Security-Policy', csp);
-	return refreshSupabaseSession(req, res);
+	const securedResponse = await refreshSupabaseSession(req, res);
+	// COOP is a document policy. Keep it consistent on every app page so a
+	// PayPal popup remains connected after an SPA navigation from / or /neu.
+	securedResponse.headers.set(
+		'Cross-Origin-Opener-Policy',
+		crossOriginOpenerPolicy(payPalSdkEnabled),
+	);
+	return securedResponse;
 }
 
 function getClientIp(req: NextRequest): string {

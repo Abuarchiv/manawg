@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 const PAYPAL_SANDBOX_URL = 'https://api-m.sandbox.paypal.com';
 const PAYPAL_LIVE_URL = 'https://api-m.paypal.com';
 
@@ -7,6 +5,7 @@ export interface PayPalOrderResponse {
 	id?: string;
 	status?: string;
 	purchase_units?: Array<{
+		payee?: { merchant_id?: string };
 		payments?: {
 			captures?: Array<{
 				status?: string;
@@ -94,8 +93,27 @@ async function paypalRequest<T>(
 			...(init.headers ?? {}),
 		},
 	});
-	if (!response.ok) throw new Error(`paypal_api_${response.status}`);
+	if (!response.ok) {
+		let issue: string | undefined;
+		try {
+			const body = (await response.json()) as { details?: Array<{ issue?: unknown }> };
+			const payeeIssue = body.details?.find(
+				(detail) => typeof detail.issue === 'string' && detail.issue.startsWith('PAYEE_'),
+			)?.issue;
+			if (typeof payeeIssue === 'string') issue = payeeIssue;
+		} catch {
+			// Keep the HTTP status when PayPal returns a non-JSON error body.
+		}
+		throw new Error(`paypal_api_${response.status}${issue ? `_${issue}` : ''}`);
+	}
 	return (await response.json()) as T;
+}
+
+export function isTerminalPayPalOrderCreationError(error: unknown): boolean {
+	return (
+		error instanceof Error &&
+		/^paypal_api_(400|401|403|404|422)_PAYEE_[A-Z0-9_]+$/.test(error.message)
+	);
 }
 
 export async function createPayPalOrder(input: {
@@ -104,10 +122,11 @@ export async function createPayPalOrder(input: {
 	description: string;
 	payeeMerchantId: string;
 	customId: string;
+	requestId: string;
 }): Promise<PayPalOrderResponse> {
 	return paypalRequest<PayPalOrderResponse>('/v2/checkout/orders', input.payeeMerchantId, {
 		method: 'POST',
-		headers: { 'PayPal-Request-Id': randomUUID() },
+		headers: { 'PayPal-Request-Id': input.requestId },
 		body: JSON.stringify({
 			intent: 'CAPTURE',
 			purchase_units: [
@@ -134,7 +153,7 @@ export async function capturePayPalOrder(
 		payeeMerchantId,
 		{
 			method: 'POST',
-			headers: { 'PayPal-Request-Id': orderId },
+			headers: { 'PayPal-Request-Id': orderId, Prefer: 'return=representation' },
 		},
 	);
 }
