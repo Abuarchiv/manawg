@@ -10,7 +10,7 @@ import {
 import {
 	type EventOccurrence,
 	eventDateForDisplay,
-	formatEventTimeRange,
+	formatEventTimeOfDay,
 } from '@/features/events/events';
 import { occurrenceToIcs } from '@/features/events/ics';
 import { cn } from '@/shared/lib/cn';
@@ -167,7 +167,7 @@ export function CalendarUpcomingList({
 														className="mr-1 inline size-3.5 align-[-2px]"
 														aria-hidden
 													/>
-													{formatEventTimeRange(entry.occurrence)}
+													{formatEventTimeOfDay(entry.occurrence)}
 													{entry.occurrence.location && ` · ${entry.occurrence.location}`}
 													{entry.occurrence.recurring && ' · wiederholt sich'}
 												</span>

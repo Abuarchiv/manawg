@@ -252,12 +252,10 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	return (
 		<li
 			id={`announcement-${announcement.id}`}
-			className={cn(
-				'scroll-mt-24 rounded-xl',
-				highlighted && 'outline outline-2 outline-offset-4 outline-ring',
-			)}
+			className={cn('scroll-mt-24', highlighted && 'ring-2 ring-inset ring-ring')}
 		>
-			<Card size="sm" aria-busy={busy}>
+			{/* Randlos: die Liste zieht Rahmen und Trennlinien, damit die Pinnwand wie ein Feed liest. */}
+			<Card size="sm" aria-busy={busy} className="rounded-none border-0 bg-transparent">
 				<CardHeader>
 					<CardTitle className="flex min-w-0 items-center gap-2 font-sans font-normal">
 						<MemberAvatar name={author.name} size={28} />
@@ -442,7 +440,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 						</p>
 					)}
 				</CardContent>
-				<CardFooter className="flex-col items-stretch gap-2 px-1.5 py-1">
+				<CardFooter className="flex-col items-stretch gap-2 border-t-0 bg-transparent px-1.5 pt-0 pb-1">
 					<Collapsible
 						open={commentsOpen}
 						onOpenChange={setCommentsOpen}

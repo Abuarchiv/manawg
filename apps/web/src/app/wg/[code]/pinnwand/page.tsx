@@ -50,7 +50,6 @@ import { AnnouncementSkeleton } from '@/features/pinnwand/components/Announcemen
 import { EmptyState } from '@/features/pinnwand/components/EmptyState';
 import { MyOpenAnnouncements } from '@/features/pinnwand/components/MyOpenAnnouncements';
 import { PinnwandComposer } from '@/features/pinnwand/components/PinnwandComposer';
-import { PinnwandHeader } from '@/features/pinnwand/components/PinnwandHeader';
 import type {
 	Announcement,
 	AnnouncementComment,
@@ -59,7 +58,7 @@ import type {
 	ReactionKey,
 } from '@/features/pinnwand/components/announcement-types';
 import { CONTENT_MAX, REFRESH_INTERVAL_MS } from '@/features/pinnwand/components/constants';
-import { ChevronDown, Megaphone } from 'lucide-react';
+import { ChevronDown, Megaphone, Plus } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -969,21 +968,7 @@ export default function PinnwandPage(): React.ReactElement {
 	return (
 		<div data-exchange-content className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-4">
 			<SubNav />
-			<PinnwandHeader
-				itemCount={openItems.length}
-				refreshing={refreshing}
-				composerOpen={composerOpen}
-				composerBusy={submitting}
-				loading={initialLoading}
-				hasDraft={hasDraft}
-				showComposerToggle={false}
-				onToggleComposer={() => {
-					if (submittingRef.current) return;
-					if (composerOpen) closeComposer();
-					else setComposerOpen(true);
-					setNotice(null);
-				}}
-			/>
+			<h1 className="sr-only">Pinnwand</h1>
 
 			{newCount > 0 && (
 				<Button
@@ -1055,7 +1040,7 @@ export default function PinnwandPage(): React.ReactElement {
 					Noch keine Beiträge geladen.
 				</EmptyState>
 			) : items.length === 0 ? (
-				<EmptyState icon={Megaphone} hint="Teile eine Frage oder Info über den Button unten.">
+				<EmptyState icon={Megaphone} hint="Teile eine Frage oder Info über das Plus unten rechts.">
 					Noch keine Beiträge
 				</EmptyState>
 			) : (
@@ -1065,7 +1050,10 @@ export default function PinnwandPage(): React.ReactElement {
 							Nichts Offenes
 						</EmptyState>
 					) : (
-						<ul className="flex flex-col gap-3" aria-label="Pinnwand-Beiträge">
+						<ul
+							className="flex flex-col divide-y overflow-hidden rounded-xl border"
+							aria-label="Pinnwand-Beiträge"
+						>
 							{openItems.map(renderCard)}
 						</ul>
 					)}
@@ -1087,7 +1075,10 @@ export default function PinnwandPage(): React.ReactElement {
 							</CollapsibleTrigger>
 							{/* Verlinkte Archiv-Beiträge müssen per Hash auffindbar bleiben. */}
 							<CollapsibleContent keepMounted>
-								<ul className="flex flex-col gap-3 pt-1" aria-label="Geklärte und ältere Beiträge">
+								<ul
+									className="flex flex-col divide-y overflow-hidden rounded-xl border"
+									aria-label="Geklärte und ältere Beiträge"
+								>
 									{archivedItems.map(renderCard)}
 								</ul>
 							</CollapsibleContent>
@@ -1107,6 +1098,7 @@ export default function PinnwandPage(): React.ReactElement {
 							setNotice(null);
 						}}
 					>
+						<Plus data-icon="inline-start" aria-hidden />
 						{hasDraft ? 'Entwurf fortsetzen' : 'Beitrag erstellen'}
 					</Button>
 				</ThumbAction>

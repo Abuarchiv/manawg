@@ -219,7 +219,11 @@ test('legacy all-day title-only edit preserves the displayed date and both store
 		return route.fulfill({ json: { event: { ...legacy, ...route.request().postDataJSON() } } });
 	});
 	await navigateToFeature(page, `/wg/${SHARE_CODE}/kalender`);
-	await expect(page.getByText('Di 22.09.2026 · ganztägig', { exact: true })).toBeVisible();
+	await expect(
+		page
+			.getByRole('list', { name: /Dienstag, 22\. September$/ })
+			.getByText('ganztägig', { exact: true }),
+	).toBeVisible();
 	await page.getByRole('button', { name: 'Termin bearbeiten: Alter Geburtstag' }).click();
 	await expect(page.getByLabel('Beginn')).toHaveValue('2026-09-22');
 	await expect(page.getByLabel('Ende (optional)')).toHaveValue('2026-09-22');
@@ -280,7 +284,11 @@ for (const timezoneId of ['America/Los_Angeles', 'Pacific/Kiritimati']) {
 			await loaded;
 			await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
 			await expect(page.getByText(event.title, { exact: true })).toBeVisible();
-			await expect(page.getByText('Di 22.09.2026 · ganztägig', { exact: true })).toBeVisible();
+			await expect(
+				page
+					.getByRole('list', { name: /Dienstag, 22\. September$/ })
+					.getByText('ganztägig', { exact: true }),
+			).toBeVisible();
 		});
 	});
 }

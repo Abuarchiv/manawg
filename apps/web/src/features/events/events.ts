@@ -470,6 +470,17 @@ export function formatEventTimeRange(occurrence: EventOccurrence): string {
 	return `${startLabel} – ${WEEKDAY_FORMATTER.format(end)} ${DATE_FORMATTER.format(end)} ${TIME_FORMATTER.format(end)}`;
 }
 
+/** Nur die Uhrzeit, für Listen, die den Tag schon daneben zeigen. */
+export function formatEventTimeOfDay(occurrence: EventOccurrence): string {
+	if (occurrence.allDay) return 'ganztägig';
+	const start = new Date(occurrence.startsAt);
+	const end = occurrence.endsAt ? new Date(occurrence.endsAt) : null;
+	const startLabel = TIME_FORMATTER.format(start);
+	if (!end) return startLabel;
+	if (isSameDay(start, end)) return `${startLabel}–${TIME_FORMATTER.format(end)}`;
+	return `${startLabel} – ${WEEKDAY_FORMATTER.format(end)} ${DATE_FORMATTER.format(end)} ${TIME_FORMATTER.format(end)}`;
+}
+
 export function getMonthBounds(reference: Date): { start: Date; end: Date } {
 	const year = reference.getFullYear();
 	const month = reference.getMonth();

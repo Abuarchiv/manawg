@@ -1,5 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
-import { dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
 
 test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires the local fixture server');
 
@@ -198,6 +198,7 @@ test('compact plus actions keep their names and skip nested and text-only action
 	for (const [feature, label] of [
 		['kalender', 'Termin hinzufügen'],
 		['vorraete', 'Vorrat hinzufügen'],
+		['pinnwand', 'Beitrag erstellen'],
 	] as const) {
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/${feature}`);
 		await useLargeText(page);
@@ -219,7 +220,39 @@ test('compact plus actions keep their names and skip nested and text-only action
 	await itemName.focus();
 	await expect(itemName).toBeFocused();
 
-	await navigateToFeature(page, `/wg/${SHARE_CODE}/pinnwand`);
+	// Eine offene Forderung blendet den reinen Text-Button „Ausgleichen“ ein.
+	const createdAt = new Date().toISOString();
+	await page.route(`**/api/wg/${SHARE_CODE}/expenses`, (route) =>
+		route.request().method() === 'GET'
+			? route.fulfill({
+					json: {
+						payments: [],
+						expenses: [
+							{
+								id: 'fab-text-action-expense',
+								paidByMemberId: FIXTURE_WG.memberId,
+								amountCents: 2000,
+								currency: 'EUR',
+								description: 'Einkauf',
+								imageUrl: null,
+								occurredAt: createdAt,
+								createdAt,
+								updatedAt: createdAt,
+								splits: [
+									{
+										id: 'fab-text-action-split',
+										debtorMemberId: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
+										amountCents: 1000,
+										settledAt: null,
+									},
+								],
+							},
+						],
+					},
+				})
+			: route.continue(),
+	);
+	await navigateToFeature(page, `/wg/${SHARE_CODE}/ausgaben`);
 	await useLargeText(page);
 	await dismissOnboarding(page);
 	const textAction = page.locator('[data-page-primary-action] > button');
