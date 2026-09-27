@@ -1,7 +1,8 @@
 # October release readiness — 2026-09-27
 
-Status: **local implementation and verification complete; no release approval while hosted/provider gates remain open**.
+Status: **local fixes verified; integration of newly discovered upstream PayPal/Sentry changes is pending; no release approval**.
 Baseline: `75f387ed55a6ddd0a61db6c3cf203f54e0b77a0c` (`origin/main`, fetched September 27).
+Latest remote main readback: `63833dd5160f8857720a1e7dbbce05bcb92a6649`; four newer upstream PayPal/Sentry commits require integration and renewed gates.
 Work branch: `audit/release-october-20260927`. The original dirty checkout is preserved.
 GitHub Actions are unavailable until month end. This is the only accepted deferred verification; other unknowns remain open gates.
 
@@ -27,7 +28,7 @@ An unavailable or skipped test is not a pass. A health response is not proof of 
 - [x] Cross-review and reproduce findings, prioritize by data/security/financial impact, implement narrow changes with regression evidence and independent review.
 - [x] Run all applicable local candidate gates and browser flows; audit skipped lanes individually. Hosted/provider gates remain explicitly open below.
 - [x] Obtain a fresh whole-app review without implementation history; resolve new substantive findings.
-- [x] Record final local evidence, remaining external requirements and October 1 release procedure.
+- [ ] Integrate the four newer upstream commits and refresh final local evidence; external requirements and October 1 release procedure are recorded below.
 
 ## Findings and verification ledger
 
@@ -63,7 +64,7 @@ No destructive data, Production migration/deployment, paid provider setting, cre
 
 - App Production: READY deployment `dpl_5ZSVAXfpSvv7PkChwqXWpWDjqS3F`, SHA `36c5b55e099aef36658c4a43342ae5ab36a152a9`. It is not the audit baseline or repaired candidate. A connected authenticated browser loaded dashboard and shopping; no resident data was changed.
 - Latest Preview: READY `dpl_C98jhu1qbAzVWhpF98e9NayLTgsk`, SHA `80c26c670e32245c28ce8d08cbcb781a7ba7fe01`; no Preview found for baseline `75f387ed`.
-- Landing privacy source: `Abuarchiv/manawg-landing`, main `7e00fdf832d4856a19570d9f366e13fe76d718fb`, deployed as `dpl_6XeMXv17xjp3FHJWnmsrb4P8XBum`. A separate isolated disclosure patch is committed as `ed8f2a7`; no publication yet.
+- Landing privacy source: `Abuarchiv/manawg-landing`, main `7e00fdf832d4856a19570d9f366e13fe76d718fb`, deployed as `dpl_6XeMXv17xjp3FHJWnmsrb4P8XBum`. A separate isolated disclosure patch is committed as `b196367`; no publication yet.
 - Both Supabase projects ACTIVE_HEALTHY. Root independently compared every live Drizzle `(hash, timestamp, position)` to the journal: 16 applied rows, zero unexplained mismatches, historical 0007 exactly matches its explicit allowlist. Migration 0016 is pending; no ledger edits or live migrations were performed.
 - Current public tables have RLS and no effective CRUD grants for anon/authenticated. Provider-owned `supabase_admin` defaults still grant future-table privileges; ordinary migration-role defaults are separate. The current SQL identity cannot alter the provider owner; no privilege escalation attempted.
 - PayPal environment keys absent in both app environments. Sentry key names present; presence is not event-delivery evidence. Leaked-password protection remains an advisor warning. Backup/PITR retention and real alert/device/mail receipt are not established by health or empty logs.
@@ -95,13 +96,14 @@ This proves local database recovery only. The export is non-atomic and contains 
 - Both Supabase projects are ACTIVE_HEALTHY in eu-central-1 on Free plans. Read-only checks find matching 238 public columns, 27 RLS-enabled tables and no effective anon/auth CRUD; zero unexplained ledger mismatches. Migrations 0016/0017 are pending; no hosted migration was run.
 - Public Auth settings return 200. Production enables email and Google, disables phone, permits signup and requires email confirmation. Preview enables email, disables Google/phone and auto-confirms email. The Preview Google button remains visible but returns unavailable; these settings do not prove a completed login or email delivery.
 - Sentry UI confirms EU storage for organization `manawg`, project `javascript-nextjs` (4512021577334865). Outgoing TLS verification was enabled and verified after reload. DPA acceptance is not proven; no legal agreement was accepted. Plan wording “30-day lookback” is not a deletion guarantee. Vercel sensitive DSNs cannot be read through authorized APIs. A read-only scan of the current Production page and its 25 same-origin scripts found no Sentry client reference or DSN, consistent with that older deployment; actual DSN/project association and delivery remain unverified. See the [Sentry prerequisites note](2026-09-27-sentry-privacy-prerequisites.md).
+- Upstash resource `upstash-kv-carmine-clock` is attached across environments; endpoint comparisons and a single normal health-request correlation strongly support Production association, while the Sensitive UPSTASH env record itself remains unreadable. Complete metadata inventory: 539 event-index keys, all no-expiry, 1,067 total entries. No payload reads or deletions. See [Upstash prerequisites](2026-09-27-rate-limit-privacy-prerequisites.md).
 - PayPal configuration names are absent from both hosted environments; no real payment was attempted. Sandbox account/partner access is required before enabling this release feature. Existing manual settlement stays available.
 - Standard Vercel protection redirects both current and older immutable deployment health URLs to SSO. This does not remove authorized/bypass access to older code. Attachment rollout and rollback must retain tombstone-aware readers/writers or make incompatible deployments inaccessible.
 
 ## Companion candidates
 
 - MCP: `fix/release-client-contracts-20260927`, commit `56a7728503d277fdcf43c181b57cdb96eb9b3169`; Node 22, pnpm 9.15.9; 151 tests, lint, types and build pass. Deploy/update client before the stricter App API. Existing running MCP process was neither changed nor restarted.
-- Landing: `docs/release-privacy-20260927`, commit `ed8f2a727dd0bc92e94cbb12fa7ddf9a9d94fd92`; Node 24.19; Biome and build/types pass. Only privacy page changed. No publication; resolve Sentry association/DPA prerequisites first.
+- Landing: `docs/release-privacy-20260927`, commit `b1963676f728b2f2ae5c857972d73c9cb0dac915`; Node 24.19; Biome and build/types pass. Only privacy page changed. No publication; resolve Sentry association/DPA and historical Upstash analytics prerequisites first.
 - No branch has been pushed, no PR merged, no site deployed and no production database changed during this mission.
 
 ## October 1 release sequence and stop conditions
@@ -114,16 +116,16 @@ This proves local database recovery only. The export is non-atomic and contains 
 
 ## Local verification evidence
 
-Latest production source: `55049e0a199a5337f92b21ae191b4147214a6fbc`. Subsequent commits change verification and documentation only. Runtimes: Node 22.23.2 / pnpm 9.0.0 for the app, Node 22 / pnpm 9.15.9 for MCP, Node 24.19 for landing. No dependency or lockfile changes were needed.
+Latest production source: `2a965a3` (including OCR `275e7a8` and rate-limit privacy/timeout `a242a81`). Subsequent commits change verification and documentation only. Runtimes: Node 22.23.2 / pnpm 9.0.0 for the app, Node 22 / pnpm 9.15.9 for MCP, Node 24.19 for landing. No dependency or lockfile changes were needed.
 
 | Gate | Result / scope |
 | --- | --- |
 | Production builds | Unconfigured, synthetic Sentry/PayPal-configured, and isolated fixture builds pass on the latest production source. |
 | Bundle budgets | Shared first-load 102.2 kB gzip in both variants; unchanged cap 120 kB. Baseline 184.7/184.8 kB. All per-route budgets pass. |
-| Static gates | Biome 638 files; seven feature boundaries; analytics privacy and security boundaries pass. Both TypeScript configurations pass. |
-| Node unit suite | 266 tests: 265 pass, zero fail, one explicit opt-in PG test skipped; actual PG integration executed separately. |
-| Chromium suite and focused completion | Full final run: 521 pass, one focus-fixture hydration race, 43 conditional skips. The test now waits for the real loaded chore action before DOM injection; it passes three author repeats and an independent root run (1/1). Thus all 522 locally executable cases have passing evidence. This is full-run plus focused completion, not a claim that the retained full-run process exited zero. |
-| WebKit expanded pack | 68 pass, zero fail, one explicitly skipped PG case (covered in its separate database lane); retries 0. Includes financial replay, attachment recovery, native titles, role controls and contrast. |
+| Static gates | Biome 642 files; seven feature boundaries; analytics privacy and security boundaries pass. Both TypeScript configurations pass. |
+| Node unit suite | 284 tests: 283 pass, zero fail, one explicit opt-in PG test skipped; actual PG integration executed separately. |
+| Chromium full suite | 524 pass, zero fail, 43 conditional skips; retained full process exits zero on the current product source. Includes actual OCR and the hydration regression. |
+| WebKit | Earlier expanded pack: 68 pass and one PG skip. Current product source: 35 pass, three test-harness failures (native Tab order and two handled OCR warning comparisons); targeted corrections are being verified. No product CSP expansion. |
 | Local Auth UI | 9/9 pass using a local fake Supabase provider; six cases supplement fixture-suite skips. No real email/OTP delivery claim. |
 | Configured PayPal document security | 4/4 pass across Chromium/WebKit on the latest configured build. Independent official public SDK proof has zero CSP violations with downstream calls intercepted, original document nonce across real SPA navigation, and preserved popup opener. No real payment claim. |
 | Private attachment recovery | Explicit fixture=true: Chromium 1/1 and WebKit 1/1, zero skips. Two uploads, restored draft/preview, read retry, removed-key error, new-key re-upload and zero CSP violations. |
@@ -142,11 +144,11 @@ The fixture suite's 43 skips are explicit. Separate local lanes cover 23 of thos
 
 ### Evidence and reproducibility
 
-Final root logs and JSON reports, including the original focus failure and its successful correction, are preserved with SHA-256/size manifest under `/Users/abu/.local/share/manawg-recovery/release-checks/20260927T172725Z-55049e0/` (directory 0700, files 0600). Working diagnostics also remain under `/tmp/manawg-october-*`. Earlier rounds are retained under `integrated`, `final`, `round2` and `final3` names; their failures are not relabelled as passes. Use the app scripts `lint`, `typecheck`, `test:unit`, `build`, `bundle:check`, `analytics:check` and `scripts/check-security-boundaries.mjs`. Browser runs use production fixture builds, Node 22, `CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true`, one worker and `--retries=0`. The Auth lane additionally supplies fake local Supabase public configuration. No real provider key is needed for these local checks.
+Evidence snapshots: earlier `55049e0` logs remain under `/Users/abu/.local/share/manawg-recovery/release-checks/20260927T172725Z-55049e0/`; current pre-upstream integration logs and sanitized Upstash mapping/inventory are under `/Users/abu/.local/share/manawg-recovery/release-checks/20260927T201739Z-2a965a3-pre-upstream/`. Both have SHA-256/size manifests and private permissions. Failed runs remain labelled as failures. Current working diagnostics are `/tmp/manawg-october-replay-*`; run browser gates against production fixture builds with Node 22, one worker, `--retries=0`, explicit fixture flags and `OCR_RUNTIME_E2E=true` for the real OCR lane.
 
 ### Maintenance constraints
 
-Keep the frozen lockfile and supported Node versions. Preserve original operation keys across ambiguous HTTP results, validate stale mutation versions, and store replay results in the same transaction as the mutation. Rehearse future additive migrations and restores in disposable PostgreSQL before hosted rollout. Re-run the configured browser/security lanes whenever optional SDKs or CSP change. A green fixture run does not cover protected deployments, provider delivery or device behavior.
+Keep the frozen lockfile and supported Node versions. Preserve original operation keys across ambiguous HTTP results, keep offline retry horizons shorter than durable replay retention, validate stale mutation versions, and store replay results in the same transaction as the mutation. Rehearse future additive migrations and restores in disposable PostgreSQL before hosted rollout. Re-run the configured browser/security lanes whenever optional SDKs or CSP change. A green fixture run does not cover protected deployments, provider delivery or device behavior.
 
 
 ## Release disposition
@@ -154,3 +156,14 @@ Keep the frozen lockfile and supported Node versions. Preserve original operatio
 The application is locally hardened and reviewable, but **not yet cleared for October 1 Production release**. The known GitHub billing block prevents exact-revision hosted CI/Preview evidence. The other remaining requirements are genuine operational/provider gates, not silently accepted exceptions: sandbox payment access and completion, Sentry association/legal/disclosure/delivery confirmation (or keeping it disabled), current-SHA authenticated Preview flows and migration/storage-removal rehearsal, real device/email/push receipt, and a chosen offsite recovery/RPO/RTO arrangement. Local database restore, encryption and permission proof do not replace those checks.
 
 No Production database migration, app deployment, live payment, user deletion, real push/email/OTP send, Git history rewrite or paid change was performed. The only external configuration change was enabling and rereading Sentry's outgoing TLS verification; its cropped local screenshot is retained in the task's visualizations directory. The original application checkout's pre-existing WIP is preserved. App, MCP and landing changes are committed in their isolated branches; nothing was pushed or merged.
+
+## Completion-audit follow-up
+
+The completion audit found and fixed additional previously uncovered paths:
+
+- `275e7a8`: OCR incorrectly interpreted `Brot 12.34 EUR` as 123400 cents. Whole-token parsing now accepts valid dot/comma decimal and grouped EUR values, rejects malformed/date/signed/foreign-currency inputs, and honors the amount cap. Twelve parser tests and 78 independent adversarial cases pass. Actual Tesseract worker/WASM/models run under narrow CSP: `wasm-unsafe-eval` and only the two exact German/English model URLs. Initialization/recognition failures are bounded, workers cleaned up, and controls recover. No image upload or application write occurs in OCR verification.
+- `a242a81`: unused Upstash SDK analytics stored raw limiter identifiers/outcomes with no expiry; SDK timeout bypassed configured fail-closed behavior. Analytics are disabled and SDK timeout enters the existing failure policy. Two actual pinned-SDK regressions pass. Historical data remains; see the rate-limit privacy prerequisites.
+- `2a965a3`: a fresh whole-app reviewer reproduced automatic replay of an eight-day-old uncertain expense after the server response cache had expired, allowing duplication. The client now fences original queue timestamps at the shared seven-day retention minus five minutes thirty seconds for clock/transport uncertainty, including force, crash-without-attempt-metadata and uploads crossing the horizon. Original content/keys remain for manual comparison; no blind recreation. Twenty integrity tests pass independently.
+- The same reviewer twice reproduced React hydration error #418 on `/offline`. A stable initial online state now matches SSR/client, and the existing effect reads actual connectivity. The browser regression failed before the fix and passes on the rebuilt source in both engines.
+
+A read-only `tmutil destinationinfo -X` check returned an empty destination inventory; it provides no evidence of an external backup and does not rule out other backup products.
