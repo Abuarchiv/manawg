@@ -5,6 +5,8 @@ import { expect, test } from '@playwright/test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 import { isTerminalPayPalOrderCreationError } from '../src/core/infra/paypal.ts';
 import { computeNetBalances, simplifyDebts } from '../src/features/expenses/debt-reduction.ts';
+import type { DebtExpenseInput, PairBalance } from '../src/features/expenses/debts.ts';
+import type { ExpensePaymentInput } from '../src/features/expenses/expense-payments.ts';
 import {
 	isPayPalCaptureDebtChanged,
 	parsePayPalAmountCents,
@@ -16,6 +18,7 @@ const CAPTURE_ROUTE_PATH = path.join(
 	'src/app/api/wg/[code]/paypal/capture/route.ts',
 );
 const ORDER_ROUTE_PATH = path.join(process.cwd(), 'src/app/api/wg/[code]/paypal/order/route.ts');
+const DEBTS_PATH = path.join(process.cwd(), 'src/features/expenses/debts.ts');
 const wgId = '550e8400-e29b-41d4-a716-446655440000';
 const payerId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
 const payeeId = '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55';
@@ -43,6 +46,13 @@ function loadRoute<T>(routePath: string, overrides: Record<string, unknown>): T 
 	);
 	return module.exports;
 }
+
+const { computeBalances } = loadRoute<{
+	computeBalances: (
+		expenses: ReadonlyArray<DebtExpenseInput>,
+		payments?: ReadonlyArray<ExpensePaymentInput>,
+	) => PairBalance[];
+}>(DEBTS_PATH, { '@/core/utils/time': { MS_PER_DAY: 86_400_000 } });
 
 function jsonResponse(body: unknown, init: number | ResponseInit = 200): Response {
 	const status = typeof init === 'number' ? init : (init.status ?? 200);
@@ -95,8 +105,8 @@ function createPayPalFixture(
 		initialOrderId?: string;
 		initialStatus?: string;
 		initialAmountCents?: number;
-		expenses?: Parameters<typeof computeNetBalances>[0];
-		completedPayments?: Parameters<typeof computeNetBalances>[2];
+		expenses?: DebtExpenseInput[];
+		completedPayments?: ExpensePaymentInput[];
 		members?: Array<{
 			id: string;
 			name: string;
@@ -151,6 +161,14 @@ function createPayPalFixture(
 			{ id: payeeId, name: 'Noah', color: 'green', paypalMerchantId: 'merchant-1' },
 		]
 	).map((member) => ({ ...member, wgId }));
+	const openExpenses = options.expenses ?? [
+		{
+			paidByMemberId: payeeId,
+			currency: 'EUR',
+			occurredAt: '2026-09-27T00:00:00.000Z',
+			splits: [{ debtorMemberId: payerId, amountCents: 1_200, settledAt: null }],
+		},
+	];
 	let lockHeld = false;
 	let paymentSequence = 0;
 
@@ -293,20 +311,20 @@ function createPayPalFixture(
 		},
 		'@/core/guards/with-wg-route': { withWgRoute: (_name: string, handler: unknown) => handler },
 		'@/core/infra/observability': { logApiError: () => undefined },
+		'@/core/infra/paypal-onboarding': { isPayPalMerchantReady: async () => true },
+		'@/features/expenses/open-expenses': {
+			loadOpenExpenses: async () => openExpenses,
+		},
 		'@/core/rate-limit': {
 			checkRateLimit: async () => ({ success: true }),
 			wgWriteLimiter: {},
 		},
 		'@/features/expenses/debt-reduction': {
-			computeNetBalances: options.expenses ? computeNetBalances : () => [],
-			simplifyDebts: options.expenses
-				? simplifyDebts
-				: () => [{ fromId: payerId, toId: payeeId, currency: 'EUR', cents: 1200 }],
+			computeNetBalances,
+			simplifyDebts,
 		},
 		'@/features/expenses/debts': {
-			computeBalances: () => [
-				{ debtorId: payerId, creditorId: payeeId, currency: 'EUR', amountCents: 1200 },
-			],
+			computeBalances,
 		},
 		'@/features/expenses/expense-payments': {
 			PAYPAL_ORDER_TTL_MS: 10_000,
@@ -353,9 +371,6 @@ function createPayPalFixture(
 				return nextResponse(orderResponses, completedOrder());
 			},
 			isPayPalConfigured: () => true,
-		},
-		'@/features/expenses/open-expenses': {
-			loadOpenExpenses: async () => options.expenses ?? [],
 		},
 		'@/features/expenses/paypal-settlement': {
 			isPayPalCaptureDebtChanged,
@@ -479,6 +494,7 @@ test('a persisted capture reconciles before a reshaped debt graph can invalidate
 		{
 			paidByMemberId: payeeId,
 			currency: 'EUR',
+			occurredAt: '2026-09-27T00:00:00.000Z',
 			splits: [
 				{ debtorMemberId: aId, amountCents: 2_000, settledAt: null },
 				{ debtorMemberId: payerId, amountCents: 1_000, settledAt: null },
@@ -487,6 +503,7 @@ test('a persisted capture reconciles before a reshaped debt graph can invalidate
 		{
 			paidByMemberId: eId,
 			currency: 'EUR',
+			occurredAt: '2026-09-27T00:00:00.000Z',
 			splits: [
 				{ debtorMemberId: payerId, amountCents: 500, settledAt: null },
 				{ debtorMemberId: cId, amountCents: 1_000, settledAt: null },
@@ -657,4 +674,50 @@ test('provider results without the persisted order identity stay unresolved', as
 		expect(await response.json()).toMatchObject({ status: 'PENDING' });
 		expect(fixture.payment.status).toBe('capturing');
 	}
+});
+
+test('a new capture is refused when its direct debt was replaced by an equal simplified path', async () => {
+	const cId = '00000000-0000-4000-8000-000000000003';
+	const members = [
+		{ id: payerId, name: 'A', color: null, paypalMerchantId: null },
+		{ id: payeeId, name: 'B', color: null, paypalMerchantId: 'merchant-1' },
+		{ id: cId, name: 'C', color: null, paypalMerchantId: null },
+	];
+	const expenses: DebtExpenseInput[] = [
+		{
+			paidByMemberId: cId,
+			currency: 'EUR',
+			occurredAt: '2026-09-27T00:00:00.000Z',
+			splits: [{ debtorMemberId: payerId, amountCents: 1_000, settledAt: null }],
+		},
+		{
+			paidByMemberId: payeeId,
+			currency: 'EUR',
+			occurredAt: '2026-09-27T00:00:00.000Z',
+			splits: [{ debtorMemberId: cId, amountCents: 1_000, settledAt: null }],
+		},
+	];
+
+	expect(simplifyDebts(computeNetBalances(expenses, members))).toContainEqual(
+		expect.objectContaining({ fromId: payerId, toId: payeeId, cents: 1_000, currency: 'EUR' }),
+	);
+	expect(
+		computeBalances(expenses).some(
+			(debt) => debt.debtorId === payerId && debt.creditorId === payeeId && debt.currency === 'EUR',
+		),
+	).toBe(false);
+
+	const fixture = createPayPalFixture({
+		initialAmountCents: 1_000,
+		members,
+		expenses,
+		captureResponses: [completedOrder({ amount: '10.00' })],
+	});
+	const response = await fixture.capture();
+
+	expect(response.status).toBe(409);
+	expect(await response.json()).toEqual({ error: 'debt_changed' });
+	expect(fixture.payment.status).toBe('failed');
+	expect(fixture.captureOrderIds).toEqual([]);
+	expect(fixture.readOrderIds).toEqual([]);
 });

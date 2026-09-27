@@ -20,6 +20,7 @@ import {
 } from '@/core/infra/paypal';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { computeNetBalances, simplifyDebts } from '@/features/expenses/debt-reduction';
+import { computeBalances } from '@/features/expenses/debts';
 import {
 	hasCapturingExpensePayment,
 	loadCompletedExpensePayments,
@@ -138,6 +139,19 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 					(item.currency ?? 'EUR') === current.currency,
 			);
 			if (isPayPalCaptureDebtChanged(debt?.cents, current.amountCents)) {
+				await tx
+					.update(expensePayments)
+					.set({ status: 'failed' })
+					.where(and(eq(expensePayments.id, current.id), eq(expensePayments.status, 'created')));
+				return { kind: 'debt_changed' as const };
+			}
+			const directDebt = computeBalances(expenses, payments).find(
+				(item) =>
+					item.debtorId === current.fromMemberId &&
+					item.creditorId === current.toMemberId &&
+					item.currency === current.currency,
+			);
+			if (!directDebt || directDebt.amountCents < current.amountCents) {
 				await tx
 					.update(expensePayments)
 					.set({ status: 'failed' })
