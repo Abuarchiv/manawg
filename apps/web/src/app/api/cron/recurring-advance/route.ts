@@ -170,7 +170,7 @@ async function advanceTemplate(template: DueRecurring): Promise<CreatedAdvance[]
 				nextDueAt,
 				lastCreatedAt: now,
 				updatedAt: now,
-				...(template.anchorAt ? {} : { anchorAt: nextDueAt }),
+				...(template.anchorAt ? {} : { anchorAt: template.nextDueAt }),
 			})
 			.where(
 				and(
