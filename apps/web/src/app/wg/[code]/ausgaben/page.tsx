@@ -789,10 +789,12 @@ export default function AusgabenPage() {
 				return;
 			}
 			const msg =
-				res.status === 409
+				res.status === 409 && res.error !== 'image_removed'
 					? 'Diese Ausgabe wurde inzwischen geändert. Lade die Liste neu und entscheide dann, welche Version stimmt.'
 					: expenseSaveErrorMessage(res.error);
-			if (res.status === 409) setConflictExpenseId(editingExpense?.id ?? null);
+			if (res.status === 409 && res.error !== 'image_removed') {
+				setConflictExpenseId(editingExpense?.id ?? null);
+			}
 			rollbackOptimisticExpense();
 			endPending(optimisticId);
 			setFormError(msg);
