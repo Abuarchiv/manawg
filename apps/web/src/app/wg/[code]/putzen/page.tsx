@@ -712,7 +712,10 @@ export default function PutzenPage() {
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
-				body: JSON.stringify({ completedByMemberId: identity.memberId }),
+				body: JSON.stringify({
+					expectedNextDueAt: chore.nextDueAt,
+					expectedAssignedMemberId: chore.assignedMemberId,
+				}),
 			},
 		);
 
@@ -727,6 +730,8 @@ export default function PutzenPage() {
 						memberId: identity.memberId,
 						idempotencyKey,
 						choreId: chore.id,
+						expectedNextDueAt: chore.nextDueAt,
+						expectedAssignedMemberId: chore.assignedMemberId,
 					}),
 				);
 				if (queuedCount === 0) {
@@ -766,6 +771,15 @@ export default function PutzenPage() {
 			) {
 				setCompleteConfirmId(null);
 				setActionNotice('Diese Putzaufgabe wurde bereits erledigt. Der Plan wird aktualisiert.');
+				void load(false);
+				endPending(chore.id);
+				return;
+			}
+			if (result.status === 409 && result.error === 'chore_occurrence_changed') {
+				setCompleteConfirmId(null);
+				setActionError(
+					'Termin oder Zuständigkeit haben sich geändert. Prüfe den aktualisierten Plan.',
+				);
 				void load(false);
 				endPending(chore.id);
 				return;

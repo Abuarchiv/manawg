@@ -20,6 +20,8 @@ export interface TodayImportantItem {
 	tone: 'danger' | 'accent' | 'neutral';
 	isPersonal: boolean;
 	entityId?: string;
+	expectedNextDueAt?: string;
+	expectedAssignedMemberId?: string | null;
 	amountCents?: number;
 	currency?: string;
 }
@@ -157,6 +159,8 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 					tone: urgency === 0 ? ('danger' as const) : ('accent' as const),
 					isPersonal,
 					entityId: chore.id,
+					expectedNextDueAt: chore.nextDueAt,
+					expectedAssignedMemberId: chore.assignedMemberId ?? null,
 				},
 				urgency,
 				isPersonal,

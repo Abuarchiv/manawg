@@ -48,6 +48,7 @@ import {
 	createOfflineIdempotencyKey,
 	createQueuedShoppingItem,
 	createQueuedShoppingUpdate,
+	hasQueuedShoppingUpdate,
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
@@ -152,6 +153,9 @@ export default function EinkaufPage() {
 	const clearingBoughtRef = useRef(false);
 	const nameInputRef = useRef<HTMLInputElement>(null);
 	const nameValueRef = useRef('');
+	const shoppingPatchRequestKeysRef = useRef(
+		new Map<string, { fingerprint: string; key: string }>(),
+	);
 
 	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'shopping');
 	const appliedPrefillRef = useRef<string | null>(null);
@@ -403,10 +407,55 @@ export default function EinkaufPage() {
 	const toggleBought = useCallback(
 		async (item: ShoppingItem): Promise<void> => {
 			if (isPending(item.id)) return;
+			if (hasQueuedShoppingUpdate(readOfflineQueue(), wg.shareCode, identity.memberId, item.id)) {
+				return;
+			}
+			const becomingBought = item.boughtAt === null;
+			const queuedCreate = readOfflineQueue().find(
+				(queued) =>
+					queued.id === item.id &&
+					queued.shareCode === wg.shareCode &&
+					queued.type === 'shopping.create',
+			);
+			let patchRequest: {
+				expectedUpdatedAt: string;
+				expectedBoughtAt: string | null;
+				fingerprint: string;
+				idempotencyKey: string;
+			} | null = null;
+			if (!queuedCreate) {
+				if (!item.updatedAt) {
+					setToggleError(
+						'Der Artikelstand wird aktualisiert. Prüfe die Liste und versuche es erneut.',
+					);
+					void load(true);
+					return;
+				}
+				const fingerprint = JSON.stringify({
+					expectedUpdatedAt: item.updatedAt,
+					expectedBoughtAt: item.boughtAt,
+					bought: becomingBought,
+				});
+				const previous = shoppingPatchRequestKeysRef.current.get(item.id);
+				const idempotencyKey =
+					previous?.fingerprint === fingerprint ? previous.key : createOfflineIdempotencyKey();
+				if (!idempotencyKey) {
+					setToggleError(
+						'Einkaufsstatus konnte nicht sicher gespeichert werden. Versuche es erneut.',
+					);
+					return;
+				}
+				patchRequest = {
+					expectedUpdatedAt: item.updatedAt,
+					expectedBoughtAt: item.boughtAt,
+					fingerprint,
+					idempotencyKey,
+				};
+				shoppingPatchRequestKeysRef.current.set(item.id, { fingerprint, key: idempotencyKey });
+			}
 			start(item.id);
 			setToggleError(null);
 			setToggleNotice(null);
-			const becomingBought = item.boughtAt === null;
 			const optimisticItem: ShoppingItem = {
 				...item,
 				boughtAt: becomingBought ? new Date().toISOString() : null,
@@ -427,12 +476,6 @@ export default function EinkaufPage() {
 				);
 
 			try {
-				const queuedCreate = readOfflineQueue().find(
-					(queued) =>
-						queued.id === item.id &&
-						queued.shareCode === wg.shareCode &&
-						queued.type === 'shopping.create',
-				);
 				if (queuedCreate) {
 					const saved = writeOfflineQueue(
 						readOfflineQueue().map((queued) =>
@@ -456,6 +499,11 @@ export default function EinkaufPage() {
 					);
 					return;
 				}
+				if (!patchRequest) {
+					rollback();
+					setToggleError('Der Einkaufsstatus konnte nicht sicher gespeichert werden.');
+					return;
+				}
 
 				const res = await apiFetch<{ item: ShoppingItem }>(
 					`/api/wg/${encodedShareCode}/shopping/${encodeURIComponent(item.id)}`,
@@ -463,13 +511,21 @@ export default function EinkaufPage() {
 						method: 'PATCH',
 						memberId: identity.memberId,
 						memberToken: identity.memberToken,
+						headers: { 'Idempotency-Key': patchRequest.idempotencyKey },
 						body: JSON.stringify({
 							bought: becomingBought,
-							boughtByMemberId: becomingBought ? identity.memberId : null,
+							expectedUpdatedAt: patchRequest.expectedUpdatedAt,
+							expectedBoughtAt: patchRequest.expectedBoughtAt,
 						}),
 					},
 				);
 				if (!res.ok) {
+					if (res.status > 0 && res.status < 500 && res.status !== 429) {
+						const pending = shoppingPatchRequestKeysRef.current.get(item.id);
+						if (pending?.fingerprint === patchRequest.fingerprint) {
+							shoppingPatchRequestKeysRef.current.delete(item.id);
+						}
+					}
 					if (res.status === 403) {
 						rollback();
 						setToggleError('Nur der/die Autor:in kann dies abhaken.');
@@ -487,6 +543,10 @@ export default function EinkaufPage() {
 						rollback();
 						await load(true);
 						setToggleError(shoppingAddErrorMessage(res.error));
+					} else if (res.status === 409 && res.error === 'shopping_item_changed') {
+						rollback();
+						await load(true);
+						setToggleError('Der Einkaufsstatus hat sich geändert. Prüfe den aktualisierten Stand.');
 					} else if (res.status === 0) {
 						const queued = createQueuedShoppingUpdate({
 							wgId: wg.id,
@@ -495,6 +555,9 @@ export default function EinkaufPage() {
 							itemId: item.id,
 							name: item.name,
 							bought: becomingBought,
+							expectedUpdatedAt: patchRequest.expectedUpdatedAt,
+							expectedBoughtAt: patchRequest.expectedBoughtAt,
+							idempotencyKey: patchRequest.idempotencyKey,
 						});
 						if (enqueueOfflineAction(queued) === 0) {
 							rollback();
@@ -521,6 +584,7 @@ export default function EinkaufPage() {
 						prev.map((current) => (current.id === item.id ? res.data.item : current)),
 					),
 				);
+				shoppingPatchRequestKeysRef.current.delete(item.id);
 				void load(true);
 			} finally {
 				end(item.id);
@@ -636,6 +700,16 @@ export default function EinkaufPage() {
 		(a, b) => (b.boughtAt ?? '').localeCompare(a.boughtAt ?? '') || byCreated(a, b),
 	);
 	const actionError = toggleError ?? (removeErrorId ? null : removeError);
+	const queuedShoppingUpdateIds = new Set(
+		readOfflineQueue()
+			.filter(
+				(action) =>
+					action.type === 'shopping.update' &&
+					action.shareCode === wg.shareCode &&
+					action.memberId === identity.memberId,
+			)
+			.map((action) => String(action.payload.itemId)),
+	);
 
 	// Nach dem Einkauf: eigene frisch gekaufte Artikel direkt als Ausgabe erfassen.
 	const receiptKey = `manawg:receipt-prompt:${wg.shareCode}`;
@@ -704,6 +778,7 @@ export default function EinkaufPage() {
 				adder={memberLookup(item.addedByMemberId)}
 				buyer={item.boughtByMemberId ? memberLookup(item.boughtByMemberId) : null}
 				pending={isPending(item.id)}
+				queued={queuedShoppingUpdateIds.has(item.id)}
 				onToggle={toggleBought}
 				onRemove={remove}
 				removeError={removeErrorId === item.id ? removeError : null}
