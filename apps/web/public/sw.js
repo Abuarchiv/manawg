@@ -139,7 +139,7 @@ self.addEventListener('notificationclick', (event) => {
 	event.notification.close();
 	const url = event.notification.data?.url || '/';
 	event.waitUntil(
-		clients.matchAll({ type: 'window' }).then((wins) => {
+		clients.matchAll({ type: 'window' }).then(async (wins) => {
 			let targetUrl = null;
 			try {
 				targetUrl = new URL(url, self.location.origin);
@@ -148,28 +148,50 @@ self.addEventListener('notificationclick', (event) => {
 			}
 			const isSameOriginTarget = targetUrl?.origin === self.location.origin;
 			for (const w of wins) {
-				const windowUrl = new URL(w.url);
+				let windowUrl;
+				try {
+					windowUrl = new URL(w.url);
+				} catch {
+					continue;
+				}
 				if (
-					windowUrl.origin === self.location.origin &&
 					isSameOriginTarget &&
+					windowUrl.origin === self.location.origin &&
 					w.url === targetUrl.href &&
-					'focus' in w
+					typeof w.focus === 'function'
 				) {
-					return w.focus();
+					try {
+						return await w.focus();
+					} catch {
+						// The tab may close before it can be focused.
+					}
 				}
 			}
 			for (const w of wins) {
-				const windowUrl = new URL(w.url);
+				let windowUrl;
+				try {
+					windowUrl = new URL(w.url);
+				} catch {
+					continue;
+				}
 				if (
-					windowUrl.origin === self.location.origin &&
 					isSameOriginTarget &&
+					windowUrl.origin === self.location.origin &&
 					windowUrl.pathname === targetUrl.pathname &&
-					'focus' in w
+					w.url !== targetUrl.href &&
+					typeof w.navigate === 'function'
 				) {
-					return w.focus();
+					try {
+						const navigated = await w.navigate(targetUrl.href);
+						if (navigated && typeof navigated.focus === 'function') {
+							return await navigated.focus();
+						}
+					} catch {
+						// Fall back to a new window if navigation fails or the tab closes.
+					}
 				}
 			}
-			return clients.openWindow(isSameOriginTarget ? url : '/');
+			return clients.openWindow(isSameOriginTarget ? targetUrl.href : '/');
 		}),
 	);
 });
