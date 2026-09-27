@@ -388,7 +388,11 @@ export default function ErinnerungenPage() {
 				{loading ? (
 					<Skeleton className="h-20 w-full" />
 				) : remindersLoadFailed && reminders.length === 0 ? null : (
-					<ReminderHistory items={reminders} memberName={memberName} />
+					<ReminderHistory
+						items={reminders}
+						memberName={memberName}
+						currentMemberId={identity.memberId}
+					/>
 				)}
 			</section>
 			{primaryReminder && <ThumbAction>{reminderButton(primaryReminder, true)}</ThumbAction>}

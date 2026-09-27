@@ -73,6 +73,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 }: ExpenseRowProps) {
 	const isPayer = expense.paidByMemberId === currentMemberId;
 	const impact = getExpenseImpact(expense, currentMemberId);
+	const who = (id: string) => (id === currentMemberId ? 'Du' : memberName(id));
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const [settleCandidate, setSettleCandidate] = useState<ExpenseSplit | null>(null);
 	return (
@@ -198,7 +199,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 									<Item key={split.id} variant="muted" size="xs">
 										<ItemContent className="min-w-0">
 											<ItemTitle className="line-clamp-none break-words">
-												{memberName(split.debtorMemberId)} ·{' '}
+												{who(split.debtorMemberId)} ·{' '}
 												<span className="font-mono tabular-nums">
 													{formatEuroCents(split.amountCents, expense.currency)}
 												</span>
@@ -210,7 +211,9 @@ export const ExpenseRow = memo(function ExpenseRow({
 														? 'Kein Anteil'
 														: settled
 															? 'Als beglichen vermerkt'
-															: `Offen an ${memberName(expense.paidByMemberId)}`}
+															: expense.paidByMemberId === currentMemberId
+																? 'Offen an dich'
+																: `Offen an ${memberName(expense.paidByMemberId)}`}
 											</ItemDescription>
 										</ItemContent>
 										{!ownShare && split.amountCents > 0 && (

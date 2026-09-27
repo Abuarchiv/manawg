@@ -1219,6 +1219,7 @@ export default function PutzenPage() {
 					fairness={fairness}
 					monthCompletions={monthCompletions}
 					members={members.map((member) => ({ id: member.id, name: member.name }))}
+					currentMemberId={identity.memberId}
 				/>
 			)}
 			{!showSkeleton && (items.length > 0 || absences.length > 0 || absencesPanelActive) && (

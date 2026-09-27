@@ -7,6 +7,7 @@ import {
 } from '@/components/animate-ui/primitives/base/collapsible';
 import { Button } from '@/components/ui/button';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
+import { useWg } from '@/components/wg/WgContextProvider';
 import type { Abo, MemberOption } from '@/components/wg/abos-types';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
@@ -34,6 +35,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 		{ nextDueAt: abo.nextDueAt, intervalMonths: abo.intervalMonths },
 		3,
 	);
+	const { identity } = useWg();
 	const payerName = payer?.name ?? 'unbekannt';
 	return (
 		<li className={isPaused ? 'text-muted-foreground' : undefined}>
@@ -69,7 +71,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 							)}
 							{` · ${formatIntervalLabel(abo.intervalMonths)} · `}
 							<span className="sr-only">bezahlt von </span>
-							{payerName}
+							{abo.paidByMemberId === identity.memberId ? 'du' : payerName}
 						</span>
 					</span>
 					<ChevronDown
@@ -82,7 +84,10 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 						<ul className="flex flex-col gap-2">
 							{abo.splits.map((split) => {
 								const name =
-									members.find((member) => member.id === split.debtorMemberId)?.name ?? 'unbekannt';
+									split.debtorMemberId === identity.memberId
+										? 'Du'
+										: (members.find((member) => member.id === split.debtorMemberId)?.name ??
+											'unbekannt');
 								return (
 									<li
 										key={split.debtorMemberId}
