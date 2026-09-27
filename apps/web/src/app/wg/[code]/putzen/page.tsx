@@ -15,6 +15,7 @@ import { ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
+import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
@@ -76,7 +77,7 @@ import type {
 	RecurrenceType,
 } from '@/features/chores/components/chore-types';
 import { QUICK_CHORE_TEMPLATES, TITLE_MAX } from '@/features/chores/components/constants';
-import { Sparkles } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1071,9 +1072,6 @@ export default function PutzenPage() {
 				itemCount={items.length}
 				loading={showSkeleton}
 				health={!showSkeleton && items.length > 0 ? health : null}
-				refreshing={refreshing}
-				showForm={showForm}
-				onToggleForm={() => setShowForm((open) => !open)}
 			/>
 			<ChoreForm
 				open={showForm}
@@ -1247,6 +1245,12 @@ export default function PutzenPage() {
 					isPending={isPending}
 				/>
 			)}
+			<ThumbAction>
+				<Button type="button" className="min-h-11 w-full" onClick={() => setShowForm(true)}>
+					<Plus data-icon="inline-start" aria-hidden />
+					Putzaufgabe erfassen
+				</Button>
+			</ThumbAction>
 		</div>
 	);
 }

@@ -22,8 +22,9 @@ export function AusgabenHeader({
 	onToggleForm,
 }: AusgabenHeaderProps): React.ReactElement {
 	return (
-		<header className="flex flex-wrap items-center justify-between gap-2">
-			<div className="min-w-0">
+		// Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader.
+		<header className="flex flex-wrap items-center justify-end gap-2">
+			<div className="sr-only">
 				<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight text-foreground">
 					Ausgaben
 				</h1>

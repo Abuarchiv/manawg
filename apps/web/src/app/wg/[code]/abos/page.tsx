@@ -412,7 +412,8 @@ export default function AbosPage() {
 	return (
 		<div data-finance-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
 			<SubNav liveCount={!loading && !loadError ? dueCount : undefined} />
-			<header className="flex min-w-0 flex-wrap items-center gap-3">
+			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
+			<header className="sr-only">
 				<div className="min-w-0 flex-1">
 					<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight break-words [overflow-wrap:anywhere]">
 						Fixkosten

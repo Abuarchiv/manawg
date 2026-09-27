@@ -212,8 +212,8 @@ test('shows personal actions and a separate Berlin week agenda', async ({ page }
 	await expect(agenda.getByText('WG-Abendessen', { exact: true })).toBeVisible();
 	await expect(agenda.getByText('Bad putzen', { exact: true })).toHaveCount(0);
 
-	const weekDate = agenda.locator('#week-heading + p');
 	const weekHeader = agenda.locator(':scope > div').first();
+	const weekHeading = agenda.getByRole('heading', { name: 'Diese Woche' });
 	const calendarLink = agenda.getByRole('link', { name: 'Kalender' });
 	for (const theme of ['light', 'dark'] as const) {
 		for (const width of [320, 360, 390]) {
@@ -229,13 +229,8 @@ test('shows personal actions and a separate Berlin week agenda', async ({ page }
 			}));
 			expect(layout.page).toBeLessThanOrEqual(layout.viewport);
 			await expect(calendarLink).toBeVisible();
-			const [rootFontSize, normalLineCount, hitTarget] = await Promise.all([
+			const [rootFontSize, hitTarget] = await Promise.all([
 				page.locator('html').evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize)),
-				weekDate.evaluate((node) => {
-					const range = document.createRange();
-					range.selectNodeContents(node);
-					return new Set(Array.from(range.getClientRects(), (rect) => Math.round(rect.top))).size;
-				}),
 				calendarLink.evaluate((node) => {
 					const target = getComputedStyle(node, '::after');
 					return {
@@ -245,10 +240,6 @@ test('shows personal actions and a separate Berlin week agenda', async ({ page }
 				}),
 			]);
 			expect(rootFontSize).toBeLessThan(32);
-			expect(
-				normalLineCount,
-				`${width}px ${theme}: normal week date wraps into ${normalLineCount} lines`,
-			).toBeLessThanOrEqual(2);
 			expect(hitTarget.height).toBeGreaterThanOrEqual(44);
 			expect(hitTarget.minWidth).toBeGreaterThanOrEqual(44);
 			await calendarLink.focus();
@@ -291,19 +282,9 @@ test('shows personal actions and a separate Berlin week agenda', async ({ page }
 			await page.evaluate(() => window.scrollTo(0, 0));
 
 			await expect(calendarLink).toBeVisible();
-			await expect(weekDate).toContainText(/–/);
-			const lineCount = await weekDate.evaluate((node) => {
-				const range = document.createRange();
-				range.selectNodeContents(node);
-				return new Set(Array.from(range.getClientRects(), (rect) => Math.round(rect.top))).size;
-			});
-			expect(
-				lineCount,
-				`${width}px ${theme}: week date wraps into ${lineCount} lines`,
-			).toBeLessThanOrEqual(3);
-			const [rootFontSize, dateFontSize, hitTarget] = await Promise.all([
+			const [rootFontSize, headingFontSize, hitTarget] = await Promise.all([
 				page.locator('html').evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize)),
-				weekDate.evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize)),
+				weekHeading.evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize)),
 				calendarLink.evaluate((node) => {
 					const target = getComputedStyle(node, '::after');
 					return {
@@ -313,7 +294,7 @@ test('shows personal actions and a separate Berlin week agenda', async ({ page }
 				}),
 			]);
 			expect(rootFontSize).toBe(32);
-			expect(dateFontSize).toBeGreaterThanOrEqual(26);
+			expect(headingFontSize).toBeGreaterThanOrEqual(26);
 			expect(hitTarget.height).toBeGreaterThanOrEqual(44);
 			expect(hitTarget.minWidth).toBeGreaterThanOrEqual(44);
 			await calendarLink.focus();

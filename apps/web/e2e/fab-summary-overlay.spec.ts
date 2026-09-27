@@ -199,6 +199,7 @@ test('compact plus actions keep their names and skip nested and text-only action
 		['kalender', 'Termin hinzufügen'],
 		['vorraete', 'Vorrat hinzufügen'],
 		['pinnwand', 'Beitrag erstellen'],
+		['putzen', 'Putzaufgabe erfassen'],
 	] as const) {
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/${feature}`);
 		await useLargeText(page);

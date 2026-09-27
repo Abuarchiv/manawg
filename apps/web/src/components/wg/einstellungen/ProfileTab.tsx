@@ -213,13 +213,12 @@ export function ProfileTab({
 						<Alert variant="destructive" className="mt-3">
 							<AlertTitle>Laden fehlgeschlagen</AlertTitle>
 							<AlertDescription>
-								{paypalLoadError}
+								<p>{paypalLoadError}</p>
 								<Button
 									type="button"
 									variant="outline"
 									onClick={retryPayPalLoad}
 									disabled={loadingPayPal}
-									className="mt-2"
 								>
 									Erneut versuchen
 								</Button>
