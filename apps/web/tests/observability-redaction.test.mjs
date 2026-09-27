@@ -397,6 +397,7 @@ test('idempotency cache failures never log a push endpoint or provider error', a
 			},
 			'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]+$/i },
 			'@/core/infra/observability': loaded.exports,
+			'@/core/offline/replay-retention': loadCoreModule('../offline/replay-retention.ts', {}),
 			'@/core/rate-limit': { createConfiguredRedis: () => null },
 		});
 		await setCachedResponse(`push_subscribe:https://push.example/${secret}`, secret, {

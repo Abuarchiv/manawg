@@ -1,6 +1,7 @@
 import { db, idempotencyResponses } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { logApiError } from '@/core/infra/observability';
+import { RESPONSE_REPLAY_TTL_SECONDS } from '@/core/offline/replay-retention';
 import { createConfiguredRedis } from '@/core/rate-limit';
 import { and, eq, gt, lte, sql } from 'drizzle-orm';
 
@@ -13,7 +14,7 @@ const redis = createConfiguredRedis();
 // Queued offline writes can be retried days after a lost response, so the
 // durable response cache must outlive the retry window. Redis still only
 // deduplicates best-effort audit events briefly.
-export const RESPONSE_REPLAY_TTL_SECONDS = 7 * 24 * 60 * 60;
+export { RESPONSE_REPLAY_TTL_SECONDS };
 // A claim is only a lease. If the worker dies after inserting the placeholder,
 // another retry must be able to reclaim it instead of being blocked for the
 // entire offline replay window.

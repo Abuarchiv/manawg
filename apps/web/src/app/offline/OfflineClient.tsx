@@ -117,7 +117,7 @@ function visibleQueueCodes(actions: OfflineAction[]): Set<string> {
 }
 
 export function OfflineClient() {
-	const [online, setOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine);
+	const [online, setOnline] = useState(true);
 	const [knownWgs, setKnownWgs] = useState<KnownWg[]>([]);
 	const [queue, setQueue] = useState<OfflineAction[]>([]);
 	const [syncing, setSyncing] = useState(false);

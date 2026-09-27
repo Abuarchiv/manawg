@@ -32,6 +32,10 @@ function loadTs(relativePath, mocks, globals = {}) {
 }
 
 const VALID_KEY = '00000000-0000-4000-8000-000000000001';
+const { OFFLINE_REPLAY_MAX_AGE_MS, RESPONSE_REPLAY_TTL_SECONDS } = loadTs(
+	'src/core/offline/replay-retention.ts',
+	{},
+);
 
 function createAction(overrides = {}) {
 	return {
@@ -41,7 +45,7 @@ function createAction(overrides = {}) {
 		wgId: 'wg-1',
 		shareCode: 'TEST1234',
 		memberId: 'member-a',
-		createdAt: '2026-09-27T10:00:00.000Z',
+		createdAt: new Date().toISOString(),
 		payload: { content: 'original', kind: 'info', imageUrl: null },
 		...overrides,
 	};
@@ -68,6 +72,7 @@ function makeQueueModule({
 	identity = () => ({ memberId: 'member-a' }),
 	images = {},
 	storage = makeStorage(),
+	clock = Date,
 } = {}) {
 	class FakeCustomEvent {
 		constructor(type, init = {}) {
@@ -104,8 +109,9 @@ function makeQueueModule({
 				...images,
 			},
 			'./offline-queue': queue,
+			'./replay-retention': loadTs('src/core/offline/replay-retention.ts', {}),
 		},
-		{ window, CustomEvent: FakeCustomEvent, Date, Math, AbortSignal, process },
+		{ window, CustomEvent: FakeCustomEvent, Date: clock, Math, AbortSignal, process },
 	);
 	return { module, storage, window };
 }
@@ -117,6 +123,124 @@ function deferred() {
 	});
 	return { promise, resolve };
 }
+
+test('expired replay windows fence automatic and forced sync before upload or mutation', async () => {
+	const now = Date.parse('2026-10-10T12:00:00Z');
+	class Clock extends Date {
+		static now() {
+			return now;
+		}
+	}
+	for (const force of [false, true]) {
+		for (const attempts of [undefined, 3]) {
+			let requests = 0;
+			let uploads = 0;
+			const storage = makeStorage();
+			const { module } = makeQueueModule({
+				clock: Clock,
+				storage,
+				apiFetch: async () => {
+					requests += 1;
+					return { ok: true, data: {} };
+				},
+				images: {
+					uploadPendingImageToken: async () => {
+						uploads += 1;
+						return 'https://app.invalid/image';
+					},
+				},
+			});
+			const action = createAction({
+				type: 'expense.create',
+				createdAt: new Date(now - 8 * 24 * 60 * 60 * 1000).toISOString(),
+				...(attempts === undefined
+					? {}
+					: { attempts, lastAttemptAt: new Date(now - 1000).toISOString() }),
+				payload: {
+					description: 'Old expense',
+					amountCents: 100,
+					paidByMemberId: 'member-a',
+					splits: [{ debtorMemberId: 'member-b', amountCents: 100 }],
+					imageUrl: 'manawg-pending-image:receipt',
+				},
+			});
+			// Direct storage models a crash before attempts/lastAttemptAt could be persisted.
+			storage.setItem('manawg:offline-actions', JSON.stringify([action]));
+			assert.equal(await module.syncOfflineActions('TEST1234', { memberId: 'member-a', force }), 0);
+			assert.equal(requests, 0);
+			assert.equal(uploads, 0);
+			const retained = module.readOfflineQueue()[0];
+			assert.equal(retained.idempotencyKey, action.idempotencyKey);
+			assert.equal(JSON.stringify(retained.payload), JSON.stringify(action.payload));
+			assert.match(retained.lastError, /^Server prüfen:/);
+			assert.match(retained.lastError, /Wiederholungsfrist ist abgelaufen/);
+			assert.equal(module.needsManualOfflineResolution(retained), true);
+		}
+	}
+});
+
+test('replay fence includes the retention boundary and invalid clocks but tolerates small future skew', async () => {
+	const now = Date.parse('2026-10-10T12:00:00Z');
+	class Clock extends Date {
+		static now() {
+			return now;
+		}
+	}
+	for (const [createdAt, expectedRequests] of [
+		[new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString(), 0],
+		[new Date(now - RESPONSE_REPLAY_TTL_SECONDS * 1000 + 1).toISOString(), 0],
+		[new Date(now - OFFLINE_REPLAY_MAX_AGE_MS).toISOString(), 0],
+		[new Date(now - OFFLINE_REPLAY_MAX_AGE_MS + 1).toISOString(), 1],
+		['invalid', 0],
+		[new Date(now + 24 * 60 * 60 * 1000).toISOString(), 0],
+		[new Date(now + 60 * 1000).toISOString(), 1],
+	]) {
+		let requests = 0;
+		const { module } = makeQueueModule({
+			clock: Clock,
+			apiFetch: async () => {
+				requests += 1;
+				return { ok: true, data: {} };
+			},
+		});
+		module.writeOfflineQueue([createAction({ createdAt })]);
+		await module.syncOfflineActions('TEST1234', { memberId: 'member-a', force: true });
+		assert.equal(requests, expectedRequests, createdAt);
+	}
+});
+
+test('replay window is rechecked after an upload crosses the deadline', async () => {
+	let now = Date.parse('2026-10-10T12:00:00Z');
+	class Clock extends Date {
+		static now() {
+			return now;
+		}
+	}
+	let requests = 0;
+	const { module } = makeQueueModule({
+		clock: Clock,
+		apiFetch: async () => {
+			requests += 1;
+			return { ok: true, data: {} };
+		},
+		images: {
+			uploadPendingImageToken: async () => {
+				now += 2;
+				return 'https://app.invalid/image';
+			},
+		},
+	});
+	module.writeOfflineQueue([
+		createAction({
+			createdAt: new Date(now - OFFLINE_REPLAY_MAX_AGE_MS + 1).toISOString(),
+			payload: { content: 'receipt', kind: 'info', imageUrl: 'manawg-pending-image:receipt' },
+		}),
+	]);
+	await module.syncOfflineActions('TEST1234', { memberId: 'member-a', force: true });
+	assert.equal(requests, 0);
+	assert.equal(module.readOfflineQueue().length, 1);
+	assert.match(module.readOfflineQueue()[0].lastError, /^Server prüfen:/);
+});
 
 test('sync does not resurrect an action deleted while its request waits', async () => {
 	const entered = deferred();
@@ -393,6 +517,7 @@ test('resolved upload URL is persisted to the queue before its IndexedDB blob is
 			},
 			'@/shared/lib/identity': { getIdentity: () => ({ memberId: 'member-a' }) },
 			'./offline-images': images,
+			'./replay-retention': loadTs('src/core/offline/replay-retention.ts', {}),
 			'./offline-queue': {
 				isOfflineIdempotencyKey: (value) => value === VALID_KEY,
 				createOfflineIdempotencyKey: () => VALID_KEY,

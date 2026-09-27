@@ -13,13 +13,18 @@ import {
 	serializeOfflineAction,
 	shouldRetryOfflineAction,
 } from './offline-queue';
+import {
+	OFFLINE_REPLAY_CLOCK_SKEW_MS,
+	OFFLINE_REPLAY_MAX_AGE_MS,
+	RESPONSE_REPLAY_TTL_SECONDS,
+} from './replay-retention';
 
 export const OFFLINE_QUEUE_KEY = 'manawg:offline-actions';
 export const SYNCED_IDS_KEY = 'manawg:offline-synced-ids';
 /** No expiry: replaying an edited action under its original key can drop the edit. */
 const OFFLINE_REVIEW_IDS_KEY = 'manawg:offline-review-ids';
 /** How long a "synced but queue-write failed" marker survives reloads. */
-const SYNCED_IDS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const SYNCED_IDS_TTL_MS = RESPONSE_REPLAY_TTL_SECONDS * 1000;
 const syncedAfterFailedQueueSave = new Set<string>();
 const reviewAfterFailedQueueSave = new Set<string>();
 // ponytail: this fallback lasts for the current page only; use IndexedDB if reload-time recovery is required.
@@ -44,6 +49,10 @@ const REAUTH_REQUIRED_ERROR =
 	'Erneute Anmeldung erforderlich: Öffne die WG erneut oder tritt mit einem aktuellen Einladungslink bei.';
 const REVIEW_REQUIRED_ERROR =
 	'Server prüfen: Die erste Version kann bereits gespeichert sein. Die Bearbeitung wurde nicht gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege benötigte Änderungen neu an.';
+const REPLAY_EXPIRED_ERROR =
+	'Server prüfen: Die sichere Wiederholungsfrist ist abgelaufen. Diese Aktion kann bereits gespeichert sein und wird nicht erneut gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege nur fehlende Änderungen neu an.';
+const INVALID_ACTION_TIME_ERROR =
+	'Server prüfen: Der Zeitpunkt dieser Aktion ist unklar. Sie kann bereits gespeichert sein und wird nicht erneut gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege nur fehlende Änderungen neu an.';
 const IDEMPOTENCY_KEY_ERROR =
 	'Idempotenz-Schlüssel konnte nicht erzeugt werden. Die Aktion bleibt gespeichert und wird nicht gesendet.';
 const syncInFlight = new Map<string, Promise<number>>();
@@ -284,15 +293,28 @@ function clearReviewIdsForMissingActions(actions: OfflineAction[]): void {
 	}
 }
 
+function replayWindowReviewError(action: OfflineAction): string | null {
+	const createdAt = Date.parse(action.createdAt);
+	const now = Date.now();
+	if (!Number.isFinite(createdAt) || createdAt > now + OFFLINE_REPLAY_CLOCK_SKEW_MS) {
+		return INVALID_ACTION_TIME_ERROR;
+	}
+	// Creation is conservative: a crashed first attempt may never have saved attempt metadata.
+	return now - createdAt >= OFFLINE_REPLAY_MAX_AGE_MS ? REPLAY_EXPIRED_ERROR : null;
+}
+
 function filterOfflineQueue(actions: OfflineAction[]): OfflineAction[] {
 	const persistedSynced = new Set(readPersistedSyncedIds());
 	const reviewIds = new Set([...reviewAfterFailedQueueSave, ...readPersistedReviewIds()]);
 	return actions
 		.filter((action) => !syncedAfterFailedQueueSave.has(action.id))
 		.filter((action) => !persistedSynced.has(action.id))
-		.map((action) =>
-			reviewIds.has(action.id) ? { ...action, lastError: REVIEW_REQUIRED_ERROR } : action,
-		);
+		.map((action) => {
+			const lastError =
+				replayWindowReviewError(action) ??
+				(reviewIds.has(action.id) ? REVIEW_REQUIRED_ERROR : null);
+			return lastError ? { ...action, lastError } : action;
+		});
 }
 
 function readCachedOfflineQueue(): OfflineAction[] {
@@ -483,6 +505,7 @@ function isChoreAlreadyCompleted(
 }
 
 export function needsManualOfflineResolution(action: OfflineAction): boolean {
+	if (replayWindowReviewError(action)) return true;
 	if (action.lastError?.startsWith('Server prüfen:')) return true;
 	return (
 		typeof action.payload.imageUrl === 'string' &&
@@ -526,7 +549,9 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 	if (options?.signal?.aborted) return 0;
 	const storedQueue = readOfflineQueue();
 	if (storedQueue.length === 0) return 0;
-	const queue = storedQueue.map(backfillIdempotencyKey);
+	const queue = storedQueue.map((action) =>
+		needsManualOfflineResolution(action) ? action : backfillIdempotencyKey(action),
+	);
 	// Probe storage writability BEFORE spending network calls — if we cannot
 	// persist removals, replaying would duplicate mutations. This rewrite of
 	// the just-read snapshot races with concurrent enqueues only for the few
@@ -613,6 +638,7 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 				);
 			}
 			if (options?.signal?.aborted) break;
+			if (needsManualOfflineResolution(readyAction)) continue;
 			if (
 				!readOfflineQueue().some(
 					(current) =>

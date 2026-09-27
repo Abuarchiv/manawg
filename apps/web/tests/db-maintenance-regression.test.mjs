@@ -123,6 +123,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 			},
 			'@/core/guards/api-auth': {},
 			'@/core/infra/observability': loadObservability(env, logs),
+			'@/core/offline/replay-retention': load('core/offline/replay-retention.ts', {}, env),
 			'@/core/rate-limit': { createConfiguredRedis: () => null },
 			'drizzle-orm': { lte: () => {} },
 		},
