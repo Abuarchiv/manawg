@@ -29,7 +29,7 @@ interface CalendarUpcomingListProps {
 }
 
 const ROW_CLASS =
-	'flex min-h-12 w-full min-w-0 items-center gap-2 py-2 pr-3 pl-1 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 active:bg-muted';
+	'flex min-h-11 w-full min-w-0 items-center gap-2 py-1.5 pr-3 pl-1 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 active:bg-muted';
 
 const DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 	weekday: 'long',
@@ -114,7 +114,7 @@ export function CalendarUpcomingList({
 					<li key={key} className="grid grid-cols-[3.25rem_minmax(0,1fr)]">
 						<h3
 							className={cn(
-								'flex flex-col items-center pt-2.5 leading-tight',
+								'flex flex-col items-center pt-2 leading-tight',
 								isToday ? 'text-foreground' : 'text-muted-foreground',
 							)}
 						>
@@ -124,7 +124,7 @@ export function CalendarUpcomingList({
 							</span>
 							<span
 								aria-hidden
-								className={cn('text-lg font-semibold tabular-nums', isToday && 'text-foreground')}
+								className={cn('text-base font-semibold tabular-nums', isToday && 'text-foreground')}
 							>
 								{day.date.getDate()}
 							</span>
