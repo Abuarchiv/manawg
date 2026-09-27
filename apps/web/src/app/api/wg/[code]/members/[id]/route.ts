@@ -1,14 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgMembers } from '@/core/db';
 import { hasCapturingMemberPayment, lockActiveAccountMember } from '@/core/db/account-deletion';
-import {
-	apiError,
-	badRequest,
-	conflict,
-	forbidden,
-	notFound,
-	tooMany,
-} from '@/core/errors';
+import { apiError, badRequest, conflict, forbidden, notFound, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';

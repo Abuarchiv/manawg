@@ -33,3 +33,19 @@
 - Production and Preview environment NAME listings confirmed no PayPal configuration. Real PayPal login/payment and deployment remain unverified; see docs/paypal-setup.md for exact provider prerequisites.
 
 This implementation is local and isolated. No real payment, provider permission grant, production data change or deployment was performed.
+
+
+## Current-main integration verification — 2026-09-27
+
+- Rebased only the PayPal feature onto origin/main 75f387ed; preserved main's capturing-payment deactivation guard, expense-payment locks, profile Help/LinkRow and complete test inventory.
+- Installed the committed dependency lockfile in this worktree; primary checkout and its dependencies were not changed.
+- The default fixture lane now supplies public dummy PayPal client/BN values, so the capture regression runs without provider credentials.
+- Updated both pre-existing PayPal settings tests to retain load-error/accessibility/keyboard retry and 320/360px light/dark coverage for the new connection UI.
+- Fixed two existing-main observability test loaders after the Sentry import change; real wrapper/privacy behavior and assertions remain tested.
+- Reused the existing optional Sentry client split (616602b9) to repair the required bundle gate on current main. Added runtime entrypoint checks for disabled, enabled/deferred and failed optional load.
+- Final Node 22.23.2 unit suite: 186 passed, zero failed/skipped.
+- Standard fixture lane, all four PayPal specs: 13 passed, zero skipped, including optimized build. Real phone/provider testing is deferred by the user.
+- Full root lint (612 files), typecheck, feature boundaries and analytics privacy check: passed.
+- Builds with Sentry unconfigured and a synthetic configured DSN passed. Shared initial gzip JS: 101.4 kB / 102.2 kB, both below 120 kB; both bundle checks passed.
+- Independent integration/test reviews found no remaining issues; generated next-env.d.ts restored. Graph AST update: 5,088 nodes / 13,860 edges.
+- Hosted CI, deployment and real provider payment are separate from these local results. No production changes or actual funds movement performed.

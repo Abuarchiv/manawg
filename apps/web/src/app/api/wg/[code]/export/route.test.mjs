@@ -20,6 +20,13 @@ function loadTs(file, overrides = {}) {
 	return module.exports;
 }
 
+function loadObservability() {
+	return loadTs('src/core/infra/observability.ts', {
+		'./sentry': { captureSentryException() {}, logSentryApiError() {} },
+		'./sentry-privacy': loadTs('src/core/infra/sentry-privacy.ts'),
+	});
+}
+
 function exportRoute(failedTable) {
 	const tables = Object.fromEntries(
 		[
@@ -73,7 +80,7 @@ function exportRoute(failedTable) {
 			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
 			resolveE2EFixture: async () => ({ mode: 'real' }),
 		},
-		'@/core/infra/observability': loadTs('src/core/infra/observability.ts'),
+		'@/core/infra/observability': loadObservability(),
 		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }) },
 		'@/core/reads/export': loadTs('src/core/reads/export.ts'),
 		'drizzle-orm': { asc: () => null, desc: () => null, eq: () => null, inArray: () => null },
