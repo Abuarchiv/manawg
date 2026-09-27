@@ -181,6 +181,19 @@ for (const scheme of ['light', 'dark'] as const) {
 		const unchecked = page.getByRole('switch', { name: 'Ausgaben', exact: true });
 		await expect(checked).toBeChecked();
 		await expect(unchecked).not.toBeChecked();
+		await expect(checked).toBeEnabled();
+		await expect(unchecked).toBeEnabled();
+		await Promise.all(
+			[checked, unchecked].map((control) =>
+				control.evaluate(async (element) => {
+					await Promise.all(
+						element
+							.getAnimations({ subtree: true })
+							.map((animation) => animation.finished.catch(() => undefined)),
+					);
+				}),
+			),
+		);
 
 		for (const [label, expectChecked] of [
 			['Putzplan', true],
