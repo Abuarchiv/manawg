@@ -33,6 +33,9 @@ export function expenseSaveErrorMessage(error: string): string {
 	if (error === 'image_invalid') {
 		return 'Ausgabe konnte nicht gespeichert werden: Der Anhang ist ungültig.';
 	}
+	if (error === 'image_removed') {
+		return 'Ausgabe konnte nicht gespeichert werden: Der Anhang wurde entfernt. Lade ihn erneut hoch.';
+	}
 	if (error === 'expected_updated_at_invalid') {
 		return 'Ausgabe konnte nicht gespeichert werden: Lade die Liste neu und versuche es erneut.';
 	}
@@ -105,6 +108,9 @@ export function expenseActionErrorMessage(error: string): string {
 	}
 	if (error === 'id_invalid') {
 		return 'Diese Ausgabenaktion konnte nicht eindeutig zugeordnet werden.';
+	}
+	if (error === 'image_removed') {
+		return 'Der Anhang wurde entfernt. Lade ihn erneut hoch, bevor du die Ausgabe speicherst.';
 	}
 	if (error === 'settled_invalid') {
 		return 'Diese Zahlung konnte nicht markiert werden: Lade die Ausgaben neu und versuche es erneut.';

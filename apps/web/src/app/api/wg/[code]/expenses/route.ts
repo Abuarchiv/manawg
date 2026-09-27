@@ -1,4 +1,5 @@
 import { db, expenseSplits, expenses, idempotencyResponses, recurringExpenses } from '@/core/db';
+import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
 import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
 import { apiError, badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
 import {
@@ -175,6 +176,7 @@ async function finalizeExpenseCreateClaim(
 
 function expenseCreateAbortResponse(error: unknown): NextResponse | null {
 	if (!(error instanceof TransactionAbort)) return null;
+	if (error.code === 'image_removed') return conflict('image_removed', 'image_removed');
 	if (error.code === 'paypal_payment_pending') return conflict('paypal_payment_pending');
 	if (error.code === 'recurring_expense_not_found') return notFound('recurring_expense_not_found');
 	if (error.code === 'abo_paused') return badRequest('abo_paused');
@@ -378,6 +380,7 @@ export async function POST(
 			  };
 		try {
 			written = await withExpensePaymentLock(wg.id, async (tx) => {
+				await assertPrivateImageCanBeAttached(tx, wg.id, safeImageUrl);
 				if (idemScope && idemKey) {
 					const replay = await lockExpenseCreateClaim(tx, idemScope, idemKey);
 					if (replay) return { replayed: true as const, body: replay };

@@ -405,16 +405,13 @@ function replaceQueuedSnapshot(snapshot: OfflineAction, replacement: OfflineActi
 
 function mergeSyncOutcomes(
 	current: OfflineAction[],
-	outcomes: Map<
-		string,
-		{ snapshot: OfflineAction; retry?: OfflineAction; requestStarted?: boolean }
-	>,
+	outcomes: Map<string, { snapshot: OfflineAction; retry?: OfflineAction; reviewOnEdit?: boolean }>,
 	reviewIds: Set<string>,
 ): OfflineAction[] {
 	return current.flatMap((action) => {
 		const outcome = outcomes.get(action.id);
 		if (!outcome || !sameOfflineAction(action, outcome.snapshot)) {
-			if (outcome?.requestStarted && needsReviewAfterRequest(action, outcome.snapshot)) {
+			if (outcome?.reviewOnEdit && needsReviewAfterRequest(action, outcome.snapshot)) {
 				reviewIds.add(action.id);
 			}
 			return [action];
@@ -501,7 +498,7 @@ function explainPendingImageUploadError(err: unknown): string | null {
 	const match = /^(?:sign|upload)-failed:(\d+)(?::(.+))?$/.exec(err.message);
 	if (!match) return null;
 	if (match[2] === 'image_removed') {
-		return 'Bild wurde entfernt: Die gespeicherte Bilddatei ist nicht mehr verfügbar. Entferne diese Aktion und erstelle sie erneut.';
+		return 'Bild wurde entfernt: Entferne den Anhang in der Offline-Warteschlange oder wähle das Bild erneut aus.';
 	}
 	const status = Number(match[1]);
 	const failure = explainOfflineActionFailure(status, match[2]);
@@ -538,7 +535,7 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 	if (!writeOfflineQueue(queue)) return 0;
 	const outcomes = new Map<
 		string,
-		{ snapshot: OfflineAction; retry?: OfflineAction; requestStarted?: boolean }
+		{ snapshot: OfflineAction; retry?: OfflineAction; reviewOnEdit?: boolean }
 	>();
 	const additions: OfflineAction[] = [];
 	const recurringRetrySourceIds = new Set<string>();
@@ -639,7 +636,7 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 			}
 			if (res.ok) {
 				recordSynced(readyAction);
-				outcomes.set(action.id, { snapshot: requestSnapshot, requestStarted: true });
+				outcomes.set(action.id, { snapshot: requestSnapshot, reviewOnEdit: true });
 				const recurringAdvance = getRecurringAdvancePayload(readyAction);
 				if (recurringAdvance) {
 					if (options?.signal?.aborted) {
@@ -669,12 +666,12 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 				isChoreAlreadyCompleted(readyAction, res)
 			) {
 				recordSynced(readyAction);
-				outcomes.set(action.id, { snapshot: requestSnapshot, requestStarted: true });
+				outcomes.set(action.id, { snapshot: requestSnapshot, reviewOnEdit: true });
 			} else {
 				const failure = explainOfflineActionFailure(res.status, res.error);
 				outcomes.set(action.id, {
 					snapshot: requestSnapshot,
-					requestStarted: true,
+					reviewOnEdit: res.status === 0 || res.status >= 500,
 					retry: {
 						...readyAction,
 						attempts: (readyAction.attempts ?? 0) + 1,

@@ -19,11 +19,20 @@ function harness() {
 		warning: null,
 		warningUpdateSucceeds: true,
 		legacy: null,
+		rejectImageAttachment: false,
+		replayWgId: null,
 	};
+	class TransactionAbort extends Error {
+		constructor(code) {
+			super(code);
+			this.code = code;
+		}
+	}
 	const cache = new Map();
 	let prior = Promise.resolve();
 	const announcements = { id: 'id' };
-	const withAnnouncementReplay = async (req, scope, mutate, legacyResponse) => {
+	const withAnnouncementReplay = async (req, scope, mutate, legacyResponse, wgIdForLock) => {
+		state.replayWgId = wgIdForLock ?? null;
 		const replayKey = req.headers.get('idempotency-key');
 		const cacheKey = `${scope}:${replayKey}`;
 		const waitFor = prior;
@@ -71,7 +80,17 @@ function harness() {
 			db: {},
 			wgMembers: {},
 		},
-		'@/core/errors': { badRequest: (error) => Response.json({ error }, { status: 400 }) },
+		'@/core/db/private-image-deletions': {
+			assertPrivateImageCanBeAttached: async () => {
+				if (state.rejectImageAttachment) throw new TransactionAbort('image_removed');
+			},
+		},
+		'@/core/db/transaction': { TransactionAbort },
+		'@/core/errors': {
+			badRequest: (error) => Response.json({ error }, { status: 400 }),
+			conflict: (error, code) =>
+				Response.json({ error, ...(code ? { code } : {}) }, { status: 409 }),
+		},
 		'@/core/guards/require-wg-member': {
 			requireWgMember: async () => ({
 				ok: true,
@@ -119,7 +138,7 @@ function harness() {
 	);
 	return {
 		state,
-		post: () =>
+		post: (imageUrl = null) =>
 			module.exports.POST(
 				new Request('https://example.invalid', {
 					method: 'POST',
@@ -127,7 +146,7 @@ function harness() {
 					body: JSON.stringify({
 						content: 'Hello',
 						kind: 'info',
-						imageUrl: null,
+						imageUrl,
 						source: 'system',
 					}),
 				}),
@@ -145,6 +164,7 @@ test('concurrent create retry returns one announcement and runs push once', asyn
 	assert.equal(state.created[0].source, 'manual');
 	assert.equal(state.audits, 1);
 	assert.equal(state.notifications, 1);
+	assert.equal(state.replayWgId, wgId);
 });
 
 test('old flat cached response replays without another create', async () => {
@@ -170,4 +190,16 @@ test('warning is returned only when its completed response is updated', async ()
 	assert.equal((await (await failed.post()).json()).warning, null);
 	assert.equal((await (await failed.post()).json()).warning, null);
 	assert.equal(failed.state.created.length, 1);
+});
+
+test('revoked private image attachment returns 409 without creating an announcement', async () => {
+	const { state, post } = harness();
+	state.rejectImageAttachment = true;
+	const response = await post(
+		'https://app.example/api/upload/read?key=manawg%2F22222222-2222-4222-8222-222222222222%2Fannouncement%2F33333333-3333-4333-8333-333333333333.jpg',
+	);
+	assert.equal(response.status, 409);
+	assert.deepEqual(await response.json(), { error: 'image_removed', code: 'image_removed' });
+	assert.equal(state.created.length, 0);
+	assert.equal(state.notifications, 0);
 });

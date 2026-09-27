@@ -432,6 +432,7 @@ export function OfflineQueueSection({
 							const risk = getOfflineActionRisk(item);
 							const editDraft = buildQueueEditDraft(item);
 							const requiresManualReview = item.lastError?.startsWith('Server prüfen:') === true;
+							const requiresManualResolution = needsManualOfflineResolution(item);
 							const serverCheckLabel = `Server prüfen: ${summary.detail || summary.title}`;
 							const actionLabel = summary.detail || summary.title;
 							const rowBusy = syncing || checkingServerIds.has(item.id);
@@ -443,7 +444,7 @@ export function OfflineQueueSection({
 											{item.attempts ? <Badge variant="destructive">{item.attempts}x</Badge> : null}
 										</ItemTitle>
 										<ItemDescription className="line-clamp-none">{summary.detail}</ItemDescription>
-										{requiresManualReview ? (
+										{requiresManualResolution ? (
 											<Alert className="mt-1" variant="destructive">
 												<AlertDescription>{item.lastError}</AlertDescription>
 											</Alert>

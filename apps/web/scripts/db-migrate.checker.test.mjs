@@ -156,7 +156,9 @@ function createCatalogClient({ schemaCreateRows = [], triggerRows = expectedTrig
 			const text = String(sql);
 			if (text.includes('has_schema_privilege')) return { rows: schemaCreateRows };
 			if (text.includes('rel.relrowsecurity')) {
-				return { rows: [{ table_name: 'wgs', rls_enabled: true }] };
+				return {
+					rows: params[1].map((table_name) => ({ table_name, rls_enabled: true })),
+				};
 			}
 			if (text.includes('has_table_privilege')) return { rows: [] };
 			if (text.includes('has_sequence_privilege')) return { rows: [] };
@@ -202,6 +204,17 @@ test('db:check uses effective schema privileges and rejects CREATE for API roles
 	const privilegeQuery = client.queries.find(({ sql }) => sql.includes('has_schema_privilege'));
 	assert.ok(privilegeQuery, 'checker queries effective schema privileges');
 	assert.deepEqual(privilegeQuery.params, [['anon', 'authenticated'], 'public']);
+});
+
+test('db:check includes durable private image revocations in the RLS catalog scope', async () => {
+	const client = createCatalogClient();
+	await checker.assertCatalogSecurity(client, [
+		{ table: 'wgs' },
+		{ table: 'private_image_deletions' },
+	]);
+
+	const rlsQuery = client.queries.find(({ sql }) => sql.includes('rel.relrowsecurity'));
+	assert.deepEqual(rlsQuery.params, ['public', ['wgs', 'private_image_deletions']]);
 });
 
 test('db:check requests and accepts all 21 bindings enabled for normal sessions', async () => {

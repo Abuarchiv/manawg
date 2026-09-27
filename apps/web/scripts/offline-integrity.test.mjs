@@ -554,6 +554,63 @@ test('missing and revoked image blobs stay visible and are never silently droppe
 	assert.equal(revokedRequests, 0);
 });
 
+test('server image_removed retains payload and supports explicit removal after rejection', async () => {
+	const publicUrl = 'https://app.invalid/api/upload/read?key=revoked';
+	let requestCount = 0;
+	const { module } = makeQueueModule({
+		apiFetch: async () => {
+			requestCount += 1;
+			return requestCount === 1
+				? { ok: false, status: 409, error: 'image_removed' }
+				: { ok: true, data: undefined };
+		},
+	});
+	module.writeOfflineQueue([
+		createAction({ payload: { content: 'with image', kind: 'info', imageUrl: publicUrl } }),
+	]);
+	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
+	const blocked = module.readOfflineQueue()[0];
+	assert.equal(blocked.payload.imageUrl, publicUrl);
+	assert.match(blocked.lastError, /^Bild wurde entfernt:/);
+	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
+	assert.equal(requestCount, 1);
+	module.writeOfflineQueue([{ ...blocked, payload: { ...blocked.payload, imageUrl: null } }]);
+	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
+	assert.equal(requestCount, 2);
+	assert.equal(module.readOfflineQueue().length, 0);
+
+	const entered = deferred();
+	const response = deferred();
+	let racedRequestCount = 0;
+	const raced = makeQueueModule({
+		apiFetch: async () => {
+			racedRequestCount += 1;
+			if (racedRequestCount === 1) {
+				entered.resolve();
+				return response.promise;
+			}
+			return { ok: true, data: undefined };
+		},
+	});
+	raced.module.writeOfflineQueue([
+		createAction({ payload: { content: 'with image', kind: 'info', imageUrl: publicUrl } }),
+	]);
+	const syncing = raced.module.syncOfflineActions('TEST1234', {
+		force: true,
+		memberId: 'member-a',
+	});
+	await entered.promise;
+	const current = raced.module.readOfflineQueue()[0];
+	raced.module.writeOfflineQueue([{ ...current, payload: { ...current.payload, imageUrl: null } }]);
+	response.resolve({ ok: false, status: 409, error: 'image_removed' });
+	await syncing;
+	assert.equal(raced.module.readOfflineQueue()[0].payload.imageUrl, null);
+	assert.doesNotMatch(raced.module.readOfflineQueue()[0].lastError ?? '', /^Server prüfen:/);
+	await raced.module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
+	assert.equal(racedRequestCount, 2);
+	assert.equal(raced.module.readOfflineQueue().length, 0);
+});
+
 test('API client sends expected member separately from fixture identity headers', async () => {
 	let sentHeaders;
 	let sentSignal;
