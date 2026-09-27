@@ -109,6 +109,9 @@ export function expenseActionErrorMessage(error: string): string {
 	if (error === 'settled_invalid') {
 		return 'Diese Zahlung konnte nicht markiert werden: Lade die Ausgaben neu und versuche es erneut.';
 	}
+	if (error === 'split_already_offset') {
+		return 'Dieser Anteil ist durch andere Ausgleiche ganz oder teilweise verrechnet. Den vollen Betrag als beglichen zu markieren würde den Saldo überschreiten; die Ausgabenliste wird aktualisiert.';
+	}
 	return 'Ausgabenaktion fehlgeschlagen.';
 }
 

@@ -1334,6 +1334,7 @@ export default function AusgabenPage() {
 				const message = expenseActionErrorMessage(res.error);
 				setActionError(message);
 				toast.error(message);
+				if (res.error === 'split_already_offset') void load(false);
 			}
 		} else {
 			void load(false);
