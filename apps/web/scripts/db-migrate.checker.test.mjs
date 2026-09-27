@@ -3,6 +3,39 @@ import test from 'node:test';
 
 const checker = await import('./db-migrate.mjs');
 
+test('db:migrate accepts direct URLs and rejects query parameters that override them', async (t) => {
+	for (const [name, url] of [
+		['local connection', 'postgresql://migrator:example@localhost:5432/app'],
+		[
+			'remote connection with verified TLS',
+			'postgresql://migrator:example@db.example.test:5432/app?sslmode=verify-full',
+		],
+	]) {
+		await t.test(`accepts ${name}`, () => {
+			assert.doesNotThrow(() => checker.validateDatabaseUrl(url, 'DATABASE_MIGRATION_URL'));
+		});
+	}
+
+	for (const [name, url] of [
+		[
+			'host override',
+			'postgresql://migrator:example@db.example.test:5432/app?sslmode=verify-full&host=localhost',
+		],
+		[
+			'port override',
+			'postgresql://migrator:example@db.example.test:5432/app?sslmode=verify-full&port=6543',
+		],
+		[
+			'duplicate TLS mode',
+			'postgresql://migrator:example@db.example.test:5432/app?sslmode=verify-full&sslmode=disable',
+		],
+	]) {
+		await t.test(`rejects ${name}`, () => {
+			assert.throws(() => checker.validateDatabaseUrl(url, 'DATABASE_MIGRATION_URL'));
+		});
+	}
+});
+
 const triggerArgs = {
 	expenses: ['paid_by_member_id'],
 	expense_imports: ['imported_by_member_id'],
