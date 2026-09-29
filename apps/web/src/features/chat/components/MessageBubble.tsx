@@ -131,11 +131,12 @@ export function MessageBubble({
 
 	useEffect(() => {
 		const saved = readDraft<{ body?: string }>(draftKey);
-		if (typeof saved?.body === 'string') {
+		// A draft identical to the stored message is no unsaved change.
+		if (typeof saved?.body === 'string' && saved.body !== (message.body ?? '')) {
 			setDraft(saved.body);
 			setHasDraft(true);
 		}
-	}, [draftKey]);
+	}, [draftKey, message.body]);
 	useEffect(() => {
 		if (editing) {
 			wasEditingRef.current = true;
@@ -149,6 +150,11 @@ export function MessageBubble({
 		setDraft(value);
 		setHasDraft(true);
 		writeDraft(draftKey, { body: value });
+	}
+	function cancelEdit() {
+		setEditing(false);
+		setHasDraft(false);
+		removeDraft(draftKey);
 	}
 	async function saveEdit() {
 		const text = draft.trim();
@@ -233,7 +239,7 @@ export function MessageBubble({
 										event.preventDefault();
 										void saveEdit();
 									}
-									if (event.key === 'Escape' && !pendingRef.current) setEditing(false);
+									if (event.key === 'Escape' && !pendingRef.current) cancelEdit();
 								}}
 								rows={3}
 								disabled={pending}
@@ -245,7 +251,7 @@ export function MessageBubble({
 							/>
 						</Field>
 						<div className="flex flex-wrap justify-end gap-2">
-							<Button variant="outline" disabled={pending} onClick={() => setEditing(false)}>
+							<Button variant="outline" disabled={pending} onClick={cancelEdit}>
 								Abbrechen
 							</Button>
 							<Button disabled={pending || !draft.trim()} onClick={() => void saveEdit()}>
