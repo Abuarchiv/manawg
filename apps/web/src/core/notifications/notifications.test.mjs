@@ -69,3 +69,33 @@ test('event notification times use Europe/Berlin in summer and winter', () => {
 		else process.env.TZ = previousTimezone;
 	}
 });
+
+test('all-day event pushes show the Berlin date without a clock time', () => {
+	const previousTimezone = process.env.TZ;
+	process.env.TZ = 'UTC';
+	try {
+		// All-day events are stored at Berlin midnight (22:00/23:00 UTC the day before).
+		const created = formatNotificationMessage('event.created', {
+			wgName: 'WG',
+			actorName: 'Alex',
+			title: 'Umzug',
+			startsAt: '2026-09-30T22:00:00.000Z',
+			allDay: true,
+		});
+		const upcoming = formatNotificationMessage('event.upcoming', {
+			wgName: 'WG',
+			title: 'Feiertag',
+			startsAt: '2026-01-01T23:00:00.000Z',
+			allDay: true,
+		});
+
+		assert.equal(created.body, 'Alex hat in WG „Umzug“ am 01.10. (ganztägig) eingetragen.');
+		assert.equal(upcoming.body, 'Morgen in WG: „Feiertag“ am 02.01. (ganztägig).');
+		for (const message of [created, upcoming]) {
+			assert.doesNotMatch(message.body, /\d{2}:\d{2}/);
+		}
+	} finally {
+		if (previousTimezone === undefined) Reflect.deleteProperty(process.env, 'TZ');
+		else process.env.TZ = previousTimezone;
+	}
+});

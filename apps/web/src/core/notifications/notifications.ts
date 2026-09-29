@@ -97,10 +97,19 @@ function eventUrlPath(payload: Record<string, unknown>): string {
 	return id ? `/kalender?highlight=${encodeURIComponent(id)}` : '/kalender';
 }
 
-function formatEventTime(value: unknown): string {
+function formatEventTime(value: unknown, allDay = false): string {
 	if (typeof value !== 'string' || value.length === 0) return 'demnächst';
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return 'demnächst';
+	// All-day events start at Berlin midnight; a clock time would be noise.
+	if (allDay) {
+		const day = new Intl.DateTimeFormat('de-DE', {
+			day: '2-digit',
+			month: '2-digit',
+			timeZone: 'Europe/Berlin',
+		}).format(date);
+		return `${day} (ganztägig)`;
+	}
 	return new Intl.DateTimeFormat('de-DE', {
 		day: '2-digit',
 		month: '2-digit',
@@ -213,17 +222,20 @@ export function formatNotificationMessage(
 				body: `${text(payload.actorName, 'Jemand')} hat in ${wgName} „${text(
 					payload.title,
 					'Termin',
-				)}“ am ${formatEventTime(payload.startsAt)} eingetragen.`,
+				)}“ am ${formatEventTime(payload.startsAt, payload.allDay === true)} eingetragen.`,
 				urlPath: eventUrlPath(payload),
 			};
-		case 'event.upcoming':
+		case 'event.upcoming': {
+			const title = text(payload.title, 'Termin');
 			return {
 				title: 'Termin morgen',
-				body: `Morgen in ${wgName}: „${text(payload.title, 'Termin')}“ um ${formatEventTime(
-					payload.startsAt,
-				)}.`,
+				body:
+					payload.allDay === true
+						? `Morgen in ${wgName}: „${title}“ am ${formatEventTime(payload.startsAt, true)}.`
+						: `Morgen in ${wgName}: „${title}“ um ${formatEventTime(payload.startsAt)}.`,
 				urlPath: eventUrlPath(payload),
 			};
+		}
 		case 'event.today': {
 			const title = text(payload.title, 'Termin');
 			const body =
