@@ -554,6 +554,7 @@ export default function PinnwandPage(): React.ReactElement {
 						setError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
+					announcementIdempotencyKeyRef.current = null;
 					refreshCount();
 					if (!clearEditedQueueItem()) {
 						setError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);

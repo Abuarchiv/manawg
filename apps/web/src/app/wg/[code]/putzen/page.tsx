@@ -476,6 +476,7 @@ export default function PutzenPage() {
 						setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
+					choreCreateRequestRef.current = null;
 					refreshCount();
 					setItems((current) => [
 						{
@@ -606,6 +607,7 @@ export default function PutzenPage() {
 						setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
+					absenceCreateRequestRef.current = null;
 					if (!clearEditedQueueItem(['absence.create'])) {
 						setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
@@ -765,6 +767,7 @@ export default function PutzenPage() {
 					endPending(chore.id);
 					return;
 				}
+				completionRequestKeysRef.current.delete(chore.id);
 				refreshCount();
 				setActionNotice(
 					'Erledigung offline vorgemerkt. Nächster Termin und Zuständigkeit werden nach der Synchronisierung bestätigt.',

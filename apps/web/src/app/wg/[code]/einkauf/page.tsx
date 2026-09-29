@@ -347,6 +347,7 @@ export default function EinkaufPage() {
 						setAddError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
+					addIdempotencyKeyRef.current = null;
 					refreshCount();
 					if (fromInput && !clearEditedQueueItem()) {
 						setAddError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
@@ -566,6 +567,7 @@ export default function EinkaufPage() {
 							);
 							return;
 						}
+						shoppingPatchRequestKeysRef.current.delete(item.id);
 						refreshCount();
 						setToggleNotice(
 							becomingBought
