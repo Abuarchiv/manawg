@@ -354,7 +354,7 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 			({ warning } = await dispatchNotificationSafely({
 				wg,
 				event: 'chore.due',
-				payload: { title, choreId: chore.id },
+				payload: { title, choreId: chore.id, nextDueAt: nextDueAt.toISOString() },
 				targetMemberIds: [assignedMemberId],
 			}));
 		}

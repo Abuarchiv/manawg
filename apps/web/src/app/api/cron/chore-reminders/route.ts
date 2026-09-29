@@ -36,6 +36,7 @@ function pruneLocalReminderClaims(now: number): void {
 interface DueChore {
 	id: string;
 	title: string;
+	nextDueAt: Date;
 	assignedMemberId: string | null;
 	lastReminderAt: Date | null;
 	wgId: string;
@@ -124,6 +125,7 @@ export const GET = withCronLogging(
 			.select({
 				id: chores.id,
 				title: chores.title,
+				nextDueAt: chores.nextDueAt,
 				assignedMemberId: chores.assignedMemberId,
 				lastReminderAt: chores.lastReminderAt,
 				wgId: wgs.id,
@@ -206,7 +208,11 @@ export const GET = withCronLogging(
 						return await dispatchNotification({
 							wg: { id: item.wgId, name: item.wgName, shareCode: item.shareCode },
 							event: 'chore.due',
-							payload: { title: item.title, choreId: item.id },
+							payload: {
+								title: item.title,
+								choreId: item.id,
+								nextDueAt: item.nextDueAt.toISOString(),
+							},
 							targetMemberIds: [item.assignedMemberId],
 						});
 					} catch (err) {

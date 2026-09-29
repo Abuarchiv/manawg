@@ -34,11 +34,13 @@ function harness({ choreCount }) {
 		inFlight: 0,
 		maxInFlight: 0,
 		dispatched: [],
+		payloads: [],
 		stamped: null,
 	};
 	const rows = Array.from({ length: choreCount }, (_, index) => ({
 		id: `chore-${index}`,
 		title: `Chore ${index}`,
+		nextDueAt: new Date('2026-09-23T08:00:00.000Z'),
 		assignedMemberId: `member-${index}`,
 		lastReminderAt: null,
 		wgId: 'wg-1',
@@ -99,6 +101,7 @@ function harness({ choreCount }) {
 				await new Promise((resolve) => setImmediate(resolve));
 				state.inFlight -= 1;
 				state.dispatched.push(notification.payload.choreId);
+				state.payloads.push(notification.payload);
 				return { sent: 1, failures: [] };
 			},
 		},
@@ -199,6 +202,11 @@ test('chore reminder candidates are bounded to a recent window and capped', asyn
 		'wgMembers.id',
 	]);
 	assert.equal(state.limit, 500);
+	assert.equal(
+		state.payloads[0].nextDueAt,
+		'2026-09-23T08:00:00.000Z',
+		'the push copy needs nextDueAt to say whether the chore is overdue',
+	);
 	assert.deepEqual(
 		state.orderBy.map((order) => order.args[0]),
 		['chores.lastReminderAt', 'chores.nextDueAt', 'chores.id'],

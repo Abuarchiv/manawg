@@ -1,3 +1,4 @@
+import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 
 export type NotificationEvent =
@@ -119,6 +120,32 @@ function formatEventTime(value: unknown, allDay = false): string {
 	}).format(date);
 }
 
+function berlinDayNumber(date: Date): number {
+	const [year, month, day] = berlinDayKey(date).split('-').map(Number);
+	return Date.UTC(year ?? 0, (month ?? 1) - 1, day ?? 1) / 86_400_000;
+}
+
+// Reminders also fire for chores overdue up to a week and for new chores due
+// tomorrow, so the copy follows the Berlin calendar distance to nextDueAt.
+function choreDueBody(payload: Record<string, unknown>, wgName: string): string {
+	const title = text(payload.title, 'Eine Aufgabe');
+	const dueAt = typeof payload.nextDueAt === 'string' ? new Date(payload.nextDueAt) : null;
+	if (!dueAt || Number.isNaN(dueAt.getTime())) return `${title} ist heute in ${wgName} fällig.`;
+	const diffDays = berlinDayNumber(dueAt) - berlinDayNumber(new Date());
+	if (diffDays < 0) {
+		const overdueDays = -diffDays;
+		return `${title} ist in ${wgName} seit ${overdueDays} ${overdueDays === 1 ? 'Tag' : 'Tagen'} offen.`;
+	}
+	if (diffDays === 0) return `${title} ist heute in ${wgName} fällig.`;
+	if (diffDays === 1) return `${title} ist morgen in ${wgName} fällig.`;
+	const day = new Intl.DateTimeFormat('de-DE', {
+		day: '2-digit',
+		month: '2-digit',
+		timeZone: 'Europe/Berlin',
+	}).format(dueAt);
+	return `${title} ist am ${day} in ${wgName} fällig.`;
+}
+
 function inventoryUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.inventoryItemId === 'string' ? payload.inventoryItemId.trim() : '';
 	return id ? `/vorraete?highlight=${encodeURIComponent(id)}` : '/vorraete';
@@ -207,7 +234,7 @@ export function formatNotificationMessage(
 		case 'chore.due':
 			return {
 				title: 'Putzplan',
-				body: `${text(payload.title, 'Eine Aufgabe')} ist heute in ${wgName} fällig.`,
+				body: choreDueBody(payload, wgName),
 				urlPath: choreUrlPath(payload),
 			};
 		case 'shopping.added':
