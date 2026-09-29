@@ -69,3 +69,29 @@ test('no-op when the remainder is already zero', () => {
 	const next = distributeRemainderCents(current, members, 0);
 	assert.deepEqual(next, current);
 });
+
+test('never writes a negative amount, even when the excess sits outside the targets', () => {
+	// Regression (#492): the only over-allocated share belongs to someone who
+	// is not a target (a moved-out member). The targets can't absorb it, but
+	// they must stay at zero rather than turn into unparsable "-x,xx" strings.
+	const next = distributeRemainderCents({ inactive: '30,00' }, members, -1000);
+	for (const value of Object.values(next)) {
+		assert.ok(!value.startsWith('-'), `negative amount ${value}`);
+	}
+	assert.equal(next.inactive, '30,00');
+});
+
+test('is pure: same input, same output, input left untouched', () => {
+	// Regression (#493): the leftover counter used to live in a closure that
+	// the state updater mutated, so a second (StrictMode) invocation lost cents.
+	const current = Object.freeze({ a: '10,00' });
+	const first = distributeRemainderCents(current, members, 2001);
+	const second = distributeRemainderCents(current, members, 2001);
+	assert.deepEqual(first, second);
+	assert.deepEqual(current, { a: '10,00' });
+	const cents = Object.values(first).reduce(
+		(sum, v) => sum + Math.round(Number.parseFloat(v.replace(',', '.')) * 100),
+		0,
+	);
+	assert.equal(cents, 1000 + 2001);
+});

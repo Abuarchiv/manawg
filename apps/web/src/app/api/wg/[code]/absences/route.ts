@@ -112,6 +112,7 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 	}
 	const startDate = new Date(parsed.data.startDate);
 	const endDate = new Date(parsed.data.endDate);
+	if (endDate.getTime() < startDate.getTime()) return badRequest('date_range_invalid');
 	if (berlinDayKey(endDate) < berlinDayKey(startDate)) return badRequest('date_range_invalid');
 	const idemKey = readIdempotencyKey(req);
 	const auth = await requireWgMember(req, code);

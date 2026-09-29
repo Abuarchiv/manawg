@@ -845,10 +845,13 @@ export default function AusgabenPage() {
 		const desc = description.trim();
 		const amountEuros = parseEuroAmount(amountStr);
 		const validationErrors: ExpenseFormFieldErrors = {};
-		if (!desc || desc.length > DESCRIPTION_MAX || amountEuros === null || amountEuros <= 0) {
-			if (!desc || desc.length > DESCRIPTION_MAX)
-				validationErrors.description = 'Beschreibung fehlt.';
-			if (amountEuros === null || amountEuros <= 0) validationErrors.amount = 'Betrag ungültig.';
+		if (!desc || desc.length > DESCRIPTION_MAX) {
+			validationErrors.description = 'Beschreibung fehlt.';
+		}
+		if (amountEuros === null || amountEuros < AMOUNT_MIN_EUROS || amountEuros > AMOUNT_MAX_EUROS) {
+			validationErrors.amount = 'Betrag ungültig.';
+		}
+		if (Object.keys(validationErrors).length > 0 || amountEuros === null) {
 			setValidationErrors(validationErrors);
 			return;
 		}

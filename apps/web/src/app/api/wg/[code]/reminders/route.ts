@@ -22,7 +22,7 @@ import {
 	canSendReminder,
 	formatReminderMessage,
 } from '@/features/expenses/reminders';
-import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -91,7 +91,11 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 		})
 		.from(wgMembers)
 		.where(
-			and(eq(wgMembers.wgId, wg.id), inArray(wgMembers.id, [debtorMemberId, creditorMemberId])),
+			and(
+				eq(wgMembers.wgId, wg.id),
+				inArray(wgMembers.id, [debtorMemberId, creditorMemberId]),
+				isNull(wgMembers.deactivatedAt),
+			),
 		);
 	if (memberRows.length !== 2) return badRequest('member_not_in_wg');
 

@@ -196,6 +196,16 @@ test('chat read marker advances by timestamp and message id', () => {
 	assert.match(query.sql, /::uuid > "wg_chat_reads"\."last_read_message_id"/i);
 });
 
+test('null chat read marker resets a set marker instead of matching nothing', () => {
+	const reads = pgTable('wg_chat_reads', {
+		lastReadMessageId: uuid('last_read_message_id'),
+	});
+	const where = chatReadQuery.buildChatReadMarkerSetWhere(null, reads.lastReadMessageId);
+	const query = new PgDialect().sqlToQuery(where);
+	assert.match(query.sql, /^"wg_chat_reads"\."last_read_message_id" is not null$/i);
+	assert.deepEqual(query.params, []);
+});
+
 test('read payload keeps the latest page and older refresh updates in separate fields', () => {
 	const pageTombstone = {
 		id: 'page-deleted',

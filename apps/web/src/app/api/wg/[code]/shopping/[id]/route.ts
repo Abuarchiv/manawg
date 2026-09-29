@@ -1,7 +1,8 @@
 import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, shoppingItems } from '@/core/db';
-import { badRequest, conflict, forbidden, notFound, tooMany } from '@/core/errors';
+import { badRequest, conflict, notFound, tooMany } from '@/core/errors';
+import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -155,7 +156,7 @@ export const DELETE = withWgRoute<{ id: string }>('shopping DELETE', async (req,
 	);
 	if (!limited.success) return tooMany();
 
-	// Only the member who added the item may delete it.
+	// The member who added the item, or the WG admin, may delete it.
 	const existing = await db
 		.select({ addedByMemberId: shoppingItems.addedByMemberId, name: shoppingItems.name })
 		.from(shoppingItems)
@@ -163,11 +164,10 @@ export const DELETE = withWgRoute<{ id: string }>('shopping DELETE', async (req,
 		.limit(1);
 	const row = existing[0];
 	if (!row) return notFound('item_not_found');
-	// Self-ownership requires a verified HMAC token — the bare member-id
-	// header is spoofable.
-	if (!auth.member.verified || row.addedByMemberId !== auth.member.memberId) {
-		return forbidden('not_owner', 'not_owner');
-	}
+	// Ownership and the admin override both require a verified caller — the
+	// bare member-id header is spoofable.
+	const denied = await requireOwnerOrAdmin(wgId, auth.member, row.addedByMemberId);
+	if (denied) return denied;
 
 	const deleted = await db
 		.delete(shoppingItems)

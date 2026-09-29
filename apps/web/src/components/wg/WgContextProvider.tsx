@@ -79,6 +79,10 @@ export function WgContextProvider({
 	const [hydrated, setHydrated] = useState(false);
 	const [memberLoaded, setMemberLoaded] = useState(false);
 	const [memberLoadError, setMemberLoadError] = useState(false);
+	// Consecutive non-auth failures (429, 5xx, network) of the members/admin
+	// fetch. Without retries isAdmin would stay false for
+	// the whole session and hide every admin action.
+	const [membersRefreshFailures, setMembersRefreshFailures] = useState(0);
 	const syncingRef = useRef(false);
 	const syncAbortRef = useRef<AbortController | null>(null);
 	const authUserIdRef = useRef<string | null>(initialIdentity?.authUserId ?? null);
@@ -226,7 +230,11 @@ export function WgContextProvider({
 			if (res.ok) {
 				setMembers(res.data.members.map((m) => ({ ...m, active: m.active !== false })));
 				setIsAdmin(res.data.viewerIsAdmin === true);
-			} else if (res.status === 401 && res.error === 'auth_required') {
+				setMembersRefreshFailures(0);
+				return;
+			}
+			setMembersRefreshFailures(0);
+			if (res.status === 401 && res.error === 'auth_required') {
 				window.location.replace(
 					`/neu?next=${encodeURIComponent(window.location.pathname + window.location.search)}`,
 				);
@@ -238,8 +246,11 @@ export function WgContextProvider({
 				setStateIdentity(null);
 			} else if (res.error === 'member_context_changed' && authUserIdRef.current) {
 				await loadSessionMember(authUserIdRef.current, authGeneration);
+			} else {
+				setMembersRefreshFailures((failures) => failures + 1);
 			}
 		} catch (err) {
+			setMembersRefreshFailures((failures) => failures + 1);
 			// Network blip — the paused interval/focus listener retries. Log it
 			// so silently stale member lists stay diagnosable instead of
 			// vanishing into an empty catch block.
@@ -256,6 +267,22 @@ export function WgContextProvider({
 		if (!identity) return;
 		void refreshMembers();
 	}, [identity, refreshMembers]);
+
+	// Retry a failed members/admin fetch with backoff and on focus/online, so
+	// one transient error does not hide admin actions until a hard reload.
+	useEffect(() => {
+		if (membersRefreshFailures === 0 || !identity || !accountReady) return;
+		const retry = () => void refreshMembers();
+		const delayMs = Math.min(60_000, 5_000 * 2 ** (membersRefreshFailures - 1));
+		const timer = window.setTimeout(retry, delayMs);
+		window.addEventListener('online', retry);
+		window.addEventListener('focus', retry);
+		return () => {
+			window.clearTimeout(timer);
+			window.removeEventListener('online', retry);
+			window.removeEventListener('focus', retry);
+		};
+	}, [accountReady, identity, membersRefreshFailures, refreshMembers]);
 
 	const sync = useCallback(async () => {
 		if (

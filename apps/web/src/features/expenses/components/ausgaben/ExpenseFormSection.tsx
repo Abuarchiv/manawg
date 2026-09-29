@@ -48,6 +48,7 @@ import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNot
 import { ImageUploader } from '@/components/wg/ImageUploader';
 import type { Member } from '@/components/wg/WgContextProvider';
 import { formatEuroCents } from '@/core/utils/money';
+import { remainderCandidates } from '@/features/expenses/expense-split-input';
 import { ArrowLeft, ChevronDown, Receipt, Repeat2 } from 'lucide-react';
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
 import { ManualSplitSummary } from './ManualSplitSummary';
@@ -205,7 +206,7 @@ export function ExpenseFormSection({
 	const hasLockedHistoricalShare =
 		isEditingExpense && splitCandidates.some((member) => !member.active);
 	const historicalShareHintId = `${splitErrorId}-inactive-share`;
-	const remainderMembers = isEditingExpense ? members.filter((member) => member.active) : members;
+	const remainderMembers = remainderCandidates(members);
 	const firstSplitMemberId = splitCandidates[0]?.id;
 	const splitErrorTargetsMode =
 		Boolean(fieldErrors.splits) && (splitMode !== 'manual' || firstSplitMemberId === undefined);

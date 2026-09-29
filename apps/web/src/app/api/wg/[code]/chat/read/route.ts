@@ -43,7 +43,9 @@ export const POST = withWgRoute('chat read POST', async (req, { code }) => {
 		if (!messageRows[0]) return notFound('message_not_found');
 	}
 
-	await db
+	// `applied` tells the client whether the marker actually moved: an older
+	// receipt is ignored, and a `null` reset is a no-op on an unset marker.
+	const changed = await db
 		.insert(wgChatReads)
 		.values({
 			wgId,
@@ -54,7 +56,8 @@ export const POST = withWgRoute('chat read POST', async (req, { code }) => {
 			target: [wgChatReads.wgId, wgChatReads.memberId],
 			set: { lastReadMessageId: messageId, updatedAt: new Date() },
 			setWhere: buildChatReadMarkerSetWhere(messageId, wgChatReads.lastReadMessageId),
-		});
+		})
+		.returning({ memberId: wgChatReads.memberId });
 
-	return NextResponse.json({ ok: true });
+	return NextResponse.json({ ok: true, applied: changed.length > 0 });
 });

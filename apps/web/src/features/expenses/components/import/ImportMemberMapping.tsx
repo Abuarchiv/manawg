@@ -28,7 +28,9 @@ export function ImportMemberMapping({
 	return (
 		<FieldGroup>
 			{names.map((name, index) => {
-				const value = mapping[name] ?? '';
+				const mapped = mapping[name];
+				// A stale id (e.g. a moved-out member) is shown as unassigned and flagged.
+				const value = mapped && members.some((member) => member.id === mapped) ? mapped : '';
 				const invalid = showErrors && !value;
 				return (
 					<Field key={name} data-invalid={invalid || undefined}>

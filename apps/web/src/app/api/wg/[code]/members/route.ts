@@ -9,6 +9,7 @@ import { HTTP, apiError, badRequest, forbidden, notFound, tooMany } from '@/core
 import { isVerifiedWgAdmin } from '@/core/guards/admin';
 import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
+import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
 import { and, asc, count, eq } from 'drizzle-orm';
@@ -132,7 +133,7 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 		where: (w, { eq }) => eq(w.shareCode, code),
 		columns: { id: true, joiningEnabled: true },
 	});
-	if (!wg) return notFound('wg_not_found');
+	if (!wg) return shareCodeMissResponse(user.id, notFound('wg_not_found'));
 	const authenticatedUser = user;
 
 	try {

@@ -7,6 +7,7 @@ import {
 	claimResponseSlot,
 	getCachedResponse,
 	readIdempotencyKey,
+	releaseResponseSlot,
 	setCachedResponse,
 } from '@/core/idempotency';
 import { NextResponse } from 'next/server';
@@ -144,6 +145,10 @@ interface CachedJsonResponse {
 	body: unknown;
 }
 
+function isReplayableStatus(status: number): boolean {
+	return status >= 200 && status < 300;
+}
+
 /** Replay a JSON mutation response after the caller has authenticated and
  * established a tenant/member-scoped replay scope. */
 export async function withIdempotentJsonResponse(
@@ -169,7 +174,21 @@ export async function withIdempotentJsonResponse(
 		return NextResponse.json(slot.cached.body, { status: slot.cached.status });
 	}
 
-	const response = await handler();
+	let response: NextResponse;
+	try {
+		response = await handler();
+	} catch (err) {
+		await releaseResponseSlot(scope, key);
+		throw err;
+	}
+	// Only a committed success is replayable. Clients keep the same key and
+	// retry after 4xx/5xx/429 outcomes, so caching those would replay a
+	// transient failure for the whole offline retry window. Release the claim
+	// instead so the retry runs the handler again.
+	if (!isReplayableStatus(response.status)) {
+		await releaseResponseSlot(scope, key);
+		return response;
+	}
 	let body: unknown = null;
 	try {
 		body = await response.clone().json();

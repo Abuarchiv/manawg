@@ -19,7 +19,7 @@ import {
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import type { NotificationDispatchWarning } from '@/core/notifications/notification-dispatch';
-import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { checkRateLimit, expensesReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import { AMOUNT_MAX_CENTS, AMOUNT_MIN_CENTS } from '@/features/expenses/expense-constants';
@@ -36,7 +36,7 @@ import {
 	resolveExpensePayer,
 } from '@/features/expenses/expenses';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
-import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns, gt, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -204,6 +204,14 @@ export const GET = withWgRoute(
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
 
+		// Per-member bucket on top of the middleware's per-IP read limit: this
+		// returns the WG's whole expense history.
+		const limit = await checkRateLimit(
+			expensesReadLimiter,
+			`expenses:${wgId}:${auth.member.memberId}`,
+		);
+		if (!limit.success) return tooMany('rate_limited');
+
 		const rows = await db
 			.select()
 			.from(expenses)
@@ -212,9 +220,15 @@ export const GET = withWgRoute(
 
 		if (rows.length === 0) return NextResponse.json({ expenses: [] });
 
-		const expenseIds = rows.map((r) => r.id);
+		// Balances need the full history, so the list stays complete. Splits are
+		// joined by WG instead of `inArray(expenseIds)`: one bind parameter per
+		// expense would exceed PostgreSQL's 65,535-parameter limit for large WGs.
 		const [splits, payments] = await Promise.all([
-			db.select().from(expenseSplits).where(inArray(expenseSplits.expenseId, expenseIds)),
+			db
+				.select(getTableColumns(expenseSplits))
+				.from(expenseSplits)
+				.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
+				.where(eq(expenses.wgId, wgId)),
 			loadCompletedExpensePayments(wgId),
 		]);
 

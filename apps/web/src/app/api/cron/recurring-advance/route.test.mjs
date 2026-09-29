@@ -486,3 +486,63 @@ test('legacy month-end anchor survives separate January and February cron runs',
 		assert.equal(legacy.state.template.anchorAt.toISOString(), '2025-01-31T00:00:00.000Z');
 	});
 });
+
+test('legacy month-end anchor adopts the pre-advance due date across three months', async (t) => {
+	// Due dates are stored as local noon (inputDateToIso), so the UTC day is the Berlin day.
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-01-31T12:00:00.000Z') });
+	const legacy = harness({
+		initialDueAt: new Date('2026-01-31T11:00:00.000Z'),
+		initialAnchorAt: null,
+		patchAfterInsert: null,
+	});
+
+	await withCronSecret(async () => {
+		const runs = [
+			['2026-01-31T12:00:00.000Z', '2026-02-28T11:00:00.000Z'],
+			['2026-02-28T12:00:00.000Z', '2026-03-31T11:00:00.000Z'],
+			['2026-03-31T12:00:00.000Z', '2026-04-30T11:00:00.000Z'],
+			['2026-04-30T12:00:00.000Z', '2026-05-31T11:00:00.000Z'],
+		];
+		for (const [runAt, expectedNext] of runs) {
+			t.mock.timers.setTime(Date.parse(runAt));
+			await legacy.get();
+			assert.equal(legacy.state.template.nextDueAt.toISOString(), expectedNext);
+			assert.equal(legacy.state.template.anchorAt.toISOString(), '2026-01-31T11:00:00.000Z');
+			assert.equal(legacy.state.template.anchorAt.getUTCDate(), 31);
+		}
+		assert.deepEqual(
+			legacy.state.expenses.map((expense) => expense.recurringDueAt.toISOString()),
+			[
+				'2026-01-31T11:00:00.000Z',
+				'2026-02-28T11:00:00.000Z',
+				'2026-03-31T11:00:00.000Z',
+				'2026-04-30T11:00:00.000Z',
+			],
+		);
+	});
+});
+
+test('legacy month-end catch-up keeps anchor day 31 within a single run', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-04-30T12:00:00.000Z') });
+	const legacy = harness({
+		initialDueAt: new Date('2026-01-31T11:00:00.000Z'),
+		initialAnchorAt: null,
+		patchAfterInsert: null,
+	});
+
+	await withCronSecret(async () => {
+		const response = await legacy.get();
+		assert.deepEqual(await response.json(), { ok: true, charged: 4, failedTemplates: 0 });
+		assert.deepEqual(
+			legacy.state.expenses.map((expense) => expense.recurringDueAt.toISOString()),
+			[
+				'2026-01-31T11:00:00.000Z',
+				'2026-02-28T11:00:00.000Z',
+				'2026-03-31T11:00:00.000Z',
+				'2026-04-30T11:00:00.000Z',
+			],
+		);
+		assert.equal(legacy.state.template.nextDueAt.toISOString(), '2026-05-31T11:00:00.000Z');
+		assert.equal(legacy.state.template.anchorAt.toISOString(), '2026-01-31T11:00:00.000Z');
+	});
+});

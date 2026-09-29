@@ -20,7 +20,7 @@ function loadTs(file, overrides = {}) {
 	return module.exports;
 }
 
-function exportRoute(failedTable) {
+function exportRoute(failedTable, { expenseCount = 0 } = {}) {
 	const tables = Object.fromEntries(
 		[
 			'announcements',
@@ -50,13 +50,23 @@ function exportRoute(failedTable) {
 		]),
 	);
 	const limits = [];
+	const inArrayCalls = [];
+	const expenseRows = Array.from({ length: expenseCount }, (_, index) => ({
+		id: `expense-${index}`,
+		description: 'x',
+		amountCents: 1,
+		currency: 'EUR',
+		paidByMemberId: 'member',
+		imageUrl: null,
+		occurredAt: new Date(0),
+	}));
 	const db = {
 		select: () => ({
 			from: (table) => {
 				const rows =
 					table === tables[failedTable]
 						? Promise.reject(new Error('privateDbPassword123'))
-						: Promise.resolve([]);
+						: Promise.resolve(table === tables.expenses ? expenseRows : []);
 				const query = Object.assign(rows, {
 					where: () => query,
 					orderBy: () => query,
@@ -99,12 +109,16 @@ function exportRoute(failedTable) {
 			asc: () => null,
 			desc: () => null,
 			eq: () => null,
-			inArray: () => null,
+			inArray: (_column, values) => {
+				inArrayCalls.push(values.length);
+				return null;
+			},
 		},
 		'next/server': { NextResponse: Response },
 	});
 	return {
 		limits,
+		inArrayCalls,
 		get: (search = '') => GET({ nextUrl: new URL(`https://example.invalid/export${search}`) }, {}),
 	};
 }
@@ -124,6 +138,15 @@ test('explicit export limits remain bounded', async () => {
 	assert.ok(route.limits.every((limit) => limit === 20));
 	assert.equal((await route.get('?limit=100001')).status, 400);
 	assert.equal((await route.get('?limit=0')).status, 400);
+});
+
+test('large expense id sets load splits in bind-param-safe chunks', async () => {
+	for (const search of ['?format=csv&section=expenses', '?sections=expenses']) {
+		const route = exportRoute(undefined, { expenseCount: 25_001 });
+		const response = await route.get(search);
+		assert.equal(response.status, 200, await response.text());
+		assert.deepEqual(route.inArrayCalls, [10_000, 10_000, 5_001]);
+	}
 });
 
 test('one failed JSON section rejects the incomplete backup', async (t) => {

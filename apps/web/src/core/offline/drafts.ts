@@ -152,20 +152,12 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 					quantity: typeof action.payload.quantity === 'string' ? action.payload.quantity : '',
 				},
 			};
-		case 'shopping.update': {
-			const name = String(action.payload.name ?? '');
-			const quantity = typeof action.payload.quantity === 'string' ? action.payload.quantity : '';
-			if (!name && !quantity) return null;
-			return {
-				module: 'shopping',
-				draft: {
-					queueEditId: action.id,
-					queueEditType: action.type,
-					name,
-					quantity,
-				},
-			};
-		}
+		// Queued updates have no owning edit form: the Einkaufs-/Ausgaben-forms
+		// only create, so editing one there would turn the update into a new
+		// item and drop the original. They can only be synced or discarded.
+		case 'shopping.update':
+		case 'expense.update':
+			return null;
 		case 'recurring.advance':
 			return null;
 		case 'announcement.create':
@@ -180,8 +172,9 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 				},
 			};
 		case 'absence.create':
+			// The Putzplan owns both forms and reads only the chore draft key.
 			return {
-				module: 'absence',
+				module: 'chore',
 				draft: {
 					queueEditId: action.id,
 					queueEditType: action.type,
@@ -211,7 +204,6 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 				},
 			};
 		case 'expense.create':
-		case 'expense.update':
 		case 'recurring.create':
 			return {
 				module: 'expense',

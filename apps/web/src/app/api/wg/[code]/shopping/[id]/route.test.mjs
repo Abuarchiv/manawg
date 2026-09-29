@@ -13,6 +13,7 @@ const routeFile = path.join(directory, 'route.ts');
 const itemId = '11111111-1111-4111-8111-111111111111';
 const wgId = '22222222-2222-4222-8222-222222222222';
 const memberId = '33333333-3333-4333-8333-333333333333';
+const otherMemberId = '55555555-5555-4555-8555-555555555555';
 const shareCode = 'MTE8PZAT';
 
 function json(body, init = {}) {
@@ -21,7 +22,10 @@ function json(body, init = {}) {
 
 function harness(returning = async () => [{ id: itemId }]) {
 	const state = {
+		adminMemberId: null,
 		audits: 0,
+		deleted: 0,
+		member: { memberId, name: 'Alex', verified: true },
 		notices: 0,
 		update: null,
 		current: {
@@ -30,6 +34,7 @@ function harness(returning = async () => [{ id: itemId }]) {
 			updatedAt: '2026-09-27T10:00:00.123456Z',
 			boughtAt: null,
 			boughtByMemberId: null,
+			addedByMemberId: memberId,
 			name: 'Milch',
 		},
 		loggedErrors: [],
@@ -41,6 +46,14 @@ function harness(returning = async () => [{ id: itemId }]) {
 		wgId: 'shopping_items.wg_id',
 		updatedAt: 'shopping_items.updated_at',
 		boughtAt: 'shopping_items.bought_at',
+		addedByMemberId: 'shopping_items.added_by_member_id',
+		name: 'shopping_items.name',
+	};
+	const wgMembers = {
+		id: 'wg_members.id',
+		wgId: 'wg_members.wg_id',
+		role: 'wg_members.role',
+		deactivatedAt: 'wg_members.deactivated_at',
 	};
 	const replayCache = new Map();
 	const matches = (conditions) => {
@@ -104,11 +117,43 @@ function harness(returning = async () => [{ id: itemId }]) {
 		select() {
 			return {
 				from(table) {
+					if (table === wgMembers) {
+						return {
+							where() {
+								const rows = state.adminMemberId ? [{ id: state.adminMemberId }] : [];
+								return { limit: async () => rows };
+							},
+						};
+					}
 					assert.equal(table, shoppingItems);
 					return {
 						where() {
-							const rows = state.current ? [{ id: state.current.id }] : [];
+							const rows = state.current
+								? [
+										{
+											id: state.current.id,
+											addedByMemberId: state.current.addedByMemberId,
+											name: state.current.name,
+										},
+									]
+								: [];
 							return { limit: async () => rows };
+						},
+					};
+				},
+			};
+		},
+		delete(table) {
+			assert.equal(table, shoppingItems);
+			return {
+				where() {
+					return {
+						returning: async () => {
+							if (!state.current) return [];
+							state.deleted += 1;
+							const { id } = state.current;
+							state.current = null;
+							return [{ id }];
 						},
 					};
 				},
@@ -126,7 +171,7 @@ function harness(returning = async () => [{ id: itemId }]) {
 				state.audits += 1;
 			},
 		},
-		'@/core/db': { db, shoppingItems },
+		'@/core/db': { db, shoppingItems, wgMembers },
 		'@/core/errors': {
 			badRequest: (error) => json({ error }, 400),
 			conflict: (error) => json({ error }, 409),
@@ -140,7 +185,7 @@ function harness(returning = async () => [{ id: itemId }]) {
 			requireWgMember: async () => ({
 				ok: true,
 				wg: { id: wgId },
-				member: { memberId, name: 'Alex', verified: true },
+				member: state.member,
 			}),
 		},
 		'@/core/guards/route-preamble': {
@@ -221,6 +266,9 @@ function harness(returning = async () => [{ id: itemId }]) {
 					path.join(process.cwd(), 'src/features/shopping/shopping-duplicate.ts'),
 				);
 			}
+			if (name === '@/core/guards/admin') {
+				return loadTypeScript(path.join(process.cwd(), 'src/core/guards/admin.ts'));
+			}
 			if (Object.hasOwn(mocks, name)) return mocks[name];
 			return requireFromWeb(name);
 		};
@@ -243,6 +291,13 @@ function harness(returning = async () => [{ id: itemId }]) {
 					method: 'PATCH',
 					headers: { 'content-type': 'application/json', 'idempotency-key': key },
 					body: JSON.stringify(body ?? { bought, expectedUpdatedAt, expectedBoughtAt }),
+				}),
+				{ params: Promise.resolve({ code: shareCode, id: itemId }) },
+			),
+		remove: () =>
+			route.DELETE(
+				new Request(`https://example.invalid/api/wg/${shareCode}/shopping/${itemId}`, {
+					method: 'DELETE',
 				}),
 				{ params: Promise.resolve({ code: shareCode, id: itemId }) },
 			),
@@ -339,4 +394,51 @@ test('retry of a bought PATCH replays after another member reopens the item', as
 	assert.equal(state.audits, 1);
 	assert.equal(state.notices, 1);
 	assert.equal(state.current.boughtAt, null);
+});
+
+test('the member who added a shopping item may delete it', async () => {
+	const { remove, state } = harness();
+
+	const response = await remove();
+
+	assert.equal(response.status, 200);
+	assert.deepEqual(await response.json(), { deleted: true });
+	assert.equal(state.deleted, 1);
+	assert.equal(state.audits, 1);
+});
+
+test("a verified WG admin may delete another member's shopping item", async () => {
+	const { remove, state } = harness();
+	state.current.addedByMemberId = otherMemberId;
+	state.adminMemberId = memberId;
+
+	const response = await remove();
+
+	assert.equal(response.status, 200);
+	assert.deepEqual(await response.json(), { deleted: true });
+	assert.equal(state.deleted, 1);
+	assert.equal(state.audits, 1);
+});
+
+test("non-admins and unverified admins cannot delete another member's item", async () => {
+	for (const setup of [
+		(state) => {
+			state.adminMemberId = otherMemberId;
+		},
+		(state) => {
+			state.adminMemberId = memberId;
+			state.member = { ...state.member, verified: false };
+		},
+	]) {
+		const { remove, state } = harness();
+		state.current.addedByMemberId = otherMemberId;
+		setup(state);
+
+		const response = await remove();
+
+		assert.equal(response.status, 403);
+		assert.deepEqual(await response.json(), { error: 'not_owner' });
+		assert.equal(state.deleted, 0);
+		assert.equal(state.audits, 0);
+	}
 });

@@ -453,7 +453,10 @@ export function ImportWizard() {
 		setStep('preview');
 	}
 
-	const allMapped = namesNeedingMapping.every((name) => Boolean(mapping[name]));
+	// A mapping only counts when it points at an active member (the commit rejects others).
+	const allMapped = namesNeedingMapping.every((name) =>
+		memberOptions.some((member) => member.id === mapping[name]),
+	);
 
 	const stepNumber = ['source', 'input', 'mapping', 'preview', 'commit'].indexOf(step) + 1;
 	const selectedCount = (preview?.parsed.length ?? 0) - skipIndexes.size;

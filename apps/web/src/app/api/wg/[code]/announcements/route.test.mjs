@@ -21,6 +21,7 @@ function harness() {
 		legacy: null,
 		rejectImageAttachment: false,
 		replayWgId: null,
+		existingChoreId: null,
 	};
 	class TransactionAbort extends Error {
 		constructor(code) {
@@ -31,6 +32,7 @@ function harness() {
 	const cache = new Map();
 	let prior = Promise.resolve();
 	const announcements = { id: 'id' };
+	const chores = { id: 'chore-id', wgId: 'chore-wg' };
 	const withAnnouncementReplay = async (req, scope, mutate, legacyResponse, wgIdForLock) => {
 		state.replayWgId = wgIdForLock ?? null;
 		const replayKey = req.headers.get('idempotency-key');
@@ -48,6 +50,16 @@ function harness() {
 			const cached = cache.get(cacheKey);
 			if (cached) return { response: cached, effect: null, key: replayKey };
 			const tx = {
+				select: () => ({
+					from: (table) => {
+						assert.equal(table, chores);
+						return {
+							where: () => ({
+								limit: async () => (state.existingChoreId ? [{ id: state.existingChoreId }] : []),
+							}),
+						};
+					},
+				}),
 				insert: (table) => ({
 					values: (value) => ({
 						returning: async () => {
@@ -75,6 +87,7 @@ function harness() {
 		'@/core/audit': { recordAuditEvent: async () => state.audits++ },
 		'@/core/db': {
 			announcements,
+			chores,
 			announcementComments: {},
 			announcementReactions: {},
 			db: {},
@@ -138,7 +151,7 @@ function harness() {
 	);
 	return {
 		state,
-		post: (imageUrl = null) =>
+		post: (imageUrl = null, extra = {}) =>
 			module.exports.POST(
 				new Request('https://example.invalid', {
 					method: 'POST',
@@ -148,6 +161,7 @@ function harness() {
 						kind: 'info',
 						imageUrl,
 						source: 'system',
+						...extra,
 					}),
 				}),
 				{ code: 'MTE8PZAT' },
@@ -202,4 +216,33 @@ test('revoked private image attachment returns 409 without creating an announcem
 	assert.deepEqual(await response.json(), { error: 'image_removed', code: 'image_removed' });
 	assert.equal(state.created.length, 0);
 	assert.equal(state.notifications, 0);
+});
+
+const choreId = '44444444-4444-4444-8444-444444444444';
+
+test('client-chosen provenance is stored as a manual post', async () => {
+	for (const extra of [
+		{ source: 'chore_swap', sourcePath: '/putzen?highlight=forged' },
+		{ source: 'expense', sourcePath: '/ausgaben' },
+		{ source: 'shopping', sourcePath: '/einkauf' },
+		{ source: 'chore_swap', choreId },
+	]) {
+		const { state, post } = harness();
+		assert.equal((await post(null, extra)).status, 200);
+		assert.equal(state.created[0].source, 'manual');
+		assert.equal(state.created[0].sourcePath, null);
+	}
+});
+
+test('a swap request for a chore of this WG keeps a server-built source path', async () => {
+	for (const extra of [
+		{ source: 'chore_swap', choreId },
+		{ source: 'chore_swap', sourcePath: `/putzen?highlight=${choreId}` },
+	]) {
+		const { state, post } = harness();
+		state.existingChoreId = choreId;
+		assert.equal((await post(null, extra)).status, 200);
+		assert.equal(state.created[0].source, 'chore_swap');
+		assert.equal(state.created[0].sourcePath, `/putzen?highlight=${choreId}`);
+	}
 });

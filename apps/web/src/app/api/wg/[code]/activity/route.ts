@@ -13,7 +13,7 @@ import {
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { buildActivityTimeline, getActivityReminders } from '@/core/reads/activity';
-import { desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 export const GET = withWgRoute(
@@ -84,8 +84,10 @@ export const GET = withWgRoute(
 					assignedMemberId: chores.assignedMemberId,
 				})
 				.from(chores)
-				.where(eq(chores.wgId, wg.id))
-				.orderBy(desc(chores.nextDueAt))
+				// Only overdue chores feed the reminders; oldest first so the cap
+				// never drops the ones that have been hanging the longest.
+				.where(and(eq(chores.wgId, wg.id), lte(chores.nextDueAt, new Date())))
+				.orderBy(asc(chores.nextDueAt))
 				.limit(120),
 			db
 				.select({

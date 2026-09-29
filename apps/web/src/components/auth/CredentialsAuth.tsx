@@ -2,7 +2,7 @@
 
 import { ErrorBox } from '@/components/neu/ErrorBox';
 import { Button } from '@/components/ui/button';
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -268,10 +268,17 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								enterKeyHint="go"
 								minLength={6}
 								required
-								aria-describedby={passwordFieldInvalid ? 'auth-email-error' : undefined}
+								aria-describedby={
+									passwordFieldInvalid
+										? 'auth-password-hint auth-email-error'
+										: 'auth-password-hint'
+								}
 								aria-invalid={passwordFieldInvalid || undefined}
 								className="text-base"
 							/>
+							<FieldDescription id="auth-password-hint" className="text-xs">
+								Für ein neues Konto mindestens {NEW_PASSWORD_MIN_LENGTH} Zeichen.
+							</FieldDescription>
 						</Field>
 						<Button
 							type="button"

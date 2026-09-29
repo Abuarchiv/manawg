@@ -32,6 +32,7 @@ import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
 import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import {
+	discardQueuedEntry,
 	enqueueOfflineAction,
 	readOfflineQueue,
 	syncOfflineActions,
@@ -48,6 +49,7 @@ import {
 	createQueuedShoppingItem,
 	createQueuedShoppingUpdate,
 	hasQueuedShoppingUpdate,
+	isQueuedOnlyId,
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
@@ -606,9 +608,29 @@ export default function EinkaufPage() {
 	const remove = useCallback(
 		async (id: string): Promise<void> => {
 			if (isPending(id)) return;
-			start(id);
 			setRemoveError(null);
 			setRemoveErrorId(null);
+			const queued = discardQueuedEntry(wg.shareCode, id);
+			if (queued === 'storage_blocked') {
+				setRemoveErrorId(id);
+				setRemoveError(
+					'Offline-Speicher ist blockiert. Der vorgemerkte Artikel konnte nicht entfernt werden.',
+				);
+				return;
+			}
+			if (queued === 'removed' || isQueuedOnlyId(id)) {
+				commitItems((prev) =>
+					keepItems(
+						prev,
+						prev.filter((item) => item.id !== id),
+					),
+				);
+				refreshCount();
+				setToggleNotice('Offline vorgemerkter Artikel wurde entfernt.');
+				if (queued === 'not_queued') void load(true);
+				return;
+			}
+			start(id);
 			const res = await apiFetch<unknown>(
 				`/api/wg/${encodedShareCode}/shopping/${encodeURIComponent(id)}`,
 				{
@@ -655,7 +677,9 @@ export default function EinkaufPage() {
 			identity.memberToken,
 			isPending,
 			load,
+			refreshCount,
 			start,
+			wg.shareCode,
 		],
 	);
 

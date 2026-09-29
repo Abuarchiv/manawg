@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isAnnouncementArchived, reconcilePendingAnnouncements } from './announcement-workflow.ts';
+import {
+	getMyOpenAnnouncements,
+	isAnnouncementArchived,
+	reconcilePendingAnnouncements,
+	summarizeAnnouncementReactions,
+} from './announcement-workflow.ts';
 
 test('tracks A to A+B to A across focus and background revisions before apply', () => {
 	const postA = { id: 'post-a' };
@@ -33,5 +38,42 @@ test('archives resolved posts and quiet unpinned infos, keeps open asks on the b
 	assert.equal(
 		isAnnouncementArchived({ ...base, kind: 'problem', status: 'resolved', pinnedAt: old }, now),
 		true,
+	);
+});
+
+test('summarizes known reactions per announcement and marks my own', () => {
+	const summary = summarizeAnnouncementReactions(
+		[
+			{ announcementId: 'a', memberId: 'me', reaction: 'take' },
+			{ announcementId: 'a', memberId: 'bob', reaction: 'take' },
+			{ announcementId: 'a', memberId: 'bob', reaction: 'seen' },
+			{ announcementId: 'a', memberId: 'me', reaction: 'unknown' },
+			{ announcementId: 'b', memberId: 'bob', reaction: 'ok' },
+		],
+		'me',
+	);
+	assert.deepEqual(summary.get('a'), {
+		reactionCounts: { take: 2, seen: 1 },
+		myReactions: ['take'],
+	});
+	assert.deepEqual(summary.get('b'), { reactionCounts: { ok: 1 }, myReactions: [] });
+	assert.equal(
+		summarizeAnnouncementReactions(
+			[{ announcementId: 'a', memberId: 'me', reaction: 'ok' }],
+			null,
+		).get('a')?.myReactions.length,
+		0,
+	);
+});
+
+test('my open announcements are the unresolved ones I took', () => {
+	const items = [
+		{ id: '1', status: 'open', myReactions: ['take'] },
+		{ id: '2', status: 'resolved', myReactions: ['take'] },
+		{ id: '3', status: 'open', myReactions: ['seen'] },
+	];
+	assert.deepEqual(
+		getMyOpenAnnouncements(items).map((item) => item.id),
+		['1'],
 	);
 });

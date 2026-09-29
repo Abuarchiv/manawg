@@ -49,6 +49,7 @@ function harness() {
 				return state.revoked;
 			},
 		},
+		'@/core/infra/observability': { logApiError: () => undefined },
 		'@/core/infra/supabase-storage': {
 			ImageStorageConfigurationError,
 			ImageStorageObjectNotFoundError,

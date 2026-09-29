@@ -11,9 +11,13 @@ import {
 	isCalendarFeedToken,
 	verifyCalendarFeedToken,
 } from '@/features/events/calendar-subscription';
+import {
+	buildEventsWindowFilter,
+	withEventWindowCandidates,
+} from '@/features/events/event-reminder-window';
 import { type EventInput, expandRecurrence } from '@/features/events/events';
 import { type CalendarFeedOccurrence, calendarFeedToIcs } from '@/features/events/ics';
-import { and, asc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, eq, gt, isNotNull, isNull, or } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const FEED_HORIZON_DAYS = 365;
@@ -43,6 +47,8 @@ export async function GET(
 	const limit = await checkRateLimit(wgReadLimiter, `calendar-feed:${clientIpKey(req)}`);
 	if (!limit.success) return tooMany('rate_limited');
 
+	const from = startOfBerlinDay(new Date());
+	const to = new Date(from.getTime() + FEED_HORIZON_DAYS * MS_PER_DAY);
 	try {
 		const events = await withTransaction(async (tx) => {
 			const [beforeLock] = await tx
@@ -76,16 +82,38 @@ export async function GET(
 				)
 				.limit(1);
 			if (!subscription || !verifyCalendarFeedToken(id, subscription.tokenSeed, token)) return null;
-			return tx
-				.select()
-				.from(wgEvents)
-				.where(eq(wgEvents.wgId, subscription.wgId))
-				.orderBy(asc(wgEvents.startsAt));
+			// Same window as the events API: only rows that can produce an
+			// occurrence in [from, to] (recurring roots have no age bound), paged
+			// and capped instead of loading the WG's whole event history.
+			const baseFilter = and(
+				eq(wgEvents.wgId, subscription.wgId),
+				buildEventsWindowFilter(from, to),
+			);
+			return withEventWindowCandidates(
+				from,
+				(cursor, pageLimit) => {
+					const cursorFilter = cursor
+						? or(
+								gt(wgEvents.startsAt, cursor.startsAt),
+								and(eq(wgEvents.startsAt, cursor.startsAt), gt(wgEvents.id, cursor.id)),
+							)
+						: undefined;
+					return tx
+						.select()
+						.from(wgEvents)
+						.where(cursorFilter ? and(baseFilter, cursorFilter) : baseFilter)
+						.orderBy(asc(wgEvents.startsAt), asc(wgEvents.id))
+						.limit(pageLimit);
+				},
+				() => 'window_too_large' as const,
+				(rows) => rows,
+			);
 		});
 		if (!events) return notFound('calendar_feed_not_found');
+		if (events === 'window_too_large') {
+			return NextResponse.json({ error: 'events_window_too_large' }, { status: 503 });
+		}
 
-		const from = startOfBerlinDay(new Date());
-		const to = new Date(from.getTime() + FEED_HORIZON_DAYS * MS_PER_DAY);
 		const occurrences: CalendarFeedOccurrence[] = events.flatMap((row) =>
 			expandRecurrence(eventToInput(row), from, to),
 		);

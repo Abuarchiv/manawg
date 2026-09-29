@@ -102,15 +102,12 @@ export function OfflineQueueSection({
 		refresh();
 	}
 
-	function editHref(item: OfflineAction): string {
-		if (item.type === 'shopping.create') return buildQueueEditHref(shareCode, 'shopping');
-		if (item.type === 'announcement.create') return buildQueueEditHref(shareCode, 'announcement');
-		if (item.type === 'expense.create') return buildQueueEditHref(shareCode, 'expense');
-		if (item.type === 'recurring.create') return buildQueueEditHref(shareCode, 'expense');
-		if (item.type === 'absence.create') {
-			return buildQueueEditHref(shareCode, 'chore', { openAbsencesPanel: true });
-		}
-		return buildQueueEditHref(shareCode, 'chore');
+	// The page that reads the draft is derived from the draft's own module, so
+	// the draft key and the opened form can never disagree.
+	function editHref(item: OfflineAction, draft: QueueEditDraft): string {
+		return buildQueueEditHref(shareCode, draft.module, {
+			openAbsencesPanel: item.type === 'absence.create',
+		});
 	}
 
 	function inspectHref(item: OfflineAction): string {
@@ -150,7 +147,7 @@ export function OfflineQueueSection({
 			}));
 			return;
 		}
-		window.location.assign(editHref(item));
+		window.location.assign(editHref(item, draft));
 	}
 
 	function setConflictNote(id: string, note: string): void {

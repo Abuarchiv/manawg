@@ -46,6 +46,8 @@ interface ExportPage {
 
 const NO_EXPORT_LIMIT = Number.MAX_SAFE_INTEGER;
 const EXPORT_LIMIT_MAX = 100_000;
+/** Expense ids per split query; well below Postgres' 65,535 bind-param cap. */
+const SPLIT_ID_CHUNK_SIZE = 10_000;
 
 /**
  * Optional `limit`/`offset` params so a huge WG can page through the dump
@@ -149,20 +151,26 @@ async function loadSplitsByExpense(expenseIds: string[]): Promise<Map<string, Ex
 	const splitsByExpense = new Map<string, ExportSplitRow[]>();
 	if (expenseIds.length === 0) return splitsByExpense;
 
-	const splitRows = await db
-		.select({
-			expenseId: expenseSplits.expenseId,
-			debtorMemberId: expenseSplits.debtorMemberId,
-			amountCents: expenseSplits.amountCents,
-			settledAt: expenseSplits.settledAt,
-		})
-		.from(expenseSplits)
-		.where(inArray(expenseSplits.expenseId, expenseIds));
+	// Postgres caps a statement at 65,535 bind parameters, so a large (or
+	// unlimited) page of expense ids is read in chunks.
+	for (let start = 0; start < expenseIds.length; start += SPLIT_ID_CHUNK_SIZE) {
+		const splitRows = await db
+			.select({
+				expenseId: expenseSplits.expenseId,
+				debtorMemberId: expenseSplits.debtorMemberId,
+				amountCents: expenseSplits.amountCents,
+				settledAt: expenseSplits.settledAt,
+			})
+			.from(expenseSplits)
+			.where(
+				inArray(expenseSplits.expenseId, expenseIds.slice(start, start + SPLIT_ID_CHUNK_SIZE)),
+			);
 
-	for (const split of splitRows) {
-		const splits = splitsByExpense.get(split.expenseId) ?? [];
-		splits.push(split);
-		splitsByExpense.set(split.expenseId, splits);
+		for (const split of splitRows) {
+			const splits = splitsByExpense.get(split.expenseId) ?? [];
+			splits.push(split);
+			splitsByExpense.set(split.expenseId, splits);
+		}
 	}
 	return splitsByExpense;
 }

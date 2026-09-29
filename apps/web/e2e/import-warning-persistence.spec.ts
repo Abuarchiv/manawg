@@ -122,8 +122,9 @@ test('missing, expired, or different import rows reject warning updates', async 
 	}
 });
 
-function importRoute(persist: () => Promise<boolean>) {
+function importRoute(persist: () => Promise<boolean>, commit?: () => Promise<unknown>) {
 	let logs = 0;
+	const released: string[] = [];
 	const result = {
 		importId: 'import-1',
 		inserted: 1,
@@ -165,6 +166,9 @@ function importRoute(persist: () => Promise<boolean>) {
 				getCachedResponse: async () => null,
 				persistImportReplayWarning: persist,
 				readIdempotencyKey: () => 'key',
+				releaseResponseSlot: async (scope: string, key: string) => {
+					released.push(`${scope}:${key}`);
+				},
 			},
 			'@/core/infra/observability': { logApiError: () => logs++ },
 			'@/core/rate-limit': {
@@ -177,7 +181,7 @@ function importRoute(persist: () => Promise<boolean>) {
 				readImportJsonBody: async (req: Request) => ({ ok: true, value: await req.json() }),
 			},
 			'@/features/expenses/import-commit': {
-				commitImport: async () => result,
+				commitImport: commit ?? (async () => result),
 				isCommitResult: () => true,
 			},
 			'@/features/expenses/import-hash': { hashPayload: () => 'hash' },
@@ -193,6 +197,7 @@ function importRoute(persist: () => Promise<boolean>) {
 	);
 	return {
 		logs: () => logs,
+		released: () => released,
 		post: () =>
 			route.POST(
 				new Request('https://example.invalid', {
@@ -218,4 +223,21 @@ test('immediate response preserves a known warning when persistence fails', asyn
 	});
 	await expect((await failed.post()).json()).resolves.toMatchObject({ warning });
 	expect(failed.logs()).toBe(1);
+});
+
+test('a failed commit releases its idempotency claim so the retry gets the real error', async () => {
+	const failing = importRoute(
+		async () => true,
+		async () => {
+			throw new Error('member_not_in_wg');
+		},
+	);
+	expect((await failing.post()).status).toBe(400);
+	expect(failing.released()).toHaveLength(1);
+	expect((await failing.post()).status).toBe(400);
+	expect(failing.released()).toHaveLength(2);
+
+	const succeeding = importRoute(async () => true);
+	expect((await succeeding.post()).status).toBe(200);
+	expect(succeeding.released()).toHaveLength(0);
 });

@@ -77,6 +77,10 @@ export const wgWriteLimiter = build(30, 60, 'wg-write'); // 30 writes / min / IP
 // so 20/min locked whole WGs out ("Deine WG konnte nicht geladen werden"). With
 // 32^8 codes, one IP at 120/min still needs ~17,000 years to walk the code space.
 export const wgShareCodeLookupLimiter = build(120, 60, 'wg-code-lookup'); // 120 share-code lookups / min / IP — brute-force defense
+// Nested /api/wg/<code>/… routes answer differently for an unknown code and
+// for a foreign WG. Only misses are counted (per signed-in account), so
+// members are never throttled while code enumeration stops after a few tries.
+export const wgShareCodeMissLimiter = build(20, 3600, 'wg-code-miss'); // 20 unknown/foreign share codes / hour / account
 export const notifTestLimiter = build(3, 60, 'notif-test'); // 3 test notifications / min / member — anti-spam
 export const reminderSendLimiter = build(10, 3600, 'reminder-send'); // 10 Mahnungen / hour / member — global anti-spam
 
@@ -92,6 +96,9 @@ export const wgExportLimiter = build(20, 3600, 'wg-export'); // 20 exports / hou
 // its own per-member bucket: scraping balances stays throttled even from a
 // rotating pool of IPs.
 export const dashboardLimiter = build(60, 60, 'dashboard'); // 60 dashboard reads / min / member
+// The expense list returns the WG's full expense history; same per-member
+// bucket reasoning as the dashboard.
+export const expensesReadLimiter = build(60, 60, 'expenses-read'); // 60 expense-list reads / min / member
 export const healthLimiter = build(60, 60, 'health'); // 60 probes / min / IP — outside the middleware matcher
 export const importLimiter = build(10, 3600, 'import-preview'); // 10 preview / hour / member
 export const importCommitLimiter = build(3, 3600, 'import-commit'); // 3 commit / hour / member
