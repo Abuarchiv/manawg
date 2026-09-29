@@ -41,7 +41,14 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 	if (!hasSupabaseEnv() || !serviceRoleKey) {
 		return apiError('account_deletion_unavailable', 503, 'account_deletion_unavailable');
 	}
-	const user = await getAuthenticatedUser(req);
+	let user: Awaited<ReturnType<typeof getAuthenticatedUser>>;
+	try {
+		user = await getAuthenticatedUser(req);
+	} catch (err) {
+		// A transient Auth outage is retryable, not an unauthenticated caller.
+		logApiError('[api/account DELETE] auth error', err);
+		return apiError('db_error', 503);
+	}
 	if (!user) return apiError('unauthorized', 401, 'auth_required');
 
 	try {

@@ -11,6 +11,7 @@ import {
 } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
 import { readJsonBody } from '@/core/http/read-json';
+import { logApiError } from '@/core/infra/observability';
 import { PRIVATE_IMAGE_MIME_TYPES } from '@/core/infra/private-image-policy';
 import {
 	S3ConfigurationError,
@@ -77,7 +78,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	if (!isValidShareCode(code)) return noStore(badRequest('invalid_share_code'));
 	if (!isAllowedMimeType(mimeType)) return noStore(badRequest('invalid_mime_type'));
 
-	const authenticatedUser = await getAuthenticatedUser(req);
+	let authenticatedUser: Awaited<ReturnType<typeof getAuthenticatedUser>>;
+	try {
+		authenticatedUser = await getAuthenticatedUser(req);
+	} catch (err) {
+		// A transient Auth outage is retryable, not an unauthenticated caller.
+		logApiError('[upload sign] auth error', err);
+		return noStore(apiError('db_error', 503));
+	}
 	if (!authenticatedUser) return noStore(apiError('auth_required', 401, 'auth_required'));
 
 	const wg = await db.query.wgs.findFirst({
