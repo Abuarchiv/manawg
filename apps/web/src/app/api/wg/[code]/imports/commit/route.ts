@@ -178,8 +178,10 @@ export async function POST(
 			});
 		} catch (writeErr) {
 			replayReservation?.reject(writeErr);
+			// The commit rolled back, so free the Postgres claim: a retry with the
+			// same key must re-run and get the real error, not a pending 500.
+			if (idemScope && idemKey) await releaseResponseSlot(idemScope, idemKey);
 			if (writeErr instanceof TransactionAbort && writeErr.code === 'paypal_payment_pending') {
-				if (idemScope && idemKey) await releaseResponseSlot(idemScope, idemKey);
 				return conflict('paypal_payment_pending');
 			}
 			throw writeErr;
