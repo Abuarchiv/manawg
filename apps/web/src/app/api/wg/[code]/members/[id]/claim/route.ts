@@ -5,6 +5,7 @@ import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { apiError, badRequest, conflict, forbidden, notFound } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { verifyMemberToken } from '@/core/guards/member-token';
+import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from '@/shared/lib/member-header';
 import { and, eq, sql } from 'drizzle-orm';
@@ -26,7 +27,7 @@ export const POST = withWgRoute<{ id: string }>('members claim POST', async (req
 		where: (w, { eq }) => eq(w.shareCode, code),
 		columns: { id: true },
 	});
-	if (!wg) return notFound('wg_not_found');
+	if (!wg) return shareCodeMissResponse(user.id, notFound('wg_not_found'));
 
 	const legacyMemberId = req.headers.get(MEMBER_ID_HEADER)?.trim();
 	const legacyToken = req.headers.get(MEMBER_TOKEN_HEADER);

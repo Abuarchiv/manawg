@@ -20,6 +20,7 @@ const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 function isRateLimitedApiPath(path: string): boolean {
 	return (
 		path === '/api/account' ||
+		path.startsWith('/api/auth/') ||
 		path === '/api/wg' ||
 		path.startsWith('/api/wg/') ||
 		path.startsWith('/api/calendar/') ||
@@ -170,6 +171,7 @@ export const config = {
 	matcher: [
 		'/((?!api|_next/static|_next/image|favicon.ico|manifest.json|.*\\..*).*)',
 		'/api/account',
+		'/api/auth/:path*',
 		'/api/wg',
 		'/api/wg/:path*',
 		'/api/calendar/:path*',

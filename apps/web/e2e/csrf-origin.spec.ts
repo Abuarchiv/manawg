@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { NextRequest } from 'next/server';
-import { middleware, originAllowed } from '../src/middleware';
+import { config, middleware, originAllowed } from '../src/middleware';
 
 const WRITE_URL = 'https://app.example.com/api/wg/ABCDEFGH/expenses';
 
@@ -64,4 +64,13 @@ test('treats an explicit default port as same-origin and still rejects others', 
 	expect(
 		originAllowed(request({ host: 'app.example.com', origin: 'https://app.example.com:3000' })),
 	).toBe(false);
+});
+
+test('guards the password-recovery API like every other state-changing route', async () => {
+	expect(config.matcher).toContain('/api/auth/:path*');
+	const req = new NextRequest('https://app.example.com/api/auth/recovery', {
+		method: 'DELETE',
+		headers: { host: 'app.example.com', origin: 'https://evil.example.com' },
+	});
+	expect((await middleware(req)).status).toBe(403);
 });
