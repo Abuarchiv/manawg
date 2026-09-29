@@ -12,6 +12,7 @@ import {
 	isOfflineIdempotencyKey,
 	serializeOfflineAction,
 	shouldRetryOfflineAction,
+	withoutQueuedEntry,
 } from './offline-queue';
 import {
 	OFFLINE_REPLAY_CLOCK_SKEW_MS,
@@ -376,6 +377,19 @@ export function writeOfflineQueue(actions: OfflineAction[]): boolean {
 		// Offline queue persistence is best-effort when browser storage is blocked.
 		return false;
 	}
+}
+
+/**
+ * Deletes a not-yet-synced create (and follow-ups that target it) locally.
+ * Item routes reject the synthetic queue id, so a list delete must not call them.
+ */
+export function discardQueuedEntry(
+	shareCode: string,
+	id: string,
+): 'removed' | 'not_queued' | 'storage_blocked' {
+	const next = withoutQueuedEntry(readOfflineQueue(), shareCode, id);
+	if (!next) return 'not_queued';
+	return writeOfflineQueue(next) ? 'removed' : 'storage_blocked';
 }
 
 export function enqueueOfflineAction(action: OfflineAction): number {

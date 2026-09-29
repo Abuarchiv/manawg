@@ -30,6 +30,7 @@ import {
 	writeDraft,
 } from '@/core/offline/drafts';
 import {
+	discardQueuedEntry,
 	enqueueOfflineAction,
 	readOfflineQueue,
 	syncOfflineActions,
@@ -46,6 +47,7 @@ import {
 	createQueuedAbsence,
 	createQueuedChore,
 	createQueuedChoreCompletion,
+	isQueuedOnlyId,
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { endOfBerlinDay, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
@@ -650,6 +652,21 @@ export default function PutzenPage() {
 	async function removeAbsence(id: string): Promise<void> {
 		const pendingKey = `absence:${id}:remove`;
 		if (isPending(pendingKey)) return;
+		const queued = discardQueuedEntry(wg.shareCode, id);
+		if (queued === 'storage_blocked') {
+			setActionError(
+				'Offline-Speicher ist blockiert. Die vorgemerkte Abwesenheit konnte nicht entfernt werden.',
+			);
+			return;
+		}
+		if (queued === 'removed' || isQueuedOnlyId(id)) {
+			updateAbsences((current) => current.filter((absence) => absence.id !== id));
+			refreshCount();
+			setActionError(null);
+			setActionNotice('Offline vorgemerkte Abwesenheit wurde entfernt.');
+			if (queued === 'not_queued') void load(false);
+			return;
+		}
 		startPending(pendingKey);
 		try {
 			const result = await apiFetch<Record<string, never>>(
@@ -936,9 +953,23 @@ export default function PutzenPage() {
 
 	async function handleRemove(id: string): Promise<void> {
 		if (isPending(id)) return;
-		startPending(id);
 		setActionError(null);
 		setActionNotice(null);
+		const queued = discardQueuedEntry(wg.shareCode, id);
+		if (queued === 'storage_blocked') {
+			setActionError(
+				'Offline-Speicher ist blockiert. Die vorgemerkte Aufgabe konnte nicht entfernt werden.',
+			);
+			return;
+		}
+		if (queued === 'removed' || isQueuedOnlyId(id)) {
+			setItems((current) => current.filter((item) => item.id !== id));
+			refreshCount();
+			setActionNotice('Offline vorgemerkte Aufgabe wurde entfernt.');
+			if (queued === 'not_queued') void load(false);
+			return;
+		}
+		startPending(id);
 
 		const result = await apiFetch<Record<string, never>>(
 			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(id)}`,
