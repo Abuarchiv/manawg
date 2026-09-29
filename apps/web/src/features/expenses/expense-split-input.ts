@@ -55,9 +55,15 @@ export function isEqualExpenseSplit(
 
 	const activeIds = members.filter((member) => member.active !== false).map((member) => member.id);
 	if (splits.length !== activeIds.length) return false;
-	const expected = distributeCentsEqually(amountCents, activeIds);
-	const byId = new Map(splits.map((split) => [split.debtorMemberId, split.amountCents]));
-	return activeIds.every((id, index) => byId.get(id) === expected[index]);
+	const splitIds = new Set(splits.map((split) => split.debtorMemberId));
+	if (!activeIds.every((id) => splitIds.has(id))) return false;
+	// Equal splits rotate who receives the leftover cent (see
+	// buildSplitsFromForm's rotationOffset), so compare the cent values as a
+	// multiset instead of per member.
+	const byAmount = (a: number, b: number) => a - b;
+	const expected = distributeCentsEqually(amountCents, activeIds).sort(byAmount);
+	const actual = splits.map((split) => split.amountCents).sort(byAmount);
+	return actual.every((cents, index) => cents === expected[index]);
 }
 
 export function buildSplitsFromForm(input: BuildSplitsInput): SplitInputResult {
