@@ -225,6 +225,19 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 							: undefined,
 					recurringNextDueAt:
 						typeof action.payload.nextDueAt === 'string' ? action.payload.nextDueAt : undefined,
+					// A queued "Fixkosten nachholen" booking must keep its template link,
+					// otherwise the edited booking never advances the template. Its
+					// recurringNextDueAt is the template due date the booking expects.
+					...(action.type === 'expense.create' &&
+					typeof action.payload.recurringExpenseId === 'string'
+						? {
+								recurringSourceId: action.payload.recurringExpenseId,
+								recurringNextDueAt:
+									typeof action.payload.expectedRecurringNextDueAt === 'string'
+										? action.payload.expectedRecurringNextDueAt
+										: undefined,
+							}
+						: {}),
 					...(manualSplits && Object.keys(manualSplits).length > 0 ? { manualSplits } : {}),
 				},
 			};

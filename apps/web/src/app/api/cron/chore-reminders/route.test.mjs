@@ -19,7 +19,13 @@ function harness({ choreCount }) {
 		wgId: 'chores.wgId',
 	};
 	const choreCompletions = { choreId: 'choreCompletions.choreId', completedAt: 'c.completedAt' };
-	const wgMembers = { id: 'wgMembers.id', deactivatedAt: 'wgMembers.deactivatedAt' };
+	const wgMembers = {
+		id: 'wgMembers.id',
+		deactivatedAt: 'wgMembers.deactivatedAt',
+		pushOptIn: 'wgMembers.pushOptIn',
+		notifyChores: 'wgMembers.notifyChores',
+	};
+	const pushSubscriptions = { memberId: 'pushSubscriptions.memberId' };
 	const wgs = { id: 'wgs.id', name: 'wgs.name', shareCode: 'wgs.shareCode' };
 	const state = {
 		candidateWhere: null,
@@ -28,11 +34,13 @@ function harness({ choreCount }) {
 		inFlight: 0,
 		maxInFlight: 0,
 		dispatched: [],
+		payloads: [],
 		stamped: null,
 	};
 	const rows = Array.from({ length: choreCount }, (_, index) => ({
 		id: `chore-${index}`,
 		title: `Chore ${index}`,
+		nextDueAt: new Date('2026-09-23T08:00:00.000Z'),
 		assignedMemberId: `member-${index}`,
 		lastReminderAt: null,
 		wgId: 'wg-1',
@@ -83,7 +91,7 @@ function harness({ choreCount }) {
 	};
 
 	const mocks = {
-		'@/core/db': { choreCompletions, chores, db, wgMembers, wgs },
+		'@/core/db': { choreCompletions, chores, db, pushSubscriptions, wgMembers, wgs },
 		'@/core/infra/cron-auth': { verifyCronSecret: () => true },
 		'@/core/infra/observability': { withCronLogging: (_name, handler) => handler },
 		'@/core/notifications/notification-dispatch': {
@@ -93,6 +101,7 @@ function harness({ choreCount }) {
 				await new Promise((resolve) => setImmediate(resolve));
 				state.inFlight -= 1;
 				state.dispatched.push(notification.payload.choreId);
+				state.payloads.push(notification.payload);
 				return { sent: 1, failures: [] };
 			},
 		},
@@ -166,7 +175,38 @@ test('chore reminder candidates are bounded to a recent window and capped', asyn
 		),
 		'throttled chores are excluded in SQL so the cap drains the backlog',
 	);
+	assert.ok(
+		conditions.some(
+			(condition) =>
+				condition.operator === 'eq' &&
+				condition.args[0] === 'wgMembers.pushOptIn' &&
+				condition.args[1] === true,
+		),
+		'assignees without push opt-in are excluded in SQL',
+	);
+	assert.ok(
+		conditions.some(
+			(condition) =>
+				condition.operator === 'eq' &&
+				condition.args[0] === 'wgMembers.notifyChores' &&
+				condition.args[1] === true,
+		),
+		'assignees with muted chore notifications are excluded in SQL',
+	);
+	const subscriptionFilter = conditions.find(
+		(condition) => condition.operator === 'sql' && /exists/.test(condition.text),
+	);
+	assert.ok(subscriptionFilter, 'assignees without a push subscription are excluded in SQL');
+	assert.deepEqual(subscriptionFilter.args.slice(1), [
+		'pushSubscriptions.memberId',
+		'wgMembers.id',
+	]);
 	assert.equal(state.limit, 500);
+	assert.equal(
+		state.payloads[0].nextDueAt,
+		'2026-09-23T08:00:00.000Z',
+		'the push copy needs nextDueAt to say whether the chore is overdue',
+	);
 	assert.deepEqual(
 		state.orderBy.map((order) => order.args[0]),
 		['chores.lastReminderAt', 'chores.nextDueAt', 'chores.id'],

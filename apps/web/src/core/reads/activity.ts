@@ -453,6 +453,9 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 	return items.sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, input.limit ?? 50);
 }
 
+/** Announcement kinds that turn into a reminder once they stay open too long. */
+export const REMINDER_ANNOUNCEMENT_KINDS = ['question', 'request', 'task'] as const;
+
 export function getActivityReminders(
 	input: ActivityReminderInput,
 	now = Date.now(),
@@ -475,7 +478,7 @@ export function getActivityReminders(
 	}
 
 	for (const item of input.openAnnouncements ?? []) {
-		if (!['question', 'request', 'task'].includes(item.kind)) continue;
+		if (!(REMINDER_ANNOUNCEMENT_KINDS as readonly string[]).includes(item.kind)) continue;
 		const createdAt = parseTimestamp(item.createdAt);
 		if (createdAt === null) continue;
 		const days = Math.floor((now - createdAt) / MS_PER_DAY);

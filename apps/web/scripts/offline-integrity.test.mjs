@@ -871,3 +871,19 @@ test('manual-review queue actions show the full warning and link to the module l
 	assert.match(queueSection, /Offline-Aktion verwerfen/);
 	assert.match(queueSection, /hasRetryableItems && \(/);
 });
+
+test('a synced queue entry no longer counts as queued for an open queue edit', async () => {
+	const { module } = makeQueueModule({ apiFetch: async () => ({ ok: true, data: {} }) });
+	module.writeOfflineQueue([createAction()]);
+	assert.equal(module.isOfflineActionQueued('action-1'), true);
+	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
+	assert.equal(module.isOfflineActionQueued('action-1'), false);
+});
+
+test('queue-edit submits check that the edited entry is still queued before creating', () => {
+	for (const page of ['einkauf', 'pinnwand', 'putzen', 'ausgaben']) {
+		const source = readSource(`src/app/wg/[code]/${page}/page.tsx`);
+		assert.match(source, /isOfflineActionQueued\(queueEditId\)/, page);
+		assert.match(source, /QUEUE_EDIT_ALREADY_SENT_MESSAGE/, page);
+	}
+});

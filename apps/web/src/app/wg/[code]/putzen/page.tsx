@@ -32,6 +32,7 @@ import {
 import {
 	discardQueuedEntry,
 	enqueueOfflineAction,
+	isOfflineActionQueued,
 	readOfflineQueue,
 	syncOfflineActions,
 	writeOfflineQueue,
@@ -40,6 +41,7 @@ import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
 } from '@/core/offline/offline-copy';
 import {
 	type OfflineActionType,
@@ -57,6 +59,7 @@ import { getAbsentMemberIds } from '@/features/chores/absence';
 import type { AbsenceInput } from '@/features/chores/absence';
 import { absenceSaveErrorMessage, choreCreateErrorMessage } from '@/features/chores/chore-errors';
 import { buildChoreFairness, chooseNextAvailableMember } from '@/features/chores/chore-fairness';
+import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import {
 	CHORE_GROUPS,
 	getChoreGroup,
@@ -417,11 +420,32 @@ export default function PutzenPage() {
 		return true;
 	}
 
+	/** The edited queue entry may have been synced meanwhile; a new create would duplicate it. */
+	function editedQueueItemWasSent(type: OfflineActionType): boolean {
+		if (!queueEditId) return false;
+		const editType = readDraft<{ queueEditType?: string }>(draftKey)?.queueEditType;
+		return editType === type && !isOfflineActionQueued(queueEditId);
+	}
+
 	async function add(): Promise<void> {
 		const title = newTitle.trim();
 		if (title.length === 0) return;
 		const pendingKey = 'chore:add';
 		if (isPending(pendingKey)) return;
+		if (editedQueueItemWasSent('chore.create')) {
+			setQueueEditId(null);
+			setNewTitle('');
+			setNewInterval(7);
+			setNewRecurrenceType('days');
+			setNewAssigned('');
+			assigneeTouchedRef.current = false;
+			setShowForm(false);
+			removeDraft(draftKey);
+			setActionError(null);
+			setActionNotice(QUEUE_EDIT_ALREADY_SENT_MESSAGE);
+			void load(false);
+			return;
+		}
 		startPending(pendingKey);
 		setActionError(null);
 		setActionNotice(null);
@@ -475,6 +499,7 @@ export default function PutzenPage() {
 						setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
+					choreCreateRequestRef.current = null;
 					refreshCount();
 					setItems((current) => [
 						{
@@ -549,6 +574,16 @@ export default function PutzenPage() {
 		}
 		const pendingKey = 'absence:add';
 		if (isPending(pendingKey)) return;
+		if (editedQueueItemWasSent('absence.create')) {
+			setQueueEditId(null);
+			setAbsenceStart('');
+			setAbsenceEnd('');
+			setAbsenceReason('');
+			setActionError(null);
+			setActionNotice(QUEUE_EDIT_ALREADY_SENT_MESSAGE);
+			void load(false);
+			return;
+		}
 		startPending(pendingKey);
 		setActionError(null);
 		setActionNotice(null);
@@ -605,6 +640,7 @@ export default function PutzenPage() {
 						setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
+					absenceCreateRequestRef.current = null;
 					if (!clearEditedQueueItem(['absence.create'])) {
 						setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
@@ -764,6 +800,7 @@ export default function PutzenPage() {
 					endPending(chore.id);
 					return;
 				}
+				completionRequestKeysRef.current.delete(chore.id);
 				refreshCount();
 				setActionNotice(
 					'Erledigung offline vorgemerkt. Nächster Termin und Zuständigkeit werden nach der Synchronisierung bestätigt.',
@@ -1061,10 +1098,19 @@ export default function PutzenPage() {
 	});
 	const nextAssigneeNameByChoreId = new Map<string, string | null>(
 		items.map((chore): [string, string | null] => {
+			// Mirror the complete route: availability is judged on the next due
+			// day, not today. The client row has no anchor, which only affects
+			// month-end clamping, never the day an absence is checked against.
+			const nextDueAt = computeNextDueAt(
+				new Date(chore.nextDueAt),
+				chore.intervalDays,
+				new Date(),
+				chore.recurrenceType,
+			);
 			const nextAssigneeId = chooseNextAvailableMember({
 				members: activeMembers,
 				currentMemberId: chore.assignedMemberId,
-				absentMemberIds,
+				absentMemberIds: getAbsentMemberIds(absences, nextDueAt.getTime()),
 				chores: items,
 			});
 			if (!nextAssigneeId) return [chore.id, null];

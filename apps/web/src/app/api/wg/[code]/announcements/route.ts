@@ -35,6 +35,8 @@ import { z } from 'zod';
 const CONTENT_MIN = 1;
 const CONTENT_MAX = 2000;
 const ANNOUNCEMENTS_LIST_LIMIT = 300;
+/** Sources a member writes by hand; everything else is a system notice. */
+const MEMBER_ANNOUNCEMENT_SOURCES: AnnouncementSource[] = ['manual', 'chore_swap'];
 const announcementKindSchema = z.enum(ANNOUNCEMENT_KINDS);
 
 type AnnouncementCreateWarning =
@@ -101,12 +103,41 @@ export const GET = withWgRoute(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
-		const items = await db
-			.select()
-			.from(announcements)
-			.where(eq(announcements.wgId, wgId))
-			.orderBy(sql`${announcements.pinnedAt} desc nulls last`, desc(announcements.createdAt))
-			.limit(ANNOUNCEMENTS_LIST_LIMIT);
+		const listOrder = [
+			sql`${announcements.pinnedAt} desc nulls last`,
+			desc(announcements.createdAt),
+		] as const;
+		// System notices (postSystemNotice) are stored as open posts too and can
+		// flood the newest window, so open posts written by members are fetched
+		// separately and always included next to the newest rows.
+		const [newestItems, openMemberItems] = await Promise.all([
+			db
+				.select()
+				.from(announcements)
+				.where(eq(announcements.wgId, wgId))
+				.orderBy(...listOrder)
+				.limit(ANNOUNCEMENTS_LIST_LIMIT),
+			db
+				.select()
+				.from(announcements)
+				.where(
+					and(
+						eq(announcements.wgId, wgId),
+						eq(announcements.status, 'open'),
+						inArray(announcements.source, MEMBER_ANNOUNCEMENT_SOURCES),
+					),
+				)
+				.orderBy(...listOrder)
+				.limit(ANNOUNCEMENTS_LIST_LIMIT),
+		]);
+		const itemsById = new Map(newestItems.map((item) => [item.id, item]));
+		for (const item of openMemberItems) itemsById.set(item.id, item);
+		const items = [...itemsById.values()].sort(
+			(a, b) =>
+				(b.pinnedAt?.getTime() ?? Number.NEGATIVE_INFINITY) -
+					(a.pinnedAt?.getTime() ?? Number.NEGATIVE_INFINITY) ||
+				b.createdAt.getTime() - a.createdAt.getTime(),
+		);
 
 		if (items.length === 0) return NextResponse.json({ announcements: [] });
 

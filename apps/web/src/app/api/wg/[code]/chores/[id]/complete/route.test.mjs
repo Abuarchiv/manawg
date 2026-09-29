@@ -238,7 +238,13 @@ function makeRoute(state) {
 		},
 		'@/core/infra/observability': { logApiError: () => undefined },
 		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
-		'@/features/chores/absence': { getAbsentMemberIds: () => new Set() },
+		'@/core/utils/berlin-day': { startOfBerlinDay: (date) => new Date(date) },
+		'@/features/chores/absence': {
+			getAbsentMemberIds: (_absences, at) => {
+				state.absenceCheckedAt = at;
+				return [];
+			},
+		},
 		'@/features/chores/chore-fairness': {
 			computeOpenGapsByMember: () => new Map(),
 			chooseNextAvailableMember: ({ members, currentMemberId }) =>
@@ -254,6 +260,7 @@ function makeRoute(state) {
 			and: (...values) => values,
 			eq: (...values) => values,
 			gt: (...values) => values,
+			gte: (...values) => values,
 			isNull: (value) => [value, null],
 			sql: () => null,
 		},
@@ -351,4 +358,12 @@ test('stale and legacy chore completion payloads conflict without advancing the 
 	assert.deepEqual(await legacy.json(), { error: 'chore_occurrence_changed' });
 	assert.equal(state.completions.length, 1);
 	assert.equal(state.chore.nextDueAt.getTime(), originalDueAt.getTime() + 7 * 86_400_000);
+});
+
+test('rotation checks absences on the next due day, not at completion time', async () => {
+	const state = makeState();
+	const route = makeRoute(state);
+	const response = await route.post(route.request(), route.context);
+	assert.equal(response.status, 200);
+	assert.equal(state.absenceCheckedAt, originalDueAt.getTime() + 7 * 86_400_000);
 });

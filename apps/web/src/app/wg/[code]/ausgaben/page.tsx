@@ -18,6 +18,7 @@ import { captureException } from '@/core/infra/observability';
 import { removeDraft } from '@/core/offline/drafts';
 import {
 	enqueueOfflineAction,
+	isOfflineActionQueued,
 	readOfflineQueue,
 	syncOfflineActions,
 	writeOfflineQueue,
@@ -26,6 +27,7 @@ import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
 } from '@/core/offline/offline-copy';
 import {
 	type OfflineActionType,
@@ -500,6 +502,16 @@ export default function AusgabenPage() {
 		return true;
 	}
 
+	/** The edited queue entry may have been synced meanwhile; a new create would duplicate it. */
+	function discardSentQueueEdit(type: OfflineActionType): boolean {
+		if (!queueEditId || queueEditType !== type || isOfflineActionQueued(queueEditId)) return false;
+		resetForm();
+		setShowForm(false);
+		setActionWarning(QUEUE_EDIT_ALREADY_SENT_MESSAGE);
+		void load(false);
+		return true;
+	}
+
 	const { queuedCount, refreshCount } = useOfflineQueueSync({
 		shareCode: wg.shareCode,
 		memberId: identity.memberId,
@@ -553,6 +565,11 @@ export default function AusgabenPage() {
 			// Cycles the "+1 cent" recipient across expenses so the same person
 			// doesn't always eat the leftover cent on uneven splits.
 			rotationOffset: expenses.length,
+			// Editing keeps the saved per-member shares when nothing that
+			// affects them changed, so a settled share is not reopened.
+			previousSplits: editingExpense
+				? expenses.find((expense) => expense.id === editingExpense.id)?.splits
+				: undefined,
 		});
 	}
 
@@ -564,6 +581,7 @@ export default function AusgabenPage() {
 			);
 			return;
 		}
+		if (!submittingRef.current && discardSentQueueEdit('expense.create')) return;
 		setFormError(null);
 		setConflictExpenseId(null);
 		const desc = description.trim();
@@ -600,10 +618,15 @@ export default function AusgabenPage() {
 			!isEdit && recurringSourceId
 				? recurringExpenses.find((item) => item.id === recurringSourceId)
 				: null;
+		// An edited queued booking keeps the template due date it was queued against.
+		const queuedRecurringNextDueAt =
+			!isEdit && recurringSourceId && queueEditType === 'expense.create'
+				? recurringNextDueAt
+				: null;
 		const expectedRecurringNextDueAt = recurringSourceId
 			? reusePendingRequest && pendingRequest?.expectedRecurringNextDueAt
 				? pendingRequest.expectedRecurringNextDueAt
-				: recurringTemplateForCreate?.nextDueAt
+				: (queuedRecurringNextDueAt ?? recurringTemplateForCreate?.nextDueAt)
 			: undefined;
 		if (!isEdit && recurringSourceId && !expectedRecurringNextDueAt) {
 			setActionError(
@@ -842,6 +865,7 @@ export default function AusgabenPage() {
 		setFieldErrors({});
 		setFormError(null);
 		const wasEditingQueuedRecurring = queueEditType === 'recurring.create';
+		if (discardSentQueueEdit('recurring.create')) return;
 		const desc = description.trim();
 		const amountEuros = parseEuroAmount(amountStr);
 		const validationErrors: ExpenseFormFieldErrors = {};

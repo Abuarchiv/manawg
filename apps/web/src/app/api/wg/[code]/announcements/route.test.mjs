@@ -22,6 +22,8 @@ function harness() {
 		rejectImageAttachment: false,
 		replayWgId: null,
 		existingChoreId: null,
+		announcementResults: [],
+		announcementQueries: 0,
 	};
 	class TransactionAbort extends Error {
 		constructor(code) {
@@ -90,7 +92,23 @@ function harness() {
 			chores,
 			announcementComments: {},
 			announcementReactions: {},
-			db: {},
+			db: {
+				select: () => ({
+					from: (table) => {
+						const rows =
+							table === announcements
+								? (state.announcementResults[state.announcementQueries++] ?? [])
+								: [];
+						const query = Object.assign(Promise.resolve(rows), {
+							innerJoin: () => query,
+							where: () => query,
+							orderBy: () => query,
+							limit: () => query,
+						});
+						return query;
+					},
+				}),
+			},
 			wgMembers: {},
 		},
 		'@/core/db/private-image-deletions': {
@@ -141,6 +159,7 @@ function harness() {
 		'@/features/pinnwand/announcement-workflow': {
 			ANNOUNCEMENT_KINDS: ['info', 'question', 'problem', 'request', 'decision'],
 			ANNOUNCEMENT_SOURCES: ['manual', 'system', 'chore_swap', 'expense', 'shopping'],
+			summarizeAnnouncementReactions: () => new Map(),
 		},
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	};
@@ -151,6 +170,7 @@ function harness() {
 	);
 	return {
 		state,
+		get: () => module.exports.GET(new Request('https://example.invalid'), { code: 'MTE8PZAT' }),
 		post: (imageUrl = null, extra = {}) =>
 			module.exports.POST(
 				new Request('https://example.invalid', {
@@ -245,4 +265,33 @@ test('a swap request for a chore of this WG keeps a server-built source path', a
 		assert.equal(state.created[0].source, 'chore_swap');
 		assert.equal(state.created[0].sourcePath, `/putzen?highlight=${choreId}`);
 	}
+});
+
+test('GET keeps open member posts that system notices pushed out of the newest window', async () => {
+	const { state, get } = harness();
+	const post = (id, createdAt, extra = {}) => ({
+		id,
+		createdAt: new Date(createdAt),
+		pinnedAt: null,
+		status: 'open',
+		source: 'manual',
+		...extra,
+	});
+	const pinned = post('pinned', '2026-01-01T00:00:00Z', { pinnedAt: new Date('2026-09-01') });
+	const notice = post('notice', '2026-09-20T00:00:00Z', { source: 'shopping' });
+	const recentOpen = post('recent-open', '2026-09-10T00:00:00Z');
+	const oldOpen = post('old-open', '2026-02-01T00:00:00Z');
+	state.announcementResults = [
+		[pinned, notice, recentOpen],
+		[recentOpen, oldOpen],
+	];
+
+	const response = await get();
+	assert.equal(response.status, 200);
+	const { announcements: items } = await response.json();
+	assert.deepEqual(
+		items.map((item) => item.id),
+		['pinned', 'notice', 'recent-open', 'old-open'],
+	);
+	assert.equal(state.announcementQueries, 2);
 });

@@ -17,7 +17,7 @@ import {
 	pushEndpointSchema,
 	pushP256dhSchema,
 } from '@/core/validators/push-endpoint';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -297,13 +297,25 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 							authKey,
 							userAgent: req.headers.get('user-agent'),
 						};
+						// The endpoint is globally unique per browser. Reassign it when it
+						// still belongs to this account's membership in another WG or to a
+						// moved-out member; a foreign active owner keeps it (403).
+						const reassignableOwners = tx
+							.select({ id: wgMembers.id })
+							.from(wgMembers)
+							.where(
+								or(eq(wgMembers.authUserId, auth.authUserId), isNotNull(wgMembers.deactivatedAt)),
+							);
 						const [saved] = await tx
 							.insert(pushSubscriptions)
 							.values({ memberId: current.id, endpoint, ...subscriptionValues })
 							.onConflictDoUpdate({
 								target: pushSubscriptions.endpoint,
-								set: subscriptionValues,
-								setWhere: eq(pushSubscriptions.memberId, current.id),
+								set: { memberId: current.id, ...subscriptionValues },
+								setWhere: sql`(${eq(pushSubscriptions.memberId, current.id)} or ${inArray(
+									pushSubscriptions.memberId,
+									reassignableOwners,
+								)})`,
 							})
 							.returning({ id: pushSubscriptions.id });
 						if (!saved) throw new TransactionAbort('endpoint_owned');

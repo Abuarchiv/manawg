@@ -26,13 +26,14 @@ import {
 } from '@/core/idempotency';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { startOfBerlinDay } from '@/core/utils/berlin-day';
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import {
 	chooseNextAvailableMember,
 	computeOpenGapsByMember,
 } from '@/features/chores/chore-fairness';
 import { computeNextDueAt, isLateCompletion } from '@/features/chores/chore-recurrence';
-import { and, eq, gt, isNull, sql } from 'drizzle-orm';
+import { and, eq, gt, gte, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
@@ -213,7 +214,12 @@ export const POST = withWgRoute<{ id: string }>(
 						endDate: memberAbsences.endDate,
 					})
 					.from(memberAbsences)
-					.where(eq(memberAbsences.wgId, c.wgId)),
+					.where(
+						and(
+							eq(memberAbsences.wgId, c.wgId),
+							gte(memberAbsences.endDate, startOfBerlinDay(nextDueAt)),
+						),
+					),
 				db
 					.select({
 						assignedMemberId: chores.assignedMemberId,
@@ -228,6 +234,9 @@ export const POST = withWgRoute<{ id: string }>(
 					startDate: absence.startDate.toISOString(),
 					endDate: absence.endDate.toISOString(),
 				})),
+				// The next assignee has to be available on the next due day, not
+				// today: someone back tomorrow can take a chore due next week.
+				nextDueAt.getTime(),
 			);
 			// Reuse the same shared helper GET /chores uses so
 			// openGapCountForAssignee here matches the UI's "Nächste:r" prediction

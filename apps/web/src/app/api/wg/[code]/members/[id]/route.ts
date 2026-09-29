@@ -1,5 +1,5 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, wgMembers } from '@/core/db';
+import { db, pushSubscriptions, wgMembers } from '@/core/db';
 import { hasCapturingMemberPayment, lockActiveAccountMember } from '@/core/db/account-deletion';
 import { apiError, badRequest, conflict, forbidden, notFound, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
@@ -185,6 +185,11 @@ export const PATCH = withWgRoute<{ id: string }>(
 					paypalMerchantId: wgMembers.paypalMerchantId,
 				});
 			if (!updated) return { ok: false as const, response: notFound('member_not_found') };
+			// A moved-out member must not keep receiving pushes, and their browser
+			// endpoint has to be free for the next WG on the same device.
+			if (active === false) {
+				await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.memberId, id));
+			}
 			return {
 				ok: true as const,
 				changedActive: active !== undefined && active !== (target.deactivatedAt === null),

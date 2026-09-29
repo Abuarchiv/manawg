@@ -41,6 +41,7 @@ const emptySnapshot: Snapshot<never> = {
 const cache = new Map<string, Snapshot<unknown>>();
 const listeners = new Map<string, Set<() => void>>();
 const inFlight = new Map<string, Promise<void>>();
+const queuedFetches = new Map<string, Promise<void>>();
 const pendingUpdates = new Map<string, DataUpdate<unknown>[]>();
 const rebasingFetches = new Set<string>();
 
@@ -71,14 +72,29 @@ function subscribe(key: string, listener: () => void): () => void {
 	};
 }
 
-async function fetchAndCache<T>(
+/**
+ * A refresh that arrives while a GET is running may follow a mutation that
+ * GET cannot see yet. It therefore runs one more GET after the running one;
+ * concurrent callers share that single follow-up.
+ */
+export function fetchAndCache<T>(
 	key: string,
 	url: string,
 	options: CachedFetchOptions,
 ): Promise<void> {
 	const pending = inFlight.get(key);
-	if (pending) return pending;
+	if (!pending) return startFetch<T>(key, url, options);
+	const queued = queuedFetches.get(key);
+	if (queued) return queued;
+	const followUp = pending.then(() => {
+		queuedFetches.delete(key);
+		return inFlight.get(key) ?? startFetch<T>(key, url, options);
+	});
+	queuedFetches.set(key, followUp);
+	return followUp;
+}
 
+function startFetch<T>(key: string, url: string, options: CachedFetchOptions): Promise<void> {
 	const previous = snapshotFor<T>(key);
 	const requestVersion = previous.version;
 	if (previous.data === undefined || pendingUpdates.has(key)) rebasingFetches.add(key);

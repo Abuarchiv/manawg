@@ -34,6 +34,7 @@ import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offlin
 import {
 	discardQueuedEntry,
 	enqueueOfflineAction,
+	isOfflineActionQueued,
 	readOfflineQueue,
 	syncOfflineActions,
 	writeOfflineQueue,
@@ -42,6 +43,7 @@ import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
 	formatQueuedOfflineEntries,
 } from '@/core/offline/offline-copy';
 import {
@@ -301,6 +303,16 @@ export default function EinkaufPage() {
 		const submittedName = text ?? newName;
 		const { name, quantity } = parseShoppingInput(submittedName);
 		if (name.length === 0) return;
+		// The edited queue entry may have been synced meanwhile; a new create would duplicate it.
+		if (fromInput && queueEditId && !isOfflineActionQueued(queueEditId)) {
+			setQueueEditId(null);
+			setNewName('');
+			removeDraft(draftKey);
+			setAddError(null);
+			setAddNotice(QUEUE_EDIT_ALREADY_SENT_MESSAGE);
+			void load(true);
+			return;
+		}
 		addingRef.current = true;
 		setAdding(true);
 		setAddError(null);
@@ -347,6 +359,7 @@ export default function EinkaufPage() {
 						setAddError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
+					addIdempotencyKeyRef.current = null;
 					refreshCount();
 					if (fromInput && !clearEditedQueueItem()) {
 						setAddError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
@@ -566,6 +579,7 @@ export default function EinkaufPage() {
 							);
 							return;
 						}
+						shoppingPatchRequestKeysRef.current.delete(item.id);
 						refreshCount();
 						setToggleNotice(
 							becomingBought

@@ -234,12 +234,30 @@ export function advanceChatRefreshSequence(currentRequestId: number): number {
 	return currentRequestId + 1;
 }
 
+/**
+ * Merges the latest page into the loaded history. When a full latest page no
+ * longer contains the newest loaded message (e.g. the tab was backgrounded
+ * while more than a page arrived), merging would leave a silent gap between
+ * the old history and the new page, so the latest page replaces the history;
+ * a full page keeps `hasMoreOlder` set, so the skipped messages load again
+ * through the normal "load older" path.
+ */
 export function reconcileChatMessages<T extends { id: string }>(
 	existing: readonly T[],
 	latestPage: readonly T[],
 	refreshedLoaded: readonly T[],
+	pageSize?: number,
 ): T[] {
 	const latestIds = new Set(latestPage.map((message) => message.id));
+	const newestLoaded = existing[existing.length - 1];
+	if (
+		pageSize !== undefined &&
+		latestPage.length >= pageSize &&
+		newestLoaded &&
+		!latestIds.has(newestLoaded.id)
+	) {
+		return [...latestPage];
+	}
 	const refreshedById = new Map(refreshedLoaded.map((message) => [message.id, message]));
 	// Both history and the latest page already have the database's exact order.
 	// JS timestamps lose microseconds, so they cannot safely reconstruct it.
