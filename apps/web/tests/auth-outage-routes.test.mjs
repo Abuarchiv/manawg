@@ -175,3 +175,159 @@ test('account DELETE returns a retryable 503 when Supabase Auth is unavailable',
 
 	await assertAuthOutage(response, state);
 });
+
+// Share-code routes load their preamble helpers through the `@/` alias, which
+// this harness cannot resolve, so stand in minimal equivalents.
+function wgRouteMocks(state) {
+	const { unreachable, ...mocks } = sharedMocks(state);
+	const readShareCode = async (ctx) => ({ ok: true, ...(await ctx.params) });
+	return {
+		...mocks,
+		'@/core/errors': {
+			...mocks['@/core/errors'],
+			HTTP: {},
+			forbidden: (error) => NextResponse.json({ error }, { status: 403 }),
+		},
+		'@/core/db': {
+			db: { query: { wgs: { findFirst: unreachable('wg lookup') } } },
+			idempotencyResponses: {},
+			wgMembers: {},
+			wgs: {},
+		},
+		'@/core/db/account-deletion': {
+			assertAccountCanAcquireMembership: unreachable('assertAccountCanAcquireMembership'),
+			lockActiveAccountMember: unreachable('lockActiveAccountMember'),
+		},
+		'@/core/db/schema': { LIMITS: { NAME_MAX: 50 } },
+		'@/core/db/transaction': {
+			TransactionAbort: class extends Error {},
+			withTransaction: unreachable('withTransaction'),
+		},
+		'@/core/activity-feed': { postSystemNotice: unreachable('postSystemNotice') },
+		'@/core/audit': { recordAuditEvent: unreachable('recordAuditEvent') },
+		'@/core/db/delete-wg': { deleteWgCascade: unreachable('deleteWgCascade') },
+		'@/core/guards/admin': { isVerifiedWgAdmin: unreachable('isVerifiedWgAdmin') },
+		'@/core/guards/api-auth': {
+			UUID_PATTERN: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+			requireMember: unreachable('requireMember'),
+		},
+		'@/core/guards/idempotency': {
+			claimReplaySlotWithRetry: unreachable('claimReplaySlotWithRetry'),
+			withIdempotentJsonResponse: unreachable('withIdempotentJsonResponse'),
+		},
+		'@/core/guards/member-token': {
+			deriveMemberToken: unreachable('deriveMemberToken'),
+			verifyMemberToken: unreachable('verifyMemberToken'),
+		},
+		'@/core/guards/require-wg-admin': { requireWgAdmin: unreachable('requireWgAdmin') },
+		'@/core/guards/require-wg-member': { requireWgMember: unreachable('requireWgMember') },
+		'@/core/guards/route-preamble': { readShareCode },
+		'@/core/idempotency': {
+			RESPONSE_REPLAY_TTL_SECONDS: 60,
+			getCachedResponse: unreachable('getCachedResponse'),
+			readIdempotencyKey: unreachable('readIdempotencyKey'),
+		},
+		'@/features/expenses/expense-payments': {
+			withExpensePaymentLock: unreachable('withExpensePaymentLock'),
+		},
+		'@/shared/lib/member-header': {
+			MEMBER_ID_HEADER: 'x-member-id',
+			MEMBER_TOKEN_HEADER: 'x-member-token',
+		},
+		'@/shared/lib/share-code': {
+			generateShareCode: unreachable('generateShareCode'),
+			isValidShareCode: () => true,
+		},
+		'@/core/guards/share-code-miss': {
+			shareCodeMissResponse: unreachable('shareCodeMissResponse'),
+		},
+		'@/core/guards/with-wg-route': {
+			withWgRoute: (label, handler) => async (req, ctx) => {
+				const { ok: _ok, ...params } = await readShareCode(ctx);
+				try {
+					return await handler(req, params);
+				} catch (err) {
+					state.logged.push(`[${label}]`);
+					return NextResponse.json({ error: String(err) }, { status: 500 });
+				}
+			},
+		},
+		'@/core/infra/e2e-db-down': {
+			E2E_CREATED_WG: {},
+			getE2EWgFixture: unreachable('getE2EWgFixture'),
+			isE2EDbDownMode: () => false,
+		},
+		'@/core/rate-limit': {
+			checkRateLimit: async () => ({ success: true }),
+			clientIpKey: () => '127.0.0.1',
+			rateLimitFailMode: () => 'open',
+			registerLimiter: {},
+			wgWriteLimiter: {},
+		},
+	};
+}
+
+const WG_CODE = 'MTE8PZAT';
+const wgCtx = (params = {}) => ({ params: Promise.resolve({ code: WG_CODE, ...params }) });
+
+test('WG GET returns a retryable 503 when Supabase Auth is unavailable', async () => {
+	const state = { authCalls: 0, logged: [] };
+	const { GET } = loadRoute('src/app/api/wg/[code]/route.ts', wgRouteMocks(state));
+
+	const response = await GET(new Request(`https://app.test/api/wg/${WG_CODE}`), wgCtx());
+
+	await assertAuthOutage(response, state);
+});
+
+test('WG mine returns a retryable 503 when Supabase Auth is unavailable', async () => {
+	const state = { authCalls: 0, logged: [] };
+	const { GET } = loadRoute('src/app/api/wg/mine/route.ts', wgRouteMocks(state));
+
+	const response = await GET(new Request('https://app.test/api/wg/mine'));
+
+	await assertAuthOutage(response, state);
+});
+
+test('WG join returns a retryable 503 when Supabase Auth is unavailable', async () => {
+	const state = { authCalls: 0, logged: [] };
+	const { POST } = loadRoute('src/app/api/wg/[code]/members/route.ts', wgRouteMocks(state));
+
+	const response = await POST(
+		new Request(`https://app.test/api/wg/${WG_CODE}/members`, {
+			method: 'POST',
+			body: JSON.stringify({ name: 'Mia' }),
+		}),
+		wgCtx(),
+	);
+
+	await assertAuthOutage(response, state);
+});
+
+test('member claim returns a retryable 503 when Supabase Auth is unavailable', async () => {
+	const state = { authCalls: 0, logged: [] };
+	const { POST } = loadRoute(
+		'src/app/api/wg/[code]/members/[id]/claim/route.ts',
+		wgRouteMocks(state),
+	);
+
+	const response = await POST(
+		new Request(`https://app.test/api/wg/${WG_CODE}/members/claim`, { method: 'POST' }),
+		wgCtx({ id: '11111111-1111-4111-8111-111111111111' }),
+	);
+
+	await assertAuthOutage(response, state);
+});
+
+test('WG create returns a retryable 503 when Supabase Auth is unavailable', async () => {
+	const state = { authCalls: 0, logged: [] };
+	const { POST } = loadRoute('src/app/api/wg/route.ts', wgRouteMocks(state));
+
+	const response = await POST(
+		new Request('https://app.test/api/wg', {
+			method: 'POST',
+			body: JSON.stringify({ name: 'Sonnenallee', creatorName: 'Mia' }),
+		}),
+	);
+
+	await assertAuthOutage(response, state);
+});

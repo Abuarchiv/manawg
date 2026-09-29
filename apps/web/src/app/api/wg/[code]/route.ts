@@ -80,10 +80,17 @@ export async function GET(
 		});
 	}
 
+	let user: Awaited<ReturnType<typeof getAuthenticatedUser>>;
 	try {
-		const user = await getAuthenticatedUser(req);
-		if (!user) return apiError('auth_required', 401, 'auth_required');
+		user = await getAuthenticatedUser(req);
+	} catch (err) {
+		// A transient Auth outage is retryable, not an unauthenticated caller.
+		logApiError('[api/wg/[code] GET] auth error', err);
+		return apiError('db_error', 503);
+	}
+	if (!user) return apiError('auth_required', 401, 'auth_required');
 
+	try {
 		const wg = await db.query.wgs.findFirst({
 			where: (w, { eq }) => eq(w.shareCode, code),
 			columns: {
