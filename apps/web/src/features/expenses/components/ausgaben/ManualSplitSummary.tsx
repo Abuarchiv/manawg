@@ -37,7 +37,10 @@ export function ManualSplitSummary({
 
 	function distributeRemainder(): void {
 		if (totalCents <= 0 || remainderCents === 0) return;
-		setManualSplits((prev) => distributeRemainderCents(prev, members, remainderCents));
+		// Compute the next state from the same snapshot remainderCents came
+		// from, outside any updater, so StrictMode's double-invoked updaters
+		// cannot apply the remainder against a different base.
+		setManualSplits(distributeRemainderCents(manualSplits, members, remainderCents));
 	}
 
 	return (
