@@ -234,7 +234,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		);
 		setMessages((prev) =>
 			isLatestChatRefreshResponse(requestSequence, refreshRequestSequenceRef.current)
-				? reconcileChatMessages(prev, res.data.messages, refreshedLoadedMessages)
+				? reconcileChatMessages(prev, res.data.messages, refreshedLoadedMessages, PAGE_SIZE)
 				: prev,
 		);
 		setReactionRows((prev) => {
