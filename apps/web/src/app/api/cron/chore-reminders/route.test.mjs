@@ -110,6 +110,7 @@ function harness({ choreCount }) {
 			isNull: op('isNull'),
 			lte: op('lte'),
 			or: op('or'),
+			sql: (strings, ...values) => ({ operator: 'sql', args: values, text: strings.join('?') }),
 		},
 		'next/server': {
 			NextResponse: Object.assign(class extends Response {}, {
@@ -168,8 +169,9 @@ test('chore reminder candidates are bounded to a recent window and capped', asyn
 	assert.equal(state.limit, 500);
 	assert.deepEqual(
 		state.orderBy.map((order) => order.args[0]),
-		['chores.nextDueAt', 'chores.id'],
+		['chores.lastReminderAt', 'chores.nextDueAt', 'chores.id'],
 	);
+	assert.match(state.orderBy[0].text, /asc nulls first/);
 });
 
 test('a large reminder backlog is dispatched in batches of ten', async (t) => {
