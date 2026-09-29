@@ -4,7 +4,7 @@ import { verifyCronSecret } from '@/core/infra/cron-auth';
 import { withCronLogging } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
-import { and, eq, gte, inArray, isNotNull, isNull, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 // Minimum gap between reminder dispatches for the same chore. The cron runs
@@ -13,6 +13,14 @@ import { type NextRequest, NextResponse } from 'next/server';
 // "calendar day" to remain robust against TZ/DST/replay edge cases.
 const REMINDER_THROTTLE_MS = 18 * 60 * 60 * 1000;
 const REMINDER_CLAIM_SCOPE = 'chore-reminders';
+// Chores overdue for longer than this are no longer reminded: without a lower
+// bound the candidate query scanned every chore ever due across all WGs.
+const REMINDER_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
+// Per-run cap; throttled chores are excluded in SQL, so a larger backlog is
+// drained by the following runs instead of being loaded in one go.
+const REMINDER_CANDIDATE_LIMIT = 500;
+// Same concurrency cap as the event-reminders cron.
+const DISPATCH_BATCH_SIZE = 10;
 const localReminderClaims = new Map<string, number>(); // claim key -> expiry (epoch ms)
 
 // The Set used to grow forever: keys for every chore ever reminded stayed
@@ -110,6 +118,7 @@ export const GET = withCronLogging(
 		const startOfDay = startOfBerlinDay(now);
 		const endOfDay = endOfBerlinDay(now);
 		const throttleCutoff = new Date(now.getTime() - REMINDER_THROTTLE_MS);
+		const lookbackStart = new Date(now.getTime() - REMINDER_LOOKBACK_MS);
 
 		const due = (await db
 			.select({
@@ -127,12 +136,16 @@ export const GET = withCronLogging(
 			.where(
 				and(
 					lte(chores.nextDueAt, endOfDay),
+					gte(chores.nextDueAt, lookbackStart),
 					isNotNull(chores.assignedMemberId),
+					or(isNull(chores.lastReminderAt), lte(chores.lastReminderAt, throttleCutoff)),
 					// Moved-out assignees are skipped entirely — the rotation
 					// handles reassignment, this only guards stale reminders.
 					isNull(wgMembers.deactivatedAt),
 				),
-			)) as DueChore[];
+			)
+			.orderBy(asc(chores.nextDueAt), asc(chores.id))
+			.limit(REMINDER_CANDIDATE_LIMIT)) as DueChore[];
 
 		if (due.length === 0) return NextResponse.json({ ok: true, sent: 0 });
 
@@ -159,51 +172,53 @@ export const GET = withCronLogging(
 			return true;
 		});
 
-		const claimAttempts = await Promise.all(
-			pending.map(async (item) => ({
-				item,
-				claimKey: await claimReminderDispatch(item.id, startOfDay, now),
-			})),
-		);
-		const claimed: Array<(typeof pending)[number] & { reminderClaimKey: string }> = [];
-		for (const { item, claimKey } of claimAttempts) {
-			if (claimKey) claimed.push({ ...item, reminderClaimKey: claimKey });
+		// Claim and dispatch in fixed-size batches so a large backlog never
+		// opens hundreds of concurrent DB claims and push requests at once.
+		const sentChoreIds: string[] = [];
+		const failedClaimKeys: string[] = [];
+		for (let index = 0; index < pending.length; index += DISPATCH_BATCH_SIZE) {
+			const batch = pending.slice(index, index + DISPATCH_BATCH_SIZE);
+			const claimAttempts = await Promise.all(
+				batch.map(async (item) => ({
+					item,
+					claimKey: await claimReminderDispatch(item.id, startOfDay, now),
+				})),
+			);
+			const claimed: Array<PendingChore & { reminderClaimKey: string }> = [];
+			for (const { item, claimKey } of claimAttempts) {
+				if (claimKey) claimed.push({ ...item, reminderClaimKey: claimKey });
+			}
+
+			const results = await Promise.allSettled(
+				claimed.map(async (item) => {
+					try {
+						return await dispatchNotification({
+							wg: { id: item.wgId, name: item.wgName, shareCode: item.shareCode },
+							event: 'chore.due',
+							payload: { title: item.title, choreId: item.id },
+							targetMemberIds: [item.assignedMemberId],
+						});
+					} catch (err) {
+						console.warn('[chore-reminders] notification dispatch failed');
+						return { sent: 0, failures: [err] };
+					}
+				}),
+			);
+
+			// Only stamp chores whose dispatch actually delivered at least one
+			// push — a fulfilled promise with sent: 0 (e.g. no VAPID keys) would
+			// otherwise silently swallow the reminder until the throttle window
+			// passes. Failed pushes release their claim and retry next run.
+			for (const [idx, item] of claimed.entries()) {
+				const result = results[idx];
+				if (result?.status === 'fulfilled' && result.value.sent > 0) {
+					sentChoreIds.push(item.id);
+				} else {
+					failedClaimKeys.push(item.reminderClaimKey);
+				}
+			}
 		}
 
-		const results = await Promise.allSettled(
-			claimed.map(async (item) => {
-				try {
-					return await dispatchNotification({
-						wg: { id: item.wgId, name: item.wgName, shareCode: item.shareCode },
-						event: 'chore.due',
-						payload: { title: item.title, choreId: item.id },
-						targetMemberIds: [item.assignedMemberId],
-					});
-				} catch (err) {
-					console.warn('[chore-reminders] notification dispatch failed');
-					return { sent: 0, failures: [err] };
-				}
-			}),
-		);
-
-		// Only stamp chores whose dispatch actually delivered at least one
-		// push — a fulfilled promise with sent: 0 (e.g. no VAPID keys) would
-		// otherwise silently swallow the reminder until the throttle window
-		// passes. Failed pushes release their claim and retry next run.
-		const delivered = claimed
-			.map((item, idx) => {
-				const result = results[idx];
-				if (result?.status !== 'fulfilled') return null;
-				return { item, sent: result.value.sent };
-			})
-			.filter((entry): entry is { item: (typeof claimed)[number]; sent: number } => entry !== null);
-		const sentChoreIds = delivered.filter((entry) => entry.sent > 0).map((entry) => entry.item.id);
-		const failedClaimKeys = [
-			...claimed
-				.filter((_, idx) => results[idx]?.status === 'rejected')
-				.map((item) => item.reminderClaimKey),
-			...delivered.filter((entry) => entry.sent === 0).map((entry) => entry.item.reminderClaimKey),
-		];
 		await Promise.all(failedClaimKeys.map((key) => releaseReminderDispatchClaim(key)));
 		if (sentChoreIds.length > 0) {
 			await db.update(chores).set({ lastReminderAt: now }).where(inArray(chores.id, sentChoreIds));
