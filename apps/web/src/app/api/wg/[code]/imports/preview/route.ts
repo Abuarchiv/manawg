@@ -15,7 +15,7 @@ import {
 	parseSplitwiseCsv,
 } from '@/features/expenses/import-parsers';
 import { parseOcrText } from '@/features/expenses/ocr';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -63,16 +63,21 @@ export const POST = withWgRoute('imports/preview', async (req, { code }) => {
 		throw parseErr;
 	}
 
+	// Same contract as the commit: only active members can be mapped, so a
+	// clean preview never turns into member_not_in_wg on commit.
 	const members = await db
 		.select({ id: wgMembers.id, name: wgMembers.name })
 		.from(wgMembers)
-		.where(eq(wgMembers.wgId, wg.id));
+		.where(and(eq(wgMembers.wgId, wg.id), isNull(wgMembers.deactivatedAt)));
+	const activeMemberIds = new Set(members.map((member) => member.id));
 
 	const names = collectUniqueNames(parsedExpenses);
 	const autoMatched = matchMembers(names, members);
 	const mapping: Record<string, string | null> = {};
 	for (const name of names) {
-		mapping[name] = memberMapping?.[name] ?? autoMatched.get(name) ?? null;
+		const candidate = memberMapping?.[name] ?? autoMatched.get(name);
+		// An unknown or moved-out member id becomes a conflict for that name.
+		mapping[name] = candidate && activeMemberIds.has(candidate) ? candidate : null;
 	}
 	const conflicts = findMappingConflicts(parsedExpenses, mapping);
 
