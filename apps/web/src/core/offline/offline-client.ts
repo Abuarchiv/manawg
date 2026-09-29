@@ -340,6 +340,11 @@ export function readOfflineQueue(): OfflineAction[] {
 	}
 }
 
+/** False once the action left the queue, e.g. because a background sync already sent it. */
+export function isOfflineActionQueued(id: string): boolean {
+	return readOfflineQueue().some((item) => item.id === id);
+}
+
 export function countOfflineActions(shareCode?: string, options?: { memberId?: string }): number {
 	const queue = readOfflineQueue();
 	return queue.filter(

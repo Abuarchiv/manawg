@@ -32,6 +32,7 @@ import {
 import {
 	discardQueuedEntry,
 	enqueueOfflineAction,
+	isOfflineActionQueued,
 	readOfflineQueue,
 	syncOfflineActions,
 	writeOfflineQueue,
@@ -40,6 +41,7 @@ import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
 } from '@/core/offline/offline-copy';
 import {
 	type OfflineActionType,
@@ -418,11 +420,32 @@ export default function PutzenPage() {
 		return true;
 	}
 
+	/** The edited queue entry may have been synced meanwhile; a new create would duplicate it. */
+	function editedQueueItemWasSent(type: OfflineActionType): boolean {
+		if (!queueEditId) return false;
+		const editType = readDraft<{ queueEditType?: string }>(draftKey)?.queueEditType;
+		return editType === type && !isOfflineActionQueued(queueEditId);
+	}
+
 	async function add(): Promise<void> {
 		const title = newTitle.trim();
 		if (title.length === 0) return;
 		const pendingKey = 'chore:add';
 		if (isPending(pendingKey)) return;
+		if (editedQueueItemWasSent('chore.create')) {
+			setQueueEditId(null);
+			setNewTitle('');
+			setNewInterval(7);
+			setNewRecurrenceType('days');
+			setNewAssigned('');
+			assigneeTouchedRef.current = false;
+			setShowForm(false);
+			removeDraft(draftKey);
+			setActionError(null);
+			setActionNotice(QUEUE_EDIT_ALREADY_SENT_MESSAGE);
+			void load(false);
+			return;
+		}
 		startPending(pendingKey);
 		setActionError(null);
 		setActionNotice(null);
@@ -551,6 +574,16 @@ export default function PutzenPage() {
 		}
 		const pendingKey = 'absence:add';
 		if (isPending(pendingKey)) return;
+		if (editedQueueItemWasSent('absence.create')) {
+			setQueueEditId(null);
+			setAbsenceStart('');
+			setAbsenceEnd('');
+			setAbsenceReason('');
+			setActionError(null);
+			setActionNotice(QUEUE_EDIT_ALREADY_SENT_MESSAGE);
+			void load(false);
+			return;
+		}
 		startPending(pendingKey);
 		setActionError(null);
 		setActionNotice(null);

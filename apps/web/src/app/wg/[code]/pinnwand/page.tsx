@@ -16,6 +16,7 @@ import { captureException } from '@/core/infra/observability';
 import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import {
 	enqueueOfflineAction,
+	isOfflineActionQueued,
 	readOfflineQueue,
 	syncOfflineActions,
 	writeOfflineQueue,
@@ -24,6 +25,7 @@ import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
 } from '@/core/offline/offline-copy';
 import { isPendingImageToken } from '@/core/offline/offline-images';
 import {
@@ -493,6 +495,20 @@ export default function PinnwandPage(): React.ReactElement {
 		const text = content.trim();
 		if (text.length === 0 || text.length > CONTENT_MAX) {
 			setError('Inhalt fehlt oder zu lang.');
+			return;
+		}
+		if (submittingRef.current) return;
+		// The edited queue entry may have been synced meanwhile; a new create would duplicate it.
+		if (queueEditId && !isOfflineActionQueued(queueEditId)) {
+			setQueueEditId(null);
+			setContent('');
+			setKind('info');
+			setImageUrl(null);
+			setComposerOpen(false);
+			removeDraft(draftKey);
+			setError(null);
+			setNotice(QUEUE_EDIT_ALREADY_SENT_MESSAGE);
+			void load();
 			return;
 		}
 		// Race guard: if the image is still a local pending-image-token (upload
