@@ -414,9 +414,13 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 		.limit(1);
 	const template = rows[0];
 	if (!template) return notFound('recurring_expense_not_found');
-	const denied = await requireOwnerOrAdmin(wg.id, auth.member, template.createdByMemberId);
-	if (denied) return denied;
 	if (isTemplateUpdate) {
+		// Editing the template is the owner's (or admin's) call. The plain
+		// advance below is what every member's "Erfassen" sends after booking
+		// the charge; it only moves nextDueAt by one interval, guarded by the
+		// expectedNextDueAt compare-and-set.
+		const denied = await requireOwnerOrAdmin(wg.id, auth.member, template.createdByMemberId);
+		if (denied) return denied;
 		if (
 			parsed.data.nextDueAt !== undefined &&
 			!isRecurringDueAtEditAllowed(parsed.data.nextDueAt, template.nextDueAt)

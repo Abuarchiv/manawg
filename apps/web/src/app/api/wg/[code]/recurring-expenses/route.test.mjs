@@ -169,3 +169,21 @@ test('PATCH rejects moving nextDueAt out of the catch-up range', async (t) => {
 	assert.equal(moved.status, 200);
 	assert.equal(state.template.nextDueAt.toISOString(), '2026-11-01T00:00:00.000Z');
 });
+
+test('any member may advance a template after booking it, but only the owner may edit it', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });
+	const { state, patch } = harness({ callerId: otherMemberId });
+
+	const edit = await patch({ description: 'Strom' });
+	assert.equal(edit.status, 403);
+	assert.equal(state.template.description, 'Miete');
+
+	const advanced = await patch({ expectedNextDueAt: currentDueAt.toISOString() });
+	assert.equal(advanced.status, 200);
+	assert.equal(state.template.nextDueAt.toISOString(), '2026-11-01T00:00:00.000Z');
+
+	// The expectedNextDueAt check still rejects a stale or replayed advance.
+	const replay = await patch({ expectedNextDueAt: currentDueAt.toISOString() });
+	assert.equal(replay.status, 409);
+	assert.equal(state.template.nextDueAt.toISOString(), '2026-11-01T00:00:00.000Z');
+});
