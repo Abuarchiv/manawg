@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { WEAK_PASSWORD_MESSAGE } from '../src/core/auth/password-errors';
 
 test.describe('live public dashboard entry', () => {
 	test.skip(
@@ -48,6 +49,7 @@ test.describe('live public dashboard entry', () => {
 		await expect(page).toHaveURL(/\/neu\?action=create$/);
 		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
 		await expect(page.getByLabel('Passwort', { exact: true })).toBeVisible();
+		await expect(page.getByText('Für ein neues Konto mindestens 8 Zeichen.')).toBeVisible();
 		const phoneTab = page.getByRole('tab', { name: 'Telefon / SMS', exact: true });
 		const { external } = (await (await authSettings).json()) as { external?: { phone?: boolean } };
 		if (external?.phone === true) {
@@ -72,7 +74,7 @@ test.describe('live public dashboard entry', () => {
 				await route.abort();
 			},
 		);
-		const passwordWarning = page.getByRole('alert').filter({ hasText: 'sicheres Passwort' });
+		const passwordWarning = page.getByRole('alert').filter({ hasText: WEAK_PASSWORD_MESSAGE });
 		await page.getByLabel('E-Mail-Adresse').fill('kurz@example.invalid');
 		await page.getByLabel('Passwort', { exact: true }).fill('12345');
 		await page.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
