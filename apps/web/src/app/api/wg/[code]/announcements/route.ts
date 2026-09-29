@@ -3,6 +3,7 @@ import {
 	announcementComments,
 	announcementReactions,
 	announcements,
+	chores,
 	db,
 	wgMembers,
 } from '@/core/db';
@@ -24,9 +25,10 @@ import {
 import {
 	ANNOUNCEMENT_KINDS,
 	ANNOUNCEMENT_SOURCES,
+	type AnnouncementSource,
 	summarizeAnnouncementReactions,
 } from '@/features/pinnwand/announcement-workflow';
-import { asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -64,6 +66,10 @@ const createAnnouncementSchema = z.object({
 	imageUrl: imageUrlSchema,
 	kind: announcementKindSchema.optional().default('info'),
 	source: z.enum(ANNOUNCEMENT_SOURCES).optional().default('manual'),
+	// Only a swap request may carry a provenance, and only for a chore the
+	// server verifies. `sourcePath` is accepted for queued clients but only its
+	// chore id is used; the stored path is always rebuilt server-side.
+	choreId: z.string().uuid().optional(),
 	sourcePath: z
 		.string()
 		.trim()
@@ -72,6 +78,22 @@ const createAnnouncementSchema = z.object({
 		.optional()
 		.nullable(),
 });
+
+const CHORE_SWAP_PATH_RE =
+	/^\/putzen\?highlight=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+
+function requestedSwapChoreId(
+	source: AnnouncementSource,
+	choreId: string | undefined,
+	sourcePath: string | null,
+): string | null {
+	if (source !== 'chore_swap') return null;
+	return choreId ?? CHORE_SWAP_PATH_RE.exec(sourcePath ?? '')?.[1] ?? null;
+}
+
+function choreSwapSourcePath(choreId: string): string {
+	return `/putzen?highlight=${encodeURIComponent(choreId)}`;
+}
 
 export const GET = withWgRoute(
 	'announcements GET',
@@ -170,13 +192,12 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 		return badRequest('content_invalid');
 	}
 
-	const { content, imageUrl = null, kind, source, sourcePath = null } = parsed.data;
+	const { content, imageUrl = null, kind, source, choreId, sourcePath = null } = parsed.data;
 	const safeImageUrl = typeof imageUrl === 'string' && imageUrl.length > 0 ? imageUrl : null;
-	const safeSource = source === 'system' ? 'manual' : source;
-	const safeSourcePath =
-		safeSource !== 'manual' && typeof sourcePath === 'string' && sourcePath.startsWith('/')
-			? sourcePath
-			: null;
+	const swapChoreId = requestedSwapChoreId(source, choreId, sourcePath);
+	// SECURITY: system/expense/shopping provenance is server-generated only.
+	let safeSource: AnnouncementSource = 'manual';
+	let safeSourcePath: string | null = null;
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
@@ -202,6 +223,17 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 					return { response: { status: 429, body: { error: 'too_many_requests' } }, effect: null };
 				}
 				await assertPrivateImageCanBeAttached(tx, wg.id, safeImageUrl);
+				if (swapChoreId) {
+					const [chore] = await tx
+						.select({ id: chores.id })
+						.from(chores)
+						.where(and(eq(chores.wgId, wg.id), eq(chores.id, swapChoreId)))
+						.limit(1);
+					if (chore) {
+						safeSource = 'chore_swap';
+						safeSourcePath = choreSwapSourcePath(chore.id);
+					}
+				}
 
 				const [item] = await tx
 					.insert(announcements)

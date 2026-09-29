@@ -860,7 +860,7 @@ export default function PutzenPage() {
 				body: JSON.stringify({
 					kind: 'request',
 					source: 'chore_swap',
-					sourcePath: `/putzen?highlight=${encodeURIComponent(chore.id)}`,
+					choreId: chore.id,
 					content: `${identity.name} bittet um Tausch: "${chore.title}" ist ${status.label}. Nachholen, übernehmen oder kurz absprechen.`,
 				}),
 			},
