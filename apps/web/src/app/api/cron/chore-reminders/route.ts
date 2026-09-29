@@ -1,5 +1,5 @@
 import * as dbSchema from '@/core/db';
-import { choreCompletions, chores, db, wgMembers, wgs } from '@/core/db';
+import { choreCompletions, chores, db, pushSubscriptions, wgMembers, wgs } from '@/core/db';
 import { verifyCronSecret } from '@/core/infra/cron-auth';
 import { withCronLogging } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
@@ -142,6 +142,14 @@ export const GET = withCronLogging(
 					// Moved-out assignees are skipped entirely — the rotation
 					// handles reassignment, this only guards stale reminders.
 					isNull(wgMembers.deactivatedAt),
+					// Only chores that can actually be delivered are candidates: an
+					// assignee without push (opt-out, chores muted, no subscription)
+					// never gets lastReminderAt stamped and would otherwise occupy
+					// the NULLS FIRST front of the capped window forever. Mirrors
+					// the eligibility checks in dispatchNotification.
+					eq(wgMembers.pushOptIn, true),
+					eq(wgMembers.notifyChores, true),
+					sql`exists (select 1 from ${pushSubscriptions} where ${pushSubscriptions.memberId} = ${wgMembers.id})`,
 				),
 			)
 			// Rotate the capped window across daily runs: never-reminded chores
