@@ -56,3 +56,26 @@ test('create drafts still route to their owning page', () => {
 	);
 	assert.equal(buildQueueEditHref('MTE8PZAT', 'shopping'), '/wg/MTE8PZAT/einkauf');
 });
+
+test('a queued recurring booking keeps its template link and expected due date', () => {
+	const draft = buildQueueEditDraft(
+		action('expense.create', {
+			description: 'Miete',
+			amountCents: 50000,
+			paidByMemberId: 'm1',
+			recurringExpenseId: 'rec-1',
+			expectedRecurringNextDueAt: '2026-10-01T00:00:00.000Z',
+		}),
+	);
+	assert.equal(draft?.module, 'expense');
+	assert.equal(draft?.draft.recurringSourceId, 'rec-1');
+	assert.equal(draft?.draft.recurringNextDueAt, '2026-10-01T00:00:00.000Z');
+});
+
+test('a plain queued expense carries no template link', () => {
+	const draft = buildQueueEditDraft(
+		action('expense.create', { description: 'Einkauf', amountCents: 100 }),
+	);
+	assert.equal(draft?.draft.recurringSourceId, undefined);
+	assert.equal(draft?.draft.recurringNextDueAt, undefined);
+});

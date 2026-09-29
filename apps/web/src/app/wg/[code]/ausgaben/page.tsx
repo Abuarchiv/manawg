@@ -605,10 +605,15 @@ export default function AusgabenPage() {
 			!isEdit && recurringSourceId
 				? recurringExpenses.find((item) => item.id === recurringSourceId)
 				: null;
+		// An edited queued booking keeps the template due date it was queued against.
+		const queuedRecurringNextDueAt =
+			!isEdit && recurringSourceId && queueEditType === 'expense.create'
+				? recurringNextDueAt
+				: null;
 		const expectedRecurringNextDueAt = recurringSourceId
 			? reusePendingRequest && pendingRequest?.expectedRecurringNextDueAt
 				? pendingRequest.expectedRecurringNextDueAt
-				: recurringTemplateForCreate?.nextDueAt
+				: (queuedRecurringNextDueAt ?? recurringTemplateForCreate?.nextDueAt)
 			: undefined;
 		if (!isEdit && recurringSourceId && !expectedRecurringNextDueAt) {
 			setActionError(
