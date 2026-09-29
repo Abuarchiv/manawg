@@ -553,6 +553,11 @@ export default function AusgabenPage() {
 			// Cycles the "+1 cent" recipient across expenses so the same person
 			// doesn't always eat the leftover cent on uneven splits.
 			rotationOffset: expenses.length,
+			// Editing keeps the saved per-member shares when nothing that
+			// affects them changed, so a settled share is not reopened.
+			previousSplits: editingExpense
+				? expenses.find((expense) => expense.id === editingExpense.id)?.splits
+				: undefined,
 		});
 	}
 

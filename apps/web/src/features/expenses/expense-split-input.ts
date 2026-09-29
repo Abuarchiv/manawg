@@ -40,6 +40,14 @@ interface BuildSplitsInput {
 	 * The page passes its current expense count.
 	 */
 	rotationOffset: number;
+	/**
+	 * The saved splits of the expense being edited. When the amount and the
+	 * set of debtors are unchanged, an equal split resends these per-member
+	 * amounts instead of re-rotating the leftover cent: moving that cent to
+	 * another member would change their share and reopen it if it was
+	 * already settled.
+	 */
+	previousSplits?: readonly DebtorShare[] | undefined;
 }
 
 export function isEqualExpenseSplit(
@@ -67,11 +75,13 @@ export function isEqualExpenseSplit(
 }
 
 export function buildSplitsFromForm(input: BuildSplitsInput): SplitInputResult {
-	const { splitMode, members, manualSplits, amountCents, rotationOffset } = input;
+	const { splitMode, members, manualSplits, amountCents, rotationOffset, previousSplits } = input;
 
 	if (splitMode === 'equal') {
 		const activeIds = members.filter((m) => m.active).map((m) => m.id);
 		if (activeIds.length === 0) return { ok: false, reason: 'no_members' };
+		const kept = keepPreviousEqualSplits(amountCents, activeIds, previousSplits);
+		if (kept) return { ok: true, splits: kept };
 		return { ok: true, splits: buildEqualSplits(amountCents, activeIds, rotationOffset) };
 	}
 
@@ -92,6 +102,32 @@ export function buildSplitsFromForm(input: BuildSplitsInput): SplitInputResult {
 	if (splits.length === 0) return { ok: false, reason: 'splits_empty' };
 	if (sum !== amountCents) return { ok: false, reason: 'splits_mismatch' };
 	return { ok: true, splits };
+}
+
+function keepPreviousEqualSplits(
+	amountCents: number,
+	activeIds: readonly string[],
+	previousSplits: readonly DebtorShare[] | undefined,
+): DebtorShare[] | null {
+	if (!previousSplits || previousSplits.length !== activeIds.length) return null;
+	const previousById = new Map(
+		previousSplits.map((split) => [split.debtorMemberId, split.amountCents]),
+	);
+	if (previousById.size !== activeIds.length) return null;
+	let sum = 0;
+	const splits: DebtorShare[] = [];
+	for (const id of activeIds) {
+		const cents = previousById.get(id);
+		if (cents === undefined) return null;
+		splits.push({ debtorMemberId: id, amountCents: cents });
+		sum += cents;
+	}
+	if (sum !== amountCents) return null;
+	// Only reuse a split that still is an equal split of this amount.
+	const byAmount = (a: number, b: number) => a - b;
+	const expected = distributeCentsEqually(amountCents, activeIds).sort(byAmount);
+	const actual = splits.map((split) => split.amountCents).sort(byAmount);
+	return actual.every((cents, index) => cents === expected[index]) ? splits : null;
 }
 
 /**
