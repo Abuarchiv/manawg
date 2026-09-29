@@ -203,12 +203,16 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 		assignedMemberId = null,
 		nextDueAt: nextDueAtStr,
 	} = parsed.data;
+	const createdAt = new Date();
 	const nextDueAt = nextDueAtStr
 		? new Date(nextDueAtStr)
 		: // Calendar-aware initial due: months-based chores anchor on
 			// today + N months (not today + 30N days), matching the cadence the
 			// completion handler will use later. See chore-recurrence.ts.
-			computeNextDueAt(new Date(), intervalDays, new Date(), recurrenceType);
+			computeNextDueAt(createdAt, intervalDays, createdAt, recurrenceType);
+	// Store the unclamped cadence anchor: a monthly chore created on 31.01 is
+	// first due 28.02 but must keep day 31 for 31.03, 30.04, …
+	const anchorAt = nextDueAtStr ? nextDueAt : createdAt;
 	const idemKey = readIdempotencyKey(req);
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
@@ -294,7 +298,7 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 					recurrenceType,
 					assignedMemberId,
 					nextDueAt,
-					anchorAt: nextDueAt,
+					anchorAt,
 				})
 				.returning();
 			if (!chore) throw new TransactionAbort('insert_failed');

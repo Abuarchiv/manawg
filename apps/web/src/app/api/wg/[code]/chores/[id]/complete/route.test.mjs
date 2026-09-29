@@ -247,6 +247,8 @@ function makeRoute(state) {
 		'@/features/chores/chore-recurrence': {
 			computeNextDueAt: (previousDueAt, intervalDays) =>
 				new Date(previousDueAt.getTime() + intervalDays * 86_400_000),
+			isLateCompletion: (previousDueAt, completedAt) =>
+				completedAt.getTime() > previousDueAt.getTime(),
 		},
 		'drizzle-orm': {
 			and: (...values) => values,
