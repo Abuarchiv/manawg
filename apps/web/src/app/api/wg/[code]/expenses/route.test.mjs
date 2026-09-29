@@ -611,3 +611,128 @@ test('revoked private image attachment returns 409 without creating an expense',
 	assert.equal(state.expenses.length, 0);
 	assert.equal(state.sideEffects, 0);
 });
+
+function getHarness({ expenseCount, readLimited = false }) {
+	const readLimiter = { name: 'expenses-read' };
+	const state = { rateLimitKeys: [], splitQueries: [] };
+	const rows = Array.from({ length: expenseCount }, (_, index) => ({
+		id: `expense-${index}`,
+		wgId,
+		amountCents: 100,
+		occurredAt: new Date(Date.UTC(2026, 0, 1) + index * 1000),
+	}));
+	const splitRows = rows.map((row) => ({
+		id: `split-${row.id}`,
+		expenseId: row.id,
+		debtorMemberId: secondMemberId,
+		amountCents: 100,
+		settledAt: null,
+	}));
+	const db = {
+		select: (columns) => {
+			const query = {
+				table: null,
+				joined: null,
+				from(table) {
+					this.table = table;
+					return this;
+				},
+				innerJoin(table) {
+					this.joined = table;
+					return this;
+				},
+				where(predicate) {
+					if (this.table === expenseSplits) {
+						state.splitQueries.push({ columns, joined: this.joined, predicate });
+						return Promise.resolve(splitRows);
+					}
+					assert.equal(this.table, expenses);
+					return this;
+				},
+				orderBy: async () => rows,
+			};
+			return query;
+		},
+	};
+	const stub = new Proxy({}, { get: () => () => undefined });
+	const route = loadTypeScript(routePath, {
+		'@/core/db': { db, expenseSplits, expenses, idempotencyResponses, recurringExpenses },
+		'@/core/db/private-image-deletions': stub,
+		'@/core/db/transaction': { TransactionAbort },
+		'@/core/errors': {
+			apiError: stub.apiError,
+			badRequest: stub.badRequest,
+			conflict: stub.conflict,
+			notFound: stub.notFound,
+			serverError: stub.serverError,
+			tooMany: (message) => Response.json({ error: message }, { status: 429 }),
+		},
+		'@/core/guards/idempotency': { ReplayCache },
+		'@/core/guards/require-wg-member': {
+			requireWgMember: async () => ({
+				ok: true,
+				wg: { id: wgId, name: 'WG', shareCode: 'MTE8PZAT' },
+				member: { memberId: firstMemberId, name: 'First' },
+			}),
+		},
+		'@/core/guards/route-preamble': stub,
+		'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },
+		'@/core/idempotency': { RESPONSE_REPLAY_TTL_SECONDS: 604_800 },
+		'@/core/infra/observability': stub,
+		'@/core/rate-limit': {
+			checkRateLimit: async (limiter, key) => {
+				assert.equal(limiter, readLimiter);
+				state.rateLimitKeys.push(key);
+				return { success: !readLimited };
+			},
+			expensesReadLimiter: readLimiter,
+			wgWriteLimiter: {},
+		},
+		'@/core/validators/currency': { currencySchema: requireFromWeb('zod').z.string() },
+		'@/core/validators/image-url': {
+			imageUrlSchema: requireFromWeb('zod').z.string().nullable().optional(),
+		},
+		'@/features/expenses/expense-constants': { AMOUNT_MAX_CENTS: 100_000_000, AMOUNT_MIN_CENTS: 1 },
+		'@/features/expenses/expense-payments': { loadCompletedExpensePayments: async () => [] },
+		'@/features/expenses/expenses': stub,
+		'@/features/expenses/split-math': stub,
+		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
+	});
+	return {
+		state,
+		get: () =>
+			route.GET(new Request('https://example.invalid/api/wg/MTE8PZAT/expenses'), {
+				params: Promise.resolve({ code: 'MTE8PZAT' }),
+			}),
+	};
+}
+
+test('expense list is throttled per member before touching the database', async () => {
+	const { state, get } = getHarness({ expenseCount: 1, readLimited: true });
+	const response = await get();
+	assert.equal(response.status, 429);
+	assert.deepEqual(state.rateLimitKeys, [`expenses:${wgId}:${firstMemberId}`]);
+	assert.equal(state.splitQueries.length, 0);
+});
+
+test('expense list loads splits for more than 65,535 expenses without a bind parameter per id', async () => {
+	const { state, get } = getHarness({ expenseCount: 70_000 });
+	const response = await get();
+	assert.equal(response.status, 200);
+	const body = await response.json();
+	assert.equal(body.expenses.length, 70_000);
+	assert.ok(body.expenses.every((expense) => expense.splits.length === 1));
+	assert.equal(state.splitQueries.length, 1);
+	const [query] = state.splitQueries;
+	assert.equal(query.joined, expenses);
+	assert.deepEqual(Object.keys(query.columns).sort(), [
+		'amountCents',
+		'debtorMemberId',
+		'expenseId',
+		'id',
+		'settledAt',
+	]);
+	const { PgDialect } = requireFromWeb('drizzle-orm/pg-core');
+	const compiled = new PgDialect().sqlToQuery(query.predicate);
+	assert.deepEqual(compiled.params, [wgId]);
+});

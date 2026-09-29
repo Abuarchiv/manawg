@@ -96,6 +96,9 @@ export const wgExportLimiter = build(20, 3600, 'wg-export'); // 20 exports / hou
 // its own per-member bucket: scraping balances stays throttled even from a
 // rotating pool of IPs.
 export const dashboardLimiter = build(60, 60, 'dashboard'); // 60 dashboard reads / min / member
+// The expense list returns the WG's full expense history; same per-member
+// bucket reasoning as the dashboard.
+export const expensesReadLimiter = build(60, 60, 'expenses-read'); // 60 expense-list reads / min / member
 export const healthLimiter = build(60, 60, 'health'); // 60 probes / min / IP — outside the middleware matcher
 export const importLimiter = build(10, 3600, 'import-preview'); // 10 preview / hour / member
 export const importCommitLimiter = build(3, 3600, 'import-commit'); // 3 commit / hour / member
