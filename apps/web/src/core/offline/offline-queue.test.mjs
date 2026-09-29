@@ -30,8 +30,8 @@ const {
 	createQueuedShoppingItem,
 	createQueuedShoppingUpdate,
 	getOfflineActionRequest,
+	isQueuedCreateId,
 	hasQueuedShoppingUpdate,
-	isQueuedOnlyId,
 	withoutQueuedEntry,
 } = module.exports;
 const key = '55555555-5555-4555-8555-555555555555';
@@ -106,28 +106,6 @@ test('queued shopping PATCH preserves the version, expected state, and online id
 	assert.deepEqual(JSON.parse(JSON.stringify(legacyBody)), { bought: true });
 });
 
-test('queued creates carry synthetic ids that item routes cannot address', () => {
-	const shopping = createQueuedShoppingItem({
-		shareCode,
-		memberId,
-		name: 'Milch',
-		quantity: null,
-		now: 1,
-	});
-	const absence = createQueuedAbsence({
-		shareCode,
-		memberId,
-		absenceMemberId: memberId,
-		startDate: '2026-10-01',
-		endDate: '2026-10-02',
-		reason: null,
-		now: 1,
-	});
-	assert.equal(isQueuedOnlyId(shopping.id), true);
-	assert.equal(isQueuedOnlyId(absence.id), true);
-	assert.equal(isQueuedOnlyId(memberId), false);
-});
-
 test('withoutQueuedEntry drops the queued create and follow-ups that target it', () => {
 	const chore = createQueuedChore({
 		shareCode,
@@ -158,4 +136,36 @@ test('withoutQueuedEntry drops the queued create and follow-ups that target it',
 	assert.deepEqual(withoutQueuedEntry(queue, shareCode, chore.id), [unrelated, otherWg]);
 	assert.equal(withoutQueuedEntry(queue, shareCode, memberId), null);
 	assert.equal(withoutQueuedEntry(queue, 'NOWG0000', chore.id), null);
+});
+
+test('synthetic ids of offline creates are recognised, server ids are not', () => {
+	const shopping = createQueuedShoppingItem({
+		shareCode,
+		memberId,
+		name: 'Milch',
+		quantity: null,
+		now: 1,
+	});
+	const chore = createQueuedChore({
+		shareCode,
+		memberId,
+		title: 'Bad putzen',
+		intervalDays: 7,
+		recurrenceType: 'days',
+		assignedMemberId: memberId,
+		now: 1,
+	});
+	const absence = createQueuedAbsence({
+		shareCode,
+		memberId,
+		absenceMemberId: memberId,
+		startDate: '2026-10-01',
+		endDate: '2026-10-02',
+		reason: null,
+		now: 1,
+	});
+	for (const action of [shopping, chore, absence]) assert.equal(isQueuedCreateId(action.id), true);
+	for (const serverId of [memberId, 'absence-holiday', 'chore-1']) {
+		assert.equal(isQueuedCreateId(serverId), false);
+	}
 });

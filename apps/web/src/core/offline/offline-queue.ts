@@ -405,12 +405,15 @@ export function hasQueuedShoppingUpdate(
 	);
 }
 
+const QUEUED_CREATE_ID_RE = /^(?:shopping|chore-create|absence):[^:]+:\d+:/;
+
 /**
- * Queued creates carry a synthetic, non-UUID id until the server assigns one;
- * item routes reject such ids, so they can only be removed locally.
+ * True for the synthetic id of a create made offline (e.g.
+ * `shopping:<code>:<ms>:<slug>`). The server never issues such ids, so a row
+ * carrying one is local-only even after its queue entry was discarded.
  */
-export function isQueuedOnlyId(id: string): boolean {
-	return !isOfflineIdempotencyKey(id);
+export function isQueuedCreateId(id: string): boolean {
+	return QUEUED_CREATE_ID_RE.test(id);
 }
 
 /**

@@ -49,7 +49,7 @@ import {
 	createQueuedShoppingItem,
 	createQueuedShoppingUpdate,
 	hasQueuedShoppingUpdate,
-	isQueuedOnlyId,
+	isQueuedCreateId,
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
@@ -618,7 +618,7 @@ export default function EinkaufPage() {
 				);
 				return;
 			}
-			if (queued === 'removed' || isQueuedOnlyId(id)) {
+			if (queued === 'removed' || isQueuedCreateId(id)) {
 				commitItems((prev) =>
 					keepItems(
 						prev,
@@ -627,7 +627,6 @@ export default function EinkaufPage() {
 				);
 				refreshCount();
 				setToggleNotice('Offline vorgemerkter Artikel wurde entfernt.');
-				if (queued === 'not_queued') void load(true);
 				return;
 			}
 			start(id);

@@ -4,7 +4,7 @@ import { verifyCronSecret } from '@/core/infra/cron-auth';
 import { withCronLogging } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 // Minimum gap between reminder dispatches for the same chore. The cron runs
@@ -144,7 +144,10 @@ export const GET = withCronLogging(
 					isNull(wgMembers.deactivatedAt),
 				),
 			)
-			.orderBy(asc(chores.nextDueAt), asc(chores.id))
+			// Rotate the capped window across daily runs: never-reminded chores
+			// first, then the ones reminded longest ago, so a backlog above the
+			// cap cannot keep the same oldest rows in front forever.
+			.orderBy(sql`${chores.lastReminderAt} asc nulls first`, asc(chores.nextDueAt), asc(chores.id))
 			.limit(REMINDER_CANDIDATE_LIMIT)) as DueChore[];
 
 		if (due.length === 0) return NextResponse.json({ ok: true, sent: 0 });

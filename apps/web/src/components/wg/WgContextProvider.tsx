@@ -233,7 +233,7 @@ export function WgContextProvider({
 				setMembersRefreshFailures(0);
 				return;
 			}
-			setMembersRefreshFailures(0);
+			// Keep counting transient failures so the retry backs off (5 s → 60 s).
 			if (res.status === 401 && res.error === 'auth_required') {
 				window.location.replace(
 					`/neu?next=${encodeURIComponent(window.location.pathname + window.location.search)}`,
@@ -244,6 +244,7 @@ export function WgContextProvider({
 			) {
 				clearIdentity(wg.id);
 				setStateIdentity(null);
+				setMembersRefreshFailures(0);
 			} else if (res.error === 'member_context_changed' && authUserIdRef.current) {
 				await loadSessionMember(authUserIdRef.current, authGeneration);
 			} else {
