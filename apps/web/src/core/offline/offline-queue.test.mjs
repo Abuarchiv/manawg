@@ -24,14 +24,12 @@ new Function('require', 'module', 'exports', compiled)(
 );
 
 const {
-	createQueuedAbsence,
 	createQueuedChore,
 	createQueuedChoreCompletion,
 	createQueuedShoppingItem,
 	createQueuedShoppingUpdate,
 	getOfflineActionRequest,
 	hasQueuedShoppingUpdate,
-	isQueuedOnlyId,
 	withoutQueuedEntry,
 } = module.exports;
 const key = '55555555-5555-4555-8555-555555555555';
@@ -104,28 +102,6 @@ test('queued shopping PATCH preserves the version, expected state, and online id
 	};
 	const legacyBody = getOfflineActionRequest(legacy).body;
 	assert.deepEqual(JSON.parse(JSON.stringify(legacyBody)), { bought: true });
-});
-
-test('queued creates carry synthetic ids that item routes cannot address', () => {
-	const shopping = createQueuedShoppingItem({
-		shareCode,
-		memberId,
-		name: 'Milch',
-		quantity: null,
-		now: 1,
-	});
-	const absence = createQueuedAbsence({
-		shareCode,
-		memberId,
-		absenceMemberId: memberId,
-		startDate: '2026-10-01',
-		endDate: '2026-10-02',
-		reason: null,
-		now: 1,
-	});
-	assert.equal(isQueuedOnlyId(shopping.id), true);
-	assert.equal(isQueuedOnlyId(absence.id), true);
-	assert.equal(isQueuedOnlyId(memberId), false);
 });
 
 test('withoutQueuedEntry drops the queued create and follow-ups that target it', () => {

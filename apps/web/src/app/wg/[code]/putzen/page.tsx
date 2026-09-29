@@ -47,7 +47,6 @@ import {
 	createQueuedAbsence,
 	createQueuedChore,
 	createQueuedChoreCompletion,
-	isQueuedOnlyId,
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { endOfBerlinDay, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
@@ -659,12 +658,11 @@ export default function PutzenPage() {
 			);
 			return;
 		}
-		if (queued === 'removed' || isQueuedOnlyId(id)) {
+		if (queued === 'removed') {
 			updateAbsences((current) => current.filter((absence) => absence.id !== id));
 			refreshCount();
 			setActionError(null);
 			setActionNotice('Offline vorgemerkte Abwesenheit wurde entfernt.');
-			if (queued === 'not_queued') void load(false);
 			return;
 		}
 		startPending(pendingKey);
@@ -962,11 +960,10 @@ export default function PutzenPage() {
 			);
 			return;
 		}
-		if (queued === 'removed' || isQueuedOnlyId(id)) {
+		if (queued === 'removed') {
 			setItems((current) => current.filter((item) => item.id !== id));
 			refreshCount();
 			setActionNotice('Offline vorgemerkte Aufgabe wurde entfernt.');
-			if (queued === 'not_queued') void load(false);
 			return;
 		}
 		startPending(id);

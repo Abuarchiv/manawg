@@ -171,12 +171,12 @@ test('private read authenticates malformed and foreign keys before streaming byt
 	expect(source).toContain('downloadSupabaseImage');
 	expect(source).not.toContain('getImageStorageProvider');
 	expect(source).not.toContain('downloadAwsImage');
-	expect(source.indexOf('const privateImage =')).toBeLessThan(
-		source.indexOf('const authenticatedUser ='),
-	);
-	expect(source.indexOf('const authenticatedUser =')).toBeLessThan(
-		source.indexOf('const auth = await requireMember'),
-	);
+	const authLookup = source.indexOf('authenticatedUser = await getAuthenticatedUser(req)');
+	expect(authLookup).toBeGreaterThan(-1);
+	expect(source.indexOf('const privateImage =')).toBeLessThan(authLookup);
+	expect(authLookup).toBeLessThan(source.indexOf('const auth = await requireMember'));
+	// A transient Auth outage answers 503 before any membership lookup or read.
+	expect(source).toContain("return noStore(apiError('db_error', 503))");
 	expect(source.indexOf('const auth = await requireMember')).toBeLessThan(
 		source.indexOf('await downloadSupabaseImage'),
 	);

@@ -406,14 +406,6 @@ export function hasQueuedShoppingUpdate(
 }
 
 /**
- * Queued creates carry a synthetic, non-UUID id until the server assigns one;
- * item routes reject such ids, so they can only be removed locally.
- */
-export function isQueuedOnlyId(id: string): boolean {
-	return !isOfflineIdempotencyKey(id);
-}
-
-/**
  * Returns the queue without the queued create `id` of this WG and without
  * follow-up actions that target it, or `null` when no such entry is queued.
  */
