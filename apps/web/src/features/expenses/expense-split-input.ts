@@ -123,3 +123,13 @@ export function splitCandidates<T extends SplitMemberLike>(
 	if (splitMode !== 'manual') return members.filter((m) => m.active);
 	return members.filter((m) => m.active || (manualSplits[m.id] ?? '').trim().length > 0);
 }
+
+/**
+ * Who "Rest aufteilen" may assign cents to: active members only, in every
+ * form mode. A moved-out member keeps a historical share they already carry,
+ * but must never receive new cents — the API rejects that with
+ * `member_not_in_wg`.
+ */
+export function remainderCandidates<T extends SplitMemberLike>(members: readonly T[]): T[] {
+	return members.filter((m) => m.active);
+}

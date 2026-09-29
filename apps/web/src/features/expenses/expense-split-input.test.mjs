@@ -15,7 +15,12 @@ registerHooks({
 	},
 });
 
-const { buildSplitsFromForm, isEqualExpenseSplit } = await import('./expense-split-input.ts');
+const { buildSplitsFromForm, isEqualExpenseSplit, remainderCandidates } = await import(
+	'./expense-split-input.ts'
+);
+const { distributeRemainderCents } = await import(
+	'./components/ausgaben/manual-split-distribute.ts'
+);
 
 const members = [
 	{ id: 'a', active: true },
@@ -35,7 +40,11 @@ test('an equal split saved with a rotation offset reopens as equal', () => {
 			rotationOffset,
 		});
 		assert.equal(result.ok, true);
-		assert.equal(isEqualExpenseSplit(1001, result.splits, members), true, `offset ${rotationOffset}`);
+		assert.equal(
+			isEqualExpenseSplit(1001, result.splits, members),
+			true,
+			`offset ${rotationOffset}`,
+		);
 	}
 });
 
@@ -55,4 +64,30 @@ test('a split missing an active member is not equal', () => {
 		{ debtorMemberId: 'b', amountCents: 333 },
 	];
 	assert.equal(isEqualExpenseSplit(1001, splits, members), false);
+});
+
+test('"Rest aufteilen" never assigns cents to a moved-out member when creating', () => {
+	// Regression: create mode offered every member, moved-out ones included,
+	// so the remainder landed on them and the POST failed with
+	// member_not_in_wg.
+	const wg = [...members, { id: 'gone', active: false }];
+	const targets = remainderCandidates(wg);
+	assert.deepEqual(
+		targets.map((m) => m.id),
+		['a', 'b', 'c'],
+	);
+	const next = distributeRemainderCents({}, targets, 3000);
+	assert.equal(next.gone, undefined);
+	const result = buildSplitsFromForm({
+		splitMode: 'manual',
+		members: wg,
+		manualSplits: next,
+		amountCents: 3000,
+		rotationOffset: 0,
+	});
+	assert.equal(result.ok, true);
+	assert.deepEqual(
+		result.splits.map((split) => split.debtorMemberId),
+		['a', 'b', 'c'],
+	);
 });
