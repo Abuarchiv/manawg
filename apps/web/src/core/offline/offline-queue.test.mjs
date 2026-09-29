@@ -24,11 +24,13 @@ new Function('require', 'module', 'exports', compiled)(
 );
 
 const {
+	createQueuedAbsence,
 	createQueuedChore,
 	createQueuedChoreCompletion,
 	createQueuedShoppingItem,
 	createQueuedShoppingUpdate,
 	getOfflineActionRequest,
+	isQueuedCreateId,
 	hasQueuedShoppingUpdate,
 	withoutQueuedEntry,
 } = module.exports;
@@ -134,4 +136,36 @@ test('withoutQueuedEntry drops the queued create and follow-ups that target it',
 	assert.deepEqual(withoutQueuedEntry(queue, shareCode, chore.id), [unrelated, otherWg]);
 	assert.equal(withoutQueuedEntry(queue, shareCode, memberId), null);
 	assert.equal(withoutQueuedEntry(queue, 'NOWG0000', chore.id), null);
+});
+
+test('synthetic ids of offline creates are recognised, server ids are not', () => {
+	const shopping = createQueuedShoppingItem({
+		shareCode,
+		memberId,
+		name: 'Milch',
+		quantity: null,
+		now: 1,
+	});
+	const chore = createQueuedChore({
+		shareCode,
+		memberId,
+		title: 'Bad putzen',
+		intervalDays: 7,
+		recurrenceType: 'days',
+		assignedMemberId: memberId,
+		now: 1,
+	});
+	const absence = createQueuedAbsence({
+		shareCode,
+		memberId,
+		absenceMemberId: memberId,
+		startDate: '2026-10-01',
+		endDate: '2026-10-02',
+		reason: null,
+		now: 1,
+	});
+	for (const action of [shopping, chore, absence]) assert.equal(isQueuedCreateId(action.id), true);
+	for (const serverId of [memberId, 'absence-holiday', 'chore-1']) {
+		assert.equal(isQueuedCreateId(serverId), false);
+	}
 });

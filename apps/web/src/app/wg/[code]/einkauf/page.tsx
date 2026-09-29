@@ -49,6 +49,7 @@ import {
 	createQueuedShoppingItem,
 	createQueuedShoppingUpdate,
 	hasQueuedShoppingUpdate,
+	isQueuedCreateId,
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
@@ -617,7 +618,7 @@ export default function EinkaufPage() {
 				);
 				return;
 			}
-			if (queued === 'removed') {
+			if (queued === 'removed' || isQueuedCreateId(id)) {
 				commitItems((prev) =>
 					keepItems(
 						prev,

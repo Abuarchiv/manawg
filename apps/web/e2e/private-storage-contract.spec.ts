@@ -57,7 +57,9 @@ test('private reads use Supabase after an AWS rollback and re-check membership',
 	);
 	const nextServer = createRequire(routePath)('next/server') as typeof import('next/server');
 	let authenticatedUser: { id: string } | null = { id: 'user-1' };
+	let authOutage = false;
 	let membership: 'active' | 'foreign' | 'revoked' = 'active';
+	let membershipCalls = 0;
 	let downloadCalls = 0;
 	const downloadedKeys: string[] = [];
 
@@ -67,8 +69,12 @@ test('private reads use Supabase after an AWS rollback and re-check membership',
 	};
 	const route = loadTs<{ GET: (request: { nextUrl: URL }) => Promise<Response> }>(routePath, {
 		'@/core/auth/server': {
-			getAuthenticatedUser: async () => authenticatedUser,
+			getAuthenticatedUser: async () => {
+				if (authOutage) throw new Error('AuthRetryableFetchError');
+				return authenticatedUser;
+			},
 		},
+		'@/core/infra/observability': { logApiError: () => undefined },
 		'@/core/db/private-image-deletions': {
 			isPrivateImageKeyRevoked: async () => false,
 		},
@@ -83,8 +89,9 @@ test('private reads use Supabase after an AWS rollback and re-check membership',
 				nextServer.NextResponse.json({ error: message }, { status: 500 }),
 		},
 		'@/core/guards/api-auth': {
-			requireMember: async () =>
-				membership === 'active'
+			requireMember: async () => {
+				membershipCalls += 1;
+				return membership === 'active'
 					? { ok: true, member: { memberId: 'member-1', name: 'Member', verified: true } }
 					: {
 							ok: false,
@@ -92,7 +99,8 @@ test('private reads use Supabase after an AWS rollback and re-check membership',
 								{ error: membership === 'revoked' ? 'member_deactivated' : 'not_a_member' },
 								{ status: 401 },
 							),
-						},
+						};
+			},
 		},
 		'@/core/infra/supabase-storage': {
 			...storageErrors,
@@ -127,6 +135,17 @@ test('private reads use Supabase after an AWS rollback and re-check membership',
 	};
 
 	try {
+		// A transient Auth outage is retryable: 503, no-store, and no membership
+		// lookup or storage read before the caller is known.
+		authOutage = true;
+		const outage = await route.GET(request);
+		expect(outage.status).toBe(503);
+		expect(await outage.json()).toEqual({ error: 'db_error' });
+		expect(outage.headers.get('cache-control')).toBe('no-store');
+		expect(membershipCalls).toBe(0);
+		expect(downloadCalls).toBe(0);
+		authOutage = false;
+
 		authenticatedUser = null;
 		const guest = await route.GET(request);
 		expect(guest.status).toBe(401);
@@ -175,8 +194,6 @@ test('private read authenticates malformed and foreign keys before streaming byt
 	expect(authLookup).toBeGreaterThan(-1);
 	expect(source.indexOf('const privateImage =')).toBeLessThan(authLookup);
 	expect(authLookup).toBeLessThan(source.indexOf('const auth = await requireMember'));
-	// A transient Auth outage answers 503 before any membership lookup or read.
-	expect(source).toContain("return noStore(apiError('db_error', 503))");
 	expect(source.indexOf('const auth = await requireMember')).toBeLessThan(
 		source.indexOf('await downloadSupabaseImage'),
 	);

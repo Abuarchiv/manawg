@@ -47,6 +47,7 @@ import {
 	createQueuedAbsence,
 	createQueuedChore,
 	createQueuedChoreCompletion,
+	isQueuedCreateId,
 } from '@/core/offline/offline-queue';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { endOfBerlinDay, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
@@ -658,7 +659,7 @@ export default function PutzenPage() {
 			);
 			return;
 		}
-		if (queued === 'removed') {
+		if (queued === 'removed' || isQueuedCreateId(id)) {
 			updateAbsences((current) => current.filter((absence) => absence.id !== id));
 			refreshCount();
 			setActionError(null);
@@ -960,7 +961,7 @@ export default function PutzenPage() {
 			);
 			return;
 		}
-		if (queued === 'removed') {
+		if (queued === 'removed' || isQueuedCreateId(id)) {
 			setItems((current) => current.filter((item) => item.id !== id));
 			refreshCount();
 			setActionNotice('Offline vorgemerkte Aufgabe wurde entfernt.');

@@ -405,6 +405,17 @@ export function hasQueuedShoppingUpdate(
 	);
 }
 
+const QUEUED_CREATE_ID_RE = /^(?:shopping|chore-create|absence):[^:]+:\d+:/;
+
+/**
+ * True for the synthetic id of a create made offline (e.g.
+ * `shopping:<code>:<ms>:<slug>`). The server never issues such ids, so a row
+ * carrying one is local-only even after its queue entry was discarded.
+ */
+export function isQueuedCreateId(id: string): boolean {
+	return QUEUED_CREATE_ID_RE.test(id);
+}
+
 /**
  * Returns the queue without the queued create `id` of this WG and without
  * follow-up actions that target it, or `null` when no such entry is queued.
