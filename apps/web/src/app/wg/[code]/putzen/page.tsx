@@ -57,6 +57,7 @@ import { getAbsentMemberIds } from '@/features/chores/absence';
 import type { AbsenceInput } from '@/features/chores/absence';
 import { absenceSaveErrorMessage, choreCreateErrorMessage } from '@/features/chores/chore-errors';
 import { buildChoreFairness, chooseNextAvailableMember } from '@/features/chores/chore-fairness';
+import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import {
 	CHORE_GROUPS,
 	getChoreGroup,
@@ -1061,10 +1062,19 @@ export default function PutzenPage() {
 	});
 	const nextAssigneeNameByChoreId = new Map<string, string | null>(
 		items.map((chore): [string, string | null] => {
+			// Mirror the complete route: availability is judged on the next due
+			// day, not today. The client row has no anchor, which only affects
+			// month-end clamping, never the day an absence is checked against.
+			const nextDueAt = computeNextDueAt(
+				new Date(chore.nextDueAt),
+				chore.intervalDays,
+				new Date(),
+				chore.recurrenceType,
+			);
 			const nextAssigneeId = chooseNextAvailableMember({
 				members: activeMembers,
 				currentMemberId: chore.assignedMemberId,
-				absentMemberIds,
+				absentMemberIds: getAbsentMemberIds(absences, nextDueAt.getTime()),
 				chores: items,
 			});
 			if (!nextAssigneeId) return [chore.id, null];
