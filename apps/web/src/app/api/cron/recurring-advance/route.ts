@@ -1,5 +1,5 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, expenseSplits, expenses, recurringExpenses, wgs } from '@/core/db';
+import { db, expenseSplits, expenses, recurringExpenses, wgMembers, wgs } from '@/core/db';
 import { TransactionAbort } from '@/core/db/transaction';
 import { verifyCronSecret } from '@/core/infra/cron-auth';
 import { logApiError } from '@/core/infra/observability';
@@ -16,7 +16,7 @@ import {
 	recurringSplitsMatchAmount,
 } from '@/features/expenses/recurring-expenses';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
-import { and, eq, isNull, lte } from 'drizzle-orm';
+import { and, eq, inArray, isNull, lte } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 interface DueRecurring {
@@ -87,6 +87,30 @@ async function createExpenseForDueAt(
 				return null;
 			}
 			if (await hasCapturingExpensePayment(tx, template.wgId)) return null;
+			// A payer or debtor who moved out must not be charged new shares.
+			// Skip without advancing: the template stays due, so it is booked
+			// once someone edits or pauses it, and the loop stops here for this
+			// run instead of spinning.
+			const memberIds = Array.from(
+				new Set([template.paidByMemberId, ...splits.map((split) => split.debtorMemberId)]),
+			);
+			const activeMembers = await tx
+				.select({ id: wgMembers.id })
+				.from(wgMembers)
+				.where(
+					and(
+						eq(wgMembers.wgId, template.wgId),
+						inArray(wgMembers.id, memberIds),
+						isNull(wgMembers.deactivatedAt),
+					),
+				);
+			if (activeMembers.length !== memberIds.length) {
+				logApiError('[cron/recurring-advance] skipped template with inactive members', {
+					recurringExpenseId: template.id,
+					wgId: template.wgId,
+				});
+				return null;
+			}
 			const [inserted] = await tx
 				.insert(expenses)
 				.values({

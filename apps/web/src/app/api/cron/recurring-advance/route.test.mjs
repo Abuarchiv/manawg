@@ -22,6 +22,7 @@ function harness({
 	errorConstraint = null,
 	duplicateErrorShape = 'cause',
 	initialAnchorAt = initialDueAt,
+	activeMemberIds = [memberId],
 } = {}) {
 	const recurringExpenses = {
 		id: 'recurringExpenses.id',
@@ -38,6 +39,11 @@ function harness({
 	const expenses = { id: 'expenses.id' };
 	const expenseSplits = {};
 	const wgs = { id: 'wgs.id', name: 'wgs.name', shareCode: 'wgs.shareCode' };
+	const wgMembers = {
+		id: 'wgMembers.id',
+		wgId: 'wgMembers.wgId',
+		deactivatedAt: 'wgMembers.deactivatedAt',
+	};
 	const state = {
 		template: {
 			id: templateId,
@@ -66,12 +72,14 @@ function harness({
 		capturing: false,
 		wgExists: true,
 		loggedErrors: [],
+		memberQueries: [],
 	};
 
 	const eq = (field, value) => ({ operator: 'eq', field, value });
 	const and = (...conditions) => ({ operator: 'and', conditions });
 	const lte = (field, value) => ({ operator: 'lte', field, value });
 	const isNull = (field) => ({ operator: 'isNull', field });
+	const inArray = (field, values) => ({ operator: 'inArray', field, values });
 	const valueFor = (field) => {
 		if (field === wgs.id) return wgId;
 		if (field === recurringExpenses.id) return state.template.id;
@@ -105,6 +113,15 @@ function harness({
 					return query;
 				},
 				where(predicate) {
+					if (table === wgMembers) {
+						const ids = predicate.conditions.find(
+							(condition) => condition.operator === 'inArray',
+						).values;
+						state.memberQueries.push(ids);
+						return Promise.resolve(
+							ids.filter((id) => activeMemberIds.includes(id)).map((id) => ({ id })),
+						);
+					}
 					assert.equal(matches(predicate), true);
 					return query;
 				},
@@ -226,7 +243,7 @@ function harness({
 
 	const mocks = {
 		'@/core/audit': { recordAuditEvent: async (event) => state.events.push(event) },
-		'@/core/db': { db, expenseSplits, expenses, recurringExpenses, wgs },
+		'@/core/db': { db, expenseSplits, expenses, recurringExpenses, wgMembers, wgs },
 		'@/core/db/transaction': {
 			TransactionAbort: class TransactionAbort extends Error {},
 		},
@@ -271,7 +288,7 @@ function harness({
 				splits.reduce((sum, split) => sum + split.amountCents, 0) === amount,
 		},
 		'@/features/expenses/split-math': { settledAtForOwnShare: () => null },
-		'drizzle-orm': { and, eq, isNull, lte },
+		'drizzle-orm': { and, eq, inArray, isNull, lte },
 		'next/server': {
 			NextResponse: Object.assign(class extends Response {}, {
 				json: (body, init) => Response.json(body, init),
@@ -544,5 +561,27 @@ test('legacy month-end catch-up keeps anchor day 31 within a single run', async 
 		);
 		assert.equal(legacy.state.template.nextDueAt.toISOString(), '2026-05-31T11:00:00.000Z');
 		assert.equal(legacy.state.template.anchorAt.toISOString(), '2026-01-31T11:00:00.000Z');
+	});
+});
+
+test('a template with a moved-out payer or debtor is skipped without advancing', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });
+	const julyDueAt = new Date('2026-07-01T00:00:00.000Z');
+	const { state, get } = harness({
+		initialDueAt: julyDueAt,
+		patchAfterInsert: null,
+		activeMemberIds: [],
+	});
+	await withCronSecret(async () => {
+		const response = await get();
+		assert.deepEqual(await response.json(), { ok: true, charged: 0, failedTemplates: 0 });
+		// One check per run: the catch-up loop stops at the first skip.
+		assert.deepEqual(state.memberQueries, [[memberId]]);
+		assert.equal(state.expenses.length, 0);
+		assert.equal(state.splits.length, 0);
+		assert.equal(state.notifications.length, 0);
+		assert.deepEqual(state.updateResults, []);
+		assert.equal(state.template.nextDueAt.toISOString(), julyDueAt.toISOString());
+		assert.equal(state.loggedErrors.length, 1);
 	});
 });
