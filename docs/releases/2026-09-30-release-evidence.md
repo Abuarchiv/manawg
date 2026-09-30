@@ -3,7 +3,7 @@
 This is dated evidence, not unconditional release approval. CI work is deferred
 at the owner's explicit request. No Production migration was performed.
 
-## Confirmed Production application
+## Confirmed Production application — initial readback
 
 - `app.manawg.com` resolves to READY deployment
   `dpl_37GfugtVpdpbuXJMKyPvvSuyQEyV`, source
@@ -17,6 +17,19 @@ at the owner's explicit request. No Production migration was performed.
 - The isolated Pinnwand route fixture now blocks service workers and updates
   its in-memory comments after deletion. All five cases passed in Chromium and
   WebKit; the focused comment case independently passed three times in each.
+
+## Final dependency correction
+
+- The existing narrow brace-expansion override now pins patched `5.0.12`.
+  The package and lock diff passed independent review; no other dependency
+  versions changed. Node 22/pnpm 9 frozen installation succeeded.
+- Live Production dependency audit after integration reported zero known
+  vulnerabilities across 316 dependencies. Repository lint passed (669 files).
+  The patched dependency tree also passed typecheck, 393 unit/route checks
+  (one skip), Next 15.5.24 build and bundle budgets (102.2/120 kB shared).
+- These checks cover the updated dependency tree. The 512-case fixture run
+  above preceded the lock correction and is not presented as a new final-SHA
+  hosted or device test.
 
 ## Database and private storage
 
