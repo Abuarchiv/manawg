@@ -94,6 +94,8 @@ function keepItems(prev: ShoppingItem[], next: ShoppingItem[]): ShoppingItem[] {
 	return unchanged ? prev : next;
 }
 
+const NO_INVENTORY: InventoryItemDto[] = [];
+
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function EinkaufPage() {
 	const { wg, members, identity, isAdmin } = useWg();
@@ -108,7 +110,11 @@ export default function EinkaufPage() {
 	} = useCachedFetch<{ items: ShoppingItem[] }>(`/api/wg/${encodedShareCode}/shopping`, {
 		memberId: identity.memberId,
 	});
-	const { data: cachedInventory, refresh: refreshInventory } = useCachedFetch<{
+	const {
+		data: cachedInventory,
+		isLoading: inventoryLoading,
+		refresh: refreshInventory,
+	} = useCachedFetch<{
 		items: InventoryItemDto[];
 	}>(`/api/wg/${encodedShareCode}/inventory`, {
 		memberId: identity.memberId,
@@ -132,9 +138,9 @@ export default function EinkaufPage() {
 	);
 	const [initialLoading, setInitialLoading] = useState(shoppingReadLoading);
 	const [newName, setNewName] = useState('');
-	const [inventory, setInventory] = useState<InventoryItemDto[]>(
-		() => cachedInventory?.items ?? [],
-	);
+	// Direkt abgeleitet statt per Effect gespiegelt: sonst rendert ein Frame mit
+	// leerem Vorrat und die Vorschläge springen.
+	const inventory = cachedInventory?.items ?? NO_INVENTORY;
 	const [doneOpen, setDoneOpen] = useState(false);
 	const [receiptSince, setReceiptSince] = useState<string | null>(null);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -208,8 +214,7 @@ export default function EinkaufPage() {
 			);
 			setInitialLoading(false);
 		}
-		if (cachedInventory) setInventory(cachedInventory.items);
-	}, [cachedInventory, cachedShopping, shoppingReadError]);
+	}, [cachedShopping, shoppingReadError]);
 	const itemCount = items.length;
 
 	useEffect(() => {
@@ -794,6 +799,9 @@ export default function EinkaufPage() {
 		taken.add(key);
 		return true;
 	});
+	// Vorschläge und Liste erscheinen gemeinsam, sobald Liste und Vorrat da sind: sonst
+	// tauschen die Gruppen nach dem Laden und schieben die Liste nach unten (Layout Shift).
+	const suggestionsPending = initialLoading || inventoryLoading;
 	const suggestionGroups = [
 		{ label: 'Vorrat niedrig', names: lowStock.slice(0, 6) },
 		frequent.length > 0
@@ -804,7 +812,7 @@ export default function EinkaufPage() {
 						(name) => !taken.has(normalizeForMatch(name)),
 					),
 				},
-	].filter((group) => group.names.length > 0);
+	].filter((group) => !suggestionsPending && group.names.length > 0);
 
 	function renderRow(item: ShoppingItem) {
 		return (
@@ -930,7 +938,7 @@ export default function EinkaufPage() {
 				</Alert>
 			)}
 
-			{initialLoading && items.length === 0 ? (
+			{inventoryLoading || (initialLoading && items.length === 0) ? (
 				<ListSkeleton />
 			) : loadError && items.length === 0 ? (
 				<Empty>
