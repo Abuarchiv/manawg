@@ -31,13 +31,15 @@ PayPal entscheidet, welche Konten und Produkte im jeweiligen Land zugelassen sin
 
 Am 27.09.2026 wurden bei Vercel die Namen der Umgebungsvariablen geprüft: Production und Preview enthielten keine `PAYPAL_*` oder `NEXT_PUBLIC_PAYPAL_*`-Konfiguration. Production hatte `NEXT_PUBLIC_APP_URL`, Preview nicht. Lokale Hauptcheckout-Umgebungsdateien enthielten ebenfalls keine der geprüften PayPal-Zugangsvariablen. Werte wurden nicht abgerufen. Ohne diese Einrichtung kann kein echter Provider-Login getestet oder als funktionierend bestätigt werden.
 
-## Betreiber-Zugang am 28.09.2026
+## Früherer Zwischenstand vor Verkäuferabschluss am 30.09.2026
 
-Der bestehende Developer-Zugang kann inzwischen die Sandbox-App-Liste und die vorhandene `Default Application` öffnen. Eine erneute persönliche Anmeldung ist deshalb aktuell nicht der Blocker. Es wurden keine App-Einstellungen gespeichert und keine Schlüsselwerte ausgegeben.
+Der Betreiber hat die Erstellung der US Sandbox Platform Partner App einschließlich des angezeigten Developer Agreement ausdrücklich freigegeben. Die App wurde am 28.09. erstellt; dabei erzeugte PayPal ein Sandbox-Geschäftskonto und neue API-Zugänge. Die Zugangsdaten liegen ausschließlich im privaten lokalen Secret-Verzeichnis. Es wurde keine Live-App eingerichtet.
 
-Im geprüften Erstellungsformular ist der Typ `Platform` verfügbar. PayPal gibt dafür den Namen `Platform Partner App` fest vor und erzeugt automatisch ein neues Sandbox-Geschäftskonto. Deutschland steht in der dort angebotenen Regionenliste nicht zur Auswahl. Als konkreter, noch ungesendeter Entwurf wurde `United States` gewählt; dessen späterer Sandbox-Nachweis würde keine Deutschland-/Live-Freigabe ersetzen.
+Die unveränderten App-Helfer erhielten beim Sandbox-OAuth HTTP 200 und beim Partner-Referral HTTP 201. Merchant-Readiness gab vor abgeschlossenem Verkäufer-Onboarding HTTP 401 `AUTHORIZATION_ERROR` zurück. Das ist ein offener Provider-Nachweis, keine bestätigte fehlende Verbindung und kein Grund, die Readiness-Prüfung abzuschwächen.
 
-`Create App` erzeugt neue API-Zugangsdaten und bestätigt laut Formular das [PayPal Developer Agreement für US-Konten](https://www.paypal.com/us/webapps/mpp/ua/xdeveloper-full). Diese neue Zugangs-/Vertragsaktion benötigt eine ausdrückliche Betreiberfreigabe. Der Button wurde nicht betätigt. Erst danach lassen sich die tatsächliche Partner-API-Freigabe und ein isolierter Sandbox-Ablauf prüfen; die vorhandene Standard-App wird nicht stillschweigend als geeignete Platform-App behandelt.
+Eine isolierte lokale PostgreSQL-17.11-Datenbank mit allen 18 Migrationen und einem lokalen Auth-Double ist vorbereitet. Die tatsächlichen App-Routen erstellten eine Test-WG, Verkäufer/Zahler und eine EUR-12,34-Ausgabe; signierte Mitgliedstokens stammen aus dem echten WG-Lookup. Das ist lokaler Handler-Nachweis, kein gehosteter Supabase-Auth-Nachweis.
+
+Der Browser erreichte aus „PayPal verbinden“ den echten Dialog auf `www.sandbox.paypal.com`; Deutschland und das vorhandene deutsche Sandbox-Verkäuferkonto sind auswählbar. Die Verkäuferfreigabe wurde am 30.09. ausdrücklich autorisiert und im Sandbox-Dialog ausgeführt. PayPal verlangt anschließend weitere synthetische Onboardingangaben; diese sind noch kein abgeschlossener Readiness-Nachweis. Readiness nach Rückkehr und echter Sandbox-Capture bleiben bis zum nachgewiesenen Abschluss offen. Ein vorhandenes deutsches Sandbox-Zahlerkonto wird verwendet; zusätzliche Konten sind nicht erforderlich.
 
 ## Offizielle Quellen
 
@@ -46,3 +48,9 @@ Im geprüften Erstellungsformular ist der Typ `Platform` verfügbar. PayPal gibt
 - [Onboarding und Länderunterstützung](https://developer.paypal.com/platforms/seller-onboarding)
 - [Plattformfreigabe](https://developer.paypal.com/platforms/get-started)
 - [Plattformkonto einrichten](https://developer.paypal.com/platforms/create-account)
+
+## Tatsächliches Verkäufer-Onboarding am 30.09.2026
+
+Die separat freigegebene Verkäuferberechtigung wurde im Sandbox-Dialog übernommen. Die weiteren Angaben waren ausschließlich synthetische Testangaben; es wurden kein Live-Konto und kein Bankkonto verknüpft. PayPal meldet den Verkäufer als mit der Plattform verbunden. Die unveränderte Readiness-Prüfung erhielt danach HTTP 200 und `true`.
+
+Der erste vollständige Sandbox-Dialog bot keinen Rücksprung zur HTTP-Loopback-App. Ein gezielter Versuch mit zusätzlicher offizieller Rückkehrbeschriftung änderte dieses Verhalten nicht; die experimentelle Änderung wurde vollständig verworfen. Damit sind App-Zuordnung, echter Browser-Callback und Capture weiterhin offen. Ein geschützter Cloudflare-HTTPS-Test wurde ausdrücklich für höchstens 30 Minuten freigegeben und gestartet. Der öffentliche Zugang wies Anfragen ohne Zugangsschlüssel mit HTTP 401 ab. Nach einer Korrektur des macOS-CLI-Pfads wurde nur innerhalb derselben festen Frist erneut gestartet. Der Supervisor beendete den Zugang um 13:57:39 UTC vor der Frist 13:57:44 UTC. Modellzugangsfehler unterbrachen den weiteren Testaufbau; echter Callback, Mitgliedszuordnung und Zahlung wurden nicht bestätigt. Für ein neues öffentliches Testfenster ist eine gesonderte Freigabe erforderlich. Es gab keine Änderung des Zertifikatsvertrauens und keine TLS-Ausnahme.
