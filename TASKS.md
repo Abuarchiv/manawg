@@ -2,10 +2,14 @@
 
 ## Aktueller Nachweis — 2026-09-30
 
-Production ist auf `6aa0b666` verifiziert: Health, Auth-Abgrenzung, privater
-Storage-Upload/Read/Revocation und unveränderter DB-Migrationsstand bestätigt.
-393 Unit-/Route- und 512 Chromium-Fixture-Fälle bestanden; Hosted Preview und
-echte Geräte sind getrennte offene Abnahmen. Frischer lokaler Restore: 62/62
+Production ist auf `8931977` verifiziert: frische Health- und Auth-Abgrenzungs-
+Prüfungen bestanden. Privater Storage-Upload/Read/Revocation und DB-Migrationsstand
+sind am vorherigen quellgleichen App-Stand `6aa0b666` bestätigt. Die korrigierte
+Dependency-Version bestand 393 Unit-/Route-Tests; 512 Chromium-Fixture-Fälle
+bestanden vor der Lock-Korrektur. Hosted Preview:
+frischer Login, eigene Test-WG (200), Fremdnutzer-Abgrenzung (401) und vollständiger
+Cleanup bestätigt. Native finale Preview-SHA/CI-Gates und echte Geräte bleiben
+getrennte offene Abnahmen. Frischer lokaler Restore: 62/62
 Datenabschnitte. MCP und Datenschutz-Landing wurden geliefert.
 
 CI bleibt auf ausdrücklichen Nutzerwunsch ausgenommen. Sandbox-Zahlungsfreigabe,

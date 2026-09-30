@@ -30,6 +30,35 @@ at the owner's explicit request. No Production migration was performed.
 - These checks cover the updated dependency tree. The 512-case fixture run
   above preceded the lock correction and is not presented as a new final-SHA
   hosted or device test.
+- Subsequent Production delivery `89319773cd09dc1e39479004720208921e0b2f82`
+  reached READY as `dpl_AAgehM7awZmKTmeuRG7FhTvL9i8B`, Node 22, with
+  `app.manawg.com` assigned. Fresh health, dedicated-account login and own-WG
+  reads passed; foreign and anonymous WG reads returned 401. This is a dated
+  delivery readback, not an assertion about future deployments.
+
+## Hosted Preview authentication and isolation
+
+- Protected Preview `manawg-n4rmhme9p-abditubes-projects.vercel.app`
+  (`dpl_7HrAmh3k9gYwYw1AxB7qr4jvp616`) was uploaded from the clean local
+  `6aa0b666` tree. The provider readback has no GitSource/commit SHA; this is
+  not native exact-SHA provider provenance or a final-revision CI gate.
+- Connected Chrome SSO succeeded without a human prompt. Fresh QA signup and
+  signed-in `/api/wg/mine` returned 200. All 29 inspected script chunks used
+  only the exact Preview Supabase host.
+- A direct Preview DB transaction, guarded by exact project reference and
+  verify-full TLS, created one non-joinable canary WG and one owner membership.
+  Owner list returned 200 with exactly that marker; its dashboard returned 200.
+  A second authenticated QA user had an empty WG list (200) and was denied the
+  same dashboard with 401 `not_a_member`. This proves the hosted runtime DB
+  target through the unique Preview canary; the sensitive Vercel env value
+  itself remained unreadable.
+- Cleanup removed exactly one member, one WG and both QA Auth users. Remaining
+  canary WG/member/user, session and identity counts were zero; no additional
+  profile or app-generated WG records remained. The browser signed out.
+- The earlier CLI-cookie 401 was not reproduced in fresh native Chrome. Its
+  cookie-validity/forwarding cause remains unclassified; no auth weakening was
+  made. App source under `apps/web/src` is identical between this Preview source
+  and delivered `8931977`; only the separately checked dependency tree differs.
 
 ## Database and private storage
 
@@ -66,9 +95,9 @@ at the owner's explicit request. No Production migration was performed.
   readiness HTTP 200). One EUR 0.01 order exists in CREATED state. Buyer
   approval, capture and WG settlement are not proven. No new Sandbox setup or
   Production credential change is required by this evidence.
-- Hosted Preview authenticated multi-user acceptance remains unproven: local
-  SSR accepted Preview cookies, but the protected hosted route returned 401.
-  Investigate build-time target and cookie transport without weakening auth.
+- Hosted Preview auth and own/foreign WG access now have controlled evidence
+  above. Full final-revision hosted journeys and native exact-SHA Preview
+  provenance remain separate from this focused probe; no CI success is claimed.
 - Historical Upstash metadata scan found 552 persistent ZSET keys containing
   1,111 entries. No event payloads were read. Deletion requires specific owner
   confirmation; no deletion or TTL change has occurred.
