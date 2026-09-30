@@ -267,6 +267,7 @@ export default function PutzenPage() {
 			intervalDays?: number;
 			recurrenceType?: RecurrenceType;
 			assignedMemberId?: string;
+			assigneeTouched?: boolean;
 			absenceMemberId?: string;
 			absenceStartDate?: string;
 			absenceEndDate?: string;
@@ -278,8 +279,10 @@ export default function PutzenPage() {
 			setDraftHydrated(true);
 			return;
 		}
-		if (!isEmptyModuleDraft('chore', draft, identity.memberId)) {
-			assigneeTouchedRef.current = true;
+		const { assigneeTouched: savedAssigneeTouched, ...formDraft } = draft;
+		if (!isEmptyModuleDraft('chore', formDraft, identity.memberId)) {
+			assigneeTouchedRef.current =
+				typeof savedAssigneeTouched === 'boolean' ? savedAssigneeTouched : true;
 			setShowForm(true);
 		}
 		if (draft.title) {
@@ -343,8 +346,11 @@ export default function PutzenPage() {
 
 	useEffect(() => {
 		if (!draftHydrated) return;
-		writeDraft(draftKey, {
-			...readDraft<Record<string, unknown>>(draftKey),
+		const { assigneeTouched: _previousAssigneeTouched, ...previousDraft } =
+			readDraft<Record<string, unknown>>(draftKey) ?? {};
+		void _previousAssigneeTouched;
+		const draft = {
+			...previousDraft,
 			title: newTitle,
 			recurrenceType: newRecurrenceType,
 			intervalDays: newInterval,
@@ -356,7 +362,13 @@ export default function PutzenPage() {
 			absenceEndDate: absenceEnd,
 			absenceReason,
 			queueEditId,
-		});
+		};
+		writeDraft(
+			draftKey,
+			isEmptyModuleDraft('chore', draft, identity.memberId)
+				? draft
+				: { ...draft, assigneeTouched: assigneeTouchedRef.current },
+		);
 	}, [
 		absenceEnd,
 		absenceMemberId,
@@ -364,6 +376,7 @@ export default function PutzenPage() {
 		absenceStart,
 		draftHydrated,
 		draftKey,
+		identity.memberId,
 		newAssigned,
 		newInterval,
 		newRecurrenceType,
