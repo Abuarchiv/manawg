@@ -24,6 +24,64 @@ const SCAN_PAGE_CAP = 100;
 const META_BATCH_SIZE = 100;
 const NAMESPACE_MARKER = ':events:';
 
+export const ATOMIC_DELETE_SCRIPT = String.raw`
+local expectedCount = tonumber(ARGV[1])
+local cutoffMs = tonumber(ARGV[2])
+local expectedZcardTotal = tonumber(ARGV[3])
+if not expectedCount or expectedCount > 552 or #KEYS ~= expectedCount then
+  return {'ABORT', 'key_count'}
+end
+if #ARGV ~= expectedCount + 3 then
+  return {'ABORT', 'argument_count'}
+end
+local seen = {}
+local totalZcard = 0
+for index, key in ipairs(KEYS) do
+  if string.sub(key, 1, 7) ~= 'manawg:' then
+    return {'ABORT', 'namespace'}
+  end
+  local marker = ':events:'
+  local markerStart = string.find(key, marker, 1, true)
+  if not markerStart or markerStart <= 8 or string.find(key, marker, markerStart + #marker, true) then
+    return {'ABORT', 'namespace'}
+  end
+  local suffix = string.sub(key, markerStart + #marker)
+  if string.len(suffix) ~= 13 or not string.match(suffix, '^%d+$') then
+    return {'ABORT', 'bucket_schema'}
+  end
+  local bucketMs = tonumber(suffix)
+  if not bucketMs or not cutoffMs or bucketMs > cutoffMs then
+    return {'ABORT', 'bucket_cutoff'}
+  end
+  if seen[key] then
+    return {'ABORT', 'duplicate_key'}
+  end
+  seen[key] = true
+  local keyType = redis.call('TYPE', key)
+  if type(keyType) == 'table' then keyType = keyType.ok end
+  if keyType ~= 'zset' then
+    return {'ABORT', 'type_drift'}
+  end
+  if redis.call('TTL', key) ~= -1 then
+    return {'ABORT', 'ttl_drift'}
+  end
+  local zcard = redis.call('ZCARD', key)
+  local expectedZcard = tonumber(ARGV[index + 3])
+  if not expectedZcard or zcard ~= expectedZcard then
+    return {'ABORT', 'cardinality_drift'}
+  end
+  totalZcard = totalZcard + zcard
+end
+if totalZcard ~= expectedZcardTotal then
+  return {'ABORT', 'total_cardinality_drift'}
+end
+local deleted = redis.call('DEL', unpack(KEYS))
+if deleted ~= expectedCount then
+  return {'UNKNOWN', 'delete_count_mismatch'}
+end
+return {'DELETED', tostring(deleted)}
+`;
+
 class PurgeGuardError extends Error {
 	constructor(code) {
 		super(code);
@@ -140,9 +198,10 @@ function validateSnapshot(snapshot, baseline) {
 	}
 }
 
-function summary(snapshot, baseline, mode, deletedCount = 0) {
+function summary(snapshot, baseline, mode, outcome, deletedCount, error = null) {
 	return {
 		mode,
+		outcome,
 		namespacePattern: baseline.namespacePattern,
 		recordedScanStartedAt: baseline.scanStartedAt,
 		keyCap: baseline.maxKeyCount,
@@ -156,6 +215,7 @@ function summary(snapshot, baseline, mode, deletedCount = 0) {
 		},
 		metadataFingerprintSha256: snapshot.fingerprint,
 		deletedCount,
+		...(error ? { error } : {}),
 		confirmationLiteralRequired: baseline.confirmationLiteral,
 	};
 }
@@ -171,16 +231,48 @@ export async function runBoundedPurge({
 	}
 	const first = await readSnapshot(redis, baseline);
 	validateSnapshot(first, baseline);
-	if (!execute) return summary(first, baseline, 'DRY_RUN');
+	if (!execute) return summary(first, baseline, 'DRY_RUN', 'NOT_ATTEMPTED', 0);
 
-	// Final pre-delete scan rechecks the complete key set, type, TTL, bucket suffix, and cardinality.
+	// Final scan plus the Lua script rechecks the full candidate set atomically before DEL.
 	const final = await readSnapshot(redis, baseline);
 	validateSnapshot(final, baseline);
 	if (final.fingerprint !== first.fingerprint) throw new PurgeGuardError('metadata_fingerprint_drift');
-
-	const deletedCount = await redis.del(final.records.map((row) => row.key));
-	if (deletedCount !== baseline.keyCount) throw new PurgeGuardError('delete_count_mismatch');
-	return summary(final, baseline, 'EXECUTED', deletedCount);
+	const keys = final.records.map((row) => row.key);
+	const args = [
+		String(baseline.keyCount),
+		String(baseline.scanStartMs),
+		String(baseline.zsetCardinalitySum),
+		...final.records.map((row) => String(row.zcard)),
+	];
+	let reply;
+	try {
+		reply = await redis.eval(ATOMIC_DELETE_SCRIPT, keys, args);
+	} catch {
+		return summary(final, baseline, 'EXECUTION_ATTEMPTED', 'UNKNOWN', null, 'delete_outcome_unknown');
+	}
+	if (!Array.isArray(reply) || typeof reply[0] !== 'string') {
+		return summary(final, baseline, 'EXECUTION_ATTEMPTED', 'UNKNOWN', null, 'delete_outcome_unknown');
+	}
+	if (reply[0] === 'ABORT') {
+		const safeReasons = new Set([
+			'key_count',
+			'argument_count',
+			'namespace',
+			'bucket_schema',
+			'bucket_cutoff',
+			'duplicate_key',
+			'type_drift',
+			'ttl_drift',
+			'cardinality_drift',
+			'total_cardinality_drift',
+		]);
+		const reason = safeReasons.has(reply[1]) ? reply[1] : 'rejected';
+		throw new PurgeGuardError(`atomic_preflight_${reason}`);
+	}
+	if (reply[0] !== 'DELETED' || Number(reply[1]) !== baseline.keyCount) {
+		return summary(final, baseline, 'EXECUTION_ATTEMPTED', 'UNKNOWN', null, 'delete_outcome_unknown');
+	}
+	return summary(final, baseline, 'EXECUTED', 'DELETED', Number(reply[1]));
 }
 
 function parseReply(buffer, offset = 0) {
@@ -224,8 +316,8 @@ function encodeCommand(args) {
 	return parts.join('');
 }
 
-function createRedisClient(url) {
-	const socket = tls.connect({
+export function createRedisClient(url, { connect = tls.connect, handshakeTimeoutMs = 15000 } = {}) {
+	const socket = connect({
 		host: url.hostname,
 		port: Number(url.port || 6379),
 		servername: url.hostname,
@@ -263,8 +355,23 @@ function createRedisClient(url) {
 		socket.write(encodeCommand(args));
 	});
 	const ready = new Promise((resolve, reject) => {
-		socket.once('secureConnect', resolve);
-		socket.once('error', () => reject(new PurgeGuardError('redis_connect_failed')));
+		let settled = false;
+		const handshakeTimeout = setTimeout(() => {
+			if (settled) return;
+			settled = true;
+			reject(new PurgeGuardError('redis_tls_handshake_timeout'));
+			socket.destroy();
+		}, handshakeTimeoutMs);
+		const finish = (error = null) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(handshakeTimeout);
+			if (error) reject(error);
+			else resolve();
+		};
+		socket.once('secureConnect', () => finish());
+		socket.once('error', () => finish(new PurgeGuardError('redis_connect_failed')));
+		socket.once('close', () => finish(new PurgeGuardError('redis_connect_failed')));
 	});
 	const command = async (args) => {
 		const reply = await send(args);
@@ -277,7 +384,7 @@ function createRedisClient(url) {
 		type: (key) => command(['TYPE', key]),
 		ttl: (key) => command(['TTL', key]),
 		zcard: (key) => command(['ZCARD', key]),
-		del: (keys) => command(['DEL', ...keys]),
+		eval: (script, keys, args) => command(['EVAL', script, String(keys.length), ...keys, ...args]),
 		auth: async (username, password) => command(username ? ['AUTH', username, password] : ['AUTH', password]),
 		ping: () => command(['PING']),
 		close: () => socket.end(),
@@ -322,10 +429,11 @@ async function main() {
 		await redis.ready;
 		const username = decodeURIComponent(url.username || 'default');
 		const auth = await redis.auth(username === 'default' ? '' : username, decodeURIComponent(url.password));
-		if (auth !== 'OK' || (await redis.ping()) !== 'PONG') throw new PurgeGuardError('redis_auth_failed');
-		const result = await runBoundedPurge({ redis, ...options });
-		process.stdout.write(`${JSON.stringify(result)}\n`);
-	} finally {
+			if (auth !== 'OK' || (await redis.ping()) !== 'PONG') throw new PurgeGuardError('redis_auth_failed');
+			const result = await runBoundedPurge({ redis, ...options });
+			process.stdout.write(`${JSON.stringify(result)}\n`);
+			if (result.outcome === 'UNKNOWN') process.exitCode = 1;
+		} finally {
 		redis.close();
 	}
 }
