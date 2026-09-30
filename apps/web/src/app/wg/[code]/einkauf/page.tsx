@@ -37,7 +37,7 @@ import {
 	isOfflineActionQueued,
 	readOfflineQueue,
 	syncOfflineActions,
-	writeOfflineQueue,
+	updateOfflineQueue,
 } from '@/core/offline/offline-client';
 import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
@@ -288,9 +288,13 @@ export default function EinkaufPage() {
 		[memberInfoById],
 	);
 
-	function clearEditedQueueItem(): boolean {
+	async function clearEditedQueueItem(): Promise<boolean> {
 		if (!queueEditId) return true;
-		const saved = writeOfflineQueue(readOfflineQueue().filter((item) => item.id !== queueEditId));
+		const saved = await updateOfflineQueue((actions) =>
+			actions.some((item) => item.id === queueEditId)
+				? actions.filter((item) => item.id !== queueEditId)
+				: null,
+		);
 		if (!saved) return false;
 		setQueueEditId(null);
 		return true;
@@ -355,13 +359,13 @@ export default function EinkaufPage() {
 						name,
 						quantity,
 					});
-					if (enqueueOfflineAction(queued) === 0) {
+					if ((await enqueueOfflineAction(queued)) === 0) {
 						setAddError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
 					addIdempotencyKeyRef.current = null;
 					refreshCount();
-					if (fromInput && !clearEditedQueueItem()) {
+					if (fromInput && !(await clearEditedQueueItem())) {
 						setAddError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
@@ -396,7 +400,7 @@ export default function EinkaufPage() {
 				return;
 			}
 			addIdempotencyKeyRef.current = null;
-			if (fromInput && !clearEditedQueueItem()) {
+			if (fromInput && !(await clearEditedQueueItem())) {
 				setAddError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
@@ -490,17 +494,38 @@ export default function EinkaufPage() {
 
 			try {
 				if (queuedCreate) {
-					const saved = writeOfflineQueue(
-						readOfflineQueue().map((queued) =>
-							queued.id === item.id
-								? { ...queued, payload: { ...queued.payload, bought: becomingBought } }
-								: queued,
-						),
-					);
+					let updated = false;
+					const saved = await updateOfflineQueue((actions) => {
+						const queued = actions.find(
+							(action) =>
+								action.id === item.id &&
+								action.shareCode === wg.shareCode &&
+								action.memberId === identity.memberId &&
+								action.type === 'shopping.create',
+						);
+						if (!queued) return null;
+						updated = true;
+						return actions.map((action) =>
+							action.id === item.id &&
+							action.shareCode === wg.shareCode &&
+							action.memberId === identity.memberId &&
+							action.type === 'shopping.create'
+								? { ...action, payload: { ...action.payload, bought: becomingBought } }
+								: action,
+						);
+					});
 					if (!saved) {
 						rollback();
 						setToggleError(
 							'Offline-Speicher ist blockiert. Der Einkaufsstatus konnte nicht vorgemerkt werden.',
+						);
+						return;
+					}
+					if (!updated) {
+						rollback();
+						void load(true);
+						setToggleError(
+							'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
 						);
 						return;
 					}
@@ -572,7 +597,7 @@ export default function EinkaufPage() {
 							expectedBoughtAt: patchRequest.expectedBoughtAt,
 							idempotencyKey: patchRequest.idempotencyKey,
 						});
-						if (enqueueOfflineAction(queued) === 0) {
+						if ((await enqueueOfflineAction(queued)) === 0) {
 							rollback();
 							setToggleError(
 								'Offline-Speicher ist blockiert. Der Einkaufsstatus konnte nicht vorgemerkt werden.',
@@ -624,7 +649,7 @@ export default function EinkaufPage() {
 			if (isPending(id)) return;
 			setRemoveError(null);
 			setRemoveErrorId(null);
-			const queued = discardQueuedEntry(wg.shareCode, id);
+			const queued = await discardQueuedEntry(wg.shareCode, id);
 			if (queued === 'storage_blocked') {
 				setRemoveErrorId(id);
 				setRemoveError(

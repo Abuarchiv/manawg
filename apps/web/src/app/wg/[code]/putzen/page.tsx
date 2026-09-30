@@ -33,9 +33,8 @@ import {
 	discardQueuedEntry,
 	enqueueOfflineAction,
 	isOfflineActionQueued,
-	readOfflineQueue,
 	syncOfflineActions,
-	writeOfflineQueue,
+	updateOfflineQueue,
 } from '@/core/offline/offline-client';
 import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
@@ -421,13 +420,13 @@ export default function PutzenPage() {
 		}, 80);
 	}, [absenceId, absencesPanelActive]);
 
-	function clearEditedQueueItem(expectedTypes?: OfflineActionType[]): boolean {
+	async function clearEditedQueueItem(expectedTypes?: OfflineActionType[]): Promise<boolean> {
 		if (!queueEditId) return true;
-		if (expectedTypes) {
-			const queued = readOfflineQueue().find((item) => item.id === queueEditId);
-			if (!queued || !expectedTypes.includes(queued.type)) return true;
-		}
-		const saved = writeOfflineQueue(readOfflineQueue().filter((item) => item.id !== queueEditId));
+		const saved = await updateOfflineQueue((actions) => {
+			const queued = actions.find((item) => item.id === queueEditId);
+			if (!queued || (expectedTypes && !expectedTypes.includes(queued.type))) return null;
+			return actions.filter((item) => item.id !== queueEditId);
+		});
 		if (!saved) return false;
 		setQueueEditId(null);
 		return true;
@@ -508,7 +507,7 @@ export default function PutzenPage() {
 						recurrenceType: newRecurrenceType,
 						assignedMemberId: newAssigned || null,
 					});
-					if (enqueueOfflineAction(queued) === 0) {
+					if ((await enqueueOfflineAction(queued)) === 0) {
 						setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
@@ -532,7 +531,7 @@ export default function PutzenPage() {
 					setNewInterval(7);
 					setNewRecurrenceType('days');
 					setNewAssigned('');
-					if (!clearEditedQueueItem(['chore.create'])) {
+					if (!(await clearEditedQueueItem(['chore.create']))) {
 						setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
@@ -553,7 +552,7 @@ export default function PutzenPage() {
 			setNewInterval(7);
 			setNewRecurrenceType('days');
 			setNewAssigned('');
-			if (!clearEditedQueueItem(['chore.create'])) {
+			if (!(await clearEditedQueueItem(['chore.create']))) {
 				setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
@@ -649,12 +648,12 @@ export default function PutzenPage() {
 						endDate,
 						reason: absenceReason.trim() || null,
 					});
-					if (enqueueOfflineAction(queued) === 0) {
+					if ((await enqueueOfflineAction(queued)) === 0) {
 						setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
 					absenceCreateRequestRef.current = null;
-					if (!clearEditedQueueItem(['absence.create'])) {
+					if (!(await clearEditedQueueItem(['absence.create']))) {
 						setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
@@ -686,7 +685,7 @@ export default function PutzenPage() {
 			setAbsenceStart('');
 			setAbsenceEnd('');
 			setAbsenceReason('');
-			if (!clearEditedQueueItem(['absence.create'])) {
+			if (!(await clearEditedQueueItem(['absence.create']))) {
 				setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
@@ -701,7 +700,7 @@ export default function PutzenPage() {
 	async function removeAbsence(id: string): Promise<void> {
 		const pendingKey = `absence:${id}:remove`;
 		if (isPending(pendingKey)) return;
-		const queued = discardQueuedEntry(wg.shareCode, id);
+		const queued = await discardQueuedEntry(wg.shareCode, id);
 		if (queued === 'storage_blocked') {
 			setActionError(
 				'Offline-Speicher ist blockiert. Die vorgemerkte Abwesenheit konnte nicht entfernt werden.',
@@ -789,7 +788,7 @@ export default function PutzenPage() {
 			if (result.status > 0 && result.status < 500 && result.status !== 429)
 				completionRequestKeysRef.current.delete(chore.id);
 			if (result.status === 0) {
-				const queuedCount = enqueueOfflineAction(
+				const queuedCount = await enqueueOfflineAction(
 					createQueuedChoreCompletion({
 						wgId: wg.id,
 						shareCode: wg.shareCode,
@@ -1004,7 +1003,7 @@ export default function PutzenPage() {
 		if (isPending(id)) return;
 		setActionError(null);
 		setActionNotice(null);
-		const queued = discardQueuedEntry(wg.shareCode, id);
+		const queued = await discardQueuedEntry(wg.shareCode, id);
 		if (queued === 'storage_blocked') {
 			setActionError(
 				'Offline-Speicher ist blockiert. Die vorgemerkte Aufgabe konnte nicht entfernt werden.',
