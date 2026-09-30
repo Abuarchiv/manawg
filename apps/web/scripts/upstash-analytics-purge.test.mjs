@@ -127,7 +127,12 @@ test('foreign and limiter-counter keys abort before any deletion', async () => {
 	const foreign = { key: 'manawg:wg-write:member-x:limit', type: 'string', ttl: -1, zcard: 0 };
 	const redis = fakeRedis(records, { onScan: () => [...records, foreign] });
 	await assert.rejects(
-		runBoundedPurge({ redis, baseline: makeBaseline(records), execute: true, confirmation: 'DELETE_TEST_ANALYTICS_KEYS' }),
+		runBoundedPurge({
+			redis,
+			baseline: makeBaseline(records),
+			execute: true,
+			confirmation: 'DELETE_TEST_ANALYTICS_KEYS',
+		}),
 		/foreign_namespace_or_schema_drift/,
 	);
 	assert.equal(redis.evalCalls.length, 0);
@@ -154,13 +159,21 @@ test('confirmed execution deletes only analytics keys and leaves limiter counter
 	});
 
 	assert.equal(summary.outcome, 'DELETED');
-	assert.deepEqual(redis.deletedKeys, analytics.map((row) => row.key));
+	assert.deepEqual(
+		redis.deletedKeys,
+		analytics.map((row) => row.key),
+	);
 	for (const row of protectedKeys) assert.equal(redis.records.has(row.key), true);
 });
 
 test('candidate key cap aborts before any EVAL', async () => {
 	const records = makeRecords();
-	const extra = { key: `manawg:limiter-c:events:${scanStart - 900_000}`, type: 'zset', ttl: -1, zcard: 1 };
+	const extra = {
+		key: `manawg:limiter-c:events:${scanStart - 900_000}`,
+		type: 'zset',
+		ttl: -1,
+		zcard: 1,
+	};
 	const redis = fakeRedis([...records, extra]);
 	await assert.rejects(
 		runBoundedPurge({ redis, baseline: makeBaseline(records) }),
@@ -181,10 +194,20 @@ test('an empty limiter namespace fails closed before metadata reads or deletion'
 
 test('a new bucket on the final scan aborts before any deletion', async () => {
 	const records = makeRecords();
-	const newer = { key: `manawg:limiter-c:events:${scanStart + 1}`, type: 'zset', ttl: -1, zcard: 1 };
-	const redis = fakeRedis(records, { onScan: (n) => n === 1 ? records : [...records, newer] });
+	const newer = {
+		key: `manawg:limiter-c:events:${scanStart + 1}`,
+		type: 'zset',
+		ttl: -1,
+		zcard: 1,
+	};
+	const redis = fakeRedis(records, { onScan: (n) => (n === 1 ? records : [...records, newer]) });
 	await assert.rejects(
-		runBoundedPurge({ redis, baseline: makeBaseline(records), execute: true, confirmation: 'DELETE_TEST_ANALYTICS_KEYS' }),
+		runBoundedPurge({
+			redis,
+			baseline: makeBaseline(records),
+			execute: true,
+			confirmation: 'DELETE_TEST_ANALYTICS_KEYS',
+		}),
 		/bucket_after_recorded_scan_start/,
 	);
 	assert.equal(redis.evalCalls.length, 0);
@@ -192,12 +215,17 @@ test('a new bucket on the final scan aborts before any deletion', async () => {
 
 test('a same-count replacement key fails the exact fingerprint before deletion', async () => {
 	const records = makeRecords();
-	const replacements = records.map((row, index) => index === 0
-		? { ...row, key: row.key.replace('limiter-a', 'new-limiter') }
-		: row);
-	const redis = fakeRedis(records, { onScan: (n) => n === 1 ? records : replacements });
+	const replacements = records.map((row, index) =>
+		index === 0 ? { ...row, key: row.key.replace('limiter-a', 'new-limiter') } : row,
+	);
+	const redis = fakeRedis(records, { onScan: (n) => (n === 1 ? records : replacements) });
 	await assert.rejects(
-		runBoundedPurge({ redis, baseline: makeBaseline(records), execute: true, confirmation: 'DELETE_TEST_ANALYTICS_KEYS' }),
+		runBoundedPurge({
+			redis,
+			baseline: makeBaseline(records),
+			execute: true,
+			confirmation: 'DELETE_TEST_ANALYTICS_KEYS',
+		}),
 		/metadata_fingerprint_drift/,
 	);
 	assert.equal(redis.evalCalls.length, 0);
@@ -207,13 +235,18 @@ test('type drift during final recheck aborts before any deletion', async () => {
 	const records = makeRecords();
 	let typeReads = 0;
 	const redis = fakeRedis(records, {
-			onRead: (kind, n, key, row) => {
+		onRead: (kind, _n, key, row) => {
 			if (kind === 'type' && key === records[0].key && ++typeReads > 1) return { type: 'string' };
 			return row;
 		},
 	});
 	await assert.rejects(
-		runBoundedPurge({ redis, baseline: makeBaseline(records), execute: true, confirmation: 'DELETE_TEST_ANALYTICS_KEYS' }),
+		runBoundedPurge({
+			redis,
+			baseline: makeBaseline(records),
+			execute: true,
+			confirmation: 'DELETE_TEST_ANALYTICS_KEYS',
+		}),
 		/type_schema_drift/,
 	);
 	assert.equal(redis.evalCalls.length, 0);
@@ -223,13 +256,18 @@ test('TTL drift during final recheck aborts before any deletion', async () => {
 	const records = makeRecords();
 	let ttlReads = 0;
 	const redis = fakeRedis(records, {
-			onRead: (kind, n, key, row) => {
+		onRead: (kind, _n, key, row) => {
 			if (kind === 'ttl' && key === records[0].key && ++ttlReads > 1) return { ttl: 120 };
 			return row;
 		},
 	});
 	await assert.rejects(
-		runBoundedPurge({ redis, baseline: makeBaseline(records), execute: true, confirmation: 'DELETE_TEST_ANALYTICS_KEYS' }),
+		runBoundedPurge({
+			redis,
+			baseline: makeBaseline(records),
+			execute: true,
+			confirmation: 'DELETE_TEST_ANALYTICS_KEYS',
+		}),
 		/ttl_schema_drift/,
 	);
 	assert.equal(redis.evalCalls.length, 0);
@@ -249,8 +287,16 @@ test('confirmed execution deletes only the exact preflight analytics key set', a
 	assert.equal(summary.outcome, 'DELETED');
 	assert.equal(summary.deletedCount, 2);
 	assert.equal(redis.evalCalls.length, 1);
-	assert.deepEqual(redis.evalCalls[0].keys, records.map((row) => row.key));
-	assert.equal(redis.evalCalls[0].keys.some((key) => key.includes('wg-write') || key.includes('limiter-counter')), false);
+	assert.deepEqual(
+		redis.evalCalls[0].keys,
+		records.map((row) => row.key),
+	);
+	assert.equal(
+		redis.evalCalls[0].keys.some(
+			(key) => key.includes('wg-write') || key.includes('limiter-counter'),
+		),
+		false,
+	);
 	assert.equal(redis.evalCalls[0].script, ATOMIC_DELETE_SCRIPT);
 });
 
@@ -268,7 +314,14 @@ test('atomic Lua script checks type, TTL, and ZCARD before DEL without reading m
 
 test('atomic guard rejections are known not to have deleted any keys', async () => {
 	const records = makeRecords();
-	for (const reason of ['namespace', 'bucket_cutoff', 'type_drift', 'ttl_drift', 'cardinality_drift', 'total_cardinality_drift']) {
+	for (const reason of [
+		'namespace',
+		'bucket_cutoff',
+		'type_drift',
+		'ttl_drift',
+		'cardinality_drift',
+		'total_cardinality_drift',
+	]) {
 		const redis = fakeRedis(records, { onEval: () => ['ABORT', reason] });
 		await assert.rejects(
 			runBoundedPurge({
@@ -297,10 +350,12 @@ test('Redis EVAL encodes the exact key set and expected metadata arguments', asy
 	await redis.ready;
 	const replyPromise = redis.eval(script, keys, args);
 	const fields = ['EVAL', script, String(keys.length), ...keys, ...args];
-	const expectedWire = `*${fields.length}\r\n${fields.map((value) => {
-		const text = String(value);
-		return `$${Buffer.byteLength(text)}\r\n${text}\r\n`;
-	}).join('')}`;
+	const expectedWire = `*${fields.length}\r\n${fields
+		.map((value) => {
+			const text = String(value);
+			return `$${Buffer.byteLength(text)}\r\n${text}\r\n`;
+		})
+		.join('')}`;
 	assert.equal(socket.writes[0], expectedWire);
 	socket.emit('data', Buffer.from('*2\r\n$7\r\nDELETED\r\n$1\r\n2\r\n'));
 	assert.deepEqual(await replyPromise, ['DELETED', '2']);
@@ -318,11 +373,13 @@ test('TLS handshake timeout destroys the socket and rejects the connection', asy
 	assert.equal(socket.destroyed, true);
 });
 
-test('lost or mismatched EVAL response is reported as unknown with null deleted count', async (t) => {
+test('lost or mismatched EVAL response is reported as unknown with null deleted count', async (_t) => {
 	const records = makeRecords();
 	const baseline = makeBaseline(records);
 	for (const onEval of [
-		() => { throw new Error('response lost: rediss://default:private-secret@example.invalid'); },
+		() => {
+			throw new Error('response lost: rediss://default:private-secret@example.invalid');
+		},
 		() => ['DELETED', '1'],
 	]) {
 		const redis = fakeRedis(records, { onEval });
@@ -340,7 +397,9 @@ test('lost or mismatched EVAL response is reported as unknown with null deleted 
 });
 
 test('untrusted connection errors are reduced to a generic safe label', () => {
-	const label = safeErrorCode(new Error('REDIS_URL=rediss://default:private-secret@example.invalid:6379'));
+	const label = safeErrorCode(
+		new Error('REDIS_URL=rediss://default:private-secret@example.invalid:6379'),
+	);
 	assert.equal(label, 'metadata_scan_failed');
 	assert.equal(label.includes('private-secret'), false);
 });

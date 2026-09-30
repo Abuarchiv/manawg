@@ -15,8 +15,7 @@ export const RECORDED_BASELINE = Object.freeze({
 	zsetCardinalitySum: 1111,
 	oldestBucketMs: Date.parse('2026-08-29T06:00:00.000Z'),
 	newestBucketMs: Date.parse('2026-09-28T01:00:00.000Z'),
-	confirmationLiteral:
-		'DELETE_MANAWG_ANALYTICS_KEYS_552_UP_TO_2026-09-30T12:24:23.073Z_B4871484',
+	confirmationLiteral: 'DELETE_MANAWG_ANALYTICS_KEYS_552_UP_TO_2026-09-30T12:24:23.073Z_B4871484',
 });
 
 const SCAN_COUNT = 1000;
@@ -129,7 +128,8 @@ async function readSnapshot(redis, baseline) {
 		cursor = String(reply[0]);
 		pages += 1;
 		for (const key of reply[1]) {
-			if (bucketTimeMs(key) === null) throw new PurgeGuardError('foreign_namespace_or_schema_drift');
+			if (bucketTimeMs(key) === null)
+				throw new PurgeGuardError('foreign_namespace_or_schema_drift');
 			if (bucketTimeMs(key) > baseline.scanStartMs) {
 				throw new PurgeGuardError('bucket_after_recorded_scan_start');
 			}
@@ -192,7 +192,9 @@ function validateSnapshot(snapshot, baseline) {
 	}
 	if (
 		snapshot.records.length !== baseline.keyCount ||
-		snapshot.records.some((row) => row.type !== 'zset' || row.ttl !== -1 || !Number.isSafeInteger(row.zcard))
+		snapshot.records.some(
+			(row) => row.type !== 'zset' || row.ttl !== -1 || !Number.isSafeInteger(row.zcard),
+		)
 	) {
 		throw new PurgeGuardError('per_key_metadata_drift');
 	}
@@ -236,7 +238,8 @@ export async function runBoundedPurge({
 	// Final scan plus the Lua script rechecks the full candidate set atomically before DEL.
 	const final = await readSnapshot(redis, baseline);
 	validateSnapshot(final, baseline);
-	if (final.fingerprint !== first.fingerprint) throw new PurgeGuardError('metadata_fingerprint_drift');
+	if (final.fingerprint !== first.fingerprint)
+		throw new PurgeGuardError('metadata_fingerprint_drift');
 	const keys = final.records.map((row) => row.key);
 	const args = [
 		String(baseline.keyCount),
@@ -248,10 +251,24 @@ export async function runBoundedPurge({
 	try {
 		reply = await redis.eval(ATOMIC_DELETE_SCRIPT, keys, args);
 	} catch {
-		return summary(final, baseline, 'EXECUTION_ATTEMPTED', 'UNKNOWN', null, 'delete_outcome_unknown');
+		return summary(
+			final,
+			baseline,
+			'EXECUTION_ATTEMPTED',
+			'UNKNOWN',
+			null,
+			'delete_outcome_unknown',
+		);
 	}
 	if (!Array.isArray(reply) || typeof reply[0] !== 'string') {
-		return summary(final, baseline, 'EXECUTION_ATTEMPTED', 'UNKNOWN', null, 'delete_outcome_unknown');
+		return summary(
+			final,
+			baseline,
+			'EXECUTION_ATTEMPTED',
+			'UNKNOWN',
+			null,
+			'delete_outcome_unknown',
+		);
 	}
 	if (reply[0] === 'ABORT') {
 		const safeReasons = new Set([
@@ -270,7 +287,14 @@ export async function runBoundedPurge({
 		throw new PurgeGuardError(`atomic_preflight_${reason}`);
 	}
 	if (reply[0] !== 'DELETED' || Number(reply[1]) !== baseline.keyCount) {
-		return summary(final, baseline, 'EXECUTION_ATTEMPTED', 'UNKNOWN', null, 'delete_outcome_unknown');
+		return summary(
+			final,
+			baseline,
+			'EXECUTION_ATTEMPTED',
+			'UNKNOWN',
+			null,
+			'delete_outcome_unknown',
+		);
 	}
 	return summary(final, baseline, 'EXECUTED', 'DELETED', Number(reply[1]));
 }
@@ -289,7 +313,10 @@ function parseReply(buffer, offset = 0) {
 		const length = Number(line);
 		if (length === -1) return { value: null, next };
 		if (buffer.length < next + length + 2) return null;
-		return { value: buffer.subarray(next, next + length).toString('utf8'), next: next + length + 2 };
+		return {
+			value: buffer.subarray(next, next + length).toString('utf8'),
+			next: next + length + 2,
+		};
 	}
 	if (prefix === '*') {
 		const count = Number(line);
@@ -344,16 +371,17 @@ export function createRedisClient(url, { connect = tls.connect, handshakeTimeout
 			current.reject(new PurgeGuardError('redis_transport_failed'));
 		}
 	});
-	const send = (args) => new Promise((resolve, reject) => {
-		const current = { resolve, reject, timeout: null };
-		current.timeout = setTimeout(() => {
-			const index = pending.indexOf(current);
-			if (index >= 0) pending.splice(index, 1);
-			reject(new PurgeGuardError('redis_command_timeout'));
-		}, 15000);
-		pending.push(current);
-		socket.write(encodeCommand(args));
-	});
+	const send = (args) =>
+		new Promise((resolve, reject) => {
+			const current = { resolve, reject, timeout: null };
+			current.timeout = setTimeout(() => {
+				const index = pending.indexOf(current);
+				if (index >= 0) pending.splice(index, 1);
+				reject(new PurgeGuardError('redis_command_timeout'));
+			}, 15000);
+			pending.push(current);
+			socket.write(encodeCommand(args));
+		});
 	const ready = new Promise((resolve, reject) => {
 		let settled = false;
 		const handshakeTimeout = setTimeout(() => {
@@ -385,7 +413,8 @@ export function createRedisClient(url, { connect = tls.connect, handshakeTimeout
 		ttl: (key) => command(['TTL', key]),
 		zcard: (key) => command(['ZCARD', key]),
 		eval: (script, keys, args) => command(['EVAL', script, String(keys.length), ...keys, ...args]),
-		auth: async (username, password) => command(username ? ['AUTH', username, password] : ['AUTH', password]),
+		auth: async (username, password) =>
+			command(username ? ['AUTH', username, password] : ['AUTH', password]),
 		ping: () => command(['PING']),
 		close: () => socket.end(),
 	};
@@ -423,17 +452,22 @@ async function main() {
 		url.hostname !== kv.hostname ||
 		url.port !== kv.port ||
 		url.pathname !== kv.pathname
-	) throw new PurgeGuardError('private_redis_target_mismatch');
+	)
+		throw new PurgeGuardError('private_redis_target_mismatch');
 	const redis = createRedisClient(url);
 	try {
 		await redis.ready;
 		const username = decodeURIComponent(url.username || 'default');
-		const auth = await redis.auth(username === 'default' ? '' : username, decodeURIComponent(url.password));
-			if (auth !== 'OK' || (await redis.ping()) !== 'PONG') throw new PurgeGuardError('redis_auth_failed');
-			const result = await runBoundedPurge({ redis, ...options });
-			process.stdout.write(`${JSON.stringify(result)}\n`);
-			if (result.outcome === 'UNKNOWN') process.exitCode = 1;
-		} finally {
+		const auth = await redis.auth(
+			username === 'default' ? '' : username,
+			decodeURIComponent(url.password),
+		);
+		if (auth !== 'OK' || (await redis.ping()) !== 'PONG')
+			throw new PurgeGuardError('redis_auth_failed');
+		const result = await runBoundedPurge({ redis, ...options });
+		process.stdout.write(`${JSON.stringify(result)}\n`);
+		if (result.outcome === 'UNKNOWN') process.exitCode = 1;
+	} finally {
 		redis.close();
 	}
 }
