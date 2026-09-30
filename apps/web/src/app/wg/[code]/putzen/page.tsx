@@ -279,6 +279,14 @@ export default function PutzenPage() {
 			return;
 		}
 		const { assigneeTouched: savedAssigneeTouched, ...formDraft } = draft;
+		// Ältere Entwürfe ohne assigneeTouched speicherten den automatischen Vorschlag
+		// (meist man selbst) mit; der allein soll das Formular nicht aufspringen lassen.
+		if (
+			typeof savedAssigneeTouched !== 'boolean' &&
+			formDraft.assignedMemberId === identity.memberId
+		) {
+			formDraft.assignedMemberId = '';
+		}
 		if (!isEmptyModuleDraft('chore', formDraft, identity.memberId)) {
 			assigneeTouchedRef.current =
 				typeof savedAssigneeTouched === 'boolean' ? savedAssigneeTouched : true;

@@ -18,7 +18,8 @@ test('PayPal status failure is announced and can be retried from the keyboard', 
 			}
 			return route.fulfill({ json: { available: true, connected: false } });
 		}
-		return route.fulfill({ status: 400, json: { error: 'unexpected_action' } });
+		// Retrying without a started onboarding has nothing to complete.
+		return route.fulfill({ status: 409, json: { error: 'paypal_connection_expired' } });
 	});
 
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen`);

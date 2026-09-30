@@ -163,6 +163,7 @@ export function PayPalConnect({
 	const confirmConnection = useCallback(
 		async (merchantId: string | null, expectedScope: string): Promise<void> => {
 			if (scopeRef.current !== expectedScope) return;
+			const returnedFromPayPal = pendingReturn.current?.scope === expectedScope;
 			setBusy(true);
 			setError(null);
 			try {
@@ -196,6 +197,8 @@ export function PayPalConnect({
 				}
 				pendingReturn.current = null;
 				callbackState.current = null;
+				// Ohne laufendes Onboarding gibt es nichts abzuschließen: einfach nicht verbunden.
+				if (!returnedFromPayPal && !result.ok && result.error === 'paypal_connection_expired') return;
 				setError(
 					result.ok
 						? 'PayPal-Verbindung konnte nicht bestätigt werden.'
