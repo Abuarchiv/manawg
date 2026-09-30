@@ -119,7 +119,7 @@ export function CalendarUpcomingList({
 							)}
 						>
 							<span className="sr-only">{day.label}</span>
-							<span aria-hidden className="text-[11px] uppercase">
+							<span aria-hidden className="text-[12px] uppercase">
 								{isToday ? 'Heute' : WEEKDAY_FORMATTER.format(day.date).replace('.', '')}
 							</span>
 							<span
