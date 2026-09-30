@@ -265,8 +265,12 @@ export default function EinkaufPage() {
 		onSynced: () => void load(true),
 	});
 
+	// Nur einmal pro Deep-Link springen, nicht bei jedem Poll/Refresh erneut.
+	const scrolledHighlightRef = useRef<string | null>(null);
 	useEffect(() => {
 		if (!highlightedId || itemCount === 0) return;
+		if (scrolledHighlightRef.current === highlightedId) return;
+		scrolledHighlightRef.current = highlightedId;
 		if (items.some((item) => item.id === highlightedId && item.boughtAt !== null))
 			setDoneOpen(true);
 		window.setTimeout(() => {
@@ -655,6 +659,7 @@ export default function EinkaufPage() {
 			if (isPending(id)) return;
 			start(id);
 			try {
+				setToggleError(null);
 				setRemoveError(null);
 				setRemoveErrorId(null);
 				const queued = await discardQueuedEntry(wg.shareCode, id);
@@ -733,6 +738,7 @@ export default function EinkaufPage() {
 		if (clearingBoughtRef.current) return;
 		clearingBoughtRef.current = true;
 		setClearingBought(true);
+		setToggleError(null);
 		setRemoveError(null);
 		setRemoveErrorId(null);
 		try {

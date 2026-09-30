@@ -79,7 +79,8 @@ export default function VorraetePage() {
 			if (res.ok) {
 				setLoadError(null);
 				setItems(res.data.items);
-			} else {
+			} else if (!silent || !hasInventoryDataRef.current) {
+				// Ein stiller Hintergrund-Refresh legt keinen Fehler über eine brauchbare Liste.
 				setLoadError(getWgLoadErrorMessage('Vorräte', res.status, res.error));
 			}
 			setInitialLoading(false);
