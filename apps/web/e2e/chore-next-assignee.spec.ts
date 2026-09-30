@@ -1,5 +1,6 @@
 import { type Locator, expect, test } from '@playwright/test';
 import { chooseNextAvailableMember } from '../src/features/chores/chore-fairness';
+import { computeNextDueAt } from '../src/features/chores/chore-recurrence';
 import { MEMBER_TOKEN_HEADER } from '../src/shared/lib/member-header';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
 
@@ -272,8 +273,19 @@ test('states when no active member is eligible for the next round', async ({ pag
 	const choreOwner: FixtureMember = { id: 'anna', name: 'Anna', color: null, active: true };
 	const departedMember: FixtureMember = { id: 'dora', name: 'Dora', color: null, active: false };
 	const members = [viewer, choreOwner, departedMember];
-	const chores = [chore('no-successor', 'anna')];
-	const absences = [absence(viewer), absence(choreOwner)];
+	const noSuccessorChore = chore('no-successor', 'anna');
+	const chores = [noSuccessorChore];
+	const nextRoundDueAt = computeNextDueAt(
+		new Date(noSuccessorChore.nextDueAt),
+		noSuccessorChore.intervalDays,
+		new Date(),
+		noSuccessorChore.recurrenceType,
+	);
+	const absenceEndDate = new Date(nextRoundDueAt.getTime() + 86_400_000).toISOString();
+	const absences = [absence(viewer), absence(choreOwner)].map((memberAbsence) => ({
+		...memberAbsence,
+		endDate: absenceEndDate,
+	}));
 	const activeMembers = members
 		.filter((member) => member.active)
 		.map(({ id, name }) => ({ id, name }));
