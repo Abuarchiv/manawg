@@ -89,7 +89,7 @@ test('keeps the Pinnwand loading skeleton within a 320px viewport at 200% text',
 test('shows refresh error while cached Pinnwand posts stay visible', async ({ page }) => {
 	await setupMember(page);
 	let phase: 'startup' | 'controlled' = 'startup';
-	let failNextRead = false;
+	let failReads = false;
 	let failedReads = 0;
 	let initialReadPending = true;
 	const initialRead = createRequestGate();
@@ -104,8 +104,7 @@ test('shows refresh error while cached Pinnwand posts stay visible', async ({ pa
 		if (phase === 'startup') {
 			return route.fulfill({ json: { announcements: [cached] } });
 		}
-		if (failNextRead) {
-			failNextRead = false;
+		if (failReads) {
 			failedReads += 1;
 			return route.fulfill({ status: 503, json: { error: 'service_unavailable' } });
 		}
@@ -121,10 +120,15 @@ test('shows refresh error while cached Pinnwand posts stay visible', async ({ pa
 	await page.waitForLoadState('networkidle');
 
 	phase = 'controlled';
-	failNextRead = true;
+	failReads = true;
 	await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-	await expect.poll(() => failedReads).toBe(1);
-	await expect(page.getByRole('button', { name: 'Pinnwand erneut laden' })).toBeVisible();
+	await expect.poll(() => failedReads).toBeGreaterThanOrEqual(1);
+	const retry = page.getByRole('button', { name: 'Pinnwand erneut laden' });
+	await expect(retry).toBeVisible();
+	await expect(page.getByText('Cache-Beitrag', { exact: true })).toBeVisible();
+	failReads = false;
+	await retry.click();
+	await expect(retry).toBeHidden();
 	await expect(page.getByText('Cache-Beitrag', { exact: true })).toBeVisible();
 });
 
@@ -143,9 +147,11 @@ test('removes a cached Pinnwand post missing from the focus refresh', async ({ p
 			initialRead.markStarted();
 			await initialRead.gate;
 		}
-		if (removeOnNextRead) {
+		// Once the server deleted the post it stays deleted for every later read
+		// (a focus can trigger more than one refresh).
+		if (removeOnNextRead || changedReads > 0) {
+			if (removeOnNextRead) changedReads += 1;
 			removeOnNextRead = false;
-			changedReads += 1;
 			return route.fulfill({ json: { announcements: [retained] } });
 		}
 		return route.fulfill({

@@ -166,11 +166,11 @@ export default function EinkaufPage() {
 	const hasShoppingCacheRef = useRef(cachedShopping !== undefined);
 
 	const load = useCallback(
-		async (silent = false): Promise<void> => {
+		async (silent = false, afterMutation = false): Promise<void> => {
 			const requestId = loadRequestIdRef.current + 1;
 			loadRequestIdRef.current = requestId;
 			if (!silent && !hasShoppingCacheRef.current) setInitialLoading(true);
-			const res = await refreshShopping();
+			const res = await refreshShopping({ afterMutation });
 			if (requestId !== loadRequestIdRef.current) {
 				if (!silent) setInitialLoading(false);
 				return;
@@ -414,7 +414,8 @@ export default function EinkaufPage() {
 			} else if (res.data.warning === 'notification_delivery_unknown') {
 				toast.info('Gespeichert. Push-Versand konnte nicht bestätigt werden.');
 			}
-			void load(true);
+			// The add has no optimistic row; make sure the list reflects it.
+			void load(true, true);
 		} finally {
 			addingRef.current = false;
 			setAdding(false);

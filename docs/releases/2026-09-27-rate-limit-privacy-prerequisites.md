@@ -1,6 +1,10 @@
 # Upstash rate-limit analytics publication gate — 2026-09-27
 
-**Status: Do not publish the landing update until the rate-limit analytics cutover and historical-data checks are complete.**
+**Current status (2026-09-30):** The review candidate disables Upstash rate-limit analytics, but the Production cutover and historical-data cleanup are not verified. Do not claim this gate closed or publish a deletion/retention claim from the candidate source alone.
+
+**Status at the 2026-09-27 readback:** Do not publish the landing update until the rate-limit analytics cutover and historical-data checks are complete.
+
+## Initial readback — 2026-09-27
 
 Current Production still uses the previous app code with Upstash analytics enabled. Candidate commit `a242a81` disables SDK analytics and makes SDK timeouts respect the configured failure policy; its real-SDK regression passes. Deployment cutover remains unperformed, so do not publish the corresponding notice yet. Candidate rate-limit counters use raw client-IP keys where IP limiting applies and expire after at most 2 hours and 1 second (the longest configured window is one hour). Member-scoped counters use member identifiers.
 
@@ -11,3 +15,9 @@ The resource is `upstash-kv-carmine-clock`, Vercel resource `store_4dDvmtJKRDzbs
 The initial incomplete 500-key scan was superseded by a complete scoped `manawg:*:events:*` scan below a 5,000-key cap: **539 unique event-index keys, all TTL=-1; aggregate ZCARD 1,067**. No members, payloads, raw keys or IPs were read or emitted. The inventory used SCAN/TTL/ZCARD only and made no Redis writes/deletions. The ordinary health GET uses the deployed limiter and may itself add normal telemetry; the before/after delta is correlation, not proven causation.
 
 Do not claim historical analytics are gone. Before publication, complete the app cutover and obtain explicit authorization for a narrowly scoped historical-retention cleanup. The resource is shared across environments, so cleanup must not remove active counters or unrelated keys. This note records release facts; it is not a legal-compliance assessment or sign-off.
+
+## Candidate readback — 2026-09-30
+
+The `6c507fa0` source tree constructs its Upstash rate limiters with `analytics: false`. New limiter counters still use raw client-IP keys for IP-scoped limits or member identifiers for member-scoped limits, and expire within their configured sliding windows (the prior audit measured an upper bound of two hours and one second). This is a source-level candidate fact, not proof of Production cutover.
+
+The September 27 read-only Upstash inventory remains the latest data readback available to this task: it found 539 `manawg:*:events:*` index keys without a TTL and aggregate cardinality 1,067. No payloads or IP values were read. No fresh scan or Redis mutation was performed on September 30. Historical analytics may still exist; disabling analytics does not erase old buckets. Any cleanup of the shared Redis resource remains a separate, explicitly authorized operator action.
