@@ -88,7 +88,7 @@ test('keeps the Pinnwand loading skeleton within a 320px viewport at 200% text',
 
 test('shows refresh error while cached Pinnwand posts stay visible', async ({ page }) => {
 	await setupMember(page);
-	let failNextRead = false;
+	let failReads = false;
 	let failedReads = 0;
 	let initialReadPending = true;
 	const initialRead = createRequestGate();
@@ -99,8 +99,7 @@ test('shows refresh error while cached Pinnwand posts stay visible', async ({ pa
 			initialRead.markStarted();
 			await initialRead.gate;
 		}
-		if (failNextRead) {
-			failNextRead = false;
+		if (failReads) {
 			failedReads += 1;
 			return route.fulfill({ status: 503, json: { error: 'service_unavailable' } });
 		}
@@ -115,10 +114,15 @@ test('shows refresh error while cached Pinnwand posts stay visible', async ({ pa
 	initialRead.release();
 	await expect(page.getByText('Cache-Beitrag', { exact: true })).toBeVisible();
 
-	failNextRead = true;
+	failReads = true;
 	await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-	await expect.poll(() => failedReads).toBe(1);
-	await expect(page.getByRole('button', { name: 'Pinnwand erneut laden' })).toBeVisible();
+	await expect.poll(() => failedReads).toBeGreaterThanOrEqual(1);
+	const retry = page.getByRole('button', { name: 'Pinnwand erneut laden' });
+	await expect(retry).toBeVisible();
+	await expect(page.getByText('Cache-Beitrag', { exact: true })).toBeVisible();
+	failReads = false;
+	await retry.click();
+	await expect(retry).toBeHidden();
 	await expect(page.getByText('Cache-Beitrag', { exact: true })).toBeVisible();
 });
 

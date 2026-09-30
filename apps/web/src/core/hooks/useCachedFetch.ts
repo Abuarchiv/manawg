@@ -139,7 +139,7 @@ function startFetch<T>(key: string, url: string, options: CachedFetchOptions): P
 				pendingUpdates.delete(key);
 				return;
 			}
-			if (current.version !== requestVersion) {
+			if (result.ok && current.version !== requestVersion) {
 				publish(key, { ...current, isLoading: false, isFetching: false });
 				return;
 			}
@@ -164,10 +164,6 @@ function startFetch<T>(key: string, url: string, options: CachedFetchOptions): P
 		})
 		.catch(() => {
 			const current = snapshotFor<T>(key);
-			if (current.version !== requestVersion) {
-				publish(key, { ...current, isLoading: false, isFetching: false });
-				return;
-			}
 			publish(key, {
 				...current,
 				error: { status: 0, error: 'Netzwerkfehler' },

@@ -12,7 +12,11 @@ function loadCachedFetch(apiFetch, generation = { value: 0 }) {
 	const module = { exports: {} };
 	const mocks = {
 		'@/core/infra/api-client': { apiFetch, mutationGeneration: () => generation.value },
-		react: {},
+		react: {
+			useCallback: (callback) => callback,
+			useEffect: () => {},
+			useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot(),
+		},
 	};
 	vm.runInContext(
 		js,
@@ -23,10 +27,12 @@ function loadCachedFetch(apiFetch, generation = { value: 0 }) {
 
 function deferred() {
 	let resolve;
-	const promise = new Promise((done) => {
+	let reject;
+	const promise = new Promise((done, fail) => {
 		resolve = done;
+		reject = fail;
 	});
-	return { promise, resolve };
+	return { promise, resolve, reject };
 }
 
 test('a refresh during a running GET fetches again instead of joining the stale GET', async () => {
@@ -92,4 +98,50 @@ test('a plain refresh after any mutation settled does not join the older GET', a
 	assert.equal(calls, 2);
 	responses[1].resolve({ ok: true, data: ['after'] });
 	await followUp;
+});
+
+test('refresh errors survive a concurrent local cache update without replacing it', async () => {
+	for (const failure of ['http', 'network']) {
+		const response = deferred();
+		let initial = true;
+		const { useCachedFetch } = loadCachedFetch(() => {
+			if (!initial) return response.promise;
+			initial = false;
+			return Promise.resolve({ ok: true, data: ['initial'] });
+		});
+		const read = useCachedFetch('/api/items');
+		await read.refresh();
+		const pending = read.refresh();
+		read.setData(['newer local data']);
+		if (failure === 'http') {
+			response.resolve({ ok: false, status: 503, error: 'service_unavailable' });
+		} else {
+			response.reject(new Error('offline'));
+		}
+		assert.equal((await pending).ok, false, failure);
+		const current = useCachedFetch('/api/items');
+		assert.deepEqual(current.data, ['newer local data']);
+		assert.equal(current.error.status, failure === 'http' ? 503 : 0);
+		assert.equal(current.isFetching, false);
+	}
+});
+
+test('a successful stale refresh preserves newer local data', async () => {
+	const response = deferred();
+	let initial = true;
+	const { useCachedFetch } = loadCachedFetch(() => {
+		if (!initial) return response.promise;
+		initial = false;
+		return Promise.resolve({ ok: true, data: ['initial'] });
+	});
+	const read = useCachedFetch('/api/items');
+	await read.refresh();
+	const pending = read.refresh();
+	read.setData(['newer local data']);
+	response.resolve({ ok: true, data: ['stale server data'] });
+	await pending;
+	const current = useCachedFetch('/api/items');
+	assert.deepEqual(current.data, ['newer local data']);
+	assert.equal(current.error, undefined);
+	assert.equal(current.isFetching, false);
 });
