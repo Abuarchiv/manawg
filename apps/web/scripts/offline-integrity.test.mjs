@@ -221,6 +221,7 @@ test('list deletes stay pending while queued removal waits and clear pending on 
 				isQueuedCreateId: () => false,
 				setRemoveError: noop,
 				setRemoveErrorId: noop,
+				setToggleError: noop,
 				commitItems: noop,
 				refreshCount: noop,
 				setToggleNotice: noop,
