@@ -53,7 +53,8 @@ const QUICK_TEMPLATES: ReadonlyArray<{
 		allDay: true,
 	},
 	{ label: 'Stromableser', title: 'Stromableser kommt', recurrence: null, allDay: false },
-	{ label: 'WG-Meeting', title: 'WG-Meeting', recurrence: 'FREQ=WEEKLY;BYDAY=MO', allDay: false },
+	// Das Formular kennt nur die Frequenz; ein BYDAY wäre stillschweigend verworfen worden.
+	{ label: 'WG-Meeting', title: 'WG-Meeting', recurrence: 'FREQ=WEEKLY', allDay: false },
 	{ label: 'Müll raus', title: 'Müll raus', recurrence: 'FREQ=WEEKLY', allDay: false },
 ];
 

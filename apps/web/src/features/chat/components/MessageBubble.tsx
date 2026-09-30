@@ -398,7 +398,7 @@ export function MessageBubble({
 								</AttachmentMedia>
 								<AttachmentContent>
 									<AttachmentTitle>Bild</AttachmentTitle>
-									<AttachmentDescription>In voller Größe öffnen</AttachmentDescription>
+									<AttachmentDescription>Öffnen</AttachmentDescription>
 								</AttachmentContent>
 								<AttachmentTrigger
 									aria-label="Bild in voller Größe öffnen"

@@ -122,7 +122,7 @@ for (const width of [320, 360, 390] as const) {
 				const replyInput = panel.getByRole('textbox', { name: /^Antwort verfassen:/ });
 				await expect(replyInput).toBeVisible();
 				await replyInput.fill(REPLY_TEXT);
-				const sendReply = panel.getByRole('button', { name: /^Antwort senden:/ });
+				const sendReply = panel.getByRole('button', { name: /^Antworten:/ });
 				await expect(sendReply).toBeEnabled();
 				const replyBounds = await sendReply.boundingBox();
 				expect(replyBounds).not.toBeNull();
