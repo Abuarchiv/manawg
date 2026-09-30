@@ -63,6 +63,14 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	const isDeleteArmed = deleteConfirm.confirmId === item.id;
 	const pending = pendingAction !== null;
 
+	// Another member deleted the item meanwhile: drop the row instead of offering a retry that can never succeed.
+	function dropIfGone(res: { status: number; error?: string }): boolean {
+		if (res.status !== 404 || res.error !== 'item_not_found') return false;
+		setRemoved(true);
+		onChanged(undefined, item.id);
+		return true;
+	}
+
 	async function changeQuantity(delta: number): Promise<void> {
 		if (pending) return;
 		setPendingAction(delta < 0 ? 'decrement' : 'increment');
@@ -96,6 +104,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						setError(warningMessage);
 					}
 					onChanged(res.data.item);
+				} else if (dropIfGone(res)) {
+					// row is gone
 				} else if (res.status === 429) {
 					setError('Zu viele Änderungen in kurzer Zeit. Bitte später erneut versuchen.');
 				} else {
@@ -122,6 +132,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				if (res.ok) {
 					restockIdempotencyKeyRef.current = null;
 					onChanged(res.data.item);
+				} else if (dropIfGone(res)) {
+					// row is gone
 				} else if (res.status === 429) {
 					setError('Zu viele Änderungen in kurzer Zeit. Bitte später erneut versuchen.');
 				} else {
@@ -146,7 +158,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 			if (res.ok) {
 				setRemoved(true);
 				onChanged(undefined, item.id);
-			} else {
+			} else if (!dropIfGone(res)) {
 				setError('Löschen fehlgeschlagen.');
 			}
 		} finally {
