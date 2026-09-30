@@ -2,11 +2,11 @@
 
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
+import { useWg } from '@/components/wg/WgContextProvider';
 import { LinkRow } from '@/components/wg/einstellungen/LinkRow';
 import { PayPalConnect } from '@/components/wg/einstellungen/PayPalConnect';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { WgNameSection } from '@/components/wg/einstellungen/WgNameSection';
-import { useWg } from '@/components/wg/WgContextProvider';
 import { InstallButton } from '@/shared/components/install-button';
 import { useTheme } from '@/shared/components/theme/ThemeProvider';
 import { haptic } from '@/shared/lib/haptics';
