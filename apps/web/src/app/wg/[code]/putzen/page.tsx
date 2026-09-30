@@ -138,6 +138,10 @@ export default function PutzenPage() {
 	const [absenceEnd, setAbsenceEnd] = useState('');
 	const [absenceReason, setAbsenceReason] = useState('');
 	const [actionError, setActionError] = useState<string | null>(null);
+	// Ein älterer Fehler (Erledigen, Tauschen …) gehört nicht ins frisch geöffnete Formular.
+	useEffect(() => {
+		if (showForm) setActionError(null);
+	}, [showForm]);
 	const [actionNotice, setActionNotice] = useState<string | null>(null);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [queueEditId, setQueueEditId] = useState<string | null>(null);

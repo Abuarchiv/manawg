@@ -320,6 +320,7 @@ export default function KalenderPage() {
 	function handleSelectOccurrence(occ: EventOccurrence): void {
 		const event = events.find((e) => e.id === occ.eventId);
 		if (!event) return;
+		setActionError(null);
 		setEditingOccurrence(occ);
 		setEditing(event);
 	}
@@ -365,6 +366,7 @@ export default function KalenderPage() {
 	}
 
 	async function handleUpdate(id: string, payload: UpdateEventPayload): Promise<void> {
+		setActionError(null);
 		const previous = events.find((event) => event.id === id);
 		if (previous) {
 			updateEvents((current) =>
@@ -392,6 +394,7 @@ export default function KalenderPage() {
 	}
 
 	async function handleDelete(id: string): Promise<void> {
+		setActionError(null);
 		const previousEventIndex = events.findIndex((event) => event.id === id);
 		const previousEvent = events[previousEventIndex];
 		updateEvents((current) => current.filter((event) => event.id !== id));
@@ -542,6 +545,7 @@ export default function KalenderPage() {
 
 	function handleFabClick(): void {
 		haptic('light');
+		setActionError(null);
 		setCreateOpen(true);
 	}
 

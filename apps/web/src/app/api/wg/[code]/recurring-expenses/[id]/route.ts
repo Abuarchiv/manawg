@@ -11,6 +11,7 @@ import { currencySchema } from '@/core/validators/currency';
 import { isRecurringDueAtEditAllowed } from '@/core/validators/recurring-due-date';
 import { checkPaidByGuard } from '@/features/expenses/expenses';
 import {
+	addMonthsFromAnchor,
 	parseRecurringSplits,
 	recurringSplitsMatchAmount,
 } from '@/features/expenses/recurring-expenses';
@@ -209,6 +210,18 @@ export const PATCH = withWgRoute<{ id: string }>(
 						? 'resume'
 						: null;
 
+		// Fortsetzen bucht verpasste Termine nicht nach: der nächste Termin springt
+		// auf den ersten Zyklustag ab heute (heute fällig bleibt fällig), sonst legt der Cron jeden Pausenmonat an.
+		let resumedDueAt = nextDueAt;
+		if (pauseTransition === 'resume' && parsed.data.nextDueAt === undefined) {
+			const anchorDay = (template.anchorAt ?? template.nextDueAt).getUTCDate();
+			const today = new Date();
+			today.setUTCHours(0, 0, 0, 0);
+			while (resumedDueAt < today) {
+				resumedDueAt = addMonthsFromAnchor(resumedDueAt, anchorDay, nextIntervalMonths);
+			}
+		}
+
 		const nextPausedAt =
 			pauseTransition === 'pause'
 				? new Date()
@@ -239,7 +252,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 			amountCents: nextAmountCents,
 			paidByMemberId: nextPaidByMemberId,
 			intervalMonths: nextIntervalMonths,
-			nextDueAt,
+			nextDueAt: resumedDueAt,
 			splitsJson: JSON.stringify(nextSplits),
 			updatedAt: new Date(),
 			...(pauseTransition !== null ? { pausedAt: nextPausedAt } : {}),
