@@ -566,7 +566,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 												className="min-h-11"
 												disabled={commentPending || !commentDraft.draft.trim()}
 												onClick={() => void submitComment()}
-												aria-label={`Antwort senden: ${actionSubject}`}
+												aria-label={`Antworten: ${actionSubject}`}
 											>
 												{commentPending ? (
 													<Spinner data-icon="inline-start" />
