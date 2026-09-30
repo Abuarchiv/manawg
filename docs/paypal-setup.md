@@ -29,9 +29,9 @@ PayPal entscheidet, welche Konten und Produkte im jeweiligen Land zugelassen sin
 4. Sandbox-Zahlung ausführen und den tatsächlichen Capture samt Empfänger, Betrag, Währung und einmaliger Saldoänderung prüfen. Einen zweiten Versuch sowie Abbruch/Fehler ohne Zahlung prüfen.
 5. Erst danach die vorhandenen Release-Gates verwenden. Lokale Fixture-Tests ersetzen keinen Provider- oder Produktionsnachweis.
 
-Am 27.09.2026 wurden bei Vercel die Namen der Umgebungsvariablen geprüft: Production und Preview enthielten keine `PAYPAL_*` oder `NEXT_PUBLIC_PAYPAL_*`-Konfiguration. Production hatte `NEXT_PUBLIC_APP_URL`, Preview nicht. Lokale Hauptcheckout-Umgebungsdateien enthielten ebenfalls keine der geprüften PayPal-Zugangsvariablen. Werte wurden nicht abgerufen. Ohne diese Einrichtung kann kein echter Provider-Login getestet oder als funktionierend bestätigt werden.
+Am 27.09.2026 wurden bei Vercel die Namen der Umgebungsvariablen geprüft: Production und Preview enthielten keine `PAYPAL_*` oder `NEXT_PUBLIC_PAYPAL_*`-Konfiguration. Production hatte `NEXT_PUBLIC_APP_URL`, Preview nicht. Lokale Hauptcheckout-Umgebungsdateien enthielten ebenfalls keine der geprüften PayPal-Zugangsvariablen. Werte wurden nicht abgerufen. Dieser historische Vercel-Befund belegte nur fehlende Host-Variablen; die lokalen Sandbox-Zugangsdaten und Verkäuferfreigabe wurden später separat nachgewiesen (siehe 30.09.2026).
 
-## Betreiber-Zugang am 28.09.2026
+## Historische Betreiber-Prüfung am 28.09.2026
 
 Der bestehende Developer-Zugang kann inzwischen die Sandbox-App-Liste und die vorhandene `Default Application` öffnen. Eine erneute persönliche Anmeldung ist deshalb aktuell nicht der Blocker. Es wurden keine App-Einstellungen gespeichert und keine Schlüsselwerte ausgegeben.
 
@@ -39,11 +39,13 @@ Im geprüften Erstellungsformular ist der Typ `Platform` verfügbar. PayPal gibt
 
 `Create App` erzeugt neue API-Zugangsdaten und bestätigt laut Formular das [PayPal Developer Agreement für US-Konten](https://www.paypal.com/us/webapps/mpp/ua/xdeveloper-full). Diese neue Zugangs-/Vertragsaktion benötigt eine ausdrückliche Betreiberfreigabe. Der Button wurde nicht betätigt. Erst danach lassen sich die tatsächliche Partner-API-Freigabe und ein isolierter Sandbox-Ablauf prüfen; die vorhandene Standard-App wird nicht stillschweigend als geeignete Platform-App behandelt.
 
-## Zugangsprüfung am 30.09.2026
+## Sandbox-Status am 30.09.2026
 
-Ein neuer Chrome-Relay-Tab zur [PayPal-Entwickler-App-Liste](https://developer.paypal.com/dashboard/applications) wurde auf die PayPal-Anmeldeseite umgeleitet. In dieser Sitzung war keine Entwickler-Anmeldung verfügbar; es wurden keine Zugangsdaten eingegeben, keine App angelegt und keine Vereinbarung akzeptiert. Ein bereits offener Sandbox-Tab zeigt weiterhin „Geschäftskonto einrichten“; das belegt keine abgeschlossene Verkäufer- oder Plattformfreigabe.
+Die Sandbox wurde bereits in einer vorherigen Sitzung eingerichtet. Die vorhandenen Plattformzugangsdaten sowie Verkäufer- und Käufer-Testkonten liegen in owner-only Dateien; in dieser Prüfung wurden sie weder ausgegeben noch geändert. Der aktuelle Kandidat `cca08ac6` wurde mit diesen bestehenden Zugangsdaten geprüft: OAuth antwortete mit HTTP 200, der Verkäufer-Readiness-Aufruf mit HTTP 200 und `isPayPalMerchantReady` mit `true`.
 
-Der aktuelle Vercel-Readback enthält in Production und Preview weiterhin keine `PAYPAL_*`- oder `NEXT_PUBLIC_PAYPAL_*`-Variablen. Ohne den PayPal-Entwicklerzugang und die anschließende Plattformfreigabe bleiben Kontoverknüpfung und Order/Capture unbestätigt.
+Ein älterer Prüf-Wrapper lieferte HTTP 401, weil er die Partner-Händlerkennung als Zielverkäufer übergab. Der Readiness-Aufruf erwartet die Händlerkennung des verbundenen Verkäufers. Die 401 ist daher ein Fehler in diesem Prüfaufruf, kein Nachweis für fehlende Sandbox-Zugänge oder einen Fehler im aktuellen Kandidaten.
+
+Ein neuer Entwickler-Dashboard-Tab führte zwar zur PayPal-Anmeldeseite; das widerlegt die bereits vorhandene Sandbox-Berechtigung nicht. Der Vercel-Namensreadback vom 30.09.2026 zeigte weiterhin keine `PAYPAL_*`- oder `NEXT_PUBLIC_PAYPAL_*`-Variablen in Production oder Preview. Es wurden keine Variablen deployt. Ein echtes Sandbox-Order/Approval/Capture-Ergebnis steht noch aus; Production bleibt ohne PayPal-Konfiguration.
 
 ## Offizielle Quellen
 
