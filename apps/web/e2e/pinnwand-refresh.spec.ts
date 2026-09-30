@@ -137,9 +137,11 @@ test('removes a cached Pinnwand post missing from the focus refresh', async ({ p
 			initialRead.markStarted();
 			await initialRead.gate;
 		}
-		if (removeOnNextRead) {
+		// Once the server deleted the post it stays deleted for every later read
+		// (a focus can trigger more than one refresh).
+		if (removeOnNextRead || changedReads > 0) {
+			if (removeOnNextRead) changedReads += 1;
 			removeOnNextRead = false;
-			changedReads += 1;
 			return route.fulfill({ json: { announcements: [retained] } });
 		}
 		return route.fulfill({

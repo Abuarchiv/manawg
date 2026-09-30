@@ -73,17 +73,20 @@ function subscribe(key: string, listener: () => void): () => void {
 }
 
 /**
- * A refresh that arrives while a GET is running may follow a mutation that
- * GET cannot see yet. It therefore runs one more GET after the running one;
- * concurrent callers share that single follow-up.
+ * Overlapping refreshes (focus, polling, several hooks) share the running
+ * GET. Only a refresh right after a mutation (`afterMutation`) may need data
+ * the running GET cannot see yet; it runs one more GET after the running one,
+ * and concurrent post-mutation callers share that single follow-up.
  */
 export function fetchAndCache<T>(
 	key: string,
 	url: string,
 	options: CachedFetchOptions,
+	afterMutation = false,
 ): Promise<void> {
 	const pending = inFlight.get(key);
 	if (!pending) return startFetch<T>(key, url, options);
+	if (!afterMutation) return pending;
 	const queued = queuedFetches.get(key);
 	if (queued) return queued;
 	const followUp = pending.then(() => {
@@ -211,20 +214,25 @@ export function useCachedFetch<T>(url: string, options: CachedFetchOptions = {})
 		() => emptySnapshot as Snapshot<T>,
 	);
 
-	const refresh = useCallback(async (): Promise<FetchResult<T>> => {
-		await fetchAndCache<T>(key, url, { memberId, memberToken, headers });
-		const current = snapshotFor<T>(key);
-		if (current.error) return { ok: false, ...current.error };
-		if (current.data !== undefined) {
-			return {
-				ok: true,
-				data: current.data,
-				serverData: current.serverData,
-				serverRevision: current.serverRevision,
-			};
-		}
-		return { ok: false, status: 0, error: 'Netzwerkfehler' };
-	}, [headers, key, memberId, memberToken, url]);
+	const refresh = useCallback(
+		async ({
+			afterMutation = false,
+		}: { afterMutation?: boolean } = {}): Promise<FetchResult<T>> => {
+			await fetchAndCache<T>(key, url, { memberId, memberToken, headers }, afterMutation);
+			const current = snapshotFor<T>(key);
+			if (current.error) return { ok: false, ...current.error };
+			if (current.data !== undefined) {
+				return {
+					ok: true,
+					data: current.data,
+					serverData: current.serverData,
+					serverRevision: current.serverRevision,
+				};
+			}
+			return { ok: false, status: 0, error: 'Netzwerkfehler' };
+		},
+		[headers, key, memberId, memberToken, url],
+	);
 
 	const setData = useCallback((update: DataUpdate<T>) => updateCache(key, update), [key]);
 

@@ -33,8 +33,8 @@ test('a refresh during a running GET fetches again instead of joining the stale 
 
 	const initial = fetchAndCache('key', '/api/items', {});
 	// e.g. a mutation finished here and the page asks for fresh data
-	const afterMutation = fetchAndCache('key', '/api/items', {});
-	const concurrent = fetchAndCache('key', '/api/items', {});
+	const afterMutation = fetchAndCache('key', '/api/items', {}, true);
+	const concurrent = fetchAndCache('key', '/api/items', {}, true);
 	assert.equal(calls, 1);
 	assert.equal(concurrent, afterMutation);
 
@@ -56,4 +56,20 @@ test('sequential refreshes start one GET each', async () => {
 	await fetchAndCache('key', '/api/items', {});
 	await fetchAndCache('key', '/api/items', {});
 	assert.equal(calls, 2);
+});
+
+test('overlapping plain refreshes (focus, polling) share the running GET', async () => {
+	const response = deferred();
+	let calls = 0;
+	const { fetchAndCache } = loadCachedFetch(() => {
+		calls += 1;
+		return response.promise;
+	});
+	const first = fetchAndCache('key', '/api/items', {});
+	const second = fetchAndCache('key', '/api/items', {});
+	assert.equal(second, first);
+	response.resolve({ ok: true, data: [] });
+	await first;
+	await new Promise((done) => setImmediate(done));
+	assert.equal(calls, 1);
 });
