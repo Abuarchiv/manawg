@@ -9,6 +9,16 @@ type ApiFetchInit = RequestInit & { memberId?: string; memberToken?: string | un
 /** status 0 means no trustworthy result was received; a write may still have committed. */
 type ApiFetchResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
 
+let mutationCount = 0;
+
+/**
+ * Increases after every settled non-GET request. A cached read that started
+ * before the latest mutation may not contain its effect (useCachedFetch).
+ */
+export function mutationGeneration(): number {
+	return mutationCount;
+}
+
 export async function apiFetch<T>(
 	path: string,
 	init: ApiFetchInit = {},
@@ -33,6 +43,7 @@ export async function apiFetch<T>(
 		headers.set('content-type', 'application/json');
 	}
 
+	const isMutation = method !== 'GET' && method !== 'HEAD';
 	try {
 		const timeoutSignal = AbortSignal.timeout(15_000);
 		const requestSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
@@ -82,5 +93,7 @@ export async function apiFetch<T>(
 		}
 	} catch {
 		return { ok: false, status: 0, error: 'Netzwerkfehler' };
+	} finally {
+		if (isMutation) mutationCount += 1;
 	}
 }

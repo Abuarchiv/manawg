@@ -38,7 +38,9 @@ function absence(member: FixtureMember): FixtureAbsence {
 		memberId: member.id,
 		memberName: member.name,
 		startDate: new Date(Date.now() - 86_400_000).toISOString(),
-		endDate: new Date(Date.now() + 86_400_000).toISOString(),
+		// Rotation checks absences on the next due day (one interval ahead), so
+		// the absence must cover the whole next round, not just today.
+		endDate: new Date(Date.now() + 9 * 86_400_000).toISOString(),
 		reason: 'Urlaub',
 	};
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { apiFetch } from '@/core/infra/api-client';
+import { apiFetch, mutationGeneration } from '@/core/infra/api-client';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
 interface CachedFetchOptions {
@@ -41,6 +41,8 @@ const emptySnapshot: Snapshot<never> = {
 const cache = new Map<string, Snapshot<unknown>>();
 const listeners = new Map<string, Set<() => void>>();
 const inFlight = new Map<string, Promise<void>>();
+/** mutationGeneration() at the time each in-flight GET started. */
+const inFlightGeneration = new Map<string, number>();
 const queuedFetches = new Map<string, Promise<void>>();
 const pendingUpdates = new Map<string, DataUpdate<unknown>[]>();
 const rebasingFetches = new Set<string>();
@@ -73,17 +75,21 @@ function subscribe(key: string, listener: () => void): () => void {
 }
 
 /**
- * A refresh that arrives while a GET is running may follow a mutation that
- * GET cannot see yet. It therefore runs one more GET after the running one;
- * concurrent callers share that single follow-up.
+ * Overlapping refreshes (focus, polling, several hooks) share the running
+ * GET. When a mutation settled after that GET started (or the caller says
+ * `afterMutation`), the running GET may miss its effect, so one more GET runs
+ * after it; concurrent callers share that single follow-up.
  */
 export function fetchAndCache<T>(
 	key: string,
 	url: string,
 	options: CachedFetchOptions,
+	afterMutation = false,
 ): Promise<void> {
 	const pending = inFlight.get(key);
 	if (!pending) return startFetch<T>(key, url, options);
+	const startedBeforeMutation = inFlightGeneration.get(key) !== mutationGeneration();
+	if (!afterMutation && !startedBeforeMutation) return pending;
 	const queued = queuedFetches.get(key);
 	if (queued) return queued;
 	const followUp = pending.then(() => {
@@ -95,6 +101,7 @@ export function fetchAndCache<T>(
 }
 
 function startFetch<T>(key: string, url: string, options: CachedFetchOptions): Promise<void> {
+	const generation = mutationGeneration();
 	const previous = snapshotFor<T>(key);
 	const requestVersion = previous.version;
 	if (previous.data === undefined || pendingUpdates.has(key)) rebasingFetches.add(key);
@@ -170,10 +177,14 @@ function startFetch<T>(key: string, url: string, options: CachedFetchOptions): P
 		})
 		.finally(() => {
 			rebasingFetches.delete(key);
-			if (inFlight.get(key) === request) inFlight.delete(key);
+			if (inFlight.get(key) === request) {
+				inFlight.delete(key);
+				inFlightGeneration.delete(key);
+			}
 		});
 
 	inFlight.set(key, request);
+	inFlightGeneration.set(key, generation);
 	return request;
 }
 
@@ -211,20 +222,25 @@ export function useCachedFetch<T>(url: string, options: CachedFetchOptions = {})
 		() => emptySnapshot as Snapshot<T>,
 	);
 
-	const refresh = useCallback(async (): Promise<FetchResult<T>> => {
-		await fetchAndCache<T>(key, url, { memberId, memberToken, headers });
-		const current = snapshotFor<T>(key);
-		if (current.error) return { ok: false, ...current.error };
-		if (current.data !== undefined) {
-			return {
-				ok: true,
-				data: current.data,
-				serverData: current.serverData,
-				serverRevision: current.serverRevision,
-			};
-		}
-		return { ok: false, status: 0, error: 'Netzwerkfehler' };
-	}, [headers, key, memberId, memberToken, url]);
+	const refresh = useCallback(
+		async ({
+			afterMutation = false,
+		}: { afterMutation?: boolean } = {}): Promise<FetchResult<T>> => {
+			await fetchAndCache<T>(key, url, { memberId, memberToken, headers }, afterMutation);
+			const current = snapshotFor<T>(key);
+			if (current.error) return { ok: false, ...current.error };
+			if (current.data !== undefined) {
+				return {
+					ok: true,
+					data: current.data,
+					serverData: current.serverData,
+					serverRevision: current.serverRevision,
+				};
+			}
+			return { ok: false, status: 0, error: 'Netzwerkfehler' };
+		},
+		[headers, key, memberId, memberToken, url],
+	);
 
 	const setData = useCallback((update: DataUpdate<T>) => updateCache(key, update), [key]);
 
