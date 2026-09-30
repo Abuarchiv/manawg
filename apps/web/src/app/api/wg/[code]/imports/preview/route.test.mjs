@@ -48,6 +48,7 @@ function previewRoute() {
 	});
 	const { POST } = loadTs('src/app/api/wg/[code]/imports/preview/route.ts', {
 		'@/core/db': { db, wgMembers },
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			badRequest: (error) => Response.json({ error }, { status: 400 }),
 			tooMany: () => new Response(null, { status: 429 }),

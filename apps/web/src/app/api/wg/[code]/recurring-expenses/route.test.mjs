@@ -96,6 +96,7 @@ function harness({ callerId = otherMemberId, isAdmin = false } = {}) {
 		'@/core/audit': { recordAuditEvent: async () => {} },
 		'@/core/db': { db, idempotencyResponses: {}, recurringExpenses, wgMembers },
 		'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			apiError: (code, status) => errorResponse(code, status),
 			badRequest: (code) => errorResponse(code, 400),

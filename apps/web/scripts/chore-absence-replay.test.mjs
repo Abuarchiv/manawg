@@ -149,6 +149,7 @@ function harness(kind, bodyOverride) {
 			},
 		},
 		'@/core/db/transaction': { TransactionAbort, withTransaction },
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			badRequest: (code) => jsonError(code, 400),
 			conflict: (code) => jsonError(code, 409),

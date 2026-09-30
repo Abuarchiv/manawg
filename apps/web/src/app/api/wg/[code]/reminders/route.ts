@@ -6,6 +6,7 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { readJsonLimited } from '@/core/http/read-json';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, reminderSendLimiter } from '@/core/rate-limit';
 import { MS_PER_DAY } from '@/core/utils/time';
@@ -59,7 +60,7 @@ export const GET = withWgRoute('reminders GET', async (req, { code }) => {
 export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 	let raw: unknown;
 	try {
-		raw = await req.json();
+		raw = await readJsonLimited(req);
 	} catch {
 		return badRequest('invalid_json');
 	}

@@ -131,6 +131,7 @@ function makeOrderHarness({ isPayPalMerchantReady, createPayPalOrder }) {
 	const terminalPayPalError = loadPayPalInfra().isTerminalPayPalOrderCreationError;
 	const dependencies = {
 		'@/core/db': { db: {}, expensePayments, wgMembers },
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			badRequest: (error) => Response.json({ error }, { status: 400 }),
 			conflict: (error) => Response.json({ error }, { status: 409 }),
@@ -241,6 +242,7 @@ test('new PayPal order is refused when the recipient has lost provider readiness
 	const z = requireFromWeb('zod').z;
 	const overrides = {
 		'@/core/db': { expensePayments, wgMembers },
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			badRequest: (error) => Response.json({ error }, { status: 400 }),
 			conflict: (error) => Response.json({ error }, { status: 409 }),

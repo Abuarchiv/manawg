@@ -40,3 +40,20 @@ export async function readJsonBody(req: Request, maxBytes: number): Promise<Json
 		return { ok: false, reason: 'invalid_json' };
 	}
 }
+
+/** Default cap for ordinary JSON mutations; the platform limit (4.5 MB) is far above any legitimate body. */
+export const DEFAULT_JSON_BODY_BYTES = 128 * 1024;
+
+/**
+ * Drop-in for `req.json()` that refuses oversized bodies. Throws on oversize
+ * or malformed JSON, so existing try/catch blocks returning 'invalid_json'
+ * keep their response shape.
+ */
+export async function readJsonLimited(
+	req: Request,
+	maxBytes: number = DEFAULT_JSON_BODY_BYTES,
+): Promise<unknown> {
+	const result = await readJsonBody(req, maxBytes);
+	if (!result.ok) throw new Error(result.reason);
+	return result.body;
+}

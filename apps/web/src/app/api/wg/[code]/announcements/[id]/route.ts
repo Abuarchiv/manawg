@@ -7,6 +7,7 @@ import { isVerifiedWgAdmin, requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { readJsonLimited } from '@/core/http/read-json';
 import {
 	type NotificationDispatchWarning,
 	dispatchNotificationSafely,
@@ -30,7 +31,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 
 		let raw: unknown;
 		try {
-			raw = await req.json();
+			raw = await readJsonLimited(req);
 		} catch {
 			return badRequest('invalid_json');
 		}

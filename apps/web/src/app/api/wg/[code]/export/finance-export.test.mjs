@@ -163,6 +163,7 @@ function createExportRoute({ failedTable } = {}) {
 	const logged = [];
 	const { GET } = loadTs('src/app/api/wg/[code]/export/route.ts', {
 		'@/core/db': { db, ...tables },
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			badRequest: (error) => Response.json({ error }, { status: 400 }),
 			serverError: (_error, message) =>

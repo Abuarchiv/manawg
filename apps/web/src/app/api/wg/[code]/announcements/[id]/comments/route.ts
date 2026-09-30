@@ -10,6 +10,7 @@ import { badRequest, notFound } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { readJsonLimited } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
 import {
 	type NotificationDispatchWarning,
@@ -78,7 +79,7 @@ export const POST = withWgRoute<{ id: string }>(
 
 		let raw: unknown;
 		try {
-			raw = await req.json();
+			raw = await readJsonLimited(req);
 		} catch {
 			return badRequest('invalid_json');
 		}

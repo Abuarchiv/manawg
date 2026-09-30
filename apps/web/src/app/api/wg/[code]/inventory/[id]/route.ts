@@ -7,6 +7,7 @@ import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { readJsonLimited } from '@/core/http/read-json';
 import { getCachedResponse, readIdempotencyKey, releaseResponseSlot } from '@/core/idempotency';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
@@ -80,7 +81,7 @@ export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, 
 
 	let raw: unknown;
 	try {
-		raw = await req.json();
+		raw = await readJsonLimited(req);
 	} catch {
 		return badRequest('invalid_json');
 	}

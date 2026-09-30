@@ -189,6 +189,7 @@ function harness({
 	const mocks = {
 		'@/core/db': { calendarSubscriptions, wgEvents, wgMembers, wgs },
 		'@/core/db/transaction': { withTransaction: async (operation) => operation(tx) },
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			notFound: (code) => Response.json({ error: code }, { status: 404 }),
 			serverError: (code) => Response.json({ error: code }, { status: 500 }),

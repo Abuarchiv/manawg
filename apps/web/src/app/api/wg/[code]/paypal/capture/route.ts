@@ -11,6 +11,7 @@ import {
 } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { readJsonLimited } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
 import {
 	type PayPalOrderResponse,
@@ -43,7 +44,7 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 
 	let body: unknown;
 	try {
-		body = await req.json();
+		body = await readJsonLimited(req);
 	} catch {
 		return badRequest('invalid_json');
 	}
