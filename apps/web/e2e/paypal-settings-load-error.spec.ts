@@ -64,11 +64,12 @@ for (const width of [320, 360]) {
 			retryRequested = true;
 			await page.keyboard.press('Enter');
 
+			await expect(errorAlert).toBeHidden();
+			await expect.poll(() => completeBodies).toEqual([{ action: 'complete' }]);
+			// Without a started onboarding there is nothing to expire: stay quietly unconnected.
 			await expect(
 				page.getByText('Die PayPal-Verbindung ist abgelaufen. Bitte starte sie erneut.'),
-			).toBeVisible();
-			await expect(errorAlert).toBeHidden();
-			expect(completeBodies).toEqual([{ action: 'complete' }]);
+			).toHaveCount(0);
 			await expect(
 				page.getByRole('button', { name: 'PayPal verbinden', exact: true }),
 			).toBeEnabled();
