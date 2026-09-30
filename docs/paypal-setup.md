@@ -45,7 +45,7 @@ Die Sandbox wurde bereits in einer vorherigen Sitzung eingerichtet. Die vorhande
 
 Ein älterer Prüf-Wrapper lieferte HTTP 401, weil er die Partner-Händlerkennung als Zielverkäufer übergab. Der Readiness-Aufruf erwartet die Händlerkennung des verbundenen Verkäufers. Die 401 ist daher ein Fehler in diesem Prüfaufruf, kein Nachweis für fehlende Sandbox-Zugänge oder einen Fehler im aktuellen Kandidaten.
 
-Ein neuer Entwickler-Dashboard-Tab führte zwar zur PayPal-Anmeldeseite; das widerlegt die bereits vorhandene Sandbox-Berechtigung nicht. Der Vercel-Namensreadback vom 30.09.2026 zeigte weiterhin keine `PAYPAL_*`- oder `NEXT_PUBLIC_PAYPAL_*`-Variablen in Production oder Preview. Es wurden keine Variablen deployt. Ein echtes Sandbox-Order/Approval/Capture-Ergebnis steht noch aus; Production bleibt ohne PayPal-Konfiguration.
+Ein neuer Entwickler-Dashboard-Tab führte zwar zur PayPal-Anmeldeseite; das widerlegt die bereits vorhandene Sandbox-Berechtigung nicht. Der Vercel-Namensreadback vom 30.09.2026 zeigte weiterhin keine `PAYPAL_*`- oder `NEXT_PUBLIC_PAYPAL_*`-Variablen in Production oder Preview. Es wurden keine Variablen deployt. Der aktuelle Kandidat erstellte mit bestehenden Sandbox-Zugangsdaten einen Order über EUR 0,01 (Orders API HTTP 201, Status `CREATED`). Käuferfreigabe und Capture sind noch offen; es wurde kein zweiter Order erstellt. Production bleibt ohne PayPal-Konfiguration.
 
 ## Offizielle Quellen
 

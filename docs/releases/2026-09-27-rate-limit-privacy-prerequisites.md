@@ -18,6 +18,12 @@ Do not claim historical analytics are gone. Before publication, complete the app
 
 ## Candidate readback — 2026-09-30
 
-The `6c507fa0` source tree constructs its Upstash rate limiters with `analytics: false`. New limiter counters still use raw client-IP keys for IP-scoped limits or member identifiers for member-scoped limits, and expire within their configured sliding windows (the prior audit measured an upper bound of two hours and one second). This is a source-level candidate fact, not proof of Production cutover.
+The `cca08ac6` source tree constructs its Upstash rate limiters with `analytics: false`. New limiter counters still use raw client-IP keys for IP-scoped limits or member identifiers for member-scoped limits, and expire within their configured sliding windows (the prior audit measured an upper bound of two hours and one second). This is a source-level candidate fact, not proof of Production cutover.
 
 The September 27 read-only Upstash inventory remains the latest data readback available to this task: it found 539 `manawg:*:events:*` index keys without a TTL and aggregate cardinality 1,067. No payloads or IP values were read. No fresh scan or Redis mutation was performed on September 30. Historical analytics may still exist; disabling analytics does not erase old buckets. Any cleanup of the shared Redis resource remains a separate, explicitly authorized operator action.
+
+## Read-only metadata refresh — 2026-09-30
+
+Using the existing TLS `REDIS_URL`/`KV_URL` in the private workspace environment, both confirmed to resolve to the same Upstash database, a bounded `SCAN MATCH manawg:*:events:* COUNT 1000` found **552 unique keys**. All were sorted sets with **TTL -1** and a combined **ZCARD of 1,111**; none disappeared during the metadata read. Compared with September 27, that is **+13 keys** and **+44 members**.
+
+The time-like key suffixes span **2026-08-29 06:00 UTC–2026-09-28 01:00 UTC**. This is only the key-bucket range; sorted-set scores and members were not read, so it does not establish event timestamps or a retention cutoff. No expiry or cleanup cutoff is configured by these keys. No deletion or TTL mutation was performed. With no operator-selected retention cutoff, the report-only dry run yields zero cleanup candidates.
