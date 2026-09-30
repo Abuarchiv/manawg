@@ -5,7 +5,7 @@ test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local f
 
 for (const width of [320, 360]) {
 	for (const theme of ['Hell', 'Dunkel'] as const) {
-		test(`${width}px ${theme}: failed status check blocks connect until retry`, async ({
+		test(`${width}px ${theme}: unknown status keeps explicit connect available and can be retried`, async ({
 			page,
 		}) => {
 			await page.setViewportSize({ width, height: 780 });
@@ -36,9 +36,9 @@ for (const width of [320, 360]) {
 			await expect(errorAlert).toBeVisible();
 			expect(statusGets).toBeGreaterThan(0);
 			await expect(page.getByRole('textbox', { name: /merchant.?id/i })).toHaveCount(0);
-			await expect(page.getByRole('button', { name: 'PayPal verbinden', exact: true })).toHaveCount(
-				0,
-			);
+			await expect(
+				page.getByRole('button', { name: 'PayPal verbinden', exact: true }),
+			).toBeEnabled();
 
 			await themeButton.click();
 			if (theme === 'Dunkel') await expect(page.locator('html')).toHaveClass(/dark/);

@@ -3,13 +3,13 @@ import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from '.
 
 test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 
-test('profile connects a PayPal recipient only after explicit consent and server confirmation', async ({
+test('profile can start and confirm PayPal while legacy status lookup is unavailable', async ({
 	page,
 }, testInfo) => {
 	await page.setViewportSize({ width: 320, height: 800 });
 	await setupMember(page);
 
-	let connected = false;
+	let serverConfirmed = false;
 	let connectGets = 0;
 	const connectPosts: Array<{ action?: string; consent?: boolean; merchantId?: string }> = [];
 	const connectEndpoint = `**/api/wg/${FIXTURE_WG.shareCode}/paypal/connect`;
@@ -17,7 +17,7 @@ test('profile connects a PayPal recipient only after explicit consent and server
 	await page.route(connectEndpoint, async (route) => {
 		if (route.request().method() === 'GET') {
 			connectGets += 1;
-			return route.fulfill({ json: { available: true, connected } });
+			return route.fulfill({ status: 500, json: { error: 'paypal_status_failed' } });
 		}
 		const body = route.request().postDataJSON() as {
 			action?: string;
@@ -27,7 +27,7 @@ test('profile connects a PayPal recipient only after explicit consent and server
 		connectPosts.push(body);
 		if (body.action === 'start') return route.fulfill({ json: { url: actionUrl } });
 		if (body.action === 'confirm') {
-			connected = true;
+			serverConfirmed = true;
 			return route.fulfill({ json: { connected: true } });
 		}
 		return route.fulfill({ status: 400, json: { error: 'invalid_action' } });
@@ -54,11 +54,17 @@ test('profile connects a PayPal recipient only after explicit consent and server
 	await expect(page.getByRole('textbox', { name: /merchant.?id/i })).toHaveCount(0);
 	await expect.poll(() => connectGets).toBeGreaterThan(0);
 	await expect(
+		page.getByRole('alert').filter({
+			hasText: 'PayPal-Verbindung konnte nicht geprüft werden. Bitte versuche es erneut.',
+		}),
+	).toBeVisible();
+	await expect(
 		page.getByText(
 			'Mit „PayPal verbinden“ stimmst du zu, dass die für die Verknüpfung nötigen Kontodaten zwischen ManaWG und PayPal ausgetauscht werden.',
 			{ exact: true },
 		),
 	).toBeVisible();
+	await expect(page.getByRole('button', { name: 'PayPal verbinden', exact: true })).toBeEnabled();
 
 	const light = page.getByRole('button', { name: 'Hell', exact: true });
 	const dark = page.getByRole('button', { name: 'Dunkel', exact: true });
@@ -83,11 +89,14 @@ test('profile connects a PayPal recipient only after explicit consent and server
 	await expect(page).toHaveURL(actionUrl);
 	expect(connectPosts[0]).toEqual({ action: 'start', consent: true });
 
+	const connectGetsBeforeReturn = connectGets;
 	await page.goto(
 		`/wg/${FIXTURE_WG.shareCode}/einstellungen?keep=1&paypal=return&merchantIdInPayPal=untrusted-hint&trackingId=untrusted&consentStatus=granted`,
 	);
 	await dismissOnboarding(page);
 	await expect(page.getByText('PayPal verbunden', { exact: true })).toBeVisible();
+	expect(serverConfirmed).toBe(true);
+	expect(connectGets).toBeGreaterThan(connectGetsBeforeReturn);
 	expect(connectPosts.at(-1)).toEqual({
 		action: 'confirm',
 		merchantId: 'untrusted-hint',
@@ -182,26 +191,32 @@ test('does not redirect to an untrusted PayPal action host', async ({ page }) =>
 	expect(new URL(page.url()).pathname).toBe(`/wg/${FIXTURE_WG.shareCode}/einstellungen`);
 });
 
-test('retries a return after status and provider confirmation failures', async ({ page }) => {
+test('retries a new PayPal return while the old account status is connected', async ({ page }) => {
 	await setupMember(page);
 	let connectGets = 0;
-	let confirmCalls = 0;
-	let statusReady = false;
+	let startCalls = 0;
+	let retrying = false;
+	let retryConfirmCalls = 0;
+	const confirms: Array<{ action?: string; merchantId?: string }> = [];
 	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/paypal/connect`, async (route) => {
 		if (route.request().method() === 'GET') {
 			connectGets += 1;
-			if (!statusReady) {
-				return route.fulfill({ status: 503, json: { error: 'temporarily_unavailable' } });
-			}
-			return route.fulfill({ json: { available: true, connected: false } });
+			return retrying
+				? route.fulfill({ status: 503, json: { error: 'temporarily_unavailable' } })
+				: route.fulfill({ json: { available: true, connected: true } });
 		}
-		const body = route.request().postDataJSON() as { action?: string };
+		const body = route.request().postDataJSON() as { action?: string; merchantId?: string };
+		if (body.action === 'start') {
+			startCalls += 1;
+			return route.fulfill({ json: { url: 'https://www.paypal.com/connect' } });
+		}
 		if (body.action === 'confirm') {
-			confirmCalls += 1;
-			if (confirmCalls === 1) {
+			confirms.push(body);
+			if (!retrying) {
 				return route.fulfill({ status: 502, json: { error: 'provider_unavailable' } });
 			}
-			if (confirmCalls === 2) {
+			retryConfirmCalls += 1;
+			if (retryConfirmCalls === 1) {
 				return route.fulfill({ status: 409, json: { error: 'paypal_payment_pending' } });
 			}
 			return route.fulfill({ json: { connected: true } });
@@ -218,19 +233,28 @@ test('retries a return after status and provider confirmation failures', async (
 	await expect(
 		page.getByText('PayPal-Verbindung konnte nicht geprüft werden. Bitte versuche es erneut.'),
 	).toBeVisible();
-	statusReady = true;
+	await expect(page.getByText('PayPal verbunden', { exact: true })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'Verbindung prüfen', exact: true })).toBeEnabled();
+	await expect(page.getByRole('button', { name: 'PayPal verbinden', exact: true })).toHaveCount(0);
+	await expect.poll(() => confirms.length).toBe(1);
+	expect(connectGets).toBeGreaterThan(0);
+	expect(confirms[0]).toEqual({ action: 'confirm', merchantId: 'retry-hint' });
+
+	retrying = true;
+	const statusGetsBeforeFirstRetry = connectGets;
 	await page.getByRole('button', { name: 'Verbindung prüfen', exact: true }).click();
-	await expect.poll(() => confirmCalls).toBe(1);
-	await expect(
-		page.getByText('PayPal-Verbindung konnte nicht geprüft werden. Bitte versuche es erneut.'),
-	).toBeVisible();
-	await page.getByRole('button', { name: 'Verbindung prüfen', exact: true }).click();
-	await expect.poll(() => confirmCalls).toBe(2);
+	await expect.poll(() => connectGets).toBe(statusGetsBeforeFirstRetry + 1);
+	await expect.poll(() => confirms.length).toBe(2);
 	await expect(page.getByText('Eine Zahlung läuft noch. Versuche es danach erneut.')).toBeVisible();
+	const statusGetsBeforeSecondRetry = connectGets;
 	await page.getByRole('button', { name: 'Verbindung prüfen', exact: true }).click();
+	await expect.poll(() => connectGets).toBe(statusGetsBeforeSecondRetry + 1);
+	await expect.poll(() => confirms.length).toBe(3);
+	expect(confirms[1]).toEqual({ action: 'confirm', merchantId: 'retry-hint' });
+	expect(confirms[2]).toEqual({ action: 'confirm', merchantId: 'retry-hint' });
+	expect(startCalls).toBe(0);
 	await expect(page.getByText('PayPal verbunden', { exact: true })).toBeVisible();
-	expect(connectGets).toBeGreaterThan(3);
-	expect(confirmCalls).toBe(3);
+	expect(retryConfirmCalls).toBe(2);
 	const cleanUrl = new URL(page.url());
 	expect(cleanUrl.searchParams.get('keep')).toBe('1');
 	expect(cleanUrl.searchParams.has('merchantIdInPayPal')).toBe(false);

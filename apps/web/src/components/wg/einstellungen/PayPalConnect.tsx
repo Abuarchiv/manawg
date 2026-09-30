@@ -239,8 +239,8 @@ export function PayPalConnect({
 		clearPayPalHints(callbackUrl);
 
 		async function loadConnection(): Promise<void> {
-			const currentStatus = await fetchConnectionStatus(currentScope, controller.signal);
-			if (!isCurrent() || !currentStatus) return;
+			await fetchConnectionStatus(currentScope, controller.signal);
+			if (!isCurrent()) return;
 			const currentCallback =
 				callbackState.current?.scope === currentScope ? callbackState.current : null;
 			if (currentCallback?.action === 'cancel') {
@@ -271,7 +271,7 @@ export function PayPalConnect({
 
 	async function startConnection(): Promise<void> {
 		const currentScope = scope;
-		if (busy || !status?.available) return;
+		if (busy || status?.available === false) return;
 		pendingReturn.current = null;
 		callbackState.current = null;
 		setBusy(true);
@@ -307,11 +307,13 @@ export function PayPalConnect({
 	async function retryConnection(): Promise<void> {
 		const currentScope = scope;
 		const pending = pendingReturn.current;
-		const currentStatus = await fetchConnectionStatus(currentScope);
-		if (currentStatus && pending?.scope === currentScope) {
+		await fetchConnectionStatus(currentScope);
+		if (pending?.scope === currentScope) {
 			await confirmConnection(pending.merchantId, currentScope);
 		}
 	}
+
+	const hasPendingReturn = pendingReturn.current?.scope === scope;
 
 	return (
 		<div className="flex flex-col gap-3 p-3">
@@ -323,11 +325,17 @@ export function PayPalConnect({
 					<Spinner aria-hidden />
 					PayPal-Verbindung wird geprüft…
 				</div>
+			) : hasPendingReturn ? (
+				!error && (
+					<p className="text-sm text-muted-foreground" aria-live="polite">
+						{PAYPAL_PENDING}
+					</p>
+				)
 			) : status?.connected ? (
 				<p className="text-sm" aria-live="polite">
 					PayPal verbunden
 				</p>
-			) : status?.available ? (
+			) : status?.available !== false ? (
 				<>
 					<p className="text-sm text-muted-foreground">{PAYPAL_CONSENT}</p>
 					<Button
@@ -351,7 +359,7 @@ export function PayPalConnect({
 					<AlertDescription>{error}</AlertDescription>
 				</Alert>
 			)}
-			{error && !status?.connected && !loading && (
+			{error && (!status?.connected || hasPendingReturn) && !loading && (
 				<Button type="button" variant="ghost" onClick={retryConnection} disabled={busy}>
 					Verbindung prüfen
 				</Button>
