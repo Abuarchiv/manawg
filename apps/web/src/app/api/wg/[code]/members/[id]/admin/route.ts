@@ -35,13 +35,21 @@ export const POST = withWgRoute<{ id: string }>(
 				return { ok: false as const, response: forbidden('not_admin', 'not_admin') };
 			}
 			const [target] = await tx
-				.select({ id: wgMembers.id, name: wgMembers.name, deactivatedAt: wgMembers.deactivatedAt })
+				.select({
+					id: wgMembers.id,
+					name: wgMembers.name,
+					deactivatedAt: wgMembers.deactivatedAt,
+					authUserId: wgMembers.authUserId,
+				})
 				.from(wgMembers)
 				.where(and(eq(wgMembers.id, id), eq(wgMembers.wgId, wg.id)))
 				.for('update');
 			if (!target) return { ok: false as const, response: notFound('member_not_found') };
 			if (target.deactivatedAt)
 				return { ok: false as const, response: conflict('member_inactive') };
+			// An admin without a login could never use the role; the WG would be left without one.
+			if (!target.authUserId)
+				return { ok: false as const, response: conflict('member_not_linked') };
 			await tx.update(wgMembers).set({ role: 'member' }).where(eq(wgMembers.id, actor.id));
 			await tx.update(wgMembers).set({ role: 'admin' }).where(eq(wgMembers.id, target.id));
 			return { ok: true as const, target };

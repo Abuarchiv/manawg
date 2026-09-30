@@ -15,7 +15,7 @@ const targetId = '44444444-4444-4444-8444-444444444444';
 
 function harness({
 	actorRole = 'admin',
-	target = { id: targetId, name: 'Mira', deactivatedAt: null },
+	target = { id: targetId, name: 'Mira', deactivatedAt: null, authUserId: 'auth-2' },
 } = {}) {
 	const state = { updates: [], audits: [] };
 	const wgMembers = {
@@ -96,9 +96,10 @@ test('hands the admin role to an active member and audits it', async () => {
 	assert.equal(state.audits[0].eventType, 'member.admin_transferred');
 });
 
-test('rejects inactive, missing, self and non-admin-actor targets without writes', async () => {
+test('rejects inactive, unlinked, missing, self and non-admin-actor targets without writes', async () => {
 	for (const [opts, id, status] of [
 		[{ target: { id: targetId, name: 'M', deactivatedAt: new Date() } }, targetId, 409],
+		[{ target: { id: targetId, name: 'M', deactivatedAt: null, authUserId: null } }, targetId, 409],
 		[{ target: null }, targetId, 404],
 		[{}, adminId, 400],
 		[{ actorRole: 'member' }, targetId, 403],

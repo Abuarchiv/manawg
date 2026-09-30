@@ -128,7 +128,9 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 			setPromoteError(
 				res.error === 'member_inactive'
 					? 'Dieses Mitglied ist ausgezogen. Aktiviere es zuerst wieder.'
-					: 'Admin-Rolle konnte nicht übergeben werden. Bitte erneut versuchen.',
+					: res.error === 'member_not_linked'
+						? 'Dieses Mitglied hat noch kein Konto verknüpft und kann nicht Admin werden.'
+						: 'Admin-Rolle konnte nicht übergeben werden. Bitte erneut versuchen.',
 			);
 			return;
 		}
