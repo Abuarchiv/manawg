@@ -124,7 +124,7 @@ export function MemberDeactivateDialog({
 		if (res.error === 'admin_required') {
 			setSubmitError(
 				selfLeave
-					? 'Admins können ihre Mitgliedschaft derzeit nicht beenden, weil die Admin-Rolle nicht übertragen werden kann. Wenn du nur dieses Gerät abmelden möchtest, nutze oben „Konto abmelden“.'
+					? 'Übergib zuerst die Admin-Rolle an ein aktives Mitglied, dann kannst du die WG verlassen. Wenn du nur dieses Gerät abmelden möchtest, nutze oben „Konto abmelden“.'
 					: 'Nur aktive Admin-Mitglieder können andere Mitglieder deaktivieren. Admin-Mitgliedschaften selbst können nicht deaktiviert werden. Bitte wende dich an ein aktives Admin-Mitglied.',
 			);
 			submittingRef.current = false;
