@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
 
+// page.route provider doubles must not be bypassed by the built app's service worker.
+test.use({ serviceWorkers: 'block' });
 test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 
 test('profile can start and confirm PayPal while legacy status lookup is unavailable', async ({
@@ -259,4 +261,73 @@ test('retries a new PayPal return while the old account status is connected', as
 	expect(cleanUrl.searchParams.get('keep')).toBe('1');
 	expect(cleanUrl.searchParams.has('merchantIdInPayPal')).toBe(false);
 	expect(cleanUrl.searchParams.has('trackingId')).toBe(false);
+});
+
+test('can finish provider onboarding without a callback using only the pending cookie', async ({
+	page,
+}, testInfo) => {
+	await page.setViewportSize({ width: 320, height: 800 });
+	await setupMember(page);
+	const posts: unknown[] = [];
+	let completeCalls = 0;
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/paypal/connect`, async (route) => {
+		if (route.request().method() === 'GET')
+			return route.fulfill({ json: { available: true, connected: false } });
+		const body = route.request().postDataJSON() as { action?: string };
+		posts.push(body);
+		if (body.action !== 'complete')
+			return route.fulfill({ status: 400, json: { error: 'paypal_request_invalid' } });
+		completeCalls += 1;
+		return completeCalls === 1
+			? route.fulfill({ status: 409, json: { error: 'paypal_onboarding_pending' } })
+			: route.fulfill({ json: { connected: true } });
+	});
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen`);
+	await dismissOnboarding(page);
+	const check = page.getByRole('button', { name: 'Verbindung prüfen', exact: true });
+	await expect(check).toBeEnabled();
+	await page.screenshot({
+		path: testInfo.outputPath('paypal-recovery-light-320.png'),
+		animations: 'disabled',
+	});
+	await page.getByRole('button', { name: 'Dunkel', exact: true }).click();
+	await page.screenshot({
+		path: testInfo.outputPath('paypal-recovery-dark-320.png'),
+		animations: 'disabled',
+	});
+	await check.click();
+	await expect(page.getByText('PayPal-Verbindung wartet noch auf Bestätigung.')).toBeVisible();
+	await expect(page.getByText('PayPal verbunden', { exact: true })).toHaveCount(0);
+	await check.click();
+	await expect(page.getByText('PayPal verbunden', { exact: true })).toBeVisible();
+	expect(posts).toEqual([{ action: 'complete' }, { action: 'complete' }]);
+	await expect(page.getByRole('textbox', { name: /merchant.?id/i })).toHaveCount(0);
+});
+
+test('missing callback hint uses server completion and expired state offers a fresh connection', async ({
+	page,
+}) => {
+	await setupMember(page);
+	const posts: unknown[] = [];
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/paypal/connect`, async (route) => {
+		if (route.request().method() === 'GET')
+			return route.fulfill({ json: { available: true, connected: false } });
+		posts.push(route.request().postDataJSON());
+		return route.fulfill({ status: 409, json: { error: 'paypal_connection_expired' } });
+	});
+	await navigateToFeature(
+		page,
+		`/wg/${FIXTURE_WG.shareCode}/einstellungen?keep=1&paypal=return&trackingId=untrusted`,
+	);
+	await dismissOnboarding(page);
+	await expect(
+		page.getByText('Die PayPal-Verbindung ist abgelaufen. Bitte starte sie erneut.'),
+	).toBeVisible();
+	await expect(page.getByRole('button', { name: 'PayPal verbinden', exact: true })).toBeEnabled();
+	await expect(page.getByText('PayPal verbunden', { exact: true })).toHaveCount(0);
+	expect(posts).toEqual([{ action: 'complete' }]);
+	const url = new URL(page.url());
+	expect(url.searchParams.get('keep')).toBe('1');
+	expect(url.searchParams.has('paypal')).toBe(false);
+	expect(url.searchParams.has('trackingId')).toBe(false);
 });

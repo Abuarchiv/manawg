@@ -38,7 +38,7 @@ const PAYPAL_PENDING = 'PayPal-Verbindung wartet noch auf Bestätigung.';
 
 interface PendingReturn {
 	scope: string;
-	merchantId: string;
+	merchantId: string | null;
 }
 
 interface PayPalCallback {
@@ -161,7 +161,7 @@ export function PayPalConnect({
 	);
 
 	const confirmConnection = useCallback(
-		async (merchantId: string, expectedScope: string): Promise<void> => {
+		async (merchantId: string | null, expectedScope: string): Promise<void> => {
 			if (scopeRef.current !== expectedScope) return;
 			setBusy(true);
 			setError(null);
@@ -170,7 +170,9 @@ export function PayPalConnect({
 					method: 'POST',
 					memberId,
 					memberToken,
-					body: JSON.stringify({ action: 'confirm', merchantId }),
+					body: JSON.stringify(
+						merchantId ? { action: 'confirm', merchantId } : { action: 'complete' },
+					),
 				});
 				if (scopeRef.current !== expectedScope) return;
 				if (result.ok && result.data.connected === true) {
@@ -231,8 +233,8 @@ export function PayPalConnect({
 				merchantId: callback === 'return' ? merchantId || null : null,
 			};
 		}
-		if (callback === 'return' && merchantId) {
-			pendingReturn.current = { scope: currentScope, merchantId };
+		if (callback === 'return') {
+			pendingReturn.current = { scope: currentScope, merchantId: merchantId || null };
 		} else if (callback === 'cancel') {
 			pendingReturn.current = null;
 		}
@@ -245,10 +247,6 @@ export function PayPalConnect({
 				callbackState.current?.scope === currentScope ? callbackState.current : null;
 			if (currentCallback?.action === 'cancel') {
 				setError('PayPal-Verbindung wurde abgebrochen.');
-				return;
-			}
-			if (currentCallback?.action === 'return' && !currentCallback.merchantId) {
-				setError('PayPal-Verbindung konnte nicht bestätigt werden. Bitte starte sie erneut.');
 				return;
 			}
 			const pending = pendingReturn.current;
@@ -307,9 +305,12 @@ export function PayPalConnect({
 	async function retryConnection(): Promise<void> {
 		const currentScope = scope;
 		const pending = pendingReturn.current;
-		await fetchConnectionStatus(currentScope);
+		const currentStatus = await fetchConnectionStatus(currentScope);
+		if (scopeRef.current !== currentScope) return;
 		if (pending?.scope === currentScope) {
 			await confirmConnection(pending.merchantId, currentScope);
+		} else if (currentStatus && !currentStatus.connected && currentStatus.available) {
+			await confirmConnection(null, currentScope);
 		}
 	}
 
@@ -345,7 +346,7 @@ export function PayPalConnect({
 						disabled={busy}
 					>
 						{busy && <Spinner data-icon="inline-start" />}
-						{busy ? 'Weiterleitung zu PayPal…' : 'PayPal verbinden'}
+						{busy ? 'Bitte warten…' : 'PayPal verbinden'}
 					</Button>
 				</>
 			) : status ? (
@@ -359,7 +360,7 @@ export function PayPalConnect({
 					<AlertDescription>{error}</AlertDescription>
 				</Alert>
 			)}
-			{error && (!status?.connected || hasPendingReturn) && !loading && (
+			{(!status?.connected || hasPendingReturn) && status?.available !== false && !loading && (
 				<Button type="button" variant="ghost" onClick={retryConnection} disabled={busy}>
 					Verbindung prüfen
 				</Button>

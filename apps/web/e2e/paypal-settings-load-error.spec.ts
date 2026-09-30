@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { FIXTURE_WG, navigateToFeature, setupMember } from './_helpers';
 
+// page.route provider doubles must not be bypassed by the built app's service worker.
+test.use({ serviceWorkers: 'block' });
 test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 
 for (const width of [320, 360]) {
@@ -14,6 +16,7 @@ for (const width of [320, 360]) {
 			let retryRequested = false;
 			let statusGets = 0;
 			const startBodies: unknown[] = [];
+			const completeBodies: unknown[] = [];
 			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/paypal/connect`, async (route) => {
 				if (route.request().method() === 'GET') {
 					statusGets += 1;
@@ -24,6 +27,10 @@ for (const width of [320, 360]) {
 				}
 				const body = route.request().postDataJSON() as { action?: string };
 				if (body.action === 'start') startBodies.push(body);
+				if (body.action === 'complete') {
+					completeBodies.push(body);
+					return route.fulfill({ status: 409, json: { error: 'paypal_connection_expired' } });
+				}
 				return route.fulfill({ status: 400, json: { error: 'unexpected_action' } });
 			});
 
@@ -57,7 +64,11 @@ for (const width of [320, 360]) {
 			retryRequested = true;
 			await page.keyboard.press('Enter');
 
+			await expect(
+				page.getByText('Die PayPal-Verbindung ist abgelaufen. Bitte starte sie erneut.'),
+			).toBeVisible();
 			await expect(errorAlert).toBeHidden();
+			expect(completeBodies).toEqual([{ action: 'complete' }]);
 			await expect(
 				page.getByRole('button', { name: 'PayPal verbinden', exact: true }),
 			).toBeEnabled();
@@ -66,3 +77,31 @@ for (const width of [320, 360]) {
 		});
 	}
 }
+
+test('failed status retry preserves the status error without attempting cookie completion', async ({
+	page,
+}) => {
+	await setupMember(page);
+	const posts: unknown[] = [];
+	let gets = 0;
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/paypal/connect`, async (route) => {
+		if (route.request().method() === 'GET') {
+			gets += 1;
+			return route.fulfill({ status: 503, json: { error: 'temporary_failure' } });
+		}
+		posts.push(route.request().postDataJSON());
+		return route.fulfill({ status: 409, json: { error: 'paypal_connection_expired' } });
+	});
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen`);
+	await expect.poll(() => gets).toBeGreaterThan(0);
+	const before = gets;
+	await page.getByRole('button', { name: 'Verbindung prüfen', exact: true }).click();
+	await expect.poll(() => gets).toBeGreaterThan(before);
+	await expect(
+		page.getByText('PayPal-Verbindung konnte nicht geprüft werden. Bitte versuche es erneut.'),
+	).toBeVisible();
+	expect(posts).toEqual([]);
+	await expect(
+		page.getByText('Die PayPal-Verbindung ist abgelaufen. Bitte starte sie erneut.'),
+	).toHaveCount(0);
+});
