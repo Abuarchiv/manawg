@@ -520,8 +520,8 @@ export default function AbosPage() {
 					<AlertDialogHeader>
 						<AlertDialogTitle>Fixkosten löschen?</AlertDialogTitle>
 						<AlertDialogDescription>
-							Abo „{deleteCandidate?.description}“ wird entfernt. Bereits erfasste Ausgaben bleiben
-							erhalten.
+							Fixkosten „{deleteCandidate?.description}“ werden entfernt. Bereits erfasste Ausgaben
+							bleiben erhalten.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

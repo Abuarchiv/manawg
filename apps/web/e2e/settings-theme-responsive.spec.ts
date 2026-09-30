@@ -33,3 +33,36 @@ test('all theme choices stay reachable at 320px with 200% text', async ({ page }
 		if (name === 'Hell') await expect(page.locator('html')).not.toHaveClass(/dark/);
 	}
 });
+
+test('admin can rename the WG from the profile tab and sees API failures', async ({ page }) => {
+	await setupMember(page);
+	await page.route('**/api/wg/*/members', (route) =>
+		route.fulfill({
+			json: {
+				members: [
+					{ id: FIXTURE_WG.memberId, name: FIXTURE_WG.memberName, color: '#6d5efc', active: true },
+				],
+				viewerIsAdmin: true,
+			},
+		}),
+	);
+	let status = 500;
+	let sentName: string | undefined;
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}`, (route) => {
+		if (route.request().method() !== 'PATCH') return route.fallback();
+		sentName = route.request().postDataJSON().name;
+		return route.fulfill({ status, json: { wg: { name: sentName } } });
+	});
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen`);
+	const name = page.getByLabel('Name eurer WG');
+	const save = page.getByRole('button', { name: 'Speichern', exact: true });
+	await expect(save).toBeDisabled();
+	await name.fill('  Neue WG ');
+	await save.click();
+	await expect(page.getByText(/nicht umbenannt werden/)).toBeVisible();
+	await expect(name).toHaveValue('  Neue WG ');
+	status = 200;
+	await name.press('Enter');
+	await expect(page.getByText('WG-Name gespeichert.')).toBeVisible();
+	expect(sentName).toBe('Neue WG');
+});

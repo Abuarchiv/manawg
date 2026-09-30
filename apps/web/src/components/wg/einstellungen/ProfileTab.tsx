@@ -5,6 +5,8 @@ import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { LinkRow } from '@/components/wg/einstellungen/LinkRow';
 import { PayPalConnect } from '@/components/wg/einstellungen/PayPalConnect';
 import { Section } from '@/components/wg/einstellungen/Section';
+import { WgNameSection } from '@/components/wg/einstellungen/WgNameSection';
+import { useWg } from '@/components/wg/WgContextProvider';
 import { InstallButton } from '@/shared/components/install-button';
 import { useTheme } from '@/shared/components/theme/ThemeProvider';
 import { haptic } from '@/shared/lib/haptics';
@@ -32,6 +34,7 @@ export function ProfileTab({
 	memberToken,
 }: ProfileTabProps) {
 	const { theme, setTheme } = useTheme();
+	const { isAdmin } = useWg();
 
 	return (
 		<>
@@ -44,6 +47,15 @@ export function ProfileTab({
 					</div>
 				</div>
 			</Section>
+
+			{isAdmin && (
+				<WgNameSection
+					wgName={wgName}
+					shareCode={shareCode}
+					memberId={memberId}
+					memberToken={memberToken}
+				/>
+			)}
 
 			<Section title="Darstellung">
 				<div className="p-2">
