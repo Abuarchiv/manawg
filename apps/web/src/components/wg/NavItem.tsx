@@ -95,7 +95,7 @@ export function NavItem({
 						</Badge>
 					)}
 				</span>
-				<span className="max-w-full whitespace-nowrap text-center text-[10px] font-semibold leading-3.5">
+				<span className="max-w-full whitespace-nowrap text-center text-[12px] font-semibold leading-3.5">
 					{label}
 				</span>
 			</Link>

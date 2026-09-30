@@ -10,6 +10,7 @@ import {
 	EmptyMedia,
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/observability';
+import { THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import { TriangleAlert } from 'lucide-react';
 import { useEffect } from 'react';
 
@@ -22,7 +23,11 @@ export default function GlobalError({
 	}, [error]);
 
 	return (
-		<html lang="de">
+		<html lang="de" suppressHydrationWarning>
+			<head>
+				{/* biome-ignore lint/security/noDangerouslySetInnerHtml: static constant, no dynamic data */}
+				<script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+			</head>
 			<body className="min-h-[100dvh] bg-background text-foreground antialiased">
 				<main className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center justify-center px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
 					<Empty>

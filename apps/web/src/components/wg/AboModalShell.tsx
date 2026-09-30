@@ -32,6 +32,7 @@ interface AboModalShellProps {
 export function AboModalShell({ title, onClose, submitting, children }: AboModalShellProps) {
 	const [confirmClose, setConfirmClose] = useState(false);
 	const dirtyRef = useRef(false);
+	const backRef = useRef<HTMLButtonElement>(null);
 	const trackFieldChange = (event: SyntheticEvent<HTMLDivElement>) => {
 		const target = event.target;
 		if (target instanceof Element && target.matches('input, select, textarea'))
@@ -61,12 +62,13 @@ export function AboModalShell({ title, onClose, submitting, children }: AboModal
 			>
 				<DialogContent
 					showCloseButton={false}
-					initialFocus={false}
+					initialFocus={backRef}
 					className="top-0 flex h-dvh max-h-dvh w-full max-w-md translate-y-0 flex-col gap-0 rounded-none p-0"
 				>
 					<DialogHeader className="shrink-0 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
 						<div className="flex items-center gap-2">
 							<Button
+								ref={backRef}
 								variant="ghost"
 								size="icon"
 								className="size-9"
