@@ -39,6 +39,12 @@ Im geprüften Erstellungsformular ist der Typ `Platform` verfügbar. PayPal gibt
 
 `Create App` erzeugt neue API-Zugangsdaten und bestätigt laut Formular das [PayPal Developer Agreement für US-Konten](https://www.paypal.com/us/webapps/mpp/ua/xdeveloper-full). Diese neue Zugangs-/Vertragsaktion benötigt eine ausdrückliche Betreiberfreigabe. Der Button wurde nicht betätigt. Erst danach lassen sich die tatsächliche Partner-API-Freigabe und ein isolierter Sandbox-Ablauf prüfen; die vorhandene Standard-App wird nicht stillschweigend als geeignete Platform-App behandelt.
 
+## Zugangsprüfung am 30.09.2026
+
+Ein neuer Chrome-Relay-Tab zur [PayPal-Entwickler-App-Liste](https://developer.paypal.com/dashboard/applications) wurde auf die PayPal-Anmeldeseite umgeleitet. In dieser Sitzung war keine Entwickler-Anmeldung verfügbar; es wurden keine Zugangsdaten eingegeben, keine App angelegt und keine Vereinbarung akzeptiert. Ein bereits offener Sandbox-Tab zeigt weiterhin „Geschäftskonto einrichten“; das belegt keine abgeschlossene Verkäufer- oder Plattformfreigabe.
+
+Der aktuelle Vercel-Readback enthält in Production und Preview weiterhin keine `PAYPAL_*`- oder `NEXT_PUBLIC_PAYPAL_*`-Variablen. Ohne den PayPal-Entwicklerzugang und die anschließende Plattformfreigabe bleiben Kontoverknüpfung und Order/Capture unbestätigt.
+
 ## Offizielle Quellen
 
 - [Empfänger vor einer Zahlung verbinden](https://developer.paypal.com/platforms/seller-onboarding/before-payment)
