@@ -17,7 +17,7 @@ import { claimIdempotencySlot, readIdempotencyKey } from '@/core/idempotency';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	type ExpensePaymentInput,
-	hasActiveExpensePayment,
+	hasCapturingExpensePayment,
 	withExpensePaymentLock,
 } from '@/features/expenses/expense-payments';
 import {
@@ -297,7 +297,7 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 						confirmation.toMemberId,
 						confirmation.currency,
 					);
-					if (await hasActiveExpensePayment(tx, auth.wg.id)) return { kind: 'blocked' as const };
+					if (await hasCapturingExpensePayment(tx, auth.wg.id)) return { kind: 'blocked' as const };
 					if (!settlementScopeMatches(confirmation.expected, preview)) {
 						return { kind: 'changed' as const };
 					}

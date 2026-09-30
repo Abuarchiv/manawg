@@ -14,7 +14,7 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { computeNetBalances } from '@/features/expenses/debt-reduction';
 import {
-	hasActiveExpensePayment,
+	hasCapturingExpensePayment,
 	loadCompletedExpensePayments,
 	withExpensePaymentLock,
 } from '@/features/expenses/expense-payments';
@@ -115,7 +115,9 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 			if ((settled && current.settledAt !== null) || (!settled && current.settledAt === null)) {
 				return { kind: 'unchanged' as const, split: currentSplit };
 			}
-			if (await hasActiveExpensePayment(tx, expense.wgId)) return { kind: 'blocked' as const };
+			// Only money in flight blocks; an unpaid 'created' PayPal order must not freeze the whole
+			// group for its 3 h TTL (capture re-validates the debt itself).
+			if (await hasCapturingExpensePayment(tx, expense.wgId)) return { kind: 'blocked' as const };
 
 			if (settled) {
 				// ponytail: scan all WG splits under the lock; add indexed stored balances if this becomes slow.
