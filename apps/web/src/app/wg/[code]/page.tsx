@@ -356,13 +356,23 @@ export default function WgHomePage() {
 							<output className="text-sm text-muted-foreground">Termine werden geladen…</output>
 						)}
 						{eventRead.error && (
-							<output className="text-sm text-muted-foreground">
-								{eventRead.data
-									? 'Termine konnten nicht aktualisiert werden. Angezeigte Einträge können veraltet sein.'
-									: data
-										? 'Termine konnten nicht geladen werden. Putzplan-Aufgaben bleiben sichtbar.'
-										: 'Termine konnten nicht geladen werden.'}
-							</output>
+							<div className="flex min-w-0 flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
+								<output className="min-w-0 flex-1 basis-48">
+									{eventRead.data
+										? 'Termine konnten nicht aktualisiert werden. Angezeigte Einträge können veraltet sein.'
+										: data
+											? 'Termine konnten nicht geladen werden. Putzplan-Aufgaben bleiben sichtbar.'
+											: 'Termine konnten nicht geladen werden.'}
+								</output>
+								<Button
+									variant="outline"
+									type="button"
+									className="min-h-11 shrink-0"
+									onClick={() => void eventRead.refresh()}
+								>
+									Termine erneut laden
+								</Button>
+							</div>
 						)}
 						{!data && !error && (
 							<output className="text-sm text-muted-foreground">
