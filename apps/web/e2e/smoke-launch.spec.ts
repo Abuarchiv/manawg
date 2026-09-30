@@ -162,6 +162,39 @@ test.describe('ManaWG launch smoke', () => {
 		await expect.poll(() => memberPostRequests).toBe(1);
 	});
 
+	test('an unknown code from the join request returns to the code field', async ({ page }) => {
+		test.skip(
+			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
+			'mocked join responses need the fixture build',
+		);
+		await page.addInitScript(() => window.localStorage.clear());
+		await page.route('**/api/wg/mine', (route) =>
+			route.fulfill({ status: 200, contentType: 'application/json', body: '{"wgs":[]}' }),
+		);
+		await page.route('**/api/wg/MTE8PZAT', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ wg: { id: 'x', name: 'x', shareCode: 'MTE8PZAT' }, members: [] }),
+			}),
+		);
+		await page.route('**/api/wg/MTE8PZAT/members', (route) =>
+			route.fulfill({
+				status: 404,
+				contentType: 'application/json',
+				body: JSON.stringify({ error: 'wg_not_found' }),
+			}),
+		);
+
+		await gotoWithRetry(page, '/neu?code=MTE8PZAT');
+		await page.getByRole('button', { name: 'WG-Code prüfen' }).click();
+		await page.getByLabel('Dein Anzeigename').fill('Smoke Tester');
+		await page.getByRole('button', { name: 'WG beitreten', exact: true }).click();
+
+		await expect(page.getByRole('heading', { name: 'Per Code beitreten' })).toBeVisible();
+		await expect(page.getByText('Diesen WG-Code gibt es nicht.')).toBeVisible();
+	});
+
 	test('404 page provides a valid keyboard skip target', async ({ page }) => {
 		await gotoWithRetry(page, '/this-page-does-not-exist');
 		await expect(page.getByRole('heading', { name: 'Seite nicht gefunden' })).toBeVisible();

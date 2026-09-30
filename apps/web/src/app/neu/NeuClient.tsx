@@ -566,6 +566,10 @@ export function NeuClient() {
 						: joinErrorMessage(res.status, apiError);
 				if (apiError === 'name_invalid' || (res.status === 409 && apiError === 'name_taken')) {
 					setFieldError('joinName', message);
+				} else if (joinErrorField(res.status, apiError) === 'joinCode') {
+					// The code is only checked by this POST; send the user back to fix it.
+					setStep('join');
+					setFieldError('joinCode', message);
 				} else {
 					setFormError(message);
 				}
