@@ -138,6 +138,7 @@ function harness({
 		'@/core/db/account-deletion': {
 			lockActiveAccountMember: async () => (inactive ? null : { id: memberId }),
 		},
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': errors,
 		'@/core/guards/require-wg-member': { requireWgMember: async () => auth },
 		'@/core/guards/with-wg-route': { withWgRoute: (_name, handler) => handler },

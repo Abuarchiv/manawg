@@ -175,6 +175,7 @@ function harness() {
 		},
 		'@/core/db': { db, idempotencyResponses, wgEvents },
 		'@/core/db/transaction': { TransactionAbort, withTransaction },
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			badRequest: (code) => Response.json({ error: code }, { status: 400 }),
 			serverError: (code) => Response.json({ error: code }, { status: 500 }),

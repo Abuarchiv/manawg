@@ -320,6 +320,7 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 			},
 		},
 		'@/core/db/transaction': { TransactionAbort },
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			apiError: (message, status, code) =>
 				Response.json({ error: message, ...(code ? { code } : {}) }, { status }),
@@ -659,6 +660,7 @@ function getHarness({ expenseCount, readLimited = false }) {
 		'@/core/db': { db, expenseSplits, expenses, idempotencyResponses, recurringExpenses },
 		'@/core/db/private-image-deletions': stub,
 		'@/core/db/transaction': { TransactionAbort },
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			apiError: stub.apiError,
 			badRequest: stub.badRequest,

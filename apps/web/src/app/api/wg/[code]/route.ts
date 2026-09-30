@@ -9,6 +9,7 @@ import { requireMember } from '@/core/guards/api-auth';
 import { deriveMemberToken } from '@/core/guards/member-token';
 import { requireWgAdmin } from '@/core/guards/require-wg-admin';
 import { readShareCode } from '@/core/guards/route-preamble';
+import { readJsonLimited } from '@/core/http/read-json';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { logApiError } from '@/core/infra/observability';
@@ -137,7 +138,7 @@ export async function PATCH(
 	const { code } = codeResult;
 	let raw: unknown;
 	try {
-		raw = await req.json();
+		raw = await readJsonLimited(req);
 	} catch {
 		return badRequest('invalid_json');
 	}

@@ -30,6 +30,7 @@ function harness() {
 				return { id: 'user-id' };
 			},
 		},
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			apiError: (_message, status, error) => Response.json({ error }, { status }),
 			badRequest: (error) => Response.json({ error }, { status: 400 }),

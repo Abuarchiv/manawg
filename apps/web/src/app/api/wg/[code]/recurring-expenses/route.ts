@@ -12,6 +12,7 @@ import {
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { readShareCode } from '@/core/guards/route-preamble';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { readJsonLimited } from '@/core/http/read-json';
 import {
 	RESPONSE_REPLAY_TTL_SECONDS,
 	getCachedResponse,
@@ -150,7 +151,7 @@ export async function POST(
 	> | null = null;
 
 	try {
-		raw = await req.json();
+		raw = await readJsonLimited(req);
 	} catch {
 		return badRequest('invalid_json');
 	}
@@ -355,7 +356,7 @@ export async function POST(
 export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code }) => {
 	let raw: unknown;
 	try {
-		raw = await req.json();
+		raw = await readJsonLimited(req);
 	} catch {
 		return badRequest('invalid_json');
 	}
@@ -583,7 +584,7 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 export const DELETE = withWgRoute('recurring-expenses DELETE', async (req, { code }) => {
 	let raw: unknown;
 	try {
-		raw = await req.json();
+		raw = await readJsonLimited(req);
 	} catch {
 		return badRequest('invalid_json');
 	}
