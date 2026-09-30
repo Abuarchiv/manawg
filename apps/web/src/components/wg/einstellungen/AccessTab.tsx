@@ -50,7 +50,7 @@ import { apiFetch } from '@/core/infra/api-client';
 import { buildSecurityOverview } from '@/core/infra/security';
 import type { StoredIdentity } from '@/shared/lib/identity';
 import { clearIdentity, forgetWg, memberAuthHeader } from '@/shared/lib/identity';
-import { LogOut, Trash2, UserMinus, UserPlus } from 'lucide-react';
+import { Crown, LogOut, Trash2, UserMinus, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -88,6 +88,9 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 		name: string;
 		selfLeave?: boolean;
 	} | null>(null);
+	const [memberToPromote, setMemberToPromote] = useState<{ id: string; name: string } | null>(null);
+	const [promoting, setPromoting] = useState(false);
+	const [promoteError, setPromoteError] = useState<string | null>(null);
 	const [reactivatingId, setReactivatingId] = useState<string | null>(null);
 	const [memberActionMessage, setMemberActionMessage] = useState<string | null>(null);
 	const [memberActionError, setMemberActionError] = useState<string | null>(null);
@@ -104,6 +107,36 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 		}
 		setMemberActionError(null);
 		setMemberActionMessage(`${name} ist jetzt als ausgezogen markiert.`);
+		void refreshMembers(identity.memberId);
+	}
+
+	async function handleTransferAdmin(): Promise<void> {
+		if (!memberToPromote || promoting) return;
+		setPromoting(true);
+		setPromoteError(null);
+		const res = await apiFetch<{ member: { id: string; name: string } }>(
+			`/api/wg/${encodedShareCode}/members/${memberToPromote.id}/admin`,
+			{
+				method: 'POST',
+				memberId: identity.memberId,
+				memberToken: identity.memberToken,
+				body: JSON.stringify({}),
+			},
+		);
+		setPromoting(false);
+		if (!res.ok) {
+			setPromoteError(
+				res.error === 'member_inactive'
+					? 'Dieses Mitglied ist ausgezogen. Aktiviere es zuerst wieder.'
+					: 'Admin-Rolle konnte nicht übergeben werden. Bitte erneut versuchen.',
+			);
+			return;
+		}
+		setMemberActionError(null);
+		setMemberActionMessage(
+			`${memberToPromote.name} ist jetzt Admin. Du kannst die WG jetzt normal verlassen.`,
+		);
+		setMemberToPromote(null);
 		void refreshMembers(identity.memberId);
 	}
 
@@ -460,16 +493,31 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 									<Badge variant="secondary">Du</Badge>
 								) : (
 									isAdmin && (
-										<Button
-											type="button"
-											variant="outline"
-											size="sm"
-											onClick={() => setMemberToDeactivate({ id: member.id, name: member.name })}
-											aria-label={`Ausziehen: ${member.name}`}
-										>
-											<UserMinus aria-hidden />
-											Ausziehen
-										</Button>
+										<>
+											<Button
+												type="button"
+												variant="outline"
+												size="sm"
+												onClick={() => {
+													setPromoteError(null);
+													setMemberToPromote({ id: member.id, name: member.name });
+												}}
+												aria-label={`Admin übergeben: ${member.name}`}
+											>
+												<Crown aria-hidden />
+												Admin
+											</Button>
+											<Button
+												type="button"
+												variant="outline"
+												size="sm"
+												onClick={() => setMemberToDeactivate({ id: member.id, name: member.name })}
+												aria-label={`Ausziehen: ${member.name}`}
+											>
+												<UserMinus aria-hidden />
+												Ausziehen
+											</Button>
+										</>
 									)
 								)}
 							</ItemActions>
@@ -569,15 +617,15 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 					title="WG verlassen"
 					hint={
 						isAdmin
-							? 'Als Admin kannst du nicht einfach ausziehen.'
+							? 'Admin übergeben, dann verlassen.'
 							: 'Deaktiviert deine Mitgliedschaft. Einträge und offene Salden bleiben erhalten.'
 					}
 				>
 					<div className="grid gap-3 p-3">
 						{isAdmin ? (
 							<p className="text-muted-foreground text-[12px]">
-								Die Admin-Rolle lässt sich nicht übertragen. Du kannst dein Konto löschen (dann
-								übernimmt das am längsten aktive Mitglied) oder die WG für alle löschen.
+								Übergib zuerst die Admin-Rolle an ein aktives Mitglied (Button „Admin“ bei den
+								Mitgliedern), danach kannst du die WG verlassen.
 							</p>
 						) : activeMembers.length <= 1 ? (
 							<p className="text-muted-foreground text-[12px]">
@@ -679,6 +727,44 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 						>
 							{deleteStage === 'pending' ? <Spinner aria-hidden /> : <Trash2 aria-hidden />}
 							Endgültig löschen
+						</Button>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			<AlertDialog
+				open={memberToPromote !== null}
+				onOpenChange={(open) => {
+					if (!open && !promoting) setMemberToPromote(null);
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogMedia>
+							<Crown aria-hidden />
+						</AlertDialogMedia>
+						<AlertDialogTitle>Admin-Rolle übergeben?</AlertDialogTitle>
+						<AlertDialogDescription>
+							{memberToPromote?.name} wird Admin dieser WG. Du wirst normales Mitglied und kannst
+							die Rolle nur zurückbekommen, wenn {memberToPromote?.name} sie dir übergibt.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					{promoteError && (
+						<Alert variant="destructive">
+							<AlertDescription>{promoteError}</AlertDescription>
+						</Alert>
+					)}
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={promoting}>Abbrechen</AlertDialogCancel>
+						<Button
+							onClick={(event) => {
+								event.preventDefault();
+								void handleTransferAdmin();
+							}}
+							disabled={promoting}
+						>
+							{promoting && <Spinner aria-hidden />}
+							Übergeben
 						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>

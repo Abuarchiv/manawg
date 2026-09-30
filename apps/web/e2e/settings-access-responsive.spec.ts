@@ -126,9 +126,7 @@ test('WG access controls match admin permissions and explain deactivation accura
 	await expect(renewCode).toBeEnabled();
 	await expect(deleteWg).toBeEnabled();
 	await expect(leaveWg).toHaveCount(0);
-	await expect(
-		page.getByText('Die Admin-Rolle lässt sich nicht übertragen.', { exact: false }),
-	).toBeVisible();
+	await expect(page.getByText('Übergib zuerst die Admin-Rolle', { exact: false })).toBeVisible();
 
 	await page.getByRole('button', { name: 'Ausziehen: Mira' }).click();
 	await expect(
@@ -168,8 +166,28 @@ test('admin_required explains why an admin cannot leave the WG', async ({ page }
 	await expect.poll(() => patchRequests).toBe(1);
 	await expect(
 		page.getByText(
-			'Admins können ihre Mitgliedschaft derzeit nicht beenden, weil die Admin-Rolle nicht übertragen werden kann. Wenn du nur dieses Gerät abmelden möchtest, nutze oben „Konto abmelden“.',
+			'Übergib zuerst die Admin-Rolle an ein aktives Mitglied, dann kannst du die WG verlassen. Wenn du nur dieses Gerät abmelden möchtest, nutze oben „Konto abmelden“.',
 		),
 	).toBeVisible();
 	await expect(page.getByText(/Bitte erneut versuchen/)).toHaveCount(0);
+});
+
+test('admin can hand over the admin role after a confirmation', async ({ page }) => {
+	await setupMember(page);
+	await mockMemberRole(page, () => true);
+	let transfers = 0;
+	await page.route(
+		`**/api/wg/${FIXTURE_WG.shareCode}/members/fixture-other-member/admin`,
+		async (route) => {
+			transfers += 1;
+			return route.fulfill({ json: { member: { id: 'fixture-other-member', name: 'Mira' } } });
+		},
+	);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+
+	await page.getByRole('button', { name: 'Admin übergeben: Mira' }).click();
+	await expect(page.getByText('Mira wird Admin dieser WG.')).toBeVisible();
+	await page.getByRole('button', { name: 'Übergeben', exact: true }).click();
+	await expect.poll(() => transfers).toBe(1);
+	await expect(page.getByText(/Mira ist jetzt Admin/)).toBeVisible();
 });
