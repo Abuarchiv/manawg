@@ -29,7 +29,7 @@ interface QuickRestockSheetProps {
 	memberId: string;
 	memberToken?: string | undefined;
 	onClose: () => void;
-	onChanged: (item: InventoryMutationItemDto) => void;
+	onChanged: (item?: InventoryMutationItemDto, deletedId?: string) => void;
 }
 
 const QUICK_RESTOCK_LIMIT = 5;
@@ -79,6 +79,10 @@ export function QuickRestockSheet({
 		if (res.ok) {
 			restockRequestKeysRef.current.delete(item.id);
 			onChanged(res.data.item);
+		} else if (res.status === 404 && res.error === 'item_not_found') {
+			restockRequestKeysRef.current.delete(item.id);
+			onChanged(undefined, item.id);
+			setError(`${item.name} existiert nicht mehr und wurde aus der Liste entfernt.`);
 		} else {
 			if (res.status > 0 && res.status < 500) restockRequestKeysRef.current.delete(item.id);
 			setError('Aktualisierung fehlgeschlagen.');
@@ -89,7 +93,10 @@ export function QuickRestockSheet({
 		<Drawer
 			open={open}
 			onOpenChange={(next) => {
-				if (!next) onClose();
+				if (!next) {
+					setError(null);
+					onClose();
+				}
 			}}
 		>
 			<DrawerContent className="mx-auto w-full max-w-md">

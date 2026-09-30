@@ -192,6 +192,11 @@ export function InventoryAddModal({
 			if (mode === 'create') createRequestRef.current = null;
 			onSaved(res.data.item);
 			onClose();
+		} else if (mode === 'edit' && current && res.status === 404 && res.error === 'item_not_found') {
+			setSaving(false);
+			onSaved(undefined, current.id);
+			setConflictNeedsReload(true);
+			setServerError('Dieser Vorrat wurde inzwischen entfernt. Schließe das Formular.');
 		} else if (mode === 'edit' && current && res.error === 'version_conflict') {
 			const refreshed = await apiFetch<{ items: InventoryItemDto[] }>(
 				`/api/wg/${encodedShareCode}/inventory`,
