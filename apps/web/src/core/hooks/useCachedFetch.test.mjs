@@ -4,13 +4,16 @@ import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
 
-function loadCachedFetch(apiFetch) {
+function loadCachedFetch(apiFetch, generation = { value: 0 }) {
 	const source = readFileSync(new URL('./useCachedFetch.ts', import.meta.url), 'utf8');
 	const js = ts.transpileModule(source, {
 		compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 	}).outputText;
 	const module = { exports: {} };
-	const mocks = { '@/core/infra/api-client': { apiFetch }, react: {} };
+	const mocks = {
+		'@/core/infra/api-client': { apiFetch, mutationGeneration: () => generation.value },
+		react: {},
+	};
 	vm.runInContext(
 		js,
 		vm.createContext({ require: (id) => mocks[id], module, exports: module.exports }),
@@ -72,4 +75,21 @@ test('overlapping plain refreshes (focus, polling) share the running GET', async
 	await first;
 	await new Promise((done) => setImmediate(done));
 	assert.equal(calls, 1);
+});
+
+test('a plain refresh after any mutation settled does not join the older GET', async () => {
+	const responses = [deferred(), deferred()];
+	let calls = 0;
+	const generation = { value: 0 };
+	const { fetchAndCache } = loadCachedFetch(() => responses[calls++].promise, generation);
+	const running = fetchAndCache('key', '/api/items', {});
+	generation.value += 1; // e.g. a POST on the Pinnwand finished meanwhile
+	const followUp = fetchAndCache('key', '/api/items', {});
+	assert.notEqual(followUp, running);
+	responses[0].resolve({ ok: true, data: ['before'] });
+	await running;
+	await new Promise((done) => setImmediate(done));
+	assert.equal(calls, 2);
+	responses[1].resolve({ ok: true, data: ['after'] });
+	await followUp;
 });
