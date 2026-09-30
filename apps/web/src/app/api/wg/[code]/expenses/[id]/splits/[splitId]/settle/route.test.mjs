@@ -193,7 +193,7 @@ async function post({
 			path.join(process.cwd(), 'src/features/expenses/debt-reduction.ts'),
 		),
 		'@/features/expenses/expense-payments': {
-			hasActiveExpensePayment: async () => false,
+			hasCapturingExpensePayment: async () => false,
 			loadCompletedExpensePayments: async () => payments,
 			withExpensePaymentLock: async (_wgId, run) => {
 				state.lockActive = true;

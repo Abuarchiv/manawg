@@ -1664,7 +1664,7 @@ export default function AusgabenPage() {
 						<EmptyHeader>
 							<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
 							<EmptyDescription>
-								Erfasse eure erste gemeinsame Ausgabe über das Plus unten rechts.
+								Erfasse eure erste gemeinsame Ausgabe mit „Ausgabe erfassen“ unten.
 							</EmptyDescription>
 						</EmptyHeader>
 					</Empty>
