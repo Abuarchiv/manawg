@@ -434,8 +434,8 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 			</Section>
 
 			<Section
-				title="Sicherheit & Vertrauen"
-				hint="Schneller Überblick, wer drin ist und wie offen der WG-Code ist."
+				title="Mitglieder & Sicherheit"
+				hint="Wer drin ist, wie offen der WG-Code ist und wer ausziehen kann."
 			>
 				<div className="grid grid-cols-2 gap-3 p-3">
 					{securityOverview.map((item) => (
@@ -448,12 +448,12 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				<Separator />
 				<ItemGroup className="gap-0 px-2 py-1">
 					{activeMembers.map((member) => (
-						<Item key={member.id} size="sm" className="min-h-[44px]">
+						<Item key={member.id} size="sm" className="min-h-[44px] flex-wrap">
 							<ItemMedia>
 								<MemberAvatar name={member.name} size={26} />
 							</ItemMedia>
-							<ItemContent className="min-w-0">
-								<ItemTitle>{member.name}</ItemTitle>
+							<ItemContent className="min-w-0 basis-20">
+								<ItemTitle className="line-clamp-none">{member.name}</ItemTitle>
 							</ItemContent>
 							<ItemActions>
 								{member.id === identity.memberId ? (
@@ -483,13 +483,15 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 						</p>
 						<ItemGroup className="gap-0">
 							{inactiveMembers.map((member) => (
-								<Item key={member.id} size="sm" className="min-h-[44px] opacity-70">
+								<Item key={member.id} size="sm" className="min-h-[44px] flex-wrap opacity-70">
 									<ItemMedia>
 										<MemberAvatar name={member.name} size={26} />
 									</ItemMedia>
-									<ItemContent className="min-w-0">
-										<ItemTitle>{member.name}</ItemTitle>
-										<ItemDescription>Ausgezogen, Verlauf bleibt erhalten</ItemDescription>
+									<ItemContent className="min-w-0 basis-40">
+										<ItemTitle className="line-clamp-none">{member.name}</ItemTitle>
+										<ItemDescription className="line-clamp-none">
+											Ausgezogen, Verlauf bleibt erhalten
+										</ItemDescription>
 									</ItemContent>
 									<ItemActions>
 										{isAdmin && (
@@ -567,15 +569,15 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 					title="WG verlassen"
 					hint={
 						isAdmin
-							? 'Admins können ihre Mitgliedschaft derzeit nicht beenden.'
+							? 'Als Admin kannst du nicht einfach ausziehen.'
 							: 'Deaktiviert deine Mitgliedschaft. Einträge und offene Salden bleiben erhalten.'
 					}
 				>
 					<div className="grid gap-3 p-3">
 						{isAdmin ? (
 							<p className="text-muted-foreground text-[12px]">
-								Admins können ihre Mitgliedschaft derzeit nicht beenden, weil die Admin-Rolle nicht
-								übertragen werden kann.
+								Die Admin-Rolle lässt sich nicht übertragen. Du kannst dein Konto löschen (dann
+								übernimmt das am längsten aktive Mitglied) oder die WG für alle löschen.
 							</p>
 						) : activeMembers.length <= 1 ? (
 							<p className="text-muted-foreground text-[12px]">

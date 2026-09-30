@@ -127,9 +127,7 @@ test('WG access controls match admin permissions and explain deactivation accura
 	await expect(deleteWg).toBeEnabled();
 	await expect(leaveWg).toHaveCount(0);
 	await expect(
-		page.getByText(
-			'Admins können ihre Mitgliedschaft derzeit nicht beenden, weil die Admin-Rolle nicht übertragen werden kann.',
-		),
+		page.getByText('Die Admin-Rolle lässt sich nicht übertragen.', { exact: false }),
 	).toBeVisible();
 
 	await page.getByRole('button', { name: 'Ausziehen: Mira' }).click();
