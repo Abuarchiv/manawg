@@ -2,19 +2,21 @@
 
 ## Aktueller Nachweis — 2026-09-30
 
-Production ist auf `8931977` verifiziert: frische Health- und Auth-Abgrenzungs-
+Production ist auf `746f889` verifiziert: frische Health- und Auth-Abgrenzungs-
 Prüfungen bestanden. Privater Storage-Upload/Read/Revocation und DB-Migrationsstand
 sind am vorherigen quellgleichen App-Stand `6aa0b666` bestätigt. Die korrigierte
 Dependency-Version bestand 393 Unit-/Route-Tests; 512 Chromium-Fixture-Fälle
 bestanden vor der Lock-Korrektur. Hosted Preview:
 frischer Login, eigene Test-WG (200), Fremdnutzer-Abgrenzung (401) und vollständiger
-Cleanup bestätigt. Native finale Preview-SHA/CI-Gates und echte Geräte bleiben
-getrennte offene Abnahmen. Frischer lokaler Restore: 62/62
+Cleanup bestätigt. Nativer Preview auf `746f889` mit GitSource-SHA und Health
+bestätigt; vollständige CI-Gates und echte Geräte bleiben getrennte offene
+Abnahmen. Frischer lokaler Restore: 62/62
 Datenabschnitte. MCP und Datenschutz-Landing wurden geliefert.
 
-CI bleibt auf ausdrücklichen Nutzerwunsch ausgenommen. Sandbox-Zahlungsfreigabe,
-Offsite-Backup/Key-Custody, historische Analytics-Löschfreigabe und echte
-Telefonabnahme bleiben offen. Details und Beweisgrenzen:
+Die freigegebene Analytics-Bereinigung löschte 552 Keys; Readback: null verbleibend.
+CI und gezielte Vercel-Bypass-Token-Rotation bleiben auf Nutzerwunsch zurückgestellt.
+Sandbox-Zahlungstest, Offsite-Backup/Key-Custody sowie echte Telefon- und
+Alarmempfangsabnahme bleiben offen. Details und Beweisgrenzen:
 [Release evidence](docs/releases/2026-09-30-release-evidence.md).
 
 Die folgenden älteren Abschnitte sind historische Zustände.

@@ -60,6 +60,40 @@ at the owner's explicit request. No Production migration was performed.
   made. App source under `apps/web/src` is identical between this Preview source
   and delivered `8931977`; only the separately checked dependency tree differs.
 
+## Final native delivery and operational follow-up
+
+- Production and native GitSource Preview both reached READY on
+  `746f889b383c666b883c736ea73069777bde916e`. Production:
+  `dpl_26PWi8KTovgRt7VjcbeFv4Dt19FN`, alias `app.manawg.com`; fresh health and
+  own-WG/authenticated foreign-WG checks passed (200/401).
+- Preview: `dpl_6tskc352VSEJYi1NwJnQURc1zg1x`,
+  `manawg-3j43fosxj-abditubes-projects.vercel.app`. All 29 fetched scripts used
+  only the Preview Supabase host. Post-cleanup health returned database OK and
+  zero missing required configuration; KV/rate limiting and push were
+  intentionally disabled for the isolated Preview.
+- Its 25 temporary Preview-only env overrides were removed. All 51 original
+  env records retained their ID/key/type/target/branch metadata. The temporary
+  GitHub ref was removed only at the exact owned SHA; main and the primary WIP
+  were preserved. The initial Preview attempt without overrides was canceled
+  before build completion. Secret-bearing temporary artifacts were removed.
+- After explicit owner confirmation, the guarded Redis Lua operation deleted
+  exactly 552 reviewed persistent analytics keys containing 1,111 entries.
+  Fresh metadata matched fingerprint `b4871484...` before execution. A separate
+  TLS readback at `2026-09-30T19:18:42.525Z` found zero keys matching the reviewed
+  analytics namespace. This does not assert deletion of provider logs/backups.
+- A diagnostic accidentally printed two existing Vercel automation-bypass
+  secrets as protection-map keys into the internal tool log. Saved artifacts
+  were sanitized; no public disclosure or use is evidenced. App authentication
+  is still required. The owner explicitly deferred targeted rotation, including
+  possible updates to the repository and Preview GitHub secrets. CI work remains
+  deferred. No secret values are recorded here.
+- A later read of the previous EUR 0.01 Sandbox order returned provider HTTP
+  404; no capture or WG settlement was observed. The exact cause is not proven.
+  The existing Sandbox setup is retained; no replacement order was created.
+
+Later operational documentation edits do not change the delivered app source
+or dependency tree. The native delivery SHA above identifies the built app.
+
 ## Database and private storage
 
 - Production readback found 18 migrations through `0017`, 28 public tables,
@@ -92,15 +126,16 @@ at the owner's explicit request. No Production migration was performed.
 ## Remaining acceptance boundaries
 
 - The existing PayPal Sandbox credentials and seller readiness work (OAuth and
-  readiness HTTP 200). One EUR 0.01 order exists in CREATED state. Buyer
-  approval, capture and WG settlement are not proven. No new Sandbox setup or
-  Production credential change is required by this evidence.
-- Hosted Preview auth and own/foreign WG access now have controlled evidence
-  above. Full final-revision hosted journeys and native exact-SHA Preview
-  provenance remain separate from this focused probe; no CI success is claimed.
+  readiness HTTP 200 in the recorded probe). The EUR 0.01 order was initially
+  CREATED; its later read returned 404 as recorded above. Buyer approval,
+  capture and WG settlement are not proven. The existing Sandbox is retained.
+- Hosted Preview auth and own/foreign WG access have controlled evidence above;
+  the final native Preview also has exact GitSource SHA and health evidence.
+  Full final-revision hosted journeys remain separate from this focused probe;
+  no CI success is claimed.
 - Historical Upstash metadata scan found 552 persistent ZSET keys containing
-  1,111 entries. No event payloads were read. Deletion requires specific owner
-  confirmation; no deletion or TTL change has occurred.
+  1,111 entries. No event payloads were read. The owner-authorized deletion and
+  zero-key readback are recorded above; no TTL change was made.
   The guarded helper passed independent review, 17 Node 22 mock checks and
   eight real Lua scenarios against isolated official Redis (network none,
   tmpfs, no host mounts). Guard failures preserved all supplied keys. Temporary
