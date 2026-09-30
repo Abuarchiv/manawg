@@ -2,7 +2,7 @@
 
 Scope: hosted Supabase PostgreSQL and Auth, AWS S3 uploads (Supabase Storage if used), Upstash and Vercel. No local PostgreSQL substitute or custom backup service.
 
-**Status: documented procedure, not recovery evidence.** Repository behavior was inspected on 2026-09-03. Provider plans, backup/PITR availability and retention, restore capability, Auth settings, object protection, environment secrets and approval rules remain **UNVERIFIED** until an operator records current evidence. This document authorizes no remote action and does not declare ManaWG release-ready.
+**Status: hosted recovery evidence remains incomplete.** A fresh local export and isolated Supabase PostgreSQL 17.6 restore check passed on 2026-09-30; row counts matched for all 62 exported tables. This does not demonstrate provider-managed backups/PITR, offsite retention, complete Auth/Storage recovery, or measured RPO/RTO. No offsite destination is configured on the operator Mac. Provider backup status/retention, PITR, Auth settings, object protection, environment secrets and approval rules remain **UNVERIFIED** until an operator records current evidence. This document authorizes no remote action and does not declare ManaWG release-ready.
 
 ## Authority and stop conditions
 
@@ -49,6 +49,14 @@ The export completed at **01:15:28 UTC (03:15:28 Europe/Berlin)**. The disposabl
 | Session state | A fresh session reported `session_replication_role = origin`. |
 
 The Storage manifest contained **one bucket, zero objects and zero image references**. This proves the empty inventory was accounted for; it does not exercise object-byte recovery, attachment upload/read or provider deletion. The managed Auth/Storage schema reference restores database objects only; it is **not** an approved script to apply wholesale to a hosted Supabase project.
+
+### Current local evidence — 2026-09-30
+
+- The daily 03:15 Europe/Berlin LaunchAgent was loaded, but the 2026-09-28 through 2026-09-30 scheduled attempts failed at `roles.sql` while the OrbStack Docker socket was stopped. After starting OrbStack manually, the existing export completed at **2026-09-30 10:41:13 UTC**. This confirms the export path works when Docker is running; it does not fix the schedule's Docker availability dependency.
+- The completed export remains local-only. Its directory is `0700`; the manifest, status and export files are `0600`; FileVault is on; every export hash matches its manifest. The export contains 62 `COPY` sections and zero Storage objects.
+- The export restored into a disposable Supabase PostgreSQL 17.6 database over a Docker internal network with no application services. The drill initialized the `extensions` and `vault` schemas plus the empty `supabase_realtime` publication required by the dump, then restored roles, the managed Auth/Storage schema reference, the application schema and data. Row counts matched the source for all 62 `COPY` tables. The temporary project, database, container, volume and network were removed.
+- `tmutil destinationinfo` reports no Time Machine destination, and no `rclone`, `restic` or `borg` remote is configured. No offsite copy is evidenced. The zero-object export does not exercise Storage object-byte recovery. Provider-managed backup/PITR and measured RPO/RTO remain unverified.
+- A portable OpenPGP archive is staged with AES-256/OCB AEAD. GPG packet inspection and decrypt/hash verification matched all five source files. The archive and its separate random passphrase are `0600` under `0700` directories; FileVault is on. Nothing was uploaded. A user-approved offsite destination and separate key custody are still needed for an offsite copy.
 
 ### Local restore sequence
 
