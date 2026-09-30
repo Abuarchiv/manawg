@@ -648,65 +648,67 @@ export default function EinkaufPage() {
 	const remove = useCallback(
 		async (id: string): Promise<void> => {
 			if (isPending(id)) return;
-			setRemoveError(null);
-			setRemoveErrorId(null);
-			const queued = await discardQueuedEntry(wg.shareCode, id);
-			if (queued === 'storage_blocked') {
-				setRemoveErrorId(id);
-				setRemoveError(
-					'Offline-Speicher ist blockiert. Der vorgemerkte Artikel konnte nicht entfernt werden.',
-				);
-				return;
-			}
-			if (queued === 'removed' || isQueuedCreateId(id)) {
-				commitItems((prev) =>
-					keepItems(
-						prev,
-						prev.filter((item) => item.id !== id),
-					),
-				);
-				refreshCount();
-				setToggleNotice('Offline vorgemerkter Artikel wurde entfernt.');
-				return;
-			}
 			start(id);
-			const res = await apiFetch<unknown>(
-				`/api/wg/${encodedShareCode}/shopping/${encodeURIComponent(id)}`,
-				{
-					method: 'DELETE',
-					memberId: identity.memberId,
-					memberToken: identity.memberToken,
-				},
-			);
-			if (!res.ok) {
-				if (res.status === 403) {
+			try {
+				setRemoveError(null);
+				setRemoveErrorId(null);
+				const queued = await discardQueuedEntry(wg.shareCode, id);
+				if (queued === 'storage_blocked') {
 					setRemoveErrorId(id);
-					setRemoveError('Nur der/die Autor:in kann diesen Eintrag entfernen.');
-				} else if (res.status === 404 && res.error === 'item_not_found') {
+					setRemoveError(
+						'Offline-Speicher ist blockiert. Der vorgemerkte Artikel konnte nicht entfernt werden.',
+					);
+					return;
+				}
+				if (queued === 'removed' || isQueuedCreateId(id)) {
 					commitItems((prev) =>
 						keepItems(
 							prev,
 							prev.filter((item) => item.id !== id),
 						),
 					);
-					setRemoveError(
-						'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
-					);
-				} else {
-					setRemoveErrorId(id);
-					setRemoveError(shoppingActionErrorMessage(res.error, 'Entfernen fehlgeschlagen.'));
+					refreshCount();
+					setToggleNotice('Offline vorgemerkter Artikel wurde entfernt.');
+					return;
 				}
+				const res = await apiFetch<unknown>(
+					`/api/wg/${encodedShareCode}/shopping/${encodeURIComponent(id)}`,
+					{
+						method: 'DELETE',
+						memberId: identity.memberId,
+						memberToken: identity.memberToken,
+					},
+				);
+				if (!res.ok) {
+					if (res.status === 403) {
+						setRemoveErrorId(id);
+						setRemoveError('Nur der/die Autor:in kann diesen Eintrag entfernen.');
+					} else if (res.status === 404 && res.error === 'item_not_found') {
+						commitItems((prev) =>
+							keepItems(
+								prev,
+								prev.filter((item) => item.id !== id),
+							),
+						);
+						setRemoveError(
+							'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
+						);
+					} else {
+						setRemoveErrorId(id);
+						setRemoveError(shoppingActionErrorMessage(res.error, 'Entfernen fehlgeschlagen.'));
+					}
+					return;
+				}
+				commitItems((prev) =>
+					keepItems(
+						prev,
+						prev.filter((item) => item.id !== id),
+					),
+				);
+				void load(true);
+			} finally {
 				end(id);
-				return;
 			}
-			commitItems((prev) =>
-				keepItems(
-					prev,
-					prev.filter((item) => item.id !== id),
-				),
-			);
-			void load(true);
-			end(id);
 		},
 		[
 			end,

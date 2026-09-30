@@ -700,22 +700,22 @@ export default function PutzenPage() {
 	async function removeAbsence(id: string): Promise<void> {
 		const pendingKey = `absence:${id}:remove`;
 		if (isPending(pendingKey)) return;
-		const queued = await discardQueuedEntry(wg.shareCode, id);
-		if (queued === 'storage_blocked') {
-			setActionError(
-				'Offline-Speicher ist blockiert. Die vorgemerkte Abwesenheit konnte nicht entfernt werden.',
-			);
-			return;
-		}
-		if (queued === 'removed' || isQueuedCreateId(id)) {
-			updateAbsences((current) => current.filter((absence) => absence.id !== id));
-			refreshCount();
-			setActionError(null);
-			setActionNotice('Offline vorgemerkte Abwesenheit wurde entfernt.');
-			return;
-		}
 		startPending(pendingKey);
 		try {
+			const queued = await discardQueuedEntry(wg.shareCode, id);
+			if (queued === 'storage_blocked') {
+				setActionError(
+					'Offline-Speicher ist blockiert. Die vorgemerkte Abwesenheit konnte nicht entfernt werden.',
+				);
+				return;
+			}
+			if (queued === 'removed' || isQueuedCreateId(id)) {
+				updateAbsences((current) => current.filter((absence) => absence.id !== id));
+				refreshCount();
+				setActionError(null);
+				setActionNotice('Offline vorgemerkte Abwesenheit wurde entfernt.');
+				return;
+			}
 			const result = await apiFetch<Record<string, never>>(
 				`/api/wg/${encodedShareCode}/absences/${encodeURIComponent(id)}`,
 				{
@@ -1001,54 +1001,56 @@ export default function PutzenPage() {
 
 	async function handleRemove(id: string): Promise<void> {
 		if (isPending(id)) return;
-		setActionError(null);
-		setActionNotice(null);
-		const queued = await discardQueuedEntry(wg.shareCode, id);
-		if (queued === 'storage_blocked') {
-			setActionError(
-				'Offline-Speicher ist blockiert. Die vorgemerkte Aufgabe konnte nicht entfernt werden.',
-			);
-			return;
-		}
-		if (queued === 'removed' || isQueuedCreateId(id)) {
-			setItems((current) => current.filter((item) => item.id !== id));
-			refreshCount();
-			setActionNotice('Offline vorgemerkte Aufgabe wurde entfernt.');
-			return;
-		}
 		startPending(id);
+		try {
+			setActionError(null);
+			setActionNotice(null);
+			const queued = await discardQueuedEntry(wg.shareCode, id);
+			if (queued === 'storage_blocked') {
+				setActionError(
+					'Offline-Speicher ist blockiert. Die vorgemerkte Aufgabe konnte nicht entfernt werden.',
+				);
+				return;
+			}
+			if (queued === 'removed' || isQueuedCreateId(id)) {
+				setItems((current) => current.filter((item) => item.id !== id));
+				refreshCount();
+				setActionNotice('Offline vorgemerkte Aufgabe wurde entfernt.');
+				return;
+			}
 
-		const result = await apiFetch<Record<string, never>>(
-			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(id)}`,
-			{
-				method: 'DELETE',
-				memberId: identity.memberId,
-				memberToken: identity.memberToken,
-			},
-		);
+			const result = await apiFetch<Record<string, never>>(
+				`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(id)}`,
+				{
+					method: 'DELETE',
+					memberId: identity.memberId,
+					memberToken: identity.memberToken,
+				},
+			);
 
-		if (!result.ok) {
-			const msg =
-				result.status === 403
-					? 'Nur WG-Admins können diese Aufgabe endgültig entfernen.'
-					: result.status === 404 && result.error === 'chore_not_found'
-						? 'Diese Putzaufgabe existiert nicht mehr und wurde aus dem Plan entfernt.'
-						: result.status === 0 ||
-								result.error === 'Netzwerkfehler' ||
-								result.error === 'Failed to fetch'
-							? 'Entfernen fehlgeschlagen: Prüfe deine Verbindung und versuche es erneut.'
-							: 'Entfernen fehlgeschlagen.';
-			setActionError(msg);
-			if (result.status === 404 && result.error === 'chore_not_found') {
+			if (!result.ok) {
+				const msg =
+					result.status === 403
+						? 'Nur WG-Admins können diese Aufgabe endgültig entfernen.'
+						: result.status === 404 && result.error === 'chore_not_found'
+							? 'Diese Putzaufgabe existiert nicht mehr und wurde aus dem Plan entfernt.'
+							: result.status === 0 ||
+									result.error === 'Netzwerkfehler' ||
+									result.error === 'Failed to fetch'
+								? 'Entfernen fehlgeschlagen: Prüfe deine Verbindung und versuche es erneut.'
+								: 'Entfernen fehlgeschlagen.';
+				setActionError(msg);
+				if (result.status === 404 && result.error === 'chore_not_found') {
+					setItems((current) => current.filter((item) => item.id !== id));
+					void load(false);
+				}
+			} else {
 				setItems((current) => current.filter((item) => item.id !== id));
 				void load(false);
 			}
-		} else {
-			setItems((current) => current.filter((item) => item.id !== id));
-			void load(false);
+		} finally {
+			endPending(id);
 		}
-
-		endPending(id);
 	}
 
 	function memberLookup(id: string | null): MemberInfo {
