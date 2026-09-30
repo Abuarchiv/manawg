@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
 
 test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+test.use({ serviceWorkers: 'block' });
 
 const SHARE_CODE = 'MTE8PZAT';
 const MEMBER_ID = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
@@ -256,6 +257,7 @@ test('comment delete requires confirmation and only removes the comment once con
 		async (route) => {
 			if (route.request().method() !== 'DELETE') return route.continue();
 			deleteRequests += 1;
+			post.comments = [];
 			return route.fulfill({ json: {} });
 		},
 	);

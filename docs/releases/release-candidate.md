@@ -1,5 +1,9 @@
 # ManaWG Release Candidate Evidence
 
+Latest dated readback: [2026-09-30 release evidence](2026-09-30-release-evidence.md).
+CI work is explicitly deferred by the owner; historical gates below remain
+historical evidence and are not claimed passed for the latest revision.
+
 This is a dated evidence log, not a standing release approval. Older branch names, candidate SHAs, and blockers describe only their recorded date.
 
 Production migration requires a successful `push` run of `.github/workflows/ci.yml` for the exact current `main` candidate SHA, with both `validate` and `e2e-fixtures` successful. A read-only Actions API preflight verifies this before the workflow enters the protected Production environment; the separate exact-SHA Preview evidence and explicit confirmation remain required.

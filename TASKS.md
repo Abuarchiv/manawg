@@ -1,6 +1,27 @@
 # ManaWG Release Readiness
 
-## Aktuelle Freigabelage — 2026-09-25
+## Aktueller Nachweis — 2026-09-30
+
+Production ist auf `746f889` verifiziert: frische Health- und Auth-Abgrenzungs-
+Prüfungen bestanden. Privater Storage-Upload/Read/Revocation und DB-Migrationsstand
+sind am vorherigen quellgleichen App-Stand `6aa0b666` bestätigt. Die korrigierte
+Dependency-Version bestand 393 Unit-/Route-Tests; 512 Chromium-Fixture-Fälle
+bestanden vor der Lock-Korrektur. Hosted Preview:
+frischer Login, eigene Test-WG (200), Fremdnutzer-Abgrenzung (401) und vollständiger
+Cleanup bestätigt. Nativer Preview auf `746f889` mit GitSource-SHA und Health
+bestätigt; vollständige CI-Gates und echte Geräte bleiben getrennte offene
+Abnahmen. Frischer lokaler Restore: 62/62
+Datenabschnitte. MCP und Datenschutz-Landing wurden geliefert.
+
+Die freigegebene Analytics-Bereinigung löschte 552 Keys; Readback: null verbleibend.
+CI und gezielte Vercel-Bypass-Token-Rotation bleiben auf Nutzerwunsch zurückgestellt.
+Sandbox-Zahlungstest, Offsite-Backup/Key-Custody sowie echte Telefon- und
+Alarmempfangsabnahme bleiben offen. Details und Beweisgrenzen:
+[Release evidence](docs/releases/2026-09-30-release-evidence.md).
+
+Die folgenden älteren Abschnitte sind historische Zustände.
+
+## Historische Freigabelage — 2026-09-25
 
 - **Nicht release-ready.** Die PRs #444 und #449 sind auf `main` gelandet. Beim letzten Readback stand `origin/main` auf `519ebc2`; sein Push-CI-Lauf `36162244967` bestand einschließlich Preview-Datenbankcheck, aber `e2e-preview` wurde übersprungen. `app.manawg.com` zeigt weiterhin einen älteren READY-Deploy; für diesen Main-SHA fehlen exakter Hosted-Preview- und Production-Nachweis.
 - Auf dem aktuellen Main-SHA bestanden GitHub-`validate` und 337 Fixture-E2E-Tests; 39 Hosted-Fälle wurden übersprungen. Ein früherer lokaler Produktionsmodus-Mobilcheck prüfte 20 Kombinationen bei 320/390 px in Hell/Dunkel ohne horizontalen Überlauf oder CSP-Fehler. Fixture- und Mobilbefunde ersetzen keine echten Geräte oder Residenten.
