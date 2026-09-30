@@ -17,9 +17,8 @@ import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offlin
 import {
 	enqueueOfflineAction,
 	isOfflineActionQueued,
-	readOfflineQueue,
 	syncOfflineActions,
-	writeOfflineQueue,
+	updateOfflineQueue,
 } from '@/core/offline/offline-client';
 import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
@@ -483,9 +482,13 @@ export default function PinnwandPage(): React.ReactElement {
 		commitItems(itemsRef.current.map((item) => (item.id === id ? updater(item) : item)));
 	}
 
-	function clearEditedQueueItem(): boolean {
+	async function clearEditedQueueItem(): Promise<boolean> {
 		if (!queueEditId) return true;
-		const saved = writeOfflineQueue(readOfflineQueue().filter((item) => item.id !== queueEditId));
+		const saved = await updateOfflineQueue((actions) =>
+			actions.some((item) => item.id === queueEditId)
+				? actions.filter((item) => item.id !== queueEditId)
+				: null,
+		);
 		if (!saved) return false;
 		setQueueEditId(null);
 		return true;
@@ -566,13 +569,13 @@ export default function PinnwandPage(): React.ReactElement {
 						kind,
 						imageUrl,
 					});
-					if (enqueueOfflineAction(queued) === 0) {
+					if ((await enqueueOfflineAction(queued)) === 0) {
 						setError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
 					announcementIdempotencyKeyRef.current = null;
 					refreshCount();
-					if (!clearEditedQueueItem()) {
+					if (!(await clearEditedQueueItem())) {
 						setError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
@@ -592,7 +595,7 @@ export default function PinnwandPage(): React.ReactElement {
 			setContent('');
 			setKind('info');
 			setImageUrl(null);
-			if (!clearEditedQueueItem()) {
+			if (!(await clearEditedQueueItem())) {
 				setError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}

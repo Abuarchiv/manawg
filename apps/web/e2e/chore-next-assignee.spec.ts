@@ -1,4 +1,5 @@
 import { type Locator, expect, test } from '@playwright/test';
+import { buildDraftKey } from '../src/core/offline/drafts';
 import { chooseNextAvailableMember } from '../src/features/chores/chore-fairness';
 import { MEMBER_TOKEN_HEADER } from '../src/shared/lib/member-header';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
@@ -275,7 +276,11 @@ test('states when no active member is eligible for the next round', async ({ pag
 	const departedMember: FixtureMember = { id: 'dora', name: 'Dora', color: null, active: false };
 	const members = [viewer, choreOwner, departedMember];
 	const chores = [chore('no-successor', 'anna')];
-	const absences = [absence(viewer), absence(choreOwner)];
+	const nextDueCoveredUntil = new Date(Date.now() + 8 * 86_400_000).toISOString();
+	const absences = [absence(viewer), absence(choreOwner)].map((entry) => ({
+		...entry,
+		endDate: nextDueCoveredUntil,
+	}));
 	const activeMembers = members
 		.filter((member) => member.active)
 		.map(({ id, name }) => ({ id, name }));
@@ -332,4 +337,105 @@ test('wraps a long predicted name at phone widths in both themes', async ({ page
 			});
 		}
 	}
+});
+
+test('restores the automatic assignee for a titled draft and posts it', async ({ page }) => {
+	const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+	await openPutzen(page, [viewer], [], []);
+	await page.getByRole('button', { name: 'Putzaufgabe erfassen' }).click();
+
+	const title = page.getByPlaceholder('z. B. Müll rausbringen');
+	const assignee = page.getByLabel('Zuständig');
+	await title.fill('Automatisch zugewiesener Entwurf');
+	await expect(assignee).toHaveValue(CURRENT_MEMBER);
+	await page.reload();
+	await expect(title).toBeVisible();
+	await expect(title).toHaveValue('Automatisch zugewiesener Entwurf');
+	await expect(assignee).toHaveValue(CURRENT_MEMBER);
+
+	let postedAssigneeId: unknown;
+	await page.route(`**/api/wg/${SHARE_CODE}/chores`, async (route) => {
+		if (route.request().method() === 'POST') {
+			postedAssigneeId = route.request().postDataJSON().assignedMemberId;
+			await route.fulfill({ status: 201, json: { warning: null } });
+			return;
+		}
+		await route.fallback();
+	});
+	await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
+	await expect.poll(() => postedAssigneeId).toBe(CURRENT_MEMBER);
+});
+
+test('preserves explicit and legacy unassigned chore drafts', async ({ page }) => {
+	const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+	await openPutzen(page, [viewer], [], []);
+	await page.getByRole('button', { name: 'Putzaufgabe erfassen' }).click();
+
+	const title = page.getByPlaceholder('z. B. Müll rausbringen');
+	const assignee = page.getByLabel('Zuständig');
+	await title.fill('Ohne Zuständigkeit');
+	await expect(assignee).toHaveValue(CURRENT_MEMBER);
+	await assignee.selectOption('');
+	const draftKey = buildDraftKey(SHARE_CODE, CURRENT_MEMBER, 'chore');
+	await expect
+		.poll(() =>
+			page.evaluate((key) => {
+				const raw = localStorage.getItem(key);
+				return raw ? (JSON.parse(raw) as Record<string, unknown>).assigneeTouched : undefined;
+			}, draftKey),
+		)
+		.toBe(true);
+	await page.reload();
+	await expect(title).toBeVisible();
+	await expect(assignee).toHaveValue('');
+
+	await page.evaluate(
+		(key) =>
+			localStorage.setItem(
+				key,
+				JSON.stringify({
+					title: 'Legacy empty assignee',
+					intervalDays: 7,
+					recurrenceType: 'days',
+					assignedMemberId: '',
+				}),
+			),
+		draftKey,
+	);
+	await page.reload();
+	await expect(title).toBeVisible();
+	await expect(title).toHaveValue('Legacy empty assignee');
+	await expect(assignee).toHaveValue('');
+});
+
+test('does not reopen an untouched empty chore form after reload', async ({ page }) => {
+	const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+	await openPutzen(page, [viewer], [], []);
+	await page.getByRole('button', { name: 'Putzaufgabe erfassen' }).click();
+	const title = page.getByPlaceholder('z. B. Müll rausbringen');
+	await expect(title).toBeVisible();
+	await page.reload();
+	await expect(title).toBeHidden();
+});
+
+test('keeps each compact chore action reachable at its painted edge', async ({ page }) => {
+	const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+	const flatmate: FixtureMember = {
+		id: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
+		name: 'Mina',
+		color: null,
+		active: true,
+	};
+	const title = 'Edge-hit dishwasher';
+	await openPutzen(page, [viewer, flatmate], [{ ...chore('edge-hit', flatmate.id), title }], []);
+
+	const row = page.locator('#chore-edge-hit');
+	const complete = row.getByRole('button', { name: `Als erledigt markieren: ${title}` });
+	const completeBox = await complete.boundingBox();
+	if (!completeBox) throw new Error('The completion button is not visible.');
+	await page.mouse.click(
+		completeBox.x + completeBox.width - 1,
+		completeBox.y + completeBox.height / 2,
+	);
+	await expect(page.getByRole('alertdialog')).toBeVisible();
 });

@@ -89,10 +89,12 @@ test('keeps the Pinnwand loading skeleton within a 320px viewport at 200% text',
 
 test('shows refresh error while cached Pinnwand posts stay visible', async ({ page }) => {
 	await setupMember(page);
+	let phase: 'startup' | 'controlled' = 'startup';
 	let failReads = false;
 	let failedReads = 0;
 	let initialReadPending = true;
 	const initialRead = createRequestGate();
+	const cached = announcement('post-cached', 'Cache-Beitrag');
 	await page.route(`**/api/wg/${SHARE_CODE}/announcements*`, async (route) => {
 		if (route.request().method() !== 'GET') return route.continue();
 		if (initialReadPending) {
@@ -100,13 +102,14 @@ test('shows refresh error while cached Pinnwand posts stay visible', async ({ pa
 			initialRead.markStarted();
 			await initialRead.gate;
 		}
+		if (phase === 'startup') {
+			return route.fulfill({ json: { announcements: [cached] } });
+		}
 		if (failReads) {
 			failedReads += 1;
 			return route.fulfill({ status: 503, json: { error: 'service_unavailable' } });
 		}
-		return route.fulfill({
-			json: { announcements: [announcement('post-cached', 'Cache-Beitrag')] },
-		});
+		return route.fulfill({ json: { announcements: [cached] } });
 	});
 
 	await navigateToFeature(page, `/wg/${SHARE_CODE}/pinnwand`);
@@ -114,7 +117,10 @@ test('shows refresh error while cached Pinnwand posts stay visible', async ({ pa
 	await initialRead.started;
 	initialRead.release();
 	await expect(page.getByText('Cache-Beitrag', { exact: true })).toBeVisible();
+	await page.bringToFront();
+	await page.waitForLoadState('networkidle');
 
+	phase = 'controlled';
 	failReads = true;
 	await page.evaluate(() => window.dispatchEvent(new Event('focus')));
 	await expect.poll(() => failedReads).toBeGreaterThanOrEqual(1);
@@ -170,6 +176,7 @@ test('removes a cached Pinnwand post missing from the focus refresh', async ({ p
 
 test('does not resurrect a deleted post after two pending refreshes', async ({ page }) => {
 	await setupMember(page);
+	let phase: 'startup' | 'controlled' = 'startup';
 	let nextRefresh: ReturnType<typeof announcement>[] | null = null;
 	let refreshReads = 0;
 	let markSecondRefreshFulfilled: () => void = () => {};
@@ -187,6 +194,9 @@ test('does not resurrect a deleted post after two pending refreshes', async ({ p
 			initialRead.markStarted();
 			await initialRead.gate;
 		}
+		if (phase === 'startup') {
+			return route.fulfill({ json: { announcements: [retained] } });
+		}
 		if (nextRefresh) {
 			const response = nextRefresh;
 			nextRefresh = null;
@@ -203,7 +213,10 @@ test('does not resurrect a deleted post after two pending refreshes', async ({ p
 	await initialRead.started;
 	initialRead.release();
 	await expect(page.getByText('Beitrag A', { exact: true })).toBeVisible();
+	await page.bringToFront();
+	await page.waitForLoadState('networkidle');
 
+	phase = 'controlled';
 	const pendingButton = page.getByRole('button', { name: /neue Beitr/ });
 	nextRefresh = [retained, deleted];
 	await page.evaluate(() => window.dispatchEvent(new Event('focus')));

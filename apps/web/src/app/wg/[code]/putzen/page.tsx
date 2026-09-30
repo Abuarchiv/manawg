@@ -33,9 +33,8 @@ import {
 	discardQueuedEntry,
 	enqueueOfflineAction,
 	isOfflineActionQueued,
-	readOfflineQueue,
 	syncOfflineActions,
-	writeOfflineQueue,
+	updateOfflineQueue,
 } from '@/core/offline/offline-client';
 import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
@@ -267,6 +266,7 @@ export default function PutzenPage() {
 			intervalDays?: number;
 			recurrenceType?: RecurrenceType;
 			assignedMemberId?: string;
+			assigneeTouched?: boolean;
 			absenceMemberId?: string;
 			absenceStartDate?: string;
 			absenceEndDate?: string;
@@ -278,8 +278,10 @@ export default function PutzenPage() {
 			setDraftHydrated(true);
 			return;
 		}
-		if (!isEmptyModuleDraft('chore', draft, identity.memberId)) {
-			assigneeTouchedRef.current = true;
+		const { assigneeTouched: savedAssigneeTouched, ...formDraft } = draft;
+		if (!isEmptyModuleDraft('chore', formDraft, identity.memberId)) {
+			assigneeTouchedRef.current =
+				typeof savedAssigneeTouched === 'boolean' ? savedAssigneeTouched : true;
 			setShowForm(true);
 		}
 		if (draft.title) {
@@ -343,8 +345,11 @@ export default function PutzenPage() {
 
 	useEffect(() => {
 		if (!draftHydrated) return;
-		writeDraft(draftKey, {
-			...readDraft<Record<string, unknown>>(draftKey),
+		const { assigneeTouched: _previousAssigneeTouched, ...previousDraft } =
+			readDraft<Record<string, unknown>>(draftKey) ?? {};
+		void _previousAssigneeTouched;
+		const draft = {
+			...previousDraft,
 			title: newTitle,
 			recurrenceType: newRecurrenceType,
 			intervalDays: newInterval,
@@ -356,7 +361,13 @@ export default function PutzenPage() {
 			absenceEndDate: absenceEnd,
 			absenceReason,
 			queueEditId,
-		});
+		};
+		writeDraft(
+			draftKey,
+			isEmptyModuleDraft('chore', draft, identity.memberId)
+				? draft
+				: { ...draft, assigneeTouched: assigneeTouchedRef.current },
+		);
 	}, [
 		absenceEnd,
 		absenceMemberId,
@@ -364,6 +375,7 @@ export default function PutzenPage() {
 		absenceStart,
 		draftHydrated,
 		draftKey,
+		identity.memberId,
 		newAssigned,
 		newInterval,
 		newRecurrenceType,
@@ -408,13 +420,13 @@ export default function PutzenPage() {
 		}, 80);
 	}, [absenceId, absencesPanelActive]);
 
-	function clearEditedQueueItem(expectedTypes?: OfflineActionType[]): boolean {
+	async function clearEditedQueueItem(expectedTypes?: OfflineActionType[]): Promise<boolean> {
 		if (!queueEditId) return true;
-		if (expectedTypes) {
-			const queued = readOfflineQueue().find((item) => item.id === queueEditId);
-			if (!queued || !expectedTypes.includes(queued.type)) return true;
-		}
-		const saved = writeOfflineQueue(readOfflineQueue().filter((item) => item.id !== queueEditId));
+		const saved = await updateOfflineQueue((actions) => {
+			const queued = actions.find((item) => item.id === queueEditId);
+			if (!queued || (expectedTypes && !expectedTypes.includes(queued.type))) return null;
+			return actions.filter((item) => item.id !== queueEditId);
+		});
 		if (!saved) return false;
 		setQueueEditId(null);
 		return true;
@@ -495,7 +507,7 @@ export default function PutzenPage() {
 						recurrenceType: newRecurrenceType,
 						assignedMemberId: newAssigned || null,
 					});
-					if (enqueueOfflineAction(queued) === 0) {
+					if ((await enqueueOfflineAction(queued)) === 0) {
 						setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
@@ -519,7 +531,7 @@ export default function PutzenPage() {
 					setNewInterval(7);
 					setNewRecurrenceType('days');
 					setNewAssigned('');
-					if (!clearEditedQueueItem(['chore.create'])) {
+					if (!(await clearEditedQueueItem(['chore.create']))) {
 						setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
@@ -540,7 +552,7 @@ export default function PutzenPage() {
 			setNewInterval(7);
 			setNewRecurrenceType('days');
 			setNewAssigned('');
-			if (!clearEditedQueueItem(['chore.create'])) {
+			if (!(await clearEditedQueueItem(['chore.create']))) {
 				setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
@@ -636,12 +648,12 @@ export default function PutzenPage() {
 						endDate,
 						reason: absenceReason.trim() || null,
 					});
-					if (enqueueOfflineAction(queued) === 0) {
+					if ((await enqueueOfflineAction(queued)) === 0) {
 						setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
 					absenceCreateRequestRef.current = null;
-					if (!clearEditedQueueItem(['absence.create'])) {
+					if (!(await clearEditedQueueItem(['absence.create']))) {
 						setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
@@ -673,7 +685,7 @@ export default function PutzenPage() {
 			setAbsenceStart('');
 			setAbsenceEnd('');
 			setAbsenceReason('');
-			if (!clearEditedQueueItem(['absence.create'])) {
+			if (!(await clearEditedQueueItem(['absence.create']))) {
 				setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
@@ -688,22 +700,22 @@ export default function PutzenPage() {
 	async function removeAbsence(id: string): Promise<void> {
 		const pendingKey = `absence:${id}:remove`;
 		if (isPending(pendingKey)) return;
-		const queued = discardQueuedEntry(wg.shareCode, id);
-		if (queued === 'storage_blocked') {
-			setActionError(
-				'Offline-Speicher ist blockiert. Die vorgemerkte Abwesenheit konnte nicht entfernt werden.',
-			);
-			return;
-		}
-		if (queued === 'removed' || isQueuedCreateId(id)) {
-			updateAbsences((current) => current.filter((absence) => absence.id !== id));
-			refreshCount();
-			setActionError(null);
-			setActionNotice('Offline vorgemerkte Abwesenheit wurde entfernt.');
-			return;
-		}
 		startPending(pendingKey);
 		try {
+			const queued = await discardQueuedEntry(wg.shareCode, id);
+			if (queued === 'storage_blocked') {
+				setActionError(
+					'Offline-Speicher ist blockiert. Die vorgemerkte Abwesenheit konnte nicht entfernt werden.',
+				);
+				return;
+			}
+			if (queued === 'removed' || isQueuedCreateId(id)) {
+				updateAbsences((current) => current.filter((absence) => absence.id !== id));
+				refreshCount();
+				setActionError(null);
+				setActionNotice('Offline vorgemerkte Abwesenheit wurde entfernt.');
+				return;
+			}
 			const result = await apiFetch<Record<string, never>>(
 				`/api/wg/${encodedShareCode}/absences/${encodeURIComponent(id)}`,
 				{
@@ -776,7 +788,7 @@ export default function PutzenPage() {
 			if (result.status > 0 && result.status < 500 && result.status !== 429)
 				completionRequestKeysRef.current.delete(chore.id);
 			if (result.status === 0) {
-				const queuedCount = enqueueOfflineAction(
+				const queuedCount = await enqueueOfflineAction(
 					createQueuedChoreCompletion({
 						wgId: wg.id,
 						shareCode: wg.shareCode,
@@ -989,54 +1001,56 @@ export default function PutzenPage() {
 
 	async function handleRemove(id: string): Promise<void> {
 		if (isPending(id)) return;
-		setActionError(null);
-		setActionNotice(null);
-		const queued = discardQueuedEntry(wg.shareCode, id);
-		if (queued === 'storage_blocked') {
-			setActionError(
-				'Offline-Speicher ist blockiert. Die vorgemerkte Aufgabe konnte nicht entfernt werden.',
-			);
-			return;
-		}
-		if (queued === 'removed' || isQueuedCreateId(id)) {
-			setItems((current) => current.filter((item) => item.id !== id));
-			refreshCount();
-			setActionNotice('Offline vorgemerkte Aufgabe wurde entfernt.');
-			return;
-		}
 		startPending(id);
+		try {
+			setActionError(null);
+			setActionNotice(null);
+			const queued = await discardQueuedEntry(wg.shareCode, id);
+			if (queued === 'storage_blocked') {
+				setActionError(
+					'Offline-Speicher ist blockiert. Die vorgemerkte Aufgabe konnte nicht entfernt werden.',
+				);
+				return;
+			}
+			if (queued === 'removed' || isQueuedCreateId(id)) {
+				setItems((current) => current.filter((item) => item.id !== id));
+				refreshCount();
+				setActionNotice('Offline vorgemerkte Aufgabe wurde entfernt.');
+				return;
+			}
 
-		const result = await apiFetch<Record<string, never>>(
-			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(id)}`,
-			{
-				method: 'DELETE',
-				memberId: identity.memberId,
-				memberToken: identity.memberToken,
-			},
-		);
+			const result = await apiFetch<Record<string, never>>(
+				`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(id)}`,
+				{
+					method: 'DELETE',
+					memberId: identity.memberId,
+					memberToken: identity.memberToken,
+				},
+			);
 
-		if (!result.ok) {
-			const msg =
-				result.status === 403
-					? 'Nur WG-Admins können diese Aufgabe endgültig entfernen.'
-					: result.status === 404 && result.error === 'chore_not_found'
-						? 'Diese Putzaufgabe existiert nicht mehr und wurde aus dem Plan entfernt.'
-						: result.status === 0 ||
-								result.error === 'Netzwerkfehler' ||
-								result.error === 'Failed to fetch'
-							? 'Entfernen fehlgeschlagen: Prüfe deine Verbindung und versuche es erneut.'
-							: 'Entfernen fehlgeschlagen.';
-			setActionError(msg);
-			if (result.status === 404 && result.error === 'chore_not_found') {
+			if (!result.ok) {
+				const msg =
+					result.status === 403
+						? 'Nur WG-Admins können diese Aufgabe endgültig entfernen.'
+						: result.status === 404 && result.error === 'chore_not_found'
+							? 'Diese Putzaufgabe existiert nicht mehr und wurde aus dem Plan entfernt.'
+							: result.status === 0 ||
+									result.error === 'Netzwerkfehler' ||
+									result.error === 'Failed to fetch'
+								? 'Entfernen fehlgeschlagen: Prüfe deine Verbindung und versuche es erneut.'
+								: 'Entfernen fehlgeschlagen.';
+				setActionError(msg);
+				if (result.status === 404 && result.error === 'chore_not_found') {
+					setItems((current) => current.filter((item) => item.id !== id));
+					void load(false);
+				}
+			} else {
 				setItems((current) => current.filter((item) => item.id !== id));
 				void load(false);
 			}
-		} else {
-			setItems((current) => current.filter((item) => item.id !== id));
-			void load(false);
+		} finally {
+			endPending(id);
 		}
-
-		endPending(id);
 	}
 
 	function memberLookup(id: string | null): MemberInfo {

@@ -18,6 +18,7 @@ import {
 	PAYPAL_CONNECTION_COOKIE_NAME,
 	createPayPalConnectionCookie,
 	createPayPalPartnerReferral,
+	getPayPalMerchantIdByTracking,
 	getPayPalOnboardingConfig,
 	getPayPalTrackingId,
 	isPayPalMerchantId,
@@ -35,6 +36,7 @@ import { z } from 'zod';
 
 const COOKIE_MAX_AGE = 30 * 60;
 const startSchema = z.object({ action: z.literal('start'), consent: z.literal(true) }).strict();
+const completeSchema = z.object({ action: z.literal('complete') }).strict();
 const confirmSchema = z
 	.object({ action: z.literal('confirm'), merchantId: z.string().refine(isPayPalMerchantId) })
 	.strict();
@@ -96,7 +98,8 @@ export const POST = withWgRoute<{ code: string }>('paypal connect POST', async (
 	}
 	const start = startSchema.safeParse(raw);
 	const confirm = confirmSchema.safeParse(raw);
-	if (!start.success && !confirm.success) {
+	const complete = completeSchema.safeParse(raw);
+	if (!start.success && !confirm.success && !complete.success) {
 		const error =
 			raw &&
 			typeof raw === 'object' &&
@@ -159,8 +162,6 @@ export const POST = withWgRoute<{ code: string }>('paypal connect POST', async (
 			return serverError('paypal_onboarding_start_failed');
 		}
 	}
-	if (!confirm.success) return badRequest('paypal_request_invalid');
-	const confirmation = confirm.data;
 
 	const state = verifyPayPalConnectionCookie(cookieValue(req), {
 		wgId: auth.wg.id,
@@ -169,17 +170,37 @@ export const POST = withWgRoute<{ code: string }>('paypal connect POST', async (
 		code,
 		environment: config.environment,
 	});
-	if (!state) return conflict('paypal_connection_expired');
-	if (!confirm.success) return badRequest('paypal_request_invalid');
+	if (
+		!state ||
+		state.trackingId !== getPayPalTrackingId(auth.authUserId, config.clientId, config.environment)
+	) {
+		return conflict('paypal_connection_expired');
+	}
+	let merchantId = confirm.success ? confirm.data.merchantId : null;
 
 	let ready: boolean;
 	try {
-		ready = await isPayPalMerchantReady(confirmation.merchantId, state.trackingId);
+		const [member] = await db
+			.select({ paypalMerchantId: wgMembers.paypalMerchantId })
+			.from(wgMembers)
+			.where(and(eq(wgMembers.id, auth.member.memberId), eq(wgMembers.wgId, auth.wg.id)))
+			.limit(1);
+		if (!member) return notFound('member_not_found');
+		if (
+			(member.paypalMerchantId ?? null) !== state.expectedPreviousMerchantId &&
+			!(confirm.success && member.paypalMerchantId === merchantId)
+		) {
+			return conflict('paypal_account_already_connected');
+		}
+		if (complete.success) merchantId = await getPayPalMerchantIdByTracking(state.trackingId);
+		if (!merchantId) return conflict('paypal_onboarding_pending');
+		ready = await isPayPalMerchantReady(merchantId, state.trackingId);
 	} catch (err) {
 		logApiError('[paypal connect verification]', err);
 		return serverError('paypal_verification_failed');
 	}
-	if (!ready) return conflict('paypal_onboarding_pending');
+	if (!ready || !merchantId) return conflict('paypal_onboarding_pending');
+	const verifiedMerchantId = merchantId;
 
 	try {
 		const result = await withExpensePaymentLock(auth.wg.id, async (tx) => {
@@ -196,7 +217,7 @@ export const POST = withWgRoute<{ code: string }>('paypal connect POST', async (
 				.where(and(eq(wgMembers.id, auth.member.memberId), eq(wgMembers.wgId, auth.wg.id)))
 				.for('update');
 			if (!member) return 'member_not_found' as const;
-			if (member.paypalMerchantId !== confirmation.merchantId) {
+			if (member.paypalMerchantId !== verifiedMerchantId) {
 				if ((member.paypalMerchantId ?? null) !== state.expectedPreviousMerchantId) {
 					return 'paypal_account_already_connected' as const;
 				}
@@ -205,7 +226,7 @@ export const POST = withWgRoute<{ code: string }>('paypal connect POST', async (
 				}
 				await tx
 					.update(wgMembers)
-					.set({ paypalMerchantId: confirmation.merchantId })
+					.set({ paypalMerchantId: verifiedMerchantId })
 					.where(and(eq(wgMembers.id, auth.member.memberId), eq(wgMembers.wgId, auth.wg.id)));
 			}
 			return 'connected' as const;

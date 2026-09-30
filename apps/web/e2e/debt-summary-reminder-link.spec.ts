@@ -9,13 +9,14 @@ test('keeps finance actions and expense summary keyboard-operable at phone sizes
 }, testInfo) => {
 	const { shareCode, memberId } = FIXTURE_WG;
 	const otherMemberId = '11111111-1111-4111-8111-111111111111';
+	const longMemberName = 'A'.repeat(80);
 	await setupMember(page);
 	await page.route(`**/api/wg/${shareCode}/members`, (route) =>
 		route.fulfill({
 			json: {
 				members: [
 					{ id: memberId, name: 'Abu', color: null, active: true },
-					{ id: otherMemberId, name: 'Mustermann-Langname', color: null, active: true },
+					{ id: otherMemberId, name: longMemberName, color: null, active: true },
 				],
 				viewerIsAdmin: false,
 			},
@@ -79,7 +80,8 @@ test('keeps finance actions and expense summary keyboard-operable at phone sizes
 	const debtList = page.getByRole('list', { name: 'Deine offenen Zahlungen' });
 	await expect(debtList).toBeVisible();
 	// Salden sind immer sichtbar, nicht mehr hinter „Alle Salden“ versteckt.
-	await expect(page.getByRole('list', { name: 'Saldo pro Mitglied' })).toBeVisible();
+	const balanceList = page.getByRole('list', { name: 'Saldo pro Mitglied' });
+	await expect(balanceList).toBeVisible();
 	const balanceLabel = page.getByText('Dein Saldo', { exact: true });
 	await expect(balanceLabel).toBeVisible();
 	// Der Saldo ist die Überschrift, die offenen Zahlungen stehen direkt darunter.
@@ -121,7 +123,7 @@ test('keeps finance actions and expense summary keyboard-operable at phone sizes
 			await page.evaluate((fontSize) => {
 				document.documentElement.style.setProperty('font-size', fontSize, 'important');
 			}, textScale);
-			for (const width of [390, 360, 320]) {
+			for (const width of [320, 360, 390]) {
 				await page.setViewportSize({ width, height: 844 });
 				const metrics = await Promise.all(
 					[settleButton, remindButton].map((button) =>
@@ -177,6 +179,50 @@ test('keeps finance actions and expense summary keyboard-operable at phone sizes
 					const debtBox = await debtList.boundingBox();
 					if (!balanceBox || !debtBox) throw new Error('Summary must have layout boxes');
 					expect(balanceBox.y).toBeLessThan(debtBox.y);
+					const chfBalance = balanceList
+						.getByRole('listitem')
+						.filter({ hasText: longMemberName })
+						.filter({ hasText: 'CHF' });
+					await expect(chfBalance).toHaveCount(1);
+					const balanceMetrics = await chfBalance.evaluate((row) => {
+						const name = row.firstElementChild?.lastElementChild as HTMLElement | null;
+						const amount = row.lastElementChild as HTMLElement | null;
+						const card = row.closest('[data-slot="card"]') as HTMLElement | null;
+						if (!name || !amount || !card) throw new Error('Balance row layout is incomplete');
+						const nameRect = name.getBoundingClientRect();
+						const amountRect = amount.getBoundingClientRect();
+						const cardRect = card.getBoundingClientRect();
+						return {
+							nameWidth: nameRect.width,
+							nameClientWidth: name.clientWidth,
+							nameScrollWidth: name.scrollWidth,
+							nameRight: nameRect.right,
+							cardRight: cardRect.right,
+							amountLeft: amountRect.left,
+							amountRight: amountRect.right,
+							cardLeft: cardRect.left,
+						};
+					});
+					expect(
+						balanceMetrics.nameWidth,
+						`${width}px / ${theme}: member name must have visible width`,
+					).toBeGreaterThan(32);
+					expect(
+						balanceMetrics.nameScrollWidth,
+						`${width}px / ${theme}: member name must not be clipped`,
+					).toBeLessThanOrEqual(balanceMetrics.nameClientWidth + 1);
+					expect(
+						balanceMetrics.nameRight,
+						`${width}px / ${theme}: member name extends beyond its card`,
+					).toBeLessThanOrEqual(balanceMetrics.cardRight + 1);
+					expect(
+						balanceMetrics.amountLeft,
+						`${width}px / ${theme}: balance amount starts outside its card`,
+					).toBeGreaterThanOrEqual(balanceMetrics.cardLeft - 1);
+					expect(
+						balanceMetrics.amountRight,
+						`${width}px / ${theme}: balance amount extends beyond its card`,
+					).toBeLessThanOrEqual(balanceMetrics.cardRight + 1);
 					await page.screenshot({
 						path: testInfo.outputPath(`reminders-${width}-${theme}.png`),
 						animations: 'disabled',

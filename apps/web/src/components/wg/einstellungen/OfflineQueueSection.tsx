@@ -20,7 +20,7 @@ import {
 	needsManualOfflineResolution,
 	readOfflineQueue,
 	syncOfflineActions,
-	writeOfflineQueue,
+	updateOfflineQueue,
 } from '@/core/offline/offline-client';
 import {
 	formatRecurringAdvanceConflictNote,
@@ -66,9 +66,9 @@ export function OfflineQueueSection({
 		return () => window.removeEventListener('manawg:offline-queue', refresh);
 	}, [refresh]);
 
-	function remove(id: string): void {
-		const saved = writeOfflineQueue(
-			readOfflineQueue().filter((item) => item.id !== id || !isActiveMemberItem(item)),
+	async function remove(id: string): Promise<void> {
+		const saved = await updateOfflineQueue((actions) =>
+			actions.filter((item) => item.id !== id || !isActiveMemberItem(item)),
 		);
 		if (!saved) {
 			setConflictNotes((current) => ({
@@ -80,9 +80,9 @@ export function OfflineQueueSection({
 		refresh();
 	}
 
-	function removeAttachment(id: string): void {
-		const saved = writeOfflineQueue(
-			readOfflineQueue().map((item) =>
+	async function removeAttachment(id: string): Promise<void> {
+		const saved = await updateOfflineQueue((actions) =>
+			actions.map((item) =>
 				item.id === id && isActiveMemberItem(item)
 					? { ...item, payload: { ...item.payload, imageUrl: null } }
 					: item,

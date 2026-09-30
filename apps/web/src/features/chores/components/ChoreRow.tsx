@@ -138,7 +138,7 @@ export const ChoreRow = memo(function ChoreRow({
 					</Button>
 				)}
 			</ItemContent>
-			<ItemActions className="ml-auto flex-nowrap gap-0.5">
+			<ItemActions className="ml-auto flex-nowrap gap-3">
 				<Button
 					onClick={() => onComplete(chore)}
 					disabled={busy}
