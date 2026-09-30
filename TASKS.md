@@ -1,6 +1,21 @@
 # ManaWG Release Readiness
 
-## Aktuelle Freigabelage — 2026-09-25
+## Aktueller Nachweis — 2026-09-30
+
+Production ist auf `6aa0b666` verifiziert: Health, Auth-Abgrenzung, privater
+Storage-Upload/Read/Revocation und unveränderter DB-Migrationsstand bestätigt.
+393 Unit-/Route- und 512 Chromium-Fixture-Fälle bestanden; Hosted Preview und
+echte Geräte sind getrennte offene Abnahmen. Frischer lokaler Restore: 62/62
+Datenabschnitte. MCP und Datenschutz-Landing wurden geliefert.
+
+CI bleibt auf ausdrücklichen Nutzerwunsch ausgenommen. Sandbox-Zahlungsfreigabe,
+Offsite-Backup/Key-Custody, historische Analytics-Löschfreigabe und echte
+Telefonabnahme bleiben offen. Details und Beweisgrenzen:
+[Release evidence](docs/releases/2026-09-30-release-evidence.md).
+
+Die folgenden älteren Abschnitte sind historische Zustände.
+
+## Historische Freigabelage — 2026-09-25
 
 - **Nicht release-ready.** Die PRs #444 und #449 sind auf `main` gelandet. Beim letzten Readback stand `origin/main` auf `519ebc2`; sein Push-CI-Lauf `36162244967` bestand einschließlich Preview-Datenbankcheck, aber `e2e-preview` wurde übersprungen. `app.manawg.com` zeigt weiterhin einen älteren READY-Deploy; für diesen Main-SHA fehlen exakter Hosted-Preview- und Production-Nachweis.
 - Auf dem aktuellen Main-SHA bestanden GitHub-`validate` und 337 Fixture-E2E-Tests; 39 Hosted-Fälle wurden übersprungen. Ein früherer lokaler Produktionsmodus-Mobilcheck prüfte 20 Kombinationen bei 320/390 px in Hell/Dunkel ohne horizontalen Überlauf oder CSP-Fehler. Fixture- und Mobilbefunde ersetzen keine echten Geräte oder Residenten.
