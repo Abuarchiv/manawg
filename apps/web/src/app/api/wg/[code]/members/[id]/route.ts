@@ -5,6 +5,7 @@ import { apiError, badRequest, conflict, forbidden, notFound, tooMany } from '@/
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { computeBalances } from '@/features/expenses/debts';
 import {
@@ -118,7 +119,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 		if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
 		let raw: unknown;
 		try {
-			raw = await req.json();
+			raw = await readJsonLimited(req);
 		} catch {
 			return badRequest('invalid_json');
 		}

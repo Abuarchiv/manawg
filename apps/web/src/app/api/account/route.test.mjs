@@ -94,6 +94,7 @@ function harness({
 				return result;
 			},
 		},
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			apiError: (message, status, code) => Response.json({ error: message, code }, { status }),
 			conflict: (message) => Response.json({ error: message }, { status: 409 }),

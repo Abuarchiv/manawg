@@ -44,6 +44,7 @@ function sharedMocks(state) {
 				throw Object.assign(new Error('Auth service unavailable'), { status: 503 });
 			},
 		},
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			apiError: (error, status, code) =>
 				NextResponse.json(code === undefined ? { error } : { error, code }, { status }),
@@ -183,6 +184,7 @@ function wgRouteMocks(state) {
 	const readShareCode = async (ctx) => ({ ok: true, ...(await ctx.params) });
 	return {
 		...mocks,
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			...mocks['@/core/errors'],
 			HTTP: {},

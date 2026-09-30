@@ -200,6 +200,7 @@ function makeRoute(state) {
 		},
 		'@/core/db': { ...tables, db },
 		'@/core/db/transaction': { TransactionAbort, withTransaction },
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			badRequest: (code) => json({ error: code }, 400),
 			conflict: (code) => json({ error: code }, 409),

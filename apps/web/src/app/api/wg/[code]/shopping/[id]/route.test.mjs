@@ -172,6 +172,7 @@ function harness(returning = async () => [{ id: itemId }]) {
 			},
 		},
 		'@/core/db': { db, shoppingItems, wgMembers },
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			badRequest: (error) => json({ error }, 400),
 			conflict: (error) => json({ error }, 409),

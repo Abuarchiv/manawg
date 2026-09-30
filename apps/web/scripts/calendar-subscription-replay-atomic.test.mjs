@@ -127,6 +127,7 @@ function harness({
 					? { id: memberId, name: 'Mina', role: 'member', authUserId, deactivatedAt: null }
 					: null,
 		},
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			requireVerifiedMember: () => null,
 			serverError: (code) => Response.json({ error: code }, { status: 500 }),

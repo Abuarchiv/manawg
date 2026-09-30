@@ -11,6 +11,7 @@ import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { readJsonLimited } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
 import { and, asc, count, eq } from 'drizzle-orm';
@@ -111,7 +112,7 @@ function isUniqueMemberNameViolation(err: unknown): boolean {
 export const POST = withWgRoute('members POST', async (req, { code }) => {
 	let raw: unknown;
 	try {
-		raw = await req.json();
+		raw = await readJsonLimited(req);
 	} catch {
 		return badRequest('invalid_json');
 	}

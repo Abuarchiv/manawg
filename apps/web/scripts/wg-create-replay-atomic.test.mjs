@@ -147,6 +147,7 @@ function harness({
 		},
 		'@/core/db/schema': { LIMITS: { NAME_MAX: 100 } },
 		'@/core/db/transaction': { TransactionAbort, withTransaction },
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			apiError: (code, status) => error(code, status),
 			badRequest: (code) => error(code, 400),
