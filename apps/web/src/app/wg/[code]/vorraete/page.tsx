@@ -12,6 +12,7 @@ import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { useStableCallback } from '@/core/hooks/useStableCallback';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { InventoryList } from '@/features/inventory/components/InventoryList';
 import {
@@ -104,6 +105,23 @@ export default function VorraetePage() {
 	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
 	useVisibilityPausedInterval(() => void load(true), 30_000);
 
+	const onChanged = useStableCallback(
+		(updated?: InventoryMutationItemDto, deletedId?: string): void => {
+			if (updated || deletedId) {
+				setItems((prev) => applyInventoryMutation(prev, updated, deletedId));
+				setInventoryData((current) => {
+					if (!current && !updated) return current;
+					const nextItems = applyInventoryMutation(current?.items ?? [], updated, deletedId);
+					return {
+						items: nextItems,
+						grouped: groupItemsByCategory(nextItems),
+					};
+				});
+			}
+			void load(true);
+		},
+	);
+
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
 			<SubNav />
@@ -178,20 +196,7 @@ export default function VorraetePage() {
 					shareCode={wg.shareCode}
 					memberId={identity.memberId}
 					memberToken={identity.memberToken}
-					onChanged={(updated, deletedId) => {
-						if (updated || deletedId) {
-							setItems((prev) => applyInventoryMutation(prev, updated, deletedId));
-							setInventoryData((current) => {
-								if (!current && !updated) return current;
-								const nextItems = applyInventoryMutation(current?.items ?? [], updated, deletedId);
-								return {
-									items: nextItems,
-									grouped: groupItemsByCategory(nextItems),
-								};
-							});
-						}
-						void load(true);
-					}}
+					onChanged={onChanged}
 					addOpen={addOpen}
 					onAddOpenChange={setAddOpen}
 				/>

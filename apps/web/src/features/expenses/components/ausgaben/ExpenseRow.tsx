@@ -78,7 +78,10 @@ export const ExpenseRow = memo(function ExpenseRow({
 	return (
 		<li
 			id={`expense-${expense.id}`}
-			className={cn('scroll-mt-24', highlighted && 'ring-2 ring-inset ring-ring')}
+			className={cn(
+				'scroll-mt-24 [contain-intrinsic-size:auto_4.5rem] [content-visibility:auto]',
+				highlighted && 'ring-2 ring-inset ring-ring',
+			)}
 		>
 			<Collapsible open={expanded} onOpenChange={() => onToggleExpand(expense.id)}>
 				<Item className="gap-1 rounded-none py-1 pr-1.5 pl-3">

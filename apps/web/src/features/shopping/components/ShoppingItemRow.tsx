@@ -90,7 +90,12 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	}
 
 	return (
-		<li className={cn('relative', swipeX > 0 && 'overflow-hidden')}>
+		<li
+			className={cn(
+				'relative [contain-intrinsic-size:auto_3.5rem] [content-visibility:auto]',
+				swipeX > 0 && 'overflow-hidden',
+			)}
+		>
 			{/* overflow-hidden nur während aktiver Wischgeste: sonst schneidet es die
 			    unsichtbare Tap-Fläche der Checkbox (after:-inset-2.5) am linken Rand ab,
 			    weil das Item hier px-0 hat und die Checkbox flächenbündig sitzt. */}

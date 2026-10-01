@@ -13,6 +13,7 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
+import { useStableCallback } from '@/core/hooks/useStableCallback';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
 import { removeDraft } from '@/core/offline/drafts';
@@ -88,6 +89,9 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+/** Einträge pro Seite im Verlauf; Salden und Export nutzen weiterhin alle. */
+const EXPENSE_RENDER_PAGE = 60;
 
 const ExpenseFormSection = dynamic(
 	() =>
@@ -1434,10 +1438,19 @@ export default function AusgabenPage() {
 
 	const showSkeleton = initialLoading && expenses.length === 0;
 	// Verlauf nach Kalenderwoche; die API liefert neueste zuerst.
+	// Nur die neuesten Einträge rendern (Salden nutzen weiter alle); „Mehr anzeigen“ lädt nach.
+	const [visibleLimit, setVisibleLimit] = useState(EXPENSE_RENDER_PAGE);
+	const highlightIndex = highlightedId ? expenses.findIndex((e) => e.id === highlightedId) : -1;
+	const renderLimit = Math.max(visibleLimit, highlightIndex + 1);
+	const stableToggleExpand = useStableCallback(toggleExpand);
+	const stableDelete = useStableCallback(deleteExpense);
+	const stableEdit = useStableCallback(startEdit);
+	const stableToggleSettle = useStableCallback(toggleSettle);
+	const stableMemberName = useStableCallback(memberName);
 	const expenseWeeks = useMemo(() => {
 		const weeks: Array<{ label: string; items: typeof expenses }> = [];
 		const now = new Date();
-		for (const expense of expenses) {
+		for (const expense of expenses.slice(0, renderLimit)) {
 			const date = parseValidDate(expense.occurredAt);
 			const label = date ? formatWeekLabel(startOfWeek(date), now) : 'Datum unbekannt';
 			const current = weeks.at(-1);
@@ -1445,7 +1458,7 @@ export default function AusgabenPage() {
 			else weeks.push({ label, items: [expense] });
 		}
 		return weeks;
-	}, [expenses]);
+	}, [expenses, renderLimit]);
 	const directDebts = useMemo(
 		() =>
 			computeDirectDebts(
@@ -1679,12 +1692,12 @@ export default function AusgabenPage() {
 											key={expense.id}
 											expense={expense}
 											expanded={expanded.has(expense.id)}
-											onToggleExpand={toggleExpand}
-											onDelete={deleteExpense}
-											onEdit={startEdit}
-											onToggleSettle={toggleSettle}
+											onToggleExpand={stableToggleExpand}
+											onDelete={stableDelete}
+											onEdit={stableEdit}
+											onToggleSettle={stableToggleSettle}
 											isPending={isPending}
-											memberName={memberName}
+											memberName={stableMemberName}
 											currentMemberId={identity.memberId}
 											highlighted={highlightedId === expense.id}
 										/>
@@ -1692,6 +1705,14 @@ export default function AusgabenPage() {
 								</ul>
 							</section>
 						))}
+						{renderLimit < expenses.length && (
+							<Button
+								variant="outline"
+								onClick={() => setVisibleLimit(renderLimit + EXPENSE_RENDER_PAGE)}
+							>
+								Mehr anzeigen ({expenses.length - renderLimit})
+							</Button>
+						)}
 					</div>
 				)}
 				{/* Selten gebraucht: Import am Listenende statt als Icon über dem Saldo. */}
