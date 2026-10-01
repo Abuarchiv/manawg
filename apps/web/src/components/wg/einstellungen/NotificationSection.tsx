@@ -9,11 +9,11 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import {
 	notificationSaveErrorMessage,
 	notificationTestErrorMessage,
-} from '@/core/guards/settings-errors';
+} from '@/components/wg/einstellungen/settings-errors';
+import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { apiFetch } from '@/core/infra/api-client';
 import { parseQuietHour } from '@/core/notifications/notification-preferences';
 import {

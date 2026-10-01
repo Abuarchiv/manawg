@@ -3,9 +3,9 @@
  * mutation/load path: network failure, retryable server failure,
  * WG-unavailable, invalid share code, and auth-invalidated.
  *
- * These predicates classify a `(code, status?)` pair — they never produce
- * user-facing copy. Each feature keeps its own German message text; only the
- * "which bucket is this error in" decision lives here.
+ * These predicates classify a `(code, status?)` pair. `mutationErrorMessage`
+ * turns the shared buckets into one German sentence; each feature only supplies
+ * its subject and its feature-specific codes.
  */
 
 const HTTP_NOT_FOUND = 404;
@@ -49,4 +49,41 @@ export function isAuthInvalidated(code: string | null, status?: number): boolean
 		code === 'member_id_required' ||
 		code === 'member_id_invalid'
 	);
+}
+
+export type ApiErrorKind =
+	| 'network'
+	| 'wgUnavailable'
+	| 'invalidShareCode'
+	| 'authInvalidated'
+	| 'retryable';
+
+/** Single bucket for an error; callers map the bucket to their own copy. */
+export function classifyApiError(code: string | null, status?: number): ApiErrorKind | null {
+	if (isNetworkError(code, status)) return 'network';
+	if (isWgUnavailable(code, status)) return 'wgUnavailable';
+	if (isInvalidShareCode(code)) return 'invalidShareCode';
+	if (isAuthInvalidated(code, status)) return 'authInvalidated';
+	if (isRetryableServerError(code, status)) return 'retryable';
+	return null;
+}
+
+/**
+ * Error copy for a failed mutation: the shared buckets first (network, retryable,
+ * WG unavailable, share code, auth), then the feature's own `specific` texts, else
+ * `fallback`. `retrySubject` lets the retryable bucket name a different action.
+ */
+export function mutationErrorMessage(
+	subject: string,
+	code: string,
+	specific: Readonly<Record<string, string>>,
+	fallback: string,
+	retrySubject: string = subject,
+): string {
+	if (isNetworkError(code)) return `${subject}: Prüfe deine Verbindung und versuche es erneut.`;
+	if (isRetryableServerError(code)) return `${retrySubject}: Versuche es gleich erneut.`;
+	if (isWgUnavailable(code)) return `${subject}: Öffne die WG über den aktuellen Link erneut.`;
+	if (isInvalidShareCode(code)) return `${subject}: Der WG-Code ist ungültig.`;
+	if (isAuthInvalidated(code)) return `${subject}: Tritt der WG erneut bei.`;
+	return Object.hasOwn(specific, code) ? (specific[code] as string) : fallback;
 }

@@ -1,11 +1,12 @@
 import { db, idempotencyResponses, shoppingItems } from '@/core/db';
+import { completeClaimedResponse } from '@/core/db/claimed-response';
 import type { ShoppingItem } from '@/core/db/schema';
 import type { DbTransaction } from '@/core/db/transaction';
 import type { ReplayReservation } from '@/core/guards/idempotency';
+import { RESPONSE_REPLAY_TTL_SECONDS } from '@/core/offline/replay-retention';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-
-const RESPONSE_REPLAY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+import { z } from 'zod';
 
 type ShoppingCreateWarning =
 	| null
@@ -22,26 +23,26 @@ export type ShoppingCreateReplayResponse =
 	  }
 	| { status: 409; body: { error: 'shopping_item_duplicate' } };
 
+const shoppingCreateWarningSchema = z
+	.enum(['notification_delivery_failed', 'notification_delivery_unknown'])
+	.nullable();
+
+const shoppingCreateItemSchema = z.object({
+	id: z.string(),
+	addedByMemberId: z.string(),
+	name: z.string(),
+	createdAt: z.string(),
+	quantity: z.string().nullable(),
+	boughtAt: z.string().nullable(),
+	boughtByMemberId: z.string().nullable(),
+});
+
 function isShoppingCreateWarning(value: unknown): value is ShoppingCreateWarning {
-	return (
-		value === null ||
-		value === 'notification_delivery_failed' ||
-		value === 'notification_delivery_unknown'
-	);
+	return shoppingCreateWarningSchema.safeParse(value).success;
 }
 
 function isShoppingCreateItem(value: unknown): boolean {
-	if (!value || typeof value !== 'object') return false;
-	const item = value as Record<string, unknown>;
-	return (
-		typeof item.id === 'string' &&
-		typeof item.addedByMemberId === 'string' &&
-		typeof item.name === 'string' &&
-		typeof item.createdAt === 'string' &&
-		(item.quantity === null || typeof item.quantity === 'string') &&
-		(item.boughtAt === null || typeof item.boughtAt === 'string') &&
-		(item.boughtByMemberId === null || typeof item.boughtByMemberId === 'string')
-	);
+	return shoppingCreateItemSchema.safeParse(value).success;
 }
 
 export function normalizeShoppingCreateReplayResponse(
@@ -198,27 +199,13 @@ export async function withShoppingCreatePostCommitFallback(
 	}
 }
 
-export async function persistShoppingCreateReplayResponse(
+export function persistShoppingCreateReplayResponse(
 	tx: DbTransaction,
 	scope: string,
 	key: string,
 	response: ShoppingCreateReplayResponse,
 ): Promise<boolean> {
-	const rows = await tx
-		.update(idempotencyResponses)
-		.set({
-			responseBody: response,
-			expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_MS),
-		})
-		.where(
-			and(
-				eq(idempotencyResponses.scope, scope),
-				eq(idempotencyResponses.key, key),
-				sql`${idempotencyResponses.responseBody} @> '{"_claimed": true}'::jsonb`,
-			),
-		)
-		.returning({ key: idempotencyResponses.key });
-	return rows.length > 0;
+	return completeClaimedResponse(tx, scope, key, response);
 }
 
 export async function releaseShoppingCreateClaim(scope: string, key: string): Promise<boolean> {
@@ -268,7 +255,7 @@ export async function insertShoppingItemWithReplay(
 		status: 200,
 		body: { item, warning: 'notification_delivery_unknown' },
 	};
-	const expiresAt = new Date(Date.now() + RESPONSE_REPLAY_TTL_MS);
+	const expiresAt = new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000);
 	await tx
 		.insert(idempotencyResponses)
 		.values({

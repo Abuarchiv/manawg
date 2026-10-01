@@ -36,6 +36,128 @@ import {
 import { cn } from '@/shared/lib/cn';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+interface ServerCheck {
+	path: string;
+	note: (payload: Record<string, unknown>, data: never) => string;
+}
+
+function serverCheck<Data>(
+	path: string,
+	note: (payload: Record<string, unknown>, data: Data) => string,
+): ServerCheck {
+	return { path, note: note as ServerCheck['note'] };
+}
+
+const SERVER_CHECKS: Record<string, ServerCheck> = {
+	'shopping.create': serverCheck<{
+		items: Array<{ name: string; quantity: string | null; boughtAt: string | null }>;
+	}>('shopping', (payload, data) => {
+		const name = String(payload.name ?? '').trim();
+		const serverItem = data.items.find((shoppingItem) => shoppingItem.name.trim() === name);
+		return serverItem
+			? `Ähnlicher Einkaufsartikel existiert schon. Status dort: ${
+					serverItem.boughtAt ? 'erledigt' : 'offen'
+				}. Prüfe vor dem Senden, ob es ein Duplikat wäre.`
+			: 'Kein gleichnamiger Einkaufsartikel auf dem Server gefunden.';
+	}),
+	'shopping.update': serverCheck<{ items: Array<{ id: string; boughtAt: string | null }> }>(
+		'shopping',
+		(payload, data) => {
+			const itemId = String(payload.itemId ?? '');
+			const serverItem = data.items.find((shoppingItem) => shoppingItem.id === itemId);
+			return serverItem
+				? `Server-Version gefunden. Status dort: ${
+						serverItem.boughtAt ? 'erledigt' : 'offen'
+					}. Prüfe vor dem erneuten Senden, ob das noch stimmt.`
+				: 'Der Einkaufsartikel existiert serverseitig nicht mehr.';
+		},
+	),
+	'announcement.create': serverCheck<{
+		announcements: Array<{ content: string; resolvedAt?: string | null }>;
+	}>('announcements', (payload, data) => {
+		const content = String(payload.content ?? '').trim();
+		const serverPost = data.announcements.find(
+			(announcement) => announcement.content.trim() === content,
+		);
+		return serverPost
+			? `Gleicher Pinnwand-Beitrag existiert schon. Status dort: ${
+					serverPost.resolvedAt ? 'geklärt' : 'offen'
+				}. Prüfe vor dem Senden, ob es ein Duplikat wäre.`
+			: 'Kein gleicher Pinnwand-Beitrag auf dem Server gefunden.';
+	}),
+	'chore.complete': serverCheck<{ chores: Array<{ id: string }> }>('chores', (payload, data) => {
+		const choreId = String(payload.choreId ?? '');
+		return data.chores.some((chore) => chore.id === choreId)
+			? 'Server-Version gefunden. Prüfe Zuständigkeit und Fälligkeit vor dem Senden.'
+			: 'Die Aufgabe existiert serverseitig nicht mehr.';
+	}),
+	'chore.create': serverCheck<{ chores: Array<{ title: string; intervalDays: number }> }>(
+		'chores',
+		(payload, data) => {
+			const title = String(payload.title ?? '').trim();
+			const serverChore = data.chores.find((chore) => chore.title.trim() === title);
+			return serverChore
+				? `Gleiche Putzaufgabe existiert schon. Intervall dort: alle ${serverChore.intervalDays} Tage. Prüfe vor dem Senden, ob es ein Duplikat wäre.`
+				: 'Keine gleichnamige Putzaufgabe auf dem Server gefunden.';
+		},
+	),
+	'absence.create': serverCheck<{
+		absences: Array<{ memberId: string; startDate: string; endDate: string }>;
+	}>('absences', (payload, data) => {
+		const absenceMemberId = String(payload.memberId ?? '');
+		const startDate = String(payload.startDate ?? '');
+		const endDate = String(payload.endDate ?? '');
+		const serverAbsence = data.absences.find(
+			(absence) =>
+				absence.memberId === absenceMemberId &&
+				absence.startDate === startDate &&
+				absence.endDate === endDate,
+		);
+		return serverAbsence
+			? 'Gleiche Abwesenheit existiert schon auf dem Server.'
+			: 'Keine gleiche Abwesenheit auf dem Server gefunden.';
+	}),
+	'expense.create': serverCheck<{ expenses: Array<{ description: string; amountCents: number }> }>(
+		'expenses',
+		(payload, data) => {
+			const description = String(payload.description ?? '').trim();
+			const amountCents = Number(payload.amountCents ?? 0);
+			const serverExpense = data.expenses.find(
+				(expense) =>
+					expense.description.trim() === description && expense.amountCents === amountCents,
+			);
+			return serverExpense
+				? 'Gleiche Ausgabe mit gleichem Betrag existiert schon. Prüfe vor dem Senden, ob es ein Duplikat wäre.'
+				: 'Keine gleiche Ausgabe mit gleichem Betrag auf dem Server gefunden.';
+		},
+	),
+	'recurring.create': serverCheck<{
+		recurringExpenses: Array<{ description: string; amountCents: number; nextDueAt: string }>;
+	}>('recurring-expenses', (payload, data) => {
+		const description = String(payload.description ?? '').trim();
+		const amountCents = Number(payload.amountCents ?? 0);
+		const serverTemplate = data.recurringExpenses.find(
+			(template) =>
+				template.description.trim() === description && template.amountCents === amountCents,
+		);
+		return serverTemplate
+			? formatRecurringTemplateConflictNote(serverTemplate)
+			: 'Keine gleiche Fixkosten-Vorlage auf dem Server gefunden.';
+	}),
+	'recurring.advance': serverCheck<{
+		recurringExpenses: Array<{ id: string; nextDueAt: string }>;
+	}>('recurring-expenses', (payload, data) => {
+		const recurringExpenseId = String(payload.recurringExpenseId ?? '');
+		const expectedNextDueAt = String(payload.expectedRecurringNextDueAt ?? '');
+		const serverTemplate = data.recurringExpenses.find(
+			(template) => template.id === recurringExpenseId,
+		);
+		return serverTemplate
+			? formatRecurringAdvanceConflictNote(serverTemplate, expectedNextDueAt)
+			: 'Diese Fixkosten-Vorlage existiert serverseitig nicht mehr.';
+	}),
+};
+
 export function OfflineQueueSection({
 	shareCode,
 	memberId,
@@ -187,198 +309,20 @@ export function OfflineQueueSection({
 	}
 
 	async function checkServerInner(item: OfflineAction): Promise<void> {
-		if (item.type === 'shopping.create') {
-			const name = String(item.payload.name ?? '').trim();
-			const res = await apiFetch<{
-				items: Array<{ name: string; quantity: string | null; boughtAt: string | null }>;
-			}>(`/api/wg/${encodedShareCode}/shopping`, { memberId });
-			if (!res.ok) {
-				setServerCheckError(item.id, res.status, res.error);
-				return;
-			}
-			const serverItem = res.data.items.find((shoppingItem) => shoppingItem.name.trim() === name);
+		const check = SERVER_CHECKS[item.type];
+		if (!check) {
 			setConflictNote(
 				item.id,
-				serverItem
-					? `Ähnlicher Einkaufsartikel existiert schon. Status dort: ${
-							serverItem.boughtAt ? 'erledigt' : 'offen'
-						}. Prüfe vor dem Senden, ob es ein Duplikat wäre.`
-					: 'Kein gleichnamiger Einkaufsartikel auf dem Server gefunden.',
+				'Server-Vergleich bereit: bearbeite den Entwurf, wenn sich Inhalt oder Aufteilung geändert haben.',
 			);
 			return;
 		}
-		if (item.type === 'shopping.update') {
-			const itemId = String(item.payload.itemId ?? '');
-			const res = await apiFetch<{
-				items: Array<{ id: string; boughtAt: string | null }>;
-			}>(`/api/wg/${encodedShareCode}/shopping`, { memberId });
-			if (!res.ok) {
-				setServerCheckError(item.id, res.status, res.error);
-				return;
-			}
-			const serverItem = res.data.items.find((shoppingItem) => shoppingItem.id === itemId);
-			setConflictNote(
-				item.id,
-				serverItem
-					? `Server-Version gefunden. Status dort: ${
-							serverItem.boughtAt ? 'erledigt' : 'offen'
-						}. Prüfe vor dem erneuten Senden, ob das noch stimmt.`
-					: 'Der Einkaufsartikel existiert serverseitig nicht mehr.',
-			);
+		const res = await apiFetch<unknown>(`/api/wg/${encodedShareCode}/${check.path}`, { memberId });
+		if (!res.ok) {
+			setServerCheckError(item.id, res.status, res.error);
 			return;
 		}
-		if (item.type === 'announcement.create') {
-			const content = String(item.payload.content ?? '').trim();
-			const res = await apiFetch<{
-				announcements: Array<{ content: string; resolvedAt?: string | null }>;
-			}>(`/api/wg/${encodedShareCode}/announcements`, { memberId });
-			if (!res.ok) {
-				setServerCheckError(item.id, res.status, res.error);
-				return;
-			}
-			const serverPost = res.data.announcements.find(
-				(announcement) => announcement.content.trim() === content,
-			);
-			setConflictNote(
-				item.id,
-				serverPost
-					? `Gleicher Pinnwand-Beitrag existiert schon. Status dort: ${
-							serverPost.resolvedAt ? 'geklärt' : 'offen'
-						}. Prüfe vor dem Senden, ob es ein Duplikat wäre.`
-					: 'Kein gleicher Pinnwand-Beitrag auf dem Server gefunden.',
-			);
-			return;
-		}
-		if (item.type === 'chore.complete') {
-			const choreId = String(item.payload.choreId ?? '');
-			const res = await apiFetch<{
-				chores: Array<{ id: string; assignedMemberId: string | null }>;
-			}>(`/api/wg/${encodedShareCode}/chores`, { memberId });
-			if (!res.ok) {
-				setServerCheckError(item.id, res.status, res.error);
-				return;
-			}
-			const exists = res.data.chores.some((chore) => chore.id === choreId);
-			setConflictNote(
-				item.id,
-				exists
-					? 'Server-Version gefunden. Prüfe Zuständigkeit und Fälligkeit vor dem Senden.'
-					: 'Die Aufgabe existiert serverseitig nicht mehr.',
-			);
-			return;
-		}
-		if (item.type === 'chore.create') {
-			const title = String(item.payload.title ?? '').trim();
-			const res = await apiFetch<{
-				chores: Array<{ title: string; assignedMemberId: string | null; intervalDays: number }>;
-			}>(`/api/wg/${encodedShareCode}/chores`, { memberId });
-			if (!res.ok) {
-				setServerCheckError(item.id, res.status, res.error);
-				return;
-			}
-			const serverChore = res.data.chores.find((chore) => chore.title.trim() === title);
-			setConflictNote(
-				item.id,
-				serverChore
-					? `Gleiche Putzaufgabe existiert schon. Intervall dort: alle ${serverChore.intervalDays} Tage. Prüfe vor dem Senden, ob es ein Duplikat wäre.`
-					: 'Keine gleichnamige Putzaufgabe auf dem Server gefunden.',
-			);
-			return;
-		}
-		if (item.type === 'absence.create') {
-			const absenceMemberId = String(item.payload.memberId ?? '');
-			const startDate = String(item.payload.startDate ?? '');
-			const endDate = String(item.payload.endDate ?? '');
-			const res = await apiFetch<{
-				absences: Array<{ memberId: string; startDate: string; endDate: string }>;
-			}>(`/api/wg/${encodedShareCode}/absences`, { memberId });
-			if (!res.ok) {
-				setServerCheckError(item.id, res.status, res.error);
-				return;
-			}
-			const serverAbsence = res.data.absences.find(
-				(absence) =>
-					absence.memberId === absenceMemberId &&
-					absence.startDate === startDate &&
-					absence.endDate === endDate,
-			);
-			setConflictNote(
-				item.id,
-				serverAbsence
-					? 'Gleiche Abwesenheit existiert schon auf dem Server.'
-					: 'Keine gleiche Abwesenheit auf dem Server gefunden.',
-			);
-			return;
-		}
-		if (item.type === 'expense.create') {
-			const description = String(item.payload.description ?? '').trim();
-			const amountCents = Number(item.payload.amountCents ?? 0);
-			const res = await apiFetch<{
-				expenses: Array<{ description: string; amountCents: number }>;
-			}>(`/api/wg/${encodedShareCode}/expenses`, { memberId });
-			if (!res.ok) {
-				setServerCheckError(item.id, res.status, res.error);
-				return;
-			}
-			const serverExpense = res.data.expenses.find(
-				(expense) =>
-					expense.description.trim() === description && expense.amountCents === amountCents,
-			);
-			setConflictNote(
-				item.id,
-				serverExpense
-					? 'Gleiche Ausgabe mit gleichem Betrag existiert schon. Prüfe vor dem Senden, ob es ein Duplikat wäre.'
-					: 'Keine gleiche Ausgabe mit gleichem Betrag auf dem Server gefunden.',
-			);
-			return;
-		}
-		if (item.type === 'recurring.create') {
-			const description = String(item.payload.description ?? '').trim();
-			const amountCents = Number(item.payload.amountCents ?? 0);
-			const res = await apiFetch<{
-				recurringExpenses: Array<{ description: string; amountCents: number; nextDueAt: string }>;
-			}>(`/api/wg/${encodedShareCode}/recurring-expenses`, { memberId });
-			if (!res.ok) {
-				setServerCheckError(item.id, res.status, res.error);
-				return;
-			}
-			const serverTemplate = res.data.recurringExpenses.find(
-				(template) =>
-					template.description.trim() === description && template.amountCents === amountCents,
-			);
-			setConflictNote(
-				item.id,
-				serverTemplate
-					? formatRecurringTemplateConflictNote(serverTemplate)
-					: 'Keine gleiche Fixkosten-Vorlage auf dem Server gefunden.',
-			);
-			return;
-		}
-		if (item.type === 'recurring.advance') {
-			const recurringExpenseId = String(item.payload.recurringExpenseId ?? '');
-			const expectedNextDueAt = String(item.payload.expectedRecurringNextDueAt ?? '');
-			const res = await apiFetch<{
-				recurringExpenses: Array<{ id: string; nextDueAt: string }>;
-			}>(`/api/wg/${encodedShareCode}/recurring-expenses`, { memberId });
-			if (!res.ok) {
-				setServerCheckError(item.id, res.status, res.error);
-				return;
-			}
-			const serverTemplate = res.data.recurringExpenses.find(
-				(template) => template.id === recurringExpenseId,
-			);
-			setConflictNote(
-				item.id,
-				serverTemplate
-					? formatRecurringAdvanceConflictNote(serverTemplate, expectedNextDueAt)
-					: 'Diese Fixkosten-Vorlage existiert serverseitig nicht mehr.',
-			);
-			return;
-		}
-		setConflictNote(
-			item.id,
-			'Server-Vergleich bereit: bearbeite den Entwurf, wenn sich Inhalt oder Aufteilung geändert haben.',
-		);
+		setConflictNote(item.id, check.note(item.payload, res.data as never));
 	}
 
 	async function retry(): Promise<void> {

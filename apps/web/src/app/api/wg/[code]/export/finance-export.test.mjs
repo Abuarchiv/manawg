@@ -225,7 +225,9 @@ function appBalancesFromSource(computeNetBalances) {
 }
 
 test('exported expenses and completed payments reconstruct the app balances by currency', async () => {
-	const { computeNetBalances } = loadTs('src/features/expenses/debt-reduction.ts');
+	const { computeNetBalances } = loadTs('src/features/expenses/debt-reduction.ts', {
+		'@/core/utils/money': { normalizeCurrency: (value) => value?.trim().toUpperCase() || 'EUR' },
+	});
 	const response = await createExportRoute().get();
 	assert.equal(response.status, 200);
 	const exported = await response.json();

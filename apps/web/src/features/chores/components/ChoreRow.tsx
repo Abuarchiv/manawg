@@ -26,8 +26,10 @@ import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { formatRelativeTime, parseValidDate } from '@/core/utils/time';
 import { getChoreRepairHint, getChoreStatus } from '@/features/chores/chore-status';
-import type { Chore, MemberInfo, RecurrenceType } from '@/features/chores/components/chore-types';
+import type { Chore, RecurrenceType } from '@/features/chores/components/chore-types';
 import { cn } from '@/shared/lib/cn';
+import type { MemberInfo } from '@/shared/lib/member-types';
+
 import { Check, Hand, MessageSquareMore, MoreHorizontal, Trash2 } from 'lucide-react';
 import { type ReactElement, memo, useState } from 'react';
 

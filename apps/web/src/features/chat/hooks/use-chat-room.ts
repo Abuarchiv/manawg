@@ -7,8 +7,8 @@ import {
 	notificationWarningMessage,
 } from '@/core/notifications/notification-warning';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useChatChannel } from '../chat-channel';
 import {
 	CHAT_REFRESH_BATCH_SIZE,
 	advanceChatRefreshSequence,
@@ -35,6 +35,7 @@ export interface ChatReactionRow {
 }
 
 const PAGE_SIZE = 50;
+const CHAT_POLL_INTERVAL_MS = 8000;
 
 type ChatAction = 'send' | 'react' | 'unreact' | 'edit' | 'delete';
 
@@ -254,12 +255,7 @@ export function useChatRoom({
 		return refreshPromiseRef.current;
 	}, [fetchMessages]);
 
-	useChatChannel(wgId, {
-		onMessageCreated: () => void refresh(),
-		onMessageUpdated: () => void refresh(),
-		onMessageDeleted: () => void refresh(),
-		onReactionChanged: () => void refresh(),
-	});
+	useVisibilityPausedInterval(() => void refresh(), wgId ? CHAT_POLL_INTERVAL_MS : null);
 
 	// Bootstrap through the gated API when the RSC passed no messages (the
 	// server render intentionally loads none — see chat/page.tsx).

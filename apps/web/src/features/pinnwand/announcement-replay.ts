@@ -1,11 +1,8 @@
 import { db, idempotencyResponses } from '@/core/db';
+import { completeClaimedResponse } from '@/core/db/claimed-response';
 import { type DbTransaction, lockExpensePayments, withTransaction } from '@/core/db/transaction';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
-import {
-	RESPONSE_REPLAY_TTL_SECONDS,
-	getCachedResponse,
-	readIdempotencyKey,
-} from '@/core/idempotency-store';
+import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { and, eq, gt, sql } from 'drizzle-orm';
 
@@ -115,21 +112,8 @@ export async function withAnnouncementReplay<T>(
 					return mutation;
 				}
 				if (key) {
-					const rows = await tx
-						.update(idempotencyResponses)
-						.set({
-							responseBody: mutation.response,
-							expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
-						})
-						.where(
-							and(
-								eq(idempotencyResponses.scope, scope),
-								eq(idempotencyResponses.key, key),
-								sql`${idempotencyResponses.responseBody} @> '{"_claimed": true}'::jsonb`,
-							),
-						)
-						.returning({ scope: idempotencyResponses.scope });
-					if (rows.length !== 1) throw new Error('idempotency_claim_missing');
+					const claimCompleted = await completeClaimedResponse(tx, scope, key, mutation.response);
+					if (!claimCompleted) throw new Error('idempotency_claim_missing');
 				}
 				return mutation;
 			} catch (err) {

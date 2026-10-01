@@ -175,7 +175,10 @@ test.describe('expense integrity regressions', () => {
 				amountCents: number,
 			) => boolean;
 		}>(RECURRING_HELPERS, {
-			'@/core/utils/time': { parseTimestamp: () => null },
+			'@/core/utils/time': {
+				parseTimestamp: () => null,
+				addMonthsFromAnchor: (from: Date) => from,
+			},
 			'@/features/expenses/split-math': loadTs(SPLIT_MATH),
 		});
 		const first = { debtorMemberId: CALLER_ID, amountCents: 1 };
@@ -900,7 +903,10 @@ test.describe('expense integrity regressions', () => {
 		);
 		const splitMath = loadTs<Record<string, unknown>>(SPLIT_MATH);
 		const recurringHelpers = loadTs<Record<string, unknown>>(RECURRING_HELPERS, {
-			'@/core/utils/time': { parseTimestamp: (value: string) => Date.parse(value) },
+			'@/core/utils/time': {
+				parseTimestamp: (value: string) => Date.parse(value),
+				addMonthsFromAnchor: (from: Date) => from,
+			},
 			'@/features/expenses/split-math': splitMath,
 		});
 		const errors = {
@@ -1417,12 +1423,7 @@ test.describe('expense integrity regressions', () => {
 			expenseSaveErrorMessage: (error: string) => string;
 			recurringTemplateSaveErrorMessage: (error: string) => string;
 		}>(path.join(ROOT, 'src/features/expenses/expense-errors.ts'), {
-			'@/core/http/error-codes': {
-				isAuthInvalidated: () => false,
-				isInvalidShareCode: () => false,
-				isNetworkError: () => false,
-				isRetryableServerError: () => false,
-			},
+			'@/core/http/error-codes': loadTs(path.join(ROOT, 'src/core/http/error-codes.ts')),
 		});
 
 		expect(messages.expenseSaveErrorMessage('paid_by_must_include_caller')).toContain('Anteil');

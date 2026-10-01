@@ -38,6 +38,7 @@ import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { formatTimeFull } from '@/core/utils/time';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
+import type { MemberInfo } from '@/shared/lib/member-types';
 import { Copy, Pencil, Reply, Smile, Trash2 } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
 import { canDeleteMessage, canEditMessage } from '../chat-pure';
@@ -65,7 +66,7 @@ export interface ReactionSummary {
 
 interface MessageBubbleProps {
 	message: BubbleMessage;
-	sender: { name: string; color: string | null } | null;
+	sender: MemberInfo | null;
 	currentMemberId: string;
 	isAdmin: boolean;
 	isOwn: boolean;

@@ -15,7 +15,6 @@ import { currencySchema } from '@/core/validators/currency';
 import { buildExpensePrefillDraft } from '@/features/expenses/expense-prefill';
 import { isEqualExpenseSplit } from '@/features/expenses/expense-split-input';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { DESCRIPTION_MAX, type QUICK_EXPENSE_TEMPLATES } from './constants';
 import type { Expense, RecurringExpense } from './expense-types';
 
 export type SplitMode = 'equal' | 'manual';
@@ -329,18 +328,6 @@ export function useExpenseForm({
 		setPendingPrefill(null);
 	}
 
-	function applyQuickExpense(template: (typeof QUICK_EXPENSE_TEMPLATES)[number]): void {
-		suggestPrefill({
-			description: template.description.slice(0, DESCRIPTION_MAX),
-			amountStr: template.amount,
-			imageUrl: null,
-			paidByMemberId: identityMemberId,
-			splitMode: 'equal',
-			manualSplits: {},
-			recurringSourceId: null,
-		});
-	}
-
 	function startEdit(expense: Expense): void {
 		setRecurringSourceId(null);
 		setPendingPrefill(null);
@@ -436,7 +423,6 @@ export function useExpenseForm({
 			if (pendingPrefill) applyPrefill(pendingPrefill);
 		},
 		resetForm,
-		applyQuickExpense,
 		startEdit,
 		startRecurringEdit,
 	};

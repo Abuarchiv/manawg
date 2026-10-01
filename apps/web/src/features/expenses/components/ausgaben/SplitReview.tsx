@@ -3,9 +3,10 @@
 import { Badge } from '@/components/ui/badge';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { formatEuroCents } from '@/core/utils/money';
+import type { MemberRef } from '@/shared/lib/member-types';
 
 interface SplitReviewProps {
-	members: ReadonlyArray<{ id: string; name: string }>;
+	members: ReadonlyArray<MemberRef>;
 	splits: ReadonlyArray<{ debtorMemberId: string; amountCents: number }> | null;
 	paidByMemberId: string;
 	currency?: string;

@@ -1,4 +1,4 @@
-import { formatEuroCents } from '@/core/utils/money';
+import { formatEuroCents, normalizeCurrency } from '@/core/utils/money';
 
 export const REMINDER_COOLDOWN_HOURS = 48;
 const HOURS_TO_MS = 3_600_000;
@@ -22,10 +22,6 @@ function toMs(value: string | Date): number {
 	if (value instanceof Date) return value.getTime();
 	const parsed = Date.parse(value);
 	return Number.isNaN(parsed) ? 0 : parsed;
-}
-
-function normalizeCurrency(currency: string | undefined): string {
-	return currency?.trim().toUpperCase() || 'EUR';
 }
 
 /**

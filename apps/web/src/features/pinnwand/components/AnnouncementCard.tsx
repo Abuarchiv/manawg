@@ -54,6 +54,7 @@ import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { buildPinnwandPrefill, getPinnwandPrefillHref } from '@/features/pinnwand/pinnwand-prefill';
 import { cn } from '@/shared/lib/cn';
+import type { MemberInfo } from '@/shared/lib/member-types';
 import {
 	CheckCircle2,
 	ChevronDown,
@@ -85,7 +86,7 @@ import { KIND_LABELS } from './constants';
 
 interface AnnouncementCardProps {
 	announcement: Announcement;
-	author: { name: string; color: string | null };
+	author: MemberInfo;
 	deletePending: boolean;
 	pinPending: boolean;
 	statusPending: boolean;

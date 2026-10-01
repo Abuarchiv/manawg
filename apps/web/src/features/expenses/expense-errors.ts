@@ -1,210 +1,113 @@
-import {
-	isAuthInvalidated,
-	isInvalidShareCode,
-	isNetworkError,
-	isRetryableServerError,
-} from '@/core/http/error-codes';
+import { mutationErrorMessage } from '@/core/http/error-codes';
+
+const SPLIT_SUM_MISMATCH =
+	'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.';
+const PAID_BY_MUST_INCLUDE_CALLER =
+	'Wenn du für jemand anderen buchst, muss dein eigener Anteil größer als 0 sein.';
+
+const SAVE_SUBJECT = 'Ausgabe konnte nicht gespeichert werden';
+const SAVE_ERRORS: Record<string, string> = {
+	amount_invalid: `${SAVE_SUBJECT}: Der Betrag ist ungültig.`,
+	description_invalid: `${SAVE_SUBJECT}: Die Beschreibung muss 1 bis 160 Zeichen haben.`,
+	currency_invalid: `${SAVE_SUBJECT}: Die Währung ist ungültig.`,
+	image_invalid: `${SAVE_SUBJECT}: Der Anhang ist ungültig.`,
+	image_removed: `${SAVE_SUBJECT}: Der Anhang wurde entfernt. Lade ihn erneut hoch.`,
+	expected_updated_at_invalid: `${SAVE_SUBJECT}: Lade die Liste neu und versuche es erneut.`,
+	occurred_at_invalid: `${SAVE_SUBJECT}: Prüfe das Ausgabedatum.`,
+	splits_invalid: SPLIT_SUM_MISMATCH,
+	splits_sum_mismatch: SPLIT_SUM_MISMATCH,
+	splits_duplicate_debtor:
+		'Aufteilung enthält eine Person doppelt — jede Person darf nur einmal vorkommen.',
+	paid_by_must_include_caller: PAID_BY_MUST_INCLUDE_CALLER,
+	member_not_in_wg: `${SAVE_SUBJECT}: Mindestens ein Mitglied ist nicht mehr in dieser WG.`,
+	insert_failed: `${SAVE_SUBJECT}: Prüfe die Ausgabenliste und versuche es erneut.`,
+	split_insert_failed:
+		'Ausgabe konnte nicht vollständig gespeichert werden: Lade die Ausgaben neu und prüfe die Aufteilung.',
+	fetch_failed:
+		'Ausgabe wurde möglicherweise gespeichert: Lade die Ausgaben neu und prüfe den Eintrag.',
+	invalid_body: `${SAVE_SUBJECT}: Die Anfrage war ungültig.`,
+	invalid_json: `${SAVE_SUBJECT}: Die Anfrage war ungültig.`,
+};
 
 export function expenseSaveErrorMessage(error: string): string {
-	if (isNetworkError(error)) {
-		return 'Ausgabe konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
-	}
-	if (isRetryableServerError(error)) {
-		return 'Ausgabe konnte nicht gespeichert werden: Versuche es gleich erneut.';
-	}
-	if (error === 'wg_not_found') {
-		return 'Ausgabe konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
-	}
-	if (isInvalidShareCode(error)) {
-		return 'Ausgabe konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
-	}
-	if (isAuthInvalidated(error)) {
-		return 'Ausgabe konnte nicht gespeichert werden: Tritt der WG erneut bei.';
-	}
-	if (error === 'amount_invalid') {
-		return 'Ausgabe konnte nicht gespeichert werden: Der Betrag ist ungültig.';
-	}
-	if (error === 'description_invalid') {
-		return 'Ausgabe konnte nicht gespeichert werden: Die Beschreibung muss 1 bis 160 Zeichen haben.';
-	}
-	if (error === 'currency_invalid') {
-		return 'Ausgabe konnte nicht gespeichert werden: Die Währung ist ungültig.';
-	}
-	if (error === 'image_invalid') {
-		return 'Ausgabe konnte nicht gespeichert werden: Der Anhang ist ungültig.';
-	}
-	if (error === 'image_removed') {
-		return 'Ausgabe konnte nicht gespeichert werden: Der Anhang wurde entfernt. Lade ihn erneut hoch.';
-	}
-	if (error === 'expected_updated_at_invalid') {
-		return 'Ausgabe konnte nicht gespeichert werden: Lade die Liste neu und versuche es erneut.';
-	}
-	if (error === 'occurred_at_invalid') {
-		return 'Ausgabe konnte nicht gespeichert werden: Prüfe das Ausgabedatum.';
-	}
-	if (error === 'splits_invalid') {
-		return 'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.';
-	}
-	if (error === 'splits_sum_mismatch') {
-		return 'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.';
-	}
-	if (error === 'splits_duplicate_debtor') {
-		return 'Aufteilung enthält eine Person doppelt — jede Person darf nur einmal vorkommen.';
-	}
-	if (error === 'paid_by_must_include_caller') {
-		return 'Wenn du für jemand anderen buchst, muss dein eigener Anteil größer als 0 sein.';
-	}
-	if (error === 'member_not_in_wg') {
-		return 'Ausgabe konnte nicht gespeichert werden: Mindestens ein Mitglied ist nicht mehr in dieser WG.';
-	}
-	if (error === 'insert_failed') {
-		return 'Ausgabe konnte nicht gespeichert werden: Prüfe die Ausgabenliste und versuche es erneut.';
-	}
-	if (error === 'split_insert_failed') {
-		return 'Ausgabe konnte nicht vollständig gespeichert werden: Lade die Ausgaben neu und prüfe die Aufteilung.';
-	}
-	if (error === 'fetch_failed') {
-		return 'Ausgabe wurde möglicherweise gespeichert: Lade die Ausgaben neu und prüfe den Eintrag.';
-	}
-	if (error === 'invalid_body' || error === 'invalid_json') {
-		return 'Ausgabe konnte nicht gespeichert werden: Die Anfrage war ungültig.';
-	}
-	return 'Ausgabe konnte nicht gespeichert werden.';
+	return mutationErrorMessage(SAVE_SUBJECT, error, SAVE_ERRORS, `${SAVE_SUBJECT}.`);
 }
+
+const ACTION_SUBJECT = 'Aktion fehlgeschlagen';
+const ACTION_ERRORS: Record<string, string> = {
+	not_split_party:
+		'Nur wer bezahlt hat oder beteiligt ist, kann diese Zahlung als beglichen markieren.',
+	member_ids_invalid: 'Ausgleich konnte nicht gespeichert werden: Wähle zwei gültige Mitglieder.',
+	same_member:
+		'Ausgleich konnte nicht gespeichert werden: Zahlende und empfangende Person müssen verschieden sein.',
+	member_not_in_wg:
+		'Ausgleich konnte nicht gespeichert werden: Mindestens ein Mitglied ist nicht mehr in dieser WG.',
+	not_party_to_debt: 'Nur beteiligte Mitglieder können diesen Ausgleich markieren.',
+	invalid_body: 'Die Änderung konnte nicht gespeichert werden: Die Anfrage war ungültig.',
+	invalid_json: 'Die Änderung konnte nicht gespeichert werden: Die Anfrage war ungültig.',
+	id_invalid: 'Diese Aktion konnte nicht eindeutig zugeordnet werden.',
+	image_removed:
+		'Der Anhang wurde entfernt. Lade ihn erneut hoch, bevor du die Ausgabe speicherst.',
+	settled_invalid:
+		'Diese Zahlung konnte nicht markiert werden: Lade die Ausgaben neu und versuche es erneut.',
+	split_already_offset:
+		'Dieser Anteil ist durch andere Ausgleiche ganz oder teilweise verrechnet. Den vollen Betrag als beglichen zu markieren würde den Saldo überschreiten; die Ausgabenliste wird aktualisiert.',
+};
 
 export function expenseActionErrorMessage(error: string): string {
-	if (isNetworkError(error)) {
-		return 'Aktion fehlgeschlagen: Prüfe deine Verbindung und versuche es erneut.';
-	}
-	if (isRetryableServerError(error)) {
-		return 'Aktion fehlgeschlagen: Versuche es gleich erneut.';
-	}
-	if (error === 'wg_not_found') {
-		return 'Aktion fehlgeschlagen: Öffne die WG über den aktuellen Link erneut.';
-	}
-	if (isInvalidShareCode(error)) {
-		return 'Aktion fehlgeschlagen: Der WG-Code ist ungültig.';
-	}
-	if (isAuthInvalidated(error)) {
-		return 'Aktion fehlgeschlagen: Tritt der WG erneut bei.';
-	}
-	if (error === 'not_split_party') {
-		return 'Nur wer bezahlt hat oder beteiligt ist, kann diese Zahlung als beglichen markieren.';
-	}
-	if (error === 'member_ids_invalid') {
-		return 'Ausgleich konnte nicht gespeichert werden: Wähle zwei gültige Mitglieder.';
-	}
-	if (error === 'same_member') {
-		return 'Ausgleich konnte nicht gespeichert werden: Zahlende und empfangende Person müssen verschieden sein.';
-	}
-	if (error === 'member_not_in_wg') {
-		return 'Ausgleich konnte nicht gespeichert werden: Mindestens ein Mitglied ist nicht mehr in dieser WG.';
-	}
-	if (error === 'not_party_to_debt') {
-		return 'Nur beteiligte Mitglieder können diesen Ausgleich markieren.';
-	}
-	if (error === 'invalid_body' || error === 'invalid_json') {
-		return 'Die Änderung konnte nicht gespeichert werden: Die Anfrage war ungültig.';
-	}
-	if (error === 'id_invalid') {
-		return 'Diese Aktion konnte nicht eindeutig zugeordnet werden.';
-	}
-	if (error === 'image_removed') {
-		return 'Der Anhang wurde entfernt. Lade ihn erneut hoch, bevor du die Ausgabe speicherst.';
-	}
-	if (error === 'settled_invalid') {
-		return 'Diese Zahlung konnte nicht markiert werden: Lade die Ausgaben neu und versuche es erneut.';
-	}
-	if (error === 'split_already_offset') {
-		return 'Dieser Anteil ist durch andere Ausgleiche ganz oder teilweise verrechnet. Den vollen Betrag als beglichen zu markieren würde den Saldo überschreiten; die Ausgabenliste wird aktualisiert.';
-	}
-	return 'Die Aktion ist fehlgeschlagen. Versuche es gleich erneut.';
+	return mutationErrorMessage(
+		ACTION_SUBJECT,
+		error,
+		ACTION_ERRORS,
+		'Die Aktion ist fehlgeschlagen. Versuche es gleich erneut.',
+	);
 }
+
+const TEMPLATE_SAVE_SUBJECT = 'Vorlage konnte nicht gespeichert werden';
+const TEMPLATE_SAVE_ERRORS: Record<string, string> = {
+	paid_by_must_include_caller: PAID_BY_MUST_INCLUDE_CALLER,
+	member_not_in_wg: 'Mindestens ein Mitglied der Fixkosten-Vorlage ist nicht mehr in dieser WG.',
+	recurring_expense_not_found:
+		'Diese Fixkosten-Vorlage existiert nicht mehr. Lade die Ausgaben neu.',
+	insert_failed: `${TEMPLATE_SAVE_SUBJECT}: Prüfe die Liste und versuche es erneut.`,
+	update_failed:
+		'Vorlage konnte nicht aktualisiert werden: Lade die Ausgaben neu und prüfe die Vorlage.',
+	amount_invalid: `${TEMPLATE_SAVE_SUBJECT}: Prüfe den Betrag.`,
+	description_invalid: `${TEMPLATE_SAVE_SUBJECT}: Gib eine Beschreibung ein.`,
+	interval_invalid: `${TEMPLATE_SAVE_SUBJECT}: Wähle ein gültiges Intervall.`,
+	due_date_invalid: `${TEMPLATE_SAVE_SUBJECT}: Prüfe das nächste Fälligkeitsdatum.`,
+	splits_invalid: SPLIT_SUM_MISMATCH,
+	splits_sum_mismatch: SPLIT_SUM_MISMATCH,
+	invalid_body: `${TEMPLATE_SAVE_SUBJECT}: Die Anfrage war ungültig.`,
+	invalid_json: `${TEMPLATE_SAVE_SUBJECT}: Die Anfrage war ungültig.`,
+};
 
 export function recurringTemplateSaveErrorMessage(error: string): string {
-	if (isNetworkError(error)) {
-		return 'Vorlage konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
-	}
-	if (isRetryableServerError(error)) {
-		return 'Vorlage konnte nicht gespeichert werden: Versuche es gleich erneut.';
-	}
-	if (error === 'wg_not_found') {
-		return 'Vorlage konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
-	}
-	if (isInvalidShareCode(error)) {
-		return 'Vorlage konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
-	}
-	if (isAuthInvalidated(error)) {
-		return 'Vorlage konnte nicht gespeichert werden: Tritt der WG erneut bei.';
-	}
-	if (error === 'paid_by_must_include_caller') {
-		return 'Wenn du für jemand anderen buchst, muss dein eigener Anteil größer als 0 sein.';
-	}
-	if (error === 'member_not_in_wg') {
-		return 'Mindestens ein Mitglied der Fixkosten-Vorlage ist nicht mehr in dieser WG.';
-	}
-	if (error === 'recurring_expense_not_found') {
-		return 'Diese Fixkosten-Vorlage existiert nicht mehr. Lade die Ausgaben neu.';
-	}
-	if (error === 'insert_failed') {
-		return 'Vorlage konnte nicht gespeichert werden: Prüfe die Liste und versuche es erneut.';
-	}
-	if (error === 'update_failed') {
-		return 'Vorlage konnte nicht aktualisiert werden: Lade die Ausgaben neu und prüfe die Vorlage.';
-	}
-	if (error === 'amount_invalid') {
-		return 'Vorlage konnte nicht gespeichert werden: Prüfe den Betrag.';
-	}
-	if (error === 'description_invalid') {
-		return 'Vorlage konnte nicht gespeichert werden: Gib eine Beschreibung ein.';
-	}
-	if (error === 'interval_invalid') {
-		return 'Vorlage konnte nicht gespeichert werden: Wähle ein gültiges Intervall.';
-	}
-	if (error === 'due_date_invalid') {
-		return 'Vorlage konnte nicht gespeichert werden: Prüfe das nächste Fälligkeitsdatum.';
-	}
-	if (error === 'splits_invalid') {
-		return 'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.';
-	}
-	if (error === 'splits_sum_mismatch') {
-		return 'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.';
-	}
-	if (error === 'invalid_body' || error === 'invalid_json') {
-		return 'Vorlage konnte nicht gespeichert werden: Die Anfrage war ungültig.';
-	}
-	return 'Vorlage konnte nicht gespeichert werden.';
+	return mutationErrorMessage(
+		TEMPLATE_SAVE_SUBJECT,
+		error,
+		TEMPLATE_SAVE_ERRORS,
+		`${TEMPLATE_SAVE_SUBJECT}.`,
+	);
 }
 
+const TEMPLATE_DELETE_SUBJECT = 'Vorlage konnte nicht gelöscht werden';
+const TEMPLATE_DELETE_ERRORS: Record<string, string> = {
+	id_invalid: `${TEMPLATE_DELETE_SUBJECT}: Diese Vorlage konnte nicht eindeutig zugeordnet werden.`,
+	recurring_expense_not_found:
+		'Diese Fixkosten-Vorlage existiert nicht mehr. Lade die Ausgaben neu.',
+	delete_failed: `${TEMPLATE_DELETE_SUBJECT}: Lade die Ausgaben neu und prüfe, ob sie noch existiert.`,
+	invalid_body: `${TEMPLATE_DELETE_SUBJECT}: Die Anfrage war ungültig.`,
+	invalid_json: `${TEMPLATE_DELETE_SUBJECT}: Die Anfrage war ungültig.`,
+};
+
 export function recurringTemplateDeleteErrorMessage(error: string): string {
-	if (isNetworkError(error)) {
-		return 'Vorlage konnte nicht gelöscht werden: Prüfe deine Verbindung und versuche es erneut.';
-	}
-	if (isRetryableServerError(error)) {
-		return 'Vorlage konnte nicht gelöscht werden: Versuche es gleich erneut.';
-	}
-	if (error === 'wg_not_found') {
-		return 'Vorlage konnte nicht gelöscht werden: Öffne die WG über den aktuellen Link erneut.';
-	}
-	if (isInvalidShareCode(error)) {
-		return 'Vorlage konnte nicht gelöscht werden: Der WG-Code ist ungültig.';
-	}
-	if (isAuthInvalidated(error)) {
-		return 'Vorlage konnte nicht gelöscht werden: Tritt der WG erneut bei.';
-	}
-	if (error === 'id_invalid') {
-		return 'Vorlage konnte nicht gelöscht werden: Diese Vorlage konnte nicht eindeutig zugeordnet werden.';
-	}
-	if (error === 'recurring_expense_not_found') {
-		return 'Diese Fixkosten-Vorlage existiert nicht mehr. Lade die Ausgaben neu.';
-	}
-	if (error === 'delete_failed') {
-		return 'Vorlage konnte nicht gelöscht werden: Lade die Ausgaben neu und prüfe, ob sie noch existiert.';
-	}
-	if (error === 'invalid_body' || error === 'invalid_json') {
-		return 'Vorlage konnte nicht gelöscht werden: Die Anfrage war ungültig.';
-	}
-	return 'Vorlage konnte nicht gelöscht werden.';
+	return mutationErrorMessage(
+		TEMPLATE_DELETE_SUBJECT,
+		error,
+		TEMPLATE_DELETE_ERRORS,
+		`${TEMPLATE_DELETE_SUBJECT}.`,
+	);
 }
 
 export function recurringAdvanceWarningMessage(status: number, error: string): string {
@@ -230,7 +133,7 @@ export function splitInputErrorMessage(
 		case 'splits_empty':
 			return 'Aufteilung leer — gib mindestens einen Betrag ein.';
 		case 'splits_mismatch':
-			return 'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.';
+			return SPLIT_SUM_MISMATCH;
 		case 'no_members':
 			return 'Keine Mitglieder vorhanden.';
 	}

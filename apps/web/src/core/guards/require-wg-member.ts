@@ -2,7 +2,7 @@ import { getAuthenticatedUser } from '@/core/auth/server';
 import { type VerifiedMember, requireMember } from '@/core/guards/api-auth';
 import { type ResolvedWg, resolveWg } from '@/core/guards/resolve';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
-import { apiError, notFound } from '@/core/http/api-errors';
+import { HTTP, apiError, notFound } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
 import type { NextRequest, NextResponse } from 'next/server';
 
@@ -19,8 +19,6 @@ interface WgMemberFail {
 }
 
 type RequireWgMemberResult = WgMemberOk | WgMemberFail;
-
-const HTTP_UNAUTHORIZED = 401;
 
 /**
  * Resolve a share code to its WG and verify the caller is a member — the
@@ -55,7 +53,7 @@ export async function requireWgMember(
 	if (!user) {
 		return {
 			ok: false,
-			response: apiError('auth_required', HTTP_UNAUTHORIZED, 'auth_required'),
+			response: apiError('auth_required', HTTP.UNAUTHORIZED, 'auth_required'),
 		};
 	}
 

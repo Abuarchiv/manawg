@@ -24,11 +24,6 @@ export interface AbsenceListResponse {
 	absences: AbsenceInput[];
 }
 
-export interface MemberInfo {
-	name: string;
-	color: string | null;
-}
-
 // Minimal member shape needed by the chore/absence selects. Structurally a
 // subset of the WgContext `Member`, so passing `useWg().members` in is safe.
 export interface ChoreMember {

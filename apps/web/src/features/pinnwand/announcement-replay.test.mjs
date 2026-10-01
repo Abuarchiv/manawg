@@ -120,8 +120,11 @@ function harness() {
 				return { won: true };
 			},
 		},
+		'@/core/db/claimed-response': {
+			completeClaimedResponse: async (tx, _scope, _key, responseBody) =>
+				(await tx.update().set({ responseBody }).where().returning()).length > 0,
+		},
 		'@/core/idempotency-store': {
-			RESPONSE_REPLAY_TTL_SECONDS: 604_800,
 			getCachedResponse: async () =>
 				state.staleRead ? null : state.slot && !state.slot._claimed ? state.slot : null,
 			readIdempotencyKey: (req) => req.headers.get('idempotency-key'),
