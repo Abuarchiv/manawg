@@ -49,6 +49,12 @@ function singleCurrencyTotal(totals: Readonly<CurrencyTotals>): number | null {
 	return currencies.length <= 1 ? (currencies[0] ? (totals[currencies[0]] ?? 0) : 0) : null;
 }
 
+// Code points, not UTF-16 units: slicing mid-surrogate leaves a broken "�".
+function clip(text: string, max: number): string {
+	const chars = Array.from(text);
+	return chars.length > max ? `${chars.slice(0, max).join('')}…` : text;
+}
+
 export interface MemberBalance {
 	memberId: string;
 	memberName: string;
@@ -528,7 +534,7 @@ export async function loadDashboardData(
 			timestamp: a.createdAt.toISOString(),
 			memberId: a.authorMemberId,
 			memberName: memberById.get(a.authorMemberId)?.name ?? '—',
-			text: a.content.length > 80 ? `${a.content.slice(0, 80)}…` : a.content,
+			text: clip(a.content, 80),
 			href: getDashboardActivityHref(shareCode, 'announcement', a.id),
 		});
 		rawActivityByKey.set(`announcement:${a.id}`, a.createdAt.getTime());

@@ -903,7 +903,7 @@ export default function PutzenPage() {
 				});
 				const nextName = members.find((member) => member.id === updated.assignedMemberId)?.name;
 				setActionNotice(
-					`Erledigt. Nächster Termin: ${formatShortDate(updated.nextDueAt)}; ${nextName ? `${nextName} ist dran (Rotation).` : 'noch niemand zugewiesen.'}`,
+					`Erledigt. Nächster Termin: ${formatShortDate(updated.nextDueAt, 'Europe/Berlin')}; ${nextName ? `${nextName} ist dran (Rotation).` : 'noch niemand zugewiesen.'}`,
 				);
 			} else {
 				setActionNotice(

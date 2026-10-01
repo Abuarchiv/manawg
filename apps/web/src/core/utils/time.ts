@@ -12,6 +12,15 @@ export function parseValidDate(value: string | Date): Date | null {
 	return timestamp === null ? null : new Date(timestamp);
 }
 
+/**
+ * Whole calendar days (device zone) from `from` to `to`. A 24h-bucket
+ * is wrong near midnight: 47h ahead from 08:00 is the day after tomorrow, not "morgen".
+ */
+function calendarDaysBetween(from: Date, to: Date): number {
+	const day = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+	return Math.round((day(to) - day(from)) / MS_PER_DAY);
+}
+
 export function formatRelativeTime(iso: string, now = Date.now()): string {
 	const date = parseValidDate(iso);
 	if (!date) return 'Zeit unbekannt';
@@ -41,7 +50,7 @@ export function formatRelativeTime(iso: string, now = Date.now()): string {
 			return `in ${h} Std`;
 		}
 		if (until < 7 * MS_PER_DAY) {
-			const d = Math.floor(until / MS_PER_DAY);
+			const d = calendarDaysBetween(new Date(now), date);
 			return d === 1 ? 'morgen' : `in ${d} Tagen`;
 		}
 		return new Intl.DateTimeFormat('de-DE', {
@@ -62,7 +71,7 @@ export function formatRelativeTime(iso: string, now = Date.now()): string {
 		return `vor ${h} Std`;
 	}
 	if (diff < 7 * MS_PER_DAY) {
-		const d = Math.floor(diff / MS_PER_DAY);
+		const d = calendarDaysBetween(date, new Date(now));
 		return d === 1 ? 'gestern' : `vor ${d} Tagen`;
 	}
 	return new Intl.DateTimeFormat('de-DE', {
@@ -82,27 +91,35 @@ export function formatCompactRelativeTime(iso: string, now = Date.now()): string
 		const until = -diff;
 		if (until < MS_PER_HOUR) return `in ${Math.floor(until / MS_PER_MINUTE)} Min.`;
 		if (until < MS_PER_DAY) return `in ${Math.floor(until / MS_PER_HOUR)} Std.`;
-		const days = Math.floor(until / MS_PER_DAY);
-		if (days < 7) return days === 1 ? 'morgen' : `in ${days} T.`;
+		const days = calendarDaysBetween(new Date(now), date);
+		if (until < 7 * MS_PER_DAY) return days === 1 ? 'morgen' : `in ${days} T.`;
 		return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' }).format(date);
 	}
 
 	if (diff < MS_PER_MINUTE) return 'jetzt';
 	if (diff < MS_PER_HOUR) return `${Math.round(diff / MS_PER_MINUTE)} Min.`;
 	if (diff < MS_PER_DAY) return `${Math.round(diff / MS_PER_HOUR)} Std.`;
-	const days = Math.round(diff / MS_PER_DAY);
-	if (days < 7) return `${days} T.`;
+	const days = calendarDaysBetween(date, new Date(now));
+	if (diff < 7 * MS_PER_DAY) return `${days} T.`;
 	return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' }).format(date);
 }
 
-export function formatShortDate(iso: string): string {
+/**
+ * `timeZone: 'Europe/Berlin'` for dates that are Berlin calendar days (chore due
+ * dates, absences): a device in New York must show the same day the status
+ * label ("morgen", "heute fällig") was computed for.
+ */
+export function formatShortDate(iso: string, timeZone?: 'Europe/Berlin'): string {
 	const date = parseValidDate(iso);
 	if (!date) return 'Datum unbekannt';
-	return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' }).format(date);
+	return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', timeZone }).format(
+		date,
+	);
 }
 
+/** Absence range: Berlin days, see `formatShortDate`. */
 export function formatShortDateRange(startIso: string, endIso: string): string {
-	return `${formatShortDate(startIso)} bis ${formatShortDate(endIso)}`;
+	return `${formatShortDate(startIso, 'Europe/Berlin')} bis ${formatShortDate(endIso, 'Europe/Berlin')}`;
 }
 
 export function formatTimeFull(iso: string): string {
@@ -131,5 +148,7 @@ export function formatWeekLabel(weekStart: Date, now = new Date()): string {
 	);
 	if (weeksAgo === 0) return 'Diese Woche';
 	if (weeksAgo === 1) return 'Letzte Woche';
-	return `Woche ab ${formatShortDate(weekStart.toISOString())}`;
+	// Without a year, weeks exactly 52 weeks apart share a label and key.
+	const year = weekStart.getFullYear() === now.getFullYear() ? '' : `${weekStart.getFullYear()}`;
+	return `Woche ab ${formatShortDate(weekStart.toISOString())}${year}`;
 }

@@ -21,7 +21,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ImageUploader } from '@/components/wg/ImageUploader';
-import { memberTint } from '@/components/wg/MemberAvatar';
+import { initials, memberTint } from '@/components/wg/MemberAvatar';
 import type { AnnouncementKind } from '@/features/pinnwand/components/announcement-types';
 import { CONTENT_MAX, KIND_OPTIONS } from '@/features/pinnwand/components/constants';
 import { ChevronDown, ImagePlus, Send, X } from 'lucide-react';
@@ -64,9 +64,7 @@ export function PinnwandComposer({
 			<CardHeader>
 				<CardTitle className="flex min-w-0 items-center gap-2">
 					<Avatar>
-						<AvatarFallback style={memberTint(authorName)}>
-							{authorName.slice(0, 2).toLocaleUpperCase('de-DE')}
-						</AvatarFallback>
+						<AvatarFallback style={memberTint(authorName)}>{initials(authorName)}</AvatarFallback>
 					</Avatar>
 					<h2>Neuer Beitrag</h2>
 				</CardTitle>

@@ -276,7 +276,7 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 				title: absence.isCurrentMember
 					? 'Du bist als abwesend markiert'
 					: `${absence.name} ist abwesend`,
-				detail: `bis ${formatShortDate(absence.endDate)}`,
+				detail: `bis ${formatShortDate(absence.endDate, 'Europe/Berlin')}`,
 				href: absence.id
 					? `${base}/putzen?panel=absences&absence=${encodeURIComponent(absence.id)}`
 					: `${base}/putzen?panel=absences`,
