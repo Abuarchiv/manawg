@@ -328,6 +328,8 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 			if (!data) return;
 			setRotateConfirm(false);
 			setJoiningEnabled(data.wg.joiningEnabled);
+			// Old code is dead after rotation; drop it so the WG list doesn't show a stale duplicate.
+			forgetWg(wg.shareCode);
 			router.replace(`/wg/${encodeURIComponent(data.wg.shareCode)}/einstellungen`);
 		} finally {
 			accessPendingRef.current = false;
