@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
+import { hasSessionCookie } from '@/core/auth/session-hint';
 import { LogoMark } from '@/shared/components/ui/LogoMark';
 import { cn } from '@/shared/lib/cn';
 import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
@@ -167,6 +168,11 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	// biome-ignore lint/correctness/useExhaustiveDependencies: retryNonce deliberately reruns the lookup without affecting its request shape.
 	useEffect(() => {
 		const controller = new AbortController();
+		if (!hasSessionCookie()) {
+			setMemberships([]);
+			setMembershipState('signed-out');
+			return;
+		}
 		setMembershipState('loading');
 		fetch('/api/wg/mine', { cache: 'no-store', signal: controller.signal })
 			.then(async (response) => {
