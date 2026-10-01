@@ -133,7 +133,17 @@ export function WgContextProvider({
 					...(member.memberToken ? { memberToken: member.memberToken } : {}),
 				};
 				setIdentity(wg.id, nextIdentity);
-				setStateIdentity(nextIdentity);
+				// Keep the same object when nothing changed: a new identity re-runs
+				// refreshMembers and every page fetch keyed on it.
+				setStateIdentity((prev) =>
+					prev &&
+					prev.memberId === nextIdentity.memberId &&
+					prev.name === nextIdentity.name &&
+					prev.authUserId === nextIdentity.authUserId &&
+					prev.memberToken === nextIdentity.memberToken
+						? prev
+						: nextIdentity,
+				);
 				setAccountReady(true);
 				setMemberLoaded(true);
 				return;
@@ -180,6 +190,7 @@ export function WgContextProvider({
 			setAccountReady(false);
 			setMemberLoaded(true);
 		};
+		let revalidating = false;
 		const loadForUser = (nextUserId: string) => {
 			if (nextUserId !== authUserIdRef.current) {
 				authUserIdRef.current = nextUserId;
@@ -196,8 +207,15 @@ export function WgContextProvider({
 				window.setTimeout(() => void loadSessionMember(nextUserId, generation), 0);
 				return;
 			}
+			// getSession and INITIAL_SESSION both land here on mount; one revalidation is enough.
+			if (revalidating) return;
+			revalidating = true;
 			const generation = authGenerationRef.current;
-			window.setTimeout(() => void loadSessionMember(nextUserId, generation, true), 0);
+			window.setTimeout(() => {
+				void loadSessionMember(nextUserId, generation, true).finally(() => {
+					revalidating = false;
+				});
+			}, 0);
 		};
 		const { data } = supabase.auth.onAuthStateChange((event, session) => {
 			const nextUserId = session?.user.id ?? null;
