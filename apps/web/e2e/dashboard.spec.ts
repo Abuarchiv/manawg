@@ -22,7 +22,13 @@ import type { EventInput, EventOccurrence } from '../src/features/events/events'
 import { expandRecurrence } from '../src/features/events/events';
 import { buildSettlementSummary, simplifyDebts } from '../src/features/expenses/debt-reduction';
 import { parseShoppingInput } from '../src/features/shopping/parse-shopping-input';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	mockUnreadCount,
+	navigateToFeature,
+	setupMember,
+} from './_helpers';
 
 test.describe('daily overview home', () => {
 	const BASE = '/api/wg/MTE8PZAT';
@@ -131,9 +137,7 @@ test.describe('daily overview home', () => {
 		await page.route(`**${BASE}/dashboard`, (route) =>
 			route.fulfill({ status: 200, json: fixtureDashboard(dueChores) }),
 		);
-		await page.route(`**${BASE}/chat/unread-count`, (route) =>
-			route.fulfill({ status: 200, json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, BASE);
 	}
 
 	test('shows personal actions and a separate Berlin week agenda', async ({ page }, testInfo) => {
@@ -395,9 +399,7 @@ test.describe('daily overview home', () => {
 				json: fixtureDashboard(dashboardReads === 1 ? [chore] : []),
 			});
 		});
-		await page.route(`**${BASE}/chat/unread-count`, (route) =>
-			route.fulfill({ status: 200, json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, BASE);
 		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
 			route.fulfill({ status: 200, json: { events: [] } }),
 		);
@@ -488,9 +490,7 @@ test.describe('daily overview home', () => {
 		await page.route(`**${BASE}/dashboard`, (route) =>
 			route.fulfill({ status: 503, json: { error: 'temporarily_unavailable' } }),
 		);
-		await page.route(`**${BASE}/chat/unread-count`, (route) =>
-			route.fulfill({ status: 200, json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, BASE);
 		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
 			route.fulfill({ status: 200, json: { events: [] } }),
 		);
@@ -510,9 +510,7 @@ test.describe('daily overview home', () => {
 		await page.clock.install({ time: new Date('2026-09-27T21:59:30.000Z') });
 		await setupMember(page);
 		await mockDashboard(page, []);
-		await page.route(`**${BASE}/chat/unread-count`, (route) =>
-			route.fulfill({ status: 200, json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, BASE);
 		const eventRangeStarts: string[] = [];
 		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) => {
 			const url = new URL(route.request().url());
@@ -962,9 +960,7 @@ test.describe('daily overview navigation', () => {
 			dueChores: [],
 			dueRecurringExpenses: [],
 		});
-		await page.route(`**${BASE}/chat/unread-count`, (route) =>
-			route.fulfill({ status: 200, json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, BASE);
 
 		await navigateToFeature(page, '/wg/MTE8PZAT/kalender');
 		await dismissOnboarding(page);
@@ -997,9 +993,7 @@ test.describe('daily overview navigation', () => {
 			],
 			dueRecurringExpenses: [],
 		});
-		await page.route(`**${BASE}/chat/unread-count`, (route) =>
-			route.fulfill({ status: 200, json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, BASE);
 
 		await navigateToFeature(page, '/wg/MTE8PZAT/vorraete');
 		await dismissOnboarding(page);
@@ -1022,9 +1016,7 @@ test.describe('daily overview navigation', () => {
 			dueChores: [],
 			dueRecurringExpenses: [],
 		});
-		await page.route(`**${BASE}/chat/unread-count`, (route) =>
-			route.fulfill({ status: 200, json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, BASE);
 		const createdAt = new Date(Date.now() - 60_000).toISOString();
 		const coffee = {
 			id: 'coffee',
@@ -1647,9 +1639,7 @@ test.describe('large data render limit', () => {
 		await page.route(`**/api/wg/${shareCode}/dashboard`, (route) =>
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
-		await page.route(`**/api/wg/${shareCode}/chat/unread-count`, (route) =>
-			route.fulfill({ json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 
 		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 		await dismissOnboarding(page);

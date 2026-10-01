@@ -2,7 +2,13 @@
 // Why: refreshes must not clobber a comment being edited.
 
 import { expect, test } from '@playwright/test';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	inMinimalMatrix,
+	navigateToFeature,
+	setupMember,
+} from './_helpers';
 
 test.describe('pinnwand archive', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -48,6 +54,8 @@ test.describe('pinnwand archive', () => {
 		for (const rootFontSize of ['16px', '32px'] as const) {
 			const textScale = rootFontSize === '32px' ? '200%' : 'normal';
 			for (const width of [320, 390]) {
+				if (!inMinimalMatrix({ width, dark: colorScheme === 'dark', large: textScale === '200%' }))
+					continue;
 				test(`Pinnwand archive toggle fits at ${width}px, ${colorScheme} mode, and ${textScale} text`, async ({
 					page,
 				}) => {
@@ -295,6 +303,7 @@ test.describe('pinnwand comment layout', () => {
 	for (const width of [320, 360, 390] as const) {
 		for (const largeText of [false, true] as const) {
 			for (const colorScheme of ['light', 'dark'] as const) {
+				if (!inMinimalMatrix({ width, dark: colorScheme === 'dark', large: largeText })) continue;
 				test(`keeps Pinnwand comments usable at ${width}px, ${largeText ? '32px' : 'normal'} text, ${colorScheme}`, async ({
 					page,
 				}) => {

@@ -3,6 +3,8 @@
 
 import { expect, test } from '@playwright/test';
 
+import { mockNoWgs } from './_helpers';
+
 test.describe('auth phone flow', () => {
 	test.describe('phone authentication fixture', () => {
 		test.skip(process.env.AUTH_UI_E2E !== 'true', 'Requires the isolated fake Supabase fixture.');
@@ -207,13 +209,7 @@ test.describe('entry accessibility', () => {
 		});
 
 		test('moves focus between steps and keeps server errors form-level', async ({ page }) => {
-			await page.route('**/api/wg/mine', (route) =>
-				route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: JSON.stringify({ wgs: [] }),
-				}),
-			);
+			await mockNoWgs(page);
 			await page.route('**/api/wg', async (route) => {
 				if (route.request().method() === 'POST') {
 					await route.fulfill({
@@ -277,13 +273,7 @@ test.describe('entry account switch', () => {
 		test('does not restore the previous account draft after switching accounts', async ({
 			page,
 		}) => {
-			await page.route('**/api/wg/mine', (route) =>
-				route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: JSON.stringify({ wgs: [] }),
-				}),
-			);
+			await mockNoWgs(page);
 			await page.route('**/auth/v1/logout', (route) => route.fulfill({ status: 204, body: '' }));
 
 			await page.goto('/neu');

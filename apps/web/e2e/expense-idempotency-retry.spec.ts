@@ -1,3 +1,6 @@
+// Expense create/edit retry and idempotency-key handling, including offline queue replay.
+// Why: ambiguous network failures must reuse the original key so a retry can never book an expense twice.
+
 import { type Page, type Route, expect, test } from '@playwright/test';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
 

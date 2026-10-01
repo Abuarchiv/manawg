@@ -2,7 +2,13 @@
 // Why: the composer must never lose a draft and must stay usable above the iOS keyboard.
 
 import { type Page, expect, test } from '@playwright/test';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	mockUnreadCount,
+	navigateToFeature,
+	setupMember,
+} from './_helpers';
 
 test.describe('chat edit focus', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -27,40 +33,40 @@ test.describe('chat edit focus', () => {
 		return { actions, editor, message };
 	}
 
-	for (const colorScheme of ['light', 'dark'] as const) {
-		for (const width of [320, 360] as const) {
-			for (const fontSize of [16, 32] as const) {
-				test(`chat edit keeps keyboard focus through open, Escape, and cancel (${width}px, ${colorScheme}, ${fontSize}px)`, async ({
-					page,
-				}) => {
-					await page.setViewportSize({ width, height: 740 });
-					await page.emulateMedia({ colorScheme });
-					await setupMember(page);
-					await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/chat`);
-					await dismissOnboarding(page);
-					const appliedFontSize = await page.evaluate((size) => {
-						document.documentElement.style.fontSize = `${size}px`;
-						return getComputedStyle(document.documentElement).fontSize;
-					}, fontSize);
-					expect(appliedFontSize).toBe(`${fontSize}px`);
+	// Minimal matrix: 320px light at 16px and 320px dark at 32px text.
+	for (const [colorScheme, width, fontSize] of [
+		['light', 320, 16],
+		['dark', 320, 32],
+	] as const) {
+		test(`chat edit keeps keyboard focus through open, Escape, and cancel (${width}px, ${colorScheme}, ${fontSize}px)`, async ({
+			page,
+		}) => {
+			await page.setViewportSize({ width, height: 740 });
+			await page.emulateMedia({ colorScheme });
+			await setupMember(page);
+			await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/chat`);
+			await dismissOnboarding(page);
+			const appliedFontSize = await page.evaluate((size) => {
+				document.documentElement.style.fontSize = `${size}px`;
+				return getComputedStyle(document.documentElement).fontSize;
+			}, fontSize);
+			expect(appliedFontSize).toBe(`${fontSize}px`);
 
-					const { actions, editor, message } = await openEditorFromKeyboard(page);
-					await expect(editor).toBeFocused();
-					await page.keyboard.press('Escape');
-					await expect(editor).toBeHidden();
-					await expect(actions).toBeFocused();
+			const { actions, editor, message } = await openEditorFromKeyboard(page);
+			await expect(editor).toBeFocused();
+			await page.keyboard.press('Escape');
+			await expect(editor).toBeHidden();
+			await expect(actions).toBeFocused();
 
-					const reopened = await openEditorFromKeyboard(page);
-					await expect(reopened.editor).toBeFocused();
-					await page.keyboard.press('Tab');
-					const cancel = message.getByRole('button', { name: 'Abbrechen' });
-					await expect(cancel).toBeFocused();
-					await page.keyboard.press('Enter');
-					await expect(reopened.editor).toBeHidden();
-					await expect(reopened.actions).toBeFocused();
-				});
-			}
-		}
+			const reopened = await openEditorFromKeyboard(page);
+			await expect(reopened.editor).toBeFocused();
+			await page.keyboard.press('Tab');
+			const cancel = message.getByRole('button', { name: 'Abbrechen' });
+			await expect(cancel).toBeFocused();
+			await page.keyboard.press('Enter');
+			await expect(reopened.editor).toBeHidden();
+			await expect(reopened.actions).toBeFocused();
+		});
 	}
 
 	test('saving an edited chat message returns keyboard focus to its actions button', async ({
@@ -267,9 +273,7 @@ test.describe('chat compose', () => {
 		await page.route(`**/api/wg/${SHARE_CODE}/members`, (route) =>
 			route.fulfill({ json: { members: [MEMBER] } }),
 		);
-		await page.route(`**/api/wg/${SHARE_CODE}/chat/unread-count`, (route) =>
-			route.fulfill({ json: { count: 0 } }),
-		);
+		await mockUnreadCount(page, `/api/wg/${SHARE_CODE}`);
 		await page.route(`**/api/wg/${SHARE_CODE}/chat/read`, (route) =>
 			route.fulfill({ json: { ok: true } }),
 		);

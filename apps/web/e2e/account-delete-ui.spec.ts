@@ -1,13 +1,11 @@
+// Account deletion confirmation UI (fixture lane).
+// Why: the UI must report the true server outcome (200/202/unconfirmed/pre-commit failure) and never claim a failed or pending deletion as done.
+
 import { expect, test } from '@playwright/test';
+import { mockNoWgs } from './_helpers';
 
 async function openConfirmation(page: import('@playwright/test').Page) {
-	await page.route('**/api/wg/mine', (route) =>
-		route.fulfill({
-			status: 200,
-			contentType: 'application/json',
-			body: JSON.stringify({ wgs: [] }),
-		}),
-	);
+	await mockNoWgs(page);
 	await page.goto('/');
 	await page.getByRole('button', { name: 'Konto dauerhaft löschen' }).click();
 	await page.getByLabel('Tippe LÖSCHEN').fill('LÖSCHEN');

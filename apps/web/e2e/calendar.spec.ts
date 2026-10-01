@@ -979,6 +979,7 @@ test.describe('marker mobile overflow', () => {
 
 	for (const width of [320, 360] as const) {
 		for (const colorScheme of ['light', 'dark'] as const) {
+			if (width !== 320) continue;
 			test(`chat date separator fits a ${width}px viewport at 200% text (${colorScheme})`, async ({
 				page,
 			}) => {

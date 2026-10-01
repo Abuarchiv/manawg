@@ -68,7 +68,7 @@ test.describe('shopping retry', () => {
 				await route.continue();
 				return;
 			}
-			keys.push(route.request().headers()['idempotency-key']);
+			keys.push(route.request().headers()['idempotency-key'] ?? '');
 			await route.fulfill({
 				status: keys.length === 1 ? 503 : 200,
 				contentType: 'application/json',
@@ -812,8 +812,8 @@ test.describe('shopping conflict handling', () => {
 		const pool = new Pool({ connectionString: localTestDatabaseUrl(), max: 1 });
 		const database = drizzle(pool, { schema });
 		const suffix = randomUUID().replaceAll('-', '');
-		let wgId: string | undefined;
-		let secondWgId: string | undefined;
+		let wgId = '';
+		let secondWgId = '';
 		const name = `Pilot shopping ${suffix}`;
 		const normalizedVariant = `  ${name.toUpperCase()}  `;
 
@@ -822,26 +822,26 @@ test.describe('shopping conflict handling', () => {
 				'INSERT INTO public.wgs (share_code, name) VALUES ($1, $2) RETURNING id',
 				[`P${suffix.slice(0, 7)}`, `Pilot shopping ${suffix}`],
 			);
-			wgId = wg.rows[0]?.id;
+			wgId = wg.rows[0]?.id ?? '';
 			expect(wgId).toBeTruthy();
 			const secondWg = await pool.query<{ id: string }>(
 				'INSERT INTO public.wgs (share_code, name) VALUES ($1, $2) RETURNING id',
 				[`Q${suffix.slice(0, 7)}`, `Pilot shopping second ${suffix}`],
 			);
-			secondWgId = secondWg.rows[0]?.id;
+			secondWgId = secondWg.rows[0]?.id ?? '';
 			expect(secondWgId).toBeTruthy();
 
 			const member = await pool.query<{ id: string }>(
 				'INSERT INTO public.wg_members (wg_id, name) VALUES ($1, $2) RETURNING id',
 				[wgId, `Pilot member ${suffix}`],
 			);
-			const memberId = member.rows[0]?.id;
+			const memberId = member.rows[0]?.id ?? '';
 			expect(memberId).toBeTruthy();
 			const secondMember = await pool.query<{ id: string }>(
 				'INSERT INTO public.wg_members (wg_id, name) VALUES ($1, $2) RETURNING id',
 				[secondWgId, `Pilot second member ${suffix}`],
 			);
-			const secondMemberId = secondMember.rows[0]?.id;
+			const secondMemberId = secondMember.rows[0]?.id ?? '';
 			expect(secondMemberId).toBeTruthy();
 
 			const first = await database

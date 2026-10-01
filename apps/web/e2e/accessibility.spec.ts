@@ -2,7 +2,14 @@
 // Why: WCAG 2.2 targets (contrast, focus, label-in-name) are legal/UX requirements and regress via styling changes.
 
 import { type Locator, type Page, expect, test } from '@playwright/test';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	mockNoWgs,
+	mockUnreadCount,
+	navigateToFeature,
+	setupMember,
+} from './_helpers';
 
 test.describe('contrast tokens', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -406,9 +413,7 @@ test.describe('label in name audit', () => {
 	test('Start page has exactly one <h1>, named after the WG', async ({ page }) => {
 		await setupMember(page);
 		await page.route(`**${BASE}/dashboard`, (route) => route.fulfill({ json: emptyDashboard }));
-		await page.route(`**${BASE}/chat/unread-count`, (route) =>
-			route.fulfill({ json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, BASE);
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
 		await dismissOnboarding(page);
@@ -424,9 +429,7 @@ test.describe('label in name audit', () => {
 	test('bottom-nav navigation moves focus to the main landmark', async ({ page }) => {
 		await setupMember(page);
 		await page.route(`**${BASE}/dashboard`, (route) => route.fulfill({ json: emptyDashboard }));
-		await page.route(`**${BASE}/chat/unread-count`, (route) =>
-			route.fulfill({ json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, BASE);
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
 		await dismissOnboarding(page);
@@ -443,9 +446,7 @@ test.describe('label in name audit', () => {
 	test('new-WG invite card names the visible action first', async ({ page }) => {
 		await setupMember(page);
 		await page.route(`**${BASE}/dashboard`, (route) => route.fulfill({ json: emptyDashboard }));
-		await page.route(`**${BASE}/chat/unread-count`, (route) =>
-			route.fulfill({ json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, BASE);
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
 		await dismissOnboarding(page);
@@ -552,9 +553,7 @@ test.describe('label in name audit', () => {
 		await page.route(`**/api/wg/${shareCode}/dashboard`, (route) =>
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
-		await page.route(`**/api/wg/${shareCode}/chat/unread-count`, (route) =>
-			route.fulfill({ json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 
 		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 		await dismissOnboarding(page);
@@ -704,7 +703,7 @@ test.describe('enter key next field', () => {
 	// Regression: a field whose keyboard key reads "next" submitted the whole form
 	// and flagged the still-empty fields below it.
 	test('the "next" key moves to the following field instead of submitting', async ({ page }) => {
-		await page.route('**/api/wg/mine', (route) => route.fulfill({ json: { wgs: [] } }));
+		await mockNoWgs(page);
 		let submitted = false;
 		await page.route('**/api/wg', (route) => {
 			if (route.request().method() === 'POST') submitted = true;

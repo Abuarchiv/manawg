@@ -11,7 +11,13 @@ import {
 } from '../src/features/chores/chore-fairness';
 import { getChoreStatus } from '../src/features/chores/chore-status';
 import { MEMBER_TOKEN_HEADER } from '../src/shared/lib/member-header';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	mockUnreadCount,
+	navigateToFeature,
+	setupMember,
+} from './_helpers';
 
 test.describe('chore absence cache', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -181,9 +187,7 @@ test.describe('chore next assignee', () => {
 				json: { openShoppingCount: 123, dueChores: [], dueRecurringExpenses: [] },
 			}),
 		);
-		await page.route(`**/api/wg/${SHARE_CODE}/chat/unread-count`, (route) =>
-			route.fulfill({ json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, `/api/wg/${SHARE_CODE}`);
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/putzen`);
 		await dismissOnboarding(page);
 		await expect.poll(() => memberTokens.length, { timeout: 15_000 }).toBeGreaterThanOrEqual(1);
@@ -815,9 +819,7 @@ test.describe('week status', () => {
 		await page.route(`**${BASE}/events**`, (route) =>
 			route.fulfill({ status: 500, json: { error: 'temporarily_unavailable' } }),
 		);
-		await page.route(`**${BASE}/chat/unread-count`, (route) =>
-			route.fulfill({ status: 200, json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, BASE);
 		await page.route(`**${BASE}/activity`, (route) =>
 			route.fulfill({ status: 200, json: { items: [], reminders: [] } }),
 		);

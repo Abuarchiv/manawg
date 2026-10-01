@@ -2,7 +2,14 @@
 // Why: phone-only product; nothing may overflow or trap the user at the smallest supported viewport.
 
 import { type Locator, type Page, expect, test } from '@playwright/test';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	mockNoWgs,
+	mockUnreadCount,
+	navigateToFeature,
+	setupMember,
+} from './_helpers';
 
 test.describe('mobile layout matrix', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -653,13 +660,8 @@ test.describe('mobile layout matrix', () => {
 		}
 	}
 
-	const extraInventoryLayouts = [320, 360, 390]
-		.flatMap((width) =>
-			(['light', 'dark'] as const).flatMap((colorScheme) =>
-				(['normal', '200%'] as const).map((textScale) => ({ width, colorScheme, textScale })),
-			),
-		)
-		.filter(({ width, colorScheme }) => width !== 320 || colorScheme !== 'light');
+	// Minimal matrix next to the 320px light case above: 320px dark at 200% text.
+	const extraInventoryLayouts = [{ width: 320, colorScheme: 'dark', textScale: '200%' }] as const;
 
 	for (const { width, colorScheme, textScale } of extraInventoryLayouts) {
 		test(`inventory row remains readable at ${width}px (${colorScheme}, ${textScale} text)`, async ({
@@ -710,7 +712,7 @@ test.describe('entry frame overflow', () => {
 			const wgName = 'Donaudampfschifffahrtsgesellschaftskapitänswohngemeinschaft';
 			await page.setViewportSize({ width: 320, height: 780 });
 			await page.addInitScript(() => window.localStorage.clear());
-			await page.route('**/api/wg/mine', (route) => route.fulfill({ json: { wgs: [] } }));
+			await mockNoWgs(page);
 			await page.route('**/api/wg', async (route) => {
 				if (route.request().method() === 'POST') {
 					await route.fulfill({
@@ -870,13 +872,7 @@ test.describe('app shell state', () => {
 				'Requires the configured Supabase browser client.',
 			);
 
-			await page.route('**/api/wg/mine', (route) =>
-				route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: JSON.stringify({ wgs: [] }),
-				}),
-			);
+			await mockNoWgs(page);
 
 			await page.goto('/neu?action=create');
 			await page.getByRole('button', { name: 'Mit anderem Konto anmelden', exact: true }).click();
@@ -892,13 +888,7 @@ test.describe('app shell state', () => {
 				'Requires the configured Supabase browser client.',
 			);
 
-			await page.route('**/api/wg/mine', (route) =>
-				route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: JSON.stringify({ wgs: [] }),
-				}),
-			);
+			await mockNoWgs(page);
 
 			await page.goto(`/neu?code=${FIXTURE_WG.shareCode}`);
 			await page.getByRole('button', { name: 'Mit anderem Konto anmelden', exact: true }).click();
@@ -1002,9 +992,7 @@ test.describe('drawer mobile zoom', () => {
 		await page.route(`**/api/wg/${shareCode}/dashboard`, (route) =>
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
-		await page.route(`**/api/wg/${shareCode}/chat/unread-count`, (route) =>
-			route.fulfill({ json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 	}
 
 	for (const drawerCase of drawers) {

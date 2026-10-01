@@ -1,3 +1,6 @@
+// Hosted social-login entry live lane; CI references this file by name.
+// Why: OAuth errors must keep a safe destination, reject external redirects and clear PKCE cookies; only verifiable against the real provider config.
+
 import { expect, test } from '@playwright/test';
 
 test.describe('live social-login entry', () => {

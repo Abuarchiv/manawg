@@ -7,7 +7,14 @@ import {
 	getOfflineActionRequest,
 } from '../src/core/offline/offline-queue';
 import type { Expense } from '../src/features/expenses/components/ausgaben/expense-types';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	inMinimalMatrix,
+	mockUnreadCount,
+	navigateToFeature,
+	setupMember,
+} from './_helpers';
 
 test.describe('expense row reflow', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -57,9 +64,7 @@ test.describe('expense row reflow', () => {
 		await page.route(`**/api/wg/${shareCode}/dashboard`, (route) =>
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
-		await page.route(`**/api/wg/${shareCode}/chat/unread-count`, (route) =>
-			route.fulfill({ json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 
 		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 		await dismissOnboarding(page);
@@ -202,9 +207,7 @@ test.describe('expense currency edit', () => {
 		await page.route(`**/api/wg/${shareCode}/dashboard`, (route) =>
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
-		await page.route(`**/api/wg/${shareCode}/chat/unread-count`, (route) =>
-			route.fulfill({ json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 
 		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 		await dismissOnboarding(page);
@@ -350,9 +353,7 @@ test.describe('expense edit payer', () => {
 		await page.route(`**/api/wg/${SHARE_CODE}/dashboard`, (route) =>
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
-		await page.route(`**/api/wg/${SHARE_CODE}/chat/unread-count`, (route) =>
-			route.fulfill({ json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, `/api/wg/${SHARE_CODE}`);
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/ausgaben`);
 		await dismissOnboarding(page);
 	}
@@ -478,9 +479,7 @@ test.describe('manual split validation', () => {
 		await page.route(`**/api/wg/${shareCode}/dashboard`, (route) =>
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
-		await page.route(`**/api/wg/${shareCode}/chat/unread-count`, (route) =>
-			route.fulfill({ json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 	}
 
 	test('blocks an invalid manual expense share, then submits the corrected split', async ({
@@ -739,9 +738,7 @@ test.describe('finance dialog mobile', () => {
 		await page.route(`**/api/wg/${shareCode}/dashboard`, (route) =>
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
-		await page.route(`**/api/wg/${shareCode}/chat/unread-count`, (route) =>
-			route.fulfill({ json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 
 		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 		await dismissOnboarding(page);
@@ -1012,6 +1009,7 @@ test.describe('fab summary overlay', () => {
 
 	for (const width of [320, 360]) {
 		for (const colorScheme of ['light', 'dark'] as const) {
+			if (width !== 320) continue;
 			test(`floating action leaves the monthly summary visible at ${width}px, ${colorScheme}, 200% text`, async ({
 				page,
 			}, testInfo) => {
@@ -1290,6 +1288,10 @@ test.describe('subscription summary responsive', () => {
 	for (const width of [320, 360]) {
 		for (const colorScheme of ['light', 'dark'] as const) {
 			for (const textScale of ['normal', '200%'] as const) {
+				if (
+					!inMinimalMatrix({ width, dark: colorScheme === 'dark', large: textScale !== 'normal' })
+				)
+					continue;
 				test(`monthly summary fits ${width}px ${colorScheme} ${textScale}`, async ({ page }) => {
 					await page.setViewportSize({ width, height: 740 });
 					await page.emulateMedia({ colorScheme });

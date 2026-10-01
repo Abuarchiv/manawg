@@ -1,3 +1,6 @@
+// Vercel Preview protection (Preview lane only; CI references this file by name).
+// Why: the deployment must stay unreachable without the automation bypass secret.
+
 import { expect, test } from '@playwright/test';
 
 const previewE2E = process.env.PREVIEW_E2E === 'true';

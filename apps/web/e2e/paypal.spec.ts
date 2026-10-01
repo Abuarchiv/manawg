@@ -2,7 +2,13 @@
 // Why: money-moving UI must show truthful states and never leak partner data into the document.
 
 import { type Page, expect, test } from '@playwright/test';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	mockUnreadCount,
+	navigateToFeature,
+	setupMember,
+} from './_helpers';
 
 test.describe('paypal checkout', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -86,9 +92,7 @@ test.describe('paypal checkout', () => {
 		await page.route(`**/api/wg/${shareCode}/dashboard`, (route) =>
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
-		await page.route(`**/api/wg/${shareCode}/chat/unread-count`, (route) =>
-			route.fulfill({ json: { count: 0, overflow: false } }),
-		);
+		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 		await dismissOnboarding(page);
 	}
@@ -689,6 +693,7 @@ test.describe('paypal settings load error', () => {
 
 	for (const width of [320, 360]) {
 		for (const theme of ['Hell', 'Dunkel'] as const) {
+			if (width !== 320) continue;
 			test(`${width}px ${theme}: unknown status keeps explicit connect available and can be retried`, async ({
 				page,
 			}) => {

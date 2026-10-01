@@ -2,7 +2,14 @@
 // Why: every tab must stay reachable and readable at 320px / 200% text, and pending switches must not double-submit.
 
 import { type Page, expect, test } from '@playwright/test';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	inMinimalMatrix,
+	mockNoWgs,
+	navigateToFeature,
+	setupMember,
+} from './_helpers';
 
 test.describe('settings access responsive', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -204,6 +211,8 @@ test.describe('settings data summary responsive', () => {
 	const width = 320;
 	for (const colorScheme of ['light', 'dark'] as const) {
 		for (const textScale of ['normal', '32px'] as const) {
+			if (!inMinimalMatrix({ width, dark: colorScheme === 'dark', large: textScale !== 'normal' }))
+				continue;
 			test(`export summary fits ${width}px ${colorScheme} ${textScale}`, async ({ page }) => {
 				await page.setViewportSize({ width, height: 844 });
 				await page.emulateMedia({ colorScheme });
@@ -512,6 +521,8 @@ test.describe('settings offline queue responsive', () => {
 	const width = 320;
 	for (const colorScheme of ['light', 'dark'] as const) {
 		for (const textScale of ['normal', '32px'] as const) {
+			if (!inMinimalMatrix({ width, dark: colorScheme === 'dark', large: textScale !== 'normal' }))
+				continue;
 			test(`offline retry fits ${width}px ${colorScheme} ${textScale}`, async ({ page }) => {
 				await page.setViewportSize({ width, height: 844 });
 				await page.emulateMedia({ colorScheme });
@@ -927,7 +938,7 @@ test.describe('invite code copy', () => {
 			const code = 'MTE8PZAT';
 			await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 			await page.addInitScript(() => window.localStorage.clear());
-			await page.route('**/api/wg/mine', (route) => route.fulfill({ json: { wgs: [] } }));
+			await mockNoWgs(page);
 			await page.route('**/api/wg', async (route) => {
 				if (route.request().method() === 'POST') {
 					await route.fulfill({

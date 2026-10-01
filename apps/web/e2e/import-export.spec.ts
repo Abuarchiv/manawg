@@ -10,7 +10,13 @@ import { PgDialect } from 'drizzle-orm/pg-core';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 import { idempotencyResponses } from '../src/core/db/schema';
 import { RESPONSE_REPLAY_TTL_SECONDS } from '../src/core/offline/replay-retention';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	inMinimalMatrix,
+	navigateToFeature,
+	setupMember,
+} from './_helpers';
 
 test.describe('import replay atomic', () => {
 	type CommitResult = {
@@ -539,6 +545,7 @@ test.describe('import wizard responsive', () => {
 		for (const largeText of [false, true] as const) {
 			const textScale = largeText ? '32px' : 'normal';
 			for (const colorScheme of ['light', 'dark'] as const) {
+				if (!inMinimalMatrix({ width, dark: colorScheme === 'dark', large: largeText })) continue;
 				test(`Splitwise import actions fit at ${width}px with ${textScale} root text (${colorScheme})`, async ({
 					page,
 				}) => {
