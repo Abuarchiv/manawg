@@ -131,6 +131,9 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		if (error === 'image_removed') {
 			return 'Dieses Bild wurde entfernt. Lade es erneut hoch, bevor du die Nachricht sendest.';
 		}
+		if (error === 'too_many_requests') {
+			return 'Zu viele Anfragen. Warte kurz und versuche es dann erneut.';
+		}
 		if (error === 'Netzwerkfehler' || error === 'Failed to fetch') {
 			switch (action) {
 				case 'send':
