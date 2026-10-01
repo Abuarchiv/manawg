@@ -53,6 +53,15 @@ export async function reconcileStaleCapturingPayments(
 			continue;
 		}
 
+		if (order.id !== payment.providerOrderId) {
+			logApiError(
+				'[paypal reconcile] order identity mismatch',
+				new Error(`paypal_order_mismatch:${payment.id}`),
+			);
+			result.pending += 1;
+			continue;
+		}
+
 		const units = order.purchase_units ?? [];
 		const captures = units.flatMap((unit) => unit.payments?.captures ?? []);
 		const captureUnit = units.find((unit) =>
