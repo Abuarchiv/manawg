@@ -130,6 +130,58 @@ test.describe('wg cached fetch', () => {
 		expect(shoppingReads).toBeGreaterThanOrEqual(2);
 	});
 
+	test('a failed revisit refresh keeps the cached Putzplan and settles to a retryable error', async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 390, height: 844 });
+		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await setupMember(page);
+
+		const chore = {
+			id: 'chore-bath',
+			title: 'Bad putzen',
+			intervalDays: 7,
+			recurrenceType: 'days',
+			nextDueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+			assignedMemberId: E2E_EXISTING_WG.member.id,
+			lastCompletedAt: null,
+			lastCompletedByName: null,
+			openGapCountForAssignee: 0,
+		};
+		let choreReads = 0;
+		await page.route(`**/api/wg/${SHARE_CODE}/chores`, (route) => {
+			choreReads += 1;
+			return choreReads === 1
+				? route.fulfill({ json: { chores: [chore], monthCompletions: {} } })
+				: route.fulfill({ status: 503, json: { error: 'server_error' } });
+		});
+		await page.route(`**/api/wg/${SHARE_CODE}/absences`, (route) =>
+			route.fulfill({ json: { absences: [] } }),
+		);
+		await page.route(`**/api/wg/${SHARE_CODE}/inventory*`, (route) =>
+			route.fulfill({ json: { items: [], grouped: {} } }),
+		);
+
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/putzen`);
+		await dismissOnboarding(page);
+		const row = page.locator(`#chore-${chore.id}`);
+		await expect(row).toBeVisible();
+
+		await page
+			.locator(`nav[aria-label="Haushalt"] a[href="/wg/${SHARE_CODE}/vorraete"]:visible`)
+			.click();
+		await expect(page.getByRole('heading', { name: 'Vorräte' })).toBeVisible();
+		await page
+			.locator(`nav[aria-label="Haushalt"] a[href="/wg/${SHARE_CODE}/putzen"]:visible`)
+			.click();
+
+		await expect(page.getByText('Putzplan konnte nicht geladen werden')).toBeVisible();
+		await expect(row).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Putzplan erneut laden' })).toBeEnabled();
+		await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+		expect(choreReads).toBeGreaterThanOrEqual(2);
+	});
+
 	test('revoked membership hides the WG shell after member refresh', async ({ page }) => {
 		await setupMember(page);
 		await page.route(`**/api/wg/${SHARE_CODE}/members`, (route) =>

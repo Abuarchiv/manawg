@@ -2,7 +2,6 @@
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { copyViaTextArea } from '@/core/utils/clipboard';
 import { isValidShareCode } from '@/core/utils/share-code';
@@ -15,7 +14,6 @@ interface Props {
 	wgName: string;
 	shareCode: string;
 	appUrl?: string;
-	hideHeader?: boolean;
 	joiningEnabled?: boolean;
 }
 
@@ -34,13 +32,7 @@ function buildShareUrl(shareCode: string, explicitAppUrl?: string): string {
 	return `/?code=${encodeURIComponent(shareCode)}`;
 }
 
-export function ShareWgCard({
-	wgName,
-	shareCode,
-	appUrl,
-	hideHeader = false,
-	joiningEnabled = true,
-}: Props) {
+export function ShareWgCard({ wgName, shareCode, appUrl, joiningEnabled = true }: Props) {
 	const [copied, setCopied] = useState<'code' | 'link' | 'shared' | null>(null);
 	const [copyError, setCopyError] = useState<string | null>(null);
 	const [copying, setCopying] = useState<'code' | 'link' | 'share' | null>(null);
@@ -123,45 +115,18 @@ export function ShareWgCard({
 
 	return (
 		<div>
-			{!hideHeader ? (
-				<Card>
-					<CardHeader>
-						<CardTitle>WG teilen</CardTitle>
-						<CardDescription>
-							{joiningEnabled
-								? 'Wer Code oder QR scannt, kommt zum Beitrittsflow.'
-								: 'Beitritte sind gesperrt. Öffne den Zugang, bevor du teilst.'}
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<ShareWgBody
-							shareUrl={shareUrl}
-							shareCode={shareCode}
-							wgName={wgName}
-							joiningEnabled={joiningEnabled}
-							copied={copied}
-							copying={copying}
-							copyError={copyError}
-							onCopyCode={() => copy(shareCode, 'code')}
-							onCopyLink={() => copy(shareUrl, 'link')}
-							onShare={nativeShare}
-						/>
-					</CardContent>
-				</Card>
-			) : (
-				<ShareWgBody
-					shareUrl={shareUrl}
-					shareCode={shareCode}
-					wgName={wgName}
-					joiningEnabled={joiningEnabled}
-					copied={copied}
-					copying={copying}
-					copyError={copyError}
-					onCopyCode={() => copy(shareCode, 'code')}
-					onCopyLink={() => copy(shareUrl, 'link')}
-					onShare={nativeShare}
-				/>
-			)}
+			<ShareWgBody
+				shareUrl={shareUrl}
+				shareCode={shareCode}
+				wgName={wgName}
+				joiningEnabled={joiningEnabled}
+				copied={copied}
+				copying={copying}
+				copyError={copyError}
+				onCopyCode={() => copy(shareCode, 'code')}
+				onCopyLink={() => copy(shareUrl, 'link')}
+				onShare={nativeShare}
+			/>
 		</div>
 	);
 }

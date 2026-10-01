@@ -20,7 +20,10 @@ import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { deleteWgErrorMessage, readResponseErrorCode } from '@/core/guards/settings-errors';
+import {
+	deleteWgErrorMessage,
+	readResponseErrorCode,
+} from '@/components/wg/einstellungen/settings-errors';
 import type { StoredIdentity } from '@/shared/lib/identity';
 import { clearIdentity, forgetWg, memberAuthHeader } from '@/shared/lib/identity';
 import { LogOut, Trash2 } from 'lucide-react';

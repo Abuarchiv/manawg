@@ -155,10 +155,6 @@ test('SDK timeout results use the existing open and closed failure policies', as
 	});
 	assert.ok(closed.reset > Date.now());
 	assert.deepEqual(open, { success: true, remaining: -1, reset: 0 });
-	assert.deepEqual(harness.rateLimit.getFailOpenStats(), {
-		total: 1,
-		byCause: { 'limiter-call-failed': 1 },
-	});
 	assert.equal(harness.logs.length, 2);
 	assert.equal(harness.exceptions.length, 2);
 });

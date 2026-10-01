@@ -137,7 +137,7 @@ const FAIL_OPEN_PRODUCTION_LOG =
 const FAIL_CLOSED_PRODUCTION_LOG =
 	'[rate-limit] Upstash Redis not configured in production — failing closed';
 const OPEN_STATE_REPORT_INTERVAL_MS = 5 * 60 * 1000;
-// Both maps below use `cause` (the report throttle also includes fail mode).
+// The report throttle is keyed by fail mode and `cause`.
 // Causes are internal literals today,
 // but nothing stops a future caller from passing request-derived text — and
 // in a long-lived serverless instance an unbounded module-level Map is a
@@ -145,27 +145,6 @@ const OPEN_STATE_REPORT_INTERVAL_MS = 5 * 60 * 1000;
 // keep their entries, so memory stays bounded while the signal survives.
 const MAX_TRACKED_CAUSES = 32;
 const lastReportedAt = new Map<string, number>();
-
-// Monotonic fail-open tally. Failing open is deliberate, but it must be
-// measurable: a sustained Upstash outage or a standing misconfiguration
-// silently disables every limiter while the API looks healthy. The report
-// throttle below still dedupes the *alert*, but the counter counts every
-// fail-open event so operators can alert on "rate limiting is disabled".
-// Observational only — it never influences the allow/deny decision.
-const failOpenTotals = new Map<string, number>();
-
-export function getFailOpenStats(): {
-	total: number;
-	byCause: Record<string, number>;
-} {
-	const byCause: Record<string, number> = {};
-	let total = 0;
-	for (const [cause, count] of failOpenTotals) {
-		byCause[cause] = count;
-		total += count;
-	}
-	return { total, byCause };
-}
 
 function trackCause(map: Map<string, number>, cause: string, value: number): boolean {
 	if (!map.has(cause) && map.size >= MAX_TRACKED_CAUSES) return false;
@@ -183,11 +162,6 @@ function reportUnavailable(
 	failMode: 'open' | 'closed',
 	limiterCallFailed = false,
 ): void {
-	if (failMode === 'open') {
-		// Count only requests that were allowed without a working limiter.
-		trackCause(failOpenTotals, cause, (failOpenTotals.get(cause) ?? 0) + 1);
-	}
-
 	const isProduction = process.env.VERCEL_ENV === 'production';
 	const state = failMode === 'open' ? 'failing open' : 'failing closed';
 
@@ -215,10 +189,9 @@ function reportUnavailable(
 	});
 }
 
-/** Test seam — the report throttle and fail-open tally are process-global state. */
+/** Test seam — the report throttle is process-global state. */
 export function resetOpenStateReporting(): void {
 	lastReportedAt.clear();
-	failOpenTotals.clear();
 }
 
 export async function checkRateLimit(

@@ -547,10 +547,6 @@ test.describe('rate limit fail open env', () => {
 
 				const alerts = spy.calls.filter((args) => args[0] === FAIL_CLOSED_PRODUCTION_LOG);
 				expect(alerts).toHaveLength(productionAlert ? 1 : 0);
-				expect(rateLimit.getFailOpenStats()).toEqual({
-					total: failMode === 'open' ? 1 : 0,
-					byCause: failMode === 'open' ? { 'upstash-not-configured': 1 } : {},
-				});
 			} finally {
 				spy.restore();
 				restore();
@@ -667,48 +663,7 @@ test.describe('rate limit fail open stats', () => {
 		};
 	}
 
-	const unreachableLimiter = {
-		limit: async () => {
-			throw new Error('upstash unreachable');
-		},
-	};
-
-	test('getFailOpenStats counts fail-open events per cause', async () => {
-		const capture: ObservabilityCapture = { captured: [] };
-		const spy = spyConsoleError();
-		const restore = pinEnv({});
-		try {
-			const rateLimit = loadRateLimit(capture);
-			expect(rateLimit.getFailOpenStats()).toEqual({ total: 0, byCause: {} });
-
-			const allowed = await rateLimit.checkRateLimit(null, 'member-1', 'open');
-			expect(allowed).toEqual({ success: true, remaining: -1, reset: 0 });
-			await rateLimit.checkRateLimit(null, 'member-2', 'open');
-
-			const denied = await rateLimit.checkRateLimit(unreachableLimiter, 'member-3', 'closed');
-			expect(denied.success).toBe(false);
-			expect(denied.limiterUnavailable).toBe(true);
-
-			expect(rateLimit.getFailOpenStats()).toEqual({
-				total: 2,
-				byCause: { 'upstash-not-configured': 2 },
-			});
-
-			rateLimit.resetOpenStateReporting();
-			expect(rateLimit.getFailOpenStats()).toEqual({ total: 0, byCause: {} });
-
-			await rateLimit.checkRateLimit(null, 'member-4', 'open');
-			expect(rateLimit.getFailOpenStats()).toEqual({
-				total: 1,
-				byCause: { 'upstash-not-configured': 1 },
-			});
-		} finally {
-			spy.restore();
-			restore();
-		}
-	});
-
-	test('the fail-open tally counts only allowed production events while monitoring stays throttled', async () => {
+	test('production fail-open logs every event while the monitoring capture stays throttled', async () => {
 		const capture: ObservabilityCapture = { captured: [] };
 		const spy = spyConsoleError();
 		const restore = pinEnv({ VERCEL_ENV: 'production' });
@@ -717,11 +672,6 @@ test.describe('rate limit fail open stats', () => {
 			await rateLimit.checkRateLimit(null, 'wg-1', 'open');
 			await rateLimit.checkRateLimit(null, 'wg-2', 'open');
 			await rateLimit.checkRateLimit(null, 'wg-3', 'open');
-
-			expect(rateLimit.getFailOpenStats()).toEqual({
-				total: 3,
-				byCause: { 'upstash-not-configured': 3 },
-			});
 
 			const productionAlerts = spy.calls.filter((args) => args[0] === FAIL_OPEN_PRODUCTION_LOG);
 			expect(productionAlerts).toHaveLength(3);
@@ -754,7 +704,6 @@ test.describe('rate limit fail open stats', () => {
 			await rateLimit.checkRateLimit(sensitiveLimiter, 'wg-1', 'closed');
 			await rateLimit.checkRateLimit(sensitiveLimiter, 'wg-2', 'closed');
 
-			expect(rateLimit.getFailOpenStats()).toEqual({ total: 0, byCause: {} });
 			const limiterFailures = spy.calls.filter(
 				(args) => args[0] === '[rate-limit] limiter call failed, failing closed',
 			);

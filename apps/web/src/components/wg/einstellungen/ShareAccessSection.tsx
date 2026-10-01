@@ -9,9 +9,10 @@ import { ShareWgCard } from '@/components/wg/ShareWgCard';
 import type { WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { accessErrorMessage, readResponseErrorCode } from '@/core/guards/settings-errors';
+import { accessErrorMessage } from '@/components/wg/einstellungen/settings-errors';
+import { apiFetch } from '@/core/infra/api-client';
 import type { StoredIdentity } from '@/shared/lib/identity';
-import { forgetWg, memberAuthHeader } from '@/shared/lib/identity';
+import { forgetWg } from '@/shared/lib/identity';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
@@ -45,35 +46,21 @@ export function ShareAccessSection({
 		if (!isAdmin) return null;
 		setAccessError(null);
 		setAccessMessage(null);
-		try {
-			const res = await fetch(`/api/wg/${encodedShareCode}`, {
-				method: 'PATCH',
-				headers: {
-					'content-type': 'application/json',
-					...memberAuthHeader(identity.memberId, identity.memberToken),
-				},
-				body: JSON.stringify(body),
-			});
-			if (res.status === 403) {
-				const errorCode = await readResponseErrorCode(res);
-				setAccessError(
-					errorCode === 'member_not_verified'
-						? 'Dein Gerät ist noch nicht bestätigt. Lade die App neu und versuche es erneut.'
-						: 'Nur Admins können den WG-Zugang ändern.',
-				);
-				return null;
-			}
-			if (!res.ok) {
-				setAccessError(accessErrorMessage(res.status, await readResponseErrorCode(res)));
-				return null;
-			}
-			return (await res.json()) as { wg: WgSummary };
-		} catch {
-			setAccessError(
-				'Zugang konnte nicht geändert werden: Prüfe deine Verbindung und versuche es erneut.',
-			);
-			return null;
-		}
+		const res = await apiFetch<{ wg: WgSummary }>(`/api/wg/${encodedShareCode}`, {
+			method: 'PATCH',
+			memberId: identity.memberId,
+			memberToken: identity.memberToken,
+			body: JSON.stringify(body),
+		});
+		if (res.ok) return res.data;
+		setAccessError(
+			res.status === 403
+				? res.error === 'member_not_verified'
+					? 'Dein Gerät ist noch nicht bestätigt. Lade die App neu und versuche es erneut.'
+					: 'Nur Admins können den WG-Zugang ändern.'
+				: accessErrorMessage(res.status, res.error),
+		);
+		return null;
 	}
 
 	async function toggleJoining(): Promise<void> {
@@ -143,12 +130,7 @@ export function ShareAccessSection({
 			>
 				{/* ShareWgCard already centres QR and aligns copy buttons */}
 				<div className="p-3">
-					<ShareWgCard
-						wgName={wg.name}
-						shareCode={wg.shareCode}
-						hideHeader
-						joiningEnabled={joiningEnabled}
-					/>
+					<ShareWgCard wgName={wg.name} shareCode={wg.shareCode} joiningEnabled={joiningEnabled} />
 				</div>
 			</Section>
 
