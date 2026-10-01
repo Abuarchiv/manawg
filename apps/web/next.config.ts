@@ -43,7 +43,12 @@ const nextConfig: NextConfig = {
 		],
 	},
 	async headers() {
-		return [{ source: '/:path*', headers: securityHeaders }];
+		return [
+			{ source: '/:path*', headers: securityHeaders },
+			// Vercel otherwise labels header-less API responses "public, max-age=0, must-revalidate".
+			// Routes that set their own Cache-Control keep it.
+			{ source: '/api/:path*', headers: [{ key: 'Cache-Control', value: 'private, no-store' }] },
+		];
 	},
 	experimental: {
 		optimizePackageImports: ['lucide-react'],
