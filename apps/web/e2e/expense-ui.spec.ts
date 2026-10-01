@@ -1021,7 +1021,10 @@ test.describe('fab summary overlay', () => {
 				await dismissOnboarding(page);
 				await expect(page.getByRole('heading', { name: 'Fixkosten', exact: true })).toBeVisible();
 				await expect(page.getByText('Dein Anteil', { exact: true })).toBeVisible();
-				const actionButton = page.getByRole('button', { name: 'Fixkosten hinzufügen', exact: true });
+				const actionButton = page.getByRole('button', {
+					name: 'Fixkosten hinzufügen',
+					exact: true,
+				});
 				await expect(actionButton).toBeVisible();
 				await expect(actionButton).toHaveAccessibleName('Fixkosten hinzufügen');
 
