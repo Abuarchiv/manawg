@@ -164,7 +164,16 @@ function buildOptimisticExpense({
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
+/** Das Formular-Chunk einmal online anfordern, damit der Service Worker es für offline hat. */
+function usePreloadExpenseForm(): void {
+	useEffect(() => {
+		if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+		void import('@/features/expenses/components/ausgaben/ExpenseFormSection');
+	}, []);
+}
+
 export default function AusgabenPage() {
+	usePreloadExpenseForm();
 	const { wg, members, identity } = useWg();
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
@@ -417,7 +426,10 @@ export default function AusgabenPage() {
 						if (!mountedRef.current) return;
 						if (requestId !== loadRequestIdRef.current) return;
 						refreshCount();
-						if (synced > 0) void load(false);
+						if (synced > 0) {
+							setActionNotice((current) => (current?.tone === 'warning' ? null : current));
+							void load(false);
+						}
 					})
 					.catch((err) =>
 						captureException(err, { action: 'syncOfflineActions', page: 'ausgaben' }),

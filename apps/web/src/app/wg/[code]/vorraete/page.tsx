@@ -10,6 +10,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { SubNav } from '@/components/wg/SubNav';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { isNetworkError } from '@/core/errors/generic-error-codes';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { useStableCallback } from '@/core/hooks/useStableCallback';
@@ -80,7 +81,10 @@ export default function VorraetePage() {
 			if (res.ok) {
 				setLoadError(null);
 				setItems(res.data.items);
-			} else if (!silent || !hasInventoryDataRef.current) {
+			} else if (
+				(!silent || !hasInventoryDataRef.current) &&
+				!(hasInventoryDataRef.current && isNetworkError(res.error, res.status))
+			) {
 				// Ein stiller Hintergrund-Refresh legt keinen Fehler über eine brauchbare Liste.
 				setLoadError(getWgLoadErrorMessage('Vorräte', res.status, res.error));
 			}

@@ -95,6 +95,10 @@ export function EventEditModal({
 	const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [errorField, setErrorField] = useState<'title' | 'startsAt' | 'endsAt' | null>(null);
+	// Die Meldung sitzt unter den Feldern, der Speichern-Button ist angeheftet.
+	useEffect(() => {
+		if (error) document.getElementById('event-edit-error')?.scrollIntoView({ block: 'nearest' });
+	}, [error]);
 
 	useEffect(() => {
 		if (!event) return;

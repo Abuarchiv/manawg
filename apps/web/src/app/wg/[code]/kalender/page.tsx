@@ -10,6 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SubNav } from '@/components/wg/SubNav';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
+import {
+	RATE_LIMITED_MESSAGE,
+	isNetworkError,
+	isRateLimited,
+} from '@/core/errors/generic-error-codes';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
@@ -118,6 +123,15 @@ function buildChoreOccurrences(
 		.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
 
+/** Offline und 429 brauchen einen konkreten nächsten Schritt statt der pauschalen Meldung. */
+function eventSaveError(base: string, res: { status: number; error: string }): string {
+	if (isNetworkError(res.error, res.status)) {
+		return `${base}: Prüfe deine Verbindung und versuche es erneut.`;
+	}
+	if (isRateLimited(res.error, res.status)) return RATE_LIMITED_MESSAGE;
+	return `${base}.`;
+}
+
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function KalenderPage() {
 	const { wg, identity } = useWg();
@@ -224,9 +238,12 @@ export default function KalenderPage() {
 
 			const [eventsRes, choreRes] = await Promise.all([refreshEvents(), refreshChores()]);
 
+			// Offline mit vorhandenem Cache: Daten weiter zeigen, kein Fehlerzustand.
+			const keepCached = (res: { ok: boolean; status?: number; error?: string }): boolean =>
+				hasCalendarDataRef.current && !res.ok && isNetworkError(res.error ?? null, res.status);
 			let nextError: string | null = null;
 			if (eventsRes.ok) setEvents(eventsRes.data.events);
-			else nextError = 'Termine konnten nicht geladen werden.';
+			else if (!keepCached(eventsRes)) nextError = 'Termine konnten nicht geladen werden.';
 			if (choreRes.ok) {
 				setChores(
 					choreRes.data.chores.map((chore) => ({
@@ -235,7 +252,8 @@ export default function KalenderPage() {
 						nextDueAt: chore.nextDueAt,
 					})),
 				);
-			} else if (!nextError) nextError = 'Putzplan-Aufgaben konnten nicht geladen werden.';
+			} else if (!nextError && !keepCached(choreRes))
+				nextError = 'Putzplan-Aufgaben konnten nicht geladen werden.';
 			setLoadError(nextError);
 			if (isInitial) setLoading(false);
 		},
@@ -346,8 +364,9 @@ export default function KalenderPage() {
 			if (res.status > 0 && res.status < 500 && res.status !== 429)
 				createEventRequestRef.current = null;
 			updateEvents((current) => current.filter((event) => event.id !== optimisticId));
-			toast.error('Termin konnte nicht gespeichert werden.');
-			throw new Error('Termin konnte nicht gespeichert werden.');
+			const message = eventSaveError('Termin konnte nicht gespeichert werden', res);
+			toast.error(message);
+			throw new Error(message);
 		}
 		createEventRequestRef.current = null;
 		haptic('medium');
@@ -386,8 +405,9 @@ export default function KalenderPage() {
 			if (previous) {
 				updateEvents((current) => current.map((event) => (event.id === id ? previous : event)));
 			}
-			toast.error('Termin konnte nicht aktualisiert werden.');
-			throw new Error('Termin konnte nicht aktualisiert werden.');
+			const message = eventSaveError('Termin konnte nicht aktualisiert werden', res);
+			toast.error(message);
+			throw new Error(message);
 		}
 		updateEvents((current) => current.map((event) => (event.id === id ? res.data.event : event)));
 		setEditing(null);
@@ -415,8 +435,9 @@ export default function KalenderPage() {
 					return restored;
 				});
 			}
-			setActionError('Termin konnte nicht gelöscht werden.');
-			toast.error('Termin konnte nicht gelöscht werden.');
+			const message = eventSaveError('Termin konnte nicht gelöscht werden', res);
+			setActionError(message);
+			toast.error(message);
 			return;
 		}
 		updateEvents((current) => current.filter((event) => event.id !== id));

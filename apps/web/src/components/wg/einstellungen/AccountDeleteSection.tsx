@@ -16,6 +16,7 @@ import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
+import { RATE_LIMITED_MESSAGE } from '@/core/errors/generic-error-codes';
 import { UserX } from 'lucide-react';
 import { useState } from 'react';
 
@@ -46,6 +47,11 @@ export function AccountDeleteSection() {
 			}
 			if (res.status === 401) {
 				setError('Melde dich erneut an, um dein Konto zu löschen.');
+				setStage('confirm');
+				return;
+			}
+			if (res.status === 429) {
+				setError(RATE_LIMITED_MESSAGE);
 				setStage('confirm');
 				return;
 			}

@@ -43,6 +43,7 @@ function harness(page, result) {
 		hasPageCacheRef: { current: true },
 		loadRequestIdRef: requestId,
 		mountedRef: { current: true },
+		isNetworkError: (code, status) => status === 0 || code === 'Netzwerkfehler',
 		setLoading: (value) => {
 			state.loading = value;
 		},

@@ -17,6 +17,7 @@ import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { isNetworkError } from '@/core/errors/generic-error-codes';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
@@ -183,13 +184,21 @@ export default function PutzenPage() {
 						if (!mountedRef.current) return;
 						if (requestId !== loadRequestIdRef.current) return;
 						refreshCount();
-						if (synced > 0) void load(false);
+						if (synced > 0) {
+							setActionNotice(null);
+							void load(false);
+						}
 					})
 					.catch((err) => captureException(err, { action: 'syncOfflineActions', page: 'putzen' }));
-			} else {
+			} else if (!(hasPageCacheRef.current && isNetworkError(result.error, result.status))) {
+				// Offline mit vorhandenem Cache: Liste weiter zeigen, kein Fehlerzustand.
 				nextLoadError = getWgLoadErrorMessage('Putzplan', result.status, result.error);
 			}
-			if (!absenceResult.ok && !nextLoadError) {
+			if (
+				!absenceResult.ok &&
+				!nextLoadError &&
+				!(hasPageCacheRef.current && isNetworkError(absenceResult.error, absenceResult.status))
+			) {
 				nextLoadError = getWgLoadErrorMessage(
 					'Abwesenheiten',
 					absenceResult.status,
@@ -218,11 +227,18 @@ export default function PutzenPage() {
 			setInitialLoading(false);
 			setLoadError(null);
 		}
-		if (choresReadError) {
+		const hasCache = Boolean(cachedChores || cachedAbsences);
+		if (
+			choresReadError &&
+			!(hasCache && isNetworkError(choresReadError.error, choresReadError.status))
+		) {
 			setLoadError(
 				getWgLoadErrorMessage('Putzplan', choresReadError.status, choresReadError.error),
 			);
-		} else if (absencesReadError) {
+		} else if (
+			absencesReadError &&
+			!(hasCache && isNetworkError(absencesReadError.error, absencesReadError.status))
+		) {
 			setLoadError(
 				getWgLoadErrorMessage('Abwesenheiten', absencesReadError.status, absencesReadError.error, {
 					verb: 'konnten',
@@ -824,6 +840,28 @@ export default function PutzenPage() {
 					endPending(chore.id);
 					return;
 				}
+				// Aufgabe bleibt im Plan: lokal auf nächsten Termin/Zuständigen rücken,
+				// der Server bestätigt beides nach der Synchronisierung.
+				const localNextDueAt = computeNextDueAt(
+					new Date(chore.nextDueAt),
+					chore.intervalDays,
+					new Date(),
+					chore.recurrenceType,
+				);
+				const localNextAssignee = chooseNextAvailableMember({
+					members: activeMembers,
+					currentMemberId: chore.assignedMemberId,
+					absentMemberIds: getAbsentMemberIds(absences, localNextDueAt.getTime()),
+					chores: items,
+				});
+				updateChores((current) => [
+					...current.filter((item) => item.id !== chore.id),
+					{
+						...previousChore,
+						nextDueAt: localNextDueAt.toISOString(),
+						assignedMemberId: localNextAssignee ?? previousChore.assignedMemberId,
+					},
+				]);
 				completionRequestKeysRef.current.delete(chore.id);
 				refreshCount();
 				setActionNotice(

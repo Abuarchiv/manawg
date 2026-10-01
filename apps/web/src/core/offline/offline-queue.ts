@@ -440,6 +440,8 @@ export function getOfflineActionSummary(action: OfflineAction): OfflineActionSum
 	return offlineActionHandlers[action.type].summary(action);
 }
 
+const OFFLINE_NO_CONNECTION_TITLE = 'Noch keine Verbindung';
+
 const STALE_ACTION_RISK: OfflineActionRisk = {
 	title: 'Vor dem Senden prüfen',
 	detail: 'Der Eintrag ist schon länger in der Warteschlange und könnte nicht mehr aktuell sein.',
@@ -638,7 +640,7 @@ export function explainOfflineActionFailure(
 ): OfflineFailureExplanation {
 	if (status === 0) {
 		return {
-			title: 'Noch keine Verbindung',
+			title: OFFLINE_NO_CONNECTION_TITLE,
 			detail: 'Die Aktion bleibt gespeichert und wird erneut versucht, sobald das Netz zurück ist.',
 		};
 	}
@@ -914,5 +916,7 @@ export function getOfflineActionRisk(
 	}
 	const ageHours = Math.floor((now - createdAt) / 3_600_000);
 	if (ageHours < 6 && !action.lastError) return null;
+	// A fresh no-connection failure says nothing about the server state.
+	if (ageHours < 6 && action.lastError?.startsWith(OFFLINE_NO_CONNECTION_TITLE)) return null;
 	return offlineActionHandlers[action.type].risk(action);
 }

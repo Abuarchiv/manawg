@@ -41,6 +41,7 @@ import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { Section } from '@/components/wg/einstellungen/Section';
+import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/errors/generic-error-codes';
 import {
 	accessErrorMessage,
 	deleteWgErrorMessage,
@@ -126,11 +127,13 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 		setPromoting(false);
 		if (!res.ok) {
 			setPromoteError(
-				res.error === 'member_inactive'
-					? 'Dieses Mitglied ist ausgezogen. Aktiviere es zuerst wieder.'
-					: res.error === 'member_not_linked'
-						? 'Dieses Mitglied hat noch kein Konto verknüpft und kann nicht Admin werden.'
-						: 'Admin-Rolle konnte nicht übergeben werden. Bitte erneut versuchen.',
+				isRateLimited(res.error, res.status)
+					? RATE_LIMITED_MESSAGE
+					: res.error === 'member_inactive'
+						? 'Dieses Mitglied ist ausgezogen. Aktiviere es zuerst wieder.'
+						: res.error === 'member_not_linked'
+							? 'Dieses Mitglied hat noch kein Konto verknüpft und kann nicht Admin werden.'
+							: 'Admin-Rolle konnte nicht übergeben werden. Bitte erneut versuchen.',
 			);
 			return;
 		}
@@ -160,7 +163,11 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 			setMemberActionMessage(`${member.name} ist wieder aktiv.`);
 			void refreshMembers(identity.memberId);
 		} else {
-			setMemberActionError('Aktivierung konnte nicht gespeichert werden. Bitte erneut versuchen.');
+			setMemberActionError(
+				isRateLimited(res.error, res.status)
+					? RATE_LIMITED_MESSAGE
+					: 'Aktivierung konnte nicht gespeichert werden. Bitte erneut versuchen.',
+			);
 		}
 		setReactivatingId(null);
 	}

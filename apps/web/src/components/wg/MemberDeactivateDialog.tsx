@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/errors/generic-error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
 import { TriangleAlert as AlertTriangle } from 'lucide-react';
@@ -132,9 +133,11 @@ export function MemberDeactivateDialog({
 			return;
 		}
 		setSubmitError(
-			selfLeave
-				? 'WG konnte nicht verlassen werden. Deine Mitgliedschaft bleibt bestehen. Bitte erneut versuchen.'
-				: 'Auszug konnte nicht gespeichert werden. Bitte erneut versuchen.',
+			isRateLimited(res.error, res.status)
+				? RATE_LIMITED_MESSAGE
+				: selfLeave
+					? 'WG konnte nicht verlassen werden. Deine Mitgliedschaft bleibt bestehen. Bitte erneut versuchen.'
+					: 'Auszug konnte nicht gespeichert werden. Bitte erneut versuchen.',
 		);
 		submittingRef.current = false;
 		setSubmitting(false);
