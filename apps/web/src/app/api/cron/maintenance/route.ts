@@ -10,7 +10,9 @@ import {
 import { purgeExpiredIdempotencyResponses } from '@/core/idempotency';
 import { verifyCronSecret } from '@/core/infra/cron-auth';
 import { logApiError, withCronLogging } from '@/core/infra/observability';
+import { isPayPalConfigured } from '@/core/infra/paypal';
 import { removeSupabaseImages } from '@/core/infra/supabase-storage';
+import { reconcileStaleCapturingPayments } from '@/features/expenses/paypal-reconcile';
 import { type NextRequest, NextResponse } from 'next/server';
 
 async function cleanupPrivateImages(): Promise<{
@@ -82,11 +84,14 @@ export const GET = withCronLogging(
 			auth && serviceRoleKey
 				? (authUserId: string) => deleteAuthUser(auth.url, serviceRoleKey, authUserId)
 				: null;
-		const [purge, deletions, privateImages] = await Promise.allSettled([
+		const [purge, deletions, privateImages, paypal] = await Promise.allSettled([
 			purgeExpiredIdempotencyResponses(),
 			retryPendingAccountDeletions(deleteAuth),
 			cleanupPrivateImages(),
+			isPayPalConfigured() ? reconcileStaleCapturingPayments() : Promise.resolve(null),
 		]);
+		if (paypal.status === 'rejected')
+			logApiError('[maintenance] PayPal capture reconcile failed', paypal.reason);
 		if (purge.status === 'rejected')
 			logApiError('[maintenance] idempotency cleanup failed', purge.reason);
 		if (deletions.status === 'rejected') {
@@ -111,6 +116,7 @@ export const GET = withCronLogging(
 			{
 				ok,
 				purgedIdempotencyRows: purge.status === 'fulfilled' ? purge.value : null,
+				paypalReconcile: paypal.status === 'fulfilled' ? paypal.value : null,
 				accountDeletions:
 					deletions.status === 'fulfilled'
 						? { ...deletions.value, authAdminAvailable: Boolean(deleteAuth) }
