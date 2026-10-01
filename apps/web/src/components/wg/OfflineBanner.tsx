@@ -17,6 +17,8 @@ import { AlertCircle, CheckCircle2, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
+const SUCCESS_NOTICE_MS = 6000;
+
 function formatQueuedActions(count: number): string {
 	if (count === 1) return '1 Aktion wartet.';
 	return `${count} Aktionen warten.`;
@@ -75,6 +77,13 @@ export function OfflineBanner() {
 			window.removeEventListener('manawg:offline-synced', onSynced);
 		};
 	}, [identity, wg.shareCode]);
+
+	// A finished sync is only news for a moment; keep the sticky bar from lingering.
+	useEffect(() => {
+		if (notice?.type !== 'success' || queueCount > 0) return;
+		const timer = window.setTimeout(() => setNotice(null), SUCCESS_NOTICE_MS);
+		return () => window.clearTimeout(timer);
+	}, [notice, queueCount]);
 
 	async function retry(): Promise<void> {
 		if (syncingRef.current) return;
