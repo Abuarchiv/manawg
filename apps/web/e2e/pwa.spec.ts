@@ -427,6 +427,47 @@ test.describe('offline page', () => {
 			await expect(page.getByText('Keine wartenden Aktionen.')).toBeVisible();
 			await expect(page.getByText('Milch')).toHaveCount(0);
 		});
+
+		test('a 429 stops the replay after one request and keeps every action queued', async ({
+			page,
+		}) => {
+			await page.route('**/api/wg/mine', (route) => fulfillMembership(route));
+			let posts = 0;
+			await page.route('**/api/wg/MTE8PZAT/shopping', (route) => {
+				posts += 1;
+				return route.fulfill({
+					status: 429,
+					contentType: 'application/json',
+					body: JSON.stringify({ error: 'rate_limited' }),
+				});
+			});
+			await page.addInitScript(
+				({ storedWg, storedActions }) => {
+					localStorage.setItem('manawg_known_wgs', JSON.stringify([storedWg]));
+					localStorage.setItem('manawg:offline-actions', JSON.stringify(storedActions));
+				},
+				{
+					storedWg: knownWg,
+					storedActions: [
+						queuedAction,
+						{
+							...queuedAction,
+							id: `shopping:${FIXTURE_WG.shareCode}:offline-test-2`,
+							idempotencyKey: '22222222-2222-4222-8222-222222222222',
+							payload: { name: 'Brot', quantity: null },
+						},
+					],
+				},
+			);
+			await navigateToFeature(page, '/offline');
+
+			await page.getByRole('button', { name: 'Offline-Aktionen jetzt synchronisieren' }).click();
+
+			await expect(page.getByText('Zu viele Anfragen: Die Aktion bleibt')).toBeVisible();
+			await expect(page.getByText('Brot')).toBeVisible();
+			await expect(page.getByText('2 Aktionen warten.').first()).toBeVisible();
+			expect(posts).toBe(1);
+		});
 	});
 });
 
