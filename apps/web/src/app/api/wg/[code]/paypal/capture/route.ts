@@ -13,7 +13,6 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { readJsonLimited } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
-import { formatEuroCents } from '@/core/utils/money';
 import {
 	type PayPalOrderResponse,
 	capturePayPalOrder,
@@ -21,6 +20,7 @@ import {
 	isPayPalConfigured,
 } from '@/core/infra/paypal';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { formatEuroCents } from '@/core/utils/money';
 import { computeNetBalances, simplifyDebts } from '@/features/expenses/debt-reduction';
 import { computeBalances } from '@/features/expenses/debts';
 import {

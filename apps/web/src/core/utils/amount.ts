@@ -3,8 +3,9 @@ export function parseEuroAmount(value: string): number | null {
 	const trimmed = value
 		.replace(/€|EUR/gi, '')
 		.trim()
-		.replace(/^(\d{1,3})((?:[\s  ]\d{3})+)(?=,|$)/, (_, head: string, rest: string) =>
-			head + rest.replace(/\s/g, '').replace(/[  ]/g, ''),
+		.replace(
+			/^(\d{1,3})((?:[\s  ]\d{3})+)(?=,|$)/,
+			(_, head: string, rest: string) => head + rest.replace(/\s/g, '').replace(/[  ]/g, ''),
 		);
 	// German thousands dots ("1.234,56", "1.200") — only in the strict 3-digit-group form.
 	const normalized = /^\d{1,3}(?:\.\d{3})+(?:,\d{0,2})?$/.test(trimmed)

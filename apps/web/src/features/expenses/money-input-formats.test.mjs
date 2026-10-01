@@ -21,7 +21,7 @@ const { parseSplitwiseCsv } = await import('./import-parsers.ts');
 test('parseEuroAmount accepts pasted euro formats and rejects ambiguous ones', () => {
 	const ok = {
 		'1.234,50': 1234.5,
-		'1234.5': 1234.5,
+		1234.5: 1234.5,
 		'12,': 12,
 		'1 234,50': 1234.5,
 		'1 234,50': 1234.5,
