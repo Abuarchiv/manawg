@@ -580,7 +580,7 @@ export default function EinkaufPage() {
 					}
 					if (res.status === 403) {
 						rollback();
-						setToggleError('Nur der/die Autor:in kann dies abhaken.');
+						setToggleError('Nur wer den Artikel hinzugefügt hat, kann ihn abhaken.');
 					} else if (res.status === 404 && res.error === 'item_not_found') {
 						commitItems((prev) =>
 							keepItems(
@@ -701,7 +701,7 @@ export default function EinkaufPage() {
 				if (!res.ok) {
 					if (res.status === 403) {
 						setRemoveErrorId(id);
-						setRemoveError('Nur der/die Autor:in kann diesen Eintrag entfernen.');
+						setRemoveError('Nur wer den Artikel hinzugefügt hat, kann ihn entfernen.');
 					} else if (res.status === 404 && res.error === 'item_not_found') {
 						commitItems((prev) =>
 							keepItems(

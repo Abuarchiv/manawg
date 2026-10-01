@@ -25,7 +25,7 @@ export function SplitReview({
 			</p>
 		);
 	}
-	const payer = members.find((member) => member.id === paidByMemberId)?.name ?? 'Zahler:in';
+	const payer = members.find((member) => member.id === paidByMemberId)?.name ?? 'Zahlende Person';
 	return (
 		<ItemGroup aria-label="Anteile vor dem Speichern" aria-live="polite" className="gap-1">
 			{members.map((member) => {

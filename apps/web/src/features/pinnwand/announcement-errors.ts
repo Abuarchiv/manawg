@@ -62,7 +62,7 @@ export function commentActionErrorMessage(error: string): string {
 		return 'Kommentar konnte nicht gespeichert werden: Der Text muss 1 bis 600 Zeichen haben.';
 	}
 	if (error === 'not_owner') {
-		return 'Nur der/die Autor:in kann diesen Kommentar ändern.';
+		return 'Nur wer den Kommentar geschrieben hat, kann ihn ändern.';
 	}
 	if (isRetryableServerError(error)) {
 		return 'Kommentar-Aktion fehlgeschlagen: Versuche es gleich erneut.';
@@ -120,7 +120,7 @@ export function announcementActionErrorMessage(error: string): string {
 		return 'Pinnwand-Aktion fehlgeschlagen: Die Beitragsart ist ungültig.';
 	}
 	if (error === 'status_change_not_allowed') {
-		return 'Nur Autor:in oder übernehmende Person kann diesen Beitrag als geklärt markieren.';
+		return 'Nur wer den Beitrag geschrieben hat oder ihn übernommen hat, kann diesen Beitrag als geklärt markieren.';
 	}
 	if (error === 'invalid_body' || error === 'invalid_json') {
 		return 'Pinnwand-Aktion konnte nicht gespeichert werden: Die Anfrage war ungültig.';

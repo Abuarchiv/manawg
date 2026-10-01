@@ -94,7 +94,7 @@ const IMPORT_ERROR_MESSAGES: Readonly<Record<string, string>> = {
 		'Die Importdaten konnten nicht gelesen werden. Prüfe den Export und versuche es erneut.',
 	invalid_json:
 		'Die Importdaten konnten nicht gelesen werden. Prüfe den Export und versuche es erneut.',
-	payer_unmapped: 'Der Zahler konnte nicht zugeordnet werden. Prüfe die Zuordnung.',
+	payer_unmapped: 'Die zahlende Person konnte nicht zugeordnet werden. Prüfe die Zuordnung.',
 	no_valid_splits: 'Keine gültige Aufteilung gefunden. Prüfe die Anteile.',
 	split_sum_mismatch: 'Die Anteile ergeben nicht den Gesamtbetrag. Prüfe die Datei.',
 	insert_failed: 'Dieser Eintrag konnte nicht gespeichert werden. Versuche es erneut.',
@@ -711,8 +711,8 @@ export function ImportWizard() {
 						<Badge variant="secondary">{selectedCount} ausgewählt</Badge>
 					</div>
 					<p className="text-sm text-muted-foreground">
-						Prüfe Betrag, Zahler:in und alle Anteile. Wähle Einträge ab, die du nicht übernehmen
-						möchtest.
+						Prüfe Betrag, zahlende Person und alle Anteile. Wähle Einträge ab, die du nicht
+						übernehmen möchtest.
 					</p>
 					<ImportPreviewTable
 						expenses={preview.parsed}
@@ -733,7 +733,7 @@ export function ImportWizard() {
 							<div className="flex flex-col gap-1">
 								<FieldLabel htmlFor="import-duplicates">Duplikate überspringen</FieldLabel>
 								<FieldDescription>
-									Gleiches Datum, Beschreibung, Betrag und Zahler:in.
+									Gleiches Datum, Beschreibung, Betrag und zahlende Person.
 								</FieldDescription>
 							</div>
 						</Field>
