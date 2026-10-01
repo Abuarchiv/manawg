@@ -543,28 +543,33 @@ test.describe('debt summary reminder link', () => {
 				}, textScale);
 				for (const width of [320, 360, 390]) {
 					await page.setViewportSize({ width, height: 844 });
-					const metrics = await Promise.all(
-						[settleButton, remindButton].map((button) =>
-							button.evaluate((element) => {
-								const buttonRect = element.getBoundingClientRect();
-								const textRange = document.createRange();
-								textRange.selectNodeContents(element);
-								const textRect = textRange.getBoundingClientRect();
-								const hitTarget = getComputedStyle(element, '::after');
-								return {
-									button: {
-										left: buttonRect.left,
-										right: buttonRect.right,
-										top: buttonRect.top,
-										bottom: buttonRect.bottom,
-									},
-									textFits:
-										textRect.left >= buttonRect.left - 1 && textRect.right <= buttonRect.right + 1,
-									touchWidth: Number.parseFloat(hitTarget.minWidth),
-									touchHeight: Number.parseFloat(hitTarget.height),
-								};
-							}),
-						),
+					// Beide Buttons im selben Frame messen: getBoundingClientRect ist
+					// viewport-relativ, zwei getrennte evaluate-Aufrufe können zwischen
+					// Scroll- oder Render-Schritten liegen und eine Scheinüberlappung melden.
+					const metrics = await secondaryDebt.evaluate((row) =>
+						(['Ausgleichen', 'Erinnern'] as const).map((label) => {
+							const element = [...row.querySelectorAll('button')].find(
+								(button) => button.textContent?.trim() === label,
+							);
+							if (!element) throw new Error(`${label} button missing`);
+							const buttonRect = element.getBoundingClientRect();
+							const textRange = document.createRange();
+							textRange.selectNodeContents(element);
+							const textRect = textRange.getBoundingClientRect();
+							const hitTarget = getComputedStyle(element, '::after');
+							return {
+								button: {
+									left: buttonRect.left,
+									right: buttonRect.right,
+									top: buttonRect.top,
+									bottom: buttonRect.bottom,
+								},
+								textFits:
+									textRect.left >= buttonRect.left - 1 && textRect.right <= buttonRect.right + 1,
+								touchWidth: Number.parseFloat(hitTarget.minWidth),
+								touchHeight: Number.parseFloat(hitTarget.height),
+							};
+						}),
 					);
 					const [settle, remind] = metrics;
 					const buttonsOverlap =

@@ -27,7 +27,8 @@ openspec/         change proposals and specs
 ```
 pnpm install
 pnpm dev                          # http://localhost:3000
-pnpm lint                         # biome + feature-boundary + wg-auth-invariant checks
+pnpm lint                         # biome (whole repo)
+pnpm --filter @manawg/web lint   # biome + feature-boundary + wg-auth-invariant checks
 pnpm typecheck
 pnpm --filter @manawg/web test:unit
 pnpm build
