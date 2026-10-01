@@ -8,7 +8,12 @@ const ts = require('typescript');
 
 function loadCallback(page, scope) {
 	const source = readFileSync(
-		new URL(`../src/app/wg/[code]/${page}/page.tsx`, import.meta.url),
+		new URL(
+			page === 'putzen'
+				? '../src/features/chores/hooks/use-putzen-page.ts'
+				: `../src/app/wg/[code]/${page}/page.tsx`,
+			import.meta.url,
+		),
 		'utf8',
 	);
 	const file = ts.createSourceFile(
