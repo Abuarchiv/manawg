@@ -18,6 +18,7 @@ import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgExportLimiter } from '@/core/rate-limit';
 import {
+	CSV_BOM,
 	type ExportRow,
 	type ExportSectionKey,
 	buildWgExport,
@@ -126,7 +127,7 @@ function csvExportResponse(
 	section: ExportSectionKey,
 	rows: Array<Record<string, unknown>>,
 ): NextResponse {
-	return new NextResponse(toCsv(rows, getExportSectionHeaders(section)), {
+	return new NextResponse(`${CSV_BOM}${toCsv(rows, getExportSectionHeaders(section))}`, {
 		headers: {
 			'content-type': 'text/csv; charset=utf-8',
 			'content-disposition': `attachment; filename="${shareCode}-${section}.csv"`,
@@ -490,7 +491,7 @@ export async function GET(
 			}
 			const section = requestedSection ?? 'expenses';
 			return new NextResponse(
-				toCsv(getExportSectionRows(data, section), getExportSectionHeaders(section)),
+				`${CSV_BOM}${toCsv(getExportSectionRows(data, section), getExportSectionHeaders(section))}`,
 				{
 					headers: {
 						'content-type': 'text/csv; charset=utf-8',

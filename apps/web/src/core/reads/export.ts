@@ -106,6 +106,11 @@ export function buildWgExport(input: WgExportInput, now = Date.now()): WgExport 
 	};
 }
 
+// Deutsches Excel erwartet Semikolon und (in der Route) ein UTF-8-BOM, sonst
+// landet alles in einer Spalte und Umlaute sind kaputt.
+const CSV_DELIMITER = ';';
+export const CSV_BOM = '\uFEFF';
+
 function formatCsvValue(value: unknown): string {
 	if (value === null || value === undefined) return '';
 	if (value instanceof Date) return value.toISOString();
@@ -126,16 +131,16 @@ function neutralizeCsvFormula(text: string): string {
 function escapeCsv(value: unknown): string {
 	const raw = formatCsvValue(value);
 	const text = neutralizeCsvFormula(raw);
-	if (raw === text && !/[",\n\r]/.test(text)) return text;
+	if (raw === text && !/[";\n\r]/.test(text)) return text;
 	return `"${text.replace(/"/g, '""')}"`;
 }
 
 export function toCsv(rows: ExportRow[], fallbackHeaders: string[] = []): string {
 	const headers = fallbackHeaders.length > 0 ? fallbackHeaders : Object.keys(rows[0] ?? {});
 	if (headers.length === 0) return '';
-	const lines = [headers.join(',')];
+	const lines = [headers.join(CSV_DELIMITER)];
 	for (const row of rows) {
-		lines.push(headers.map((header) => escapeCsv(row[header])).join(','));
+		lines.push(headers.map((header) => escapeCsv(row[header])).join(CSV_DELIMITER));
 	}
 	return lines.join('\n');
 }

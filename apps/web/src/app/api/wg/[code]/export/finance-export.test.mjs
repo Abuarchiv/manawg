@@ -293,9 +293,11 @@ test('completed payments support optional JSON sections and paged CSV', async ()
 		'?format=csv&section=expensePayments&limit=1&offset=1',
 	);
 	assert.equal(response.status, 200);
+	const bytes = new Uint8Array(await response.clone().arrayBuffer());
+	assert.deepEqual([...bytes.slice(0, 3)], [0xef, 0xbb, 0xbf]);
 	assert.equal(
 		await response.text(),
-		'id,fromMemberId,toMemberId,amountCents,currency,completedAt\npayment-eur,bob,alice,2500,EUR,2026-02-03T12:00:00.000Z',
+		'id;fromMemberId;toMemberId;amountCents;currency;completedAt\npayment-eur;bob;alice;2500;EUR;2026-02-03T12:00:00.000Z',
 	);
 });
 

@@ -248,7 +248,13 @@ export function AboForm({
 			setError('Fälligkeit fehlt.');
 			return;
 		}
-		const nextDueAtIso = inputDateToIso(nextDueAt);
+		// Unverändertes Datum bleibt der gespeicherte Zeitstempel: sonst würde jedes
+		// Bearbeiten ihn auf 12:00 Ortszeit schieben und ein lange überfälliges
+		// Datum vom Server als außerhalb des Bereichs abgelehnt.
+		const nextDueAtIso =
+			initial && nextDueAt === isoDateToInput(initial.nextDueAt)
+				? initial.nextDueAt
+				: inputDateToIso(nextDueAt);
 		if (nextDueAtIso === null) {
 			setError('Fälligkeit fehlt.');
 			return;
