@@ -101,3 +101,9 @@ Local lint, build, fixture, and pure gate results do not prove hosted Preview
 authentication, Supabase migration state, provider callbacks, production
 data integrity, or a production canary. Those claims remain `BLOCKED` until
 the owner records the corresponding external evidence.
+
+## Stand 2026-10-01 (ersetzt die gelöschten Gate-Notizen vom 2026-09-27)
+
+- Upstash-Rate-Limit-Analytics: SDK-Analytics seit dem Release vom 2026-09-30 aus; die 552 historischen Analytics-Keys wurden am 2026-09-30 gelöscht (Readback: 0 verbleibend). Gate geschlossen.
+- Sentry: DSN-Zuordnung und EU-Ingestion sind belegt; Retention/automatische Löschung und ein echter Alert-Mail-Empfang bleiben offen (siehe oben). Keine Lösch-/Aufbewahrungsaussage veröffentlichen, bis das belegt ist.
+
