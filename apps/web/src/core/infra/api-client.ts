@@ -11,6 +11,9 @@ type ApiFetchResult<T> = { ok: true; data: T } | { ok: false; status: number; er
 
 let mutationCount = 0;
 
+export const MEMBERSHIP_LOST_EVENT = 'manawg:membership-lost';
+const MEMBERSHIP_LOST_ERRORS = new Set(['not_a_member', 'member_deactivated', 'wg_not_found']);
+
 /**
  * Increases after every settled non-GET request. A cached read that started
  * before the latest mutation may not contain its effect (useCachedFetch).
@@ -68,6 +71,16 @@ export async function apiFetch<T>(
 				}
 			} catch {
 				// keep statusText
+			}
+			// Removed, left, or the share code rotated while the app was open: every screen
+			// would otherwise show an empty list. The WG shell reacts (explain or redirect).
+			if (
+				(res.status === 401 || res.status === 404) &&
+				MEMBERSHIP_LOST_ERRORS.has(error) &&
+				typeof window !== 'undefined' &&
+				path.startsWith('/api/wg/')
+			) {
+				window.dispatchEvent(new CustomEvent(MEMBERSHIP_LOST_EVENT, { detail: { path, error } }));
 			}
 			return { ok: false, status: res.status, error };
 		}
