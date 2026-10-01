@@ -182,7 +182,9 @@ export const ChoreRow = memo(function ChoreRow({
 								<dd>{isMine ? 'du' : assignee.name}</dd>
 								<dt className="text-muted-foreground">Fällig</dt>
 								<dd>
-									{parseValidDate(chore.nextDueAt)?.toLocaleDateString('de-DE') ?? 'unbekannt'} (
+									{parseValidDate(chore.nextDueAt)?.toLocaleDateString('de-DE', {
+										timeZone: 'Europe/Berlin',
+									}) ?? 'unbekannt'} (
 									{status.label})
 								</dd>
 								<dt className="text-muted-foreground">Rhythmus</dt>

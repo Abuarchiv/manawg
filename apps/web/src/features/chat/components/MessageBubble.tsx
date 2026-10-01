@@ -33,7 +33,7 @@ import { Field, FieldGroup } from '@/components/ui/field';
 import { Message, MessageAvatar, MessageContent, MessageHeader } from '@/components/ui/message';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
-import { memberTint } from '@/components/wg/MemberAvatar';
+import { initials, memberTint } from '@/components/wg/MemberAvatar';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { formatTimeFull } from '@/core/utils/time';
 import { cn } from '@/shared/lib/cn';
@@ -215,7 +215,7 @@ export function MessageBubble({
 				<MessageAvatar className={grouped ? 'invisible' : undefined} aria-hidden>
 					<Avatar className="size-7 text-xs">
 						<AvatarFallback style={memberTint(senderName)}>
-							{senderName.slice(0, 2).toLocaleUpperCase('de-DE')}
+							{initials(senderName)}
 						</AvatarFallback>
 					</Avatar>
 				</MessageAvatar>

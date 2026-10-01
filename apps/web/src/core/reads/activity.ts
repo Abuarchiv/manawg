@@ -1,4 +1,4 @@
-import { berlinDayKey } from '@/core/utils/berlin-day';
+import { berlinDayKey, prevBerlinDayStart, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 import {
 	MS_PER_DAY,
@@ -275,7 +275,7 @@ function auditDetail(metadataJson?: string | null): string | undefined {
 			parts.push(`abwesend ${formatSharedShortDateRange(metadata.startDate, metadata.endDate)}`);
 		}
 		if (typeof metadata.nextDueAt === 'string') {
-			parts.push(`nächste Fälligkeit ${formatShortDate(metadata.nextDueAt)}`);
+			parts.push(`nächste Fälligkeit ${formatShortDate(metadata.nextDueAt, 'Europe/Berlin')}`);
 		}
 		if (Array.isArray(metadata.splitIds)) {
 			parts.push(`${metadata.splitIds.length} Anteil${metadata.splitIds.length === 1 ? '' : 'e'}`);
@@ -562,11 +562,13 @@ export function groupActivityItemsByDay(
 		weekday: 'short',
 		day: '2-digit',
 		month: '2-digit',
+		timeZone: 'Europe/Berlin',
 	});
 	// Group by Berlin calendar day so entries around midnight land under the
 	// label the user actually sees (labels are formatted in Berlin time).
 	const todayKey = berlinDayKey(new Date(now));
-	const yesterdayKey = berlinDayKey(new Date(now - MS_PER_DAY));
+	// Not `now - 24h`: on the day after spring-forward (23h) that lands two days back.
+	const yesterdayKey = berlinDayKey(prevBerlinDayStart(startOfBerlinDay(new Date(now))));
 	const groups = new Map<string, ActivityItem[]>();
 
 	for (const item of items) {
