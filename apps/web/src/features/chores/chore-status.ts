@@ -176,3 +176,16 @@ export function getChoreGroup(
 	if (days < 0) return 'overdue';
 	return days <= 7 ? 'week' : 'later';
 }
+
+/** Reparaturbedürftige Aufgaben stehen innerhalb jeder Gruppe zuerst, leere Gruppen entfallen. */
+export function groupChoresForPlan<T extends ChoreRepairInput>(
+	chores: T[],
+	currentMemberId: string,
+): { key: ChoreGroupKey; label: string; chores: T[] }[] {
+	const needsRepair = (chore: T) => (getChoreRepairHint(chore) !== null ? 0 : 1);
+	const sorted = [...chores].sort((a, b) => needsRepair(a) - needsRepair(b));
+	return CHORE_GROUPS.map((group) => ({
+		...group,
+		chores: sorted.filter((chore) => getChoreGroup(chore, currentMemberId) === group.key),
+	})).filter((group) => group.chores.length > 0);
+}

@@ -75,3 +75,17 @@ export function choreCreateErrorMessage(error: string): string {
 	}
 	return 'Hinzufügen fehlgeschlagen. Versuche es gleich erneut.';
 }
+
+/** Gemeinsame Fehlertexte für Tausch- und Übernahme-Aktion: `prefix` ist der Satz ohne Punkt. */
+export function choreActionErrorMessage(
+	prefix: string,
+	result: { error: string; status: number },
+): string {
+	if (result.error === 'unexpected_error' || result.error === 'server_error') {
+		return `${prefix}: Versuche es gleich erneut.`;
+	}
+	if (isNetworkError(result.error, result.status)) {
+		return `${prefix}: Prüfe deine Verbindung und versuche es erneut.`;
+	}
+	return `${prefix}.`;
+}

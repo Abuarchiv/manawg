@@ -1,4 +1,7 @@
+import { getAbsentMemberIds } from '@/features/chores/absence';
+import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import { getChoreStatus } from '@/features/chores/chore-status';
+import type { RecurrenceType } from '@/features/chores/components/chore-types';
 
 interface MemberInput {
 	id: string;
@@ -172,4 +175,34 @@ export function chooseNextAvailableMember(input: {
 		if (member && !absent.has(member.id)) return member.id;
 	}
 	return null;
+}
+
+/**
+ * Spiegelt die Complete-Route: Verfügbarkeit wird am nächsten Fälligkeitstag geprüft, nicht heute.
+ * Dem Client-Datensatz fehlt der Anker, was nur die Monatsende-Klammerung betrifft, nie den
+ * Tag, gegen den Abwesenheiten geprüft werden.
+ */
+export function predictNextAssigneeId(
+	chore: {
+		nextDueAt: string;
+		intervalDays: number;
+		recurrenceType: RecurrenceType;
+		assignedMemberId: string | null;
+	},
+	chores: ChoreInput[],
+	members: MemberInput[],
+	absences: Parameters<typeof getAbsentMemberIds>[0],
+): string | null {
+	const nextDueAt = computeNextDueAt(
+		new Date(chore.nextDueAt),
+		chore.intervalDays,
+		new Date(),
+		chore.recurrenceType,
+	);
+	return chooseNextAvailableMember({
+		members,
+		currentMemberId: chore.assignedMemberId,
+		absentMemberIds: getAbsentMemberIds(absences, nextDueAt.getTime()),
+		chores,
+	});
 }

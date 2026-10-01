@@ -6,7 +6,7 @@ import {
 	replayKey,
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
-import { readShareCode } from '@/core/guards/route-preamble';
+import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, conflict, serverError, tooMany } from '@/core/http/api-errors';
 import {
 	getCachedResponse,
@@ -14,7 +14,6 @@ import {
 	readIdempotencyKey,
 	releaseResponseSlot,
 } from '@/core/idempotency-store';
-import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, importCommitLimiter } from '@/core/rate-limit';
 import {
@@ -33,7 +32,7 @@ import {
 	parseSplitwiseCsv,
 } from '@/features/expenses/import-parsers';
 import { parseOcrText } from '@/features/expenses/ocr';
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 // Generous TTL: a re-submitted commit (double click, retry after a client
@@ -62,13 +61,7 @@ function parseFor(source: string, payload: string): ParsedExpense[] {
 	return parseOcrText(payload).expenses;
 }
 
-export async function POST(
-	req: NextRequest,
-	ctx: RouteCtx<{ code: string }>,
-): Promise<NextResponse> {
-	const codeResult = await readShareCode(ctx);
-	if (!codeResult.ok) return codeResult.response;
-	const { code } = codeResult;
+export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 	const idemKey = readIdempotencyKey(req);
 	let replayReservation: Extract<ReplayReservation<CommitResult>, { owned: true }> | null = null;
 
@@ -221,4 +214,4 @@ export async function POST(
 		logApiError('[imports/commit]', err);
 		return serverError(err);
 	}
-}
+});

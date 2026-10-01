@@ -169,3 +169,13 @@ export function splitCandidates<T extends SplitMemberLike>(
 export function remainderCandidates<T extends SplitMemberLike>(members: readonly T[]): T[] {
 	return members.filter((m) => m.active);
 }
+
+/** Stable form of the manual split inputs for request fingerprints. */
+export function manualSplitsFingerprint(
+	splitMode: SplitMode,
+	manualSplits: Record<string, string>,
+): Array<[string, string]> | null {
+	return splitMode === 'manual'
+		? Object.entries(manualSplits).sort(([left], [right]) => left.localeCompare(right))
+		: null;
+}

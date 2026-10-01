@@ -4,7 +4,7 @@ import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, serverError, tooMany } from '@/core/http/api-errors';
+import { apiError, badRequest, serverError, tooMany } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import {
 	RESPONSE_REPLAY_TTL_SECONDS,
@@ -112,7 +112,7 @@ export const GET = withWgRoute(
 					.orderBy(asc(wgEvents.startsAt), asc(wgEvents.id))
 					.limit(pageLimit);
 			},
-			() => NextResponse.json({ error: 'events_window_too_large' }, { status: 503 }),
+			() => apiError('events_window_too_large', 503),
 			(rows) => {
 				const events: SerializedWgEvent[] = rows.map(serializeWgEvent);
 				return NextResponse.json({ events });
@@ -121,10 +121,7 @@ export const GET = withWgRoute(
 	},
 	{
 		fixture: () => {
-			return NextResponse.json(
-				{ events: [] },
-				{ headers: { 'Cache-Control': 'private, no-store' } },
-			);
+			return NextResponse.json({ events: [] });
 		},
 	},
 );
