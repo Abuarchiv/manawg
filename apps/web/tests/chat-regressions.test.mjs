@@ -289,9 +289,9 @@ test('reconciliation preserves database order when timestamps lose microseconds'
 // Execute the component's real request callbacks with controlled transport and
 // state, so polling latency is tested without a browser or duplicating the loop.
 function refreshHarness(apiFetch, initialMessages = []) {
-	const path = new URL('../src/features/chat/components/ChatView.tsx', import.meta.url);
+	const path = new URL('../src/features/chat/hooks/use-chat-room.ts', import.meta.url);
 	const source = ts.createSourceFile(
-		'ChatView.tsx',
+		'use-chat-room.ts',
 		readFileSync(path, 'utf8'),
 		ts.ScriptTarget.ES2022,
 		true,
@@ -312,7 +312,7 @@ function refreshHarness(apiFetch, initialMessages = []) {
 		...chat,
 		PAGE_SIZE: 50,
 		messages: initialMessages,
-		encodedShareCode: 'test',
+		messagesUrl: '/api/wg/test/chat/messages',
 		identity: { memberId: 'member' },
 		apiFetch,
 		useCallback: (callback) => callback,
