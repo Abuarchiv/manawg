@@ -134,7 +134,7 @@ export function WgContextProvider({
 			const cachedIdentity = getIdentity(wg.id);
 			if (
 				!res.ok &&
-				(res.status === 0 || res.status >= 500) &&
+				(res.status === 0 || res.status === 429 || res.status >= 500) &&
 				cachedIdentity?.authUserId === authUserId
 			) {
 				setStateIdentity(cachedIdentity);
@@ -146,7 +146,7 @@ export function WgContextProvider({
 			setStateIdentity(null);
 			setIsAdmin(false);
 			setAccountReady(false);
-			setMemberLoadError(!res.ok && (res.status === 0 || res.status >= 500));
+			setMemberLoadError(!res.ok && (res.status === 0 || res.status === 429 || res.status >= 500));
 			setMemberLoaded(true);
 		},
 		[encodedShareCode, wg.id],

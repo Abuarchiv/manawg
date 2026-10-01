@@ -10,6 +10,7 @@ import {
 	explainOfflineActionFailure,
 	getOfflineActionRequest,
 	isOfflineIdempotencyKey,
+	isQueuedCreateId,
 	serializeOfflineAction,
 	shouldRetryOfflineAction,
 	withoutQueuedEntry,
@@ -22,6 +23,7 @@ import {
 
 export const OFFLINE_QUEUE_KEY = 'manawg:offline-actions';
 export const SYNCED_IDS_KEY = 'manawg:offline-synced-ids';
+const OFFLINE_QUEUE_LOCK_NAME = 'manawg:offline-queue';
 /** No expiry: replaying an edited action under its original key can drop the edit. */
 const OFFLINE_REVIEW_IDS_KEY = 'manawg:offline-review-ids';
 /** How long a "synced but queue-write failed" marker survives reloads. */
@@ -75,6 +77,29 @@ function getOfflineStorage(): Storage | null {
 		return window.localStorage;
 	} catch {
 		return null;
+	}
+}
+
+type OfflineQueueLockResult<T> = { acquired: true; value: T } | { acquired: false };
+
+function supportsOfflineQueueLocks(): boolean {
+	return typeof navigator !== 'undefined' && Boolean(navigator.locks?.request);
+}
+
+async function withOfflineQueueLock<T>(
+	update: (storage: Storage) => T | Promise<T>,
+): Promise<OfflineQueueLockResult<T>> {
+	const storage = getOfflineStorage();
+	if (!storage || !supportsOfflineQueueLocks()) return { acquired: false };
+	try {
+		const value = await navigator.locks.request(
+			OFFLINE_QUEUE_LOCK_NAME,
+			{ mode: 'exclusive' },
+			() => update(storage),
+		);
+		return { acquired: true, value };
+	} catch {
+		return { acquired: false };
 	}
 }
 
@@ -212,9 +237,7 @@ function readPersistedSyncedIds(): string[] {
 	}
 }
 
-function persistSyncedIds(ids: string[]): void {
-	const storage = getOfflineStorage();
-	if (!storage) return;
+function persistSyncedIds(storage: Storage, ids: string[]): void {
 	try {
 		const raw = storage.getItem(SYNCED_IDS_KEY);
 		const parsed = isRecord(raw ? (JSON.parse(raw) as unknown) : null) ? raw : null;
@@ -248,9 +271,7 @@ function readPersistedReviewIds(): string[] {
 	}
 }
 
-function persistOfflineReviewIds(ids: string[]): void {
-	const storage = getOfflineStorage();
-	if (!storage) return;
+function persistOfflineReviewIds(storage: Storage, ids: string[]): void {
 	try {
 		const raw = storage.getItem(OFFLINE_REVIEW_IDS_KEY);
 		const parsed = isRecord(raw ? (JSON.parse(raw) as unknown) : null) ? raw : null;
@@ -268,13 +289,11 @@ function persistOfflineReviewIds(ids: string[]): void {
 	}
 }
 
-function clearReviewIdsForMissingActions(actions: OfflineAction[]): void {
+function clearReviewIdsForMissingActions(actions: OfflineAction[], storage: Storage): void {
 	const currentIds = new Set(actions.map((action) => action.id));
 	for (const id of reviewAfterFailedQueueSave) {
 		if (!currentIds.has(id)) reviewAfterFailedQueueSave.delete(id);
 	}
-	const storage = getOfflineStorage();
-	if (!storage) return;
 	try {
 		const raw = storage.getItem(OFFLINE_REVIEW_IDS_KEY);
 		const parsed = isRecord(raw ? (JSON.parse(raw) as unknown) : null) ? raw : null;
@@ -322,9 +341,7 @@ function readCachedOfflineQueue(): OfflineAction[] {
 	return filterOfflineQueue(cachedOfflineQueue ?? []);
 }
 
-export function readOfflineQueue(): OfflineAction[] {
-	const storage = getOfflineStorage();
-	if (!storage) return readCachedOfflineQueue();
+function readOfflineQueueFromStorage(storage: Storage): OfflineAction[] | null {
 	try {
 		const raw = storage.getItem(OFFLINE_QUEUE_KEY);
 		if (!raw) {
@@ -336,8 +353,14 @@ export function readOfflineQueue(): OfflineAction[] {
 		cachedOfflineQueue = queue;
 		return queue;
 	} catch {
-		return readCachedOfflineQueue();
+		return null;
 	}
+}
+
+export function readOfflineQueue(): OfflineAction[] {
+	const storage = getOfflineStorage();
+	if (!storage) return readCachedOfflineQueue();
+	return readOfflineQueueFromStorage(storage) ?? readCachedOfflineQueue();
 }
 
 /** False once the action left the queue, e.g. because a background sync already sent it. */
@@ -366,15 +389,13 @@ export function filterOfflineActionsForAuthUser(
 	});
 }
 
-export function writeOfflineQueue(actions: OfflineAction[]): boolean {
-	const storage = getOfflineStorage();
-	if (!storage) return false;
+function persistOfflineQueue(actions: OfflineAction[], storage: Storage): boolean {
 	try {
 		storage.setItem(OFFLINE_QUEUE_KEY, `[${actions.map(serializeOfflineAction).join(',')}]`);
 		for (const action of actions) {
 			syncedAfterFailedQueueSave.delete(action.id);
 		}
-		clearReviewIdsForMissingActions(actions);
+		clearReviewIdsForMissingActions(actions, storage);
 		cachedOfflineQueue = filterOfflineQueue(actions);
 		window.dispatchEvent(new CustomEvent('manawg:offline-queue'));
 		return true;
@@ -384,22 +405,52 @@ export function writeOfflineQueue(actions: OfflineAction[]): boolean {
 	}
 }
 
+export async function updateOfflineQueue(
+	update: (actions: OfflineAction[]) => OfflineAction[] | null,
+): Promise<boolean> {
+	const result = await withOfflineQueueLock((storage) => {
+		const current = readOfflineQueueFromStorage(storage);
+		if (!current) return false;
+		const next = update(current);
+		return next === null || persistOfflineQueue(next, storage);
+	});
+	return result.acquired && result.value;
+}
+
 /**
  * Deletes a not-yet-synced create (and follow-ups that target it) locally.
  * Item routes reject the synthetic queue id, so a list delete must not call them.
  */
-export function discardQueuedEntry(
+export async function discardQueuedEntry(
 	shareCode: string,
 	id: string,
-): 'removed' | 'not_queued' | 'storage_blocked' {
-	const next = withoutQueuedEntry(readOfflineQueue(), shareCode, id);
-	if (!next) return 'not_queued';
-	return writeOfflineQueue(next) ? 'removed' : 'storage_blocked';
+): Promise<'removed' | 'not_queued' | 'storage_blocked'> {
+	const queued = readOfflineQueue().some(
+		(action) =>
+			action.shareCode === shareCode &&
+			(action.id === id || action.payload.itemId === id || action.payload.choreId === id),
+	);
+	if (!queued && !isQueuedCreateId(id) && (!supportsOfflineQueueLocks() || !getOfflineStorage())) {
+		return 'not_queued';
+	}
+	let status: 'removed' | 'not_queued' = 'not_queued';
+	const saved = await updateOfflineQueue((actions) => {
+		const next = withoutQueuedEntry(actions, shareCode, id);
+		if (!next) return null;
+		status = 'removed';
+		return next;
+	});
+	return saved ? status : 'storage_blocked';
 }
 
-export function enqueueOfflineAction(action: OfflineAction): number {
-	const next = [...readOfflineQueue(), action];
-	return writeOfflineQueue(next) ? next.length : 0;
+export async function enqueueOfflineAction(action: OfflineAction): Promise<number> {
+	let count = 0;
+	const saved = await updateOfflineQueue((actions) => {
+		const next = [...actions, action];
+		count = next.length;
+		return next;
+	});
+	return saved ? count : 0;
 }
 
 async function resolvePendingImages(
@@ -434,14 +485,21 @@ function needsReviewAfterRequest(current: OfflineAction, snapshot: OfflineAction
 	);
 }
 
-function replaceQueuedSnapshot(snapshot: OfflineAction, replacement: OfflineAction): boolean {
-	const current = readOfflineQueue();
-	const index = current.findIndex(
-		(action) => action.id === snapshot.id && sameOfflineAction(action, snapshot),
-	);
-	if (index < 0) return false;
-	current[index] = replacement;
-	return writeOfflineQueue(current);
+async function replaceQueuedSnapshot(
+	snapshot: OfflineAction,
+	replacement: OfflineAction,
+): Promise<boolean> {
+	let replaced = false;
+	const saved = await updateOfflineQueue((current) => {
+		const index = current.findIndex(
+			(action) => action.id === snapshot.id && sameOfflineAction(action, snapshot),
+		);
+		if (index < 0) return null;
+		current[index] = replacement;
+		replaced = true;
+		return current;
+	});
+	return saved && replaced;
 }
 
 function mergeSyncOutcomes(
@@ -566,17 +624,18 @@ export async function syncOfflineActions(
 
 async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions): Promise<number> {
 	if (options?.signal?.aborted) return 0;
-	const storedQueue = readOfflineQueue();
-	if (storedQueue.length === 0) return 0;
-	const queue = storedQueue.map((action) =>
-		needsManualOfflineResolution(action) ? action : backfillIdempotencyKey(action),
-	);
-	// Probe storage writability BEFORE spending network calls — if we cannot
-	// persist removals, replaying would duplicate mutations. This rewrite of
-	// the just-read snapshot races with concurrent enqueues only for the few
-	// microseconds until the next line; the final write-back below re-reads
-	// and merges, which is what actually protects longer-running syncs.
-	if (!writeOfflineQueue(queue)) return 0;
+	const preflight = await withOfflineQueueLock((storage) => {
+		const storedQueue = readOfflineQueueFromStorage(storage);
+		if (!storedQueue) return null;
+		if (storedQueue.length === 0) return [];
+		const queue = storedQueue.map((action) =>
+			needsManualOfflineResolution(action) ? action : backfillIdempotencyKey(action),
+		);
+		return persistOfflineQueue(queue, storage) ? queue : null;
+	});
+	if (!preflight.acquired || preflight.value === null) return 0;
+	const queue = preflight.value;
+	if (queue.length === 0) return 0;
 	const outcomes = new Map<
 		string,
 		{ snapshot: OfflineAction; retry?: OfflineAction; reviewOnEdit?: boolean }
@@ -648,7 +707,7 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 			const { action: readyAction, tokens } = await resolvePendingImages(action, options?.signal);
 			if (options?.signal?.aborted) break;
 			if (!sameOfflineAction(action, readyAction)) {
-				if (!replaceQueuedSnapshot(action, readyAction)) continue;
+				if (!(await replaceQueuedSnapshot(action, readyAction))) continue;
 				requestSnapshot = readyAction;
 				await Promise.all(
 					tokens.map((token) =>
@@ -753,36 +812,55 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 		}
 	}
 
-	// Apply results only to exact snapshots still present in the queue. A
-	// deletion or edit made while a request waited wins over this stale result.
-	const merged = mergeSyncOutcomes(readOfflineQueue(), outcomes, reviewIds);
-	const mergedIds = new Set(merged.map((action) => action.id));
-	for (const action of additions) {
-		if (!mergedIds.has(action.id)) {
-			merged.push(action);
-			mergedIds.add(action.id);
-		}
-	}
-	if (reviewIds.size > 0) persistOfflineReviewIds([...reviewIds]);
-	const queueToWrite = merged.map((action) =>
-		reviewIds.has(action.id) ? { ...action, lastError: REVIEW_REQUIRED_ERROR } : action,
-	);
-	const flushedActionIds = syncedActionIds.filter(
-		(actionId) => !queueToWrite.some((action) => action.id === actionId),
-	);
-	const queueSaved =
-		outcomes.size === 0 && additions.length === 0 && reviewIds.size === 0
-			? true
-			: writeOfflineQueue(queueToWrite);
-	if (!queueSaved) {
-		const markerIds = flushedActionIds.filter((actionId) => !recurringRetrySourceIds.has(actionId));
-		for (const actionId of markerIds) {
-			syncedAfterFailedQueueSave.add(actionId);
-		}
-		persistSyncedIds(markerIds);
-		if (reviewIds.size > 0) {
+	// Apply results to exact snapshots still present; preserve concurrent edits,
+	// removals, and enqueues from every same-origin tab.
+	const finalSave = await withOfflineQueueLock((storage) => {
+		const current = readOfflineQueueFromStorage(storage);
+		if (!current) {
+			const uncertainIds = [...new Set([...syncedActionIds, ...reviewIds])];
+			for (const actionId of uncertainIds) reviewAfterFailedQueueSave.add(actionId);
+			persistOfflineReviewIds(storage, uncertainIds);
 			window.dispatchEvent(new CustomEvent('manawg:offline-queue'));
+			return false;
 		}
+		const merged = mergeSyncOutcomes(current, outcomes, reviewIds);
+		const mergedIds = new Set(merged.map((action) => action.id));
+		for (const action of additions) {
+			if (!mergedIds.has(action.id)) {
+				merged.push(action);
+				mergedIds.add(action.id);
+			}
+		}
+		if (reviewIds.size > 0) persistOfflineReviewIds(storage, [...reviewIds]);
+		const queueToWrite = merged.map((action) =>
+			reviewIds.has(action.id) ? { ...action, lastError: REVIEW_REQUIRED_ERROR } : action,
+		);
+		const flushedActionIds = syncedActionIds.filter(
+			(actionId) => !queueToWrite.some((action) => action.id === actionId),
+		);
+		const queueSaved =
+			outcomes.size === 0 && additions.length === 0 && reviewIds.size === 0
+				? true
+				: persistOfflineQueue(queueToWrite, storage);
+		if (!queueSaved) {
+			const markerIds = flushedActionIds.filter(
+				(actionId) => !recurringRetrySourceIds.has(actionId),
+			);
+			for (const actionId of markerIds) {
+				syncedAfterFailedQueueSave.add(actionId);
+			}
+			persistSyncedIds(storage, markerIds);
+			if (reviewIds.size > 0) {
+				window.dispatchEvent(new CustomEvent('manawg:offline-queue'));
+			}
+		}
+		return queueSaved;
+	});
+	if (!finalSave.acquired) {
+		for (const actionId of [...new Set([...syncedActionIds, ...reviewIds])]) {
+			reviewAfterFailedQueueSave.add(actionId);
+		}
+		window.dispatchEvent(new CustomEvent('manawg:offline-queue'));
 	}
 	if (synced > 0) {
 		window.dispatchEvent(

@@ -39,7 +39,7 @@ interface ExpenseDto {
 
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function ErinnerungenPage() {
-	const { wg, members, identity } = useWg();
+	const { wg, members, identity, isAdmin } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const {
 		data: cachedExpenses,
@@ -236,10 +236,15 @@ export default function ErinnerungenPage() {
 
 	const reminderKey = (row: (typeof rows)[number]) =>
 		`${row.currency}:${row.debtorId}:${row.creditorId}`;
+	// The API only lets the creditor (or the admin) remind, and only active debtors.
+	const canRemind = (row: (typeof rows)[number]) =>
+		(row.creditorId === identity.memberId || isAdmin) &&
+		members.find((m) => m.id === row.debtorId)?.active !== false;
+	const remindable = rows.filter(canRemind);
 	const primaryReminder =
-		rows.find((row) => reminderKey(row) === primaryReminderKey) ??
-		rows.find((row) => cooldownFor(row.debtorId, row.creditorId, row.currency).allowed) ??
-		rows[0] ??
+		remindable.find((row) => reminderKey(row) === primaryReminderKey) ??
+		remindable.find((row) => cooldownFor(row.debtorId, row.creditorId, row.currency).allowed) ??
+		remindable[0] ??
 		null;
 
 	function reminderButton(row: (typeof rows)[number], primary = false) {
@@ -366,7 +371,7 @@ export default function ErinnerungenPage() {
 									currency={row.currency}
 									oldestDebtAgeDays={row.oldestAge}
 									currentMemberId={identity.memberId}
-									action={row === primaryReminder ? null : reminderButton(row)}
+									action={row === primaryReminder || !canRemind(row) ? null : reminderButton(row)}
 								/>
 							);
 						})}

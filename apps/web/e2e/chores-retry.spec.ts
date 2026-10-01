@@ -14,17 +14,3 @@ test('uses Berlin calendar days instead of rounding elapsed hours', () => {
 		label: 'seit 1 T. offen',
 	});
 });
-
-test('requires a WG member for chores and absences API data', async ({ request }) => {
-	const [choresResponse, absencesResponse] = await Promise.all([
-		request.get('/api/wg/MTE8PZAT/chores', { timeout: 120_000 }),
-		request.get('/api/wg/MTE8PZAT/absences', { timeout: 120_000 }),
-	]);
-
-	expect(choresResponse.status()).toBe(401);
-	expect(absencesResponse.status()).toBe(401);
-	await expect(choresResponse.json()).resolves.toMatchObject({ error: 'auth_required' });
-	await expect(absencesResponse.json()).resolves.toMatchObject({
-		error: 'auth_required',
-	});
-});

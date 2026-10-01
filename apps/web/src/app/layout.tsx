@@ -2,6 +2,7 @@ import { InstallPrompt } from '@/shared/components/install-prompt';
 import { PwaRegister } from '@/shared/components/pwa-register';
 import { ThemeProvider } from '@/shared/components/theme/ThemeProvider';
 import { getAppUrl } from '@/shared/lib/app-url';
+import { THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import Script from 'next/script';
@@ -162,7 +163,7 @@ export default function RootLayout({
             Safe: no dynamic data interpolated, only reads from localStorage.
             Pattern used by next-themes and every major theme library. */}
 				<Script id="manawg-theme-bootstrap" strategy="beforeInteractive">
-					{`(function(){try{var t=localStorage.getItem('manawg-theme');var s=t!=='light'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(t==='dark'||s){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`}
+					{THEME_BOOTSTRAP_SCRIPT}
 				</Script>
 				{/* Organization + SoftwareApplication JSON-LD for rich results. Content is static JSON.stringify of trusted constants — no XSS surface. */}
 				<Script

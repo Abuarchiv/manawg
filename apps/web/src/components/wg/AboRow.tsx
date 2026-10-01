@@ -37,6 +37,12 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 	);
 	const { identity } = useWg();
 	const payerName = payer?.name ?? 'unbekannt';
+	// The cron skips (never advances) a template whose payer or debtor moved out.
+	const blockedByMovedOut =
+		!isPaused &&
+		[abo.paidByMemberId, ...abo.splits.map((split) => split.debtorMemberId)].some(
+			(id) => members.find((member) => member.id === id)?.active === false,
+		);
 	return (
 		<li className={isPaused ? 'text-muted-foreground' : undefined}>
 			<Collapsible>
@@ -62,6 +68,8 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 						<span className="text-[12px] leading-normal font-normal text-muted-foreground">
 							{isPaused ? (
 								'pausiert'
+							) : blockedByMovedOut ? (
+								<span className="font-medium text-foreground">wird nicht gebucht</span>
 							) : isOverdue ? (
 								<span className="font-medium text-foreground">
 									seit {formatShortDate(abo.nextDueAt)} fällig
@@ -104,7 +112,13 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 								);
 							})}
 						</ul>
-						{preview.length > 0 && !isPaused && (
+						{blockedByMovedOut && (
+							<p className="text-sm font-medium text-foreground">
+								Wird nicht gebucht, weil ein beteiligtes Mitglied ausgezogen ist. Passe die Anteile
+								an oder pausiere die Fixkosten.
+							</p>
+						)}
+						{preview.length > 0 && !isPaused && !blockedByMovedOut && (
 							<p className="text-sm text-muted-foreground">
 								Nächste {preview.length} Buchungen:{' '}
 								{preview.map((date) => formatShortDate(date.toISOString())).join(', ')}

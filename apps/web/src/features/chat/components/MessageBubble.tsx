@@ -121,7 +121,7 @@ export function MessageBubble({
 	const align = isOwn ? 'end' : 'start';
 	// Uhrzeit klein unten rechts in der Blase wie bei WhatsApp; das Datum steht im Tagestrenner.
 	const timeStamp = (
-		<span className="float-end ms-2 mt-1.5 text-[11px] leading-none tabular-nums opacity-70">
+		<span className="float-end ms-2 mt-1.5 text-[12px] leading-none tabular-nums opacity-70">
 			{message.editedAt && 'bearbeitet · '}
 			<time dateTime={message.createdAt} title={formatTimeFull(message.createdAt)}>
 				{TIME_FORMAT.format(new Date(message.createdAt))}
@@ -398,7 +398,7 @@ export function MessageBubble({
 								</AttachmentMedia>
 								<AttachmentContent>
 									<AttachmentTitle>Bild</AttachmentTitle>
-									<AttachmentDescription>In voller Größe öffnen</AttachmentDescription>
+									<AttachmentDescription>Öffnen</AttachmentDescription>
 								</AttachmentContent>
 								<AttachmentTrigger
 									aria-label="Bild in voller Größe öffnen"

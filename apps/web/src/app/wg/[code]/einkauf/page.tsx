@@ -37,7 +37,7 @@ import {
 	isOfflineActionQueued,
 	readOfflineQueue,
 	syncOfflineActions,
-	writeOfflineQueue,
+	updateOfflineQueue,
 } from '@/core/offline/offline-client';
 import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
@@ -94,6 +94,8 @@ function keepItems(prev: ShoppingItem[], next: ShoppingItem[]): ShoppingItem[] {
 	return unchanged ? prev : next;
 }
 
+const NO_INVENTORY: InventoryItemDto[] = [];
+
 // craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function EinkaufPage() {
 	const { wg, members, identity, isAdmin } = useWg();
@@ -108,7 +110,11 @@ export default function EinkaufPage() {
 	} = useCachedFetch<{ items: ShoppingItem[] }>(`/api/wg/${encodedShareCode}/shopping`, {
 		memberId: identity.memberId,
 	});
-	const { data: cachedInventory, refresh: refreshInventory } = useCachedFetch<{
+	const {
+		data: cachedInventory,
+		isLoading: inventoryLoading,
+		refresh: refreshInventory,
+	} = useCachedFetch<{
 		items: InventoryItemDto[];
 	}>(`/api/wg/${encodedShareCode}/inventory`, {
 		memberId: identity.memberId,
@@ -132,9 +138,9 @@ export default function EinkaufPage() {
 	);
 	const [initialLoading, setInitialLoading] = useState(shoppingReadLoading);
 	const [newName, setNewName] = useState('');
-	const [inventory, setInventory] = useState<InventoryItemDto[]>(
-		() => cachedInventory?.items ?? [],
-	);
+	// Direkt abgeleitet statt per Effect gespiegelt: sonst rendert ein Frame mit
+	// leerem Vorrat und die Vorschläge springen.
+	const inventory = cachedInventory?.items ?? NO_INVENTORY;
 	const [doneOpen, setDoneOpen] = useState(false);
 	const [receiptSince, setReceiptSince] = useState<string | null>(null);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -208,8 +214,7 @@ export default function EinkaufPage() {
 			);
 			setInitialLoading(false);
 		}
-		if (cachedInventory) setInventory(cachedInventory.items);
-	}, [cachedInventory, cachedShopping, shoppingReadError]);
+	}, [cachedShopping, shoppingReadError]);
 	const itemCount = items.length;
 
 	useEffect(() => {
@@ -260,8 +265,12 @@ export default function EinkaufPage() {
 		onSynced: () => void load(true),
 	});
 
+	// Nur einmal pro Deep-Link springen, nicht bei jedem Poll/Refresh erneut.
+	const scrolledHighlightRef = useRef<string | null>(null);
 	useEffect(() => {
 		if (!highlightedId || itemCount === 0) return;
+		if (scrolledHighlightRef.current === highlightedId) return;
+		scrolledHighlightRef.current = highlightedId;
 		if (items.some((item) => item.id === highlightedId && item.boughtAt !== null))
 			setDoneOpen(true);
 		window.setTimeout(() => {
@@ -288,9 +297,13 @@ export default function EinkaufPage() {
 		[memberInfoById],
 	);
 
-	function clearEditedQueueItem(): boolean {
+	async function clearEditedQueueItem(): Promise<boolean> {
 		if (!queueEditId) return true;
-		const saved = writeOfflineQueue(readOfflineQueue().filter((item) => item.id !== queueEditId));
+		const saved = await updateOfflineQueue((actions) =>
+			actions.some((item) => item.id === queueEditId)
+				? actions.filter((item) => item.id !== queueEditId)
+				: null,
+		);
 		if (!saved) return false;
 		setQueueEditId(null);
 		return true;
@@ -355,13 +368,13 @@ export default function EinkaufPage() {
 						name,
 						quantity,
 					});
-					if (enqueueOfflineAction(queued) === 0) {
+					if ((await enqueueOfflineAction(queued)) === 0) {
 						setAddError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
 					addIdempotencyKeyRef.current = null;
 					refreshCount();
-					if (fromInput && !clearEditedQueueItem()) {
+					if (fromInput && !(await clearEditedQueueItem())) {
 						setAddError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
@@ -396,7 +409,7 @@ export default function EinkaufPage() {
 				return;
 			}
 			addIdempotencyKeyRef.current = null;
-			if (fromInput && !clearEditedQueueItem()) {
+			if (fromInput && !(await clearEditedQueueItem())) {
 				setAddError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
@@ -491,17 +504,38 @@ export default function EinkaufPage() {
 
 			try {
 				if (queuedCreate) {
-					const saved = writeOfflineQueue(
-						readOfflineQueue().map((queued) =>
-							queued.id === item.id
-								? { ...queued, payload: { ...queued.payload, bought: becomingBought } }
-								: queued,
-						),
-					);
+					let updated = false;
+					const saved = await updateOfflineQueue((actions) => {
+						const queued = actions.find(
+							(action) =>
+								action.id === item.id &&
+								action.shareCode === wg.shareCode &&
+								action.memberId === identity.memberId &&
+								action.type === 'shopping.create',
+						);
+						if (!queued) return null;
+						updated = true;
+						return actions.map((action) =>
+							action.id === item.id &&
+							action.shareCode === wg.shareCode &&
+							action.memberId === identity.memberId &&
+							action.type === 'shopping.create'
+								? { ...action, payload: { ...action.payload, bought: becomingBought } }
+								: action,
+						);
+					});
 					if (!saved) {
 						rollback();
 						setToggleError(
 							'Offline-Speicher ist blockiert. Der Einkaufsstatus konnte nicht vorgemerkt werden.',
+						);
+						return;
+					}
+					if (!updated) {
+						rollback();
+						void load(true);
+						setToggleError(
+							'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
 						);
 						return;
 					}
@@ -573,7 +607,7 @@ export default function EinkaufPage() {
 							expectedBoughtAt: patchRequest.expectedBoughtAt,
 							idempotencyKey: patchRequest.idempotencyKey,
 						});
-						if (enqueueOfflineAction(queued) === 0) {
+						if ((await enqueueOfflineAction(queued)) === 0) {
 							rollback();
 							setToggleError(
 								'Offline-Speicher ist blockiert. Der Einkaufsstatus konnte nicht vorgemerkt werden.',
@@ -623,65 +657,68 @@ export default function EinkaufPage() {
 	const remove = useCallback(
 		async (id: string): Promise<void> => {
 			if (isPending(id)) return;
-			setRemoveError(null);
-			setRemoveErrorId(null);
-			const queued = discardQueuedEntry(wg.shareCode, id);
-			if (queued === 'storage_blocked') {
-				setRemoveErrorId(id);
-				setRemoveError(
-					'Offline-Speicher ist blockiert. Der vorgemerkte Artikel konnte nicht entfernt werden.',
-				);
-				return;
-			}
-			if (queued === 'removed' || isQueuedCreateId(id)) {
-				commitItems((prev) =>
-					keepItems(
-						prev,
-						prev.filter((item) => item.id !== id),
-					),
-				);
-				refreshCount();
-				setToggleNotice('Offline vorgemerkter Artikel wurde entfernt.');
-				return;
-			}
 			start(id);
-			const res = await apiFetch<unknown>(
-				`/api/wg/${encodedShareCode}/shopping/${encodeURIComponent(id)}`,
-				{
-					method: 'DELETE',
-					memberId: identity.memberId,
-					memberToken: identity.memberToken,
-				},
-			);
-			if (!res.ok) {
-				if (res.status === 403) {
+			try {
+				setToggleError(null);
+				setRemoveError(null);
+				setRemoveErrorId(null);
+				const queued = await discardQueuedEntry(wg.shareCode, id);
+				if (queued === 'storage_blocked') {
 					setRemoveErrorId(id);
-					setRemoveError('Nur der/die Autor:in kann diesen Eintrag entfernen.');
-				} else if (res.status === 404 && res.error === 'item_not_found') {
+					setRemoveError(
+						'Offline-Speicher ist blockiert. Der vorgemerkte Artikel konnte nicht entfernt werden.',
+					);
+					return;
+				}
+				if (queued === 'removed' || isQueuedCreateId(id)) {
 					commitItems((prev) =>
 						keepItems(
 							prev,
 							prev.filter((item) => item.id !== id),
 						),
 					);
-					setRemoveError(
-						'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
-					);
-				} else {
-					setRemoveErrorId(id);
-					setRemoveError(shoppingActionErrorMessage(res.error, 'Entfernen fehlgeschlagen.'));
+					refreshCount();
+					setToggleNotice('Offline vorgemerkter Artikel wurde entfernt.');
+					return;
 				}
+				const res = await apiFetch<unknown>(
+					`/api/wg/${encodedShareCode}/shopping/${encodeURIComponent(id)}`,
+					{
+						method: 'DELETE',
+						memberId: identity.memberId,
+						memberToken: identity.memberToken,
+					},
+				);
+				if (!res.ok) {
+					if (res.status === 403) {
+						setRemoveErrorId(id);
+						setRemoveError('Nur der/die Autor:in kann diesen Eintrag entfernen.');
+					} else if (res.status === 404 && res.error === 'item_not_found') {
+						commitItems((prev) =>
+							keepItems(
+								prev,
+								prev.filter((item) => item.id !== id),
+							),
+						);
+						setRemoveError(
+							'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
+						);
+					} else {
+						setRemoveErrorId(id);
+						setRemoveError(shoppingActionErrorMessage(res.error, 'Entfernen fehlgeschlagen.'));
+					}
+					return;
+				}
+				commitItems((prev) =>
+					keepItems(
+						prev,
+						prev.filter((item) => item.id !== id),
+					),
+				);
+				void load(true);
+			} finally {
 				end(id);
-				return;
 			}
-			commitItems((prev) =>
-				keepItems(
-					prev,
-					prev.filter((item) => item.id !== id),
-				),
-			);
-			void load(true);
-			end(id);
 		},
 		[
 			end,
@@ -701,6 +738,7 @@ export default function EinkaufPage() {
 		if (clearingBoughtRef.current) return;
 		clearingBoughtRef.current = true;
 		setClearingBought(true);
+		setToggleError(null);
 		setRemoveError(null);
 		setRemoveErrorId(null);
 		try {
@@ -794,6 +832,9 @@ export default function EinkaufPage() {
 		taken.add(key);
 		return true;
 	});
+	// Vorschläge und Liste erscheinen gemeinsam, sobald Liste und Vorrat da sind: sonst
+	// tauschen die Gruppen nach dem Laden und schieben die Liste nach unten (Layout Shift).
+	const suggestionsPending = initialLoading || inventoryLoading;
 	const suggestionGroups = [
 		{ label: 'Vorrat niedrig', names: lowStock.slice(0, 6) },
 		frequent.length > 0
@@ -804,7 +845,7 @@ export default function EinkaufPage() {
 						(name) => !taken.has(normalizeForMatch(name)),
 					),
 				},
-	].filter((group) => group.names.length > 0);
+	].filter((group) => !suggestionsPending && group.names.length > 0);
 
 	function renderRow(item: ShoppingItem) {
 		return (
@@ -930,7 +971,7 @@ export default function EinkaufPage() {
 				</Alert>
 			)}
 
-			{initialLoading && items.length === 0 ? (
+			{inventoryLoading || (initialLoading && items.length === 0) ? (
 				<ListSkeleton />
 			) : loadError && items.length === 0 ? (
 				<Empty>

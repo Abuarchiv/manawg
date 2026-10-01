@@ -66,17 +66,21 @@ function applyResolved(next: ResolvedTheme): void {
 export function ThemeProvider({ children }: { children: ReactNode }) {
 	const [theme, setThemeState] = useState<Theme>('system');
 	const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
+	// Der Bootstrap-Script hat die Klasse schon gesetzt; vor dem ersten Lesen des
+	// gespeicherten Themes darf der 'light'-Startwert sie nicht wieder entfernen.
+	const [ready, setReady] = useState(false);
 
 	useEffect(() => {
 		const initial = readStoredTheme();
+		setReady(true);
 		setThemeState(initial);
 		const r = resolve(initial);
 		setResolvedTheme(r);
 	}, []);
 
 	useEffect(() => {
-		applyResolved(resolvedTheme);
-	}, [resolvedTheme]);
+		if (ready) applyResolved(resolvedTheme);
+	}, [ready, resolvedTheme]);
 
 	useEffect(() => {
 		if (theme !== 'system' || typeof window === 'undefined') return;

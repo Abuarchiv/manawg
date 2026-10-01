@@ -39,6 +39,7 @@ function harness({ changedRows }) {
 	const json = (body, status) => Response.json(body, { status });
 	const mocks = {
 		'@/core/db': { db, wgChatMessages, wgChatReads },
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			badRequest: (error) => json({ error }, 400),
 			notFound: (error) => json({ error }, 404),

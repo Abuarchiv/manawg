@@ -7,6 +7,7 @@ import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { apiError, badRequest, conflict, serverError, tooMany } from '@/core/errors';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { deriveMemberToken } from '@/core/guards/member-token';
+import { readJsonLimited } from '@/core/http/read-json';
 import {
 	RESPONSE_REPLAY_TTL_SECONDS,
 	getCachedResponse,
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 	let raw: unknown;
 	try {
-		raw = await req.json();
+		raw = await readJsonLimited(req);
 	} catch {
 		return badRequest('invalid_json');
 	}

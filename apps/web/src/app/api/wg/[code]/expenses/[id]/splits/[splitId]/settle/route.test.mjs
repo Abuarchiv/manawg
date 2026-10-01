@@ -78,6 +78,7 @@ async function post({
 	payments = [],
 	currentMemberId = debtorId,
 	settled = true,
+	rawBody,
 	target = expenses[0],
 }) {
 	const state = { audits: [], updates: [], lockActive: false };
@@ -169,6 +170,7 @@ async function post({
 			expenseSplits: splitsTable,
 			wgMembers: membersTable,
 		},
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': {
 			badRequest: (error) => responseJson({ error }, { status: 400 }),
 			conflict: (error) => responseJson({ error }, { status: 409 }),
@@ -191,7 +193,7 @@ async function post({
 			path.join(process.cwd(), 'src/features/expenses/debt-reduction.ts'),
 		),
 		'@/features/expenses/expense-payments': {
-			hasActiveExpensePayment: async () => false,
+			hasCapturingExpensePayment: async () => false,
 			loadCompletedExpensePayments: async () => payments,
 			withExpensePaymentLock: async (_wgId, run) => {
 				state.lockActive = true;
@@ -215,7 +217,7 @@ async function post({
 		new Request('https://example.invalid/settle', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ settled }),
+			body: rawBody ?? JSON.stringify({ settled }),
 		}),
 		{ code: 'MTE8PZAT', id: target.id, splitId: target.splits[0].id },
 	);
@@ -313,4 +315,13 @@ test('allows reopening a manually settled split even when no residual debt remai
 	assert.equal(result.response.status, 200);
 	assert.equal(result.split.settledAt, null);
 	assert.equal(result.state.audits[0]?.eventType, 'expense.split.reopened');
+});
+
+test('rejects a JSON null body with 400 instead of a 500', async () => {
+	const target = entry(expenseIds[0], expenseIds[1], payerId, debtorId, 1200);
+	const result = await post({ expenses: [target], target, rawBody: 'null' });
+
+	assert.equal(result.response.status, 400);
+	assert.deepEqual(await result.response.json(), { error: 'invalid_body' });
+	assert.equal(result.state.updates.length, 0);
 });

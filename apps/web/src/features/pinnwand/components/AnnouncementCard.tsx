@@ -184,6 +184,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	const [commentError, setCommentError] = useState(false);
 	const commentPendingRef = useRef(false);
 	const [deleteOpen, setDeleteOpen] = useState(false);
+	const deletingRef = useRef(false);
 	const [deleteError, setDeleteError] = useState(false);
 	const [touchedReactions, setTouchedReactions] = useState<ReactionKey[]>([]);
 	const draftKey = `manawg:draft:${shareCode}:${currentMemberId}:announcement:${announcement.id}`;
@@ -566,7 +567,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 												className="min-h-11"
 												disabled={commentPending || !commentDraft.draft.trim()}
 												onClick={() => void submitComment()}
-												aria-label={`Antwort senden: ${actionSubject}`}
+												aria-label={`Antworten: ${actionSubject}`}
 											>
 												{commentPending ? (
 													<Spinner data-icon="inline-start" />
@@ -586,7 +587,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 			<AlertDialog
 				open={deleteOpen}
 				onOpenChange={(open) => {
-					if (!deletePending) setDeleteOpen(open);
+					if (!deletePending && !deletingRef.current) setDeleteOpen(open);
 				}}
 			>
 				<AlertDialogContent>
@@ -613,10 +614,16 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							className="min-h-11"
 							aria-label={`Beitrag entfernen bestätigen: ${actionSubject}`}
 							onClick={async () => {
+								// Synchron sperren: der eingebaute Close läuft vor dem nächsten Render.
+								deletingRef.current = true;
 								setDeleteError(false);
-								const ok = await onDelete();
-								if (ok) setDeleteOpen(false);
-								else setDeleteError(true);
+								try {
+									const ok = await onDelete();
+									if (ok) setDeleteOpen(false);
+									else setDeleteError(true);
+								} finally {
+									deletingRef.current = false;
+								}
 							}}
 						>
 							{deletePending && <Spinner data-icon="inline-start" />}

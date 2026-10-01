@@ -164,6 +164,7 @@ export function ImportWizard() {
 	const [ocrRunning, setOcrRunning] = useState(false);
 	const [preview, setPreview] = useState<PreviewResponse | null>(null);
 	const [mapping, setMapping] = useState<Record<string, string | null>>({});
+	const previewPayloadRef = useRef<string | null>(null);
 	const [mappingValidated, setMappingValidated] = useState(false);
 	const [skipIndexes, setSkipIndexes] = useState<Set<number>>(new Set());
 	const [busy, setBusy] = useState(false);
@@ -359,9 +360,18 @@ export function ImportWizard() {
 			return;
 		}
 		setPreview(res.data);
-		setMapping(res.data.memberMapping);
+		// Nach „Zurück“ bleiben eigene Zuordnungen für weiterhin vorhandene Namen erhalten.
+		setMapping((previous) =>
+			Object.fromEntries(
+				Object.entries(res.data.memberMapping).map(([name, memberId]) => [
+					name,
+					Object.hasOwn(previous, name) ? (previous[name] ?? null) : memberId,
+				]),
+			),
+		);
 		setMappingValidated(false);
-		setSkipIndexes(new Set());
+		if (previewPayloadRef.current !== rawPayload) setSkipIndexes(new Set());
+		previewPayloadRef.current = rawPayload;
 		setInputStatus('ready');
 		clearImportError();
 		setStep('mapping');

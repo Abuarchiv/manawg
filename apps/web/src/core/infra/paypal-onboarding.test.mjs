@@ -204,3 +204,51 @@ test('a provider 404 means the saved merchant is disconnected, while other failu
 	});
 	await assert.rejects(unavailable('2B23456789ABC'), /paypal_api_503/);
 });
+
+test('tracking lookup accepts only the documented single object with exact tracking and valid merchant ID', async () => {
+	process.env.PAYPAL_ENV = 'sandbox';
+	process.env.PAYPAL_CLIENT_ID = 'our-client';
+	process.env.PAYPAL_CLIENT_SECRET = 'test-secret-for-onboarding';
+	process.env.PAYPAL_PARTNER_MERCHANT_ID = '2A23456789ABC';
+	process.env.NEXT_PUBLIC_APP_URL = 'https://manawg.example';
+	for (const response of [
+		{ merchant_id: '2B23456789ABC', tracking_id: binding.trackingId },
+		null,
+		[],
+		[{ merchant_id: '2B23456789ABC', tracking_id: binding.trackingId }],
+		{ merchant_id: '2B23456789ABC', tracking_id: 'different' },
+		{ merchant_id: 'not-a-merchant', tracking_id: binding.trackingId },
+		{ merchants: [{ merchant_id: '2B23456789ABC', tracking_id: binding.trackingId }] },
+	]) {
+		const calls = [];
+		const { getPayPalMerchantIdByTracking } = loadOnboarding({
+			'./paypal': {
+				requestPayPalApi: async (url, init) => {
+					calls.push({ url, init });
+					return response;
+				},
+			},
+		});
+		const result = await getPayPalMerchantIdByTracking(binding.trackingId);
+		assert.equal(
+			result,
+			response?.merchant_id === '2B23456789ABC' && response.tracking_id === binding.trackingId
+				? '2B23456789ABC'
+				: null,
+		);
+		assert.deepEqual(calls, [
+			{
+				url: `/v1/customer/partners/2A23456789ABC/merchant-integrations?tracking_id=${encodeURIComponent(binding.trackingId)}`,
+				init: { method: 'GET' },
+			},
+		]);
+	}
+	const { getPayPalMerchantIdByTracking } = loadOnboarding({
+		'./paypal': {
+			requestPayPalApi: async () => {
+				throw new Error('paypal_api_404');
+			},
+		},
+	});
+	await assert.rejects(getPayPalMerchantIdByTracking(binding.trackingId), /paypal_api_404/);
+});

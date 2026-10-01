@@ -302,3 +302,17 @@ export async function isPayPalMerchantReady(
 		isPayPalMerchantIntegrationReady(integration, config.clientId, expectedTrackingId)
 	);
 }
+
+export async function getPayPalMerchantIdByTracking(trackingId: string): Promise<string | null> {
+	const config = getPayPalOnboardingConfig();
+	if (!config) throw new Error('paypal_not_configured');
+	const integration = await requestPayPalApi<unknown>(
+		`/v1/customer/partners/${encodeURIComponent(config.partnerMerchantId)}/merchant-integrations?tracking_id=${encodeURIComponent(trackingId)}`,
+		{ method: 'GET' },
+	);
+	if (!integration || typeof integration !== 'object' || Array.isArray(integration)) return null;
+	const merchant = integration as { merchant_id?: unknown; tracking_id?: unknown };
+	return merchant.tracking_id === trackingId && isPayPalMerchantId(merchant.merchant_id)
+		? merchant.merchant_id
+		: null;
+}

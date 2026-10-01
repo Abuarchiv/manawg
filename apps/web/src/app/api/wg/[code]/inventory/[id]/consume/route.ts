@@ -10,6 +10,7 @@ import {
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { readJsonLimited } from '@/core/http/read-json';
 import { getCachedResponse, readIdempotencyKey, releaseResponseSlot } from '@/core/idempotency';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
@@ -47,7 +48,7 @@ export const POST = withWgRoute<{ id: string }>('inventory consume', async (req,
 
 	let raw: unknown;
 	try {
-		raw = await req.json();
+		raw = await readJsonLimited(req);
 	} catch {
 		return badRequest('invalid_json');
 	}

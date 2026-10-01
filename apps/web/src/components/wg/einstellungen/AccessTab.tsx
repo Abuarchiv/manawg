@@ -50,7 +50,7 @@ import { apiFetch } from '@/core/infra/api-client';
 import { buildSecurityOverview } from '@/core/infra/security';
 import type { StoredIdentity } from '@/shared/lib/identity';
 import { clearIdentity, forgetWg, memberAuthHeader } from '@/shared/lib/identity';
-import { LogOut, Trash2, UserMinus, UserPlus } from 'lucide-react';
+import { Crown, LogOut, Trash2, UserMinus, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -88,6 +88,9 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 		name: string;
 		selfLeave?: boolean;
 	} | null>(null);
+	const [memberToPromote, setMemberToPromote] = useState<{ id: string; name: string } | null>(null);
+	const [promoting, setPromoting] = useState(false);
+	const [promoteError, setPromoteError] = useState<string | null>(null);
 	const [reactivatingId, setReactivatingId] = useState<string | null>(null);
 	const [memberActionMessage, setMemberActionMessage] = useState<string | null>(null);
 	const [memberActionError, setMemberActionError] = useState<string | null>(null);
@@ -104,6 +107,38 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 		}
 		setMemberActionError(null);
 		setMemberActionMessage(`${name} ist jetzt als ausgezogen markiert.`);
+		void refreshMembers(identity.memberId);
+	}
+
+	async function handleTransferAdmin(): Promise<void> {
+		if (!memberToPromote || promoting) return;
+		setPromoting(true);
+		setPromoteError(null);
+		const res = await apiFetch<{ member: { id: string; name: string } }>(
+			`/api/wg/${encodedShareCode}/members/${memberToPromote.id}/admin`,
+			{
+				method: 'POST',
+				memberId: identity.memberId,
+				memberToken: identity.memberToken,
+				body: JSON.stringify({}),
+			},
+		);
+		setPromoting(false);
+		if (!res.ok) {
+			setPromoteError(
+				res.error === 'member_inactive'
+					? 'Dieses Mitglied ist ausgezogen. Aktiviere es zuerst wieder.'
+					: res.error === 'member_not_linked'
+						? 'Dieses Mitglied hat noch kein Konto verknüpft und kann nicht Admin werden.'
+						: 'Admin-Rolle konnte nicht übergeben werden. Bitte erneut versuchen.',
+			);
+			return;
+		}
+		setMemberActionError(null);
+		setMemberActionMessage(
+			`${memberToPromote.name} ist jetzt Admin. Du kannst die WG jetzt normal verlassen.`,
+		);
+		setMemberToPromote(null);
 		void refreshMembers(identity.memberId);
 	}
 
@@ -434,8 +469,8 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 			</Section>
 
 			<Section
-				title="Sicherheit & Vertrauen"
-				hint="Schneller Überblick, wer drin ist und wie offen der WG-Code ist."
+				title="Mitglieder & Sicherheit"
+				hint="Wer drin ist, wie offen der WG-Code ist und wer ausziehen kann."
 			>
 				<div className="grid grid-cols-2 gap-3 p-3">
 					{securityOverview.map((item) => (
@@ -448,28 +483,43 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				<Separator />
 				<ItemGroup className="gap-0 px-2 py-1">
 					{activeMembers.map((member) => (
-						<Item key={member.id} size="sm" className="min-h-[44px]">
+						<Item key={member.id} size="sm" className="min-h-[44px] flex-wrap">
 							<ItemMedia>
 								<MemberAvatar name={member.name} size={26} />
 							</ItemMedia>
-							<ItemContent className="min-w-0">
-								<ItemTitle>{member.name}</ItemTitle>
+							<ItemContent className="min-w-0 basis-20">
+								<ItemTitle className="line-clamp-none">{member.name}</ItemTitle>
 							</ItemContent>
 							<ItemActions>
 								{member.id === identity.memberId ? (
 									<Badge variant="secondary">Du</Badge>
 								) : (
 									isAdmin && (
-										<Button
-											type="button"
-											variant="outline"
-											size="sm"
-											onClick={() => setMemberToDeactivate({ id: member.id, name: member.name })}
-											aria-label={`Ausziehen: ${member.name}`}
-										>
-											<UserMinus aria-hidden />
-											Ausziehen
-										</Button>
+										<>
+											<Button
+												type="button"
+												variant="outline"
+												size="sm"
+												onClick={() => {
+													setPromoteError(null);
+													setMemberToPromote({ id: member.id, name: member.name });
+												}}
+												aria-label={`Admin übergeben: ${member.name}`}
+											>
+												<Crown aria-hidden />
+												Admin
+											</Button>
+											<Button
+												type="button"
+												variant="outline"
+												size="sm"
+												onClick={() => setMemberToDeactivate({ id: member.id, name: member.name })}
+												aria-label={`Ausziehen: ${member.name}`}
+											>
+												<UserMinus aria-hidden />
+												Ausziehen
+											</Button>
+										</>
 									)
 								)}
 							</ItemActions>
@@ -483,13 +533,15 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 						</p>
 						<ItemGroup className="gap-0">
 							{inactiveMembers.map((member) => (
-								<Item key={member.id} size="sm" className="min-h-[44px] opacity-70">
+								<Item key={member.id} size="sm" className="min-h-[44px] flex-wrap opacity-70">
 									<ItemMedia>
 										<MemberAvatar name={member.name} size={26} />
 									</ItemMedia>
-									<ItemContent className="min-w-0">
-										<ItemTitle>{member.name}</ItemTitle>
-										<ItemDescription>Ausgezogen, Verlauf bleibt erhalten</ItemDescription>
+									<ItemContent className="min-w-0 basis-40">
+										<ItemTitle className="line-clamp-none">{member.name}</ItemTitle>
+										<ItemDescription className="line-clamp-none">
+											Ausgezogen, Verlauf bleibt erhalten
+										</ItemDescription>
 									</ItemContent>
 									<ItemActions>
 										{isAdmin && (
@@ -567,15 +619,15 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 					title="WG verlassen"
 					hint={
 						isAdmin
-							? 'Admins können ihre Mitgliedschaft derzeit nicht beenden.'
+							? 'Admin übergeben, dann verlassen.'
 							: 'Deaktiviert deine Mitgliedschaft. Einträge und offene Salden bleiben erhalten.'
 					}
 				>
 					<div className="grid gap-3 p-3">
 						{isAdmin ? (
 							<p className="text-muted-foreground text-[12px]">
-								Admins können ihre Mitgliedschaft derzeit nicht beenden, weil die Admin-Rolle nicht
-								übertragen werden kann.
+								Übergib zuerst die Admin-Rolle an ein aktives Mitglied (Button „Admin“ bei den
+								Mitgliedern), danach kannst du die WG verlassen.
 							</p>
 						) : activeMembers.length <= 1 ? (
 							<p className="text-muted-foreground text-[12px]">
@@ -677,6 +729,44 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 						>
 							{deleteStage === 'pending' ? <Spinner aria-hidden /> : <Trash2 aria-hidden />}
 							Endgültig löschen
+						</Button>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			<AlertDialog
+				open={memberToPromote !== null}
+				onOpenChange={(open) => {
+					if (!open && !promoting) setMemberToPromote(null);
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogMedia>
+							<Crown aria-hidden />
+						</AlertDialogMedia>
+						<AlertDialogTitle>Admin-Rolle übergeben?</AlertDialogTitle>
+						<AlertDialogDescription>
+							{memberToPromote?.name} wird Admin dieser WG. Du wirst normales Mitglied und kannst
+							die Rolle nur zurückbekommen, wenn {memberToPromote?.name} sie dir übergibt.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					{promoteError && (
+						<Alert variant="destructive">
+							<AlertDescription>{promoteError}</AlertDescription>
+						</Alert>
+					)}
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={promoting}>Abbrechen</AlertDialogCancel>
+						<Button
+							onClick={(event) => {
+								event.preventDefault();
+								void handleTransferAdmin();
+							}}
+							disabled={promoting}
+						>
+							{promoting && <Spinner aria-hidden />}
+							Übergeben
 						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>

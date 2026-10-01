@@ -21,7 +21,7 @@ import {
 	isOfflineActionQueued,
 	readOfflineQueue,
 	syncOfflineActions,
-	writeOfflineQueue,
+	updateOfflineQueue,
 } from '@/core/offline/offline-client';
 import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
@@ -488,13 +488,13 @@ export default function AusgabenPage() {
 	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
 	useVisibilityPausedInterval(() => void load(false), 30_000);
 
-	function clearEditedQueueItem(expectedTypes?: OfflineActionType[]): boolean {
+	async function clearEditedQueueItem(expectedTypes?: OfflineActionType[]): Promise<boolean> {
 		if (!queueEditId) return true;
-		if (expectedTypes) {
-			const queued = readOfflineQueue().find((item) => item.id === queueEditId);
-			if (!queued || !expectedTypes.includes(queued.type)) return true;
-		}
-		const saved = writeOfflineQueue(readOfflineQueue().filter((item) => item.id !== queueEditId));
+		const saved = await updateOfflineQueue((actions) => {
+			const queued = actions.find((item) => item.id === queueEditId);
+			if (!queued || (expectedTypes && !expectedTypes.includes(queued.type))) return null;
+			return actions.filter((item) => item.id !== queueEditId);
+		});
 		if (!saved) return false;
 		setQueueEditId(null);
 		setQueueEditType(null);
@@ -757,7 +757,7 @@ export default function AusgabenPage() {
 									}
 								: {}),
 						});
-				const queuedCount = enqueueOfflineAction(queuedAction);
+				const queuedCount = await enqueueOfflineAction(queuedAction);
 				if (queuedCount === 0) {
 					rollbackOptimisticExpense();
 					endPending(optimisticId);
@@ -768,7 +768,7 @@ export default function AusgabenPage() {
 				}
 				if (!isEdit) expenseCreateRequestRef.current = null;
 				refreshCount();
-				if (!clearEditedQueueItem(['expense.create', 'expense.update'])) {
+				if (!(await clearEditedQueueItem(['expense.create', 'expense.update']))) {
 					endPending(optimisticId);
 					finishSubmitting();
 					setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
@@ -829,7 +829,7 @@ export default function AusgabenPage() {
 					],
 		);
 		endPending(optimisticId);
-		if (!clearEditedQueueItem(['expense.create', 'expense.update'])) {
+		if (!(await clearEditedQueueItem(['expense.create', 'expense.update']))) {
 			finishSubmitting();
 			setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
 			toast.error(DRAFT_CLEANUP_FAILED_MESSAGE);
@@ -1045,7 +1045,7 @@ export default function AusgabenPage() {
 					nextDueAt: nextDueAt.toISOString(),
 					splits,
 				});
-				if (enqueueOfflineAction(queued) === 0) {
+				if ((await enqueueOfflineAction(queued)) === 0) {
 					setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 					finishSavingRecurringTemplate();
 					return;
@@ -1068,7 +1068,7 @@ export default function AusgabenPage() {
 						splits,
 					},
 				]);
-				if (!clearEditedQueueItem(['recurring.create'])) {
+				if (!(await clearEditedQueueItem(['recurring.create']))) {
 					setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 					finishSavingRecurringTemplate();
 					return;
@@ -1113,7 +1113,7 @@ export default function AusgabenPage() {
 					: [...current, res.data.recurringExpense],
 		);
 		setEditingRecurringExpense(null);
-		if (!clearEditedQueueItem(['recurring.create'])) {
+		if (!(await clearEditedQueueItem(['recurring.create']))) {
 			setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
 			finishSavingRecurringTemplate();
 			return;
@@ -1218,7 +1218,7 @@ export default function AusgabenPage() {
 				recurringExpenseCreateRequestsRef.current.delete(template.id);
 			}
 			if (createRes.status === 0) {
-				const queuedCount = enqueueOfflineAction(
+				const queuedCount = await enqueueOfflineAction(
 					createQueuedExpense({
 						wgId: wg.id,
 						shareCode: wg.shareCode,
@@ -1664,7 +1664,7 @@ export default function AusgabenPage() {
 						<EmptyHeader>
 							<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
 							<EmptyDescription>
-								Erfasse eure erste gemeinsame Ausgabe über das Plus unten rechts.
+								Erfasse eure erste gemeinsame Ausgabe mit „Ausgabe erfassen“ unten.
 							</EmptyDescription>
 						</EmptyHeader>
 					</Empty>

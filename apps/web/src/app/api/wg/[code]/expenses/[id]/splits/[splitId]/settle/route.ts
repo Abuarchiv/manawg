@@ -11,10 +11,11 @@ import {
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { computeNetBalances } from '@/features/expenses/debt-reduction';
 import {
-	hasActiveExpensePayment,
+	hasCapturingExpensePayment,
 	loadCompletedExpensePayments,
 	withExpensePaymentLock,
 } from '@/features/expenses/expense-payments';
@@ -29,9 +30,14 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 
 		let body: { settled?: unknown };
 		try {
-			body = (await req.json()) as { settled?: unknown };
+			body = (await readJsonLimited(req)) as { settled?: unknown };
 		} catch {
 			return badRequest('invalid_json');
+		}
+		// `null`, arrays and scalars are valid JSON but not a body; without this a
+		// literal `null` dereferences below and surfaces as a 500.
+		if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+			return badRequest('invalid_body');
 		}
 		if (body.settled !== undefined && typeof body.settled !== 'boolean') {
 			return badRequest('settled_invalid');
@@ -115,7 +121,9 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 			if ((settled && current.settledAt !== null) || (!settled && current.settledAt === null)) {
 				return { kind: 'unchanged' as const, split: currentSplit };
 			}
-			if (await hasActiveExpensePayment(tx, expense.wgId)) return { kind: 'blocked' as const };
+			// Only money in flight blocks; an unpaid 'created' PayPal order must not freeze the whole
+			// group for its 3 h TTL (capture re-validates the debt itself).
+			if (await hasCapturingExpensePayment(tx, expense.wgId)) return { kind: 'blocked' as const };
 
 			if (settled) {
 				// ponytail: scan all WG splits under the lock; add indexed stored balances if this becomes slow.

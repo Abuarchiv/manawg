@@ -573,13 +573,18 @@ export function DebtSummary({
 								return (
 									<li
 										key={`${member.currency}-${member.memberId}`}
-										className="grid grid-cols-[minmax(0,1fr)_minmax(3rem,5rem)_auto] items-center gap-2 text-sm"
+										className="grid grid-cols-1 items-center gap-2 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(3rem,5rem)_auto]"
 									>
 										<span className="flex min-w-0 items-center gap-2">
 											<MemberAvatar name={member.memberName} size={24} />
-											<span className="truncate">{isMe ? 'Du' : member.memberName}</span>
+											<span className="min-w-0 whitespace-normal break-words sm:truncate">
+												{isMe ? 'Du' : member.memberName}
+											</span>
 										</span>
-										<span aria-hidden className="flex h-1.5 overflow-hidden rounded-full bg-muted">
+										<span
+											aria-hidden
+											className="hidden h-1.5 overflow-hidden rounded-full bg-muted sm:flex"
+										>
 											<span className="flex flex-1 justify-end">
 												{member.balanceCents < 0 && (
 													<span
@@ -596,7 +601,7 @@ export function DebtSummary({
 										</span>
 										<span
 											className={cn(
-												'text-right font-mono whitespace-nowrap tabular-nums',
+												'justify-self-end text-right font-mono whitespace-nowrap tabular-nums',
 												member.balanceCents > 0
 													? 'text-settled'
 													: member.balanceCents < 0

@@ -67,12 +67,32 @@ function makeStorage() {
 	};
 }
 
+function makeLockManager() {
+	const tails = new Map();
+	return {
+		request(name, _options, callback) {
+			const previous = tails.get(name) ?? Promise.resolve();
+			let release;
+			const gate = new Promise((resolve) => {
+				release = resolve;
+			});
+			const tail = previous.then(() => gate);
+			tails.set(name, tail);
+			return previous.then(callback).finally(() => {
+				release();
+				if (tails.get(name) === tail) tails.delete(name);
+			});
+		},
+	};
+}
+
 function makeQueueModule({
 	apiFetch = async () => ({ ok: false, status: 0, error: 'network' }),
 	identity = () => ({ memberId: 'member-a' }),
 	images = {},
 	storage = makeStorage(),
 	clock = Date,
+	locks = makeLockManager(),
 } = {}) {
 	class FakeCustomEvent {
 		constructor(type, init = {}) {
@@ -84,6 +104,8 @@ function makeQueueModule({
 	const queue = {
 		isOfflineIdempotencyKey: (value) => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value),
 		createOfflineIdempotencyKey: () => VALID_KEY,
+		isQueuedCreateId: (value) =>
+			typeof value === 'string' && /^(?:shopping|chore-create|absence):/.test(value),
 		explainOfflineActionFailure: (status, error) => ({
 			title: 'Fehler',
 			detail: `${status}:${error ?? ''}`,
@@ -95,6 +117,11 @@ function makeQueueModule({
 		}),
 		serializeOfflineAction: (action) => JSON.stringify(action),
 		shouldRetryOfflineAction: () => true,
+		withoutQueuedEntry: (actions, shareCode, id) => {
+			if (!actions.some((action) => action.shareCode === shareCode && action.id === id))
+				return null;
+			return actions.filter((action) => action.id !== id || action.shareCode !== shareCode);
+		},
 	};
 	const module = loadTs(
 		'src/core/offline/offline-client.ts',
@@ -111,7 +138,15 @@ function makeQueueModule({
 			'./offline-queue': queue,
 			'./replay-retention': loadTs('src/core/offline/replay-retention.ts', {}),
 		},
-		{ window, CustomEvent: FakeCustomEvent, Date: clock, Math, AbortSignal, process },
+		{
+			window,
+			CustomEvent: FakeCustomEvent,
+			Date: clock,
+			Math,
+			AbortSignal,
+			navigator: locks ? { locks } : {},
+			process,
+		},
 	);
 	return { module, storage, window };
 }
@@ -123,6 +158,297 @@ function deferred() {
 	});
 	return { promise, resolve };
 }
+
+async function setQueue(module, actions) {
+	assert.equal(await module.updateOfflineQueue(() => actions), true);
+}
+
+test('list deletes stay pending while queued removal waits and clear pending on every outcome', async () => {
+	for (const [relativePath, name] of [
+		['src/app/wg/[code]/einkauf/page.tsx', 'remove'],
+		['src/app/wg/[code]/putzen/page.tsx', 'removeAbsence'],
+		['src/app/wg/[code]/putzen/page.tsx', 'handleRemove'],
+	]) {
+		const source = readSource(relativePath);
+		const tree = ts.createSourceFile(
+			relativePath,
+			source,
+			ts.ScriptTarget.Latest,
+			true,
+			ts.ScriptKind.TSX,
+		);
+		let callback;
+		function visit(node) {
+			if (ts.isVariableDeclaration(node) && node.name.getText(tree) === name) {
+				callback = node.initializer.arguments[0].getText(tree);
+			} else if (ts.isFunctionDeclaration(node) && node.name?.text === name) {
+				callback = node.getText(tree);
+			}
+			ts.forEachChild(node, visit);
+		}
+		visit(tree);
+		assert.ok(callback, `${relativePath}: ${name}`);
+		const js = ts.transpileModule(`globalThis.remove = (${callback});`, {
+			compilerOptions: { target: ts.ScriptTarget.ES2022 },
+		}).outputText;
+		for (const outcome of ['not_queued', 'storage_blocked', 'removed']) {
+			const queue = deferred();
+			const request = deferred();
+			const pending = new Set();
+			let deletes = 0;
+			let discards = 0;
+			const noop = () => {};
+			const start = (id) => pending.add(id);
+			const end = (id) => pending.delete(id);
+			const context = vm.createContext({
+				wg: { shareCode: 'TEST1234' },
+				encodedShareCode: 'TEST1234',
+				identity: { memberId: 'member-a', memberToken: 'token' },
+				isPending: (id) => pending.has(id),
+				start,
+				end,
+				startPending: start,
+				endPending: end,
+				discardQueuedEntry: () => {
+					discards += 1;
+					return queue.promise;
+				},
+				apiFetch: (_path, init) => {
+					assert.equal(init.method, 'DELETE');
+					deletes += 1;
+					return request.promise;
+				},
+				isQueuedCreateId: () => false,
+				setRemoveError: noop,
+				setRemoveErrorId: noop,
+				setToggleError: noop,
+				commitItems: noop,
+				refreshCount: noop,
+				setToggleNotice: noop,
+				load: noop,
+				updateAbsences: noop,
+				setActionError: noop,
+				setActionNotice: noop,
+				setItems: noop,
+			});
+			vm.runInContext(js, context);
+			const first = context.remove('server-id');
+			const second = context.remove('server-id');
+			queue.resolve(outcome);
+			await new Promise(setImmediate);
+			const pendingBeforeResponse = pending.size;
+			request.resolve({ ok: true, data: {} });
+			await Promise.all([first, second]);
+			const label = `${name}: ${outcome}`;
+			assert.equal(deletes, outcome === 'not_queued' ? 1 : 0, `${label}: duplicate DELETE`);
+			assert.equal(discards, 1, `${label}: duplicate queued removal`);
+			assert.equal(pendingBeforeResponse, outcome === 'not_queued' ? 1 : 0, `${label}: pending`);
+			assert.equal(pending.size, 0, `${label}: pending cleared`);
+		}
+	}
+});
+
+test('two tabs preserve both enqueues when the second reads during the first mutation', async () => {
+	const storage = makeStorage();
+	const locks = makeLockManager();
+	const first = makeQueueModule({ storage, locks }).module;
+	const second = makeQueueModule({ storage, locks }).module;
+	const getItem = storage.getItem.bind(storage);
+	let secondEnqueue;
+	storage.getItem = (key) => {
+		const value = getItem(key);
+		if (key === 'manawg:offline-actions' && !secondEnqueue) {
+			secondEnqueue = second.enqueueOfflineAction(createAction({ id: 'action-2' }));
+		}
+		return value;
+	};
+
+	const firstCount = await first.enqueueOfflineAction(createAction());
+	const secondCount = await secondEnqueue;
+	assert.equal(firstCount, 1);
+	assert.equal(secondCount, 2);
+	assert.deepEqual(
+		JSON.parse(storage.getItem('manawg:offline-actions')).map((action) => action.id),
+		['action-1', 'action-2'],
+	);
+});
+
+test('same-tab concurrent enqueues keep every action', async () => {
+	const { module, storage } = makeQueueModule();
+	await Promise.all(
+		Array.from({ length: 8 }, (_, index) =>
+			module.enqueueOfflineAction(createAction({ id: `action-${index}` })),
+		),
+	);
+	assert.deepEqual(
+		JSON.parse(storage.getItem('manawg:offline-actions')).map((action) => action.id),
+		Array.from({ length: 8 }, (_, index) => `action-${index}`),
+	);
+});
+
+test('queue writes and sync fail closed when Web Locks are unavailable', async () => {
+	const storage = makeStorage();
+	storage.setItem('manawg:offline-actions', JSON.stringify([createAction()]));
+	let requests = 0;
+	const { module } = makeQueueModule({
+		storage,
+		locks: null,
+		apiFetch: async () => {
+			requests += 1;
+			return { ok: true, data: {} };
+		},
+	});
+	assert.equal(await module.enqueueOfflineAction(createAction({ id: 'action-2' })), 0);
+	assert.equal(await module.discardQueuedEntry('TEST1234', 'action-1'), 'storage_blocked');
+	assert.equal(
+		await module.discardQueuedEntry('TEST1234', '11111111-1111-4111-8111-111111111111'),
+		'not_queued',
+	);
+	assert.equal(
+		await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' }),
+		0,
+	);
+	assert.equal(requests, 0);
+	assert.deepEqual(
+		JSON.parse(storage.getItem('manawg:offline-actions')).map((action) => action.id),
+		['action-1'],
+	);
+});
+
+test('discarding a queued update for a server item still fails closed without Web Locks', async () => {
+	const serverItemId = '11111111-1111-4111-8111-111111111111';
+	const storage = makeStorage();
+	storage.setItem(
+		'manawg:offline-actions',
+		JSON.stringify([
+			createAction({
+				id: 'shopping-update',
+				type: 'shopping.update',
+				payload: { itemId: serverItemId, name: 'Milch', bought: true },
+			}),
+		]),
+	);
+	const { module } = makeQueueModule({ storage, locks: null });
+	assert.equal(await module.discardQueuedEntry('TEST1234', serverItemId), 'storage_blocked');
+	assert.equal(JSON.parse(storage.getItem('manawg:offline-actions')).length, 1);
+});
+
+test('discard during a second-tab enqueue preserves the new action', async () => {
+	const storage = makeStorage();
+	const locks = makeLockManager();
+	const first = makeQueueModule({ storage, locks }).module;
+	const second = makeQueueModule({ storage, locks }).module;
+	await setQueue(first, [createAction()]);
+	const getItem = storage.getItem.bind(storage);
+	let queueReads = 0;
+	let secondEnqueue;
+	storage.getItem = (key) => {
+		const value = getItem(key);
+		if (key === 'manawg:offline-actions' && ++queueReads === 2) {
+			secondEnqueue = second.enqueueOfflineAction(createAction({ id: 'action-2' }));
+		}
+		return value;
+	};
+	assert.equal(await first.discardQueuedEntry('TEST1234', 'action-1'), 'removed');
+	assert.equal(await secondEnqueue, 1);
+	assert.deepEqual(
+		JSON.parse(storage.getItem('manawg:offline-actions')).map((action) => action.id),
+		['action-2'],
+	);
+});
+
+test('edit during a second-tab enqueue preserves both the edit and new action', async () => {
+	const storage = makeStorage();
+	const locks = makeLockManager();
+	const first = makeQueueModule({ storage, locks }).module;
+	const second = makeQueueModule({ storage, locks }).module;
+	await setQueue(first, [createAction()]);
+	const getItem = storage.getItem.bind(storage);
+	let secondEnqueue;
+	storage.getItem = (key) => {
+		const value = getItem(key);
+		if (key === 'manawg:offline-actions' && !secondEnqueue) {
+			secondEnqueue = second.enqueueOfflineAction(createAction({ id: 'action-2' }));
+		}
+		return value;
+	};
+	assert.equal(
+		await first.updateOfflineQueue((actions) =>
+			actions.map((action) =>
+				action.id === 'action-1'
+					? { ...action, payload: { ...action.payload, content: 'edited' } }
+					: action,
+			),
+		),
+		true,
+	);
+	assert.equal(await secondEnqueue, 2);
+	const queue = JSON.parse(storage.getItem('manawg:offline-actions'));
+	assert.equal(queue.find((action) => action.id === 'action-1').payload.content, 'edited');
+	assert.deepEqual(
+		queue.map((action) => action.id),
+		['action-1', 'action-2'],
+	);
+});
+
+test('sync final merge preserves an enqueue made from another tab during the request', async () => {
+	const storage = makeStorage();
+	const locks = makeLockManager();
+	const second = makeQueueModule({ storage, locks }).module;
+	let secondEnqueue;
+	const first = makeQueueModule({
+		storage,
+		locks,
+		apiFetch: async () => {
+			secondEnqueue = second.enqueueOfflineAction(createAction({ id: 'action-2' }));
+			return { ok: true, data: {} };
+		},
+	}).module;
+	await setQueue(first, [createAction()]);
+	assert.equal(
+		await first.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' }),
+		1,
+	);
+	assert.equal(await secondEnqueue, 2);
+	assert.deepEqual(
+		JSON.parse(storage.getItem('manawg:offline-actions')).map((action) => action.id),
+		['action-2'],
+	);
+});
+
+test('concurrent failed queue saves retain every synced marker', async () => {
+	const storage = makeStorage();
+	const locks = makeLockManager();
+	const requestsReady = deferred();
+	const responsesReady = deferred();
+	let requests = 0;
+	let failQueueSave = false;
+	storage.setItem = (key, value) => {
+		if (failQueueSave && key === 'manawg:offline-actions') throw new Error('quota');
+		storage.values.set(key, String(value));
+	};
+	const apiFetch = async () => {
+		requests += 1;
+		if (requests === 2) requestsReady.resolve();
+		await responsesReady.promise;
+		return { ok: true, data: {} };
+	};
+	const first = makeQueueModule({ storage, locks, apiFetch }).module;
+	const second = makeQueueModule({ storage, locks, apiFetch }).module;
+	await setQueue(first, [createAction(), createAction({ id: 'action-2' })]);
+	const syncing = Promise.all([
+		first.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' }),
+		second.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' }),
+	]);
+	await requestsReady.promise;
+	failQueueSave = true;
+	responsesReady.resolve();
+	await syncing;
+	const savedMarkers = JSON.parse(storage.getItem('manawg:offline-synced-ids'));
+	assert.deepEqual(Object.keys(savedMarkers).sort(), ['action-1', 'action-2']);
+	const reloaded = makeQueueModule({ storage, locks }).module;
+	assert.equal(reloaded.readOfflineQueue().length, 0);
+});
 
 test('expired replay windows fence automatic and forced sync before upload or mutation', async () => {
 	const now = Date.parse('2026-10-10T12:00:00Z');
@@ -203,7 +529,7 @@ test('replay fence includes the retention boundary and invalid clocks but tolera
 				return { ok: true, data: {} };
 			},
 		});
-		module.writeOfflineQueue([createAction({ createdAt })]);
+		await setQueue(module, [createAction({ createdAt })]);
 		await module.syncOfflineActions('TEST1234', { memberId: 'member-a', force: true });
 		assert.equal(requests, expectedRequests, createdAt);
 	}
@@ -230,7 +556,7 @@ test('replay window is rechecked after an upload crosses the deadline', async ()
 			},
 		},
 	});
-	module.writeOfflineQueue([
+	await setQueue(module, [
 		createAction({
 			createdAt: new Date(now - OFFLINE_REPLAY_MAX_AGE_MS + 1).toISOString(),
 			payload: { content: 'receipt', kind: 'info', imageUrl: 'manawg-pending-image:receipt' },
@@ -251,10 +577,10 @@ test('sync does not resurrect an action deleted while its request waits', async 
 			return response.promise;
 		},
 	});
-	module.writeOfflineQueue([createAction()]);
+	await setQueue(module, [createAction()]);
 	const syncing = module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
 	await entered.promise;
-	module.writeOfflineQueue([]);
+	await setQueue(module, []);
 	response.resolve({ ok: false, status: 0, error: 'network' });
 	await syncing;
 	assert.equal(module.readOfflineQueue().length, 0);
@@ -271,10 +597,10 @@ test('sync preserves an action edit made while its request waits', async () => {
 			return response.promise;
 		},
 	});
-	module.writeOfflineQueue([createAction()]);
+	await setQueue(module, [createAction()]);
 	const syncing = module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
 	await entered.promise;
-	module.writeOfflineQueue([
+	await setQueue(module, [
 		createAction({ payload: { content: 'edited', kind: 'info', imageUrl: null } }),
 	]);
 	response.resolve({ ok: false, status: 0, error: 'network' });
@@ -301,10 +627,10 @@ test('a successful old request cannot hide a concurrent edit when final storage 
 			return response.promise;
 		},
 	});
-	module.writeOfflineQueue([createAction()]);
+	await setQueue(module, [createAction()]);
 	const syncing = module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
 	await entered.promise;
-	module.writeOfflineQueue([
+	await setQueue(module, [
 		createAction({ payload: { content: 'edited', kind: 'info', imageUrl: null } }),
 	]);
 	failQueueSave = true;
@@ -323,12 +649,61 @@ test('a successful old request cannot hide a concurrent edit when final storage 
 	assert.match(reloaded.module.readOfflineQueue()[0].lastError, /^Server prüfen:/);
 	await reloaded.module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
 	failQueueSave = false;
-	reloaded.module.writeOfflineQueue([]);
+	await setQueue(reloaded.module, []);
 	assert.equal(storage.getItem('manawg:offline-review-ids'), '{}');
-	reloaded.module.writeOfflineQueue([
+	await setQueue(reloaded.module, [
 		createAction({ payload: { content: 'replacement', kind: 'info', imageUrl: null } }),
 	]);
 	assert.equal(reloaded.module.readOfflineQueue()[0].lastError, undefined);
+});
+
+test('failed final queue read marks a successful action for review after storage recovers', async () => {
+	const storage = makeStorage();
+	const locks = makeLockManager();
+	const getItem = storage.getItem.bind(storage);
+	let failQueueRead = false;
+	let requests = 0;
+	storage.getItem = (key) => {
+		if (failQueueRead && key === 'manawg:offline-actions')
+			throw new Error('temporary read failure');
+		return getItem(key);
+	};
+	const { module } = makeQueueModule({
+		storage,
+		locks,
+		apiFetch: async () => {
+			requests += 1;
+			failQueueRead = true;
+			return { ok: true, data: undefined };
+		},
+	});
+	await setQueue(module, [createAction()]);
+	assert.equal(
+		await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' }),
+		1,
+	);
+	failQueueRead = false;
+	const recovered = module.readOfflineQueue()[0];
+	assert.equal(recovered.payload.content, 'original');
+	assert.match(recovered.lastError, /^Server prüfen:/);
+	assert.equal(module.needsManualOfflineResolution(recovered), true);
+	assert.equal(
+		await module.updateOfflineQueue((actions) =>
+			actions.map((action) =>
+				action.id === 'action-1'
+					? { ...action, payload: { ...action.payload, content: 'edited' } }
+					: action,
+			),
+		),
+		true,
+	);
+	assert.equal(module.readOfflineQueue()[0].payload.content, 'edited');
+	assert.match(module.readOfflineQueue()[0].lastError, /^Server prüfen:/);
+	assert.equal(
+		await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' }),
+		0,
+	);
+	assert.equal(requests, 1);
 });
 
 test('failed final save keeps an expense when its recurring follow-up was not persisted', async () => {
@@ -348,7 +723,7 @@ test('failed final save keeps an expense when its recurring follow-up was not pe
 			return { ok: true, data: undefined };
 		},
 	});
-	module.writeOfflineQueue([
+	await setQueue(module, [
 		createAction({
 			type: 'expense.create',
 			payload: {
@@ -376,7 +751,7 @@ test('a recurring advance action is not followed by a second advance request', a
 			return { ok: true, data: undefined };
 		},
 	});
-	module.writeOfflineQueue([
+	await setQueue(module, [
 		createAction({
 			type: 'recurring.advance',
 			payload: {
@@ -397,7 +772,7 @@ test('queued PATCH keeps its idempotency key and expected member in the request'
 			return { ok: true, data: undefined };
 		},
 	});
-	module.writeOfflineQueue([
+	await setQueue(module, [
 		createAction({
 			type: 'shopping.update',
 			payload: {
@@ -476,6 +851,7 @@ test('resolved upload URL is persisted to the queue before its IndexedDB blob is
 	};
 	const storage = makeStorage();
 	const localStorage = storage;
+	const locks = makeLockManager();
 	class FakeCustomEvent {
 		constructor(type, init = {}) {
 			this.type = type;
@@ -540,10 +916,11 @@ test('resolved upload URL is persisted to the queue before its IndexedDB blob is
 			Date,
 			Math,
 			AbortSignal,
+			navigator: { locks },
 			process,
 		},
 	);
-	module.writeOfflineQueue([
+	await setQueue(module, [
 		createAction({ payload: { content: 'with image', kind: 'info', imageUrl: pendingToken } }),
 	]);
 	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
@@ -570,7 +947,7 @@ test('delete or edit during attachment cleanup stops the stale network request',
 				},
 			},
 		});
-		module.writeOfflineQueue([
+		await setQueue(module, [
 			createAction({
 				payload: { content: 'original', kind: 'info', imageUrl: 'manawg-pending-image:pic' },
 			}),
@@ -578,17 +955,60 @@ test('delete or edit during attachment cleanup stops the stale network request',
 		const syncing = module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
 		await cleanupStarted.promise;
 		if (change === 'delete') {
-			module.writeOfflineQueue([]);
+			await setQueue(module, []);
 		} else {
 			const current = module.readOfflineQueue()[0];
-			module.writeOfflineQueue([
-				{ ...current, payload: { ...current.payload, content: 'edited' } },
-			]);
+			await setQueue(module, [{ ...current, payload: { ...current.payload, content: 'edited' } }]);
 		}
 		cleanupRelease.resolve();
 		await syncing;
 		assert.equal(requestCount, 0);
 	}
+});
+
+test('edit during image upload keeps the replacement and does not send the stale snapshot', async () => {
+	const uploadStarted = deferred();
+	const uploadResponse = deferred();
+	let requests = 0;
+	let removals = 0;
+	const { module } = makeQueueModule({
+		apiFetch: async () => {
+			requests += 1;
+			return { ok: true, data: undefined };
+		},
+		images: {
+			uploadPendingImageToken: async () => {
+				uploadStarted.resolve();
+				return uploadResponse.promise;
+			},
+			removePendingImage: async () => {
+				removals += 1;
+			},
+		},
+	});
+	await setQueue(module, [
+		createAction({
+			payload: { content: 'original', kind: 'info', imageUrl: 'manawg-pending-image:pic' },
+		}),
+	]);
+	const syncing = module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
+	await uploadStarted.promise;
+	assert.equal(
+		await module.updateOfflineQueue((actions) =>
+			actions.map((action) =>
+				action.id === 'action-1'
+					? { ...action, payload: { ...action.payload, content: 'edited' } }
+					: action,
+			),
+		),
+		true,
+	);
+	uploadResponse.resolve('https://app.invalid/image');
+	await syncing;
+	assert.equal(requests, 0);
+	assert.equal(removals, 0);
+	assert.equal(module.readOfflineQueue()[0].payload.content, 'edited');
+	assert.equal(module.readOfflineQueue()[0].payload.imageUrl, 'manawg-pending-image:pic');
 });
 
 test('aborting after an auth change stops later requests and keeps all queue entries', async () => {
@@ -607,7 +1027,7 @@ test('aborting after an auth change stops later requests and keeps all queue ent
 			});
 		},
 	});
-	module.writeOfflineQueue([
+	await setQueue(module, [
 		createAction(),
 		createAction({ id: 'action-2', payload: { content: 'second', kind: 'info', imageUrl: null } }),
 	]);
@@ -640,13 +1060,13 @@ test('missing and revoked image blobs stay visible and are never silently droppe
 			},
 		},
 	});
-	module.writeOfflineQueue([pendingAction]);
+	await setQueue(module, [pendingAction]);
 	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
 	assert.equal(module.readOfflineQueue()[0].payload.imageUrl, 'manawg-pending-image:missing');
 	assert.match(module.readOfflineQueue()[0].lastError, /^Bild fehlt:/);
 	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
 	assert.equal(requestCount, 0);
-	module.writeOfflineQueue([
+	await setQueue(module, [
 		{
 			...module.readOfflineQueue()[0],
 			payload: { ...module.readOfflineQueue()[0].payload, imageUrl: null },
@@ -667,7 +1087,7 @@ test('missing and revoked image blobs stay visible and are never silently droppe
 			},
 		},
 	});
-	revoked.module.writeOfflineQueue([
+	await setQueue(revoked.module, [
 		createAction({
 			id: 'revoked',
 			payload: { content: 'with image', kind: 'info', imageUrl: 'manawg-pending-image:revoked' },
@@ -690,7 +1110,7 @@ test('server image_removed retains payload and supports explicit removal after r
 				: { ok: true, data: undefined };
 		},
 	});
-	module.writeOfflineQueue([
+	await setQueue(module, [
 		createAction({ payload: { content: 'with image', kind: 'info', imageUrl: publicUrl } }),
 	]);
 	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
@@ -699,7 +1119,7 @@ test('server image_removed retains payload and supports explicit removal after r
 	assert.match(blocked.lastError, /^Bild wurde entfernt:/);
 	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
 	assert.equal(requestCount, 1);
-	module.writeOfflineQueue([{ ...blocked, payload: { ...blocked.payload, imageUrl: null } }]);
+	await setQueue(module, [{ ...blocked, payload: { ...blocked.payload, imageUrl: null } }]);
 	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
 	assert.equal(requestCount, 2);
 	assert.equal(module.readOfflineQueue().length, 0);
@@ -717,7 +1137,7 @@ test('server image_removed retains payload and supports explicit removal after r
 			return { ok: true, data: undefined };
 		},
 	});
-	raced.module.writeOfflineQueue([
+	await setQueue(raced.module, [
 		createAction({ payload: { content: 'with image', kind: 'info', imageUrl: publicUrl } }),
 	]);
 	const syncing = raced.module.syncOfflineActions('TEST1234', {
@@ -726,7 +1146,7 @@ test('server image_removed retains payload and supports explicit removal after r
 	});
 	await entered.promise;
 	const current = raced.module.readOfflineQueue()[0];
-	raced.module.writeOfflineQueue([{ ...current, payload: { ...current.payload, imageUrl: null } }]);
+	await setQueue(raced.module, [{ ...current, payload: { ...current.payload, imageUrl: null } }]);
 	response.resolve({ ok: false, status: 409, error: 'image_removed' });
 	await syncing;
 	assert.equal(raced.module.readOfflineQueue()[0].payload.imageUrl, null);
@@ -796,6 +1216,7 @@ test('server guard rejects a stale expected member only after cookie membership 
 			},
 			wgMembers: {},
 		},
+		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/errors': { apiError: (code, status) => ({ code, status }) },
 		'@/core/guards/member-token': { verifyMemberToken: () => false },
 		'@/core/infra/observability': { logApiError() {} },
@@ -874,7 +1295,7 @@ test('manual-review queue actions show the full warning and link to the module l
 
 test('a synced queue entry no longer counts as queued for an open queue edit', async () => {
 	const { module } = makeQueueModule({ apiFetch: async () => ({ ok: true, data: {} }) });
-	module.writeOfflineQueue([createAction()]);
+	await setQueue(module, [createAction()]);
 	assert.equal(module.isOfflineActionQueued('action-1'), true);
 	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
 	assert.equal(module.isOfflineActionQueued('action-1'), false);

@@ -410,7 +410,7 @@ test('split settle authenticates before lookup and scopes expenses to the WG', a
 		'@/core/guards/with-wg-route': { withWgRoute: (_name: string, handler: unknown) => handler },
 		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
 		'@/features/expenses/expense-payments': {
-			hasActiveExpensePayment: async () => false,
+			hasCapturingExpensePayment: async () => false,
 			withExpensePaymentLock: async () => undefined,
 		},
 		'drizzle-orm': {

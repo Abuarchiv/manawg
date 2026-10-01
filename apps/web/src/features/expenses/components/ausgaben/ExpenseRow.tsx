@@ -128,7 +128,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 										>
 											{formatEuroCents(impact.cents, expense.currency)}
 										</span>
-										<span className="whitespace-nowrap text-[11px] font-normal text-muted-foreground">
+										<span className="whitespace-nowrap text-[12px] font-normal text-muted-foreground">
 											{IMPACT_LABEL[impact.kind]}
 										</span>
 									</span>
