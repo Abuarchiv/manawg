@@ -2,6 +2,7 @@ import { captureException } from '@/core/infra/observability';
 import { NextResponse } from 'next/server';
 
 const HTTP_BAD_REQUEST = 400;
+const HTTP_UNAUTHORIZED = 401;
 const HTTP_FORBIDDEN = 403;
 const HTTP_NOT_FOUND = 404;
 const HTTP_CONFLICT = 409;
@@ -12,6 +13,7 @@ const HTTP_SERVER_ERROR = 500;
 
 export const HTTP = {
 	BAD_REQUEST: HTTP_BAD_REQUEST,
+	UNAUTHORIZED: HTTP_UNAUTHORIZED,
 	FORBIDDEN: HTTP_FORBIDDEN,
 	NOT_FOUND: HTTP_NOT_FOUND,
 	CONFLICT: HTTP_CONFLICT,

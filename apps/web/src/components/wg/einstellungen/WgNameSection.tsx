@@ -6,7 +6,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { memberAuthHeader } from '@/shared/lib/identity';
+import { apiFetch } from '@/core/infra/api-client';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
 
@@ -41,26 +41,24 @@ export function WgNameSection({ wgName, shareCode, memberId, memberToken }: WgNa
 		setError(null);
 		setSaved(false);
 		try {
-			const res = await fetch(`/api/wg/${encodeURIComponent(shareCode)}`, {
+			const res = await apiFetch<unknown>(`/api/wg/${encodeURIComponent(shareCode)}`, {
 				method: 'PATCH',
-				headers: {
-					'content-type': 'application/json',
-					...memberAuthHeader(memberId, memberToken),
-				},
+				memberId,
+				memberToken,
 				body: JSON.stringify({ name: trimmed }),
 			});
 			if (!res.ok) {
 				setError(
 					res.status === 403
 						? 'Nur Admins können die WG umbenennen.'
-						: 'WG konnte nicht umbenannt werden: Versuche es gleich erneut.',
+						: res.status === 0
+							? 'WG konnte nicht umbenannt werden: Prüfe deine Verbindung und versuche es erneut.'
+							: 'WG konnte nicht umbenannt werden: Versuche es gleich erneut.',
 				);
 				return;
 			}
 			setSaved(true);
 			router.refresh();
-		} catch {
-			setError('WG konnte nicht umbenannt werden: Prüfe deine Verbindung und versuche es erneut.');
 		} finally {
 			setPending(false);
 		}

@@ -1,4 +1,4 @@
-export type JsonBodyResult =
+type JsonBodyResult =
 	| { ok: true; body: unknown }
 	| { ok: false; reason: 'invalid_json' | 'payload_too_large' };
 

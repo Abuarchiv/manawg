@@ -683,6 +683,61 @@ test.describe('shopping conflict handling', () => {
 		);
 	});
 
+	test('keeps an item removal pending until the server answers, then clears it on failure and success', async ({
+		page,
+	}) => {
+		test.skip(
+			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
+			'requires the local fixture server',
+		);
+		const { shareCode, memberId } = FIXTURE_WG;
+		const item: FixtureShoppingItem = {
+			id: 'shopping-milk',
+			addedByMemberId: memberId,
+			name: 'Milch',
+			quantity: null,
+			boughtAt: null,
+			boughtByMemberId: null,
+			createdAt: '2026-09-22T10:00:00.000Z',
+			updatedAt: '2026-09-22T10:00:00.000Z',
+		};
+		await mockShoppingPage(page, false, 200, [item]);
+		let deletes = 0;
+		let releaseDelete: () => void = () => {};
+		const deleteGate = new Promise<void>((resolve) => {
+			releaseDelete = resolve;
+		});
+		await page.route(
+			new RegExp(`/api/wg/${shareCode}/shopping/${item.id}(?:\\?.*)?$`),
+			async (route) => {
+				if (route.request().method() !== 'DELETE') return route.fallback();
+				deletes += 1;
+				if (deletes === 1) {
+					await deleteGate;
+					return route.fulfill({ status: 500, json: { error: 'server_error' } });
+				}
+				return route.fulfill({ json: { deleted: 1 } });
+			},
+		);
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${shareCode}/einkauf`);
+		await dismissOnboarding(page);
+
+		await page.getByRole('button', { name: 'Artikelaktionen: Milch' }).click();
+		const remove = page.getByRole('button', { name: /entfernen: Milch$/ });
+		await remove.click();
+		await remove.click();
+		await expect(remove).toBeDisabled();
+		releaseDelete();
+
+		await expect(remove).toBeEnabled();
+		expect(deletes).toBe(1);
+		await remove.click();
+		await remove.click();
+		await expect(page.getByRole('checkbox', { name: 'Milch erledigen' })).toHaveCount(0);
+		expect(deletes).toBe(2);
+	});
+
 	test('explains the admin requirement when clear-bought returns 403', async ({ page }) => {
 		test.skip(
 			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',

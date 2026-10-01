@@ -1,4 +1,4 @@
-import { apiError, badRequest, notFound } from '@/core/http/api-errors';
+import { HTTP, apiError, badRequest, notFound } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { type E2EWgFixture, getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
@@ -19,8 +19,6 @@ import type { NextRequest, NextResponse } from 'next/server';
  * rate-limit bypass got into this codebase. Having one implementation means a
  * fix lands everywhere at once.
  */
-
-const HTTP_UNAUTHORIZED = 401;
 
 type ShareCodeResult<P> = ({ ok: true; code: string } & P) | { ok: false; response: NextResponse };
 
@@ -70,13 +68,13 @@ export async function resolveE2EFixture(req: NextRequest, code: string): Promise
 	if (!memberId) {
 		return {
 			mode: 'denied',
-			response: apiError('auth_required', HTTP_UNAUTHORIZED, 'auth_required'),
+			response: apiError('auth_required', HTTP.UNAUTHORIZED, 'auth_required'),
 		};
 	}
 	if (!fixture.members.some((member) => member.id === memberId)) {
 		return {
 			mode: 'denied',
-			response: apiError('not_a_member', HTTP_UNAUTHORIZED, 'not_a_member'),
+			response: apiError('not_a_member', HTTP.UNAUTHORIZED, 'not_a_member'),
 		};
 	}
 

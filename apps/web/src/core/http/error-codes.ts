@@ -50,3 +50,20 @@ export function isAuthInvalidated(code: string | null, status?: number): boolean
 		code === 'member_id_invalid'
 	);
 }
+
+export type ApiErrorKind =
+	| 'network'
+	| 'wgUnavailable'
+	| 'invalidShareCode'
+	| 'authInvalidated'
+	| 'retryable';
+
+/** Single bucket for an error; callers map the bucket to their own copy. */
+export function classifyApiError(code: string | null, status?: number): ApiErrorKind | null {
+	if (isNetworkError(code, status)) return 'network';
+	if (isWgUnavailable(code, status)) return 'wgUnavailable';
+	if (isInvalidShareCode(code)) return 'invalidShareCode';
+	if (isAuthInvalidated(code, status)) return 'authInvalidated';
+	if (isRetryableServerError(code, status)) return 'retryable';
+	return null;
+}

@@ -118,6 +118,57 @@ test.describe('chore absence cache', () => {
 		await expect(absenceRow).toBeVisible();
 		expect(deleteCalls).toBe(0);
 	});
+
+	test('an absence removal stays pending until the server answers and is retryable after a failure', async ({
+		page,
+	}) => {
+		const shareCode = 'MTE8PZAT';
+		const absence = {
+			id: 'absence-holiday',
+			memberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+			memberName: 'Alex',
+			startDate: '2026-01-01T00:00:00.000Z',
+			endDate: '2099-12-31T00:00:00.000Z',
+			reason: 'Urlaub',
+		};
+		let deleteCalls = 0;
+		let releaseFirstDelete: () => void = () => {};
+		const firstDeleteGate = new Promise<void>((resolve) => {
+			releaseFirstDelete = resolve;
+		});
+		await setupMember(page);
+		await page.route(`**/api/wg/${shareCode}/chores`, (route) =>
+			route.fulfill({ json: { chores: [], monthCompletions: {} } }),
+		);
+		await page.route(`**/api/wg/${shareCode}/absences`, (route) =>
+			route.fulfill({ json: { absences: deleteCalls > 1 ? [] : [absence] } }),
+		);
+		await page.route(`**/api/wg/${shareCode}/absences/${absence.id}`, async (route) => {
+			deleteCalls += 1;
+			if (deleteCalls === 1) {
+				await firstDeleteGate;
+				return route.fulfill({ status: 500, json: { error: 'server_error' } });
+			}
+			return route.fulfill({ json: {} });
+		});
+
+		await navigateToFeature(page, `/wg/${shareCode}/putzen`);
+		await dismissOnboarding(page);
+		const absenceRow = page.locator(`#absence-${absence.id}`);
+		const remove = absenceRow.getByRole('button', { name: /entfernen$/ });
+		await remove.click();
+		await remove.click();
+		await expect(remove).toBeDisabled();
+		releaseFirstDelete();
+
+		await expect(page.getByText('Abwesenheit konnte nicht entfernt werden.')).toBeVisible();
+		await expect(remove).toBeEnabled();
+		expect(deleteCalls).toBe(1);
+		await remove.click();
+		await remove.click();
+		await expect(absenceRow).toHaveCount(0);
+		expect(deleteCalls).toBe(2);
+	});
 });
 
 test.describe('chore next assignee', () => {
@@ -350,6 +401,42 @@ test.describe('chore next assignee', () => {
 		expect(confirmationBox.height).toBeGreaterThanOrEqual(44);
 		await expectNoOverflow(alert);
 		await expectNoOverflow(confirmation);
+	});
+
+	test('a chore removal stays pending until the server answers and is retryable after a failure', async ({
+		page,
+	}) => {
+		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+		const title = 'Fenster putzen';
+		let deleteCalls = 0;
+		let releaseFirstDelete: () => void = () => {};
+		const firstDeleteGate = new Promise<void>((resolve) => {
+			releaseFirstDelete = resolve;
+		});
+		await page.route(`**/api/wg/${SHARE_CODE}/chores/removal-pending`, async (route) => {
+			if (route.request().method() !== 'DELETE') return route.fallback();
+			deleteCalls += 1;
+			if (deleteCalls === 1) {
+				await firstDeleteGate;
+				return route.fulfill({ status: 500, json: { error: 'server_error' } });
+			}
+			return route.fulfill({ json: {} });
+		});
+		await openPutzen(page, [viewer], [{ ...chore('removal-pending', viewer.id), title }], [], true);
+
+		const row = page.locator('#chore-removal-pending');
+		await row.getByRole('button', { name: `Aufgabenaktionen: ${title}` }).click();
+		const remove = page.getByRole('button', { name: new RegExp(`entfernen: ${title}$`) });
+		await remove.click();
+		await remove.click();
+		await expect(remove).toBeDisabled();
+		releaseFirstDelete();
+
+		await expect(
+			page.getByText('Entfernen fehlgeschlagen. Versuche es gleich erneut.'),
+		).toBeVisible();
+		await expect(remove).toBeEnabled();
+		expect(deleteCalls).toBe(1);
 	});
 
 	test('hides permanent chore removal from non-admin members', async ({ page }) => {

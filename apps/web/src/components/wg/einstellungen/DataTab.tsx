@@ -9,7 +9,10 @@ import type { WgSummary } from '@/components/wg/WgContextProvider';
 import { LinkRow } from '@/components/wg/einstellungen/LinkRow';
 import { OfflineQueueSection } from '@/components/wg/einstellungen/OfflineQueueSection';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { exportErrorMessage, readResponseErrorCode } from '@/core/guards/settings-errors';
+import {
+	exportErrorMessage,
+	readResponseErrorCode,
+} from '@/components/wg/einstellungen/settings-errors';
 import type { ExportSectionKey, ExportSectionSummary } from '@/core/reads/export';
 import { cn } from '@/shared/lib/cn';
 import type { StoredIdentity } from '@/shared/lib/identity';

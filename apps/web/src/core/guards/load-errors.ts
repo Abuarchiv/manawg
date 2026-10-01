@@ -1,14 +1,16 @@
-import {
-	isAuthInvalidated,
-	isInvalidShareCode,
-	isNetworkError,
-	isRetryableServerError,
-	isWgUnavailable,
-} from '@/core/http/error-codes';
+import { type ApiErrorKind, classifyApiError } from '@/core/http/error-codes';
 
 interface WgLoadErrorOptions {
 	verb?: 'konnte' | 'konnten';
 }
+
+const LOAD_SUFFIX: Record<ApiErrorKind, string> = {
+	network: ': Prüfe deine Verbindung und versuche es erneut.',
+	wgUnavailable: ': Öffne die WG über den aktuellen Link erneut.',
+	invalidShareCode: ': Der WG-Code ist ungültig.',
+	authInvalidated: ': Tritt der WG erneut bei.',
+	retryable: ': Versuche es gleich erneut.',
+};
 
 export function getWgLoadErrorMessage(
 	label: string,
@@ -17,23 +19,8 @@ export function getWgLoadErrorMessage(
 	options: WgLoadErrorOptions = {},
 ): string {
 	const prefix = `${label} ${options.verb ?? 'konnte'} nicht geladen werden`;
-	if (isNetworkError(error, status)) {
-		return `${prefix}: Prüfe deine Verbindung und versuche es erneut.`;
-	}
-	if (isWgUnavailable(error, status)) {
-		return `${prefix}: Öffne die WG über den aktuellen Link erneut.`;
-	}
-	if (isInvalidShareCode(error)) {
-		return `${prefix}: Der WG-Code ist ungültig.`;
-	}
-	if (isAuthInvalidated(error, status)) {
-		return `${prefix}: Tritt der WG erneut bei.`;
-	}
-	if (error === 'query_invalid') {
-		return `${prefix}: Der Suchbegriff ist zu lang.`;
-	}
-	if (isRetryableServerError(error, status)) {
-		return `${prefix}: Versuche es gleich erneut.`;
-	}
+	const kind = classifyApiError(error, status);
+	if (kind) return prefix + LOAD_SUFFIX[kind];
+	if (error === 'query_invalid') return `${prefix}: Der Suchbegriff ist zu lang.`;
 	return `${prefix}.`;
 }

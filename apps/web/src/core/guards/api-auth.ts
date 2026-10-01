@@ -1,15 +1,11 @@
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers } from '@/core/db';
 import { verifyMemberToken } from '@/core/guards/member-token';
-import { apiError } from '@/core/http/api-errors';
+import { HTTP, apiError } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
 import { EXPECTED_MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from '@/shared/lib/member-header';
 import { and, eq } from 'drizzle-orm';
 import type { NextRequest, NextResponse } from 'next/server';
-
-const HTTP_SERVICE_UNAVAILABLE = 503;
-
-const HTTP_UNAUTHORIZED = 401;
 
 /**
  * Strict UUID v4 shape check: version nibble `4` plus the RFC 4122 variant
@@ -48,7 +44,7 @@ type RequireMemberResult = MemberOk | MemberFail;
 type AuthenticatedUser = NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>>;
 
 function unauthorized(code: string): NextResponse {
-	return apiError(code, HTTP_UNAUTHORIZED, code);
+	return apiError(code, HTTP.UNAUTHORIZED, code);
 }
 
 /**
@@ -93,6 +89,6 @@ export async function requireMember(
 		return { ok: true, member: { memberId: row.id, name: row.name, verified } };
 	} catch (err) {
 		logApiError('[requireMember] db error', err);
-		return { ok: false, response: apiError('db_error', HTTP_SERVICE_UNAVAILABLE) };
+		return { ok: false, response: apiError('db_error', HTTP.SERVICE_UNAVAILABLE) };
 	}
 }
