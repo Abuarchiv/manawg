@@ -222,61 +222,64 @@ export default function AktivitaetPage() {
 				</Card>
 			)}
 
-			<Card className="overflow-visible border-0 bg-transparent py-0 shadow-none">
-				<CardContent className="space-y-3 p-0">
-					<InputGroup>
-						<InputGroupAddon align="inline-start">
-							<Search className="h-4 w-4" aria-hidden />
-						</InputGroupAddon>
-						<InputGroupInput
-							type="search"
-							value={filter.query}
-							onChange={(event) => {
-								const query = event.currentTarget.value;
-								setFilter((current) => ({ ...current, query }));
-							}}
-							placeholder="Aktivität durchsuchen"
-							aria-label="Aktivität durchsuchen"
-							className="min-h-11 text-base"
-						/>
-					</InputGroup>
-					<div className="grid grid-cols-2 gap-2">
-						<label htmlFor="activity-scope" className="grid min-w-0 gap-1 text-xs font-medium">
-							Umfang
-							<NativeSelect
-								id="activity-scope"
-								value={scope}
-								onChange={(event) => setScope(event.target.value as ActivityScope)}
-								className="w-full [&_select]:min-h-10"
-							>
-								<NativeSelectOption value="all">Alle</NativeSelectOption>
-								<NativeSelectOption value="system">System</NativeSelectOption>
-								<NativeSelectOption value="mine">Von mir</NativeSelectOption>
-								<NativeSelectOption value="changes">Änderungen</NativeSelectOption>
-								<NativeSelectOption value="done">Erledigungen</NativeSelectOption>
-							</NativeSelect>
-						</label>
-						<label htmlFor="activity-kind" className="grid min-w-0 gap-1 text-xs font-medium">
-							Bereich
-							<NativeSelect
-								id="activity-kind"
-								value={filter.kind}
-								onChange={(event) => setKind(event.target.value as ActivityKind | 'all')}
-								className="w-full [&_select]:min-h-10"
-							>
-								<NativeSelectOption value="all">Alle</NativeSelectOption>
-								<NativeSelectOption value="expense">Ausgaben</NativeSelectOption>
-								<NativeSelectOption value="shopping">Einkauf</NativeSelectOption>
-								<NativeSelectOption value="announcement">Pinnwand</NativeSelectOption>
-								<NativeSelectOption value="chore">Putzen</NativeSelectOption>
-								<NativeSelectOption value="recurring">Fixkosten</NativeSelectOption>
-								<NativeSelectOption value="absence">Abwesenheiten</NativeSelectOption>
-								<NativeSelectOption value="audit">Audit</NativeSelectOption>
-							</NativeSelect>
-						</label>
-					</div>
-				</CardContent>
-			</Card>
+			{/* Erst mit den Daten zeigen: die Inbox-Karte rutscht sonst darüber ein und schiebt die Filter (CLS 0,2). */}
+			{(data || !loading) && (
+				<Card className="overflow-visible border-0 bg-transparent py-0 shadow-none">
+					<CardContent className="space-y-3 p-0">
+						<InputGroup>
+							<InputGroupAddon align="inline-start">
+								<Search className="h-4 w-4" aria-hidden />
+							</InputGroupAddon>
+							<InputGroupInput
+								type="search"
+								value={filter.query}
+								onChange={(event) => {
+									const query = event.currentTarget.value;
+									setFilter((current) => ({ ...current, query }));
+								}}
+								placeholder="Aktivität durchsuchen"
+								aria-label="Aktivität durchsuchen"
+								className="min-h-11 text-base"
+							/>
+						</InputGroup>
+						<div className="grid grid-cols-2 gap-2">
+							<label htmlFor="activity-scope" className="grid min-w-0 gap-1 text-xs font-medium">
+								Umfang
+								<NativeSelect
+									id="activity-scope"
+									value={scope}
+									onChange={(event) => setScope(event.target.value as ActivityScope)}
+									className="w-full [&_select]:min-h-10"
+								>
+									<NativeSelectOption value="all">Alle</NativeSelectOption>
+									<NativeSelectOption value="system">System</NativeSelectOption>
+									<NativeSelectOption value="mine">Von mir</NativeSelectOption>
+									<NativeSelectOption value="changes">Änderungen</NativeSelectOption>
+									<NativeSelectOption value="done">Erledigungen</NativeSelectOption>
+								</NativeSelect>
+							</label>
+							<label htmlFor="activity-kind" className="grid min-w-0 gap-1 text-xs font-medium">
+								Bereich
+								<NativeSelect
+									id="activity-kind"
+									value={filter.kind}
+									onChange={(event) => setKind(event.target.value as ActivityKind | 'all')}
+									className="w-full [&_select]:min-h-10"
+								>
+									<NativeSelectOption value="all">Alle</NativeSelectOption>
+									<NativeSelectOption value="expense">Ausgaben</NativeSelectOption>
+									<NativeSelectOption value="shopping">Einkauf</NativeSelectOption>
+									<NativeSelectOption value="announcement">Pinnwand</NativeSelectOption>
+									<NativeSelectOption value="chore">Putzen</NativeSelectOption>
+									<NativeSelectOption value="recurring">Fixkosten</NativeSelectOption>
+									<NativeSelectOption value="absence">Abwesenheiten</NativeSelectOption>
+									<NativeSelectOption value="audit">Audit</NativeSelectOption>
+								</NativeSelect>
+							</label>
+						</div>
+					</CardContent>
+				</Card>
+			)}
 
 			<Card className="overflow-visible border-0 bg-transparent py-0 shadow-none">
 				<CardContent className="p-0">

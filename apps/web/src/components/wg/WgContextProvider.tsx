@@ -63,6 +63,8 @@ interface Props {
 	wg: WgSummary;
 	members: Member[];
 	initialIdentity?: StoredIdentity | undefined;
+	/** Server-verified admin flag; only meaningful together with initialIdentity.authUserId. */
+	initialIsAdmin?: boolean | undefined;
 	children: ReactNode;
 }
 
@@ -70,14 +72,20 @@ export function WgContextProvider({
 	wg,
 	members: initialMembers,
 	initialIdentity,
+	initialIsAdmin,
 	children,
 }: Props) {
+	// The WG layout resolved the Supabase session and membership on the server
+	// (authUserId is only set there). Start ready instead of waiting for
+	// getSession -> /api/wg/[code]; the auth listener still revalidates in the
+	// background and clears everything on sign-out.
+	const serverVerified = Boolean(initialIdentity?.authUserId);
 	const [members, setMembers] = useState<Member[]>(initialMembers);
-	const [isAdmin, setIsAdmin] = useState(false);
+	const [isAdmin, setIsAdmin] = useState(serverVerified && initialIsAdmin === true);
 	const [identity, setStateIdentity] = useState<StoredIdentity | null>(initialIdentity ?? null);
-	const [accountReady, setAccountReady] = useState(false);
+	const [accountReady, setAccountReady] = useState(serverVerified);
 	const [hydrated, setHydrated] = useState(false);
-	const [memberLoaded, setMemberLoaded] = useState(false);
+	const [memberLoaded, setMemberLoaded] = useState(serverVerified);
 	const [memberLoadError, setMemberLoadError] = useState(false);
 	// Consecutive non-auth failures (429, 5xx, network) of the members/admin
 	// fetch. Without retries isAdmin would stay false for
