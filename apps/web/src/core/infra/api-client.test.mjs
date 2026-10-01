@@ -15,7 +15,7 @@ import {
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const apiClientPath = path.join(process.cwd(), 'src/core/infra/api-client.ts');
-const chatViewPath = path.join(process.cwd(), 'src/features/chat/components/ChatView.tsx');
+const chatViewPath = path.join(process.cwd(), 'src/features/chat/hooks/use-chat-room.ts');
 
 function loadTypeScript(file, overrides = {}) {
 	const output = transpileModule(readFileSync(file, 'utf8'), {
@@ -73,7 +73,7 @@ function failedBodyResponse(status = 201) {
 function loadSendMessage({ pendingMessageRequestRef, createOfflineIdempotencyKey }) {
 	const source = readFileSync(chatViewPath, 'utf8');
 	const sourceFile = createSourceFile(
-		'ChatView.tsx',
+		'use-chat-room.ts',
 		source,
 		ScriptTarget.Latest,
 		true,
@@ -87,7 +87,7 @@ function loadSendMessage({ pendingMessageRequestRef, createOfflineIdempotencyKey
 		forEachChild(node, visit);
 	}
 	visit(sourceFile);
-	assert.ok(functionSource, 'expected to find the actual ChatView.sendMessage function');
+	assert.ok(functionSource, 'expected to find the actual useChatRoom sendMessage function');
 
 	const output = transpileModule(`${functionSource}\nmodule.exports = sendMessage;`, {
 		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
@@ -99,7 +99,7 @@ function loadSendMessage({ pendingMessageRequestRef, createOfflineIdempotencyKey
 		'setSendError',
 		'pendingMessageRequestRef',
 		'createOfflineIdempotencyKey',
-		'encodedShareCode',
+		'messagesUrl',
 		'identity',
 		'explainChatError',
 		output,
@@ -109,7 +109,7 @@ function loadSendMessage({ pendingMessageRequestRef, createOfflineIdempotencyKey
 		() => undefined,
 		pendingMessageRequestRef,
 		createOfflineIdempotencyKey,
-		'MTE8PZAT',
+		'/api/wg/MTE8PZAT/chat/messages',
 		{ memberId: 'member-1', memberToken: 'token-1' },
 		() => 'chat_error',
 	);
