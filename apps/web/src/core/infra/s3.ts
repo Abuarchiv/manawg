@@ -1,14 +1,12 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { PRIVATE_IMAGE_MAX_BYTES, PRIVATE_IMAGE_MIME_TYPES } from './private-image-policy';
+import { PRIVATE_IMAGE_MAX_BYTES, isAllowedPrivateImageMimeType } from './private-image-policy';
 
 const REGION = process.env.AWS_REGION;
 const BUCKET = process.env.S3_BUCKET;
 const PUBLIC_URL = process.env.S3_PUBLIC_URL; // e.g. https://bucket.s3.region.amazonaws.com
 
-const MAX_UPLOAD_BYTES = PRIVATE_IMAGE_MAX_BYTES;
 const PRESIGN_TTL_SEC = 300;
-const ALLOWED_MIME_TYPES = new Set<string>(PRIVATE_IMAGE_MIME_TYPES);
 
 interface S3SignatureResponse {
 	presignedUrl: string;
@@ -55,7 +53,7 @@ function getPublicBase(): string {
 }
 
 export function isAllowedMimeType(mimeType: string): boolean {
-	return ALLOWED_MIME_TYPES.has(mimeType);
+	return isAllowedPrivateImageMimeType(mimeType);
 }
 
 function isSafeS3Key(key: string): boolean {
@@ -73,8 +71,8 @@ export async function createPresignedUpload(
 	if (!Number.isInteger(contentLength) || contentLength <= 0) {
 		throw new Error(`Invalid contentLength: ${contentLength}`);
 	}
-	if (contentLength > MAX_UPLOAD_BYTES) {
-		throw new Error(`File too large: ${contentLength} > ${MAX_UPLOAD_BYTES}`);
+	if (contentLength > PRIVATE_IMAGE_MAX_BYTES) {
+		throw new Error(`File too large: ${contentLength} > ${PRIVATE_IMAGE_MAX_BYTES}`);
 	}
 
 	const client = getClient();
@@ -97,7 +95,7 @@ export async function createPresignedUpload(
 	});
 	const publicUrl = `${getPublicBase()}/${key}`;
 
-	return { presignedUrl, publicUrl, maxFileSize: MAX_UPLOAD_BYTES };
+	return { presignedUrl, publicUrl, maxFileSize: PRIVATE_IMAGE_MAX_BYTES };
 }
 
 export const S3_MAX_UPLOAD_BYTES = PRIVATE_IMAGE_MAX_BYTES;

@@ -127,6 +127,7 @@ function makeQueueModule({
 		'src/core/offline/offline-client.ts',
 		{
 			'@/core/infra/api-client': { apiFetch },
+			'@/core/utils/browser': { safeLocalStorage: () => window.localStorage },
 			'@/shared/lib/identity': { getIdentity: identity },
 			'./offline-images': {
 				isPendingImageToken: (value) =>
@@ -885,6 +886,7 @@ test('resolved upload URL is persisted to the queue before its IndexedDB blob is
 	const module = loadTs(
 		'src/core/offline/offline-client.ts',
 		{
+			'@/core/utils/browser': { safeLocalStorage: () => window.localStorage },
 			'@/core/infra/api-client': {
 				apiFetch: async (_path, init) => {
 					queueAtRequest = JSON.parse(localStorage.getItem('manawg:offline-actions'));

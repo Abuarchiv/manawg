@@ -1,6 +1,7 @@
 'use client';
 
 import { apiFetch } from '@/core/infra/api-client';
+import { safeLocalStorage } from '@/core/utils/browser';
 import { getIdentity } from '@/shared/lib/identity';
 import { isPendingImageToken, removePendingImage, uploadPendingImageToken } from './offline-images';
 import {
@@ -71,15 +72,6 @@ function getSyncScopeKey(shareCode?: string, options?: OfflineSyncOptions): stri
 	return `${shareCode ?? '*'}:${options?.memberId ?? '*'}:${options?.force ? 'force' : 'auto'}`;
 }
 
-function getOfflineStorage(): Storage | null {
-	if (typeof window === 'undefined') return null;
-	try {
-		return window.localStorage;
-	} catch {
-		return null;
-	}
-}
-
 type OfflineQueueLockResult<T> = { acquired: true; value: T } | { acquired: false };
 
 function supportsOfflineQueueLocks(): boolean {
@@ -89,7 +81,7 @@ function supportsOfflineQueueLocks(): boolean {
 async function withOfflineQueueLock<T>(
 	update: (storage: Storage) => T | Promise<T>,
 ): Promise<OfflineQueueLockResult<T>> {
-	const storage = getOfflineStorage();
+	const storage = safeLocalStorage();
 	if (!storage || !supportsOfflineQueueLocks()) return { acquired: false };
 	try {
 		const value = await navigator.locks.request(
@@ -218,7 +210,7 @@ function isOfflineAction(value: unknown): value is OfflineAction {
 }
 
 function readPersistedSyncedIds(): string[] {
-	const storage = getOfflineStorage();
+	const storage = safeLocalStorage();
 	if (!storage) return [];
 	try {
 		const raw = storage.getItem(SYNCED_IDS_KEY);
@@ -256,7 +248,7 @@ function persistSyncedIds(storage: Storage, ids: string[]): void {
 }
 
 function readPersistedReviewIds(): string[] {
-	const storage = getOfflineStorage();
+	const storage = safeLocalStorage();
 	if (!storage) return [];
 	try {
 		const raw = storage.getItem(OFFLINE_REVIEW_IDS_KEY);
@@ -358,7 +350,7 @@ function readOfflineQueueFromStorage(storage: Storage): OfflineAction[] | null {
 }
 
 export function readOfflineQueue(): OfflineAction[] {
-	const storage = getOfflineStorage();
+	const storage = safeLocalStorage();
 	if (!storage) return readCachedOfflineQueue();
 	return readOfflineQueueFromStorage(storage) ?? readCachedOfflineQueue();
 }
@@ -430,7 +422,7 @@ export async function discardQueuedEntry(
 			action.shareCode === shareCode &&
 			(action.id === id || action.payload.itemId === id || action.payload.choreId === id),
 	);
-	if (!queued && !isQueuedCreateId(id) && (!supportsOfflineQueueLocks() || !getOfflineStorage())) {
+	if (!queued && !isQueuedCreateId(id) && (!supportsOfflineQueueLocks() || !safeLocalStorage())) {
 		return 'not_queued';
 	}
 	let status: 'removed' | 'not_queued' = 'not_queued';

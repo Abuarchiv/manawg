@@ -110,7 +110,7 @@ function urlBase64ToArrayBuffer(base64String: string): ArrayBuffer {
 	return output.buffer;
 }
 
-function isPushSupported(): boolean {
+export function isPushSupported(): boolean {
 	return (
 		typeof window !== 'undefined' &&
 		'Notification' in window &&
