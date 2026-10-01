@@ -850,7 +850,7 @@ export default function EinkaufPage() {
 	// tauschen die Gruppen nach dem Laden und schieben die Liste nach unten (Layout Shift).
 	const suggestionsPending = initialLoading || inventoryLoading;
 	const suggestionGroups = [
-		{ label: 'Vorrat niedrig', names: lowStock.slice(0, 6) },
+		{ label: 'Bald leer', names: lowStock.slice(0, 6) },
 		frequent.length > 0
 			? { label: 'Oft gekauft', names: frequent.slice(0, 6) }
 			: {
