@@ -56,15 +56,11 @@ export function AccountDeleteSection() {
 			}
 			const pending = res.status === 202;
 			try {
-				const { signOutSocialAccount } = await import('@/core/auth/client');
-				await signOutSocialAccount();
-			} catch {
-				// The server already removed WG access; a stale local session is harmless.
-			}
-			try {
-				for (const key of Object.keys(localStorage)) {
-					if (key.startsWith('manawg')) localStorage.removeItem(key);
-				}
+				const { clearLocalAccountData, signOutSocialAccount } = await import('@/core/auth/client');
+				await signOutSocialAccount().catch(() => {
+					// The server already removed WG access; a stale local session is harmless.
+				});
+				await clearLocalAccountData();
 			} catch {
 				// Browser storage failure does not change the server's accepted deletion.
 			}
