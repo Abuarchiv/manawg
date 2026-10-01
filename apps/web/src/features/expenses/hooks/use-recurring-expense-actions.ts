@@ -34,6 +34,7 @@ import {
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
 import { buildOptimisticExpense } from '@/features/expenses/optimistic-expense';
 import { findQueuedRecurringTemplate } from '@/features/expenses/queued-recurring-template';
+import { formatIntervalLabel } from '@/features/expenses/recurring-expenses';
 import type { DebtorShare } from '@/features/expenses/split-math';
 import { useRef, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
@@ -329,7 +330,7 @@ export function useRecurringExpenseActions(
 		notify.success(
 			editingRecurringExpense
 				? 'Fixkosten-Vorlage aktualisiert.'
-				: 'Als monatliche Vorlage gespeichert.',
+				: `Als Vorlage gespeichert (${formatIntervalLabel(recurringIntervalMonths)}).`,
 		);
 		finishSaving();
 	}

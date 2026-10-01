@@ -672,6 +672,13 @@ export function explainOfflineActionFailure(
 				'Die Vorlage existiert nicht mehr. Entferne diese Offline-Aktion oder erstelle die Fixkosten neu.',
 		};
 	}
+	if (error === 'abo_paused') {
+		return {
+			title: 'Fixkosten pausiert',
+			detail:
+				'Die Fixkosten sind inzwischen pausiert. Entferne diese Offline-Aktion oder setze die Fixkosten fort.',
+		};
+	}
 	if (error === 'item_not_found') {
 		return {
 			title: 'Einkauf fehlt',

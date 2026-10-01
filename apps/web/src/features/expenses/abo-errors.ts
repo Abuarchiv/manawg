@@ -1,8 +1,15 @@
 const RETRYABLE_ERRORS = new Set(['unexpected_error', 'server_error', 'db_error']);
 const MEMBERSHIP_ERRORS = new Set(['not_a_member', 'member_id_required', 'member_id_invalid']);
+const NETWORK_ERRORS = new Set(['Netzwerkfehler', 'Failed to fetch']);
+// Der Server lässt nur Ersteller oder WG-Admin Fixkosten ändern; die Buttons sehen alle.
+const NOT_OWNER_HINT = 'Nur wer die Fixkosten angelegt hat oder Admin der WG ist, darf das.';
 
 export function aboSaveErrorMessage(error: string, action: 'angelegt' | 'aktualisiert'): string {
 	const prefix = `Fixkosten konnten nicht ${action} werden`;
+	if (NETWORK_ERRORS.has(error)) {
+		return `${prefix}: Prüfe deine Verbindung und versuche es erneut.`;
+	}
+	if (error === 'not_owner') return `${prefix}: ${NOT_OWNER_HINT}`;
 	if (RETRYABLE_ERRORS.has(error)) {
 		return `${prefix}: Versuche es gleich erneut.`;
 	}
@@ -46,7 +53,8 @@ export function aboSaveErrorMessage(error: string, action: 'angelegt' | 'aktuali
 }
 
 export function aboActionErrorMessage(error: string): string {
-	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') {
+	if (error === 'not_owner') return `Fixkosten-Aktion fehlgeschlagen: ${NOT_OWNER_HINT}`;
+	if (NETWORK_ERRORS.has(error)) {
 		return 'Fixkosten-Aktion fehlgeschlagen: Prüfe deine Verbindung und versuche es erneut.';
 	}
 	if (RETRYABLE_ERRORS.has(error)) {
@@ -74,7 +82,8 @@ export function aboActionErrorMessage(error: string): string {
 }
 
 export function aboDeleteErrorMessage(error: string): string {
-	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') {
+	if (error === 'not_owner') return `Fixkosten konnten nicht gelöscht werden: ${NOT_OWNER_HINT}`;
+	if (NETWORK_ERRORS.has(error)) {
 		return 'Fixkosten konnten nicht gelöscht werden: Prüfe deine Verbindung und versuche es erneut.';
 	}
 	if (RETRYABLE_ERRORS.has(error)) {
