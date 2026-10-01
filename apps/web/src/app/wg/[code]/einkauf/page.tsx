@@ -76,6 +76,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+/** Zeilen pro Liste, die zunächst gerendert werden; „Mehr anzeigen“ lädt nach. */
+const ROW_RENDER_PAGE = 100;
+
 type ShoppingCreateWarning =
 	| null
 	| 'notification_delivery_failed'
@@ -142,6 +145,7 @@ export default function EinkaufPage() {
 	// leerem Vorrat und die Vorschläge springen.
 	const inventory = cachedInventory?.items ?? NO_INVENTORY;
 	const [doneOpen, setDoneOpen] = useState(false);
+	const [rowLimit, setRowLimit] = useState(ROW_RENDER_PAGE);
 	const [receiptSince, setReceiptSince] = useState<string | null>(null);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [addError, setAddError] = useState<string | null>(null);
@@ -847,6 +851,17 @@ export default function EinkaufPage() {
 				},
 	].filter((group) => !suggestionsPending && group.names.length > 0);
 
+	// Lange Listen zunächst gekürzt rendern; das hervorgehobene Element bleibt immer im DOM.
+	const visibleCount = (list: ShoppingItem[]): number =>
+		Math.max(rowLimit, list.findIndex((item) => item.id === highlightedId) + 1);
+	const visibleOpenCount = visibleCount(openItems);
+	const visibleDoneCount = visibleCount(doneItems);
+	const moreButton = (hidden: number) => (
+		<Button variant="outline" onClick={() => setRowLimit((limit) => limit + ROW_RENDER_PAGE)}>
+			Mehr anzeigen ({hidden})
+		</Button>
+	);
+
 	function renderRow(item: ShoppingItem) {
 		return (
 			<ShoppingItemRow
@@ -994,11 +1009,12 @@ export default function EinkaufPage() {
 				<section aria-label="Einkaufsartikel" className="flex flex-col gap-4">
 					{openItems.length > 0 ? (
 						<ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
-							{openItems.map(renderRow)}
+							{openItems.slice(0, visibleOpenCount).map(renderRow)}
 						</ul>
 					) : (
 						<p className="text-sm text-muted-foreground">Alles eingekauft.</p>
 					)}
+					{visibleOpenCount < openItems.length && moreButton(openItems.length - visibleOpenCount)}
 					{doneItems.length > 0 && (
 						<details
 							open={doneOpen}
@@ -1013,8 +1029,12 @@ export default function EinkaufPage() {
 								Erledigt ({doneItems.length})
 							</summary>
 							<ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
-								{doneItems.map(renderRow)}
+								{/* Erledigte nur rendern, solange der Block offen ist (Highlight öffnet ihn). */}
+								{doneOpen && doneItems.slice(0, visibleDoneCount).map(renderRow)}
 							</ul>
+							{doneOpen &&
+								visibleDoneCount < doneItems.length &&
+								moreButton(doneItems.length - visibleDoneCount)}
 							{isAdmin && (
 								<Button
 									variant="outline"

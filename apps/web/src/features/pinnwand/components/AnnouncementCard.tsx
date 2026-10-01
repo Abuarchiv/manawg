@@ -92,14 +92,19 @@ interface AnnouncementCardProps {
 	deletePending: boolean;
 	pinPending: boolean;
 	statusPending: boolean;
-	reactionPending: (reaction: ReactionKey) => boolean;
-	onDelete: () => Promise<boolean>;
-	onTogglePinned: () => void;
-	onToggleStatus: () => void;
-	onToggleReaction: (reaction: ReactionKey) => void;
-	onAddComment: (content: string) => Promise<boolean>;
-	onUpdateComment: (commentId: string, content: string) => Promise<boolean>;
-	onDeleteComment: (commentId: string) => Promise<boolean>;
+	/** Komma-getrennte Reaktionen mit laufender Anfrage (String statt Funktion, damit memo greift). */
+	pendingReactions: string;
+	onDelete: (announcement: Announcement) => Promise<boolean>;
+	onTogglePinned: (announcement: Announcement) => void;
+	onToggleStatus: (announcement: Announcement) => void;
+	onToggleReaction: (announcement: Announcement, reaction: ReactionKey) => void;
+	onAddComment: (announcement: Announcement, content: string) => Promise<boolean>;
+	onUpdateComment: (
+		announcement: Announcement,
+		commentId: string,
+		content: string,
+	) => Promise<boolean>;
+	onDeleteComment: (announcement: Announcement, commentId: string) => Promise<boolean>;
 	currentMemberId: string;
 	isAdmin: boolean;
 	shareCode: string;
@@ -163,7 +168,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	deletePending,
 	pinPending,
 	statusPending,
-	reactionPending,
+	pendingReactions,
 	onDelete,
 	onTogglePinned,
 	onToggleStatus,
@@ -176,6 +181,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	shareCode,
 	highlighted,
 }: AnnouncementCardProps): ReactElement {
+	const reactionPending = (key: ReactionKey): boolean => pendingReactions.includes(key);
 	const bodyText = announcement.content.trim();
 	const isLong = bodyText.length > 300 || bodyText.split('\n').length > 6;
 	const [expanded, setExpanded] = useState(false);
@@ -232,7 +238,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 
 	function react(key: ReactionKey) {
 		setTouchedReactions((current) => (current.includes(key) ? current : [...current, key]));
-		onToggleReaction(key);
+		onToggleReaction(announcement, key);
 	}
 	async function submitComment() {
 		const text = commentDraft.draft.trim();
@@ -241,7 +247,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 		setCommentPending(true);
 		setCommentError(false);
 		try {
-			const ok = await onAddComment(text);
+			const ok = await onAddComment(announcement, text);
 			if (ok) commentDraft.clear();
 			else setCommentError(true);
 		} finally {
@@ -253,7 +259,10 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	return (
 		<li
 			id={`announcement-${announcement.id}`}
-			className={cn('scroll-mt-24', highlighted && 'ring-2 ring-inset ring-ring')}
+			className={cn(
+				'scroll-mt-24 [contain-intrinsic-size:auto_9rem] [content-visibility:auto]',
+				highlighted && 'ring-2 ring-inset ring-ring',
+			)}
 		>
 			{/* Randlos: die Liste zieht Rahmen und Trennlinien, damit die Pinnwand wie ein Feed liest. */}
 			<Card
@@ -325,7 +334,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 								<DropdownMenuGroup>
 									{canModerate && (
 										<DropdownMenuItem
-											onClick={onTogglePinned}
+											onClick={() => onTogglePinned(announcement)}
 											disabled={pinPending}
 											className="min-h-11"
 											aria-label={
@@ -338,7 +347,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 									)}
 									{canResolve && (
 										<DropdownMenuItem
-											onClick={onToggleStatus}
+											onClick={() => onToggleStatus(announcement)}
 											disabled={statusPending}
 											className="min-h-11"
 											aria-label={
@@ -502,7 +511,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 										size="sm"
 										className="gap-1 pr-2 text-[12px]"
 										disabled={statusPending}
-										onClick={onToggleStatus}
+										onClick={() => onToggleStatus(announcement)}
 										aria-label={`Als erledigt markieren: ${actionSubject}`}
 									>
 										{statusPending ? (
@@ -531,8 +540,8 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 													comment.memberId === currentMemberId && !comment.id.startsWith('temp-')
 												}
 												draftKey={`${draftKey}:edit:${comment.id}`}
-												onUpdate={(text) => onUpdateComment(comment.id, text)}
-												onDelete={() => onDeleteComment(comment.id)}
+												onUpdate={(text) => onUpdateComment(announcement, comment.id, text)}
+												onDelete={() => onDeleteComment(announcement, comment.id)}
 											/>
 										))}
 									</ul>
@@ -618,7 +627,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 								deletingRef.current = true;
 								setDeleteError(false);
 								try {
-									const ok = await onDelete();
+									const ok = await onDelete(announcement);
 									if (ok) setDeleteOpen(false);
 									else setDeleteError(true);
 								} finally {

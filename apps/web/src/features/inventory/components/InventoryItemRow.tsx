@@ -176,7 +176,10 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	if (removed) return null;
 
 	return (
-		<Item className="flex-col items-stretch gap-2" aria-busy={pending}>
+		<Item
+			className="flex-col items-stretch gap-2 [contain-intrinsic-size:auto_4.5rem] [content-visibility:auto]"
+			aria-busy={pending}
+		>
 			<div className="flex w-full min-w-0 flex-wrap items-center gap-2">
 				<ItemContent className="min-w-0 flex-[1_1_9rem]">
 					<ItemTitle className="w-full min-w-0 gap-2 line-clamp-none">

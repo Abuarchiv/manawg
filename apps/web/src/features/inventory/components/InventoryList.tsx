@@ -25,7 +25,7 @@ import {
 import { cn } from '@/shared/lib/cn';
 import { Package, ShoppingBasket, Zap } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 interface InventoryListProps {
 	items: InventoryItemDto[];
@@ -59,9 +59,9 @@ export function InventoryList({
 		(item) => item.decrementCount30d > 0 || item.lastDecrementedAt !== null,
 	);
 
-	function openEdit(item: InventoryItemDto): void {
+	const openEdit = useCallback((item: InventoryItemDto): void => {
 		setEditing(item);
-	}
+	}, []);
 
 	return (
 		<div className="flex flex-col gap-4">

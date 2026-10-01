@@ -39,7 +39,7 @@ import { formatTimeFull } from '@/core/utils/time';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import { Copy, Pencil, Reply, Smile, Trash2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { canDeleteMessage, canEditMessage } from '../chat-pure';
 import { ReactionPicker } from './ReactionPicker';
 
@@ -74,14 +74,14 @@ interface MessageBubbleProps {
 	reactions: ReactionSummary[];
 	replyTo: BubbleMessage | null;
 	replyToSender: { name: string } | null;
-	onReact: (emoji: string) => Promise<boolean>;
-	onUnreact: (emoji: string) => Promise<boolean>;
-	onEdit: (next: string) => Promise<boolean>;
-	onDelete: () => Promise<boolean>;
-	onReply: () => void;
+	onReact: (messageId: string, emoji: string) => Promise<boolean>;
+	onUnreact: (messageId: string, emoji: string) => Promise<boolean>;
+	onEdit: (messageId: string, next: string) => Promise<boolean>;
+	onDelete: (messageId: string) => Promise<boolean>;
+	onReply: (messageId: string) => void;
 }
 
-export function MessageBubble({
+export const MessageBubble = memo(function MessageBubble({
 	message,
 	sender,
 	currentMemberId,
@@ -163,7 +163,7 @@ export function MessageBubble({
 		setPending(true);
 		setError(null);
 		try {
-			if (await onEdit(text)) {
+			if (await onEdit(message.id, text)) {
 				setEditing(false);
 				setHasDraft(false);
 				removeDraft(draftKey);
@@ -179,7 +179,7 @@ export function MessageBubble({
 		setPending(true);
 		setError(null);
 		try {
-			if (await onDelete()) {
+			if (await onDelete(message.id)) {
 				setDeleteOpen(false);
 				removeDraft(draftKey);
 			} else setError('Nachricht konnte nicht gelöscht werden.');
@@ -195,7 +195,7 @@ export function MessageBubble({
 		setError(null);
 		haptic('selection');
 		try {
-			const ok = await (mine ? onUnreact(emoji) : onReact(emoji));
+			const ok = await (mine ? onUnreact(message.id, emoji) : onReact(message.id, emoji));
 			if (!ok) setError('Reaktion konnte nicht gespeichert werden.');
 			return ok;
 		} finally {
@@ -319,7 +319,7 @@ export function MessageBubble({
 												className="min-h-11"
 												onClick={() => {
 													haptic('selection');
-													onReply();
+													onReply(message.id);
 												}}
 											>
 												<Reply aria-hidden /> Antworten
@@ -459,4 +459,4 @@ export function MessageBubble({
 			</MessageContent>
 		</Message>
 	);
-}
+});

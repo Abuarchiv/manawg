@@ -15,6 +15,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { notifyChatReadConfirmed } from '@/components/wg/useWgCounts';
+import { useStableCallback } from '@/core/hooks/useStableCallback';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { haptic } from '@/shared/lib/haptics';
@@ -114,6 +115,10 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	const lastReadSentIdRef = useRef<string | null>(null);
 	const encodedShareCode = encodeURIComponent(shareCode);
 
+	const listMembers = useMemo(
+		() => members.map((m) => ({ id: m.id, name: m.name, color: m.color ?? null })),
+		[members],
+	);
 	const reactionsByMessage = useMemo(
 		() => summarizeReactions(reactionRows, identity.memberId),
 		[reactionRows, identity.memberId],
@@ -609,6 +614,16 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		haptic('selection');
 	}
 
+	const stableLoadOlder = useStableCallback(() => void loadOlder());
+	const stableReact = useStableCallback(react);
+	const stableUnreact = useStableCallback(unreact);
+	const stableEdit = useStableCallback(editMessage);
+	const stableDelete = useStableCallback(deleteMessage);
+	const onReply = useCallback((id: string) => {
+		setReplyToId(id);
+		setReplyFocusRequest((request) => request + 1);
+	}, []);
+
 	return (
 		<div ref={chatRootRef} className="relative flex min-h-0 flex-1 flex-col bg-background">
 			{readError && (
@@ -687,7 +702,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 							) : (
 								<MessageList
 									messages={messages}
-									members={members.map((m) => ({ id: m.id, name: m.name, color: m.color ?? null }))}
+									members={listMembers}
 									currentMemberId={identity.memberId}
 									shareCode={shareCode}
 									isAdmin={isAdmin}
@@ -696,15 +711,12 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 									loadingOlder={loadingOlder}
 									olderError={olderError}
 									scrollRef={scrollRef}
-									onLoadOlder={() => void loadOlder()}
-									onReact={react}
-									onUnreact={unreact}
-									onEdit={editMessage}
-									onDelete={deleteMessage}
-									onReply={(id) => {
-										setReplyToId(id);
-										setReplyFocusRequest((request) => request + 1);
-									}}
+									onLoadOlder={stableLoadOlder}
+									onReact={stableReact}
+									onUnreact={stableUnreact}
+									onEdit={stableEdit}
+									onDelete={stableDelete}
+									onReply={onReply}
 								/>
 							)}
 							<MessageScrollerItem>

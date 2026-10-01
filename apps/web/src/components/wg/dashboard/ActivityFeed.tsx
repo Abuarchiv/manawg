@@ -94,7 +94,10 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
 					</>
 				);
 				return (
-					<li key={activityItemKey(item, index)}>
+					<li
+						key={activityItemKey(item, index)}
+						className="[contain-intrinsic-size:auto_3.5rem] [content-visibility:auto]"
+					>
 						{item.href ? (
 							<Link
 								href={item.href}

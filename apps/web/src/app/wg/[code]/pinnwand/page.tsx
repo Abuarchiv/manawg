@@ -11,6 +11,7 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
+import { useStableCallback } from '@/core/hooks/useStableCallback';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
 import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
@@ -62,6 +63,10 @@ import { ChevronDown, Megaphone, Plus } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+/** Beiträge pro Liste, die zunächst gerendert werden; „Mehr anzeigen“ lädt nach. */
+const CARD_RENDER_PAGE = 30;
+const UNKNOWN_AUTHOR = { name: '?', color: null };
 
 function kindFromParam(value: string | null): AnnouncementKind | null {
 	if (
@@ -424,11 +429,6 @@ export default function PinnwandPage(): React.ReactElement {
 		commitItems(pendingRemoteItems.map(applyCommentOverrides));
 		setPendingRemoteItems(null);
 		setNewCount(0);
-	}
-
-	function memberLookup(id: string): { name: string; color: string | null } {
-		const m = members.find((x) => x.id === id);
-		return { name: m?.name ?? '?', color: m?.color ?? null };
 	}
 
 	function commitItems(nextItems: Announcement[]): void {
@@ -959,27 +959,52 @@ export default function PinnwandPage(): React.ReactElement {
 		}
 		return { openItems, archivedItems };
 	}, [items]);
+	const [openLimit, setOpenLimit] = useState(CARD_RENDER_PAGE);
+	const [archivedLimit, setArchivedLimit] = useState(CARD_RENDER_PAGE);
+	// Das verlinkte/hervorgehobene Element muss immer im DOM sein.
+	const visibleOpenCount = Math.max(
+		openLimit,
+		openItems.findIndex((item) => item.id === highlightedId) + 1,
+	);
+	const visibleArchivedCount = Math.max(
+		archivedLimit,
+		archivedItems.findIndex((item) => item.id === highlightedId) + 1,
+	);
 	const myOpenItems = useMemo(() => getMyOpenAnnouncements(items), [items]);
+
+	const authorByMemberId = useMemo(
+		() => new Map(members.map((m) => [m.id, { name: m.name, color: m.color ?? null }] as const)),
+		[members],
+	);
+	const stableDelete = useStableCallback((a: Announcement) => remove(a.id));
+	const stableTogglePinned = useStableCallback(togglePinned);
+	const stableToggleStatus = useStableCallback(toggleStatus);
+	const stableToggleReaction = useStableCallback((a: Announcement, reaction: ReactionKey) => {
+		void toggleReaction(a, reaction);
+	});
+	const stableAddComment = useStableCallback(addComment);
+	const stableUpdateComment = useStableCallback(updateComment);
+	const stableDeleteComment = useStableCallback(deleteComment);
 
 	function renderCard(a: Announcement): React.ReactElement {
 		return (
 			<AnnouncementCard
 				key={`${identity.memberId}:${a.id}`}
 				announcement={a}
-				author={memberLookup(a.authorMemberId)}
+				author={authorByMemberId.get(a.authorMemberId) ?? UNKNOWN_AUTHOR}
 				deletePending={isPending(a.id)}
 				pinPending={isPending(`${a.id}:pin`)}
 				statusPending={isPending(`${a.id}:status`)}
-				reactionPending={(reaction) => isPending(`${a.id}:reaction:${reaction}`)}
-				onDelete={() => remove(a.id)}
-				onTogglePinned={() => togglePinned(a)}
-				onToggleStatus={() => toggleStatus(a)}
-				onToggleReaction={(reaction) => {
-					void toggleReaction(a, reaction);
-				}}
-				onAddComment={(content) => addComment(a, content)}
-				onUpdateComment={(commentId, content) => updateComment(a, commentId, content)}
-				onDeleteComment={(commentId) => deleteComment(a, commentId)}
+				pendingReactions={(['seen', 'take', 'ok'] as const)
+					.filter((reaction) => isPending(`${a.id}:reaction:${reaction}`))
+					.join()}
+				onDelete={stableDelete}
+				onTogglePinned={stableTogglePinned}
+				onToggleStatus={stableToggleStatus}
+				onToggleReaction={stableToggleReaction}
+				onAddComment={stableAddComment}
+				onUpdateComment={stableUpdateComment}
+				onDeleteComment={stableDeleteComment}
 				currentMemberId={identity.memberId}
 				isAdmin={isAdmin}
 				shareCode={wg.shareCode}
@@ -1077,8 +1102,16 @@ export default function PinnwandPage(): React.ReactElement {
 							className="flex flex-col divide-y overflow-hidden rounded-xl border"
 							aria-label="Pinnwand-Beiträge"
 						>
-							{openItems.map(renderCard)}
+							{openItems.slice(0, visibleOpenCount).map(renderCard)}
 						</ul>
+					)}
+					{visibleOpenCount < openItems.length && (
+						<Button
+							variant="outline"
+							onClick={() => setOpenLimit(visibleOpenCount + CARD_RENDER_PAGE)}
+						>
+							Mehr anzeigen ({openItems.length - visibleOpenCount})
+						</Button>
 					)}
 					{archivedItems.length > 0 && (
 						<Collapsible open={archiveOpen} onOpenChange={setArchiveOpen}>
@@ -1102,8 +1135,17 @@ export default function PinnwandPage(): React.ReactElement {
 									className="flex flex-col divide-y overflow-hidden rounded-xl border"
 									aria-label="Geklärte und ältere Beiträge"
 								>
-									{archivedItems.map(renderCard)}
+									{archivedItems.slice(0, visibleArchivedCount).map(renderCard)}
 								</ul>
+								{visibleArchivedCount < archivedItems.length && (
+									<Button
+										variant="outline"
+										className="mt-2 w-full"
+										onClick={() => setArchivedLimit(visibleArchivedCount + CARD_RENDER_PAGE)}
+									>
+										Mehr anzeigen ({archivedItems.length - visibleArchivedCount})
+									</Button>
+								)}
 							</CollapsibleContent>
 						</Collapsible>
 					)}

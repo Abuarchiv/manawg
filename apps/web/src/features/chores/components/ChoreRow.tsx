@@ -96,7 +96,7 @@ export const ChoreRow = memo(function ChoreRow({
 			id={`chore-${chore.id}`}
 			render={<li />}
 			className={cn(
-				'scroll-mt-24 rounded-none py-2 pr-1.5',
+				'scroll-mt-24 rounded-none py-2 pr-1.5 [contain-intrinsic-size:auto_4.5rem] [content-visibility:auto]',
 				highlighted && 'ring-2 ring-inset ring-ring',
 			)}
 			aria-busy={busy}

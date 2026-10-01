@@ -33,6 +33,7 @@ const DAY_FORMAT = new Intl.DateTimeFormat('de-DE', {
 	day: '2-digit',
 	month: 'long',
 });
+const NO_REACTIONS: ReactionSummary[] = [];
 const MESSAGE_GROUP_WINDOW_MS = 5 * 60 * 1000;
 
 function groupsWithPreviousMessage(
@@ -169,14 +170,14 @@ export function MessageList({
 								isAdmin={isAdmin}
 								isOwn={message.senderMemberId === currentMemberId}
 								draftKey={`manawg:draft:${shareCode}:${currentMemberId}:chat:edit:${message.id}`}
-								reactions={reactionsByMessage.get(message.id) ?? []}
+								reactions={reactionsByMessage.get(message.id) ?? NO_REACTIONS}
 								replyTo={replyTo}
 								replyToSender={replyToSender}
-								onReact={(emoji) => onReact(message.id, emoji)}
-								onUnreact={(emoji) => onUnreact(message.id, emoji)}
-								onEdit={(next) => onEdit(message.id, next)}
-								onDelete={() => onDelete(message.id)}
-								onReply={() => onReply(message.id)}
+								onReact={onReact}
+								onUnreact={onUnreact}
+								onEdit={onEdit}
+								onDelete={onDelete}
+								onReply={onReply}
 							/>
 						</MessageGroup>
 					)}
