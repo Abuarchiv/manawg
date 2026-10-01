@@ -427,7 +427,13 @@ export default function EinkaufPage() {
 			} else if (res.data.warning === 'notification_delivery_unknown') {
 				toast.info('Gespeichert. Push-Versand konnte nicht bestätigt werden.');
 			}
-			// The add has no optimistic row; make sure the list reflects it.
+			// Zeile sofort zeigen, der Refresh gleicht danach ab.
+			const created = res.data.item as ShoppingItem | undefined;
+			if (created) {
+				commitItems((prev) =>
+					prev.some((item) => item.id === created.id) ? prev : [created, ...prev],
+				);
+			}
 			void load(true, true);
 		} finally {
 			addingRef.current = false;
