@@ -7,7 +7,7 @@ import {
 } from '@/components/animate-ui/primitives/base/collapsible';
 import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
 import { LegacyAccountRecovery } from '@/components/auth/LegacyAccountRecovery';
-import { SocialLoginButtons, type SocialProvider } from '@/components/auth/SocialLoginButtons';
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { LegalLinks } from '@/components/entry/LegalLinks';
 import { BackButton } from '@/components/neu/BackButton';
@@ -35,12 +35,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { safeNextPath } from '@/core/auth/next-path';
 import { hasSessionCookie } from '@/core/auth/session-hint';
-import {
-	DELETION_PENDING_MESSAGE,
-	RATE_LIMITED_MESSAGE,
-	getInitialJoinCode,
-	joinErrorMessage,
-} from '@/core/infra/join-flow';
+import { joinErrorMessage } from '@/core/infra/join-flow';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
@@ -50,178 +45,31 @@ import { ArrowRight, ChevronDown, Home, KeyRound, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-
-const WG_NAME_MAX = 100;
-const NAME_MAX = 80;
-const START_DRAFT_KEY = 'manawg:draft:neu';
-
-interface CreateResponse {
-	wg: { id: string; shareCode: string; name: string };
-	creator: { id: string; name: string };
-}
-
-interface CreatedWg {
-	code: string;
-	name: string;
-}
-
-interface JoinWg {
-	code: string;
-	name: string;
-}
-
-interface AccountWg {
-	id: string;
-	code: string;
-	name: string;
-}
-
-type StartStep = 'choose' | 'create' | 'join' | 'joinName' | 'invite';
-type StartField = 'wgName' | 'creatorName' | 'joinCode' | 'joinName';
-
-function isNeuPath(path: string): boolean {
-	try {
-		return new URL(path, 'https://manawg.invalid').pathname === '/neu';
-	} catch {
-		return false;
-	}
-}
-
-function getWgCodeFromPath(path: string): string | null {
-	const match = path.match(/^\/wg\/([^/]+)/);
-	if (!match?.[1]) return null;
-	try {
-		const code = normalizeShareCode(decodeURIComponent(match[1]));
-		return isValidShareCode(code) ? code : null;
-	} catch {
-		return null;
-	}
-}
-
-function getNeuIntentFromSearch(search: string): { joinCode: string; create: boolean } {
-	const currentSearch = search.startsWith('?') ? search : `?${search}`;
-	const nested = safeNextPath(new URLSearchParams(currentSearch).get('next'));
-	for (const candidate of [currentSearch, nested]) {
-		const url = new URL(candidate, 'https://manawg.invalid/neu');
-		if (url.pathname !== '/neu') continue;
-		const joinCode = getInitialJoinCode(url.search);
-		if (joinCode) return { joinCode, create: false };
-		if (url.searchParams.get('action') === 'create') return { joinCode: '', create: true };
-	}
-	return { joinCode: '', create: false };
-}
-
-function getJoinCodeFromSearch(search: string): string {
-	return getNeuIntentFromSearch(search).joinCode;
-}
-
-// Only a fresh sign-in skips the WG picker; a deliberate visit to /neu (second WG) keeps it.
-const JUST_SIGNED_IN_KEY = 'manawg:just-signed-in';
-
-function markJustSignedIn(): void {
-	try {
-		sessionStorage.setItem(JUST_SIGNED_IN_KEY, '1');
-	} catch {
-		// Without storage the user simply sees the picker.
-	}
-}
-
-function consumeJustSignedIn(): boolean {
-	try {
-		const value = sessionStorage.getItem(JUST_SIGNED_IN_KEY);
-		sessionStorage.removeItem(JUST_SIGNED_IN_KEY);
-		return value === '1';
-	} catch {
-		return false;
-	}
-}
-
-async function startSocialLogin(provider: SocialProvider, next: string): Promise<void> {
-	markJustSignedIn();
-	const { startSocialLogin } = await import('@/core/auth/client');
-	await startSocialLogin(provider, next);
-}
-
-interface StartDraft extends Record<string, unknown> {
-	step?: StartStep;
-	wgName?: string;
-	creatorName?: string;
-	joinCode?: string;
-	joinName?: string;
-	joinWg?: JoinWg;
-}
-
-async function readStartError(response: Response): Promise<string> {
-	try {
-		const body = (await response.clone().json()) as { code?: unknown; error?: unknown };
-		if (typeof body.error === 'string') return body.error;
-		if (typeof body.code === 'string') return body.code;
-	} catch {
-		return '';
-	}
-	return '';
-}
-
-function createWgErrorMessage(status: number, error: string): string {
-	if (status === 429) return RATE_LIMITED_MESSAGE;
-	if (error === 'account_deletion_pending') return DELETION_PENDING_MESSAGE;
-	if (status === 401 && error === 'auth_required') {
-		return 'Melde dich zuerst mit deinem Konto an.';
-	}
-	if (status === 400 && error === 'name_invalid') {
-		return 'WG konnte nicht erstellt werden: Der WG-Name muss 1 bis 100 Zeichen haben.';
-	}
-	if (status === 400 && error === 'creator_name_invalid') {
-		return 'WG konnte nicht erstellt werden: Dein Anzeigename muss 1 bis 80 Zeichen haben.';
-	}
-	if (status === 400 && (error === 'invalid_body' || error === 'invalid_json')) {
-		return 'WG-Name und dein Anzeigename müssen ausgefüllt und kurz genug sein.';
-	}
-	if (error === 'share_code_exhausted') {
-		return 'Gerade konnte kein WG-Code erstellt werden. Bitte versuche es gleich noch einmal.';
-	}
-	if (error === 'insert_failed' || error === 'member_insert_failed') {
-		return 'WG konnte nicht vollständig erstellt werden. Bitte versuche es erneut.';
-	}
-	if (
-		status >= 500 ||
-		error === 'server_error' ||
-		error === 'unexpected_error' ||
-		error === 'db_error'
-	) {
-		return 'WG konnte nicht erstellt werden: Versuche es gleich erneut.';
-	}
-	return 'Konnte WG nicht erstellen.';
-}
-
-function createWgErrorField(status: number, error: string): StartField | null {
-	if (status === 400 && error === 'name_invalid') return 'wgName';
-	if (status === 400 && error === 'creator_name_invalid') return 'creatorName';
-	return null;
-}
-
-function joinErrorField(status: number, error: string): StartField | null {
-	if (status === 404 || error === 'wg_not_found' || error === 'invalid_share_code') {
-		return 'joinCode';
-	}
-	return null;
-}
-
-function isJoinWg(value: unknown): value is JoinWg {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-	const code = Reflect.get(value, 'code');
-	const name = Reflect.get(value, 'name');
-	return (
-		typeof code === 'string' &&
-		isValidShareCode(normalizeShareCode(code)) &&
-		typeof name === 'string' &&
-		name.trim().length > 0
-	);
-}
-
-function isAccountWg(value: unknown): value is AccountWg {
-	return isJoinWg(value);
-}
+import {
+	type AccountWg,
+	type CreateResponse,
+	type CreatedWg,
+	type JoinWg,
+	NAME_MAX,
+	START_DRAFT_KEY,
+	type StartDraft,
+	type StartField,
+	type StartStep,
+	WG_NAME_MAX,
+	consumeJustSignedIn,
+	createWgErrorField,
+	createWgErrorMessage,
+	getJoinCodeFromSearch,
+	getNeuIntentFromSearch,
+	getWgCodeFromPath,
+	isAccountWg,
+	isJoinWg,
+	isNeuPath,
+	joinErrorField,
+	markJustSignedIn,
+	readStartError,
+	startSocialLogin,
+} from './start-flow';
 
 export function NeuClient() {
 	const router = useRouter();
