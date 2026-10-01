@@ -244,7 +244,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 					</TabsTrigger>
 				</TabsList>
 			)}
-			<TabsContent value="email" aria-label="Mit E-Mail anmelden">
+			<TabsContent value="email" aria-label="Mit E-Mail anmelden" tabIndex={-1}>
 				<form
 					noValidate
 					onSubmit={(event) => {
@@ -351,7 +351,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 			</TabsContent>
 
 			{phoneEnabled && (
-				<TabsContent value="phone" aria-labelledby="phone-auth-heading">
+				<TabsContent value="phone" aria-labelledby="phone-auth-heading" tabIndex={-1}>
 					<form
 						noValidate
 						onSubmit={(event) => {
