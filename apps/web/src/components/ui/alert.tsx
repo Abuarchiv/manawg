@@ -43,7 +43,7 @@ function AlertTitle({ className, ...props }: React.ComponentProps<'div'>) {
 		<div
 			data-slot="alert-title"
 			className={cn(
-				'min-w-0 max-w-full font-medium [overflow-wrap:anywhere] group-has-[>svg]/alert:col-start-2 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground',
+				'min-w-0 max-w-full font-medium [overflow-wrap:anywhere] group-has-[>svg]/alert:col-start-2 [&_a:not(.group\/button)]:underline [&_a:not(.group\/button)]:underline-offset-3 [&_a:not(.group\/button)]:hover:text-foreground',
 				className,
 			)}
 			{...props}
@@ -56,7 +56,7 @@ function AlertDescription({ className, ...props }: React.ComponentProps<'div'>) 
 		<div
 			data-slot="alert-description"
 			className={cn(
-				'min-w-0 max-w-full text-sm text-balance text-muted-foreground [overflow-wrap:anywhere] [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4',
+				'min-w-0 max-w-full text-sm text-balance text-muted-foreground [overflow-wrap:anywhere] [&_a:not(.group\/button)]:underline [&_a:not(.group\/button)]:underline-offset-3 [&_a:not(.group\/button)]:hover:text-foreground [&_p:not(:last-child)]:mb-4',
 				className,
 			)}
 			{...props}

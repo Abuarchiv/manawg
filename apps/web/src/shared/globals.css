@@ -360,6 +360,20 @@ select {
 	font-size: max(16px, 1rem);
 }
 
+/* 6b. iOS Safari sizes native date/time inputs by their intrinsic picker
+       width, so they can poke out of a narrow form column. */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"] {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+	max-width: 100%;
+	-webkit-appearance: none;
+	appearance: none;
+}
+
 /* ─── END RESPONSIVE FOUNDATIONS ────────────────────────────────────────── */
 
 @layer base {
