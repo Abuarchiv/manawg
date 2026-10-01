@@ -87,7 +87,9 @@ export function CalendarUpcomingList({
 						<CalendarClock aria-hidden />
 					</EmptyMedia>
 					<EmptyTitle>Die nächsten 30 Tage sind frei</EmptyTitle>
-					<EmptyDescription>Trag euren nächsten Termin ein.</EmptyDescription>
+					<EmptyDescription>
+						Trage euren nächsten Termin über das Plus unten rechts ein.
+					</EmptyDescription>
 				</EmptyHeader>
 			</Empty>
 		);

@@ -74,19 +74,19 @@ export function expenseSaveErrorMessage(error: string): string {
 
 export function expenseActionErrorMessage(error: string): string {
 	if (isNetworkError(error)) {
-		return 'Ausgabenaktion fehlgeschlagen: Prüfe deine Verbindung und versuche es erneut.';
+		return 'Aktion fehlgeschlagen: Prüfe deine Verbindung und versuche es erneut.';
 	}
 	if (isRetryableServerError(error)) {
-		return 'Ausgabenaktion fehlgeschlagen: Versuche es gleich erneut.';
+		return 'Aktion fehlgeschlagen: Versuche es gleich erneut.';
 	}
 	if (error === 'wg_not_found') {
-		return 'Ausgabenaktion fehlgeschlagen: Öffne die WG über den aktuellen Link erneut.';
+		return 'Aktion fehlgeschlagen: Öffne die WG über den aktuellen Link erneut.';
 	}
 	if (isInvalidShareCode(error)) {
-		return 'Ausgabenaktion fehlgeschlagen: Der WG-Code ist ungültig.';
+		return 'Aktion fehlgeschlagen: Der WG-Code ist ungültig.';
 	}
 	if (isAuthInvalidated(error)) {
-		return 'Ausgabenaktion fehlgeschlagen: Tritt der WG erneut bei.';
+		return 'Aktion fehlgeschlagen: Tritt der WG erneut bei.';
 	}
 	if (error === 'not_split_party') {
 		return 'Nur Zahler:in oder beteiligte Person kann diese Zahlung als beglichen markieren.';
@@ -104,10 +104,10 @@ export function expenseActionErrorMessage(error: string): string {
 		return 'Nur beteiligte Mitglieder können diesen Ausgleich markieren.';
 	}
 	if (error === 'invalid_body' || error === 'invalid_json') {
-		return 'Ausgabenaktion konnte nicht gespeichert werden: Die Anfrage war ungültig.';
+		return 'Die Änderung konnte nicht gespeichert werden: Die Anfrage war ungültig.';
 	}
 	if (error === 'id_invalid') {
-		return 'Diese Ausgabenaktion konnte nicht eindeutig zugeordnet werden.';
+		return 'Diese Aktion konnte nicht eindeutig zugeordnet werden.';
 	}
 	if (error === 'image_removed') {
 		return 'Der Anhang wurde entfernt. Lade ihn erneut hoch, bevor du die Ausgabe speicherst.';
@@ -118,7 +118,7 @@ export function expenseActionErrorMessage(error: string): string {
 	if (error === 'split_already_offset') {
 		return 'Dieser Anteil ist durch andere Ausgleiche ganz oder teilweise verrechnet. Den vollen Betrag als beglichen zu markieren würde den Saldo überschreiten; die Ausgabenliste wird aktualisiert.';
 	}
-	return 'Ausgabenaktion fehlgeschlagen.';
+	return 'Die Aktion ist fehlgeschlagen. Versuche es gleich erneut.';
 }
 
 export function recurringTemplateSaveErrorMessage(error: string): string {
