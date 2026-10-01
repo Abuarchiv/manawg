@@ -52,6 +52,9 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 	const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
+	// Tells password managers to offer a generated/new password once the user heads for
+	// "Konto erstellen"; the sign-in path keeps current-password until then.
+	const [newAccountIntent, setNewAccountIntent] = useState(false);
 	const [phone, setPhone] = useState('');
 	const [otp, setOtp] = useState('');
 	const [otpRequested, setOtpRequested] = useState(false);
@@ -279,7 +282,8 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								type="password"
 								value={password}
 								onChange={(event) => setPassword(event.target.value)}
-								autoComplete="current-password"
+								autoComplete={newAccountIntent ? 'new-password' : 'current-password'}
+								onFocus={() => setNewAccountIntent(false)}
 								enterKeyHint="go"
 								minLength={6}
 								required
@@ -339,6 +343,8 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 							<Button
 								type="button"
 								variant="outline"
+								onPointerDown={() => setNewAccountIntent(true)}
+								onFocus={() => setNewAccountIntent(true)}
 								onClick={() => void submitEmail('sign-up')}
 								disabled={busy !== null}
 							>
