@@ -320,7 +320,7 @@ test.describe('Settlement HTTP cache policy', () => {
 		);
 
 		expect(response.status()).toBe(400);
-		expect(response.headers()['cache-control']).toBe('no-store');
+		expect(response.headers()['cache-control']).toBe('private, no-store');
 		await expect(response.json()).resolves.toMatchObject({ error: 'invalid_share_code' });
 	});
 
@@ -336,7 +336,7 @@ test.describe('Settlement HTTP cache policy', () => {
 		);
 
 		expect(response.status()).toBe(401);
-		expect(response.headers()['cache-control']).toBe('no-store');
+		expect(response.headers()['cache-control']).toBe('private, no-store');
 		await expect(response.json()).resolves.toMatchObject({ error: 'auth_required' });
 	});
 });
