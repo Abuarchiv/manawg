@@ -129,9 +129,19 @@ function prepareRow(input: CommitInput, parsed: ParsedExpense): PreparedRow {
 	const paidByMemberId = input.mapping[parsed.paidByName];
 	if (!paidByMemberId) return { ok: false, reason: 'payer_unmapped' };
 
-	const splitRows = parsed.splits
-		.map((s) => ({ debtorMemberId: input.mapping[s.memberName], amountCents: s.amountCents }))
-		.filter((s): s is SplitRow => Boolean(s.debtorMemberId));
+	// Zwei Namen der Datei können demselben Mitglied zugeordnet sein (z. B. „Tom“ und
+	// „Thomas“). Pro Mitglied darf es nur einen Anteil geben (wie bei manuellen Ausgaben),
+	// sonst lässt sich die Ausgabe später nicht mehr bearbeiten: Beträge werden summiert.
+	const amountByDebtor = new Map<string, number>();
+	for (const s of parsed.splits) {
+		const debtorMemberId = input.mapping[s.memberName];
+		if (!debtorMemberId) continue;
+		amountByDebtor.set(debtorMemberId, (amountByDebtor.get(debtorMemberId) ?? 0) + s.amountCents);
+	}
+	const splitRows: SplitRow[] = Array.from(amountByDebtor, ([debtorMemberId, amountCents]) => ({
+		debtorMemberId,
+		amountCents,
+	}));
 	if (splitRows.length === 0) return { ok: false, reason: 'no_valid_splits' };
 
 	const splitSum = splitRows.reduce((acc, s) => acc + s.amountCents, 0);

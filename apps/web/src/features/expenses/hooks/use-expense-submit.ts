@@ -300,7 +300,9 @@ export function useExpenseSubmit(
 				finishSubmitting();
 				return;
 			}
-			const isConflict = res.status === 409 && res.error !== 'image_removed';
+			// Nur die Versionsprüfung beim Bearbeiten ist ein Bearbeitungskonflikt; andere
+			// 409 (z. B. Fixkosten schon übernommen) haben eigene Texte.
+			const isConflict = res.status === 409 && res.error === 'expense_changed';
 			const msg = isConflict
 				? 'Diese Ausgabe wurde inzwischen geändert. Lade die Liste neu und entscheide dann, welche Version stimmt.'
 				: expenseSaveErrorMessage(res.error);

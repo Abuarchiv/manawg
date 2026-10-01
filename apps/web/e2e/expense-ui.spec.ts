@@ -1412,6 +1412,49 @@ test.describe('subscription error notice', () => {
 	});
 });
 
+test.describe('paused fixed cost in expenses', () => {
+	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	test.use({ hasTouch: true, isMobile: true });
+
+	test('a paused overdue template offers no direct booking', async ({ page }) => {
+		const template = (id: string, description: string, pausedAt: string | null) => ({
+			id,
+			description,
+			amountCents: 1499,
+			currency: 'EUR',
+			paidByMemberId: FIXTURE_WG.memberId,
+			intervalMonths: 1,
+			nextDueAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+			lastCreatedAt: null,
+			pausedAt,
+			splits: [{ debtorMemberId: FIXTURE_WG.memberId, amountCents: 1499 }],
+		});
+
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/recurring-expenses`, (route) =>
+			route.fulfill({
+				json: {
+					recurringExpenses: [
+						template('abo-aktiv', 'Strom', null),
+						template('abo-pause', 'Netflix', new Date().toISOString()),
+					],
+				},
+			}),
+		);
+
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
+		await dismissOnboarding(page);
+
+		await expect(
+			page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Strom' }),
+		).toBeVisible();
+		await expect(page.getByText('pausiert', { exact: false }).first()).toBeVisible();
+		await expect(
+			page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Netflix' }),
+		).toHaveCount(0);
+	});
+});
+
 test.describe('offline expense edit', () => {
 	test('offline expense edits replay as a PATCH for the original expense', () => {
 		const action = createQueuedExpenseUpdate({

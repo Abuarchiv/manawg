@@ -130,9 +130,10 @@ export function RecurringExpensesSection({
 						) : (
 							<ItemGroup>
 								{visibleRecurringExpenses.map((item) => {
-									const alreadyCreated = wasRecurringExpenseAlreadyCreated(item);
+									const paused = Boolean(item.pausedAt);
+									const alreadyCreated = !paused && wasRecurringExpenseAlreadyCreated(item);
 									const nextDueAt = parseTimestamp(item.nextDueAt);
-									const due = nextDueAt !== null && nextDueAt <= Date.now();
+									const due = !paused && nextDueAt !== null && nextDueAt <= Date.now();
 									const pending = recurringActionPending || isPending(item.id);
 									return (
 										<Item
@@ -149,8 +150,8 @@ export function RecurringExpensesSection({
 													<span className="font-mono tabular-nums">
 														{formatEuroCents(item.amountCents, item.currency)}
 													</span>{' '}
-													· bezahlt von {memberName(item.paidByMemberId)} · fällig{' '}
-													{formatShortDate(item.nextDueAt)}
+													· bezahlt von {memberName(item.paidByMemberId)} ·{' '}
+													{paused ? 'pausiert' : `fällig ${formatShortDate(item.nextDueAt)}`}
 													{item.lastCreatedAt
 														? ` · zuletzt ${formatRelativeTime(item.lastCreatedAt)}`
 														: ''}
@@ -232,7 +233,7 @@ export function RecurringExpensesSection({
 																	render={
 																		<Link href={getRecurringExpenseHref(shareCode, item.id)} />
 																	}
-																	disabled={pending}
+																	disabled={pending || paused}
 																	className="min-h-11"
 																	aria-label={`Fixkosten-Ausgabe manuell erfassen: ${item.description}`}
 																>

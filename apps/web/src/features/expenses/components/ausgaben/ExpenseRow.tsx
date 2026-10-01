@@ -230,7 +230,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 												size="sm"
 												className="ml-auto"
 												onClick={() => setSettleCandidate(split)}
-												disabled={isPending(split.id)}
+												disabled={isPending(split.id) || isPending(expense.id)}
 												aria-label={`${settled ? 'Wieder öffnen' : 'Als bezahlt eintragen'}: ${memberName(split.debtorMemberId)}`}
 											>
 												{isPending(split.id) ? (
@@ -310,7 +310,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 						<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
 						<AlertDialogAction
 							className="min-h-11"
-							disabled={!settleCandidate || isPending(settleCandidate.id)}
+							disabled={!settleCandidate || isPending(settleCandidate.id) || isPending(expense.id)}
 							onClick={() => {
 								if (settleCandidate) onToggleSettle(expense.id, settleCandidate);
 								setSettleCandidate(null);
