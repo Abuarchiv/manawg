@@ -1,5 +1,6 @@
 'use client';
 
+import { safeLocalStorage } from '@/core/utils/browser';
 import { MotionConfig } from 'motion/react';
 import {
 	type ReactNode,
@@ -22,7 +23,6 @@ interface ThemeContextValue {
 	theme: Theme;
 	resolvedTheme: ResolvedTheme;
 	setTheme: (theme: Theme) => void;
-	toggle: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -34,15 +34,6 @@ function systemPrefersDark(): boolean {
 
 function resolve(theme: Theme): ResolvedTheme {
 	return resolveTheme(theme, systemPrefersDark());
-}
-
-function safeLocalStorage(): Storage | null {
-	if (typeof window === 'undefined') return null;
-	try {
-		return window.localStorage;
-	} catch {
-		return null;
-	}
 }
 
 function readStoredTheme(): Theme {
@@ -113,19 +104,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 		setResolvedTheme(r);
 	}, []);
 
-	const toggle = useCallback(() => {
-		setThemeState((prev) => {
-			const next: Theme = resolve(prev) === 'dark' ? 'light' : 'dark';
-			writeStoredTheme(next);
-			const r = resolve(next);
-			setResolvedTheme(r);
-			return next;
-		});
-	}, []);
-
 	const value = useMemo<ThemeContextValue>(
-		() => ({ theme, resolvedTheme, setTheme, toggle }),
-		[theme, resolvedTheme, setTheme, toggle],
+		() => ({ theme, resolvedTheme, setTheme }),
+		[theme, resolvedTheme, setTheme],
 	);
 
 	return (

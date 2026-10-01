@@ -125,13 +125,4 @@ function CollapsiblePanel({
 	);
 }
 
-export {
-	Collapsible,
-	CollapsibleTrigger,
-	CollapsiblePanel,
-	useCollapsible,
-	type CollapsibleProps,
-	type CollapsibleTriggerProps,
-	type CollapsiblePanelProps,
-	type CollapsibleContextType,
-};
+export { Collapsible, CollapsibleTrigger, CollapsiblePanel };

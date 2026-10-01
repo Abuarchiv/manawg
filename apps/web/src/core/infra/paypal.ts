@@ -114,14 +114,6 @@ export async function requestPayPalApi<T>(
 	return (await response.json()) as T;
 }
 
-async function paypalRequest<T>(
-	path: string,
-	payeeMerchantId: string,
-	init: RequestInit,
-): Promise<T> {
-	return requestPayPalApi<T>(path, init, payeeMerchantId);
-}
-
 export function isTerminalPayPalOrderCreationError(error: unknown): boolean {
 	return (
 		error instanceof Error &&
@@ -137,37 +129,41 @@ export async function createPayPalOrder(input: {
 	customId: string;
 	requestId: string;
 }): Promise<PayPalOrderResponse> {
-	return paypalRequest<PayPalOrderResponse>('/v2/checkout/orders', input.payeeMerchantId, {
-		method: 'POST',
-		headers: { 'PayPal-Request-Id': input.requestId },
-		body: JSON.stringify({
-			intent: 'CAPTURE',
-			purchase_units: [
-				{
-					custom_id: input.customId,
-					description: input.description,
-					payee: { merchant_id: input.payeeMerchantId },
-					amount: {
-						currency_code: input.currency,
-						value: (input.amountCents / 100).toFixed(2),
+	return requestPayPalApi<PayPalOrderResponse>(
+		'/v2/checkout/orders',
+		{
+			method: 'POST',
+			headers: { 'PayPal-Request-Id': input.requestId },
+			body: JSON.stringify({
+				intent: 'CAPTURE',
+				purchase_units: [
+					{
+						custom_id: input.customId,
+						description: input.description,
+						payee: { merchant_id: input.payeeMerchantId },
+						amount: {
+							currency_code: input.currency,
+							value: (input.amountCents / 100).toFixed(2),
+						},
 					},
-				},
-			],
-		}),
-	});
+				],
+			}),
+		},
+		input.payeeMerchantId,
+	);
 }
 
 export async function capturePayPalOrder(
 	orderId: string,
 	payeeMerchantId: string,
 ): Promise<PayPalOrderResponse> {
-	return paypalRequest<PayPalOrderResponse>(
+	return requestPayPalApi<PayPalOrderResponse>(
 		`/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`,
-		payeeMerchantId,
 		{
 			method: 'POST',
 			headers: { 'PayPal-Request-Id': orderId, Prefer: 'return=representation' },
 		},
+		payeeMerchantId,
 	);
 }
 
@@ -175,9 +171,9 @@ export async function getPayPalOrder(
 	orderId: string,
 	payeeMerchantId: string,
 ): Promise<PayPalOrderResponse> {
-	return paypalRequest<PayPalOrderResponse>(
+	return requestPayPalApi<PayPalOrderResponse>(
 		`/v2/checkout/orders/${encodeURIComponent(orderId)}`,
-		payeeMerchantId,
 		{ method: 'GET' },
+		payeeMerchantId,
 	);
 }
