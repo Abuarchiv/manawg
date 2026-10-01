@@ -70,7 +70,7 @@ test('due chores are the overdue ones, oldest first, so the 120-row cap keeps th
 			withWgRoute: (_name, handler) => (req) => handler(req, { code: 'MTE8PZAT' }),
 		},
 		'@/core/reads/activity': {
-			REMINDER_ANNOUNCEMENT_KINDS: ['question', 'request', 'task'],
+			REMINDER_ANNOUNCEMENT_KINDS: ['question', 'problem', 'request'],
 			buildActivityTimeline: () => [],
 			getActivityReminders: () => [],
 		},
@@ -181,7 +181,7 @@ test('reminders read open shopping items and open announcements from their own o
 			withWgRoute: (_name, handler) => (req) => handler(req, { code: 'MTE8PZAT' }),
 		},
 		'@/core/reads/activity': {
-			REMINDER_ANNOUNCEMENT_KINDS: ['question', 'request', 'task'],
+			REMINDER_ANNOUNCEMENT_KINDS: ['question', 'problem', 'request'],
 			buildActivityTimeline: () => [],
 			getActivityReminders: (input) => {
 				reminderInput = input;
@@ -229,7 +229,7 @@ test('reminders read open shopping items and open announcements from their own o
 		'and',
 		['eq', 'announcements.wgId', 'wg-1'],
 		['eq', 'announcements.status', 'open'],
-		['inArray', 'announcements.kind', ['question', 'request', 'task']],
+		['inArray', 'announcements.kind', ['question', 'problem', 'request']],
 	]);
 	assert.deepEqual(openAnnouncementQuery.orderBy, ['asc', 'announcements.createdAt']);
 	assert.equal(openAnnouncementQuery.limit, 120);

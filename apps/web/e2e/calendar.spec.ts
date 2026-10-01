@@ -448,6 +448,47 @@ test.describe('calendar fixes', () => {
 		await expect(eventButton).toHaveCount(0);
 	});
 
+	test('push link highlights its event and a 403 names who may change it', async ({ page }) => {
+		test.skip(
+			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
+			'requires the local fixture server',
+		);
+		const event: EventInput = {
+			id: '44444444-4444-4444-8444-444444444444',
+			title: 'Termin aus Push-Link',
+			description: null,
+			startsAt: new Date(Date.now() + 86_400_000).toISOString(),
+			endsAt: null,
+			allDay: false,
+			location: null,
+			recurrence: null,
+		};
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/events*`, (route) =>
+			route.fulfill({ json: { events: [event] } }),
+		);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/events/${event.id}`, (route) =>
+			route.fulfill({ status: 403, json: { error: 'not_owner' } }),
+		);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores*`, (route) =>
+			route.fulfill({ json: { chores: [] } }),
+		);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender?highlight=${event.id}`);
+		await dismissOnboarding(page);
+		await expect(page.locator(`#event-${event.id}`)).toBeVisible();
+		await page
+			.getByRole('button', { name: `Termin bearbeiten: ${event.title}`, exact: true })
+			.click();
+		await page.getByRole('button', { name: 'Termin löschen', exact: true }).click();
+		await page
+			.getByRole('alertdialog')
+			.getByRole('button', { name: 'Löschen', exact: true })
+			.click();
+		await expect(
+			page.getByRole('alert').filter({ hasText: 'Das dürfen nur WG-Admins' }).first(),
+		).toBeVisible();
+	});
+
 	test('keeps complex recurrence on title-only save and replaces it explicitly', async ({
 		page,
 	}) => {
@@ -884,6 +925,8 @@ test.describe('calendar date and recurrence regressions', () => {
 		expect(detectMention('@', 1)).toBeNull();
 		expect(detectMention('@ ', 1)).toBeNull();
 		expect(detectMention('Hallo @M', 8)).toEqual({ query: 'M', startIndex: 6 });
+		// Namen mit Umlaut-fremden Buchstaben bleiben bis zum Ende des Namens auswählbar.
+		expect(detectMention('Hi @René', 8)).toEqual({ query: 'René', startIndex: 3 });
 	});
 
 	test('theme changes received from another tab update the document class', async ({ page }) => {

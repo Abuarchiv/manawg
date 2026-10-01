@@ -96,6 +96,32 @@ test.describe('chat edit focus', () => {
 		await expect(message).toContainText('Geänderte Chat-Nachricht');
 		await expect(actions).toBeFocused();
 	});
+
+	test('a vanished reply target tells how to continue and keeps the text', async ({ page }) => {
+		await page.setViewportSize({ width: 360, height: 740 });
+		await setupMember(page);
+		await mockUnreadCount(page, `/api/wg/${FIXTURE_WG.shareCode}`);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chat/messages*`, (route) =>
+			route.request().method() === 'POST'
+				? route.fulfill({ status: 400, json: { error: 'reply_to_not_found' } })
+				: route.fulfill({
+						json: { messages: [], refreshedMessages: [], reactions: [], mentions: [] },
+					}),
+		);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/chat`);
+		await dismissOnboarding(page);
+
+		await page
+			.locator(`#message-${MESSAGE_ID}`)
+			.getByRole('button', { name: /Aktionen für Nachricht/ })
+			.click();
+		await page.getByRole('menuitem', { name: 'Antworten' }).click();
+		const composer = page.getByRole('textbox', { name: 'Chat-Nachricht' });
+		await composer.fill('Hallo zurück');
+		await page.getByRole('button', { name: 'Nachricht senden' }).click();
+		await expect(page.getByText('Entferne die Antwort und sende erneut.')).toBeVisible();
+		await expect(composer).toHaveValue('Hallo zurück');
+	});
 });
 
 test.describe('chat ios keyboard', () => {
