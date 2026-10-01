@@ -660,7 +660,8 @@ test('completed captures are not settled when provider payee, amount, or currenc
 		const response = await fixture.capture();
 		expect(response.status).toBe(409);
 		expect(await response.json()).toEqual({ error: 'paypal_payment_not_completed' });
-		expect(fixture.payment.status).toBe('capturing');
+		// Not settled, and not left capturing: that would lock the whole WG's finances.
+		expect(fixture.payment.status).toBe('failed');
 	}
 });
 
