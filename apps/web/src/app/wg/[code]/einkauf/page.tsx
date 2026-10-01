@@ -623,7 +623,12 @@ export default function EinkaufPage() {
 						);
 					} else {
 						rollback();
-						setToggleError(shoppingActionErrorMessage(res.error, 'Abhaken fehlgeschlagen.'));
+						setToggleError(
+							shoppingActionErrorMessage(
+								res.error,
+								'Abhaken fehlgeschlagen. Versuche es gleich erneut.',
+							),
+						);
 					}
 					return;
 				}
@@ -705,7 +710,12 @@ export default function EinkaufPage() {
 						);
 					} else {
 						setRemoveErrorId(id);
-						setRemoveError(shoppingActionErrorMessage(res.error, 'Entfernen fehlgeschlagen.'));
+						setRemoveError(
+							shoppingActionErrorMessage(
+								res.error,
+								'Entfernen fehlgeschlagen. Versuche es gleich erneut.',
+							),
+						);
 					}
 					return;
 				}

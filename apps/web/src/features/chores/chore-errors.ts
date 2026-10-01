@@ -73,5 +73,5 @@ export function choreCreateErrorMessage(error: string): string {
 	if (error === 'invalid_body' || error === 'invalid_json') {
 		return 'Putzaufgabe konnte nicht gespeichert werden: Die Anfrage war ungültig.';
 	}
-	return 'Hinzufügen fehlgeschlagen.';
+	return 'Hinzufügen fehlgeschlagen. Versuche es gleich erneut.';
 }

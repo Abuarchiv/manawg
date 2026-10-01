@@ -183,9 +183,10 @@ export function AboForm({
 	}, [amountStr]);
 	const descriptionError =
 		error && (description.trim().length === 0 || description.trim().length > DESCRIPTION_MAX)
-			? 'Beschreibung fehlt.'
+			? 'Gib eine kurze Beschreibung ein.'
 			: null;
-	const amountError = error && parsedAmountCents === null ? 'Betrag ungültig.' : null;
+	const amountError =
+		error && parsedAmountCents === null ? 'Gib einen Betrag über 0 € ein, z. B. 12,50.' : null;
 	const nextDueError = error && nextDueAt.trim().length === 0 ? 'Fälligkeit fehlt.' : null;
 	const formError = error && !descriptionError && !amountError && !nextDueError ? error : null;
 
@@ -236,11 +237,11 @@ export function AboForm({
 		setSplitError(null);
 		const trimmedDescription = description.trim();
 		if (trimmedDescription.length === 0 || trimmedDescription.length > DESCRIPTION_MAX) {
-			setError('Beschreibung fehlt.');
+			setError('Gib eine kurze Beschreibung ein.');
 			return;
 		}
 		if (parsedAmountCents === null) {
-			setError('Betrag ungültig.');
+			setError('Gib einen Betrag über 0 € ein, z. B. 12,50.');
 			return;
 		}
 		if (nextDueAt.trim().length === 0) {
@@ -254,7 +255,7 @@ export function AboForm({
 		}
 		const splits = buildSplits();
 		if (typeof splits === 'string') {
-			if (splits === 'amount_invalid') setError('Betrag ungültig.');
+			if (splits === 'amount_invalid') setError('Gib einen Betrag über 0 € ein, z. B. 12,50.');
 			else if (splits === 'no_members') setError('Keine Mitglieder vorhanden.');
 			else setSplitError(splitInputErrorMessage(splits));
 			return;

@@ -91,7 +91,7 @@ export function AbosList({
 							{loadError && abos.length === 0
 								? 'Versuche es erneut.'
 								: abos.length === 0
-									? 'Miete, Internet oder Streaming mit „Neue Fixkosten“ unten anlegen.'
+									? 'Miete, Internet oder Streaming über das Plus unten rechts anlegen.'
 									: 'Wähle einen anderen Filter.'}
 						</EmptyDescription>
 					</EmptyHeader>

@@ -39,7 +39,7 @@ export function shoppingAddErrorMessage(error: string): string {
 	if (error === 'insert_failed') {
 		return 'Artikel konnte nicht gespeichert werden: Prüfe die Einkaufsliste und versuche es erneut.';
 	}
-	return 'Hinzufügen fehlgeschlagen.';
+	return 'Hinzufügen fehlgeschlagen. Versuche es gleich erneut.';
 }
 
 export function shoppingActionErrorMessage(error: string, fallback: string): string {

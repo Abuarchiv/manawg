@@ -1050,7 +1050,7 @@ export default function PutzenPage() {
 									result.error === 'Netzwerkfehler' ||
 									result.error === 'Failed to fetch'
 								? 'Entfernen fehlgeschlagen: Prüfe deine Verbindung und versuche es erneut.'
-								: 'Entfernen fehlgeschlagen.';
+								: 'Entfernen fehlgeschlagen. Versuche es gleich erneut.';
 				setActionError(msg);
 				if (result.status === 404 && result.error === 'chore_not_found') {
 					setItems((current) => current.filter((item) => item.id !== id));

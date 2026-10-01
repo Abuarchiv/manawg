@@ -588,10 +588,10 @@ export default function AusgabenPage() {
 		const amountEuros = parseEuroAmount(amountStr);
 		const validationErrors: ExpenseFormFieldErrors = {};
 		if (desc.length === 0 || desc.length > DESCRIPTION_MAX) {
-			validationErrors.description = 'Beschreibung fehlt.';
+			validationErrors.description = 'Gib eine kurze Beschreibung ein.';
 		}
 		if (amountEuros === null || amountEuros < AMOUNT_MIN_EUROS || amountEuros > AMOUNT_MAX_EUROS) {
-			validationErrors.amount = 'Betrag ungültig.';
+			validationErrors.amount = 'Gib einen Betrag über 0 € ein, z. B. 12,50.';
 		}
 		if (Object.keys(validationErrors).length > 0) {
 			setValidationErrors(validationErrors);
@@ -870,10 +870,10 @@ export default function AusgabenPage() {
 		const amountEuros = parseEuroAmount(amountStr);
 		const validationErrors: ExpenseFormFieldErrors = {};
 		if (!desc || desc.length > DESCRIPTION_MAX) {
-			validationErrors.description = 'Beschreibung fehlt.';
+			validationErrors.description = 'Gib eine kurze Beschreibung ein.';
 		}
 		if (amountEuros === null || amountEuros < AMOUNT_MIN_EUROS || amountEuros > AMOUNT_MAX_EUROS) {
-			validationErrors.amount = 'Betrag ungültig.';
+			validationErrors.amount = 'Gib einen Betrag über 0 € ein, z. B. 12,50.';
 		}
 		if (Object.keys(validationErrors).length > 0 || amountEuros === null) {
 			setValidationErrors(validationErrors);
@@ -1664,7 +1664,7 @@ export default function AusgabenPage() {
 						<EmptyHeader>
 							<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
 							<EmptyDescription>
-								Erfasse eure erste gemeinsame Ausgabe mit „Ausgabe erfassen“ unten.
+								Erfasse eure erste gemeinsame Ausgabe über das Plus unten rechts.
 							</EmptyDescription>
 						</EmptyHeader>
 					</Empty>

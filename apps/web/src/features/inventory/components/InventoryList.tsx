@@ -83,7 +83,9 @@ export function InventoryList({
 							<Package aria-hidden />
 						</EmptyMedia>
 						<EmptyTitle>Noch keine Vorräte erfasst</EmptyTitle>
-						<EmptyDescription>Beginne mit Klopapier, Spülmittel oder Nudeln.</EmptyDescription>
+						<EmptyDescription>
+							Beginne mit Klopapier, Spülmittel oder Nudeln – über das Plus unten rechts.
+						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (
