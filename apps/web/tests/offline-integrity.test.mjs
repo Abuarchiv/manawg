@@ -165,7 +165,7 @@ async function setQueue(module, actions) {
 
 test('list deletes stay pending while queued removal waits and clear pending on every outcome', async () => {
 	for (const [relativePath, name] of [
-		['src/app/wg/[code]/einkauf/page.tsx', 'remove'],
+		['src/features/shopping/hooks/use-shopping-page.ts', 'remove'],
 		['src/app/wg/[code]/putzen/page.tsx', 'removeAbsence'],
 		['src/app/wg/[code]/putzen/page.tsx', 'handleRemove'],
 	]) {

@@ -17,9 +17,7 @@ export async function GET(
 	const e2e = await resolveE2EFixture(req, code);
 	if (e2e.mode === 'denied') return e2e.response;
 	if (e2e.mode === 'fixture') {
-		return NextResponse.json(buildE2EDashboardData(code), {
-			headers: { 'Cache-Control': 'private, no-store' },
-		});
+		return NextResponse.json(buildE2EDashboardData(code));
 	}
 
 	try {
@@ -42,9 +40,7 @@ export async function GET(
 		if (!limit.success) return tooMany('rate_limited');
 
 		const data = await loadDashboardData(auth.wg.id, auth.member.memberId, code);
-		return NextResponse.json(data, {
-			headers: { 'Cache-Control': 'private, no-store' },
-		});
+		return NextResponse.json(data);
 	} catch (err) {
 		logApiError('[dashboard GET]', err);
 		return serverError(err);

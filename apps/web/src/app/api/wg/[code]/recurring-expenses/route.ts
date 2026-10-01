@@ -9,7 +9,6 @@ import {
 	replayKey,
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
-import { readShareCode } from '@/core/guards/route-preamble';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
 	apiError,
@@ -25,7 +24,6 @@ import {
 	getCachedResponse,
 	readIdempotencyKey,
 } from '@/core/idempotency-store';
-import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
@@ -42,7 +40,7 @@ import {
 } from '@/features/expenses/recurring-expenses';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
 import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
@@ -143,14 +141,7 @@ export const GET = withWgRoute(
 	},
 );
 
-export async function POST(
-	req: NextRequest,
-	ctx: RouteCtx<{ code: string }>,
-): Promise<NextResponse> {
-	const codeResult = await readShareCode(ctx);
-	if (!codeResult.ok) return codeResult.response;
-	const { code } = codeResult;
-
+export const POST = withWgRoute('recurring-expenses POST', async (req, { code }) => {
 	let raw: unknown;
 	let replayReservation: Extract<
 		ReplayReservation<RecurringCreateResponseBody>,
@@ -358,7 +349,7 @@ export async function POST(
 		logApiError('[recurring-expenses POST]', err);
 		return serverError(err);
 	}
-}
+});
 
 export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code }) => {
 	let raw: unknown;
