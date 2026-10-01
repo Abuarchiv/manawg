@@ -8,8 +8,8 @@ import {
 	EmptyTitle,
 } from '@/components/ui/empty';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { AboRow } from '@/components/wg/AboRow';
-import type { Abo, AboFilter, MemberOption } from '@/components/wg/abos-types';
+import { AboRow } from '@/features/expenses/components/abos/AboRow';
+import type { Abo, AboFilter, MemberOption } from '@/features/expenses/components/abos/abos-types';
 import { RefreshCw } from 'lucide-react';
 
 interface AbosListProps {

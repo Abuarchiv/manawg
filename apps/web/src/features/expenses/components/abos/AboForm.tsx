@@ -22,10 +22,10 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import type { AboSplit, MemberOption } from '@/components/wg/abos-types';
 import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
 import { inputDateToIso } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
+import type { AboSplit, MemberOption } from '@/features/expenses/components/abos/abos-types';
 import { SplitReview } from '@/features/expenses/components/ausgaben/SplitReview';
 import { splitInputErrorMessage } from '@/features/expenses/expense-errors';
 import { useEffect, useMemo, useState } from 'react';

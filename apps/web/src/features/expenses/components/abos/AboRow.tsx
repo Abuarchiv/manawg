@@ -8,10 +8,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useWg } from '@/components/wg/WgContextProvider';
-import type { Abo, MemberOption } from '@/components/wg/abos-types';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
+import type { Abo, MemberOption } from '@/features/expenses/components/abos/abos-types';
 import {
 	formatIntervalLabel,
 	previewNextOccurrences,

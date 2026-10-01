@@ -32,13 +32,13 @@ import {
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
-import { PayPalPaymentButton } from '@/components/wg/PayPalPaymentButton';
-import { RemindButton } from '@/components/wg/RemindButton';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
+import { PayPalPaymentButton } from '@/features/expenses/components/debts/PayPalPaymentButton';
+import { RemindButton } from '@/features/expenses/components/debts/RemindButton';
 import { getDebtOverview } from '@/features/expenses/debt-overview';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import { cn } from '@/shared/lib/cn';

@@ -1,8 +1,8 @@
 'use client';
 
-import { AboForm, type AboFormValues } from '@/components/wg/AboForm';
-import { AboModalShell } from '@/components/wg/AboModalShell';
-import type { MemberOption } from '@/components/wg/abos-types';
+import { AboForm, type AboFormValues } from '@/features/expenses/components/abos/AboForm';
+import { AboModalShell } from '@/features/expenses/components/abos/AboModalShell';
+import type { MemberOption } from '@/features/expenses/components/abos/abos-types';
 
 interface AboCreateModalProps {
 	members: MemberOption[];

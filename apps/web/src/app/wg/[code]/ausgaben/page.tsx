@@ -4,7 +4,6 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
-import { DebtSummary } from '@/components/wg/DebtSummary';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
@@ -61,6 +60,7 @@ import type {
 	RecurringExpense,
 } from '@/features/expenses/components/ausgaben/expense-types';
 import { useExpenseForm } from '@/features/expenses/components/ausgaben/useExpenseForm';
+import { DebtSummary } from '@/features/expenses/components/debts/DebtSummary';
 import {
 	buildSettlementSummary,
 	computeDirectDebts,
