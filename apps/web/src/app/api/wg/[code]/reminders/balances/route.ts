@@ -61,10 +61,7 @@ export const GET = withWgRoute(
 	},
 	{
 		fixture: () => {
-			return NextResponse.json(
-				{ balances: [] },
-				{ headers: { 'Cache-Control': 'private, no-store' } },
-			);
+			return NextResponse.json({ balances: [] });
 		},
 	},
 );

@@ -8,7 +8,6 @@ import {
 	replayKey,
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
-import { readShareCode } from '@/core/guards/route-preamble';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
 	apiError,
@@ -24,7 +23,6 @@ import {
 	getCachedResponse,
 	readIdempotencyKey,
 } from '@/core/idempotency-store';
-import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import type { NotificationDispatchWarning } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, expensesReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
@@ -45,7 +43,7 @@ import {
 } from '@/features/expenses/expenses';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
 import { and, desc, eq, getTableColumns, gt, sql } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const DESCRIPTION_MIN = 1;
@@ -262,14 +260,7 @@ export const GET = withWgRoute(
 	},
 );
 
-export async function POST(
-	req: NextRequest,
-	ctx: RouteCtx<{ code: string }>,
-): Promise<NextResponse> {
-	const codeResult = await readShareCode(ctx);
-	if (!codeResult.ok) return codeResult.response;
-	const { code } = codeResult;
-
+export const POST = withWgRoute('expenses POST', async (req, { code }) => {
 	let raw: unknown;
 	let replayReservation: Extract<
 		ReplayReservation<ExpenseCreateResponseBody>,
@@ -567,4 +558,4 @@ export async function POST(
 		logApiError('[expenses POST]', err);
 		return serverError(err);
 	}
-}
+});

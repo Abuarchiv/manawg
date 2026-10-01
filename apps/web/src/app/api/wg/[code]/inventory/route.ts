@@ -86,10 +86,7 @@ export const GET = withWgRoute(
 	{
 		fixture: () => {
 			const items: never[] = [];
-			return NextResponse.json(
-				{ items, grouped: groupItemsByCategory(items) },
-				{ headers: { 'Cache-Control': 'private, no-store' } },
-			);
+			return NextResponse.json({ items, grouped: groupItemsByCategory(items) });
 		},
 	},
 );
