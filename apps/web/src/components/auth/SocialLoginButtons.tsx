@@ -37,11 +37,23 @@ export function SocialLoginButtons({
 		try {
 			await onOAuthStart(provider, next);
 		} catch (error) {
-			setError(
-				error instanceof Error && error.message === 'provider_unavailable'
-					? 'Dieser Anmeldedienst ist gerade nicht verfügbar. Bitte versuche es später erneut.'
-					: 'Die Anmeldung ist gerade nicht erreichbar. Bitte prüfe deine Verbindung und versuche es erneut.',
-			);
+			if (error instanceof Error && error.message === 'provider_unavailable') {
+				setError(
+					'Dieser Anmeldedienst ist gerade nicht verfügbar. Bitte versuche es später erneut.',
+				);
+			} else if (
+				variant === 'link' &&
+				error instanceof Error &&
+				typeof Reflect.get(error, 'code') === 'string'
+			) {
+				// Supabase antwortet beim Verknüpfen mit einem Fehlercode (z. B. bereits verknüpft);
+				// das ist kein Verbindungsproblem.
+				setError('Das Konto konnte nicht verknüpft werden. Bitte versuche es später erneut.');
+			} else {
+				setError(
+					'Die Anmeldung ist gerade nicht erreichbar. Bitte prüfe deine Verbindung und versuche es erneut.',
+				);
+			}
 		} finally {
 			setPendingProvider(null);
 		}

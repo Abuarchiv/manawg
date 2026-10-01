@@ -105,7 +105,8 @@ export function ShareAccessSection({
 			setJoiningEnabled(data.wg.joiningEnabled);
 			// Old code is dead after rotation; drop it so the WG list doesn't show a stale duplicate.
 			forgetWg(wg.shareCode);
-			router.replace(`/wg/${encodeURIComponent(data.wg.shareCode)}/einstellungen`);
+			// #zugang, sonst landet man nach dem Erneuern wieder im Profil-Tab.
+			router.replace(`/wg/${encodeURIComponent(data.wg.shareCode)}/einstellungen#zugang`);
 		} finally {
 			accessPendingRef.current = false;
 			setAccessPending(null);

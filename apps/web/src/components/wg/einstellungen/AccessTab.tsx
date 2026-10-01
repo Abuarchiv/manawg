@@ -21,8 +21,27 @@ async function linkSocialIdentity(provider: SocialProvider, next: string): Promi
 	await linkSocialIdentity(provider, next);
 }
 
+function useGoogleLinked(): boolean {
+	const [linked, setLinked] = useState(false);
+	useEffect(() => {
+		let active = true;
+		import('@/core/auth/client')
+			.then(({ hasLinkedIdentity }) => hasLinkedIdentity('google'))
+			.then((value) => {
+				if (active) setLinked(value);
+			})
+			// Ohne Auskunft bleibt der Button sichtbar; ein Fehlschlag beim Verknüpfen wird dort erklärt.
+			.catch(() => {});
+		return () => {
+			active = false;
+		};
+	}, []);
+	return linked;
+}
+
 export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	const [joiningEnabled, setJoiningEnabled] = useState(wg.joiningEnabled);
+	const googleLinked = useGoogleLinked();
 
 	useEffect(() => {
 		setJoiningEnabled(wg.joiningEnabled);
@@ -41,11 +60,15 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				hint="Verknüpfe einen weiteren Anbieter, damit dein Zugang auch bei Gerätewechsel erhalten bleibt."
 			>
 				<div className="p-3">
-					<SocialLoginButtons
-						variant="link"
-						next={`/wg/${encodeURIComponent(wg.shareCode)}/einstellungen#zugang`}
-						onOAuthStart={linkSocialIdentity}
-					/>
+					{googleLinked ? (
+						<p className="text-sm text-muted-foreground">Google ist mit deinem Konto verknüpft.</p>
+					) : (
+						<SocialLoginButtons
+							variant="link"
+							next={`/wg/${encodeURIComponent(wg.shareCode)}/einstellungen#zugang`}
+							onOAuthStart={linkSocialIdentity}
+						/>
+					)}
 				</div>
 			</Section>
 
