@@ -70,6 +70,12 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 			setActionError('Bitte wähle einen gültigen Zeitraum für die Abwesenheit.');
 			return;
 		}
+		// Die Liste zeigt nur laufende und künftige Abwesenheiten; eine vergangene würde
+		// scheinbar gespeichert und sofort wieder aus der Ansicht verschwinden.
+		if (endOfBerlinDay(endDay) < new Date()) {
+			setActionError('Das Ende der Abwesenheit liegt in der Vergangenheit.');
+			return;
+		}
 		const pendingKey = 'absence:add';
 		if (isPending(pendingKey)) return;
 		if (editedQueueItemWasSent('absence.create')) {

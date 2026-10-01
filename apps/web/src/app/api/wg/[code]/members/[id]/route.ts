@@ -1,5 +1,5 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, pushSubscriptions, wgMembers } from '@/core/db';
+import { chores, db, pushSubscriptions, wgMembers } from '@/core/db';
 import { hasCapturingMemberPayment, lockActiveAccountMember } from '@/core/db/account-deletion';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
@@ -197,6 +197,12 @@ export const PATCH = withWgRoute<{ id: string }>(
 			// endpoint has to be free for the next WG on the same device.
 			if (active === false) {
 				await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.memberId, id));
+				// Offene Putzaufgaben werden frei: sonst bliebe die Aufgabe bei jemandem stehen, der nicht
+				// mehr da ist, und käme erst nach zwei Tagen Verzug als „Niemand zuständig“-Fall hoch.
+				await tx
+					.update(chores)
+					.set({ assignedMemberId: null, lastReminderAt: null, updatedAt: new Date() })
+					.where(and(eq(chores.wgId, wgId), eq(chores.assignedMemberId, id)));
 			}
 			return {
 				ok: true as const,

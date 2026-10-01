@@ -1575,6 +1575,8 @@ test.describe('date integrity ui', () => {
 
 		test('uses Berlin day boundaries across the spring clock change', async ({ page }) => {
 			const post = await interceptValidationPost(page, 'absences');
+			// Vergangene Zeiträume lehnt das Formular ab, daher steht die Uhr vor der Zeitumstellung.
+			await page.clock.setFixedTime(new Date('2026-03-20T10:00:00Z'));
 			await setupMember(page);
 			await navigateToFeature(page, `/wg/${SHARE_CODE}/putzen?panel=absences`);
 			await dismissOnboarding(page);
