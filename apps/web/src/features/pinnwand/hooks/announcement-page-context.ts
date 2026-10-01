@@ -1,0 +1,44 @@
+import type { useToast } from '@/components/ui/Toast';
+import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
+import type { NotificationWarning } from '@/core/notifications/notification-warning';
+import type {
+	Announcement,
+	AnnouncementComment,
+	ReactionKey,
+} from '@/features/pinnwand/components/announcement-types';
+import type { StoredIdentity } from '@/shared/lib/identity';
+import type { MutableRefObject } from 'react';
+
+/** What the Pinnwand mutation hooks share: who acts, where results go, and the loaded board. */
+export interface AnnouncementPageContext {
+	wg: Pick<WgSummary, 'id' | 'shareCode'>;
+	identity: StoredIdentity;
+	members: Member[];
+	toast: ReturnType<typeof useToast>;
+	encodedShareCode: string;
+	isPending: (id: string) => boolean;
+	start: (id: string) => void;
+	end: (id: string) => void;
+	setActionError: (message: string | null) => void;
+	setNotice: (message: string | null) => void;
+	itemsRef: MutableRefObject<Announcement[]>;
+	commitItems: (nextItems: Announcement[]) => void;
+	load: (mode?: 'replace' | 'background') => Promise<void>;
+	refreshCount: () => void;
+}
+
+export type AnnouncementWriteResponse = {
+	announcement: Announcement;
+	warning: NotificationWarning;
+};
+
+export type AnnouncementReactionResponse = {
+	reaction: ReactionKey;
+	active: boolean;
+	warning: NotificationWarning;
+};
+
+export type AnnouncementCommentResponse = {
+	comment: AnnouncementComment;
+	warning: NotificationWarning;
+};

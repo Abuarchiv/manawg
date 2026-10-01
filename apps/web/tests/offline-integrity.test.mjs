@@ -167,8 +167,8 @@ async function setQueue(module, actions) {
 test('list deletes stay pending while queued removal waits and clear pending on every outcome', async () => {
 	for (const [relativePath, name] of [
 		['src/features/shopping/hooks/use-shopping-page.ts', 'remove'],
-		['src/features/chores/hooks/use-putzen-page.ts', 'removeAbsence'],
-		['src/features/chores/hooks/use-putzen-page.ts', 'handleRemove'],
+		['src/features/chores/hooks/use-absences.ts', 'removeAbsence'],
+		['src/features/chores/hooks/use-chore-actions.ts', 'handleRemove'],
 	]) {
 		const source = readSource(relativePath);
 		const tree = ts.createSourceFile(
