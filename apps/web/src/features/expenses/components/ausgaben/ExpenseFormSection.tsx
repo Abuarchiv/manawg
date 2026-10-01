@@ -529,7 +529,7 @@ export function ExpenseFormSection({
 													))}
 												</NativeSelect>
 												<FieldDescription>
-													Die Vorlage merkt Betrag, Zahler:in und diese Aufteilung.
+													Die Vorlage merkt Betrag, zahlende Person und diese Aufteilung.
 												</FieldDescription>
 											</Field>
 											{!isEditingQueuedExpense &&

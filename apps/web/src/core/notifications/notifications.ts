@@ -284,8 +284,8 @@ export function formatNotificationMessage(
 			const detail =
 				quantity !== null && threshold !== null ? ` (${quantity} von ${threshold})` : '';
 			return {
-				title: 'Vorrat niedrig',
-				body: `Vorrat niedrig: ${itemName}${detail} in ${wgName}.`,
+				title: 'Vorrat bald leer',
+				body: `Bald leer: ${itemName}${detail} in ${wgName}.`,
 				urlPath: inventoryUrlPath(payload),
 			};
 		}
