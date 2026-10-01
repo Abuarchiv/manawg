@@ -13,6 +13,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { readJsonLimited } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
+import { formatEuroCents } from '@/core/utils/money';
 import {
 	type PayPalOrderResponse,
 	capturePayPalOrder,
@@ -379,7 +380,7 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 				eventType: 'expense.debt.paid.paypal',
 				entityType: 'expense_payment',
 				entityId: capturePayment.id,
-				summary: `${auth.member.name} hat ${capturePayment.amountCents / 100} ${capturePayment.currency} per PayPal beglichen.`,
+				summary: `${auth.member.name} hat ${formatEuroCents(capturePayment.amountCents, capturePayment.currency)} per PayPal beglichen.`,
 				metadata: {
 					fromMemberId: capturePayment.fromMemberId,
 					toMemberId: capturePayment.toMemberId,
