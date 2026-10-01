@@ -655,30 +655,6 @@ test.describe('chore next assignee', () => {
 		).toBeVisible();
 	});
 
-	test('explains an overlapping absence instead of a generic save failure', async ({ page }) => {
-		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
-		await openPutzen(page, [viewer], [chore('overlap', viewer.id)], []);
-		await page.route(`**/api/wg/${SHARE_CODE}/absences`, async (route) => {
-			if (route.request().method() === 'POST') {
-				await route.fulfill({
-					status: 409,
-					json: { error: 'absence_overlaps_existing', code: 'absence_overlaps_existing' },
-				});
-				return;
-			}
-			await route.fallback();
-		});
-		await page.getByRole('button', { name: 'Abwesenheit eintragen' }).click();
-		await page.getByLabel('Abwesenheit von').fill('2099-01-01');
-		await page.getByLabel('Abwesenheit bis').fill('2099-01-05');
-		await page.getByRole('button', { name: 'Abwesenheit speichern' }).click();
-		await expect(
-			page.getByText(
-				'Abwesenheit konnte nicht gespeichert werden: In diesem Zeitraum ist für dieses Mitglied bereits eine Abwesenheit eingetragen.',
-			),
-		).toBeVisible();
-	});
-
 	test('preserves explicit and legacy unassigned chore drafts', async ({ page }) => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 		await openPutzen(page, [viewer], [], []);

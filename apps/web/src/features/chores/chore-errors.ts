@@ -7,7 +7,6 @@ const ABSENCE_ERRORS: Record<string, string> = {
 	not_owner: `${ABSENCE_SUBJECT}: Nur die Person selbst oder ein WG-Admin darf das eintragen.`,
 	reason_invalid: `${ABSENCE_SUBJECT}: Der Grund darf höchstens 120 Zeichen haben.`,
 	member_not_in_wg: `${ABSENCE_SUBJECT}: Dieses Mitglied ist nicht mehr in dieser WG.`,
-	absence_overlaps_existing: `${ABSENCE_SUBJECT}: In diesem Zeitraum ist für dieses Mitglied bereits eine Abwesenheit eingetragen.`,
 	insert_failed: `${ABSENCE_SUBJECT}: Prüfe den Putzplan und versuche es erneut.`,
 	invalid_json: `${ABSENCE_SUBJECT}: Die Anfrage war ungültig.`,
 	invalid_body: `${ABSENCE_SUBJECT}: Die Anfrage war ungültig.`,
