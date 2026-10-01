@@ -601,7 +601,7 @@ test.describe('enter key hint forms', () => {
 		await navigateToFeature(page, `/wg/${shareCode}/abos`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
-		await expect(page.getByRole('dialog', { name: 'Fixkosten hinzufügen' })).toBeVisible();
+		await expect(page.getByRole('dialog', { name: 'Neue Fixkosten' })).toBeVisible();
 
 		await expect(page.locator('#abo-description')).toHaveAttribute('enterkeyhint', 'next');
 		await expect(page.locator('#abo-amount')).toHaveAttribute('enterkeyhint', 'next');

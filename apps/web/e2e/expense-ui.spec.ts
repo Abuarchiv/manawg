@@ -1401,7 +1401,7 @@ test.describe('subscription error notice', () => {
 		).toBeVisible();
 
 		await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
-		const dialog = page.getByRole('dialog', { name: 'Fixkosten hinzufügen' });
+		const dialog = page.getByRole('dialog', { name: 'Neue Fixkosten' });
 		await expect(dialog).toBeVisible();
 		await expect(
 			dialog.getByText('Fixkosten konnten nicht gelöscht werden', { exact: false }),
@@ -1491,7 +1491,7 @@ test.describe('date integrity ui', () => {
 		await dismissOnboarding(page);
 		await expect(page.getByRole('heading', { name: 'Fixkosten', exact: true })).toBeVisible();
 		await page.getByRole('button', { name: 'Fixkosten hinzufügen', exact: true }).click();
-		await expect(page.getByRole('heading', { name: 'Fixkosten hinzufügen', exact: true })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Neue Fixkosten', exact: true })).toBeVisible();
 	}
 
 	async function openCalendarCreate(
