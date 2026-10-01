@@ -880,7 +880,7 @@ export function explainOfflineActionFailure(
 	};
 }
 
-export function getOfflineRetryDelayMs(action: OfflineAction): number {
+function getOfflineRetryDelayMs(action: OfflineAction): number {
 	const attempts = action.attempts ?? 0;
 	if (attempts <= 0) return 0;
 	return Math.min(15 * 60_000, 15_000 * 2 ** attempts);

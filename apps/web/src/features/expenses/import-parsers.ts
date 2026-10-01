@@ -52,7 +52,7 @@ export class UnsupportedCurrencyError extends Error {
 	}
 }
 
-export function normalizeMemberName(name: string): string {
+function normalizeMemberName(name: string): string {
 	return name
 		.normalize('NFD')
 		.replace(/̀|́|̂|̃|̄|̆|̇|̈|̊|̋|̌|̧/g, '')

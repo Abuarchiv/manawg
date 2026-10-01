@@ -23,7 +23,7 @@ interface ToastStore {
 
 // WCAG 2.2.1: a toast must give enough time to read it. The auto-dismiss timer
 // lives in ToastItem (not here) so it can pause while hovered or focused.
-export const TOAST_DURATION_MS = 4000;
+const TOAST_DURATION_MS = 4000;
 
 const useToastStore = create<ToastStore>((set) => ({
 	toasts: [],

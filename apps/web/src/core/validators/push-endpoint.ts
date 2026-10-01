@@ -28,7 +28,7 @@ const ALLOWED_HOST_SUFFIXES = [
 	'.push.apple.com',
 ];
 
-export function isAllowedPushEndpoint(url: string): boolean {
+function isAllowedPushEndpoint(url: string): boolean {
 	let parsed: URL;
 	try {
 		parsed = new URL(url);

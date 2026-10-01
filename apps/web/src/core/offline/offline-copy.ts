@@ -14,7 +14,7 @@ export function formatQueuedOfflineEntries(count: number): string {
 	return `${count} Offline-Einträge warten auf Synchronisierung.`;
 }
 
-export function formatSyncedOfflineActions(count: number): string {
+function formatSyncedOfflineActions(count: number): string {
 	if (count === 1) return '1 Offline-Aktion synchronisiert.';
 	return `${count} Offline-Aktionen synchronisiert.`;
 }

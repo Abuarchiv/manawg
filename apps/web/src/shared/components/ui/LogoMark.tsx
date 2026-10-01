@@ -68,22 +68,3 @@ export function LogoMark({
 		</svg>
 	);
 }
-
-interface BrandLockupProps {
-	size?: number;
-	className?: string;
-	wordmarkClassName?: string;
-}
-
-export function BrandLockup({
-	size = 28,
-	className = 'flex items-center gap-2',
-	wordmarkClassName = 'font-heading text-xl font-semibold tracking-[-0.03em] text-foreground',
-}: BrandLockupProps) {
-	return (
-		<span className={className}>
-			<LogoMark size={size} tile={false} aria-hidden="true" />
-			<span className={wordmarkClassName}>{BRAND.wordmark}</span>
-		</span>
-	);
-}

@@ -27,7 +27,7 @@ export function buildQueueEditHref(
 	return `/wg/${encodedShareCode}/putzen`;
 }
 
-export function parseDraft<T extends Record<string, unknown>>(raw: string | null): T | null {
+function parseDraft<T extends Record<string, unknown>>(raw: string | null): T | null {
 	if (!raw) return null;
 	try {
 		const parsed = JSON.parse(raw) as unknown;

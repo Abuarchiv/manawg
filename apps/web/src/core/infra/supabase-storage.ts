@@ -107,9 +107,7 @@ export async function removeSupabaseImages(objectKeys: readonly string[]): Promi
 	if (error) throw error;
 }
 
-export function limitPrivateImageStream(
-	stream: ReadableStream<Uint8Array>,
-): ReadableStream<Uint8Array> {
+function limitPrivateImageStream(stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
 	const reader = stream.getReader();
 	let bytesRead = 0;
 

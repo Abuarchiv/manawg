@@ -37,15 +37,6 @@ export function readIdempotencyKey(req: Request): string | null {
 }
 
 /**
- * Deterministic cache key for a replay response, combining the route scope
- * with the caller's idempotency key. Two requests with the same idempotency
- * key on different routes never collide because the scope differs.
- */
-export function replayKey(scope: string, idempotencyKey: string): string {
-	return `${scope}:${idempotencyKey}`;
-}
-
-/**
  * Atomically claims a response-replay slot in Postgres.
  *
  * Returns `true` when the caller won the slot and MUST perform the mutation

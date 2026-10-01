@@ -61,14 +61,14 @@ async function mapInBatches<T, R>(
 	return results;
 }
 
-export function buildNotificationUrl(shareCode: string, urlPath: string): string {
+function buildNotificationUrl(shareCode: string, urlPath: string): string {
 	const normalizedPath = urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
 	return `${getAppUrl()}/wg/${encodeURIComponent(shareCode)}${normalizedPath}`;
 }
 
 /** Quiet-hour settings are WG-local and use the same Berlin calendar zone as
  * recurrence and reminders. Never depend on the host process timezone. */
-export function berlinCurrentHour(now = new Date()): number {
+function berlinCurrentHour(now = new Date()): number {
 	const hour = new Intl.DateTimeFormat('en-GB', {
 		timeZone: 'Europe/Berlin',
 		hour: '2-digit',

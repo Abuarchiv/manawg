@@ -1,12 +1,7 @@
 'use client';
 
 import { cn } from '@/shared/lib/cn';
-import {
-	MessageScroller as MessageScrollerPrimitive,
-	useMessageScroller,
-	useMessageScrollerScrollable,
-	useMessageScrollerVisibility,
-} from '@shadcn/react/message-scroller';
+import { MessageScroller as MessageScrollerPrimitive } from '@shadcn/react/message-scroller';
 import type * as React from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -124,7 +119,4 @@ export {
 	MessageScrollerContent,
 	MessageScrollerItem,
 	MessageScrollerButton,
-	useMessageScroller,
-	useMessageScrollerScrollable,
-	useMessageScrollerVisibility,
 };

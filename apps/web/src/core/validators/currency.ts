@@ -8,6 +8,6 @@ import { z } from 'zod';
  * crash on the client. Existing DB rows with other currencies are not affected
  * (no schema migration).
  */
-export const SUPPORTED_CURRENCIES = ['EUR', 'CHF', 'USD', 'GBP'] as const;
+const SUPPORTED_CURRENCIES = ['EUR', 'CHF', 'USD', 'GBP'] as const;
 
 export const currencySchema = z.enum(SUPPORTED_CURRENCIES);
