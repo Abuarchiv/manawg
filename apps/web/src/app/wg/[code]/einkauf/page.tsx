@@ -161,6 +161,7 @@ export default function EinkaufPage() {
 	const [draftHydrated, setDraftHydrated] = useState(false);
 	const { isPending, start, end } = usePendingSet();
 	const addingRef = useRef(false);
+	const inFlightRef = useRef<Promise<void> | null>(null);
 	const addIdempotencyKeyRef = useRef<{ fingerprint: string; key: string } | null>(null);
 	const clearingBoughtRef = useRef(false);
 	const nameInputRef = useRef<HTMLInputElement>(null);
@@ -320,7 +321,10 @@ export default function EinkaufPage() {
 
 	/** Chips übergeben ihren Text direkt; nur Eingaben aus dem Feld leeren danach das Feld. */
 	async function add(text?: string): Promise<void> {
-		if (addingRef.current) return;
+		// Chip-Doppeltipp verwerfen; eine Eingabe per Enter während eines laufenden
+		// Hinzufügens wird nachgereiht statt still verworfen (gleicher Text → gleicher Key).
+		if (addingRef.current && text !== undefined) return;
+		while (addingRef.current && inFlightRef.current) await inFlightRef.current;
 		const fromInput = text === undefined;
 		const submittedName = text ?? newName;
 		const { name, quantity } = parseShoppingInput(submittedName);
@@ -336,6 +340,10 @@ export default function EinkaufPage() {
 			return;
 		}
 		addingRef.current = true;
+		let release: () => void = () => {};
+		inFlightRef.current = new Promise<void>((resolve) => {
+			release = resolve;
+		});
 		setAdding(true);
 		setAddError(null);
 		setAddNotice(null);
@@ -348,6 +356,8 @@ export default function EinkaufPage() {
 		if (!idempotencyKey) {
 			setAddError('Artikel konnte nicht sicher gespeichert werden. Versuche es erneut.');
 			addingRef.current = false;
+			inFlightRef.current = null;
+			release();
 			setAdding(false);
 			return;
 		}
@@ -441,6 +451,8 @@ export default function EinkaufPage() {
 			void load(true, true);
 		} finally {
 			addingRef.current = false;
+			inFlightRef.current = null;
+			release();
 			setAdding(false);
 		}
 	}
