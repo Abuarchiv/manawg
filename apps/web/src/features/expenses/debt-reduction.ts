@@ -1,3 +1,4 @@
+import { normalizeCurrency } from '@/core/utils/money';
 import type { ExpensePaymentInput } from './expense-payments';
 
 export interface SimplifiedDebt {
@@ -40,10 +41,6 @@ interface MemberInput {
 	id: string;
 	name: string;
 	color: string | null;
-}
-
-function normalizeCurrency(currency: string | undefined): string {
-	return currency?.trim().toUpperCase() || 'EUR';
 }
 
 function currencyKey(currency: string, memberId: string): string {

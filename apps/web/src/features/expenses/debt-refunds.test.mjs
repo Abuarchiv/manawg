@@ -22,9 +22,12 @@ function loadTypeScript(relativePath, overrides = {}) {
 
 const { computeBalances } = loadTypeScript('src/features/expenses/debts.ts', {
 	'@/core/utils/time': { MS_PER_DAY: 86_400_000 },
+	'@/core/utils/money': { normalizeCurrency: (value) => value?.trim().toUpperCase() || 'EUR' },
 });
 const { buildSettlementSummary, computeDirectDebts, computeNetBalances, simplifyDebts } =
-	loadTypeScript('src/features/expenses/debt-reduction.ts');
+	loadTypeScript('src/features/expenses/debt-reduction.ts', {
+		'@/core/utils/money': { normalizeCurrency: (value) => value?.trim().toUpperCase() || 'EUR' },
+	});
 
 const members = [
 	{ id: 'A', name: 'A', color: null },

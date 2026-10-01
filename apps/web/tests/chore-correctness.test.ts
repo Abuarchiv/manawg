@@ -18,7 +18,8 @@ registerHooks({
 const { buildChoreFairness, chooseNextAvailableMember } = await import(
 	'../src/features/chores/chore-fairness.ts'
 );
-const { formatAbsenceRange, isMemberAbsent } = await import('../src/features/chores/absence.ts');
+const { getAbsentMemberIds } = await import('../src/features/chores/absence.ts');
+const { formatShortDateRange } = await import('../src/core/utils/time.ts');
 const { buildChorePatchUpdate } = await import('../src/features/chores/chore-patch.ts');
 
 const now = Date.parse('2026-09-23T12:00:00.000Z');
@@ -167,8 +168,14 @@ test('switching from days to months anchors the month cycle at the current due d
 
 test('absence end date includes the selected Berlin calendar day', () => {
 	const absence = [{ memberId: 'alice', startDate: '2026-09-24', endDate: '2026-09-24' }];
-	assert.equal(isMemberAbsent(absence, 'alice', Date.parse('2026-09-24T18:00:00+02:00')), true);
-	assert.equal(isMemberAbsent(absence, 'alice', Date.parse('2026-09-25T00:00:00+02:00')), false);
+	assert.equal(
+		getAbsentMemberIds(absence, Date.parse('2026-09-24T18:00:00+02:00')).includes('alice'),
+		true,
+	);
+	assert.equal(
+		getAbsentMemberIds(absence, Date.parse('2026-09-25T00:00:00+02:00')).includes('alice'),
+		false,
+	);
 });
 
 test('absence dates use Berlin days across daylight saving and travel', () => {
@@ -181,7 +188,13 @@ test('absence dates use Berlin days across daylight saving and travel', () => {
 			endDate,
 		},
 	];
-	assert.equal(isMemberAbsent(absence, 'alice', Date.parse('2026-03-29T00:00:00+01:00')), true);
-	assert.equal(isMemberAbsent(absence, 'alice', Date.parse('2026-03-30T00:00:00+02:00')), false);
-	assert.equal(formatAbsenceRange(startDate, endDate), '29.03. bis 29.03.');
+	assert.equal(
+		getAbsentMemberIds(absence, Date.parse('2026-03-29T00:00:00+01:00')).includes('alice'),
+		true,
+	);
+	assert.equal(
+		getAbsentMemberIds(absence, Date.parse('2026-03-30T00:00:00+02:00')).includes('alice'),
+		false,
+	);
+	assert.equal(formatShortDateRange(startDate, endDate), '29.03. bis 29.03.');
 });

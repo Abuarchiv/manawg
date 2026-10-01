@@ -8,7 +8,7 @@ import {
 	getChoreStatus,
 	groupChoresForPlan,
 } from '@/features/chores/chore-status';
-import type { MemberInfo } from '@/features/chores/components/chore-types';
+import type { MemberInfo } from '@/shared/lib/member-types';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import type { ChorePageContext } from './chore-page-context';

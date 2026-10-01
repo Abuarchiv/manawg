@@ -152,3 +152,25 @@ export function formatWeekLabel(weekStart: Date, now = new Date()): string {
 	const year = weekStart.getFullYear() === now.getFullYear() ? '' : `${weekStart.getFullYear()}`;
 	return `Woche ab ${formatShortDate(weekStart.toISOString())}${year}`;
 }
+
+export function addMonths(date: Date, months: number): Date {
+	const next = new Date(date);
+	const day = next.getUTCDate();
+	next.setUTCMonth(next.getUTCMonth() + months, 1);
+	const lastDay = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0)).getUTCDate();
+	next.setUTCDate(Math.min(day, lastDay));
+	return next;
+}
+
+/**
+ * Advance `from` by `months` while keeping the ANCHOR's day-of-month, so a
+ * month-end due date never drifts (anchor day 31: 31.01 → 28.02 → 31.03 →
+ * 30.04 …). Chaining plain addMonths would clamp once and stay clamped.
+ */
+export function addMonthsFromAnchor(from: Date, anchorDay: number, months: number): Date {
+	const next = new Date(from);
+	next.setUTCMonth(next.getUTCMonth() + months, 1);
+	const lastDay = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0)).getUTCDate();
+	next.setUTCDate(Math.min(anchorDay, lastDay));
+	return next;
+}

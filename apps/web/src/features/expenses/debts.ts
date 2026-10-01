@@ -1,3 +1,4 @@
+import { normalizeCurrency } from '@/core/utils/money';
 import { MS_PER_DAY } from '@/core/utils/time';
 import type { ExpensePaymentInput } from './expense-payments';
 
@@ -17,10 +18,6 @@ export interface PairBalance {
 	debtorId: string;
 	amountCents: number;
 	currency: string;
-}
-
-function normalizeCurrency(currency: string | undefined): string {
-	return currency?.trim().toUpperCase() || 'EUR';
 }
 
 /**

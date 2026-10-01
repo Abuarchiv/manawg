@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import type { ChoreFairness } from '@/features/chores/chore-fairness';
+import type { MemberRef } from '@/shared/lib/member-types';
 import { ChevronDown } from 'lucide-react';
 
 const FAIRNESS_RULES = [
@@ -27,7 +28,7 @@ export function FairnessPanel({
 }: {
 	fairness: ChoreFairness;
 	monthCompletions: Record<string, number>;
-	members: { id: string; name: string }[];
+	members: MemberRef[];
 	/** Die eigene Person heißt überall „du“, nicht beim eigenen Namen. */
 	currentMemberId: string;
 }) {

@@ -16,10 +16,9 @@ function loadErrorMap(file) {
 		(name) =>
 			name === '@/core/http/error-codes'
 				? {
-						isAuthInvalidated: () => false,
-						isInvalidShareCode: () => false,
 						isNetworkError: () => false,
-						isRetryableServerError: () => false,
+						mutationErrorMessage: (_subject, code, specific, fallback) =>
+							Object.hasOwn(specific, code) ? specific[code] : fallback,
 					}
 				: requireFromWeb(name),
 		loaded,

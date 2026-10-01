@@ -94,6 +94,7 @@ const eventWindow = loadTypeScriptModule(
 	path.join(srcPath, 'features/events/event-reminder-window.ts'),
 	{
 		'@/core/utils/berlin-day': berlinDay,
+		'@/core/utils/time': timeUtils,
 		'../../core/db/schema': { wgEvents },
 		'./events': eventUtils,
 		'drizzle-orm': drizzle,

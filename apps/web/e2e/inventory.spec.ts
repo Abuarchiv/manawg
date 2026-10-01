@@ -19,7 +19,6 @@ import type { DbTransaction } from '../src/core/db/transaction';
 import { type ReplaySlotDependencies, claimReplaySlot } from '../src/core/guards/replay-slot';
 import {
 	type ConsumeInventoryMutationInput,
-	type ConsumeInventoryTransaction,
 	consumeInventoryMutation,
 } from '../src/features/inventory/consume-mutation';
 import { type InventoryItemDto, groupItemsByCategory } from '../src/features/inventory/inventory';
@@ -62,7 +61,7 @@ test.describe('inventory consume regression', () => {
 		};
 	}
 
-	function createFakeTransaction(state: InventoryState): ConsumeInventoryTransaction {
+	function createFakeTransaction(state: InventoryState): DbTransaction {
 		const select = (..._fields: unknown[]) => {
 			let table: unknown;
 			const query = {
@@ -153,7 +152,7 @@ test.describe('inventory consume regression', () => {
 			return query;
 		};
 
-		return { select, update, insert };
+		return { select, update, insert } as unknown as DbTransaction;
 	}
 
 	type ReplayBody = { quantity: number };

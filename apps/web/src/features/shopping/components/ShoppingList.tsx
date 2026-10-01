@@ -2,7 +2,9 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { readOfflineQueue } from '@/core/offline/offline-client';
 import { ShoppingItemRow } from '@/features/shopping/components/ShoppingItemRow';
-import type { MemberInfo, ShoppingItem } from '@/features/shopping/components/shopping-types';
+import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
+import type { MemberInfo } from '@/shared/lib/member-types';
+
 import { ChevronRight, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 

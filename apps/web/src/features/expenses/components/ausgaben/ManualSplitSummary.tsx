@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import { formatEuroCents } from '@/core/utils/money';
+import type { MemberRef } from '@/shared/lib/member-types';
 import type { Dispatch, SetStateAction } from 'react';
 import { distributeRemainderCents } from './manual-split-distribute';
 
@@ -12,7 +13,7 @@ interface ManualSplitSummaryProps {
 	amountStr: string;
 	currency: string;
 	manualSplits: Record<string, string>;
-	members: ReadonlyArray<{ id: string; name: string }>;
+	members: ReadonlyArray<MemberRef>;
 	setManualSplits: Dispatch<SetStateAction<Record<string, string>>>;
 	disabled?: boolean;
 }

@@ -23,7 +23,8 @@ import {
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
-import { type AbsenceInput, formatAbsenceRange } from '@/features/chores/absence';
+import { formatShortDateRange } from '@/core/utils/time';
+import type { AbsenceInput } from '@/features/chores/absence';
 import type { ChoreMember } from '@/features/chores/components/chore-types';
 import { cn } from '@/shared/lib/cn';
 import Link from 'next/link';
@@ -207,7 +208,7 @@ export function AbsencePanel({
 											{absence.memberName}
 										</ItemTitle>
 										<ItemDescription className="line-clamp-none">
-											{formatAbsenceRange(absence.startDate, absence.endDate)}
+											{formatShortDateRange(absence.startDate, absence.endDate)}
 										</ItemDescription>
 										{absence.reason && (
 											<ItemDescription className="line-clamp-none break-words">
@@ -222,7 +223,7 @@ export function AbsencePanel({
 											onClick={() => {
 												if (requestRemove(absence.id)) onRemove(absence.id);
 											}}
-											aria-label={`Abwesenheit von ${absence.memberName} (${formatAbsenceRange(absence.startDate, absence.endDate)}) ${armed ? 'endgültig entfernen' : 'entfernen'}`}
+											aria-label={`Abwesenheit von ${absence.memberName} (${formatShortDateRange(absence.startDate, absence.endDate)}) ${armed ? 'endgültig entfernen' : 'entfernen'}`}
 										>
 											{removing && <Spinner data-icon="inline-start" aria-hidden />}
 											{armed ? 'Wirklich entfernen?' : 'Entfernen'}

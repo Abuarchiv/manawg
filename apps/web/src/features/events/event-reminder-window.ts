@@ -5,9 +5,12 @@ import {
 	nextBerlinDayStart,
 	startOfBerlinDay,
 } from '@/core/utils/berlin-day';
+import { MS_PER_DAY } from '@/core/utils/time';
 import { and, eq, gt, gte, isNotNull, isNull, lte, or } from 'drizzle-orm';
 import { wgEvents } from '../../core/db/schema';
 import {
+	BYDAY_TO_INDEX,
+	DEFAULT_DURATION_MS,
 	EVENTS_LIST_LIMIT,
 	berlinCalendarDate,
 	eventDateForDisplay,
@@ -16,17 +19,6 @@ import {
 
 const EVENT_WINDOW_PAGE_SIZE = 500;
 const EVENT_WINDOW_SCAN_LIMIT = 10_000;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-const DEFAULT_DURATION_MS = 60 * 60 * 1000;
-const BYDAY_INDEX: Record<string, number> = {
-	SU: 0,
-	MO: 1,
-	TU: 2,
-	WE: 3,
-	TH: 4,
-	FR: 5,
-	SA: 6,
-};
 
 interface EventWindowCandidate {
 	id: string;
@@ -45,7 +37,7 @@ type ParsedRecurrenceRule = NonNullable<ReturnType<typeof parseRecurrenceRule>>;
 
 function recurrenceWeekdays(rule: ParsedRecurrenceRule): number[] {
 	const weekdays = (rule.byDay ?? []).flatMap((day) => {
-		const weekday = BYDAY_INDEX[day];
+		const weekday = BYDAY_TO_INDEX[day];
 		return weekday === undefined ? [] : [weekday];
 	});
 	return [...new Set(weekdays)].sort((a, b) => a - b);

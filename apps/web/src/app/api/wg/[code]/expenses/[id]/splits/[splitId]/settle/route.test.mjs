@@ -191,6 +191,11 @@ async function post({
 		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
 		'@/features/expenses/debt-reduction': loadTypeScript(
 			path.join(process.cwd(), 'src/features/expenses/debt-reduction.ts'),
+			{
+				'@/core/utils/money': {
+					normalizeCurrency: (value) => value?.trim().toUpperCase() || 'EUR',
+				},
+			},
 		),
 		'@/features/expenses/expense-payments': {
 			hasCapturingExpensePayment: async () => false,
