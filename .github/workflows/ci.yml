@@ -20,6 +20,7 @@ jobs:
   validate:
     if: github.event_name != 'deployment_status' && !(github.event_name == 'pull_request' && github.event.pull_request.draft)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -30,6 +31,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v4
+        with:
+          path: apps/web/.next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
       - run: pnpm lint
       - run: pnpm --dir apps/web analytics:check
       - run: pnpm --filter @manawg/web exec node scripts/check-feature-boundaries.mjs
@@ -43,6 +49,7 @@ jobs:
   e2e-fixtures:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'run-e2e'))
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: validate
     steps:
       - uses: actions/checkout@v4
@@ -71,14 +78,17 @@ jobs:
   # here, outside the environment, so PR-branch deployments skip instead of
   # being rejected by the environment protection rules as a failed job.
   # Pushes to main that were already superseded skip the same way.
+  # Preview gates only run while repo variable PREVIEW_GATE is `on` (release time).
   preview-source:
     if: >-
       always() &&
+      vars.PREVIEW_GATE == 'on' &&
       (
         github.event_name == 'deployment_status' ||
         (github.event_name == 'push' && github.ref == 'refs/heads/main')
       )
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # Runs after validate on push so the main-tip check is as late as possible.
     needs: validate
     outputs:
@@ -125,6 +135,7 @@ jobs:
         )
       )
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [validate, preview-source]
     environment:
       name: Preview
@@ -295,6 +306,7 @@ jobs:
       endsWith(github.event.deployment_status.target_url, '-abditubes-projects.vercel.app') &&
       needs.preview-source.outputs.trusted == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [preview-source, db-supabase-preview]
     environment:
       name: Preview
