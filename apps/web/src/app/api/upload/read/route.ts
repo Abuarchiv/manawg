@@ -1,7 +1,7 @@
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { isPrivateImageKeyRevoked } from '@/core/db/private-image-deletions';
-import { apiError, badRequest, notFound, serverError } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
+import { apiError, badRequest, notFound, serverError } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
 import {
 	ImageStorageConfigurationError,

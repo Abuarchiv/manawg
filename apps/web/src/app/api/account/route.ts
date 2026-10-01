@@ -1,6 +1,6 @@
 import { deleteAuthUser } from '@/core/auth/delete-user';
-import { getSupabaseEnv, hasSupabaseEnv } from '@/core/auth/env';
 import { getAuthenticatedUser } from '@/core/auth/server';
+import { getSupabaseEnv, hasSupabaseEnv } from '@/core/auth/supabase-env';
 import { accountDeletions, auditEvents } from '@/core/db';
 import {
 	readAccountDeletionStatusWithFreshConnection,
@@ -8,7 +8,7 @@ import {
 } from '@/core/db/account-deletion';
 import { removeAccountFromWgs } from '@/core/db/delete-account';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { apiError, conflict, serverError } from '@/core/errors';
+import { apiError, conflict, serverError } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';

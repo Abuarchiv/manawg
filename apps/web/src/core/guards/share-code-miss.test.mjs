@@ -18,7 +18,7 @@ function load(limitResult) {
 	const calls = [];
 	const module = { exports: {} };
 	const stubs = {
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			tooMany: (message, code) => Response.json({ error: message, code }, { status: 429 }),
 		},
 		'@/core/rate-limit': {

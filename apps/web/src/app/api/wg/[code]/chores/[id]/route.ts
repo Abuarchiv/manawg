@@ -1,11 +1,11 @@
 import { recordAuditEvent } from '@/core/audit';
 import { CHORE_RECURRENCE_TYPES, chores, db, wgMembers } from '@/core/db';
 import type { ChoreRecurrenceType } from '@/core/db';
-import { badRequest, conflict, forbidden, notFound, tooMany } from '@/core/errors';
 import { isVerifiedWgAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { badRequest, conflict, forbidden, notFound, tooMany } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { buildChorePatchUpdate } from '@/features/chores/chore-patch';

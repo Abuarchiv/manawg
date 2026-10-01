@@ -1,16 +1,16 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, idempotencyResponses, wgEvents } from '@/core/db';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { badRequest, serverError, tooMany } from '@/core/errors';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { badRequest, serverError, tooMany } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import {
 	RESPONSE_REPLAY_TTL_SECONDS,
 	getCachedResponse,
 	readIdempotencyKey,
-} from '@/core/idempotency';
+} from '@/core/idempotency-store';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {

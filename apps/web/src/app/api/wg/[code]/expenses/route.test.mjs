@@ -321,7 +321,7 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 		},
 		'@/core/db/transaction': { TransactionAbort },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			apiError: (message, status, code) =>
 				Response.json({ error: message, ...(code ? { code } : {}) }, { status }),
 			badRequest: (message = 'bad_request') => Response.json({ error: message }, { status: 400 }),
@@ -363,7 +363,7 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
 		},
 		'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 604_800,
 			getCachedResponse: async (scope, key) => {
 				const row = state.idempotency.get(claimId(scope, key));
@@ -661,7 +661,7 @@ function getHarness({ expenseCount, readLimited = false }) {
 		'@/core/db/private-image-deletions': stub,
 		'@/core/db/transaction': { TransactionAbort },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			apiError: stub.apiError,
 			badRequest: stub.badRequest,
 			conflict: stub.conflict,
@@ -679,7 +679,7 @@ function getHarness({ expenseCount, readLimited = false }) {
 		},
 		'@/core/guards/route-preamble': stub,
 		'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },
-		'@/core/idempotency': { RESPONSE_REPLAY_TTL_SECONDS: 604_800 },
+		'@/core/idempotency-store': { RESPONSE_REPLAY_TTL_SECONDS: 604_800 },
 		'@/core/infra/observability': stub,
 		'@/core/rate-limit': {
 			checkRateLimit: async (limiter, key) => {

@@ -20,9 +20,9 @@ import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { hasSessionCookie } from '@/core/auth/session-hint';
+import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { LogoMark } from '@/shared/components/ui/LogoMark';
 import { cn } from '@/shared/lib/cn';
-import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import {
 	CalendarDays,
 	Clock3,

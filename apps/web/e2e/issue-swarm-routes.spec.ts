@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import pathModule from 'node:path';
 import { expect, test } from '@playwright/test';
-import { serverError } from '../src/core/errors';
+import { serverError } from '../src/core/http/api-errors';
 import { apiFetch } from '../src/core/infra/api-client';
 import { logApiError } from '../src/core/infra/observability';
 import { createPresignedUpload } from '../src/core/infra/s3';

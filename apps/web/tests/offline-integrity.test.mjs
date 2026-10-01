@@ -1217,7 +1217,7 @@ test('server guard rejects a stale expected member only after cookie membership 
 			wgMembers: {},
 		},
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': { apiError: (code, status) => ({ code, status }) },
+		'@/core/http/api-errors': { apiError: (code, status) => ({ code, status }) },
 		'@/core/guards/member-token': { verifyMemberToken: () => false },
 		'@/core/infra/observability': { logApiError() {} },
 		'@/shared/lib/member-header': {

@@ -254,7 +254,7 @@ test('expense DELETE rechecks authorization and blocks an active capture under t
 				revokePrivateImageIfUnreferenced: async () => undefined,
 			},
 			'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
-			'@/core/errors': {
+			'@/core/http/api-errors': {
 				badRequest: (code: string) => responseError(code, 400),
 				conflict: (code: string) => responseError(code, 409),
 				forbidden: (code: string) => responseError(code, 403),
@@ -392,7 +392,7 @@ test('split settle authenticates before lookup and scopes expenses to the WG', a
 	const route = loadTs<{ POST: (req: Request, ctx: unknown) => Promise<Response> }>(SETTLE_ROUTE, {
 		'@/core/audit': { recordAuditEvent: async () => undefined },
 		'@/core/db': { db, expenses, expenseSplits: {} },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			badRequest: (code: string) => responseError(code, 400),
 			conflict: (code: string) => responseError(code, 409),
 			forbidden: (code: string) => responseError(code, 403),
@@ -583,7 +583,7 @@ test('expense PATCH preserves split integrity with fractional timestamps and con
 					}
 				},
 			},
-			'@/core/errors': {
+			'@/core/http/api-errors': {
 				badRequest: (code: string) => responseError(code, 400),
 				conflict: (code: string) => responseError(code, 409),
 				forbidden: (code: string) => responseError(code, 403),
@@ -904,7 +904,7 @@ test('both recurring expense PATCH routes guard financial edits without blocking
 	const common = {
 		'@/core/audit': { recordAuditEvent: async () => undefined },
 		'@/core/db': { db, recurringExpenses, wgMembers },
-		'@/core/errors': errors,
+		'@/core/http/api-errors': errors,
 		'@/core/guards/admin': { requireOwnerOrAdmin: async () => null },
 		'@/core/guards/require-wg-member': auth,
 		'@/core/guards/with-wg-route': { withWgRoute: (_name: string, handler: unknown) => handler },
@@ -936,7 +936,7 @@ test('both recurring expense PATCH routes guard financial edits without blocking
 			replayKey: () => 'replay-key',
 		},
 		'@/core/guards/route-preamble': { readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }) },
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
 			getCachedResponse: async () => null,
 			readIdempotencyKey: () => null,
@@ -1183,7 +1183,7 @@ test('recurring expense PATCH rejects an inactive payer', async () => {
 	}>(RECURRING_ROUTE, {
 		'@/core/audit': { recordAuditEvent: async () => undefined },
 		'@/core/db': { db, recurringExpenses, wgMembers },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			badRequest: (code: string) => responseError(code, 400),
 			notFound: (code: string) => responseError(code, 404),
 			tooMany: () => responseError('too_many', 429),
@@ -1237,7 +1237,7 @@ test('import route ignores mapping conflicts on skipped rows', async () => {
 	const response = await loadTs<{
 		POST: (req: Request, ctx: unknown) => Promise<Response>;
 	}>(IMPORT_ROUTE, {
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			badRequest: (code: string) => responseError(code, 400),
 			serverError: () => responseError('server_error', 500),
 			tooMany: () => responseError('too_many', 429),
@@ -1265,7 +1265,7 @@ test('import route ignores mapping conflicts on skipped rows', async () => {
 		'@/core/guards/route-preamble': {
 			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
 		},
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			getCachedResponse: async () => null,
 			readIdempotencyKey: () => null,
 			setCachedResponse: async () => undefined,
@@ -1339,7 +1339,7 @@ test('import helper does not validate member mappings for skipped rows', async (
 		commitImport: (input: unknown) => Promise<{ skipped: number }>;
 	}>(IMPORT_COMMIT, {
 		'@/core/activity-feed': { postSystemNotice: async () => undefined },
-		'@/core/idempotency': { RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60 },
+		'@/core/idempotency-store': { RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60 },
 		'@/core/audit': { recordAuditEvent: async () => undefined },
 		'@/core/db': { db, expenseImports, expenseSplits: {}, expenses: {}, wgMembers: {} },
 		'@/core/notifications/notification-dispatch': {
@@ -1386,7 +1386,7 @@ test('payer guard failures explain how to correct an expense and recurring templ
 		expenseSaveErrorMessage: (error: string) => string;
 		recurringTemplateSaveErrorMessage: (error: string) => string;
 	}>(path.join(ROOT, 'src/features/expenses/expense-errors.ts'), {
-		'@/core/errors/generic-error-codes': {
+		'@/core/http/error-codes': {
 			isAuthInvalidated: () => false,
 			isInvalidShareCode: () => false,
 			isNetworkError: () => false,
@@ -1451,7 +1451,7 @@ test('recurring expense creation requires the caller to bear a positive share', 
 		'@/core/db/transaction': {
 			TransactionAbort: class TransactionAbort extends Error {},
 		},
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			apiError: (code: string, status: number) => responseError(code, status),
 			badRequest: (code: string) => responseError(code, 400),
 			conflict: (code: string) => responseError(code, 409),
@@ -1484,7 +1484,7 @@ test('recurring expense creation requires the caller to bear a positive share', 
 			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
 		},
 		'@/core/guards/with-wg-route': { withWgRoute: (_name: string, handler: unknown) => handler },
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
 			getCachedResponse: async () => null,
 			readIdempotencyKey: () => null,

@@ -190,7 +190,7 @@ function harness(kind: Kind, warning: null | 'notification_delivery_failed' = nu
 			assertPrivateImageCanBeAttached: async () => undefined,
 		},
 		'@/core/db/transaction': { TransactionAbort: abort },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			apiError: (code: string, status: number) => responseError(code, status),
 			badRequest: (code: string) => responseError(code, 400),
 			conflict: (code: string) => responseError(code, 409),
@@ -221,7 +221,7 @@ function harness(kind: Kind, warning: null | 'notification_delivery_failed' = nu
 		},
 		'@/core/guards/route-preamble': { readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }) },
 		'@/core/guards/with-wg-route': { withWgRoute: (_name: string, handler: unknown) => handler },
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
 			getCachedResponse: async () => null,
 			readIdempotencyKey: (req: Request) => req.headers.get('idempotency-key'),

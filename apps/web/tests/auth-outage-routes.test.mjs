@@ -45,7 +45,7 @@ function sharedMocks(state) {
 			},
 		},
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			apiError: (error, status, code) =>
 				NextResponse.json(code === undefined ? { error } : { error, code }, { status }),
 			badRequest: (error) => NextResponse.json({ error }, { status: 400 }),
@@ -94,7 +94,7 @@ test('upload sign returns a retryable 503 when Supabase Auth is unavailable', as
 		},
 		'@/core/rate-limit': { checkRateLimit: unreachable('checkRateLimit'), uploadSignLimiter: {} },
 		'@/core/validators/image-url': { getPrivateImageUrl: unreachable('getPrivateImageUrl') },
-		'@/shared/lib/share-code': {
+		'@/core/utils/share-code': {
 			isValidShareCode: () => true,
 			normalizeShareCode: (value) => value,
 		},
@@ -155,7 +155,7 @@ test('account DELETE returns a retryable 503 when Supabase Auth is unavailable',
 	const { DELETE } = loadRoute('src/app/api/account/route.ts', {
 		...mocks,
 		'@/core/auth/delete-user': { deleteAuthUser: unreachable('deleteAuthUser') },
-		'@/core/auth/env': {
+		'@/core/auth/supabase-env': {
 			getSupabaseEnv: unreachable('getSupabaseEnv'),
 			hasSupabaseEnv: () => true,
 		},
@@ -185,8 +185,8 @@ function wgRouteMocks(state) {
 	return {
 		...mocks,
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
-			...mocks['@/core/errors'],
+		'@/core/http/api-errors': {
+			...mocks['@/core/http/api-errors'],
 			HTTP: {},
 			forbidden: (error) => NextResponse.json({ error }, { status: 403 }),
 		},
@@ -224,7 +224,7 @@ function wgRouteMocks(state) {
 		'@/core/guards/require-wg-admin': { requireWgAdmin: unreachable('requireWgAdmin') },
 		'@/core/guards/require-wg-member': { requireWgMember: unreachable('requireWgMember') },
 		'@/core/guards/route-preamble': { readShareCode },
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 60,
 			getCachedResponse: unreachable('getCachedResponse'),
 			readIdempotencyKey: unreachable('readIdempotencyKey'),
@@ -236,7 +236,7 @@ function wgRouteMocks(state) {
 			MEMBER_ID_HEADER: 'x-member-id',
 			MEMBER_TOKEN_HEADER: 'x-member-token',
 		},
-		'@/shared/lib/share-code': {
+		'@/core/utils/share-code': {
 			generateShareCode: unreachable('generateShareCode'),
 			isValidShareCode: () => true,
 		},

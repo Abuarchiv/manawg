@@ -176,7 +176,7 @@ function harness() {
 		'@/core/db': { db, idempotencyResponses, wgEvents },
 		'@/core/db/transaction': { TransactionAbort, withTransaction },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			badRequest: (code) => Response.json({ error: code }, { status: 400 }),
 			serverError: (code) => Response.json({ error: code }, { status: 500 }),
 			tooMany: (code) => Response.json({ error: code }, { status: 429 }),
@@ -209,7 +209,7 @@ function harness() {
 					}
 				},
 		},
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
 			getCachedResponse: async () => state.cachedResponse,
 			readIdempotencyKey: (req) => req.headers.get('idempotency-key'),

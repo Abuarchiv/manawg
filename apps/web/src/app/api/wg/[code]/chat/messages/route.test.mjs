@@ -172,7 +172,7 @@ function harness() {
 			},
 			withTransaction,
 		},
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			conflict: (error, code) =>
 				Response.json({ error, ...(code ? { code } : {}) }, { status: 409 }),
 		},
@@ -195,7 +195,7 @@ function harness() {
 		'@/core/http/read-json': {
 			readJsonBody: async (req) => ({ ok: true, body: await req.json() }),
 		},
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 604_800,
 			getCachedResponse: async () => (state.slot && !state.slot._claimed ? state.slot : null),
 			readIdempotencyKey: (req) => req.headers.get('idempotency-key'),

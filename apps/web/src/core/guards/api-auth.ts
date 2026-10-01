@@ -1,7 +1,7 @@
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers } from '@/core/db';
-import { apiError } from '@/core/errors';
 import { verifyMemberToken } from '@/core/guards/member-token';
+import { apiError } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
 import { EXPECTED_MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from '@/shared/lib/member-header';
 import { and, eq } from 'drizzle-orm';

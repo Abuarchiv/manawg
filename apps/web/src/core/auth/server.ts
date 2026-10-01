@@ -5,7 +5,7 @@ import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import type { User } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
-import { getSupabaseEnv, hasSupabaseEnv } from './env';
+import { getSupabaseEnv, hasSupabaseEnv } from './supabase-env';
 
 function isTransientAuthError(error: unknown): boolean {
 	return (

@@ -9,17 +9,17 @@ import {
 } from '@/core/db';
 import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
 import { TransactionAbort, lockExpensePayments, withTransaction } from '@/core/db/transaction';
-import { badRequest, conflict, payloadTooLarge } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { badRequest, conflict, payloadTooLarge } from '@/core/http/api-errors';
 import { readJsonBody } from '@/core/http/read-json';
 import {
 	RESPONSE_REPLAY_TTL_SECONDS,
 	getCachedResponse,
 	readIdempotencyKey,
-} from '@/core/idempotency';
+} from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';

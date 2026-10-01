@@ -5,7 +5,7 @@ import {
 	RESPONSE_REPLAY_TTL_SECONDS,
 	getCachedResponse,
 	readIdempotencyKey,
-} from '@/core/idempotency';
+} from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { and, eq, gt, sql } from 'drizzle-orm';
 

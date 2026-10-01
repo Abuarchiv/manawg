@@ -1,7 +1,7 @@
 import { calendarSubscriptions, wgEvents, wgMembers, wgs } from '@/core/db';
 import { withTransaction } from '@/core/db/transaction';
-import { notFound, serverError, tooMany } from '@/core/errors';
 import { isUuid } from '@/core/guards/api-auth';
+import { notFound, serverError, tooMany } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgReadLimiter } from '@/core/rate-limit';

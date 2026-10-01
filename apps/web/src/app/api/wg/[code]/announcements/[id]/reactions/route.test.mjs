@@ -112,7 +112,7 @@ function harness() {
 		'@/core/audit': { recordAuditEvent: async (event) => state.audits.push(event.eventType) },
 		'@/core/db': { announcements, announcementReactions },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': { badRequest: (error) => Response.json({ error }, { status: 400 }) },
+		'@/core/http/api-errors': { badRequest: (error) => Response.json({ error }, { status: 400 }) },
 		'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
 		'@/core/guards/require-wg-member': {
 			requireWgMember: async () => ({

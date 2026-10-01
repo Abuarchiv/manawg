@@ -2,11 +2,11 @@ import { recordAuditEvent } from '@/core/audit';
 import { announcementReactions, announcements, db } from '@/core/db';
 import { revokePrivateImageIfUnreferenced } from '@/core/db/private-image-deletions';
 import { lockExpensePayments, withTransaction } from '@/core/db/transaction';
-import { badRequest, forbidden, notFound, tooMany } from '@/core/errors';
 import { isVerifiedWgAdmin, requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { badRequest, forbidden, notFound, tooMany } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import {
 	type NotificationDispatchWarning,

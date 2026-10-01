@@ -4,18 +4,25 @@ import { db, wgMembers, wgs } from '@/core/db';
 import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { deleteWgCascade } from '@/core/db/delete-wg';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { apiError, badRequest, conflict, forbidden, notFound, serverError } from '@/core/errors';
 import { requireMember } from '@/core/guards/api-auth';
 import { deriveMemberToken } from '@/core/guards/member-token';
 import { requireWgAdmin } from '@/core/guards/require-wg-admin';
 import { readShareCode } from '@/core/guards/route-preamble';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
+import {
+	apiError,
+	badRequest,
+	conflict,
+	forbidden,
+	notFound,
+	serverError,
+} from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { logApiError } from '@/core/infra/observability';
+import { generateShareCode } from '@/core/utils/share-code';
 import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
-import { generateShareCode } from '@/shared/lib/share-code';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

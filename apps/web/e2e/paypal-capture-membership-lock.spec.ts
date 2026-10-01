@@ -131,7 +131,7 @@ test('PayPal capture rechecks active membership under the payment lock', async (
 				return membershipActive ? { memberId: callerId } : null;
 			},
 		},
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			badRequest: (code: string) => jsonResponse({ error: code }, 400),
 			conflict: (code: string) => jsonResponse({ error: code }, 409),
 			forbidden: (code: string) => jsonResponse({ error: code }, 403),

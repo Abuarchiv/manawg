@@ -1,7 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, idempotencyResponses, recurringExpenses, wgMembers } from '@/core/db';
 import { TransactionAbort } from '@/core/db/transaction';
-import { apiError, badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import {
 	ReplayCache,
@@ -12,12 +11,20 @@ import {
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { readShareCode } from '@/core/guards/route-preamble';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import {
+	apiError,
+	badRequest,
+	conflict,
+	notFound,
+	serverError,
+	tooMany,
+} from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import {
 	RESPONSE_REPLAY_TTL_SECONDS,
 	getCachedResponse,
 	readIdempotencyKey,
-} from '@/core/idempotency';
+} from '@/core/idempotency-store';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';

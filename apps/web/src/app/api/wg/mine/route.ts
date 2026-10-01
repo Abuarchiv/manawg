@@ -1,6 +1,6 @@
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
-import { apiError, serverError } from '@/core/errors';
+import { apiError, serverError } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';

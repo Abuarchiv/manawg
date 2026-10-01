@@ -66,7 +66,7 @@ function harness({ serverAvailable = true, unsubscribeResult = true } = {}) {
 	};
 	const client = loadTypeScriptModule('src/core/auth/client.ts', {
 		'@supabase/ssr': { createBrowserClient: () => ({ auth }) },
-		'./env': {
+		'./supabase-env': {
 			getSupabaseEnv: () => ({ url: 'https://auth.example.test', publishableKey: 'test' }),
 		},
 		'./next-path': { safeNextPath: (value) => value },

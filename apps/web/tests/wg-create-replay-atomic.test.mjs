@@ -148,7 +148,7 @@ function harness({
 		'@/core/db/schema': { LIMITS: { NAME_MAX: 100 } },
 		'@/core/db/transaction': { TransactionAbort, withTransaction },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			apiError: (code, status) => error(code, status),
 			badRequest: (code) => error(code, 400),
 			conflict: (code) => error(code, 409),
@@ -166,7 +166,7 @@ function harness({
 			},
 		},
 		'@/core/guards/member-token': { deriveMemberToken: () => null },
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
 			getCachedResponse: async () =>
 				state.slot?.body?._claimed ? null : (state.slot?.body ?? null),
@@ -180,7 +180,7 @@ function harness({
 			rateLimitFailMode: () => 'open',
 			registerLimiter: {},
 		},
-		'@/shared/lib/share-code': {
+		'@/core/utils/share-code': {
 			generateShareCode: () => 'MTE8PZAT',
 			isValidShareCode: () => true,
 		},

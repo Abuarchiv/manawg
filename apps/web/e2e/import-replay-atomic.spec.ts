@@ -109,7 +109,7 @@ function harness(initialSlot: unknown) {
 			idempotencyResponses,
 			wgMembers: {},
 		},
-		'@/core/idempotency': { RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60 },
+		'@/core/idempotency-store': { RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60 },
 		'@/core/notifications/notification-dispatch': {
 			dispatchNotificationSafely: async () => {
 				state.dispatches += 1;

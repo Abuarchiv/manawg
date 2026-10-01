@@ -1,6 +1,5 @@
 import { recordAuditEvent } from '@/core/audit';
 import { withTransaction } from '@/core/db/transaction';
-import { badRequest, conflict, notFound, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import {
 	ReplayCache,
@@ -10,8 +9,13 @@ import {
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
-import { getCachedResponse, readIdempotencyKey, releaseResponseSlot } from '@/core/idempotency';
+import {
+	getCachedResponse,
+	readIdempotencyKey,
+	releaseResponseSlot,
+} from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';

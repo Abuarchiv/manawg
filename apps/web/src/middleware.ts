@@ -1,6 +1,11 @@
 import { refreshSupabaseSession } from '@/core/auth/middleware';
 import { isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import {
+	contentSecurityPolicy,
+	crossOriginOpenerPolicy,
+	isPayPalSdkEnabled,
+} from '@/core/infra/security-headers';
+import {
 	checkRateLimit,
 	clientIpKey,
 	rateLimitFailMode,
@@ -8,11 +13,6 @@ import {
 	wgShareCodeLookupLimiter,
 	wgWriteLimiter,
 } from '@/core/rate-limit';
-import {
-	contentSecurityPolicy,
-	crossOriginOpenerPolicy,
-	isPayPalSdkEnabled,
-} from '@/shared/lib/security-headers';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);

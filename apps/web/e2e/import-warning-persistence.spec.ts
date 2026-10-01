@@ -76,7 +76,7 @@ function warningStore(row: ReplayRow | null) {
 			importId: string,
 			warning: Warning,
 		) => Promise<boolean>;
-	}>(path.join(process.cwd(), 'src/core/idempotency.ts'), {
+	}>(path.join(process.cwd(), 'src/core/idempotency-store.ts'), {
 		'@/core/db': { db, idempotencyResponses },
 		'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]+$/i },
 		'@/core/offline/replay-retention': { RESPONSE_REPLAY_TTL_SECONDS },
@@ -135,7 +135,7 @@ function importRoute(persist: () => Promise<boolean>, commit?: () => Promise<unk
 	const route = loadTs<{ POST: (req: Request, ctx: unknown) => Promise<Response> }>(
 		path.join(process.cwd(), 'src/app/api/wg/[code]/imports/commit/route.ts'),
 		{
-			'@/core/errors': {
+			'@/core/http/api-errors': {
 				badRequest: () => new Response(null, { status: 400 }),
 				serverError: () => new Response(null, { status: 500 }),
 				tooMany: () => new Response(null, { status: 429 }),
@@ -162,7 +162,7 @@ function importRoute(persist: () => Promise<boolean>, commit?: () => Promise<unk
 			'@/core/guards/route-preamble': {
 				readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
 			},
-			'@/core/idempotency': {
+			'@/core/idempotency-store': {
 				getCachedResponse: async () => null,
 				persistImportReplayWarning: persist,
 				readIdempotencyKey: () => 'key',

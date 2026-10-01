@@ -9,9 +9,9 @@ import {
 } from '@/core/db';
 import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
 import { TransactionAbort } from '@/core/db/transaction';
-import { badRequest, conflict, payloadTooLarge } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { badRequest, conflict, payloadTooLarge } from '@/core/http/api-errors';
 import { readJsonBody } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';

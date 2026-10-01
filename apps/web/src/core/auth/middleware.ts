@@ -2,7 +2,7 @@ import { isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { createServerClient } from '@supabase/ssr';
 import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
-import { getSupabaseEnv, hasSupabaseEnv } from './env';
+import { getSupabaseEnv, hasSupabaseEnv } from './supabase-env';
 
 function isTransientAuthError(error: unknown): boolean {
 	return (

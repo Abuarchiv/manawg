@@ -10,10 +10,10 @@ import { Spinner } from '@/components/ui/spinner';
 import { SubNav } from '@/components/wg/SubNav';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { isNetworkError } from '@/core/errors/generic-error-codes';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { useStableCallback } from '@/core/hooks/useStableCallback';
+import { isNetworkError } from '@/core/http/error-codes';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { InventoryList } from '@/features/inventory/components/InventoryList';
 import {

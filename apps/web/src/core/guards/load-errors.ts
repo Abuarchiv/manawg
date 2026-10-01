@@ -4,7 +4,7 @@ import {
 	isNetworkError,
 	isRetryableServerError,
 	isWgUnavailable,
-} from '@/core/errors/generic-error-codes';
+} from '@/core/http/error-codes';
 
 interface WgLoadErrorOptions {
 	verb?: 'konnte' | 'konnten';

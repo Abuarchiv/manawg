@@ -2,7 +2,6 @@ import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, shoppingItems } from '@/core/db';
 import { withTransaction } from '@/core/db/transaction';
-import { badRequest, conflict, forbidden, serverError, tooMany } from '@/core/errors';
 import { isWgAdmin } from '@/core/guards/admin';
 import {
 	ReplayCache,
@@ -12,8 +11,9 @@ import {
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { badRequest, conflict, forbidden, serverError, tooMany } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
-import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency';
+import { getCachedResponse, readIdempotencyKey, setCachedResponse } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';

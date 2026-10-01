@@ -1,7 +1,6 @@
 /**
- * Content-Security-Policy shared by both zones' middleware so the policy
- * can't drift between `web` and `landing` — they serve one origin and must
- * agree on what that origin is allowed to load.
+ * Content-Security-Policy and related header values applied by `middleware.ts`.
+ * Kept out of the middleware so the policy can be unit-tested without Next.
  */
 /**
  * `connect-src` origins the browser may reach beyond this origin.

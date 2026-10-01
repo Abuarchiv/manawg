@@ -14,7 +14,7 @@ function loadErrorMap(file) {
 	const loaded = { exports: {} };
 	new Function('require', 'module', 'exports', source)(
 		(name) =>
-			name === '@/core/errors/generic-error-codes'
+			name === '@/core/http/error-codes'
 				? {
 						isAuthInvalidated: () => false,
 						isInvalidShareCode: () => false,

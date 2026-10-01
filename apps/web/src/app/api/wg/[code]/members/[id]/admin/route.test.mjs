@@ -44,7 +44,7 @@ function harness({
 		'@/core/db/account-deletion': {
 			lockActiveAccountMember: async () => ({ id: adminId, role: actorRole }),
 		},
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			badRequest: (error) => json({ error }, 400),
 			conflict: (error) => json({ error }, 409),
 			forbidden: (error) => json({ error }, 403),

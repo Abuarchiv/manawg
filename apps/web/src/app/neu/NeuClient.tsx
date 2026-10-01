@@ -43,9 +43,9 @@ import {
 } from '@/core/infra/join-flow';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import posthog from '@/shared/lib/analytics';
 import { getIdentity, rememberWg } from '@/shared/lib/identity';
-import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import { ArrowRight, ChevronDown, Home, KeyRound, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';

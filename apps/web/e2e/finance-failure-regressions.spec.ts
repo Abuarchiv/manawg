@@ -245,7 +245,7 @@ async function patchWithDepartedMember(body: Record<string, unknown>, paused = f
 				}),
 			},
 		},
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			badRequest: (error: string) => Response.json({ error }, { status: 400 }),
 			apiError: (error: string, status: number) => Response.json({ error }, { status }),
 		},

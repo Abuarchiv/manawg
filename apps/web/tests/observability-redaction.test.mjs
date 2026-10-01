@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { format } from 'node:util';
-import { contentSecurityPolicy } from '../src/shared/lib/security-headers.ts';
+import { contentSecurityPolicy } from '../src/core/infra/security-headers.ts';
 
 test('Sentry CSP allows only the configured HTTPS DSN origin', () => {
 	const originalDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
@@ -386,7 +386,7 @@ test('idempotency cache failures never log a push endpoint or provider error', a
 	console.error = (...args) => calls.push(format(...args));
 	console.warn = (...args) => calls.push(format(...args));
 	try {
-		const { setCachedResponse } = loadCoreModule('../idempotency.ts', {
+		const { setCachedResponse } = loadCoreModule('../idempotency-store.ts', {
 			'@/core/db': {
 				db: {
 					update: () => {

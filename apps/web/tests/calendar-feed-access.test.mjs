@@ -190,7 +190,7 @@ function harness({
 		'@/core/db': { calendarSubscriptions, wgEvents, wgMembers, wgs },
 		'@/core/db/transaction': { withTransaction: async (operation) => operation(tx) },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			notFound: (code) => Response.json({ error: code }, { status: 404 }),
 			serverError: (code) => Response.json({ error: code }, { status: 500 }),
 			tooMany: (code) => Response.json({ error: code }, { status: 429 }),

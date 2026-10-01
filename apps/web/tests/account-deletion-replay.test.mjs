@@ -13,7 +13,7 @@ function load(cached, idempotencyOverrides = {}) {
 		'@/core/guards/replay-slot': {
 			claimReplaySlot: async () => (cached ? { won: false, cached } : { won: true }),
 		},
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			claimResponseSlot: async () => true,
 			getCachedResponse: async () => cached,
 			readIdempotencyKey: (req) => req.headers.get('idempotency-key'),

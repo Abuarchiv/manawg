@@ -1,8 +1,8 @@
 'use client';
 
+import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { z } from 'zod';
 import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from './member-header';
-import { isValidShareCode, normalizeShareCode } from './share-code';
 
 const STORAGE_PREFIX = 'manawg_identity:';
 const KNOWN_WGS_KEY = 'manawg_known_wgs';

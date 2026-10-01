@@ -7,10 +7,10 @@ import { LinkRow } from '@/components/wg/einstellungen/LinkRow';
 import { PayPalConnect } from '@/components/wg/einstellungen/PayPalConnect';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { WgNameSection } from '@/components/wg/einstellungen/WgNameSection';
+import { isPayPalSdkEnabled } from '@/core/infra/security-headers';
 import { InstallButton } from '@/shared/components/install-button';
 import { useTheme } from '@/shared/components/theme/ThemeProvider';
 import { haptic } from '@/shared/lib/haptics';
-import { isPayPalSdkEnabled } from '@/shared/lib/security-headers';
 import { Monitor, Moon, Sun } from 'lucide-react';
 
 // Ohne PayPal-Zugangsdaten keinen halbfertigen PayPal-Abschnitt zeigen.

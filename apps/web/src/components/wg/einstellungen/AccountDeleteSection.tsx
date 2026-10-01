@@ -16,7 +16,7 @@ import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { RATE_LIMITED_MESSAGE } from '@/core/errors/generic-error-codes';
+import { RATE_LIMITED_MESSAGE } from '@/core/http/error-codes';
 import { UserX } from 'lucide-react';
 import { useState } from 'react';
 

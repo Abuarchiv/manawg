@@ -31,7 +31,7 @@ function harness() {
 			},
 		},
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			apiError: (_message, status, error) => Response.json({ error }, { status }),
 			badRequest: (error) => Response.json({ error }, { status: 400 }),
 			notFound: (error) => Response.json({ error }, { status: 404 }),

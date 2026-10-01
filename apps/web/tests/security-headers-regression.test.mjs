@@ -4,7 +4,7 @@ import {
 	contentSecurityPolicy,
 	crossOriginOpenerPolicy,
 	isPayPalSdkEnabled,
-} from '../src/shared/lib/security-headers.ts';
+} from '../src/core/infra/security-headers.ts';
 
 const payPalOrigins = ['https://www.paypal.com', 'https://www.sandbox.paypal.com'];
 const ocrLanguageDataUrls = [

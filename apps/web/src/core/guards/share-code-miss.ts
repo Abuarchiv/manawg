@@ -1,4 +1,4 @@
-import { tooMany } from '@/core/errors';
+import { tooMany } from '@/core/http/api-errors';
 import { checkRateLimit, wgShareCodeMissLimiter } from '@/core/rate-limit';
 import type { NextResponse } from 'next/server';
 

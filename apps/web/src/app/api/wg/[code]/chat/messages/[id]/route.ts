@@ -2,11 +2,17 @@ import { recordAuditEvent } from '@/core/audit';
 import { db, wgChatMessages } from '@/core/db';
 import { revokePrivateImageIfUnreferenced } from '@/core/db/private-image-deletions';
 import { lockExpensePayments, withTransaction } from '@/core/db/transaction';
-import { badRequest, forbidden, notFound, requireVerifiedMember, tooMany } from '@/core/errors';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import {
+	badRequest,
+	forbidden,
+	notFound,
+	requireVerifiedMember,
+	tooMany,
+} from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { canEditMessage, sanitizeMessageBody } from '@/features/chat/chat-pure';

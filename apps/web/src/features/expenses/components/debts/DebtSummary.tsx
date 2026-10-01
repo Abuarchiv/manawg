@@ -33,6 +33,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { apiFetch } from '@/core/infra/api-client';
+import { isPayPalSdkEnabled } from '@/core/infra/security-headers';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
@@ -42,7 +43,6 @@ import { RemindButton } from '@/features/expenses/components/debts/RemindButton'
 import { getDebtOverview } from '@/features/expenses/debt-overview';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import { cn } from '@/shared/lib/cn';
-import { isPayPalSdkEnabled } from '@/shared/lib/security-headers';
 import { ChevronDown, History } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';

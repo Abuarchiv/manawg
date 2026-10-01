@@ -2,8 +2,8 @@
 
 import { retireWebPushEndpoint } from '@/core/notifications/push-subscribe';
 import { createBrowserClient } from '@supabase/ssr';
-import { getSupabaseEnv } from './env';
 import { safeNextPath } from './next-path';
+import { getSupabaseEnv } from './supabase-env';
 
 export type SocialProvider = 'google';
 

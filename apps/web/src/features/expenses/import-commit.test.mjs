@@ -95,7 +95,7 @@ function runCommit(existingExpenses) {
 			wgMembers,
 		},
 		'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
-		'@/core/idempotency': { RESPONSE_REPLAY_TTL_SECONDS: 60 },
+		'@/core/idempotency-store': { RESPONSE_REPLAY_TTL_SECONDS: 60 },
 		'@/core/notifications/notification-dispatch': {
 			dispatchNotificationSafely: async () => ({ warning: null }),
 		},

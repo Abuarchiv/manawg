@@ -128,7 +128,7 @@ function harness({
 					: null,
 		},
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			requireVerifiedMember: () => null,
 			serverError: (code) => Response.json({ error: code }, { status: 500 }),
 			tooMany: () => Response.json({ error: 'rate_limited' }, { status: 429 }),
@@ -151,7 +151,7 @@ function harness({
 			}),
 		},
 		'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
 			getCachedResponse: async () =>
 				state.slot?.body?._claimed ? null : (state.slot?.body ?? null),
