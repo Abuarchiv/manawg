@@ -9,6 +9,7 @@ const ts = require('typescript');
 // Pages whose loading logic lives in a feature hook instead of page.tsx.
 const LOAD_SOURCES = {
 	ausgaben: '../src/features/expenses/hooks/use-expenses-data.ts',
+	putzen: '../src/features/chores/hooks/use-putzen-page.ts',
 };
 
 function loadCallback(page, scope) {
