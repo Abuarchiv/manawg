@@ -644,6 +644,12 @@ export function explainOfflineActionFailure(
 			detail: 'Die Aktion bleibt gespeichert und wird erneut versucht, sobald das Netz zurück ist.',
 		};
 	}
+	if (status === 429 || error === 'rate_limited' || error === 'too_many_requests') {
+		return {
+			title: 'Zu viele Anfragen',
+			detail: 'Die Aktion bleibt in der Warteschlange und wird gleich automatisch erneut gesendet.',
+		};
+	}
 	if (error === 'not_a_member' || error === 'member_id_required' || error === 'member_id_invalid') {
 		return {
 			title: 'Mitglied nicht mehr gültig',

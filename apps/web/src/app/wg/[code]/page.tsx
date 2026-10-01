@@ -259,11 +259,6 @@ export default function WgHomePage() {
 						/>
 					</div>
 				)}
-				{loading && data && (
-					<output aria-live="polite" className="sr-only">
-						Dashboard wird neu geladen
-					</output>
-				)}
 
 				{!isNewWg && (
 					<section aria-labelledby="today-heading" className="flex min-w-0 flex-col gap-2">

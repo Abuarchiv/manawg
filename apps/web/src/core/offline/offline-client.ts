@@ -793,6 +793,9 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 									: `${failure.title}: ${failure.detail}`,
 					},
 				});
+				// Rate-Limit gilt für die ganze Sitzung: Restliche Aktionen würden
+				// nur ebenfalls 429 bekommen und ihre Wiederholungsfrist verlängern.
+				if (res.status === 429) break;
 			}
 		} catch (err) {
 			if (options?.signal?.aborted) break;
