@@ -108,6 +108,7 @@ export default async function WgLayout({ children, params }: Props) {
 	const initialIdentity: StoredIdentity = {
 		memberId,
 		name: memberName,
+		authUserId: user.id,
 		...(memberToken ? { memberToken } : {}),
 	};
 
@@ -119,18 +120,28 @@ export default async function WgLayout({ children, params }: Props) {
 			id: wgMembers.id,
 			name: wgMembers.name,
 			color: wgMembers.color,
+			role: wgMembers.role,
 			paypalMerchantId: wgMembers.paypalMerchantId,
 			deactivatedAt: wgMembers.deactivatedAt,
 		})
 		.from(wgMembers)
 		.where(eq(wgMembers.wgId, wg.id));
-	const members = memberRows.map(({ deactivatedAt, ...member }) => ({
+	// Same rule as isWgAdmin: the first active admin row. Session is server-verified.
+	const initialIsAdmin =
+		memberRows.find((row) => row.role === 'admin' && row.deactivatedAt === null)?.id === memberId;
+	const members = memberRows.map(({ deactivatedAt, role: _role, ...member }) => ({
 		...member,
 		active: deactivatedAt === null,
 	}));
 
 	return (
-		<WgShell code={code} wg={wg} members={members} initialIdentity={initialIdentity}>
+		<WgShell
+			code={code}
+			wg={wg}
+			members={members}
+			initialIdentity={initialIdentity}
+			initialIsAdmin={initialIsAdmin}
+		>
 			{children}
 		</WgShell>
 	);
@@ -141,6 +152,7 @@ function WgShell({
 	wg,
 	members,
 	initialIdentity,
+	initialIsAdmin,
 	children,
 }: {
 	code: string;
@@ -159,12 +171,19 @@ function WgShell({
 		active: boolean;
 	}>;
 	initialIdentity?: StoredIdentity;
+	initialIsAdmin?: boolean;
 	children: ReactNode;
 }) {
 	const wgBaseHref = `/wg/${encodeURIComponent(code)}`;
 
 	return (
-		<WgContextProvider key={wg.id} wg={wg} members={members} initialIdentity={initialIdentity}>
+		<WgContextProvider
+			key={wg.id}
+			wg={wg}
+			members={members}
+			initialIdentity={initialIdentity}
+			initialIsAdmin={initialIsAdmin}
+		>
 			<div
 				className="group/wg-shell min-h-svh bg-background"
 				style={{
