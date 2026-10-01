@@ -1,11 +1,11 @@
 'use client';
 
-import { Checkbox as CheckboxPrimitive } from '@base-ui-components/react/checkbox';
+import { Checkbox as CheckboxPrimitive } from '@base-ui/react/checkbox';
 import { type HTMLMotionProps, type SVGMotionProps, motion } from 'motion/react';
 import type * as React from 'react';
 
-import { useControlledState } from '@/hooks/use-controlled-state';
-import { getStrictContext } from '@/lib/get-strict-context';
+import { useControlledState } from '@/core/hooks/use-controlled-state';
+import { getStrictContext } from '@/shared/lib/get-strict-context';
 
 type CheckboxContextType = {
 	isChecked: boolean;

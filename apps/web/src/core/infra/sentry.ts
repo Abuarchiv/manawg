@@ -1,4 +1,3 @@
-import { captureException as captureSentryEvent, logger } from '@sentry/core';
 import * as Sentry from '@sentry/nextjs';
 import { sanitizeSentryBreadcrumb, sanitizeSentryEvent } from './sentry-privacy';
 
@@ -24,7 +23,7 @@ export function initializeSentry(): void {
 
 export function captureSentryException(error: unknown, tags: Record<string, string>): void {
 	try {
-		captureSentryEvent(error, { tags });
+		Sentry.captureException(error, { tags });
 	} catch {
 		// Optional telemetry must never break the caller.
 	}
@@ -32,7 +31,7 @@ export function captureSentryException(error: unknown, tags: Record<string, stri
 
 export function logSentryApiError(errorTypes: string[]): void {
 	try {
-		logger.error('api_route_error', {
+		Sentry.logger.error('api_route_error', {
 			error_types: errorTypes.join(' | '),
 		});
 	} catch {

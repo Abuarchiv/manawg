@@ -12,7 +12,7 @@ export const EXPECTED_MEMBER_ID_HEADER = 'x-manawg-expected-member-id';
 
 /**
  * Header carrying the HMAC session token derived from
- * `MEMBER_SESSION_SECRET` (see `@/lib/wg/member-token`). Optional on most
+ * `MEMBER_SESSION_SECRET` (see `@/core/guards/member-token`). Optional on most
  * requests (legacy `x-manawg-member-id`-only auth still works for
  * non-destructive routes) but required for admin-gated mutations
  * (WG delete/rename/rotate-share-code).

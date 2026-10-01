@@ -16,7 +16,7 @@ const storedIdentitySchema = z.object({
 	name: z.string().min(1).max(NAME_MAX_LENGTH),
 	// Used only to keep local offline records separated when this browser switches accounts.
 	authUserId: z.string().regex(UUID_V4_PATTERN).optional(),
-	// Session token (see @/lib/wg/member-token). Optional so identities
+	// Session token (see @/core/guards/member-token). Optional so identities
 	// stored before this field existed keep parsing — they just stay
 	// "legacy" until WgContextProvider's self-heal effect backfills it.
 	memberToken: z.string().min(1).optional(),
