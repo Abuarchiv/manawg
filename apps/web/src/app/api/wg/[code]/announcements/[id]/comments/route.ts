@@ -144,7 +144,7 @@ export const POST = withWgRoute<{ id: string }>(
 		}
 
 		const { comment, authorMemberId } = outcome.effect;
-		void recordAuditEvent({
+		await recordAuditEvent({
 			wgId: wg.id,
 			memberId: auth.member.memberId,
 			eventType: 'announcement.comment.created',
@@ -155,7 +155,7 @@ export const POST = withWgRoute<{ id: string }>(
 				announcementId: id,
 				contentPreview: parsed.data.content.slice(0, 120),
 			},
-		}).catch(() => undefined);
+		});
 
 		let warning: NotificationDispatchWarning = null;
 		try {

@@ -189,6 +189,8 @@ export const POST = withWgRoute<{ id: string }>('inventory consume', async (req,
 		return NextResponse.json(responseBody);
 	} catch (err) {
 		replayReservation?.reject(err);
+		// A rolled-back write must not leave its claim blocking the same-key retry.
+		if (idemScope && idemKey) await releaseResponseSlot(idemScope, idemKey);
 		throw err;
 	}
 });
