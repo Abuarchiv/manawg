@@ -11,7 +11,6 @@
 const HTTP_NOT_FOUND = 404;
 const HTTP_UNAUTHORIZED = 401;
 const HTTP_SERVER_ERROR = 500;
-const HTTP_TOO_MANY = 429;
 
 export function isNetworkError(code: string | null, status?: number): boolean {
 	return status === 0 || code === 'Netzwerkfehler' || code === 'Failed to fetch';
@@ -19,8 +18,18 @@ export function isNetworkError(code: string | null, status?: number): boolean {
 
 export const RATE_LIMITED_MESSAGE = 'Zu viele Anfragen. Warte kurz und versuche es dann erneut.';
 
+/**
+ * The server names its 429s `too_many_requests` (default), `rate_limited`
+ * (middleware, most routes) or a feature-specific `*_rate_limited`. Callers that
+ * only keep the code, not the status, must still recognise all of them.
+ */
 export function isRateLimited(code: string | null, status?: number): boolean {
-	return status === 429 || code === 'too_many_requests';
+	return (
+		status === 429 ||
+		code === 'too_many_requests' ||
+		code === 'rate_limited' ||
+		code?.endsWith('_rate_limited') === true
+	);
 }
 
 export function isRetryableServerError(code: string | null, status?: number): boolean {
@@ -28,8 +37,8 @@ export function isRetryableServerError(code: string | null, status?: number): bo
 		code === 'unexpected_error' ||
 		code === 'server_error' ||
 		code === 'db_error' ||
-		code === 'too_many_requests' ||
-		status === HTTP_TOO_MANY ||
+		code === 'rate_limiter_unavailable' ||
+		isRateLimited(code, status) ||
 		(status !== undefined && status >= HTTP_SERVER_ERROR)
 	);
 }

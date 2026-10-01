@@ -5,6 +5,7 @@ const ABSENCE_ERRORS: Record<string, string> = {
 	date_range_invalid: `${ABSENCE_SUBJECT}: Das Enddatum liegt vor dem Startdatum.`,
 	reason_invalid: `${ABSENCE_SUBJECT}: Der Grund darf höchstens 120 Zeichen haben.`,
 	member_not_in_wg: `${ABSENCE_SUBJECT}: Dieses Mitglied ist nicht mehr in dieser WG.`,
+	absence_overlaps_existing: `${ABSENCE_SUBJECT}: In diesem Zeitraum ist für dieses Mitglied bereits eine Abwesenheit eingetragen.`,
 	insert_failed: `${ABSENCE_SUBJECT}: Prüfe den Putzplan und versuche es erneut.`,
 	invalid_json: `${ABSENCE_SUBJECT}: Die Anfrage war ungültig.`,
 	invalid_body: `${ABSENCE_SUBJECT}: Die Anfrage war ungültig.`,

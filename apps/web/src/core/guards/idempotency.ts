@@ -40,9 +40,8 @@ export type ReplayReservation<T> =
  * This is deliberately separate from (and faster than) the cross-process
  * Postgres claim in {@link claimReplaySlotWithRetry} below, which covers
  * the case where the duplicate request lands on a *different* Lambda
- * instance. Both layers are required — see the "RED BUG-002" test in
- * expenses/route.test.ts, which exercises the local-map layer even when
- * the Postgres cache read is stale/null.
+ * instance. Both layers are required: the local map still deduplicates
+ * when the Postgres cache read is stale or null.
  *
  * Extracted verbatim (semantics unchanged) from the hand-rolled
  * `expenseCreateReplay` Map in expenses/route.ts so both the expenses and
@@ -114,7 +113,7 @@ export function replayKey(scope: string, key: string): string {
 
 /**
  * Cross-process response-replay claim with poll-and-retry, backed by the
- * Postgres claim table in `@/core/idempotency` (deliberately not Redis — see
+ * Postgres claim table in `@/core/idempotency-store` (deliberately not Redis — see
  * that module's doc comment re: the iter 13 P0 outage where an empty-env
  * Redis client silently no-opped and let duplicate expense inserts through).
  *
