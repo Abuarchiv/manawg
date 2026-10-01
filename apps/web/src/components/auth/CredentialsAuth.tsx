@@ -6,7 +6,13 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { WEAK_PASSWORD_MESSAGE, isWeakPasswordError } from '@/core/auth/password-errors';
+import {
+	AUTH_FAILURE_MESSAGES,
+	type AuthFailure,
+	WEAK_PASSWORD_MESSAGE,
+	classifyAuthError,
+	isWeakPasswordError,
+} from '@/core/auth/password-errors';
 import { type ReactElement, useEffect, useState } from 'react';
 
 /** Minimum for passwords chosen now (sign-up, reset); Supabase enforces the same value. */
@@ -32,10 +38,12 @@ function isValidEmail(value: string): boolean {
 	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function GenericAuthError(): ReactElement {
+function GenericAuthError({ failure = 'other' }: { failure?: AuthFailure }): ReactElement {
 	return (
 		<ErrorBox>
-			Die Anmeldung konnte gerade nicht abgeschlossen werden. Bitte versuche es erneut.
+			{failure === 'other'
+				? 'Die Anmeldung konnte gerade nicht abgeschlossen werden. Bitte versuche es erneut.'
+				: AUTH_FAILURE_MESSAGES[failure]}
 		</ErrorBox>
 	);
 }
@@ -51,6 +59,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 	const [emailError, setEmailError] = useState<
 		'generic' | 'invalid' | 'weak-password' | 'reset-invalid' | null
 	>(null);
+	const [failure, setFailure] = useState<AuthFailure>('other');
 	const [emailMessage, setEmailMessage] = useState<string | null>(null);
 	const [phoneError, setPhoneError] = useState<
 		'generic' | 'invalid-phone' | 'invalid-otp' | 'unavailable' | null
@@ -73,11 +82,13 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 	}, []);
 
 	function resetEmailFeedback(): void {
+		setFailure('other');
 		setEmailError(null);
 		setEmailMessage(null);
 	}
 
 	function resetPhoneFeedback(): void {
+		setFailure('other');
 		setPhoneError(null);
 		setPhoneMessage(null);
 	}
@@ -116,6 +127,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 				);
 			}
 		} catch (error) {
+			setFailure(classifyAuthError(error));
 			setEmailError(mode === 'sign-up' && isWeakPasswordError(error) ? 'weak-password' : 'generic');
 		} finally {
 			setBusy(null);
@@ -137,7 +149,8 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 			setEmailMessage(
 				'Wenn zu dieser E-Mail-Adresse ein Konto gehört, erhältst du gleich einen Link zum Zurücksetzen des Passworts.',
 			);
-		} catch {
+		} catch (error) {
+			setFailure(classifyAuthError(error));
 			setEmailError('generic');
 		} finally {
 			setBusy(null);
@@ -162,6 +175,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 			setPhoneMessage('Wenn die Nummer verwendet werden kann, wurde ein SMS-Code gesendet.');
 		} catch (error) {
 			const { isPhoneAuthUnavailable } = await import('@/core/auth/client');
+			setFailure(classifyAuthError(error));
 			setPhoneError(isPhoneAuthUnavailable(error) ? 'unavailable' : 'generic');
 		} finally {
 			setBusy(null);
@@ -185,7 +199,8 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 			const result = await verifyPhoneOtp(phone, otp);
 			if (result.sessionEstablished) onAuthenticated();
 			else setPhoneError('generic');
-		} catch {
+		} catch (error) {
+			setFailure(classifyAuthError(error));
 			setPhoneError('generic');
 		} finally {
 			setBusy(null);
@@ -291,7 +306,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 						</Button>
 						{emailError === 'generic' && (
 							<div id="auth-email-error">
-								<GenericAuthError />
+								<GenericAuthError failure={failure} />
 							</div>
 						)}
 						{emailError === 'invalid' && (
@@ -393,7 +408,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 							)}
 							{phoneError === 'generic' && (
 								<div id="auth-phone-error">
-									<GenericAuthError />
+									<GenericAuthError failure={failure} />
 								</div>
 							)}
 							{phoneError === 'invalid-phone' && (
