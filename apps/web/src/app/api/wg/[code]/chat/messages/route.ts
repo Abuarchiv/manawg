@@ -456,6 +456,8 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 			event: 'chat.message',
 			payload: { messageId: outcome.created.id, actorName: auth.member.name, preview },
 			excludeMemberId: auth.member.memberId,
+			// Erwähnte bekommen nur die gezielte Mention-Push, nicht zusätzlich die allgemeine.
+			excludeMemberIds: outcome.mentionIds,
 		}),
 	];
 	if (outcome.mentionIds.length > 0) {

@@ -17,6 +17,7 @@ import { EventEditModal } from '@/features/events/components/EventEditModal';
 import { useCalendarPage } from '@/features/events/hooks/use-calendar-page';
 import { haptic } from '@/shared/lib/haptics';
 import { CalendarDays, List, Plus, RotateCcw } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 type ViewMode = 'month' | 'list';
@@ -30,6 +31,7 @@ export default function KalenderPage() {
 		return new Date(now.getFullYear(), now.getMonth(), 1);
 	});
 	const calendar = useCalendarPage(month);
+	const highlightEventId = useSearchParams().get('highlight');
 	const { loading, loadError, actionError, editingOccurrence } = calendar;
 	// Liste als Default: eine WG hat selten mehr als eine Handvoll Termine im
 	// Monat — das Grid ist die Ausnahme-Ansicht, nicht der Einstieg.
@@ -135,6 +137,7 @@ export default function KalenderPage() {
 								choreOccurrences={calendar.upcomingChoreOccurrences}
 								onSelect={calendar.selectOccurrence}
 								wgBaseHref={wgBaseHref}
+								highlightEventId={highlightEventId}
 							/>
 						)}
 					</section>

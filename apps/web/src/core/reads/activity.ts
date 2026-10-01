@@ -453,8 +453,11 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 	return items.sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, input.limit ?? 50);
 }
 
-/** Announcement kinds that turn into a reminder once they stay open too long. */
-export const REMINDER_ANNOUNCEMENT_KINDS = ['question', 'request', 'task'] as const;
+/**
+ * Announcement kinds that turn into a reminder once they stay open too long: those the
+ * pinnwand lets members close ("Erledigt"). Infos and decisions fade out on their own.
+ */
+export const REMINDER_ANNOUNCEMENT_KINDS = ['question', 'problem', 'request'] as const;
 
 export function getActivityReminders(
 	input: ActivityReminderInput,

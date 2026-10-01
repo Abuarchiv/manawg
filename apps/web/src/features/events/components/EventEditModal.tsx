@@ -179,6 +179,7 @@ export function EventEditModal({
 
 	async function handleDelete(): Promise<void> {
 		if (!event) return;
+		setError(null);
 		setDeleting(true);
 		try {
 			await onDelete(event.id);

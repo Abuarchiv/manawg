@@ -5,8 +5,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import { useCalendarSubscription } from '@/features/events/hooks/use-calendar-subscription';
-import { ChevronRight, ExternalLink, Loader2, RefreshCw, Trash2 } from 'lucide-react';
+import { ChevronRight, ExternalLink, RefreshCw, Trash2 } from 'lucide-react';
 
 export function CalendarSubscriptionSection({ encodedShareCode }: { encodedShareCode: string }) {
 	const feed = useCalendarSubscription(encodedShareCode);
@@ -126,7 +127,7 @@ export function CalendarSubscriptionSection({ encodedShareCode }: { encodedShare
 							onClick={() => void feed.create()}
 							className="max-w-full self-start whitespace-normal text-left"
 						>
-							{feed.busy ? <Loader2 data-icon="inline-start" aria-hidden /> : null}
+							{feed.busy ? <Spinner data-icon="inline-start" aria-hidden /> : null}
 							Kalender-Feed erstellen
 						</Button>
 					)}
