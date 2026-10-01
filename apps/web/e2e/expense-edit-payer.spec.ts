@@ -96,7 +96,7 @@ async function openAusgaben(page: import('@playwright/test').Page, expenses: Exp
 
 test('keeps the payer selectable while creating an expense', async ({ page }) => {
 	await openAusgaben(page, []);
-	await page.getByRole('button', { name: 'Ausgabe erfassen' }).first().click();
+	await page.getByRole('button', { name: 'Ausgabe hinzufügen' }).first().click();
 	await expect(page.getByLabel('Bezahlt von')).toBeEnabled();
 	await expect(page.getByLabel('Aufteilung: Gleichmäßig')).toBeEnabled();
 });

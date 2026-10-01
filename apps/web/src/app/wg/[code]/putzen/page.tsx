@@ -178,7 +178,9 @@ export default function PutzenPage() {
 				<Empty>
 					<EmptyHeader>
 						<EmptyTitle>Noch keine Aufgaben geladen</EmptyTitle>
-						<EmptyDescription>Versuche es erneut.</EmptyDescription>
+						<EmptyDescription>
+							Versuche es erneut, sobald die Verbindung wieder da ist.
+						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : items.length === 0 && !initialLoading ? (
@@ -281,7 +283,7 @@ export default function PutzenPage() {
 			<ThumbAction>
 				<Button type="button" className="min-h-11 w-full" onClick={() => setShowForm(true)}>
 					<Plus data-icon="inline-start" aria-hidden />
-					Putzaufgabe erfassen
+					Putzaufgabe hinzufügen
 				</Button>
 			</ThumbAction>
 		</div>

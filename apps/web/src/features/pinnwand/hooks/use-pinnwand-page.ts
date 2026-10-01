@@ -617,7 +617,7 @@ export function usePinnwandPage() {
 			resolvedAt: nextStatus === 'resolved' ? new Date().toISOString() : null,
 			resolvedByMemberId: nextStatus === 'resolved' ? identity.memberId : null,
 		}));
-		if (nextStatus === 'resolved') toast.success('Erledigt – liegt jetzt unter „Geklärt & älter“');
+		if (nextStatus === 'resolved') toast.success('Erledigt – liegt jetzt unter „Geklärt & älter“.');
 		void patchAnnouncement(announcement.id, { status: nextStatus }, pendingKey, previousItems);
 	}
 

@@ -57,7 +57,7 @@ export default function AusgabenPage() {
 							? 'Fixkosten-Vorlage bearbeiten'
 							: editingExpense
 								? 'Ausgabe bearbeiten'
-								: 'Ausgabe erfassen'
+								: 'Ausgabe hinzufügen'
 					}
 					previewSplits={page.splitPreview?.ok ? page.splitPreview.splits : null}
 					pendingPrefillDescription={form.pendingPrefill?.description ?? null}
@@ -208,7 +208,7 @@ export default function AusgabenPage() {
 					}}
 				>
 					<Plus data-icon="inline-start" aria-hidden />
-					Ausgabe erfassen
+					Ausgabe hinzufügen
 				</Button>
 			</ThumbAction>
 		</div>

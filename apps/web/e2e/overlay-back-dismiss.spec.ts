@@ -44,7 +44,7 @@ test('system back closes an open drawer instead of leaving the page', async ({ p
 	await navigateToFeature(page, `/wg/${shareCode}/putzen`);
 	await dismissOnboarding(page);
 
-	const trigger = page.getByRole('button', { name: 'Putzaufgabe erfassen', exact: true });
+	const trigger = page.getByRole('button', { name: 'Putzaufgabe hinzufügen', exact: true });
 	await trigger.click();
 	const drawer = page.getByRole('dialog');
 	await expect(drawer).toBeVisible();

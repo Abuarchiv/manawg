@@ -926,7 +926,7 @@ export function usePutzenPage() {
 			}
 
 			setCompleteConfirmId(null);
-			toast.success('Aufgabe erledigt ✓');
+			toast.success('Aufgabe erledigt.');
 			void load(false);
 		}
 

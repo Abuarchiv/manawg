@@ -219,7 +219,7 @@ export function useShoppingAdd({
 				setNewName('');
 				removeDraft(draftKey);
 			}
-			toast.success('Hinzugefügt');
+			toast.success('Artikel hinzugefügt.');
 			const warningMessage = notificationWarningMessage(res.data.warning);
 			if (warningMessage) toast.info(warningMessage);
 			// Show the created row right away (the POST already returned it) instead of

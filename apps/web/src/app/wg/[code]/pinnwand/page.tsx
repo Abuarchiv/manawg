@@ -161,7 +161,10 @@ export default function PinnwandPage(): React.ReactElement {
 					Noch keine Beiträge geladen.
 				</EmptyState>
 			) : items.length === 0 ? (
-				<EmptyState icon={Megaphone} hint="Teile eine Frage oder Info über das Plus unten rechts.">
+				<EmptyState
+					icon={Megaphone}
+					hint="Tippe unten auf „Beitrag hinzufügen“, um eine Frage oder Info zu teilen."
+				>
 					Noch keine Beiträge
 				</EmptyState>
 			) : (
@@ -231,7 +234,7 @@ export default function PinnwandPage(): React.ReactElement {
 						}}
 					>
 						<Plus data-icon="inline-start" aria-hidden />
-						{composer.hasDraft ? 'Entwurf fortsetzen' : 'Beitrag erstellen'}
+						{composer.hasDraft ? 'Entwurf fortsetzen' : 'Beitrag hinzufügen'}
 					</Button>
 				</ThumbAction>
 			)}

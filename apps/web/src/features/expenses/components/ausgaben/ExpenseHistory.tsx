@@ -57,7 +57,9 @@ export function ExpenseHistory({
 				<Empty>
 					<EmptyHeader>
 						<EmptyTitle>Noch keine Ausgaben geladen</EmptyTitle>
-						<EmptyDescription>Versuche es erneut, um eure Einträge zu sehen.</EmptyDescription>
+						<EmptyDescription>
+							Versuche es erneut, sobald die Verbindung wieder da ist.
+						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : expenseCount === 0 && !initialLoading ? (
@@ -65,7 +67,7 @@ export function ExpenseHistory({
 					<EmptyHeader>
 						<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
 						<EmptyDescription>
-							Erfasse eure erste gemeinsame Ausgabe über das Plus unten rechts.
+							Tippe unten auf „Ausgabe hinzufügen“, um eure erste gemeinsame Ausgabe einzutragen.
 						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
