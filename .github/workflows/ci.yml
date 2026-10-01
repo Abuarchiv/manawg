@@ -78,9 +78,11 @@ jobs:
   # here, outside the environment, so PR-branch deployments skip instead of
   # being rejected by the environment protection rules as a failed job.
   # Pushes to main that were already superseded skip the same way.
+  # Preview gates only run while repo variable PREVIEW_GATE is `on` (release time).
   preview-source:
     if: >-
       always() &&
+      vars.PREVIEW_GATE == 'on' &&
       (
         github.event_name == 'deployment_status' ||
         (github.event_name == 'push' && github.ref == 'refs/heads/main')
