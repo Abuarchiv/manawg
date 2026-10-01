@@ -29,6 +29,17 @@ const TESSERACT_LANGUAGE_DATA_URLS = [
 	'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
 ];
 
+/** An invalid or non-HTTPS provider URL must not widen the policy. */
+function httpsOrigin(value: string | undefined): URL | null {
+	if (!value) return null;
+	try {
+		const url = new URL(value);
+		return url.protocol === 'https:' ? url : null;
+	} catch {
+		return null;
+	}
+}
+
 export function isPayPalSdkEnabled(
 	clientId: string | undefined,
 	partnerAttributionId: string | undefined,
@@ -66,38 +77,17 @@ export function contentSecurityPolicy(
 	if (payPalSdkEnabled) {
 		connectSrc.push(...PAYPAL_FRAME_CONNECT_ORIGINS);
 	}
-	const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
-	if (posthogHost) {
-		try {
-			const apiOrigin = new URL(posthogHost);
-			if (apiOrigin.protocol === 'https:') {
-				connectSrc.push(apiOrigin.origin);
-				const assetsOrigin = new URL(apiOrigin.origin);
-				assetsOrigin.hostname = apiOrigin.hostname.replace('.i.', '-assets.i.');
-				scriptSrc.push(assetsOrigin.origin);
-			}
-		} catch {
-			// Invalid analytics configuration must not widen the policy.
-		}
+	const posthogOrigin = httpsOrigin(process.env.NEXT_PUBLIC_POSTHOG_HOST);
+	if (posthogOrigin) {
+		connectSrc.push(posthogOrigin.origin);
+		const assetsOrigin = new URL(posthogOrigin.origin);
+		assetsOrigin.hostname = posthogOrigin.hostname.replace('.i.', '-assets.i.');
+		scriptSrc.push(assetsOrigin.origin);
 	}
-	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-	if (supabaseUrl) {
-		try {
-			const authOrigin = new URL(supabaseUrl);
-			if (authOrigin.protocol === 'https:') connectSrc.push(authOrigin.origin);
-		} catch {
-			// Invalid auth configuration must not widen the policy.
-		}
-	}
-	const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
-	if (sentryDsn) {
-		try {
-			const sentryOrigin = new URL(sentryDsn);
-			if (sentryOrigin.protocol === 'https:') connectSrc.push(sentryOrigin.origin);
-		} catch {
-			// Invalid observability configuration must not widen policy.
-		}
-	}
+	const supabaseOrigin = httpsOrigin(process.env.NEXT_PUBLIC_SUPABASE_URL);
+	if (supabaseOrigin) connectSrc.push(supabaseOrigin.origin);
+	const sentryOrigin = httpsOrigin(process.env.NEXT_PUBLIC_SENTRY_DSN);
+	if (sentryOrigin) connectSrc.push(sentryOrigin.origin);
 	if (process.env.NODE_ENV === 'development') {
 		scriptSrc.push("'unsafe-eval'");
 	}

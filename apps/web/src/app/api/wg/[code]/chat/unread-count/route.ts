@@ -62,9 +62,7 @@ export const GET = withWgRoute(
 	},
 	{
 		fixture: () => {
-			return NextResponse.json(toChatUnreadCountResponse(0), {
-				headers: { 'Cache-Control': 'private, no-store' },
-			});
+			return NextResponse.json(toChatUnreadCountResponse(0));
 		},
 	},
 );

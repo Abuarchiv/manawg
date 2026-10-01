@@ -695,9 +695,9 @@ test.describe('pinnwand refresh', () => {
 		});
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/pinnwand`);
 		await dismissOnboarding(page);
-		await page.getByRole('button', { name: 'Beitrag erstellen' }).click();
+		await page.getByRole('button', { name: 'Beitrag hinzufügen' }).click();
 		await page.getByLabel('Beitragstext').fill('Hallo');
 		await page.getByRole('button', { name: 'Posten', exact: true }).click();
-		await expect(page.getByRole('button', { name: 'Beitrag erstellen' })).toBeFocused();
+		await expect(page.getByRole('button', { name: 'Beitrag hinzufügen' })).toBeFocused();
 	});
 });

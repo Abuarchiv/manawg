@@ -32,7 +32,7 @@ test('online attachment error maps ask residents to upload a replacement image',
 	const expense = loadErrorMap('src/features/expenses/expense-errors.ts');
 	const announcement = loadErrorMap('src/features/pinnwand/announcement-errors.ts');
 	const chat = readFileSync(
-		path.join(process.cwd(), 'src/features/chat/components/ChatView.tsx'),
+		path.join(process.cwd(), 'src/features/chat/hooks/use-chat-room.ts'),
 		'utf8',
 	);
 	assert.match(

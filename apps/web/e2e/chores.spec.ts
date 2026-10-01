@@ -459,7 +459,7 @@ test.describe('chore next assignee', () => {
 	test('restores the automatic assignee for a titled draft and posts it', async ({ page }) => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 		await openPutzen(page, [viewer], [], []);
-		await page.getByRole('button', { name: 'Putzaufgabe erfassen' }).click();
+		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 
 		const title = page.getByPlaceholder('z. B. Müll rausbringen');
 		const assignee = page.getByLabel('Zuständig');
@@ -486,7 +486,7 @@ test.describe('chore next assignee', () => {
 	test('preserves explicit and legacy unassigned chore drafts', async ({ page }) => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 		await openPutzen(page, [viewer], [], []);
-		await page.getByRole('button', { name: 'Putzaufgabe erfassen' }).click();
+		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 
 		const title = page.getByPlaceholder('z. B. Müll rausbringen');
 		const assignee = page.getByLabel('Zuständig');
@@ -528,7 +528,7 @@ test.describe('chore next assignee', () => {
 	test('does not reopen an untouched empty chore form after reload', async ({ page }) => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 		await openPutzen(page, [viewer], [], []);
-		await page.getByRole('button', { name: 'Putzaufgabe erfassen' }).click();
+		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 		const title = page.getByPlaceholder('z. B. Müll rausbringen');
 		await expect(title).toBeVisible();
 		await page.reload();
@@ -715,7 +715,7 @@ test.describe('chore swap coordination (pilot DB worker)', () => {
 
 			await page.goto(`/wg/${shareCode}/putzen`);
 			await expect(page.locator(`li#chore-${choreId}`)).toContainText('wöchentlich');
-			await page.getByRole('button', { name: 'Putzaufgabe erfassen' }).click();
+			await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 			await expect(page.getByText('Erste Fälligkeit: in 7 Tagen.', { exact: false })).toBeVisible();
 		} finally {
 			for (const announcementId of createdAnnouncementIds) {

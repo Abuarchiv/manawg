@@ -280,9 +280,9 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						/>
 					)}
 					{inviteCode ? (
-						<WgWelcome variant="invitation" code={inviteCode} compact />
+						<WgWelcome variant="invitation" code={inviteCode} />
 					) : (
-						<WgWelcome variant="create" compact />
+						<WgWelcome variant="create" />
 					)}
 					{module ? (
 						<PublicModulePreview module={module} homeHref={publicHref('/')} />

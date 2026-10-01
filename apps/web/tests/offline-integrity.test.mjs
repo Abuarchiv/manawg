@@ -127,6 +127,7 @@ function makeQueueModule({
 		'src/core/offline/offline-client.ts',
 		{
 			'@/core/infra/api-client': { apiFetch },
+			'@/core/utils/browser': { safeLocalStorage: () => window.localStorage },
 			'@/shared/lib/identity': { getIdentity: identity },
 			'./offline-images': {
 				isPendingImageToken: (value) =>
@@ -165,9 +166,9 @@ async function setQueue(module, actions) {
 
 test('list deletes stay pending while queued removal waits and clear pending on every outcome', async () => {
 	for (const [relativePath, name] of [
-		['src/app/wg/[code]/einkauf/page.tsx', 'remove'],
-		['src/app/wg/[code]/putzen/page.tsx', 'removeAbsence'],
-		['src/app/wg/[code]/putzen/page.tsx', 'handleRemove'],
+		['src/features/shopping/hooks/use-shopping-page.ts', 'remove'],
+		['src/features/chores/hooks/use-putzen-page.ts', 'removeAbsence'],
+		['src/features/chores/hooks/use-putzen-page.ts', 'handleRemove'],
 	]) {
 		const source = readSource(relativePath);
 		const tree = ts.createSourceFile(
@@ -885,6 +886,7 @@ test('resolved upload URL is persisted to the queue before its IndexedDB blob is
 	const module = loadTs(
 		'src/core/offline/offline-client.ts',
 		{
+			'@/core/utils/browser': { safeLocalStorage: () => window.localStorage },
 			'@/core/infra/api-client': {
 				apiFetch: async (_path, init) => {
 					queueAtRequest = JSON.parse(localStorage.getItem('manawg:offline-actions'));

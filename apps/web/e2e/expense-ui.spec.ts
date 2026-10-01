@@ -360,7 +360,7 @@ test.describe('expense edit payer', () => {
 
 	test('keeps the payer selectable while creating an expense', async ({ page }) => {
 		await openAusgaben(page, []);
-		await page.getByRole('button', { name: 'Ausgabe erfassen' }).first().click();
+		await page.getByRole('button', { name: 'Ausgabe hinzufügen' }).first().click();
 		await expect(page.getByLabel('Bezahlt von')).toBeEnabled();
 		await expect(page.getByLabel('Aufteilung: Gleichmäßig')).toBeEnabled();
 	});
@@ -503,7 +503,7 @@ test.describe('manual split validation', () => {
 
 		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 		await dismissOnboarding(page);
-		await page.getByRole('button', { name: 'Ausgabe erfassen' }).first().click();
+		await page.getByRole('button', { name: 'Ausgabe hinzufügen' }).first().click();
 		const dialog = page.getByRole('dialog');
 		await dialog.getByLabel('Beschreibung', { exact: true }).fill('Internet');
 		await dialog.getByLabel('Betrag', { exact: true }).fill('10');
@@ -551,7 +551,7 @@ test.describe('manual split validation', () => {
 
 		await navigateToFeature(page, `/wg/${shareCode}/abos`);
 		await dismissOnboarding(page);
-		await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
+		await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
 		const dialog = page.getByRole('dialog');
 		await dialog.getByLabel('Beschreibung', { exact: true }).fill('Internet');
 		await dialog.getByLabel('Betrag', { exact: true }).fill('10');
@@ -597,7 +597,7 @@ test.describe('manual split validation', () => {
 
 		await navigateToFeature(page, `/wg/${shareCode}/abos`);
 		await dismissOnboarding(page);
-		await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
+		await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
 		const dialog = page.getByRole('dialog');
 		await dialog.getByLabel('Beschreibung', { exact: true }).fill('Internet');
 		await dialog.getByLabel('Betrag', { exact: true }).fill('10');
@@ -742,7 +742,7 @@ test.describe('finance dialog mobile', () => {
 
 		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 		await dismissOnboarding(page);
-		await page.getByRole('button', { name: 'Ausgabe erfassen' }).first().click();
+		await page.getByRole('button', { name: 'Ausgabe hinzufügen' }).first().click();
 		const expenseDialog = page.getByRole('dialog');
 		await expect(expenseDialog).toBeVisible();
 		await expenseDialog.getByText('Manuell', { exact: true }).click();
@@ -753,7 +753,7 @@ test.describe('finance dialog mobile', () => {
 
 		await page.goto(`/wg/${shareCode}/abos`);
 		await dismissOnboarding(page);
-		await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
+		await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
 		const aboDialog = page.getByRole('dialog');
 		await expect(aboDialog).toBeVisible();
 		await aboDialog.getByText('Manuell', { exact: true }).click();
@@ -1021,9 +1021,9 @@ test.describe('fab summary overlay', () => {
 				await dismissOnboarding(page);
 				await expect(page.getByRole('heading', { name: 'Fixkosten', exact: true })).toBeVisible();
 				await expect(page.getByText('Dein Anteil', { exact: true })).toBeVisible();
-				const actionButton = page.getByRole('button', { name: 'Neue Fixkosten', exact: true });
+				const actionButton = page.getByRole('button', { name: 'Fixkosten hinzufügen', exact: true });
 				await expect(actionButton).toBeVisible();
-				await expect(actionButton).toHaveAccessibleName('Neue Fixkosten');
+				await expect(actionButton).toHaveAccessibleName('Fixkosten hinzufügen');
 
 				const geometry = {
 					rootFontSize: await page.evaluate(
@@ -1196,9 +1196,9 @@ test.describe('fab summary overlay', () => {
 		for (const [feature, label] of [
 			['kalender', 'Termin hinzufügen'],
 			['vorraete', 'Vorrat hinzufügen'],
-			['pinnwand', 'Beitrag erstellen'],
-			['putzen', 'Putzaufgabe erfassen'],
-			['ausgaben', 'Ausgabe erfassen'],
+			['pinnwand', 'Beitrag hinzufügen'],
+			['putzen', 'Putzaufgabe hinzufügen'],
+			['ausgaben', 'Ausgabe hinzufügen'],
 		] as const) {
 			await navigateToFeature(page, `/wg/${SHARE_CODE}/${feature}`);
 			await useLargeText(page);
@@ -1400,8 +1400,8 @@ test.describe('subscription error notice', () => {
 			page.locator('#main').getByText('Fixkosten konnten nicht gelöscht werden', { exact: false }),
 		).toBeVisible();
 
-		await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
-		const dialog = page.getByRole('dialog', { name: 'Neue Fixkosten' });
+		await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
+		const dialog = page.getByRole('dialog', { name: 'Fixkosten hinzufügen' });
 		await expect(dialog).toBeVisible();
 		await expect(
 			dialog.getByText('Fixkosten konnten nicht gelöscht werden', { exact: false }),
@@ -1490,8 +1490,8 @@ test.describe('date integrity ui', () => {
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/abos`);
 		await dismissOnboarding(page);
 		await expect(page.getByRole('heading', { name: 'Fixkosten', exact: true })).toBeVisible();
-		await page.getByRole('button', { name: 'Neue Fixkosten', exact: true }).click();
-		await expect(page.getByRole('heading', { name: 'Neue Fixkosten', exact: true })).toBeVisible();
+		await page.getByRole('button', { name: 'Fixkosten hinzufügen', exact: true }).click();
+		await expect(page.getByRole('heading', { name: 'Fixkosten hinzufügen', exact: true })).toBeVisible();
 	}
 
 	async function openCalendarCreate(

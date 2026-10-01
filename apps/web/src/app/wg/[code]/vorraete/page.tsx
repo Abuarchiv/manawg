@@ -10,120 +10,14 @@ import { Spinner } from '@/components/ui/spinner';
 import { SubNav } from '@/components/wg/SubNav';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import { useStableCallback } from '@/core/hooks/useStableCallback';
-import { isNetworkError } from '@/core/http/error-codes';
-import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { InventoryList } from '@/features/inventory/components/InventoryList';
-import {
-	type InventoryCategory,
-	type InventoryItemDto,
-	type InventoryMutationItemDto,
-	groupItemsByCategory,
-} from '@/features/inventory/inventory';
+import { useInventoryPage } from '@/features/inventory/hooks/use-inventory-page';
 import { Plus } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-
-interface InventoryResponse {
-	items: InventoryItemDto[];
-	grouped: Record<InventoryCategory, InventoryItemDto[]>;
-}
-
-function applyInventoryMutation(
-	items: InventoryItemDto[],
-	updated?: InventoryMutationItemDto,
-	deletedId?: string,
-): InventoryItemDto[] {
-	if (deletedId) return items.filter((item) => item.id !== deletedId);
-	if (!updated) return items;
-	const existing = items.find((item) => item.id === updated.id);
-	const merged: InventoryItemDto = {
-		...(existing ?? {}),
-		...updated,
-		decrementCount30d: updated.decrementCount30d ?? existing?.decrementCount30d ?? 0,
-	};
-	return existing
-		? items.map((item) => (item.id === updated.id ? merged : item))
-		: [...items, merged];
-}
 
 export default function VorraetePage() {
 	const { wg, identity } = useWg();
-	const encodedShareCode = encodeURIComponent(wg.shareCode);
-	const inventoryUrl = `/api/wg/${encodedShareCode}/inventory`;
-	const {
-		data: inventoryData,
-		error: inventoryError,
-		isLoading: inventoryLoading,
-		refresh: refreshInventory,
-		setData: setInventoryData,
-	} = useCachedFetch<InventoryResponse>(inventoryUrl, {
-		memberId: identity.memberId,
-	});
-	const [items, setItems] = useState<InventoryItemDto[]>(() => inventoryData?.items ?? []);
-	const [initialLoading, setInitialLoading] = useState(inventoryLoading);
-	const [loadError, setLoadError] = useState<string | null>(null);
-	const [addOpen, setAddOpen] = useState(false);
-	const requestIdRef = useRef(0);
-	const hasInventoryDataRef = useRef(inventoryData !== undefined);
-
-	const load = useCallback(
-		async (silent = false): Promise<void> => {
-			const requestId = requestIdRef.current + 1;
-			requestIdRef.current = requestId;
-			if (!silent && !hasInventoryDataRef.current) setInitialLoading(true);
-			const res = await refreshInventory();
-			if (requestId !== requestIdRef.current) {
-				return;
-			}
-			if (res.ok) {
-				setLoadError(null);
-				setItems(res.data.items);
-			} else if (
-				(!silent || !hasInventoryDataRef.current) &&
-				!(hasInventoryDataRef.current && isNetworkError(res.error, res.status))
-			) {
-				// Ein stiller Hintergrund-Refresh legt keinen Fehler über eine brauchbare Liste.
-				setLoadError(getWgLoadErrorMessage('Vorräte', res.status, res.error));
-			}
-			setInitialLoading(false);
-		},
-		[refreshInventory],
-	);
-
-	useEffect(() => {
-		if (inventoryData) {
-			hasInventoryDataRef.current = true;
-			setItems(inventoryData.items);
-			setLoadError(null);
-		} else if (inventoryError) {
-			setLoadError(getWgLoadErrorMessage('Vorräte', inventoryError.status, inventoryError.error));
-		}
-	}, [inventoryData, inventoryError]);
-
-	useEffect(() => {
-		void load(false);
-	}, [load]);
-	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
-	useVisibilityPausedInterval(() => void load(true), 30_000);
-
-	const onChanged = useStableCallback(
-		(updated?: InventoryMutationItemDto, deletedId?: string): void => {
-			if (updated || deletedId) {
-				setItems((prev) => applyInventoryMutation(prev, updated, deletedId));
-				setInventoryData((current) => {
-					if (!current && !updated) return current;
-					const nextItems = applyInventoryMutation(current?.items ?? [], updated, deletedId);
-					return {
-						items: nextItems,
-						grouped: groupItemsByCategory(nextItems),
-					};
-				});
-			}
-			void load(true);
-		},
-	);
+	const { items, initialLoading, loadError, addOpen, setAddOpen, load, onChanged } =
+		useInventoryPage(wg.shareCode, identity.memberId);
 
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
@@ -187,7 +81,7 @@ export default function VorraetePage() {
 			) : loadError && items.length === 0 ? (
 				<Empty className="border border-dashed">
 					<EmptyHeader>
-						<EmptyTitle>Vorräte noch nicht geladen</EmptyTitle>
+						<EmptyTitle>Noch keine Vorräte geladen</EmptyTitle>
 						<EmptyDescription>
 							Versuche es erneut, sobald die Verbindung wieder da ist.
 						</EmptyDescription>

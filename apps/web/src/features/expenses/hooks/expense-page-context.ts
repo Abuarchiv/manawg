@@ -1,0 +1,38 @@
+import type { useToast } from '@/components/ui/Toast';
+import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
+import type {
+	Expense,
+	RecurringExpense,
+} from '@/features/expenses/components/ausgaben/expense-types';
+import type { useExpenseForm } from '@/features/expenses/components/ausgaben/useExpenseForm';
+import type { StoredIdentity } from '@/shared/lib/identity';
+
+export interface ActionNotifier {
+	error: (message: string | null) => void;
+	warning: (message: string) => void;
+	success: (message: string) => void;
+}
+
+export interface PendingIds {
+	isPending: (id: string) => boolean;
+	start: (id: string) => void;
+	end: (id: string) => void;
+}
+
+/** What the Ausgaben mutation hooks share: who acts, where results go, how to reload. */
+export interface ExpensePageContext {
+	wg: Pick<WgSummary, 'id' | 'shareCode'>;
+	identity: StoredIdentity;
+	members: Member[];
+	toast: ReturnType<typeof useToast>;
+	notify: ActionNotifier;
+	pending: PendingIds;
+	expenses: Expense[];
+	recurringExpenses: RecurringExpense[];
+	updateExpenses: (update: (current: Expense[]) => Expense[]) => void;
+	updateRecurringExpenses: (update: (current: RecurringExpense[]) => RecurringExpense[]) => void;
+	reload: () => Promise<void>;
+	refreshQueuedCount: () => void;
+}
+
+export type ExpenseFormState = ReturnType<typeof useExpenseForm>;

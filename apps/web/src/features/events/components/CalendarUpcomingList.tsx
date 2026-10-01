@@ -88,7 +88,7 @@ export function CalendarUpcomingList({
 					</EmptyMedia>
 					<EmptyTitle>Die nächsten 30 Tage sind frei</EmptyTitle>
 					<EmptyDescription>
-						Trage euren nächsten Termin über das Plus unten rechts ein.
+						Tippe unten auf „Termin hinzufügen“, um euren nächsten Termin einzutragen.
 					</EmptyDescription>
 				</EmptyHeader>
 			</Empty>

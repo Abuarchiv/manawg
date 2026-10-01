@@ -334,7 +334,7 @@ test('discarding an ambiguous expense starts a new request key for identical for
 	await expect(form).toBeHidden();
 	await page
 		.locator('[data-page-primary-action]')
-		.getByRole('button', { name: 'Ausgabe erfassen' })
+		.getByRole('button', { name: 'Ausgabe hinzufügen' })
 		.click();
 
 	const newForm = page.getByRole('dialog');

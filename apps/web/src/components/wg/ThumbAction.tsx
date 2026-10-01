@@ -3,13 +3,7 @@
 import { cn } from '@/shared/lib/cn';
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
 
-export function ThumbAction({
-	children,
-	reserveSpace = true,
-}: {
-	children: ReactNode;
-	reserveSpace?: boolean;
-}) {
+export function ThumbAction({ children }: { children: ReactNode }) {
 	const spacerRef = useRef<HTMLDivElement>(null);
 	const actionRef = useRef<HTMLDivElement>(null);
 
@@ -22,7 +16,7 @@ export function ThumbAction({
 		const syncHeight = () => {
 			const height = action.getBoundingClientRect().height;
 			root.style.setProperty('--thumb-action-space', `${height + 8}px`);
-			if (reserveSpace && spacerRef.current) {
+			if (spacerRef.current) {
 				spacerRef.current.style.height = `${height + 12}px`;
 			}
 		};
@@ -33,11 +27,11 @@ export function ThumbAction({
 			observer?.disconnect();
 			root.style.removeProperty('--thumb-action-space');
 		};
-	}, [reserveSpace]);
+	}, []);
 
 	return (
 		<>
-			{reserveSpace && <div ref={spacerRef} aria-hidden className="h-14 shrink-0" />}
+			<div ref={spacerRef} aria-hidden className="h-14 shrink-0" />
 			<div
 				ref={actionRef}
 				data-page-primary-action

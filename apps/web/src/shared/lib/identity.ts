@@ -1,5 +1,6 @@
 'use client';
 
+import { safeLocalStorage } from '@/core/utils/browser';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { z } from 'zod';
 import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from './member-header';
@@ -53,15 +54,6 @@ export interface KnownWg {
 	code: string;
 	name: string;
 	lastVisitedAt: number;
-}
-
-function safeLocalStorage(): Storage | null {
-	if (typeof window === 'undefined') return null;
-	try {
-		return window.localStorage;
-	} catch {
-		return null;
-	}
 }
 
 export function getIdentity(wgId: string): StoredIdentity | null {

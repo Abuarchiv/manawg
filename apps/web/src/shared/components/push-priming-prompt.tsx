@@ -8,35 +8,10 @@ import {
 	shouldAutoResubscribePush,
 	shouldShowPushPriming,
 } from '@/core/notifications/push-priming';
-import { subscribeWebPush } from '@/core/notifications/push-subscribe';
+import { isPushSupported, subscribeWebPush } from '@/core/notifications/push-subscribe';
+import { isEditingTarget, safeLocalStorage } from '@/core/utils/browser';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-function safeLocalStorage(): Storage | null {
-	if (typeof window === 'undefined') return null;
-	try {
-		return window.localStorage;
-	} catch {
-		return null;
-	}
-}
-
-function isEditingTarget(): boolean {
-	const active = document.activeElement;
-	return (
-		active instanceof HTMLElement &&
-		(active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)
-	);
-}
-
-function isPushSupported(): boolean {
-	return (
-		typeof window !== 'undefined' &&
-		'Notification' in window &&
-		'serviceWorker' in navigator &&
-		'PushManager' in window
-	);
-}
 
 function rememberDismissed(): void {
 	try {

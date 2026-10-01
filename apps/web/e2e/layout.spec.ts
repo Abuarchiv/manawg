@@ -960,7 +960,7 @@ test.describe('drawer mobile zoom', () => {
 	const { id: wgId, memberId, memberName, shareCode } = FIXTURE_WG;
 
 	const drawers = [
-		{ feature: 'putzen', openButton: 'Putzaufgabe erfassen' },
+		{ feature: 'putzen', openButton: 'Putzaufgabe hinzufügen' },
 		{ feature: 'vorraete', openButton: 'Vorrat hinzufügen' },
 		{ feature: 'kalender', openButton: 'Termin hinzufügen' },
 	] as const;
@@ -1311,7 +1311,7 @@ test.describe('overlay back dismiss', () => {
 		await navigateToFeature(page, `/wg/${shareCode}/putzen`);
 		await dismissOnboarding(page);
 
-		const trigger = page.getByRole('button', { name: 'Putzaufgabe erfassen', exact: true });
+		const trigger = page.getByRole('button', { name: 'Putzaufgabe hinzufügen', exact: true });
 		await trigger.click();
 		const drawer = page.getByRole('dialog');
 		await expect(drawer).toBeVisible();
