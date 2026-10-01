@@ -40,8 +40,21 @@ export function useChoreActions(ctx: ChorePageContext) {
 	const completionRequestKeysRef = useRef(new Map<string, string>());
 	const [completeConfirmId, setCompleteConfirmId] = useState<string | null>(null);
 
+	/**
+	 * Eine offline angelegte Aufgabe hat nur eine lokale Pseudo-ID; die Server-Routen lehnen sie
+	 * mit `id_invalid` ab. Statt einer irreführenden Fehlermeldung kommt ein klarer Hinweis.
+	 */
+	function isStillQueued(chore: Chore): boolean {
+		if (!isQueuedCreateId(chore.id)) return false;
+		setActionError(null);
+		setActionNotice(
+			'Diese Aufgabe ist noch offline vorgemerkt und lässt sich erst nach der Synchronisierung bearbeiten.',
+		);
+		return true;
+	}
+
 	async function handleComplete(chore: Chore): Promise<void> {
-		if (isPending(chore.id)) return;
+		if (isPending(chore.id) || isStillQueued(chore)) return;
 
 		// First tap → arm; second tap → commit
 		if (completeConfirmId !== chore.id) {
@@ -225,7 +238,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 
 	async function handleSwapRequest(chore: Chore): Promise<void> {
 		const pendingKey = `${chore.id}:swap`;
-		if (isPending(pendingKey)) return;
+		if (isPending(pendingKey) || isStillQueued(chore)) return;
 
 		startPending(pendingKey);
 		setActionError(null);
@@ -262,7 +275,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 
 	async function handleAssignTo(chore: Chore, memberId: string, notice: string): Promise<void> {
 		const pendingKey = `${chore.id}:take`;
-		if (isPending(pendingKey)) return;
+		if (isPending(pendingKey) || isStillQueued(chore)) return;
 		startPending(pendingKey);
 		setActionError(null);
 		setActionNotice(null);

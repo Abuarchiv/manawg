@@ -25,7 +25,7 @@ function formatRotationDate(value: string | Date | null | undefined): string {
 
 export function buildSecurityOverview(input: SecurityOverviewInput): SecurityOverviewItem[] {
 	return [
-		{ label: 'Identität', value: `${input.memberName} auf diesem Gerät` },
+		{ label: 'Identität', value: `${input.memberName} (du)` },
 		{
 			label: 'Mitglieder',
 			value: `${input.memberCount} ${input.memberCount === 1 ? 'Person' : 'Personen'} in der WG`,

@@ -28,8 +28,10 @@ export function ClearBoughtDialog({
 				<AlertDialogHeader>
 					<AlertDialogTitle>Erledigte Artikel entfernen?</AlertDialogTitle>
 					<AlertDialogDescription>
-						{doneCount} erledigte Artikel werden für die ganze WG endgültig entfernt. Offene Artikel
-						bleiben erhalten.
+						{doneCount === 1
+							? '1 erledigter Artikel wird'
+							: `${doneCount} erledigte Artikel werden`}{' '}
+						für die ganze WG endgültig entfernt. Offene Artikel bleiben erhalten.
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>

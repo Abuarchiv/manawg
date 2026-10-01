@@ -40,6 +40,9 @@ export function describeParsedExpenseWarning(code: string): string {
 	if (code === 'custom_splits_discarded') {
 		return 'Die eigene Aufteilung wich zu stark vom Gesamtbetrag ab und wurde verworfen — stattdessen gleichmäßig aufgeteilt.';
 	}
+	if (code === 'ocr_heuristic') {
+		return 'Aus dem Bild erkannt: Prüfe Datum, Betrag und zahlende Person. Die Ausgabe wird nur der zahlenden Person zugeordnet, es entsteht keine Schuld.';
+	}
 	return code;
 }
 

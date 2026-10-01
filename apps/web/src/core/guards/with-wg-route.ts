@@ -8,9 +8,9 @@ import type { NextRequest, NextResponse } from 'next/server';
 /**
  * The ceremony every `/api/wg/[code]/...` handler opens and closes with.
  *
- * 72 of the 75 handlers repeated the same six lines: read and validate the
- * share code, optionally answer from the E2E fixture, and wrap the body in a
- * try/catch that logs and returns `server_error`. Six lines is small enough
+ * Nearly every handler used to repeat the same six lines: read and validate
+ * the share code, optionally answer from the E2E fixture, and wrap the body in
+ * a try/catch that logs and returns `server_error`. Six lines is small enough
  * that nobody minded copying them, and copies drift — a route that forgets the
  * catch turns a database blip into an unhandled rejection.
  *
@@ -23,8 +23,8 @@ import type { NextRequest, NextResponse } from 'next/server';
 interface WgRouteOptions {
 	/**
 	 * How to answer when the E2E db-down fixture is serving this share code.
-	 * Omit it — as 30 of the routes do — and the gate is skipped entirely, so
-	 * the handler runs as it would in production.
+	 * Omit it — as most routes do — and the gate is skipped entirely, so the
+	 * handler runs as it would in production.
 	 */
 	fixture?: (fixture: E2EWgFixture, memberId: string) => NextResponse;
 }

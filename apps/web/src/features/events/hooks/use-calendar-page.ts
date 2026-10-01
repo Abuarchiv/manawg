@@ -75,13 +75,23 @@ function buildChoreOccurrences(
 		.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
 
-/** Offline und 429 brauchen einen konkreten nächsten Schritt statt der pauschalen Meldung. */
+/** Offline, 429 und fehlende Rechte brauchen einen konkreten nächsten Schritt statt der pauschalen Meldung. */
 function eventSaveError(base: string, res: { status: number; error: string }): string {
 	if (isNetworkError(res.error, res.status)) {
 		return `${base}: Prüfe deine Verbindung und versuche es erneut.`;
 	}
 	if (isRateLimited(res.error, res.status)) return RATE_LIMITED_MESSAGE;
+	// Die API lässt nur die Person, die den Termin angelegt hat, und WG-Admins ändern oder löschen.
+	if (res.status === 403) {
+		return `${base}: Das dürfen nur WG-Admins und wer den Termin angelegt hat.`;
+	}
+	if (res.status === 404) return `${base}: Der Termin existiert nicht mehr.`;
 	return `${base}.`;
+}
+
+/** Der Termin wurde inzwischen von jemand anderem gelöscht; ihn lokal wiederherzustellen wäre falsch. */
+function isEventGone(res: { status: number; error: string }): boolean {
+	return res.status === 404 && res.error === 'event_not_found';
 }
 
 /** Termine und Putzplan-Fälligkeiten laden, optimistisch anlegen/ändern/löschen. */
@@ -278,7 +288,9 @@ export function useCalendarPage(month: Date) {
 			},
 		);
 		if (!res.ok) {
-			if (previous) {
+			if (isEventGone(res)) {
+				updateEvents((current) => current.filter((event) => event.id !== id));
+			} else if (previous) {
 				updateEvents((current) => current.map((event) => (event.id === id ? previous : event)));
 			}
 			const message = eventSaveError('Termin konnte nicht aktualisiert werden', res);
@@ -299,7 +311,8 @@ export function useCalendarPage(month: Date) {
 			memberId: identity.memberId,
 			memberToken: identity.memberToken,
 		});
-		if (!res.ok) {
+		// Bereits von jemand anderem gelöscht: Ziel erreicht, nicht wiederherstellen.
+		if (!res.ok && !isEventGone(res)) {
 			if (previousEvent) {
 				updateEvents((current) => {
 					if (current.some((event) => event.id === id)) return current;

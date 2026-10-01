@@ -16,6 +16,7 @@ import { occurrenceToIcs } from '@/features/events/ics';
 import { cn } from '@/shared/lib/cn';
 import { CalendarClock, ChevronRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect } from 'react';
 
 interface CalendarUpcomingListProps {
 	occurrences: EventOccurrence[];
@@ -26,6 +27,8 @@ interface CalendarUpcomingListProps {
 	}>;
 	onSelect: (occurrence: EventOccurrence) => void;
 	wgBaseHref: string;
+	/** Termin aus dem Push-Link (`?highlight=`); die nächste Fälligkeit wird markiert und angescrollt. */
+	highlightEventId?: string | null;
 }
 
 const ROW_CLASS =
@@ -65,7 +68,15 @@ export function CalendarUpcomingList({
 	choreOccurrences,
 	onSelect,
 	wgBaseHref,
+	highlightEventId = null,
 }: CalendarUpcomingListProps) {
+	useEffect(() => {
+		if (!highlightEventId) return;
+		document
+			.getElementById(`event-${highlightEventId}`)
+			?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	}, [highlightEventId]);
+
 	const entries = [
 		...occurrences.map((occurrence) => ({
 			kind: 'event' as const,
@@ -95,6 +106,12 @@ export function CalendarUpcomingList({
 		);
 	}
 
+	// Bei Serien trägt nur das erste Vorkommen den Anker.
+	const highlightedEntry = highlightEventId
+		? entries.find(
+				(entry) => entry.kind === 'event' && entry.occurrence.eventId === highlightEventId,
+			)
+		: undefined;
 	const days = new Map<string, { label: string; date: Date; entries: typeof entries }>();
 	for (const entry of entries) {
 		const date =
@@ -153,7 +170,16 @@ export function CalendarUpcomingList({
 										</Link>
 									</li>
 								) : (
-									<li key={`${entry.occurrence.eventId}-${entry.occurrence.occurrenceIndex}`}>
+									<li
+										key={`${entry.occurrence.eventId}-${entry.occurrence.occurrenceIndex}`}
+										id={
+											entry === highlightedEntry ? `event-${entry.occurrence.eventId}` : undefined
+										}
+										className={cn(
+											'scroll-mt-24',
+											entry === highlightedEntry && 'ring-2 ring-inset ring-ring',
+										)}
+									>
 										<button
 											type="button"
 											onClick={() => onSelect(entry.occurrence)}

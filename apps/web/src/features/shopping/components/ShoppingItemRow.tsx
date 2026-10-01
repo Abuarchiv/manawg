@@ -267,7 +267,8 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 								)}
 								{!canRemove && (
 									<p className="text-sm text-muted-foreground">
-										Nur die Person, die den Artikel hinzugefügt hat, kann ihn entfernen.
+										Nur die Person, die den Artikel hinzugefügt hat, oder ein WG-Admin kann ihn
+										entfernen.
 									</p>
 								)}
 								<DrawerClose render={<Button variant="outline" />}>Schließen</DrawerClose>

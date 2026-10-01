@@ -47,7 +47,10 @@ export function ShoppingAddBar({
 					<Button
 						type="submit"
 						size="icon"
-						disabled={!value.trim() || adding}
+						// Nicht während des Speicherns sperren: ein deaktivierter Absende-Knopf blockiert auch
+						// Enter im Feld, und der nächste Artikel würde nicht nachgereiht, sondern verschluckt.
+						disabled={!value.trim()}
+						aria-busy={adding}
 						aria-label="Artikel hinzufügen"
 						onPointerDown={(event) => event.preventDefault()}
 						className="size-11 shrink-0"

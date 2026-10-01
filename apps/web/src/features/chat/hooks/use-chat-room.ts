@@ -63,6 +63,14 @@ function explainChatError(action: ChatAction, error: string): string {
 	if (error === 'too_many_requests') {
 		return 'Zu viele Anfragen. Warte kurz und versuche es dann erneut.';
 	}
+	// Ohne diese Texte bliebe die Antwort-Vorschau stehen und jedes Senden scheiterte stumm gleich.
+	if (error === 'reply_to_not_found' || error === 'reply_to_invalid') {
+		return 'Die Nachricht, auf die du antwortest, gibt es nicht mehr. Entferne die Antwort und sende erneut.';
+	}
+	if (error === 'message_deleted') return 'Diese Nachricht wurde gelöscht.';
+	if (error === 'edit_not_allowed') {
+		return 'Nachrichten lassen sich nur 15 Minuten nach dem Senden bearbeiten.';
+	}
 	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') return OFFLINE_ERRORS[action];
 	return GENERIC_ERRORS[action];
 }

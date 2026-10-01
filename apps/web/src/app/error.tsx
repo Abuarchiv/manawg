@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/observability';
 import { TriangleAlert } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect } from 'react';
 
 export default function ErrorBoundary({
@@ -54,6 +55,9 @@ export default function ErrorBoundary({
 					)}
 					<Button type="button" size="lg" onClick={() => reset()}>
 						Erneut versuchen
+					</Button>
+					<Button variant="outline" size="lg" render={<Link href="/" />} nativeButton={false}>
+						Zur Startseite
 					</Button>
 					<a
 						href="mailto:info@manawg.com?subject=Fehler%20in%20ManaWG"

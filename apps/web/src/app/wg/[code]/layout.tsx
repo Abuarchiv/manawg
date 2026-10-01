@@ -15,7 +15,7 @@ import type { StoredIdentity } from '@/shared/lib/identity';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { type ReactNode, cache } from 'react';
 
 interface Props {
 	children: ReactNode;
@@ -37,48 +37,20 @@ export async function generateMetadata({
 			robots: { index: false, follow: false },
 		};
 	}
-	const user = await getAuthenticatedUserFromCookies();
-	if (!user) return { title: 'WG — ManaWG', robots: { index: false, follow: false } };
-	const [access] = await db
-		.select({ name: wgs.name })
-		.from(wgMembers)
-		.innerJoin(wgs, eq(wgMembers.wgId, wgs.id))
-		.where(
-			and(
-				eq(wgs.shareCode, code),
-				eq(wgMembers.authUserId, user.id),
-				isNull(wgMembers.deactivatedAt),
-			),
-		)
-		.limit(1);
+	const viewer = await getWgViewer(code);
 	return {
-		title: access ? `${access.name} — ManaWG` : 'WG — ManaWG',
+		title: viewer?.access ? `${viewer.access.name} — ManaWG` : 'WG — ManaWG',
 		robots: { index: false, follow: false },
 	};
 }
 
-export default async function WgLayout({ children, params }: Props) {
-	const { code: rawCode } = await params;
-	const code = normalizeShareCode(rawCode);
-	if (!isValidShareCode(code)) {
-		notFound();
-	}
-
-	if (isE2EDbDownMode()) {
-		const fixture = getE2EWgFixture(code);
-		if (!fixture) notFound();
-		// Fixture rosters are always fully active.
-		const fixtureMembers = fixture.members.map((member) => ({ ...member, active: true }));
-		return (
-			<WgShell code={code} wg={fixture} members={fixtureMembers}>
-				{children}
-			</WgShell>
-		);
-	}
-
+/**
+ * Session und Mitgliedschaft einmal pro Request: generateMetadata und das Layout
+ * brauchen beides, und getUser() ist ein Netzwerkaufruf an Supabase Auth.
+ */
+const getWgViewer = cache(async (code: string) => {
 	const user = await getAuthenticatedUserFromCookies();
-	if (!user) redirect(`/neu?next=${encodeURIComponent(`/wg/${encodeURIComponent(code)}`)}`);
-
+	if (!user) return null;
 	const [access] = await db
 		.select({
 			id: wgs.id,
@@ -99,6 +71,31 @@ export default async function WgLayout({ children, params }: Props) {
 			),
 		)
 		.limit(1);
+	return { user, access };
+});
+
+export default async function WgLayout({ children, params }: Props) {
+	const { code: rawCode } = await params;
+	const code = normalizeShareCode(rawCode);
+	if (!isValidShareCode(code)) {
+		notFound();
+	}
+
+	if (isE2EDbDownMode()) {
+		const fixture = getE2EWgFixture(code);
+		if (!fixture) notFound();
+		// Fixture rosters are always fully active.
+		const fixtureMembers = fixture.members.map((member) => ({ ...member, active: true }));
+		return (
+			<WgShell code={code} wg={fixture} members={fixtureMembers}>
+				{children}
+			</WgShell>
+		);
+	}
+
+	const viewer = await getWgViewer(code);
+	if (!viewer) redirect(`/neu?next=${encodeURIComponent(`/wg/${encodeURIComponent(code)}`)}`);
+	const { user, access } = viewer;
 	if (!access) {
 		redirect(`/neu?next=${encodeURIComponent(`/wg/${encodeURIComponent(code)}`)}`);
 	}

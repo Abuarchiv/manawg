@@ -128,7 +128,8 @@ export function MembersSection({ wg, members, identity, joiningEnabled }: Member
 
 	const securityOverview = buildSecurityOverview({
 		memberName: identity.name,
-		memberCount: members.length,
+		// Ausgezogene zählen nicht mit, sonst widerspricht die Zahl der Liste darunter.
+		memberCount: activeMembers.length,
 		joiningEnabled,
 		shareCodeRotatedAt: wg.shareCodeRotatedAt ?? null,
 	});
@@ -143,7 +144,9 @@ export function MembersSection({ wg, members, identity, joiningEnabled }: Member
 					{securityOverview.map((item) => (
 						<div key={item.label} className="min-w-0">
 							<p className="text-muted-foreground text-xs">{item.label}</p>
-							<p className="text-foreground mt-0.5 text-[12px] font-medium">{item.value}</p>
+							<p className="text-foreground mt-0.5 break-words text-[12px] font-medium">
+								{item.value}
+							</p>
 						</div>
 					))}
 				</div>

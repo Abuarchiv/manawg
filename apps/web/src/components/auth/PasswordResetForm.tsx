@@ -6,7 +6,11 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import { WEAK_PASSWORD_MESSAGE, isWeakPasswordError } from '@/core/auth/password-errors';
+import {
+	WEAK_PASSWORD_MESSAGE,
+	isSamePasswordError,
+	isWeakPasswordError,
+} from '@/core/auth/password-errors';
 import { cn } from '@/shared/lib/cn';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -57,11 +61,15 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 			}
 			router.replace('/neu');
 		} catch (error) {
-			setError(
-				isWeakPasswordError(error)
-					? WEAK_PASSWORD_MESSAGE
-					: 'Das Passwort konnte gerade nicht geändert werden. Bitte fordere einen neuen Link an.',
-			);
+			if (isWeakPasswordError(error)) setError(WEAK_PASSWORD_MESSAGE);
+			// Supabase lehnt das bisherige Passwort ab; ein neuer Link würde daran nichts ändern.
+			else if (isSamePasswordError(error)) {
+				setError('Das neue Passwort muss sich vom bisherigen unterscheiden.');
+			} else {
+				setError(
+					'Das Passwort konnte gerade nicht geändert werden. Bitte fordere einen neuen Link an.',
+				);
+			}
 			setState('ready');
 		}
 	}

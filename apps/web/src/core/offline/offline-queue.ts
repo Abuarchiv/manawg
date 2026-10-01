@@ -644,6 +644,12 @@ export function explainOfflineActionFailure(
 			detail: 'Die Aktion bleibt gespeichert und wird erneut versucht, sobald das Netz zurück ist.',
 		};
 	}
+	if (status === 429 || error === 'rate_limited' || error === 'too_many_requests') {
+		return {
+			title: 'Zu viele Anfragen',
+			detail: 'Die Aktion bleibt in der Warteschlange und wird gleich automatisch erneut gesendet.',
+		};
+	}
 	if (error === 'not_a_member' || error === 'member_id_required' || error === 'member_id_invalid') {
 		return {
 			title: 'Mitglied nicht mehr gültig',
@@ -670,6 +676,13 @@ export function explainOfflineActionFailure(
 			title: 'Fixkosten-Vorlage fehlt',
 			detail:
 				'Die Vorlage existiert nicht mehr. Entferne diese Offline-Aktion oder erstelle die Fixkosten neu.',
+		};
+	}
+	if (error === 'abo_paused') {
+		return {
+			title: 'Fixkosten pausiert',
+			detail:
+				'Die Fixkosten sind inzwischen pausiert. Entferne diese Offline-Aktion oder setze die Fixkosten fort.',
 		};
 	}
 	if (error === 'item_not_found') {
@@ -781,6 +794,13 @@ export function explainOfflineActionFailure(
 		return {
 			title: 'Datum prüfen',
 			detail: 'Bearbeite Datum oder Zeitraum, bevor du diese Aktion erneut sendest.',
+		};
+	}
+	if (error === 'absence_overlaps_existing') {
+		return {
+			title: 'Abwesenheit überschneidet sich',
+			detail:
+				'Für diese Person gibt es im Zeitraum schon eine Abwesenheit. Entferne diese Offline-Aktion oder passe den Zeitraum an.',
 		};
 	}
 	if (error === 'invalid_body') {

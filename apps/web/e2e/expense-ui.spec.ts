@@ -122,7 +122,13 @@ test.describe('expense row reflow', () => {
 					await expect(
 						page.getByRole('menuitem', { name: 'Bearbeiten', exact: true }),
 					).toBeVisible();
-					await page.keyboard.press('Escape');
+					// Ein Escape direkt nach dem Öffnen kann noch in der Öffnungsphase landen; erst wenn
+					// das Menü wirklich weg ist, weitermessen. Sonst steht es in WebKit noch an der alten,
+					// breiteren Ankerposition und der nächste Durchlauf meldet einen Scheinüberlauf.
+					await expect(async () => {
+						await page.keyboard.press('Escape');
+						await expect(page.getByRole('menu')).toHaveCount(0, { timeout: 500 });
+					}).toPass();
 				}
 			}
 		}
@@ -1412,6 +1418,49 @@ test.describe('subscription error notice', () => {
 	});
 });
 
+test.describe('paused fixed cost in expenses', () => {
+	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	test.use({ hasTouch: true, isMobile: true });
+
+	test('a paused overdue template offers no direct booking', async ({ page }) => {
+		const template = (id: string, description: string, pausedAt: string | null) => ({
+			id,
+			description,
+			amountCents: 1499,
+			currency: 'EUR',
+			paidByMemberId: FIXTURE_WG.memberId,
+			intervalMonths: 1,
+			nextDueAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+			lastCreatedAt: null,
+			pausedAt,
+			splits: [{ debtorMemberId: FIXTURE_WG.memberId, amountCents: 1499 }],
+		});
+
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/recurring-expenses`, (route) =>
+			route.fulfill({
+				json: {
+					recurringExpenses: [
+						template('abo-aktiv', 'Strom', null),
+						template('abo-pause', 'Netflix', new Date().toISOString()),
+					],
+				},
+			}),
+		);
+
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
+		await dismissOnboarding(page);
+
+		await expect(
+			page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Strom' }),
+		).toBeVisible();
+		await expect(page.getByText('pausiert', { exact: false }).first()).toBeVisible();
+		await expect(
+			page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Netflix' }),
+		).toHaveCount(0);
+	});
+});
+
 test.describe('offline expense edit', () => {
 	test('offline expense edits replay as a PATCH for the original expense', () => {
 		const action = createQueuedExpenseUpdate({
@@ -1575,6 +1624,8 @@ test.describe('date integrity ui', () => {
 
 		test('uses Berlin day boundaries across the spring clock change', async ({ page }) => {
 			const post = await interceptValidationPost(page, 'absences');
+			// Vergangene Zeiträume lehnt das Formular ab, daher steht die Uhr vor der Zeitumstellung.
+			await page.clock.setFixedTime(new Date('2026-03-20T10:00:00Z'));
 			await setupMember(page);
 			await navigateToFeature(page, `/wg/${SHARE_CODE}/putzen?panel=absences`);
 			await dismissOnboarding(page);

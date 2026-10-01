@@ -102,7 +102,8 @@ export function ShoppingList({
 				onToggle={onToggle}
 				onRemove={onRemove}
 				removeError={removeErrorId === item.id ? removeError : null}
-				canRemove={item.addedByMemberId === memberId}
+				// Die Server-Route lässt auch den Admin fremde Artikel entfernen.
+				canRemove={item.addedByMemberId === memberId || isAdmin}
 				highlighted={highlightedId === item.id}
 				shareCode={shareCode}
 			/>

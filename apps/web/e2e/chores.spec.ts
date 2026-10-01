@@ -449,6 +449,72 @@ test.describe('chore next assignee', () => {
 		await expect(page.getByRole('button', { name: `Aufgabe entfernen: ${title}` })).toHaveCount(0);
 	});
 
+	test('offers other members for an absence only to admins', async ({ page }) => {
+		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+		const other: FixtureMember = { id: 'anna', name: 'Anna', color: null, active: true };
+
+		await openPutzen(page, [viewer, other], [chore('absence-select', viewer.id)], []);
+		await page.getByRole('button', { name: 'Abwesenheit eintragen' }).click();
+		await expect(page.getByLabel('Abwesendes Mitglied').locator('option')).toHaveText(['Abu']);
+	});
+
+	test('admins can pick another member for an absence', async ({ page }) => {
+		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+		const other: FixtureMember = { id: 'anna', name: 'Anna', color: null, active: true };
+
+		await openPutzen(page, [viewer, other], [chore('absence-admin', viewer.id)], [], true);
+		await page.getByRole('button', { name: 'Abwesenheit eintragen' }).click();
+		await expect(page.getByLabel('Abwesendes Mitglied').locator('option')).toHaveText([
+			'Abu',
+			'Anna',
+		]);
+	});
+
+	test('explains an absence that overlaps an existing one', async ({ page }) => {
+		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+
+		await openPutzen(page, [viewer], [chore('absence-overlap', viewer.id)], []);
+		await page.route(`**/api/wg/${SHARE_CODE}/absences`, (route) =>
+			route.request().method() === 'POST'
+				? route.fulfill({
+						status: 409,
+						json: { error: 'absence_overlaps_existing', code: 'absence_overlaps_existing' },
+					})
+				: route.fallback(),
+		);
+		await page.getByRole('button', { name: 'Abwesenheit eintragen' }).click();
+		const day = (offset: number) =>
+			new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+		await page.getByLabel('Abwesenheit von').fill(day(2));
+		await page.getByLabel('Abwesenheit bis').fill(day(4));
+		await page.getByRole('button', { name: 'Abwesenheit speichern' }).click();
+		await expect(
+			page.getByText(
+				'Abwesenheit konnte nicht gespeichert werden: Für diese Person gibt es im Zeitraum schon eine Abwesenheit.',
+			),
+		).toBeVisible();
+	});
+
+	test('rejects an absence that already ended', async ({ page }) => {
+		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+		let posts = 0;
+
+		await openPutzen(page, [viewer], [chore('absence-past', viewer.id)], []);
+		await page.route(`**/api/wg/${SHARE_CODE}/absences`, (route) => {
+			if (route.request().method() !== 'POST') return route.fallback();
+			posts += 1;
+			return route.fulfill({ json: { absence: null } });
+		});
+		await page.getByRole('button', { name: 'Abwesenheit eintragen' }).click();
+		await page.getByLabel('Abwesenheit von').fill('2020-01-01');
+		await page.getByLabel('Abwesenheit bis').fill('2020-01-05');
+		await page.getByRole('button', { name: 'Abwesenheit speichern' }).click();
+		await expect(
+			page.getByText('Das Ende der Abwesenheit liegt in der Vergangenheit.'),
+		).toBeVisible();
+		expect(posts).toBe(0);
+	});
+
 	test('shows the authoritative next member and labels the viewer as du', async ({ page }) => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 		const absentMember: FixtureMember = { id: 'ben', name: 'Ben', color: null, active: true };
@@ -568,6 +634,25 @@ test.describe('chore next assignee', () => {
 		});
 		await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
 		await expect.poll(() => postedAssigneeId).toBe(CURRENT_MEMBER);
+	});
+
+	test('names a rate limit as retryable instead of a generic save failure', async ({ page }) => {
+		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+		await openPutzen(page, [viewer], [], []);
+		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
+		await page.getByPlaceholder('z. B. Müll rausbringen').fill('Zu schnell');
+		// Die Middleware antwortet mit `rate_limited`, nicht mit `too_many_requests`.
+		await page.route(`**/api/wg/${SHARE_CODE}/chores`, async (route) => {
+			if (route.request().method() === 'POST') {
+				await route.fulfill({ status: 429, json: { error: 'rate_limited' } });
+				return;
+			}
+			await route.fallback();
+		});
+		await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
+		await expect(
+			page.getByText('Putzaufgabe konnte nicht gespeichert werden: Versuche es gleich erneut.'),
+		).toBeVisible();
 	});
 
 	test('preserves explicit and legacy unassigned chore drafts', async ({ page }) => {

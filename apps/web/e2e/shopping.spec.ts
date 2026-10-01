@@ -104,6 +104,56 @@ test.describe('shopping retry', () => {
 		expect(keys[1]).toBe(keys[0]);
 	});
 
+	test('queues a second Enter while the first add is saving and ignores a repeated Enter on the same text', async ({
+		page,
+	}) => {
+		test.skip(
+			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
+			'requires the local fixture server',
+		);
+		const posted: string[] = [];
+		let releaseFirst: () => void = () => {};
+		const firstGate = new Promise<void>((resolve) => {
+			releaseFirst = resolve;
+		});
+		await page.route('**/api/wg/MTE8PZAT/shopping', async (route) => {
+			if (route.request().method() !== 'POST') {
+				await route.fallback();
+				return;
+			}
+			const { name } = route.request().postDataJSON() as { name: string };
+			posted.push(name);
+			if (posted.length === 1) await firstGate;
+			await route.fulfill({
+				json: {
+					item: {
+						id: `item-${posted.length}`,
+						name,
+						quantity: null,
+						addedByMemberId: FIXTURE_WG.memberId,
+						boughtAt: null,
+						boughtByMemberId: null,
+						createdAt: new Date().toISOString(),
+					},
+					warning: null,
+				},
+			});
+		});
+		await setupMember(page);
+		await navigateToFeature(page, '/wg/MTE8PZAT/einkauf');
+		await dismissOnboarding(page);
+		const input = page.getByLabel('Artikel-Name');
+		await input.fill('Milch');
+		await input.press('Enter');
+		// Der zweite Enter darf nicht am gesperrten Absende-Knopf scheitern.
+		await input.press('Enter');
+		await input.fill('Brot');
+		await input.press('Enter');
+		releaseFirst();
+		await expect.poll(() => posted).toEqual(['Milch', 'Brot']);
+		await expect(input).toHaveValue('');
+	});
+
 	test('uses a fresh idempotency key after an offline-queued shopping create', async ({ page }) => {
 		test.skip(
 			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
@@ -701,7 +751,10 @@ test.describe('shopping conflict handling', () => {
 			createdAt: '2026-09-22T10:00:00.000Z',
 			updatedAt: '2026-09-22T10:00:00.000Z',
 		};
-		await mockShoppingPage(page, false, 200, [item]);
+		// Dasselbe Array speist das Mock-GET: nach dem erfolgreichen DELETE liefert der
+		// „Server“ den Artikel nicht mehr, wie in echt beim Neuladen nach dem Entfernen.
+		const serverItems = [item];
+		await mockShoppingPage(page, false, 200, serverItems);
 		let deletes = 0;
 		let releaseDelete: () => void = () => {};
 		const deleteGate = new Promise<void>((resolve) => {
@@ -716,6 +769,7 @@ test.describe('shopping conflict handling', () => {
 					await deleteGate;
 					return route.fulfill({ status: 500, json: { error: 'server_error' } });
 				}
+				serverItems.length = 0;
 				return route.fulfill({ json: { deleted: 1 } });
 			},
 		);
@@ -725,17 +779,20 @@ test.describe('shopping conflict handling', () => {
 
 		await page.getByRole('button', { name: 'Artikelaktionen: Milch' }).click();
 		const remove = page.getByRole('button', { name: /entfernen: Milch$/ });
+		const confirmRemove = page.getByRole('button', { name: 'Endgültig entfernen: Milch' });
+		// Erster Tipp schärft, zweiter bestätigt; erst klicken, wenn der Bestätigungszustand steht.
 		await remove.click();
-		await remove.click();
+		await confirmRemove.click();
 		await expect(remove).toBeDisabled();
 		releaseDelete();
 
 		await expect(remove).toBeEnabled();
 		expect(deletes).toBe(1);
 		await remove.click();
-		await remove.click();
-		await expect(page.getByRole('checkbox', { name: 'Milch erledigen' })).toHaveCount(0);
-		expect(deletes).toBe(2);
+		await confirmRemove.click();
+		// Der Request-Zähler läuft im Route-Handler, also asynchron zum Klick.
+		await expect.poll(() => deletes).toBe(2);
+		await expect(page.getByRole('button', { name: 'Artikelaktionen: Milch' })).toHaveCount(0);
 	});
 
 	test('explains the admin requirement when clear-bought returns 403', async ({ page }) => {

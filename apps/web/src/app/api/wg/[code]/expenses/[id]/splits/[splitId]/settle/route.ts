@@ -127,26 +127,26 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 
 			if (settled) {
 				// ponytail: scan all WG splits under the lock; add indexed stored balances if this becomes slow.
-				const [members, splitRows, payments] = await Promise.all([
-					tx
-						.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
-						.from(wgMembers)
-						.where(eq(wgMembers.wgId, expense.wgId)),
-					tx
-						.select({
-							expenseId: expenses.id,
-							paidByMemberId: expenses.paidByMemberId,
-							currency: expenses.currency,
-							splitId: expenseSplits.id,
-							debtorMemberId: expenseSplits.debtorMemberId,
-							amountCents: expenseSplits.amountCents,
-							settledAt: expenseSplits.settledAt,
-						})
-						.from(expenses)
-						.innerJoin(expenseSplits, eq(expenseSplits.expenseId, expenses.id))
-						.where(eq(expenses.wgId, expense.wgId)),
-					loadCompletedExpensePayments(expense.wgId, tx),
-				]);
+				// Nacheinander statt Promise.all: eine Transaktion hat nur eine Verbindung, und pg
+				// meldet parallele Abfragen darauf als veraltet (in pg 9 entfernt).
+				const members = await tx
+					.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
+					.from(wgMembers)
+					.where(eq(wgMembers.wgId, expense.wgId));
+				const splitRows = await tx
+					.select({
+						expenseId: expenses.id,
+						paidByMemberId: expenses.paidByMemberId,
+						currency: expenses.currency,
+						splitId: expenseSplits.id,
+						debtorMemberId: expenseSplits.debtorMemberId,
+						amountCents: expenseSplits.amountCents,
+						settledAt: expenseSplits.settledAt,
+					})
+					.from(expenses)
+					.innerJoin(expenseSplits, eq(expenseSplits.expenseId, expenses.id))
+					.where(eq(expenses.wgId, expense.wgId));
+				const payments = await loadCompletedExpensePayments(expense.wgId, tx);
 				const balanceExpenses = splitRows.map((row) => ({
 					paidByMemberId: row.paidByMemberId,
 					currency: row.currency,

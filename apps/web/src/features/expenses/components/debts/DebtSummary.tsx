@@ -503,13 +503,7 @@ export function DebtSummary({
 		(member) => member.memberId === currentMemberId && member.balanceCents !== 0,
 	);
 	const ownBalance = ownBalances.length === 1 ? ownBalances[0] : null;
-	// Balken je Währung auf den größten Betrag skaliert, wie bei Tricount.
-	const maxByCurrency = new Map<string, number>();
-	for (const member of balances) {
-		const abs = Math.abs(member.balanceCents);
-		if (abs > (maxByCurrency.get(member.currency) ?? 0)) maxByCurrency.set(member.currency, abs);
-	}
-	const showBalances = balances.length > 1 && maxByCurrency.size > 0;
+	const showBalances = balances.length > 1;
 
 	return (
 		<Card size="sm">
@@ -567,41 +561,21 @@ export function DebtSummary({
 						</h3>
 						<ul aria-label="Saldo pro Mitglied" className="flex flex-col gap-2">
 							{balances.map((member) => {
-								const max = maxByCurrency.get(member.currency) ?? 0;
-								const width = max > 0 ? `${(Math.abs(member.balanceCents) / max) * 100}%` : '0%';
 								const isMe = member.memberId === currentMemberId;
 								return (
 									<li
 										key={`${member.currency}-${member.memberId}`}
-										className="grid grid-cols-1 items-center gap-2 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(3rem,5rem)_auto]"
+										className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-sm"
 									>
-										<span className="flex min-w-0 items-center gap-2">
+										<span className="flex min-w-0 flex-1 basis-32 items-center gap-2">
 											<MemberAvatar name={member.memberName} size={24} />
-											<span className="min-w-0 whitespace-normal break-words sm:truncate">
+											<span className="min-w-0 whitespace-normal break-words">
 												{isMe ? 'Du' : member.memberName}
 											</span>
 										</span>
 										<span
-											aria-hidden
-											className="hidden h-1.5 overflow-hidden rounded-full bg-muted sm:flex"
-										>
-											<span className="flex flex-1 justify-end">
-												{member.balanceCents < 0 && (
-													<span
-														className="h-full rounded-l-full bg-destructive"
-														style={{ width }}
-													/>
-												)}
-											</span>
-											<span className="flex flex-1">
-												{member.balanceCents > 0 && (
-													<span className="h-full rounded-r-full bg-settled" style={{ width }} />
-												)}
-											</span>
-										</span>
-										<span
 											className={cn(
-												'justify-self-end text-right font-mono whitespace-nowrap tabular-nums',
+												'ml-auto shrink-0 text-right font-mono whitespace-nowrap tabular-nums',
 												member.balanceCents > 0
 													? 'text-settled'
 													: member.balanceCents < 0

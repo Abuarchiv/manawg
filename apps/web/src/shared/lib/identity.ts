@@ -18,14 +18,18 @@ const storedIdentitySchema = z.object({
 	// Used only to keep local offline records separated when this browser switches accounts.
 	authUserId: z.string().regex(UUID_V4_PATTERN).optional(),
 	// Session token (see @/core/guards/member-token). Optional so identities
-	// stored before this field existed keep parsing — they just stay
-	// "legacy" until WgContextProvider's self-heal effect backfills it.
+	// stored before this field existed keep parsing; WgContextProvider rewrites
+	// the field from the server on the next WG load (loadSessionMember).
 	memberToken: z.string().min(1).optional(),
 });
 
+// WG-Namen dürfen bis 100 Zeichen lang sein (POST/PATCH /api/wg); mit 80 würden
+// lange Namen beim Lesen still verworfen und fehlten auf der Offline-Seite.
+const WG_NAME_MAX_LENGTH = 100;
+
 const knownWgSchema = z.object({
 	code: z.string(),
-	name: z.string().min(1).max(NAME_MAX_LENGTH),
+	name: z.string().min(1).max(WG_NAME_MAX_LENGTH),
 	lastVisitedAt: z.number().finite(),
 });
 
@@ -59,9 +63,9 @@ export interface KnownWg {
 export function getIdentity(wgId: string): StoredIdentity | null {
 	const ls = safeLocalStorage();
 	if (!ls) return null;
-	const raw = ls.getItem(STORAGE_PREFIX + wgId);
-	if (!raw) return null;
 	try {
+		const raw = ls.getItem(STORAGE_PREFIX + wgId);
+		if (!raw) return null;
 		const parsed: unknown = JSON.parse(raw);
 		const result = storedIdentitySchema.safeParse(parsed);
 		if (!result.success) return null;
@@ -128,7 +132,11 @@ export function getLegacyIdentityCandidates(): LegacyIdentityCandidate[] {
 export function clearIdentity(wgId: string): void {
 	const ls = safeLocalStorage();
 	if (!ls) return;
-	ls.removeItem(STORAGE_PREFIX + wgId);
+	try {
+		ls.removeItem(STORAGE_PREFIX + wgId);
+	} catch {
+		// Blocked storage: nothing stored, nothing to clear.
+	}
 }
 
 const MAX_KNOWN_WGS = 20;

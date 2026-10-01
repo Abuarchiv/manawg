@@ -29,6 +29,7 @@ const {
 	createQueuedChoreCompletion,
 	createQueuedShoppingItem,
 	createQueuedShoppingUpdate,
+	explainOfflineActionFailure,
 	getOfflineActionRequest,
 	isQueuedCreateId,
 	hasQueuedShoppingUpdate,
@@ -167,5 +168,14 @@ test('synthetic ids of offline creates are recognised, server ids are not', () =
 	for (const action of [shopping, chore, absence]) assert.equal(isQueuedCreateId(action.id), true);
 	for (const serverId of [memberId, 'absence-holiday', 'chore-1']) {
 		assert.equal(isQueuedCreateId(serverId), false);
+	}
+});
+
+test('a rate-limited replay is explained as retried automatically, not as a failure', () => {
+	for (const [status, error] of [
+		[429, 'rate_limited'],
+		[429, 'too_many_requests'],
+	]) {
+		assert.equal(explainOfflineActionFailure(status, error).title, 'Zu viele Anfragen');
 	}
 });

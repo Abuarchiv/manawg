@@ -37,3 +37,9 @@ export function isWeakPasswordError(error: unknown): boolean {
 		error !== null && typeof error === 'object' && Reflect.get(error, 'code') === 'weak_password'
 	);
 }
+
+export function isSamePasswordError(error: unknown): boolean {
+	return (
+		error !== null && typeof error === 'object' && Reflect.get(error, 'code') === 'same_password'
+	);
+}

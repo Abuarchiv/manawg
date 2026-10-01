@@ -57,6 +57,7 @@ export function useShoppingAdd({
 	const [draftHydrated, setDraftHydrated] = useState(false);
 	const addingRef = useRef(false);
 	const inFlightRef = useRef<Promise<void> | null>(null);
+	const inFlightTextRef = useRef<string | null>(null);
 	const addIdempotencyKeyRef = useRef<{ fingerprint: string; key: string } | null>(null);
 	const nameValueRef = useRef('');
 	const appliedPrefillRef = useRef<string | null>(null);
@@ -107,9 +108,12 @@ export function useShoppingAdd({
 		// Chip-Doppeltipp verwerfen; eine Eingabe per Enter während eines laufenden
 		// Hinzufügens wird nachgereiht statt still verworfen (gleicher Text → gleicher Key).
 		if (addingRef.current && text !== undefined) return;
-		while (addingRef.current && inFlightRef.current) await inFlightRef.current;
 		const fromInput = text === undefined;
 		const submittedName = text ?? newName;
+		// Doppel-Enter oder Doppeltipp auf denselben Text: der läuft schon, ein zweiter Versuch
+		// träfe nur die Dublettensperre und zeigte einen Fehler für einen erfolgreichen Artikel.
+		if (addingRef.current && submittedName === inFlightTextRef.current) return;
+		while (addingRef.current && inFlightRef.current) await inFlightRef.current;
 		const { name, quantity } = parseShoppingInput(submittedName);
 		if (name.length === 0) return;
 		// The edited queue entry may have been synced meanwhile; a new create would duplicate it.
@@ -123,6 +127,7 @@ export function useShoppingAdd({
 			return;
 		}
 		addingRef.current = true;
+		inFlightTextRef.current = submittedName;
 		let release: () => void = () => {};
 		inFlightRef.current = new Promise<void>((resolve) => {
 			release = resolve;
@@ -140,6 +145,7 @@ export function useShoppingAdd({
 			setAddError('Artikel konnte nicht sicher gespeichert werden. Versuche es erneut.');
 			addingRef.current = false;
 			inFlightRef.current = null;
+			inFlightTextRef.current = null;
 			release();
 			setAdding(false);
 			return;
@@ -232,6 +238,7 @@ export function useShoppingAdd({
 		} finally {
 			addingRef.current = false;
 			inFlightRef.current = null;
+			inFlightTextRef.current = null;
 			release();
 			setAdding(false);
 		}

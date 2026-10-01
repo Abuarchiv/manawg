@@ -20,6 +20,8 @@ export interface DispatchInput {
 	payload: Record<string, unknown>;
 	targetMemberIds?: string[];
 	excludeMemberId?: string;
+	/** Weitere Mitglieder ohne Push, z. B. wer für dasselbe Ereignis schon gezielt benachrichtigt wird. */
+	excludeMemberIds?: readonly string[];
 	bypassPreferences?: boolean;
 }
 
@@ -223,6 +225,7 @@ export async function dispatchNotification(
 
 	const targetMembers = rows
 		.filter((member) => member.id !== input.excludeMemberId)
+		.filter((member) => !input.excludeMemberIds?.includes(member.id))
 		// Moved-out members never receive push, even when explicitly targeted.
 		.filter((member) => member.deactivatedAt === null)
 		.filter(

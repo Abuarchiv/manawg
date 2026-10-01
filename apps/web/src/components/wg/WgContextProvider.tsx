@@ -291,7 +291,9 @@ export function WgContextProvider({
 			if (authGeneration !== authGenerationRef.current) return;
 			// Normalize defensively: an omitted flag (e.g. E2E fixtures) means active.
 			if (res.ok) {
-				setMembers(res.data.members.map((m) => ({ ...m, active: m.active !== false })));
+				const next = res.data.members.map((m) => ({ ...m, active: m.active !== false }));
+				// Alle 30 s: unveränderte Liste behalten, sonst rendert jeder useWg()-Nutzer ohne Anlass neu.
+				setMembers((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
 				setIsAdmin(res.data.viewerIsAdmin === true);
 				setMembersRefreshFailures(0);
 				return;
