@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-const checker = await import('./db-migrate.mjs');
+const checker = await import('../scripts/db-migrate.mjs');
 
 test('db:migrate accepts direct URLs and rejects query parameters that override them', async (t) => {
 	for (const [name, url] of [
