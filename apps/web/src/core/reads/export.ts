@@ -126,18 +126,37 @@ function neutralizeCsvFormula(text: string): string {
 function escapeCsv(value: unknown): string {
 	const raw = formatCsvValue(value);
 	const text = neutralizeCsvFormula(raw);
-	if (raw === text && !/[",\n\r]/.test(text)) return text;
+	if (raw === text && !/[";\n\r]/.test(text)) return text;
 	return `"${text.replace(/"/g, '""')}"`;
 }
 
+const CENTS_SUFFIX = /Cents$/;
+
+/** Cents become a decimal-comma amount ("12,34"), the form German Excel reads as a number. */
+function formatCentsAmount(value: unknown): string {
+	if (typeof value !== 'number' || !Number.isFinite(value)) return escapeCsv(value);
+	const abs = Math.abs(Math.round(value));
+	return `${value < 0 ? '-' : ''}${Math.floor(abs / 100)},${String(abs % 100).padStart(2, '0')}`;
+}
+
+/**
+ * German Excel needs a UTF-8 BOM for umlauts and a semicolon separator
+ * (the comma is its decimal mark); `*Cents` columns are written as `*` amounts.
+ */
 export function toCsv(rows: ExportRow[], fallbackHeaders: string[] = []): string {
 	const headers = fallbackHeaders.length > 0 ? fallbackHeaders : Object.keys(rows[0] ?? {});
 	if (headers.length === 0) return '';
-	const lines = [headers.join(',')];
+	const lines = [headers.map((header) => header.replace(CENTS_SUFFIX, '')).join(';')];
 	for (const row of rows) {
-		lines.push(headers.map((header) => escapeCsv(row[header])).join(','));
+		lines.push(
+			headers
+				.map((header) =>
+					CENTS_SUFFIX.test(header) ? formatCentsAmount(row[header]) : escapeCsv(row[header]),
+				)
+				.join(';'),
+		);
 	}
-	return lines.join('\n');
+	return `\uFEFF${lines.join('\n')}`;
 }
 
 export function getExportSectionHeaders(section: ExportSectionKey): string[] {

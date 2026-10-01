@@ -34,6 +34,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { safeNextPath } from '@/core/auth/next-path';
+import { hasSessionCookie } from '@/core/auth/session-hint';
 import { getInitialJoinCode, joinErrorMessage } from '@/core/infra/join-flow';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
@@ -290,6 +291,11 @@ export function NeuClient() {
 			if (authRetryNonce > 0) {
 				setError(null);
 				setInvalidField(null);
+			}
+			if (!hasSessionCookie()) {
+				setAccountWgs([]);
+				setAuthState('signed-out');
+				return;
 			}
 			setAuthState('loading');
 			try {

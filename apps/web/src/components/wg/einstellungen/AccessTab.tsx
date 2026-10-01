@@ -626,8 +626,9 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 					<div className="grid gap-3 p-3">
 						{isAdmin ? (
 							<p className="text-muted-foreground text-[12px]">
-								Übergib zuerst die Admin-Rolle an ein aktives Mitglied (Button „Admin“ bei den
-								Mitgliedern), danach kannst du die WG verlassen.
+								{activeMembers.length <= 1
+									? 'Du bist Admin und das letzte aktive Mitglied. Aktiviere zuerst ein ausgezogenes Mitglied und übergib die Admin-Rolle, oder lösche die WG unten.'
+									: 'Übergib zuerst die Admin-Rolle an ein aktives Mitglied (Button „Admin“ bei den Mitgliedern), danach kannst du die WG verlassen.'}
 							</p>
 						) : activeMembers.length <= 1 ? (
 							<p className="text-muted-foreground text-[12px]">

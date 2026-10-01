@@ -33,4 +33,17 @@ test.describe('credentials auth form validation fixture', () => {
 			'Bitte gib eine gültige E-Mail-Adresse und ein Passwort mit mindestens 6 Zeichen ein.',
 		);
 	});
+
+	test('password field switches to new-password only for "Konto erstellen"', async ({ page }) => {
+		await page.route('**/api/wg/mine', (route) =>
+			route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
+		);
+		await page.goto('/neu');
+		const password = page.locator('#auth-password');
+		await expect(password).toHaveAttribute('autocomplete', 'current-password');
+		await page.getByRole('button', { name: 'Konto erstellen' }).focus();
+		await expect(password).toHaveAttribute('autocomplete', 'new-password');
+		await password.focus();
+		await expect(password).toHaveAttribute('autocomplete', 'current-password');
+	});
 });
