@@ -1,3 +1,6 @@
+// Hosted public entry (Supabase) live lane; CI references this file by name.
+// Why: only hosted evidence that public exploration, create/join choices and private deep-link protection work against real Supabase.
+
 import { expect, test } from '@playwright/test';
 import { WEAK_PASSWORD_MESSAGE } from '../src/core/auth/password-errors';
 

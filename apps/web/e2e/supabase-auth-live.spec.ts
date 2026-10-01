@@ -1,3 +1,6 @@
+// Hosted Supabase auth release coverage and password-reset smoke; CI references this file by name.
+// Why: guests must not reach private WGs and account switching must work against the real auth backend.
+
 import { expect, test } from '@playwright/test';
 
 const liveEnabled = process.env.SUPABASE_AUTH_LIVE_E2E === 'true';

@@ -1,3 +1,6 @@
+// Account deletion against a disposable loopback PostgreSQL (own config: account-delete-db.config.cjs).
+// Why: deletion must be atomic, fenced and leave no residue; only a real database proves FK/cascade behaviour.
+
 import { expect, test } from '@playwright/test';
 
 const accountDeleteTestUrl = process.env.ACCOUNT_DELETE_TEST_URL?.trim() ?? '';

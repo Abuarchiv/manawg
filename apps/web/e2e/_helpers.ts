@@ -93,3 +93,26 @@ export async function dismissOnboarding(page: Page): Promise<void> {
 			throw new Error('Fixture identity was not accepted — setupMember() must run first');
 		});
 }
+
+/**
+ * Mocks the chat unread badge request that every WG page fires. `base` is the
+ * WG API prefix, e.g. `/api/wg/MTE8PZAT`; the default count keeps the badge hidden.
+ */
+export async function mockUnreadCount(page: Page, base: string, count = 0): Promise<void> {
+	await page.route(`**${base}/chat/unread-count`, (route) =>
+		route.fulfill({ status: 200, json: { count, overflow: false } }),
+	);
+}
+
+/** Mocks the signed-in user's WG list as empty (entry/onboarding pages). */
+export async function mockNoWgs(page: Page): Promise<void> {
+	await page.route('**/api/wg/mine', (route) => route.fulfill({ status: 200, json: { wgs: [] } }));
+}
+
+/**
+ * Minimal responsive matrix: 320px light at 100% text plus 320px dark at 200% text.
+ * Wider widths and the other colour/scale combinations exercise the same CSS paths.
+ */
+export function inMinimalMatrix(c: { width: number; dark: boolean; large: boolean }): boolean {
+	return c.width === 320 && c.dark === c.large;
+}
