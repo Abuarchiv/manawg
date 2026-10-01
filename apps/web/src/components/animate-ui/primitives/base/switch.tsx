@@ -242,14 +242,4 @@ function SwitchIcon({
 	);
 }
 
-export {
-	Switch,
-	SwitchThumb,
-	SwitchIcon,
-	useSwitch,
-	type SwitchProps,
-	type SwitchThumbProps,
-	type SwitchIconProps,
-	type SwitchIconPosition,
-	type SwitchContextType,
-};
+export { Switch, SwitchThumb, SwitchIcon, type SwitchProps };
