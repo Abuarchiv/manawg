@@ -989,7 +989,7 @@ export default function EinkaufPage() {
 										.join(', ')}`,
 								)}`}
 								onClick={dismissReceiptPrompt}
-								className={cn(buttonVariants({ size: 'sm' }))}
+								className={cn(buttonVariants({ size: 'sm' }), 'no-underline!')}
 							>
 								Ausgabe erfassen
 							</Link>
