@@ -563,6 +563,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		if (!frame) return;
 		let chrome: HTMLElement | null = null;
 		let chromeObserver: ResizeObserver | null = null;
+		let shift = 0;
 
 		// Re-resolved on every pass: React re-renders and app-chrome swaps must
 		// not leave listeners or observers pointing at detached nodes.
@@ -587,8 +588,14 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			// pans the visual viewport: only reserve the nav part that is visible.
 			const nav = chrome?.getBoundingClientRect();
 			const reserved = nav ? Math.max(0, bottom - Math.max(top, nav.top)) : 68;
+			// The pan scrolls the frame's top (tabs, first messages) out of sight, so a
+			// short chat looks empty. Pin the frame's top to the visible top instead.
+			const base = frame.getBoundingClientRect().top - shift;
+			shift = Math.max(0, top - base);
+			frame.style.position = shift ? 'relative' : '';
+			frame.style.top = shift ? `${shift}px` : '';
 			// End the frame at the visible bottom, wherever the pan left its top.
-			frame.style.height = `${Math.max(0, bottom - reserved - frame.getBoundingClientRect().top)}px`;
+			frame.style.height = `${Math.max(0, bottom - reserved - base - shift)}px`;
 		}
 
 		// The sticky offline banner sits above the frame and moves its top edge.
