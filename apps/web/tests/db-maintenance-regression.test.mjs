@@ -153,6 +153,10 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 			'@/core/idempotency': idempotency,
 			'@/core/infra/cron-auth': { verifyCronSecret: () => true },
 			'@/core/infra/observability': loadObservability(env, logs),
+			'@/core/infra/paypal': { isPayPalConfigured: () => false },
+			'@/features/expenses/paypal-reconcile': {
+				reconcileStaleCapturingPayments: async () => null,
+			},
 			'@/core/infra/supabase-storage': { removeSupabaseImages: async () => undefined },
 			'next/server': { NextResponse: Response },
 		},
@@ -165,6 +169,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 	assert.deepEqual(await failedCleanup.json(), {
 		ok: false,
 		purgedIdempotencyRows: null,
+		paypalReconcile: null,
 		accountDeletions: { ...recoveryResult, authAdminAvailable: false },
 		privateImageCleanup: {
 			attempted: 0,
@@ -186,6 +191,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 	assert.deepEqual(await response.json(), {
 		ok: true,
 		purgedIdempotencyRows: 1,
+		paypalReconcile: null,
 		accountDeletions: { ...recoveryResult, authAdminAvailable: false },
 		privateImageCleanup: {
 			attempted: 0,

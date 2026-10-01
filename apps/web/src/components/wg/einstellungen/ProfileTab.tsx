@@ -10,7 +10,14 @@ import { WgNameSection } from '@/components/wg/einstellungen/WgNameSection';
 import { InstallButton } from '@/shared/components/install-button';
 import { useTheme } from '@/shared/components/theme/ThemeProvider';
 import { haptic } from '@/shared/lib/haptics';
+import { isPayPalSdkEnabled } from '@/shared/lib/security-headers';
 import { Monitor, Moon, Sun } from 'lucide-react';
+
+// Ohne PayPal-Zugangsdaten keinen halbfertigen PayPal-Abschnitt zeigen.
+const PAYPAL_ENABLED = isPayPalSdkEnabled(
+	process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
+	process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
+);
 
 const THEMES = [
 	{ value: 'light', label: 'Hell', icon: Sun },
@@ -84,9 +91,11 @@ export function ProfileTab({
 				</div>
 			</Section>
 
-			<Section title="PayPal">
-				<PayPalConnect shareCode={shareCode} memberId={memberId} memberToken={memberToken} />
-			</Section>
+			{PAYPAL_ENABLED && (
+				<Section title="PayPal">
+					<PayPalConnect shareCode={shareCode} memberId={memberId} memberToken={memberToken} />
+				</Section>
+			)}
 
 			<Section
 				title="Hilfe"

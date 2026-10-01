@@ -332,6 +332,19 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 			capturedCents !== capturePayment.amountCents ||
 			capture.amount?.currency_code !== capturePayment.currency
 		) {
+			// Nicht hängen lassen: ein `capturing`-Eintrag sperrt sonst die Finanzen der ganzen WG.
+			logApiError(
+				'[paypal capture] captured order does not match payment',
+				new Error(`paypal_capture_mismatch:${capturePayment.id}`),
+			);
+			await withExpensePaymentLock(auth.wg.id, (tx) =>
+				tx
+					.update(expensePayments)
+					.set({ status: 'failed' })
+					.where(
+						and(eq(expensePayments.id, capturePayment.id), eq(expensePayments.status, 'capturing')),
+					),
+			);
 			return conflict('paypal_payment_not_completed');
 		}
 

@@ -68,6 +68,10 @@ function harness() {
 			logApiError: (message) => state.events.push(`log:${message}`),
 			withCronLogging: (_name, handler) => handler,
 		},
+		'@/core/infra/paypal': { isPayPalConfigured: () => false },
+		'@/features/expenses/paypal-reconcile': {
+			reconcileStaleCapturingPayments: async () => null,
+		},
 		'@/core/infra/supabase-storage': {
 			removeSupabaseImages: async (objectKeys) => {
 				state.events.push('remove');
