@@ -42,17 +42,23 @@ import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { endOfBerlinDay, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
 import { formatShortDate, parseTimestamp } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
-import { getAbsentMemberIds } from '@/features/chores/absence';
+import { getAbsentMemberIds, pickVisibleAbsences } from '@/features/chores/absence';
 import type { AbsenceInput } from '@/features/chores/absence';
-import { absenceSaveErrorMessage, choreCreateErrorMessage } from '@/features/chores/chore-errors';
-import { buildChoreFairness, chooseNextAvailableMember } from '@/features/chores/chore-fairness';
+import {
+	absenceSaveErrorMessage,
+	choreActionErrorMessage,
+	choreCreateErrorMessage,
+} from '@/features/chores/chore-errors';
+import {
+	buildChoreFairness,
+	chooseNextAvailableMember,
+	predictNextAssigneeId,
+} from '@/features/chores/chore-fairness';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import {
-	CHORE_GROUPS,
-	getChoreGroup,
 	getChorePlanHealth,
-	getChoreRepairHint,
 	getChoreStatus,
+	groupChoresForPlan,
 } from '@/features/chores/chore-status';
 import type {
 	AbsenceListResponse,
@@ -952,13 +958,7 @@ export function usePutzenPage() {
 		);
 
 		if (!result.ok) {
-			setActionError(
-				result.error === 'unexpected_error' || result.error === 'server_error'
-					? 'Tauschanfrage konnte nicht gepostet werden: Versuche es gleich erneut.'
-					: isNetworkError(result.error, result.status)
-						? 'Tauschanfrage konnte nicht gepostet werden: Prüfe deine Verbindung und versuche es erneut.'
-						: 'Tauschanfrage konnte nicht gepostet werden.',
-			);
+			setActionError(choreActionErrorMessage('Tauschanfrage konnte nicht gepostet werden', result));
 		} else {
 			setActionNotice('Tauschanfrage wurde auf der Pinnwand gepostet.');
 		}
@@ -995,13 +995,7 @@ export function usePutzenPage() {
 				endPending(pendingKey);
 				return;
 			}
-			setActionError(
-				result.error === 'unexpected_error' || result.error === 'server_error'
-					? 'Aufgabe konnte nicht übernommen werden: Versuche es gleich erneut.'
-					: isNetworkError(result.error, result.status)
-						? 'Aufgabe konnte nicht übernommen werden: Prüfe deine Verbindung und versuche es erneut.'
-						: 'Aufgabe konnte nicht übernommen werden.',
-			);
+			setActionError(choreActionErrorMessage('Aufgabe konnte nicht übernommen werden', result));
 		} else {
 			setItems((current) =>
 				current.map((item) =>
@@ -1088,36 +1082,15 @@ export function usePutzenPage() {
 				).length
 			: undefined;
 	const health = getChorePlanHealth(items);
-	// Der Block "Lücken reparieren" zeigte genau diese Aufgaben als zweite
-	// Kartenreihe, 200px über der Liste, in der sie ohnehin stehen. Statt sie zu
-	// verdoppeln stehen die reparaturbedürftigen jetzt einfach oben.
-	const sortedItems = useMemo(() => {
-		const needsRepair = (item: Chore) => (getChoreRepairHint(item) !== null ? 0 : 1);
-		return [...items].sort((a, b) => needsRepair(a) - needsRepair(b));
-	}, [items]);
 	const choreGroups = useMemo(
-		() =>
-			CHORE_GROUPS.map((group) => ({
-				...group,
-				chores: sortedItems.filter(
-					(chore) => getChoreGroup(chore, identity.memberId) === group.key,
-				),
-			})).filter((group) => group.chores.length > 0),
-		[identity.memberId, sortedItems],
+		() => groupChoresForPlan(items, identity.memberId),
+		[identity.memberId, items],
 	);
 	const absentMemberIds = getAbsentMemberIds(absences);
-	const selectedAbsence = useMemo(
-		() => absences.find((absence) => absence.id === absenceId) ?? null,
-		[absenceId, absences],
+	const visibleAbsences = useMemo(
+		() => pickVisibleAbsences(absences, absencesPanelActive, absenceId),
+		[absenceId, absences, absencesPanelActive],
 	);
-	const visibleAbsences = useMemo(() => {
-		if (absencesPanelActive) return absences;
-		const firstItems = absences.slice(0, 4);
-		if (!selectedAbsence || firstItems.some((absence) => absence.id === selectedAbsence.id)) {
-			return firstItems;
-		}
-		return [selectedAbsence, ...firstItems].slice(0, 4);
-	}, [absences, absencesPanelActive, selectedAbsence]);
 	const hiddenAbsenceCount = absences.length - visibleAbsences.length;
 	const fairness = buildChoreFairness({
 		members: activeMembers.map((member) => ({ id: member.id, name: member.name })),
@@ -1126,21 +1099,7 @@ export function usePutzenPage() {
 	});
 	const nextAssigneeNameByChoreId = new Map<string, string | null>(
 		items.map((chore): [string, string | null] => {
-			// Mirror the complete route: availability is judged on the next due
-			// day, not today. The client row has no anchor, which only affects
-			// month-end clamping, never the day an absence is checked against.
-			const nextDueAt = computeNextDueAt(
-				new Date(chore.nextDueAt),
-				chore.intervalDays,
-				new Date(),
-				chore.recurrenceType,
-			);
-			const nextAssigneeId = chooseNextAvailableMember({
-				members: activeMembers,
-				currentMemberId: chore.assignedMemberId,
-				absentMemberIds: getAbsentMemberIds(absences, nextDueAt.getTime()),
-				chores: items,
-			});
+			const nextAssigneeId = predictNextAssigneeId(chore, items, activeMembers, absences);
 			if (!nextAssigneeId) return [chore.id, null];
 			return [
 				chore.id,

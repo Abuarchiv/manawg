@@ -54,3 +54,16 @@ export function formatAbsenceRange(startDate: string, endDate: string): string {
 	if (start === null || end === null) return 'Datum unbekannt';
 	return `${berlinDateFormatter.format(start)} bis ${berlinDateFormatter.format(end)}`;
 }
+
+/** Ohne offenes Panel nur die ersten vier; eine per Link gewählte Abwesenheit bleibt sichtbar. */
+export function pickVisibleAbsences(
+	absences: AbsenceInput[],
+	showAll: boolean,
+	selectedId: string | null,
+): AbsenceInput[] {
+	if (showAll) return absences;
+	const firstItems = absences.slice(0, 4);
+	const selected = absences.find((absence) => absence.id === selectedId);
+	if (!selected || firstItems.some((absence) => absence.id === selected.id)) return firstItems;
+	return [selected, ...firstItems].slice(0, 4);
+}
