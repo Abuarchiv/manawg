@@ -62,28 +62,28 @@ async function loadSettlementSnapshot(
 	client: SettlementQueryClient,
 	wgId: string,
 ): Promise<SettlementSnapshot> {
-	const [members, expenseRows] = await Promise.all([
-		client
-			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
-			.from(wgMembers)
-			.where(eq(wgMembers.wgId, wgId)),
-		client
-			.select({
-				id: expenses.id,
-				paidByMemberId: expenses.paidByMemberId,
-				currency: expenses.currency,
-				occurredAt: expenses.occurredAt,
-			})
-			.from(expenses)
-			.where(eq(expenses.wgId, wgId)),
-	]);
+	// Nacheinander statt Promise.all: in der Transaktion gibt es nur eine Verbindung, und pg
+	// meldet parallele Abfragen darauf als veraltet (in pg 9 entfernt).
+	const members = await client
+		.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
+		.from(wgMembers)
+		.where(eq(wgMembers.wgId, wgId));
+	const expenseRows = await client
+		.select({
+			id: expenses.id,
+			paidByMemberId: expenses.paidByMemberId,
+			currency: expenses.currency,
+			occurredAt: expenses.occurredAt,
+		})
+		.from(expenses)
+		.where(eq(expenses.wgId, wgId));
 
 	// Splits are joined by WG instead of `inArray(expenseIds)`: one bind
 	// parameter per expense would exceed PostgreSQL's 65,535-parameter limit.
-	const [splitRows, paymentRows] = await Promise.all([
+	const splitRows: SettlementSplitInput[] =
 		expenseRows.length === 0
-			? Promise.resolve([] as SettlementSplitInput[])
-			: client
+			? []
+			: await client
 					.select({
 						id: expenseSplits.id,
 						expenseId: expenseSplits.expenseId,
@@ -93,17 +93,16 @@ async function loadSettlementSnapshot(
 					})
 					.from(expenseSplits)
 					.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
-					.where(eq(expenses.wgId, wgId)),
-		client
-			.select({
-				fromMemberId: expensePayments.fromMemberId,
-				toMemberId: expensePayments.toMemberId,
-				amountCents: expensePayments.amountCents,
-				currency: expensePayments.currency,
-			})
-			.from(expensePayments)
-			.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed'))),
-	]);
+					.where(eq(expenses.wgId, wgId));
+	const paymentRows = await client
+		.select({
+			fromMemberId: expensePayments.fromMemberId,
+			toMemberId: expensePayments.toMemberId,
+			amountCents: expensePayments.amountCents,
+			currency: expensePayments.currency,
+		})
+		.from(expensePayments)
+		.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed')));
 
 	const splitsByExpense = new Map<string, SettlementSplitInput[]>();
 	for (const split of splitRows) {

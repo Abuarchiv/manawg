@@ -175,10 +175,8 @@ export async function persistImportReplayWarning(
 }
 
 /**
- * Cache a response payload under `scope:key` for the seven-day offline retry window.
- * Silently drops payloads larger than 32 KiB so a misbehaving caller cannot
- * exhaust storage. `ON CONFLICT DO UPDATE` replaces a temporary claim marker
- * written by `claimResponseSlot` with the real response body.
+ * Gives up a still-unanswered claim so a retry can run the mutation again.
+ * Only a placeholder (`_claimed`) is removed; a stored response is never deleted.
  */
 export async function releaseResponseSlot(scope: string, key: string): Promise<void> {
 	try {
@@ -213,6 +211,13 @@ export async function purgeExpiredIdempotencyResponses(now: Date = new Date()): 
 	return deleted.length;
 }
 
+/**
+ * Cache a response payload under `scope:key` for the seven-day offline retry window.
+ * A payload larger than 32 KiB is not stored: the slot is marked replay-unavailable
+ * instead, so a retry fails loudly rather than re-running the mutation.
+ * `ON CONFLICT DO UPDATE` replaces a temporary claim marker written by
+ * `claimResponseSlot` with the real response body.
+ */
 export async function setCachedResponse(
 	scope: string,
 	key: string,

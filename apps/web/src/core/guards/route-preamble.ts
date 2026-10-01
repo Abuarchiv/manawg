@@ -13,8 +13,8 @@ import type { NextRequest, NextResponse } from 'next/server';
  * The two steps every `/api/wg/[code]/...` handler runs before it touches its
  * own domain logic.
  *
- * Both were copy-pasted into every route — the share-code check into 42 of
- * them, the E2E fixture gate into 16, character for character. Copies drift:
+ * Both used to be copy-pasted into every route, character for character.
+ * Copies drift:
  * an identical-looking duplicate of the client-IP logic is exactly how a
  * rate-limit bypass got into this codebase. Having one implementation means a
  * fix lands everywhere at once.

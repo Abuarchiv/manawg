@@ -2,10 +2,12 @@
  * Startup environment validation.
  *
  * The app degrades silently when optional infrastructure is unconfigured:
- * without Upstash the rate limiter fails open, without VAPID keys push
- * notifications never send, without AWS credentials image uploads 500 on the
- * first signature request. In production those are invisible until a user
- * hits them. `checkEnv` turns that into one explicit report at boot.
+ * without Upstash the rate limiter fails open (in production it fails closed
+ * and is therefore required, see below), without VAPID keys push notifications
+ * never send, without the Supabase service-role key account deletion answers
+ * 503, without AWS credentials image uploads 500 on the first signature
+ * request. In production those are invisible until a user hits them.
+ * `checkEnv` turns that into one explicit report at boot.
  *
  * Split into two severities:
  *   - `missingRequired` — the app cannot serve correctly at all (no database,
@@ -22,7 +24,7 @@
 type EnvSource = Record<string, string | undefined>;
 
 interface DegradedFeature {
-	feature: 'rate-limiting' | 'push-notifications' | 'image-uploads' | 'error-reporting';
+	feature: 'rate-limiting' | 'push-notifications' | 'image-uploads' | 'account-deletion';
 	missing: string[];
 	impact: string;
 }
@@ -52,6 +54,11 @@ const OPTIONAL_FEATURES: readonly FeatureSpec[] = [
 		feature: 'push-notifications',
 		vars: ['NEXT_PUBLIC_VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'VAPID_SUBJECT'],
 		impact: 'Web-Push is disabled — reminders and mentions never reach devices.',
+	},
+	{
+		feature: 'account-deletion',
+		vars: ['SUPABASE_SERVICE_ROLE_KEY'],
+		impact: 'Account deletion answers 503 — the Auth user cannot be removed without it.',
 	},
 ] as const;
 
