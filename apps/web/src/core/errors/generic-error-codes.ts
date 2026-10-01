@@ -11,6 +11,7 @@
 const HTTP_NOT_FOUND = 404;
 const HTTP_UNAUTHORIZED = 401;
 const HTTP_SERVER_ERROR = 500;
+const HTTP_TOO_MANY = 429;
 
 export function isNetworkError(code: string | null, status?: number): boolean {
 	return status === 0 || code === 'Netzwerkfehler' || code === 'Failed to fetch';
@@ -22,6 +23,7 @@ export function isRetryableServerError(code: string | null, status?: number): bo
 		code === 'server_error' ||
 		code === 'db_error' ||
 		code === 'too_many_requests' ||
+		status === HTTP_TOO_MANY ||
 		(status !== undefined && status >= HTTP_SERVER_ERROR)
 	);
 }

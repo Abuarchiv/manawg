@@ -581,6 +581,18 @@ function isChoreAlreadyCompleted(
 	);
 }
 
+/** The item is already on the open list (e.g. a housemate added it): the goal is met. */
+function isShoppingAlreadyOnList(
+	action: OfflineAction,
+	res: { status: number; error: string },
+): boolean {
+	return (
+		action.type === 'shopping.create' &&
+		res.status === 409 &&
+		res.error === 'shopping_item_duplicate'
+	);
+}
+
 export function needsManualOfflineResolution(action: OfflineAction): boolean {
 	if (replayWindowReviewError(action)) return true;
 	if (action.lastError?.startsWith('Server prüfen:')) return true;
@@ -767,7 +779,8 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 				}
 			} else if (
 				(readyAction.type === 'recurring.advance' && isRecurringAlreadyAdvanced(res)) ||
-				isChoreAlreadyCompleted(readyAction, res)
+				isChoreAlreadyCompleted(readyAction, res) ||
+				isShoppingAlreadyOnList(readyAction, res)
 			) {
 				recordSynced(readyAction);
 				outcomes.set(action.id, { snapshot: requestSnapshot, reviewOnEdit: true });
