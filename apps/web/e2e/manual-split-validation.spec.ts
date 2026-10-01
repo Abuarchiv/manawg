@@ -50,7 +50,7 @@ test('blocks an invalid manual expense share, then submits the corrected split',
 
 	await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Ausgabe erfassen' }).first().click();
+	await page.getByRole('button', { name: 'Ausgabe hinzufügen' }).first().click();
 	const dialog = page.getByRole('dialog');
 	await dialog.getByLabel('Beschreibung', { exact: true }).fill('Internet');
 	await dialog.getByLabel('Betrag', { exact: true }).fill('10');
@@ -96,7 +96,7 @@ test('blocks a malformed manual Abo share, then submits the corrected split', as
 
 	await navigateToFeature(page, `/wg/${shareCode}/abos`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
+	await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
 	const dialog = page.getByRole('dialog');
 	await dialog.getByLabel('Beschreibung', { exact: true }).fill('Internet');
 	await dialog.getByLabel('Betrag', { exact: true }).fill('10');
@@ -142,7 +142,7 @@ test('keeps blank and zero Abo shares opt-out while posting valid shares', async
 
 	await navigateToFeature(page, `/wg/${shareCode}/abos`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
+	await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
 	const dialog = page.getByRole('dialog');
 	await dialog.getByLabel('Beschreibung', { exact: true }).fill('Internet');
 	await dialog.getByLabel('Betrag', { exact: true }).fill('10');

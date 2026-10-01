@@ -123,7 +123,7 @@ test('keeps finance forms in narrow viewports at 200% text size', async ({ page 
 
 	await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Ausgabe erfassen' }).first().click();
+	await page.getByRole('button', { name: 'Ausgabe hinzufügen' }).first().click();
 	const expenseDialog = page.getByRole('dialog');
 	await expect(expenseDialog).toBeVisible();
 	await expenseDialog.getByText('Manuell', { exact: true }).click();
@@ -134,7 +134,7 @@ test('keeps finance forms in narrow viewports at 200% text size', async ({ page 
 
 	await page.goto(`/wg/${shareCode}/abos`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
+	await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
 	const aboDialog = page.getByRole('dialog');
 	await expect(aboDialog).toBeVisible();
 	await aboDialog.getByText('Manuell', { exact: true }).click();

@@ -342,7 +342,7 @@ test('wraps a long predicted name at phone widths in both themes', async ({ page
 test('restores the automatic assignee for a titled draft and posts it', async ({ page }) => {
 	const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 	await openPutzen(page, [viewer], [], []);
-	await page.getByRole('button', { name: 'Putzaufgabe erfassen' }).click();
+	await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 
 	const title = page.getByPlaceholder('z. B. Müll rausbringen');
 	const assignee = page.getByLabel('Zuständig');
@@ -369,7 +369,7 @@ test('restores the automatic assignee for a titled draft and posts it', async ({
 test('preserves explicit and legacy unassigned chore drafts', async ({ page }) => {
 	const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 	await openPutzen(page, [viewer], [], []);
-	await page.getByRole('button', { name: 'Putzaufgabe erfassen' }).click();
+	await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 
 	const title = page.getByPlaceholder('z. B. Müll rausbringen');
 	const assignee = page.getByLabel('Zuständig');
@@ -411,7 +411,7 @@ test('preserves explicit and legacy unassigned chore drafts', async ({ page }) =
 test('does not reopen an untouched empty chore form after reload', async ({ page }) => {
 	const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 	await openPutzen(page, [viewer], [], []);
-	await page.getByRole('button', { name: 'Putzaufgabe erfassen' }).click();
+	await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 	const title = page.getByPlaceholder('z. B. Müll rausbringen');
 	await expect(title).toBeVisible();
 	await page.reload();

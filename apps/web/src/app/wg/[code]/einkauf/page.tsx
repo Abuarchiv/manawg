@@ -436,7 +436,7 @@ export default function EinkaufPage() {
 				setNewName('');
 				removeDraft(draftKey);
 			}
-			toast.success('Hinzugefügt');
+			toast.success('Artikel hinzugefügt.');
 			if (res.data.warning === 'notification_delivery_failed') {
 				toast.info('Gespeichert. Nicht alle Push-Benachrichtigungen konnten versendet werden.');
 			} else if (res.data.warning === 'notification_delivery_unknown') {
@@ -1024,7 +1024,9 @@ export default function EinkaufPage() {
 				<Empty>
 					<EmptyHeader>
 						<EmptyTitle>Noch keine Artikel geladen</EmptyTitle>
-						<EmptyDescription>Versuche es erneut.</EmptyDescription>
+						<EmptyDescription>
+							Versuche es erneut, sobald die Verbindung wieder da ist.
+						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : items.length === 0 ? (
@@ -1034,7 +1036,7 @@ export default function EinkaufPage() {
 							<ListChecks aria-hidden />
 						</EmptyMedia>
 						<EmptyTitle>Noch nichts auf der Liste</EmptyTitle>
-						<EmptyDescription>Was fehlt bei euch?</EmptyDescription>
+						<EmptyDescription>Tippe unten ins Feld und schreib auf, was fehlt.</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (

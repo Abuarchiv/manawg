@@ -550,7 +550,7 @@ export default function AbosPage() {
 					}}
 				>
 					<Plus data-icon="inline-start" aria-hidden />
-					Neue Fixkosten
+					Fixkosten hinzufügen
 				</Button>
 			</ThumbAction>
 		</div>

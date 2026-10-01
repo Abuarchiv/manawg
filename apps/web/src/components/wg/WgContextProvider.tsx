@@ -410,7 +410,7 @@ export function WgContextProvider({
 						// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 						role="status"
 					>
-						<Skeleton className="h-7 w-40" />
+						<Skeleton className="h-7 w-40 max-w-full" />
 						<Skeleton className="mt-4 h-24 rounded-xl" />
 						<Skeleton className="mt-4 h-24 rounded-xl" />
 					</div>

@@ -1553,7 +1553,7 @@ export default function AusgabenPage() {
 							? 'Fixkosten-Vorlage bearbeiten'
 							: editingExpense
 								? 'Ausgabe bearbeiten'
-								: 'Ausgabe erfassen'
+								: 'Ausgabe hinzufügen'
 					}
 					previewSplits={splitPreview?.ok ? splitPreview.splits : null}
 					pendingPrefillDescription={pendingPrefill?.description ?? null}
@@ -1681,7 +1681,9 @@ export default function AusgabenPage() {
 					<Empty>
 						<EmptyHeader>
 							<EmptyTitle>Noch keine Ausgaben geladen</EmptyTitle>
-							<EmptyDescription>Versuche es erneut, um eure Einträge zu sehen.</EmptyDescription>
+							<EmptyDescription>
+								Versuche es erneut, sobald die Verbindung wieder da ist.
+							</EmptyDescription>
 						</EmptyHeader>
 					</Empty>
 				) : expenses.length === 0 && !initialLoading ? (
@@ -1689,7 +1691,7 @@ export default function AusgabenPage() {
 						<EmptyHeader>
 							<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
 							<EmptyDescription>
-								Erfasse eure erste gemeinsame Ausgabe über das Plus unten rechts.
+								Tippe unten auf „Ausgabe hinzufügen“, um eure erste gemeinsame Ausgabe einzutragen.
 							</EmptyDescription>
 						</EmptyHeader>
 					</Empty>
@@ -1751,7 +1753,7 @@ export default function AusgabenPage() {
 					}}
 				>
 					<Plus data-icon="inline-start" aria-hidden />
-					Ausgabe erfassen
+					Ausgabe hinzufügen
 				</Button>
 			</ThumbAction>
 		</div>
