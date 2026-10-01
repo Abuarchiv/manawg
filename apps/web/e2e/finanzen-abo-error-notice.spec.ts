@@ -51,7 +51,7 @@ test('a failed abo action does not leak its error into a freshly opened create f
 		page.locator('#main').getByText('Fixkosten konnten nicht gelöscht werden', { exact: false }),
 	).toBeVisible();
 
-	await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
+	await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
 	const dialog = page.getByRole('dialog', { name: 'Neue Fixkosten' });
 	await expect(dialog).toBeVisible();
 	await expect(

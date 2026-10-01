@@ -52,7 +52,7 @@ async function openAboCreate(
 	await navigateToFeature(page, `/wg/${SHARE_CODE}/abos`);
 	await dismissOnboarding(page);
 	await expect(page.getByRole('heading', { name: 'Fixkosten', exact: true })).toBeVisible();
-	await page.getByRole('button', { name: 'Neue Fixkosten', exact: true }).click();
+	await page.getByRole('button', { name: 'Fixkosten hinzufügen', exact: true }).click();
 	await expect(page.getByRole('heading', { name: 'Neue Fixkosten', exact: true })).toBeVisible();
 }
 

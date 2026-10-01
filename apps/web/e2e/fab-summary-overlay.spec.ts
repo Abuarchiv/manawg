@@ -25,9 +25,9 @@ for (const width of [320, 360]) {
 			await dismissOnboarding(page);
 			await expect(page.getByRole('heading', { name: 'Fixkosten', exact: true })).toBeVisible();
 			await expect(page.getByText('Dein Anteil', { exact: true })).toBeVisible();
-			const actionButton = page.getByRole('button', { name: 'Neue Fixkosten', exact: true });
+			const actionButton = page.getByRole('button', { name: 'Fixkosten hinzufügen', exact: true });
 			await expect(actionButton).toBeVisible();
-			await expect(actionButton).toHaveAccessibleName('Neue Fixkosten');
+			await expect(actionButton).toHaveAccessibleName('Fixkosten hinzufügen');
 
 			const geometry = {
 				rootFontSize: await page.evaluate(
@@ -198,9 +198,9 @@ test('compact plus actions keep their names and skip nested and text-only action
 	for (const [feature, label] of [
 		['kalender', 'Termin hinzufügen'],
 		['vorraete', 'Vorrat hinzufügen'],
-		['pinnwand', 'Beitrag erstellen'],
-		['putzen', 'Putzaufgabe erfassen'],
-		['ausgaben', 'Ausgabe erfassen'],
+		['pinnwand', 'Beitrag hinzufügen'],
+		['putzen', 'Putzaufgabe hinzufügen'],
+		['ausgaben', 'Ausgabe hinzufügen'],
 	] as const) {
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/${feature}`);
 		await useLargeText(page);

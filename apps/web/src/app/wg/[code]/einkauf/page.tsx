@@ -434,7 +434,7 @@ export default function EinkaufPage() {
 				setNewName('');
 				removeDraft(draftKey);
 			}
-			toast.success('Hinzugefügt');
+			toast.success('Artikel hinzugefügt.');
 			const warningMessage = notificationWarningMessage(res.data.warning);
 			if (warningMessage) toast.info(warningMessage);
 			// Show the created row right away (the POST already returned it) instead of
@@ -1019,7 +1019,9 @@ export default function EinkaufPage() {
 				<Empty>
 					<EmptyHeader>
 						<EmptyTitle>Noch keine Artikel geladen</EmptyTitle>
-						<EmptyDescription>Versuche es erneut.</EmptyDescription>
+						<EmptyDescription>
+							Versuche es erneut, sobald die Verbindung wieder da ist.
+						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : items.length === 0 ? (
@@ -1029,7 +1031,7 @@ export default function EinkaufPage() {
 							<ListChecks aria-hidden />
 						</EmptyMedia>
 						<EmptyTitle>Noch nichts auf der Liste</EmptyTitle>
-						<EmptyDescription>Was fehlt bei euch?</EmptyDescription>
+						<EmptyDescription>Tippe unten ins Feld und schreib auf, was fehlt.</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (

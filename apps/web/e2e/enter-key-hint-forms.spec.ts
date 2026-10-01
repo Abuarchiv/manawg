@@ -33,7 +33,7 @@ test('abo description and amount fields hint "next"', async ({ page }) => {
 
 	await navigateToFeature(page, `/wg/${shareCode}/abos`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Neue Fixkosten' }).click();
+	await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
 	await expect(page.getByRole('dialog', { name: 'Neue Fixkosten' })).toBeVisible();
 
 	await expect(page.locator('#abo-description')).toHaveAttribute('enterkeyhint', 'next');
@@ -53,7 +53,7 @@ test('chore title field hints "done"', async ({ page }) => {
 
 	await navigateToFeature(page, `/wg/${shareCode}/putzen`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Putzaufgabe erfassen', exact: true }).click();
+	await page.getByRole('button', { name: 'Putzaufgabe hinzufügen', exact: true }).click();
 
 	await expect(page.locator('#chore-title')).toHaveAttribute('enterkeyhint', 'done');
 });
@@ -99,10 +99,10 @@ test('expense description and amount fields hint "next"', async ({ page }) => {
 
 	await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 	await dismissOnboarding(page);
-	// Das Plus unten rechts öffnet das Formular.
+	// Der Button unten öffnet das Formular.
 	await page
 		.locator('[data-page-primary-action]')
-		.getByRole('button', { name: 'Ausgabe erfassen' })
+		.getByRole('button', { name: 'Ausgabe hinzufügen' })
 		.click();
 
 	await expect(page.locator('#expense-description')).toHaveAttribute('enterkeyhint', 'next');
