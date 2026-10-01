@@ -64,3 +64,30 @@ test('chat document does not overshoot the viewport at rest', async ({ page }) =
 	);
 	expect(overshoot).toBeLessThanOrEqual(0);
 });
+
+test('chat composer stays above the nav while the offline banner is shown', async ({
+	page,
+	context,
+}) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await setupMember(page);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/chat`);
+	await dismissOnboarding(page);
+	await expect(page.getByRole('textbox', { name: 'Chat-Nachricht' })).toBeVisible();
+	await page.waitForLoadState('networkidle');
+	await context.setOffline(true);
+	await expect(page.locator('[data-offline-banner]')).toBeVisible();
+	await expect
+		.poll(() =>
+			page.evaluate(() => {
+				const nav = document.querySelector('nav[data-app-chrome]')?.getBoundingClientRect();
+				const field = document
+					.querySelector('textarea[aria-label="Chat-Nachricht"]')
+					?.closest('.border-t')
+					?.getBoundingClientRect();
+				return nav && field ? Math.round(nav.top - field.bottom) : null;
+			}),
+		)
+		.toBeGreaterThanOrEqual(0);
+	await context.setOffline(false);
+});

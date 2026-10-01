@@ -586,6 +586,11 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			frame.style.height = `${Math.max(0, bottom - reserved - frame.getBoundingClientRect().top)}px`;
 		}
 
+		// The sticky offline banner sits above the frame and moves its top edge.
+		const shell = frame.closest('main')?.parentElement;
+		const shellObserver = new MutationObserver(resize);
+		if (shell) shellObserver.observe(shell, { childList: true });
+
 		syncChrome();
 		resize();
 		window.addEventListener('resize', resize);
@@ -593,6 +598,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		viewport?.addEventListener('scroll', resize);
 		return () => {
 			chromeObserver?.disconnect();
+			shellObserver.disconnect();
 			window.removeEventListener('resize', resize);
 			viewport?.removeEventListener('resize', resize);
 			viewport?.removeEventListener('scroll', resize);
