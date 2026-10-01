@@ -417,7 +417,10 @@ export default function AusgabenPage() {
 						if (!mountedRef.current) return;
 						if (requestId !== loadRequestIdRef.current) return;
 						refreshCount();
-						if (synced > 0) void load(false);
+						if (synced > 0) {
+							setActionNotice((current) => (current?.tone === 'warning' ? null : current));
+							void load(false);
+						}
 					})
 					.catch((err) =>
 						captureException(err, { action: 'syncOfflineActions', page: 'ausgaben' }),

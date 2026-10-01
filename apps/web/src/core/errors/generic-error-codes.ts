@@ -16,6 +16,12 @@ export function isNetworkError(code: string | null, status?: number): boolean {
 	return status === 0 || code === 'Netzwerkfehler' || code === 'Failed to fetch';
 }
 
+export const RATE_LIMITED_MESSAGE = 'Zu viele Anfragen. Warte kurz und versuche es dann erneut.';
+
+export function isRateLimited(code: string | null, status?: number): boolean {
+	return status === 429 || code === 'too_many_requests';
+}
+
 export function isRetryableServerError(code: string | null, status?: number): boolean {
 	return (
 		code === 'unexpected_error' ||
