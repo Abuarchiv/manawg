@@ -82,16 +82,16 @@ export function AbosList({
 						</EmptyMedia>
 						<EmptyTitle>
 							{loadError && abos.length === 0
-								? 'Fixkosten noch nicht geladen'
+								? 'Noch keine Fixkosten geladen'
 								: abos.length === 0
 									? 'Noch keine Fixkosten'
 									: `Keine ${filter === 'paused' ? 'pausierten' : 'aktiven'} Fixkosten`}
 						</EmptyTitle>
 						<EmptyDescription>
 							{loadError && abos.length === 0
-								? 'Versuche es erneut.'
+								? 'Versuche es erneut, sobald die Verbindung wieder da ist.'
 								: abos.length === 0
-									? 'Miete, Internet oder Streaming über das Plus unten rechts anlegen.'
+									? 'Tippe unten auf „Fixkosten hinzufügen“, z. B. für Miete, Internet oder Streaming.'
 									: 'Wähle einen anderen Filter.'}
 						</EmptyDescription>
 					</EmptyHeader>

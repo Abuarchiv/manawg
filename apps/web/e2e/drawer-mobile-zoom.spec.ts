@@ -6,7 +6,7 @@ test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local f
 const { id: wgId, memberId, memberName, shareCode } = FIXTURE_WG;
 
 const drawers = [
-	{ feature: 'putzen', openButton: 'Putzaufgabe erfassen' },
+	{ feature: 'putzen', openButton: 'Putzaufgabe hinzufügen' },
 	{ feature: 'vorraete', openButton: 'Vorrat hinzufügen' },
 	{ feature: 'kalender', openButton: 'Termin hinzufügen' },
 ] as const;

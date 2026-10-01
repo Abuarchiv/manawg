@@ -184,7 +184,7 @@ export default function VorraetePage() {
 			) : loadError && items.length === 0 ? (
 				<Empty className="border border-dashed">
 					<EmptyHeader>
-						<EmptyTitle>Vorräte noch nicht geladen</EmptyTitle>
+						<EmptyTitle>Noch keine Vorräte geladen</EmptyTitle>
 						<EmptyDescription>
 							Versuche es erneut, sobald die Verbindung wieder da ist.
 						</EmptyDescription>
