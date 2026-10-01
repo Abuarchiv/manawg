@@ -85,6 +85,8 @@ const IMPORT_ERROR_MESSAGES: Readonly<Record<string, string>> = {
 	payload_changed: 'Die Eingabe wurde nach der Vorschau geändert. Erstelle die Vorschau neu.',
 	payload_too_large:
 		'Die Datei ist zu groß. Wähle eine kleinere Datei (CSV bis 5 MB, Bild bis 10 MB).',
+	too_many_rows:
+		'Die Datei hat zu viele Zeilen (max. 2.000). Teile den Export in mehrere Dateien auf.',
 	unsupported_currency:
 		'Diese Datei enthält keine unterstützte Währung. Verwende einen Export in Euro (EUR).',
 	empty_payload: 'Keine Ausgaben gefunden. Prüfe die Datei und versuche es erneut.',
@@ -123,6 +125,7 @@ function recoveryActionFor(error: string, operation: ImportOperation): RecoveryA
 	if (
 		error === 'payload_changed' ||
 		error === 'payload_too_large' ||
+		error === 'too_many_rows' ||
 		error === 'unsupported_currency' ||
 		error === 'empty_payload' ||
 		error === 'invalid_body' ||
@@ -320,8 +323,15 @@ export function ImportWizard() {
 			return;
 		}
 		void file
-			.text()
-			.then((text) => {
+			.arrayBuffer()
+			.then((buffer) => {
+				// Excel-CSV aus deutschen Installationen ist oft Windows-1252, nicht UTF-8.
+				let text: string;
+				try {
+					text = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+				} catch {
+					text = new TextDecoder('windows-1252').decode(buffer);
+				}
 				if (inputRunIdRef.current !== runId) return;
 				setRawPayload(text);
 				setInputStatus(text.trim() ? 'ready' : 'empty');

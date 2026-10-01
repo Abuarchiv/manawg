@@ -17,7 +17,12 @@ import {
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, importCommitLimiter } from '@/core/rate-limit';
-import { MAX_CSV_BYTES, MAX_OCR_BYTES, readImportJsonBody } from '@/features/expenses/import-body';
+import {
+	MAX_CSV_BYTES,
+	MAX_IMPORT_ROWS,
+	MAX_OCR_BYTES,
+	readImportJsonBody,
+} from '@/features/expenses/import-body';
 import { type CommitResult, commitImport, isCommitResult } from '@/features/expenses/import-commit';
 import { hashPayload } from '@/features/expenses/import-hash';
 import {
@@ -126,6 +131,7 @@ export async function POST(
 			throw parseErr;
 		}
 		if (parsedExpenses.length === 0) return badRequest('empty_payload');
+		if (parsedExpenses.length > MAX_IMPORT_ROWS) return badRequest('too_many_rows');
 		if (skipIndexes.some((index) => index >= parsedExpenses.length)) {
 			return badRequest('invalid_skip_indexes');
 		}
