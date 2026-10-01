@@ -2,6 +2,8 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+    paths-ignore: ['**.md', 'docs/**', '.github/ISSUE_TEMPLATE/**']
   push:
     branches: [main]
   deployment_status:
@@ -9,9 +11,14 @@ on:
 permissions:
   contents: read
 
+# Newer PR pushes cancel older runs; main pushes and deployment events never cancel.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   validate:
-    if: github.event_name != 'deployment_status'
+    if: github.event_name != 'deployment_status' && !(github.event_name == 'pull_request' && github.event.pull_request.draft)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,8 +39,9 @@ jobs:
       - run: pnpm build
       - run: pnpm --filter @manawg/web bundle:check
 
+  # PRs run e2e only with label `run-e2e`; main always runs it.
   e2e-fixtures:
-    if: github.event_name != 'deployment_status'
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'run-e2e'))
     runs-on: ubuntu-latest
     needs: validate
     steps:
