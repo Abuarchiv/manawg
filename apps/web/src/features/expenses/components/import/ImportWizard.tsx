@@ -25,6 +25,7 @@ import type { NotificationWarning } from '@/core/notifications/notification-warn
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import type { ParsedExpense } from '@/features/expenses/import-parsers';
 import { OcrInitializationError, runOcrOnImage } from '@/features/expenses/ocr';
+import type { MemberRef } from '@/shared/lib/member-types';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -44,7 +45,7 @@ interface PreviewResponse {
 	payloadHash: string;
 	memberMapping: Record<string, string | null>;
 	conflicts: string[];
-	members: Array<{ id: string; name: string }>;
+	members: MemberRef[];
 }
 
 interface CommitResponse {

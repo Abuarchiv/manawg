@@ -25,6 +25,7 @@ function loadMutations() {
 			wgInventoryItems,
 			wgInventoryLog: { name: 'log' },
 		},
+		'@/core/db/claimed-response': { completeClaimedResponse: async () => true },
 		'@/features/inventory/inventory': {
 			buildShoppingPushPayload: () => ({}),
 			clampQuantity: (value) => Math.min(Math.max(value, 0), 9999),

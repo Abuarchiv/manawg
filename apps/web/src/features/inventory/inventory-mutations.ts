@@ -5,6 +5,7 @@ import {
 	wgInventoryItems,
 	wgInventoryLog,
 } from '@/core/db';
+import { completeClaimedResponse } from '@/core/db/claimed-response';
 import type { WgInventoryItem } from '@/core/db/schema';
 import type { DbTransaction } from '@/core/db/transaction';
 import {
@@ -14,29 +15,15 @@ import {
 } from '@/features/inventory/inventory';
 import { and, eq, gt, sql } from 'drizzle-orm';
 
-const INVENTORY_REPLAY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
 export async function completeInventoryReplay(
 	tx: DbTransaction,
 	scope: string,
 	key: string,
 	payload: object,
 ): Promise<void> {
-	const [completed] = await tx
-		.update(idempotencyResponses)
-		.set({
-			responseBody: payload,
-			expiresAt: new Date(Date.now() + INVENTORY_REPLAY_TTL_MS),
-		})
-		.where(
-			and(
-				eq(idempotencyResponses.scope, scope),
-				eq(idempotencyResponses.key, key),
-				sql`${idempotencyResponses.responseBody} @> '{"_claimed": true}'::jsonb`,
-			),
-		)
-		.returning({ scope: idempotencyResponses.scope });
-	if (!completed) throw new Error('inventory_replay_completion_failed');
+	if (!(await completeClaimedResponse(tx, scope, key, payload))) {
+		throw new Error('inventory_replay_completion_failed');
+	}
 }
 
 export async function persistInventoryReplayWarning(
@@ -68,7 +55,7 @@ type InventoryItemInput = Pick<
 	'wgId' | 'name' | 'quantity' | 'unit' | 'threshold' | 'category'
 >;
 
-async function pushBelowThresholdItemToShopping(
+export async function pushBelowThresholdItemToShopping(
 	tx: DbTransaction,
 	item: Pick<WgInventoryItem, 'name' | 'quantity' | 'threshold' | 'unit'>,
 	wgId: string,

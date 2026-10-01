@@ -64,10 +64,10 @@ import type {
 	AbsenceListResponse,
 	Chore,
 	ChoreListResponse,
-	MemberInfo,
 	RecurrenceType,
 } from '@/features/chores/components/chore-types';
 import { type QUICK_CHORE_TEMPLATES, TITLE_MAX } from '@/features/chores/components/constants';
+import type { MemberInfo } from '@/shared/lib/member-types';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 export type ChoreSuggestion = {

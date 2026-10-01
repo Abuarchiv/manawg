@@ -8,14 +8,3 @@ export const RECURRING_INTERVAL_OPTIONS = [
 	{ value: 3, label: 'Quartal' },
 	{ value: 12, label: 'Jahr' },
 ] as const;
-
-export const QUICK_EXPENSE_TEMPLATES: ReadonlyArray<{
-	label: string;
-	description: string;
-	amount: string;
-}> = [
-	{ label: 'Wocheneinkauf', description: 'Wocheneinkauf', amount: '25,00' },
-	{ label: 'Putzmittel', description: 'Putzmittel', amount: '8,00' },
-	{ label: 'Internet', description: 'Internet', amount: '35,00' },
-	{ label: 'Getränke', description: 'Getränke', amount: '12,00' },
-];

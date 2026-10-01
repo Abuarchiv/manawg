@@ -19,6 +19,7 @@ import {
 	prevBerlinDayStart,
 	startOfBerlinDay,
 } from '@/core/utils/berlin-day';
+import { normalizeCurrency } from '@/core/utils/money';
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import { computeNetBalances } from '@/features/expenses/debt-reduction';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
@@ -35,10 +36,6 @@ import {
 const SPARKLINE_DAYS = 14;
 const ACTIVITY_LIMIT = 6;
 const AUDIT_DEDUPE_WINDOW_MS = 60_000;
-
-function normalizeCurrency(currency: string | undefined): string {
-	return currency?.trim().toUpperCase() || 'EUR';
-}
 
 function addCurrencyTotal(totals: CurrencyTotals, currency: string, cents: number): void {
 	totals[currency] = (totals[currency] ?? 0) + cents;

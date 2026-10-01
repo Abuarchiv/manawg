@@ -25,8 +25,9 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
-import type { MemberInfo, ShoppingItem } from '@/features/shopping/components/shopping-types';
+import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import { cn } from '@/shared/lib/cn';
+import type { MemberInfo } from '@/shared/lib/member-types';
 import { Check, MoreHorizontal, Receipt, RotateCcw, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { memo, useRef, useState } from 'react';

@@ -1,6 +1,6 @@
 import type { wgEvents } from '@/core/db';
 import { berlinDayKey, berlinWallMinutes, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
-import { MS_PER_DAY, parseTimestamp } from '@/core/utils/time';
+import { MS_PER_DAY, addMonths, addMonthsFromAnchor, parseTimestamp } from '@/core/utils/time';
 
 export const EVENTS_LIST_LIMIT = 1000;
 
@@ -51,7 +51,7 @@ export const RECURRENCE_OPTIONS: ReadonlyArray<{ value: string; label: string }>
 	{ value: 'MONTHLY', label: 'Monatlich' },
 	{ value: 'YEARLY', label: 'Jährlich' },
 ];
-const BYDAY_TO_INDEX: Record<RecurrenceByDay, number> = {
+export const BYDAY_TO_INDEX: Record<RecurrenceByDay, number> = {
 	SU: 0,
 	MO: 1,
 	TU: 2,
@@ -62,7 +62,7 @@ const BYDAY_TO_INDEX: Record<RecurrenceByDay, number> = {
 };
 const MAX_EXPAND_ITERATIONS = 366;
 const MAX_OCCURRENCES = 366;
-const DEFAULT_DURATION_MS = 60 * 60 * 1000;
+export const DEFAULT_DURATION_MS = 60 * 60 * 1000;
 
 /** UTC-midnight date whose UTC fields represent the instant's Berlin calendar date. */
 export function berlinCalendarDate(date: Date): Date {
@@ -136,12 +136,7 @@ function addToDate(date: Date, freq: RecurrenceFreq, interval: number): Date {
 	} else if (freq === 'WEEKLY') {
 		next.setUTCDate(next.getUTCDate() + 7 * interval);
 	} else if (freq === 'MONTHLY') {
-		const day = next.getUTCDate();
-		next.setUTCMonth(next.getUTCMonth() + interval, 1);
-		const lastDay = new Date(
-			Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0),
-		).getUTCDate();
-		next.setUTCDate(Math.min(day, lastDay));
+		return addMonths(next, interval);
 	} else {
 		next.setUTCFullYear(next.getUTCFullYear() + interval);
 	}
@@ -398,18 +393,9 @@ export function expandRecurrence(
 }
 
 function addFromAnchor(anchor: Date, freq: RecurrenceFreq, totalInterval: number): Date {
+	if (freq === 'MONTHLY') return addMonthsFromAnchor(anchor, anchor.getUTCDate(), totalInterval);
 	const next = new Date(anchor);
-	const anchorDay = anchor.getUTCDate();
-	if (freq === 'MONTHLY') {
-		next.setUTCDate(1);
-		next.setUTCMonth(next.getUTCMonth() + totalInterval);
-		const lastDay = new Date(
-			Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0),
-		).getUTCDate();
-		next.setUTCDate(Math.min(anchorDay, lastDay));
-	} else {
-		next.setUTCFullYear(anchor.getUTCFullYear() + totalInterval);
-	}
+	next.setUTCFullYear(anchor.getUTCFullYear() + totalInterval);
 	return next;
 }
 

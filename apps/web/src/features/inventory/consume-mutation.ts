@@ -1,12 +1,9 @@
 import { shoppingItems, wgInventoryItems, wgInventoryLog } from '@/core/db';
 import type { WgInventoryItem, WgMember } from '@/core/db/schema';
-import {
-	buildShoppingPushPayload,
-	clampQuantity,
-	isBelowThreshold,
-	normalizeForMatch,
-} from '@/features/inventory/inventory';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import type { DbTransaction } from '@/core/db/transaction';
+import { clampQuantity, isBelowThreshold, normalizeForMatch } from '@/features/inventory/inventory';
+import { pushBelowThresholdItemToShopping } from '@/features/inventory/inventory-mutations';
+import { and, eq, isNull } from 'drizzle-orm';
 
 export type ConsumeInventoryMutationInput = {
 	itemId: WgInventoryItem['id'];
@@ -15,46 +12,8 @@ export type ConsumeInventoryMutationInput = {
 	delta: number;
 };
 
-export interface ConsumeInventoryTransaction {
-	select(): {
-		from(table: typeof wgInventoryItems): {
-			where(condition: unknown): {
-				limit(count: number): {
-					for(strength: 'update'): PromiseLike<WgInventoryItem[]>;
-				};
-			};
-		};
-	};
-	select(fields: {
-		id: typeof shoppingItems.id;
-		name: typeof shoppingItems.name;
-	}): {
-		from(table: typeof shoppingItems): {
-			where(condition: unknown): PromiseLike<Array<{ id: string; name: string }>>;
-		};
-	};
-	update(table: typeof wgInventoryItems): {
-		set(values: Partial<WgInventoryItem>): {
-			where(condition: unknown): {
-				returning(): PromiseLike<WgInventoryItem[]>;
-			};
-		};
-	};
-	insert(table: typeof shoppingItems | typeof wgInventoryLog): {
-		values(
-			values: typeof shoppingItems.$inferInsert | typeof wgInventoryLog.$inferInsert,
-		): PromiseLike<unknown> & {
-			onConflictDoNothing(config?: { target?: unknown; where?: unknown }): {
-				returning(fields: {
-					id: typeof shoppingItems.id;
-				}): PromiseLike<Array<{ id: string }>>;
-			};
-		};
-	};
-}
-
 export async function consumeInventoryMutation(
-	tx: ConsumeInventoryTransaction,
+	tx: DbTransaction,
 	input: ConsumeInventoryMutationInput,
 ) {
 	// Lock the row: a relative -N has no stale state to conflict on, so
@@ -111,26 +70,12 @@ export async function consumeInventoryMutation(
 			(row) => normalizeForMatch(row.name) === normalizedName,
 		);
 		if (!alreadyOpen) {
-			const payload = buildShoppingPushPayload({
-				name: updated.name,
-				quantity: updated.quantity,
-				threshold: updated.threshold,
-				unit: updated.unit,
-			});
-			const created = await tx
-				.insert(shoppingItems)
-				.values({
-					wgId: input.wgId,
-					addedByMemberId: input.memberId,
-					name: payload.name,
-					quantity: payload.quantity,
-				})
-				.onConflictDoNothing({
-					target: [shoppingItems.wgId, shoppingItems.normalizedName],
-					where: sql`${shoppingItems.boughtAt} IS NULL`,
-				})
-				.returning({ id: shoppingItems.id });
-			autoPushedShoppingItemId = created[0]?.id ?? null;
+			autoPushedShoppingItemId = await pushBelowThresholdItemToShopping(
+				tx,
+				updated,
+				input.wgId,
+				input.memberId,
+			);
 		}
 	}
 

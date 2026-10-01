@@ -16,7 +16,7 @@ import {
 } from '@/core/offline/offline-queue';
 import { parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
-import { parseTimestamp } from '@/core/utils/time';
+import { addMonths, parseTimestamp } from '@/core/utils/time';
 import type { ExpenseFormFieldErrors } from '@/features/expenses/components/ausgaben/ExpenseFormSection';
 import {
 	AMOUNT_MAX_EUROS,
@@ -34,7 +34,6 @@ import {
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
 import { buildOptimisticExpense } from '@/features/expenses/optimistic-expense';
 import { findQueuedRecurringTemplate } from '@/features/expenses/queued-recurring-template';
-import { addMonths } from '@/features/expenses/recurring-expenses';
 import type { DebtorShare } from '@/features/expenses/split-math';
 import { useRef, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';

@@ -1,79 +1,37 @@
-import {
-	isAuthInvalidated,
-	isInvalidShareCode,
-	isNetworkError,
-	isRetryableServerError,
-} from '@/core/http/error-codes';
+import { isNetworkError, mutationErrorMessage } from '@/core/http/error-codes';
+
+const ABSENCE_SUBJECT = 'Abwesenheit konnte nicht gespeichert werden';
+const ABSENCE_ERRORS: Record<string, string> = {
+	date_range_invalid: `${ABSENCE_SUBJECT}: Das Enddatum liegt vor dem Startdatum.`,
+	reason_invalid: `${ABSENCE_SUBJECT}: Der Grund darf höchstens 120 Zeichen haben.`,
+	member_not_in_wg: `${ABSENCE_SUBJECT}: Dieses Mitglied ist nicht mehr in dieser WG.`,
+	insert_failed: `${ABSENCE_SUBJECT}: Prüfe den Putzplan und versuche es erneut.`,
+	invalid_json: `${ABSENCE_SUBJECT}: Die Anfrage war ungültig.`,
+	invalid_body: `${ABSENCE_SUBJECT}: Die Anfrage war ungültig.`,
+};
 
 export function absenceSaveErrorMessage(error: string): string {
-	if (isNetworkError(error)) {
-		return 'Abwesenheit konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
-	}
-	if (isRetryableServerError(error)) {
-		return 'Abwesenheit konnte nicht gespeichert werden: Versuche es gleich erneut.';
-	}
-	if (error === 'wg_not_found') {
-		return 'Abwesenheit konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
-	}
-	if (isInvalidShareCode(error)) {
-		return 'Abwesenheit konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
-	}
-	if (isAuthInvalidated(error)) {
-		return 'Abwesenheit konnte nicht gespeichert werden: Tritt der WG erneut bei.';
-	}
-	if (error === 'date_range_invalid') {
-		return 'Abwesenheit konnte nicht gespeichert werden: Das Enddatum liegt vor dem Startdatum.';
-	}
-	if (error === 'reason_invalid') {
-		return 'Abwesenheit konnte nicht gespeichert werden: Der Grund darf höchstens 120 Zeichen haben.';
-	}
-	if (error === 'member_not_in_wg') {
-		return 'Abwesenheit konnte nicht gespeichert werden: Dieses Mitglied ist nicht mehr in dieser WG.';
-	}
-	if (error === 'insert_failed') {
-		return 'Abwesenheit konnte nicht gespeichert werden: Prüfe den Putzplan und versuche es erneut.';
-	}
-	if (error === 'invalid_json' || error === 'invalid_body') {
-		return 'Abwesenheit konnte nicht gespeichert werden: Die Anfrage war ungültig.';
-	}
-	return 'Abwesenheit konnte nicht gespeichert werden.';
+	return mutationErrorMessage(ABSENCE_SUBJECT, error, ABSENCE_ERRORS, `${ABSENCE_SUBJECT}.`);
 }
 
+const CHORE_SUBJECT = 'Putzaufgabe konnte nicht gespeichert werden';
+const CHORE_CREATE_ERRORS: Record<string, string> = {
+	member_not_in_wg: `${CHORE_SUBJECT}: Dieses Mitglied ist nicht mehr in dieser WG.`,
+	interval_invalid: `${CHORE_SUBJECT}: Das Intervall muss zwischen 1 und 365 Tagen liegen.`,
+	title_invalid: `${CHORE_SUBJECT}: Der Titel muss 1 bis 120 Zeichen haben.`,
+	due_date_invalid: `${CHORE_SUBJECT}: Das Fälligkeitsdatum ist ungültig.`,
+	insert_failed: `${CHORE_SUBJECT}: Prüfe den Putzplan und versuche es erneut.`,
+	invalid_body: `${CHORE_SUBJECT}: Die Anfrage war ungültig.`,
+	invalid_json: `${CHORE_SUBJECT}: Die Anfrage war ungültig.`,
+};
+
 export function choreCreateErrorMessage(error: string): string {
-	if (isNetworkError(error)) {
-		return 'Putzaufgabe konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
-	}
-	if (isRetryableServerError(error)) {
-		return 'Putzaufgabe konnte nicht gespeichert werden: Versuche es gleich erneut.';
-	}
-	if (error === 'wg_not_found') {
-		return 'Putzaufgabe konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
-	}
-	if (isInvalidShareCode(error)) {
-		return 'Putzaufgabe konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
-	}
-	if (isAuthInvalidated(error)) {
-		return 'Putzaufgabe konnte nicht gespeichert werden: Tritt der WG erneut bei.';
-	}
-	if (error === 'member_not_in_wg') {
-		return 'Putzaufgabe konnte nicht gespeichert werden: Dieses Mitglied ist nicht mehr in dieser WG.';
-	}
-	if (error === 'interval_invalid') {
-		return 'Putzaufgabe konnte nicht gespeichert werden: Das Intervall muss zwischen 1 und 365 Tagen liegen.';
-	}
-	if (error === 'title_invalid') {
-		return 'Putzaufgabe konnte nicht gespeichert werden: Der Titel muss 1 bis 120 Zeichen haben.';
-	}
-	if (error === 'due_date_invalid') {
-		return 'Putzaufgabe konnte nicht gespeichert werden: Das Fälligkeitsdatum ist ungültig.';
-	}
-	if (error === 'insert_failed') {
-		return 'Putzaufgabe konnte nicht gespeichert werden: Prüfe den Putzplan und versuche es erneut.';
-	}
-	if (error === 'invalid_body' || error === 'invalid_json') {
-		return 'Putzaufgabe konnte nicht gespeichert werden: Die Anfrage war ungültig.';
-	}
-	return 'Hinzufügen fehlgeschlagen. Versuche es gleich erneut.';
+	return mutationErrorMessage(
+		CHORE_SUBJECT,
+		error,
+		CHORE_CREATE_ERRORS,
+		'Hinzufügen fehlgeschlagen. Versuche es gleich erneut.',
+	);
 }
 
 /** Gemeinsame Fehlertexte für Tausch- und Übernahme-Aktion: `prefix` ist der Satz ohne Punkt. */

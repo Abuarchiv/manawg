@@ -1,129 +1,60 @@
-import {
-	isAuthInvalidated,
-	isInvalidShareCode,
-	isNetworkError,
-	isRetryableServerError,
-} from '@/core/http/error-codes';
+import { mutationErrorMessage } from '@/core/http/error-codes';
+
+const CREATE_SUBJECT = 'Beitrag konnte nicht gespeichert werden';
+const CREATE_ERRORS: Record<string, string> = {
+	content_invalid: `${CREATE_SUBJECT}: Der Text muss 1 bis 2000 Zeichen haben.`,
+	kind_invalid: `${CREATE_SUBJECT}: Die Beitragsart ist ungültig.`,
+	image_invalid: `${CREATE_SUBJECT}: Der Anhang ist ungültig.`,
+	image_removed: `${CREATE_SUBJECT}: Der Anhang wurde entfernt. Lade das Bild erneut hoch.`,
+	source_path_invalid: `${CREATE_SUBJECT}: Der Quelllink ist ungültig.`,
+	insert_failed: `${CREATE_SUBJECT}: Prüfe die Pinnwand und versuche es erneut.`,
+	invalid_json: `${CREATE_SUBJECT}: Die Anfrage war ungültig.`,
+};
 
 export function announcementCreateErrorMessage(error: string): string {
-	if (isNetworkError(error)) {
-		return 'Beitrag konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
-	}
-	if (isRetryableServerError(error)) {
-		return 'Beitrag konnte nicht gespeichert werden: Versuche es gleich erneut.';
-	}
-	if (error === 'wg_not_found') {
-		return 'Beitrag konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
-	}
-	if (isInvalidShareCode(error)) {
-		return 'Beitrag konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
-	}
-	if (isAuthInvalidated(error)) {
-		return 'Beitrag konnte nicht gespeichert werden: Tritt der WG erneut bei.';
-	}
-	if (error === 'content_invalid') {
-		return 'Beitrag konnte nicht gespeichert werden: Der Text muss 1 bis 2000 Zeichen haben.';
-	}
-	if (error === 'kind_invalid') {
-		return 'Beitrag konnte nicht gespeichert werden: Die Beitragsart ist ungültig.';
-	}
-	if (error === 'image_invalid') {
-		return 'Beitrag konnte nicht gespeichert werden: Der Anhang ist ungültig.';
-	}
-	if (error === 'image_removed') {
-		return 'Beitrag konnte nicht gespeichert werden: Der Anhang wurde entfernt. Lade das Bild erneut hoch.';
-	}
-	if (error === 'source_path_invalid') {
-		return 'Beitrag konnte nicht gespeichert werden: Der Quelllink ist ungültig.';
-	}
-	if (error === 'insert_failed') {
-		return 'Beitrag konnte nicht gespeichert werden: Prüfe die Pinnwand und versuche es erneut.';
-	}
-	if (error === 'invalid_json') {
-		return 'Beitrag konnte nicht gespeichert werden: Die Anfrage war ungültig.';
-	}
-	return 'Beitrag konnte nicht gespeichert werden.';
+	return mutationErrorMessage(CREATE_SUBJECT, error, CREATE_ERRORS, `${CREATE_SUBJECT}.`);
 }
+
+const COMMENT_SUBJECT = 'Kommentar konnte nicht gespeichert werden';
+const COMMENT_ERRORS: Record<string, string> = {
+	comment_invalid: `${COMMENT_SUBJECT}: Der Text muss 1 bis 600 Zeichen haben.`,
+	not_owner: 'Nur wer den Kommentar geschrieben hat, kann ihn ändern.',
+	insert_failed: `${COMMENT_SUBJECT}: Lade den Beitrag neu und versuche es erneut.`,
+	delete_failed:
+		'Kommentar konnte nicht gelöscht werden: Lade den Beitrag neu und prüfe, ob er noch existiert.',
+	comment_not_found:
+		'Kommentar existiert nicht mehr. Lade den Beitrag neu, um den aktuellen Stand zu sehen.',
+	invalid_json: `${COMMENT_SUBJECT}: Die Anfrage war ungültig.`,
+};
 
 export function commentActionErrorMessage(error: string): string {
-	if (isNetworkError(error)) {
-		return 'Kommentar konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
-	}
-	if (error === 'wg_not_found') {
-		return 'Kommentar konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
-	}
-	if (isInvalidShareCode(error)) {
-		return 'Kommentar konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
-	}
-	if (isAuthInvalidated(error)) {
-		return 'Kommentar konnte nicht gespeichert werden: Tritt der WG erneut bei.';
-	}
-	if (error === 'comment_invalid') {
-		return 'Kommentar konnte nicht gespeichert werden: Der Text muss 1 bis 600 Zeichen haben.';
-	}
-	if (error === 'not_owner') {
-		return 'Nur wer den Kommentar geschrieben hat, kann ihn ändern.';
-	}
-	if (isRetryableServerError(error)) {
-		return 'Kommentar-Aktion fehlgeschlagen: Versuche es gleich erneut.';
-	}
-	if (error === 'insert_failed') {
-		return 'Kommentar konnte nicht gespeichert werden: Lade den Beitrag neu und versuche es erneut.';
-	}
-	if (error === 'delete_failed') {
-		return 'Kommentar konnte nicht gelöscht werden: Lade den Beitrag neu und prüfe, ob er noch existiert.';
-	}
-	if (error === 'comment_not_found') {
-		return 'Kommentar existiert nicht mehr. Lade den Beitrag neu, um den aktuellen Stand zu sehen.';
-	}
-	if (error === 'invalid_json') {
-		return 'Kommentar konnte nicht gespeichert werden: Die Anfrage war ungültig.';
-	}
-	return 'Kommentar-Aktion fehlgeschlagen.';
+	return mutationErrorMessage(
+		COMMENT_SUBJECT,
+		error,
+		COMMENT_ERRORS,
+		'Kommentar-Aktion fehlgeschlagen.',
+		'Kommentar-Aktion fehlgeschlagen',
+	);
 }
 
+const ACTION_SUBJECT = 'Pinnwand-Aktion fehlgeschlagen';
+const ACTION_ERRORS: Record<string, string> = {
+	reaction_invalid: 'Reaktion konnte nicht gespeichert werden: Die Reaktion ist ungültig.',
+	insert_failed:
+		'Reaktion konnte nicht gespeichert werden: Lade den Beitrag neu und versuche es erneut.',
+	delete_failed:
+		'Reaktion konnte nicht entfernt werden: Lade den Beitrag neu und prüfe den aktuellen Stand.',
+	reaction_not_found:
+		'Reaktion existiert nicht mehr. Lade den Beitrag neu, um den aktuellen Stand zu sehen.',
+	status_invalid: 'Pinnwand-Status konnte nicht gespeichert werden: Der Status ist ungültig.',
+	pinned_invalid: 'Fixierung konnte nicht gespeichert werden: Der Wert ist ungültig.',
+	kind_invalid: `${ACTION_SUBJECT}: Die Beitragsart ist ungültig.`,
+	status_change_not_allowed:
+		'Nur wer den Beitrag geschrieben hat oder ihn übernommen hat, kann diesen Beitrag als geklärt markieren.',
+	invalid_body: 'Pinnwand-Aktion konnte nicht gespeichert werden: Die Anfrage war ungültig.',
+	invalid_json: 'Pinnwand-Aktion konnte nicht gespeichert werden: Die Anfrage war ungültig.',
+};
+
 export function announcementActionErrorMessage(error: string): string {
-	if (isNetworkError(error)) {
-		return 'Pinnwand-Aktion fehlgeschlagen: Prüfe deine Verbindung und versuche es erneut.';
-	}
-	if (error === 'wg_not_found') {
-		return 'Pinnwand-Aktion fehlgeschlagen: Öffne die WG über den aktuellen Link erneut.';
-	}
-	if (isInvalidShareCode(error)) {
-		return 'Pinnwand-Aktion fehlgeschlagen: Der WG-Code ist ungültig.';
-	}
-	if (isAuthInvalidated(error)) {
-		return 'Pinnwand-Aktion fehlgeschlagen: Tritt der WG erneut bei.';
-	}
-	if (isRetryableServerError(error)) {
-		return 'Pinnwand-Aktion fehlgeschlagen: Versuche es gleich erneut.';
-	}
-	if (error === 'reaction_invalid') {
-		return 'Reaktion konnte nicht gespeichert werden: Die Reaktion ist ungültig.';
-	}
-	if (error === 'insert_failed') {
-		return 'Reaktion konnte nicht gespeichert werden: Lade den Beitrag neu und versuche es erneut.';
-	}
-	if (error === 'delete_failed') {
-		return 'Reaktion konnte nicht entfernt werden: Lade den Beitrag neu und prüfe den aktuellen Stand.';
-	}
-	if (error === 'reaction_not_found') {
-		return 'Reaktion existiert nicht mehr. Lade den Beitrag neu, um den aktuellen Stand zu sehen.';
-	}
-	if (error === 'status_invalid') {
-		return 'Pinnwand-Status konnte nicht gespeichert werden: Der Status ist ungültig.';
-	}
-	if (error === 'pinned_invalid') {
-		return 'Fixierung konnte nicht gespeichert werden: Der Wert ist ungültig.';
-	}
-	if (error === 'kind_invalid') {
-		return 'Pinnwand-Aktion fehlgeschlagen: Die Beitragsart ist ungültig.';
-	}
-	if (error === 'status_change_not_allowed') {
-		return 'Nur wer den Beitrag geschrieben hat oder ihn übernommen hat, kann diesen Beitrag als geklärt markieren.';
-	}
-	if (error === 'invalid_body' || error === 'invalid_json') {
-		return 'Pinnwand-Aktion konnte nicht gespeichert werden: Die Anfrage war ungültig.';
-	}
-	return 'Pinnwand-Aktion fehlgeschlagen.';
+	return mutationErrorMessage(ACTION_SUBJECT, error, ACTION_ERRORS, `${ACTION_SUBJECT}.`);
 }

@@ -1,5 +1,10 @@
 export const CENTS_PER_EURO = 100;
 
+/** Legacy rows without a currency are Euro. */
+export function normalizeCurrency(currency: string | undefined): string {
+	return currency?.trim().toUpperCase() || 'EUR';
+}
+
 interface FormatEuroCentsOptions {
 	signed?: boolean;
 }

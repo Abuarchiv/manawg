@@ -8,8 +8,3 @@ export interface ShoppingItem {
 	createdAt: string;
 	updatedAt?: string;
 }
-
-export interface MemberInfo {
-	name: string;
-	color: string | null;
-}
