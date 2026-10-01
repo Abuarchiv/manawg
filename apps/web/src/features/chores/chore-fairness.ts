@@ -167,7 +167,7 @@ export function chooseNextAvailableMember(input: {
 		? input.members.findIndex((member) => member.id === input.currentMemberId)
 		: -1;
 	for (let offset = 1; offset <= input.members.length; offset += 1) {
-		const idx = (Math.max(startIndex, 0) + offset) % input.members.length;
+		const idx = (Math.max(startIndex, -1) + offset) % input.members.length;
 		const member = input.members[idx];
 		if (member && !absent.has(member.id)) return member.id;
 	}
