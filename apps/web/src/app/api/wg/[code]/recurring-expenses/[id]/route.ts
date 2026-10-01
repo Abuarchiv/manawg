@@ -253,6 +253,12 @@ export const PATCH = withWgRoute<{ id: string }>(
 			paidByMemberId: nextPaidByMemberId,
 			intervalMonths: nextIntervalMonths,
 			nextDueAt: resumedDueAt,
+			// Ein verschobener Termin setzt den Zyklus-Anker neu, sonst springt der
+			// nächste Cron-Lauf auf den alten Monatstag zurück.
+			...(parsed.data.nextDueAt !== undefined &&
+			nextDueAt.getTime() !== template.nextDueAt.getTime()
+				? { anchorAt: nextDueAt }
+				: {}),
 			splitsJson: JSON.stringify(nextSplits),
 			updatedAt: new Date(),
 			...(pauseTransition !== null ? { pausedAt: nextPausedAt } : {}),

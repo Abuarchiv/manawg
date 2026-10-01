@@ -43,9 +43,15 @@ export function useVisibilityPausedInterval(callback: () => void, delayMs: numbe
 		};
 
 		if (typeof document === 'undefined' || !document.hidden) start();
+		// Regaining the connection is a "became reachable" moment, like the tab becoming visible.
+		const onOnline = (): void => {
+			if (!document.hidden) savedCallback.current();
+		};
 		document.addEventListener('visibilitychange', onVisibility);
+		window.addEventListener('online', onOnline);
 		return () => {
 			document.removeEventListener('visibilitychange', onVisibility);
+			window.removeEventListener('online', onOnline);
 			stop();
 		};
 	}, [delayMs]);

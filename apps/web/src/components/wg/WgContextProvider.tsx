@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createSupabaseBrowserClient } from '@/core/auth/client';
-import { apiFetch } from '@/core/infra/api-client';
+import { MEMBERSHIP_LOST_EVENT, apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
@@ -222,6 +222,43 @@ export function WgContextProvider({
 		};
 	}, [hydrated, loadSessionMember, wg.id]);
 
+	// Any API call can discover that this member was removed or left, or that the share
+	// code rotated (404 wg_not_found on the old code).
+	useEffect(() => {
+		let handling = false;
+		const onLost = (event: Event) => {
+			const { path = '', error } =
+				(event as CustomEvent<{ path?: string; error?: string }>).detail ?? {};
+			if (!path.startsWith(`/api/wg/${encodedShareCode}`) || handling) return;
+			handling = true;
+			authGenerationRef.current += 1;
+			syncAbortRef.current?.abort();
+			const showLost = () => {
+				clearIdentity(wg.id);
+				setStateIdentity(null);
+				setIsAdmin(false);
+				setAccountReady(false);
+				setMemberLoaded(true);
+			};
+			if (error !== 'wg_not_found') return showLost();
+			// Same WG under a new code: follow it instead of leaving a broken page.
+			setMemberLoaded(false);
+			void fetch('/api/wg/mine', { cache: 'no-store' })
+				.then((res) => (res.ok ? res.json() : null))
+				.then((data: { wgs?: Array<{ id: string; code: string }> } | null) => {
+					const next = data?.wgs?.find((entry) => entry.id === wg.id)?.code;
+					if (!next) return showLost();
+					const { pathname, search } = window.location;
+					window.location.replace(
+						pathname.replace(`/wg/${encodedShareCode}`, `/wg/${encodeURIComponent(next)}`) + search,
+					);
+				})
+				.catch(showLost);
+		};
+		window.addEventListener(MEMBERSHIP_LOST_EVENT, onLost);
+		return () => window.removeEventListener(MEMBERSHIP_LOST_EVENT, onLost);
+	}, [encodedShareCode, wg.id]);
+
 	const refreshMembers = useCallback(async () => {
 		if (!identity || !accountReady) return;
 		const authGeneration = authGenerationRef.current;
@@ -319,6 +356,13 @@ export function WgContextProvider({
 
 	useVisibilityPausedInterval(() => void sync(), identity && accountReady ? 60_000 : null);
 
+	// Joins, move-outs and admin hand-overs by other members show up without a reload;
+	// a 401 here is also how a removed member finds out.
+	useVisibilityPausedInterval(
+		() => void refreshMembers(),
+		identity && accountReady ? 30_000 : null,
+	);
+
 	// Sync on online/focus events in addition to the paused interval above.
 	// These listeners are re-registered when `sync` changes (which happens when
 	// identity or wg.shareCode change), so the cleanup always removes the
@@ -383,7 +427,8 @@ export function WgContextProvider({
 			<main id="main" tabIndex={-1} className="mx-auto max-w-md p-6">
 				<Alert variant="destructive">
 					<AlertDescription className="text-current">
-						Deine Mitgliedschaft konnte nicht bestätigt werden.
+						Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist oder entfernt
+						wurdest.
 					</AlertDescription>
 					<a
 						href={`/neu?next=${encodeURIComponent(`/wg/${wg.shareCode}`)}`}

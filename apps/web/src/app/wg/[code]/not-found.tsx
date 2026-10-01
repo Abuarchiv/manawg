@@ -6,7 +6,6 @@ import {
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
-	EmptyTitle,
 } from '@/components/ui/empty';
 import { SearchX } from 'lucide-react';
 import type { Metadata } from 'next';
@@ -28,7 +27,12 @@ export default function WgNotFound() {
 							<EmptyMedia variant="icon">
 								<SearchX aria-hidden />
 							</EmptyMedia>
-							<EmptyTitle>WG nicht gefunden</EmptyTitle>
+							<h1
+								data-slot="empty-title"
+								className="min-w-0 max-w-full text-base font-semibold [overflow-wrap:anywhere]"
+							>
+								WG nicht gefunden
+							</h1>
 							<EmptyDescription>
 								Der 8-stellige Code ist falsch oder die WG wurde gelöscht.
 							</EmptyDescription>

@@ -21,6 +21,7 @@ export function isRetryableServerError(code: string | null, status?: number): bo
 		code === 'unexpected_error' ||
 		code === 'server_error' ||
 		code === 'db_error' ||
+		code === 'too_many_requests' ||
 		(status !== undefined && status >= HTTP_SERVER_ERROR)
 	);
 }

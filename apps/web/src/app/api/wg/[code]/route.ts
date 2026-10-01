@@ -9,6 +9,7 @@ import { requireMember } from '@/core/guards/api-auth';
 import { deriveMemberToken } from '@/core/guards/member-token';
 import { requireWgAdmin } from '@/core/guards/require-wg-admin';
 import { readShareCode } from '@/core/guards/route-preamble';
+import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { readJsonLimited } from '@/core/http/read-json';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
@@ -103,11 +104,18 @@ export async function GET(
 				createdAt: true,
 			},
 		});
-		if (!wg) {
-			return notFound('wg_not_found');
-		}
+		if (!wg) return await shareCodeMissResponse(user.id, notFound('wg_not_found'));
 		const auth = await requireMember(req, wg.id, user);
-		if (!auth.ok) return auth.response;
+		if (!auth.ok) {
+			const body = (await auth.response
+				.clone()
+				.json()
+				.catch(() => null)) as { error?: unknown } | null;
+			// Same enumeration budget as requireWgMember: unknown and foreign codes both count.
+			return body?.error === 'not_a_member'
+				? await shareCodeMissResponse(user.id, auth.response)
+				: auth.response;
+		}
 		const memberToken = deriveMemberToken(wg.id, auth.member.memberId);
 
 		const members = await db

@@ -69,7 +69,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 			.returning();
 		if (!updated) return notFound('message_not_found');
 
-		void recordAuditEvent({
+		await recordAuditEvent({
 			wgId,
 			memberId: auth.member.memberId,
 			eventType: 'chat.message.edited',
@@ -80,7 +80,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				previewBefore: row.body?.slice(0, 80) ?? null,
 				previewAfter: updated.body?.slice(0, 80) ?? null,
 			},
-		}).catch(() => undefined);
+		});
 
 		return NextResponse.json({ message: updated });
 	},
@@ -148,7 +148,7 @@ export const DELETE = withWgRoute<{ id: string }>(
 		if (!deletion.deleted) return NextResponse.json({ deleted: true });
 		const { row, isAuthor } = deletion;
 
-		void recordAuditEvent({
+		await recordAuditEvent({
 			wgId,
 			memberId: auth.member.memberId,
 			eventType: 'chat.message.deleted',
@@ -160,7 +160,7 @@ export const DELETE = withWgRoute<{ id: string }>(
 				kind: row.kind,
 				adminOverride: !isAuthor,
 			},
-		}).catch(() => undefined);
+		});
 
 		return NextResponse.json({ deleted: true });
 	},

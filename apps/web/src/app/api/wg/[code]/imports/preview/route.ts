@@ -3,7 +3,12 @@ import { badRequest, tooMany } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { checkRateLimit, importLimiter } from '@/core/rate-limit';
-import { MAX_CSV_BYTES, MAX_OCR_BYTES, readImportJsonBody } from '@/features/expenses/import-body';
+import {
+	MAX_CSV_BYTES,
+	MAX_IMPORT_ROWS,
+	MAX_OCR_BYTES,
+	readImportJsonBody,
+} from '@/features/expenses/import-body';
 import { hashPayload } from '@/features/expenses/import-hash';
 import {
 	type ParsedExpense,
@@ -62,6 +67,8 @@ export const POST = withWgRoute('imports/preview', async (req, { code }) => {
 		}
 		throw parseErr;
 	}
+
+	if (parsedExpenses.length > MAX_IMPORT_ROWS) return badRequest('too_many_rows');
 
 	// Same contract as the commit: only active members can be mapped, so a
 	// clean preview never turns into member_not_in_wg on commit.

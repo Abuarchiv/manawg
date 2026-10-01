@@ -34,7 +34,13 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { safeNextPath } from '@/core/auth/next-path';
-import { getInitialJoinCode, joinErrorMessage } from '@/core/infra/join-flow';
+import { hasSessionCookie } from '@/core/auth/session-hint';
+import {
+	DELETION_PENDING_MESSAGE,
+	RATE_LIMITED_MESSAGE,
+	getInitialJoinCode,
+	joinErrorMessage,
+} from '@/core/infra/join-flow';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import posthog from '@/shared/lib/analytics';
@@ -157,6 +163,8 @@ async function readStartError(response: Response): Promise<string> {
 }
 
 function createWgErrorMessage(status: number, error: string): string {
+	if (status === 429) return RATE_LIMITED_MESSAGE;
+	if (error === 'account_deletion_pending') return DELETION_PENDING_MESSAGE;
 	if (status === 401 && error === 'auth_required') {
 		return 'Melde dich zuerst mit deinem Konto an.';
 	}
@@ -290,6 +298,11 @@ export function NeuClient() {
 			if (authRetryNonce > 0) {
 				setError(null);
 				setInvalidField(null);
+			}
+			if (!hasSessionCookie()) {
+				setAccountWgs([]);
+				setAuthState('signed-out');
+				return;
 			}
 			setAuthState('loading');
 			try {
@@ -899,10 +912,17 @@ export function NeuClient() {
 								type="text"
 								value={joinCode}
 								onChange={(event) => {
-									setJoinCode(event.target.value.toUpperCase());
+									// Pasted codes often carry spaces or dashes ("ABCD 1234"); drop them (and
+									// leave maxLength slack) so a paste is not cut off.
+									setJoinCode(
+										event.target.value
+											.replace(/[^a-z0-9]/gi, '')
+											.toUpperCase()
+											.slice(0, 8),
+									);
 									if (error) clearError();
 								}}
-								maxLength={8}
+								maxLength={16}
 								required
 								autoFocus
 								autoComplete="off"

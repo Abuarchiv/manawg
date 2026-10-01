@@ -203,7 +203,8 @@ function harness({
 					);
 					const due =
 						state.template.nextDueAt <= dueCondition.value && state.template.pausedAt === null;
-					return Promise.resolve(due ? [{ ...state.template }] : []);
+					const rows = Promise.resolve(due ? [{ ...state.template }] : []);
+					return Object.assign(rows, { orderBy: () => ({ limit: () => rows }) });
 				},
 			};
 			return query;
@@ -288,7 +289,7 @@ function harness({
 				splits.reduce((sum, split) => sum + split.amountCents, 0) === amount,
 		},
 		'@/features/expenses/split-math': { settledAtForOwnShare: () => null },
-		'drizzle-orm': { and, eq, inArray, isNull, lte },
+		'drizzle-orm': { and, asc: (column) => column, eq, inArray, isNull, lte },
 		'next/server': {
 			NextResponse: Object.assign(class extends Response {}, {
 				json: (body, init) => Response.json(body, init),

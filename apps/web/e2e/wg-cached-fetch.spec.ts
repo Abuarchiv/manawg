@@ -107,6 +107,10 @@ test('revoked membership hides the WG shell after member refresh', async ({ page
 	);
 	await navigateToFeature(page, `/wg/${SHARE_CODE}`);
 
-	await expect(page.getByText('Deine Mitgliedschaft konnte nicht bestätigt werden.')).toBeVisible();
+	await expect(
+		page.getByText(
+			'Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist oder entfernt wurdest.',
+		),
+	).toBeVisible();
 	await expect(page.getByRole('link', { name: /Chat öffnen/ })).toHaveCount(0);
 });

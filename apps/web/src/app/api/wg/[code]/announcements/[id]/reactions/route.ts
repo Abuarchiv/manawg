@@ -148,7 +148,7 @@ export const POST = withWgRoute<{ id: string }>(
 
 		const effect = outcome.effect;
 		if (effect.type === 'removed') {
-			void recordAuditEvent({
+			await recordAuditEvent({
 				wgId: wg.id,
 				memberId: auth.member.memberId,
 				eventType: 'announcement.reaction.removed',
@@ -156,11 +156,11 @@ export const POST = withWgRoute<{ id: string }>(
 				entityId: effect.reactionId,
 				summary: `${auth.member.name} hat eine Reaktion entfernt.`,
 				metadata: { announcementId: id, reaction: parsed.data.reaction },
-			}).catch(() => undefined);
+			});
 			return NextResponse.json(outcome.response.body, { status: outcome.response.status });
 		}
 
-		void recordAuditEvent({
+		await recordAuditEvent({
 			wgId: wg.id,
 			memberId: auth.member.memberId,
 			eventType: 'announcement.reaction.added',
@@ -168,7 +168,7 @@ export const POST = withWgRoute<{ id: string }>(
 			entityId: effect.reactionId,
 			summary: `${auth.member.name} hat mit ${parsed.data.reaction} reagiert.`,
 			metadata: { announcementId: id, reaction: parsed.data.reaction },
-		}).catch(() => undefined);
+		});
 		let warning: NotificationDispatchWarning = null;
 		if (effect.authorMemberId !== auth.member.memberId) {
 			try {

@@ -145,6 +145,10 @@ export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, 
 			});
 		}
 		return mutation;
+	}).catch(async (err) => {
+		// A rolled-back write must not leave its claim blocking the same-key retry.
+		if (rawIdempotencyKey) await releaseResponseSlot(replayScope, rawIdempotencyKey);
+		throw err;
 	});
 	if (result.kind === 'not_found' || result.kind === 'conflict') {
 		if (rawIdempotencyKey) await releaseResponseSlot(replayScope, rawIdempotencyKey);

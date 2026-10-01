@@ -16,8 +16,14 @@ import {
 	recurringSplitsMatchAmount,
 } from '@/features/expenses/recurring-expenses';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
-import { and, eq, inArray, isNull, lte } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, lte } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
+
+// Per-run cap and concurrency: an unbounded Promise.all over every due template
+// opens one transaction each and exhausts the connection pool. Overdue templates
+// stay due, so the remainder is drained by the following runs.
+const TEMPLATE_LIMIT = 500;
+const TEMPLATE_BATCH_SIZE = 10;
 
 interface DueRecurring {
 	id: string;
@@ -247,15 +253,24 @@ export const GET = withCronLogging(
 			})
 			.from(recurringExpenses)
 			.innerJoin(wgs, eq(recurringExpenses.wgId, wgs.id))
-			.where(
-				and(lte(recurringExpenses.nextDueAt, now), isNull(recurringExpenses.pausedAt)),
-			)) as DueRecurring[];
+			.where(and(lte(recurringExpenses.nextDueAt, now), isNull(recurringExpenses.pausedAt)))
+			.orderBy(asc(recurringExpenses.nextDueAt), asc(recurringExpenses.id))
+			.limit(TEMPLATE_LIMIT)) as DueRecurring[];
 
 		if (due.length === 0) return NextResponse.json({ ok: true, charged: 0 });
 
 		// allSettled, not all: one corrupt template (DB error, constraint
 		// violation) must not block advancing every other WG's templates.
-		const settled = await Promise.allSettled(due.map((template) => advanceTemplate(template)));
+		const settled: PromiseSettledResult<CreatedAdvance[]>[] = [];
+		for (let index = 0; index < due.length; index += TEMPLATE_BATCH_SIZE) {
+			settled.push(
+				...(await Promise.allSettled(
+					due
+						.slice(index, index + TEMPLATE_BATCH_SIZE)
+						.map((template) => advanceTemplate(template)),
+				)),
+			);
+		}
 		const created: CreatedAdvance[] = [];
 		let failedTemplates = 0;
 		for (const result of settled) {

@@ -50,7 +50,19 @@ test('apiFetch treats malformed JSON success responses as ambiguous', async () =
 });
 
 test('CSV formula guards remain quoted after neutralization', () => {
-	expect(toCsv([{ value: '=1+1' }], ['value'])).toBe('value\n"\'=1+1"');
+	expect(toCsv([{ value: '=1+1' }], ['value'])).toBe('\uFEFFvalue\n"\'=1+1"');
+});
+
+test('CSV opens in German Excel: BOM, semicolons, decimal-comma amounts', () => {
+	expect(
+		toCsv(
+			[
+				{ title: 'Müll; "Bad"', amountCents: -1205 },
+				{ title: 'x', amountCents: 5 },
+			],
+			['title', 'amountCents'],
+		),
+	).toBe('\uFEFFtitle;amount\n"Müll; ""Bad""";-12,05\nx;0,05');
 });
 
 test('presigned uploads reject path traversal keys before configuration lookup', async () => {

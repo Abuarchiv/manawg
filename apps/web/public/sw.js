@@ -112,7 +112,8 @@ self.addEventListener('activate', (event) => {
 // --- Web Push ---
 
 self.addEventListener('push', (event) => {
-	if (!event.data) return;
+	// Safari revokes subscriptions that receive a push without showing a
+	// notification, so an empty payload still shows the fallback.
 	let data;
 	try {
 		data = event.data.json();
