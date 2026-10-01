@@ -4,8 +4,6 @@ import { useRender } from '@base-ui/react/use-render';
 import { type VariantProps, cva } from 'class-variance-authority';
 import type * as React from 'react';
 
-import { Button } from '@/components/ui/button';
-
 const attachmentVariants = cva(
 	'group/attachment relative flex w-fit max-w-full min-w-0 shrink-0 flex-wrap rounded-xl border bg-card text-card-foreground transition-colors focus-within:ring-1 focus-within:ring-ring/50 has-[>a,>button]:hover:bg-muted/50 data-[state=error]:border-destructive/30 data-[state=idle]:border-dashed',
 	{
@@ -117,36 +115,6 @@ function AttachmentDescription({ className, ...props }: React.ComponentProps<'sp
 	);
 }
 
-function AttachmentActions({ className, ...props }: React.ComponentProps<'div'>) {
-	return (
-		<div
-			data-slot="attachment-actions"
-			className={cn(
-				'relative z-20 flex shrink-0 items-center group-data-[orientation=vertical]/attachment:absolute group-data-[orientation=vertical]/attachment:top-3 group-data-[orientation=vertical]/attachment:right-3 group-data-[orientation=vertical]/attachment:gap-1',
-				className,
-			)}
-			{...props}
-		/>
-	);
-}
-
-function AttachmentAction({
-	className,
-	variant,
-	size = 'icon-xs',
-	...props
-}: React.ComponentProps<typeof Button>) {
-	return (
-		<Button
-			data-slot="attachment-action"
-			variant={variant ?? 'ghost'}
-			size={size}
-			className={cn(className)}
-			{...props}
-		/>
-	);
-}
-
 function AttachmentTrigger({
 	className,
 	render,
@@ -172,27 +140,11 @@ function AttachmentTrigger({
 	});
 }
 
-function AttachmentGroup({ className, ...props }: React.ComponentProps<'div'>) {
-	return (
-		<div
-			data-slot="attachment-group"
-			className={cn(
-				'flex min-w-0 scroll-fade-x snap-x snap-mandatory scroll-px-1 scrollbar-none gap-3 overflow-x-auto overscroll-x-contain py-1 *:data-[slot=attachment]:flex-none *:data-[slot=attachment]:snap-start',
-				className,
-			)}
-			{...props}
-		/>
-	);
-}
-
 export {
 	Attachment,
-	AttachmentGroup,
 	AttachmentMedia,
 	AttachmentContent,
 	AttachmentTitle,
 	AttachmentDescription,
-	AttachmentActions,
-	AttachmentAction,
 	AttachmentTrigger,
 };

@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import { isEditingTarget } from '@/core/utils/browser';
 import { X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -13,21 +14,6 @@ import {
 } from '../lib/pwa-install';
 import { InstallButton } from './install-button';
 import { LogoMark } from './ui/LogoMark';
-
-/**
- * True while the user has an input/textarea/contentEditable focused — e.g.
- * typing a chat message. The prompt is fixed just above the BottomNav, which
- * is exactly where feature composers (chat, pinnwand) sit, so popping up
- * unconditionally can slide the prompt over an in-progress keystroke and eat
- * the tap meant for the composer's send button.
- */
-function isEditingTarget(): boolean {
-	const active = document.activeElement;
-	return (
-		active instanceof HTMLElement &&
-		(active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)
-	);
-}
 
 /**
  * Floating install prompt — shown on the start page of every app start until

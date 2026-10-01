@@ -8,6 +8,7 @@ import {
 	getSyncedCountForWg,
 	syncOfflineActions,
 } from '@/core/offline/offline-client';
+import { formatOfflineQueueCount } from '@/core/offline/offline-copy';
 import {
 	formatManualOfflineSyncResult,
 	formatQueuedOfflineActions,
@@ -18,11 +19,6 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 const SUCCESS_NOTICE_MS = 6000;
-
-function formatQueuedActions(count: number): string {
-	if (count === 1) return '1 Aktion wartet.';
-	return `${count} Aktionen warten.`;
-}
 
 function isScopedSyncEventForOtherWg(event: Event, shareCode: string): boolean {
 	if (!(event instanceof CustomEvent)) return false;
@@ -132,7 +128,9 @@ export function OfflineBanner() {
 						<WifiOff className="h-4 w-4 shrink-0" aria-hidden />
 						<span className="truncate">
 							Offline.{' '}
-							{queueCount > 0 ? formatQueuedActions(queueCount) : 'Änderungen werden vorgemerkt.'}
+							{queueCount > 0
+								? formatOfflineQueueCount(queueCount)
+								: 'Änderungen werden vorgemerkt.'}
 						</span>
 					</div>
 					<Link

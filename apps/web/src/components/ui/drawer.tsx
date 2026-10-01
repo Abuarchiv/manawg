@@ -215,9 +215,6 @@ function DrawerDescription({ className, ...props }: DrawerPrimitive.Description.
 
 export {
 	Drawer,
-	DrawerPortal,
-	DrawerOverlay,
-	DrawerSwipeHandle,
 	DrawerTrigger,
 	DrawerClose,
 	DrawerContent,
