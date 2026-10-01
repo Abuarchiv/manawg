@@ -57,6 +57,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				id: announcements.id,
 				authorMemberId: announcements.authorMemberId,
 				content: announcements.content,
+				status: announcements.status,
 			})
 			.from(announcements)
 			.where(and(eq(announcements.id, id), eq(announcements.wgId, wg.id)))
@@ -131,7 +132,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 			},
 		});
 		let warning: NotificationDispatchWarning = null;
-		if (parsed.data.status === 'resolved') {
+		// A repeated resolve (double tap, retry) must not push the same notice twice.
+		if (parsed.data.status === 'resolved' && row.status !== 'resolved') {
 			const takers = await db
 				.select({ memberId: announcementReactions.memberId })
 				.from(announcementReactions)

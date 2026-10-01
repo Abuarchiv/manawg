@@ -322,7 +322,26 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 					`chat:${wg.id}:${auth.member.memberId}`,
 				);
 				if (!limited.success) {
-					return await complete({ status: 429, body: { error: 'too_many_requests' } });
+					// A rejected write can retry the same key once its rate limit clears,
+					// so the claim is released instead of caching the 429.
+					if (replayKey) {
+						const rows = await tx
+							.delete(idempotencyResponses)
+							.where(
+								and(
+									eq(idempotencyResponses.scope, replayScope),
+									eq(idempotencyResponses.key, replayKey),
+									sql`${idempotencyResponses.responseBody} @> '{"_claimed": true}'::jsonb`,
+								),
+							)
+							.returning({ scope: idempotencyResponses.scope });
+						if (rows.length !== 1) throw new Error('idempotency_claim_missing');
+					}
+					return {
+						response: { status: 429, body: { error: 'too_many_requests' } },
+						created: null,
+						mentionIds: [] as string[],
+					};
 				}
 
 				if (replyToMessageId) {
@@ -450,7 +469,7 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 			}),
 		);
 	}
-	void recordAuditEvent({
+	await recordAuditEvent({
 		wgId: wg.id,
 		memberId: auth.member.memberId,
 		eventType: 'chat.message.created',
@@ -458,7 +477,7 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 		entityId: outcome.created.id,
 		summary: `${auth.member.name} hat im Chat eine Nachricht gesendet.`,
 		metadata: { preview, kind, mentions: outcome.mentionIds.length },
-	}).catch(() => undefined);
+	});
 
 	const notificationResults = await Promise.all(notificationDispatches);
 	let warning: 'notification_delivery_failed' | 'notification_delivery_unknown' | null =

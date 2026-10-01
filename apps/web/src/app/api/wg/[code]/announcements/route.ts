@@ -302,7 +302,7 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 	}
 
 	const item = outcome.effect;
-	void recordAuditEvent({
+	await recordAuditEvent({
 		wgId: wg.id,
 		memberId: auth.member.memberId,
 		eventType: 'announcement.created',
@@ -315,7 +315,7 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 			source: safeSource,
 			hasImage: Boolean(safeImageUrl),
 		},
-	}).catch(() => undefined);
+	});
 
 	let warning: AnnouncementCreateWarning = null;
 	try {
