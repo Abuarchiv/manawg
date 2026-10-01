@@ -122,7 +122,13 @@ test.describe('expense row reflow', () => {
 					await expect(
 						page.getByRole('menuitem', { name: 'Bearbeiten', exact: true }),
 					).toBeVisible();
-					await page.keyboard.press('Escape');
+					// Ein Escape direkt nach dem Öffnen kann noch in der Öffnungsphase landen; erst wenn
+					// das Menü wirklich weg ist, weitermessen. Sonst steht es in WebKit noch an der alten,
+					// breiteren Ankerposition und der nächste Durchlauf meldet einen Scheinüberlauf.
+					await expect(async () => {
+						await page.keyboard.press('Escape');
+						await expect(page.getByRole('menu')).toHaveCount(0, { timeout: 500 });
+					}).toPass();
 				}
 			}
 		}
