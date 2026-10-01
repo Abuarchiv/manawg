@@ -21,6 +21,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
+import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import type { ParsedExpense } from '@/features/expenses/import-parsers';
 import { OcrInitializationError, runOcrOnImage } from '@/features/expenses/ocr';
@@ -46,14 +47,12 @@ interface PreviewResponse {
 	members: Array<{ id: string; name: string }>;
 }
 
-type CommitWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
-
 interface CommitResponse {
 	importId: string;
 	inserted: number;
 	skipped: number;
 	errors: Array<{ index: number; reason: string }>;
-	warning: CommitWarning;
+	warning: NotificationWarning;
 }
 
 type ImportOperation = 'preview' | 'commit';

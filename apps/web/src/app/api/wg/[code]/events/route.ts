@@ -12,6 +12,7 @@ import {
 	readIdempotencyKey,
 } from '@/core/idempotency-store';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
+import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	buildEventsWindowFilter,
@@ -32,8 +33,7 @@ const DESCRIPTION_MAX = 2_000;
 const LOCATION_MAX = 200;
 const RECURRENCE_MAX = 200;
 
-type EventCreateWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
-type EventCreateResponseBody = { event: SerializedWgEvent; warning: EventCreateWarning };
+type EventCreateResponseBody = { event: SerializedWgEvent; warning: NotificationWarning };
 type EventCreateReplayResponse<T = unknown> = { status: number; body: T };
 
 function readEventCreateReplayResponse(value: unknown): EventCreateReplayResponse | null {
@@ -300,7 +300,7 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 		},
 	});
 
-	const { warning }: { warning: EventCreateWarning } = await dispatchNotificationSafely({
+	const { warning }: { warning: NotificationWarning } = await dispatchNotificationSafely({
 		wg: { id: wg.id, name: wg.name, shareCode: code },
 		event: 'event.created',
 		payload: {

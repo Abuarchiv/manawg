@@ -8,9 +8,8 @@ function withHttps(value: string): string {
 }
 
 /**
- * Single source of truth for the app's public origin, shared by both the
- * `landing` and `web` zones so SEO metadata (sitemap/robots/OG) and canonical
- * links stay identical across the split — both zones serve the same origin.
+ * Single source of truth for the app's public origin (invite links, metadata,
+ * OAuth return URLs), so no caller re-derives it from request headers.
  */
 export function getAppUrl(): string {
 	const rawAppUrl = cleanEnvUrl(process.env.NEXT_PUBLIC_APP_URL);

@@ -14,6 +14,10 @@ import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { useStableCallback } from '@/core/hooks/useStableCallback';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
+import {
+	type NotificationWarning,
+	notificationWarningMessage,
+} from '@/core/notifications/notification-warning';
 import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import {
 	enqueueOfflineAction,
@@ -83,8 +87,6 @@ function kindFromParam(value: string | null): AnnouncementKind | null {
 
 type CommentOverride = AnnouncementComment | null;
 
-type NotificationWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
-
 type AnnouncementCreateResponse = {
 	announcement: Announcement;
 	warning: NotificationWarning;
@@ -105,16 +107,6 @@ type AnnouncementCommentResponse = {
 	comment: AnnouncementComment;
 	warning: NotificationWarning;
 };
-
-function notificationWarningMessage(warning: NotificationWarning): string | null {
-	if (warning === 'notification_delivery_failed') {
-		return 'Gespeichert. Nicht alle Push-Benachrichtigungen konnten versendet werden.';
-	}
-	if (warning === 'notification_delivery_unknown') {
-		return 'Gespeichert. Push-Versand konnte nicht bestätigt werden.';
-	}
-	return null;
-}
 
 export default function PinnwandPage(): React.ReactElement {
 	const { wg, members, identity, isAdmin } = useWg();
