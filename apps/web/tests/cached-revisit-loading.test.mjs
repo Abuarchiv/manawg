@@ -6,9 +6,14 @@ import test from 'node:test';
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
 
+// Pages whose loading logic lives in a feature hook instead of page.tsx.
+const LOAD_SOURCES = {
+	ausgaben: '../src/features/expenses/hooks/use-expenses-data.ts',
+};
+
 function loadCallback(page, scope) {
 	const source = readFileSync(
-		new URL(`../src/app/wg/[code]/${page}/page.tsx`, import.meta.url),
+		new URL(LOAD_SOURCES[page] ?? `../src/app/wg/[code]/${page}/page.tsx`, import.meta.url),
 		'utf8',
 	);
 	const file = ts.createSourceFile(
@@ -75,6 +80,10 @@ function harness(page, result) {
 		sortByNextDue: (items) => items,
 		syncOfflineActions: async () => 0,
 		refreshCount: noop,
+		refreshQueuedCount: noop,
+		setActionNotice: noop,
+		shareCode: 'TESTCODE',
+		memberId: 'member',
 		captureException: noop,
 		wg: { shareCode: 'TESTCODE' },
 		identity: { memberId: 'member' },

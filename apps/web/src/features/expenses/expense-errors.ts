@@ -235,3 +235,8 @@ export function splitInputErrorMessage(
 			return 'Keine Mitglieder vorhanden.';
 	}
 }
+
+/** A 4xx other than 429 will not succeed on retry, so its idempotency key is dropped. */
+export function isPermanentClientError(status: number): boolean {
+	return status >= 400 && status < 500 && status !== 429;
+}
