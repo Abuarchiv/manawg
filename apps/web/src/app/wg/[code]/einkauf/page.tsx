@@ -196,7 +196,12 @@ export default function EinkaufPage() {
 						if (!mountedRef.current) return;
 						if (requestId !== loadRequestIdRef.current) return;
 						refreshCount();
-						if (synced > 0) void load(true);
+						if (synced > 0) {
+							// Die „Offline vorgemerkt"-Hinweise sind mit dem Replay überholt.
+							setAddNotice(null);
+							setToggleNotice(null);
+							void load(true);
+						}
 					})
 					.catch((err) => captureException(err, { action: 'syncOfflineActions', page: 'einkauf' }));
 			} else {
