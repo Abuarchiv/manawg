@@ -49,7 +49,7 @@ export function expenseSaveErrorMessage(error: string): string {
 		return 'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.';
 	}
 	if (error === 'splits_duplicate_debtor') {
-		return 'Aufteilung enthält eine Person doppelt — jede Mitbewohner:in darf nur einmal vorkommen.';
+		return 'Aufteilung enthält eine Person doppelt — jede Person darf nur einmal vorkommen.';
 	}
 	if (error === 'paid_by_must_include_caller') {
 		return 'Wenn du für jemand anderen buchst, muss dein eigener Anteil größer als 0 sein.';
@@ -89,13 +89,13 @@ export function expenseActionErrorMessage(error: string): string {
 		return 'Aktion fehlgeschlagen: Tritt der WG erneut bei.';
 	}
 	if (error === 'not_split_party') {
-		return 'Nur Zahler:in oder beteiligte Person kann diese Zahlung als beglichen markieren.';
+		return 'Nur wer bezahlt hat oder beteiligt ist, kann diese Zahlung als beglichen markieren.';
 	}
 	if (error === 'member_ids_invalid') {
 		return 'Ausgleich konnte nicht gespeichert werden: Wähle zwei gültige Mitglieder.';
 	}
 	if (error === 'same_member') {
-		return 'Ausgleich konnte nicht gespeichert werden: Zahler:in und Empfänger:in müssen verschieden sein.';
+		return 'Ausgleich konnte nicht gespeichert werden: Zahlende und empfangende Person müssen verschieden sein.';
 	}
 	if (error === 'member_not_in_wg') {
 		return 'Ausgleich konnte nicht gespeichert werden: Mindestens ein Mitglied ist nicht mehr in dieser WG.';

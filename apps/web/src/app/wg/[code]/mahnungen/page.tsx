@@ -316,7 +316,7 @@ export default function ErinnerungenPage() {
 						Erinnerungen
 					</h1>
 					<p className="mt-0.5 text-[12px] text-muted-foreground">
-						Max. alle {REMINDER_COOLDOWN_HOURS} Stunden pro Person
+						Pro Person höchstens alle {REMINDER_COOLDOWN_HOURS} Stunden
 					</p>
 					<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
 						<Spinner />

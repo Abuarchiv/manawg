@@ -78,7 +78,7 @@ const NOTIFICATION_PREFERENCES: ReadonlyArray<{
 		description: 'Wenn dich jemand an einen offenen Betrag erinnert',
 	},
 	{ key: 'notifyShopping', label: 'Einkäufe', description: 'Neue Einträge auf der Einkaufsliste' },
-	{ key: 'notifyInventory', label: 'Vorräte', description: 'Niedrige Vorratsbestände' },
+	{ key: 'notifyInventory', label: 'Vorräte', description: 'Wenn etwas bald leer ist' },
 	{ key: 'notifyChat', label: 'Chat', description: 'Neue Nachrichten und Erwähnungen' },
 	{ key: 'notifyEvents', label: 'Kalender', description: 'Kalendertermine und Erinnerungen' },
 ];

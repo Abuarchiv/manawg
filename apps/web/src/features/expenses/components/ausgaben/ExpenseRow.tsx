@@ -104,10 +104,16 @@ export const ExpenseRow = memo(function ExpenseRow({
 											{expense.description}
 										</span>
 										<span className="text-[12px] leading-normal font-normal text-muted-foreground">
-											{isPayer ? 'Du zahltest' : `${memberName(expense.paidByMemberId)} zahlte`}{' '}
-											<span className="whitespace-nowrap tabular-nums">
-												{formatEuroCents(expense.amountCents, expense.currency)}
-											</span>
+											{isPayer ? 'Du zahltest' : `${memberName(expense.paidByMemberId)} zahlte`}
+											{/* Gleicher Betrag steht rechts schon; nur bei abweichendem Anteil zusätzlich links. */}
+											{Math.abs(impact.cents) !== expense.amountCents && (
+												<>
+													{' '}
+													<span className="whitespace-nowrap tabular-nums">
+														{formatEuroCents(expense.amountCents, expense.currency)}
+													</span>
+												</>
+											)}
 											{expense.imageUrl && (
 												<>
 													{' · '}

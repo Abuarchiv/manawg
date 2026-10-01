@@ -80,7 +80,9 @@ export function AboModalShell({ title, onClose, submitting, children }: AboModal
 							</Button>
 							<DialogTitle>{title}</DialogTitle>
 						</div>
-						<DialogDescription>Wiederholung, Zahler:in und Anteile festlegen.</DialogDescription>
+						<DialogDescription>
+							Wiederholung, zahlende Person und Anteile festlegen.
+						</DialogDescription>
 					</DialogHeader>
 					<Separator />
 					<div

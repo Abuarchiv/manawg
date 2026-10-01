@@ -189,7 +189,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						{lowStock && (
 							<Badge variant="destructive">
 								<AlertCircle aria-hidden />
-								Niedrig
+								Bald leer
 							</Badge>
 						)}
 					</ItemTitle>

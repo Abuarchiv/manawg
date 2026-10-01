@@ -1312,7 +1312,7 @@ export default function AusgabenPage() {
 			}
 			const message =
 				res.status === 403
-					? 'Nur Zahler:in oder beteiligte Person kann diese Ausgabe entfernen.'
+					? 'Nur wer bezahlt hat oder beteiligt ist, kann diese Ausgabe entfernen.'
 					: expenseActionErrorMessage(res.error);
 			setActionError(message);
 			toast.error(message);

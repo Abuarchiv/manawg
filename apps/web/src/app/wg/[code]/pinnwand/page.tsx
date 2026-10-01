@@ -938,7 +938,7 @@ export default function PinnwandPage(): React.ReactElement {
 			} else {
 				const msg =
 					res.status === 403
-						? 'Nur Autor:in oder WG-Admin können diesen Beitrag entfernen.'
+						? 'Nur wer den Beitrag geschrieben hat oder WG-Admins können ihn entfernen.'
 						: announcementActionErrorMessage(res.error);
 				setActionError(msg);
 			}
