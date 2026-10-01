@@ -214,9 +214,7 @@ export function MessageBubble({
 			{!isOwn && (
 				<MessageAvatar className={grouped ? 'invisible' : undefined} aria-hidden>
 					<Avatar className="size-7 text-xs">
-						<AvatarFallback style={memberTint(senderName)}>
-							{initials(senderName)}
-						</AvatarFallback>
+						<AvatarFallback style={memberTint(senderName)}>{initials(senderName)}</AvatarFallback>
 					</Avatar>
 				</MessageAvatar>
 			)}

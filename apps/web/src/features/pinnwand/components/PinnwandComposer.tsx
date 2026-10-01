@@ -64,9 +64,7 @@ export function PinnwandComposer({
 			<CardHeader>
 				<CardTitle className="flex min-w-0 items-center gap-2">
 					<Avatar>
-						<AvatarFallback style={memberTint(authorName)}>
-							{initials(authorName)}
-						</AvatarFallback>
+						<AvatarFallback style={memberTint(authorName)}>{initials(authorName)}</AvatarFallback>
 					</Avatar>
 					<h2>Neuer Beitrag</h2>
 				</CardTitle>
