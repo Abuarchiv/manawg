@@ -8,7 +8,6 @@ import {
 	wgMembers,
 } from '@/core/db';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { badRequest, serverError, tooMany } from '@/core/errors';
 import {
 	ReplayCache,
 	type ReplayReservation,
@@ -17,14 +16,16 @@ import {
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { badRequest, serverError, tooMany } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import {
 	RESPONSE_REPLAY_TTL_SECONDS,
 	getCachedResponse,
 	readIdempotencyKey,
-} from '@/core/idempotency';
+} from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
+import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { berlinDayKey, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { MS_PER_DAY } from '@/core/utils/time';
@@ -42,9 +43,7 @@ const INTERVAL_MAX_DAYS = 365;
 const INTERVAL_MAX_MONTHS = 60;
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
-type ChoreCreateWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
-
-type ChoreCreateResponseBody = { chore: unknown; warning: ChoreCreateWarning };
+type ChoreCreateResponseBody = { chore: unknown; warning: NotificationWarning };
 
 const choreCreateReplay = new ReplayCache<ChoreCreateResponseBody>(IDEMPOTENCY_TTL_MS);
 
@@ -364,7 +363,7 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 				nextDueAt: chore.nextDueAt,
 			},
 		});
-		let warning: ChoreCreateWarning = null;
+		let warning: NotificationWarning = null;
 		if (assignedMemberId && nextDueAt.getTime() <= Date.now() + MS_PER_DAY) {
 			({ warning } = await dispatchNotificationSafely({
 				wg,

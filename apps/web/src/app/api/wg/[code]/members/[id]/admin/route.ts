@@ -1,10 +1,10 @@
 import { recordAuditEvent } from '@/core/audit';
 import { wgMembers } from '@/core/db';
 import { lockActiveAccountMember } from '@/core/db/account-deletion';
-import { badRequest, conflict, forbidden, notFound, payloadTooLarge } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgAdmin } from '@/core/guards/require-wg-admin';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { badRequest, conflict, forbidden, notFound, payloadTooLarge } from '@/core/http/api-errors';
 import { readJsonBody } from '@/core/http/read-json';
 import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
 import { and, eq } from 'drizzle-orm';

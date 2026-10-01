@@ -20,9 +20,9 @@ import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { hasSessionCookie } from '@/core/auth/session-hint';
+import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { LogoMark } from '@/shared/components/ui/LogoMark';
 import { cn } from '@/shared/lib/cn';
-import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import {
 	CalendarDays,
 	Clock3,
@@ -280,9 +280,9 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						/>
 					)}
 					{inviteCode ? (
-						<WgWelcome variant="invitation" code={inviteCode} compact />
+						<WgWelcome variant="invitation" code={inviteCode} />
 					) : (
-						<WgWelcome variant="create" compact />
+						<WgWelcome variant="create" />
 					)}
 					{module ? (
 						<PublicModulePreview module={module} homeHref={publicHref('/')} />

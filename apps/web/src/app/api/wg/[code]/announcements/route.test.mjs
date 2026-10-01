@@ -117,7 +117,7 @@ function harness() {
 			},
 		},
 		'@/core/db/transaction': { TransactionAbort },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			badRequest: (error) => Response.json({ error }, { status: 400 }),
 			conflict: (error, code) =>
 				Response.json({ error, ...(code ? { code } : {}) }, { status: 409 }),

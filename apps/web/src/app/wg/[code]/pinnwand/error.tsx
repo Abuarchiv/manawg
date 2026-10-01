@@ -1,4 +1,3 @@
-// craftsman-ignore: TS002 — Next.js App Router requires default export for error boundaries
 'use client';
 
 import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';

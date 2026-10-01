@@ -38,7 +38,7 @@ function makeRoute(state) {
 		'@/core/audit': { recordAuditEvent: async () => undefined },
 		'@/core/db': { CHORE_RECURRENCE_TYPES: ['days', 'months'], chores, db, wgMembers: {} },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			badRequest: (code) => json({ error: code }, 400),
 			conflict: (code) => json({ error: code }, 409),
 			forbidden: (code) => json({ error: code }, 403),

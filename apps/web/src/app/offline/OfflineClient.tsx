@@ -32,7 +32,7 @@ function moduleLabel(action: OfflineAction): string {
 	return getOfflineActionSummary(action).title;
 }
 
-export function formatOfflineAge(iso: string, now = Date.now()): string {
+function formatOfflineAge(iso: string, now = Date.now()): string {
 	const timestamp = parseTimestamp(iso);
 	if (timestamp === null) return 'Zeitpunkt unklar';
 	const ageMs = now - timestamp;

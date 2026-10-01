@@ -1,8 +1,8 @@
 import { getAuthenticatedUser } from '@/core/auth/server';
-import { apiError, notFound } from '@/core/errors';
 import { type VerifiedMember, requireMember } from '@/core/guards/api-auth';
 import { type ResolvedWg, resolveWg } from '@/core/guards/resolve';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
+import { apiError, notFound } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
 import type { NextRequest, NextResponse } from 'next/server';
 

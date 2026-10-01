@@ -1,5 +1,5 @@
 import { deleteAuthUser } from '@/core/auth/delete-user';
-import { getSupabaseEnv, hasSupabaseEnv } from '@/core/auth/env';
+import { getSupabaseEnv, hasSupabaseEnv } from '@/core/auth/supabase-env';
 import { retryPendingAccountDeletions } from '@/core/db/account-deletion';
 import {
 	claimPrivateImageCleanupBatch,
@@ -7,7 +7,7 @@ import {
 	findLivePrivateImageReferenceKeys,
 	markPrivateImageStorageDeleted,
 } from '@/core/db/private-image-deletions';
-import { purgeExpiredIdempotencyResponses } from '@/core/idempotency';
+import { purgeExpiredIdempotencyResponses } from '@/core/idempotency-store';
 import { verifyCronSecret } from '@/core/infra/cron-auth';
 import { logApiError, withCronLogging } from '@/core/infra/observability';
 import { isPayPalConfigured } from '@/core/infra/paypal';

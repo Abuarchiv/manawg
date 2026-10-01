@@ -97,7 +97,7 @@ function harness({ callerId = otherMemberId, isAdmin = false } = {}) {
 		'@/core/db': { db, idempotencyResponses: {}, recurringExpenses, wgMembers },
 		'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			apiError: (code, status) => errorResponse(code, status),
 			badRequest: (code) => errorResponse(code, 400),
 			conflict: (code) => errorResponse(code, 409),
@@ -127,7 +127,7 @@ function harness({ callerId = otherMemberId, isAdmin = false } = {}) {
 		'@/core/guards/with-wg-route': {
 			withWgRoute: (_label, handler) => (req) => handler(req, { code: 'MTE8PZAT' }),
 		},
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 60,
 			getCachedResponse: async () => null,
 			readIdempotencyKey: () => null,

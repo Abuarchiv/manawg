@@ -26,7 +26,7 @@ export async function loadCompletedExpensePayments(
 		.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed')));
 }
 
-export function activeExpensePaymentCondition(wgId: string, now = new Date()) {
+function activeExpensePaymentCondition(wgId: string, now = new Date()) {
 	return and(
 		eq(expensePayments.wgId, wgId),
 		or(

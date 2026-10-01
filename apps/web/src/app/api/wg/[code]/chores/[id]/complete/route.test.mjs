@@ -201,7 +201,7 @@ function makeRoute(state) {
 		'@/core/db': { ...tables, db },
 		'@/core/db/transaction': { TransactionAbort, withTransaction },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			badRequest: (code) => json({ error: code }, 400),
 			conflict: (code) => json({ error: code }, 409),
 			notFound: (code) => json({ error: code }, 404),
@@ -231,7 +231,7 @@ function makeRoute(state) {
 			withWgRoute: (_label, handler) => async (request, context) =>
 				handler(request, await context.params),
 		},
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
 			getCachedResponse: async () =>
 				state.claim && state.claim._claimed !== true ? state.claim : null,

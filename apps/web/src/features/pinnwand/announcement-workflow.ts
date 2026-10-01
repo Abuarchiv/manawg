@@ -82,7 +82,7 @@ export function getMyOpenAnnouncements<
 	return items.filter((item) => item.status !== 'resolved' && item.myReactions.includes('take'));
 }
 
-export function getNewAnnouncementCount(
+function getNewAnnouncementCount(
 	currentItems: readonly { id: string }[],
 	remoteItems: readonly { id: string }[],
 ): number {

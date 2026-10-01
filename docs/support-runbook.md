@@ -1,6 +1,6 @@
 # ManaWG support and incident triage
 
-This is a diagnostic guide, not evidence that delivery, recovery, or a release has passed. The current release status is in [TASKS.md](../TASKS.md) and the dated [candidate record](releases/release-candidate.md). Database recovery and production changes follow the separate [recovery runbook](database-recovery.md).
+This is a diagnostic guide, not evidence that delivery, recovery, or a release has passed. The latest release status is in the dated [release evidence](releases/2026-10-01-release-evidence.md). Database recovery and production changes follow the separate [recovery runbook](database-recovery.md).
 
 ## First response
 

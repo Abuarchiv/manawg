@@ -10,8 +10,8 @@ import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
 import { deriveMemberToken } from '@/core/guards/member-token';
 import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
+import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import type { StoredIdentity } from '@/shared/lib/identity';
-import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
@@ -57,7 +57,6 @@ export async function generateMetadata({
 	};
 }
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from layout.tsx
 export default async function WgLayout({ children, params }: Props) {
 	const { code: rawCode } = await params;
 	const code = normalizeShareCode(rawCode);

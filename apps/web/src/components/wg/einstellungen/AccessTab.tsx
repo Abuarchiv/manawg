@@ -41,12 +41,12 @@ import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/errors/generic-error-codes';
 import {
 	accessErrorMessage,
 	deleteWgErrorMessage,
 	readResponseErrorCode,
 } from '@/core/guards/settings-errors';
+import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { buildSecurityOverview } from '@/core/infra/security';
 import type { StoredIdentity } from '@/shared/lib/identity';

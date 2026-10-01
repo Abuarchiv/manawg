@@ -1,8 +1,9 @@
 'use client';
 
+import { safeLocalStorage } from '@/core/utils/browser';
+import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { z } from 'zod';
 import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from './member-header';
-import { isValidShareCode, normalizeShareCode } from './share-code';
 
 const STORAGE_PREFIX = 'manawg_identity:';
 const KNOWN_WGS_KEY = 'manawg_known_wgs';
@@ -16,7 +17,7 @@ const storedIdentitySchema = z.object({
 	name: z.string().min(1).max(NAME_MAX_LENGTH),
 	// Used only to keep local offline records separated when this browser switches accounts.
 	authUserId: z.string().regex(UUID_V4_PATTERN).optional(),
-	// Session token (see @/lib/wg/member-token). Optional so identities
+	// Session token (see @/core/guards/member-token). Optional so identities
 	// stored before this field existed keep parsing — they just stay
 	// "legacy" until WgContextProvider's self-heal effect backfills it.
 	memberToken: z.string().min(1).optional(),
@@ -53,15 +54,6 @@ export interface KnownWg {
 	code: string;
 	name: string;
 	lastVisitedAt: number;
-}
-
-function safeLocalStorage(): Storage | null {
-	if (typeof window === 'undefined') return null;
-	try {
-		return window.localStorage;
-	} catch {
-		return null;
-	}
 }
 
 export function getIdentity(wgId: string): StoredIdentity | null {

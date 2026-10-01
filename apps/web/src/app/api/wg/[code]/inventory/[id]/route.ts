@@ -2,13 +2,17 @@ import { recordAuditEvent } from '@/core/audit';
 import { db, wgInventoryItems } from '@/core/db';
 import type { WgInventoryItem } from '@/core/db/schema';
 import { withTransaction } from '@/core/db/transaction';
-import { badRequest, conflict, notFound, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
-import { getCachedResponse, readIdempotencyKey, releaseResponseSlot } from '@/core/idempotency';
+import {
+	getCachedResponse,
+	readIdempotencyKey,
+	releaseResponseSlot,
+} from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	INVENTORY_CATEGORIES,

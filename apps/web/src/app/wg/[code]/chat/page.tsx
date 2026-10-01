@@ -1,8 +1,8 @@
 import { SubNav } from '@/components/wg/SubNav';
 import { db, type wgChatMessages, wgs } from '@/core/db';
 import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
+import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { ChatView } from '@/features/chat/components/ChatView';
-import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import { eq } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -21,7 +21,6 @@ export const metadata: Metadata = {
 	robots: { index: false, follow: false },
 };
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default async function ChatPage({ params }: PageProps) {
 	const { code: rawCode } = await params;
 	const code = normalizeShareCode(rawCode);

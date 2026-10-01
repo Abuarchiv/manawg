@@ -16,8 +16,8 @@
 		"components": "@/components",
 		"utils": "@/shared/lib/cn",
 		"ui": "@/components/ui",
-		"lib": "@/lib",
-		"hooks": "@/hooks"
+		"lib": "@/shared/lib",
+		"hooks": "@/core/hooks"
 	},
 	"menuColor": "default",
 	"menuAccent": "subtle",

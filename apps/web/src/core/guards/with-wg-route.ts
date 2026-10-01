@@ -1,5 +1,5 @@
-import { serverError } from '@/core/errors';
 import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
+import { serverError } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import type { E2EWgFixture } from '@/core/infra/e2e-db-down';
 import { logApiError } from '@/core/infra/observability';

@@ -1,7 +1,6 @@
 import { db, expenseSplits, expenses, idempotencyResponses, recurringExpenses } from '@/core/db';
 import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
 import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
-import { apiError, badRequest, conflict, notFound, serverError, tooMany } from '@/core/errors';
 import {
 	ReplayCache,
 	type ReplayReservation,
@@ -11,12 +10,20 @@ import {
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { readShareCode } from '@/core/guards/route-preamble';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import {
+	apiError,
+	badRequest,
+	conflict,
+	notFound,
+	serverError,
+	tooMany,
+} from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import {
 	RESPONSE_REPLAY_TTL_SECONDS,
 	getCachedResponse,
 	readIdempotencyKey,
-} from '@/core/idempotency';
+} from '@/core/idempotency-store';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import type { NotificationDispatchWarning } from '@/core/notifications/notification-dispatch';

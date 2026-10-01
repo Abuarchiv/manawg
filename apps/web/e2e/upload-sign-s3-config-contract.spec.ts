@@ -6,7 +6,7 @@ import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 import { readJsonBody } from '../src/core/http/read-json';
 import { checkEnv } from '../src/core/infra/env';
 import * as privateImagePolicy from '../src/core/infra/private-image-policy';
-import * as shareCode from '../src/shared/lib/share-code';
+import * as shareCode from '../src/core/utils/share-code';
 
 type S3Module = typeof import('../src/core/infra/s3');
 
@@ -80,7 +80,7 @@ function loadRoute(
 		'@/core/db': {
 			db: { query: { wgs: { findFirst: async () => ({ id: 'wg-1' }) } } },
 		},
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			apiError: (message: string, status: number, code?: string) =>
 				json(code !== undefined ? { error: message, code } : { error: message }, status),
 			badRequest: (message: string) => json({ error: message }, 400),
@@ -112,7 +112,7 @@ function loadRoute(
 		'@/core/validators/image-url': {
 			getPrivateImageUrl: (key: string) => `https://images.example/${key}`,
 		},
-		'@/shared/lib/share-code': shareCode,
+		'@/core/utils/share-code': shareCode,
 	});
 }
 

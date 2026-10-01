@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { isE2EDbDownMode } from '../src/core/infra/e2e-db-down';
-import { contentSecurityPolicy } from '../src/shared/lib/security-headers';
+import { contentSecurityPolicy } from '../src/core/infra/security-headers';
 import { FIXTURE_WG, setupMember } from './_helpers';
 
 test('CSP keeps upgrade-insecure-requests by default', () => {

@@ -293,7 +293,7 @@ function createPayPalFixture(
 	const db = { select: selectQuery };
 	const commonOverrides = {
 		'@/core/db': { db, expensePayments, wgMembers },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			badRequest: (code: string) => jsonResponse({ error: code }, 400),
 			conflict: (code: string) => jsonResponse({ error: code }, 409),
 			forbidden: (code: string) => jsonResponse({ error: code }, 403),

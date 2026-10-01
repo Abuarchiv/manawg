@@ -17,6 +17,10 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { notifyChatReadConfirmed } from '@/components/wg/useWgCounts';
 import { useStableCallback } from '@/core/hooks/useStableCallback';
 import { apiFetch } from '@/core/infra/api-client';
+import {
+	type NotificationWarning,
+	notificationWarningMessage,
+} from '@/core/notifications/notification-warning';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { haptic } from '@/shared/lib/haptics';
 import { ChevronDown, MessageCircle } from 'lucide-react';
@@ -374,7 +378,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		pendingMessageRequestRef.current = { fingerprint, key: idempotencyKey };
 		const res = await apiFetch<{
 			message: ChatMessageDto;
-			warning: null | 'notification_delivery_failed' | 'notification_delivery_unknown';
+			warning: NotificationWarning;
 		}>(`/api/wg/${encodedShareCode}/chat/messages`, {
 			method: 'POST',
 			memberId: identity.memberId,
@@ -397,11 +401,8 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 				: [...prev, res.data.message],
 		);
 		void refresh();
-		if (res.data.warning === 'notification_delivery_failed') {
-			toast.info('Gesendet. Nicht alle Push-Benachrichtigungen konnten versendet werden.');
-		} else if (res.data.warning === 'notification_delivery_unknown') {
-			toast.info('Gesendet. Push-Versand konnte nicht bestätigt werden.');
-		}
+		const warningMessage = notificationWarningMessage(res.data.warning, 'Gesendet');
+		if (warningMessage) toast.info(warningMessage);
 		return true;
 	}
 

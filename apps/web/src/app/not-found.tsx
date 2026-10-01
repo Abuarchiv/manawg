@@ -14,7 +14,6 @@ export const metadata: Metadata = {
 	title: 'Seite nicht gefunden — ManaWG',
 };
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export for pages
 export default function NotFound() {
 	return (
 		<main

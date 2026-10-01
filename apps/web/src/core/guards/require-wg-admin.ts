@@ -1,8 +1,8 @@
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db } from '@/core/db';
-import { apiError, forbidden, notFound, tooMany } from '@/core/errors';
 import { checkWgAdminAccess } from '@/core/guards/admin';
 import { type VerifiedMember, requireMember } from '@/core/guards/api-auth';
+import { apiError, forbidden, notFound, tooMany } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import type { NextRequest, NextResponse } from 'next/server';

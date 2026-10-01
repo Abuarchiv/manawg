@@ -1,11 +1,11 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseReminders, wgMembers } from '@/core/db';
 import { withTransaction } from '@/core/db/transaction';
-import { apiError, badRequest, forbidden, tooMany } from '@/core/errors';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { apiError, badRequest, forbidden, tooMany } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, reminderSendLimiter } from '@/core/rate-limit';

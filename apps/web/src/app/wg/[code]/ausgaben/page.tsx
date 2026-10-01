@@ -4,7 +4,6 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
-import { DebtSummary } from '@/components/wg/DebtSummary';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
@@ -16,6 +15,10 @@ import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { useStableCallback } from '@/core/hooks/useStableCallback';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
+import {
+	type NotificationWarning,
+	notificationWarningMessage,
+} from '@/core/notifications/notification-warning';
 import { removeDraft } from '@/core/offline/drafts';
 import {
 	enqueueOfflineAction,
@@ -61,6 +64,7 @@ import type {
 	RecurringExpense,
 } from '@/features/expenses/components/ausgaben/expense-types';
 import { useExpenseForm } from '@/features/expenses/components/ausgaben/useExpenseForm';
+import { DebtSummary } from '@/features/expenses/components/debts/DebtSummary';
 import {
 	buildSettlementSummary,
 	computeDirectDebts,
@@ -105,19 +109,8 @@ const ExpenseFormSection = dynamic(
 	},
 );
 
-type ExpenseCreateWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
-type ExpenseCreateResponse = { expense: Expense; warning: ExpenseCreateWarning };
+type ExpenseCreateResponse = { expense: Expense; warning: NotificationWarning };
 type ExpenseMutationResponse = Expense | ExpenseCreateResponse;
-
-function expensePushWarningMessage(warning: ExpenseCreateWarning): string | null {
-	if (warning === 'notification_delivery_failed') {
-		return 'Gespeichert. Nicht alle Push-Benachrichtigungen konnten versendet werden.';
-	}
-	if (warning === 'notification_delivery_unknown') {
-		return 'Gespeichert. Push-Versand konnte nicht bestätigt werden.';
-	}
-	return null;
-}
 
 function buildOptimisticExpense({
 	id,
@@ -163,7 +156,6 @@ function buildOptimisticExpense({
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 /** Das Formular-Chunk einmal online anfordern, damit der Service Worker es für offline hat. */
 function usePreloadExpenseForm(): void {
 	useEffect(() => {
@@ -833,7 +825,7 @@ export default function AusgabenPage() {
 
 		if (!isEdit) expenseCreateRequestRef.current = null;
 		const savedExpense = 'expense' in res.data ? res.data.expense : res.data;
-		const pushWarning = 'expense' in res.data ? expensePushWarningMessage(res.data.warning) : null;
+		const pushWarning = 'expense' in res.data ? notificationWarningMessage(res.data.warning) : null;
 		updateExpenses((current) =>
 			isEdit
 				? current.map((expense) => (expense.id === savedExpense.id ? savedExpense : expense))
@@ -1285,7 +1277,7 @@ export default function AusgabenPage() {
 		const advanced = await advanceRecurringTemplate(template.id, expectedRecurringNextDueAt);
 		if (advanced) {
 			recurringExpenseCreateRequestsRef.current.delete(template.id);
-			const pushWarning = expensePushWarningMessage(createRes.data.warning);
+			const pushWarning = notificationWarningMessage(createRes.data.warning);
 			if (pushWarning) setActionWarning(pushWarning);
 			else setActionSuccess('Fixkosten-Ausgabe wurde erstellt.');
 		}

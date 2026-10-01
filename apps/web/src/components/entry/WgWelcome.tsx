@@ -1,13 +1,8 @@
 import { buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/shared/lib/cn';
 import Link from 'next/link';
 
-export type WgWelcomeVariant = 'create' | 'invitation';
-
-type WgWelcomeProps =
-	| { variant: 'create'; compact?: boolean }
-	| { variant: 'invitation'; code: string; compact?: boolean };
+type WgWelcomeProps = { variant: 'create' } | { variant: 'invitation'; code: string };
 
 export function WgWelcome(props: WgWelcomeProps) {
 	const invitation = props.variant === 'invitation';
@@ -15,38 +10,12 @@ export function WgWelcome(props: WgWelcomeProps) {
 		? `/neu?code=${encodeURIComponent(props.code)}`
 		: '/neu?action=create';
 
-	if (props.compact) {
-		return (
-			<div className="flex flex-col gap-2">
-				{invitation && <p className="text-sm text-muted-foreground">Deine Einladung ist bereit.</p>}
-				<Link href={actionHref} className={cn(buttonVariants(), 'w-full')}>
-					{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
-				</Link>
-			</div>
-		);
-	}
-
 	return (
-		<Card>
-			<CardHeader className="gap-2">
-				<CardTitle>{invitation ? 'Deine Einladung wartet' : 'Startet gemeinsam'}</CardTitle>
-				<CardDescription>
-					{invitation
-						? 'Melde dich an, um dieser bestehenden WG beizutreten.'
-						: 'Einkauf, Ausgaben, Putzen und Pinnwand an einem Ort.'}
-				</CardDescription>
-			</CardHeader>
-			<CardContent className="flex flex-col gap-2">
-				<Link href={actionHref} className={cn(buttonVariants(), 'w-full')}>
-					{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
-				</Link>
-				<Link
-					href={invitation ? actionHref : '/neu'}
-					className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}
-				>
-					Anmelden
-				</Link>
-			</CardContent>
-		</Card>
+		<div className="flex flex-col gap-2">
+			{invitation && <p className="text-sm text-muted-foreground">Deine Einladung ist bereit.</p>}
+			<Link href={actionHref} className={cn(buttonVariants(), 'w-full')}>
+				{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
+			</Link>
+		</div>
 	);
 }

@@ -30,6 +30,10 @@ import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
+import {
+	type NotificationWarning,
+	notificationWarningMessage,
+} from '@/core/notifications/notification-warning';
 import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import {
 	discardQueuedEntry,
@@ -79,12 +83,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 /** Zeilen pro Liste, die zunächst gerendert werden; „Mehr anzeigen“ lädt nach. */
 const ROW_RENDER_PAGE = 100;
 
-type ShoppingCreateWarning =
-	| null
-	| 'notification_delivery_failed'
-	| 'notification_delivery_unknown';
-
-type ShoppingCreateResponse = { item: ShoppingItem; warning: ShoppingCreateWarning };
+type ShoppingCreateResponse = { item: ShoppingItem; warning: NotificationWarning };
 
 const UNKNOWN_MEMBER: MemberInfo = { name: '?', color: null };
 const RECEIPT_PROMPT_WINDOW_MS = 12 * 60 * 60 * 1000;
@@ -99,7 +98,6 @@ function keepItems(prev: ShoppingItem[], next: ShoppingItem[]): ShoppingItem[] {
 
 const NO_INVENTORY: InventoryItemDto[] = [];
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function EinkaufPage() {
 	const { wg, members, identity, isAdmin } = useWg();
 	const toast = useToast();
@@ -437,11 +435,8 @@ export default function EinkaufPage() {
 				removeDraft(draftKey);
 			}
 			toast.success('Artikel hinzugefügt.');
-			if (res.data.warning === 'notification_delivery_failed') {
-				toast.info('Gespeichert. Nicht alle Push-Benachrichtigungen konnten versendet werden.');
-			} else if (res.data.warning === 'notification_delivery_unknown') {
-				toast.info('Gespeichert. Push-Versand konnte nicht bestätigt werden.');
-			}
+			const warningMessage = notificationWarningMessage(res.data.warning);
+			if (warningMessage) toast.info(warningMessage);
 			// Show the created row right away (the POST already returned it) instead of
 			// waiting for the follow-up list fetch, which then reconciles.
 			const created = res.data.item;

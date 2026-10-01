@@ -4,8 +4,6 @@ import { useRender } from '@base-ui/react/use-render';
 import { type VariantProps, cva } from 'class-variance-authority';
 import type * as React from 'react';
 
-import { Separator } from '@/components/ui/separator';
-
 function ItemGroup({ className, ...props }: React.ComponentProps<'div'>) {
 	return (
 		<div
@@ -15,17 +13,6 @@ function ItemGroup({ className, ...props }: React.ComponentProps<'div'>) {
 				'group/item-group flex w-full min-w-0 flex-col gap-4 has-data-[size=sm]:gap-2.5 has-data-[size=xs]:gap-2',
 				className,
 			)}
-			{...props}
-		/>
-	);
-}
-
-function ItemSeparator({ className, ...props }: React.ComponentProps<typeof Separator>) {
-	return (
-		<Separator
-			data-slot="item-separator"
-			orientation="horizontal"
-			className={cn('my-2', className)}
 			{...props}
 		/>
 	);
@@ -158,19 +145,6 @@ function ItemActions({ className, ...props }: React.ComponentProps<'div'>) {
 	);
 }
 
-function ItemHeader({ className, ...props }: React.ComponentProps<'div'>) {
-	return (
-		<div
-			data-slot="item-header"
-			className={cn(
-				'flex min-w-0 max-w-full basis-full flex-wrap items-center justify-between gap-2',
-				className,
-			)}
-			{...props}
-		/>
-	);
-}
-
 function ItemFooter({ className, ...props }: React.ComponentProps<'div'>) {
 	return (
 		<div
@@ -190,9 +164,7 @@ export {
 	ItemContent,
 	ItemActions,
 	ItemGroup,
-	ItemSeparator,
 	ItemTitle,
 	ItemDescription,
-	ItemHeader,
 	ItemFooter,
 };

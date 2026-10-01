@@ -9,7 +9,7 @@ import {
 	readIdempotencyKey,
 	releaseResponseSlot,
 	setCachedResponse,
-} from '@/core/idempotency';
+} from '@/core/idempotency-store';
 import { NextResponse } from 'next/server';
 
 export type { ReplaySlotDependencies, ReplaySlotResult } from '@/core/guards/replay-slot';

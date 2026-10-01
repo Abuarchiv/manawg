@@ -1,7 +1,7 @@
 import { db, wgMembers } from '@/core/db';
-import { badRequest, tooMany } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { badRequest, tooMany } from '@/core/http/api-errors';
 import { checkRateLimit, importLimiter } from '@/core/rate-limit';
 import {
 	MAX_CSV_BYTES,

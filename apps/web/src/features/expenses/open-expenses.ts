@@ -64,7 +64,7 @@ interface RawSplitRow {
  * behaved differently depending on the driver. Normalising to ISO string
  * makes the behaviour deterministic regardless of the underlying driver.
  */
-export function groupSplitsByExpense(
+function groupSplitsByExpense(
 	rows: readonly RawSplitRow[],
 ): Map<string, DebtExpenseInput['splits']> {
 	const splitsByExpense = new Map<string, DebtExpenseInput['splits']>();

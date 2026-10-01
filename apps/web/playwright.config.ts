@@ -1,4 +1,3 @@
-// craftsman-ignore: TS002
 import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

@@ -120,7 +120,7 @@ function harness() {
 				return { won: true };
 			},
 		},
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 604_800,
 			getCachedResponse: async () =>
 				state.staleRead ? null : state.slot && !state.slot._claimed ? state.slot : null,

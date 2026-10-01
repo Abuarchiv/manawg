@@ -45,7 +45,6 @@ const DataTab = dynamic(
 	{ ssr: false, loading: tabFallback },
 );
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function EinstellungenPage() {
 	const { wg, members, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);

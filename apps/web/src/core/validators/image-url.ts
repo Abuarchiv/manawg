@@ -144,7 +144,7 @@ function getAllowedHosts(): string[] {
 	return [...hosts];
 }
 
-export function isAllowedImageHost(url: string): boolean {
+function isAllowedImageHost(url: string): boolean {
 	let parsed: URL;
 	try {
 		parsed = new URL(url);

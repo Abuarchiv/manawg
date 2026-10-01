@@ -7,6 +7,10 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/co
 import { Spinner } from '@/components/ui/spinner';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { apiFetch } from '@/core/infra/api-client';
+import {
+	type NotificationWarning,
+	notificationWarningMessage,
+} from '@/core/notifications/notification-warning';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import {
 	type InventoryItemDto,
@@ -26,22 +30,11 @@ interface InventoryItemRowProps {
 }
 
 type PendingAction = 'decrement' | 'increment' | 'delete';
-type ConsumeWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
 type ConsumeResponse = {
 	item: InventoryMutationItemDto;
 	clamped: boolean;
-	warning: ConsumeWarning;
+	warning: NotificationWarning;
 };
-
-function consumeWarningMessage(warning: ConsumeWarning): string | null {
-	if (warning === 'notification_delivery_failed') {
-		return 'Bestand aktualisiert. Nicht alle Push-Benachrichtigungen konnten versendet werden.';
-	}
-	if (warning === 'notification_delivery_unknown') {
-		return 'Bestand aktualisiert. Push-Versand konnte nicht bestätigt werden.';
-	}
-	return null;
-}
 
 export const InventoryItemRow = memo(function InventoryItemRow({
 	item,
@@ -95,7 +88,10 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				);
 				if (res.ok) {
 					consumeIdempotencyKeyRef.current = null;
-					const warningMessage = consumeWarningMessage(res.data.warning);
+					const warningMessage = notificationWarningMessage(
+						res.data.warning,
+						'Bestand aktualisiert',
+					);
 					if (res.data.clamped && warningMessage) {
 						setError(`Bestand kann nicht unter 0 fallen. ${warningMessage}`);
 					} else if (res.data.clamped) {

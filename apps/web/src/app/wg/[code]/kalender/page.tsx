@@ -10,12 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SubNav } from '@/components/wg/SubNav';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
-import {
-	RATE_LIMITED_MESSAGE,
-	isNetworkError,
-	isRateLimited,
-} from '@/core/errors/generic-error-codes';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { RATE_LIMITED_MESSAGE, isNetworkError, isRateLimited } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { copyText } from '@/core/utils/clipboard';
@@ -132,7 +128,6 @@ function eventSaveError(base: string, res: { status: number; error: string }): s
 	return `${base}.`;
 }
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function KalenderPage() {
 	const { wg, identity } = useWg();
 	const toast = useToast();

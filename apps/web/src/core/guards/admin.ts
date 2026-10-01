@@ -1,5 +1,5 @@
 import { db, wgMembers } from '@/core/db';
-import { forbidden } from '@/core/errors';
+import { forbidden } from '@/core/http/api-errors';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { NextResponse } from 'next/server';
 

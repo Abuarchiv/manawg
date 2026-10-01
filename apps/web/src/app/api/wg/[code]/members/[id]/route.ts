@@ -1,10 +1,17 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, pushSubscriptions, wgMembers } from '@/core/db';
 import { hasCapturingMemberPayment, lockActiveAccountMember } from '@/core/db/account-deletion';
-import { apiError, badRequest, conflict, forbidden, notFound, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import {
+	apiError,
+	badRequest,
+	conflict,
+	forbidden,
+	notFound,
+	tooMany,
+} from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { computeBalances } from '@/features/expenses/debts';

@@ -4,19 +4,19 @@ import { db, idempotencyResponses, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { apiError, badRequest, conflict, serverError, tooMany } from '@/core/errors';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { deriveMemberToken } from '@/core/guards/member-token';
+import { apiError, badRequest, conflict, serverError, tooMany } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import {
 	RESPONSE_REPLAY_TTL_SECONDS,
 	getCachedResponse,
 	readIdempotencyKey,
-} from '@/core/idempotency';
+} from '@/core/idempotency-store';
 import { E2E_CREATED_WG, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
-import { generateShareCode, isValidShareCode } from '@/shared/lib/share-code';
+import { generateShareCode, isValidShareCode } from '@/core/utils/share-code';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

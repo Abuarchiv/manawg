@@ -56,7 +56,7 @@ function harness({
 				return true;
 			},
 		},
-		'@/core/auth/env': {
+		'@/core/auth/supabase-env': {
 			getSupabaseEnv: () => ({ url: 'https://auth.example.test' }),
 			hasSupabaseEnv: () => true,
 		},
@@ -95,7 +95,7 @@ function harness({
 			},
 		},
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			apiError: (message, status, code) => Response.json({ error: message, code }, { status }),
 			conflict: (message) => Response.json({ error: message }, { status: 409 }),
 			serverError: (message) => Response.json({ error: message }, { status: 500 }),

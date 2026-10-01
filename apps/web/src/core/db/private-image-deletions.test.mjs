@@ -520,7 +520,7 @@ test(
 						},
 						'@/core/db/private-image-deletions': helper,
 						'@/core/db/transaction': transaction,
-						'@/core/errors': {
+						'@/core/http/api-errors': {
 							badRequest: (error) => responseJson(error, 400),
 							conflict: (error, code) =>
 								Response.json({ error, ...(code ? { code } : {}) }, { status: 409 }),
@@ -539,7 +539,7 @@ test(
 						'@/core/http/read-json': {
 							readJsonBody: async (request) => ({ ok: true, body: await request.json() }),
 						},
-						'@/core/idempotency': {
+						'@/core/idempotency-store': {
 							RESPONSE_REPLAY_TTL_SECONDS: 604_800,
 							getCachedResponse: async () => null,
 							readIdempotencyKey: () => null,
@@ -679,7 +679,7 @@ test(
 					},
 					'@/core/db/private-image-deletions': helper,
 					'@/core/db/transaction': transaction,
-					'@/core/errors': {
+					'@/core/http/api-errors': {
 						badRequest: (error) => responseJson(error, 400),
 						conflict: (error, code) =>
 							Response.json({ error, ...(code ? { code } : {}) }, { status: 409 }),
@@ -758,7 +758,7 @@ test(
 					'@/core/db': { db, wgChatMessages: schema.wgChatMessages },
 					'@/core/db/private-image-deletions': helper,
 					'@/core/db/transaction': transaction,
-					'@/core/errors': {
+					'@/core/http/api-errors': {
 						badRequest: (error) => responseJson(error, 400),
 						forbidden: (error) => responseJson(error, 403),
 						notFound: (error) => responseJson(error, 404),
@@ -810,7 +810,7 @@ test(
 					},
 					'@/core/db/private-image-deletions': helper,
 					'@/core/db/transaction': transaction,
-					'@/core/errors': {
+					'@/core/http/api-errors': {
 						badRequest: (error) => responseJson(error, 400),
 						forbidden: (error) => responseJson(error, 403),
 						notFound: (error) => responseJson(error, 404),
@@ -893,7 +893,7 @@ test(
 						'@/core/db': { db, idempotencyResponses: schema.idempotencyResponses },
 						'@/core/db/transaction': transaction,
 						'@/core/guards/idempotency': { claimReplaySlotWithRetry: async () => ({ won: true }) },
-						'@/core/idempotency': {
+						'@/core/idempotency-store': {
 							RESPONSE_REPLAY_TTL_SECONDS: 604_800,
 							getCachedResponse: async () => null,
 							readIdempotencyKey: (request) => request.headers.get('Idempotency-Key'),

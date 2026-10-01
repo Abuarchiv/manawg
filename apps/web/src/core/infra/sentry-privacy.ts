@@ -21,7 +21,7 @@ type SentryEventShape = {
 	breadcrumbs?: unknown[];
 };
 
-const SAFE_TAG_VALUES: Record<string, ReadonlySet<string>> = {
+export const SAFE_TAG_VALUES: Record<string, ReadonlySet<string>> = {
 	area: new Set(['startup', 'rate-limit']),
 	boundary: new Set(['global', 'root', 'wg-code']),
 	cronJob: new Set(['event-reminders', 'chore-reminders', 'maintenance', 'recurring-advance']),

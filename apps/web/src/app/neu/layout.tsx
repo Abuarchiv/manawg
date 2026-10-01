@@ -7,7 +7,6 @@ export const metadata: Metadata = {
 		'Neue WG in 30 Sekunden erstellen oder mit 8-stelligem Code beitreten. Kostenlos und datensparsam.',
 };
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from layout.tsx
 export default function NeuLayout({ children }: { children: ReactNode }) {
 	return children;
 }

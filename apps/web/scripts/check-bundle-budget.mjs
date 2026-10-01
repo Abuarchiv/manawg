@@ -13,7 +13,6 @@
  *
  * Excluded from per-route caps and reported informationally only:
  *  - Tesseract OCR chunk:   only loaded on /wg/[code]/import OCR step
- *  - three.js / @react-three: only loaded on `/` via Hero3D dynamic gate
  *
  * Usage: pnpm --filter @manawg/web bundle:check
  */
@@ -26,7 +25,7 @@ const KILOBYTE = 1024;
 const SHARED_JS_BUDGET_KB = 120;
 const PER_ROUTE_BUDGET_KB = 55;
 const TESSERACT_INFO_BUDGET_KB = 2500;
-const LAZY_CHUNK_HINTS = ['tesseract', 'three', 'react-three'];
+const LAZY_CHUNK_HINTS = ['tesseract'];
 const TESSERACT_CHUNK_HINT = 'tesseract';
 
 const PROJECT_ROOT = resolve(process.cwd());

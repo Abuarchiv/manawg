@@ -1,12 +1,12 @@
-import { apiError, badRequest, notFound } from '@/core/errors';
+import { apiError, badRequest, notFound } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { type E2EWgFixture, getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
+import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 // Deliberately NOT from '@/core/guards/api-auth', which re-exports the same constant:
 // api-auth pulls in the database module, and the E2E db-down path exists
 // precisely to answer requests when no database can be loaded. A route test
 // asserts that api-auth stays unloaded in that mode.
 import { MEMBER_ID_HEADER } from '@/shared/lib/member-header';
-import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import type { NextRequest, NextResponse } from 'next/server';
 
 /**

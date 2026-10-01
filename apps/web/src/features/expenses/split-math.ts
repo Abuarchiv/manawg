@@ -59,7 +59,7 @@ export function distributeCentsEqually(
  * Returns a new array; the input is not mutated. Negative offsets are
  * normalized.
  */
-export function rotateDebtors<T>(debtors: readonly T[], offset: number): T[] {
+function rotateDebtors<T>(debtors: readonly T[], offset: number): T[] {
 	const n = debtors.length;
 	if (n === 0) return [];
 	const k = ((offset % n) + n) % n;

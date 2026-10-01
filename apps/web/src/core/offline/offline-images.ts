@@ -42,7 +42,7 @@ async function readUploadSignError(response: Response): Promise<string> {
 	}
 }
 
-export function createPendingImageToken(id: string): string {
+function createPendingImageToken(id: string): string {
 	return `${TOKEN_PREFIX}${id}`;
 }
 
@@ -50,7 +50,7 @@ export function isPendingImageToken(value: string | null | undefined): value is 
 	return Boolean(value?.startsWith(TOKEN_PREFIX));
 }
 
-export function pendingImageIdFromToken(token: string): string {
+function pendingImageIdFromToken(token: string): string {
 	return token.slice(TOKEN_PREFIX.length);
 }
 

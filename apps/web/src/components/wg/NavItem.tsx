@@ -1,6 +1,5 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import { Home, ListChecks, type LucideIcon, Megaphone, Receipt } from 'lucide-react';
@@ -20,13 +19,6 @@ interface NavItemProps {
 	href: string;
 	label: string;
 	iconKey: NavIconKey;
-	badgeCount?: number;
-	/**
-	 * Explicit active state for grouped destinations (Start/Haushalt/Finanzen/
-	 * Austausch). When omitted, falls back to exact href matching so existing
-	 * callers keep their behavior.
-	 */
-	active?: boolean;
 	/**
 	 * Additional hrefs that mark this item active (parent grouping). Compared
 	 * by exact path or `<prefix>/…` so `/wg/ABC/vorraete` keeps Haushalt
@@ -35,16 +27,7 @@ interface NavItemProps {
 	activePrefixes?: string[];
 }
 
-const BADGE_MAX_DISPLAY = 99;
-
-export function NavItem({
-	href,
-	label,
-	iconKey,
-	badgeCount,
-	active,
-	activePrefixes,
-}: NavItemProps) {
+export function NavItem({ href, label, iconKey, activePrefixes }: NavItemProps) {
 	const pathname = usePathname();
 	const normalizedPath = pathname?.replace(/\/+$/, '') ?? '';
 	const normalizedHref = new URL(href, 'https://manawg.invalid').pathname.replace(/\/+$/, '');
@@ -55,14 +38,8 @@ export function NavItem({
 		(prefix) => normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`),
 	);
 	const isCurrentPage = normalizedPath === normalizedHref;
-	const isActive = active ?? (isCurrentPage || prefixActive);
+	const isActive = isCurrentPage || prefixActive;
 	const Icon = ICONS[iconKey];
-	const normalizedBadge = typeof badgeCount === 'number' && badgeCount > 0 ? badgeCount : null;
-	const showBadge = normalizedBadge !== null;
-	const badgeText =
-		normalizedBadge !== null && normalizedBadge > BADGE_MAX_DISPLAY
-			? `${BADGE_MAX_DISPLAY}+`
-			: normalizedBadge;
 
 	return (
 		<li>
@@ -81,20 +58,7 @@ export function NavItem({
 						: 'active:bg-foreground/5',
 				)}
 			>
-				<span className="relative">
-					<Icon aria-hidden className="size-[18px]" strokeWidth={1.5} />
-					{showBadge && (
-						<Badge
-							variant="destructive"
-							aria-label={`${badgeCount} ungelesen`}
-							aria-live="polite"
-							aria-atomic="true"
-							className="absolute -right-3 -top-2 tabular-nums"
-						>
-							{badgeText}
-						</Badge>
-					)}
-				</span>
+				<Icon aria-hidden className="size-[18px]" strokeWidth={1.5} />
 				<span className="max-w-full whitespace-nowrap text-center text-[12px] font-semibold leading-3.5">
 					{label}
 				</span>

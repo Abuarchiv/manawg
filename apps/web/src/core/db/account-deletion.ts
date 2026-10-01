@@ -3,7 +3,7 @@ import { accountDeletions, expensePayments, wgMembers, wgs } from './schema';
 import { type DbTransaction, withFreshTransaction, withTransaction } from './transaction';
 import { TransactionAbort } from './transaction-abort';
 
-export const ACCOUNT_DELETION_RETRY_BATCH_SIZE = 5;
+const ACCOUNT_DELETION_RETRY_BATCH_SIZE = 5;
 
 export type AuthDeletionExecutor = (authUserId: string) => Promise<boolean>;
 

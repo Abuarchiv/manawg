@@ -91,7 +91,7 @@ export function clampQuantity(value: number): number {
 	return Math.trunc(value);
 }
 
-export function isValidCategory(value: string): value is InventoryCategory {
+function isValidCategory(value: string): value is InventoryCategory {
 	return (INVENTORY_CATEGORIES as readonly string[]).includes(value);
 }
 

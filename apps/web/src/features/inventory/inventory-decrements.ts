@@ -3,25 +3,6 @@ import { MS_PER_DAY } from '@/core/utils/time';
 import { and, eq, gte, inArray, lt } from 'drizzle-orm';
 
 const DEFAULT_DECREMENT_WINDOW_DAYS = 30;
-export async function getRecentDecrementCount(
-	itemId: string,
-	days: number = DEFAULT_DECREMENT_WINDOW_DAYS,
-): Promise<number> {
-	const since = new Date(Date.now() - days * MS_PER_DAY);
-	const rows = await db
-		.select({ delta: wgInventoryLog.delta })
-		.from(wgInventoryLog)
-		.where(
-			and(
-				eq(wgInventoryLog.itemId, itemId),
-				eq(wgInventoryLog.kind, 'consume'),
-				gte(wgInventoryLog.createdAt, since),
-				lt(wgInventoryLog.delta, 0),
-			),
-		);
-	return rows.length;
-}
-
 export async function getRecentDecrementCounts(
 	itemIds: readonly string[],
 	days: number = DEFAULT_DECREMENT_WINDOW_DAYS,

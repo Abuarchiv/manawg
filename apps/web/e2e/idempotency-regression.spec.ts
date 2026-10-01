@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { serverError } from '../src/core/errors';
 import {
 	type ReplaySlotDependencies,
 	type ReplaySlotResult,
 	claimReplaySlot,
 } from '../src/core/guards/replay-slot';
+import { serverError } from '../src/core/http/api-errors';
 
 type MutationResponse = { id: string };
 

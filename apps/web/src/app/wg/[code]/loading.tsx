@@ -9,7 +9,6 @@ const BAR_ROWS = [
 	{ width: 'w-1/2', key: 'r2' },
 ] as const;
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from loading.tsx
 export default function WgLoading() {
 	return (
 		<output

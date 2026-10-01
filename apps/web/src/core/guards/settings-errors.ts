@@ -4,7 +4,7 @@ import {
 	isNetworkError,
 	isRetryableServerError,
 	isWgUnavailable,
-} from '@/core/errors/generic-error-codes';
+} from '@/core/http/error-codes';
 
 export async function readResponseErrorCode(response: Response): Promise<string | null> {
 	try {

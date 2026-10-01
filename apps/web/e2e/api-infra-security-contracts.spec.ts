@@ -112,7 +112,7 @@ test('upload-sign rejects an oversized unauthenticated JSON body before auth or 
 				},
 			},
 		},
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			apiError: (message: string, status: number, code?: string) =>
 				json(code ? { error: message, code } : { error: message }, status),
 			badRequest: (message: string) => json({ error: message }, 400),
@@ -142,7 +142,7 @@ test('upload-sign rejects an oversized unauthenticated JSON body before auth or 
 			uploadSignLimiter: null,
 		},
 		'@/core/validators/image-url': { getPrivateImageUrl: () => 'https://example.invalid/image' },
-		'@/shared/lib/share-code': {
+		'@/core/utils/share-code': {
 			isValidShareCode: () => true,
 			normalizeShareCode: (value: string) => value,
 		},

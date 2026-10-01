@@ -256,6 +256,5 @@ export function useCachedFetch<T>(url: string, options: CachedFetchOptions = {})
 		serverRevision: snapshot.serverRevision,
 		refresh,
 		setData,
-		mutate: setData,
 	};
 }

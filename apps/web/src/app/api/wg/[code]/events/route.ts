@@ -1,17 +1,18 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, idempotencyResponses, wgEvents } from '@/core/db';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { badRequest, serverError, tooMany } from '@/core/errors';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { badRequest, serverError, tooMany } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import {
 	RESPONSE_REPLAY_TTL_SECONDS,
 	getCachedResponse,
 	readIdempotencyKey,
-} from '@/core/idempotency';
+} from '@/core/idempotency-store';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
+import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	buildEventsWindowFilter,
@@ -32,8 +33,7 @@ const DESCRIPTION_MAX = 2_000;
 const LOCATION_MAX = 200;
 const RECURRENCE_MAX = 200;
 
-type EventCreateWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
-type EventCreateResponseBody = { event: SerializedWgEvent; warning: EventCreateWarning };
+type EventCreateResponseBody = { event: SerializedWgEvent; warning: NotificationWarning };
 type EventCreateReplayResponse<T = unknown> = { status: number; body: T };
 
 function readEventCreateReplayResponse(value: unknown): EventCreateReplayResponse | null {
@@ -300,7 +300,7 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 		},
 	});
 
-	const { warning }: { warning: EventCreateWarning } = await dispatchNotificationSafely({
+	const { warning }: { warning: NotificationWarning } = await dispatchNotificationSafely({
 		wg: { id: wg.id, name: wg.name, shareCode: code },
 		event: 'event.created',
 		payload: {

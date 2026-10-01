@@ -16,10 +16,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Item, ItemContent, ItemGroup } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
-import { AboCreateModal } from '@/components/wg/AboCreateModal';
-import { AboEditModal } from '@/components/wg/AboEditModal';
-import type { AboFormValues } from '@/components/wg/AboForm';
-import { AbosList } from '@/components/wg/AbosList';
 import {
 	type ActionNotice,
 	ActionNoticeBanner,
@@ -29,13 +25,17 @@ import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { SubNav } from '@/components/wg/SubNav';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
-import type { Abo, AboFilter } from '@/components/wg/abos-types';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { formatEuroCents } from '@/core/utils/money';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { AboCreateModal } from '@/features/expenses/components/abos/AboCreateModal';
+import { AboEditModal } from '@/features/expenses/components/abos/AboEditModal';
+import type { AboFormValues } from '@/features/expenses/components/abos/AboForm';
+import { AbosList } from '@/features/expenses/components/abos/AbosList';
+import type { Abo, AboFilter } from '@/features/expenses/components/abos/abos-types';
 import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
@@ -167,7 +167,6 @@ function aboDeleteErrorMessage(error: string): string {
 	return 'Fixkosten konnten nicht gelöscht werden.';
 }
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function AbosPage() {
 	const { wg, members, identity } = useWg();
 	const toast = useToast();

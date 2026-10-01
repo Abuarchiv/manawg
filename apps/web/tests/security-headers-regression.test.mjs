@@ -4,7 +4,7 @@ import {
 	contentSecurityPolicy,
 	crossOriginOpenerPolicy,
 	isPayPalSdkEnabled,
-} from '../src/shared/lib/security-headers.ts';
+} from '../src/core/infra/security-headers.ts';
 
 const payPalOrigins = ['https://www.paypal.com', 'https://www.sandbox.paypal.com'];
 const ocrLanguageDataUrls = [
@@ -30,6 +30,9 @@ test('PayPal CSP grants only the exact SDK hosts and uses the document nonce', (
 	}
 	assert.ok(policy.get('script-src')?.includes("'nonce-request-nonce'"));
 	assert.ok(policy.get('style-src')?.includes("'nonce-request-nonce'"));
+	// Ersetzt das gelöschte check-security-boundaries-Script: Nonce-CSP darf nie auf unsafe-inline zurückfallen.
+	assert.doesNotMatch(policy.get('script-src').join(' '), /unsafe-inline/);
+	assert.doesNotMatch(policy.get('style-src').join(' '), /unsafe-inline/);
 	assert.ok(policy.get('frame-src')?.includes("'self'"));
 	assert.doesNotMatch(policy.get('connect-src').join(' '), /\*\.paypal|paypalobjects|venmo/i);
 	assert.doesNotMatch(policy.get('frame-src').join(' '), /\*\.paypal|paypalobjects|venmo/i);

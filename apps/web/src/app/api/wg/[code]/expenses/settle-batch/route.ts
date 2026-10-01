@@ -1,6 +1,10 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expensePayments, expenseSplits, expenses, wgMembers } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
+import { UUID_PATTERN } from '@/core/guards/api-auth';
+import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
 	apiError,
 	badRequest,
@@ -8,13 +12,9 @@ import {
 	forbidden,
 	requireVerifiedMember,
 	tooMany,
-} from '@/core/errors';
-import { UUID_PATTERN } from '@/core/guards/api-auth';
-import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
-import { requireWgMember } from '@/core/guards/require-wg-member';
-import { withWgRoute } from '@/core/guards/with-wg-route';
+} from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
-import { claimIdempotencySlot, readIdempotencyKey } from '@/core/idempotency';
+import { claimIdempotencySlot, readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	type ExpensePaymentInput,

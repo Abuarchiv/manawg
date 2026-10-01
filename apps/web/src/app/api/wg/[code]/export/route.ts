@@ -11,9 +11,9 @@ import {
 	shoppingItems,
 	wgMembers,
 } from '@/core/db';
-import { badRequest, serverError, tooMany } from '@/core/errors';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
+import { badRequest, serverError, tooMany } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgExportLimiter } from '@/core/rate-limit';

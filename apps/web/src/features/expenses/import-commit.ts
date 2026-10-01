@@ -9,7 +9,7 @@ import {
 	wgMembers,
 } from '@/core/db';
 import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
-import { RESPONSE_REPLAY_TTL_SECONDS } from '@/core/idempotency';
+import { RESPONSE_REPLAY_TTL_SECONDS } from '@/core/idempotency-store';
 import {
 	type NotificationDispatchWarning,
 	dispatchNotificationSafely,

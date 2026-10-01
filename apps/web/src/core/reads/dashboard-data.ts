@@ -152,7 +152,7 @@ export interface DashboardData {
 	setup: DashboardSetup;
 }
 
-export function getLatestManualAnnouncement(
+function getLatestManualAnnouncement(
 	announcementRows: Array<{
 		id?: string;
 		content: string;
@@ -173,14 +173,14 @@ export function getLatestManualAnnouncement(
 		: null;
 }
 
-export function countOpenManualAnnouncements(
+function countOpenManualAnnouncements(
 	announcementRows: Array<{ source: string | null; status: string }>,
 ): number {
 	return announcementRows.filter((item) => item.source === 'manual' && item.status === 'open')
 		.length;
 }
 
-export function getCurrentAbsenceRowsByMember<
+function getCurrentAbsenceRowsByMember<
 	TRow extends { memberId: string; startDate: Date; endDate: Date },
 >(absenceRows: TRow[], nowMs: number): Map<string, TRow> {
 	const currentRows = absenceRows
@@ -344,7 +344,7 @@ export function computeMemberBalances(
 	);
 }
 
-export function buildDueChores(
+function buildDueChores(
 	choreRows: Array<{
 		id: string;
 		title: string;
@@ -370,7 +370,7 @@ export function buildDueChores(
 		.sort((a, b) => a.nextDueAt.localeCompare(b.nextDueAt));
 }
 
-export function isDuplicateAuditActivity(
+function isDuplicateAuditActivity(
 	rawByKey: Map<string, number>,
 	kind: ActivityKind,
 	entityId: string | null | undefined,

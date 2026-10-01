@@ -1,7 +1,6 @@
 'use client';
 
 import { type ComponentProps, useId } from 'react';
-import { BRAND } from '../../lib/brand';
 import geometry from '../../lib/brand-mark.json';
 import { cn } from '../../lib/cn';
 import styles from './brand-mark.module.css';
@@ -37,7 +36,7 @@ export function LogoMark({
 			height={tile ? size : (size * geometry.height) / geometry.width}
 			viewBox={tile ? '0 0 512 512' : '0 0 416 346'}
 			role="img"
-			aria-label={BRAND.wordmark}
+			aria-label="ManaWG"
 			data-brand-mark="organism"
 			className={cn('shrink-0', loading && styles.loading, className)}
 			{...props}
@@ -66,24 +65,5 @@ export function LogoMark({
 				/>
 			</g>
 		</svg>
-	);
-}
-
-interface BrandLockupProps {
-	size?: number;
-	className?: string;
-	wordmarkClassName?: string;
-}
-
-export function BrandLockup({
-	size = 28,
-	className = 'flex items-center gap-2',
-	wordmarkClassName = 'font-heading text-xl font-semibold tracking-[-0.03em] text-foreground',
-}: BrandLockupProps) {
-	return (
-		<span className={className}>
-			<LogoMark size={size} tile={false} aria-hidden="true" />
-			<span className={wordmarkClassName}>{BRAND.wordmark}</span>
-		</span>
 	);
 }

@@ -2,15 +2,15 @@ import { recordAuditEvent } from '@/core/audit';
 import { calendarSubscriptions, db, idempotencyResponses } from '@/core/db';
 import { type ActiveAccountMember, lockActiveAccountMember } from '@/core/db/account-deletion';
 import { type DbTransaction, TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { requireVerifiedMember, serverError, tooMany } from '@/core/errors';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { requireVerifiedMember, serverError, tooMany } from '@/core/http/api-errors';
 import {
 	RESPONSE_REPLAY_TTL_SECONDS,
 	getCachedResponse,
 	readIdempotencyKey,
-} from '@/core/idempotency';
+} from '@/core/idempotency-store';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	calendarFeedUrl,

@@ -1,5 +1,4 @@
 import { TransactionAbort } from '@/core/db/transaction';
-import { badRequest, conflict, serverError, tooMany } from '@/core/errors';
 import {
 	ReplayCache,
 	type ReplayReservation,
@@ -8,12 +7,13 @@ import {
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { readShareCode } from '@/core/guards/route-preamble';
+import { badRequest, conflict, serverError, tooMany } from '@/core/http/api-errors';
 import {
 	getCachedResponse,
 	persistImportReplayWarning,
 	readIdempotencyKey,
 	releaseResponseSlot,
-} from '@/core/idempotency';
+} from '@/core/idempotency-store';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, importCommitLimiter } from '@/core/rate-limit';

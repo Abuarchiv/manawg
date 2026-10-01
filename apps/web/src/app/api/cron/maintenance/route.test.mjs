@@ -34,7 +34,7 @@ function harness() {
 	}
 	const overrides = {
 		'@/core/auth/delete-user': { deleteAuthUser: async () => true },
-		'@/core/auth/env': { getSupabaseEnv: () => null, hasSupabaseEnv: () => false },
+		'@/core/auth/supabase-env': { getSupabaseEnv: () => null, hasSupabaseEnv: () => false },
 		'@/core/db/account-deletion': {
 			retryPendingAccountDeletions: async (deleteAuthUser) => {
 				assert.equal(deleteAuthUser, null);
@@ -60,7 +60,7 @@ function harness() {
 				return state.pending;
 			},
 		},
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			purgeExpiredIdempotencyResponses: async () => 0,
 		},
 		'@/core/infra/cron-auth': { verifyCronSecret: () => true },

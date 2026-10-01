@@ -1,6 +1,8 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expensePayments, wgMembers } from '@/core/db';
 import { lockActiveAccountMember } from '@/core/db/account-deletion';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
 	badRequest,
 	conflict,
@@ -8,9 +10,7 @@ import {
 	requireVerifiedMember,
 	serverError,
 	tooMany,
-} from '@/core/errors';
-import { requireWgMember } from '@/core/guards/require-wg-member';
-import { withWgRoute } from '@/core/guards/with-wg-route';
+} from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
 import {

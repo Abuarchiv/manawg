@@ -1,9 +1,15 @@
 import { recordAuditEvent } from '@/core/audit';
 import { announcementComments, announcements, db } from '@/core/db';
-import { badRequest, forbidden, notFound, requireVerifiedMember, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import {
+	badRequest,
+	forbidden,
+	notFound,
+	requireVerifiedMember,
+	tooMany,
+} from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { and, eq } from 'drizzle-orm';

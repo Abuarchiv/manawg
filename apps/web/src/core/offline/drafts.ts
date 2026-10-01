@@ -1,4 +1,5 @@
 import { formatEuroInput } from '@/core/utils/amount';
+import { safeLocalStorage } from '@/core/utils/browser';
 import type { OfflineAction, OfflineActionType } from './offline-queue';
 
 export type DraftModule = 'announcement' | 'expense' | 'shopping' | 'chore' | 'absence';
@@ -27,7 +28,7 @@ export function buildQueueEditHref(
 	return `/wg/${encodedShareCode}/putzen`;
 }
 
-export function parseDraft<T extends Record<string, unknown>>(raw: string | null): T | null {
+function parseDraft<T extends Record<string, unknown>>(raw: string | null): T | null {
 	if (!raw) return null;
 	try {
 		const parsed = JSON.parse(raw) as unknown;
@@ -38,17 +39,8 @@ export function parseDraft<T extends Record<string, unknown>>(raw: string | null
 	}
 }
 
-function getDraftStorage(): Storage | null {
-	if (typeof window === 'undefined') return null;
-	try {
-		return window.localStorage;
-	} catch {
-		return null;
-	}
-}
-
 export function readDraft<T extends Record<string, unknown>>(key: string): T | null {
-	const storage = getDraftStorage();
+	const storage = safeLocalStorage();
 	if (!storage) return null;
 	try {
 		return parseDraft<T>(storage.getItem(key));
@@ -58,7 +50,7 @@ export function readDraft<T extends Record<string, unknown>>(key: string): T | n
 }
 
 export function writeDraft(key: string, draft: Record<string, unknown>): boolean {
-	const storage = getDraftStorage();
+	const storage = safeLocalStorage();
 	if (!storage) return false;
 	try {
 		storage.setItem(key, JSON.stringify(draft));
@@ -70,7 +62,7 @@ export function writeDraft(key: string, draft: Record<string, unknown>): boolean
 }
 
 export function removeDraft(key: string): void {
-	const storage = getDraftStorage();
+	const storage = safeLocalStorage();
 	if (!storage) return;
 	try {
 		storage.removeItem(key);

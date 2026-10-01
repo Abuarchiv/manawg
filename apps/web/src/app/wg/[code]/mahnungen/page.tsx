@@ -3,16 +3,19 @@ import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { BackLink } from '@/components/wg/BackLink';
-import { DebtRow } from '@/components/wg/DebtRow';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
-import { RemindButton } from '@/components/wg/RemindButton';
-import { ReminderHistory, type ReminderHistoryItem } from '@/components/wg/ReminderHistory';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { formatRelativeTime } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { DebtRow } from '@/features/expenses/components/debts/DebtRow';
+import { RemindButton } from '@/features/expenses/components/debts/RemindButton';
+import {
+	ReminderHistory,
+	type ReminderHistoryItem,
+} from '@/features/expenses/components/debts/ReminderHistory';
 import {
 	type DebtExpenseInput,
 	computeBalances,
@@ -37,7 +40,6 @@ interface ExpenseDto {
 	splits: ExpenseSplitDto[];
 }
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function ErinnerungenPage() {
 	const { wg, members, identity, isAdmin } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);

@@ -1,6 +1,6 @@
 'use client';
 
-import { Switch as SwitchPrimitives } from '@base-ui-components/react/switch';
+import { Switch as SwitchPrimitives } from '@base-ui/react/switch';
 import {
 	type HTMLMotionProps,
 	type LegacyAnimationControls,
@@ -11,8 +11,8 @@ import {
 } from 'motion/react';
 import * as React from 'react';
 
-import { useControlledState } from '@/hooks/use-controlled-state';
-import { getStrictContext } from '@/lib/get-strict-context';
+import { useControlledState } from '@/core/hooks/use-controlled-state';
+import { getStrictContext } from '@/shared/lib/get-strict-context';
 
 type SwitchContextType = {
 	isChecked: boolean;
@@ -242,14 +242,4 @@ function SwitchIcon({
 	);
 }
 
-export {
-	Switch,
-	SwitchThumb,
-	SwitchIcon,
-	useSwitch,
-	type SwitchProps,
-	type SwitchThumbProps,
-	type SwitchIconProps,
-	type SwitchIconPosition,
-	type SwitchContextType,
-};
+export { Switch, SwitchThumb, SwitchIcon, type SwitchProps };

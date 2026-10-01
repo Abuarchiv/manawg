@@ -17,12 +17,16 @@ import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { isNetworkError } from '@/core/errors/generic-error-codes';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
+import { isNetworkError } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/observability';
+import {
+	type NotificationWarning,
+	notificationWarningMessage,
+} from '@/core/notifications/notification-warning';
 import {
 	buildDraftKey,
 	isEmptyModuleDraft,
@@ -86,13 +90,11 @@ import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 type ChoreSuggestion = { title: string; intervalDays: number; recurrenceType: RecurrenceType };
-type ChoreCreateWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
-type ChoreCreateResponse = { chore: unknown; warning: ChoreCreateWarning };
+type ChoreCreateResponse = { chore: unknown; warning: NotificationWarning };
 const ConfirmDialog = dynamic(() =>
 	import('@/components/ui/ConfirmDialog').then((module) => module.ConfirmDialog),
 );
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function PutzenPage() {
 	const { wg, members, identity, isAdmin } = useWg();
 	const toast = useToast();
@@ -588,13 +590,8 @@ export default function PutzenPage() {
 			setShowForm(false);
 			removeDraft(draftKey);
 			void load(false);
-			if (result.data.warning === 'notification_delivery_failed') {
-				setActionNotice(
-					'Gespeichert. Nicht alle Push-Benachrichtigungen konnten versendet werden.',
-				);
-			} else if (result.data.warning === 'notification_delivery_unknown') {
-				setActionNotice('Gespeichert. Push-Versand konnte nicht bestätigt werden.');
-			}
+			const warningMessage = notificationWarningMessage(result.data.warning);
+			if (warningMessage) setActionNotice(warningMessage);
 		} finally {
 			endPending(pendingKey);
 		}

@@ -171,7 +171,7 @@ async function post({
 			wgMembers: membersTable,
 		},
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			badRequest: (error) => responseJson({ error }, { status: 400 }),
 			conflict: (error) => responseJson({ error }, { status: 409 }),
 			forbidden: (error) => responseJson({ error }, { status: 403 }),

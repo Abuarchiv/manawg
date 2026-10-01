@@ -1,6 +1,5 @@
 import { recordAuditEvent } from '@/core/audit';
 import { withTransaction } from '@/core/db/transaction';
-import { badRequest, conflict, notFound, tooMany } from '@/core/errors';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import {
 	ReplayCache,
@@ -10,10 +9,16 @@ import {
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
-import { getCachedResponse, readIdempotencyKey, releaseResponseSlot } from '@/core/idempotency';
+import {
+	getCachedResponse,
+	readIdempotencyKey,
+	releaseResponseSlot,
+} from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
+import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { consumeInventoryMutation } from '@/features/inventory/consume-mutation';
 import { INVENTORY_LIMITS } from '@/features/inventory/inventory';
@@ -33,13 +38,11 @@ const consumeSchema = z.object({
 });
 
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
-type ConsumeWarning = null | 'notification_delivery_failed' | 'notification_delivery_unknown';
-
 type ConsumeResponseBody = {
 	item: unknown;
 	clamped: boolean;
 	autoPushedShoppingItemId: string | null;
-	warning: ConsumeWarning;
+	warning: NotificationWarning;
 };
 const consumeReplay = new ReplayCache<ConsumeResponseBody>(IDEMPOTENCY_TTL_MS);
 
@@ -145,7 +148,7 @@ export const POST = withWgRoute<{ id: string }>('inventory consume', async (req,
 			},
 		});
 
-		let warning: ConsumeWarning = null;
+		let warning: NotificationWarning = null;
 		if (justCrossedThreshold || autoPushedShoppingItemId !== null) {
 			({ warning } = await dispatchNotificationSafely({
 				wg,

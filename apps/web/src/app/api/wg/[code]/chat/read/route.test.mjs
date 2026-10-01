@@ -40,7 +40,7 @@ function harness({ changedRows }) {
 	const mocks = {
 		'@/core/db': { db, wgChatMessages, wgChatReads },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			badRequest: (error) => json({ error }, 400),
 			notFound: (error) => json({ error }, 404),
 			tooMany: () => json({ error: 'rate_limited' }, 429),

@@ -3,7 +3,7 @@ import {
 	isInvalidShareCode,
 	isNetworkError,
 	isRetryableServerError,
-} from '@/core/errors/generic-error-codes';
+} from '@/core/http/error-codes';
 
 export function absenceSaveErrorMessage(error: string): string {
 	if (isNetworkError(error)) {

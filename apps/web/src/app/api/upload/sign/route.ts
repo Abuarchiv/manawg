@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db } from '@/core/db';
+import { requireMember } from '@/core/guards/api-auth';
 import {
 	apiError,
 	badRequest,
@@ -8,8 +9,7 @@ import {
 	payloadTooLarge,
 	serverError,
 	tooMany,
-} from '@/core/errors';
-import { requireMember } from '@/core/guards/api-auth';
+} from '@/core/http/api-errors';
 import { readJsonBody } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
 import { PRIVATE_IMAGE_MIME_TYPES } from '@/core/infra/private-image-policy';
@@ -25,8 +25,8 @@ import {
 	getImageStorageProvider,
 } from '@/core/infra/supabase-storage';
 import { checkRateLimit, uploadSignLimiter } from '@/core/rate-limit';
+import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { getPrivateImageUrl } from '@/core/validators/image-url';
-import { isValidShareCode, normalizeShareCode } from '@/shared/lib/share-code';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 

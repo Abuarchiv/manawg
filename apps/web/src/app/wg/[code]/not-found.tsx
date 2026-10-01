@@ -16,7 +16,6 @@ export const metadata: Metadata = {
 	robots: { index: false, follow: false },
 };
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export for not-found pages
 export default function WgNotFound() {
 	return (
 		<div className="flex min-h-[calc(100svh-4.25rem)] items-center justify-center bg-background px-4 pb-[env(safe-area-inset-bottom)]">

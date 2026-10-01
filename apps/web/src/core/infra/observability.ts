@@ -9,6 +9,9 @@
  * never change control flow at the call site.
  */
 
+import { captureSentryException, logSentryApiError } from './sentry';
+import { SAFE_TAG_VALUES, safeErrorName } from './sentry-privacy';
+
 /**
  * Report an unexpected error with only fixed diagnostic labels. Error messages
  * and arbitrary context can contain provider responses, SQL, or request data.
@@ -46,17 +49,10 @@ function describeThrown(err: unknown): string {
 	return `thrown ${typeof err}`;
 }
 
-const SAFE_CONTEXT_VALUES: Record<string, ReadonlySet<string>> = {
-	area: new Set(['startup', 'rate-limit']),
-	boundary: new Set(['global', 'root', 'wg-code']),
-	cronJob: new Set(['event-reminders', 'chore-reminders', 'maintenance', 'recurring-advance']),
-	method: new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD']),
-};
-
 function safeContext(context?: Record<string, unknown>): Record<string, string> {
 	const safe: Record<string, string> = {};
 	if (!context) return safe;
-	for (const [key, allowedValues] of Object.entries(SAFE_CONTEXT_VALUES)) {
+	for (const [key, allowedValues] of Object.entries(SAFE_TAG_VALUES)) {
 		const value = context[key];
 		if (typeof value === 'string' && allowedValues.has(value)) {
 			safe[key] = value;
@@ -94,5 +90,3 @@ export function withCronLogging<T extends (...args: never[]) => Promise<unknown>
 		}
 	}) as T;
 }
-import { captureSentryException, logSentryApiError } from './sentry';
-import { safeErrorName } from './sentry-privacy';

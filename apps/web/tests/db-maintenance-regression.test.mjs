@@ -106,7 +106,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 	const recoveryCalls = [];
 	let recoveryResult = { attempted: 1, completed: 0, failed: 1, pending: 1 };
 	const idempotency = load(
-		'core/idempotency.ts',
+		'core/idempotency-store.ts',
 		{
 			'@/core/db': {
 				idempotencyResponses: {},
@@ -133,7 +133,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 	const route = load(
 		'app/api/cron/maintenance/route.ts',
 		{
-			'@/core/auth/env': { hasSupabaseEnv: () => false, getSupabaseEnv: () => null },
+			'@/core/auth/supabase-env': { hasSupabaseEnv: () => false, getSupabaseEnv: () => null },
 			'@/core/auth/delete-user': { deleteAuthUser: async () => false },
 			'@/core/db/account-deletion': {
 				retryPendingAccountDeletions: async (deleteAuth) => {
@@ -150,7 +150,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 				findLivePrivateImageReferenceKeys: async () => new Set(),
 				markPrivateImageStorageDeleted: async () => undefined,
 			},
-			'@/core/idempotency': idempotency,
+			'@/core/idempotency-store': idempotency,
 			'@/core/infra/cron-auth': { verifyCronSecret: () => true },
 			'@/core/infra/observability': loadObservability(env, logs),
 			'@/core/infra/paypal': { isPayPalConfigured: () => false },

@@ -1,11 +1,11 @@
 'use client';
 
-import { Collapsible as CollapsiblePrimitive } from '@base-ui-components/react/collapsible';
+import { Collapsible as CollapsiblePrimitive } from '@base-ui/react/collapsible';
 import { AnimatePresence, type HTMLMotionProps, motion } from 'motion/react';
 import type * as React from 'react';
 
-import { useControlledState } from '@/hooks/use-controlled-state';
-import { getStrictContext } from '@/lib/get-strict-context';
+import { useControlledState } from '@/core/hooks/use-controlled-state';
+import { getStrictContext } from '@/shared/lib/get-strict-context';
 
 type CollapsibleContextType = {
 	isOpen: boolean;
@@ -125,13 +125,4 @@ function CollapsiblePanel({
 	);
 }
 
-export {
-	Collapsible,
-	CollapsibleTrigger,
-	CollapsiblePanel,
-	useCollapsible,
-	type CollapsibleProps,
-	type CollapsibleTriggerProps,
-	type CollapsiblePanelProps,
-	type CollapsibleContextType,
-};
+export { Collapsible, CollapsibleTrigger, CollapsiblePanel };

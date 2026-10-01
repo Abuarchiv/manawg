@@ -173,7 +173,7 @@ function harness(returning = async () => [{ id: itemId }]) {
 		},
 		'@/core/db': { db, shoppingItems, wgMembers },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/errors': {
+		'@/core/http/api-errors': {
 			badRequest: (error) => json({ error }, 400),
 			conflict: (error) => json({ error }, 409),
 			forbidden: (error) => json({ error }, 403),
@@ -209,7 +209,7 @@ function harness(returning = async () => [{ id: itemId }]) {
 					? new Date('2026-09-27T10:00:00.124Z')
 					: { column, value, truncateMilliseconds: true },
 		},
-		'@/core/idempotency': {
+		'@/core/idempotency-store': {
 			readIdempotencyKey: (request) => request.headers.get('idempotency-key'),
 		},
 		'@/features/pinnwand/announcement-replay': {
