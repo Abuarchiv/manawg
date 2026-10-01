@@ -167,7 +167,6 @@ function aboDeleteErrorMessage(error: string): string {
 	return 'Fixkosten konnten nicht gelöscht werden.';
 }
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function AbosPage() {
 	const { wg, members, identity } = useWg();
 	const toast = useToast();

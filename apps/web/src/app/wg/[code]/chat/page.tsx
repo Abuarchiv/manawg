@@ -21,7 +21,6 @@ export const metadata: Metadata = {
 	robots: { index: false, follow: false },
 };
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default async function ChatPage({ params }: PageProps) {
 	const { code: rawCode } = await params;
 	const code = normalizeShareCode(rawCode);

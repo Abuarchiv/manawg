@@ -116,7 +116,6 @@ function notificationWarningMessage(warning: NotificationWarning): string | null
 	return null;
 }
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function PinnwandPage(): React.ReactElement {
 	const { wg, members, identity, isAdmin } = useWg();
 	const toast = useToast();

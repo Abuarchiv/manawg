@@ -57,7 +57,6 @@ export async function generateMetadata({
 	};
 }
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from layout.tsx
 export default async function WgLayout({ children, params }: Props) {
 	const { code: rawCode } = await params;
 	const code = normalizeShareCode(rawCode);

@@ -37,7 +37,6 @@ interface ExpenseDto {
 	splits: ExpenseSplitDto[];
 }
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function ErinnerungenPage() {
 	const { wg, members, identity, isAdmin } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);

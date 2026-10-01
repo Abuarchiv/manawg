@@ -92,7 +92,6 @@ const ConfirmDialog = dynamic(() =>
 	import('@/components/ui/ConfirmDialog').then((module) => module.ConfirmDialog),
 );
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function PutzenPage() {
 	const { wg, members, identity, isAdmin } = useWg();
 	const toast = useToast();

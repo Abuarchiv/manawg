@@ -132,7 +132,6 @@ function eventSaveError(base: string, res: { status: number; error: string }): s
 	return `${base}.`;
 }
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function KalenderPage() {
 	const { wg, identity } = useWg();
 	const toast = useToast();

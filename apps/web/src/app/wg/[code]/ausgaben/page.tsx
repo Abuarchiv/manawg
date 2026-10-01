@@ -163,7 +163,6 @@ function buildOptimisticExpense({
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 /** Das Formular-Chunk einmal online anfordern, damit der Service Worker es für offline hat. */
 function usePreloadExpenseForm(): void {
 	useEffect(() => {

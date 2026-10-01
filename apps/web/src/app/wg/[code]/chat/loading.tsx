@@ -1,6 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton';
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export.
 export default function ChatLoading() {
 	return (
 		<output

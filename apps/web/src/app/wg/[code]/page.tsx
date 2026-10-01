@@ -69,7 +69,6 @@ function samePendingAnnouncement(
 	);
 }
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function WgHomePage() {
 	const { wg, identity } = useWg();
 	const [todayMoreOpen, setTodayMoreOpen] = useState(false);

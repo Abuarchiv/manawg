@@ -99,7 +99,6 @@ function keepItems(prev: ShoppingItem[], next: ShoppingItem[]): ShoppingItem[] {
 
 const NO_INVENTORY: InventoryItemDto[] = [];
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function EinkaufPage() {
 	const { wg, members, identity, isAdmin } = useWg();
 	const toast = useToast();

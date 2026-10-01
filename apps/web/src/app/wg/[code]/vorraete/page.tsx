@@ -48,7 +48,6 @@ function applyInventoryMutation(
 		: [...items, merged];
 }
 
-// craftsman-ignore: TS002 — Next.js App Router requires default export from page.tsx
 export default function VorraetePage() {
 	const { wg, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);

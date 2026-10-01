@@ -19,7 +19,6 @@ const securityHeaders = [
 	{ key: 'X-DNS-Prefetch-Control', value: 'off' },
 ];
 
-// craftsman-ignore: TS002 — Next.js config requires default export
 const nextConfig: NextConfig = {
 	env: {
 		NEXT_PUBLIC_SENTRY_ENVIRONMENT: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? 'development',

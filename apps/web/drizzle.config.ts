@@ -23,7 +23,6 @@ if (migrationUrl) {
 	);
 }
 
-// craftsman-ignore: TS002 — drizzle-kit requires default export from drizzle.config.ts
 export default defineConfig({
 	schema: './src/core/db/schema.ts',
 	out: './drizzle',
