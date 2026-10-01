@@ -235,8 +235,13 @@ export default function PinnwandPage(): React.ReactElement {
 		remoteAnnouncements,
 	]);
 
+	const createButtonRef = useRef<HTMLButtonElement | null>(null);
+	const composerWasOpenRef = useRef(false);
 	useEffect(() => {
 		if (composerOpen) textareaRef.current?.focus();
+		// Der Inline-Composer verschwindet beim Posten/Schließen samt Fokus; zurück auf den Auslöser.
+		else if (composerWasOpenRef.current) createButtonRef.current?.focus();
+		composerWasOpenRef.current = composerOpen;
 	}, [composerOpen]);
 
 	useEffect(() => {
@@ -1108,6 +1113,7 @@ export default function PinnwandPage(): React.ReactElement {
 			{!composerOpen && (
 				<ThumbAction>
 					<Button
+						ref={createButtonRef}
 						type="button"
 						className="min-h-11 w-full"
 						disabled={submitting || initialLoading}

@@ -289,3 +289,22 @@ test('comment delete requires confirmation and only removes the comment once con
 	await expect.poll(() => deleteRequests).toBe(1);
 	await expect(page.getByText('Testkommentar', { exact: true })).toBeHidden();
 });
+
+test('returns focus to the create button after posting', async ({ page }) => {
+	await setupMember(page);
+	await page.route(`**/api/wg/${SHARE_CODE}/announcements*`, async (route) => {
+		if (route.request().method() === 'POST') {
+			return route.fulfill({
+				status: 201,
+				json: { announcement: announcement('new-post', 'Hallo') },
+			});
+		}
+		return route.fulfill({ json: { announcements: [] } });
+	});
+	await navigateToFeature(page, `/wg/${SHARE_CODE}/pinnwand`);
+	await dismissOnboarding(page);
+	await page.getByRole('button', { name: 'Beitrag erstellen' }).click();
+	await page.getByLabel('Beitragstext').fill('Hallo');
+	await page.getByRole('button', { name: 'Posten', exact: true }).click();
+	await expect(page.getByRole('button', { name: 'Beitrag erstellen' })).toBeFocused();
+});
