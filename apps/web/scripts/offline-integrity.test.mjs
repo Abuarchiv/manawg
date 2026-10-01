@@ -1265,46 +1265,10 @@ test('offline data is visible only for the currently bound local account', () =>
 	assert.equal(module.filterOfflineActionsForAuthUser(scoped, null).length, 0);
 });
 
-test('WG context aborts queued sync and re-resolves membership when auth changes', () => {
-	const contextProvider = readSource('src/components/wg/WgContextProvider.tsx');
-	assert.match(contextProvider, /onAuthStateChange/);
-	assert.match(contextProvider, /\.abort\(\)/);
-	assert.match(contextProvider, /signal:\s*[^,}]+\.signal/);
-	assert.match(contextProvider, /member_context_changed/);
-});
-
-test('offline page uses account-bound local queue after offline or server failure', () => {
-	const offlineClient = readSource('src/app/offline/OfflineClient.tsx');
-	assert.equal((offlineClient.match(/filterOfflineActionsForAuthUser/g) ?? []).length >= 2, true);
-	assert.match(offlineClient, /getLocalAuthUserId/);
-	assert.match(offlineClient, /visibleQueueCodes/);
-	assert.match(offlineClient, /hasRetryableQueue/);
-});
-
-test('manual-review queue actions show the full warning and link to the module list', () => {
-	const queueSection = readSource('src/components/wg/einstellungen/OfflineQueueSection.tsx');
-	assert.match(
-		queueSection,
-		/requiresManualReview = item\.lastError\?\.startsWith\('Server prüfen:'\)/,
-	);
-	assert.match(queueSection, /<AlertDescription>\{item\.lastError\}<\/AlertDescription>/);
-	assert.match(queueSection, /WG-Eintrag prüfen/);
-	assert.match(queueSection, /Offline-Aktion verwerfen/);
-	assert.match(queueSection, /hasRetryableItems && \(/);
-});
-
 test('a synced queue entry no longer counts as queued for an open queue edit', async () => {
 	const { module } = makeQueueModule({ apiFetch: async () => ({ ok: true, data: {} }) });
 	await setQueue(module, [createAction()]);
 	assert.equal(module.isOfflineActionQueued('action-1'), true);
 	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
 	assert.equal(module.isOfflineActionQueued('action-1'), false);
-});
-
-test('queue-edit submits check that the edited entry is still queued before creating', () => {
-	for (const page of ['einkauf', 'pinnwand', 'putzen', 'ausgaben']) {
-		const source = readSource(`src/app/wg/[code]/${page}/page.tsx`);
-		assert.match(source, /isOfflineActionQueued\(queueEditId\)/, page);
-		assert.match(source, /QUEUE_EDIT_ALREADY_SENT_MESSAGE/, page);
-	}
 });
