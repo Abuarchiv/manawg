@@ -448,7 +448,9 @@ export function useShoppingPage({
 				if (!res.ok) {
 					if (res.status === 403) {
 						setRemoveErrorId(id);
-						setRemoveError('Nur wer den Artikel hinzugefügt hat, kann ihn entfernen.');
+						setRemoveError(
+							'Nur wer den Artikel hinzugefügt hat oder ein WG-Admin kann ihn entfernen.',
+						);
 					} else if (res.status === 404 && res.error === 'item_not_found') {
 						commitItems((prev) =>
 							keepItems(

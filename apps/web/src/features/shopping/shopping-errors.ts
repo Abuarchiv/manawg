@@ -7,7 +7,7 @@ import {
 const ADD_SUBJECT = 'Artikel konnte nicht gespeichert werden';
 const ADD_ERRORS: Record<string, string> = {
 	name_invalid: `${ADD_SUBJECT}: Der Name muss 1 bis 120 Zeichen haben.`,
-	quantity_invalid: `${ADD_SUBJECT}: Die Menge darf höchstens 40 sein.`,
+	quantity_invalid: `${ADD_SUBJECT}: Die Menge darf höchstens 40 Zeichen haben.`,
 	bought_invalid: `${ADD_SUBJECT}: Der Status ist ungültig.`,
 	invalid_json: `${ADD_SUBJECT}: Die Anfrage war ungültig.`,
 	invalid_body: `${ADD_SUBJECT}: Die Anfrage war ungültig.`,

@@ -260,7 +260,10 @@ export default function PutzenPage() {
 				<AbsencePanel
 					active={absencesPanelActive}
 					absentCount={absentMemberIds.length}
-					members={activeMembers}
+					// Die API lässt Abwesenheiten nur für sich selbst oder als Admin zu.
+					members={
+						isAdmin ? activeMembers : activeMembers.filter((m) => m.id === identity.memberId)
+					}
 					memberId={absenceMemberId}
 					onMemberIdChange={setAbsenceMemberId}
 					start={absenceStart}

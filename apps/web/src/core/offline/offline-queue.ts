@@ -790,6 +790,13 @@ export function explainOfflineActionFailure(
 			detail: 'Bearbeite Datum oder Zeitraum, bevor du diese Aktion erneut sendest.',
 		};
 	}
+	if (error === 'absence_overlaps_existing') {
+		return {
+			title: 'Abwesenheit überschneidet sich',
+			detail:
+				'Für diese Person gibt es im Zeitraum schon eine Abwesenheit. Entferne diese Offline-Aktion oder passe den Zeitraum an.',
+		};
+	}
 	if (error === 'invalid_body') {
 		return {
 			title: 'Offline-Aktion prüfen',

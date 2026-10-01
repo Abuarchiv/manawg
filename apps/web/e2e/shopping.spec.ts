@@ -104,6 +104,56 @@ test.describe('shopping retry', () => {
 		expect(keys[1]).toBe(keys[0]);
 	});
 
+	test('queues a second Enter while the first add is saving and ignores a repeated Enter on the same text', async ({
+		page,
+	}) => {
+		test.skip(
+			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
+			'requires the local fixture server',
+		);
+		const posted: string[] = [];
+		let releaseFirst: () => void = () => {};
+		const firstGate = new Promise<void>((resolve) => {
+			releaseFirst = resolve;
+		});
+		await page.route('**/api/wg/MTE8PZAT/shopping', async (route) => {
+			if (route.request().method() !== 'POST') {
+				await route.fallback();
+				return;
+			}
+			const { name } = route.request().postDataJSON() as { name: string };
+			posted.push(name);
+			if (posted.length === 1) await firstGate;
+			await route.fulfill({
+				json: {
+					item: {
+						id: `item-${posted.length}`,
+						name,
+						quantity: null,
+						addedByMemberId: FIXTURE_WG.memberId,
+						boughtAt: null,
+						boughtByMemberId: null,
+						createdAt: new Date().toISOString(),
+					},
+					warning: null,
+				},
+			});
+		});
+		await setupMember(page);
+		await navigateToFeature(page, '/wg/MTE8PZAT/einkauf');
+		await dismissOnboarding(page);
+		const input = page.getByLabel('Artikel-Name');
+		await input.fill('Milch');
+		await input.press('Enter');
+		// Der zweite Enter darf nicht am gesperrten Absende-Knopf scheitern.
+		await input.press('Enter');
+		await input.fill('Brot');
+		await input.press('Enter');
+		releaseFirst();
+		await expect.poll(() => posted).toEqual(['Milch', 'Brot']);
+		await expect(input).toHaveValue('');
+	});
+
 	test('uses a fresh idempotency key after an offline-queued shopping create', async ({ page }) => {
 		test.skip(
 			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
