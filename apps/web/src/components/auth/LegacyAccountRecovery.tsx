@@ -99,12 +99,19 @@ export function LegacyAccountRecovery() {
 								name="shareCode"
 								type="text"
 								value={shareCode}
-								onChange={(event) => setShareCode(event.target.value.toUpperCase())}
+								onChange={(event) =>
+									setShareCode(
+										event.target.value
+											.replace(/[^a-z0-9]/gi, '')
+											.toUpperCase()
+											.slice(0, 8),
+									)
+								}
 								autoComplete="off"
 								autoCapitalize="characters"
 								inputMode="text"
 								enterKeyHint="done"
-								maxLength={8}
+								maxLength={16}
 								aria-describedby={error ? 'legacy-recovery-error' : undefined}
 								aria-invalid={error ? true : undefined}
 								className="font-mono text-base uppercase"

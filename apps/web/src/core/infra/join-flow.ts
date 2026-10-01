@@ -7,10 +7,20 @@ export function getInitialJoinCode(search: string): string {
 	return isValidShareCode(code) ? code : '';
 }
 
+export const RATE_LIMITED_MESSAGE =
+	'Zu viele Versuche. Bitte warte einige Minuten und versuche es dann erneut.';
+export const DELETION_PENDING_MESSAGE =
+	'Dein Konto wird gerade gelöscht. Neue WGs oder Beitritte sind nicht mehr möglich.';
+
 export function joinErrorMessage(status: number, error: string): string {
+	if (status === 429) return RATE_LIMITED_MESSAGE;
+	if (error === 'account_deletion_pending') return DELETION_PENDING_MESSAGE;
 	if (status === 404 || error === 'wg_not_found') return 'Diesen WG-Code gibt es nicht.';
 	if (status === 409 && error === 'name_taken') return 'Der Name ist in dieser WG schon vergeben.';
 	if (status === 409 && error === 'member_limit_reached') return 'Diese WG ist schon voll.';
+	if (error === 'member_deactivated') {
+		return 'Du bist in dieser WG als ausgezogen markiert. Eine Admin-Person kann dich wieder aktivieren.';
+	}
 	if (status === 403 && error === 'joining_disabled') {
 		return 'Diese WG nimmt gerade keine neuen Beitritte an.';
 	}

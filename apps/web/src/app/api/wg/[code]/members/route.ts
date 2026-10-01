@@ -166,6 +166,7 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 									| 'limit'
 									| 'name_taken'
 									| 'already_joined'
+									| 'member_deactivated'
 									| 'not_found'
 									| 'joining_disabled';
 						  }
@@ -182,10 +183,15 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 							.for('update');
 						if (!lockedWg || lockedWg.shareCode !== code) return { ok: false, reason: 'not_found' };
 						const existingForUser = await tx
-							.select({ id: wgMembers.id })
+							.select({ id: wgMembers.id, deactivatedAt: wgMembers.deactivatedAt })
 							.from(wgMembers)
 							.where(and(eq(wgMembers.wgId, wg.id), eq(wgMembers.authUserId, user.id)))
 							.limit(1);
+						// A moved-out member must not be sent into the WG (it would bounce
+						// them back to the picker); tell them an admin has to reactivate.
+						if (existingForUser[0]?.deactivatedAt) {
+							return { ok: false, reason: 'member_deactivated' };
+						}
 						if (existingForUser.length > 0) return { ok: false, reason: 'already_joined' };
 						if (!lockedWg.joiningEnabled) return { ok: false, reason: 'joining_disabled' };
 						const memberCount = await tx
@@ -228,6 +234,9 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 					}
 					if (joinResult.reason === 'limit') {
 						return apiError('member_limit_reached', HTTP.CONFLICT, 'member_limit_reached');
+					}
+					if (joinResult.reason === 'member_deactivated') {
+						return forbidden('member_deactivated', 'member_deactivated');
 					}
 					if (joinResult.reason === 'already_joined') {
 						return apiError('already_joined', HTTP.CONFLICT, 'already_joined');
