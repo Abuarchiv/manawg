@@ -229,7 +229,7 @@ export function MemberDeactivateDialog({
 							void handleConfirm();
 						}}
 						disabled={submitting || loading}
-						aria-label={selfLeave ? 'Verlassen: WG auf diesem Gerät verlassen' : undefined}
+						aria-label={selfLeave ? 'Verlassen: WG verlassen' : undefined}
 					>
 						{submitting && <Spinner aria-hidden />}
 						{selfLeave ? 'Verlassen' : 'Ausziehen'}

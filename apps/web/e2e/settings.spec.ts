@@ -171,7 +171,7 @@ test.describe('settings access responsive', () => {
 
 		await page.getByRole('button', { name: 'WG verlassen', exact: true }).click();
 		const confirmLeave = page.getByRole('button', {
-			name: 'Verlassen: WG auf diesem Gerät verlassen',
+			name: 'Verlassen: WG verlassen',
 		});
 		await expect(confirmLeave).toBeEnabled();
 		await confirmLeave.click();
@@ -884,6 +884,8 @@ test.describe('share card', () => {
 		);
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		// Ausgezogene zählen in der Sicherheitsübersicht nicht als Mitglieder.
+		await expect(page.getByText('1 Person in der WG')).toBeVisible();
 		// WCAG 2.5.3 — the visible "Aktivieren" label must stay at the start of the
 		// accessible name, disambiguated by the affected member's name.
 		await page
@@ -917,7 +919,7 @@ test.describe('share card', () => {
 		const cancel = page.getByRole('button', { name: 'Abbrechen: WG verlassen', exact: true });
 		await expect(cancel).toBeVisible();
 		await expect(
-			page.getByRole('button', { name: 'Verlassen: WG auf diesem Gerät verlassen', exact: true }),
+			page.getByRole('button', { name: 'Verlassen: WG verlassen', exact: true }),
 		).toBeVisible();
 		await cancel.click();
 

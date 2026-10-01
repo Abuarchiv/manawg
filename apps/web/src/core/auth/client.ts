@@ -73,6 +73,13 @@ export async function linkSocialIdentity(provider: SocialProvider, next: string)
 	if (error) throw error;
 }
 
+/** Whether the signed-in account already has this provider attached (linking it again fails). */
+export async function hasLinkedIdentity(provider: SocialProvider): Promise<boolean> {
+	const { data, error } = await createSupabaseBrowserClient().auth.getUserIdentities();
+	if (error) throw error;
+	return data.identities.some((identity) => identity.provider === provider);
+}
+
 export async function signInWithEmailPassword(
 	email: string,
 	password: string,
