@@ -564,7 +564,6 @@ test.describe('haushalt shopping checkbox hitarea', () => {
 		);
 		expect(hitTarget).toBe(true);
 	});
-
 });
 
 test.describe('haushalt shopping swipe pointer capture', () => {
