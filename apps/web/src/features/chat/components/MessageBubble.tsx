@@ -126,7 +126,7 @@ export const MessageBubble = memo(function MessageBubble({
 	// Uhrzeit klein unten rechts in der Blase wie bei WhatsApp; das Datum steht im Tagestrenner.
 	const timeStamp = (
 		<span className="float-end ms-2 mt-1.5 text-[12px] leading-none tabular-nums opacity-70">
-			{message.editedAt && 'bearbeitet · '}
+			{message.editedAt && !isDeleted && 'bearbeitet · '}
 			<time dateTime={message.createdAt} title={formatTimeFull(message.createdAt)}>
 				{TIME_FORMAT.format(new Date(message.createdAt))}
 			</time>
@@ -163,6 +163,11 @@ export const MessageBubble = memo(function MessageBubble({
 	async function saveEdit() {
 		const text = draft.trim();
 		if (!text || pendingRef.current) return;
+		// Unverändert: kein PATCH, sonst würde die Nachricht ohne Grund als „bearbeitet“ markiert.
+		if (text === (message.body ?? '').trim()) {
+			cancelEdit();
+			return;
+		}
 		pendingRef.current = true;
 		setPending(true);
 		setError(null);

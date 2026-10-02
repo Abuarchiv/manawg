@@ -564,6 +564,53 @@ test.describe('haushalt shopping checkbox hitarea', () => {
 		);
 		expect(hitTarget).toBe(true);
 	});
+
+	test('shopping row keeps checkbox and menu on one line at 200% text', async ({ page }) => {
+		test.skip(
+			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
+			'requires the local fixture server',
+		);
+		await page.route('**/api/wg/MTE8PZAT/shopping', (route) =>
+			route.request().method() === 'GET'
+				? route.fulfill({
+						json: {
+							items: [
+								{
+									id: 'wrap-item',
+									name: 'Hafermilch Barista Edition',
+									quantity: '2 Packungen',
+									addedByMemberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+									boughtAt: null,
+									boughtByMemberId: null,
+									createdAt: new Date().toISOString(),
+									updatedAt: new Date().toISOString(),
+								},
+							],
+						},
+					})
+				: route.continue(),
+		);
+		await setupMember(page);
+		await page.setViewportSize({ width: 320, height: 700 });
+		await navigateToFeature(page, '/wg/MTE8PZAT/einkauf');
+		await dismissOnboarding(page);
+		await page.evaluate(() => {
+			document.documentElement.style.setProperty('font-size', '32px', 'important');
+		});
+
+		const row = page.locator('[data-shopping-row]');
+		const checkbox = row.getByRole('checkbox');
+		const menu = row.getByRole('button', { name: /^Artikelaktionen/ });
+		const [rowBox, checkboxBox, menuBox] = await Promise.all([
+			row.boundingBox(),
+			checkbox.boundingBox(),
+			menu.boundingBox(),
+		]);
+		if (!rowBox || !checkboxBox || !menuBox) throw new Error('row parts missing');
+		// Das Menü steht rechts neben der Checkbox statt darunter umzubrechen (Zeile wächst nur durch den Titel).
+		expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(rowBox.y + rowBox.height);
+		expect(menuBox.x).toBeGreaterThan(checkboxBox.x + checkboxBox.width);
+	});
 });
 
 test.describe('haushalt shopping swipe pointer capture', () => {

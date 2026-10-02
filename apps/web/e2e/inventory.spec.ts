@@ -500,6 +500,85 @@ test.describe('inventory restock retry', () => {
 		await expect(page.getByRole('button', { name: 'Reis um eins erhöhen' })).toHaveCount(0);
 	});
 
+	test('a quantity tap shows at once, rolls back on failure and refreshes the shopping count', async ({
+		page,
+	}) => {
+		const item = {
+			id: '11111111-1111-4111-8111-111111111111',
+			wgId: FIXTURE_WG.id,
+			name: 'Reis',
+			quantity: 3,
+			unit: 'Packung',
+			threshold: 2,
+			category: 'kueche',
+			lastDecrementedAt: null,
+			decrementCount30d: 0,
+			createdAt: '2026-09-20T10:00:00.000Z',
+			updatedAt: '2026-09-23T10:00:00.000Z',
+		};
+		let serverQuantity = item.quantity;
+		let shoppingCount = 0;
+		let failNext = true;
+		let releaseConsume: () => void = () => {};
+		const consumeGate = new Promise<void>((resolve) => {
+			releaseConsume = resolve;
+		});
+
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/dashboard*`, (route) =>
+			route.fulfill({
+				json: { openShoppingCount: shoppingCount, dueChores: [], dueRecurringExpenses: [] },
+			}),
+		);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/inventory`, async (route) => {
+			if (route.request().method() !== 'GET') return route.continue();
+			const current = { ...item, quantity: serverQuantity };
+			await route.fulfill({
+				json: {
+					items: [current],
+					grouped: { bad: [], kueche: [current], putzmittel: [], sonstiges: [] },
+				},
+			});
+		});
+		await page.route(
+			`**/api/wg/${FIXTURE_WG.shareCode}/inventory/${item.id}/consume`,
+			async (route) => {
+				await consumeGate;
+				if (failNext) {
+					failNext = false;
+					return route.fulfill({ status: 500, json: { error: 'boom' } });
+				}
+				serverQuantity = 2;
+				shoppingCount = 1;
+				await route.fulfill({
+					json: {
+						item: { ...item, quantity: 2 },
+						clamped: false,
+						warning: null,
+						autoPushedShoppingItemId: 'shopping-1',
+					},
+				});
+			},
+		);
+
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
+		await dismissOnboarding(page);
+		const minus = page.getByRole('button', { name: 'Reis um eins verringern' });
+		await expect(page.getByText('3 Packung')).toBeVisible();
+
+		await minus.click();
+		// Die Antwort hängt noch am Gate: die Anzeige ist optimistisch.
+		await expect(page.getByText('2 Packung')).toBeVisible();
+		await expect(page.getByText('Bald leer')).toBeVisible();
+		releaseConsume();
+		await expect(page.getByText('Aktualisierung fehlgeschlagen.')).toBeVisible();
+		await expect(page.getByText('3 Packung')).toBeVisible();
+
+		await minus.click();
+		await expect(page.getByText('2 Packung')).toBeVisible();
+		await expect(page.getByRole('link', { name: /^Einkäufe, 1 offen/ })).toBeVisible();
+	});
+
 	test('armed inventory delete can be cancelled without deleting the item', async ({ page }) => {
 		const item = {
 			id: '11111111-1111-4111-8111-111111111111',

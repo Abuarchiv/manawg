@@ -328,6 +328,7 @@ export function useCalendarPage(month: Date) {
 		}
 		updateEvents((current) => current.filter((event) => event.id !== id));
 		setEditing(null);
+		if (res.ok) toast.success('Termin gelöscht.');
 	}
 
 	return {

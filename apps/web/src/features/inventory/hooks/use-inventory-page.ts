@@ -2,12 +2,14 @@ import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { useStableCallback } from '@/core/hooks/useStableCallback';
 import { isNetworkError } from '@/core/http/error-codes';
+import type { DashboardData } from '@/core/reads/dashboard-data';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import {
 	type InventoryCategory,
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
 	groupItemsByCategory,
+	isBelowThreshold,
 } from '@/features/inventory/inventory';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -35,7 +37,7 @@ function applyInventoryMutation(
 }
 
 /** Laden, Cache und Auto-Refresh der Vorräte; `onChanged` übernimmt Mutationen sofort in die Liste. */
-export function useInventoryPage(shareCode: string, memberId: string) {
+export function useInventoryPage(shareCode: string, memberId: string, memberToken?: string) {
 	const encodedShareCode = encodeURIComponent(shareCode);
 	const inventoryUrl = `/api/wg/${encodedShareCode}/inventory`;
 	const {
@@ -47,6 +49,12 @@ export function useInventoryPage(shareCode: string, memberId: string) {
 	} = useCachedFetch<InventoryResponse>(inventoryUrl, {
 		memberId: memberId,
 	});
+	// Zähler „Einkäufe“ in der Unternavigation: Der Server legt unter dem Schwellwert automatisch einen
+	// Einkaufsartikel an, den der Dashboard-Cache sonst erst beim nächsten Fokus/Reload kennt.
+	const { refresh: refreshDashboard } = useCachedFetch<DashboardData>(
+		`/api/wg/${encodedShareCode}/dashboard`,
+		{ memberId, memberToken },
+	);
 	const [items, setItems] = useState<InventoryItemDto[]>(() => inventoryData?.items ?? []);
 	const [initialLoading, setInitialLoading] = useState(inventoryLoading);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -107,6 +115,7 @@ export function useInventoryPage(shareCode: string, memberId: string) {
 					};
 				});
 			}
+			if (updated && isBelowThreshold(updated)) void refreshDashboard({ afterMutation: true });
 			void load(true);
 		},
 	);
