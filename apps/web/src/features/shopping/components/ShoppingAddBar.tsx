@@ -23,7 +23,7 @@ export function ShoppingAddBar({
 }) {
 	return (
 		<ThumbAction>
-			<div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-2">
+			<div className="flex flex-col gap-1.5 rounded-xl border border-border bg-background p-1.5">
 				<form
 					id="shopping-add-form"
 					onSubmit={(event) => {

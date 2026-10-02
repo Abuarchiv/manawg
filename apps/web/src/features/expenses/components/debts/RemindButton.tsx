@@ -169,9 +169,7 @@ export function RemindButton({
 				variant={status === 'sent' ? 'secondary' : primary ? 'default' : 'outline'}
 				size={size === 'sm' ? 'sm' : 'default'}
 				className={
-					primary
-						? 'h-auto min-h-11 w-full whitespace-normal py-2'
-						: 'h-auto whitespace-normal py-2'
+					primary ? 'h-auto min-h-11 w-full whitespace-normal py-2' : 'h-auto whitespace-normal'
 				}
 				onClick={() => void handleClick()}
 				disabled={disabled}

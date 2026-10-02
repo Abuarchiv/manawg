@@ -107,7 +107,7 @@
 
 @media (max-width: 639px) {
 	body:has(.group\/wg-shell) [data-slot="card"] {
-		--card-spacing: 0.75rem;
+		--card-spacing: 0.625rem;
 	}
 	body:has(.group\/wg-shell) [data-slot="empty"] {
 		padding: 1rem 0;
