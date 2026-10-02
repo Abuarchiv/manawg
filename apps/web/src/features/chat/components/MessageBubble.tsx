@@ -336,7 +336,7 @@ export const MessageBubble = memo(function MessageBubble({
 														void copyText(message.body ?? '').then((copied) =>
 															copied
 																? toast.success('Nachricht kopiert.')
-																: toast.error('Kopieren hat nicht geklappt.'),
+																: toast.error('Kopieren hat nicht geklappt. Versuche es erneut.'),
 														)
 													}
 												>

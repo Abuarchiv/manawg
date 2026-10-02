@@ -165,7 +165,7 @@ function IosSteps() {
 			</Step>
 			<Step num={2}>
 				Nach unten scrollen und{' '}
-				<span className="font-medium text-foreground">„Zum Home-Bildschirm"</span> wählen.
+				<span className="font-medium text-foreground">„Zum Home-Bildschirm“</span> wählen.
 			</Step>
 			<Step num={3}>
 				Oben rechts auf <span className="font-medium text-foreground">Hinzufügen</span> tippen.
@@ -182,8 +182,8 @@ function AndroidSteps() {
 				tippen.
 			</Step>
 			<Step num={2}>
-				Wähle <span className="font-medium text-foreground">„App installieren"</span> oder „Zum
-				Startbildschirm".
+				Wähle <span className="font-medium text-foreground">„App installieren“</span> oder „Zum
+				Startbildschirm“.
 			</Step>
 			<Step num={3}>Bestätigen. ManaWG liegt dann auf dem Homescreen.</Step>
 		</ItemGroup>
@@ -199,7 +199,7 @@ function DesktopSteps() {
 			</Step>
 			<Step num={2}>
 				Alternativ: <span className="font-medium text-foreground">⋮ Menü</span> → „ManaWG
-				installieren".
+				installieren“.
 			</Step>
 			<Step num={3}>Bestätigen. ManaWG startet dann wie eine App.</Step>
 		</ItemGroup>

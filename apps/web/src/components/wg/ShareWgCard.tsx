@@ -97,7 +97,7 @@ export function ShareWgCard({ wgName, shareCode, appUrl, joiningEnabled = true }
 		try {
 			await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({
 				title: `WG ${wgName} beitreten`,
-				text: `Tritt der WG "${wgName}" auf ManaWG bei. Code: ${shareCode}`,
+				text: `Tritt der WG „${wgName}“ auf ManaWG bei. Code: ${shareCode}`,
 				url: shareUrl,
 			});
 			showCopied('shared');

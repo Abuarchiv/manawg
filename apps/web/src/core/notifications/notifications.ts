@@ -178,10 +178,10 @@ export function formatNotificationMessage(
 			};
 		}
 		case 'expense.recurring_charged': {
-			const description = text(payload.description, 'Ein Abo');
+			const description = text(payload.description, 'Eine Fixkosten-Vorlage');
 			return {
-				title: 'Neue Abo-Buchung',
-				body: `Neue Abo-Buchung: ${description} ${money(payload.amountCents, payload.currency)}`,
+				title: 'Neue Fixkosten-Buchung',
+				body: `Neue Fixkosten-Buchung: ${description} ${money(payload.amountCents, payload.currency)}`,
 				urlPath: expenseUrlPath(payload),
 			};
 		}
@@ -191,7 +191,7 @@ export function formatNotificationMessage(
 			const dayClause =
 				rawDays >= 1 ? ` (ältester Posten ${rawDays} ${rawDays === 1 ? 'Tag' : 'Tage'} alt)` : '';
 			return {
-				title: 'Mahnung',
+				title: 'Erinnerung',
 				body: `Du schuldest ${creditor} noch ${money(payload.amountCents, payload.currency)}${dayClause} — bitte zeitnah ausgleichen.`,
 				urlPath: '/mahnungen',
 			};

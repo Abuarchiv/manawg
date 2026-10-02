@@ -54,7 +54,7 @@ export function CopyCodeButton({
 				: `/neu?code=${encodeURIComponent(code)}`;
 		const host = typeof window !== 'undefined' ? window.location.host : '';
 		const text = wgName
-			? `Komm in unsere WG "${wgName}" auf ManaWG: ${url}\n(oder mit Code ${code} unter ${host} beitreten)`
+			? `Komm in unsere WG „${wgName}“ auf ManaWG: ${url}\n(oder mit Code ${code} unter ${host} beitreten)`
 			: `Komm in unsere WG auf ManaWG: ${url}\n(oder mit Code ${code})`;
 		const shareData = { title: 'ManaWG', text, url };
 

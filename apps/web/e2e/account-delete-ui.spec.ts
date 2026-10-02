@@ -71,7 +71,7 @@ test('a pre-commit server failure stays in the confirmation dialog', async ({ pa
 	await openConfirmation(page);
 	await page.getByRole('button', { name: 'Konto löschen', exact: true }).click();
 	await expect(
-		page.getByText('Konto konnte nicht gelöscht werden. Bitte später erneut versuchen.'),
+		page.getByText('Konto konnte nicht gelöscht werden. Bitte versuche es später erneut.'),
 	).toBeVisible();
 	await expect(page).toHaveURL('/');
 });

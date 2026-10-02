@@ -87,7 +87,7 @@ export function MembersSection({ wg, members, identity, joiningEnabled }: Member
 						? 'Dieses Mitglied ist ausgezogen. Aktiviere es zuerst wieder.'
 						: res.error === 'member_not_linked'
 							? 'Dieses Mitglied hat noch kein Konto verknüpft und kann nicht Admin werden.'
-							: 'Admin-Rolle konnte nicht übergeben werden. Bitte erneut versuchen.',
+							: 'Admin-Rolle konnte nicht übergeben werden. Bitte versuche es erneut.',
 			);
 			return;
 		}
@@ -120,7 +120,7 @@ export function MembersSection({ wg, members, identity, joiningEnabled }: Member
 			setMemberActionError(
 				isRateLimited(res.error, res.status)
 					? RATE_LIMITED_MESSAGE
-					: 'Aktivierung konnte nicht gespeichert werden. Bitte erneut versuchen.',
+					: 'Aktivierung konnte nicht gespeichert werden. Bitte versuche es erneut.',
 			);
 		}
 		setReactivatingId(null);

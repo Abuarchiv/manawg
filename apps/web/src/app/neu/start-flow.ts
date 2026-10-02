@@ -151,7 +151,7 @@ export function createWgErrorMessage(status: number, error: string): string {
 	) {
 		return 'WG konnte nicht erstellt werden: Versuche es gleich erneut.';
 	}
-	return 'Konnte WG nicht erstellen.';
+	return 'WG konnte nicht erstellt werden. Bitte versuche es erneut.';
 }
 
 export function createWgErrorField(status: number, error: string): StartField | null {

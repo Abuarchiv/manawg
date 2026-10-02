@@ -128,7 +128,7 @@ export function LegacyAccountRecovery() {
 							className="w-full"
 						>
 							{submitting ? <Spinner data-icon="inline-start" aria-hidden="true" /> : null}
-							{submitting ? 'Wird wiederhergestellt …' : 'Profil wiederherstellen'}
+							{submitting ? 'Wird wiederhergestellt…' : 'Profil wiederherstellen'}
 						</Button>
 					</FieldGroup>
 				</form>

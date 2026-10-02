@@ -125,11 +125,11 @@ export default function EinstellungenPage() {
 				<header className="mb-4 flex items-center gap-2">
 					<Link
 						href={wgBaseHref}
-						aria-label="Zurück zum Dashboard"
+						aria-label="Zurück zum Start"
 						className={cn(buttonVariants({ variant: 'ghost', size: 'icon-lg' }), 'shrink-0')}
 					>
 						<ArrowLeft aria-hidden />
-						<span className="sr-only">Zurück zum Dashboard</span>
+						<span className="sr-only">Zurück zum Start</span>
 					</Link>
 					<h1 className="font-heading min-w-0 flex-1 text-lg font-semibold tracking-tight break-words text-foreground">
 						Einstellungen

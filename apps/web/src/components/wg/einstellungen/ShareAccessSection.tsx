@@ -92,7 +92,7 @@ export function ShareAccessSection({
 		if (!rotateConfirm) {
 			setRotateConfirm(true);
 			setAccessError(null);
-			setAccessMessage('Klicke erneut auf Bestätigen, um den WG-Code zu erneuern.');
+			setAccessMessage('Tippe erneut auf Bestätigen, um den WG-Code zu erneuern.');
 			return;
 		}
 		if (accessPendingRef.current) return;

@@ -288,9 +288,9 @@ export const PATCH = withWgRoute<{ id: string }>(
 					: 'recurring.updated';
 		const summary =
 			pauseTransition === 'pause'
-				? `${auth.member.name} hat das Abo ${updated.description} pausiert.`
+				? `${auth.member.name} hat die Fixkosten ${updated.description} pausiert.`
 				: pauseTransition === 'resume'
-					? `${auth.member.name} hat das Abo ${updated.description} reaktiviert.`
+					? `${auth.member.name} hat die Fixkosten ${updated.description} reaktiviert.`
 					: `${auth.member.name} hat die Fixkosten-Vorlage ${updated.description} aktualisiert.`;
 
 		await recordAuditEvent({

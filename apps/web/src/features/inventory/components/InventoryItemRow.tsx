@@ -103,10 +103,10 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				} else if (dropIfGone(res)) {
 					// row is gone
 				} else if (res.status === 429) {
-					setError('Zu viele Änderungen in kurzer Zeit. Bitte später erneut versuchen.');
+					setError('Zu viele Änderungen in kurzer Zeit. Bitte versuche es später erneut.');
 				} else {
 					if (res.status > 0 && res.status < 500) consumeIdempotencyKeyRef.current = null;
-					setError('Aktualisierung fehlgeschlagen.');
+					setError('Aktualisierung fehlgeschlagen. Versuche es erneut.');
 				}
 			} else {
 				const idempotencyKey = restockIdempotencyKeyRef.current ?? createOfflineIdempotencyKey();
@@ -131,10 +131,10 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				} else if (dropIfGone(res)) {
 					// row is gone
 				} else if (res.status === 429) {
-					setError('Zu viele Änderungen in kurzer Zeit. Bitte später erneut versuchen.');
+					setError('Zu viele Änderungen in kurzer Zeit. Bitte versuche es später erneut.');
 				} else {
 					if (res.status > 0 && res.status < 500) restockIdempotencyKeyRef.current = null;
-					setError('Aktualisierung fehlgeschlagen.');
+					setError('Aktualisierung fehlgeschlagen. Versuche es erneut.');
 				}
 			}
 		} finally {
@@ -155,7 +155,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				setRemoved(true);
 				onChanged(undefined, item.id);
 			} else if (!dropIfGone(res)) {
-				setError('Löschen fehlgeschlagen.');
+				setError('Löschen fehlgeschlagen. Versuche es erneut.');
 			}
 		} finally {
 			setPendingAction(null);

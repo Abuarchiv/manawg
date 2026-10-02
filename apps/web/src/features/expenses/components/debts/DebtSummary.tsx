@@ -233,7 +233,7 @@ function DebtRow({
 			setReviewOpen(false);
 			const message =
 				reason === 'no_direct_splits'
-					? 'Diese Verrechnung hat keine direkt zuordenbaren Anteile. Prüft die ursprünglichen Ausgaben einzeln.'
+					? 'Diese Verrechnung hat keine direkt zuordenbaren Anteile. Prüfe die ursprünglichen Ausgaben einzeln.'
 					: settled > 0
 						? `Zahlung eingetragen: ${formatEuroCents(settledCents ?? 0, debt.currency)} von ${debt.fromName} an ${debt.toName}.${remainingCents ? ` ${formatEuroCents(remainingCents, debt.currency)} bleiben in der Verrechnung offen.` : ''}`
 						: 'Keine Zahlung eingetragen. Die offenen Ausgaben werden neu geladen.';
