@@ -14,7 +14,7 @@ import { HTTP, apiError, badRequest, forbidden, notFound, tooMany } from '@/core
 import { readJsonLimited } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
-import { and, asc, count, eq } from 'drizzle-orm';
+import { and, asc, count, eq, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -205,7 +205,9 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 						const existing = await tx
 							.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
 							.from(wgMembers)
-							.where(and(eq(wgMembers.wgId, wg.id), eq(wgMembers.name, name)))
+							// Groß-/Kleinschreibung ignorieren: „anna“ neben „Anna“ wären im Chat und in Salden nicht zu unterscheiden
+							// (der Unique-Index bleibt exakt und fängt nur das Rennen ab).
+							.where(and(eq(wgMembers.wgId, wg.id), sql`lower(${wgMembers.name}) = lower(${name})`))
 							.limit(1);
 						if (existing.length > 0) {
 							return { ok: false, reason: 'name_taken' };
