@@ -19,9 +19,10 @@ export function isNetworkError(code: string | null, status?: number): boolean {
 export const RATE_LIMITED_MESSAGE = 'Zu viele Anfragen. Warte kurz und versuche es dann erneut.';
 
 /**
- * The server names its 429s `too_many_requests` (default), `rate_limited`
- * (middleware, most routes) or a feature-specific `*_rate_limited`. Callers that
- * only keep the code, not the status, must still recognise all of them.
+ * The server names its 429s `too_many_requests` (default of `tooMany()`),
+ * `rate_limited` (middleware and some routes) or a feature-specific
+ * `*_rate_limited`. Callers that only keep the code, not the status, must still
+ * recognise all of them.
  */
 export function isRateLimited(code: string | null, status?: number): boolean {
 	return (

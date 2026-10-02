@@ -23,8 +23,8 @@ const storedIdentitySchema = z.object({
 	memberToken: z.string().min(1).optional(),
 });
 
-// WG-Namen dürfen bis 100 Zeichen lang sein (POST/PATCH /api/wg); mit 80 würden
-// lange Namen beim Lesen still verworfen und fehlten auf der Offline-Seite.
+// WG names may be up to 100 characters (POST/PATCH /api/wg); with 80, long names
+// would be silently dropped on read and missing from the offline page.
 const WG_NAME_MAX_LENGTH = 100;
 
 const knownWgSchema = z.object({

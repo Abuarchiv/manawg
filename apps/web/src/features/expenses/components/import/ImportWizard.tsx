@@ -20,6 +20,7 @@ import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { isRateLimited } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
@@ -106,7 +107,8 @@ const IMPORT_ERROR_MESSAGES: Readonly<Record<string, string>> = {
 
 function importActionErrorMessage(error: string): string {
 	return (
-		IMPORT_ERROR_MESSAGES[error] ??
+		// The middleware answers 429 with `rate_limited`, the routes with `too_many_requests`.
+		IMPORT_ERROR_MESSAGES[isRateLimited(error) ? 'too_many_requests' : error] ??
 		'Der Import konnte nicht abgeschlossen werden. Versuche es erneut.'
 	);
 }
@@ -138,7 +140,7 @@ function recoveryActionFor(error: string, operation: ImportOperation): RecoveryA
 	if (
 		error === 'Netzwerkfehler' ||
 		error === 'Failed to fetch' ||
-		error === 'too_many_requests' ||
+		isRateLimited(error) ||
 		error === 'unexpected_error' ||
 		error === 'server_error' ||
 		error === 'db_error'

@@ -30,7 +30,7 @@ export interface MentionTrigger {
 
 export function detectMention(value: string, cursor: number): MentionTrigger | null {
 	const upTo = value.slice(0, cursor);
-	// Unicode-Buchstaben wie beim Erkennen im Absenden, sonst endet die Auswahl bei „René“ nach dem é.
+	// Unicode letters like the mention check on send, otherwise the picker stops at "René" after the é.
 	const match = /(?:^|\s)@([\p{L}\p{N}_-]{1,40})$/u.exec(upTo);
 	if (!match) return null;
 	const start = upTo.length - (match[1]?.length ?? 0) - 1;
