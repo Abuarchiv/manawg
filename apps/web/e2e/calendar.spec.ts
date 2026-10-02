@@ -446,6 +446,7 @@ test.describe('calendar fixes', () => {
 			0,
 		);
 		await expect(eventButton).toHaveCount(0);
+		await expect(page.getByText('Termin gelöscht.')).toBeVisible();
 	});
 
 	test('push link highlights its event and a 403 names who may change it', async ({ page }) => {

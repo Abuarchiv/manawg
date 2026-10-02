@@ -97,6 +97,46 @@ test.describe('chat edit focus', () => {
 		await expect(actions).toBeFocused();
 	});
 
+	test('saving unchanged text sends no PATCH and a deleted message drops its edited marker', async ({
+		page,
+	}) => {
+		await setupMember(page);
+		let patches = 0;
+		await page.route(
+			`**/api/wg/${FIXTURE_WG.shareCode}/chat/messages/${MESSAGE_ID}`,
+			async (route) => {
+				const method = route.request().method();
+				if (method === 'DELETE') return route.fulfill({ json: { ok: true } });
+				if (method !== 'PATCH') return route.fallback();
+				patches += 1;
+				const { body } = route.request().postDataJSON() as { body: string };
+				await route.fulfill({
+					json: { message: { id: MESSAGE_ID, body, editedAt: new Date().toISOString() } },
+				});
+			},
+		);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/chat`);
+		await dismissOnboarding(page);
+
+		const first = await openEditorFromKeyboard(page);
+		await first.editor.press('ControlOrMeta+Enter');
+		await expect(first.editor).toBeHidden();
+		expect(patches).toBe(0);
+		await expect(first.message).not.toContainText('bearbeitet');
+
+		const second = await openEditorFromKeyboard(page);
+		await second.editor.fill('Geänderte Chat-Nachricht');
+		await second.editor.press('ControlOrMeta+Enter');
+		await expect(second.message).toContainText('bearbeitet');
+		expect(patches).toBe(1);
+
+		await second.actions.click();
+		await page.getByRole('menuitem', { name: 'Löschen' }).click();
+		await page.getByRole('button', { name: 'Nachricht endgültig löschen' }).click();
+		await expect(second.message).toContainText('gelöscht');
+		await expect(second.message).not.toContainText('bearbeitet');
+	});
+
 	test('a vanished reply target tells how to continue and keeps the text', async ({ page }) => {
 		await page.setViewportSize({ width: 360, height: 740 });
 		await setupMember(page);
