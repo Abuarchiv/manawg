@@ -478,7 +478,7 @@ test.describe('daily overview home', () => {
 		await expect(
 			page.getByRole('button', { name: 'Bestätigen: Bad putzen erledigt' }),
 		).toBeDisabled();
-		await expect(page.getByText('Wird gespeichert …')).toBeVisible();
+		await expect(page.getByText('Wird gespeichert…')).toBeVisible();
 		await expect(page.getByText('Nochmal tippen zum Bestätigen')).toHaveCount(0);
 
 		resolveComplete?.();

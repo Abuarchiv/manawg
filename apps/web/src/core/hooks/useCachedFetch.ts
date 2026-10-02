@@ -207,6 +207,18 @@ function updateCache<T>(key: string, update: DataUpdate<T>): void {
 	});
 }
 
+/**
+ * Refresh a cached URL without subscribing to it, e.g. a counter another hook
+ * shows. Subscribing would add a mount and focus fetch on every page that only
+ * wants to nudge the cache after its own mutation.
+ */
+export function refreshCachedFetch<T>(
+	url: string,
+	options: CachedFetchOptions = {},
+): Promise<void> {
+	return fetchAndCache<T>(cacheKey(url, options.memberId), url, options, true);
+}
+
 export function useCachedFetch<T>(url: string, options: CachedFetchOptions = {}) {
 	const { memberId, memberToken, headers } = options;
 	const key = cacheKey(url, memberId);

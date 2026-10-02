@@ -140,10 +140,12 @@ export function useExpenseForm({
 			setDraftHydrated(true);
 			return;
 		}
-		// Open the form only for a draft the user would recognize. A draft
-		// holding nothing but defaults would otherwise pop the form open on
-		// every visit.
-		if (!isEmptyModuleDraft('expense', draft, identityMemberId)) setShowForm(true);
+		// A stored draft is restored silently and shows up when the user taps
+		// "Ausgabe hinzufügen"; popping the form open on every visit was
+		// confusing. Only "Bearbeiten" from the offline queue opens it directly.
+		if (draft.queueEditId && !isEmptyModuleDraft('expense', draft, identityMemberId)) {
+			setShowForm(true);
+		}
 		const target = draft.editingExpense;
 		if (target !== undefined && target !== null) {
 			if (

@@ -289,7 +289,7 @@ export function NeuClient() {
 				);
 			}
 		} catch {
-			setAccountSwitchError('Konto konnte nicht abgemeldet werden. Bitte erneut versuchen.');
+			setAccountSwitchError('Konto konnte nicht abgemeldet werden. Bitte versuche es erneut.');
 		} finally {
 			busyRef.current = false;
 			setBusy(false);
@@ -506,7 +506,7 @@ export function NeuClient() {
 					step === 'create'
 						? 'Melde dich an, danach erstellst du deine neue WG.'
 						: joinCode
-							? 'Melde dich an, um mit deinem Einladungscode beizutreten.'
+							? 'Melde dich an, um mit deinem WG-Code beizutreten.'
 							: 'Dein Konto bringt dich auf jedem Gerät zurück in deine WG.'
 				}
 				backHref={explorationHref()}
@@ -566,10 +566,12 @@ export function NeuClient() {
 					: step === 'joinName'
 						? 'Mit diesem Namen sehen dich deine Mitbewohner.'
 						: step === 'create'
-							? 'Gib eurer WG einen Namen. Danach erhältst du euren Einladungscode.'
+							? 'Gib eurer WG einen Namen. Danach erhältst du euren WG-Code.'
 							: step === 'join'
-								? 'Gib den Einladungscode deiner Mitbewohner ein.'
-								: 'Öffne eine bestehende WG oder starte gemeinsam neu.'
+								? 'Gib den WG-Code deiner Mitbewohner ein.'
+								: accountWgs.length > 0
+									? 'Öffne eine deiner WGs oder starte gemeinsam neu.'
+									: 'Du hast noch keine WG. Erstelle eure oder tritt mit einem Code bei.'
 			}
 			backHref={explorationHref()}
 			actions={
@@ -595,7 +597,7 @@ export function NeuClient() {
 			{deniedWgCode && step === 'choose' && (
 				<ErrorBox>
 					Auf die WG {deniedWgCode} hast du mit diesem Konto keinen Zugriff. Wähle eine deiner WGs
-					oder tritt mit dem Einladungscode bei.
+					oder tritt mit dem WG-Code bei.
 				</ErrorBox>
 			)}
 
@@ -868,7 +870,7 @@ export function NeuClient() {
 							) : (
 								<ArrowRight data-icon="inline-start" aria-hidden />
 							)}
-							{busy ? 'Wird beigetreten…' : 'Beitreten'}
+							{busy ? 'Tritt bei…' : 'Beitreten'}
 						</Button>
 					</div>
 				</form>

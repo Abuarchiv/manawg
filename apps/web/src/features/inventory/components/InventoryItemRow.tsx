@@ -51,7 +51,11 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	const [removed, setRemoved] = useState(false);
 	const consumeIdempotencyKeyRef = useRef<string | null>(null);
 	const restockIdempotencyKeyRef = useRef<string | null>(null);
-	const lowStock = isBelowThreshold(item);
+	// Optimistisch: der Bestand ändert sich sofort beim Tippen; Erfolg ersetzt ihn durch den Serverwert,
+	// Fehler setzen ihn im finally zurück (null = zeige den Serverstand).
+	const [optimisticQuantity, setOptimisticQuantity] = useState<number | null>(null);
+	const quantity = optimisticQuantity ?? item.quantity;
+	const lowStock = isBelowThreshold({ ...item, quantity });
 	const deleteConfirm = useConfirmDelete();
 	const isDeleteArmed = deleteConfirm.confirmId === item.id;
 	const pending = pendingAction !== null;
@@ -68,6 +72,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 		if (pending) return;
 		setPendingAction(delta < 0 ? 'decrement' : 'increment');
 		setError(null);
+		setOptimisticQuantity(Math.max(0, item.quantity + delta));
 		try {
 			if (delta < 0) {
 				const idempotencyKey = consumeIdempotencyKeyRef.current ?? createOfflineIdempotencyKey();
@@ -103,10 +108,10 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				} else if (dropIfGone(res)) {
 					// row is gone
 				} else if (res.status === 429) {
-					setError('Zu viele Änderungen in kurzer Zeit. Bitte später erneut versuchen.');
+					setError('Zu viele Änderungen in kurzer Zeit. Bitte versuche es später erneut.');
 				} else {
 					if (res.status > 0 && res.status < 500) consumeIdempotencyKeyRef.current = null;
-					setError('Aktualisierung fehlgeschlagen.');
+					setError('Aktualisierung fehlgeschlagen. Versuche es erneut.');
 				}
 			} else {
 				const idempotencyKey = restockIdempotencyKeyRef.current ?? createOfflineIdempotencyKey();
@@ -131,14 +136,15 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				} else if (dropIfGone(res)) {
 					// row is gone
 				} else if (res.status === 429) {
-					setError('Zu viele Änderungen in kurzer Zeit. Bitte später erneut versuchen.');
+					setError('Zu viele Änderungen in kurzer Zeit. Bitte versuche es später erneut.');
 				} else {
 					if (res.status > 0 && res.status < 500) restockIdempotencyKeyRef.current = null;
-					setError('Aktualisierung fehlgeschlagen.');
+					setError('Aktualisierung fehlgeschlagen. Versuche es erneut.');
 				}
 			}
 		} finally {
 			setPendingAction(null);
+			setOptimisticQuantity(null);
 		}
 	}
 
@@ -155,7 +161,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				setRemoved(true);
 				onChanged(undefined, item.id);
 			} else if (!dropIfGone(res)) {
-				setError('Löschen fehlgeschlagen.');
+				setError('Löschen fehlgeschlagen. Versuche es erneut.');
 			}
 		} finally {
 			setPendingAction(null);
@@ -190,7 +196,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						)}
 					</ItemTitle>
 					<ItemDescription className="line-clamp-none tabular-nums">
-						{item.quantity} {item.unit} · Nachkaufen ab{'\u00a0'}
+						{quantity} {item.unit} · Nachkaufen ab{'\u00a0'}
 						{item.threshold}
 					</ItemDescription>
 				</ItemContent>
@@ -201,10 +207,10 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						variant="outline"
 						size="icon"
 						onClick={() => void changeQuantity(-1)}
-						disabled={pending || item.quantity === 0}
+						disabled={pending || quantity === 0}
 						aria-busy={pendingAction === 'decrement'}
 						aria-label={
-							item.quantity === 0
+							quantity === 0
 								? `${item.name} um eins verringern (Bestand 0)`
 								: `${item.name} um eins verringern`
 						}

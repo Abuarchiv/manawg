@@ -97,7 +97,7 @@ export default function WgHomePage() {
 	const data = dashboardRead.data ?? null;
 	const loading = dashboardRead.isLoading;
 	const error = dashboardRead.error
-		? getWgLoadErrorMessage('Dashboard', dashboardRead.error.status, dashboardRead.error.error)
+		? getWgLoadErrorMessage('Die Startseite', dashboardRead.error.status, dashboardRead.error.error)
 		: null;
 	const eventOccurrences = useMemo(
 		() =>
@@ -255,7 +255,7 @@ export default function WgHomePage() {
 							message={data ? `${error} Die angezeigten Daten können veraltet sein.` : error}
 							onRetry={() => void load()}
 							busy={loading}
-							retryLabel="Dashboard erneut laden"
+							retryLabel="Startseite erneut laden"
 						/>
 					</div>
 				)}
@@ -460,7 +460,7 @@ export default function WgHomePage() {
 											'min-w-0 max-w-full self-end whitespace-normal px-0 text-[12px] text-muted-foreground leading-snug',
 										)}
 									>
-										Ganze Chronik <ChevronRight data-icon="inline-end" aria-hidden />
+										Gesamte Aktivität <ChevronRight data-icon="inline-end" aria-hidden />
 									</Link>
 									{data ? (
 										<div className="flex flex-col gap-2">
@@ -584,7 +584,7 @@ function TodayRow({
 						)}
 					>
 						{pending ? (
-							'Wird gespeichert …'
+							'Wird gespeichert…'
 						) : armed ? (
 							'Nochmal tippen zum Bestätigen'
 						) : debtAmount !== undefined ? (

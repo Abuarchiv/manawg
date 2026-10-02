@@ -106,15 +106,15 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 			{/* Visually hidden live region for share status announcements */}
 			<span id={liveId} aria-live="polite" aria-atomic="true" className="sr-only">
 				{state === 'shared'
-					? 'Einladungslink wurde nativ geteilt.'
+					? 'Einladungslink wurde geteilt.'
 					: state === 'copied'
 						? 'Einladungslink wurde kopiert.'
 						: state === 'codeCopied'
-							? 'Einladungscode wurde kopiert.'
+							? 'WG-Code wurde kopiert.'
 							: state === 'failed'
-								? 'Teilen fehlgeschlagen.'
+								? 'Teilen fehlgeschlagen. Kopiere den Link stattdessen.'
 								: state === 'codeFailed'
-									? 'Einladungscode konnte nicht kopiert werden.'
+									? 'WG-Code konnte nicht kopiert werden.'
 									: ''}
 			</span>
 
@@ -124,7 +124,7 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 						<Check aria-hidden />
 					</div>
 					<CardTitle className="max-w-full break-words">{wgName} ist live.</CardTitle>
-					<CardDescription>Teile den Einladungscode mit deiner WG.</CardDescription>
+					<CardDescription>Teile den WG-Code mit deiner WG.</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-col items-center gap-3 text-center">
 					<Button
@@ -199,7 +199,7 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 					<CardFooter>
 						<Badge variant={state === 'failed' ? 'destructive' : 'secondary'}>
 							{state === 'shared'
-								? 'Nativ geteilt'
+								? 'Einladung geteilt'
 								: state === 'copied'
 									? 'Link kopiert'
 									: 'Teilen fehlgeschlagen'}

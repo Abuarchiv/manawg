@@ -231,7 +231,7 @@ export function ImageUploader({
 		}
 		if (file.size > MAX_FILE_BYTES) {
 			setNotice(null);
-			setError('Bild zu groß (max 8 MB).');
+			setError('Bild zu groß (max. 8 MB). Wähle ein kleineres Bild.');
 			return;
 		}
 		uploadPendingRef.current = true;
@@ -450,7 +450,7 @@ export function ImageUploader({
 				) : (
 					<ImagePlus className="size-6" aria-hidden="true" />
 				)}
-				<span aria-live="polite">{uploading ? 'Lade hoch…' : 'Bild hinzufügen'}</span>
+				<span aria-live="polite">{uploading ? 'Lädt hoch…' : 'Bild hinzufügen'}</span>
 				<span className="text-xs text-muted-foreground">JPG, PNG, WebP, HEIC · max. 8 MB</span>
 				<input
 					type="file"

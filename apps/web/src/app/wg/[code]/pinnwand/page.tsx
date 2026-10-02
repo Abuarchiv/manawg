@@ -163,7 +163,7 @@ export default function PinnwandPage(): React.ReactElement {
 			) : items.length === 0 ? (
 				<EmptyState
 					icon={Megaphone}
-					hint="Tippe unten auf „Beitrag hinzufügen“, um eine Frage oder Info zu teilen."
+					hint="Tippe unten rechts auf „+“, um eine Frage oder Info zu teilen."
 				>
 					Noch keine Beiträge
 				</EmptyState>

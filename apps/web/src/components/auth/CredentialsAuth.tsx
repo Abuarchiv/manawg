@@ -306,7 +306,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 							disabled={busy !== null}
 							className="px-0"
 						>
-							{busy === 'password-reset' ? 'Link wird angefordert …' : 'Passwort vergessen?'}
+							{busy === 'password-reset' ? 'Link wird angefordert…' : 'Passwort vergessen?'}
 						</Button>
 						{emailError === 'generic' && (
 							<div id="auth-email-error">

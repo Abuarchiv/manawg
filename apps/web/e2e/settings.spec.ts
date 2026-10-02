@@ -969,7 +969,7 @@ test.describe('invite code copy', () => {
 			await expect(copyCodeButton).toBeFocused();
 			await page.keyboard.press('Enter');
 
-			await expect(page.locator('#share-status-live')).toHaveText('Einladungscode wurde kopiert.');
+			await expect(page.locator('#share-status-live')).toHaveText('WG-Code wurde kopiert.');
 			await expect(
 				page.getByRole('button', { name: 'Mitbewohner einladen', exact: true }),
 			).toBeVisible();

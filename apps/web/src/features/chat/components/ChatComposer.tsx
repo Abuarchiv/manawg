@@ -281,7 +281,6 @@ export function ChatComposer({
 						aria-label="Chat-Nachricht"
 						aria-autocomplete="list"
 						aria-controls={mentionOpen ? mentionListboxId : undefined}
-						aria-expanded={mentionOpen}
 						aria-activedescendant={activeOptionId}
 						className="max-h-32 min-h-10 flex-1 px-4 py-2 text-base"
 					/>

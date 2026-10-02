@@ -52,7 +52,7 @@ const DELETE_WG_MESSAGES: KindMessages = {
 export function deleteWgErrorMessage(status: number, code: string | null): string {
 	return messageFor(
 		DELETE_WG_MESSAGES,
-		'Löschen fehlgeschlagen. Bitte später erneut versuchen.',
+		'Löschen fehlgeschlagen. Bitte versuche es später erneut.',
 		status,
 		code,
 	);

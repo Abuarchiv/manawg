@@ -57,6 +57,8 @@ export function useExpenseRowActions({
 
 		if (alreadyGone) {
 			notify.error('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.');
+		} else {
+			toast.success('Ausgabe entfernt.');
 		}
 		pending.end(id);
 		void reload();

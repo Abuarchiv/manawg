@@ -33,7 +33,11 @@ export function useChatViewportFit(chatRootRef: RefObject<HTMLElement | null>): 
 			if (!frame?.isConnected) frame = resolveFrame();
 			if (!frame) return;
 			syncChrome();
-			const top = viewport?.offsetTop ?? 0;
+			// Schrumpft das Layout-Viewport mit der Tastatur (interactive-widget=resizes-content,
+			// iOS 27), meldet offsetTop trotzdem den Seiten-Scroll und schob den Rahmen aus dem
+			// Bild. Dann gibt es keinen Pan, nur den normalen Scroll.
+			const top =
+				viewport && window.innerHeight <= viewport.height + 1 ? 0 : (viewport?.offsetTop ?? 0);
 			const bottom = top + (viewport?.height ?? window.innerHeight);
 			// iOS keeps the fixed nav at the layout bottom, behind the keyboard, and
 			// pans the visual viewport: only reserve the nav part that is visible.

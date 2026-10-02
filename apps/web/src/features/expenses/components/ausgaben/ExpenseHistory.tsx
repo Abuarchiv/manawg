@@ -67,7 +67,7 @@ export function ExpenseHistory({
 					<EmptyHeader>
 						<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
 						<EmptyDescription>
-							Tippe unten auf „Ausgabe hinzufügen“, um eure erste gemeinsame Ausgabe einzutragen.
+							Tippe unten rechts auf „+“, um eure erste gemeinsame Ausgabe einzutragen.
 						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>

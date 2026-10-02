@@ -16,6 +16,8 @@ export function ThumbAction({ children }: { children: ReactNode }) {
 		const syncHeight = () => {
 			const height = action.getBoundingClientRect().height;
 			root.style.setProperty('--thumb-action-space', `${height + 8}px`);
+			// Fokus/scrollIntoView lassen Felder und ⋯-Menüs sonst unter dem festen Button stehen.
+			root.style.scrollPaddingBottom = `calc(var(--app-nav-height, 5rem) + 0.5rem + ${height + 8}px)`;
 			if (spacerRef.current) {
 				spacerRef.current.style.height = `${height + 12}px`;
 			}
@@ -26,6 +28,7 @@ export function ThumbAction({ children }: { children: ReactNode }) {
 		return () => {
 			observer?.disconnect();
 			root.style.removeProperty('--thumb-action-space');
+			root.style.removeProperty('scroll-padding-bottom');
 		};
 	}, []);
 

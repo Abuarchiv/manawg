@@ -37,7 +37,7 @@ function errorMessage(error: string): string {
 	if (error === 'reminder_rate_limited') return 'Zu viele Erinnerungen — bitte später erneut.';
 	if (error === 'debtor_opted_out') return 'Diese Person erhält keine Erinnerungen.';
 	if (error === 'no_open_debt') return 'Keine offene Schuld zwischen euch.';
-	if (error === 'not_a_member') return 'Bitte erneut der WG beitreten.';
+	if (error === 'not_a_member') return 'Tritt der WG bitte erneut bei.';
 	if (error === 'Failed to fetch' || error === 'Netzwerkfehler') {
 		return 'Erinnerung konnte nicht gesendet werden — Verbindung prüfen.';
 	}
@@ -157,7 +157,7 @@ export function RemindButton({
 	}
 
 	let label = 'Erinnern';
-	if (status === 'sending') label = 'Sende…';
+	if (status === 'sending') label = 'Sendet…';
 	else if (status === 'sent') label = 'Gesendet';
 	else if (status === 'cooldown') label = cooldownLabel ?? 'Noch gesperrt';
 	else if (status === 'optedOut') label = 'Erinnerungen deaktiviert';

@@ -1,4 +1,5 @@
 import { useToast } from '@/components/ui/Toast';
+import { isReadOnlyMode } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import {
 	type NotificationWarning,
@@ -213,7 +214,8 @@ export function useShoppingAdd({
 				}
 				if (retryableResponse) await load(true);
 				setAddError(
-					retryableResponse
+					// 429 und Wartungsmodus lehnt die Middleware vor jeder Verarbeitung ab: nichts wurde gespeichert.
+					retryableResponse && res.status !== 429 && !isReadOnlyMode(res.error)
 						? 'Speicherstatus unklar. Prüfe die Liste und versuche es bei Bedarf erneut.'
 						: shoppingAddErrorMessage(res.error),
 				);

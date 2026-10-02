@@ -1,4 +1,11 @@
-import { isNetworkError, mutationErrorMessage } from '@/core/http/error-codes';
+import {
+	READ_ONLY_MESSAGE,
+	SESSION_EXPIRED_MESSAGE,
+	isNetworkError,
+	isReadOnlyMode,
+	isSessionExpired,
+	mutationErrorMessage,
+} from '@/core/http/error-codes';
 
 const ABSENCE_SUBJECT = 'Abwesenheit konnte nicht gespeichert werden';
 const ABSENCE_ERRORS: Record<string, string> = {
@@ -41,6 +48,8 @@ export function choreActionErrorMessage(
 	prefix: string,
 	result: { error: string; status: number },
 ): string {
+	if (isReadOnlyMode(result.error)) return `${prefix}: ${READ_ONLY_MESSAGE}`;
+	if (isSessionExpired(result.error)) return `${prefix}: ${SESSION_EXPIRED_MESSAGE}`;
 	if (result.error === 'unexpected_error' || result.error === 'server_error') {
 		return `${prefix}: Versuche es gleich erneut.`;
 	}

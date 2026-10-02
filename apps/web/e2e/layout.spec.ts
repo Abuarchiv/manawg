@@ -894,7 +894,7 @@ test.describe('app shell state', () => {
 			await page.getByRole('button', { name: 'Mit anderem Konto anmelden', exact: true }).click();
 
 			await expect(
-				page.getByText('Melde dich an, um mit deinem Einladungscode beizutreten.'),
+				page.getByText('Melde dich an, um mit deinem WG-Code beizutreten.'),
 			).toBeVisible();
 		});
 

@@ -132,6 +132,21 @@ test.describe('expense row reflow', () => {
 				}
 			}
 		}
+
+		// Entfernen bestätigt wie bei Fixkosten mit einer Erfolgsmeldung.
+		await page.route(`**/api/wg/${shareCode}/expenses/${EXPENSE_ID}`, (route) =>
+			route.fulfill({ json: { deleted: true } }),
+		);
+		await page.evaluate(() => {
+			document.documentElement.style.fontSize = '';
+		});
+		await action.tap();
+		await page.getByRole('menuitem', { name: 'Entfernen', exact: true }).click();
+		await page
+			.getByRole('alertdialog')
+			.getByRole('button', { name: 'Entfernen', exact: true })
+			.click();
+		await expect(page.getByText('Ausgabe entfernt.')).toBeVisible();
 	});
 });
 
