@@ -128,7 +128,10 @@ export function useChoreCreate(
 		if (!isEmptyModuleDraft('chore', formDraft, identity.memberId)) {
 			assigneeTouchedRef.current =
 				typeof savedAssigneeTouched === 'boolean' ? savedAssigneeTouched : true;
-			setShowForm(true);
+			// Ein gespeicherter Entwurf wird still wiederhergestellt und erscheint erst, wenn man
+			// „Putzaufgabe hinzufügen“ tippt. Sonst sprang das Formular bei jedem Besuch von Haushalt
+			// auf. Nur „Bearbeiten“ aus der Offline-Warteschlange öffnet es direkt (Nutzeraktion).
+			if (formDraft.queueEditId) setShowForm(true);
 		}
 		if (draft.title) {
 			setNewTitle(draft.title);

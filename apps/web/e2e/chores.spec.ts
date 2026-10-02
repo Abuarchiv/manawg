@@ -619,6 +619,9 @@ test.describe('chore next assignee', () => {
 		await title.fill('Automatisch zugewiesener Entwurf');
 		await expect(assignee).toHaveValue(CURRENT_MEMBER);
 		await page.reload();
+		// Ein Entwurf klappt das Formular nicht von selbst auf; erst „Putzaufgabe hinzufügen“ zeigt ihn.
+		await expect(title).toBeHidden();
+		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 		await expect(title).toBeVisible();
 		await expect(title).toHaveValue('Automatisch zugewiesener Entwurf');
 		await expect(assignee).toHaveValue(CURRENT_MEMBER);
@@ -675,6 +678,9 @@ test.describe('chore next assignee', () => {
 			)
 			.toBe(true);
 		await page.reload();
+		// Ein Entwurf klappt das Formular nicht von selbst auf; erst „Putzaufgabe hinzufügen“ zeigt ihn.
+		await expect(title).toBeHidden();
+		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 		await expect(title).toBeVisible();
 		await expect(assignee).toHaveValue('');
 
@@ -692,6 +698,9 @@ test.describe('chore next assignee', () => {
 			draftKey,
 		);
 		await page.reload();
+		// Ein Entwurf klappt das Formular nicht von selbst auf; erst „Putzaufgabe hinzufügen“ zeigt ihn.
+		await expect(title).toBeHidden();
+		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 		await expect(title).toBeVisible();
 		await expect(title).toHaveValue('Legacy empty assignee');
 		await expect(assignee).toHaveValue('');
