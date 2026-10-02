@@ -24,6 +24,10 @@ export const RATE_LIMITED_MESSAGE = 'Zu viele Anfragen. Warte kurz und versuche 
  * `*_rate_limited`. Callers that only keep the code, not the status, must still
  * recognise all of them.
  */
+export const READ_ONLY_MESSAGE =
+	'Die App ist gerade in Wartung und nur lesbar. Versuche es später erneut.';
+export const SESSION_EXPIRED_MESSAGE = 'Deine Sitzung ist abgelaufen. Melde dich neu an.';
+
 export function isRateLimited(code: string | null, status?: number): boolean {
 	return (
 		status === 429 ||
@@ -37,6 +41,7 @@ export function isRetryableServerError(code: string | null, status?: number): bo
 	return (
 		code === 'unexpected_error' ||
 		code === 'server_error' ||
+		code === 'service_unavailable' ||
 		code === 'db_error' ||
 		code === 'rate_limiter_unavailable' ||
 		isRateLimited(code, status) ||
@@ -61,8 +66,20 @@ export function isAuthInvalidated(code: string | null, status?: number): boolean
 	);
 }
 
+/** Supabase-Sitzung abgelaufen (Guards antworten 401 `auth_required`); anders als `authInvalidated` ist die Mitgliedschaft intakt. */
+export function isSessionExpired(code: string | null): boolean {
+	return code === 'auth_required';
+}
+
+/** Middleware bei `MIGRATION_READ_ONLY=true`: 503 `migration_read_only` auf jede Mutation (Wartung). */
+export function isReadOnlyMode(code: string | null): boolean {
+	return code === 'migration_read_only';
+}
+
 export type ApiErrorKind =
 	| 'network'
+	| 'readOnly'
+	| 'sessionExpired'
 	| 'wgUnavailable'
 	| 'invalidShareCode'
 	| 'authInvalidated'
@@ -71,6 +88,9 @@ export type ApiErrorKind =
 /** Single bucket for an error; callers map the bucket to their own copy. */
 export function classifyApiError(code: string | null, status?: number): ApiErrorKind | null {
 	if (isNetworkError(code, status)) return 'network';
+	// Vor retryable/authInvalidated: 503 bzw. 401 würden sonst falsch eingeordnet.
+	if (isReadOnlyMode(code)) return 'readOnly';
+	if (isSessionExpired(code)) return 'sessionExpired';
 	if (isWgUnavailable(code, status)) return 'wgUnavailable';
 	if (isInvalidShareCode(code)) return 'invalidShareCode';
 	if (isAuthInvalidated(code, status)) return 'authInvalidated';
@@ -91,6 +111,8 @@ export function mutationErrorMessage(
 	retrySubject: string = subject,
 ): string {
 	if (isNetworkError(code)) return `${subject}: Prüfe deine Verbindung und versuche es erneut.`;
+	if (isReadOnlyMode(code)) return `${subject}: ${READ_ONLY_MESSAGE}`;
+	if (isSessionExpired(code)) return `${subject}: ${SESSION_EXPIRED_MESSAGE}`;
 	if (isRetryableServerError(code)) return `${retrySubject}: Versuche es gleich erneut.`;
 	if (isWgUnavailable(code)) return `${subject}: Öffne die WG über den aktuellen Link erneut.`;
 	if (isInvalidShareCode(code)) return `${subject}: Der WG-Code ist ungültig.`;

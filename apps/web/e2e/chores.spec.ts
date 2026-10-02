@@ -658,6 +658,38 @@ test.describe('chore next assignee', () => {
 		).toBeVisible();
 	});
 
+	test('names an expired session and maintenance mode and keeps the draft', async ({ page }) => {
+		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+		await openPutzen(page, [viewer], [], []);
+		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
+		const title = page.getByPlaceholder('z. B. Müll rausbringen');
+		await title.fill('Entwurf bleibt');
+		let failure = { status: 401, json: { error: 'auth_required', code: 'auth_required' } };
+		await page.route(`**/api/wg/${SHARE_CODE}/chores`, async (route) => {
+			if (route.request().method() === 'POST') {
+				await route.fulfill(failure);
+				return;
+			}
+			await route.fallback();
+		});
+		await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
+		await expect(
+			page.getByText(
+				'Putzaufgabe konnte nicht gespeichert werden: Deine Sitzung ist abgelaufen. Melde dich neu an.',
+			),
+		).toBeVisible();
+		await expect(title).toHaveValue('Entwurf bleibt');
+		// Middleware bei MIGRATION_READ_ONLY: 503 `migration_read_only`.
+		failure = { status: 503, json: { error: 'migration_read_only', retryAfter: '300' } };
+		await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
+		await expect(
+			page.getByText(
+				'Putzaufgabe konnte nicht gespeichert werden: Die App ist gerade in Wartung und nur lesbar. Versuche es später erneut.',
+			),
+		).toBeVisible();
+		await expect(title).toHaveValue('Entwurf bleibt');
+	});
+
 	test('preserves explicit and legacy unassigned chore drafts', async ({ page }) => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 		await openPutzen(page, [viewer], [], []);

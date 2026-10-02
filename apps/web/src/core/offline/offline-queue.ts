@@ -650,6 +650,13 @@ export function explainOfflineActionFailure(
 			detail: 'Die Aktion bleibt in der Warteschlange und wird gleich automatisch erneut gesendet.',
 		};
 	}
+	if (error === 'migration_read_only') {
+		return {
+			title: 'App in Wartung',
+			detail:
+				'Die Aktion bleibt in der Warteschlange und wird gesendet, sobald die Wartung vorbei ist.',
+		};
+	}
 	if (error === 'not_a_member' || error === 'member_id_required' || error === 'member_id_invalid') {
 		return {
 			title: 'Mitglied nicht mehr gültig',
