@@ -253,7 +253,7 @@ function DebtRow({
 
 	return (
 		<Item size="sm" className="items-center gap-x-2.5 px-0 py-1.5">
-			<div aria-hidden className="flex shrink-0 items-center -space-x-1.5">
+			<div aria-hidden className="flex shrink-0 items-center -space-x-0.5">
 				<MemberAvatar name={debt.fromName} size={24} className="ring-2 ring-card" />
 				<MemberAvatar name={debt.toName} size={24} className="ring-2 ring-card" />
 			</div>
