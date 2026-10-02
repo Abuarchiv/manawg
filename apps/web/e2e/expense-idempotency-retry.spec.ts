@@ -529,6 +529,9 @@ test('malformed recurring-template success queues once across split rotation, dr
 	await navigateToFeature(restoredPage, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
 	await dismissOnboarding(restoredPage);
 	const restoredForm = restoredPage.getByRole('dialog');
+	// Der Entwurf öffnet das Formular nicht von selbst; erst „Ausgabe hinzufügen“ zeigt ihn.
+	await expect(restoredForm).toBeHidden();
+	await restoredPage.getByRole('button', { name: 'Ausgabe hinzufügen' }).click();
 	await expect(restoredForm).toBeVisible();
 	await expect(restoredForm.getByLabel('Beschreibung')).toHaveValue('Internet');
 	await expect(restoredForm.getByLabel('Betrag')).toHaveValue('12,01');

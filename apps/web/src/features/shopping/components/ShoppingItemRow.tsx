@@ -114,7 +114,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 				data-shopping-row
 				id={`shopping-${item.id}`}
 				className={cn(
-					'relative flex-nowrap touch-pan-y scroll-mt-24 rounded-none bg-background px-3',
+					'relative touch-pan-y scroll-mt-24 rounded-none bg-background px-3',
 					swipeX === 0 && 'transition-transform',
 					highlighted && 'ring-2 ring-inset ring-ring',
 				)}
@@ -185,7 +185,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 						)}
 					</ItemDescription>
 				</ItemContent>
-				<ItemActions className="ml-auto shrink-0">
+				<ItemActions className="ml-auto">
 					<Drawer onOpenChange={() => deleteConfirm.cancel()}>
 						<DrawerTrigger
 							render={
