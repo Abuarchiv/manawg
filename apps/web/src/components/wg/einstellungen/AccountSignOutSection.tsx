@@ -44,7 +44,7 @@ export function AccountSignOutSection({
 			}
 			router.push('/');
 		} catch {
-			setAccountSignOutError('Konto konnte nicht abgemeldet werden. Bitte erneut versuchen.');
+			setAccountSignOutError('Konto konnte nicht abgemeldet werden. Bitte versuche es erneut.');
 		} finally {
 			setAccountSignOutPending(false);
 		}
@@ -65,7 +65,7 @@ export function AccountSignOutSection({
 					className="w-full"
 				>
 					{accountSignOutPending ? <Spinner aria-hidden /> : <LogOut aria-hidden />}
-					{accountSignOutPending ? 'Melde ab…' : 'Konto abmelden'}
+					{accountSignOutPending ? 'Meldet ab…' : 'Konto abmelden'}
 				</Button>
 				{accountSignOutError && (
 					<Alert variant="destructive" className="mt-2">

@@ -56,7 +56,7 @@ export function AccountDeleteSection() {
 				return;
 			}
 			if (res.status !== 200 && res.status !== 202) {
-				setError('Konto konnte nicht gelöscht werden. Bitte später erneut versuchen.');
+				setError('Konto konnte nicht gelöscht werden. Bitte versuche es später erneut.');
 				setStage('confirm');
 				return;
 			}

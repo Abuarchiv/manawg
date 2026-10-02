@@ -256,7 +256,7 @@ export function OfflineQueueSection({
 			setConflictNotes((current) => ({
 				...current,
 				[item.id]:
-					'Es existiert bereits ein anderer ungespeicherter Formular-Entwurf für dieses Modul. Öffne das Formular, speichere oder verwerfe ihn, und bearbeite dann den Queue-Eintrag.',
+					'Es existiert bereits ein anderer ungespeicherter Formular-Entwurf für dieses Modul. Öffne das Formular, speichere oder verwerfe ihn, und bearbeite dann den Eintrag in der Warteschlange.',
 			}));
 			return;
 		}
@@ -452,7 +452,7 @@ export function OfflineQueueSection({
 															onClick={() => removeAttachment(item.id)}
 															disabled={rowBusy}
 														>
-															Anhang weg
+															Anhang entfernen
 														</Button>
 													) : null}
 												</>

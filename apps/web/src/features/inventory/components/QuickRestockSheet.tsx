@@ -85,7 +85,7 @@ export function QuickRestockSheet({
 			setError(`${item.name} existiert nicht mehr und wurde aus der Liste entfernt.`);
 		} else {
 			if (res.status > 0 && res.status < 500) restockRequestKeysRef.current.delete(item.id);
-			setError('Aktualisierung fehlgeschlagen.');
+			setError('Aktualisierung fehlgeschlagen. Versuche es erneut.');
 		}
 	}
 

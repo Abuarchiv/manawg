@@ -42,7 +42,8 @@ function formatOfflineAge(iso: string, now = Date.now()): string {
 	if (minutes < 60) return `vor ${minutes} Min.`;
 	const hours = Math.floor(minutes / 60);
 	if (hours < 24) return `vor ${hours} Std.`;
-	return `vor ${Math.floor(hours / 24)} Tagen`;
+	const days = Math.floor(hours / 24);
+	return days === 1 ? 'vor 1 Tag' : `vor ${days} Tagen`;
 }
 
 function countByShareCode(items: OfflineAction[]): Map<string, number> {
@@ -219,7 +220,7 @@ export function OfflineClient() {
 		knownWgs.find((wg) => (queueCounts.get(wg.code) ?? 0) > 0) ?? knownWgs[0] ?? null;
 	const statusLabel =
 		status === 'checking'
-			? 'Wird geprüft …'
+			? 'Wird geprüft…'
 			: status === 'browser-offline'
 				? 'Offline-Modus'
 				: status === 'server-unreachable'
@@ -229,7 +230,7 @@ export function OfflineClient() {
 						: 'Wieder online';
 	const statusHeading =
 		status === 'checking'
-			? 'Verbindung wird geprüft …'
+			? 'Verbindung wird geprüft…'
 			: status === 'browser-offline'
 				? 'Du bist gerade offline.'
 				: status === 'server-unreachable'

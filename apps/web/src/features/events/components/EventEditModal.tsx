@@ -170,7 +170,9 @@ export function EventEditModal({
 				recurrence: recurrence.trim() || null,
 			});
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen.');
+			setError(
+				err instanceof Error ? err.message : 'Speichern fehlgeschlagen. Versuche es erneut.',
+			);
 			setErrorField(null);
 		} finally {
 			setSaving(false);
@@ -184,7 +186,7 @@ export function EventEditModal({
 		try {
 			await onDelete(event.id);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen.');
+			setError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen. Versuche es erneut.');
 		} finally {
 			setDeleting(false);
 			setConfirmingDelete(false);

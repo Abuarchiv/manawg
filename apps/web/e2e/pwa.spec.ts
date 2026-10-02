@@ -292,7 +292,7 @@ test.describe('cold pwa', () => {
 			await page.goto('/cold-pwa-never-visited', { waitUntil: 'load' });
 
 			await expect(page).toHaveTitle('Offline — ManaWG');
-			await expect(page.locator('h1')).not.toHaveText('Verbindung wird geprüft …', {
+			await expect(page.locator('h1')).not.toHaveText('Verbindung wird geprüft…', {
 				timeout: 15_000,
 			});
 			await expect(
@@ -364,7 +364,7 @@ test.describe('offline page', () => {
 			await seedOfflineState(page);
 			const navigation = navigateToFeature(page, '/offline');
 
-			await expect(page.getByRole('heading', { name: 'Verbindung wird geprüft …' })).toBeVisible();
+			await expect(page.getByRole('heading', { name: 'Verbindung wird geprüft…' })).toBeVisible();
 			await expect(page.getByRole('heading', { name: 'Du bist wieder verbunden.' })).toHaveCount(0);
 
 			resolveRoute?.();

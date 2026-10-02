@@ -45,9 +45,9 @@ interface ActivityResponse {
 }
 
 function formatVisibleActivityCount(count: number): string {
-	if (count === 0) return 'Keine sichtbaren Chronik-Einträge.';
-	if (count === 1) return '1 Chronik-Eintrag sichtbar.';
-	return `${count} Chronik-Einträge sichtbar.`;
+	if (count === 0) return 'Keine sichtbaren Einträge.';
+	if (count === 1) return '1 Eintrag sichtbar.';
+	return `${count} Einträge sichtbar.`;
 }
 
 export default function AktivitaetPage() {
@@ -153,7 +153,7 @@ export default function AktivitaetPage() {
 	return (
 		<div className="mx-auto min-w-0 w-full max-w-3xl space-y-4 bg-background px-4 py-4 pb-[env(safe-area-inset-bottom)]">
 			<header className="flex items-start gap-2">
-				<BackLink href={wgBaseHref} label="Dashboard" />
+				<BackLink href={wgBaseHref} label="Start" />
 				<div className="min-w-0 flex-1">
 					<h1 className="font-heading text-lg font-semibold tracking-tight text-foreground">
 						Aktivität

@@ -42,5 +42,5 @@ export function joinErrorMessage(status: number, error: string): string {
 	if (status === 0) {
 		return 'Beitritt konnte nicht abgeschlossen werden: Prüfe deine Verbindung und versuche es erneut.';
 	}
-	return 'Hat nicht geklappt. Bitte nochmal versuchen.';
+	return 'Der Beitritt hat nicht geklappt. Bitte versuche es noch einmal.';
 }

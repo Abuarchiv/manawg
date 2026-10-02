@@ -107,7 +107,7 @@ export function useShoppingPage({
 						if (requestId !== loadRequestIdRef.current) return;
 						refreshCount();
 						if (synced > 0) {
-							// Die „Offline vorgemerkt"-Hinweise sind mit dem Replay überholt.
+							// Die „Offline vorgemerkt“-Hinweise sind mit dem Replay überholt.
 							setAddNotice(null);
 							setToggleNotice(null);
 							void load(true);

@@ -58,7 +58,7 @@ const REPLAY_EXPIRED_ERROR =
 const INVALID_ACTION_TIME_ERROR =
 	'Server prüfen: Der Zeitpunkt dieser Aktion ist unklar. Sie kann bereits gespeichert sein und wird nicht erneut gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege nur fehlende Änderungen neu an.';
 const IDEMPOTENCY_KEY_ERROR =
-	'Idempotenz-Schlüssel konnte nicht erzeugt werden. Die Aktion bleibt gespeichert und wird nicht gesendet.';
+	'Die Aktion konnte nicht für das sichere Senden vorbereitet werden. Sie bleibt gespeichert und wird nicht gesendet; versuche es später erneut.';
 const syncInFlight = new Map<string, Promise<number>>();
 let syncTail: Promise<unknown> = Promise.resolve();
 

@@ -668,7 +668,7 @@ export function explainOfflineActionFailure(
 		return {
 			title: 'WG-Link nicht mehr gültig',
 			detail:
-				'Prüfe den Einladungslink oder lass dir einen neuen Share-Code geben, bevor du diese Aktion sendest.',
+				'Prüfe den Einladungslink oder lass dir einen neuen Einladungslink geben, bevor du diese Aktion sendest.',
 		};
 	}
 	if (error === 'recurring_expense_not_found') {
