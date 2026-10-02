@@ -84,7 +84,7 @@ export function InventoryList({
 						</EmptyMedia>
 						<EmptyTitle>Noch keine Vorräte erfasst</EmptyTitle>
 						<EmptyDescription>
-							Tippe unten auf „Vorrat hinzufügen“, z. B. für Klopapier, Spülmittel oder Nudeln.
+							Tippe unten rechts auf „+“ und leg z. B. Klopapier, Spülmittel oder Nudeln an.
 						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>

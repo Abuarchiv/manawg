@@ -91,7 +91,7 @@ export function AbosList({
 							{loadError && abos.length === 0
 								? 'Versuche es erneut, sobald die Verbindung wieder da ist.'
 								: abos.length === 0
-									? 'Tippe unten auf „Fixkosten hinzufügen“, z. B. für Miete, Internet oder Streaming.'
+									? 'Tippe unten rechts auf „+“ und trag z. B. Miete, Internet oder Streaming ein.'
 									: 'Wähle einen anderen Filter.'}
 						</EmptyDescription>
 					</EmptyHeader>
