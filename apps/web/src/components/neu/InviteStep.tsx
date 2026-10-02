@@ -106,7 +106,7 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 			{/* Visually hidden live region for share status announcements */}
 			<span id={liveId} aria-live="polite" aria-atomic="true" className="sr-only">
 				{state === 'shared'
-					? 'Einladungslink wurde nativ geteilt.'
+					? 'Einladung wurde geteilt.'
 					: state === 'copied'
 						? 'Einladungslink wurde kopiert.'
 						: state === 'codeCopied'
@@ -199,7 +199,7 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 					<CardFooter>
 						<Badge variant={state === 'failed' ? 'destructive' : 'secondary'}>
 							{state === 'shared'
-								? 'Nativ geteilt'
+								? 'Geteilt'
 								: state === 'copied'
 									? 'Link kopiert'
 									: 'Teilen fehlgeschlagen'}
