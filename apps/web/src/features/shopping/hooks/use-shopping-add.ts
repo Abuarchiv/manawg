@@ -113,6 +113,9 @@ export function useShoppingAdd({
 		// Doppel-Enter oder Doppeltipp auf denselben Text: der läuft schon, ein zweiter Versuch
 		// träfe nur die Dublettensperre und zeigte einen Fehler für einen erfolgreichen Artikel.
 		if (addingRef.current && submittedName === inFlightTextRef.current) return;
+		// Auch die wartende Eingabe merken: ein weiteres Enter auf denselben Text würde sonst
+		// nach dem Warten ein zweites Mal gesendet und träfe die Dublettensperre.
+		inFlightTextRef.current = submittedName;
 		while (addingRef.current && inFlightRef.current) await inFlightRef.current;
 		const { name, quantity } = parseShoppingInput(submittedName);
 		if (name.length === 0) return;

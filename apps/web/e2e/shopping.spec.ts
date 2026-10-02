@@ -149,9 +149,12 @@ test.describe('shopping retry', () => {
 		await input.press('Enter');
 		await input.fill('Brot');
 		await input.press('Enter');
+		// Auch das wartende „Brot“ wird nicht doppelt nachgereiht.
+		await input.press('Enter');
 		releaseFirst();
 		await expect.poll(() => posted).toEqual(['Milch', 'Brot']);
 		await expect(input).toHaveValue('');
+		expect(posted).toEqual(['Milch', 'Brot']);
 	});
 
 	test('uses a fresh idempotency key after an offline-queued shopping create', async ({ page }) => {

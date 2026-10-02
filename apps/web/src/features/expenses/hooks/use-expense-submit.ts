@@ -300,8 +300,8 @@ export function useExpenseSubmit(
 				finishSubmitting();
 				return;
 			}
-			// Nur die Versionsprüfung beim Bearbeiten ist ein Bearbeitungskonflikt; andere
-			// 409 (z. B. Fixkosten schon übernommen) haben eigene Texte.
+			// Only the version check on edit is an edit conflict; other 409s
+			// (e.g. recurring expense already taken over) have their own texts.
 			const isConflict = res.status === 409 && res.error === 'expense_changed';
 			const msg = isConflict
 				? 'Diese Ausgabe wurde inzwischen geändert. Lade die Liste neu und entscheide dann, welche Version stimmt.'

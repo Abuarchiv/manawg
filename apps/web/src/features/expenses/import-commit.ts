@@ -129,9 +129,9 @@ function prepareRow(input: CommitInput, parsed: ParsedExpense): PreparedRow {
 	const paidByMemberId = input.mapping[parsed.paidByName];
 	if (!paidByMemberId) return { ok: false, reason: 'payer_unmapped' };
 
-	// Zwei Namen der Datei können demselben Mitglied zugeordnet sein (z. B. „Tom“ und
-	// „Thomas“). Pro Mitglied darf es nur einen Anteil geben (wie bei manuellen Ausgaben),
-	// sonst lässt sich die Ausgabe später nicht mehr bearbeiten: Beträge werden summiert.
+	// Two names in the file can be mapped to the same member (e.g. "Tom" and "Thomas").
+	// A member may have only one share (as with manual expenses), otherwise the expense can
+	// no longer be edited later: amounts are summed.
 	const amountByDebtor = new Map<string, number>();
 	for (const s of parsed.splits) {
 		const debtorMemberId = input.mapping[s.memberName];

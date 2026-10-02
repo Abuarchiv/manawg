@@ -1,6 +1,7 @@
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { notifyChatReadConfirmed } from '@/components/wg/useWgCounts';
+import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import {
 	type NotificationWarning,
@@ -60,10 +61,9 @@ function explainChatError(action: ChatAction, error: string): string {
 	if (error === 'image_removed') {
 		return 'Dieses Bild wurde entfernt. Lade es erneut hoch, bevor du die Nachricht sendest.';
 	}
-	if (error === 'too_many_requests') {
-		return 'Zu viele Anfragen. Warte kurz und versuche es dann erneut.';
-	}
-	// Ohne diese Texte bliebe die Antwort-Vorschau stehen und jedes Senden scheiterte stumm gleich.
+	// The middleware answers 429 with `rate_limited`, the routes with `too_many_requests`.
+	if (isRateLimited(error)) return RATE_LIMITED_MESSAGE;
+	// Without these texts the reply preview would stay and every send would fail the same way, silently.
 	if (error === 'reply_to_not_found' || error === 'reply_to_invalid') {
 		return 'Die Nachricht, auf die du antwortest, gibt es nicht mehr. Entferne die Antwort und sende erneut.';
 	}

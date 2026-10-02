@@ -127,8 +127,8 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 
 			if (settled) {
 				// ponytail: scan all WG splits under the lock; add indexed stored balances if this becomes slow.
-				// Nacheinander statt Promise.all: eine Transaktion hat nur eine Verbindung, und pg
-				// meldet parallele Abfragen darauf als veraltet (in pg 9 entfernt).
+				// Sequential instead of Promise.all: a transaction has a single connection, and pg
+				// deprecates parallel queries on it (removed in pg 9).
 				const members = await tx
 					.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
 					.from(wgMembers)
