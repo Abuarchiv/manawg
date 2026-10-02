@@ -165,6 +165,7 @@ function harness(returning = async () => [{ id: itemId }]) {
 			postSystemNotice: async () => {
 				state.notices += 1;
 			},
+			resolveShoppingRequest: async () => {},
 		},
 		'@/core/audit': {
 			recordAuditEvent: async () => {

@@ -1,4 +1,4 @@
-import { postSystemNotice } from '@/core/activity-feed';
+import { postSystemNotice, resolveShoppingRequest } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, shoppingItems } from '@/core/db';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
@@ -132,6 +132,7 @@ export const PATCH = withWgRoute<{ id: string }>('shopping PATCH', async (req, {
 			metadata: { name: item.name },
 		});
 		if (isBought) {
+			await resolveShoppingRequest(wgId, item.id, auth.member.memberId);
 			await postSystemNotice({
 				wgId,
 				authorMemberId: auth.member.memberId,
@@ -175,6 +176,7 @@ export const DELETE = withWgRoute<{ id: string }>('shopping DELETE', async (req,
 		.where(and(eq(shoppingItems.id, id), eq(shoppingItems.wgId, wgId)))
 		.returning({ id: shoppingItems.id });
 	if (deleted.length === 0) return notFound('item_not_found');
+	await resolveShoppingRequest(wgId, id, auth.member.memberId);
 	await recordAuditEvent({
 		wgId,
 		memberId: auth.member.memberId,

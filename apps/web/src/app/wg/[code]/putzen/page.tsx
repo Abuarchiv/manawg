@@ -26,6 +26,7 @@ import { QUICK_CHORE_TEMPLATES } from '@/features/chores/components/constants';
 import { usePutzenPage } from '@/features/chores/hooks/use-putzen-page';
 import { Plus, Sparkles } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { useEffect } from 'react';
 
 const ConfirmDialog = dynamic(() =>
 	import('@/components/ui/ConfirmDialog').then((module) => module.ConfirmDialog),
@@ -96,6 +97,13 @@ export default function PutzenPage() {
 		visibleAbsences,
 	} = usePutzenPage();
 	const wgBaseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
+	const actionErrorVisible = Boolean(actionError) && !showForm && !completeConfirmId;
+	// Der Fehler steht oben; wer am Abwesenheitsformular unten ist, sähe ihn sonst nicht.
+	useEffect(() => {
+		if (actionErrorVisible) {
+			document.getElementById('chore-action-error')?.scrollIntoView({ block: 'nearest' });
+		}
+	}, [actionErrorVisible]);
 
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
@@ -152,8 +160,8 @@ export default function PutzenPage() {
 					/>
 				)}
 			</ChoreForm>
-			{actionError && !showForm && !completeConfirmId && (
-				<Alert variant="destructive">
+			{actionErrorVisible && (
+				<Alert variant="destructive" id="chore-action-error">
 					<AlertDescription>{actionError}</AlertDescription>
 				</Alert>
 			)}

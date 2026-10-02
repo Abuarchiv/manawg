@@ -371,6 +371,11 @@ export function ImportWizard() {
 			showImportError('preview', res.error, 'Vorschau fehlgeschlagen');
 			return;
 		}
+		// Ohne erkannte Ausgabe wäre der Zuordnungsschritt leer („Alle Namen erkannt“ und „Keine Namen erkannt“ zugleich).
+		if (res.data.parsed.length === 0) {
+			showImportError('preview', 'empty_payload', 'Vorschau fehlgeschlagen');
+			return;
+		}
 		setPreview(res.data);
 		// Nach „Zurück“ bleiben eigene Zuordnungen für weiterhin vorhandene Namen erhalten.
 		setMapping((previous) =>

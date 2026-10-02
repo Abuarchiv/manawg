@@ -7,6 +7,7 @@ import {
 	parseTimestamp,
 } from '@/core/utils/time';
 import { getChoreStatus } from '@/features/chores/chore-status';
+import { KIND_LABELS } from '@/features/pinnwand/components/constants';
 
 const STALE_SHOPPING_DAYS = 3;
 const STALE_ANNOUNCEMENT_DAYS = 2;
@@ -211,9 +212,12 @@ function auditDetail(metadataJson?: string | null): string | undefined {
 		if (typeof metadata.contentPreview === 'string' && metadata.contentPreview.length > 0) {
 			parts.push(`„${metadata.contentPreview}“`);
 		}
-		if (typeof metadata.kind === 'string' && metadata.kind.length > 0) {
-			parts.push(`Typ: ${metadata.kind}`);
-		}
+		// Nur bekannte Pinnwand-Arten: Chat-Audits tragen kind 'text'/'image', das ist kein Nutzer-Text.
+		const kindLabel =
+			typeof metadata.kind === 'string'
+				? (KIND_LABELS as Record<string, string | undefined>)[metadata.kind]
+				: undefined;
+		if (kindLabel) parts.push(`Typ: ${kindLabel}`);
 		if (metadata.hasImage === true) {
 			parts.push('mit Bild');
 		}
@@ -630,7 +634,8 @@ export function buildActivityInbox(input: ActivityInboxInput): ActivityInboxItem
 		.map((item) => ({
 			id: `activity:${item.kind}:${item.id}`,
 			priority: 'normal' as const,
-			title: item.text,
+			// Protokoll-Texte beginnen mit „hat“/„ist“ und brauchen die Person davor (wie im ActivityFeed).
+			title: item.text.replace(/^hat\b/, 'Du hast').replace(/^ist\b/, 'Du bist'),
 			detail: inboxActivityDetail(item.kind),
 			href: item.href ?? '',
 			kind: item.kind,
