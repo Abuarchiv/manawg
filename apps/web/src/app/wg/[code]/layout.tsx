@@ -45,8 +45,8 @@ export async function generateMetadata({
 }
 
 /**
- * Session und Mitgliedschaft einmal pro Request: generateMetadata und das Layout
- * brauchen beides, und getUser() ist ein Netzwerkaufruf an Supabase Auth.
+ * Session and membership once per request: generateMetadata and the layout both
+ * need them, and getUser() is a network call to Supabase Auth.
  */
 const getWgViewer = cache(async (code: string) => {
 	const user = await getAuthenticatedUserFromCookies();

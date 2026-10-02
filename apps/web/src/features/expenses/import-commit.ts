@@ -129,9 +129,9 @@ function prepareRow(input: CommitInput, parsed: ParsedExpense): PreparedRow {
 	const paidByMemberId = input.mapping[parsed.paidByName];
 	if (!paidByMemberId) return { ok: false, reason: 'payer_unmapped' };
 
-	// Zwei Namen der Datei können demselben Mitglied zugeordnet sein (z. B. „Tom“ und
-	// „Thomas“). Pro Mitglied darf es nur einen Anteil geben (wie bei manuellen Ausgaben),
-	// sonst lässt sich die Ausgabe später nicht mehr bearbeiten: Beträge werden summiert.
+	// Two names in the file can be mapped to the same member (e.g. "Tom" and "Thomas").
+	// A member may have only one share (as with manual expenses), otherwise the expense can
+	// no longer be edited later: amounts are summed.
 	const amountByDebtor = new Map<string, number>();
 	for (const s of parsed.splits) {
 		const debtorMemberId = input.mapping[s.memberName];
@@ -353,6 +353,12 @@ async function writeImport(
 	};
 }
 
+const IMPORT_SOURCE_LABELS: Partial<Record<ImportSource, string>> = {
+	splitwise_csv: 'Splitwise',
+	splid_csv: 'Splid',
+	ocr_screenshot: 'Screenshot',
+};
+
 export async function commitImport(input: CommitInput): Promise<CommitResult> {
 	await assertMembersInWg(input);
 
@@ -372,12 +378,14 @@ export async function commitImport(input: CommitInput): Promise<CommitResult> {
 	// WG about an import that already happened, so a failure here must not undo
 	// the import itself.
 	const importedLabel = `${inserted} ${inserted === 1 ? 'Ausgabe' : 'Ausgaben'}`;
+	const sourceLabel = IMPORT_SOURCE_LABELS[input.source];
 	await postSystemNotice({
 		wgId: input.wg.id,
 		authorMemberId: input.importedByMemberId,
 		kind: 'info',
 		source: 'expense',
-		content: `${input.importedByName} hat ${importedLabel} importiert (${input.source}).`,
+		// Der interne Schlüssel (z. B. „splitwise_csv“) gehört nicht in den Pinnwand-Text.
+		content: `${input.importedByName} hat ${importedLabel} importiert${sourceLabel ? ` (${sourceLabel})` : ''}.`,
 	});
 
 	await recordAuditEvent({

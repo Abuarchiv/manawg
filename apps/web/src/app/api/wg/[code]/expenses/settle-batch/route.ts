@@ -62,8 +62,8 @@ async function loadSettlementSnapshot(
 	client: SettlementQueryClient,
 	wgId: string,
 ): Promise<SettlementSnapshot> {
-	// Nacheinander statt Promise.all: in der Transaktion gibt es nur eine Verbindung, und pg
-	// meldet parallele Abfragen darauf als veraltet (in pg 9 entfernt).
+	// Sequential instead of Promise.all: a transaction has a single connection, and pg
+	// deprecates parallel queries on it (removed in pg 9).
 	const members = await client
 		.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
 		.from(wgMembers)

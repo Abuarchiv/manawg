@@ -11,7 +11,7 @@ const NOT_TEMPLATE_OWNER =
 const SAVE_SUBJECT = 'Ausgabe konnte nicht gespeichert werden';
 const SAVE_ERRORS: Record<string, string> = {
 	amount_invalid: `${SAVE_SUBJECT}: Der Betrag ist ungültig.`,
-	// 200 = DESCRIPTION_MAX im Ausgaben-Schema; bewusst kein Import, damit der Unit-Test-Loader diese Datei allein lädt.
+	// 200 = DESCRIPTION_MAX in the expense schema; deliberately not imported so the unit-test loader can load this file alone.
 	description_invalid: `${SAVE_SUBJECT}: Die Beschreibung muss 1 bis 200 Zeichen haben.`,
 	currency_invalid: `${SAVE_SUBJECT}: Die Währung ist ungültig.`,
 	image_invalid: `${SAVE_SUBJECT}: Der Anhang ist ungültig.`,

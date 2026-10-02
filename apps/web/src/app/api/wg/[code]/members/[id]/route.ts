@@ -197,8 +197,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 			// endpoint has to be free for the next WG on the same device.
 			if (active === false) {
 				await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.memberId, id));
-				// Offene Putzaufgaben werden frei: sonst bliebe die Aufgabe bei jemandem stehen, der nicht
-				// mehr da ist, und käme erst nach zwei Tagen Verzug als „Niemand zuständig“-Fall hoch.
+				// Free their chores: otherwise a chore stays with someone who left, no reminder reaches
+				// anyone, and the plan only flags it after two days overdue, not as "Niemand zuständig".
 				await tx
 					.update(chores)
 					.set({ assignedMemberId: null, lastReminderAt: null, updatedAt: new Date() })

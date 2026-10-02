@@ -14,6 +14,7 @@ function isStaleMembershipError(error: string): boolean {
 function isRetryableServerError(status: number, error: string): boolean {
 	return (
 		status >= 500 ||
+		status === 429 ||
 		error === 'server_error' ||
 		error === 'unexpected_error' ||
 		error === 'db_error'

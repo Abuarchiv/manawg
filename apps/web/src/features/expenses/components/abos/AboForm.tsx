@@ -27,6 +27,7 @@ import { inputDateToIso } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import type { AboSplit, MemberOption } from '@/features/expenses/components/abos/abos-types';
 import { SplitReview } from '@/features/expenses/components/ausgaben/SplitReview';
+import { amountErrorMessage } from '@/features/expenses/components/ausgaben/constants';
 import { splitInputErrorMessage } from '@/features/expenses/expense-errors';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -186,7 +187,7 @@ export function AboForm({
 			? 'Gib eine kurze Beschreibung ein.'
 			: null;
 	const amountError =
-		error && parsedAmountCents === null ? 'Gib einen Betrag über 0 € ein, z. B. 12,50.' : null;
+		error && parsedAmountCents === null ? amountErrorMessage(parseEuroAmount(amountStr)) : null;
 	const nextDueError = error && nextDueAt.trim().length === 0 ? 'Fälligkeit fehlt.' : null;
 	const formError = error && !descriptionError && !amountError && !nextDueError ? error : null;
 
@@ -241,7 +242,7 @@ export function AboForm({
 			return;
 		}
 		if (parsedAmountCents === null) {
-			setError('Gib einen Betrag über 0 € ein, z. B. 12,50.');
+			setError(amountErrorMessage(parseEuroAmount(amountStr)));
 			return;
 		}
 		if (nextDueAt.trim().length === 0) {

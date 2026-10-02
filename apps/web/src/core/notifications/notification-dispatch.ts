@@ -20,7 +20,7 @@ export interface DispatchInput {
 	payload: Record<string, unknown>;
 	targetMemberIds?: string[];
 	excludeMemberId?: string;
-	/** Weitere Mitglieder ohne Push, z. B. wer für dasselbe Ereignis schon gezielt benachrichtigt wird. */
+	/** More members to skip, e.g. those already notified directly about the same event. */
 	excludeMemberIds?: readonly string[];
 	bypassPreferences?: boolean;
 }

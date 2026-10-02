@@ -4,6 +4,7 @@ import { announcements, db, wgChatMessages } from '@/core/db';
 import { logApiError } from '@/core/infra/observability';
 import { SYSTEM_MESSAGE_KIND } from '@/features/chat/chat-pure';
 import type { ChatSystemKind } from '@/features/chat/chat-pure';
+import { and, eq } from 'drizzle-orm';
 
 export interface SystemNoticeInput {
 	wgId: string;
@@ -35,6 +36,41 @@ export async function postSystemNotice(input: SystemNoticeInput): Promise<void> 
 		});
 	} catch (err) {
 		logApiError('[activity-feed] system notice failed', err);
+	}
+}
+
+/**
+ * Schließt die offene „auf die Einkaufsliste gesetzt“-Bitte, sobald der Artikel gekauft oder
+ * entfernt wurde. Sonst bleibt sie als „Übernehme ich“-Karte stehen und die Aktivität mahnt
+ * zusätzlich „liegt seit N Tagen offen“ für einen Artikel, den es nicht mehr gibt (Gegenstück zu
+ * chore_swap, das beim Erledigen schließt). Best-effort wie postSystemNotice.
+ */
+export async function resolveShoppingRequest(
+	wgId: string,
+	itemId: string,
+	resolvedByMemberId: string,
+): Promise<void> {
+	try {
+		const now = new Date();
+		await db
+			.update(announcements)
+			.set({
+				status: 'resolved',
+				resolvedAt: now,
+				resolvedByMemberId,
+				updatedAt: now,
+			})
+			.where(
+				and(
+					eq(announcements.wgId, wgId),
+					eq(announcements.status, 'open'),
+					eq(announcements.source, 'shopping'),
+					eq(announcements.kind, 'request'),
+					eq(announcements.sourcePath, `/einkauf?highlight=${encodeURIComponent(itemId)}`),
+				),
+			);
+	} catch (err) {
+		logApiError('[activity-feed] shopping request resolve failed', err);
 	}
 }
 

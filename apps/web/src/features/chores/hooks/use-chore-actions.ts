@@ -255,7 +255,8 @@ export function useChoreActions(ctx: ChorePageContext) {
 					kind: 'request',
 					source: 'chore_swap',
 					choreId: chore.id,
-					content: `${identity.name} bittet um Tausch: "${chore.title}" ist ${status.label}. Nachholen, übernehmen oder kurz absprechen.`,
+					// Klammer statt „ist …“: Labels wie „in 7 T.“ oder „Datum prüfen“ ergeben im Satz „T..“ bzw. Unsinn.
+					content: `${identity.name} bittet um Tausch: „${chore.title}“ (${status.label}). Übernehmen oder kurz absprechen?`,
 				}),
 			},
 		);

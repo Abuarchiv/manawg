@@ -1,5 +1,6 @@
 'use client';
 
+import { useToast } from '@/components/ui/Toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -35,6 +36,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { initials, memberTint } from '@/components/wg/MemberAvatar';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
+import { copyText } from '@/core/utils/clipboard';
 import { formatTimeFull } from '@/core/utils/time';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
@@ -99,6 +101,7 @@ export const MessageBubble = memo(function MessageBubble({
 	onDelete,
 	onReply,
 }: MessageBubbleProps) {
+	const toast = useToast();
 	const [editing, setEditing] = useState(false);
 	const [draft, setDraft] = useState(message.body ?? '');
 	const [hasDraft, setHasDraft] = useState(false);
@@ -328,7 +331,14 @@ export const MessageBubble = memo(function MessageBubble({
 											{message.body && (
 												<DropdownMenuItem
 													className="min-h-11"
-													onClick={() => void navigator.clipboard?.writeText(message.body ?? '')}
+													// copyText fängt die Ablehnung der Async-Clipboard-API ab (sonst pageerror ohne Rückmeldung).
+													onClick={() =>
+														void copyText(message.body ?? '').then((copied) =>
+															copied
+																? toast.success('Nachricht kopiert.')
+																: toast.error('Kopieren hat nicht geklappt.'),
+														)
+													}
 												>
 													<Copy aria-hidden /> Kopieren
 												</DropdownMenuItem>
