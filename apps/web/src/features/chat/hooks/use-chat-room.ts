@@ -1,7 +1,15 @@
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { notifyChatReadConfirmed } from '@/components/wg/useWgCounts';
-import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/http/error-codes';
+import {
+	RATE_LIMITED_MESSAGE,
+	READ_ONLY_MESSAGE,
+	SESSION_EXPIRED_MESSAGE,
+	isRateLimited,
+	isReadOnlyMode,
+	isRetryableServerError,
+	isSessionExpired,
+} from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import {
 	type NotificationWarning,
@@ -72,6 +80,9 @@ function explainChatError(action: ChatAction, error: string): string {
 		return 'Nachrichten lassen sich nur 15 Minuten nach dem Senden bearbeiten.';
 	}
 	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') return OFFLINE_ERRORS[action];
+	if (isReadOnlyMode(error)) return READ_ONLY_MESSAGE;
+	if (isSessionExpired(error)) return SESSION_EXPIRED_MESSAGE;
+	if (isRetryableServerError(error)) return `${GENERIC_ERRORS[action]} Versuche es gleich erneut.`;
 	return GENERIC_ERRORS[action];
 }
 
