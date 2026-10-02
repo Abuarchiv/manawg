@@ -22,6 +22,7 @@ import {
 	AMOUNT_MAX_EUROS,
 	AMOUNT_MIN_EUROS,
 	DESCRIPTION_MAX,
+	amountErrorMessage,
 } from '@/features/expenses/components/ausgaben/constants';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import {
@@ -102,7 +103,7 @@ export function useExpenseSubmit(
 			validationErrors.description = 'Gib eine kurze Beschreibung ein.';
 		}
 		if (amountEuros === null || amountEuros < AMOUNT_MIN_EUROS || amountEuros > AMOUNT_MAX_EUROS) {
-			validationErrors.amount = 'Gib einen Betrag über 0 € ein, z. B. 12,50.';
+			validationErrors.amount = amountErrorMessage(amountEuros);
 		}
 		if (Object.keys(validationErrors).length > 0) {
 			support.setValidationErrors(validationErrors);

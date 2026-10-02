@@ -353,6 +353,12 @@ async function writeImport(
 	};
 }
 
+const IMPORT_SOURCE_LABELS: Partial<Record<ImportSource, string>> = {
+	splitwise_csv: 'Splitwise',
+	splid_csv: 'Splid',
+	ocr_screenshot: 'Screenshot',
+};
+
 export async function commitImport(input: CommitInput): Promise<CommitResult> {
 	await assertMembersInWg(input);
 
@@ -372,12 +378,14 @@ export async function commitImport(input: CommitInput): Promise<CommitResult> {
 	// WG about an import that already happened, so a failure here must not undo
 	// the import itself.
 	const importedLabel = `${inserted} ${inserted === 1 ? 'Ausgabe' : 'Ausgaben'}`;
+	const sourceLabel = IMPORT_SOURCE_LABELS[input.source];
 	await postSystemNotice({
 		wgId: input.wg.id,
 		authorMemberId: input.importedByMemberId,
 		kind: 'info',
 		source: 'expense',
-		content: `${input.importedByName} hat ${importedLabel} importiert (${input.source}).`,
+		// Der interne Schlüssel (z. B. „splitwise_csv“) gehört nicht in den Pinnwand-Text.
+		content: `${input.importedByName} hat ${importedLabel} importiert${sourceLabel ? ` (${sourceLabel})` : ''}.`,
 	});
 
 	await recordAuditEvent({

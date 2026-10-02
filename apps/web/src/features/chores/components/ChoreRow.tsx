@@ -276,7 +276,8 @@ export const ChoreRow = memo(function ChoreRow({
 						<AlertDialogTitle>„{chore.title}“ erledigt?</AlertDialogTitle>
 						<AlertDialogDescription>
 							{nextAssigneeName
-								? `Danach ist ${nextAssigneeName} dran.`
+								? // Der Hook liefert „du“ für das eigene Mitglied, das braucht „bist“.
+									`Danach ${nextAssigneeName === 'du' ? 'bist' : 'ist'} ${nextAssigneeName} dran.`
 								: 'Für die nächste Runde ist gerade niemand verfügbar.'}{' '}
 							Lässt sich nicht rückgängig machen.
 						</AlertDialogDescription>

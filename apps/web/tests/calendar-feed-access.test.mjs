@@ -251,9 +251,12 @@ async function withFrozenTime(value, operation) {
 
 test('active Auth-linked calendar feed returns events after locking the WG', async () => {
 	const { state, get } = harness();
-	const response = await get();
-	assert.equal(response.status, 200);
-	assert.match(await response.text(), /Other member event/);
+	// Feste Uhrzeit: der Standard-Termin (2026-10-01) lag sonst ab dem Folgetag in der Vergangenheit.
+	await withFrozenTime('2026-09-25T12:00:00.000Z', async () => {
+		const response = await get();
+		assert.equal(response.status, 200);
+		assert.match(await response.text(), /Other member event/);
+	});
 	assert.deepEqual(state.steps, ['wg-lock', 'member-check', 'events']);
 });
 
