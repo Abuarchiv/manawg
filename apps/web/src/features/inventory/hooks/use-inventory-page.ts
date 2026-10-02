@@ -1,5 +1,5 @@
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { refreshCachedFetch, useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { useStableCallback } from '@/core/hooks/useStableCallback';
 import { isNetworkError } from '@/core/http/error-codes';
 import type { DashboardData } from '@/core/reads/dashboard-data';
@@ -49,12 +49,6 @@ export function useInventoryPage(shareCode: string, memberId: string, memberToke
 	} = useCachedFetch<InventoryResponse>(inventoryUrl, {
 		memberId: memberId,
 	});
-	// Zähler „Einkäufe“ in der Unternavigation: Der Server legt unter dem Schwellwert automatisch einen
-	// Einkaufsartikel an, den der Dashboard-Cache sonst erst beim nächsten Fokus/Reload kennt.
-	const { refresh: refreshDashboard } = useCachedFetch<DashboardData>(
-		`/api/wg/${encodedShareCode}/dashboard`,
-		{ memberId, memberToken },
-	);
 	const [items, setItems] = useState<InventoryItemDto[]>(() => inventoryData?.items ?? []);
 	const [initialLoading, setInitialLoading] = useState(inventoryLoading);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -115,7 +109,14 @@ export function useInventoryPage(shareCode: string, memberId: string, memberToke
 					};
 				});
 			}
-			if (updated && isBelowThreshold(updated)) void refreshDashboard({ afterMutation: true });
+			// Zähler „Einkäufe“ in der Unternavigation: Unter dem Schwellwert legt der Server automatisch
+			// einen Einkaufsartikel an, den der Dashboard-Cache sonst erst beim nächsten Fokus kennt.
+			if (updated && isBelowThreshold(updated)) {
+				void refreshCachedFetch<DashboardData>(`/api/wg/${encodedShareCode}/dashboard`, {
+					memberId,
+					memberToken,
+				});
+			}
 			void load(true);
 		},
 	);
