@@ -569,7 +569,9 @@ export function NeuClient() {
 							? 'Gib eurer WG einen Namen. Danach erhältst du euren WG-Code.'
 							: step === 'join'
 								? 'Gib den WG-Code deiner Mitbewohner ein.'
-								: 'Öffne eine bestehende WG oder starte gemeinsam neu.'
+								: accountWgs.length > 0
+									? 'Öffne eine deiner WGs oder starte gemeinsam neu.'
+									: 'Du hast noch keine WG. Erstelle eure oder tritt mit einem Code bei.'
 			}
 			backHref={explorationHref()}
 			actions={
