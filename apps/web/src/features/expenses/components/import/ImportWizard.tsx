@@ -27,7 +27,7 @@ import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import type { ParsedExpense } from '@/features/expenses/import-parsers';
 import { OcrInitializationError, runOcrOnImage } from '@/features/expenses/ocr';
 import type { MemberRef } from '@/shared/lib/member-types';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -585,7 +585,8 @@ export function ImportWizard() {
 									</Alert>
 								)}
 								<details>
-									<summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">
+									<summary className="flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-medium [&::-webkit-details-marker]:hidden">
+										<ChevronDown className="size-4" aria-hidden />
 										Ergebnis prüfen oder korrigieren
 									</summary>
 									<div className="pt-2">
@@ -612,14 +613,13 @@ export function ImportWizard() {
 						) : (
 							<>
 								<Field data-disabled={busy || inputStatus === 'reading'}>
-									<FieldLabel htmlFor="import-csv-file">Datei auswählen</FieldLabel>
 									<Input
 										id="import-csv-file"
 										type="file"
 										accept=".csv,text/csv"
 										aria-label="CSV-Datei auswählen"
 										disabled={busy || inputStatus === 'reading'}
-										className="text-base"
+										className="text-sm file:text-sm"
 										onChange={(event) => {
 											const file = event.target.files?.[0];
 											if (!file) return;
@@ -629,7 +629,8 @@ export function ImportWizard() {
 									<FieldDescription>Export-Datei bis 5 MB.</FieldDescription>
 								</Field>
 								<details>
-									<summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">
+									<summary className="flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-medium [&::-webkit-details-marker]:hidden">
+										<ChevronDown className="size-4" aria-hidden />
 										Oder Inhalt einfügen
 									</summary>
 									<div className="pt-2">
@@ -728,8 +729,7 @@ export function ImportWizard() {
 						<Badge variant="secondary">{selectedCount} ausgewählt</Badge>
 					</div>
 					<p className="text-sm text-muted-foreground">
-						Prüfe Betrag, zahlende Person und alle Anteile. Wähle Einträge ab, die du nicht
-						übernehmen möchtest.
+						Prüfe Beträge und Anteile. Nicht gewünschte Einträge abwählen.
 					</p>
 					<ImportPreviewTable
 						expenses={preview.parsed}
@@ -740,8 +740,9 @@ export function ImportWizard() {
 						disabled={busy}
 					/>
 					<FieldGroup>
-						<Field orientation="horizontal" className="min-h-11" data-disabled={busy}>
+						<Field orientation="horizontal" className="min-h-11 items-start" data-disabled={busy}>
 							<Checkbox
+								className="mt-0.5"
 								id="import-duplicates"
 								checked={skipDuplicates}
 								onCheckedChange={(checked) => setSkipDuplicates(checked === true)}
