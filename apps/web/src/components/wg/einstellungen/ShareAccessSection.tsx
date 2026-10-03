@@ -125,7 +125,7 @@ export function ShareAccessSection({
 				title="WG teilen"
 				hint={
 					joiningEnabled
-						? 'Code oder QR führen neue Mitbewohner zum Beitrittsflow.'
+						? 'Code oder QR-Code laden neue Mitglieder in die WG ein.'
 						: 'Beitritte sind gesperrt. Teilen wird blockiert, bis du den Zugang öffnest.'
 				}
 			>

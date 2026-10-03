@@ -2,7 +2,6 @@
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Field, FieldLabel } from '@/components/ui/field';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
 import type { WgSummary } from '@/components/wg/WgContextProvider';
@@ -121,14 +120,14 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 						{exportPending === 'json' ? <Spinner aria-hidden /> : <Download aria-hidden />}
 						JSON exportieren
 					</Button>
-					<Field>
-						<FieldLabel htmlFor="csv-export-section">CSV-Bereich</FieldLabel>
+					<div className="flex flex-wrap gap-2">
 						<NativeSelect
 							id="csv-export-section"
+							aria-label="CSV-Bereich"
 							value={csvExportSection}
 							disabled={exportPending !== null}
 							onChange={(event) => setCsvExportSection(event.target.value as ExportSectionKey)}
-							className="w-full text-base"
+							className="min-w-0 flex-1 text-base"
 						>
 							{exportSummary.map((section) => (
 								<NativeSelectOption key={section.key} value={section.key}>
@@ -136,22 +135,22 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 								</NativeSelectOption>
 							))}
 						</NativeSelect>
-					</Field>
-					<Button
-						type="button"
-						variant="outline"
-						onClick={() => void downloadExport('csv')}
-						disabled={exportPending !== null}
-						aria-label={
-							exportPending === 'csv'
-								? `${csvExportLabel} wird als CSV exportiert`
-								: `${csvExportLabel} als CSV exportieren`
-						}
-						className="w-full"
-					>
-						{exportPending === 'csv' ? <Spinner aria-hidden /> : <Download aria-hidden />}
-						CSV exportieren
-					</Button>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => void downloadExport('csv')}
+							disabled={exportPending !== null}
+							aria-label={
+								exportPending === 'csv'
+									? `${csvExportLabel} wird als CSV exportiert`
+									: `${csvExportLabel} als CSV exportieren`
+							}
+							className="shrink-0"
+						>
+							{exportPending === 'csv' ? <Spinner aria-hidden /> : <Download aria-hidden />}
+							CSV exportieren
+						</Button>
+					</div>
 				</div>
 				{exportMessage && (
 					<div className="px-4 pb-4">

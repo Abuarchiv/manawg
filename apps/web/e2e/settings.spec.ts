@@ -884,8 +884,7 @@ test.describe('share card', () => {
 		);
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
-		// Ausgezogene zählen in der Sicherheitsübersicht nicht als Mitglieder.
-		await expect(page.getByText('1 Person in der WG')).toBeVisible();
+		await expect(page.getByText('Ausgezogen, Verlauf bleibt erhalten')).toBeVisible();
 		// WCAG 2.5.3 — the visible "Aktivieren" label must stay at the start of the
 		// accessible name, disambiguated by the affected member's name.
 		await page
