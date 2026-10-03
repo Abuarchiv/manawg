@@ -1,7 +1,7 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { Item, ItemContent, ItemDescription, ItemFooter, ItemTitle } from '@/components/ui/item';
+import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { formatEuroCents } from '@/core/utils/money';
 import { cn } from '@/shared/lib/cn';
 import type { ReactNode } from 'react';
@@ -57,7 +57,7 @@ export function DebtRow({
 				>
 					{formatEuroCents(amountCents, currency)}
 				</Badge>
-				{action && <ItemFooter className="justify-end">{action}</ItemFooter>}
+				{action && <div className="ml-auto min-w-0 max-w-full">{action}</div>}
 			</Item>
 		</li>
 	);

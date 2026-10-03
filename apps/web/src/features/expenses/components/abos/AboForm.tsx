@@ -19,7 +19,6 @@ import {
 	InputGroupText,
 } from '@/components/ui/input-group';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
-import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
@@ -377,7 +376,7 @@ export function AboForm({
 					<FieldError id="abo-next-due-error">{nextDueError}</FieldError>
 				</Field>
 				<FieldSet disabled={submitting} data-invalid={Boolean(splitError)}>
-					<FieldLegend>Beteiligte & Aufteilung</FieldLegend>
+					<FieldLegend variant="label">Beteiligte & Aufteilung</FieldLegend>
 					<ToggleGroup
 						variant="segmented"
 						value={[splitMode]}
@@ -441,10 +440,10 @@ export function AboForm({
 						</FieldGroup>
 					)}
 					{splitError && <FieldError id="abo-splits-error">{splitError}</FieldError>}
-					{splitMode !== 'manual' && (
+					{splitMode !== 'manual' && typeof splitPreview !== 'string' && (
 						<SplitReview
 							members={splitCandidates}
-							splits={typeof splitPreview === 'string' ? null : splitPreview}
+							splits={splitPreview}
 							paidByMemberId={paidByMemberId}
 						/>
 					)}
@@ -455,27 +454,20 @@ export function AboForm({
 					</Alert>
 				)}
 			</FieldGroup>
-			<div className="sticky bottom-0 flex flex-col gap-3 bg-popover pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
-				<Separator />
-				<p className="text-xs text-muted-foreground">
-					{intervalMonths === 1 ? 'Monatlich' : `Alle ${intervalMonths} Monate`} · keine
-					automatische Überweisung.
-				</p>
-				<div className="flex flex-col gap-2">
-					<Button type="submit" className="w-full" disabled={submitting}>
-						{submitting && <Spinner data-icon="inline-start" />}
-						{mode === 'create' ? 'Fixkosten anlegen' : 'Speichern'}
-					</Button>
-					<Button
-						type="button"
-						variant="ghost"
-						className="w-full"
-						onClick={onCancel}
-						disabled={submitting}
-					>
-						Abbrechen
-					</Button>
-				</div>
+			<div className="sticky bottom-0 flex gap-2 bg-popover pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+				<Button
+					type="button"
+					variant="outline"
+					className="flex-none"
+					onClick={onCancel}
+					disabled={submitting}
+				>
+					Abbrechen
+				</Button>
+				<Button type="submit" className="min-w-0 flex-1 whitespace-normal" disabled={submitting}>
+					{submitting && <Spinner data-icon="inline-start" />}
+					{mode === 'create' ? 'Fixkosten anlegen' : 'Speichern'}
+				</Button>
 			</div>
 		</form>
 	);

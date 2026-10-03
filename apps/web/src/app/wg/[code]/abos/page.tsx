@@ -119,7 +119,9 @@ export default function AbosPage() {
 				setAbos(sortByNextDue(res.data.recurringExpenses));
 				setLoadError(null);
 			} else {
-				setLoadError(getWgLoadErrorMessage('Abos', res.status, res.error, { verb: 'konnten' }));
+				setLoadError(
+					getWgLoadErrorMessage('Fixkosten', res.status, res.error, { verb: 'konnten' }),
+				);
 			}
 			setLoading(false);
 			setRefreshing(false);
@@ -134,7 +136,7 @@ export default function AbosPage() {
 			setLoadError(null);
 		} else if (abosReadError) {
 			setLoadError(
-				getWgLoadErrorMessage('Abos', abosReadError.status, abosReadError.error, {
+				getWgLoadErrorMessage('Fixkosten', abosReadError.status, abosReadError.error, {
 					verb: 'konnten',
 				}),
 			);
@@ -314,7 +316,7 @@ export default function AbosPage() {
 			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
 			<header className="sr-only">
 				<div className="min-w-0 flex-1">
-					<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight break-words [overflow-wrap:anywhere]">
+					<h1 className="font-heading font-semibold tracking-tight break-words [overflow-wrap:anywhere]">
 						Fixkosten
 					</h1>
 					<p className="text-sm text-muted-foreground" aria-live="polite">

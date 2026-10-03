@@ -50,11 +50,13 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 					render={
 						<Button
 							variant="ghost"
-							className="group h-auto w-full justify-start gap-3 rounded-none px-3 py-2.5 text-left whitespace-normal"
+							className="group h-auto w-full items-start justify-start gap-3 rounded-none px-3 py-2.5 text-left whitespace-normal"
 						/>
 					}
 				>
-					<MemberAvatar name={payerName} size={28} />
+					<span className="mt-0.5 flex">
+						<MemberAvatar name={payerName} size={28} />
+					</span>
 					<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 						<span className="flex min-w-0 items-baseline gap-3">
 							<span className="sr-only">Details öffnen:</span>
@@ -84,7 +86,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 					</span>
 					<ChevronDown
 						aria-hidden
-						className="size-4 shrink-0 text-muted-foreground group-aria-expanded:rotate-180"
+						className="mt-0.5 size-4 shrink-0 text-muted-foreground group-aria-expanded:rotate-180"
 					/>
 				</CollapsibleTrigger>
 				<CollapsiblePanel>
@@ -124,7 +126,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 								{preview.map((date) => formatShortDate(date.toISOString())).join(', ')}
 							</p>
 						)}
-						<div className="flex flex-wrap items-center gap-2 border-t pt-3">
+						<div className="flex flex-wrap items-center gap-3 border-t pt-3">
 							{/* Pausieren liegt bewusst hier statt als Schalter in der Zeile: kein versehentliches Antippen. */}
 							<Button
 								variant="outline"
@@ -140,7 +142,6 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 							<Button
 								variant="outline"
 								size="icon"
-								className="size-10"
 								onClick={() => onEdit(abo)}
 								disabled={pending}
 								aria-label={`${abo.description} bearbeiten`}
@@ -151,7 +152,6 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 							<Button
 								variant="ghost"
 								size="icon"
-								className="size-10"
 								onClick={() => onDelete(abo)}
 								disabled={pending}
 								aria-label={`${abo.description} löschen`}

@@ -75,27 +75,29 @@ export function AbosList({
 				{filtered.length} Fixkosten sichtbar
 			</output>
 			{filtered.length === 0 ? (
-				<Empty>
-					<EmptyHeader>
-						<EmptyMedia variant="icon">
-							<RefreshCw />
-						</EmptyMedia>
-						<EmptyTitle>
-							{loadError && abos.length === 0
-								? 'Noch keine Fixkosten geladen'
-								: abos.length === 0
-									? 'Noch keine Fixkosten'
-									: `Keine ${filter === 'paused' ? 'pausierten' : 'aktiven'} Fixkosten`}
-						</EmptyTitle>
-						<EmptyDescription>
-							{loadError && abos.length === 0
-								? 'Versuche es erneut, sobald die Verbindung wieder da ist.'
-								: abos.length === 0
-									? 'Tippe unten rechts auf „+“ und trag z. B. Miete, Internet oder Streaming ein.'
-									: 'Wähle einen anderen Filter.'}
-						</EmptyDescription>
-					</EmptyHeader>
-				</Empty>
+				loadError && abos.length === 0 ? null : (
+					<Empty>
+						<EmptyHeader>
+							<EmptyMedia variant="icon">
+								<RefreshCw />
+							</EmptyMedia>
+							<EmptyTitle>
+								{loadError && abos.length === 0
+									? 'Noch keine Fixkosten geladen'
+									: abos.length === 0
+										? 'Noch keine Fixkosten'
+										: `Keine ${filter === 'paused' ? 'pausierten' : 'aktiven'} Fixkosten`}
+							</EmptyTitle>
+							<EmptyDescription>
+								{loadError && abos.length === 0
+									? 'Versuche es erneut, sobald die Verbindung wieder da ist.'
+									: abos.length === 0
+										? 'Tippe unten rechts auf „+“ und trag z. B. Miete, Internet oder Streaming ein.'
+										: 'Wähle einen anderen Filter.'}
+							</EmptyDescription>
+						</EmptyHeader>
+					</Empty>
+				)
 			) : (
 				<ul className="divide-y overflow-hidden rounded-xl border">
 					{filtered.map((abo) => (
