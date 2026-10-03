@@ -35,6 +35,7 @@ import {
 	groupActivityItemsByDay,
 } from '@/core/reads/activity';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { cn } from '@/shared/lib/cn';
 import { AlertTriangle, History, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -152,15 +153,12 @@ export default function AktivitaetPage() {
 
 	return (
 		<div className="mx-auto min-w-0 w-full max-w-3xl space-y-4 bg-background px-4 py-4 pb-[env(safe-area-inset-bottom)]">
-			<header className="flex items-start gap-2">
+			<header className="flex items-center gap-2">
 				<BackLink href={wgBaseHref} label="Start" />
 				<div className="min-w-0 flex-1">
 					<h1 className="font-heading text-lg font-semibold tracking-tight text-foreground">
 						Aktivität
 					</h1>
-					<p className="mt-0.5 text-[12px] text-muted-foreground">
-						Verlauf, Erinnerungen und offene Klärungen.
-					</p>
 				</div>
 			</header>
 
@@ -193,7 +191,7 @@ export default function AktivitaetPage() {
 									<Item
 										key={item.id}
 										size="sm"
-										className="rounded-none border-b border-border last:border-0"
+										className="rounded-none border-0 border-b border-border px-0 last:border-b-0"
 										render={<Link href={`${wgBaseHref}${item.href}`} />}
 									>
 										<ItemContent className="min-w-0">
@@ -221,8 +219,8 @@ export default function AktivitaetPage() {
 				</Card>
 			)}
 
-			{/* Erst mit den Daten zeigen: die Inbox-Karte rutscht sonst darüber ein und schiebt die Filter (CLS 0,2). */}
-			{(data || !loading) && (
+			{/* Erst mit Daten und nur bei nicht leerem Verlauf zeigen: die Inbox-Karte rutscht sonst darüber ein und schiebt die Filter (CLS 0,2). */}
+			{data && data.items.length > 0 && (
 				<Card className="overflow-visible border-0 bg-transparent py-0 shadow-none">
 					<CardContent className="space-y-3 p-0">
 						<InputGroup>
@@ -248,7 +246,7 @@ export default function AktivitaetPage() {
 									id="activity-scope"
 									value={scope}
 									onChange={(event) => setScope(event.target.value as ActivityScope)}
-									className="w-full [&_select]:min-h-10"
+									className="w-full"
 								>
 									<NativeSelectOption value="all">Alle</NativeSelectOption>
 									<NativeSelectOption value="system">System</NativeSelectOption>
@@ -263,7 +261,7 @@ export default function AktivitaetPage() {
 									id="activity-kind"
 									value={filter.kind}
 									onChange={(event) => setKind(event.target.value as ActivityKind | 'all')}
-									className="w-full [&_select]:min-h-10"
+									className="w-full"
 								>
 									<NativeSelectOption value="all">Alle</NativeSelectOption>
 									<NativeSelectOption value="expense">Ausgaben</NativeSelectOption>
@@ -284,23 +282,24 @@ export default function AktivitaetPage() {
 				<CardContent className="p-0">
 					{data ? (
 						chronicleGroups.length > 0 ? (
-							<div className="space-y-5">
-								<output aria-live="polite" className="block text-[12px] text-muted-foreground">
+							<div className="space-y-3">
+								<output
+									aria-live="polite"
+									className={cn(
+										'block text-[12px] text-muted-foreground',
+										!hasActiveFilter && 'sr-only',
+									)}
+								>
 									{formatVisibleActivityCount(filteredItems.length)}
 								</output>
 								{chronicleGroups.map((group) => (
 									<div key={group.date} className="space-y-2">
 										<Marker variant="separator">
 											<MarkerContent>
-												<span className="font-medium">
-													{group.label} · {group.items.length}
-												</span>
+												<span className="font-medium">{group.label}</span>
 											</MarkerContent>
 										</Marker>
-										{/* Eine umrandete Liste pro Tag statt einer Karte pro Eintrag. */}
-										<div className="rounded-xl border px-3">
-											<ActivityFeed items={group.items} />
-										</div>
+										<ActivityFeed items={group.items} />
 									</div>
 								))}
 							</div>
@@ -347,7 +346,7 @@ export default function AktivitaetPage() {
 								</div>
 							))}
 						</div>
-					) : (
+					) : error ? null : (
 						<p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[12px] text-muted-foreground">
 							Keine Aktivität geladen. Versuche es erneut.
 						</p>

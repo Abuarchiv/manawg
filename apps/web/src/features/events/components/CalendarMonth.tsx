@@ -4,17 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-	Item,
-	ItemActions,
-	ItemContent,
-	ItemDescription,
-	ItemGroup,
-	ItemTitle,
-} from '@/components/ui/item';
-import {
 	type EventOccurrence,
 	eventOverlapsCalendarDay,
-	formatEventTimeRange,
+	formatEventTimeOfDay,
 } from '@/features/events/events';
 import { cn } from '@/shared/lib/cn';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -221,7 +213,7 @@ export function CalendarMonth({
 					<Button
 						variant="ghost"
 						size="icon"
-						className="size-[44px] shrink-0 after:h-[44px] after:min-w-[44px]"
+						className="shrink-0"
 						onClick={onPrev}
 						aria-label="Vorheriger Monat"
 					>
@@ -231,7 +223,7 @@ export function CalendarMonth({
 					<Button
 						variant="ghost"
 						size="icon"
-						className="size-[44px] shrink-0 after:h-[44px] after:min-w-[44px]"
+						className="shrink-0"
 						onClick={onNext}
 						aria-label="Nächster Monat"
 					>
@@ -314,44 +306,42 @@ export function CalendarMonth({
 					</tbody>
 				</table>
 				{selectedDay && (
-					<section aria-label="Termine am ausgewählten Tag" className="flex flex-col gap-2 px-2">
+					<section aria-label="Termine am ausgewählten Tag" className="flex flex-col gap-2 px-4">
 						<div className="flex flex-wrap items-center gap-2">
 							<h3 className="text-sm font-medium">{FULL_DATE_FORMATTER.format(selectedDay)}</h3>
-							<Badge variant="secondary">
-								{selectedOccurrences.length === 1
-									? '1 Termin'
-									: `${selectedOccurrences.length} Termine`}
-							</Badge>
+							{selectedOccurrences.length > 0 && (
+								<Badge variant="secondary">
+									{selectedOccurrences.length === 1
+										? '1 Termin'
+										: `${selectedOccurrences.length} Termine`}
+								</Badge>
+							)}
 						</div>
 						{selectedOccurrences.length === 0 ? (
 							<p className="text-sm text-muted-foreground">Keine Termine an diesem Tag.</p>
 						) : (
-							<ItemGroup>
+							<ul className="flex flex-col divide-y divide-border/60">
 								{selectedOccurrences.map((occurrence) => (
-									<Item
-										key={`${occurrence.eventId}-${occurrence.occurrenceIndex}`}
-										variant="outline"
-									>
-										<ItemContent className="min-w-0 basis-32">
-											<ItemTitle className="line-clamp-none break-words">
-												{occurrence.title}
-											</ItemTitle>
-											<ItemDescription className="line-clamp-none">
-												{formatEventTimeRange(occurrence)}
-											</ItemDescription>
-										</ItemContent>
-										<ItemActions className="ml-auto">
-											<Button
-												variant="outline"
-												onClick={() => onSelectOccurrence(occurrence)}
-												aria-label={`Termin öffnen: ${occurrence.title}`}
-											>
-												Öffnen
-											</Button>
-										</ItemActions>
-									</Item>
+									<li key={`${occurrence.eventId}-${occurrence.occurrenceIndex}`}>
+										<button
+											type="button"
+											onClick={() => onSelectOccurrence(occurrence)}
+											aria-label={`Termin öffnen: ${occurrence.title}`}
+											className="flex min-h-11 w-full min-w-0 items-center gap-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 active:bg-muted"
+										>
+											<span className="flex min-w-0 flex-1 flex-col">
+												<span className="text-[14px] font-medium break-words">
+													{occurrence.title}
+												</span>
+												<span className="text-[12px] break-words text-muted-foreground">
+													{formatEventTimeOfDay(occurrence)}
+												</span>
+											</span>
+											<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+										</button>
+									</li>
 								))}
-							</ItemGroup>
+							</ul>
 						)}
 					</section>
 				)}
