@@ -55,10 +55,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				joiningEnabled={joiningEnabled}
 				onJoiningEnabledChange={setJoiningEnabled}
 			/>
-			<Section
-				title="Anmeldemethoden"
-				hint="Verknüpfe einen weiteren Anbieter, damit dein Zugang auch bei Gerätewechsel erhalten bleibt."
-			>
+			<Section title="Anmeldemethoden">
 				<div className="p-3">
 					{googleLinked ? (
 						<p className="text-sm text-muted-foreground">Google ist mit deinem Konto verknüpft.</p>
@@ -72,12 +69,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				</div>
 			</Section>
 
-			<MembersSection
-				wg={wg}
-				members={members}
-				identity={identity}
-				joiningEnabled={joiningEnabled}
-			/>
+			<MembersSection wg={wg} members={members} identity={identity} />
 			<AccountSignOutSection wg={wg} identity={identity} />
 			<DangerZoneSection wg={wg} members={members} identity={identity} />
 		</>

@@ -339,12 +339,14 @@ export function OfflineQueueSection({
 	}
 
 	return (
-		<Section
-			title="Offline-Warteschlange"
-			hint="Aktionen, die ohne Netz vorgemerkt wurden und später synchronisiert werden."
-		>
-			<div className="grid gap-3 p-3">
-				<div className="flex min-h-[44px] flex-wrap items-center justify-between gap-3">
+		<Section title="Offline-Warteschlange" hint="Wird bei Netz gesendet.">
+			<div className="grid gap-2 p-3">
+				<div
+					className={cn(
+						'flex flex-wrap items-center justify-between gap-3',
+						hasRetryableItems && 'min-h-[44px]',
+					)}
+				>
 					<p className="text-muted-foreground text-[12px]">
 						{formatOfflineQueueCount(items.length)}
 					</p>
