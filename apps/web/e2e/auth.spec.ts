@@ -170,7 +170,7 @@ test.describe('start credentials auth validation', () => {
 			await password.press('Enter');
 
 			await expect(page.locator('#auth-email-error')).toContainText(
-				'Bitte gib eine gültige E-Mail-Adresse und ein Passwort mit mindestens 6 Zeichen ein.',
+				'Bitte gib eine gültige E-Mail-Adresse und dein Passwort ein.',
 			);
 		});
 

@@ -304,11 +304,11 @@ export function OfflineClient() {
 			tabIndex={-1}
 			className="min-h-svh bg-background px-4 pt-[max(1.5rem,env(safe-area-inset-top,0px))] pb-6 text-foreground focus:outline-none"
 		>
-			<div className="mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-md flex-col justify-center gap-5 pb-[env(safe-area-inset-bottom)]">
+			<div className="mx-auto flex w-full max-w-md flex-col gap-5 pb-[env(safe-area-inset-bottom)]">
 				<header className="flex flex-col gap-3" aria-labelledby="offline-heading">
 					<div className="flex items-center justify-between gap-3">
 						<div className="flex min-w-0 items-center gap-2">
-							<span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted">
+							<span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-muted">
 								{online ? (
 									<Wifi className="h-5 w-5 text-primary" aria-hidden />
 								) : (
@@ -335,7 +335,7 @@ export function OfflineClient() {
 					</div>
 					<h1
 						id="offline-heading"
-						className="font-heading text-[20px] leading-[26px] font-semibold tracking-tight"
+						className="font-heading text-lg leading-6 font-semibold tracking-tight"
 						aria-live="polite"
 					>
 						{statusHeading}

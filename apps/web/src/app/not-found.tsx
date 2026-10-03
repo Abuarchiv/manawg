@@ -29,7 +29,7 @@ export default function NotFound() {
 						</EmptyMedia>
 						<h1
 							data-slot="empty-title"
-							className="min-w-0 max-w-full text-base font-semibold [overflow-wrap:anywhere]"
+							className="min-w-0 max-w-full text-lg font-semibold [overflow-wrap:anywhere]"
 						>
 							Seite nicht gefunden
 						</h1>
