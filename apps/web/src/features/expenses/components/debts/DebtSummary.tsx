@@ -163,14 +163,10 @@ function DebtRow({
 				setPreview(res.data);
 				setReviewOpen(true);
 			} else {
-				const message = settlementErrorMessage(res.error);
-				setError(message);
-				toast.error(message);
+				toast.error('Prüfung fehlgeschlagen. Versuche es gleich erneut.');
 			}
 		} catch {
-			const message = settlementErrorMessage('Netzwerkfehler');
-			setError(message);
-			toast.error(message);
+			toast.error('Prüfung fehlgeschlagen. Prüfe deine Verbindung.');
 		} finally {
 			settlingRef.current = false;
 			setReviewing(false);
@@ -356,13 +352,12 @@ function DebtRow({
 				}}
 			>
 				<AlertDialogContent className="max-h-[90dvh] overflow-y-auto">
-					<AlertDialogHeader>
+					<AlertDialogHeader className="place-items-start text-left">
 						<AlertDialogTitle>Bereits erfolgte Zahlung bestätigen</AlertDialogTitle>
 						<AlertDialogDescription>
-							Bestätige nur, wenn {debt.fromName} den Betrag von{' '}
+							Nur bestätigen, wenn {debt.fromName}{' '}
 							{formatEuroCents(preview?.settleableCents ?? 0, debt.currency)} bereits an{' '}
-							{debt.toName} gezahlt hat. Nur die unten aufgeführten Anteile werden als beglichen
-							vermerkt. Es wird kein Geld überwiesen.
+							{debt.toName} gezahlt hat. Es wird kein Geld überwiesen.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<ItemGroup aria-label="Unterstützte Ausgabenanteile">
@@ -503,7 +498,10 @@ export function DebtSummary({
 		(member) => member.memberId === currentMemberId && member.balanceCents !== 0,
 	);
 	const ownBalance = ownBalances.length === 1 ? ownBalances[0] : null;
-	const showBalances = balances.length > 1;
+	// Die eigene Zeile steckt schon in der Überschrift; nur weglassen, wenn die Liste sichtbar bleibt.
+	const listedBalances =
+		ownBalance && balances.length > 1 ? balances.filter((m) => m !== ownBalance) : balances;
+	const showBalances = balances.length > 1 && listedBalances.length > 0;
 
 	return (
 		<Card size="sm">
@@ -560,7 +558,7 @@ export function DebtSummary({
 							Salden
 						</h3>
 						<ul aria-label="Saldo pro Mitglied" className="flex flex-col gap-1.5">
-							{balances.map((member) => {
+							{listedBalances.map((member) => {
 								const isMe = member.memberId === currentMemberId;
 								return (
 									<li

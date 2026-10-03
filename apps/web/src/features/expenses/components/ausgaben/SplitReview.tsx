@@ -26,7 +26,6 @@ export function SplitReview({
 			</p>
 		);
 	}
-	const payer = members.find((member) => member.id === paidByMemberId)?.name ?? 'Zahlende Person';
 	return (
 		<ItemGroup aria-label="Anteile vor dem Speichern" aria-live="polite" className="gap-1">
 			{members.map((member) => {
@@ -35,15 +34,14 @@ export function SplitReview({
 					<Item key={member.id} variant="muted" size="xs">
 						<ItemContent className="min-w-0">
 							<ItemTitle className="line-clamp-none break-words">{member.name}</ItemTitle>
-							<ItemDescription className="line-clamp-none">
-								{!splits
-									? 'Anteil nach gültiger Aufteilung'
-									: !share || share.amountCents === 0
-										? 'Kein Anteil'
-										: member.id === paidByMemberId
-											? 'Eigener Anteil · bereits bezahlt'
-											: `Schuldet ${payer} diesen Anteil`}
-							</ItemDescription>
+							{(!share || share.amountCents === 0) && (
+								<ItemDescription className="line-clamp-none">Kein Anteil</ItemDescription>
+							)}
+							{share && share.amountCents !== 0 && member.id === paidByMemberId && (
+								<ItemDescription className="line-clamp-none">
+									Eigener Anteil · bereits bezahlt
+								</ItemDescription>
+							)}
 						</ItemContent>
 						<Badge variant="outline" className="font-mono tabular-nums">
 							{splits ? formatEuroCents(share?.amountCents ?? 0, currency) : '—'}

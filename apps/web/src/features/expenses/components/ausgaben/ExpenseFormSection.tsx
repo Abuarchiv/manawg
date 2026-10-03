@@ -235,7 +235,6 @@ export function ExpenseFormSection({
 							<Button
 								variant="ghost"
 								size="icon"
-								className="size-9"
 								onClick={requestClose}
 								disabled={formSaving}
 								aria-label="Ausgabe abbrechen"
@@ -445,11 +444,11 @@ export function ExpenseFormSection({
 											/>
 											{!fieldErrors.splits && (
 												<FieldDescription>
-													Für einzelne Personen{' '}
+													Leer lassen oder{' '}
 													<span className="font-mono tabular-nums">
 														{formatEuroCents(0, currency)}
 													</span>{' '}
-													eintragen oder das Feld leer lassen.
+													für keinen Anteil.
 												</FieldDescription>
 											)}
 										</FieldGroup>
