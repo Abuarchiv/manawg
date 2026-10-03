@@ -1,19 +1,16 @@
 'use client';
 
-import { buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BackLink } from '@/components/wg/BackLink';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { readResponseErrorCode } from '@/components/wg/einstellungen/settings-errors';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { SETTINGS_TABS, getSettingsTabFromHash } from '@/core/guards/settings-tabs';
 import type { SettingsTab } from '@/core/guards/settings-tabs';
 import { type WgExport, buildEmptyExportSummary, buildExportSummary } from '@/core/reads/export';
-import { cn } from '@/shared/lib/cn';
 import { memberAuthHeader } from '@/shared/lib/identity';
-import { ArrowLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 /**
@@ -121,16 +118,9 @@ export default function EinstellungenPage() {
 
 	return (
 		<div className="mx-auto min-w-0 w-full max-w-3xl px-[16px] pb-[env(safe-area-inset-bottom,0px)]">
-			<div className="min-w-0 py-4">
-				<header className="mb-4 flex items-center gap-2">
-					<Link
-						href={wgBaseHref}
-						aria-label="Zurück zum Start"
-						className={cn(buttonVariants({ variant: 'ghost', size: 'icon-lg' }), 'shrink-0')}
-					>
-						<ArrowLeft aria-hidden />
-						<span className="sr-only">Zurück zum Start</span>
-					</Link>
+			<div className="min-w-0 py-3">
+				<header className="mb-2 flex items-center gap-2">
+					<BackLink href={wgBaseHref} label="Start" />
 					<h1 className="font-heading min-w-0 flex-1 text-lg font-semibold tracking-tight break-words text-foreground">
 						Einstellungen
 					</h1>
@@ -148,7 +138,7 @@ export default function EinstellungenPage() {
 				>
 					<TabsList
 						data-sticky-tabs
-						className="sticky z-10 grid h-auto min-w-0 max-w-full w-full grid-cols-[repeat(auto-fit,minmax(min(100%,4rem),1fr))] gap-1 rounded-xl p-1"
+						className="sticky z-10 grid before:absolute before:inset-x-0 before:-top-2 before:h-2 before:bg-background before:content-[''] h-auto min-w-0 max-w-full w-full grid-cols-[repeat(auto-fit,minmax(min(100%,4rem),1fr))] gap-1 rounded-xl p-1"
 						style={{
 							top: 'calc(env(safe-area-inset-top, 0px) + var(--offline-banner-height, 0px) + 0.5rem)',
 						}}
@@ -160,14 +150,14 @@ export default function EinstellungenPage() {
 								id={`tab-${tab.id}`}
 								className="w-full min-w-0 whitespace-normal px-1 text-center text-xs"
 							>
-								{tab.id === 'notifications' ? 'Hinweise' : tab.label}
+								{tab.label}
 							</TabsTrigger>
 						))}
 					</TabsList>
 
 					<TabsContent
 						value={activeTab}
-						className="mt-4 grid min-w-0 max-w-full gap-4 outline-none"
+						className="mt-2 grid min-w-0 max-w-full gap-2.5 outline-none"
 					>
 						{activeTab === 'profile' && (
 							<ProfileTab

@@ -16,14 +16,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-	Attachment,
-	AttachmentContent,
-	AttachmentDescription,
-	AttachmentMedia,
-	AttachmentTitle,
-	AttachmentTrigger,
-} from '@/components/ui/attachment';
 import { Button } from '@/components/ui/button';
 import {
 	Card,
@@ -62,6 +54,7 @@ import {
 	ExternalLink,
 	Eye,
 	Hand,
+	ImageOff,
 	ListChecks,
 	MessageCircle,
 	MoreHorizontal,
@@ -151,6 +144,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	const reactionPending = (key: ReactionKey): boolean => pendingReactions.includes(key);
 	const bodyText = announcement.content.trim();
 	const isLong = bodyText.length > 300 || bodyText.split('\n').length > 6;
+	const [imageFailed, setImageFailed] = useState(false);
 	const [expanded, setExpanded] = useState(false);
 	const [commentsOpen, setCommentsOpen] = useState(false);
 	const [commentPending, setCommentPending] = useState(false);
@@ -258,7 +252,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 					<CardAction>
 						<DropdownMenu>
 							<DropdownMenuTrigger
-								render={<Button variant="ghost" size="icon" className="-my-2 size-10" />}
+								render={<Button variant="ghost" size="icon" className="-my-1 size-8" />}
 								aria-label={`Beitragsaktionen: ${actionSubject}`}
 								disabled={deletePending}
 							>
@@ -376,28 +370,28 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 						</div>
 					)}
 					{announcement.imageUrl && (
-						<Attachment state="done" className="w-full">
-							<AttachmentMedia variant="image" className="size-20">
-								{/* eslint-disable-next-line @next/next/no-img-element */}
+						<a
+							href={announcement.imageUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label={`Bildanhang öffnen: ${actionSubject}`}
+							className="block"
+						>
+							{imageFailed ? (
+								<span className="flex h-16 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+									<ImageOff aria-hidden />
+								</span>
+							) : (
+								// eslint-disable-next-line @next/next/no-img-element
 								<img
 									src={announcement.imageUrl}
-									alt={`Bildanhang: ${actionSubject}`}
+									alt=""
 									loading="lazy"
+									onError={() => setImageFailed(true)}
+									className="max-h-40 w-full rounded-lg object-cover"
 								/>
-							</AttachmentMedia>
-							<AttachmentContent>
-								<AttachmentTitle>Beitragsbild</AttachmentTitle>
-								<AttachmentDescription>In voller Größe öffnen</AttachmentDescription>
-							</AttachmentContent>
-							<AttachmentTrigger
-								aria-label={`Bildanhang öffnen: ${actionSubject}`}
-								render={
-									<a href={announcement.imageUrl} target="_blank" rel="noopener noreferrer">
-										<span className="sr-only">Bildanhang öffnen: {actionSubject}</span>
-									</a>
-								}
-							/>
-						</Attachment>
+							)}
+						</a>
 					)}
 					{(takerNames.length > 0 || announcement.resolvedAt || busy) && (
 						<p className="flex flex-wrap items-center gap-x-2 text-[12px] text-muted-foreground [overflow-wrap:anywhere]">
@@ -531,26 +525,20 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 												commentError ? `announcement-comment-error-${announcement.id}` : undefined
 											}
 											maxLength={600}
-											rows={2}
+											rows={1}
 											aria-label={`Antwort verfassen: ${actionSubject}`}
 											placeholder="Antwort schreiben"
 											className="max-h-40 text-base"
 										/>
-										<InputGroupAddon align="block-end" className="justify-end">
+										<InputGroupAddon align="inline-end">
 											<InputGroupButton
 												variant="default"
-												size="sm"
-												className="min-h-11"
+												size="icon-sm"
 												disabled={commentPending || !commentDraft.draft.trim()}
 												onClick={() => void submitComment()}
 												aria-label={`Antworten: ${actionSubject}`}
 											>
-												{commentPending ? (
-													<Spinner data-icon="inline-start" />
-												) : (
-													<Send data-icon="inline-start" />
-												)}
-												{commentPending ? 'Wird gesendet…' : 'Antworten'}
+												{commentPending ? <Spinner /> : <Send />}
 											</InputGroupButton>
 										</InputGroupAddon>
 									</InputGroup>

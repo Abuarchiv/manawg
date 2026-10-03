@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { REMINDER_COOLDOWN_HOURS } from '@/features/expenses/reminders';
 import { Bell, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -30,10 +31,12 @@ interface RemindButtonProps {
 	onOptimistic?: (() => (() => void) | undefined) | undefined;
 	size?: 'sm' | 'md';
 	primary?: boolean;
+	label?: string;
 }
 
 function errorMessage(error: string): string {
-	if (error === 'reminder_cooldown') return 'Bitte etwas warten (48 h pro Person).';
+	if (error === 'reminder_cooldown')
+		return `Bitte etwas warten (${REMINDER_COOLDOWN_HOURS} Std. pro Person).`;
 	if (error === 'reminder_rate_limited') return 'Zu viele Erinnerungen — bitte später erneut.';
 	if (error === 'debtor_opted_out') return 'Diese Person erhält keine Erinnerungen.';
 	if (error === 'no_open_debt') return 'Keine offene Schuld zwischen euch.';
@@ -68,6 +71,7 @@ export function RemindButton({
 	onOptimistic,
 	size = 'md',
 	primary = false,
+	label: idleLabel = 'Erinnern',
 }: RemindButtonProps) {
 	const toast = useToast();
 	const [status, setStatus] = useState<RemindButtonStatus>(
@@ -156,14 +160,18 @@ export function RemindButton({
 		}
 	}
 
-	let label = 'Erinnern';
+	let label = idleLabel;
 	if (status === 'sending') label = 'Sendet…';
 	else if (status === 'sent') label = 'Gesendet';
 	else if (status === 'cooldown') label = cooldownLabel ?? 'Noch gesperrt';
 	else if (status === 'optedOut') label = 'Erinnerungen deaktiviert';
 
 	return (
-		<div className="flex max-w-full flex-col gap-2">
+		<div
+			className={
+				primary ? 'flex max-w-full flex-col gap-2' : 'flex max-w-full flex-col items-start gap-2'
+			}
+		>
 			<Button
 				type="button"
 				variant={status === 'sent' ? 'secondary' : primary ? 'default' : 'outline'}
@@ -183,7 +191,7 @@ export function RemindButton({
 				)}
 				{label}
 			</Button>
-			{feedback && (
+			{feedback && !(status === 'sent' && feedback === successMessage(null)) && (
 				<Alert
 					role={status === 'error' ? 'alert' : 'status'}
 					variant={status === 'error' ? 'destructive' : 'default'}

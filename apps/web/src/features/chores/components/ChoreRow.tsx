@@ -59,12 +59,12 @@ function formatChoreCadence(interval: number, type: RecurrenceType): string {
 		if (interval === 3) return 'quartalsweise';
 		if (interval === 6) return 'halbjährlich';
 		if (interval === 12) return 'jährlich';
-		return `alle ${interval} Mon.`;
+		return `alle ${interval}\u00a0Mon.`;
 	}
 	if (interval === 1) return 'täglich';
 	if (interval === 7) return 'wöchentlich';
-	if (interval === 14) return 'alle 14 T.';
-	return `alle ${interval} T.`;
+	if (interval === 14) return 'alle 14\u00a0T.';
+	return `alle ${interval}\u00a0T.`;
 }
 
 export const ChoreRow = memo(function ChoreRow({
@@ -118,7 +118,7 @@ export const ChoreRow = memo(function ChoreRow({
 				<ItemTitle className="line-clamp-none w-auto break-words text-[14px] [overflow-wrap:anywhere]">
 					{chore.title}
 				</ItemTitle>
-				<ItemDescription className="line-clamp-none break-words text-[12px]">
+				<ItemDescription className="line-clamp-none break-words text-[12px] leading-snug">
 					<span className="sr-only">Zuständig: {isMine ? 'du' : assignee.name} · </span>
 					<span className={cn(status.state === 'overdue' && 'font-medium text-foreground')}>
 						{status.label}

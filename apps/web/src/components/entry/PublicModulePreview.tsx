@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
 	Item,
 	ItemActions,
@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/item';
 import { cn } from '@/shared/lib/cn';
 import type { LucideIcon } from 'lucide-react';
-import { ListChecks, Megaphone, Receipt } from 'lucide-react';
+import { ChevronRight, ListChecks, Megaphone, Receipt } from 'lucide-react';
 import Link from 'next/link';
 
 export interface PublicPreviewModule {
@@ -135,20 +135,12 @@ function PreviewRows({
 					<ItemContent className="min-w-0">
 						<ItemTitle className="line-clamp-none break-words">Pizzaabend</ItemTitle>
 						<ItemDescription className="line-clamp-none break-words">
-							Mika bezahlt · 28,40 €
+							Mika bezahlt 28,40 € · 7,10 € pro Person
 						</ItemDescription>
 					</ItemContent>
 					<ItemActions>
 						<Badge variant="outline">4 Personen</Badge>
 					</ItemActions>
-				</Item>
-				<Item size="sm" className="rounded-none px-0">
-					<ItemContent className="min-w-0">
-						<ItemTitle className="line-clamp-none break-words">Aufteilung</ItemTitle>
-						<ItemDescription className="line-clamp-none break-words">
-							7,10 € pro Person
-						</ItemDescription>
-					</ItemContent>
 				</Item>
 			</ItemGroup>
 		);
@@ -203,9 +195,6 @@ function PreviewRows({
 					<ItemTitle className="line-clamp-none break-words">{copy.title}</ItemTitle>
 					<ItemDescription className="line-clamp-none break-words">{copy.detail}</ItemDescription>
 				</ItemContent>
-				<ItemActions className="@max-[320px]:basis-full @max-[320px]:justify-end">
-					<Badge variant="outline">Beispiel</Badge>
-				</ItemActions>
 			</Item>
 		</ItemGroup>
 	);
@@ -218,11 +207,10 @@ function ExampleCard({
 	const copy = previewFor(module);
 	return (
 		<article aria-label={`${module.title}, Beispiel-WG`}>
-			<Card size={featured ? 'default' : 'sm'} className="h-full">
+			<Card size={featured ? 'default' : 'sm'} className={cn('h-full', !featured && 'py-3')}>
 				{!featured && (
 					<CardHeader>
 						<CardTitle>{module.title}</CardTitle>
-						<CardDescription>{copy.detail}</CardDescription>
 					</CardHeader>
 				)}
 				<CardContent>
@@ -236,14 +224,11 @@ function ExampleCard({
 export function PublicModulePreviews({ modules }: { modules: PublicPreviewModule[] }) {
 	return (
 		<section aria-labelledby="public-examples-heading" className="flex flex-col gap-3">
-			<div className="flex items-end justify-between gap-3">
+			<div className="flex items-start justify-between gap-3">
 				<div className="flex flex-col gap-1">
-					<h2 id="public-examples-heading" className="text-base font-semibold">
+					<h2 id="public-examples-heading" className="text-balance text-base font-semibold">
 						So kann euer Alltag aussehen
 					</h2>
-					<p className="text-sm text-muted-foreground">
-						Vier kleine Einblicke aus einer Beispiel-WG.
-					</p>
 				</div>
 				<Badge variant="secondary" className="shrink-0">
 					Beispiel-WG
@@ -273,8 +258,12 @@ export function PublicModulePreview({
 				</Badge>
 			</div>
 			<ExampleCard module={module} featured />
-			<Link href={homeHref} className={cn(buttonVariants({ variant: 'link' }), 'self-start px-0')}>
+			<Link
+				href={homeHref}
+				className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'self-start')}
+			>
 				Alle Bereiche ansehen
+				<ChevronRight className="size-4" aria-hidden data-icon="inline-end" />
 			</Link>
 		</section>
 	);

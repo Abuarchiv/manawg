@@ -40,6 +40,7 @@ import {
 	CircleCheck,
 	Loader2,
 	Megaphone,
+	Sparkles,
 } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import dynamic from 'next/dynamic';
@@ -242,7 +243,7 @@ export default function WgHomePage() {
 		<>
 			<div
 				data-home-content
-				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-6 px-4 py-6"
+				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-3 px-4 py-3"
 			>
 				{isNewWg && (
 					<div>
@@ -285,7 +286,12 @@ export default function WgHomePage() {
 									{forYouMore.length > 0 && (
 										<Collapsible open={todayMoreOpen} onOpenChange={setTodayMoreOpen}>
 											<CollapsibleTrigger
-												render={<Button variant="ghost" className="w-full justify-between" />}
+												render={
+													<Button
+														variant="ghost"
+														className="w-full justify-between text-muted-foreground"
+													/>
+												}
 											>
 												<span>
 													{todayMoreOpen
@@ -329,8 +335,8 @@ export default function WgHomePage() {
 					</section>
 				)}
 
-				<div className="flex min-w-0 flex-col gap-6">
-					<section aria-labelledby="week-heading" className="flex min-w-0 flex-col gap-3">
+				<div className="flex min-w-0 flex-col gap-3">
+					<section aria-labelledby="week-heading" className="flex min-w-0 flex-col gap-2">
 						<div className="flex min-w-0 flex-wrap items-center gap-3">
 							<h2 id="week-heading" className="font-heading min-w-0 text-xl font-semibold">
 								Diese Woche
@@ -339,7 +345,7 @@ export default function WgHomePage() {
 								href={`${wgBaseHref}/kalender`}
 								className={cn(
 									buttonVariants({ variant: 'ghost' }),
-									'min-h-11 ml-auto shrink-0 px-2 text-sm after:h-[44px] after:min-w-[44px]',
+									'ml-auto shrink-0 px-2 text-sm text-muted-foreground after:h-[44px] after:min-w-[44px]',
 								)}
 							>
 								Kalender <ChevronRight data-icon="inline-end" aria-hidden />
@@ -381,7 +387,7 @@ export default function WgHomePage() {
 
 						{weekAgenda.overdue.length > 0 && (
 							<div className="flex min-w-0 flex-col gap-2">
-								<h3 className="text-sm font-medium text-muted-foreground">Überfällig</h3>
+								<h3 className="text-sm font-medium text-foreground">Überfällig</h3>
 								<ul className="flex min-w-0 flex-col divide-y divide-border/60 rounded-xl border">
 									{overdueVisible.map((item) => (
 										<AgendaRow key={item.key} item={item} />
@@ -403,6 +409,9 @@ export default function WgHomePage() {
 
 						{upcomingVisible.length > 0 && (
 							<div className="flex min-w-0 flex-col gap-2">
+								{weekAgenda.overdue.length > 0 && (
+									<h3 className="text-sm font-medium text-muted-foreground">Anstehend</h3>
+								)}
 								<ul className="flex min-w-0 flex-col divide-y divide-border/60 rounded-xl border">
 									{upcomingVisible.map((item) => (
 										<AgendaRow key={item.key} item={item} />
@@ -429,9 +438,7 @@ export default function WgHomePage() {
 							Boolean(eventRead.data) &&
 							weekAgenda.overdue.length === 0 &&
 							weekAgenda.upcoming.length === 0 && (
-								<p className="rounded-xl border p-4 text-sm text-muted-foreground">
-									Bis Sonntag keine WG-Termine und keine Putzaufgaben der anderen.
-								</p>
+								<p className="text-sm text-muted-foreground">Bis Sonntag nichts geplant.</p>
 							)}
 					</section>
 
@@ -443,7 +450,7 @@ export default function WgHomePage() {
 									render={
 										<Button
 											variant="ghost"
-											className="group w-full justify-between px-0 text-muted-foreground aria-expanded:bg-transparent"
+											className="group w-full justify-between pl-0 pr-2 font-heading text-[length:inherit] font-semibold text-foreground hover:bg-transparent active:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent"
 										/>
 									}
 								>
@@ -453,15 +460,6 @@ export default function WgHomePage() {
 							</h2>
 							<CollapsiblePanel {...(reducedMotion ? { transition: { duration: 0 } } : {})}>
 								<div className="flex min-w-0 flex-col gap-3">
-									<Link
-										href={`${wgBaseHref}/aktivitaet`}
-										className={cn(
-											buttonVariants({ variant: 'ghost' }),
-											'min-w-0 max-w-full self-end whitespace-normal px-0 text-[12px] text-muted-foreground leading-snug',
-										)}
-									>
-										Gesamte Aktivität <ChevronRight data-icon="inline-end" aria-hidden />
-									</Link>
 									{data ? (
 										<div className="flex flex-col gap-2">
 											{latestAnnouncement && !latestIsPending && (
@@ -492,7 +490,9 @@ export default function WgHomePage() {
 												</Item>
 											)}
 											{activityItems.length > 0 ? (
-												<ActivityFeed items={activityItems} />
+												<div className="rounded-xl border px-3">
+													<ActivityFeed items={activityItems} />
+												</div>
 											) : !latestAnnouncement || latestIsPending ? (
 												<p className="text-sm text-muted-foreground">Noch keine neuen Einträge.</p>
 											) : null}
@@ -513,6 +513,15 @@ export default function WgHomePage() {
 											<Skeleton className="h-11 w-full" />
 										</div>
 									)}
+									<Link
+										href={`${wgBaseHref}/aktivitaet`}
+										className={cn(
+											buttonVariants({ variant: 'ghost' }),
+											'min-w-0 max-w-full self-end whitespace-normal px-0 text-[12px] text-muted-foreground leading-snug',
+										)}
+									>
+										Gesamte Aktivität <ChevronRight data-icon="inline-end" aria-hidden />
+									</Link>
 								</div>
 							</CollapsiblePanel>
 						</Collapsible>
@@ -547,12 +556,12 @@ function TodayRow({
 			? formatEuroCents(item.amountCents, item.currency, { signed: true })
 			: undefined;
 	return (
-		<li className="flex min-w-0 items-center gap-1 pr-1">
+		<li className="flex min-w-0 items-center gap-2 pl-2 pr-3">
 			{checkable ? (
 				<Button
 					variant="ghost"
 					size="icon"
-					className="ml-1 size-9 shrink-0"
+					className="shrink-0"
 					aria-label={armed ? `Bestätigen: ${item.title} erledigt` : `Abhaken: ${item.title}`}
 					aria-pressed={armed}
 					disabled={pending}
@@ -567,7 +576,7 @@ function TodayRow({
 					)}
 				</Button>
 			) : (
-				<span className="ml-1 flex size-9 shrink-0 items-center justify-center">
+				<span className="flex size-8 shrink-0 items-center justify-center">
 					<TodayIcon kind={item.kind} />
 				</span>
 			)}
@@ -579,7 +588,7 @@ function TodayRow({
 					<span className="text-[14px] font-medium leading-snug break-words">{item.title}</span>
 					<span
 						className={cn(
-							'text-[12px] text-muted-foreground',
+							'text-pretty text-[12px] text-muted-foreground',
 							item.kind === 'recurring' && 'tabular-nums',
 						)}
 					>
@@ -590,7 +599,9 @@ function TodayRow({
 						) : debtAmount !== undefined ? (
 							<>
 								{item.detail} ·{' '}
-								<span className="font-mono font-medium tabular-nums">{debtAmount}</span>
+								<span className="whitespace-nowrap font-mono font-medium tabular-nums">
+									{debtAmount}
+								</span>
 							</>
 						) : (
 							item.detail
@@ -616,12 +627,12 @@ function formatAgendaDay(dayKey: string): string {
 
 function AgendaRow({ item }: { item: WeekAgendaItem }) {
 	return (
-		<li className="flex min-w-0 items-center gap-2 px-3">
-			<span className="flex size-9 shrink-0 items-center justify-center text-muted-foreground">
+		<li className="flex min-w-0 items-center gap-2 pl-2 pr-3">
+			<span className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
 				{item.kind === 'event' ? (
 					<CalendarDays className="size-4" aria-hidden />
 				) : (
-					<Check className="size-4" aria-hidden />
+					<Sparkles className="size-4" aria-hidden />
 				)}
 			</span>
 			<Link

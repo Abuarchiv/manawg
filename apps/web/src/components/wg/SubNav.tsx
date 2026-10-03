@@ -216,14 +216,17 @@ function SegmentList({
 									{showCount && (
 										<span
 											aria-hidden
-											className="font-mono text-xs tabular-nums text-muted-foreground"
+											className="text-[12px] leading-none font-medium tabular-nums text-muted-foreground"
 										>
 											{marker}
 											{countOverflow || count > 99 || (countExact ?? 0) > 99 ? '99+' : count}
 										</span>
 									)}
 									{!showCount && marker && (
-										<span aria-hidden className="font-mono text-xs text-muted-foreground">
+										<span
+											aria-hidden
+											className="text-[12px] leading-none font-medium text-muted-foreground"
+										>
 											{marker}
 										</span>
 									)}

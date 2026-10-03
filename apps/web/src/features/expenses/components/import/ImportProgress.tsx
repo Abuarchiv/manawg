@@ -33,7 +33,7 @@ export function ImportProgress({ state, inserted = 0, skipped = 0, errors = 0, m
 						? 'Import fehlgeschlagen'
 						: errors > 0
 							? 'Import mit Fehlern abgeschlossen'
-							: 'Import abgeschlossen'}
+							: `${inserted} importiert`}
 			</AlertTitle>
 			<AlertDescription>
 				{state === 'pending' ? (
@@ -41,7 +41,7 @@ export function ImportProgress({ state, inserted = 0, skipped = 0, errors = 0, m
 				) : state === 'error' ? (
 					(message ?? 'Bitte erneut versuchen.')
 				) : (
-					`${inserted} importiert · ${skipped} übersprungen · ${errors} Fehler`
+					`${skipped} übersprungen · ${errors} Fehler`
 				)}
 			</AlertDescription>
 		</Alert>

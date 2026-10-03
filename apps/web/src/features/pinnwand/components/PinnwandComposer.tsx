@@ -11,7 +11,6 @@ import {
 	Card,
 	CardAction,
 	CardContent,
-	CardDescription,
 	CardFooter,
 	CardHeader,
 	CardTitle,
@@ -68,7 +67,6 @@ export function PinnwandComposer({
 					</Avatar>
 					<h2>Neuer Beitrag</h2>
 				</CardTitle>
-				<CardDescription>Von {authorName}</CardDescription>
 				<CardAction>
 					<Button
 						type="button"
@@ -86,7 +84,9 @@ export function PinnwandComposer({
 			<CardContent className="flex flex-col gap-3">
 				<FieldGroup>
 					<Field>
-						<FieldLabel id="announcement-kind-label">Beitragstyp</FieldLabel>
+						<FieldLabel id="announcement-kind-label" className="sr-only">
+							Beitragstyp
+						</FieldLabel>
 						<ToggleGroup
 							value={[kind]}
 							onValueChange={(values) => {
@@ -100,14 +100,16 @@ export function PinnwandComposer({
 							aria-labelledby="announcement-kind-label"
 						>
 							{KIND_OPTIONS.map((option) => (
-								<ToggleGroupItem key={option.value} value={option.value}>
+								<ToggleGroupItem key={option.value} value={option.value} className="px-2">
 									{option.label}
 								</ToggleGroupItem>
 							))}
 						</ToggleGroup>
 					</Field>
 					<Field data-invalid={Boolean(error)}>
-						<FieldLabel htmlFor="announcement-content">Beitragstext</FieldLabel>
+						<FieldLabel htmlFor="announcement-content" className="sr-only">
+							Beitragstext
+						</FieldLabel>
 						<Textarea
 							ref={textareaRef}
 							id="announcement-content"
@@ -115,12 +117,12 @@ export function PinnwandComposer({
 							onChange={(e) => onContentChange(e.target.value)}
 							disabled={submitting}
 							maxLength={CONTENT_MAX}
-							rows={4}
+							rows={3}
 							aria-label="Beitragstext"
 							aria-invalid={Boolean(error)}
 							aria-describedby={error ? 'announcement-error' : 'announcement-count'}
 							placeholder={`Was gibt es Neues, ${authorName}?`}
-							className="min-h-32 text-base"
+							className="min-h-20 text-base"
 						/>
 					</Field>
 				</FieldGroup>
@@ -150,7 +152,10 @@ export function PinnwandComposer({
 				)}
 			</CardContent>
 			<CardFooter className="flex-wrap justify-between gap-3">
-				<span id="announcement-count" className="text-xs tabular-nums text-muted-foreground">
+				<span
+					id="announcement-count"
+					className={`text-xs tabular-nums text-muted-foreground${content.length < CONTENT_MAX * 0.8 ? ' sr-only' : ''}`}
+				>
 					{content.length}/{CONTENT_MAX}
 				</span>
 				<Button

@@ -299,15 +299,6 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								Für ein neues Konto mindestens {NEW_PASSWORD_MIN_LENGTH} Zeichen.
 							</FieldDescription>
 						</Field>
-						<Button
-							type="button"
-							variant="link"
-							onClick={() => void requestPasswordReset()}
-							disabled={busy !== null}
-							className="px-0"
-						>
-							{busy === 'password-reset' ? 'Link wird angefordert…' : 'Passwort vergessen?'}
-						</Button>
 						{emailError === 'generic' && (
 							<div id="auth-email-error">
 								<GenericAuthError failure={failure} />
@@ -315,10 +306,7 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 						)}
 						{emailError === 'invalid' && (
 							<div id="auth-email-error">
-								<ErrorBox>
-									Bitte gib eine gültige E-Mail-Adresse und ein Passwort mit mindestens 6 Zeichen
-									ein.
-								</ErrorBox>
+								<ErrorBox>Bitte gib eine gültige E-Mail-Adresse und dein Passwort ein.</ErrorBox>
 							</div>
 						)}
 						{emailError === 'weak-password' && (
@@ -332,6 +320,15 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 								<ErrorBox>Bitte gib eine gültige E-Mail-Adresse ein.</ErrorBox>
 							</div>
 						)}
+						<Button
+							type="button"
+							variant="link"
+							onClick={() => void requestPasswordReset()}
+							disabled={busy !== null}
+							className="px-0"
+						>
+							{busy === 'password-reset' ? 'Link wird angefordert…' : 'Passwort vergessen?'}
+						</Button>
 						{emailMessage && (
 							<output className="block text-[13px] text-muted-foreground">{emailMessage}</output>
 						)}

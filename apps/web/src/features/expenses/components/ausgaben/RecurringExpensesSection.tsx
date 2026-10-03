@@ -104,7 +104,7 @@ export function RecurringExpensesSection({
 				{recurringFilterActive && <h2 className="text-base font-semibold">Fixkosten-Fokus</h2>}
 				<CollapsibleTrigger render={<Button variant="outline" className="w-full justify-start" />}>
 					<Repeat2 data-icon="inline-start" />
-					Wiederkehrende Kosten<Badge variant="secondary">{recurringExpenses.length}</Badge>
+					Fixkosten<Badge variant="secondary">{recurringExpenses.length}</Badge>
 					<ChevronDown data-icon="inline-end" className={cn('ml-auto', open && 'rotate-180')} />
 				</CollapsibleTrigger>
 				<CollapsiblePanel>
@@ -209,7 +209,7 @@ export function RecurringExpensesSection({
 												<ItemActions className="shrink-0">
 													<DropdownMenu>
 														<DropdownMenuTrigger
-															render={<Button variant="ghost" size="icon" className="size-9" />}
+															render={<Button variant="ghost" size="icon" />}
 															disabled={pending}
 															aria-label={`Fixkosten-Aktionen: ${item.description}`}
 														>

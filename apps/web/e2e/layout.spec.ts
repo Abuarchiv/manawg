@@ -507,7 +507,7 @@ test.describe('mobile layout matrix', () => {
 			expect(contentBox).not.toBeNull();
 			if (contentBox)
 				expect(contentBox.x + contentBox.width).toBeLessThanOrEqual(viewportWidth + 1);
-			const detail = page.getByText('Für dich · heute fällig', { exact: true });
+			const detail = page.getByText('heute fällig', { exact: true });
 			await expect(detail).toHaveCount(1);
 			const detailMetrics = await detail.evaluate((element) => {
 				const card = element.closest('li');

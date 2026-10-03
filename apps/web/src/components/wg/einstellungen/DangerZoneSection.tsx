@@ -12,7 +12,7 @@ import {
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
@@ -105,18 +105,13 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 	return (
 		<>
 			<div className="grid gap-3">
-				<div className="px-1">
-					<h2 className="text-destructive text-[12px] font-semibold">Gefahrenzone</h2>
-					<p className="text-muted-foreground mt-0.5 text-xs">
-						WG verlassen, WG löschen oder Konto löschen.
-					</p>
-				</div>
+				<h2 className="font-heading text-destructive text-sm font-semibold">Gefahrenzone</h2>
 
 				<Section
 					title="WG verlassen"
 					hint={
 						isAdmin
-							? 'Admin übergeben, dann verlassen.'
+							? undefined
 							: 'Deaktiviert deine Mitgliedschaft. Einträge und offene Salden bleiben erhalten.'
 					}
 				>
@@ -194,21 +189,17 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<Field>
-						<FieldLabel htmlFor="delete-wg-confirm">WG-Code zur Bestätigung</FieldLabel>
+						<FieldLabel htmlFor="delete-wg-confirm">WG-Code</FieldLabel>
 						<Input
 							id="delete-wg-confirm"
 							type="text"
 							value={confirmText}
 							onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
 							placeholder={wg.shareCode}
-							aria-describedby="delete-wg-confirm-hint"
 							disabled={deleteStage === 'pending'}
 							className="text-center font-mono text-base tracking-[0.18em]"
 							autoComplete="off"
 						/>
-						<FieldDescription id="delete-wg-confirm-hint">
-							Groß-/Kleinschreibung wird automatisch angeglichen.
-						</FieldDescription>
 					</Field>
 					{deleteError && (
 						<Alert variant="destructive">

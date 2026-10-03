@@ -2,7 +2,6 @@
 
 import { Checkbox } from '@/components/animate-ui/components/base/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
 	Drawer,
@@ -91,12 +90,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	}
 
 	return (
-		<li
-			className={cn(
-				'relative [contain-intrinsic-size:auto_3.5rem] [content-visibility:auto]',
-				swipeX > 0 && 'overflow-hidden',
-			)}
-		>
+		<li className={cn('relative', swipeX > 0 && 'overflow-hidden')}>
 			{/* overflow-hidden nur während aktiver Wischgeste: sonst schneidet es die
 			    unsichtbare Tap-Fläche der Checkbox (after:-inset-2.5) am linken Rand ab,
 			    weil das Item hier px-0 hat und die Checkbox flächenbündig sitzt. */}
@@ -189,12 +183,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 					<Drawer onOpenChange={() => deleteConfirm.cancel()}>
 						<DrawerTrigger
 							render={
-								<Button
-									variant="ghost"
-									size="icon"
-									className="size-9"
-									aria-label={`Artikelaktionen: ${item.name}`}
-								/>
+								<Button variant="ghost" size="icon" aria-label={`Artikelaktionen: ${item.name}`} />
 							}
 						>
 							<MoreHorizontal aria-hidden />
@@ -202,20 +191,16 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 						<DrawerContent className="mx-auto w-full max-w-md">
 							<DrawerHeader>
 								<DrawerTitle className="break-words">{item.name}</DrawerTitle>
-								<DrawerDescription>{item.quantity || 'Keine Menge angegeben'}</DrawerDescription>
-							</DrawerHeader>
-							<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
-								<Badge variant="secondary" className="w-fit">
-									{isBought ? 'Erledigt' : 'Offen'}
-								</Badge>
-								<p className="text-sm text-muted-foreground">
-									Hinzugefügt von {adderName}
+								<DrawerDescription>
+									{item.quantity ? `${item.quantity} · ` : ''}Hinzugefügt von {adderName}
 									{isBought
 										? buyerName
 											? ` · Gekauft von ${buyerName}`
 											: ' · Gekauft · Person nicht angegeben'
 										: ''}
-								</p>
+								</DrawerDescription>
+							</DrawerHeader>
+							<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
 								{isBought && (
 									<>
 										<Button
@@ -230,8 +215,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 											Als Ausgabe übernehmen
 										</Button>
 										<p className="text-sm text-muted-foreground">
-											Nur dieser Artikel wird vorausgefüllt. Betrag und Aufteilung prüfst du vor dem
-											Speichern.
+											Betrag und Aufteilung prüfst du vor dem Speichern.
 										</p>
 									</>
 								)}

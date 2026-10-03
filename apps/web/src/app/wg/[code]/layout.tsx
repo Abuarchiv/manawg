@@ -199,7 +199,7 @@ function WgShell({
 			<AppBottomNav
 				aria-label="WG Hauptnavigation"
 				data-app-chrome
-				className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
+				className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full min-w-0 max-w-[var(--app-nav-width)] px-4 pb-[max(0.5rem,calc(env(safe-area-inset-bottom,0px)-0.5rem))]"
 			>
 				<div className="glass-bar rounded-[18px]">
 					<ul className="flex flex-wrap gap-0.5 p-0.5 [&>li]:min-w-fit [&>li]:flex-1">

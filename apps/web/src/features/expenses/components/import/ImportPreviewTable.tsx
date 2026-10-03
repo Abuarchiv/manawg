@@ -4,7 +4,6 @@ import { Checkbox } from '@/components/animate-ui/components/base/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
-import { Field, FieldLabel } from '@/components/ui/field';
 import {
 	Item,
 	ItemContent,
@@ -72,7 +71,7 @@ export function ImportPreviewTable({
 			</Empty>
 		);
 	return (
-		<ItemGroup aria-label="Import-Vorschau">
+		<ItemGroup className="gap-2" aria-label="Import-Vorschau">
 			{expenses.map((parsed, index) => {
 				const skipped = skipIndexes.has(index);
 				return (
@@ -81,11 +80,20 @@ export function ImportPreviewTable({
 						variant="outline"
 						className={cn('items-start', skipped && 'opacity-60')}
 					>
+						<Checkbox
+							id={`import-entry-${index}`}
+							checked={!skipped}
+							onCheckedChange={() => onToggleSkip(index)}
+							disabled={disabled}
+							aria-label={`Eintrag ${index + 1} importieren`}
+							className="mt-0.5"
+						/>
 						<ItemContent className="min-w-0">
 							<ItemTitle className="line-clamp-none break-words">{parsed.description}</ItemTitle>
 							<ItemDescription className="line-clamp-none">
 								{formatDate(parsed.date)} · bezahlt von{' '}
 								{resolveName(mapping, members, parsed.paidByName)}
+								{skipped && ' · wird übersprungen'}
 							</ItemDescription>
 						</ItemContent>
 						<Badge variant="outline" className="font-mono tabular-nums">
@@ -108,24 +116,12 @@ export function ImportPreviewTable({
 								))}
 							</ul>
 							{parsed.warnings.length > 0 && (
-								<Alert>
+								<Alert className="border-0 bg-transparent p-0 text-xs">
 									<AlertDescription>
 										{parsed.warnings.map(describeParsedExpenseWarning).join(' ')}
 									</AlertDescription>
 								</Alert>
 							)}
-							<Field orientation="horizontal" className="min-h-11" data-disabled={disabled}>
-								<Checkbox
-									id={`import-entry-${index}`}
-									checked={!skipped}
-									onCheckedChange={() => onToggleSkip(index)}
-									disabled={disabled}
-									aria-label={`Eintrag ${index + 1} importieren`}
-								/>
-								<FieldLabel htmlFor={`import-entry-${index}`} className="min-h-11 flex-1">
-									{skipped ? 'Wird übersprungen' : 'Diesen Eintrag importieren'}
-								</FieldLabel>
-							</Field>
 						</ItemFooter>
 					</Item>
 				);

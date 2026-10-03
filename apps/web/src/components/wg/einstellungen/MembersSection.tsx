@@ -22,7 +22,6 @@ import {
 	ItemMedia,
 	ItemTitle,
 } from '@/components/ui/item';
-import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
@@ -31,7 +30,6 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
-import { buildSecurityOverview } from '@/core/infra/security';
 import type { StoredIdentity } from '@/shared/lib/identity';
 import { Crown, UserMinus, UserPlus } from 'lucide-react';
 import { useState } from 'react';
@@ -40,11 +38,10 @@ interface MembersSectionProps {
 	wg: WgSummary;
 	members: Member[];
 	identity: StoredIdentity;
-	joiningEnabled: boolean;
 }
 
 /** Mitgliederliste mit Admin-Übergabe, Ausziehen und Reaktivieren (nur Admins). */
-export function MembersSection({ wg, members, identity, joiningEnabled }: MembersSectionProps) {
+export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const { refreshMembers, isAdmin } = useWg();
 	const [memberToDeactivate, setMemberToDeactivate] = useState<{ id: string; name: string } | null>(
@@ -126,38 +123,16 @@ export function MembersSection({ wg, members, identity, joiningEnabled }: Member
 		setReactivatingId(null);
 	}
 
-	const securityOverview = buildSecurityOverview({
-		memberName: identity.name,
-		// Ausgezogene zählen nicht mit, sonst widerspricht die Zahl der Liste darunter.
-		memberCount: activeMembers.length,
-		joiningEnabled,
-		shareCodeRotatedAt: wg.shareCodeRotatedAt ?? null,
-	});
-
 	return (
 		<>
-			<Section
-				title="Mitglieder & Sicherheit"
-				hint="Wer drin ist, wie offen der WG-Code ist und wer ausziehen kann."
-			>
-				<div className="grid grid-cols-2 gap-3 p-3">
-					{securityOverview.map((item) => (
-						<div key={item.label} className="min-w-0">
-							<p className="text-muted-foreground text-xs">{item.label}</p>
-							<p className="text-foreground mt-0.5 break-words text-[12px] font-medium">
-								{item.value}
-							</p>
-						</div>
-					))}
-				</div>
-				<Separator />
+			<Section title="Mitglieder">
 				<ItemGroup className="gap-0 px-2 py-1">
 					{activeMembers.map((member) => (
-						<Item key={member.id} size="sm" className="min-h-[44px] flex-wrap">
+						<Item key={member.id} size="sm" className="min-h-[44px] flex-nowrap">
 							<ItemMedia>
 								<MemberAvatar name={member.name} size={26} />
 							</ItemMedia>
-							<ItemContent className="min-w-0 basis-20">
+							<ItemContent className="min-w-0">
 								<ItemTitle className="line-clamp-none">{member.name}</ItemTitle>
 							</ItemContent>
 							<ItemActions>
@@ -169,7 +144,7 @@ export function MembersSection({ wg, members, identity, joiningEnabled }: Member
 											<Button
 												type="button"
 												variant="outline"
-												size="sm"
+												size="icon"
 												onClick={() => {
 													setPromoteError(null);
 													setMemberToPromote({ id: member.id, name: member.name });
@@ -177,17 +152,15 @@ export function MembersSection({ wg, members, identity, joiningEnabled }: Member
 												aria-label={`Admin übergeben: ${member.name}`}
 											>
 												<Crown aria-hidden />
-												Admin
 											</Button>
 											<Button
 												type="button"
 												variant="outline"
-												size="sm"
+												size="icon"
 												onClick={() => setMemberToDeactivate({ id: member.id, name: member.name })}
 												aria-label={`Ausziehen: ${member.name}`}
 											>
 												<UserMinus aria-hidden />
-												Ausziehen
 											</Button>
 										</>
 									)
@@ -198,16 +171,14 @@ export function MembersSection({ wg, members, identity, joiningEnabled }: Member
 				</ItemGroup>
 				{inactiveMembers.length > 0 && (
 					<div className="px-4 pt-2 pb-1">
-						<p className="text-muted-foreground px-0.5 pb-1 text-xs font-medium tracking-wide uppercase">
-							Ausgezogen
-						</p>
+						<p className="text-muted-foreground px-0.5 pb-1 text-xs font-medium">Ausgezogen</p>
 						<ItemGroup className="gap-0">
 							{inactiveMembers.map((member) => (
-								<Item key={member.id} size="sm" className="min-h-[44px] flex-wrap opacity-70">
+								<Item key={member.id} size="sm" className="min-h-[44px] flex-nowrap opacity-70">
 									<ItemMedia>
 										<MemberAvatar name={member.name} size={26} />
 									</ItemMedia>
-									<ItemContent className="min-w-0 basis-40">
+									<ItemContent className="min-w-0">
 										<ItemTitle className="line-clamp-none">{member.name}</ItemTitle>
 										<ItemDescription className="line-clamp-none">
 											Ausgezogen, Verlauf bleibt erhalten

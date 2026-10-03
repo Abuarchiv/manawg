@@ -24,7 +24,7 @@ export default async function PasswordResetPage() {
 			description={
 				recoveryRequested
 					? 'Lege ein neues Passwort für dein Konto fest.'
-					: 'Fordere einen neuen Link an, wenn dein bisheriger abgelaufen ist.'
+					: 'Fordere einen neuen Link an.'
 			}
 			headingId="password-reset-heading"
 			backHref="/neu"

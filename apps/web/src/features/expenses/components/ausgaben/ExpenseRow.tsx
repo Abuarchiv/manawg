@@ -84,7 +84,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 			)}
 		>
 			<Collapsible open={expanded} onOpenChange={() => onToggleExpand(expense.id)}>
-				<Item className="gap-1 rounded-none py-1 pr-1.5 pl-3">
+				<Item className="gap-0.5 rounded-none py-1 pr-1.5 pl-3">
 					<ItemContent className="min-w-0">
 						<CollapsibleTrigger
 							render={
@@ -100,7 +100,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 								<span className="flex min-w-0 flex-1 flex-col gap-1 @[10rem]:flex-row @[10rem]:gap-3">
 									<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 										<span className="sr-only">Details öffnen:</span>
-										<span className="min-w-0 hyphens-auto text-[14px] font-medium leading-snug [overflow-wrap:break-word]">
+										<span className="line-clamp-2 min-w-0 hyphens-auto text-[14px] font-medium leading-snug [overflow-wrap:break-word]">
 											{expense.description}
 										</span>
 										<span className="text-[12px] leading-normal font-normal text-muted-foreground">
@@ -145,10 +145,10 @@ export const ExpenseRow = memo(function ExpenseRow({
 							</span>
 						</CollapsibleTrigger>
 					</ItemContent>
-					<ItemActions>
+					<ItemActions className="shrink-0">
 						<DropdownMenu>
 							<DropdownMenuTrigger
-								render={<Button variant="ghost" size="icon" className="size-8" />}
+								render={<Button variant="ghost" size="icon" />}
 								aria-label={`Aktionen für ${expense.description}`}
 							>
 								<MoreHorizontal />
@@ -238,7 +238,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 												) : (
 													<Check data-icon="inline-start" />
 												)}
-												{settled ? 'Wieder öffnen' : 'Als bezahlt eintragen'}
+												{settled ? 'Wieder öffnen' : 'Bezahlt'}
 											</Button>
 										)}
 									</Item>

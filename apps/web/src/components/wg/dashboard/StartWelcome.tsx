@@ -50,14 +50,14 @@ export function StartWelcome() {
 					</CardTitle>
 					<CardDescription>
 						{!hasRoommates
-							? 'Lade deine Mitbewohner ein und startet gemeinsam.'
+							? 'Lade deine Mitbewohner ein und starte gemeinsam mit ihnen.'
 							: 'Startet mit eurem ersten Eintrag.'}
 					</CardDescription>
 					<CardAction>
 						<Button
 							variant="ghost"
 							size="icon"
-							className="size-9"
+							className="size-8"
 							onClick={dismiss}
 							aria-label="Einstiegshinweis dauerhaft ausblenden"
 						>
@@ -65,9 +65,9 @@ export function StartWelcome() {
 						</Button>
 					</CardAction>
 				</CardHeader>
-				<CardContent className="flex flex-col gap-1">
+				<CardContent className="flex flex-row flex-wrap gap-2">
 					{hasRoommates && (
-						<Link href={`${baseHref}/einkauf`} className={cn(buttonVariants(), '')}>
+						<Link href={`${baseHref}/einkauf`} className={cn(buttonVariants(), 'flex-1')}>
 							Einkauf öffnen
 						</Link>
 					)}
@@ -75,6 +75,7 @@ export function StartWelcome() {
 						code={wg.shareCode}
 						wgName={wg.name}
 						joiningEnabled={wg.joiningEnabled}
+						className="flex-1"
 						variant={hasRoommates ? 'ghost' : 'default'}
 					/>
 					{!wg.joiningEnabled && (

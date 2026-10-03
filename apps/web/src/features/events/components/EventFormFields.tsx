@@ -53,7 +53,7 @@ export function EventFormFields({
 	errorId,
 }: EventFormFieldsProps) {
 	return (
-		<FieldGroup>
+		<FieldGroup className="gap-3">
 			<Field data-disabled={disabled}>
 				<FieldLabel htmlFor={`${idPrefix}-title`}>Titel</FieldLabel>
 				<Input
@@ -70,7 +70,7 @@ export function EventFormFields({
 					className="text-base"
 				/>
 			</Field>
-			<Field orientation="horizontal" data-disabled={disabled} className="min-h-11">
+			<Field orientation="horizontal" data-disabled={disabled} className="min-h-9">
 				<Checkbox
 					id={`${idPrefix}-all-day`}
 					checked={allDay}
@@ -85,7 +85,7 @@ export function EventFormFields({
 					disabled={disabled}
 					className="relative after:absolute after:-inset-3"
 				/>
-				<FieldLabel htmlFor={`${idPrefix}-all-day`} className="min-h-11">
+				<FieldLabel htmlFor={`${idPrefix}-all-day`} className="min-h-9">
 					Ganztägig
 				</FieldLabel>
 			</Field>

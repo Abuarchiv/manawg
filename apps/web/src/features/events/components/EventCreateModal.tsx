@@ -161,7 +161,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 			<DrawerContent className="mx-auto w-full max-w-md">
 				<DrawerHeader>
 					<DrawerTitle>Neuer Termin</DrawerTitle>
-					<DrawerDescription>
+					<DrawerDescription className="sr-only">
 						Für eure WG · Datum und Uhrzeit wie auf deinem Gerät.
 					</DrawerDescription>
 				</DrawerHeader>
@@ -169,12 +169,13 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 					<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
 						<FieldSet disabled={submitting}>
 							<FieldLegend variant="label">Vorlagen</FieldLegend>
-							<div className="flex flex-wrap gap-2">
+							<div className="-mx-4 flex gap-2 overflow-x-auto px-4">
 								{QUICK_TEMPLATES.map((template) => (
 									<Button
 										key={template.label}
 										type="button"
 										variant="outline"
+										className="shrink-0"
 										onClick={() => applyTemplate(template)}
 										disabled={submitting}
 									>

@@ -51,10 +51,7 @@ export function AccountSignOutSection({
 	}
 
 	return (
-		<Section
-			title="Konto abmelden"
-			hint="Meldet dein Konto auf diesem Gerät ab. WG-Mitgliedschaft und Daten bleiben erhalten."
-		>
+		<Section title="Konto abmelden">
 			<div className="p-3">
 				<Button
 					type="button"

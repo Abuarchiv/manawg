@@ -237,7 +237,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						</AlertDescription>
 					</output>
 				)}
-				<div className="flex min-w-0 flex-col gap-6">
+				<div className={cn('flex min-w-0 flex-col', section ? 'gap-3' : 'gap-6')}>
 					<header className="flex flex-col gap-3">
 						<div className="flex flex-wrap items-center justify-between gap-3">
 							<Link
@@ -261,12 +261,14 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							</Link>
 						</div>
 						<div className="flex flex-col gap-1">
-							<h1 className="font-heading text-[22px] leading-7 font-semibold tracking-tight">
+							<h1 className="font-heading text-balance text-lg leading-6 font-semibold tracking-tight">
 								{module?.title ?? 'Euer WG-Alltag. Gemeinsam geregelt.'}
 							</h1>
-							<p className="text-sm text-muted-foreground">
-								{module?.description ?? 'Einkäufe planen, Kosten teilen und Aufgaben verteilen.'}
-							</p>
+							{!section && (
+								<p className="text-sm text-muted-foreground">
+									{module?.description ?? 'Einkäufe planen, Kosten teilen und Aufgaben verteilen.'}
+								</p>
+							)}
 						</div>
 					</header>
 					{section && (
