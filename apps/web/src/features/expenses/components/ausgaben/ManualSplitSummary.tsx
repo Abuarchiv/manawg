@@ -72,7 +72,7 @@ export function ManualSplitSummary({
 				<Button
 					type="button"
 					variant="outline"
-					size="lg"
+					size="sm"
 					onClick={distributeRemainder}
 					disabled={disabled}
 				>

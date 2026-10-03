@@ -53,12 +53,12 @@ export function ExpenseHistory({
 			{expenseCount > 0 && <h2 className="sr-only">Verlauf</h2>}
 			{showSkeleton ? (
 				<ExpensesSkeleton />
-			) : loadFailed && expenseCount === 0 ? (
+			) : loadFailed && expenseCount === 0 ? null : expenseCount === 0 && !initialLoading ? (
 				<Empty>
 					<EmptyHeader>
-						<EmptyTitle>Noch keine Ausgaben geladen</EmptyTitle>
+						<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
 						<EmptyDescription>
-							Versuche es erneut, sobald die Verbindung wieder da ist.
+							Tippe unten rechts auf „+“, um eure erste gemeinsame Ausgabe einzutragen.
 						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
@@ -75,8 +75,8 @@ export function ExpenseHistory({
 				<div className="flex flex-col gap-4">
 					{weeks.map((week) => (
 						<section key={week.label} aria-label={week.label} className="flex flex-col gap-1.5">
-							<h3 className="px-1 text-[12px] font-medium text-muted-foreground">{week.label}</h3>
-							<ul className="divide-y overflow-hidden rounded-xl border">
+							<h3 className="px-0 text-[12px] font-medium text-muted-foreground">{week.label}</h3>
+							<ul className="divide-y divide-border/60 overflow-hidden rounded-xl border">
 								{week.items.map((expense) => (
 									<ExpenseRow
 										key={expense.id}
