@@ -14,10 +14,8 @@ import type { MemberRef } from '@/shared/lib/member-types';
 import { ChevronDown } from 'lucide-react';
 
 const FAIRNESS_RULES = [
-	'Niemand direkt doppelt',
-	'Wenigste Last zuerst',
-	'Nach Erledigung neu berechnet',
-	'Abwesenheiten überspringen, sobald hinterlegt',
+	'Wenigste Last zuerst, niemand direkt doppelt',
+	'Nach Erledigung neu berechnet, Abwesende übersprungen',
 ];
 
 export function FairnessPanel({
@@ -40,12 +38,26 @@ export function FairnessPanel({
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Diesen Monat</CardTitle>
+				<CardTitle>
+					Diesen Monat
+					{fairness.suggestedAssignee && (
+						<span className="font-normal text-muted-foreground">
+							{' · Als Nächstes dran: '}
+							<span className="font-medium text-foreground">
+								{fairness.suggestedAssignee.id === currentMemberId
+									? 'du'
+									: fairness.suggestedAssignee.name}
+							</span>
+						</span>
+					)}
+				</CardTitle>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-3">
-				<div className="flex flex-col gap-2">
+				<div className="flex flex-col gap-2 empty:hidden">
 					{total === 0 ? (
-						<p className="text-sm text-muted-foreground">Noch nichts erledigt.</p>
+						!fairness.suggestedAssignee && (
+							<p className="text-sm text-muted-foreground">Noch nichts erledigt.</p>
+						)
 					) : (
 						<>
 							<div aria-hidden className="flex h-2 overflow-hidden rounded-full bg-muted">
@@ -71,18 +83,10 @@ export function FairnessPanel({
 						</>
 					)}
 				</div>
-				{fairness.suggestedAssignee && (
-					<p className="text-sm">
-						Als Nächstes dran:{' '}
-						<span className="font-medium">
-							{fairness.suggestedAssignee.id === currentMemberId
-								? 'du'
-								: fairness.suggestedAssignee.name}
-						</span>
-					</p>
-				)}
 				<Collapsible>
-					<CollapsibleTrigger render={<Button variant="outline" className="w-full break-normal" />}>
+					<CollapsibleTrigger
+						render={<Button variant="ghost" size="sm" className="w-full break-normal" />}
+					>
 						<span className="min-w-0 flex-1 text-left break-normal whitespace-normal">
 							So wird verteilt
 						</span>
@@ -95,17 +99,16 @@ export function FairnessPanel({
 									<li key={rule}>{rule}</li>
 								))}
 							</ul>
-							<ItemGroup className="gap-2">
+							<ItemGroup className="gap-0 divide-y">
 								{fairness.rows.map((row) => (
-									<Item key={row.id} variant="outline">
+									<Item key={row.id}>
 										<ItemContent className="min-w-0">
 											<ItemTitle className="line-clamp-none break-words">
 												{row.id === currentMemberId ? 'Du' : row.name}
 											</ItemTitle>
 											<ItemDescription className="line-clamp-none">
-												{row.assignedCount} Aufgabe{row.assignedCount === 1 ? '' : 'n'} ·{' '}
-												{row.openGapCount}{' '}
-												{row.openGapCount === 1 ? 'offener Termin' : 'offene Termine'}
+												{row.assignedCount} Aufgabe{row.assignedCount === 1 ? '' : 'n'}
+												{row.openGapCount > 0 && ` · ${row.openGapCount} offen`}
 											</ItemDescription>
 										</ItemContent>
 										{!row.available && <Badge variant="secondary">Abwesend</Badge>}

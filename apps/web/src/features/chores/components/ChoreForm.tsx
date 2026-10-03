@@ -76,7 +76,7 @@ export function ChoreForm({
 			<DrawerContent className="mx-auto w-full max-w-md">
 				<DrawerHeader>
 					<DrawerTitle>Neue Putzaufgabe</DrawerTitle>
-					<DrawerDescription>Aufgabe, Rhythmus und erste zuständige Person.</DrawerDescription>
+					<DrawerDescription>Rhythmus und erste zuständige Person.</DrawerDescription>
 				</DrawerHeader>
 				<form
 					id="add-chore-form"
@@ -143,11 +143,7 @@ export function ChoreForm({
 										</ToggleGroupItem>
 									))}
 								</ToggleGroup>
-								<FieldDescription>
-									Erste Fälligkeit: {firstDue}. Bei früher Erledigung bleibt die bestehende
-									Fälligkeit die Basis; bei später Erledigung beginnt der nächste Rhythmus am
-									Abschluss.
-								</FieldDescription>
+								<FieldDescription>Erste Fälligkeit: {firstDue}.</FieldDescription>
 							</Field>
 							<Field data-disabled={pending}>
 								<FieldLabel htmlFor="chore-assigned">Zuständig</FieldLabel>
@@ -165,10 +161,7 @@ export function ChoreForm({
 										</NativeSelectOption>
 									))}
 								</NativeSelect>
-								<FieldDescription>
-									Nach dem Erledigen wird die Zuständigkeit neu verteilt. Abwesenheiten werden
-									berücksichtigt.
-								</FieldDescription>
+								<FieldDescription>Wird nach dem Erledigen neu verteilt.</FieldDescription>
 							</Field>
 						</FieldGroup>
 						{error && (
