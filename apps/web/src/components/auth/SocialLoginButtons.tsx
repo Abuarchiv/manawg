@@ -85,7 +85,6 @@ export function SocialLoginButtons({
 						key={provider}
 						type="button"
 						variant="outline"
-						size="lg"
 						onClick={() => void start(provider)}
 						disabled={pendingProvider !== null}
 						className="w-full"

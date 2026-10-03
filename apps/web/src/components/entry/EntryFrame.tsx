@@ -34,7 +34,7 @@ export function EntryFrame({
 				<Link
 					href={backHref}
 					aria-label="Zurück zur öffentlichen Ansicht"
-					className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-9')}
+					className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
 				>
 					<ArrowLeft aria-hidden />
 				</Link>
@@ -49,7 +49,7 @@ export function EntryFrame({
 			<header className="flex flex-col gap-2">
 				<h1
 					id={headingId}
-					className="break-words font-heading text-[22px] leading-7 font-semibold tracking-tight"
+					className="break-words font-heading text-lg leading-6 font-semibold tracking-tight"
 				>
 					{title}
 				</h1>

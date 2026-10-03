@@ -83,7 +83,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 					</AlertDescription>
 				</Alert>
 				<Link href="/neu" className={cn(buttonVariants({ variant: 'outline' }))}>
-					Neuen Link über die Anmeldung anfordern
+					Neuen Link anfordern
 				</Link>
 			</div>
 		);
