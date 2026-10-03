@@ -165,7 +165,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 						Für eure WG · Datum und Uhrzeit wie auf deinem Gerät.
 					</DrawerDescription>
 				</DrawerHeader>
-				<form noValidate onSubmit={handleSubmit} className="flex min-h-0 flex-col">
+				<form onSubmit={handleSubmit} className="flex min-h-0 flex-col">
 					<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
 						<FieldSet disabled={submitting}>
 							<FieldLegend variant="label">Vorlagen</FieldLegend>

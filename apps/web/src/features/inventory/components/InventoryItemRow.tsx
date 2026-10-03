@@ -181,11 +181,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						</span>
 					</ItemTitle>
 					<ItemDescription className="line-clamp-none tabular-nums">
-						{quantity} {item.unit} ·{' '}
-						<span className="whitespace-nowrap">
-							Nachkaufen ab{'\u00a0'}
-							{item.threshold}
-						</span>
+						{quantity} {item.unit} · Nachkaufen ab{'\u00a0'}
+						{item.threshold}
 					</ItemDescription>
 				</ItemContent>
 
