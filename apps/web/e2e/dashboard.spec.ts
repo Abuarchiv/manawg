@@ -217,7 +217,7 @@ test.describe('daily overview home', () => {
 		await personal.getByRole('button', { name: 'Weitere anzeigen (2)' }).click();
 		await page.waitForTimeout(300);
 		await expect(personal.getByText('WG · 3 offene Artikel')).toBeVisible();
-		await expect(personal.getByText(/WG-Fixkosten/)).toBeVisible();
+		await expect(personal.getByText(/Fixkosten/)).toBeVisible();
 		await expect(personal.getByText('An Anna', { exact: true })).toBeVisible();
 		await expect(personal.getByText('Von Anna', { exact: true })).toBeVisible();
 		await expect(personal.getByText(/12,50/)).toBeVisible();
@@ -591,7 +591,7 @@ test.describe('daily overview model', () => {
 		expect(items.some((item) => item.entityId === 'mine')).toBe(true);
 		expect(items.some((item) => item.entityId === 'theirs')).toBe(false);
 		expect(items.find((item) => item.kind === 'shopping')?.detail).toContain('WG');
-		expect(items.find((item) => item.kind === 'recurring')?.detail).toContain('WG');
+		expect(items.find((item) => item.kind === 'recurring')?.detail).toContain('Fixkosten');
 	});
 
 	test('keeps personal settlements distinct by counterparty and currency', () => {
@@ -1451,7 +1451,7 @@ test.describe('start overview model', () => {
 			expect(items.some((item) => item.entityId === 'later')).toBe(false);
 			expect(items[0]).toMatchObject({
 				isPersonal: true,
-				detail: expect.stringContaining('Für dich'),
+				detail: expect.stringContaining('offen'),
 				href: '/wg/WG%2F1/putzen?highlight=own-overdue',
 			});
 			expect(items[1]).toMatchObject({

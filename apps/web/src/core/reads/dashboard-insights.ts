@@ -146,7 +146,7 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 			const isPersonal = chore.assignedMemberId === input.currentMemberId;
 			const due = dueLabel(chore.nextDueAt, now);
 			const ownership = isPersonal
-				? 'Für dich'
+				? ''
 				: chore.assignedMemberName
 					? chore.assignedMemberName
 					: 'Noch nicht zugewiesen';
@@ -223,10 +223,10 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 		ranked.push({
 			item: {
 				kind: 'recurring',
-				title: `${recurring.description} ist fällig`,
+				title: recurring.description,
 				detail: recurring.nextDueAt
-					? `WG-Fixkosten · ${formatEuro(recurring.amountCents, recurring.currency)} · ${dueLabel(recurring.nextDueAt, now)}`
-					: `WG-Fixkosten · ${formatEuro(recurring.amountCents, recurring.currency)}`,
+					? `Fixkosten · ${formatEuro(recurring.amountCents, recurring.currency)} · ${dueLabel(recurring.nextDueAt, now)}`
+					: `Fixkosten · ${formatEuro(recurring.amountCents, recurring.currency)}`,
 				href: `${base}/ausgaben?recurring=${encodeURIComponent(recurring.id)}`,
 				tone: urgency === 0 ? 'danger' : 'accent',
 				isPersonal: false,
