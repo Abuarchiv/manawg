@@ -133,6 +133,32 @@ export function CommentRow({
 							<Spinner /> Wird gesendet…
 						</output>
 					)}
+					{canEdit && !editing && (
+						<span className="ml-auto flex gap-1">
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								disabled={pending}
+								aria-label={`Kommentar bearbeiten: ${actionSubject}`}
+								onClick={() => {
+									if (!draft.restored) draft.change(comment.content);
+									focusEditorOnEditRef.current = true;
+									setEditing(true);
+								}}
+							>
+								<Pencil aria-hidden />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								disabled={pending}
+								aria-label={`Kommentar entfernen: ${actionSubject}`}
+								onClick={() => setConfirmOpen(true)}
+							>
+								<Trash2 aria-hidden />
+							</Button>
+						</span>
+					)}
 				</div>
 				{editing ? (
 					<FieldGroup className="gap-2">
@@ -173,32 +199,6 @@ export function CommentRow({
 							Kommentar konnte nicht gespeichert oder entfernt werden. Versuche es erneut.
 						</AlertDescription>
 					</Alert>
-				)}
-				{canEdit && !editing && (
-					<div className="flex flex-wrap gap-1">
-						<Button
-							variant="ghost"
-							size="sm"
-							disabled={pending}
-							aria-label={`Kommentar bearbeiten: ${actionSubject}`}
-							onClick={() => {
-								if (!draft.restored) draft.change(comment.content);
-								focusEditorOnEditRef.current = true;
-								setEditing(true);
-							}}
-						>
-							<Pencil data-icon="inline-start" /> Bearbeiten
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							disabled={pending}
-							aria-label={`Kommentar entfernen: ${actionSubject}`}
-							onClick={() => setConfirmOpen(true)}
-						>
-							<Trash2 data-icon="inline-start" /> Entfernen
-						</Button>
-					</div>
 				)}
 			</div>
 			<AlertDialog open={confirmOpen} onOpenChange={(open) => !pending && setConfirmOpen(open)}>
