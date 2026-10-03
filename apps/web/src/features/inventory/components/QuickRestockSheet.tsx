@@ -1,6 +1,5 @@
 'use client';
 
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -111,9 +110,9 @@ export function QuickRestockSheet({
 					style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
 				>
 					{error && (
-						<Alert variant="destructive">
-							<AlertDescription>{error}</AlertDescription>
-						</Alert>
+						<p role="alert" className="text-xs text-destructive">
+							{error}
+						</p>
 					)}
 					{sorted.length === 0 ? (
 						<Empty className="border border-dashed">

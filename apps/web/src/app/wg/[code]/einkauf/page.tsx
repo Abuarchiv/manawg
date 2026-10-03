@@ -91,13 +91,11 @@ export default function EinkaufPage() {
 	].filter((group) => !suggestionsPending && group.names.length > 0);
 
 	return (
-		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
+		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-4">
 			<SubNav liveCount={!initialLoading && !loadError ? open.length : undefined} />
 			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
 			<header className="sr-only">
-				<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight text-foreground">
-					Einkaufsliste
-				</h1>
+				<h1>Einkaufsliste</h1>
 				<p
 					className="mt-0.5 text-[12px] text-muted-foreground tabular-nums"
 					aria-live="polite"

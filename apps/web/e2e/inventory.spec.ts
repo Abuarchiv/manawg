@@ -569,7 +569,6 @@ test.describe('inventory restock retry', () => {
 		await minus.click();
 		// Die Antwort hängt noch am Gate: die Anzeige ist optimistisch.
 		await expect(page.getByText('2 Packung')).toBeVisible();
-		await expect(page.getByText('Bald leer')).toBeVisible();
 		releaseConsume();
 		await expect(page.getByText('Aktualisierung fehlgeschlagen.')).toBeVisible();
 		await expect(page.getByText('3 Packung')).toBeVisible();

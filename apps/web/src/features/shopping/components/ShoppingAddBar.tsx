@@ -23,7 +23,7 @@ export function ShoppingAddBar({
 }) {
 	return (
 		<ThumbAction>
-			<div className="flex flex-col gap-1.5 rounded-xl border border-border bg-background p-1.5">
+			<div className="flex flex-col gap-1.5 bg-background py-1.5">
 				<form
 					id="shopping-add-form"
 					onSubmit={(event) => {
@@ -53,7 +53,7 @@ export function ShoppingAddBar({
 						aria-busy={adding}
 						aria-label="Artikel hinzufügen"
 						onPointerDown={(event) => event.preventDefault()}
-						className="size-11 shrink-0"
+						className="size-11 shrink-0 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
 					>
 						{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}
 					</Button>
