@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button';
 import {
 	Drawer,
 	DrawerContent,
-	DrawerDescription,
 	DrawerFooter,
 	DrawerHeader,
 	DrawerTitle,
@@ -255,11 +254,6 @@ export function InventoryAddModal({
 			<DrawerContent className="mx-auto w-full max-w-md">
 				<DrawerHeader>
 					<DrawerTitle>{mode === 'edit' ? 'Vorrat bearbeiten' : 'Neuer Vorrat'}</DrawerTitle>
-					<DrawerDescription>
-						{mode === 'edit'
-							? 'Menge, Einheit, Kategorie und „Nachkaufen ab“ anpassen.'
-							: 'Name, Menge, Einheit, Kategorie und „Nachkaufen ab“ festlegen.'}
-					</DrawerDescription>
 				</DrawerHeader>
 
 				<form

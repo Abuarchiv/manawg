@@ -20,14 +20,12 @@ export default function VorraetePage() {
 		useInventoryPage(wg.shareCode, identity.memberId, identity.memberToken);
 
 	return (
-		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
+		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-4">
 			<SubNav />
 			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
 			<header className="sr-only">
 				<div className="min-w-0 flex-1">
-					<h1 className="font-heading text-[26px] leading-8 font-semibold tracking-tight text-foreground">
-						Vorräte
-					</h1>
+					<h1>Vorräte</h1>
 					<p
 						className="mt-0.5 text-[12px] text-muted-foreground tabular-nums"
 						aria-live="polite"
