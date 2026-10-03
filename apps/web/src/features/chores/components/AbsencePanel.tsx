@@ -86,9 +86,9 @@ export function AbsencePanel({
 			<CardHeader>
 				<CardTitle className="break-normal">Abwesenheiten</CardTitle>
 				<CardDescription className="break-normal">
-					{active
-						? 'Abwesenheits-Fokus: wer nicht da ist, wird bei der Rotation übersprungen.'
-						: 'Wer nicht da ist, wird bei der Rotation übersprungen.'}
+					{active && 'Abwesenheits-Fokus: '}
+					Wer fehlt, wird übersprungen.
+					{absentCount > 0 && ` · ${absentCount} aktuell abwesend`}
 				</CardDescription>
 				<CardAction>
 					<Button
@@ -103,12 +103,7 @@ export function AbsencePanel({
 					</Button>
 				</CardAction>
 			</CardHeader>
-			<CardContent className="flex flex-col gap-3">
-				{absentCount > 0 && (
-					<p className="text-sm text-muted-foreground tabular-nums">
-						{absentCount} aktuell abwesend
-					</p>
-				)}
+			<CardContent className="flex flex-col gap-0">
 				<Collapsible open={formOpen}>
 					<CollapsiblePanel>
 						<form
@@ -117,7 +112,7 @@ export function AbsencePanel({
 								event.preventDefault();
 								onAdd();
 							}}
-							className="flex flex-col gap-3 pb-1"
+							className="flex flex-col gap-3 pb-3"
 						>
 							<FieldGroup>
 								<Field data-disabled={pending}>
@@ -169,10 +164,9 @@ export function AbsencePanel({
 										value={reason}
 										onChange={(event) => onReasonChange(event.target.value)}
 										maxLength={120}
-										placeholder="Grund optional"
+										placeholder="z. B. Urlaub"
 										disabled={pending}
 										enterKeyHint="done"
-										aria-label="Abwesenheitsgrund"
 										className="text-base"
 									/>
 								</Field>
@@ -189,7 +183,7 @@ export function AbsencePanel({
 					</CollapsiblePanel>
 				</Collapsible>
 				{totalCount > 0 && (
-					<ItemGroup className="gap-2">
+					<ItemGroup className="gap-0 divide-y">
 						{visibleAbsences.map((absence) => {
 							const removing = isPending(`absence:${absence.id}:remove`);
 							const armed = confirmId === absence.id;
@@ -197,7 +191,6 @@ export function AbsencePanel({
 								<Item
 									key={absence.id}
 									id={`absence-${absence.id}`}
-									variant="outline"
 									className={cn(
 										'scroll-mt-28',
 										absence.id === highlightedAbsenceId && 'ring-2 ring-inset ring-ring',
@@ -247,7 +240,7 @@ export function AbsencePanel({
 				{hiddenCount > 0 && (
 					<Link
 						href={allAbsencesHref}
-						className={buttonVariants({ variant: 'outline', className: 'min-h-11' })}
+						className={buttonVariants({ variant: 'outline', className: 'mt-3 min-h-11' })}
 					>
 						Alle {totalCount} Abwesenheiten anzeigen
 					</Link>
