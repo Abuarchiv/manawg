@@ -137,7 +137,7 @@
 	--font-mono: var(--font-jetbrains-mono);
 	/* Small text keeps a readable floor under the fluid root size (section 6);
 	   headings and spacing above still scale down on narrow phones. */
-	--text-xs: max(11.5px, 0.8125rem);
+	--text-xs: max(12px, 0.8125rem);
 	--text-sm: max(12.5px, 0.875rem);
 	--text-lg: 1.0625rem;
 	--text-2xl: 1.625rem;
@@ -291,7 +291,7 @@ textarea,
    Scrollen nicht die ganze Seite neu malt.
    Ohne backdrop-filter oder bei weniger Transparenz / mehr Kontrast → deckend. */
 .glass-bar {
-	--glass-tint: rgb(255 255 255 / 0.72);
+	--glass-tint: rgb(255 255 255 / 0.84);
 	--glass-solid: var(--card);
 	--glass-edge: inset 0 0 0 1px rgb(0 0 0 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9);
 	--glass-drop: 0 8px 28px rgb(0 0 0 / 0.1);
@@ -303,7 +303,7 @@ textarea,
 	transform: translateZ(0);
 }
 .dark .glass-bar {
-	--glass-tint: rgb(10 10 10 / 0.62);
+	--glass-tint: rgb(10 10 10 / 0.8);
 	--glass-solid: #0a0a0a;
 	--glass-edge: inset 0 0 0 1px rgb(255 255 255 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.28);
 	--glass-drop: 0 10px 32px rgb(0 0 0 / 0.34);

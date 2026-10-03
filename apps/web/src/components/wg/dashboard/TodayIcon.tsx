@@ -4,15 +4,16 @@ import {
 	ListChecks,
 	type LucideIcon,
 	Megaphone,
-	Receipt,
+	Repeat2,
 	Sparkles,
+	Wallet,
 } from 'lucide-react';
 
 const ICONS: Record<TodayImportantKind, LucideIcon> = {
 	chore: Sparkles,
 	shopping: ListChecks,
-	debt: Receipt,
-	recurring: Receipt,
+	debt: Wallet,
+	recurring: Repeat2,
 	absence: AlertTriangle,
 	announcement: Megaphone,
 };
