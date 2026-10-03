@@ -96,12 +96,12 @@
 	}
 	:is([data-household-content], [data-finance-content], [data-exchange-content])
 		[data-slot="item"] {
-		padding-block: 0.375rem;
+		padding-block: 0.25rem;
 	}
 	:is([data-household-content], [data-finance-content], [data-exchange-content])
 		[data-slot="empty"] {
 		gap: 0.75rem;
-		padding: 1.25rem 0.75rem;
+		padding: 0.75rem 0.75rem;
 	}
 }
 

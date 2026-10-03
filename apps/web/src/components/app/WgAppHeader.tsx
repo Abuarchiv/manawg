@@ -25,7 +25,7 @@ export function WgAppHeader() {
 		<header
 			data-home-header
 			data-app-chrome
-			className="mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-3 px-4 pt-4"
+			className="mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-2 px-4 pt-3"
 		>
 			<div className="flex min-w-0 flex-wrap items-center gap-1">
 				<LogoMark
@@ -38,7 +38,7 @@ export function WgAppHeader() {
 					<h1
 						aria-label={`${wg.name} – Start`}
 						title={wg.name}
-						className="truncate text-xl font-semibold tracking-tight"
+						className="truncate text-lg font-semibold tracking-tight"
 					>
 						{wg.name}
 					</h1>
