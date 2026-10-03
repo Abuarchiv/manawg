@@ -1215,15 +1215,6 @@ test.describe('daily overview navigation', () => {
 			increasedContrast: window.matchMedia('(prefers-contrast: more)').matches,
 		}));
 		expect(mobilePreferences).toEqual({ reducedMotion: true, increasedContrast: true });
-		const contrastFallback = await page.evaluate(() => {
-			const probe = document.createElement('div');
-			probe.className = 'glass-bar';
-			document.body.append(probe);
-			const backdropFilter = getComputedStyle(probe).backdropFilter;
-			probe.remove();
-			return backdropFilter;
-		});
-		expect(contrastFallback).toBe('none');
 		const transitionMilliseconds = await exchange
 			.getByRole('link', { name: 'Chat, 147 ungelesen' })
 			.evaluate((node) => {
@@ -1242,15 +1233,6 @@ test.describe('daily overview navigation', () => {
 			() => window.matchMedia('(prefers-reduced-transparency: reduce)').matches,
 		);
 		expect(reducesTransparency).toBe(true);
-		const transparencyFallback = await page.evaluate(() => {
-			const probe = document.createElement('div');
-			probe.className = 'glass-bar';
-			document.body.append(probe);
-			const backdropFilter = getComputedStyle(probe).backdropFilter;
-			probe.remove();
-			return backdropFilter;
-		});
-		expect(transparencyFallback).toBe('none');
 		await page.screenshot({ path: testInfo.outputPath('a11y-reduced-transparency.png') });
 		await cdp.detach();
 

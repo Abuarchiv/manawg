@@ -196,37 +196,29 @@ function WgShell({
 					{children}
 				</main>
 			</div>
-			<AppBottomNav
-				aria-label="WG Hauptnavigation"
-				data-app-chrome
-				className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full min-w-0 max-w-[var(--app-nav-width)] px-7 pb-[max(0.5rem,calc(env(safe-area-inset-bottom,0px)-0.5rem))]"
-			>
-				<div className="glass-bar rounded-[18px]">
-					<ul className="flex flex-wrap gap-0.5 p-0.5 [&>li]:min-w-fit [&>li]:flex-1">
-						<NavItem
-							href={wgBaseHref}
-							label="Start"
-							iconKey="home"
-							activePrefixes={[`${wgBaseHref}/aktivitaet`]}
-						/>
-						{WG_SECTIONS.map((section) => (
-							<NavItem
-								key={section.label}
-								href={`${wgBaseHref}/${section.pages[0].slug}`}
-								label={section.label}
-								iconKey={section.iconKey}
-								activePrefixes={[...section.pages.map((page) => page.slug), ...section.related].map(
-									(slug) => `${wgBaseHref}/${slug}`,
-								)}
-							/>
-						))}
-						{/* Vier Ziele nach Candidate A: Start, Haushalt (Einkauf/Vorräte/
-					    Putzen/Kalender), Finanzen (Ausgaben/Fixkosten/Mahnungen/Import),
-					    Austausch (Pinnwand/Chat). Alle bisherigen Deep Links lösen
-					    weiter auf; Aktivität/Einstellungen bleiben über
-					    Header- und Start-Verlinkungen erreichbar. */}
-					</ul>
-				</div>
+			<AppBottomNav label="WG Hauptnavigation">
+				<NavItem
+					href={wgBaseHref}
+					label="Start"
+					iconKey="home"
+					activePrefixes={[`${wgBaseHref}/aktivitaet`]}
+				/>
+				{WG_SECTIONS.map((section) => (
+					<NavItem
+						key={section.label}
+						href={`${wgBaseHref}/${section.pages[0].slug}`}
+						label={section.label}
+						iconKey={section.iconKey}
+						activePrefixes={[...section.pages.map((page) => page.slug), ...section.related].map(
+							(slug) => `${wgBaseHref}/${slug}`,
+						)}
+					/>
+				))}
+				{/* Vier Ziele nach Candidate A: Start, Haushalt (Einkauf/Vorräte/
+				    Putzen/Kalender), Finanzen (Ausgaben/Fixkosten/Mahnungen/Import),
+				    Austausch (Pinnwand/Chat). Alle bisherigen Deep Links lösen
+				    weiter auf; Aktivität/Einstellungen bleiben über
+				    Header- und Start-Verlinkungen erreichbar. */}
 			</AppBottomNav>
 			{/* Last in the DOM so Tab reaches a toast's dismiss button right after
 			    whatever the user just did, instead of jumping back to the page top. */}
