@@ -110,9 +110,9 @@ export default function KalenderPage() {
 					haptic('light');
 					setView(value as ViewMode);
 				}}
-				className="gap-3"
+				className="gap-2"
 			>
-				<TabsList className="w-full">
+				<TabsList className="w-fit self-end">
 					<TabsTrigger value="list" className="min-w-max whitespace-nowrap">
 						<List data-icon="inline-start" aria-hidden />
 						Agenda

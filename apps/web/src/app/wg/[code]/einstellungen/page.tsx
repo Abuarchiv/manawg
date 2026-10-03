@@ -157,7 +157,7 @@ export default function EinstellungenPage() {
 
 					<TabsContent
 						value={activeTab}
-						className="mt-3 grid min-w-0 max-w-full gap-3 outline-none"
+						className="mt-2 grid min-w-0 max-w-full gap-2.5 outline-none"
 					>
 						{activeTab === 'profile' && (
 							<ProfileTab

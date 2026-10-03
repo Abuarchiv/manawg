@@ -243,7 +243,7 @@ export default function WgHomePage() {
 		<>
 			<div
 				data-home-content
-				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-4 px-4 py-4"
+				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-3 px-4 py-3"
 			>
 				{isNewWg && (
 					<div>
@@ -335,7 +335,7 @@ export default function WgHomePage() {
 					</section>
 				)}
 
-				<div className="flex min-w-0 flex-col gap-4">
+				<div className="flex min-w-0 flex-col gap-3">
 					<section aria-labelledby="week-heading" className="flex min-w-0 flex-col gap-2">
 						<div className="flex min-w-0 flex-wrap items-center gap-3">
 							<h2 id="week-heading" className="font-heading min-w-0 text-xl font-semibold">

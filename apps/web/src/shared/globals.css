@@ -55,8 +55,8 @@
    retain 16px text to avoid Safari's automatic focus zoom. */
 @media (max-width: 639px) {
 	:is([data-household-content], [data-finance-content], [data-exchange-content]) {
-		gap: 0.75rem;
-		padding-block: 0.75rem;
+		gap: 0.625rem;
+		padding-block: 0.5rem;
 	}
 	:is([data-household-content], [data-finance-content], [data-exchange-content]) h1 {
 		font-size: 1.125rem;
@@ -84,7 +84,7 @@
 	}
 	:is([data-household-content], [data-finance-content], [data-exchange-content])
 		[data-slot="card"] {
-		--card-spacing: 0.625rem;
+		--card-spacing: 0.5rem;
 	}
 	:is([data-household-content], [data-finance-content], [data-exchange-content])
 		[data-slot="field"] {
@@ -107,7 +107,7 @@
 
 @media (max-width: 639px) {
 	body:has(.group\/wg-shell) [data-slot="card"] {
-		--card-spacing: 0.625rem;
+		--card-spacing: 0.5rem;
 	}
 	body:has(.group\/wg-shell) [data-slot="empty"] {
 		padding: 1rem 0;
