@@ -11,7 +11,7 @@
 // served from cache, and the app has its own offline queue for writes.
 //
 // Bump VERSION to evict every cached shell asset on the next activate.
-const VERSION = 'manawg-app-v4-offline-assets';
+const VERSION = 'manawg-app-v5-static-routes';
 const SHELL_CACHE = `${VERSION}-shell`;
 const PUBLIC_DOCUMENT_PATHS = new Set(['/', '/offline']);
 
@@ -83,6 +83,18 @@ const isCompletePushData = (data) =>
 	data.url.length > 0;
 
 self.addEventListener('install', (event) => {
+	// Static routing (Safari 27 / Chrome 123): API and auth calls go straight to
+	// the network without waking the worker. Mirrors the fetch handler's bypass.
+	if (typeof event.addRoutes === 'function') {
+		try {
+			event.addRoutes([
+				{ condition: { urlPattern: { pathname: '/api/*' } }, source: 'network' },
+				{ condition: { urlPattern: { pathname: '/auth/*' } }, source: 'network' },
+			]);
+		} catch {
+			// Unsupported pattern syntax — the fetch handler still bypasses these.
+		}
+	}
 	event.waitUntil(
 		caches
 			.open(SHELL_CACHE)

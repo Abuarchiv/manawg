@@ -25,7 +25,7 @@ export function WgAppHeader() {
 		<header
 			data-home-header
 			data-app-chrome
-			className="mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-2 px-4 pt-3"
+			className="mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-2 px-4 pt-3 pb-2"
 		>
 			<div className="flex min-w-0 flex-wrap items-center gap-1">
 				<LogoMark

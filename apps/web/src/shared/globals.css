@@ -293,7 +293,7 @@ textarea,
 .glass-bar {
 	--glass-tint: rgb(255 255 255 / 0.84);
 	--glass-solid: var(--card);
-	--glass-edge: inset 0 0 0 1px rgb(0 0 0 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9);
+	--glass-edge: inset 0 0 0 1px rgb(0 0 0 / 0.12), inset 0 1px 0 rgb(255 255 255 / 1);
 	--glass-drop: 0 8px 28px rgb(0 0 0 / 0.1);
 	color: var(--foreground);
 	background: var(--glass-tint);
@@ -305,7 +305,7 @@ textarea,
 .dark .glass-bar {
 	--glass-tint: rgb(10 10 10 / 0.8);
 	--glass-solid: #0a0a0a;
-	--glass-edge: inset 0 0 0 1px rgb(255 255 255 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.28);
+	--glass-edge: inset 0 0 0 1px rgb(255 255 255 / 0.22), inset 0 1px 0 rgb(255 255 255 / 0.36);
 	--glass-drop: 0 10px 32px rgb(0 0 0 / 0.34);
 	color: #fafafa;
 }
@@ -326,6 +326,94 @@ textarea,
 @media (forced-colors: active) {
 	.glass-bar {
 		border: 1px solid CanvasText;
+	}
+}
+
+/* Aktive Registerkarte als erhabene Glas-Pille (iOS 27 Tab-Leiste): heller
+   Körper, dunkle Kante, kurzer Schatten. Bei weniger Transparenz / mehr
+   Kontrast bleibt die Pille, nur ohne Schatten; forced-colors zeichnet Rand. */
+.glass-pill {
+	background: rgb(255 255 255 / 0.96);
+	box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.12);
+}
+.dark .glass-pill {
+	background: rgb(255 255 255 / 0.12);
+	box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14), 0 1px 3px rgb(0 0 0 / 0.4);
+}
+/* biome-ignore lint/correctness/noUnknownMediaFeatureName: Media Queries 5, Chrome 118+ */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+	.glass-pill {
+		background: var(--accent);
+		box-shadow: inset 0 0 0 1px var(--border);
+	}
+}
+@media (forced-colors: active) {
+	.glass-pill {
+		border: 1px solid CanvasText;
+	}
+}
+
+/* Start-Kopfzeile bleibt stehen und bekommt beim Scrollen eine deckende Leiste
+   mit Haarlinie (iOS 27 Scroll-Edge-Effekt), scroll-getrieben ohne JS. Ohne
+   animation-timeline oder bei weniger Bewegung ist die Leiste immer deckend. */
+[data-home-header] {
+	position: sticky;
+	top: calc(env(safe-area-inset-top, 0px) + var(--offline-banner-height, 0px));
+	z-index: 20;
+	background-color: var(--background);
+}
+@supports (animation-timeline: scroll()) {
+	@media (prefers-reduced-motion: no-preference) {
+		[data-home-header] {
+			animation: home-header-edge linear both;
+			animation-timeline: scroll(root);
+			animation-range: 0 1.5rem;
+		}
+	}
+}
+@keyframes home-header-edge {
+	from {
+		box-shadow: 0 1px 0 transparent;
+	}
+	to {
+		box-shadow: 0 1px 0 var(--border);
+	}
+}
+
+/* Safari 27 / Chrome 135: eigenes Dropdown ohne JS. Ältere Browser behalten das
+   native Steuerelement, das Chevron-Icon bleibt in beiden Fällen unseres. */
+@supports (appearance: base-select) {
+	[data-slot="native-select"] {
+		appearance: base-select;
+	}
+	[data-slot="native-select"]::picker-icon {
+		display: none;
+	}
+	[data-slot="native-select"]::picker(select) {
+		margin-block: 0.25rem;
+		padding: 0.25rem;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+		background: var(--popover);
+		color: var(--popover-foreground);
+		box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+	}
+	[data-slot="native-select"] option {
+		min-height: 2.75rem;
+		padding: 0.5rem 0.625rem;
+		border-radius: var(--radius-md);
+		background: transparent;
+		color: inherit;
+		font-size: 0.875rem;
+	}
+	[data-slot="native-select"] option:hover,
+	[data-slot="native-select"] option:focus-visible {
+		background: var(--accent);
+		color: var(--accent-foreground);
+	}
+	[data-slot="native-select"] option::checkmark {
+		order: 1;
+		margin-inline-start: auto;
 	}
 }
 

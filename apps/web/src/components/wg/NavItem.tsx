@@ -53,7 +53,7 @@ export function NavItem({ href, label, iconKey, activePrefixes }: NavItemProps) 
 				}}
 				className={cn(
 					'flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-[14px] py-0.5 text-foreground/70 outline-none transition-colors duration-[120ms] select-none focus-visible:ring-2 focus-visible:ring-ring',
-					isActive ? 'bg-foreground/8 text-foreground' : 'active:bg-foreground/5',
+					isActive ? 'glass-pill text-foreground' : 'active:bg-foreground/5',
 				)}
 			>
 				<Icon aria-hidden className="size-[18px]" strokeWidth={1.5} />
