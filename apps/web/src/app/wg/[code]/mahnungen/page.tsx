@@ -250,6 +250,7 @@ export default function ErinnerungenPage() {
 		null;
 
 	function reminderButton(row: (typeof rows)[number], primary = false) {
+		const debtorName = memberName(row.debtorId);
 		const cooldown = cooldownFor(row.debtorId, row.creditorId, row.currency);
 		const cooldownLabel = cooldown.nextAllowedAt
 			? `Wieder möglich ${formatRelativeTime(cooldown.nextAllowedAt.toISOString())}`
@@ -305,6 +306,8 @@ export default function ErinnerungenPage() {
 						: undefined
 				}
 				primary={primary}
+				size={primary ? 'md' : 'sm'}
+				label={primary ? `${debtorName} erinnern` : 'Erinnern'}
 			/>
 		);
 	}
@@ -318,7 +321,7 @@ export default function ErinnerungenPage() {
 						Erinnerungen
 					</h1>
 					<p className="mt-0.5 text-[12px] text-muted-foreground">
-						Pro Person höchstens alle {REMINDER_COOLDOWN_HOURS} Stunden
+						Pro Person höchstens alle {REMINDER_COOLDOWN_HOURS} Std.
 					</p>
 					<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
 						<Spinner />
@@ -327,7 +330,7 @@ export default function ErinnerungenPage() {
 				</div>
 			</header>
 			<section className="flex flex-col gap-3">
-				<h2 className="text-base font-semibold">Offene Schulden</h2>
+				<h2 className="text-[12px] font-medium text-muted-foreground">Offene Schulden</h2>
 				{loadErrors.expenses && (
 					<LoadErrorBanner
 						message={loadErrors.expenses}
@@ -354,7 +357,7 @@ export default function ErinnerungenPage() {
 						</EmptyHeader>
 					</Empty>
 				) : (
-					<ul className="flex flex-col gap-3">
+					<ul className="flex flex-col gap-2">
 						{rows.map((row) => {
 							return (
 								<DebtRow
@@ -381,7 +384,9 @@ export default function ErinnerungenPage() {
 				)}
 			</section>
 			<section className="flex flex-col gap-3">
-				<h2 className="text-base font-semibold">Letzte Erinnerungen (30 Tage)</h2>
+				<h2 className="text-[12px] font-medium text-muted-foreground">
+					Letzte Erinnerungen (30 Tage)
+				</h2>
 				{loadErrors.reminders && (
 					<LoadErrorBanner
 						message={loadErrors.reminders}
