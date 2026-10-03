@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { type NavigatorWithShare, copyViaTextArea } from '@/core/utils/clipboard';
+import { cn } from '@/shared/lib/cn';
 import { AlertTriangle, Check, Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -13,6 +14,7 @@ interface CopyCodeButtonProps {
 	wgName?: string;
 	joiningEnabled?: boolean;
 	variant?: 'default' | 'ghost';
+	className?: string;
 }
 
 type CopyState = 'idle' | 'shared' | 'copied' | 'failed';
@@ -22,6 +24,7 @@ export function CopyCodeButton({
 	wgName,
 	joiningEnabled = true,
 	variant = 'ghost',
+	className,
 }: CopyCodeButtonProps) {
 	const [state, setState] = useState<CopyState>('idle');
 	const [sharing, setSharing] = useState(false);
@@ -104,7 +107,7 @@ export function CopyCodeButton({
 				variant={variant}
 				onClick={onClick}
 				disabled={!joiningEnabled || sharing}
-				className="h-auto whitespace-normal"
+				className={cn('h-auto whitespace-normal', className)}
 			>
 				{sharing ? (
 					<Spinner data-icon="inline-start" aria-hidden />

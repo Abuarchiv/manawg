@@ -101,12 +101,12 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
 						{item.href ? (
 							<Link
 								href={item.href}
-								className="flex min-h-12 items-start gap-3 rounded-lg py-2.5 focus-visible:outline-2 focus-visible:outline-ring active:bg-muted"
+								className="flex min-h-12 items-start gap-3 rounded-lg py-2 focus-visible:outline-2 focus-visible:outline-ring active:bg-muted"
 							>
 								{content}
 							</Link>
 						) : (
-							<div className="flex min-h-12 items-start gap-3 py-2.5">{content}</div>
+							<div className="flex min-h-12 items-start gap-3 py-2">{content}</div>
 						)}
 					</li>
 				);

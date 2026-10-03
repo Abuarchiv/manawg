@@ -61,7 +61,7 @@ export function initials(name: string): string {
 
 export function MemberAvatar({ name, size = DEFAULT_SIZE, className = '' }: MemberAvatarProps) {
 	const showInitials = size >= HIDE_INITIALS_BELOW;
-	const fontSize = Math.round(size * 0.42);
+	const fontSize = Math.max(11, Math.round(size * 0.42));
 
 	return (
 		<span
