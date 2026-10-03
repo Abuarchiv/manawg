@@ -1,7 +1,7 @@
 'use client';
 
 import { Switch } from '@/components/animate-ui/components/base/switch';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldContent, FieldDescription, FieldTitle } from '@/components/ui/field';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -27,7 +27,7 @@ import {
 } from '@/core/notifications/web-push-errors';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { haptic } from '@/shared/lib/haptics';
-import { Bell, CheckCircle2, Smartphone } from 'lucide-react';
+import { Bell, CheckCircle2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => ({
@@ -68,19 +68,19 @@ const NOTIFICATION_PREFERENCES: ReadonlyArray<{
 	{
 		key: 'notifyAnnouncements',
 		label: 'Pinnwand',
-		description: 'Beiträge, Antworten, Reaktionen und geklärte Sachen',
+		description: 'Beiträge, Antworten und Reaktionen',
 	},
 	{ key: 'notifyChores', label: 'Putzplan', description: 'Fällige Aufgaben und Erinnerungen' },
 	{ key: 'notifyExpenses', label: 'Ausgaben', description: 'Neue gemeinsame Kosten' },
 	{
 		key: 'notifyReminders',
 		label: 'Erinnerungen',
-		description: 'Wenn dich jemand an einen offenen Betrag erinnert',
+		description: 'Erinnerung an offene Beträge',
 	},
-	{ key: 'notifyShopping', label: 'Einkäufe', description: 'Neue Einträge auf der Einkaufsliste' },
+	{ key: 'notifyShopping', label: 'Einkäufe', description: 'Neue Einträge auf der Liste' },
 	{ key: 'notifyInventory', label: 'Vorräte', description: 'Wenn etwas bald leer ist' },
 	{ key: 'notifyChat', label: 'Chat', description: 'Neue Nachrichten und Erwähnungen' },
-	{ key: 'notifyEvents', label: 'Kalender', description: 'Kalendertermine und Erinnerungen' },
+	{ key: 'notifyEvents', label: 'Kalender', description: 'Termine und Erinnerungen' },
 ];
 
 export function NotificationSection({
@@ -348,7 +348,6 @@ export function NotificationSection({
 				)}
 				{!status && error && (
 					<Alert variant="destructive">
-						<AlertTitle>Laden fehlgeschlagen</AlertTitle>
 						<AlertDescription>{error}</AlertDescription>
 						<Button
 							type="button"
@@ -368,13 +367,6 @@ export function NotificationSection({
 					</Alert>
 				)}
 				<Field orientation="horizontal">
-					<span className="border-border inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border">
-						{pending === 'push' ? (
-							<Spinner aria-hidden />
-						) : (
-							<Smartphone className="h-4 w-4" aria-hidden />
-						)}
-					</span>
 					<FieldContent>
 						<FieldTitle>
 							Web Push
@@ -383,6 +375,24 @@ export function NotificationSection({
 						<FieldDescription>
 							{!pushConfigured ? 'Nicht konfiguriert' : pushActive ? 'Aktiv' : 'Aktivieren'}
 						</FieldDescription>
+						{pushActive && (
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								onClick={() => void sendTestNotification()}
+								disabled={notificationControlsDisabled}
+								aria-label={
+									pending === 'test'
+										? 'Testbenachrichtigung wird gesendet'
+										: 'Testbenachrichtigung senden'
+								}
+								className="justify-self-start"
+							>
+								{pending === 'test' && <Spinner aria-hidden />}
+								Test senden
+							</Button>
+						)}
 					</FieldContent>
 					<Switch
 						checked={pushTarget ?? pushActive}
@@ -397,21 +407,6 @@ export function NotificationSection({
 						}}
 					/>
 				</Field>
-				<Button
-					type="button"
-					variant="outline"
-					onClick={() => void sendTestNotification()}
-					disabled={notificationControlsDisabled || !pushActive}
-					aria-label={
-						pending === 'test'
-							? 'Testbenachrichtigung wird gesendet'
-							: 'Testbenachrichtigung senden'
-					}
-					className="justify-self-start"
-				>
-					{pending === 'test' && <Spinner aria-hidden />}
-					Test senden
-				</Button>
 
 				<div className="min-w-0 max-w-full">
 					{NOTIFICATION_PREFERENCES.map((pref, index) => (
@@ -433,13 +428,11 @@ export function NotificationSection({
 					))}
 				</div>
 
-				<div className="border-border grid min-w-0 max-w-full grid-cols-1 gap-2 border-t pt-3">
+				<div className="border-border grid min-w-0 max-w-full grid-cols-1 gap-1 border-t pt-2">
 					<div className="flex min-h-[44px] items-center justify-between gap-2">
 						<div className="min-w-0">
 							<div className="text-foreground text-sm font-medium">Ruhezeit</div>
-							<div className="text-muted-foreground text-xs">
-								In dieser Zeit werden Push-Benachrichtigungen pausiert.
-							</div>
+							<div className="text-muted-foreground text-xs">Push pausiert in diesem Zeitraum.</div>
 						</div>
 						<Button
 							type="button"

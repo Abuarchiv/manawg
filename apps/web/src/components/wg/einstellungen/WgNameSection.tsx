@@ -66,9 +66,11 @@ export function WgNameSection({ wgName, shareCode, memberId, memberToken }: WgNa
 
 	return (
 		<Section title="WG-Name">
-			<form onSubmit={(event) => void submit(event)} className="flex flex-col gap-2 p-3">
-				<Field>
-					<FieldLabel htmlFor="wg-name">Name eurer WG</FieldLabel>
+			<form onSubmit={(event) => void submit(event)} className="grid gap-2 p-3">
+				<Field orientation="horizontal" className="items-center gap-2">
+					<FieldLabel htmlFor="wg-name" className="sr-only">
+						Name eurer WG
+					</FieldLabel>
 					<Input
 						id="wg-name"
 						value={name}
@@ -80,7 +82,12 @@ export function WgNameSection({ wgName, shareCode, memberId, memberToken }: WgNa
 						autoComplete="off"
 						enterKeyHint="done"
 						disabled={pending}
+						className="min-w-0 flex-1"
 					/>
+					<Button type="submit" disabled={pending || unchanged || !trimmed} className="shrink-0">
+						{pending && <Spinner data-icon="inline-start" aria-hidden />}
+						Speichern
+					</Button>
 				</Field>
 				{error && (
 					<Alert variant="destructive">
@@ -88,10 +95,6 @@ export function WgNameSection({ wgName, shareCode, memberId, memberToken }: WgNa
 					</Alert>
 				)}
 				{saved && <output className="text-xs text-muted-foreground">WG-Name gespeichert.</output>}
-				<Button type="submit" disabled={pending || unchanged || !trimmed} className="self-start">
-					{pending && <Spinner data-icon="inline-start" aria-hidden />}
-					Speichern
-				</Button>
 			</form>
 		</Section>
 	);

@@ -50,7 +50,6 @@ export function ProfileTab({
 					<MemberAvatar name={memberName} size={32} />
 					<div className="min-w-0 flex-1">
 						<div className="text-foreground truncate text-[14px] font-medium">{memberName}</div>
-						<div className="text-muted-foreground mt-0.5 text-[12px]">in {wgName}</div>
 					</div>
 				</div>
 			</Section>
@@ -65,7 +64,7 @@ export function ProfileTab({
 			)}
 
 			<Section title="Darstellung">
-				<div className="p-2">
+				<div className="grid gap-2 p-2">
 					<ToggleGroup
 						variant="segmented"
 						className="w-full flex-wrap"
@@ -85,9 +84,9 @@ export function ProfileTab({
 							</ToggleGroupItem>
 						))}
 					</ToggleGroup>
-				</div>
-				<div className="px-2 pb-2">
-					<InstallButton label="App installieren" />
+					<div className="grid [&>*]:w-full">
+						<InstallButton label="App installieren" />
+					</div>
 				</div>
 			</Section>
 
@@ -97,10 +96,7 @@ export function ProfileTab({
 				</Section>
 			)}
 
-			<Section
-				title="Hilfe"
-				hint="Beschreibe, was passiert ist und wie wir den Fehler nachstellen können."
-			>
+			<Section title="Hilfe">
 				<ul>
 					<LinkRow
 						href="mailto:info@manawg.com?subject=Fehler%20in%20ManaWG"
