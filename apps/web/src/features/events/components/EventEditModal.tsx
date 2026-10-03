@@ -203,13 +203,11 @@ export function EventEditModal({
 			<DrawerContent className="mx-auto w-full max-w-md">
 				<DrawerHeader>
 					<DrawerTitle>Termin bearbeiten</DrawerTitle>
-					<DrawerDescription>
-						{event.recurrence
-							? 'Änderungen gelten für die gesamte Terminserie.'
-							: 'Änderungen gelten für diesen WG-Termin.'}
-					</DrawerDescription>
+					{event.recurrence && (
+						<DrawerDescription>Änderungen gelten für die gesamte Terminserie.</DrawerDescription>
+					)}
 				</DrawerHeader>
-				<form onSubmit={handleSave} className="flex min-h-0 flex-col">
+				<form noValidate onSubmit={handleSave} className="flex min-h-0 flex-col">
 					<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
 						<EventFormFields
 							idPrefix="event-edit"
@@ -270,34 +268,45 @@ export function EventEditModal({
 						)}
 					</div>
 					<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-						<Button type="submit" disabled={saving || deleting}>
-							{saving && <Spinner data-icon="inline-start" aria-hidden />}
-							{saving ? 'Speichert…' : 'Speichern'}
-						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={requestClose}
-							disabled={saving || deleting}
-						>
-							Abbrechen
-						</Button>
-						{onExportIcs && (
-							<Button type="button" variant="outline" onClick={onExportIcs}>
-								<CalendarPlus data-icon="inline-start" aria-hidden />
-								In Kalender-App übernehmen
+						<div className="flex gap-2">
+							<Button type="submit" className="flex-1" disabled={saving || deleting}>
+								{saving && <Spinner data-icon="inline-start" aria-hidden />}
+								{saving ? 'Speichert…' : 'Speichern'}
 							</Button>
-						)}
-						<Button
-							type="button"
-							variant="destructive"
-							onClick={() => setConfirmingDelete(true)}
-							disabled={saving || deleting}
-							aria-label="Termin löschen"
-						>
-							<Trash2 data-icon="inline-start" aria-hidden />
-							Termin löschen
-						</Button>
+							<Button
+								type="button"
+								variant="outline"
+								className="flex-1"
+								onClick={requestClose}
+								disabled={saving || deleting}
+							>
+								Abbrechen
+							</Button>
+						</div>
+						<div className="flex flex-wrap gap-2">
+							{onExportIcs && (
+								<Button
+									type="button"
+									variant="outline"
+									className="min-w-0 flex-1 whitespace-normal"
+									onClick={onExportIcs}
+								>
+									<CalendarPlus data-icon="inline-start" aria-hidden />
+									In Kalender-App übernehmen
+								</Button>
+							)}
+							<Button
+								type="button"
+								variant="destructive"
+								className="min-w-0 flex-1 whitespace-normal"
+								onClick={() => setConfirmingDelete(true)}
+								disabled={saving || deleting}
+								aria-label="Termin löschen"
+							>
+								<Trash2 data-icon="inline-start" aria-hidden />
+								Termin löschen
+							</Button>
+						</div>
 					</DrawerFooter>
 				</form>
 				<AlertDialog

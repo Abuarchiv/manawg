@@ -1,12 +1,6 @@
 'use client';
 
-import {
-	Empty,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyMedia,
-	EmptyTitle,
-} from '@/components/ui/empty';
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import {
 	type EventOccurrence,
 	eventDateForDisplay,
@@ -39,6 +33,7 @@ const DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 	day: 'numeric',
 	month: 'long',
 });
+const MONTH_SHORT_FORMATTER = new Intl.DateTimeFormat('de-DE', { month: 'short' });
 const WEEKDAY_FORMATTER = new Intl.DateTimeFormat('de-DE', { weekday: 'short' });
 
 function formatDayLabel(date: Date, now = new Date()): string {
@@ -97,10 +92,7 @@ export function CalendarUpcomingList({
 					<EmptyMedia variant="icon">
 						<CalendarClock aria-hidden />
 					</EmptyMedia>
-					<EmptyTitle>Die nächsten 30 Tage sind frei</EmptyTitle>
-					<EmptyDescription>
-						Tippe unten rechts auf „+“, um euren nächsten Termin einzutragen.
-					</EmptyDescription>
+					<EmptyTitle>Keine Termine in den nächsten 30 Tagen</EmptyTitle>
 				</EmptyHeader>
 			</Empty>
 		);
@@ -127,7 +119,9 @@ export function CalendarUpcomingList({
 	// Eine Liste, Datum links: Tage lassen sich wie in einem Taschenkalender überfliegen.
 	return (
 		<ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
-			{[...days.entries()].map(([key, day]) => {
+			{[...days.entries()].map(([key, day], index, all) => {
+				const prevDate = index > 0 ? all[index - 1]?.[1].date : undefined;
+				const showMonth = !prevDate || prevDate.getMonth() !== day.date.getMonth();
 				const isToday = day.label.startsWith('Heute');
 				return (
 					<li key={key} className="grid grid-cols-[3.25rem_minmax(0,1fr)]">
@@ -138,7 +132,7 @@ export function CalendarUpcomingList({
 							)}
 						>
 							<span className="sr-only">{day.label}</span>
-							<span aria-hidden className="text-[12px] uppercase">
+							<span aria-hidden className="text-[12px]">
 								{isToday ? 'Heute' : WEEKDAY_FORMATTER.format(day.date).replace('.', '')}
 							</span>
 							<span
@@ -147,6 +141,11 @@ export function CalendarUpcomingList({
 							>
 								{day.date.getDate()}
 							</span>
+							{showMonth && (
+								<span aria-hidden className="text-[12px]">
+									{MONTH_SHORT_FORMATTER.format(day.date).replace('.', '')}
+								</span>
+							)}
 						</h3>
 						<ul aria-label={day.label} className="flex min-w-0 flex-col divide-y divide-border/60">
 							{day.entries.map((entry) =>
@@ -162,7 +161,7 @@ export function CalendarUpcomingList({
 													{entry.chore.title}
 												</span>
 												<span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
-													<Sparkles className="size-3.5 shrink-0" aria-hidden />
+													<Sparkles className="size-4 shrink-0" aria-hidden />
 													Putzplan
 												</span>
 											</span>
@@ -191,10 +190,7 @@ export function CalendarUpcomingList({
 													{entry.occurrence.title}
 												</span>
 												<span className="text-[12px] break-words text-muted-foreground">
-													<CalendarClock
-														className="mr-1 inline size-3.5 align-[-2px]"
-														aria-hidden
-													/>
+													<CalendarClock className="mr-1 inline size-4 align-[-2px]" aria-hidden />
 													{formatEventTimeOfDay(entry.occurrence)}
 													{entry.occurrence.location && ` · ${entry.occurrence.location}`}
 													{entry.occurrence.recurring && ' · wiederholt sich'}

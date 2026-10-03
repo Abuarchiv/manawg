@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SubNav } from '@/components/wg/SubNav';
@@ -15,8 +15,9 @@ import {
 import { EventCreateModal } from '@/features/events/components/EventCreateModal';
 import { EventEditModal } from '@/features/events/components/EventEditModal';
 import { useCalendarPage } from '@/features/events/hooks/use-calendar-page';
+import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
-import { CalendarDays, List, Plus, RotateCcw } from 'lucide-react';
+import { CalendarDays, List, Plus } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
@@ -94,7 +95,6 @@ export default function KalenderPage() {
 
 			{loadError && (
 				<Alert variant="destructive">
-					<AlertTitle>Kalender konnte nicht geladen werden</AlertTitle>
 					<AlertDescription className="flex flex-wrap items-center justify-between gap-2">
 						<span>{loadError}</span>
 						<Button type="button" variant="outline" onClick={() => void calendar.reload()}>
@@ -143,18 +143,17 @@ export default function KalenderPage() {
 					</section>
 				</TabsContent>
 				<TabsContent value="month" className="flex flex-col gap-2">
-					{!isCurrentMonth && (
-						<Button
-							variant="outline"
-							size="icon"
-							className="self-end"
-							onClick={handleJumpToToday}
-							aria-label="Zum aktuellen Monat springen"
-							title="Heute"
-						>
-							<RotateCcw aria-hidden />
-						</Button>
-					)}
+					<Button
+						variant="outline"
+						size="sm"
+						className={cn('self-end', isCurrentMonth && 'invisible')}
+						onClick={handleJumpToToday}
+						aria-label="Zum aktuellen Monat springen"
+						aria-hidden={isCurrentMonth || undefined}
+						tabIndex={isCurrentMonth ? -1 : undefined}
+					>
+						Heute
+					</Button>
 					<CalendarMonth
 						month={month}
 						occurrences={calendar.monthOccurrences}
