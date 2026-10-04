@@ -125,7 +125,6 @@ export const ChoreRow = memo(function ChoreRow({
 					</span>
 					{' · '}
 					{cadence}
-					{nextAssigneeName && ` · danach ${nextAssigneeName}`}
 				</ItemDescription>
 				{needsTakeOver && (
 					<Button
@@ -260,7 +259,9 @@ export const ChoreRow = memo(function ChoreRow({
 							)}
 						</div>
 						<DrawerFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
-							<DrawerClose render={<Button variant="outline" />}>Schließen</DrawerClose>
+							<DrawerClose render={<Button variant="outline" className="min-h-11" />}>
+								Schließen
+							</DrawerClose>
 						</DrawerFooter>
 					</DrawerContent>
 				</Drawer>
