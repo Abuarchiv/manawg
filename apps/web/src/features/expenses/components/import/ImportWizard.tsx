@@ -26,6 +26,7 @@ import type { NotificationWarning } from '@/core/notifications/notification-warn
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import type { ParsedExpense } from '@/features/expenses/import-parsers';
 import { OcrInitializationError, runOcrOnImage } from '@/features/expenses/ocr';
+import { cn } from '@/shared/lib/cn';
 import type { MemberRef } from '@/shared/lib/member-types';
 import { ArrowLeft, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
@@ -159,6 +160,25 @@ function payloadKey(source: ImportSourceKind): 'splitwise_csv' | 'splid_csv' | '
 	return 'ocr_text';
 }
 
+/** Natives Datei-Feld bleibt unsichtbar im DOM; der Button ist sein Label, damit er wie jeder andere aussieht. */
+function FilePickLabel({
+	htmlFor,
+	fallback,
+	name,
+}: { htmlFor: string; fallback: string; name: string | null }) {
+	return (
+		<label
+			htmlFor={htmlFor}
+			className={cn(
+				buttonVariants({ variant: 'outline' }),
+				'w-full cursor-pointer peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 peer-disabled:pointer-events-none peer-disabled:opacity-50',
+			)}
+		>
+			<span className="min-w-0 truncate">{name ?? fallback}</span>
+		</label>
+	);
+}
+
 export function ImportWizard() {
 	const { wg, members, identity } = useWg();
 	const encodedCode = encodeURIComponent(wg.shareCode);
@@ -185,6 +205,7 @@ export function ImportWizard() {
 	const previousStepRef = useRef<Step | null>(null);
 	const router = useRouter();
 	const [leaveOpen, setLeaveOpen] = useState(false);
+	const [pickedFileName, setPickedFileName] = useState<string | null>(null);
 	const [sourceToChange, setSourceToChange] = useState<ImportSourceKind | null>(null);
 
 	useEffect(() => {
@@ -262,6 +283,7 @@ export function ImportWizard() {
 		setCommitState('idle');
 		setCommitResult(null);
 		setSkipDuplicates(true);
+		setPickedFileName(null);
 		setInputStatus('empty');
 	}
 
@@ -498,11 +520,11 @@ export function ImportWizard() {
 	return (
 		<div className="flex flex-col gap-5">
 			{/* Kopf wie auf den anderen Unterseiten: Zurück-Pfeil links neben dem Titel. */}
-			<header className="flex min-w-0 items-center gap-3">
+			<header className="flex min-w-0 items-start gap-2">
 				<Link
 					href={returnHref}
 					aria-label="Zurück zu Ausgaben"
-					className={buttonVariants({ variant: 'ghost', size: 'icon' })}
+					className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), '-ml-2')}
 					aria-disabled={busy || ocrRunning || undefined}
 					tabIndex={busy || ocrRunning ? -1 : undefined}
 					onClick={(event) => {
@@ -519,11 +541,11 @@ export function ImportWizard() {
 					<ArrowLeft aria-hidden />
 				</Link>
 				<div className="min-w-0 flex-1">
-					<h1 className="font-heading text-lg font-semibold tracking-tight">
+					<h1 className="font-heading text-base leading-8 font-semibold break-words">
 						Ausgaben importieren
 					</h1>
-					<p className="mt-0.5 text-[12px] text-muted-foreground tabular-nums">
-						Aus Splitwise oder Splid · Schritt {stepNumber} von 5
+					<p className="text-[12px] text-muted-foreground tabular-nums">
+						Schritt {stepNumber} von 5
 					</p>
 				</div>
 			</header>
@@ -558,8 +580,7 @@ export function ImportWizard() {
 					<FieldGroup>
 						{source === 'ocr_screenshot' ? (
 							<>
-								<Field data-disabled={busy || ocrRunning}>
-									<FieldLabel htmlFor="import-screenshot">Bild auswählen</FieldLabel>
+								<Field className="relative" data-disabled={busy || ocrRunning}>
 									<Input
 										id="import-screenshot"
 										type="file"
@@ -568,9 +589,16 @@ export function ImportWizard() {
 										disabled={busy || ocrRunning}
 										onChange={(event) => {
 											const file = event.target.files?.[0];
-											if (file) void handleOcrFile(file);
+											if (!file) return;
+											setPickedFileName(file.name);
+											void handleOcrFile(file);
 										}}
-										className="text-base"
+										className="peer sr-only h-px w-px"
+									/>
+									<FilePickLabel
+										htmlFor="import-screenshot"
+										fallback="Bild auswählen"
+										name={pickedFileName}
 									/>
 									<FieldDescription>
 										Foto oder Bildschirmfoto bis 10 MB. Nur Eurobeträge (EUR) werden erkannt.
@@ -612,19 +640,25 @@ export function ImportWizard() {
 							</>
 						) : (
 							<>
-								<Field data-disabled={busy || inputStatus === 'reading'}>
+								<Field className="relative" data-disabled={busy || inputStatus === 'reading'}>
 									<Input
 										id="import-csv-file"
 										type="file"
 										accept=".csv,text/csv"
 										aria-label="CSV-Datei auswählen"
 										disabled={busy || inputStatus === 'reading'}
-										className="text-sm file:text-sm"
+										className="peer sr-only h-px w-px"
 										onChange={(event) => {
 											const file = event.target.files?.[0];
 											if (!file) return;
+											setPickedFileName(file.name);
 											handleCsvFile(file);
 										}}
+									/>
+									<FilePickLabel
+										htmlFor="import-csv-file"
+										fallback="Datei auswählen"
+										name={pickedFileName}
 									/>
 									<FieldDescription>Export-Datei bis 5 MB.</FieldDescription>
 								</Field>

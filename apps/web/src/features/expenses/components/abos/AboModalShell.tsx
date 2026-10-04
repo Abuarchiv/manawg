@@ -11,13 +11,7 @@ import {
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft } from 'lucide-react';
 import { type ReactNode, type SyntheticEvent, useRef, useState } from 'react';
@@ -32,7 +26,6 @@ interface AboModalShellProps {
 export function AboModalShell({ title, onClose, submitting, children }: AboModalShellProps) {
 	const [confirmClose, setConfirmClose] = useState(false);
 	const dirtyRef = useRef(false);
-	const backRef = useRef<HTMLButtonElement>(null);
 	const trackFieldChange = (event: SyntheticEvent<HTMLDivElement>) => {
 		const target = event.target;
 		if (target instanceof Element && target.matches('input, select, textarea'))
@@ -62,16 +55,14 @@ export function AboModalShell({ title, onClose, submitting, children }: AboModal
 			>
 				<DialogContent
 					showCloseButton={false}
-					initialFocus={backRef}
+					initialFocus={() => document.getElementById('abo-description')}
 					className="top-0 flex h-dvh max-h-dvh w-full max-w-md translate-y-0 flex-col gap-0 rounded-none p-0"
 				>
 					<DialogHeader className="shrink-0 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
 						<div className="flex items-center gap-2">
 							<Button
-								ref={backRef}
 								variant="ghost"
 								size="icon"
-								className="size-9"
 								onClick={requestClose}
 								disabled={submitting}
 								aria-label="Fixkosten-Editor schließen"
@@ -80,9 +71,6 @@ export function AboModalShell({ title, onClose, submitting, children }: AboModal
 							</Button>
 							<DialogTitle>{title}</DialogTitle>
 						</div>
-						<DialogDescription>
-							Wiederholung, zahlende Person und Anteile festlegen.
-						</DialogDescription>
 					</DialogHeader>
 					<Separator />
 					<div

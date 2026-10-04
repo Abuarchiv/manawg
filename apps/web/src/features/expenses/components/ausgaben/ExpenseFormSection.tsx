@@ -18,13 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
 	Field,
 	FieldDescription,
@@ -243,7 +237,6 @@ export function ExpenseFormSection({
 							</Button>
 							<DialogTitle>{title}</DialogTitle>
 						</div>
-						<DialogDescription>Speichern löst keine Überweisung aus.</DialogDescription>
 					</DialogHeader>
 					<Separator />
 					<form
@@ -335,7 +328,7 @@ export function ExpenseFormSection({
 									)}
 								</Field>
 								<FieldSet disabled={formSaving} data-invalid={Boolean(fieldErrors.splits)}>
-									<FieldLegend>Beteiligte & Aufteilung</FieldLegend>
+									<FieldLegend variant="label">Beteiligte & Aufteilung</FieldLegend>
 									<ToggleGroup
 										variant="segmented"
 										value={[splitMode]}

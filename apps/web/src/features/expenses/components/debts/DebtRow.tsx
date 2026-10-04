@@ -1,7 +1,7 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
+import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
 import { cn } from '@/shared/lib/cn';
 import type { ReactNode } from 'react';
@@ -41,23 +41,28 @@ export function DebtRow({
 
 	return (
 		<li>
-			<Item variant="outline" className="items-start">
-				<ItemContent className="min-w-0">
+			<Item size="sm" className="items-center gap-x-2.5">
+				<div aria-hidden className="flex shrink-0 items-center -space-x-0.5">
+					<MemberAvatar name={debtor.name} size={24} className="ring-2 ring-card" />
+					<MemberAvatar name={creditor.name} size={24} className="ring-2 ring-card" />
+				</div>
+				<ItemContent className="min-w-0 basis-28">
 					<ItemTitle className="line-clamp-none break-words">
 						{iOwe ? 'Du schuldest' : `${debtor.name} schuldet`} {owedToMe ? 'dir' : creditor.name}
 					</ItemTitle>
-					<ItemDescription>{ageLabel}</ItemDescription>
+					<ItemDescription>
+						{ageLabel} ·{' '}
+						<span
+							className={cn(
+								'font-mono tabular-nums',
+								owedToMe ? 'text-settled' : iOwe ? 'text-destructive' : 'text-foreground',
+							)}
+						>
+							{formatEuroCents(amountCents, currency)}
+						</span>
+					</ItemDescription>
 				</ItemContent>
-				<Badge
-					variant="secondary"
-					className={cn(
-						'font-mono tabular-nums',
-						owedToMe ? 'text-settled' : iOwe ? 'text-destructive' : 'text-foreground',
-					)}
-				>
-					{formatEuroCents(amountCents, currency)}
-				</Badge>
-				{action && <div className="ml-auto min-w-0 max-w-full">{action}</div>}
+				{action && <div className="ml-auto shrink-0">{action}</div>}
 			</Item>
 		</li>
 	);
