@@ -999,8 +999,9 @@ test.describe('public calendar preview responsive', () => {
 			}
 		}
 
-		const homeLink = page.getByRole('link', { name: 'Alle Bereiche ansehen' });
-		await expect(homeLink).toBeVisible();
+		const homeLink = page
+			.getByRole('navigation', { name: 'Öffentliche Hauptnavigation' })
+			.getByRole('link', { name: 'Start', exact: true });
 		await expect(homeLink).toHaveAttribute('href', '/');
 		await homeLink.focus();
 		await expect(homeLink).toBeFocused();

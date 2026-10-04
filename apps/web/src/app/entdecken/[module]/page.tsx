@@ -7,16 +7,15 @@ import { notFound } from 'next/navigation';
 // route needs its own descriptive title, not the generic app-wide one).
 const PUBLIC_MODULES: Record<string, { title: string; description: string }> = {
 	ausgaben: { title: 'Ausgaben', description: 'Gemeinsame Kosten im Blick.' },
-	einkauf: { title: 'Einkäufe', description: 'Die nächste Einkaufsliste.' },
+	einkauf: { title: 'Einkäufe', description: 'Was gekauft werden muss.' },
 	pinnwand: { title: 'Pinnwand', description: 'Infos für alle.' },
 	putzen: { title: 'Putzplan', description: 'Aufgaben fair verteilen.' },
-	fixkosten: { title: 'Fixkosten', description: 'Regelmäßige Kosten.' },
-	mahnungen: { title: 'Erinnerungen', description: 'Offene Beträge nachhalten.' },
+	fixkosten: { title: 'Fixkosten', description: 'Wiederkehrende Kosten.' },
+	mahnungen: { title: 'Erinnerungen', description: 'Wer noch zahlen muss.' },
 	vorraete: { title: 'Vorräte', description: 'Was noch da ist.' },
 	kalender: { title: 'Kalender', description: 'Gemeinsame Termine.' },
 	aktivitaet: { title: 'Aktivität', description: 'Was zuletzt passiert ist.' },
 	chat: { title: 'Chat', description: 'Kurz etwas klären.' },
-	einstellungen: { title: 'Einstellungen', description: 'Die WG verwalten.' },
 };
 
 export async function generateMetadata({
