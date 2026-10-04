@@ -8,6 +8,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { Section } from '@/components/wg/einstellungen/Section';
 import {
 	notificationSaveErrorMessage,
@@ -63,24 +64,16 @@ type NotificationPreferenceKey =
 const NOTIFICATION_PREFERENCES: ReadonlyArray<{
 	key: NotificationPreferenceKey;
 	label: string;
-	description: string;
+	description?: string;
 }> = [
-	{
-		key: 'notifyAnnouncements',
-		label: 'Pinnwand',
-		description: 'Beiträge, Antworten und Reaktionen',
-	},
-	{ key: 'notifyChores', label: 'Putzplan', description: 'Fällige Aufgaben und Erinnerungen' },
-	{ key: 'notifyExpenses', label: 'Ausgaben', description: 'Neue gemeinsame Kosten' },
-	{
-		key: 'notifyReminders',
-		label: 'Erinnerungen',
-		description: 'Erinnerung an offene Beträge',
-	},
-	{ key: 'notifyShopping', label: 'Einkäufe', description: 'Neue Einträge auf der Liste' },
+	{ key: 'notifyAnnouncements', label: 'Pinnwand' },
+	{ key: 'notifyChores', label: 'Putzplan' },
+	{ key: 'notifyExpenses', label: 'Ausgaben' },
+	{ key: 'notifyReminders', label: 'Erinnerungen', description: 'Erinnerung an offene Beträge' },
+	{ key: 'notifyShopping', label: 'Einkäufe' },
 	{ key: 'notifyInventory', label: 'Vorräte', description: 'Wenn etwas bald leer ist' },
-	{ key: 'notifyChat', label: 'Chat', description: 'Neue Nachrichten und Erwähnungen' },
-	{ key: 'notifyEvents', label: 'Kalender', description: 'Termine und Erinnerungen' },
+	{ key: 'notifyChat', label: 'Chat' },
+	{ key: 'notifyEvents', label: 'Kalender' },
 ];
 
 export function NotificationSection({
@@ -332,13 +325,10 @@ export function NotificationSection({
 	const notificationBusy = pending !== null || loadingStatus;
 	const notificationControlsDisabled = !status || notificationBusy;
 	const pushConfigured = status?.pushConfigured !== false;
+	const quietHoursSet = status?.quietStartHour != null || status?.quietEndHour != null;
 
 	return (
-		<Section
-			id="benachrichtigungen"
-			title="Benachrichtigungen"
-			hint="Wähle, worüber du informiert wirst."
-		>
+		<Section id="benachrichtigungen" title="Benachrichtigungen">
 			<div className="grid min-w-0 gap-3 p-3">
 				{loadingStatus && (
 					<div className="grid gap-2" aria-live="polite">
@@ -347,34 +337,20 @@ export function NotificationSection({
 					</div>
 				)}
 				{!status && error && (
-					<Alert variant="destructive">
-						<AlertDescription>{error}</AlertDescription>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => void loadStatus()}
-							disabled={loadingStatus}
-							className="mt-2"
-						>
-							{loadingStatus ? (
-								<>
-									<Spinner aria-hidden /> Lädt…
-								</>
-							) : (
-								'Erneut laden'
-							)}
-						</Button>
-					</Alert>
+					<LoadErrorBanner
+						message={error}
+						onRetry={() => void loadStatus()}
+						busy={loadingStatus}
+						retryLabel="Erneut laden"
+					/>
 				)}
-				<Field orientation="horizontal">
+				<Field orientation="horizontal" className="has-[>[data-slot=field-content]]:items-center">
 					<FieldContent>
 						<FieldTitle>
 							Web Push
 							{pushActive && <Bell className="text-muted-foreground h-3.5 w-3.5" aria-hidden />}
 						</FieldTitle>
-						<FieldDescription>
-							{!pushConfigured ? 'Nicht konfiguriert' : pushActive ? 'Aktiv' : 'Aktivieren'}
-						</FieldDescription>
+						{!pushConfigured && <FieldDescription>Nicht konfiguriert</FieldDescription>}
 						{pushActive && (
 							<Button
 								type="button"
@@ -412,10 +388,13 @@ export function NotificationSection({
 					{NOTIFICATION_PREFERENCES.map((pref, index) => (
 						<div key={pref.key}>
 							{index > 0 && <Separator />}
-							<Field orientation="horizontal" className="min-h-[44px] py-2">
+							<Field
+								orientation="horizontal"
+								className="min-h-[44px] py-1 has-[>[data-slot=field-content]]:items-center"
+							>
 								<FieldContent>
 									<FieldTitle>{pref.label}</FieldTitle>
-									<FieldDescription>{pref.description}</FieldDescription>
+									{pref.description && <FieldDescription>{pref.description}</FieldDescription>}
 								</FieldContent>
 								<Switch
 									checked={status?.[pref.key] ?? true}
@@ -430,20 +409,19 @@ export function NotificationSection({
 
 				<div className="border-border grid min-w-0 max-w-full grid-cols-1 gap-1 border-t pt-2">
 					<div className="flex min-h-[44px] items-center justify-between gap-2">
-						<div className="min-w-0">
-							<div className="text-foreground text-sm font-medium">Ruhezeit</div>
-							<div className="text-muted-foreground text-xs">Push pausiert in diesem Zeitraum.</div>
-						</div>
-						<Button
-							type="button"
-							variant="ghost"
-							onClick={() => void saveQuietHours(null, null)}
-							disabled={notificationControlsDisabled}
-						>
-							Aus
-						</Button>
+						<div className="text-foreground min-w-0 text-sm font-medium">Ruhezeit</div>
+						{quietHoursSet && (
+							<Button
+								type="button"
+								variant="ghost"
+								onClick={() => void saveQuietHours(null, null)}
+								disabled={notificationControlsDisabled}
+							>
+								Aus
+							</Button>
+						)}
 					</div>
-					<div className="grid min-w-0 grid-cols-1 gap-2">
+					<div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2">
 						<Field className="min-w-0">
 							<FieldTitle>Von</FieldTitle>
 							<NativeSelect

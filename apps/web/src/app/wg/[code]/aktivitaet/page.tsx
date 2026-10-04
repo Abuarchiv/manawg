@@ -1,6 +1,5 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -8,7 +7,6 @@ import {
 	EmptyContent,
 	EmptyDescription,
 	EmptyHeader,
-	EmptyMedia,
 	EmptyTitle,
 } from '@/components/ui/empty';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
@@ -17,7 +15,6 @@ import { Marker, MarkerContent } from '@/components/ui/marker';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
-import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { ActivityFeed } from '@/components/wg/dashboard/ActivityFeed';
@@ -28,15 +25,13 @@ import {
 	type ActivityItem,
 	type ActivityKind,
 	type ActivityReminder,
-	type ActivityScope,
 	buildActivityInbox,
-	filterActivityByScope,
 	filterActivityItems,
 	groupActivityItemsByDay,
 } from '@/core/reads/activity';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
-import { AlertTriangle, History, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -67,7 +62,6 @@ export default function AktivitaetPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(activityLoading);
 	const [filter, setFilter] = useState<ActivityFilter>({ kind: 'all', mineOnly: false, query: '' });
-	const [scope, setScope] = useState<ActivityScope>('all');
 	const requestIdRef = useRef(0);
 
 	const load = useCallback(async (): Promise<void> => {
@@ -105,14 +99,8 @@ export default function AktivitaetPage() {
 	}, [activityError, cachedActivity]);
 
 	const filteredItems = useMemo(
-		() =>
-			filterActivityByScope(
-				filterActivityItems(data?.items ?? [], filter, identity.name, identity.memberId),
-				scope,
-				identity.name,
-				identity.memberId,
-			),
-		[data?.items, filter, identity.memberId, identity.name, scope],
+		() => filterActivityItems(data?.items ?? [], filter, identity.name, identity.memberId),
+		[data?.items, filter, identity.memberId, identity.name],
 	);
 	const chronicleGroups = useMemo(
 		() =>
@@ -143,24 +131,17 @@ export default function AktivitaetPage() {
 		setFilter((current) => ({ ...current, kind }));
 	}
 
-	const hasActiveFilter =
-		scope !== 'all' || filter.kind !== 'all' || filter.mineOnly || filter.query.trim().length > 0;
+	const hasActiveFilter = filter.kind !== 'all' || filter.query.trim().length > 0;
 
 	function resetFilters(): void {
-		setScope('all');
 		setFilter({ kind: 'all', mineOnly: false, query: '' });
 	}
 
 	return (
-		<div className="mx-auto min-w-0 w-full max-w-3xl space-y-4 bg-background px-4 py-4 pb-[env(safe-area-inset-bottom)]">
-			<header className="flex items-center gap-2">
-				<BackLink href={wgBaseHref} label="Start" />
-				<div className="min-w-0 flex-1">
-					<h1 className="font-heading text-lg font-semibold tracking-tight text-foreground">
-						Aktivität
-					</h1>
-				</div>
-			</header>
+		<div className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-4 px-4 py-4">
+			<h1 className="font-heading min-w-0 flex-1 text-base font-semibold tracking-tight break-words text-foreground">
+				Aktivität
+			</h1>
 
 			{error && (
 				<LoadErrorBanner
@@ -174,47 +155,35 @@ export default function AktivitaetPage() {
 			{data && inboxItems.length > 0 && (
 				<Card>
 					<CardHeader>
-						<div className="flex min-w-0 items-center justify-between gap-2">
-							<CardTitle className="flex min-w-0 items-center gap-2">
-								<AlertTriangle className="h-4 w-4" aria-hidden />
-								Inbox
-							</CardTitle>
-							<Badge variant="secondary" className="shrink-0">
-								{inboxCountLabel}
-							</Badge>
+						<div className="flex min-w-0 items-baseline justify-between gap-2">
+							<CardTitle className="min-w-0">Offen</CardTitle>
+							<span className="shrink-0 text-xs text-muted-foreground">{inboxCountLabel}</span>
 						</div>
 					</CardHeader>
 					<CardContent>
-						{inboxItems.length > 0 ? (
-							<ItemGroup aria-label="Offene Klärungen">
-								{inboxItems.map((item) => (
-									<Item
-										key={item.id}
-										size="sm"
-										className="rounded-none border-0 border-b border-border px-0 last:border-b-0"
-										render={<Link href={`${wgBaseHref}${item.href}`} />}
-									>
-										<ItemContent className="min-w-0">
-											<ItemTitle className="min-w-0 w-full">
-												<span className="flex items-center justify-between gap-2">
-													<span className="line-clamp-1">{item.title}</span>
-													{item.priority === 'high' && (
-														<Badge variant="destructive" className="shrink-0">
-															Wichtig
-														</Badge>
-													)}
-												</span>
-											</ItemTitle>
-											<ItemDescription className="min-w-0 line-clamp-1">
-												{item.detail}
-											</ItemDescription>
-										</ItemContent>
-									</Item>
-								))}
-							</ItemGroup>
-						) : (
-							<p className="py-1 text-[12px] text-muted-foreground">Keine offenen Klärungen.</p>
-						)}
+						<ItemGroup aria-label="Offene Klärungen">
+							{inboxItems.map((item) => (
+								<Item
+									key={item.id}
+									size="sm"
+									className="rounded-none border-0 border-b border-border px-0 last:border-b-0"
+									render={<Link href={`${wgBaseHref}${item.href}`} />}
+								>
+									<ItemContent className="min-w-0">
+										<ItemTitle className="min-w-0 w-full">
+											<span
+												className={cn('line-clamp-1', item.priority === 'high' && 'font-semibold')}
+											>
+												{item.title}
+											</span>
+										</ItemTitle>
+										<ItemDescription className="min-w-0 line-clamp-1">
+											{item.detail}
+										</ItemDescription>
+									</ItemContent>
+								</Item>
+							))}
+						</ItemGroup>
 					</CardContent>
 				</Card>
 			)}
@@ -239,22 +208,7 @@ export default function AktivitaetPage() {
 								className="min-h-11 text-base"
 							/>
 						</InputGroup>
-						<div className="grid grid-cols-2 gap-2">
-							<label htmlFor="activity-scope" className="grid min-w-0 gap-1 text-xs font-medium">
-								Umfang
-								<NativeSelect
-									id="activity-scope"
-									value={scope}
-									onChange={(event) => setScope(event.target.value as ActivityScope)}
-									className="w-full"
-								>
-									<NativeSelectOption value="all">Alle</NativeSelectOption>
-									<NativeSelectOption value="system">System</NativeSelectOption>
-									<NativeSelectOption value="mine">Von mir</NativeSelectOption>
-									<NativeSelectOption value="changes">Änderungen</NativeSelectOption>
-									<NativeSelectOption value="done">Erledigungen</NativeSelectOption>
-								</NativeSelect>
-							</label>
+						<div className="grid grid-cols-1 gap-2">
 							<label htmlFor="activity-kind" className="grid min-w-0 gap-1 text-xs font-medium">
 								Bereich
 								<NativeSelect
@@ -265,12 +219,12 @@ export default function AktivitaetPage() {
 								>
 									<NativeSelectOption value="all">Alle</NativeSelectOption>
 									<NativeSelectOption value="expense">Ausgaben</NativeSelectOption>
-									<NativeSelectOption value="shopping">Einkauf</NativeSelectOption>
+									<NativeSelectOption value="shopping">Einkäufe</NativeSelectOption>
 									<NativeSelectOption value="announcement">Pinnwand</NativeSelectOption>
-									<NativeSelectOption value="chore">Putzen</NativeSelectOption>
+									<NativeSelectOption value="chore">Putzplan</NativeSelectOption>
 									<NativeSelectOption value="recurring">Fixkosten</NativeSelectOption>
 									<NativeSelectOption value="absence">Abwesenheiten</NativeSelectOption>
-									<NativeSelectOption value="audit">Audit</NativeSelectOption>
+									<NativeSelectOption value="audit">WG-Änderungen</NativeSelectOption>
 								</NativeSelect>
 							</label>
 						</div>
@@ -304,9 +258,9 @@ export default function AktivitaetPage() {
 								))}
 							</div>
 						) : hasActiveFilter ? (
-							<Empty className="gap-3 border-0 px-0 py-5">
-								<EmptyHeader>
-									<EmptyTitle>Keine Aktivität für diesen Filter.</EmptyTitle>
+							<Empty className="items-start gap-3 border-0 px-0 py-5 text-left">
+								<EmptyHeader className="items-start">
+									<EmptyTitle>Keine Aktivität für diesen Filter</EmptyTitle>
 									<EmptyDescription>
 										<output aria-live="polite">
 											{formatVisibleActivityCount(filteredItems.length)}
@@ -320,13 +274,9 @@ export default function AktivitaetPage() {
 								</EmptyContent>
 							</Empty>
 						) : (
-							<Empty className="gap-3 border-0 px-0 py-5">
-								<EmptyHeader>
-									<EmptyMedia variant="icon">
-										<History aria-hidden />
-									</EmptyMedia>
-									<EmptyTitle>Noch keine Aktivität.</EmptyTitle>
-									<EmptyDescription>Neue Einträge und Änderungen erscheinen hier.</EmptyDescription>
+							<Empty className="items-start gap-3 border-0 px-0 py-5 text-left">
+								<EmptyHeader className="items-start">
+									<EmptyTitle>Noch keine Aktivität</EmptyTitle>
 								</EmptyHeader>
 							</Empty>
 						)

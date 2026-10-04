@@ -161,7 +161,7 @@ export function MemberDeactivateDialog({
 					<AlertDialogDescription>
 						{selfLeave
 							? 'Deine Mitgliedschaft in dieser WG wird deaktiviert. Deine Einträge und offenen Salden bleiben erhalten. Ein aktives Admin-Mitglied mit der nötigen Berechtigung kann dich später wieder aktivieren.'
-							: `${member.name} verliert den Zugriff auf diese WG. Historie und offene Salden bleiben erhalten. Ein aktives Admin-Mitglied kann sie später wieder aktivieren.`}
+							: `${member.name} verliert den Zugriff auf diese WG. Historie und offene Salden bleiben erhalten. Ein aktives Admin-Mitglied kann den Zugang später wieder aktivieren.`}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 
@@ -224,6 +224,7 @@ export function MemberDeactivateDialog({
 						Abbrechen
 					</AlertDialogCancel>
 					<Button
+						variant="destructive"
 						onClick={(event) => {
 							event.preventDefault();
 							void handleConfirm();

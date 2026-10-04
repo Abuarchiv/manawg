@@ -142,7 +142,7 @@ test.describe('settings access responsive', () => {
 		await page.getByRole('button', { name: 'Ausziehen: Mira' }).click();
 		await expect(
 			page.getByText(
-				'Mira verliert den Zugriff auf diese WG. Historie und offene Salden bleiben erhalten. Ein aktives Admin-Mitglied kann sie später wieder aktivieren.',
+				'Mira verliert den Zugriff auf diese WG. Historie und offene Salden bleiben erhalten. Ein aktives Admin-Mitglied kann den Zugang später wieder aktivieren.',
 			),
 		).toBeVisible();
 		await expect(page.getByText(/behält aber Zugriff auf dieses Gerät/)).toHaveCount(0);

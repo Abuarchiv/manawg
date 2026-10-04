@@ -46,7 +46,7 @@ const SECTION_LABELS: Record<ExportSectionKey, string> = {
 	chores: 'Putzplan',
 	absences: 'Abwesenheiten',
 	announcements: 'Pinnwand',
-	auditEvents: 'Audit',
+	auditEvents: 'WG-Änderungen',
 };
 
 const SECTION_HEADERS: Record<ExportSectionKey, string[]> = {

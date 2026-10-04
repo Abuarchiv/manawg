@@ -58,7 +58,7 @@ const SERVER_CHECKS: Record<string, ServerCheck> = {
 			? `Ähnlicher Einkaufsartikel existiert schon. Status dort: ${
 					serverItem.boughtAt ? 'erledigt' : 'offen'
 				}. Prüfe vor dem Senden, ob es ein Duplikat wäre.`
-			: 'Kein gleichnamiger Einkaufsartikel auf dem Server gefunden.';
+			: 'Auf dem Server nicht gefunden.';
 	}),
 	'shopping.update': serverCheck<{ items: Array<{ id: string; boughtAt: string | null }> }>(
 		'shopping',
@@ -83,7 +83,7 @@ const SERVER_CHECKS: Record<string, ServerCheck> = {
 			? `Gleicher Pinnwand-Beitrag existiert schon. Status dort: ${
 					serverPost.resolvedAt ? 'geklärt' : 'offen'
 				}. Prüfe vor dem Senden, ob es ein Duplikat wäre.`
-			: 'Kein gleicher Pinnwand-Beitrag auf dem Server gefunden.';
+			: 'Auf dem Server nicht gefunden.';
 	}),
 	'chore.complete': serverCheck<{ chores: Array<{ id: string }> }>('chores', (payload, data) => {
 		const choreId = String(payload.choreId ?? '');
@@ -98,7 +98,7 @@ const SERVER_CHECKS: Record<string, ServerCheck> = {
 			const serverChore = data.chores.find((chore) => chore.title.trim() === title);
 			return serverChore
 				? `Gleiche Putzaufgabe existiert schon. Intervall dort: alle ${serverChore.intervalDays} Tage. Prüfe vor dem Senden, ob es ein Duplikat wäre.`
-				: 'Keine gleichnamige Putzaufgabe auf dem Server gefunden.';
+				: 'Auf dem Server nicht gefunden.';
 		},
 	),
 	'absence.create': serverCheck<{
@@ -115,7 +115,7 @@ const SERVER_CHECKS: Record<string, ServerCheck> = {
 		);
 		return serverAbsence
 			? 'Gleiche Abwesenheit existiert schon auf dem Server.'
-			: 'Keine gleiche Abwesenheit auf dem Server gefunden.';
+			: 'Auf dem Server nicht gefunden.';
 	}),
 	'expense.create': serverCheck<{ expenses: Array<{ description: string; amountCents: number }> }>(
 		'expenses',
@@ -128,7 +128,7 @@ const SERVER_CHECKS: Record<string, ServerCheck> = {
 			);
 			return serverExpense
 				? 'Gleiche Ausgabe mit gleichem Betrag existiert schon. Prüfe vor dem Senden, ob es ein Duplikat wäre.'
-				: 'Keine gleiche Ausgabe mit gleichem Betrag auf dem Server gefunden.';
+				: 'Auf dem Server nicht gefunden.';
 		},
 	),
 	'recurring.create': serverCheck<{
@@ -142,7 +142,7 @@ const SERVER_CHECKS: Record<string, ServerCheck> = {
 		);
 		return serverTemplate
 			? formatRecurringTemplateConflictNote(serverTemplate)
-			: 'Keine gleiche Fixkosten-Vorlage auf dem Server gefunden.';
+			: 'Auf dem Server nicht gefunden.';
 	}),
 	'recurring.advance': serverCheck<{
 		recurringExpenses: Array<{ id: string; nextDueAt: string }>;
@@ -339,7 +339,7 @@ export function OfflineQueueSection({
 	}
 
 	return (
-		<Section title="Offline-Warteschlange" hint="Wird bei Netz gesendet.">
+		<Section title="Offline-Warteschlange">
 			<div className="grid gap-2 p-3">
 				<div
 					className={cn(

@@ -31,7 +31,7 @@ import { Section } from '@/components/wg/einstellungen/Section';
 import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import type { StoredIdentity } from '@/shared/lib/identity';
-import { Crown, UserMinus, UserPlus } from 'lucide-react';
+import { Crown, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 
 interface MembersSectionProps {
@@ -144,23 +144,23 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 											<Button
 												type="button"
 												variant="outline"
-												size="icon"
+												size="sm"
 												onClick={() => {
 													setPromoteError(null);
 													setMemberToPromote({ id: member.id, name: member.name });
 												}}
 												aria-label={`Admin übergeben: ${member.name}`}
 											>
-												<Crown aria-hidden />
+												Admin
 											</Button>
 											<Button
 												type="button"
 												variant="outline"
-												size="icon"
+												size="sm"
 												onClick={() => setMemberToDeactivate({ id: member.id, name: member.name })}
 												aria-label={`Ausziehen: ${member.name}`}
 											>
-												<UserMinus aria-hidden />
+												Ausziehen
 											</Button>
 										</>
 									)
