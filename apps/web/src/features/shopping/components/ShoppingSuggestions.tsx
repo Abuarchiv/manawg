@@ -18,14 +18,14 @@ export function ShoppingSuggestions({
 	return (
 		<div className="flex flex-col gap-3">
 			{groups.map((group) => (
-				<div key={group.label} className="flex min-w-0 flex-col gap-1.5">
-					<p className="text-sm font-medium text-muted-foreground">{group.label}</p>
+				<div key={group.label} className="flex min-w-0 flex-col gap-2">
+					<p className="text-[12px] font-medium text-muted-foreground">{group.label}</p>
 					<ul aria-label={group.label} className="-mx-4 -my-1.5 flex flex-wrap gap-2 px-4 py-1.5">
 						{group.names.map((name) => (
 							<li key={name} className="min-w-0 max-w-full">
 								<Button
 									type="button"
-									variant="outline"
+									variant="secondary"
 									size="sm"
 									disabled={disabled}
 									onClick={() => onAdd(name)}

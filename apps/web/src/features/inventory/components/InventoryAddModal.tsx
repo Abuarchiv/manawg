@@ -353,8 +353,8 @@ export function InventoryAddModal({
 							</div>
 							<FieldDescription aria-live="polite">
 								{mode === 'create' && isBelowThreshold({ quantity, threshold })
-									? 'Die Menge liegt nicht über „Nachkaufen ab“ – der Vorrat kommt beim Speichern direkt auf die Einkaufsliste.'
-									: 'Wenn der Bestand diesen Wert erreicht, wird der Vorrat als niedrig markiert und auf die Einkaufsliste gesetzt.'}
+									? 'Kommt beim Speichern direkt auf die Einkaufsliste.'
+									: 'Ab diesem Bestand kommt der Vorrat auf die Einkaufsliste.'}
 							</FieldDescription>
 						</FieldGroup>
 						{serverError && (

@@ -316,7 +316,7 @@ test.describe('mobile layout matrix', () => {
 		}
 		const help = page.getByText(
 			// Default Menge 0 ≤ Nachkaufen ab 1, so the form warns about the automatic shopping entry.
-			'Die Menge liegt nicht über „Nachkaufen ab“ – der Vorrat kommt beim Speichern direkt auf die Einkaufsliste.',
+			'Kommt beim Speichern direkt auf die Einkaufsliste.',
 			{ exact: true },
 		);
 		const helpBox = await measureBox(help);
@@ -597,7 +597,7 @@ test.describe('mobile layout matrix', () => {
 									: route === 'chores'
 										? 'Putzplan'
 										: route === 'shopping'
-											? 'Einkaufsliste'
+											? 'Einkäufe'
 											: 'Vorräte',
 						}),
 					).toBeVisible({ timeout: 30_000 });
