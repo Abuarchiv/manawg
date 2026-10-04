@@ -97,23 +97,23 @@ export const ExpenseRow = memo(function ExpenseRow({
 							<MemberAvatar name={memberName(expense.paidByMemberId)} size={28} />
 							{/* Betrag rechts neben dem Text; erst wenn die Zeile zu schmal wird (große Schrift), darunter. */}
 							<span className="@container flex min-w-0 flex-1">
-								<span className="flex min-w-0 flex-1 flex-col gap-1 @[10rem]:flex-row @[10rem]:gap-3">
+								<span className="flex min-w-0 flex-1 flex-col gap-1 @[15rem]:flex-row @[15rem]:gap-3">
 									<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 										<span className="sr-only">Details öffnen:</span>
 										<span className="line-clamp-2 min-w-0 hyphens-auto text-[14px] font-medium leading-snug [overflow-wrap:break-word]">
 											{expense.description}
 										</span>
 										<span className="text-[12px] leading-normal font-normal text-muted-foreground">
-											{isPayer ? 'Du zahltest' : `${memberName(expense.paidByMemberId)} zahlte`}
 											{/* Gleicher Betrag steht rechts schon; nur bei abweichendem Anteil zusätzlich links. */}
-											{Math.abs(impact.cents) !== expense.amountCents && (
-												<>
-													{' '}
-													<span className="whitespace-nowrap tabular-nums">
+											<span className="whitespace-nowrap">
+												{isPayer ? 'Du zahltest' : `${memberName(expense.paidByMemberId)} zahlte`}
+												{Math.abs(impact.cents) !== expense.amountCents && (
+													<span className="tabular-nums">
+														{' '}
 														{formatEuroCents(expense.amountCents, expense.currency)}
 													</span>
-												</>
-											)}
+												)}
+											</span>
 											{expense.imageUrl && (
 												<>
 													{' · '}
@@ -124,7 +124,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 										</span>
 									</span>
 									{/* Wie Splitwise: rechts steht, was die Ausgabe für dich bedeutet. */}
-									<span className="flex shrink-0 flex-col gap-0.5 @[10rem]:items-end @[10rem]:text-right">
+									<span className="flex shrink-0 flex-row flex-wrap items-baseline gap-x-1.5 @[15rem]:flex-col @[15rem]:items-end @[15rem]:gap-0.5 @[15rem]:text-right">
 										<span
 											className={cn(
 												'whitespace-nowrap font-mono text-[14px] leading-snug tabular-nums',

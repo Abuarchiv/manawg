@@ -50,7 +50,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 					render={
 						<Button
 							variant="ghost"
-							className="group h-auto w-full items-start justify-start gap-3 rounded-none px-3 py-2.5 text-left whitespace-normal"
+							className="group h-auto w-full items-start justify-start gap-3 rounded-none px-3 py-2.5 text-left whitespace-normal hover:bg-transparent aria-expanded:bg-transparent active:bg-muted"
 						/>
 					}
 				>
@@ -150,8 +150,9 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 								<span className="sr-only">{abo.description} bearbeiten</span>
 							</Button>
 							<Button
-								variant="ghost"
+								variant="outline"
 								size="icon"
+								className="text-destructive"
 								onClick={() => onDelete(abo)}
 								disabled={pending}
 								aria-label={`${abo.description} löschen`}

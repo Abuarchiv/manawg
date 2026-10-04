@@ -19,7 +19,7 @@ export function BackLink({ href, label }: BackLinkProps) {
 		<Link
 			href={href}
 			aria-label={`Zurück zu ${label}`}
-			className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
+			className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), '-ml-2')}
 		>
 			<ArrowLeft aria-hidden />
 			<span className="sr-only">Zurück zu {label}</span>

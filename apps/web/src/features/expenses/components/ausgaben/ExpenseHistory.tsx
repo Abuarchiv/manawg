@@ -1,7 +1,7 @@
 'use client';
 
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { ExpenseRow } from '@/features/expenses/components/ausgaben/ExpenseRow';
 import { ExpensesSkeleton } from '@/features/expenses/components/ausgaben/ExpensesSkeleton';
 import type { Expense, ExpenseSplit } from '@/features/expenses/components/ausgaben/expense-types';
@@ -57,18 +57,6 @@ export function ExpenseHistory({
 				<Empty>
 					<EmptyHeader>
 						<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
-						<EmptyDescription>
-							Tippe unten rechts auf „+“, um eure erste gemeinsame Ausgabe einzutragen.
-						</EmptyDescription>
-					</EmptyHeader>
-				</Empty>
-			) : expenseCount === 0 && !initialLoading ? (
-				<Empty>
-					<EmptyHeader>
-						<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
-						<EmptyDescription>
-							Tippe unten rechts auf „+“, um eure erste gemeinsame Ausgabe einzutragen.
-						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (
@@ -112,7 +100,7 @@ export function ExpenseHistory({
 					)}
 				>
 					<FileInput data-icon="inline-start" aria-hidden />
-					Kontoauszug importieren
+					Ausgaben importieren
 				</Link>
 			)}
 		</section>
