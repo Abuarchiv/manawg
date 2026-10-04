@@ -15,7 +15,6 @@ import {
 import { EventCreateModal } from '@/features/events/components/EventCreateModal';
 import { EventEditModal } from '@/features/events/components/EventEditModal';
 import { useCalendarPage } from '@/features/events/hooks/use-calendar-page';
-import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import { CalendarDays, List, Plus } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -112,16 +111,29 @@ export default function KalenderPage() {
 				}}
 				className="gap-2"
 			>
-				<TabsList className="w-fit self-end">
-					<TabsTrigger value="list" className="min-w-max whitespace-nowrap">
-						<List data-icon="inline-start" aria-hidden />
-						Agenda
-					</TabsTrigger>
-					<TabsTrigger value="month" className="min-w-max whitespace-nowrap">
-						<CalendarDays data-icon="inline-start" aria-hidden />
-						Monat
-					</TabsTrigger>
-				</TabsList>
+				<div className="flex flex-wrap items-center justify-end gap-2">
+					{view === 'month' && !isCurrentMonth && (
+						<Button
+							variant="outline"
+							size="sm"
+							className="mr-auto"
+							onClick={handleJumpToToday}
+							aria-label="Zum aktuellen Monat springen"
+						>
+							Heute
+						</Button>
+					)}
+					<TabsList className="w-fit shrink-0">
+						<TabsTrigger value="list" className="min-w-max whitespace-nowrap">
+							<List data-icon="inline-start" aria-hidden />
+							Agenda
+						</TabsTrigger>
+						<TabsTrigger value="month" className="min-w-max whitespace-nowrap">
+							<CalendarDays data-icon="inline-start" aria-hidden />
+							Monat
+						</TabsTrigger>
+					</TabsList>
+				</div>
 				<TabsContent value="list" className="flex flex-col gap-3">
 					<section aria-labelledby="calendar-upcoming-heading" className="flex flex-col gap-3">
 						<h2 id="calendar-upcoming-heading" className="sr-only">
@@ -143,17 +155,6 @@ export default function KalenderPage() {
 					</section>
 				</TabsContent>
 				<TabsContent value="month" className="flex flex-col gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						className={cn('self-end', isCurrentMonth && 'invisible')}
-						onClick={handleJumpToToday}
-						aria-label="Zum aktuellen Monat springen"
-						aria-hidden={isCurrentMonth || undefined}
-						tabIndex={isCurrentMonth ? -1 : undefined}
-					>
-						Heute
-					</Button>
 					<CalendarMonth
 						month={month}
 						occurrences={calendar.monthOccurrences}
@@ -162,6 +163,8 @@ export default function KalenderPage() {
 						onSelectDay={handleDaySelect}
 						onSelectOccurrence={calendar.selectOccurrence}
 						selectedDay={selectedDay}
+						choreOccurrences={calendar.upcomingChoreOccurrences}
+						wgBaseHref={wgBaseHref}
 					/>
 				</TabsContent>
 			</Tabs>

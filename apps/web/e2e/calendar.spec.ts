@@ -903,13 +903,13 @@ test.describe('calendar date and recurrence regressions', () => {
 		await page.locator('#event-create-title').fill('Entwurf bleibt');
 		await page.locator('#event-create-start').fill('2026-09-25T18:00');
 		await page.locator('#event-create-end').fill('2026-09-25T20:00');
-		await page.getByRole('button', { name: 'Schließen · Entwurf behalten', exact: true }).click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Abbrechen', exact: true }).click();
 		await open.click();
 		await expect(page.locator('#event-create-title')).toHaveValue('Entwurf bleibt');
 		await expect(page.locator('#event-create-start')).toHaveValue('2026-09-25T18:00');
 		await expect(page.locator('#event-create-end')).toHaveValue('2026-09-25T20:00');
 		await page.locator('#event-create-start').fill('');
-		await page.getByRole('button', { name: 'Schließen · Entwurf behalten', exact: true }).click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Abbrechen', exact: true }).click();
 		await open.click();
 		await expect(page.locator('#event-create-start')).toHaveValue('');
 		await expect(page.locator('#event-create-end')).toHaveValue('2026-09-25T20:00');

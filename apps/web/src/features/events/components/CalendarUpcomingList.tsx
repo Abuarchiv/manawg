@@ -127,7 +127,7 @@ export function CalendarUpcomingList({
 					<li key={key} className="grid grid-cols-[3.25rem_minmax(0,1fr)]">
 						<h3
 							className={cn(
-								'flex flex-col items-center pt-2 leading-tight',
+								'flex flex-col items-center py-2 leading-tight',
 								isToday ? 'text-foreground' : 'text-muted-foreground',
 							)}
 						>
@@ -135,17 +135,14 @@ export function CalendarUpcomingList({
 							<span aria-hidden className="text-[12px]">
 								{isToday ? 'Heute' : WEEKDAY_FORMATTER.format(day.date).replace('.', '')}
 							</span>
-							<span
-								aria-hidden
-								className={cn('text-base font-semibold tabular-nums', isToday && 'text-foreground')}
-							>
-								{day.date.getDate()}
+							<span aria-hidden className="flex items-baseline gap-0.5">
+								<span className="text-base font-semibold tabular-nums">{day.date.getDate()}</span>
+								{showMonth && (
+									<span className="text-[12px] font-normal">
+										{MONTH_SHORT_FORMATTER.format(day.date).replace('.', '')}
+									</span>
+								)}
 							</span>
-							{showMonth && (
-								<span aria-hidden className="text-[12px]">
-									{MONTH_SHORT_FORMATTER.format(day.date).replace('.', '')}
-								</span>
-							)}
 						</h3>
 						<ul aria-label={day.label} className="flex min-w-0 flex-col divide-y divide-border/60">
 							{day.entries.map((entry) =>

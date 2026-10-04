@@ -1,6 +1,12 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from '@/components/ui/empty';
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
 import { MessageScrollerItem } from '@/components/ui/message-scroller';
 import { Spinner } from '@/components/ui/spinner';
 import { MessageCircle } from 'lucide-react';
@@ -39,7 +45,8 @@ export function ChatEmptyPlaceholder() {
 					<EmptyMedia>
 						<MessageCircle aria-hidden />
 					</EmptyMedia>
-					<EmptyDescription>Noch keine Nachrichten. Schreib die erste.</EmptyDescription>
+					<EmptyTitle>Noch keine Nachrichten</EmptyTitle>
+					<EmptyDescription>Schreib die erste.</EmptyDescription>
 				</EmptyHeader>
 			</Empty>
 		</MessageScrollerItem>

@@ -121,23 +121,23 @@ export default function PinnwandPage(): React.ReactElement {
 				/>
 			)}
 
-			{composer.open && (
-				<PinnwandComposer
-					authorName={identity.name}
-					submitting={composer.submitting}
-					kind={composer.kind}
-					onKindChange={composer.setKind}
-					content={composer.content}
-					onContentChange={composer.setContent}
-					textareaRef={composer.textareaRef}
-					imageUrl={composer.imageUrl}
-					onImageUrlChange={composer.setImageUrl}
-					shareCode={wg.shareCode}
-					error={composer.error}
-					onClose={composer.close}
-					onSubmit={composer.submit}
-				/>
-			)}
+			<PinnwandComposer
+				open={composer.open}
+				finalFocusRef={composer.buttonRef}
+				authorName={identity.name}
+				submitting={composer.submitting}
+				kind={composer.kind}
+				onKindChange={composer.setKind}
+				content={composer.content}
+				onContentChange={composer.setContent}
+				textareaRef={composer.textareaRef}
+				imageUrl={composer.imageUrl}
+				onImageUrlChange={composer.setImageUrl}
+				shareCode={wg.shareCode}
+				error={composer.error}
+				onClose={composer.close}
+				onSubmit={composer.submit}
+			/>
 
 			{notice && (
 				<Alert aria-live="polite">
@@ -161,12 +161,7 @@ export default function PinnwandPage(): React.ReactElement {
 					Noch keine Beiträge geladen.
 				</EmptyState>
 			) : items.length === 0 ? (
-				<EmptyState
-					icon={Megaphone}
-					hint="Tippe unten rechts auf „+“, um eine Frage oder Info zu teilen."
-				>
-					Noch keine Beiträge
-				</EmptyState>
+				<EmptyState icon={Megaphone}>Noch keine Beiträge</EmptyState>
 			) : (
 				<>
 					{openItems.length === 0 ? (
@@ -220,24 +215,21 @@ export default function PinnwandPage(): React.ReactElement {
 					)}
 				</>
 			)}
-			{/* Offenes Formular hat eigenes Schließen (X) und Posten. */}
-			{!composer.open && (
-				<ThumbAction>
-					<Button
-						ref={composer.buttonRef}
-						type="button"
-						className="min-h-11 w-full"
-						disabled={composer.submitting || initialLoading}
-						onClick={() => {
-							composer.setOpen(true);
-							setNotice(null);
-						}}
-					>
-						<Plus data-icon="inline-start" aria-hidden />
-						{composer.hasDraft ? 'Entwurf fortsetzen' : 'Beitrag hinzufügen'}
-					</Button>
-				</ThumbAction>
-			)}
+			<ThumbAction>
+				<Button
+					ref={composer.buttonRef}
+					type="button"
+					className="min-h-11 w-full"
+					disabled={composer.submitting || initialLoading}
+					onClick={() => {
+						composer.setOpen(true);
+						setNotice(null);
+					}}
+				>
+					<Plus data-icon="inline-start" aria-hidden />
+					{composer.hasDraft ? 'Entwurf fortsetzen' : 'Beitrag hinzufügen'}
+				</Button>
+			</ThumbAction>
 		</div>
 	);
 }
