@@ -243,7 +243,7 @@ export default function WgHomePage() {
 		<>
 			<div
 				data-home-content
-				className="mx-auto grid w-full max-w-[var(--app-frame-width)] min-w-0 grid-cols-1 gap-3 px-4 py-3"
+				className="mx-auto flex w-full min-w-0 max-w-[var(--app-frame-width)] flex-col gap-4 px-4 py-4"
 			>
 				{isNewWg && (
 					<div>
@@ -317,7 +317,7 @@ export default function WgHomePage() {
 									)}
 								</>
 							) : (
-								<p className="flex items-center gap-2 rounded-xl border p-4 text-sm text-muted-foreground">
+								<p className="flex items-center gap-2 rounded-xl border p-3 text-sm text-muted-foreground">
 									<Check className="size-4 shrink-0" aria-hidden />
 									Alles erledigt. Gerade gibt es nichts für dich zu tun.
 								</p>
@@ -390,7 +390,7 @@ export default function WgHomePage() {
 								<h3 className="text-sm font-medium text-foreground">Überfällig</h3>
 								<ul className="flex min-w-0 flex-col divide-y divide-border/60 rounded-xl border">
 									{overdueVisible.map((item) => (
-										<AgendaRow key={item.key} item={item} />
+										<AgendaRow key={item.key} item={item} todayKey={berlinTodayKey} />
 									))}
 								</ul>
 								{weekAgenda.overdue.length > overdueVisible.length && (
@@ -398,10 +398,14 @@ export default function WgHomePage() {
 										href={`${wgBaseHref}/putzen?filter=overdue`}
 										className={cn(
 											buttonVariants({ variant: 'ghost' }),
-											'min-h-11 justify-start px-0',
+											'w-full justify-between text-muted-foreground',
 										)}
 									>
-										Alle überfälligen Aufgaben ({weekAgenda.overdue.length - overdueVisible.length})
+										<span>
+											Alle überfälligen Aufgaben (
+											{weekAgenda.overdue.length - overdueVisible.length})
+										</span>
+										<ChevronRight data-icon="inline-end" aria-hidden />
 									</Link>
 								)}
 							</div>
@@ -414,7 +418,7 @@ export default function WgHomePage() {
 								)}
 								<ul className="flex min-w-0 flex-col divide-y divide-border/60 rounded-xl border">
 									{upcomingVisible.map((item) => (
-										<AgendaRow key={item.key} item={item} />
+										<AgendaRow key={item.key} item={item} todayKey={berlinTodayKey} />
 									))}
 								</ul>
 								{weekAgenda.upcoming.length > upcomingVisible.length && (
@@ -422,11 +426,14 @@ export default function WgHomePage() {
 										href={`${wgBaseHref}/kalender`}
 										className={cn(
 											buttonVariants({ variant: 'ghost' }),
-											'min-h-11 justify-start px-0',
+											'w-full justify-between text-muted-foreground',
 										)}
 									>
-										Weitere Termine und Aufgaben (
-										{weekAgenda.upcoming.length - upcomingVisible.length})
+										<span>
+											Weitere Termine und Aufgaben (
+											{weekAgenda.upcoming.length - upcomingVisible.length})
+										</span>
+										<ChevronRight data-icon="inline-end" aria-hidden />
 									</Link>
 								)}
 							</div>
@@ -438,19 +445,22 @@ export default function WgHomePage() {
 							Boolean(eventRead.data) &&
 							weekAgenda.overdue.length === 0 &&
 							weekAgenda.upcoming.length === 0 && (
-								<p className="text-sm text-muted-foreground">Bis Sonntag nichts geplant.</p>
+								<p className="flex items-center gap-2 rounded-xl border p-3 text-sm text-muted-foreground">
+									<CalendarDays className="size-4 shrink-0" aria-hidden />
+									Bis Sonntag nichts geplant.
+								</p>
 							)}
 					</section>
 
 					<section aria-labelledby="wg-now-heading" className="flex min-w-0 flex-col gap-3">
 						{/* Immer zugeklappt starten: Neuigkeiten öffnet man bei Bedarf selbst. */}
 						<Collapsible>
-							<h2 id="wg-now-heading">
+							<h2 id="wg-now-heading" className="mb-1.5">
 								<CollapsibleTrigger
 									render={
 										<Button
 											variant="ghost"
-											className="group w-full justify-between pl-0 pr-2 font-heading text-[length:inherit] font-semibold text-foreground hover:bg-transparent active:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent"
+											className="group w-full justify-between border-0 px-0 -my-1.5 leading-[inherit] font-heading text-[length:inherit] font-semibold text-foreground hover:bg-transparent active:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent"
 										/>
 									}
 								>
@@ -490,8 +500,8 @@ export default function WgHomePage() {
 												</Item>
 											)}
 											{activityItems.length > 0 ? (
-												<div className="rounded-xl border px-3">
-													<ActivityFeed items={activityItems} />
+												<div className="rounded-xl border">
+													<ActivityFeed items={activityItems} inset />
 												</div>
 											) : !latestAnnouncement || latestIsPending ? (
 												<p className="text-sm text-muted-foreground">Noch keine neuen Einträge.</p>
@@ -556,7 +566,7 @@ function TodayRow({
 			? formatEuroCents(item.amountCents, item.currency, { signed: true })
 			: undefined;
 	return (
-		<li className="flex min-w-0 items-center gap-2 pl-2 pr-3">
+		<li className="flex min-w-0 items-center gap-2 pl-2 pr-2">
 			{checkable ? (
 				<Button
 					variant="ghost"
@@ -592,22 +602,14 @@ function TodayRow({
 							item.kind === 'recurring' && 'tabular-nums',
 						)}
 					>
-						{pending ? (
-							'Wird gespeichert…'
-						) : armed ? (
-							'Nochmal tippen zum Bestätigen'
-						) : debtAmount !== undefined ? (
-							<>
-								{item.detail} ·{' '}
-								<span className="whitespace-nowrap font-mono font-medium tabular-nums">
-									{debtAmount}
-								</span>
-							</>
-						) : (
-							item.detail
-						)}
+						{pending ? 'Wird gespeichert…' : armed ? 'Nochmal tippen zum Bestätigen' : item.detail}
 					</span>
 				</span>
+				{debtAmount !== undefined && !pending && !armed && (
+					<span className="shrink-0 whitespace-nowrap font-mono text-[12px] font-medium tabular-nums">
+						{debtAmount}
+					</span>
+				)}
 				<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
 			</Link>
 		</li>
@@ -621,13 +623,16 @@ const AGENDA_DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 	timeZone: 'Europe/Berlin',
 });
 
-function formatAgendaDay(dayKey: string): string {
+function formatAgendaDay(dayKey: string, todayKey: string): string {
+	if (dayKey === todayKey) return 'Heute';
+	const tomorrowKey = berlinDayKey(new Date(Date.parse(`${todayKey}T12:00:00Z`) + 86_400_000));
+	if (dayKey === tomorrowKey) return 'Morgen';
 	return AGENDA_DAY_FORMATTER.format(new Date(`${dayKey}T12:00:00.000Z`));
 }
 
-function AgendaRow({ item }: { item: WeekAgendaItem }) {
+function AgendaRow({ item, todayKey }: { item: WeekAgendaItem; todayKey: string }) {
 	return (
-		<li className="flex min-w-0 items-center gap-2 pl-2 pr-3">
+		<li className="flex min-w-0 items-center gap-2 pl-2 pr-2">
 			<span className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
 				{item.kind === 'event' ? (
 					<CalendarDays className="size-4" aria-hidden />
@@ -642,7 +647,7 @@ function AgendaRow({ item }: { item: WeekAgendaItem }) {
 				<span className="flex min-w-0 flex-1 flex-col">
 					<span className="text-[14px] font-medium leading-snug break-words">{item.title}</span>
 					<span className="text-[12px] text-muted-foreground">
-						{formatAgendaDay(item.dayKey)} · {item.detail}
+						{formatAgendaDay(item.dayKey, todayKey)} · {item.detail}
 					</span>
 				</span>
 				<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />

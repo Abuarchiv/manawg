@@ -113,7 +113,10 @@ function calendarDayDistance(iso: string, now: number): number | null {
 function dueLabel(iso: string, now: number): string {
 	const days = calendarDayDistance(iso, now);
 	if (days === null) return 'Datum prüfen';
-	if (days < 0) return `seit ${Math.abs(days)} T. offen`;
+	if (days < 0) {
+		const n = Math.abs(days);
+		return `seit ${n} ${n === 1 ? 'Tag' : 'Tagen'} offen`;
+	}
 	if (days === 0) return 'heute fällig';
 	if (days === 1) return 'morgen fällig';
 	return `in ${days} Tagen`;
@@ -253,7 +256,7 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 			item: {
 				kind: 'debt',
 				title: outgoing ? `An ${debt.toName}` : `Von ${debt.fromName}`,
-				detail: 'Ausgleich offen',
+				detail: outgoing ? 'Du zahlst' : 'Du bekommst',
 				href: `${base}/ausgaben`,
 				tone: outgoing ? 'danger' : 'neutral',
 				isPersonal: true,

@@ -33,7 +33,7 @@ export function AppBottomNav({ label, children }: { label: string; children: Rea
 			ref={ref}
 			aria-label={label}
 			data-app-chrome
-			className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
+			className="fixed inset-x-0 bottom-0 z-30 mx-auto bg-background w-full min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
 		>
 			<div className="rounded-[20px] border border-border bg-background text-foreground">
 				<ul className="flex flex-wrap gap-1 p-1 [&>li]:min-w-fit [&>li]:flex-1">{children}</ul>

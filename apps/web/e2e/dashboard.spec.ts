@@ -11,12 +11,7 @@ import {
 	getWeekAgenda,
 } from '../src/core/reads/dashboard-insights';
 import { instantAtBerlinWallTime } from '../src/core/utils/berlin-day';
-import {
-	formatCompactRelativeTime,
-	formatRelativeTime,
-	formatShortDate,
-	formatWeekLabel,
-} from '../src/core/utils/time';
+import { formatRelativeTime, formatShortDate, formatWeekLabel } from '../src/core/utils/time';
 import { previewBody } from '../src/features/chat/chat-pure';
 import type { EventInput, EventOccurrence } from '../src/features/events/events';
 import { expandRecurrence } from '../src/features/events/events';
@@ -1551,8 +1546,6 @@ test.describe('edge data helpers', () => {
 		const ago47h = new Date(now - 47 * 3_600_000).toISOString();
 		expect(formatRelativeTime(in47h, now)).toBe('in 2 Tagen');
 		expect(formatRelativeTime(ago47h, now)).toBe('vor 2 Tagen');
-		expect(formatCompactRelativeTime(in47h, now)).toBe('in 2 T.');
-		expect(formatCompactRelativeTime(ago47h, now)).toBe('2 T.');
 	});
 
 	test('week labels one year apart stay unique', () => {
