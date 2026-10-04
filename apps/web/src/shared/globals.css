@@ -20,7 +20,7 @@
 }
 
 [data-home-content] p.text-sm {
-	font-size: 0.8125rem;
+	font-size: max(12px, 0.75rem);
 	line-height: 1.125rem;
 }
 
@@ -36,12 +36,12 @@
 /* Row text is 14/12 everywhere, like ChoreRow. */
 [data-slot="item-title"] {
 	font-size: max(14px, 0.875rem);
-	line-height: 1.375;
+	line-height: 1.25;
 }
 
 [data-slot="item-description"] {
 	font-size: max(12px, 0.75rem);
-	line-height: 1.375;
+	line-height: 1.25;
 }
 
 /* Household, finance and exchange pages share the phone density. Native inputs
@@ -65,7 +65,7 @@
 :is([data-household-content], [data-finance-content], [data-exchange-content])
 	[data-slot="empty-description"],
 :is([data-household-content], [data-finance-content], [data-exchange-content]) p.text-sm {
-	font-size: max(13px, 0.8125rem);
+	font-size: max(12px, 0.75rem);
 	line-height: 1.125rem;
 }
 
@@ -374,7 +374,7 @@ video {
       Percent bounds keep the user's browser text size as base. */
 html {
 	/* 90 % (14,4 px) ist die Lesbarkeitsgrenze, die pilot-mobile-layout prüft. */
-	font-size: clamp(90%, 3.5vw, 93.75%);
+	font-size: 90%;
 }
 body {
 	/* Kompakt wie Messenger-Apps: 16 px mit 1.6 wirkte auf dem Handy aufgeblasen. */
@@ -410,8 +410,10 @@ input[type="month"] {
 	:root {
 		color-scheme: light;
 		/* Phone-only app: every screen size renders the same phone column.
-		   Wider viewports only add backdrop around it, never a desktop layout. */
-		--app-frame-width: 30rem;
+		   Wider viewports only add backdrop around it, never a desktop layout.
+		   27rem = 389 px, the width of a current phone, so the desktop frame
+		   looks like the phone and not like a zoomed tablet column. */
+		--app-frame-width: 27rem;
 		--app-nav-width: var(--app-frame-width);
 		--app-nav-height: 5rem;
 		/* Backdrop shown in the margins outside the centered app frame. */

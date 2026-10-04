@@ -108,7 +108,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 				data-shopping-row
 				id={`shopping-${item.id}`}
 				className={cn(
-					'relative touch-pan-y scroll-mt-24 rounded-none bg-background py-1.5 pr-1.5 pl-3',
+					'relative touch-pan-y scroll-mt-24 rounded-none bg-background py-1 pr-1.5 pl-3',
 					swipeX === 0 && 'transition-transform',
 					highlighted && 'ring-2 ring-inset ring-ring',
 				)}
@@ -139,7 +139,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 						onCheckedChange={() => onToggle(item)}
 						disabled={pending || queued}
 						size="lg"
-						className="relative size-8 rounded-lg border-foreground/50 after:absolute after:-inset-1.5 [&_svg]:size-4"
+						className="relative size-6 rounded-md border-foreground/50 after:absolute after:-inset-2.5 [&_svg]:size-3.5"
 						aria-label={isBought ? `${item.name} wieder öffnen` : `${item.name} erledigen`}
 					/>
 				</ItemMedia>

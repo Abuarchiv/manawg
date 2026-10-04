@@ -52,12 +52,12 @@ export function NavItem({ href, label, iconKey, activePrefixes }: NavItemProps) 
 					if (!isActive) haptic('light');
 				}}
 				className={cn(
-					'flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-[14px] py-0.5 text-foreground/70 outline-none transition-colors duration-[120ms] select-none focus-visible:ring-2 focus-visible:ring-ring',
+					'flex min-h-11 w-full flex-col items-center justify-center gap-0 rounded-[14px] py-0.5 text-foreground/70 outline-none transition-colors duration-[120ms] select-none focus-visible:ring-2 focus-visible:ring-ring',
 					isActive ? 'glass-pill text-foreground' : 'active:bg-foreground/5',
 				)}
 			>
 				<Icon aria-hidden className="size-[18px]" strokeWidth={1.5} />
-				<span className="max-w-full whitespace-nowrap text-center text-[12px] font-medium leading-4">
+				<span className="max-w-full whitespace-nowrap text-center text-[11px] font-medium leading-4">
 					{label}
 				</span>
 			</Link>

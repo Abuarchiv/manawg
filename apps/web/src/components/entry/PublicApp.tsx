@@ -216,7 +216,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						<div className="flex flex-wrap items-center justify-between gap-3">
 							<Link
 								href={publicHref('/')}
-								className="flex min-h-10 items-center gap-2"
+								className="flex min-h-9 items-center gap-2"
 								aria-label="ManaWG Startseite"
 							>
 								<LogoMark size={24} tile={false} aria-hidden />

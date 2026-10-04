@@ -40,9 +40,9 @@ export function WgAppHeader() {
 			ref={ref}
 			data-home-header={isStart ? '' : undefined}
 			data-app-chrome
-			className="mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-2 px-4 pt-2 pb-0"
+			className="mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-2 px-4 pt-1 pb-0"
 		>
-			<div className="flex min-h-10 min-w-0 items-center gap-2">
+			<div className="flex min-h-9 min-w-0 items-center gap-2">
 				<LogoMark
 					size={24}
 					tile={false}
