@@ -94,7 +94,7 @@ export default function EinkaufPage() {
 	].filter((group) => !suggestionsPending && group.names.length > 0);
 
 	return (
-		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-4">
+		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-3">
 			<SubNav liveCount={!initialLoading && !loadError ? open.length : undefined} />
 			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
 			<header className="sr-only">
@@ -108,11 +108,13 @@ export default function EinkaufPage() {
 				</p>
 			</header>
 
-			<ShoppingSuggestions
-				groups={suggestionGroups}
-				disabled={add.adding}
-				onAdd={(name) => void add.add(name)}
-			/>
+			{suggestionGroups.length > 0 && (
+				<ShoppingSuggestions
+					groups={suggestionGroups}
+					disabled={add.adding}
+					onAdd={(name) => void add.add(name)}
+				/>
+			)}
 
 			{shopping.queuedCount > 0 && (
 				<Alert>

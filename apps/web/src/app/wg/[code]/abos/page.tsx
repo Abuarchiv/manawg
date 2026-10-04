@@ -313,7 +313,7 @@ export default function AbosPage() {
 	return (
 		<div
 			data-finance-content
-			className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-4 px-4 py-4"
+			className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-3 px-4 py-3"
 		>
 			<SubNav liveCount={!loading && !loadError ? dueCount : undefined} />
 			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}

@@ -330,7 +330,7 @@ export default function ErinnerungenPage() {
 	return (
 		<div
 			data-finance-content
-			className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-4 px-4 py-4"
+			className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-3 px-4 py-3"
 		>
 			<header className="flex min-w-0 items-center gap-2">
 				<BackLink href={`${wgBaseHref}/ausgaben`} label="Ausgaben" />

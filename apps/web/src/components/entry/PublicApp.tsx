@@ -198,7 +198,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 			<main
 				id="main"
 				tabIndex={-1}
-				className="flex w-full min-w-0 flex-1 flex-col gap-6 px-4 py-5 focus:outline-none"
+				className="flex w-full min-w-0 flex-1 flex-col gap-4 px-4 py-3 focus:outline-none"
 			>
 				{accountDeletionPending && (
 					<output
@@ -211,12 +211,12 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						</AlertDescription>
 					</output>
 				)}
-				<div className={cn('flex min-w-0 flex-col', section ? 'gap-3' : 'gap-6')}>
-					<header className="flex flex-col gap-3">
+				<div className={cn('flex min-w-0 flex-col', section ? 'gap-3' : 'gap-4')}>
+					<header className="flex flex-col gap-2">
 						<div className="flex flex-wrap items-center justify-between gap-3">
 							<Link
 								href={publicHref('/')}
-								className="flex min-h-11 items-center gap-2"
+								className="flex min-h-10 items-center gap-2"
 								aria-label="ManaWG Startseite"
 							>
 								<LogoMark size={24} tile={false} aria-hidden />

@@ -108,7 +108,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 				data-shopping-row
 				id={`shopping-${item.id}`}
 				className={cn(
-					'relative touch-pan-y scroll-mt-24 rounded-none bg-background py-2 pr-1.5 pl-3',
+					'relative touch-pan-y scroll-mt-24 rounded-none bg-background py-1.5 pr-1.5 pl-3',
 					swipeX === 0 && 'transition-transform',
 					highlighted && 'ring-2 ring-inset ring-ring',
 				)}

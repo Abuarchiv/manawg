@@ -243,7 +243,7 @@ export default function WgHomePage() {
 		<>
 			<div
 				data-home-content
-				className="mx-auto flex w-full min-w-0 max-w-[var(--app-frame-width)] flex-col gap-4 px-4 py-4"
+				className="mx-auto flex w-full min-w-0 max-w-[var(--app-frame-width)] flex-col gap-3 px-4 py-3"
 			>
 				{isNewWg && (
 					<div>

@@ -3,7 +3,7 @@
 @import "shadcn/tailwind.css";
 
 /* Phone density, applied on every viewport width: the app is a single phone column.
-   Page wrappers set their own gap and padding (gap-4 px-4 py-4). */
+   Page wrappers set their own gap and padding (gap-3 px-4 py-3). */
 [data-home-content] section {
 	gap: 0.5rem;
 }
@@ -25,8 +25,8 @@
 }
 
 [data-home-content] [data-slot="item"] {
-	padding-block: 0.5rem;
-	min-height: 3rem;
+	padding-block: 0.25rem;
+	min-height: 2.75rem;
 }
 
 [data-home-content] [data-slot="item-content"] {
@@ -70,7 +70,7 @@
 }
 
 :is([data-household-content], [data-finance-content], [data-exchange-content]) [data-slot="card"] {
-	--card-spacing: 0.75rem;
+	--card-spacing: 0.625rem;
 }
 
 :is([data-household-content], [data-finance-content], [data-exchange-content]) [data-slot="field"] {
@@ -83,7 +83,7 @@
 }
 
 :is([data-household-content], [data-finance-content], [data-exchange-content]) [data-slot="item"] {
-	padding-block: 0.5rem;
+	padding-block: 0.25rem;
 }
 
 :is([data-household-content], [data-finance-content], [data-exchange-content]) [data-slot="empty"] {
@@ -92,7 +92,7 @@
 }
 
 body:has(.group\/wg-shell) [data-slot="card"] {
-	--card-spacing: 0.75rem;
+	--card-spacing: 0.625rem;
 }
 
 body:has(.group\/wg-shell) [data-slot="empty"] {
