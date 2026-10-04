@@ -222,9 +222,9 @@ export default function PutzenPage() {
 						>
 							<h2
 								id={`chore-group-${group.key}`}
-								className="px-1 text-[12px] font-medium text-muted-foreground"
+								className="text-[12px] font-medium text-muted-foreground"
 							>
-								{group.label} ({group.chores.length})
+								{group.label}
 							</h2>
 							<ItemGroup
 								aria-label={group.label}

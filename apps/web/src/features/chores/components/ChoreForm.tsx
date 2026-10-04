@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import {
 	Drawer,
 	DrawerContent,
-	DrawerDescription,
 	DrawerFooter,
 	DrawerHeader,
 	DrawerTitle,
@@ -76,7 +75,6 @@ export function ChoreForm({
 			<DrawerContent className="mx-auto w-full max-w-md">
 				<DrawerHeader>
 					<DrawerTitle>Neue Putzaufgabe</DrawerTitle>
-					<DrawerDescription>Rhythmus und erste zuständige Person.</DrawerDescription>
 				</DrawerHeader>
 				<form
 					id="add-chore-form"
@@ -137,7 +135,6 @@ export function ChoreForm({
 											key={preset.interval}
 											value={String(preset.interval)}
 											disabled={pending}
-											className="min-h-11"
 										>
 											{preset.label}
 										</ToggleGroupItem>
@@ -154,14 +151,13 @@ export function ChoreForm({
 									disabled={pending}
 									className="w-full [&_select]:min-h-11 [&_select]:text-base"
 								>
-									<NativeSelectOption value="">— niemand —</NativeSelectOption>
+									<NativeSelectOption value="">Niemand</NativeSelectOption>
 									{members.map((member) => (
 										<NativeSelectOption key={member.id} value={member.id}>
 											{member.name}
 										</NativeSelectOption>
 									))}
 								</NativeSelect>
-								<FieldDescription>Wird nach dem Erledigen neu verteilt.</FieldDescription>
 							</Field>
 						</FieldGroup>
 						{error && (
@@ -184,7 +180,7 @@ export function ChoreForm({
 							{pending ? 'Speichert…' : 'Hinzufügen'}
 						</Button>
 						<Button type="button" variant="outline" onClick={onClose} disabled={pending}>
-							Schließen · Entwurf behalten
+							Abbrechen
 						</Button>
 					</DrawerFooter>
 				</form>
