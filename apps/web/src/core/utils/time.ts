@@ -82,28 +82,6 @@ export function formatRelativeTime(iso: string, now = Date.now()): string {
 	}).format(date);
 }
 
-export function formatCompactRelativeTime(iso: string, now = Date.now()): string {
-	const date = parseValidDate(iso);
-	if (!date) return 'unbekannt';
-	const diff = now - date.getTime();
-
-	if (diff <= -MS_PER_MINUTE) {
-		const until = -diff;
-		if (until < MS_PER_HOUR) return `in ${Math.floor(until / MS_PER_MINUTE)} Min.`;
-		if (until < MS_PER_DAY) return `in ${Math.floor(until / MS_PER_HOUR)} Std.`;
-		const days = calendarDaysBetween(new Date(now), date);
-		if (until < 7 * MS_PER_DAY) return days === 1 ? 'morgen' : `in ${days} T.`;
-		return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' }).format(date);
-	}
-
-	if (diff < MS_PER_MINUTE) return 'jetzt';
-	if (diff < MS_PER_HOUR) return `${Math.round(diff / MS_PER_MINUTE)} Min.`;
-	if (diff < MS_PER_DAY) return `${Math.round(diff / MS_PER_HOUR)} Std.`;
-	const days = calendarDaysBetween(date, new Date(now));
-	if (diff < 7 * MS_PER_DAY) return `${days} T.`;
-	return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' }).format(date);
-}
-
 /**
  * `timeZone: 'Europe/Berlin'` for dates that are Berlin calendar days (chore due
  * dates, absences): a device in New York must show the same day the status

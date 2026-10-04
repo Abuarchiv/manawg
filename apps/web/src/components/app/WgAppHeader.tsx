@@ -11,7 +11,7 @@ import { usePathname } from 'next/navigation';
 import { useLayoutEffect, useRef } from 'react';
 
 export function WgAppHeader() {
-	const { wg, identity } = useWg();
+	const { wg } = useWg();
 	const pathname = usePathname() ?? '';
 	const baseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
 	const isStart = /^\/wg\/[^/]+\/?$/.test(pathname);
@@ -33,43 +33,38 @@ export function WgAppHeader() {
 	}, []);
 
 	// Ein Kopf für alle Seiten, wie im öffentlichen Shell: Unterseiten zeigen
-	// WG-Name und Aktionen in einer Zeile; die Begrüßung und das <h1> gehören
+	// WG-Name und Aktionen in einer Zeile; das <h1> gehört
 	// nur zur Startseite, Unterseiten haben ihren eigenen Seitentitel.
 	return (
 		<header
 			ref={ref}
 			data-home-header={isStart ? '' : undefined}
 			data-app-chrome
-			className={cn(
-				'mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-2 px-4',
-				isStart ? 'pt-3 pb-2' : 'pt-2 pb-0',
-			)}
+			className="mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-2 px-4 pt-5 pb-0"
 		>
-			<div className="flex min-w-0 flex-wrap items-center gap-1">
+			<div className="flex min-h-11 min-w-0 items-center gap-2">
 				<LogoMark
 					size={24}
 					tile={false}
 					markFill="currentColor"
 					className="size-6 shrink-0 text-foreground"
 				/>
-				<div className="min-w-0 flex-[1_1_128px] py-1">
-					{isStart ? (
-						<h1
-							aria-label={`${wg.name} – Start`}
-							title={wg.name}
-							className="truncate text-lg font-semibold tracking-tight"
-						>
-							{wg.name}
-						</h1>
-					) : (
-						<p title={wg.name} className="truncate text-lg font-semibold tracking-tight">
-							{wg.name}
-						</p>
-					)}
-					{isStart && (
-						<p className="truncate text-sm text-muted-foreground">Hallo, {identity.name}.</p>
-					)}
-				</div>
+				{isStart ? (
+					<h1
+						aria-label={`${wg.name} – Start`}
+						title={wg.name}
+						className="min-w-0 flex-1 truncate font-heading text-xl font-semibold tracking-[-0.03em]"
+					>
+						{wg.name}
+					</h1>
+				) : (
+					<p
+						title={wg.name}
+						className="min-w-0 flex-1 truncate font-heading text-xl font-semibold tracking-[-0.03em]"
+					>
+						{wg.name}
+					</p>
+				)}
 				<div className="flex shrink-0 items-center gap-2">
 					<ChatTopBarLink
 						href={`${baseHref}/chat`}

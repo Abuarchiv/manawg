@@ -146,13 +146,11 @@ export function PushPrimingPrompt({
 			role="status"
 			aria-live="polite"
 			aria-label="Benachrichtigungen aktivieren"
-			className="flex w-full flex-wrap items-center gap-3 border-t border-border pt-4"
+			className="flex w-full flex-wrap items-center gap-3 rounded-xl border p-3"
 		>
 			<div className="min-w-0 flex-1 basis-48">
 				<p className="text-sm font-medium">Benachrichtigungen</p>
-				<p className="text-[12px] text-muted-foreground">
-					Erhalte Hinweise zu fälligen Aufgaben und neuen WG-Nachrichten.
-				</p>
+				<p className="text-[12px] text-muted-foreground">Push für fällige Aufgaben und Chat.</p>
 				{activationError && (
 					<p role="alert" className="text-sm text-destructive">
 						{activationError}
@@ -176,7 +174,7 @@ export function PushPrimingPrompt({
 					type="button"
 					onClick={dismiss}
 					aria-label="Hinweis schließen"
-					className="size-9 text-muted-foreground"
+					className="text-muted-foreground"
 				>
 					<X aria-hidden />
 				</Button>
