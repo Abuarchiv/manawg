@@ -1,7 +1,4 @@
-import { buttonVariants } from '@/components/ui/button';
 import { LogoMark } from '@/shared/components/ui/LogoMark';
-import { cn } from '@/shared/lib/cn';
-import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -14,7 +11,7 @@ export function EntryFrame({
 	children,
 }: {
 	title: string;
-	description: string;
+	description?: string | undefined;
 	backHref?: string;
 	headingId?: string;
 	actions?: ReactNode;
@@ -30,22 +27,14 @@ export function EntryFrame({
 				paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
 			}}
 		>
-			<div className="flex items-center justify-between gap-3">
-				<Link
-					href={backHref}
-					aria-label="Zurück zur öffentlichen Ansicht"
-					className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
-				>
-					<ArrowLeft aria-hidden />
-				</Link>
-				<Link
-					href={backHref}
-					className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2 font-heading font-semibold')}
-				>
-					<LogoMark size={24} tile={false} aria-hidden />
-					ManaWG
-				</Link>
-			</div>
+			<Link
+				href={backHref}
+				className="flex min-h-11 items-center gap-2 self-start"
+				aria-label="ManaWG Startseite"
+			>
+				<LogoMark size={24} tile={false} aria-hidden />
+				<span className="font-heading text-xl font-semibold tracking-[-0.03em]">ManaWG</span>
+			</Link>
 			<header className="flex flex-col gap-2">
 				<h1
 					id={headingId}
@@ -53,7 +42,7 @@ export function EntryFrame({
 				>
 					{title}
 				</h1>
-				<p className="text-sm text-muted-foreground">{description}</p>
+				{description && <p className="text-sm text-muted-foreground">{description}</p>}
 				{actions}
 			</header>
 			{children}

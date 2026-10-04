@@ -34,7 +34,7 @@ const jetbrainsMono = localFont({
 const appUrl = getAppUrl();
 
 const metaDescription =
-	'Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand. In Deutschland gehostet und datensparsam.';
+	'Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand. In Deutschland gehostet.';
 
 const organizationSchema = {
 	'@context': 'https://schema.org',
@@ -42,16 +42,14 @@ const organizationSchema = {
 	name: 'ManaWG',
 	url: appUrl,
 	logo: `${appUrl}/icon-512.png`,
-	description:
-		'Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand. Kostenlos und datensparsam.',
+	description: metaDescription,
 };
 
 const softwareApplicationSchema = {
 	'@context': 'https://schema.org',
 	'@type': 'SoftwareApplication',
 	name: 'ManaWG',
-	description:
-		'Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand. Kostenlos und datensparsam.',
+	description: metaDescription,
 	url: appUrl,
 	applicationCategory: 'LifestyleApplication',
 	operatingSystem: 'Web, iOS, Android',
@@ -87,14 +85,14 @@ export const metadata: Metadata = {
 				url: '/opengraph-image',
 				width: 1200,
 				height: 630,
-				alt: 'ManaWG — Die WG-App, die einfach funktioniert.',
+				alt: 'ManaWG',
 			},
 		],
 	},
 	twitter: {
 		card: 'summary_large_image',
 		title: 'ManaWG — Deine WG-App',
-		description: 'Die WG-App, die einfach funktioniert.',
+		description: metaDescription,
 		images: ['/opengraph-image'],
 	},
 	manifest: '/manifest.json',

@@ -15,7 +15,7 @@ test.describe('live public dashboard entry', () => {
 		await page.goto('/');
 		await expect(page).toHaveURL(new URL('/', process.env.BASE_URL).href);
 		await expect(
-			page.getByRole('heading', { name: 'Euer WG-Alltag. Gemeinsam geregelt.', exact: true }),
+			page.getByRole('heading', { name: 'ManaWG', exact: true, level: 1 }),
 		).toBeVisible();
 		await expect(page.getByRole('link', { name: 'WG erstellen', exact: true })).toBeVisible();
 		const examples = page.getByRole('region', { name: 'So kann euer Alltag aussehen' });
@@ -105,7 +105,9 @@ test.describe('live public dashboard entry', () => {
 			.click();
 		await expect(page).toHaveURL(`/entdecken/einkauf?code=${code}`);
 		await expect(
-			page.getByRole('link', { name: 'Alle Bereiche ansehen', exact: true }),
+			page
+				.getByRole('navigation', { name: 'Öffentliche Hauptnavigation' })
+				.getByRole('link', { name: 'Start', exact: true }),
 		).toHaveAttribute('href', `/?code=${code}`);
 		await page.reload();
 		await page.getByRole('link', { name: 'Dieser WG beitreten', exact: true }).first().click();
