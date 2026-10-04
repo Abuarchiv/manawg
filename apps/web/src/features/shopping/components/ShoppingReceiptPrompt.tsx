@@ -52,7 +52,7 @@ export function ShoppingReceiptPrompt({
 	return (
 		<Alert>
 			<Receipt aria-hidden />
-			<AlertDescription className="flex flex-col gap-2">
+			<AlertDescription className="flex flex-col gap-2 text-[12px]">
 				<span>Beleg für {myFreshBought.length} Artikel als Ausgabe erfassen?</span>
 				<span className="flex flex-wrap gap-2">
 					<Link
@@ -63,7 +63,7 @@ export function ShoppingReceiptPrompt({
 								.join(', ')}`,
 						)}`}
 						onClick={dismissReceiptPrompt}
-						className={cn(buttonVariants({ size: 'sm' }), 'no-underline!')}
+						className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'no-underline!')}
 					>
 						Ausgabe erfassen
 					</Link>

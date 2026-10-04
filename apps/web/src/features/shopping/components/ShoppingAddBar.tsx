@@ -53,7 +53,7 @@ export function ShoppingAddBar({
 						aria-busy={adding}
 						aria-label="Artikel hinzufügen"
 						onPointerDown={(event) => event.preventDefault()}
-						className="size-11 shrink-0 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
+						className="size-11 shrink-0"
 					>
 						{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}
 					</Button>

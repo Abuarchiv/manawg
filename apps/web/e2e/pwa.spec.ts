@@ -223,7 +223,7 @@ test.describe('pwa platform', () => {
 	const wgFeatureTitles = [
 		['abos', 'Fixkosten — ManaWG'],
 		['putzen', 'Putzplan — ManaWG'],
-		['einkauf', 'Einkaufsliste — ManaWG'],
+		['einkauf', 'Einkäufe — ManaWG'],
 		['kalender', 'Kalender — ManaWG'],
 		['import', 'Ausgaben importieren — ManaWG'],
 		['ausgaben', 'Ausgaben — ManaWG'],

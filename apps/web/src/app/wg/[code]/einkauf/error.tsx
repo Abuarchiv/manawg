@@ -13,7 +13,7 @@ export default function EinkaufError({ error, reset }: EinkaufErrorProps) {
 			error={error}
 			reset={reset}
 			boundary="wg-einkauf"
-			title="Einkaufsliste konnte gerade nicht geladen werden"
+			title="Einkäufe konnten gerade nicht geladen werden"
 			body="In der Einkaufsliste ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
 		/>
 	);
