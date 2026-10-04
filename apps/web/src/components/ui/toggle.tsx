@@ -8,9 +8,10 @@ const toggleVariants = cva(
 		variants: {
 			variant: {
 				default: 'bg-transparent',
-				outline: 'border border-input bg-transparent hover:bg-muted',
+				outline:
+					'border border-input bg-transparent hover:bg-muted aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background aria-pressed:hover:bg-foreground/90 aria-pressed:hover:text-background aria-pressed:active:bg-foreground/90 aria-pressed:active:text-background',
 				segmented:
-					'flex-1 bg-transparent text-foreground/75 hover:bg-transparent aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:ring-1 aria-pressed:ring-border',
+					'flex-1 bg-transparent text-foreground/75 hover:bg-transparent aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:ring-1 aria-pressed:ring-border dark:aria-pressed:bg-foreground/15 dark:aria-pressed:ring-foreground/25',
 			},
 			size: {
 				default:
