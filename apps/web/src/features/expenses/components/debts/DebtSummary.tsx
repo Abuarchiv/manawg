@@ -269,7 +269,7 @@ function DebtRow({
 			</span>
 
 			{canSettle && (
-				<ItemFooter className="-mt-1 justify-start gap-2 pl-[54px] [&>*]:min-w-0">
+				<ItemFooter className="-mt-1 justify-start gap-2 pl-[54px] max-[359px]:pl-0 [&>*]:min-w-0">
 					<Button
 						variant={iOwe ? 'default' : 'outline'}
 						size="sm"
