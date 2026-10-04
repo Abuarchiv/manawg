@@ -1,7 +1,5 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
 	Item,
 	ItemActions,
@@ -13,112 +11,71 @@ import {
 } from '@/components/ui/item';
 import { cn } from '@/shared/lib/cn';
 import type { LucideIcon } from 'lucide-react';
-import { ChevronRight, ListChecks, Megaphone, Receipt } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-
-export interface PublicPreviewModule {
-	slug: string;
-	title: string;
-	description: string;
-	Icon: LucideIcon;
-}
 
 interface PreviewCopy {
 	title: string;
 	detail: string;
-	meta: string;
 }
 
-const PREVIEW_COPY: Record<string, PreviewCopy> = {
-	einkauf: { title: 'Hafermilch', detail: '2 Packungen', meta: 'Noch offen · für alle' },
-	ausgaben: {
-		title: 'Pizzaabend',
-		detail: 'Mika bezahlt · 28,40 €',
-		meta: '4 Personen · 7,10 € pro Person',
-	},
-	putzen: { title: 'Bad putzen', detail: 'Samira · heute', meta: 'Offen · als Nächstes dran' },
-	pinnwand: {
-		title: 'Übergabe am Freitag',
-		detail: 'Alex · gestern',
-		meta: 'Schlüssel liegen im Flur bereit.',
-	},
-	fixkosten: { title: 'Internet', detail: '29,99 € monatlich', meta: 'Nächste Zahlung am 3.' },
-	mahnungen: {
-		title: 'Noah bekommt 12,50 €',
-		detail: 'Geteilt aus dem Einkauf',
-		meta: 'Seit 2 Tagen offen',
-	},
-	vorraete: {
-		title: 'Toilettenpapier',
-		detail: '2 Packungen vorhanden',
-		meta: 'Mindestbestand: 1 Packung',
-	},
-	kalender: { title: 'Putzplan-Check', detail: 'Freitag · 18:00 Uhr', meta: 'Für die ganze WG' },
-	aktivitaet: {
-		title: 'Mara hat Einkauf ergänzt',
-		detail: 'Hafermilch · 2 Packungen',
-		meta: 'Vor 12 Minuten',
-	},
-	chat: { title: 'In der WG', detail: '„Bin um acht wieder da.“', meta: 'Lea · vor 8 Minuten' },
-	einstellungen: {
-		title: 'WG-Mitglieder verwalten',
-		detail: 'Einladungen und Rollen',
-		meta: 'Nur für berechtigte Mitglieder',
-	},
-};
+const PREVIEW_COPY = {
+	einkauf: { title: 'Hafermilch', detail: '2 Packungen · von Mika' },
+	ausgaben: { title: 'Pizzaabend', detail: 'Mika bezahlt · 4 Personen' },
+	putzen: { title: 'Bad putzen', detail: 'Lea · heute' },
+	pinnwand: { title: 'Übergabe am Freitag', detail: 'Jona · Schlüssel liegen im Flur bereit.' },
+	fixkosten: { title: 'Internet', detail: '29,99 € monatlich · nächste Zahlung am 3.' },
+	mahnungen: { title: 'Jona bekommt 12,50 €', detail: 'Geteilt aus dem Einkauf · seit 2 Tagen' },
+	vorraete: { title: 'Toilettenpapier', detail: '2 Packungen · Mindestbestand 1' },
+	kalender: { title: 'Putzplan-Check', detail: 'Freitag · 18:00 Uhr · für die ganze WG' },
+	aktivitaet: { title: 'Sami hat Einkauf ergänzt', detail: 'Hafermilch · vor 12 Minuten' },
+	chat: { title: 'In der WG', detail: '„Bin um acht wieder da.“ · Lea' },
+} satisfies Record<string, PreviewCopy>;
 
-function previewFor(module: PublicPreviewModule): PreviewCopy {
-	return (
-		PREVIEW_COPY[module.slug] ?? {
-			title: module.title,
-			detail: module.description,
-			meta: 'Beispielinhalte für eure WG',
-		}
-	);
+export type PreviewSlug = keyof typeof PREVIEW_COPY;
+
+export interface PublicPreviewModule {
+	slug: PreviewSlug;
+	title: string;
+	Icon: LucideIcon;
 }
 
-function PreviewRows({
-	module,
-	copy,
-	featured,
-}: {
-	module: PublicPreviewModule;
-	copy: PreviewCopy;
-	featured: boolean;
-}) {
-	if (!featured) {
-		return (
-			<ItemGroup className="gap-2">
-				<Item size="sm" className="rounded-none px-0">
-					<ItemMedia variant="icon">
-						<module.Icon aria-hidden />
-					</ItemMedia>
-					<ItemContent className="min-w-0">
-						<ItemTitle className="line-clamp-none break-words">{copy.title}</ItemTitle>
-						<ItemDescription className="line-clamp-none break-words">{copy.meta}</ItemDescription>
-					</ItemContent>
-				</Item>
-			</ItemGroup>
-		);
-	}
+const ROW = 'min-h-11 rounded-none border-0 border-t border-border px-0 first:border-t-0';
+
+const SHOPPING_ROWS = [
+	['Hafermilch', '2 Packungen · von Mika', false],
+	['Bananen', '6 Stück · von Lea', false],
+	['Spülmittel', '1 Flasche · von Jona', true],
+] as const;
+
+function PreviewRows({ module }: { module: PublicPreviewModule }) {
+	const copy = PREVIEW_COPY[module.slug];
 
 	if (module.slug === 'einkauf') {
 		return (
-			<ItemGroup className="gap-2">
-				{[
-					['Hafermilch', '2 Packungen', 'Offen'],
-					['Bananen', '6 Stück', 'Offen'],
-					['Spülmittel', '1 Flasche', 'Erledigt'],
-				].map(([title, detail, state]) => (
-					<Item key={title} size="sm" className="rounded-none px-0">
-						<ItemMedia variant="icon">
-							<ListChecks aria-hidden />
+			<ItemGroup className="gap-0">
+				{SHOPPING_ROWS.map(([title, detail, done]) => (
+					<Item key={title} className={ROW}>
+						<ItemMedia>
+							<span
+								aria-hidden
+								className="flex size-5 items-center justify-center rounded-[6px] border border-input"
+							>
+								{done && <Check className="size-3.5" />}
+							</span>
 						</ItemMedia>
 						<ItemContent className="min-w-0">
-							<ItemTitle className="line-clamp-none break-words">{title}</ItemTitle>
+							<ItemTitle
+								className={cn(
+									'line-clamp-none break-words',
+									done && 'text-muted-foreground line-through',
+								)}
+							>
+								{title}
+								{done && <span className="sr-only">, erledigt</span>}
+							</ItemTitle>
 							<ItemDescription className="line-clamp-none break-words">{detail}</ItemDescription>
 						</ItemContent>
-						<Badge variant={state === 'Erledigt' ? 'secondary' : 'outline'}>{state}</Badge>
 					</Item>
 				))}
 			</ItemGroup>
@@ -127,20 +84,16 @@ function PreviewRows({
 
 	if (module.slug === 'ausgaben') {
 		return (
-			<ItemGroup className="gap-2">
-				<Item size="sm" className="rounded-none px-0">
+			<ItemGroup className="gap-0">
+				<Item className={ROW}>
 					<ItemMedia variant="icon">
-						<Receipt aria-hidden />
+						<module.Icon aria-hidden />
 					</ItemMedia>
 					<ItemContent className="min-w-0">
-						<ItemTitle className="line-clamp-none break-words">Pizzaabend</ItemTitle>
-						<ItemDescription className="line-clamp-none break-words">
-							Mika bezahlt 28,40 € · 7,10 € pro Person
-						</ItemDescription>
+						<ItemTitle className="line-clamp-none break-words">{copy.title}</ItemTitle>
+						<ItemDescription className="line-clamp-none break-words">{copy.detail}</ItemDescription>
 					</ItemContent>
-					<ItemActions>
-						<Badge variant="outline">4 Personen</Badge>
-					</ItemActions>
+					<ItemActions className="shrink-0 font-mono text-sm tabular-nums">28,40 €</ItemActions>
 				</Item>
 			</ItemGroup>
 		);
@@ -148,37 +101,16 @@ function PreviewRows({
 
 	if (module.slug === 'putzen') {
 		return (
-			<ItemGroup className="gap-2">
-				<Item size="sm" className="rounded-none px-0">
+			<ItemGroup className="gap-0">
+				<Item className={ROW}>
 					<ItemMedia>
 						<Avatar size="sm">
-							<AvatarFallback>S</AvatarFallback>
+							<AvatarFallback>L</AvatarFallback>
 						</Avatar>
 					</ItemMedia>
 					<ItemContent className="min-w-0">
-						<ItemTitle className="line-clamp-none break-words">Bad putzen</ItemTitle>
-						<ItemDescription className="line-clamp-none break-words">
-							Samira · heute
-						</ItemDescription>
-					</ItemContent>
-					<Badge variant="outline">Offen</Badge>
-				</Item>
-			</ItemGroup>
-		);
-	}
-
-	if (module.slug === 'pinnwand') {
-		return (
-			<ItemGroup className="gap-2">
-				<Item size="sm" className="rounded-none px-0">
-					<ItemMedia variant="icon">
-						<Megaphone aria-hidden />
-					</ItemMedia>
-					<ItemContent className="min-w-0">
-						<ItemTitle className="line-clamp-none break-words">Übergabe am Freitag</ItemTitle>
-						<ItemDescription className="line-clamp-none break-words">
-							Alex · gestern · Schlüssel liegen im Flur bereit.
-						</ItemDescription>
+						<ItemTitle className="line-clamp-none break-words">{copy.title}</ItemTitle>
+						<ItemDescription className="line-clamp-none break-words">{copy.detail}</ItemDescription>
 					</ItemContent>
 				</Item>
 			</ItemGroup>
@@ -186,8 +118,8 @@ function PreviewRows({
 	}
 
 	return (
-		<ItemGroup className="gap-2">
-			<Item size="sm" className="rounded-none px-0 @container">
+		<ItemGroup className="gap-0">
+			<Item className={ROW}>
 				<ItemMedia variant="icon">
 					<module.Icon aria-hidden />
 				</ItemMedia>
@@ -200,71 +132,58 @@ function PreviewRows({
 	);
 }
 
-function ExampleCard({
-	module,
-	featured = false,
-}: { module: PublicPreviewModule; featured?: boolean }) {
-	const copy = previewFor(module);
+export function PublicModulePreviews({
+	modules,
+	hrefFor,
+}: {
+	modules: PublicPreviewModule[];
+	hrefFor: (slug: string) => string;
+}) {
 	return (
-		<article aria-label={`${module.title}, Beispiel-WG`}>
-			<Card size={featured ? 'default' : 'sm'} className={cn('h-full', !featured && 'py-3')}>
-				{!featured && (
-					<CardHeader>
-						<CardTitle>{module.title}</CardTitle>
-					</CardHeader>
-				)}
-				<CardContent>
-					<PreviewRows module={module} copy={copy} featured={featured} />
-				</CardContent>
-			</Card>
-		</article>
-	);
-}
-
-export function PublicModulePreviews({ modules }: { modules: PublicPreviewModule[] }) {
-	return (
-		<section aria-labelledby="public-examples-heading" className="flex flex-col gap-3">
-			<div className="flex items-start justify-between gap-3">
-				<div className="flex flex-col gap-1">
-					<h2 id="public-examples-heading" className="text-balance text-base font-semibold">
-						So kann euer Alltag aussehen
-					</h2>
+		<section aria-label="So kann euer Alltag aussehen">
+			<Card className="py-0">
+				<div className="flex flex-col">
+					{modules.map((module) => {
+						const copy = PREVIEW_COPY[module.slug];
+						return (
+							<article key={module.slug} aria-label={`${module.title}, Beispiel-WG`}>
+								<Item
+									render={<Link href={hrefFor(module.slug)} />}
+									className="min-h-11 rounded-none border-0 border-t border-border px-4 py-2.5 in-[article:first-child]:border-t-0"
+								>
+									<ItemMedia variant="icon">
+										<module.Icon aria-hidden />
+									</ItemMedia>
+									<ItemContent className="min-w-0">
+										<ItemTitle className="line-clamp-none break-words">{module.title}</ItemTitle>
+										<ItemDescription className="line-clamp-none break-words">
+											{copy.title} · {copy.detail}
+										</ItemDescription>
+									</ItemContent>
+									<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+								</Item>
+							</article>
+						);
+					})}
 				</div>
-				<Badge variant="secondary" className="shrink-0">
-					Beispiel-WG
-				</Badge>
-			</div>
-			<div className="grid grid-cols-1 gap-3">
-				{modules.map((module) => (
-					<ExampleCard key={module.slug} module={module} />
-				))}
-			</div>
+			</Card>
 		</section>
 	);
 }
 
-export function PublicModulePreview({
-	module,
-	homeHref = '/',
-}: {
-	module: PublicPreviewModule;
-	homeHref?: string;
-}) {
+export function PublicModulePreview({ module }: { module: PublicPreviewModule }) {
 	return (
-		<section aria-label={`Beispielansicht für ${module.title}`} className="flex flex-col gap-3">
-			<div className="flex justify-end">
-				<Badge variant="secondary" className="shrink-0">
-					Beispiel-WG · fiktiv
-				</Badge>
-			</div>
-			<ExampleCard module={module} featured />
-			<Link
-				href={homeHref}
-				className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'self-start')}
-			>
-				Alle Bereiche ansehen
-				<ChevronRight className="size-4" aria-hidden data-icon="inline-end" />
-			</Link>
+		<section aria-label={`Beispielansicht für ${module.title}`}>
+			<article aria-label={`${module.title}, Beispiel-WG`}>
+				<Card className="h-full">
+					<CardHeader>
+						<span className="justify-self-end text-[12px] text-muted-foreground">Beispiel</span>
+					</CardHeader>
+					<CardContent>
+						<PreviewRows module={module} />
+					</CardContent>
+				</Card>
+			</article>
 		</section>
 	);
 }

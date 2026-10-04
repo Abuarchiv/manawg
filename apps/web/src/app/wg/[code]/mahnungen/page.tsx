@@ -8,6 +8,7 @@ import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { DebtRow } from '@/features/expenses/components/debts/DebtRow';
@@ -22,7 +23,7 @@ import {
 	computeOldestDebtAges,
 } from '@/features/expenses/debts';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
-import { REMINDER_COOLDOWN_HOURS, canSendReminder } from '@/features/expenses/reminders';
+import { canSendReminder } from '@/features/expenses/reminders';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface ExpenseSplitDto {
@@ -241,6 +242,7 @@ export default function ErinnerungenPage() {
 	// The API only lets the creditor (or the admin) remind, and only active debtors.
 	const canRemind = (row: (typeof rows)[number]) =>
 		(row.creditorId === identity.memberId || isAdmin) &&
+		row.debtorId !== identity.memberId &&
 		members.find((m) => m.id === row.debtorId)?.active !== false;
 	const remindable = rows.filter(canRemind);
 	const primaryReminder =
@@ -249,8 +251,21 @@ export default function ErinnerungenPage() {
 		remindable[0] ??
 		null;
 
+	const allClear =
+		!loading &&
+		rows.length === 0 &&
+		reminders.length === 0 &&
+		!loadErrors.expenses &&
+		!loadErrors.reminders &&
+		!expensesLoadFailed &&
+		!remindersLoadFailed;
+
 	function reminderButton(row: (typeof rows)[number], primary = false) {
 		const debtorName = memberName(row.debtorId);
+		const primaryLabel =
+			row.creditorId === identity.memberId
+				? `${debtorName} erinnern`
+				: `${debtorName} an ${memberName(row.creditorId)} erinnern · ${formatEuroCents(row.amountCents, row.currency)}`;
 		const cooldown = cooldownFor(row.debtorId, row.creditorId, row.currency);
 		const cooldownLabel = cooldown.nextAllowedAt
 			? `Wieder möglich ${formatRelativeTime(cooldown.nextAllowedAt.toISOString())}`
@@ -307,104 +322,114 @@ export default function ErinnerungenPage() {
 				}
 				primary={primary}
 				size={primary ? 'md' : 'sm'}
-				label={primary ? `${debtorName} erinnern` : 'Erinnern'}
+				label={primary ? primaryLabel : 'Erinnern'}
 			/>
 		);
 	}
 
 	return (
-		<div data-finance-content className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
-			<header className="flex min-w-0 items-center gap-3">
+		<div
+			data-finance-content
+			className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-3 px-4 py-3"
+		>
+			<header className="flex min-w-0 items-center gap-2">
 				<BackLink href={`${wgBaseHref}/ausgaben`} label="Ausgaben" />
-				<div className="min-w-0 flex-1">
-					<h1 className="font-heading text-lg font-semibold tracking-tight break-words">
-						Erinnerungen
-					</h1>
-					<p className="mt-0.5 text-[12px] text-muted-foreground">
-						Pro Person höchstens alle {REMINDER_COOLDOWN_HOURS} Std.
-					</p>
-					<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
-						<Spinner />
-						Wird aktualisiert…
-					</output>
-				</div>
+				<h1 className="font-heading min-w-0 flex-1 text-base font-semibold break-words">
+					Erinnerungen
+				</h1>
+				<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
+					<Spinner />
+					Wird aktualisiert…
+				</output>
 			</header>
-			<section className="flex flex-col gap-3">
-				<h2 className="text-[12px] font-medium text-muted-foreground">Offene Schulden</h2>
-				{loadErrors.expenses && (
-					<LoadErrorBanner
-						message={loadErrors.expenses}
-						onRetry={() => void load(true)}
-						busy={loading || refreshing}
-						retryLabel="Erneut laden"
-					/>
-				)}
-				{loading ? (
-					<div
-						className="flex flex-col gap-3"
-						aria-busy="true"
-						aria-label="Offene Schulden werden geladen"
-						// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
-						role="status"
-					>
-						<Skeleton className="h-24 w-full" />
-						<Skeleton className="h-24 w-full" />
-					</div>
-				) : expensesLoadFailed && rows.length === 0 ? null : rows.length === 0 ? (
-					<Empty>
-						<EmptyHeader>
-							<EmptyTitle>Alles ausgeglichen. Nichts offen.</EmptyTitle>
-						</EmptyHeader>
-					</Empty>
-				) : (
-					<ul className="flex flex-col gap-2">
-						{rows.map((row) => {
-							return (
-								<DebtRow
-									key={`${row.currency}:${row.debtorId}:${row.creditorId}`}
-									debtor={{
-										id: row.debtorId,
-										name: memberName(row.debtorId),
-										color: memberColor(row.debtorId),
-									}}
-									creditor={{
-										id: row.creditorId,
-										name: memberName(row.creditorId),
-										color: memberColor(row.creditorId),
-									}}
-									amountCents={row.amountCents}
-									currency={row.currency}
-									oldestDebtAgeDays={row.oldestAge}
-									currentMemberId={identity.memberId}
-									action={row === primaryReminder || !canRemind(row) ? null : reminderButton(row)}
-								/>
-							);
-						})}
-					</ul>
-				)}
-			</section>
-			<section className="flex flex-col gap-3">
-				<h2 className="text-[12px] font-medium text-muted-foreground">
-					Letzte Erinnerungen (30 Tage)
-				</h2>
-				{loadErrors.reminders && (
-					<LoadErrorBanner
-						message={loadErrors.reminders}
-						onRetry={() => void load(true)}
-						busy={loading || refreshing}
-						retryLabel="Erneut laden"
-					/>
-				)}
-				{loading ? (
-					<Skeleton className="h-20 w-full" />
-				) : remindersLoadFailed && reminders.length === 0 ? null : (
-					<ReminderHistory
-						items={reminders}
-						memberName={memberName}
-						currentMemberId={identity.memberId}
-					/>
-				)}
-			</section>
+			{allClear ? (
+				<Empty>
+					<EmptyHeader>
+						<EmptyTitle>Alles ausgeglichen. Nichts offen.</EmptyTitle>
+					</EmptyHeader>
+				</Empty>
+			) : (
+				<>
+					<section className="flex flex-col gap-2">
+						<h2 className="text-[12px] font-medium text-muted-foreground">Offene Schulden</h2>
+						{loadErrors.expenses && (
+							<LoadErrorBanner
+								message={loadErrors.expenses}
+								onRetry={() => void load(true)}
+								busy={loading || refreshing}
+								retryLabel="Erneut laden"
+							/>
+						)}
+						{loading ? (
+							<div
+								className="flex flex-col gap-2"
+								aria-busy="true"
+								aria-label="Offene Schulden werden geladen"
+								// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
+								role="status"
+							>
+								<Skeleton className="h-24 w-full" />
+								<Skeleton className="h-24 w-full" />
+							</div>
+						) : expensesLoadFailed && rows.length === 0 ? null : rows.length === 0 ? (
+							<Empty>
+								<EmptyHeader>
+									<EmptyTitle>Alles ausgeglichen. Nichts offen.</EmptyTitle>
+								</EmptyHeader>
+							</Empty>
+						) : (
+							<ul className="divide-y overflow-hidden rounded-xl border">
+								{rows.map((row) => {
+									return (
+										<DebtRow
+											key={`${row.currency}:${row.debtorId}:${row.creditorId}`}
+											debtor={{
+												id: row.debtorId,
+												name: memberName(row.debtorId),
+												color: memberColor(row.debtorId),
+											}}
+											creditor={{
+												id: row.creditorId,
+												name: memberName(row.creditorId),
+												color: memberColor(row.creditorId),
+											}}
+											amountCents={row.amountCents}
+											currency={row.currency}
+											oldestDebtAgeDays={row.oldestAge}
+											currentMemberId={identity.memberId}
+											action={
+												row === primaryReminder || !canRemind(row) ? null : reminderButton(row)
+											}
+										/>
+									);
+								})}
+							</ul>
+						)}
+					</section>
+					<section className="flex flex-col gap-2">
+						<h2 className="text-[12px] font-medium text-muted-foreground">
+							Letzte Erinnerungen (30 Tage)
+						</h2>
+						{loadErrors.reminders && (
+							<LoadErrorBanner
+								message={loadErrors.reminders}
+								onRetry={() => void load(true)}
+								busy={loading || refreshing}
+								retryLabel="Erneut laden"
+							/>
+						)}
+						{loading ? (
+							<Skeleton className="h-20 w-full" />
+						) : remindersLoadFailed && reminders.length === 0 ? null : (
+							<ReminderHistory
+								items={reminders}
+								memberName={memberName}
+								currentMemberId={identity.memberId}
+							/>
+						)}
+					</section>
+				</>
+			)}
 			{primaryReminder && <ThumbAction>{reminderButton(primaryReminder, true)}</ThumbAction>}
 		</div>
 	);

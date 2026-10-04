@@ -79,23 +79,26 @@ export default function EinkaufPage() {
 	// tauschen die Gruppen nach dem Laden und schieben die Liste nach unten (Layout Shift).
 	const suggestionsPending = initialLoading || inventoryLoading;
 	const suggestionGroups = [
-		{ label: 'Bald leer', names: lowStock.slice(0, 6) },
+		{ label: 'Bald leer', names: lowStock.slice(0, 4) },
 		frequent.length > 0
-			? { label: 'Oft gekauft', names: frequent.slice(0, 6) }
+			? { label: 'Oft gekauft', names: frequent.slice(0, 4) }
 			: {
 					label: 'Vorschläge',
-					names: QUICK_SHOPPING_ITEMS.map((item) => item.name).filter(
-						(name) => !taken.has(normalizeForMatch(name)),
-					),
+					names:
+						items.length === 0
+							? QUICK_SHOPPING_ITEMS.map((item) => item.name).filter(
+									(name) => !taken.has(normalizeForMatch(name)),
+								)
+							: [],
 				},
 	].filter((group) => !suggestionsPending && group.names.length > 0);
 
 	return (
-		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-4">
+		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-3">
 			<SubNav liveCount={!initialLoading && !loadError ? open.length : undefined} />
 			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
 			<header className="sr-only">
-				<h1>Einkaufsliste</h1>
+				<h1>Einkäufe</h1>
 				<p
 					className="mt-0.5 text-[12px] text-muted-foreground tabular-nums"
 					aria-live="polite"
@@ -105,11 +108,13 @@ export default function EinkaufPage() {
 				</p>
 			</header>
 
-			<ShoppingSuggestions
-				groups={suggestionGroups}
-				disabled={add.adding}
-				onAdd={(name) => void add.add(name)}
-			/>
+			{suggestionGroups.length > 0 && (
+				<ShoppingSuggestions
+					groups={suggestionGroups}
+					disabled={add.adding}
+					onAdd={(name) => void add.add(name)}
+				/>
+			)}
 
 			{shopping.queuedCount > 0 && (
 				<Alert>
@@ -134,12 +139,6 @@ export default function EinkaufPage() {
 					<AlertDescription>{shopping.toggleNotice}</AlertDescription>
 				</Alert>
 			)}
-			<ShoppingReceiptPrompt
-				doneItems={doneItems}
-				memberId={identity.memberId}
-				shareCode={wg.shareCode}
-			/>
-
 			{inventoryLoading || (initialLoading && items.length === 0) ? (
 				<ListSkeleton />
 			) : loadError && items.length === 0 ? (
@@ -158,7 +157,6 @@ export default function EinkaufPage() {
 							<ListChecks aria-hidden />
 						</EmptyMedia>
 						<EmptyTitle>Noch nichts auf der Liste</EmptyTitle>
-						<EmptyDescription>Tippe unten ins Feld und schreib auf, was fehlt.</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (
@@ -181,6 +179,11 @@ export default function EinkaufPage() {
 					onClearRequest={() => setClearConfirmOpen(true)}
 				/>
 			)}
+			<ShoppingReceiptPrompt
+				doneItems={doneItems}
+				memberId={identity.memberId}
+				shareCode={wg.shareCode}
+			/>
 			<ShoppingAddBar
 				value={add.newName}
 				onChange={add.changeName}

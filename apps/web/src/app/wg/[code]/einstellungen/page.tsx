@@ -2,7 +2,6 @@
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BackLink } from '@/components/wg/BackLink';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { readResponseErrorCode } from '@/components/wg/einstellungen/settings-errors';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
@@ -45,7 +44,6 @@ const DataTab = dynamic(
 export default function EinstellungenPage() {
 	const { wg, members, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
-	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const [exportSummary, setExportSummary] =
 		useState<ReturnType<typeof buildExportSummary>>(buildEmptyExportSummary);
 	const [exportSummaryError, setExportSummaryError] = useState<string | null>(null);
@@ -117,15 +115,11 @@ export default function EinstellungenPage() {
 	}, []);
 
 	return (
-		<div className="mx-auto min-w-0 w-full max-w-3xl px-[16px] pb-[env(safe-area-inset-bottom,0px)]">
-			<div className="min-w-0 py-3">
-				<header className="mb-2 flex items-center gap-2">
-					<BackLink href={wgBaseHref} label="Start" />
-					<h1 className="font-heading min-w-0 flex-1 text-lg font-semibold tracking-tight break-words text-foreground">
-						Einstellungen
-					</h1>
-				</header>
-
+		<div className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-3 px-4 py-3">
+			<h1 className="font-heading min-w-0 flex-1 text-base font-semibold tracking-tight break-words text-foreground">
+				Einstellungen
+			</h1>
+			<div className="min-w-0">
 				<Tabs
 					className="min-w-0"
 					value={activeTab}
@@ -138,7 +132,7 @@ export default function EinstellungenPage() {
 				>
 					<TabsList
 						data-sticky-tabs
-						className="sticky z-10 grid before:absolute before:inset-x-0 before:-top-2 before:h-2 before:bg-background before:content-[''] h-auto min-w-0 max-w-full w-full grid-cols-[repeat(auto-fit,minmax(min(100%,4rem),1fr))] gap-1 rounded-xl p-1"
+						className="sticky z-10 grid before:absolute before:-inset-x-4 before:-top-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:h-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:bg-background before:content-[''] h-auto min-w-0 max-w-full w-full grid-cols-[repeat(auto-fit,minmax(min(100%,4rem),1fr))] gap-1 rounded-xl p-1"
 						style={{
 							top: 'calc(env(safe-area-inset-top, 0px) + var(--offline-banner-height, 0px) + 0.5rem)',
 						}}
@@ -187,12 +181,6 @@ export default function EinstellungenPage() {
 								exportSummaryError={exportSummaryError}
 							/>
 						)}
-
-						<div className="text-muted-foreground pt-2 text-center text-xs">
-							<p>
-								ManaWG · WG-Code <span className="font-mono">{wg.shareCode}</span>
-							</p>
-						</div>
 					</TabsContent>
 				</Tabs>
 			</div>

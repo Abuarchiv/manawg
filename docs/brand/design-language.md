@@ -19,11 +19,11 @@ For the requested WG app-feel update, subpage navigation may use a 120 ms opacit
 
 ## Explicit navigation glass exception
 
-On 2026-09-23 the product owner requested Liquid Glass for the bottom navigation in light and dark mode. `.glass-bar` may use a tinted translucent background with backdrop blur on the navigation layer only, never on content. Reduced-transparency, increased-contrast and browsers without `backdrop-filter` fall back to the opaque bordered bar.
+On 2026-09-23 the product owner requested Liquid Glass for the bottom navigation; on 2026-10-04 they chose the opaque bordered bar of the public shell for every shell instead. The bottom navigation is one component (`AppBottomNav`), no translucent background, no backdrop blur.
 
 ## Explicit iOS 27 chrome refinements
 
-On 2026-10-03 the product owner asked to follow iOS 27's Liquid Glass refinements. Three navigation-layer changes apply, content stays opaque: `.glass-bar` uses a darker edge and brighter top highlight; the active bottom-nav item is a raised `.glass-pill` (solid in reduced-transparency/contrast, outlined in forced colors); the Start header is sticky and gains a hairline once content scrolls under it, driven by `animation-timeline: scroll()` with no JS and no motion under reduced-motion. Native selects opt into `appearance: base-select` where supported; older browsers keep the system control.
+On 2026-10-03 the product owner asked to follow iOS 27's Liquid Glass refinements. Two navigation-layer changes apply, content stays opaque: the active bottom-nav item is a raised `.glass-pill` (solid in reduced-transparency/contrast, outlined in forced colors); the Start header is sticky and gains a hairline once content scrolls under it, driven by `animation-timeline: scroll()` with no JS and no motion under reduced-motion. Native selects opt into `appearance: base-select` where supported; older browsers keep the system control.
 
 ## Explicit handset touch-feedback exception
 

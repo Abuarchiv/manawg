@@ -536,7 +536,10 @@ test.describe('chore next assignee', () => {
 
 		await openPutzen(page, members, chores, absences);
 		const row = page.locator('#chore-viewer-next');
-		await expect(row).toContainText('danach du');
+		// Der Folge-Zuständige steht im Aktionen-Drawer, nicht mehr in der Zeile.
+		await expect(row).not.toContainText('danach');
+		await row.getByRole('button', { name: /^Aufgabenaktionen:/ }).click();
+		await expect(page.getByRole('dialog').getByText('Danach').locator('+ dd')).toHaveText('du');
 		await expect(row.getByText('Zuständig: Anna')).toBeVisible();
 	});
 
@@ -564,8 +567,11 @@ test.describe('chore next assignee', () => {
 
 		await openPutzen(page, members, chores, absences);
 		const row = page.locator('#chore-no-successor');
-		await expect(row).not.toContainText('danach');
 		await expect(row.getByText('Dora', { exact: true })).toHaveCount(0);
+		await row.getByRole('button', { name: /^Aufgabenaktionen:/ }).click();
+		await expect(page.getByRole('dialog').getByText('Danach').locator('+ dd')).toHaveText(
+			'niemand verfügbar',
+		);
 	});
 
 	test('wraps a long predicted name at phone widths in both themes', async ({ page }, testInfo) => {
@@ -589,7 +595,12 @@ test.describe('chore next assignee', () => {
 
 		await openPutzen(page, members, chores, []);
 		const row = page.locator('#chore-long-next');
-		await expect(row).toContainText(`danach ${longNext.name}`);
+		await row.getByRole('button', { name: /^Aufgabenaktionen:/ }).click();
+		await expect(page.getByRole('dialog').getByText('Danach').locator('+ dd')).toHaveText(
+			longNext.name,
+		);
+		await page.keyboard.press('Escape');
+		await expect(page.getByRole('dialog')).toBeHidden();
 
 		for (const theme of ['light', 'dark'] as const) {
 			for (const width of [320, 390]) {

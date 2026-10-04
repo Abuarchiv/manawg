@@ -85,11 +85,13 @@ export function AbsencePanel({
 		<Card id="absences-panel" className={cn('scroll-mt-28', active && 'ring-2 ring-ring')}>
 			<CardHeader>
 				<CardTitle className="break-normal">Abwesenheiten</CardTitle>
-				<CardDescription className="break-normal">
-					{active && 'Abwesenheits-Fokus: '}
-					Wer fehlt, wird übersprungen.
-					{absentCount > 0 && ` · ${absentCount} aktuell abwesend`}
-				</CardDescription>
+				{(active || absentCount > 0) && (
+					<CardDescription className="break-normal">
+						{active && 'Abwesenheits-Fokus'}
+						{active && absentCount > 0 && ' · '}
+						{absentCount > 0 && `${absentCount} aktuell abwesend`}
+					</CardDescription>
+				)}
 				<CardAction>
 					<Button
 						variant="outline"
@@ -112,7 +114,7 @@ export function AbsencePanel({
 								event.preventDefault();
 								onAdd();
 							}}
-							className="flex flex-col gap-3 pb-3"
+							className="flex flex-col gap-3 pt-3 pb-3"
 						>
 							<FieldGroup>
 								<Field data-disabled={pending}>
@@ -192,7 +194,7 @@ export function AbsencePanel({
 									key={absence.id}
 									id={`absence-${absence.id}`}
 									className={cn(
-										'scroll-mt-28',
+										'scroll-mt-28 px-0',
 										absence.id === highlightedAbsenceId && 'ring-2 ring-inset ring-ring',
 									)}
 								>

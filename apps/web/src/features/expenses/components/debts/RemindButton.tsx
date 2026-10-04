@@ -37,12 +37,12 @@ interface RemindButtonProps {
 function errorMessage(error: string): string {
 	if (error === 'reminder_cooldown')
 		return `Bitte etwas warten (${REMINDER_COOLDOWN_HOURS} Std. pro Person).`;
-	if (error === 'reminder_rate_limited') return 'Zu viele Erinnerungen — bitte später erneut.';
+	if (error === 'reminder_rate_limited') return 'Zu viele Erinnerungen. Bitte später erneut.';
 	if (error === 'debtor_opted_out') return 'Diese Person erhält keine Erinnerungen.';
 	if (error === 'no_open_debt') return 'Keine offene Schuld zwischen euch.';
 	if (error === 'not_a_member') return 'Tritt der WG bitte erneut bei.';
 	if (error === 'Failed to fetch' || error === 'Netzwerkfehler') {
-		return 'Erinnerung konnte nicht gesendet werden — Verbindung prüfen.';
+		return 'Erinnerung konnte nicht gesendet werden. Verbindung prüfen.';
 	}
 	return 'Erinnerung konnte nicht gesendet werden.';
 }

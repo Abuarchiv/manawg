@@ -31,7 +31,7 @@ import {
 	MessageCircle,
 	Package,
 	Receipt,
-	Settings,
+	Repeat2,
 	Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -47,45 +47,19 @@ interface AccountWg {
 type PublicModule = PublicPreviewModule;
 
 const PRIMARY_MODULES: PublicModule[] = [
-	{
-		slug: 'ausgaben',
-		title: 'Ausgaben',
-		description: 'Gemeinsame Kosten im Blick.',
-		Icon: Receipt,
-	},
-	{
-		slug: 'einkauf',
-		title: 'Einkäufe',
-		description: 'Die nächste Einkaufsliste.',
-		Icon: ListChecks,
-	},
-	{ slug: 'pinnwand', title: 'Pinnwand', description: 'Infos für alle.', Icon: Megaphone },
-	{ slug: 'putzen', title: 'Putzplan', description: 'Aufgaben fair verteilen.', Icon: Sparkles },
+	{ slug: 'ausgaben', title: 'Ausgaben', Icon: Receipt },
+	{ slug: 'einkauf', title: 'Einkäufe', Icon: ListChecks },
+	{ slug: 'pinnwand', title: 'Pinnwand', Icon: Megaphone },
+	{ slug: 'putzen', title: 'Putzplan', Icon: Sparkles },
 ];
 
 const OTHER_MODULES: PublicModule[] = [
-	{ slug: 'fixkosten', title: 'Fixkosten', description: 'Regelmäßige Kosten.', Icon: Receipt },
-	{
-		slug: 'mahnungen',
-		title: 'Erinnerungen',
-		description: 'Offene Beträge nachhalten.',
-		Icon: Receipt,
-	},
-	{ slug: 'vorraete', title: 'Vorräte', description: 'Was noch da ist.', Icon: Package },
-	{ slug: 'kalender', title: 'Kalender', description: 'Gemeinsame Termine.', Icon: CalendarDays },
-	{
-		slug: 'aktivitaet',
-		title: 'Aktivität',
-		description: 'Was zuletzt passiert ist.',
-		Icon: Clock3,
-	},
-	{ slug: 'chat', title: 'Chat', description: 'Kurz etwas klären.', Icon: MessageCircle },
-	{
-		slug: 'einstellungen',
-		title: 'Einstellungen',
-		description: 'Die WG verwalten.',
-		Icon: Settings,
-	},
+	{ slug: 'fixkosten', title: 'Fixkosten', Icon: Repeat2 },
+	{ slug: 'mahnungen', title: 'Erinnerungen', Icon: Receipt },
+	{ slug: 'vorraete', title: 'Vorräte', Icon: Package },
+	{ slug: 'kalender', title: 'Kalender', Icon: CalendarDays },
+	{ slug: 'aktivitaet', title: 'Aktivität', Icon: Clock3 },
+	{ slug: 'chat', title: 'Chat', Icon: MessageCircle },
 ];
 
 const PUBLIC_MODULES = [...PRIMARY_MODULES, ...OTHER_MODULES];
@@ -214,7 +188,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 
 	return (
 		<div
-			className="min-h-svh bg-background"
+			className="flex min-h-svh flex-col bg-background"
 			style={{
 				paddingTop: 'env(safe-area-inset-top, 0px)',
 				paddingBottom: 'calc(var(--app-nav-height, 5rem) + 0.5rem)',
@@ -224,7 +198,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 			<main
 				id="main"
 				tabIndex={-1}
-				className="flex w-full min-w-0 flex-col gap-6 px-4 py-5 focus:outline-none"
+				className="flex w-full min-w-0 flex-1 flex-col gap-4 px-4 py-3 focus:outline-none"
 			>
 				{accountDeletionPending && (
 					<output
@@ -237,12 +211,12 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						</AlertDescription>
 					</output>
 				)}
-				<div className={cn('flex min-w-0 flex-col', section ? 'gap-3' : 'gap-6')}>
-					<header className="flex flex-col gap-3">
+				<div className={cn('flex min-w-0 flex-col', section ? 'gap-3' : 'gap-4')}>
+					<header className="flex flex-col gap-2">
 						<div className="flex flex-wrap items-center justify-between gap-3">
 							<Link
 								href={publicHref('/')}
-								className="flex min-h-11 items-center gap-2"
+								className="flex min-h-9 items-center gap-2"
 								aria-label="ManaWG Startseite"
 							>
 								<LogoMark size={24} tile={false} aria-hidden />
@@ -260,16 +234,14 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 								{accountAction.label}
 							</Link>
 						</div>
-						<div className="flex flex-col gap-1">
-							<h1 className="font-heading text-balance text-lg leading-6 font-semibold tracking-tight">
-								{module?.title ?? 'Euer WG-Alltag. Gemeinsam geregelt.'}
-							</h1>
-							{!section && (
-								<p className="text-sm text-muted-foreground">
-									{module?.description ?? 'Einkäufe planen, Kosten teilen und Aufgaben verteilen.'}
-								</p>
+						<h1
+							className={cn(
+								'font-heading text-balance text-lg leading-6 font-semibold tracking-tight',
+								(section || !module) && 'sr-only',
 							)}
-						</div>
+						>
+							{module?.title ?? 'ManaWG'}
+						</h1>
 					</header>
 					{section && (
 						<SubNav
@@ -281,15 +253,15 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							}))}
 						/>
 					)}
+					{module ? (
+						<PublicModulePreview module={module} />
+					) : (
+						<PublicModulePreviews modules={PRIMARY_MODULES} hrefFor={discoveryHref} />
+					)}
 					{inviteCode ? (
 						<WgWelcome variant="invitation" code={inviteCode} />
 					) : (
 						<WgWelcome variant="create" />
-					)}
-					{module ? (
-						<PublicModulePreview module={module} homeHref={publicHref('/')} />
-					) : (
-						<PublicModulePreviews modules={PRIMARY_MODULES} />
 					)}
 					{membershipState === 'loading' && (
 						<output aria-live="polite" aria-label="Deine WGs werden geprüft" className="block">
@@ -339,34 +311,26 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						</Card>
 					)}
 				</div>
-				<LegalLinks />
+				<LegalLinks className="mt-auto" />
 			</main>
-			<AppBottomNav
-				aria-label="Öffentliche Hauptnavigation"
-				data-app-chrome
-				className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
-			>
-				<div className="rounded-[20px] border border-border bg-background text-foreground">
-					<ul className="flex flex-wrap gap-1 p-1 [&>li]:min-w-fit [&>li]:flex-1">
-						<NavItem
-							href={publicHref('/')}
-							label="Start"
-							iconKey="home"
-							activePrefixes={[discoveryHref('aktivitaet')]}
-						/>
-						{WG_SECTIONS.map((item) => (
-							<NavItem
-								key={item.label}
-								href={discoveryHref(item.pages[0].slug)}
-								label={item.label}
-								iconKey={item.iconKey}
-								activePrefixes={[...item.pages.map((page) => page.slug), ...item.related].map(
-									discoveryHref,
-								)}
-							/>
-						))}
-					</ul>
-				</div>
+			<AppBottomNav label="Öffentliche Hauptnavigation">
+				<NavItem
+					href={publicHref('/')}
+					label="Start"
+					iconKey="home"
+					activePrefixes={[discoveryHref('aktivitaet')]}
+				/>
+				{WG_SECTIONS.map((item) => (
+					<NavItem
+						key={item.label}
+						href={discoveryHref(item.pages[0].slug)}
+						label={item.label}
+						iconKey={item.iconKey}
+						activePrefixes={[...item.pages.map((page) => page.slug), ...item.related].map(
+							discoveryHref,
+						)}
+					/>
+				))}
 			</AppBottomNav>
 		</div>
 	);

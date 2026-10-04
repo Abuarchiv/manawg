@@ -67,14 +67,6 @@ export function useAnnouncementComposer(
 	const hasDraft = Boolean(content.trim() || imageUrl || queueEditId || kind !== 'info');
 
 	const createButtonRef = useRef<HTMLButtonElement | null>(null);
-	const composerWasOpenRef = useRef(false);
-	useEffect(() => {
-		if (composerOpen) textareaRef.current?.focus();
-		// Der Inline-Composer verschwindet beim Posten/Schließen samt Fokus; zurück auf den Auslöser.
-		else if (composerWasOpenRef.current) createButtonRef.current?.focus();
-		composerWasOpenRef.current = composerOpen;
-	}, [composerOpen]);
-
 	useEffect(() => {
 		if (!composerOpen) return;
 		function onKey(e: KeyboardEvent): void {

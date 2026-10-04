@@ -88,13 +88,13 @@ export function AbosList({
 										? 'Noch keine Fixkosten'
 										: `Keine ${filter === 'paused' ? 'pausierten' : 'aktiven'} Fixkosten`}
 							</EmptyTitle>
-							<EmptyDescription>
-								{loadError && abos.length === 0
-									? 'Versuche es erneut, sobald die Verbindung wieder da ist.'
-									: abos.length === 0
-										? 'Tippe unten rechts auf „+“ und trag z. B. Miete, Internet oder Streaming ein.'
+							{abos.length > 0 || loadError ? (
+								<EmptyDescription>
+									{loadError && abos.length === 0
+										? 'Versuche es erneut, sobald die Verbindung wieder da ist.'
 										: 'Wähle einen anderen Filter.'}
-							</EmptyDescription>
+								</EmptyDescription>
+							) : null}
 						</EmptyHeader>
 					</Empty>
 				)

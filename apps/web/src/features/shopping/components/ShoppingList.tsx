@@ -117,16 +117,16 @@ export function ShoppingList({
 					{openItems.slice(0, visibleOpenCount).map(renderRow)}
 				</ul>
 			) : (
-				<p className="text-sm text-muted-foreground">Alles eingekauft.</p>
+				<p className="text-[12px] text-muted-foreground">Alles eingekauft.</p>
 			)}
 			{visibleOpenCount < openItems.length && moreButton(openItems.length - visibleOpenCount)}
 			{doneItems.length > 0 && (
 				<details
 					open={doneOpen}
 					onToggle={(event) => onDoneOpenChange(event.currentTarget.open)}
-					className="group"
+					className="group -mt-2"
 				>
-					<summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium text-muted-foreground [&::-webkit-details-marker]:hidden">
+					<summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-[12px] font-medium text-muted-foreground [&::-webkit-details-marker]:hidden">
 						<ChevronRight
 							aria-hidden
 							className="size-4 transition-transform group-open:rotate-90"
@@ -142,11 +142,11 @@ export function ShoppingList({
 						moreButton(doneItems.length - visibleDoneCount)}
 					{isAdmin && (
 						<Button
-							variant="outline"
+							variant="ghost"
 							onClick={onClearRequest}
 							disabled={clearingBought}
 							aria-label={`Erledigte Artikel entfernen (${doneItems.length})`}
-							className="mt-2 self-start"
+							className="mt-1 self-start text-muted-foreground"
 						>
 							{clearingBought ? (
 								<Spinner data-icon="inline-start" aria-hidden />

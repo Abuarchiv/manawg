@@ -9,7 +9,8 @@ import {
 	formatEventTimeOfDay,
 } from '@/features/events/events';
 import { cn } from '@/shared/lib/cn';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface CalendarMonthProps {
@@ -20,7 +21,12 @@ interface CalendarMonthProps {
 	onSelectDay: (day: Date) => void;
 	onSelectOccurrence: (occurrence: EventOccurrence) => void;
 	selectedDay: Date | null;
+	/** Putzplan-Fälligkeiten im Agenda-Zeitraum; sie bekommen wie Termine einen Punkt. */
+	choreOccurrences: ReadonlyArray<{ choreId: string; title: string; startsAt: string }>;
+	wgBaseHref: string;
 }
+
+type ChoreOccurrence = CalendarMonthProps['choreOccurrences'][number];
 
 const WEEKDAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
 const MONTH_FORMATTER = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' });
@@ -35,6 +41,11 @@ interface DayCell {
 	date: Date;
 	inCurrentMonth: boolean;
 	occurrences: EventOccurrence[];
+	chores: ChoreOccurrence[];
+}
+
+function dayKey(date: Date): string {
+	return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
 function startOfMonth(date: Date): Date {
@@ -62,7 +73,11 @@ function sameDay(a: Date, b: Date): boolean {
 	);
 }
 
-function buildDays(month: Date, occurrences: EventOccurrence[]): DayCell[] {
+function buildDays(
+	month: Date,
+	occurrences: EventOccurrence[],
+	choresByDay: Map<string, ChoreOccurrence[]>,
+): DayCell[] {
 	const first = startOfMonth(month);
 	const last = endOfMonth(month);
 	const gridStart = startOfWeekMonday(first);
@@ -75,6 +90,7 @@ function buildDays(month: Date, occurrences: EventOccurrence[]): DayCell[] {
 			date: dayDate,
 			inCurrentMonth: dayDate.getMonth() === month.getMonth(),
 			occurrences: dayOcc,
+			chores: choresByDay.get(dayKey(dayDate)) ?? [],
 		});
 		cursor.setDate(cursor.getDate() + 1);
 		if (days.length >= 42) break;
@@ -108,8 +124,17 @@ export function CalendarMonth({
 	onSelectDay,
 	onSelectOccurrence,
 	selectedDay,
+	choreOccurrences,
+	wgBaseHref,
 }: CalendarMonthProps) {
-	const days = useMemo(() => buildDays(month, occurrences), [month, occurrences]);
+	const days = useMemo(() => {
+		const choresByDay = new Map<string, ChoreOccurrence[]>();
+		for (const chore of choreOccurrences) {
+			const key = dayKey(new Date(chore.startsAt));
+			choresByDay.set(key, [...(choresByDay.get(key) ?? []), chore]);
+		}
+		return buildDays(month, occurrences, choresByDay);
+	}, [month, occurrences, choreOccurrences]);
 	const monthLabel = MONTH_FORMATTER.format(month);
 	const today = useMemo(() => new Date(), []);
 
@@ -202,12 +227,15 @@ export function CalendarMonth({
 	const selectedOccurrences = selectedDay
 		? occurrences.filter((occurrence) => eventOverlapsCalendarDay(occurrence, selectedDay))
 		: [];
+	const selectedChores = selectedDay
+		? (days.find((d) => sameDay(d.date, selectedDay))?.chores ?? [])
+		: [];
 	const weeks = Array.from({ length: Math.ceil(days.length / 7) }, (_, index) =>
 		days.slice(index * 7, index * 7 + 7),
 	);
 
 	return (
-		<Card className="-mx-4">
+		<Card className="-mx-4 rounded-none border-x-0">
 			<CardHeader className="px-[clamp(8px,4%,24px)]">
 				<div className="flex items-center justify-between gap-2">
 					<Button
@@ -231,7 +259,7 @@ export function CalendarMonth({
 					</Button>
 				</div>
 			</CardHeader>
-			<CardContent className="flex flex-col gap-4 px-0">
+			<CardContent className="flex flex-col gap-4 px-[4px]">
 				<table
 					ref={gridRef}
 					// biome-ignore lint/a11y/useSemanticElements: Calendar uses the existing roving-tabindex grid controller.
@@ -272,7 +300,7 @@ export function CalendarMonth({
 										>
 											<Button
 												type="button"
-												variant={isSelected ? 'default' : isToday ? 'secondary' : 'ghost'}
+												variant="ghost"
 												data-day-cell
 												data-day-date={day.date.toISOString()}
 												tabIndex={weekIndex * 7 + dayIndex === focusedIndex ? 0 : -1}
@@ -282,16 +310,28 @@ export function CalendarMonth({
 														? ', 1 Termin'
 														: day.occurrences.length
 															? `, ${day.occurrences.length} Termine`
-															: '')
+															: '') +
+													(day.chores.length ? ', Putzplan' : '')
 												}
 												aria-current={isToday ? 'date' : undefined}
 												className={cn(
-													'relative min-h-11 w-full px-0 after:h-[44px] after:min-w-[44px]',
+													'relative min-h-11 w-full px-0 hover:bg-transparent active:bg-transparent dark:hover:bg-transparent',
 													!day.inCurrentMonth && 'opacity-50',
 												)}
 											>
-												{day.date.getDate()}
-												{day.occurrences.length > 0 && (
+												<span
+													className={cn(
+														'grid size-8 place-items-center rounded-full',
+														isSelected
+															? 'bg-primary text-primary-foreground'
+															: isToday
+																? 'bg-secondary text-secondary-foreground'
+																: 'group-active/button:bg-muted',
+													)}
+												>
+													{day.date.getDate()}
+												</span>
+												{(day.occurrences.length > 0 || day.chores.length > 0) && (
 													<span
 														aria-hidden
 														className="absolute bottom-1 size-1 rounded-full bg-current"
@@ -317,10 +357,28 @@ export function CalendarMonth({
 								</Badge>
 							)}
 						</div>
-						{selectedOccurrences.length === 0 ? (
+						{selectedOccurrences.length === 0 && selectedChores.length === 0 ? (
 							<p className="text-sm text-muted-foreground">Keine Termine an diesem Tag.</p>
 						) : (
 							<ul className="flex flex-col divide-y divide-border/60">
+								{selectedChores.map((chore) => (
+									<li key={`chore-${chore.choreId}-${chore.startsAt}`}>
+										<Link
+											href={`${wgBaseHref}/putzen?highlight=${encodeURIComponent(chore.choreId)}`}
+											aria-label={`Putzaufgabe öffnen: ${chore.title}`}
+											className="flex min-h-11 w-full min-w-0 items-center gap-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 active:bg-muted"
+										>
+											<span className="flex min-w-0 flex-1 flex-col">
+												<span className="text-[14px] font-medium break-words">{chore.title}</span>
+												<span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
+													<Sparkles className="size-4 shrink-0" aria-hidden />
+													Putzplan
+												</span>
+											</span>
+											<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+										</Link>
+									</li>
+								))}
 								{selectedOccurrences.map((occurrence) => (
 									<li key={`${occurrence.eventId}-${occurrence.occurrenceIndex}`}>
 										<button

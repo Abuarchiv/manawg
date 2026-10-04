@@ -19,13 +19,7 @@ export function SplitReview({
 	paidByMemberId,
 	currency = 'EUR',
 }: SplitReviewProps) {
-	if (!splits) {
-		return (
-			<p className="text-xs text-muted-foreground">
-				Die Anteile erscheinen, sobald der Betrag gültig ist.
-			</p>
-		);
-	}
+	if (!splits) return null;
 	return (
 		<ItemGroup aria-label="Anteile vor dem Speichern" aria-live="polite" className="gap-1">
 			{members.map((member) => {

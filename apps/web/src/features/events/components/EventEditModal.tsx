@@ -320,7 +320,7 @@ export function EventEditModal({
 							<AlertDialogTitle>Termin löschen?</AlertDialogTitle>
 							<AlertDialogDescription>
 								{event.recurrence
-									? `„${event.title}“ wird unwiderruflich entfernt – die gesamte Serie inklusive aller zukünftigen Termine.`
+									? `„${event.title}“ wird unwiderruflich entfernt, mit allen zukünftigen Terminen der Serie.`
 									: `„${event.title}“ wird unwiderruflich entfernt.`}
 							</AlertDialogDescription>
 						</AlertDialogHeader>

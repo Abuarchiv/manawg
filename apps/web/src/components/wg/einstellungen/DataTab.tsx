@@ -82,7 +82,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 		<>
 			<Section
 				title="Datenexport"
-				hint="Ausgewählte WG-Daten, inklusive erledigter Zahlungen. Datei-Inhalte und Systemwiederherstellung sind nicht enthalten."
+				hint="Alle WG-Daten inklusive erledigter Zahlungen, ohne Dateianhänge."
 			>
 				{exportSummary.length > 0 && (
 					<div className="border-border grid grid-cols-2 gap-x-4 gap-y-1.5 border-b p-3 text-xs">
@@ -115,7 +115,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 								? 'WG-Daten werden als JSON exportiert'
 								: 'WG-Daten als JSON exportieren'
 						}
-						className="w-full"
+						className="h-11 w-full"
 					>
 						{exportPending === 'json' ? <Spinner aria-hidden /> : <Download aria-hidden />}
 						JSON exportieren
@@ -145,7 +145,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 									? `${csvExportLabel} wird als CSV exportiert`
 									: `${csvExportLabel} als CSV exportieren`
 							}
-							className="shrink-0"
+							className="h-11 shrink-0"
 						>
 							{exportPending === 'csv' ? <Spinner aria-hidden /> : <Download aria-hidden />}
 							CSV exportieren
@@ -169,14 +169,11 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 				)}
 			</Section>
 
-			<Section
-				title="Aus Splitwise oder Splid importieren"
-				hint="Übernehme bestehende Ausgaben per CSV-Export oder Screenshot. Namen werden automatisch zugeordnet."
-			>
+			<Section title="Import">
 				<div className="p-3">
 					<Link
 						href={`${wgBaseHref}/import`}
-						className={cn(buttonVariants({ variant: 'default' }), 'w-full')}
+						className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}
 					>
 						<Upload aria-hidden />
 						Ausgaben importieren

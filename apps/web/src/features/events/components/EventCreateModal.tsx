@@ -169,7 +169,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 					<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
 						<FieldSet disabled={submitting}>
 							<FieldLegend variant="label">Vorlagen</FieldLegend>
-							<div className="-mx-4 flex gap-2 overflow-x-auto px-4">
+							<div className="flex flex-wrap gap-2">
 								{QUICK_TEMPLATES.map((template) => (
 									<Button
 										key={template.label}
@@ -232,7 +232,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 							{submitting ? 'Speichert…' : 'Termin speichern'}
 						</Button>
 						<Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-							Schließen · Entwurf behalten
+							Abbrechen
 						</Button>
 					</DrawerFooter>
 				</form>

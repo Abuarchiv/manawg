@@ -85,7 +85,13 @@ export function FairnessPanel({
 				</div>
 				<Collapsible>
 					<CollapsibleTrigger
-						render={<Button variant="ghost" size="sm" className="w-full break-normal" />}
+						render={
+							<Button
+								variant="ghost"
+								size="sm"
+								className="-mx-2.5 w-[calc(100%+1.25rem)] break-normal"
+							/>
+						}
 					>
 						<span className="min-w-0 flex-1 text-left break-normal whitespace-normal">
 							So wird verteilt
@@ -101,7 +107,7 @@ export function FairnessPanel({
 							</ul>
 							<ItemGroup className="gap-0 divide-y">
 								{fairness.rows.map((row) => (
-									<Item key={row.id}>
+									<Item key={row.id} className="px-0">
 										<ItemContent className="min-w-0">
 											<ItemTitle className="line-clamp-none break-words">
 												{row.id === currentMemberId ? 'Du' : row.name}

@@ -96,13 +96,13 @@ function ChatPageContent({
 			className="flex min-h-0 flex-col"
 			style={{
 				height:
-					'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--offline-banner-height, 0px))',
+					'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--offline-banner-height, 0px) - var(--app-header-height, 0px))',
 				// ChatView already ends the frame above the nav; cancel the shell's nav padding.
 				marginBottom: 'calc(-1 * (var(--app-nav-height, 5rem) + 0.5rem))',
 			}}
 		>
-			<header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-4 py-2">
-				<div className="mx-auto flex w-full max-w-3xl items-center gap-2">
+			<header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-4 pt-[0.5rem] pb-2">
+				<div className="mx-auto flex w-full max-w-4xl items-center gap-2">
 					{/* Das Segment ersetzt den sichtbaren Titel, damit der Chat keine
 					    zusätzliche Höhe verliert. */}
 					<h1 className="sr-only">Chat</h1>

@@ -84,7 +84,11 @@ export function WgNameSection({ wgName, shareCode, memberId, memberToken }: WgNa
 						disabled={pending}
 						className="min-w-0 flex-1"
 					/>
-					<Button type="submit" disabled={pending || unchanged || !trimmed} className="shrink-0">
+					<Button
+						type="submit"
+						disabled={pending || unchanged || !trimmed}
+						className="h-11 shrink-0"
+					>
 						{pending && <Spinner data-icon="inline-start" aria-hidden />}
 						Speichern
 					</Button>

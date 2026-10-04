@@ -278,7 +278,7 @@ export function AboForm({
 
 	const splitPreview = buildSplits();
 	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-5">
+		<form onSubmit={handleSubmit} className="flex min-h-full flex-col gap-5">
 			<FieldGroup>
 				<Field data-disabled={submitting} data-invalid={Boolean(descriptionError)}>
 					<FieldLabel htmlFor="abo-description">Beschreibung</FieldLabel>
@@ -454,19 +454,19 @@ export function AboForm({
 					</Alert>
 				)}
 			</FieldGroup>
-			<div className="sticky bottom-0 flex gap-2 bg-popover pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+			<div className="sticky bottom-0 mt-auto flex flex-col gap-2 bg-popover pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+				<Button type="submit" className="w-full whitespace-normal" disabled={submitting}>
+					{submitting && <Spinner data-icon="inline-start" />}
+					{mode === 'create' ? 'Fixkosten anlegen' : 'Speichern'}
+				</Button>
 				<Button
 					type="button"
-					variant="outline"
-					className="flex-none"
+					variant="ghost"
+					className="w-full"
 					onClick={onCancel}
 					disabled={submitting}
 				>
 					Abbrechen
-				</Button>
-				<Button type="submit" className="min-w-0 flex-1 whitespace-normal" disabled={submitting}>
-					{submitting && <Spinner data-icon="inline-start" />}
-					{mode === 'create' ? 'Fixkosten anlegen' : 'Speichern'}
 				</Button>
 			</div>
 		</form>

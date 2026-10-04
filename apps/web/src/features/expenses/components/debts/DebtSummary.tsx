@@ -43,7 +43,7 @@ import { RemindButton } from '@/features/expenses/components/debts/RemindButton'
 import { getDebtOverview } from '@/features/expenses/debt-overview';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import { cn } from '@/shared/lib/cn';
-import { ChevronDown, History } from 'lucide-react';
+import { Bell, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 
@@ -248,7 +248,7 @@ function DebtRow({
 	const owedToMe = debt.toId === currentMemberId;
 
 	return (
-		<Item size="sm" className="items-center gap-x-2.5 px-0 py-1.5">
+		<Item size="sm" className="items-center gap-x-2.5 px-0 py-1">
 			<div aria-hidden className="flex shrink-0 items-center -space-x-0.5">
 				<MemberAvatar name={debt.fromName} size={24} className="ring-2 ring-card" />
 				<MemberAvatar name={debt.toName} size={24} className="ring-2 ring-card" />
@@ -269,7 +269,7 @@ function DebtRow({
 			</span>
 
 			{canSettle && (
-				<ItemFooter className="justify-start gap-2 [&>*]:min-w-0">
+				<ItemFooter className="-mt-1 justify-start gap-2 pl-[54px] max-[359px]:pl-0 [&>*]:min-w-0">
 					<Button
 						variant={iOwe ? 'default' : 'outline'}
 						size="sm"
@@ -435,8 +435,8 @@ function DebtRow({
 	);
 }
 
-// Der eigene Saldo ist die wichtigste Zahl der Seite: groß und in eigener Zeile.
-const HERO_AMOUNT = 'block font-mono text-[22px] leading-7 font-semibold tabular-nums';
+// Der eigene Saldo ist die wichtigste Zahl der Seite: größer als der Fließtext, in der Überschriftenzeile.
+const HERO_AMOUNT = 'font-mono text-[20px] leading-6 font-semibold tabular-nums';
 
 interface DebtSummaryProps {
 	debts: SimplifiedDebt[];
@@ -546,7 +546,7 @@ export function DebtSummary({
 						title="Alle Erinnerungen"
 						className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }))}
 					>
-						<History aria-hidden />
+						<Bell aria-hidden />
 					</Link>
 				</CardAction>
 			</CardHeader>
@@ -574,11 +574,13 @@ export function DebtSummary({
 										<span
 											className={cn(
 												'ml-auto shrink-0 text-right font-mono whitespace-nowrap tabular-nums',
-												member.balanceCents > 0
-													? 'text-settled'
-													: member.balanceCents < 0
-														? 'text-destructive'
-														: 'text-muted-foreground',
+												member.balanceCents === 0
+													? 'text-muted-foreground'
+													: !isMe
+														? 'text-foreground'
+														: member.balanceCents > 0
+															? 'text-settled'
+															: 'text-destructive',
 											)}
 										>
 											{member.balanceCents === 0

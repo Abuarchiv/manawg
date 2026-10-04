@@ -507,7 +507,7 @@ export function NeuClient() {
 						? 'Melde dich an, danach erstellst du deine neue WG.'
 						: joinCode
 							? 'Melde dich an, um mit deinem WG-Code beizutreten.'
-							: 'Dein Konto bringt dich auf jedem Gerät zurück in deine WG.'
+							: undefined
 				}
 				backHref={explorationHref()}
 			>
@@ -682,7 +682,7 @@ export function NeuClient() {
 						<Field
 							id="wg-name"
 							label="WG-Name"
-							placeholder="z. B. WG Kurt-Schumacher"
+							placeholder="z. B. WG Weserstraße"
 							value={wgName}
 							onChange={setWgName}
 							maxLength={WG_NAME_MAX}
@@ -828,7 +828,7 @@ export function NeuClient() {
 						<Field
 							id="join-name"
 							label="Dein Anzeigename"
-							placeholder="z. B. Samira"
+							placeholder="z. B. Anna"
 							value={joinName}
 							onChange={(value) => {
 								setJoinName(value);

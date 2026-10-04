@@ -2,7 +2,8 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/u
 import { useWg } from '@/components/wg/WgContextProvider';
 import { activityItemKey } from '@/core/reads/activity';
 import { formatEuroCents } from '@/core/utils/money';
-import { formatCompactRelativeTime } from '@/core/utils/time';
+import { formatRelativeTime } from '@/core/utils/time';
+import { cn } from '@/shared/lib/cn';
 import {
 	CalendarOff,
 	History,
@@ -41,7 +42,7 @@ const kindIcon: Record<ActivityItem['kind'], typeof Receipt> = {
 // alle anderen sind Stichworte („Brot gekauft“) und stehen als Titel, die Person darunter.
 const VERB_START = /^(hat|ist)\b/;
 
-export function ActivityFeed({ items }: { items: ActivityItem[] }) {
+export function ActivityFeed({ items, inset }: { items: ActivityItem[]; inset?: boolean }) {
 	const { identity } = useWg();
 	if (items.length === 0) {
 		return (
@@ -68,21 +69,30 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
 						: item.text;
 				const content = (
 					<>
-						<Icon
-							className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-							strokeWidth={1.5}
-							aria-hidden
-						/>
+						{inset ? (
+							<span className="flex size-8 shrink-0 items-center justify-center">
+								<Icon className="size-4 text-muted-foreground" strokeWidth={1.5} aria-hidden />
+							</span>
+						) : (
+							<Icon
+								className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+								strokeWidth={1.5}
+								aria-hidden
+							/>
+						)}
 						<div className="min-w-0 flex-1">
-							<p className="line-clamp-2 break-words text-sm leading-5">
+							<p
+								className={cn(
+									'line-clamp-2 break-words text-sm leading-5',
+									inset && 'text-[14px] font-medium',
+								)}
+							>
 								{sentence && <span className="font-medium">{who} </span>}
 								{text}
 							</p>
 							<p className="line-clamp-2 text-[12px] text-muted-foreground">
 								{!sentence && `${who} · `}
-								<time dateTime={item.timestamp}>
-									{formatCompactRelativeTime(item.timestamp, now)}
-								</time>
+								<time dateTime={item.timestamp}>{formatRelativeTime(item.timestamp, now)}</time>
 								{item.detail && ` · ${item.detail}`}
 							</p>
 						</div>
@@ -101,12 +111,22 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
 						{item.href ? (
 							<Link
 								href={item.href}
-								className="flex min-h-12 items-start gap-3 rounded-lg py-2 focus-visible:outline-2 focus-visible:outline-ring active:bg-muted"
+								className={cn(
+									'flex min-h-12 items-start gap-3 rounded-lg py-2 focus-visible:outline-2 focus-visible:outline-ring active:bg-muted',
+									inset && 'items-center gap-2 px-2',
+								)}
 							>
 								{content}
 							</Link>
 						) : (
-							<div className="flex min-h-12 items-start gap-3 py-2">{content}</div>
+							<div
+								className={cn(
+									'flex min-h-12 items-start gap-3 py-2',
+									inset && 'items-center gap-2 px-2',
+								)}
+							>
+								{content}
+							</div>
 						)}
 					</li>
 				);
