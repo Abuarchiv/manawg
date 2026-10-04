@@ -125,7 +125,7 @@ export function ShareAccessSection({
 				title="WG teilen"
 				hint={
 					joiningEnabled
-						? 'Code oder QR-Code laden neue Mitglieder in die WG ein.'
+						? undefined
 						: 'Beitritte sind gesperrt. Teilen wird blockiert, bis du den Zugang öffnest.'
 				}
 			>
@@ -137,11 +137,7 @@ export function ShareAccessSection({
 
 			<Section
 				title="Zugang"
-				hint={
-					isAdmin
-						? 'Steuert, ob der aktuelle WG-Code neue Mitglieder aufnehmen darf.'
-						: 'Nur Admins können den WG-Code verwalten.'
-				}
+				hint={isAdmin ? undefined : 'Nur Admins können den WG-Code verwalten.'}
 			>
 				<div className="grid gap-3 p-3">
 					<Field orientation="horizontal" className="min-h-[44px]">

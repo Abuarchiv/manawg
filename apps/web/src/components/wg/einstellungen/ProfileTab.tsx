@@ -52,19 +52,7 @@ export function ProfileTab({
 						<div className="text-foreground truncate text-[14px] font-medium">{memberName}</div>
 					</div>
 				</div>
-			</Section>
-
-			{isAdmin && (
-				<WgNameSection
-					wgName={wgName}
-					shareCode={shareCode}
-					memberId={memberId}
-					memberToken={memberToken}
-				/>
-			)}
-
-			<Section title="Darstellung">
-				<div className="grid gap-2 p-2">
+				<div className="grid gap-2 px-2 pb-2">
 					<ToggleGroup
 						variant="segmented"
 						className="w-full flex-wrap"
@@ -89,6 +77,15 @@ export function ProfileTab({
 					</div>
 				</div>
 			</Section>
+
+			{isAdmin && (
+				<WgNameSection
+					wgName={wgName}
+					shareCode={shareCode}
+					memberId={memberId}
+					memberToken={memberToken}
+				/>
+			)}
 
 			{PAYPAL_ENABLED && (
 				<Section title="PayPal">

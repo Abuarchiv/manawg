@@ -4,7 +4,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import type { WgSummary } from '@/components/wg/WgContextProvider';
-import { Section } from '@/components/wg/einstellungen/Section';
 import type { StoredIdentity } from '@/shared/lib/identity';
 import { clearIdentity, forgetWg } from '@/shared/lib/identity';
 import { LogOut } from 'lucide-react';
@@ -51,25 +50,23 @@ export function AccountSignOutSection({
 	}
 
 	return (
-		<Section title="Konto abmelden">
-			<div className="p-3">
-				<Button
-					type="button"
-					variant="outline"
-					onClick={() => void handleAccountSignOut()}
-					disabled={accountSignOutPending}
-					aria-label="Konto abmelden"
-					className="w-full"
-				>
-					{accountSignOutPending ? <Spinner aria-hidden /> : <LogOut aria-hidden />}
-					{accountSignOutPending ? 'Meldet ab…' : 'Konto abmelden'}
-				</Button>
-				{accountSignOutError && (
-					<Alert variant="destructive" className="mt-2">
-						<AlertDescription>{accountSignOutError}</AlertDescription>
-					</Alert>
-				)}
-			</div>
-		</Section>
+		<div>
+			<Button
+				type="button"
+				variant="outline"
+				onClick={() => void handleAccountSignOut()}
+				disabled={accountSignOutPending}
+				aria-label="Konto abmelden"
+				className="w-full"
+			>
+				{accountSignOutPending ? <Spinner aria-hidden /> : <LogOut aria-hidden />}
+				{accountSignOutPending ? 'Meldet ab…' : 'Konto abmelden'}
+			</Button>
+			{accountSignOutError && (
+				<Alert variant="destructive" className="mt-2">
+					<AlertDescription>{accountSignOutError}</AlertDescription>
+				</Alert>
+			)}
+		</div>
 	);
 }

@@ -18,7 +18,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { Section } from '@/components/wg/einstellungen/Section';
 import {
 	deleteWgErrorMessage,
@@ -36,7 +35,7 @@ interface DangerZoneSectionProps {
 	identity: StoredIdentity;
 }
 
-/** WG verlassen, WG löschen und Konto löschen. */
+/** WG verlassen und WG löschen. */
 export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionProps) {
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const router = useRouter();
@@ -104,43 +103,41 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 
 	return (
 		<>
-			<div className="grid gap-3">
-				<h2 className="font-heading text-destructive text-sm font-semibold">Gefahrenzone</h2>
+			<div className="mt-3 grid gap-3 border-t pt-3">
+				<h2 className="text-destructive text-xs font-medium">Gefahrenzone</h2>
 
-				<Section
-					title="WG verlassen"
-					hint={
-						isAdmin
-							? undefined
-							: 'Deaktiviert deine Mitgliedschaft. Einträge und offene Salden bleiben erhalten.'
-					}
-				>
-					<div className="grid gap-3 p-3">
-						{isAdmin ? (
-							<p className="text-muted-foreground text-[12px]">
-								{activeMemberCount <= 1
-									? 'Du bist Admin und das letzte aktive Mitglied. Aktiviere zuerst ein ausgezogenes Mitglied und übergib die Admin-Rolle, oder lösche die WG unten.'
-									: 'Übergib zuerst die Admin-Rolle an ein aktives Mitglied (Button „Admin“ bei den Mitgliedern), danach kannst du die WG verlassen.'}
-							</p>
-						) : activeMemberCount <= 1 ? (
-							<p className="text-muted-foreground text-[12px]">
-								Du bist das letzte aktive Mitglied. Die WG kann erst verlassen werden, wenn ein
-								weiteres Mitglied aktiv ist. Wenn du nur dieses Gerät abmelden möchtest, nutze oben
-								„Konto abmelden“.
-							</p>
-						) : (
-							<Button
-								type="button"
-								variant="destructive"
-								onClick={openLeaveConfirm}
-								className="w-full"
-							>
-								<LogOut aria-hidden />
-								WG verlassen
-							</Button>
-						)}
-					</div>
-				</Section>
+				{isAdmin ? (
+					<p className="text-muted-foreground text-xs">
+						{activeMemberCount <= 1
+							? 'Du bist Admin und das letzte aktive Mitglied. Aktiviere zuerst ein ausgezogenes Mitglied und übergib die Admin-Rolle, oder lösche die WG unten.'
+							: 'Übergib zuerst die Admin-Rolle an ein aktives Mitglied (Button „Admin“ bei den Mitgliedern), danach kannst du die WG verlassen.'}
+					</p>
+				) : (
+					<Section
+						title="WG verlassen"
+						hint="Deaktiviert deine Mitgliedschaft. Einträge und offene Salden bleiben erhalten."
+					>
+						<div className="grid gap-3 p-3">
+							{activeMemberCount <= 1 ? (
+								<p className="text-muted-foreground text-[12px]">
+									Du bist das letzte aktive Mitglied. Die WG kann erst verlassen werden, wenn ein
+									weiteres Mitglied aktiv ist. Wenn du nur dieses Gerät abmelden möchtest, nutze
+									oben „Konto abmelden“.
+								</p>
+							) : (
+								<Button
+									type="button"
+									variant="destructive"
+									onClick={openLeaveConfirm}
+									className="w-full"
+								>
+									<LogOut aria-hidden />
+									WG verlassen
+								</Button>
+							)}
+						</div>
+					</Section>
+				)}
 
 				<Section
 					title="WG dauerhaft löschen"
@@ -163,8 +160,6 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 						</Button>
 					</div>
 				</Section>
-
-				<AccountDeleteSection />
 			</div>
 
 			<AlertDialog

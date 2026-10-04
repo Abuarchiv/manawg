@@ -24,7 +24,8 @@ const CONFIRM_WORD = 'LÖSCHEN';
 const UNKNOWN_DELETE_OUTCOME_MESSAGE =
 	'Der Server kann den Status nicht bestätigen. Warte kurz und versuche es erneut; ein bereits angenommener Auftrag wird serverseitig fortgesetzt.';
 
-export function AccountDeleteSection() {
+/** `embedded`: ohne eigene Rahmenkarte, für den gemeinsamen Abschnitt „Konto“. */
+export function AccountDeleteSection({ embedded = false }: { embedded?: boolean }) {
 	const [stage, setStage] = useState<'idle' | 'confirm' | 'pending'>('idle');
 	const [confirmText, setConfirmText] = useState('');
 	const [error, setError] = useState<string | null>(null);
@@ -77,28 +78,39 @@ export function AccountDeleteSection() {
 		}
 	}
 
+	const trigger = (
+		<Button
+			type="button"
+			variant="destructive"
+			onClick={() => {
+				setStage('confirm');
+				setConfirmText('');
+				setError(null);
+			}}
+			className="w-full"
+		>
+			<UserX aria-hidden />
+			Konto dauerhaft löschen
+		</Button>
+	);
+
 	return (
 		<>
-			<Section
-				title="Konto löschen"
-				hint="Löscht dein Konto und deine Anmeldedaten. In jeder WG ziehst du aus; Einträge und offene Salden bleiben für die anderen erhalten."
-			>
-				<div className="p-3">
-					<Button
-						type="button"
-						variant="destructive"
-						onClick={() => {
-							setStage('confirm');
-							setConfirmText('');
-							setError(null);
-						}}
-						className="w-full"
-					>
-						<UserX aria-hidden />
-						Konto dauerhaft löschen
-					</Button>
+			{embedded ? (
+				<div className="grid gap-1.5">
+					<p className="text-muted-foreground text-xs">
+						Du ziehst aus allen WGs aus; Einträge und Salden bleiben.
+					</p>
+					{trigger}
 				</div>
-			</Section>
+			) : (
+				<Section
+					title="Konto löschen"
+					hint="Löscht dein Konto und deine Anmeldedaten. In jeder WG ziehst du aus; Einträge und offene Salden bleiben für die anderen erhalten."
+				>
+					<div className="p-3">{trigger}</div>
+				</Section>
+			)}
 
 			<AlertDialog
 				open={stage !== 'idle'}

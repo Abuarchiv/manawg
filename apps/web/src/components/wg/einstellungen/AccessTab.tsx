@@ -2,6 +2,7 @@
 
 import { SocialLoginButtons, type SocialProvider } from '@/components/auth/SocialLoginButtons';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
+import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { AccountSignOutSection } from '@/components/wg/einstellungen/AccountSignOutSection';
 import { DangerZoneSection } from '@/components/wg/einstellungen/DangerZoneSection';
 import { MembersSection } from '@/components/wg/einstellungen/MembersSection';
@@ -70,7 +71,12 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 			</Section>
 
 			<MembersSection wg={wg} members={members} identity={identity} />
-			<AccountSignOutSection wg={wg} identity={identity} />
+			<Section title="Konto">
+				<div className="grid gap-3 p-3">
+					<AccountSignOutSection wg={wg} identity={identity} />
+					<AccountDeleteSection embedded />
+				</div>
+			</Section>
 			<DangerZoneSection wg={wg} members={members} identity={identity} />
 		</>
 	);
