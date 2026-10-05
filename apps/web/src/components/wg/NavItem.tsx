@@ -45,7 +45,6 @@ export function NavItem({ href, label, iconKey, activePrefixes }: NavItemProps) 
 		<li>
 			<Link
 				href={href}
-				prefetch={true}
 				aria-current={isActive ? (isCurrentPage ? 'page' : 'location') : undefined}
 				data-bottom-nav-item
 				onClick={() => {
