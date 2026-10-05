@@ -12,8 +12,12 @@ const source = transpileModule(readFileSync(validatorPath, 'utf8'), {
 }).outputText;
 const loaded = { exports: {} };
 new Function('require', 'module', 'exports', source)(requireFromWeb, loaded, loaded.exports);
-const { isRecurringDueAtEditAllowed, isRecurringDueAtInRange, recurringDueAtSchema } =
-	loaded.exports;
+const {
+	isRecurringAnchorAllowed,
+	isRecurringDueAtEditAllowed,
+	isRecurringDueAtInRange,
+	recurringDueAtSchema,
+} = loaded.exports;
 
 test('a due date far in the past or future is out of range', (t) => {
 	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });
@@ -36,4 +40,23 @@ test('an edit may not move the due date out of range but may resend the current 
 	const stale = new Date('2024-01-01T00:00:00.000Z');
 	assert.equal(isRecurringDueAtEditAllowed('2024-01-01T00:00:00.000Z', stale), true);
 	assert.equal(isRecurringDueAtEditAllowed('2023-01-01T00:00:00.000Z', stale), false);
+});
+
+test('a month-end start day is a valid anchor for the clamped first due date', () => {
+	assert.equal(
+		isRecurringAnchorAllowed('2026-01-31T11:00:00.000Z', '2026-02-28T11:00:00.000Z'),
+		true,
+	);
+});
+
+test('an anchor after the first due date or years before it is rejected', () => {
+	assert.equal(
+		isRecurringAnchorAllowed('2026-03-01T11:00:00.000Z', '2026-02-28T11:00:00.000Z'),
+		false,
+	);
+	assert.equal(
+		isRecurringAnchorAllowed('2020-01-31T11:00:00.000Z', '2026-02-28T11:00:00.000Z'),
+		false,
+	);
+	assert.equal(isRecurringAnchorAllowed('not-a-date', '2026-02-28T11:00:00.000Z'), false);
 });

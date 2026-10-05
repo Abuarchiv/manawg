@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { hasCapturingMemberPayment, lockAccount } from './account-deletion';
 import { deleteWgCascade } from './delete-wg';
+import { releaseMemberChores } from './member-departure';
 import {
 	accountDeletions,
 	calendarSubscriptions,
@@ -89,6 +90,7 @@ export async function removeAccountFromWgs(
 				pushOptIn: false,
 			})
 			.where(eq(wgMembers.id, membership.id));
+		await releaseMemberChores(tx, membership.wgId, membership.id);
 		const newAdminId = membership.role === 'admin' ? successor.id : null;
 		if (newAdminId) {
 			await tx.update(wgMembers).set({ role: 'admin' }).where(eq(wgMembers.id, newAdminId));

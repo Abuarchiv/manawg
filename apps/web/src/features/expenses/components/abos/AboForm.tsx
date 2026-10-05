@@ -22,7 +22,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Spinner } from '@/components/ui/spinner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
-import { inputDateToIso } from '@/core/utils/local-date';
+import { inputDateToIso, todayInputValue } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import type { AboSplit, MemberOption } from '@/features/expenses/components/abos/abos-types';
 import { SplitReview } from '@/features/expenses/components/ausgaben/SplitReview';
@@ -82,14 +82,6 @@ function buildEqualSplits(members: MemberOption[], amountCents: number): AboSpli
 		debtorMemberId: member.id,
 		amountCents: base + (index < remainder ? 1 : 0),
 	}));
-}
-
-function todayInputValue(): string {
-	const now = new Date();
-	const year = now.getFullYear();
-	const month = String(now.getMonth() + 1).padStart(2, '0');
-	const day = String(now.getDate()).padStart(2, '0');
-	return `${year}-${month}-${day}`;
 }
 
 function isoDateToInput(iso: string): string {

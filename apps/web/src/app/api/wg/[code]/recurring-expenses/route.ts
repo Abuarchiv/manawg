@@ -28,6 +28,7 @@ import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import {
+	isRecurringAnchorAllowed,
 	isRecurringDueAtEditAllowed,
 	recurringDueAtSchema,
 } from '@/core/validators/recurring-due-date';
@@ -66,6 +67,8 @@ const createRecurringSchema = z.object({
 	paidByMemberId: z.string().uuid(),
 	intervalMonths: z.number().int().min(1).max(24).default(1),
 	nextDueAt: recurringDueAtSchema,
+	/** Unclamped start day; later due dates keep its day-of-month. */
+	anchorAt: z.string().datetime({ offset: true }).optional(),
 	splits: z.array(splitSchema).min(1).max(50),
 });
 
@@ -164,9 +167,17 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 		if (issues.fieldErrors.description) return badRequest('description_invalid');
 		if (issues.fieldErrors.paidByMemberId) return badRequest('member_id_invalid');
 		if (issues.fieldErrors.intervalMonths) return badRequest('interval_invalid');
-		if (issues.fieldErrors.nextDueAt) return badRequest('due_date_invalid');
+		if (issues.fieldErrors.nextDueAt || issues.fieldErrors.anchorAt) {
+			return badRequest('due_date_invalid');
+		}
 		if (issues.fieldErrors.splits) return badRequest('splits_invalid');
 		return badRequest('invalid_body');
+	}
+	if (
+		parsed.data.anchorAt !== undefined &&
+		!isRecurringAnchorAllowed(parsed.data.anchorAt, parsed.data.nextDueAt)
+	) {
+		return badRequest('due_date_invalid');
 	}
 	if (parsed.data.currency !== 'EUR') return badRequest('recurring_currency_unsupported');
 	const splitCheck = validateSplits(parsed.data.amountCents, parsed.data.splits);
@@ -287,7 +298,7 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 						amountCents: parsed.data.amountCents,
 						intervalMonths: parsed.data.intervalMonths,
 						nextDueAt: new Date(parsed.data.nextDueAt),
-						anchorAt: new Date(parsed.data.nextDueAt),
+						anchorAt: new Date(parsed.data.anchorAt ?? parsed.data.nextDueAt),
 						splitsJson: JSON.stringify(parsed.data.splits),
 					})
 					.returning();
@@ -498,9 +509,17 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 				splitsJson: JSON.stringify(splits),
 				updatedAt: new Date(),
 			})
-			.where(and(eq(recurringExpenses.id, parsed.data.id), eq(recurringExpenses.wgId, wg.id)))
+			// Compare-and-set on the due date: a concurrent booking (cron or
+			// "Erfassen") must not be undone by writing the stale date back.
+			.where(
+				and(
+					eq(recurringExpenses.id, parsed.data.id),
+					eq(recurringExpenses.wgId, wg.id),
+					eq(recurringExpenses.nextDueAt, template.nextDueAt),
+				),
+			)
 			.returning();
-		if (!updated) return notFound('recurring_expense_not_found');
+		if (!updated) return conflict('recurring_expense_changed', 'recurring_expense_changed');
 		await recordAuditEvent({
 			wgId: wg.id,
 			memberId: auth.member.memberId,

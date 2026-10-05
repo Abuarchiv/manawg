@@ -4,7 +4,7 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { apiError, badRequest, notFound, tooMany } from '@/core/http/api-errors';
+import { apiError, badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
@@ -246,7 +246,12 @@ export const PATCH = withWgRoute<{ id: string }>(
 							eq(recurringExpenses.wgId, wgId),
 							isNotNull(recurringExpenses.pausedAt),
 						)
-					: and(eq(recurringExpenses.id, id), eq(recurringExpenses.wgId, wgId));
+					: and(
+							eq(recurringExpenses.id, id),
+							eq(recurringExpenses.wgId, wgId),
+							// Compare-and-set: a concurrent booking must not be undone.
+							eq(recurringExpenses.nextDueAt, template.nextDueAt),
+						);
 		const updateValues = {
 			description: nextDescription,
 			amountCents: nextAmountCents,
@@ -277,6 +282,9 @@ export const PATCH = withWgRoute<{ id: string }>(
 				.limit(1);
 			const current = currentRows[0];
 			if (!current) return notFound('recurring_expense_not_found');
+			if (pauseTransition === null) {
+				return conflict('recurring_expense_changed', 'recurring_expense_changed');
+			}
 			return NextResponse.json({ recurringExpense: serialize(current) });
 		}
 

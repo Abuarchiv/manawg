@@ -406,6 +406,10 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 			},
 		},
 		'@/features/expenses/expenses': expenseHelpers,
+		'@/features/expenses/paid-by-guard': loadTypeScript(
+			path.join(process.cwd(), 'src/features/expenses/paid-by-guard.ts'),
+			{},
+		),
 		'@/features/expenses/split-math': {
 			splitValidationErrorCode: (reason) => reason,
 			validateSplits: (amount, splits) =>
@@ -697,6 +701,7 @@ function getHarness({ expenseCount, readLimited = false }) {
 		'@/features/expenses/expense-constants': { AMOUNT_MAX_CENTS: 100_000_000, AMOUNT_MIN_CENTS: 1 },
 		'@/features/expenses/expense-payments': { loadCompletedExpensePayments: async () => [] },
 		'@/features/expenses/expenses': stub,
+		'@/features/expenses/paid-by-guard': stub,
 		'@/features/expenses/split-math': stub,
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	});

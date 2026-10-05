@@ -643,6 +643,10 @@ test(
 				{
 					'./account-deletion': accountDeletion,
 					'./delete-wg': deleteWg,
+					'./member-departure': loadTypeScript(
+						path.join(process.cwd(), 'src/core/db/member-departure.ts'),
+						{ './schema': schema },
+					),
 					'./schema': schema,
 					'./transaction': transaction,
 				},

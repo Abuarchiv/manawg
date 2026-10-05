@@ -224,7 +224,14 @@ export const GET = withWgRoute(
 			.where(eq(expenses.wgId, wgId))
 			.orderBy(desc(expenses.occurredAt));
 
-		if (rows.length === 0) return NextResponse.json({ expenses: [] });
+		// Payments are a pair-level ledger, independent of any expense: after
+		// the last expense is deleted, completed repayments still shift balances.
+		if (rows.length === 0) {
+			return NextResponse.json({
+				expenses: [],
+				payments: await loadCompletedExpensePayments(wgId),
+			});
+		}
 
 		// Balances need the full history, so the list stays complete. Splits are
 		// joined by WG instead of `inArray(expenseIds)`: one bind parameter per
@@ -255,7 +262,7 @@ export const GET = withWgRoute(
 	},
 	{
 		fixture: () => {
-			return NextResponse.json({ expenses: [] });
+			return NextResponse.json({ expenses: [], payments: [] });
 		},
 	},
 );

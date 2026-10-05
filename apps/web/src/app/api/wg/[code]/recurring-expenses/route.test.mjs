@@ -135,7 +135,7 @@ function harness({ callerId = otherMemberId, isAdmin = false } = {}) {
 		'@/core/infra/observability': { logApiError: () => {} },
 		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
 		'@/features/expenses/expense-payments': { withExpensePaymentLock: async () => {} },
-		'@/features/expenses/expenses': { checkPaidByGuard: () => ({ ok: true }) },
+		'@/features/expenses/paid-by-guard': { checkPaidByGuard: () => ({ ok: true }) },
 		'drizzle-orm': new Proxy({}, { get: () => () => ({}) }),
 		'next/server': {
 			NextResponse: Object.assign(class extends Response {}, {
