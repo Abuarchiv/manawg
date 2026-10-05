@@ -3,6 +3,7 @@
 import { safeLocalStorage } from '@/core/utils/browser';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { z } from 'zod';
+import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from './limits';
 import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from './member-header';
 
 const STORAGE_PREFIX = 'manawg_identity:';
@@ -10,11 +11,9 @@ const KNOWN_WGS_KEY = 'manawg_known_wgs';
 
 const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const NAME_MAX_LENGTH = 80;
-
 const storedIdentitySchema = z.object({
 	memberId: z.string().regex(UUID_V4_PATTERN, 'memberId must be a valid UUID v4'),
-	name: z.string().min(1).max(NAME_MAX_LENGTH),
+	name: z.string().min(1).max(MEMBER_NAME_MAX_LENGTH),
 	// Used only to keep local offline records separated when this browser switches accounts.
 	authUserId: z.string().regex(UUID_V4_PATTERN).optional(),
 	// Session token (see @/core/guards/member-token). Optional so identities
@@ -23,10 +22,8 @@ const storedIdentitySchema = z.object({
 	memberToken: z.string().min(1).optional(),
 });
 
-// WG names may be up to 100 characters (POST/PATCH /api/wg); with 80, long names
-// would be silently dropped on read and missing from the offline page.
-const WG_NAME_MAX_LENGTH = 100;
-
+// Same limit as POST/PATCH /api/wg: a shorter one would silently drop long
+// names on read and hide them from the offline page.
 const knownWgSchema = z.object({
 	code: z.string(),
 	name: z.string().min(1).max(WG_NAME_MAX_LENGTH),

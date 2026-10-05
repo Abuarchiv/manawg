@@ -190,6 +190,7 @@ function harness({
 			gt: (column, value) => condition('gt', column, value),
 			sql: () => condition('sql'),
 		},
+		'@/shared/lib/limits': { MEMBER_NAME_MAX_LENGTH: 80, WG_NAME_MAX_LENGTH: 100 },
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	};
 	const source = readFileSync(path.join(webDir, 'src/app/api/wg/route.ts'), 'utf8');

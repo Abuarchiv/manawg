@@ -7,10 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { apiFetch } from '@/core/infra/api-client';
+import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
-
-const WG_NAME_MAX = 100;
 
 interface WgNameSectionProps {
 	wgName: string;
@@ -74,7 +73,7 @@ export function WgNameSection({ wgName, shareCode, memberId, memberToken }: WgNa
 					<Input
 						id="wg-name"
 						value={name}
-						maxLength={WG_NAME_MAX}
+						maxLength={WG_NAME_MAX_LENGTH}
 						onChange={(event) => {
 							setName(event.target.value);
 							setSaved(false);

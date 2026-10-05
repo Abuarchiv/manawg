@@ -17,12 +17,12 @@ import { E2E_CREATED_WG, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
 import { generateShareCode, isValidShareCode } from '@/core/utils/share-code';
+import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const WG_NAME_MIN = 1;
-const WG_NAME_MAX = 100;
 const SHARE_CODE_RETRIES = 5;
 
 type CachedJsonResponse = { status: number; body: unknown };
@@ -44,7 +44,7 @@ function replayResponse(response: CachedJsonResponse): NextResponse {
 }
 
 const createWgSchema = z.object({
-	name: z.string().trim().min(WG_NAME_MIN).max(WG_NAME_MAX),
+	name: z.string().trim().min(WG_NAME_MIN).max(WG_NAME_MAX_LENGTH),
 	creatorName: z.string().trim().min(WG_NAME_MIN).max(LIMITS.NAME_MAX),
 });
 

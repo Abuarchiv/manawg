@@ -49,7 +49,7 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 		logApiError('[api/account DELETE] auth error', err);
 		return apiError('db_error', 503);
 	}
-	if (!user) return apiError('unauthorized', 401, 'auth_required');
+	if (!user) return apiError('auth_required', 401, 'auth_required');
 
 	try {
 		const { url } = getSupabaseEnv();
