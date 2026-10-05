@@ -143,7 +143,14 @@ export const pushSubscriptions = pgTable(
 	},
 	(t) => ({
 		memberIdx: index('push_subscriptions_member_idx').on(t.memberId),
-		endpointIdx: uniqueIndex('push_subscriptions_endpoint_idx').on(t.endpoint),
+		// One browser endpoint may serve the same account in several WGs, so the
+		// subscription is unique per member, not per endpoint. Foreign accounts are
+		// kept off a shared endpoint by the subscribe route.
+		memberEndpointUnique: uniqueIndex('push_subscriptions_member_endpoint_idx').on(
+			t.memberId,
+			t.endpoint,
+		),
+		endpointIdx: index('push_subscriptions_endpoint_lookup_idx').on(t.endpoint),
 	}),
 );
 
