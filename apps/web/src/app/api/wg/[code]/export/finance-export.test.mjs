@@ -90,6 +90,7 @@ const completedPayments = [
 
 function createExportRoute({ failedTable } = {}) {
 	const columns = {
+		announcementComments: ['announcementId'],
 		announcements: ['wgId'],
 		auditEvents: ['wgId'],
 		chores: ['wgId'],
@@ -99,6 +100,8 @@ function createExportRoute({ failedTable } = {}) {
 		memberAbsences: ['wgId'],
 		recurringExpenses: ['wgId'],
 		shoppingItems: ['wgId'],
+		wgChatMessages: ['wgId'],
+		wgEvents: ['wgId'],
 		wgMembers: ['wgId'],
 	};
 	const tables = Object.fromEntries(
@@ -141,6 +144,7 @@ function createExportRoute({ failedTable } = {}) {
 						return rows.slice(offset, offset + limit);
 					}),
 					{
+						innerJoin: () => query,
 						where: (condition) => {
 							rows = rows.filter((row) => matches(row, condition));
 							return query;
@@ -161,8 +165,8 @@ function createExportRoute({ failedTable } = {}) {
 		}),
 	};
 	const logged = [];
+	const exportModule = loadTs('src/core/reads/export.ts');
 	const { GET } = loadTs('src/app/api/wg/[code]/export/route.ts', {
-		'@/core/db': { db, ...tables },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/http/api-errors': {
 			badRequest: (error) => Response.json({ error }, { status: 400 }),
@@ -183,14 +187,18 @@ function createExportRoute({ failedTable } = {}) {
 		},
 		'@/core/infra/observability': { logApiError: (...args) => logged.push(args) },
 		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }) },
-		'@/core/reads/export': loadTs('src/core/reads/export.ts'),
-		'drizzle-orm': {
-			and: (...items) => ({ op: 'and', items }),
-			asc: () => null,
-			desc: () => null,
-			eq: (column, value) => ({ op: 'eq', column, value }),
-			inArray: (column, values) => ({ op: 'inArray', column, values }),
-		},
+		'@/core/reads/export': exportModule,
+		'@/core/reads/export-queries': loadTs('src/core/reads/export-queries.ts', {
+			'@/core/db': { db, ...tables },
+			'drizzle-orm': {
+				and: (...items) => ({ op: 'and', items }),
+				asc: () => null,
+				desc: () => null,
+				eq: (column, value) => ({ op: 'eq', column, value }),
+				inArray: (column, values) => ({ op: 'inArray', column, values }),
+			},
+			'./export': exportModule,
+		}),
 		'next/server': { NextResponse: Response },
 	});
 	return {
