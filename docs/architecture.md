@@ -117,6 +117,9 @@ fail-open) is a separate best-effort dedup for audit side effects only.
 - Balances: `features/expenses/debts.ts` aggregates unsettled splits per debtor/creditor pair;
   `debt-reduction.ts` computes net balances (including completed PayPal payments) and
   `simplifyDebts` for settlement suggestions.
+- Paid-by rule (`features/expenses/paid-by-guard.ts`): whoever records an expense paid by
+  someone else must bear a positive share. It applies to manual entry, Abos and CSV/OCR imports;
+  only a verified WG admin may import a shared history with rows they are not part of.
 - Manual settlement sets `expense_splits.settled_at`
   (`/api/wg/<code>/expenses/[id]/splits/[splitId]/settle`, `/expenses/settle-batch`).
 - PayPal (`/api/wg/<code>/paypal/{connect,order,capture}`, `features/expenses/paypal-*.ts`): the
@@ -127,7 +130,9 @@ fail-open) is a separate best-effort dedup for audit side effects only.
   `capturing` rows older than 15 minutes, because they block the WG's finances. All of PayPal is
   off when `PAYPAL_*` is empty. Operator setup: [paypal-setup.md](paypal-setup.md).
 - Recurring expenses ("Abos") are templates in `recurring_expenses`, materialized by the
-  `recurring-advance` cron.
+  `recurring-advance` cron. `anchor_at` keeps the day-of-month (31.01 → 28.02 → 31.03); edits are
+  a compare-and-set on `next_due_at` so a concurrent booking is never written back
+  (`409 recurring_expense_changed`).
 
 ## Offline queue
 
@@ -207,8 +212,9 @@ fail-open) is a separate best-effort dedup for audit side effects only.
 
 ## Cron jobs
 
-Four Vercel crons, see the table in the [README](../README.md#cron-jobs). All use
-`verifyCronSecret` (constant-time bearer compare) and fail closed without `CRON_SECRET`, cap
+Four Vercel crons, see the table in the [README](../README.md#cron-jobs). All open with
+`requireCronSecret` (constant-time bearer compare, `core/infra/cron-auth.ts`) and fail closed
+without `CRON_SECRET`, cap
 work per run (batches, limits) and leave the rest to the next run. Reminder crons deduplicate
 with claim rows/throttle timestamps so a re-run does not notify twice.
 
@@ -236,6 +242,13 @@ with claim rows/throttle timestamps so a re-run does not notify twice.
   (`core/offline/offline-queue.ts`).
 - **Redacted logging.** Raw errors copied stacks and provider payloads (Postgres, PayPal) into
   long-lived logs, so only label and error name are logged (`core/infra/observability.ts`).
+- **Shared input limits.** Forms and API validation read name limits from
+  `shared/lib/limits.ts`, so browser and server reject the same values; a test keeps it equal to
+  the database's `LIMITS.NAME_MAX`.
+- **Deleted means deleted.** A deleted chat message loses its text at rest, the audit log keeps
+  no preview, and exports never contain deleted text or images.
+- **Migrations give up instead of queueing.** `db-migrate.mjs` sets `lock_timeout = 5s`, so DDL
+  that cannot get its lock rolls back rather than stalling every query on the table.
 - **Baseline migration with adoption.** The push-era migration chain could not replay on an empty
   database; existing databases record the baseline as applied instead of executing it
   (`scripts/db-migrate.mjs`).
