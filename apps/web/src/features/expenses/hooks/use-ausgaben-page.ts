@@ -100,7 +100,6 @@ export function useAusgabenPage() {
 		const timerId = window.setTimeout(() => {
 			document.getElementById(`expense-${highlightedId}`)?.scrollIntoView({
 				block: 'center',
-				behavior: 'smooth',
 			});
 		}, 80);
 		return () => window.clearTimeout(timerId);
@@ -111,7 +110,6 @@ export function useAusgabenPage() {
 		const timerId = window.setTimeout(() => {
 			document.getElementById('recurring-expenses')?.scrollIntoView({
 				block: 'start',
-				behavior: 'smooth',
 			});
 		}, 80);
 		return () => window.clearTimeout(timerId);

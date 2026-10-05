@@ -440,21 +440,26 @@ export function AboForm({
 						</FieldGroup>
 					)}
 					{splitError && <FieldError id="abo-splits-error">{splitError}</FieldError>}
-					{splitMode !== 'manual' && typeof splitPreview !== 'string' && (
-						<SplitReview
-							members={splitCandidates}
-							splits={splitPreview}
-							paidByMemberId={paidByMemberId}
-						/>
-					)}
+					{splitMode !== 'manual' &&
+						(typeof splitPreview === 'string' ? (
+							<FieldDescription>
+								Betrag eingeben, dann wird gleichmäßig aufgeteilt.
+							</FieldDescription>
+						) : (
+							<SplitReview
+								members={splitCandidates}
+								splits={splitPreview}
+								paidByMemberId={paidByMemberId}
+							/>
+						))}
 				</FieldSet>
+			</FieldGroup>
+			<div className="sticky bottom-0 mt-auto flex flex-col gap-2 bg-popover pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
 				{(formError || saveError) && (
 					<Alert variant="destructive">
 						<AlertDescription>{formError ?? saveError}</AlertDescription>
 					</Alert>
 				)}
-			</FieldGroup>
-			<div className="sticky bottom-0 mt-auto flex flex-col gap-2 bg-popover pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
 				<Button type="submit" className="w-full whitespace-normal" disabled={submitting}>
 					{submitting && <Spinner data-icon="inline-start" />}
 					{mode === 'create' ? 'Fixkosten anlegen' : 'Speichern'}
