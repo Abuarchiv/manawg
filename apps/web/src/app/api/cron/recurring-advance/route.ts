@@ -225,6 +225,20 @@ async function advanceTemplate(template: DueRecurring): Promise<CreatedAdvance[]
 	return created;
 }
 
+/** Runs `task` over `items` at most {@link TEMPLATE_BATCH_SIZE} at a time. */
+async function settleInBatches<T, R>(
+	items: readonly T[],
+	task: (item: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+	const settled: PromiseSettledResult<R>[] = [];
+	for (let index = 0; index < items.length; index += TEMPLATE_BATCH_SIZE) {
+		settled.push(
+			...(await Promise.allSettled(items.slice(index, index + TEMPLATE_BATCH_SIZE).map(task))),
+		);
+	}
+	return settled;
+}
+
 export const GET = withCronLogging(
 	'recurring-advance',
 	async (req: NextRequest): Promise<NextResponse> => {
@@ -261,16 +275,7 @@ export const GET = withCronLogging(
 
 		// allSettled, not all: one corrupt template (DB error, constraint
 		// violation) must not block advancing every other WG's templates.
-		const settled: PromiseSettledResult<CreatedAdvance[]>[] = [];
-		for (let index = 0; index < due.length; index += TEMPLATE_BATCH_SIZE) {
-			settled.push(
-				...(await Promise.allSettled(
-					due
-						.slice(index, index + TEMPLATE_BATCH_SIZE)
-						.map((template) => advanceTemplate(template)),
-				)),
-			);
-		}
+		const settled = await settleInBatches(due, advanceTemplate);
 		const created: CreatedAdvance[] = [];
 		let failedTemplates = 0;
 		for (const result of settled) {
@@ -282,34 +287,35 @@ export const GET = withCronLogging(
 			}
 		}
 
-		await Promise.allSettled(
-			created.map(async ({ template, expenseId }) => {
-				await recordAuditEvent({
-					wgId: template.wgId,
-					memberId: null,
-					eventType: 'recurring.charged',
-					entityType: 'expense',
-					entityId: expenseId,
-					summary: `Fixkosten-Buchung ${template.description} wurde automatisch eingetragen.`,
-					metadata: {
-						recurringExpenseId: template.id,
-						amountCents: template.amountCents,
-						currency: 'EUR',
-						description: template.description,
-					},
-				});
-				await dispatchNotificationSafely({
-					wg: { id: template.wgId, name: template.wgName, shareCode: template.shareCode },
-					event: 'expense.recurring_charged',
-					payload: {
-						description: template.description,
-						amountCents: template.amountCents,
-						currency: 'EUR',
-						expenseId,
-					},
-				});
-			}),
-		);
+		// Batched like the advances: on the 1st of the month hundreds of bookings
+		// fire at once, and an unbounded fan-out would exhaust the small
+		// connection pool (audit rows are then lost silently).
+		await settleInBatches(created, async ({ template, expenseId }) => {
+			await recordAuditEvent({
+				wgId: template.wgId,
+				memberId: null,
+				eventType: 'recurring.charged',
+				entityType: 'expense',
+				entityId: expenseId,
+				summary: `Fixkosten-Buchung ${template.description} wurde automatisch eingetragen.`,
+				metadata: {
+					recurringExpenseId: template.id,
+					amountCents: template.amountCents,
+					currency: 'EUR',
+					description: template.description,
+				},
+			});
+			await dispatchNotificationSafely({
+				wg: { id: template.wgId, name: template.wgName, shareCode: template.shareCode },
+				event: 'expense.recurring_charged',
+				payload: {
+					description: template.description,
+					amountCents: template.amountCents,
+					currency: 'EUR',
+					expenseId,
+				},
+			});
+		});
 
 		return NextResponse.json({
 			ok: failedTemplates === 0,
