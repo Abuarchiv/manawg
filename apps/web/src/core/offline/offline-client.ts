@@ -2,6 +2,7 @@
 
 import { apiFetch } from '@/core/infra/api-client';
 import { safeLocalStorage } from '@/core/utils/browser';
+import { isRecord } from '@/core/utils/is-record';
 import { getIdentity } from '@/shared/lib/identity';
 import { isPendingImageToken, removePendingImage, uploadPendingImageToken } from './offline-images';
 import {
@@ -93,10 +94,6 @@ async function withOfflineQueueLock<T>(
 	} catch {
 		return { acquired: false };
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isStringOrNull(value: unknown): value is string | null {
