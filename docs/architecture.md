@@ -164,6 +164,12 @@ plans one shared protocol.
   applies per-category preferences (`notify_*` columns), quiet hours (Berlin time, skipped for
   `urgent`) and `push_opt_in`, and sends in batches of 10. `dispatchNotificationSafely` adds a
   5 s timeout so a push failure never fails the triggering request.
+- A browser endpoint is stored once per member (`(member_id, endpoint)` unique), so one device
+  receives pushes for every WG of the same account. Unsubscribing in one WG keeps the browser
+  subscription while another WG still uses it (`endpointInUse`); an endpoint still owned by an
+  active member of another account is refused (`endpoint_owned`).
+- Payloads carry a relative `/wg/<code>/…` link, a TTL (12 h urgent, 24 h otherwise) and a
+  10 s request timeout, so stale reminders are not delivered days later.
 - Without VAPID variables push is disabled; in production `VAPID_SUBJECT` is required.
 
 ## Privacy and observability
@@ -266,6 +272,10 @@ with claim rows/throttle timestamps so a re-run does not notify twice.
 - **Baseline migration with adoption.** The push-era migration chain could not replay on an empty
   database; existing databases record the baseline as applied instead of executing it
   (`scripts/db-migrate.mjs`).
+- **Calendar feed keeps 90 days of history.** Subscribed calendar apps mirror the feed and delete
+  what leaves it; starting at today removed yesterday's events from everyone's phone.
+- **Event years 1900–2200.** Wide enough for yearly birthdays; a typo like year 0026 or 20266 is
+  rejected in the form and the API instead of being stored and expanded.
 
 ## Glossary
 
