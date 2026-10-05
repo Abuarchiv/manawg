@@ -238,6 +238,7 @@ test.describe('private image url', () => {
 				CRON_SECRET: 'cron-secret',
 				UPSTASH_REDIS_REST_URL: 'https://redis.example',
 				UPSTASH_REDIS_REST_TOKEN: 'upstash-token',
+				SUPABASE_SERVICE_ROLE_KEY: 'server-key',
 			});
 
 			const complete = checkEnv(productionEnv());
@@ -260,6 +261,12 @@ test.describe('private image url', () => {
 			});
 			expect(supabase.ok).toBe(false);
 			expect(supabase.missingRequired).toContain('SUPABASE_STORAGE_BUCKET');
+
+			const withoutServiceRole = checkEnv(
+				(({ SUPABASE_SERVICE_ROLE_KEY: _dropped, ...rest }) => rest)(productionEnv()),
+			);
+			expect(withoutServiceRole.ok).toBe(false);
+			expect(withoutServiceRole.missingRequired).toContain('SUPABASE_SERVICE_ROLE_KEY');
 		});
 	});
 });

@@ -116,7 +116,6 @@ export const DELETE = withWgRoute<{ id: string }>(
 				.select({
 					senderMemberId: wgChatMessages.senderMemberId,
 					deletedAt: wgChatMessages.deletedAt,
-					body: wgChatMessages.body,
 					kind: wgChatMessages.kind,
 					imageUrl: wgChatMessages.imageUrl,
 				})
@@ -137,7 +136,9 @@ export const DELETE = withWgRoute<{ id: string }>(
 
 			const [updated] = await tx
 				.update(wgChatMessages)
-				.set({ deletedAt: new Date() })
+				// Reads already hide a deleted message's text; erase it at rest too,
+				// so "gelöscht" means deleted (GDPR Art. 17), not merely hidden.
+				.set({ deletedAt: new Date(), body: null })
 				.where(
 					and(
 						eq(wgChatMessages.id, id),
@@ -162,7 +163,6 @@ export const DELETE = withWgRoute<{ id: string }>(
 			entityId: id,
 			summary: `${auth.member.name} hat eine Chat-Nachricht gelöscht.`,
 			metadata: {
-				preview: row.body?.slice(0, 80) ?? null,
 				kind: row.kind,
 				adminOverride: !isAuthor,
 			},

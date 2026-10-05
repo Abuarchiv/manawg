@@ -491,3 +491,19 @@ test('Vercel config loads the public Sentry config wrapper', () => {
 	);
 	assert.equal(typeof module.exports.default?.headers, 'function');
 });
+
+test('every route error boundary tag survives Sentry tag filtering', async () => {
+	const { readdirSync } = await import('node:fs');
+	const { SAFE_TAG_VALUES } = await import('../src/core/infra/sentry-privacy.ts');
+	const appDir = fileURLToPath(new URL('../src/app', import.meta.url));
+	const boundaryFiles = readdirSync(appDir, { recursive: true }).filter((file) =>
+		/(^|[/\\])(global-)?error\.tsx$/.test(String(file)),
+	);
+	assert.ok(boundaryFiles.length > 0);
+	for (const file of boundaryFiles) {
+		const source = readFileSync(path.join(appDir, String(file)), 'utf8');
+		const tag = source.match(/boundary(?:="|: ')([a-z-]+)/)?.[1];
+		assert.ok(tag, `${file} has no boundary tag`);
+		assert.ok(SAFE_TAG_VALUES.boundary.has(tag), `${file}: boundary "${tag}" is not allowed`);
+	}
+});
