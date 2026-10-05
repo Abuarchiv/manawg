@@ -75,6 +75,8 @@ export function useChoreActions(ctx: ChorePageContext) {
 		}
 		completionRequestKeysRef.current.set(chore.id, idempotencyKey);
 		const previousChore = items.find((item) => item.id === chore.id) ?? chore;
+		updateChores((current) => current.filter((item) => item.id !== chore.id));
+
 		const result = await apiFetch<{ chore?: Pick<Chore, 'id' | 'nextDueAt' | 'assignedMemberId'> }>(
 			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(chore.id)}/complete`,
 			{
