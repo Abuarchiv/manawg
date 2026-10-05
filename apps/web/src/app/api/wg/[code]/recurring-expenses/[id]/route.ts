@@ -20,6 +20,7 @@ import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import {
 	addMonthsFromAnchor,
 	parseRecurringSplits,
+	recurringDueDateMatchesExpected,
 	recurringSplitsMatchAmount,
 } from '@/features/expenses/recurring-expenses';
 import { and, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
@@ -40,6 +41,8 @@ const patchSchema = z.object({
 	nextDueAt: z.string().datetime({ offset: true }).optional(),
 	splits: z.array(splitSchema).min(1).max(50).optional(),
 	paused: z.boolean().optional(),
+	/** The due date the editor loaded; a booking since then makes the edit stale. */
+	expectedNextDueAt: z.string().datetime({ offset: true }).optional(),
 });
 
 function serialize(row: typeof recurringExpenses.$inferSelect) {
@@ -137,6 +140,15 @@ export const PATCH = withWgRoute<{ id: string }>(
 		if (!template) return notFound('recurring_expense_not_found');
 		const denied = await requireOwnerOrAdmin(wgId, auth.member, template.createdByMemberId);
 		if (denied) return denied;
+		if (
+			parsed.data.expectedNextDueAt !== undefined &&
+			!recurringDueDateMatchesExpected(
+				template.nextDueAt.toISOString(),
+				parsed.data.expectedNextDueAt,
+			)
+		) {
+			return conflict('recurring_expense_changed', 'recurring_expense_changed');
+		}
 		if (
 			parsed.data.nextDueAt !== undefined &&
 			!isRecurringDueAtEditAllowed(parsed.data.nextDueAt, template.nextDueAt)

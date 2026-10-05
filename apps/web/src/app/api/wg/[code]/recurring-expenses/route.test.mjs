@@ -208,3 +208,28 @@ test('PATCH resending the unchanged due date keeps the cadence anchor', async (t
 	assert.equal(moved.status, 200);
 	assert.equal(state.template.anchorAt.toISOString(), '2026-11-15T11:00:00.000Z');
 });
+
+test('PATCH from an editor that loaded an older due date is refused, not written back', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });
+	const { state, patch } = harness({ callerId: creatorId });
+	const loadedDueAt = state.template.nextDueAt.toISOString();
+	// A booking (cron or "Erfassen") moved the template on after the form was opened.
+	state.template.nextDueAt = new Date('2026-11-01T11:00:00.000Z');
+
+	const stale = await patch({
+		description: 'Miete neu',
+		nextDueAt: loadedDueAt,
+		expectedNextDueAt: loadedDueAt,
+	});
+	assert.equal(stale.status, 409);
+	assert.deepEqual(await stale.json(), { error: 'recurring_expense_changed' });
+	assert.equal(state.updates.length, 0);
+	assert.equal(state.template.nextDueAt.toISOString(), '2026-11-01T11:00:00.000Z');
+
+	const fresh = await patch({
+		description: 'Miete neu',
+		expectedNextDueAt: '2026-11-01T11:00:00.000Z',
+	});
+	assert.equal(fresh.status, 200);
+	assert.equal(state.template.description, 'Miete neu');
+});

@@ -28,6 +28,9 @@ export function aboSaveErrorMessage(error: string, action: 'angelegt' | 'aktuali
 	if (error === 'recurring_expense_not_found') {
 		return 'Diese Fixkosten existieren nicht mehr. Lade die Liste neu.';
 	}
+	if (error === 'recurring_expense_changed') {
+		return `${prefix}: Sie wurden inzwischen gebucht oder geändert. Die Liste ist neu geladen, bearbeite sie bitte noch einmal.`;
+	}
 	if (error === 'amount_invalid') {
 		return `${prefix}: Prüfe den Betrag.`;
 	}

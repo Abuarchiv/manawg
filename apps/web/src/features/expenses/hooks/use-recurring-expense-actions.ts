@@ -241,6 +241,9 @@ export function useRecurringExpenseActions(
 				paidByMemberId,
 				intervalMonths: recurringIntervalMonths,
 				nextDueAt: nextDueAt.toISOString(),
+				...(editingRecurringExpense
+					? { expectedNextDueAt: editingRecurringExpense.nextDueAt }
+					: {}),
 				...(startsAt && !editingRecurringExpense ? { anchorAt: startsAt } : {}),
 				splits,
 			}),
@@ -317,6 +320,7 @@ export function useRecurringExpenseActions(
 				return;
 			}
 			form.setFormError(recurringTemplateSaveErrorMessage(res.error));
+			if (res.status === 409 && res.error === 'recurring_expense_changed') void reload();
 			finishSaving();
 			return;
 		}

@@ -438,6 +438,17 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 		// expectedNextDueAt compare-and-set.
 		const denied = await requireOwnerOrAdmin(wg.id, auth.member, template.createdByMemberId);
 		if (denied) return denied;
+		// The editor sends the due date it loaded: if a booking moved it since,
+		// saving would write the stale date back and the template would be due again.
+		if (
+			parsed.data.expectedNextDueAt !== undefined &&
+			!recurringDueDateMatchesExpected(
+				template.nextDueAt.toISOString(),
+				parsed.data.expectedNextDueAt,
+			)
+		) {
+			return conflict('recurring_expense_changed', 'recurring_expense_changed');
+		}
 		if (
 			parsed.data.nextDueAt !== undefined &&
 			!isRecurringDueAtEditAllowed(parsed.data.nextDueAt, template.nextDueAt)
@@ -526,7 +537,16 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 				),
 			)
 			.returning();
-		if (!updated) return conflict('recurring_expense_changed', 'recurring_expense_changed');
+		if (!updated) {
+			const [stillThere] = await db
+				.select({ id: recurringExpenses.id })
+				.from(recurringExpenses)
+				.where(and(eq(recurringExpenses.id, parsed.data.id), eq(recurringExpenses.wgId, wg.id)))
+				.limit(1);
+			return stillThere
+				? conflict('recurring_expense_changed', 'recurring_expense_changed')
+				: notFound('recurring_expense_not_found');
+		}
 		await recordAuditEvent({
 			wgId: wg.id,
 			memberId: auth.member.memberId,
