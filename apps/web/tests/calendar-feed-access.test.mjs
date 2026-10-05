@@ -181,7 +181,7 @@ function harness({
 					assert.equal(table, wgs);
 					assert.equal(lock, 'share');
 					state.steps.push('wg-lock');
-					return state.wgExists ? [{ id: wgId }] : [];
+					return state.wgExists ? [{ id: wgId, name: 'Sonnenhof' }] : [];
 				},
 				orderBy() {
 					assert.equal(table, wgEvents);
@@ -224,7 +224,8 @@ function harness({
 			},
 		},
 		'@/features/events/ics': {
-			calendarFeedToIcs: (events) => events.map((event) => event.title).join('\n'),
+			calendarFeedToIcs: (events, calendarName) =>
+				[`CALNAME:${calendarName}`, ...events.map((event) => event.title)].join('\n'),
 		},
 		'drizzle-orm': drizzle,
 		'next/server': { NextResponse: Response },
@@ -260,7 +261,9 @@ test('active Auth-linked calendar feed returns events after locking the WG', asy
 	// The sample event is on 2026-10-01; with the real clock it would eventually drop out of the feed.
 	const response = await withFrozenTime('2026-09-25T12:00:00.000Z', get);
 	assert.equal(response.status, 200);
-	assert.match(await response.text(), /Other member event/);
+	const body = await response.text();
+	assert.match(body, /Other member event/);
+	assert.match(body, /CALNAME:ManaWG · Sonnenhof/);
 	assert.deepEqual(state.steps, ['wg-lock', 'member-check', 'events']);
 });
 
@@ -327,7 +330,10 @@ test('calendar feed keeps all-day events through their final Berlin day across D
 			assert.match(body, /All-day today/);
 			assert.match(body, /All-day span ending today/);
 		});
-		assert.equal(state.expansionWindows[0]?.from, dayStart);
+		assert.equal(
+			state.expansionWindows[0]?.to,
+			new Date(dayStartDate.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+		);
 	}
 });
 
@@ -352,6 +358,7 @@ test('calendar feed loads only events that can occur in the feed window', async 
 	const { state, get } = harness({
 		events: [
 			eventRow('past-single', '2024-01-10T10:00:00.000Z'),
+			eventRow('recent-single', '2026-08-01T10:00:00.000Z'),
 			eventRow('past-ended-series', '2024-01-01T10:00:00.000Z', {
 				recurrence: 'FREQ=WEEKLY;COUNT=3',
 			}),
@@ -367,10 +374,13 @@ test('calendar feed loads only events that can occur in the feed window', async 
 		const body = await response.text();
 		assert.match(body, /old-weekly-series/);
 		assert.match(body, /upcoming-single/);
+		// Recent history stays in the feed so calendar apps do not delete it at midnight.
+		assert.match(body, /recent-single/);
 		assert.doesNotMatch(body, /past-single|past-ended-series|beyond-horizon/);
 	});
 	assert.deepEqual([...new Set(state.expandedEventIds)].sort(), [
 		'old-weekly-series',
+		'recent-single',
 		'upcoming-single',
 	]);
 	assert.ok(state.eventQueries.every((count) => count <= 500));
