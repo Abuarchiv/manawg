@@ -103,7 +103,7 @@ export function useExpenseSubmit(
 			validationErrors.description = 'Gib eine kurze Beschreibung ein.';
 		}
 		if (amountEuros === null || amountEuros < AMOUNT_MIN_EUROS || amountEuros > AMOUNT_MAX_EUROS) {
-			validationErrors.amount = amountErrorMessage(amountEuros);
+			validationErrors.amount = amountErrorMessage(amountEuros, form.amountStr);
 		}
 		if (Object.keys(validationErrors).length > 0) {
 			support.setValidationErrors(validationErrors);

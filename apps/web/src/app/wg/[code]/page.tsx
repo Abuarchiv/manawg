@@ -45,7 +45,7 @@ import {
 import { useReducedMotion } from 'motion/react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 
 const PushPrimingPrompt = dynamic(
 	() => import('@/shared/components/push-priming-prompt').then((m) => m.PushPrimingPrompt),
@@ -56,6 +56,15 @@ const REFRESH_INTERVAL_MS = 30_000;
 const TODAY_VISIBLE = 4;
 
 type PendingAnnouncement = DashboardData['myOpenAnnouncements'][number];
+
+function subscribeOnline(onChange: () => void): () => void {
+	window.addEventListener('online', onChange);
+	window.addEventListener('offline', onChange);
+	return () => {
+		window.removeEventListener('online', onChange);
+		window.removeEventListener('offline', onChange);
+	};
+}
 
 function samePendingAnnouncement(
 	announcement: NonNullable<DashboardData['latestAnnouncement']>,
@@ -71,6 +80,11 @@ function samePendingAnnouncement(
 }
 
 export default function WgHomePage() {
+	const online = useSyncExternalStore(
+		subscribeOnline,
+		() => navigator.onLine,
+		() => true,
+	);
 	const { wg, identity } = useWg();
 	const [todayMoreOpen, setTodayMoreOpen] = useState(false);
 	const [armedChoreId, setArmedChoreId] = useState<string | null>(null);
@@ -271,7 +285,8 @@ export default function WgHomePage() {
 						<StartWelcome />
 					</div>
 				)}
-				{error && (
+				{/* Offline mit vorhandenen Daten meldet schon die Offline-Leiste. */}
+				{error && !(data && !online) && (
 					<div>
 						<LoadErrorBanner
 							message={data ? `${error} Die angezeigten Daten können veraltet sein.` : error}
@@ -376,7 +391,7 @@ export default function WgHomePage() {
 						{eventRead.isLoading && !eventRead.data && (
 							<output className="text-sm text-muted-foreground">Termine werden geladen…</output>
 						)}
-						{eventRead.error && (
+						{eventRead.error && !(online === false && eventRead.data) && (
 							<div className="flex min-w-0 flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
 								<output className="min-w-0 flex-1 basis-48">
 									{eventRead.data
@@ -594,8 +609,8 @@ function TodayRow({
 					size="icon"
 					className="shrink-0"
 					aria-label={armed ? `Bestätigen: ${item.title} erledigt` : `Abhaken: ${item.title}`}
-					aria-pressed={armed}
-					disabled={pending}
+					// aria-disabled statt disabled: sonst verliert der Fokus den Knopf, während gespeichert wird.
+					aria-disabled={pending}
 					onClick={onCheck}
 				>
 					{pending ? (

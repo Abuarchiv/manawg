@@ -164,7 +164,11 @@ export function useShoppingPage({
 		commitItems,
 		load,
 		refreshCount,
-		setAddNotice,
+		// Neuer Hinzufügen-Versuch räumt auch den alten Abhak-Fehler weg.
+		setAddNotice: (notice) => {
+			setAddNotice(notice);
+			if (notice === null) setToggleError(null);
+		},
 	});
 
 	// Nur einmal pro Deep-Link springen, nicht bei jedem Poll/Refresh erneut.
