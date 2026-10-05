@@ -155,6 +155,12 @@ export function useShoppingAdd({
 			return;
 		}
 		addIdempotencyKeyRef.current = { fingerprint, key: idempotencyKey };
+		// Feld sofort leeren; bei Fehlschlag unten wiederherstellen (nur wenn noch leer).
+		let saved = false;
+		if (fromInput) {
+			nameValueRef.current = '';
+			setNewName('');
+		}
 		try {
 			const res = await apiFetch<ShoppingCreateResponse>(`/api/wg/${encodedShareCode}/shopping`, {
 				method: 'POST',
@@ -202,10 +208,8 @@ export function useShoppingAdd({
 						},
 						...prev,
 					]);
-					if (fromInput && nameValueRef.current === submittedName) {
-						setNewName('');
-						removeDraft(draftKey);
-					}
+					saved = true;
+					if (fromInput && nameValueRef.current === '') removeDraft(draftKey);
 					setAddNotice('Offline gespeichert. Wird synchronisiert, sobald ihr wieder online seid.');
 					return;
 				}
@@ -226,11 +230,8 @@ export function useShoppingAdd({
 				setAddError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
-			if (fromInput && nameValueRef.current === submittedName) {
-				setNewName('');
-				removeDraft(draftKey);
-			}
-			toast.success('Artikel hinzugefügt.');
+			saved = true;
+			if (fromInput && nameValueRef.current === '') removeDraft(draftKey);
 			const warningMessage = notificationWarningMessage(res.data.warning);
 			if (warningMessage) toast.info(warningMessage);
 			// Show the created row right away (the POST already returned it) instead of
@@ -241,6 +242,10 @@ export function useShoppingAdd({
 			}
 			void load(true, true);
 		} finally {
+			if (fromInput && !saved && nameValueRef.current === '') {
+				nameValueRef.current = submittedName;
+				setNewName(submittedName);
+			}
 			addingRef.current = false;
 			inFlightRef.current = null;
 			inFlightTextRef.current = null;
@@ -250,8 +255,9 @@ export function useShoppingAdd({
 	}
 
 	function changeName(value: string): void {
-		nameValueRef.current = value;
-		setNewName(value);
+		const next = value.replace(/^\s+/, '');
+		nameValueRef.current = next;
+		setNewName(next);
 	}
 
 	return { newName, changeName, adding, addError, add };
