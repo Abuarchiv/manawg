@@ -45,7 +45,7 @@ import {
 import { useReducedMotion } from 'motion/react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const PushPrimingPrompt = dynamic(
 	() => import('@/shared/components/push-priming-prompt').then((m) => m.PushPrimingPrompt),
@@ -172,6 +172,27 @@ export default function WgHomePage() {
 		);
 	}
 	useVisibilityPausedInterval(() => void load(), REFRESH_INTERVAL_MS);
+	useEffect(() => {
+		if (!completeNotice) return;
+		const timer = setTimeout(() => setCompleteNotice(null), 4000);
+		return () => clearTimeout(timer);
+	}, [completeNotice]);
+	useEffect(() => {
+		if (!armedChoreId || pendingChoreId) return;
+		const timer = setTimeout(() => setArmedChoreId(null), 4000);
+		return () => clearTimeout(timer);
+	}, [armedChoreId, pendingChoreId]);
+	useEffect(() => {
+		const onShow = () => {
+			if (document.visibilityState === 'visible') load();
+		};
+		document.addEventListener('visibilitychange', onShow);
+		window.addEventListener('focus', onShow);
+		return () => {
+			document.removeEventListener('visibilitychange', onShow);
+			window.removeEventListener('focus', onShow);
+		};
+	}, [load]);
 
 	const forYouItems = useMemo(
 		() =>
@@ -266,9 +287,6 @@ export default function WgHomePage() {
 						<h2 id="today-heading" className="font-heading text-xl font-semibold">
 							Für dich
 						</h2>
-						{completeNotice && (
-							<output className="block text-sm text-muted-foreground">{completeNotice}</output>
-						)}
 						{data ? (
 							forYouItems.length > 0 ? (
 								<>
@@ -331,6 +349,9 @@ export default function WgHomePage() {
 								<Skeleton className="h-14 w-full" />
 								<Skeleton className="h-14 w-full" />
 							</output>
+						)}
+						{completeNotice && (
+							<output className="block text-sm text-muted-foreground">{completeNotice}</output>
 						)}
 					</section>
 				)}
@@ -592,9 +613,9 @@ function TodayRow({
 			)}
 			<Link
 				href={item.href}
-				className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg py-1.5 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+				className="flex min-h-11 min-w-0 flex-1 flex-wrap items-center gap-x-2 rounded-lg py-1.5 outline-none transition-colors duration-75 active:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50"
 			>
-				<span className="flex min-w-0 flex-1 flex-col">
+				<span className="flex min-w-16 flex-1 flex-col">
 					<span className="text-[14px] font-medium leading-snug break-words">{item.title}</span>
 					<span
 						className={cn(
@@ -605,12 +626,14 @@ function TodayRow({
 						{pending ? 'Wird gespeichert…' : armed ? 'Nochmal tippen zum Bestätigen' : item.detail}
 					</span>
 				</span>
-				{debtAmount !== undefined && !pending && !armed && (
-					<span className="shrink-0 whitespace-nowrap font-mono text-[12px] font-medium tabular-nums">
-						{debtAmount}
-					</span>
-				)}
-				<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+				<span className="ml-auto flex shrink-0 items-center gap-2">
+					{debtAmount !== undefined && !pending && !armed && (
+						<span className="whitespace-nowrap font-mono text-[12px] font-medium tabular-nums">
+							{debtAmount}
+						</span>
+					)}
+					<ChevronRight className="size-4 text-muted-foreground" aria-hidden />
+				</span>
 			</Link>
 		</li>
 	);
