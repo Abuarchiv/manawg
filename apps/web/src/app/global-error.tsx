@@ -8,6 +8,7 @@ import {
 	EmptyHeader,
 	EmptyMedia,
 } from '@/components/ui/empty';
+import { captureException } from '@/core/infra/capture-client';
 import { THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import { TriangleAlert } from 'lucide-react';
 import { useEffect } from 'react';
@@ -17,9 +18,7 @@ export default function GlobalError({
 	reset,
 }: { error: Error & { digest?: string }; reset: () => void }) {
 	useEffect(() => {
-		void import('@/core/infra/observability').then((m) =>
-			m.captureException(error, { boundary: 'global' }),
-		);
+		captureException(error, { boundary: 'global' });
 	}, [error]);
 
 	return (

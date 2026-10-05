@@ -1,7 +1,7 @@
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { isNetworkError } from '@/core/http/error-codes';
-import { captureException } from '@/core/infra/observability';
+import { captureException } from '@/core/infra/capture-client';
 import { syncOfflineActions } from '@/core/offline/offline-client';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';

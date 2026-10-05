@@ -2,7 +2,7 @@
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { captureException } from '@/core/infra/observability';
+import { captureException } from '@/core/infra/capture-client';
 import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';

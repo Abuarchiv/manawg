@@ -9,7 +9,7 @@ import {
 	EmptyHeader,
 	EmptyMedia,
 } from '@/components/ui/empty';
-import { captureException } from '@/core/infra/observability';
+import { captureException } from '@/core/infra/capture-client';
 import { TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';

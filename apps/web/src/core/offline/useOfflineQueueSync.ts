@@ -1,5 +1,6 @@
 'use client';
 
+import { captureException } from '@/core/infra/capture-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { countOfflineActions, getSyncedCountForWg, syncOfflineActions } from './offline-client';
 
@@ -91,9 +92,7 @@ export function useOfflineQueueSync({
 					updateCount();
 				})
 				.catch((err) =>
-					import('@/core/infra/observability').then((m) =>
-						m.captureException(err, { action: 'syncOfflineActions', page: pageRef.current }),
-					),
+					captureException(err, { action: 'syncOfflineActions', page: pageRef.current }),
 				);
 		};
 		const onExternalSync = (event: Event): void => {

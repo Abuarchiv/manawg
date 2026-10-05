@@ -24,6 +24,10 @@ import { gzipSync } from 'node:zlib';
 const KILOBYTE = 1024;
 const SHARED_JS_BUDGET_KB = 120;
 const PER_ROUTE_BUDGET_KB = 55;
+// /offline must run without network: the service worker precaches only the
+// scripts in its HTML, so the Supabase auth client stays a static import there.
+// Every other page loads that client lazily, which leaves the chunk to /offline.
+const ROUTE_BUDGET_OVERRIDES_KB = { '/offline/page': 85 };
 const TESSERACT_INFO_BUDGET_KB = 2500;
 const LAZY_CHUNK_HINTS = ['tesseract'];
 const TESSERACT_CHUNK_HINT = 'tesseract';
@@ -136,8 +140,9 @@ function main() {
 		const routeOnly = chunks.filter((c) => counts.get(c) === 1 && !isLazyChunk(c));
 		const sizeKb = sumGzipKb(routeOnly);
 		perRouteResults.push({ page, sizeKb });
-		if (sizeKb > PER_ROUTE_BUDGET_KB) {
-			failures.push(`Route ${page} = ${sizeKb.toFixed(1)} kB exceeds ${PER_ROUTE_BUDGET_KB} kB`);
+		const budgetKb = ROUTE_BUDGET_OVERRIDES_KB[page] ?? PER_ROUTE_BUDGET_KB;
+		if (sizeKb > budgetKb) {
+			failures.push(`Route ${page} = ${sizeKb.toFixed(1)} kB exceeds ${budgetKb} kB`);
 		}
 	}
 

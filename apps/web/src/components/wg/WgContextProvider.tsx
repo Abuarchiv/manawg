@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MEMBERSHIP_LOST_EVENT, apiFetch } from '@/core/infra/api-client';
+import { captureException } from '@/core/infra/capture-client';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
@@ -325,9 +326,7 @@ export function WgContextProvider({
 			// Network blip — the paused interval/focus listener retries. Log it
 			// so silently stale member lists stay diagnosable instead of
 			// vanishing into an empty catch block.
-			void import('@/core/infra/observability').then((m) =>
-				m.captureException(err, { action: 'refreshMembers', shareCode: encodedShareCode }),
-			);
+			captureException(err, { action: 'refreshMembers', shareCode: encodedShareCode });
 		}
 	}, [accountReady, encodedShareCode, identity, loadSessionMember, wg.id]);
 

@@ -83,13 +83,15 @@ export function AbsencePanel({
 
 	return (
 		<Card id="absences-panel" className={cn('scroll-mt-28', active && 'ring-2 ring-ring')}>
-			<CardHeader className="flex flex-wrap items-start justify-between gap-2">
-				<CardTitle className="break-normal">Abwesenheiten</CardTitle>
-				{absentCount > 0 && (
-					<CardDescription className="break-normal">
-						{`${absentCount} aktuell abwesend`}
-					</CardDescription>
-				)}
+			<CardHeader className="flex flex-wrap items-center justify-between gap-2">
+				<div className="flex min-w-fit flex-1 flex-col gap-1">
+					<CardTitle className="break-normal">Abwesenheiten</CardTitle>
+					{absentCount > 0 && (
+						<CardDescription className="break-normal">
+							{`${absentCount} aktuell abwesend`}
+						</CardDescription>
+					)}
+				</div>
 				<CardAction>
 					<Button
 						variant="outline"
@@ -103,7 +105,7 @@ export function AbsencePanel({
 					</Button>
 				</CardAction>
 			</CardHeader>
-			<CardContent className={cn('flex flex-col gap-0', !formOpen && totalCount === 0 && 'p-0')}>
+			<CardContent className={cn('flex flex-col gap-0', !formOpen && totalCount === 0 && 'hidden')}>
 				<Collapsible open={formOpen}>
 					<CollapsiblePanel>
 						<form

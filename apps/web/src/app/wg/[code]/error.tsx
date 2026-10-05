@@ -9,6 +9,7 @@ import {
 	EmptyHeader,
 	EmptyMedia,
 } from '@/components/ui/empty';
+import { captureException } from '@/core/infra/capture-client';
 import { TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
@@ -20,9 +21,7 @@ interface WgErrorProps {
 
 export default function WgError({ error, reset }: WgErrorProps) {
 	useEffect(() => {
-		void import('@/core/infra/observability').then((m) =>
-			m.captureException(error, { boundary: 'wg-code' }),
-		);
+		captureException(error, { boundary: 'wg-code' });
 	}, [error]);
 
 	return (

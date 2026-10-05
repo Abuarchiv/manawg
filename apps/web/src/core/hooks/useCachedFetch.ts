@@ -46,9 +46,6 @@ const inFlightGeneration = new Map<string, number>();
 const queuedFetches = new Map<string, Promise<void>>();
 const pendingUpdates = new Map<string, DataUpdate<unknown>[]>();
 const rebasingFetches = new Set<string>();
-/** Focus refreshes within this window of the last successful fetch are skipped. */
-const FOCUS_REFRESH_MIN_MS = 10_000;
-const lastSuccessAt = new Map<string, number>();
 
 function cacheKey(url: string, memberId?: string): string {
 	return JSON.stringify([memberId ?? null, url]);
@@ -122,7 +119,6 @@ function startFetch<T>(key: string, url: string, options: CachedFetchOptions): P
 	})
 		.then((result) => {
 			const current = snapshotFor<T>(key);
-			if (result.ok) lastSuccessAt.set(key, Date.now());
 			if (result.ok && rebasingFetches.has(key)) {
 				let data: T | undefined = result.data;
 				for (const update of pendingUpdates.get(key) ?? []) {
@@ -258,13 +254,10 @@ export function useCachedFetch<T>(url: string, options: CachedFetchOptions = {})
 
 	useEffect(() => {
 		void refresh();
-		const onFocus = () => {
-			if (Date.now() - (lastSuccessAt.get(key) ?? 0) < FOCUS_REFRESH_MIN_MS) return;
-			void refresh();
-		};
+		const onFocus = () => void refresh();
 		window.addEventListener('focus', onFocus);
 		return () => window.removeEventListener('focus', onFocus);
-	}, [key, refresh]);
+	}, [refresh]);
 
 	return {
 		data: snapshot.data,
