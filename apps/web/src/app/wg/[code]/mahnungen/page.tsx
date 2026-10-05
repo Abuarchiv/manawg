@@ -245,10 +245,12 @@ export default function ErinnerungenPage() {
 		row.debtorId !== identity.memberId &&
 		members.find((m) => m.id === row.debtorId)?.active !== false;
 	const remindable = rows.filter(canRemind);
+	const mine = remindable.filter((row) => row.creditorId === identity.memberId);
+	const pool = mine.length > 0 ? mine : remindable;
 	const primaryReminder =
-		remindable.find((row) => reminderKey(row) === primaryReminderKey) ??
-		remindable.find((row) => cooldownFor(row.debtorId, row.creditorId, row.currency).allowed) ??
-		remindable[0] ??
+		pool.find((row) => reminderKey(row) === primaryReminderKey) ??
+		pool.find((row) => cooldownFor(row.debtorId, row.creditorId, row.currency).allowed) ??
+		pool[0] ??
 		null;
 
 	const allClear =
@@ -332,9 +334,9 @@ export default function ErinnerungenPage() {
 			data-finance-content
 			className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-3 px-4 py-3"
 		>
-			<header className="flex min-w-0 items-center gap-2">
+			<header className="flex min-w-0 flex-wrap items-center gap-2">
 				<BackLink href={`${wgBaseHref}/ausgaben`} label="Ausgaben" />
-				<h1 className="font-heading min-w-0 flex-1 text-base font-semibold break-words">
+				<h1 className="font-heading min-w-0 flex-1 text-base font-semibold [overflow-wrap:normal] hyphens-auto">
 					Erinnerungen
 				</h1>
 				<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">

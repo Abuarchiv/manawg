@@ -218,6 +218,10 @@ export function ImportWizard() {
 		heading.scrollIntoView({ block: 'start', behavior: 'auto' });
 	}, [step]);
 
+	useEffect(() => {
+		if (error) document.getElementById('import-error')?.scrollIntoView({ block: 'center' });
+	}, [error]);
+
 	const conflicts = useMemo(() => preview?.conflicts ?? [], [preview]);
 	// Import assigns expenses to a member ("aus Listen raus": moved-out members are
 	// not offered as targets). Historic names in the CSV still resolve by name.
@@ -541,7 +545,7 @@ export function ImportWizard() {
 					<ArrowLeft aria-hidden />
 				</Link>
 				<div className="min-w-0 flex-1">
-					<h1 className="font-heading text-base leading-8 font-semibold break-words">
+					<h1 className="font-heading text-base leading-8 font-semibold [overflow-wrap:normal] hyphens-auto">
 						Ausgaben importieren
 					</h1>
 					<p className="text-[12px] text-muted-foreground tabular-nums">

@@ -104,6 +104,8 @@ interface DebtRowProps {
 	memberToken?: string | undefined;
 	memberPayPalMerchantId: (id: string) => string | null;
 	payPalEligible: boolean;
+	/** PayPal-Hinweis nur in der ersten passenden Zeile je Karte. */
+	showPayPalHint: boolean;
 	onSettled: (message?: string) => void;
 }
 
@@ -129,6 +131,7 @@ function DebtRow({
 	memberToken,
 	memberPayPalMerchantId,
 	payPalEligible,
+	showPayPalHint,
 	onSettled,
 }: DebtRowProps) {
 	const toast = useToast();
@@ -248,12 +251,12 @@ function DebtRow({
 	const owedToMe = debt.toId === currentMemberId;
 
 	return (
-		<Item size="sm" className="items-center gap-x-2.5 px-0 py-1">
+		<Item size="sm" className="flex-wrap items-center gap-x-2.5 px-0 py-1">
 			<div aria-hidden className="flex shrink-0 items-center -space-x-0.5">
 				<MemberAvatar name={debt.fromName} size={24} className="ring-2 ring-card" />
 				<MemberAvatar name={debt.toName} size={24} className="ring-2 ring-card" />
 			</div>
-			<ItemContent className="min-w-0">
+			<ItemContent className="min-w-[7rem] flex-1">
 				<ItemTitle className="line-clamp-none text-sm font-normal break-words">
 					{iOwe ? 'Du' : debt.fromName} {iOwe ? 'schuldest' : 'schuldet'}{' '}
 					{owedToMe ? 'dir' : debt.toName}
@@ -269,7 +272,7 @@ function DebtRow({
 			</span>
 
 			{canSettle && (
-				<ItemFooter className="-mt-1 justify-start gap-2 pl-[54px] max-[359px]:pl-0 [&>*]:min-w-0">
+				<ItemFooter className="-mt-1 basis-full justify-start gap-2 pl-[54px] max-[359px]:pl-0 [&>*]:min-w-0">
 					<Button
 						variant={iOwe ? 'default' : 'outline'}
 						size="sm"
@@ -291,7 +294,7 @@ function DebtRow({
 							size="sm"
 						/>
 					)}
-					{PAYPAL_ENABLED && !payeeMerchantId && owedToMe && (
+					{PAYPAL_ENABLED && showPayPalHint && !payeeMerchantId && owedToMe && (
 						<div className="col-span-full min-w-0">
 							<p className="text-sm text-muted-foreground">
 								Verbinde PayPal, damit andere Mitglieder dir Geld senden können.
@@ -304,7 +307,7 @@ function DebtRow({
 							</Link>
 						</div>
 					)}
-					{PAYPAL_ENABLED && !payeeMerchantId && iOwe && (
+					{PAYPAL_ENABLED && showPayPalHint && !payeeMerchantId && iOwe && (
 						<p className="col-span-full text-sm text-muted-foreground">
 							PayPal-Zahlungen sind erst möglich, wenn {debt.toName} PayPal verbunden hat.
 						</p>
@@ -470,7 +473,16 @@ export function DebtSummary({
 	if (debts.length === 0 && personal.length === 0 && others.length === 0 && balances.length === 0)
 		return null;
 
+	const hinted = new Set<string>();
 	function renderDebt(debt: SimplifiedDebt) {
+		const hintKey =
+			debt.toId === currentMemberId
+				? 'me'
+				: debt.fromId === currentMemberId
+					? `to:${debt.toId}`
+					: null;
+		const showPayPalHint = hintKey !== null && !hinted.has(hintKey);
+		if (hintKey) hinted.add(hintKey);
 		return (
 			<DebtRow
 				key={`${debt.currency ?? 'EUR'}-${debt.fromId}-${debt.toId}`}
@@ -480,6 +492,7 @@ export function DebtSummary({
 				currentMemberId={currentMemberId}
 				memberToken={memberToken}
 				memberPayPalMerchantId={memberPayPalMerchantId}
+				showPayPalHint={showPayPalHint}
 				payPalEligible={
 					summary === undefined ||
 					debts.some(

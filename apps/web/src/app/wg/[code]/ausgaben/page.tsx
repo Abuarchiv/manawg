@@ -1,5 +1,6 @@
 'use client';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
@@ -140,6 +141,16 @@ export default function AusgabenPage() {
 					busy={initialLoading || refreshing}
 					retryLabel="Ausgaben erneut laden"
 				/>
+			)}
+			{page.showSkeleton && (
+				<div aria-hidden className="flex min-h-[26rem] flex-col gap-3 rounded-xl border p-3">
+					<Skeleton className="h-3 w-20" />
+					<Skeleton className="h-7 w-2/3" />
+					<Skeleton className="h-4 w-1/3" />
+					{['b0', 'b1', 'b2'].map((key) => (
+						<Skeleton key={key} className="h-6 w-full" />
+					))}
+				</div>
 			)}
 			{!page.showSkeleton &&
 				(expenses.length > 0 ||

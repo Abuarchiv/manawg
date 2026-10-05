@@ -211,7 +211,6 @@ export default function AbosPage() {
 			if (res.status > 0 && res.status < 500 && res.status !== 429) createRequestRef.current = null;
 			const message = aboSaveErrorMessage(res.error, 'angelegt');
 			setNoticeMessage('error', message);
-			toast.error(message);
 		}
 		setSubmitting(false);
 	}
@@ -244,7 +243,6 @@ export default function AbosPage() {
 			updateAbos((current) => upsertAbo(current, previousAbo));
 			const message = aboSaveErrorMessage(res.error, 'aktualisiert');
 			setNoticeMessage('error', message);
-			toast.error(message);
 		}
 		setSubmitting(false);
 	}
