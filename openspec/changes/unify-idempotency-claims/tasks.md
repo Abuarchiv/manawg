@@ -11,9 +11,9 @@
 ## 3. Financial routes
 
 - [x] 3.1 Expenses create (both lock sites), recurring create, import commit; release after every confirmed rollback, not only listed codes.
-- [ ] 3.2 Run `expense-integrity`, `expense-idempotency-retry` and `import-export` e2e specs after each step.
+- [x] 3.2 Run `expense-integrity`, `expense-idempotency-retry` and `import-export` e2e specs after each step.
 
 ## 4. Verification
 
 - [x] 4.1 `rg "_claimed"` outside `core/db/claimed-response.ts`, `core/idempotency-store.ts` and tests returns nothing.
-- [ ] 4.2 Lint, typecheck, unit tests, build and the full fixture e2e suite pass; record exact results in the PR.
+- [x] 4.2 Lint, typecheck, unit tests, build and the full fixture e2e suite pass; record exact results in the PR.
