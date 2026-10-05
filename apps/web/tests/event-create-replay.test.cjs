@@ -20,6 +20,26 @@ const wgId = '989ac820-58b7-431f-9c65-28721264f333';
 const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
 const key = '550e8400-e29b-41d4-a716-446655440000';
 
+function loadTs(relativePath, mocks = {}) {
+	const compiled = transpileModule(readFileSync(path.join(webRoot, 'src', relativePath), 'utf8'), {
+		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
+	}).outputText;
+	const module = { exports: {} };
+	new Function('require', 'module', 'exports', compiled)(
+		(name) => (Object.hasOwn(mocks, name) ? mocks[name] : requireFromWeb(name)),
+		module,
+		module.exports,
+	);
+	return module.exports;
+}
+
+// The real field schemas run, so the route is exercised with its actual validation.
+function loadEventSchemas() {
+	return loadTs('features/events/event-schemas.ts', {
+		'@/features/events/event-limits': loadTs('features/events/event-limits.ts'),
+	});
+}
+
 function harness() {
 	const state = {
 		slot: { body: { _claimed: true }, expiresAt: new Date(Date.now() + 60_000) },
@@ -231,6 +251,7 @@ function harness() {
 			buildEventsWindowFilter: () => undefined,
 			withEventWindowCandidates: async () => undefined,
 		},
+		'@/features/events/event-schemas': loadEventSchemas(),
 		'@/features/events/events': {
 			formatRecurrenceRule: () => '',
 			parseRecurrenceRule: () => null,

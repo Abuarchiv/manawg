@@ -89,6 +89,9 @@ const timeUtils = loadTypeScriptModule(path.join(srcPath, 'core/utils/time.ts'))
 const eventUtils = loadTypeScriptModule(path.join(srcPath, 'features/events/events.ts'), {
 	'@/core/utils/berlin-day': berlinDay,
 	'@/core/utils/time': timeUtils,
+	'@/features/events/event-limits': loadTypeScriptModule(
+		path.join(srcPath, 'features/events/event-limits.ts'),
+	),
 });
 const eventWindow = loadTypeScriptModule(
 	path.join(srcPath, 'features/events/event-reminder-window.ts'),

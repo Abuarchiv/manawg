@@ -50,3 +50,21 @@ test('valid input reports no field error', () => {
 	});
 	assert.equal(result.ok, true);
 });
+
+test('a mistyped year is reported on its field instead of being saved', () => {
+	const typoStart = validateEventForm({
+		title: 'Meeting',
+		startsAt: '0026-01-01T10:00',
+		endsAt: '',
+	});
+	assert.equal(typoStart.ok, false);
+	assert.equal(typoStart.field, 'startsAt');
+
+	const typoEnd = validateEventForm({
+		title: 'Meeting',
+		startsAt: '2026-01-01T10:00',
+		endsAt: '20266-01-01T11:00',
+	});
+	assert.equal(typoEnd.ok, false);
+	assert.equal(typoEnd.field, 'endsAt');
+});

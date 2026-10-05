@@ -25,6 +25,13 @@ import {
 	withEventWindowCandidates,
 } from '@/features/events/event-reminder-window';
 import {
+	eventDateTimeSchema,
+	eventDescriptionSchema,
+	eventLocationSchema,
+	eventRecurrenceSchema,
+	eventTitleSchema,
+} from '@/features/events/event-schemas';
+import {
 	type SerializedWgEvent,
 	formatRecurrenceRule,
 	parseRecurrenceRule,
@@ -33,11 +40,6 @@ import {
 import { and, asc, eq, gt, or, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-
-const TITLE_MAX = 200;
-const DESCRIPTION_MAX = 2_000;
-const LOCATION_MAX = 200;
-const RECURRENCE_MAX = 200;
 
 type EventCreateResponseBody = { event: SerializedWgEvent; warning: NotificationWarning };
 type EventCreateReplayResponse<T = unknown> = { status: number; body: T };
@@ -65,13 +67,13 @@ function replayEventCreateResponse(value: unknown): NextResponse {
 }
 
 const createSchema = z.object({
-	title: z.string().trim().min(1).max(TITLE_MAX),
-	description: z.string().trim().max(DESCRIPTION_MAX).nullable().optional(),
-	startsAt: z.string().datetime({ offset: true }),
-	endsAt: z.string().datetime({ offset: true }).nullable().optional(),
+	title: eventTitleSchema,
+	description: eventDescriptionSchema.optional(),
+	startsAt: eventDateTimeSchema,
+	endsAt: eventDateTimeSchema.nullable().optional(),
 	allDay: z.boolean().optional().default(false),
-	location: z.string().trim().max(LOCATION_MAX).nullable().optional(),
-	recurrence: z.string().trim().max(RECURRENCE_MAX).nullable().optional(),
+	location: eventLocationSchema.optional(),
+	recurrence: eventRecurrenceSchema.optional(),
 });
 
 function normalizeRecurrence(value: string | null | undefined): string | null {
