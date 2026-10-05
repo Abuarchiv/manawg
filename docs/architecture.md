@@ -108,6 +108,12 @@ ignored).
 `withIdempotentJsonResponse` wraps this for JSON routes. `claimIdempotencySlot` (Upstash, 5 min,
 fail-open) is a separate best-effort dedup for audit side effects only.
 
+Routes that lock the claim inside their own transaction release it after a rollback with
+`releaseClaimedResponse` (`core/db/claimed-response.ts`), which only deletes the placeholder
+with the lease that request locked. The lock/complete steps are still hand-written per route;
+[`openspec/changes/unify-idempotency-claims`](../openspec/changes/unify-idempotency-claims/proposal.md)
+plans one shared protocol.
+
 ## Money
 
 - All amounts are integer cents. `features/expenses/split-math.ts`: equal splits use
@@ -247,6 +253,14 @@ with claim rows/throttle timestamps so a re-run does not notify twice.
   the database's `LIMITS.NAME_MAX`.
 - **Deleted means deleted.** A deleted chat message loses its text at rest, the audit log keeps
   no preview, and exports never contain deleted text or images.
+- **Oversized bodies are 413, not 400.** `readJsonLimited` routes map its error through
+  `unreadableJsonBody`, so the client can tell "shorten this" from "malformed".
+- **Browser floor Safari 16.4.** `api-client.ts` falls back from `AbortSignal.any` (Safari 17.4+)
+  to its own controller; raw `fetch` calls carry the same 15 s timeout as `apiFetch`.
+- **Counts, not rows, for summaries.** `GET /export?summary=counts` counts with the dump's filters,
+  so the settings page does not download a WG's whole chat to show numbers.
+- **Bounded service-worker cache.** Chunks fetched while browsing live in a capped runtime cache;
+  `sw.js` does not change between deploys, so nothing else would evict them.
 - **Migrations give up instead of queueing.** `db-migrate.mjs` sets `lock_timeout = 5s`, so DDL
   that cannot get its lock rolls back rather than stalling every query on the table.
 - **Baseline migration with adoption.** The push-era migration chain could not replay on an empty

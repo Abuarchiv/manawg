@@ -16,6 +16,8 @@ environment setup, Preview secrets and workflow inputs: see
       and a fresh completed directory.
 - [ ] Migration window approved by the owner. If writes must stop, set `MIGRATION_READ_ONLY=true`
       and remove it afterwards.
+- [ ] Migration `0018_member_fk_indexes` builds 11 indexes in one transaction; writes to those
+      tables wait until it commits. Run it in a quiet window (seconds at today's data size).
 - [ ] Production migration only via `.github/workflows/migrate-production.yml` on `main`
       (`candidate_sha`, `preview_run_id`, `MIGRATE_PRODUCTION`). Never run `db:migrate` against
       Production from a laptop, and never use Production credentials in Preview.
