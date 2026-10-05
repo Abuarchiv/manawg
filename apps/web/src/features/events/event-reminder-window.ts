@@ -5,13 +5,14 @@ import {
 	nextBerlinDayStart,
 	startOfBerlinDay,
 } from '@/core/utils/berlin-day';
-import { MS_PER_DAY } from '@/core/utils/time';
+import { MS_PER_DAY, addMonthsFromAnchor } from '@/core/utils/time';
 import { and, eq, gt, gte, isNotNull, isNull, lte, or } from 'drizzle-orm';
 import { wgEvents } from '../../core/db/schema';
 import {
 	BYDAY_TO_INDEX,
 	DEFAULT_DURATION_MS,
 	EVENTS_LIST_LIMIT,
+	addYearsFromAnchor,
 	berlinCalendarDate,
 	eventDateForDisplay,
 	parseRecurrenceRule,
@@ -77,21 +78,12 @@ function recurrenceRawStartAtIndex(
 		const anchorWeekStart = startMs - anchorWeekday * MS_PER_DAY;
 		return anchorWeekStart + (weekBlock * 7 + weekday) * MS_PER_DAY;
 	}
-	if (rule.freq === 'MONTHLY' || rule.freq === 'YEARLY') {
-		const candidate = new Date(anchor);
-		const anchorDay = anchor.getUTCDate();
-		if (rule.freq === 'MONTHLY') {
-			candidate.setUTCDate(1);
-			candidate.setUTCMonth(candidate.getUTCMonth() + rule.interval * index);
-			const lastDay = new Date(
-				Date.UTC(candidate.getUTCFullYear(), candidate.getUTCMonth() + 1, 0),
-			).getUTCDate();
-			candidate.setUTCDate(Math.min(anchorDay, lastDay));
-		} else {
-			candidate.setUTCFullYear(anchor.getUTCFullYear() + rule.interval * index);
-		}
-		return candidate.getTime();
+	// Same anchor-clamped stepping as the expansion in events.ts, so a reminder
+	// lands on the occurrence the calendar shows (31st → 30th, 29.02 → 28.02).
+	if (rule.freq === 'MONTHLY') {
+		return addMonthsFromAnchor(anchor, anchor.getUTCDate(), rule.interval * index).getTime();
 	}
+	if (rule.freq === 'YEARLY') return addYearsFromAnchor(anchor, rule.interval * index).getTime();
 	return null;
 }
 

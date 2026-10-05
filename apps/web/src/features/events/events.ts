@@ -392,11 +392,20 @@ export function expandRecurrence(
 	return occurrences;
 }
 
+/**
+ * The anchor moved by whole years. A 29 February anchor falls on 28 February in
+ * other years, as people expect for birthdays; plain `setUTCFullYear` rolled it
+ * over to 1 March.
+ */
+export function addYearsFromAnchor(anchor: Date, years: number): Date {
+	return addMonthsFromAnchor(anchor, anchor.getUTCDate(), years * MONTHS_PER_YEAR);
+}
+
+const MONTHS_PER_YEAR = 12;
+
 function addFromAnchor(anchor: Date, freq: RecurrenceFreq, totalInterval: number): Date {
 	if (freq === 'MONTHLY') return addMonthsFromAnchor(anchor, anchor.getUTCDate(), totalInterval);
-	const next = new Date(anchor);
-	next.setUTCFullYear(anchor.getUTCFullYear() + totalInterval);
-	return next;
+	return addYearsFromAnchor(anchor, totalInterval);
 }
 
 /** Browser agenda: all-day events occupy inclusive local calendar dates, not one hour. */
