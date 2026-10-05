@@ -43,6 +43,7 @@ test.describe('expense integrity regressions', () => {
 	const RECURRING_ROUTE = path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/[id]/route.ts');
 	const IMPORT_ROUTE = path.join(ROOT, 'src/app/api/wg/[code]/imports/commit/route.ts');
 	const IMPORT_COMMIT = path.join(ROOT, 'src/features/expenses/import-commit.ts');
+	const PAID_BY_GUARD = path.join(ROOT, 'src/features/expenses/paid-by-guard.ts');
 	const IMPORT_PARSERS = path.join(ROOT, 'src/features/expenses/import-parsers.ts');
 	const RECURRING_HELPERS = path.join(ROOT, 'src/features/expenses/recurring-expenses.ts');
 	const SPLIT_MATH = path.join(ROOT, 'src/features/expenses/split-math.ts');
@@ -947,6 +948,7 @@ test.describe('expense integrity regressions', () => {
 			},
 			'@/core/validators/currency': { currencySchema: z.string() },
 			'@/features/expenses/expenses': expenseFeatures,
+			'@/features/expenses/paid-by-guard': loadTs(PAID_BY_GUARD),
 			'@/features/expenses/recurring-expenses': recurringHelpers,
 			'drizzle-orm': operators,
 		};
@@ -1240,7 +1242,7 @@ test.describe('expense integrity regressions', () => {
 				wgWriteLimiter: {},
 			},
 			'@/core/validators/currency': { currencySchema: z.string() },
-			'@/features/expenses/expenses': { checkPaidByGuard: () => ({ ok: true }) },
+			'@/features/expenses/paid-by-guard': { checkPaidByGuard: () => ({ ok: true }) },
 			'@/features/expenses/recurring-expenses': recurringHelpers,
 			'drizzle-orm': operators,
 		}).PATCH(
@@ -1292,6 +1294,7 @@ test.describe('expense integrity regressions', () => {
 				claimReplaySlotWithRetry: async () => ({ won: true }),
 				replayKey: () => 'replay-key',
 			},
+			'@/core/guards/admin': { isVerifiedWgAdmin: async () => false },
 			'@/core/guards/require-wg-member': {
 				requireWgMember: async () => ({
 					ok: true,
@@ -1388,6 +1391,7 @@ test.describe('expense integrity regressions', () => {
 				withExpensePaymentLock: withPaymentLock,
 			},
 			'@/features/expenses/split-math': { settledAtForOwnShare: () => null },
+			'@/features/expenses/paid-by-guard': loadTs(PAID_BY_GUARD),
 		});
 		const foreignMemberId = '24ba761e-a429-45c3-a311-18e9a44b9be8';
 		const result = await commitImport.commitImport({
@@ -1395,6 +1399,7 @@ test.describe('expense integrity regressions', () => {
 			source: 'splitwise_csv',
 			importedByMemberId: CALLER_ID,
 			importedByName: 'Mina',
+			mayRecordForOthers: false,
 			expenses: [
 				{
 					parsed: {
@@ -1534,6 +1539,7 @@ test.describe('expense integrity regressions', () => {
 				) => operation(tx),
 			},
 			'@/features/expenses/expenses': expenseFeatures,
+			'@/features/expenses/paid-by-guard': loadTs(PAID_BY_GUARD),
 			'@/features/expenses/recurring-expenses': { parseRecurringSplits: JSON.parse },
 			'@/features/expenses/split-math': loadTs(SPLIT_MATH),
 			'drizzle-orm': {
@@ -1830,8 +1836,8 @@ test.describe('expense create replay atomic', () => {
 				imageUrlSchema: requireFromWeb('zod').z.string().nullable().optional(),
 				isAllowedImageUrlForWg: () => true,
 			},
+			'@/features/expenses/paid-by-guard': { checkPaidByGuard: () => ({ ok: true }) },
 			'@/features/expenses/expenses': {
-				checkPaidByGuard: () => ({ ok: true }),
 				findExpenseMemberIds: async () => new Set([MEMBER_ID]),
 				insertExpenseWithSplits: async (
 					tx: { addExpense: () => void },
@@ -2184,7 +2190,7 @@ test.describe('finance failure regressions', () => {
 			'@/core/guards/with-wg-route': { withWgRoute: (_label: string, handler: unknown) => handler },
 			'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }) },
 			'@/core/validators/currency': { currencySchema: requireFromWeb('zod').z.string() },
-			'@/features/expenses/expenses': { checkPaidByGuard: () => ({ ok: true }) },
+			'@/features/expenses/paid-by-guard': { checkPaidByGuard: () => ({ ok: true }) },
 			'@/features/expenses/recurring-expenses': {
 				parseRecurringSplits: JSON.parse,
 				recurringSplitsMatchAmount: () => true,

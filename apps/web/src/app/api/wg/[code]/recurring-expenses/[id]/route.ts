@@ -9,7 +9,7 @@ import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { isRecurringDueAtEditAllowed } from '@/core/validators/recurring-due-date';
-import { checkPaidByGuard } from '@/features/expenses/expenses';
+import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import {
 	addMonthsFromAnchor,
 	parseRecurringSplits,

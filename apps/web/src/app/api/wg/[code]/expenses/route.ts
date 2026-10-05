@@ -35,12 +35,12 @@ import {
 	withExpensePaymentLock,
 } from '@/features/expenses/expense-payments';
 import {
-	checkPaidByGuard,
 	findExpenseMemberIds,
 	insertExpenseWithSplits,
 	recordExpenseCreatedSideEffects,
 	resolveExpensePayer,
 } from '@/features/expenses/expenses';
+import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
 import { and, desc, eq, getTableColumns, gt, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';

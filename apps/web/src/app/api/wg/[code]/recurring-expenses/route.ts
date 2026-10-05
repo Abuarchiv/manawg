@@ -32,7 +32,7 @@ import {
 	recurringDueAtSchema,
 } from '@/core/validators/recurring-due-date';
 import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
-import { checkPaidByGuard } from '@/features/expenses/expenses';
+import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import {
 	buildRecurringAdvance,
 	parseRecurringSplits,

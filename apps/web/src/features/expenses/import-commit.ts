@@ -19,6 +19,7 @@ import {
 	hasCapturingExpensePayment,
 	withExpensePaymentLock,
 } from '@/features/expenses/expense-payments';
+import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { ImportSource, ParsedExpense } from './import-parsers';
@@ -28,6 +29,11 @@ interface CommitInput {
 	source: ImportSource;
 	importedByMemberId: string;
 	importedByName: string;
+	/**
+	 * WG admins may import a full shared history, including rows they were not
+	 * part of. Everyone else is held to the same paid-by rule as manual entry.
+	 */
+	mayRecordForOthers: boolean;
 	expenses: ReadonlyArray<{ parsed: ParsedExpense; skip: boolean }>;
 	mapping: Readonly<Record<string, string | null>>;
 	skipDuplicates: boolean;
@@ -146,6 +152,11 @@ function prepareRow(input: CommitInput, parsed: ParsedExpense): PreparedRow {
 
 	const splitSum = splitRows.reduce((acc, s) => acc + s.amountCents, 0);
 	if (splitSum !== parsed.amountCents) return { ok: false, reason: 'split_sum_mismatch' };
+
+	if (!input.mayRecordForOthers) {
+		const guard = checkPaidByGuard(paidByMemberId, input.importedByMemberId, splitRows);
+		if (!guard.ok) return { ok: false, reason: guard.reason };
+	}
 
 	return {
 		ok: true,

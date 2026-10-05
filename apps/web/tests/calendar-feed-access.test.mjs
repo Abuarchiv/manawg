@@ -102,6 +102,7 @@ const eventWindow = loadTypeScriptModule(
 );
 
 function harness({
+	token = 'valid',
 	authUserId = 'auth-user',
 	deactivatedAt = null,
 	revokedAt = null,
@@ -169,13 +170,13 @@ function harness({
 							: [];
 					}
 					if (table === calendarSubscriptions) {
-						return state.revokedAt ? [] : [{ wgId }];
+						return state.revokedAt ? [] : [{ wgId, tokenSeed: 'seed' }];
 					}
 					throw new Error(`unexpected limit query: ${String(table)}`);
 				},
 				for: async (lock) => {
 					assert.equal(table, wgs);
-					assert.equal(lock, 'update');
+					assert.equal(lock, 'share');
 					state.steps.push('wg-lock');
 					return state.wgExists ? [{ id: wgId }] : [];
 				},
@@ -192,6 +193,8 @@ function harness({
 		'@/core/db/transaction': { withTransaction: async (operation) => operation(tx) },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/http/api-errors': {
+			HTTP: { SERVICE_UNAVAILABLE: 503 },
+			apiError: (code, status) => Response.json({ error: code }, { status }),
 			notFound: (code) => Response.json({ error: code }, { status: 404 }),
 			serverError: (code) => Response.json({ error: code }, { status: 500 }),
 			tooMany: (code) => Response.json({ error: code }, { status: 429 }),
@@ -224,10 +227,10 @@ function harness({
 		'next/server': { NextResponse: Response },
 	};
 	const route = loadTypeScriptModule(routePath, mocks);
-	const request = new Request(`https://example.test/api/calendar/${id}/valid`);
+	const request = new Request(`https://example.test/api/calendar/${id}/${token}`);
 	return {
 		state,
-		get: () => route.GET(request, { params: Promise.resolve({ id, token: 'valid' }) }),
+		get: () => route.GET(request, { params: Promise.resolve({ id, token }) }),
 	};
 }
 
@@ -256,6 +259,13 @@ test('active Auth-linked calendar feed returns events after locking the WG', asy
 	assert.equal(response.status, 200);
 	assert.match(await response.text(), /Other member event/);
 	assert.deepEqual(state.steps, ['wg-lock', 'member-check', 'events']);
+});
+
+test('a wrong feed token is rejected before the WG row is locked', async () => {
+	const { state, get } = harness({ token: 'stale-token' });
+	const response = await get();
+	assert.equal(response.status, 404);
+	assert.deepEqual(state.steps, []);
 });
 
 test('detached or deactivated membership cannot use its old calendar URL', async () => {

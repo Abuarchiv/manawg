@@ -1,7 +1,7 @@
 import { calendarSubscriptions, wgEvents, wgMembers, wgs } from '@/core/db';
 import { withTransaction } from '@/core/db/transaction';
 import { isUuid } from '@/core/guards/api-auth';
-import { notFound, serverError, tooMany } from '@/core/http/api-errors';
+import { HTTP, apiError, notFound, serverError, tooMany } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgReadLimiter } from '@/core/rate-limit';
@@ -52,16 +52,20 @@ export async function GET(
 	try {
 		const events = await withTransaction(async (tx) => {
 			const [beforeLock] = await tx
-				.select({ wgId: calendarSubscriptions.wgId })
+				.select({ wgId: calendarSubscriptions.wgId, tokenSeed: calendarSubscriptions.tokenSeed })
 				.from(calendarSubscriptions)
 				.where(and(eq(calendarSubscriptions.id, id), isNull(calendarSubscriptions.revokedAt)))
 				.limit(1);
-			if (!beforeLock) return null;
+			// Reject a wrong token before taking any lock, so an unauthenticated
+			// caller holding only a feed id cannot make WG writes wait.
+			if (!beforeLock || !verifyCalendarFeedToken(id, beforeLock.tokenSeed, token)) return null;
+			// A share lock is enough to serialize with member deactivation and WG
+			// deletion (both hold FOR UPDATE) without blocking ordinary inserts.
 			const [wg] = await tx
 				.select({ id: wgs.id })
 				.from(wgs)
 				.where(eq(wgs.id, beforeLock.wgId))
-				.for('update');
+				.for('share');
 			if (!wg) return null;
 
 			const [subscription] = await tx
@@ -111,7 +115,7 @@ export async function GET(
 		});
 		if (!events) return notFound('calendar_feed_not_found');
 		if (events === 'window_too_large') {
-			return NextResponse.json({ error: 'events_window_too_large' }, { status: 503 });
+			return apiError('events_window_too_large', HTTP.SERVICE_UNAVAILABLE);
 		}
 
 		const occurrences: CalendarFeedOccurrence[] = events.flatMap((row) =>

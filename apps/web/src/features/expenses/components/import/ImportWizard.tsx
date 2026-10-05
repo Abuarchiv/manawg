@@ -101,6 +101,8 @@ const IMPORT_ERROR_MESSAGES: Readonly<Record<string, string>> = {
 	payer_unmapped: 'Die zahlende Person konnte nicht zugeordnet werden. Prüfe die Zuordnung.',
 	no_valid_splits: 'Keine gültige Aufteilung gefunden. Prüfe die Anteile.',
 	split_sum_mismatch: 'Die Anteile ergeben nicht den Gesamtbetrag. Prüfe die Datei.',
+	paid_by_must_include_caller:
+		'Du kannst nur Ausgaben importieren, die du bezahlt hast oder an denen du beteiligt bist. Komplette WG-Historien importiert der Admin.',
 	insert_failed: 'Dieser Eintrag konnte nicht gespeichert werden. Versuche es erneut.',
 	import_insert_failed:
 		'Der Import konnte gerade nicht gespeichert werden. Versuche es gleich erneut.',
@@ -134,7 +136,8 @@ function recoveryActionFor(error: string, operation: ImportOperation): RecoveryA
 		error === 'invalid_body' ||
 		error === 'invalid_json' ||
 		error === 'no_valid_splits' ||
-		error === 'split_sum_mismatch'
+		error === 'split_sum_mismatch' ||
+		error === 'paid_by_must_include_caller'
 	) {
 		return { kind: 'input', label: 'Eingabe korrigieren' };
 	}

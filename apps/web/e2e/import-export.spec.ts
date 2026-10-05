@@ -137,6 +137,7 @@ test.describe('import replay atomic', () => {
 				withExpensePaymentLock,
 			},
 			'@/features/expenses/split-math': { settledAtForOwnShare: () => null },
+			'@/features/expenses/paid-by-guard': { checkPaidByGuard: () => ({ ok: true }) },
 			'drizzle-orm': {
 				and: (...parts: unknown[]) => parts,
 				eq: (...parts: unknown[]) => parts,
@@ -381,6 +382,7 @@ test.describe('import warning persistence', () => {
 					claimReplaySlotWithRetry: async () => ({ won: true }),
 					replayKey: () => 'replay-key',
 				},
+				'@/core/guards/admin': { isVerifiedWgAdmin: async () => false },
 				'@/core/guards/require-wg-member': {
 					requireWgMember: async () => ({
 						ok: true,
