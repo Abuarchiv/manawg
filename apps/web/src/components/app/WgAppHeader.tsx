@@ -42,7 +42,7 @@ export function WgAppHeader() {
 			data-app-chrome
 			className="mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-2 px-4 pt-1 pb-0"
 		>
-			<div className="flex min-h-9 min-w-0 items-center gap-2">
+			<div className="flex min-h-9 min-w-0 flex-wrap items-center gap-2">
 				<LogoMark
 					size={24}
 					tile={false}
@@ -53,14 +53,14 @@ export function WgAppHeader() {
 					<h1
 						aria-label={`${wg.name} – Start`}
 						title={wg.name}
-						className="min-w-0 flex-1 truncate font-heading text-xl font-semibold tracking-[-0.03em]"
+						className="min-w-[8rem] flex-1 basis-0 truncate font-heading text-xl font-semibold tracking-[-0.03em]"
 					>
 						{wg.name}
 					</h1>
 				) : (
 					<p
 						title={wg.name}
-						className="min-w-0 flex-1 truncate font-heading text-xl font-semibold tracking-[-0.03em]"
+						className="min-w-[8rem] flex-1 basis-0 truncate font-heading text-xl font-semibold tracking-[-0.03em]"
 					>
 						{wg.name}
 					</p>
