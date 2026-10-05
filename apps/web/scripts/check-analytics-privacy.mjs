@@ -6,11 +6,13 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 const root = new URL('../src/', import.meta.url);
-const [instrumentation, onboarding, pwa] = await Promise.all([
+const [instrumentation, createFlow, joinFlow, pwa] = await Promise.all([
 	readFile(new URL('instrumentation-client.ts', root), 'utf8'),
-	readFile(new URL('app/neu/NeuClient.tsx', root), 'utf8'),
+	readFile(new URL('app/neu/use-create-wg.ts', root), 'utf8'),
+	readFile(new URL('app/neu/use-join-wg.ts', root), 'utf8'),
 	readFile(new URL('shared/components/pwa-register.tsx', root), 'utf8'),
 ]);
+const onboarding = createFlow + joinFlow;
 
 const compiled = ts.transpileModule(instrumentation, {
 	compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },

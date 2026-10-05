@@ -1,236 +1,63 @@
 'use client';
 
-import {
-	Collapsible,
-	CollapsiblePanel,
-	CollapsibleTrigger,
-} from '@/components/animate-ui/primitives/base/collapsible';
 import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
-import { LegacyAccountRecovery } from '@/components/auth/LegacyAccountRecovery';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { LegalLinks } from '@/components/entry/LegalLinks';
-import { BackButton } from '@/components/neu/BackButton';
 import { ErrorBox } from '@/components/neu/ErrorBox';
-import { Field } from '@/components/neu/Field';
 import { InviteStep } from '@/components/neu/InviteStep';
 import { Button } from '@/components/ui/button';
-import {
-	FieldDescription,
-	FieldGroup,
-	FieldLabel,
-	FieldSeparator,
-	Field as UiField,
-} from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import {
-	Item,
-	ItemContent,
-	ItemDescription,
-	ItemGroup,
-	ItemMedia,
-	ItemTitle,
-} from '@/components/ui/item';
+import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Spinner } from '@/components/ui/spinner';
 import { safeNextPath } from '@/core/auth/next-path';
-import { hasSessionCookie } from '@/core/auth/session-hint';
-import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
-import { joinErrorMessage } from '@/core/infra/join-flow';
-import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
-import posthog from '@/shared/lib/analytics';
-import { isClientFixtureMode } from '@/shared/lib/fixture-mode';
-import { getIdentity, rememberWg } from '@/shared/lib/identity';
-import { ArrowRight, ChevronDown, Home, KeyRound, Plus } from 'lucide-react';
-import Link from 'next/link';
+import { normalizeShareCode } from '@/core/utils/share-code';
+import { getIdentity } from '@/shared/lib/identity';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { ChooseStep } from './ChooseStep';
+import { CreateStep } from './CreateStep';
+import { JoinCodeStep } from './JoinCodeStep';
+import { JoinNameStep } from './JoinNameStep';
 import {
-	type AccountWg,
-	type CreateResponse,
-	type CreatedWg,
-	type JoinWg,
-	NAME_MAX,
-	START_DRAFT_KEY,
-	type StartDraft,
-	type StartField,
-	type StartStep,
-	WG_NAME_MAX,
-	consumeJustSignedIn,
-	createWgErrorField,
-	createWgErrorMessage,
 	getJoinCodeFromSearch,
 	getNeuIntentFromSearch,
 	getWgCodeFromPath,
-	isAccountWg,
-	isJoinWg,
 	isNeuPath,
-	joinErrorField,
-	markJustSignedIn,
-	readStartError,
 	startSocialLogin,
 } from './start-flow';
+import { useAccountWgs } from './use-account-wgs';
+import { useBusyLock } from './use-busy-lock';
+import { useCreateWg } from './use-create-wg';
+import { useJoinWg } from './use-join-wg';
+import { useSaveStartDraft, useStartDraft } from './use-start-draft';
+import { useStartError } from './use-start-error';
 
 export function NeuClient() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const [step, setStep] = useState<StartStep>('choose');
-	const [wgName, setWgName] = useState('');
-	const [creatorName, setCreatorName] = useState('');
-	const [joinCode, setJoinCode] = useState('');
-	const [joinName, setJoinName] = useState('');
-	const [joinWg, setJoinWg] = useState<JoinWg | null>(null);
-	const [accountWgs, setAccountWgs] = useState<AccountWg[]>([]);
-	const [authState, setAuthState] = useState<'loading' | 'signed-out' | 'authenticated' | 'error'>(
-		'loading',
-	);
-	const [authRetryNonce, setAuthRetryNonce] = useState(0);
-	const [busy, setBusy] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const [invalidField, setInvalidField] = useState<StartField | null>(null);
+	const {
+		step,
+		setStep,
+		wgName,
+		setWgName,
+		creatorName,
+		setCreatorName,
+		joinCode,
+		setJoinCode,
+		joinName,
+		setJoinName,
+		joinWg,
+		setJoinWg,
+		interactive,
+		resetDraft,
+	} = useStartDraft();
+	const { busy, busyRef, setBusy } = useBusyLock();
+	const { error, invalidField, clearError, setFormError, setFieldError } = useStartError();
 	const [accountSwitchError, setAccountSwitchError] = useState<string | null>(null);
-	const [createdWg, setCreatedWg] = useState<CreatedWg | null>(null);
-	const [interactive, setInteractive] = useState(false);
-	const busyRef = useRef(false);
-	const createRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
-	const joinRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 	const [legacyOpen, setLegacyOpen] = useState(false);
-
-	function clearError(): void {
-		setError(null);
-		setInvalidField(null);
-	}
-
-	function setFormError(message: string): void {
-		setError(message);
-		setInvalidField(null);
-	}
-
-	function setFieldError(field: StartField, message: string): void {
-		setError(message);
-		setInvalidField(field);
-	}
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: mount-only initializer — reads the saved draft and initial URL params once; adding searchParams would re-run on navigation and clobber in-progress step/draft state.
-	useEffect(() => {
-		const initialSearch =
-			typeof window === 'undefined' ? searchParams.toString() : window.location.search;
-		const initialParams = new URLSearchParams(initialSearch);
-		const intent = getNeuIntentFromSearch(initialSearch);
-		const code = intent.joinCode;
-		const draft = readDraft<StartDraft>(START_DRAFT_KEY);
-		if (draft?.wgName) setWgName(draft.wgName);
-		if (draft?.creatorName) setCreatorName(draft.creatorName);
-		if (draft?.joinName) setJoinName(draft.joinName);
-		if (code) {
-			setJoinCode(code);
-			setStep('join');
-		} else if (intent.create || initialParams.get('action') === 'create') {
-			setStep('create');
-		} else {
-			if (draft?.joinCode) setJoinCode(draft.joinCode);
-			if (draft?.step === 'joinName' && isJoinWg(draft.joinWg)) {
-				const restoredCode = normalizeShareCode(draft.joinWg.code);
-				setJoinWg({ code: restoredCode, name: `WG ${restoredCode}` });
-				setStep('joinName');
-			} else if (draft?.step === 'create' || draft?.step === 'join') setStep(draft.step);
-			else if (draft?.joinCode) setStep('join');
-		}
-		setInteractive(true);
-	}, []);
-
-	useEffect(() => {
-		if (!interactive) return;
-		let cancelled = false;
-		const loadAccountWgs = async () => {
-			if (authRetryNonce > 0) {
-				setError(null);
-				setInvalidField(null);
-			}
-			if (!hasSessionCookie()) {
-				setAccountWgs([]);
-				setAuthState('signed-out');
-				return;
-			}
-			setAuthState('loading');
-			try {
-				const res = await fetch('/api/wg/mine', {
-					cache: 'no-store',
-					signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-				});
-				if (cancelled) return;
-				if (res.status === 401) {
-					setAccountWgs([]);
-					setAuthState('signed-out');
-					return;
-				}
-				if (!res.ok) {
-					setAuthState('error');
-					return;
-				}
-				const data: unknown = await res.json();
-				const wgs =
-					data && typeof data === 'object' && !Array.isArray(data)
-						? Reflect.get(data, 'wgs')
-						: null;
-				if (!Array.isArray(wgs) || !wgs.every(isAccountWg)) {
-					setAuthState('error');
-					return;
-				}
-				setAccountWgs(
-					wgs.map((wg) => ({ ...wg, code: normalizeShareCode(wg.code), name: wg.name.trim() })),
-				);
-				setAuthState('authenticated');
-			} catch {
-				if (!cancelled) setAuthState('error');
-			}
-		};
-		void loadAccountWgs();
-		return () => {
-			cancelled = true;
-		};
-	}, [authRetryNonce, interactive]);
-
-	useEffect(() => {
-		if (authState !== 'authenticated') return;
-		const intent = getNeuIntentFromSearch(searchParams.toString());
-		if (intent.joinCode || intent.create) return;
-		const next = safeNextPath(searchParams.get('next'));
-		const [onlyWg] = accountWgs;
-		// One WG: skip the picker, like the public start page does.
-		if (next === '/' || isNeuPath(next)) {
-			if (consumeJustSignedIn() && accountWgs.length === 1 && onlyWg && step === 'choose') {
-				router.replace(`/wg/${encodeURIComponent(onlyWg.code)}`);
-			}
-			return;
-		}
-		const nextWgCode = getWgCodeFromPath(next);
-		if (nextWgCode && !accountWgs.some((accountWg) => accountWg.code === nextWgCode)) return;
-		router.replace(next);
-	}, [accountWgs, authState, router, searchParams, step]);
-
-	useEffect(() => {
-		if (!interactive) return;
-		if (step === 'invite') {
-			removeDraft(START_DRAFT_KEY);
-			return;
-		}
-		const draft: StartDraft = {
-			step,
-			wgName,
-			creatorName,
-			joinCode,
-			joinName,
-			...(joinWg ? { joinWg } : {}),
-		};
-		const hasDraft = [wgName, creatorName, joinCode, joinName].some(
-			(value) => value.trim().length > 0,
-		);
-		if (hasDraft) writeDraft(START_DRAFT_KEY, draft);
-		else removeDraft(START_DRAFT_KEY);
-	}, [creatorName, interactive, joinCode, joinName, joinWg, step, wgName]);
+	const { accountWgs, setAccountWgs, authState, setAuthState, retryAuth, handleAuthenticated } =
+		useAccountWgs({ interactive, step, clearError });
+	useSaveStartDraft({ interactive, step, wgName, creatorName, joinCode, joinName, joinWg });
 
 	function loginNextPath(): string {
 		const params = new URLSearchParams();
@@ -256,6 +83,28 @@ export function NeuClient() {
 		router.replace(loginNextPath());
 	}
 
+	const errorActions = { clearError, setFormError, setFieldError };
+	const { createdWg, setCreatedWg, createWg } = useCreateWg({
+		wgName,
+		creatorName,
+		setStep,
+		busyRef,
+		setBusy,
+		...errorActions,
+		returnToSignIn,
+	});
+	const { verifyJoinCode, joinExistingWg } = useJoinWg({
+		joinCode,
+		joinName,
+		joinWg,
+		setJoinWg,
+		setStep,
+		busyRef,
+		setBusy,
+		...errorActions,
+		returnToSignIn,
+	});
+
 	async function switchAccount(): Promise<void> {
 		if (busyRef.current) return;
 		busyRef.current = true;
@@ -276,14 +125,7 @@ export function NeuClient() {
 					: [];
 			});
 			const { pushCleanup } = await signOutSocialAccount(pushTargets);
-			const intent = getNeuIntentFromSearch(searchParams.toString());
-			removeDraft(START_DRAFT_KEY);
-			setStep(intent.joinCode ? 'join' : intent.create ? 'create' : 'choose');
-			setWgName('');
-			setCreatorName('');
-			setJoinCode(intent.joinCode);
-			setJoinName('');
-			setJoinWg(null);
+			resetDraft(getNeuIntentFromSearch(searchParams.toString()));
 			setCreatedWg(null);
 			clearError();
 			setAccountWgs([]);
@@ -301,193 +143,6 @@ export function NeuClient() {
 		}
 	}
 
-	async function createWg(): Promise<void> {
-		if (busyRef.current) return;
-		const trimmedWg = wgName.trim();
-		const trimmedMe = creatorName.trim();
-		if (trimmedWg.length === 0) return setFieldError('wgName', 'WG-Name fehlt.');
-		if (trimmedMe.length === 0) return setFieldError('creatorName', 'Dein Anzeigename fehlt.');
-		busyRef.current = true;
-		setBusy(true);
-		clearError();
-		const body = { name: trimmedWg, creatorName: trimmedMe };
-		const fingerprint = JSON.stringify(body);
-		const pendingRequest = createRequestRef.current;
-		const idempotencyKey =
-			pendingRequest?.fingerprint === fingerprint
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
-		if (!idempotencyKey) {
-			setFormError('WG konnte nicht sicher erstellt werden. Versuche es erneut.');
-			busyRef.current = false;
-			setBusy(false);
-			return;
-		}
-		createRequestRef.current = { fingerprint, key: idempotencyKey };
-		try {
-			const res = await fetch('/api/wg', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
-				body: JSON.stringify(body),
-				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-			});
-			if (res.status === 401) {
-				returnToSignIn();
-				return;
-			}
-			if (!res.ok) {
-				if (res.status > 0 && res.status < 500) createRequestRef.current = null;
-				const apiError = await readStartError(res);
-				const message = createWgErrorMessage(res.status, apiError);
-				const field = createWgErrorField(res.status, apiError);
-				if (field) setFieldError(field, message);
-				else setFormError(message);
-				return;
-			}
-			const data = (await res.json()) as CreateResponse;
-			// Only now is the created WG known; a body lost in transit must be retried
-			// with the same key, or the retry would create a second WG.
-			createRequestRef.current = null;
-			posthog.capture('wg_created');
-			rememberWg({
-				code: data.wg.shareCode,
-				name: data.wg.name,
-				lastVisitedAt: Date.now(),
-			});
-			removeDraft(START_DRAFT_KEY);
-			setCreatedWg({ code: data.wg.shareCode, name: data.wg.name });
-			setStep('invite');
-		} catch {
-			setFormError(
-				'WG konnte nicht erstellt werden: Prüfe deine Verbindung und versuche es erneut.',
-			);
-		} finally {
-			busyRef.current = false;
-			setBusy(false);
-		}
-	}
-
-	async function verifyJoinCode(): Promise<void> {
-		if (busyRef.current) return;
-		const code = normalizeShareCode(joinCode);
-		if (!isValidShareCode(code)) {
-			setFieldError(
-				'joinCode',
-				'Code besteht aus 8 Zeichen (Großbuchstaben/Ziffern, ohne I/L/O/U).',
-			);
-			return;
-		}
-		busyRef.current = true;
-		setBusy(true);
-		clearError();
-		try {
-			if (isClientFixtureMode()) {
-				// The database-free fixture keeps its existing policy-preview contract;
-				// production never performs this private metadata lookup before joining.
-				const res = await fetch(`/api/wg/${encodeURIComponent(code)}`, { cache: 'no-store' });
-				if (!res.ok) {
-					const apiError = await readStartError(res);
-					const message = joinErrorMessage(res.status, apiError);
-					const field = joinErrorField(res.status, apiError);
-					if (field) setFieldError(field, message);
-					else setFormError(message);
-					return;
-				}
-				const data = (await res.json()) as {
-					wg: { id: string; shareCode: string; name: string; joiningEnabled?: boolean };
-				};
-				if (data.wg.joiningEnabled === false) {
-					setFormError(joinErrorMessage(403, 'joining_disabled'));
-					return;
-				}
-			}
-			// A valid code is only a local input checkpoint. The authenticated POST
-			// remains the authority for existence, membership, and invite policy.
-			// The real WG name isn't fetchable pre-join (GET /api/wg/[code] requires
-			// membership), so we show the code itself rather than a fabricated name.
-			setJoinWg({ code, name: `WG ${code}` });
-			setStep('joinName');
-		} catch {
-			setFormError(joinErrorMessage(0, ''));
-		} finally {
-			busyRef.current = false;
-			setBusy(false);
-		}
-	}
-
-	async function joinExistingWg(): Promise<void> {
-		if (busyRef.current) return;
-		const name = joinName.trim();
-		if (!joinWg) return;
-		if (name.length === 0) {
-			setFieldError('joinName', 'Dein Anzeigename fehlt.');
-			return;
-		}
-		busyRef.current = true;
-		setBusy(true);
-		clearError();
-		const body = { name };
-		const fingerprint = JSON.stringify({ code: joinWg.code, ...body });
-		const pendingRequest = joinRequestRef.current;
-		const idempotencyKey =
-			pendingRequest?.fingerprint === fingerprint
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
-		if (!idempotencyKey) {
-			setFormError('WG-Beitritt konnte nicht sicher gesendet werden. Versuche es erneut.');
-			busyRef.current = false;
-			setBusy(false);
-			return;
-		}
-		joinRequestRef.current = { fingerprint, key: idempotencyKey };
-		try {
-			const res = await fetch(`/api/wg/${encodeURIComponent(joinWg.code)}/members`, {
-				method: 'POST',
-				headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
-				body: JSON.stringify(body),
-				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-			});
-			if (res.status === 401) {
-				returnToSignIn();
-				return;
-			}
-			if (!res.ok) {
-				if (res.status > 0 && res.status < 500) joinRequestRef.current = null;
-				const apiError = await readStartError(res);
-				if (res.status === 409 && apiError === 'already_joined') {
-					removeDraft(START_DRAFT_KEY);
-					router.push(`/wg/${encodeURIComponent(joinWg.code)}`);
-					return;
-				}
-				const message =
-					apiError === 'auth_required'
-						? 'Melde dich zuerst mit deinem Konto an.'
-						: joinErrorMessage(res.status, apiError);
-				if (apiError === 'name_invalid' || (res.status === 409 && apiError === 'name_taken')) {
-					setFieldError('joinName', message);
-				} else if (joinErrorField(res.status, apiError) === 'joinCode') {
-					// The code is only checked by this POST; send the user back to fix it.
-					setStep('join');
-					setFieldError('joinCode', message);
-				} else {
-					setFormError(message);
-				}
-				return;
-			}
-			await res.json();
-			joinRequestRef.current = null;
-			posthog.capture('wg_joined');
-			rememberWg({ code: joinWg.code, name: joinWg.name, lastVisitedAt: Date.now() });
-			removeDraft(START_DRAFT_KEY);
-			router.push(`/wg/${encodeURIComponent(joinWg.code)}`);
-		} catch {
-			setFormError(joinErrorMessage(0, ''));
-		} finally {
-			busyRef.current = false;
-			setBusy(false);
-		}
-	}
-
 	function backToChoose(): void {
 		setStep('choose');
 		clearError();
@@ -499,12 +154,6 @@ export function NeuClient() {
 		const code = getWgCodeFromPath(safeNextPath(searchParams.get('next')));
 		return code && !accountWgs.some((accountWg) => accountWg.code === code) ? code : null;
 	})();
-
-	function handleAuthenticated(): void {
-		markJustSignedIn();
-		setAuthState('loading');
-		setAuthRetryNonce((value) => value + 1);
-	}
 
 	if (authState !== 'authenticated') {
 		return (
@@ -529,7 +178,7 @@ export function NeuClient() {
 				{authState === 'error' && (
 					<div className="flex flex-col gap-2">
 						<ErrorBox>Deine Anmeldung konnte gerade nicht geprüft werden.</ErrorBox>
-						<Button variant="outline" onClick={() => setAuthRetryNonce((value) => value + 1)}>
+						<Button variant="outline" onClick={() => retryAuth()}>
 							Erneut prüfen
 						</Button>
 					</div>
@@ -611,139 +260,29 @@ export function NeuClient() {
 			)}
 
 			{step === 'choose' && (
-				<div className="flex flex-col gap-4">
-					{accountWgs.length > 0 && (
-						<section aria-labelledby="your-wgs-heading" className="flex flex-col gap-3">
-							<h2 id="your-wgs-heading" className="text-base font-semibold">
-								Deine WGs
-							</h2>
-							<ItemGroup>
-								{accountWgs.map((accountWg) => (
-									<Item
-										key={accountWg.id}
-										variant="outline"
-										render={<Link href={`/wg/${encodeURIComponent(accountWg.code)}`} />}
-									>
-										<ItemMedia variant="icon">
-											<Home aria-hidden />
-										</ItemMedia>
-										<ItemContent className="min-w-0">
-											<ItemTitle className="line-clamp-none break-words">
-												{accountWg.name}
-											</ItemTitle>
-											<ItemDescription>WG öffnen</ItemDescription>
-										</ItemContent>
-									</Item>
-								))}
-							</ItemGroup>
-						</section>
-					)}
-					<div className="flex flex-col gap-2">
-						<Button
-							size="lg"
-							disabled={!interactive || busy}
-							onClick={() => setStep('create')}
-							className="w-full"
-						>
-							<Plus data-icon="inline-start" aria-hidden /> Neue WG erstellen
-						</Button>
-						<Button
-							size="lg"
-							variant="outline"
-							disabled={!interactive || busy}
-							onClick={() => setStep('join')}
-							className="w-full"
-						>
-							<KeyRound data-icon="inline-start" aria-hidden /> Per Code beitreten
-						</Button>
-					</div>
-					<Collapsible open={legacyOpen} onOpenChange={setLegacyOpen}>
-						<CollapsibleTrigger
-							render={
-								<Button
-									variant="ghost"
-									className="h-auto w-full justify-between whitespace-normal text-left"
-								/>
-							}
-						>
-							Altes Profil auf diesem Gerät wiederherstellen
-							<ChevronDown data-icon="inline-end" aria-hidden />
-						</CollapsibleTrigger>
-						<CollapsiblePanel keepRendered>
-							<div inert={!legacyOpen} className="pt-3">
-								<LegacyAccountRecovery />
-							</div>
-						</CollapsiblePanel>
-					</Collapsible>
-				</div>
+				<ChooseStep
+					accountWgs={accountWgs}
+					interactive={interactive}
+					busy={busy}
+					legacyOpen={legacyOpen}
+					onLegacyOpenChange={setLegacyOpen}
+					onCreate={() => setStep('create')}
+					onJoin={() => setStep('join')}
+				/>
 			)}
 
 			{step === 'create' && (
-				<form
-					noValidate
-					onSubmit={(event) => {
-						event.preventDefault();
-						void createWg();
-					}}
-					className="flex flex-col gap-5"
-				>
-					<FieldGroup>
-						<Field
-							id="wg-name"
-							label="WG-Name"
-							placeholder="z. B. WG Weserstraße"
-							value={wgName}
-							onChange={setWgName}
-							maxLength={WG_NAME_MAX}
-							autoComplete="organization"
-							autoFocus
-							required
-							invalid={invalidField === 'wgName'}
-							describedBy={invalidField === 'wgName' ? 'create-wg-error' : undefined}
-							enterKeyHint="next"
-						/>
-						<Field
-							id="creator-name"
-							label="Dein Anzeigename"
-							placeholder="z. B. Anna"
-							value={creatorName}
-							onChange={setCreatorName}
-							maxLength={NAME_MAX}
-							autoComplete="given-name"
-							required
-							invalid={invalidField === 'creatorName'}
-							describedBy={invalidField === 'creatorName' ? 'create-wg-error' : undefined}
-							enterKeyHint="done"
-						/>
-					</FieldGroup>
-					{error && (
-						<ErrorBox
-							id={
-								invalidField === 'wgName' || invalidField === 'creatorName'
-									? 'create-wg-error'
-									: 'create-wg-form-error'
-							}
-						>
-							{error}
-						</ErrorBox>
-					)}
-					<div className="flex flex-wrap items-center gap-2">
-						<BackButton onClick={backToChoose} disabled={busy} />
-						<Button
-							type="submit"
-							disabled={busy}
-							aria-label={busy ? 'WG wird erstellt…' : 'WG erstellen'}
-							className="flex-1"
-						>
-							{busy ? (
-								<Spinner data-icon="inline-start" aria-hidden />
-							) : (
-								<ArrowRight data-icon="inline-start" aria-hidden />
-							)}
-							{busy ? 'Wird erstellt…' : 'WG erstellen'}
-						</Button>
-					</div>
-				</form>
+				<CreateStep
+					wgName={wgName}
+					onWgNameChange={setWgName}
+					creatorName={creatorName}
+					onCreatorNameChange={setCreatorName}
+					error={error}
+					invalidField={invalidField}
+					busy={busy}
+					onSubmit={() => void createWg()}
+					onBack={backToChoose}
+				/>
 			)}
 
 			{step === 'invite' && createdWg && (
@@ -755,134 +294,33 @@ export function NeuClient() {
 			)}
 
 			{step === 'join' && (
-				<form
-					noValidate
-					onSubmit={(event) => {
-						event.preventDefault();
-						void verifyJoinCode();
-					}}
-					className="flex flex-col gap-5"
-				>
-					<FieldGroup>
-						<UiField data-invalid={invalidField === 'joinCode'}>
-							<FieldLabel htmlFor="join-code">WG-Code</FieldLabel>
-							<Input
-								id="join-code"
-								type="text"
-								value={joinCode}
-								onChange={(event) => {
-									// Pasted codes often carry spaces or dashes ("ABCD 1234"); drop them (and
-									// leave maxLength slack) so a paste is not cut off.
-									setJoinCode(
-										event.target.value
-											.replace(/[^a-z0-9]/gi, '')
-											.toUpperCase()
-											.slice(0, 8),
-									);
-									if (error) clearError();
-								}}
-								maxLength={16}
-								required
-								autoFocus
-								autoComplete="off"
-								autoCapitalize="characters"
-								inputMode="text"
-								enterKeyHint="done"
-								placeholder="ABCD1234"
-								aria-describedby={
-									invalidField === 'joinCode' ? 'join-code-hint join-code-error' : 'join-code-hint'
-								}
-								aria-invalid={invalidField === 'joinCode'}
-								className="font-mono text-base"
-							/>
-							<FieldDescription id="join-code-hint">
-								8 Zeichen, ohne I, L, O und U.
-							</FieldDescription>
-						</UiField>
-					</FieldGroup>
-					{error && (
-						<ErrorBox id={invalidField === 'joinCode' ? 'join-code-error' : 'join-code-form-error'}>
-							{error}
-						</ErrorBox>
-					)}
-					<div className="flex flex-wrap items-center gap-2">
-						<BackButton onClick={backToChoose} disabled={busy} />
-						<Button
-							type="submit"
-							disabled={busy}
-							aria-label={busy ? 'WG-Code wird geprüft…' : 'WG-Code prüfen'}
-							className="flex-1"
-						>
-							{busy ? (
-								<Spinner data-icon="inline-start" aria-hidden />
-							) : (
-								<ArrowRight data-icon="inline-start" aria-hidden />
-							)}
-							{busy ? 'Wird geprüft…' : 'Code prüfen'}
-						</Button>
-					</div>
-				</form>
+				<JoinCodeStep
+					joinCode={joinCode}
+					onJoinCodeChange={setJoinCode}
+					error={error}
+					invalidField={invalidField}
+					clearError={clearError}
+					busy={busy}
+					onSubmit={() => void verifyJoinCode()}
+					onBack={backToChoose}
+				/>
 			)}
 
 			{step === 'joinName' && joinWg && (
-				<form
-					noValidate
-					onSubmit={(event) => {
-						event.preventDefault();
-						void joinExistingWg();
+				<JoinNameStep
+					joinWg={joinWg}
+					joinName={joinName}
+					onJoinNameChange={setJoinName}
+					error={error}
+					invalidField={invalidField}
+					clearError={clearError}
+					busy={busy}
+					onSubmit={() => void joinExistingWg()}
+					onBack={() => {
+						clearError();
+						setStep('join');
 					}}
-					className="flex flex-col gap-5"
-				>
-					<FieldGroup>
-						<Field
-							id="join-name"
-							label="Dein Anzeigename"
-							placeholder="z. B. Anna"
-							value={joinName}
-							onChange={(value) => {
-								setJoinName(value);
-								if (error) clearError();
-							}}
-							maxLength={NAME_MAX}
-							autoComplete="given-name"
-							autoFocus
-							required
-							invalid={invalidField === 'joinName'}
-							describedBy={invalidField === 'joinName' ? 'join-name-error' : undefined}
-							enterKeyHint="done"
-						/>
-					</FieldGroup>
-					<p className="text-sm text-muted-foreground">
-						Du trittst <span className="font-medium text-foreground">{joinWg.name}</span> bei.
-					</p>
-					{error && (
-						<ErrorBox id={invalidField === 'joinName' ? 'join-name-error' : 'join-name-form-error'}>
-							{error}
-						</ErrorBox>
-					)}
-					<div className="flex flex-wrap items-center gap-2">
-						<BackButton
-							onClick={() => {
-								clearError();
-								setStep('join');
-							}}
-							disabled={busy}
-						/>
-						<Button
-							type="submit"
-							disabled={busy}
-							aria-label={busy ? 'Du trittst der WG bei…' : 'WG beitreten'}
-							className="flex-1"
-						>
-							{busy ? (
-								<Spinner data-icon="inline-start" aria-hidden />
-							) : (
-								<ArrowRight data-icon="inline-start" aria-hidden />
-							)}
-							{busy ? 'Tritt bei…' : 'Beitreten'}
-						</Button>
-					</div>
-				</form>
+				/>
 			)}
 		</EntryFrame>
 	);
