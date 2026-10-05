@@ -6,7 +6,7 @@
 ## 2. Non-financial routes
 
 - [x] 2.1 Chores create, chore completion (drop the redundant pre-transaction read), absences, events, calendar subscription, chat messages, WG create; one commit per route with its replay tests green.
-- [ ] 2.2 Shopping create: replace the unconditional upsert with lock + complete; add a test for a same-key retry after a lease reclaim with `bought: true`.
+- [x] 2.2 Shopping create: replace the unconditional upsert with lock + complete; add a test for a same-key retry after a lease reclaim with `bought: true`.
 
 ## 3. Financial routes
 

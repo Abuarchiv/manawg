@@ -32,6 +32,7 @@ import {
 	finalizeShoppingCreateDuplicateReplay,
 	handleShoppingCreateTransactionFailure,
 	insertShoppingItemWithReplay,
+	lockShoppingCreateClaim,
 	normalizeShoppingCreateReplayOrReject,
 	normalizeShoppingCreateReplayResponse,
 	persistShoppingCreateReplayResponse,
@@ -183,26 +184,39 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 		}
 
 		let item: typeof shoppingItems.$inferSelect | undefined;
+		// Lease of the claim this request locked; completion, duplicate replay and
+		// release only touch the placeholder with this lease.
+		let claimLease: Date | null = null;
 		if (idemScope && idemKey) {
 			let transactionBodyStarted = false;
+			let replayed: ShoppingCreateReplayResponse | null = null;
+			const releaseClaim = async () =>
+				claimLease ? releaseShoppingCreateClaim(idemScope, idemKey, claimLease) : false;
 			try {
 				item = await withTransaction(async (tx) => {
 					transactionBodyStarted = true;
 					try {
+						const claim = await lockShoppingCreateClaim(tx, idemScope, idemKey);
+						if (claim.kind === 'completed') {
+							replayed = claim.response;
+							return undefined;
+						}
+						claimLease = claim.leaseExpiresAt;
 						return await insertShoppingItemWithReplay(tx, {
 							wgId: wg.id,
 							addedByMemberId: addedBy,
 							name,
 							quantity: safeQuantity,
 							bought,
-							replay: { scope: idemScope, key: idemKey },
+							replay: { scope: idemScope, key: idemKey, leaseExpiresAt: claim.leaseExpiresAt },
 						});
 					} catch (err) {
 						throw new ShoppingCreateTransactionRollback(err);
 					}
 				});
 			} catch (insertErr) {
-				if (isOpenShoppingItemDuplicate(insertErr)) {
+				const lease = claimLease;
+				if (lease && isOpenShoppingItemDuplicate(insertErr)) {
 					const duplicateResponse = await finalizeShoppingCreateDuplicateReplay(replayReservation, {
 						persist: () =>
 							withTransaction((tx) =>
@@ -211,13 +225,14 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 									idemScope,
 									idemKey,
 									SHOPPING_CREATE_DUPLICATE_RESPONSE,
+									lease,
 								),
 							),
 						read: async () =>
 							normalizeShoppingCreateReplayResponse(
 								await getCachedResponse<unknown>(idemScope, idemKey),
 							),
-						release: () => releaseShoppingCreateClaim(idemScope, idemKey),
+						release: releaseClaim,
 					});
 					if (!duplicateResponse) return serverError('idempotency_response_pending');
 					return shoppingCreateHttpResponse(duplicateResponse);
@@ -227,13 +242,15 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 					const failure = transactionBodyStarted
 						? insertErr
 						: new ShoppingCreateTransactionRollback(insertErr);
-					await handleShoppingCreateTransactionFailure(replayReservation, failure, () =>
-						releaseShoppingCreateClaim(idemScope, idemKey),
-					);
+					await handleShoppingCreateTransactionFailure(replayReservation, failure, releaseClaim);
 				} catch {
 					return serverError('idempotency_response_pending');
 				}
 				return serverError('idempotency_response_pending');
+			}
+			if (replayed) {
+				resolveShoppingCreateReplay(replayReservation, replayed);
+				return shoppingCreateHttpResponse(replayed);
 			}
 		} else {
 			try {
@@ -259,11 +276,7 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 			const err = new Error('insert_failed');
 			replayReservation?.reject(err);
 			if (idemScope && idemKey) {
-				try {
-					if (!(await releaseShoppingCreateClaim(idemScope, idemKey))) {
-						return serverError('idempotency_response_pending');
-					}
-				} catch {
+				if (!claimLease || !(await releaseShoppingCreateClaim(idemScope, idemKey, claimLease))) {
 					return serverError('idempotency_response_pending');
 				}
 			}
