@@ -60,6 +60,21 @@ class TransactionAbort extends Error {
 	}
 }
 
+/** Real expense constants and schemas, so the route validates with production limits. */
+function expenseValidationModules() {
+	const constants = loadTypeScript(
+		path.join(process.cwd(), 'src/features/expenses/expense-constants.ts'),
+		{},
+	);
+	return {
+		'@/features/expenses/expense-constants': constants,
+		'@/features/expenses/expense-schemas': loadTypeScript(
+			path.join(process.cwd(), 'src/features/expenses/expense-schemas.ts'),
+			{ '@/features/expenses/expense-constants': constants },
+		),
+	};
+}
+
 function loadTypeScript(file, overrides) {
 	const source = transpileModule(readFileSync(file, 'utf8'), {
 		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
@@ -380,10 +395,7 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 			imageUrlSchema: requireFromWeb('zod').z.string().nullable().optional(),
 			isAllowedImageUrlForWg: () => true,
 		},
-		'@/features/expenses/expense-constants': {
-			AMOUNT_MAX_CENTS: 100_000_000,
-			AMOUNT_MIN_CENTS: 1,
-		},
+		...expenseValidationModules(),
 		'@/features/expenses/expense-payments': {
 			hasCapturingExpensePayment: async () => state.capturing,
 			loadCompletedExpensePayments: async () => [],
@@ -698,7 +710,7 @@ function getHarness({ expenseCount, readLimited = false }) {
 		'@/core/validators/image-url': {
 			imageUrlSchema: requireFromWeb('zod').z.string().nullable().optional(),
 		},
-		'@/features/expenses/expense-constants': { AMOUNT_MAX_CENTS: 100_000_000, AMOUNT_MIN_CENTS: 1 },
+		...expenseValidationModules(),
 		'@/features/expenses/expense-payments': { loadCompletedExpensePayments: async () => [] },
 		'@/features/expenses/expenses': stub,
 		'@/features/expenses/paid-by-guard': stub,

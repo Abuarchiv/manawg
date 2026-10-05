@@ -17,6 +17,36 @@ import {
 	wgMembers,
 } from '../src/core/db/schema';
 
+/**
+ * The real, dependency-free expense validation modules. Routes import them for
+ * their request schemas; loading the real ones keeps every route test on the
+ * limits production enforces.
+ */
+const EXPENSE_VALIDATION_MODULES: Record<string, unknown> = (() => {
+	const webRoot = process.cwd();
+	const requireFromWebRoot = createRequire(path.join(webRoot, 'package.json'));
+	const load = (relative: string, deps: Record<string, unknown> = {}) => {
+		const compiled = transpileModule(readFileSync(path.join(webRoot, relative), 'utf8'), {
+			compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
+		}).outputText;
+		const loaded = { exports: {} as Record<string, unknown> };
+		new Function('require', 'module', 'exports', compiled)(
+			(id: string) => (Object.hasOwn(deps, id) ? deps[id] : requireFromWebRoot(id)),
+			loaded,
+			loaded.exports,
+		);
+		return loaded.exports;
+	};
+	const constants = load('src/features/expenses/expense-constants.ts');
+	const schemas = load('src/features/expenses/expense-schemas.ts', {
+		'@/features/expenses/expense-constants': constants,
+	});
+	return {
+		'@/features/expenses/expense-constants': constants,
+		'@/features/expenses/expense-schemas': schemas,
+	};
+})();
+
 test.describe('expense integrity regressions', () => {
 	function loadTs<T>(filePath: string, overrides: Record<string, unknown> = {}): T {
 		const compiled = transpileModule(readFileSync(filePath, 'utf8'), {
@@ -264,6 +294,7 @@ test.describe('expense integrity regressions', () => {
 		const route = loadTs<{ DELETE: (req: Request, ctx: unknown) => Promise<Response> }>(
 			EXPENSE_ROUTE,
 			{
+				...EXPENSE_VALIDATION_MODULES,
 				'@/core/audit': { recordAuditEvent: async () => undefined },
 				'@/core/db': { db, expenseSplits, expenses, wgMembers: {} },
 				'@/core/db/private-image-deletions': {
@@ -300,10 +331,6 @@ test.describe('expense integrity regressions', () => {
 				'@/core/validators/image-url': {
 					imageUrlSchema: z.string().nullable().optional(),
 					isAllowedImageUrlForWg: () => true,
-				},
-				'@/features/expenses/expense-constants': {
-					AMOUNT_MAX_CENTS: 100_000_000,
-					AMOUNT_MIN_CENTS: 1,
 				},
 				'@/features/expenses/expense-payments': {
 					withExpensePaymentLock: withPaymentLock,
@@ -597,6 +624,7 @@ test.describe('expense integrity regressions', () => {
 		const route = loadTs<{ PATCH: (req: Request, ctx: unknown) => Promise<Response> }>(
 			EXPENSE_ROUTE,
 			{
+				...EXPENSE_VALIDATION_MODULES,
 				'@/core/audit': { recordAuditEvent: async () => undefined },
 				'@/core/db': { db, expenseSplits, expenses, wgMembers },
 				'@/core/db/private-image-deletions': {
@@ -639,10 +667,6 @@ test.describe('expense integrity regressions', () => {
 				'@/core/validators/image-url': {
 					imageUrlSchema: z.string().nullable().optional(),
 					isAllowedImageUrlForWg: () => true,
-				},
-				'@/features/expenses/expense-constants': {
-					AMOUNT_MAX_CENTS: 100_000_000,
-					AMOUNT_MIN_CENTS: 1,
 				},
 				'@/features/expenses/expense-payments': {
 					hasCapturingExpensePayment: async () => capturing,
@@ -955,6 +979,7 @@ test.describe('expense integrity regressions', () => {
 		const collectionRoute = loadTs<{
 			PATCH: (req: Request, ctx: unknown) => Promise<Response>;
 		}>(path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/route.ts'), {
+			...EXPENSE_VALIDATION_MODULES,
 			...common,
 			'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
 			'@/core/guards/idempotency': {
@@ -1220,6 +1245,7 @@ test.describe('expense integrity regressions', () => {
 		const response = await loadTs<{
 			PATCH: (req: Request, ctx: unknown) => Promise<Response>;
 		}>(RECURRING_ROUTE, {
+			...EXPENSE_VALIDATION_MODULES,
 			'@/core/audit': { recordAuditEvent: async () => undefined },
 			'@/core/db': { db, recurringExpenses, wgMembers },
 			'@/core/http/api-errors': {
@@ -1476,6 +1502,7 @@ test.describe('expense integrity regressions', () => {
 		const route = loadTs<{
 			POST: (req: Request, ctx: unknown) => Promise<Response>;
 		}>(path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/route.ts'), {
+			...EXPENSE_VALIDATION_MODULES,
 			'@/core/audit': { recordAuditEvent: async () => undefined },
 			'@/core/db': {
 				db: {
@@ -1831,6 +1858,7 @@ test.describe('expense create replay atomic', () => {
 				: 'src/app/api/wg/[code]/recurring-expenses/route.ts',
 		);
 		const route = loadTs<{ POST: (req: Request, ctx: unknown) => Promise<Response> }>(file, {
+			...EXPENSE_VALIDATION_MODULES,
 			...common,
 			'@/core/validators/image-url': {
 				imageUrlSchema: requireFromWeb('zod').z.string().nullable().optional(),
@@ -2143,6 +2171,7 @@ test.describe('finance failure regressions', () => {
 		const { PATCH } = loadTs<{
 			PATCH: (req: Request, params: { code: string; id: string }) => Promise<Response>;
 		}>('app/api/wg/[code]/recurring-expenses/[id]/route.ts', {
+			...EXPENSE_VALIDATION_MODULES,
 			'@/core/audit': { recordAuditEvent: async () => undefined },
 			'@/core/db': {
 				...schema,

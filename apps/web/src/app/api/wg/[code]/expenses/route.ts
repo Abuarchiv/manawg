@@ -29,12 +29,17 @@ import type { NotificationDispatchWarning } from '@/core/notifications/notificat
 import { checkRateLimit, expensesReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
-import { AMOUNT_MAX_CENTS, AMOUNT_MIN_CENTS } from '@/features/expenses/expense-constants';
+import { MAX_SPLITS } from '@/features/expenses/expense-constants';
 import {
 	hasCapturingExpensePayment,
 	loadCompletedExpensePayments,
 	withExpensePaymentLock,
 } from '@/features/expenses/expense-payments';
+import {
+	expenseAmountSchema,
+	expenseDescriptionSchema,
+	expenseSplitSchema,
+} from '@/features/expenses/expense-schemas';
 import {
 	findExpenseMemberIds,
 	insertExpenseWithSplits,
@@ -47,10 +52,6 @@ import { and, desc, eq, getTableColumns, gt, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const DESCRIPTION_MIN = 1;
-const DESCRIPTION_MAX = 200;
-const MAX_SPLITS = 50;
-
 type ExpenseCreateResponseBody = { expense: unknown; warning: NotificationDispatchWarning };
 
 const expenseCreateReplay = new ReplayCache<ExpenseCreateResponseBody>();
@@ -59,29 +60,17 @@ function expenseCreateIdempotencyScope(wgId: string, memberId: string): string {
 	return `expenses-create:${wgId}:${memberId}`;
 }
 
-const splitSchema = z.object({
-	debtorMemberId: z.string().uuid(),
-	amountCents: z
-		.number()
-		.int('amountCents must be an integer')
-		.min(0, 'amountCents must not be negative'),
-});
-
 const createExpenseSchema = z
 	.object({
 		paidByMemberId: z.string().uuid().optional(),
-		amountCents: z
-			.number()
-			.int('amountCents must be an integer')
-			.min(AMOUNT_MIN_CENTS)
-			.max(AMOUNT_MAX_CENTS),
+		amountCents: expenseAmountSchema,
 		currency: currencySchema.optional().default('EUR'),
-		description: z.string().trim().min(DESCRIPTION_MIN).max(DESCRIPTION_MAX),
+		description: expenseDescriptionSchema,
 		imageUrl: imageUrlSchema,
 		occurredAt: z.string().datetime({ offset: true }).optional(),
 		recurringExpenseId: z.string().uuid().optional(),
 		expectedRecurringNextDueAt: z.string().datetime({ offset: true }).optional(),
-		splits: z.array(splitSchema).min(1).max(MAX_SPLITS),
+		splits: z.array(expenseSplitSchema).min(1).max(MAX_SPLITS),
 	})
 	.superRefine((value, ctx) => {
 		// Structural shape alone would accept splits whose total does not match

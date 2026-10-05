@@ -34,7 +34,13 @@ import {
 	isRecurringDueAtEditAllowed,
 	recurringDueAtSchema,
 } from '@/core/validators/recurring-due-date';
+import { MAX_SPLITS, RECURRING_INTERVAL_MAX_MONTHS } from '@/features/expenses/expense-constants';
 import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
+import {
+	expenseAmountSchema,
+	expenseDescriptionSchema,
+	expenseSplitSchema,
+} from '@/features/expenses/expense-schemas';
 import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import {
 	buildRecurringAdvance,
@@ -56,21 +62,16 @@ function recurringCreateIdempotencyScope(wgId: string, memberId: string): string
 	return `recurring-expenses-create:${wgId}:${memberId}`;
 }
 
-const splitSchema = z.object({
-	debtorMemberId: z.string().uuid(),
-	amountCents: z.number().int().min(0),
-});
-
 const createRecurringSchema = z.object({
-	description: z.string().trim().min(1).max(200),
-	amountCents: z.number().int().min(1).max(100_000_000),
+	description: expenseDescriptionSchema,
+	amountCents: expenseAmountSchema,
 	currency: currencySchema.optional().default('EUR'),
 	paidByMemberId: z.string().uuid(),
-	intervalMonths: z.number().int().min(1).max(24).default(1),
+	intervalMonths: z.number().int().min(1).max(RECURRING_INTERVAL_MAX_MONTHS).default(1),
 	nextDueAt: recurringDueAtSchema,
 	/** Unclamped start day; later due dates keep its day-of-month. */
 	anchorAt: z.string().datetime({ offset: true }).optional(),
-	splits: z.array(splitSchema).min(1).max(50),
+	splits: z.array(expenseSplitSchema).min(1).max(MAX_SPLITS),
 });
 
 function serialize(row: typeof recurringExpenses.$inferSelect) {
@@ -87,14 +88,14 @@ function serialize(row: typeof recurringExpenses.$inferSelect) {
 
 const advanceSchema = z.object({
 	id: z.string().uuid(),
-	description: z.string().trim().min(1).max(200).optional(),
-	amountCents: z.number().int().min(1).max(100_000_000).optional(),
+	description: expenseDescriptionSchema.optional(),
+	amountCents: expenseAmountSchema.optional(),
 	currency: currencySchema.optional(),
 	paidByMemberId: z.string().uuid().optional(),
-	intervalMonths: z.number().int().min(1).max(24).optional(),
+	intervalMonths: z.number().int().min(1).max(RECURRING_INTERVAL_MAX_MONTHS).optional(),
 	nextDueAt: z.string().datetime({ offset: true }).optional(),
 	expectedNextDueAt: z.string().datetime({ offset: true }).optional(),
-	splits: z.array(splitSchema).min(1).max(50).optional(),
+	splits: z.array(expenseSplitSchema).min(1).max(MAX_SPLITS).optional(),
 });
 
 const deleteRecurringSchema = z.object({

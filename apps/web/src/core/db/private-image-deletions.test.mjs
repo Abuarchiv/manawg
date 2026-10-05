@@ -10,6 +10,21 @@ const connectionString = process.env.PRIVATE_IMAGE_TEST_DATABASE_URL;
 const wgId = '11111111-1111-4111-8111-111111111111';
 const objectId = '22222222-2222-4222-8222-222222222222';
 
+/** Real expense constants and schemas, so the route validates with production limits. */
+function expenseValidationModules() {
+	const constants = loadTypeScript(
+		path.join(process.cwd(), 'src/features/expenses/expense-constants.ts'),
+		{},
+	);
+	return {
+		'@/features/expenses/expense-constants': constants,
+		'@/features/expenses/expense-schemas': loadTypeScript(
+			path.join(process.cwd(), 'src/features/expenses/expense-schemas.ts'),
+			{ '@/features/expenses/expense-constants': constants },
+		),
+	};
+}
+
 function loadTypeScript(file, overrides = {}) {
 	const source = transpileModule(readFileSync(file, 'utf8'), {
 		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
@@ -713,10 +728,7 @@ test(
 						imageUrlSchema: z.string().nullable().optional(),
 						isAllowedImageUrlForWg: () => true,
 					},
-					'@/features/expenses/expense-constants': {
-						AMOUNT_MAX_CENTS: 100_000_000,
-						AMOUNT_MIN_CENTS: 1,
-					},
+					...expenseValidationModules(),
 					'@/features/expenses/expense-payments': {
 						hasCapturingExpensePayment: async () => false,
 						withExpensePaymentLock: async (currentWgId, operation) =>

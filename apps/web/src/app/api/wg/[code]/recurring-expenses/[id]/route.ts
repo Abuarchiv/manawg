@@ -16,6 +16,12 @@ import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { isRecurringDueAtEditAllowed } from '@/core/validators/recurring-due-date';
+import { MAX_SPLITS, RECURRING_INTERVAL_MAX_MONTHS } from '@/features/expenses/expense-constants';
+import {
+	expenseAmountSchema,
+	expenseDescriptionSchema,
+	expenseSplitSchema,
+} from '@/features/expenses/expense-schemas';
 import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import {
 	addMonthsFromAnchor,
@@ -27,19 +33,14 @@ import { and, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const splitSchema = z.object({
-	debtorMemberId: z.string().uuid(),
-	amountCents: z.number().int().min(0),
-});
-
 const patchSchema = z.object({
-	description: z.string().trim().min(1).max(200).optional(),
-	amountCents: z.number().int().min(1).max(100_000_000).optional(),
+	description: expenseDescriptionSchema.optional(),
+	amountCents: expenseAmountSchema.optional(),
 	currency: currencySchema.optional(),
 	paidByMemberId: z.string().uuid().optional(),
-	intervalMonths: z.number().int().min(1).max(24).optional(),
+	intervalMonths: z.number().int().min(1).max(RECURRING_INTERVAL_MAX_MONTHS).optional(),
 	nextDueAt: z.string().datetime({ offset: true }).optional(),
-	splits: z.array(splitSchema).min(1).max(50).optional(),
+	splits: z.array(expenseSplitSchema).min(1).max(MAX_SPLITS).optional(),
 	paused: z.boolean().optional(),
 	/** The due date the editor loaded; a booking since then makes the edit stale. */
 	expectedNextDueAt: z.string().datetime({ offset: true }).optional(),
