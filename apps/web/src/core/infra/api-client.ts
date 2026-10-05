@@ -1,3 +1,4 @@
+import { isClientFixtureMode } from '@/shared/lib/fixture-mode';
 import {
 	EXPECTED_MEMBER_ID_HEADER,
 	MEMBER_ID_HEADER,
@@ -31,11 +32,7 @@ export async function apiFetch<T>(
 
 	const headers = new Headers(rest.headers);
 	if (memberId) headers.set(EXPECTED_MEMBER_ID_HEADER, memberId);
-	if (
-		process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true' &&
-		process.env.NEXT_PUBLIC_DB_DOWN === 'true' &&
-		memberId
-	) {
+	if (isClientFixtureMode() && memberId) {
 		headers.set(MEMBER_ID_HEADER, memberId);
 	}
 	if (memberToken) {

@@ -35,6 +35,11 @@ function loadTypeScript(file, overrides = {}) {
 }
 
 const { apiFetch } = loadTypeScript(apiClientPath, {
+	'@/shared/lib/fixture-mode': {
+		isClientFixtureMode: () =>
+			process.env.NEXT_PUBLIC_DB_DOWN === 'true' &&
+			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true',
+	},
 	'@/shared/lib/member-header': {
 		EXPECTED_MEMBER_ID_HEADER: 'x-manawg-expected-member-id',
 		MEMBER_ID_HEADER: 'x-manawg-member-id',

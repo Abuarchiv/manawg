@@ -40,6 +40,7 @@ import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import posthog from '@/shared/lib/analytics';
+import { isClientFixtureMode } from '@/shared/lib/fixture-mode';
 import { getIdentity, rememberWg } from '@/shared/lib/identity';
 import { ArrowRight, ChevronDown, Home, KeyRound, Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -373,7 +374,7 @@ export function NeuClient() {
 		setBusy(true);
 		clearError();
 		try {
-			if (process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true') {
+			if (isClientFixtureMode()) {
 				// The database-free fixture keeps its existing policy-preview contract;
 				// production never performs this private metadata lookup before joining.
 				const res = await fetch(`/api/wg/${encodeURIComponent(code)}`, { cache: 'no-store' });

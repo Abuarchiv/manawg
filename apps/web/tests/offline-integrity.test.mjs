@@ -1079,6 +1079,7 @@ test('API client sends expected member separately from fixture identity headers'
 	const api = loadTs(
 		'src/core/infra/api-client.ts',
 		{
+			'@/shared/lib/fixture-mode': { isClientFixtureMode: () => false },
 			'@/shared/lib/member-header': {
 				MEMBER_ID_HEADER: 'x-manawg-member-id',
 				MEMBER_TOKEN_HEADER: 'x-manawg-member-token',

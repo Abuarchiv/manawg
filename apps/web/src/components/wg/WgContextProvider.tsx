@@ -8,6 +8,7 @@ import { captureException } from '@/core/infra/capture-client';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
+import { isClientFixtureMode } from '@/shared/lib/fixture-mode';
 import {
 	type StoredIdentity,
 	clearIdentity,
@@ -100,10 +101,7 @@ export function WgContextProvider({
 		const storedIdentity = getIdentity(wg.id);
 		// The database-free Playwright fixture has no Supabase session by design.
 		// It only exists in CI and keeps its old local identity setup working.
-		const fixtureMode =
-			process.env.NEXT_PUBLIC_DB_DOWN === 'true' &&
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true';
-		if (fixtureMode) {
+		if (isClientFixtureMode()) {
 			const fixtureIdentity = storedIdentity ?? initialIdentity;
 			if (fixtureIdentity) {
 				setStateIdentity(fixtureIdentity);
@@ -171,12 +169,7 @@ export function WgContextProvider({
 
 	useEffect(() => {
 		if (!hydrated) return;
-		if (
-			process.env.NEXT_PUBLIC_DB_DOWN === 'true' &&
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true'
-		) {
-			return;
-		}
+		if (isClientFixtureMode()) return;
 		let cancelled = false;
 		let unsubscribe: (() => void) | undefined;
 		void import('@/core/auth/client').then(({ createSupabaseBrowserClient }) => {
