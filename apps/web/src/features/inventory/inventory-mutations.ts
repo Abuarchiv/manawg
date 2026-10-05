@@ -196,11 +196,12 @@ export async function updateInventoryItemMutation(
 		});
 	}
 
-	const autoPushedShoppingItemId = await pushBelowThresholdItemToShopping(
-		tx,
-		updated,
-		input.wgId,
-		input.memberId,
-	);
+	// Only crossing the threshold restocks the shopping list. Renaming an item
+	// that is already low, or a partial restock that stays low, must not bring
+	// back an entry someone deleted or already bought.
+	const crossedThreshold = !isBelowThreshold(existing) && isBelowThreshold(updated);
+	const autoPushedShoppingItemId = crossedThreshold
+		? await pushBelowThresholdItemToShopping(tx, updated, input.wgId, input.memberId)
+		: null;
 	return { kind: 'ok' as const, updated, delta, autoPushedShoppingItemId };
 }
