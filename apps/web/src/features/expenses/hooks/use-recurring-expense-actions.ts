@@ -260,6 +260,7 @@ export function useRecurringExpenseActions(
 					paidByMemberId,
 					intervalMonths: recurringIntervalMonths,
 					nextDueAt: nextDueAt.toISOString(),
+					...(startsAt ? { anchorAt: startsAt } : {}),
 					splits,
 				});
 				if ((await enqueueOfflineAction(queued)) === 0) {

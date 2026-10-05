@@ -182,6 +182,7 @@ function hasValidPayload(type: OfflineActionType, payload: Record<string, unknow
 				typeof payload.paidByMemberId === 'string' &&
 				typeof payload.intervalMonths === 'number' &&
 				typeof payload.nextDueAt === 'string' &&
+				(payload.anchorAt === undefined || typeof payload.anchorAt === 'string') &&
 				isSplitArray(payload.splits)
 			);
 		case 'recurring.advance':

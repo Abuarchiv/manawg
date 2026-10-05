@@ -149,6 +149,8 @@ interface QueuedRecurringInput extends QueuedIdentityInput {
 	paidByMemberId: string;
 	intervalMonths: number;
 	nextDueAt: string;
+	/** Unclamped start day; must replay unchanged with the same idempotency key. */
+	anchorAt?: string;
 	splits: Array<{ debtorMemberId: string; amountCents: number }>;
 	now?: number;
 }
@@ -375,6 +377,7 @@ export function createQueuedRecurring(input: QueuedRecurringInput): OfflineActio
 			paidByMemberId: input.paidByMemberId,
 			intervalMonths: input.intervalMonths,
 			nextDueAt: input.nextDueAt,
+			...(input.anchorAt ? { anchorAt: input.anchorAt } : {}),
 			splits: input.splits,
 		},
 		now,
