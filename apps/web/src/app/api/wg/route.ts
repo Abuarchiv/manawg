@@ -2,6 +2,7 @@ import { recordAuditEvent } from '@/core/audit';
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, idempotencyResponses, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
+import { releaseClaimedResponse } from '@/core/db/claimed-response';
 import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
@@ -178,6 +179,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		}
 	}
 
+	// Lease of the claim this request locked; released when the write fails, so
+	// a retry with the same key does not wait out the lease.
+	let claimedLeaseExpiresAt: Date | null = null;
+	const releaseClaim = async () => {
+		if (idemKey && claimedLeaseExpiresAt) {
+			await releaseClaimedResponse(idemScope, idemKey, claimedLeaseExpiresAt);
+		}
+	};
 	try {
 		// The WG and its creator are one write. A WG whose creator row is missing
 		// has a valid share code but no one who can administer it, and the person
@@ -228,6 +237,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 						) {
 							throw new TransactionAbort('idempotency_claim_invalid');
 						}
+						claimedLeaseExpiresAt = slot.expiresAt;
 					}
 					const [createdWg] = await tx.insert(wgs).values({ name, shareCode }).returning();
 					if (!createdWg) throw new TransactionAbort('insert_failed');
@@ -284,6 +294,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				return replayResponse(result.response);
 			} catch (err) {
 				if (err instanceof TransactionAbort) {
+					await releaseClaim();
 					if (err.code === 'account_deletion_pending') {
 						return conflict('account_deletion_pending', 'account_deletion_pending');
 					}
@@ -294,9 +305,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			}
 		}
 		logApiError('[api/wg POST] share code retries exhausted', lastError);
+		await releaseClaim();
 		return serverError('share_code_exhausted');
 	} catch (err) {
 		logApiError('[api/wg POST] insert failed', err);
+		await releaseClaim();
 		return serverError('db_error');
 	}
 }

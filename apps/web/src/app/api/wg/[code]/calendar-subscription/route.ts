@@ -1,6 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { calendarSubscriptions, db, idempotencyResponses } from '@/core/db';
 import { type ActiveAccountMember, lockActiveAccountMember } from '@/core/db/account-deletion';
+import { releaseClaimedResponse } from '@/core/db/claimed-response';
 import { type DbTransaction, TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
@@ -83,6 +84,7 @@ async function withCalendarMutation(
 	let result:
 		| { replayed: true; response: CachedJsonResponse }
 		| { replayed: false; outcome: MutationResult };
+	let claimedLeaseExpiresAt: Date | null = null;
 	try {
 		result = await withTransaction(async (tx) => {
 			const member = await lockActiveAccountMember(
@@ -115,6 +117,7 @@ async function withCalendarMutation(
 					(slot.body as Record<string, unknown>)._claimed !== true
 				)
 					throw new TransactionAbort('idempotency_claim_invalid');
+				claimedLeaseExpiresAt = slot.expiresAt;
 			}
 			const outcome = member
 				? await mutate(tx, member)
@@ -140,6 +143,10 @@ async function withCalendarMutation(
 			return { replayed: false as const, outcome };
 		});
 	} catch (err) {
+		// The write rolled back: free the claim so a same-key retry runs at once.
+		if (key && claimedLeaseExpiresAt) {
+			await releaseClaimedResponse(scope, key, claimedLeaseExpiresAt);
+		}
 		if (err instanceof TransactionAbort) return serverError(err.code);
 		throw err;
 	}

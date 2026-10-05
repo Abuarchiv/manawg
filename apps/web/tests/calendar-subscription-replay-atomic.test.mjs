@@ -120,6 +120,16 @@ function harness({
 			calendarSubscriptions,
 			idempotencyResponses,
 		},
+		'@/core/db/claimed-response': {
+			releaseClaimedResponse: async (_scope, _key, leaseExpiresAt) => {
+				if (
+					state.slot?.body?._claimed === true &&
+					state.slot.expiresAt.getTime() === leaseExpiresAt.getTime()
+				) {
+					state.slot = null;
+				}
+			},
+		},
 		'@/core/db/transaction': { TransactionAbort, withTransaction },
 		'@/core/db/account-deletion': {
 			lockActiveAccountMember: async (_tx, _wgId, memberId, authUserId) =>
@@ -239,8 +249,11 @@ test('failed replay publication rolls token rotation back', async () => {
 	const response = await call('PATCH');
 	assert.equal(response.status, 500);
 	assert.equal(state.subscription.tokenSeed, 'seed-0');
-	assert.deepEqual(state.slot.body, { _claimed: true });
+	// The rolled-back request frees its claim, so a same-key retry runs at once.
+	assert.equal(state.slot, null);
 	assert.equal(state.audits, 0);
+	const retry = await call('PATCH');
+	assert.equal(retry.status, 500);
 });
 
 test('reactivation retry does not regenerate its token', async () => {

@@ -95,6 +95,7 @@ function harness({ callerId = otherMemberId, isAdmin = false } = {}) {
 	const mocks = {
 		'@/core/audit': { recordAuditEvent: async () => {} },
 		'@/core/db': { db, idempotencyResponses: {}, recurringExpenses, wgMembers },
+		'@/core/db/claimed-response': { releaseClaimedResponse: async () => undefined },
 		'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/http/api-errors': {

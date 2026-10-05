@@ -1,5 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, idempotencyResponses, recurringExpenses, wgMembers } from '@/core/db';
+import { releaseClaimedResponse } from '@/core/db/claimed-response';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import {
@@ -259,6 +260,7 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 					template: typeof recurringExpenses.$inferSelect;
 					body: RecurringCreateResponseBody;
 			  };
+		let claimedLeaseExpiresAt: Date | null = null;
 		try {
 			written = await withExpensePaymentLock(wg.id, async (tx) => {
 				if (idemScope && idemKey) {
@@ -287,6 +289,7 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 					) {
 						throw new TransactionAbort('idempotency_claim_invalid');
 					}
+					claimedLeaseExpiresAt = slot.expiresAt;
 				}
 				const [template] = await tx
 					.insert(recurringExpenses)
@@ -326,6 +329,10 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 			});
 		} catch (writeErr) {
 			replayReservation?.reject(writeErr);
+			// The write rolled back: free the claim so a same-key retry runs at once.
+			if (idemScope && idemKey && claimedLeaseExpiresAt) {
+				await releaseClaimedResponse(idemScope, idemKey, claimedLeaseExpiresAt);
+			}
 			throw writeErr;
 		}
 		if (written.replayed) {

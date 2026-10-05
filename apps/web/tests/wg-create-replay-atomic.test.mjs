@@ -140,6 +140,16 @@ function harness({
 			wgMembers,
 			wgs,
 		},
+		'@/core/db/claimed-response': {
+			releaseClaimedResponse: async (_scope, _key, leaseExpiresAt) => {
+				if (
+					state.slot?.body?._claimed === true &&
+					state.slot.expiresAt.getTime() === leaseExpiresAt.getTime()
+				) {
+					state.slot = null;
+				}
+			},
+		},
 		'@/core/db/account-deletion': {
 			assertAccountCanAcquireMembership: async () => {
 				if (state.accountDeleted) throw new TransactionAbort('account_deletion_pending');
@@ -248,10 +258,10 @@ for (const failAt of ['member', 'replay']) {
 		assert.equal(response.status, 500);
 		assert.equal(state.wgs.length, 0);
 		assert.equal(state.members.length, 0);
-		assert.deepEqual(state.slot.body, { _claimed: true });
+		// The rolled-back request frees its claim, so the same-key retry runs at once.
+		assert.equal(state.slot, null);
 		assert.equal(state.audits, 0);
 		state.failAt = null;
-		state.slot.expiresAt = new Date(0);
 		const retry = await post();
 		assert.equal(retry.status, 200);
 		assert.equal(state.wgs.length, 1);

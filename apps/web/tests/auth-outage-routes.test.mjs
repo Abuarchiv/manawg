@@ -46,6 +46,7 @@ function sharedMocks(state) {
 		},
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/shared/lib/limits': { MEMBER_NAME_MAX_LENGTH: 80, WG_NAME_MAX_LENGTH: 100 },
+		'@/core/db/claimed-response': { releaseClaimedResponse: async () => undefined },
 		'@/core/http/api-errors': {
 			apiError: (error, status, code) =>
 				NextResponse.json(code === undefined ? { error } : { error, code }, { status }),
