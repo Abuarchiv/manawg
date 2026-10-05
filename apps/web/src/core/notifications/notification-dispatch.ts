@@ -11,7 +11,6 @@ import {
 	isTransientWebPushStatus,
 	parseWebPushStatusCode,
 } from '@/core/notifications/web-push-errors';
-import { getAppUrl } from '@/shared/lib/app-url';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 export interface DispatchInput {
@@ -63,10 +62,28 @@ async function mapInBatches<T, R>(
 	return results;
 }
 
+/**
+ * Same-origin path for the notification click. The service worker resolves it
+ * against its own origin; an absolute URL built from the configured app URL
+ * opened only `/` whenever that URL differed from the origin the app runs on.
+ */
 function buildNotificationUrl(shareCode: string, urlPath: string): string {
 	const normalizedPath = urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
-	return `${getAppUrl()}/wg/${encodeURIComponent(shareCode)}${normalizedPath}`;
+	return `/wg/${encodeURIComponent(shareCode)}${normalizedPath}`;
 }
+
+const SECONDS_PER_HOUR = 60 * 60;
+/**
+ * How long the push service keeps an undelivered message. web-push defaults to
+ * four weeks, so a phone back online after days got "Termin heute" for a past
+ * day. Due-today reminders expire sooner than ordinary activity.
+ */
+const PUSH_TTL_SECONDS: Record<'urgent' | 'normal', number> = {
+	urgent: 12 * SECONDS_PER_HOUR,
+	normal: 24 * SECONDS_PER_HOUR,
+};
+/** A push service that does not answer by then is treated as a failed delivery. */
+const PUSH_REQUEST_TIMEOUT_MS = 10_000;
 
 /** Quiet-hour settings are WG-local and use the same Berlin calendar zone as
  * recurrence and reminders. Never depend on the host process timezone. */
@@ -102,6 +119,7 @@ async function configureWebPush(): Promise<typeof import('web-push') | null> {
 async function sendWebPush(
 	memberId: string,
 	payload: { title: string; body: string; url: string },
+	priority: 'urgent' | 'normal',
 ): Promise<WebPushResult> {
 	const webPush = await configureWebPush();
 	if (!webPush) return { sent: 0, failures: [] };
@@ -133,6 +151,11 @@ async function sendWebPush(
 								url: payload.url,
 								icon: '/icon-192.png',
 							}),
+							{
+								TTL: PUSH_TTL_SECONDS[priority],
+								urgency: priority === 'urgent' ? 'high' : 'normal',
+								timeout: PUSH_REQUEST_TIMEOUT_MS,
+							},
 						);
 						sent += 1;
 						break;
@@ -248,7 +271,7 @@ export async function dispatchNotification(
 
 	const pushResults = await mapInBatches(targetMembers, PUSH_BATCH_SIZE, async (member) => {
 		if (!member.pushOptIn) return { sent: 0, failures: [] };
-		return sendWebPush(member.id, { title: message.title, body: message.body, url });
+		return sendWebPush(member.id, { title: message.title, body: message.body, url }, priority);
 	});
 
 	const sentTotal = pushResults
