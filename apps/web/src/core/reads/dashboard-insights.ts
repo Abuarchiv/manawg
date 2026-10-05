@@ -421,7 +421,7 @@ export function getWeekAgenda(input: {
 			kind: 'event',
 			title: event.title,
 			detail: event.location ? `${when} · ${event.location}` : when,
-			href: `${base}/kalender`,
+			href: `${base}/kalender?highlight=${encodeURIComponent(event.eventId)}`,
 			dayKey,
 			at: event.allDay
 				? startOfBerlinDay(new Date(`${dayKey}T12:00:00.000Z`)).getTime()
