@@ -24,7 +24,6 @@ import { and, asc, eq, gt, gte, isNull, lte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-
 type AbsenceCreateResponseBody = {
 	absence: {
 		id: string;

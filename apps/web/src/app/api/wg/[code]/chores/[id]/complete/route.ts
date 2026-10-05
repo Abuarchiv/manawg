@@ -37,7 +37,6 @@ import { computeNextDueAt, isLateCompletion } from '@/features/chores/chore-recu
 import { and, eq, gt, gte, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-
 type ChoreCompleteResponseBody = { chore: unknown };
 
 const choreCompleteReplay = new ReplayCache<ChoreCompleteResponseBody>();
