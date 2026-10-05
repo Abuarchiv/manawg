@@ -459,8 +459,9 @@ export function OfflineClient() {
 						<div className="space-y-2">
 							{knownWgs.length === 0 ? (
 								<p className="text-sm leading-relaxed text-muted-foreground">
-									Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du
-									mit deinem Code erneut beitreten.
+									{status === 'browser-offline'
+										? 'Ohne Netz zeigen wir nur WGs mit wartenden Aktionen. Sobald du wieder online bist, öffnet sich deine WG wieder.'
+										: 'Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du mit deinem Code erneut beitreten.'}
 								</p>
 							) : (
 								<ItemGroup aria-label="Bekannte WGs">

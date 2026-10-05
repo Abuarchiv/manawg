@@ -40,6 +40,8 @@ export function ThumbAction({ children }: { children: ReactNode }) {
 				data-page-primary-action
 				className={cn(
 					'pointer-events-none [&>*]:pointer-events-auto fixed inset-x-0 bottom-[calc(var(--app-nav-height,5rem)+0.5rem)] z-20 mx-auto w-full max-w-[var(--app-nav-width)] px-4',
+					// Deckt die 8 px zwischen Aktion und Tab-Leiste ab, sonst scheint die Liste durch.
+					'after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-2 after:bg-background',
 					'max-[639px]:[&>button:has(svg.lucide-plus)]:flex',
 					'max-[639px]:[&>button:has(svg.lucide-plus)]:size-[44px]',
 					'max-[639px]:[&>button:has(svg.lucide-plus)]:min-h-[44px]',
