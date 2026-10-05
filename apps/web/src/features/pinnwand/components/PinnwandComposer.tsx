@@ -60,6 +60,7 @@ export function PinnwandComposer({
 	onClose,
 	onSubmit,
 }: PinnwandComposerProps): ReactElement {
+	const fieldInvalid = Boolean(error) && (content.trim() === '' || content.length > CONTENT_MAX);
 	const [attachmentOpen, setAttachmentOpen] = useState(Boolean(imageUrl));
 	return (
 		<Drawer
@@ -105,7 +106,7 @@ export function PinnwandComposer({
 								))}
 							</ToggleGroup>
 						</Field>
-						<Field data-invalid={Boolean(error)}>
+						<Field data-invalid={fieldInvalid}>
 							<FieldLabel htmlFor="announcement-content" className="sr-only">
 								Beitragstext
 							</FieldLabel>
@@ -118,7 +119,7 @@ export function PinnwandComposer({
 								maxLength={CONTENT_MAX}
 								rows={3}
 								aria-label="Beitragstext"
-								aria-invalid={Boolean(error)}
+								aria-invalid={fieldInvalid}
 								aria-describedby={error ? 'announcement-error' : 'announcement-count'}
 								placeholder={`Was gibt es Neues, ${authorName}?`}
 								className="min-h-20 text-base"

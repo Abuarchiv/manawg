@@ -67,9 +67,7 @@ export function CalendarUpcomingList({
 }: CalendarUpcomingListProps) {
 	useEffect(() => {
 		if (!highlightEventId) return;
-		document
-			.getElementById(`event-${highlightEventId}`)
-			?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+		document.getElementById(`event-${highlightEventId}`)?.scrollIntoView({ block: 'center' });
 	}, [highlightEventId]);
 
 	const entries = [
