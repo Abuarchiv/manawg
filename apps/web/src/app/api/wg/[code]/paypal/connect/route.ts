@@ -24,6 +24,7 @@ import {
 	getPayPalTrackingId,
 	isPayPalMerchantId,
 	isPayPalMerchantReady,
+	readPayPalConnectionCookie,
 	verifyPayPalConnectionCookie,
 } from '@/core/infra/paypal-onboarding';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -41,18 +42,6 @@ const completeSchema = z.object({ action: z.literal('complete') }).strict();
 const confirmSchema = z
 	.object({ action: z.literal('confirm'), merchantId: z.string().refine(isPayPalMerchantId) })
 	.strict();
-
-function cookieValue(req: Request): string | undefined {
-	const cookie = req.headers.get('cookie');
-	if (!cookie) return undefined;
-	for (const part of cookie.split(';')) {
-		const separator = part.indexOf('=');
-		if (separator >= 0 && part.slice(0, separator).trim() === PAYPAL_CONNECTION_COOKIE_NAME) {
-			return part.slice(separator + 1).trim();
-		}
-	}
-	return undefined;
-}
 
 function cookieHeader(value: string, maxAge: number, secureCookie: boolean): string {
 	const secure = secureCookie ? '; Secure' : '';
@@ -164,7 +153,7 @@ export const POST = withWgRoute<{ code: string }>('paypal connect POST', async (
 		}
 	}
 
-	const state = verifyPayPalConnectionCookie(cookieValue(req), {
+	const state = verifyPayPalConnectionCookie(readPayPalConnectionCookie(req), {
 		wgId: auth.wg.id,
 		memberId: auth.member.memberId,
 		authUserId: auth.authUserId,

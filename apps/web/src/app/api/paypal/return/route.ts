@@ -1,23 +1,11 @@
 import {
-	PAYPAL_CONNECTION_COOKIE_NAME,
 	getPayPalEnvironment,
 	getTrustedPayPalAppOrigin,
 	isPayPalMerchantId,
+	readPayPalConnectionCookie,
 	verifyPayPalConnectionCookie,
 } from '@/core/infra/paypal-onboarding';
 import { type NextRequest, NextResponse } from 'next/server';
-
-function cookieValue(req: NextRequest): string | undefined {
-	const cookie = req.headers.get('cookie');
-	if (!cookie) return undefined;
-	for (const part of cookie.split(';')) {
-		const separator = part.indexOf('=');
-		if (separator >= 0 && part.slice(0, separator).trim() === PAYPAL_CONNECTION_COOKIE_NAME) {
-			return part.slice(separator + 1).trim();
-		}
-	}
-	return undefined;
-}
 
 function redirect(location: string): NextResponse {
 	return new NextResponse(null, {
@@ -44,7 +32,7 @@ export function GET(req: NextRequest): NextResponse {
 	}
 
 	const callbackUrl = new URL(req.url);
-	const state = verifyPayPalConnectionCookie(cookieValue(req), { environment });
+	const state = verifyPayPalConnectionCookie(readPayPalConnectionCookie(req), { environment });
 	if (!state || callbackUrl.searchParams.get('state') !== state.nonce) {
 		return redirect(new URL('/', appOrigin).toString());
 	}
