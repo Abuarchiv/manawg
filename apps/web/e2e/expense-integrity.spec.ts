@@ -23,6 +23,13 @@ import { loadClaimedResponse } from '../tests/support/claimed-response.cjs';
  * their request schemas; loading the real ones keeps every route test on the
  * limits production enforces.
  */
+// Recurring routes serialize their response through the helper module; these
+// harnesses mock that module, so they get a minimal stand-in.
+const serializeRecurringExpenseStub = (row: { splitsJson: string }) => ({
+	...row,
+	splits: JSON.parse(row.splitsJson),
+});
+
 const EXPENSE_VALIDATION_MODULES: Record<string, unknown> = (() => {
 	const webRoot = process.cwd();
 	const requireFromWebRoot = createRequire(path.join(webRoot, 'package.json'));
@@ -1575,7 +1582,10 @@ test.describe('expense integrity regressions', () => {
 			},
 			'@/features/expenses/expenses': expenseFeatures,
 			'@/features/expenses/paid-by-guard': loadTs(PAID_BY_GUARD),
-			'@/features/expenses/recurring-expenses': { parseRecurringSplits: JSON.parse },
+			'@/features/expenses/recurring-expenses': {
+				parseRecurringSplits: JSON.parse,
+				serializeRecurringExpense: serializeRecurringExpenseStub,
+			},
 			'@/features/expenses/split-math': loadTs(SPLIT_MATH),
 			'drizzle-orm': {
 				and: (...conditions: unknown[]) => conditions,
@@ -1913,7 +1923,10 @@ test.describe('expense create replay atomic', () => {
 				},
 				resolveExpensePayer: (_payer: unknown, caller: string) => caller,
 			},
-			'@/features/expenses/recurring-expenses': { parseRecurringSplits: JSON.parse },
+			'@/features/expenses/recurring-expenses': {
+				parseRecurringSplits: JSON.parse,
+				serializeRecurringExpense: serializeRecurringExpenseStub,
+			},
 		});
 		const request = () =>
 			new Request('http://localhost', {
@@ -2252,6 +2265,7 @@ test.describe('finance failure regressions', () => {
 			'@/features/expenses/recurring-expenses': {
 				parseRecurringSplits: JSON.parse,
 				recurringSplitsMatchAmount: () => true,
+				serializeRecurringExpense: serializeRecurringExpenseStub,
 			},
 		});
 		const response = await PATCH(

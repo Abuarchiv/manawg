@@ -46,6 +46,7 @@ import {
 	buildRecurringAdvance,
 	parseRecurringSplits,
 	recurringDueDateMatchesExpected,
+	serializeRecurringExpense,
 } from '@/features/expenses/recurring-expenses';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
@@ -78,18 +79,6 @@ const createRecurringSchema = z.object({
 	splits: z.array(expenseSplitSchema).min(1).max(MAX_SPLITS),
 });
 
-function serialize(row: typeof recurringExpenses.$inferSelect) {
-	return {
-		...row,
-		currency: 'EUR',
-		nextDueAt: row.nextDueAt.toISOString(),
-		lastCreatedAt: row.lastCreatedAt?.toISOString() ?? null,
-		pausedAt: row.pausedAt?.toISOString() ?? null,
-		createdAt: row.createdAt.toISOString(),
-		splits: parseRecurringSplits(row.splitsJson),
-	};
-}
-
 const advanceSchema = z.object({
 	id: z.string().uuid(),
 	description: expenseDescriptionSchema.optional(),
@@ -118,7 +107,7 @@ export const GET = withWgRoute(
 			.where(eq(recurringExpenses.wgId, wg.id))
 			.orderBy(asc(recurringExpenses.nextDueAt))
 			.limit(RECURRING_EXPENSES_LIST_LIMIT);
-		return NextResponse.json({ recurringExpenses: rows.map(serialize) });
+		return NextResponse.json({ recurringExpenses: rows.map(serializeRecurringExpense) });
 	},
 	{
 		fixture: (fixture) => {
@@ -293,7 +282,9 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 					})
 					.returning();
 				if (!template) throw new TransactionAbort('insert_failed');
-				const body: RecurringCreateResponseBody = { recurringExpense: serialize(template) };
+				const body: RecurringCreateResponseBody = {
+					recurringExpense: serializeRecurringExpense(template),
+				};
 				if (idemScope && idemKey && claimedLeaseExpiresAt) {
 					await completeClaimedResponse(tx, idemScope, idemKey, body, claimedLeaseExpiresAt);
 				}
@@ -535,7 +526,7 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 				splitCount: splits.length,
 			},
 		});
-		return NextResponse.json({ recurringExpense: serialize(updated) });
+		return NextResponse.json({ recurringExpense: serializeRecurringExpense(updated) });
 	}
 	if (
 		parsed.data.expectedNextDueAt &&
@@ -600,7 +591,7 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 			splitCount: parseRecurringSplits(updated.splitsJson).length,
 		},
 	});
-	return NextResponse.json({ recurringExpense: serialize(updated) });
+	return NextResponse.json({ recurringExpense: serializeRecurringExpense(updated) });
 });
 
 export const DELETE = withWgRoute('recurring-expenses DELETE', async (req, { code }) => {

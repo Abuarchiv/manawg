@@ -1,3 +1,4 @@
+import type { recurringExpenses } from '@/core/db';
 import { addMonthsFromAnchor, parseTimestamp } from '@/core/utils/time';
 
 export { addMonthsFromAnchor };
@@ -19,6 +20,19 @@ interface RecurringCreationWindowInput {
 export interface RecurringSplit {
 	debtorMemberId: string;
 	amountCents: number;
+}
+
+/** API shape of a template row: ISO timestamps and parsed splits. */
+export function serializeRecurringExpense(row: typeof recurringExpenses.$inferSelect) {
+	return {
+		...row,
+		currency: 'EUR',
+		nextDueAt: row.nextDueAt.toISOString(),
+		lastCreatedAt: row.lastCreatedAt?.toISOString() ?? null,
+		pausedAt: row.pausedAt?.toISOString() ?? null,
+		createdAt: row.createdAt.toISOString(),
+		splits: parseRecurringSplits(row.splitsJson),
+	};
 }
 
 export function getRecurringExpenseHref(shareCode: string, id: string): string {

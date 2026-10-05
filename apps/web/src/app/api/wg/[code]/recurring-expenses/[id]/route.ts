@@ -28,6 +28,7 @@ import {
 	parseRecurringSplits,
 	recurringDueDateMatchesExpected,
 	recurringSplitsMatchAmount,
+	serializeRecurringExpense,
 } from '@/features/expenses/recurring-expenses';
 import { and, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -45,18 +46,6 @@ const patchSchema = z.object({
 	/** The due date the editor loaded; a booking since then makes the edit stale. */
 	expectedNextDueAt: z.string().datetime({ offset: true }).optional(),
 });
-
-function serialize(row: typeof recurringExpenses.$inferSelect) {
-	return {
-		...row,
-		currency: 'EUR',
-		nextDueAt: row.nextDueAt.toISOString(),
-		lastCreatedAt: row.lastCreatedAt?.toISOString() ?? null,
-		pausedAt: row.pausedAt?.toISOString() ?? null,
-		createdAt: row.createdAt.toISOString(),
-		splits: parseRecurringSplits(row.splitsJson),
-	};
-}
 
 function hasDuplicateSplitDebtors(splits: Array<{ debtorMemberId: string }>): boolean {
 	const seen = new Set<string>();
@@ -81,7 +70,7 @@ export const GET = withWgRoute<{ id: string }>(
 			.limit(1);
 		const row = rows[0];
 		if (!row) return notFound('recurring_expense_not_found');
-		return NextResponse.json({ recurringExpense: serialize(row) });
+		return NextResponse.json({ recurringExpense: serializeRecurringExpense(row) });
 	},
 );
 
@@ -250,7 +239,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 					: template.pausedAt;
 
 		if (onlyPauseRequest && pauseTransition === null) {
-			return NextResponse.json({ recurringExpense: serialize(template) });
+			return NextResponse.json({ recurringExpense: serializeRecurringExpense(template) });
 		}
 
 		const updateWhere =
@@ -305,7 +294,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 			if (pauseTransition === null) {
 				return conflict('recurring_expense_changed', 'recurring_expense_changed');
 			}
-			return NextResponse.json({ recurringExpense: serialize(current) });
+			return NextResponse.json({ recurringExpense: serializeRecurringExpense(current) });
 		}
 
 		const eventType =
@@ -338,7 +327,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				splitCount: nextSplits.length,
 			},
 		});
-		return NextResponse.json({ recurringExpense: serialize(updated) });
+		return NextResponse.json({ recurringExpense: serializeRecurringExpense(updated) });
 	},
 );
 
