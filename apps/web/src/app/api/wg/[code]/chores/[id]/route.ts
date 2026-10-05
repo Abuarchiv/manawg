@@ -9,7 +9,7 @@ import { badRequest, conflict, forbidden, notFound, tooMany } from '@/core/http/
 import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { buildChorePatchUpdate } from '@/features/chores/chore-patch';
-import { and, eq, isNull } from 'drizzle-orm';
+import { type SQL, and, eq, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -131,13 +131,18 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 		anchorAt?: Date;
 		intervalDays?: number;
 		recurrenceType?: ChoreRecurrenceType;
+		lastReminderAt?: SQL;
 		updatedAt: Date;
 	} = {
 		updatedAt: new Date(),
 	};
 	if (recurrencePatch) Object.assign(update, recurrencePatch.update);
 	if (parsed.data.assignedMemberId !== undefined) {
-		update.assignedMemberId = parsed.data.assignedMemberId;
+		const nextAssignee = parsed.data.assignedMemberId;
+		update.assignedMemberId = nextAssignee;
+		// A new assignee starts with a fresh reminder throttle, as on completion
+		// and move-out; re-saving the same assignee keeps it.
+		update.lastReminderAt = sql`case when ${chores.assignedMemberId} is distinct from ${nextAssignee}::uuid then null else ${chores.lastReminderAt} end`;
 	}
 
 	const currentMatch = currentChore

@@ -65,11 +65,43 @@ export function useAnnouncementActions(
 		commitItems(itemsRef.current.map((item) => (item.id === id ? updater(item) : item)));
 	}
 
+	/**
+	 * Captures the given fields of one card now and returns a function that puts
+	 * only those back. Restoring a snapshot of the whole list instead would also
+	 * undo changes to other cards that succeeded while this request was in flight.
+	 */
+	function captureFields<K extends keyof Announcement>(id: string, keys: readonly K[]): () => void {
+		const before = itemsRef.current.find((item) => item.id === id);
+		return () => {
+			if (!before) return;
+			updateItem(id, (item) => {
+				const restored = { ...item };
+				for (const key of keys) restored[key] = before[key];
+				return restored;
+			});
+		};
+	}
+
+	function replaceComment(
+		announcementId: string,
+		commentId: string,
+		replacement: AnnouncementComment | null,
+	): void {
+		updateItem(announcementId, (item) => {
+			const others = item.comments.filter((comment) => comment.id !== commentId);
+			const comments = replacement ? [...others, replacement] : others;
+			return {
+				...item,
+				comments: comments.sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+			};
+		});
+	}
+
 	async function patchAnnouncement(
 		id: string,
 		body: { pinned?: boolean; status?: AnnouncementStatus; kind?: AnnouncementKind },
 		pendingKey: string,
-		rollbackItems?: Announcement[],
+		rollback: () => void,
 	): Promise<void> {
 		if (isPending(pendingKey)) return;
 		start(pendingKey);
@@ -88,7 +120,7 @@ export function useAnnouncementActions(
 			if (res.status === 404 && res.error === 'announcement_not_found') {
 				dropVanishedAnnouncement(id);
 			} else {
-				if (rollbackItems) commitItems(rollbackItems);
+				rollback();
 				setActionError(announcementActionErrorMessage(res.error));
 			}
 			return;
@@ -101,7 +133,7 @@ export function useAnnouncementActions(
 	function togglePinned(announcement: Announcement): void {
 		const pendingKey = `${announcement.id}:pin`;
 		if (isPending(pendingKey)) return;
-		const previousItems = itemsRef.current;
+		const rollback = captureFields(announcement.id, ['pinnedAt']);
 		updateItem(announcement.id, (item) => ({
 			...item,
 			pinnedAt: item.pinnedAt ? null : new Date().toISOString(),
@@ -110,7 +142,7 @@ export function useAnnouncementActions(
 			announcement.id,
 			{ pinned: !announcement.pinnedAt },
 			pendingKey,
-			previousItems,
+			rollback,
 		);
 	}
 
@@ -118,7 +150,7 @@ export function useAnnouncementActions(
 		const pendingKey = `${announcement.id}:status`;
 		if (isPending(pendingKey)) return;
 		const nextStatus = announcement.status === 'resolved' ? 'open' : 'resolved';
-		const previousItems = itemsRef.current;
+		const rollback = captureFields(announcement.id, ['status', 'resolvedAt', 'resolvedByMemberId']);
 		updateItem(announcement.id, (item) => ({
 			...item,
 			status: nextStatus,
@@ -126,13 +158,13 @@ export function useAnnouncementActions(
 			resolvedByMemberId: nextStatus === 'resolved' ? identity.memberId : null,
 		}));
 		if (nextStatus === 'resolved') toast.success('Erledigt – liegt jetzt unter „Geklärt & älter“.');
-		void patchAnnouncement(announcement.id, { status: nextStatus }, pendingKey, previousItems);
+		void patchAnnouncement(announcement.id, { status: nextStatus }, pendingKey, rollback);
 	}
 
 	async function toggleReaction(announcement: Announcement, reaction: ReactionKey): Promise<void> {
 		const pendingKey = `${announcement.id}:reaction:${reaction}`;
 		if (isPending(pendingKey)) return;
-		const previousItems = itemsRef.current;
+		const rollback = captureFields(announcement.id, ['myReactions', 'reactionCounts', 'takers']);
 		const active = announcement.myReactions.includes(reaction);
 		updateItem(announcement.id, (item) => ({
 			...item,
@@ -164,7 +196,7 @@ export function useAnnouncementActions(
 		const idempotencyKey =
 			pendingReaction?.active === !active ? pendingReaction.key : createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
-			commitItems(previousItems);
+			rollback();
 			end(pendingKey);
 			setActionError('Reaktion konnte nicht sicher gesendet werden. Versuche es erneut.');
 			return;
@@ -193,7 +225,7 @@ export function useAnnouncementActions(
 			} else if (res.status === 404 && res.error === 'reaction_not_found' && active) {
 				setActionError('Diese Reaktion war schon entfernt. Die Pinnwand bleibt aktuell.');
 			} else {
-				commitItems(previousItems);
+				rollback();
 				setActionError(announcementActionErrorMessage(res.error));
 			}
 			return;
@@ -207,7 +239,6 @@ export function useAnnouncementActions(
 	async function addComment(announcement: Announcement, content: string): Promise<boolean> {
 		const pendingKey = `${announcement.id}:comment`;
 		if (isPending(pendingKey)) return false;
-		const previousItems = itemsRef.current;
 		const optimisticComment: AnnouncementComment = {
 			id: `temp-${Date.now()}`,
 			announcementId: announcement.id,
@@ -253,7 +284,7 @@ export function useAnnouncementActions(
 				dropVanishedAnnouncement(announcement.id);
 			} else {
 				forgetCommentOverride(announcement.id, optimisticComment.id);
-				commitItems(previousItems);
+				replaceComment(announcement.id, optimisticComment.id, null);
 				setActionError(commentActionErrorMessage(res.error));
 			}
 			return false;
@@ -281,7 +312,6 @@ export function useAnnouncementActions(
 	): Promise<boolean> {
 		const pendingKey = `${commentId}:comment-edit`;
 		if (isPending(pendingKey)) return false;
-		const previousItems = itemsRef.current;
 		const previousComment = announcement.comments.find((comment) => comment.id === commentId);
 		if (previousComment) {
 			rememberCommentOverride(announcement.id, commentId, { ...previousComment, content });
@@ -315,7 +345,7 @@ export function useAnnouncementActions(
 				return true;
 			}
 			forgetCommentOverride(announcement.id, commentId);
-			commitItems(previousItems);
+			if (previousComment) replaceComment(announcement.id, commentId, previousComment);
 			setActionError(commentActionErrorMessage(res.error));
 			return false;
 		}
@@ -334,7 +364,7 @@ export function useAnnouncementActions(
 	async function deleteComment(announcement: Announcement, commentId: string): Promise<boolean> {
 		const pendingKey = `${commentId}:comment-delete`;
 		if (isPending(pendingKey)) return false;
-		const previousItems = itemsRef.current;
+		const previousComment = announcement.comments.find((comment) => comment.id === commentId);
 		rememberCommentOverride(announcement.id, commentId, null);
 		updateItem(announcement.id, (item) => ({
 			...item,
@@ -356,7 +386,7 @@ export function useAnnouncementActions(
 				setActionError('Dieser Kommentar existiert nicht mehr und wurde entfernt.');
 			} else {
 				forgetCommentOverride(announcement.id, commentId);
-				commitItems(previousItems);
+				if (previousComment) replaceComment(announcement.id, commentId, previousComment);
 				setActionError(commentActionErrorMessage(res.error));
 			}
 			return false;
