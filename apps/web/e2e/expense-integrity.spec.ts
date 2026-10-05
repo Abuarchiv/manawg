@@ -16,6 +16,7 @@ import {
 	recurringExpenses,
 	wgMembers,
 } from '../src/core/db/schema';
+import { loadClaimedResponse } from '../tests/support/claimed-response.cjs';
 
 /**
  * The real, dependency-free expense validation modules. Routes import them for
@@ -981,6 +982,7 @@ test.describe('expense integrity regressions', () => {
 		}>(path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/route.ts'), {
 			...EXPENSE_VALIDATION_MODULES,
 			...common,
+			'@/core/db/claimed-response': loadClaimedResponse(common),
 			'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
 			'@/core/guards/idempotency': {
 				ReplayCache: class {
@@ -1408,6 +1410,9 @@ test.describe('expense integrity regressions', () => {
 			'@/core/idempotency-store': { RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60 },
 			'@/core/audit': { recordAuditEvent: async () => undefined },
 			'@/core/db': { db, expenseImports, expenseSplits: {}, expenses: {}, wgMembers: {} },
+			'@/core/db/claimed-response': loadClaimedResponse({
+				'@/core/db': { db, idempotencyResponses },
+			}),
 			'@/core/notifications/notification-dispatch': {
 				dispatchNotificationSafely: async () => ({ warning: null }),
 			},
@@ -1512,6 +1517,9 @@ test.describe('expense integrity regressions', () => {
 				recurringExpenses,
 				wgMembers: {},
 			},
+			'@/core/db/claimed-response': loadClaimedResponse({
+				'@/core/db': { idempotencyResponses: {} },
+			}),
 			'@/core/db/transaction': {
 				TransactionAbort: class TransactionAbort extends Error {},
 			},
@@ -1748,6 +1756,22 @@ test.describe('expense create replay atomic', () => {
 			insert: () => {
 				throw new Error('business insert escaped transaction');
 			},
+			delete: (table: unknown) => ({
+				where: (condition: Parameters<typeof dialect.sqlToQuery>[0]) => ({
+					returning: async () => {
+						if (table !== idempotencyResponses) throw new Error('unexpected delete');
+						const [, , lease] = dialect.sqlToQuery(condition).params;
+						if (
+							JSON.stringify(state.slot?.body) !== '{"_claimed":true}' ||
+							state.slot?.expiresAt.getTime() !== Date.parse(String(lease))
+						) {
+							return [];
+						}
+						state.slot = null;
+						return [{ scope: 'released' }];
+					},
+				}),
+			}),
 			update: (table: unknown) => ({
 				set: (values: {
 					responseBody: Parameters<typeof dialect.sqlToQuery>[0];
@@ -1816,7 +1840,10 @@ test.describe('expense create replay atomic', () => {
 						return { owned: true, resolve: () => undefined, reject: () => undefined };
 					}
 				},
-				claimReplaySlotWithRetry: async () => ({ won: true }),
+				claimReplaySlotWithRetry: async () => {
+					state.slot ??= { body: { _claimed: true }, expiresAt: new Date(Date.now() + 60_000) };
+					return { won: true };
+				},
 				replayKey: () => 'local-key',
 			},
 			'@/core/guards/require-wg-member': {
@@ -1860,6 +1887,7 @@ test.describe('expense create replay atomic', () => {
 		const route = loadTs<{ POST: (req: Request, ctx: unknown) => Promise<Response> }>(file, {
 			...EXPENSE_VALIDATION_MODULES,
 			...common,
+			'@/core/db/claimed-response': loadClaimedResponse(common),
 			'@/core/validators/image-url': {
 				imageUrlSchema: requireFromWeb('zod').z.string().nullable().optional(),
 				isAllowedImageUrlForWg: () => true,
@@ -1918,7 +1946,8 @@ test.describe('expense create replay atomic', () => {
 			state.failBaseWrite = true;
 			expect((await post()).status).toBe(500);
 			expect(state.created).toEqual([]);
-			expect(state.slot?.body).toEqual({ _claimed: true });
+			// The confirmed rollback frees the claim, so the same-key retry runs at once.
+			expect(state.slot).toBeNull();
 			state.failBaseWrite = false;
 			expect((await post()).status, state.errors.join('\n')).toBe(200);
 			expect(state.created).toEqual([EXPENSE_ID]);

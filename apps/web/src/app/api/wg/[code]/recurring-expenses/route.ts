@@ -1,6 +1,10 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, idempotencyResponses, recurringExpenses, wgMembers } from '@/core/db';
-import { releaseClaimedResponse } from '@/core/db/claimed-response';
+import { db, recurringExpenses, wgMembers } from '@/core/db';
+import {
+	completeClaimedResponse,
+	lockClaimedResponse,
+	releaseClaimedResponse,
+} from '@/core/db/claimed-response';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import {
@@ -21,11 +25,7 @@ import {
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
-import {
-	RESPONSE_REPLAY_TTL_SECONDS,
-	getCachedResponse,
-	readIdempotencyKey,
-} from '@/core/idempotency-store';
+import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
@@ -48,7 +48,7 @@ import {
 	recurringDueDateMatchesExpected,
 } from '@/features/expenses/recurring-expenses';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
-import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -57,6 +57,10 @@ const RECURRING_EXPENSES_LIST_LIMIT = 500;
 type RecurringCreateResponseBody = { recurringExpense: unknown };
 
 const recurringCreateReplay = new ReplayCache<RecurringCreateResponseBody>();
+
+function isRecurringCreateResponseBody(body: unknown): body is RecurringCreateResponseBody {
+	return body !== null && typeof body === 'object' && 'recurringExpense' in body;
+}
 
 function recurringCreateIdempotencyScope(wgId: string, memberId: string): string {
 	return `recurring-expenses-create:${wgId}:${memberId}`;
@@ -265,32 +269,14 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 		try {
 			written = await withExpensePaymentLock(wg.id, async (tx) => {
 				if (idemScope && idemKey) {
-					const [slot] = await tx
-						.select({
-							body: idempotencyResponses.responseBody,
-							expiresAt: idempotencyResponses.expiresAt,
-						})
-						.from(idempotencyResponses)
-						.where(
-							and(eq(idempotencyResponses.scope, idemScope), eq(idempotencyResponses.key, idemKey)),
-						)
-						.limit(1)
-						.for('update');
-					if (!slot) throw new TransactionAbort('idempotency_claim_missing');
-					if (slot.body && typeof slot.body === 'object' && 'recurringExpense' in slot.body) {
-						return { replayed: true as const, body: slot.body as RecurringCreateResponseBody };
-					}
-					if (
-						slot.expiresAt <= new Date() ||
-						!slot.body ||
-						typeof slot.body !== 'object' ||
-						Array.isArray(slot.body) ||
-						Object.keys(slot.body).length !== 1 ||
-						(slot.body as Record<string, unknown>)._claimed !== true
-					) {
-						throw new TransactionAbort('idempotency_claim_invalid');
-					}
-					claimedLeaseExpiresAt = slot.expiresAt;
+					const claim = await lockClaimedResponse(
+						tx,
+						idemScope,
+						idemKey,
+						isRecurringCreateResponseBody,
+					);
+					if (claim.kind === 'completed') return { replayed: true as const, body: claim.body };
+					claimedLeaseExpiresAt = claim.leaseExpiresAt;
 				}
 				const [template] = await tx
 					.insert(recurringExpenses)
@@ -308,23 +294,8 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 					.returning();
 				if (!template) throw new TransactionAbort('insert_failed');
 				const body: RecurringCreateResponseBody = { recurringExpense: serialize(template) };
-				if (idemScope && idemKey) {
-					const rows = await tx
-						.update(idempotencyResponses)
-						.set({
-							responseBody: body,
-							expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
-						})
-						.where(
-							and(
-								eq(idempotencyResponses.scope, idemScope),
-								eq(idempotencyResponses.key, idemKey),
-								gt(idempotencyResponses.expiresAt, new Date()),
-								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-							),
-						)
-						.returning({ scope: idempotencyResponses.scope });
-					if (rows.length !== 1) throw new TransactionAbort('idempotency_claim_missing');
+				if (idemScope && idemKey && claimedLeaseExpiresAt) {
+					await completeClaimedResponse(tx, idemScope, idemKey, body, claimedLeaseExpiresAt);
 				}
 				return { replayed: false as const, template, body };
 			});

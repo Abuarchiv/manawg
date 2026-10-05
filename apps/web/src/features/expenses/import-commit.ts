@@ -1,15 +1,8 @@
 import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
-import {
-	db,
-	expenseImports,
-	expenseSplits,
-	expenses,
-	idempotencyResponses,
-	wgMembers,
-} from '@/core/db';
+import { db, expenseImports, expenseSplits, expenses, wgMembers } from '@/core/db';
+import { completeClaimedResponse, lockClaimedResponse } from '@/core/db/claimed-response';
 import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
-import { RESPONSE_REPLAY_TTL_SECONDS } from '@/core/idempotency-store';
 import {
 	type NotificationDispatchWarning,
 	dispatchNotificationSafely,
@@ -184,16 +177,6 @@ type ImportTransactionResult =
 	| { replayed: true; result: CommitResult }
 	| { replayed: false; value: ImportWriteResult };
 
-function isClaimPlaceholder(value: unknown): boolean {
-	return (
-		value !== null &&
-		typeof value === 'object' &&
-		!Array.isArray(value) &&
-		Object.keys(value).length === 1 &&
-		(value as Record<string, unknown>)._claimed === true
-	);
-}
-
 export function isCommitResult(value: unknown): value is CommitResult {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
 	const body = value as Record<string, unknown>;
@@ -229,21 +212,16 @@ async function writeImport(
 	tx: DbTransaction,
 	input: CommitInput,
 ): Promise<ImportTransactionResult> {
+	let lease: Date | null = null;
 	if (input.replay) {
-		const [slot] = await tx
-			.select({ body: idempotencyResponses.responseBody })
-			.from(idempotencyResponses)
-			.where(
-				and(
-					eq(idempotencyResponses.scope, input.replay.scope),
-					eq(idempotencyResponses.key, input.replay.key),
-				),
-			)
-			.limit(1)
-			.for('update');
-		if (!slot) throw new Error('idempotency_claim_missing');
-		if (isCommitResult(slot.body)) return { replayed: true, result: slot.body };
-		if (!isClaimPlaceholder(slot.body)) throw new Error('idempotency_claim_invalid');
+		const claim = await lockClaimedResponse(
+			tx,
+			input.replay.scope,
+			input.replay.key,
+			isCommitResult,
+		);
+		if (claim.kind === 'completed') return { replayed: true, result: claim.body };
+		lease = claim.leaseExpiresAt;
 	}
 
 	if (await hasCapturingExpensePayment(tx, input.wg.id)) {
@@ -340,22 +318,9 @@ async function writeImport(
 		})
 		.where(eq(expenseImports.id, imp.id));
 
-	if (input.replay) {
+	if (input.replay && lease) {
 		const result: CommitResult = { importId: imp.id, inserted, skipped, errors, warning: null };
-		const rows = await tx
-			.update(idempotencyResponses)
-			.set({
-				responseBody: result,
-				expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
-			})
-			.where(
-				and(
-					eq(idempotencyResponses.scope, input.replay.scope),
-					eq(idempotencyResponses.key, input.replay.key),
-				),
-			)
-			.returning({ scope: idempotencyResponses.scope });
-		if (rows.length !== 1) throw new Error('idempotency_claim_missing');
+		await completeClaimedResponse(tx, input.replay.scope, input.replay.key, result, lease);
 	}
 
 	return {

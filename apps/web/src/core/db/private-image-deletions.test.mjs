@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadClaimedResponse } from '../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const connectionString = process.env.PRIVATE_IMAGE_TEST_DATABASE_URL;
@@ -533,6 +534,10 @@ test(
 							wgChatReactions: schema.wgChatReactions,
 							wgMembers: schema.wgMembers,
 						},
+						'@/core/db/claimed-response': loadClaimedResponse({
+							'@/core/db': { db, idempotencyResponses: schema.idempotencyResponses },
+							'@/core/db/transaction': transaction,
+						}),
 						'@/core/db/private-image-deletions': helper,
 						'@/core/db/transaction': transaction,
 						'@/core/http/api-errors': {
@@ -907,6 +912,10 @@ test(
 					path.join(process.cwd(), 'src/features/pinnwand/announcement-replay.ts'),
 					{
 						'@/core/db': { db, idempotencyResponses: schema.idempotencyResponses },
+						'@/core/db/claimed-response': loadClaimedResponse({
+							'@/core/db': { db, idempotencyResponses: schema.idempotencyResponses },
+							'@/core/db/transaction': transaction,
+						}),
 						'@/core/db/transaction': transaction,
 						'@/core/guards/idempotency': { claimReplaySlotWithRetry: async () => ({ won: true }) },
 						'@/core/idempotency-store': {

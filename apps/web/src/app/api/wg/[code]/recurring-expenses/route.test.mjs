@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadClaimedResponse } from '../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const srcRoot = path.join(process.cwd(), 'src');
@@ -95,7 +96,6 @@ function harness({ callerId = otherMemberId, isAdmin = false } = {}) {
 	const mocks = {
 		'@/core/audit': { recordAuditEvent: async () => {} },
 		'@/core/db': { db, idempotencyResponses: {}, recurringExpenses, wgMembers },
-		'@/core/db/claimed-response': { releaseClaimedResponse: async () => undefined },
 		'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/http/api-errors': {
@@ -144,6 +144,7 @@ function harness({ callerId = otherMemberId, isAdmin = false } = {}) {
 			}),
 		},
 	};
+	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
 	const route = loadTs(routePath, mocks);
 	return {
 		state,

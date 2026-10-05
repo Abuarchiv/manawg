@@ -1,4 +1,9 @@
 import { db, expenseSplits, expenses, idempotencyResponses, recurringExpenses } from '@/core/db';
+import {
+	completeClaimedResponse,
+	lockClaimedResponse,
+	releaseClaimedResponse,
+} from '@/core/db/claimed-response';
 import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
 import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
 import {
@@ -19,11 +24,7 @@ import {
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
-import {
-	RESPONSE_REPLAY_TTL_SECONDS,
-	getCachedResponse,
-	readIdempotencyKey,
-} from '@/core/idempotency-store';
+import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import type { NotificationDispatchWarning } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, expensesReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
@@ -89,32 +90,8 @@ const createExpenseSchema = z
 		}
 	});
 
-async function lockExpenseCreateClaim(
-	tx: DbTransaction,
-	scope: string,
-	key: string,
-): Promise<ExpenseCreateResponseBody | null> {
-	const [slot] = await tx
-		.select({ body: idempotencyResponses.responseBody, expiresAt: idempotencyResponses.expiresAt })
-		.from(idempotencyResponses)
-		.where(and(eq(idempotencyResponses.scope, scope), eq(idempotencyResponses.key, key)))
-		.limit(1)
-		.for('update');
-	if (!slot) throw new TransactionAbort('idempotency_claim_missing');
-	if (slot.body && typeof slot.body === 'object' && 'expense' in slot.body) {
-		return slot.body as ExpenseCreateResponseBody;
-	}
-	if (
-		slot.expiresAt <= new Date() ||
-		!slot.body ||
-		typeof slot.body !== 'object' ||
-		Array.isArray(slot.body) ||
-		Object.keys(slot.body).length !== 1 ||
-		(slot.body as Record<string, unknown>)._claimed !== true
-	) {
-		throw new TransactionAbort('idempotency_claim_invalid');
-	}
-	return null;
+function isExpenseCreateResponseBody(body: unknown): body is ExpenseCreateResponseBody {
+	return body !== null && typeof body === 'object' && 'expense' in body;
 }
 
 async function findRecurringExpense(
@@ -143,30 +120,6 @@ async function findRecurringExpense(
 		.from(expenseSplits)
 		.where(eq(expenseSplits.expenseId, expense.id));
 	return { expense, splits };
-}
-
-async function finalizeExpenseCreateClaim(
-	tx: DbTransaction,
-	scope: string,
-	key: string,
-	body: ExpenseCreateResponseBody,
-): Promise<void> {
-	const rows = await tx
-		.update(idempotencyResponses)
-		.set({
-			responseBody: body,
-			expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
-		})
-		.where(
-			and(
-				eq(idempotencyResponses.scope, scope),
-				eq(idempotencyResponses.key, key),
-				gt(idempotencyResponses.expiresAt, new Date()),
-				sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-			),
-		)
-		.returning({ scope: idempotencyResponses.scope });
-	if (rows.length !== 1) throw new TransactionAbort('idempotency_claim_missing');
 }
 
 function expenseCreateAbortResponse(error: unknown): NextResponse | null {
@@ -387,66 +340,85 @@ export const POST = withWgRoute('expenses POST', async (req, { code }) => {
 					expense: typeof expenses.$inferSelect;
 					body: ExpenseCreateResponseBody;
 			  };
+		// Lease of the claim this request locked, and the error its transaction
+		// callback threw: drizzle rethrows that error only after ROLLBACK succeeded.
+		let claimLease: Date | null = null;
+		const rollback = { failed: false, error: undefined as unknown };
+		const writeExpense = async (tx: DbTransaction): Promise<typeof written> => {
+			if (idemScope && idemKey) {
+				const claim = await lockClaimedResponse(
+					tx,
+					idemScope,
+					idemKey,
+					isExpenseCreateResponseBody,
+				);
+				if (claim.kind === 'completed') return { replayed: true, body: claim.body };
+				claimLease = claim.leaseExpiresAt;
+			}
+			await assertPrivateImageCanBeAttached(tx, wg.id, safeImageUrl);
+
+			let recurringDueAt: Date | undefined;
+			if (recurringExpenseId && expectedRecurringNextDueAt) {
+				const expectedDueAt = new Date(expectedRecurringNextDueAt);
+				const existing = await findRecurringExpense(tx, wg.id, recurringExpenseId, expectedDueAt);
+				if (existing) {
+					const body: ExpenseCreateResponseBody = {
+						expense: { ...existing.expense, splits: existing.splits },
+						warning: null,
+					};
+					if (idemScope && idemKey && claimLease) {
+						await completeClaimedResponse(tx, idemScope, idemKey, body, claimLease);
+					}
+					return { replayed: true as const, body };
+				}
+
+				const [template] = await tx
+					.select()
+					.from(recurringExpenses)
+					.where(
+						and(eq(recurringExpenses.id, recurringExpenseId), eq(recurringExpenses.wgId, wg.id)),
+					)
+					.limit(1)
+					.for('update');
+				if (!template) throw new TransactionAbort('recurring_expense_not_found');
+				if (template.pausedAt) throw new TransactionAbort('abo_paused');
+				if (template.nextDueAt.getTime() !== expectedDueAt.getTime()) {
+					throw new TransactionAbort('recurring_expense_already_advanced');
+				}
+				recurringDueAt = template.nextDueAt;
+			}
+			if (await hasCapturingExpensePayment(tx, wg.id)) {
+				throw new TransactionAbort('paypal_payment_pending');
+			}
+			const created = await insertExpenseWithSplits(tx, {
+				wgId: wg.id,
+				paidByMemberId: paidBy,
+				amountCents,
+				currency,
+				description,
+				imageUrl: safeImageUrl,
+				occurredAt,
+				splits: validatedSplits,
+				...(recurringExpenseId && recurringDueAt ? { recurringExpenseId, recurringDueAt } : {}),
+			});
+			const body: ExpenseCreateResponseBody = {
+				expense: { ...created.expense, splits: created.splits },
+				warning: null,
+			};
+			if (idemScope && idemKey && claimLease) {
+				await completeClaimedResponse(tx, idemScope, idemKey, body, claimLease);
+			}
+			return { replayed: false as const, expense: created.expense, body };
+		};
 		try {
 			written = await withExpensePaymentLock(wg.id, async (tx) => {
-				await assertPrivateImageCanBeAttached(tx, wg.id, safeImageUrl);
-				if (idemScope && idemKey) {
-					const replay = await lockExpenseCreateClaim(tx, idemScope, idemKey);
-					if (replay) return { replayed: true as const, body: replay };
+				try {
+					return await writeExpense(tx);
+				} catch (err) {
+					rollback.failed = true;
+					rollback.error = err;
+					throw err;
 				}
-
-				let recurringDueAt: Date | undefined;
-				if (recurringExpenseId && expectedRecurringNextDueAt) {
-					const expectedDueAt = new Date(expectedRecurringNextDueAt);
-					const existing = await findRecurringExpense(tx, wg.id, recurringExpenseId, expectedDueAt);
-					if (existing) {
-						const body: ExpenseCreateResponseBody = {
-							expense: { ...existing.expense, splits: existing.splits },
-							warning: null,
-						};
-						if (idemScope && idemKey) {
-							await finalizeExpenseCreateClaim(tx, idemScope, idemKey, body);
-						}
-						return { replayed: true as const, body };
-					}
-
-					const [template] = await tx
-						.select()
-						.from(recurringExpenses)
-						.where(
-							and(eq(recurringExpenses.id, recurringExpenseId), eq(recurringExpenses.wgId, wg.id)),
-						)
-						.limit(1)
-						.for('update');
-					if (!template) throw new TransactionAbort('recurring_expense_not_found');
-					if (template.pausedAt) throw new TransactionAbort('abo_paused');
-					if (template.nextDueAt.getTime() !== expectedDueAt.getTime()) {
-						throw new TransactionAbort('recurring_expense_already_advanced');
-					}
-					recurringDueAt = template.nextDueAt;
-				}
-				if (await hasCapturingExpensePayment(tx, wg.id)) {
-					throw new TransactionAbort('paypal_payment_pending');
-				}
-				const created = await insertExpenseWithSplits(tx, {
-					wgId: wg.id,
-					paidByMemberId: paidBy,
-					amountCents,
-					currency,
-					description,
-					imageUrl: safeImageUrl,
-					occurredAt,
-					splits: validatedSplits,
-					...(recurringExpenseId && recurringDueAt ? { recurringExpenseId, recurringDueAt } : {}),
-				});
-				const body: ExpenseCreateResponseBody = {
-					expense: { ...created.expense, splits: created.splits },
-					warning: null,
-				};
-				if (idemScope && idemKey) {
-					await finalizeExpenseCreateClaim(tx, idemScope, idemKey, body);
-				}
-				return { replayed: false as const, expense: created.expense, body };
 			});
 		} catch (writeErr) {
 			if (
@@ -456,8 +428,14 @@ export const POST = withWgRoute('expenses POST', async (req, { code }) => {
 			) {
 				const replayed = await withExpensePaymentLock(wg.id, async (tx) => {
 					if (idemScope && idemKey) {
-						const replay = await lockExpenseCreateClaim(tx, idemScope, idemKey);
-						if (replay) return replay;
+						const claim = await lockClaimedResponse(
+							tx,
+							idemScope,
+							idemKey,
+							isExpenseCreateResponseBody,
+						);
+						if (claim.kind === 'completed') return claim.body;
+						claimLease = claim.leaseExpiresAt;
 					}
 					const existing = await findRecurringExpense(
 						tx,
@@ -470,8 +448,8 @@ export const POST = withWgRoute('expenses POST', async (req, { code }) => {
 						expense: { ...existing.expense, splits: existing.splits },
 						warning: null,
 					};
-					if (idemScope && idemKey) {
-						await finalizeExpenseCreateClaim(tx, idemScope, idemKey, body);
+					if (idemScope && idemKey && claimLease) {
+						await completeClaimedResponse(tx, idemScope, idemKey, body, claimLease);
 					}
 					return body;
 				});
@@ -481,26 +459,13 @@ export const POST = withWgRoute('expenses POST', async (req, { code }) => {
 				}
 			}
 
-			const recurringErrorResponse = expenseCreateAbortResponse(writeErr);
-			if (recurringErrorResponse) {
-				if (idemScope && idemKey) {
-					await withExpensePaymentLock(wg.id, async (tx) => {
-						await tx
-							.delete(idempotencyResponses)
-							.where(
-								and(
-									eq(idempotencyResponses.scope, idemScope),
-									eq(idempotencyResponses.key, idemKey),
-									sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-								),
-							);
-					});
-				}
-				replayReservation?.reject(writeErr);
-				return recurringErrorResponse;
+			// The write rolled back: free the claim so a same-key retry runs at once.
+			if (idemScope && idemKey && claimLease && rollback.failed && rollback.error === writeErr) {
+				await releaseClaimedResponse(idemScope, idemKey, claimLease);
 			}
-
 			replayReservation?.reject(writeErr);
+			const abortResponse = expenseCreateAbortResponse(writeErr);
+			if (abortResponse) return abortResponse;
 			if (writeErr instanceof TransactionAbort) return serverError(writeErr.code);
 			throw writeErr;
 		}

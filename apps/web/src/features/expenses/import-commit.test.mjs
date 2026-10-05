@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadClaimedResponse } from '../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const sourcePath = path.join(process.cwd(), 'src/features/expenses/import-commit.ts');
@@ -116,7 +117,6 @@ function runCommit(existingExpenses, { rows, mapping, mayRecordForOthers = false
 			wgMembers,
 		},
 		'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
-		'@/core/idempotency-store': { RESPONSE_REPLAY_TTL_SECONDS: 60 },
 		'@/core/notifications/notification-dispatch': {
 			dispatchNotificationSafely: async () => ({ warning: null }),
 		},
@@ -135,6 +135,7 @@ function runCommit(existingExpenses, { rows, mapping, mayRecordForOthers = false
 			sql: (parts, ...values) => ({ parts, values }),
 		},
 	};
+	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
 	const module = loadTsModule(sourcePath, mocks);
 	return {
 		state,
