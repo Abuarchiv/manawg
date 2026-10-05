@@ -178,7 +178,6 @@ export function useShoppingPage({
 		window.setTimeout(() => {
 			document.getElementById(`shopping-${highlightedId}`)?.scrollIntoView({
 				block: 'center',
-				behavior: 'smooth',
 			});
 		}, 80);
 	}, [highlightedId, itemCount, items]);

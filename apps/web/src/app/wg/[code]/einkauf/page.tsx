@@ -68,7 +68,6 @@ export default function EinkaufPage() {
 			.filter((item) => item.decrementCount30d > 0)
 			.sort((a, b) => b.decrementCount30d - a.decrementCount30d)
 			.map((item) => item.name),
-		...done.map((item) => item.name),
 	].filter((name) => {
 		const key = normalizeForMatch(name);
 		if (taken.has(key)) return false;
