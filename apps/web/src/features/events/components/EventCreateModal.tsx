@@ -221,8 +221,8 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 							}
 						/>
 						{error && (
-							<Alert variant="destructive">
-								<AlertDescription id="event-create-error">{error}</AlertDescription>
+							<Alert variant="destructive" id="event-create-error">
+								<AlertDescription>{error}</AlertDescription>
 							</Alert>
 						)}
 					</div>

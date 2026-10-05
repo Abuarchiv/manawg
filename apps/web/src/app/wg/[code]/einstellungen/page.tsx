@@ -51,6 +51,14 @@ export default function EinstellungenPage() {
 		typeof window === 'undefined' ? 'profile' : getSettingsTabFromHash(window.location.hash),
 	);
 
+	// Tab-Chunks vorladen: offline schlägt sonst jeder Tab-Wechsel fehl und der Import bleibt gecacht.
+	useEffect(() => {
+		void import('@/components/wg/einstellungen/ProfileTab');
+		void import('@/components/wg/einstellungen/NotificationSection');
+		void import('@/components/wg/einstellungen/AccessTab');
+		void import('@/components/wg/einstellungen/DataTab');
+	}, []);
+
 	// Export-Zusammenfassung erst laden, wenn der Daten-Tab geöffnet wird; danach bleibt sie im State.
 	const exportSummaryLoaded = useRef(false);
 	useEffect(() => {
@@ -132,7 +140,7 @@ export default function EinstellungenPage() {
 				>
 					<TabsList
 						data-sticky-tabs
-						className="sticky z-10 grid before:absolute before:-inset-x-4 before:-top-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:h-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:bg-background before:content-[''] h-auto min-w-0 max-w-full w-full grid-cols-[repeat(auto-fit,minmax(min(100%,4rem),1fr))] gap-1 rounded-xl p-1"
+						className="sticky z-10 grid before:absolute before:-inset-x-4 before:-top-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:h-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:bg-background before:content-[''] h-auto min-w-0 max-w-full w-full grid-cols-[repeat(auto-fit,minmax(min(100%,3rem),1fr))] gap-1 rounded-xl p-1"
 						style={{
 							top: 'calc(env(safe-area-inset-top, 0px) + var(--offline-banner-height, 0px) + 0.5rem)',
 						}}

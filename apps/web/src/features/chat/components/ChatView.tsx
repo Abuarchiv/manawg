@@ -56,6 +56,17 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	const stableUnreact = useStableCallback(chat.unreact);
 	const stableEdit = useStableCallback(chat.editMessage);
 	const stableDelete = useStableCallback(chat.deleteMessage);
+	// Eigene Nachricht immer ans Listenende holen, auch wenn hochgescrollt wurde.
+	const send = useStableCallback(async (input: Parameters<typeof chat.sendMessage>[0]) => {
+		const ok = await chat.sendMessage(input);
+		if (ok) {
+			setTimeout(() => {
+				const el = chat.scrollRef.current;
+				if (el) el.scrollTop = el.scrollHeight;
+			}, 100);
+		}
+		return ok;
+	});
 	const onReply = useCallback((id: string) => {
 		setReplyToId(id);
 		setReplyFocusRequest((request) => request + 1);
@@ -150,7 +161,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 				replyToSenderName={replyToSender?.name ?? null}
 				onClearReply={() => setReplyToId(null)}
 				onRestoreReply={setReplyToId}
-				onSend={chat.sendMessage}
+				onSend={send}
 			/>
 		</div>
 	);
