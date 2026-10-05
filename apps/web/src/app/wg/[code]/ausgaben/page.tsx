@@ -126,7 +126,8 @@ export default function AusgabenPage() {
 			{page.actionNotice && !showForm && <ActionNoticeBanner notice={page.actionNotice} />}
 			{refreshing && (
 				<output
-					className="flex items-center gap-2 text-sm text-muted-foreground"
+					// Schwebt über dem Inhalt: im Fluss würde sein Verschwinden die Karten springen lassen.
+					className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.5rem)] z-40 mx-auto flex w-fit items-center gap-2 rounded-full border bg-background px-3 py-1 text-sm text-muted-foreground shadow-sm"
 					aria-live="polite"
 				>
 					<Spinner />

@@ -128,16 +128,6 @@ export default function EinkaufPage() {
 					retryLabel="Liste erneut laden"
 				/>
 			)}
-			{actionError && (
-				<Alert variant="destructive">
-					<AlertDescription>{actionError}</AlertDescription>
-				</Alert>
-			)}
-			{shopping.toggleNotice && (
-				<Alert>
-					<AlertDescription>{shopping.toggleNotice}</AlertDescription>
-				</Alert>
-			)}
 			{inventoryLoading || (initialLoading && items.length === 0) ? (
 				<ListSkeleton />
 			) : loadError && items.length === 0 ? (
@@ -190,6 +180,8 @@ export default function EinkaufPage() {
 				adding={add.adding}
 				addError={add.addError}
 				addNotice={shopping.addNotice}
+				actionError={actionError}
+				toggleNotice={shopping.toggleNotice}
 			/>
 			{isAdmin && (
 				<ClearBoughtDialog

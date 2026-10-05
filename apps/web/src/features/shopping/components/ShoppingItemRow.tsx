@@ -154,8 +154,8 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 					</ItemTitle>
 					<ItemDescription className="line-clamp-1">
 						{pending ? (
-							<output aria-live="polite" className="inline-flex items-center gap-1">
-								<Spinner aria-hidden />
+							<output aria-live="polite" className="flex items-center gap-1">
+								<Spinner aria-hidden className="size-3" />
 								Speichert…
 							</output>
 						) : queued ? (

@@ -13,6 +13,8 @@ export function ShoppingAddBar({
 	adding,
 	addError,
 	addNotice,
+	actionError,
+	toggleNotice,
 }: {
 	value: string;
 	onChange: (value: string) => void;
@@ -20,6 +22,8 @@ export function ShoppingAddBar({
 	adding: boolean;
 	addError: string | null;
 	addNotice: string | null;
+	actionError: string | null;
+	toggleNotice: string | null;
 }) {
 	return (
 		<ThumbAction>
@@ -58,6 +62,17 @@ export function ShoppingAddBar({
 						{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}
 					</Button>
 				</form>
+				{/* Im festen Fußbereich statt oben in der Liste: sonst liegt die Meldung außerhalb des Sichtbereichs und schiebt Zeilen. */}
+				{actionError && (
+					<Alert variant="destructive">
+						<AlertDescription>{actionError}</AlertDescription>
+					</Alert>
+				)}
+				{toggleNotice && (
+					<Alert>
+						<AlertDescription>{toggleNotice}</AlertDescription>
+					</Alert>
+				)}
 				{addError && (
 					<Alert id="shopping-add-error" variant="destructive">
 						<AlertDescription>{addError}</AlertDescription>
