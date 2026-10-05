@@ -3,9 +3,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { createSupabaseBrowserClient } from '@/core/auth/client';
 import { MEMBERSHIP_LOST_EVENT, apiFetch } from '@/core/infra/api-client';
-import { captureException } from '@/core/infra/observability';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
@@ -178,62 +176,69 @@ export function WgContextProvider({
 		) {
 			return;
 		}
-		const supabase = createSupabaseBrowserClient();
-		const clearSessionIdentity = () => {
-			authGenerationRef.current += 1;
-			syncAbortRef.current?.abort();
-			syncAbortRef.current = null;
-			authUserIdRef.current = null;
-			clearIdentity(wg.id);
-			setStateIdentity(null);
-			setIsAdmin(false);
-			setAccountReady(false);
-			setMemberLoaded(true);
-		};
-		let revalidating = false;
-		const loadForUser = (nextUserId: string) => {
-			if (nextUserId !== authUserIdRef.current) {
-				authUserIdRef.current = nextUserId;
-				const generation = ++authGenerationRef.current;
+		let cancelled = false;
+		let unsubscribe: (() => void) | undefined;
+		void import('@/core/auth/client').then(({ createSupabaseBrowserClient }) => {
+			if (cancelled) return;
+			const supabase = createSupabaseBrowserClient();
+			const clearSessionIdentity = () => {
+				authGenerationRef.current += 1;
 				syncAbortRef.current?.abort();
 				syncAbortRef.current = null;
+				authUserIdRef.current = null;
+				clearIdentity(wg.id);
+				setStateIdentity(null);
 				setIsAdmin(false);
 				setAccountReady(false);
-				setMemberLoaded(false);
-				if (getIdentity(wg.id)?.authUserId !== nextUserId) {
-					clearIdentity(wg.id);
-					setStateIdentity(null);
+				setMemberLoaded(true);
+			};
+			let revalidating = false;
+			const loadForUser = (nextUserId: string) => {
+				if (nextUserId !== authUserIdRef.current) {
+					authUserIdRef.current = nextUserId;
+					const generation = ++authGenerationRef.current;
+					syncAbortRef.current?.abort();
+					syncAbortRef.current = null;
+					setIsAdmin(false);
+					setAccountReady(false);
+					setMemberLoaded(false);
+					if (getIdentity(wg.id)?.authUserId !== nextUserId) {
+						clearIdentity(wg.id);
+						setStateIdentity(null);
+					}
+					window.setTimeout(() => void loadSessionMember(nextUserId, generation), 0);
+					return;
 				}
-				window.setTimeout(() => void loadSessionMember(nextUserId, generation), 0);
-				return;
-			}
-			// getSession and INITIAL_SESSION both land here on mount; one revalidation is enough.
-			if (revalidating) return;
-			revalidating = true;
+				// getSession and INITIAL_SESSION both land here on mount; one revalidation is enough.
+				if (revalidating) return;
+				revalidating = true;
+				const generation = authGenerationRef.current;
+				window.setTimeout(() => {
+					void loadSessionMember(nextUserId, generation, true).finally(() => {
+						revalidating = false;
+					});
+				}, 0);
+			};
+			const { data } = supabase.auth.onAuthStateChange((event, session) => {
+				const nextUserId = session?.user.id ?? null;
+				if (event === 'SIGNED_OUT' || !nextUserId) {
+					clearSessionIdentity();
+					return;
+				}
+				if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') loadForUser(nextUserId);
+			});
 			const generation = authGenerationRef.current;
-			window.setTimeout(() => {
-				void loadSessionMember(nextUserId, generation, true).finally(() => {
-					revalidating = false;
-				});
-			}, 0);
-		};
-		const { data } = supabase.auth.onAuthStateChange((event, session) => {
-			const nextUserId = session?.user.id ?? null;
-			if (event === 'SIGNED_OUT' || !nextUserId) {
-				clearSessionIdentity();
-				return;
-			}
-			if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') loadForUser(nextUserId);
-		});
-		const generation = authGenerationRef.current;
-		void supabase.auth.getSession().then(({ data: sessionData, error }) => {
-			if (error || generation !== authGenerationRef.current) return;
-			const userId = sessionData.session?.user.id;
-			if (userId) loadForUser(userId);
-			else clearSessionIdentity();
+			void supabase.auth.getSession().then(({ data: sessionData, error }) => {
+				if (error || generation !== authGenerationRef.current) return;
+				const userId = sessionData.session?.user.id;
+				if (userId) loadForUser(userId);
+				else clearSessionIdentity();
+			});
+			unsubscribe = () => data.subscription.unsubscribe();
 		});
 		return () => {
-			data.subscription.unsubscribe();
+			cancelled = true;
+			unsubscribe?.();
 			authGenerationRef.current += 1;
 			syncAbortRef.current?.abort();
 			syncAbortRef.current = null;
@@ -320,7 +325,9 @@ export function WgContextProvider({
 			// Network blip — the paused interval/focus listener retries. Log it
 			// so silently stale member lists stay diagnosable instead of
 			// vanishing into an empty catch block.
-			captureException(err, { action: 'refreshMembers', shareCode: encodedShareCode });
+			void import('@/core/infra/observability').then((m) =>
+				m.captureException(err, { action: 'refreshMembers', shareCode: encodedShareCode }),
+			);
 		}
 	}, [accountReady, encodedShareCode, identity, loadSessionMember, wg.id]);
 
@@ -329,8 +336,14 @@ export function WgContextProvider({
 		return { wg, members, identity, refreshMembers, isAdmin };
 	}, [wg, members, identity, refreshMembers, isAdmin]);
 
+	// The layout already delivered members/isAdmin for a server-verified session.
+	const skipFirstMembersFetch = useRef(serverVerified);
 	useEffect(() => {
 		if (!identity) return;
+		if (skipFirstMembersFetch.current) {
+			skipFirstMembersFetch.current = false;
+			return;
+		}
 		void refreshMembers();
 	}, [identity, refreshMembers]);
 
@@ -407,7 +420,7 @@ export function WgContextProvider({
 			<div className="min-h-svh bg-background" aria-busy="true">
 				<main id="main" tabIndex={-1} className="focus:outline-none">
 					<div
-						className="mx-auto w-full max-w-3xl px-4 pt-6"
+						className="mx-auto w-full max-w-[var(--app-frame-width)] px-4 pt-6"
 						aria-label="Wird geladen"
 						// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 						role="status"

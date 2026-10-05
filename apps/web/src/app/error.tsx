@@ -8,7 +8,6 @@ import {
 	EmptyHeader,
 	EmptyMedia,
 } from '@/components/ui/empty';
-import { captureException } from '@/core/infra/observability';
 import { TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
@@ -18,7 +17,9 @@ export default function ErrorBoundary({
 	reset,
 }: { error: Error & { digest?: string }; reset: () => void }) {
 	useEffect(() => {
-		captureException(error, { boundary: 'root' });
+		void import('@/core/infra/observability').then((m) =>
+			m.captureException(error, { boundary: 'root' }),
+		);
 	}, [error]);
 
 	return (

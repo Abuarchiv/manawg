@@ -1270,7 +1270,12 @@ test.describe('daily overview navigation', () => {
 			name: 'Chat, 8 ungelesen',
 		});
 		await expect(chat).toBeVisible();
-		await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+		await page.evaluate(() => {
+			// Focus refreshes are throttled to 10 s after a successful fetch; jump past it.
+			const now = Date.now;
+			Date.now = () => now() + 60_000;
+			window.dispatchEvent(new Event('focus'));
+		});
 		await expect.poll(() => unreadReads).toBe(2);
 		await expect(
 			page.getByRole('navigation', { name: 'Austausch' }).getByRole('link', {

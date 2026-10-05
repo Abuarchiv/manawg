@@ -411,7 +411,12 @@ test.describe('inventory restock retry', () => {
 		await dismissOnboarding(page);
 		await expect(page.getByRole('button', { name: 'Reis um eins erhöhen' })).toBeVisible();
 		delayNextGet = true;
-		await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+		await page.evaluate(() => {
+			// Focus refreshes are throttled to 10 s after a successful fetch; jump past it.
+			const now = Date.now;
+			Date.now = () => now() + 60_000;
+			window.dispatchEvent(new Event('focus'));
+		});
 		await staleGetStarted;
 
 		try {
