@@ -219,17 +219,16 @@ export function useChoreActions(ctx: ChorePageContext) {
 						: [...current, completed];
 				});
 				const nextName = members.find((member) => member.id === updated.assignedMemberId)?.name;
-				setActionNotice(
+				toast.success(
 					`Erledigt. Nächster Termin: ${formatShortDate(updated.nextDueAt, 'Europe/Berlin')}; ${nextName ? `${nextName} ist dran (Rotation).` : 'noch niemand zugewiesen.'}`,
 				);
 			} else {
-				setActionNotice(
+				toast.success(
 					'Erledigt. Der bestätigte nächste Termin und die Zuständigkeit werden geladen.',
 				);
 			}
 
 			setCompleteConfirmId(null);
-			toast.success('Aufgabe erledigt.');
 			void load(false);
 		}
 

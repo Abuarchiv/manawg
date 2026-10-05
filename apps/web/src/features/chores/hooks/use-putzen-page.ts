@@ -80,7 +80,6 @@ export function usePutzenPage() {
 		window.setTimeout(() => {
 			document.getElementById(`chore-${highlightedId}`)?.scrollIntoView({
 				block: 'center',
-				behavior: 'smooth',
 			});
 		}, 80);
 	}, [highlightedId, itemCount]);
@@ -90,7 +89,6 @@ export function usePutzenPage() {
 		window.setTimeout(() => {
 			document.getElementById('chore-list')?.scrollIntoView({
 				block: 'start',
-				behavior: 'smooth',
 			});
 		}, 80);
 	}, [overdueFilterActive]);
@@ -100,7 +98,6 @@ export function usePutzenPage() {
 		window.setTimeout(() => {
 			document.getElementById('absences-panel')?.scrollIntoView({
 				block: 'start',
-				behavior: 'smooth',
 			});
 		}, 80);
 	}, [absenceId, absencesPanelActive]);

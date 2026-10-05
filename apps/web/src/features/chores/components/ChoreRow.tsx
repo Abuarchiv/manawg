@@ -114,7 +114,7 @@ export const ChoreRow = memo(function ChoreRow({
 				</span>
 			)}
 			{/* Mindestbreite in rem: bei großer Schrift rutschen die Knöpfe unter den Titel statt ihn zu zerquetschen. */}
-			<ItemContent className="min-w-[7rem] gap-0.5">
+			<ItemContent className="min-w-0 flex-1 gap-0.5">
 				<ItemTitle className="line-clamp-none w-auto break-words text-[14px] [overflow-wrap:anywhere]">
 					{chore.title}
 				</ItemTitle>
@@ -139,7 +139,7 @@ export const ChoreRow = memo(function ChoreRow({
 					</Button>
 				)}
 			</ItemContent>
-			<ItemActions className="ml-auto flex-nowrap gap-3">
+			<ItemActions className="ml-auto shrink-0 flex-nowrap gap-3">
 				<Button
 					onClick={() => onComplete(chore)}
 					disabled={busy}
