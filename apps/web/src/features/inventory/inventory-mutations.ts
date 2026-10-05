@@ -8,6 +8,7 @@ import {
 import { completeClaimedResponse } from '@/core/db/claimed-response';
 import type { WgInventoryItem } from '@/core/db/schema';
 import type { DbTransaction } from '@/core/db/transaction';
+import { TransactionAbort } from '@/core/db/transaction-abort';
 import {
 	buildShoppingPushPayload,
 	clampQuantity,
@@ -21,8 +22,13 @@ export async function completeInventoryReplay(
 	key: string,
 	payload: object,
 ): Promise<void> {
-	if (!(await completeClaimedResponse(tx, scope, key, payload))) {
-		throw new Error('inventory_replay_completion_failed');
+	try {
+		await completeClaimedResponse(tx, scope, key, payload);
+	} catch (err) {
+		if (err instanceof TransactionAbort && err.code === 'idempotency_claim_missing') {
+			throw new Error('inventory_replay_completion_failed');
+		}
+		throw err;
 	}
 }
 

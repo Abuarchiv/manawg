@@ -1,9 +1,18 @@
 import { db, idempotencyResponses } from '@/core/db';
-import { completeClaimedResponse } from '@/core/db/claimed-response';
-import { type DbTransaction, lockExpensePayments, withTransaction } from '@/core/db/transaction';
+import {
+	completeClaimedResponse,
+	lockClaimedResponse,
+	releaseClaimedResponse,
+	releaseLockedClaim,
+} from '@/core/db/claimed-response';
+import {
+	type DbTransaction,
+	TransactionAbort,
+	lockExpensePayments,
+	withTransaction,
+} from '@/core/db/transaction';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
-import { logApiError } from '@/core/infra/observability';
 import { and, eq, gt, sql } from 'drizzle-orm';
 
 export interface AnnouncementReplayResponse {
@@ -29,16 +38,6 @@ function isCompletedResponse(value: unknown): value is AnnouncementReplayRespons
 	);
 }
 
-function isClaimPlaceholder(value: unknown): boolean {
-	return (
-		value !== null &&
-		typeof value === 'object' &&
-		!Array.isArray(value) &&
-		Object.keys(value).length === 1 &&
-		(value as { _claimed?: unknown })._claimed === true
-	);
-}
-
 export async function withAnnouncementReplay<T>(
 	req: Request,
 	scope: string,
@@ -49,6 +48,7 @@ export async function withAnnouncementReplay<T>(
 	const key = readIdempotencyKey(req);
 	const completedResponse = (value: unknown): AnnouncementReplayResponse | null =>
 		isCompletedResponse(value) ? value : (legacyResponse?.(value) ?? null);
+	const isReplayable = (value: unknown): value is unknown => completedResponse(value) !== null;
 	if (key) {
 		const cached = await getCachedResponse<AnnouncementReplayResponse>(scope, key);
 		if (cached) {
@@ -73,20 +73,13 @@ export async function withAnnouncementReplay<T>(
 			try {
 				if (wgId) await lockExpensePayments(tx, wgId);
 				if (key) {
-					const [slot] = await tx
-						.select({
-							body: idempotencyResponses.responseBody,
-							expiresAt: idempotencyResponses.expiresAt,
-						})
-						.from(idempotencyResponses)
-						.where(and(eq(idempotencyResponses.scope, scope), eq(idempotencyResponses.key, key)))
-						.limit(1)
-						.for('update');
-					if (!slot) throw new Error('idempotency_claim_missing');
-					const completed = completedResponse(slot.body);
-					if (completed) return { response: completed, effect: null };
-					if (!isClaimPlaceholder(slot.body)) throw new Error('idempotency_claim_invalid');
-					lockedClaimExpiry = slot.expiresAt;
+					const claim = await lockClaimedResponse(tx, scope, key, isReplayable);
+					if (claim.kind === 'completed') {
+						const response = completedResponse(claim.body);
+						if (!response) throw new TransactionAbort('idempotency_claim_invalid');
+						return { response, effect: null };
+					}
+					lockedClaimExpiry = claim.leaseExpiresAt;
 				}
 
 				const mutation = await mutate(tx);
@@ -97,23 +90,11 @@ export async function withAnnouncementReplay<T>(
 					mutation.effect === null
 				) {
 					// A rejected write can retry the same key once its rate limit clears.
-					const rows = await tx
-						.delete(idempotencyResponses)
-						.where(
-							and(
-								eq(idempotencyResponses.scope, scope),
-								eq(idempotencyResponses.key, key),
-								eq(idempotencyResponses.expiresAt, lockedClaimExpiry),
-								sql`${idempotencyResponses.responseBody} @> '{"_claimed": true}'::jsonb`,
-							),
-						)
-						.returning({ scope: idempotencyResponses.scope });
-					if (rows.length !== 1) throw new Error('idempotency_claim_missing');
+					await releaseLockedClaim(tx, scope, key, lockedClaimExpiry);
 					return mutation;
 				}
-				if (key) {
-					const claimCompleted = await completeClaimedResponse(tx, scope, key, mutation.response);
-					if (!claimCompleted) throw new Error('idempotency_claim_missing');
+				if (key && lockedClaimExpiry) {
+					await completeClaimedResponse(tx, scope, key, mutation.response, lockedClaimExpiry);
 				}
 				return mutation;
 			} catch (err) {
@@ -126,20 +107,7 @@ export async function withAnnouncementReplay<T>(
 		// Drizzle rethrows a callback error only after ROLLBACK succeeds.
 		// A COMMIT failure leaves the claim in place for a safe later retry.
 		if (key && lockedClaimExpiry && failedInCallback && err === callbackFailure) {
-			try {
-				await db
-					.delete(idempotencyResponses)
-					.where(
-						and(
-							eq(idempotencyResponses.scope, scope),
-							eq(idempotencyResponses.key, key),
-							eq(idempotencyResponses.expiresAt, lockedClaimExpiry),
-							sql`${idempotencyResponses.responseBody} @> '{"_claimed": true}'::jsonb`,
-						),
-					);
-			} catch (releaseErr) {
-				logApiError('[announcement/replay] rollback claim release failed', releaseErr);
-			}
+			await releaseClaimedResponse(scope, key, lockedClaimExpiry);
 		}
 		throw err;
 	}

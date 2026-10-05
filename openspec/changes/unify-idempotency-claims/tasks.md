@@ -1,7 +1,7 @@
 ## 1. Helpers
 
-- [ ] 1.1 Add `lockClaimedResponse` and a lease-checked `completeClaimedResponse` to `core/db/claimed-response.ts` next to the existing `releaseClaimedResponse`; unit-test missing, expired, foreign, completed and claimed rows.
-- [ ] 1.2 Adapt the three existing callers of the boolean `completeClaimedResponse` (pinnwand, inventory, shopping duplicate path).
+- [x] 1.1 Add `lockClaimedResponse` and a lease-checked `completeClaimedResponse` to `core/db/claimed-response.ts` next to the existing `releaseClaimedResponse`; unit-test missing, expired, foreign, completed and claimed rows.
+- [x] 1.2 Adapt the three existing callers of the boolean `completeClaimedResponse` (pinnwand, inventory, shopping duplicate path).
 
 ## 2. Non-financial routes
 

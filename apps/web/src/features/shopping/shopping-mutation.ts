@@ -2,6 +2,7 @@ import { db, idempotencyResponses, shoppingItems } from '@/core/db';
 import { completeClaimedResponse } from '@/core/db/claimed-response';
 import type { ShoppingItem } from '@/core/db/schema';
 import type { DbTransaction } from '@/core/db/transaction';
+import { TransactionAbort } from '@/core/db/transaction-abort';
 import type { ReplayReservation } from '@/core/guards/idempotency';
 import { RESPONSE_REPLAY_TTL_SECONDS } from '@/core/offline/replay-retention';
 import { and, eq, sql } from 'drizzle-orm';
@@ -199,13 +200,19 @@ export async function withShoppingCreatePostCommitFallback(
 	}
 }
 
-export function persistShoppingCreateReplayResponse(
+export async function persistShoppingCreateReplayResponse(
 	tx: DbTransaction,
 	scope: string,
 	key: string,
 	response: ShoppingCreateReplayResponse,
 ): Promise<boolean> {
-	return completeClaimedResponse(tx, scope, key, response);
+	try {
+		await completeClaimedResponse(tx, scope, key, response);
+		return true;
+	} catch (err) {
+		if (err instanceof TransactionAbort && err.code === 'idempotency_claim_missing') return false;
+		throw err;
+	}
 }
 
 export async function releaseShoppingCreateClaim(scope: string, key: string): Promise<boolean> {

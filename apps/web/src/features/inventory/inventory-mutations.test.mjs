@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadClaimedResponse } from '../../../tests/support/claimed-response.mjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const directory = path.dirname(fileURLToPath(import.meta.url));
@@ -34,7 +35,7 @@ function loadMutations({ inventory } = {}) {
 			wgInventoryItems,
 			wgInventoryLog: { name: 'log' },
 		},
-		'@/core/db/claimed-response': { completeClaimedResponse: async () => true },
+		'@/core/db/transaction-abort': { TransactionAbort: class extends Error {} },
 		'@/features/inventory/inventory': inventory ?? {
 			buildShoppingPushPayload: () => ({}),
 			clampQuantity: (value) => Math.min(Math.max(value, 0), 9999),
@@ -47,6 +48,7 @@ function loadMutations({ inventory } = {}) {
 			sql: () => null,
 		},
 	};
+	overrides['@/core/db/claimed-response'] = loadClaimedResponse(overrides);
 	new Function('require', 'module', 'exports', source)(
 		(name) => (name in overrides ? overrides[name] : requireFromWeb(name)),
 		module,
