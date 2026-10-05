@@ -5,6 +5,31 @@ import {
 	MEMBER_TOKEN_HEADER,
 } from '@/shared/lib/member-header';
 
+/** A request the server has not answered by then counts as a network failure. */
+export const REQUEST_TIMEOUT_MS = 15_000;
+
+/**
+ * `AbortSignal.any`, with a fallback for browsers that lack it. The app
+ * supports Safari 16.4+, but `AbortSignal.any` only exists from Safari 17.4;
+ * calling it there throws, and every request with a caller signal (offline
+ * sync, background refresh) would fail without reaching the server.
+ */
+export function anySignal(signals: readonly AbortSignal[]): AbortSignal {
+	if (typeof AbortSignal.any === 'function') return AbortSignal.any([...signals]);
+	const controller = new AbortController();
+	for (const source of signals) {
+		if (source.aborted) {
+			controller.abort(source.reason);
+			break;
+		}
+		source.addEventListener('abort', () => controller.abort(source.reason), {
+			once: true,
+			signal: controller.signal,
+		});
+	}
+	return controller.signal;
+}
+
 type ApiFetchInit = RequestInit & { memberId?: string; memberToken?: string | undefined };
 
 /** status 0 means no trustworthy result was received; a write may still have committed. */
@@ -45,8 +70,8 @@ export async function apiFetch<T>(
 
 	const isMutation = method !== 'GET' && method !== 'HEAD';
 	try {
-		const timeoutSignal = AbortSignal.timeout(15_000);
-		const requestSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+		const timeoutSignal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+		const requestSignal = signal ? anySignal([signal, timeoutSignal]) : timeoutSignal;
 		const res = await fetch(path, {
 			cache: 'no-store',
 			...rest,

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
 import {
 	isPendingImageToken,
 	readPendingImage,
@@ -273,6 +274,7 @@ export function ImageUploader({
 					'content-type': 'application/json',
 				},
 				body: JSON.stringify({ shareCode, purpose, mimeType: file.type, fileSize: file.size }),
+				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
 			const signError = sigRes.ok ? '' : await readUploadSignError(sigRes);
 			if (

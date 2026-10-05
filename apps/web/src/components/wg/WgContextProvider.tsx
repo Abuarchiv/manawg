@@ -250,6 +250,7 @@ export function WgContextProvider({
 			handling = true;
 			authGenerationRef.current += 1;
 			syncAbortRef.current?.abort();
+			syncAbortRef.current = null;
 			const showLost = () => {
 				clearIdentity(wg.id);
 				setStateIdentity(null);

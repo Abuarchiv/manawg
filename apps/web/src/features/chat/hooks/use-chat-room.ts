@@ -413,7 +413,11 @@ export function useChatRoom({
 				return false;
 			}
 			committed = true;
-			reactionRequestKeysRef.current.delete(requestKeyId);
+			// A committed add or remove settles both directions: a key kept from an
+			// earlier uncertain attempt in the other direction would otherwise replay
+			// that old result later instead of reaching the server.
+			reactionRequestKeysRef.current.delete(`add:${messageId}:${emoji}`);
+			reactionRequestKeysRef.current.delete(`remove:${messageId}:${emoji}`);
 			const isOwnRow = (row: ChatReactionRow) =>
 				row.messageId === messageId && row.memberId === identity.memberId && row.emoji === emoji;
 			setReactionRows((prev) =>

@@ -129,13 +129,16 @@ export default function WgHomePage() {
 			setCompleteNotice(null);
 			return;
 		}
+		// One key per occurrence: after an uncertain failure that actually saved,
+		// the next due date must not replay the earlier completion.
+		const requestKey = `${choreId}:${item.expectedNextDueAt}`;
 		const idempotencyKey =
-			completionRequestKeysRef.current.get(choreId) ?? createOfflineIdempotencyKey();
+			completionRequestKeysRef.current.get(requestKey) ?? createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
 			setCompleteNotice('Konnte nicht sicher gespeichert werden. Erledige es im Putzplan.');
 			return;
 		}
-		completionRequestKeysRef.current.set(choreId, idempotencyKey);
+		completionRequestKeysRef.current.set(requestKey, idempotencyKey);
 		setPendingChoreId(choreId);
 		const result = await apiFetch(
 			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(choreId)}/complete`,
@@ -153,13 +156,13 @@ export default function WgHomePage() {
 		setPendingChoreId(null);
 		setArmedChoreId(null);
 		if (result.ok || result.error === 'chore_already_completed') {
-			completionRequestKeysRef.current.delete(choreId);
+			completionRequestKeysRef.current.delete(requestKey);
 			setCompleteNotice(`${item.title} erledigt.`);
 			void load();
 			return;
 		}
 		if (result.error === 'chore_occurrence_changed') {
-			completionRequestKeysRef.current.delete(choreId);
+			completionRequestKeysRef.current.delete(requestKey);
 			setCompleteNotice(
 				'Termin oder Zuständigkeit haben sich geändert. Der Plan wird aktualisiert.',
 			);
@@ -167,7 +170,7 @@ export default function WgHomePage() {
 			return;
 		}
 		if (result.status > 0 && result.status < 500 && result.status !== 429)
-			completionRequestKeysRef.current.delete(choreId);
+			completionRequestKeysRef.current.delete(requestKey);
 		setCompleteNotice(
 			result.status === 0
 				? 'Offline: Öffne den Putzplan, dort wird die Erledigung vorgemerkt.'

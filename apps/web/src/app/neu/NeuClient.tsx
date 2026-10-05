@@ -35,6 +35,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { safeNextPath } from '@/core/auth/next-path';
 import { hasSessionCookie } from '@/core/auth/session-hint';
+import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
 import { joinErrorMessage } from '@/core/infra/join-flow';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
@@ -155,7 +156,10 @@ export function NeuClient() {
 			}
 			setAuthState('loading');
 			try {
-				const res = await fetch('/api/wg/mine', { cache: 'no-store' });
+				const res = await fetch('/api/wg/mine', {
+					cache: 'no-store',
+					signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+				});
 				if (cancelled) return;
 				if (res.status === 401) {
 					setAccountWgs([]);
@@ -325,6 +329,7 @@ export function NeuClient() {
 				method: 'POST',
 				headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify(body),
+				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
 			if (res.status === 401) {
 				returnToSignIn();
@@ -339,8 +344,10 @@ export function NeuClient() {
 				else setFormError(message);
 				return;
 			}
-			createRequestRef.current = null;
 			const data = (await res.json()) as CreateResponse;
+			// Only now is the created WG known; a body lost in transit must be retried
+			// with the same key, or the retry would create a second WG.
+			createRequestRef.current = null;
 			posthog.capture('wg_created');
 			rememberWg({
 				code: data.wg.shareCode,
@@ -438,6 +445,7 @@ export function NeuClient() {
 				method: 'POST',
 				headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify(body),
+				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
 			if (res.status === 401) {
 				returnToSignIn();
@@ -466,8 +474,8 @@ export function NeuClient() {
 				}
 				return;
 			}
-			joinRequestRef.current = null;
 			await res.json();
+			joinRequestRef.current = null;
 			posthog.capture('wg_joined');
 			rememberWg({ code: joinWg.code, name: joinWg.name, lastVisitedAt: Date.now() });
 			removeDraft(START_DRAFT_KEY);
