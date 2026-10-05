@@ -341,6 +341,11 @@ export function OfflineClient() {
 						{statusHeading}
 					</h1>
 					<p className="text-sm text-muted-foreground">{statusDescription}</p>
+					{status === 'unauthenticated' && (
+						<Button size="lg" render={<Link href="/neu" />} nativeButton={false} className="w-full">
+							Anmelden
+						</Button>
+					)}
 					{queue.length > 0 && hasRetryableQueue && (
 						<Button
 							type="button"
@@ -441,71 +446,75 @@ export function OfflineClient() {
 					)}
 				</section>
 
-				<section
-					aria-labelledby="known-wgs-heading"
-					className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
-				>
-					<div>
-						<h2 id="known-wgs-heading" className="font-heading text-base leading-5 font-semibold">
-							Zurück in deine WG
-						</h2>
-					</div>
-					<div className="space-y-2">
-						{knownWgs.length === 0 ? (
-							<p className="text-sm leading-relaxed text-muted-foreground">
-								Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du mit
-								deinem Code erneut beitreten.
-							</p>
-						) : (
-							<ItemGroup aria-label="Bekannte WGs">
-								{knownWgs.slice(0, 3).map((wg) => (
-									<Item
-										key={wg.code}
-										variant="outline"
-										render={<Link href={wgHref(wg.code)} aria-label={`${wg.name} öffnen`} />}
-									>
-										<ItemContent>
-											<ItemTitle>{wg.name}</ItemTitle>
-											<ItemDescription>
-												{formatWgQueuedActionCount(queueCounts.get(wg.code) ?? 0)}
-											</ItemDescription>
-										</ItemContent>
-										<ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-									</Item>
-								))}
-							</ItemGroup>
-						)}
+				{status !== 'unauthenticated' && (
+					<section
+						aria-labelledby="known-wgs-heading"
+						className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
+					>
+						<div>
+							<h2 id="known-wgs-heading" className="font-heading text-base leading-5 font-semibold">
+								Zurück in deine WG
+							</h2>
+						</div>
+						<div className="space-y-2">
+							{knownWgs.length === 0 ? (
+								<p className="text-sm leading-relaxed text-muted-foreground">
+									Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du
+									mit deinem Code erneut beitreten.
+								</p>
+							) : (
+								<ItemGroup aria-label="Bekannte WGs">
+									{knownWgs.slice(0, 3).map((wg) => (
+										<Item
+											key={wg.code}
+											variant="outline"
+											render={<Link href={wgHref(wg.code)} aria-label={`${wg.name} öffnen`} />}
+										>
+											<ItemContent>
+												<ItemTitle>{wg.name}</ItemTitle>
+												<ItemDescription>
+													{formatWgQueuedActionCount(queueCounts.get(wg.code) ?? 0)}
+												</ItemDescription>
+											</ItemContent>
+											<ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+										</Item>
+									))}
+								</ItemGroup>
+							)}
 
-						<div className="grid grid-cols-1 gap-2 pt-2">
-							{primaryWg && (
+							<div className="grid grid-cols-1 gap-2 pt-2">
+								{primaryWg && (
+									<Button
+										variant="outline"
+										size="lg"
+										render={<Link href={wgHref(primaryWg.code, '/einstellungen#daten')} />}
+										nativeButton={false}
+										className="w-full"
+									>
+										Aktionen prüfen
+									</Button>
+								)}
 								<Button
 									variant="outline"
 									size="lg"
-									render={<Link href={wgHref(primaryWg.code, '/einstellungen#daten')} />}
+									render={<Link href="/neu" />}
 									nativeButton={false}
 									className="w-full"
 								>
-									Aktionen prüfen
+									Code eingeben
 								</Button>
-							)}
-							<Button
-								variant={status === 'unauthenticated' ? 'default' : 'outline'}
-								size="lg"
-								render={<Link href="/neu" />}
-								nativeButton={false}
-								className="w-full"
-							>
-								{status === 'unauthenticated' ? 'Anmelden' : 'Code eingeben'}
-							</Button>
+							</div>
 						</div>
-					</div>
-				</section>
+					</section>
+				)}
 
-				<p className="text-center text-xs leading-relaxed text-muted-foreground">
-					{queue.length > 0
-						? `${Array.from(new Set(queue.map(moduleLabel))).join(', ')} bleibt lokal gespeichert.`
-						: 'Du kannst diese Seite schließen. Sobald du online bist, lädt ManaWG wieder normal.'}
-				</p>
+				{(status === 'browser-offline' || status === 'server-unreachable') && (
+					<p className="text-center text-xs leading-relaxed text-muted-foreground">
+						{queue.length > 0
+							? `${Array.from(new Set(queue.map(moduleLabel))).join(', ')} bleibt lokal gespeichert.`
+							: 'Du kannst diese Seite schließen. Sobald du online bist, lädt ManaWG wieder normal.'}
+					</p>
+				)}
 			</div>
 		</main>
 	);

@@ -365,7 +365,7 @@ export function PayPalConnect({
 				</Alert>
 			)}
 			{(!status?.connected || hasPendingReturn) && status?.available !== false && !loading && (
-				<Button type="button" variant="ghost" onClick={retryConnection} disabled={busy}>
+				<Button type="button" variant="outline" onClick={retryConnection} disabled={busy}>
 					Verbindung prüfen
 				</Button>
 			)}

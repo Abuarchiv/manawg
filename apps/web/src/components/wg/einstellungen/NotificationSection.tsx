@@ -344,130 +344,139 @@ export function NotificationSection({
 						retryLabel="Erneut laden"
 					/>
 				)}
-				<Field orientation="horizontal" className="has-[>[data-slot=field-content]]:items-center">
-					<FieldContent>
-						<FieldTitle>
-							Web Push
-							{pushActive && <Bell className="text-muted-foreground h-3.5 w-3.5" aria-hidden />}
-						</FieldTitle>
-						{!pushConfigured && <FieldDescription>Nicht konfiguriert</FieldDescription>}
-						{pushActive && (
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								onClick={() => void sendTestNotification()}
-								disabled={notificationControlsDisabled}
-								aria-label={
-									pending === 'test'
-										? 'Testbenachrichtigung wird gesendet'
-										: 'Testbenachrichtigung senden'
-								}
-								className="justify-self-start"
-							>
-								{pending === 'test' && <Spinner aria-hidden />}
-								Test senden
-							</Button>
-						)}
-					</FieldContent>
-					<Switch
-						checked={pushTarget ?? pushActive}
-						disabled={notificationControlsDisabled || !pushConfigured}
-						aria-busy={pending === 'push'}
-						aria-label={pushActive ? 'Web Push deaktivieren' : 'Web Push aktivieren'}
-						onCheckedChange={(checked) => {
-							if (pendingRef.current) return;
-							// Thumb gleitet sofort; nach der Browser-Abfrage zählt der echte Zustand.
-							setPushTarget(checked);
-							void (checked ? activatePush() : deactivatePush()).finally(() => setPushTarget(null));
-						}}
-					/>
-				</Field>
+				{status && (
+					<>
+						<Field
+							orientation="horizontal"
+							className="has-[>[data-slot=field-content]]:items-center"
+						>
+							<FieldContent>
+								<FieldTitle>
+									Web Push
+									{pushActive && <Bell className="text-muted-foreground h-3.5 w-3.5" aria-hidden />}
+								</FieldTitle>
+								{!pushConfigured && <FieldDescription>Nicht konfiguriert</FieldDescription>}
+								{pushActive && (
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										onClick={() => void sendTestNotification()}
+										disabled={notificationControlsDisabled}
+										aria-label={
+											pending === 'test'
+												? 'Testbenachrichtigung wird gesendet'
+												: 'Testbenachrichtigung senden'
+										}
+										className="justify-self-start"
+									>
+										{pending === 'test' && <Spinner aria-hidden />}
+										Test senden
+									</Button>
+								)}
+							</FieldContent>
+							<Switch
+								checked={pushTarget ?? pushActive}
+								disabled={notificationControlsDisabled || !pushConfigured}
+								aria-busy={pending === 'push'}
+								aria-label={pushActive ? 'Web Push deaktivieren' : 'Web Push aktivieren'}
+								onCheckedChange={(checked) => {
+									if (pendingRef.current) return;
+									// Thumb gleitet sofort; nach der Browser-Abfrage zählt der echte Zustand.
+									setPushTarget(checked);
+									void (checked ? activatePush() : deactivatePush()).finally(() =>
+										setPushTarget(null),
+									);
+								}}
+							/>
+						</Field>
 
-				<div className="min-w-0 max-w-full">
-					{NOTIFICATION_PREFERENCES.map((pref, index) => (
-						<div key={pref.key}>
-							{index > 0 && <Separator />}
-							<Field
-								orientation="horizontal"
-								className="min-h-[44px] py-1 has-[>[data-slot=field-content]]:items-center"
-							>
-								<FieldContent>
-									<FieldTitle>{pref.label}</FieldTitle>
-									{pref.description && <FieldDescription>{pref.description}</FieldDescription>}
-								</FieldContent>
-								<Switch
-									checked={status?.[pref.key] ?? true}
-									disabled={notificationControlsDisabled}
-									aria-label={pref.label}
-									onCheckedChange={() => void togglePreference(pref.key)}
-								/>
-							</Field>
+						<div className="min-w-0 max-w-full">
+							{NOTIFICATION_PREFERENCES.map((pref, index) => (
+								<div key={pref.key}>
+									{index > 0 && <Separator />}
+									<Field
+										orientation="horizontal"
+										className="min-h-[44px] py-1 has-[>[data-slot=field-content]]:items-center"
+									>
+										<FieldContent>
+											<FieldTitle>{pref.label}</FieldTitle>
+											{pref.description && <FieldDescription>{pref.description}</FieldDescription>}
+										</FieldContent>
+										<Switch
+											checked={status?.[pref.key] ?? true}
+											disabled={notificationControlsDisabled}
+											aria-label={pref.label}
+											onCheckedChange={() => void togglePreference(pref.key)}
+										/>
+									</Field>
+								</div>
+							))}
 						</div>
-					))}
-				</div>
 
-				<div className="border-border grid min-w-0 max-w-full grid-cols-1 gap-1 border-t pt-2">
-					<div className="flex min-h-[44px] items-center justify-between gap-2">
-						<div className="text-foreground min-w-0 text-sm font-medium">Ruhezeit</div>
-						{quietHoursSet && (
-							<Button
-								type="button"
-								variant="ghost"
-								onClick={() => void saveQuietHours(null, null)}
-								disabled={notificationControlsDisabled}
-							>
-								Aus
-							</Button>
-						)}
-					</div>
-					<div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2">
-						<Field className="min-w-0">
-							<FieldTitle>Von</FieldTitle>
-							<NativeSelect
-								value={status?.quietStartHour ?? ''}
-								disabled={notificationControlsDisabled}
-								onChange={(e) => {
-									const value = parseQuietHour(e.target.value);
-									void (value === null
-										? saveQuietHours(null, null)
-										: saveQuietHours(value, status?.quietEndHour ?? 7));
-								}}
-								aria-label="Ruhezeit von"
-								className="w-full min-w-0 text-base"
-							>
-								<NativeSelectOption value="">Aus</NativeSelectOption>
-								{HOUR_OPTIONS.map((option) => (
-									<NativeSelectOption key={option.label} value={option.value}>
-										{option.label}
-									</NativeSelectOption>
-								))}
-							</NativeSelect>
-						</Field>
-						<Field className="min-w-0">
-							<FieldTitle>Bis</FieldTitle>
-							<NativeSelect
-								value={status?.quietEndHour ?? ''}
-								disabled={notificationControlsDisabled}
-								onChange={(e) => {
-									const value = parseQuietHour(e.target.value);
-									void (value === null
-										? saveQuietHours(null, null)
-										: saveQuietHours(status?.quietStartHour ?? 22, value));
-								}}
-								aria-label="Ruhezeit bis"
-								className="w-full min-w-0 text-base"
-							>
-								<NativeSelectOption value="">Aus</NativeSelectOption>
-								{HOUR_OPTIONS.map((option) => (
-									<NativeSelectOption key={option.label} value={option.value}>
-										{option.label}
-									</NativeSelectOption>
-								))}
-							</NativeSelect>
-						</Field>
-					</div>
-				</div>
+						<div className="border-border grid min-w-0 max-w-full grid-cols-1 gap-1 border-t pt-2">
+							<div className="flex min-h-[44px] items-center justify-between gap-2">
+								<div className="text-foreground min-w-0 text-sm font-medium">Ruhezeit</div>
+								{quietHoursSet && (
+									<Button
+										type="button"
+										variant="ghost"
+										onClick={() => void saveQuietHours(null, null)}
+										disabled={notificationControlsDisabled}
+									>
+										Aus
+									</Button>
+								)}
+							</div>
+							<div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2">
+								<Field className="min-w-0">
+									<FieldTitle>Von</FieldTitle>
+									<NativeSelect
+										value={status?.quietStartHour ?? ''}
+										disabled={notificationControlsDisabled}
+										onChange={(e) => {
+											const value = parseQuietHour(e.target.value);
+											void (value === null
+												? saveQuietHours(null, null)
+												: saveQuietHours(value, status?.quietEndHour ?? 7));
+										}}
+										aria-label="Ruhezeit von"
+										className="w-full min-w-0 text-base"
+									>
+										<NativeSelectOption value="">Aus</NativeSelectOption>
+										{HOUR_OPTIONS.map((option) => (
+											<NativeSelectOption key={option.label} value={option.value}>
+												{option.label}
+											</NativeSelectOption>
+										))}
+									</NativeSelect>
+								</Field>
+								<Field className="min-w-0">
+									<FieldTitle>Bis</FieldTitle>
+									<NativeSelect
+										value={status?.quietEndHour ?? ''}
+										disabled={notificationControlsDisabled}
+										onChange={(e) => {
+											const value = parseQuietHour(e.target.value);
+											void (value === null
+												? saveQuietHours(null, null)
+												: saveQuietHours(status?.quietStartHour ?? 22, value));
+										}}
+										aria-label="Ruhezeit bis"
+										className="w-full min-w-0 text-base"
+									>
+										<NativeSelectOption value="">Aus</NativeSelectOption>
+										{HOUR_OPTIONS.map((option) => (
+											<NativeSelectOption key={option.label} value={option.value}>
+												{option.label}
+											</NativeSelectOption>
+										))}
+									</NativeSelect>
+								</Field>
+							</div>
+						</div>
+					</>
+				)}
 
 				{message && (
 					<Alert>

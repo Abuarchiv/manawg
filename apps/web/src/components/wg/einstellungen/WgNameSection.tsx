@@ -67,7 +67,7 @@ export function WgNameSection({ wgName, shareCode, memberId, memberToken }: WgNa
 	return (
 		<Section title="WG-Name">
 			<form onSubmit={(event) => void submit(event)} className="grid gap-2 p-3">
-				<Field orientation="horizontal" className="items-center gap-2">
+				<Field orientation="horizontal" className="flex-wrap items-center gap-2">
 					<FieldLabel htmlFor="wg-name" className="sr-only">
 						Name eurer WG
 					</FieldLabel>
@@ -82,7 +82,7 @@ export function WgNameSection({ wgName, shareCode, memberId, memberToken }: WgNa
 						autoComplete="off"
 						enterKeyHint="done"
 						disabled={pending}
-						className="min-w-0 flex-1"
+						className="min-w-[10rem] flex-1"
 					/>
 					<Button
 						type="submit"
