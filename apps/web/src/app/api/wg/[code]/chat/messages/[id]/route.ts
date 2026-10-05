@@ -12,6 +12,7 @@ import {
 	notFound,
 	requireVerifiedMember,
 	tooMany,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -34,8 +35,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 		let raw: unknown;
 		try {
 			raw = await readJsonLimited(req);
-		} catch {
-			return badRequest('invalid_json');
+		} catch (err) {
+			return unreadableJsonBody(err);
 		}
 		const parsed = patchSchema.safeParse(raw);
 		if (!parsed.success) return badRequest('body_invalid');

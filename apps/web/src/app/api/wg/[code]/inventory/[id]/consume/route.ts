@@ -9,7 +9,13 @@ import {
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
+import {
+	badRequest,
+	conflict,
+	notFound,
+	tooMany,
+	unreadableJsonBody,
+} from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import {
 	getCachedResponse,
@@ -51,8 +57,8 @@ export const POST = withWgRoute<{ id: string }>('inventory consume', async (req,
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 
 	const parsed = consumeSchema.safeParse(raw);

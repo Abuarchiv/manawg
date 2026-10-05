@@ -6,7 +6,14 @@ import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { deriveMemberToken } from '@/core/guards/member-token';
-import { apiError, badRequest, conflict, serverError, tooMany } from '@/core/http/api-errors';
+import {
+	apiError,
+	badRequest,
+	conflict,
+	serverError,
+	tooMany,
+	unreadableJsonBody,
+} from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import {
 	RESPONSE_REPLAY_TTL_SECONDS,
@@ -84,8 +91,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 
 	const parsed = createWgSchema.safeParse(raw);

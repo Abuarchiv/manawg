@@ -10,7 +10,15 @@ import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { HTTP, apiError, badRequest, forbidden, notFound, tooMany } from '@/core/http/api-errors';
+import {
+	HTTP,
+	apiError,
+	badRequest,
+	forbidden,
+	notFound,
+	tooMany,
+	unreadableJsonBody,
+} from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
@@ -113,8 +121,8 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 	if (!isPostBody(raw)) return badRequest('invalid_body');
 	const parsed = joinMemberSchema.safeParse(raw);

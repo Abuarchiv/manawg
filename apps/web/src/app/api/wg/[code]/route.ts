@@ -16,6 +16,7 @@ import {
 	forbidden,
 	notFound,
 	serverError,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import type { RouteCtx } from '@/core/infra/api-types';
@@ -154,8 +155,8 @@ export async function PATCH(
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 	const parsed = patchWgSchema.safeParse(raw);
 	if (!parsed.success) return badRequest('wg_update_invalid');

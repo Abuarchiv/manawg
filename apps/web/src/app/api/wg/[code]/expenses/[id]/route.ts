@@ -16,6 +16,7 @@ import {
 	requireVerifiedMember,
 	serverError,
 	tooMany,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
@@ -134,8 +135,8 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 
 	const parsed = patchSchema.safeParse(raw);

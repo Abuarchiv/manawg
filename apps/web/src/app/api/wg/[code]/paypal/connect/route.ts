@@ -11,6 +11,7 @@ import {
 	requireVerifiedMember,
 	serverError,
 	tooMany,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
@@ -93,8 +94,8 @@ export const POST = withWgRoute<{ code: string }>('paypal connect POST', async (
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 	const start = startSchema.safeParse(raw);
 	const confirm = confirmSchema.safeParse(raw);

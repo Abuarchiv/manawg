@@ -17,6 +17,7 @@ import {
 	notFound,
 	serverError,
 	tooMany,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import {
@@ -152,8 +153,8 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 
 	const idemKey = readIdempotencyKey(req);
@@ -365,8 +366,8 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 	const parsed = advanceSchema.safeParse(raw);
 	if (!parsed.success) {
@@ -607,8 +608,8 @@ export const DELETE = withWgRoute('recurring-expenses DELETE', async (req, { cod
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 	const parsed = deleteRecurringSchema.safeParse(raw);
 	if (!parsed.success) {

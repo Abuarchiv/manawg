@@ -10,6 +10,7 @@ import {
 	requireVerifiedMember,
 	serverError,
 	tooMany,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
@@ -46,8 +47,8 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 	let body: unknown;
 	try {
 		body = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 	const parsed = captureSchema.safeParse(body);
 	if (!parsed.success) return badRequest('order_id_invalid');
