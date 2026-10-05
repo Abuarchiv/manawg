@@ -10,7 +10,7 @@ import type { SettingsTab } from '@/core/guards/settings-tabs';
 import { type WgExport, buildEmptyExportSummary, buildExportSummary } from '@/core/reads/export';
 import { memberAuthHeader } from '@/shared/lib/identity';
 import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * Only one tab is ever mounted, but statically importing all four put every
@@ -51,11 +51,10 @@ export default function EinstellungenPage() {
 		typeof window === 'undefined' ? 'profile' : getSettingsTabFromHash(window.location.hash),
 	);
 
-	// Load the export summary eagerly on mount, independent of the active tab, so
-	// the Daten tab shows section counts the instant it is opened. Kept in the
-	// page (always mounted) rather than DataTab (conditionally rendered) so the
-	// fetch fires on first paint regardless of which tab is active.
+	// Export-Zusammenfassung erst laden, wenn der Daten-Tab geöffnet wird; danach bleibt sie im State.
+	const exportSummaryLoaded = useRef(false);
 	useEffect(() => {
+		if (activeTab !== 'data' || exportSummaryLoaded.current) return;
 		let cancelled = false;
 		async function loadExportSummary(): Promise<void> {
 			try {
@@ -75,6 +74,7 @@ export default function EinstellungenPage() {
 				}
 				setExportSummary(buildExportSummary((await response.json()) as WgExport));
 				setExportSummaryError(null);
+				exportSummaryLoaded.current = true;
 			} catch {
 				if (!cancelled) {
 					setExportSummaryError(
@@ -87,7 +87,7 @@ export default function EinstellungenPage() {
 		return () => {
 			cancelled = true;
 		};
-	}, [encodedShareCode, identity.memberId]);
+	}, [activeTab, encodedShareCode, identity.memberId]);
 
 	useEffect(() => {
 		const update = () => setActiveTab(getSettingsTabFromHash(window.location.hash));
