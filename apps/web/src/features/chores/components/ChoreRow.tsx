@@ -177,8 +177,8 @@ export const ChoreRow = memo(function ChoreRow({
 						<DrawerHeader>
 							<DrawerTitle className="break-words">{chore.title}</DrawerTitle>
 						</DrawerHeader>
-						<div className="flex flex-col gap-3 overflow-y-auto overscroll-contain p-4">
-							<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+						<div className="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain p-4">
+							<dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm [&>dd]:break-words">
 								<dt className="text-muted-foreground">Zuständig</dt>
 								<dd>{isMine ? 'du' : assignee.name}</dd>
 								<dt className="text-muted-foreground">Fällig</dt>
