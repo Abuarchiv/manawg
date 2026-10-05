@@ -136,7 +136,17 @@ export function CalendarMonth({
 		return buildDays(month, occurrences, choresByDay);
 	}, [month, occurrences, choreOccurrences]);
 	const monthLabel = MONTH_FORMATTER.format(month);
-	const today = useMemo(() => new Date(), []);
+	const [today, setToday] = useState(() => new Date());
+	useEffect(() => {
+		const refresh = () =>
+			setToday((prev) => (dayKey(prev) === dayKey(new Date()) ? prev : new Date()));
+		window.addEventListener('focus', refresh);
+		document.addEventListener('visibilitychange', refresh);
+		return () => {
+			window.removeEventListener('focus', refresh);
+			document.removeEventListener('visibilitychange', refresh);
+		};
+	}, []);
 
 	const [focusedIndex, setFocusedIndex] = useState<number>(() =>
 		pickInitialFocusIndex(days, selectedDay, today, month),
@@ -349,11 +359,11 @@ export function CalendarMonth({
 					<section aria-label="Termine am ausgewählten Tag" className="flex flex-col gap-2 px-4">
 						<div className="flex flex-wrap items-center gap-2">
 							<h3 className="text-sm font-medium">{FULL_DATE_FORMATTER.format(selectedDay)}</h3>
-							{selectedOccurrences.length > 0 && (
+							{selectedOccurrences.length + selectedChores.length > 0 && (
 								<Badge variant="secondary">
-									{selectedOccurrences.length === 1
-										? '1 Termin'
-										: `${selectedOccurrences.length} Termine`}
+									{selectedOccurrences.length + selectedChores.length === 1
+										? '1 Eintrag'
+										: `${selectedOccurrences.length + selectedChores.length} Einträge`}
 								</Badge>
 							)}
 						</div>
@@ -361,24 +371,6 @@ export function CalendarMonth({
 							<p className="text-sm text-muted-foreground">Keine Termine an diesem Tag.</p>
 						) : (
 							<ul className="flex flex-col divide-y divide-border/60">
-								{selectedChores.map((chore) => (
-									<li key={`chore-${chore.choreId}-${chore.startsAt}`}>
-										<Link
-											href={`${wgBaseHref}/putzen?highlight=${encodeURIComponent(chore.choreId)}`}
-											aria-label={`Putzaufgabe öffnen: ${chore.title}`}
-											className="flex min-h-11 w-full min-w-0 items-center gap-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 active:bg-muted"
-										>
-											<span className="flex min-w-0 flex-1 flex-col">
-												<span className="text-[14px] font-medium break-words">{chore.title}</span>
-												<span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
-													<Sparkles className="size-4 shrink-0" aria-hidden />
-													Putzplan
-												</span>
-											</span>
-											<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-										</Link>
-									</li>
-								))}
 								{selectedOccurrences.map((occurrence) => (
 									<li key={`${occurrence.eventId}-${occurrence.occurrenceIndex}`}>
 										<button
@@ -397,6 +389,24 @@ export function CalendarMonth({
 											</span>
 											<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
 										</button>
+									</li>
+								))}
+								{selectedChores.map((chore) => (
+									<li key={`chore-${chore.choreId}-${chore.startsAt}`}>
+										<Link
+											href={`${wgBaseHref}/putzen?highlight=${encodeURIComponent(chore.choreId)}`}
+											aria-label={`Putzaufgabe öffnen: ${chore.title}`}
+											className="flex min-h-11 w-full min-w-0 items-center gap-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 active:bg-muted"
+										>
+											<span className="flex min-w-0 flex-1 flex-col">
+												<span className="text-[14px] font-medium break-words">{chore.title}</span>
+												<span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
+													<Sparkles className="size-4 shrink-0" aria-hidden />
+													Putzplan
+												</span>
+											</span>
+											<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+										</Link>
 									</li>
 								))}
 							</ul>

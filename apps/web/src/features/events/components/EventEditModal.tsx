@@ -96,6 +96,11 @@ export function EventEditModal({
 	const [error, setError] = useState<string | null>(null);
 	const [errorField, setErrorField] = useState<'title' | 'startsAt' | 'endsAt' | null>(null);
 	// Die Meldung sitzt unter den Feldern, der Speichern-Button ist angeheftet.
+	const shownError = error || actionError;
+	useEffect(() => {
+		if (shownError)
+			document.getElementById('event-edit-error')?.scrollIntoView({ block: 'nearest' });
+	}, [shownError]);
 	useEffect(() => {
 		if (error) document.getElementById('event-edit-error')?.scrollIntoView({ block: 'nearest' });
 	}, [error]);
@@ -283,22 +288,23 @@ export function EventEditModal({
 								Abbrechen
 							</Button>
 						</div>
-						<div className="flex flex-wrap gap-2">
+						<div className={onExportIcs ? 'grid grid-cols-2 gap-2' : 'flex gap-2'}>
 							{onExportIcs && (
 								<Button
 									type="button"
 									variant="outline"
-									className="min-w-0 flex-1 whitespace-normal"
+									className="h-auto min-h-8"
 									onClick={onExportIcs}
+									aria-label="In Kalender-App übernehmen"
 								>
 									<CalendarPlus data-icon="inline-start" aria-hidden />
-									In Kalender-App übernehmen
+									In Kalender
 								</Button>
 							)}
 							<Button
 								type="button"
 								variant="destructive"
-								className="min-w-0 flex-1 whitespace-normal"
+								className="h-auto min-h-8 flex-1"
 								onClick={() => setConfirmingDelete(true)}
 								disabled={saving || deleting}
 								aria-label="Termin löschen"

@@ -49,7 +49,7 @@ export function usePinnwandPage() {
 		refreshCount: data.refreshCount,
 	};
 
-	const scrollToAnnouncement = useCallback((id: string, behavior: ScrollBehavior = 'smooth') => {
+	const scrollToAnnouncement = useCallback((id: string, behavior: ScrollBehavior = 'auto') => {
 		setHighlightedId(id);
 		window.setTimeout(() => {
 			document.getElementById(`announcement-${id}`)?.scrollIntoView({
@@ -80,7 +80,6 @@ export function usePinnwandPage() {
 		const timer = window.setTimeout(() => {
 			document.getElementById(`announcement-${highlightedId}`)?.scrollIntoView({
 				block: 'center',
-				behavior: 'smooth',
 			});
 		}, 80);
 		return () => window.clearTimeout(timer);

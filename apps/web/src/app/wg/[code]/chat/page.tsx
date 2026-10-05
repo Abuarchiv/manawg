@@ -101,7 +101,7 @@ function ChatPageContent({
 				marginBottom: 'calc(-1 * (var(--app-nav-height, 5rem) + 0.5rem))',
 			}}
 		>
-			<header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-4 pt-[0.5rem] pb-2">
+			<header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-4 pt-3 pb-2">
 				<div className="mx-auto flex w-full max-w-4xl items-center gap-2">
 					{/* Das Segment ersetzt den sichtbaren Titel, damit der Chat keine
 					    zusätzliche Höhe verliert. */}
