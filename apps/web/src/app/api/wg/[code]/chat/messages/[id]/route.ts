@@ -83,10 +83,6 @@ export const PATCH = withWgRoute<{ id: string }>(
 			entityType: 'chat_message',
 			entityId: id,
 			summary: `${auth.member.name} hat eine Chat-Nachricht bearbeitet.`,
-			metadata: {
-				previewBefore: row.body?.slice(0, 80) ?? null,
-				previewAfter: updated.body?.slice(0, 80) ?? null,
-			},
 		});
 
 		return NextResponse.json({ message: updated });

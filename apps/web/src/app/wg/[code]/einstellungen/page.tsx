@@ -7,7 +7,11 @@ import { readResponseErrorCode } from '@/components/wg/einstellungen/settings-er
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { SETTINGS_TABS, getSettingsTabFromHash } from '@/core/guards/settings-tabs';
 import type { SettingsTab } from '@/core/guards/settings-tabs';
-import { type WgExport, buildEmptyExportSummary, buildExportSummary } from '@/core/reads/export';
+import {
+	type ExportSectionCounts,
+	buildEmptyExportSummary,
+	buildExportSummaryFromCounts,
+} from '@/core/reads/export';
 import { memberAuthHeader } from '@/shared/lib/identity';
 import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
@@ -45,7 +49,7 @@ export default function EinstellungenPage() {
 	const { wg, members, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const [exportSummary, setExportSummary] =
-		useState<ReturnType<typeof buildExportSummary>>(buildEmptyExportSummary);
+		useState<ReturnType<typeof buildExportSummaryFromCounts>>(buildEmptyExportSummary);
 	const [exportSummaryError, setExportSummaryError] = useState<string | null>(null);
 	const [activeTab, setActiveTab] = useState<SettingsTab>(() =>
 		typeof window === 'undefined' ? 'profile' : getSettingsTabFromHash(window.location.hash),
@@ -58,7 +62,7 @@ export default function EinstellungenPage() {
 		let cancelled = false;
 		async function loadExportSummary(): Promise<void> {
 			try {
-				const response = await fetch(`/api/wg/${encodedShareCode}/export`, {
+				const response = await fetch(`/api/wg/${encodedShareCode}/export?summary=counts`, {
 					headers: memberAuthHeader(identity.memberId),
 				});
 				if (cancelled) return;
@@ -72,7 +76,8 @@ export default function EinstellungenPage() {
 					);
 					return;
 				}
-				setExportSummary(buildExportSummary((await response.json()) as WgExport));
+				const { counts } = (await response.json()) as { counts: ExportSectionCounts };
+				setExportSummary(buildExportSummaryFromCounts(counts));
 				setExportSummaryError(null);
 				exportSummaryLoaded.current = true;
 			} catch {

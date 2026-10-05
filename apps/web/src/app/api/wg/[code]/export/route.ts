@@ -20,6 +20,7 @@ import {
 	type MemberRows,
 	NO_EXPORT_LIMIT,
 	buildSectionLoaders,
+	countExportSections,
 	fetchMemberRows,
 	mapMemberRows,
 	toMemberById,
@@ -102,6 +103,11 @@ async function settleSection<T>(
 	}
 }
 
+/** `?summary=counts`: per-section row counts for the settings page, no rows. */
+function wantsCountsOnly(req: NextRequest): boolean {
+	return req.nextUrl.searchParams.get('summary') === 'counts';
+}
+
 function sectionRecord(
 	rowsFor: (section: ExportSectionKey) => ExportRow[],
 ): Record<ExportSectionKey, ExportRow[]> {
@@ -147,6 +153,13 @@ export async function GET(
 			wg: { name: fixture.name, shareCode: fixture.shareCode },
 			...sectionRecord((section) => (section === 'members' ? members : [])),
 		});
+		if (wantsCountsOnly(req)) {
+			return NextResponse.json({
+				counts: Object.fromEntries(
+					EXPORT_SECTION_KEYS.map((section) => [section, data.sections[section].length]),
+				),
+			});
+		}
 		if (format === 'csv') {
 			const section = parseCsvSection(req);
 			if (!section) return badRequest('section_invalid');
@@ -164,6 +177,10 @@ export async function GET(
 		// and one member's export budget must not lock out their flatmates.
 		const limit = await checkRateLimit(wgExportLimiter, `export:${wg.id}:${auth.member.memberId}`);
 		if (!limit.success) return tooMany('rate_limited');
+
+		if (wantsCountsOnly(req)) {
+			return NextResponse.json({ counts: await countExportSections(wg.id) });
+		}
 
 		const parsedPage = parseExportPage(req);
 		if (!parsedPage) return badRequest('pagination_invalid');

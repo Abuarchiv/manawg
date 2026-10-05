@@ -14,9 +14,11 @@ import {
 	wgEvents,
 	wgMembers,
 } from '@/core/db';
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { type SQL, and, asc, count, desc, eq, inArray } from 'drizzle-orm';
+import type { PgTable } from 'drizzle-orm/pg-core';
 import {
 	type ExportRow,
+	type ExportSectionCounts,
 	type ExportSectionKey,
 	formatExpenseSplitsForExport,
 	parseRecurringSplitsForExport,
@@ -85,6 +87,11 @@ async function loadSplitsByExpense(expenseIds: string[]): Promise<Map<string, Ex
 		}
 	}
 	return splitsByExpense;
+}
+
+/** Only completed payments are part of the ledger the export documents. */
+function completedPaymentsOf(wgId: string): SQL | undefined {
+	return and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed'));
 }
 
 export async function fetchMemberRows(wgId: string) {
@@ -156,7 +163,7 @@ async function fetchExpensePaymentRows(wgId: string, page: ExportPage) {
 			completedAt: expensePayments.completedAt,
 		})
 		.from(expensePayments)
-		.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed')))
+		.where(completedPaymentsOf(wgId))
 		.orderBy(desc(expensePayments.completedAt), desc(expensePayments.id))
 		.limit(page.limit)
 		.offset(page.offset);
@@ -508,5 +515,64 @@ export function buildSectionLoaders(
 		events: withNames(() => fetchEventRows(wgId, page), mapEventRows),
 		chatMessages: withNames(() => fetchChatMessageRows(wgId, page), mapChatMessageRows),
 		auditEvents: withNames(() => fetchAuditRows(wgId, page), mapAuditRows),
+	};
+}
+
+async function countRows(table: PgTable, where: SQL | undefined): Promise<number> {
+	const [row] = await db.select({ value: count() }).from(table).where(where);
+	return row?.value ?? 0;
+}
+
+/**
+ * Row count per section with the same filters as the dump, for the settings
+ * summary. Counting instead of downloading keeps the summary cheap for WGs with
+ * a long chat history.
+ */
+export async function countExportSections(wgId: string): Promise<ExportSectionCounts> {
+	const [
+		members,
+		expenseCount,
+		expensePaymentCount,
+		recurringExpenseCount,
+		shoppingItemCount,
+		choreCount,
+		absenceCount,
+		announcementCount,
+		announcementCommentCount,
+		eventCount,
+		chatMessageCount,
+		auditEventCount,
+	] = await Promise.all([
+		countRows(wgMembers, eq(wgMembers.wgId, wgId)),
+		countRows(expenses, eq(expenses.wgId, wgId)),
+		countRows(expensePayments, completedPaymentsOf(wgId)),
+		countRows(recurringExpenses, eq(recurringExpenses.wgId, wgId)),
+		countRows(shoppingItems, eq(shoppingItems.wgId, wgId)),
+		countRows(chores, eq(chores.wgId, wgId)),
+		countRows(memberAbsences, eq(memberAbsences.wgId, wgId)),
+		countRows(announcements, eq(announcements.wgId, wgId)),
+		db
+			.select({ value: count() })
+			.from(announcementComments)
+			.innerJoin(announcements, eq(announcementComments.announcementId, announcements.id))
+			.where(eq(announcements.wgId, wgId))
+			.then(([row]) => row?.value ?? 0),
+		countRows(wgEvents, eq(wgEvents.wgId, wgId)),
+		countRows(wgChatMessages, eq(wgChatMessages.wgId, wgId)),
+		countRows(auditEvents, eq(auditEvents.wgId, wgId)),
+	]);
+	return {
+		members,
+		expenses: expenseCount,
+		expensePayments: expensePaymentCount,
+		recurringExpenses: recurringExpenseCount,
+		shoppingItems: shoppingItemCount,
+		chores: choreCount,
+		absences: absenceCount,
+		announcements: announcementCount,
+		announcementComments: announcementCommentCount,
+		events: eventCount,
+		chatMessages: chatMessageCount,
+		auditEvents: auditEventCount,
 	};
 }

@@ -89,6 +89,7 @@ function exportRoute(failedTable, { expenseCount = 0, rowsByTable = {} } = {}) {
 	const drizzle = {
 		and: () => null,
 		asc: () => null,
+		count: () => null,
 		desc: () => null,
 		eq: () => null,
 		inArray: (_column, values) => {
@@ -328,4 +329,18 @@ test('a failed new section fails the full export closed', async (t) => {
 		assert.equal(response.status, 500);
 		assert.equal((await response.json()).error, 'export_incomplete');
 	}
+});
+
+test('the counts summary counts rows per section instead of downloading them', async () => {
+	const route = exportRoute(null, {
+		rowsByTable: { wgChatMessages: [{ value: 3 }], wgMembers: [{ value: 2 }] },
+	});
+	const response = await route.get('?summary=counts');
+	assert.equal(response.status, 200);
+	const { counts } = await response.json();
+	assert.equal(counts.chatMessages, 3);
+	assert.equal(counts.members, 2);
+	assert.equal(counts.expenses, 0);
+	assert.equal(Object.keys(counts).length, 12);
+	assert.deepEqual(route.limits, []);
 });
