@@ -1,8 +1,8 @@
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
+const { readFileSync } = require('node:fs');
+const { createRequire } = require('node:module');
+const path = require('node:path');
 
-const webDir = path.resolve(import.meta.dirname, '../..');
+const webDir = path.resolve(__dirname, '../..');
 const requireFromWeb = createRequire(path.join(webDir, 'package.json'));
 const { ModuleKind, ScriptTarget, transpileModule } = requireFromWeb('typescript');
 const compiled = transpileModule(
@@ -25,7 +25,7 @@ const compiled = transpileModule(
  * `@/core/infra/observability`. Mock objects are read at call time, so a harness
  * may swap its fake db between requests.
  */
-export function loadClaimedResponse(mocks) {
+function loadClaimedResponse(mocks) {
 	const TransactionAbort =
 		mocks['@/core/db/transaction-abort']?.TransactionAbort ??
 		mocks['@/core/db/transaction']?.TransactionAbort;
@@ -47,3 +47,5 @@ export function loadClaimedResponse(mocks) {
 	);
 	return module.exports;
 }
+
+module.exports = { loadClaimedResponse };

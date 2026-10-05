@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
+import { loadClaimedResponse } from './support/claimed-response.cjs';
 
 const webDir = path.resolve(import.meta.dirname, '..');
 const requireFromWeb = createRequire(path.join(webDir, 'package.json'));
@@ -135,20 +136,28 @@ function harness({
 				query: {
 					wgs: { findFirst: async () => (state.shareCodeExhausted ? { id: 'existing' } : null) },
 				},
+				delete: (table) => ({
+					where: (condition) => ({
+						returning: async () => {
+							assert.equal(table, idempotencyResponses);
+							const lease = condition.parts.find(
+								(part) => part?.kind === 'eq' && part.parts[0] === idempotencyResponses.expiresAt,
+							)?.parts[1];
+							if (
+								state.slot?.body?._claimed !== true ||
+								state.slot.expiresAt.getTime() !== lease?.getTime()
+							) {
+								return [];
+							}
+							state.slot = null;
+							return [{ scope: 'released' }];
+						},
+					}),
+				}),
 			},
 			idempotencyResponses,
 			wgMembers,
 			wgs,
-		},
-		'@/core/db/claimed-response': {
-			releaseClaimedResponse: async (_scope, _key, leaseExpiresAt) => {
-				if (
-					state.slot?.body?._claimed === true &&
-					state.slot.expiresAt.getTime() === leaseExpiresAt.getTime()
-				) {
-					state.slot = null;
-				}
-			},
 		},
 		'@/core/db/account-deletion': {
 			assertAccountCanAcquireMembership: async () => {
@@ -203,6 +212,7 @@ function harness({
 		'@/shared/lib/limits': { MEMBER_NAME_MAX_LENGTH: 80, WG_NAME_MAX_LENGTH: 100 },
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	};
+	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
 	const source = readFileSync(path.join(webDir, 'src/app/api/wg/route.ts'), 'utf8');
 	const compiled = transpileModule(source, {
 		compilerOptions: {

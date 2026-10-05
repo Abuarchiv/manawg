@@ -1,8 +1,12 @@
 import { recordAuditEvent } from '@/core/audit';
 import { getAuthenticatedUser } from '@/core/auth/server';
-import { db, idempotencyResponses, wgMembers, wgs } from '@/core/db';
+import { db, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
-import { releaseClaimedResponse } from '@/core/db/claimed-response';
+import {
+	completeClaimedResponse,
+	lockClaimedResponse,
+	releaseClaimedResponse,
+} from '@/core/db/claimed-response';
 import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
@@ -16,17 +20,12 @@ import {
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
-import {
-	RESPONSE_REPLAY_TTL_SECONDS,
-	getCachedResponse,
-	readIdempotencyKey,
-} from '@/core/idempotency-store';
+import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
 import { E2E_CREATED_WG, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
 import { generateShareCode, isValidShareCode } from '@/core/utils/share-code';
 import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
-import { and, eq, gt, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -208,36 +207,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			try {
 				const result = await withTransaction(async (tx) => {
 					await assertAccountCanAcquireMembership(tx, authenticatedUser.id);
+					let lease: Date | null = null;
 					if (idemKey) {
-						const [slot] = await tx
-							.select({
-								body: idempotencyResponses.responseBody,
-								expiresAt: idempotencyResponses.expiresAt,
-							})
-							.from(idempotencyResponses)
-							.where(
-								and(
-									eq(idempotencyResponses.scope, idemScope),
-									eq(idempotencyResponses.key, idemKey),
-								),
-							)
-							.limit(1)
-							.for('update');
-						if (!slot) throw new TransactionAbort('idempotency_claim_missing');
-						if (slot.expiresAt > new Date() && isCachedJsonResponse(slot.body)) {
-							return { replayed: true as const, response: slot.body };
-						}
-						if (
-							slot.expiresAt <= new Date() ||
-							!slot.body ||
-							typeof slot.body !== 'object' ||
-							Array.isArray(slot.body) ||
-							Object.keys(slot.body).length !== 1 ||
-							(slot.body as Record<string, unknown>)._claimed !== true
-						) {
-							throw new TransactionAbort('idempotency_claim_invalid');
-						}
-						claimedLeaseExpiresAt = slot.expiresAt;
+						const claim = await lockClaimedResponse(tx, idemScope, idemKey, isCachedJsonResponse);
+						if (claim.kind === 'completed')
+							return { replayed: true as const, response: claim.body };
+						lease = claim.leaseExpiresAt;
+						claimedLeaseExpiresAt = lease;
 					}
 					const [createdWg] = await tx.insert(wgs).values({ name, shareCode }).returning();
 					if (!createdWg) throw new TransactionAbort('insert_failed');
@@ -260,23 +236,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 							creator: { id: createdMember.id, name: createdMember.name },
 						},
 					};
-					if (idemKey) {
-						const updated = await tx
-							.update(idempotencyResponses)
-							.set({
-								responseBody: response,
-								expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
-							})
-							.where(
-								and(
-									eq(idempotencyResponses.scope, idemScope),
-									eq(idempotencyResponses.key, idemKey),
-									gt(idempotencyResponses.expiresAt, new Date()),
-									sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-								),
-							)
-							.returning({ scope: idempotencyResponses.scope });
-						if (updated.length !== 1) throw new TransactionAbort('idempotency_claim_missing');
+					if (idemKey && lease) {
+						await completeClaimedResponse(tx, idemScope, idemKey, response, lease);
 					}
 					return { replayed: false as const, wg: createdWg, member: createdMember, response };
 				});

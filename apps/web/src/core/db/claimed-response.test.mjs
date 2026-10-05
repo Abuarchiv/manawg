@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadClaimedResponse } from '../../../tests/support/claimed-response.mjs';
+import { loadClaimedResponse } from '../../../tests/support/claimed-response.cjs';
 
 const scope = 'chores-create:wg-1:member-1';
 const key = '11111111-1111-4111-8111-111111111111';

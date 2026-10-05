@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { PgDialect, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import { loadClaimedResponse } from '../../../tests/support/claimed-response.mjs';
+import { loadClaimedResponse } from '../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const file = path.join(process.cwd(), 'src/features/pinnwand/announcement-replay.ts');

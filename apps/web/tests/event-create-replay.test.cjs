@@ -4,6 +4,7 @@ const { createRequire } = require('node:module');
 const path = require('node:path');
 const test = require('node:test');
 const { ModuleKind, ScriptTarget, transpileModule } = require('typescript');
+const { loadClaimedResponse } = require('./support/claimed-response.cjs');
 
 const webRoot = path.resolve(__dirname, '..');
 const requireFromWeb = createRequire(path.join(webRoot, 'package.json'));
@@ -144,21 +145,25 @@ function harness() {
 			throw new Error('event insert escaped transaction');
 		},
 		delete: (table) => ({
-			where: async (condition) => {
-				assert.equal(table, idempotencyResponses);
-				const query = dialect.sqlToQuery(condition);
-				state.releaseWhere = query.sql;
-				const lease = Date.parse(query.params[2]);
-				if (
-					state.slot &&
-					Object.keys(state.slot.body).length === 1 &&
-					state.slot.body._claimed === true &&
-					lease === state.slot.expiresAt.getTime()
-				) {
+			where: (condition) => ({
+				returning: async () => {
+					assert.equal(table, idempotencyResponses);
+					const query = dialect.sqlToQuery(condition);
+					state.releaseWhere = query.sql;
+					const lease = Date.parse(query.params[2]);
+					if (
+						!state.slot ||
+						Object.keys(state.slot.body).length !== 1 ||
+						state.slot.body._claimed !== true ||
+						lease !== state.slot.expiresAt.getTime()
+					) {
+						return [];
+					}
 					state.slot = null;
 					state.releases += 1;
-				}
-			},
+					return [{ scope: 'released' }];
+				},
+			}),
 		}),
 		update: (table) => ({
 			set: (values) => ({
@@ -263,6 +268,7 @@ function harness() {
 		},
 		'next/server': { NextResponse: { json: (body, options) => Response.json(body, options) } },
 	};
+	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
 	const compiled = transpileModule(
 		readFileSync(path.join(webRoot, 'src/app/api/wg/[code]/events/route.ts'), 'utf8'),
 		{

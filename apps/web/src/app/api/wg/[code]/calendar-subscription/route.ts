@@ -1,17 +1,17 @@
 import { recordAuditEvent } from '@/core/audit';
-import { calendarSubscriptions, db, idempotencyResponses } from '@/core/db';
+import { calendarSubscriptions, db } from '@/core/db';
 import { type ActiveAccountMember, lockActiveAccountMember } from '@/core/db/account-deletion';
-import { releaseClaimedResponse } from '@/core/db/claimed-response';
+import {
+	completeClaimedResponse,
+	lockClaimedResponse,
+	releaseClaimedResponse,
+} from '@/core/db/claimed-response';
 import { type DbTransaction, TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { requireVerifiedMember, serverError, tooMany } from '@/core/http/api-errors';
-import {
-	RESPONSE_REPLAY_TTL_SECONDS,
-	getCachedResponse,
-	readIdempotencyKey,
-} from '@/core/idempotency-store';
+import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	calendarFeedUrl,
@@ -19,7 +19,7 @@ import {
 	deriveCalendarFeedToken,
 } from '@/features/events/calendar-subscription';
 import { getAppUrl } from '@/shared/lib/app-url';
-import { and, eq, gt, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 type CalendarSubscriptionRow = typeof calendarSubscriptions.$inferSelect;
@@ -43,6 +43,10 @@ function cachedResponse(value: unknown): CachedJsonResponse | null {
 	// Older calendar replay rows stored the successful JSON body directly.
 	if ('subscription' in row || row.revoked === true) return { status: 200, body: row };
 	return null;
+}
+
+function isReplayable(value: unknown): value is unknown {
+	return cachedResponse(value) !== null;
 }
 
 function replayResponse(response: CachedJsonResponse): NextResponse {
@@ -94,51 +98,19 @@ async function withCalendarMutation(
 				auth.authUserId,
 			);
 			if (key) {
-				const [slot] = await tx
-					.select({
-						body: idempotencyResponses.responseBody,
-						expiresAt: idempotencyResponses.expiresAt,
-					})
-					.from(idempotencyResponses)
-					.where(and(eq(idempotencyResponses.scope, scope), eq(idempotencyResponses.key, key)))
-					.limit(1)
-					.for('update');
-				if (!slot) throw new TransactionAbort('idempotency_claim_missing');
-				const completed = cachedResponse(slot.body);
-				if (slot.expiresAt > new Date() && completed) {
-					return { replayed: true as const, response: completed };
+				const claim = await lockClaimedResponse(tx, scope, key, isReplayable);
+				if (claim.kind === 'completed') {
+					const response = cachedResponse(claim.body);
+					if (!response) throw new TransactionAbort('idempotency_claim_invalid');
+					return { replayed: true as const, response };
 				}
-				if (
-					slot.expiresAt <= new Date() ||
-					!slot.body ||
-					typeof slot.body !== 'object' ||
-					Array.isArray(slot.body) ||
-					Object.keys(slot.body).length !== 1 ||
-					(slot.body as Record<string, unknown>)._claimed !== true
-				)
-					throw new TransactionAbort('idempotency_claim_invalid');
-				claimedLeaseExpiresAt = slot.expiresAt;
+				claimedLeaseExpiresAt = claim.leaseExpiresAt;
 			}
 			const outcome = member
 				? await mutate(tx, member)
 				: { response: { status: 401, body: { error: 'member_deactivated' } } };
-			if (key) {
-				const updated = await tx
-					.update(idempotencyResponses)
-					.set({
-						responseBody: outcome.response,
-						expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
-					})
-					.where(
-						and(
-							eq(idempotencyResponses.scope, scope),
-							eq(idempotencyResponses.key, key),
-							gt(idempotencyResponses.expiresAt, new Date()),
-							sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-						),
-					)
-					.returning({ scope: idempotencyResponses.scope });
-				if (updated.length !== 1) throw new TransactionAbort('idempotency_claim_missing');
+			if (key && claimedLeaseExpiresAt) {
+				await completeClaimedResponse(tx, scope, key, outcome.response, claimedLeaseExpiresAt);
 			}
 			return { replayed: false as const, outcome };
 		});

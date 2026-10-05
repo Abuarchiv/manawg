@@ -1,5 +1,10 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, idempotencyResponses, memberAbsences, wgMembers } from '@/core/db';
+import { db, memberAbsences, wgMembers } from '@/core/db';
+import {
+	completeClaimedResponse,
+	lockClaimedResponse,
+	releaseClaimedResponse,
+} from '@/core/db/claimed-response';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { isVerifiedWgAdmin } from '@/core/guards/admin';
 import {
@@ -19,15 +24,11 @@ import {
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
-import {
-	RESPONSE_REPLAY_TTL_SECONDS,
-	getCachedResponse,
-	readIdempotencyKey,
-} from '@/core/idempotency-store';
+import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { berlinDayKey, endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
-import { and, asc, eq, gt, gte, isNull, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -43,6 +44,10 @@ type AbsenceCreateResponseBody = {
 };
 
 const absenceCreateReplay = new ReplayCache<AbsenceCreateResponseBody>();
+
+function isAbsenceCreateResponseBody(body: unknown): body is AbsenceCreateResponseBody {
+	return body !== null && typeof body === 'object' && 'absence' in body;
+}
 
 function absenceCreateIdempotencyScope(wgId: string, memberId: string): string {
 	return `absences-create:${wgId}:${memberId}`;
@@ -171,33 +176,17 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 			}
 		}
 		const creation = await withTransaction(async (tx) => {
+			let lease: Date | null = null;
 			if (idemScope && idemKey) {
-				const [slot] = await tx
-					.select({
-						body: idempotencyResponses.responseBody,
-						expiresAt: idempotencyResponses.expiresAt,
-					})
-					.from(idempotencyResponses)
-					.where(
-						and(eq(idempotencyResponses.scope, idemScope), eq(idempotencyResponses.key, idemKey)),
-					)
-					.limit(1)
-					.for('update');
-				if (!slot) throw new TransactionAbort('idempotency_claim_missing');
-				if (slot.body && typeof slot.body === 'object' && 'absence' in slot.body) {
-					return { kind: 'replayed' as const, body: slot.body as AbsenceCreateResponseBody };
-				}
-				if (
-					slot.expiresAt <= new Date() ||
-					!slot.body ||
-					typeof slot.body !== 'object' ||
-					Array.isArray(slot.body) ||
-					Object.keys(slot.body).length !== 1 ||
-					(slot.body as Record<string, unknown>)._claimed !== true
-				) {
-					throw new TransactionAbort('idempotency_claim_invalid');
-				}
-				claimedLeaseExpiresAt = slot.expiresAt;
+				const claim = await lockClaimedResponse(
+					tx,
+					idemScope,
+					idemKey,
+					isAbsenceCreateResponseBody,
+				);
+				if (claim.kind === 'completed') return { kind: 'replayed' as const, body: claim.body };
+				lease = claim.leaseExpiresAt;
+				claimedLeaseExpiresAt = lease;
 			}
 			await tx.execute(
 				sql`select pg_advisory_xact_lock(hashtext(${`absence:${wg.id}:${parsed.data.memberId}`}))`,
@@ -233,29 +222,13 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 					endDate: created.endDate.toISOString(),
 				},
 			};
-			if (idemScope && idemKey) {
-				let rows: Array<{ scope: string }>;
-				try {
-					rows = await tx
-						.update(idempotencyResponses)
-						.set({
-							responseBody: body,
-							expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
-						})
-						.where(
-							and(
-								eq(idempotencyResponses.scope, idemScope),
-								eq(idempotencyResponses.key, idemKey),
-								gt(idempotencyResponses.expiresAt, new Date()),
-								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-							),
-						)
-						.returning({ scope: idempotencyResponses.scope });
-				} catch (err) {
-					logApiError('[absences POST] replay write failed', err);
+			if (idemScope && idemKey && lease) {
+				await completeClaimedResponse(tx, idemScope, idemKey, body, lease).catch((err: unknown) => {
+					if (!(err instanceof TransactionAbort)) {
+						logApiError('[absences POST] replay write failed', err);
+					}
 					throw new TransactionAbort('idempotency_response_write_failed');
-				}
-				if (rows.length !== 1) throw new TransactionAbort('idempotency_response_write_failed');
+				});
 			}
 			return { kind: 'created' as const, absence: created, body };
 		});
@@ -267,20 +240,7 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 			const err = new Error('absence_overlaps_existing');
 			replayReservation?.reject(err);
 			if (idemScope && idemKey && claimedLeaseExpiresAt) {
-				try {
-					await db
-						.delete(idempotencyResponses)
-						.where(
-							and(
-								eq(idempotencyResponses.scope, idemScope),
-								eq(idempotencyResponses.key, idemKey),
-								eq(idempotencyResponses.expiresAt, claimedLeaseExpiresAt),
-								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-							),
-						);
-				} catch (releaseErr) {
-					logApiError('[absences POST] claim release failed', releaseErr);
-				}
+				await releaseClaimedResponse(idemScope, idemKey, claimedLeaseExpiresAt);
 			}
 			return conflict('absence_overlaps_existing', 'absence_overlaps_existing');
 		}
@@ -303,28 +263,12 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 		return NextResponse.json(creation.body);
 	} catch (err) {
 		replayReservation?.reject(err);
+		// Only the still-unfinished placeholder of this lease is removed, so this is
+		// a no-op when the write committed before the failure.
+		if (idemScope && idemKey && claimedLeaseExpiresAt) {
+			await releaseClaimedResponse(idemScope, idemKey, claimedLeaseExpiresAt);
+		}
 		if (err instanceof TransactionAbort) {
-			if (
-				idemScope &&
-				idemKey &&
-				claimedLeaseExpiresAt &&
-				['insert_failed', 'idempotency_response_write_failed'].includes(err.code)
-			) {
-				try {
-					await db
-						.delete(idempotencyResponses)
-						.where(
-							and(
-								eq(idempotencyResponses.scope, idemScope),
-								eq(idempotencyResponses.key, idemKey),
-								eq(idempotencyResponses.expiresAt, claimedLeaseExpiresAt),
-								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-							),
-						);
-				} catch (releaseErr) {
-					logApiError('[absences POST] claim release failed', releaseErr);
-				}
-			}
 			return serverError(err.code);
 		}
 		throw err;

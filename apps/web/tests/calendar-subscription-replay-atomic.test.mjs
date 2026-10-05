@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
+import { loadClaimedResponse } from './support/claimed-response.cjs';
 
 const webDir = path.resolve(import.meta.dirname, '..');
 const requireFromWeb = createRequire(path.join(webDir, 'package.json'));
@@ -116,19 +117,29 @@ function harness({
 			},
 		},
 		'@/core/db': {
-			db: { query: { calendarSubscriptions: { findFirst: async () => null } } },
+			db: {
+				query: { calendarSubscriptions: { findFirst: async () => null } },
+				delete: (table) => ({
+					where: (condition) => ({
+						returning: async () => {
+							assert.equal(table, idempotencyResponses);
+							const lease = condition.parts.find(
+								(part) => part?.kind === 'eq' && part.parts[0] === idempotencyResponses.expiresAt,
+							)?.parts[1];
+							if (
+								state.slot?.body?._claimed !== true ||
+								state.slot.expiresAt.getTime() !== lease?.getTime()
+							) {
+								return [];
+							}
+							state.slot = null;
+							return [{ scope: 'released' }];
+						},
+					}),
+				}),
+			},
 			calendarSubscriptions,
 			idempotencyResponses,
-		},
-		'@/core/db/claimed-response': {
-			releaseClaimedResponse: async (_scope, _key, leaseExpiresAt) => {
-				if (
-					state.slot?.body?._claimed === true &&
-					state.slot.expiresAt.getTime() === leaseExpiresAt.getTime()
-				) {
-					state.slot = null;
-				}
-			},
 		},
 		'@/core/db/transaction': { TransactionAbort, withTransaction },
 		'@/core/db/account-deletion': {
@@ -188,6 +199,7 @@ function harness({
 		},
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	};
+	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
 	const source = readFileSync(
 		path.join(webDir, 'src/app/api/wg/[code]/calendar-subscription/route.ts'),
 		'utf8',

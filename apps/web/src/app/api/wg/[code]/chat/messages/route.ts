@@ -7,6 +7,12 @@ import {
 	wgChatReactions,
 	wgMembers,
 } from '@/core/db';
+import {
+	completeClaimedResponse,
+	lockClaimedResponse,
+	releaseClaimedResponse,
+	releaseLockedClaim,
+} from '@/core/db/claimed-response';
 import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
 import { TransactionAbort, lockExpensePayments, withTransaction } from '@/core/db/transaction';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
@@ -15,11 +21,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, conflict, payloadTooLarge } from '@/core/http/api-errors';
 import { readJsonBody } from '@/core/http/read-json';
-import {
-	RESPONSE_REPLAY_TTL_SECONDS,
-	getCachedResponse,
-	readIdempotencyKey,
-} from '@/core/idempotency-store';
+import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
@@ -65,16 +67,6 @@ function isCachedJsonResponse(value: unknown): value is CachedJsonResponse {
 		(value as CachedJsonResponse).status >= 200 &&
 		(value as CachedJsonResponse).status < 600 &&
 		'body' in value
-	);
-}
-
-function isClaimPlaceholder(value: unknown): boolean {
-	return (
-		value !== null &&
-		typeof value === 'object' &&
-		!Array.isArray(value) &&
-		Object.keys(value).length === 1 &&
-		(value as { _claimed?: unknown })._claimed === true
 	);
 }
 
@@ -270,26 +262,11 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 			try {
 				await lockExpensePayments(tx, wg.id);
 				if (replayKey) {
-					const [slot] = await tx
-						.select({
-							body: idempotencyResponses.responseBody,
-							expiresAt: idempotencyResponses.expiresAt,
-						})
-						.from(idempotencyResponses)
-						.where(
-							and(
-								eq(idempotencyResponses.scope, replayScope),
-								eq(idempotencyResponses.key, replayKey),
-							),
-						)
-						.limit(1)
-						.for('update');
-					if (!slot) throw new Error('idempotency_claim_missing');
-					if (isCachedJsonResponse(slot.body)) {
-						return { response: slot.body, created: null, mentionIds: [] as string[] };
+					const claim = await lockClaimedResponse(tx, replayScope, replayKey, isCachedJsonResponse);
+					if (claim.kind === 'completed') {
+						return { response: claim.body, created: null, mentionIds: [] as string[] };
 					}
-					if (!isClaimPlaceholder(slot.body)) throw new Error('idempotency_claim_invalid');
-					lockedClaimExpiry = slot.expiresAt;
+					lockedClaimExpiry = claim.leaseExpiresAt;
 				}
 
 				async function complete(
@@ -297,22 +274,8 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 					created: ChatMessageRow | null = null,
 					mentionIds: string[] = [],
 				) {
-					if (replayKey) {
-						const rows = await tx
-							.update(idempotencyResponses)
-							.set({
-								responseBody: response,
-								expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
-							})
-							.where(
-								and(
-									eq(idempotencyResponses.scope, replayScope),
-									eq(idempotencyResponses.key, replayKey),
-									sql`${idempotencyResponses.responseBody} @> '{"_claimed": true}'::jsonb`,
-								),
-							)
-							.returning({ scope: idempotencyResponses.scope });
-						if (rows.length !== 1) throw new Error('idempotency_claim_missing');
+					if (replayKey && lockedClaimExpiry) {
+						await completeClaimedResponse(tx, replayScope, replayKey, response, lockedClaimExpiry);
 					}
 					return { response, created, mentionIds };
 				}
@@ -324,18 +287,8 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 				if (!limited.success) {
 					// A rejected write can retry the same key once its rate limit clears,
 					// so the claim is released instead of caching the 429.
-					if (replayKey) {
-						const rows = await tx
-							.delete(idempotencyResponses)
-							.where(
-								and(
-									eq(idempotencyResponses.scope, replayScope),
-									eq(idempotencyResponses.key, replayKey),
-									sql`${idempotencyResponses.responseBody} @> '{"_claimed": true}'::jsonb`,
-								),
-							)
-							.returning({ scope: idempotencyResponses.scope });
-						if (rows.length !== 1) throw new Error('idempotency_claim_missing');
+					if (replayKey && lockedClaimExpiry) {
+						await releaseLockedClaim(tx, replayScope, replayKey, lockedClaimExpiry);
 					}
 					return {
 						response: { status: 429, body: { error: 'too_many_requests' } },
@@ -424,20 +377,7 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 		// Drizzle rethrows the callback error only after ROLLBACK succeeds. A COMMIT
 		// failure never enters the callback catch and keeps its claim fail-closed.
 		if (replayKey && lockedClaimExpiry && failedInCallback && err === callbackFailure) {
-			try {
-				await db
-					.delete(idempotencyResponses)
-					.where(
-						and(
-							eq(idempotencyResponses.scope, replayScope),
-							eq(idempotencyResponses.key, replayKey),
-							eq(idempotencyResponses.expiresAt, lockedClaimExpiry),
-							sql`${idempotencyResponses.responseBody} @> '{"_claimed": true}'::jsonb`,
-						),
-					);
-			} catch (releaseErr) {
-				logApiError('[chat/messages] rollback claim release failed', releaseErr);
-			}
+			await releaseClaimedResponse(replayScope, replayKey, lockedClaimExpiry);
 		}
 		if (err instanceof TransactionAbort && err.code === 'image_removed') {
 			return conflict('image_removed', 'image_removed');
