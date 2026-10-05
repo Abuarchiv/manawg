@@ -98,9 +98,11 @@ ignored).
    `claimResponseSlot` inserts a `{"_claimed": true}` placeholder; the loser polls
    (`claimReplaySlotWithRetry`) until the winner's response is stored, then replays it.
    Claim/cache errors fail closed.
-3. **Completion**: `setCachedResponse`, or `completeClaimedResponse`
-   (`core/db/claimed-response.ts`) inside the mutation's transaction so the response row commits
-   atomically with the write (shopping, inventory, pinnwand).
+3. **Completion**: `setCachedResponse`, or the claim helpers in `core/db/claimed-response.ts`
+   inside the mutation's transaction, so the response row commits atomically with the write:
+   `lockClaimedResponse` (row lock; returns the stored response or the placeholder's lease),
+   `completeClaimedResponse` (replaces only the placeholder with that lease) and
+   `releaseLockedClaim` (in-transaction release, e.g. after a rate limit).
 4. Only successful statuses are cached; failures release the claim so a retry runs again.
    Responses over 32 KiB are stored as replay-unavailable. Rows live 7 days
    (`RESPONSE_REPLAY_TTL_SECONDS`) and are purged by the maintenance cron.
@@ -108,11 +110,12 @@ ignored).
 `withIdempotentJsonResponse` wraps this for JSON routes. `claimIdempotencySlot` (Upstash, 5 min,
 fail-open) is a separate best-effort dedup for audit side effects only.
 
-Routes that lock the claim inside their own transaction release it after a rollback with
-`releaseClaimedResponse` (`core/db/claimed-response.ts`), which only deletes the placeholder
-with the lease that request locked. The lock/complete steps are still hand-written per route;
-[`openspec/changes/unify-idempotency-claims`](../openspec/changes/unify-idempotency-claims/proposal.md)
-plans one shared protocol.
+After a rollback, routes call `releaseClaimedResponse`, which only deletes the placeholder with
+the lease that request locked: a request whose lease ran out can neither complete nor delete the
+claim of the request that took the key over. The protocol is specified in
+[`openspec/changes/unify-idempotency-claims`](../openspec/changes/unify-idempotency-claims/proposal.md).
+Remaining unleased releases: the CSV import route, inventory consume and
+`withIdempotentJsonResponse` (`releaseResponseSlot`).
 
 ## Money
 
