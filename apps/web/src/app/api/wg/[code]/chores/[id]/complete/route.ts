@@ -37,11 +37,10 @@ import { computeNextDueAt, isLateCompletion } from '@/features/chores/chore-recu
 import { and, eq, gt, gte, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
 type ChoreCompleteResponseBody = { chore: unknown };
 
-const choreCompleteReplay = new ReplayCache<ChoreCompleteResponseBody>(IDEMPOTENCY_TTL_MS);
+const choreCompleteReplay = new ReplayCache<ChoreCompleteResponseBody>();
 
 function choreCompleteIdempotencyScope(wgId: string, memberId: string, choreId: string): string {
 	return `chores-complete:${wgId}:${memberId}:${choreId}`;

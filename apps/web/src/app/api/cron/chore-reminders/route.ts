@@ -1,6 +1,6 @@
 import * as dbSchema from '@/core/db';
 import { choreCompletions, chores, db, pushSubscriptions, wgMembers, wgs } from '@/core/db';
-import { verifyCronSecret } from '@/core/infra/cron-auth';
+import { requireCronSecret } from '@/core/infra/cron-auth';
 import { withCronLogging } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
@@ -99,17 +99,8 @@ async function releaseReminderDispatchClaim(key: string): Promise<void> {
 export const GET = withCronLogging(
 	'chore-reminders',
 	async (req: NextRequest): Promise<NextResponse> => {
-		const secret = process.env.CRON_SECRET;
-		// Fail CLOSED: without CRON_SECRET set, the endpoint is world-callable —
-		// anyone can enumerate WGs and trigger N notifications. Previously the
-		// `secret && ...` short-circuit silently skipped auth when the env var
-		// was missing.
-		if (!secret) {
-			return new NextResponse('cron_secret_missing', { status: 503 });
-		}
-		if (!verifyCronSecret(req.headers.get('authorization'), secret)) {
-			return new NextResponse('unauthorized', { status: 401 });
-		}
+		const denied = requireCronSecret(req);
+		if (denied) return denied;
 
 		const now = new Date();
 		pruneLocalReminderClaims(now.getTime());

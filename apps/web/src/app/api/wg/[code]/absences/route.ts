@@ -24,7 +24,6 @@ import { and, asc, eq, gt, gte, isNull, lte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
 type AbsenceCreateResponseBody = {
 	absence: {
@@ -37,7 +36,7 @@ type AbsenceCreateResponseBody = {
 	};
 };
 
-const absenceCreateReplay = new ReplayCache<AbsenceCreateResponseBody>(IDEMPOTENCY_TTL_MS);
+const absenceCreateReplay = new ReplayCache<AbsenceCreateResponseBody>();
 
 function absenceCreateIdempotencyScope(wgId: string, memberId: string): string {
 	return `absences-create:${wgId}:${memberId}`;

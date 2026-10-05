@@ -10,6 +10,7 @@ import {
 	releaseResponseSlot,
 	setCachedResponse,
 } from '@/core/idempotency-store';
+import { MS_PER_MINUTE } from '@/core/utils/time';
 import { NextResponse } from 'next/server';
 
 export type { ReplaySlotDependencies, ReplaySlotResult } from '@/core/guards/replay-slot';
@@ -31,6 +32,13 @@ export type ReplayReservation<T> =
 	  };
 
 /**
+ * How long one instance remembers a write for in-process replay. Long enough
+ * to cover a client's immediate retries; cross-instance replays fall through to
+ * the Postgres claim, which lives much longer.
+ */
+export const LOCAL_REPLAY_TTL_MS = 5 * MS_PER_MINUTE;
+
+/**
  * In-process (single warm-Lambda-instance) response-replay cache, keyed by
  * an arbitrary string. Deduplicates concurrent requests that land on the
  * SAME instance while the first is still writing — the first caller
@@ -42,15 +50,11 @@ export type ReplayReservation<T> =
  * the case where the duplicate request lands on a *different* Lambda
  * instance. Both layers are required: the local map still deduplicates
  * when the Postgres cache read is stale or null.
- *
- * Extracted verbatim (semantics unchanged) from the hand-rolled
- * `expenseCreateReplay` Map in expenses/route.ts so both the expenses and
- * recurring-expenses routes can share one reservation implementation.
  */
 export class ReplayCache<T> {
 	private readonly entries = new Map<string, ReplayEntry<T>>();
 
-	constructor(private readonly ttlMs: number) {}
+	constructor(private readonly ttlMs = LOCAL_REPLAY_TTL_MS) {}
 
 	get(cacheKey: string): Promise<T> | null {
 		const entry = this.entries.get(cacheKey);

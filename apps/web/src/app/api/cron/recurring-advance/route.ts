@@ -1,7 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, recurringExpenses, wgMembers, wgs } from '@/core/db';
 import { TransactionAbort } from '@/core/db/transaction';
-import { verifyCronSecret } from '@/core/infra/cron-auth';
+import { requireCronSecret } from '@/core/infra/cron-auth';
 import { logApiError } from '@/core/infra/observability';
 import { withCronLogging } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
@@ -242,13 +242,8 @@ async function settleInBatches<T, R>(
 export const GET = withCronLogging(
 	'recurring-advance',
 	async (req: NextRequest): Promise<NextResponse> => {
-		const secret = process.env.CRON_SECRET;
-		if (!secret) {
-			return new NextResponse('cron_secret_missing', { status: 503 });
-		}
-		if (!verifyCronSecret(req.headers.get('authorization'), secret)) {
-			return new NextResponse('unauthorized', { status: 401 });
-		}
+		const denied = requireCronSecret(req);
+		if (denied) return denied;
 
 		const now = new Date();
 		const due = (await db

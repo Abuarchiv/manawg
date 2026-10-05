@@ -28,6 +28,7 @@ import {
 import { getDashboardAnnouncementHref } from '@/core/reads/dashboard-links';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
+import { MS_PER_DAY } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { type SerializedWgEvent, expandRecurrence } from '@/features/events/events';
 import { cn } from '@/shared/lib/cn';
@@ -53,6 +54,8 @@ const PushPrimingPrompt = dynamic(
 );
 
 const REFRESH_INTERVAL_MS = 30_000;
+/** How long the done notice stays, and how long a tapped chore stays armed for the confirm tap. */
+const TRANSIENT_STATE_MS = 4000;
 const TODAY_VISIBLE = 4;
 
 type PendingAnnouncement = DashboardData['myOpenAnnouncements'][number];
@@ -174,12 +177,12 @@ export default function WgHomePage() {
 	useVisibilityPausedInterval(() => void load(), REFRESH_INTERVAL_MS);
 	useEffect(() => {
 		if (!completeNotice) return;
-		const timer = setTimeout(() => setCompleteNotice(null), 4000);
+		const timer = setTimeout(() => setCompleteNotice(null), TRANSIENT_STATE_MS);
 		return () => clearTimeout(timer);
 	}, [completeNotice]);
 	useEffect(() => {
 		if (!armedChoreId || pendingChoreId) return;
-		const timer = setTimeout(() => setArmedChoreId(null), 4000);
+		const timer = setTimeout(() => setArmedChoreId(null), TRANSIENT_STATE_MS);
 		return () => clearTimeout(timer);
 	}, [armedChoreId, pendingChoreId]);
 	useEffect(() => {
@@ -648,7 +651,7 @@ const AGENDA_DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 
 function formatAgendaDay(dayKey: string, todayKey: string): string {
 	if (dayKey === todayKey) return 'Heute';
-	const tomorrowKey = berlinDayKey(new Date(Date.parse(`${todayKey}T12:00:00Z`) + 86_400_000));
+	const tomorrowKey = berlinDayKey(new Date(Date.parse(`${todayKey}T12:00:00Z`) + MS_PER_DAY));
 	if (dayKey === tomorrowKey) return 'Morgen';
 	return AGENDA_DAY_FORMATTER.format(new Date(`${dayKey}T12:00:00.000Z`));
 }

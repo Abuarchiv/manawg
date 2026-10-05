@@ -37,14 +37,13 @@ const consumeSchema = z.object({
 		.max(INVENTORY_LIMITS.CONSUME_DELTA_MAX),
 });
 
-const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 type ConsumeResponseBody = {
 	item: unknown;
 	clamped: boolean;
 	autoPushedShoppingItemId: string | null;
 	warning: NotificationWarning;
 };
-const consumeReplay = new ReplayCache<ConsumeResponseBody>(IDEMPOTENCY_TTL_MS);
+const consumeReplay = new ReplayCache<ConsumeResponseBody>();
 
 export const POST = withWgRoute<{ id: string }>('inventory consume', async (req, { code, id }) => {
 	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');

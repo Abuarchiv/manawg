@@ -43,9 +43,8 @@ const QUANTITY_MAX = 40;
 const SHOPPING_ITEMS_LIST_LIMIT = 1000;
 /** Hard ceiling for `SHOPPING_ITEMS_LIST_LIMIT` — env can lower or raise, never unbound. */
 const SHOPPING_ITEMS_LIST_LIMIT_MAX = 5000;
-const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
-const shoppingCreateReplay = new ReplayCache<ShoppingCreateReplayResponse>(IDEMPOTENCY_TTL_MS);
+const shoppingCreateReplay = new ReplayCache<ShoppingCreateReplayResponse>();
 
 function shoppingCreateIdempotencyScope(wgId: string, memberId: string): string {
 	return `shopping-create:${wgId}:${memberId}`;

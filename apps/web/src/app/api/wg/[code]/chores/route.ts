@@ -41,11 +41,10 @@ const INTERVAL_MIN = 1;
 // Cap depends on unit: 365 days OR 60 months (=5y) — both reasonable for a WG.
 const INTERVAL_MAX_DAYS = 365;
 const INTERVAL_MAX_MONTHS = 60;
-const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
 type ChoreCreateResponseBody = { chore: unknown; warning: NotificationWarning };
 
-const choreCreateReplay = new ReplayCache<ChoreCreateResponseBody>(IDEMPOTENCY_TTL_MS);
+const choreCreateReplay = new ReplayCache<ChoreCreateResponseBody>();
 
 function choreCreateIdempotencyScope(wgId: string, memberId: string): string {
 	return `chores-create:${wgId}:${memberId}`;

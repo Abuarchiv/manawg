@@ -44,12 +44,11 @@ import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 const RECURRING_EXPENSES_LIST_LIMIT = 500;
 
 type RecurringCreateResponseBody = { recurringExpense: unknown };
 
-const recurringCreateReplay = new ReplayCache<RecurringCreateResponseBody>(IDEMPOTENCY_TTL_MS);
+const recurringCreateReplay = new ReplayCache<RecurringCreateResponseBody>();
 
 function recurringCreateIdempotencyScope(wgId: string, memberId: string): string {
 	return `recurring-expenses-create:${wgId}:${memberId}`;

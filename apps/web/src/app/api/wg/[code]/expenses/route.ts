@@ -49,11 +49,10 @@ import { z } from 'zod';
 const DESCRIPTION_MIN = 1;
 const DESCRIPTION_MAX = 200;
 const MAX_SPLITS = 50;
-const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
 type ExpenseCreateResponseBody = { expense: unknown; warning: NotificationDispatchWarning };
 
-const expenseCreateReplay = new ReplayCache<ExpenseCreateResponseBody>(IDEMPOTENCY_TTL_MS);
+const expenseCreateReplay = new ReplayCache<ExpenseCreateResponseBody>();
 
 function expenseCreateIdempotencyScope(wgId: string, memberId: string): string {
 	return `expenses-create:${wgId}:${memberId}`;

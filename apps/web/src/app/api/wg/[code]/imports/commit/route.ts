@@ -39,9 +39,8 @@ import { z } from 'zod';
 // Generous TTL: a re-submitted commit (double click, retry after a client
 // timeout) must replay the SAME result — with skipDuplicates:false there is
 // no other guard against inserting the same expenses twice.
-const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
-const importCommitReplay = new ReplayCache<CommitResult>(IDEMPOTENCY_TTL_MS);
+const importCommitReplay = new ReplayCache<CommitResult>();
 
 function importCommitIdempotencyScope(wgId: string, memberId: string): string {
 	return `import-commit:${wgId}:${memberId}`;
