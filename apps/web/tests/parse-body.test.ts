@@ -5,13 +5,13 @@ import { DEFAULT_JSON_BODY_BYTES } from '../src/core/http/read-json.ts';
 
 const { parseBody } = await import('../src/core/http/parse-body.ts');
 
-const post = (body, headers = {}) =>
+const post = (body: BodyInit, headers: Record<string, string> = {}) =>
 	new Request('http://x.test/', { method: 'POST', body, headers });
 
 const schema = z.object({ title: z.string().min(1), days: z.number().int().positive() });
 
-async function failure(result) {
-	assert.equal(result.ok, false);
+async function failure(result: { ok: true } | { ok: false; response: Response }) {
+	if (result.ok) throw new Error('expected parseBody to fail');
 	return { status: result.response.status, body: await result.response.json() };
 }
 

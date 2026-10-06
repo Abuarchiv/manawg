@@ -6,7 +6,7 @@ import { Home, ListChecks, type LucideIcon, Megaphone, Receipt } from 'lucide-re
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export type NavIconKey = 'home' | 'haushalt' | 'finanzen' | 'austausch';
+type NavIconKey = 'home' | 'haushalt' | 'finanzen' | 'austausch';
 
 const ICONS: Record<NavIconKey, LucideIcon> = {
 	home: Home,

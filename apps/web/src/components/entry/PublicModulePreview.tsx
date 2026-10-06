@@ -32,7 +32,7 @@ const PREVIEW_COPY = {
 	chat: { title: 'In der WG', detail: '„Bin um acht wieder da.“ · Lea' },
 } satisfies Record<string, PreviewCopy>;
 
-export type PreviewSlug = keyof typeof PREVIEW_COPY;
+type PreviewSlug = keyof typeof PREVIEW_COPY;
 
 export interface PublicPreviewModule {
 	slug: PreviewSlug;

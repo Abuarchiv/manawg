@@ -62,13 +62,13 @@ export interface MemberBalance {
 	balanceCents: number;
 }
 
-export interface DaySpend {
+interface DaySpend {
 	date: string;
 	currency: string;
 	cents: number;
 }
 
-export type CurrencyTotals = Record<string, number>;
+type CurrencyTotals = Record<string, number>;
 
 export interface DashboardSpendSummary {
 	spendByDay: DaySpend[];
@@ -80,7 +80,7 @@ export interface DashboardSpendSummary {
 	monthSpendCents: number | null;
 }
 
-export interface ActivityItem {
+interface ActivityItem {
 	kind: 'expense' | 'shopping' | 'announcement' | 'chore' | 'recurring' | 'absence' | 'audit';
 	timestamp: string;
 	/** Damit die Oberfläche eigene Einträge als „Du …“ zeigen kann. */
@@ -92,7 +92,7 @@ export interface ActivityItem {
 	href?: string;
 }
 
-export interface ChoreDue {
+interface ChoreDue {
 	id: string;
 	title: string;
 	assignedMemberId: string | null;
@@ -102,7 +102,7 @@ export interface ChoreDue {
 	overdue: boolean;
 }
 
-export interface DashboardSetup {
+interface DashboardSetup {
 	choreCount: number;
 	hasExpense: boolean;
 	hasShoppingItem: boolean;

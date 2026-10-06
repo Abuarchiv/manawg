@@ -27,6 +27,71 @@ import {
 	normalizeType,
 } from '../scripts/db-migrate/schema-normalize.mjs';
 
+interface SnapshotColumn {
+	name: string;
+	type: string;
+	notNull: boolean;
+	primaryKey?: boolean;
+	default?: string;
+	generated?: { as: string };
+}
+interface SnapshotKey {
+	name: string;
+	columns: string[];
+}
+interface SnapshotTable {
+	table: string;
+	columns: Record<string, SnapshotColumn>;
+	indexes: Record<
+		string,
+		{
+			name: string;
+			isUnique: boolean;
+			method: string;
+			where?: string;
+			columns: Array<{ expression: string; asc: boolean; nulls: string }>;
+		}
+	>;
+	foreignKeys: Record<
+		string,
+		{
+			name: string;
+			columnsFrom: string[];
+			tableTo: string;
+			columnsTo: string[];
+			onDelete: keyof typeof ACTION_CODES;
+			onUpdate: keyof typeof ACTION_CODES;
+		}
+	>;
+	compositePrimaryKeys: Record<string, SnapshotKey>;
+	uniqueConstraints: Record<string, SnapshotKey>;
+	checkConstraints: Record<string, { name: string; value: string }>;
+}
+type CatalogRow = Record<string, unknown>;
+interface CatalogColumnRow extends CatalogRow {
+	table_name: string;
+	column_name: string;
+}
+interface CatalogIndexRow extends CatalogRow {
+	table_name: string;
+	index_name: string;
+}
+interface Catalog {
+	columns: CatalogColumnRow[];
+	constraints: CatalogRow[];
+	indexes: CatalogIndexRow[];
+}
+interface JournalEntry {
+	idx: number;
+	tag: string;
+	when: number;
+}
+interface LedgerRow {
+	id: number;
+	hash: string;
+	created_at: string;
+}
+
 const ACTION_CODES = {
 	'no action': 'a',
 	restrict: 'r',
@@ -36,11 +101,12 @@ const ACTION_CODES = {
 };
 
 /** Catalog rows shaped like the migrator's pg_catalog queries, built from a snapshot. */
-function catalogFor(snapshotTag) {
-	const columns = [];
-	const constraints = [];
-	const indexes = [];
-	for (const table of expectedSchema(snapshotTag)) {
+function catalogFor(snapshotTag: string): Catalog {
+	const columns: CatalogColumnRow[] = [];
+	const constraints: CatalogRow[] = [];
+	const indexes: CatalogIndexRow[] = [];
+	const tables: SnapshotTable[] = expectedSchema(snapshotTag);
+	for (const table of tables) {
 		const base = { table_name: table.table, is_valid: true };
 		for (const column of Object.values(table.columns)) {
 			columns.push({
@@ -118,9 +184,9 @@ function catalogFor(snapshotTag) {
 	return { columns, constraints, indexes };
 }
 
-function catalogClient({ columns, constraints, indexes }) {
+function catalogClient({ columns, constraints, indexes }: Catalog) {
 	return {
-		query: async (sql) => {
+		query: async (sql: string) => {
 			const text = String(sql);
 			if (text.includes('format_type(attr.atttypid')) return { rows: columns };
 			if (text.includes('pg_get_constraintdef(con.oid')) return { rows: constraints };
@@ -130,16 +196,16 @@ function catalogClient({ columns, constraints, indexes }) {
 	};
 }
 
-const canonicalRows = () =>
-	readMigrationJournal().entries.map((entry, index) => ({
+const canonicalRows = (): LedgerRow[] =>
+	(readMigrationJournal().entries as JournalEntry[]).map((entry, index) => ({
 		id: index + 1,
 		hash: hashMigration(entry.tag),
 		created_at: String(entry.when),
 	}));
 
-function ledgerClient(rows, { tableExists = true } = {}) {
+function ledgerClient(rows: Partial<LedgerRow>[], { tableExists = true } = {}) {
 	return {
-		query: async (sql) => {
+		query: async (sql: string) => {
 			const text = String(sql);
 			if (text.includes('pg_catalog.pg_class')) return { rows: tableExists ? [{}] : [] };
 			if (text.includes('__drizzle_migrations')) return { rows };
@@ -172,10 +238,11 @@ test('normalizers treat catalog output and snapshot SQL as equal', () => {
 });
 
 test('the journal on disk is contiguous and hashes match the raw SQL files', () => {
-	const { entries } = readMigrationJournal();
-	assert.equal(entries[0].tag, BASELINE_TAG);
+	const entries: JournalEntry[] = readMigrationJournal().entries;
+	assert.equal(entries[0]?.tag, BASELINE_TAG);
 	entries.forEach((entry, index) => assert.equal(entry.idx, index));
 	const last = entries.at(-1);
+	assert.ok(last);
 	const sql = fs.readFileSync(path.join(migrationsFolder, `${last.tag}.sql`), 'utf8');
 	assert.equal(hashMigration(last.tag), crypto.createHash('sha256').update(sql).digest('hex'));
 	const snapshotNumbers = fs
@@ -198,7 +265,8 @@ test('ledger prefix counts applied migrations and tolerates a missing table only
 test('ledger prefix rejects reordered, mistimed, duplicated and malformed rows', async () => {
 	const rows = canonicalRows();
 	const [first, second] = rows;
-	const cases = [
+	assert.ok(first && second);
+	const cases: Array<[Partial<LedgerRow>[], RegExp]> = [
 		[[second], /migration ledger is not a canonical prefix; expected 0000_baseline before/],
 		[[{ ...first, created_at: '1' }], /timestamp mismatch for migration 0000_baseline/],
 		[[first, { ...first, id: 2 }], /duplicate migration 0000_baseline/],
@@ -211,7 +279,9 @@ test('ledger prefix rejects reordered, mistimed, duplicated and malformed rows',
 });
 
 test('allowlisted historical hashes are accepted only at their position and timestamp', async () => {
-	const [[hash, { when, position }]] = [...LEGACY_LEDGER_ALLOWLIST];
+	const [legacy] = [...LEGACY_LEDGER_ALLOWLIST];
+	assert.ok(legacy);
+	const [hash, { when, position }] = legacy;
 	assert.equal(isAllowedLegacyLedgerRow(hash, String(when), position), true);
 	assert.equal(isAllowedLegacyLedgerRow(hash, String(when), position + 1), false);
 	assert.equal(isAllowedLegacyLedgerRow(hash, String(when + 1), position), false);
@@ -244,7 +314,8 @@ test('schema check reports missing, unexpected and invalid objects', async () =>
 	const catalog = catalogFor(tag);
 	const [dropped, ...columns] = catalog.columns;
 	const [invalidIndex, ...indexes] = catalog.indexes;
-	const broken = {
+	assert.ok(dropped && invalidIndex);
+	const broken: Catalog = {
 		columns: [
 			...columns,
 			{ ...dropped, table_name: 'stray_table', column_name: 'id' },
@@ -255,7 +326,7 @@ test('schema check reports missing, unexpected and invalid objects', async () =>
 	};
 	await assert.rejects(
 		assertExpectedSchema(catalogClient(broken), tag, 'mismatch.', { rejectUnexpected: true }),
-		(error) => {
+		(error: Error) => {
 			assert.match(error.message, /^mismatch\. Mismatches: /);
 			assert.ok(error.message.includes('unexpected table public.stray_table'));
 			assert.ok(
@@ -277,23 +348,23 @@ test('schema check reports missing, unexpected and invalid objects', async () =>
 test('baseline adoption tolerates exactly the reviewed drift', async () => {
 	const catalog = catalogFor(BASELINE_TAG);
 	const [extraKey] = ADOPTION_KNOWN_DRIFT.extraColumns;
-	const [extraTable, extraColumn] = extraKey.split('.');
-	const withDrift = {
+	assert.ok(extraKey);
+	const [extraTable = '', extraColumn = ''] = extraKey.split('.');
+	const [firstColumn] = catalog.columns;
+	assert.ok(firstColumn);
+	const withDrift: Catalog = {
 		...catalog,
 		columns: catalog.columns.some(
 			(column) => column.table_name === extraTable && column.column_name === extraColumn,
 		)
 			? catalog.columns
-			: [
-					...catalog.columns,
-					{ ...catalog.columns[0], table_name: extraTable, column_name: extraColumn },
-				],
+			: [...catalog.columns, { ...firstColumn, table_name: extraTable, column_name: extraColumn }],
 	};
 	await assertBaselineSchema(catalogClient(withDrift));
 
-	const unreviewed = {
+	const unreviewed: Catalog = {
 		...catalog,
-		columns: [...catalog.columns, { ...catalog.columns[0], column_name: 'unreviewed_column' }],
+		columns: [...catalog.columns, { ...firstColumn, column_name: 'unreviewed_column' }],
 	};
 	await assert.rejects(
 		assertBaselineSchema(catalogClient(unreviewed)),

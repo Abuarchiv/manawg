@@ -7,8 +7,6 @@
 
 export { createRecurringAdvanceRetry, needsManualOfflineResolution } from './offline-replay-rules';
 export {
-	OFFLINE_QUEUE_KEY,
-	SYNCED_IDS_KEY,
 	countOfflineActions,
 	discardQueuedEntry,
 	enqueueOfflineAction,

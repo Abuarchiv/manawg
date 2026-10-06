@@ -2,6 +2,7 @@
 // Why: refreshes must not clobber a comment being edited.
 
 import { expect, test } from '@playwright/test';
+import type { Announcement } from '../src/features/pinnwand/components/announcement-types';
 import {
 	FIXTURE_WG,
 	dismissOnboarding,
@@ -16,7 +17,11 @@ test.describe('pinnwand archive', () => {
 	const SHARE_CODE = 'MTE8PZAT';
 	const MEMBER_ID = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
 
-	function announcement(id: string, content: string, extra: Record<string, unknown> = {}) {
+	function announcement(
+		id: string,
+		content: string,
+		extra: Partial<Announcement> = {},
+	): Announcement {
 		return {
 			id,
 			authorMemberId: MEMBER_ID,

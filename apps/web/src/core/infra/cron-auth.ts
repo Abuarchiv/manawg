@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
  * trigger real side effects (notification dispatch, recurring-expense
  * creation) so the comparison is constant-time.
  */
-export function verifyCronSecret(authorizationHeader: string | null, secret: string): boolean {
+function verifyCronSecret(authorizationHeader: string | null, secret: string): boolean {
 	const expected = Buffer.from(`Bearer ${secret}`);
 	const provided = Buffer.from(authorizationHeader ?? '');
 	if (expected.length !== provided.length) return false;

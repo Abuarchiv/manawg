@@ -1,23 +1,11 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
 import test from 'node:test';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-const validatorPath = path.join(process.cwd(), 'src/core/validators/recurring-due-date.ts');
-const source = transpileModule(readFileSync(validatorPath, 'utf8'), {
-	compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-}).outputText;
-const loaded = { exports: {} };
-new Function('require', 'module', 'exports', source)(requireFromWeb, loaded, loaded.exports);
-const {
+import {
 	isRecurringAnchorAllowed,
 	isRecurringDueAtEditAllowed,
 	isRecurringDueAtInRange,
 	recurringDueAtSchema,
-} = loaded.exports;
+} from './recurring-due-date';
 
 test('a due date far in the past or future is out of range', (t) => {
 	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });

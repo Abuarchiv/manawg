@@ -8,7 +8,7 @@ import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export interface SubNavItem {
+interface SubNavItem {
 	href: string;
 	label: string;
 	icon: LucideIcon;

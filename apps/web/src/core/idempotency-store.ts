@@ -14,7 +14,7 @@ const redis = createConfiguredRedis();
 // Queued offline writes can be retried days after a lost response, so the
 // durable response cache must outlive the retry window. Redis still only
 // deduplicates best-effort audit events briefly.
-export { RESPONSE_REPLAY_TTL_SECONDS };
+
 // A claim is only a lease. If the worker dies after inserting the placeholder,
 // another retry must be able to reclaim it instead of being blocked for the
 // entire offline replay window.

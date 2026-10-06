@@ -33,7 +33,7 @@ export interface Announcement {
 	comments: AnnouncementComment[];
 }
 
-export interface AnnouncementTaker {
+interface AnnouncementTaker {
 	memberId: string;
 	name: string;
 	color: string | null;

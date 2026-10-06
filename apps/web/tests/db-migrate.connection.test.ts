@@ -6,42 +6,50 @@ import {
 } from '../scripts/db-migrate/connection.mjs';
 import { errorCodeSuffix, safeFailureReason } from '../scripts/db-migrate/failure.mjs';
 
+/** Process env as Next's augmented `ProcessEnv` type requires it. */
+const env = (vars: Record<string, string>): NodeJS.ProcessEnv => ({ NODE_ENV: 'test', ...vars });
+
 const DIRECT = 'postgresql://migrator:example@db.project.supabase.co:5432/postgres?sslmode=require';
 
 test('resolveConnectionString prefers DATABASE_MIGRATION_URL over every runtime URL', () => {
 	assert.equal(
-		resolveConnectionString({
-			DATABASE_MIGRATION_URL: DIRECT,
-			POSTGRES_URL: 'postgresql://other:example@db.other.supabase.co:5432/postgres?sslmode=require',
-			POSTGRES_URL_NON_POOLING: 'not-a-url',
-		}),
+		resolveConnectionString(
+			env({
+				DATABASE_MIGRATION_URL: DIRECT,
+				POSTGRES_URL:
+					'postgresql://other:example@db.other.supabase.co:5432/postgres?sslmode=require',
+				POSTGRES_URL_NON_POOLING: 'not-a-url',
+			}),
+		),
 		DIRECT,
 	);
 });
 
 test('resolveConnectionString strips a Neon -pooler label from the runtime URL', () => {
 	assert.equal(
-		resolveConnectionString({
-			DATABASE_URL:
-				'postgresql://u:p@ep-cool-name-pooler.eu-central-1.aws.neon.tech:5432/db?sslmode=require',
-		}),
+		resolveConnectionString(
+			env({
+				DATABASE_URL:
+					'postgresql://u:p@ep-cool-name-pooler.eu-central-1.aws.neon.tech:5432/db?sslmode=require',
+			}),
+		),
 		'postgresql://u:p@ep-cool-name.eu-central-1.aws.neon.tech:5432/db?sslmode=require',
 	);
 });
 
 test('resolveConnectionString falls back to the non-pooling pair and validates it', () => {
-	assert.equal(resolveConnectionString({ DATABASE_URL_UNPOOLED: DIRECT }), DIRECT);
+	assert.equal(resolveConnectionString(env({ DATABASE_URL_UNPOOLED: DIRECT })), DIRECT);
 	assert.throws(
 		() =>
-			resolveConnectionString({
-				POSTGRES_URL_NON_POOLING: DIRECT.replace(':5432/', ':6543/'),
-			}),
+			resolveConnectionString(
+				env({ POSTGRES_URL_NON_POOLING: DIRECT.replace(':5432/', ':6543/') }),
+			),
 		/^Error: POSTGRES_URL_NON_POOLING\/DATABASE_URL_UNPOOLED must not use port 6543/,
 	);
 });
 
 test('resolveConnectionString names the variables to set when none is present', () => {
-	assert.throws(() => resolveConnectionString({}), {
+	assert.throws(() => resolveConnectionString(env({})), {
 		message: 'No database URL. Set DATABASE_MIGRATION_URL, POSTGRES_URL or DATABASE_URL.',
 	});
 });

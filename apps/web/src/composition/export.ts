@@ -201,14 +201,6 @@ export function getExportSectionHeaders(section: ExportSectionKey): string[] {
 
 export type ExportSectionCounts = Record<ExportSectionKey, number>;
 
-export function buildExportSummary(data: WgExport): ExportSectionSummary[] {
-	return buildExportSummaryFromCounts(
-		Object.fromEntries(
-			EXPORT_SECTION_KEYS.map((key) => [key, data.sections[key].length]),
-		) as ExportSectionCounts,
-	);
-}
-
 /** Summary from `GET /export?summary=counts`, without downloading every row. */
 export function buildExportSummaryFromCounts(counts: ExportSectionCounts): ExportSectionSummary[] {
 	return EXPORT_SECTION_KEYS.map((key) => ({

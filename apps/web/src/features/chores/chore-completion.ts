@@ -15,7 +15,7 @@ export interface ChoreOccurrence {
 }
 
 /** Next occurrence as `POST /chores/<id>/complete` confirms it. */
-export interface ConfirmedChore {
+interface ConfirmedChore {
 	id: string;
 	nextDueAt: string;
 	assignedMemberId: string | null;
@@ -141,7 +141,7 @@ export const CHORE_COMPLETION_COPY = {
 	failed: 'Erledigt-Aktion konnte nicht gespeichert werden: Versuche es gleich erneut.',
 } as const;
 
-export function choreCompletedMessage(
+function choreCompletedMessage(
 	title: string,
 	next: ConfirmedChore | null,
 	nextAssigneeName: string | undefined,
