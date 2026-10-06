@@ -2,7 +2,7 @@ import { mockModuleWithReal } from './module-mocks';
 import { responseError } from './values';
 
 /** Error helpers that answer `{ error: code }`, so tests compare bodies without optional codes. */
-export const apiErrorStubs = {
+const apiErrorStubs = {
 	apiError: (code: string, status: number) => responseError(code, status),
 	badRequest: (code: string) => responseError(code, 400),
 	conflict: (code: string) => responseError(code, 409),

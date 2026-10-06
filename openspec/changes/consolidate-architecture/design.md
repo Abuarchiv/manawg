@@ -79,8 +79,8 @@ the same way the app does; no `vm`, no source-text extraction.
 
 ## Risks
 
-- Money routes: each idempotency migration keeps its replay tests and the expense-integrity e2e
-  specs green.
+- Money routes: each idempotency migration keeps its replay tests and the expense integrity route
+  tests green.
 - Test migration: test counts are compared before and after; no behaviour test is dropped without
   an equivalent.
 - Removing the member token changes which requests can mutate: none that a member with a session

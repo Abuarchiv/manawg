@@ -43,8 +43,6 @@ import { and, count, desc, eq, isNull } from 'drizzle-orm';
 import type { WgHealth } from './dashboard-health';
 import { getWgHealth } from './dashboard-insights';
 
-export { computeMemberBalances, summarizeDashboardSpend } from '@/composition/dashboard-summary';
-
 interface DashboardSetup {
 	choreCount: number;
 	hasExpense: boolean;

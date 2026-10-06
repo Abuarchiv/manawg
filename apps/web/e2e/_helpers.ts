@@ -144,4 +144,4 @@ export async function mockDashboard(page: Page, base: string, body: unknown): Pr
 	await page.route(`**${base}/dashboard`, (route) => route.fulfill({ status: 200, json: body }));
 }
 
-export { defined, jsonResponse, spyConsoleError, tuple } from '../tests/support/values';
+export { defined, tuple } from '../tests/support/values';
