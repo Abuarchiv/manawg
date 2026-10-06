@@ -1,16 +1,23 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, idempotencyResponses, wgEvents } from '@/core/db';
+import {
+	completeClaimedResponse,
+	lockClaimedResponse,
+	releaseClaimedResponse,
+} from '@/core/db/claimed-response';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { apiError, badRequest, serverError, tooMany } from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
 import {
-	RESPONSE_REPLAY_TTL_SECONDS,
-	getCachedResponse,
-	readIdempotencyKey,
-} from '@/core/idempotency-store';
+	apiError,
+	badRequest,
+	serverError,
+	tooMany,
+	unreadableJsonBody,
+} from '@/core/http/api-errors';
+import { readJsonLimited } from '@/core/http/read-json';
+import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
@@ -18,6 +25,13 @@ import {
 	buildEventsWindowFilter,
 	withEventWindowCandidates,
 } from '@/features/events/event-reminder-window';
+import {
+	eventDateTimeSchema,
+	eventDescriptionSchema,
+	eventLocationSchema,
+	eventRecurrenceSchema,
+	eventTitleSchema,
+} from '@/features/events/event-schemas';
 import {
 	type SerializedWgEvent,
 	formatRecurrenceRule,
@@ -27,11 +41,6 @@ import {
 import { and, asc, eq, gt, or, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-
-const TITLE_MAX = 200;
-const DESCRIPTION_MAX = 2_000;
-const LOCATION_MAX = 200;
-const RECURRENCE_MAX = 200;
 
 type EventCreateResponseBody = { event: SerializedWgEvent; warning: NotificationWarning };
 type EventCreateReplayResponse<T = unknown> = { status: number; body: T };
@@ -51,6 +60,10 @@ function readEventCreateReplayResponse(value: unknown): EventCreateReplayRespons
 	return 'event' in record ? { status: 200, body: value as EventCreateResponseBody } : null;
 }
 
+function isEventCreateReplayable(value: unknown): value is unknown {
+	return readEventCreateReplayResponse(value) !== null;
+}
+
 function replayEventCreateResponse(value: unknown): NextResponse {
 	const replay = readEventCreateReplayResponse(value);
 	return replay
@@ -59,13 +72,13 @@ function replayEventCreateResponse(value: unknown): NextResponse {
 }
 
 const createSchema = z.object({
-	title: z.string().trim().min(1).max(TITLE_MAX),
-	description: z.string().trim().max(DESCRIPTION_MAX).nullable().optional(),
-	startsAt: z.string().datetime({ offset: true }),
-	endsAt: z.string().datetime({ offset: true }).nullable().optional(),
+	title: eventTitleSchema,
+	description: eventDescriptionSchema.optional(),
+	startsAt: eventDateTimeSchema,
+	endsAt: eventDateTimeSchema.nullable().optional(),
 	allDay: z.boolean().optional().default(false),
-	location: z.string().trim().max(LOCATION_MAX).nullable().optional(),
-	recurrence: z.string().trim().max(RECURRENCE_MAX).nullable().optional(),
+	location: eventLocationSchema.optional(),
+	recurrence: eventRecurrenceSchema.optional(),
 });
 
 function normalizeRecurrence(value: string | null | undefined): string | null {
@@ -130,8 +143,8 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 	const parsed = createSchema.safeParse(raw);
 	if (!parsed.success) {
@@ -181,33 +194,13 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 		written = await withTransaction(async (tx) => {
 			try {
 				if (idemScope && idemKey) {
-					const [slot] = await tx
-						.select({
-							body: idempotencyResponses.responseBody,
-							expiresAt: idempotencyResponses.expiresAt,
-						})
-						.from(idempotencyResponses)
-						.where(
-							and(eq(idempotencyResponses.scope, idemScope), eq(idempotencyResponses.key, idemKey)),
-						)
-						.limit(1)
-						.for('update');
-					if (!slot) throw new TransactionAbort('idempotency_claim_missing');
-					const replay = readEventCreateReplayResponse(slot.body);
-					if (replay) {
+					const claim = await lockClaimedResponse(tx, idemScope, idemKey, isEventCreateReplayable);
+					if (claim.kind === 'completed') {
+						const replay = readEventCreateReplayResponse(claim.body);
+						if (!replay) throw new TransactionAbort('idempotency_claim_invalid');
 						return { replayed: true as const, response: replay };
 					}
-					if (
-						slot.expiresAt <= new Date() ||
-						!slot.body ||
-						typeof slot.body !== 'object' ||
-						Array.isArray(slot.body) ||
-						Object.keys(slot.body).length !== 1 ||
-						(slot.body as Record<string, unknown>)._claimed !== true
-					) {
-						throw new TransactionAbort('idempotency_claim_invalid');
-					}
-					rollback.claimExpiresAt = slot.expiresAt;
+					rollback.claimExpiresAt = claim.leaseExpiresAt;
 				}
 
 				const [row] = await tx
@@ -229,23 +222,8 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 					status: 200,
 					body: { event: serializeWgEvent(row), warning: null },
 				};
-				if (idemScope && idemKey) {
-					const updated = await tx
-						.update(idempotencyResponses)
-						.set({
-							responseBody: response,
-							expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
-						})
-						.where(
-							and(
-								eq(idempotencyResponses.scope, idemScope),
-								eq(idempotencyResponses.key, idemKey),
-								gt(idempotencyResponses.expiresAt, new Date()),
-								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-							),
-						)
-						.returning({ scope: idempotencyResponses.scope });
-					if (updated.length !== 1) throw new TransactionAbort('idempotency_claim_missing');
+				if (idemScope && idemKey && rollback.claimExpiresAt) {
+					await completeClaimedResponse(tx, idemScope, idemKey, response, rollback.claimExpiresAt);
 				}
 				return { replayed: false as const, row, response };
 			} catch (err) {
@@ -262,20 +240,7 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 			idemScope &&
 			idemKey
 		) {
-			try {
-				await db
-					.delete(idempotencyResponses)
-					.where(
-						and(
-							eq(idempotencyResponses.scope, idemScope),
-							eq(idempotencyResponses.key, idemKey),
-							eq(idempotencyResponses.expiresAt, rollback.claimExpiresAt),
-							sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-						),
-					);
-			} catch {
-				console.warn('[events POST] rolled-back claim release failed');
-			}
+			await releaseClaimedResponse(idemScope, idemKey, rollback.claimExpiresAt);
 		}
 		if (err instanceof TransactionAbort) return serverError(err.code);
 		throw err;

@@ -1,15 +1,8 @@
 import { isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { createServerClient } from '@supabase/ssr';
-import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
+import { isTransientAuthError } from './auth-errors';
 import { getSupabaseEnv, hasSupabaseEnv } from './supabase-env';
-
-function isTransientAuthError(error: unknown): boolean {
-	return (
-		isAuthRetryableFetchError(error) ||
-		(typeof error === 'object' && error !== null && 'status' in error && error.status === 429)
-	);
-}
 
 function signInRedirect(request: NextRequest, response: NextResponse): NextResponse {
 	const url = request.nextUrl.clone();

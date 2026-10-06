@@ -52,7 +52,7 @@ interface ExpenseRowProps {
 	onDelete: (id: string) => void;
 	onEdit: (expense: Expense) => void;
 	onToggleSettle: (expenseId: string, split: ExpenseSplit) => void;
-	isPending: (id: string) => boolean;
+	pendingIds: ReadonlySet<string>;
 	memberName: (id: string) => string;
 	currentMemberId: string;
 	highlighted: boolean;
@@ -65,7 +65,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 	onDelete,
 	onEdit,
 	onToggleSettle,
-	isPending,
+	pendingIds,
 	memberName,
 	currentMemberId,
 	highlighted,
@@ -158,7 +158,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 									{isPayer && (
 										<DropdownMenuItem
 											onClick={() => onEdit(expense)}
-											disabled={isPending(expense.id)}
+											disabled={pendingIds.has(expense.id)}
 										>
 											<Pencil />
 											Bearbeiten
@@ -167,7 +167,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 									<DropdownMenuItem
 										variant="destructive"
 										onClick={() => setDeleteOpen(true)}
-										disabled={isPending(expense.id)}
+										disabled={pendingIds.has(expense.id)}
 									>
 										<Trash2 />
 										Entfernen
@@ -230,10 +230,10 @@ export const ExpenseRow = memo(function ExpenseRow({
 												size="sm"
 												className="ml-auto"
 												onClick={() => setSettleCandidate(split)}
-												disabled={isPending(split.id) || isPending(expense.id)}
+												disabled={pendingIds.has(split.id) || pendingIds.has(expense.id)}
 												aria-label={`${settled ? 'Wieder öffnen' : 'Als bezahlt eintragen'}: ${memberName(split.debtorMemberId)}`}
 											>
-												{isPending(split.id) ? (
+												{pendingIds.has(split.id) ? (
 													<Spinner data-icon="inline-start" />
 												) : (
 													<Check data-icon="inline-start" />
@@ -268,7 +268,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 						<AlertDialogAction
 							variant="destructive"
 							className="min-h-11"
-							disabled={isPending(expense.id)}
+							disabled={pendingIds.has(expense.id)}
 							onClick={() => {
 								setDeleteOpen(false);
 								onDelete(expense.id);
@@ -310,7 +310,9 @@ export const ExpenseRow = memo(function ExpenseRow({
 						<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
 						<AlertDialogAction
 							className="min-h-11"
-							disabled={!settleCandidate || isPending(settleCandidate.id) || isPending(expense.id)}
+							disabled={
+								!settleCandidate || pendingIds.has(settleCandidate.id) || pendingIds.has(expense.id)
+							}
 							onClick={() => {
 								if (settleCandidate) onToggleSettle(expense.id, settleCandidate);
 								setSettleCandidate(null);

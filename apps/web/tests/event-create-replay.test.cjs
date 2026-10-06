@@ -4,6 +4,7 @@ const { createRequire } = require('node:module');
 const path = require('node:path');
 const test = require('node:test');
 const { ModuleKind, ScriptTarget, transpileModule } = require('typescript');
+const { loadClaimedResponse } = require('./support/claimed-response.cjs');
 
 const webRoot = path.resolve(__dirname, '..');
 const requireFromWeb = createRequire(path.join(webRoot, 'package.json'));
@@ -19,6 +20,26 @@ const wgEvents = {};
 const wgId = '989ac820-58b7-431f-9c65-28721264f333';
 const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
 const key = '550e8400-e29b-41d4-a716-446655440000';
+
+function loadTs(relativePath, mocks = {}) {
+	const compiled = transpileModule(readFileSync(path.join(webRoot, 'src', relativePath), 'utf8'), {
+		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
+	}).outputText;
+	const module = { exports: {} };
+	new Function('require', 'module', 'exports', compiled)(
+		(name) => (Object.hasOwn(mocks, name) ? mocks[name] : requireFromWeb(name)),
+		module,
+		module.exports,
+	);
+	return module.exports;
+}
+
+// The real field schemas run, so the route is exercised with its actual validation.
+function loadEventSchemas() {
+	return loadTs('features/events/event-schemas.ts', {
+		'@/features/events/event-limits': loadTs('features/events/event-limits.ts'),
+	});
+}
 
 function harness() {
 	const state = {
@@ -124,21 +145,25 @@ function harness() {
 			throw new Error('event insert escaped transaction');
 		},
 		delete: (table) => ({
-			where: async (condition) => {
-				assert.equal(table, idempotencyResponses);
-				const query = dialect.sqlToQuery(condition);
-				state.releaseWhere = query.sql;
-				const lease = Date.parse(query.params[2]);
-				if (
-					state.slot &&
-					Object.keys(state.slot.body).length === 1 &&
-					state.slot.body._claimed === true &&
-					lease === state.slot.expiresAt.getTime()
-				) {
+			where: (condition) => ({
+				returning: async () => {
+					assert.equal(table, idempotencyResponses);
+					const query = dialect.sqlToQuery(condition);
+					state.releaseWhere = query.sql;
+					const lease = Date.parse(query.params[2]);
+					if (
+						!state.slot ||
+						Object.keys(state.slot.body).length !== 1 ||
+						state.slot.body._claimed !== true ||
+						lease !== state.slot.expiresAt.getTime()
+					) {
+						return [];
+					}
 					state.slot = null;
 					state.releases += 1;
-				}
-			},
+					return [{ scope: 'released' }];
+				},
+			}),
 		}),
 		update: (table) => ({
 			set: (values) => ({
@@ -231,6 +256,7 @@ function harness() {
 			buildEventsWindowFilter: () => undefined,
 			withEventWindowCandidates: async () => undefined,
 		},
+		'@/features/events/event-schemas': loadEventSchemas(),
 		'@/features/events/events': {
 			formatRecurrenceRule: () => '',
 			parseRecurrenceRule: () => null,
@@ -242,6 +268,7 @@ function harness() {
 		},
 		'next/server': { NextResponse: { json: (body, options) => Response.json(body, options) } },
 	};
+	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
 	const compiled = transpileModule(
 		readFileSync(path.join(webRoot, 'src/app/api/wg/[code]/events/route.ts'), 'utf8'),
 		{

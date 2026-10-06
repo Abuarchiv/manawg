@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadClaimedResponse } from '../../../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const routeFile = path.join(process.cwd(), 'src/app/api/wg/[code]/chores/[id]/complete/route.ts');
@@ -96,18 +97,22 @@ function makeRoute(state) {
 				where: () => query(rowsFor(table, projection, draft)),
 			}),
 		});
-	const releaseClaim = () => {
-		if (state.claim && state.claim._claimed === true) {
-			state.claim = null;
-			state.claimExpiresAt = null;
+	const releaseClaim = (conditions) => {
+		const lease = conditions.find((part) => part[0] === tables.idempotencyResponses.expiresAt)?.[1];
+		if (state.claim?._claimed !== true || lease?.getTime() !== state.claimExpiresAt?.getTime()) {
+			return [];
 		}
+		state.claim = null;
+		state.claimExpiresAt = null;
+		return [{ scope: 'released' }];
 	};
 	const db = {
 		select: makeSelect(),
 		delete: (table) => ({
-			where: async () => {
-				if (table === tables.idempotencyResponses) releaseClaim();
-			},
+			where: (conditions) => ({
+				returning: async () =>
+					table === tables.idempotencyResponses ? releaseClaim(conditions) : [],
+			}),
 		}),
 	};
 	class TransactionAbort extends Error {
@@ -267,6 +272,7 @@ function makeRoute(state) {
 		},
 		'next/server': { NextResponse: { json } },
 	};
+	overrides['@/core/db/claimed-response'] = loadClaimedResponse(overrides);
 	const compiled = transpileModule(readFileSync(routeFile, 'utf8'), {
 		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
 	}).outputText;

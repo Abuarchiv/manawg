@@ -16,7 +16,9 @@ export const INVENTORY_LIMITS = {
 	UNIT_MAX: 40,
 	CATEGORY_MAX: 40,
 	CONSUME_DELTA_MIN: -100,
-	CONSUME_DELTA_MAX: 0,
+	// A consume takes at least one unit; zero would only re-trigger the
+	// low-stock push and shopping entry without anything being used.
+	CONSUME_DELTA_MAX: -1,
 } as const;
 
 export const INVENTORY_CATEGORY_LABELS: Record<InventoryCategory, string> = {

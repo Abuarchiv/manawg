@@ -33,7 +33,8 @@ interface ErrorResponse {
 	code?: string;
 }
 
-async function readUploadSignError(response: Response): Promise<string> {
+/** Error code of a failed /api/upload/sign response, or '' when the body is unreadable. */
+export async function readUploadSignError(response: Response): Promise<string> {
 	try {
 		const body = (await response.clone().json()) as ErrorResponse;
 		return body.error ?? body.code ?? '';

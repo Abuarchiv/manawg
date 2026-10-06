@@ -1,7 +1,7 @@
 import { calendarSubscriptions, wgEvents, wgMembers, wgs } from '@/core/db';
 import { withTransaction } from '@/core/db/transaction';
 import { isUuid } from '@/core/guards/api-auth';
-import { notFound, serverError, tooMany } from '@/core/http/api-errors';
+import { HTTP, apiError, notFound, serverError, tooMany } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgReadLimiter } from '@/core/rate-limit';
@@ -21,6 +21,10 @@ import { and, asc, eq, gt, isNotNull, isNull, or } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const FEED_HORIZON_DAYS = 365;
+// Calendar apps mirror the feed: an occurrence that leaves the feed is deleted
+// on the next sync, so recent history stays in instead of vanishing at midnight.
+const FEED_HISTORY_DAYS = 90;
+const FEED_CALENDAR_NAME = 'ManaWG';
 
 function eventToInput(row: typeof wgEvents.$inferSelect): EventInput {
 	return {
@@ -47,21 +51,26 @@ export async function GET(
 	const limit = await checkRateLimit(wgReadLimiter, `calendar-feed:${clientIpKey(req)}`);
 	if (!limit.success) return tooMany('rate_limited');
 
-	const from = startOfBerlinDay(new Date());
-	const to = new Date(from.getTime() + FEED_HORIZON_DAYS * MS_PER_DAY);
+	const now = Date.now();
+	const from = startOfBerlinDay(new Date(now - FEED_HISTORY_DAYS * MS_PER_DAY));
+	const to = new Date(startOfBerlinDay(new Date(now)).getTime() + FEED_HORIZON_DAYS * MS_PER_DAY);
 	try {
-		const events = await withTransaction(async (tx) => {
+		const feed = await withTransaction(async (tx) => {
 			const [beforeLock] = await tx
-				.select({ wgId: calendarSubscriptions.wgId })
+				.select({ wgId: calendarSubscriptions.wgId, tokenSeed: calendarSubscriptions.tokenSeed })
 				.from(calendarSubscriptions)
 				.where(and(eq(calendarSubscriptions.id, id), isNull(calendarSubscriptions.revokedAt)))
 				.limit(1);
-			if (!beforeLock) return null;
+			// Reject a wrong token before taking any lock, so an unauthenticated
+			// caller holding only a feed id cannot make WG writes wait.
+			if (!beforeLock || !verifyCalendarFeedToken(id, beforeLock.tokenSeed, token)) return null;
+			// A share lock is enough to serialize with member deactivation and WG
+			// deletion (both hold FOR UPDATE) without blocking ordinary inserts.
 			const [wg] = await tx
-				.select({ id: wgs.id })
+				.select({ id: wgs.id, name: wgs.name })
 				.from(wgs)
 				.where(eq(wgs.id, beforeLock.wgId))
-				.for('update');
+				.for('share');
 			if (!wg) return null;
 
 			const [subscription] = await tx
@@ -106,18 +115,19 @@ export async function GET(
 						.limit(pageLimit);
 				},
 				() => 'window_too_large' as const,
-				(rows) => rows,
+				(rows) => ({ wgName: wg.name, rows }),
 			);
 		});
-		if (!events) return notFound('calendar_feed_not_found');
-		if (events === 'window_too_large') {
-			return NextResponse.json({ error: 'events_window_too_large' }, { status: 503 });
+		if (!feed) return notFound('calendar_feed_not_found');
+		if (feed === 'window_too_large') {
+			return apiError('events_window_too_large', HTTP.SERVICE_UNAVAILABLE);
 		}
 
-		const occurrences: CalendarFeedOccurrence[] = events.flatMap((row) =>
+		const occurrences: CalendarFeedOccurrence[] = feed.rows.flatMap((row) =>
 			expandRecurrence(eventToInput(row), from, to),
 		);
-		const body = calendarFeedToIcs(occurrences, 'ManaWG');
+		// Several subscribed WGs must stay distinguishable in the calendar app.
+		const body = calendarFeedToIcs(occurrences, `${FEED_CALENDAR_NAME} · ${feed.wgName}`);
 		return new NextResponse(body, {
 			headers: {
 				'Cache-Control': 'no-store',

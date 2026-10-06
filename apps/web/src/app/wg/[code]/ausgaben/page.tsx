@@ -206,7 +206,7 @@ export default function AusgabenPage() {
 				expanded={page.expanded}
 				highlightedId={page.highlightedId}
 				currentMemberId={identity.memberId}
-				isPending={page.pending.isPending}
+				pendingIds={page.pending.pendingIds}
 				memberName={page.stable.memberName}
 				onToggleExpand={page.stable.toggleExpand}
 				onDelete={page.stable.deleteExpense}

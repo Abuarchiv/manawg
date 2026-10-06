@@ -65,6 +65,7 @@ function makeRoute(state) {
 			and: (...conditions) => conditions,
 			eq: (column, value) => ({ column, value }),
 			isNull: (column) => ({ column, value: null }),
+			sql: (parts, ...values) => ({ parts, values }),
 		},
 		'next/server': { NextResponse: { json } },
 	};

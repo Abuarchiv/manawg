@@ -1,6 +1,7 @@
 'use client';
 
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { MS_PER_DAY } from '@/core/utils/time';
 import {
 	type EventOccurrence,
 	eventDateForDisplay,
@@ -39,7 +40,7 @@ const WEEKDAY_FORMATTER = new Intl.DateTimeFormat('de-DE', { weekday: 'short' })
 function formatDayLabel(date: Date, now = new Date()): string {
 	const dayMs = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 	const todayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-	const diff = Math.round((dayMs - todayMs) / 86_400_000);
+	const diff = Math.round((dayMs - todayMs) / MS_PER_DAY);
 	if (diff === 0) return `Heute · ${DAY_FORMATTER.format(date)}`;
 	if (diff === 1) return `Morgen · ${DAY_FORMATTER.format(date)}`;
 	return DAY_FORMATTER.format(date);

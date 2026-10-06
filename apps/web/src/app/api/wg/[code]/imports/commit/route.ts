@@ -1,4 +1,5 @@
 import { TransactionAbort } from '@/core/db/transaction';
+import { isVerifiedWgAdmin } from '@/core/guards/admin';
 import {
 	ReplayCache,
 	type ReplayReservation,
@@ -38,9 +39,8 @@ import { z } from 'zod';
 // Generous TTL: a re-submitted commit (double click, retry after a client
 // timeout) must replay the SAME result — with skipDuplicates:false there is
 // no other guard against inserting the same expenses twice.
-const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
-const importCommitReplay = new ReplayCache<CommitResult>(IDEMPOTENCY_TTL_MS);
+const importCommitReplay = new ReplayCache<CommitResult>();
 
 function importCommitIdempotencyScope(wgId: string, memberId: string): string {
 	return `import-commit:${wgId}:${memberId}`;
@@ -161,6 +161,11 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 			}
 		}
 
+		const mayRecordForOthers = await isVerifiedWgAdmin(
+			wg.id,
+			auth.member.memberId,
+			auth.member.verified,
+		);
 		const dbSource = source === 'ocr_text' ? ('ocr_screenshot' as const) : source;
 		let result: CommitResult;
 		try {
@@ -169,6 +174,7 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 				source: dbSource,
 				importedByMemberId: auth.member.memberId,
 				importedByName: auth.member.name,
+				mayRecordForOthers,
 				expenses: items,
 				mapping: memberMapping,
 				skipDuplicates,

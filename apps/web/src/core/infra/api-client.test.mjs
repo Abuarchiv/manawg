@@ -35,6 +35,11 @@ function loadTypeScript(file, overrides = {}) {
 }
 
 const { apiFetch } = loadTypeScript(apiClientPath, {
+	'@/shared/lib/fixture-mode': {
+		isClientFixtureMode: () =>
+			process.env.NEXT_PUBLIC_DB_DOWN === 'true' &&
+			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true',
+	},
 	'@/shared/lib/member-header': {
 		EXPECTED_MEMBER_ID_HEADER: 'x-manawg-expected-member-id',
 		MEMBER_ID_HEADER: 'x-manawg-member-id',
@@ -233,4 +238,34 @@ test('retrying an ambiguously committed chat message reuses its idempotency key'
 		[message, message],
 	);
 	assert.equal(generatedKeys, 1);
+});
+
+test('anySignal aborts with the first source, also without AbortSignal.any', async () => {
+	const { anySignal } = loadTypeScript(apiClientPath, {
+		'@/shared/lib/fixture-mode': { isClientFixtureMode: () => false },
+		'@/shared/lib/member-header': {
+			EXPECTED_MEMBER_ID_HEADER: 'x-manawg-expected-member-id',
+			MEMBER_ID_HEADER: 'x-manawg-member-id',
+			MEMBER_TOKEN_HEADER: 'x-manawg-member-token',
+		},
+	});
+	const nativeAny = AbortSignal.any;
+	try {
+		for (const any of [nativeAny, undefined]) {
+			AbortSignal.any = any;
+			const first = new AbortController();
+			const second = new AbortController();
+			const combined = anySignal([first.signal, second.signal]);
+			assert.equal(combined.aborted, false);
+			second.abort('stop');
+			assert.equal(combined.aborted, true);
+			assert.equal(combined.reason, 'stop');
+
+			const already = new AbortController();
+			already.abort('early');
+			assert.equal(anySignal([already.signal, first.signal]).reason, 'early');
+		}
+	} finally {
+		AbortSignal.any = nativeAny;
+	}
 });

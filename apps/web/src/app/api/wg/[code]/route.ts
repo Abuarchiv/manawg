@@ -16,6 +16,7 @@ import {
 	forbidden,
 	notFound,
 	serverError,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import type { RouteCtx } from '@/core/infra/api-types';
@@ -23,16 +24,16 @@ import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { logApiError } from '@/core/infra/observability';
 import { generateShareCode } from '@/core/utils/share-code';
 import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
+import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const WG_NAME_MIN = 1;
-const WG_NAME_MAX = 100;
 
 const patchWgSchema = z
 	.object({
-		name: z.string().trim().min(WG_NAME_MIN).max(WG_NAME_MAX).optional(),
+		name: z.string().trim().min(WG_NAME_MIN).max(WG_NAME_MAX_LENGTH).optional(),
 		joiningEnabled: z.boolean().optional(),
 		rotateShareCode: z.boolean().optional(),
 	})
@@ -154,8 +155,8 @@ export async function PATCH(
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 	const parsed = patchWgSchema.safeParse(raw);
 	if (!parsed.success) return badRequest('wg_update_invalid');

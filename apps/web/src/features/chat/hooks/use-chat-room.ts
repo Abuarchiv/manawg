@@ -146,6 +146,9 @@ export function useChatRoom({
 	const refreshOlderOffsetRef = useRef(0);
 	const refreshRequestSequenceRef = useRef(0);
 	const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
+	// Set when a mutation invalidates the refresh in flight: its result is then
+	// dropped, so the next refresh() must fetch again instead of reusing it.
+	const refreshSupersededRef = useRef(false);
 	const pendingMessageRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 	const reactionRequestKeysRef = useRef(new Map<string, string>());
 	const reactionMutationVersionsRef = useRef(
@@ -165,6 +168,7 @@ export function useChatRoom({
 		refreshRequestSequenceRef.current = advanceChatRefreshSequence(
 			refreshRequestSequenceRef.current,
 		);
+		if (refreshPromiseRef.current) refreshSupersededRef.current = true;
 	}
 
 	const sendRead = useCallback(
@@ -267,11 +271,19 @@ export function useChatRoom({
 
 	const refresh = useCallback((): Promise<boolean> => {
 		// A poll must not supersede a request that is still loading. Mutations
-		// still invalidate its sequence so a stale snapshot cannot undo them.
-		refreshPromiseRef.current ??= fetchMessages().finally(() => {
-			refreshPromiseRef.current = null;
+		// still invalidate its sequence so a stale snapshot cannot undo them; in
+		// that case one follow-up fetch is chained after it, otherwise the caller
+		// (e.g. the post-send refresh) would wait on a result that gets dropped.
+		const inFlight = refreshPromiseRef.current;
+		if (inFlight && !refreshSupersededRef.current) return inFlight;
+		refreshSupersededRef.current = false;
+		const next: Promise<boolean> = (
+			inFlight ? inFlight.then(fetchMessages, fetchMessages) : fetchMessages()
+		).finally(() => {
+			if (refreshPromiseRef.current === next) refreshPromiseRef.current = null;
 		});
-		return refreshPromiseRef.current;
+		refreshPromiseRef.current = next;
+		return next;
 	}, [fetchMessages]);
 
 	useVisibilityPausedInterval(() => void refresh(), wgId ? CHAT_POLL_INTERVAL_MS : null);
@@ -413,7 +425,11 @@ export function useChatRoom({
 				return false;
 			}
 			committed = true;
-			reactionRequestKeysRef.current.delete(requestKeyId);
+			// A committed add or remove settles both directions: a key kept from an
+			// earlier uncertain attempt in the other direction would otherwise replay
+			// that old result later instead of reaching the server.
+			reactionRequestKeysRef.current.delete(`add:${messageId}:${emoji}`);
+			reactionRequestKeysRef.current.delete(`remove:${messageId}:${emoji}`);
 			const isOwnRow = (row: ChatReactionRow) =>
 				row.messageId === messageId && row.memberId === identity.memberId && row.emoji === emoji;
 			setReactionRows((prev) =>

@@ -34,6 +34,16 @@ export function berlinDayKey(date: Date): string {
 	return dayKeyFormat.format(date);
 }
 
+/**
+ * Whole Berlin calendar days from `from` to `to` (negative when `to` is
+ * earlier). Counts date changes, not 24h spans: a chore due this evening is
+ * 0 days away, not "morgen", and DST days still count as one day.
+ */
+export function berlinCalendarDayDistance(from: Date, to: Date): number {
+	const dayMs = (date: Date) => Date.parse(`${berlinDayKey(date)}T12:00:00Z`);
+	return Math.round((dayMs(to) - dayMs(from)) / (24 * MS_PER_HOUR));
+}
+
 function berlinHour(date: Date): number {
 	return Number(hourFormat.format(date));
 }

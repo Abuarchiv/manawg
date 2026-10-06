@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { PgDialect, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadClaimedResponse } from '../../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const routePath = path.join(process.cwd(), 'src/app/api/wg/[code]/chat/messages/route.ts');
@@ -42,7 +43,7 @@ function harness() {
 		warning: null,
 		warningUpdateSucceeds: true,
 		warningWhere: '',
-		claimExpiry: new Date('2026-09-25T00:00:00.000Z'),
+		claimExpiry: new Date(Date.now() + 15 * 60_000),
 		releaseWhere: '',
 		errors: [],
 		locks: 0,
@@ -57,10 +58,14 @@ function harness() {
 	let prior = Promise.resolve();
 	const db = {
 		delete: () => ({
-			where: async (condition) => {
-				state.releaseWhere = new PgDialect().sqlToQuery(condition).sql;
-				if (state.slot?._claimed) state.slot = null;
-			},
+			where: (condition) => ({
+				returning: async () => {
+					state.releaseWhere = new PgDialect().sqlToQuery(condition).sql;
+					if (!state.slot?._claimed) return [];
+					state.slot = null;
+					return [{ scope: 'chat-message' }];
+				},
+			}),
 		}),
 		update: () => ({
 			set: () => ({
@@ -227,6 +232,7 @@ function harness() {
 		'@/features/chat/chat-unread-query': {},
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	};
+	overrides['@/core/db/claimed-response'] = loadClaimedResponse(overrides);
 	new Function('require', 'module', 'exports', source)(
 		(name) => (name in overrides ? overrides[name] : requireFromWeb(name)),
 		module,

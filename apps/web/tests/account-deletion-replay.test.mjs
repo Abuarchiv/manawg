@@ -21,6 +21,7 @@ function load(cached, idempotencyOverrides = {}) {
 			setCachedResponse: async () => undefined,
 			...idempotencyOverrides,
 		},
+		'@/core/utils/time': { MS_PER_MINUTE: 60_000 },
 		'next/server': { NextResponse: Response },
 	};
 	const source = readFileSync(path.join(webDir, 'src/core/guards/idempotency.ts'), 'utf8');

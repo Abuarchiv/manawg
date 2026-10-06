@@ -92,7 +92,7 @@ function harness({ choreCount }) {
 
 	const mocks = {
 		'@/core/db': { choreCompletions, chores, db, pushSubscriptions, wgMembers, wgs },
-		'@/core/infra/cron-auth': { verifyCronSecret: () => true },
+		'@/core/infra/cron-auth': { requireCronSecret: () => null },
 		'@/core/infra/observability': { withCronLogging: (_name, handler) => handler },
 		'@/core/notifications/notification-dispatch': {
 			dispatchNotification: async (notification) => {

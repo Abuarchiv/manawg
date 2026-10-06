@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import test from 'node:test';
+import { loadClaimedResponse } from './support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(new URL('../package.json', import.meta.url));
 const ts = requireFromWeb('typescript');
@@ -136,15 +137,19 @@ function harness(kind, bodyOverride) {
 					from: () => ({ where: () => ({ limit: async () => [{ id: memberId }] }) }),
 				}),
 				delete: (table) => ({
-					where: async (conditions) => {
-						assert.equal(table, tables.idempotencyResponses);
-						assert.deepEqual(state.claim, { _claimed: true });
-						const expiry = conditions.find(
-							(part) => Array.isArray(part) && part[0] === tables.idempotencyResponses.expiresAt,
-						)?.[1];
-						assert.ok(expiry instanceof Date);
-						if (expiry.getTime() === state.claimExpiresAt.getTime()) state.claim = null;
-					},
+					where: (conditions) => ({
+						returning: async () => {
+							assert.equal(table, tables.idempotencyResponses);
+							assert.deepEqual(state.claim, { _claimed: true });
+							const expiry = conditions.find(
+								(part) => Array.isArray(part) && part[0] === tables.idempotencyResponses.expiresAt,
+							)?.[1];
+							assert.ok(expiry instanceof Date);
+							if (expiry.getTime() !== state.claimExpiresAt.getTime()) return [];
+							state.claim = null;
+							return [{ scope: 'released' }];
+						},
+					}),
 				}),
 			},
 		},
@@ -225,6 +230,7 @@ function harness(kind, bodyOverride) {
 		'next/server': { NextResponse: { json: (body) => Response.json(body) } },
 	};
 	overrides['@/core/db'].CHORE_RECURRENCE_TYPES = ['days', 'months'];
+	overrides['@/core/db/claimed-response'] = loadClaimedResponse(overrides);
 	const route = kind === 'chore' ? 'chores' : 'absences';
 	const post = loadPost(route, overrides);
 	const body =

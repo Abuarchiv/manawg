@@ -2,6 +2,7 @@
 
 import { apiFetch } from '@/core/infra/api-client';
 import { safeLocalStorage } from '@/core/utils/browser';
+import { isRecord } from '@/core/utils/is-record';
 import { getIdentity } from '@/shared/lib/identity';
 import { isPendingImageToken, removePendingImage, uploadPendingImageToken } from './offline-images';
 import {
@@ -95,10 +96,6 @@ async function withOfflineQueueLock<T>(
 	}
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 function isStringOrNull(value: unknown): value is string | null {
 	return typeof value === 'string' || value === null;
 }
@@ -182,6 +179,7 @@ function hasValidPayload(type: OfflineActionType, payload: Record<string, unknow
 				typeof payload.paidByMemberId === 'string' &&
 				typeof payload.intervalMonths === 'number' &&
 				typeof payload.nextDueAt === 'string' &&
+				(payload.anchorAt === undefined || typeof payload.anchorAt === 'string') &&
 				isSplitArray(payload.splits)
 			);
 		case 'recurring.advance':

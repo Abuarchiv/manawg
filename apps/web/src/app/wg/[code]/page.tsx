@@ -28,6 +28,7 @@ import {
 import { getDashboardAnnouncementHref } from '@/core/reads/dashboard-links';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
+import { MS_PER_DAY } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { type SerializedWgEvent, expandRecurrence } from '@/features/events/events';
 import { cn } from '@/shared/lib/cn';
@@ -53,6 +54,8 @@ const PushPrimingPrompt = dynamic(
 );
 
 const REFRESH_INTERVAL_MS = 30_000;
+/** How long the done notice stays, and how long a tapped chore stays armed for the confirm tap. */
+const TRANSIENT_STATE_MS = 4000;
 const TODAY_VISIBLE = 4;
 
 type PendingAnnouncement = DashboardData['myOpenAnnouncements'][number];
@@ -140,13 +143,16 @@ export default function WgHomePage() {
 			setCompleteNotice(null);
 			return;
 		}
+		// One key per occurrence: after an uncertain failure that actually saved,
+		// the next due date must not replay the earlier completion.
+		const requestKey = `${choreId}:${item.expectedNextDueAt}`;
 		const idempotencyKey =
-			completionRequestKeysRef.current.get(choreId) ?? createOfflineIdempotencyKey();
+			completionRequestKeysRef.current.get(requestKey) ?? createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
 			setCompleteNotice('Konnte nicht sicher gespeichert werden. Erledige es im Putzplan.');
 			return;
 		}
-		completionRequestKeysRef.current.set(choreId, idempotencyKey);
+		completionRequestKeysRef.current.set(requestKey, idempotencyKey);
 		setPendingChoreId(choreId);
 		const result = await apiFetch(
 			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(choreId)}/complete`,
@@ -164,13 +170,13 @@ export default function WgHomePage() {
 		setPendingChoreId(null);
 		setArmedChoreId(null);
 		if (result.ok || result.error === 'chore_already_completed') {
-			completionRequestKeysRef.current.delete(choreId);
+			completionRequestKeysRef.current.delete(requestKey);
 			setCompleteNotice(`${item.title} erledigt.`);
 			void load();
 			return;
 		}
 		if (result.error === 'chore_occurrence_changed') {
-			completionRequestKeysRef.current.delete(choreId);
+			completionRequestKeysRef.current.delete(requestKey);
 			setCompleteNotice(
 				'Termin oder Zuständigkeit haben sich geändert. Der Plan wird aktualisiert.',
 			);
@@ -178,7 +184,7 @@ export default function WgHomePage() {
 			return;
 		}
 		if (result.status > 0 && result.status < 500 && result.status !== 429)
-			completionRequestKeysRef.current.delete(choreId);
+			completionRequestKeysRef.current.delete(requestKey);
 		setCompleteNotice(
 			result.status === 0
 				? 'Offline: Öffne den Putzplan, dort wird die Erledigung vorgemerkt.'
@@ -188,12 +194,12 @@ export default function WgHomePage() {
 	useVisibilityPausedInterval(() => void load(), REFRESH_INTERVAL_MS);
 	useEffect(() => {
 		if (!completeNotice) return;
-		const timer = setTimeout(() => setCompleteNotice(null), 4000);
+		const timer = setTimeout(() => setCompleteNotice(null), TRANSIENT_STATE_MS);
 		return () => clearTimeout(timer);
 	}, [completeNotice]);
 	useEffect(() => {
 		if (!armedChoreId || pendingChoreId) return;
-		const timer = setTimeout(() => setArmedChoreId(null), 4000);
+		const timer = setTimeout(() => setArmedChoreId(null), TRANSIENT_STATE_MS);
 		return () => clearTimeout(timer);
 	}, [armedChoreId, pendingChoreId]);
 	useEffect(() => {
@@ -663,7 +669,7 @@ const AGENDA_DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 
 function formatAgendaDay(dayKey: string, todayKey: string): string {
 	if (dayKey === todayKey) return 'Heute';
-	const tomorrowKey = berlinDayKey(new Date(Date.parse(`${todayKey}T12:00:00Z`) + 86_400_000));
+	const tomorrowKey = berlinDayKey(new Date(Date.parse(`${todayKey}T12:00:00Z`) + MS_PER_DAY));
 	if (dayKey === tomorrowKey) return 'Morgen';
 	return AGENDA_DAY_FORMATTER.format(new Date(`${dayKey}T12:00:00.000Z`));
 }

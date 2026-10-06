@@ -7,3 +7,20 @@ export function inputDateToIso(value: string): string | null {
 	if (year === undefined || month === undefined || day === undefined) return null;
 	return new Date(year, month - 1, day, 12, 0, 0).toISOString();
 }
+
+/** Today's date in the browser's time zone, as an `<input type="date">` value. */
+export function todayInputValue(now = new Date()): string {
+	const year = now.getFullYear();
+	const month = String(now.getMonth() + 1).padStart(2, '0');
+	const day = String(now.getDate()).padStart(2, '0');
+	return `${year}-${month}-${day}`;
+}
+
+/**
+ * Today at local noon. Due dates are stored at noon so their UTC calendar day
+ * equals the local one; `new Date()` shortly after midnight would otherwise
+ * still be "yesterday" in UTC.
+ */
+export function todayAtLocalNoon(now = new Date()): Date {
+	return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+}

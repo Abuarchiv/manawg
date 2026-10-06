@@ -5,9 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
 import {
 	isPendingImageToken,
 	readPendingImage,
+	readUploadSignError,
 	removePendingImage,
 	storePendingImage,
 	uploadPendingImageToken,
@@ -32,11 +34,6 @@ interface SignResponse {
 	uploadHeaders?: Record<string, string>;
 }
 
-interface ErrorResponse {
-	error?: string;
-	code?: string;
-}
-
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set([
 	'image/jpeg',
@@ -47,15 +44,6 @@ const ALLOWED_IMAGE_TYPES = new Set([
 ]);
 const MISSING_PENDING_IMAGE_MESSAGE =
 	'Bild konnte auf diesem Gerät nicht mehr gefunden werden. Entferne den Platzhalter und wähle es erneut aus.';
-
-async function readUploadSignError(response: Response): Promise<string> {
-	try {
-		const body = (await response.clone().json()) as ErrorResponse;
-		return body.error ?? body.code ?? '';
-	} catch {
-		return '';
-	}
-}
 
 function uploadSignErrorMessage(status: number, error: string): string {
 	if (status === 404 || error === 'wg_not_found') {
@@ -273,6 +261,7 @@ export function ImageUploader({
 					'content-type': 'application/json',
 				},
 				body: JSON.stringify({ shareCode, purpose, mimeType: file.type, fileSize: file.size }),
+				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
 			const signError = sigRes.ok ? '' : await readUploadSignError(sigRes);
 			if (

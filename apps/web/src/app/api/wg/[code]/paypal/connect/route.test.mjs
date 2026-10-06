@@ -29,6 +29,10 @@ function loadTs(file, overrides = {}) {
 	return loaded.exports;
 }
 
+const { readPayPalConnectionCookie } = loadTs('src/core/infra/paypal-onboarding.ts', {
+	'./paypal': {},
+});
+
 function responseError(error, status = 400) {
 	return Response.json({ error }, { status });
 }
@@ -112,6 +116,7 @@ function harness({
 			state.cookieState = value;
 			return 'signed-cookie';
 		},
+		readPayPalConnectionCookie,
 		verifyPayPalConnectionCookie: (value, expected) =>
 			value === 'signed-cookie' || value === 'valid-cookie'
 				? {
@@ -321,6 +326,7 @@ test('generic PayPal return ignores caller destinations and malformed merchant h
 			getPayPalEnvironment: () => 'sandbox',
 			getTrustedPayPalAppOrigin: () => 'https://manawg.example',
 			isPayPalMerchantId: (value) => value === merchantId,
+			readPayPalConnectionCookie,
 			verifyPayPalConnectionCookie: (value) =>
 				value === 'valid-cookie' ? { environment: 'sandbox', code, nonce: callbackNonce } : null,
 		},

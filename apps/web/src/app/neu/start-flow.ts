@@ -11,8 +11,10 @@ import {
 } from '@/core/infra/join-flow';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 
-export const WG_NAME_MAX = 100;
-export const NAME_MAX = 80;
+import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
+
+export const WG_NAME_MAX = WG_NAME_MAX_LENGTH;
+export const NAME_MAX = MEMBER_NAME_MAX_LENGTH;
 export const START_DRAFT_KEY = 'manawg:draft:neu';
 
 export interface CreateResponse {
@@ -129,10 +131,10 @@ export function createWgErrorMessage(status: number, error: string): string {
 		return 'Melde dich zuerst mit deinem Konto an.';
 	}
 	if (status === 400 && error === 'name_invalid') {
-		return 'WG konnte nicht erstellt werden: Der WG-Name muss 1 bis 100 Zeichen haben.';
+		return `WG konnte nicht erstellt werden: Der WG-Name muss 1 bis ${WG_NAME_MAX} Zeichen haben.`;
 	}
 	if (status === 400 && error === 'creator_name_invalid') {
-		return 'WG konnte nicht erstellt werden: Dein Anzeigename muss 1 bis 80 Zeichen haben.';
+		return `WG konnte nicht erstellt werden: Dein Anzeigename muss 1 bis ${NAME_MAX} Zeichen haben.`;
 	}
 	if (status === 400 && (error === 'invalid_body' || error === 'invalid_json')) {
 		return 'WG-Name und dein Anzeigename müssen ausgefüllt und kurz genug sein.';

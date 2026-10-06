@@ -20,9 +20,10 @@ function loadTs(file, overrides = {}) {
 	return module.exports;
 }
 
-function exportRoute(failedTable, { expenseCount = 0 } = {}) {
+function exportRoute(failedTable, { expenseCount = 0, rowsByTable = {} } = {}) {
 	const tables = Object.fromEntries(
 		[
+			'announcementComments',
 			'announcements',
 			'auditEvents',
 			'chores',
@@ -32,6 +33,8 @@ function exportRoute(failedTable, { expenseCount = 0 } = {}) {
 			'memberAbsences',
 			'recurringExpenses',
 			'shoppingItems',
+			'wgChatMessages',
+			'wgEvents',
 			'wgMembers',
 		].map((name) => [
 			name,
@@ -63,11 +66,13 @@ function exportRoute(failedTable, { expenseCount = 0 } = {}) {
 	const db = {
 		select: () => ({
 			from: (table) => {
+				const name = Object.keys(tables).find((key) => tables[key] === table);
 				const rows =
 					table === tables[failedTable]
 						? Promise.reject(new Error('privateDbPassword123'))
-						: Promise.resolve(table === tables.expenses ? expenseRows : []);
+						: Promise.resolve(table === tables.expenses ? expenseRows : (rowsByTable[name] ?? []));
 				const query = Object.assign(rows, {
+					innerJoin: () => query,
 					where: () => query,
 					orderBy: () => query,
 					limit: (limit) => {
@@ -80,8 +85,19 @@ function exportRoute(failedTable, { expenseCount = 0 } = {}) {
 			},
 		}),
 	};
+	const exportModule = loadTs('src/core/reads/export.ts');
+	const drizzle = {
+		and: () => null,
+		asc: () => null,
+		count: () => null,
+		desc: () => null,
+		eq: () => null,
+		inArray: (_column, values) => {
+			inArrayCalls.push(values.length);
+			return null;
+		},
+	};
 	const { GET } = loadTs('src/app/api/wg/[code]/export/route.ts', {
-		'@/core/db': { db, ...tables },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/http/api-errors': {
 			badRequest: (error) => Response.json({ error }, { status: 400 }),
@@ -104,17 +120,12 @@ function exportRoute(failedTable, { expenseCount = 0 } = {}) {
 			'./sentry-privacy': loadTs('src/core/infra/sentry-privacy.ts'),
 		}),
 		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }) },
-		'@/core/reads/export': loadTs('src/core/reads/export.ts'),
-		'drizzle-orm': {
-			and: () => null,
-			asc: () => null,
-			desc: () => null,
-			eq: () => null,
-			inArray: (_column, values) => {
-				inArrayCalls.push(values.length);
-				return null;
-			},
-		},
+		'@/core/reads/export': exportModule,
+		'@/core/reads/export-queries': loadTs('src/core/reads/export-queries.ts', {
+			'@/core/db': { db, ...tables },
+			'drizzle-orm': drizzle,
+			'./export': exportModule,
+		}),
 		'next/server': { NextResponse: Response },
 	});
 	return {
@@ -159,4 +170,177 @@ test('one failed JSON section rejects the incomplete backup', async (t) => {
 		assert.equal((await response.json()).error, 'export_incomplete');
 	}
 	assert.equal(JSON.stringify(logged).includes('privateDbPassword123'), false);
+});
+
+test('deleted chat messages export without their text or image', async () => {
+	const route = exportRoute(undefined, {
+		rowsByTable: {
+			wgMembers: [{ id: 'member', name: 'Alice', createdAt: new Date(0) }],
+			wgChatMessages: [
+				{
+					id: 'message-live',
+					senderMemberId: 'member',
+					kind: 'image',
+					body: 'Hallo',
+					imageUrl: 'https://img.example/live.jpg',
+					replyToMessageId: null,
+					editedAt: null,
+					deletedAt: null,
+					createdAt: new Date('2026-03-01T10:00:00Z'),
+				},
+				{
+					id: 'message-deleted',
+					senderMemberId: 'member',
+					kind: 'image',
+					body: 'privateDeletedText',
+					imageUrl: 'https://img.example/deleted.jpg',
+					replyToMessageId: 'message-live',
+					editedAt: new Date('2026-03-01T10:05:00Z'),
+					deletedAt: new Date('2026-03-01T10:06:00Z'),
+					createdAt: new Date('2026-03-01T10:01:00Z'),
+				},
+				{
+					id: 'message-system',
+					senderMemberId: null,
+					kind: 'system',
+					body: null,
+					imageUrl: null,
+					replyToMessageId: null,
+					editedAt: null,
+					deletedAt: null,
+					createdAt: new Date('2026-03-01T10:02:00Z'),
+				},
+			],
+		},
+	});
+	const response = await route.get('?sections=chatMessages');
+	assert.equal(response.status, 200);
+	const { sections } = await response.json();
+	assert.deepEqual(sections.chatMessages, [
+		{
+			id: 'message-live',
+			createdAt: '2026-03-01T10:00:00.000Z',
+			senderName: 'Alice',
+			kind: 'image',
+			body: 'Hallo',
+			imageUrl: 'https://img.example/live.jpg',
+			editedAt: null,
+			deletedAt: null,
+			replyToMessageId: null,
+		},
+		{
+			id: 'message-deleted',
+			createdAt: '2026-03-01T10:01:00.000Z',
+			senderName: 'Alice',
+			kind: 'image',
+			body: null,
+			imageUrl: '',
+			editedAt: '2026-03-01T10:05:00.000Z',
+			deletedAt: '2026-03-01T10:06:00.000Z',
+			replyToMessageId: 'message-live',
+		},
+		{
+			id: 'message-system',
+			createdAt: '2026-03-01T10:02:00.000Z',
+			senderName: 'System',
+			kind: 'system',
+			body: null,
+			imageUrl: '',
+			editedAt: null,
+			deletedAt: null,
+			replyToMessageId: null,
+		},
+	]);
+
+	const csv = await route.get('?format=csv&section=chatMessages');
+	assert.equal(csv.status, 200);
+	const csvText = await csv.text();
+	assert.equal(csvText.includes('privateDeletedText'), false);
+	assert.equal(csvText.includes('deleted.jpg'), false);
+});
+
+test('new sections are part of the full dump and export CSV headers', async () => {
+	const route = exportRoute(undefined, {
+		rowsByTable: {
+			wgMembers: [{ id: 'member', name: 'Alice', createdAt: new Date(0) }],
+			announcementComments: [
+				{
+					id: 'comment',
+					announcementId: 'post',
+					memberId: 'member',
+					content: '=HYPERLINK("x")',
+					createdAt: new Date('2026-03-02T08:00:00Z'),
+				},
+			],
+			wgEvents: [
+				{
+					id: 'event',
+					title: 'Putzparty',
+					description: null,
+					startsAt: new Date('2026-03-05T18:00:00Z'),
+					endsAt: null,
+					allDay: false,
+					location: 'Küche',
+					recurrence: null,
+					createdByMemberId: null,
+					createdAt: new Date('2026-03-01T08:00:00Z'),
+				},
+			],
+		},
+	});
+	const response = await route.get();
+	assert.equal(response.status, 200);
+	const { sections, failedSections } = await response.json();
+	assert.deepEqual(failedSections, []);
+	assert.deepEqual(sections.chatMessages, []);
+	assert.deepEqual(sections.announcementComments, [
+		{
+			id: 'comment',
+			announcementId: 'post',
+			authorName: 'Alice',
+			content: '=HYPERLINK("x")',
+			createdAt: '2026-03-02T08:00:00.000Z',
+		},
+	]);
+	assert.equal(sections.events[0].createdByName, '');
+
+	const expected = {
+		chatMessages: 'id;createdAt;senderName;kind;body;imageUrl;editedAt;deletedAt;replyToMessageId',
+		announcementComments:
+			'id;announcementId;authorName;content;createdAt\ncomment;post;Alice;"\'=HYPERLINK(""x"")";2026-03-02T08:00:00.000Z',
+		events:
+			'id;title;description;startsAt;endsAt;allDay;location;recurrence;createdByName;createdAt\nevent;Putzparty;;2026-03-05T18:00:00.000Z;;false;Küche;;;2026-03-01T08:00:00.000Z',
+	};
+	for (const [section, csv] of Object.entries(expected)) {
+		const csvResponse = await route.get(`?format=csv&section=${section}`);
+		assert.equal(csvResponse.status, 200);
+		assert.equal(
+			csvResponse.headers.get('content-disposition'),
+			`attachment; filename="MTE8PZAT-${section}.csv"`,
+		);
+		assert.equal(await csvResponse.text(), csv);
+	}
+});
+
+test('a failed new section fails the full export closed', async (t) => {
+	t.mock.method(console, 'error', () => {});
+	for (const table of ['wgChatMessages', 'announcementComments', 'wgEvents']) {
+		const response = await exportRoute(table).get();
+		assert.equal(response.status, 500);
+		assert.equal((await response.json()).error, 'export_incomplete');
+	}
+});
+
+test('the counts summary counts rows per section instead of downloading them', async () => {
+	const route = exportRoute(null, {
+		rowsByTable: { wgChatMessages: [{ value: 3 }], wgMembers: [{ value: 2 }] },
+	});
+	const response = await route.get('?summary=counts');
+	assert.equal(response.status, 200);
+	const { counts } = await response.json();
+	assert.equal(counts.chatMessages, 3);
+	assert.equal(counts.members, 2);
+	assert.equal(counts.expenses, 0);
+	assert.equal(Object.keys(counts).length, 12);
+	assert.deepEqual(route.limits, []);
 });

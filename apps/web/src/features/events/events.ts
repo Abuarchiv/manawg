@@ -1,6 +1,7 @@
 import type { wgEvents } from '@/core/db';
 import { berlinDayKey, berlinWallMinutes, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
 import { MS_PER_DAY, addMonths, addMonthsFromAnchor, parseTimestamp } from '@/core/utils/time';
+import { isEventYearInRange } from '@/features/events/event-limits';
 
 export const EVENTS_LIST_LIMIT = 1000;
 
@@ -392,11 +393,20 @@ export function expandRecurrence(
 	return occurrences;
 }
 
+/**
+ * The anchor moved by whole years. A 29 February anchor falls on 28 February in
+ * other years, as people expect for birthdays; plain `setUTCFullYear` rolled it
+ * over to 1 March.
+ */
+export function addYearsFromAnchor(anchor: Date, years: number): Date {
+	return addMonthsFromAnchor(anchor, anchor.getUTCDate(), years * MONTHS_PER_YEAR);
+}
+
+const MONTHS_PER_YEAR = 12;
+
 function addFromAnchor(anchor: Date, freq: RecurrenceFreq, totalInterval: number): Date {
 	if (freq === 'MONTHLY') return addMonthsFromAnchor(anchor, anchor.getUTCDate(), totalInterval);
-	const next = new Date(anchor);
-	next.setUTCFullYear(anchor.getUTCFullYear() + totalInterval);
-	return next;
+	return addYearsFromAnchor(anchor, totalInterval);
 }
 
 /** Browser agenda: all-day events occupy inclusive local calendar dates, not one hour. */
@@ -586,6 +596,12 @@ export function validateEventForm(input: {
 	const endsAt = input.endsAt
 		? new Date(`${normalizeEventDateTime(input.endsAt, allDay)}${allDay ? 'Z' : ''}`)
 		: null;
+	if (!isEventYearInRange(startsAt)) {
+		return { ok: false, error: 'Startdatum ist ungültig.', field: 'startsAt' };
+	}
+	if (endsAt && !isEventYearInRange(endsAt)) {
+		return { ok: false, error: 'Enddatum ist ungültig.', field: 'endsAt' };
+	}
 	if (endsAt && endsAt.getTime() < startsAt.getTime()) {
 		return { ok: false, error: 'Endzeit liegt vor Startzeit.', field: 'endsAt' };
 	}

@@ -24,7 +24,12 @@
 type EnvSource = Record<string, string | undefined>;
 
 interface DegradedFeature {
-	feature: 'rate-limiting' | 'push-notifications' | 'image-uploads' | 'account-deletion';
+	feature:
+		| 'rate-limiting'
+		| 'push-notifications'
+		| 'image-uploads'
+		| 'account-deletion'
+		| 'error-reporting';
 	missing: string[];
 	impact: string;
 }
@@ -60,10 +65,19 @@ const OPTIONAL_FEATURES: readonly FeatureSpec[] = [
 		vars: ['SUPABASE_SERVICE_ROLE_KEY'],
 		impact: 'Account deletion answers 503 — the Auth user cannot be removed without it.',
 	},
+	{
+		feature: 'error-reporting',
+		vars: ['NEXT_PUBLIC_SENTRY_DSN'],
+		impact: 'Sentry is off — server and client errors are only visible in function logs.',
+	},
 ] as const;
 
-/** Production-only requirements. */
-const PRODUCTION_REQUIRED = ['CRON_SECRET'] as const;
+/**
+ * Production-only requirements. Account deletion is a legal obligation
+ * (GDPR Art. 17), so a Production deployment that cannot delete Auth users
+ * must not report itself healthy.
+ */
+const PRODUCTION_REQUIRED = ['CRON_SECRET', 'SUPABASE_SERVICE_ROLE_KEY'] as const;
 
 /**
  * Required in every environment, alongside the database. Unlike the

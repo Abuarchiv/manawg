@@ -1,28 +1,35 @@
 import { recordAuditEvent } from '@/core/audit';
 import { getAuthenticatedUser } from '@/core/auth/server';
-import { db, idempotencyResponses, wgMembers, wgs } from '@/core/db';
+import { db, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
+import {
+	completeClaimedResponse,
+	lockClaimedResponse,
+	releaseClaimedResponse,
+} from '@/core/db/claimed-response';
 import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { deriveMemberToken } from '@/core/guards/member-token';
-import { apiError, badRequest, conflict, serverError, tooMany } from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
 import {
-	RESPONSE_REPLAY_TTL_SECONDS,
-	getCachedResponse,
-	readIdempotencyKey,
-} from '@/core/idempotency-store';
+	apiError,
+	badRequest,
+	conflict,
+	serverError,
+	tooMany,
+	unreadableJsonBody,
+} from '@/core/http/api-errors';
+import { readJsonLimited } from '@/core/http/read-json';
+import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
 import { E2E_CREATED_WG, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
 import { generateShareCode, isValidShareCode } from '@/core/utils/share-code';
-import { and, eq, gt, sql } from 'drizzle-orm';
+import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const WG_NAME_MIN = 1;
-const WG_NAME_MAX = 100;
 const SHARE_CODE_RETRIES = 5;
 
 type CachedJsonResponse = { status: number; body: unknown };
@@ -44,7 +51,7 @@ function replayResponse(response: CachedJsonResponse): NextResponse {
 }
 
 const createWgSchema = z.object({
-	name: z.string().trim().min(WG_NAME_MIN).max(WG_NAME_MAX),
+	name: z.string().trim().min(WG_NAME_MIN).max(WG_NAME_MAX_LENGTH),
 	creatorName: z.string().trim().min(WG_NAME_MIN).max(LIMITS.NAME_MAX),
 });
 
@@ -84,8 +91,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 
 	const parsed = createWgSchema.safeParse(raw);
@@ -171,6 +178,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		}
 	}
 
+	// Lease of the claim this request locked; released when the write fails, so
+	// a retry with the same key does not wait out the lease.
+	let claimedLeaseExpiresAt: Date | null = null;
+	const releaseClaim = async () => {
+		if (idemKey && claimedLeaseExpiresAt) {
+			await releaseClaimedResponse(idemScope, idemKey, claimedLeaseExpiresAt);
+		}
+	};
 	try {
 		// The WG and its creator are one write. A WG whose creator row is missing
 		// has a valid share code but no one who can administer it, and the person
@@ -192,35 +207,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			try {
 				const result = await withTransaction(async (tx) => {
 					await assertAccountCanAcquireMembership(tx, authenticatedUser.id);
+					let lease: Date | null = null;
 					if (idemKey) {
-						const [slot] = await tx
-							.select({
-								body: idempotencyResponses.responseBody,
-								expiresAt: idempotencyResponses.expiresAt,
-							})
-							.from(idempotencyResponses)
-							.where(
-								and(
-									eq(idempotencyResponses.scope, idemScope),
-									eq(idempotencyResponses.key, idemKey),
-								),
-							)
-							.limit(1)
-							.for('update');
-						if (!slot) throw new TransactionAbort('idempotency_claim_missing');
-						if (slot.expiresAt > new Date() && isCachedJsonResponse(slot.body)) {
-							return { replayed: true as const, response: slot.body };
-						}
-						if (
-							slot.expiresAt <= new Date() ||
-							!slot.body ||
-							typeof slot.body !== 'object' ||
-							Array.isArray(slot.body) ||
-							Object.keys(slot.body).length !== 1 ||
-							(slot.body as Record<string, unknown>)._claimed !== true
-						) {
-							throw new TransactionAbort('idempotency_claim_invalid');
-						}
+						const claim = await lockClaimedResponse(tx, idemScope, idemKey, isCachedJsonResponse);
+						if (claim.kind === 'completed')
+							return { replayed: true as const, response: claim.body };
+						lease = claim.leaseExpiresAt;
+						claimedLeaseExpiresAt = lease;
 					}
 					const [createdWg] = await tx.insert(wgs).values({ name, shareCode }).returning();
 					if (!createdWg) throw new TransactionAbort('insert_failed');
@@ -243,23 +236,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 							creator: { id: createdMember.id, name: createdMember.name },
 						},
 					};
-					if (idemKey) {
-						const updated = await tx
-							.update(idempotencyResponses)
-							.set({
-								responseBody: response,
-								expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
-							})
-							.where(
-								and(
-									eq(idempotencyResponses.scope, idemScope),
-									eq(idempotencyResponses.key, idemKey),
-									gt(idempotencyResponses.expiresAt, new Date()),
-									sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-								),
-							)
-							.returning({ scope: idempotencyResponses.scope });
-						if (updated.length !== 1) throw new TransactionAbort('idempotency_claim_missing');
+					if (idemKey && lease) {
+						await completeClaimedResponse(tx, idemScope, idemKey, response, lease);
 					}
 					return { replayed: false as const, wg: createdWg, member: createdMember, response };
 				});
@@ -277,6 +255,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				return replayResponse(result.response);
 			} catch (err) {
 				if (err instanceof TransactionAbort) {
+					await releaseClaim();
 					if (err.code === 'account_deletion_pending') {
 						return conflict('account_deletion_pending', 'account_deletion_pending');
 					}
@@ -287,9 +266,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			}
 		}
 		logApiError('[api/wg POST] share code retries exhausted', lastError);
+		await releaseClaim();
 		return serverError('share_code_exhausted');
 	} catch (err) {
 		logApiError('[api/wg POST] insert failed', err);
+		await releaseClaim();
 		return serverError('db_error');
 	}
 }

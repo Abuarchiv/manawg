@@ -4,48 +4,48 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { apiError, badRequest, notFound, tooMany } from '@/core/http/api-errors';
+import {
+	apiError,
+	badRequest,
+	conflict,
+	notFound,
+	tooMany,
+	unreadableJsonBody,
+} from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { isRecurringDueAtEditAllowed } from '@/core/validators/recurring-due-date';
-import { checkPaidByGuard } from '@/features/expenses/expenses';
+import { MAX_SPLITS, RECURRING_INTERVAL_MAX_MONTHS } from '@/features/expenses/expense-constants';
+import {
+	expenseAmountSchema,
+	expenseDescriptionSchema,
+	expenseSplitSchema,
+} from '@/features/expenses/expense-schemas';
+import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import {
 	addMonthsFromAnchor,
 	parseRecurringSplits,
+	recurringDueDateMatchesExpected,
 	recurringSplitsMatchAmount,
+	serializeRecurringExpense,
 } from '@/features/expenses/recurring-expenses';
 import { and, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const splitSchema = z.object({
-	debtorMemberId: z.string().uuid(),
-	amountCents: z.number().int().min(0),
-});
-
 const patchSchema = z.object({
-	description: z.string().trim().min(1).max(200).optional(),
-	amountCents: z.number().int().min(1).max(100_000_000).optional(),
+	description: expenseDescriptionSchema.optional(),
+	amountCents: expenseAmountSchema.optional(),
 	currency: currencySchema.optional(),
 	paidByMemberId: z.string().uuid().optional(),
-	intervalMonths: z.number().int().min(1).max(24).optional(),
+	intervalMonths: z.number().int().min(1).max(RECURRING_INTERVAL_MAX_MONTHS).optional(),
 	nextDueAt: z.string().datetime({ offset: true }).optional(),
-	splits: z.array(splitSchema).min(1).max(50).optional(),
+	splits: z.array(expenseSplitSchema).min(1).max(MAX_SPLITS).optional(),
 	paused: z.boolean().optional(),
+	/** The due date the editor loaded; a booking since then makes the edit stale. */
+	expectedNextDueAt: z.string().datetime({ offset: true }).optional(),
 });
-
-function serialize(row: typeof recurringExpenses.$inferSelect) {
-	return {
-		...row,
-		currency: 'EUR',
-		nextDueAt: row.nextDueAt.toISOString(),
-		lastCreatedAt: row.lastCreatedAt?.toISOString() ?? null,
-		pausedAt: row.pausedAt?.toISOString() ?? null,
-		createdAt: row.createdAt.toISOString(),
-		splits: parseRecurringSplits(row.splitsJson),
-	};
-}
 
 function hasDuplicateSplitDebtors(splits: Array<{ debtorMemberId: string }>): boolean {
 	const seen = new Set<string>();
@@ -70,7 +70,7 @@ export const GET = withWgRoute<{ id: string }>(
 			.limit(1);
 		const row = rows[0];
 		if (!row) return notFound('recurring_expense_not_found');
-		return NextResponse.json({ recurringExpense: serialize(row) });
+		return NextResponse.json({ recurringExpense: serializeRecurringExpense(row) });
 	},
 );
 
@@ -82,8 +82,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 		let raw: unknown;
 		try {
 			raw = await readJsonLimited(req);
-		} catch {
-			return badRequest('invalid_json');
+		} catch (err) {
+			return unreadableJsonBody(err);
 		}
 		const parsed = patchSchema.safeParse(raw);
 		if (!parsed.success) {
@@ -130,6 +130,15 @@ export const PATCH = withWgRoute<{ id: string }>(
 		if (!template) return notFound('recurring_expense_not_found');
 		const denied = await requireOwnerOrAdmin(wgId, auth.member, template.createdByMemberId);
 		if (denied) return denied;
+		if (
+			parsed.data.expectedNextDueAt !== undefined &&
+			!recurringDueDateMatchesExpected(
+				template.nextDueAt.toISOString(),
+				parsed.data.expectedNextDueAt,
+			)
+		) {
+			return conflict('recurring_expense_changed', 'recurring_expense_changed');
+		}
 		if (
 			parsed.data.nextDueAt !== undefined &&
 			!isRecurringDueAtEditAllowed(parsed.data.nextDueAt, template.nextDueAt)
@@ -230,7 +239,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 					: template.pausedAt;
 
 		if (onlyPauseRequest && pauseTransition === null) {
-			return NextResponse.json({ recurringExpense: serialize(template) });
+			return NextResponse.json({ recurringExpense: serializeRecurringExpense(template) });
 		}
 
 		const updateWhere =
@@ -246,7 +255,12 @@ export const PATCH = withWgRoute<{ id: string }>(
 							eq(recurringExpenses.wgId, wgId),
 							isNotNull(recurringExpenses.pausedAt),
 						)
-					: and(eq(recurringExpenses.id, id), eq(recurringExpenses.wgId, wgId));
+					: and(
+							eq(recurringExpenses.id, id),
+							eq(recurringExpenses.wgId, wgId),
+							// Compare-and-set: a concurrent booking must not be undone.
+							eq(recurringExpenses.nextDueAt, template.nextDueAt),
+						);
 		const updateValues = {
 			description: nextDescription,
 			amountCents: nextAmountCents,
@@ -277,7 +291,10 @@ export const PATCH = withWgRoute<{ id: string }>(
 				.limit(1);
 			const current = currentRows[0];
 			if (!current) return notFound('recurring_expense_not_found');
-			return NextResponse.json({ recurringExpense: serialize(current) });
+			if (pauseTransition === null) {
+				return conflict('recurring_expense_changed', 'recurring_expense_changed');
+			}
+			return NextResponse.json({ recurringExpense: serializeRecurringExpense(current) });
 		}
 
 		const eventType =
@@ -310,7 +327,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				splitCount: nextSplits.length,
 			},
 		});
-		return NextResponse.json({ recurringExpense: serialize(updated) });
+		return NextResponse.json({ recurringExpense: serializeRecurringExpense(updated) });
 	},
 );
 

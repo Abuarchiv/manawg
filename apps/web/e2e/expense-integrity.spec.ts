@@ -16,6 +16,44 @@ import {
 	recurringExpenses,
 	wgMembers,
 } from '../src/core/db/schema';
+import { loadClaimedResponse } from '../tests/support/claimed-response.cjs';
+
+/**
+ * The real, dependency-free expense validation modules. Routes import them for
+ * their request schemas; loading the real ones keeps every route test on the
+ * limits production enforces.
+ */
+// Recurring routes serialize their response through the helper module; these
+// harnesses mock that module, so they get a minimal stand-in.
+const serializeRecurringExpenseStub = (row: { splitsJson: string }) => ({
+	...row,
+	splits: JSON.parse(row.splitsJson),
+});
+
+const EXPENSE_VALIDATION_MODULES: Record<string, unknown> = (() => {
+	const webRoot = process.cwd();
+	const requireFromWebRoot = createRequire(path.join(webRoot, 'package.json'));
+	const load = (relative: string, deps: Record<string, unknown> = {}) => {
+		const compiled = transpileModule(readFileSync(path.join(webRoot, relative), 'utf8'), {
+			compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
+		}).outputText;
+		const loaded = { exports: {} as Record<string, unknown> };
+		new Function('require', 'module', 'exports', compiled)(
+			(id: string) => (Object.hasOwn(deps, id) ? deps[id] : requireFromWebRoot(id)),
+			loaded,
+			loaded.exports,
+		);
+		return loaded.exports;
+	};
+	const constants = load('src/features/expenses/expense-constants.ts');
+	const schemas = load('src/features/expenses/expense-schemas.ts', {
+		'@/features/expenses/expense-constants': constants,
+	});
+	return {
+		'@/features/expenses/expense-constants': constants,
+		'@/features/expenses/expense-schemas': schemas,
+	};
+})();
 
 test.describe('expense integrity regressions', () => {
 	function loadTs<T>(filePath: string, overrides: Record<string, unknown> = {}): T {
@@ -43,6 +81,7 @@ test.describe('expense integrity regressions', () => {
 	const RECURRING_ROUTE = path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/[id]/route.ts');
 	const IMPORT_ROUTE = path.join(ROOT, 'src/app/api/wg/[code]/imports/commit/route.ts');
 	const IMPORT_COMMIT = path.join(ROOT, 'src/features/expenses/import-commit.ts');
+	const PAID_BY_GUARD = path.join(ROOT, 'src/features/expenses/paid-by-guard.ts');
 	const IMPORT_PARSERS = path.join(ROOT, 'src/features/expenses/import-parsers.ts');
 	const RECURRING_HELPERS = path.join(ROOT, 'src/features/expenses/recurring-expenses.ts');
 	const SPLIT_MATH = path.join(ROOT, 'src/features/expenses/split-math.ts');
@@ -263,6 +302,7 @@ test.describe('expense integrity regressions', () => {
 		const route = loadTs<{ DELETE: (req: Request, ctx: unknown) => Promise<Response> }>(
 			EXPENSE_ROUTE,
 			{
+				...EXPENSE_VALIDATION_MODULES,
 				'@/core/audit': { recordAuditEvent: async () => undefined },
 				'@/core/db': { db, expenseSplits, expenses, wgMembers: {} },
 				'@/core/db/private-image-deletions': {
@@ -299,10 +339,6 @@ test.describe('expense integrity regressions', () => {
 				'@/core/validators/image-url': {
 					imageUrlSchema: z.string().nullable().optional(),
 					isAllowedImageUrlForWg: () => true,
-				},
-				'@/features/expenses/expense-constants': {
-					AMOUNT_MAX_CENTS: 100_000_000,
-					AMOUNT_MIN_CENTS: 1,
 				},
 				'@/features/expenses/expense-payments': {
 					withExpensePaymentLock: withPaymentLock,
@@ -596,6 +632,7 @@ test.describe('expense integrity regressions', () => {
 		const route = loadTs<{ PATCH: (req: Request, ctx: unknown) => Promise<Response> }>(
 			EXPENSE_ROUTE,
 			{
+				...EXPENSE_VALIDATION_MODULES,
 				'@/core/audit': { recordAuditEvent: async () => undefined },
 				'@/core/db': { db, expenseSplits, expenses, wgMembers },
 				'@/core/db/private-image-deletions': {
@@ -638,10 +675,6 @@ test.describe('expense integrity regressions', () => {
 				'@/core/validators/image-url': {
 					imageUrlSchema: z.string().nullable().optional(),
 					isAllowedImageUrlForWg: () => true,
-				},
-				'@/features/expenses/expense-constants': {
-					AMOUNT_MAX_CENTS: 100_000_000,
-					AMOUNT_MIN_CENTS: 1,
 				},
 				'@/features/expenses/expense-payments': {
 					hasCapturingExpensePayment: async () => capturing,
@@ -947,13 +980,16 @@ test.describe('expense integrity regressions', () => {
 			},
 			'@/core/validators/currency': { currencySchema: z.string() },
 			'@/features/expenses/expenses': expenseFeatures,
+			'@/features/expenses/paid-by-guard': loadTs(PAID_BY_GUARD),
 			'@/features/expenses/recurring-expenses': recurringHelpers,
 			'drizzle-orm': operators,
 		};
 		const collectionRoute = loadTs<{
 			PATCH: (req: Request, ctx: unknown) => Promise<Response>;
 		}>(path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/route.ts'), {
+			...EXPENSE_VALIDATION_MODULES,
 			...common,
+			'@/core/db/claimed-response': loadClaimedResponse(common),
 			'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
 			'@/core/guards/idempotency': {
 				ReplayCache: class {
@@ -1218,6 +1254,7 @@ test.describe('expense integrity regressions', () => {
 		const response = await loadTs<{
 			PATCH: (req: Request, ctx: unknown) => Promise<Response>;
 		}>(RECURRING_ROUTE, {
+			...EXPENSE_VALIDATION_MODULES,
 			'@/core/audit': { recordAuditEvent: async () => undefined },
 			'@/core/db': { db, recurringExpenses, wgMembers },
 			'@/core/http/api-errors': {
@@ -1240,7 +1277,7 @@ test.describe('expense integrity regressions', () => {
 				wgWriteLimiter: {},
 			},
 			'@/core/validators/currency': { currencySchema: z.string() },
-			'@/features/expenses/expenses': { checkPaidByGuard: () => ({ ok: true }) },
+			'@/features/expenses/paid-by-guard': { checkPaidByGuard: () => ({ ok: true }) },
 			'@/features/expenses/recurring-expenses': recurringHelpers,
 			'drizzle-orm': operators,
 		}).PATCH(
@@ -1292,6 +1329,7 @@ test.describe('expense integrity regressions', () => {
 				claimReplaySlotWithRetry: async () => ({ won: true }),
 				replayKey: () => 'replay-key',
 			},
+			'@/core/guards/admin': { isVerifiedWgAdmin: async () => false },
 			'@/core/guards/require-wg-member': {
 				requireWgMember: async () => ({
 					ok: true,
@@ -1379,6 +1417,9 @@ test.describe('expense integrity regressions', () => {
 			'@/core/idempotency-store': { RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60 },
 			'@/core/audit': { recordAuditEvent: async () => undefined },
 			'@/core/db': { db, expenseImports, expenseSplits: {}, expenses: {}, wgMembers: {} },
+			'@/core/db/claimed-response': loadClaimedResponse({
+				'@/core/db': { db, idempotencyResponses },
+			}),
 			'@/core/notifications/notification-dispatch': {
 				dispatchNotificationSafely: async () => ({ warning: null }),
 			},
@@ -1388,6 +1429,7 @@ test.describe('expense integrity regressions', () => {
 				withExpensePaymentLock: withPaymentLock,
 			},
 			'@/features/expenses/split-math': { settledAtForOwnShare: () => null },
+			'@/features/expenses/paid-by-guard': loadTs(PAID_BY_GUARD),
 		});
 		const foreignMemberId = '24ba761e-a429-45c3-a311-18e9a44b9be8';
 		const result = await commitImport.commitImport({
@@ -1395,6 +1437,7 @@ test.describe('expense integrity regressions', () => {
 			source: 'splitwise_csv',
 			importedByMemberId: CALLER_ID,
 			importedByName: 'Mina',
+			mayRecordForOthers: false,
 			expenses: [
 				{
 					parsed: {
@@ -1471,6 +1514,7 @@ test.describe('expense integrity regressions', () => {
 		const route = loadTs<{
 			POST: (req: Request, ctx: unknown) => Promise<Response>;
 		}>(path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/route.ts'), {
+			...EXPENSE_VALIDATION_MODULES,
 			'@/core/audit': { recordAuditEvent: async () => undefined },
 			'@/core/db': {
 				db: {
@@ -1480,6 +1524,9 @@ test.describe('expense integrity regressions', () => {
 				recurringExpenses,
 				wgMembers: {},
 			},
+			'@/core/db/claimed-response': loadClaimedResponse({
+				'@/core/db': { idempotencyResponses: {} },
+			}),
 			'@/core/db/transaction': {
 				TransactionAbort: class TransactionAbort extends Error {},
 			},
@@ -1534,7 +1581,11 @@ test.describe('expense integrity regressions', () => {
 				) => operation(tx),
 			},
 			'@/features/expenses/expenses': expenseFeatures,
-			'@/features/expenses/recurring-expenses': { parseRecurringSplits: JSON.parse },
+			'@/features/expenses/paid-by-guard': loadTs(PAID_BY_GUARD),
+			'@/features/expenses/recurring-expenses': {
+				parseRecurringSplits: JSON.parse,
+				serializeRecurringExpense: serializeRecurringExpenseStub,
+			},
 			'@/features/expenses/split-math': loadTs(SPLIT_MATH),
 			'drizzle-orm': {
 				and: (...conditions: unknown[]) => conditions,
@@ -1715,6 +1766,22 @@ test.describe('expense create replay atomic', () => {
 			insert: () => {
 				throw new Error('business insert escaped transaction');
 			},
+			delete: (table: unknown) => ({
+				where: (condition: Parameters<typeof dialect.sqlToQuery>[0]) => ({
+					returning: async () => {
+						if (table !== idempotencyResponses) throw new Error('unexpected delete');
+						const [, , lease] = dialect.sqlToQuery(condition).params;
+						if (
+							JSON.stringify(state.slot?.body) !== '{"_claimed":true}' ||
+							state.slot?.expiresAt.getTime() !== Date.parse(String(lease))
+						) {
+							return [];
+						}
+						state.slot = null;
+						return [{ scope: 'released' }];
+					},
+				}),
+			}),
 			update: (table: unknown) => ({
 				set: (values: {
 					responseBody: Parameters<typeof dialect.sqlToQuery>[0];
@@ -1783,7 +1850,10 @@ test.describe('expense create replay atomic', () => {
 						return { owned: true, resolve: () => undefined, reject: () => undefined };
 					}
 				},
-				claimReplaySlotWithRetry: async () => ({ won: true }),
+				claimReplaySlotWithRetry: async () => {
+					state.slot ??= { body: { _claimed: true }, expiresAt: new Date(Date.now() + 60_000) };
+					return { won: true };
+				},
 				replayKey: () => 'local-key',
 			},
 			'@/core/guards/require-wg-member': {
@@ -1825,13 +1895,15 @@ test.describe('expense create replay atomic', () => {
 				: 'src/app/api/wg/[code]/recurring-expenses/route.ts',
 		);
 		const route = loadTs<{ POST: (req: Request, ctx: unknown) => Promise<Response> }>(file, {
+			...EXPENSE_VALIDATION_MODULES,
 			...common,
+			'@/core/db/claimed-response': loadClaimedResponse(common),
 			'@/core/validators/image-url': {
 				imageUrlSchema: requireFromWeb('zod').z.string().nullable().optional(),
 				isAllowedImageUrlForWg: () => true,
 			},
+			'@/features/expenses/paid-by-guard': { checkPaidByGuard: () => ({ ok: true }) },
 			'@/features/expenses/expenses': {
-				checkPaidByGuard: () => ({ ok: true }),
 				findExpenseMemberIds: async () => new Set([MEMBER_ID]),
 				insertExpenseWithSplits: async (
 					tx: { addExpense: () => void },
@@ -1851,7 +1923,10 @@ test.describe('expense create replay atomic', () => {
 				},
 				resolveExpensePayer: (_payer: unknown, caller: string) => caller,
 			},
-			'@/features/expenses/recurring-expenses': { parseRecurringSplits: JSON.parse },
+			'@/features/expenses/recurring-expenses': {
+				parseRecurringSplits: JSON.parse,
+				serializeRecurringExpense: serializeRecurringExpenseStub,
+			},
 		});
 		const request = () =>
 			new Request('http://localhost', {
@@ -1884,7 +1959,8 @@ test.describe('expense create replay atomic', () => {
 			state.failBaseWrite = true;
 			expect((await post()).status).toBe(500);
 			expect(state.created).toEqual([]);
-			expect(state.slot?.body).toEqual({ _claimed: true });
+			// The confirmed rollback frees the claim, so the same-key retry runs at once.
+			expect(state.slot).toBeNull();
 			state.failBaseWrite = false;
 			expect((await post()).status, state.errors.join('\n')).toBe(200);
 			expect(state.created).toEqual([EXPENSE_ID]);
@@ -2137,6 +2213,7 @@ test.describe('finance failure regressions', () => {
 		const { PATCH } = loadTs<{
 			PATCH: (req: Request, params: { code: string; id: string }) => Promise<Response>;
 		}>('app/api/wg/[code]/recurring-expenses/[id]/route.ts', {
+			...EXPENSE_VALIDATION_MODULES,
 			'@/core/audit': { recordAuditEvent: async () => undefined },
 			'@/core/db': {
 				...schema,
@@ -2184,10 +2261,11 @@ test.describe('finance failure regressions', () => {
 			'@/core/guards/with-wg-route': { withWgRoute: (_label: string, handler: unknown) => handler },
 			'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }) },
 			'@/core/validators/currency': { currencySchema: requireFromWeb('zod').z.string() },
-			'@/features/expenses/expenses': { checkPaidByGuard: () => ({ ok: true }) },
+			'@/features/expenses/paid-by-guard': { checkPaidByGuard: () => ({ ok: true }) },
 			'@/features/expenses/recurring-expenses': {
 				parseRecurringSplits: JSON.parse,
 				recurringSplitsMatchAmount: () => true,
+				serializeRecurringExpense: serializeRecurringExpenseStub,
 			},
 		});
 		const response = await PATCH(

@@ -6,22 +6,32 @@ import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-const source = path.join(process.cwd(), 'src/core/offline/offline-queue.ts');
-const module = { exports: {} };
-const compiled = transpileModule(readFileSync(source, 'utf8'), {
-	compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-}).outputText;
-new Function('require', 'module', 'exports', compiled)(
-	(name) =>
-		name === '@/core/utils/time'
-			? {
-					parseTimestamp: (value) =>
-						Number.isFinite(Date.parse(value)) ? Date.parse(value) : null,
-				}
-			: requireFromWeb(name),
-	module,
-	module.exports,
+
+function loadTs(file, resolve) {
+	const loaded = { exports: {} };
+	const compiled = transpileModule(readFileSync(file, 'utf8'), {
+		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
+	}).outputText;
+	new Function('require', 'module', 'exports', compiled)(resolve, loaded, loaded.exports);
+	return loaded.exports;
+}
+
+const errorCodes = loadTs(path.join(process.cwd(), 'src/core/http/error-codes.ts'), requireFromWeb);
+const failureCopy = loadTs(
+	path.join(process.cwd(), 'src/core/offline/offline-failure-copy.ts'),
+	(name) => (name === '@/core/http/error-codes' ? errorCodes : requireFromWeb(name)),
 );
+const module = {
+	exports: loadTs(path.join(process.cwd(), 'src/core/offline/offline-queue.ts'), (name) => {
+		if (name === '@/core/utils/time') {
+			return {
+				parseTimestamp: (value) => (Number.isFinite(Date.parse(value)) ? Date.parse(value) : null),
+			};
+		}
+		if (name === './offline-failure-copy') return failureCopy;
+		return requireFromWeb(name);
+	}),
+};
 
 const {
 	createQueuedAbsence,
@@ -178,4 +188,19 @@ test('a rate-limited replay is explained as retried automatically, not as a fail
 	]) {
 		assert.equal(explainOfflineActionFailure(status, error).title, 'Zu viele Anfragen');
 	}
+});
+
+test('a feature-specific rate-limit code is explained as an automatic retry too', () => {
+	assert.equal(explainOfflineActionFailure(503, 'import_rate_limited').title, 'Zu viele Anfragen');
+});
+
+test('known codes win over the status bucket; unknown codes fall back to it', () => {
+	assert.equal(explainOfflineActionFailure(404, 'chore_not_found').title, 'Putzplan-Aufgabe fehlt');
+	assert.equal(explainOfflineActionFailure(400, 'title_invalid').title, 'Eintrag prüfen');
+	assert.equal(explainOfflineActionFailure(404, 'something_new').title, 'Ziel nicht mehr gefunden');
+	assert.equal(
+		explainOfflineActionFailure(400, 'constructor').title,
+		'Synchronisierung fehlgeschlagen',
+	);
+	assert.equal(explainOfflineActionFailure(500).title, 'Server gerade nicht bereit');
 });

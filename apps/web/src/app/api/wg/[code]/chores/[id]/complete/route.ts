@@ -1,13 +1,10 @@
 import { recordAuditEvent } from '@/core/audit';
+import { announcements, choreCompletions, chores, db, memberAbsences, wgMembers } from '@/core/db';
 import {
-	announcements,
-	choreCompletions,
-	chores,
-	db,
-	idempotencyResponses,
-	memberAbsences,
-	wgMembers,
-} from '@/core/db';
+	completeClaimedResponse,
+	lockClaimedResponse,
+	releaseClaimedResponse,
+} from '@/core/db/claimed-response';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import {
@@ -18,13 +15,16 @@ import {
 } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, notFound, serverError, tooMany } from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
 import {
-	RESPONSE_REPLAY_TTL_SECONDS,
-	getCachedResponse,
-	readIdempotencyKey,
-} from '@/core/idempotency-store';
+	badRequest,
+	conflict,
+	notFound,
+	serverError,
+	tooMany,
+	unreadableJsonBody,
+} from '@/core/http/api-errors';
+import { readJsonLimited } from '@/core/http/read-json';
+import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { startOfBerlinDay } from '@/core/utils/berlin-day';
@@ -34,38 +34,19 @@ import {
 	computeOpenGapsByMember,
 } from '@/features/chores/chore-fairness';
 import { computeNextDueAt, isLateCompletion } from '@/features/chores/chore-recurrence';
-import { and, eq, gt, gte, isNull, sql } from 'drizzle-orm';
+import { and, eq, gte, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-
-const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
 type ChoreCompleteResponseBody = { chore: unknown };
 
-const choreCompleteReplay = new ReplayCache<ChoreCompleteResponseBody>(IDEMPOTENCY_TTL_MS);
+const choreCompleteReplay = new ReplayCache<ChoreCompleteResponseBody>();
 
 function choreCompleteIdempotencyScope(wgId: string, memberId: string, choreId: string): string {
 	return `chores-complete:${wgId}:${memberId}:${choreId}`;
 }
 
-async function releaseChoreCompleteClaim(
-	scope: string,
-	key: string,
-	expiresAt: Date,
-): Promise<void> {
-	try {
-		await db
-			.delete(idempotencyResponses)
-			.where(
-				and(
-					eq(idempotencyResponses.scope, scope),
-					eq(idempotencyResponses.key, key),
-					eq(idempotencyResponses.expiresAt, expiresAt),
-					sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-				),
-			);
-	} catch (err) {
-		logApiError('[chore complete POST] claim release failed', err);
-	}
+function isChoreCompleteResponseBody(body: unknown): body is ChoreCompleteResponseBody {
+	return body !== null && typeof body === 'object' && !Array.isArray(body) && 'chore' in body;
 }
 
 export const POST = withWgRoute<{ id: string }>(
@@ -112,8 +93,8 @@ export const POST = withWgRoute<{ id: string }>(
 		let raw: unknown;
 		try {
 			raw = await readJsonLimited(req);
-		} catch {
-			return badRequest('invalid_json');
+		} catch (err) {
+			return unreadableJsonBody(err);
 		}
 		const body =
 			raw !== null && typeof raw === 'object' && !Array.isArray(raw)
@@ -158,27 +139,6 @@ export const POST = withWgRoute<{ id: string }>(
 					replayReservation?.resolve(slot.cached);
 					return NextResponse.json(slot.cached);
 				}
-				const [claimed] = await db
-					.select({
-						body: idempotencyResponses.responseBody,
-						expiresAt: idempotencyResponses.expiresAt,
-					})
-					.from(idempotencyResponses)
-					.where(
-						and(eq(idempotencyResponses.scope, idemScope), eq(idempotencyResponses.key, idemKey)),
-					)
-					.limit(1);
-				if (!claimed) throw new TransactionAbort('idempotency_claim_missing');
-				if (
-					!claimed.body ||
-					typeof claimed.body !== 'object' ||
-					Array.isArray(claimed.body) ||
-					Object.keys(claimed.body).length !== 1 ||
-					(claimed.body as { _claimed?: unknown })._claimed !== true
-				) {
-					throw new TransactionAbort('idempotency_claim_invalid');
-				}
-				claimedLeaseExpiresAt = claimed.expiresAt;
 			}
 
 			// Anchor next-due on the previous due (clamped to "now" if overdue) so
@@ -295,39 +255,14 @@ export const POST = withWgRoute<{ id: string }>(
 			try {
 				txResult = await withTransaction(async (tx) => {
 					if (idemScope && idemKey) {
-						const [slot] = await tx
-							.select({
-								body: idempotencyResponses.responseBody,
-								expiresAt: idempotencyResponses.expiresAt,
-							})
-							.from(idempotencyResponses)
-							.where(
-								and(
-									eq(idempotencyResponses.scope, idemScope),
-									eq(idempotencyResponses.key, idemKey),
-								),
-							)
-							.limit(1)
-							.for('update');
-						if (!slot) throw new TransactionAbort('idempotency_claim_missing');
-						if (
-							slot.body &&
-							typeof slot.body === 'object' &&
-							!Array.isArray(slot.body) &&
-							'chore' in slot.body
-						) {
-							return { replayed: true as const, body: slot.body as ChoreCompleteResponseBody };
-						}
-						if (
-							!slot.body ||
-							typeof slot.body !== 'object' ||
-							Array.isArray(slot.body) ||
-							Object.keys(slot.body).length !== 1 ||
-							(slot.body as { _claimed?: unknown })._claimed !== true
-						) {
-							throw new TransactionAbort('idempotency_claim_invalid');
-						}
-						claimedLeaseExpiresAt = slot.expiresAt;
+						const claim = await lockClaimedResponse(
+							tx,
+							idemScope,
+							idemKey,
+							isChoreCompleteResponseBody,
+						);
+						if (claim.kind === 'completed') return { replayed: true as const, body: claim.body };
+						claimedLeaseExpiresAt = claim.leaseExpiresAt;
 					}
 					const updatedRows = await tx
 						.update(chores)
@@ -375,45 +310,33 @@ export const POST = withWgRoute<{ id: string }>(
 						if (!claimedLeaseExpiresAt) {
 							throw new TransactionAbort('idempotency_claim_missing');
 						}
-						let replayRows: Array<{ scope: string }>;
-						try {
-							replayRows = await tx
-								.update(idempotencyResponses)
-								.set({
-									responseBody: { chore: updated },
-									expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
-								})
-								.where(
-									and(
-										eq(idempotencyResponses.scope, idemScope),
-										eq(idempotencyResponses.key, idemKey),
-										eq(idempotencyResponses.expiresAt, claimedLeaseExpiresAt),
-										gt(idempotencyResponses.expiresAt, new Date()),
-										sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-									),
-								)
-								.returning({ scope: idempotencyResponses.scope });
-						} catch (err) {
-							logApiError('[chore complete POST] replay write failed', err);
+						await completeClaimedResponse(
+							tx,
+							idemScope,
+							idemKey,
+							{ chore: updated },
+							claimedLeaseExpiresAt,
+						).catch((err: unknown) => {
+							if (!(err instanceof TransactionAbort)) {
+								logApiError('[chore complete POST] replay write failed', err);
+							}
 							throw new TransactionAbort('idempotency_response_write_failed');
-						}
-						if (replayRows.length !== 1) {
-							throw new TransactionAbort('idempotency_response_write_failed');
-						}
+						});
 					}
 
 					return { raced: false as const, chore: updated };
 				});
 			} catch (err) {
+				replayReservation?.reject(err);
+				// Only the still-unfinished placeholder of this lease is removed, so this
+				// is a no-op when the write committed before the failure.
+				if (idemScope && idemKey && claimedLeaseExpiresAt) {
+					await releaseClaimedResponse(idemScope, idemKey, claimedLeaseExpiresAt);
+				}
 				if (err instanceof TransactionAbort) {
-					replayReservation?.reject(err);
-					if (idemScope && idemKey && claimedLeaseExpiresAt) {
-						await releaseChoreCompleteClaim(idemScope, idemKey, claimedLeaseExpiresAt);
-					}
 					logApiError('[chore complete POST] completion insert failed', err);
 					return serverError(err.code);
 				}
-				replayReservation?.reject(err);
 				logApiError('[chore complete POST] transaction failed', err);
 				return serverError('completion_insert_failed');
 			}
@@ -426,7 +349,7 @@ export const POST = withWgRoute<{ id: string }>(
 				const err = new Error('chore_already_completed');
 				replayReservation?.reject(err);
 				if (idemScope && idemKey && claimedLeaseExpiresAt) {
-					await releaseChoreCompleteClaim(idemScope, idemKey, claimedLeaseExpiresAt);
+					await releaseClaimedResponse(idemScope, idemKey, claimedLeaseExpiresAt);
 				}
 				// A concurrent DELETE also loses the CAS: report it as gone, not as "already done".
 				const [stillThere] = await db

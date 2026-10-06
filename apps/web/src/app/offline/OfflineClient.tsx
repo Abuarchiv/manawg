@@ -23,6 +23,7 @@ import {
 	getOfflineActionSummary,
 } from '@/core/offline/offline-queue';
 import { parseTimestamp } from '@/core/utils/time';
+import { isClientFixtureMode } from '@/shared/lib/fixture-mode';
 import { type KnownWg, getKnownWgs } from '@/shared/lib/identity';
 import { ArrowRight, CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
 import Link from 'next/link';
@@ -96,15 +97,8 @@ async function getAccountMemberships(signal?: AbortSignal): Promise<AccountMembe
 	);
 }
 
-function isE2EFixtureMode(): boolean {
-	return (
-		process.env.NEXT_PUBLIC_DB_DOWN === 'true' &&
-		process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE === 'true'
-	);
-}
-
 async function getLocalAuthUserId(): Promise<string | null> {
-	if (isE2EFixtureMode()) return null;
+	if (isClientFixtureMode()) return null;
 	try {
 		const { data, error } = await createSupabaseBrowserClient().auth.getSession();
 		return error ? null : (data.session?.user.id ?? null);
@@ -132,7 +126,7 @@ export function OfflineClient() {
 		const generation = ++refreshGenerationRef.current;
 		const current = () => generation === refreshGenerationRef.current;
 		const browserOffline = typeof navigator !== 'undefined' && !navigator.onLine;
-		const fixtureMode = isE2EFixtureMode();
+		const fixtureMode = isClientFixtureMode();
 		const localAuthUserId = await getLocalAuthUserId();
 		if (!current()) return [];
 		setOnline(!browserOffline);
@@ -194,7 +188,7 @@ export function OfflineClient() {
 		window.addEventListener('manawg:offline-queue', refreshOnEvent);
 		window.addEventListener('storage', refreshOnEvent);
 		let unsubscribe = () => {};
-		if (!isE2EFixtureMode()) {
+		if (!isClientFixtureMode()) {
 			try {
 				const { data } = createSupabaseBrowserClient().auth.onAuthStateChange(onAuthStateChange);
 				unsubscribe = () => data.subscription.unsubscribe();

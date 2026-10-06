@@ -248,7 +248,7 @@ function harness({
 		'@/core/db/transaction': {
 			TransactionAbort: class TransactionAbort extends Error {},
 		},
-		'@/core/infra/cron-auth': { verifyCronSecret: () => true },
+		'@/core/infra/cron-auth': { requireCronSecret: () => null },
 		'@/core/infra/observability': {
 			logApiError: (...args) => state.loggedErrors.push(args),
 			withCronLogging: (_name, handler) => handler,

@@ -231,7 +231,7 @@ export default function AbosPage() {
 				method: 'PATCH',
 				memberId: identity.memberId,
 				memberToken: identity.memberToken,
-				body: JSON.stringify(values),
+				body: JSON.stringify({ ...values, expectedNextDueAt: previousAbo.nextDueAt }),
 			},
 		);
 		if (res.ok) {
@@ -243,6 +243,11 @@ export default function AbosPage() {
 			updateAbos((current) => upsertAbo(current, previousAbo));
 			const message = aboSaveErrorMessage(res.error, 'aktualisiert');
 			setNoticeMessage('error', message);
+			if (res.status === 409 && res.error === 'recurring_expense_changed') {
+				// The form holds the old due date; close it so the next edit starts from fresh data.
+				setEditing(null);
+				void load(false);
+			}
 		}
 		setSubmitting(false);
 	}

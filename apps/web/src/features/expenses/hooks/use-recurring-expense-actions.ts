@@ -15,6 +15,7 @@ import {
 	createQueuedRecurring,
 } from '@/core/offline/offline-queue';
 import { parseEuroAmount } from '@/core/utils/amount';
+import { todayAtLocalNoon } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import { addMonths, parseTimestamp } from '@/core/utils/time';
 import type { ExpenseFormFieldErrors } from '@/features/expenses/components/ausgaben/ExpenseFormSection';
@@ -79,6 +80,7 @@ export function useRecurringExpenseActions(
 		fingerprint: string;
 		key: string;
 		nextDueAt: string;
+		anchorAt?: string;
 		splits: DebtorShare[];
 		queued?: boolean;
 	} | null>(null);
@@ -187,13 +189,22 @@ export function useRecurringExpenseActions(
 			);
 			return;
 		}
+		// A new template starts today and is first due one interval later. The
+		// unclamped start day is sent as the anchor, so a template begun on the
+		// 31st keeps billing on month ends instead of sticking to the 28th.
+		const startsAt =
+			editingRecurringExpense || queuedNextDueAt !== null
+				? null
+				: reusePendingRequest && pendingRequest
+					? (pendingRequest.anchorAt ?? null)
+					: todayAtLocalNoon().toISOString();
 		const nextDueAt = editingRecurringExpense
 			? new Date(editingRecurringExpense.nextDueAt)
 			: queuedNextDueAt !== null
 				? new Date(queuedNextDueAt)
 				: reusePendingRequest && pendingRequest
 					? new Date(pendingRequest.nextDueAt)
-					: addMonths(new Date(), recurringIntervalMonths);
+					: addMonths(new Date(startsAt ?? Date.now()), recurringIntervalMonths);
 		const idempotencyKey = editingRecurringExpense
 			? null
 			: reusePendingRequest && pendingRequest
@@ -208,6 +219,7 @@ export function useRecurringExpenseActions(
 				fingerprint,
 				key: idempotencyKey,
 				nextDueAt: nextDueAt.toISOString(),
+				...(startsAt ? { anchorAt: startsAt } : {}),
 				splits,
 			};
 		}
@@ -229,6 +241,10 @@ export function useRecurringExpenseActions(
 				paidByMemberId,
 				intervalMonths: recurringIntervalMonths,
 				nextDueAt: nextDueAt.toISOString(),
+				...(editingRecurringExpense
+					? { expectedNextDueAt: editingRecurringExpense.nextDueAt }
+					: {}),
+				...(startsAt && !editingRecurringExpense ? { anchorAt: startsAt } : {}),
 				splits,
 			}),
 		});
@@ -247,6 +263,7 @@ export function useRecurringExpenseActions(
 					paidByMemberId,
 					intervalMonths: recurringIntervalMonths,
 					nextDueAt: nextDueAt.toISOString(),
+					...(startsAt ? { anchorAt: startsAt } : {}),
 					splits,
 				});
 				if ((await enqueueOfflineAction(queued)) === 0) {
@@ -303,6 +320,7 @@ export function useRecurringExpenseActions(
 				return;
 			}
 			form.setFormError(recurringTemplateSaveErrorMessage(res.error));
+			if (res.status === 409 && res.error === 'recurring_expense_changed') void reload();
 			finishSaving();
 			return;
 		}

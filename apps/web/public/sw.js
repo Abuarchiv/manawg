@@ -11,8 +11,14 @@
 // served from cache, and the app has its own offline queue for writes.
 //
 // Bump VERSION to evict every cached shell asset on the next activate.
-const VERSION = 'manawg-app-v5-static-routes';
+const VERSION = 'manawg-app-v6-runtime-cap';
 const SHELL_CACHE = `${VERSION}-shell`;
+// Hashed /_next/static chunks fetched while browsing. sw.js itself does not
+// change between deploys, so nothing would ever evict them; the cap keeps the
+// cache from growing with every release. The offline shell's own chunks live in
+// SHELL_CACHE and are not subject to it.
+const RUNTIME_CACHE = `${VERSION}-runtime`;
+const MAX_RUNTIME_ENTRIES = 200;
 const PUBLIC_DOCUMENT_PATHS = new Set(['/', '/offline']);
 
 const SHELL_ASSETS = [
@@ -29,6 +35,20 @@ const cacheResponse = (request, response) => {
 	caches
 		.open(SHELL_CACHE)
 		.then((cache) => cache.put(request, response))
+		.catch(() => undefined);
+};
+
+// Cache keys keep insertion order, so the oldest entries go first.
+const cacheRuntimeAsset = (request, response) => {
+	if (response.ok === false) return;
+	caches
+		.open(RUNTIME_CACHE)
+		.then(async (cache) => {
+			await cache.put(request, response);
+			const keys = await cache.keys();
+			const excess = keys.length - MAX_RUNTIME_ENTRIES;
+			if (excess > 0) await Promise.all(keys.slice(0, excess).map((key) => cache.delete(key)));
+		})
 		.catch(() => undefined);
 };
 
@@ -113,7 +133,7 @@ self.addEventListener('activate', (event) => {
 			.then((keys) =>
 				Promise.all(
 					keys
-						.filter((k) => k.startsWith('manawg-app-') && k !== SHELL_CACHE)
+						.filter((k) => k.startsWith('manawg-app-') && k !== SHELL_CACHE && k !== RUNTIME_CACHE)
 						.map((k) => caches.delete(k)),
 				),
 			)
@@ -248,8 +268,7 @@ self.addEventListener('fetch', (event) => {
 			matchFromCache(request).then((cached) => {
 				if (cached) return cached;
 				return fetch(request).then((res) => {
-					const copy = res.clone();
-					cacheResponse(request, copy);
+					cacheRuntimeAsset(request, res.clone());
 					return res;
 				});
 			}),

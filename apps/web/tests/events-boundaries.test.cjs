@@ -831,3 +831,20 @@ test('today reminder selection keeps current all-day spans and excludes stale ev
 		'tomorrow',
 	);
 });
+
+test('a yearly 29 February event falls on 28 February in common years', () => {
+	const event = {
+		id: 'birthday',
+		title: 'Geburtstag',
+		description: null,
+		startsAt: '2028-02-29T00:00:00.000Z',
+		endsAt: '2028-02-29T00:00:00.000Z',
+		allDay: true,
+		location: null,
+		recurrence: 'FREQ=YEARLY',
+	};
+	const starts = expandRecurrence(event, '2028-01-01', '2033-01-01').map((occurrence) =>
+		occurrence.startsAt.slice(0, 10),
+	);
+	assert.deepEqual(starts, ['2028-02-29', '2029-02-28', '2030-02-28', '2031-02-28', '2032-02-29']);
+});

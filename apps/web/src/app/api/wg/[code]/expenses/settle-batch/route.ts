@@ -12,6 +12,7 @@ import {
 	forbidden,
 	requireVerifiedMember,
 	tooMany,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { claimIdempotencySlot, readIdempotencyKey } from '@/core/idempotency-store';
@@ -223,8 +224,8 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 
 	const parsed = parseSettlementConfirmation(raw);

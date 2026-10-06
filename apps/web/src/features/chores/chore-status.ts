@@ -1,5 +1,5 @@
-import { berlinDayKey } from '@/core/utils/berlin-day';
-import { MS_PER_DAY, parseTimestamp } from '@/core/utils/time';
+import { berlinCalendarDayDistance } from '@/core/utils/berlin-day';
+import { parseTimestamp } from '@/core/utils/time';
 
 type ChoreStatusState = 'planned' | 'due' | 'overdue' | 'unknown';
 type ChoreStatusTone = 'ok' | 'soon' | 'overdue';
@@ -38,18 +38,9 @@ interface ChorePlanHealth {
 	nextLabel: string;
 }
 
-function berlinCalendarDayMs(key: string): number {
-	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
-	if (!match) throw new Error(`Unexpected Berlin day key: ${key}`);
-	return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-}
-
 function calendarDayDistance(iso: string, now: number): number | null {
 	const dueAt = parseTimestamp(iso);
-	if (dueAt === null) return null;
-	const dueKey = berlinDayKey(new Date(dueAt));
-	const nowKey = berlinDayKey(new Date(now));
-	return (berlinCalendarDayMs(dueKey) - berlinCalendarDayMs(nowKey)) / MS_PER_DAY;
+	return dueAt === null ? null : berlinCalendarDayDistance(new Date(now), new Date(dueAt));
 }
 
 export function getChoreStatus(iso: string, now = Date.now()): ChoreStatus {

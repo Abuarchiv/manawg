@@ -10,6 +10,9 @@ interface WgExportInput {
 	chores: ExportRow[];
 	absences: ExportRow[];
 	announcements: ExportRow[];
+	announcementComments: ExportRow[];
+	events: ExportRow[];
+	chatMessages: ExportRow[];
 	auditEvents: ExportRow[];
 }
 
@@ -25,6 +28,9 @@ export interface WgExport {
 		chores: ExportRow[];
 		absences: ExportRow[];
 		announcements: ExportRow[];
+		announcementComments: ExportRow[];
+		events: ExportRow[];
+		chatMessages: ExportRow[];
 		auditEvents: ExportRow[];
 	};
 }
@@ -46,6 +52,9 @@ const SECTION_LABELS: Record<ExportSectionKey, string> = {
 	chores: 'Putzplan',
 	absences: 'Abwesenheiten',
 	announcements: 'Pinnwand',
+	announcementComments: 'Pinnwand-Kommentare',
+	events: 'Termine',
+	chatMessages: 'Chat',
 	auditEvents: 'WG-Änderungen',
 };
 
@@ -79,10 +88,34 @@ const SECTION_HEADERS: Record<ExportSectionKey, string[]> = {
 	chores: ['id', 'title', 'assignedName', 'nextDueAt', 'intervalDays'],
 	absences: ['id', 'memberName', 'startDate', 'endDate', 'reason', 'createdAt'],
 	announcements: ['id', 'content', 'kind', 'status', 'authorName', 'imageUrl', 'createdAt'],
+	announcementComments: ['id', 'announcementId', 'authorName', 'content', 'createdAt'],
+	events: [
+		'id',
+		'title',
+		'description',
+		'startsAt',
+		'endsAt',
+		'allDay',
+		'location',
+		'recurrence',
+		'createdByName',
+		'createdAt',
+	],
+	chatMessages: [
+		'id',
+		'createdAt',
+		'senderName',
+		'kind',
+		'body',
+		'imageUrl',
+		'editedAt',
+		'deletedAt',
+		'replyToMessageId',
+	],
 	auditEvents: ['id', 'eventType', 'entityType', 'memberName', 'summary', 'createdAt'],
 };
 
-const EXPORT_SECTION_KEYS = Object.keys(SECTION_LABELS) as ExportSectionKey[];
+export const EXPORT_SECTION_KEYS = Object.keys(SECTION_LABELS) as readonly ExportSectionKey[];
 
 export function isExportSectionKey(value: string | null): value is ExportSectionKey {
 	return EXPORT_SECTION_KEYS.includes(value as ExportSectionKey);
@@ -101,6 +134,9 @@ export function buildWgExport(input: WgExportInput, now = Date.now()): WgExport 
 			chores: input.chores,
 			absences: input.absences,
 			announcements: input.announcements,
+			announcementComments: input.announcementComments,
+			events: input.events,
+			chatMessages: input.chatMessages,
 			auditEvents: input.auditEvents,
 		},
 	};
@@ -163,11 +199,22 @@ export function getExportSectionHeaders(section: ExportSectionKey): string[] {
 	return SECTION_HEADERS[section];
 }
 
+export type ExportSectionCounts = Record<ExportSectionKey, number>;
+
 export function buildExportSummary(data: WgExport): ExportSectionSummary[] {
+	return buildExportSummaryFromCounts(
+		Object.fromEntries(
+			EXPORT_SECTION_KEYS.map((key) => [key, data.sections[key].length]),
+		) as ExportSectionCounts,
+	);
+}
+
+/** Summary from `GET /export?summary=counts`, without downloading every row. */
+export function buildExportSummaryFromCounts(counts: ExportSectionCounts): ExportSectionSummary[] {
 	return EXPORT_SECTION_KEYS.map((key) => ({
 		key,
 		label: SECTION_LABELS[key],
-		count: data.sections[key].length,
+		count: counts[key] ?? 0,
 	}));
 }
 

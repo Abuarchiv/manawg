@@ -10,6 +10,7 @@ import { PgDialect } from 'drizzle-orm/pg-core';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 import { idempotencyResponses } from '../src/core/db/schema';
 import { RESPONSE_REPLAY_TTL_SECONDS } from '../src/core/offline/replay-retention';
+import { loadClaimedResponse } from '../tests/support/claimed-response.cjs';
 import {
 	FIXTURE_WG,
 	dismissOnboarding,
@@ -30,7 +31,12 @@ test.describe('import replay atomic', () => {
 	const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 	const importCommitPath = path.join(process.cwd(), 'src/features/expenses/import-commit.ts');
 	const expenseImports = { id: 'expense-import-id' };
-	const idempotencyResponses = { scope: 'scope', key: 'key', responseBody: 'response-body' };
+	const idempotencyResponses = {
+		scope: 'scope',
+		key: 'key',
+		responseBody: 'response-body',
+		expiresAt: 'expires-at',
+	};
 
 	function loadCommitImport(overrides: Record<string, unknown>) {
 		const source = transpileModule(readFileSync(importCommitPath, 'utf8'), {
@@ -52,6 +58,7 @@ test.describe('import replay atomic', () => {
 	function harness(initialSlot: unknown) {
 		const state = {
 			slot: initialSlot,
+			claimExpiresAt: new Date(Date.now() + 15 * 60_000),
 			imports: 0,
 			notices: 0,
 			audits: 0,
@@ -77,7 +84,10 @@ test.describe('import replay atomic', () => {
 					from: () => ({
 						where: () => ({
 							limit: () => ({
-								for: async () => (slotDraft === undefined ? [] : [{ body: slotDraft }]),
+								for: async () =>
+									slotDraft === undefined
+										? []
+										: [{ body: slotDraft, expiresAt: state.claimExpiresAt }],
 							}),
 						}),
 					}),
@@ -113,7 +123,7 @@ test.describe('import replay atomic', () => {
 				release();
 			}
 		};
-		const commitImport = loadCommitImport({
+		const mocks: Record<string, unknown> = {
 			'@/core/activity-feed': { postSystemNotice: async () => state.notices++ },
 			'@/core/audit': { recordAuditEvent: async () => state.audits++ },
 			'@/core/db': {
@@ -124,7 +134,6 @@ test.describe('import replay atomic', () => {
 				idempotencyResponses,
 				wgMembers: {},
 			},
-			'@/core/idempotency-store': { RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60 },
 			'@/core/notifications/notification-dispatch': {
 				dispatchNotificationSafely: async () => {
 					state.dispatches += 1;
@@ -137,6 +146,7 @@ test.describe('import replay atomic', () => {
 				withExpensePaymentLock,
 			},
 			'@/features/expenses/split-math': { settledAtForOwnShare: () => null },
+			'@/features/expenses/paid-by-guard': { checkPaidByGuard: () => ({ ok: true }) },
 			'drizzle-orm': {
 				and: (...parts: unknown[]) => parts,
 				eq: (...parts: unknown[]) => parts,
@@ -144,7 +154,9 @@ test.describe('import replay atomic', () => {
 				isNull: (part: unknown) => part,
 				sql: () => null,
 			},
-		});
+		};
+		mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
+		const commitImport = loadCommitImport(mocks);
 		return { state, commitImport };
 	}
 
@@ -381,6 +393,7 @@ test.describe('import warning persistence', () => {
 					claimReplaySlotWithRetry: async () => ({ won: true }),
 					replayKey: () => 'replay-key',
 				},
+				'@/core/guards/admin': { isVerifiedWgAdmin: async () => false },
 				'@/core/guards/require-wg-member': {
 					requireWgMember: async () => ({
 						ok: true,

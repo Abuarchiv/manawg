@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
+import { loadClaimedResponse } from './support/claimed-response.cjs';
 
 const webDir = path.resolve(import.meta.dirname, '..');
 const requireFromWeb = createRequire(path.join(webDir, 'package.json'));
@@ -135,6 +136,24 @@ function harness({
 				query: {
 					wgs: { findFirst: async () => (state.shareCodeExhausted ? { id: 'existing' } : null) },
 				},
+				delete: (table) => ({
+					where: (condition) => ({
+						returning: async () => {
+							assert.equal(table, idempotencyResponses);
+							const lease = condition.parts.find(
+								(part) => part?.kind === 'eq' && part.parts[0] === idempotencyResponses.expiresAt,
+							)?.parts[1];
+							if (
+								state.slot?.body?._claimed !== true ||
+								state.slot.expiresAt.getTime() !== lease?.getTime()
+							) {
+								return [];
+							}
+							state.slot = null;
+							return [{ scope: 'released' }];
+						},
+					}),
+				}),
 			},
 			idempotencyResponses,
 			wgMembers,
@@ -190,8 +209,10 @@ function harness({
 			gt: (column, value) => condition('gt', column, value),
 			sql: () => condition('sql'),
 		},
+		'@/shared/lib/limits': { MEMBER_NAME_MAX_LENGTH: 80, WG_NAME_MAX_LENGTH: 100 },
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	};
+	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
 	const source = readFileSync(path.join(webDir, 'src/app/api/wg/route.ts'), 'utf8');
 	const compiled = transpileModule(source, {
 		compilerOptions: {
@@ -247,10 +268,10 @@ for (const failAt of ['member', 'replay']) {
 		assert.equal(response.status, 500);
 		assert.equal(state.wgs.length, 0);
 		assert.equal(state.members.length, 0);
-		assert.deepEqual(state.slot.body, { _claimed: true });
+		// The rolled-back request frees its claim, so the same-key retry runs at once.
+		assert.equal(state.slot, null);
 		assert.equal(state.audits, 0);
 		state.failAt = null;
-		state.slot.expiresAt = new Date(0);
 		const retry = await post();
 		assert.equal(retry.status, 200);
 		assert.equal(state.wgs.length, 1);

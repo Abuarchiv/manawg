@@ -1,10 +1,13 @@
-import { db, idempotencyResponses, shoppingItems } from '@/core/db';
-import { completeClaimedResponse } from '@/core/db/claimed-response';
+import { shoppingItems } from '@/core/db';
+import {
+	completeClaimedResponse,
+	lockClaimedResponse,
+	releaseClaimedResponse,
+} from '@/core/db/claimed-response';
 import type { ShoppingItem } from '@/core/db/schema';
 import type { DbTransaction } from '@/core/db/transaction';
+import { TransactionAbort } from '@/core/db/transaction-abort';
 import type { ReplayReservation } from '@/core/guards/idempotency';
-import { RESPONSE_REPLAY_TTL_SECONDS } from '@/core/offline/replay-retention';
-import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -114,7 +117,8 @@ export interface ShoppingCreateInput {
 	name: string;
 	quantity: string | null;
 	bought: boolean;
-	replay?: { scope: string; key: string };
+	/** The claim locked by `lockShoppingCreateClaim` in the same transaction. */
+	replay?: { scope: string; key: string; leaseExpiresAt: Date };
 }
 
 export class ShoppingCreateTransactionRollback extends Error {
@@ -199,27 +203,52 @@ export async function withShoppingCreatePostCommitFallback(
 	}
 }
 
-export function persistShoppingCreateReplayResponse(
+export async function persistShoppingCreateReplayResponse(
 	tx: DbTransaction,
 	scope: string,
 	key: string,
 	response: ShoppingCreateReplayResponse,
+	leaseExpiresAt: Date,
 ): Promise<boolean> {
-	return completeClaimedResponse(tx, scope, key, response);
+	try {
+		await completeClaimedResponse(tx, scope, key, response, leaseExpiresAt);
+		return true;
+	} catch (err) {
+		if (err instanceof TransactionAbort && err.code === 'idempotency_claim_missing') return false;
+		throw err;
+	}
 }
 
-export async function releaseShoppingCreateClaim(scope: string, key: string): Promise<boolean> {
-	const rows = await db
-		.delete(idempotencyResponses)
-		.where(
-			and(
-				eq(idempotencyResponses.scope, scope),
-				eq(idempotencyResponses.key, key),
-				sql`${idempotencyResponses.responseBody} @> '{"_claimed": true}'::jsonb`,
-			),
-		)
-		.returning({ key: idempotencyResponses.key });
-	return rows.length > 0;
+export function releaseShoppingCreateClaim(
+	scope: string,
+	key: string,
+	leaseExpiresAt: Date,
+): Promise<boolean> {
+	return releaseClaimedResponse(scope, key, leaseExpiresAt);
+}
+
+function isShoppingCreateReplayable(value: unknown): value is unknown {
+	return normalizeShoppingCreateReplayResponse(value) !== null;
+}
+
+/**
+ * Lock the create claim before inserting. A request whose lease ran out while
+ * another one took the key over and saved its item replays that response
+ * instead of inserting a second item.
+ */
+export async function lockShoppingCreateClaim(
+	tx: DbTransaction,
+	scope: string,
+	key: string,
+): Promise<
+	| { kind: 'claimed'; leaseExpiresAt: Date }
+	| { kind: 'completed'; response: ShoppingCreateReplayResponse }
+> {
+	const claim = await lockClaimedResponse(tx, scope, key, isShoppingCreateReplayable);
+	if (claim.kind === 'claimed') return claim;
+	const response = normalizeShoppingCreateReplayResponse(claim.body);
+	if (!response) throw new TransactionAbort('idempotency_claim_invalid');
+	return { kind: 'completed', response };
 }
 
 export async function handleShoppingCreateTransactionFailure(
@@ -255,19 +284,13 @@ export async function insertShoppingItemWithReplay(
 		status: 200,
 		body: { item, warning: 'notification_delivery_unknown' },
 	};
-	const expiresAt = new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000);
-	await tx
-		.insert(idempotencyResponses)
-		.values({
-			scope: input.replay.scope,
-			key: input.replay.key,
-			responseBody,
-			expiresAt,
-		})
-		.onConflictDoUpdate({
-			target: [idempotencyResponses.scope, idempotencyResponses.key],
-			set: { responseBody, expiresAt },
-		});
+	await completeClaimedResponse(
+		tx,
+		input.replay.scope,
+		input.replay.key,
+		responseBody,
+		input.replay.leaseExpiresAt,
+	);
 
 	return item;
 }

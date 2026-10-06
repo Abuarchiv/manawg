@@ -57,6 +57,8 @@ const LEGACY_LEDGER_ALLOWLIST = new Map([
 	],
 ]);
 const MIGRATION_LOCK = 'manawg:drizzle-migrate';
+/** How long one migration statement may wait for a table lock. */
+const MIGRATION_LOCK_TIMEOUT = '5s';
 const PUBLIC_SCHEMA = 'public';
 const PUBLIC_ROLES = ['anon', 'authenticated'];
 const MEMBER_WG_INVARIANT_FUNCTIONS = [
@@ -1218,6 +1220,11 @@ async function main() {
 		currentStage = 'ledger';
 		if (hasMigrationLedger || needsAdoption) await assertMigrationLedgerPrefix(client);
 		const db = drizzle(client);
+		// DDL waits for an ACCESS EXCLUSIVE (or SHARE) lock and, while waiting,
+		// queues every later query on that table behind it. Give up quickly
+		// instead: the whole migration rolls back and can simply be re-run.
+		currentStage = 'lock-timeout';
+		await client.query(`set lock_timeout = '${MIGRATION_LOCK_TIMEOUT}'`);
 		currentStage = 'migrate';
 		await migrate(db, { migrationsFolder });
 		console.error('[migrate] Up to date.');

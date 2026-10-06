@@ -1,5 +1,5 @@
 import { db, idempotencyResponses, wgEvents, wgMembers, wgs } from '@/core/db';
-import { verifyCronSecret } from '@/core/infra/cron-auth';
+import { requireCronSecret } from '@/core/infra/cron-auth';
 import { withCronLogging } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { startOfBerlinDay } from '@/core/utils/berlin-day';
@@ -126,11 +126,8 @@ async function releaseReminderDispatchClaim(item: ReminderDelivery): Promise<voi
 export const GET = withCronLogging(
 	'event-reminders',
 	async (req: NextRequest): Promise<NextResponse> => {
-		const secret = process.env.CRON_SECRET;
-		if (!secret) return new NextResponse('cron_secret_missing', { status: 503 });
-		if (!verifyCronSecret(req.headers.get('authorization'), secret)) {
-			return new NextResponse('unauthorized', { status: 401 });
-		}
+		const denied = requireCronSecret(req);
+		if (denied) return denied;
 
 		const now = new Date();
 		const todayStart = startOfBerlinDay(now);

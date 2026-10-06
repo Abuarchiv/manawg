@@ -4,7 +4,7 @@ import { withTransaction } from '@/core/db/transaction';
 import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, serverError, tooMany } from '@/core/http/api-errors';
+import { badRequest, serverError, tooMany, unreadableJsonBody } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
@@ -95,8 +95,8 @@ export const POST = withWgRoute('inventory POST', async (req, { code }) => {
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 
 	const parsed = createInventorySchema.safeParse(raw);

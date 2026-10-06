@@ -126,6 +126,7 @@ function makeQueueModule({
 	const module = loadTs(
 		'src/core/offline/offline-client.ts',
 		{
+			'@/core/utils/is-record': loadTs('src/core/utils/is-record.ts', {}),
 			'@/core/infra/api-client': { apiFetch },
 			'@/core/utils/browser': { safeLocalStorage: () => window.localStorage },
 			'@/shared/lib/identity': { getIdentity: identity },
@@ -801,6 +802,7 @@ test('resolved upload URL is persisted to the queue before its IndexedDB blob is
 	const module = loadTs(
 		'src/core/offline/offline-client.ts',
 		{
+			'@/core/utils/is-record': loadTs('src/core/utils/is-record.ts', {}),
 			'@/core/utils/browser': { safeLocalStorage: () => window.localStorage },
 			'@/core/infra/api-client': {
 				apiFetch: async (_path, init) => {
@@ -1079,6 +1081,7 @@ test('API client sends expected member separately from fixture identity headers'
 	const api = loadTs(
 		'src/core/infra/api-client.ts',
 		{
+			'@/shared/lib/fixture-mode': { isClientFixtureMode: () => false },
 			'@/shared/lib/member-header': {
 				MEMBER_ID_HEADER: 'x-manawg-member-id',
 				MEMBER_TOKEN_HEADER: 'x-manawg-member-token',

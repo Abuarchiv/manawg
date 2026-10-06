@@ -116,6 +116,11 @@ export const wgMembers = pgTable(
 		uniqueWgAuthUser: uniqueIndex('wg_members_wg_auth_user_unique_idx')
 			.on(t.wgId, t.authUserId)
 			.where(sql`${t.authUserId} IS NOT NULL`),
+		// "Which WGs is this account in?" (`/api/wg/mine`, account deletion)
+		// filters on the auth user alone, without a WG.
+		authUserIdx: index('wg_members_auth_user_idx')
+			.on(t.authUserId)
+			.where(sql`${t.authUserId} IS NOT NULL`),
 		oneAdminPerWg: uniqueIndex('wg_members_one_admin_per_wg_idx')
 			.on(t.wgId)
 			.where(sql`${t.role} = 'admin'`),
@@ -138,7 +143,14 @@ export const pushSubscriptions = pgTable(
 	},
 	(t) => ({
 		memberIdx: index('push_subscriptions_member_idx').on(t.memberId),
-		endpointIdx: uniqueIndex('push_subscriptions_endpoint_idx').on(t.endpoint),
+		// One browser endpoint may serve the same account in several WGs, so the
+		// subscription is unique per member, not per endpoint. Foreign accounts are
+		// kept off a shared endpoint by the subscribe route.
+		memberEndpointUnique: uniqueIndex('push_subscriptions_member_endpoint_idx').on(
+			t.memberId,
+			t.endpoint,
+		),
+		endpointIdx: index('push_subscriptions_endpoint_lookup_idx').on(t.endpoint),
 	}),
 );
 
@@ -304,6 +316,7 @@ export const shoppingItems = pgTable(
 	(t) => ({
 		wgIdx: index('shopping_items_wg_idx').on(t.wgId),
 		openIdx: index('shopping_items_open_idx').on(t.wgId, t.boughtAt),
+		addedByIdx: index('shopping_items_added_by_idx').on(t.addedByMemberId),
 		uniqueOpenName: uniqueIndex('shopping_items_unique_open_name')
 			.on(t.wgId, t.normalizedName)
 			.where(sql`${t.boughtAt} IS NULL`),
@@ -370,6 +383,7 @@ export const announcementReactions = pgTable(
 	},
 	(t) => ({
 		announcementIdx: index('announcement_reactions_announcement_idx').on(t.announcementId),
+		memberIdx: index('announcement_reactions_member_idx').on(t.memberId),
 		uniqueMemberReaction: uniqueIndex('announcement_reactions_unique_member_reaction').on(
 			t.announcementId,
 			t.memberId,
@@ -396,6 +410,7 @@ export const announcementComments = pgTable(
 			t.announcementId,
 			t.createdAt,
 		),
+		memberIdx: index('announcement_comments_member_idx').on(t.memberId),
 	}),
 );
 
@@ -454,6 +469,7 @@ export const choreCompletions = pgTable(
 	},
 	(t) => ({
 		choreIdx: index('chore_completions_chore_idx').on(t.choreId, t.completedAt),
+		completedByIdx: index('chore_completions_completed_by_idx').on(t.completedByMemberId),
 	}),
 );
 
@@ -601,6 +617,9 @@ export const wgInventoryLog = pgTable(
 	},
 	(t) => ({
 		itemIdx: index('wg_inventory_log_item_idx').on(t.itemId, t.createdAt),
+		memberIdx: index('wg_inventory_log_member_idx')
+			.on(t.memberId)
+			.where(sql`${t.memberId} IS NOT NULL`),
 	}),
 );
 
@@ -661,6 +680,10 @@ export const auditEvents = pgTable(
 	(t) => ({
 		wgIdx: index('audit_events_wg_idx').on(t.wgId, t.createdAt),
 		entityIdx: index('audit_events_entity_idx').on(t.entityType, t.entityId),
+		// Foreign-key lookups when a member row is deleted (WG deletion).
+		memberIdx: index('audit_events_member_idx')
+			.on(t.memberId)
+			.where(sql`${t.memberId} IS NOT NULL`),
 	}),
 );
 
@@ -689,6 +712,13 @@ export const wgChatMessages = pgTable(
 	(t) => ({
 		wgCreatedIdx: index('wg_chat_messages_wg_created_idx').on(t.wgId, t.createdAt),
 		replyIdx: index('wg_chat_messages_reply_idx').on(t.wgId, t.replyToMessageId),
+		// Deleting a WG cascades over its messages and runs one ON DELETE SET NULL
+		// lookup per message on this self-reference; the (wg_id, …) index above
+		// cannot serve it, so every lookup would scan the whole chat table.
+		replyToIdx: index('wg_chat_messages_reply_to_idx')
+			.on(t.replyToMessageId)
+			.where(sql`${t.replyToMessageId} IS NOT NULL`),
+		senderIdx: index('wg_chat_messages_sender_idx').on(t.senderMemberId),
 		// The only values ever written: 'text'/'image' in POST /chat/messages
 		// and 'system' via appendSystemMessage (see chat-pure.ts's
 		// TEXT_MESSAGE_KIND/SYSTEM_MESSAGE_KIND). Added NOT VALID out of caution
@@ -717,6 +747,7 @@ export const wgChatReactions = pgTable(
 			t.emoji,
 		),
 		messageIdx: index('wg_chat_reactions_message_idx').on(t.messageId),
+		memberIdx: index('wg_chat_reactions_member_idx').on(t.memberId),
 	}),
 );
 
@@ -737,6 +768,10 @@ export const wgChatReads = pgTable(
 	(t) => ({
 		pk: primaryKey({ columns: [t.wgId, t.memberId] }),
 		memberIdx: index('wg_chat_reads_member_idx').on(t.memberId),
+		// ON DELETE SET NULL lookup for every deleted chat message.
+		lastReadIdx: index('wg_chat_reads_last_read_idx')
+			.on(t.lastReadMessageId)
+			.where(sql`${t.lastReadMessageId} IS NOT NULL`),
 	}),
 );
 

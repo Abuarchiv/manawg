@@ -4,11 +4,14 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadClaimedResponse } from '../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const sourcePath = path.join(process.cwd(), 'src/features/expenses/import-commit.ts');
 const wgId = '22222222-2222-4222-8222-222222222222';
 const memberId = '33333333-3333-4333-8333-333333333333';
+const bobId = '44444444-4444-4444-8444-444444444444';
+const charlieId = '55555555-5555-4555-8555-555555555555';
 const expenseFields = {
 	wgId: 'expenses.wgId',
 	paidByMemberId: 'expenses.paidByMemberId',
@@ -19,7 +22,24 @@ const expenseFields = {
 	importDuplicateKey: 'expenses.importDuplicateKey',
 };
 
-function runCommit(existingExpenses) {
+function loadTsModule(file, mocks = {}) {
+	const source = transpileModule(readFileSync(file, 'utf8'), {
+		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
+	}).outputText;
+	const loaded = { exports: {} };
+	new Function('require', 'module', 'exports', source)(
+		(name) => (Object.hasOwn(mocks, name) ? mocks[name] : requireFromWeb(name)),
+		loaded,
+		loaded.exports,
+	);
+	return loaded.exports;
+}
+
+const paidByGuard = loadTsModule(
+	path.join(process.cwd(), 'src/features/expenses/paid-by-guard.ts'),
+);
+
+function runCommit(existingExpenses, { rows, mapping, mayRecordForOthers = false } = {}) {
 	const expenseImports = { id: 'expenseImports.id' };
 	const expenseSplits = {};
 	const wgMembers = { id: 'wgMembers.id' };
@@ -78,7 +98,9 @@ function runCommit(existingExpenses) {
 		select: () => ({
 			from: (table) => {
 				assert.equal(table, wgMembers);
-				return { where: async () => [{ id: memberId }] };
+				return {
+					where: async () => Object.values(mapping ?? { Alice: memberId }).map((id) => ({ id })),
+				};
 			},
 		}),
 	};
@@ -95,7 +117,6 @@ function runCommit(existingExpenses) {
 			wgMembers,
 		},
 		'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
-		'@/core/idempotency-store': { RESPONSE_REPLAY_TTL_SECONDS: 60 },
 		'@/core/notifications/notification-dispatch': {
 			dispatchNotificationSafely: async () => ({ warning: null }),
 		},
@@ -104,6 +125,7 @@ function runCommit(existingExpenses) {
 			hasCapturingExpensePayment: async () => false,
 			withExpensePaymentLock: async (_id, operation) => operation(tx),
 		},
+		'@/features/expenses/paid-by-guard': paidByGuard,
 		'@/features/expenses/split-math': { settledAtForOwnShare: () => null },
 		'drizzle-orm': {
 			and: (...conditions) => conditions,
@@ -113,16 +135,8 @@ function runCommit(existingExpenses) {
 			sql: (parts, ...values) => ({ parts, values }),
 		},
 	};
-	const source = transpileModule(readFileSync(sourcePath, 'utf8'), {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	const loaded = { exports: {} };
-	new Function('require', 'module', 'exports', source)(
-		(name) => (Object.hasOwn(mocks, name) ? mocks[name] : requireFromWeb(name)),
-		loaded,
-		loaded.exports,
-	);
-	const module = loaded.exports;
+	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
+	const module = loadTsModule(sourcePath, mocks);
 	return {
 		state,
 		commit: () =>
@@ -131,10 +145,10 @@ function runCommit(existingExpenses) {
 				source: 'manual',
 				importedByMemberId: memberId,
 				importedByName: 'Alice',
-				expenses: [
-					{
-						skip: false,
-						parsed: {
+				mayRecordForOthers,
+				expenses: (
+					rows ?? [
+						{
 							date: '2025-01-15',
 							description: 'Dinner',
 							amountCents: 1200,
@@ -143,9 +157,9 @@ function runCommit(existingExpenses) {
 							splits: [{ memberName: 'Alice', amountCents: 1200 }],
 							warnings: [],
 						},
-					},
-				],
-				mapping: { Alice: memberId },
+					]
+				).map((parsed) => ({ skip: false, parsed })),
+				mapping: mapping ?? { Alice: memberId },
 				skipDuplicates: true,
 				rawPayloadHash: 'payload-hash',
 			}),
@@ -173,4 +187,34 @@ test('duplicate checks distinguish currencies and keep the legacy EUR import key
 	const sameCurrency = runCommit([existing('EUR')]);
 	const skipped = await sameCurrency.commit();
 	assert.deepEqual([skipped.inserted, skipped.skipped], [0, 1]);
+});
+
+const foreignRow = {
+	date: '2025-02-01',
+	description: 'Strom',
+	amountCents: 5000,
+	currency: 'EUR',
+	paidByName: 'Bob',
+	splits: [{ memberName: 'Charlie', amountCents: 5000 }],
+	warnings: [],
+};
+const threeMembers = { Alice: memberId, Bob: bobId, Charlie: charlieId };
+
+test('a regular member cannot import a debt between two other members', async () => {
+	const run = runCommit([], { rows: [foreignRow], mapping: threeMembers });
+	const result = await run.commit();
+	assert.equal(result.inserted, 0);
+	assert.deepEqual(result.errors, [{ index: 0, reason: 'paid_by_must_include_caller' }]);
+	assert.equal(run.state.inserted.length, 0);
+});
+
+test('a WG admin may import a shared history that includes other members', async () => {
+	const run = runCommit([], {
+		rows: [foreignRow],
+		mapping: threeMembers,
+		mayRecordForOthers: true,
+	});
+	const result = await run.commit();
+	assert.equal(result.inserted, 1);
+	assert.deepEqual(result.errors, []);
 });

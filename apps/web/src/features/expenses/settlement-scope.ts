@@ -1,3 +1,4 @@
+import { isRecord } from '@/core/utils/is-record';
 import { currencySchema } from '@/core/validators/currency';
 import { z } from 'zod';
 import { computeNetBalances, simplifyDebts } from './debt-reduction';
@@ -103,10 +104,6 @@ const settlementConfirmationSchema = z
 		expected: settlementExpectedSchema,
 	})
 	.strict();
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 export function parseSettlementConfirmation(raw: unknown): SettlementConfirmationParseResult {
 	if (

@@ -4,12 +4,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+	EVENT_DESCRIPTION_MAX,
+	EVENT_LOCATION_MAX,
+	EVENT_TITLE_MAX,
+} from '@/features/events/event-limits';
 import { normalizeEventDateTime } from '@/features/events/events';
 import type { ReactNode } from 'react';
-
-const TITLE_MAX = 200;
-const LOCATION_MAX = 200;
-const DESCRIPTION_MAX = 2_000;
 
 interface EventFormFieldsProps {
 	idPrefix: string;
@@ -60,7 +61,7 @@ export function EventFormFields({
 					id={`${idPrefix}-title`}
 					value={title}
 					onChange={(event) => onTitleChange(event.target.value)}
-					maxLength={TITLE_MAX}
+					maxLength={EVENT_TITLE_MAX}
 					placeholder="z. B. WG-Meeting"
 					required
 					disabled={disabled}
@@ -130,7 +131,7 @@ export function EventFormFields({
 					id={`${idPrefix}-location`}
 					value={location}
 					onChange={(event) => onLocationChange(event.target.value)}
-					maxLength={LOCATION_MAX}
+					maxLength={EVENT_LOCATION_MAX}
 					placeholder="z. B. Küche"
 					disabled={disabled}
 					enterKeyHint="next"
@@ -144,7 +145,7 @@ export function EventFormFields({
 					id={`${idPrefix}-description`}
 					value={description}
 					onChange={(event) => onDescriptionChange(event.target.value)}
-					maxLength={DESCRIPTION_MAX}
+					maxLength={EVENT_DESCRIPTION_MAX}
 					rows={3}
 					disabled={disabled}
 					className="text-base"
