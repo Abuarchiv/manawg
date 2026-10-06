@@ -116,3 +116,18 @@ export async function mockNoWgs(page: Page): Promise<void> {
 export function inMinimalMatrix(c: { width: number; dark: boolean; large: boolean }): boolean {
 	return c.width === 320 && c.dark === c.large;
 }
+
+/**
+ * Resolves on the next history pop, or after 2 s when it already happened. A closed dialog
+ * pops its history marker 50 ms later (useDismissOnBack); a page.goto started before that
+ * pop gets aborted by it, so wait for it before leaving the page.
+ */
+export function nextHistoryPop(page: Page): Promise<unknown> {
+	return page.evaluate(
+		() =>
+			new Promise((done) => {
+				window.addEventListener('popstate', done, { once: true });
+				window.setTimeout(done, 2000);
+			}),
+	);
+}

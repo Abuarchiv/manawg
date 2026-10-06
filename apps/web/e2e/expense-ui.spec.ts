@@ -13,6 +13,7 @@ import {
 	inMinimalMatrix,
 	mockUnreadCount,
 	navigateToFeature,
+	nextHistoryPop,
 	setupMember,
 } from './_helpers';
 
@@ -760,7 +761,6 @@ test.describe('finance dialog mobile', () => {
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
 		await mockUnreadCount(page, `/api/wg/${shareCode}`);
-
 		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Ausgabe hinzufügen' }).first().click();
@@ -771,7 +771,7 @@ test.describe('finance dialog mobile', () => {
 		await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
 		await page.getByRole('alertdialog').getByRole('button', { name: 'Entwurf verwerfen' }).click();
 		await expect(expenseDialog).toBeHidden();
-
+		await nextHistoryPop(page);
 		await page.goto(`/wg/${shareCode}/abos`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
