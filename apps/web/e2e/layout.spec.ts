@@ -600,15 +600,15 @@ test.describe('mobile layout matrix', () => {
 						await page.setViewportSize({ width: 320, height: 740 });
 						await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(320);
 					}
-					const rootFontSize = await page.evaluate(
-						() => getComputedStyle(document.documentElement).fontSize,
-					);
+					const readRootFontSize = () =>
+						page.evaluate(() => getComputedStyle(document.documentElement).fontSize);
 					// Normal text scales fluidly on narrow phones (90–100 %); 200 % stays exact.
 					if (textScale === '200%') {
-						expect(rootFontSize).toBe('32px');
+						await expect.poll(readRootFontSize).toBe('32px');
 					} else {
-						expect(Number.parseFloat(rootFontSize)).toBeGreaterThanOrEqual(14.4);
-						expect(Number.parseFloat(rootFontSize)).toBeLessThanOrEqual(16);
+						const rootFontSize = Number.parseFloat(await readRootFontSize());
+						expect(rootFontSize).toBeGreaterThanOrEqual(14.4);
+						expect(rootFontSize).toBeLessThanOrEqual(16);
 					}
 					if (route === 'inventory') {
 						await page
