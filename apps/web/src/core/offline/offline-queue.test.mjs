@@ -21,17 +21,27 @@ const failureCopy = loadTs(
 	path.join(process.cwd(), 'src/core/offline/offline-failure-copy.ts'),
 	(name) => (name === '@/core/http/error-codes' ? errorCodes : requireFromWeb(name)),
 );
-const module = {
-	exports: loadTs(path.join(process.cwd(), 'src/core/offline/offline-queue.ts'), (name) => {
-		if (name === '@/core/utils/time') {
-			return {
-				parseTimestamp: (value) => (Number.isFinite(Date.parse(value)) ? Date.parse(value) : null),
-			};
+// The queue module re-exports its sibling modules; those load through the same resolver.
+const offlineModules = new Map();
+function resolveOfflineModule(name) {
+	if (name === '@/core/utils/time') {
+		return {
+			parseTimestamp: (value) => (Number.isFinite(Date.parse(value)) ? Date.parse(value) : null),
+		};
+	}
+	if (name === './offline-failure-copy') return failureCopy;
+	if (name.startsWith('./')) {
+		if (!offlineModules.has(name)) {
+			offlineModules.set(
+				name,
+				loadTs(path.join(process.cwd(), 'src/core/offline', `${name}.ts`), resolveOfflineModule),
+			);
 		}
-		if (name === './offline-failure-copy') return failureCopy;
-		return requireFromWeb(name);
-	}),
-};
+		return offlineModules.get(name);
+	}
+	return requireFromWeb(name);
+}
+const module = { exports: resolveOfflineModule('./offline-queue') };
 
 const {
 	createQueuedAbsence,

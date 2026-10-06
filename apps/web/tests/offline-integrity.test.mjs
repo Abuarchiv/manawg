@@ -8,7 +8,9 @@ import ts from 'typescript';
 const webRoot = path.resolve(import.meta.dirname, '..');
 const readSource = (relativePath) => readFileSync(path.join(webRoot, relativePath), 'utf8');
 
-function loadTs(relativePath, mocks, globals = {}) {
+// Relative imports that are not mocked load the sibling module with the same mocks and globals,
+// once per top-level load, so a module split into several files shares its state.
+function loadTs(relativePath, mocks, globals = {}, siblings = new Map()) {
 	const source = readSource(relativePath);
 	const js = ts.transpileModule(source, {
 		compilerOptions: {
@@ -20,6 +22,13 @@ function loadTs(relativePath, mocks, globals = {}) {
 	const context = vm.createContext({
 		require: (id) => {
 			if (Object.hasOwn(mocks, id)) return mocks[id];
+			if (id.startsWith('./')) {
+				const siblingPath = path.posix.join(path.posix.dirname(relativePath), `${id.slice(2)}.ts`);
+				if (!siblings.has(siblingPath)) {
+					siblings.set(siblingPath, loadTs(siblingPath, mocks, globals, siblings));
+				}
+				return siblings.get(siblingPath);
+			}
 			throw new Error(`Unexpected import ${id} from ${relativePath}`);
 		},
 		module,
