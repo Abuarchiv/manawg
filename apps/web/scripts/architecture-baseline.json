@@ -1,7 +1,6 @@
 {
 	"violations": [
 		"comment-lang e2e/expense-ui.spec.ts",
-		"test-loader tests/support/claimed-response.cjs",
 		"test-location e2e/_helpers.ts",
 		"test-location e2e/preview-global-setup.ts"
 	],
