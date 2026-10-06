@@ -1,46 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import test from 'node:test';
-import {
-	ModuleKind,
-	ScriptKind,
-	ScriptTarget,
-	createSourceFile,
-	forEachChild,
-	isFunctionDeclaration,
-	transpileModule,
-} from 'typescript';
+import test, { type TestContext } from 'node:test';
 
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-const apiClientPath = path.join(process.cwd(), 'src/core/infra/api-client.ts');
-const chatViewPath = path.join(process.cwd(), 'src/features/chat/hooks/use-chat-room.ts');
+const { anySignal, apiFetch } = await import('../src/core/infra/api-client.ts');
+const { postChatMessage } = await import('../src/features/chat/chat-send.ts');
 
-function loadTypeScript(file, overrides = {}) {
-	const output = transpileModule(readFileSync(file, 'utf8'), {
-		compilerOptions: {
-			esModuleInterop: true,
-			module: ModuleKind.CommonJS,
-			target: ScriptTarget.ES2022,
-		},
-	}).outputText;
-	const loaded = { exports: {} };
-	new Function('require', 'module', 'exports', output)(
-		(name) => (Object.hasOwn(overrides, name) ? overrides[name] : requireFromWeb(name)),
-		loaded,
-		loaded.exports,
-	);
-	return loaded.exports;
-}
-
-const { apiFetch } = loadTypeScript(apiClientPath, {
-	'@/shared/lib/member-header': {
-		EXPECTED_MEMBER_ID_HEADER: 'x-manawg-expected-member-id',
-	},
-});
-
-function replaceFetch(t, implementation) {
+function replaceFetch(t: TestContext, implementation: typeof fetch) {
 	const originalFetch = globalThis.fetch;
 	globalThis.fetch = implementation;
 	t.after(() => {
@@ -68,54 +32,8 @@ function failedBodyResponse(status = 201) {
 	});
 }
 
-function loadSendMessage({ pendingMessageRequestRef, createOfflineIdempotencyKey }) {
-	const source = readFileSync(chatViewPath, 'utf8');
-	const sourceFile = createSourceFile(
-		'use-chat-room.ts',
-		source,
-		ScriptTarget.Latest,
-		true,
-		ScriptKind.TSX,
-	);
-	let functionSource;
-	function visit(node) {
-		if (isFunctionDeclaration(node) && node.name?.text === 'sendMessage') {
-			functionSource = node.getText(sourceFile);
-		}
-		forEachChild(node, visit);
-	}
-	visit(sourceFile);
-	assert.ok(functionSource, 'expected to find the actual useChatRoom sendMessage function');
-
-	const output = transpileModule(`${functionSource}\nmodule.exports = sendMessage;`, {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	const loaded = { exports: null };
-	new Function(
-		'module',
-		'apiFetch',
-		'setSendError',
-		'pendingMessageRequestRef',
-		'createOfflineIdempotencyKey',
-		'messagesUrl',
-		'identity',
-		'explainChatError',
-		output,
-	)(
-		loaded,
-		apiFetch,
-		() => undefined,
-		pendingMessageRequestRef,
-		createOfflineIdempotencyKey,
-		'/api/wg/MTE8PZAT/chat/messages',
-		{ memberId: 'member-1' },
-		() => 'chat_error',
-	);
-	return loaded.exports;
-}
-
 test('unreadable successful JSON responses have unknown status 0', async (t) => {
-	const responses = [
+	const responses: Array<[string, Response]> = [
 		['truncated HTTP 200 JSON', truncatedResponse(200)],
 		['body read failure after HTTP 201 headers', failedBodyResponse(201)],
 		[
@@ -131,13 +49,13 @@ test('unreadable successful JSON responses have unknown status 0', async (t) => 
 		],
 	];
 
-	let currentResponse;
-	replaceFetch(t, async () => currentResponse);
+	let currentResponse: Response | undefined;
+	replaceFetch(t, async () => currentResponse as Response);
 	for (const [name, response] of responses) {
 		currentResponse = response;
 		const result = await apiFetch('/api/write', { method: 'POST', body: '{}' });
 		assert.equal(result.ok, false, name);
-		assert.equal(result.status, 0, name);
+		assert.equal(!result.ok && result.status, 0, name);
 	}
 });
 
@@ -151,14 +69,14 @@ test('well-formed successful JSON keeps its HTTP success result', async (t) => {
 });
 
 test('real HTTP 400 and 429 responses retain their status and error code', async (t) => {
-	const results = [
+	const results: Array<[number, string]> = [
 		[400, 'invalid_body'],
 		[409, 'settlement_changed'],
 		[429, 'rate_limited'],
 	];
 
-	let currentResponse;
-	replaceFetch(t, async () => currentResponse);
+	let currentResponse: Response | undefined;
+	replaceFetch(t, async () => currentResponse as Response);
 	for (const [status, error] of results) {
 		currentResponse = Response.json({ error }, { status });
 		assert.deepEqual(await apiFetch('/api/write', { method: 'POST', body: '{}' }), {
@@ -171,11 +89,11 @@ test('real HTTP 400 and 429 responses retain their status and error code', async
 
 test('keeps the expected-member header and combines the caller abort signal', async (t) => {
 	const controller = new AbortController();
-	let requestHeaders;
-	let requestSignal;
+	let requestHeaders: Headers | undefined;
+	let requestSignal: AbortSignal | null | undefined;
 	replaceFetch(t, async (_input, init) => {
-		requestHeaders = new Headers(init.headers);
-		requestSignal = init.signal;
+		requestHeaders = new Headers(init?.headers);
+		requestSignal = init?.signal;
 		controller.abort();
 		return Response.json({ ok: true });
 	});
@@ -188,11 +106,11 @@ test('keeps the expected-member header and combines the caller abort signal', as
 	});
 
 	assert.equal(result.ok, true);
-	assert.equal(requestHeaders.get('x-manawg-expected-member-id'), 'member-1');
-	assert.equal(requestHeaders.get('x-manawg-member-id'), null);
-	assert.equal(requestHeaders.get('x-manawg-member-token'), null);
+	assert.equal(requestHeaders?.get('x-manawg-expected-member-id'), 'member-1');
+	assert.equal(requestHeaders?.get('x-manawg-member-id'), null);
+	assert.equal(requestHeaders?.get('x-manawg-member-token'), null);
 	assert.notEqual(requestSignal, controller.signal);
-	assert.equal(requestSignal.aborted, true);
+	assert.equal(requestSignal?.aborted, true);
 });
 
 test('204 remains a successful empty response', async (t) => {
@@ -205,45 +123,66 @@ test('204 remains a successful empty response', async (t) => {
 });
 
 test('retrying an ambiguously committed chat message reuses its idempotency key', async (t) => {
-	const keys = [];
-	const bodies = [];
+	const keys: Array<string | null> = [];
+	const bodies: unknown[] = [];
 	let generatedKeys = 0;
 	replaceFetch(t, async (_input, init) => {
-		keys.push(new Headers(init.headers).get('Idempotency-Key'));
-		bodies.push(init.body);
+		keys.push(new Headers(init?.headers).get('Idempotency-Key'));
+		bodies.push(init?.body);
 		return truncatedResponse(200);
 	});
-	const pendingMessageRequestRef = { current: null };
-	const sendMessage = loadSendMessage({
-		pendingMessageRequestRef,
-		createOfflineIdempotencyKey: () => `chat-key-${++generatedKeys}`,
-	});
+	const pending = { current: null };
+	const deps = {
+		messagesUrl: '/api/wg/MTE8PZAT/chat/messages',
+		memberId: 'member-1',
+		pending,
+		createKey: () => `chat-key-${++generatedKeys}`,
+	};
 	const message = {
 		body: 'committed message',
 		mentionMemberIds: [],
 		replyToMessageId: null,
 	};
 
-	assert.equal(await sendMessage(message), false);
-	assert.equal(await sendMessage(message), false);
+	assert.equal((await postChatMessage(message, deps)).ok, false);
+	assert.equal((await postChatMessage(message, deps)).ok, false);
 	assert.deepEqual(keys, ['chat-key-1', 'chat-key-1']);
 	assert.deepEqual(
-		bodies.map((body) => JSON.parse(body)),
+		bodies.map((body) => JSON.parse(String(body))),
 		[message, message],
 	);
 	assert.equal(generatedKeys, 1);
 });
 
-test('anySignal aborts with the first source, also without AbortSignal.any', async () => {
-	const { anySignal } = loadTypeScript(apiClientPath, {
-		'@/shared/lib/member-header': {
-			EXPECTED_MEMBER_ID_HEADER: 'x-manawg-expected-member-id',
-		},
+test('a rejected chat message frees its key, a missing key sends nothing', async (t) => {
+	let requests = 0;
+	replaceFetch(t, async () => {
+		requests += 1;
+		return Response.json({ error: 'reply_to_not_found' }, { status: 404 });
 	});
+	const pending = { current: null as { fingerprint: string; key: string } | null };
+	const message = { body: 'hi', mentionMemberIds: [], replyToMessageId: 'gone' };
+	const deps = { messagesUrl: '/api/x', memberId: 'member-1', pending, createKey: () => 'key' };
+
+	assert.deepEqual(await postChatMessage(message, deps), {
+		ok: false,
+		reason: 'rejected',
+		error: 'reply_to_not_found',
+	});
+	assert.equal(pending.current, null);
+	assert.deepEqual(await postChatMessage(message, { ...deps, createKey: () => null }), {
+		ok: false,
+		reason: 'key_unavailable',
+	});
+	assert.equal(requests, 1);
+});
+
+test('anySignal aborts with the first source, also without AbortSignal.any', async () => {
 	const nativeAny = AbortSignal.any;
+	const signalStatics = AbortSignal as unknown as { any: typeof AbortSignal.any | undefined };
 	try {
 		for (const any of [nativeAny, undefined]) {
-			AbortSignal.any = any;
+			signalStatics.any = any;
 			const first = new AbortController();
 			const second = new AbortController();
 			const combined = anySignal([first.signal, second.signal]);
@@ -257,6 +196,6 @@ test('anySignal aborts with the first source, also without AbortSignal.any', asy
 			assert.equal(anySignal([already.signal, first.signal]).reason, 'early');
 		}
 	} finally {
-		AbortSignal.any = nativeAny;
+		signalStatics.any = nativeAny;
 	}
 });

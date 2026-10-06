@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { SplitMode } from './useExpenseForm';
+import type { SplitMode } from './expense-form-draft';
 
 interface ExpenseFormDirtyInput {
 	description: string;

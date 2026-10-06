@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { subscribeConnectivity, useOnlineStatus } from '@/core/hooks/use-online-status';
 import {
 	countOfflineActions,
 	getSyncedCountForWg,
@@ -31,7 +32,7 @@ function isScopedSyncEventForOtherWg(event: Event, shareCode: string): boolean {
 export function OfflineBanner() {
 	const { wg, identity } = useWg();
 	const settingsDataHref = `/wg/${encodeURIComponent(wg.shareCode)}/einstellungen#daten`;
-	const [online, setOnline] = useState(true);
+	const online = useOnlineStatus();
 	const [queueCount, setQueueCount] = useState(0);
 	const [syncing, setSyncing] = useState(false);
 	const [notice, setNotice] = useState<{
@@ -41,9 +42,7 @@ export function OfflineBanner() {
 	const syncingRef = useRef(false);
 
 	useEffect(() => {
-		setOnline(navigator.onLine);
 		const update = (options?: { clearNotice?: boolean }) => {
-			setOnline(navigator.onLine);
 			const nextCount = countOfflineActions(wg.shareCode, { memberId: identity.memberId });
 			setQueueCount(nextCount);
 			if (options?.clearNotice !== false) setNotice(null);
@@ -62,13 +61,11 @@ export function OfflineBanner() {
 			update({ clearNotice: synced <= 0 });
 		};
 		update();
-		window.addEventListener('online', updateFromEvent);
-		window.addEventListener('offline', updateFromEvent);
+		const unsubscribeConnectivity = subscribeConnectivity(updateFromEvent);
 		window.addEventListener('manawg:offline-queue', updateFromEvent);
 		window.addEventListener('manawg:offline-synced', onSynced);
 		return () => {
-			window.removeEventListener('online', updateFromEvent);
-			window.removeEventListener('offline', updateFromEvent);
+			unsubscribeConnectivity();
 			window.removeEventListener('manawg:offline-queue', updateFromEvent);
 			window.removeEventListener('manawg:offline-synced', onSynced);
 		};

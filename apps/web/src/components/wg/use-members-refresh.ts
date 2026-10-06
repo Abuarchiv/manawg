@@ -1,5 +1,6 @@
 'use client';
 
+import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/capture-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
@@ -124,11 +125,11 @@ export function useMembersRefresh({
 		const retry = () => void refreshMembers();
 		const delayMs = Math.min(60_000, 5_000 * 2 ** (membersRefreshFailures - 1));
 		const timer = window.setTimeout(retry, delayMs);
-		window.addEventListener('online', retry);
+		const unsubscribeOnline = subscribeOnline(retry);
 		window.addEventListener('focus', retry);
 		return () => {
 			window.clearTimeout(timer);
-			window.removeEventListener('online', retry);
+			unsubscribeOnline();
 			window.removeEventListener('focus', retry);
 		};
 	}, [accountReady, identity, membersRefreshFailures, refreshMembers]);

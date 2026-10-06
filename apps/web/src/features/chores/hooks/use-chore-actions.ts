@@ -29,7 +29,6 @@ export function useChoreActions(ctx: ChorePageContext) {
 		setActionNotice,
 		items,
 		absences,
-		setItems,
 		updateChores,
 		load,
 		refreshCount,
@@ -122,7 +121,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 				refreshCount();
 				break;
 			case 'not_found':
-				setItems((current) => current.filter((item) => item.id !== chore.id));
+				updateChores((current) => current.filter((item) => item.id !== chore.id));
 				break;
 			case 'already_completed':
 			case 'occurrence_changed':
@@ -200,7 +199,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 
 		if (!result.ok) {
 			if (result.status === 404 && result.error === 'chore_not_found') {
-				setItems((current) => current.filter((item) => item.id !== chore.id));
+				updateChores((current) => current.filter((item) => item.id !== chore.id));
 				setActionError('Diese Putzaufgabe existiert nicht mehr und wurde aus dem Plan entfernt.');
 				void load(false);
 				endPending(pendingKey);
@@ -208,7 +207,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 			}
 			setActionError(choreActionErrorMessage('Aufgabe konnte nicht übernommen werden', result));
 		} else {
-			setItems((current) =>
+			updateChores((current) =>
 				current.map((item) =>
 					item.id === chore.id ? { ...item, assignedMemberId: memberId } : item,
 				),
@@ -234,7 +233,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 				return;
 			}
 			if (queued === 'removed' || isQueuedCreateId(id)) {
-				setItems((current) => current.filter((item) => item.id !== id));
+				updateChores((current) => current.filter((item) => item.id !== id));
 				refreshCount();
 				setActionNotice('Offline vorgemerkte Aufgabe wurde entfernt.');
 				return;
@@ -259,11 +258,11 @@ export function useChoreActions(ctx: ChorePageContext) {
 								: 'Entfernen fehlgeschlagen. Versuche es gleich erneut.';
 				setActionError(msg);
 				if (result.status === 404 && result.error === 'chore_not_found') {
-					setItems((current) => current.filter((item) => item.id !== id));
+					updateChores((current) => current.filter((item) => item.id !== id));
 					void load(false);
 				}
 			} else {
-				setItems((current) => current.filter((item) => item.id !== id));
+				updateChores((current) => current.filter((item) => item.id !== id));
 				void load(false);
 			}
 		} finally {

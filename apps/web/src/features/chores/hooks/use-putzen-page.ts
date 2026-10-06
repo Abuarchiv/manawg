@@ -17,7 +17,7 @@ import { useChoreActions } from './use-chore-actions';
 import { useChoreCreate } from './use-chore-create';
 import { useChoresData } from './use-chores-data';
 
-/** Putzplan-Seite: verbindet Laden, Anlegen, Aktionen und Abwesenheiten und leitet die Anzeige ab. */
+/** The chore plan page: ties loading, creating, actions and absences together and derives the view. */
 export function usePutzenPage() {
 	const { wg, members, identity } = useWg();
 	const toast = useToast();
@@ -54,7 +54,6 @@ export function usePutzenPage() {
 		setActionNotice,
 		items,
 		absences,
-		setItems: data.setItems,
 		updateChores: data.updateChores,
 		updateAbsences: data.updateAbsences,
 		load: data.load,

@@ -6,6 +6,7 @@ import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
+const { explainChatError } = await import('../chat/chat-errors.ts');
 
 function loadErrorMap(file) {
 	const source = transpileModule(readFileSync(path.join(process.cwd(), file), 'utf8'), {
@@ -30,10 +31,6 @@ function loadErrorMap(file) {
 test('online attachment error maps ask residents to upload a replacement image', () => {
 	const expense = loadErrorMap('src/features/expenses/expense-errors.ts');
 	const announcement = loadErrorMap('src/features/pinnwand/announcement-errors.ts');
-	const chat = readFileSync(
-		path.join(process.cwd(), 'src/features/chat/hooks/use-chat-room.ts'),
-		'utf8',
-	);
 	assert.match(
 		expense.expenseSaveErrorMessage('image_removed'),
 		/Anhang wurde entfernt.*erneut hoch/,
@@ -46,8 +43,8 @@ test('online attachment error maps ask residents to upload a replacement image',
 		announcement.announcementCreateErrorMessage('image_removed'),
 		/Anhang wurde entfernt.*erneut hoch/,
 	);
-	assert.match(
-		chat,
-		/if \(error === 'image_removed'\) \{\s*return 'Dieses Bild wurde entfernt\. Lade es erneut hoch, bevor du die Nachricht sendest\.';/,
+	assert.equal(
+		explainChatError('send', 'image_removed'),
+		'Dieses Bild wurde entfernt. Lade es erneut hoch, bevor du die Nachricht sendest.',
 	);
 });
