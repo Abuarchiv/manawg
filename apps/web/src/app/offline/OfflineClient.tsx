@@ -3,8 +3,6 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
-import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { createSupabaseBrowserClient } from '@/core/auth/client';
 import {
@@ -17,85 +15,24 @@ import {
 	formatManualOfflineSyncResult,
 	getOfflineSyncFailureMessage,
 } from '@/core/offline/offline-copy';
-import {
-	type OfflineAction,
-	getOfflineActionRisk,
-	getOfflineActionSummary,
-} from '@/core/offline/offline-queue';
-import { parseTimestamp } from '@/core/utils/time';
+import type { OfflineAction } from '@/core/offline/offline-queue';
 import { isClientFixtureMode } from '@/shared/lib/fixture-mode';
 import { type KnownWg, getKnownWgs, hasLocalIdentityFor } from '@/shared/lib/identity';
-import { ArrowRight, CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
+import { CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
-function moduleLabel(action: OfflineAction): string {
-	return getOfflineActionSummary(action).title;
-}
-
-function formatOfflineAge(iso: string, now = Date.now()): string {
-	const timestamp = parseTimestamp(iso);
-	if (timestamp === null) return 'Zeitpunkt unklar';
-	const ageMs = now - timestamp;
-	if (ageMs < 0) return 'Zeitpunkt in der Zukunft';
-	if (ageMs < 60_000) return 'gerade eben';
-	const minutes = Math.floor(ageMs / 60_000);
-	if (minutes < 60) return `vor ${minutes} Min.`;
-	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return `vor ${hours} Std.`;
-	const days = Math.floor(hours / 24);
-	return days === 1 ? 'vor 1 Tag' : `vor ${days} Tagen`;
-}
-
-function countByShareCode(items: OfflineAction[]): Map<string, number> {
-	const counts = new Map<string, number>();
-	for (const item of items) counts.set(item.shareCode, (counts.get(item.shareCode) ?? 0) + 1);
-	return counts;
-}
-
-function formatQueuedActionCount(count: number): string {
-	if (count === 0) return 'Keine wartenden Aktionen.';
-	if (count === 1) return '1 Aktion wartet.';
-	return `${count} Aktionen warten.`;
-}
-
-function formatWgQueuedActionCount(count: number): string {
-	if (count === 0) return 'Keine wartenden Aktionen';
-	if (count === 1) return '1 Aktion wartet';
-	return `${count} Aktionen warten`;
-}
-
-function wgHref(code: string, suffix = ''): string {
-	return `/wg/${encodeURIComponent(code)}${suffix}`;
-}
-
-type AccountMembership = { code: string; memberId: string };
-type OfflineStatus =
-	| 'checking'
-	| 'browser-offline'
-	| 'server-unreachable'
-	| 'unauthenticated'
-	| 'ready';
-
-async function getAccountMemberships(signal?: AbortSignal): Promise<AccountMembership[] | null> {
-	const res = await fetch('/api/wg/mine', {
-		cache: 'no-store',
-		...(signal ? { signal } : {}),
-	});
-	if (res.status === 401) return null;
-	if (!res.ok) throw new Error('account_wgs_failed');
-	const data: unknown = await res.json();
-	if (!data || typeof data !== 'object' || !Array.isArray((data as { wgs?: unknown }).wgs)) {
-		throw new Error('account_wgs_invalid');
-	}
-	return (data as { wgs: unknown[] }).wgs.filter(
-		(wg): wg is AccountMembership =>
-			typeof wg === 'object' &&
-			wg !== null &&
-			typeof (wg as AccountMembership).code === 'string' &&
-			typeof (wg as AccountMembership).memberId === 'string',
-	);
-}
+import { KnownWgsCard } from './KnownWgsCard';
+import { OfflineQueueCard } from './OfflineQueueCard';
+import {
+	type OfflineStatus,
+	countByShareCode,
+	getAccountMemberships,
+	moduleLabel,
+	offlineStatusCopy,
+	visibleKnownWgs,
+	visibleQueueCodes,
+	wgHref,
+} from './offline-page-helpers';
 
 async function getLocalAuthUserId(): Promise<string | null> {
 	if (isClientFixtureMode()) return null;
@@ -105,16 +42,6 @@ async function getLocalAuthUserId(): Promise<string | null> {
 	} catch {
 		return null;
 	}
-}
-
-/** Mit passender lokaler Identität bleiben alle gemerkten WGs erreichbar, sonst nur die mit wartenden Aktionen. */
-function visibleKnownWgs(queueCodes: Set<string>, hasIdentity: boolean): KnownWg[] {
-	const known = getKnownWgs();
-	return hasIdentity ? known : known.filter((wg) => queueCodes.has(wg.code));
-}
-
-function visibleQueueCodes(actions: OfflineAction[]): Set<string> {
-	return new Set(actions.map((action) => action.shareCode));
 }
 
 export function OfflineClient() {
@@ -218,46 +145,17 @@ export function OfflineClient() {
 
 	const queueCounts = useMemo(() => countByShareCode(queue), [queue]);
 	const hasRetryableQueue = queue.some((action) => !needsManualOfflineResolution(action));
-	const recentQueue = queue.slice(0, 4);
-	const hiddenQueueCount = Math.max(0, queue.length - recentQueue.length);
 	const primaryWg =
 		knownWgs.find((wg) => (queueCounts.get(wg.code) ?? 0) > 0) ?? knownWgs[0] ?? null;
 	const lastWg = knownWgs.reduce<KnownWg | null>(
 		(latest, wg) => (!latest || wg.lastVisitedAt > latest.lastVisitedAt ? wg : latest),
 		null,
 	);
-	const statusLabel =
-		status === 'checking'
-			? 'Wird geprüft…'
-			: status === 'browser-offline'
-				? 'Offline-Modus'
-				: status === 'server-unreachable'
-					? 'Server nicht erreichbar'
-					: status === 'unauthenticated'
-						? 'Anmeldung nötig'
-						: 'Wieder online';
-	const statusHeading =
-		status === 'checking'
-			? 'Verbindung wird geprüft…'
-			: status === 'browser-offline'
-				? 'Du bist gerade offline.'
-				: status === 'server-unreachable'
-					? 'Server gerade nicht erreichbar.'
-					: status === 'unauthenticated'
-						? 'Melde dich an, um Offline-Aktionen zu sehen.'
-						: online
-							? 'Du bist wieder verbunden.'
-							: 'Du bist gerade offline.';
-	const statusDescription =
-		status === 'checking'
-			? 'Einen Moment, wir prüfen deine Verbindung und dein Konto.'
-			: status === 'browser-offline'
-				? 'Deine lokal gespeicherten Aktionen bleiben sichtbar. Sobald du wieder online bist, kannst du sie synchronisieren.'
-				: status === 'server-unreachable'
-					? 'Der Server antwortet gerade nicht. Deine lokal gespeicherten Aktionen bleiben erhalten; versuche es später erneut.'
-					: status === 'unauthenticated'
-						? 'Offline-Aktionen und gemerkte WGs hängen an deinem Konto.'
-						: 'ManaWG speichert vorbereitete Aktionen auf diesem Gerät. Sobald das Netz zurück ist, kannst du sie synchronisieren und in deine WG zurückspringen.';
+	const {
+		label: statusLabel,
+		heading: statusHeading,
+		description: statusDescription,
+	} = offlineStatusCopy(status, online);
 
 	async function syncNow() {
 		if (syncingRef.current || !hasRetryableQueue) return;
@@ -395,140 +293,16 @@ export function OfflineClient() {
 					)}
 				</header>
 
-				<section
-					aria-labelledby="offline-queue-heading"
-					className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
-				>
-					<div className="flex items-start justify-between gap-3">
-						<div>
-							<h2
-								id="offline-queue-heading"
-								className="font-heading text-base leading-5 font-semibold"
-							>
-								Warteschlange
-							</h2>
-							<p className="mt-1 text-sm text-muted-foreground">
-								{formatQueuedActionCount(queue.length)}
-							</p>
-						</div>
-					</div>
-					{recentQueue.length > 0 && (
-						<ItemGroup className="gap-2" aria-label="Wartende Offline-Aktionen">
-							{recentQueue.map((item) => {
-								const summary = getOfflineActionSummary(item);
-								const risk = getOfflineActionRisk(item);
-								return (
-									<Item key={item.id} variant="outline">
-										<ItemContent>
-											<ItemTitle>{summary.title}</ItemTitle>
-											<ItemDescription className="truncate">{summary.detail}</ItemDescription>
-											{item.lastError && (
-												<p className="mt-1 text-xs text-destructive">{item.lastError}</p>
-											)}
-											{risk && (
-												<p className="mt-1 text-xs text-muted-foreground">
-													{risk.title}: {risk.detail}
-												</p>
-											)}
-										</ItemContent>
-										<span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-											{formatOfflineAge(item.createdAt)}
-										</span>
-									</Item>
-								);
-							})}
-						</ItemGroup>
-					)}
-					{hiddenQueueCount > 0 && (
-						<>
-							<Separator />
-							<p className="text-sm text-muted-foreground">
-								+{hiddenQueueCount} weitere Aktion
-								{hiddenQueueCount === 1 ? '' : 'en'} in der Warteschlange.{' '}
-								{primaryWg ? (
-									<Button
-										variant="link"
-										size="lg"
-										render={<Link href={wgHref(primaryWg.code, '/einstellungen#daten')} />}
-										nativeButton={false}
-										className="px-0"
-									>
-										Alle Aktionen prüfen
-									</Button>
-								) : (
-									'Alle Aktionen prüfen'
-								)}{' '}
-								öffnet die vollständige Liste.
-							</p>
-						</>
-					)}
-				</section>
+				<OfflineQueueCard queue={queue} primaryWg={primaryWg} />
 
 				{status !== 'unauthenticated' && (
-					<section
-						aria-labelledby="known-wgs-heading"
-						className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
-					>
-						<div>
-							<h2 id="known-wgs-heading" className="font-heading text-base leading-5 font-semibold">
-								Zurück in deine WG
-							</h2>
-						</div>
-						<div className="space-y-2">
-							{knownWgs.length === 0 ? (
-								<p className="text-sm leading-relaxed text-muted-foreground">
-									{status === 'checking'
-										? 'Gemerkte WGs werden gesucht…'
-										: hasIdentity
-											? 'Auf diesem Gerät bist du in einer WG angemeldet, aber ihr Code ist hier nicht gespeichert. Sobald du wieder online bist, öffnet sich deine WG wieder.'
-											: status === 'browser-offline'
-												? 'Ohne Netz zeigen wir nur WGs mit wartenden Aktionen. Sobald du wieder online bist, öffnet sich deine WG wieder.'
-												: 'Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du mit deinem Code erneut beitreten.'}
-								</p>
-							) : (
-								<ItemGroup aria-label="Bekannte WGs">
-									{knownWgs.slice(0, 3).map((wg) => (
-										<Item
-											key={wg.code}
-											variant="outline"
-											render={<Link href={wgHref(wg.code)} aria-label={`${wg.name} öffnen`} />}
-										>
-											<ItemContent>
-												<ItemTitle>{wg.name}</ItemTitle>
-												<ItemDescription>
-													{formatWgQueuedActionCount(queueCounts.get(wg.code) ?? 0)}
-												</ItemDescription>
-											</ItemContent>
-											<ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-										</Item>
-									))}
-								</ItemGroup>
-							)}
-
-							<div className="grid grid-cols-1 gap-2 pt-2">
-								{primaryWg && (
-									<Button
-										variant="outline"
-										size="lg"
-										render={<Link href={wgHref(primaryWg.code, '/einstellungen#daten')} />}
-										nativeButton={false}
-										className="w-full"
-									>
-										Aktionen prüfen
-									</Button>
-								)}
-								<Button
-									variant="outline"
-									size="lg"
-									render={<Link href="/neu" />}
-									nativeButton={false}
-									className="w-full"
-								>
-									Code eingeben
-								</Button>
-							</div>
-						</div>
-					</section>
+					<KnownWgsCard
+						status={status}
+						knownWgs={knownWgs}
+						hasIdentity={hasIdentity}
+						queueCounts={queueCounts}
+						primaryWg={primaryWg}
+					/>
 				)}
 
 				{(status === 'browser-offline' || status === 'server-unreachable') && (
