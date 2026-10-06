@@ -46,50 +46,41 @@ const createInventorySchema = z.object({
 	category: z.enum(INVENTORY_CATEGORIES).default('sonstiges'),
 });
 
-export const GET = withWgRoute(
-	'inventory GET',
-	async (req, { code }) => {
-		const url = new URL(req.url);
-		const lowStockOnly = url.searchParams.get('lowStock') === 'true';
-		const listLimit = readListLimit(
-			process.env,
-			'INVENTORY_LIST_LIMIT',
-			INVENTORY_LIST_LIMIT,
-			INVENTORY_LIST_LIMIT_MAX,
-		);
-		const auth = await requireWgMember(req, code);
-		if (!auth.ok) return auth.response;
-		const wgId = auth.wg.id;
-		const items = await db
-			.select()
-			.from(wgInventoryItems)
-			.where(
-				lowStockOnly
-					? and(
-							eq(wgInventoryItems.wgId, wgId),
-							lte(wgInventoryItems.quantity, wgInventoryItems.threshold),
-						)
-					: eq(wgInventoryItems.wgId, wgId),
-			)
-			.orderBy(asc(wgInventoryItems.category), asc(wgInventoryItems.name))
-			.limit(listLimit);
-		const counts = await getRecentDecrementCounts(items.map((i) => i.id));
-		const enrichedItems = items.map((item) => ({
-			...item,
-			decrementCount30d: counts.get(item.id) ?? 0,
-		}));
-		return NextResponse.json({
-			items: enrichedItems,
-			grouped: groupItemsByCategory(enrichedItems),
-		});
-	},
-	{
-		fixture: () => {
-			const items: never[] = [];
-			return NextResponse.json({ items, grouped: groupItemsByCategory(items) });
-		},
-	},
-);
+export const GET = withWgRoute('inventory GET', async (req, { code }) => {
+	const url = new URL(req.url);
+	const lowStockOnly = url.searchParams.get('lowStock') === 'true';
+	const listLimit = readListLimit(
+		process.env,
+		'INVENTORY_LIST_LIMIT',
+		INVENTORY_LIST_LIMIT,
+		INVENTORY_LIST_LIMIT_MAX,
+	);
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wgId = auth.wg.id;
+	const items = await db
+		.select()
+		.from(wgInventoryItems)
+		.where(
+			lowStockOnly
+				? and(
+						eq(wgInventoryItems.wgId, wgId),
+						lte(wgInventoryItems.quantity, wgInventoryItems.threshold),
+					)
+				: eq(wgInventoryItems.wgId, wgId),
+		)
+		.orderBy(asc(wgInventoryItems.category), asc(wgInventoryItems.name))
+		.limit(listLimit);
+	const counts = await getRecentDecrementCounts(items.map((i) => i.id));
+	const enrichedItems = items.map((item) => ({
+		...item,
+		decrementCount30d: counts.get(item.id) ?? 0,
+	}));
+	return NextResponse.json({
+		items: enrichedItems,
+		grouped: groupItemsByCategory(enrichedItems),
+	});
+});
 
 export const POST = withWgRoute('inventory POST', async (req, { code }) => {
 	let raw: unknown;

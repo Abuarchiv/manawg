@@ -95,49 +95,18 @@ const deleteRecurringSchema = z.object({
 	id: z.string().uuid(),
 });
 
-export const GET = withWgRoute(
-	'recurring-expenses GET',
-	async (req, { code }) => {
-		const auth = await requireWgMember(req, code);
-		if (!auth.ok) return auth.response;
-		const wg = auth.wg;
-		const rows = await db
-			.select()
-			.from(recurringExpenses)
-			.where(eq(recurringExpenses.wgId, wg.id))
-			.orderBy(asc(recurringExpenses.nextDueAt))
-			.limit(RECURRING_EXPENSES_LIST_LIMIT);
-		return NextResponse.json({ recurringExpenses: rows.map(serializeRecurringExpense) });
-	},
-	{
-		fixture: (fixture) => {
-			return NextResponse.json({
-				recurringExpenses: [
-					{
-						id: 'a1ef32d5-d40a-4df2-9977-7684dce7df3f',
-						wgId: fixture.id,
-						createdByMemberId: fixture.members[0]?.id ?? '',
-						paidByMemberId: fixture.members[0]?.id ?? '',
-						description: 'Internet',
-						amountCents: 3290,
-						currency: 'EUR',
-						intervalMonths: 1,
-						nextDueAt: new Date(Date.now() - 86_400_000).toISOString(),
-						lastCreatedAt: null,
-						pausedAt: null,
-						createdAt: new Date().toISOString(),
-						splits: [
-							{
-								debtorMemberId: fixture.members[0]?.id ?? '',
-								amountCents: 3290,
-							},
-						],
-					},
-				],
-			});
-		},
-	},
-);
+export const GET = withWgRoute('recurring-expenses GET', async (req, { code }) => {
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wg = auth.wg;
+	const rows = await db
+		.select()
+		.from(recurringExpenses)
+		.where(eq(recurringExpenses.wgId, wg.id))
+		.orderBy(asc(recurringExpenses.nextDueAt))
+		.limit(RECURRING_EXPENSES_LIST_LIMIT);
+	return NextResponse.json({ recurringExpenses: rows.map(serializeRecurringExpense) });
+});
 
 export const POST = withWgRoute('recurring-expenses POST', async (req, { code }) => {
 	let raw: unknown;
