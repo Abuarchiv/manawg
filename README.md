@@ -76,13 +76,21 @@ New migrations: edit `src/core/db/schema.ts`, then `pnpm --filter @manawg/web db
 
 ### Fixture mode (no database)
 
-The app can run against in-memory fixtures from `src/core/infra/e2e-db-down.ts` (two fixture
-WGs, share codes `MTE8PZAT` and `SMKETEST`). `isE2EDbDownMode()` only switches on when all of
-these hold: `E2E_FIXTURE_MODE=true` (or `NODE_ENV=test`), `NEXT_PUBLIC_DB_DOWN=true`,
+The app can run against in-memory fixtures from `src/fixtures/` (two fixture WGs, share codes
+`MTE8PZAT` and `SMKETEST`). `isE2EDbDownMode()` (`src/fixtures/mode.ts`) only switches on when all
+of these hold: `E2E_FIXTURE_MODE=true` (or `NODE_ENV=test`), `NEXT_PUBLIC_DB_DOWN=true`,
 `CI=true`, `VERCEL` not `1`, `VERCEL_ENV` not `production`, and neither `POSTGRES_URL` nor
-`DATABASE_URL` set. It mints member tokens without real authentication, so it can never activate
-on a Vercel deployment. `test:e2e:fixtures` sets all of this and builds an isolated server on
-port `3101` (`E2E_PORT`).
+`DATABASE_URL` set. It trusts a plain member-id header without real authentication, so it can
+never activate on a Vercel deployment. `test:e2e:fixtures` sets all of this and builds an isolated
+server on port `3101` (`E2E_PORT`).
+
+Only `src/app/` (including `src/middleware.ts`) imports `src/fixtures/`, through one seam per
+entry: `resolveFixtureRequest` in the middleware answers fixture API reads and `POST /api/wg`
+before any route runs, `loadFixtureWgView` feeds the WG layout and chat page,
+`fixtureClientProps` hands `sessionless` to the `/neu` and `/offline` clients, and
+`FixtureClientSetup` in the root layout configures the API client. Core, components and features
+receive plain options (`requireWgSignIn`, `sessionless`, `configureApiClient`) and never see
+fixture mode.
 
 ## Commands
 
