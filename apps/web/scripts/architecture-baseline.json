@@ -1,6 +1,5 @@
 {
 	"violations": [
-		"comment-history e2e/layout.spec.ts",
 		"comment-history src/app/api/cron/chore-reminders/route.ts",
 		"comment-history src/app/api/cron/event-reminders/route.ts",
 		"comment-history src/app/api/cron/recurring-advance/route.ts",
@@ -17,14 +16,7 @@
 		"comment-history src/features/expenses/import-hash.ts",
 		"comment-history src/features/expenses/ocr.ts",
 		"comment-history src/shared/lib/use-dismiss-on-back.ts",
-		"comment-lang e2e/accessibility.spec.ts",
-		"comment-lang e2e/chat.spec.ts",
-		"comment-lang e2e/chores.spec.ts",
-		"comment-lang e2e/dashboard.spec.ts",
-		"comment-lang e2e/expense-idempotency-retry.spec.ts",
 		"comment-lang e2e/expense-ui.spec.ts",
-		"comment-lang e2e/layout.spec.ts",
-		"comment-lang e2e/settlement.spec.ts",
 		"comment-lang src/app/global-error.tsx",
 		"comment-lang src/app/layout.tsx",
 		"comment-lang src/app/wg/[code]/aktivitaet/page.tsx",
@@ -193,14 +185,6 @@
 		"src/core/db/schema.ts": 1040,
 		"src/features/events/events.ts": 633,
 		"src/features/expenses/import-parsers.ts": 589,
-		"e2e/account-delete-db.spec.ts": 1177,
-		"e2e/chores.spec.ts": 965,
-		"e2e/dashboard.spec.ts": 1060,
-		"e2e/expense-idempotency-retry.spec.ts": 999,
-		"e2e/expense-ui.spec.ts": 1812,
-		"e2e/layout.spec.ts": 1497,
-		"e2e/paypal.spec.ts": 870,
-		"e2e/settings.spec.ts": 981,
-		"e2e/shopping.spec.ts": 838
+		"e2e/expense-ui.spec.ts": 1812
 	}
 }
