@@ -1,6 +1,5 @@
 {
 	"violations": [
-		"banned-import src/components/ui/Toast.tsx zustand",
 		"comment-history e2e/layout.spec.ts",
 		"comment-history e2e/shopping.spec.ts",
 		"comment-history scripts/db-migrate.mjs",

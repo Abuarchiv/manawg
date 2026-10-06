@@ -4,8 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { haptic } from '@/shared/lib/haptics';
 import { CheckCircle, Info, X, XCircle } from 'lucide-react';
-import { useCallback, useEffect, useRef } from 'react';
-import { create } from 'zustand';
+import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 
 type ToastVariant = 'success' | 'error' | 'info';
 
@@ -15,34 +14,46 @@ interface Toast {
 	variant: ToastVariant;
 }
 
-interface ToastStore {
-	toasts: Toast[];
-	addToast: (message: string, variant: ToastVariant) => void;
-	removeToast: (id: string) => void;
-}
-
 // WCAG 2.2.1: a toast must give enough time to read it. The auto-dismiss timer
 // lives in ToastItem (not here) so it can pause while hovered or focused.
 const TOAST_DURATION_MS = 4000;
 
-const useToastStore = create<ToastStore>((set) => ({
-	toasts: [],
-	addToast: (message, variant) => {
-		const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-		set((state) => ({ toasts: [...state.toasts, { id, message, variant }] }));
-		haptic(variant === 'error' ? 'heavy' : variant === 'success' ? 'medium' : 'light');
-	},
-	removeToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
-}));
+/** Module-level store: toasts survive route changes and any component may raise one. */
+let toasts: Toast[] = [];
+const listeners = new Set<() => void>();
+const NO_TOASTS: Toast[] = [];
 
-// Öffentlicher Hook
-export function useToast() {
-	const { addToast } = useToastStore();
-	return {
-		success: (message: string) => addToast(message, 'success'),
-		error: (message: string) => addToast(message, 'error'),
-		info: (message: string) => addToast(message, 'info'),
+function setToasts(next: Toast[]): void {
+	toasts = next;
+	for (const listener of listeners) listener();
+}
+
+function subscribe(listener: () => void): () => void {
+	listeners.add(listener);
+	return () => {
+		listeners.delete(listener);
 	};
+}
+
+function addToast(message: string, variant: ToastVariant): void {
+	const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+	setToasts([...toasts, { id, message, variant }]);
+	haptic(variant === 'error' ? 'heavy' : variant === 'success' ? 'medium' : 'light');
+}
+
+function removeToast(id: string): void {
+	setToasts(toasts.filter((t) => t.id !== id));
+}
+
+const toastApi = {
+	success: (message: string) => addToast(message, 'success'),
+	error: (message: string) => addToast(message, 'error'),
+	info: (message: string) => addToast(message, 'info'),
+};
+
+/** Raising a toast does not subscribe the caller, so it never re-renders on toast changes. */
+export function useToast() {
+	return toastApi;
 }
 
 const variantIcons: Record<ToastVariant, typeof CheckCircle> = {
@@ -52,7 +63,6 @@ const variantIcons: Record<ToastVariant, typeof CheckCircle> = {
 };
 
 function ToastItem({ toast }: { toast: Toast }) {
-	const { removeToast } = useToastStore();
 	const Icon = variantIcons[toast.variant];
 	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -63,7 +73,7 @@ function ToastItem({ toast }: { toast: Toast }) {
 	const scheduleTimer = useCallback(() => {
 		clearTimer();
 		timerRef.current = setTimeout(() => removeToast(toast.id), TOAST_DURATION_MS);
-	}, [clearTimer, removeToast, toast.id]);
+	}, [clearTimer, toast.id]);
 
 	useEffect(() => {
 		scheduleTimer();
@@ -98,9 +108,13 @@ function ToastItem({ toast }: { toast: Toast }) {
 }
 
 export function ToastContainer() {
-	const { toasts } = useToastStore();
+	const current = useSyncExternalStore(
+		subscribe,
+		() => toasts,
+		() => NO_TOASTS,
+	);
 
-	if (toasts.length === 0) return null;
+	if (current.length === 0) return null;
 
 	return (
 		<div
@@ -109,7 +123,7 @@ export function ToastContainer() {
 			// biome-ignore lint/a11y/useSemanticElements: role="region" names the fixed toast stack; <section> would add another landmark.
 			role="region"
 		>
-			{toasts.map((toast) => (
+			{current.map((toast) => (
 				<div key={toast.id} className="pointer-events-auto">
 					<ToastItem toast={toast} />
 				</div>
