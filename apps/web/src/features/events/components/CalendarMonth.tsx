@@ -3,6 +3,15 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { subscribeVisibility } from '@/core/hooks/use-online-status';
+import {
+	type ChoreOccurrence,
+	buildDays,
+	dayKey,
+	groupChoresByDay,
+	pickInitialFocusIndex,
+	sameDay,
+} from '@/features/events/calendar-grid';
 import {
 	type EventOccurrence,
 	eventOverlapsCalendarDay,
@@ -21,12 +30,10 @@ interface CalendarMonthProps {
 	onSelectDay: (day: Date) => void;
 	onSelectOccurrence: (occurrence: EventOccurrence) => void;
 	selectedDay: Date | null;
-	/** Putzplan-Fälligkeiten im Agenda-Zeitraum; sie bekommen wie Termine einen Punkt. */
-	choreOccurrences: ReadonlyArray<{ choreId: string; title: string; startsAt: string }>;
+	/** Chore due dates in the agenda range; they get a dot like events. */
+	choreOccurrences: readonly ChoreOccurrence[];
 	wgBaseHref: string;
 }
-
-type ChoreOccurrence = CalendarMonthProps['choreOccurrences'][number];
 
 const WEEKDAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
 const MONTH_FORMATTER = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' });
@@ -36,85 +43,6 @@ const FULL_DATE_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 	month: 'long',
 	year: 'numeric',
 });
-
-interface DayCell {
-	date: Date;
-	inCurrentMonth: boolean;
-	occurrences: EventOccurrence[];
-	chores: ChoreOccurrence[];
-}
-
-function dayKey(date: Date): string {
-	return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-}
-
-function startOfMonth(date: Date): Date {
-	return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-function endOfMonth(date: Date): Date {
-	return new Date(date.getFullYear(), date.getMonth() + 1, 0);
-}
-
-function startOfWeekMonday(date: Date): Date {
-	const copy = new Date(date);
-	const dow = copy.getDay();
-	const diff = dow === 0 ? -6 : 1 - dow;
-	copy.setDate(copy.getDate() + diff);
-	copy.setHours(0, 0, 0, 0);
-	return copy;
-}
-
-function sameDay(a: Date, b: Date): boolean {
-	return (
-		a.getFullYear() === b.getFullYear() &&
-		a.getMonth() === b.getMonth() &&
-		a.getDate() === b.getDate()
-	);
-}
-
-function buildDays(
-	month: Date,
-	occurrences: EventOccurrence[],
-	choresByDay: Map<string, ChoreOccurrence[]>,
-): DayCell[] {
-	const first = startOfMonth(month);
-	const last = endOfMonth(month);
-	const gridStart = startOfWeekMonday(first);
-	const days: DayCell[] = [];
-	const cursor = new Date(gridStart);
-	while (cursor <= last || days.length % 7 !== 0 || days.length === 0) {
-		const dayDate = new Date(cursor);
-		const dayOcc = occurrences.filter((occ) => eventOverlapsCalendarDay(occ, dayDate));
-		days.push({
-			date: dayDate,
-			inCurrentMonth: dayDate.getMonth() === month.getMonth(),
-			occurrences: dayOcc,
-			chores: choresByDay.get(dayKey(dayDate)) ?? [],
-		});
-		cursor.setDate(cursor.getDate() + 1);
-		if (days.length >= 42) break;
-	}
-	return days;
-}
-
-function pickInitialFocusIndex(
-	days: DayCell[],
-	selectedDay: Date | null,
-	today: Date,
-	month: Date,
-): number {
-	if (selectedDay) {
-		const idx = days.findIndex((d) => sameDay(d.date, selectedDay));
-		if (idx >= 0) return idx;
-	}
-	if (today.getFullYear() === month.getFullYear() && today.getMonth() === month.getMonth()) {
-		const idx = days.findIndex((d) => sameDay(d.date, today));
-		if (idx >= 0) return idx;
-	}
-	const firstOfMonth = days.findIndex((d) => d.inCurrentMonth);
-	return firstOfMonth >= 0 ? firstOfMonth : 0;
-}
 
 export function CalendarMonth({
 	month,
@@ -127,24 +55,20 @@ export function CalendarMonth({
 	choreOccurrences,
 	wgBaseHref,
 }: CalendarMonthProps) {
-	const days = useMemo(() => {
-		const choresByDay = new Map<string, ChoreOccurrence[]>();
-		for (const chore of choreOccurrences) {
-			const key = dayKey(new Date(chore.startsAt));
-			choresByDay.set(key, [...(choresByDay.get(key) ?? []), chore]);
-		}
-		return buildDays(month, occurrences, choresByDay);
-	}, [month, occurrences, choreOccurrences]);
+	const days = useMemo(
+		() => buildDays(month, occurrences, groupChoresByDay(choreOccurrences)),
+		[month, occurrences, choreOccurrences],
+	);
 	const monthLabel = MONTH_FORMATTER.format(month);
 	const [today, setToday] = useState(() => new Date());
 	useEffect(() => {
 		const refresh = () =>
 			setToday((prev) => (dayKey(prev) === dayKey(new Date()) ? prev : new Date()));
 		window.addEventListener('focus', refresh);
-		document.addEventListener('visibilitychange', refresh);
+		const unsubscribeVisibility = subscribeVisibility(refresh);
 		return () => {
 			window.removeEventListener('focus', refresh);
-			document.removeEventListener('visibilitychange', refresh);
+			unsubscribeVisibility();
 		};
 	}, []);
 

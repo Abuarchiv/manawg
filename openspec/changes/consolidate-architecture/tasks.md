@@ -21,9 +21,9 @@
 
 ## 5. Client
 
-- [ ] 5.1 `useSyncedCollection` and one online/visibility subscription; migrate shopping, chores, inventory, pinnwand.
+- [x] 5.1 `useSyncedCollection` and one online/visibility subscription; migrate shopping, chores, inventory, pinnwand.
 - [ ] 5.2 Chore completion implemented once.
-- [ ] 5.3 Split the dashboard page, `ImportWizard`, the shopping and chat hooks.
+- [x] 5.3 Split the dashboard page, `ImportWizard`, the shopping and chat hooks.
 - [ ] 5.4 One component tree; remove `components/neu` and `shared/components/ui`.
 - [ ] 5.5 Replace Zustand in the toast store; drop the dependency.
 
