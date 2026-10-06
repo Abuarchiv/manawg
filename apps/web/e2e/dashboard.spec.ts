@@ -412,11 +412,12 @@ test.describe('daily overview home', () => {
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
 		await dismissOnboarding(page);
+		// Nach einem Fehler bleibt der Dialog offen: Wiederholen heißt nur noch bestätigen.
 		const confirmCompletion = async (): Promise<void> => {
-			await page.getByRole('button', { name: 'Abhaken: Bad putzen' }).click();
-			await page.getByRole('button', { name: 'Bestätigen: Bad putzen erledigt' }).click();
+			await page.getByRole('button', { name: 'Erledigt bestätigen: Bad putzen' }).click();
 		};
 
+		await page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' }).click();
 		await confirmCompletion();
 		await expect(
 			page.getByText('Erledigt konnte nicht gespeichert werden. Versuche es gleich erneut.'),
@@ -436,7 +437,7 @@ test.describe('daily overview home', () => {
 		await expect(page.getByText('Bad putzen', { exact: true })).toHaveCount(0);
 	});
 
-	test('shows a saving label instead of "tap again" while a completion request is in flight', async ({
+	test('shows a saving label and keeps focus while a completion request is in flight', async ({
 		page,
 	}) => {
 		await setupMember(page);
@@ -464,17 +465,15 @@ test.describe('daily overview home', () => {
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
 		await dismissOnboarding(page);
-		await page.getByRole('button', { name: 'Abhaken: Bad putzen' }).click();
-		await page.getByRole('button', { name: 'Bestätigen: Bad putzen erledigt' }).click();
+		await page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' }).click();
+		await page.getByRole('button', { name: 'Erledigt bestätigen: Bad putzen' }).click();
 
-		// While the request is in flight the button is disabled (still labelled
-		// as the armed "confirm" action for a11y) but the subtitle must say it is
-		// saving, not repeat the now-stale "tap again to confirm" instruction.
-		await expect(
-			page.getByRole('button', { name: 'Bestätigen: Bad putzen erledigt' }),
-		).toBeDisabled();
+		// While the request is in flight the confirm button keeps focus (aria-disabled,
+		// not disabled) and the row subtitle says it is saving.
+		const confirm = page.getByRole('button', { name: 'Erledigt bestätigen: Bad putzen' });
+		await expect(confirm).toHaveAttribute('aria-disabled', 'true');
+		await expect(confirm).toBeFocused();
 		await expect(page.getByText('Wird gespeichert…')).toBeVisible();
-		await expect(page.getByText('Nochmal tippen zum Bestätigen')).toHaveCount(0);
 
 		resolveComplete?.();
 		await expect(page.getByText('Bad putzen erledigt.')).toBeVisible();

@@ -5,6 +5,7 @@ import {
 	CollapsiblePanel,
 	CollapsibleTrigger,
 } from '@/components/animate-ui/primitives/base/collapsible';
+import { useToast } from '@/components/ui/Toast';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,6 +30,11 @@ import { getDashboardAnnouncementHref } from '@/core/reads/dashboard-links';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { getChoreStatus } from '@/features/chores/chore-status';
+import {
+	ChoreCompleteDialog,
+	completeTriggerLabel,
+} from '@/features/chores/components/ChoreCompleteDialog';
 import { type SerializedWgEvent, expandRecurrence } from '@/features/events/events';
 import { cn } from '@/shared/lib/cn';
 import {
@@ -37,7 +43,6 @@ import {
 	ChevronDown,
 	ChevronRight,
 	Circle,
-	CircleCheck,
 	Loader2,
 	Megaphone,
 	Sparkles,
@@ -87,9 +92,10 @@ export default function WgHomePage() {
 	);
 	const { wg, identity } = useWg();
 	const [todayMoreOpen, setTodayMoreOpen] = useState(false);
-	const [armedChoreId, setArmedChoreId] = useState<string | null>(null);
+	const [confirmItem, setConfirmItem] = useState<TodayImportantItem | null>(null);
 	const [pendingChoreId, setPendingChoreId] = useState<string | null>(null);
-	const [completeNotice, setCompleteNotice] = useState<string | null>(null);
+	const [completeError, setCompleteError] = useState<string | null>(null);
+	const toast = useToast();
 	const completionRequestKeysRef = useRef(new Map<string, string>());
 	const [berlinTodayKey, setBerlinTodayKey] = useState(() => berlinDayKey(new Date()));
 	const [agendaNow, setAgendaNow] = useState(() => Date.now());
@@ -130,23 +136,21 @@ export default function WgHomePage() {
 		void dashboardRead.refresh();
 	}, [berlinTodayKey, dashboardRead.refresh, eventRead.refresh]);
 
-	// Nur eigene Putzaufgaben lassen sich direkt abhaken. Erster Tipp merkt vor,
-	// zweiter bestätigt – wie im Putzplan, damit ein versehentlicher Tipp nichts bucht.
+	// Nur eigene Putzaufgaben lassen sich direkt abhaken. Wie im Putzplan: erst der
+	// Knopf, dann der Bestätigungsdialog; ein Toast meldet das Ergebnis.
 	async function completeChore(item: TodayImportantItem): Promise<void> {
 		const choreId = item.entityId;
 		if (!choreId || pendingChoreId) return;
-		if (armedChoreId !== choreId) {
-			setArmedChoreId(choreId);
-			setCompleteNotice(null);
-			return;
-		}
 		const idempotencyKey =
 			completionRequestKeysRef.current.get(choreId) ?? createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
-			setCompleteNotice('Konnte nicht sicher gespeichert werden. Erledige es im Putzplan.');
+			setCompleteError(
+				'Erledigt-Aktion konnte nicht sicher gespeichert werden. Versuche es erneut.',
+			);
 			return;
 		}
 		completionRequestKeysRef.current.set(choreId, idempotencyKey);
+		setCompleteError(null);
 		setPendingChoreId(choreId);
 		const result = await apiFetch(
 			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(choreId)}/complete`,
@@ -162,40 +166,29 @@ export default function WgHomePage() {
 			},
 		);
 		setPendingChoreId(null);
-		setArmedChoreId(null);
 		if (result.ok || result.error === 'chore_already_completed') {
 			completionRequestKeysRef.current.delete(choreId);
-			setCompleteNotice(`${item.title} erledigt.`);
+			setConfirmItem(null);
+			toast.success(`${item.title} erledigt.`);
 			void load();
 			return;
 		}
 		if (result.error === 'chore_occurrence_changed') {
 			completionRequestKeysRef.current.delete(choreId);
-			setCompleteNotice(
-				'Termin oder Zuständigkeit haben sich geändert. Der Plan wird aktualisiert.',
-			);
+			setConfirmItem(null);
+			toast.info('Termin oder Zuständigkeit haben sich geändert. Der Plan wird aktualisiert.');
 			void load();
 			return;
 		}
 		if (result.status > 0 && result.status < 500 && result.status !== 429)
 			completionRequestKeysRef.current.delete(choreId);
-		setCompleteNotice(
+		setCompleteError(
 			result.status === 0
 				? 'Offline: Öffne den Putzplan, dort wird die Erledigung vorgemerkt.'
 				: 'Erledigt konnte nicht gespeichert werden. Versuche es gleich erneut.',
 		);
 	}
 	useVisibilityPausedInterval(() => void load(), REFRESH_INTERVAL_MS);
-	useEffect(() => {
-		if (!completeNotice) return;
-		const timer = setTimeout(() => setCompleteNotice(null), 4000);
-		return () => clearTimeout(timer);
-	}, [completeNotice]);
-	useEffect(() => {
-		if (!armedChoreId || pendingChoreId) return;
-		const timer = setTimeout(() => setArmedChoreId(null), 4000);
-		return () => clearTimeout(timer);
-	}, [armedChoreId, pendingChoreId]);
 	useEffect(() => {
 		const onShow = () => {
 			if (document.visibilityState === 'visible') load();
@@ -310,9 +303,15 @@ export default function WgHomePage() {
 											<TodayRow
 												key={`${item.kind}:${item.entityId ?? item.href}`}
 												item={item}
-												armed={armedChoreId === item.entityId}
 												pending={pendingChoreId === item.entityId}
-												onCheck={() => void completeChore(item)}
+												confirming={confirmItem?.entityId === item.entityId}
+												error={completeError}
+												onCheck={() => {
+													setCompleteError(null);
+													setConfirmItem(item);
+												}}
+												onCancel={() => setConfirmItem(null)}
+												onConfirm={() => void completeChore(item)}
 											/>
 										))}
 									</ul>
@@ -339,9 +338,15 @@ export default function WgHomePage() {
 														<TodayRow
 															key={`${item.kind}:${item.entityId ?? item.href}`}
 															item={item}
-															armed={armedChoreId === item.entityId}
 															pending={pendingChoreId === item.entityId}
-															onCheck={() => void completeChore(item)}
+															confirming={confirmItem?.entityId === item.entityId}
+															error={completeError}
+															onCheck={() => {
+																setCompleteError(null);
+																setConfirmItem(item);
+															}}
+															onCancel={() => setConfirmItem(null)}
+															onConfirm={() => void completeChore(item)}
 														/>
 													))}
 												</ul>
@@ -364,9 +369,6 @@ export default function WgHomePage() {
 								<Skeleton className="h-14 w-full" />
 								<Skeleton className="h-14 w-full" />
 							</output>
-						)}
-						{completeNotice && (
-							<output className="block text-sm text-muted-foreground">{completeNotice}</output>
 						)}
 					</section>
 				)}
@@ -587,16 +589,23 @@ export default function WgHomePage() {
 
 function TodayRow({
 	item,
-	armed,
 	pending,
+	confirming,
+	error,
 	onCheck,
+	onCancel,
+	onConfirm,
 }: {
 	item: TodayImportantItem;
-	armed: boolean;
 	pending: boolean;
+	confirming: boolean;
+	error: string | null;
 	onCheck: () => void;
+	onCancel: () => void;
+	onConfirm: () => void;
 }) {
 	const checkable = item.kind === 'chore' && item.isPersonal && Boolean(item.entityId);
+	const actionLabel = getChoreStatus(item.expectedNextDueAt ?? '').actionLabel;
 	const debtAmount =
 		item.kind === 'debt' && item.amountCents !== undefined
 			? formatEuroCents(item.amountCents, item.currency, { signed: true })
@@ -608,15 +617,15 @@ function TodayRow({
 					variant="ghost"
 					size="icon"
 					className="shrink-0"
-					aria-label={armed ? `Bestätigen: ${item.title} erledigt` : `Abhaken: ${item.title}`}
+					aria-label={completeTriggerLabel(item.title, actionLabel)}
 					// aria-disabled statt disabled: sonst verliert der Fokus den Knopf, während gespeichert wird.
 					aria-disabled={pending}
-					onClick={onCheck}
+					onClick={() => {
+						if (!pending) onCheck();
+					}}
 				>
 					{pending ? (
 						<Loader2 className="animate-spin" aria-hidden />
-					) : armed ? (
-						<CircleCheck aria-hidden />
 					) : (
 						<Circle className="text-muted-foreground" aria-hidden />
 					)}
@@ -638,11 +647,11 @@ function TodayRow({
 							item.kind === 'recurring' && 'tabular-nums',
 						)}
 					>
-						{pending ? 'Wird gespeichert…' : armed ? 'Nochmal tippen zum Bestätigen' : item.detail}
+						{pending ? 'Wird gespeichert…' : item.detail}
 					</span>
 				</span>
 				<span className="ml-auto flex shrink-0 items-center gap-2">
-					{debtAmount !== undefined && !pending && !armed && (
+					{debtAmount !== undefined && !pending && (
 						<span className="whitespace-nowrap font-mono text-[12px] font-medium tabular-nums">
 							{debtAmount}
 						</span>
@@ -650,6 +659,17 @@ function TodayRow({
 					<ChevronRight className="size-4 text-muted-foreground" aria-hidden />
 				</span>
 			</Link>
+			{checkable && (
+				<ChoreCompleteDialog
+					open={confirming}
+					title={item.title}
+					actionLabel={actionLabel}
+					busy={pending}
+					error={error}
+					onCancel={onCancel}
+					onConfirm={onConfirm}
+				/>
+			)}
 		</li>
 	);
 }
