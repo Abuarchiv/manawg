@@ -4,6 +4,7 @@
 import { writeFile } from 'node:fs/promises';
 import { type Page, type Route, expect, test } from '@playwright/test';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import { applyRootTextScale } from './support/text-scale';
 
 test.describe('pwa platform', () => {
 	async function fireInstallEvent(page: import('@playwright/test').Page) {
@@ -79,9 +80,7 @@ test.describe('pwa platform', () => {
 			navItemHeights: number[];
 		}> = [];
 		for (const textScale of ['100%', '200%'] as const) {
-			await page.evaluate((fontSize) => {
-				document.documentElement.style.fontSize = fontSize;
-			}, textScale);
+			await applyRootTextScale(page, textScale === '200%' ? 200 : 100);
 			await expect
 				.poll(() =>
 					page.evaluate(() => {

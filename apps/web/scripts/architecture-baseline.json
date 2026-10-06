@@ -6,6 +6,6 @@
 		"test-location e2e/preview-global-setup.ts"
 	],
 	"fileSize": {
-		"e2e/expense-ui.spec.ts": 1812
+		"e2e/expense-ui.spec.ts": 1788
 	}
 }

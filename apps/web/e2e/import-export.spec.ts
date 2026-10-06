@@ -9,20 +9,10 @@ import {
 	navigateToFeature,
 	setupMember,
 } from './_helpers';
+import { applyRootTextScale } from './support/text-scale';
 
 test.describe('import wizard responsive', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
-
-	async function setLargeText(page: Page): Promise<void> {
-		await page.evaluate(() => {
-			const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce;
-			if (!nonce) throw new Error('CSP nonce not found');
-			const style = document.createElement('style');
-			style.nonce = nonce;
-			style.textContent = 'html { font-size: 200% !important; }';
-			document.head.append(style);
-		});
-	}
 
 	async function expectPageFits(page: Page, width: number): Promise<void> {
 		const dimensions = await page.evaluate(() => ({
@@ -115,7 +105,7 @@ test.describe('import wizard responsive', () => {
 
 					await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/import`);
 					await dismissOnboarding(page);
-					if (largeText) await setLargeText(page);
+					if (largeText) await applyRootTextScale(page, 200, { persistAcrossNavigation: true });
 					await expect(page.getByRole('button', { name: /Splitwise CSV/ })).toBeVisible();
 					await expect
 						.poll(() =>
@@ -150,8 +140,8 @@ test.describe('import wizard responsive', () => {
 						expect(await back.evaluate((el) => el === document.activeElement)).toBe(true);
 						await page.keyboard.press('Enter');
 						await expect(page.getByRole('heading', { name: 'Importquelle wählen' })).toBeVisible();
+						// The persisted scale is adopted at document start of the reloaded wizard.
 						await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/import`);
-						await setLargeText(page);
 						const restartedFontSize = await page.evaluate(() =>
 							Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
 						);

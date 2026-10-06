@@ -10,6 +10,7 @@ import {
 	navigateToFeature,
 	setupMember,
 } from './_helpers';
+import { applyRootTextScale } from './support/text-scale';
 
 test.describe('pinnwand archive', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -75,9 +76,7 @@ test.describe('pinnwand archive', () => {
 
 					await navigateToFeature(page, `/wg/${SHARE_CODE}/pinnwand`);
 					await dismissOnboarding(page);
-					await page.evaluate((fontSize) => {
-						document.documentElement.style.setProperty('font-size', fontSize, 'important');
-					}, rootFontSize);
+					await applyRootTextScale(page, rootFontSize === '32px' ? 200 : 100);
 
 					const board = page.getByRole('list', { name: 'Pinnwand-Beiträge' });
 					await expect(board.getByText('Offene Frage')).toBeVisible();
@@ -322,11 +321,7 @@ test.describe('pinnwand comment layout', () => {
 
 					await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/pinnwand`);
 					await dismissOnboarding(page);
-					if (largeText) {
-						await page.evaluate(() => {
-							document.documentElement.style.setProperty('font-size', '32px', 'important');
-						});
-					}
+					if (largeText) await applyRootTextScale(page, 200);
 					await expect
 						.poll(async () =>
 							page.locator('html').evaluate((element) => element.classList.contains('dark')),
@@ -461,9 +456,7 @@ test.describe('pinnwand refresh', () => {
 
 		const skeleton = page.getByLabel('Pinnwand wird geladen');
 		await expect(skeleton).toBeVisible();
-		await page.evaluate(() => {
-			document.documentElement.style.setProperty('font-size', '200%', 'important');
-		});
+		await applyRootTextScale(page, 200);
 		const geometry = await skeleton.evaluate((root) => {
 			const viewportWidth = document.documentElement.clientWidth;
 			return {

@@ -3,6 +3,7 @@
 
 import { type Locator, type Page, expect, test } from '@playwright/test';
 import { dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import { applyRootTextScale } from './support/text-scale';
 
 test.describe('mobile layout matrix', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -594,21 +595,19 @@ test.describe('mobile layout matrix', () => {
 					).toBeVisible({ timeout: 30_000 });
 					expect(await page.evaluate(() => navigator.maxTouchPoints)).toBeGreaterThan(0);
 					if (textScale === '200%') {
-						await page.evaluate(() => {
-							document.documentElement.style.fontSize = '200%';
-						});
+						await applyRootTextScale(page, 200);
 						await page.setViewportSize({ width: 320, height: 740 });
 						await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(320);
 					}
-					const readRootFontSize = () =>
-						page.evaluate(() => getComputedStyle(document.documentElement).fontSize);
+					const rootFontSize = await page.evaluate(
+						() => getComputedStyle(document.documentElement).fontSize,
+					);
 					// Normal text scales fluidly on narrow phones (90–100 %); 200 % stays exact.
 					if (textScale === '200%') {
-						await expect.poll(readRootFontSize).toBe('32px');
+						expect(rootFontSize).toBe('32px');
 					} else {
-						const rootFontSize = Number.parseFloat(await readRootFontSize());
-						expect(rootFontSize).toBeGreaterThanOrEqual(14.4);
-						expect(rootFontSize).toBeLessThanOrEqual(16);
+						expect(Number.parseFloat(rootFontSize)).toBeGreaterThanOrEqual(14.4);
+						expect(Number.parseFloat(rootFontSize)).toBeLessThanOrEqual(16);
 					}
 					if (route === 'inventory') {
 						await page
@@ -679,9 +678,7 @@ test.describe('mobile layout matrix', () => {
 			await dismissOnboarding(page);
 			await expect(page.getByRole('heading', { name: 'Vorräte' })).toBeVisible({ timeout: 30_000 });
 			if (textScale === '200%') {
-				await page.evaluate(() => {
-					document.documentElement.style.fontSize = '200%';
-				});
+				await applyRootTextScale(page, 200);
 				await page.setViewportSize({ width, height: 740 });
 				await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(width);
 			}

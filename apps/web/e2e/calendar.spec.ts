@@ -1,9 +1,10 @@
 // Calendar: all-day/timed events across Berlin DST and extreme time zones, recurrence, ICS, month grid, public preview.
 // Why: a calendar day must be identical for every device time zone.
 
-import { type Page, type Route, expect, test } from '@playwright/test';
+import { type Route, expect, test } from '@playwright/test';
 import type { EventInput } from '../src/features/events/events';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import { applyRootTextScale, resetRootTextScale } from './support/text-scale';
 
 test.describe('calendar fixes', () => {
 	test('shows a fetched multi-day event on every overlapping month-grid day', async ({ page }) => {
@@ -145,12 +146,7 @@ test.describe('calendar fixes', () => {
 			}
 		}
 
-		await page.route('**/__e2e-font-scale-200.css', (route) =>
-			route.fulfill({ contentType: 'text/css', body: ':root { font-size: 32px !important; }' }),
-		);
-		await page.addStyleTag({
-			url: new URL('/__e2e-font-scale-200.css', page.url()).toString(),
-		});
+		await applyRootTextScale(page, 200);
 		for (const width of [320, 360]) {
 			await page.setViewportSize({ width, height: 812 });
 			for (const colorScheme of ['light', 'dark'] as const) {
@@ -519,13 +515,8 @@ test.describe('public calendar preview responsive', () => {
 			await page.emulateMedia({ colorScheme });
 
 			for (const textScale of ['normal', '200%'] as const) {
-				await page.evaluate((scale) => {
-					if (scale === '200%') {
-						document.documentElement.style.fontSize = '32px';
-					} else {
-						document.documentElement.style.removeProperty('font-size');
-					}
-				}, textScale);
+				if (textScale === '200%') await applyRootTextScale(page, 200);
+				else await resetRootTextScale(page);
 
 				for (const width of [320, 360, 390]) {
 					await page.setViewportSize({ width, height: 812 });
@@ -564,17 +555,6 @@ test.describe('public calendar preview responsive', () => {
 test.describe('marker mobile overflow', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 
-	async function setTextScale(page: Page) {
-		await page.evaluate(() => {
-			const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce;
-			if (!nonce) throw new Error('CSP nonce not found');
-			const style = document.createElement('style');
-			style.nonce = nonce;
-			style.textContent = 'html { font-size: 200% !important; }';
-			document.head.append(style);
-		});
-	}
-
 	for (const width of [320, 360] as const) {
 		for (const colorScheme of ['light', 'dark'] as const) {
 			if (width !== 320) continue;
@@ -586,7 +566,7 @@ test.describe('marker mobile overflow', () => {
 				await setupMember(page);
 				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/chat`);
 				await dismissOnboarding(page);
-				await setTextScale(page);
+				await applyRootTextScale(page, 200);
 
 				await expect(page.getByRole('textbox', { name: 'Chat-Nachricht' })).toBeVisible();
 				const isDark = await page
@@ -628,7 +608,7 @@ test.describe('marker mobile overflow', () => {
 
 				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
 				await dismissOnboarding(page);
-				await setTextScale(page);
+				await applyRootTextScale(page, 200);
 				const header = page.locator('[data-home-header]');
 				await expect(header).toBeVisible();
 				await expect(

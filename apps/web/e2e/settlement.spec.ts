@@ -10,6 +10,7 @@ import {
 	setupMember,
 	tuple,
 } from './_helpers';
+import { applyRootTextScale } from './support/text-scale';
 
 test.describe('settlement scope', () => {
 	const memberA = '11111111-1111-4111-8111-111111111111';
@@ -169,9 +170,7 @@ test.describe('debt summary reminder link', () => {
 		for (const theme of ['light', 'dark'] as const) {
 			await page.emulateMedia({ colorScheme: theme });
 			for (const textScale of ['100%', '200%'] as const) {
-				await page.evaluate((fontSize) => {
-					document.documentElement.style.setProperty('font-size', fontSize, 'important');
-				}, textScale);
+				await applyRootTextScale(page, textScale === '200%' ? 200 : 100);
 				for (const width of [320, 360, 390]) {
 					await page.setViewportSize({ width, height: 844 });
 					// Measure both buttons in the same frame: getBoundingClientRect is

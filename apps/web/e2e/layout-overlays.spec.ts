@@ -3,15 +3,14 @@
 
 import { type Locator, type Page, expect, test } from '@playwright/test';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import { applyRootTextScale, resetRootTextScale } from './support/text-scale';
 
 test.describe('alert dialog responsive', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 
 	async function expectAlertDialogLayout(page: Page, dialog: Locator) {
 		for (const fontSize of ['16px', '32px']) {
-			await page.evaluate((size) => {
-				document.documentElement.style.fontSize = size;
-			}, fontSize);
+			await applyRootTextScale(page, fontSize === '32px' ? 200 : 100);
 
 			for (const theme of ['light', 'dark'] as const) {
 				await page.emulateMedia({ colorScheme: theme });
@@ -172,7 +171,7 @@ test.describe('alert dialog responsive', () => {
 		await expect(choreDialog).toBeHidden();
 		await expect(completeTrigger).toBeFocused();
 
-		await page.evaluate(() => document.documentElement.style.removeProperty('font-size'));
+		await resetRootTextScale(page);
 		await page.setViewportSize({ width: 320, height: 740 });
 		await page.goto(`/wg/${shareCode}/abos`);
 		await dismissOnboarding(page);

@@ -9,6 +9,7 @@ import {
 	navigateToFeature,
 	setupMember,
 } from './_helpers';
+import { applyRootTextScale } from './support/text-scale';
 
 test.describe('chat edit focus', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -46,11 +47,10 @@ test.describe('chat edit focus', () => {
 			await setupMember(page);
 			await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/chat`);
 			await dismissOnboarding(page);
-			const appliedFontSize = await page.evaluate((size) => {
-				document.documentElement.style.fontSize = `${size}px`;
-				return getComputedStyle(document.documentElement).fontSize;
-			}, fontSize);
-			expect(appliedFontSize).toBe(`${fontSize}px`);
+			await applyRootTextScale(page, (fontSize / 16) * 100);
+			expect(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe(
+				`${fontSize}px`,
+			);
 
 			const { actions, editor, message } = await openEditorFromKeyboard(page);
 			await expect(editor).toBeFocused();
@@ -473,9 +473,7 @@ test.describe('chat pinnwand reflow 200', () => {
 			await dismissOnboarding(page);
 			await expect(page.getByRole('textbox').last()).toBeVisible();
 
-			await page.evaluate(() => {
-				document.documentElement.style.fontSize = '32px';
-			});
+			await applyRootTextScale(page, 200);
 			expect(await page.locator('html').evaluate((el) => getComputedStyle(el).fontSize)).toBe(
 				'32px',
 			);
@@ -510,9 +508,7 @@ test.describe('chat pinnwand reflow 200', () => {
 				page.getByText('Ein etwas längerer Pinnwand-Beitrag', { exact: false }),
 			).toBeVisible();
 
-			await page.evaluate(() => {
-				document.documentElement.style.fontSize = '32px';
-			});
+			await applyRootTextScale(page, 200);
 			expect(await page.locator('html').evaluate((el) => getComputedStyle(el).fontSize)).toBe(
 				'32px',
 			);
