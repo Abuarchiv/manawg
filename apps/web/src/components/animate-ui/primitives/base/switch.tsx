@@ -156,7 +156,7 @@ function SwitchThumb({
 					'0 2px 32px color-mix(in oklch, var(--primary) 20%, transparent)',
 				].join(', ')
 			: '0.5px 0.5px 2px rgba(0,0,0,0.03)',
-		// Gedrückt wird der Thumb zu Glas: deckender Rand, die Spur scheint eingerückt durch (Brandbook 11.3).
+		// Pressed, the thumb turns to glass: opaque border, the track shows through inset (Brandbook 11.3).
 		...(isPressed
 			? {
 					backgroundColor: 'var(--background)',

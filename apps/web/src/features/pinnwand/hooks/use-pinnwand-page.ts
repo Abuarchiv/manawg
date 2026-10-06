@@ -16,7 +16,7 @@ import { useAnnouncementsData } from './use-announcements-data';
 
 const CARD_RENDER_PAGE = 30;
 
-/** Pinnwand-Seite: verbindet Laden, Verfassen und Karten-Aktionen und leitet die Anzeige ab. */
+/** Pinnwand page: ties loading, composing and card actions together and derives the view. */
 export function usePinnwandPage() {
 	const { wg, members, identity, isAdmin } = useWg();
 	const toast = useToast();
@@ -74,7 +74,7 @@ export function usePinnwandPage() {
 
 	useEffect(() => {
 		if (!highlightedId || itemCount === 0) return;
-		// Verlinkte Beiträge können im eingeklappten Archiv liegen.
+		// Linked posts may sit in the collapsed archive.
 		const target = itemsRef.current.find((item) => item.id === highlightedId);
 		if (target && isAnnouncementArchived(target, Date.now())) setArchiveOpen(true);
 		const timer = window.setTimeout(() => {
@@ -100,7 +100,7 @@ export function usePinnwandPage() {
 	}, [items]);
 	const [openLimit, setOpenLimit] = useState(CARD_RENDER_PAGE);
 	const [archivedLimit, setArchivedLimit] = useState(CARD_RENDER_PAGE);
-	// Das verlinkte/hervorgehobene Element muss immer im DOM sein.
+	// The linked/highlighted element must always be in the DOM.
 	const visibleOpenCount = Math.max(
 		openLimit,
 		openItems.findIndex((item) => item.id === highlightedId) + 1,

@@ -54,7 +54,7 @@ export function summarizeAnnouncementReactions(
 	return summary;
 }
 
-/** Infos und Entscheidungen brauchen keine Klärung; ohne Pin rutschen sie nach einer Woche ohne Antwort ins Archiv. */
+/** Infos and decisions need no resolution; unpinned, they move to the archive after a week without replies. */
 const ANNOUNCEMENT_FADE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function isAnnouncementArchived(

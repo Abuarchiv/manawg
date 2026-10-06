@@ -23,7 +23,7 @@ interface ShareAccessSectionProps {
 	onJoiningEnabledChange: (enabled: boolean) => void;
 }
 
-/** WG-Code teilen sowie Beitritte sperren und den Code erneuern (nur Admins). */
+/** Share the WG code, lock joining and rotate the code (admins only). */
 export function ShareAccessSection({
 	wg,
 	identity,
@@ -66,7 +66,7 @@ export function ShareAccessSection({
 		setAccessPending('join');
 		setRotateConfirm(false);
 		const next = !joiningEnabled;
-		// Optimistisch umschalten, damit der Thumb sofort gleitet; bei Fehler zurück.
+		// Toggle optimistically so the thumb slides at once; revert on failure.
 		setJoiningEnabled(next);
 		try {
 			const data = await updateAccess({ joiningEnabled: next });
@@ -102,7 +102,7 @@ export function ShareAccessSection({
 			setJoiningEnabled(data.wg.joiningEnabled);
 			// Old code is dead after rotation; drop it so the WG list doesn't show a stale duplicate.
 			forgetWg(wg.shareCode);
-			// #zugang, sonst landet man nach dem Erneuern wieder im Profil-Tab.
+			// #zugang: otherwise rotating the code lands back on the profile tab.
 			router.replace(`/wg/${encodeURIComponent(data.wg.shareCode)}/einstellungen#zugang`);
 		} finally {
 			accessPendingRef.current = false;

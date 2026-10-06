@@ -13,7 +13,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 // "calendar day" to remain robust against TZ/DST/replay edge cases.
 const REMINDER_THROTTLE_MS = 18 * 60 * 60 * 1000;
 const REMINDER_CLAIM_SCOPE = 'chore-reminders';
-// Chores overdue for longer than this are no longer reminded: without a lower
+// Chores overdue for longer than this are not reminded: without a lower
 // bound the candidate query scanned every chore ever due across all WGs.
 const REMINDER_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 // Per-run cap; throttled chores are excluded in SQL, so a larger backlog is
@@ -23,7 +23,7 @@ const REMINDER_CANDIDATE_LIMIT = 500;
 const DISPATCH_BATCH_SIZE = 10;
 const localReminderClaims = new Map<string, number>(); // claim key -> expiry (epoch ms)
 
-// The Set used to grow forever: keys for every chore ever reminded stayed
+// Without pruning, keys for every chore ever reminded would stay
 // resident for the lifetime of the process. Claims are only meaningful until
 // the throttle window passes, so entries carry an expiry and are pruned at
 // the start of every run.

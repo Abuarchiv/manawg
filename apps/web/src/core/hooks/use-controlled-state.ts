@@ -13,8 +13,8 @@ export function useControlledState<T, Rest extends unknown[] = []>(
 	const { value, defaultValue, onChange } = props;
 
 	// `defaultValue` is optional, so the initial state really can be
-	// `undefined` when neither prop is supplied. Typing that honestly (`T`)
-	// used to hide it behind `defaultValue as T` and left callers with a
+	// `undefined` when neither prop is supplied. The state type says so instead
+	// of casting `defaultValue as T`, which would leave callers with a
 	// runtime `undefined` their prop types did not allow for.
 	const [state, setInternalState] = React.useState<T | undefined>(
 		value !== undefined ? value : defaultValue,

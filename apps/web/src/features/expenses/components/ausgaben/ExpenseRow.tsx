@@ -95,7 +95,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 							}
 						>
 							<MemberAvatar name={memberName(expense.paidByMemberId)} size={28} />
-							{/* Betrag rechts neben dem Text; erst wenn die Zeile zu schmal wird (große Schrift), darunter. */}
+							{/* Amount to the right of the text; below it only when the row gets too narrow (large text). */}
 							<span className="@container flex min-w-0 flex-1">
 								<span className="flex min-w-0 flex-1 flex-col gap-1 @[15rem]:flex-row @[15rem]:gap-3">
 									<span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -104,7 +104,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 											{expense.description}
 										</span>
 										<span className="text-[12px] leading-normal font-normal text-muted-foreground">
-											{/* Gleicher Betrag steht rechts schon; nur bei abweichendem Anteil zusätzlich links. */}
+											{/* The same amount already shows on the right; the left only adds a differing share. */}
 											<span className="whitespace-nowrap">
 												{isPayer ? 'Du zahltest' : `${memberName(expense.paidByMemberId)} zahlte`}
 												{Math.abs(impact.cents) !== expense.amountCents && (
@@ -123,7 +123,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 											)}
 										</span>
 									</span>
-									{/* Wie Splitwise: rechts steht, was die Ausgabe für dich bedeutet. */}
+									{/* Like Splitwise: the right side shows what the expense means for you. */}
 									<span className="flex shrink-0 flex-row flex-wrap items-baseline gap-x-1.5 @[15rem]:flex-col @[15rem]:items-end @[15rem]:gap-0.5 @[15rem]:text-right">
 										<span
 											className={cn(
@@ -177,7 +177,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 						</DropdownMenu>
 					</ItemActions>
 					<CollapsibleContent className="w-full pr-1.5 pb-2">
-						{/* Die Woche steht schon als Überschrift; der genaue Zeitpunkt nur in den Details. */}
+						{/* The week already shows as a heading; the exact time only in the details. */}
 						<p className="mb-2 text-xs text-muted-foreground">
 							<time dateTime={expense.occurredAt}>{formatTimeFull(expense.occurredAt)}</time>
 						</p>

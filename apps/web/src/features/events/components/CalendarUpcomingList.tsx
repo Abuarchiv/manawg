@@ -22,7 +22,7 @@ interface CalendarUpcomingListProps {
 	}>;
 	onSelect: (occurrence: EventOccurrence) => void;
 	wgBaseHref: string;
-	/** Termin aus dem Push-Link (`?highlight=`); die nächste Fälligkeit wird markiert und angescrollt. */
+	/** Event from the push link (`?highlight=`); its next occurrence is marked and scrolled into view. */
 	highlightEventId?: string | null;
 }
 
@@ -97,7 +97,7 @@ export function CalendarUpcomingList({
 		);
 	}
 
-	// Bei Serien trägt nur das erste Vorkommen den Anker.
+	// For series only the first occurrence carries the anchor.
 	const highlightedEntry = highlightEventId
 		? entries.find(
 				(entry) => entry.kind === 'event' && entry.occurrence.eventId === highlightEventId,
@@ -115,7 +115,7 @@ export function CalendarUpcomingList({
 		days.set(key, day);
 	}
 
-	// Eine Liste, Datum links: Tage lassen sich wie in einem Taschenkalender überfliegen.
+	// One list, date on the left: days can be skimmed like in a pocket diary.
 	return (
 		<ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
 			{[...days.entries()].map(([key, day], index, all) => {

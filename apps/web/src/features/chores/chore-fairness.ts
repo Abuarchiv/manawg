@@ -178,9 +178,9 @@ export function chooseNextAvailableMember(input: {
 }
 
 /**
- * Spiegelt die Complete-Route: Verfügbarkeit wird am nächsten Fälligkeitstag geprüft, nicht heute.
- * Dem Client-Datensatz fehlt der Anker, was nur die Monatsende-Klammerung betrifft, nie den
- * Tag, gegen den Abwesenheiten geprüft werden.
+ * Mirrors the complete route: availability is checked on the next due day, not today. The
+ * client record lacks the anchor, which only affects month-end clamping, never the day
+ * absences are checked against.
  */
 export function predictNextAssigneeId(
 	chore: {

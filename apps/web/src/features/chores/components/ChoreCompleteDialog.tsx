@@ -13,14 +13,14 @@ import {
 import { Button } from '@/components/ui/button';
 import type { ReactElement } from 'react';
 
-/** Wortlaut des Auslösers: Start und Putzplan nutzen dieselben Beschriftungen. */
+/** Trigger wording: the start page and the chore plan use the same labels. */
 export function completeTriggerLabel(title: string, actionLabel: string): string {
 	return actionLabel === 'Nachholen'
 		? `Aufgabe nachholen: ${title}`
 		: `Als erledigt markieren: ${title}`;
 }
 
-/** Zweiter Schritt beim Erledigen, geteilt von Start und Putzplan. */
+/** Second step of completing a chore, shared by the start page and the chore plan. */
 export function ChoreCompleteDialog({
 	open,
 	title,
@@ -54,7 +54,7 @@ export function ChoreCompleteDialog({
 						{nextAssigneeName === undefined
 							? null
 							: nextAssigneeName
-								? // Der Hook liefert „du“ für das eigene Mitglied, das braucht „bist“.
+								? // The hook returns „du“ for the own member, which needs „bist“.
 									`Danach ${nextAssigneeName === 'du' ? 'bist' : 'ist'} ${nextAssigneeName} dran. `
 								: 'Für die nächste Runde ist gerade niemand verfügbar. '}
 						Lässt sich nicht rückgängig machen.
@@ -73,7 +73,7 @@ export function ChoreCompleteDialog({
 						onClick={() => {
 							if (!busy) onConfirm();
 						}}
-						// aria-disabled statt disabled: der Fokus bleibt beim Speichern auf dem Knopf.
+						// aria-disabled instead of disabled: focus stays on the button while saving.
 						aria-disabled={busy}
 						className="aria-disabled:opacity-50"
 						aria-label={`${actionLabel} bestätigen: ${title}`}

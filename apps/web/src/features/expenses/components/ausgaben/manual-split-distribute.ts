@@ -37,7 +37,7 @@ export function distributeRemainderCents(
 	if (targets.length === 0) return next;
 	let remainingCents = remainderCents;
 	let remainingTargets = targets;
-	// ponytail: repeat the member pass after a cap; sort balances only if household sizes make rescans costly.
+	// Known cost: repeats the member pass after a cap; sorting balances pays off only if households get large enough to make rescans costly.
 	while (remainingCents !== 0 && remainingTargets.length > 0) {
 		const perCent = Math.floor(remainingCents / remainingTargets.length);
 		let leftover = remainingCents - perCent * remainingTargets.length;

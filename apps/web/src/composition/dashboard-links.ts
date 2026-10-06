@@ -1,4 +1,5 @@
-import { type ActivityKind, getAuditHref } from './activity';
+import type { ActivityKind } from './activity';
+import { getAuditHref } from './activity-audit';
 
 export function getDashboardActivityHref(
 	shareCode: string,

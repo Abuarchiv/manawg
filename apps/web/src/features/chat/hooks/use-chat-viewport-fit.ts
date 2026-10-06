@@ -33,9 +33,9 @@ export function useChatViewportFit(chatRootRef: RefObject<HTMLElement | null>): 
 			if (!frame?.isConnected) frame = resolveFrame();
 			if (!frame) return;
 			syncChrome();
-			// Schrumpft das Layout-Viewport mit der Tastatur (interactive-widget=resizes-content,
-			// iOS 27), meldet offsetTop trotzdem den Seiten-Scroll und schob den Rahmen aus dem
-			// Bild. Dann gibt es keinen Pan, nur den normalen Scroll.
+			// When the layout viewport shrinks with the keyboard (interactive-widget=resizes-content,
+			// iOS 27), offsetTop still reports the page scroll and would push the frame out of
+			// view. There is no pan then, only the normal scroll.
 			const top =
 				viewport && window.innerHeight <= viewport.height + 1 ? 0 : (viewport?.offsetTop ?? 0);
 			const bottom = top + (viewport?.height ?? window.innerHeight);

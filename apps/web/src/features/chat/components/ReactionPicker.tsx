@@ -26,7 +26,7 @@ interface ReactionPickerProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onSelect: (emoji: string) => Promise<boolean>;
-	/** Wird aus einem Menü geöffnet; danach geht der Fokus dorthin zurück. */
+	/** Opened from a menu; focus returns there afterwards. */
 	returnFocusRef: RefObject<HTMLElement | null>;
 }
 

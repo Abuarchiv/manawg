@@ -1,7 +1,7 @@
 const RETRYABLE_ERRORS = new Set(['unexpected_error', 'server_error', 'db_error']);
 const MEMBERSHIP_ERRORS = new Set(['not_a_member', 'member_id_required', 'member_id_invalid']);
 const NETWORK_ERRORS = new Set(['Netzwerkfehler', 'Failed to fetch']);
-// Der Server lässt nur Ersteller oder WG-Admin Fixkosten ändern; die Buttons sehen alle.
+// The server lets only the creator or a WG admin change fixed costs; everyone sees the buttons.
 const NOT_OWNER_HINT = 'Nur wer die Fixkosten angelegt hat oder Admin der WG ist, darf das.';
 
 export function aboSaveErrorMessage(error: string, action: 'angelegt' | 'aktualisiert'): string {
