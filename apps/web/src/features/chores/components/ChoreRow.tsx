@@ -1,15 +1,6 @@
 'use client';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-	AlertDialog,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
 	Drawer,
@@ -26,6 +17,10 @@ import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { formatRelativeTime, parseValidDate } from '@/core/utils/time';
 import { getChoreRepairHint, getChoreStatus } from '@/features/chores/chore-status';
+import {
+	ChoreCompleteDialog,
+	completeTriggerLabel,
+} from '@/features/chores/components/ChoreCompleteDialog';
 import type { Chore, RecurrenceType } from '@/features/chores/components/chore-types';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
@@ -141,16 +136,14 @@ export const ChoreRow = memo(function ChoreRow({
 			</ItemContent>
 			<ItemActions className="ml-auto flex-nowrap gap-3">
 				<Button
-					onClick={() => onComplete(chore)}
-					disabled={busy}
+					onClick={() => {
+						if (!busy) onComplete(chore);
+					}}
+					aria-disabled={busy}
 					variant={status.state === 'planned' ? 'outline' : 'default'}
 					size="icon"
-					className="size-8 rounded-full"
-					aria-label={
-						status.actionLabel === 'Nachholen'
-							? `Aufgabe nachholen: ${chore.title}`
-							: `Als erledigt markieren: ${chore.title}`
-					}
+					className="size-8 rounded-full aria-disabled:opacity-50"
+					aria-label={completeTriggerLabel(chore.title, status.actionLabel)}
 				>
 					{isPending ? <Spinner aria-hidden /> : <Check aria-hidden />}
 				</Button>
@@ -266,42 +259,16 @@ export const ChoreRow = memo(function ChoreRow({
 					</DrawerContent>
 				</Drawer>
 			</ItemActions>
-			<AlertDialog
+			<ChoreCompleteDialog
 				open={isCompleteArmed}
-				onOpenChange={(next) => {
-					if (!next && !busy) onCancelComplete();
-				}}
-			>
-				<AlertDialogContent className="w-[calc(100%-2rem)]">
-					<AlertDialogHeader>
-						<AlertDialogTitle>„{chore.title}“ erledigt?</AlertDialogTitle>
-						<AlertDialogDescription>
-							{nextAssigneeName
-								? // Der Hook liefert „du“ für das eigene Mitglied, das braucht „bist“.
-									`Danach ${nextAssigneeName === 'du' ? 'bist' : 'ist'} ${nextAssigneeName} dran.`
-								: 'Für die nächste Runde ist gerade niemand verfügbar.'}{' '}
-							Lässt sich nicht rückgängig machen.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					{completeError && (
-						<Alert variant="destructive">
-							<AlertDescription>{completeError}</AlertDescription>
-						</Alert>
-					)}
-					<AlertDialogFooter>
-						<AlertDialogCancel disabled={busy} className="min-h-11">
-							Abbrechen
-						</AlertDialogCancel>
-						<Button
-							onClick={() => onComplete(chore)}
-							disabled={busy}
-							aria-label={`${status.actionLabel} bestätigen: ${chore.title}`}
-						>
-							{status.actionLabel} bestätigen
-						</Button>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+				title={chore.title}
+				actionLabel={status.actionLabel}
+				busy={busy}
+				error={completeError}
+				nextAssigneeName={nextAssigneeName}
+				onCancel={onCancelComplete}
+				onConfirm={() => onComplete(chore)}
+			/>
 		</Item>
 	);
 });
