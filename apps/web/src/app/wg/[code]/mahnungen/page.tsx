@@ -5,12 +5,8 @@ import { Spinner } from '@/components/ui/spinner';
 import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { ThumbAction } from '@/components/wg/ThumbAction';
-import { useWg } from '@/components/wg/WgContextProvider';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime } from '@/core/utils/time';
-import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { DebtRow } from '@/features/expenses/components/debts/DebtRow';
 import { RemindButton } from '@/features/expenses/components/debts/RemindButton';
 import {
@@ -18,251 +14,35 @@ import {
 	type ReminderHistoryItem,
 } from '@/features/expenses/components/debts/ReminderHistory';
 import {
-	type DebtExpenseInput,
-	computeBalances,
-	computeOldestDebtAges,
-} from '@/features/expenses/debts';
-import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
-import { canSendReminder } from '@/features/expenses/reminders';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
-interface ExpenseSplitDto {
-	id: string;
-	debtorMemberId: string;
-	amountCents: number;
-	settledAt: string | null;
-}
-
-interface ExpenseDto {
-	id: string;
-	paidByMemberId: string;
-	currency: string;
-	occurredAt: string;
-	splits: ExpenseSplitDto[];
-}
+	type ReminderRow,
+	reminderKey,
+	useRemindersPage,
+} from '@/features/expenses/hooks/use-reminders-page';
 
 export default function ErinnerungenPage() {
-	const { wg, members, identity, isAdmin } = useWg();
-	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const {
-		data: cachedExpenses,
-		error: expensesReadError,
-		refresh: refreshExpenses,
-	} = useCachedFetch<{ expenses: ExpenseDto[]; payments?: ExpensePaymentInput[] }>(
-		`/api/wg/${encodedShareCode}/expenses`,
-		{ memberId: identity.memberId },
-	);
-	const {
-		data: cachedReminders,
-		error: remindersReadError,
-		refresh: refreshReminders,
-		setData: setCachedReminders,
-	} = useCachedFetch<{ reminders: ReminderHistoryItem[] }>(
-		`/api/wg/${encodedShareCode}/reminders`,
-		{ memberId: identity.memberId },
-	);
-	const wgBaseHref = `/wg/${encodedShareCode}`;
+		wg,
+		identity,
+		loading,
+		refreshing,
+		loadErrors,
+		expensesLoadFailed,
+		remindersLoadFailed,
+		load,
+		reminders,
+		updateReminders,
+		setPrimaryReminderKey,
+		memberName,
+		memberColor,
+		rows,
+		cooldownFor,
+		canRemind,
+		primaryReminder,
+		allClear,
+	} = useRemindersPage();
+	const wgBaseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
 
-	const [expenses, setExpenses] = useState<ExpenseDto[]>(() => cachedExpenses?.expenses ?? []);
-	const [payments, setPayments] = useState<ExpensePaymentInput[]>(
-		() => cachedExpenses?.payments ?? [],
-	);
-	const [reminders, setReminders] = useState<ReminderHistoryItem[]>(
-		() => cachedReminders?.reminders ?? [],
-	);
-	const [loading, setLoading] = useState(!cachedExpenses && !cachedReminders);
-	const [refreshing, setRefreshing] = useState(false);
-	const [loadErrors, setLoadErrors] = useState<{
-		expenses: string | null;
-		reminders: string | null;
-	}>({ expenses: null, reminders: null });
-	const [expensesLoadFailed, setExpensesLoadFailed] = useState(false);
-	const [remindersLoadFailed, setRemindersLoadFailed] = useState(false);
-	const [primaryReminderKey, setPrimaryReminderKey] = useState<string | null>(null);
-	const hasPageCacheRef = useRef(Boolean(cachedExpenses || cachedReminders));
-
-	function updateReminders(
-		update: (current: ReminderHistoryItem[]) => ReminderHistoryItem[],
-	): void {
-		setReminders(update);
-		setCachedReminders((current) => {
-			const previous = current?.reminders ?? reminders;
-			const next = update(previous);
-			if (!current && next === previous) return current;
-			return { ...(current ?? { reminders: previous }), reminders: next };
-		});
-	}
-
-	const load = useCallback(
-		async (initial: boolean): Promise<void> => {
-			if (initial && !hasPageCacheRef.current) setLoading(true);
-			else setRefreshing(true);
-
-			const [expensesRes, remindersRes] = await Promise.all([
-				refreshExpenses(),
-				refreshReminders(),
-			]);
-
-			const nextErrors: { expenses: string | null; reminders: string | null } = {
-				expenses: null,
-				reminders: null,
-			};
-			if (expensesRes.ok) {
-				setExpenses(expensesRes.data.expenses);
-				setPayments(expensesRes.data.payments ?? []);
-				setExpensesLoadFailed(false);
-			} else {
-				setExpensesLoadFailed(true);
-				nextErrors.expenses = getWgLoadErrorMessage(
-					'Ausgaben',
-					expensesRes.status,
-					expensesRes.error,
-					{
-						verb: 'konnten',
-					},
-				);
-			}
-			if (remindersRes.ok) {
-				setReminders(remindersRes.data.reminders);
-				setRemindersLoadFailed(false);
-			} else {
-				setRemindersLoadFailed(true);
-				nextErrors.reminders = getWgLoadErrorMessage(
-					'Erinnerungen',
-					remindersRes.status,
-					remindersRes.error,
-					{
-						verb: 'konnten',
-					},
-				);
-			}
-			setLoadErrors(nextErrors);
-			setLoading(false);
-			setRefreshing(false);
-		},
-		[refreshExpenses, refreshReminders],
-	);
-	useEffect(() => {
-		if (cachedExpenses) {
-			hasPageCacheRef.current = true;
-			setExpenses(cachedExpenses.expenses);
-			setPayments(cachedExpenses.payments ?? []);
-			setExpensesLoadFailed(false);
-			setLoadErrors((current) => ({ ...current, expenses: null }));
-		}
-		if (cachedReminders) {
-			hasPageCacheRef.current = true;
-			setReminders(cachedReminders.reminders);
-			setRemindersLoadFailed(false);
-			setLoadErrors((current) => ({ ...current, reminders: null }));
-		}
-		if (cachedExpenses || cachedReminders) setLoading(false);
-		if (expensesReadError) {
-			setExpensesLoadFailed(true);
-			setLoadErrors((current) => ({
-				...current,
-				expenses: getWgLoadErrorMessage(
-					'Ausgaben',
-					expensesReadError.status,
-					expensesReadError.error,
-					{ verb: 'konnten' },
-				),
-			}));
-		}
-		if (remindersReadError) {
-			setRemindersLoadFailed(true);
-			setLoadErrors((current) => ({
-				...current,
-				reminders: getWgLoadErrorMessage(
-					'Erinnerungen',
-					remindersReadError.status,
-					remindersReadError.error,
-					{ verb: 'konnten' },
-				),
-			}));
-		}
-	}, [cachedExpenses, cachedReminders, expensesReadError, remindersReadError]);
-
-	useEffect(() => {
-		void load(true);
-	}, [load]);
-	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
-	useVisibilityPausedInterval(() => void load(false), 30_000);
-
-	const memberName = useCallback(
-		(id: string) => members.find((m) => m.id === id)?.name ?? '?',
-		[members],
-	);
-	const memberColor = useCallback(
-		(id: string) => members.find((m) => m.id === id)?.color ?? null,
-		[members],
-	);
-
-	const debtExpenses = useMemo<DebtExpenseInput[]>(
-		() =>
-			expenses.map((expense) => ({
-				paidByMemberId: expense.paidByMemberId,
-				currency: expense.currency,
-				occurredAt: expense.occurredAt,
-				splits: expense.splits.map((split) => ({
-					debtorMemberId: split.debtorMemberId,
-					amountCents: split.amountCents,
-					settledAt: split.settledAt,
-				})),
-			})),
-		[expenses],
-	);
-
-	const balances = useMemo(() => computeBalances(debtExpenses, payments), [debtExpenses, payments]);
-
-	const rows = useMemo(() => {
-		const oldestAges = computeOldestDebtAges(balances, debtExpenses);
-		return balances
-			.map((pair, i) => ({ ...pair, oldestAge: oldestAges[i] ?? 0 }))
-			.sort((a, b) => b.amountCents - a.amountCents);
-	}, [balances, debtExpenses]);
-
-	function cooldownFor(debtorId: string, creditorId: string, currency: string) {
-		return canSendReminder(
-			debtorId,
-			creditorId,
-			reminders.map((r) => ({
-				debtorMemberId: r.debtorMemberId,
-				creditorMemberId: r.creditorMemberId,
-				currency: r.currency,
-				sentAt: r.sentAt,
-			})),
-			undefined,
-			currency,
-		);
-	}
-
-	const reminderKey = (row: (typeof rows)[number]) =>
-		`${row.currency}:${row.debtorId}:${row.creditorId}`;
-	// The API only lets the creditor (or the admin) remind, and only active debtors.
-	const canRemind = (row: (typeof rows)[number]) =>
-		(row.creditorId === identity.memberId || isAdmin) &&
-		row.debtorId !== identity.memberId &&
-		members.find((m) => m.id === row.debtorId)?.active !== false;
-	const remindable = rows.filter(canRemind);
-	const mine = remindable.filter((row) => row.creditorId === identity.memberId);
-	const pool = mine.length > 0 ? mine : remindable;
-	const primaryReminder =
-		pool.find((row) => reminderKey(row) === primaryReminderKey) ??
-		pool.find((row) => cooldownFor(row.debtorId, row.creditorId, row.currency).allowed) ??
-		pool[0] ??
-		null;
-
-	const allClear =
-		!loading &&
-		rows.length === 0 &&
-		reminders.length === 0 &&
-		!loadErrors.expenses &&
-		!loadErrors.reminders &&
-		!expensesLoadFailed &&
-		!remindersLoadFailed;
-
-	function reminderButton(row: (typeof rows)[number], primary = false) {
+	function reminderButton(row: ReminderRow, primary = false) {
 		const debtorName = memberName(row.debtorId);
 		const primaryLabel =
 			row.creditorId === identity.memberId
