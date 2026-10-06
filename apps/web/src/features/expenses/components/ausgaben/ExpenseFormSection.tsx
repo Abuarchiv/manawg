@@ -16,9 +16,9 @@ import { ExpenseExtras } from './ExpenseExtras';
 import { ExpenseSplitFieldset } from './ExpenseSplitFieldset';
 import { TextField } from './TextField';
 import { DESCRIPTION_MAX } from './constants';
+import type { SplitMode } from './expense-form-draft';
 import type { RecurringExpense } from './expense-types';
 import { useExpenseFormDirty } from './use-expense-form-dirty';
-import type { SplitMode } from './useExpenseForm';
 
 const EXPENSE_DESCRIPTION_FIELD_ID = 'expense-description';
 

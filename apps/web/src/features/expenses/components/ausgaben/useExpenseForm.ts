@@ -10,22 +10,19 @@ import {
 import type { OfflineActionType } from '@/core/offline/offline-queue';
 import { formatEuroInput } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
-import { parseTimestamp } from '@/core/utils/time';
-import { currencySchema } from '@/core/validators/currency';
 import { buildExpensePrefillDraft } from '@/features/expenses/expense-prefill';
 import { isEqualExpenseSplit } from '@/features/expenses/expense-split-input';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+	type ExpenseDraft,
+	type ExpenseEditReference,
+	type ExpenseSuggestion,
+	type SplitMode,
+	parseDraftEditTarget,
+	recurringTemplateSuggestion,
+	splitsToManualInput,
+} from './expense-form-draft';
 import type { Expense, RecurringExpense } from './expense-types';
-
-export type SplitMode = 'equal' | 'manual';
-
-type ExpenseSuggestion = Omit<
-	NonNullable<ReturnType<typeof buildExpensePrefillDraft>>,
-	'splitMode'
-> & {
-	splitMode: SplitMode;
-	recurringSourceId: string | null;
-};
 
 /**
  * Only the fields this hook actually reads. Kept structural rather than
@@ -36,31 +33,6 @@ interface FormMember {
 	id: string;
 	active: boolean;
 }
-
-/**
- * What a restored draft may contain. Everything is optional because the draft
- * is user-controlled localStorage data from a possibly older app version.
- *
- * A `type` rather than an `interface` on purpose: only type aliases get the
- * implicit index signature that `readDraft`'s `Record<string, unknown>`
- * constraint requires.
- */
-type ExpenseDraft = {
-	recurringSourceId?: string | null;
-	editingExpense?: unknown;
-	description?: string;
-	amountStr?: string;
-	imageUrl?: string | null;
-	paidByMemberId?: string;
-	splitMode?: SplitMode;
-	manualSplits?: Record<string, string>;
-	queueEditId?: string;
-	queueEditType?: OfflineActionType;
-	recurringIntervalMonths?: number;
-	recurringNextDueAt?: string;
-};
-
-type ExpenseEditReference = Pick<Expense, 'id' | 'updatedAt'> & { currency?: Expense['currency'] };
 
 interface UseExpenseFormOptions {
 	shareCode: string;
@@ -83,10 +55,7 @@ interface UseExpenseFormOptions {
  * being edited, the inline error, and the localStorage draft that survives a
  * reload or an accidental navigation.
  *
- * Extracted from the page component, which held 27 `useState` calls and made
- * this logic reachable only through full-page render tests. The form is the
- * largest self-contained cluster in there — it has a real boundary (the four
- * `start*`/`reset` entry points below) and no dependency on loaded data.
+ * Its boundary is the `start*`/`reset` entry points below; it needs no loaded data.
  *
  * Deliberately NOT included: `submitting` and the submit handlers. Those talk
  * to the API and to the offline queue, so they belong to a separate seam.
@@ -146,30 +115,15 @@ export function useExpenseForm({
 		if (draft.queueEditId && !isEmptyModuleDraft('expense', draft, identityMemberId)) {
 			setShowForm(true);
 		}
-		const target = draft.editingExpense;
-		if (target !== undefined && target !== null) {
-			if (
-				typeof target === 'object' &&
-				'id' in target &&
-				typeof target.id === 'string' &&
-				/^[a-z0-9-]{1,128}$/i.test(target.id) &&
-				'updatedAt' in target &&
-				typeof target.updatedAt === 'string' &&
-				parseTimestamp(target.updatedAt) !== null
-			) {
-				const currency = 'currency' in target ? currencySchema.safeParse(target.currency) : null;
-				setEditingExpense({
-					id: target.id,
-					updatedAt: target.updatedAt,
-					...(currency?.success ? { currency: currency.data } : {}),
-				});
-			} else {
-				setInvalidEditDraft(true);
-				setShowForm(true);
-				setFormError(
-					'Die Zuordnung dieses Entwurfs ist beschädigt. Deine Eingaben bleiben erhalten; öffne die ursprüngliche Ausgabe erneut oder verwirf den Entwurf.',
-				);
-			}
+		const target = parseDraftEditTarget(draft.editingExpense);
+		if (target.kind === 'valid') {
+			setEditingExpense(target.reference);
+		} else if (target.kind === 'invalid') {
+			setInvalidEditDraft(true);
+			setShowForm(true);
+			setFormError(
+				'Die Zuordnung dieses Entwurfs ist beschädigt. Deine Eingaben bleiben erhalten; öffne die ursprüngliche Ausgabe erneut oder verwirf den Entwurf.',
+			);
 		}
 		if (draft.description) setDescription(draft.description);
 		if (draft.amountStr) setAmountStr(draft.amountStr);
@@ -298,15 +252,7 @@ export function useExpenseForm({
 		const template = recurringExpenses.find((item) => item.id === recurringId);
 		if (!template) return;
 		appliedRecurringRef.current = recurringId;
-		suggestPrefill({
-			description: template.description,
-			amountStr: formatEuroInput(template.amountCents / CENTS_PER_EURO),
-			imageUrl: null,
-			paidByMemberId: template.paidByMemberId,
-			splitMode: 'manual',
-			manualSplits: splitsToManualInput(template.splits),
-			recurringSourceId: recurringId,
-		});
+		suggestPrefill(recurringTemplateSuggestion(template));
 	}, [suggestPrefill, recurringExpenses, recurringId]);
 
 	function resetForm(): void {
@@ -337,11 +283,9 @@ export function useExpenseForm({
 		setAmountStr(formatEuroInput(expense.amountCents / CENTS_PER_EURO));
 		setImageUrl(expense.imageUrl);
 		setPaidByMemberId(expense.paidByMemberId);
-		// Detect "equal" if the existing splits cover EVERY current member and
-		// each share matches what Hamilton rounding would produce for the same
-		// (amount, member-order) pair. Previous heuristic ("each split is base
-		// or base+1") falsely treated [334,334,333] (3 cents remainder bug) and
-		// expenses missing a member as equal.
+		// "Equal" only if the splits cover EVERY current member and each share matches what
+		// largest-remainder rounding produces for the same (amount, member order) pair; shares
+		// that merely differ by a cent, or a missing member, are a manual split.
 		const isEqual = isEqualExpenseSplit(expense.amountCents, expense.splits, members);
 		if (isEqual) {
 			setSplitMode('equal');
@@ -428,16 +372,4 @@ export function useExpenseForm({
 		startEdit,
 		startRecurringEdit,
 	};
-}
-
-/** Turns stored cent shares into the euro strings the manual inputs display. */
-function splitsToManualInput(
-	splits: ReadonlyArray<{ debtorMemberId: string; amountCents: number }>,
-): Record<string, string> {
-	return Object.fromEntries(
-		splits.map((split) => [
-			split.debtorMemberId,
-			formatEuroInput(split.amountCents / CENTS_PER_EURO),
-		]),
-	);
 }
