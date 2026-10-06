@@ -3,7 +3,8 @@
 
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { type ActivityItem, filterActivityByScope } from '../src/composition/activity';
+import type { ActivityItem } from '../src/composition/activity';
+import { filterActivityByScope } from '../src/composition/activity-views';
 import * as offlineClient from '../src/core/offline/offline-client';
 import { buildChoreFairness } from '../src/features/chores/chore-fairness';
 import { getChoreStatus } from '../src/features/chores/chore-status';

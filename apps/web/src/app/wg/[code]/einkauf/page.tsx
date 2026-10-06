@@ -50,14 +50,14 @@ export default function EinkaufPage() {
 	const { items, initialLoading, loadError, add } = shopping;
 	const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
-	// Direkt abgeleitet statt per Effect gespiegelt: sonst rendert ein Frame mit
-	// leerem Vorrat und die Vorschläge springen.
+	// Derived directly instead of mirrored through an effect: otherwise one frame renders with
+	// an empty inventory and the suggestions jump.
 	const inventory = cachedInventory?.items ?? NO_INVENTORY;
 	const { open, done, openItems, doneItems } = splitShoppingItems(items);
 	const actionError =
 		shopping.toggleError ?? (shopping.removeErrorId ? null : shopping.removeError);
 
-	// Vorschläge ohne Artikel, die schon offen auf der Liste stehen.
+	// Suggestions without items that are already open on the list.
 	const openNames = new Set(open.map((item) => normalizeForMatch(item.name)));
 	const lowStock = inventory
 		.filter((item) => isBelowThreshold(item) && !openNames.has(normalizeForMatch(item.name)))
@@ -74,8 +74,8 @@ export default function EinkaufPage() {
 		taken.add(key);
 		return true;
 	});
-	// Vorschläge und Liste erscheinen gemeinsam, sobald Liste und Vorrat da sind: sonst
-	// tauschen die Gruppen nach dem Laden und schieben die Liste nach unten (Layout Shift).
+	// Suggestions and list appear together once list and inventory have loaded: otherwise
+	// the groups swap after loading and push the list down (layout shift).
 	const suggestionsPending = initialLoading || inventoryLoading;
 	const suggestionGroups = [
 		{ label: 'Bald leer', names: lowStock.slice(0, 4) },
@@ -95,7 +95,7 @@ export default function EinkaufPage() {
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-3">
 			<SubNav liveCount={!initialLoading && !loadError ? open.length : undefined} />
-			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
+			{/* The active tab already names the page; title and count stay for screen readers. */}
 			<header className="sr-only">
 				<h1>Einkäufe</h1>
 				<p

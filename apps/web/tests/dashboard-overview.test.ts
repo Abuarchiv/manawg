@@ -3,12 +3,8 @@
 
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import {
-	getBerlinWeekWindow,
-	getForYouItems,
-	getTodayImportantItems,
-	getWeekAgenda,
-} from '../src/composition/dashboard-insights';
+import { getForYouItems, getTodayImportantItems } from '../src/composition/dashboard-insights';
+import { getBerlinWeekWindow, getWeekAgenda } from '../src/composition/dashboard-week';
 import type { EventInput, EventOccurrence } from '../src/features/events/events';
 import { expandRecurrence } from '../src/features/events/events';
 import { buildSettlementSummary, simplifyDebts } from '../src/features/expenses/debt-reduction';

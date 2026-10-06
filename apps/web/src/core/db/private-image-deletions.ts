@@ -10,7 +10,7 @@ const CLEANUP_DELAY_MS = 2 * 60 * 60 * 1000 + 5 * 60 * 1000;
 const CLEANUP_RECHECK_MS = 24 * 60 * 60 * 1000;
 const CLEANUP_BATCH_SIZE = 50;
 
-// ponytail: full per-WG image-history scan; normalize reference keys if measured delete latency warrants it.
+// Known cost: scans the full per-WG image history; normalized reference keys are the next step if delete latency warrants it.
 async function getWgPrivateImageKeys(
 	tx: DbTransaction,
 	wgId: string,

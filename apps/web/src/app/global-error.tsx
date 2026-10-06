@@ -46,7 +46,7 @@ export default function GlobalError({
 							<Button type="button" size="lg" onClick={() => reset()}>
 								Erneut versuchen
 							</Button>
-							{/* Kein next/link: Dieser Fehler liegt über dem Root-Layout, also hilft nur ein harter Seitenaufruf. */}
+							{/* No next/link: this error sits above the root layout, so only a full page load helps. */}
 							<a href="/" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
 								Zur Startseite
 							</a>

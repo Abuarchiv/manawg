@@ -9,7 +9,7 @@ interface PutzenHeaderProps {
 
 export function PutzenHeader({ itemCount, loading, health }: PutzenHeaderProps) {
 	return (
-		// Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader.
+		// The active tab already names the page; title and count stay for screen readers.
 		<header className="sr-only">
 			<h1>Putzplan</h1>
 			<p aria-live="polite" aria-atomic="true">

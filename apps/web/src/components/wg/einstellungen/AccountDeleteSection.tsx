@@ -24,7 +24,7 @@ const CONFIRM_WORD = 'LÖSCHEN';
 const UNKNOWN_DELETE_OUTCOME_MESSAGE =
 	'Der Server kann den Status nicht bestätigen. Warte kurz und versuche es erneut; ein bereits angenommener Auftrag wird serverseitig fortgesetzt.';
 
-/** `embedded`: ohne eigene Rahmenkarte, für den gemeinsamen Abschnitt „Konto“. */
+/** `embedded`: without its own card frame, for the shared „Konto“ section. */
 export function AccountDeleteSection({ embedded = false }: { embedded?: boolean }) {
 	const [stage, setStage] = useState<'idle' | 'confirm' | 'pending'>('idle');
 	const [confirmText, setConfirmText] = useState('');

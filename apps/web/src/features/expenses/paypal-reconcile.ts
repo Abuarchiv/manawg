@@ -10,8 +10,8 @@ import { parsePayPalAmountCents, terminalPayPalCaptureOutcome } from './paypal-s
 const STALE_CAPTURE_MS = 15 * 60 * 1000;
 
 /**
- * Löst hängende `capturing`-Zahlungen auf, deren Zahler den Flow nie beendet hat.
- * Solange eine existiert, sperrt sie Ausgaben und Ausgleich der ganzen WG.
+ * Resolves stuck `capturing` payments whose payer never finished the flow. While one exists,
+ * it blocks expenses and settlement for the whole WG.
  */
 export async function reconcileStaleCapturingPayments(
 	now = new Date(),
@@ -90,7 +90,7 @@ export async function reconcileStaleCapturingPayments(
 			parsePayPalAmountCents(capture.amount?.value) === payment.amountCents &&
 			capture.amount?.currency_code === payment.currency;
 		if (!matches) {
-			// Geld ist bei PayPal angekommen, passt aber nicht zur Order: manuell prüfen.
+			// The money reached PayPal but does not match the order: check manually.
 			logApiError(
 				'[paypal reconcile] captured order does not match payment',
 				new Error(`paypal_capture_mismatch:${payment.id}`),

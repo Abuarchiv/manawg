@@ -150,9 +150,9 @@ export default function RootLayout({
 				<meta name="apple-mobile-web-app-status-bar-style" content="black" />
 				<meta name="apple-mobile-web-app-title" content="ManaWG" />
 				<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-				{/* Sehr früh den beforeinstallprompt-Event abfangen — bevor React mountet.
-            Browser feuert das Event nur einmal; ohne diesen Catcher verlieren
-            spät-mountende Komponenten ihn komplett. */}
+				{/* Catch beforeinstallprompt very early, before React mounts.
+				The browser fires it only once; without this catcher late-mounting
+				components miss it entirely. */}
 				<Script id="manawg-install-ready" strategy="beforeInteractive">
 					{`(function(){if(typeof window==='undefined')return;window.__manawgDeferredInstallEvent=null;window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__manawgDeferredInstallEvent=e;window.dispatchEvent(new CustomEvent('manawg:install-ready'));});})();`}
 				</Script>

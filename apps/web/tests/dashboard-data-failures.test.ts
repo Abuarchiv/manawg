@@ -45,8 +45,8 @@ await mockModuleWithReal('@/core/utils/berlin-day', {
 });
 await mockModuleWithReal('@/features/chores/absence', { getAbsentMemberIds: () => [] });
 await mockModuleWithReal('@/features/expenses/debt-reduction', { computeNetBalances: () => [] });
+await mockModuleWithReal('@/composition/dashboard-activity', { buildDueChores: () => [] });
 await mockModuleWithReal('@/composition/dashboard-insights', {
-	buildDueChores: () => [],
 	getWgHealth: (input: { dueRecurringCount: number }) => ({
 		dueRecurringCount: input.dueRecurringCount,
 	}),

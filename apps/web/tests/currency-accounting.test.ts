@@ -5,8 +5,12 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { isDeepStrictEqual } from 'node:util';
 import { buildActivityTimeline } from '../src/composition/activity';
-import { computeMemberBalances, summarizeDashboardSpend } from '../src/composition/dashboard-data';
-import { getTodayImportantItems, getWgHealth } from '../src/composition/dashboard-insights';
+import { getWgHealth } from '../src/composition/dashboard-health';
+import { getTodayImportantItems } from '../src/composition/dashboard-insights';
+import {
+	computeMemberBalances,
+	summarizeDashboardSpend,
+} from '../src/composition/dashboard-summary';
 import { formatNotificationMessage } from '../src/core/notifications/notifications';
 import { computeNetBalances } from '../src/features/expenses/debt-reduction';
 import { computeBalances, computeOldestDebtAges } from '../src/features/expenses/debts';

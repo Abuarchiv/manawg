@@ -35,7 +35,7 @@ interface DangerZoneSectionProps {
 	identity: StoredIdentity;
 }
 
-/** WG verlassen und WG löschen. */
+/** Leave the WG and delete the WG. */
 export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionProps) {
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const router = useRouter();

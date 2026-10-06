@@ -233,14 +233,14 @@ export const GET = withCronLogging(
 				}
 				if (deliveries.length === 0) return NextResponse.json({ ok: true, sent: 0 });
 
-				// ponytail: retry while the occurrence is current; use durable state if recovery after it ends matters.
+				// Known limit: retries only while the occurrence is current; recovering after it ends would need durable state.
 				const { sent, failed } = await processReminderBatches(
 					deliveries,
 					(item) => claimReminderDispatch(item, now),
 					async (item) => {
 						try {
 							// A partial retry may repeat a successful device for this member.
-							// ponytail: per-subscription claims only if that duplication matters.
+							// Per-subscription claims would prevent that, if the duplication ever matters.
 							const result = await dispatchNotification({
 								wg: { id: item.wgId, name: item.wgName, shareCode: item.shareCode },
 								event: item.reminderCopy === 'today' ? 'event.today' : 'event.upcoming',

@@ -3,7 +3,7 @@
 // deterministic.
 
 import { type Page, expect, test } from '@playwright/test';
-import { getBerlinWeekWindow } from '../src/composition/dashboard-insights';
+import { getBerlinWeekWindow } from '../src/composition/dashboard-week';
 import { instantAtBerlinWallTime } from '../src/core/utils/berlin-day';
 import {
 	FIXTURE_WG,

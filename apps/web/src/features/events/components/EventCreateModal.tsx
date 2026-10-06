@@ -53,7 +53,7 @@ const QUICK_TEMPLATES: ReadonlyArray<{
 		allDay: true,
 	},
 	{ label: 'Stromableser', title: 'Stromableser kommt', recurrence: null, allDay: false },
-	// Das Formular kennt nur die Frequenz; ein BYDAY wäre stillschweigend verworfen worden.
+	// The form only knows the frequency; a BYDAY would have been dropped silently.
 	{ label: 'WG-Meeting', title: 'WG-Meeting', recurrence: 'FREQ=WEEKLY', allDay: false },
 	{ label: 'Müll raus', title: 'Müll raus', recurrence: 'FREQ=WEEKLY', allDay: false },
 ];
@@ -76,7 +76,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [errorField, setErrorField] = useState<'title' | 'startsAt' | 'endsAt' | null>(null);
-	// Die Meldung sitzt unter den Feldern, der Speichern-Button ist angeheftet.
+	// The message sits below the fields; the save button is pinned.
 	useEffect(() => {
 		if (error) document.getElementById('event-create-error')?.scrollIntoView({ block: 'nearest' });
 	}, [error]);

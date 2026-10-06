@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { initials } from '../src/components/wg/member-initials';
-import { groupActivityItemsByDay } from '../src/composition/activity';
+import { groupActivityItemsByDay } from '../src/composition/activity-views';
 import { formatRelativeTime, formatShortDate, formatWeekLabel } from '../src/core/utils/time';
 import { previewBody } from '../src/features/chat/chat-pure';
 import { parseShoppingInput } from '../src/features/shopping/parse-shopping-input';

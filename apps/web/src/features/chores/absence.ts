@@ -31,7 +31,7 @@ function isAbsenceActive(startDate: string, endDate: string, at: number): boolea
 	return berlinDayKey(new Date(start)) <= day && day <= berlinDayKey(new Date(end));
 }
 
-/** Ohne offenes Panel nur die ersten vier; eine per Link gewählte Abwesenheit bleibt sichtbar. */
+/** Without the panel open only the first four; an absence selected by link stays visible. */
 export function pickVisibleAbsences(
 	absences: AbsenceInput[],
 	showAll: boolean,

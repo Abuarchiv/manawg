@@ -1,6 +1,6 @@
 /**
- * Was eine Ausgabe für mich bedeutet (wie Splitwise: „du bekommst“ / „du schuldest“),
- * statt nur die Gesamtsumme zu zeigen.
+ * What an expense means for the viewer (like Splitwise: „du bekommst“ / „du schuldest“),
+ * instead of only the total.
  */
 export type ExpenseImpact =
 	| { kind: 'lent'; cents: number }
