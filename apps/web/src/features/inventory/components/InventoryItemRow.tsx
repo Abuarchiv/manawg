@@ -43,8 +43,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	const [removed, setRemoved] = useState(false);
 	const consumeIdempotencyKeyRef = useRef<string | null>(null);
 	const restockIdempotencyKeyRef = useRef<string | null>(null);
-	// Optimistisch: der Bestand ändert sich sofort beim Tippen; Erfolg ersetzt ihn durch den Serverwert,
-	// Fehler setzen ihn im finally zurück (null = zeige den Serverstand).
+	// Optimistic: the stock changes on tap; success replaces it with the server value,
+	// failures reset it in finally (null = show the server state).
 	const [optimisticQuantity, setOptimisticQuantity] = useState<number | null>(null);
 	const quantity = optimisticQuantity ?? item.quantity;
 	const deleteConfirm = useConfirmDelete();

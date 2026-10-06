@@ -40,7 +40,7 @@ export function InventoryList({
 }: InventoryListProps) {
 	const [quickOpen, setQuickOpen] = useState(false);
 	const [editing, setEditing] = useState<InventoryItemDto | null>(null);
-	// Knappe Vorräte stehen gesammelt oben, der Rest bleibt nach Kategorie sortiert.
+	// Low stock is grouped at the top; the rest stays sorted by category.
 	const lowItems = useMemo(() => items.filter(isBelowThreshold), [items]);
 	const grouped = useMemo(
 		() => groupItemsByCategory(items.filter((item) => !isBelowThreshold(item))),

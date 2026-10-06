@@ -8,7 +8,7 @@ import type { MemberInfo } from '@/shared/lib/member-types';
 import { ChevronRight, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
-/** Zeilen pro Liste, die zunächst gerendert werden; „Mehr anzeigen“ lädt nach. */
+/** Rows per list rendered at first; „Mehr anzeigen“ loads more. */
 const ROW_RENDER_PAGE = 100;
 
 const UNKNOWN_MEMBER: MemberInfo = { name: '?', color: null };
@@ -79,7 +79,7 @@ export function ShoppingList({
 			.map((action) => String(action.payload.itemId)),
 	);
 
-	// Lange Listen zunächst gekürzt rendern; das hervorgehobene Element bleibt immer im DOM.
+	// Render long lists truncated at first; the highlighted element always stays in the DOM.
 	const visibleCount = (list: ShoppingItem[]): number =>
 		Math.max(rowLimit, list.findIndex((item) => item.id === highlightedId) + 1);
 	const visibleOpenCount = visibleCount(openItems);
@@ -102,7 +102,7 @@ export function ShoppingList({
 				onToggle={onToggle}
 				onRemove={onRemove}
 				removeError={removeErrorId === item.id ? removeError : null}
-				// Die Server-Route lässt auch den Admin fremde Artikel entfernen.
+				// The server route also lets the admin remove other members' items.
 				canRemove={item.addedByMemberId === memberId || isAdmin}
 				highlighted={highlightedId === item.id}
 				shareCode={shareCode}
@@ -134,7 +134,7 @@ export function ShoppingList({
 						Erledigt ({doneItems.length})
 					</summary>
 					<ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
-						{/* Erledigte nur rendern, solange der Block offen ist (Highlight öffnet ihn). */}
+						{/* Render bought items only while the block is open (a highlight opens it). */}
 						{doneOpen && doneItems.slice(0, visibleDoneCount).map(renderRow)}
 					</ul>
 					{doneOpen &&

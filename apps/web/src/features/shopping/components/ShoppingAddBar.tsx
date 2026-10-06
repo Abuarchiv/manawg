@@ -51,8 +51,8 @@ export function ShoppingAddBar({
 					<Button
 						type="submit"
 						size="icon"
-						// Nicht während des Speicherns sperren: ein deaktivierter Absende-Knopf blockiert auch
-						// Enter im Feld, und der nächste Artikel würde nicht nachgereiht, sondern verschluckt.
+						// Do not lock while saving: a disabled submit button also blocks
+						// Enter in the field, and the next item would be swallowed instead of queued.
 						disabled={!value.trim()}
 						aria-busy={adding}
 						aria-label="Artikel hinzufügen"
@@ -62,7 +62,7 @@ export function ShoppingAddBar({
 						{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}
 					</Button>
 				</form>
-				{/* Im festen Fußbereich statt oben in der Liste: sonst liegt die Meldung außerhalb des Sichtbereichs und schiebt Zeilen. */}
+				{/* In the fixed footer rather than at the top of the list: otherwise the message sits out of view and shifts rows. */}
 				{actionError && (
 					<Alert variant="destructive">
 						<AlertDescription>{actionError}</AlertDescription>

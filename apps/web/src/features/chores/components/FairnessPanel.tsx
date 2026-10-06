@@ -27,7 +27,7 @@ export function FairnessPanel({
 	fairness: ChoreFairness;
 	monthCompletions: Record<string, number>;
 	members: MemberRef[];
-	/** Die eigene Person heißt überall „du“, nicht beim eigenen Namen. */
+	/** The viewer is called „du“ everywhere, never by their own name. */
 	currentMemberId: string;
 }) {
 	const shares = members

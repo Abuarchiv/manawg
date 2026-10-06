@@ -151,7 +151,7 @@ function DrawerContent({ className, children, ...props }: DrawerPrimitive.Popup.
 						'data-[swipe-direction=left]:left-0 data-[swipe-direction=left]:origin-left data-[swipe-direction=left]:[--closed-transform:translate3d(calc(-100%-var(--drawer-inset,0px)-2px),0,0)] data-[swipe-direction=left]:[--translate-x:calc(var(--drawer-swipe-movement-x)+var(--stack-peek-offset)+(var(--stack-shrink)*100%))]',
 						// Direction: right.
 						'data-[swipe-direction=right]:right-0 data-[swipe-direction=right]:origin-right data-[swipe-direction=right]:[--closed-transform:translate3d(calc(100%+var(--drawer-inset,0px)+2px),0,0)] data-[swipe-direction=right]:[--translate-x:calc(var(--drawer-swipe-movement-x)-var(--stack-peek-offset)-(var(--stack-shrink)*100%))]',
-						// Breite kommt allein aus inset-x (app-frame-width); w-full/max-w/mx-auto der Aufrufer würden sie verschieben.
+						// Width comes from inset-x alone (app-frame-width); callers' w-full/max-w/mx-auto would shift it.
 						'data-[swipe-axis=y]:mx-0 data-[swipe-axis=y]:w-auto data-[swipe-axis=y]:max-w-none',
 						className,
 					)}

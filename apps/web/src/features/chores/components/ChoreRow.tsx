@@ -108,7 +108,7 @@ export const ChoreRow = memo(function ChoreRow({
 					?
 				</span>
 			)}
-			{/* Mindestbreite in rem: bei großer Schrift rutschen die Knöpfe unter den Titel statt ihn zu zerquetschen. */}
+			{/* Minimum width in rem: with large text the buttons wrap below the title instead of squeezing it. */}
 			<ItemContent className="min-w-[7rem] gap-0.5">
 				<ItemTitle className="line-clamp-none w-auto break-words text-[14px] [overflow-wrap:anywhere]">
 					{chore.title}
@@ -194,7 +194,7 @@ export const ChoreRow = memo(function ChoreRow({
 									</>
 								)}
 							</dl>
-							{/* Bei der eigenen Aufgabe gäbe es nichts zu übernehmen. */}
+							{/* Nothing to take over on one's own chore. */}
 							{!isMine && (
 								<Button
 									variant="outline"

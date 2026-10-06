@@ -150,7 +150,7 @@ export function buildActivityInbox(input: ActivityInboxInput): ActivityInboxItem
 		.map((item) => ({
 			id: `activity:${item.kind}:${item.id}`,
 			priority: 'normal' as const,
-			// Protokoll-Texte beginnen mit „hat“/„ist“ und brauchen die Person davor (wie im ActivityFeed).
+			// Log texts start with „hat“/„ist“ and need the person in front (as in ActivityFeed).
 			title: item.text.replace(/^hat\b/, 'Du hast').replace(/^ist\b/, 'Du bist'),
 			detail: inboxActivityDetail(item.kind),
 			href: item.href ?? '',

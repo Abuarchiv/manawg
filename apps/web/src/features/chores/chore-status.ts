@@ -155,7 +155,7 @@ const CHORE_GROUPS: { key: ChoreGroupKey; label: string }[] = [
 	{ key: 'later', label: 'Später' },
 ];
 
-/** Eigene Aufgaben bis morgen stehen oben, fremde nach Dringlichkeit darunter. */
+/** The viewer's own chores due by tomorrow come first, others by urgency below. */
 function getChoreGroup(
 	chore: ChoreRepairInput,
 	currentMemberId: string,

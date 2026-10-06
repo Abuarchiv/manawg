@@ -182,7 +182,7 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 		void load(true);
 	}, [load]);
 
-	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
+	// Auto-refresh as on the dashboard, in place of a manual reload button.
 	useVisibilityPausedInterval(() => void load(false), 30_000);
 
 	const { queuedCount, refreshCount: refreshQueuedCount } = useOfflineQueueSync({

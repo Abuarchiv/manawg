@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 // nextDueAt drives the cron's catch-up loop (one iteration per missed
-// interval). An unbounded past date used to translate into an unbounded
-// charge storm, and a nonsensical far-future date silently parked the
+// interval). An unbounded past date would translate into an unbounded
+// charge storm, and a nonsensical far-future date would silently park the
 // template — both are rejected on create and whenever an edit moves the
 // due date.
 const MAX_PAST_DAYS = 366;

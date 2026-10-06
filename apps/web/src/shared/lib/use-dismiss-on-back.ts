@@ -46,7 +46,7 @@ function onPopState() {
  * A navigation started while the overlay closes (e.g. "Verwerfen" → router.push)
  * replaces history.state, so the marker is gone and no back() is issued.
  *
- * ponytail: closing an outer overlay before an inner one leaves a stale entry.
+ * Known limit: closing an outer overlay before an inner one leaves a stale entry.
  */
 export function useDismissOnBack(
 	open: boolean,

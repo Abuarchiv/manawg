@@ -188,7 +188,7 @@ export default function AktivitaetPage() {
 				</Card>
 			)}
 
-			{/* Erst mit Daten und nur bei nicht leerem Verlauf zeigen: die Inbox-Karte rutscht sonst darüber ein und schiebt die Filter (CLS 0,2). */}
+			{/* Only with data and a non-empty history: otherwise the inbox card slides in above and pushes the filters down (CLS 0.2). */}
 			{data && data.items.length > 0 && (
 				<Card className="overflow-visible border-0 bg-transparent py-0 shadow-none">
 					<CardContent className="space-y-3 p-0">

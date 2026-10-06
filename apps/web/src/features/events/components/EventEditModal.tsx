@@ -64,7 +64,7 @@ interface EventEditModalProps {
 	onUpdate: (id: string, payload: UpdateEventPayload) => Promise<void>;
 	onDelete: (id: string) => Promise<void>;
 	actionError?: string | null;
-	/** Exportiert den gewählten Termin als .ics für die eigene Kalender-App. */
+	/** Exports the selected event as .ics for the viewer's own calendar app. */
 	onExportIcs?: (() => void) | undefined;
 }
 
@@ -95,7 +95,7 @@ export function EventEditModal({
 	const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [errorField, setErrorField] = useState<'title' | 'startsAt' | 'endsAt' | null>(null);
-	// Die Meldung sitzt unter den Feldern, der Speichern-Button ist angeheftet.
+	// The message sits below the fields; the save button is pinned.
 	const shownError = error || actionError;
 	useEffect(() => {
 		if (shownError)

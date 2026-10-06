@@ -28,12 +28,12 @@ import { useExpenseSubmit } from './use-expense-submit';
 import { useExpensesData } from './use-expenses-data';
 import { useRecurringExpenseActions } from './use-recurring-expense-actions';
 
-/** Einträge pro Seite im Verlauf; Salden und Export nutzen weiterhin alle. */
+/** Entries per page in the history; balances and export still use all of them. */
 const EXPENSE_RENDER_PAGE = 60;
-/** Fixkosten-Vorschau zeigt höchstens so viele Vorlagen, außer der Filter ist aktiv. */
+/** The fixed-costs preview shows at most this many templates unless the filter is active. */
 const RECURRING_PREVIEW_LIMIT = 4;
 
-/** Ausgaben-Seite: lädt Daten, hält Formular und Mutationen zusammen und liefert die Anzeige-Ableitungen. */
+/** Expenses page: loads data, holds form and mutations together and derives the view. */
 export function useAusgabenPage() {
 	const { wg, members, identity } = useWg();
 	const toast = useToast();
@@ -139,8 +139,8 @@ export function useAusgabenPage() {
 	const stableToggleSettle = useStableCallback(rowActions.toggleSettle);
 	const stableMemberName = useStableCallback(memberName);
 
-	// Verlauf nach Kalenderwoche; die API liefert neueste zuerst.
-	// Nur die neuesten Einträge rendern (Salden nutzen weiter alle); „Mehr anzeigen“ lädt nach.
+	// History by calendar week; the API returns newest first.
+	// Render only the newest entries (balances still use all); „Mehr anzeigen“ loads more.
 	const [visibleLimit, setVisibleLimit] = useState(EXPENSE_RENDER_PAGE);
 	const highlightIndex = highlightedId ? expenses.findIndex((e) => e.id === highlightedId) : -1;
 	const renderLimit = Math.max(visibleLimit, highlightIndex + 1);

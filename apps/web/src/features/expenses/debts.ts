@@ -104,7 +104,7 @@ export function computeBalances(
 /**
  * Age (in whole days) of the oldest unsettled split between two members.
  *
- * Used to render "seit X Tagen" copy in reminders. Direction matters: the debtor
+ * Feeds the "seit X Tagen" copy in reminders. Direction matters: the debtor
  * owes the creditor, so we only consider splits where the creditor paid and the
  * debtor is the listed debtor.
  */

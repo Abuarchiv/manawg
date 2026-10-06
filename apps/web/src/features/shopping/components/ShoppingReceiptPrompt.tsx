@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 
 const RECEIPT_PROMPT_WINDOW_MS = 12 * 60 * 60 * 1000;
 
-/** Nach dem Einkauf: eigene frisch gekaufte Artikel direkt als Ausgabe erfassen. */
+/** After shopping: record the viewer's freshly bought items as an expense right away. */
 export function ShoppingReceiptPrompt({
 	doneItems,
 	memberId,
@@ -24,7 +24,7 @@ export function ShoppingReceiptPrompt({
 		try {
 			setReceiptSince(window.localStorage.getItem(receiptKey));
 		} catch {
-			// Ohne Speicher erscheint der Hinweis nur für die letzten Stunden.
+			// Without storage the hint appears only for the last few hours.
 		}
 	}, [receiptKey]);
 	const receiptCutoff = Math.max(

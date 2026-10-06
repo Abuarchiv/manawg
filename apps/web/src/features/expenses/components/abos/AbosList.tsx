@@ -47,7 +47,7 @@ export function AbosList({
 	onTogglePause,
 	onDelete,
 }: AbosListProps) {
-	// Der Filter lohnt erst, wenn es pausierte Abos gibt.
+	// The filter pays off only once there are paused Abos.
 	const showFilter = abos.some((abo) => abo.pausedAt !== null);
 	const filtered = applyFilter(abos, showFilter ? filter : 'all');
 

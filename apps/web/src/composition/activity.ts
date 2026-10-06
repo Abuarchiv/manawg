@@ -8,7 +8,6 @@ import { auditDetail, formatAuditActivityText, getAuditHref } from './activity-a
 
 export {
 	type ActivityFilter,
-	type ActivityScope,
 	buildActivityInbox,
 	filterActivityByScope,
 	filterActivityItems,

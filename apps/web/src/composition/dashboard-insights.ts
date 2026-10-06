@@ -2,7 +2,7 @@ import { formatShortDate, parseTimestamp } from '@/core/utils/time';
 import { simplifyDebts } from '@/features/expenses/debt-reduction';
 import { choreUrgency, dueLabel, formatEuro } from './dashboard-format';
 
-export { type WgHealth, getWgHealth } from './dashboard-health';
+export { getWgHealth } from './dashboard-health';
 export {
 	type WeekAgenda,
 	type WeekAgendaItem,

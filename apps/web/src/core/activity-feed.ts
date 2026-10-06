@@ -39,10 +39,10 @@ export async function postSystemNotice(input: SystemNoticeInput): Promise<void> 
 }
 
 /**
- * Schließt die offene „auf die Einkaufsliste gesetzt“-Bitte, sobald der Artikel gekauft oder
- * entfernt wurde. Sonst bleibt sie als „Übernehme ich“-Karte stehen und die Aktivität mahnt
- * zusätzlich „liegt seit N Tagen offen“ für einen Artikel, den es nicht mehr gibt (Gegenstück zu
- * chore_swap, das beim Erledigen schließt). Best-effort wie postSystemNotice.
+ * Closes the open „auf die Einkaufsliste gesetzt“ request once the item is bought or removed.
+ * Otherwise it stays as an „Übernehme ich“ card and the activity also nags „liegt seit N Tagen
+ * offen“ for an item that is gone (counterpart to chore_swap, which closes on
+ * completion). Best-effort like postSystemNotice.
  */
 export async function resolveShoppingRequest(
 	wgId: string,

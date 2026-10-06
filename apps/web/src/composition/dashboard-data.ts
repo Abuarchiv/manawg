@@ -24,12 +24,7 @@ import {
 	summarizeDashboardSpend,
 } from './dashboard-summary';
 
-export {
-	type DashboardSpendSummary,
-	type MemberBalance,
-	computeMemberBalances,
-	summarizeDashboardSpend,
-} from './dashboard-summary';
+export { computeMemberBalances, summarizeDashboardSpend } from './dashboard-summary';
 
 const AUDIT_DEDUPE_WINDOW_MS = 60_000;
 

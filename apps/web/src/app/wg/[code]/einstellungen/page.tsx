@@ -55,7 +55,7 @@ export default function EinstellungenPage() {
 		typeof window === 'undefined' ? 'profile' : getSettingsTabFromHash(window.location.hash),
 	);
 
-	// Tab-Chunks vorladen: offline schlägt sonst jeder Tab-Wechsel fehl und der Import bleibt gecacht.
+	// Preload tab chunks: offline, every tab switch would otherwise fail and the failed import stays cached.
 	useEffect(() => {
 		void import('@/components/wg/einstellungen/ProfileTab');
 		void import('@/components/wg/einstellungen/NotificationSection');
@@ -63,7 +63,7 @@ export default function EinstellungenPage() {
 		void import('@/components/wg/einstellungen/DataTab');
 	}, []);
 
-	// Export-Zusammenfassung erst laden, wenn der Daten-Tab geöffnet wird; danach bleibt sie im State.
+	// Load the export summary only when the data tab opens; it then stays in state.
 	const exportSummaryLoaded = useRef(false);
 	useEffect(() => {
 		if (activeTab !== 'data' || exportSummaryLoaded.current) return;

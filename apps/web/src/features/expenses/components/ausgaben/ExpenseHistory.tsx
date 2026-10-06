@@ -90,7 +90,7 @@ export function ExpenseHistory({
 					)}
 				</div>
 			)}
-			{/* Selten gebraucht: Import am Listenende statt als Icon über dem Saldo. */}
+			{/* Rarely needed: import at the end of the list instead of as an icon above the balance. */}
 			{!showSkeleton && (
 				<Link
 					href={importHref}
