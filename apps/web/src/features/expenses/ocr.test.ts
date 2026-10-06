@@ -20,6 +20,10 @@ const contextDate = '2026-09-27T00:00:00.000Z';
 const reloadRequired = (error: unknown) =>
 	error instanceof OcrInitializationError && error.requiresReload;
 
+// Resolves in a microtask, so createWorker runs before any init timer. The default loader's
+// dynamic import can take longer than a 10 ms timeout on a busy machine.
+const loadTesseract = async () => tesseract;
+
 function setTesseractMock(createWorker: CreateWorker): void {
 	tesseract.createWorker = createWorker;
 }
@@ -170,7 +174,7 @@ test('a late worker is terminated if createWorker resolves after the init timeou
 	};
 	setTesseractMock(() => workerInit.promise);
 	await assertRejectsWithin(
-		runOcrOnImage(new Blob(), undefined, { initTimeoutMs: 10 }),
+		runOcrOnImage(new Blob(), undefined, { loadTesseract, initTimeoutMs: 10 }),
 		250,
 		reloadRequired,
 	);
@@ -188,7 +192,7 @@ test('recognition timeout terminates an initialized worker', async () => {
 		},
 	}));
 	await assertRejectsWithin(
-		runOcrOnImage(new Blob(), undefined, { recognitionTimeoutMs: 10 }),
+		runOcrOnImage(new Blob(), undefined, { loadTesseract, recognitionTimeoutMs: 10 }),
 		250,
 		/recognition timed out/i,
 	);
@@ -207,7 +211,7 @@ test('worker errors during recognition reject and terminate the initialized work
 		},
 	}));
 	await assertRejectsWithin(
-		runOcrOnImage(new Blob(), undefined, { recognitionTimeoutMs: 100 }),
+		runOcrOnImage(new Blob(), undefined, { loadTesseract, recognitionTimeoutMs: 100 }),
 		250,
 		/recognition failed/,
 	);
@@ -234,7 +238,7 @@ test('SDK init errors reject promptly and repeated attempts do not spawn another
 		queueMicrotask(() => options?.errorHandler?.('TypeError: Failed to fetch language data'));
 		return new Promise(() => {});
 	});
-	const runtime = { loadTesseract: async () => tesseract, initTimeoutMs: 100 };
+	const runtime = { loadTesseract, initTimeoutMs: 100 };
 	await assertRejectsWithin(runOcrOnImage(new Blob(), undefined, runtime), 250, reloadRequired);
 	await assert.rejects(runOcrOnImage(new Blob(), undefined, runtime), reloadRequired);
 	assert.equal(createCalls, 1);

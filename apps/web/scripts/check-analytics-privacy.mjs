@@ -2,8 +2,8 @@
 // src/instrumentation-client.ts is evaluated once per case against a stand-in PostHog SDK.
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
-import path from 'node:path';
 import { createRequire } from 'node:module';
+import path from 'node:path';
 import { mock } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -202,7 +202,11 @@ for (const invalidEnv of [
 assert.equal((await initialize(env, true)).calls.length, 0);
 assert.equal((await initialize(env, false, true)).calls.length, 0);
 // Positive control: the negative cases above only prove something if each case runs the entrypoint.
-assert.equal((await initialize(env)).calls.length, 1, 'entrypoint did not run again for a later case');
+assert.equal(
+	(await initialize(env)).calls.length,
+	1,
+	'entrypoint did not run again for a later case',
+);
 assert.doesNotMatch(pwa, /posthog|onAuthStateChange|createSupabaseBrowserClient/);
 
 const captureCalls = [...onboarding.matchAll(/posthog\.capture\(([^)]*)\)/g)].map(
