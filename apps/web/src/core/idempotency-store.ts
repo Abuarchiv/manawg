@@ -25,34 +25,28 @@ export function readIdempotencyKey(req: Request): string | null {
 /**
  * Atomically claims a response-replay slot in Postgres.
  *
- * Returns `true` when the caller won the slot and must perform the mutation and complete the
- * claim. Returns `false` when another request holds it; the caller must wait for and replay that
- * request's response. Two serverless instances racing on the same key collide on the
- * `(scope, key)` primary key, so only one wins the insert. An expired placeholder is reclaimed.
+ * Resolves to the claim's lease (its `expiresAt`) when the caller won the slot and must perform
+ * the mutation and complete the claim, or `null` when another request holds it; the caller must
+ * then wait for and replay that request's response. Two serverless instances racing on the same
+ * key collide on the `(scope, key)` primary key, so only one wins the insert. An expired
+ * placeholder is reclaimed. The lease lets the winner release exactly its own claim.
  *
  * Fail-closed: a DB error leaves claim ownership unknown and aborts the request, even if the
  * insert may have committed before the error.
  */
-export async function claimResponseSlot(scope: string, key: string): Promise<boolean> {
+export async function claimResponseSlot(scope: string, key: string): Promise<Date | null> {
+	const expiresAt = new Date(Date.now() + RESPONSE_CLAIM_LEASE_SECONDS * 1000);
 	try {
 		const rows = await db
 			.insert(idempotencyResponses)
-			.values({
-				scope,
-				key,
-				responseBody: CLAIM_PLACEHOLDER,
-				expiresAt: new Date(Date.now() + RESPONSE_CLAIM_LEASE_SECONDS * 1000),
-			})
+			.values({ scope, key, responseBody: CLAIM_PLACEHOLDER, expiresAt })
 			.onConflictDoUpdate({
 				target: [idempotencyResponses.scope, idempotencyResponses.key],
-				set: {
-					responseBody: CLAIM_PLACEHOLDER,
-					expiresAt: new Date(Date.now() + RESPONSE_CLAIM_LEASE_SECONDS * 1000),
-				},
+				set: { responseBody: CLAIM_PLACEHOLDER, expiresAt },
 				where: sql`${idempotencyResponses.expiresAt} <= now()`,
 			})
-			.returning({ scope: idempotencyResponses.scope });
-		return rows.length > 0;
+			.returning({ expiresAt: idempotencyResponses.expiresAt });
+		return rows[0]?.expiresAt ?? null;
 	} catch (err) {
 		throw new Error('idempotency_claim_failed', { cause: err });
 	}
