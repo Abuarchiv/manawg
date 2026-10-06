@@ -1,6 +1,6 @@
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
-import { apiError, serverError } from '@/core/http/api-errors';
+import { serverError, serviceUnavailable, unauthorized } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -13,9 +13,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 	} catch (err) {
 		// A transient Auth outage is retryable, not an unauthenticated caller.
 		logApiError('[api/wg/mine GET] auth error', err);
-		return apiError('db_error', 503);
+		return serviceUnavailable('db_error');
 	}
-	if (!user) return apiError('auth_required', 401, 'auth_required');
+	if (!user) return unauthorized('auth_required', 'auth_required');
 	try {
 		const memberships = await db
 			.select({ id: wgs.id, memberId: wgMembers.id, name: wgs.name, code: wgs.shareCode })

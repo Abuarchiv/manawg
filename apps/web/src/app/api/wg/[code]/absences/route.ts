@@ -6,7 +6,7 @@ import {
 	releaseClaimedResponse,
 } from '@/core/db/claimed-response';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { isVerifiedWgAdmin } from '@/core/guards/admin';
+import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import {
 	ReplayCache,
 	type ReplayReservation,
@@ -18,7 +18,6 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
 	badRequest,
 	conflict,
-	forbidden,
 	serverError,
 	tooMany,
 	unreadableJsonBody,
@@ -156,12 +155,8 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 		.limit(1);
 	if (member.length === 0) return badRequest('member_not_in_wg');
 
-	// A bare x-manawg-member-id is spoofable, so self-ownership only counts
-	// with a verified HMAC token.
-	const isOwner = auth.member.verified && parsed.data.memberId === auth.member.memberId;
-	if (!isOwner && !(await isVerifiedWgAdmin(wg.id, auth.member.memberId, auth.member.verified))) {
-		return forbidden('not_owner', 'not_owner');
-	}
+	const denied = await requireOwnerOrAdmin(wg.id, auth.member, parsed.data.memberId);
+	if (denied) return denied;
 
 	const replaySlot = idemReplayKey === null ? null : absenceCreateReplay.reserve(idemReplayKey);
 	if (replaySlot?.owned === false) return NextResponse.json(await replaySlot.promise);

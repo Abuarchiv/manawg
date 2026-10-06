@@ -24,7 +24,7 @@ import {
 	readResponseErrorCode,
 } from '@/components/wg/einstellungen/settings-errors';
 import type { StoredIdentity } from '@/shared/lib/identity';
-import { clearIdentity, forgetWg, memberAuthHeader } from '@/shared/lib/identity';
+import { clearIdentity, forgetWg, memberContextHeader } from '@/shared/lib/identity';
 import { LogOut, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -75,15 +75,10 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 		try {
 			const res = await fetch(`/api/wg/${encodedShareCode}`, {
 				method: 'DELETE',
-				headers: memberAuthHeader(identity.memberId, identity.memberToken),
+				headers: memberContextHeader(identity.memberId),
 			});
 			if (res.status === 403) {
-				const errorCode = await readResponseErrorCode(res);
-				setDeleteError(
-					errorCode === 'member_not_verified'
-						? 'Dein Gerät ist noch nicht bestätigt. Lade die App neu und versuche es erneut.'
-						: 'Nur Admins können die WG löschen.',
-				);
+				setDeleteError('Nur Admins können die WG löschen.');
 				setDeleteStage('confirm');
 				return;
 			}
@@ -224,7 +219,6 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 					member={{ id: identity.memberId, name: identity.name }}
 					selfLeave
 					viewerMemberId={identity.memberId}
-					viewerMemberToken={identity.memberToken}
 					onClose={() => setLeaving(false)}
 					onDeactivated={leaveWg}
 				/>

@@ -10,7 +10,7 @@ import {
 	chooseNextAvailableMember,
 } from '../src/features/chores/chore-fairness';
 import { getChoreStatus } from '../src/features/chores/chore-status';
-import { MEMBER_TOKEN_HEADER } from '../src/shared/lib/member-header';
+import { EXPECTED_MEMBER_ID_HEADER } from '../src/shared/lib/member-header';
 import {
 	FIXTURE_WG,
 	dismissOnboarding,
@@ -222,9 +222,9 @@ test.describe('chore next assignee', () => {
 		viewerIsAdmin = false,
 	) {
 		await setupMember(page);
-		const memberTokens: Array<string | undefined> = [];
+		const memberHeaders: Array<string | undefined> = [];
 		await page.route(`**/api/wg/${SHARE_CODE}/members`, (route) => {
-			memberTokens.push(route.request().headers()[MEMBER_TOKEN_HEADER]);
+			memberHeaders.push(route.request().headers()[EXPECTED_MEMBER_ID_HEADER]);
 			return route.fulfill({ json: { members, viewerIsAdmin } });
 		});
 		await page.route(`**/api/wg/${SHARE_CODE}/chores`, (route) =>
@@ -241,8 +241,8 @@ test.describe('chore next assignee', () => {
 		await mockUnreadCount(page, `/api/wg/${SHARE_CODE}`);
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/putzen`);
 		await dismissOnboarding(page);
-		await expect.poll(() => memberTokens.length, { timeout: 15_000 }).toBeGreaterThanOrEqual(1);
-		expect(memberTokens.every((token) => token === 'fixture-member-token')).toBe(true);
+		await expect.poll(() => memberHeaders.length, { timeout: 15_000 }).toBeGreaterThanOrEqual(1);
+		expect(memberHeaders.every((memberId) => memberId === CURRENT_MEMBER)).toBe(true);
 		const household = page.getByRole('navigation', { name: 'Haushalt' });
 		const shopping = household.getByRole('link', { name: 'Einkäufe, 123 offen' });
 		await expect(shopping).toBeVisible();

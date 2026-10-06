@@ -79,11 +79,9 @@ const NOTIFICATION_PREFERENCES: ReadonlyArray<{
 export function NotificationSection({
 	code,
 	memberId,
-	memberToken,
 }: {
 	code: string;
 	memberId: string;
-	memberToken?: string | undefined;
 }) {
 	const [status, setStatus] = useState<NotificationStatus | null>(null);
 	const [pending, setPending] = useState<'push' | 'save' | 'test' | null>(null);
@@ -147,7 +145,7 @@ export function NotificationSection({
 			}
 			if (!subscription) return;
 			try {
-				await persistExistingWebPushSubscription(code, memberId, subscription, memberToken);
+				await persistExistingWebPushSubscription(code, memberId, subscription);
 				if (cancelled) return;
 				setStatus((prev) =>
 					prev && prev.pushOptIn === false ? { ...prev, pushOptIn: true } : prev,
@@ -160,7 +158,7 @@ export function NotificationSection({
 		return () => {
 			cancelled = true;
 		};
-	}, [code, memberId, memberToken, status?.pushOptIn]);
+	}, [code, memberId, status?.pushOptIn]);
 
 	async function activatePush() {
 		if (pendingRef.current) return;
@@ -169,7 +167,7 @@ export function NotificationSection({
 		setError(null);
 		setMessage(null);
 		try {
-			await subscribeWebPush(code, memberId, memberToken);
+			await subscribeWebPush(code, memberId);
 			setStatus((prev) => (prev ? { ...prev, pushOptIn: true } : prev));
 			setMessage('Web Push ist aktiv.');
 		} catch (err) {
@@ -186,7 +184,7 @@ export function NotificationSection({
 		setPending('push');
 		setError(null);
 		try {
-			await unsubscribeWebPush(code, memberId, memberToken);
+			await unsubscribeWebPush(code, memberId);
 			setStatus((prev) => (prev ? { ...prev, pushOptIn: false } : prev));
 			setMessage('Web Push ist deaktiviert.');
 		} catch (err) {
@@ -220,7 +218,6 @@ export function NotificationSection({
 			const res = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
 				method: 'PATCH',
 				memberId,
-				memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify(body),
 			});
@@ -261,7 +258,6 @@ export function NotificationSection({
 			const res = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
 				method: 'PATCH',
 				memberId,
-				memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify(body),
 			});
@@ -300,7 +296,6 @@ export function NotificationSection({
 			const res = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
 				method: 'POST',
 				memberId,
-				memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({ action: 'test_notification' }),
 			});

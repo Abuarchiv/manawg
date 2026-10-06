@@ -95,7 +95,6 @@ export function useRecurringExpenseActions(
 		const advanceRes = await apiFetch<{ recurringExpense: RecurringExpense }>(recurringApiUrl, {
 			method: 'PATCH',
 			memberId: identity.memberId,
-			memberToken: identity.memberToken,
 			body: JSON.stringify({
 				id: templateId,
 				...(expectedNextDueAt ? { expectedNextDueAt } : {}),
@@ -232,7 +231,6 @@ export function useRecurringExpenseActions(
 		const res = await apiFetch<{ recurringExpense: RecurringExpense }>(recurringApiUrl, {
 			method: editingRecurringExpense ? 'PATCH' : 'POST',
 			memberId: identity.memberId,
-			memberToken: identity.memberToken,
 			...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
 			body: JSON.stringify({
 				id: editingRecurringExpense?.id,
@@ -420,7 +418,6 @@ export function useRecurringExpenseActions(
 			{
 				method: 'POST',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({
 					...requestBody,
@@ -499,7 +496,6 @@ export function useRecurringExpenseActions(
 		const res = await apiFetch<unknown>(recurringApiUrl, {
 			method: 'DELETE',
 			memberId: identity.memberId,
-			memberToken: identity.memberToken,
 			body: JSON.stringify({ id: template.id }),
 		});
 

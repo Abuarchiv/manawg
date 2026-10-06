@@ -25,7 +25,6 @@ interface InventoryListProps {
 	items: InventoryItemDto[];
 	shareCode: string;
 	memberId: string;
-	memberToken?: string | undefined;
 	onChanged: (item?: InventoryMutationItemDto, deletedId?: string) => void;
 	addOpen: boolean;
 	onAddOpenChange: (open: boolean) => void;
@@ -35,7 +34,6 @@ export function InventoryList({
 	items,
 	shareCode,
 	memberId,
-	memberToken,
 	onChanged,
 	addOpen,
 	onAddOpenChange: setAddOpen,
@@ -95,7 +93,6 @@ export function InventoryList({
 												item={item}
 												shareCode={shareCode}
 												memberId={memberId}
-												memberToken={memberToken}
 												onChanged={onChanged}
 												onEdit={openEdit}
 											/>
@@ -135,7 +132,6 @@ export function InventoryList({
 												item={item}
 												shareCode={shareCode}
 												memberId={memberId}
-												memberToken={memberToken}
 												onChanged={onChanged}
 												onEdit={openEdit}
 											/>
@@ -152,7 +148,6 @@ export function InventoryList({
 				open={addOpen || editing !== null}
 				shareCode={shareCode}
 				memberId={memberId}
-				memberToken={memberToken}
 				mode={editing ? 'edit' : 'create'}
 				initial={editing}
 				onItemRefreshed={setEditing}
@@ -167,7 +162,6 @@ export function InventoryList({
 				items={items}
 				shareCode={shareCode}
 				memberId={memberId}
-				memberToken={memberToken}
 				onClose={() => setQuickOpen(false)}
 				onChanged={onChanged}
 			/>

@@ -5,18 +5,19 @@ import { db, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { isVerifiedWgAdmin } from '@/core/guards/admin';
+import { isWgAdmin } from '@/core/guards/admin';
 import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
-	HTTP,
-	apiError,
 	badRequest,
+	conflict,
 	forbidden,
 	notFound,
+	serviceUnavailable,
 	tooMany,
+	unauthorized,
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
@@ -84,9 +85,9 @@ export const GET = withWgRoute(
 			active: deactivatedAt === null,
 		}));
 		// Client-side UI gating only (deactivate/reactivate buttons, chat
-		// admin-delete) — every actual mutation re-checks isVerifiedWgAdmin
-		// server-side, so a stale/spoofed value here can't grant real access.
-		const viewerIsAdmin = await isVerifiedWgAdmin(wgId, auth.member.memberId, auth.member.verified);
+		// admin-delete) — every actual mutation re-checks the admin role
+		// server-side, so a stale value here can't grant real access.
+		const viewerIsAdmin = await isWgAdmin(wgId, auth.member.memberId);
 
 		return NextResponse.json({
 			members,
@@ -143,9 +144,9 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 	} catch (err) {
 		// A transient Auth outage is retryable, not an unauthenticated caller.
 		logApiError('[members POST] auth error', err);
-		return apiError('db_error', 503);
+		return serviceUnavailable('db_error');
 	}
-	if (!authUser) return apiError('auth_required', 401, 'auth_required');
+	if (!authUser) return unauthorized('auth_required', 'auth_required');
 	const user = authUser;
 	const wg = await db.query.wgs.findFirst({
 		where: (w, { eq }) => eq(w.shareCode, code),
@@ -243,15 +244,15 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 						return forbidden('joining_disabled', 'joining_disabled');
 					}
 					if (joinResult.reason === 'limit') {
-						return apiError('member_limit_reached', HTTP.CONFLICT, 'member_limit_reached');
+						return conflict('member_limit_reached', 'member_limit_reached');
 					}
 					if (joinResult.reason === 'member_deactivated') {
 						return forbidden('member_deactivated', 'member_deactivated');
 					}
 					if (joinResult.reason === 'already_joined') {
-						return apiError('already_joined', HTTP.CONFLICT, 'already_joined');
+						return conflict('already_joined', 'already_joined');
 					}
-					return apiError('name_taken', HTTP.CONFLICT, 'name_taken');
+					return conflict('name_taken', 'name_taken');
 				}
 				const member = joinResult.member;
 				await recordAuditEvent({
@@ -281,7 +282,7 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 					return null;
 				} catch (err) {
 					if (err instanceof TransactionAbort && err.code === 'account_deletion_pending') {
-						return apiError('account_deletion_pending', HTTP.CONFLICT, 'account_deletion_pending');
+						return conflict('account_deletion_pending', 'account_deletion_pending');
 					}
 					throw err;
 				}
@@ -289,7 +290,7 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 		);
 	} catch (err) {
 		if (err instanceof TransactionAbort && err.code === 'account_deletion_pending') {
-			return apiError('account_deletion_pending', HTTP.CONFLICT, 'account_deletion_pending');
+			return conflict('account_deletion_pending', 'account_deletion_pending');
 		}
 		throw err;
 	}

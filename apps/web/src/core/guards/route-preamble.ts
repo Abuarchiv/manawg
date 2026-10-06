@@ -1,12 +1,11 @@
-import { HTTP, apiError, badRequest, notFound } from '@/core/http/api-errors';
+import { badRequest, notFound, unauthorized } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { type E2EWgFixture, getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
-// Deliberately NOT from '@/core/guards/api-auth', which re-exports the same constant:
-// api-auth pulls in the database module, and the E2E db-down path exists
-// precisely to answer requests when no database can be loaded. A route test
-// asserts that api-auth stays unloaded in that mode.
-import { MEMBER_ID_HEADER } from '@/shared/lib/member-header';
+// Must not import '@/core/guards/api-auth': it pulls in the database module,
+// and the E2E db-down path exists precisely to answer requests when no
+// database can be loaded. A route test asserts that api-auth stays unloaded.
+import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 import type { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -64,17 +63,18 @@ export async function resolveE2EFixture(req: NextRequest, code: string): Promise
 	const fixture = getE2EWgFixture(code);
 	if (!fixture) return { mode: 'denied', response: notFound('wg_not_found') };
 
-	const memberId = req.headers.get(MEMBER_ID_HEADER);
+	// Fixture mode has no Supabase session; the tab's member header names the caller.
+	const memberId = req.headers.get(EXPECTED_MEMBER_ID_HEADER);
 	if (!memberId) {
 		return {
 			mode: 'denied',
-			response: apiError('auth_required', HTTP.UNAUTHORIZED, 'auth_required'),
+			response: unauthorized('auth_required', 'auth_required'),
 		};
 	}
 	if (!fixture.members.some((member) => member.id === memberId)) {
 		return {
 			mode: 'denied',
-			response: apiError('not_a_member', HTTP.UNAUTHORIZED, 'not_a_member'),
+			response: unauthorized('not_a_member', 'not_a_member'),
 		};
 	}
 

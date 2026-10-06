@@ -87,7 +87,6 @@ function loadPayPalSdk(merchantId: string): Promise<void> {
 interface PayPalPaymentButtonProps {
 	shareCode: string;
 	currentMemberId: string;
-	memberToken?: string | undefined;
 	fromMemberId: string;
 	toMemberId: string;
 	payeeMerchantId: string;
@@ -99,7 +98,6 @@ interface PayPalPaymentButtonProps {
 export function PayPalPaymentButton({
 	shareCode,
 	currentMemberId,
-	memberToken,
 	fromMemberId,
 	toMemberId,
 	payeeMerchantId,
@@ -140,7 +138,6 @@ export function PayPalPaymentButton({
 					{
 						method: 'POST',
 						memberId: currentMemberId,
-						memberToken,
 						body: JSON.stringify({ orderId }),
 					},
 				);
@@ -187,7 +184,6 @@ export function PayPalPaymentButton({
 				{
 					method: 'POST',
 					memberId: currentMemberId,
-					memberToken,
 					body: JSON.stringify({ fromMemberId, toMemberId, currency }),
 				},
 			);
@@ -205,7 +201,7 @@ export function PayPalPaymentButton({
 			try {
 				const lookup = await apiFetch<{ status: string; orderId?: string }>(
 					`/api/wg/${encodeURIComponent(shareCode)}/paypal/order?toMemberId=${encodeURIComponent(toMemberId)}`,
-					{ method: 'GET', memberId: currentMemberId, memberToken },
+					{ method: 'GET', memberId: currentMemberId },
 				);
 				if (cancelled) return;
 				const lookupState = resolvePayPalOrderLookup(lookup);
@@ -260,7 +256,6 @@ export function PayPalPaymentButton({
 		currentMemberId,
 		currency,
 		fromMemberId,
-		memberToken,
 		payeeMerchantId,
 		shareCode,
 		toMemberId,

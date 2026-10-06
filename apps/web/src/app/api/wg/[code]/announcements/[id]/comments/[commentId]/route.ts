@@ -3,15 +3,8 @@ import { announcementComments, announcements, db } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	badRequest,
-	forbidden,
-	notFound,
-	requireVerifiedMember,
-	tooMany,
-	unreadableJsonBody,
-} from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
+import { badRequest, forbidden, notFound, tooMany } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -58,22 +51,11 @@ export const PATCH = withWgRoute<{ id: string; commentId: string }>(
 	async (req, { code, id, commentId }) => {
 		if (!UUID_PATTERN.test(id) || !UUID_PATTERN.test(commentId)) return badRequest('id_invalid');
 
-		let raw: unknown;
-		try {
-			raw = await readJsonLimited(req);
-		} catch (err) {
-			return unreadableJsonBody(err);
-		}
-		const parsed = commentSchema.safeParse(raw);
-		if (!parsed.success) return badRequest('comment_invalid');
+		const parsed = await parseBody(req, commentSchema, { invalid: 'comment_invalid' });
+		if (!parsed.ok) return parsed.response;
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
-		// Owner check trusts the caller identity claimed by the spoofable
-		// x-manawg-member-id header, so require a verified HMAC token before
-		// trusting it (same pattern as expense mutations).
-		const unverified = requireVerifiedMember(auth.member);
-		if (unverified) return unverified;
 		const limited = await checkRateLimit(
 			wgWriteLimiter,
 			`comment-edit:${wgId}:${auth.member.memberId}`,
@@ -117,11 +99,6 @@ export const DELETE = withWgRoute<{ id: string; commentId: string }>(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
-		// Owner check trusts the caller identity claimed by the spoofable
-		// x-manawg-member-id header, so require a verified HMAC token before
-		// trusting it (same pattern as expense mutations).
-		const unverified = requireVerifiedMember(auth.member);
-		if (unverified) return unverified;
 		const limited = await checkRateLimit(
 			wgWriteLimiter,
 			`comment-delete:${wgId}:${auth.member.memberId}`,

@@ -15,7 +15,7 @@ import {
 import type { ExportSectionKey, ExportSectionSummary } from '@/composition/export';
 import { cn } from '@/shared/lib/cn';
 import type { StoredIdentity } from '@/shared/lib/identity';
-import { memberAuthHeader } from '@/shared/lib/identity';
+import { memberContextHeader } from '@/shared/lib/identity';
 import { Download, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
@@ -50,7 +50,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 				format === 'csv'
 					? `/api/wg/${encodedShareCode}/export?format=csv&section=${encodeURIComponent(csvSection)}`
 					: `/api/wg/${encodedShareCode}/export`;
-			const res = await fetch(url, { headers: memberAuthHeader(identity.memberId) });
+			const res = await fetch(url, { headers: memberContextHeader(identity.memberId) });
 			if (!res.ok) {
 				setExportError(exportErrorMessage(res.status, await readResponseErrorCode(res)));
 				return;

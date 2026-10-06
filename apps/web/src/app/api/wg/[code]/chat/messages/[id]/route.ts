@@ -10,7 +10,6 @@ import {
 	badRequest,
 	forbidden,
 	notFound,
-	requireVerifiedMember,
 	tooMany,
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
@@ -45,11 +44,6 @@ export const PATCH = withWgRoute<{ id: string }>(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
-		// Owner check trusts the caller identity claimed by the spoofable
-		// x-manawg-member-id header, so require a verified HMAC token before
-		// trusting it (same pattern as comment/expense mutations).
-		const unverified = requireVerifiedMember(auth.member);
-		if (unverified) return unverified;
 		const limited = await checkRateLimit(
 			wgWriteLimiter,
 			`chat-edit:${wgId}:${auth.member.memberId}`,
@@ -96,11 +90,6 @@ export const DELETE = withWgRoute<{ id: string }>(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
-		// Owner check trusts the caller identity claimed by the spoofable
-		// x-manawg-member-id header, so require a verified HMAC token before
-		// trusting it (same pattern as comment/expense mutations).
-		const unverified = requireVerifiedMember(auth.member);
-		if (unverified) return unverified;
 		const limited = await checkRateLimit(
 			wgWriteLimiter,
 			`chat-delete:${wgId}:${auth.member.memberId}`,
@@ -123,12 +112,8 @@ export const DELETE = withWgRoute<{ id: string }>(
 			if (!row) return { ok: false as const, response: notFound('message_not_found') };
 			if (row.deletedAt) return { ok: true as const, deleted: false as const, row };
 
-			// auth.member.verified is already guaranteed by the check above; kept
-			// explicit here to match requireOwnerOrAdmin's own isOwner shape.
-			const isAuthor = auth.member.verified && row.senderMemberId === auth.member.memberId;
-			const denied = isAuthor
-				? null
-				: await requireOwnerOrAdmin(wgId, auth.member, row.senderMemberId);
+			const isAuthor = row.senderMemberId === auth.member.memberId;
+			const denied = await requireOwnerOrAdmin(wgId, auth.member, row.senderMemberId);
 			if (denied) return { ok: false as const, response: denied };
 
 			const [updated] = await tx

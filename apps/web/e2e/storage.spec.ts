@@ -353,7 +353,7 @@ test.describe('private storage contract', () => {
 				requireMember: async () => {
 					membershipCalls += 1;
 					return membership === 'active'
-						? { ok: true, member: { memberId: 'member-1', name: 'Member', verified: true } }
+						? { ok: true, member: { memberId: 'member-1', name: 'Member' } }
 						: {
 								ok: false,
 								response: nextServer.NextResponse.json(
@@ -561,7 +561,7 @@ test.describe('upload sign s3 config contract', () => {
 			'@/core/guards/api-auth': {
 				requireMember: async () => ({
 					ok: true,
-					member: { memberId: 'member-1', name: 'Member', verified: true },
+					member: { memberId: 'member-1', name: 'Member' },
 				}),
 			},
 			'@/core/http/read-json': { readJsonBody },

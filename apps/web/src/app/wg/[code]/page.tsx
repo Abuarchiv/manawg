@@ -110,12 +110,10 @@ export default function WgHomePage() {
 	);
 	const dashboardRead = useCachedFetch<DashboardData>(`/api/wg/${encodedShareCode}/dashboard`, {
 		memberId: identity.memberId,
-		memberToken: identity.memberToken,
 	});
 	const eventUrl = `/api/wg/${encodedShareCode}/events?from=${encodeURIComponent(weekWindow.from.toISOString())}&to=${encodeURIComponent(weekWindow.to.toISOString())}`;
 	const eventRead = useCachedFetch<{ events: SerializedWgEvent[] }>(eventUrl, {
 		memberId: identity.memberId,
-		memberToken: identity.memberToken,
 	});
 	const data = dashboardRead.data ?? null;
 	const loading = dashboardRead.isLoading;
@@ -162,7 +160,6 @@ export default function WgHomePage() {
 			{
 				method: 'POST',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({
 					expectedNextDueAt: item.expectedNextDueAt,
@@ -581,11 +578,7 @@ export default function WgHomePage() {
 					</section>
 				</div>
 				<div>
-					<PushPrimingPrompt
-						code={wg.shareCode}
-						memberId={identity.memberId}
-						memberToken={identity.memberToken}
-					/>
+					<PushPrimingPrompt code={wg.shareCode} memberId={identity.memberId} />
 				</div>
 			</div>
 		</>

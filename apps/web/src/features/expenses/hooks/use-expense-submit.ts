@@ -228,7 +228,6 @@ export function useExpenseSubmit(
 		const res = await apiFetch<ExpenseMutationResponse>(url, {
 			method: isEdit ? 'PATCH' : 'POST',
 			memberId: identity.memberId,
-			memberToken: identity.memberToken,
 			...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
 			body: JSON.stringify(requestBody),
 		});

@@ -731,7 +731,6 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 			const res = await apiFetch<unknown>(request.path, {
 				method: request.method,
 				memberId: readyAction.memberId,
-				...(identity?.memberToken ? { memberToken: identity.memberToken } : {}),
 				body: JSON.stringify(request.body),
 				...(options?.signal ? { signal: options.signal } : {}),
 				headers: { 'Idempotency-Key': idempotencyKey },
@@ -755,7 +754,6 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 							{
 								method: 'PATCH',
 								memberId: readyAction.memberId,
-								...(identity?.memberToken ? { memberToken: identity.memberToken } : {}),
 								body: JSON.stringify(recurringAdvance),
 								...(options?.signal ? { signal: options.signal } : {}),
 							},

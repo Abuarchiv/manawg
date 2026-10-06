@@ -71,7 +71,6 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 			{
 				method: 'POST',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				body: JSON.stringify({}),
 			},
 		);
@@ -106,7 +105,6 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				body: JSON.stringify({ active: true }),
 			},
 		);
@@ -267,7 +265,6 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 					encodedShareCode={encodedShareCode}
 					member={memberToDeactivate}
 					viewerMemberId={identity.memberId}
-					viewerMemberToken={identity.memberToken}
 					onClose={() => setMemberToDeactivate(null)}
 					onDeactivated={handleMemberDeactivated}
 				/>

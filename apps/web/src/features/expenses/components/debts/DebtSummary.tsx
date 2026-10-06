@@ -101,7 +101,6 @@ interface DebtRowProps {
 	expenses: readonly Expense[];
 	shareCode: string;
 	currentMemberId: string;
-	memberToken?: string | undefined;
 	memberPayPalMerchantId: (id: string) => string | null;
 	payPalEligible: boolean;
 	/** PayPal-Hinweis nur in der ersten passenden Zeile je Karte. */
@@ -128,7 +127,6 @@ function DebtRow({
 	expenses,
 	shareCode,
 	currentMemberId,
-	memberToken,
 	memberPayPalMerchantId,
 	payPalEligible,
 	showPayPalHint,
@@ -160,7 +158,7 @@ function DebtRow({
 		try {
 			const res = await apiFetch<SettlementPreview>(
 				`${endpoint}?${new URLSearchParams({ fromMemberId: debt.fromId, toMemberId: debt.toId, currency: debt.currency ?? 'EUR' })}`,
-				{ memberId: currentMemberId, memberToken },
+				{ memberId: currentMemberId },
 			);
 			if (res.ok) {
 				setPreview(res.data);
@@ -211,7 +209,6 @@ function DebtRow({
 			const res = await apiFetch<SettleBatchResponse>(endpoint, {
 				method: 'POST',
 				memberId: currentMemberId,
-				memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify(body),
 			});
@@ -290,7 +287,6 @@ function DebtRow({
 							creditorMemberId={debt.toId}
 							currency={debt.currency ?? 'EUR'}
 							currentMemberId={currentMemberId}
-							memberToken={memberToken}
 							size="sm"
 						/>
 					)}
@@ -324,7 +320,6 @@ function DebtRow({
 								<PayPalPaymentButton
 									shareCode={shareCode}
 									currentMemberId={currentMemberId}
-									memberToken={memberToken}
 									fromMemberId={debt.fromId}
 									toMemberId={debt.toId}
 									payeeMerchantId={payeeMerchantId}
@@ -449,7 +444,6 @@ interface DebtSummaryProps {
 	expenses: readonly Expense[];
 	shareCode: string;
 	currentMemberId: string;
-	memberToken?: string | undefined;
 	memberPayPalMerchantId?: (id: string) => string | null;
 	onSettled: (message?: string) => void;
 }
@@ -465,7 +459,6 @@ export function DebtSummary({
 	expenses,
 	shareCode,
 	currentMemberId,
-	memberToken,
 	memberPayPalMerchantId = () => null,
 	onSettled,
 }: DebtSummaryProps) {
@@ -490,7 +483,6 @@ export function DebtSummary({
 				expenses={expenses}
 				shareCode={shareCode}
 				currentMemberId={currentMemberId}
-				memberToken={memberToken}
 				memberPayPalMerchantId={memberPayPalMerchantId}
 				showPayPalHint={showPayPalHint}
 				payPalEligible={

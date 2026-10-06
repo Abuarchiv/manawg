@@ -190,7 +190,6 @@ export default function AbosPage() {
 			{
 				method: 'POST',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify(values),
 			},
@@ -230,7 +229,6 @@ export default function AbosPage() {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				body: JSON.stringify({ ...values, expectedNextDueAt: previousAbo.nextDueAt }),
 			},
 		);
@@ -263,7 +261,6 @@ export default function AbosPage() {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				body: JSON.stringify({ paused: !isPaused }),
 			},
 		);
@@ -285,7 +282,7 @@ export default function AbosPage() {
 		updateAbos((current) => current.filter((item) => item.id !== abo.id));
 		const res = await apiFetch<{ deleted: true }>(
 			`/api/wg/${encodedShareCode}/recurring-expenses/${encodeURIComponent(abo.id)}`,
-			{ method: 'DELETE', memberId: identity.memberId, memberToken: identity.memberToken },
+			{ method: 'DELETE', memberId: identity.memberId },
 		);
 		if (res.ok) {
 			setNoticeMessage('success', 'Fixkosten gelöscht.');

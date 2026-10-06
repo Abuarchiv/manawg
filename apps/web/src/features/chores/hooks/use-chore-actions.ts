@@ -82,7 +82,6 @@ export function useChoreActions(ctx: ChorePageContext) {
 			{
 				method: 'POST',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({
 					expectedNextDueAt: chore.nextDueAt,
@@ -249,7 +248,6 @@ export function useChoreActions(ctx: ChorePageContext) {
 			{
 				method: 'POST',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				body: JSON.stringify({
 					kind: 'request',
 					source: 'chore_swap',
@@ -285,7 +283,6 @@ export function useChoreActions(ctx: ChorePageContext) {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				body: JSON.stringify({ assignedMemberId: memberId }),
 			},
 		);
@@ -337,7 +334,6 @@ export function useChoreActions(ctx: ChorePageContext) {
 				{
 					method: 'DELETE',
 					memberId: identity.memberId,
-					memberToken: identity.memberToken,
 				},
 			);
 

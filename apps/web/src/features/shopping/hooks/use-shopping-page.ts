@@ -30,7 +30,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface UseShoppingPageOptions {
 	wg: { id: string; shareCode: string };
-	identity: { memberId: string; memberToken?: string };
+	identity: { memberId: string };
 	prefillName: string | null;
 	highlightedId: string | null;
 	/** Nur für Vorschläge: ein Fehler beim Nachladen darf die Liste nicht blockieren. */
@@ -329,7 +329,6 @@ export function useShoppingPage({
 					{
 						method: 'PATCH',
 						memberId: identity.memberId,
-						memberToken: identity.memberToken,
 						headers: { 'Idempotency-Key': patchRequest.idempotencyKey },
 						body: JSON.stringify({
 							bought: becomingBought,
@@ -421,7 +420,6 @@ export function useShoppingPage({
 			encodedShareCode,
 			commitItems,
 			identity.memberId,
-			identity.memberToken,
 			isPending,
 			load,
 			refreshCount,
@@ -462,7 +460,6 @@ export function useShoppingPage({
 					{
 						method: 'DELETE',
 						memberId: identity.memberId,
-						memberToken: identity.memberToken,
 					},
 				);
 				if (!res.ok) {
@@ -508,7 +505,6 @@ export function useShoppingPage({
 			encodedShareCode,
 			commitItems,
 			identity.memberId,
-			identity.memberToken,
 			isPending,
 			load,
 			refreshCount,
@@ -528,7 +524,6 @@ export function useShoppingPage({
 			const res = await apiFetch<{ deleted: number }>(`/api/wg/${encodedShareCode}/shopping`, {
 				method: 'DELETE',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 			});
 			if (res.ok) {
 				commitItems((prev) =>

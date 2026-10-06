@@ -25,7 +25,7 @@ function harness(returning = async () => [{ id: itemId }]) {
 		adminMemberId: null,
 		audits: 0,
 		deleted: 0,
-		member: { memberId, name: 'Alex', verified: true },
+		member: { memberId, name: 'Alex' },
 		notices: 0,
 		update: null,
 		current: {
@@ -409,7 +409,7 @@ test('the member who added a shopping item may delete it', async () => {
 	assert.equal(state.audits, 1);
 });
 
-test("a verified WG admin may delete another member's shopping item", async () => {
+test("a WG admin may delete another member's shopping item", async () => {
 	const { remove, state } = harness();
 	state.current.addedByMemberId = otherMemberId;
 	state.adminMemberId = memberId;
@@ -422,19 +422,11 @@ test("a verified WG admin may delete another member's shopping item", async () =
 	assert.equal(state.audits, 1);
 });
 
-test("non-admins and unverified admins cannot delete another member's item", async () => {
-	for (const setup of [
-		(state) => {
-			state.adminMemberId = otherMemberId;
-		},
-		(state) => {
-			state.adminMemberId = memberId;
-			state.member = { ...state.member, verified: false };
-		},
-	]) {
+test("non-admins cannot delete another member's item", async () => {
+	for (const adminMemberId of [otherMemberId, null]) {
 		const { remove, state } = harness();
 		state.current.addedByMemberId = otherMemberId;
-		setup(state);
+		state.adminMemberId = adminMemberId;
 
 		const response = await remove();
 

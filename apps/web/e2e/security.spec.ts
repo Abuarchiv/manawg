@@ -2,6 +2,7 @@
 // rate-limit fail-open behaviour, bounded body reads, idempotency replay and API client edge cases.
 // Pure logic runs without a browser; these guard the trust boundary and must not regress silently.
 
+import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -12,7 +13,7 @@ import { expect, test } from '@playwright/test';
 import { NextRequest } from 'next/server';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 import { toCsv } from '../src/composition/export';
-import { deriveMemberToken, verifyMemberToken } from '../src/core/guards/member-token';
+import { verifyLegacyClaimProof } from '../src/core/guards/legacy-claim-proof';
 import {
 	type ReplaySlotDependencies,
 	type ReplaySlotResult,
@@ -204,40 +205,34 @@ test.describe('require wg member regression', () => {
 			.split('export async function GET(')[1]
 			?.split('export async function PATCH(')[0];
 		if (!getHandler) throw new Error('GET handler not found');
+		// requireWgMembership authenticates the Supabase user before it runs the WG lookup.
 		expect(getHandler.indexOf('if (isE2EDbDownMode())')).toBeLessThan(
-			getHandler.indexOf('getAuthenticatedUser(req)'),
+			getHandler.indexOf('requireWgMembership(req, code'),
 		);
-		expect(getHandler.indexOf('getAuthenticatedUser(req)')).toBeLessThan(
-			getHandler.indexOf('db.query.wgs.findFirst('),
+		const guard = readFileSync(join(__dirname, '../src/core/guards/require-wg-member.ts'), 'utf8');
+		expect(guard.indexOf('getAuthenticatedUser(req)')).toBeLessThan(guard.indexOf('loadWg(code)'));
+		expect(guard.indexOf('loadWg(code)')).toBeLessThan(
+			guard.indexOf('requireMember(req, wg.id, user)'),
 		);
-		expect(getHandler).toContain('requireMember(req, wg.id, user)');
 	});
 });
 
-test.describe('member token', () => {
-	test('member token verification rejects trailing non-hex data', () => {
+test.describe('legacy claim proof', () => {
+	const wgId = '989ac820-58b7-431f-9c65-28721264f333';
+	const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
+
+	test('legacy claim proof accepts the stored HMAC and rejects trailing data or a missing secret', () => {
 		const previousSecret = process.env.MEMBER_SESSION_SECRET;
 		process.env.MEMBER_SESSION_SECRET = 'auth-regression-secret';
-
 		try {
-			const token = deriveMemberToken(
-				'989ac820-58b7-431f-9c65-28721264f333',
-				'7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
-			);
-			expect(
-				verifyMemberToken(
-					'989ac820-58b7-431f-9c65-28721264f333',
-					'7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
-					token,
-				),
-			).toBe(true);
-			expect(
-				verifyMemberToken(
-					'989ac820-58b7-431f-9c65-28721264f333',
-					'7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
-					`${token}g`,
-				),
-			).toBe(false);
+			const token = createHmac('sha256', 'auth-regression-secret')
+				.update(`${wgId}:${memberId}`)
+				.digest('hex');
+			expect(verifyLegacyClaimProof(wgId, memberId, token)).toBe(true);
+			expect(verifyLegacyClaimProof(wgId, memberId, `${token}g`)).toBe(false);
+			expect(verifyLegacyClaimProof(wgId, memberId, null)).toBe(false);
+			Reflect.deleteProperty(process.env, 'MEMBER_SESSION_SECRET');
+			expect(verifyLegacyClaimProof(wgId, memberId, token)).toBe(false);
 		} finally {
 			if (previousSecret === undefined)
 				Reflect.deleteProperty(process.env, 'MEMBER_SESSION_SECRET');
@@ -245,13 +240,14 @@ test.describe('member token', () => {
 		}
 	});
 
-	test('normal server membership verification derives identity from auth and validates tokens', async () => {
+	test('normal server membership derives identity from auth alone, without member tokens', async () => {
 		const source = await readFile(
 			path.resolve(process.cwd(), 'src/core/guards/api-auth.ts'),
 			'utf8',
 		);
-		expect(source).toContain('const verified = verifyMemberToken(');
-		expect(source).toContain('member: { memberId: row.id, name: row.name, verified }');
+		expect(source).toContain('eq(wgMembers.authUserId, user.id)');
+		expect(source).not.toContain('legacy-claim-proof');
+		expect(source).not.toContain('LEGACY_CLAIM');
 	});
 });
 

@@ -196,10 +196,9 @@ function harness({
 		'@/core/db/transaction': { withTransaction: async (operation) => operation(tx) },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/http/api-errors': {
-			HTTP: { SERVICE_UNAVAILABLE: 503 },
-			apiError: (code, status) => Response.json({ error: code }, { status }),
 			notFound: (code) => Response.json({ error: code }, { status: 404 }),
 			serverError: (code) => Response.json({ error: code }, { status: 500 }),
+			serviceUnavailable: (code) => Response.json({ error: code }, { status: 503 }),
 			tooMany: (code) => Response.json({ error: code }, { status: 429 }),
 		},
 		'@/core/guards/api-auth': { isUuid: () => true },

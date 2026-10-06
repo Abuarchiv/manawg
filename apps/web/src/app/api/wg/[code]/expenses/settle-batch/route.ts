@@ -6,12 +6,11 @@ import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
-	apiError,
 	badRequest,
 	conflict,
 	forbidden,
-	requireVerifiedMember,
 	tooMany,
+	unauthorized,
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
@@ -190,8 +189,6 @@ const getSettlement = withWgRoute('settle-batch GET', async (req, { code }) => {
 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return noStore(auth.response);
-	const unverified = requireVerifiedMember(auth.member);
-	if (unverified) return noStore(unverified);
 	if (!isParty(auth.member.memberId, fromMemberId, toMemberId)) {
 		return noStore(forbidden('not_party_to_debt', 'not_party_to_debt'));
 	}
@@ -240,8 +237,6 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
-	const unverified = requireVerifiedMember(auth.member);
-	if (unverified) return unverified;
 	if (!isParty(auth.member.memberId, confirmation.fromMemberId, confirmation.toMemberId)) {
 		return forbidden('not_party_to_debt', 'not_party_to_debt');
 	}
@@ -338,7 +333,7 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 			}
 
 			if (mutation.kind === 'member_deactivated') {
-				return apiError('member_deactivated', 401, 'member_deactivated');
+				return unauthorized('member_deactivated', 'member_deactivated');
 			}
 			if (mutation.kind === 'member_not_in_wg') return badRequest('member_not_in_wg');
 			if (mutation.kind === 'blocked') return conflict('paypal_payment_pending');

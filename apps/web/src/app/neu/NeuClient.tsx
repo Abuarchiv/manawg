@@ -124,7 +124,6 @@ export function NeuClient() {
 							{
 								code: wg.code,
 								memberId: identity.memberId,
-								...(identity.memberToken ? { memberToken: identity.memberToken } : {}),
 							},
 						]
 					: [];

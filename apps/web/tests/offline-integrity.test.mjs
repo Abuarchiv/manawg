@@ -1075,16 +1075,13 @@ test('server image_removed retains payload and supports explicit removal after r
 	assert.equal(raced.module.readOfflineQueue().length, 0);
 });
 
-test('API client sends expected member separately from fixture identity headers', async () => {
+test('API client sends only the expected member header, never a member id or token', async () => {
 	let sentHeaders;
 	let sentSignal;
 	const api = loadTs(
 		'src/core/infra/api-client.ts',
 		{
-			'@/shared/lib/fixture-mode': { isClientFixtureMode: () => false },
 			'@/shared/lib/member-header': {
-				MEMBER_ID_HEADER: 'x-manawg-member-id',
-				MEMBER_TOKEN_HEADER: 'x-manawg-member-token',
 				EXPECTED_MEMBER_ID_HEADER: 'x-manawg-expected-member-id',
 			},
 		},
@@ -1108,6 +1105,7 @@ test('API client sends expected member separately from fixture identity headers'
 	});
 	assert.equal(sentHeaders.get('x-manawg-expected-member-id'), 'member-a');
 	assert.equal(sentHeaders.has('x-manawg-member-id'), false);
+	assert.equal(sentHeaders.has('x-manawg-member-token'), false);
 	assert.notEqual(sentSignal, controller.signal);
 	controller.abort();
 	assert.equal(sentSignal.aborted, true);
@@ -1137,11 +1135,12 @@ test('server guard rejects a stale expected member only after cookie membership 
 			wgMembers: {},
 		},
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/http/api-errors': { apiError: (code, status) => ({ code, status }) },
-		'@/core/guards/member-token': { verifyMemberToken: () => false },
+		'@/core/http/api-errors': {
+			HTTP: { UNAUTHORIZED: 401, CONFLICT: 409, SERVICE_UNAVAILABLE: 503 },
+			apiError: (code, status) => ({ code, status }),
+		},
 		'@/core/infra/observability': { logApiError() {} },
 		'@/shared/lib/member-header': {
-			MEMBER_TOKEN_HEADER: 'x-manawg-member-token',
 			EXPECTED_MEMBER_ID_HEADER: 'x-manawg-expected-member-id',
 		},
 		'drizzle-orm': { and: (...args) => args, eq: (...args) => args },
@@ -1156,7 +1155,8 @@ test('server guard rejects a stale expected member only after cookie membership 
 	assert.equal(authenticated, true);
 	assert.equal(membershipResolved, true);
 	assert.equal(result.ok, false);
-	assert.equal(result.response.code, 'member_context_changed');
+	assert.equal(result.reason, 'member_context_changed');
+	assert.deepEqual(result.response, { code: 'member_context_changed', status: 409 });
 	const matching = await guard.requireMember(
 		{
 			method: 'POST',

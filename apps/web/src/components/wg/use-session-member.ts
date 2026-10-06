@@ -78,7 +78,7 @@ export function useSessionMember({
 			if (!keepCurrentContext) setMemberLoaded(false);
 			setMemberLoadError(false);
 			const res = await apiFetch<{
-				currentMember?: { memberId: string; name: string; memberToken?: string };
+				currentMember?: { memberId: string; name: string };
 			}>(`/api/wg/${encodedShareCode}`);
 			if (generation !== authGenerationRef.current) return;
 			const member = res.ok ? res.data.currentMember : undefined;
@@ -87,7 +87,6 @@ export function useSessionMember({
 					memberId: member.memberId,
 					name: member.name,
 					authUserId,
-					...(member.memberToken ? { memberToken: member.memberToken } : {}),
 				};
 				setIdentity(wg.id, nextIdentity);
 				// Keep the same object when nothing changed: a new identity re-runs
@@ -96,8 +95,7 @@ export function useSessionMember({
 					prev &&
 					prev.memberId === nextIdentity.memberId &&
 					prev.name === nextIdentity.name &&
-					prev.authUserId === nextIdentity.authUserId &&
-					prev.memberToken === nextIdentity.memberToken
+					prev.authUserId === nextIdentity.authUserId
 						? prev
 						: nextIdentity,
 				);

@@ -184,7 +184,6 @@ function harness({
 				return { won: true };
 			},
 		},
-		'@/core/guards/member-token': { deriveMemberToken: () => null },
 		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
 			getCachedResponse: async () =>

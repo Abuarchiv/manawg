@@ -1,5 +1,5 @@
 import { TransactionAbort } from '@/core/db/transaction';
-import { isVerifiedWgAdmin } from '@/core/guards/admin';
+import { isWgAdmin } from '@/core/guards/admin';
 import {
 	ReplayCache,
 	type ReplayReservation,
@@ -161,11 +161,7 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 			}
 		}
 
-		const mayRecordForOthers = await isVerifiedWgAdmin(
-			wg.id,
-			auth.member.memberId,
-			auth.member.verified,
-		);
+		const mayRecordForOthers = await isWgAdmin(wg.id, auth.member.memberId);
 		const dbSource = source === 'ocr_text' ? ('ocr_screenshot' as const) : source;
 		let result: CommitResult;
 		try {

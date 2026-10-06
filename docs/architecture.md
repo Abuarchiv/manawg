@@ -73,18 +73,20 @@ Rules:
   can be a member of several WGs. `deactivated_at` is the move-out soft delete; deactivated
   members lose API access and push, history stays.
 - **Membership check** (`core/guards/api-auth.ts` `requireMember`): the server-verified
-  Supabase user is looked up in `wg_members`. That lookup is the authoritative identity proof.
-  `x-manawg-expected-member-id` mismatch yields `409 member_context_changed`.
-- **Member token** (`core/guards/member-token.ts`):
-  `HMAC-SHA256(MEMBER_SESSION_SECRET, "<wgId>:<memberId>")`, issued by `GET /api/wg/<code>`
-  and sent back as `x-manawg-member-token`. A valid token sets `verified: true`. Money/state
-  mutations that trust a caller-claimed id call `requireVerifiedMember`
-  (`core/http/api-errors.ts`) and answer `403 member_not_verified` without it. No session table:
-  the token is recomputed on every request.
+  Supabase user is looked up in `wg_members`. That lookup is the only identity proof; CSRF is
+  covered by the middleware's same-origin check. Failures carry a typed `reason`
+  (`auth_required`, `not_a_member`, `member_deactivated`, `member_context_changed`,
+  `db_error`). `x-manawg-expected-member-id` mismatch yields `409 member_context_changed`, so a
+  stale tab cannot act as a different member. `requireWgMember` and `requireWgAdmin`
+  (`core/guards/require-wg-*.ts`) share the auth and share-code resolution steps.
+- **Legacy-profile recovery** (`POST /api/wg/<code>/members/<id>/claim`,
+  `core/guards/legacy-claim-proof.ts`): links an unlinked member row to the signed-in account
+  only with the `HMAC-SHA256(MEMBER_SESSION_SECRET, "<wgId>:<memberId>")` token that browsers
+  stored before account login. Normal API access never uses it.
 - **Admin**: `wg_members.role` is `admin` or `member`, at most one admin per WG (partial unique
-  index). `core/guards/admin.ts`: `isWgAdmin`, `isVerifiedWgAdmin`, `requireOwnerOrAdmin`
-  (owner or verified admin for edits/deletes of others' items) and `checkWgAdminAccess` (WG
-  rename/delete/share-code rotation/joining toggle; requires a verified admin).
+  index). `core/guards/admin.ts`: `isWgAdmin` and `requireOwnerOrAdmin` (owner or admin for
+  edits/deletes of others' items); `requireWgAdmin` gates WG rename/delete/share-code
+  rotation/joining toggle.
 
 ## Idempotency
 
@@ -128,7 +130,7 @@ Remaining unleased releases: the CSV import route, inventory consume and
   `simplifyDebts` for settlement suggestions.
 - Paid-by rule (`features/expenses/paid-by-guard.ts`): whoever records an expense paid by
   someone else must bear a positive share. It applies to manual entry, Abos and CSV/OCR imports;
-  only a verified WG admin may import a shared history with rows they are not part of.
+  only the WG admin may import a shared history with rows they are not part of.
 - Manual settlement sets `expense_splits.settled_at`
   (`/api/wg/<code>/expenses/[id]/splits/[splitId]/settle`, `/expenses/settle-batch`).
 - PayPal (`/api/wg/<code>/paypal/{connect,order,capture}`, `features/expenses/paypal-*.ts`): the
@@ -239,9 +241,9 @@ with claim rows/throttle timestamps so a re-run does not notify twice.
 - **Response replay in Postgres, not Redis.** Production once had empty `UPSTASH_*` values; the
   Redis client silently no-opped and duplicate expenses were inserted
   (`core/idempotency-store.ts`, `core/guards/idempotency.ts`).
-- **Stateless HMAC member token.** Deterministic per (WG, member): no session table, no backfill;
-  a bare `x-manawg-member-id` is readable from the members list and must not prove identity
-  (`core/guards/member-token.ts`).
+- **Supabase session as the only identity proof.** A second per-member token would prove
+  nothing the session cookie does not; the client sends only the expected member id, which the
+  server checks against the session (`core/guards/api-auth.ts`).
 - **Rate limiter fails closed in production.** A missing or failing Upstash answers 503 instead
   of leaving share-code lookups (brute-force defense) and writes unthrottled; `checkEnv` therefore
   treats `UPSTASH_*` as required in production (`core/rate-limit.ts`, `core/infra/env.ts`).

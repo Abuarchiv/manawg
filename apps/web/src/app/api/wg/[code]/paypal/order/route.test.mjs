@@ -136,7 +136,6 @@ function makeOrderHarness({ isPayPalMerchantReady, createPayPalOrder }) {
 			badRequest: (error) => Response.json({ error }, { status: 400 }),
 			conflict: (error) => Response.json({ error }, { status: 409 }),
 			forbidden: (error) => Response.json({ error }, { status: 403 }),
-			requireVerifiedMember: () => null,
 			serverError: (error) => Response.json({ error: String(error) }, { status: 500 }),
 			tooMany: () => new Response(null, { status: 429 }),
 		},
@@ -144,7 +143,7 @@ function makeOrderHarness({ isPayPalMerchantReady, createPayPalOrder }) {
 			requireWgMember: async () => ({
 				ok: true,
 				wg: { id: wgId },
-				member: { memberId: fromMemberId, verified: true },
+				member: { memberId: fromMemberId },
 			}),
 		},
 		'@/core/guards/with-wg-route': { withWgRoute: (_name, handler) => handler },
@@ -247,7 +246,6 @@ test('new PayPal order is refused when the recipient has lost provider readiness
 			badRequest: (error) => Response.json({ error }, { status: 400 }),
 			conflict: (error) => Response.json({ error }, { status: 409 }),
 			forbidden: (error) => Response.json({ error }, { status: 403 }),
-			requireVerifiedMember: () => null,
 			serverError: (error) => Response.json({ error }, { status: 500 }),
 			tooMany: () => new Response(null, { status: 429 }),
 		},
@@ -255,7 +253,7 @@ test('new PayPal order is refused when the recipient has lost provider readiness
 			requireWgMember: async () => ({
 				ok: true,
 				wg: { id: wgId },
-				member: { memberId: fromMemberId, verified: true },
+				member: { memberId: fromMemberId },
 			}),
 		},
 		'@/core/guards/with-wg-route': { withWgRoute: (_name, handler) => handler },

@@ -31,8 +31,7 @@ export interface E2EWgFixture {
 }
 
 /**
- * Fixture mode serves the fixture roster and mints member tokens without real
- * authentication, so it must never activate on a hosted deployment: Vercel
+ * Fixture mode serves the fixture roster without real authentication, so it must never activate on a hosted deployment: Vercel
  * sets `VERCEL=1` on every build and function (Preview and Production alike),
  * while the local/CI fixture runs only fake `VERCEL_ENV=preview`.
  */

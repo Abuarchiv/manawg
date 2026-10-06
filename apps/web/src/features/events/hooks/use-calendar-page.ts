@@ -242,7 +242,6 @@ export function useCalendarPage(month: Date) {
 		const res = await apiFetch<CalendarCreateResponse>(eventsBaseUrl, {
 			method: 'POST',
 			memberId: identity.memberId,
-			memberToken: identity.memberToken,
 			headers: { 'Idempotency-Key': idempotencyKey },
 			body: JSON.stringify(payload),
 		});
@@ -283,7 +282,6 @@ export function useCalendarPage(month: Date) {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				body: JSON.stringify(payload),
 			},
 		);
@@ -309,7 +307,6 @@ export function useCalendarPage(month: Date) {
 		const res = await apiFetch<unknown>(`${eventsBaseUrl}/${encodeURIComponent(id)}`, {
 			method: 'DELETE',
 			memberId: identity.memberId,
-			memberToken: identity.memberToken,
 		});
 		// Bereits von jemand anderem gelöscht: Ziel erreicht, nicht wiederherstellen.
 		if (!res.ok && !isEventGone(res)) {

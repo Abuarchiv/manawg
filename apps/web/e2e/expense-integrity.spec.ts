@@ -315,7 +315,6 @@ test.describe('expense integrity regressions', () => {
 					conflict: (code: string) => responseError(code, 409),
 					forbidden: (code: string) => responseError(code, 403),
 					notFound: (code: string) => responseError(code, 404),
-					requireVerifiedMember: () => null,
 					serverError: (code: string) => responseError(code, 500),
 					tooMany: () => responseError('too_many', 429),
 				},
@@ -453,7 +452,6 @@ test.describe('expense integrity regressions', () => {
 					conflict: (code: string) => responseError(code, 409),
 					forbidden: (code: string) => responseError(code, 403),
 					notFound: (code: string) => responseError(code, 404),
-					requireVerifiedMember: () => null,
 					tooMany: () => responseError('too_many', 429),
 				},
 				'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
@@ -651,7 +649,6 @@ test.describe('expense integrity regressions', () => {
 					conflict: (code: string) => responseError(code, 409),
 					forbidden: (code: string) => responseError(code, 403),
 					notFound: (code: string) => responseError(code, 404),
-					requireVerifiedMember: () => null,
 					serverError: (code: string) => responseError(code, 500),
 					tooMany: () => responseError('too_many', 429),
 				},
@@ -1329,7 +1326,7 @@ test.describe('expense integrity regressions', () => {
 				claimReplaySlotWithRetry: async () => ({ won: true }),
 				replayKey: () => 'replay-key',
 			},
-			'@/core/guards/admin': { isVerifiedWgAdmin: async () => false },
+			'@/core/guards/admin': { isWgAdmin: async () => false },
 			'@/core/guards/require-wg-member': {
 				requireWgMember: async () => ({
 					ok: true,

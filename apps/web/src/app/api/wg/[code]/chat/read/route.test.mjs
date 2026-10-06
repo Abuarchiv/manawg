@@ -50,7 +50,7 @@ function harness({ changedRows }) {
 			requireWgMember: async () => ({
 				ok: true,
 				wg: { id: wgId },
-				member: { memberId, verified: true },
+				member: { memberId },
 			}),
 		},
 		'@/core/guards/with-wg-route': {

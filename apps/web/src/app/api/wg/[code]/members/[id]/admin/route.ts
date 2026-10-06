@@ -31,7 +31,7 @@ export const POST = withWgRoute<{ id: string }>(
 
 		const result = await withExpensePaymentLock(wg.id, async (tx) => {
 			const actor = await lockActiveAccountMember(tx, wg.id, member.memberId, admin.authUserId);
-			if (!actor || actor.role !== 'admin' || !member.verified) {
+			if (!actor || actor.role !== 'admin') {
 				return { ok: false as const, response: forbidden('not_admin', 'not_admin') };
 			}
 			const [target] = await tx

@@ -26,7 +26,6 @@ async function saveServerPushOptOut(
 	code: string,
 	memberId: string,
 	endpoint?: string,
-	memberToken?: string,
 ): Promise<boolean> {
 	const encodedCode = encodeURIComponent(code);
 	const saved = await apiFetch<{ ok: true; endpointInUse?: boolean }>(
@@ -34,7 +33,6 @@ async function saveServerPushOptOut(
 		{
 			method: endpoint ? 'POST' : 'PATCH',
 			memberId,
-			memberToken,
 			body: endpoint
 				? JSON.stringify({ action: 'push_unsubscribe', endpoint })
 				: JSON.stringify({ pushOptIn: false }),
@@ -58,9 +56,8 @@ export async function retireWebPushEndpoint(
 	code: string,
 	memberId: string,
 	endpoint: string,
-	memberToken?: string,
 ): Promise<boolean> {
-	return saveServerPushOptOut(code, memberId, endpoint, memberToken);
+	return saveServerPushOptOut(code, memberId, endpoint);
 }
 
 async function saveServerPushOptIn(
@@ -68,7 +65,6 @@ async function saveServerPushOptIn(
 	memberId: string,
 	subscription: PushSubscription,
 	createdSubscription = false,
-	memberToken?: string,
 ): Promise<void> {
 	// `toJSON()` already returns `PushSubscriptionJSON`, so the DOM types are
 	// the contract here — no cast that could silently accept a different
@@ -83,7 +79,6 @@ async function saveServerPushOptIn(
 	const saved = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
 		method: 'POST',
 		memberId,
-		memberToken,
 		body: JSON.stringify({
 			action: 'push_subscribe',
 			endpoint: json.endpoint,
@@ -130,16 +125,11 @@ export async function persistExistingWebPushSubscription(
 	code: string,
 	memberId: string,
 	subscription: PushSubscription,
-	memberToken?: string,
 ): Promise<void> {
-	await saveServerPushOptIn(code, memberId, subscription, false, memberToken);
+	await saveServerPushOptIn(code, memberId, subscription, false);
 }
 
-export async function subscribeWebPush(
-	code: string,
-	memberId: string,
-	memberToken?: string,
-): Promise<void> {
+export async function subscribeWebPush(code: string, memberId: string): Promise<void> {
 	if (!isPushSupported()) {
 		throw new Error('Push wird von diesem Browser nicht unterstützt.');
 	}
@@ -163,23 +153,19 @@ export async function subscribeWebPush(
 		});
 		createdSubscription = true;
 	}
-	await saveServerPushOptIn(code, memberId, subscription, createdSubscription, memberToken);
+	await saveServerPushOptIn(code, memberId, subscription, createdSubscription);
 }
 
-export async function unsubscribeWebPush(
-	code: string,
-	memberId: string,
-	memberToken?: string,
-): Promise<void> {
+export async function unsubscribeWebPush(code: string, memberId: string): Promise<void> {
 	if (!('serviceWorker' in navigator) || !navigator.serviceWorker) {
-		await saveServerPushOptOut(code, memberId, undefined, memberToken);
+		await saveServerPushOptOut(code, memberId, undefined);
 		return;
 	}
 	const registration = await navigator.serviceWorker.ready;
 	const subscription = await registration.pushManager.getSubscription();
 	const endpoint = subscription?.endpoint;
 	if (!endpoint) {
-		await saveServerPushOptOut(code, memberId, undefined, memberToken);
+		await saveServerPushOptOut(code, memberId, undefined);
 		return;
 	}
 
@@ -187,7 +173,7 @@ export async function unsubscribeWebPush(
 	// device: keep it while another WG still receives pushes through it.
 	let endpointInUse = false;
 	try {
-		endpointInUse = await retireWebPushEndpoint(code, memberId, endpoint, memberToken);
+		endpointInUse = await retireWebPushEndpoint(code, memberId, endpoint);
 	} finally {
 		if (!endpointInUse) await subscription.unsubscribe().catch(() => undefined);
 	}

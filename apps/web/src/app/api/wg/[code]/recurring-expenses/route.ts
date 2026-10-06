@@ -16,9 +16,9 @@ import {
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
-	apiError,
 	badRequest,
 	conflict,
+	forbidden,
 	notFound,
 	serverError,
 	tooMany,
@@ -210,7 +210,7 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 			parsed.data.splits,
 		);
 		if (!paidByGuard.ok) {
-			return apiError('paid_by_must_include_caller', 403, 'paid_by_must_include_caller');
+			return forbidden('paid_by_must_include_caller', 'paid_by_must_include_caller');
 		}
 		const memberIds = Array.from(
 			new Set([
@@ -466,7 +466,7 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 				parsed.data.paidByMemberId !== template.paidByMemberId) ||
 			hasSplitChange;
 		if (hasFinancialChange && !checkPaidByGuard(paidByMemberId, auth.member.memberId, splits).ok) {
-			return apiError('paid_by_must_include_caller', 403, 'paid_by_must_include_caller');
+			return forbidden('paid_by_must_include_caller', 'paid_by_must_include_caller');
 		}
 
 		const requestedDueAt = parsed.data.nextDueAt ? new Date(parsed.data.nextDueAt) : null;

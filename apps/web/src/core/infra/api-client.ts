@@ -1,9 +1,4 @@
-import { isClientFixtureMode } from '@/shared/lib/fixture-mode';
-import {
-	EXPECTED_MEMBER_ID_HEADER,
-	MEMBER_ID_HEADER,
-	MEMBER_TOKEN_HEADER,
-} from '@/shared/lib/member-header';
+import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 
 /** A request the server has not answered by then counts as a network failure. */
 export const REQUEST_TIMEOUT_MS = 15_000;
@@ -30,7 +25,7 @@ export function anySignal(signals: readonly AbortSignal[]): AbortSignal {
 	return controller.signal;
 }
 
-type ApiFetchInit = RequestInit & { memberId?: string; memberToken?: string | undefined };
+type ApiFetchInit = RequestInit & { memberId?: string };
 
 /** status 0 means no trustworthy result was received; a write may still have committed. */
 type ApiFetchResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
@@ -52,17 +47,11 @@ export async function apiFetch<T>(
 	path: string,
 	init: ApiFetchInit = {},
 ): Promise<ApiFetchResult<T>> {
-	const { memberId, memberToken, signal, ...rest } = init;
+	const { memberId, signal, ...rest } = init;
 	const method = rest.method ?? 'GET';
 
 	const headers = new Headers(rest.headers);
 	if (memberId) headers.set(EXPECTED_MEMBER_ID_HEADER, memberId);
-	if (isClientFixtureMode() && memberId) {
-		headers.set(MEMBER_ID_HEADER, memberId);
-	}
-	if (memberToken) {
-		headers.set(MEMBER_TOKEN_HEADER, memberToken);
-	}
 	const hasBody = rest.body !== undefined && rest.body !== null;
 	if (hasBody && ['POST', 'PUT', 'PATCH'].includes(method)) {
 		headers.set('content-type', 'application/json');

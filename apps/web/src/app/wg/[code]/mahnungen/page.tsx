@@ -280,7 +280,6 @@ export default function ErinnerungenPage() {
 				creditorMemberId={row.creditorId}
 				currency={row.currency}
 				currentMemberId={identity.memberId}
-				memberToken={identity.memberToken}
 				cooldownActive={!cooldown.allowed}
 				cooldownLabel={cooldownLabel}
 				onSent={(reminderId) => {

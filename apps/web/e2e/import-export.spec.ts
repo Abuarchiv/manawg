@@ -393,7 +393,7 @@ test.describe('import warning persistence', () => {
 					claimReplaySlotWithRetry: async () => ({ won: true }),
 					replayKey: () => 'replay-key',
 				},
-				'@/core/guards/admin': { isVerifiedWgAdmin: async () => false },
+				'@/core/guards/admin': { isWgAdmin: async () => false },
 				'@/core/guards/require-wg-member': {
 					requireWgMember: async () => ({
 						ok: true,

@@ -7,7 +7,6 @@ import {
 	badRequest,
 	conflict,
 	forbidden,
-	requireVerifiedMember,
 	serverError,
 	tooMany,
 	unreadableJsonBody,
@@ -55,8 +54,6 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
-	const verified = requireVerifiedMember(auth.member);
-	if (verified) return verified;
 	const limited = await checkRateLimit(
 		wgWriteLimiter,
 		`paypal-capture:${auth.wg.id}:${auth.member.memberId}`,

@@ -124,11 +124,7 @@ export function WgContextProvider({
 	});
 	useMembersPolling(refreshMembers, Boolean(identity && accountReady));
 	useSyncOnFocusAndOnline(sync, identity, accountReady);
-	useTabWarmup(
-		encodedShareCode,
-		accountReady ? identity?.memberId : undefined,
-		identity?.memberToken,
-	);
+	useTabWarmup(encodedShareCode, accountReady ? identity?.memberId : undefined);
 
 	// A server-verified session already carries the identity, so the shell and page render
 	// in the SSR HTML; only the localStorage path has to wait for the mount effect.

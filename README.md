@@ -49,7 +49,7 @@ Minimum variables in `apps/web/.env.local` (`checkEnv` in `src/core/infra/env.ts
 | --- | --- |
 | `POSTGRES_URL` (or `DATABASE_URL`) | Runtime database. Remote URLs need an explicit port; TLS is enforced (`src/core/db/connection.ts`). |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase Auth. Without them every `/wg/*` page redirects to `/neu`. |
-| `MEMBER_SESSION_SECRET` | Signs member tokens (`openssl rand -hex 32`). Without it verified-only writes answer `403 member_not_verified`. |
+| `MEMBER_SESSION_SECRET` | Signs calendar feed URLs and verifies legacy-profile recovery proofs (`openssl rand -hex 32`). Not used for normal API access. |
 
 Optional features degrade when unset and are reported as `[env] DEGRADED ...`: Upstash rate
 limiting (`UPSTASH_REDIS_REST_*`, fails open outside production), Web Push (`VAPID_*`,
@@ -170,7 +170,6 @@ answers `503 cron_secret_missing`, with a wrong header `401`.
 | --- | --- |
 | `/api/health` returns 503 `degraded` | `missingRequiredCount > 0` or `database: unreachable`. Variable names are only in the boot log line `[env] MISSING REQUIRED: ...` (`src/instrumentation.ts`), never in the response. |
 | API answers `503 rate_limiter_unavailable` | Limiter fails closed when `VERCEL_ENV=production`, `NODE_ENV=test`, or `NODE_ENV=production` without `VERCEL_ENV` (e.g. local `next start`) and Upstash is missing or erroring (`src/core/rate-limit.ts`). Set `UPSTASH_REDIS_REST_URL` (https) and `UPSTASH_REDIS_REST_TOKEN`. |
-| Writes answer `403 member_not_verified` | `MEMBER_SESSION_SECRET` unset, so `GET /api/wg/<code>` issues no member token and verified-only mutations reject (`src/core/http/api-errors.ts`, `src/core/guards/member-token.ts`). |
 | Writes answer `403 cross_origin_blocked` | Middleware requires a same-origin `Origin` header on mutating requests to the matched API paths (`/api/wg`, `/api/account`, `/api/auth/*`, `/api/upload/*`, ...). |
 | Writes and crons answer `503 migration_read_only` | `MIGRATION_READ_ONLY=true` is set (migration window). |
 | Cron answers `503 cron_secret_missing` / `401` | `CRON_SECRET` unset / wrong bearer header. |
