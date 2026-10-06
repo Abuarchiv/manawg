@@ -58,6 +58,7 @@ mock.module('@/core/guards/api-auth', {
 mock.module('@/core/infra/s3', {
 	namedExports: {
 		// The route tells configuration failures apart with instanceof; errors come from the installed copy.
+		// biome-ignore lint/complexity/noStaticOnlyClass: instanceof needs a constructor to delegate from.
 		S3ConfigurationError: class {
 			static [Symbol.hasInstance](value: unknown) {
 				return value instanceof installedS3().S3ConfigurationError;

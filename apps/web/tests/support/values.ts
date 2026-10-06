@@ -10,6 +10,11 @@ export function jsonResponse(body: unknown, init: number | ResponseInit = 200): 
 	});
 }
 
+/** `{ error: code }` with the given status, the body shape of the API error helpers. */
+export function responseError(code: string, status: number): Response {
+	return Response.json({ error: code }, { status });
+}
+
 /** Silences `console.error` and records each call until `restore()`. */
 export function spyConsoleError(): { calls: unknown[][]; restore: () => void } {
 	const original = console.error;
