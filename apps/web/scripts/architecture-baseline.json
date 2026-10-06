@@ -3,7 +3,6 @@
 		"banned-import src/components/ui/Toast.tsx zustand",
 		"comment-history e2e/layout.spec.ts",
 		"comment-history e2e/shopping.spec.ts",
-		"comment-history scripts/db-migrate.mjs",
 		"comment-history src/app/api/cron/chore-reminders/route.ts",
 		"comment-history src/app/api/cron/event-reminders/route.ts",
 		"comment-history src/app/api/cron/recurring-advance/route.ts",
@@ -411,7 +410,6 @@
 		"test-location tests/chat-regressions.test.mjs",
 		"test-location tests/chore-absence-replay.test.mjs",
 		"test-location tests/db-maintenance-regression.test.mjs",
-		"test-location tests/db-migrate.checker.test.mjs",
 		"test-location tests/event-create-replay.test.cjs",
 		"test-location tests/events-boundaries.test.cjs",
 		"test-location tests/observability-redaction.test.mjs",
@@ -479,7 +477,6 @@
 		"e2e/settings.spec.ts": 981,
 		"e2e/settlement.spec.ts": 1172,
 		"e2e/shopping.spec.ts": 1302,
-		"e2e/storage.spec.ts": 913,
-		"scripts/db-migrate.mjs": 1269
+		"e2e/storage.spec.ts": 913
 	}
 }
