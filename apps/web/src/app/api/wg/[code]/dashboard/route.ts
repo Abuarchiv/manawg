@@ -1,7 +1,6 @@
-import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
+import { readShareCode } from '@/core/guards/route-preamble';
 import { serverError, tooMany } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
-import { buildE2EDashboardData } from '@/core/infra/e2e-db-down';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, dashboardLimiter } from '@/core/rate-limit';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -14,15 +13,9 @@ export async function GET(
 	if (!codeResult.ok) return codeResult.response;
 	const { code } = codeResult;
 
-	const e2e = await resolveE2EFixture(req, code);
-	if (e2e.mode === 'denied') return e2e.response;
-	if (e2e.mode === 'fixture') {
-		return NextResponse.json(buildE2EDashboardData(code));
-	}
-
 	try {
-		// Dynamic imports keep DB-backed modules out of the DB-down fixture path
-		// above — the route module itself must stay importable without a DB.
+		// Dynamic imports keep DB-backed modules out of the route module's top
+		// level, so the module itself stays importable without a database.
 		const [{ requireWgMember }, { loadDashboardData }] = await Promise.all([
 			import('@/core/guards/require-wg-member'),
 			import('@/composition/dashboard-data'),

@@ -48,9 +48,13 @@ export queries, activity feed). Allowed imports: `composition -> features, core,
 
 ### 5. Fixture seam
 
-All `isE2EDbDownMode` branches move behind `core/infra/fixture-mode/`, called from exactly one place
-per layer (middleware, route preamble, layout loader). The rest of the code does not know fixture
-mode exists.
+Fixture data and mode detection live in the top-level `src/fixtures/` layer, which only `app`
+(including `src/middleware.ts`) may import. One seam per entry: the middleware answers fixture API
+requests before any route runs (`resolveFixtureRequest`), the WG layout and chat page load fixture
+page data (`loadFixtureWgView`), and the root layout configures client modules
+(`FixtureClientSetup`, `fixtureClientProps`). Core guards carry no fixture branches; core and
+component modules take plain options (`requireWgSignIn`, `sessionless`, `configureApiClient`).
+The rest of the code does not know fixture mode exists.
 
 ### 6. Synced collections
 

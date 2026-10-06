@@ -2,8 +2,8 @@
 // Why: queued writes must replay once and failures must roll back visibly.
 
 import { expect, test } from '@playwright/test';
-import { E2E_EXISTING_WG } from '../src/core/infra/e2e-db-down';
 import { isEmptyModuleDraft } from '../src/core/offline/drafts';
+import { E2E_EXISTING_WG } from '../src/fixtures/data';
 import { dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
 
 test.describe('offline drafts', () => {

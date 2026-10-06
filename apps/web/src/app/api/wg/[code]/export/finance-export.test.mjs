@@ -183,7 +183,6 @@ function createExportRoute({ failedTable } = {}) {
 		},
 		'@/core/guards/route-preamble': {
 			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
-			resolveE2EFixture: async () => ({ mode: 'real' }),
 		},
 		'@/core/infra/observability': { logApiError: (...args) => logged.push(args) },
 		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }) },

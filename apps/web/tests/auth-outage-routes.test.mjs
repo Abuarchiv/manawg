@@ -260,11 +260,6 @@ function wgRouteMocks(state) {
 				}
 			},
 		},
-		'@/core/infra/e2e-db-down': {
-			E2E_CREATED_WG: {},
-			getE2EWgFixture: unreachable('getE2EWgFixture'),
-			isE2EDbDownMode: () => false,
-		},
 		'@/core/rate-limit': {
 			checkRateLimit: async () => ({ success: true }),
 			clientIpKey: () => '127.0.0.1',

@@ -1,5 +1,4 @@
 import { refreshSupabaseSession } from '@/core/auth/middleware';
-import { isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import {
 	contentSecurityPolicy,
 	crossOriginOpenerPolicy,
@@ -13,6 +12,7 @@ import {
 	wgShareCodeLookupLimiter,
 	wgWriteLimiter,
 } from '@/core/rate-limit';
+import { type FixtureRequest, resolveFixtureRequest } from '@/fixtures/middleware';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -33,12 +33,12 @@ export function isShareCodeLookup(path: string, method: string): boolean {
 	return method === 'GET' && path !== '/api/wg/mine' && /^\/api\/wg\/[^/]+$/.test(path);
 }
 
-async function withPageSecurityHeaders(req: NextRequest): Promise<NextResponse> {
+async function withPageSecurityHeaders(
+	req: NextRequest,
+	fixture: FixtureRequest | null,
+): Promise<NextResponse> {
 	const nonce = crypto.randomUUID().replaceAll('-', '');
-	const localFixtureHttp =
-		isE2EDbDownMode() &&
-		req.nextUrl.protocol === 'http:' &&
-		['localhost', '127.0.0.1', '[::1]'].includes(req.nextUrl.hostname);
+	const localFixtureHttp = fixture?.localHttp === true;
 	const payPalSdkEnabled = isPayPalSdkEnabled(
 		process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
 		process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
@@ -54,7 +54,9 @@ async function withPageSecurityHeaders(req: NextRequest): Promise<NextResponse> 
 		},
 	});
 	res.headers.set('Content-Security-Policy', csp);
-	const securedResponse = await refreshSupabaseSession(req, res);
+	const securedResponse = await refreshSupabaseSession(req, res, {
+		requireWgSignIn: fixture === null,
+	});
 	// COOP is a document policy. Keep it consistent on every app page so a
 	// PayPal popup remains connected after an SPA navigation from / or /neu.
 	securedResponse.headers.set(
@@ -90,9 +92,10 @@ export function originAllowed(req: NextRequest): boolean {
 export async function middleware(req: NextRequest): Promise<NextResponse> {
 	const isRead = READ_METHODS.has(req.method);
 	const path = req.nextUrl.pathname;
+	const fixture = resolveFixtureRequest(req);
 
 	if (!path.startsWith('/api/')) {
-		return withPageSecurityHeaders(req);
+		return withPageSecurityHeaders(req, fixture);
 	}
 	if (!isRateLimitedApiPath(path)) {
 		return refreshSupabaseSession(req, NextResponse.next());
@@ -160,6 +163,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 			},
 		);
 	}
+
+	const fixtureResponse = fixture ? await fixture.apiResponse() : null;
+	if (fixtureResponse) return fixtureResponse;
 
 	return refreshSupabaseSession(req, NextResponse.next());
 }

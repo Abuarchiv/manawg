@@ -1,4 +1,3 @@
-import { isClientFixtureMode } from '@/shared/lib/fixture-mode';
 import {
 	EXPECTED_MEMBER_ID_HEADER,
 	MEMBER_ID_HEADER,
@@ -36,6 +35,16 @@ type ApiFetchInit = RequestInit & { memberId?: string; memberToken?: string | un
 type ApiFetchResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
 
 let mutationCount = 0;
+let sendMemberIdHeader = false;
+
+/**
+ * Called once by the app shell. `memberIdHeader` sends the caller's member id
+ * as the identity header, for a server that authenticates by that header
+ * instead of a session (the database-free test build); off everywhere else.
+ */
+export function configureApiClient(options: { memberIdHeader: boolean }): void {
+	sendMemberIdHeader = options.memberIdHeader;
+}
 
 export const MEMBERSHIP_LOST_EVENT = 'manawg:membership-lost';
 const MEMBERSHIP_LOST_ERRORS = new Set(['not_a_member', 'member_deactivated', 'wg_not_found']);
@@ -57,7 +66,7 @@ export async function apiFetch<T>(
 
 	const headers = new Headers(rest.headers);
 	if (memberId) headers.set(EXPECTED_MEMBER_ID_HEADER, memberId);
-	if (isClientFixtureMode() && memberId) {
+	if (sendMemberIdHeader && memberId) {
 		headers.set(MEMBER_ID_HEADER, memberId);
 	}
 	if (memberToken) {

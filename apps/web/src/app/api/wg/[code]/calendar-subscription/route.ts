@@ -149,33 +149,23 @@ async function requireCalendarMember(req: NextRequest, code: string) {
 	return auth;
 }
 
-export const GET = withWgRoute(
-	'calendar subscription GET',
-	async (req, { code }) => {
-		const limit = await checkRateLimit(wgReadLimiter, `calendar-subscription:${clientIpKey(req)}`);
-		if (!limit.success) return tooMany('rate_limited');
-		const auth = await requireCalendarMember(req, code);
-		if (!auth.ok) return auth.response;
-		const row = await db.query.calendarSubscriptions.findFirst({
-			where: and(
-				eq(calendarSubscriptions.wgId, auth.wg.id),
-				eq(calendarSubscriptions.memberId, auth.member.memberId),
-				isNull(calendarSubscriptions.revokedAt),
-			),
-		});
-		return NextResponse.json(
-			{ subscription: row ? responseFor(row) : null },
-			{ headers: { 'Cache-Control': 'private, no-store' } },
-		);
-	},
-	{
-		fixture: () =>
-			NextResponse.json(
-				{ subscription: null },
-				{ headers: { 'Cache-Control': 'private, no-store' } },
-			),
-	},
-);
+export const GET = withWgRoute('calendar subscription GET', async (req, { code }) => {
+	const limit = await checkRateLimit(wgReadLimiter, `calendar-subscription:${clientIpKey(req)}`);
+	if (!limit.success) return tooMany('rate_limited');
+	const auth = await requireCalendarMember(req, code);
+	if (!auth.ok) return auth.response;
+	const row = await db.query.calendarSubscriptions.findFirst({
+		where: and(
+			eq(calendarSubscriptions.wgId, auth.wg.id),
+			eq(calendarSubscriptions.memberId, auth.member.memberId),
+			isNull(calendarSubscriptions.revokedAt),
+		),
+	});
+	return NextResponse.json(
+		{ subscription: row ? responseFor(row) : null },
+		{ headers: { 'Cache-Control': 'private, no-store' } },
+	);
+});
 
 export const POST = withWgRoute('calendar subscription POST', async (req, { code }) => {
 	const auth = await requireCalendarMember(req, code);
