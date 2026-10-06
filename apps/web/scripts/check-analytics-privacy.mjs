@@ -3,10 +3,15 @@
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { mock } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const root = new URL('../src/', import.meta.url);
+const entrypoint = new URL('instrumentation-client.ts', root);
+// The entrypoint has no ESM syntax, so Node evaluates it as CommonJS and caches it by file name;
+// dropping the cache entry makes every case evaluate it again.
+const requireCache = createRequire(import.meta.url).cache;
 const [createFlow, joinFlow, pwa] = await Promise.all([
 	readFile(new URL('app/neu/use-create-wg.ts', root), 'utf8'),
 	readFile(new URL('app/neu/use-join-wg.ts', root), 'utf8'),
@@ -67,7 +72,8 @@ async function initialize(env, failImport = false, failInit = false) {
 	];
 	try {
 		run++;
-		await import(new URL(`instrumentation-client.ts?run=${run}`, root).href);
+		Reflect.deleteProperty(requireCache, fileURLToPath(entrypoint));
+		await import(`${entrypoint.href}?run=${run}`);
 		// A configuration that must not load the SDK never settles; the wait lets a wrong load show.
 		await Promise.race([settled, new Promise((resolve) => setTimeout(resolve, 500))]);
 	} finally {
@@ -195,6 +201,8 @@ for (const invalidEnv of [
 }
 assert.equal((await initialize(env, true)).calls.length, 0);
 assert.equal((await initialize(env, false, true)).calls.length, 0);
+// Positive control: the negative cases above only prove something if each case runs the entrypoint.
+assert.equal((await initialize(env)).calls.length, 1, 'entrypoint did not run again for a later case');
 assert.doesNotMatch(pwa, /posthog|onAuthStateChange|createSupabaseBrowserClient/);
 
 const captureCalls = [...onboarding.matchAll(/posthog\.capture\(([^)]*)\)/g)].map(
