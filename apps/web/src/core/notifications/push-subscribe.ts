@@ -52,7 +52,6 @@ async function saveServerPushOptOut(
 	return saved.data?.endpointInUse === true;
 }
 
-/** Remove one browser endpoint without changing the member's other devices. */
 /** Removes this WG's use of the endpoint; resolves to whether another WG still uses it. */
 export async function retireWebPushEndpoint(
 	code: string,
@@ -184,11 +183,8 @@ export async function unsubscribeWebPush(
 	}
 
 	// The browser subscription is shared by every WG of this account on this
-	// device: keep it while another WG still receives pushes through it.
-	let endpointInUse = false;
-	try {
-		endpointInUse = await retireWebPushEndpoint(code, memberId, endpoint, memberToken);
-	} finally {
-		if (!endpointInUse) await subscription.unsubscribe().catch(() => undefined);
-	}
+	// device: drop it only after the server confirmed no other WG still uses it.
+	// A failed server call keeps it, so other WGs keep receiving pushes.
+	const endpointInUse = await retireWebPushEndpoint(code, memberId, endpoint, memberToken);
+	if (!endpointInUse) await subscription.unsubscribe().catch(() => undefined);
 }
