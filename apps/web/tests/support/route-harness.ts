@@ -9,6 +9,15 @@ import { NextRequest } from 'next/server';
 
 export const SHARE_CODE = 'MTE8PZAT';
 
+/**
+ * An independent copy of a `src/` module that no `mock.module` call applies to, for a test that
+ * mocks a module but still needs some of its real functions. The copy's own imports are
+ * unmocked copies too (see the `instance` query in register hooks).
+ */
+export function importUnmocked(srcPath: string): Promise<unknown> {
+	return import(new URL(`../../src/${srcPath}?instance=unmocked`, import.meta.url).href);
+}
+
 /** The second argument Next passes a route handler. */
 export function routeCtx(params: Record<string, string> = {}): never {
 	return { params: Promise.resolve({ code: SHARE_CODE, ...params }) } as never;
