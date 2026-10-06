@@ -145,7 +145,7 @@ export default function EinstellungenPage() {
 				>
 					<TabsList
 						data-sticky-tabs
-						className="sticky z-10 grid before:absolute before:-inset-x-4 before:-top-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:h-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:bg-background before:content-[''] h-auto min-w-0 max-w-full w-full grid-cols-[repeat(auto-fit,minmax(min(100%,3rem),1fr))] gap-1 rounded-xl p-1"
+						className="sticky z-10 flex flex-wrap before:absolute before:-inset-x-4 before:-top-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:h-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:bg-background before:content-[''] h-auto min-w-0 max-w-full w-full gap-1 rounded-xl p-1"
 						style={{
 							top: 'calc(env(safe-area-inset-top, 0px) + var(--offline-banner-height, 0px) + 0.5rem)',
 						}}
@@ -155,7 +155,7 @@ export default function EinstellungenPage() {
 								key={tab.id}
 								value={tab.id}
 								id={`tab-${tab.id}`}
-								className="w-full min-w-0 whitespace-normal px-1 text-center text-xs"
+								className="min-w-fit flex-[1_1_auto] px-1 text-center text-xs [overflow-wrap:normal]"
 							>
 								{tab.label}
 							</TabsTrigger>
