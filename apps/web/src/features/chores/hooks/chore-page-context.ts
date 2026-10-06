@@ -19,7 +19,6 @@ export interface ChorePageContext {
 	setActionNotice: (message: string | null) => void;
 	items: Chore[];
 	absences: AbsenceInput[];
-	setItems: (update: (current: Chore[]) => Chore[]) => void;
 	updateChores: (update: (current: Chore[]) => Chore[]) => void;
 	updateAbsences: (update: (current: AbsenceInput[]) => AbsenceInput[]) => void;
 	load: (initial: boolean) => Promise<void>;

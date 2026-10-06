@@ -56,7 +56,6 @@ export function usePutzenPage() {
 		setActionNotice,
 		items,
 		absences,
-		setItems: data.setItems,
 		updateChores: data.updateChores,
 		updateAbsences: data.updateAbsences,
 		load: data.load,

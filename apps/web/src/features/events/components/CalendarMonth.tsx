@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { subscribeVisibility } from '@/core/hooks/use-online-status';
 import {
 	type EventOccurrence,
 	eventOverlapsCalendarDay,
@@ -141,10 +142,10 @@ export function CalendarMonth({
 		const refresh = () =>
 			setToday((prev) => (dayKey(prev) === dayKey(new Date()) ? prev : new Date()));
 		window.addEventListener('focus', refresh);
-		document.addEventListener('visibilitychange', refresh);
+		const unsubscribeVisibility = subscribeVisibility(refresh);
 		return () => {
 			window.removeEventListener('focus', refresh);
-			document.removeEventListener('visibilitychange', refresh);
+			unsubscribeVisibility();
 		};
 	}, []);
 

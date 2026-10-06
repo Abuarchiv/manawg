@@ -21,6 +21,7 @@ import {
 	createOfflineIdempotencyKey,
 	createQueuedShoppingItem,
 } from '@/core/offline/offline-queue';
+import type { PendingOverlay } from '@/core/sync/use-synced-collection';
 import { NAME_MAX } from '@/features/shopping/components/constants';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import { parseShoppingInput } from '@/features/shopping/parse-shopping-input';
@@ -34,21 +35,21 @@ interface UseShoppingAddOptions {
 	wg: { id: string; shareCode: string };
 	identity: { memberId: string };
 	prefillName: string | null;
-	commitItems: (update: ShoppingItem[] | ((current: ShoppingItem[]) => ShoppingItem[])) => void;
-	/** Noch unbestätigte Zeilen; Polls dürfen sie nicht überschreiben. */
-	optimisticRef: { current: Map<string, ShoppingItem> };
+	commitItems: (update: (current: ShoppingItem[]) => ShoppingItem[]) => void;
+	/** Unconfirmed rows; polls must not overwrite them. */
+	pending: PendingOverlay<ShoppingItem>;
 	load: (silent?: boolean, afterMutation?: boolean) => Promise<void>;
 	refreshCount: () => void;
 	setAddNotice: (notice: string | null) => void;
 }
 
-/** Eingabefeld, Entwurf (inkl. bearbeiteter Offline-Eintrag) und Hinzufügen von Artikeln. */
+/** Input field, draft (including an offline entry being edited) and adding items. */
 export function useShoppingAdd({
 	wg,
 	identity,
 	prefillName,
 	commitItems,
-	optimisticRef,
+	pending,
 	load,
 	refreshCount,
 	setAddNotice,
@@ -108,18 +109,18 @@ export function useShoppingAdd({
 		return true;
 	}
 
-	/** Chips übergeben ihren Text direkt; nur Eingaben aus dem Feld leeren danach das Feld. */
+	/** Chips pass their text directly; only input from the field clears the field afterwards. */
 	async function add(text?: string): Promise<void> {
-		// Chip-Doppeltipp verwerfen; eine Eingabe per Enter während eines laufenden
-		// Hinzufügens wird nachgereiht statt still verworfen (gleicher Text → gleicher Key).
+		// Drop a double tap on a chip; Enter in the field while an add is running is queued
+		// behind it instead of silently dropped (same text, same idempotency key).
 		if (addingRef.current && text !== undefined) return;
 		const fromInput = text === undefined;
 		const submittedName = text ?? newName;
-		// Doppel-Enter oder Doppeltipp auf denselben Text: der läuft schon, ein zweiter Versuch
-		// träfe nur die Dublettensperre und zeigte einen Fehler für einen erfolgreichen Artikel.
+		// Double Enter or double tap on the same text: it is already running, and a second attempt
+		// would only hit the duplicate check and show an error for an item that was saved.
 		if (addingRef.current && submittedName === inFlightTextRef.current) return;
-		// Auch die wartende Eingabe merken: ein weiteres Enter auf denselben Text würde sonst
-		// nach dem Warten ein zweites Mal gesendet und träfe die Dublettensperre.
+		// Remember the waiting input too: another Enter on the same text would otherwise be sent
+		// a second time after the wait and hit the duplicate check.
 		inFlightTextRef.current = submittedName;
 		while (addingRef.current && inFlightRef.current) await inFlightRef.current;
 		const { name, quantity } = parseShoppingInput(submittedName);
@@ -159,14 +160,14 @@ export function useShoppingAdd({
 			return;
 		}
 		addIdempotencyKeyRef.current = { fingerprint, key: idempotencyKey };
-		// Feld sofort leeren; bei Fehlschlag unten wiederherstellen (nur wenn noch leer).
+		// Clear the field right away; restore it below on failure (only if it is still empty).
 		let saved = false;
 		if (fromInput) {
 			nameValueRef.current = '';
 			setNewName('');
 		}
-		// Artikel erscheint sofort; bei Erfolg wird die Zeile an Ort und Stelle durch die echte ersetzt,
-		// bei Fehlschlag verschwindet sie wieder (Fehlermeldung im Fußbereich).
+		// The item shows up at once; on success the row is replaced in place by the saved one,
+		// on failure it disappears again (the error shows below the list).
 		const tempId = `${TEMP_ITEM_ID_PREFIX}${idempotencyKey}`;
 		const tempItem: ShoppingItem = {
 			id: tempId,
@@ -177,10 +178,10 @@ export function useShoppingAdd({
 			boughtByMemberId: null,
 			createdAt: new Date().toISOString(),
 		};
-		optimisticRef.current.set(tempId, tempItem);
+		pending.set(tempItem);
 		commitItems((prev) => [tempItem, ...prev]);
 		const settleTemp = (replacement: ShoppingItem | null): void => {
-			optimisticRef.current.delete(tempId);
+			pending.delete(tempId);
 			commitItems((prev) => {
 				if (replacement && prev.some((i) => i.id === replacement.id)) {
 					return prev.filter((i) => i.id !== tempId);
@@ -237,7 +238,7 @@ export function useShoppingAdd({
 				}
 				if (retryableResponse) await load(true);
 				setAddError(
-					// 429 und Wartungsmodus lehnt die Middleware vor jeder Verarbeitung ab: nichts wurde gespeichert.
+					// The middleware rejects 429 and read-only mode before any processing: nothing was saved.
 					retryableResponse && res.status !== 429 && !isReadOnlyMode(res.error)
 						? 'Speicherstatus unklar. Prüfe die Liste und versuche es bei Bedarf erneut.'
 						: shoppingAddErrorMessage(res.error),
@@ -256,8 +257,8 @@ export function useShoppingAdd({
 			if (warningMessage) toast.info(warningMessage);
 			void load(true, true);
 		} finally {
-			// Auch bei einer Ausnahme darf keine Temp-Zeile hängen bleiben.
-			if (optimisticRef.current.has(tempId)) settleTemp(null);
+			// No placeholder row may stay behind, not even after an exception.
+			if (pending.has(tempId)) settleTemp(null);
 			if (fromInput && !saved && nameValueRef.current === '') {
 				nameValueRef.current = submittedName;
 				setNewName(submittedName);

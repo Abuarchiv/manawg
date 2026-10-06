@@ -1,8 +1,8 @@
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { refreshCachedFetch, useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { refreshCachedFetch } from '@/core/hooks/useCachedFetch';
 import { useStableCallback } from '@/core/hooks/useStableCallback';
 import { isNetworkError } from '@/core/http/error-codes';
-import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import {
 	type InventoryCategory,
 	type InventoryItemDto,
@@ -10,7 +10,7 @@ import {
 	groupItemsByCategory,
 	isBelowThreshold,
 } from '@/features/inventory/inventory';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 interface InventoryResponse {
 	items: InventoryItemDto[];
@@ -35,81 +35,36 @@ function applyInventoryMutation(
 		: [...items, merged];
 }
 
-/** Laden, Cache und Auto-Refresh der Vorräte; `onChanged` übernimmt Mutationen sofort in die Liste. */
+/** The pantry list: synced items and `onChanged`, which applies a mutation to the list at once. */
 export function useInventoryPage(shareCode: string, memberId: string) {
 	const encodedShareCode = encodeURIComponent(shareCode);
-	const inventoryUrl = `/api/wg/${encodedShareCode}/inventory`;
-	const {
-		data: inventoryData,
-		error: inventoryError,
-		isLoading: inventoryLoading,
-		refresh: refreshInventory,
-		setData: setInventoryData,
-	} = useCachedFetch<InventoryResponse>(inventoryUrl, {
-		memberId: memberId,
-	});
-	const [items, setItems] = useState<InventoryItemDto[]>(() => inventoryData?.items ?? []);
-	const [initialLoading, setInitialLoading] = useState(inventoryLoading);
-	const [loadError, setLoadError] = useState<string | null>(null);
 	const [addOpen, setAddOpen] = useState(false);
-	const requestIdRef = useRef(0);
-	const hasInventoryDataRef = useRef(inventoryData !== undefined);
-
+	const inventory = useSyncedCollection<InventoryResponse, InventoryItemDto>({
+		url: `/api/wg/${encodedShareCode}/inventory`,
+		memberId,
+		select: (data) => data.items,
+		assemble: (items) => ({ items, grouped: groupItemsByCategory(items) }),
+		getId: (item) => item.id,
+		describeError: (error) => getWgLoadErrorMessage('Vorräte', error.status, error.error),
+		// A background refresh, or a network failure with a list on screen, adds no banner.
+		hideError: (error, { silent, hasData }) =>
+			hasData && (silent || isNetworkError(error.error, error.status)),
+	});
+	const loadInventory = inventory.load;
 	const load = useCallback(
 		async (silent = false): Promise<void> => {
-			const requestId = requestIdRef.current + 1;
-			requestIdRef.current = requestId;
-			if (!silent && !hasInventoryDataRef.current) setInitialLoading(true);
-			const res = await refreshInventory();
-			if (requestId !== requestIdRef.current) {
-				return;
-			}
-			if (res.ok) {
-				setLoadError(null);
-				setItems(res.data.items);
-			} else if (
-				(!silent || !hasInventoryDataRef.current) &&
-				!(hasInventoryDataRef.current && isNetworkError(res.error, res.status))
-			) {
-				// Ein stiller Hintergrund-Refresh legt keinen Fehler über eine brauchbare Liste.
-				setLoadError(getWgLoadErrorMessage('Vorräte', res.status, res.error));
-			}
-			setInitialLoading(false);
+			await loadInventory({ silent });
 		},
-		[refreshInventory],
+		[loadInventory],
 	);
-
-	useEffect(() => {
-		if (inventoryData) {
-			hasInventoryDataRef.current = true;
-			setItems(inventoryData.items);
-			setLoadError(null);
-		} else if (inventoryError) {
-			setLoadError(getWgLoadErrorMessage('Vorräte', inventoryError.status, inventoryError.error));
-		}
-	}, [inventoryData, inventoryError]);
-
-	useEffect(() => {
-		void load(false);
-	}, [load]);
-	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
-	useVisibilityPausedInterval(() => void load(true), 30_000);
 
 	const onChanged = useStableCallback(
 		(updated?: InventoryMutationItemDto, deletedId?: string): void => {
 			if (updated || deletedId) {
-				setItems((prev) => applyInventoryMutation(prev, updated, deletedId));
-				setInventoryData((current) => {
-					if (!current && !updated) return current;
-					const nextItems = applyInventoryMutation(current?.items ?? [], updated, deletedId);
-					return {
-						items: nextItems,
-						grouped: groupItemsByCategory(nextItems),
-					};
-				});
+				inventory.commit((current) => applyInventoryMutation(current, updated, deletedId));
 			}
-			// Zähler „Einkäufe“ in der Unternavigation: Unter dem Schwellwert legt der Server automatisch
-			// einen Einkaufsartikel an, den der Dashboard-Cache sonst erst beim nächsten Fokus kennt.
+			// Below the threshold the server adds a shopping item; the dashboard cache behind the
+			// "Einkäufe" counter in the sub navigation would otherwise only learn of it on focus.
 			if (updated && isBelowThreshold(updated)) {
 				void refreshCachedFetch(`/api/wg/${encodedShareCode}/dashboard`, {
 					memberId,
@@ -119,5 +74,13 @@ export function useInventoryPage(shareCode: string, memberId: string) {
 		},
 	);
 
-	return { items, initialLoading, loadError, addOpen, setAddOpen, load, onChanged };
+	return {
+		items: inventory.items,
+		initialLoading: inventory.initialLoading,
+		loadError: inventory.loadError,
+		addOpen,
+		setAddOpen,
+		load,
+		onChanged,
+	};
 }
