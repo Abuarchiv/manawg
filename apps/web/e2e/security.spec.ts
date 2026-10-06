@@ -1,6 +1,7 @@
-// Security and HTTP contracts: CSRF/origin checks, security headers, membership guards (no 404 oracle),
-// rate-limit fail-open behaviour, bounded body reads, idempotency replay and API client edge cases.
-// Pure logic runs without a browser; these guard the trust boundary and must not regress silently.
+// Security over HTTP: the strict CSP on a served page and auth_required before any WG lookup.
+// The pure guard and contract checks live in tests/request-guards.test.ts and
+// tests/http-contracts.test.ts.
+
 import { expect, test } from '@playwright/test';
 import { FIXTURE_WG, setupMember } from './_helpers';
 
