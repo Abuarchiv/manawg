@@ -348,6 +348,13 @@ test.describe('private storage contract', () => {
 					nextServer.NextResponse.json({ error: message }, { status: 404 }),
 				serverError: (message: string) =>
 					nextServer.NextResponse.json({ error: message }, { status: 500 }),
+				serviceUnavailable: (message: string) =>
+					nextServer.NextResponse.json({ error: message }, { status: 503 }),
+				unauthorized: (message: string, code?: string) =>
+					nextServer.NextResponse.json(
+						{ error: message, ...(code ? { code } : {}) },
+						{ status: 401 },
+					),
 			},
 			'@/core/guards/api-auth': {
 				requireMember: async () => {
@@ -448,7 +455,7 @@ test.describe('private storage contract', () => {
 		expect(source).toContain('parsePrivateImageKey');
 		expect(source).toContain('getAuthenticatedUser');
 		expect(source).toContain('requireMember');
-		expect(source).toContain("apiError('auth_required'");
+		expect(source).toContain("unauthorized('auth_required'");
 		expect(source).toContain('if (!auth.ok) return noStore(auth.response)');
 		expect(source).toContain('downloadSupabaseImage');
 		expect(source).not.toContain('getImageStorageProvider');
@@ -557,6 +564,9 @@ test.describe('upload sign s3 config contract', () => {
 				tooMany: (message: string, code?: string) =>
 					json(code !== undefined ? { error: message, code } : { error: message }, 429),
 				serverError: (message: string) => json({ error: message }, 500),
+				serviceUnavailable: (message: string) => json({ error: message }, 503),
+				unauthorized: (message: string, code?: string) =>
+					json(code !== undefined ? { error: message, code } : { error: message }, 401),
 			},
 			'@/core/guards/api-auth': {
 				requireMember: async () => ({
