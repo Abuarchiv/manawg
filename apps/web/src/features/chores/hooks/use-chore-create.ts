@@ -34,6 +34,7 @@ import { type QUICK_CHORE_TEMPLATES, TITLE_MAX } from '@/features/chores/compone
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChorePageContext } from './chore-page-context';
 import type { AbsenceFormState } from './use-absences';
+import { useChoreDraftSync, useChoreFormFields } from './use-chore-draft';
 
 export type ChoreSuggestion = {
 	title: string;
@@ -42,14 +43,14 @@ export type ChoreSuggestion = {
 };
 type ChoreCreateResponse = { chore: unknown; warning: NotificationWarning };
 
-/** Der aus einer Offline-Warteschlange zurückgeholte Eintrag, den der Entwurf gerade bearbeitet. */
+/** The offline queue entry the draft is currently editing. */
 export interface QueueEdit {
 	setQueueEditId: (id: string | null) => void;
 	clearEditedQueueItem: (expectedTypes?: OfflineActionType[]) => Promise<boolean>;
 	editedQueueItemWasSent: (type: OfflineActionType) => boolean;
 }
 
-/** Aufgabe anlegen: Formular, localStorage-Entwurf (inkl. Abwesenheitsfelder), Vorschläge und Speichern. */
+/** Creating a chore: form, localStorage draft (with the absence fields), suggestions and saving. */
 export function useChoreCreate(
 	ctx: ChorePageContext,
 	absenceForm: AbsenceFormState,
@@ -69,92 +70,41 @@ export function useChoreCreate(
 		load,
 		refreshCount,
 	} = ctx;
+	const fields = useChoreFormFields();
 	const {
-		absenceMemberId,
-		setAbsenceMemberId,
-		absenceStart,
-		setAbsenceStart,
-		absenceEnd,
-		setAbsenceEnd,
-		absenceReason,
-		setAbsenceReason,
-	} = absenceForm;
+		newTitle,
+		setNewTitle,
+		newInterval,
+		setNewInterval,
+		newRecurrenceType,
+		setNewRecurrenceType,
+		newAssigned,
+		setNewAssigned,
+		assigneeTouchedRef,
+		resetFields,
+	} = fields;
 	const [showForm, setShowForm] = useState(false);
 	const [pendingSuggestion, setPendingSuggestion] = useState<ChoreSuggestion | null>(null);
 	const [confirmSuggestion, setConfirmSuggestion] = useState(false);
-	const [newTitle, setNewTitle] = useState('');
-	const [newInterval, setNewInterval] = useState(7);
-	const [newRecurrenceType, setNewRecurrenceType] = useState<RecurrenceType>('days');
-	const [newAssigned, setNewAssigned] = useState<string>('');
 	const [queueEditId, setQueueEditId] = useState<string | null>(null);
-	const [draftHydrated, setDraftHydrated] = useState(false);
 	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'chore');
 	const appliedPrefillRef = useRef<string | null>(null);
 	const titleInputRef = useRef<HTMLInputElement>(null);
-	const assigneeTouchedRef = useRef(false);
 	const choreCreateRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const draftHydrated = useChoreDraftSync({
+		draftKey,
+		memberId: identity.memberId,
+		fields,
+		absenceForm,
+		queueEditId,
+		setQueueEditId,
+		setShowForm,
+	});
 
-	// Ein älterer Fehler (Erledigen, Tauschen …) gehört nicht ins frisch geöffnete Formular.
+	// An older error (completing, swapping …) does not belong in a freshly opened form.
 	useEffect(() => {
 		if (showForm) setActionError(null);
 	}, [setActionError, showForm]);
-
-	useEffect(() => {
-		const draft = readDraft<{
-			title?: string;
-			intervalDays?: number;
-			recurrenceType?: RecurrenceType;
-			assignedMemberId?: string;
-			assigneeTouched?: boolean;
-			absenceMemberId?: string;
-			absenceStartDate?: string;
-			absenceEndDate?: string;
-			absenceReason?: string;
-			openAbsencesPanel?: boolean;
-			queueEditId?: string;
-		}>(draftKey);
-		if (!draft) {
-			setDraftHydrated(true);
-			return;
-		}
-		const { assigneeTouched: savedAssigneeTouched, ...formDraft } = draft;
-		// Ältere Entwürfe ohne assigneeTouched speicherten den automatischen Vorschlag
-		// (meist man selbst) mit; der allein soll das Formular nicht aufspringen lassen.
-		if (
-			typeof savedAssigneeTouched !== 'boolean' &&
-			formDraft.assignedMemberId === identity.memberId
-		) {
-			formDraft.assignedMemberId = '';
-		}
-		if (!isEmptyModuleDraft('chore', formDraft, identity.memberId)) {
-			assigneeTouchedRef.current =
-				typeof savedAssigneeTouched === 'boolean' ? savedAssigneeTouched : true;
-			// Ein gespeicherter Entwurf wird still wiederhergestellt und erscheint erst, wenn man
-			// „Putzaufgabe hinzufügen“ tippt. Sonst sprang das Formular bei jedem Besuch von Haushalt
-			// auf. Nur „Bearbeiten“ aus der Offline-Warteschlange öffnet es direkt (Nutzeraktion).
-			if (formDraft.queueEditId) setShowForm(true);
-		}
-		if (draft.title) {
-			setNewTitle(draft.title);
-		}
-		if (draft.intervalDays) setNewInterval(draft.intervalDays);
-		if (draft.recurrenceType === 'months' || draft.recurrenceType === 'days')
-			setNewRecurrenceType(draft.recurrenceType);
-		if (typeof draft.assignedMemberId === 'string') setNewAssigned(draft.assignedMemberId);
-		if (draft.absenceMemberId) setAbsenceMemberId(draft.absenceMemberId);
-		if (draft.absenceStartDate) setAbsenceStart(draft.absenceStartDate.slice(0, 10));
-		if (draft.absenceEndDate) setAbsenceEnd(draft.absenceEndDate.slice(0, 10));
-		if (draft.absenceReason !== undefined) setAbsenceReason(draft.absenceReason);
-		if (draft.queueEditId) setQueueEditId(draft.queueEditId);
-		setDraftHydrated(true);
-	}, [
-		draftKey,
-		identity.memberId,
-		setAbsenceEnd,
-		setAbsenceMemberId,
-		setAbsenceReason,
-		setAbsenceStart,
-	]);
 
 	const applyChoreSuggestion = useCallback(
 		(suggestion: ChoreSuggestion): void => {
@@ -173,7 +123,14 @@ export function useChoreCreate(
 			setPendingSuggestion(null);
 			setShowForm(true);
 		},
-		[draftKey],
+		[
+			assigneeTouchedRef,
+			draftKey,
+			setNewAssigned,
+			setNewInterval,
+			setNewRecurrenceType,
+			setNewTitle,
+		],
 	);
 
 	const suggestChore = useCallback(
@@ -187,7 +144,7 @@ export function useChoreCreate(
 				applyChoreSuggestion(suggestion);
 			}
 		},
-		[applyChoreSuggestion, draftKey, identity.memberId],
+		[applyChoreSuggestion, assigneeTouchedRef, draftKey, identity.memberId],
 	);
 
 	useEffect(() => {
@@ -199,46 +156,6 @@ export function useChoreCreate(
 			recurrenceType: 'days',
 		});
 	}, [prefillTitle, suggestChore]);
-
-	useEffect(() => {
-		if (!draftHydrated) return;
-		const { assigneeTouched: _previousAssigneeTouched, ...previousDraft } =
-			readDraft<Record<string, unknown>>(draftKey) ?? {};
-		void _previousAssigneeTouched;
-		const draft = {
-			...previousDraft,
-			title: newTitle,
-			recurrenceType: newRecurrenceType,
-			intervalDays: newInterval,
-			// Nur eine selbst gewählte Zuständigkeit ist ein Entwurf. Der automatische Vorschlag
-			// ließ das leere Formular sonst bei jedem Besuch wieder aufspringen.
-			assignedMemberId: assigneeTouchedRef.current ? newAssigned : '',
-			absenceMemberId,
-			absenceStartDate: absenceStart,
-			absenceEndDate: absenceEnd,
-			absenceReason,
-			queueEditId,
-		};
-		writeDraft(
-			draftKey,
-			isEmptyModuleDraft('chore', draft, identity.memberId)
-				? draft
-				: { ...draft, assigneeTouched: assigneeTouchedRef.current },
-		);
-	}, [
-		absenceEnd,
-		absenceMemberId,
-		absenceReason,
-		absenceStart,
-		draftHydrated,
-		draftKey,
-		identity.memberId,
-		newAssigned,
-		newInterval,
-		newRecurrenceType,
-		newTitle,
-		queueEditId,
-	]);
 
 	async function clearEditedQueueItem(expectedTypes?: OfflineActionType[]): Promise<boolean> {
 		if (!queueEditId) return true;
@@ -259,6 +176,13 @@ export function useChoreCreate(
 		return editType === type && !isOfflineActionQueued(queueEditId);
 	}
 
+	/** After a save (or a queue entry that was already sent): close the empty form, drop the draft. */
+	function closeSavedForm(): void {
+		assigneeTouchedRef.current = false;
+		setShowForm(false);
+		removeDraft(draftKey);
+	}
+
 	async function add(): Promise<void> {
 		const title = newTitle.trim();
 		if (title.length === 0) return;
@@ -266,13 +190,8 @@ export function useChoreCreate(
 		if (isPending(pendingKey)) return;
 		if (editedQueueItemWasSent('chore.create')) {
 			setQueueEditId(null);
-			setNewTitle('');
-			setNewInterval(7);
-			setNewRecurrenceType('days');
-			setNewAssigned('');
-			assigneeTouchedRef.current = false;
-			setShowForm(false);
-			removeDraft(draftKey);
+			resetFields();
+			closeSavedForm();
 			setActionError(null);
 			setActionNotice(QUEUE_EDIT_ALREADY_SENT_MESSAGE);
 			void load(false);
@@ -348,17 +267,12 @@ export function useChoreCreate(
 						},
 						...current,
 					]);
-					setNewTitle('');
-					setNewInterval(7);
-					setNewRecurrenceType('days');
-					setNewAssigned('');
+					resetFields();
 					if (!(await clearEditedQueueItem(['chore.create']))) {
 						setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
-					assigneeTouchedRef.current = false;
-					setShowForm(false);
-					removeDraft(draftKey);
+					closeSavedForm();
 					setActionNotice(
 						'Offline gespeichert. Wird synchronisiert, sobald ihr wieder online seid.',
 					);
@@ -369,17 +283,12 @@ export function useChoreCreate(
 			}
 
 			choreCreateRequestRef.current = null;
-			setNewTitle('');
-			setNewInterval(7);
-			setNewRecurrenceType('days');
-			setNewAssigned('');
+			resetFields();
 			if (!(await clearEditedQueueItem(['chore.create']))) {
 				setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
-			assigneeTouchedRef.current = false;
-			setShowForm(false);
-			removeDraft(draftKey);
+			closeSavedForm();
 			void load(false);
 			const warningMessage = notificationWarningMessage(result.data.warning);
 			if (warningMessage) setActionNotice(warningMessage);
@@ -390,33 +299,16 @@ export function useChoreCreate(
 
 	// A restored choice (including nobody) survives close/keep. Only a fresh
 	// form after saving, or an explicitly accepted suggestion, gets a default.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the touched flag is a ref read when the effect runs; setNewAssigned is stable.
 	useEffect(() => {
 		if (!showForm || !draftHydrated || pendingSuggestion) return;
 		if (assigneeTouchedRef.current || !suggestedAssignee || newAssigned) return;
 		setNewAssigned(suggestedAssignee.id);
 	}, [draftHydrated, suggestedAssignee, newAssigned, pendingSuggestion, showForm]);
-	const handleAssignedMemberIdChange = (value: string): void => {
-		assigneeTouchedRef.current = true;
-		setNewAssigned(value);
-	};
 
 	function applyQuickChore(template: (typeof QUICK_CHORE_TEMPLATES)[number]): void {
 		suggestChore(template);
 		window.setTimeout(() => titleInputRef.current?.focus(), 0);
-	}
-
-	function handleRecurrenceUnitToggle(unit: RecurrenceType): void {
-		setNewRecurrenceType(unit);
-		// Snap to a sensible default for the new unit so the number doesn't
-		// become semantically meaningless (e.g. "30 Monate" after switching
-		// from "30 Tage").
-		if (unit === 'months') setNewInterval(1);
-		else setNewInterval(7);
-	}
-
-	function handleIntervalPresetSelect(interval: number, unit: RecurrenceType): void {
-		setNewInterval(interval);
-		setNewRecurrenceType(unit);
 	}
 
 	return {
@@ -433,9 +325,9 @@ export function useChoreCreate(
 		titleInputRef,
 		applyChoreSuggestion,
 		applyQuickChore,
-		handleAssignedMemberIdChange,
-		handleRecurrenceUnitToggle,
-		handleIntervalPresetSelect,
+		handleAssignedMemberIdChange: fields.handleAssignedMemberIdChange,
+		handleRecurrenceUnitToggle: fields.handleRecurrenceUnitToggle,
+		handleIntervalPresetSelect: fields.handleIntervalPresetSelect,
 		add,
 		queueEdit: { setQueueEditId, clearEditedQueueItem, editedQueueItemWasSent } satisfies QueueEdit,
 	};
