@@ -1,12 +1,11 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgInventoryItems } from '@/core/db';
-import { withTransaction } from '@/core/db/transaction';
-import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
+import { rejectWrite, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, serverError, tooMany, unreadableJsonBody } from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
-import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
+import { serverError, tooMany } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
+import { readIdempotencyKey } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
@@ -17,10 +16,7 @@ import {
 	groupItemsByCategory,
 } from '@/features/inventory/inventory';
 import { getRecentDecrementCounts } from '@/features/inventory/inventory-decrements';
-import {
-	completeInventoryReplay,
-	createInventoryItemMutation,
-} from '@/features/inventory/inventory-mutations';
+import { createInventoryItemMutation } from '@/features/inventory/inventory-mutations';
 import { and, asc, eq, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -82,57 +78,48 @@ export const GET = withWgRoute('inventory GET', async (req, { code }) => {
 	});
 });
 
-export const POST = withWgRoute('inventory POST', async (req, { code }) => {
-	let raw: unknown;
-	try {
-		raw = await readJsonLimited(req);
-	} catch (err) {
-		return unreadableJsonBody(err);
-	}
+const inventoryCreateCodec = responseCodec();
 
-	const parsed = createInventorySchema.safeParse(raw);
-	if (!parsed.success) {
-		const { fieldErrors } = parsed.error.flatten();
-		if (fieldErrors.name) return badRequest('name_invalid');
-		if (fieldErrors.quantity) return badRequest('quantity_invalid');
-		if (fieldErrors.unit) return badRequest('unit_invalid');
-		if (fieldErrors.threshold) return badRequest('threshold_invalid');
-		if (fieldErrors.category) return badRequest('category_invalid');
-		return badRequest('invalid_body');
-	}
+export const POST = withWgRoute('inventory POST', async (req, { code }) => {
+	const parsed = await parseBody(req, createInventorySchema, {
+		fieldErrors: {
+			name: 'name_invalid',
+			quantity: 'quantity_invalid',
+			unit: 'unit_invalid',
+			threshold: 'threshold_invalid',
+			category: 'category_invalid',
+		},
+	});
+	if (!parsed.ok) return parsed.response;
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
 	const replayScope = `inventory-create:${wgId}:${auth.member.memberId}`;
-	const replayKey = readIdempotencyKey(req);
-	if (replayKey) {
-		const cached = await getCachedResponse<{ status: number; body: unknown }>(
-			replayScope,
-			replayKey,
-		);
-		if (cached) return NextResponse.json(cached.body, { status: cached.status });
-	}
-	const limited = await checkRateLimit(wgWriteLimiter, replayScope);
-	if (!limited.success) return tooMany();
 
-	return withIdempotentJsonResponse(req, replayScope, async () => {
-		const result = await withTransaction(async (tx) => {
+	const result = await withIdempotentWrite(
+		{
+			scope: replayScope,
+			key: readIdempotencyKey(req),
+			codec: inventoryCreateCodec,
+			prepare: async () => {
+				const limited = await checkRateLimit(wgWriteLimiter, replayScope);
+				return limited.success ? { input: undefined } : { stop: tooMany() };
+			},
+		},
+		async (tx) => {
 			const mutation = await createInventoryItemMutation(tx, {
 				...parsed.data,
 				wgId,
 				memberId: auth.member.memberId,
 			});
-			if (mutation.kind === 'ok' && replayKey) {
-				await completeInventoryReplay(tx, replayScope, replayKey, {
-					status: 200,
-					body: { item: mutation.item },
-				});
-			}
-			return mutation;
-		});
-		if (result.kind !== 'ok') return serverError('insert_failed');
-		const { item } = result;
-
+			if (mutation.kind !== 'ok') return rejectWrite(serverError('insert_failed'));
+			return { status: 200, body: { item: mutation.item }, context: { item: mutation.item } };
+		},
+	);
+	if (result.kind === 'stopped') return result.response;
+	if (result.kind === 'written' && result.context) {
+		if ('rejected' in result.context) return result.context.rejected;
+		const { item } = result.context;
 		await recordAuditEvent({
 			wgId,
 			memberId: auth.member.memberId,
@@ -148,7 +135,6 @@ export const POST = withWgRoute('inventory POST', async (req, { code }) => {
 				category: item.category,
 			},
 		});
-
-		return NextResponse.json({ item });
-	});
+	}
+	return NextResponse.json(result.body, { status: result.status });
 });

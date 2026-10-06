@@ -2,7 +2,12 @@ import { recordAuditEvent } from '@/core/audit';
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
-import { type WriteFn, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
+import {
+	type WriteFn,
+	type WriteOutcome,
+	responseCodec,
+	withIdempotentWrite,
+} from '@/core/db/idempotent-write';
 import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import {
@@ -96,11 +101,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	// The share-code uniqueness check runs before the transaction, so the unique index can still
 	// fire inside it; the write then retries with a fresh code instead of failing a double click.
 	let shareCode = '';
-	const createWg: WriteFn<
-		unknown,
-		{ wgId: string; memberId: string; memberName: string; wgName: string },
-		undefined
-	> = async (tx) => {
+	type Created = { wgId: string; memberId: string; memberName: string; wgName: string };
+	const createWg: WriteFn<WriteOutcome<unknown, Created>, undefined> = async (tx) => {
 		// The WG and its creator are one write: a WG without its creator has a valid share code
 		// but nobody who can administer it.
 		const [createdWg] = await tx.insert(wgs).values({ name, shareCode }).returning();

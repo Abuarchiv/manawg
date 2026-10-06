@@ -87,25 +87,49 @@ export function bodyCodec<B extends object>(
 	};
 }
 
-export type WriteOutcome<B, C = undefined> = StoredResponse<B> & { context?: C };
+/** What a write returns: its response, plus context for the route's work after commit. */
+export interface WriteOutcome<B = unknown, C = unknown> extends StoredResponse<B> {
+	context?: C;
+}
 
-export type WriteFn<B, C, I> = (tx: DbTransaction, input: I) => Promise<WriteOutcome<B, C>>;
+type AnyOutcome = { status: number; body: unknown; context?: unknown };
+
+/** The union of the contexts a write can return. */
+type ContextOf<O> = O extends unknown
+	? 'context' extends keyof O
+		? Exclude<O['context' & keyof O], undefined>
+		: never
+	: never;
+
+export type Rejected<R> = { rejected: R };
+
+/**
+ * An outcome the route answers with `response` itself, such as a lost compare-and-set. With the
+ * default `storeStatus` it is not stored, so the same key can run again.
+ */
+export function rejectWrite<R extends { status: number }>(
+	response: R,
+): { status: number; body: null; context: Rejected<R> } {
+	return { status: response.status, body: null, context: { rejected: response } };
+}
+
+export type WriteFn<O extends AnyOutcome, I> = (tx: DbTransaction, input: I) => Promise<O>;
 
 export type Prepared<I, S> = { stop: S } | { input: I };
 
-export type IdempotentWriteResult<B, C, S> =
-	| ({ kind: 'replayed' } & StoredResponse<B>)
-	| ({ kind: 'written'; context: C | undefined } & StoredResponse<B>)
+export type IdempotentWriteResult<O extends AnyOutcome, S = never> =
+	| ({ kind: 'replayed' } & StoredResponse)
+	| { kind: 'written'; status: number; body: O['body']; context: ContextOf<O> | undefined }
 	// Without a `prepare` or `beforeReplay` that can stop, callers need not handle `stopped`.
 	| ([S] extends [never] ? never : Stopped<S>);
 
 type Stopped<S> = { kind: 'stopped'; response: S };
 
-export interface IdempotentWriteOptions<B, C, I, S> {
+export interface IdempotentWriteOptions<O extends AnyOutcome, I, S> {
 	/** Namespace of the key; include the WG, the member and the route. */
 	scope: string;
 	key: string | null;
-	codec: ReplayCodec<B>;
+	codec: ReplayCodec<unknown>;
 	/** Statuses kept for replay; any other outcome releases the claim. Default: 2xx. */
 	storeStatus?: (status: number) => boolean;
 	/** Runs after a replay lookup missed and before the claim. `stop` ends the request. */
@@ -125,7 +149,7 @@ export interface IdempotentWriteOptions<B, C, I, S> {
 	 * transaction under the same claim (e.g. replaying a row a unique index found);
 	 * `null` releases the claim and rethrows.
 	 */
-	retryAfterRollback?: (error: unknown, attempt: number) => WriteFn<B, C, I> | null;
+	retryAfterRollback?: (error: unknown, attempt: number) => WriteFn<O, I> | null;
 	/** `TransactionAbort` code thrown when the response cannot be stored. */
 	completeFailureCode?: string;
 	/**
@@ -139,17 +163,17 @@ function isSuccessStatus(status: number): boolean {
 	return status >= 200 && status < 300;
 }
 
-export async function withIdempotentWrite<B, C = undefined, I = undefined, S = never>(
-	options: IdempotentWriteOptions<B, C, I, S>,
-	write: WriteFn<B, C, I>,
-): Promise<IdempotentWriteResult<B, C, S>> {
+export async function withIdempotentWrite<O extends AnyOutcome, I = undefined, S = never>(
+	options: IdempotentWriteOptions<O, I, S>,
+	write: WriteFn<O, I>,
+): Promise<IdempotentWriteResult<O, S>> {
+	type Result = IdempotentWriteResult<O, S>;
 	const { scope, key, codec } = options;
 	const storeStatus = options.storeStatus ?? isSuccessStatus;
 	const inTransaction = options.inTransaction ?? withTransaction;
 
-	const stopped = (response: S) =>
-		({ kind: 'stopped', response }) as Stopped<S> as IdempotentWriteResult<B, C, S>;
-	const replay = async (stored: unknown): Promise<IdempotentWriteResult<B, C, S>> => {
+	const stopped = (response: S) => ({ kind: 'stopped', response }) as Stopped<S> as Result;
+	const replay = async (stored: unknown): Promise<Result> => {
 		const blocked = await options.beforeReplay?.();
 		if (blocked !== undefined && blocked !== null) return stopped(blocked);
 		const response = codec.decode(stored);
@@ -169,15 +193,14 @@ export async function withIdempotentWrite<B, C = undefined, I = undefined, S = n
 		input = prepared.input;
 	}
 
-	if (!key) {
-		const outcome = await inTransaction((tx) => write(tx, input));
-		return {
-			kind: 'written',
-			status: outcome.status,
-			body: outcome.body,
-			context: outcome.context,
-		};
-	}
+	const written = (outcome: O): Result => ({
+		kind: 'written',
+		status: outcome.status,
+		body: outcome.body,
+		context: outcome.context as ContextOf<O> | undefined,
+	});
+
+	if (!key) return written(await inTransaction((tx) => write(tx, input)));
 
 	const slot = await claimReplaySlot<unknown>(scope, key, {
 		claim: claimResponseSlot,
@@ -217,13 +240,7 @@ export async function withIdempotentWrite<B, C = undefined, I = undefined, S = n
 				return { outcome };
 			});
 			if ('replayed' in result) return { kind: 'replayed', ...result.replayed };
-			const { outcome } = result;
-			return {
-				kind: 'written',
-				status: outcome.status,
-				body: outcome.body,
-				context: outcome.context,
-			};
+			return written(result.outcome);
 		} catch (error) {
 			const retry = options.retryAfterRollback?.(error, attempt) ?? null;
 			if (retry) {

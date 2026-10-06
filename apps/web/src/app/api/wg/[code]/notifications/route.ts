@@ -1,13 +1,20 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, pushSubscriptions, wgMembers } from '@/core/db';
+import { db, wgMembers } from '@/core/db';
 import { lockActiveAccountMember } from '@/core/db/account-deletion';
+import {
+	type IdempotentWriteResult,
+	type WriteOutcome,
+	type Rejected as WriteRejection,
+	rejectWrite,
+	responseCodec,
+	withIdempotentWrite,
+} from '@/core/db/idempotent-write';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { forbidden, notFound, serverError, tooMany, unauthorized } from '@/core/http/api-errors';
-import { badRequest, payloadTooLarge } from '@/core/http/api-errors';
-import { readJsonBody } from '@/core/http/read-json';
+import { parseBody } from '@/core/http/parse-body';
+import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkEnv } from '@/core/infra/env';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
@@ -17,9 +24,21 @@ import {
 	pushEndpointSchema,
 	pushP256dhSchema,
 } from '@/core/validators/push-endpoint';
-import { and, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import {
+	type NotificationSettingsUpdate,
+	type NotificationWriter,
+	subscribePush,
+	unsubscribePush,
+	updateNotificationSettings,
+} from './notification-writes';
+
+const NOTIFICATION_BODY_BYTES = 16 * 1024;
+const notificationCodec = responseCodec();
+
+type Rejected = WriteRejection<NextResponse>;
 
 const patchSchema = z.object({
 	pushOptIn: z.boolean().optional(),
@@ -104,142 +123,106 @@ export const GET = withWgRoute('notifications GET', async (req, { code }) => {
 	});
 });
 
+function memberGate(writer: NotificationWriter): () => Promise<NextResponse | null> {
+	return async () => {
+		const member = await withTransaction((tx) =>
+			lockActiveAccountMember(tx, writer.wgId, writer.memberId, writer.authUserId),
+		);
+		return member ? null : unauthorized('member_deactivated', 'member_deactivated');
+	};
+}
+
+function settingsUpdate(data: z.infer<typeof patchSchema>): NotificationSettingsUpdate {
+	const update: NotificationSettingsUpdate = {};
+	for (const field of [
+		'pushOptIn',
+		'notifyAnnouncements',
+		'notifyChores',
+		'notifyExpenses',
+		'notifyShopping',
+		'notifyInventory',
+		'notifyReminders',
+		'notifyChat',
+		'notifyEvents',
+	] as const) {
+		const value = data[field];
+		if (typeof value === 'boolean') update[field] = value;
+	}
+	if (data.quietStartHour !== undefined) update.quietStartHour = data.quietStartHour;
+	if (data.quietEndHour !== undefined) update.quietEndHour = data.quietEndHour;
+	return update;
+}
+
 export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) => {
-	const rawResult = await readJsonBody(req, 16 * 1024);
-	if (!rawResult.ok) {
-		return rawResult.reason === 'payload_too_large'
-			? payloadTooLarge()
-			: badRequest('invalid_json');
-	}
-	const parsed = patchSchema.safeParse(rawResult.body);
-	if (!parsed.success) {
-		const { fieldErrors } = parsed.error.flatten();
-		if (fieldErrors.quietStartHour || fieldErrors.quietEndHour) {
-			return badRequest('quiet_hours_invalid');
-		}
-		return badRequest('invalid_body');
-	}
+	const parsed = await parseBody(req, patchSchema, {
+		maxBytes: NOTIFICATION_BODY_BYTES,
+		fieldErrors: { quietStartHour: 'quiet_hours_invalid', quietEndHour: 'quiet_hours_invalid' },
+	});
+	if (!parsed.ok) return parsed.response;
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
+	const writer = { wgId: wg.id, memberId: auth.member.memberId, authUserId: auth.authUserId };
+	const update = settingsUpdate(parsed.data);
+	const changedFields = Object.keys(update);
 
-	return withIdempotentJsonResponse(
-		req,
-		`notification-patch:${wg.id}:${auth.member.memberId}`,
-		async () => {
-			const update: {
-				pushOptIn?: boolean;
-				notifyAnnouncements?: boolean;
-				notifyChores?: boolean;
-				notifyExpenses?: boolean;
-				notifyShopping?: boolean;
-				notifyInventory?: boolean;
-				notifyReminders?: boolean;
-				notifyChat?: boolean;
-				notifyEvents?: boolean;
-				quietStartHour?: number | null;
-				quietEndHour?: number | null;
-			} = {};
-			if (typeof parsed.data.pushOptIn === 'boolean') update.pushOptIn = parsed.data.pushOptIn;
-			if (typeof parsed.data.notifyAnnouncements === 'boolean') {
-				update.notifyAnnouncements = parsed.data.notifyAnnouncements;
-			}
-			if (typeof parsed.data.notifyChores === 'boolean')
-				update.notifyChores = parsed.data.notifyChores;
-			if (typeof parsed.data.notifyExpenses === 'boolean') {
-				update.notifyExpenses = parsed.data.notifyExpenses;
-			}
-			if (typeof parsed.data.notifyShopping === 'boolean') {
-				update.notifyShopping = parsed.data.notifyShopping;
-			}
-			if (typeof parsed.data.notifyInventory === 'boolean') {
-				update.notifyInventory = parsed.data.notifyInventory;
-			}
-			if (typeof parsed.data.notifyReminders === 'boolean') {
-				update.notifyReminders = parsed.data.notifyReminders;
-			}
-			if (typeof parsed.data.notifyChat === 'boolean') update.notifyChat = parsed.data.notifyChat;
-			if (typeof parsed.data.notifyEvents === 'boolean')
-				update.notifyEvents = parsed.data.notifyEvents;
-			if (parsed.data.quietStartHour !== undefined) {
-				update.quietStartHour = parsed.data.quietStartHour;
-			}
-			if (parsed.data.quietEndHour !== undefined) update.quietEndHour = parsed.data.quietEndHour;
-			const changedFields = Object.keys(update);
-			if (changedFields.length === 0) return NextResponse.json({ ok: true });
-
-			const member = await withTransaction(async (tx) => {
-				const current = await lockActiveAccountMember(
-					tx,
-					wg.id,
-					auth.member.memberId,
-					auth.authUserId,
-				);
-				if (!current) return null;
-				const [updated] = await tx
-					.update(wgMembers)
-					.set(update)
-					.where(and(eq(wgMembers.id, current.id), eq(wgMembers.wgId, wg.id)))
-					.returning({ id: wgMembers.id });
-				if (!updated) return null;
-				if (update.pushOptIn === false) {
-					await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.memberId, current.id));
-				}
-				return current;
-			});
-			if (!member) return unauthorized('member_deactivated', 'member_deactivated');
-			await recordAuditEvent({
-				wgId: wg.id,
-				memberId: auth.member.memberId,
-				eventType: 'notification.settings.updated',
-				entityType: 'member',
-				entityId: auth.member.memberId,
-				summary: `${member.name} hat Benachrichtigungseinstellungen geändert.`,
-				metadata: {
-					notificationFields: changedFields.map(
-						(field) => NOTIFICATION_FIELD_LABELS[field] ?? field,
-					),
-					pushOptIn: typeof update.pushOptIn === 'boolean' ? update.pushOptIn : undefined,
-					quietStartHour: update.quietStartHour,
-					quietEndHour: update.quietEndHour,
-				},
-			});
-			return NextResponse.json({ ok: true });
+	const result = await withIdempotentWrite(
+		{
+			scope: `notification-patch:${wg.id}:${auth.member.memberId}`,
+			key: readIdempotencyKey(req),
+			codec: notificationCodec,
+			beforeReplay: memberGate(writer),
 		},
-		async () => {
-			const member = await withTransaction((tx) =>
-				lockActiveAccountMember(tx, wg.id, auth.member.memberId, auth.authUserId),
-			);
-			return member ? null : unauthorized('member_deactivated', 'member_deactivated');
+		async (tx): Promise<WriteOutcome<unknown, Rejected | { memberName: string }>> => {
+			if (changedFields.length === 0) return { status: 200, body: { ok: true } };
+			const member = await updateNotificationSettings(tx, writer, update);
+			if (!member) return rejectWrite(unauthorized('member_deactivated', 'member_deactivated'));
+			return { status: 200, body: { ok: true }, context: { memberName: member.name } };
 		},
 	);
+	if (result.kind === 'stopped') return result.response;
+	if (result.kind === 'written' && result.context) {
+		if ('rejected' in result.context) return result.context.rejected;
+		await recordAuditEvent({
+			wgId: wg.id,
+			memberId: auth.member.memberId,
+			eventType: 'notification.settings.updated',
+			entityType: 'member',
+			entityId: auth.member.memberId,
+			summary: `${result.context.memberName} hat Benachrichtigungseinstellungen geändert.`,
+			metadata: {
+				notificationFields: changedFields.map((field) => NOTIFICATION_FIELD_LABELS[field] ?? field),
+				pushOptIn: typeof update.pushOptIn === 'boolean' ? update.pushOptIn : undefined,
+				quietStartHour: update.quietStartHour,
+				quietEndHour: update.quietEndHour,
+			},
+		});
+	}
+	return NextResponse.json(result.body, { status: result.status });
 });
 
+type PushAuditContext = { audit: 'subscribed' | 'unsubscribed'; name: string; pushOptIn: boolean };
+
 export const POST = withWgRoute('notifications POST', async (req, { code }) => {
-	const rawResult = await readJsonBody(req, 16 * 1024);
-	if (!rawResult.ok) {
-		return rawResult.reason === 'payload_too_large'
-			? payloadTooLarge()
-			: badRequest('invalid_json');
-	}
-	const parsed = postSchema.safeParse(rawResult.body);
-	if (!parsed.success) {
-		const { fieldErrors } = parsed.error.flatten();
-		if (fieldErrors.endpoint || fieldErrors.p256dh || fieldErrors.authKey) {
-			return badRequest('push_subscription_invalid');
-		}
-		return badRequest('invalid_body');
-	}
+	const parsed = await parseBody(req, postSchema, {
+		maxBytes: NOTIFICATION_BODY_BYTES,
+		fieldErrors: {
+			endpoint: 'push_subscription_invalid',
+			p256dh: 'push_subscription_invalid',
+			authKey: 'push_subscription_invalid',
+		},
+	});
+	if (!parsed.ok) return parsed.response;
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
-	const requestEndpoint = 'endpoint' in parsed.data ? parsed.data.endpoint : '';
+	const writer = { wgId: wg.id, memberId: auth.member.memberId, authUserId: auth.authUserId };
+	const action = parsed.data;
+	const requestEndpoint = 'endpoint' in action ? action.endpoint : '';
 	const actionScope =
-		parsed.data.action === 'test_notification'
-			? 'test'
-			: `${parsed.data.action}:${requestEndpoint}`;
+		action.action === 'test_notification' ? 'test' : `${action.action}:${requestEndpoint}`;
 
-	if (parsed.data.action === 'push_subscribe') {
+	if (action.action === 'push_subscribe') {
 		const subscribeLimit = await checkRateLimit(
 			wgWriteLimiter,
 			`push-subscribe:${wg.id}:${auth.member.memberId}`,
@@ -247,190 +230,92 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 		if (!subscribeLimit.success) return tooMany();
 	}
 
-	return withIdempotentJsonResponse(
-		req,
-		`notification:${wg.id}:${auth.member.memberId}:${actionScope}`,
-		async () => {
-			if (parsed.data.action === 'test_notification') {
-				const rl = await checkRateLimit(
-					notifTestLimiter,
-					`notif-test:${wg.id}:${auth.member.memberId}`,
-				);
-				if (!rl.success) {
-					return tooMany('test_notification_rate_limited', 'test_notification_rate_limited');
-				}
-				try {
-					await dispatchNotification({
-						wg,
-						event: 'notification.test',
-						payload: {},
-						targetMemberIds: [auth.member.memberId],
-						bypassPreferences: true,
-					});
-				} catch (err) {
-					logApiError('[notifications POST] test notification failed', err);
-					return serverError(err, 'unexpected_error');
-				}
-				return NextResponse.json({ ok: true });
-			}
-
-			if (parsed.data.action === 'push_subscribe') {
-				const { endpoint, p256dh, authKey } = parsed.data;
-				let memberName: string;
-				try {
-					const member = await withTransaction(async (tx) => {
-						const current = await lockActiveAccountMember(
-							tx,
-							wg.id,
-							auth.member.memberId,
-							auth.authUserId,
-						);
-						if (!current) throw new TransactionAbort('member_deactivated');
-						const [updatedMember] = await tx
-							.update(wgMembers)
-							.set({ pushOptIn: true })
-							.where(and(eq(wgMembers.id, current.id), eq(wgMembers.wgId, wg.id)))
-							.returning({ id: wgMembers.id });
-						if (!updatedMember) throw new TransactionAbort('member_deactivated');
-						const subscriptionValues = {
-							p256dh,
-							authKey,
-							userAgent: req.headers.get('user-agent'),
-						};
-						// Serializes concurrent subscriptions of the same endpoint from different
-						// accounts; the unique index only covers (member_id, endpoint).
-						await tx.execute(
-							sql`select pg_advisory_xact_lock(hashtext(${`push-endpoint:${endpoint}`}))`,
-						);
-						// One browser endpoint serves every WG of the same account. Another
-						// account's active member keeps it to itself (403): its notifications
-						// must not reach this browser and vice versa. Rows of moved-out
-						// members are stale and dropped.
-						const [foreignOwner] = await tx
-							.select({ id: pushSubscriptions.id })
-							.from(pushSubscriptions)
-							.innerJoin(wgMembers, eq(wgMembers.id, pushSubscriptions.memberId))
-							.where(
-								and(
-									eq(pushSubscriptions.endpoint, endpoint),
-									isNull(wgMembers.deactivatedAt),
-									or(isNull(wgMembers.authUserId), ne(wgMembers.authUserId, auth.authUserId)),
-								),
-							)
-							.limit(1);
-						if (foreignOwner) throw new TransactionAbort('endpoint_owned');
-						await tx
-							.delete(pushSubscriptions)
-							.where(
-								and(
-									eq(pushSubscriptions.endpoint, endpoint),
-									inArray(
-										pushSubscriptions.memberId,
-										tx
-											.select({ id: wgMembers.id })
-											.from(wgMembers)
-											.where(isNotNull(wgMembers.deactivatedAt)),
-									),
-								),
-							);
-						await tx
-							.insert(pushSubscriptions)
-							.values({ memberId: current.id, endpoint, ...subscriptionValues })
-							.onConflictDoUpdate({
-								target: [pushSubscriptions.memberId, pushSubscriptions.endpoint],
-								set: subscriptionValues,
-							});
-						return current;
-					});
-					memberName = member.name;
-				} catch (subscribeErr) {
-					if (subscribeErr instanceof TransactionAbort) {
-						if (subscribeErr.code === 'member_deactivated') {
-							return unauthorized('member_deactivated', 'member_deactivated');
-						}
-						return forbidden('endpoint_owned', 'endpoint_owned');
-					}
-					logApiError('[notifications POST] push subscribe failed', subscribeErr);
-					return serverError(subscribeErr, 'unexpected_error');
-				}
-				await recordAuditEvent({
-					wgId: wg.id,
-					memberId: auth.member.memberId,
-					eventType: 'notification.push.subscribed',
-					entityType: 'member',
-					entityId: auth.member.memberId,
-					summary: `${memberName} hat Web Push aktiviert.`,
-					metadata: { notificationFields: ['Web Push'], pushOptIn: true },
-				});
-				return NextResponse.json({ ok: true });
-			}
-
-			const unsubscribeLimit = await checkRateLimit(
-				wgWriteLimiter,
-				`push-unsubscribe:${wg.id}:${auth.member.memberId}`,
-			);
-			if (!unsubscribeLimit.success) return tooMany();
-			const result = await withTransaction(async (tx) => {
-				const current = await lockActiveAccountMember(
-					tx,
-					wg.id,
-					auth.member.memberId,
-					auth.authUserId,
-				);
-				if (!current) return null;
-				await tx
-					.delete(pushSubscriptions)
-					.where(
-						and(
-							eq(pushSubscriptions.endpoint, requestEndpoint),
-							eq(pushSubscriptions.memberId, current.id),
-						),
+	type PostContext = Rejected | PushAuditContext;
+	let result: IdempotentWriteResult<WriteOutcome<unknown, PostContext>, NextResponse>;
+	try {
+		result = await withIdempotentWrite<WriteOutcome<unknown, PostContext>, undefined, NextResponse>(
+			{
+				scope: `notification:${wg.id}:${auth.member.memberId}:${actionScope}`,
+				key: readIdempotencyKey(req),
+				codec: notificationCodec,
+				beforeReplay: memberGate(writer),
+			},
+			async (tx) => {
+				if (action.action === 'test_notification') {
+					const rl = await checkRateLimit(
+						notifTestLimiter,
+						`notif-test:${wg.id}:${auth.member.memberId}`,
 					);
-				const remaining = await tx
-					.select({ id: pushSubscriptions.id })
-					.from(pushSubscriptions)
-					.where(eq(pushSubscriptions.memberId, current.id))
-					.limit(1);
-				const pushOptIn =
-					remaining.length > 0
-						? true
-						: sql<boolean>`exists (select 1 from ${pushSubscriptions} where ${pushSubscriptions.memberId} = ${current.id})`;
-				const [updatedMember] = await tx
-					.update(wgMembers)
-					.set({ pushOptIn })
-					.where(and(eq(wgMembers.id, current.id), eq(wgMembers.wgId, wg.id)))
-					.returning({ pushOptIn: wgMembers.pushOptIn });
-				if (!updatedMember) return null;
-				// Another WG of this account may still use the endpoint; the browser
-				// must then keep its subscription.
-				const [otherUse] = await tx
-					.select({ id: pushSubscriptions.id })
-					.from(pushSubscriptions)
-					.where(eq(pushSubscriptions.endpoint, requestEndpoint))
-					.limit(1);
+					if (!rl.success) {
+						return rejectWrite(
+							tooMany('test_notification_rate_limited', 'test_notification_rate_limited'),
+						);
+					}
+					try {
+						await dispatchNotification({
+							wg,
+							event: 'notification.test',
+							payload: {},
+							targetMemberIds: [auth.member.memberId],
+							bypassPreferences: true,
+						});
+					} catch (err) {
+						logApiError('[notifications POST] test notification failed', err);
+						return rejectWrite(serverError(err, 'unexpected_error'));
+					}
+					return { status: 200, body: { ok: true } };
+				}
+				if (action.action === 'push_subscribe') {
+					const member = await subscribePush(tx, writer, {
+						endpoint: action.endpoint,
+						p256dh: action.p256dh,
+						authKey: action.authKey,
+						userAgent: req.headers.get('user-agent'),
+					});
+					return {
+						status: 200,
+						body: { ok: true },
+						context: { audit: 'subscribed', name: member.name, pushOptIn: true },
+					};
+				}
+				const unsubscribeLimit = await checkRateLimit(
+					wgWriteLimiter,
+					`push-unsubscribe:${wg.id}:${auth.member.memberId}`,
+				);
+				if (!unsubscribeLimit.success) return rejectWrite(tooMany());
+				const removed = await unsubscribePush(tx, writer, requestEndpoint);
+				if (!removed) return rejectWrite(unauthorized('member_deactivated', 'member_deactivated'));
 				return {
-					name: current.name,
-					pushOptIn: updatedMember.pushOptIn,
-					endpointInUse: otherUse !== undefined,
+					status: 200,
+					body: { ok: true, endpointInUse: removed.endpointInUse },
+					context: { audit: 'unsubscribed', name: removed.name, pushOptIn: removed.pushOptIn },
 				};
-			});
-			if (!result) return unauthorized('member_deactivated', 'member_deactivated');
-			await recordAuditEvent({
-				wgId: wg.id,
-				memberId: auth.member.memberId,
-				eventType: 'notification.push.unsubscribed',
-				entityType: 'member',
-				entityId: auth.member.memberId,
-				summary: `${result.name} hat Web Push deaktiviert.`,
-				metadata: { notificationFields: ['Web Push'], pushOptIn: result.pushOptIn },
-			});
-			return NextResponse.json({ ok: true, endpointInUse: result.endpointInUse });
-		},
-		async () => {
-			const member = await withTransaction((tx) =>
-				lockActiveAccountMember(tx, wg.id, auth.member.memberId, auth.authUserId),
-			);
-			return member ? null : unauthorized('member_deactivated', 'member_deactivated');
-		},
-	);
+			},
+		);
+	} catch (err) {
+		if (action.action !== 'push_subscribe') throw err;
+		if (err instanceof TransactionAbort && err.code === 'member_deactivated') {
+			return unauthorized('member_deactivated', 'member_deactivated');
+		}
+		if (err instanceof TransactionAbort && err.code === 'endpoint_owned') {
+			return forbidden('endpoint_owned', 'endpoint_owned');
+		}
+		logApiError('[notifications POST] push subscribe failed', err);
+		return serverError(err, 'unexpected_error');
+	}
+	if (result.kind === 'stopped') return result.response;
+	if (result.kind === 'written' && result.context) {
+		if ('rejected' in result.context) return result.context.rejected;
+		const subscribed = result.context.audit === 'subscribed';
+		await recordAuditEvent({
+			wgId: wg.id,
+			memberId: auth.member.memberId,
+			eventType: subscribed ? 'notification.push.subscribed' : 'notification.push.unsubscribed',
+			entityType: 'member',
+			entityId: auth.member.memberId,
+			summary: `${result.context.name} hat Web Push ${subscribed ? 'aktiviert' : 'deaktiviert'}.`,
+			metadata: { notificationFields: ['Web Push'], pushOptIn: result.context.pushOptIn },
+		});
+	}
+	return NextResponse.json(result.body, { status: result.status });
 });
