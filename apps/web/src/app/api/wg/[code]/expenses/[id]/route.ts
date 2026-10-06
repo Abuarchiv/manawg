@@ -15,9 +15,8 @@ import {
 	notFound,
 	serverError,
 	tooMany,
-	unreadableJsonBody,
 } from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
+import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
@@ -120,24 +119,17 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { code, id }) => {
 	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
 
-	let raw: unknown;
-	try {
-		raw = await readJsonLimited(req);
-	} catch (err) {
-		return unreadableJsonBody(err);
-	}
-
-	const parsed = patchSchema.safeParse(raw);
-	if (!parsed.success) {
-		const issues = parsed.error.flatten();
-		if (issues.fieldErrors.amountCents) return badRequest('amount_invalid');
-		if (issues.fieldErrors.description) return badRequest('description_invalid');
-		if (issues.fieldErrors.currency) return badRequest('currency_invalid');
-		if (issues.fieldErrors.imageUrl) return badRequest('image_invalid');
-		if (issues.fieldErrors.expectedUpdatedAt) return badRequest('expected_updated_at_invalid');
-		if (issues.fieldErrors.splits) return badRequest('splits_invalid');
-		return badRequest('invalid_body');
-	}
+	const parsed = await parseBody(req, patchSchema, {
+		fieldErrors: {
+			amountCents: 'amount_invalid',
+			description: 'description_invalid',
+			currency: 'currency_invalid',
+			imageUrl: 'image_invalid',
+			expectedUpdatedAt: 'expected_updated_at_invalid',
+			splits: 'splits_invalid',
+		},
+	});
+	if (!parsed.ok) return parsed.response;
 
 	const { description, amountCents, currency, imageUrl, expectedUpdatedAt, splits } = parsed.data;
 

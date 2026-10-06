@@ -6,7 +6,6 @@ import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 import {
 	loadClaimedResponse,
-	loadIdempotencyStore,
 	loadIdempotentWrite,
 	loadParseBody,
 } from '../../../../../../tests/support/claimed-response.cjs';

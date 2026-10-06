@@ -11,8 +11,8 @@ import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletio
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, payloadTooLarge } from '@/core/http/api-errors';
-import { readJsonBody } from '@/core/http/read-json';
+import { badRequest, conflict } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -199,21 +199,17 @@ export const GET = withWgRoute('announcements GET', async (req, { code }) => {
 });
 
 export const POST = withWgRoute('announcements POST', async (req, { code }) => {
-	const rawResult = await readJsonBody(req, 64 * 1024);
-	if (!rawResult.ok)
-		return rawResult.reason === 'payload_too_large'
-			? payloadTooLarge()
-			: badRequest('invalid_json');
-	const raw = rawResult.body;
-
-	const parsed = createAnnouncementSchema.safeParse(raw);
-	if (!parsed.success) {
-		const { fieldErrors } = parsed.error.flatten();
-		if (fieldErrors.kind || fieldErrors.source) return badRequest('kind_invalid');
-		if (fieldErrors.sourcePath) return badRequest('source_path_invalid');
-		if (fieldErrors.imageUrl) return badRequest('image_invalid');
-		return badRequest('content_invalid');
-	}
+	const parsed = await parseBody(req, createAnnouncementSchema, {
+		maxBytes: 64 * 1024,
+		fieldErrors: {
+			kind: 'kind_invalid',
+			source: 'kind_invalid',
+			sourcePath: 'source_path_invalid',
+			imageUrl: 'image_invalid',
+		},
+		invalid: 'content_invalid',
+	});
+	if (!parsed.ok) return parsed.response;
 
 	const { content, imageUrl = null, kind, source, choreId, sourcePath = null } = parsed.data;
 	const safeImageUrl = typeof imageUrl === 'string' && imageUrl.length > 0 ? imageUrl : null;

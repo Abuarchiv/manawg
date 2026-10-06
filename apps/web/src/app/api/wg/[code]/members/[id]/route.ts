@@ -12,9 +12,8 @@ import {
 	notFound,
 	tooMany,
 	unauthorized,
-	unreadableJsonBody,
 } from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
+import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { computeBalances } from '@/features/expenses/debts';
 import {
@@ -124,14 +123,10 @@ export const PATCH = withWgRoute<{ id: string }>(
 	'members/[id] PATCH',
 	async (req, { code, id }) => {
 		if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
-		let raw: unknown;
-		try {
-			raw = await readJsonLimited(req);
-		} catch (err) {
-			return unreadableJsonBody(err);
-		}
-		const parsed = patchSchema.safeParse(raw);
-		if (!parsed.success) return badRequest('active_invalid');
+		const parsed = await parseBody(req, patchSchema, {
+			invalid: 'active_invalid',
+		});
+		if (!parsed.ok) return parsed.response;
 		const { active } = parsed.data;
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;

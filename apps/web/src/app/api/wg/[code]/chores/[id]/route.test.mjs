@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadParseBody } from '../../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const routeFile = path.join(process.cwd(), 'src/app/api/wg/[code]/chores/[id]/route.ts');
@@ -69,6 +70,7 @@ function makeRoute(state) {
 		},
 		'next/server': { NextResponse: { json } },
 	};
+	overrides['@/core/http/parse-body'] = loadParseBody(overrides);
 	const compiled = transpileModule(readFileSync(routeFile, 'utf8'), {
 		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
 	}).outputText;

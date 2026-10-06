@@ -3,8 +3,8 @@ import { announcementReactions, announcements } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, unreadableJsonBody } from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
+import { badRequest } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import {
 	type NotificationDispatchWarning,
@@ -41,14 +41,10 @@ export const POST = withWgRoute<{ id: string }>(
 	async (req, { code, id }) => {
 		if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
 
-		let raw: unknown;
-		try {
-			raw = await readJsonLimited(req);
-		} catch (err) {
-			return unreadableJsonBody(err);
-		}
-		const parsed = reactionSchema.safeParse(raw);
-		if (!parsed.success) return badRequest('reaction_invalid');
+		const parsed = await parseBody(req, reactionSchema, {
+			invalid: 'reaction_invalid',
+		});
+		if (!parsed.ok) return parsed.response;
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wg = auth.wg;

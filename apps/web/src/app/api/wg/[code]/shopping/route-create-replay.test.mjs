@@ -68,7 +68,6 @@ function claimMatches(slot, condition) {
 	throw new Error(`unsupported predicate ${op}`);
 }
 
-
 class TransactionAbort extends Error {
 	constructor(code) {
 		super(code);

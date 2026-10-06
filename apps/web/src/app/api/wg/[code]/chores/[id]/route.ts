@@ -5,15 +5,8 @@ import { isWgAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	badRequest,
-	conflict,
-	forbidden,
-	notFound,
-	tooMany,
-	unreadableJsonBody,
-} from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
+import { badRequest, conflict, forbidden, notFound, tooMany } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { buildChorePatchUpdate } from '@/features/chores/chore-patch';
 import { type SQL, and, eq, isNull, sql } from 'drizzle-orm';
@@ -69,21 +62,15 @@ export const GET = withWgRoute<{ id: string }>('chores GET id', async (req, { co
 export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { code, id }) => {
 	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
 
-	let raw: unknown;
-	try {
-		raw = await readJsonLimited(req);
-	} catch (err) {
-		return unreadableJsonBody(err);
-	}
-	const parsed = patchSchema.safeParse(raw);
-	if (!parsed.success) {
-		const { fieldErrors } = parsed.error.flatten();
-		if (fieldErrors.assignedMemberId) return badRequest('member_id_invalid');
-		if (fieldErrors.nextDueAt) return badRequest('due_date_invalid');
-		if (fieldErrors.intervalDays) return badRequest('interval_invalid');
-		if (fieldErrors.recurrenceType) return badRequest('recurrence_type_invalid');
-		return badRequest('invalid_body');
-	}
+	const parsed = await parseBody(req, patchSchema, {
+		fieldErrors: {
+			assignedMemberId: 'member_id_invalid',
+			nextDueAt: 'due_date_invalid',
+			intervalDays: 'interval_invalid',
+			recurrenceType: 'recurrence_type_invalid',
+		},
+	});
+	if (!parsed.ok) return parsed.response;
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;

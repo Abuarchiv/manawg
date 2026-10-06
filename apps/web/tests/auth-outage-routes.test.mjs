@@ -34,6 +34,12 @@ function loadRoute(file, overrides) {
 	return loaded.exports;
 }
 
+/** The real parseBody, evaluated against the route's own mocks. */
+function withParseBody(mocks) {
+	mocks['@/core/http/parse-body'] = loadParseBody(mocks);
+	return mocks;
+}
+
 function sharedMocks(state) {
 	const unreachable = (name) => () => {
 		throw new Error(`${name} must not run after an Auth outage`);
@@ -84,31 +90,34 @@ async function assertAuthOutage(response, state) {
 test('upload sign returns a retryable 503 when Supabase Auth is unavailable', async () => {
 	const state = { authCalls: 0, logged: [] };
 	const { unreachable, ...mocks } = sharedMocks(state);
-	const { POST } = loadRoute('src/app/api/upload/sign/route.ts', {
-		...mocks,
-		'@/core/db': { db: { query: { wgs: { findFirst: unreachable('wg lookup') } } } },
-		'@/core/http/read-json': {
-			readJsonBody: async (req) => ({ ok: true, body: await req.json() }),
-		},
-		'@/core/infra/private-image-policy': { PRIVATE_IMAGE_MIME_TYPES: ['image/jpeg'] },
-		'@/core/infra/s3': {
-			S3ConfigurationError: class extends Error {},
-			S3_MAX_UPLOAD_BYTES: 10_000_000,
-			createPresignedUpload: unreachable('createPresignedUpload'),
-			isAllowedMimeType: () => true,
-		},
-		'@/core/infra/supabase-storage': {
-			ImageStorageConfigurationError: class extends Error {},
-			createSupabaseSignedUpload: unreachable('createSupabaseSignedUpload'),
-			getImageStorageProvider: unreachable('getImageStorageProvider'),
-		},
-		'@/core/rate-limit': { checkRateLimit: unreachable('checkRateLimit'), uploadSignLimiter: {} },
-		'@/core/validators/image-url': { getPrivateImageUrl: unreachable('getPrivateImageUrl') },
-		'@/core/utils/share-code': {
-			isValidShareCode: () => true,
-			normalizeShareCode: (value) => value,
-		},
-	});
+	const { POST } = loadRoute(
+		'src/app/api/upload/sign/route.ts',
+		withParseBody({
+			...mocks,
+			'@/core/db': { db: { query: { wgs: { findFirst: unreachable('wg lookup') } } } },
+			'@/core/http/read-json': {
+				readJsonBody: async (req) => ({ ok: true, body: await req.json() }),
+			},
+			'@/core/infra/private-image-policy': { PRIVATE_IMAGE_MIME_TYPES: ['image/jpeg'] },
+			'@/core/infra/s3': {
+				S3ConfigurationError: class extends Error {},
+				S3_MAX_UPLOAD_BYTES: 10_000_000,
+				createPresignedUpload: unreachable('createPresignedUpload'),
+				isAllowedMimeType: () => true,
+			},
+			'@/core/infra/supabase-storage': {
+				ImageStorageConfigurationError: class extends Error {},
+				createSupabaseSignedUpload: unreachable('createSupabaseSignedUpload'),
+				getImageStorageProvider: unreachable('getImageStorageProvider'),
+			},
+			'@/core/rate-limit': { checkRateLimit: unreachable('checkRateLimit'), uploadSignLimiter: {} },
+			'@/core/validators/image-url': { getPrivateImageUrl: unreachable('getPrivateImageUrl') },
+			'@/core/utils/share-code': {
+				isValidShareCode: () => true,
+				normalizeShareCode: (value) => value,
+			},
+		}),
+	);
 
 	const response = await POST(
 		new Request('https://app.test/api/upload/sign', {
