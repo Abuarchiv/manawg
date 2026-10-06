@@ -214,7 +214,7 @@ mock.module('@/core/audit', {
 	},
 });
 // Replays a stored response per scope and key; an error inside the write rolls it back.
-mock.module('@/features/pinnwand/announcement-replay', {
+mock.module('@/features/pinnwand/server/announcement-replay', {
 	namedExports: {
 		withAnnouncementReplay: async (
 			req: Request,

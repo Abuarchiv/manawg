@@ -1,3 +1,6 @@
+import 'server-only';
+
+import { wgEvents } from '@/core/db/schema';
 import {
 	berlinDayKey,
 	berlinWallMinutes,
@@ -7,7 +10,6 @@ import {
 } from '@/core/utils/berlin-day';
 import { MS_PER_DAY, addMonthsFromAnchor } from '@/core/utils/time';
 import { and, eq, gt, gte, isNotNull, isNull, lte, or } from 'drizzle-orm';
-import { wgEvents } from '../../core/db/schema';
 import {
 	BYDAY_TO_INDEX,
 	DEFAULT_DURATION_MS,
@@ -16,7 +18,7 @@ import {
 	berlinCalendarDate,
 	eventDateForDisplay,
 	parseRecurrenceRule,
-} from './events';
+} from '../events';
 
 const EVENT_WINDOW_PAGE_SIZE = 500;
 const EVENT_WINDOW_SCAN_LIMIT = 10_000;

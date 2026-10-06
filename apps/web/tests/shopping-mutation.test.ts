@@ -13,7 +13,6 @@ import type { ShoppingItem } from '../src/core/db/schema';
 import * as schema from '../src/core/db/schema';
 import type { DbTransaction } from '../src/core/db/transaction';
 import { parseShoppingInput } from '../src/features/shopping/parse-shopping-input';
-import { isOpenShoppingItemDuplicate } from '../src/features/shopping/shopping-duplicate';
 import {
 	SHOPPING_CREATE_DUPLICATE_RESPONSE,
 	type ShoppingCreateInput,
@@ -23,7 +22,8 @@ import {
 	shoppingCreateCodec,
 	shoppingCreateHttpResponse,
 	withShoppingCreatePostCommitFallback,
-} from '../src/features/shopping/shopping-mutation';
+} from '../src/features/shopping/server/shopping-mutation';
+import { isOpenShoppingItemDuplicate } from '../src/features/shopping/shopping-duplicate';
 import { assertMatchObject } from './support/match-object';
 
 describe('shopping input', () => {

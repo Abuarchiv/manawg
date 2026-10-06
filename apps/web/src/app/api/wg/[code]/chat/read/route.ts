@@ -5,7 +5,7 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, notFound, tooMany } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { chatReadLimiter, checkRateLimit } from '@/core/rate-limit';
-import { buildChatReadMarkerSetWhere } from '@/features/chat/chat-read-query';
+import { buildChatReadMarkerSetWhere } from '@/features/chat/server/chat-read-query';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

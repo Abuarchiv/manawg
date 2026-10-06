@@ -11,11 +11,11 @@ import {
 	dispatchNotificationSafely,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { ANNOUNCEMENT_REACTIONS } from '@/features/pinnwand/announcement-workflow';
 import {
 	persistAnnouncementReplayWarning,
 	withAnnouncementReplay,
-} from '@/features/pinnwand/announcement-replay';
-import { ANNOUNCEMENT_REACTIONS } from '@/features/pinnwand/announcement-workflow';
+} from '@/features/pinnwand/server/announcement-replay';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

@@ -63,7 +63,7 @@ await mockModuleWithReal('@/features/expenses/import-body', {
 	MAX_OCR_BYTES: 1024 * 1024,
 	readImportJsonBody: async (req: Request) => ({ ok: true, value: await req.json() }),
 });
-await mockModuleWithReal('@/features/expenses/import-commit', {
+await mockModuleWithReal('@/features/expenses/server/import-commit', {
 	commitImport: async (
 		_replay: unknown,
 		prepare: () => Promise<{ stop: Response } | { input: unknown }>,
@@ -73,7 +73,7 @@ await mockModuleWithReal('@/features/expenses/import-commit', {
 		return { kind: 'committed', result: current.commit ? await current.commit() : result };
 	},
 });
-await mockModuleWithReal('@/features/expenses/import-hash', { hashPayload: () => 'hash' });
+await mockModuleWithReal('@/features/expenses/server/import-hash', { hashPayload: () => 'hash' });
 await mockModuleWithReal('@/features/expenses/import-parsers', {
 	UnsupportedCurrencyError: class extends Error {},
 	findMappingConflicts: () => [],

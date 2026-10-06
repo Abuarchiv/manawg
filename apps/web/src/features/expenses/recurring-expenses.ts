@@ -1,4 +1,4 @@
-import type { recurringExpenses } from '@/core/db';
+import type { recurringExpenses } from '@/core/db/schema';
 import { addMonthsFromAnchor, parseTimestamp } from '@/core/utils/time';
 
 export { addMonthsFromAnchor };

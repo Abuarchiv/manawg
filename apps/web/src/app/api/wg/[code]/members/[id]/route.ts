@@ -19,8 +19,8 @@ import { computeBalances } from '@/features/expenses/debts';
 import {
 	loadCompletedExpensePayments,
 	withExpensePaymentLock,
-} from '@/features/expenses/expense-payments';
-import { loadOpenExpenses } from '@/features/expenses/open-expenses';
+} from '@/features/expenses/server/expense-payments';
+import { loadOpenExpenses } from '@/features/expenses/server/open-expenses';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

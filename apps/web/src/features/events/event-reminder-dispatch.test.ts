@@ -8,8 +8,8 @@ import {
 	reminderCopyForOccurrence,
 	startsInReminderWindow,
 } from './event-reminder-dispatch';
-import { computeTomorrowUtcWindow } from './event-reminder-window';
 import { expandRecurrence } from './events';
+import { computeTomorrowUtcWindow } from './server/event-reminder-window';
 
 test('reminders include only occurrences that start tomorrow', () => {
 	const from = new Date('2026-09-22T22:00:00.000Z');

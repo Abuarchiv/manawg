@@ -1,4 +1,4 @@
-import type { wgEvents } from '@/core/db';
+import type { wgEvents } from '@/core/db/schema';
 import { berlinDayKey, berlinWallMinutes, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
 import { MS_PER_DAY, addMonths, addMonthsFromAnchor, parseTimestamp } from '@/core/utils/time';
 import { isEventYearInRange } from '@/features/events/event-limits';

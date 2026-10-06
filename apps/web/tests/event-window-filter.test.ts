@@ -10,7 +10,9 @@ mock.module('drizzle-orm', { namedExports: { ...drizzle, ...predicateOperators }
 
 const { wgEvents } = await import('../src/core/db/schema');
 const { eventOverlapsCalendarDay } = await import('../src/features/events/events');
-const { buildEventsWindowFilter } = await import('../src/features/events/event-reminder-window');
+const { buildEventsWindowFilter } = await import(
+	'../src/features/events/server/event-reminder-window'
+);
 
 interface EventRow {
 	startsAt: Date;

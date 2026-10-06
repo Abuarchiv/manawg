@@ -94,7 +94,7 @@ mockDb({
 		},
 	},
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		loadCompletedExpensePayments: async () => [],
 		hasCapturingExpensePayment: async () => false,

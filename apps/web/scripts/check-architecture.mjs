@@ -13,6 +13,9 @@
  *   status-literal  apiError(...) with a numeric status instead of an HTTP constant
  *   server-only     a features/<x>/server/ module without `import 'server-only'`
  *   client-server   a 'use client' module imports a server/ module
+ *   server-placement a features/<x>/ module outside server/ imports the database layer
+ *                   (`@/core/db`, `drizzle-orm`); only row and enum types from `@/core/db/schema`
+ *                   may be imported, type-only, by code shared with the client
  *   comment-lang    a comment written in German (code comments are English)
  *   comment-history a comment that narrates history ("used to", "previously", ...)
  *   banned-import   an import of a removed dependency
@@ -55,6 +58,7 @@ const CLAIM_PROTOCOL_IDENTIFIERS = [
 	'ReplayCache',
 	'claimIdempotencySlot',
 ];
+const TYPE_IMPORT_RE = /(?:import|export)\s+type\s+[^;'"]*?from\s+['"]([^'"]+)['"]/g;
 const FIXTURE_IDENTIFIERS = /\b(isE2EDbDownMode|isClientFixtureMode)\b/;
 const SPECIFIER_RE = /(?:from\s+|require\s*\(\s*|import\s*\(\s*|import\s+)['"]([^'"]+)['"]/g;
 const GERMAN_RE =
@@ -97,6 +101,35 @@ function resolveSpecifier(specifier, fromFile) {
 	if (specifier.startsWith('@/')) return join(SRC, specifier.slice(2));
 	if (specifier.startsWith('.')) return resolve(dirname(fromFile), specifier);
 	return null;
+}
+
+/**
+ * Database-layer specifiers a module imports, minus type-only imports of `@/core/db/schema`
+ * (erased at build time, so shared row types do not pull the database into a client bundle).
+ */
+function databaseImports(source, fromFile) {
+	const schema = join(SRC, 'core', 'db', 'schema');
+	const typeOnly = new Map();
+	for (const match of source.matchAll(TYPE_IMPORT_RE)) {
+		typeOnly.set(match[1], (typeOnly.get(match[1]) ?? 0) + 1);
+	}
+	const found = [];
+	for (const match of source.matchAll(SPECIFIER_RE)) {
+		const specifier = match[1];
+		const target = resolveSpecifier(specifier, fromFile);
+		const isDrizzle = specifier === 'drizzle-orm' || specifier.startsWith('drizzle-orm/');
+		const isDb =
+			target !== null &&
+			(target === join(SRC, 'core', 'db') || target.startsWith(join(SRC, 'core', 'db') + sep));
+		if (!isDrizzle && !isDb) continue;
+		const isSchema = isDb && (target === schema || target.startsWith(schema + sep));
+		if (isSchema && (typeOnly.get(specifier) ?? 0) > 0) {
+			typeOnly.set(specifier, typeOnly.get(specifier) - 1);
+			continue;
+		}
+		found.push(specifier);
+	}
+	return found;
 }
 
 /** Strip string and template literal contents so comment checks only see comments. */
@@ -163,6 +196,12 @@ function collect() {
 					if (/(^|\/)server(\/|$)/.test(match[1]) && match[1].includes('features/')) {
 						add('client-server', r, match[1]);
 					}
+				}
+			}
+
+			if (/^src\/features\/[^/]+\//.test(r) && !/^src\/features\/[^/]+\/server\//.test(r)) {
+				for (const specifier of databaseImports(source, file)) {
+					add('server-placement', r, specifier);
 				}
 			}
 

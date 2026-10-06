@@ -23,14 +23,14 @@ import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import { MAX_SPLITS } from '@/features/expenses/expense-constants';
 import {
-	hasCapturingExpensePayment,
-	withExpensePaymentLock,
-} from '@/features/expenses/expense-payments';
-import {
 	expenseAmountSchema,
 	expenseDescriptionSchema,
 	expenseSplitSchema,
 } from '@/features/expenses/expense-schemas';
+import {
+	hasCapturingExpensePayment,
+	withExpensePaymentLock,
+} from '@/features/expenses/server/expense-payments';
 import {
 	settledAtForOwnShare,
 	splitValidationErrorCode,

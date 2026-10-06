@@ -20,7 +20,7 @@ import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	persistAnnouncementReplayWarning,
 	withAnnouncementReplay,
-} from '@/features/pinnwand/announcement-replay';
+} from '@/features/pinnwand/server/announcement-replay';
 import { and, asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

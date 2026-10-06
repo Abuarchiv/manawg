@@ -6,8 +6,7 @@ import {
 	startOfBerlinDay,
 } from '@/core/utils/berlin-day';
 import { normalizeCurrency } from '@/core/utils/money';
-import { computeNetBalances } from '@/features/expenses/debt-reduction';
-import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
+import { type ExpensePaymentInput, computeNetBalances } from '@/features/expenses/debt-reduction';
 
 const SPARKLINE_DAYS = 14;
 

@@ -4,9 +4,12 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { NextRequest } from 'next/server';
-import { computeNetBalances, simplifyDebts } from '../src/features/expenses/debt-reduction.ts';
+import {
+	type ExpensePaymentInput,
+	computeNetBalances,
+	simplifyDebts,
+} from '../src/features/expenses/debt-reduction.ts';
 import { type DebtExpenseInput, computeBalances } from '../src/features/expenses/debts.ts';
-import type { ExpensePaymentInput } from '../src/features/expenses/expense-payments.ts';
 import { assertMatchObject, matchesObject } from './support/match-object';
 import { mockModuleWithReal } from './support/module-mocks';
 import { jsonResponse } from './support/values';
@@ -80,14 +83,14 @@ await mockModuleWithReal('@/core/infra/paypal', {
 	createPayPalOrder: (input: Record<string, unknown>) => harness().createPayPalOrder(input),
 	isPayPalConfigured: () => true,
 });
-await mockModuleWithReal('@/features/expenses/expense-payments', {
+await mockModuleWithReal('@/features/expenses/server/expense-payments', {
 	PAYPAL_ORDER_TTL_MS: 10_000,
 	loadCompletedExpensePayments: async () => harness().completedPayments,
 	hasCapturingExpensePayment: async () => harness().anotherCaptureActive,
 	withExpensePaymentLock: (_id: string, operation: (tx: Tx) => Promise<unknown>) =>
 		harness().withPaymentLock(operation),
 });
-await mockModuleWithReal('@/features/expenses/open-expenses', {
+await mockModuleWithReal('@/features/expenses/server/open-expenses', {
 	loadOpenExpenses: async () => harness().openExpenses,
 });
 await mockModuleWithReal('@/core/db', {

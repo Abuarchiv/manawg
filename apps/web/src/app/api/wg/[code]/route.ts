@@ -11,7 +11,7 @@ import { parseBody } from '@/core/http/parse-body';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { generateShareCode } from '@/core/utils/share-code';
-import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
+import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';

@@ -17,13 +17,13 @@ import {
 	computeOldestDebtAgeDays,
 	findPairBalance,
 } from '@/features/expenses/debts';
-import { loadCompletedExpensePayments } from '@/features/expenses/expense-payments';
-import { loadOpenExpenses } from '@/features/expenses/open-expenses';
 import {
 	REMINDER_COOLDOWN_HOURS,
 	canSendReminder,
 	formatReminderMessage,
 } from '@/features/expenses/reminders';
+import { loadCompletedExpensePayments } from '@/features/expenses/server/expense-payments';
+import { loadOpenExpenses } from '@/features/expenses/server/open-expenses';
 import { and, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

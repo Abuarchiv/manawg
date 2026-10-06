@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 import { PgDialect, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
-import { mockDb } from '../../../tests/support/db-mock';
-import { mockObservability } from '../../../tests/support/route-harness';
-import { TransactionAbort } from '../../core/db/transaction-abort';
+import { mockDb } from '../../../../tests/support/db-mock';
+import { mockObservability } from '../../../../tests/support/route-harness';
+import { TransactionAbort } from '../../../core/db/transaction-abort';
 
 // Real drizzle, claim protocol and idempotency store against an in-memory claim slot; the SQL
 // sent for releases and warning updates is rendered and inspected.

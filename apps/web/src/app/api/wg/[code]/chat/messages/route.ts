@@ -26,7 +26,7 @@ import {
 	previewBody,
 	sanitizeMessageBody,
 } from '@/features/chat/chat-pure';
-import { buildChatCursorWhere } from '@/features/chat/chat-unread-query';
+import { buildChatCursorWhere } from '@/features/chat/server/chat-unread-query';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

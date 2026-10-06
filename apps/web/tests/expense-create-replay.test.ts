@@ -92,7 +92,7 @@ await mockModuleWithReal('@/core/validators/image-url', {
 	imageUrlSchema: z.string().nullable().optional(),
 	isAllowedImageUrlForWg: () => true,
 });
-await mockModuleWithReal('@/features/expenses/expense-payments', {
+await mockModuleWithReal('@/features/expenses/server/expense-payments', {
 	hasCapturingExpensePayment: async () => false,
 	withExpensePaymentLock: (wgId: string, operation: (tx: unknown) => Promise<unknown>) =>
 		active().withExpensePaymentLock(wgId, operation),
@@ -100,7 +100,7 @@ await mockModuleWithReal('@/features/expenses/expense-payments', {
 await mockModuleWithReal('@/features/expenses/paid-by-guard', {
 	checkPaidByGuard: () => ({ ok: true }),
 });
-await mockModuleWithReal('@/features/expenses/expenses', {
+await mockModuleWithReal('@/features/expenses/server/expenses', {
 	findExpenseMemberIds: async () => new Set([MEMBER_ID]),
 	insertExpenseWithSplits: async (
 		tx: { addExpense: () => void },

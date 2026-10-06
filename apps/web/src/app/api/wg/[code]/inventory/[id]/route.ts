@@ -14,7 +14,7 @@ import {
 	INVENTORY_LIMITS,
 	INVENTORY_UNITS,
 } from '@/features/inventory/inventory';
-import { updateInventoryItemMutation } from '@/features/inventory/inventory-mutations';
+import { updateInventoryItemMutation } from '@/features/inventory/server/inventory-mutations';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

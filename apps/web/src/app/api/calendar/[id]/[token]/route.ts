@@ -7,16 +7,16 @@ import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgReadLimiter } from '@/core/rate-limit';
 import { startOfBerlinDay } from '@/core/utils/berlin-day';
 import { MS_PER_DAY } from '@/core/utils/time';
+import { type EventInput, expandRecurrence } from '@/features/events/events';
+import { type CalendarFeedOccurrence, calendarFeedToIcs } from '@/features/events/ics';
 import {
 	isCalendarFeedToken,
 	verifyCalendarFeedToken,
-} from '@/features/events/calendar-subscription';
+} from '@/features/events/server/calendar-subscription';
 import {
 	buildEventsWindowFilter,
 	withEventWindowCandidates,
-} from '@/features/events/event-reminder-window';
-import { type EventInput, expandRecurrence } from '@/features/events/events';
-import { type CalendarFeedOccurrence, calendarFeedToIcs } from '@/features/events/ics';
+} from '@/features/events/server/event-reminder-window';
 import { and, asc, eq, gt, isNotNull, isNull, or } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 

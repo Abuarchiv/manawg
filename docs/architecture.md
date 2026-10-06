@@ -53,7 +53,7 @@ under `app/wg/**`; WG APIs belong under `app/api/wg/**`.
 | Layer | Contains | May import |
 | --- | --- | --- |
 | `app/` | Pages, layouts, route handlers. Thin. | everything below |
-| `features/<x>/` | Vertical slices: `chat`, `chores`, `events`, `expenses`, `inventory`, `pinnwand`, `shopping` (logic, hooks, components) | `core/`, `shared/`, own files |
+| `features/<x>/` | Vertical slices: `chat`, `chores`, `events`, `expenses`, `inventory`, `pinnwand`, `shopping`. Pure logic shared by client and server at the slice root, `hooks/` and `components/` for the client, `server/` for database and route logic (every module starts with `import 'server-only'`; only `server/` may import `@/core/db` or `drizzle-orm`) | `core/`, `shared/`, own files |
 | `core/reads/` | Cross-feature reads/composition: dashboard data and insights, activity feed, export | `core/`, several `features/*` (chores, expenses, events, pinnwand) |
 | `core/` (rest) | Domain-neutral blocks: `db`, `auth`, `guards`, `http`, `hooks`, `offline`, `sync`, `notifications`, `infra`, `utils`, `validators` | `core/`, `shared/` (exception: `core/activity-feed.ts` imports chat constants) |
 | `components/` | Shared UI: `ui/` shadcn primitives (plus `LogoMark`, `Toast`, `ConfirmDialog`), `animate-ui/`, `app/` app-wide composites (shell, PWA install/push prompts, theme), `wg/` WG-wide composites | `components/`, `core/`, `shared/` |

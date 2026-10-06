@@ -42,7 +42,7 @@ await mockModuleWithReal('@/features/expenses/import-body', {
 	MAX_OCR_BYTES: 100_000,
 	readImportJsonBody: async (req: Request) => ({ ok: true, value: await req.json() }),
 });
-await mockModuleWithReal('@/features/expenses/import-commit', {
+await mockModuleWithReal('@/features/expenses/server/import-commit', {
 	commitImport: async (
 		_replay: unknown,
 		prepare: () => Promise<{ stop: Response } | { input: Record<string, unknown> }>,
@@ -56,7 +56,9 @@ await mockModuleWithReal('@/features/expenses/import-commit', {
 		};
 	},
 });
-await mockModuleWithReal('@/features/expenses/import-hash', { hashPayload: () => 'payload-hash' });
+await mockModuleWithReal('@/features/expenses/server/import-hash', {
+	hashPayload: () => 'payload-hash',
+});
 await mockModuleWithReal('@/features/expenses/import-parsers', {
 	parseSplitwiseCsv: () => [parsedExpense],
 	parseSplidCsv: () => [parsedExpense],

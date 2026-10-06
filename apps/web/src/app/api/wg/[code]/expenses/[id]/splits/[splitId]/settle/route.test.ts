@@ -184,7 +184,7 @@ mock.module('@/core/audit', {
 		},
 	},
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		hasCapturingExpensePayment: async () => false,
 		loadCompletedExpensePayments: async () => current.payments,

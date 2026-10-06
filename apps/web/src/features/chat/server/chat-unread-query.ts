@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { and, eq, gt, isNull, ne, or, sql } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 

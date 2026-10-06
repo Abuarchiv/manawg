@@ -16,7 +16,7 @@ import {
 	calendarFeedUrl,
 	createCalendarFeedSeed,
 	deriveCalendarFeedToken,
-} from '@/features/events/calendar-subscription';
+} from '@/features/events/server/calendar-subscription';
 import { getAppUrl } from '@/shared/lib/app-url';
 import { and, eq, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';

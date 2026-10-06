@@ -30,7 +30,7 @@ import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	hasActiveExpensePayment,
 	withExpensePaymentLock,
-} from '@/features/expenses/expense-payments';
+} from '@/features/expenses/server/expense-payments';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

@@ -151,7 +151,7 @@ mock.module('@/core/db/transaction', {
 		withTransaction: async <T>(operation: (handle: typeof tx) => Promise<T>) => operation(tx),
 	},
 });
-mock.module('@/features/events/calendar-subscription', {
+mock.module('@/features/events/server/calendar-subscription', {
 	namedExports: {
 		isCalendarFeedToken: () => true,
 		verifyCalendarFeedToken: (_id: string, seed: string, token: string) =>

@@ -52,7 +52,7 @@ await mockWgRouteInfrastructure({
 			: { ok: false, response: responseError('unauthorized', 401) },
 });
 await mockModuleWithReal('@/core/db', { db, expenses, expenseSplits: {} });
-await mockModuleWithReal('@/features/expenses/expense-payments', {
+await mockModuleWithReal('@/features/expenses/server/expense-payments', {
 	hasCapturingExpensePayment: async () => false,
 	withExpensePaymentLock: async () => undefined,
 });

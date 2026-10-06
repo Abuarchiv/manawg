@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PgDialect } from 'drizzle-orm/pg-core';
-import { EVENT_REMINDER_BUDGET } from './event-reminder-dispatch';
+import { EVENT_REMINDER_BUDGET } from '../event-reminder-dispatch';
+import { EVENTS_LIST_LIMIT, parseRecurrenceRule } from '../events';
 import { buildEventsWindowFilter, withEventWindowCandidates } from './event-reminder-window';
-import { EVENTS_LIST_LIMIT, parseRecurrenceRule } from './events';
 
 type Candidate = {
 	id: string;

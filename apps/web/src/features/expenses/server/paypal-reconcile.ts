@@ -1,11 +1,13 @@
+import 'server-only';
+
 import { recordAuditEvent } from '@/core/audit';
 import { db, expensePayments, wgMembers } from '@/core/db';
 import { logApiError } from '@/core/infra/observability';
 import { getPayPalOrder } from '@/core/infra/paypal';
 import { formatEuroCents } from '@/core/utils/money';
 import { and, eq, lt } from 'drizzle-orm';
+import { parsePayPalAmountCents, terminalPayPalCaptureOutcome } from '../paypal-settlement';
 import { withExpensePaymentLock } from './expense-payments';
-import { parsePayPalAmountCents, terminalPayPalCaptureOutcome } from './paypal-settlement';
 
 const STALE_CAPTURE_MS = 15 * 60 * 1000;
 

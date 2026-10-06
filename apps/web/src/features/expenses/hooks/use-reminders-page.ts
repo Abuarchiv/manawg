@@ -3,12 +3,12 @@ import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import type { ReminderHistoryItem } from '@/features/expenses/components/debts/ReminderHistory';
+import type { ExpensePaymentInput } from '@/features/expenses/debt-reduction';
 import {
 	type DebtExpenseInput,
 	computeBalances,
 	computeOldestDebtAges,
 } from '@/features/expenses/debts';
-import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
 import { canSendReminder } from '@/features/expenses/reminders';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
