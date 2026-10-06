@@ -21,21 +21,25 @@ function isRetryableServerError(status: number, error: string): boolean {
 	);
 }
 
+/** Resolves to whether another WG of this account still uses the endpoint. */
 async function saveServerPushOptOut(
 	code: string,
 	memberId: string,
 	endpoint?: string,
 	memberToken?: string,
-): Promise<void> {
+): Promise<boolean> {
 	const encodedCode = encodeURIComponent(code);
-	const saved = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
-		method: endpoint ? 'POST' : 'PATCH',
-		memberId,
-		memberToken,
-		body: endpoint
-			? JSON.stringify({ action: 'push_unsubscribe', endpoint })
-			: JSON.stringify({ pushOptIn: false }),
-	});
+	const saved = await apiFetch<{ ok: true; endpointInUse?: boolean }>(
+		`/api/wg/${encodedCode}/notifications`,
+		{
+			method: endpoint ? 'POST' : 'PATCH',
+			memberId,
+			memberToken,
+			body: endpoint
+				? JSON.stringify({ action: 'push_unsubscribe', endpoint })
+				: JSON.stringify({ pushOptIn: false }),
+		},
+	);
 	if (!saved.ok) {
 		if (isStaleMembershipError(saved.error)) {
 			throw new Error('Push-Abo konnte nicht deaktiviert werden: Tritt der WG erneut bei.');
@@ -45,16 +49,18 @@ async function saveServerPushOptOut(
 		}
 		throw new Error('Push-Abo konnte nicht deaktiviert werden.');
 	}
+	return saved.data?.endpointInUse === true;
 }
 
 /** Remove one browser endpoint without changing the member's other devices. */
+/** Removes this WG's use of the endpoint; resolves to whether another WG still uses it. */
 export async function retireWebPushEndpoint(
 	code: string,
 	memberId: string,
 	endpoint: string,
 	memberToken?: string,
-): Promise<void> {
-	await saveServerPushOptOut(code, memberId, endpoint, memberToken);
+): Promise<boolean> {
+	return saveServerPushOptOut(code, memberId, endpoint, memberToken);
 }
 
 async function saveServerPushOptIn(
@@ -177,9 +183,12 @@ export async function unsubscribeWebPush(
 		return;
 	}
 
+	// The browser subscription is shared by every WG of this account on this
+	// device: keep it while another WG still receives pushes through it.
+	let endpointInUse = false;
 	try {
-		await retireWebPushEndpoint(code, memberId, endpoint, memberToken);
+		endpointInUse = await retireWebPushEndpoint(code, memberId, endpoint, memberToken);
 	} finally {
-		await subscription.unsubscribe().catch(() => undefined);
+		if (!endpointInUse) await subscription.unsubscribe().catch(() => undefined);
 	}
 }

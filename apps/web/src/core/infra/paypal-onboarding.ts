@@ -97,6 +97,19 @@ export function createPayPalConnectionCookie(state: PayPalConnectionState): stri
 	return `${payload}.${signature}`;
 }
 
+/** Raw (still signed) PayPal onboarding cookie from a request, if present. */
+export function readPayPalConnectionCookie(req: Request): string | undefined {
+	const cookie = req.headers.get('cookie');
+	if (!cookie) return undefined;
+	for (const part of cookie.split(';')) {
+		const separator = part.indexOf('=');
+		if (separator >= 0 && part.slice(0, separator).trim() === PAYPAL_CONNECTION_COOKIE_NAME) {
+			return part.slice(separator + 1).trim();
+		}
+	}
+	return undefined;
+}
+
 export function verifyPayPalConnectionCookie(
 	value: string | undefined,
 	expected: Partial<

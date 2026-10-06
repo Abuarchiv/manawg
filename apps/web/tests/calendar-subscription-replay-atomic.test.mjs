@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
+import { loadClaimedResponse } from './support/claimed-response.cjs';
 
 const webDir = path.resolve(import.meta.dirname, '..');
 const requireFromWeb = createRequire(path.join(webDir, 'package.json'));
@@ -116,7 +117,27 @@ function harness({
 			},
 		},
 		'@/core/db': {
-			db: { query: { calendarSubscriptions: { findFirst: async () => null } } },
+			db: {
+				query: { calendarSubscriptions: { findFirst: async () => null } },
+				delete: (table) => ({
+					where: (condition) => ({
+						returning: async () => {
+							assert.equal(table, idempotencyResponses);
+							const lease = condition.parts.find(
+								(part) => part?.kind === 'eq' && part.parts[0] === idempotencyResponses.expiresAt,
+							)?.parts[1];
+							if (
+								state.slot?.body?._claimed !== true ||
+								state.slot.expiresAt.getTime() !== lease?.getTime()
+							) {
+								return [];
+							}
+							state.slot = null;
+							return [{ scope: 'released' }];
+						},
+					}),
+				}),
+			},
 			calendarSubscriptions,
 			idempotencyResponses,
 		},
@@ -178,6 +199,7 @@ function harness({
 		},
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	};
+	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
 	const source = readFileSync(
 		path.join(webDir, 'src/app/api/wg/[code]/calendar-subscription/route.ts'),
 		'utf8',
@@ -239,8 +261,11 @@ test('failed replay publication rolls token rotation back', async () => {
 	const response = await call('PATCH');
 	assert.equal(response.status, 500);
 	assert.equal(state.subscription.tokenSeed, 'seed-0');
-	assert.deepEqual(state.slot.body, { _claimed: true });
+	// The rolled-back request frees its claim, so a same-key retry runs at once.
+	assert.equal(state.slot, null);
 	assert.equal(state.audits, 0);
+	const retry = await call('PATCH');
+	assert.equal(retry.status, 500);
 });
 
 test('reactivation retry does not regenerate its token', async () => {

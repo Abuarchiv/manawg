@@ -9,6 +9,7 @@ import {
 	requireVerifiedMember,
 	serverError,
 	tooMany,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
@@ -106,8 +107,8 @@ export const POST = withWgRoute('paypal order POST', async (req, { code }) => {
 	let body: unknown;
 	try {
 		body = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 	const parsed = orderSchema.safeParse(body);
 	if (!parsed.success || parsed.data.fromMemberId === parsed.data.toMemberId) {
@@ -130,19 +131,19 @@ export const POST = withWgRoute('paypal order POST', async (req, { code }) => {
 
 	try {
 		const reservation = await withExpensePaymentLock(auth.wg.id, async (tx) => {
-			const [members, expenses, payments] = await Promise.all([
-				tx
-					.select({
-						id: wgMembers.id,
-						name: wgMembers.name,
-						color: wgMembers.color,
-						paypalMerchantId: wgMembers.paypalMerchantId,
-					})
-					.from(wgMembers)
-					.where(eq(wgMembers.wgId, auth.wg.id)),
-				loadOpenExpenses(auth.wg.id, tx),
-				loadCompletedExpensePayments(auth.wg.id, tx),
-			]);
+			// One transaction connection runs one query at a time; issuing them in
+			// parallel is deprecated in pg 8 and rejected in pg 9.
+			const members = await tx
+				.select({
+					id: wgMembers.id,
+					name: wgMembers.name,
+					color: wgMembers.color,
+					paypalMerchantId: wgMembers.paypalMerchantId,
+				})
+				.from(wgMembers)
+				.where(eq(wgMembers.wgId, auth.wg.id));
+			const expenses = await loadOpenExpenses(auth.wg.id, tx);
+			const payments = await loadCompletedExpensePayments(auth.wg.id, tx);
 			const memberById = new Map(members.map((member) => [member.id, member]));
 			const payee = memberById.get(parsed.data.toMemberId);
 			if (!payee) return { kind: 'response' as const, response: badRequest('member_not_in_wg') };

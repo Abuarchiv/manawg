@@ -3,14 +3,23 @@
 import { useCallback, useRef, useState } from 'react';
 
 interface PendingSet {
+	/**
+	 * Synchronous check against the latest start/end, for double-submit guards
+	 * that run before React re-renders. Stable identity.
+	 */
 	isPending: (id: string) => boolean;
+	/**
+	 * The same set as render state. Pass this (not `isPending`) to memoized
+	 * children: its identity changes on every start/end, so they re-render.
+	 */
+	pendingIds: ReadonlySet<string>;
 	start: (id: string) => void;
 	end: (id: string) => void;
 	reset: () => void;
 }
 
 export function usePendingSet(): PendingSet {
-	const [, setPending] = useState<Set<string>>(new Set());
+	const [pendingIds, setPending] = useState<ReadonlySet<string>>(new Set<string>());
 	const pendingRef = useRef<Set<string>>(new Set());
 
 	// Callbacks stay referentially stable — callers hand them to memoized
@@ -36,5 +45,5 @@ export function usePendingSet(): PendingSet {
 		setPending(next);
 	}, []);
 
-	return { isPending, start, end, reset };
+	return { isPending, pendingIds, start, end, reset };
 }

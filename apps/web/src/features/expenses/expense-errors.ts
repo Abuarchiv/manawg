@@ -87,6 +87,7 @@ const TEMPLATE_SAVE_ERRORS: Record<string, string> = {
 	description_invalid: `${TEMPLATE_SAVE_SUBJECT}: Gib eine Beschreibung ein.`,
 	interval_invalid: `${TEMPLATE_SAVE_SUBJECT}: Wähle ein gültiges Intervall.`,
 	due_date_invalid: `${TEMPLATE_SAVE_SUBJECT}: Prüfe das nächste Fälligkeitsdatum.`,
+	recurring_expense_changed: `${TEMPLATE_SAVE_SUBJECT}: Die Vorlage wurde gerade gebucht oder geändert. Lade die Ausgaben neu und bearbeite sie erneut.`,
 	splits_invalid: SPLIT_SUM_MISMATCH,
 	splits_sum_mismatch: SPLIT_SUM_MISMATCH,
 	invalid_body: `${TEMPLATE_SAVE_SUBJECT}: Die Anfrage war ungültig.`,

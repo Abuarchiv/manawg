@@ -88,6 +88,26 @@ test('a wall time inside the spring-forward gap moves to the next valid hour', (
 	assert.equal(inBerlin(computeNextDueAt(due, 1, due, 'days')), '2026-03-29 03:30');
 });
 
+test('a chore pushed out of the spring-forward gap returns to its anchor time afterwards', () => {
+	const anchorAt = new Date('2026-03-27T01:30:00.000Z'); // 27.03. 02:30 CET
+	const gapNight = computeNextDueAt(
+		new Date('2026-03-28T01:30:00.000Z'),
+		1,
+		new Date('2026-03-28T01:30:00.000Z'),
+		'days',
+		anchorAt,
+	);
+	assert.equal(inBerlin(gapNight), '2026-03-29 03:30');
+	const after = computeNextDueAt(gapNight, 1, gapNight, 'days', anchorAt);
+	assert.equal(inBerlin(after), '2026-03-30 02:30');
+});
+
+test('a due time the user moved away from the anchor is kept', () => {
+	const anchorAt = new Date('2026-03-27T01:30:00.000Z'); // 02:30 Berlin
+	const due = new Date('2026-04-01T07:00:00.000Z'); // 09:00 CEST
+	assert.equal(inBerlin(computeNextDueAt(due, 1, due, 'days', anchorAt)), '2026-04-02 09:00');
+});
+
 test('interval 0 keeps the previous due date', () => {
 	const due = new Date('2026-03-10T08:00:00.000Z');
 	assert.equal(computeNextDueAt(due, 0, new Date(), 'days').getTime(), due.getTime());

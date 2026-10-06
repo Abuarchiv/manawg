@@ -16,17 +16,23 @@ import {
 	requireVerifiedMember,
 	serverError,
 	tooMany,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
-import { AMOUNT_MAX_CENTS, AMOUNT_MIN_CENTS } from '@/features/expenses/expense-constants';
+import { MAX_SPLITS } from '@/features/expenses/expense-constants';
 import {
 	hasCapturingExpensePayment,
 	withExpensePaymentLock,
 } from '@/features/expenses/expense-payments';
+import {
+	expenseAmountSchema,
+	expenseDescriptionSchema,
+	expenseSplitSchema,
+} from '@/features/expenses/expense-schemas';
 import {
 	settledAtForOwnShare,
 	splitValidationErrorCode,
@@ -36,23 +42,13 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// Must match POST schema in ../route.ts to avoid asymmetric edit failures.
-const MAX_SPLITS = 50;
-
-// `min(0)` mirrors the POST route so legitimate Hamilton-distributed splits
-// (e.g. 1¢ over 3 debtors → [1,0,0]) can be PATCHed without spurious rejects.
-const splitSchema = z.object({
-	debtorMemberId: z.string().uuid(),
-	amountCents: z.number().int().min(0),
-});
-
 const patchSchema = z.object({
-	description: z.string().trim().min(1).max(200).optional(),
-	amountCents: z.number().int().min(AMOUNT_MIN_CENTS).max(AMOUNT_MAX_CENTS).optional(),
+	description: expenseDescriptionSchema.optional(),
+	amountCents: expenseAmountSchema.optional(),
 	currency: currencySchema.optional(),
 	imageUrl: imageUrlSchema,
 	expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
-	splits: z.array(splitSchema).min(1).max(MAX_SPLITS).optional(),
+	splits: z.array(expenseSplitSchema).min(1).max(MAX_SPLITS).optional(),
 });
 
 export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, { code, id }) => {
@@ -134,8 +130,8 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 
 	const parsed = patchSchema.safeParse(raw);

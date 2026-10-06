@@ -63,7 +63,7 @@ function harness() {
 		'@/core/idempotency-store': {
 			purgeExpiredIdempotencyResponses: async () => 0,
 		},
-		'@/core/infra/cron-auth': { verifyCronSecret: () => true },
+		'@/core/infra/cron-auth': { requireCronSecret: () => null },
 		'@/core/infra/observability': {
 			logApiError: (message) => state.events.push(`log:${message}`),
 			withCronLogging: (_name, handler) => handler,

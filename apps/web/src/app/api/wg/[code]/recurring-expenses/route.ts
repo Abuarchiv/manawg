@@ -1,5 +1,10 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, idempotencyResponses, recurringExpenses, wgMembers } from '@/core/db';
+import { db, recurringExpenses, wgMembers } from '@/core/db';
+import {
+	completeClaimedResponse,
+	lockClaimedResponse,
+	releaseClaimedResponse,
+} from '@/core/db/claimed-response';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import {
@@ -17,80 +22,73 @@ import {
 	notFound,
 	serverError,
 	tooMany,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
-import {
-	RESPONSE_REPLAY_TTL_SECONDS,
-	getCachedResponse,
-	readIdempotencyKey,
-} from '@/core/idempotency-store';
+import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import {
+	isRecurringAnchorAllowed,
 	isRecurringDueAtEditAllowed,
 	recurringDueAtSchema,
 } from '@/core/validators/recurring-due-date';
+import { MAX_SPLITS, RECURRING_INTERVAL_MAX_MONTHS } from '@/features/expenses/expense-constants';
 import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
-import { checkPaidByGuard } from '@/features/expenses/expenses';
+import {
+	expenseAmountSchema,
+	expenseDescriptionSchema,
+	expenseSplitSchema,
+} from '@/features/expenses/expense-schemas';
+import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import {
 	buildRecurringAdvance,
 	parseRecurringSplits,
 	recurringDueDateMatchesExpected,
+	serializeRecurringExpense,
 } from '@/features/expenses/recurring-expenses';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
-import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 const RECURRING_EXPENSES_LIST_LIMIT = 500;
 
 type RecurringCreateResponseBody = { recurringExpense: unknown };
 
-const recurringCreateReplay = new ReplayCache<RecurringCreateResponseBody>(IDEMPOTENCY_TTL_MS);
+const recurringCreateReplay = new ReplayCache<RecurringCreateResponseBody>();
+
+function isRecurringCreateResponseBody(body: unknown): body is RecurringCreateResponseBody {
+	return body !== null && typeof body === 'object' && 'recurringExpense' in body;
+}
 
 function recurringCreateIdempotencyScope(wgId: string, memberId: string): string {
 	return `recurring-expenses-create:${wgId}:${memberId}`;
 }
 
-const splitSchema = z.object({
-	debtorMemberId: z.string().uuid(),
-	amountCents: z.number().int().min(0),
-});
-
 const createRecurringSchema = z.object({
-	description: z.string().trim().min(1).max(200),
-	amountCents: z.number().int().min(1).max(100_000_000),
+	description: expenseDescriptionSchema,
+	amountCents: expenseAmountSchema,
 	currency: currencySchema.optional().default('EUR'),
 	paidByMemberId: z.string().uuid(),
-	intervalMonths: z.number().int().min(1).max(24).default(1),
+	intervalMonths: z.number().int().min(1).max(RECURRING_INTERVAL_MAX_MONTHS).default(1),
 	nextDueAt: recurringDueAtSchema,
-	splits: z.array(splitSchema).min(1).max(50),
+	/** Unclamped start day; later due dates keep its day-of-month. */
+	anchorAt: z.string().datetime({ offset: true }).optional(),
+	splits: z.array(expenseSplitSchema).min(1).max(MAX_SPLITS),
 });
-
-function serialize(row: typeof recurringExpenses.$inferSelect) {
-	return {
-		...row,
-		currency: 'EUR',
-		nextDueAt: row.nextDueAt.toISOString(),
-		lastCreatedAt: row.lastCreatedAt?.toISOString() ?? null,
-		pausedAt: row.pausedAt?.toISOString() ?? null,
-		createdAt: row.createdAt.toISOString(),
-		splits: parseRecurringSplits(row.splitsJson),
-	};
-}
 
 const advanceSchema = z.object({
 	id: z.string().uuid(),
-	description: z.string().trim().min(1).max(200).optional(),
-	amountCents: z.number().int().min(1).max(100_000_000).optional(),
+	description: expenseDescriptionSchema.optional(),
+	amountCents: expenseAmountSchema.optional(),
 	currency: currencySchema.optional(),
 	paidByMemberId: z.string().uuid().optional(),
-	intervalMonths: z.number().int().min(1).max(24).optional(),
+	intervalMonths: z.number().int().min(1).max(RECURRING_INTERVAL_MAX_MONTHS).optional(),
 	nextDueAt: z.string().datetime({ offset: true }).optional(),
 	expectedNextDueAt: z.string().datetime({ offset: true }).optional(),
-	splits: z.array(splitSchema).min(1).max(50).optional(),
+	splits: z.array(expenseSplitSchema).min(1).max(MAX_SPLITS).optional(),
 });
 
 const deleteRecurringSchema = z.object({
@@ -109,7 +107,7 @@ export const GET = withWgRoute(
 			.where(eq(recurringExpenses.wgId, wg.id))
 			.orderBy(asc(recurringExpenses.nextDueAt))
 			.limit(RECURRING_EXPENSES_LIST_LIMIT);
-		return NextResponse.json({ recurringExpenses: rows.map(serialize) });
+		return NextResponse.json({ recurringExpenses: rows.map(serializeRecurringExpense) });
 	},
 	{
 		fixture: (fixture) => {
@@ -150,8 +148,8 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 
 	const idemKey = readIdempotencyKey(req);
@@ -164,9 +162,17 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 		if (issues.fieldErrors.description) return badRequest('description_invalid');
 		if (issues.fieldErrors.paidByMemberId) return badRequest('member_id_invalid');
 		if (issues.fieldErrors.intervalMonths) return badRequest('interval_invalid');
-		if (issues.fieldErrors.nextDueAt) return badRequest('due_date_invalid');
+		if (issues.fieldErrors.nextDueAt || issues.fieldErrors.anchorAt) {
+			return badRequest('due_date_invalid');
+		}
 		if (issues.fieldErrors.splits) return badRequest('splits_invalid');
 		return badRequest('invalid_body');
+	}
+	if (
+		parsed.data.anchorAt !== undefined &&
+		!isRecurringAnchorAllowed(parsed.data.anchorAt, parsed.data.nextDueAt)
+	) {
+		return badRequest('due_date_invalid');
 	}
 	if (parsed.data.currency !== 'EUR') return badRequest('recurring_currency_unsupported');
 	const splitCheck = validateSplits(parsed.data.amountCents, parsed.data.splits);
@@ -248,34 +254,18 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 					template: typeof recurringExpenses.$inferSelect;
 					body: RecurringCreateResponseBody;
 			  };
+		let claimedLeaseExpiresAt: Date | null = null;
 		try {
 			written = await withExpensePaymentLock(wg.id, async (tx) => {
 				if (idemScope && idemKey) {
-					const [slot] = await tx
-						.select({
-							body: idempotencyResponses.responseBody,
-							expiresAt: idempotencyResponses.expiresAt,
-						})
-						.from(idempotencyResponses)
-						.where(
-							and(eq(idempotencyResponses.scope, idemScope), eq(idempotencyResponses.key, idemKey)),
-						)
-						.limit(1)
-						.for('update');
-					if (!slot) throw new TransactionAbort('idempotency_claim_missing');
-					if (slot.body && typeof slot.body === 'object' && 'recurringExpense' in slot.body) {
-						return { replayed: true as const, body: slot.body as RecurringCreateResponseBody };
-					}
-					if (
-						slot.expiresAt <= new Date() ||
-						!slot.body ||
-						typeof slot.body !== 'object' ||
-						Array.isArray(slot.body) ||
-						Object.keys(slot.body).length !== 1 ||
-						(slot.body as Record<string, unknown>)._claimed !== true
-					) {
-						throw new TransactionAbort('idempotency_claim_invalid');
-					}
+					const claim = await lockClaimedResponse(
+						tx,
+						idemScope,
+						idemKey,
+						isRecurringCreateResponseBody,
+					);
+					if (claim.kind === 'completed') return { replayed: true as const, body: claim.body };
+					claimedLeaseExpiresAt = claim.leaseExpiresAt;
 				}
 				const [template] = await tx
 					.insert(recurringExpenses)
@@ -287,34 +277,25 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 						amountCents: parsed.data.amountCents,
 						intervalMonths: parsed.data.intervalMonths,
 						nextDueAt: new Date(parsed.data.nextDueAt),
-						anchorAt: new Date(parsed.data.nextDueAt),
+						anchorAt: new Date(parsed.data.anchorAt ?? parsed.data.nextDueAt),
 						splitsJson: JSON.stringify(parsed.data.splits),
 					})
 					.returning();
 				if (!template) throw new TransactionAbort('insert_failed');
-				const body: RecurringCreateResponseBody = { recurringExpense: serialize(template) };
-				if (idemScope && idemKey) {
-					const rows = await tx
-						.update(idempotencyResponses)
-						.set({
-							responseBody: body,
-							expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
-						})
-						.where(
-							and(
-								eq(idempotencyResponses.scope, idemScope),
-								eq(idempotencyResponses.key, idemKey),
-								gt(idempotencyResponses.expiresAt, new Date()),
-								sql`${idempotencyResponses.responseBody} = '{"_claimed":true}'::jsonb`,
-							),
-						)
-						.returning({ scope: idempotencyResponses.scope });
-					if (rows.length !== 1) throw new TransactionAbort('idempotency_claim_missing');
+				const body: RecurringCreateResponseBody = {
+					recurringExpense: serializeRecurringExpense(template),
+				};
+				if (idemScope && idemKey && claimedLeaseExpiresAt) {
+					await completeClaimedResponse(tx, idemScope, idemKey, body, claimedLeaseExpiresAt);
 				}
 				return { replayed: false as const, template, body };
 			});
 		} catch (writeErr) {
 			replayReservation?.reject(writeErr);
+			// The write rolled back: free the claim so a same-key retry runs at once.
+			if (idemScope && idemKey && claimedLeaseExpiresAt) {
+				await releaseClaimedResponse(idemScope, idemKey, claimedLeaseExpiresAt);
+			}
 			throw writeErr;
 		}
 		if (written.replayed) {
@@ -355,8 +336,8 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 	const parsed = advanceSchema.safeParse(raw);
 	if (!parsed.success) {
@@ -420,6 +401,17 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 		// expectedNextDueAt compare-and-set.
 		const denied = await requireOwnerOrAdmin(wg.id, auth.member, template.createdByMemberId);
 		if (denied) return denied;
+		// The editor sends the due date it loaded: if a booking moved it since,
+		// saving would write the stale date back and the template would be due again.
+		if (
+			parsed.data.expectedNextDueAt !== undefined &&
+			!recurringDueDateMatchesExpected(
+				template.nextDueAt.toISOString(),
+				parsed.data.expectedNextDueAt,
+			)
+		) {
+			return conflict('recurring_expense_changed', 'recurring_expense_changed');
+		}
 		if (
 			parsed.data.nextDueAt !== undefined &&
 			!isRecurringDueAtEditAllowed(parsed.data.nextDueAt, template.nextDueAt)
@@ -498,9 +490,26 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 				splitsJson: JSON.stringify(splits),
 				updatedAt: new Date(),
 			})
-			.where(and(eq(recurringExpenses.id, parsed.data.id), eq(recurringExpenses.wgId, wg.id)))
+			// Compare-and-set on the due date: a concurrent booking (cron or
+			// "Erfassen") must not be undone by writing the stale date back.
+			.where(
+				and(
+					eq(recurringExpenses.id, parsed.data.id),
+					eq(recurringExpenses.wgId, wg.id),
+					eq(recurringExpenses.nextDueAt, template.nextDueAt),
+				),
+			)
 			.returning();
-		if (!updated) return notFound('recurring_expense_not_found');
+		if (!updated) {
+			const [stillThere] = await db
+				.select({ id: recurringExpenses.id })
+				.from(recurringExpenses)
+				.where(and(eq(recurringExpenses.id, parsed.data.id), eq(recurringExpenses.wgId, wg.id)))
+				.limit(1);
+			return stillThere
+				? conflict('recurring_expense_changed', 'recurring_expense_changed')
+				: notFound('recurring_expense_not_found');
+		}
 		await recordAuditEvent({
 			wgId: wg.id,
 			memberId: auth.member.memberId,
@@ -517,7 +526,7 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 				splitCount: splits.length,
 			},
 		});
-		return NextResponse.json({ recurringExpense: serialize(updated) });
+		return NextResponse.json({ recurringExpense: serializeRecurringExpense(updated) });
 	}
 	if (
 		parsed.data.expectedNextDueAt &&
@@ -582,15 +591,15 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 			splitCount: parseRecurringSplits(updated.splitsJson).length,
 		},
 	});
-	return NextResponse.json({ recurringExpense: serialize(updated) });
+	return NextResponse.json({ recurringExpense: serializeRecurringExpense(updated) });
 });
 
 export const DELETE = withWgRoute('recurring-expenses DELETE', async (req, { code }) => {
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 	const parsed = deleteRecurringSchema.safeParse(raw);
 	if (!parsed.success) {

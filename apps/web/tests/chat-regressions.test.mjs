@@ -317,6 +317,7 @@ function refreshHarness(apiFetch, initialMessages = []) {
 		apiFetch,
 		useCallback: (callback) => callback,
 		refreshPromiseRef: { current: null },
+		refreshSupersededRef: { current: false },
 		refreshRequestSequenceRef: { current: 0 },
 		refreshOlderOffsetRef: { current: 0 },
 		reactionMutationVersionsRef: { current: new Map() },
@@ -397,5 +398,34 @@ test('a coalesced request still respects successful mutation invalidation', asyn
 	});
 	await pending;
 	assert.deepEqual(scope.messages, [deleted]);
+	assert.equal(scope.refreshPromiseRef.current, null);
+});
+
+test('a refresh superseded by a mutation is followed by one fresh fetch, not reused', async () => {
+	const resolvers = [];
+	const sent = { id: 'sent', createdAt: '2026-09-24T10:01:00.000Z' };
+	const { scope, refresh } = refreshHarness(
+		() =>
+			new Promise((resolve) => {
+				resolvers.push(resolve);
+			}),
+	);
+	const bootstrap = refresh();
+	// What invalidatePendingRefresh() does when a message is sent mid-load.
+	scope.refreshRequestSequenceRef.current = chat.advanceChatRefreshSequence(
+		scope.refreshRequestSequenceRef.current,
+	);
+	scope.refreshSupersededRef.current = true;
+	const afterSend = refresh();
+	assert.notEqual(afterSend, bootstrap);
+	assert.equal(refresh(), afterSend);
+
+	resolvers[0]({ ok: true, data: { messages: [], reactions: [] } });
+	await bootstrap;
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(resolvers.length, 2);
+	resolvers[1]({ ok: true, data: { messages: [sent], reactions: [] } });
+	assert.equal(await afterSend, true);
+	assert.deepEqual(scope.messages, [sent]);
 	assert.equal(scope.refreshPromiseRef.current, null);
 });

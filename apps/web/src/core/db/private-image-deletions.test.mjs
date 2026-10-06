@@ -4,11 +4,27 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadClaimedResponse } from '../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const connectionString = process.env.PRIVATE_IMAGE_TEST_DATABASE_URL;
 const wgId = '11111111-1111-4111-8111-111111111111';
 const objectId = '22222222-2222-4222-8222-222222222222';
+
+/** Real expense constants and schemas, so the route validates with production limits. */
+function expenseValidationModules() {
+	const constants = loadTypeScript(
+		path.join(process.cwd(), 'src/features/expenses/expense-constants.ts'),
+		{},
+	);
+	return {
+		'@/features/expenses/expense-constants': constants,
+		'@/features/expenses/expense-schemas': loadTypeScript(
+			path.join(process.cwd(), 'src/features/expenses/expense-schemas.ts'),
+			{ '@/features/expenses/expense-constants': constants },
+		),
+	};
+}
 
 function loadTypeScript(file, overrides = {}) {
 	const source = transpileModule(readFileSync(file, 'utf8'), {
@@ -518,6 +534,10 @@ test(
 							wgChatReactions: schema.wgChatReactions,
 							wgMembers: schema.wgMembers,
 						},
+						'@/core/db/claimed-response': loadClaimedResponse({
+							'@/core/db': { db, idempotencyResponses: schema.idempotencyResponses },
+							'@/core/db/transaction': transaction,
+						}),
 						'@/core/db/private-image-deletions': helper,
 						'@/core/db/transaction': transaction,
 						'@/core/http/api-errors': {
@@ -643,6 +663,10 @@ test(
 				{
 					'./account-deletion': accountDeletion,
 					'./delete-wg': deleteWg,
+					'./member-departure': loadTypeScript(
+						path.join(process.cwd(), 'src/core/db/member-departure.ts'),
+						{ './schema': schema },
+					),
 					'./schema': schema,
 					'./transaction': transaction,
 				},
@@ -709,10 +733,7 @@ test(
 						imageUrlSchema: z.string().nullable().optional(),
 						isAllowedImageUrlForWg: () => true,
 					},
-					'@/features/expenses/expense-constants': {
-						AMOUNT_MAX_CENTS: 100_000_000,
-						AMOUNT_MIN_CENTS: 1,
-					},
+					...expenseValidationModules(),
 					'@/features/expenses/expense-payments': {
 						hasCapturingExpensePayment: async () => false,
 						withExpensePaymentLock: async (currentWgId, operation) =>
@@ -891,6 +912,10 @@ test(
 					path.join(process.cwd(), 'src/features/pinnwand/announcement-replay.ts'),
 					{
 						'@/core/db': { db, idempotencyResponses: schema.idempotencyResponses },
+						'@/core/db/claimed-response': loadClaimedResponse({
+							'@/core/db': { db, idempotencyResponses: schema.idempotencyResponses },
+							'@/core/db/transaction': transaction,
+						}),
 						'@/core/db/transaction': transaction,
 						'@/core/guards/idempotency': { claimReplaySlotWithRetry: async () => ({ won: true }) },
 						'@/core/idempotency-store': {

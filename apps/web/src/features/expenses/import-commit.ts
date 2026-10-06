@@ -1,15 +1,8 @@
 import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
-import {
-	db,
-	expenseImports,
-	expenseSplits,
-	expenses,
-	idempotencyResponses,
-	wgMembers,
-} from '@/core/db';
+import { db, expenseImports, expenseSplits, expenses, wgMembers } from '@/core/db';
+import { completeClaimedResponse, lockClaimedResponse } from '@/core/db/claimed-response';
 import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
-import { RESPONSE_REPLAY_TTL_SECONDS } from '@/core/idempotency-store';
 import {
 	type NotificationDispatchWarning,
 	dispatchNotificationSafely,
@@ -19,6 +12,7 @@ import {
 	hasCapturingExpensePayment,
 	withExpensePaymentLock,
 } from '@/features/expenses/expense-payments';
+import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { ImportSource, ParsedExpense } from './import-parsers';
@@ -28,6 +22,11 @@ interface CommitInput {
 	source: ImportSource;
 	importedByMemberId: string;
 	importedByName: string;
+	/**
+	 * WG admins may import a full shared history, including rows they were not
+	 * part of. Everyone else is held to the same paid-by rule as manual entry.
+	 */
+	mayRecordForOthers: boolean;
 	expenses: ReadonlyArray<{ parsed: ParsedExpense; skip: boolean }>;
 	mapping: Readonly<Record<string, string | null>>;
 	skipDuplicates: boolean;
@@ -147,6 +146,11 @@ function prepareRow(input: CommitInput, parsed: ParsedExpense): PreparedRow {
 	const splitSum = splitRows.reduce((acc, s) => acc + s.amountCents, 0);
 	if (splitSum !== parsed.amountCents) return { ok: false, reason: 'split_sum_mismatch' };
 
+	if (!input.mayRecordForOthers) {
+		const guard = checkPaidByGuard(paidByMemberId, input.importedByMemberId, splitRows);
+		if (!guard.ok) return { ok: false, reason: guard.reason };
+	}
+
 	return {
 		ok: true,
 		paidByMemberId,
@@ -172,16 +176,6 @@ interface ImportWriteResult {
 type ImportTransactionResult =
 	| { replayed: true; result: CommitResult }
 	| { replayed: false; value: ImportWriteResult };
-
-function isClaimPlaceholder(value: unknown): boolean {
-	return (
-		value !== null &&
-		typeof value === 'object' &&
-		!Array.isArray(value) &&
-		Object.keys(value).length === 1 &&
-		(value as Record<string, unknown>)._claimed === true
-	);
-}
 
 export function isCommitResult(value: unknown): value is CommitResult {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -218,21 +212,16 @@ async function writeImport(
 	tx: DbTransaction,
 	input: CommitInput,
 ): Promise<ImportTransactionResult> {
+	let lease: Date | null = null;
 	if (input.replay) {
-		const [slot] = await tx
-			.select({ body: idempotencyResponses.responseBody })
-			.from(idempotencyResponses)
-			.where(
-				and(
-					eq(idempotencyResponses.scope, input.replay.scope),
-					eq(idempotencyResponses.key, input.replay.key),
-				),
-			)
-			.limit(1)
-			.for('update');
-		if (!slot) throw new Error('idempotency_claim_missing');
-		if (isCommitResult(slot.body)) return { replayed: true, result: slot.body };
-		if (!isClaimPlaceholder(slot.body)) throw new Error('idempotency_claim_invalid');
+		const claim = await lockClaimedResponse(
+			tx,
+			input.replay.scope,
+			input.replay.key,
+			isCommitResult,
+		);
+		if (claim.kind === 'completed') return { replayed: true, result: claim.body };
+		lease = claim.leaseExpiresAt;
 	}
 
 	if (await hasCapturingExpensePayment(tx, input.wg.id)) {
@@ -329,22 +318,9 @@ async function writeImport(
 		})
 		.where(eq(expenseImports.id, imp.id));
 
-	if (input.replay) {
+	if (input.replay && lease) {
 		const result: CommitResult = { importId: imp.id, inserted, skipped, errors, warning: null };
-		const rows = await tx
-			.update(idempotencyResponses)
-			.set({
-				responseBody: result,
-				expiresAt: new Date(Date.now() + RESPONSE_REPLAY_TTL_SECONDS * 1000),
-			})
-			.where(
-				and(
-					eq(idempotencyResponses.scope, input.replay.scope),
-					eq(idempotencyResponses.key, input.replay.key),
-				),
-			)
-			.returning({ scope: idempotencyResponses.scope });
-		if (rows.length !== 1) throw new Error('idempotency_claim_missing');
+		await completeClaimedResponse(tx, input.replay.scope, input.replay.key, result, lease);
 	}
 
 	return {

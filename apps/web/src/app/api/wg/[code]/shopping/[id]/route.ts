@@ -5,7 +5,13 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
+import {
+	badRequest,
+	conflict,
+	notFound,
+	tooMany,
+	unreadableJsonBody,
+} from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -27,8 +33,8 @@ export const PATCH = withWgRoute<{ id: string }>('shopping PATCH', async (req, {
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 
 	const parsed = patchShoppingItemSchema.safeParse(raw);

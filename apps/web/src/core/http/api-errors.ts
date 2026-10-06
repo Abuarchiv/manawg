@@ -96,6 +96,16 @@ export function payloadTooLarge(
 }
 
 /**
+ * Response for a body `readJsonLimited` refused: 413 when it exceeded the byte
+ * cap (the client should shorten it, not retry), otherwise 400 `invalid_json`.
+ */
+export function unreadableJsonBody(err: unknown): NextResponse<ApiErrorBody> {
+	return err instanceof Error && err.message === 'payload_too_large'
+		? payloadTooLarge()
+		: badRequest('invalid_json');
+}
+
+/**
  * Return a server error response. Idempotency safety failures are returned as
  * an explicit retryable 503 so callers never continue into the mutation.
  *

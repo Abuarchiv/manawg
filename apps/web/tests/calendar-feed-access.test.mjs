@@ -89,6 +89,9 @@ const timeUtils = loadTypeScriptModule(path.join(srcPath, 'core/utils/time.ts'))
 const eventUtils = loadTypeScriptModule(path.join(srcPath, 'features/events/events.ts'), {
 	'@/core/utils/berlin-day': berlinDay,
 	'@/core/utils/time': timeUtils,
+	'@/features/events/event-limits': loadTypeScriptModule(
+		path.join(srcPath, 'features/events/event-limits.ts'),
+	),
 });
 const eventWindow = loadTypeScriptModule(
 	path.join(srcPath, 'features/events/event-reminder-window.ts'),
@@ -102,6 +105,7 @@ const eventWindow = loadTypeScriptModule(
 );
 
 function harness({
+	token = 'valid',
 	authUserId = 'auth-user',
 	deactivatedAt = null,
 	revokedAt = null,
@@ -169,15 +173,15 @@ function harness({
 							: [];
 					}
 					if (table === calendarSubscriptions) {
-						return state.revokedAt ? [] : [{ wgId }];
+						return state.revokedAt ? [] : [{ wgId, tokenSeed: 'seed' }];
 					}
 					throw new Error(`unexpected limit query: ${String(table)}`);
 				},
 				for: async (lock) => {
 					assert.equal(table, wgs);
-					assert.equal(lock, 'update');
+					assert.equal(lock, 'share');
 					state.steps.push('wg-lock');
-					return state.wgExists ? [{ id: wgId }] : [];
+					return state.wgExists ? [{ id: wgId, name: 'Sonnenhof' }] : [];
 				},
 				orderBy() {
 					assert.equal(table, wgEvents);
@@ -192,6 +196,8 @@ function harness({
 		'@/core/db/transaction': { withTransaction: async (operation) => operation(tx) },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/http/api-errors': {
+			HTTP: { SERVICE_UNAVAILABLE: 503 },
+			apiError: (code, status) => Response.json({ error: code }, { status }),
 			notFound: (code) => Response.json({ error: code }, { status: 404 }),
 			serverError: (code) => Response.json({ error: code }, { status: 500 }),
 			tooMany: (code) => Response.json({ error: code }, { status: 429 }),
@@ -218,16 +224,17 @@ function harness({
 			},
 		},
 		'@/features/events/ics': {
-			calendarFeedToIcs: (events) => events.map((event) => event.title).join('\n'),
+			calendarFeedToIcs: (events, calendarName) =>
+				[`CALNAME:${calendarName}`, ...events.map((event) => event.title)].join('\n'),
 		},
 		'drizzle-orm': drizzle,
 		'next/server': { NextResponse: Response },
 	};
 	const route = loadTypeScriptModule(routePath, mocks);
-	const request = new Request(`https://example.test/api/calendar/${id}/valid`);
+	const request = new Request(`https://example.test/api/calendar/${id}/${token}`);
 	return {
 		state,
-		get: () => route.GET(request, { params: Promise.resolve({ id, token: 'valid' }) }),
+		get: () => route.GET(request, { params: Promise.resolve({ id, token }) }),
 	};
 }
 
@@ -254,8 +261,17 @@ test('active Auth-linked calendar feed returns events after locking the WG', asy
 	// The sample event is on 2026-10-01; with the real clock it would eventually drop out of the feed.
 	const response = await withFrozenTime('2026-09-25T12:00:00.000Z', get);
 	assert.equal(response.status, 200);
-	assert.match(await response.text(), /Other member event/);
+	const body = await response.text();
+	assert.match(body, /Other member event/);
+	assert.match(body, /CALNAME:ManaWG · Sonnenhof/);
 	assert.deepEqual(state.steps, ['wg-lock', 'member-check', 'events']);
+});
+
+test('a wrong feed token is rejected before the WG row is locked', async () => {
+	const { state, get } = harness({ token: 'stale-token' });
+	const response = await get();
+	assert.equal(response.status, 404);
+	assert.deepEqual(state.steps, []);
 });
 
 test('detached or deactivated membership cannot use its old calendar URL', async () => {
@@ -314,7 +330,10 @@ test('calendar feed keeps all-day events through their final Berlin day across D
 			assert.match(body, /All-day today/);
 			assert.match(body, /All-day span ending today/);
 		});
-		assert.equal(state.expansionWindows[0]?.from, dayStart);
+		assert.equal(
+			state.expansionWindows[0]?.to,
+			new Date(dayStartDate.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+		);
 	}
 });
 
@@ -339,6 +358,7 @@ test('calendar feed loads only events that can occur in the feed window', async 
 	const { state, get } = harness({
 		events: [
 			eventRow('past-single', '2024-01-10T10:00:00.000Z'),
+			eventRow('recent-single', '2026-08-01T10:00:00.000Z'),
 			eventRow('past-ended-series', '2024-01-01T10:00:00.000Z', {
 				recurrence: 'FREQ=WEEKLY;COUNT=3',
 			}),
@@ -354,10 +374,13 @@ test('calendar feed loads only events that can occur in the feed window', async 
 		const body = await response.text();
 		assert.match(body, /old-weekly-series/);
 		assert.match(body, /upcoming-single/);
+		// Recent history stays in the feed so calendar apps do not delete it at midnight.
+		assert.match(body, /recent-single/);
 		assert.doesNotMatch(body, /past-single|past-ended-series|beyond-horizon/);
 	});
 	assert.deepEqual([...new Set(state.expandedEventIds)].sort(), [
 		'old-weekly-series',
+		'recent-single',
 		'upcoming-single',
 	]);
 	assert.ok(state.eventQueries.every((count) => count <= 500));

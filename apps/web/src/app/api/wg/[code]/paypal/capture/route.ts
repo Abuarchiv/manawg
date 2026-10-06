@@ -10,6 +10,7 @@ import {
 	requireVerifiedMember,
 	serverError,
 	tooMany,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
@@ -46,8 +47,8 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 	let body: unknown;
 	try {
 		body = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 	const parsed = captureSchema.safeParse(body);
 	if (!parsed.success) return badRequest('order_id_invalid');
@@ -126,14 +127,14 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 			}
 			// ponytail: one unresolved PayPal capture per WG; per-account starts if throughput needs it.
 			if (await hasCapturingExpensePayment(tx, auth.wg.id)) return { kind: 'busy' as const };
-			const [members, expenses, payments] = await Promise.all([
-				tx
-					.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
-					.from(wgMembers)
-					.where(eq(wgMembers.wgId, auth.wg.id)),
-				loadOpenExpenses(auth.wg.id, tx),
-				loadCompletedExpensePayments(auth.wg.id, tx),
-			]);
+			// One transaction connection runs one query at a time; issuing them in
+			// parallel is deprecated in pg 8 and rejected in pg 9.
+			const members = await tx
+				.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
+				.from(wgMembers)
+				.where(eq(wgMembers.wgId, auth.wg.id));
+			const expenses = await loadOpenExpenses(auth.wg.id, tx);
+			const payments = await loadCompletedExpensePayments(auth.wg.id, tx);
 			const debt = simplifyDebts(computeNetBalances(expenses, members, payments)).find(
 				(item) =>
 					item.fromId === current.fromMemberId &&

@@ -21,7 +21,7 @@ interface ExpenseHistoryProps {
 	expanded: Set<string>;
 	highlightedId: string | null;
 	currentMemberId: string;
-	isPending: (id: string) => boolean;
+	pendingIds: ReadonlySet<string>;
 	memberName: (id: string) => string;
 	onToggleExpand: (id: string) => void;
 	onDelete: (id: string) => void;
@@ -41,7 +41,7 @@ export function ExpenseHistory({
 	expanded,
 	highlightedId,
 	currentMemberId,
-	isPending,
+	pendingIds,
 	memberName,
 	onToggleExpand,
 	onDelete,
@@ -74,7 +74,7 @@ export function ExpenseHistory({
 										onDelete={onDelete}
 										onEdit={onEdit}
 										onToggleSettle={onToggleSettle}
-										isPending={isPending}
+										pendingIds={pendingIds}
 										memberName={memberName}
 										currentMemberId={currentMemberId}
 										highlighted={highlightedId === expense.id}

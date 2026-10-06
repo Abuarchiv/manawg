@@ -2,7 +2,7 @@ import { db, wgChatMessages, wgChatReads } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, notFound, tooMany } from '@/core/http/api-errors';
+import { badRequest, notFound, tooMany, unreadableJsonBody } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { chatReadLimiter, checkRateLimit } from '@/core/rate-limit';
 import { buildChatReadMarkerSetWhere } from '@/features/chat/chat-read-query';
@@ -18,8 +18,8 @@ export const POST = withWgRoute('chat read POST', async (req, { code }) => {
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 	const parsed = postSchema.safeParse(raw);
 	if (!parsed.success) return badRequest('body_invalid');

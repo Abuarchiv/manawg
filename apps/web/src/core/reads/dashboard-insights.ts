@@ -1,6 +1,11 @@
-import { berlinDayKey, endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
+import {
+	berlinCalendarDayDistance,
+	berlinDayKey,
+	endOfBerlinDay,
+	startOfBerlinDay,
+} from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
-import { MS_PER_DAY, formatShortDate, parseTimestamp } from '@/core/utils/time';
+import { formatShortDate, parseTimestamp } from '@/core/utils/time';
 import type { EventOccurrence } from '@/features/events/events';
 import { simplifyDebts } from '@/features/expenses/debt-reduction';
 
@@ -100,14 +105,7 @@ function formatCurrencyTotals(totals: Readonly<Record<string, number>>): string 
 
 function calendarDayDistance(iso: string, now: number): number | null {
 	const dueAt = parseTimestamp(iso);
-	if (dueAt === null) return null;
-	// Calendar-day difference in Berlin time — a plain ms/24h rounding put
-	// same-day-evening chores under "morgen" and 13h-overdue items at "1 T.".
-	const dueKey = berlinDayKey(new Date(dueAt));
-	const nowKey = berlinDayKey(new Date(now));
-	return Math.round(
-		(Date.parse(`${dueKey}T12:00:00Z`) - Date.parse(`${nowKey}T12:00:00Z`)) / MS_PER_DAY,
-	);
+	return dueAt === null ? null : berlinCalendarDayDistance(new Date(now), new Date(dueAt));
 }
 
 function dueLabel(iso: string, now: number): string {

@@ -3,8 +3,9 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
-import { integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { PgDialect, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadClaimedResponse } from '../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const routePath = path.join(process.cwd(), 'src/app/api/wg/[code]/expenses/route.ts');
@@ -58,6 +59,21 @@ class TransactionAbort extends Error {
 		super(code);
 		this.code = code;
 	}
+}
+
+/** Real expense constants and schemas, so the route validates with production limits. */
+function expenseValidationModules() {
+	const constants = loadTypeScript(
+		path.join(process.cwd(), 'src/features/expenses/expense-constants.ts'),
+		{},
+	);
+	return {
+		'@/features/expenses/expense-constants': constants,
+		'@/features/expenses/expense-schemas': loadTypeScript(
+			path.join(process.cwd(), 'src/features/expenses/expense-schemas.ts'),
+			{ '@/features/expenses/expense-constants': constants },
+		),
+	};
 }
 
 function loadTypeScript(file, overrides) {
@@ -158,6 +174,8 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 		raceConstraint: null,
 		raceWinner: null,
 		rejectImageAttachment: false,
+		failCommit: false,
+		reclaimOnRollback: false,
 	};
 
 	const claimId = (scope, key) => `${scope}\u0000${key}`;
@@ -229,6 +247,23 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 				true,
 			),
 		update: () => ({ set: () => ({ where: () => ({ returning: async () => [] }) }) }),
+		delete: (table) => ({
+			where: (condition) => ({
+				returning: async () => {
+					assert.equal(table, idempotencyResponses);
+					const [scope, key, lease] = new PgDialect().sqlToQuery(condition).params;
+					const row = state.idempotency.get(claimId(scope, key));
+					if (
+						JSON.stringify(row?.body) !== '{"_claimed":true}' ||
+						row.expiresAt.getTime() !== Date.parse(lease)
+					) {
+						return [];
+					}
+					state.idempotency.delete(claimId(scope, key));
+					return [{ scope }];
+				},
+			}),
+		}),
 	};
 	const txFor = (local) => ({
 		select: () => selectQuery(local),
@@ -313,7 +348,7 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 		return null;
 	};
 
-	const route = loadTypeScript(routePath, {
+	const routeMocks = {
 		'@/core/db/private-image-deletions': {
 			assertPrivateImageCanBeAttached: async () => {
 				if (state.rejectImageAttachment) throw new TransactionAbort('image_removed');
@@ -380,10 +415,7 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 			imageUrlSchema: requireFromWeb('zod').z.string().nullable().optional(),
 			isAllowedImageUrlForWg: () => true,
 		},
-		'@/features/expenses/expense-constants': {
-			AMOUNT_MAX_CENTS: 100_000_000,
-			AMOUNT_MIN_CENTS: 1,
-		},
+		...expenseValidationModules(),
 		'@/features/expenses/expense-payments': {
 			hasCapturingExpensePayment: async () => state.capturing,
 			loadCompletedExpensePayments: async () => [],
@@ -397,7 +429,19 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 					template: structuredClone(state.template),
 					lastFoundExpense: null,
 				};
-				const result = await operation(txFor(local));
+				let result;
+				try {
+					result = await operation(txFor(local));
+				} catch (err) {
+					if (state.reclaimOnRollback) {
+						// Another request took the key over with a fresh lease meanwhile.
+						for (const row of state.idempotency.values()) {
+							row.expiresAt = new Date(row.expiresAt.getTime() + 60_000);
+						}
+					}
+					throw err;
+				}
+				if (state.failCommit) throw new Error('commit_outcome_unknown');
 				state.idempotency = local.idempotency;
 				state.expenses = local.expenses;
 				state.splits = local.splits;
@@ -406,6 +450,10 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 			},
 		},
 		'@/features/expenses/expenses': expenseHelpers,
+		'@/features/expenses/paid-by-guard': loadTypeScript(
+			path.join(process.cwd(), 'src/features/expenses/paid-by-guard.ts'),
+			{},
+		),
 		'@/features/expenses/split-math': {
 			splitValidationErrorCode: (reason) => reason,
 			validateSplits: (amount, splits) =>
@@ -422,7 +470,9 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 			wgMembers,
 		},
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
-	});
+	};
+	routeMocks['@/core/db/claimed-response'] = loadClaimedResponse(routeMocks);
+	const route = loadTypeScript(routePath, routeMocks);
 
 	return {
 		state,
@@ -595,6 +645,36 @@ test('does not treat a different PostgreSQL unique constraint as a recurring rep
 	assert.equal(response.status, 500);
 	assert.equal(state.expenses.length, 0);
 	assert.equal(state.sideEffects, 0);
+	assert.equal(state.idempotency.size, 0, 'the rolled-back write frees its claim');
+});
+
+test('an uncertain COMMIT keeps the expense claim fail-closed', async () => {
+	const { state, post } = harness();
+	state.failCommit = true;
+	const response = await post({
+		key: 'uncertain-commit-key',
+		body: defaultBody({ recurringExpenseId: undefined, expectedRecurringNextDueAt: undefined }),
+	});
+	assert.equal(response.status, 500);
+	assert.deepEqual(
+		[...state.idempotency.values()].map((row) => row.body),
+		[{ _claimed: true }],
+	);
+});
+
+test('a rolled-back expense keeps a claim that another request took over', async () => {
+	const { state, post } = harness();
+	state.capturing = true;
+	state.reclaimOnRollback = true;
+	const response = await post({
+		key: 'reclaimed-key',
+		body: defaultBody({ recurringExpenseId: undefined, expectedRecurringNextDueAt: undefined }),
+	});
+	assert.equal(response.status, 409);
+	assert.deepEqual(
+		[...state.idempotency.values()].map((row) => row.body),
+		[{ _claimed: true }],
+	);
 });
 
 test('revoked private image attachment returns 409 without creating an expense', async () => {
@@ -658,6 +738,7 @@ function getHarness({ expenseCount, readLimited = false }) {
 	const stub = new Proxy({}, { get: () => () => undefined });
 	const route = loadTypeScript(routePath, {
 		'@/core/db': { db, expenseSplits, expenses, idempotencyResponses, recurringExpenses },
+		'@/core/db/claimed-response': stub,
 		'@/core/db/private-image-deletions': stub,
 		'@/core/db/transaction': { TransactionAbort },
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
@@ -694,9 +775,10 @@ function getHarness({ expenseCount, readLimited = false }) {
 		'@/core/validators/image-url': {
 			imageUrlSchema: requireFromWeb('zod').z.string().nullable().optional(),
 		},
-		'@/features/expenses/expense-constants': { AMOUNT_MAX_CENTS: 100_000_000, AMOUNT_MIN_CENTS: 1 },
+		...expenseValidationModules(),
 		'@/features/expenses/expense-payments': { loadCompletedExpensePayments: async () => [] },
 		'@/features/expenses/expenses': stub,
+		'@/features/expenses/paid-by-guard': stub,
 		'@/features/expenses/split-math': stub,
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	});

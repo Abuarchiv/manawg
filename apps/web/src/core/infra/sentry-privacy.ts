@@ -23,7 +23,24 @@ type SentryEventShape = {
 
 export const SAFE_TAG_VALUES: Record<string, ReadonlySet<string>> = {
 	area: new Set(['startup', 'rate-limit']),
-	boundary: new Set(['global', 'root', 'wg-code']),
+	// One value per error.tsx; keep in sync when a route boundary is added.
+	boundary: new Set([
+		'global',
+		'root',
+		'wg-code',
+		'wg-abos',
+		'wg-aktivitaet',
+		'wg-ausgaben',
+		'wg-chat',
+		'wg-einkauf',
+		'wg-einstellungen',
+		'wg-import',
+		'wg-kalender',
+		'wg-mahnungen',
+		'wg-pinnwand',
+		'wg-putzen',
+		'wg-vorraete',
+	]),
 	cronJob: new Set(['event-reminders', 'chore-reminders', 'maintenance', 'recurring-advance']),
 	method: new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD']),
 };

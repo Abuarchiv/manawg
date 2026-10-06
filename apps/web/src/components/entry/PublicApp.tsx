@@ -20,6 +20,7 @@ import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { hasSessionCookie } from '@/core/auth/session-hint';
+import { REQUEST_TIMEOUT_MS, anySignal } from '@/core/infra/api-client';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { LogoMark } from '@/shared/components/ui/LogoMark';
 import { cn } from '@/shared/lib/cn';
@@ -148,7 +149,10 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 			return;
 		}
 		setMembershipState('loading');
-		fetch('/api/wg/mine', { cache: 'no-store', signal: controller.signal })
+		fetch('/api/wg/mine', {
+			cache: 'no-store',
+			signal: anySignal([controller.signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]),
+		})
 			.then(async (response) => {
 				if (response.status === 401) {
 					setMemberships([]);

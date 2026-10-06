@@ -10,6 +10,7 @@ import {
 	notFound,
 	requireVerifiedMember,
 	tooMany,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -31,8 +32,8 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 		let body: { settled?: unknown };
 		try {
 			body = (await readJsonLimited(req)) as { settled?: unknown };
-		} catch {
-			return badRequest('invalid_json');
+		} catch (err) {
+			return unreadableJsonBody(err);
 		}
 		// `null`, arrays and scalars are valid JSON but not a body; without this a
 		// literal `null` dereferences below and surfaces as a 500.

@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { PgDialect, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadClaimedResponse } from '../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const file = path.join(process.cwd(), 'src/features/pinnwand/announcement-replay.ts');
@@ -16,6 +17,13 @@ const idempotencyResponses = pgTable('idempotency_responses', {
 	responseBody: jsonb('response_body'),
 	expiresAt: timestamp('expires_at', { withTimezone: true }),
 });
+
+class TransactionAbort extends Error {
+	constructor(code) {
+		super(code);
+		this.code = code;
+	}
+}
 
 function harness() {
 	const state = {
@@ -30,15 +38,19 @@ function harness() {
 		warningWhere: '',
 		releaseWhere: '',
 		transientReleaseQuery: null,
-		claimExpiry: new Date('2026-09-25T00:00:00.000Z'),
+		claimExpiry: new Date(Date.now() + 15 * 60_000),
 	};
 	let prior = Promise.resolve();
 	const db = {
 		delete: () => ({
-			where: async (condition) => {
-				state.releaseWhere = new PgDialect().sqlToQuery(condition).sql;
-				if (state.slot?._claimed) state.slot = null;
-			},
+			where: (condition) => ({
+				returning: async () => {
+					state.releaseWhere = new PgDialect().sqlToQuery(condition).sql;
+					if (!state.slot?._claimed) return [];
+					state.slot = null;
+					return [{ scope }];
+				},
+			}),
 		}),
 		update: () => ({
 			set: () => ({
@@ -112,17 +124,13 @@ function harness() {
 	const module = { exports: {} };
 	const overrides = {
 		'@/core/db': { db, idempotencyResponses },
-		'@/core/db/transaction': { withTransaction },
+		'@/core/db/transaction': { TransactionAbort, withTransaction },
 		'@/core/guards/idempotency': {
 			claimReplaySlotWithRetry: async () => {
 				state.claims++;
 				if (!state.slot) state.slot = { _claimed: true };
 				return { won: true };
 			},
-		},
-		'@/core/db/claimed-response': {
-			completeClaimedResponse: async (tx, _scope, _key, responseBody) =>
-				(await tx.update().set({ responseBody }).where().returning()).length > 0,
 		},
 		'@/core/idempotency-store': {
 			getCachedResponse: async () =>
@@ -131,6 +139,7 @@ function harness() {
 		},
 		'@/core/infra/observability': { logApiError: () => undefined },
 	};
+	overrides['@/core/db/claimed-response'] = loadClaimedResponse(overrides);
 	new Function('require', 'module', 'exports', source)(
 		(name) => (name in overrides ? overrides[name] : requireFromWeb(name)),
 		module,

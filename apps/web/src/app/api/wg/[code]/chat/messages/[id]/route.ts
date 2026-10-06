@@ -12,6 +12,7 @@ import {
 	notFound,
 	requireVerifiedMember,
 	tooMany,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -34,8 +35,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 		let raw: unknown;
 		try {
 			raw = await readJsonLimited(req);
-		} catch {
-			return badRequest('invalid_json');
+		} catch (err) {
+			return unreadableJsonBody(err);
 		}
 		const parsed = patchSchema.safeParse(raw);
 		if (!parsed.success) return badRequest('body_invalid');
@@ -82,10 +83,6 @@ export const PATCH = withWgRoute<{ id: string }>(
 			entityType: 'chat_message',
 			entityId: id,
 			summary: `${auth.member.name} hat eine Chat-Nachricht bearbeitet.`,
-			metadata: {
-				previewBefore: row.body?.slice(0, 80) ?? null,
-				previewAfter: updated.body?.slice(0, 80) ?? null,
-			},
 		});
 
 		return NextResponse.json({ message: updated });
@@ -116,7 +113,6 @@ export const DELETE = withWgRoute<{ id: string }>(
 				.select({
 					senderMemberId: wgChatMessages.senderMemberId,
 					deletedAt: wgChatMessages.deletedAt,
-					body: wgChatMessages.body,
 					kind: wgChatMessages.kind,
 					imageUrl: wgChatMessages.imageUrl,
 				})
@@ -137,7 +133,9 @@ export const DELETE = withWgRoute<{ id: string }>(
 
 			const [updated] = await tx
 				.update(wgChatMessages)
-				.set({ deletedAt: new Date() })
+				// Reads already hide a deleted message's text; erase it at rest too,
+				// so "gelöscht" means deleted (GDPR Art. 17), not merely hidden.
+				.set({ deletedAt: new Date(), body: null })
 				.where(
 					and(
 						eq(wgChatMessages.id, id),
@@ -162,7 +160,6 @@ export const DELETE = withWgRoute<{ id: string }>(
 			entityId: id,
 			summary: `${auth.member.name} hat eine Chat-Nachricht gelöscht.`,
 			metadata: {
-				preview: row.body?.slice(0, 80) ?? null,
 				kind: row.kind,
 				adminOverride: !isAuthor,
 			},

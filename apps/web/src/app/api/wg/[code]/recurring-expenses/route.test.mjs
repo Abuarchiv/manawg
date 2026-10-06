@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadClaimedResponse } from '../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const srcRoot = path.join(process.cwd(), 'src');
@@ -135,7 +136,7 @@ function harness({ callerId = otherMemberId, isAdmin = false } = {}) {
 		'@/core/infra/observability': { logApiError: () => {} },
 		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
 		'@/features/expenses/expense-payments': { withExpensePaymentLock: async () => {} },
-		'@/features/expenses/expenses': { checkPaidByGuard: () => ({ ok: true }) },
+		'@/features/expenses/paid-by-guard': { checkPaidByGuard: () => ({ ok: true }) },
 		'drizzle-orm': new Proxy({}, { get: () => () => ({}) }),
 		'next/server': {
 			NextResponse: Object.assign(class extends Response {}, {
@@ -143,6 +144,7 @@ function harness({ callerId = otherMemberId, isAdmin = false } = {}) {
 			}),
 		},
 	};
+	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
 	const route = loadTs(routePath, mocks);
 	return {
 		state,
@@ -206,4 +208,29 @@ test('PATCH resending the unchanged due date keeps the cadence anchor', async (t
 	const moved = await patch({ nextDueAt: '2026-11-15T11:00:00.000Z' });
 	assert.equal(moved.status, 200);
 	assert.equal(state.template.anchorAt.toISOString(), '2026-11-15T11:00:00.000Z');
+});
+
+test('PATCH from an editor that loaded an older due date is refused, not written back', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });
+	const { state, patch } = harness({ callerId: creatorId });
+	const loadedDueAt = state.template.nextDueAt.toISOString();
+	// A booking (cron or "Erfassen") moved the template on after the form was opened.
+	state.template.nextDueAt = new Date('2026-11-01T11:00:00.000Z');
+
+	const stale = await patch({
+		description: 'Miete neu',
+		nextDueAt: loadedDueAt,
+		expectedNextDueAt: loadedDueAt,
+	});
+	assert.equal(stale.status, 409);
+	assert.deepEqual(await stale.json(), { error: 'recurring_expense_changed' });
+	assert.equal(state.updates.length, 0);
+	assert.equal(state.template.nextDueAt.toISOString(), '2026-11-01T11:00:00.000Z');
+
+	const fresh = await patch({
+		description: 'Miete neu',
+		expectedNextDueAt: '2026-11-01T11:00:00.000Z',
+	});
+	assert.equal(fresh.status, 200);
+	assert.equal(state.template.description, 'Miete neu');
 });

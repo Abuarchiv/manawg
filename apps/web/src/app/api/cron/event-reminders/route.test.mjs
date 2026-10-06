@@ -31,6 +31,9 @@ const timeUtils = loadTypeScriptModule(path.join(srcPath, 'core/utils/time.ts'))
 const eventUtils = loadTypeScriptModule(path.join(srcPath, 'features/events/events.ts'), {
 	'@/core/utils/berlin-day': berlinDay,
 	'@/core/utils/time': timeUtils,
+	'@/features/events/event-limits': loadTypeScriptModule(
+		path.join(srcPath, 'features/events/event-limits.ts'),
+	),
 });
 const reminderUtils = loadTypeScriptModule(
 	path.join(srcPath, 'features/events/event-reminder-dispatch.ts'),
@@ -188,7 +191,7 @@ function makeHarness({ failureMode = 'partial', eventEndsAt = '2026-10-26T11:00:
 	const { startOfBerlinDay, nextBerlinDayStart } = berlinDay;
 	const route = loadTypeScriptModule(routePath, {
 		'@/core/db': { db, idempotencyResponses, wgEvents, wgMembers, wgs },
-		'@/core/infra/cron-auth': { verifyCronSecret: () => true },
+		'@/core/infra/cron-auth': { requireCronSecret: () => null },
 		'@/core/infra/observability': { withCronLogging: (_name, handler) => handler },
 		'@/core/notifications/notification-dispatch': {
 			dispatchNotification: async (input) => {

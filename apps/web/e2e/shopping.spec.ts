@@ -241,7 +241,11 @@ test.describe('shopping mutation regression', () => {
 		name: item.name,
 		quantity: null,
 		bought: false,
-		replay: { scope: 'shopping-create:wg:member', key: 'same-key' },
+		replay: {
+			scope: 'shopping-create:wg:member',
+			key: 'same-key',
+			leaseExpiresAt: new Date(Date.now() + 15 * 60_000),
+		},
 	};
 
 	function createTransaction(state: State, returnItem = true): DbTransaction {
@@ -254,15 +258,6 @@ test.describe('shopping mutation regression', () => {
 							if (!returnItem) return [];
 							state.item = item;
 							return [item];
-						},
-					}),
-				};
-			}
-			if (table === idempotencyResponses) {
-				return {
-					values: (values: { responseBody: CachedShoppingResponse }) => ({
-						onConflictDoUpdate: async () => {
-							state.response = values.responseBody;
 						},
 					}),
 				};
@@ -380,6 +375,7 @@ test.describe('shopping mutation regression', () => {
 				'shopping-create:wg:member',
 				'same-key',
 				SHOPPING_CREATE_DUPLICATE_RESPONSE,
+				new Date(Date.now() + 15 * 60_000),
 			),
 		).resolves.toBe(true);
 		const crossProcessRetry = await claimReplaySlot(

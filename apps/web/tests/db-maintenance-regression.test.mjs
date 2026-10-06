@@ -151,7 +151,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 				markPrivateImageStorageDeleted: async () => undefined,
 			},
 			'@/core/idempotency-store': idempotency,
-			'@/core/infra/cron-auth': { verifyCronSecret: () => true },
+			'@/core/infra/cron-auth': { requireCronSecret: () => null },
 			'@/core/infra/observability': loadObservability(env, logs),
 			'@/core/infra/paypal': { isPayPalConfigured: () => false },
 			'@/features/expenses/paypal-reconcile': {

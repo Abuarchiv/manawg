@@ -24,7 +24,7 @@ import { getAbsentMemberIds } from '@/features/chores/absence';
 import { computeNetBalances } from '@/features/expenses/debt-reduction';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
 import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, isNull } from 'drizzle-orm';
 import { type ActivityKind, formatAuditActivityText } from './activity';
 import { type WgHealth, getWgHealth } from './dashboard-insights';
 import {
@@ -149,17 +149,17 @@ export interface DashboardData {
 	setup: DashboardSetup;
 }
 
+/** `announcementRows` holds manual posts only, newest first. */
 function getLatestManualAnnouncement(
 	announcementRows: Array<{
 		id?: string;
 		content: string;
 		authorMemberId: string;
-		source: string | null;
 		createdAt: Date;
 	}>,
 	memberById: Map<string, { name: string }>,
 ): DashboardData['latestAnnouncement'] {
-	const latestManual = announcementRows.find((item) => item.source === 'manual');
+	const latestManual = announcementRows[0];
 	return latestManual
 		? {
 				...(latestManual.id ? { id: latestManual.id } : {}),
@@ -168,13 +168,6 @@ function getLatestManualAnnouncement(
 				createdAt: latestManual.createdAt.toISOString(),
 			}
 		: null;
-}
-
-function countOpenManualAnnouncements(
-	announcementRows: Array<{ source: string | null; status: string }>,
-): number {
-	return announcementRows.filter((item) => item.source === 'manual' && item.status === 'open')
-		.length;
 }
 
 function getCurrentAbsenceRowsByMember<
@@ -400,9 +393,11 @@ export async function loadDashboardData(
 		expenseRows,
 		splitRows,
 		paymentRows,
-		shoppingRows,
+		openShopping,
+		recentShopping,
 		choreRows,
 		announcementRows,
+		openAnnouncementCountRows,
 	] = await Promise.all([
 		db
 			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
@@ -439,18 +434,25 @@ export async function loadDashboardData(
 			})
 			.from(expensePayments)
 			.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed'))),
+		// Bought items accumulate forever; the dashboard only needs the open list
+		// (count and top entries) plus the latest few for the activity preview.
+		db
+			.select({ name: shoppingItems.name, quantity: shoppingItems.quantity })
+			.from(shoppingItems)
+			.where(and(eq(shoppingItems.wgId, wgId), isNull(shoppingItems.boughtAt)))
+			.orderBy(desc(shoppingItems.createdAt)),
 		db
 			.select({
 				id: shoppingItems.id,
 				name: shoppingItems.name,
-				quantity: shoppingItems.quantity,
 				addedByMemberId: shoppingItems.addedByMemberId,
 				createdAt: shoppingItems.createdAt,
 				boughtAt: shoppingItems.boughtAt,
 			})
 			.from(shoppingItems)
 			.where(eq(shoppingItems.wgId, wgId))
-			.orderBy(desc(shoppingItems.createdAt)),
+			.orderBy(desc(shoppingItems.createdAt))
+			.limit(ACTIVITY_LIMIT),
 		db
 			.select({
 				id: chores.id,
@@ -467,13 +469,26 @@ export async function loadDashboardData(
 					id: announcements.id,
 					content: announcements.content,
 					authorMemberId: announcements.authorMemberId,
-					source: announcements.source,
-					status: announcements.status,
 					createdAt: announcements.createdAt,
 				})
 				.from(announcements)
-				.where(eq(announcements.wgId, wgId))
-				.orderBy(desc(announcements.createdAt)),
+				.where(and(eq(announcements.wgId, wgId), eq(announcements.source, 'manual')))
+				.orderBy(desc(announcements.createdAt))
+				.limit(ACTIVITY_LIMIT),
+			() => [],
+		),
+		withFallback(
+			'openAnnouncementCount',
+			db
+				.select({ value: count() })
+				.from(announcements)
+				.where(
+					and(
+						eq(announcements.wgId, wgId),
+						eq(announcements.source, 'manual'),
+						eq(announcements.status, 'open'),
+					),
+				),
 			() => [],
 		),
 	]);
@@ -484,7 +499,6 @@ export async function loadDashboardData(
 
 	const spendSummary = summarizeDashboardSpend(expenseRows, now);
 
-	const openShopping = shoppingRows.filter((s) => !s.boughtAt);
 	const openShoppingTop = openShopping
 		.slice(0, 3)
 		.map((s) => (s.quantity ? `${s.name} (${s.quantity})` : s.name));
@@ -507,7 +521,7 @@ export async function loadDashboardData(
 		});
 		rawActivityByKey.set(`expense:${e.id}`, new Date(e.occurredAt).getTime());
 	}
-	for (const s of shoppingRows.slice(0, ACTIVITY_LIMIT)) {
+	for (const s of recentShopping) {
 		activity.push({
 			kind: 'shopping',
 			timestamp: (s.boughtAt ?? s.createdAt).toISOString(),
@@ -523,9 +537,7 @@ export async function loadDashboardData(
 		});
 		rawActivityByKey.set(`shopping:${s.id}`, (s.boughtAt ?? s.createdAt).getTime());
 	}
-	for (const a of announcementRows
-		.filter((item) => item.source === 'manual')
-		.slice(0, ACTIVITY_LIMIT)) {
+	for (const a of announcementRows) {
 		activity.push({
 			kind: 'announcement',
 			timestamp: a.createdAt.toISOString(),
@@ -708,8 +720,8 @@ export async function loadDashboardData(
 		}
 	}
 	const openDebtCents = singleCurrencyTotal(openDebtByCurrency);
-	const openAnnouncementCount = countOpenManualAnnouncements(announcementRows);
-	const hasAnnouncement = announcementRows.some((item) => item.source === 'manual');
+	const openAnnouncementCount = openAnnouncementCountRows[0]?.value ?? 0;
+	const hasAnnouncement = announcementRows.length > 0;
 	const overdueChoreCount = allDueChores.filter((item) => item.overdue).length;
 	const currentMember = currentMemberId ? (memberById.get(currentMemberId) ?? null) : null;
 
@@ -740,7 +752,7 @@ export async function loadDashboardData(
 		setup: {
 			choreCount: choreRows.length,
 			hasExpense: expenseRows.length > 0,
-			hasShoppingItem: shoppingRows.length > 0,
+			hasShoppingItem: recentShopping.length > 0,
 			hasAnnouncement,
 			notificationsEnabled: Boolean(currentMember && currentMemberNotification?.pushOptIn),
 		},

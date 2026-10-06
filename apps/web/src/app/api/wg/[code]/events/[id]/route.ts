@@ -4,9 +4,16 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, notFound, tooMany } from '@/core/http/api-errors';
+import { badRequest, notFound, tooMany, unreadableJsonBody } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
+import {
+	eventDateTimeSchema,
+	eventDescriptionSchema,
+	eventLocationSchema,
+	eventRecurrenceSchema,
+	eventTitleSchema,
+} from '@/features/events/event-schemas';
 import {
 	formatRecurrenceRule,
 	parseRecurrenceRule,
@@ -16,19 +23,14 @@ import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const TITLE_MAX = 200;
-const DESCRIPTION_MAX = 2_000;
-const LOCATION_MAX = 200;
-const RECURRENCE_MAX = 200;
-
 const patchSchema = z.object({
-	title: z.string().trim().min(1).max(TITLE_MAX).optional(),
-	description: z.string().trim().max(DESCRIPTION_MAX).nullable().optional(),
-	startsAt: z.string().datetime({ offset: true }).optional(),
-	endsAt: z.string().datetime({ offset: true }).nullable().optional(),
+	title: eventTitleSchema.optional(),
+	description: eventDescriptionSchema.optional(),
+	startsAt: eventDateTimeSchema.optional(),
+	endsAt: eventDateTimeSchema.nullable().optional(),
 	allDay: z.boolean().optional(),
-	location: z.string().trim().max(LOCATION_MAX).nullable().optional(),
-	recurrence: z.string().trim().max(RECURRENCE_MAX).nullable().optional(),
+	location: eventLocationSchema.optional(),
+	recurrence: eventRecurrenceSchema.optional(),
 });
 
 function normalizeRecurrence(value: string | null): string | null | 'invalid' {
@@ -62,8 +64,8 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 	const parsed = patchSchema.safeParse(raw);
 	if (!parsed.success) {

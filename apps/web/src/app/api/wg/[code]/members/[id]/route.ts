@@ -1,6 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
-import { chores, db, pushSubscriptions, wgMembers } from '@/core/db';
+import { db, pushSubscriptions, wgMembers } from '@/core/db';
 import { hasCapturingMemberPayment, lockActiveAccountMember } from '@/core/db/account-deletion';
+import { releaseMemberChores } from '@/core/db/member-departure';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -11,6 +12,7 @@ import {
 	forbidden,
 	notFound,
 	tooMany,
+	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -127,8 +129,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 		let raw: unknown;
 		try {
 			raw = await readJsonLimited(req);
-		} catch {
-			return badRequest('invalid_json');
+		} catch (err) {
+			return unreadableJsonBody(err);
 		}
 		const parsed = patchSchema.safeParse(raw);
 		if (!parsed.success) return badRequest('active_invalid');
@@ -197,12 +199,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 			// endpoint has to be free for the next WG on the same device.
 			if (active === false) {
 				await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.memberId, id));
-				// Free their chores: otherwise a chore stays with someone who left, no reminder reaches
-				// anyone, and the plan only flags it after two days overdue, not as "Niemand zuständig".
-				await tx
-					.update(chores)
-					.set({ assignedMemberId: null, lastReminderAt: null, updatedAt: new Date() })
-					.where(and(eq(chores.wgId, wgId), eq(chores.assignedMemberId, id)));
+				await releaseMemberChores(tx, wgId, id);
 			}
 			return {
 				ok: true as const,

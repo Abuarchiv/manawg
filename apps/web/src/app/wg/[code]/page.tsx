@@ -29,6 +29,7 @@ import {
 import { getDashboardAnnouncementHref } from '@/core/reads/dashboard-links';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
+import { MS_PER_DAY } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { getChoreStatus } from '@/features/chores/chore-status';
 import {
@@ -58,6 +59,8 @@ const PushPrimingPrompt = dynamic(
 );
 
 const REFRESH_INTERVAL_MS = 30_000;
+/** How long the done notice stays, and how long a tapped chore stays armed for the confirm tap. */
+const TRANSIENT_STATE_MS = 4000;
 const TODAY_VISIBLE = 4;
 
 type PendingAnnouncement = DashboardData['myOpenAnnouncements'][number];
@@ -141,15 +144,18 @@ export default function WgHomePage() {
 	async function completeChore(item: TodayImportantItem): Promise<void> {
 		const choreId = item.entityId;
 		if (!choreId || pendingChoreId) return;
+		// One key per occurrence: after an uncertain failure that actually saved,
+		// the next due date must not replay the earlier completion.
+		const requestKey = `${choreId}:${item.expectedNextDueAt}`;
 		const idempotencyKey =
-			completionRequestKeysRef.current.get(choreId) ?? createOfflineIdempotencyKey();
+			completionRequestKeysRef.current.get(requestKey) ?? createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
 			setCompleteError(
 				'Erledigt-Aktion konnte nicht sicher gespeichert werden. Versuche es erneut.',
 			);
 			return;
 		}
-		completionRequestKeysRef.current.set(choreId, idempotencyKey);
+		completionRequestKeysRef.current.set(requestKey, idempotencyKey);
 		setCompleteError(null);
 		setPendingChoreId(choreId);
 		const result = await apiFetch(
@@ -167,21 +173,21 @@ export default function WgHomePage() {
 		);
 		setPendingChoreId(null);
 		if (result.ok || result.error === 'chore_already_completed') {
-			completionRequestKeysRef.current.delete(choreId);
+			completionRequestKeysRef.current.delete(requestKey);
 			setConfirmItem(null);
 			toast.success(`${item.title} erledigt.`);
 			void load();
 			return;
 		}
 		if (result.error === 'chore_occurrence_changed') {
-			completionRequestKeysRef.current.delete(choreId);
+			completionRequestKeysRef.current.delete(requestKey);
 			setConfirmItem(null);
 			toast.info('Termin oder Zuständigkeit haben sich geändert. Der Plan wird aktualisiert.');
 			void load();
 			return;
 		}
 		if (result.status > 0 && result.status < 500 && result.status !== 429)
-			completionRequestKeysRef.current.delete(choreId);
+			completionRequestKeysRef.current.delete(requestKey);
 		setCompleteError(
 			result.status === 0
 				? 'Offline: Öffne den Putzplan, dort wird die Erledigung vorgemerkt.'
@@ -683,7 +689,7 @@ const AGENDA_DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 
 function formatAgendaDay(dayKey: string, todayKey: string): string {
 	if (dayKey === todayKey) return 'Heute';
-	const tomorrowKey = berlinDayKey(new Date(Date.parse(`${todayKey}T12:00:00Z`) + 86_400_000));
+	const tomorrowKey = berlinDayKey(new Date(Date.parse(`${todayKey}T12:00:00Z`) + MS_PER_DAY));
 	if (dayKey === tomorrowKey) return 'Morgen';
 	return AGENDA_DAY_FORMATTER.format(new Date(`${dayKey}T12:00:00.000Z`));
 }

@@ -29,6 +29,10 @@ import type { ChoreRecurrenceType } from '@/core/db/schema';
 import { berlinDayKey, berlinWallMinutes, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
 
 const MS_PER_MINUTE = 60 * 1000;
+const MINUTES_PER_HOUR = 60;
+/** Berlin's spring-forward gap: wall times 02:00–02:59 do not exist that night. */
+const DST_GAP_START_MINUTES = 2 * MINUTES_PER_HOUR;
+const DST_GAP_END_MINUTES = 3 * MINUTES_PER_HOUR;
 
 interface BerlinWallTime {
 	year: number;
@@ -57,9 +61,25 @@ function fromBerlinWallTime(wall: BerlinWallTime): Date {
 	// A wall time inside the spring-forward gap does not exist; use the hour after.
 	const instant =
 		instantAtBerlinWallTime(dayKey, wall.minutes) ??
-		instantAtBerlinWallTime(dayKey, wall.minutes + 60);
+		instantAtBerlinWallTime(dayKey, wall.minutes + MINUTES_PER_HOUR);
 	if (!instant) throw new Error(`Cannot resolve Berlin wall time on ${dayKey}`);
 	return new Date(instant.getTime() + wall.subMinuteMs);
+}
+
+/**
+ * Undo the one-hour push `fromBerlinWallTime` applies inside the
+ * spring-forward gap. Without this, a chore due at 02:30 lands on 03:30 that
+ * night and then keeps 03:30 forever, because every later cycle copies the
+ * previous due time. Only a due time exactly one hour after a gap-hour anchor
+ * is corrected, so a time the user moved deliberately stays as it is.
+ */
+function restoreGapShiftedTime(wall: BerlinWallTime, anchorAt?: Date | null): BerlinWallTime {
+	if (!anchorAt) return wall;
+	const anchorMinutes = berlinWallMinutes(anchorAt);
+	const anchorInGapHour =
+		anchorMinutes >= DST_GAP_START_MINUTES && anchorMinutes < DST_GAP_END_MINUTES;
+	if (!anchorInGapHour || wall.minutes !== anchorMinutes + MINUTES_PER_HOUR) return wall;
+	return { ...wall, minutes: anchorMinutes };
 }
 
 function daysInMonth(year: number, month: number): number {
@@ -109,7 +129,9 @@ export function computeNextDueAt(
 	// completedAt (documented behavior). Early and same-day completions keep
 	// the previous due so the cadence does not slide.
 	const late = isLateCompletion(prevDueAt, completedAt);
-	const base = toBerlinWallTime(late ? completedAt : prevDueAt);
+	const base = late
+		? toBerlinWallTime(completedAt)
+		: restoreGapShiftedTime(toBerlinWallTime(prevDueAt), anchorAt);
 	if (recurrenceType === 'months') {
 		// Keep the stored anchor so a month-end clamp (31.01 → 28.02) does not
 		// chain into a permanent day-of-month drift.

@@ -17,7 +17,7 @@ import {
 	pushEndpointSchema,
 	pushP256dhSchema,
 } from '@/core/validators/push-endpoint';
-import { and, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -297,28 +297,44 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 							authKey,
 							userAgent: req.headers.get('user-agent'),
 						};
-						// The endpoint is globally unique per browser. Reassign it when it
-						// still belongs to this account's membership in another WG or to a
-						// moved-out member; a foreign active owner keeps it (403).
-						const reassignableOwners = tx
-							.select({ id: wgMembers.id })
-							.from(wgMembers)
+						// One browser endpoint serves every WG of the same account. Another
+						// account's active member keeps it to itself (403): its notifications
+						// must not reach this browser and vice versa. Rows of moved-out
+						// members are stale and dropped.
+						const [foreignOwner] = await tx
+							.select({ id: pushSubscriptions.id })
+							.from(pushSubscriptions)
+							.innerJoin(wgMembers, eq(wgMembers.id, pushSubscriptions.memberId))
 							.where(
-								or(eq(wgMembers.authUserId, auth.authUserId), isNotNull(wgMembers.deactivatedAt)),
+								and(
+									eq(pushSubscriptions.endpoint, endpoint),
+									isNull(wgMembers.deactivatedAt),
+									or(isNull(wgMembers.authUserId), ne(wgMembers.authUserId, auth.authUserId)),
+								),
+							)
+							.limit(1);
+						if (foreignOwner) throw new TransactionAbort('endpoint_owned');
+						await tx
+							.delete(pushSubscriptions)
+							.where(
+								and(
+									eq(pushSubscriptions.endpoint, endpoint),
+									inArray(
+										pushSubscriptions.memberId,
+										tx
+											.select({ id: wgMembers.id })
+											.from(wgMembers)
+											.where(isNotNull(wgMembers.deactivatedAt)),
+									),
+								),
 							);
-						const [saved] = await tx
+						await tx
 							.insert(pushSubscriptions)
 							.values({ memberId: current.id, endpoint, ...subscriptionValues })
 							.onConflictDoUpdate({
-								target: pushSubscriptions.endpoint,
-								set: { memberId: current.id, ...subscriptionValues },
-								setWhere: sql`(${eq(pushSubscriptions.memberId, current.id)} or ${inArray(
-									pushSubscriptions.memberId,
-									reassignableOwners,
-								)})`,
-							})
-							.returning({ id: pushSubscriptions.id });
-						if (!saved) throw new TransactionAbort('endpoint_owned');
+								target: [pushSubscriptions.memberId, pushSubscriptions.endpoint],
+								set: subscriptionValues,
+							});
 						return current;
 					});
 					memberName = member.name;
@@ -380,7 +396,18 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 					.where(and(eq(wgMembers.id, current.id), eq(wgMembers.wgId, wg.id)))
 					.returning({ pushOptIn: wgMembers.pushOptIn });
 				if (!updatedMember) return null;
-				return { name: current.name, pushOptIn: updatedMember.pushOptIn };
+				// Another WG of this account may still use the endpoint; the browser
+				// must then keep its subscription.
+				const [otherUse] = await tx
+					.select({ id: pushSubscriptions.id })
+					.from(pushSubscriptions)
+					.where(eq(pushSubscriptions.endpoint, requestEndpoint))
+					.limit(1);
+				return {
+					name: current.name,
+					pushOptIn: updatedMember.pushOptIn,
+					endpointInUse: otherUse !== undefined,
+				};
 			});
 			if (!result) return apiError('member_deactivated', 401, 'member_deactivated');
 			await recordAuditEvent({
@@ -392,7 +419,7 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 				summary: `${result.name} hat Web Push deaktiviert.`,
 				metadata: { notificationFields: ['Web Push'], pushOptIn: result.pushOptIn },
 			});
-			return NextResponse.json({ ok: true });
+			return NextResponse.json({ ok: true, endpointInUse: result.endpointInUse });
 		},
 		async () => {
 			const member = await withTransaction((tx) =>

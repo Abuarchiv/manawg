@@ -1,18 +1,11 @@
 import 'server-only';
 
 import { createServerClient } from '@supabase/ssr';
-import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import type { User } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
+import { isTransientAuthError } from './auth-errors';
 import { getSupabaseEnv, hasSupabaseEnv } from './supabase-env';
-
-function isTransientAuthError(error: unknown): boolean {
-	return (
-		isAuthRetryableFetchError(error) ||
-		(typeof error === 'object' && error !== null && 'status' in error && error.status === 429)
-	);
-}
 
 const SUPABASE_AUTH_TOKEN_COOKIE = /^sb-[A-Za-z0-9-]+-auth-token(?:\.\d+)?$/;
 

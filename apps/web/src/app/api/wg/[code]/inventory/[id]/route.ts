@@ -6,7 +6,13 @@ import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
+import {
+	badRequest,
+	conflict,
+	notFound,
+	tooMany,
+	unreadableJsonBody,
+} from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import {
 	getCachedResponse,
@@ -86,8 +92,8 @@ export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, 
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
-	} catch {
-		return badRequest('invalid_json');
+	} catch (err) {
+		return unreadableJsonBody(err);
 	}
 
 	const parsed = patchInventorySchema.safeParse(raw);

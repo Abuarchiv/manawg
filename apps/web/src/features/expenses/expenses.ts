@@ -34,31 +34,6 @@ export function resolveExpensePayer(bodyPaidByMemberId: unknown, callerId: strin
 	return null;
 }
 
-type PaidByGuardResult = { ok: true } | { ok: false; reason: 'paid_by_must_include_caller' };
-
-/**
- * Abuse guard: when the caller logs an expense paid by SOMEONE ELSE, require
- * the caller to bear a positive share in the split. This prevents pure
- * fabrication ("Alice silently makes Charlie owe Bob 30€") while still
- * allowing the legitimate "log on behalf of" UX where the caller is part of
- * the cost group. Self-paid expenses (paidBy === caller) are unrestricted.
- * Combined with the audit trail and any-debtor delete permission, this keeps
- * creation honest.
- */
-export function checkPaidByGuard(
-	paidByMemberId: string,
-	callerId: string,
-	splits: readonly ExpenseSplitInput[],
-): PaidByGuardResult {
-	if (
-		paidByMemberId !== callerId &&
-		!splits.some((split) => split.debtorMemberId === callerId && split.amountCents > 0)
-	) {
-		return { ok: false, reason: 'paid_by_must_include_caller' };
-	}
-	return { ok: true };
-}
-
 /**
  * Resolves which of the given member ids actually belong to this WG. Callers
  * compare the returned set's size against the input to detect any id that
