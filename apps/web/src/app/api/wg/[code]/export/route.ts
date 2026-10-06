@@ -1,9 +1,3 @@
-import { requireWgMember } from '@/core/guards/require-wg-member';
-import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
-import { badRequest, serverError, tooMany } from '@/core/http/api-errors';
-import type { RouteCtx } from '@/core/infra/api-types';
-import { logApiError } from '@/core/infra/observability';
-import { checkRateLimit, wgExportLimiter } from '@/core/rate-limit';
 import {
 	EXPORT_SECTION_KEYS,
 	type ExportRow,
@@ -13,7 +7,7 @@ import {
 	getExportSectionRows,
 	isExportSectionKey,
 	toCsv,
-} from '@/core/reads/export';
+} from '@/composition/export';
 import {
 	type ExportPage,
 	MEMBER_NAME_SECTIONS,
@@ -24,7 +18,13 @@ import {
 	fetchMemberRows,
 	mapMemberRows,
 	toMemberById,
-} from '@/core/reads/export-queries';
+} from '@/composition/export-queries';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
+import { badRequest, serverError, tooMany } from '@/core/http/api-errors';
+import type { RouteCtx } from '@/core/infra/api-types';
+import { logApiError } from '@/core/infra/observability';
+import { checkRateLimit, wgExportLimiter } from '@/core/rate-limit';
 import { type NextRequest, NextResponse } from 'next/server';
 
 function getExportFormat(req: NextRequest): 'json' | 'csv' | null {

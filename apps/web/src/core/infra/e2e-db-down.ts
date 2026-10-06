@@ -1,5 +1,5 @@
-import type { DashboardData } from '@/core/reads/dashboard-data';
-import { getWgHealth } from '@/core/reads/dashboard-insights';
+import type { DashboardData } from '@/composition/dashboard-data';
+import { getWgHealth } from '@/composition/dashboard-insights';
 
 export const E2E_EXISTING_WG = {
 	id: '989ac820-58b7-431f-9c65-28721264f333',

@@ -1,14 +1,10 @@
+import { SYSTEM_MESSAGE_KIND } from '@/core/feed-kinds';
 const EDIT_WINDOW_MS_DEFAULT = 15 * 60 * 1000;
-const SYSTEM_MESSAGE_KIND = 'system';
 const TEXT_MESSAGE_KIND = 'text';
 
 export const CHAT_REFRESH_BATCH_SIZE = 100;
 
-export type ChatSystemKind =
-	| 'member.joined'
-	| 'member.left'
-	| 'expense.created'
-	| 'chore.completed';
+export type { ChatSystemKind } from '@/core/feed-kinds';
 
 interface ChatMessageLike {
 	id: string;

@@ -3,13 +3,13 @@
 
 import { expect, test } from '@playwright/test';
 import { initials } from '../src/components/wg/MemberAvatar';
-import { groupActivityItemsByDay } from '../src/core/reads/activity';
+import { groupActivityItemsByDay } from '../src/composition/activity';
 import {
 	getBerlinWeekWindow,
 	getForYouItems,
 	getTodayImportantItems,
 	getWeekAgenda,
-} from '../src/core/reads/dashboard-insights';
+} from '../src/composition/dashboard-insights';
 import { instantAtBerlinWallTime } from '../src/core/utils/berlin-day';
 import { formatRelativeTime, formatShortDate, formatWeekLabel } from '../src/core/utils/time';
 import { previewBody } from '../src/features/chat/chat-pure';
