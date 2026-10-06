@@ -7,7 +7,6 @@ import { useCallback, useRef } from 'react';
 
 interface ChoreCompletionIdentity {
 	memberId: string;
-	memberToken?: string | undefined;
 }
 
 /**
@@ -20,13 +19,10 @@ export function useChoreCompletion(
 ): (chore: ChoreOccurrence) => Promise<ChoreCompletionOutcome> {
 	const keysRef = useRef(new Map<string, string>());
 	const { id: wgId, shareCode } = wg;
-	const { memberId, memberToken } = identity;
+	const { memberId } = identity;
 	return useCallback(
 		(chore: ChoreOccurrence) =>
-			submitChoreCompletion(
-				{ wgId, shareCode, memberId, memberToken, keys: keysRef.current },
-				chore,
-			),
-		[wgId, shareCode, memberId, memberToken],
+			submitChoreCompletion({ wgId, shareCode, memberId, keys: keysRef.current }, chore),
+		[wgId, shareCode, memberId],
 	);
 }

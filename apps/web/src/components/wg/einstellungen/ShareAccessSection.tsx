@@ -49,15 +49,12 @@ export function ShareAccessSection({
 		const res = await apiFetch<{ wg: WgSummary }>(`/api/wg/${encodedShareCode}`, {
 			method: 'PATCH',
 			memberId: identity.memberId,
-			memberToken: identity.memberToken,
 			body: JSON.stringify(body),
 		});
 		if (res.ok) return res.data;
 		setAccessError(
 			res.status === 403
-				? res.error === 'member_not_verified'
-					? 'Dein Gerät ist noch nicht bestätigt. Lade die App neu und versuche es erneut.'
-					: 'Nur Admins können den WG-Zugang ändern.'
+				? 'Nur Admins können den WG-Zugang ändern.'
 				: accessErrorMessage(res.status, res.error),
 		);
 		return null;

@@ -3,12 +3,13 @@ import { getAuthenticatedUser } from '@/core/auth/server';
 import { db } from '@/core/db';
 import { requireMember } from '@/core/guards/api-auth';
 import {
-	apiError,
 	badRequest,
 	notFound,
 	payloadTooLarge,
 	serverError,
+	serviceUnavailable,
 	tooMany,
+	unauthorized,
 } from '@/core/http/api-errors';
 import { readJsonBody } from '@/core/http/read-json';
 import { logApiError } from '@/core/infra/observability';
@@ -84,9 +85,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	} catch (err) {
 		// A transient Auth outage is retryable, not an unauthenticated caller.
 		logApiError('[upload sign] auth error', err);
-		return noStore(apiError('db_error', 503));
+		return noStore(serviceUnavailable('db_error'));
 	}
-	if (!authenticatedUser) return noStore(apiError('auth_required', 401, 'auth_required'));
+	if (!authenticatedUser) return noStore(unauthorized('auth_required', 'auth_required'));
 
 	const wg = await db.query.wgs.findFirst({
 		where: (w, { eq }) => eq(w.shareCode, code),

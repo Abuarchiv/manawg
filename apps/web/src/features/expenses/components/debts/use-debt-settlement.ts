@@ -29,7 +29,6 @@ interface DebtSettlementInput {
 	debt: SimplifiedDebt;
 	shareCode: string;
 	currentMemberId: string;
-	memberToken?: string | undefined;
 	onSettled: (message?: string) => void;
 }
 
@@ -41,7 +40,6 @@ export function useDebtSettlement({
 	debt,
 	shareCode,
 	currentMemberId,
-	memberToken,
 	onSettled,
 }: DebtSettlementInput) {
 	const toast = useToast();
@@ -62,7 +60,7 @@ export function useDebtSettlement({
 		try {
 			const res = await apiFetch<SettlementPreview>(
 				`${endpoint}?${new URLSearchParams({ fromMemberId: debt.fromId, toMemberId: debt.toId, currency: debt.currency ?? 'EUR' })}`,
-				{ memberId: currentMemberId, memberToken },
+				{ memberId: currentMemberId },
 			);
 			if (res.ok) {
 				setPreview(res.data);
@@ -113,7 +111,6 @@ export function useDebtSettlement({
 			const res = await apiFetch<SettleBatchResponse>(endpoint, {
 				method: 'POST',
 				memberId: currentMemberId,
-				memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify(body),
 			});

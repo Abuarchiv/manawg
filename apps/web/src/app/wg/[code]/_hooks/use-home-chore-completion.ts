@@ -13,7 +13,7 @@ import { useState } from 'react';
 
 interface HomeChoreCompletionInput {
 	wg: { id: string; shareCode: string };
-	identity: { memberId: string; memberToken?: string | undefined };
+	identity: { memberId: string };
 	members: Member[];
 	reload: () => void;
 }

@@ -7,14 +7,14 @@ import { useEffect } from 'react';
  * Warms the tab data in idle time: the first switch into Haushalt/Finanzen/Austausch then
  * renders from the useCachedFetch cache instead of starting its fetch after the page JS.
  */
-export function useTabWarmup(encodedShareCode: string, memberId?: string, memberToken?: string) {
+export function useTabWarmup(encodedShareCode: string, memberId?: string) {
 	useEffect(() => {
 		if (!memberId) return;
 		const connection = (navigator as Navigator & { connection?: { saveData?: boolean } })
 			.connection;
 		if (connection?.saveData) return;
 		const base = `/api/wg/${encodedShareCode}`;
-		const options = { memberId, memberToken };
+		const options = { memberId };
 		const warm = () => {
 			for (const path of [
 				'chores',
@@ -46,5 +46,5 @@ export function useTabWarmup(encodedShareCode: string, memberId?: string, member
 			if (idle) window.cancelIdleCallback(handle);
 			else window.clearTimeout(handle);
 		};
-	}, [encodedShareCode, memberId, memberToken]);
+	}, [encodedShareCode, memberId]);
 }

@@ -3,11 +3,12 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { closeClientOnQueryTimeout, resolveConnectionString } from './connection';
 import * as schema from './schema';
+import type { DbTransaction } from './transaction';
 
 type DbInstance = Omit<NodePgDatabase<typeof schema>, 'transaction'>;
 
 interface CachedDb {
-	db: DbInstance;
+	drizzle: NodePgDatabase<typeof schema>;
 	pool: Pool;
 	/** Raw connection-string source the pool was built from (see currentDbSource). */
 	source: string;
@@ -29,8 +30,8 @@ function invalidateDb(pool: Pool, err: Error): void {
 }
 
 // Module-level pools survive dev hot-reloads and long-lived serverless
-// instances. If POSTGRES_URL/DATABASE_URL changes underneath us (env swap,
-// hot reload after an .env edit), the old pool must not keep serving — it is
+// instances. If POSTGRES_URL/DATABASE_URL changes underneath (env swap, hot
+// reload after an .env edit), the old pool must not keep serving: it is
 // dropped and rebuilt on next access instead of being cached forever.
 function dropStaleDb(): void {
 	if (!cachedDb || cachedDb.source === currentDbSource()) return;
@@ -42,10 +43,21 @@ function dropStaleDb(): void {
 	});
 }
 
-function buildDb(): CachedDb {
-	const url = resolveConnectionString();
+/**
+ * The only runtime pool: plain queries (`db`) and transactions (`withTransaction`)
+ * share it, on the pooled Supavisor URL. Drizzle binds BEGIN/COMMIT to one
+ * checked-out client and advisory locks are transaction-scoped, both of which
+ * Supavisor transaction mode supports.
+ *
+ * Connection budget: at most 5 connections per warm serverless instance. The
+ * only other runtime connection is the short-lived client `withFreshTransaction`
+ * opens to resolve an uncertain commit.
+ */
+function getDrizzle(): NodePgDatabase<typeof schema> {
+	dropStaleDb();
+	if (cachedDb) return cachedDb.drizzle;
 	const pool = new Pool({
-		connectionString: url,
+		connectionString: resolveConnectionString(),
 		max: 5,
 		connectionTimeoutMillis: 2_000,
 		lock_timeout: 2_000,
@@ -53,24 +65,24 @@ function buildDb(): CachedDb {
 		statement_timeout: 5_000,
 	});
 	pool.on('connect', closeClientOnQueryTimeout);
-	// Omitting `transaction` is a narrowing assignment, not a cast: the drizzle
-	// instance simply has one property more than DbInstance requires.
-	const dbInstance: DbInstance = drizzle(pool, { schema });
 	pool.on('error', (err) => invalidateDb(pool, err));
-	return { db: dbInstance, pool, source: currentDbSource() };
+	cachedDb = { drizzle: drizzle(pool, { schema }), pool, source: currentDbSource() };
+	return cachedDb.drizzle;
 }
 
-// The proxy exists so the pool is only built on first use. The `{}` target is
-// a documented lie — Proxy requires a T target but owns no state itself — and
-// it is the only cast in this module: every property read is served through
-// Reflect.get against the real drizzle instance, keeping types intact.
+// The proxy defers building the pool to first use. Its `{}` target owns no
+// state; every property read is served from the real drizzle instance.
+// `transaction` is left out of the type so writes go through withTransaction.
 export const db: DbInstance = new Proxy({} as DbInstance, {
 	get(_target, prop) {
-		dropStaleDb();
-		if (!cachedDb) cachedDb = buildDb();
-		const value = Reflect.get(cachedDb.db, prop);
-		return typeof value === 'function' ? value.bind(cachedDb.db) : value;
+		const instance = getDrizzle();
+		const value = Reflect.get(instance, prop);
+		return typeof value === 'function' ? value.bind(instance) : value;
 	},
 });
+
+export function withTransaction<T>(fn: (tx: DbTransaction) => Promise<T>): Promise<T> {
+	return getDrizzle().transaction(fn);
+}
 
 export * from './schema';

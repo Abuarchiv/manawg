@@ -77,8 +77,6 @@ function connectionError(error: string): string {
 		return 'Die PayPal-Verbindung ist abgelaufen. Bitte starte sie erneut.';
 	if (error === 'paypal_account_already_connected')
 		return 'Mit dieser WG ist bereits ein anderes PayPal-Konto verbunden.';
-	if (error === 'member_not_verified')
-		return 'Dieses Gerät ist noch nicht bestätigt. Lade die App neu und versuche es erneut.';
 	return 'PayPal-Verbindung konnte nicht geprüft werden. Bitte versuche es erneut.';
 }
 
@@ -102,15 +100,13 @@ function clearPayPalHints(url: URL): void {
 export function PayPalConnect({
 	shareCode,
 	memberId,
-	memberToken,
 }: {
 	shareCode: string;
 	memberId: string;
-	memberToken?: string | undefined;
 }) {
 	const { refreshMembers } = useWg();
 	const endpoint = `/api/wg/${encodeURIComponent(shareCode)}/paypal/connect`;
-	const scope = JSON.stringify([shareCode, memberId, memberToken ?? null]);
+	const scope = JSON.stringify([shareCode, memberId]);
 	const scopeRef = useRef(scope);
 	scopeRef.current = scope;
 	const pendingReturn = useRef<PendingReturn | null>(null);
@@ -132,7 +128,6 @@ export function PayPalConnect({
 			try {
 				const result = await apiFetch<unknown>(endpoint, {
 					memberId,
-					memberToken,
 					...(signal ? { signal } : {}),
 				});
 				if (scopeRef.current !== expectedScope) return null;
@@ -157,7 +152,7 @@ export function PayPalConnect({
 				return null;
 			}
 		},
-		[endpoint, memberId, memberToken],
+		[endpoint, memberId],
 	);
 
 	const confirmConnection = useCallback(
@@ -170,7 +165,6 @@ export function PayPalConnect({
 				const result = await apiFetch<{ connected?: boolean }>(endpoint, {
 					method: 'POST',
 					memberId,
-					memberToken,
 					body: JSON.stringify(
 						merchantId ? { action: 'confirm', merchantId } : { action: 'complete' },
 					),
@@ -214,7 +208,7 @@ export function PayPalConnect({
 				if (scopeRef.current === expectedScope) setBusy(false);
 			}
 		},
-		[endpoint, memberId, memberToken, refreshMembers],
+		[endpoint, memberId, refreshMembers],
 	);
 
 	useEffect(() => {
@@ -282,7 +276,6 @@ export function PayPalConnect({
 			const result = await apiFetch<{ url?: unknown }>(endpoint, {
 				method: 'POST',
 				memberId,
-				memberToken,
 				body: JSON.stringify({ action: 'start', consent: true }),
 			});
 			if (scopeRef.current !== currentScope) return;

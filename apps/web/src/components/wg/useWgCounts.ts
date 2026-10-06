@@ -47,7 +47,6 @@ export function useChatUnreadCount(): ChatUnreadSnapshot {
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const chat = useCachedFetch<ChatUnreadCount>(`/api/wg/${encodedShareCode}/chat/unread-count`, {
 		memberId: identity.memberId,
-		memberToken: identity.memberToken,
 	});
 	const refresh = useCallback(() => void chat.refresh(), [chat.refresh]);
 
@@ -74,7 +73,6 @@ export function useDashboardCounts(): Record<string, SegmentCount> {
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const dashboard = useCachedFetch<DashboardCountsRead>(`/api/wg/${encodedShareCode}/dashboard`, {
 		memberId: identity.memberId,
-		memberToken: identity.memberToken,
 	});
 
 	const dashboardState = countState(dashboard.data, dashboard.error);

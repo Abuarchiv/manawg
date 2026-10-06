@@ -358,7 +358,7 @@ test.describe('settlement scope', () => {
 
 			const response = await request.get(
 				`/api/wg/MTE8PZAT/expenses/settle-batch?fromMemberId=${memberA}&toMemberId=${memberB}`,
-				{ headers: { 'x-manawg-member-id': fixtureMemberId } },
+				{ headers: { 'x-manawg-expected-member-id': fixtureMemberId } },
 			);
 
 			expect(response.status()).toBe(401);

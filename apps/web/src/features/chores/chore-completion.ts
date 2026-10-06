@@ -36,7 +36,6 @@ export interface ChoreCompletionContext {
 	wgId: string;
 	shareCode: string;
 	memberId: string;
-	memberToken?: string | undefined;
 	/**
 	 * Idempotency keys by occurrence (see `completionRequestKey`). A retry of the same
 	 * occurrence reuses its key; the next occurrence must not replay an earlier completion.
@@ -67,7 +66,6 @@ export async function submitChoreCompletion(
 		{
 			method: 'POST',
 			memberId: ctx.memberId,
-			memberToken: ctx.memberToken,
 			headers: { 'Idempotency-Key': idempotencyKey },
 			body: JSON.stringify({
 				expectedNextDueAt: chore.nextDueAt,

@@ -14,7 +14,6 @@ export type AuthSessionResult = {
 export type LogoutPushTarget = {
 	code: string;
 	memberId: string;
-	memberToken?: string;
 };
 
 export type LogoutPushCleanup = 'none' | 'unsubscribed' | 'failed';
@@ -165,12 +164,7 @@ async function removeCurrentBrowserPushSubscription(
 	];
 	const serverCleanup = Promise.allSettled(
 		uniqueTargets.map((target) =>
-			retireWebPushEndpoint(
-				target.code,
-				target.memberId,
-				subscription.endpoint,
-				target.memberToken,
-			),
+			retireWebPushEndpoint(target.code, target.memberId, subscription.endpoint),
 		),
 	);
 	let locallyUnsubscribed = false;

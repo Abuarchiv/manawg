@@ -163,13 +163,13 @@ test(
 		const schema = loadTypeScript(path.join(process.cwd(), 'src/core/db/schema.ts'));
 		const db = drizzle(pool, { schema });
 		const transaction = loadTypeScript(path.join(process.cwd(), 'src/core/db/transaction.ts'), {
-			'./connection': { resolveTransactionConnectionString: () => connectionString },
+			'./connection': { resolveConnectionString: () => connectionString },
+			'./index': { withTransaction: (operation) => db.transaction(operation) },
 			'./schema': schema,
 			'./transaction-abort': loadTypeScript(
 				path.join(process.cwd(), 'src/core/db/transaction-abort.ts'),
 			),
 		});
-		transaction.withTransaction = (operation) => db.transaction(operation);
 		const validator = loadTypeScript(path.join(process.cwd(), 'src/core/validators/image-url.ts'));
 		const helper = loadTypeScript(
 			path.join(process.cwd(), 'src/core/db/private-image-deletions.ts'),
@@ -709,7 +709,6 @@ test(
 							Response.json({ error, ...(code ? { code } : {}) }, { status: 409 }),
 						forbidden: (error) => responseJson(error, 403),
 						notFound: (error) => responseJson(error, 404),
-						requireVerifiedMember: () => null,
 						serverError: (error) => responseJson(error, 500),
 						tooMany: () => responseJson('too_many', 429),
 					},
@@ -783,7 +782,6 @@ test(
 						badRequest: (error) => responseJson(error, 400),
 						forbidden: (error) => responseJson(error, 403),
 						notFound: (error) => responseJson(error, 404),
-						requireVerifiedMember: () => null,
 						tooMany: () => responseJson('too_many', 429),
 					},
 					'@/core/guards/admin': { requireOwnerOrAdmin: async () => null },
@@ -792,7 +790,7 @@ test(
 						requireWgMember: async () => ({
 							ok: true,
 							wg: { id: routeWgId },
-							member: { memberId: routeMemberId, name: 'Member', verified: true },
+							member: { memberId: routeMemberId, name: 'Member' },
 						}),
 					},
 					'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },
@@ -838,7 +836,7 @@ test(
 						tooMany: () => responseJson('too_many', 429),
 					},
 					'@/core/guards/admin': {
-						isVerifiedWgAdmin: async () => true,
+						isWgAdmin: async () => true,
 						requireOwnerOrAdmin: async () => null,
 					},
 					'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
@@ -846,7 +844,7 @@ test(
 						requireWgMember: async () => ({
 							ok: true,
 							wg: { id: routeWgId },
-							member: { memberId: routeMemberId, name: 'Member', verified: true },
+							member: { memberId: routeMemberId, name: 'Member' },
 						}),
 					},
 					'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },

@@ -1,8 +1,7 @@
 // Public entry API contract in fixture mode. Live counterpart: public-entry-live.
 
 import { expect, test } from '@playwright/test';
-import { apiFetch, configureApiClient } from '../src/core/infra/api-client';
-import { isClientFixtureMode } from '../src/fixtures/client-mode';
+import { apiFetch } from '../src/core/infra/api-client';
 import { E2E_EXISTING_WG } from '../src/fixtures/data';
 
 test.describe('public entry api', () => {
@@ -69,7 +68,7 @@ test.describe('public entry api', () => {
 
 		const code = E2E_EXISTING_WG.shareCode;
 		const memberId = E2E_EXISTING_WG.member.id;
-		const validHeaders = { 'x-manawg-member-id': memberId };
+		const validHeaders = { 'x-manawg-expected-member-id': memberId };
 
 		const noHeader = await request.get(`/api/wg/${code}`);
 		expect(noHeader.status()).toBe(200);
@@ -87,44 +86,19 @@ test.describe('public entry api', () => {
 		const members = await request.get(`/api/wg/${code}/members`, { headers: validHeaders });
 		expect(members.status()).toBe(200);
 		const invalidMembers = await request.get(`/api/wg/${code}/members`, {
-			headers: { 'x-manawg-member-id': '00000000-0000-4000-8000-000000000000' },
+			headers: { 'x-manawg-expected-member-id': '00000000-0000-4000-8000-000000000000' },
 		});
 		expect(invalidMembers.status()).toBe(401);
 
-		const previousFixtureMode = process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE;
-		const previousDbDown = process.env.NEXT_PUBLIC_DB_DOWN;
-		try {
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE = 'true';
-			process.env.NEXT_PUBLIC_DB_DOWN = 'true';
-			// Same switch as the client seam (src/fixtures/FixtureClientSetup.tsx).
-			configureApiClient({ memberIdHeader: isClientFixtureMode() });
-			const fixtureClient = await apiFetch<{ members: unknown[] }>(
-				new URL(`/api/wg/${code}/members`, baseURL).href,
-				{ memberId },
-			);
-			expect(fixtureClient.ok).toBe(true);
-
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE = 'false';
-			configureApiClient({ memberIdHeader: isClientFixtureMode() });
-			const normalClient = await apiFetch(new URL(`/api/wg/${code}/members`, baseURL).href, {
-				memberId,
-			});
-			expect(normalClient).toMatchObject({ ok: false, status: 401 });
-		} finally {
-			configureApiClient({ memberIdHeader: false });
-			// Restore exactly: writing '' would leave a defined env var behind, and
-			// assigning undefined would stringify to "undefined" — remove instead.
-			if (previousFixtureMode === undefined) {
-				Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_E2E_FIXTURE_MODE');
-			} else {
-				process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE = previousFixtureMode;
-			}
-			if (previousDbDown === undefined) {
-				Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_DB_DOWN');
-			} else {
-				process.env.NEXT_PUBLIC_DB_DOWN = previousDbDown;
-			}
-		}
+		// The client names its member through the expected-member header; without one the
+		// fixture server has no caller.
+		const fixtureClient = await apiFetch<{ members: unknown[] }>(
+			new URL(`/api/wg/${code}/members`, baseURL).href,
+			{ memberId },
+		);
+		expect(fixtureClient.ok).toBe(true);
+		const anonymousClient = await apiFetch(new URL(`/api/wg/${code}/members`, baseURL).href);
+		expect(anonymousClient).toMatchObject({ ok: false, status: 401 });
 
 		const dashboard = await request.get(`/api/wg/${code}/dashboard`, { headers: validHeaders });
 		expect(dashboard.status()).toBe(200);

@@ -36,7 +36,7 @@ function applyInventoryMutation(
 }
 
 /** Laden, Cache und Auto-Refresh der Vorräte; `onChanged` übernimmt Mutationen sofort in die Liste. */
-export function useInventoryPage(shareCode: string, memberId: string, memberToken?: string) {
+export function useInventoryPage(shareCode: string, memberId: string) {
 	const encodedShareCode = encodeURIComponent(shareCode);
 	const inventoryUrl = `/api/wg/${encodedShareCode}/inventory`;
 	const {
@@ -113,7 +113,6 @@ export function useInventoryPage(shareCode: string, memberId: string, memberToke
 			if (updated && isBelowThreshold(updated)) {
 				void refreshCachedFetch(`/api/wg/${encodedShareCode}/dashboard`, {
 					memberId,
-					memberToken,
 				});
 			}
 			void load(true);

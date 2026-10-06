@@ -8,7 +8,7 @@ import {
 } from '@/core/db/account-deletion';
 import { removeAccountFromWgs } from '@/core/db/delete-account';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { apiError, conflict, serverError } from '@/core/http/api-errors';
+import { conflict, serverError, serviceUnavailable, unauthorized } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -39,7 +39,7 @@ function acceptedDeletionResponse(
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
 	const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 	if (!hasSupabaseEnv() || !serviceRoleKey) {
-		return apiError('account_deletion_unavailable', 503, 'account_deletion_unavailable');
+		return serviceUnavailable('account_deletion_unavailable', 'account_deletion_unavailable');
 	}
 	let user: Awaited<ReturnType<typeof getAuthenticatedUser>>;
 	try {
@@ -47,9 +47,9 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 	} catch (err) {
 		// A transient Auth outage is retryable, not an unauthenticated caller.
 		logApiError('[api/account DELETE] auth error', err);
-		return apiError('db_error', 503);
+		return serviceUnavailable('db_error');
 	}
-	if (!user) return apiError('auth_required', 401, 'auth_required');
+	if (!user) return unauthorized('auth_required', 'auth_required');
 
 	try {
 		const { url } = getSupabaseEnv();

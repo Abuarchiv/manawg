@@ -8,7 +8,6 @@ import { OfflineBanner } from '@/components/wg/OfflineBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
 import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
-import { deriveMemberToken } from '@/core/guards/member-token';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { loadFixtureWgView } from '@/fixtures/pages';
 import type { StoredIdentity } from '@/shared/lib/identity';
@@ -99,13 +98,7 @@ export default async function WgLayout({ children, params }: Props) {
 		redirect(`/neu?next=${encodeURIComponent(`/wg/${encodeURIComponent(code)}`)}`);
 	}
 	const { memberId, memberName, ...wg } = access;
-	const memberToken = deriveMemberToken(wg.id, memberId);
-	const initialIdentity: StoredIdentity = {
-		memberId,
-		name: memberName,
-		authUserId: user.id,
-		...(memberToken ? { memberToken } : {}),
-	};
+	const initialIdentity: StoredIdentity = { memberId, name: memberName, authUserId: user.id };
 
 	// Load the full roster including deactivated members: history and balances
 	// need every name. Choice UIs filter on `active` downstream (see

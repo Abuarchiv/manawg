@@ -222,7 +222,6 @@ export function useChoreCreate(
 			const result = await apiFetch<ChoreCreateResponse>(`/api/wg/${encodedShareCode}/chores`, {
 				method: 'POST',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({
 					title,

@@ -30,16 +30,9 @@ interface ProfileTabProps {
 	wgName: string;
 	shareCode: string;
 	memberId: string;
-	memberToken?: string | undefined;
 }
 
-export function ProfileTab({
-	memberName,
-	wgName,
-	shareCode,
-	memberId,
-	memberToken,
-}: ProfileTabProps) {
+export function ProfileTab({ memberName, wgName, shareCode, memberId }: ProfileTabProps) {
 	const { theme, setTheme } = useTheme();
 	const { isAdmin } = useWg();
 
@@ -78,18 +71,11 @@ export function ProfileTab({
 				</div>
 			</Section>
 
-			{isAdmin && (
-				<WgNameSection
-					wgName={wgName}
-					shareCode={shareCode}
-					memberId={memberId}
-					memberToken={memberToken}
-				/>
-			)}
+			{isAdmin && <WgNameSection wgName={wgName} shareCode={shareCode} memberId={memberId} />}
 
 			{PAYPAL_ENABLED && (
 				<Section title="PayPal">
-					<PayPalConnect shareCode={shareCode} memberId={memberId} memberToken={memberToken} />
+					<PayPalConnect shareCode={shareCode} memberId={memberId} />
 				</Section>
 			)}
 

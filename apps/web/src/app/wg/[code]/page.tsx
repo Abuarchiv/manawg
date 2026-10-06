@@ -89,11 +89,7 @@ export default function WgHomePage() {
 				/>
 			</div>
 			<div>
-				<PushPrimingPrompt
-					code={wg.shareCode}
-					memberId={identity.memberId}
-					memberToken={identity.memberToken}
-				/>
+				<PushPrimingPrompt code={wg.shareCode} memberId={identity.memberId} />
 			</div>
 		</div>
 	);

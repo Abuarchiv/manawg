@@ -125,7 +125,6 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 							{
 								code: wg.code,
 								memberId: identity.memberId,
-								...(identity.memberToken ? { memberToken: identity.memberToken } : {}),
 							},
 						]
 					: [];

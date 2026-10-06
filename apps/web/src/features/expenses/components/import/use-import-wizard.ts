@@ -108,7 +108,6 @@ export function useImportWizard() {
 		const res = await apiFetch<PreviewResponse>(`/api/wg/${encodedCode}/imports/preview`, {
 			method: 'POST',
 			memberId: identity.memberId,
-			memberToken: identity.memberToken,
 			body: JSON.stringify({
 				source: payloadKey(source),
 				payload: rawPayload,
@@ -157,7 +156,6 @@ export function useImportWizard() {
 		const res = await apiFetch<CommitResponse>(`/api/wg/${encodedCode}/imports/commit`, {
 			method: 'POST',
 			memberId: identity.memberId,
-			memberToken: identity.memberToken,
 			...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
 			body: signature,
 		});

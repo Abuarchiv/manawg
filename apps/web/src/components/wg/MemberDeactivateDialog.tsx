@@ -43,7 +43,6 @@ interface MemberDeactivateDialogProps {
 	member: { id: string; name: string };
 	/** Identity of the device performing the action (for the member-id header). */
 	viewerMemberId: string;
-	viewerMemberToken?: string | undefined;
 	/** Use the same balance review for a member leaving their own WG. */
 	selfLeave?: boolean | undefined;
 	onClose: () => void;
@@ -62,7 +61,6 @@ export function MemberDeactivateDialog({
 	encodedShareCode,
 	member,
 	viewerMemberId,
-	viewerMemberToken,
 	selfLeave = false,
 	onClose,
 	onDeactivated,
@@ -113,7 +111,6 @@ export function MemberDeactivateDialog({
 			{
 				method: 'PATCH',
 				memberId: viewerMemberId,
-				memberToken: viewerMemberToken,
 				body: JSON.stringify({ active: false }),
 			},
 		);

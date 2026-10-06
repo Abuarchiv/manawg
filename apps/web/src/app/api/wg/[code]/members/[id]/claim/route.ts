@@ -3,12 +3,22 @@ import { db, wgMembers } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
-import { verifyMemberToken } from '@/core/guards/member-token';
+import { verifyLegacyClaimProof } from '@/core/guards/legacy-claim-proof';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { apiError, badRequest, conflict, forbidden, notFound } from '@/core/http/api-errors';
+import {
+	badRequest,
+	conflict,
+	forbidden,
+	notFound,
+	serviceUnavailable,
+	unauthorized,
+} from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
-import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from '@/shared/lib/member-header';
+import {
+	LEGACY_CLAIM_MEMBER_ID_HEADER,
+	LEGACY_CLAIM_TOKEN_HEADER,
+} from '@/shared/lib/member-header';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
@@ -27,9 +37,9 @@ export const POST = withWgRoute<{ id: string }>('members claim POST', async (req
 	} catch (err) {
 		// A transient Auth outage is retryable, not an unauthenticated caller.
 		logApiError('[members claim POST] auth error', err);
-		return apiError('db_error', 503);
+		return serviceUnavailable('db_error');
 	}
-	if (!authUser) return apiError('auth_required', 401, 'auth_required');
+	if (!authUser) return unauthorized('auth_required', 'auth_required');
 	const user = authUser;
 
 	const wg = await db.query.wgs.findFirst({
@@ -38,9 +48,9 @@ export const POST = withWgRoute<{ id: string }>('members claim POST', async (req
 	});
 	if (!wg) return shareCodeMissResponse(user.id, notFound('wg_not_found'));
 
-	const legacyMemberId = req.headers.get(MEMBER_ID_HEADER)?.trim();
-	const legacyToken = req.headers.get(MEMBER_TOKEN_HEADER);
-	if (legacyMemberId !== id || !verifyMemberToken(wg.id, id, legacyToken)) {
+	const legacyMemberId = req.headers.get(LEGACY_CLAIM_MEMBER_ID_HEADER)?.trim();
+	const legacyToken = req.headers.get(LEGACY_CLAIM_TOKEN_HEADER);
+	if (legacyMemberId !== id || !verifyLegacyClaimProof(wg.id, id, legacyToken)) {
 		return forbidden('legacy_proof_required', 'legacy_proof_required');
 	}
 

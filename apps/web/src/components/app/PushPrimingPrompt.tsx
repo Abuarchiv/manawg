@@ -36,11 +36,9 @@ function rememberDismissed(): void {
 export function PushPrimingPrompt({
 	code,
 	memberId,
-	memberToken,
 }: {
 	code: string;
 	memberId: string;
-	memberToken?: string | undefined;
 }) {
 	const [visible, setVisible] = useState(false);
 	const [busy, setBusy] = useState(false);
@@ -104,7 +102,7 @@ export function PushPrimingPrompt({
 				return;
 			}
 			try {
-				await subscribeWebPush(code, memberId, memberToken);
+				await subscribeWebPush(code, memberId);
 			} catch {
 				// Silent: VAPID misconfig, network hiccup, etc. Einstellungen still
 				// offers a manual retry with a real error message.
@@ -114,7 +112,7 @@ export function PushPrimingPrompt({
 		return () => {
 			cancelled = true;
 		};
-	}, [code, memberId, memberToken]);
+	}, [code, memberId]);
 
 	function dismiss(): void {
 		rememberDismissed();
@@ -126,7 +124,7 @@ export function PushPrimingPrompt({
 		setBusy(true);
 		setActivationError(null);
 		try {
-			await subscribeWebPush(code, memberId, memberToken);
+			await subscribeWebPush(code, memberId);
 			rememberDismissed();
 			setVisible(false);
 		} catch {

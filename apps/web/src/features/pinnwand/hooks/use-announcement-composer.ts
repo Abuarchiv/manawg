@@ -193,7 +193,6 @@ export function useAnnouncementComposer(
 				{
 					method: 'POST',
 					memberId: identity.memberId,
-					memberToken: identity.memberToken,
 					headers: { 'Idempotency-Key': idempotencyKey },
 					body: JSON.stringify({
 						content: text,

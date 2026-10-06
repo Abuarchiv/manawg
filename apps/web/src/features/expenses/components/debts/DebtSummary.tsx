@@ -38,7 +38,6 @@ interface DebtSummaryProps {
 	expenses: readonly Expense[];
 	shareCode: string;
 	currentMemberId: string;
-	memberToken?: string | undefined;
 	memberPayPalMerchantId?: (id: string) => string | null;
 	onSettled: (message?: string) => void;
 }
@@ -54,7 +53,6 @@ export function DebtSummary({
 	expenses,
 	shareCode,
 	currentMemberId,
-	memberToken,
 	memberPayPalMerchantId = () => null,
 	onSettled,
 }: DebtSummaryProps) {
@@ -79,7 +77,6 @@ export function DebtSummary({
 				expenses={expenses}
 				shareCode={shareCode}
 				currentMemberId={currentMemberId}
-				memberToken={memberToken}
 				memberPayPalMerchantId={memberPayPalMerchantId}
 				showPayPalHint={showPayPalHint}
 				payPalEligible={

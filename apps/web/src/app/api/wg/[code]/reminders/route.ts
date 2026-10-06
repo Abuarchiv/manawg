@@ -6,8 +6,8 @@ import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
-	apiError,
 	badRequest,
+	conflict,
 	forbidden,
 	tooMany,
 	unreadableJsonBody,
@@ -124,7 +124,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 	const balances = computeBalances(openExpenses, payments);
 	const pair = findPairBalance(balances, debtorMemberId, creditorMemberId, currency);
 	if (!pair || pair.amountCents <= 0) {
-		return apiError('no_open_debt', 409, 'no_open_debt');
+		return conflict('no_open_debt', 'no_open_debt');
 	}
 
 	const recentSince = new Date(Date.now() - REMINDER_COOLDOWN_HOURS * 60 * 60 * 1000);

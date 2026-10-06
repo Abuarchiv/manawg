@@ -23,7 +23,6 @@ function subscribeOnline(onChange: () => void): () => void {
 
 interface HomeDataIdentity {
 	memberId: string;
-	memberToken?: string | undefined;
 }
 
 /**
@@ -43,7 +42,7 @@ export function useHomeData(shareCode: string, identity: HomeDataIdentity) {
 		() => getBerlinWeekWindow(Date.parse(`${berlinTodayKey}T12:00:00.000Z`)),
 		[berlinTodayKey],
 	);
-	const auth = { memberId: identity.memberId, memberToken: identity.memberToken };
+	const auth = { memberId: identity.memberId };
 	const dashboardRead = useCachedFetch<DashboardData>(
 		`/api/wg/${encodedShareCode}/dashboard`,
 		auth,

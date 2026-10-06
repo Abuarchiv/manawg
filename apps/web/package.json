@@ -10,7 +10,7 @@
 		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.unit.json",
 		"lint": "biome check . && node scripts/check-architecture.mjs && node scripts/check-wg-auth-invariant.mjs",
 		"test": "playwright test",
-		"test:unit": "node --experimental-strip-types --import ./tests/support/register.mjs --test 'src/**/*.test.mjs' 'tests/*.test.mjs' 'tests/*.test.cjs' 'tests/*.test.ts'",
+		"test:unit": "node --experimental-strip-types --experimental-test-module-mocks --import ./tests/support/register.mjs --test 'src/**/*.test.mjs' 'tests/*.test.mjs' 'tests/*.test.cjs' 'tests/*.test.ts'",
 		"test:e2e": "playwright test",
 		"test:e2e:account-delete-db": "test -n \"$ACCOUNT_DELETE_TEST_URL\" || { echo 'Set ACCOUNT_DELETE_TEST_URL to a loopback disposable PostgreSQL database.'; exit 2; }; CI=true NODE_ENV=test NEXT_TELEMETRY_DISABLED=1 POSTGRES_URL=\"$ACCOUNT_DELETE_TEST_URL\" DATABASE_URL=\"$ACCOUNT_DELETE_TEST_URL\" POSTGRES_URL_NON_POOLING=\"$ACCOUNT_DELETE_TEST_URL\" DATABASE_URL_UNPOOLED=\"$ACCOUNT_DELETE_TEST_URL\" DATABASE_MIGRATION_URL=placeholder NODE_OPTIONS=--require=./e2e/account-delete-db.config.cjs playwright test --config=e2e/account-delete-db.config.cjs",
 		"test:e2e:ui": "playwright test --ui",

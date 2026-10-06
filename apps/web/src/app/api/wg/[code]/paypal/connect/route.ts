@@ -4,13 +4,12 @@ import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
-	apiError,
 	badRequest,
 	conflict,
 	notFound,
-	requireVerifiedMember,
 	serverError,
 	tooMany,
+	unauthorized,
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
@@ -57,8 +56,6 @@ function noStoreResponse(body: unknown, init?: ResponseInit): NextResponse {
 export const GET = withWgRoute<{ code: string }>('paypal connect GET', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
-	const verified = requireVerifiedMember(auth.member);
-	if (verified) return verified;
 	const config = getPayPalOnboardingConfig();
 	if (!config) return noStoreResponse({ available: false, connected: false });
 
@@ -103,8 +100,6 @@ export const POST = withWgRoute<{ code: string }>('paypal connect POST', async (
 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
-	const verified = requireVerifiedMember(auth.member);
-	if (verified) return verified;
 	const limited = await checkRateLimit(
 		wgWriteLimiter,
 		`paypal-connect:${auth.wg.id}:${auth.member.memberId}`,
@@ -221,7 +216,7 @@ export const POST = withWgRoute<{ code: string }>('paypal connect POST', async (
 			}
 			return 'connected' as const;
 		});
-		if (result === 'member_deactivated') return apiError('member_deactivated', 401);
+		if (result === 'member_deactivated') return unauthorized('member_deactivated');
 		if (result === 'member_not_found') return notFound('member_not_found');
 		if (result === 'paypal_account_already_connected') return conflict(result);
 		if (result === 'paypal_payment_pending') return conflict(result);

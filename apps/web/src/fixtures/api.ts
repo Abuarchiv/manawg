@@ -8,13 +8,13 @@ import {
 	isExportSectionKey,
 	toCsv,
 } from '@/composition/export';
-import { HTTP, apiError, notFound } from '@/core/http/api-errors';
+import { badRequest, notFound, unauthorized } from '@/core/http/api-errors';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { toChatUnreadCountResponse } from '@/features/chat/chat-unread-count';
 import { groupItemsByCategory } from '@/features/inventory/inventory';
 import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
-import { MEMBER_ID_HEADER } from '@/shared/lib/member-header';
+import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 import { type NextRequest, NextResponse } from 'next/server';
 import { type E2EWgFixture, E2E_CREATED_WG, buildE2EDashboardData, getE2EWgFixture } from './data';
 
@@ -116,7 +116,7 @@ function exportResponse(req: NextRequest, fixture: E2EWgFixture): NextResponse {
 	}
 	if (params.get('format') === 'csv') {
 		const requested = params.get('section') ?? 'expenses';
-		if (!isExportSectionKey(requested)) return apiError('section_invalid', HTTP.BAD_REQUEST);
+		if (!isExportSectionKey(requested)) return badRequest('section_invalid');
 		return new NextResponse(
 			toCsv(getExportSectionRows(data, requested), getExportSectionHeaders(requested)),
 			{
@@ -143,10 +143,11 @@ function exportFormatValid(req: NextRequest): boolean {
 function memberRead(req: NextRequest, code: string, read: MemberRead): NextResponse {
 	const fixture = getE2EWgFixture(code);
 	if (!fixture) return notFound('wg_not_found');
-	const memberId = req.headers.get(MEMBER_ID_HEADER);
-	if (!memberId) return apiError('auth_required', HTTP.UNAUTHORIZED, 'auth_required');
+	// No Supabase session here: the tab's expected-member header names the caller.
+	const memberId = req.headers.get(EXPECTED_MEMBER_ID_HEADER);
+	if (!memberId) return unauthorized('auth_required', 'auth_required');
 	if (!fixture.members.some((member) => member.id === memberId)) {
-		return apiError('not_a_member', HTTP.UNAUTHORIZED, 'not_a_member');
+		return unauthorized('not_a_member', 'not_a_member');
 	}
 	return read(req, fixture);
 }
@@ -167,11 +168,7 @@ function wgBootstrap(code: string): NextResponse {
 		members: fixture.members,
 		...(fixture.members[0]
 			? {
-					currentMember: {
-						memberId: fixture.members[0].id,
-						name: fixture.members[0].name,
-						memberToken: 'fixture-member-token',
-					},
+					currentMember: { memberId: fixture.members[0].id, name: fixture.members[0].name },
 				}
 			: {}),
 	});
@@ -202,11 +199,7 @@ async function createWg(req: NextRequest): Promise<NextResponse | null> {
 	if (!name || !creatorName) return null;
 	return NextResponse.json({
 		wg: { id: E2E_CREATED_WG.id, shareCode: E2E_CREATED_WG.shareCode, name },
-		creator: {
-			id: E2E_CREATED_WG.member.id,
-			name: creatorName,
-			token: 'fixture-member-token',
-		},
+		creator: { id: E2E_CREATED_WG.member.id, name: creatorName },
 	});
 }
 

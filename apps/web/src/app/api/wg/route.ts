@@ -11,11 +11,12 @@ import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import {
-	apiError,
 	badRequest,
 	conflict,
 	serverError,
+	serviceUnavailable,
 	tooMany,
+	unauthorized,
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
@@ -109,9 +110,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	} catch (err) {
 		// A transient Auth outage is retryable, not an unauthenticated caller.
 		logApiError('[api/wg POST] auth lookup failed', err);
-		return apiError('db_error', 503);
+		return serviceUnavailable('db_error');
 	}
-	if (!user) return apiError('auth_required', 401, 'auth_required');
+	if (!user) return unauthorized('auth_required', 'auth_required');
 	const authenticatedUser = user;
 	const idemKey = readIdempotencyKey(req);
 	const idemScope = `wg-create:${authenticatedUser.id}`;

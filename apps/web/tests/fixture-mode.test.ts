@@ -144,13 +144,13 @@ test('fixture API reads still enforce fixture membership', async () => {
 	assert.deepEqual(await noHeader?.json(), { error: 'auth_required', code: 'auth_required' });
 
 	const stranger = await fixtureApi(path, {
-		headers: { 'x-manawg-member-id': '00000000-0000-4000-8000-000000000000' },
+		headers: { 'x-manawg-expected-member-id': '00000000-0000-4000-8000-000000000000' },
 	});
 	assert.equal(stranger?.status, 401);
 	assert.deepEqual(await stranger?.json(), { error: 'not_a_member', code: 'not_a_member' });
 
 	const member = await fixtureApi(path, {
-		headers: { 'x-manawg-member-id': E2E_EXISTING_WG.member.id },
+		headers: { 'x-manawg-expected-member-id': E2E_EXISTING_WG.member.id },
 	});
 	assert.equal(member?.status, 200);
 	const body = (await member?.json()) as { members: Array<{ id: string }> };
@@ -185,7 +185,7 @@ test('fixture WG create answers valid bodies and leaves the rest to the route', 
 	assert.equal(created?.status, 200);
 	assert.deepEqual(await created?.json(), {
 		wg: { id: E2E_CREATED_WG.id, shareCode: E2E_CREATED_WG.shareCode, name: 'Neue WG' },
-		creator: { id: E2E_CREATED_WG.member.id, name: 'Alex', token: 'fixture-member-token' },
+		creator: { id: E2E_CREATED_WG.member.id, name: 'Alex' },
 	});
 
 	assert.equal(await create({ name: '   ', creatorName: 'Alex' }), null);

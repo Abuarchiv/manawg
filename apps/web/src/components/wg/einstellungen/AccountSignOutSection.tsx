@@ -31,7 +31,6 @@ export function AccountSignOutSection({
 				{
 					code: wg.shareCode,
 					memberId: identity.memberId,
-					...(identity.memberToken ? { memberToken: identity.memberToken } : {}),
 				},
 			]);
 			clearIdentity(wg.id);

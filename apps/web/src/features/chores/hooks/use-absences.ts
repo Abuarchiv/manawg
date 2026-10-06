@@ -116,7 +116,6 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 				{
 					method: 'POST',
 					memberId: identity.memberId,
-					memberToken: identity.memberToken,
 					headers: { 'Idempotency-Key': idempotencyKey },
 					body: JSON.stringify({
 						memberId: absenceMemberId,
@@ -213,7 +212,6 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 				{
 					method: 'DELETE',
 					memberId: identity.memberId,
-					memberToken: identity.memberToken,
 				},
 			);
 			if (!result.ok) {

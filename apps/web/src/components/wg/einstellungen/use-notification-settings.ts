@@ -62,18 +62,13 @@ export const NOTIFICATION_PREFERENCES: ReadonlyArray<{
 interface NotificationSettingsInput {
 	code: string;
 	memberId: string;
-	memberToken?: string | undefined;
 }
 
 /**
  * Notification settings of the member: push subscription, per-area switches and quiet hours.
  * One request at a time; each change carries an idempotency key that survives a retry.
  */
-export function useNotificationSettings({
-	code,
-	memberId,
-	memberToken,
-}: NotificationSettingsInput) {
+export function useNotificationSettings({ code, memberId }: NotificationSettingsInput) {
 	const [status, setStatus] = useState<NotificationStatus | null>(null);
 	const [pending, setPending] = useState<'push' | 'save' | 'test' | null>(null);
 	const [pushTarget, setPushTarget] = useState<boolean | null>(null);
@@ -136,7 +131,7 @@ export function useNotificationSettings({
 			}
 			if (!subscription) return;
 			try {
-				await persistExistingWebPushSubscription(code, memberId, subscription, memberToken);
+				await persistExistingWebPushSubscription(code, memberId, subscription);
 				if (cancelled) return;
 				setStatus((prev) =>
 					prev && prev.pushOptIn === false ? { ...prev, pushOptIn: true } : prev,
@@ -149,7 +144,7 @@ export function useNotificationSettings({
 		return () => {
 			cancelled = true;
 		};
-	}, [code, memberId, memberToken, status?.pushOptIn]);
+	}, [code, memberId, status?.pushOptIn]);
 
 	async function activatePush() {
 		if (pendingRef.current) return;
@@ -158,7 +153,7 @@ export function useNotificationSettings({
 		setError(null);
 		setMessage(null);
 		try {
-			await subscribeWebPush(code, memberId, memberToken);
+			await subscribeWebPush(code, memberId);
 			setStatus((prev) => (prev ? { ...prev, pushOptIn: true } : prev));
 			setMessage('Web Push ist aktiv.');
 		} catch (err) {
@@ -175,7 +170,7 @@ export function useNotificationSettings({
 		setPending('push');
 		setError(null);
 		try {
-			await unsubscribeWebPush(code, memberId, memberToken);
+			await unsubscribeWebPush(code, memberId);
 			setStatus((prev) => (prev ? { ...prev, pushOptIn: false } : prev));
 			setMessage('Web Push ist deaktiviert.');
 		} catch (err) {
@@ -210,7 +205,6 @@ export function useNotificationSettings({
 			const res = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
 				method: 'PATCH',
 				memberId,
-				memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify(body),
 			});
@@ -268,7 +262,6 @@ export function useNotificationSettings({
 			const res = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
 				method: 'POST',
 				memberId,
-				memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({ action: 'test_notification' }),
 			});

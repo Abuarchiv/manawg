@@ -4,7 +4,11 @@ import { safeLocalStorage } from '@/core/utils/browser';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { z } from 'zod';
 import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from './limits';
-import { MEMBER_ID_HEADER, MEMBER_TOKEN_HEADER } from './member-header';
+import {
+	EXPECTED_MEMBER_ID_HEADER,
+	LEGACY_CLAIM_MEMBER_ID_HEADER,
+	LEGACY_CLAIM_TOKEN_HEADER,
+} from './member-header';
 
 const STORAGE_PREFIX = 'manawg_identity:';
 const KNOWN_WGS_KEY = 'manawg_known_wgs';
@@ -16,9 +20,8 @@ const storedIdentitySchema = z.object({
 	name: z.string().min(1).max(MEMBER_NAME_MAX_LENGTH),
 	// Used only to keep local offline records separated when this browser switches accounts.
 	authUserId: z.string().regex(UUID_V4_PATTERN).optional(),
-	// Session token (see @/core/guards/member-token). Optional so identities
-	// stored before this field existed keep parsing; WgContextProvider rewrites
-	// the field from the server on the next WG load (loadSessionMember).
+	// Legacy-profile recovery proof (see @/core/guards/legacy-claim-proof). Only
+	// read by getLegacyIdentityCandidates; normal API access never sends it.
 	memberToken: z.string().min(1).optional(),
 });
 
@@ -30,11 +33,16 @@ const knownWgSchema = z.object({
 	lastVisitedAt: z.number().finite(),
 });
 
-/** Legacy-proof headers for the explicit claim endpoint; Supabase owns normal access control. */
-export function memberAuthHeader(memberId: string, memberToken?: string): Record<string, string> {
+/** Member-context header for plain `fetch` calls outside `apiFetch` (downloads, WG delete). */
+export function memberContextHeader(memberId: string): Record<string, string> {
+	return { [EXPECTED_MEMBER_ID_HEADER]: memberId };
+}
+
+/** Proof headers for the explicit legacy claim endpoint; Supabase owns normal access control. */
+export function legacyClaimHeaders(candidate: LegacyIdentityCandidate): Record<string, string> {
 	return {
-		[MEMBER_ID_HEADER]: memberId,
-		...(memberToken ? { [MEMBER_TOKEN_HEADER]: memberToken } : {}),
+		[LEGACY_CLAIM_MEMBER_ID_HEADER]: candidate.memberId,
+		[LEGACY_CLAIM_TOKEN_HEADER]: candidate.memberToken,
 	};
 }
 
@@ -42,7 +50,6 @@ export interface StoredIdentity {
 	memberId: string;
 	name: string;
 	authUserId?: string;
-	memberToken?: string;
 }
 
 export interface LegacyIdentityCandidate {
@@ -66,13 +73,8 @@ export function getIdentity(wgId: string): StoredIdentity | null {
 		const parsed: unknown = JSON.parse(raw);
 		const result = storedIdentitySchema.safeParse(parsed);
 		if (!result.success) return null;
-		const { memberId, name, authUserId, memberToken } = result.data;
-		return {
-			memberId,
-			name,
-			...(authUserId ? { authUserId } : {}),
-			...(memberToken ? { memberToken } : {}),
-		};
+		const { memberId, name, authUserId } = result.data;
+		return { memberId, name, ...(authUserId ? { authUserId } : {}) };
 	} catch {
 		return null;
 	}

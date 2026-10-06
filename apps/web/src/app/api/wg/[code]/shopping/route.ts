@@ -345,10 +345,7 @@ export const DELETE = withWgRoute('shopping DELETE', async (req, { code }) => {
 	// item-level DELETE, which is limited to the item's own adder), so it is
 	// admin-only like the other bulk/override mutations (chores DELETE,
 	// announcement override). The caller's identity is resolved from the
-	// Supabase session by requireWgMember, so the explicit DB role check
-	// (`isWgAdmin`) is the sound proof here — `isVerifiedWgAdmin` would also
-	// demand the legacy HMAC token, which no flow issues since the Supabase
-	// migration and would lock every admin out of this action.
+	// Supabase session by requireWgMember, so the DB role check is the proof.
 	if (!(await isWgAdmin(wgId, auth.member.memberId))) {
 		return forbidden('not_admin', 'not_admin');
 	}

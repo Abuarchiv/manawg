@@ -42,7 +42,6 @@ interface InventoryAddModalProps {
 	open: boolean;
 	shareCode: string;
 	memberId: string;
-	memberToken?: string | undefined;
 	mode: 'create' | 'edit';
 	initial?: {
 		id: string;
@@ -81,7 +80,6 @@ export function InventoryAddModal({
 	open,
 	shareCode,
 	memberId,
-	memberToken,
 	mode,
 	initial,
 	onClose,
@@ -174,14 +172,13 @@ export function InventoryAddModal({
 			mode === 'edit' && current
 				? await apiFetch<{ item: InventoryMutationItemDto }>(
 						`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(current.id)}`,
-						{ method: 'PATCH', memberId, memberToken, body: JSON.stringify(body) },
+						{ method: 'PATCH', memberId, body: JSON.stringify(body) },
 					)
 				: await apiFetch<{ item: InventoryMutationItemDto }>(
 						`/api/wg/${encodedShareCode}/inventory`,
 						{
 							method: 'POST',
 							memberId,
-							memberToken,
 							headers: { 'Idempotency-Key': idempotencyKey as string },
 							body: JSON.stringify(body),
 						},
@@ -199,7 +196,7 @@ export function InventoryAddModal({
 		} else if (mode === 'edit' && current && res.error === 'version_conflict') {
 			const refreshed = await apiFetch<{ items: InventoryItemDto[] }>(
 				`/api/wg/${encodedShareCode}/inventory`,
-				{ memberId, memberToken },
+				{ memberId },
 			);
 			setSaving(false);
 			const latest = refreshed.ok

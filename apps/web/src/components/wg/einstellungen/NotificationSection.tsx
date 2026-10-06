@@ -56,11 +56,9 @@ function HourSelect({
 export function NotificationSection({
 	code,
 	memberId,
-	memberToken,
 }: {
 	code: string;
 	memberId: string;
-	memberToken?: string | undefined;
 }) {
 	const {
 		status,
@@ -74,7 +72,7 @@ export function NotificationSection({
 		togglePreference,
 		saveQuietHours,
 		sendTestNotification,
-	} = useNotificationSettings({ code, memberId, memberToken });
+	} = useNotificationSettings({ code, memberId });
 	const pushActive = !!status?.pushOptIn;
 	const notificationBusy = pending !== null || loadingStatus;
 	const notificationControlsDisabled = !status || notificationBusy;

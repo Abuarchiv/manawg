@@ -29,7 +29,6 @@ interface DebtRowProps {
 	expenses: readonly Expense[];
 	shareCode: string;
 	currentMemberId: string;
-	memberToken?: string | undefined;
 	memberPayPalMerchantId: (id: string) => string | null;
 	payPalEligible: boolean;
 	/** PayPal hint only in the first matching row per card. */
@@ -43,7 +42,6 @@ export function SettlementDebtRow({
 	expenses,
 	shareCode,
 	currentMemberId,
-	memberToken,
 	memberPayPalMerchantId,
 	payPalEligible,
 	showPayPalHint,
@@ -53,7 +51,6 @@ export function SettlementDebtRow({
 		debt,
 		shareCode,
 		currentMemberId,
-		memberToken,
 		onSettled,
 	});
 	const { reviewOpen, settling, reviewing, error, review } = settlement;
@@ -108,7 +105,6 @@ export function SettlementDebtRow({
 							creditorMemberId={debt.toId}
 							currency={debt.currency ?? 'EUR'}
 							currentMemberId={currentMemberId}
-							memberToken={memberToken}
 							size="sm"
 						/>
 					)}
@@ -142,7 +138,6 @@ export function SettlementDebtRow({
 								<PayPalPaymentButton
 									shareCode={shareCode}
 									currentMemberId={currentMemberId}
-									memberToken={memberToken}
 									fromMemberId={debt.fromId}
 									toMemberId={debt.toId}
 									payeeMerchantId={payeeMerchantId}

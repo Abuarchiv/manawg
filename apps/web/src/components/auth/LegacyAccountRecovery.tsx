@@ -10,7 +10,7 @@ import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import {
 	clearIdentity,
 	getLegacyIdentityCandidates,
-	memberAuthHeader,
+	legacyClaimHeaders,
 } from '@/shared/lib/identity';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useRef, useState } from 'react';
@@ -58,7 +58,7 @@ export function LegacyAccountRecovery() {
 						`/api/wg/${encodeURIComponent(normalizedCode)}/members/${encodeURIComponent(candidate.memberId)}/claim`,
 						{
 							method: 'POST',
-							headers: memberAuthHeader(candidate.memberId, candidate.memberToken),
+							headers: legacyClaimHeaders(candidate),
 						},
 					);
 					if (!response.ok) continue;
