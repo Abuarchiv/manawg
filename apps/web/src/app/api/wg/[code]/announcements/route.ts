@@ -97,114 +97,106 @@ function choreSwapSourcePath(choreId: string): string {
 	return `/putzen?highlight=${encodeURIComponent(choreId)}`;
 }
 
-export const GET = withWgRoute(
-	'announcements GET',
-	async (req, { code }) => {
-		const auth = await requireWgMember(req, code);
-		if (!auth.ok) return auth.response;
-		const wgId = auth.wg.id;
-		const listOrder = [
-			sql`${announcements.pinnedAt} desc nulls last`,
-			desc(announcements.createdAt),
-		] as const;
-		// System notices (postSystemNotice) are stored as open posts too and can
-		// flood the newest window, so open posts written by members are fetched
-		// separately and always included next to the newest rows.
-		const [newestItems, openMemberItems] = await Promise.all([
-			db
-				.select()
-				.from(announcements)
-				.where(eq(announcements.wgId, wgId))
-				.orderBy(...listOrder)
-				.limit(ANNOUNCEMENTS_LIST_LIMIT),
-			db
-				.select()
-				.from(announcements)
-				.where(
-					and(
-						eq(announcements.wgId, wgId),
-						eq(announcements.status, 'open'),
-						inArray(announcements.source, MEMBER_ANNOUNCEMENT_SOURCES),
-					),
-				)
-				.orderBy(...listOrder)
-				.limit(ANNOUNCEMENTS_LIST_LIMIT),
-		]);
-		const itemsById = new Map(newestItems.map((item) => [item.id, item]));
-		for (const item of openMemberItems) itemsById.set(item.id, item);
-		const items = [...itemsById.values()].sort(
-			(a, b) =>
-				(b.pinnedAt?.getTime() ?? Number.NEGATIVE_INFINITY) -
-					(a.pinnedAt?.getTime() ?? Number.NEGATIVE_INFINITY) ||
-				b.createdAt.getTime() - a.createdAt.getTime(),
-		);
+export const GET = withWgRoute('announcements GET', async (req, { code }) => {
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wgId = auth.wg.id;
+	const listOrder = [
+		sql`${announcements.pinnedAt} desc nulls last`,
+		desc(announcements.createdAt),
+	] as const;
+	// System notices (postSystemNotice) are stored as open posts too and can
+	// flood the newest window, so open posts written by members are fetched
+	// separately and always included next to the newest rows.
+	const [newestItems, openMemberItems] = await Promise.all([
+		db
+			.select()
+			.from(announcements)
+			.where(eq(announcements.wgId, wgId))
+			.orderBy(...listOrder)
+			.limit(ANNOUNCEMENTS_LIST_LIMIT),
+		db
+			.select()
+			.from(announcements)
+			.where(
+				and(
+					eq(announcements.wgId, wgId),
+					eq(announcements.status, 'open'),
+					inArray(announcements.source, MEMBER_ANNOUNCEMENT_SOURCES),
+				),
+			)
+			.orderBy(...listOrder)
+			.limit(ANNOUNCEMENTS_LIST_LIMIT),
+	]);
+	const itemsById = new Map(newestItems.map((item) => [item.id, item]));
+	for (const item of openMemberItems) itemsById.set(item.id, item);
+	const items = [...itemsById.values()].sort(
+		(a, b) =>
+			(b.pinnedAt?.getTime() ?? Number.NEGATIVE_INFINITY) -
+				(a.pinnedAt?.getTime() ?? Number.NEGATIVE_INFINITY) ||
+			b.createdAt.getTime() - a.createdAt.getTime(),
+	);
 
-		if (items.length === 0) return NextResponse.json({ announcements: [] });
+	if (items.length === 0) return NextResponse.json({ announcements: [] });
 
-		const ids = items.map((item) => item.id);
-		const reactions = await db
-			.select({
-				announcementId: announcementReactions.announcementId,
-				memberId: announcementReactions.memberId,
-				reaction: announcementReactions.reaction,
-				memberName: wgMembers.name,
-				memberColor: wgMembers.color,
-			})
-			.from(announcementReactions)
-			.innerJoin(wgMembers, eq(announcementReactions.memberId, wgMembers.id))
-			.where(inArray(announcementReactions.announcementId, ids));
-		const comments = await db
-			.select({
-				id: announcementComments.id,
-				announcementId: announcementComments.announcementId,
-				memberId: announcementComments.memberId,
-				content: announcementComments.content,
-				createdAt: announcementComments.createdAt,
-				authorName: wgMembers.name,
-				authorColor: wgMembers.color,
-			})
-			.from(announcementComments)
-			.innerJoin(wgMembers, eq(announcementComments.memberId, wgMembers.id))
-			.where(inArray(announcementComments.announcementId, ids))
-			.orderBy(asc(announcementComments.createdAt));
-		const reactionSummary = summarizeAnnouncementReactions(reactions, auth.member.memberId);
-		const commentsByAnnouncement = new Map<string, typeof comments>();
-		for (const comment of comments) {
-			const list = commentsByAnnouncement.get(comment.announcementId) ?? [];
-			list.push(comment);
-			commentsByAnnouncement.set(comment.announcementId, list);
-		}
-		const takersByAnnouncement = new Map<
-			string,
-			Array<{ memberId: string; name: string; color: string | null }>
-		>();
-		for (const reaction of reactions) {
-			if (reaction.reaction !== 'take') continue;
-			const list = takersByAnnouncement.get(reaction.announcementId) ?? [];
-			list.push({
-				memberId: reaction.memberId,
-				name: reaction.memberName,
-				color: reaction.memberColor,
-			});
-			takersByAnnouncement.set(reaction.announcementId, list);
-		}
-
-		return NextResponse.json({
-			announcements: items.map((item) => ({
-				...item,
-				reactionCounts: reactionSummary.get(item.id)?.reactionCounts ?? {},
-				myReactions: reactionSummary.get(item.id)?.myReactions ?? [],
-				takers: takersByAnnouncement.get(item.id) ?? [],
-				comments: commentsByAnnouncement.get(item.id) ?? [],
-			})),
+	const ids = items.map((item) => item.id);
+	const reactions = await db
+		.select({
+			announcementId: announcementReactions.announcementId,
+			memberId: announcementReactions.memberId,
+			reaction: announcementReactions.reaction,
+			memberName: wgMembers.name,
+			memberColor: wgMembers.color,
+		})
+		.from(announcementReactions)
+		.innerJoin(wgMembers, eq(announcementReactions.memberId, wgMembers.id))
+		.where(inArray(announcementReactions.announcementId, ids));
+	const comments = await db
+		.select({
+			id: announcementComments.id,
+			announcementId: announcementComments.announcementId,
+			memberId: announcementComments.memberId,
+			content: announcementComments.content,
+			createdAt: announcementComments.createdAt,
+			authorName: wgMembers.name,
+			authorColor: wgMembers.color,
+		})
+		.from(announcementComments)
+		.innerJoin(wgMembers, eq(announcementComments.memberId, wgMembers.id))
+		.where(inArray(announcementComments.announcementId, ids))
+		.orderBy(asc(announcementComments.createdAt));
+	const reactionSummary = summarizeAnnouncementReactions(reactions, auth.member.memberId);
+	const commentsByAnnouncement = new Map<string, typeof comments>();
+	for (const comment of comments) {
+		const list = commentsByAnnouncement.get(comment.announcementId) ?? [];
+		list.push(comment);
+		commentsByAnnouncement.set(comment.announcementId, list);
+	}
+	const takersByAnnouncement = new Map<
+		string,
+		Array<{ memberId: string; name: string; color: string | null }>
+	>();
+	for (const reaction of reactions) {
+		if (reaction.reaction !== 'take') continue;
+		const list = takersByAnnouncement.get(reaction.announcementId) ?? [];
+		list.push({
+			memberId: reaction.memberId,
+			name: reaction.memberName,
+			color: reaction.memberColor,
 		});
-	},
-	{
-		fixture: () => {
-			return NextResponse.json({ announcements: [] });
-		},
-	},
-);
+		takersByAnnouncement.set(reaction.announcementId, list);
+	}
+
+	return NextResponse.json({
+		announcements: items.map((item) => ({
+			...item,
+			reactionCounts: reactionSummary.get(item.id)?.reactionCounts ?? {},
+			myReactions: reactionSummary.get(item.id)?.myReactions ?? [],
+			takers: takersByAnnouncement.get(item.id) ?? [],
+			comments: commentsByAnnouncement.get(item.id) ?? [],
+		})),
+	});
+});
 
 export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 	const rawResult = await readJsonBody(req, 64 * 1024);

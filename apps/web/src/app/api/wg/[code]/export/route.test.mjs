@@ -113,7 +113,6 @@ function exportRoute(failedTable, { expenseCount = 0, rowsByTable = {} } = {}) {
 		},
 		'@/core/guards/route-preamble': {
 			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
-			resolveE2EFixture: async () => ({ mode: 'real' }),
 		},
 		'@/core/infra/observability': loadTs('src/core/infra/observability.ts', {
 			'./sentry': { captureSentryException() {}, logSentryApiError() {} },

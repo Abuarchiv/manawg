@@ -1,8 +1,9 @@
 // Public entry API contract in fixture mode. Live counterpart: public-entry-live.
 
 import { expect, test } from '@playwright/test';
-import { apiFetch } from '../src/core/infra/api-client';
-import { E2E_EXISTING_WG } from '../src/core/infra/e2e-db-down';
+import { apiFetch, configureApiClient } from '../src/core/infra/api-client';
+import { isClientFixtureMode } from '../src/fixtures/client-mode';
+import { E2E_EXISTING_WG } from '../src/fixtures/data';
 
 test.describe('public entry api', () => {
 	test('guest membership lookup ignores unrelated and PKCE cookies', async ({ request }) => {
@@ -95,6 +96,8 @@ test.describe('public entry api', () => {
 		try {
 			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE = 'true';
 			process.env.NEXT_PUBLIC_DB_DOWN = 'true';
+			// Same switch as the client seam (src/fixtures/FixtureClientSetup.tsx).
+			configureApiClient({ memberIdHeader: isClientFixtureMode() });
 			const fixtureClient = await apiFetch<{ members: unknown[] }>(
 				new URL(`/api/wg/${code}/members`, baseURL).href,
 				{ memberId },
@@ -102,11 +105,13 @@ test.describe('public entry api', () => {
 			expect(fixtureClient.ok).toBe(true);
 
 			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE = 'false';
+			configureApiClient({ memberIdHeader: isClientFixtureMode() });
 			const normalClient = await apiFetch(new URL(`/api/wg/${code}/members`, baseURL).href, {
 				memberId,
 			});
 			expect(normalClient).toMatchObject({ ok: false, status: 401 });
 		} finally {
+			configureApiClient({ memberIdHeader: false });
 			// Restore exactly: writing '' would leave a defined env var behind, and
 			// assigning undefined would stringify to "undefined" — remove instead.
 			if (previousFixtureMode === undefined) {
