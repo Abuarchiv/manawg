@@ -1,11 +1,10 @@
 'use client';
 
+import { ErrorBox } from '@/components/app/ErrorBox';
 import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { LegalLinks } from '@/components/entry/LegalLinks';
-import { ErrorBox } from '@/components/neu/ErrorBox';
-import { InviteStep } from '@/components/neu/InviteStep';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +15,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { ChooseStep } from './ChooseStep';
 import { CreateStep } from './CreateStep';
+import { InviteStep } from './InviteStep';
 import { JoinCodeStep } from './JoinCodeStep';
 import { JoinNameStep } from './JoinNameStep';
 import {

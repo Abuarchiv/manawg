@@ -11,7 +11,6 @@ import { useMembersPolling, useMembersRefresh } from './use-members-refresh';
 import { useMembershipLost } from './use-membership-lost';
 import { useOfflineAutoSync, useSyncOnFocusAndOnline } from './use-offline-auto-sync';
 import { useSessionMember } from './use-session-member';
-import { useTabWarmup } from './use-tab-warmup';
 
 export interface WgSummary {
 	id: string;
@@ -41,6 +40,8 @@ interface WgContextValue {
 	// reactivate buttons, chat admin-delete). Every mutation re-checks
 	// server-side, so this being stale/spoofed can't grant real access.
 	isAdmin: boolean;
+	/** The account session is confirmed; background work that needs it (tab warmup) waits for it. */
+	accountReady: boolean;
 }
 
 const WgContext = createContext<WgContextValue | null>(null);
@@ -118,8 +119,8 @@ export function WgContextProvider({
 
 	const value = useMemo<WgContextValue | null>(() => {
 		if (!identity) return null;
-		return { wg, members, identity, refreshMembers, isAdmin };
-	}, [wg, members, identity, refreshMembers, isAdmin]);
+		return { wg, members, identity, refreshMembers, isAdmin, accountReady };
+	}, [wg, members, identity, refreshMembers, isAdmin, accountReady]);
 
 	// Hook order is effect order: the sync interval, the members poll, then the
 	// online/focus sync listeners, so shared visibility/online events fire them in that order.
@@ -131,11 +132,6 @@ export function WgContextProvider({
 	});
 	useMembersPolling(refreshMembers, Boolean(identity && accountReady));
 	useSyncOnFocusAndOnline(sync, identity, accountReady);
-	useTabWarmup(
-		encodedShareCode,
-		accountReady ? identity?.memberId : undefined,
-		identity?.memberToken,
-	);
 
 	// A server-verified session already carries the identity, so the shell and page render
 	// in the SSR HTML; only the localStorage path has to wait for the mount effect.

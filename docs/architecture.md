@@ -56,8 +56,8 @@ under `app/wg/**`; WG APIs belong under `app/api/wg/**`.
 | `features/<x>/` | Vertical slices: `chat`, `chores`, `events`, `expenses`, `inventory`, `pinnwand`, `shopping` (logic, hooks, components) | `core/`, `shared/`, own files |
 | `core/reads/` | Cross-feature reads/composition: dashboard data and insights, activity feed, export | `core/`, several `features/*` (chores, expenses, events, pinnwand) |
 | `core/` (rest) | Domain-neutral blocks: `db`, `auth`, `guards`, `http`, `offline`, `notifications`, `infra`, `utils`, `validators` | `core/`, `shared/` (exception: `core/activity-feed.ts` imports chat constants) |
-| `components/` | Shared UI (`ui/` shadcn, `animate-ui/`, `app/` shell, `wg/`) | |
-| `shared/` | Presentation utilities (theme, fonts, analytics, identity, header names) | |
+| `components/` | Shared UI: `ui/` shadcn primitives (plus `LogoMark`, `Toast`, `ConfirmDialog`), `animate-ui/`, `app/` app-wide composites (shell, PWA install/push prompts, theme), `wg/` WG-wide composites | `components/`, `core/`, `shared/` |
+| `shared/` | Framework-light utilities (`lib/`, fonts, css): theme, analytics, identity, header names | `shared/` |
 
 Rules:
 

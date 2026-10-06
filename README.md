@@ -18,8 +18,8 @@ apps/web/
                   core/reads/ is the cross-feature read/composition layer (dashboard, activity, export)
   src/features/   vertical slices (chat, chores, events, expenses, inventory, pinnwand, shopping)
                   a feature may import core/, shared/ and itself, never another feature
-  src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell), wg/ (WG-wide)
-  src/shared/     presentation-level utilities: theme, fonts, css, brand, analytics, identity
+  src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide)
+  src/shared/     framework-light utilities (lib/, fonts, css): theme, brand, analytics, identity
   drizzle/        SQL migrations (`pnpm --filter @manawg/web db:generate` / `db:migrate`)
   e2e/            Playwright specs (fixture mode needs no database)
   tests/          node:test suites that are not colocated with a module

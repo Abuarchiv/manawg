@@ -16,6 +16,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { type ReactNode, cache } from 'react';
+import { TabWarmup } from './_components/TabWarmup';
 
 interface Props {
 	children: ReactNode;
@@ -181,6 +182,7 @@ function WgShell({
 			initialIsAdmin={initialIsAdmin}
 			sessionless={sessionless}
 		>
+			<TabWarmup />
 			<div
 				className="group/wg-shell min-h-svh bg-background"
 				style={{

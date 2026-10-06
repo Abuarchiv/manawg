@@ -4,7 +4,7 @@ import { FieldLabel, Field as FieldPrimitive } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/shared/lib/cn';
 
-interface FieldProps {
+interface TextFieldProps {
 	id: string;
 	label: string;
 	placeholder?: string;
@@ -19,7 +19,7 @@ interface FieldProps {
 	enterKeyHint?: 'done' | 'next' | 'go' | 'search' | 'send';
 }
 
-export function Field({
+export function TextField({
 	id,
 	label,
 	placeholder,
@@ -32,7 +32,7 @@ export function Field({
 	invalid = false,
 	describedBy,
 	enterKeyHint,
-}: FieldProps) {
+}: TextFieldProps) {
 	const nearLimit = value.length >= maxLength - 8;
 	const describedByProps = describedBy === undefined ? {} : { 'aria-describedby': describedBy };
 	return (

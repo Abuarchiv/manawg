@@ -12,15 +12,15 @@ import {
 } from '@/components/ui/dialog';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia } from '@/components/ui/item';
 import { cn } from '@/shared/lib/cn';
-import { Download, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 import {
 	type BeforeInstallEvent,
 	isAppInstalled,
 	isIosLikeDevice,
 	subscribeInstall,
 	triggerInstall,
-} from '../lib/pwa-install';
+} from '@/shared/lib/pwa-install';
+import { Download, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 type Platform = 'desktop' | 'android' | 'ios' | 'unknown';
 
@@ -67,7 +67,7 @@ export function InstallButton({
 	if (installed) return null;
 
 	const click = async () => {
-		// iOS hat keine Native-Install-API → Fallback-Modal mit Anleitung
+		// iOS has no native install API: fall back to the instructions modal
 		if (platform === 'ios') {
 			setShowFallback(true);
 			return;
@@ -83,7 +83,7 @@ export function InstallButton({
 			return;
 		}
 
-		// Kein Native-Event verfügbar → Anleitung zeigen
+		// No native event available: show the instructions
 		setShowFallback(true);
 	};
 

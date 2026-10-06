@@ -1,7 +1,7 @@
+import { InstallPrompt } from '@/components/app/InstallPrompt';
+import { PwaRegister } from '@/components/app/PwaRegister';
+import { ThemeProvider } from '@/components/app/ThemeProvider';
 import { FixtureClientSetup } from '@/fixtures/FixtureClientSetup';
-import { InstallPrompt } from '@/shared/components/install-prompt';
-import { PwaRegister } from '@/shared/components/pwa-register';
-import { ThemeProvider } from '@/shared/components/theme/ThemeProvider';
 import { getAppUrl } from '@/shared/lib/app-url';
 import { THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import type { Metadata, Viewport } from 'next';

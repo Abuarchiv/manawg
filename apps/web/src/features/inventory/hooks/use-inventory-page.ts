@@ -1,4 +1,3 @@
-import type { DashboardData } from '@/composition/dashboard-data';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { refreshCachedFetch, useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { useStableCallback } from '@/core/hooks/useStableCallback';
@@ -112,7 +111,7 @@ export function useInventoryPage(shareCode: string, memberId: string, memberToke
 			// Zähler „Einkäufe“ in der Unternavigation: Unter dem Schwellwert legt der Server automatisch
 			// einen Einkaufsartikel an, den der Dashboard-Cache sonst erst beim nächsten Fokus kennt.
 			if (updated && isBelowThreshold(updated)) {
-				void refreshCachedFetch<DashboardData>(`/api/wg/${encodedShareCode}/dashboard`, {
+				void refreshCachedFetch(`/api/wg/${encodedShareCode}/dashboard`, {
 					memberId,
 					memberToken,
 				});

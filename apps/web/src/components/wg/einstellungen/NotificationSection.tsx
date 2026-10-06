@@ -10,71 +10,48 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { Section } from '@/components/wg/einstellungen/Section';
-import {
-	notificationSaveErrorMessage,
-	notificationTestErrorMessage,
-} from '@/components/wg/einstellungen/settings-errors';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { apiFetch } from '@/core/infra/api-client';
 import { parseQuietHour } from '@/core/notifications/notification-preferences';
-import {
-	persistExistingWebPushSubscription,
-	subscribeWebPush,
-	unsubscribeWebPush,
-} from '@/core/notifications/push-subscribe';
-import {
-	formatPushActivationError,
-	formatPushDeactivationError,
-} from '@/core/notifications/web-push-errors';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import { haptic } from '@/shared/lib/haptics';
 import { Bell, CheckCircle2 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { NOTIFICATION_PREFERENCES, useNotificationSettings } from './use-notification-settings';
 
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => ({
 	value: hour,
 	label: `${String(hour).padStart(2, '0')}:00`,
 }));
 
-interface NotificationStatus {
-	pushOptIn: boolean;
-	notifyAnnouncements: boolean;
-	notifyChores: boolean;
-	notifyExpenses: boolean;
-	notifyReminders: boolean;
-	notifyShopping: boolean;
-	notifyInventory: boolean;
-	notifyChat: boolean;
-	notifyEvents: boolean;
-	quietStartHour: number | null;
-	quietEndHour: number | null;
-	pushConfigured: boolean;
-}
-
-type NotificationPreferenceKey =
-	| 'notifyAnnouncements'
-	| 'notifyChores'
-	| 'notifyExpenses'
-	| 'notifyReminders'
-	| 'notifyShopping'
-	| 'notifyInventory'
-	| 'notifyChat'
-	| 'notifyEvents';
-
-const NOTIFICATION_PREFERENCES: ReadonlyArray<{
-	key: NotificationPreferenceKey;
+function HourSelect({
+	label,
+	ariaLabel,
+	value,
+	disabled,
+	onChange,
+}: {
 	label: string;
-	description?: string;
-}> = [
-	{ key: 'notifyAnnouncements', label: 'Pinnwand' },
-	{ key: 'notifyChores', label: 'Putzplan' },
-	{ key: 'notifyExpenses', label: 'Ausgaben' },
-	{ key: 'notifyReminders', label: 'Erinnerungen', description: 'Erinnerung an offene Beträge' },
-	{ key: 'notifyShopping', label: 'Einkäufe' },
-	{ key: 'notifyInventory', label: 'Vorräte', description: 'Wenn etwas bald leer ist' },
-	{ key: 'notifyChat', label: 'Chat' },
-	{ key: 'notifyEvents', label: 'Kalender' },
-];
+	ariaLabel: string;
+	value: number | null | undefined;
+	disabled: boolean;
+	onChange: (hour: number | null) => void;
+}) {
+	return (
+		<Field className="min-w-0">
+			<FieldTitle>{label}</FieldTitle>
+			<NativeSelect
+				value={value ?? ''}
+				disabled={disabled}
+				onChange={(e) => onChange(parseQuietHour(e.target.value))}
+				aria-label={ariaLabel}
+				className="w-full min-w-0 text-base"
+			>
+				<NativeSelectOption value="">Aus</NativeSelectOption>
+				{HOUR_OPTIONS.map((option) => (
+					<NativeSelectOption key={option.label} value={option.value}>
+						{option.label}
+					</NativeSelectOption>
+				))}
+			</NativeSelect>
+		</Field>
+	);
+}
 
 export function NotificationSection({
 	code,
@@ -85,242 +62,19 @@ export function NotificationSection({
 	memberId: string;
 	memberToken?: string | undefined;
 }) {
-	const [status, setStatus] = useState<NotificationStatus | null>(null);
-	const [pending, setPending] = useState<'push' | 'save' | 'test' | null>(null);
-	const [pushTarget, setPushTarget] = useState<boolean | null>(null);
-	const [message, setMessage] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
-	const [loadingStatus, setLoadingStatus] = useState(true);
-	const pendingRef = useRef(false);
-	const notificationRequestKeysRef = useRef(new Map<string, string>());
-	const loadStatusRequestIdRef = useRef(0);
-	const pushResyncAttemptedKeyRef = useRef<string | null>(null);
-	const encodedCode = encodeURIComponent(code);
-
-	const loadStatus = useCallback(async (): Promise<void> => {
-		const requestId = loadStatusRequestIdRef.current + 1;
-		loadStatusRequestIdRef.current = requestId;
-		setLoadingStatus(true);
-		const res = await apiFetch<NotificationStatus>(`/api/wg/${encodedCode}/notifications`, {
-			memberId,
-		});
-		if (requestId !== loadStatusRequestIdRef.current) return;
-
-		if (res.ok) {
-			setStatus(res.data);
-			setError(null);
-		} else {
-			setStatus(null);
-			setError(
-				getWgLoadErrorMessage('Benachrichtigungen', res.status, res.error, {
-					verb: 'konnten',
-				}),
-			);
-		}
-		setLoadingStatus(false);
-	}, [encodedCode, memberId]);
-
-	useEffect(() => {
-		void loadStatus();
-	}, [loadStatus]);
-
-	// Reconcile server opt-in when the browser still has a live push subscription.
-	useEffect(() => {
-		let cancelled = false;
-		async function syncPushSubscriptionState(): Promise<void> {
-			if (status?.pushOptIn !== false) return;
-			const resyncKey = `${code}:${memberId}`;
-			if (pushResyncAttemptedKeyRef.current === resyncKey) return;
-			pushResyncAttemptedKeyRef.current = resyncKey;
-			if (typeof window === 'undefined') return;
-			if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-			let subscription: PushSubscription | null = null;
-			try {
-				const registration = await navigator.serviceWorker.getRegistration();
-				if (!registration) return;
-				const sub = await registration.pushManager.getSubscription();
-				if (cancelled) return;
-				if (!sub) return;
-				subscription = sub;
-			} catch {
-				return;
-			}
-			if (!subscription) return;
-			try {
-				await persistExistingWebPushSubscription(code, memberId, subscription, memberToken);
-				if (cancelled) return;
-				setStatus((prev) =>
-					prev && prev.pushOptIn === false ? { ...prev, pushOptIn: true } : prev,
-				);
-			} catch (err) {
-				if (!cancelled) setError(formatPushActivationError(err));
-			}
-		}
-		void syncPushSubscriptionState();
-		return () => {
-			cancelled = true;
-		};
-	}, [code, memberId, memberToken, status?.pushOptIn]);
-
-	async function activatePush() {
-		if (pendingRef.current) return;
-		pendingRef.current = true;
-		setPending('push');
-		setError(null);
-		setMessage(null);
-		try {
-			await subscribeWebPush(code, memberId, memberToken);
-			setStatus((prev) => (prev ? { ...prev, pushOptIn: true } : prev));
-			setMessage('Web Push ist aktiv.');
-		} catch (err) {
-			setError(formatPushActivationError(err));
-		} finally {
-			pendingRef.current = false;
-			setPending(null);
-		}
-	}
-
-	async function deactivatePush() {
-		if (pendingRef.current) return;
-		pendingRef.current = true;
-		setPending('push');
-		setError(null);
-		try {
-			await unsubscribeWebPush(code, memberId, memberToken);
-			setStatus((prev) => (prev ? { ...prev, pushOptIn: false } : prev));
-			setMessage('Web Push ist deaktiviert.');
-		} catch (err) {
-			setError(formatPushDeactivationError(err));
-		} finally {
-			pendingRef.current = false;
-			setPending(null);
-		}
-	}
-
-	async function togglePreference(key: NotificationPreferenceKey): Promise<void> {
-		if (!status || pendingRef.current) return;
-		haptic('selection');
-		pendingRef.current = true;
-		setPending('save');
-		setError(null);
-		const body = { [key]: !status[key] };
-		const requestKeyId = `patch:${JSON.stringify(body)}`;
-		const idempotencyKey =
-			notificationRequestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
-		if (!idempotencyKey) {
-			pendingRef.current = false;
-			setPending(null);
-			setError('Einstellung konnte nicht sicher gespeichert werden. Versuche es erneut.');
-			return;
-		}
-		notificationRequestKeysRef.current.set(requestKeyId, idempotencyKey);
-		try {
-			const next = !status[key];
-			setStatus({ ...status, [key]: next });
-			const res = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
-				method: 'PATCH',
-				memberId,
-				memberToken,
-				headers: { 'Idempotency-Key': idempotencyKey },
-				body: JSON.stringify(body),
-			});
-			if (!res.ok) {
-				if (res.status > 0 && res.status < 500) {
-					notificationRequestKeysRef.current.delete(requestKeyId);
-				}
-				setStatus(status);
-				setError(notificationSaveErrorMessage(res.status, res.error));
-			} else {
-				notificationRequestKeysRef.current.delete(requestKeyId);
-			}
-		} finally {
-			pendingRef.current = false;
-			setPending(null);
-		}
-	}
-
-	async function saveQuietHours(startHour: number | null, endHour: number | null): Promise<void> {
-		if (!status || pendingRef.current) return;
-		pendingRef.current = true;
-		setPending('save');
-		setError(null);
-		const body = { quietStartHour: startHour, quietEndHour: endHour };
-		const requestKeyId = `patch:${JSON.stringify(body)}`;
-		const idempotencyKey =
-			notificationRequestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
-		if (!idempotencyKey) {
-			pendingRef.current = false;
-			setPending(null);
-			setError('Ruhezeit konnte nicht sicher gespeichert werden. Versuche es erneut.');
-			return;
-		}
-		notificationRequestKeysRef.current.set(requestKeyId, idempotencyKey);
-		try {
-			const previous = status;
-			setStatus({ ...status, quietStartHour: startHour, quietEndHour: endHour });
-			const res = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
-				method: 'PATCH',
-				memberId,
-				memberToken,
-				headers: { 'Idempotency-Key': idempotencyKey },
-				body: JSON.stringify(body),
-			});
-			if (!res.ok) {
-				if (res.status > 0 && res.status < 500) {
-					notificationRequestKeysRef.current.delete(requestKeyId);
-				}
-				setStatus(previous);
-				setError(notificationSaveErrorMessage(res.status, res.error));
-			} else {
-				notificationRequestKeysRef.current.delete(requestKeyId);
-			}
-		} finally {
-			pendingRef.current = false;
-			setPending(null);
-		}
-	}
-
-	async function sendTestNotification(): Promise<void> {
-		if (pendingRef.current) return;
-		pendingRef.current = true;
-		setPending('test');
-		setError(null);
-		setMessage(null);
-		const requestKeyId = 'test_notification';
-		const idempotencyKey =
-			notificationRequestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
-		if (!idempotencyKey) {
-			pendingRef.current = false;
-			setPending(null);
-			setError('Test konnte nicht sicher gesendet werden. Versuche es erneut.');
-			return;
-		}
-		notificationRequestKeysRef.current.set(requestKeyId, idempotencyKey);
-		try {
-			const res = await apiFetch<{ ok: true }>(`/api/wg/${encodedCode}/notifications`, {
-				method: 'POST',
-				memberId,
-				memberToken,
-				headers: { 'Idempotency-Key': idempotencyKey },
-				body: JSON.stringify({ action: 'test_notification' }),
-			});
-			if (res.ok) {
-				notificationRequestKeysRef.current.delete(requestKeyId);
-				setMessage('Test wurde ausgelöst. Prüfe Push und WG-Chat.');
-			} else {
-				if (res.status > 0 && res.status < 500) {
-					notificationRequestKeysRef.current.delete(requestKeyId);
-				}
-				setError(notificationTestErrorMessage(res.status, res.error));
-			}
-		} catch {
-			setError(notificationTestErrorMessage(0, 'Netzwerkfehler'));
-		} finally {
-			pendingRef.current = false;
-			setPending(null);
-		}
-	}
-
+	const {
+		status,
+		pending,
+		pushTarget,
+		message,
+		error,
+		loadingStatus,
+		loadStatus,
+		setPushEnabled,
+		togglePreference,
+		saveQuietHours,
+		sendTestNotification,
+	} = useNotificationSettings({ code, memberId, memberToken });
 	const pushActive = !!status?.pushOptIn;
 	const notificationBusy = pending !== null || loadingStatus;
 	const notificationControlsDisabled = !status || notificationBusy;
@@ -380,14 +134,7 @@ export function NotificationSection({
 								disabled={notificationControlsDisabled || !pushConfigured}
 								aria-busy={pending === 'push'}
 								aria-label={pushActive ? 'Web Push deaktivieren' : 'Web Push aktivieren'}
-								onCheckedChange={(checked) => {
-									if (pendingRef.current) return;
-									// Thumb gleitet sofort; nach der Browser-Abfrage zählt der echte Zustand.
-									setPushTarget(checked);
-									void (checked ? activatePush() : deactivatePush()).finally(() =>
-										setPushTarget(null),
-									);
-								}}
+								onCheckedChange={setPushEnabled}
 							/>
 						</Field>
 
@@ -429,50 +176,28 @@ export function NotificationSection({
 								)}
 							</div>
 							<div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2">
-								<Field className="min-w-0">
-									<FieldTitle>Von</FieldTitle>
-									<NativeSelect
-										value={status?.quietStartHour ?? ''}
-										disabled={notificationControlsDisabled}
-										onChange={(e) => {
-											const value = parseQuietHour(e.target.value);
-											void (value === null
-												? saveQuietHours(null, null)
-												: saveQuietHours(value, status?.quietEndHour ?? 7));
-										}}
-										aria-label="Ruhezeit von"
-										className="w-full min-w-0 text-base"
-									>
-										<NativeSelectOption value="">Aus</NativeSelectOption>
-										{HOUR_OPTIONS.map((option) => (
-											<NativeSelectOption key={option.label} value={option.value}>
-												{option.label}
-											</NativeSelectOption>
-										))}
-									</NativeSelect>
-								</Field>
-								<Field className="min-w-0">
-									<FieldTitle>Bis</FieldTitle>
-									<NativeSelect
-										value={status?.quietEndHour ?? ''}
-										disabled={notificationControlsDisabled}
-										onChange={(e) => {
-											const value = parseQuietHour(e.target.value);
-											void (value === null
-												? saveQuietHours(null, null)
-												: saveQuietHours(status?.quietStartHour ?? 22, value));
-										}}
-										aria-label="Ruhezeit bis"
-										className="w-full min-w-0 text-base"
-									>
-										<NativeSelectOption value="">Aus</NativeSelectOption>
-										{HOUR_OPTIONS.map((option) => (
-											<NativeSelectOption key={option.label} value={option.value}>
-												{option.label}
-											</NativeSelectOption>
-										))}
-									</NativeSelect>
-								</Field>
+								<HourSelect
+									label="Von"
+									ariaLabel="Ruhezeit von"
+									value={status?.quietStartHour}
+									disabled={notificationControlsDisabled}
+									onChange={(value) =>
+										void (value === null
+											? saveQuietHours(null, null)
+											: saveQuietHours(value, status?.quietEndHour ?? 7))
+									}
+								/>
+								<HourSelect
+									label="Bis"
+									ariaLabel="Ruhezeit bis"
+									value={status?.quietEndHour}
+									disabled={notificationControlsDisabled}
+									onChange={(value) =>
+										void (value === null
+											? saveQuietHours(null, null)
+											: saveQuietHours(status?.quietStartHour ?? 22, value))
+									}
+								/>
 							</div>
 						</div>
 					</>

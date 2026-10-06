@@ -1,28 +1,28 @@
 'use client';
 
+import { LogoMark } from '@/components/ui/LogoMark';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { isEditingTarget } from '@/core/utils/browser';
-import { X } from 'lucide-react';
-import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import {
 	type BeforeInstallEvent,
 	isAppInstalled,
 	subscribeInstall,
 	triggerInstall,
-} from '../lib/pwa-install';
-import { InstallButton } from './install-button';
-import { LogoMark } from './ui/LogoMark';
+} from '@/shared/lib/pwa-install';
+import { X } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { InstallButton } from './InstallButton';
 
 /**
  * Floating install prompt — shown on the start page of every app start until
  * ManaWG is installed.
  * Dismissing hides it until the next page load. Browsers without a native prompt
- * (iOS, Firefox) get the manual steps from `InstallButton`. Liest das
- * `beforeinstallprompt`-Event aus dem globalen Pub/Sub-Modul
- * (`../lib/pwa-install`), damit kein Race-Condition mit dem `InstallButton`
- * in den Einstellungen entsteht.
+ * (iOS, Firefox) get the manual steps from `InstallButton`. Reads the
+ * `beforeinstallprompt` event from the global pub/sub module
+ * (`@/shared/lib/pwa-install`) so it cannot race the `InstallButton` in the
+ * settings.
  *
  * Implementation note: rendered as a normal div (not <dialog>) — toggling the
  * `open` attribute on a native dialog flips `display:none` and breaks the
@@ -83,7 +83,7 @@ export function InstallPrompt() {
 			style={{ bottom: 'calc(var(--app-nav-height, 5rem) + 0.5rem)' }}
 		>
 			<section aria-live="polite" aria-label="App installieren">
-				{/* Kompakt statt hoher Karte: verdeckt über der Navigation möglichst wenig Inhalt. */}
+				{/* Compact instead of a tall card: covers as little content above the navigation as possible. */}
 				<Card size="sm" className="gap-2 px-3 py-2.5">
 					<div className="flex min-w-0 items-center gap-2.5">
 						<LogoMark

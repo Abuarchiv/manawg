@@ -1,5 +1,7 @@
 'use client';
 
+import { InstallButton } from '@/components/app/InstallButton';
+import { useTheme } from '@/components/app/ThemeProvider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -8,8 +10,6 @@ import { PayPalConnect } from '@/components/wg/einstellungen/PayPalConnect';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { WgNameSection } from '@/components/wg/einstellungen/WgNameSection';
 import { isPayPalSdkEnabled } from '@/core/infra/security-headers';
-import { InstallButton } from '@/shared/components/install-button';
-import { useTheme } from '@/shared/components/theme/ThemeProvider';
 import { haptic } from '@/shared/lib/haptics';
 import { Monitor, Moon, Sun } from 'lucide-react';
 

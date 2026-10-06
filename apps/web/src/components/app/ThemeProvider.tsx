@@ -1,6 +1,13 @@
 'use client';
 
 import { safeLocalStorage } from '@/core/utils/browser';
+import {
+	type ResolvedTheme,
+	THEME_STORAGE_KEY,
+	type Theme,
+	parseStoredTheme,
+	resolveTheme,
+} from '@/shared/lib/theme';
 import { MotionConfig } from 'motion/react';
 import {
 	type ReactNode,
@@ -11,13 +18,6 @@ import {
 	useMemo,
 	useState,
 } from 'react';
-import {
-	type ResolvedTheme,
-	THEME_STORAGE_KEY,
-	type Theme,
-	parseStoredTheme,
-	resolveTheme,
-} from '../../lib/theme';
 
 interface ThemeContextValue {
 	theme: Theme;
@@ -57,8 +57,8 @@ function applyResolved(next: ResolvedTheme): void {
 export function ThemeProvider({ children }: { children: ReactNode }) {
 	const [theme, setThemeState] = useState<Theme>('system');
 	const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
-	// Der Bootstrap-Script hat die Klasse schon gesetzt; vor dem ersten Lesen des
-	// gespeicherten Themes darf der 'light'-Startwert sie nicht wieder entfernen.
+	// The bootstrap script has already set the class; until the stored theme is read,
+	// the 'light' initial value must not remove it again.
 	const [ready, setReady] = useState(false);
 
 	useEffect(() => {

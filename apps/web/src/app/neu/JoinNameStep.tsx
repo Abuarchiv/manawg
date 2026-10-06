@@ -1,8 +1,8 @@
 'use client';
 
-import { BackButton } from '@/components/neu/BackButton';
-import { ErrorBox } from '@/components/neu/ErrorBox';
-import { Field } from '@/components/neu/Field';
+import { BackButton } from '@/components/app/BackButton';
+import { ErrorBox } from '@/components/app/ErrorBox';
+import { TextField } from '@/components/app/TextField';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
@@ -42,7 +42,7 @@ export function JoinNameStep({
 			className="flex flex-col gap-5"
 		>
 			<FieldGroup>
-				<Field
+				<TextField
 					id="join-name"
 					label="Dein Anzeigename"
 					placeholder="z. B. Anna"

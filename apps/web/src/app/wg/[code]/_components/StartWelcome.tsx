@@ -10,11 +10,11 @@ import {
 	CardTitle,
 } from '@/components/ui/card';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { CopyCodeButton } from '@/components/wg/dashboard/CopyCodeButton';
 import { cn } from '@/shared/lib/cn';
 import { X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { CopyCodeButton } from './CopyCodeButton';
 
 export function StartWelcome() {
 	const { wg, identity, members } = useWg();

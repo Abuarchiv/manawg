@@ -1,0 +1,103 @@
+'use client';
+
+import type { DashboardData } from '@/composition/dashboard-data';
+import { getBerlinWeekWindow } from '@/composition/dashboard-insights';
+import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { getSyncedCountForWg } from '@/core/offline/offline-client';
+import { berlinDayKey } from '@/core/utils/berlin-day';
+import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { type SerializedWgEvent, expandRecurrence } from '@/features/events/events';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+
+const REFRESH_INTERVAL_MS = 30_000;
+
+function subscribeOnline(onChange: () => void): () => void {
+	window.addEventListener('online', onChange);
+	window.addEventListener('offline', onChange);
+	return () => {
+		window.removeEventListener('online', onChange);
+		window.removeEventListener('offline', onChange);
+	};
+}
+
+interface HomeDataIdentity {
+	memberId: string;
+	memberToken?: string | undefined;
+}
+
+/**
+ * Reads for the start page: the dashboard and this Berlin week's events. Both refresh every
+ * 30 s while visible, on focus, after an offline sync, and the week moves at Berlin midnight.
+ */
+export function useHomeData(shareCode: string, identity: HomeDataIdentity) {
+	const online = useSyncExternalStore(
+		subscribeOnline,
+		() => navigator.onLine,
+		() => true,
+	);
+	const [berlinTodayKey, setBerlinTodayKey] = useState(() => berlinDayKey(new Date()));
+	const [agendaNow, setAgendaNow] = useState(() => Date.now());
+	const encodedShareCode = encodeURIComponent(shareCode);
+	const weekWindow = useMemo(
+		() => getBerlinWeekWindow(Date.parse(`${berlinTodayKey}T12:00:00.000Z`)),
+		[berlinTodayKey],
+	);
+	const auth = { memberId: identity.memberId, memberToken: identity.memberToken };
+	const dashboardRead = useCachedFetch<DashboardData>(
+		`/api/wg/${encodedShareCode}/dashboard`,
+		auth,
+	);
+	const eventUrl = `/api/wg/${encodedShareCode}/events?from=${encodeURIComponent(weekWindow.from.toISOString())}&to=${encodeURIComponent(weekWindow.to.toISOString())}`;
+	const eventRead = useCachedFetch<{ events: SerializedWgEvent[] }>(eventUrl, auth);
+	const error = dashboardRead.error
+		? getWgLoadErrorMessage('Die Startseite', dashboardRead.error.status, dashboardRead.error.error)
+		: null;
+	const eventOccurrences = useMemo(
+		() =>
+			(eventRead.data?.events ?? []).flatMap((event) =>
+				expandRecurrence(event, weekWindow.from, weekWindow.to),
+			),
+		[eventRead.data, weekWindow],
+	);
+
+	const load = useCallback(() => {
+		const now = Date.now();
+		setAgendaNow(now);
+		const nextTodayKey = berlinDayKey(new Date(now));
+		if (nextTodayKey !== berlinTodayKey) setBerlinTodayKey(nextTodayKey);
+		else void eventRead.refresh();
+		void dashboardRead.refresh();
+	}, [berlinTodayKey, dashboardRead.refresh, eventRead.refresh]);
+
+	useVisibilityPausedInterval(() => void load(), REFRESH_INTERVAL_MS);
+	useEffect(() => {
+		const onShow = () => {
+			if (document.visibilityState === 'visible') load();
+		};
+		// A queued chore completion reaches the server through the shell's background sync.
+		const onSynced = (event: Event) => {
+			if (getSyncedCountForWg(event, shareCode) > 0) load();
+		};
+		document.addEventListener('visibilitychange', onShow);
+		window.addEventListener('focus', onShow);
+		window.addEventListener('manawg:offline-synced', onSynced);
+		return () => {
+			document.removeEventListener('visibilitychange', onShow);
+			window.removeEventListener('focus', onShow);
+			window.removeEventListener('manawg:offline-synced', onSynced);
+		};
+	}, [load, shareCode]);
+
+	return {
+		online,
+		data: dashboardRead.data ?? null,
+		loading: dashboardRead.isLoading,
+		error,
+		eventRead,
+		eventOccurrences,
+		berlinTodayKey,
+		agendaNow,
+		load,
+	};
+}
