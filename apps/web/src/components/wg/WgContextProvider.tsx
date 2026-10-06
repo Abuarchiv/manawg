@@ -3,6 +3,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { prefetchCachedFetch } from '@/core/hooks/useCachedFetch';
 import { MEMBERSHIP_LOST_EVENT, apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/capture-client';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
@@ -362,6 +363,50 @@ export function WgContextProvider({
 		};
 	}, [accountReady, identity, membersRefreshFailures, refreshMembers]);
 
+	// Warm the tab data in idle time: the first switch into Haushalt/Finanzen/Austausch then
+	// renders from the useCachedFetch cache instead of starting its fetch after the page JS.
+	const warmMemberId = accountReady ? identity?.memberId : undefined;
+	const warmMemberToken = identity?.memberToken;
+	useEffect(() => {
+		if (!warmMemberId) return;
+		const connection = (navigator as Navigator & { connection?: { saveData?: boolean } })
+			.connection;
+		if (connection?.saveData) return;
+		const base = `/api/wg/${encodedShareCode}`;
+		const options = { memberId: warmMemberId, memberToken: warmMemberToken };
+		const warm = () => {
+			for (const path of [
+				'chores',
+				'absences',
+				'shopping',
+				'expenses',
+				'recurring-expenses',
+				'announcements',
+			]) {
+				void prefetchCachedFetch(`${base}/${path}`, options);
+			}
+			// Evaluate the tab page chunks now: on the first switch the route only has to render
+			// (the page modules are already installed), instead of download + parse + render.
+			for (const load of [
+				() => import('@/app/wg/[code]/putzen/page'),
+				() => import('@/app/wg/[code]/einkauf/page'),
+				() => import('@/app/wg/[code]/ausgaben/page'),
+				() => import('@/app/wg/[code]/pinnwand/page'),
+				() => import('@/features/chat/components/ChatView'),
+			]) {
+				load().catch(() => undefined);
+			}
+		};
+		const idle = 'requestIdleCallback' in window;
+		const handle = idle
+			? window.requestIdleCallback(warm, { timeout: 4000 })
+			: window.setTimeout(warm, 1500);
+		return () => {
+			if (idle) window.cancelIdleCallback(handle);
+			else window.clearTimeout(handle);
+		};
+	}, [encodedShareCode, warmMemberId, warmMemberToken]);
+
 	const sync = useCallback(async () => {
 		if (
 			!accountReady ||
@@ -410,7 +455,9 @@ export function WgContextProvider({
 		};
 	}, [accountReady, identity, sync]);
 
-	if (!hydrated || !memberLoaded) {
+	// A server-verified session already carries the identity, so the shell and page render
+	// in the SSR HTML; only the localStorage path has to wait for the mount effect.
+	if (!memberLoaded || (!hydrated && !serverVerified)) {
 		// Static skeleton shell instead of null: the SSR/first-paint output keeps
 		// the document structure (<main> landmark, app background) while the
 		// client hydrates. Fully static markup — no dynamic

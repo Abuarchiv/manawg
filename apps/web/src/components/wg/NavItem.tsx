@@ -45,6 +45,9 @@ export function NavItem({ href, label, iconKey, activePrefixes }: NavItemProps) 
 		<li>
 			<Link
 				href={href}
+				// Full prefetch keeps the page payload in the router cache, so the first switch
+				// does not suspend into loading.tsx (React holds a shown fallback for ~300 ms).
+				prefetch
 				aria-current={isActive ? (isCurrentPage ? 'page' : 'location') : undefined}
 				data-bottom-nav-item
 				onClick={() => {
