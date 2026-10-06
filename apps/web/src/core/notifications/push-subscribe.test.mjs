@@ -24,7 +24,10 @@ function loadPushSubscribe(apiFetch) {
 	return loaded.exports;
 }
 
-async function disablePushInOneWg(endpointInUse) {
+async function disablePushInOneWg(
+	endpointInUse,
+	response = { ok: true, data: { ok: true, endpointInUse } },
+) {
 	let browserUnsubscribed = false;
 	const subscription = {
 		endpoint: 'https://push.example.test/device',
@@ -43,11 +46,8 @@ async function disablePushInOneWg(endpointInUse) {
 		},
 	});
 	try {
-		const { unsubscribeWebPush } = loadPushSubscribe(async () => ({
-			ok: true,
-			data: { ok: true, endpointInUse },
-		}));
-		await unsubscribeWebPush('MTE8PZAT', 'member-a');
+		const { unsubscribeWebPush } = loadPushSubscribe(async () => response);
+		await unsubscribeWebPush('MTE8PZAT', 'member-a').catch(() => undefined);
 	} finally {
 		if (previousNavigator) Object.defineProperty(globalThis, 'navigator', previousNavigator);
 		else Reflect.deleteProperty(globalThis, 'navigator');
@@ -61,4 +61,11 @@ test('turning push off in one WG keeps the browser subscription another WG still
 
 test('turning push off in the last WG that uses it unsubscribes the browser', async () => {
 	assert.equal(await disablePushInOneWg(false), true);
+});
+
+test('a failed server opt-out keeps the browser subscription other WGs may share', async () => {
+	assert.equal(
+		await disablePushInOneWg(false, { ok: false, status: 0, error: 'Netzwerkfehler' }),
+		false,
+	);
 });

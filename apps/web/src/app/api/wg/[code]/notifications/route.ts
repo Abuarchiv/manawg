@@ -297,6 +297,11 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 							authKey,
 							userAgent: req.headers.get('user-agent'),
 						};
+						// Serializes concurrent subscriptions of the same endpoint from different
+						// accounts; the unique index only covers (member_id, endpoint).
+						await tx.execute(
+							sql`select pg_advisory_xact_lock(hashtext(${`push-endpoint:${endpoint}`}))`,
+						);
 						// One browser endpoint serves every WG of the same account. Another
 						// account's active member keeps it to itself (403): its notifications
 						// must not reach this browser and vice versa. Rows of moved-out
