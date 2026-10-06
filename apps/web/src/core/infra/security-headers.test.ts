@@ -4,7 +4,7 @@ import {
 	contentSecurityPolicy,
 	crossOriginOpenerPolicy,
 	isPayPalSdkEnabled,
-} from '../src/core/infra/security-headers.ts';
+} from './security-headers';
 
 const payPalOrigins = ['https://www.paypal.com', 'https://www.sandbox.paypal.com'];
 const ocrLanguageDataUrls = [
@@ -12,13 +12,19 @@ const ocrLanguageDataUrls = [
 	'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
 ];
 
-function directives(policy) {
+function directives(policy: string): Map<string | undefined, string[]> {
 	return new Map(
 		policy.split(';').map((entry) => {
 			const [name, ...sources] = entry.trim().split(/\s+/);
 			return [name, sources];
 		}),
 	);
+}
+
+function sourcesOf(policy: Map<string | undefined, string[]>, name: string): string {
+	const sources = policy.get(name);
+	assert.ok(sources, `${name} is present`);
+	return sources.join(' ');
 }
 
 test('PayPal CSP grants only the exact SDK hosts and uses the document nonce', () => {
@@ -30,20 +36,23 @@ test('PayPal CSP grants only the exact SDK hosts and uses the document nonce', (
 	}
 	assert.ok(policy.get('script-src')?.includes("'nonce-request-nonce'"));
 	assert.ok(policy.get('style-src')?.includes("'nonce-request-nonce'"));
-	// Ersetzt das gelöschte check-security-boundaries-Script: Nonce-CSP darf nie auf unsafe-inline zurückfallen.
-	assert.doesNotMatch(policy.get('script-src').join(' '), /unsafe-inline/);
-	assert.doesNotMatch(policy.get('style-src').join(' '), /unsafe-inline/);
+	// A nonce CSP must never fall back to unsafe-inline.
+	assert.doesNotMatch(sourcesOf(policy, 'script-src'), /unsafe-inline/);
+	assert.doesNotMatch(sourcesOf(policy, 'style-src'), /unsafe-inline/);
 	assert.ok(policy.get('frame-src')?.includes("'self'"));
-	assert.doesNotMatch(policy.get('connect-src').join(' '), /\*\.paypal|paypalobjects|venmo/i);
-	assert.doesNotMatch(policy.get('frame-src').join(' '), /\*\.paypal|paypalobjects|venmo/i);
+	assert.doesNotMatch(sourcesOf(policy, 'connect-src'), /\*\.paypal|paypalobjects|venmo/i);
+	assert.doesNotMatch(sourcesOf(policy, 'frame-src'), /\*\.paypal|paypalobjects|venmo/i);
 	for (const name of ['script-src', 'style-src', 'img-src'])
-		assert.doesNotMatch(policy.get(name).join(' '), /paypal|venmo/i);
+		assert.doesNotMatch(sourcesOf(policy, name), /paypal|venmo/i);
 	assert.equal(crossOriginOpenerPolicy(true), 'same-origin-allow-popups');
 });
 
 test('PayPal hosts and popup policy stay disabled without both public SDK keys', () => {
-	const noConfig = {};
-	const partialConfig = { NEXT_PUBLIC_PAYPAL_CLIENT_ID: 'client-id' };
+	const noConfig: { NEXT_PUBLIC_PAYPAL_CLIENT_ID?: string } = {};
+	const partialConfig: {
+		NEXT_PUBLIC_PAYPAL_CLIENT_ID: string;
+		NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID?: string;
+	} = { NEXT_PUBLIC_PAYPAL_CLIENT_ID: 'client-id' };
 	const fullConfig = {
 		NEXT_PUBLIC_PAYPAL_CLIENT_ID: 'client-id',
 		NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID: 'partner-id',
@@ -69,12 +78,13 @@ test('PayPal hosts and popup policy stay disabled without both public SDK keys',
 });
 
 test('Tesseract gets WASM compilation and only its pinned German and English data files', () => {
-	const previousNodeEnv = process.env.NODE_ENV;
+	const env = process.env as Record<string, string | undefined>;
+	const previousNodeEnv = env.NODE_ENV;
 	try {
-		process.env.NODE_ENV = 'production';
+		env.NODE_ENV = 'production';
 		const policy = directives(contentSecurityPolicy('ocr-nonce', true, false));
-		const scriptSrc = policy.get('script-src');
-		const connectSrc = policy.get('connect-src');
+		const scriptSrc = policy.get('script-src') ?? [];
+		const connectSrc = policy.get('connect-src') ?? [];
 
 		assert.ok(scriptSrc.includes("'wasm-unsafe-eval'"));
 		assert.ok(!scriptSrc.includes("'unsafe-eval'"));
@@ -86,6 +96,6 @@ test('Tesseract gets WASM compilation and only its pinned German and English dat
 			ocrLanguageDataUrls.length,
 		);
 	} finally {
-		process.env.NODE_ENV = previousNodeEnv ?? '';
+		env.NODE_ENV = previousNodeEnv ?? '';
 	}
 });

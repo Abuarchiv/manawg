@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isTerminalPayPalOrderCreationError } from '../src/core/infra/paypal.ts';
-import { filterPersistedMentionIds } from '../src/features/chat/chat-pure.ts';
 import {
 	isPayPalCaptureDebtChanged,
 	isPayPalCapturePendingResult,
@@ -9,17 +7,7 @@ import {
 	resolvePayPalOrderLookup,
 	shouldRetryPayPalCapture,
 	terminalPayPalCaptureOutcome,
-} from '../src/features/expenses/paypal-settlement.ts';
-
-test('returns only mention IDs confirmed by the database insert', () => {
-	assert.deepEqual(
-		filterPersistedMentionIds(
-			['member-a', 'member-b', 'member-c'],
-			[{ mentionedMemberId: 'member-c' }, { mentionedMemberId: 'member-a' }],
-		),
-		['member-a', 'member-c'],
-	);
-});
+} from './paypal-settlement';
 
 test('accepts a capture that exactly settles the remaining debt', () => {
 	assert.equal(isPayPalCaptureDebtChanged(1_000, 1_000), false);
@@ -88,16 +76,4 @@ test('unknown capture results and failed lookups keep recovery attached to the s
 	assert.deepEqual(resolvePayPalOrderLookup({ ok: true, data: { status: 'CREATING' } }), {
 		kind: 'ready',
 	});
-});
-
-test('only definitive Payee account errors release an order-creation reservation', () => {
-	assert.equal(
-		isTerminalPayPalOrderCreationError(new Error('paypal_api_422_PAYEE_ACCOUNT_INVALID')),
-		true,
-	);
-	assert.equal(
-		isTerminalPayPalOrderCreationError(new Error('paypal_api_422_DUPLICATE_REQUEST_ID')),
-		false,
-	);
-	assert.equal(isTerminalPayPalOrderCreationError(new Error('paypal_api_503')), false);
 });
