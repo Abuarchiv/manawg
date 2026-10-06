@@ -26,7 +26,11 @@ const idempotencyResponses = {
 	responseBody: 'responseBody',
 	expiresAt: 'expiresAt',
 };
-const wgMembers = { id: 'wgMembers.id', wgId: 'wgMembers.wgId', deactivatedAt: 'wgMembers.deactivatedAt' };
+const wgMembers = {
+	id: 'wgMembers.id',
+	wgId: 'wgMembers.wgId',
+	deactivatedAt: 'wgMembers.deactivatedAt',
+};
 
 type Claim = Record<string, unknown> & { _claimed?: boolean };
 

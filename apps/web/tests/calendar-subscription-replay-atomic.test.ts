@@ -17,7 +17,12 @@ import {
 
 const key = '11111111-1111-4111-8111-111111111111';
 const calendarSubscriptions = { wgId: 'wgId', memberId: 'memberId', revokedAt: 'revokedAt' };
-const idempotencyResponses = { scope: 'scope', key: 'key', responseBody: 'body', expiresAt: 'expiresAt' };
+const idempotencyResponses = {
+	scope: 'scope',
+	key: 'key',
+	responseBody: 'body',
+	expiresAt: 'expiresAt',
+};
 
 interface Subscription extends Record<string, unknown> {
 	tokenSeed: string;
@@ -74,7 +79,9 @@ async function withTransaction<T>(operation: (tx: unknown) => Promise<T>): Promi
 				where: () => ({
 					limit: () =>
 						table === idempotencyResponses
-							? lockedRow(draft.slot ? [{ body: draft.slot.body, expiresAt: draft.slot.expiresAt }] : [])
+							? lockedRow(
+									draft.slot ? [{ body: draft.slot.body, expiresAt: draft.slot.expiresAt }] : [],
+								)
 							: lockedRow(draft.subscription ? [draft.subscription] : []),
 				}),
 			}),
@@ -112,7 +119,7 @@ async function withTransaction<T>(operation: (tx: unknown) => Promise<T>): Promi
 						revokedAt: null,
 						createdAt: now,
 						updatedAt: now,
-					} as Subscription;
+					} as unknown as Subscription;
 					return [draft.subscription];
 				},
 			}),

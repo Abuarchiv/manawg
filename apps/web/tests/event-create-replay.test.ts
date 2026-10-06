@@ -140,7 +140,10 @@ async function withTransaction<T>(operation: (tx: unknown) => Promise<T>): Promi
 
 mockObservability();
 mockRateLimit();
-mockWgMember({ wg: { id: wgId, name: 'WG', shareCode: 'MTE8PZAT' }, member: { memberId, name: 'Mina' } });
+mockWgMember({
+	wg: { id: wgId, name: 'WG', shareCode: 'MTE8PZAT' },
+	member: { memberId, name: 'Mina' },
+});
 mockDb({
 	idempotencyResponses,
 	wgEvents,
@@ -164,7 +167,11 @@ mockDb({
 					const query = render(condition);
 					state.releaseWhere = query.sql;
 					const lease = Date.parse(String(query.params[2]));
-					if (!state.slot || !isExactClaim(state.slot.body) || lease !== state.slot.expiresAt.getTime()) {
+					if (
+						!state.slot ||
+						!isExactClaim(state.slot.body) ||
+						lease !== state.slot.expiresAt.getTime()
+					) {
 						return [];
 					}
 					state.slot = null;

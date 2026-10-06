@@ -82,7 +82,7 @@ function given(overrides: Partial<Omit<typeof state, 'audits'>> = {}): void {
 	table.rows = [];
 }
 
-function rowsFor(selected: unknown, projection: Record<string, unknown>, chore: Chore) {
+function rowsFor(selected: unknown, projection: Record<string, unknown>, chore: Chore): unknown[] {
 	if (selected === chores) {
 		return 'intervalDays' in projection
 			? [{ ...chore }]
@@ -98,7 +98,7 @@ function rowsFor(selected: unknown, projection: Record<string, unknown>, chore: 
 	return [];
 }
 
-function query(rows: Record<string, unknown>[]) {
+function query<R>(rows: R[]) {
 	return Object.assign(Promise.resolve(rows), {
 		limit: async () => rows.slice(0, 1),
 		orderBy: async () => rows,

@@ -9,7 +9,12 @@ import { mockObservability, mockRateLimit, request } from './support/route-harne
 
 const id = '11111111-1111-4111-8111-111111111111';
 const wgId = '22222222-2222-4222-8222-222222222222';
-const calendarSubscriptions = { id: 'id', wgId: 'wgId', memberId: 'memberId', revokedAt: 'revokedAt' };
+const calendarSubscriptions = {
+	id: 'id',
+	wgId: 'wgId',
+	memberId: 'memberId',
+	revokedAt: 'revokedAt',
+};
 const wgMembers = { id: 'id', authUserId: 'authUserId', deactivatedAt: 'deactivatedAt' };
 const wgs = { id: 'id' };
 // Columns are the row property names, so the window filter evaluates against event rows.
@@ -28,7 +33,11 @@ interface EventRow extends Record<string, unknown> {
 	startsAt: Date;
 }
 
-function eventRow(eventId: string, startsAt: string | Date, overrides: Partial<EventRow> = {}): EventRow {
+function eventRow(
+	eventId: string,
+	startsAt: string | Date,
+	overrides: Partial<EventRow> = {},
+): EventRow {
 	const start = new Date(startsAt);
 	return {
 		id: eventId,
@@ -61,15 +70,13 @@ function createState(options: Options) {
 		revokedAt: options.revokedAt ?? null,
 		wgExists: true,
 		steps: [] as string[],
-		events:
-			options.events ??
-			[
-				eventRow('event-1', '2026-10-01T10:00:00.000Z', {
-					title: 'Other member event',
-					createdAt: new Date('2026-09-25T00:00:00.000Z'),
-					updatedAt: new Date('2026-09-25T00:00:00.000Z'),
-				}),
-			],
+		events: options.events ?? [
+			eventRow('event-1', '2026-10-01T10:00:00.000Z', {
+				title: 'Other member event',
+				createdAt: new Date('2026-09-25T00:00:00.000Z'),
+				updatedAt: new Date('2026-09-25T00:00:00.000Z'),
+			}),
+		],
 		expansionWindows: [] as { from: string; to: string }[],
 		eventQueries: [] as number[],
 		expandedEventIds: [] as string[],
@@ -158,7 +165,10 @@ mock.module('@/features/events/events', {
 		...events,
 		expandRecurrence: (...args: Parameters<typeof events.expandRecurrence>) => {
 			const [event, from, to] = args;
-			state.expansionWindows.push({ from: from.toISOString(), to: to.toISOString() });
+			state.expansionWindows.push({
+				from: new Date(from).toISOString(),
+				to: new Date(to).toISOString(),
+			});
 			state.expandedEventIds.push(event.id);
 			return events.expandRecurrence(...args);
 		},

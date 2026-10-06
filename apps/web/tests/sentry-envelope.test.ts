@@ -59,7 +59,9 @@ function installBrowserGlobals(): { networkCalls: () => number; restore: () => v
 		'addEventListener',
 		'removeEventListener',
 	];
-	const previous = new Map(names.map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+	const previous = new Map(
+		names.map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]),
+	);
 	const setGlobal = (key: string, value: unknown) =>
 		Object.defineProperty(globalThis, key, {
 			configurable: true,

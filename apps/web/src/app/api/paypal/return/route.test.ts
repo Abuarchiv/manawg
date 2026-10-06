@@ -26,7 +26,9 @@ mock.module('@/core/infra/paypal-onboarding', {
 const { GET } = await import('./route');
 
 const callback = (query: string) =>
-	GET(request(`/api/paypal/return?${query}`, { headers: { cookie: `${cookieName}=valid-cookie` } }));
+	GET(
+		request(`/api/paypal/return?${query}`, { headers: { cookie: `${cookieName}=valid-cookie` } }),
+	);
 
 test('generic PayPal return ignores caller destinations and malformed merchant hints', () => {
 	const response = callback(

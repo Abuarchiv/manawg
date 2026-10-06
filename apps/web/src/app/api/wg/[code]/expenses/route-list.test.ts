@@ -112,7 +112,9 @@ test('expense list is throttled per member before touching the database', async 
 	try {
 		const response = await get();
 		assert.equal(response.status, 429);
-		assert.deepEqual(rateLimit.calls, [['expensesReadLimiter', `expenses:${wgId}:${firstMemberId}`]]);
+		assert.deepEqual(rateLimit.calls, [
+			['expensesReadLimiter', `expenses:${wgId}:${firstMemberId}`],
+		]);
 		assert.equal(state.splitQueries.length, 0);
 	} finally {
 		rateLimit.limited.clear();

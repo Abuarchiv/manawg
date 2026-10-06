@@ -14,7 +14,13 @@ const ids = Array.from(
 	{ length: 32 },
 	(_, i) => `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
 );
-const [wgId, payerId, debtorId, thirdId, ...expenseIds] = ids as [string, string, string, string];
+const [wgId, payerId, debtorId, thirdId, ...expenseIds] = ids as [
+	string,
+	string,
+	string,
+	string,
+	...string[],
+];
 
 const expensesTable = {
 	id: 'expenses.id',
@@ -111,7 +117,8 @@ function rowsFor(table: unknown, join: unknown) {
 		);
 	}
 	if (table === expensesTable) return expenses.filter((expense) => expense.id === target.id);
-	if (table === splitsTable) return target.splits.filter((split) => split.id === target.splits[0].id);
+	if (table === splitsTable)
+		return target.splits.filter((split) => split.id === target.splits[0].id);
 	if (table === membersTable) {
 		const memberIds = new Set(
 			expenses.flatMap((expense) => [

@@ -36,7 +36,11 @@ const recurringExpenses = {
 const expenses = { id: 'expenses.id' };
 const expenseSplits = {};
 const wgs = { id: 'wgs.id', name: 'wgs.name', shareCode: 'wgs.shareCode' };
-const wgMembers = { id: 'wgMembers.id', wgId: 'wgMembers.wgId', deactivatedAt: 'wgMembers.deactivatedAt' };
+const wgMembers = {
+	id: 'wgMembers.id',
+	wgId: 'wgMembers.wgId',
+	deactivatedAt: 'wgMembers.deactivatedAt',
+};
 
 interface Options {
 	patchIntervalMonths?: boolean;
@@ -69,7 +73,8 @@ function createState(options: Options) {
 		options: {
 			patchIntervalMonths: options.patchIntervalMonths ?? false,
 			patchBeforeLock: options.patchBeforeLock ?? null,
-			patchAfterInsert: options.patchAfterInsert === undefined ? 'dueDate' : options.patchAfterInsert,
+			patchAfterInsert:
+				options.patchAfterInsert === undefined ? 'dueDate' : options.patchAfterInsert,
 			errorConstraint: options.errorConstraint ?? null,
 			duplicateErrorShape: options.duplicateErrorShape ?? 'cause',
 			activeMemberIds: options.activeMemberIds ?? [memberId],

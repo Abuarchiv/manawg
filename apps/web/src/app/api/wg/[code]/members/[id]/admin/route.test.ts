@@ -19,7 +19,12 @@ interface Target {
 	authUserId?: string | null;
 }
 
-const ACTIVE_TARGET: Target = { id: targetId, name: 'Mira', deactivatedAt: null, authUserId: 'auth-2' };
+const ACTIVE_TARGET: Target = {
+	id: targetId,
+	name: 'Mira',
+	deactivatedAt: null,
+	authUserId: 'auth-2',
+};
 
 const state = {
 	actorRole: 'admin',
@@ -35,7 +40,13 @@ function given(options: { actorRole?: string; target?: Target | null } = {}): vo
 	state.audits = [];
 }
 
-const wgMembers = { id: 'id', name: 'name', wgId: 'wgId', deactivatedAt: 'deactivatedAt', role: 'role' };
+const wgMembers = {
+	id: 'id',
+	name: 'name',
+	wgId: 'wgId',
+	deactivatedAt: 'deactivatedAt',
+	role: 'role',
+};
 const tx = {
 	select: () => ({
 		from: () => ({ where: () => ({ for: async () => (state.target ? [state.target] : []) }) }),
@@ -76,8 +87,7 @@ mock.module('@/core/guards/require-wg-admin', {
 });
 mock.module('@/features/expenses/expense-payments', {
 	namedExports: {
-		withExpensePaymentLock: async (_wgId: string, work: (handle: typeof tx) => unknown) =>
-			work(tx),
+		withExpensePaymentLock: async (_wgId: string, work: (handle: typeof tx) => unknown) => work(tx),
 	},
 });
 

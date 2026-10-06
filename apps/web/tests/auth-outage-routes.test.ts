@@ -76,9 +76,7 @@ test('upload read returns a retryable 503 when Supabase Auth is unavailable', as
 	reset();
 	const key =
 		'manawg/11111111-1111-4111-8111-111111111111/expense/22222222-2222-4222-8222-222222222222.jpg';
-	const response = await uploadRead.GET(
-		request(`/api/upload/read?key=${encodeURIComponent(key)}`),
-	);
+	const response = await uploadRead.GET(request(`/api/upload/read?key=${encodeURIComponent(key)}`));
 
 	await assertAuthOutage(response);
 	assert.equal(response.headers.get('cache-control'), 'no-store');

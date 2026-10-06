@@ -139,7 +139,10 @@ export function project(
 }
 
 /** `orderBy(asc(...), desc(...))` with Postgres defaults: NULL sorts as the largest value. */
-export function orderRows<R extends Record<string, unknown>>(rows: readonly R[], orders: unknown[]): R[] {
+export function orderRows<R extends Record<string, unknown>>(
+	rows: readonly R[],
+	orders: unknown[],
+): R[] {
 	const key = (value: unknown) =>
 		value === null || value === undefined
 			? Number.POSITIVE_INFINITY

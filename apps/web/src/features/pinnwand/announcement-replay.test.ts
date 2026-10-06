@@ -189,7 +189,12 @@ function harness() {
 				legacyResponse,
 			),
 		persistWarning: () =>
-			persistAnnouncementReplayWarning(scope, claimKey, 'comment-1', 'notification_delivery_failed'),
+			persistAnnouncementReplayWarning(
+				scope,
+				claimKey,
+				'comment-1',
+				'notification_delivery_failed',
+			),
 	};
 }
 

@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 import { mockDb } from '../../../../../../../tests/support/db-mock';
-import { type SqlNode, mockDrizzle, rowMatches } from '../../../../../../../tests/support/drizzle-mock';
+import {
+	type SqlNode,
+	mockDrizzle,
+	rowMatches,
+} from '../../../../../../../tests/support/drizzle-mock';
 import {
 	SHARE_CODE,
 	mockObservability,

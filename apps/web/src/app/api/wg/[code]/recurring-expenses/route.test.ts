@@ -103,9 +103,7 @@ mock.module('@/core/guards/admin', {
 	namedExports: {
 		isWgAdmin: async () => false,
 		requireOwnerOrAdmin: async (_wgId: string, caller: { memberId: string }, ownerId: string) =>
-			caller.memberId === ownerId
-				? null
-				: Response.json({ error: 'forbidden' }, { status: 403 }),
+			caller.memberId === ownerId ? null : Response.json({ error: 'forbidden' }, { status: 403 }),
 	},
 });
 

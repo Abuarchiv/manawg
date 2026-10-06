@@ -18,9 +18,8 @@ const wgId = '1bc67a5a-5c08-4c0d-8eaf-520def98021a';
 const fromMemberId = '2bc67a5a-5c08-4c0d-8eaf-520def98021a';
 const toMemberId = '3bc67a5a-5c08-4c0d-8eaf-520def98021a';
 
-const realPayPal = (await importUnmocked('core/infra/paypal.ts')) as typeof import(
-	'@/core/infra/paypal'
-);
+type PayPal = typeof import('@/core/infra/paypal');
+const realPayPal = (await importUnmocked('core/infra/paypal.ts')) as PayPal;
 
 const wgMembers = {
 	id: 'id',

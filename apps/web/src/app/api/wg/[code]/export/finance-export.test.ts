@@ -96,7 +96,12 @@ function get(search = '', failedTable: 'expensePayments' | null = null) {
 	resetExportDb(db, {
 		applyConditions: true,
 		failedTable,
-		rowsByTable: { expensePayments: completedPayments, expenseSplits: splits, expenses, wgMembers: members },
+		rowsByTable: {
+			expensePayments: completedPayments,
+			expenseSplits: splits,
+			expenses,
+			wgMembers: members,
+		},
 	});
 	return GET(request(`/api/wg/MTE8PZAT/export${search}`), routeCtx());
 }
@@ -164,10 +169,7 @@ test('exported expenses and completed payments reconstruct the app balances by c
 		(exported.sections.expenses as ExportedExpense[]).map((expense) => ({
 			paidByMemberId: expense.paidByMemberId,
 			currency: expense.currency,
-			splits: expense.splits.map((split) => ({
-				...split,
-				settledAt: split.settledAt === null ? null : new Date(split.settledAt),
-			})),
+			splits: expense.splits,
 		})),
 		(exported.sections.members as { id: string; name: string }[]).map(({ id, name }) => ({
 			id,

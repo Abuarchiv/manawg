@@ -269,7 +269,10 @@ function patch(
 }
 
 const remove = () =>
-	DELETE(request(`/api/wg/MTE8PZAT/shopping/${itemId}`, { method: 'DELETE' }), routeCtx({ id: itemId }));
+	DELETE(
+		request(`/api/wg/MTE8PZAT/shopping/${itemId}`, { method: 'DELETE' }),
+		routeCtx({ id: itemId }),
+	);
 
 test('reopening an item that conflicts with another open name returns 409', async (t) => {
 	t.mock.timers.enable({ apis: ['Date'], now: NOW });

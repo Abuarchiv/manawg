@@ -37,7 +37,12 @@ mock.module('drizzle-orm/node-postgres', {
 
 const { db, withTransaction } = await import('./index');
 
-const DB_ENV = ['POSTGRES_URL', 'DATABASE_URL', 'DATABASE_URL_UNPOOLED', 'POSTGRES_URL_NON_POOLING'];
+const DB_ENV = [
+	'POSTGRES_URL',
+	'DATABASE_URL',
+	'DATABASE_URL_UNPOOLED',
+	'POSTGRES_URL_NON_POOLING',
+];
 
 test('queries and transactions share one pool that follows URL changes without retrying unknown commits', async (t) => {
 	const previous = Object.fromEntries(DB_ENV.map((name) => [name, process.env[name]]));

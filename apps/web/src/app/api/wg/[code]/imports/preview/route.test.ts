@@ -42,9 +42,10 @@ mockDb({
 const { POST } = await import('./route');
 
 // Alex paid, Sam owes half.
-const CSV = ['Date,Description,Cost,Currency,Alex,Sam', '2026-01-15,Miete,30.00,EUR,15.00,-15.00'].join(
-	'\n',
-);
+const CSV = [
+	'Date,Description,Cost,Currency,Alex,Sam',
+	'2026-01-15,Miete,30.00,EUR,15.00,-15.00',
+].join('\n');
 
 async function preview(memberMapping: Record<string, string>) {
 	const response = await POST(

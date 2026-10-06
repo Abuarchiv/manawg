@@ -60,7 +60,12 @@ test('GET keeps every open item even when the bought history exceeds the list li
 		});
 	}
 	for (let index = 0; index < 3; index++) {
-		rows.push({ id: `open-${index}`, wgId, createdAt: new Date(base + index * 1000), boughtAt: null });
+		rows.push({
+			id: `open-${index}`,
+			wgId,
+			createdAt: new Date(base + index * 1000),
+			boughtAt: null,
+		});
 	}
 	rows.push({ id: 'other-wg', wgId: 'other', createdAt: new Date(base), boughtAt: null });
 

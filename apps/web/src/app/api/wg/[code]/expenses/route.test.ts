@@ -75,7 +75,10 @@ const wgMembers = pgTable('wg_members', {
 	deactivatedAt: timestamp('deactivated_at', { withTimezone: true }),
 });
 
-type Body = Record<string, unknown> & { recurringExpenseId?: string; expectedRecurringNextDueAt?: string };
+type Body = Record<string, unknown> & {
+	recurringExpenseId?: string | undefined;
+	expectedRecurringNextDueAt?: string | undefined;
+};
 type Row = Record<string, unknown>;
 interface ExpenseRow extends Row {
 	id: string;
@@ -89,7 +92,7 @@ interface ClaimRow {
 	body: Row & { _claimed?: boolean; expense?: { id: string } };
 	expiresAt: Date;
 }
-interface Template {
+interface Template extends Row {
 	id: string;
 	wgId: string;
 	nextDueAt: Date;
@@ -125,7 +128,11 @@ function defaultBody(overrides: Partial<Body> = {}): Body {
 const ordinaryBody = () =>
 	defaultBody({ recurringExpenseId: undefined, expectedRecurringNextDueAt: undefined });
 
-function createState(options: { templateWgId?: string; templateDueAt?: string; pausedAt?: Date | null }) {
+function createState(options: {
+	templateWgId?: string;
+	templateDueAt?: string;
+	pausedAt?: Date | null;
+}) {
 	return {
 		capturing: false,
 		memberId: firstMemberId,
@@ -198,7 +205,8 @@ function selectRows(table: unknown, local: Local): Row[] {
 			(expense) =>
 				expense.wgId === wgId &&
 				expense.recurringExpenseId === state.body.recurringExpenseId &&
-				expense.recurringDueAt?.getTime() === Date.parse(String(state.body.expectedRecurringNextDueAt)),
+				expense.recurringDueAt?.getTime() ===
+					Date.parse(String(state.body.expectedRecurringNextDueAt)),
 		);
 		local.lastFoundExpense = existing ?? null;
 		return existing ? [existing] : [];
@@ -297,7 +305,7 @@ function txFor(local: Local) {
 							id: '55555555-5555-4555-8555-555555555555',
 							createdAt: new Date(),
 							updatedAt: new Date(),
-						} as ExpenseRow;
+						} as unknown as ExpenseRow;
 						local.expenses.push(expense);
 						return [expense];
 					}
@@ -509,7 +517,11 @@ test('rejects foreign, stale, and paused recurring templates without creating an
 		assert.equal((await response.json()).error, error);
 		assert.equal(state.expenses.length, 0);
 		assert.equal(state.sideEffects, 0);
-		assert.equal(state.idempotency.size, 0, 'invalid recurrence attempts release their durable claim');
+		assert.equal(
+			state.idempotency.size,
+			0,
+			'invalid recurrence attempts release their durable claim',
+		);
 	}
 });
 

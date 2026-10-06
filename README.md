@@ -110,7 +110,7 @@ More scripts in `apps/web/package.json`:
 | Command | What it runs |
 | --- | --- |
 | `pnpm test` (root) | `playwright test` in `apps/web` (dev server with your `.env.local`), **not** the unit tests |
-| `pnpm --filter @manawg/web test:unit` | `node --test` over `src/**/*.test.mjs` and `tests/*` |
+| `pnpm --filter @manawg/web test:unit` | `node --test` over `src/**/*.test.ts` and `tests/*.test.ts`; the private-image lock tests also run against a loopback Postgres when `PRIVATE_IMAGE_TEST_DATABASE_URL` is set |
 | `pnpm --filter @manawg/web test:e2e:fixtures` | Playwright against a production build in fixture mode |
 | `pnpm --filter @manawg/web test:e2e:webkit` | WebKit fixture config (`playwright.webkit-fixtures.config.ts`) |
 | `pnpm --filter @manawg/web test:e2e:account-delete-db` | Account deletion against a disposable loopback Postgres in `ACCOUNT_DELETE_TEST_URL` |

@@ -1,11 +1,7 @@
 import assert from 'node:assert/strict';
 import { type TestContext, mock, test } from 'node:test';
 import { mockDb } from '../../../../../tests/support/db-mock';
-import {
-	type SqlNode,
-	conditionArg,
-	mockDrizzle,
-} from '../../../../../tests/support/drizzle-mock';
+import { type SqlNode, conditionArg, mockDrizzle } from '../../../../../tests/support/drizzle-mock';
 import { mockObservability, request } from '../../../../../tests/support/route-harness';
 
 // The route, the reminder window and the dispatch helpers run for real; the database keeps the
@@ -21,7 +17,11 @@ const wgEvents = {
 	recurrence: 'events.recurrence',
 	wgId: 'events.wgId',
 };
-const wgMembers = { id: 'members.id', wgId: 'members.wgId', deactivatedAt: 'members.deactivatedAt' };
+const wgMembers = {
+	id: 'members.id',
+	wgId: 'members.wgId',
+	deactivatedAt: 'members.deactivatedAt',
+};
 const wgs = { id: 'wgs.id', name: 'wgs.name', shareCode: 'wgs.shareCode' };
 const idempotencyResponses = {
 	scope: 'idempotency.scope',

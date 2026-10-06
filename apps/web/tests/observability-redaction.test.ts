@@ -67,14 +67,14 @@ interface Breadcrumb {
 }
 
 test('Sentry strips personal data and WG codes from error events', () => {
-	const event = sanitizeSentryEvent<SentryEvent>({
+	const event = sanitizeSentryEvent({
 		user: { id: 'member-1', email: 'alice@example.com' },
 		request: {
 			method: 'GET',
 			url: 'https://manawg.com/wg/private-code/ausgaben?invite=secret',
 			headers: { cookie: 'secret' },
 			data: { amount: 200 },
-		} as SentryEvent['request'],
+		},
 		message: 'alice@example.com',
 		exception: { values: [{ type: 'Private-group-code', value: 'expense for Alice' }] },
 		extra: { name: 'Alice' },

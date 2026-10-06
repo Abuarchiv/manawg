@@ -118,7 +118,9 @@ test('reminders read open shopping items and open announcements from their own o
 		source: 'system',
 	}));
 	const openShopping = [{ id: 'open-item', name: 'Brot', createdAt: at }];
-	const openAnnouncements = [{ id: 'open-question', content: 'Wer?', kind: 'question', createdAt: at }];
+	const openAnnouncements = [
+		{ id: 'open-question', content: 'Wer?', kind: 'question', createdAt: at },
+	];
 	state.queries = [];
 	state.rows = (query) => {
 		if (query.table === 'shoppingItems') {

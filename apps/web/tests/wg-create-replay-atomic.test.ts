@@ -79,7 +79,9 @@ async function withTransaction<T>(operation: (tx: unknown) => Promise<T>): Promi
 								assert.equal(lock, 'update');
 								assert.deepEqual(where, scopeAndKey);
 								state.events.push('lock');
-								return draft.slot ? [{ body: draft.slot.body, expiresAt: draft.slot.expiresAt }] : [];
+								return draft.slot
+									? [{ body: draft.slot.body, expiresAt: draft.slot.expiresAt }]
+									: [];
 							},
 						}),
 					}),

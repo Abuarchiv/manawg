@@ -50,7 +50,9 @@ interface HarnessState {
 }
 
 interface Harness {
-	options: Required<Omit<Options, 'onReadiness'>> & Pick<Options, 'onReadiness'>;
+	options: Required<Omit<Options, 'onReadiness'>> & {
+		onReadiness: Options['onReadiness'] | undefined;
+	};
 	state: HarnessState;
 }
 
@@ -243,8 +245,10 @@ test('start requires affirmative consent and fixes the callback to the configure
 	const firstNonce = cookieState.nonce;
 	const secondStart = await connect.POST(connectRequest({ action: 'start', consent: true }));
 	assert.equal(secondStart.status, 200);
-	assert.equal(state.referral?.trackingId, stableTrackingId);
-	assert.notEqual(state.referral?.nonce, firstNonce);
+	// Read again: the earlier null check narrowed `state.referral`.
+	const secondReferral = connect.state.referral as HarnessState['referral'];
+	assert.equal(secondReferral?.trackingId, stableTrackingId);
+	assert.notEqual(secondReferral?.nonce, firstNonce);
 });
 
 test('unready or forged provider return never writes a recipient ID', async () => {
@@ -254,7 +258,9 @@ test('unready or forged provider return never writes a recipient ID', async () =
 	);
 	assert.equal(response.status, 409);
 	assert.equal((await response.json()).error, 'paypal_onboarding_pending');
-	assert.deepEqual(connect.state.readinessCalls, [{ id: merchantId, trackingId: stableTrackingId }]);
+	assert.deepEqual(connect.state.readinessCalls, [
+		{ id: merchantId, trackingId: stableTrackingId },
+	]);
 	assert.deepEqual(connect.state.updates, []);
 });
 
@@ -302,7 +308,9 @@ test('completion discovers only the signed tracking recipient and reuses canonic
 	assert.equal(response.status, 200);
 	assert.deepEqual(await response.json(), { connected: true });
 	assert.deepEqual(connect.state.lookupCalls, [stableTrackingId]);
-	assert.deepEqual(connect.state.readinessCalls, [{ id: merchantId, trackingId: stableTrackingId }]);
+	assert.deepEqual(connect.state.readinessCalls, [
+		{ id: merchantId, trackingId: stableTrackingId },
+	]);
 	assert.deepEqual(connect.state.updates, [{ paypalMerchantId: merchantId }]);
 	assert.match(response.headers.get('set-cookie') ?? '', /Max-Age=0/);
 	assert.equal(response.headers.get('cache-control'), 'no-store');
