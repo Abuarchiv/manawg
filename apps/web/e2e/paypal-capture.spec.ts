@@ -564,8 +564,8 @@ test.describe('paypal capture state', () => {
 		expect(fixture.payment.id).toBe(reservationId);
 		expect(fixture.payment.providerOrderId).toBe('paypal-order-created-once');
 		expect(fixture.createdOrderInputs).toHaveLength(2);
-		expect(fixture.createdOrderInputs[0].requestId).toBe(reservationId);
-		expect(fixture.createdOrderInputs[1].requestId).toBe(reservationId);
+		expect(fixture.createdOrderInputs[0]?.requestId).toBe(reservationId);
+		expect(fixture.createdOrderInputs[1]?.requestId).toBe(reservationId);
 	});
 
 	test('a definitive Payee rejection frees the reservation for a corrected merchant', async () => {
@@ -577,14 +577,14 @@ test.describe('paypal capture state', () => {
 		const first = await fixture.createOrder();
 		expect(first.status).toBe(500);
 		expect(fixture.payment.status).toBe('failed');
-		const rejectedRequestId = fixture.createdOrderInputs[0].requestId;
+		const rejectedRequestId = fixture.createdOrderInputs[0]?.requestId;
 
 		fixture.updatePayeeMerchantId('merchant-corrected');
 		const retry = await fixture.createOrder();
 		expect(retry.status).toBe(200);
 		expect(fixture.payment.status).toBe('created');
-		expect(fixture.createdOrderInputs[1].payeeMerchantId).toBe('merchant-corrected');
-		expect(fixture.createdOrderInputs[1].requestId).not.toBe(rejectedRequestId);
+		expect(fixture.createdOrderInputs[1]?.payeeMerchantId).toBe('merchant-corrected');
+		expect(fixture.createdOrderInputs[1]?.requestId).not.toBe(rejectedRequestId);
 	});
 
 	test('a lost capture response is reconciled from PayPal without retrying a new order', async () => {

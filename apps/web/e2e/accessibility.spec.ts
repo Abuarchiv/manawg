@@ -32,9 +32,7 @@ test.describe('contrast tokens', () => {
 		/** Compare against this element/pseudo instead of walking up to the nearest opaque ancestor. */
 		against?: { selector: string; pseudo?: string };
 	}) {
-		function parseToLinearSrgb(
-			str: string,
-		): { r: number; g: number; b: number; a: number } | null {
+		function parseToLinearSrgb(str: string): { r: number; g: number; b: number; a: number } | null {
 			const oklchM = str.match(/oklch\(([^)]+)\)/);
 			const oklabM = str.match(/oklab\(([^)]+)\)/);
 			const rgbM = str.match(/rgba?\(([^)]+)\)/);

@@ -24,6 +24,7 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	tuple,
 } from './_helpers';
 
 test.describe('daily overview home', () => {
@@ -279,7 +280,7 @@ test.describe('daily overview home', () => {
 				// Ganz nach unten scrollen wie ein Nutzer: die Seite hält unten Platz für die Navigation frei.
 				// `instant`: html has scroll-behavior:smooth, so a plain scrollTo would still be animating.
 				await page.evaluate(() =>
-					window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }),
+					globalThis.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }),
 				);
 				const [rowBounds, navBounds] = await Promise.all([
 					lastAgendaRow.evaluate((node) => node.getBoundingClientRect().toJSON()),
@@ -635,7 +636,8 @@ test.describe('daily overview model', () => {
 			{ memberId: 'debtor-b', memberName: 'Bea', color: null, cents: -500, currency: 'EUR' },
 			{ memberId: 'creditor-a', memberName: 'Clara', color: null, cents: 500, currency: 'EUR' },
 		];
-		const reorderedBalances = [balances[0], balances[2], balances[3], balances[1]];
+		const [b0, b1, b2, b3] = tuple(balances, 4);
+		const reorderedBalances = [b0, b2, b3, b1];
 		const expenses = [
 			{
 				paidByMemberId: 'creditor-a',
@@ -660,7 +662,8 @@ test.describe('daily overview model', () => {
 			{ id: 'debtor-b', name: 'Bea', color: null },
 			{ id: 'creditor-a', name: 'Clara', color: null },
 		];
-		const reorderedMembers = [members[0], members[2], members[3], members[1]];
+		const [m0, m1, m2, m3] = tuple(members, 4);
+		const reorderedMembers = [m0, m2, m3, m1];
 		const expectedTransfers = [
 			{
 				fromId: 'debtor-a',
@@ -1103,7 +1106,11 @@ test.describe('daily overview navigation', () => {
 
 	test('refreshes the Chat count after a successful read acknowledgement', async ({ page }) => {
 		await setupMember(page);
-		await mockDashboard(page, BASE, { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] });
+		await mockDashboard(page, BASE, {
+			openShoppingCount: 0,
+			dueChores: [],
+			dueRecurringExpenses: [],
+		});
 		let unreadReads = 0;
 		let acknowledged = false;
 		let readAcknowledgements = 0;
@@ -1152,7 +1159,11 @@ test.describe('daily overview navigation', () => {
 		page,
 	}) => {
 		await setupMember(page);
-		await mockDashboard(page, BASE, { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] });
+		await mockDashboard(page, BASE, {
+			openShoppingCount: 0,
+			dueChores: [],
+			dueRecurringExpenses: [],
+		});
 		await page.route(`**${BASE}/chat/unread-count`, (route) =>
 			route.fulfill({
 				status: 200,
@@ -1180,7 +1191,11 @@ test.describe('daily overview navigation', () => {
 		page,
 	}, testInfo) => {
 		await setupMember(page);
-		await mockDashboard(page, BASE, { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] });
+		await mockDashboard(page, BASE, {
+			openShoppingCount: 0,
+			dueChores: [],
+			dueRecurringExpenses: [],
+		});
 		await page.route(`**${BASE}/chat/unread-count`, (route) =>
 			route.fulfill({
 				status: 200,

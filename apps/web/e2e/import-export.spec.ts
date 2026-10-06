@@ -72,7 +72,7 @@ test.describe('import replay atomic', () => {
 			operation: (tx: unknown) => Promise<unknown>,
 		) => {
 			const waitFor = prior;
-			let release = () => undefined;
+			let release: () => void = () => undefined;
 			prior = new Promise<void>((resolve) => {
 				release = resolve;
 			});

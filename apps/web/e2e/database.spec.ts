@@ -14,6 +14,10 @@ import {
 	resolveTransactionConnectionString,
 } from '../src/core/db/connection';
 
+interface DrizzleJournal {
+	entries: Array<{ idx: number; tag: string; when: number }>;
+}
+
 test.describe('db connection', () => {
 	const keys = [
 		'DATABASE_MIGRATION_URL',
@@ -184,7 +188,7 @@ test.describe('db migrate ledger', () => {
 			pathToFileURL(path.resolve(process.cwd(), 'scripts/db-migrate.mjs')).href
 		);
 		const migrationsDir = path.resolve(process.cwd(), 'drizzle');
-		const journal = JSON.parse(
+		const journal: DrizzleJournal = JSON.parse(
 			readFileSync(path.join(migrationsDir, 'meta', '_journal.json'), 'utf8'),
 		);
 		const rows = journal.entries.map((entry, index) => ({
@@ -251,7 +255,7 @@ test.describe('db migrate ledger', () => {
 			pathToFileURL(path.resolve(process.cwd(), 'scripts/db-migrate.mjs')).href
 		);
 		const migrationsDir = path.resolve(process.cwd(), 'drizzle');
-		const journal = JSON.parse(
+		const journal: DrizzleJournal = JSON.parse(
 			readFileSync(path.join(migrationsDir, 'meta', '_journal.json'), 'utf8'),
 		);
 		const client = {

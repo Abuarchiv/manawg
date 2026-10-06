@@ -28,6 +28,7 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	tuple,
 } from './_helpers';
 
 test.describe('settlement scope', () => {
@@ -571,7 +572,7 @@ test.describe('debt summary reminder link', () => {
 							};
 						}),
 					);
-					const [settle, remind] = metrics;
+					const [settle, remind] = tuple(metrics, 2);
 					const buttonsOverlap =
 						settle.button.left < remind.button.right &&
 						remind.button.left < settle.button.right &&
@@ -827,7 +828,8 @@ test.describe('dashboard balance consistency', () => {
 				split(currentExpense.id, memberC, 1_000),
 			];
 
-			const partialSplits = [splits[0], { ...splits[1], settledAt: new Date() }, splits[2]];
+			const [splitA, splitB, splitC] = tuple(splits, 3);
+			const partialSplits = [splitA, { ...splitB, settledAt: new Date() }, splitC];
 			const partial = dashboardBalances([currentExpense], partialSplits);
 			expect(
 				partial.map(({ paidCents, owedCents, balanceCents }) => ({
@@ -1163,7 +1165,7 @@ test.describe('currency-scoped accounting', () => {
 				myOpenAnnouncements: [],
 				dueRecurringExpenses: due,
 				absentMembers: [],
-				now: new Date('2026-01-15T12:00:00.000Z'),
+				now: new Date('2026-01-15T12:00:00.000Z').getTime(),
 			});
 			expect(today[0]?.detail).toContain('CHF');
 		});

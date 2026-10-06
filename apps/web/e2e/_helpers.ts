@@ -158,12 +158,12 @@ type Tuple<T, N extends number, R extends T[] = []> = R['length'] extends N
 	? R
 	: Tuple<T, N, [...R, T]>;
 
-/** Asserts that a query returned exactly `count` rows and types them as a tuple. */
-export function takeRows<T, N extends number>(rows: readonly T[], count: N): Tuple<T, N> {
-	if (rows.length !== count) {
-		throw new Error(`Expected ${count} rows, got ${rows.length}`);
+/** Asserts that `items` holds exactly `count` entries and types them as a tuple. */
+export function tuple<T, N extends number>(items: readonly T[], count: N): Tuple<T, N> {
+	if (items.length !== count) {
+		throw new Error(`Expected ${count} items, got ${items.length}`);
 	}
-	return [...rows] as Tuple<T, N>;
+	return [...items] as Tuple<T, N>;
 }
 
 /** Narrows away `null`/`undefined` with a descriptive failure instead of a TypeError later. */

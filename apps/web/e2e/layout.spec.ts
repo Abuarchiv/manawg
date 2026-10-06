@@ -1103,7 +1103,7 @@ test.describe('alert dialog responsive', () => {
 						);
 					});
 					const layout = await dialog.evaluate((element) => {
-						const measure = (node: HTMLElement) => {
+						const measure = (node: Element) => {
 							const rect = node.getBoundingClientRect();
 							const target = getComputedStyle(node, '::after');
 							return {
