@@ -1,7 +1,6 @@
 'use client';
 
-import { Checkbox } from '@/components/animate-ui/components/base/checkbox';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -12,111 +11,26 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Spinner } from '@/components/ui/spinner';
-import { Textarea } from '@/components/ui/textarea';
-import { useWg } from '@/components/wg/WgContextProvider';
-import { apiFetch } from '@/core/infra/api-client';
-import type { NotificationWarning } from '@/core/notifications/notification-warning';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import { MAX_CSV_BYTES } from '@/features/expenses/import-body';
-import {
-	type ImportOperation,
-	type RecoveryAction,
-	importActionErrorMessage,
-	recoveryActionFor,
-} from '@/features/expenses/import-errors';
-import type { ParsedExpense } from '@/features/expenses/import-parsers';
-import { OcrInitializationError, runOcrOnImage } from '@/features/expenses/ocr';
 import { cn } from '@/shared/lib/cn';
-import type { MemberRef } from '@/shared/lib/member-types';
-import { ArrowLeft, ChevronDown } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ImportMemberMapping } from './ImportMemberMapping';
-import { ImportPreviewTable } from './ImportPreviewTable';
+import { useEffect, useRef, useState } from 'react';
+import { ImportInputStep } from './ImportInputStep';
 import { ImportProgress } from './ImportProgress';
+import { ImportResultStep } from './ImportResultStep';
+import { ImportMappingStep, ImportPreviewStep } from './ImportReviewSteps';
 import { type ImportSourceKind, ImportSourcePicker } from './ImportSourcePicker';
+import { ImportStepHeading } from './ImportStepHeading';
+import type { ImportStep } from './import-wizard-types';
+import { useImportWizard } from './use-import-wizard';
 
-type Step = 'source' | 'input' | 'mapping' | 'preview' | 'commit';
-
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-
-interface PreviewResponse {
-	parsed: ParsedExpense[];
-	payloadHash: string;
-	memberMapping: Record<string, string | null>;
-	conflicts: string[];
-	members: MemberRef[];
-}
-
-interface CommitResponse {
-	importId: string;
-	inserted: number;
-	skipped: number;
-	errors: Array<{ index: number; reason: string }>;
-	warning: NotificationWarning;
-}
-
-function payloadKey(source: ImportSourceKind): 'splitwise_csv' | 'splid_csv' | 'ocr_text' {
-	if (source === 'splitwise_csv') return 'splitwise_csv';
-	if (source === 'splid_csv') return 'splid_csv';
-	return 'ocr_text';
-}
-
-/** Natives Datei-Feld bleibt unsichtbar im DOM; der Button ist sein Label, damit er wie jeder andere aussieht. */
-function FilePickLabel({
-	htmlFor,
-	fallback,
-	name,
-}: { htmlFor: string; fallback: string; name: string | null }) {
-	return (
-		<label
-			htmlFor={htmlFor}
-			className={cn(
-				buttonVariants({ variant: 'outline' }),
-				'w-full cursor-pointer peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 peer-disabled:pointer-events-none peer-disabled:opacity-50',
-			)}
-		>
-			<span className="min-w-0 truncate">{name ?? fallback}</span>
-		</label>
-	);
-}
-
-export function ImportWizard() {
-	const { wg, members, identity } = useWg();
-	const encodedCode = encodeURIComponent(wg.shareCode);
-	const [step, setStep] = useState<Step>('source');
-	const [source, setSource] = useState<ImportSourceKind | null>(null);
-	const [rawPayload, setRawPayload] = useState('');
-	const [ocrText, setOcrText] = useState('');
-	const [ocrRunning, setOcrRunning] = useState(false);
-	const [preview, setPreview] = useState<PreviewResponse | null>(null);
-	const [mapping, setMapping] = useState<Record<string, string | null>>({});
-	const previewPayloadRef = useRef<string | null>(null);
-	const [mappingValidated, setMappingValidated] = useState(false);
-	const [skipIndexes, setSkipIndexes] = useState<Set<number>>(new Set());
-	const [busy, setBusy] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const [commitState, setCommitState] = useState<'idle' | 'pending' | 'done' | 'error'>('idle');
-	const [commitResult, setCommitResult] = useState<CommitResponse | null>(null);
-	const [skipDuplicates, setSkipDuplicates] = useState(true);
-	const [inputStatus, setInputStatus] = useState<'empty' | 'reading' | 'ready' | 'error'>('empty');
-	const [recoveryAction, setRecoveryAction] = useState<RecoveryAction | null>(null);
-	const inputRunIdRef = useRef(0);
-	const commitAttemptRef = useRef<{ signature: string; key: string | null } | null>(null);
+/** Moves focus to the new step's heading whenever the step changes (not on first render). */
+function useStepHeadingFocus(step: ImportStep) {
 	const stepHeadingRef = useRef<HTMLHeadingElement>(null);
-	const previousStepRef = useRef<Step | null>(null);
-	const router = useRouter();
-	const [leaveOpen, setLeaveOpen] = useState(false);
-	const [pickedFileName, setPickedFileName] = useState<string | null>(null);
-	const [sourceToChange, setSourceToChange] = useState<ImportSourceKind | null>(null);
-
+	const previousStepRef = useRef<ImportStep | null>(null);
 	useEffect(() => {
 		const previousStep = previousStepRef.current;
 		previousStepRef.current = step;
@@ -126,305 +40,22 @@ export function ImportWizard() {
 		heading.focus({ preventScroll: true });
 		heading.scrollIntoView({ block: 'start', behavior: 'auto' });
 	}, [step]);
+	return stepHeadingRef;
+}
 
-	useEffect(() => {
-		if (error) document.getElementById('import-error')?.scrollIntoView({ block: 'center' });
-	}, [error]);
-
-	const conflicts = useMemo(() => preview?.conflicts ?? [], [preview]);
-	// Import assigns expenses to a member ("aus Listen raus": moved-out members are
-	// not offered as targets). Historic names in the CSV still resolve by name.
-	const memberOptions = useMemo(
-		() => members.filter((m) => m.active).map((m) => ({ id: m.id, name: m.name })),
-		[members],
-	);
-	const namesNeedingMapping = useMemo(() => {
-		if (!preview) return [];
-		const names = new Set<string>();
-		for (const expense of preview.parsed) {
-			if (expense.paidByName) names.add(expense.paidByName);
-			for (const s of expense.splits) {
-				if (s.memberName) names.add(s.memberName);
-			}
-		}
-		return Array.from(names);
-	}, [preview]);
-	const commitRecoveryAction = useMemo(() => {
-		if (!commitResult) return null;
-		for (const item of commitResult.errors) {
-			const action = recoveryActionFor(item.reason, 'commit');
-			if (action) return action;
-		}
-		return null;
-	}, [commitResult]);
-
-	function clearImportError(): void {
-		setError(null);
-		setRecoveryAction(null);
-	}
-
-	/** Everything derived from the current input: preview, mapping, selection, result. */
-	function discardDerivedState(): void {
-		setPreview(null);
-		setMapping({});
-		setMappingValidated(false);
-		setSkipIndexes(new Set());
-		setCommitState('idle');
-		setCommitResult(null);
-	}
-
-	/**
-	 * Drops the input and everything derived from it. Bumping the run id makes
-	 * any file read or OCR run still in flight discard its late result.
-	 */
-	function discardInput(): number {
-		const runId = inputRunIdRef.current + 1;
-		inputRunIdRef.current = runId;
-		setRawPayload('');
-		setOcrText('');
-		setOcrRunning(false);
-		discardDerivedState();
-		setSkipDuplicates(true);
-		return runId;
-	}
-
-	function beginInputReplacement(): number {
-		const runId = discardInput();
-		setInputStatus('reading');
-		clearImportError();
-		return runId;
-	}
-
-	function resetImportState(): void {
-		discardInput();
-		setBusy(false);
-		clearImportError();
-		setPickedFileName(null);
-		setInputStatus('empty');
-	}
-
-	function setManualPayload(value: string): void {
-		inputRunIdRef.current += 1;
-		setRawPayload(value);
-		setOcrText(value);
-		discardDerivedState();
-		setInputStatus(value.trim() ? 'ready' : 'empty');
-		clearImportError();
-	}
-
-	function showImportError(operation: ImportOperation, reason: string, prefix?: string): void {
-		setError(`${prefix ? `${prefix}: ` : ''}${importActionErrorMessage(reason)}`);
-		setRecoveryAction(recoveryActionFor(reason, operation));
-	}
-
-	async function handleOcrFile(file: File): Promise<void> {
-		const runId = beginInputReplacement();
-		if (file.size > MAX_IMAGE_BYTES) {
-			setInputStatus('error');
-			setError('Das Bild ist zu groß (max. 10 MB).');
-			setOcrRunning(false);
-			return;
-		}
-		setOcrRunning(true);
-		try {
-			const text = await runOcrOnImage(file);
-			if (inputRunIdRef.current !== runId) return;
-			setOcrText(text);
-			setRawPayload(text);
-			setInputStatus(text.trim() ? 'ready' : 'empty');
-		} catch (err) {
-			if (inputRunIdRef.current !== runId) return;
-			console.error('[ImportWizard] OCR failed', err);
-			setInputStatus('error');
-			setError(
-				err instanceof OcrInitializationError
-					? err.requiresReload
-						? 'Texterkennung konnte nicht geladen werden. Prüfe die Internetverbindung und lade die Seite neu, bevor du es erneut versuchst.'
-						: 'Texterkennung konnte nicht initialisiert werden. Prüfe die Internetverbindung und versuche es erneut.'
-					: 'Texterkennung fehlgeschlagen. Versuche es mit einem klareren Bild.',
-			);
-		} finally {
-			if (inputRunIdRef.current === runId) {
-				setOcrRunning(false);
-			}
-		}
-	}
-
-	function handleCsvFile(file: File): void {
-		const runId = beginInputReplacement();
-		if (file.size > MAX_CSV_BYTES) {
-			setInputStatus('error');
-			setError('Die CSV-Datei ist zu groß (max. 5 MB).');
-			return;
-		}
-		void file
-			.arrayBuffer()
-			.then((buffer) => {
-				// Excel-CSV aus deutschen Installationen ist oft Windows-1252, nicht UTF-8.
-				let text: string;
-				try {
-					text = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
-				} catch {
-					text = new TextDecoder('windows-1252').decode(buffer);
-				}
-				if (inputRunIdRef.current !== runId) return;
-				setRawPayload(text);
-				setInputStatus(text.trim() ? 'ready' : 'empty');
-			})
-			.catch(() => {
-				if (inputRunIdRef.current !== runId) return;
-				setInputStatus('error');
-				setError('Die Datei konnte nicht gelesen werden. Wähle sie erneut aus.');
-			});
-	}
-
-	async function submitPreview(): Promise<void> {
-		if (!source) return;
-		const payloadSize = new Blob([rawPayload]).size;
-		const limit = source === 'ocr_screenshot' ? MAX_IMAGE_BYTES : MAX_CSV_BYTES;
-		if (payloadSize > limit) {
-			setInputStatus('error');
-			showImportError('preview', 'payload_too_large');
-			return;
-		}
-		setBusy(true);
-		clearImportError();
-		const res = await apiFetch<PreviewResponse>(`/api/wg/${encodedCode}/imports/preview`, {
-			method: 'POST',
-			memberId: identity.memberId,
-			memberToken: identity.memberToken,
-			body: JSON.stringify({
-				source: payloadKey(source),
-				payload: rawPayload,
-			}),
-		});
-		setBusy(false);
-		if (!res.ok) {
-			if (res.error === 'payload_too_large') setInputStatus('error');
-			showImportError('preview', res.error, 'Vorschau fehlgeschlagen');
-			return;
-		}
-		// Ohne erkannte Ausgabe wäre der Zuordnungsschritt leer („Alle Namen erkannt“ und „Keine Namen erkannt“ zugleich).
-		if (res.data.parsed.length === 0) {
-			showImportError('preview', 'empty_payload', 'Vorschau fehlgeschlagen');
-			return;
-		}
-		setPreview(res.data);
-		// Nach „Zurück“ bleiben eigene Zuordnungen für weiterhin vorhandene Namen erhalten.
-		setMapping((previous) =>
-			Object.fromEntries(
-				Object.entries(res.data.memberMapping).map(([name, memberId]) => [
-					name,
-					Object.hasOwn(previous, name) ? (previous[name] ?? null) : memberId,
-				]),
-			),
-		);
-		setMappingValidated(false);
-		if (previewPayloadRef.current !== rawPayload) setSkipIndexes(new Set());
-		previewPayloadRef.current = rawPayload;
-		setInputStatus('ready');
-		clearImportError();
-		setStep('mapping');
-	}
-
-	async function submitCommit(): Promise<void> {
-		if (!source || !preview) return;
-		const commitBody = {
-			source: payloadKey(source),
-			payload: rawPayload,
-			previewPayloadHash: preview.payloadHash,
-			memberMapping: mapping,
-			skipDuplicates,
-			skipIndexes: Array.from(skipIndexes),
-		};
-		const signature = JSON.stringify(commitBody);
-		if (commitAttemptRef.current?.signature !== signature) {
-			commitAttemptRef.current = { signature, key: createOfflineIdempotencyKey() };
-		}
-		const idempotencyKey = commitAttemptRef.current.key;
-		setBusy(true);
-		setCommitState('pending');
-		clearImportError();
-		const res = await apiFetch<CommitResponse>(`/api/wg/${encodedCode}/imports/commit`, {
-			method: 'POST',
-			memberId: identity.memberId,
-			memberToken: identity.memberToken,
-			...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
-			body: signature,
-		});
-		setBusy(false);
-		if (!res.ok) {
-			if (res.error === 'payload_too_large') setInputStatus('error');
-			setCommitState('error');
-			showImportError('commit', res.error, 'Import fehlgeschlagen');
-			return;
-		}
-		commitAttemptRef.current = null;
-		setCommitResult(res.data);
-		setCommitState('done');
-		setStep('commit');
-	}
-
-	function applyRecoveryAction(action: RecoveryAction): void {
-		clearImportError();
-		switch (action.kind) {
-			case 'retry_preview':
-				void submitPreview();
-				return;
-			case 'retry_commit':
-				void submitCommit();
-				return;
-			case 'mapping':
-				setStep('mapping');
-				return;
-			case 'preview':
-				setStep('preview');
-				return;
-			case 'input':
-				discardDerivedState();
-				setStep('input');
-				return;
-		}
-	}
-
-	function toggleSkip(index: number): void {
-		const next = new Set(skipIndexes);
-		if (next.has(index)) next.delete(index);
-		else next.add(index);
-		setSkipIndexes(next);
-	}
-
-	function updateMapping(name: string, memberId: string | null): void {
-		setMapping((prev) => ({ ...prev, [name]: memberId }));
-	}
-
-	function continueFromMapping(): void {
-		if (!allMapped) {
-			setMappingValidated(true);
-			return;
-		}
-		setMappingValidated(false);
-		setStep('preview');
-	}
-
-	// A mapping only counts when it points at an active member (the commit rejects others).
-	const allMapped = namesNeedingMapping.every((name) =>
-		memberOptions.some((member) => member.id === mapping[name]),
-	);
-
-	const stepNumber = ['source', 'input', 'mapping', 'preview', 'commit'].indexOf(step) + 1;
-	const selectedCount = (preview?.parsed.length ?? 0) - skipIndexes.size;
-	const returnHref = `/wg/${encodedCode}/ausgaben`;
-	function chooseSource(value: ImportSourceKind) {
-		if (value !== source) resetImportState();
-		setSource(value);
-		setStep('input');
-		clearImportError();
-	}
+export function ImportWizard() {
+	const wizard = useImportWizard();
+	const { step, source, input, busy, error, recoveryAction, stepNumber } = wizard;
+	const { rawPayload, ocrRunning } = input;
+	const stepHeadingRef = useStepHeadingFocus(step);
+	const router = useRouter();
+	const [leaveOpen, setLeaveOpen] = useState(false);
+	const [sourceToChange, setSourceToChange] = useState<ImportSourceKind | null>(null);
+	const returnHref = `/wg/${wizard.encodedCode}/ausgaben`;
 
 	return (
 		<div className="flex flex-col gap-5">
-			{/* Kopf wie auf den anderen Unterseiten: Zurück-Pfeil links neben dem Titel. */}
+			{/* Header like the other subpages: back arrow left of the title. */}
 			<header className="flex min-w-0 items-start gap-2">
 				<Link
 					href={returnHref}
@@ -437,7 +68,7 @@ export function ImportWizard() {
 							event.preventDefault();
 							return;
 						}
-						if (rawPayload && commitState !== 'done') {
+						if (rawPayload && wizard.commitState !== 'done') {
 							event.preventDefault();
 							setLeaveOpen(true);
 						}
@@ -457,321 +88,42 @@ export function ImportWizard() {
 			<Progress value={stepNumber} max={5} aria-label={`Import: Schritt ${stepNumber} von 5`} />
 			{step === 'source' && (
 				<section className="flex flex-col gap-3">
-					<h2
-						ref={stepHeadingRef}
-						tabIndex={-1}
-						className="text-base font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-					>
-						Importquelle wählen
-					</h2>
+					<ImportStepHeading headingRef={stepHeadingRef}>Importquelle wählen</ImportStepHeading>
 					<ImportSourcePicker
 						value={source}
 						onChange={(value) => {
 							if (value !== source && rawPayload) setSourceToChange(value);
-							else chooseSource(value);
+							else wizard.chooseSource(value);
 						}}
 					/>
 				</section>
 			)}
 			{step === 'input' && source && (
-				<section className="flex flex-col gap-4">
-					<h2
-						ref={stepHeadingRef}
-						tabIndex={-1}
-						className="text-base font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-					>
-						{source === 'ocr_screenshot' ? 'Bild hinzufügen' : 'Export-Datei auswählen'}
-					</h2>
-					<FieldGroup>
-						{source === 'ocr_screenshot' ? (
-							<>
-								<Field className="relative" data-disabled={busy || ocrRunning}>
-									<Input
-										id="import-screenshot"
-										type="file"
-										accept="image/*"
-										aria-label="Screenshot auswählen"
-										disabled={busy || ocrRunning}
-										onChange={(event) => {
-											const file = event.target.files?.[0];
-											if (!file) return;
-											setPickedFileName(file.name);
-											void handleOcrFile(file);
-										}}
-										className="peer sr-only h-px w-px"
-									/>
-									<FilePickLabel
-										htmlFor="import-screenshot"
-										fallback="Bild auswählen"
-										name={pickedFileName}
-									/>
-									<FieldDescription>
-										Foto oder Bildschirmfoto bis 10 MB. Nur Eurobeträge (EUR) werden erkannt.
-									</FieldDescription>
-								</Field>
-								{ocrRunning && (
-									<Alert>
-										<Spinner />
-										<AlertDescription>
-											Bild wird ausgewertet. Das kann 30 Sekunden dauern.
-										</AlertDescription>
-									</Alert>
-								)}
-								<details>
-									<summary className="flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-medium [&::-webkit-details-marker]:hidden">
-										<ChevronDown className="size-4" aria-hidden />
-										Ergebnis prüfen oder korrigieren
-									</summary>
-									<div className="pt-2">
-										<Field
-											data-invalid={inputStatus === 'error'}
-											data-disabled={busy || ocrRunning}
-										>
-											<FieldLabel htmlFor="import-ocr">Erkannte Daten</FieldLabel>
-											<Textarea
-												id="import-ocr"
-												value={ocrText}
-												onChange={(event) => setManualPayload(event.target.value)}
-												disabled={busy || ocrRunning}
-												aria-label="Erkannte Daten"
-												aria-invalid={inputStatus === 'error' || undefined}
-												aria-describedby={inputStatus === 'error' ? 'import-error' : undefined}
-												placeholder="Ergebnis hier prüfen und korrigieren"
-												className="min-h-32 text-base"
-											/>
-										</Field>
-									</div>
-								</details>
-							</>
-						) : (
-							<>
-								<Field className="relative" data-disabled={busy || inputStatus === 'reading'}>
-									<Input
-										id="import-csv-file"
-										type="file"
-										accept=".csv,text/csv"
-										aria-label="CSV-Datei auswählen"
-										disabled={busy || inputStatus === 'reading'}
-										className="peer sr-only h-px w-px"
-										onChange={(event) => {
-											const file = event.target.files?.[0];
-											if (!file) return;
-											setPickedFileName(file.name);
-											handleCsvFile(file);
-										}}
-									/>
-									<FilePickLabel
-										htmlFor="import-csv-file"
-										fallback="Datei auswählen"
-										name={pickedFileName}
-									/>
-									<FieldDescription>Export-Datei bis 5 MB.</FieldDescription>
-								</Field>
-								<details>
-									<summary className="flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-medium [&::-webkit-details-marker]:hidden">
-										<ChevronDown className="size-4" aria-hidden />
-										Oder Inhalt einfügen
-									</summary>
-									<div className="pt-2">
-										<Field
-											data-invalid={inputStatus === 'error'}
-											data-disabled={busy || inputStatus === 'reading'}
-										>
-											<FieldLabel htmlFor="import-csv-textarea">Inhalt des Exports</FieldLabel>
-											<Textarea
-												id="import-csv-textarea"
-												value={rawPayload}
-												onChange={(event) => setManualPayload(event.target.value)}
-												placeholder="Füge den Inhalt deines Exports hier ein"
-												aria-label="Inhalt des Exports"
-												aria-invalid={inputStatus === 'error' || undefined}
-												aria-describedby={inputStatus === 'error' ? 'import-error' : undefined}
-												disabled={busy || inputStatus === 'reading'}
-												className="min-h-32 text-base"
-											/>
-										</Field>
-									</div>
-								</details>
-							</>
-						)}
-					</FieldGroup>
-					<div className="flex min-w-0 flex-wrap gap-2">
-						<Button
-							className="flex-1"
-							disabled={
-								busy || ocrRunning || inputStatus !== 'ready' || rawPayload.trim().length === 0
-							}
-							onClick={() => void submitPreview()}
-						>
-							{busy && <Spinner data-icon="inline-start" />}Vorschau erstellen
-						</Button>
-						<Button
-							variant="outline"
-							disabled={busy || ocrRunning}
-							onClick={() => {
-								clearImportError();
-								setStep('source');
-							}}
-						>
-							Zurück
-						</Button>
-					</div>
-				</section>
+				<ImportInputStep
+					headingRef={stepHeadingRef}
+					source={source}
+					input={input}
+					busy={busy}
+					onPreview={() => void wizard.submitPreview()}
+					onBack={() => wizard.goTo('source')}
+				/>
 			)}
-			{step === 'mapping' && preview && (
-				<section className="flex flex-col gap-4">
-					<h2
-						ref={stepHeadingRef}
-						tabIndex={-1}
-						className="text-base font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-					>
-						Namen WG-Mitgliedern zuordnen
-					</h2>
-					<p className="text-sm text-muted-foreground">
-						{conflicts.length > 0
-							? 'Ordne die markierten Namen zu.'
-							: 'Alle Namen automatisch erkannt. Bitte prüfen.'}
-					</p>
-					<ImportMemberMapping
-						names={namesNeedingMapping}
-						mapping={mapping}
-						members={memberOptions}
-						onChange={updateMapping}
-						showErrors={mappingValidated}
-					/>
-					<div className="flex min-w-0 flex-wrap gap-2">
-						<Button className="flex-1" onClick={continueFromMapping}>
-							Weiter zur Vorschau
-						</Button>
-						<Button
-							variant="outline"
-							onClick={() => {
-								clearImportError();
-								setStep('input');
-							}}
-						>
-							Zurück
-						</Button>
-					</div>
-				</section>
+			{step === 'mapping' && wizard.preview && (
+				<ImportMappingStep headingRef={stepHeadingRef} wizard={wizard} />
 			)}
-			{step === 'preview' && preview && (
-				<section className="flex flex-col gap-4">
-					<div className="flex items-center justify-between gap-2">
-						<h2
-							ref={stepHeadingRef}
-							tabIndex={-1}
-							className="text-base font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-						>
-							Vorschau
-						</h2>
-						<Badge variant="secondary">{selectedCount} ausgewählt</Badge>
-					</div>
-					<p className="text-sm text-muted-foreground">
-						Prüfe Beträge und Anteile. Nicht gewünschte Einträge abwählen.
-					</p>
-					<ImportPreviewTable
-						expenses={preview.parsed}
-						mapping={mapping}
-						members={memberOptions}
-						skipIndexes={skipIndexes}
-						onToggleSkip={toggleSkip}
-						disabled={busy}
-					/>
-					<FieldGroup>
-						<Field orientation="horizontal" className="min-h-11 items-start" data-disabled={busy}>
-							<Checkbox
-								className="mt-0.5"
-								id="import-duplicates"
-								checked={skipDuplicates}
-								onCheckedChange={(checked) => setSkipDuplicates(checked === true)}
-								disabled={busy}
-							/>
-							<div className="flex flex-col gap-1">
-								<FieldLabel htmlFor="import-duplicates">Duplikate überspringen</FieldLabel>
-								<FieldDescription>
-									Gleiches Datum, Beschreibung, Betrag und zahlende Person.
-								</FieldDescription>
-							</div>
-						</Field>
-					</FieldGroup>
-					<div className="sticky bottom-[calc(var(--app-nav-height,5rem)+env(safe-area-inset-bottom))] flex min-w-0 flex-wrap gap-2 bg-background py-3">
-						<Button
-							className="flex-1"
-							disabled={busy || selectedCount === 0}
-							onClick={() => void submitCommit()}
-						>
-							{busy && <Spinner data-icon="inline-start" />}Importieren ({selectedCount})
-						</Button>
-						<Button
-							variant="outline"
-							disabled={busy}
-							onClick={() => {
-								clearImportError();
-								setStep('mapping');
-							}}
-						>
-							Zurück
-						</Button>
-					</div>
-				</section>
+			{step === 'preview' && wizard.preview && (
+				<ImportPreviewStep headingRef={stepHeadingRef} wizard={wizard} />
 			)}
-			{step === 'commit' && commitResult && (
-				<section className="flex flex-col gap-4">
-					<h2
-						ref={stepHeadingRef}
-						tabIndex={-1}
-						className="text-base font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-					>
-						Import abgeschlossen
-					</h2>
-					<ImportProgress
-						state="done"
-						inserted={commitResult.inserted}
-						skipped={commitResult.skipped}
-						errors={commitResult.errors.length}
-					/>
-					{commitResult.warning && (
-						<Alert>
-							<AlertTitle>Hinweis zur Benachrichtigung</AlertTitle>
-							<AlertDescription>
-								{commitResult.warning === 'notification_delivery_failed'
-									? 'Der Import wurde gespeichert, aber die WG-Benachrichtigung konnte nicht an alle zugestellt werden.'
-									: 'Der Import wurde gespeichert, aber die Zustellung der WG-Benachrichtigung konnte nicht bestätigt werden.'}
-							</AlertDescription>
-						</Alert>
-					)}
-					{commitResult.errors.length > 0 && (
-						<Alert variant="destructive">
-							<AlertTitle>Nicht übernommene Einträge</AlertTitle>
-							<AlertDescription className="flex flex-col items-start gap-3">
-								<ul className="flex flex-col gap-2">
-									{commitResult.errors.map((item) => (
-										<li key={item.index}>
-											Eintrag {item.index + 1}: {importActionErrorMessage(item.reason)}
-										</li>
-									))}
-								</ul>
-								{commitRecoveryAction && (
-									<Button
-										variant="outline"
-										onClick={() => applyRecoveryAction(commitRecoveryAction)}
-									>
-										{commitRecoveryAction.label}
-									</Button>
-								)}
-							</AlertDescription>
-						</Alert>
-					)}
-					<Link
-						href={`/wg/${encodedCode}/ausgaben`}
-						className={buttonVariants({ className: 'min-h-11' })}
-					>
-						Zu den Ausgaben
-					</Link>
-				</section>
+			{step === 'commit' && wizard.commitResult && (
+				<ImportResultStep
+					headingRef={stepHeadingRef}
+					result={wizard.commitResult}
+					recoveryAction={wizard.commitRecoveryAction}
+					onRecover={wizard.applyRecoveryAction}
+					expensesHref={returnHref}
+				/>
 			)}
-			{commitState === 'pending' && <ImportProgress state="pending" />}
+			{wizard.commitState === 'pending' && <ImportProgress state="pending" />}
 			{error && (
 				<Alert id="import-error" variant="destructive">
 					<AlertDescription className="flex flex-col items-start gap-2">
@@ -780,7 +132,7 @@ export function ImportWizard() {
 							<Button
 								variant="outline"
 								disabled={busy || ocrRunning}
-								onClick={() => applyRecoveryAction(recoveryAction)}
+								onClick={() => wizard.applyRecoveryAction(recoveryAction)}
 							>
 								{recoveryAction.label}
 							</Button>
@@ -812,7 +164,7 @@ export function ImportWizard() {
 							className="min-h-11"
 							onClick={() => {
 								if (sourceToChange) {
-									chooseSource(sourceToChange);
+									wizard.chooseSource(sourceToChange);
 									setSourceToChange(null);
 								} else router.push(returnHref);
 							}}
