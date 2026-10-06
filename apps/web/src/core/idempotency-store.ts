@@ -10,6 +10,9 @@ import { type SQL, and, eq, gt, lte, or, sql } from 'drizzle-orm';
 const RESPONSE_CLAIM_LEASE_SECONDS = 15 * 60;
 const CLAIM_PLACEHOLDER = { _claimed: true };
 
+/** The write committed, but its response was too large to keep; final, never retryable. */
+const IDEMPOTENCY_RESPONSE_UNAVAILABLE = 'idempotency_response_unavailable';
+
 export function readIdempotencyKey(req: Request): string | null {
 	const raw = req.headers.get('idempotency-key');
 	if (!raw) return null;
@@ -59,13 +62,15 @@ export async function claimResponseSlot(scope: string, key: string): Promise<boo
  * The stored response for `scope:key`, or `null` when none is stored yet (no row, an expired row
  * or a still-pending claim placeholder).
  *
- * Fail-closed: a DB error aborts the request, because an unavailable store is not evidence of a
- * missing response. A response that was too large to keep throws
- * `idempotency_response_unavailable`, so a retry fails loudly instead of writing twice.
+ * Fail-closed: a DB error aborts the request with the retryable `idempotency_cache_read_failed`,
+ * because an unavailable store is not evidence of a missing response. A committed write whose
+ * response was too large to keep throws the final `idempotency_response_unavailable`: no retry
+ * can ever replay it, so it must not be reported as retryable.
  */
 export async function getCachedResponse<T>(scope: string, key: string): Promise<T | null> {
+	let rows: { body: unknown }[];
 	try {
-		const rows = await db
+		rows = await db
 			.select({ body: idempotencyResponses.responseBody })
 			.from(idempotencyResponses)
 			.where(
@@ -76,25 +81,25 @@ export async function getCachedResponse<T>(scope: string, key: string): Promise<
 				),
 			)
 			.limit(1);
-		const first = rows[0];
-		if (!first) return null;
-		if (first.body && typeof first.body === 'object' && '_claimed' in first.body) {
-			// The claim lease is represented by expiresAt. A stale placeholder is invisible to
-			// readers and can be reclaimed by claimResponseSlot.
-			return null;
-		}
-		if (
-			first.body &&
-			typeof first.body === 'object' &&
-			'_replayUnavailable' in first.body &&
-			(first.body as { _replayUnavailable?: unknown })._replayUnavailable === true
-		) {
-			throw new Error('idempotency_response_unavailable');
-		}
-		return first.body as T;
 	} catch (err) {
 		throw new Error('idempotency_cache_read_failed', { cause: err });
 	}
+	const first = rows[0];
+	if (!first) return null;
+	const body = first.body;
+	if (body && typeof body === 'object' && '_claimed' in body) {
+		// The claim lease is represented by expiresAt. A stale placeholder is invisible to
+		// readers and can be reclaimed by claimResponseSlot.
+		return null;
+	}
+	if (
+		body &&
+		typeof body === 'object' &&
+		(body as { _replayUnavailable?: unknown })._replayUnavailable === true
+	) {
+		throw new Error(IDEMPOTENCY_RESPONSE_UNAVAILABLE);
+	}
+	return body as T;
 }
 
 /** Where a post-commit warning lands in a stored response, and which row it belongs to. */

@@ -59,7 +59,7 @@ mock.module('@/core/idempotency-store', {
 			const row = state.rows.get(id(scope, key));
 			if (!row || !live(row) || isPlaceholder(row.body)) return null;
 			if ((row.body as { _replayUnavailable?: boolean })._replayUnavailable) {
-				throw new Error('idempotency_cache_read_failed');
+				throw new Error('idempotency_response_unavailable');
 			}
 			return row.body;
 		},
@@ -312,7 +312,7 @@ test('an oversized response is stored as replay-unavailable', async () => {
 		assert.equal(state.warned, 1);
 		await assert.rejects(
 			withIdempotentWrite({ scope: SCOPE, key: KEY, codec }, createChore()),
-			/idempotency_cache_read_failed/,
+			/idempotency_response_unavailable/,
 		);
 
 		reset();
