@@ -28,6 +28,7 @@ import {
 } from '@/core/offline/offline-queue';
 import { choreCreateErrorMessage } from '@/features/chores/chore-errors';
 import type { ChoreFairness } from '@/features/chores/chore-fairness';
+import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import type { RecurrenceType } from '@/features/chores/components/chore-types';
 import { type QUICK_CHORE_TEMPLATES, TITLE_MAX } from '@/features/chores/components/constants';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -64,7 +65,7 @@ export function useChoreCreate(
 		endPending,
 		setActionError,
 		setActionNotice,
-		setItems,
+		updateChores,
 		load,
 		refreshCount,
 	} = ctx;
@@ -332,14 +333,15 @@ export function useChoreCreate(
 					}
 					choreCreateRequestRef.current = null;
 					refreshCount();
-					setItems((current) => [
+					const now = new Date();
+					updateChores((current) => [
 						{
 							id: queued.id,
 							title,
 							intervalDays: newInterval,
 							recurrenceType: newRecurrenceType,
 							assignedMemberId: newAssigned || null,
-							nextDueAt: new Date().toISOString(),
+							nextDueAt: computeNextDueAt(now, newInterval, now, newRecurrenceType).toISOString(),
 							lastCompletedAt: null,
 							lastCompletedByName: null,
 							openGapCountForAssignee: 0,

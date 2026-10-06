@@ -178,7 +178,9 @@ export function AboForm({
 			? 'Gib eine kurze Beschreibung ein.'
 			: null;
 	const amountError =
-		error && parsedAmountCents === null ? amountErrorMessage(parseEuroAmount(amountStr)) : null;
+		error && parsedAmountCents === null
+			? amountErrorMessage(parseEuroAmount(amountStr), amountStr)
+			: null;
 	const nextDueError = error && nextDueAt.trim().length === 0 ? 'Fälligkeit fehlt.' : null;
 	const formError = error && !descriptionError && !amountError && !nextDueError ? error : null;
 
@@ -233,7 +235,7 @@ export function AboForm({
 			return;
 		}
 		if (parsedAmountCents === null) {
-			setError(amountErrorMessage(parseEuroAmount(amountStr)));
+			setError(amountErrorMessage(parseEuroAmount(amountStr), amountStr));
 			return;
 		}
 		if (nextDueAt.trim().length === 0) {

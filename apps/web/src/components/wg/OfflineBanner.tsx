@@ -126,7 +126,7 @@ export function OfflineBanner() {
 				<div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
 					<div className="flex min-w-0 items-center gap-2">
 						<WifiOff className="h-4 w-4 shrink-0" aria-hidden />
-						<span className="truncate">
+						<span>
 							Offline.{' '}
 							{queueCount > 0
 								? formatOfflineQueueCount(queueCount)

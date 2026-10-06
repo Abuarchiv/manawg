@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useLayoutEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /**
  * One floating bottom navigation for the public shell and the WG shell: same
@@ -9,6 +9,24 @@ import { type ReactNode, useLayoutEffect, useRef } from 'react';
  */
 export function AppBottomNav({ label, children }: { label: string; children: ReactNode }) {
 	const ref = useRef<HTMLElement>(null);
+	const [keyboardOpen, setKeyboardOpen] = useState(false);
+	// iOS keeps fixed bars at the layout viewport, so with the keyboard open the bar floats mid-screen.
+	useEffect(() => {
+		const vv = window.visualViewport;
+		if (!vv) return;
+		const sync = () => {
+			const el = document.activeElement;
+			const typing =
+				el instanceof HTMLElement && el.matches('input, textarea, [contenteditable="true"]');
+			setKeyboardOpen(typing && window.innerHeight - vv.height > 100);
+		};
+		vv.addEventListener('resize', sync);
+		document.addEventListener('focusout', sync);
+		return () => {
+			vv.removeEventListener('resize', sync);
+			document.removeEventListener('focusout', sync);
+		};
+	}, []);
 	useLayoutEffect(() => {
 		const nav = ref.current;
 		const frame = nav?.parentElement;
@@ -33,7 +51,7 @@ export function AppBottomNav({ label, children }: { label: string; children: Rea
 			ref={ref}
 			aria-label={label}
 			data-app-chrome
-			className="fixed inset-x-0 bottom-0 z-30 mx-auto bg-background w-full min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
+			className={`fixed inset-x-0 bottom-0 z-30 mx-auto bg-background w-full min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]${keyboardOpen ? ' hidden' : ''}`}
 		>
 			<div className="rounded-[20px] border border-border bg-background text-foreground">
 				<ul className="flex flex-wrap gap-0.5 p-0.5 [&>li]:min-w-fit [&>li]:flex-1">{children}</ul>

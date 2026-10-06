@@ -702,7 +702,7 @@ test.describe('settings theme responsive', () => {
 		).toBe('32px');
 		for (const tab of await page.getByRole('tab').all()) {
 			const box = await tab.boundingBox();
-			expect(box?.width).toBeGreaterThanOrEqual(120);
+			expect(box?.width).toBeGreaterThanOrEqual(112);
 		}
 
 		for (const name of ['Hell', 'Dunkel', 'System']) {

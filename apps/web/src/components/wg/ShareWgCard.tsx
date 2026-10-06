@@ -194,16 +194,16 @@ function ShareWgBody({
 						<span className="text-muted-foreground block text-xs font-medium tracking-wider uppercase">
 							Code
 						</span>
-						<span className="text-foreground mt-0.5 block font-mono text-base font-medium tracking-[0.12em]">
+						<span className="text-foreground mt-0.5 block font-mono text-base font-medium tracking-[0.12em] break-all">
 							{shareCode}
 						</span>
 					</span>
 					{copying === 'code' ? (
 						<Spinner aria-hidden />
 					) : copied === 'code' ? (
-						<Check className="text-primary h-4 w-4" aria-hidden />
+						<Check className="text-primary h-4 w-4 shrink-0" aria-hidden />
 					) : (
-						<Copy className="text-muted-foreground h-4 w-4" aria-hidden />
+						<Copy className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
 					)}
 				</button>
 				<button
