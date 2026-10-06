@@ -57,4 +57,92 @@ function loadClaimedResponse(mocks) {
 	return evaluate(compiled, helperMocks);
 }
 
-module.exports = { loadClaimedResponse };
+const compiledWrite = transpile('src/core/db/idempotent-write.ts');
+const realReplaySlot = evaluate(transpile('src/core/guards/replay-slot.ts'), {});
+
+/**
+ * Loads the real `withIdempotentWrite` against a route harness's mocks.
+ *
+ * Reads, at call time: `@/core/idempotency-store` (`claimResponseSlot`, default "won";
+ * `getCachedResponse`, default "nothing stored"), `@/core/db/claimed-response` (else the real
+ * helpers on the harness db), `withTransaction` from `@/core/db/transaction` or `@/core/db`, and
+ * `@/core/guards/replay-slot` when the harness wants to control polling.
+ */
+function loadIdempotentWrite(mocks) {
+	const TransactionAbort =
+		mocks['@/core/db/transaction-abort']?.TransactionAbort ??
+		mocks['@/core/db/transaction']?.TransactionAbort ??
+		realTransactionAbort.TransactionAbort;
+	let claimed = null;
+	const claimHelpers = () => {
+		if (mocks['@/core/db/claimed-response']) return mocks['@/core/db/claimed-response'];
+		claimed ??= loadClaimedResponse(mocks);
+		return claimed;
+	};
+	const store = () => mocks['@/core/idempotency-store'] ?? {};
+	return evaluate(compiledWrite, {
+		'@/core/db/claimed-response': {
+			lockClaimedResponse: (...args) => claimHelpers().lockClaimedResponse(...args),
+			completeClaimedResponse: (...args) => claimHelpers().completeClaimedResponse(...args),
+			releaseLockedClaim: (...args) => claimHelpers().releaseLockedClaim(...args),
+			releaseClaimedResponse: (...args) => claimHelpers().releaseClaimedResponse(...args),
+		},
+		'@/core/db/transaction': {
+			TransactionAbort,
+			withTransaction: (...args) =>
+				(mocks['@/core/db/transaction']?.withTransaction ?? mocks['@/core/db'].withTransaction)(
+					...args,
+				),
+		},
+		'@/core/guards/replay-slot': {
+			claimReplaySlot: (...args) =>
+				(mocks['@/core/guards/replay-slot'] ?? realReplaySlot).claimReplaySlot(...args),
+		},
+		'@/core/idempotency-store': {
+			claimResponseSlot: (...args) => (store().claimResponseSlot ?? (async () => true))(...args),
+			getCachedResponse: (...args) => (store().getCachedResponse ?? (async () => null))(...args),
+		},
+		'@/core/infra/observability': {
+			logApiError: (...args) => mocks['@/core/infra/observability']?.logApiError?.(...args),
+		},
+	});
+}
+
+const compiledParseBody = transpile('src/core/http/parse-body.ts');
+const realReadJson = evaluate(transpile('src/core/http/read-json.ts'), {});
+
+/**
+ * Loads the real `parseBody` against a route harness's `@/core/http/api-errors` mock. Harnesses
+ * that mock `@/core/http/read-json` with only `readJsonLimited` keep reading bodies through it.
+ */
+function loadParseBody(mocks) {
+	const errors = () => mocks['@/core/http/api-errors'] ?? {};
+	const readJson = () => mocks['@/core/http/read-json'] ?? realReadJson;
+	return evaluate(compiledParseBody, {
+		'@/core/http/api-errors': {
+			badRequest: (...args) => errors().badRequest(...args),
+			payloadTooLarge: (...args) =>
+				errors().payloadTooLarge
+					? errors().payloadTooLarge(...args)
+					: Response.json(
+							{ error: 'payload_too_large', code: 'payload_too_large' },
+							{ status: 413 },
+						),
+		},
+		'@/core/http/read-json': {
+			DEFAULT_JSON_BODY_BYTES: realReadJson.DEFAULT_JSON_BODY_BYTES,
+			readJsonBody: async (req, maxBytes) => {
+				const module = readJson();
+				if (module.readJsonBody) return module.readJsonBody(req, maxBytes);
+				try {
+					return { ok: true, body: await module.readJsonLimited(req, maxBytes) };
+				} catch (err) {
+					const tooLarge = err instanceof Error && err.message === 'payload_too_large';
+					return { ok: false, reason: tooLarge ? 'payload_too_large' : 'invalid_json' };
+				}
+			},
+		},
+	});
+}
+
+module.exports = { loadClaimedResponse, loadIdempotentWrite, loadParseBody };

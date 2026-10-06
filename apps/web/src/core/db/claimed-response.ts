@@ -65,16 +65,15 @@ export async function lockClaimedResponse<T>(
  * Replace the claim placeholder with the final response inside the mutation's
  * transaction and keep it for replays.
  *
- * Pass the lease from `lockClaimedResponse`; only routes that never lock the
- * row (`withIdempotentJsonResponse`) complete without one. Aborts the
- * transaction when the placeholder is gone, expired or held by another lease.
+ * Pass the lease from `lockClaimedResponse`. Aborts the transaction when the
+ * placeholder is gone, expired or held by another lease.
  */
 export async function completeClaimedResponse(
 	tx: DbTransaction,
 	scope: string,
 	key: string,
 	responseBody: object,
-	leaseExpiresAt?: Date,
+	leaseExpiresAt: Date,
 ): Promise<void> {
 	const rows = await tx
 		.update(idempotencyResponses)
@@ -88,7 +87,7 @@ export async function completeClaimedResponse(
 				eq(idempotencyResponses.key, key),
 				placeholderBody(),
 				sql`${idempotencyResponses.expiresAt} > now()`,
-				leaseExpiresAt ? eq(idempotencyResponses.expiresAt, leaseExpiresAt) : undefined,
+				eq(idempotencyResponses.expiresAt, leaseExpiresAt),
 			),
 		)
 		.returning({ scope: idempotencyResponses.scope });
@@ -98,7 +97,7 @@ export async function completeClaimedResponse(
 /**
  * Delete the locked placeholder inside a transaction that commits without a
  * stored response (a rejected write such as a rate limit), so the same key can
- * run again. Aborts the transaction when the placeholder is no longer ours.
+ * run again. Aborts the transaction when the placeholder is not ours anymore.
  */
 export async function releaseLockedClaim(
 	tx: DbTransaction,

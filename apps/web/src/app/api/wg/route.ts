@@ -2,25 +2,18 @@ import { recordAuditEvent } from '@/core/audit';
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
-import {
-	completeClaimedResponse,
-	lockClaimedResponse,
-	releaseClaimedResponse,
-} from '@/core/db/claimed-response';
+import { type WriteFn, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import {
-	badRequest,
 	conflict,
 	serverError,
 	serviceUnavailable,
 	tooMany,
 	unauthorized,
-	unreadableJsonBody,
 } from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
-import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
+import { parseBody } from '@/core/http/parse-body';
+import { readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
 import { generateShareCode, isValidShareCode } from '@/core/utils/share-code';
@@ -31,23 +24,7 @@ import { z } from 'zod';
 const WG_NAME_MIN = 1;
 const SHARE_CODE_RETRIES = 5;
 
-type CachedJsonResponse = { status: number; body: unknown };
-
-function isCachedJsonResponse(value: unknown): value is CachedJsonResponse {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-	const row = value as Record<string, unknown>;
-	return (
-		typeof row.status === 'number' &&
-		Number.isInteger(row.status) &&
-		row.status >= 200 &&
-		row.status <= 599 &&
-		'body' in row
-	);
-}
-
-function replayResponse(response: CachedJsonResponse): NextResponse {
-	return NextResponse.json(response.body, { status: response.status });
-}
+const wgCreateCodec = responseCodec();
 
 const createWgSchema = z.object({
 	name: z.string().trim().min(WG_NAME_MIN).max(WG_NAME_MAX_LENGTH),
@@ -87,21 +64,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		return tooMany('rate_limited', 'wg_create_rate_limited');
 	}
 
-	let raw: unknown;
-	try {
-		raw = await readJsonLimited(req);
-	} catch (err) {
-		return unreadableJsonBody(err);
-	}
-
-	const parsed = createWgSchema.safeParse(raw);
-	if (!parsed.success) {
-		const { fieldErrors } = parsed.error.flatten();
-		if (fieldErrors.name) return badRequest('name_invalid');
-		if (fieldErrors.creatorName) return badRequest('creator_name_invalid');
-		return badRequest('invalid_body');
-	}
-
+	const parsed = await parseBody(req, createWgSchema, {
+		fieldErrors: { name: 'name_invalid', creatorName: 'creator_name_invalid' },
+	});
+	if (!parsed.ok) return parsed.response;
 	const { name, creatorName } = parsed.data;
 
 	let user: { id: string } | null;
@@ -113,12 +79,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		return serviceUnavailable('db_error');
 	}
 	if (!user) return unauthorized('auth_required', 'auth_required');
-	const authenticatedUser = user;
-	const idemKey = readIdempotencyKey(req);
-	const idemScope = `wg-create:${authenticatedUser.id}`;
+	const authUserId = user.id;
 	const accountDeletionReplayResponse = async () => {
 		try {
-			await withTransaction((tx) => assertAccountCanAcquireMembership(tx, authenticatedUser.id));
+			await withTransaction((tx) => assertAccountCanAcquireMembership(tx, authUserId));
 			return null;
 		} catch (err) {
 			if (err instanceof TransactionAbort && err.code === 'account_deletion_pending') {
@@ -128,16 +92,97 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			return serverError('db_error');
 		}
 	};
-	if (idemKey) {
-		const cached = await getCachedResponse<CachedJsonResponse>(idemScope, idemKey);
-		if (cached) {
-			const blocked = await accountDeletionReplayResponse();
-			if (blocked) return blocked;
-			return replayResponse(cached);
-		}
-	}
 
+	// The share-code uniqueness check runs before the transaction, so the unique index can still
+	// fire inside it; the write then retries with a fresh code instead of failing a double click.
 	let shareCode = '';
+	const createWg: WriteFn<
+		unknown,
+		{ wgId: string; memberId: string; memberName: string; wgName: string },
+		undefined
+	> = async (tx) => {
+		// The WG and its creator are one write: a WG without its creator has a valid share code
+		// but nobody who can administer it.
+		const [createdWg] = await tx.insert(wgs).values({ name, shareCode }).returning();
+		if (!createdWg) throw new TransactionAbort('insert_failed');
+		const [createdMember] = await tx
+			.insert(wgMembers)
+			.values({ wgId: createdWg.id, name: creatorName, role: 'admin', authUserId })
+			.returning();
+		if (!createdMember) throw new TransactionAbort('member_insert_failed');
+		return {
+			status: 200,
+			body: {
+				wg: { id: createdWg.id, shareCode: createdWg.shareCode, name: createdWg.name },
+				creator: { id: createdMember.id, name: createdMember.name },
+			},
+			context: {
+				wgId: createdWg.id,
+				memberId: createdMember.id,
+				memberName: createdMember.name,
+				wgName: createdWg.name,
+			},
+		};
+	};
+
+	try {
+		const result = await withIdempotentWrite(
+			{
+				scope: `wg-create:${authUserId}`,
+				key: readIdempotencyKey(req),
+				codec: wgCreateCodec,
+				beforeReplay: accountDeletionReplayResponse,
+				prepare: async () => {
+					shareCode = await findFreeShareCode();
+					return shareCode ? { input: undefined } : { stop: serverError('share_code_exhausted') };
+				},
+				inTransaction: (work) =>
+					withTransaction(async (tx) => {
+						await assertAccountCanAcquireMembership(tx, authUserId);
+						return work(tx);
+					}),
+				retryAfterRollback: (err, attempt) => {
+					if (!isUniqueShareCodeViolation(err) || attempt >= SHARE_CODE_RETRIES) return null;
+					const candidate = generateShareCode();
+					if (isValidShareCode(candidate)) shareCode = candidate;
+					return createWg;
+				},
+			},
+			createWg,
+		);
+		if (result.kind === 'stopped') return result.response;
+		if (result.kind === 'replayed' || !result.context) {
+			return NextResponse.json(result.body, { status: result.status });
+		}
+		const created = result.context;
+		await recordAuditEvent({
+			wgId: created.wgId,
+			memberId: created.memberId,
+			eventType: 'wg.created',
+			entityType: 'wg',
+			entityId: created.wgId,
+			summary: `${created.memberName} hat die WG erstellt.`,
+			metadata: { name: created.wgName, shareCode },
+		});
+		return NextResponse.json(result.body, { status: result.status });
+	} catch (err) {
+		if (err instanceof TransactionAbort) {
+			if (err.code === 'account_deletion_pending') {
+				return conflict('account_deletion_pending', 'account_deletion_pending');
+			}
+			return serverError(err.code);
+		}
+		if (isUniqueShareCodeViolation(err)) {
+			logApiError('[api/wg POST] share code retries exhausted', err);
+			return serverError('share_code_exhausted');
+		}
+		if (err instanceof Error && err.message.startsWith('idempotency_')) return serverError(err);
+		logApiError('[api/wg POST] insert failed', err);
+		return serverError('db_error');
+	}
+}
+
+async function findFreeShareCode(): Promise<string> {
 	for (let attempt = 0; attempt < SHARE_CODE_RETRIES; attempt += 1) {
 		const candidate = generateShareCode();
 		if (!isValidShareCode(candidate)) continue;
@@ -145,116 +190,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			where: (w, { eq }) => eq(w.shareCode, candidate),
 			columns: { id: true },
 		});
-		if (!existing) {
-			shareCode = candidate;
-			break;
-		}
+		if (!existing) return candidate;
 	}
-	if (!shareCode) {
-		return serverError('share_code_exhausted');
-	}
-	if (idemKey) {
-		const slot = await claimReplaySlotWithRetry<CachedJsonResponse>(idemScope, idemKey);
-		if (!slot.won) {
-			const blocked = await accountDeletionReplayResponse();
-			if (blocked) return blocked;
-			return replayResponse(slot.cached);
-		}
-	}
-
-	// Lease of the claim this request locked; released when the write fails, so
-	// a retry with the same key does not wait out the lease.
-	let claimedLeaseExpiresAt: Date | null = null;
-	const releaseClaim = async () => {
-		if (idemKey && claimedLeaseExpiresAt) {
-			await releaseClaimedResponse(idemScope, idemKey, claimedLeaseExpiresAt);
-		}
-	};
-	try {
-		// The WG and its creator are one write. A WG whose creator row is missing
-		// has a valid share code but no one who can administer it, and the person
-		// who just created it is not a member of it. This used to be repaired
-		// with a delete afterwards, which only covered the case of an insert
-		// returning no row — when the insert threw instead, nothing cleaned up
-		// and the empty WG stayed.
-		//
-		// The share-code uniqueness check happens before the transaction, so the
-		// 23505 on the unique index can still fire inside it — retry with a fresh
-		// code instead of surfacing a raw db_error to a double-clicking user.
-		let lastError: unknown = null;
-		for (let attempt = 0; attempt < SHARE_CODE_RETRIES; attempt += 1) {
-			if (attempt > 0) {
-				const candidate = generateShareCode();
-				if (!isValidShareCode(candidate)) continue;
-				shareCode = candidate;
-			}
-			try {
-				const result = await withTransaction(async (tx) => {
-					await assertAccountCanAcquireMembership(tx, authenticatedUser.id);
-					let lease: Date | null = null;
-					if (idemKey) {
-						const claim = await lockClaimedResponse(tx, idemScope, idemKey, isCachedJsonResponse);
-						if (claim.kind === 'completed')
-							return { replayed: true as const, response: claim.body };
-						lease = claim.leaseExpiresAt;
-						claimedLeaseExpiresAt = lease;
-					}
-					const [createdWg] = await tx.insert(wgs).values({ name, shareCode }).returning();
-					if (!createdWg) throw new TransactionAbort('insert_failed');
-
-					const [createdMember] = await tx
-						.insert(wgMembers)
-						.values({
-							wgId: createdWg.id,
-							name: creatorName,
-							role: 'admin',
-							authUserId: authenticatedUser.id,
-						})
-						.returning();
-					if (!createdMember) throw new TransactionAbort('member_insert_failed');
-
-					const response: CachedJsonResponse = {
-						status: 200,
-						body: {
-							wg: { id: createdWg.id, shareCode: createdWg.shareCode, name: createdWg.name },
-							creator: { id: createdMember.id, name: createdMember.name },
-						},
-					};
-					if (idemKey && lease) {
-						await completeClaimedResponse(tx, idemScope, idemKey, response, lease);
-					}
-					return { replayed: false as const, wg: createdWg, member: createdMember, response };
-				});
-				if (result.replayed) return replayResponse(result.response);
-
-				await recordAuditEvent({
-					wgId: result.wg.id,
-					memberId: result.member.id,
-					eventType: 'wg.created',
-					entityType: 'wg',
-					entityId: result.wg.id,
-					summary: `${result.member.name} hat die WG erstellt.`,
-					metadata: { name: result.wg.name, shareCode: result.wg.shareCode },
-				});
-				return replayResponse(result.response);
-			} catch (err) {
-				if (err instanceof TransactionAbort) {
-					await releaseClaim();
-					if (err.code === 'account_deletion_pending') {
-						return conflict('account_deletion_pending', 'account_deletion_pending');
-					}
-					return serverError(err.code);
-				}
-				lastError = err;
-				if (!isUniqueShareCodeViolation(err)) throw err;
-			}
-		}
-		logApiError('[api/wg POST] share code retries exhausted', lastError);
-		await releaseClaim();
-		return serverError('share_code_exhausted');
-	} catch (err) {
-		logApiError('[api/wg POST] insert failed', err);
-		await releaseClaim();
-		return serverError('db_error');
-	}
+	return '';
 }

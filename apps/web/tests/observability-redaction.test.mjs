@@ -386,23 +386,25 @@ test('idempotency cache failures never log a push endpoint or provider error', a
 	console.error = (...args) => calls.push(format(...args));
 	console.warn = (...args) => calls.push(format(...args));
 	try {
-		const { setCachedResponse } = loadCoreModule('../idempotency-store.ts', {
+		const { releaseClaimedResponse } = loadCoreModule('../db/claimed-response.ts', {
 			'@/core/db': {
 				db: {
-					update: () => {
+					delete: () => {
 						throw new Error(secret);
 					},
 				},
 				idempotencyResponses: {},
 			},
-			'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]+$/i },
+			'@/core/db/transaction-abort': loadCoreModule('../db/transaction-abort.ts', {}),
 			'@/core/infra/observability': loaded.exports,
 			'@/core/offline/replay-retention': loadCoreModule('../offline/replay-retention.ts', {}),
-			'@/core/rate-limit': { createConfiguredRedis: () => null },
 		});
-		await setCachedResponse(`push_subscribe:https://push.example/${secret}`, secret, {
-			body: 'x'.repeat(33_000),
-		});
+		const released = await releaseClaimedResponse(
+			`push_subscribe:https://push.example/${secret}`,
+			secret,
+			new Date(),
+		);
+		assert.equal(released, false);
 		assert.ok(calls.length > 0);
 		assert.equal(JSON.stringify(calls).includes(secret), false);
 	} finally {

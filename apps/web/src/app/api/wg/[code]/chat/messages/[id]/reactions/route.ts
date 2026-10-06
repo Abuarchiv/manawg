@@ -1,6 +1,6 @@
 import { db, wgChatMessages, wgChatReactions } from '@/core/db';
+import { responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
-import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
@@ -11,10 +11,13 @@ import {
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
+import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { isSingleEmoji } from '@/features/chat/chat-pure';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+
+const okCodec = responseCodec();
 
 async function ensureMessage(
 	messageId: string,
@@ -59,22 +62,22 @@ export const POST = withWgRoute<{ id: string }>(
 		if (!messageCheck.exists) return notFound('message_not_found');
 		if (messageCheck.deleted) return conflict('message_deleted', 'message_deleted');
 
-		return withIdempotentJsonResponse(
-			req,
-			`chat-reaction-add:${wgId}:${auth.member.memberId}:${id}:${(emoji as string).trim()}`,
-			async () => {
-				await db
+		const trimmed = (emoji as string).trim();
+		const result = await withIdempotentWrite(
+			{
+				scope: `chat-reaction-add:${wgId}:${auth.member.memberId}:${id}:${trimmed}`,
+				key: readIdempotencyKey(req),
+				codec: okCodec,
+			},
+			async (tx) => {
+				await tx
 					.insert(wgChatReactions)
-					.values({
-						messageId: id,
-						memberId: auth.member.memberId,
-						emoji: (emoji as string).trim(),
-					})
+					.values({ messageId: id, memberId: auth.member.memberId, emoji: trimmed })
 					.onConflictDoNothing();
-
-				return NextResponse.json({ ok: true });
+				return { status: 200, body: { ok: true } };
 			},
 		);
+		return NextResponse.json(result.body, { status: result.status });
 	},
 );
 
@@ -100,22 +103,26 @@ export const DELETE = withWgRoute<{ id: string }>(
 		if (!messageCheck.exists) return notFound('message_not_found');
 		if (messageCheck.deleted) return conflict('message_deleted');
 
-		return withIdempotentJsonResponse(
-			req,
-			`chat-reaction-remove:${wgId}:${auth.member.memberId}:${id}:${(emoji as string).trim()}`,
-			async () => {
-				await db
+		const trimmed = (emoji as string).trim();
+		const result = await withIdempotentWrite(
+			{
+				scope: `chat-reaction-remove:${wgId}:${auth.member.memberId}:${id}:${trimmed}`,
+				key: readIdempotencyKey(req),
+				codec: okCodec,
+			},
+			async (tx) => {
+				await tx
 					.delete(wgChatReactions)
 					.where(
 						and(
 							eq(wgChatReactions.messageId, id),
 							eq(wgChatReactions.memberId, auth.member.memberId),
-							eq(wgChatReactions.emoji, (emoji as string).trim()),
+							eq(wgChatReactions.emoji, trimmed),
 						),
 					);
-
-				return NextResponse.json({ ok: true });
+				return { status: 200, body: { ok: true } };
 			},
 		);
+		return NextResponse.json(result.body, { status: result.status });
 	},
 );
