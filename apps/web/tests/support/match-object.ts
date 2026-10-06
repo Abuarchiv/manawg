@@ -15,6 +15,11 @@ export function assertMatchObject(actual: unknown, expected: unknown, message?: 
 	}
 }
 
+/** Whether `actual` contains `expected`, by the same rules as `assertMatchObject`. */
+export function matchesObject(actual: unknown, expected: unknown): boolean {
+	return matches(actual, expected);
+}
+
 function matches(actual: unknown, expected: unknown): boolean {
 	if (Object.is(actual, expected)) return true;
 	if (expected instanceof Date) {
