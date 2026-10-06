@@ -15,6 +15,19 @@ function findFile(basePath) {
 	return null;
 }
 
+/**
+ * A test loads an independent copy of a module graph, such as a second browser tab with its own
+ * module state, by importing the entry with `?instance=<id>`. The query carries over to the
+ * graph's `@/` and relative imports; module mocks for that copy name the same query.
+ */
+function inInstanceOf(parentURL, url) {
+	const instance = parentURL ? new URL(parentURL).searchParams.get('instance') : null;
+	if (!instance) return url;
+	const next = new URL(url);
+	next.searchParams.set('instance', instance);
+	return next.href;
+}
+
 export async function resolve(specifier, context, nextResolve) {
 	// Unit tests import server modules directly, as the server bundle does (`react-server`).
 	if (specifier === 'server-only') {
@@ -34,7 +47,8 @@ export async function resolve(specifier, context, nextResolve) {
 	}
 	if (basePath) {
 		const file = findFile(basePath);
-		if (file) return nextResolve(pathToFileURL(file).href, context);
+		if (file)
+			return nextResolve(inInstanceOf(context.parentURL, pathToFileURL(file).href), context);
 		return nextResolve(specifier, context);
 	}
 	try {
