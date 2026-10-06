@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadParseBody } from '../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const file = path.join(process.cwd(), 'src/app/api/wg/[code]/announcements/route.ts');
@@ -163,6 +164,7 @@ function harness() {
 		},
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	};
+	overrides['@/core/http/parse-body'] = loadParseBody(overrides);
 	new Function('require', 'module', 'exports', source)(
 		(name) => (name in overrides ? overrides[name] : requireFromWeb(name)),
 		module,

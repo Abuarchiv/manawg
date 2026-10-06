@@ -12,7 +12,7 @@ browser
        withWgRoute / readShareCode    normalize + validate share code, catch -> server_error
        (body validation)              before auth, so invalid_body cannot leak membership
        requireWgMember                Supabase user -> WG by share code -> active wg_members row
-       withIdempotentJsonResponse     optional, for mutations carrying Idempotency-Key
+       withIdempotentWrite            mutations carrying an Idempotency-Key (and keyless writes)
        features/<x> / core/reads      domain logic
        core/db (Drizzle, pg Pool)     Postgres
 ```
@@ -95,32 +95,48 @@ Rules:
 
 Mutations that may be retried (offline replay, flaky mobile networks) send a UUID
 `Idempotency-Key` header (`core/idempotency-store.ts` `readIdempotencyKey`; non-UUIDs are
-ignored).
+ignored). Every such write goes through one primitive, `withIdempotentWrite`
+(`core/db/idempotent-write.ts`), on top of table `idempotency_responses` (primary key
+`scope, key`). Route handlers never touch the claim helpers themselves; the architecture check
+fails on any claim-protocol identifier under `app/`.
 
-1. **In-process**: `ReplayCache` (`core/guards/idempotency.ts`) deduplicates concurrent
-   requests on the same warm instance.
-2. **Cross-process**: table `idempotency_responses` (primary key `scope, key`).
-   `claimResponseSlot` inserts a `{"_claimed": true}` placeholder; the loser polls
-   (`claimReplaySlotWithRetry`) until the winner's response is stored, then replays it.
-   Claim/cache errors fail closed.
-3. **Completion**: `setCachedResponse`, or the claim helpers in `core/db/claimed-response.ts`
-   inside the mutation's transaction, so the response row commits atomically with the write:
-   `lockClaimedResponse` (row lock; returns the stored response or the placeholder's lease),
-   `completeClaimedResponse` (replaces only the placeholder with that lease) and
-   `releaseLockedClaim` (in-transaction release, e.g. after a rate limit).
-4. Only successful statuses are cached; failures release the claim so a retry runs again.
-   Responses over 32 KiB are stored as replay-unavailable. Rows live 7 days
-   (`RESPONSE_REPLAY_TTL_SECONDS`) and are purged by the maintenance cron.
+```ts
+withIdempotentWrite(
+  { scope, key, codec, prepare?, beforeReplay?, inTransaction?, storeStatus?, retryAfterRollback? },
+  async (tx, input) => ({ status, body, context }),
+)
+// -> { kind: 'replayed', status, body } | { kind: 'written', status, body, context } | { kind: 'stopped', response }
+```
 
-`withIdempotentJsonResponse` wraps this for JSON routes. `claimIdempotencySlot` (Upstash, 5 min,
-fail-open) is a separate best-effort dedup for audit side effects only.
+1. **Replay lookup**: a stored response for `scope:key` is replayed before any other work.
+   `beforeReplay` can refuse it (e.g. a member who moved out, an account being deleted).
+2. **`prepare`**: checks that must pass before the claim (rate limits, membership of named
+   members, parsing an import); it can stop the request or hand an input to the write.
+3. **Claim**: `claimResponseSlot` inserts a `{"_claimed": true}` placeholder with a 15-minute
+   lease. A request that loses the claim polls (`claimReplaySlot`) until the winner's response is
+   stored, then replays it. Claim and store errors fail closed (retryable 503).
+4. **One transaction** (`inTransaction`, default `withTransaction`; money paths pass
+   `withExpensePaymentLock` so the payment lock comes before the claim row and any WG or member
+   row lock): `lockClaimedResponse` locks the claim, a completed response replays, otherwise the
+   write runs and `completeClaimedResponse` stores its response under the same lease, so the
+   response commits atomically with the write. Outcomes rejected by `storeStatus` (default: 2xx
+   only) delete the claim in the same transaction (`releaseLockedClaim`) so a retry runs again.
+5. **Rollback**: after a confirmed rollback (the write's own error) the claim is released with
+   its lease (`releaseClaimedResponse`); a failed COMMIT keeps the claim until the lease ends, so
+   an unknown outcome never runs twice. A request whose lease ran out can neither complete nor
+   delete the claim of the request that took the key over. `retryAfterRollback` runs a second
+   write under the same lease (a unique index that found the canonical row, a fresh share code).
+6. **Storage**: a `codec` decides the stored shape (`responseCodec` stores `{status, body}`,
+   `bodyCodec` the bare body; legacy readers keep older rows inside the window replayable).
+   Responses over 32 KiB are stored as replay-unavailable unless the route opts out (import
+   results). Rows live 7 days (`RESPONSE_REPLAY_TTL_SECONDS`) and are purged by the maintenance
+   cron.
 
-After a rollback, routes call `releaseClaimedResponse`, which only deletes the placeholder with
-the lease that request locked: a request whose lease ran out can neither complete nor delete the
-claim of the request that took the key over. The protocol is specified in
+Side effects that must not undo the write (audit events, push, pinboard notices) run after the
+call, for `written` results only, so a replay never repeats them. A warning that only becomes
+known then (a failed push) is written into the stored response with `setReplayWarning`. Without a
+key the write runs in a plain transaction. The protocol is specified in
 [`openspec/changes/unify-idempotency-claims`](../openspec/changes/unify-idempotency-claims/proposal.md).
-Remaining unleased releases: the CSV import route, inventory consume and
-`withIdempotentJsonResponse` (`releaseResponseSlot`).
 
 ## Money
 
@@ -261,7 +277,7 @@ with claim rows/throttle timestamps so a re-run does not notify twice.
 
 - **Response replay in Postgres, not Redis.** Production once had empty `UPSTASH_*` values; the
   Redis client silently no-opped and duplicate expenses were inserted
-  (`core/idempotency-store.ts`, `core/guards/idempotency.ts`).
+  (`core/idempotency-store.ts`, `core/db/idempotent-write.ts`).
 - **Supabase session as the only identity proof.** A second per-member token would prove
   nothing the session cookie does not; the client sends only the expected member id, which the
   server checks against the session (`core/guards/api-auth.ts`).

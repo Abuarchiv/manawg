@@ -4,7 +4,12 @@ const { createRequire } = require('node:module');
 const path = require('node:path');
 const test = require('node:test');
 const { ModuleKind, ScriptTarget, transpileModule } = require('typescript');
-const { loadClaimedResponse } = require('./support/claimed-response.cjs');
+const {
+	loadClaimedResponse,
+	loadIdempotencyStore,
+	loadIdempotentWrite,
+	loadParseBody,
+} = require('./support/claimed-response.cjs');
 
 const webRoot = path.resolve(__dirname, '..');
 const requireFromWeb = createRequire(path.join(webRoot, 'package.json'));
@@ -206,8 +211,8 @@ function harness() {
 			serverError: (code) => Response.json({ error: code }, { status: 500 }),
 			tooMany: (code) => Response.json({ error: code }, { status: 429 }),
 		},
-		'@/core/guards/idempotency': {
-			claimReplaySlotWithRetry: async () => {
+		'@/core/guards/replay-slot': {
+			claimReplaySlot: async () => {
 				state.claimAttempts += 1;
 				if (state.claimResult) return state.claimResult;
 				if (!state.slot) {
@@ -238,6 +243,7 @@ function harness() {
 			RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
 			getCachedResponse: async () => state.cachedResponse,
 			readIdempotencyKey: (req) => req.headers.get('idempotency-key'),
+			setReplayWarning: (...args) => loadIdempotencyStore(mocks).setReplayWarning(...args),
 		},
 		'@/core/notifications/notification-dispatch': {
 			dispatchNotificationSafely: async () => {
@@ -269,6 +275,8 @@ function harness() {
 		'next/server': { NextResponse: { json: (body, options) => Response.json(body, options) } },
 	};
 	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
+	mocks['@/core/db/idempotent-write'] = loadIdempotentWrite(mocks);
+	mocks['@/core/http/parse-body'] = loadParseBody(mocks);
 	const compiled = transpileModule(
 		readFileSync(path.join(webRoot, 'src/app/api/wg/[code]/events/route.ts'), 'utf8'),
 		{

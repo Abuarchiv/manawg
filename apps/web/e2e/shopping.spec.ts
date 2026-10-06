@@ -6,25 +6,19 @@ import { type Page, expect, test } from '@playwright/test';
 import { DrizzleQueryError } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import { idempotencyResponses, shoppingItems } from '../src/core/db';
+import { shoppingItems } from '../src/core/db';
 import type { ShoppingItem } from '../src/core/db/schema';
 import * as schema from '../src/core/db/schema';
 import type { DbTransaction } from '../src/core/db/transaction';
-import { type ReplaySlotDependencies, claimReplaySlot } from '../src/core/guards/replay-slot';
 import { parseShoppingInput } from '../src/features/shopping/parse-shopping-input';
 import { isOpenShoppingItemDuplicate } from '../src/features/shopping/shopping-duplicate';
 import {
 	SHOPPING_CREATE_DUPLICATE_RESPONSE,
 	type ShoppingCreateInput,
 	type ShoppingCreateReplayResponse,
-	ShoppingCreateTransactionRollback,
-	finalizeShoppingCreateDuplicateReplay,
-	handleShoppingCreateTransactionFailure,
-	insertShoppingItemWithReplay,
-	normalizeShoppingCreateReplayOrReject,
+	insertShoppingItem,
 	normalizeShoppingCreateReplayResponse,
-	persistShoppingCreateReplayResponse,
-	resolveShoppingCreateReplay,
+	shoppingCreateCodec,
 	shoppingCreateHttpResponse,
 	withShoppingCreatePostCommitFallback,
 } from '../src/features/shopping/shopping-mutation';
@@ -145,11 +139,11 @@ test.describe('shopping retry', () => {
 		const input = page.getByLabel('Artikel-Name');
 		await input.fill('Milch');
 		await input.press('Enter');
-		// Der zweite Enter darf nicht am gesperrten Absende-Knopf scheitern.
+		// The second Enter must not fail on the disabled submit button.
 		await input.press('Enter');
 		await input.fill('Brot');
 		await input.press('Enter');
-		// Auch das wartende „Brot“ wird nicht doppelt nachgereiht.
+		// The waiting „Brot“ is not queued twice either.
 		await input.press('Enter');
 		releaseFirst();
 		await expect.poll(() => posted).toEqual(['Milch', 'Brot']);
@@ -194,34 +188,9 @@ test.describe('shopping retry', () => {
 	});
 });
 
+// Claim, rollback release and same-key duplicate replay run through withIdempotentWrite and are
+// covered by tests/idempotent-write.test.ts and the shopping route replay tests.
 test.describe('shopping mutation regression', () => {
-	type CachedShoppingResponse = ShoppingCreateReplayResponse;
-
-	type State = {
-		item: ShoppingItem | null;
-		insertCount: number;
-		response: CachedShoppingResponse | null;
-		claimHeld: boolean;
-	};
-
-	function createReservation() {
-		let resolveWaiter!: (response: ShoppingCreateReplayResponse) => void;
-		let rejectWaiter!: (reason: unknown) => void;
-		const promise = new Promise<ShoppingCreateReplayResponse>((resolve, reject) => {
-			resolveWaiter = resolve;
-			rejectWaiter = reject;
-		});
-		promise.catch(() => undefined);
-		return {
-			reservation: {
-				owned: true as const,
-				resolve: resolveWaiter,
-				reject: rejectWaiter,
-			},
-			waiter: promise,
-		};
-	}
-
 	const item: ShoppingItem = {
 		id: 'shopping-1',
 		wgId: '11111111-1111-4111-8111-111111111111',
@@ -241,80 +210,32 @@ test.describe('shopping mutation regression', () => {
 		name: item.name,
 		quantity: null,
 		bought: false,
-		replay: {
-			scope: 'shopping-create:wg:member',
-			key: 'same-key',
-			leaseExpiresAt: new Date(Date.now() + 15 * 60_000),
-		},
 	};
 
-	function createTransaction(state: State, returnItem = true): DbTransaction {
-		const insert = (table: unknown) => {
-			if (table === shoppingItems) {
+	function createTransaction(returnItem = true) {
+		const state = { insertCount: 0 };
+		const tx = {
+			insert: (table: unknown) => {
+				if (table !== shoppingItems) throw new Error('unexpected table');
 				return {
 					values: () => ({
 						returning: async () => {
 							state.insertCount += 1;
-							if (!returnItem) return [];
-							state.item = item;
-							return [item];
+							return returnItem ? [item] : [];
 						},
 					}),
 				};
-			}
-			throw new Error('unexpected table');
-		};
-		const update = (table: unknown) => {
-			let values: { responseBody: CachedShoppingResponse } | null = null;
-			const query = {
-				set(nextValues: { responseBody: CachedShoppingResponse }) {
-					values = nextValues;
-					return query;
-				},
-				where() {
-					return query;
-				},
-				returning: async () => {
-					if (table !== idempotencyResponses || !state.claimHeld || !values) return [];
-					state.response = values.responseBody;
-					return [{ key: input.replay?.key ?? 'same-key' }];
-				},
-			};
-			return query;
-		};
-		return { insert, update } as unknown as DbTransaction;
-	}
-
-	function replayDependencies(state: State): ReplaySlotDependencies<ShoppingCreateReplayResponse> {
-		return {
-			claim: async () => {
-				if (state.claimHeld) return false;
-				state.claimHeld = true;
-				return true;
 			},
-			read: async () => state.response,
-			sleep: async () => undefined,
-		};
+		} as unknown as DbTransaction;
+		return { state, tx };
 	}
 
-	test('shopping create persists a replayable item response in the same transaction', async () => {
-		const state: State = { item: null, insertCount: 0, response: null, claimHeld: true };
-		const tx = createTransaction(state);
-
-		await expect(insertShoppingItemWithReplay(tx, input)).resolves.toEqual(item);
-		expect(state.response).toMatchObject({
-			status: 200,
-			body: { item: { id: 'shopping-1' }, warning: 'notification_delivery_unknown' },
-		});
+	test('shopping create inserts exactly one item in the given transaction', async () => {
+		const { state, tx } = createTransaction();
+		await expect(insertShoppingItem(tx, input)).resolves.toEqual(item);
 		expect(state.insertCount).toBe(1);
-	});
-
-	test('shopping create does not cache a response when no item is returned', async () => {
-		const state: State = { item: null, insertCount: 0, response: null, claimHeld: false };
-		await expect(
-			insertShoppingItemWithReplay(createTransaction(state, false), input),
-		).resolves.toBe(undefined);
-		expect(state.response).toBeNull();
+		const empty = createTransaction(false);
+		await expect(insertShoppingItem(empty.tx, input)).resolves.toBe(undefined);
 	});
 
 	test('replays legacy successful shopping cache rows during the response-envelope rollout', () => {
@@ -329,6 +250,7 @@ test.describe('shopping mutation regression', () => {
 			body: { item: legacyItem, warning: null },
 		});
 		expect(normalizeShoppingCreateReplayResponse({ status: 201, body: {} })).toBeNull();
+		expect(shoppingCreateCodec.decode({ status: 201, body: {} })).toBeNull();
 	});
 
 	test('rejects malformed cached shopping success instead of replaying it as a saved item', () => {
@@ -351,101 +273,21 @@ test.describe('shopping mutation regression', () => {
 		}
 	});
 
-	test('invalid persisted replay releases local waiters instead of leaving them pending', async () => {
-		const local = createReservation();
-
-		expect(
-			normalizeShoppingCreateReplayOrReject({ status: 201, body: {} }, local.reservation),
-		).toBeNull();
-		await expect(local.waiter).rejects.toMatchObject({ message: 'idempotency_response_pending' });
+	test('same-key duplicate responses are stored and replay as 409', async () => {
+		const stored = shoppingCreateCodec.encode(SHOPPING_CREATE_DUPLICATE_RESPONSE);
+		expect(stored).toEqual(SHOPPING_CREATE_DUPLICATE_RESPONSE);
+		const replay = shoppingCreateCodec.decode(stored);
+		expect(replay).toEqual(SHOPPING_CREATE_DUPLICATE_RESPONSE);
+		const httpResponse = shoppingCreateHttpResponse(SHOPPING_CREATE_DUPLICATE_RESPONSE);
+		expect(httpResponse.status).toBe(409);
+		await expect(httpResponse.json()).resolves.toEqual({ error: 'shopping_item_duplicate' });
 	});
 
-	test('same-key duplicate responses reach local waiters and cross-process replays as 409', async () => {
-		const local = createReservation();
-		resolveShoppingCreateReplay(local.reservation, SHOPPING_CREATE_DUPLICATE_RESPONSE);
-		await expect(local.waiter).resolves.toEqual(SHOPPING_CREATE_DUPLICATE_RESPONSE);
-		const localHttpResponse = shoppingCreateHttpResponse(SHOPPING_CREATE_DUPLICATE_RESPONSE);
-		expect(localHttpResponse.status).toBe(409);
-		await expect(localHttpResponse.json()).resolves.toEqual({ error: 'shopping_item_duplicate' });
-
-		const state: State = { item: null, insertCount: 0, response: null, claimHeld: true };
-		await expect(
-			persistShoppingCreateReplayResponse(
-				createTransaction(state),
-				'shopping-create:wg:member',
-				'same-key',
-				SHOPPING_CREATE_DUPLICATE_RESPONSE,
-				new Date(Date.now() + 15 * 60_000),
-			),
-		).resolves.toBe(true);
-		const crossProcessRetry = await claimReplaySlot(
-			'shopping-create:wg:member',
-			'same-key',
-			replayDependencies(state),
-		);
-		expect(crossProcessRetry).toEqual({
-			won: false,
-			cached: SHOPPING_CREATE_DUPLICATE_RESPONSE,
-		});
-		if (!crossProcessRetry.won) {
-			const crossProcessHttpResponse = shoppingCreateHttpResponse(crossProcessRetry.cached);
-			expect(crossProcessHttpResponse.status).toBe(409);
-		}
-	});
-
-	test('known rollback releases the claim; unknown commit outcome keeps it fail-closed', async () => {
-		const rollbackState: State = { item: null, insertCount: 0, response: null, claimHeld: false };
-		const rollbackDependencies = replayDependencies(rollbackState);
-		await expect(
-			claimReplaySlot('shopping-create:wg:member', 'same-key', rollbackDependencies),
-		).resolves.toEqual({ won: true });
-		const rollbackReservation = createReservation().reservation;
-		let rollbackReleaseCount = 0;
-		const rolledBack = await handleShoppingCreateTransactionFailure(
-			rollbackReservation,
-			new ShoppingCreateTransactionRollback(new Error('query failed before commit')),
-			async () => {
-				rollbackReleaseCount += 1;
-				rollbackState.claimHeld = false;
-				return true;
-			},
-		);
-		expect(rolledBack).toBe('rolled_back');
-		expect(rollbackReleaseCount).toBe(1);
-		await expect(
-			claimReplaySlot('shopping-create:wg:member', 'same-key', rollbackDependencies),
-		).resolves.toEqual({ won: true });
-
-		const unknownState: State = { item: null, insertCount: 0, response: null, claimHeld: false };
-		const unknownDependencies = replayDependencies(unknownState);
-		await expect(
-			claimReplaySlot('shopping-create:wg:member', 'same-key', unknownDependencies),
-		).resolves.toEqual({ won: true });
-		const unknownReservation = createReservation().reservation;
-		let unknownReleaseCount = 0;
-		const unknown = await handleShoppingCreateTransactionFailure(
-			unknownReservation,
-			new Error('connection dropped during commit'),
-			async () => {
-				unknownReleaseCount += 1;
-				unknownState.claimHeld = false;
-				return true;
-			},
-		);
-		expect(unknown).toBe('unknown_commit');
-		expect(unknownReleaseCount).toBe(0);
-		await expect(
-			claimReplaySlot('shopping-create:wg:member', 'same-key', unknownDependencies),
-		).rejects.toMatchObject({ message: 'idempotency_response_pending' });
-	});
-
-	test('post-commit side-effect failure returns the durable response to owner and waiter', async () => {
-		const local = createReservation();
+	test('post-commit side-effect failure returns the durable response', async () => {
 		const provisional: ShoppingCreateReplayResponse = {
 			status: 200,
 			body: { item, warning: 'notification_delivery_unknown' },
 		};
-		resolveShoppingCreateReplay(local.reservation, provisional);
 		let sanitizedFailureLogs = 0;
 		const owner = await withShoppingCreatePostCommitFallback(
 			provisional,
@@ -456,47 +298,10 @@ test.describe('shopping mutation regression', () => {
 				sanitizedFailureLogs += 1;
 			},
 		);
-		const waiter = await local.waiter;
 		const ownerResponse = shoppingCreateHttpResponse(owner);
-		const waiterResponse = shoppingCreateHttpResponse(waiter);
-		const [ownerBody, waiterBody] = await Promise.all([
-			ownerResponse.json(),
-			waiterResponse.json(),
-		]);
 		expect(ownerResponse.status).toBe(200);
-		expect(waiterResponse.status).toBe(200);
-		expect(waiterBody).toEqual(ownerBody);
 		expect(owner).toEqual(provisional);
 		expect(sanitizedFailureLogs).toBe(1);
-	});
-
-	test('duplicate stays retryable unless its replay is persisted or claim cleanup succeeds', async () => {
-		const cleanupSuccess = createReservation();
-		let cleanupCalls = 0;
-		const duplicate = await finalizeShoppingCreateDuplicateReplay(cleanupSuccess.reservation, {
-			persist: async () => false,
-			read: async () => null,
-			release: async () => {
-				cleanupCalls += 1;
-				return true;
-			},
-		});
-		await expect(cleanupSuccess.waiter).resolves.toEqual(SHOPPING_CREATE_DUPLICATE_RESPONSE);
-		expect(duplicate).toEqual(SHOPPING_CREATE_DUPLICATE_RESPONSE);
-		expect(cleanupCalls).toBe(1);
-
-		const cleanupFailure = createReservation();
-		const failed = await finalizeShoppingCreateDuplicateReplay(cleanupFailure.reservation, {
-			persist: async () => {
-				throw new Error('cache write unavailable');
-			},
-			read: async () => null,
-			release: async () => false,
-		});
-		expect(failed).toBeNull();
-		await expect(cleanupFailure.waiter).rejects.toMatchObject({
-			message: 'idempotency_response_pending',
-		});
 	});
 });
 
@@ -504,9 +309,9 @@ test.describe('haushalt shopping checkbox hitarea', () => {
 	// Regression for a <44px touch target: ShoppingItemRow's checkbox grows its hit
 	// area with an invisible `after:-inset-2.5` pseudo-element, but the swipe-to-toggle
 	// row wraps everything in an <li> with `overflow-hidden`. Since the checkbox sits
-	// flush against the row's left edge (Item used px-0), any leftward hit-area
-	// extension used to get clipped by that overflow-hidden, leaving an effective
-	// ~34px target. Fix: `overflow-hidden` only applies while a swipe is in progress.
+	// flush against the row's left edge (Item uses px-0), overflow-hidden would clip any
+	// leftward hit-area extension to an effective ~34px target, so `overflow-hidden` only
+	// applies while a swipe is in progress.
 	test('shopping item checkbox keeps its full hit area when not swiping', async ({ page }) => {
 		test.skip(
 			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
@@ -563,14 +368,11 @@ test.describe('haushalt shopping checkbox hitarea', () => {
 });
 
 test.describe('haushalt shopping swipe pointer capture', () => {
-	// Regression: ShoppingItemRow drives its swipe-to-toggle gesture with raw
-	// pointer events but used to never capture the pointer. Unlike touch events,
-	// pointer events retarget to whatever element sits under the finger at each
-	// point, so a fast/diagonal swipe that drifted off the row before lift-off
-	// meant onPointerUp (which resets swipeX and completes the toggle) never
-	// fired on that row, leaving it visually stuck mid-swipe. Fixed by calling
-	// setPointerCapture on pointerdown so move/up stay targeted at the row for
-	// the whole gesture, matching touch-event semantics.
+	// ShoppingItemRow drives its swipe-to-toggle gesture with raw pointer events. Unlike touch
+	// events, pointer events retarget to whatever element sits under the finger, so a fast or
+	// diagonal swipe that drifts off the row would never fire onPointerUp (which resets swipeX
+	// and completes the toggle) and leave the row stuck mid-swipe. setPointerCapture on
+	// pointerdown keeps move/up on the row for the whole gesture, like touch events.
 	test('shopping row captures the pointer when a touch swipe starts', async ({ page }) => {
 		test.skip(
 			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
@@ -750,8 +552,8 @@ test.describe('shopping conflict handling', () => {
 			createdAt: '2026-09-22T10:00:00.000Z',
 			updatedAt: '2026-09-22T10:00:00.000Z',
 		};
-		// Dasselbe Array speist das Mock-GET: nach dem erfolgreichen DELETE liefert der
-		// „Server“ den Artikel nicht mehr, wie in echt beim Neuladen nach dem Entfernen.
+		// The same array feeds the mock GET: after the successful DELETE the
+		// „server“ stops returning the item, like a real reload after the removal.
 		const serverItems = [item];
 		await mockShoppingPage(page, false, 200, serverItems);
 		let deletes = 0;
@@ -779,7 +581,7 @@ test.describe('shopping conflict handling', () => {
 		await page.getByRole('button', { name: 'Artikelaktionen: Milch' }).click();
 		const remove = page.getByRole('button', { name: /entfernen: Milch$/ });
 		const confirmRemove = page.getByRole('button', { name: 'Endgültig entfernen: Milch' });
-		// Erster Tipp schärft, zweiter bestätigt; erst klicken, wenn der Bestätigungszustand steht.
+		// The first tap arms, the second confirms; click only once the confirm state shows.
 		await remove.click();
 		await confirmRemove.click();
 		await expect(remove).toBeDisabled();
@@ -789,7 +591,7 @@ test.describe('shopping conflict handling', () => {
 		expect(deletes).toBe(1);
 		await remove.click();
 		await confirmRemove.click();
-		// Der Request-Zähler läuft im Route-Handler, also asynchron zum Klick.
+		// The request counter runs in the route handler, so asynchronously to the click.
 		await expect.poll(() => deletes).toBe(2);
 		await expect(page.getByRole('button', { name: 'Artikelaktionen: Milch' })).toHaveCount(0);
 	});
@@ -909,7 +711,7 @@ test.describe('shopping conflict handling', () => {
 		await page.getByLabel('Artikel-Name').fill('Hafermilch');
 		await page.getByRole('button', { name: 'Artikel hinzufügen' }).click();
 
-		// Die Zeile steht da, bevor der Server geantwortet hat; der Haken ist noch gesperrt.
+		// The row shows before the server answered; its checkbox is still disabled.
 		await expect(page.locator('[data-shopping-row]')).toHaveCount(1);
 		await expect(page.locator('[data-shopping-row]')).toContainText('Hafermilch');
 		releaseCreate?.();

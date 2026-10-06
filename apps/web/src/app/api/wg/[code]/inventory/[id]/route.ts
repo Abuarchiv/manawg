@@ -1,34 +1,20 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgInventoryItems } from '@/core/db';
+import { bodyCodec, rejectWrite, withIdempotentWrite } from '@/core/db/idempotent-write';
 import type { WgInventoryItem } from '@/core/db/schema';
-import { withTransaction } from '@/core/db/transaction';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
-import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	badRequest,
-	conflict,
-	notFound,
-	tooMany,
-	unreadableJsonBody,
-} from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
-import {
-	getCachedResponse,
-	readIdempotencyKey,
-	releaseResponseSlot,
-} from '@/core/idempotency-store';
+import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
+import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	INVENTORY_CATEGORIES,
 	INVENTORY_LIMITS,
 	INVENTORY_UNITS,
 } from '@/features/inventory/inventory';
-import {
-	completeInventoryReplay,
-	updateInventoryItemMutation,
-} from '@/features/inventory/inventory-mutations';
+import { updateInventoryItemMutation } from '@/features/inventory/inventory-mutations';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -86,106 +72,84 @@ const patchInventorySchema = z
 		message: 'expected_quantity_required',
 	});
 
+const inventoryPatchCodec = bodyCodec(
+	(stored): stored is { item: WgInventoryItem } =>
+		stored !== null && typeof stored === 'object' && 'item' in stored,
+);
+
 export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, { code, id }) => {
 	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
 
-	let raw: unknown;
-	try {
-		raw = await readJsonLimited(req);
-	} catch (err) {
-		return unreadableJsonBody(err);
-	}
-
-	const parsed = patchInventorySchema.safeParse(raw);
-	if (!parsed.success) {
-		const { fieldErrors, formErrors } = parsed.error.flatten();
-		if (fieldErrors.name) return badRequest('name_invalid');
-		if (fieldErrors.quantity || fieldErrors.quantityDelta) return badRequest('quantity_invalid');
-		if (fieldErrors.expectedQuantity) return badRequest('expected_quantity_invalid');
-		if (fieldErrors.threshold) return badRequest('threshold_invalid');
-		if (fieldErrors.unit) return badRequest('unit_invalid');
-		if (fieldErrors.category) return badRequest('category_invalid');
-		if (fieldErrors.expectedUpdatedAt) return badRequest('expected_updated_at_invalid');
-		if (formErrors.includes('empty_update')) return badRequest('empty_update');
-		if (formErrors.includes('expected_updated_at_required')) {
-			return badRequest('expected_updated_at_required');
-		}
-		if (formErrors.includes('expected_quantity_required')) {
-			return badRequest('expected_quantity_required');
-		}
-		return badRequest('invalid_body');
-	}
+	const parsed = await parseBody(req, patchInventorySchema, {
+		fieldErrors: {
+			name: 'name_invalid',
+			quantity: 'quantity_invalid',
+			quantityDelta: 'quantity_invalid',
+			expectedQuantity: 'expected_quantity_invalid',
+			threshold: 'threshold_invalid',
+			unit: 'unit_invalid',
+			category: 'category_invalid',
+			expectedUpdatedAt: 'expected_updated_at_invalid',
+		},
+		formErrors: {
+			empty_update: 'empty_update',
+			expected_updated_at_required: 'expected_updated_at_required',
+			expected_quantity_required: 'expected_quantity_required',
+		},
+	});
+	if (!parsed.ok) return parsed.response;
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
-	const rawIdempotencyKey = readIdempotencyKey(req);
-	const replayScope = `inventory-patch:${wgId}:${auth.member.memberId}:${id}`;
-	if (rawIdempotencyKey) {
-		const cached = await getCachedResponse<{ item: WgInventoryItem }>(
-			replayScope,
-			rawIdempotencyKey,
-		);
-		if (cached) return NextResponse.json(cached);
-	}
 
-	const limited = await checkRateLimit(
-		wgWriteLimiter,
-		`inventory-patch:${wgId}:${auth.member.memberId}`,
+	const result = await withIdempotentWrite(
+		{
+			scope: `inventory-patch:${wgId}:${auth.member.memberId}:${id}`,
+			key: readIdempotencyKey(req),
+			codec: inventoryPatchCodec,
+			prepare: async () => {
+				const limited = await checkRateLimit(
+					wgWriteLimiter,
+					`inventory-patch:${wgId}:${auth.member.memberId}`,
+				);
+				return limited.success ? { input: undefined } : { stop: tooMany() };
+			},
+		},
+		async (tx) => {
+			const mutation = await updateInventoryItemMutation(tx, {
+				...parsed.data,
+				itemId: id,
+				wgId,
+				memberId: auth.member.memberId,
+			});
+			if (mutation.kind === 'not_found') return rejectWrite(notFound('item_not_found'));
+			if (mutation.kind === 'conflict') return rejectWrite(conflict('version_conflict'));
+			return { status: 200, body: { item: mutation.updated }, context: mutation };
+		},
 	);
-	if (!limited.success) return tooMany();
-
-	if (rawIdempotencyKey) {
-		const slot = await claimReplaySlotWithRetry<{ item: WgInventoryItem }>(
-			replayScope,
-			rawIdempotencyKey,
-		);
-		if (!slot.won) return NextResponse.json(slot.cached);
-	}
-
-	const result = await withTransaction(async (tx) => {
-		const mutation = await updateInventoryItemMutation(tx, {
-			...parsed.data,
-			itemId: id,
+	if (result.kind === 'stopped') return result.response;
+	if (result.kind === 'written' && result.context) {
+		if ('rejected' in result.context) return result.context.rejected;
+		const { updated, delta, autoPushedShoppingItemId } = result.context;
+		await recordAuditEvent({
 			wgId,
 			memberId: auth.member.memberId,
+			eventType: 'inventory.updated',
+			entityType: 'inventory_item',
+			entityId: updated.id,
+			summary: `${auth.member.name} hat ${updated.name} in den Vorräten aktualisiert.`,
+			metadata: {
+				name: updated.name,
+				delta,
+				quantity: updated.quantity,
+				threshold: updated.threshold,
+				unit: updated.unit,
+				category: updated.category,
+				autoPushedShoppingItemId,
+			},
 		});
-		if (mutation.kind === 'ok' && rawIdempotencyKey) {
-			await completeInventoryReplay(tx, replayScope, rawIdempotencyKey, {
-				item: mutation.updated,
-			});
-		}
-		return mutation;
-	}).catch(async (err) => {
-		// A rolled-back write must not leave its claim blocking the same-key retry.
-		if (rawIdempotencyKey) await releaseResponseSlot(replayScope, rawIdempotencyKey);
-		throw err;
-	});
-	if (result.kind === 'not_found' || result.kind === 'conflict') {
-		if (rawIdempotencyKey) await releaseResponseSlot(replayScope, rawIdempotencyKey);
-		return result.kind === 'not_found' ? notFound('item_not_found') : conflict('version_conflict');
 	}
-	const { updated, delta, autoPushedShoppingItemId } = result;
-
-	await recordAuditEvent({
-		wgId,
-		memberId: auth.member.memberId,
-		eventType: 'inventory.updated',
-		entityType: 'inventory_item',
-		entityId: updated.id,
-		summary: `${auth.member.name} hat ${updated.name} in den Vorräten aktualisiert.`,
-		metadata: {
-			name: updated.name,
-			delta,
-			quantity: updated.quantity,
-			threshold: updated.threshold,
-			unit: updated.unit,
-			category: updated.category,
-			autoPushedShoppingItemId,
-		},
-	});
-
-	const responseBody = { item: updated };
-	return NextResponse.json(responseBody);
+	return NextResponse.json(result.body, { status: result.status });
 });
 
 export const DELETE = withWgRoute<{ id: string }>('inventory DELETE', async (req, { code, id }) => {

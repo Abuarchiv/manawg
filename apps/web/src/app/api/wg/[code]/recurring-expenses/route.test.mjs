@@ -4,7 +4,11 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import { loadClaimedResponse } from '../../../../../../tests/support/claimed-response.cjs';
+import {
+	loadClaimedResponse,
+	loadIdempotentWrite,
+	loadParseBody,
+} from '../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const srcRoot = path.join(process.cwd(), 'src');
@@ -102,6 +106,7 @@ function harness({ callerId = otherMemberId, isAdmin = false } = {}) {
 			apiError: (code, status) => errorResponse(code, status),
 			badRequest: (code) => errorResponse(code, 400),
 			conflict: (code) => errorResponse(code, 409),
+			forbidden: (code) => errorResponse(code, 403),
 			notFound: (code) => errorResponse(code, 404),
 			serverError: () => errorResponse('server_error', 500),
 			tooMany: () => errorResponse('rate_limited', 429),
@@ -111,11 +116,6 @@ function harness({ callerId = otherMemberId, isAdmin = false } = {}) {
 				state.ownerChecks++;
 				return member.memberId === ownerId || isAdmin ? null : errorResponse('forbidden', 403);
 			},
-		},
-		'@/core/guards/idempotency': {
-			ReplayCache: class ReplayCache {},
-			claimReplaySlotWithRetry: async () => null,
-			replayKey: () => '',
 		},
 		'@/core/guards/require-wg-member': {
 			requireWgMember: async () => ({
@@ -145,6 +145,8 @@ function harness({ callerId = otherMemberId, isAdmin = false } = {}) {
 		},
 	};
 	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
+	mocks['@/core/db/idempotent-write'] = loadIdempotentWrite(mocks);
+	mocks['@/core/http/parse-body'] = loadParseBody(mocks);
 	const route = loadTs(routePath, mocks);
 	return {
 		state,

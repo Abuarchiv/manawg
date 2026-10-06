@@ -6,14 +6,8 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	badRequest,
-	forbidden,
-	notFound,
-	tooMany,
-	unreadableJsonBody,
-} from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
+import { badRequest, forbidden, notFound, tooMany } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { canEditMessage, sanitizeMessageBody } from '@/features/chat/chat-pure';
 import { and, eq, isNull } from 'drizzle-orm';
@@ -31,14 +25,10 @@ export const PATCH = withWgRoute<{ id: string }>(
 	async (req, { code, id }) => {
 		if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
 
-		let raw: unknown;
-		try {
-			raw = await readJsonLimited(req);
-		} catch (err) {
-			return unreadableJsonBody(err);
-		}
-		const parsed = patchSchema.safeParse(raw);
-		if (!parsed.success) return badRequest('body_invalid');
+		const parsed = await parseBody(req, patchSchema, {
+			invalid: 'body_invalid',
+		});
+		if (!parsed.ok) return parsed.response;
 		const cleanBody = sanitizeMessageBody(parsed.data.body, BODY_MAX);
 		if (!cleanBody) return badRequest('body_invalid');
 		const auth = await requireWgMember(req, code);

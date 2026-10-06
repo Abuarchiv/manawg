@@ -5,13 +5,12 @@ import { requireMember } from '@/core/guards/api-auth';
 import {
 	badRequest,
 	notFound,
-	payloadTooLarge,
 	serverError,
 	serviceUnavailable,
 	tooMany,
 	unauthorized,
 } from '@/core/http/api-errors';
-import { readJsonBody } from '@/core/http/read-json';
+import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import { PRIVATE_IMAGE_MIME_TYPES } from '@/core/infra/private-image-policy';
 import {
@@ -58,22 +57,16 @@ function extFromMime(mime: string): string {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-	const rawResult = await readJsonBody(req, MAX_SIGN_BODY_BYTES);
-	if (!rawResult.ok) {
-		return noStore(
-			rawResult.reason === 'payload_too_large' ? payloadTooLarge() : badRequest('invalid_json'),
-		);
-	}
-
-	const parsed = signSchema.safeParse(rawResult.body);
-	if (!parsed.success) {
-		const issues = parsed.error.flatten();
-		if (issues.fieldErrors.shareCode) return noStore(badRequest('invalid_share_code'));
-		if (issues.fieldErrors.purpose) return noStore(badRequest('invalid_purpose'));
-		if (issues.fieldErrors.mimeType) return noStore(badRequest('invalid_mime_type'));
-		if (issues.fieldErrors.fileSize) return noStore(badRequest('file_too_large'));
-		return noStore(badRequest('invalid_body'));
-	}
+	const parsed = await parseBody(req, signSchema, {
+		maxBytes: MAX_SIGN_BODY_BYTES,
+		fieldErrors: {
+			shareCode: 'invalid_share_code',
+			purpose: 'invalid_purpose',
+			mimeType: 'invalid_mime_type',
+			fileSize: 'file_too_large',
+		},
+	});
+	if (!parsed.ok) return noStore(parsed.response);
 
 	const { shareCode: code, purpose, mimeType, fileSize } = parsed.data;
 	if (!isValidShareCode(code)) return noStore(badRequest('invalid_share_code'));

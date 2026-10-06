@@ -5,7 +5,12 @@ import path from 'node:path';
 import test from 'node:test';
 import { PgDialect, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import { loadClaimedResponse } from '../../../tests/support/claimed-response.cjs';
+import {
+	loadClaimedResponse,
+	loadIdempotencyStore,
+	loadIdempotentWrite,
+	loadParseBody,
+} from '../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const file = path.join(process.cwd(), 'src/features/pinnwand/announcement-replay.ts');
@@ -125,8 +130,8 @@ function harness() {
 	const overrides = {
 		'@/core/db': { db, idempotencyResponses },
 		'@/core/db/transaction': { TransactionAbort, withTransaction },
-		'@/core/guards/idempotency': {
-			claimReplaySlotWithRetry: async () => {
+		'@/core/guards/replay-slot': {
+			claimReplaySlot: async () => {
 				state.claims++;
 				if (!state.slot) state.slot = { _claimed: true };
 				return { won: true };
@@ -136,10 +141,13 @@ function harness() {
 			getCachedResponse: async () =>
 				state.staleRead ? null : state.slot && !state.slot._claimed ? state.slot : null,
 			readIdempotencyKey: (req) => req.headers.get('idempotency-key'),
+			setReplayWarning: (...args) => loadIdempotencyStore(overrides).setReplayWarning(...args),
 		},
 		'@/core/infra/observability': { logApiError: () => undefined },
 	};
 	overrides['@/core/db/claimed-response'] = loadClaimedResponse(overrides);
+	overrides['@/core/db/idempotent-write'] = loadIdempotentWrite(overrides);
+	overrides['@/core/http/parse-body'] = loadParseBody(overrides);
 	new Function('require', 'module', 'exports', source)(
 		(name) => (name in overrides ? overrides[name] : requireFromWeb(name)),
 		module,

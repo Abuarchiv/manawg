@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadParseBody } from '../../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const routeFile = path.join(path.dirname(fileURLToPath(import.meta.url)), 'route.ts');
@@ -66,6 +67,7 @@ function harness({ changedRows }) {
 		'drizzle-orm': { and: (...parts) => parts, eq: (...parts) => parts },
 		'next/server': { NextResponse: { json: (body) => Response.json(body) } },
 	};
+	mocks['@/core/http/parse-body'] = loadParseBody(mocks);
 	const compiled = transpileModule(readFileSync(routeFile, 'utf8'), {
 		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
 	}).outputText;

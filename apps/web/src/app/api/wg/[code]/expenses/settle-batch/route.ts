@@ -1,11 +1,12 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expensePayments, expenseSplits, expenses, wgMembers } from '@/core/db';
+import { type WriteOutcome, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import type { DbTransaction } from '@/core/db/transaction';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
-import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
+	HTTP,
 	badRequest,
 	conflict,
 	forbidden,
@@ -14,7 +15,7 @@ import {
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
-import { claimIdempotencySlot, readIdempotencyKey } from '@/core/idempotency-store';
+import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	type ExpensePaymentInput,
@@ -54,8 +55,8 @@ function noStore<T extends NextResponse>(response: T): T {
 	return response;
 }
 
-function noStoreJson<T>(body: T): NextResponse<T> {
-	return NextResponse.json(body, { headers: { 'Cache-Control': 'no-store' } });
+function noStoreJson<T>(body: T, status = 200): NextResponse<T> {
+	return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 }
 
 async function loadSettlementSnapshot(
@@ -247,133 +248,146 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 	);
 	if (!limited.success) return tooMany();
 
-	return withIdempotentJsonResponse(
-		req,
-		`settle-batch:${auth.wg.id}:${auth.member.memberId}`,
-		async () => {
-			let mutation:
-				| { kind: 'member_deactivated' }
-				| { kind: 'member_not_in_wg' }
-				| { kind: 'blocked' }
-				| { kind: 'changed' }
-				| {
-						kind: 'settled';
-						preview: SettlementPreview;
-						settledIds: string[];
-						settledCents: number;
-				  } = { kind: 'member_not_in_wg' };
-			try {
-				mutation = await withExpensePaymentLock(auth.wg.id, async (tx) => {
-					const [activeCaller] = await tx
-						.select({ id: wgMembers.id })
-						.from(wgMembers)
-						.where(
-							and(
-								eq(wgMembers.id, auth.member.memberId),
-								eq(wgMembers.wgId, auth.wg.id),
-								isNull(wgMembers.deactivatedAt),
-							),
-						)
-						.limit(1)
-						.for('update');
-					// The row lock is held through the accounting write: a concurrent
-					// deactivation either wins before this check or waits until settlement commits.
-					if (!activeCaller) return { kind: 'member_deactivated' as const };
+	let result: Awaited<ReturnType<typeof settleOnce>>;
+	try {
+		result = await settleOnce(req, auth, confirmation);
+	} catch (error) {
+		if (error instanceof SettlementChangedError) return conflict('settlement_changed');
+		throw error;
+	}
+	if (result.kind === 'replayed') return noStoreJson(result.body, result.status);
+	const outcome = result.context;
+	if (!outcome || outcome.kind === 'member_deactivated') {
+		return unauthorized('member_deactivated', 'member_deactivated');
+	}
+	if (outcome.kind === 'member_not_in_wg') return badRequest('member_not_in_wg');
+	if (outcome.kind === 'blocked') return conflict('paypal_payment_pending');
+	if (outcome.kind === 'changed') return conflict('settlement_changed');
 
-					const snapshot = await loadSettlementSnapshot(tx, auth.wg.id);
-					if (!pairIsInWg(snapshot, confirmation.fromMemberId, confirmation.toMemberId)) {
-						return { kind: 'member_not_in_wg' as const };
-					}
+	// The claim makes a keyed settlement run once, and a keyless one can only settle splits that
+	// were still open, so the audit event is recorded exactly once per settled split.
+	if (outcome.settledIds.length > 0) {
+		await recordAuditEvent({
+			wgId: auth.wg.id,
+			memberId: auth.member.memberId,
+			eventType: 'expense.debt.settled',
+			entityType: 'expense_debt',
+			entityId: `${confirmation.fromMemberId}:${confirmation.toMemberId}`,
+			summary: `${auth.member.name} hat ${outcome.settledIds.length} offene Anteil${outcome.settledIds.length === 1 ? '' : 'e'} beglichen.`,
+			metadata: {
+				fromMemberId: confirmation.fromMemberId,
+				toMemberId: confirmation.toMemberId,
+				splitIds: outcome.settledIds,
+			},
+		});
+	}
+	return noStoreJson(result.body, result.status);
+});
 
-					const preview = selectSettlementScope(
-						snapshot.expenses,
-						snapshot.members,
-						snapshot.payments,
-						confirmation.fromMemberId,
-						confirmation.toMemberId,
-						confirmation.currency,
-					);
-					if (await hasCapturingExpensePayment(tx, auth.wg.id)) return { kind: 'blocked' as const };
-					if (!settlementScopeMatches(confirmation.expected, preview)) {
-						return { kind: 'changed' as const };
-					}
-					if (preview.splits.length === 0) {
-						return { kind: 'settled' as const, preview, settledIds: [], settledCents: 0 };
-					}
+type SettlementOutcome =
+	| { kind: 'member_deactivated' }
+	| { kind: 'member_not_in_wg' }
+	| { kind: 'blocked' }
+	| { kind: 'changed' }
+	| { kind: 'settled'; settledIds: string[] };
 
-					const exactRows = preview.splits.map((split) =>
-						and(
-							eq(expenseSplits.id, split.id),
-							eq(expenseSplits.expenseId, split.expenseId),
-							eq(expenseSplits.amountCents, split.amountCents),
-							isNull(expenseSplits.settledAt),
-						),
-					);
-					const rows = await tx
-						.update(expenseSplits)
-						.set({ settledAt: new Date() })
-						.where(or(...exactRows))
-						.returning({ id: expenseSplits.id });
-					if (rows.length !== preview.splits.length) throw new SettlementChangedError();
+const settlementCodec = responseCodec();
 
-					const returnedIds = new Set(rows.map((row) => row.id));
-					const settledIds = preview.splits
-						.map((split) => split.id)
-						.filter((id) => returnedIds.has(id));
-					return {
-						kind: 'settled' as const,
-						preview,
-						settledIds,
-						settledCents: preview.settleableCents,
-					};
-				});
-			} catch (error) {
-				if (error instanceof SettlementChangedError) return conflict('settlement_changed');
-				throw error;
+/** Rejections are answered by the route and not stored, so the same key can run again. */
+function rejected(
+	kind: Exclude<SettlementOutcome['kind'], 'settled'>,
+): WriteOutcome<unknown, SettlementOutcome> {
+	const status =
+		kind === 'member_deactivated'
+			? HTTP.UNAUTHORIZED
+			: kind === 'member_not_in_wg'
+				? HTTP.BAD_REQUEST
+				: HTTP.CONFLICT;
+	return { status, body: null, context: { kind } };
+}
+
+/**
+ * Settle the confirmed splits under the WG's payment lock. The caller's member row stays locked
+ * through the accounting write: a concurrent deactivation either wins before the check or waits
+ * until the settlement commits.
+ */
+function settleOnce(
+	req: Request,
+	auth: { wg: { id: string }; member: { memberId: string } },
+	confirmation: SettlementConfirmation,
+) {
+	return withIdempotentWrite(
+		{
+			scope: `settle-batch:${auth.wg.id}:${auth.member.memberId}`,
+			key: readIdempotencyKey(req),
+			codec: settlementCodec,
+			inTransaction: (work) => withExpensePaymentLock(auth.wg.id, work),
+		},
+		async (tx): Promise<WriteOutcome<unknown, SettlementOutcome>> => {
+			const [activeCaller] = await tx
+				.select({ id: wgMembers.id })
+				.from(wgMembers)
+				.where(
+					and(
+						eq(wgMembers.id, auth.member.memberId),
+						eq(wgMembers.wgId, auth.wg.id),
+						isNull(wgMembers.deactivatedAt),
+					),
+				)
+				.limit(1)
+				.for('update');
+			if (!activeCaller) return rejected('member_deactivated');
+
+			const snapshot = await loadSettlementSnapshot(tx, auth.wg.id);
+			if (!pairIsInWg(snapshot, confirmation.fromMemberId, confirmation.toMemberId)) {
+				return rejected('member_not_in_wg');
 			}
 
-			if (mutation.kind === 'member_deactivated') {
-				return unauthorized('member_deactivated', 'member_deactivated');
-			}
-			if (mutation.kind === 'member_not_in_wg') return badRequest('member_not_in_wg');
-			if (mutation.kind === 'blocked') return conflict('paypal_payment_pending');
-			if (mutation.kind === 'changed') return conflict('settlement_changed');
+			const preview = selectSettlementScope(
+				snapshot.expenses,
+				snapshot.members,
+				snapshot.payments,
+				confirmation.fromMemberId,
+				confirmation.toMemberId,
+				confirmation.currency,
+			);
+			if (await hasCapturingExpensePayment(tx, auth.wg.id)) return rejected('blocked');
+			if (!settlementScopeMatches(confirmation.expected, preview)) return rejected('changed');
 
-			if (mutation.settledIds.length > 0) {
-				const idemKey =
-					readIdempotencyKey(req) ??
-					`derived:settle:${confirmation.fromMemberId}:${confirmation.toMemberId}:${[...mutation.settledIds].sort().join(',')}`;
-				const shouldAudit = await claimIdempotencySlot(
-					`settle-batch:${auth.wg.id}:${auth.member.memberId}`,
-					idemKey,
+			let settledIds: string[] = [];
+			let settledCents = 0;
+			if (preview.splits.length > 0) {
+				const exactRows = preview.splits.map((split) =>
+					and(
+						eq(expenseSplits.id, split.id),
+						eq(expenseSplits.expenseId, split.expenseId),
+						eq(expenseSplits.amountCents, split.amountCents),
+						isNull(expenseSplits.settledAt),
+					),
 				);
-				if (shouldAudit) {
-					await recordAuditEvent({
-						wgId: auth.wg.id,
-						memberId: auth.member.memberId,
-						eventType: 'expense.debt.settled',
-						entityType: 'expense_debt',
-						entityId: `${confirmation.fromMemberId}:${confirmation.toMemberId}`,
-						summary: `${auth.member.name} hat ${mutation.settledIds.length} offene Anteil${mutation.settledIds.length === 1 ? '' : 'e'} beglichen.`,
-						metadata: {
-							fromMemberId: confirmation.fromMemberId,
-							toMemberId: confirmation.toMemberId,
-							splitIds: mutation.settledIds,
-						},
-					});
-				}
-			}
+				const rows = await tx
+					.update(expenseSplits)
+					.set({ settledAt: new Date() })
+					.where(or(...exactRows))
+					.returning({ id: expenseSplits.id });
+				if (rows.length !== preview.splits.length) throw new SettlementChangedError();
 
-			return noStoreJson(
-				buildSettlementResponse(
-					mutation.preview,
-					mutation.settledIds,
-					mutation.settledCents,
+				const returnedIds = new Set(rows.map((row) => row.id));
+				settledIds = preview.splits.map((split) => split.id).filter((id) => returnedIds.has(id));
+				settledCents = preview.settleableCents;
+			}
+			return {
+				status: 200,
+				body: buildSettlementResponse(
+					preview,
+					settledIds,
+					settledCents,
 					confirmation.currency,
 					confirmation.fromMemberId,
 					confirmation.toMemberId,
 				),
-			);
+				context: { kind: 'settled', settledIds },
+			};
 		},
 	);
-});
+}

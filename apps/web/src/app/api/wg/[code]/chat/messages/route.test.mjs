@@ -5,7 +5,12 @@ import path from 'node:path';
 import test from 'node:test';
 import { PgDialect, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import { loadClaimedResponse } from '../../../../../../../tests/support/claimed-response.cjs';
+import {
+	loadClaimedResponse,
+	loadIdempotencyStore,
+	loadIdempotentWrite,
+	loadParseBody,
+} from '../../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const routePath = path.join(process.cwd(), 'src/app/api/wg/[code]/chat/messages/route.ts');
@@ -178,12 +183,14 @@ function harness() {
 			withTransaction,
 		},
 		'@/core/http/api-errors': {
+			HTTP: { BAD_REQUEST: 400, TOO_MANY: 429 },
+			badRequest: (error) => Response.json({ error }, { status: 400 }),
 			conflict: (error, code) =>
 				Response.json({ error, ...(code ? { code } : {}) }, { status: 409 }),
 		},
 		'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
-		'@/core/guards/idempotency': {
-			claimReplaySlotWithRetry: async () => {
+		'@/core/guards/replay-slot': {
+			claimReplaySlot: async () => {
 				state.claims++;
 				if (!state.slot) state.slot = { _claimed: true };
 				return { won: true };
@@ -204,6 +211,7 @@ function harness() {
 			RESPONSE_REPLAY_TTL_SECONDS: 604_800,
 			getCachedResponse: async () => (state.slot && !state.slot._claimed ? state.slot : null),
 			readIdempotencyKey: (req) => req.headers.get('idempotency-key'),
+			setReplayWarning: (...args) => loadIdempotencyStore(overrides).setReplayWarning(...args),
 		},
 		'@/core/infra/env': { readListLimit: (_env, _key, fallback) => fallback },
 		'@/core/infra/observability': {
@@ -233,6 +241,8 @@ function harness() {
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	};
 	overrides['@/core/db/claimed-response'] = loadClaimedResponse(overrides);
+	overrides['@/core/db/idempotent-write'] = loadIdempotentWrite(overrides);
+	overrides['@/core/http/parse-body'] = loadParseBody(overrides);
 	new Function('require', 'module', 'exports', source)(
 		(name) => (name in overrides ? overrides[name] : requireFromWeb(name)),
 		module,

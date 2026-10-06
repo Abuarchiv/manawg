@@ -4,15 +4,8 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	badRequest,
-	conflict,
-	forbidden,
-	notFound,
-	tooMany,
-	unreadableJsonBody,
-} from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
+import { badRequest, conflict, forbidden, notFound, tooMany } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { isRecurringDueAtEditAllowed } from '@/core/validators/recurring-due-date';
@@ -79,25 +72,19 @@ export const PATCH = withWgRoute<{ id: string }>(
 	async (req, { code, id }) => {
 		if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
 
-		let raw: unknown;
-		try {
-			raw = await readJsonLimited(req);
-		} catch (err) {
-			return unreadableJsonBody(err);
-		}
-		const parsed = patchSchema.safeParse(raw);
-		if (!parsed.success) {
-			const issues = parsed.error.flatten();
-			if (issues.fieldErrors.amountCents) return badRequest('amount_invalid');
-			if (issues.fieldErrors.currency) return badRequest('currency_invalid');
-			if (issues.fieldErrors.description) return badRequest('description_invalid');
-			if (issues.fieldErrors.paidByMemberId) return badRequest('member_id_invalid');
-			if (issues.fieldErrors.intervalMonths) return badRequest('interval_invalid');
-			if (issues.fieldErrors.nextDueAt) return badRequest('due_date_invalid');
-			if (issues.fieldErrors.splits) return badRequest('splits_invalid');
-			if (issues.fieldErrors.paused) return badRequest('paused_invalid');
-			return badRequest('invalid_body');
-		}
+		const parsed = await parseBody(req, patchSchema, {
+			fieldErrors: {
+				amountCents: 'amount_invalid',
+				currency: 'currency_invalid',
+				description: 'description_invalid',
+				paidByMemberId: 'member_id_invalid',
+				intervalMonths: 'interval_invalid',
+				nextDueAt: 'due_date_invalid',
+				splits: 'splits_invalid',
+				paused: 'paused_invalid',
+			},
+		});
+		if (!parsed.ok) return parsed.response;
 
 		if (parsed.data.currency !== undefined && parsed.data.currency !== 'EUR') {
 			return badRequest('recurring_currency_unsupported');
@@ -219,8 +206,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 						? 'resume'
 						: null;
 
-		// Fortsetzen bucht verpasste Termine nicht nach: der nächste Termin springt
-		// auf den ersten Zyklustag ab heute (heute fällig bleibt fällig), sonst legt der Cron jeden Pausenmonat an.
+		// Resuming does not book the missed charges: the next due date jumps
+		// to the first cycle day from today (due today stays due); otherwise the cron books every paused month.
 		let resumedDueAt = nextDueAt;
 		if (pauseTransition === 'resume' && parsed.data.nextDueAt === undefined) {
 			const anchorDay = (template.anchorAt ?? template.nextDueAt).getUTCDate();
@@ -267,8 +254,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 			paidByMemberId: nextPaidByMemberId,
 			intervalMonths: nextIntervalMonths,
 			nextDueAt: resumedDueAt,
-			// Ein verschobener Termin setzt den Zyklus-Anker neu, sonst springt der
-			// nächste Cron-Lauf auf den alten Monatstag zurück.
+			// A moved due date resets the cycle anchor; otherwise the next
+			// cron run would jump back to the old day of the month.
 			...(parsed.data.nextDueAt !== undefined &&
 			nextDueAt.getTime() !== template.nextDueAt.getTime()
 				? { anchorAt: nextDueAt }

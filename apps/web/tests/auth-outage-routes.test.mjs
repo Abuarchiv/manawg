@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadIdempotentWrite, loadParseBody } from './support/claimed-response.cjs';
 
 // Routes that call getAuthenticatedUser outside their own try/catch must turn
 // a transient Supabase Auth outage into the same structured, retryable 503
@@ -31,6 +32,12 @@ function loadRoute(file, overrides) {
 		loaded.exports,
 	);
 	return loaded.exports;
+}
+
+/** The real parseBody, evaluated against the route's own mocks. */
+function withParseBody(mocks) {
+	mocks['@/core/http/parse-body'] = loadParseBody(mocks);
+	return mocks;
 }
 
 function sharedMocks(state) {
@@ -83,31 +90,34 @@ async function assertAuthOutage(response, state) {
 test('upload sign returns a retryable 503 when Supabase Auth is unavailable', async () => {
 	const state = { authCalls: 0, logged: [] };
 	const { unreachable, ...mocks } = sharedMocks(state);
-	const { POST } = loadRoute('src/app/api/upload/sign/route.ts', {
-		...mocks,
-		'@/core/db': { db: { query: { wgs: { findFirst: unreachable('wg lookup') } } } },
-		'@/core/http/read-json': {
-			readJsonBody: async (req) => ({ ok: true, body: await req.json() }),
-		},
-		'@/core/infra/private-image-policy': { PRIVATE_IMAGE_MIME_TYPES: ['image/jpeg'] },
-		'@/core/infra/s3': {
-			S3ConfigurationError: class extends Error {},
-			S3_MAX_UPLOAD_BYTES: 10_000_000,
-			createPresignedUpload: unreachable('createPresignedUpload'),
-			isAllowedMimeType: () => true,
-		},
-		'@/core/infra/supabase-storage': {
-			ImageStorageConfigurationError: class extends Error {},
-			createSupabaseSignedUpload: unreachable('createSupabaseSignedUpload'),
-			getImageStorageProvider: unreachable('getImageStorageProvider'),
-		},
-		'@/core/rate-limit': { checkRateLimit: unreachable('checkRateLimit'), uploadSignLimiter: {} },
-		'@/core/validators/image-url': { getPrivateImageUrl: unreachable('getPrivateImageUrl') },
-		'@/core/utils/share-code': {
-			isValidShareCode: () => true,
-			normalizeShareCode: (value) => value,
-		},
-	});
+	const { POST } = loadRoute(
+		'src/app/api/upload/sign/route.ts',
+		withParseBody({
+			...mocks,
+			'@/core/db': { db: { query: { wgs: { findFirst: unreachable('wg lookup') } } } },
+			'@/core/http/read-json': {
+				readJsonBody: async (req) => ({ ok: true, body: await req.json() }),
+			},
+			'@/core/infra/private-image-policy': { PRIVATE_IMAGE_MIME_TYPES: ['image/jpeg'] },
+			'@/core/infra/s3': {
+				S3ConfigurationError: class extends Error {},
+				S3_MAX_UPLOAD_BYTES: 10_000_000,
+				createPresignedUpload: unreachable('createPresignedUpload'),
+				isAllowedMimeType: () => true,
+			},
+			'@/core/infra/supabase-storage': {
+				ImageStorageConfigurationError: class extends Error {},
+				createSupabaseSignedUpload: unreachable('createSupabaseSignedUpload'),
+				getImageStorageProvider: unreachable('getImageStorageProvider'),
+			},
+			'@/core/rate-limit': { checkRateLimit: unreachable('checkRateLimit'), uploadSignLimiter: {} },
+			'@/core/validators/image-url': { getPrivateImageUrl: unreachable('getPrivateImageUrl') },
+			'@/core/utils/share-code': {
+				isValidShareCode: () => true,
+				normalizeShareCode: (value) => value,
+			},
+		}),
+	);
 
 	const response = await POST(
 		new Request('https://app.test/api/upload/sign', {
@@ -191,7 +201,7 @@ test('account DELETE returns a retryable 503 when Supabase Auth is unavailable',
 function wgRouteMocks(state) {
 	const { unreachable, ...mocks } = sharedMocks(state);
 	const readShareCode = async (ctx) => ({ ok: true, ...(await ctx.params) });
-	return {
+	const routeMocks = {
 		...mocks,
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/http/api-errors': {
@@ -222,10 +232,6 @@ function wgRouteMocks(state) {
 			UUID_PATTERN: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
 			requireMember: unreachable('requireMember'),
 		},
-		'@/core/guards/idempotency': {
-			claimReplaySlotWithRetry: unreachable('claimReplaySlotWithRetry'),
-			withIdempotentJsonResponse: unreachable('withIdempotentJsonResponse'),
-		},
 		'@/core/guards/legacy-claim-proof': {
 			verifyLegacyClaimProof: unreachable('verifyLegacyClaimProof'),
 		},
@@ -237,7 +243,6 @@ function wgRouteMocks(state) {
 				shareCodeMissResponse: unreachable('shareCodeMissResponse'),
 			},
 		}),
-		'@/core/http/parse-body': { parseBody: unreachable('parseBody') },
 		'@/core/guards/route-preamble': { readShareCode },
 		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 60,
@@ -277,6 +282,9 @@ function wgRouteMocks(state) {
 			wgWriteLimiter: {},
 		},
 	};
+	routeMocks['@/core/http/parse-body'] = loadParseBody(routeMocks);
+	routeMocks['@/core/db/idempotent-write'] = loadIdempotentWrite(routeMocks);
+	return routeMocks;
 }
 
 const WG_CODE = 'MTE8PZAT';

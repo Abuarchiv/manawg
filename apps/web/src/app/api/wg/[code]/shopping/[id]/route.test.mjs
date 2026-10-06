@@ -6,6 +6,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { DrizzleQueryError } from 'drizzle-orm';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadParseBody } from '../../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const directory = path.dirname(fileURLToPath(import.meta.url));
@@ -236,6 +237,7 @@ function harness(returning = async () => [{ id: itemId }]) {
 		},
 		'next/server': { NextResponse: { json } },
 	};
+	mocks['@/core/http/parse-body'] = loadParseBody(mocks);
 
 	const cache = new Map();
 	function loadTypeScript(file) {
