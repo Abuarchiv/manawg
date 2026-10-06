@@ -2,10 +2,10 @@
 // Why: dashboard, debt list and settlement must agree to the cent and never mix currencies.
 
 import { expect, test } from '@playwright/test';
+import { buildActivityTimeline } from '../src/composition/activity';
+import { computeMemberBalances, summarizeDashboardSpend } from '../src/composition/dashboard-data';
+import { getTodayImportantItems, getWgHealth } from '../src/composition/dashboard-insights';
 import { formatNotificationMessage } from '../src/core/notifications/notifications';
-import { buildActivityTimeline } from '../src/core/reads/activity';
-import { computeMemberBalances, summarizeDashboardSpend } from '../src/core/reads/dashboard-data';
-import { getTodayImportantItems, getWgHealth } from '../src/core/reads/dashboard-insights';
 import { getDebtOverview } from '../src/features/expenses/debt-overview';
 import {
 	buildSettlementSummary,

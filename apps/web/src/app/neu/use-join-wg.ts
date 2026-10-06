@@ -6,7 +6,6 @@ import { removeDraft } from '@/core/offline/drafts';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import posthog from '@/shared/lib/analytics';
-import { isClientFixtureMode } from '@/shared/lib/fixture-mode';
 import { rememberWg } from '@/shared/lib/identity';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
@@ -37,6 +36,7 @@ export function useJoinWg({
 	setFormError,
 	setFieldError,
 	returnToSignIn,
+	sessionless,
 }: BusyLock &
 	StartErrorActions & {
 		joinCode: string;
@@ -45,6 +45,8 @@ export function useJoinWg({
 		setJoinWg: (joinWg: JoinWg | null) => void;
 		setStep: (step: StartStep) => void;
 		returnToSignIn: () => void;
+		/** Database-free test build without a Supabase session. */
+		sessionless: boolean;
 	}) {
 	const router = useRouter();
 	const joinRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
@@ -63,9 +65,9 @@ export function useJoinWg({
 		setBusy(true);
 		clearError();
 		try {
-			if (isClientFixtureMode()) {
-				// The database-free fixture keeps its existing policy-preview contract;
-				// production never performs this private metadata lookup before joining.
+			if (sessionless) {
+				// The database-free build keeps its policy-preview contract; a real
+				// build never performs this private metadata lookup before joining.
 				const res = await fetch(`/api/wg/${encodeURIComponent(code)}`, { cache: 'no-store' });
 				if (!res.ok) {
 					const apiError = await readStartError(res);

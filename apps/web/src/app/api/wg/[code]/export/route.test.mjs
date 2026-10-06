@@ -85,7 +85,7 @@ function exportRoute(failedTable, { expenseCount = 0, rowsByTable = {} } = {}) {
 			},
 		}),
 	};
-	const exportModule = loadTs('src/core/reads/export.ts');
+	const exportModule = loadTs('src/composition/export.ts');
 	const drizzle = {
 		and: () => null,
 		asc: () => null,
@@ -113,15 +113,14 @@ function exportRoute(failedTable, { expenseCount = 0, rowsByTable = {} } = {}) {
 		},
 		'@/core/guards/route-preamble': {
 			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
-			resolveE2EFixture: async () => ({ mode: 'real' }),
 		},
 		'@/core/infra/observability': loadTs('src/core/infra/observability.ts', {
 			'./sentry': { captureSentryException() {}, logSentryApiError() {} },
 			'./sentry-privacy': loadTs('src/core/infra/sentry-privacy.ts'),
 		}),
 		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }) },
-		'@/core/reads/export': exportModule,
-		'@/core/reads/export-queries': loadTs('src/core/reads/export-queries.ts', {
+		'@/composition/export': exportModule,
+		'@/composition/export-queries': loadTs('src/composition/export-queries.ts', {
 			'@/core/db': { db, ...tables },
 			'drizzle-orm': drizzle,
 			'./export': exportModule,

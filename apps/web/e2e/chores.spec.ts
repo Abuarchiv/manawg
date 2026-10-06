@@ -2,9 +2,9 @@
 // Why: fair rotation and Berlin calendar-day maths regress silently without explicit cases.
 
 import { type Locator, expect, test } from '@playwright/test';
+import { type ActivityItem, filterActivityByScope } from '../src/composition/activity';
 import { buildDraftKey } from '../src/core/offline/drafts';
 import * as offlineClient from '../src/core/offline/offline-client';
-import { type ActivityItem, filterActivityByScope } from '../src/core/reads/activity';
 import {
 	buildChoreFairness,
 	chooseNextAvailableMember,

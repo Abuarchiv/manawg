@@ -165,7 +165,7 @@ function createExportRoute({ failedTable } = {}) {
 		}),
 	};
 	const logged = [];
-	const exportModule = loadTs('src/core/reads/export.ts');
+	const exportModule = loadTs('src/composition/export.ts');
 	const { GET } = loadTs('src/app/api/wg/[code]/export/route.ts', {
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/http/api-errors': {
@@ -183,12 +183,11 @@ function createExportRoute({ failedTable } = {}) {
 		},
 		'@/core/guards/route-preamble': {
 			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
-			resolveE2EFixture: async () => ({ mode: 'real' }),
 		},
 		'@/core/infra/observability': { logApiError: (...args) => logged.push(args) },
 		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }) },
-		'@/core/reads/export': exportModule,
-		'@/core/reads/export-queries': loadTs('src/core/reads/export-queries.ts', {
+		'@/composition/export': exportModule,
+		'@/composition/export-queries': loadTs('src/composition/export-queries.ts', {
 			'@/core/db': { db, ...tables },
 			'drizzle-orm': {
 				and: (...items) => ({ op: 'and', items }),
@@ -262,7 +261,7 @@ test('exported expenses and completed payments reconstruct the app balances by c
 	assert.equal(JSON.stringify(exported).includes('providerOrderId'), false);
 	assert.equal(JSON.stringify(exported).includes('payeeMerchantId'), false);
 	assert.equal(
-		loadTs('src/core/reads/export.ts')
+		loadTs('src/composition/export.ts')
 			.buildExportSummary(exported)
 			.find(({ key }) => key === 'expensePayments')?.count,
 		2,

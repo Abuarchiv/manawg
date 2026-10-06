@@ -143,6 +143,13 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 			skip: skipSet.has(index),
 		}));
 
+		// Resolved before the claim: a failure here must not leave a claim behind.
+		const mayRecordForOthers = await isVerifiedWgAdmin(
+			wg.id,
+			auth.member.memberId,
+			auth.member.verified,
+		);
+
 		const replaySlot = idemReplayKey === null ? null : importCommitReplay.reserve(idemReplayKey);
 		if (replaySlot?.owned === false) {
 			return NextResponse.json(await replaySlot.promise);
@@ -161,11 +168,6 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 			}
 		}
 
-		const mayRecordForOthers = await isVerifiedWgAdmin(
-			wg.id,
-			auth.member.memberId,
-			auth.member.verified,
-		);
 		const dbSource = source === 'ocr_text' ? ('ocr_screenshot' as const) : source;
 		let result: CommitResult;
 		try {

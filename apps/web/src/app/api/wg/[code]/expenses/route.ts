@@ -145,69 +145,61 @@ function isRecurringDueUniqueViolation(error: unknown): boolean {
 	);
 }
 
-export const GET = withWgRoute(
-	'expenses GET',
-	async (req, { code }) => {
-		const auth = await requireWgMember(req, code);
-		if (!auth.ok) return auth.response;
-		const wgId = auth.wg.id;
+export const GET = withWgRoute('expenses GET', async (req, { code }) => {
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wgId = auth.wg.id;
 
-		// Per-member bucket on top of the middleware's per-IP read limit: this
-		// returns the WG's whole expense history.
-		const limit = await checkRateLimit(
-			expensesReadLimiter,
-			`expenses:${wgId}:${auth.member.memberId}`,
-		);
-		if (!limit.success) return tooMany('rate_limited');
+	// Per-member bucket on top of the middleware's per-IP read limit: this
+	// returns the WG's whole expense history.
+	const limit = await checkRateLimit(
+		expensesReadLimiter,
+		`expenses:${wgId}:${auth.member.memberId}`,
+	);
+	if (!limit.success) return tooMany('rate_limited');
 
-		const rows = await db
-			.select()
-			.from(expenses)
-			.where(eq(expenses.wgId, wgId))
-			.orderBy(desc(expenses.occurredAt));
+	const rows = await db
+		.select()
+		.from(expenses)
+		.where(eq(expenses.wgId, wgId))
+		.orderBy(desc(expenses.occurredAt));
 
-		// Payments are a pair-level ledger, independent of any expense: after
-		// the last expense is deleted, completed repayments still shift balances.
-		if (rows.length === 0) {
-			return NextResponse.json({
-				expenses: [],
-				payments: await loadCompletedExpensePayments(wgId),
-			});
-		}
-
-		// Balances need the full history, so the list stays complete. Splits are
-		// joined by WG instead of `inArray(expenseIds)`: one bind parameter per
-		// expense would exceed PostgreSQL's 65,535-parameter limit for large WGs.
-		const [splits, payments] = await Promise.all([
-			db
-				.select(getTableColumns(expenseSplits))
-				.from(expenseSplits)
-				.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
-				.where(eq(expenses.wgId, wgId)),
-			loadCompletedExpensePayments(wgId),
-		]);
-
-		const splitsByExpense = new Map<string, typeof splits>();
-		for (const s of splits) {
-			const list = splitsByExpense.get(s.expenseId) ?? [];
-			list.push(s);
-			splitsByExpense.set(s.expenseId, list);
-		}
-
+	// Payments are a pair-level ledger, independent of any expense: after
+	// the last expense is deleted, completed repayments still shift balances.
+	if (rows.length === 0) {
 		return NextResponse.json({
-			expenses: rows.map((e) => ({
-				...e,
-				splits: splitsByExpense.get(e.id) ?? [],
-			})),
-			payments,
+			expenses: [],
+			payments: await loadCompletedExpensePayments(wgId),
 		});
-	},
-	{
-		fixture: () => {
-			return NextResponse.json({ expenses: [], payments: [] });
-		},
-	},
-);
+	}
+
+	// Balances need the full history, so the list stays complete. Splits are
+	// joined by WG instead of `inArray(expenseIds)`: one bind parameter per
+	// expense would exceed PostgreSQL's 65,535-parameter limit for large WGs.
+	const [splits, payments] = await Promise.all([
+		db
+			.select(getTableColumns(expenseSplits))
+			.from(expenseSplits)
+			.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
+			.where(eq(expenses.wgId, wgId)),
+		loadCompletedExpensePayments(wgId),
+	]);
+
+	const splitsByExpense = new Map<string, typeof splits>();
+	for (const s of splits) {
+		const list = splitsByExpense.get(s.expenseId) ?? [];
+		list.push(s);
+		splitsByExpense.set(s.expenseId, list);
+	}
+
+	return NextResponse.json({
+		expenses: rows.map((e) => ({
+			...e,
+			splits: splitsByExpense.get(e.id) ?? [],
+		})),
+		payments,
+	});
+});
 
 export const POST = withWgRoute('expenses POST', async (req, { code }) => {
 	let raw: unknown;

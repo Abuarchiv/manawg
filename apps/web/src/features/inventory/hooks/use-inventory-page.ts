@@ -1,8 +1,8 @@
+import type { DashboardData } from '@/composition/dashboard-data';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { refreshCachedFetch, useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { useStableCallback } from '@/core/hooks/useStableCallback';
 import { isNetworkError } from '@/core/http/error-codes';
-import type { DashboardData } from '@/core/reads/dashboard-data';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import {
 	type InventoryCategory,

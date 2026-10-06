@@ -191,7 +191,6 @@ function harness({
 				state.slot?.body?._claimed ? null : (state.slot?.body ?? null),
 			readIdempotencyKey: (req) => req.headers.get('idempotency-key'),
 		},
-		'@/core/infra/e2e-db-down': { isE2EDbDownMode: () => false },
 		'@/core/infra/observability': { logApiError: () => undefined },
 		'@/core/rate-limit': {
 			checkRateLimit: async () => ({ success: true }),

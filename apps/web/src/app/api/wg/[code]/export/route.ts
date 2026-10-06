@@ -1,19 +1,12 @@
-import { requireWgMember } from '@/core/guards/require-wg-member';
-import { readShareCode, resolveE2EFixture } from '@/core/guards/route-preamble';
-import { badRequest, serverError, tooMany } from '@/core/http/api-errors';
-import type { RouteCtx } from '@/core/infra/api-types';
-import { logApiError } from '@/core/infra/observability';
-import { checkRateLimit, wgExportLimiter } from '@/core/rate-limit';
 import {
 	EXPORT_SECTION_KEYS,
 	type ExportRow,
 	type ExportSectionKey,
 	buildWgExport,
 	getExportSectionHeaders,
-	getExportSectionRows,
 	isExportSectionKey,
 	toCsv,
-} from '@/core/reads/export';
+} from '@/composition/export';
 import {
 	type ExportPage,
 	MEMBER_NAME_SECTIONS,
@@ -24,7 +17,13 @@ import {
 	fetchMemberRows,
 	mapMemberRows,
 	toMemberById,
-} from '@/core/reads/export-queries';
+} from '@/composition/export-queries';
+import { requireWgMember } from '@/core/guards/require-wg-member';
+import { readShareCode } from '@/core/guards/route-preamble';
+import { badRequest, serverError, tooMany } from '@/core/http/api-errors';
+import type { RouteCtx } from '@/core/infra/api-types';
+import { logApiError } from '@/core/infra/observability';
+import { checkRateLimit, wgExportLimiter } from '@/core/rate-limit';
 import { type NextRequest, NextResponse } from 'next/server';
 
 function getExportFormat(req: NextRequest): 'json' | 'csv' | null {
@@ -138,35 +137,6 @@ export async function GET(
 	const { code } = codeResult;
 	const format = getExportFormat(req);
 	if (!format) return badRequest('format_invalid');
-
-	const e2e = await resolveE2EFixture(req, code);
-	if (e2e.mode === 'denied') return e2e.response;
-	if (e2e.mode === 'fixture') {
-		const { fixture } = e2e;
-		const now = new Date().toISOString();
-		const members = fixture.members.map((member) => ({
-			id: member.id,
-			name: member.name,
-			createdAt: now,
-		}));
-		const data = buildWgExport({
-			wg: { name: fixture.name, shareCode: fixture.shareCode },
-			...sectionRecord((section) => (section === 'members' ? members : [])),
-		});
-		if (wantsCountsOnly(req)) {
-			return NextResponse.json({
-				counts: Object.fromEntries(
-					EXPORT_SECTION_KEYS.map((section) => [section, data.sections[section].length]),
-				),
-			});
-		}
-		if (format === 'csv') {
-			const section = parseCsvSection(req);
-			if (!section) return badRequest('section_invalid');
-			return csvExportResponse(fixture.shareCode, section, getExportSectionRows(data, section));
-		}
-		return NextResponse.json(data);
-	}
 
 	try {
 		const auth = await requireWgMember(req, code);

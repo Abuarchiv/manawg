@@ -1,4 +1,3 @@
-import { isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 import { isTransientAuthError } from './auth-errors';
@@ -25,12 +24,17 @@ function signInRedirect(request: NextRequest, response: NextResponse): NextRespo
 	return redirect;
 }
 
-/** Refresh sessions and require social authentication before serving WG pages. */
+/**
+ * Refresh sessions and require social authentication before serving WG pages.
+ * `requireWgSignIn: false` is only passed for builds that serve WG pages
+ * without a Supabase session at all.
+ */
 export async function refreshSupabaseSession(
 	request: NextRequest,
 	response: NextResponse,
+	{ requireWgSignIn = true }: { requireWgSignIn?: boolean } = {},
 ): Promise<NextResponse> {
-	const requiresSignIn = request.nextUrl.pathname.startsWith('/wg/') && !isE2EDbDownMode();
+	const requiresSignIn = request.nextUrl.pathname.startsWith('/wg/') && requireWgSignIn;
 	if (!hasSupabaseEnv()) return requiresSignIn ? signInRedirect(request, response) : response;
 
 	const { url, publishableKey } = getSupabaseEnv();

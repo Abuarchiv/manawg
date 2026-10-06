@@ -12,7 +12,7 @@ import {
 	exportErrorMessage,
 	readResponseErrorCode,
 } from '@/components/wg/einstellungen/settings-errors';
-import type { ExportSectionKey, ExportSectionSummary } from '@/core/reads/export';
+import type { ExportSectionKey, ExportSectionSummary } from '@/composition/export';
 import { cn } from '@/shared/lib/cn';
 import type { StoredIdentity } from '@/shared/lib/identity';
 import { memberAuthHeader } from '@/shared/lib/identity';

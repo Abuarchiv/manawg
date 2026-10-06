@@ -1,3 +1,4 @@
+import { FixtureClientSetup } from '@/fixtures/FixtureClientSetup';
 import { InstallPrompt } from '@/shared/components/install-prompt';
 import { PwaRegister } from '@/shared/components/pwa-register';
 import { ThemeProvider } from '@/shared/components/theme/ThemeProvider';
@@ -173,6 +174,7 @@ export default function RootLayout({
 				>{`${JSON.stringify(softwareApplicationSchema)}`}</Script>
 			</head>
 			<body suppressHydrationWarning>
+				<FixtureClientSetup />
 				{/* WCAG 2.4.1 Bypass Blocks — keyboard-only skip link.
 				    Targets the <main id="main"> rendered by per-route layouts. */}
 				<a href="#main" className="skip-link">

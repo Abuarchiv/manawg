@@ -384,7 +384,7 @@ test.describe('label in name audit', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 
 	const BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
-	// Fixture WG name (src/core/infra/e2e-db-down.ts E2E_EXISTING_WG.name) — not
+	// Fixture WG name (src/fixtures/data.ts E2E_EXISTING_WG.name) — not
 	// exported via FIXTURE_WG, so it is duplicated here like the other specs do.
 	const WG_NAME = 'sadf';
 
