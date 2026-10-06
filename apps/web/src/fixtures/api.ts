@@ -16,7 +16,6 @@ import { groupItemsByCategory } from '@/features/inventory/inventory';
 import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 import { type NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { type E2EWgFixture, E2E_CREATED_WG, buildE2EDashboardData, getE2EWgFixture } from './data';
 
 /**
@@ -178,10 +177,15 @@ function wgBootstrap(code: string): NextResponse {
 	});
 }
 
-const createWgSchema = z.object({
-	name: z.string().trim().min(1).max(WG_NAME_MAX_LENGTH),
-	creatorName: z.string().trim().min(1).max(MEMBER_NAME_MAX_LENGTH),
-});
+/**
+ * The create route's body rules, without zod: this module ships inside the
+ * Edge middleware bundle. Anything it rejects falls through to the route.
+ */
+function trimmedName(value: unknown, max: number): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length >= 1 && trimmed.length <= max ? trimmed : null;
+}
 
 /** `POST /api/wg`: every valid create lands on the fixture "created" WG. */
 async function createWg(req: NextRequest): Promise<NextResponse | null> {
@@ -191,13 +195,16 @@ async function createWg(req: NextRequest): Promise<NextResponse | null> {
 	} catch {
 		return null;
 	}
-	const parsed = createWgSchema.safeParse(raw);
-	if (!parsed.success) return null;
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+	const body = raw as Record<string, unknown>;
+	const name = trimmedName(body.name, WG_NAME_MAX_LENGTH);
+	const creatorName = trimmedName(body.creatorName, MEMBER_NAME_MAX_LENGTH);
+	if (!name || !creatorName) return null;
 	return NextResponse.json({
-		wg: { id: E2E_CREATED_WG.id, shareCode: E2E_CREATED_WG.shareCode, name: parsed.data.name },
+		wg: { id: E2E_CREATED_WG.id, shareCode: E2E_CREATED_WG.shareCode, name },
 		creator: {
 			id: E2E_CREATED_WG.member.id,
-			name: parsed.data.creatorName,
+			name: creatorName,
 			token: 'fixture-member-token',
 		},
 	});

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import test from 'node:test';
 import { fixtureClientProps, isClientFixtureMode } from '@/fixtures/client-mode';
-import { E2E_EXISTING_WG } from '@/fixtures/data';
+import { E2E_CREATED_WG, E2E_EXISTING_WG } from '@/fixtures/data';
 import { resolveFixtureRequest } from '@/fixtures/middleware';
 import { isE2EDbDownMode } from '@/fixtures/mode';
 import { loadFixtureWgView } from '@/fixtures/pages';
@@ -128,7 +128,7 @@ test('the page seam serves fixture WGs and rejects unknown codes', () => {
 
 async function fixtureApi(
 	path: string,
-	init: { method?: string; headers?: Record<string, string> } = {},
+	init: { method?: string; headers?: Record<string, string>; body?: string } = {},
 ) {
 	return withEnv(FIXTURE_ENV, async () => {
 		const fixture = resolveFixtureRequest(new NextRequest(`http://localhost${path}`, init));
@@ -175,4 +175,21 @@ test('fixture API leaves validation and writes to the real route', async () => {
 		((await bootstrap?.json()) as { currentMember: { memberId: string } }).currentMember.memberId,
 		E2E_EXISTING_WG.member.id,
 	);
+});
+
+test('fixture WG create answers valid bodies and leaves the rest to the route', async () => {
+	const create = (body: unknown) =>
+		fixtureApi('/api/wg', { method: 'POST', body: JSON.stringify(body) });
+
+	const created = await create({ name: ' Neue WG ', creatorName: 'Alex' });
+	assert.equal(created?.status, 200);
+	assert.deepEqual(await created?.json(), {
+		wg: { id: E2E_CREATED_WG.id, shareCode: E2E_CREATED_WG.shareCode, name: 'Neue WG' },
+		creator: { id: E2E_CREATED_WG.member.id, name: 'Alex', token: 'fixture-member-token' },
+	});
+
+	assert.equal(await create({ name: '   ', creatorName: 'Alex' }), null);
+	assert.equal(await create({ name: 'WG', creatorName: 'x'.repeat(81) }), null);
+	assert.equal(await create(['not', 'an', 'object']), null);
+	assert.equal(await fixtureApi('/api/wg', { method: 'POST', body: '{' }), null);
 });
