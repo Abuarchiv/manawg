@@ -23,8 +23,8 @@ import {
 	RESPONSE_REPLAY_TTL_SECONDS,
 } from './replay-retention';
 
-export const OFFLINE_QUEUE_KEY = 'manawg:offline-actions';
-export const SYNCED_IDS_KEY = 'manawg:offline-synced-ids';
+const OFFLINE_QUEUE_KEY = 'manawg:offline-actions';
+const SYNCED_IDS_KEY = 'manawg:offline-synced-ids';
 const OFFLINE_QUEUE_LOCK_NAME = 'manawg:offline-queue';
 /** No expiry: replaying an edited action under its original key can drop the edit. */
 const OFFLINE_REVIEW_IDS_KEY = 'manawg:offline-review-ids';

@@ -15,7 +15,7 @@ export interface SegmentCount {
 	overflow?: boolean | undefined;
 }
 
-export interface ChatUnreadCount {
+interface ChatUnreadCount {
 	count: number;
 	overflow: boolean;
 	/** Missing only for cached responses created before exact totals were added. */

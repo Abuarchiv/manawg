@@ -73,7 +73,7 @@ const webServerCommand =
 			: `${prepareIsolatedNext} && if [ "\${CI:-}" != "true" ] && [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next dev --port ${serverPort}`;
 
 export default defineConfig({
-	globalSetup: previewE2E ? path.join(APP_DIR, 'e2e/preview-global-setup.ts') : undefined,
+	...(previewE2E ? { globalSetup: path.join(APP_DIR, 'e2e/preview-global-setup.ts') } : {}),
 	testDir: './e2e',
 	fullyParallel: false,
 	forbidOnly: !!process.env.CI,
@@ -83,9 +83,9 @@ export default defineConfig({
 	timeout: previewE2E ? 60_000 : 30_000,
 	use: {
 		baseURL: BASE_URL,
-		storageState: previewStorageState,
+		...(previewStorageState ? { storageState: previewStorageState } : {}),
 		// Pace live UI actions to respect the real shared per-IP rate limits.
-		launchOptions: previewE2E ? { slowMo: 500 } : undefined,
+		...(previewE2E ? { launchOptions: { slowMo: 500 } } : {}),
 		trace: previewE2E ? 'off' : 'on-first-retry',
 		screenshot: previewE2E ? 'off' : 'only-on-failure',
 		// Pin timezone and locale so assertions on rendered dates and amounts
@@ -101,13 +101,15 @@ export default defineConfig({
 		},
 	],
 	// Skip local dev server when running against a remote BASE_URL (e.g. preview/prod).
-	webServer: isRemoteBase
-		? undefined
+	...(isRemoteBase
+		? {}
 		: {
-				command: webServerCommand,
-				cwd: APP_DIR,
-				url: BASE_URL,
-				reuseExistingServer: false,
-				timeout: 180_000,
-			},
+				webServer: {
+					command: webServerCommand,
+					cwd: APP_DIR,
+					url: BASE_URL,
+					reuseExistingServer: false,
+					timeout: 180_000,
+				},
+			}),
 });

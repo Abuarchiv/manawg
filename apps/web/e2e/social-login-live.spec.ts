@@ -2,6 +2,7 @@
 // Why: OAuth errors must keep a safe destination, reject external redirects and clear PKCE cookies; only verifiable against the real provider config.
 
 import { expect, test } from '@playwright/test';
+import { defined } from './_helpers';
 
 test.describe('live social-login entry', () => {
 	test.skip(
@@ -51,7 +52,7 @@ test.describe('live social-login entry', () => {
 			'/auth/callback?error=access_denied&next=https%3A%2F%2Fexample.com',
 			{ maxRedirects: 0 },
 		);
-		const destination = new URL(response.headers().location);
+		const destination = new URL(defined(response.headers().location, 'redirect location'));
 		expect(destination.origin).toBe(new URL(response.url()).origin);
 		expect(destination.pathname).toBe('/neu');
 		expect(destination.searchParams.get('next')).toBe('/');

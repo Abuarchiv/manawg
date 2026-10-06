@@ -70,4 +70,4 @@ function Switch({
 	);
 }
 
-export { Switch, type SwitchProps };
+export { Switch };

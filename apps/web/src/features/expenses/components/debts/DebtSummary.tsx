@@ -109,7 +109,7 @@ interface DebtRowProps {
 	onSettled: (message?: string) => void;
 }
 
-export interface MemberBalance {
+interface MemberBalance {
 	memberId: string;
 	memberName: string;
 	currency: string;

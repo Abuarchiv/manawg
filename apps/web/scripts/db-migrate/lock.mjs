@@ -3,7 +3,7 @@
  * holder fails the run with a clear reason instead of blocking it until the job times out.
  */
 
-export const MIGRATION_LOCK = 'manawg:drizzle-migrate';
+const MIGRATION_LOCK = 'manawg:drizzle-migrate';
 const LOCK_WAIT_MS = 60_000;
 const LOCK_RETRY_MS = 1_000;
 

@@ -27,7 +27,7 @@ import { contentSecurityPolicy } from '../src/core/infra/security-headers';
 import { MAX_CSV_BYTES, readImportJsonBody } from '../src/features/expenses/import-body';
 import { isE2EDbDownMode } from '../src/fixtures/mode';
 import { config, isShareCodeLookup, middleware, originAllowed } from '../src/middleware';
-import { FIXTURE_WG, setupMember } from './_helpers';
+import { FIXTURE_WG, setupMember, spyConsoleError } from './_helpers';
 
 test.describe('csrf origin', () => {
 	const WRITE_URL = 'https://app.example.com/api/wg/ABCDEFGH/expenses';
@@ -465,20 +465,6 @@ test.describe('rate limit fail open env', () => {
 		});
 	}
 
-	function spyConsoleError(): { calls: unknown[][]; restore: () => void } {
-		const original = console.error;
-		const calls: unknown[][] = [];
-		console.error = (...args: unknown[]) => {
-			calls.push(args);
-		};
-		return {
-			calls,
-			restore: () => {
-				console.error = original;
-			},
-		};
-	}
-
 	interface EnvCase {
 		env: Partial<Record<(typeof ENV_KEYS)[number], string>>;
 		failMode: 'open' | 'closed';
@@ -647,20 +633,6 @@ test.describe('rate limit fail open stats', () => {
 				},
 			},
 		});
-	}
-
-	function spyConsoleError(): { calls: unknown[][]; restore: () => void } {
-		const original = console.error;
-		const calls: unknown[][] = [];
-		console.error = (...args: unknown[]) => {
-			calls.push(args);
-		};
-		return {
-			calls,
-			restore: () => {
-				console.error = original;
-			},
-		};
 	}
 
 	test('production fail-open logs every event while the monitoring capture stays throttled', async () => {
