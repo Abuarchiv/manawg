@@ -301,6 +301,7 @@ export function useShoppingPage({
 					}
 					if (!updated) {
 						rollback();
+						optimisticRef.current.delete(item.id);
 						void load(true);
 						setToggleError(
 							'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
@@ -407,6 +408,7 @@ export function useShoppingPage({
 					),
 				);
 				shoppingPatchRequestKeysRef.current.delete(item.id);
+				optimisticRef.current.delete(item.id);
 				void load(true);
 			} finally {
 				optimisticRef.current.delete(item.id);
