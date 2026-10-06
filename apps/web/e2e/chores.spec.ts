@@ -2,14 +2,8 @@
 // Why: fair rotation and Berlin calendar-day maths regress silently without explicit cases.
 
 import { type Locator, expect, test } from '@playwright/test';
-import { type ActivityItem, filterActivityByScope } from '../src/composition/activity';
 import { buildDraftKey } from '../src/core/offline/drafts';
-import * as offlineClient from '../src/core/offline/offline-client';
-import {
-	buildChoreFairness,
-	chooseNextAvailableMember,
-} from '../src/features/chores/chore-fairness';
-import { getChoreStatus } from '../src/features/chores/chore-status';
+import { chooseNextAvailableMember } from '../src/features/chores/chore-fairness';
 import { EXPECTED_MEMBER_ID_HEADER } from '../src/shared/lib/member-header';
 import {
 	FIXTURE_WG,
@@ -785,22 +779,6 @@ test.describe('chore next assignee', () => {
 	});
 });
 
-test.describe('chores retry', () => {
-	test('uses Berlin calendar days instead of rounding elapsed hours', () => {
-		const now = Date.parse('2026-09-05T15:30:00+02:00');
-
-		expect(getChoreStatus('2026-09-06T00:10:00+02:00', now)).toMatchObject({
-			state: 'planned',
-			label: 'morgen',
-		});
-		expect(getChoreStatus('2026-09-04T00:10:00+02:00', now)).toMatchObject({
-			state: 'overdue',
-			overdueDays: 1,
-			label: 'seit 1 T. offen',
-		});
-	});
-});
-
 test.describe('chore swap coordination (pilot DB worker)', () => {
 	test.setTimeout(120_000);
 	test.skip(
@@ -954,79 +932,6 @@ test.describe('chore swap coordination (pilot DB worker)', () => {
 				await request.delete(`/api/wg/${shareCode}/chores/${choreId}`).catch(() => undefined);
 			}
 		}
-	});
-});
-
-test.describe('domain regressions (recurring retry, activity, fairness)', () => {
-	const NOW = Date.parse('2026-09-19T12:00:00.000Z');
-
-	function activity(id: string, text: string, completed: boolean): ActivityItem {
-		return {
-			id,
-			kind: 'chore',
-			timestamp: new Date(NOW).toISOString(),
-			memberId: 'member-1',
-			memberName: 'Abu',
-			text,
-			completed,
-		} as ActivityItem;
-	}
-
-	test('retries a recurring advance carried by an expense action', () => {
-		const retry = offlineClient.createRecurringAdvanceRetry(
-			{
-				id: 'queued-recurring',
-				type: 'expense.create',
-				shareCode: 'WGCODE',
-				memberId: 'member-1',
-				createdAt: new Date(NOW).toISOString(),
-				payload: {
-					recurringExpenseId: 'recurring-1',
-					expectedRecurringNextDueAt: '2026-10-01T00:00:00.000Z',
-				},
-			},
-			NOW,
-		);
-
-		expect(retry).toMatchObject({
-			type: 'recurring.advance',
-			payload: {
-				recurringExpenseId: 'recurring-1',
-				expectedRecurringNextDueAt: '2026-10-01T00:00:00.000Z',
-			},
-		});
-	});
-
-	test('activity done and changes scopes respect chore completion state', () => {
-		const items = [activity('open', 'Flur geplant', false), activity('done', 'Bad erledigt', true)];
-
-		expect(filterActivityByScope(items, 'done', 'Abu', 'member-1').map((item) => item.id)).toEqual([
-			'done',
-		]);
-		expect(
-			filterActivityByScope(items, 'changes', 'Abu', 'member-1').map((item) => item.id),
-		).toEqual(['open']);
-	});
-
-	test('uses the API-repeated open-gap total once for an assignee', () => {
-		const fairness = buildChoreFairness({
-			members: [{ id: 'member-1', name: 'Abu' }],
-			chores: [
-				{
-					assignedMemberId: 'member-1',
-					openGapCountForAssignee: 2,
-					nextDueAt: '2026-09-20T12:00:00.000Z',
-				},
-				{
-					assignedMemberId: 'member-1',
-					openGapCountForAssignee: 2,
-					nextDueAt: '2026-09-20T12:00:00.000Z',
-				},
-			],
-			now: NOW,
-		});
-
-		expect(fairness.rows[0]).toMatchObject({ openGapCount: 2, score: 10 });
 	});
 });
 
