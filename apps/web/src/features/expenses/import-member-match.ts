@@ -1,0 +1,88 @@
+import { normalizeMemberName } from './import-csv';
+import type { ParsedExpense } from './import-parsers';
+
+const FUZZY_MATCH_MAX_DISTANCE = 2;
+
+function levenshtein(a: string, b: string): number {
+	if (a === b) return 0;
+	if (a.length === 0) return b.length;
+	if (b.length === 0) return a.length;
+	const prev: number[] = new Array(b.length + 1);
+	const curr: number[] = new Array(b.length + 1);
+	for (let j = 0; j <= b.length; j += 1) prev[j] = j;
+	for (let i = 1; i <= a.length; i += 1) {
+		curr[0] = i;
+		for (let j = 1; j <= b.length; j += 1) {
+			const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+			const del = (prev[j] ?? 0) + 1;
+			const ins = (curr[j - 1] ?? 0) + 1;
+			const sub = (prev[j - 1] ?? 0) + cost;
+			curr[j] = Math.min(del, ins, sub);
+		}
+		for (let j = 0; j <= b.length; j += 1) prev[j] = curr[j] ?? 0;
+	}
+	return prev[b.length] ?? 0;
+}
+
+interface MemberRef {
+	id: string;
+	name: string;
+}
+
+export function matchMembers(
+	parsedNames: readonly string[],
+	wgMembers: readonly MemberRef[],
+): Map<string, string | null> {
+	const result = new Map<string, string | null>();
+	const memberIndex = wgMembers.map((m) => ({
+		id: m.id,
+		name: m.name,
+		normalized: normalizeMemberName(m.name),
+	}));
+	for (const raw of parsedNames) {
+		const normalized = normalizeMemberName(raw);
+		if (!normalized) {
+			result.set(raw, null);
+			continue;
+		}
+		const exact = memberIndex.find((m) => m.normalized === normalized);
+		if (exact) {
+			result.set(raw, exact.id);
+			continue;
+		}
+		let best: { id: string; distance: number; ambiguous: boolean } | null = null;
+		for (const m of memberIndex) {
+			const distance = levenshtein(normalized, m.normalized);
+			if (distance > FUZZY_MATCH_MAX_DISTANCE) continue;
+			if (best === null || distance < best.distance) {
+				best = { id: m.id, distance, ambiguous: false };
+			} else if (distance === best.distance) {
+				best.ambiguous = true;
+			}
+		}
+		result.set(raw, best && !best.ambiguous ? best.id : null);
+	}
+	return result;
+}
+
+export function collectUniqueNames(parsed: readonly ParsedExpense[]): string[] {
+	const set = new Set<string>();
+	for (const e of parsed) {
+		if (e.paidByName) set.add(e.paidByName);
+		for (const s of e.splits) {
+			if (s.memberName) set.add(s.memberName);
+		}
+	}
+	return Array.from(set);
+}
+
+export function findMappingConflicts(
+	parsed: readonly ParsedExpense[],
+	mapping: Readonly<Record<string, string | null>>,
+): string[] {
+	const conflicts = new Set<string>();
+	for (const name of collectUniqueNames(parsed)) {
+		if (!mapping[name]) conflicts.add(name);
+	}
+	return Array.from(conflicts);
+}
