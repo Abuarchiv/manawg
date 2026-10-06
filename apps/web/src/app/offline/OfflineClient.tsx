@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { createSupabaseBrowserClient } from '@/core/auth/client';
+import { subscribeConnectivity } from '@/core/hooks/use-online-status';
 import {
 	filterOfflineActionsForAuthUser,
 	needsManualOfflineResolution,
@@ -119,8 +120,7 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 			setQueue([]);
 			window.setTimeout(refreshOnEvent, 0);
 		};
-		window.addEventListener('online', refreshOnEvent);
-		window.addEventListener('offline', refreshOnEvent);
+		const unsubscribeConnectivity = subscribeConnectivity(refreshOnEvent);
 		window.addEventListener('manawg:offline-queue', refreshOnEvent);
 		window.addEventListener('storage', refreshOnEvent);
 		let unsubscribe = () => {};
@@ -135,8 +135,7 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 		return () => {
 			unsubscribe();
 			syncAbortRef.current?.abort();
-			window.removeEventListener('online', refreshOnEvent);
-			window.removeEventListener('offline', refreshOnEvent);
+			unsubscribeConnectivity();
 			window.removeEventListener('manawg:offline-queue', refreshOnEvent);
 			window.removeEventListener('storage', refreshOnEvent);
 		};

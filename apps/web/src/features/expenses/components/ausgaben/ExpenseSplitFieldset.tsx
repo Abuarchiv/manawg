@@ -22,7 +22,7 @@ import { remainderCandidates } from '@/features/expenses/expense-split-input';
 import type { Dispatch, SetStateAction } from 'react';
 import { ManualSplitSummary } from './ManualSplitSummary';
 import { SplitReview } from './SplitReview';
-import type { SplitMode } from './useExpenseForm';
+import type { SplitMode } from './expense-form-draft';
 
 interface ExpenseSplitFieldsetProps {
 	members: Member[];

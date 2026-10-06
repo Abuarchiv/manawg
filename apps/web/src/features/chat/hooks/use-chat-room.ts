@@ -1,120 +1,26 @@
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { notifyChatReadConfirmed } from '@/components/wg/useWgCounts';
-import {
-	RATE_LIMITED_MESSAGE,
-	READ_ONLY_MESSAGE,
-	SESSION_EXPIRED_MESSAGE,
-	isRateLimited,
-	isReadOnlyMode,
-	isRetryableServerError,
-	isSessionExpired,
-} from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
-import {
-	type NotificationWarning,
-	notificationWarningMessage,
-} from '@/core/notifications/notification-warning';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { notificationWarningMessage } from '@/core/notifications/notification-warning';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-	CHAT_REFRESH_BATCH_SIZE,
-	advanceChatRefreshSequence,
-	isLatestChatRefreshResponse,
-	mergePagedMessagesById,
-	mergePagedReactions,
-	nextChatRefreshBatch,
-	reactionKeysToPreserve,
-	reconcileChatMessages,
-	reconcileChatReactions,
-} from '../chat-pure';
-import type { BubbleMessage, ReactionSummary } from '../components/MessageBubble';
+import { explainChatError } from '../chat-errors';
+import { mergePagedMessagesById, mergePagedReactions } from '../chat-pure';
+import { summarizeReactions } from '../chat-reactions';
+import { CHAT_PAGE_SIZE, createChatRefresher } from '../chat-refresh';
+import { type ChatMessageInput, type PendingChatSend, postChatMessage } from '../chat-send';
+import type { ChatMessageDto, ChatReactionRow } from '../chat-types';
+import { useChatReactions } from './use-chat-reactions';
+import { useChatReadReceipt } from './use-chat-read-receipt';
 
-export interface ChatMessageDto extends BubbleMessage {
-	wgId: string;
-	systemKind?: string | null;
-	systemPayload?: Record<string, unknown> | null;
-}
+export type { ChatMessageDto, ChatReactionRow } from '../chat-types';
 
-export interface ChatReactionRow {
-	messageId: string;
-	memberId: string;
-	emoji: string;
-}
-
-const PAGE_SIZE = 50;
 const CHAT_POLL_INTERVAL_MS = 8000;
 
-type ChatAction = 'send' | 'react' | 'unreact' | 'edit' | 'delete';
-
-const OFFLINE_ERRORS: Record<ChatAction, string> = {
-	send: 'Nachricht konnte nicht gesendet werden: Prüfe deine Verbindung und versuche es erneut.',
-	react: 'Reaktion konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.',
-	unreact:
-		'Reaktion konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.',
-	edit: 'Nachricht konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.',
-	delete: 'Nachricht konnte nicht gelöscht werden: Prüfe deine Verbindung und versuche es erneut.',
-};
-
-const GENERIC_ERRORS: Record<ChatAction, string> = {
-	send: 'Nachricht konnte nicht gesendet werden.',
-	react: 'Reaktion konnte nicht gespeichert werden.',
-	unreact: 'Reaktion konnte nicht gespeichert werden.',
-	edit: 'Nachricht konnte nicht gespeichert werden.',
-	delete: 'Nachricht konnte nicht gelöscht werden.',
-};
-
-function explainChatError(action: ChatAction, error: string): string {
-	if (error === 'image_removed') {
-		return 'Dieses Bild wurde entfernt. Lade es erneut hoch, bevor du die Nachricht sendest.';
-	}
-	// The middleware answers 429 with `rate_limited`, the routes with `too_many_requests`.
-	if (isRateLimited(error)) return RATE_LIMITED_MESSAGE;
-	// Without these texts the reply preview would stay and every send would fail the same way, silently.
-	if (error === 'reply_to_not_found' || error === 'reply_to_invalid') {
-		return 'Die Nachricht, auf die du antwortest, gibt es nicht mehr. Entferne die Antwort und sende erneut.';
-	}
-	if (error === 'message_deleted') return 'Diese Nachricht wurde gelöscht.';
-	if (error === 'edit_not_allowed') {
-		return 'Nachrichten lassen sich nur 15 Minuten nach dem Senden bearbeiten.';
-	}
-	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') return OFFLINE_ERRORS[action];
-	if (isReadOnlyMode(error)) return READ_ONLY_MESSAGE;
-	if (isSessionExpired(error)) return SESSION_EXPIRED_MESSAGE;
-	if (isRetryableServerError(error)) return `${GENERIC_ERRORS[action]} Versuche es gleich erneut.`;
-	return GENERIC_ERRORS[action];
-}
-
-function summarizeReactions(
-	rows: ChatReactionRow[],
-	currentMemberId: string,
-): Map<string, ReactionSummary[]> {
-	const byMessage = new Map<string, Map<string, { count: number; mine: boolean }>>();
-	for (const row of rows) {
-		const messageMap = byMessage.get(row.messageId) ?? new Map();
-		const entry = messageMap.get(row.emoji) ?? { count: 0, mine: false };
-		entry.count += 1;
-		if (row.memberId === currentMemberId) entry.mine = true;
-		messageMap.set(row.emoji, entry);
-		byMessage.set(row.messageId, messageMap);
-	}
-	const result = new Map<string, ReactionSummary[]>();
-	for (const [messageId, emojiMap] of byMessage) {
-		const list: ReactionSummary[] = [];
-		for (const [emoji, { count, mine }] of emojiMap) {
-			list.push({ emoji, count, mine });
-		}
-		list.sort((a, b) => b.count - a.count);
-		result.set(messageId, list);
-	}
-	return result;
-}
-
 /**
- * Nachrichten, Reaktionen und Lesestatus eines WG-Chats: Bootstrap, Polling/Realtime-Refresh,
- * Cursor-Pagination und alle Mutationen. Refresh-Antworten werden per Sequenznummer gegen
- * neuere lokale Änderungen abgesichert.
+ * Messages, reactions and read state of a WG chat: bootstrap, polling refresh, cursor
+ * pagination and all mutations. Paged history does not fit a synced collection, so the refresh
+ * loop lives in `createChatRefresher`, which guards every response against newer local changes.
  */
 export function useChatRoom({
 	wgId,
@@ -134,161 +40,53 @@ export function useChatRoom({
 
 	const [messages, setMessages] = useState<ChatMessageDto[]>(initialMessages);
 	const [reactionRows, setReactionRows] = useState<ChatReactionRow[]>(initialReactions);
-	const [hasMoreOlder, setHasMoreOlder] = useState(initialMessages.length >= PAGE_SIZE);
+	const [hasMoreOlder, setHasMoreOlder] = useState(initialMessages.length >= CHAT_PAGE_SIZE);
 	const [bootstrapping, setBootstrapping] = useState(initialMessages.length === 0);
 	const [bootstrapError, setBootstrapError] = useState(false);
 	const [loadingOlder, setLoadingOlder] = useState(false);
 	const [olderError, setOlderError] = useState(false);
 	const [refreshError, setRefreshError] = useState(false);
-	const [readError, setReadError] = useState(false);
 	const [sendError, setSendError] = useState<string | null>(null);
 	const loadingOlderRef = useRef(false);
-	const refreshOlderOffsetRef = useRef(0);
-	const refreshRequestSequenceRef = useRef(0);
-	const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
-	// Set when a mutation invalidates the refresh in flight: its result is then
-	// dropped, so the next refresh() must fetch again instead of reusing it.
-	const refreshSupersededRef = useRef(false);
-	const pendingMessageRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
-	const reactionRequestKeysRef = useRef(new Map<string, string>());
-	const reactionMutationVersionsRef = useRef(
-		new Map<string, { messageId: string; version: number }>(),
-	);
-	const pendingReactionMutationsRef = useRef(new Set<string>());
-	const scrollRef = useRef<HTMLDivElement | null>(null);
-	const readSentinelRef = useRef<HTMLDivElement | null>(null);
-	const lastReadSentIdRef = useRef<string | null>(null);
+	const pendingSendRef = useRef<PendingChatSend['current']>(null);
+	const messagesRef = useRef(messages);
+	messagesRef.current = messages;
+
+	const receipt = useChatReadReceipt({ shareCode, memberId: identity.memberId, messages });
+	const reactions = useChatReactions({
+		encodedShareCode,
+		memberId: identity.memberId,
+		toast,
+		setReactionRows,
+	});
+	const reactionTracker = reactions.tracker;
 
 	const reactionsByMessage = useMemo(
 		() => summarizeReactions(reactionRows, identity.memberId),
 		[reactionRows, identity.memberId],
 	);
 
-	function invalidatePendingRefresh(): void {
-		refreshRequestSequenceRef.current = advanceChatRefreshSequence(
-			refreshRequestSequenceRef.current,
-		);
-		if (refreshPromiseRef.current) refreshSupersededRef.current = true;
-	}
-
-	const sendRead = useCallback(
-		async (messageId: string | null) => {
-			const res = await apiFetch(`/api/wg/${encodedShareCode}/chat/read`, {
-				method: 'POST',
+	const refresher = useMemo(
+		() =>
+			createChatRefresher({
+				messagesUrl,
 				memberId: identity.memberId,
-				body: JSON.stringify({ lastReadMessageId: messageId }),
-			});
-			// An older response must not overwrite a newer receipt's state.
-			if (lastReadSentIdRef.current !== messageId) return;
-			setReadError(!res.ok);
-			if (!res.ok) lastReadSentIdRef.current = null;
-			else notifyChatReadConfirmed(shareCode);
-		},
-		[encodedShareCode, identity.memberId, shareCode],
+				fetchJson: (url, init) => apiFetch(url, init),
+				getMessages: () => messagesRef.current,
+				reactions: reactionTracker,
+				setRefreshError,
+				setMessages,
+				setReactionRows,
+				setHasMoreOlder,
+			}),
+		[identity.memberId, messagesUrl, reactionTracker],
 	);
-
-	const markLatestRead = useCallback(() => {
-		const latest = messages[messages.length - 1];
-		if (!latest) return;
-		if (lastReadSentIdRef.current === latest.id) return;
-		lastReadSentIdRef.current = latest.id;
-		void sendRead(latest.id);
-	}, [messages, sendRead]);
-
-	useEffect(() => {
-		const root = scrollRef.current;
-		const sentinel = readSentinelRef.current;
-		if (!root || !sentinel || typeof IntersectionObserver === 'undefined') return;
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (entries.some((entry) => entry.isIntersecting)) markLatestRead();
-			},
-			{ root, threshold: 1 },
-		);
-		observer.observe(sentinel);
-		return () => observer.disconnect();
-	}, [markLatestRead]);
-
-	const fetchMessages = useCallback(async (): Promise<boolean> => {
-		const requestSequence = advanceChatRefreshSequence(refreshRequestSequenceRef.current);
-		refreshRequestSequenceRef.current = requestSequence;
-		const isLatest = () =>
-			isLatestChatRefreshResponse(requestSequence, refreshRequestSequenceRef.current);
-		const refreshBatch = nextChatRefreshBatch(
-			messages,
-			PAGE_SIZE,
-			CHAT_REFRESH_BATCH_SIZE,
-			refreshOlderOffsetRef.current,
-		);
-		refreshOlderOffsetRef.current = refreshBatch.nextOffset;
-		const params = new URLSearchParams({ limit: `${PAGE_SIZE}` });
-		for (const id of refreshBatch.ids) params.append('refreshId', id);
-		const mutationVersionsAtRequest = new Map(
-			[...reactionMutationVersionsRef.current].map(([key, mutation]) => [key, mutation.version]),
-		);
-		const res = await apiFetch<{
-			messages: ChatMessageDto[];
-			refreshedMessages?: ChatMessageDto[];
-			reactions: ChatReactionRow[];
-		}>(`${messagesUrl}?${params.toString()}`, { memberId: identity.memberId });
-		if (!isLatest()) return true;
-		if (!res.ok) {
-			setRefreshError((prev) => (isLatest() ? true : prev));
-			return false;
-		}
-		setRefreshError((prev) => (isLatest() ? false : prev));
-		const refreshedLoadedMessages = res.data.refreshedMessages ?? [];
-		const refreshedMessageIds = new Set(
-			[...res.data.messages, ...refreshedLoadedMessages].map((message) => message.id),
-		);
-		setMessages((prev) =>
-			isLatest()
-				? reconcileChatMessages(prev, res.data.messages, refreshedLoadedMessages, PAGE_SIZE)
-				: prev,
-		);
-		setReactionRows((prev) => {
-			if (!isLatest()) return prev;
-			const preservedLocalKeys = reactionKeysToPreserve(
-				reactionMutationVersionsRef.current,
-				pendingReactionMutationsRef.current,
-				mutationVersionsAtRequest,
-				refreshedMessageIds,
-			);
-			return reconcileChatReactions(
-				prev,
-				res.data.reactions,
-				refreshedMessageIds,
-				preservedLocalKeys,
-			);
-		});
-		// Only ever grow: the latest page's length says nothing about whether
-		// older pages were already loaded. loadOlder() clears the flag when the
-		// history is exhausted.
-		setHasMoreOlder((prev) => (isLatest() ? prev || res.data.messages.length >= PAGE_SIZE : prev));
-		return true;
-	}, [messagesUrl, identity.memberId, messages]);
-
-	const refresh = useCallback((): Promise<boolean> => {
-		// A poll must not supersede a request that is still loading. Mutations
-		// still invalidate its sequence so a stale snapshot cannot undo them; in
-		// that case one follow-up fetch is chained after it, otherwise the caller
-		// (e.g. the post-send refresh) would wait on a result that gets dropped.
-		const inFlight = refreshPromiseRef.current;
-		if (inFlight && !refreshSupersededRef.current) return inFlight;
-		refreshSupersededRef.current = false;
-		const next: Promise<boolean> = (
-			inFlight ? inFlight.then(fetchMessages, fetchMessages) : fetchMessages()
-		).finally(() => {
-			if (refreshPromiseRef.current === next) refreshPromiseRef.current = null;
-		});
-		refreshPromiseRef.current = next;
-		return next;
-	}, [fetchMessages]);
+	const refresh = refresher.refresh;
 
 	useVisibilityPausedInterval(() => void refresh(), wgId ? CHAT_POLL_INTERVAL_MS : null);
 
-	// Bootstrap through the gated API when the RSC passed no messages (the
-	// server render intentionally loads none — see chat/page.tsx).
+	// Bootstrap through the gated API when the RSC passed no messages (the server render
+	// intentionally loads none, see chat/page.tsx).
 	const bootstrappedRef = useRef(initialMessages.length > 0);
 	const loadInitialMessages = useCallback(async () => {
 		setBootstrapError(false);
@@ -312,7 +110,7 @@ export function useChatRoom({
 		setLoadingOlder(true);
 		try {
 			const res = await apiFetch<{ messages: ChatMessageDto[]; reactions: ChatReactionRow[] }>(
-				`${messagesUrl}?limit=${PAGE_SIZE}&before=${encodeURIComponent(oldest.createdAt)}&beforeId=${encodeURIComponent(oldest.id)}`,
+				`${messagesUrl}?limit=${CHAT_PAGE_SIZE}&before=${encodeURIComponent(oldest.createdAt)}&beforeId=${encodeURIComponent(oldest.id)}`,
 				{ memberId: identity.memberId },
 			);
 			if (!res.ok) {
@@ -325,127 +123,39 @@ export function useChatRoom({
 			}
 			setMessages((prev) => mergePagedMessagesById(res.data.messages, prev));
 			setReactionRows((prev) => mergePagedReactions(res.data.reactions, prev));
-			setHasMoreOlder(res.data.messages.length >= PAGE_SIZE);
+			setHasMoreOlder(res.data.messages.length >= CHAT_PAGE_SIZE);
 		} finally {
 			loadingOlderRef.current = false;
 			setLoadingOlder(false);
 		}
 	}
 
-	async function sendMessage(input: {
-		body: string;
-		mentionMemberIds: string[];
-		replyToMessageId: string | null;
-	}): Promise<boolean> {
+	async function sendMessage(input: ChatMessageInput): Promise<boolean> {
 		setSendError(null);
-		const fingerprint = JSON.stringify(input);
-		const pendingRequest = pendingMessageRequestRef.current;
-		const idempotencyKey =
-			pendingRequest?.fingerprint === fingerprint
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
-		if (!idempotencyKey) {
-			setSendError('Nachricht konnte nicht sicher gesendet werden. Versuche es erneut.');
-			return false;
-		}
-		pendingMessageRequestRef.current = { fingerprint, key: idempotencyKey };
-		const res = await apiFetch<{
-			message: ChatMessageDto;
-			warning: NotificationWarning;
-		}>(messagesUrl, {
-			method: 'POST',
+		const result = await postChatMessage(input, {
+			messagesUrl,
 			memberId: identity.memberId,
-			headers: { 'Idempotency-Key': idempotencyKey },
-			body: JSON.stringify(input),
+			pending: pendingSendRef,
 		});
-		if (!res.ok) {
-			if (res.status > 0 && res.status < 500) pendingMessageRequestRef.current = null;
-			setSendError(explainChatError('send', res.error));
+		if (!result.ok) {
+			setSendError(
+				result.reason === 'key_unavailable'
+					? 'Nachricht konnte nicht sicher gesendet werden. Versuche es erneut.'
+					: explainChatError('send', result.error),
+			);
 			return false;
 		}
-		pendingMessageRequestRef.current = null;
-		invalidatePendingRefresh();
+		const sent = result.message;
+		refresher.invalidate();
 		setMessages((prev) =>
-			prev.some((message) => message.id === res.data.message.id)
-				? prev.map((message) => (message.id === res.data.message.id ? res.data.message : message))
-				: [...prev, res.data.message],
+			prev.some((message) => message.id === sent.id)
+				? prev.map((message) => (message.id === sent.id ? sent : message))
+				: [...prev, sent],
 		);
 		void refresh();
-		const warningMessage = notificationWarningMessage(res.data.warning, 'Gesendet');
+		const warningMessage = notificationWarningMessage(result.warning, 'Gesendet');
 		if (warningMessage) toast.info(warningMessage);
 		return true;
-	}
-
-	/** Marks the reaction as in flight so a concurrent refresh keeps its local state. */
-	async function mutateReaction(
-		kind: 'add' | 'remove',
-		messageId: string,
-		emoji: string,
-	): Promise<boolean> {
-		const action = kind === 'add' ? 'react' : 'unreact';
-		const requestKeyId = `${kind}:${messageId}:${emoji}`;
-		const idempotencyKey =
-			reactionRequestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
-		if (!idempotencyKey) {
-			toast.error(explainChatError(action, 'Netzwerkfehler'));
-			return false;
-		}
-		reactionRequestKeysRef.current.set(requestKeyId, idempotencyKey);
-
-		const mutationKey = `${messageId}|${identity.memberId}|${emoji}`;
-		const current = reactionMutationVersionsRef.current.get(mutationKey);
-		reactionMutationVersionsRef.current.set(mutationKey, {
-			messageId,
-			version: (current?.version ?? 0) + 1,
-		});
-		pendingReactionMutationsRef.current.add(mutationKey);
-		let committed = false;
-		try {
-			const reactionsUrl = `/api/wg/${encodedShareCode}/chat/messages/${messageId}/reactions`;
-			const res =
-				kind === 'add'
-					? await apiFetch(reactionsUrl, {
-							method: 'POST',
-							memberId: identity.memberId,
-							headers: { 'Idempotency-Key': idempotencyKey },
-							body: JSON.stringify({ emoji }),
-						})
-					: await apiFetch(`${reactionsUrl}?emoji=${encodeURIComponent(emoji)}`, {
-							method: 'DELETE',
-							memberId: identity.memberId,
-							headers: { 'Idempotency-Key': idempotencyKey },
-						});
-			if (!res.ok) {
-				if (res.status > 0 && res.status < 500) reactionRequestKeysRef.current.delete(requestKeyId);
-				toast.error(explainChatError(action, res.error));
-				return false;
-			}
-			committed = true;
-			// A committed add or remove settles both directions: a key kept from an
-			// earlier uncertain attempt in the other direction would otherwise replay
-			// that old result later instead of reaching the server.
-			reactionRequestKeysRef.current.delete(`add:${messageId}:${emoji}`);
-			reactionRequestKeysRef.current.delete(`remove:${messageId}:${emoji}`);
-			const isOwnRow = (row: ChatReactionRow) =>
-				row.messageId === messageId && row.memberId === identity.memberId && row.emoji === emoji;
-			setReactionRows((prev) =>
-				kind === 'add'
-					? prev.some(isOwnRow)
-						? prev
-						: [...prev, { messageId, memberId: identity.memberId, emoji }]
-					: prev.filter((row) => !isOwnRow(row)),
-			);
-			return true;
-		} finally {
-			const latest = reactionMutationVersionsRef.current.get(mutationKey);
-			if (committed && latest) {
-				reactionMutationVersionsRef.current.set(mutationKey, {
-					...latest,
-					version: latest.version + 1,
-				});
-			}
-			pendingReactionMutationsRef.current.delete(mutationKey);
-		}
 	}
 
 	async function editMessage(messageId: string, next: string): Promise<boolean> {
@@ -458,20 +168,13 @@ export function useChatRoom({
 			toast.error(explainChatError('edit', res.error));
 			return false;
 		}
-		invalidatePendingRefresh();
+		refresher.invalidate();
+		const editedAt =
+			typeof res.data.message.editedAt === 'string'
+				? res.data.message.editedAt
+				: new Date().toISOString();
 		setMessages((prev) =>
-			prev.map((m) =>
-				m.id === messageId
-					? {
-							...m,
-							body: res.data.message.body,
-							editedAt:
-								typeof res.data.message.editedAt === 'string'
-									? res.data.message.editedAt
-									: new Date().toISOString(),
-						}
-					: m,
-			),
+			prev.map((m) => (m.id === messageId ? { ...m, body: res.data.message.body, editedAt } : m)),
 		);
 		return true;
 	}
@@ -485,7 +188,7 @@ export function useChatRoom({
 			toast.error(explainChatError('delete', res.error));
 			return false;
 		}
-		invalidatePendingRefresh();
+		refresher.invalidate();
 		setMessages((prev) =>
 			prev.map((m) =>
 				m.id === messageId
@@ -505,17 +208,17 @@ export function useChatRoom({
 		loadingOlder,
 		olderError,
 		refreshError,
-		readError,
+		readError: receipt.readError,
 		sendError,
-		scrollRef,
-		readSentinelRef,
-		markLatestRead,
+		scrollRef: receipt.scrollRef,
+		readSentinelRef: receipt.readSentinelRef,
+		markLatestRead: receipt.markLatestRead,
 		refresh,
 		loadInitialMessages,
 		loadOlder,
 		sendMessage,
-		react: (messageId: string, emoji: string) => mutateReaction('add', messageId, emoji),
-		unreact: (messageId: string, emoji: string) => mutateReaction('remove', messageId, emoji),
+		react: reactions.react,
+		unreact: reactions.unreact,
 		editMessage,
 		deleteMessage,
 	};

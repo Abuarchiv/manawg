@@ -1,5 +1,6 @@
 'use client';
 
+import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import type { StoredIdentity } from '@/shared/lib/identity';
@@ -65,10 +66,10 @@ export function useSyncOnFocusAndOnline(
 	useEffect(() => {
 		if (!identity || !accountReady) return;
 		void sync();
-		window.addEventListener('online', sync);
+		const unsubscribeOnline = subscribeOnline(() => void sync());
 		window.addEventListener('focus', sync);
 		return () => {
-			window.removeEventListener('online', sync);
+			unsubscribeOnline();
 			window.removeEventListener('focus', sync);
 		};
 	}, [accountReady, identity, sync]);

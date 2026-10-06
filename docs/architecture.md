@@ -55,7 +55,7 @@ under `app/wg/**`; WG APIs belong under `app/api/wg/**`.
 | `app/` | Pages, layouts, route handlers. Thin. | everything below |
 | `features/<x>/` | Vertical slices: `chat`, `chores`, `events`, `expenses`, `inventory`, `pinnwand`, `shopping` (logic, hooks, components) | `core/`, `shared/`, own files |
 | `core/reads/` | Cross-feature reads/composition: dashboard data and insights, activity feed, export | `core/`, several `features/*` (chores, expenses, events, pinnwand) |
-| `core/` (rest) | Domain-neutral blocks: `db`, `auth`, `guards`, `http`, `offline`, `notifications`, `infra`, `utils`, `validators` | `core/`, `shared/` (exception: `core/activity-feed.ts` imports chat constants) |
+| `core/` (rest) | Domain-neutral blocks: `db`, `auth`, `guards`, `http`, `hooks`, `offline`, `sync`, `notifications`, `infra`, `utils`, `validators` | `core/`, `shared/` (exception: `core/activity-feed.ts` imports chat constants) |
 | `components/` | Shared UI: `ui/` shadcn primitives (plus `LogoMark`, `Toast`, `ConfirmDialog`), `animate-ui/`, `app/` app-wide composites (shell, PWA install/push prompts, theme), `wg/` WG-wide composites | `components/`, `core/`, `shared/` |
 | `shared/` | Framework-light utilities (`lib/`, fonts, css): theme, analytics, identity, header names | `shared/` |
 
@@ -170,15 +170,33 @@ key the write runs in a plain transaction. The protocol is specified in
 
 - Supported actions (`OfflineActionType`): shopping create/update, announcement create, absence
   create, chore create/complete, expense create/update, recurring create/advance. Per-type request
-  building lives in one handler table in `offline-queue.ts`.
-- The queue is JSON in `localStorage` (`manawg:offline-actions`, `offline-client.ts`), guarded by
-  a queue lock. Each action stores a stable `idempotencyKey`; replay sends it as
+  building lives in one handler table (`offline-action-handlers.ts`), builders in
+  `offline-action-builders.ts`; `offline-queue.ts` is the public entry for both.
+- The queue is JSON in `localStorage` (`manawg:offline-actions`, `offline-store.ts`), guarded by
+  a queue lock. `offline-sync.ts` replays it with the rules in `offline-replay-rules.ts`;
+  `offline-client.ts` is the public entry. Each action stores a stable `idempotencyKey`; replay sends it as
   `Idempotency-Key`, so a request that reached the server before the connection dropped is
   replayed rather than duplicated. Retries back off exponentially (max 15 min).
 - Review window: the server keeps replay rows for 7 days, so actions older than
   `OFFLINE_REPLAY_MAX_AGE_MS` (7 days minus clock skew and two request timeouts,
   `replay-retention.ts`) are not resent automatically and need manual review in settings.
   Edited actions, missing local images and some server errors also require review.
+
+## Client data sync
+
+`core/sync/use-synced-collection.ts` keeps one server collection in sync on the client. It owns
+the cached fetch (`core/hooks/useCachedFetch`, store in `cached-fetch-store.ts`), the overlay of
+unconfirmed rows (`pending`), offline replay after a successful load, polling paused while the
+tab is hidden, the refresh on reconnect, and the single place where server responses and local
+changes (`commit`) are reconciled into the rows on screen. Feature hooks (shopping, chores and
+absences, inventory, Pinnwand) only describe the resource (URL, `select`/`assemble`, id, an
+optional `reconcile` merge, error policy, offline page) and keep their domain actions. Chat
+pages through its history, so its refresh loop is a separate framework-free module
+(`features/chat/chat-refresh.ts`).
+
+All `online`/`offline` and `visibilitychange` listeners go through
+`core/hooks/use-online-status.ts` (`subscribeConnectivity`, `subscribeOnline`,
+`subscribeVisibility`, `useOnlineStatus`), so one listener pair serves the whole app.
 
 ## Notifications
 
@@ -276,7 +294,7 @@ with claim rows/throttle timestamps so a re-run does not notify twice.
   pinnwand logic, so features do not import each other (`core/activity-feed.ts`).
 - **Offline handlers in one core table.** Splitting them per feature would need a registration
   bootstrap; a `Record<OfflineActionType, ...>` lets `tsc` enforce a handler per type
-  (`core/offline/offline-queue.ts`).
+  (`core/offline/offline-action-handlers.ts`).
 - **Redacted logging.** Raw errors copied stacks and provider payloads (Postgres, PayPal) into
   long-lived logs, so only label and error name are logged (`core/infra/observability.ts`).
 - **Shared input limits.** Forms and API validation read name limits from

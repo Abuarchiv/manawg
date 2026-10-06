@@ -1,70 +1,28 @@
 'use client';
 
-import { useToast } from '@/components/ui/Toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
-	Attachment,
-	AttachmentContent,
-	AttachmentDescription,
-	AttachmentMedia,
-	AttachmentTitle,
-	AttachmentTrigger,
-} from '@/components/ui/attachment';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Bubble, BubbleContent, BubbleGroup, BubbleReactions } from '@/components/ui/bubble';
-import { Button } from '@/components/ui/button';
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Field, FieldGroup } from '@/components/ui/field';
+import { Bubble, BubbleContent, BubbleGroup } from '@/components/ui/bubble';
 import { Message, MessageAvatar, MessageContent, MessageHeader } from '@/components/ui/message';
-import { Spinner } from '@/components/ui/spinner';
-import { Textarea } from '@/components/ui/textarea';
 import { initials, memberTint } from '@/components/wg/MemberAvatar';
-import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
-import { copyText } from '@/core/utils/clipboard';
 import { formatTimeFull } from '@/core/utils/time';
-import { cn } from '@/shared/lib/cn';
-import { haptic } from '@/shared/lib/haptics';
 import type { MemberInfo } from '@/shared/lib/member-types';
-import { Copy, Pencil, Reply, Smile, Trash2 } from 'lucide-react';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { canDeleteMessage, canEditMessage } from '../chat-pure';
+import type { BubbleMessage, ReactionSummary } from '../chat-types';
+import { useMessageBubbleActions } from '../hooks/use-message-bubble-actions';
+import { BUBBLE_TEXT, MessageActionsMenu } from './MessageActionsMenu';
+import {
+	MessageDeleteDialog,
+	MessageEditForm,
+	MessageImage,
+	MessageReactions,
+} from './MessageBubbleParts';
 import { ReactionPicker } from './ReactionPicker';
 
-const BUBBLE_TEXT = 'rounded-2xl px-3 py-1.5 text-[14px] leading-snug';
-const TIME_FORMAT = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
+export type { BubbleMessage, ReactionSummary } from '../chat-types';
 
-export interface BubbleMessage {
-	id: string;
-	senderMemberId: string | null;
-	kind: string;
-	body: string | null;
-	imageUrl: string | null;
-	createdAt: string;
-	editedAt: string | null;
-	deletedAt: string | null;
-	replyToMessageId: string | null;
-}
-export interface ReactionSummary {
-	emoji: string;
-	count: number;
-	mine: boolean;
-}
+const TIME_FORMAT = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
 
 interface MessageBubbleProps {
 	message: BubbleMessage;
@@ -101,17 +59,15 @@ export const MessageBubble = memo(function MessageBubble({
 	onDelete,
 	onReply,
 }: MessageBubbleProps) {
-	const toast = useToast();
-	const [editing, setEditing] = useState(false);
-	const [draft, setDraft] = useState(message.body ?? '');
-	const [hasDraft, setHasDraft] = useState(false);
-	const [pending, setPending] = useState(false);
-	const [reactionPending, setReactionPending] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
-	const [deleteOpen, setDeleteOpen] = useState(false);
-	const [reactOpen, setReactOpen] = useState(false);
-	const pendingRef = useRef(false);
-	const reactionRef = useRef(false);
+	const actions = useMessageBubbleActions({
+		message,
+		draftKey,
+		onReact,
+		onUnreact,
+		onEdit,
+		onDelete,
+	});
+	const { editing, pending, reactionPending, error, deleteOpen } = actions;
 	const editTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const actionsTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const wasEditingRef = useRef(false);
@@ -123,7 +79,7 @@ export const MessageBubble = memo(function MessageBubble({
 	});
 	const senderName = sender?.name ?? 'Unbekannt';
 	const align = isOwn ? 'end' : 'start';
-	// Uhrzeit klein unten rechts in der Blase wie bei WhatsApp; das Datum steht im Tagestrenner.
+	// The time sits small at the bottom right of the bubble; the date is in the day divider.
 	const timeStamp = (
 		<span className="float-end ms-2 mt-1.5 text-[12px] leading-none tabular-nums opacity-70">
 			{message.editedAt && !isDeleted && 'bearbeitet · '}
@@ -134,14 +90,6 @@ export const MessageBubble = memo(function MessageBubble({
 	);
 
 	useEffect(() => {
-		const saved = readDraft<{ body?: string }>(draftKey);
-		// A draft identical to the stored message is no unsaved change.
-		if (typeof saved?.body === 'string' && saved.body !== (message.body ?? '')) {
-			setDraft(saved.body);
-			setHasDraft(true);
-		}
-	}, [draftKey, message.body]);
-	useEffect(() => {
 		if (editing) {
 			wasEditingRef.current = true;
 			editTextareaRef.current?.focus();
@@ -150,68 +98,6 @@ export const MessageBubble = memo(function MessageBubble({
 			actionsTriggerRef.current?.focus();
 		}
 	}, [editing]);
-	function changeDraft(value: string) {
-		setDraft(value);
-		setHasDraft(true);
-		writeDraft(draftKey, { body: value });
-	}
-	function cancelEdit() {
-		setEditing(false);
-		setHasDraft(false);
-		removeDraft(draftKey);
-	}
-	async function saveEdit() {
-		const text = draft.trim();
-		if (!text || pendingRef.current) return;
-		// Unverändert: kein PATCH, sonst würde die Nachricht ohne Grund als „bearbeitet“ markiert.
-		if (text === (message.body ?? '').trim()) {
-			cancelEdit();
-			return;
-		}
-		pendingRef.current = true;
-		setPending(true);
-		setError(null);
-		try {
-			if (await onEdit(message.id, text)) {
-				setEditing(false);
-				setHasDraft(false);
-				removeDraft(draftKey);
-			} else setError('Änderung nicht gespeichert. Dein Text ist noch da.');
-		} finally {
-			pendingRef.current = false;
-			setPending(false);
-		}
-	}
-	async function remove() {
-		if (pendingRef.current) return;
-		pendingRef.current = true;
-		setPending(true);
-		setError(null);
-		try {
-			if (await onDelete(message.id)) {
-				setDeleteOpen(false);
-				removeDraft(draftKey);
-			} else setError('Nachricht konnte nicht gelöscht werden.');
-		} finally {
-			pendingRef.current = false;
-			setPending(false);
-		}
-	}
-	async function toggleReaction(emoji: string, mine: boolean) {
-		if (reactionRef.current) return false;
-		reactionRef.current = true;
-		setReactionPending(emoji);
-		setError(null);
-		haptic('selection');
-		try {
-			const ok = await (mine ? onUnreact(message.id, emoji) : onReact(message.id, emoji));
-			if (!ok) setError('Reaktion konnte nicht gespeichert werden.');
-			return ok;
-		} finally {
-			reactionRef.current = false;
-			setReactionPending(null);
-		}
-	}
 
 	return (
 		<Message
@@ -219,7 +105,7 @@ export const MessageBubble = memo(function MessageBubble({
 			id={`message-${message.id}`}
 			aria-busy={pending || Boolean(reactionPending)}
 		>
-			{/* Wie WhatsApp: eigene Nachrichten ohne Avatar, fremde mit Avatar und Name nur am Anfang einer Folge. */}
+			{/* Own messages go without avatar; others show avatar and name only at the start of a run. */}
 			{!isOwn && (
 				<MessageAvatar className={grouped ? 'invisible' : undefined} aria-hidden>
 					<Avatar className="size-7 text-xs">
@@ -234,39 +120,17 @@ export const MessageBubble = memo(function MessageBubble({
 					</MessageHeader>
 				)}
 				{editing ? (
-					<FieldGroup className="gap-2">
-						<Field data-invalid={Boolean(error)}>
-							<Textarea
-								ref={editTextareaRef}
-								value={draft}
-								onChange={(event) => changeDraft(event.target.value)}
-								onKeyDown={(event) => {
-									if (event.nativeEvent.isComposing) return;
-									if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-										event.preventDefault();
-										void saveEdit();
-									}
-									if (event.key === 'Escape' && !pendingRef.current) cancelEdit();
-								}}
-								rows={3}
-								disabled={pending}
-								maxLength={4000}
-								aria-label="Nachricht bearbeiten"
-								aria-invalid={Boolean(error)}
-								aria-describedby={error ? `message-edit-error-${message.id}` : undefined}
-								className="min-h-24 text-base"
-							/>
-						</Field>
-						<div className="flex flex-wrap justify-end gap-2">
-							<Button variant="outline" disabled={pending} onClick={cancelEdit}>
-								Abbrechen
-							</Button>
-							<Button disabled={pending || !draft.trim()} onClick={() => void saveEdit()}>
-								{pending && <Spinner data-icon="inline-start" />}
-								{pending ? 'Wird gespeichert…' : 'Speichern'}
-							</Button>
-						</div>
-					</FieldGroup>
+					<MessageEditForm
+						messageId={message.id}
+						draft={actions.draft}
+						error={error}
+						pending={pending}
+						textareaRef={editTextareaRef}
+						onChange={actions.changeDraft}
+						onSave={() => void actions.saveEdit()}
+						onCancel={actions.cancelEdit}
+						canCancel={() => !actions.pendingRef.current}
+					/>
 				) : (
 					<BubbleGroup className="min-w-0 max-w-[85%] group-data-[align=end]/message:self-end">
 						<Bubble
@@ -282,147 +146,38 @@ export const MessageBubble = memo(function MessageBubble({
 									</p>
 								</BubbleContent>
 							) : (
-								// Tippen auf die Blase öffnet Antworten, Reagieren usw. (wie Telegram) statt eines ⋯ daneben.
-								<DropdownMenu>
-									<DropdownMenuTrigger
-										ref={actionsTriggerRef}
-										disabled={pending}
-										render={
-											<BubbleContent
-												// Der Trigger setzt sonst data-slot="dropdown-menu-trigger"; die Blasenfarben hängen am Slot.
-												data-slot="bubble-content"
-												render={<button type="button" />}
-												className={cn(BUBBLE_TEXT, 'cursor-pointer')}
-											/>
-										}
-									>
-										<span className="sr-only">Aktionen für Nachricht von {senderName}: </span>
-										{replyTo && (
-											<span className="mb-1.5 block rounded-md border-s-2 border-current/40 bg-current/5 px-2 py-1">
-												<span className="block text-xs font-medium [overflow-wrap:anywhere]">
-													↪ {replyToSender?.name ?? 'Unbekannt'}
-												</span>
-												<span className="line-clamp-2 whitespace-pre-wrap text-xs opacity-80 [overflow-wrap:anywhere]">
-													{replyTo.deletedAt
-														? 'Diese Nachricht wurde gelöscht.'
-														: (replyTo.body ?? (replyTo.imageUrl ? 'Bild' : '…'))}
-												</span>
-											</span>
-										)}
-										{/* Spans statt <p>: Absatz-Elemente sind in einem <button> nicht erlaubt. */}
-										<span className="block whitespace-pre-wrap [overflow-wrap:anywhere]">
-											{message.body}
-											{timeStamp}
-										</span>
-									</DropdownMenuTrigger>
-									<DropdownMenuContent align={isOwn ? 'end' : 'start'} className="w-48">
-										<DropdownMenuGroup>
-											<DropdownMenuItem
-												className="min-h-11"
-												disabled={Boolean(reactionPending)}
-												onClick={() => setReactOpen(true)}
-											>
-												<Smile aria-hidden /> Reagieren
-											</DropdownMenuItem>
-											<DropdownMenuItem
-												className="min-h-11"
-												onClick={() => {
-													haptic('selection');
-													onReply(message.id);
-												}}
-											>
-												<Reply aria-hidden /> Antworten
-											</DropdownMenuItem>
-											{message.body && (
-												<DropdownMenuItem
-													className="min-h-11"
-													// copyText fängt die Ablehnung der Async-Clipboard-API ab (sonst pageerror ohne Rückmeldung).
-													onClick={() =>
-														void copyText(message.body ?? '').then((copied) =>
-															copied
-																? toast.success('Nachricht kopiert.')
-																: toast.error('Kopieren hat nicht geklappt. Versuche es erneut.'),
-														)
-													}
-												>
-													<Copy aria-hidden /> Kopieren
-												</DropdownMenuItem>
-											)}
-											{editable && (
-												<DropdownMenuItem
-													className="min-h-11"
-													onClick={() => {
-														if (!hasDraft) setDraft(message.body ?? '');
-														setError(null);
-														setEditing(true);
-													}}
-												>
-													<Pencil aria-hidden />{' '}
-													{hasDraft ? 'Entwurf weiterbearbeiten' : 'Bearbeiten'}
-												</DropdownMenuItem>
-											)}
-											{deletable && (
-												<DropdownMenuItem
-													className="min-h-11"
-													variant="destructive"
-													onClick={() => {
-														setError(null);
-														setDeleteOpen(true);
-													}}
-												>
-													<Trash2 aria-hidden /> Löschen
-												</DropdownMenuItem>
-											)}
-										</DropdownMenuGroup>
-									</DropdownMenuContent>
-								</DropdownMenu>
+								<MessageActionsMenu
+									message={message}
+									senderName={senderName}
+									isOwn={isOwn}
+									replyTo={replyTo}
+									replyToSender={replyToSender}
+									timeStamp={timeStamp}
+									triggerRef={actionsTriggerRef}
+									disabled={pending}
+									reactionPending={Boolean(reactionPending)}
+									editable={editable}
+									deletable={deletable}
+									hasDraft={actions.hasDraft}
+									onReactOpen={() => actions.setReactOpen(true)}
+									onReply={onReply}
+									onEdit={actions.startEdit}
+									onDelete={actions.openDelete}
+								/>
 							)}
 							{reactions.length > 0 && (
-								<BubbleReactions
+								<MessageReactions
+									reactions={reactions}
 									align={align}
-									className="static max-w-full flex-wrap translate-y-0 gap-1 bg-transparent p-0 ring-0 group-data-[align=end]/bubble:self-end has-[button]:p-0"
-								>
-									{reactions.map((reaction) => (
-										<Button
-											key={reaction.emoji}
-											variant={reaction.mine ? 'secondary' : 'outline'}
-											size="xs"
-											className="rounded-full"
-											onClick={() => void toggleReaction(reaction.emoji, reaction.mine)}
-											disabled={isDeleted || Boolean(reactionPending)}
-											aria-pressed={reaction.mine}
-											aria-label={`Reaktion ${reaction.emoji} (${reaction.count}) ${reaction.mine ? 'entfernen' : 'hinzufügen'} — Nachricht von ${senderName}`}
-										>
-											{reactionPending === reaction.emoji ? (
-												<Spinner />
-											) : (
-												<span>{reaction.emoji}</span>
-											)}
-											<span className="tabular-nums">{reaction.count}</span>
-										</Button>
-									))}
-								</BubbleReactions>
+									senderName={senderName}
+									disabled={isDeleted || Boolean(reactionPending)}
+									pendingEmoji={reactionPending}
+									onToggle={(emoji, mine) => void actions.toggleReaction(emoji, mine)}
+								/>
 							)}
 						</Bubble>
 						{!isDeleted && message.imageUrl && (
-							<Attachment state="done" className="min-w-0 max-w-full">
-								<AttachmentMedia variant="image" className="size-20">
-									{/* eslint-disable-next-line @next/next/no-img-element */}
-									<img src={message.imageUrl} alt={`Bild von ${senderName}`} loading="lazy" />
-								</AttachmentMedia>
-								<AttachmentContent>
-									<AttachmentTitle>Bild</AttachmentTitle>
-									<AttachmentDescription>Öffnen</AttachmentDescription>
-								</AttachmentContent>
-								<AttachmentTrigger
-									aria-label="Bild in voller Größe öffnen"
-									render={
-										<a href={message.imageUrl} target="_blank" rel="noopener noreferrer">
-											<span className="sr-only">Bild in voller Größe öffnen</span>
-										</a>
-									}
-								/>
-							</Attachment>
+							<MessageImage imageUrl={message.imageUrl} senderName={senderName} />
 						)}
 					</BubbleGroup>
 				)}
@@ -432,46 +187,20 @@ export const MessageBubble = memo(function MessageBubble({
 					</Alert>
 				)}
 				<ReactionPicker
-					open={reactOpen}
-					onOpenChange={setReactOpen}
-					onSelect={(emoji) => toggleReaction(emoji, false)}
+					open={actions.reactOpen}
+					onOpenChange={actions.setReactOpen}
+					onSelect={(emoji) => actions.toggleReaction(emoji, false)}
 					returnFocusRef={actionsTriggerRef}
 				/>
-				<AlertDialog
+				<MessageDeleteDialog
 					open={deleteOpen}
+					pending={pending}
+					error={error}
 					onOpenChange={(open) => {
-						if (!pendingRef.current) setDeleteOpen(open);
+						if (!actions.pendingRef.current) actions.setDeleteOpen(open);
 					}}
-				>
-					<AlertDialogContent>
-						<AlertDialogHeader>
-							<AlertDialogTitle>Nachricht löschen?</AlertDialogTitle>
-							<AlertDialogDescription>
-								Der Inhalt wird für alle entfernt. Die Nachricht bleibt als gelöscht markiert.
-							</AlertDialogDescription>
-						</AlertDialogHeader>
-						{error && (
-							<Alert variant="destructive">
-								<AlertDescription>{error}</AlertDescription>
-							</Alert>
-						)}
-						<AlertDialogFooter>
-							<AlertDialogCancel disabled={pending} className="min-h-11">
-								Abbrechen
-							</AlertDialogCancel>
-							<AlertDialogAction
-								disabled={pending}
-								variant="destructive"
-								className="min-h-11"
-								aria-label="Nachricht endgültig löschen"
-								onClick={() => void remove()}
-							>
-								{pending && <Spinner data-icon="inline-start" />}
-								{pending ? 'Wird gelöscht…' : 'Jetzt löschen'}
-							</AlertDialogAction>
-						</AlertDialogFooter>
-					</AlertDialogContent>
-				</AlertDialog>
+					onConfirm={() => void actions.remove()}
+				/>
 			</MessageContent>
 		</Message>
 	);

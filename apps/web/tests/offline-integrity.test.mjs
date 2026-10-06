@@ -8,18 +8,21 @@ import ts from 'typescript';
 const webRoot = path.resolve(import.meta.dirname, '..');
 const readSource = (relativePath) => readFileSync(path.join(webRoot, relativePath), 'utf8');
 
-function loadTs(relativePath, mocks, globals = {}) {
+// Unmocked relative imports load the sibling once per top-level load, sharing mocks and state.
+function loadTs(relativePath, mocks, globals = {}, siblings = new Map()) {
 	const source = readSource(relativePath);
-	const js = ts.transpileModule(source, {
-		compilerOptions: {
-			module: ts.ModuleKind.CommonJS,
-			target: ts.ScriptTarget.ES2022,
-		},
-	}).outputText;
+	const compilerOptions = { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 };
+	const js = ts.transpileModule(source, { compilerOptions }).outputText;
 	const module = { exports: {} };
 	const context = vm.createContext({
 		require: (id) => {
 			if (Object.hasOwn(mocks, id)) return mocks[id];
+			if (id.startsWith('./')) {
+				const sibling = path.posix.join(path.posix.dirname(relativePath), `${id.slice(2)}.ts`);
+				if (!siblings.has(sibling))
+					siblings.set(sibling, loadTs(sibling, mocks, globals, siblings));
+				return siblings.get(sibling);
+			}
 			throw new Error(`Unexpected import ${id} from ${relativePath}`);
 		},
 		module,
@@ -32,6 +35,13 @@ function loadTs(relativePath, mocks, globals = {}) {
 }
 
 const VALID_KEY = '00000000-0000-4000-8000-000000000001';
+
+class FakeCustomEvent {
+	constructor(type, init = {}) {
+		this.type = type;
+		this.detail = init.detail;
+	}
+}
 const { OFFLINE_REPLAY_MAX_AGE_MS, RESPONSE_REPLAY_TTL_SECONDS } = loadTs(
 	'src/core/offline/replay-retention.ts',
 	{},
@@ -94,12 +104,6 @@ function makeQueueModule({
 	clock = Date,
 	locks = makeLockManager(),
 } = {}) {
-	class FakeCustomEvent {
-		constructor(type, init = {}) {
-			this.type = type;
-			this.detail = init.detail;
-		}
-	}
 	const window = { localStorage: storage, dispatchEvent() {} };
 	const queue = {
 		isOfflineIdempotencyKey: (value) => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value),
@@ -769,12 +773,6 @@ test('resolved upload URL is persisted to the queue before its IndexedDB blob is
 	const storage = makeStorage();
 	const localStorage = storage;
 	const locks = makeLockManager();
-	class FakeCustomEvent {
-		constructor(type, init = {}) {
-			this.type = type;
-			this.detail = init.detail;
-		}
-	}
 	const window = { localStorage, dispatchEvent() {} };
 	const images = loadTs(
 		'src/core/offline/offline-images.ts',

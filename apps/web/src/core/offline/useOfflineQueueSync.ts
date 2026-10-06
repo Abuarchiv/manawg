@@ -1,11 +1,13 @@
 'use client';
 
+import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { captureException } from '@/core/infra/capture-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { countOfflineActions, getSyncedCountForWg, syncOfflineActions } from './offline-client';
 
 interface UseOfflineQueueSyncOptions {
-	shareCode: string;
+	/** `null` turns the hook off: no listeners, a count of 0. */
+	shareCode: string | null;
 	memberId: string;
 	/** Page name, used only to tag sync failures in observability. */
 	page: string;
@@ -20,19 +22,15 @@ interface UseOfflineQueueSyncOptions {
  * Keeps the offline-action queue in sync with the server and reports how many
  * actions are still waiting.
  *
- * Flushes on `online`, refreshes the count on `manawg:offline-queue` (the
- * event the offline client dispatches whenever the queue changes), and also
- * calls `onSynced` on `manawg:offline-synced` — the event a sync dispatches
- * on success regardless of what triggered it. Without that second listener,
- * a flush triggered by the "Jetzt senden" button in `OfflineBanner` (which
- * calls `syncOfflineActions` directly, not through this hook's own `sync`)
- * would leave the page showing pre-sync data until a manual reload, even
- * though the server already has the change.
+ * Flushes when the connection comes back, refreshes the count on
+ * `manawg:offline-queue` (the event the offline client dispatches whenever the
+ * queue changes), and calls `onSynced` on `manawg:offline-synced`, the event a
+ * sync dispatches on success regardless of what triggered it. A flush started
+ * elsewhere (e.g. the "Jetzt senden" button in `OfflineBanner`) therefore
+ * reloads the page's data too.
  *
- * Extracted from four pages (ausgaben, einkauf, putzen, pinnwand) that each
- * carried a character-identical copy — except that only ausgaben cancelled its
- * in-flight sync on unmount. That guard is kept here for all of them: without
- * it, a sync resolving after navigation calls setState on an unmounted page.
+ * A sync resolving after unmount is ignored, so it never sets state on a page
+ * the user already left.
  */
 interface OfflineQueueSync {
 	/** How many actions are waiting to be sent. */
@@ -56,7 +54,7 @@ export function useOfflineQueueSync({
 	const mountedRef = useRef(true);
 
 	const refreshCount = useCallback((): void => {
-		if (!mountedRef.current) return;
+		if (!mountedRef.current || shareCode === null) return;
 		setQueuedCount(countOfflineActions(shareCode, { memberId }));
 	}, [shareCode, memberId]);
 
@@ -72,19 +70,23 @@ export function useOfflineQueueSync({
 	pageRef.current = page;
 
 	useEffect(() => {
-		let active = true;
 		mountedRef.current = true;
+		if (shareCode === null) {
+			return () => {
+				mountedRef.current = false;
+			};
+		}
+		let active = true;
 		const updateCount = (): void => {
 			if (!active) return;
 			setQueuedCount(countOfflineActions(shareCode, { memberId }));
 		};
 		updateCount();
 
-		// Only updates the count here — `onSynced` fires from the
+		// Only updates the count here: `onSynced` fires from the
 		// `manawg:offline-synced` listener below, which `syncOfflineActions`
 		// dispatches on success regardless of caller. Calling it here too would
-		// double-fire it for this hook's own `online`-triggered syncs, since
-		// that dispatch reaches this same listener.
+		// double-fire it for this hook's own reconnect-triggered syncs.
 		const sync = (): void => {
 			syncOfflineActions(shareCode, { memberId })
 				.then(() => {
@@ -101,13 +103,13 @@ export function useOfflineQueueSync({
 			if (getSyncedCountForWg(event, shareCode) > 0) onSyncedRef.current();
 		};
 
-		window.addEventListener('online', sync);
+		const unsubscribeOnline = subscribeOnline(sync);
 		window.addEventListener('manawg:offline-queue', updateCount);
 		window.addEventListener('manawg:offline-synced', onExternalSync);
 		return () => {
 			active = false;
 			mountedRef.current = false;
-			window.removeEventListener('online', sync);
+			unsubscribeOnline();
 			window.removeEventListener('manawg:offline-queue', updateCount);
 			window.removeEventListener('manawg:offline-synced', onExternalSync);
 		};

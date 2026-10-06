@@ -1,6 +1,7 @@
 'use client';
 
 import { useWg } from '@/components/wg/WgContextProvider';
+import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
 import {
 	isPendingImageToken,
@@ -133,8 +134,7 @@ export function useImageUpload({
 		}
 
 		void syncPending();
-		window.addEventListener('online', syncPending);
-		return () => window.removeEventListener('online', syncPending);
+		return subscribeOnline(() => void syncPending());
 	}, [identity.memberId, onChange, value]);
 
 	async function handleFile(file: File): Promise<void> {
