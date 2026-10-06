@@ -7,14 +7,23 @@ const state = {
 	bucket: null as Record<string, unknown> | null,
 	keys: null as string[] | null,
 	fetchOptions: null as RequestInit | null,
+	bucketName: null as string | null,
+	signedUploads: [] as { key: string; options: unknown }[],
 };
 
 mock.module('@supabase/supabase-js', {
 	namedExports: {
 		createClient: (_url: string, _serviceRoleKey: string, options: ClientOptions) => ({
 			storage: {
-				getBucket: async () => ({ data: state.bucket, error: null }),
+				getBucket: async (name: string) => {
+					state.bucketName = name;
+					return { data: state.bucket, error: null };
+				},
 				from: () => ({
+					createSignedUploadUrl: async (key: string, uploadOptions: unknown) => {
+						state.signedUploads.push({ key, options: uploadOptions });
+						return { data: { signedUrl: `https://storage.example/upload/${key}` }, error: null };
+					},
 					remove: async (keys: string[]) => {
 						state.keys = keys;
 						const bounded = options.global?.fetch;
@@ -30,7 +39,8 @@ mock.module('@supabase/supabase-js', {
 	},
 });
 
-const { ImageStorageConfigurationError, removeSupabaseImages } = await import('./supabase-storage');
+const { ImageStorageConfigurationError, createSupabaseSignedUpload, removeSupabaseImages } =
+	await import('./supabase-storage');
 
 const ENV_NAMES = [
 	'NEXT_PUBLIC_SUPABASE_URL',
@@ -54,7 +64,17 @@ function reset(): void {
 	state.bucket = null;
 	state.keys = null;
 	state.fetchOptions = null;
+	state.bucketName = null;
+	state.signedUploads = [];
 }
+
+const PRIVATE_BUCKET = {
+	public: false,
+	file_size_limit: 8 * 1024 * 1024,
+	allowed_mime_types: ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'],
+};
+const UPLOAD_KEY =
+	'manawg/11111111-1111-4111-8111-111111111111/expense/22222222-2222-4222-8222-222222222222.jpg';
 
 test('cleanup removes through Supabase with a bounded request even when uploads use AWS', async () => {
 	reset();
@@ -107,6 +127,53 @@ test('cleanup fails closed when bucket policy no longer matches the private imag
 			ImageStorageConfigurationError,
 		);
 		assert.equal(state.keys, null);
+	} finally {
+		restoreEnv();
+	}
+});
+
+test('signed uploads never overwrite an object and carry the upload contract', async () => {
+	reset();
+	state.bucket = PRIVATE_BUCKET;
+	const restoreEnv = withEnv({
+		NEXT_PUBLIC_SUPABASE_URL: 'https://supabase.example',
+		SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+		SUPABASE_STORAGE_BUCKET: 'private-images',
+	});
+	try {
+		const signed = await createSupabaseSignedUpload(UPLOAD_KEY, 'image/jpeg');
+		assert.equal(state.bucketName, 'private-images');
+		assert.deepEqual(state.signedUploads, [{ key: UPLOAD_KEY, options: { upsert: false } }]);
+		assert.deepEqual(signed, {
+			presignedUrl: `https://storage.example/upload/${UPLOAD_KEY}`,
+			maxFileSize: 8 * 1024 * 1024,
+			uploadHeaders: { 'Cache-Control': 'max-age=0' },
+		});
+	} finally {
+		restoreEnv();
+	}
+});
+
+test('upload signing fails closed for a non-private bucket or a disallowed MIME type', async () => {
+	const restoreEnv = withEnv({
+		NEXT_PUBLIC_SUPABASE_URL: 'https://supabase.example',
+		SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+		SUPABASE_STORAGE_BUCKET: 'private-images',
+	});
+	try {
+		reset();
+		state.bucket = { ...PRIVATE_BUCKET, public: true };
+		await assert.rejects(
+			createSupabaseSignedUpload(UPLOAD_KEY, 'image/jpeg'),
+			ImageStorageConfigurationError,
+		);
+		reset();
+		state.bucket = PRIVATE_BUCKET;
+		await assert.rejects(
+			createSupabaseSignedUpload(UPLOAD_KEY, 'image/gif'),
+			ImageStorageConfigurationError,
+		);
+		assert.deepEqual(state.signedUploads, []);
 	} finally {
 		restoreEnv();
 	}

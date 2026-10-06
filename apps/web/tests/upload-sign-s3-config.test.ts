@@ -34,6 +34,8 @@ const S3_ENV_KEYS = [
 const current = {
 	s3: null as S3Stand | null,
 	limit: { success: true } as LimitResult,
+	provider: 'aws' as 'aws' | 'supabase',
+	supabaseSigns: [] as { key: string; mimeType: string }[],
 };
 
 function installedS3(): S3Stand {
@@ -73,9 +75,14 @@ mock.module('@/core/infra/s3', {
 mock.module('@/core/infra/supabase-storage', {
 	namedExports: {
 		ImageStorageConfigurationError: class extends Error {},
-		getImageStorageProvider: () => 'aws',
-		createSupabaseSignedUpload: async () => {
-			throw new Error('supabase signing is not part of this contract');
+		getImageStorageProvider: () => current.provider,
+		createSupabaseSignedUpload: async (key: string, mimeType: string) => {
+			current.supabaseSigns.push({ key, mimeType });
+			return {
+				presignedUrl: `https://storage.example/upload/${key}`,
+				maxFileSize: privateImagePolicy.PRIVATE_IMAGE_MAX_BYTES,
+				uploadHeaders: { 'Cache-Control': 'max-age=0' },
+			};
 		},
 	},
 });
@@ -271,6 +278,30 @@ describe('upload sign s3 config contract', () => {
 			assert.equal(response.headers.get('cache-control'), 'no-store');
 		} finally {
 			restore();
+		}
+	});
+
+	test('the Supabase provider signs a WG-scoped key and answers with its private image URL', async () => {
+		current.provider = 'supabase';
+		current.supabaseSigns = [];
+		try {
+			const response = await post(await loadS3());
+			assert.equal(response.status, 200);
+			assert.equal(response.headers.get('cache-control'), 'no-store');
+			const [signed, ...more] = current.supabaseSigns;
+			assert.ok(signed);
+			assert.deepEqual(more, []);
+			const { key, mimeType } = signed;
+			assert.match(key, /^manawg\/wg-1\/expense\/[0-9a-f-]{36}\.png$/);
+			assert.equal(mimeType, 'image/png');
+			assert.deepEqual(await response.json(), {
+				presignedUrl: `https://storage.example/upload/${key}`,
+				maxFileSize: 8 * 1024 * 1024,
+				uploadHeaders: { 'Cache-Control': 'max-age=0' },
+				publicUrl: `https://images.example/${key}`,
+			});
+		} finally {
+			current.provider = 'aws';
 		}
 	});
 });

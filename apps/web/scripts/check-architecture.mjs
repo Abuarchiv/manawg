@@ -16,6 +16,8 @@
  *   server-placement a features/<x>/ module outside server/ imports the database layer
  *                   (`@/core/db`, `drizzle-orm`); only row and enum types from `@/core/db/schema`
  *                   may be imported, type-only, by code shared with the client
+ *   source-text     a test reads source files under src/ instead of exercising the module
+ *                   (a test colocated under src/ that reads any file counts)
  *   comment-lang    a comment written in German (code comments are English)
  *   comment-history a comment that narrates history ("used to", "previously", ...)
  *   banned-import   an import of a removed dependency
@@ -59,6 +61,11 @@ const CLAIM_PROTOCOL_IDENTIFIERS = [
 	'claimIdempotencySlot',
 ];
 const TYPE_IMPORT_RE = /(?:import|export)\s+type\s+[^;'"]*?from\s+['"]([^'"]+)['"]/g;
+const FS_READ_RE = /\b(readFileSync|readFile|readdirSync|readdir)\s*\(/;
+/** Module specifiers (imports, mocks) are not file reads; drop them before looking for src paths. */
+const MODULE_REFERENCE_RE =
+	/(?:from\s+|import\s*\(\s*|import\s+|require\s*\(\s*|mock\.module\(\s*|mockModuleWithReal\(\s*)['"][^'"]+['"]/g;
+const SRC_PATH_LITERAL_RE = /['"`](?:src|(?:[^'"`\n]*\/)?src\/[^'"`\n]*)['"`]/;
 const FIXTURE_IDENTIFIERS = /\b(isE2EDbDownMode|isClientFixtureMode)\b/;
 const SPECIFIER_RE = /(?:from\s+|require\s*\(\s*|import\s*\(\s*|import\s+)['"]([^'"]+)['"]/g;
 const GERMAN_RE =
@@ -171,6 +178,12 @@ function collect() {
 				? /\.spec\.ts$/.test(r) || r.startsWith('e2e/support/') || /\.config\.(ts|cjs)$/.test(r)
 				: /\.test\.ts$/.test(r) || r.startsWith('tests/support/');
 			if (!okName) add('test-location', r);
+			if (
+				FS_READ_RE.test(source) &&
+				(r.startsWith('src/') || SRC_PATH_LITERAL_RE.test(source.replace(MODULE_REFERENCE_RE, '')))
+			) {
+				add('source-text', r);
+			}
 		}
 
 		if (r.startsWith('src/') && !test) {

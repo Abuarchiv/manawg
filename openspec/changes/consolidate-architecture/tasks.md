@@ -35,7 +35,7 @@
 
 ## 7. Structure and comments
 
-- [ ] 7.1 Split features into `server/` (with `server-only`) and client modules.
+- [x] 7.1 Split features into `server/` (with `server-only`) and client modules.
 - [ ] 7.2 English-only comments; remove history narration and stray notes.
 - [ ] 7.3 Split `scripts/db-migrate.mjs` into modules.
 
