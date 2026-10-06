@@ -81,7 +81,7 @@ export function ImportPreviewStep({ headingRef, wizard }: StepProps) {
 					</div>
 				</Field>
 			</FieldGroup>
-			<div className="sticky bottom-[calc(var(--app-nav-height,5rem)+env(safe-area-inset-bottom))] flex min-w-0 flex-wrap gap-2 bg-background py-3">
+			<div className="sticky bottom-[var(--app-nav-height,5rem)] flex min-w-0 flex-wrap gap-2 bg-background py-3">
 				<Button
 					className="flex-1"
 					disabled={busy || selectedCount === 0}

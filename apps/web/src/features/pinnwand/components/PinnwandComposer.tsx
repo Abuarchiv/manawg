@@ -154,7 +154,7 @@ export function PinnwandComposer({
 				<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
 					<span
 						id="announcement-count"
-						className={`self-end text-xs tabular-nums text-muted-foreground${content.length < CONTENT_MAX * 0.8 ? ' sr-only' : ''}`}
+						className={`self-end text-xs tabular-nums text-muted-foreground ${content.length < CONTENT_MAX * 0.8 ? 'sr-only' : ''}`}
 					>
 						{content.length}/{CONTENT_MAX}
 					</span>
