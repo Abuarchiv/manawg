@@ -1,4 +1,5 @@
 import { mock } from 'node:test';
+import { NextRequest } from 'next/server';
 
 /**
  * Shared stand-ins for route-handler tests that import the real handler and the real HTTP
@@ -13,17 +14,17 @@ export function routeCtx(params: Record<string, string> = {}): never {
 	return { params: Promise.resolve({ code: SHARE_CODE, ...params }) } as never;
 }
 
-/** A request typed as the `NextRequest` the handlers declare. */
+/** The `NextRequest` a handler receives; a string body is sent as is, anything else as JSON. */
 export function request(
 	path: string,
 	init: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
-): never {
+): NextRequest {
 	const { method = 'GET', body, headers = {} } = init;
-	return new Request(`https://app.test${path}`, {
+	return new NextRequest(`https://app.test${path}`, {
 		method,
 		headers: body === undefined ? headers : { 'content-type': 'application/json', ...headers },
 		...(body === undefined ? {} : { body: typeof body === 'string' ? body : JSON.stringify(body) }),
-	}) as never;
+	});
 }
 
 export interface ObservedErrors {
@@ -123,11 +124,37 @@ export function mockWgMember(initial: Pick<MemberState, 'wg' | 'member'>): Membe
 	return state;
 }
 
-/** A deferred promise for tests that interleave two requests. */
-export function gate(): { promise: Promise<void>; open: () => void } {
-	let open: () => void = () => undefined;
-	const promise = new Promise<void>((resolve) => {
-		open = resolve;
-	});
-	return { promise, open };
+/**
+ * A point inside a fake dependency (e.g. the start of a transaction) where the next request can
+ * be held, so a test interleaves two requests deterministically.
+ */
+export class Stall {
+	private armed: { reached: () => void; released: Promise<void> } | null = null;
+
+	/** Hold the next request that passes; `reached` resolves once it waits. */
+	arm(): { reached: Promise<void>; release: () => void } {
+		let reached: () => void = () => undefined;
+		let release: () => void = () => undefined;
+		const atPoint = new Promise<void>((resolve) => {
+			reached = resolve;
+		});
+		const released = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		this.armed = { reached, released };
+		return { reached: atPoint, release };
+	}
+
+	/** Called by the fake dependency; waits only when armed. */
+	async pass(): Promise<void> {
+		const armed = this.armed;
+		if (!armed) return;
+		this.armed = null;
+		armed.reached();
+		await armed.released;
+	}
+
+	reset(): void {
+		this.armed = null;
+	}
 }

@@ -123,3 +123,37 @@ export function rowMatches(
 			throw new Error(`unsupported operator ${condition.op}`);
 	}
 }
+
+/** `select(fields)` over rows keyed by column: each field reads the row property it names. */
+export function project(
+	rows: readonly Record<string, unknown>[],
+	fields: Record<string, unknown>,
+): Record<string, unknown>[] {
+	return rows.map((row) =>
+		Object.fromEntries(
+			Object.entries(fields).map(([alias, column]) => [alias, row[column as string]]),
+		),
+	);
+}
+
+/** `orderBy(asc(...), desc(...))` with Postgres defaults: NULL sorts as the largest value. */
+export function orderRows<R extends Record<string, unknown>>(rows: readonly R[], orders: unknown[]): R[] {
+	const key = (value: unknown) =>
+		value === null || value === undefined
+			? Number.POSITIVE_INFINITY
+			: value instanceof Date
+				? value.getTime()
+				: (value as number);
+	return [...rows].sort((a, b) => {
+		for (const order of orders) {
+			if (!isSqlNode(order)) continue;
+			const column = order.args[0] as string;
+			const left = key(a[column]);
+			const right = key(b[column]);
+			if (left === right) continue;
+			const ascending = left < right ? -1 : 1;
+			return order.op === 'desc' ? -ascending : ascending;
+		}
+		return 0;
+	});
+}
