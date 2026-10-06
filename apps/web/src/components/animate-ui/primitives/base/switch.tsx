@@ -6,13 +6,15 @@ import {
 	type LegacyAnimationControls,
 	type TargetAndTransition,
 	type VariantLabels,
-	motion,
 	useReducedMotion,
 } from 'motion/react';
+import * as m from 'motion/react-m';
 import * as React from 'react';
 
 import { useControlledState } from '@/core/hooks/use-controlled-state';
 import { getStrictContext } from '@/shared/lib/get-strict-context';
+
+import { MotionFeatures } from './motion-features';
 
 type SwitchContextType = {
 	isChecked: boolean;
@@ -62,7 +64,7 @@ function Switch({
 			}
 			setIsChecked(...args);
 		},
-		// The render target below is always a real <button> (motion.button). Base UI's
+		// The render target below is always a real <button> (m.button). Base UI's
 		// Switch defaults nativeButton to false, which (a) leaves `type` unset on that
 		// <button> -- defaulting to type="submit", so a Switch dropped inside a <form>
 		// later would submit it on Space/Enter/click -- and (b) logs a dev-mode warning
@@ -76,29 +78,31 @@ function Switch({
 	};
 
 	return (
-		<SwitchProvider
-			value={{
-				isChecked: isChecked ?? false,
-				setIsChecked,
-				isPressed: isPressed || isGliding,
-				setIsPressed,
-			}}
-		>
-			<SwitchPrimitives.Root
-				{...rootProps}
-				render={
-					<motion.button
-						data-slot="switch"
-						data-pressed={isPressed ? '' : undefined}
-						initial={false}
-						onTapStart={() => setIsPressed(true)}
-						onTapCancel={() => setIsPressed(false)}
-						onTap={() => setIsPressed(false)}
-						{...props}
-					/>
-				}
-			/>
-		</SwitchProvider>
+		<MotionFeatures>
+			<SwitchProvider
+				value={{
+					isChecked: isChecked ?? false,
+					setIsChecked,
+					isPressed: isPressed || isGliding,
+					setIsPressed,
+				}}
+			>
+				<SwitchPrimitives.Root
+					{...rootProps}
+					render={
+						<m.button
+							data-slot="switch"
+							data-pressed={isPressed ? '' : undefined}
+							initial={false}
+							onTapStart={() => setIsPressed(true)}
+							onTapCancel={() => setIsPressed(false)}
+							onTap={() => setIsPressed(false)}
+							{...props}
+						/>
+					}
+				/>
+			</SwitchProvider>
+		</MotionFeatures>
 	);
 }
 
@@ -169,7 +173,7 @@ function SwitchThumb({
 	return (
 		<SwitchPrimitives.Thumb
 			render={
-				<motion.div
+				<m.div
 					data-slot="switch-thumb"
 					data-pressed={isPressed ? '' : undefined}
 					{...props}
@@ -206,7 +210,7 @@ function SwitchThumb({
 						}}
 					/>
 					{children}
-				</motion.div>
+				</m.div>
 			}
 		/>
 	);
@@ -233,7 +237,7 @@ function SwitchIcon({
 	}, [position, isChecked]);
 
 	return (
-		<motion.div
+		<m.div
 			data-slot={`switch-${position}-icon`}
 			animate={isAnimated ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
 			transition={transition}

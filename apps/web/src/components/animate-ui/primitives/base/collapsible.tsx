@@ -1,11 +1,14 @@
 'use client';
 
 import { Collapsible as CollapsiblePrimitive } from '@base-ui/react/collapsible';
-import { AnimatePresence, type HTMLMotionProps, motion } from 'motion/react';
+import { AnimatePresence, type HTMLMotionProps } from 'motion/react';
+import * as m from 'motion/react-m';
 import type * as React from 'react';
 
 import { useControlledState } from '@/core/hooks/use-controlled-state';
 import { getStrictContext } from '@/shared/lib/get-strict-context';
+
+import { MotionFeatures } from './motion-features';
 
 type CollapsibleContextType = {
 	isOpen: boolean;
@@ -26,15 +29,17 @@ function Collapsible(props: CollapsibleProps) {
 	});
 
 	return (
-		<CollapsibleProvider value={{ isOpen: isOpen ?? false, setIsOpen }}>
-			<CollapsiblePrimitive.Root
-				data-slot="collapsible"
-				{...rootProps}
-				{...(open === undefined ? {} : { open })}
-				{...(defaultOpen === undefined ? {} : { defaultOpen })}
-				onOpenChange={setIsOpen}
-			/>
-		</CollapsibleProvider>
+		<MotionFeatures>
+			<CollapsibleProvider value={{ isOpen: isOpen ?? false, setIsOpen }}>
+				<CollapsiblePrimitive.Root
+					data-slot="collapsible"
+					{...rootProps}
+					{...(open === undefined ? {} : { open })}
+					{...(defaultOpen === undefined ? {} : { defaultOpen })}
+					onOpenChange={setIsOpen}
+				/>
+			</CollapsibleProvider>
+		</MotionFeatures>
 	);
 }
 
@@ -69,7 +74,7 @@ function CollapsiblePanel({
 					hidden={false}
 					keepMounted
 					render={
-						<motion.div
+						<m.div
 							key="collapsible-panel"
 							data-slot="collapsible-panel"
 							initial={{ height: 0, opacity: 0, '--mask-stop': '0%', y: 20 }}
@@ -96,7 +101,7 @@ function CollapsiblePanel({
 						hidden={false}
 						keepMounted
 						render={
-							<motion.div
+							<m.div
 								key="collapsible-panel"
 								data-slot="collapsible-panel"
 								initial={{ height: 0, opacity: 0, '--mask-stop': '0%', y: 20 }}

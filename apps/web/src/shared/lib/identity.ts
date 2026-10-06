@@ -129,6 +129,27 @@ export function getLegacyIdentityCandidates(): LegacyIdentityCandidate[] {
 	return candidates;
 }
 
+/**
+ * True, wenn auf diesem Gerät eine Identität liegt, die zum angemeldeten Konto passt
+ * (oder aus der Zeit vor der Konto-Bindung stammt). Die Offline-Seite bietet dann die
+ * gemerkten WGs an, auch ohne wartende Aktionen.
+ */
+export function hasLocalIdentityFor(authUserId: string | null): boolean {
+	const ls = safeLocalStorage();
+	if (!ls) return false;
+	try {
+		for (let index = 0; index < ls.length; index += 1) {
+			const key = ls.key(index);
+			if (!key?.startsWith(STORAGE_PREFIX)) continue;
+			const identity = getIdentity(key.slice(STORAGE_PREFIX.length));
+			if (identity && (!identity.authUserId || identity.authUserId === authUserId)) return true;
+		}
+	} catch {
+		// Storage may become inaccessible between individual reads.
+	}
+	return false;
+}
+
 export function clearIdentity(wgId: string): void {
 	const ls = safeLocalStorage();
 	if (!ls) return;

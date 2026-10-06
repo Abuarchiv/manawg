@@ -50,7 +50,12 @@ const nextConfig: NextConfig = {
 		];
 	},
 	experimental: {
-		optimizePackageImports: ['lucide-react'],
+		// Besuchte/vorab geladene Tabs bleiben 5 Min. im Router-Cache: ein Tab-Tipp ohne Netz bleibt in
+		// der App (letzte Daten) statt per Hard-Navigation auf die Offline-Seite zu fallen.
+		staleTimes: { dynamic: 300, static: 300 },
+		// motion/react bindet über `const motion = fm.motion` die komplette Feature-Bundle-Variante ein;
+		// optimizePackageImports löst die Importe auf die Einzelmodule auf (LazyMotion lädt sonst nichts nach).
+		optimizePackageImports: ['lucide-react', 'motion/react'],
 	},
 };
 

@@ -871,6 +871,63 @@ test.describe('shopping conflict handling', () => {
 		expect(getCalls).toBeGreaterThanOrEqual(2);
 	});
 
+	test('adds and checks items instantly, then rolls a failed add back with a footer error', async ({
+		page,
+	}) => {
+		test.skip(
+			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
+			'requires the local fixture server',
+		);
+		const shareCode = 'MTE8PZAT';
+		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
+		let releaseCreate: (() => void) | undefined;
+		const createGate = new Promise<void>((resolve) => {
+			releaseCreate = resolve;
+		});
+		let failNext = false;
+		let created = false;
+		const realItem = {
+			id: 'shopping-real',
+			addedByMemberId: memberId,
+			name: 'Hafermilch',
+			quantity: null,
+			boughtAt: null,
+			boughtByMemberId: null,
+			createdAt: '2026-09-21T08:00:00.000Z',
+			updatedAt: '2026-09-21T08:00:00.000Z',
+		};
+		await page.route(`**/api/wg/${shareCode}/shopping`, async (route) => {
+			if (route.request().method() === 'GET') {
+				return route.fulfill({ json: { items: created ? [realItem] : [] } });
+			}
+			if (route.request().method() !== 'POST') return route.continue();
+			if (failNext) return route.fulfill({ status: 500, json: { error: 'internal' } });
+			await createGate;
+			created = true;
+			return route.fulfill({ json: { item: realItem } });
+		});
+
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${shareCode}/einkauf`);
+		await dismissOnboarding(page);
+		await page.getByLabel('Artikel-Name').fill('Hafermilch');
+		await page.getByRole('button', { name: 'Artikel hinzufügen' }).click();
+
+		// Die Zeile steht da, bevor der Server geantwortet hat; der Haken ist noch gesperrt.
+		await expect(page.locator('[data-shopping-row]')).toHaveCount(1);
+		await expect(page.locator('[data-shopping-row]')).toContainText('Hafermilch');
+		releaseCreate?.();
+		await expect(page.locator('[data-shopping-row]#shopping-shopping-real')).toHaveCount(1);
+		await expect(page.locator('[data-shopping-row]')).toHaveCount(1);
+
+		failNext = true;
+		await page.getByLabel('Artikel-Name').fill('Brot');
+		await page.getByRole('button', { name: 'Artikel hinzufügen' }).click();
+		await expect(page.locator('#shopping-add-error')).toBeVisible();
+		await expect(page.locator('[data-shopping-row]')).toHaveCount(1);
+		await expect(page.getByLabel('Artikel-Name')).toHaveValue('Brot');
+	});
+
 	test('reopening a bought duplicate restores both items and explains the conflict at 320px', async ({
 		page,
 	}) => {

@@ -23,7 +23,7 @@ import {
 	getOfflineActionSummary,
 } from '@/core/offline/offline-queue';
 import { parseTimestamp } from '@/core/utils/time';
-import { type KnownWg, getKnownWgs } from '@/shared/lib/identity';
+import { type KnownWg, getKnownWgs, hasLocalIdentityFor } from '@/shared/lib/identity';
 import { ArrowRight, CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -113,6 +113,12 @@ async function getLocalAuthUserId(): Promise<string | null> {
 	}
 }
 
+/** Mit passender lokaler Identität bleiben alle gemerkten WGs erreichbar, sonst nur die mit wartenden Aktionen. */
+function visibleKnownWgs(queueCodes: Set<string>, hasIdentity: boolean): KnownWg[] {
+	const known = getKnownWgs();
+	return hasIdentity ? known : known.filter((wg) => queueCodes.has(wg.code));
+}
+
 function visibleQueueCodes(actions: OfflineAction[]): Set<string> {
 	return new Set(actions.map((action) => action.shareCode));
 }
@@ -120,6 +126,7 @@ function visibleQueueCodes(actions: OfflineAction[]): Set<string> {
 export function OfflineClient() {
 	const [online, setOnline] = useState(true);
 	const [knownWgs, setKnownWgs] = useState<KnownWg[]>([]);
+	const [hasIdentity, setHasIdentity] = useState(false);
 	const [queue, setQueue] = useState<OfflineAction[]>([]);
 	const [syncing, setSyncing] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
@@ -141,8 +148,9 @@ export function OfflineClient() {
 			const localQueue = fixtureMode
 				? readOfflineQueue()
 				: filterOfflineActionsForAuthUser(readOfflineQueue(), localAuthUserId);
-			const visibleCodes = visibleQueueCodes(localQueue);
-			setKnownWgs(getKnownWgs().filter((wg) => visibleCodes.has(wg.code)));
+			const identityOnDevice = hasLocalIdentityFor(localAuthUserId);
+			setHasIdentity(identityOnDevice);
+			setKnownWgs(visibleKnownWgs(visibleQueueCodes(localQueue), identityOnDevice));
 			setQueue(localQueue);
 			setStatus(fixtureMode || localAuthUserId ? 'browser-offline' : 'unauthenticated');
 			return localQueue;
@@ -161,6 +169,7 @@ export function OfflineClient() {
 			const nextQueue = readOfflineQueue().filter((action) =>
 				memberKeys.has(`${action.shareCode}:${action.memberId}`),
 			);
+			setHasIdentity(hasLocalIdentityFor(localAuthUserId));
 			setKnownWgs(getKnownWgs().filter((wg) => memberCodes.has(wg.code)));
 			setQueue(nextQueue);
 			setStatus('ready');
@@ -170,8 +179,9 @@ export function OfflineClient() {
 			const localQueue = fixtureMode
 				? readOfflineQueue()
 				: filterOfflineActionsForAuthUser(readOfflineQueue(), localAuthUserId);
-			const visibleCodes = visibleQueueCodes(localQueue);
-			setKnownWgs(getKnownWgs().filter((wg) => visibleCodes.has(wg.code)));
+			const identityOnDevice = hasLocalIdentityFor(localAuthUserId);
+			setHasIdentity(identityOnDevice);
+			setKnownWgs(visibleKnownWgs(visibleQueueCodes(localQueue), identityOnDevice));
 			setQueue(localQueue);
 			setStatus(fixtureMode || localAuthUserId ? 'server-unreachable' : 'unauthenticated');
 			return localQueue;
@@ -218,6 +228,10 @@ export function OfflineClient() {
 	const hiddenQueueCount = Math.max(0, queue.length - recentQueue.length);
 	const primaryWg =
 		knownWgs.find((wg) => (queueCounts.get(wg.code) ?? 0) > 0) ?? knownWgs[0] ?? null;
+	const lastWg = knownWgs.reduce<KnownWg | null>(
+		(latest, wg) => (!latest || wg.lastVisitedAt > latest.lastVisitedAt ? wg : latest),
+		null,
+	);
 	const statusLabel =
 		status === 'checking'
 			? 'Wird geprüft…'
@@ -341,6 +355,16 @@ export function OfflineClient() {
 						{statusHeading}
 					</h1>
 					<p className="text-sm text-muted-foreground">{statusDescription}</p>
+					{lastWg && status !== 'unauthenticated' && (
+						<Button
+							size="lg"
+							render={<Link href={wgHref(lastWg.code)} />}
+							nativeButton={false}
+							className="w-full"
+						>
+							Zurück zu {lastWg.name}
+						</Button>
+					)}
 					{status === 'unauthenticated' && (
 						<Button size="lg" render={<Link href="/neu" />} nativeButton={false} className="w-full">
 							Anmelden
@@ -459,9 +483,13 @@ export function OfflineClient() {
 						<div className="space-y-2">
 							{knownWgs.length === 0 ? (
 								<p className="text-sm leading-relaxed text-muted-foreground">
-									{status === 'browser-offline'
-										? 'Ohne Netz zeigen wir nur WGs mit wartenden Aktionen. Sobald du wieder online bist, öffnet sich deine WG wieder.'
-										: 'Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du mit deinem Code erneut beitreten.'}
+									{status === 'checking'
+										? 'Gemerkte WGs werden gesucht…'
+										: hasIdentity
+											? 'Auf diesem Gerät bist du in einer WG angemeldet, aber ihr Code ist hier nicht gespeichert. Sobald du wieder online bist, öffnet sich deine WG wieder.'
+											: status === 'browser-offline'
+												? 'Ohne Netz zeigen wir nur WGs mit wartenden Aktionen. Sobald du wieder online bist, öffnet sich deine WG wieder.'
+												: 'Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du mit deinem Code erneut beitreten.'}
 								</p>
 							) : (
 								<ItemGroup aria-label="Bekannte WGs">

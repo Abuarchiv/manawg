@@ -25,7 +25,7 @@ import {
 	shoppingActionErrorMessage,
 	shoppingAddErrorMessage,
 } from '@/features/shopping/shopping-errors';
-import { keepItems } from '@/features/shopping/shopping-view';
+import { isTempItemId, keepItems } from '@/features/shopping/shopping-view';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface UseShoppingPageOptions {
@@ -55,6 +55,16 @@ export function useShoppingPage({
 	} = useCachedFetch<{ items: ShoppingItem[] }>(`/api/wg/${encodedShareCode}/shopping`, {
 		memberId: identity.memberId,
 	});
+	// Noch nicht bestätigte Änderungen (neue Artikel mit Temp-ID, laufendes Abhaken): ein Poll
+	// oder Cache-Update darf sie nicht überschreiben, sonst flackert die Zeile zurück.
+	const optimisticRef = useRef(new Map<string, ShoppingItem>());
+	const withOptimistic = useCallback((server: ShoppingItem[]): ShoppingItem[] => {
+		const optimistic = optimisticRef.current;
+		if (optimistic.size === 0) return server;
+		const known = new Set(server.map((item) => item.id));
+		const added = [...optimistic.values()].filter((item) => !known.has(item.id));
+		return [...added, ...server.map((item) => optimistic.get(item.id) ?? item)];
+	}, []);
 	const [items, setItems] = useState<ShoppingItem[]>(() => cachedShopping?.items ?? []);
 	const commitItems = useCallback(
 		(update: ShoppingItem[] | ((current: ShoppingItem[]) => ShoppingItem[])) => {
@@ -78,6 +88,8 @@ export function useShoppingPage({
 	const [removeErrorId, setRemoveErrorId] = useState<string | null>(null);
 	const [clearingBought, setClearingBought] = useState(false);
 	const { isPending, start, end } = usePendingSet();
+	// Abhaken ist sofort sichtbar und zeigt kein „Speichert…“; die Sperre gegen Doppeltipps bleibt.
+	const togglingRef = useRef(new Set<string>());
 	const clearingBoughtRef = useRef(false);
 	const shoppingPatchRequestKeysRef = useRef(
 		new Map<string, { fingerprint: string; key: string }>(),
@@ -98,7 +110,7 @@ export function useShoppingPage({
 			}
 			if (res.ok) {
 				setLoadError(null);
-				setItems(res.data.items);
+				setItems(withOptimistic(res.data.items));
 				// Nur für Vorschläge: ein Fehler hier darf die Liste nicht blockieren.
 				void refreshInventory();
 				syncOfflineActions(wg.shareCode, { memberId: identity.memberId })
@@ -120,12 +132,12 @@ export function useShoppingPage({
 			}
 			if (!silent && requestId === loadRequestIdRef.current) setInitialLoading(false);
 		},
-		[identity.memberId, refreshInventory, refreshShopping, wg.shareCode],
+		[identity.memberId, refreshInventory, refreshShopping, wg.shareCode, withOptimistic],
 	);
 	useEffect(() => {
 		if (cachedShopping) {
 			hasShoppingCacheRef.current = true;
-			setItems(cachedShopping.items);
+			setItems(withOptimistic(cachedShopping.items));
 			setLoadError(null);
 			setInitialLoading(false);
 		} else if (shoppingReadError) {
@@ -134,7 +146,7 @@ export function useShoppingPage({
 			);
 			setInitialLoading(false);
 		}
-	}, [cachedShopping, shoppingReadError]);
+	}, [cachedShopping, shoppingReadError, withOptimistic]);
 	const itemCount = items.length;
 
 	useEffect(() => {
@@ -162,6 +174,7 @@ export function useShoppingPage({
 		identity,
 		prefillName,
 		commitItems,
+		optimisticRef,
 		load,
 		refreshCount,
 		// Neuer Hinzufügen-Versuch räumt auch den alten Abhak-Fehler weg.
@@ -187,7 +200,7 @@ export function useShoppingPage({
 	}, [highlightedId, itemCount, items]);
 	const toggleBought = useCallback(
 		async (item: ShoppingItem): Promise<void> => {
-			if (isPending(item.id)) return;
+			if (isPending(item.id) || togglingRef.current.has(item.id) || isTempItemId(item.id)) return;
 			if (hasQueuedShoppingUpdate(readOfflineQueue(), wg.shareCode, identity.memberId, item.id)) {
 				return;
 			}
@@ -234,7 +247,7 @@ export function useShoppingPage({
 				};
 				shoppingPatchRequestKeysRef.current.set(item.id, { fingerprint, key: idempotencyKey });
 			}
-			start(item.id);
+			togglingRef.current.add(item.id);
 			setToggleError(null);
 			setToggleNotice(null);
 			const optimisticItem: ShoppingItem = {
@@ -242,6 +255,7 @@ export function useShoppingPage({
 				boughtAt: becomingBought ? new Date().toISOString() : null,
 				boughtByMemberId: becomingBought ? identity.memberId : null,
 			};
+			optimisticRef.current.set(item.id, optimisticItem);
 			commitItems((prev) =>
 				keepItems(
 					prev,
@@ -395,11 +409,11 @@ export function useShoppingPage({
 				shoppingPatchRequestKeysRef.current.delete(item.id);
 				void load(true);
 			} finally {
-				end(item.id);
+				optimisticRef.current.delete(item.id);
+				togglingRef.current.delete(item.id);
 			}
 		},
 		[
-			end,
 			encodedShareCode,
 			commitItems,
 			identity.memberId,
@@ -407,7 +421,6 @@ export function useShoppingPage({
 			isPending,
 			load,
 			refreshCount,
-			start,
 			wg.id,
 			wg.shareCode,
 		],
@@ -415,7 +428,7 @@ export function useShoppingPage({
 
 	const remove = useCallback(
 		async (id: string): Promise<void> => {
-			if (isPending(id)) return;
+			if (isPending(id) || togglingRef.current.has(id) || isTempItemId(id)) return;
 			start(id);
 			try {
 				setToggleError(null);
