@@ -3,6 +3,7 @@
 
 import { type Page, expect, test } from '@playwright/test';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import { applyRootTextScale } from './support/text-scale';
 
 test.describe('shopping conflict handling', () => {
 	type FixtureShoppingItem = {
@@ -403,12 +404,7 @@ test.describe('shopping conflict handling', () => {
 			}
 		}
 
-		await page.route('**/__e2e-font-scale-200.css', (route) =>
-			route.fulfill({ contentType: 'text/css', body: ':root { font-size: 32px !important; }' }),
-		);
-		await page.addStyleTag({
-			url: new URL('/__e2e-font-scale-200.css', page.url()).toString(),
-		});
+		await applyRootTextScale(page, 200);
 		await page.setViewportSize({ width: 320, height: 812 });
 		await page.emulateMedia({ colorScheme: 'light' });
 		const suggestionButtons = suggestions.locator('button');

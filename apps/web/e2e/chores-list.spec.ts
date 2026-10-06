@@ -12,6 +12,7 @@ import {
 	navigateToFeature,
 	setupMember,
 } from './_helpers';
+import { applyRootTextScale } from './support/text-scale';
 
 test.describe('chore next assignee', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -128,9 +129,7 @@ test.describe('chore next assignee', () => {
 				for (const rootFontSize of [16, 32]) {
 					await page.setViewportSize({ width, height: 800 });
 					await page.emulateMedia({ colorScheme: theme });
-					await page.evaluate((size) => {
-						document.documentElement.style.fontSize = `${size}px`;
-					}, rootFontSize);
+					await applyRootTextScale(page, (rootFontSize / 16) * 100);
 
 					await opener.click();
 					await expect(takeOver).toBeVisible();
@@ -208,9 +207,7 @@ test.describe('chore next assignee', () => {
 		await openPutzen(page, [viewer], rows, [], true);
 		await page.setViewportSize({ width: 320, height: 800 });
 		await page.emulateMedia({ colorScheme: 'dark' });
-		await page.evaluate(() => {
-			document.documentElement.style.fontSize = '32px';
-		});
+		await applyRootTextScale(page, 200);
 
 		const row = page.locator('#chore-actions-admin-zoom');
 		await row.getByRole('button', { name: `Aufgabenaktionen: ${title}` }).click();

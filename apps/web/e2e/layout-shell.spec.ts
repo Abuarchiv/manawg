@@ -10,6 +10,7 @@ import {
 	navigateToFeature,
 	setupMember,
 } from './_helpers';
+import { applyRootTextScale } from './support/text-scale';
 
 test.describe('entry frame overflow', () => {
 	test.describe('entry headings on narrow screens', () => {
@@ -112,9 +113,7 @@ test.describe('public header reflow', () => {
 						.poll(() => page.evaluate(() => document.documentElement.classList.contains('dark')))
 						.toBe(scheme === 'dark');
 					for (const rootFontSize of [16, 32]) {
-						await page.evaluate((size) => {
-							document.documentElement.style.fontSize = `${size}px`;
-						}, rootFontSize);
+						await applyRootTextScale(page, (rootFontSize / 16) * 100);
 						await page.evaluate(() => document.fonts.ready);
 						await expect(account).toBeVisible();
 
@@ -162,9 +161,7 @@ test.describe('public header reflow', () => {
 
 			await page.setViewportSize({ width: 320, height: 844 });
 			await page.emulateMedia({ colorScheme: 'dark' });
-			await page.evaluate(() => {
-				document.documentElement.style.fontSize = '32px';
-			});
+			await applyRootTextScale(page, 200);
 			await brand.focus();
 			await page.keyboard.press('Tab');
 			await expect(account).toBeFocused();
@@ -327,12 +324,7 @@ test.describe('drawer mobile zoom', () => {
 			await expect(footer.getByRole('button').first()).toHaveAccessibleName(/.+/);
 
 			for (const fontSize of [32, 16]) {
-				await page.evaluate((size) => {
-					document.documentElement.style.fontSize = `${size}px`;
-				}, fontSize);
-				await expect
-					.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).fontSize))
-					.toBe(`${fontSize}px`);
+				await applyRootTextScale(page, (fontSize / 16) * 100);
 
 				for (const height of [640, 812]) {
 					await page.setViewportSize({ width: 320, height });

@@ -4,6 +4,7 @@
 import { expect, test } from '@playwright/test';
 
 import { mockNoWgs } from './_helpers';
+import { applyRootTextScale } from './support/text-scale';
 
 test.describe('auth phone flow', () => {
 	test.describe('phone authentication fixture', () => {
@@ -79,31 +80,11 @@ test.describe('auth tab responsive', () => {
 					}
 					return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
 				});
-				await page.route('**/__auth-test-root32.css', (route) =>
-					route.fulfill({
-						status: 200,
-						contentType: 'text/css',
-						body: 'html { font-size: 32px !important; }',
-					}),
-				);
-
 				await page.goto('/neu');
-				await page.evaluate(
-					() =>
-						new Promise<void>((resolve, reject) => {
-							const stylesheet = document.createElement('link');
-							stylesheet.rel = 'stylesheet';
-							stylesheet.href = '/__auth-test-root32.css';
-							stylesheet.onload = () => resolve();
-							stylesheet.onerror = () => reject(new Error('root font fixture failed to load'));
-							document.head.append(stylesheet);
-						}),
-				);
+				await applyRootTextScale(page, 200);
 				await page.waitForFunction(
-					({ dark }) =>
-						getComputedStyle(document.documentElement).fontSize === '32px' &&
-						document.documentElement.classList.contains('dark') === dark,
-					{ dark: scheme === 'dark' },
+					(dark) => document.documentElement.classList.contains('dark') === dark,
+					scheme === 'dark',
 				);
 
 				const phoneTab = page.getByRole('tab', { name: 'Telefon / SMS', exact: true });

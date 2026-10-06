@@ -3,6 +3,7 @@
 
 import { type Page, expect, test } from '@playwright/test';
 import { FIXTURE_WG, inMinimalMatrix, navigateToFeature, setupMember } from './_helpers';
+import { applyRootTextScale } from './support/text-scale';
 
 test.describe('settings access responsive', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -48,13 +49,10 @@ test.describe('settings access responsive', () => {
 			for (const fontSize of [16, 32]) {
 				for (const dark of [false, true]) {
 					await page.setViewportSize({ width, height: 900 });
-					await page.evaluate(
-						({ fontSize: size, dark: useDark }) => {
-							document.documentElement.style.fontSize = `${size}px`;
-							document.documentElement.classList.toggle('dark', useDark);
-						},
-						{ fontSize, dark },
-					);
+					await page.evaluate((useDark) => {
+						document.documentElement.classList.toggle('dark', useDark);
+					}, dark);
+					await applyRootTextScale(page, (fontSize / 16) * 100);
 					expect(
 						await page.locator('html').evaluate((element) => getComputedStyle(element).fontSize),
 					).toBe(`${fontSize}px`);
@@ -215,11 +213,7 @@ test.describe('settings data summary responsive', () => {
 					timeout: 30_000,
 				});
 
-				if (textScale === '32px') {
-					await page.evaluate(() => {
-						document.documentElement.style.fontSize = '200%';
-					});
-				}
+				if (textScale === '32px') await applyRootTextScale(page, 200);
 
 				const summary = page
 					.getByRole('region', { name: 'Datenexport' })
@@ -278,9 +272,7 @@ test.describe('settings legal links responsive', () => {
 			for (const colorScheme of ['light', 'dark'] as const) {
 				await page.setViewportSize({ width, height: 760 });
 				await page.emulateMedia({ colorScheme });
-				await page.locator('html').evaluate((html, size) => {
-					html.style.setProperty('font-size', `${size}px`, 'important');
-				}, fontSize);
+				await applyRootTextScale(page, (fontSize / 16) * 100);
 
 				await expect(page.locator('html')).toHaveCSS('font-size', `${fontSize}px`);
 				if (colorScheme === 'dark') {
@@ -389,13 +381,10 @@ test.describe('settings notifications responsive', () => {
 			await page.setViewportSize({ width, height: 720 });
 			for (const fontSize of ['16px', '32px']) {
 				for (const dark of [false, true]) {
-					await page.evaluate(
-						({ fontSize: nextFontSize, dark: darkMode }) => {
-							document.documentElement.style.fontSize = nextFontSize;
-							document.documentElement.classList.toggle('dark', darkMode);
-						},
-						{ fontSize, dark },
-					);
+					await page.evaluate((darkMode) => {
+						document.documentElement.classList.toggle('dark', darkMode);
+					}, dark);
+					await applyRootTextScale(page, fontSize === '32px' ? 200 : 100);
 					expect(
 						await page.locator('html').evaluate((element) => getComputedStyle(element).fontSize),
 					).toBe(fontSize);
@@ -439,10 +428,8 @@ test.describe('settings notifications responsive', () => {
 		expect(overflows).toEqual([]);
 
 		await page.setViewportSize({ width: 320, height: 720 });
-		await page.evaluate(() => {
-			document.documentElement.style.fontSize = '32px';
-			document.documentElement.classList.remove('dark');
-		});
+		await page.evaluate(() => document.documentElement.classList.remove('dark'));
+		await applyRootTextScale(page, 200);
 		await expect(endHour).toBeEnabled();
 		await endHour.focus();
 		await expect(endHour).toBeFocused();
@@ -533,9 +520,7 @@ test.describe('settings offline queue responsive', () => {
 				}, queuedAction);
 
 				if (textScale === '32px') {
-					await page.evaluate(() => {
-						document.documentElement.style.fontSize = '200%';
-					});
+					await applyRootTextScale(page, 200);
 					expect(await html.evaluate((element) => getComputedStyle(element).fontSize)).toBe('32px');
 				}
 

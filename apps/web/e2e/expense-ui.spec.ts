@@ -16,6 +16,7 @@ import {
 	nextHistoryPop,
 	setupMember,
 } from './_helpers';
+import { applyRootTextScale, resetRootTextScale } from './support/text-scale';
 
 test.describe('expense row reflow', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -85,9 +86,8 @@ test.describe('expense row reflow', () => {
 			for (const width of [320, 360, 390]) {
 				await page.setViewportSize({ width, height: 800 });
 				for (const largeText of [false, true]) {
-					await page.evaluate((enabled) => {
-						document.documentElement.style.fontSize = enabled ? '200%' : '';
-					}, largeText);
+					if (largeText) await applyRootTextScale(page, 200);
+					else await resetRootTextScale(page);
 
 					const layout = await row.evaluate((element) => ({
 						rowHeight: element.getBoundingClientRect().height,
@@ -138,9 +138,7 @@ test.describe('expense row reflow', () => {
 		await page.route(`**/api/wg/${shareCode}/expenses/${EXPENSE_ID}`, (route) =>
 			route.fulfill({ json: { deleted: true } }),
 		);
-		await page.evaluate(() => {
-			document.documentElement.style.fontSize = '';
-		});
+		await resetRootTextScale(page);
 		await action.tap();
 		await page.getByRole('menuitem', { name: 'Entfernen', exact: true }).click();
 		await page
@@ -233,9 +231,7 @@ test.describe('expense currency edit', () => {
 
 		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 		await dismissOnboarding(page);
-		await page.evaluate(() => {
-			document.documentElement.style.fontSize = '200%';
-		});
+		await applyRootTextScale(page, 200);
 		expect(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe(
 			'32px',
 		);
@@ -655,12 +651,7 @@ test.describe('finance dialog mobile', () => {
 		await expect(rows).toHaveCount(2);
 		const cancelButton = page.getByRole('button', { name: 'Abbrechen', exact: true });
 		for (const rootFontSize of [16, 32]) {
-			await page.evaluate((size) => {
-				document.documentElement.style.fontSize = `${size}px`;
-			}, rootFontSize);
-			await expect
-				.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).fontSize))
-				.toBe(`${rootFontSize}px`);
+			await applyRootTextScale(page, (rootFontSize / 16) * 100);
 			for (const theme of ['light', 'dark'] as const) {
 				await page.emulateMedia({ colorScheme: theme });
 				await expect
@@ -720,9 +711,7 @@ test.describe('finance dialog mobile', () => {
 				}
 			}
 		}
-		await page.evaluate(() => {
-			document.documentElement.style.fontSize = '16px';
-		});
+		await applyRootTextScale(page, 100);
 		await page.setViewportSize({ width: 1440, height: 900 });
 		// Wide screens keep the 28rem phone dialog, so split rows stay stacked with a full-width amount.
 		await expect
@@ -1022,15 +1011,6 @@ test.describe('fab summary overlay', () => {
 
 	const SHARE_CODE = 'MTE8PZAT';
 
-	async function useLargeText(page: Page): Promise<void> {
-		await page.evaluate(() => {
-			document.documentElement.style.setProperty('font-size', '32px', 'important');
-		});
-		await page.waitForFunction(
-			() => getComputedStyle(document.documentElement).fontSize === '32px',
-		);
-	}
-
 	for (const width of [320, 360]) {
 		for (const colorScheme of ['light', 'dark'] as const) {
 			if (width !== 320) continue;
@@ -1041,7 +1021,7 @@ test.describe('fab summary overlay', () => {
 				await page.emulateMedia({ colorScheme });
 				await setupMember(page);
 				await navigateToFeature(page, `/wg/${SHARE_CODE}/abos`);
-				await useLargeText(page);
+				await applyRootTextScale(page, 200);
 				await dismissOnboarding(page);
 				await expect(page.getByRole('heading', { name: 'Fixkosten', exact: true })).toBeVisible();
 				await expect(page.getByText('Dein Anteil', { exact: true })).toBeVisible();
@@ -1228,7 +1208,7 @@ test.describe('fab summary overlay', () => {
 			['ausgaben', 'Ausgabe hinzufügen'],
 		] as const) {
 			await navigateToFeature(page, `/wg/${SHARE_CODE}/${feature}`);
-			await useLargeText(page);
+			await applyRootTextScale(page, 200);
 			await dismissOnboarding(page);
 			const action = page.getByRole('button', { name: label, exact: true });
 			await expect(action).toBeVisible();
@@ -1238,7 +1218,7 @@ test.describe('fab summary overlay', () => {
 		}
 
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/einkauf`);
-		await useLargeText(page);
+		await applyRootTextScale(page, 200);
 		await dismissOnboarding(page);
 		await expect(page.locator('[data-page-primary-action] > button')).toHaveCount(0);
 		const addItem = page.getByRole('button', { name: 'Artikel hinzufügen', exact: true });
@@ -1283,7 +1263,7 @@ test.describe('fab summary overlay', () => {
 			route.fulfill({ json: { reminders: [] } }),
 		);
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/mahnungen`);
-		await useLargeText(page);
+		await applyRootTextScale(page, 200);
 		await dismissOnboarding(page);
 		// RemindButton legt den Button in einen Wrapper; das FAB-CSS greift nur auf direkte Kinder.
 		const textAction = page.locator('[data-page-primary-action] button');
@@ -1343,11 +1323,7 @@ test.describe('subscription summary responsive', () => {
 					await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/abos`);
 					await expect(page.getByText('Pro Monat')).toBeVisible();
 
-					if (textScale === '200%') {
-						await page.evaluate(() => {
-							document.documentElement.style.fontSize = '200%';
-						});
-					}
+					if (textScale === '200%') await applyRootTextScale(page, 200);
 
 					const summary = page.getByText('Pro Monat').locator('xpath=../../..');
 					const metrics = await summary

@@ -8,6 +8,6 @@
 		"src/composition/export-queries.ts": 579,
 		"src/features/events/events.ts": 631,
 		"src/features/expenses/import-parsers.ts": 589,
-		"e2e/expense-ui.spec.ts": 1812
+		"e2e/expense-ui.spec.ts": 1788
 	}
 }
