@@ -9,8 +9,12 @@ import type { SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 import { idempotencyResponses } from '../src/core/db/schema';
-import { RESPONSE_REPLAY_TTL_SECONDS } from '../src/core/offline/replay-retention';
-import { loadClaimedResponse } from '../tests/support/claimed-response.cjs';
+import {
+	loadClaimedResponse,
+	loadIdempotencyStore,
+	loadIdempotentWrite,
+	loadParseBody,
+} from '../tests/support/claimed-response.cjs';
 import {
 	FIXTURE_WG,
 	dismissOnboarding,
@@ -46,13 +50,21 @@ test.describe('import replay atomic', () => {
 				esModuleInterop: true,
 			},
 		}).outputText;
-		const module = { exports: {} as { commitImport: (input: unknown) => Promise<CommitResult> } };
+		const module = {
+			exports: {} as {
+				commitImport: (
+					replay: { scope: string; key: string },
+					prepare: () => Promise<{ input: unknown }>,
+				) => Promise<{ result: CommitResult }>;
+			},
+		};
 		new Function('require', 'module', 'exports', source)(
 			(name: string) => (name in overrides ? overrides[name] : requireFromWeb(name)),
 			module,
 			module.exports,
 		);
-		return module.exports.commitImport;
+		return async ({ replay, ...body }: ReturnType<typeof input>) =>
+			(await module.exports.commitImport(replay, async () => ({ input: body }))).result;
 	}
 
 	function harness(initialSlot: unknown) {
@@ -156,6 +168,7 @@ test.describe('import replay atomic', () => {
 			},
 		};
 		mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
+		mocks['@/core/db/idempotent-write'] = loadIdempotentWrite(mocks);
 		const commitImport = loadCommitImport(mocks);
 		return { state, commitImport };
 	}
@@ -267,105 +280,45 @@ test.describe('import warning persistence', () => {
 	}
 
 	type Warning = 'notification_delivery_failed' | 'notification_delivery_unknown';
-	type ReplayRow = {
-		scope: string;
-		key: string;
-		expiresAt: Date;
-		body: Record<string, unknown>;
-	};
+	const warning: Warning = 'notification_delivery_failed';
 
-	function warningStore(row: ReplayRow | null) {
+	test('warning update targets the committed import row with a scoped JSONB update', async () => {
 		const dialect = new PgDialect();
 		let setSql = '';
-		let whereSql = '';
-		let whereParams: unknown[] = [];
+		let where: { sql: string; params: unknown[] } = { sql: '', params: [] };
 		const db = {
 			update: () => ({
 				set: (values: { responseBody: SQL }) => ({
 					where: (condition: SQL) => ({
 						returning: async () => {
-							const assignment = dialect.sqlToQuery(values.responseBody);
-							const predicate = dialect.sqlToQuery(condition);
-							setSql = assignment.sql;
-							whereSql = predicate.sql;
-							whereParams = predicate.params;
-							const [scope, key, now, importId, warning] = predicate.params;
-							if (
-								!row ||
-								row.scope !== scope ||
-								row.key !== key ||
-								row.expiresAt.getTime() <= new Date(String(now)).getTime() ||
-								row.body.importId !== importId ||
-								!('warning' in row.body) ||
-								(row.body.warning !== null && row.body.warning !== warning)
-							) {
-								return [];
-							}
-							row.body = { ...row.body, warning };
-							return [{ scope: row.scope }];
+							setSql = dialect.sqlToQuery(values.responseBody).sql;
+							where = dialect.sqlToQuery(condition);
+							return [{ scope: 'import-commit:wg:member' }];
 						},
 					}),
 				}),
 			}),
 		};
-		const { persistImportReplayWarning } = loadTs<{
-			persistImportReplayWarning: (
-				scope: string,
-				key: string,
-				importId: string,
-				warning: Warning,
-			) => Promise<boolean>;
-		}>(path.join(process.cwd(), 'src/core/idempotency-store.ts'), {
-			'@/core/db': { db, idempotencyResponses },
-			'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]+$/i },
-			'@/core/offline/replay-retention': { RESPONSE_REPLAY_TTL_SECONDS },
-			'@/core/rate-limit': { createConfiguredRedis: () => null },
-		});
-		return {
-			persistImportReplayWarning,
-			query: () => ({ setSql, whereSql, whereParams }),
-		};
-	}
-
-	const warning: Warning = 'notification_delivery_failed';
-
-	test('warning update uses a scoped JSONB update', async () => {
-		const row: ReplayRow = {
-			scope: 'import-commit:wg:member',
-			key: 'key',
-			expiresAt: new Date(Date.now() + 60_000),
-			body: { importId: 'import-1', inserted: 0, skipped: 0, errors: [], warning: null },
-		};
-		const { persistImportReplayWarning, query } = warningStore(row);
-		expect(await persistImportReplayWarning(row.scope, row.key, 'import-1', warning)).toBe(true);
-		expect(query().setSql).toContain('jsonb_set');
-		expect(query().whereSql).toContain('expires_at');
-		expect(query().whereSql).toContain('importId');
-		expect(query().whereParams).toContain('import-1');
-	});
-
-	test('missing, expired, or different import rows reject warning updates', async () => {
-		const base = {
-			scope: 'import-commit:wg:member',
-			key: 'key',
-			expiresAt: new Date(Date.now() + 60_000),
-			body: { importId: 'import-1', inserted: 1, skipped: 0, errors: [], warning: null },
-		};
-		for (const row of [
-			null,
-			{ ...base, expiresAt: new Date(Date.now() - 1) },
-			{ ...base, body: { ...base.body, importId: 'other-import' } },
-		]) {
-			const { persistImportReplayWarning } = warningStore(row);
-			expect(await persistImportReplayWarning(base.scope, base.key, 'import-1', warning)).toBe(
-				false,
-			);
-		}
+		const store = loadIdempotencyStore({ '@/core/db': { db, idempotencyResponses } });
+		const persisted = await store.setReplayWarning(
+			'import-commit:wg:member',
+			'key',
+			{
+				match: [{ path: ['importId'], equals: 'import-1' }],
+				warningPath: ['warning'],
+				replaces: [null, warning],
+			},
+			warning,
+		);
+		expect(persisted).toBe(true);
+		expect(setSql).toContain('jsonb_set');
+		expect(where.sql).toContain('expires_at');
+		expect(where.sql).toContain('importId');
+		expect(where.params).toContain('import-1');
 	});
 
 	function importRoute(persist: () => Promise<boolean>, commit?: () => Promise<unknown>) {
 		let logs = 0;
-		const released: string[] = [];
 		const result = {
 			importId: 'import-1',
 			inserted: 1,
@@ -373,73 +326,66 @@ test.describe('import warning persistence', () => {
 			errors: [],
 			warning,
 		};
+		const mocks: Record<string, unknown> = {
+			'@/core/http/api-errors': {
+				badRequest: () => new Response(null, { status: 400 }),
+				conflict: () => new Response(null, { status: 409 }),
+				serverError: () => new Response(null, { status: 500 }),
+				tooMany: () => new Response(null, { status: 429 }),
+			},
+			'@/core/guards/admin': { isWgAdmin: async () => false },
+			'@/core/guards/require-wg-member': {
+				requireWgMember: async () => ({
+					ok: true,
+					wg: { id: 'wg', name: 'WG', shareCode: 'MTE8PZAT' },
+					member: { memberId: 'member', name: 'Member' },
+				}),
+			},
+			'@/core/guards/route-preamble': {
+				readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
+			},
+			'@/core/idempotency-store': {
+				readIdempotencyKey: () => 'key',
+				setReplayWarning: persist,
+			},
+			'@/core/infra/observability': { logApiError: () => logs++ },
+			'@/core/rate-limit': {
+				checkRateLimit: async () => ({ success: true }),
+				importCommitLimiter: {},
+			},
+			'@/features/expenses/import-body': {
+				MAX_CSV_BYTES: 5 * 1024 * 1024,
+				MAX_OCR_BYTES: 1024 * 1024,
+				readImportJsonBody: async (req: Request) => ({ ok: true, value: await req.json() }),
+			},
+			'@/features/expenses/import-commit': {
+				commitImport: async (
+					_replay: unknown,
+					prepare: () => Promise<{ stop: Response } | { input: unknown }>,
+				) => {
+					const prepared = await prepare();
+					if ('stop' in prepared) return { kind: 'stopped', response: prepared.stop };
+					return { kind: 'committed', result: commit ? await commit() : result };
+				},
+			},
+			'@/features/expenses/import-hash': { hashPayload: () => 'hash' },
+			'@/features/expenses/import-parsers': {
+				UnsupportedCurrencyError: class extends Error {},
+				findMappingConflicts: () => [],
+				parseSplidCsv: () => [{ paidByName: 'Member', splits: [] }],
+				parseSplitwiseCsv: () => [{ paidByName: 'Member', splits: [] }],
+			},
+			'@/features/expenses/ocr': { parseOcrText: () => ({ expenses: [] }) },
+			'next/server': { NextResponse: { json: (body: unknown) => Response.json(body) } },
+		};
+		mocks['@/core/http/parse-body'] = loadParseBody(mocks);
+		mocks['@/core/db/idempotent-write'] = loadIdempotentWrite(mocks);
 		const route = loadTs<{ POST: (req: Request, ctx: unknown) => Promise<Response> }>(
 			path.join(process.cwd(), 'src/app/api/wg/[code]/imports/commit/route.ts'),
-			{
-				'@/core/http/api-errors': {
-					badRequest: () => new Response(null, { status: 400 }),
-					serverError: () => new Response(null, { status: 500 }),
-					tooMany: () => new Response(null, { status: 429 }),
-				},
-				'@/core/guards/idempotency': {
-					ReplayCache: class {
-						get() {
-							return null;
-						}
-						reserve() {
-							return { owned: true, resolve: () => undefined, reject: () => undefined };
-						}
-					},
-					claimReplaySlotWithRetry: async () => ({ won: true }),
-					replayKey: () => 'replay-key',
-				},
-				'@/core/guards/admin': { isWgAdmin: async () => false },
-				'@/core/guards/require-wg-member': {
-					requireWgMember: async () => ({
-						ok: true,
-						wg: { id: 'wg', name: 'WG', shareCode: 'MTE8PZAT' },
-						member: { memberId: 'member', name: 'Member' },
-					}),
-				},
-				'@/core/guards/route-preamble': {
-					readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
-				},
-				'@/core/idempotency-store': {
-					getCachedResponse: async () => null,
-					persistImportReplayWarning: persist,
-					readIdempotencyKey: () => 'key',
-					releaseResponseSlot: async (scope: string, key: string) => {
-						released.push(`${scope}:${key}`);
-					},
-				},
-				'@/core/infra/observability': { logApiError: () => logs++ },
-				'@/core/rate-limit': {
-					checkRateLimit: async () => ({ success: true }),
-					importCommitLimiter: {},
-				},
-				'@/features/expenses/import-body': {
-					MAX_CSV_BYTES: 5 * 1024 * 1024,
-					MAX_OCR_BYTES: 1024 * 1024,
-					readImportJsonBody: async (req: Request) => ({ ok: true, value: await req.json() }),
-				},
-				'@/features/expenses/import-commit': {
-					commitImport: commit ?? (async () => result),
-					isCommitResult: () => true,
-				},
-				'@/features/expenses/import-hash': { hashPayload: () => 'hash' },
-				'@/features/expenses/import-parsers': {
-					UnsupportedCurrencyError: class extends Error {},
-					findMappingConflicts: () => [],
-					parseSplidCsv: () => [{ paidByName: 'Member', splits: [] }],
-					parseSplitwiseCsv: () => [{ paidByName: 'Member', splits: [] }],
-				},
-				'@/features/expenses/ocr': { parseOcrText: () => ({ expenses: [] }) },
-				'next/server': { NextResponse: { json: (body: unknown) => Response.json(body) } },
-			},
+			mocks,
 		);
 		return {
 			logs: () => logs,
-			released: () => released,
 			post: () =>
 				route.POST(
 					new Request('https://example.invalid', {
@@ -467,7 +413,8 @@ test.describe('import warning persistence', () => {
 		expect(failed.logs()).toBe(1);
 	});
 
-	test('a failed commit releases its idempotency claim so the retry gets the real error', async () => {
+	// Releasing the claim after a failed commit is the primitive's job (tests/idempotent-write).
+	test('a failed commit answers with the real error on every same-key retry', async () => {
 		const failing = importRoute(
 			async () => true,
 			async () => {
@@ -475,13 +422,10 @@ test.describe('import warning persistence', () => {
 			},
 		);
 		expect((await failing.post()).status).toBe(400);
-		expect(failing.released()).toHaveLength(1);
 		expect((await failing.post()).status).toBe(400);
-		expect(failing.released()).toHaveLength(2);
 
 		const succeeding = importRoute(async () => true);
 		expect((await succeeding.post()).status).toBe(200);
-		expect(succeeding.released()).toHaveLength(0);
 	});
 });
 

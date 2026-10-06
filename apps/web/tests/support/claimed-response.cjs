@@ -1,3 +1,5 @@
+// Real claim-protocol, idempotent-write, store and parse-body modules for the vm route harnesses
+// that still load routes through transpileModule. New tests import modules and use mock.module.
 const { readFileSync } = require('node:fs');
 const { createRequire } = require('node:module');
 const path = require('node:path');
@@ -16,6 +18,7 @@ function transpile(file) {
 	}).outputText;
 }
 
+/** @returns {any} The evaluated module's exports. */
 function evaluate(compiled, mocks) {
 	const module = { exports: {} };
 	new Function('require', 'module', 'exports', compiled)(

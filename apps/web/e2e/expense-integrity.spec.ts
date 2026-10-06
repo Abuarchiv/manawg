@@ -16,7 +16,39 @@ import {
 	recurringExpenses,
 	wgMembers,
 } from '../src/core/db/schema';
-import { loadClaimedResponse } from '../tests/support/claimed-response.cjs';
+import {
+	loadClaimedResponse,
+	loadIdempotencyStore,
+	loadIdempotentWrite,
+	loadParseBody,
+} from '../tests/support/claimed-response.cjs';
+
+type ModuleLoader = (file: string, overrides: Record<string, unknown>) => unknown;
+
+/**
+ * Adds the real idempotent-write and parse-body helpers, and the expense write modules the
+ * routes delegate to, all evaluated against the same mocks. Feature modules load on first use.
+ */
+function withRouteHelpers(
+	overrides: Record<string, unknown>,
+	load: ModuleLoader,
+): Record<string, unknown> {
+	overrides['@/core/db/idempotent-write'] = loadIdempotentWrite(overrides);
+	overrides['@/core/http/parse-body'] = loadParseBody(overrides);
+	for (const name of ['expense-create', 'recurring-template-writes', 'import-commit']) {
+		const key = `@/features/expenses/${name}`;
+		if (Object.hasOwn(overrides, key)) continue;
+		let loaded: unknown;
+		Object.defineProperty(overrides, key, {
+			enumerable: true,
+			get: () => {
+				loaded ??= load(path.join(process.cwd(), `src/features/expenses/${name}.ts`), overrides);
+				return loaded;
+			},
+		});
+	}
+	return overrides;
+}
 
 /**
  * The real, dependency-free expense validation modules. Routes import them for
@@ -984,41 +1016,34 @@ test.describe('expense integrity regressions', () => {
 		};
 		const collectionRoute = loadTs<{
 			PATCH: (req: Request, ctx: unknown) => Promise<Response>;
-		}>(path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/route.ts'), {
-			...EXPENSE_VALIDATION_MODULES,
-			...common,
-			'@/core/db/claimed-response': loadClaimedResponse(common),
-			'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
-			'@/core/guards/idempotency': {
-				ReplayCache: class {
-					get() {
-						return null;
-					}
-					remember() {}
-					reserve() {
-						return null;
-					}
+		}>(
+			path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/route.ts'),
+			withRouteHelpers(
+				{
+					...EXPENSE_VALIDATION_MODULES,
+					...common,
+					'@/core/db/claimed-response': loadClaimedResponse(common),
+					'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
+					'@/core/guards/route-preamble': {
+						readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
+					},
+					'@/core/idempotency-store': {
+						RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
+						getCachedResponse: async () => null,
+						readIdempotencyKey: () => null,
+					},
+					'@/core/infra/observability': { logApiError: () => undefined },
+					'@/features/expenses/expense-payments': {
+						withExpensePaymentLock: async (
+							_wgId: string,
+							operation: (tx: unknown) => Promise<unknown>,
+						) => operation({}),
+					},
+					'@/features/expenses/split-math': splitMath,
 				},
-				claimReplaySlotWithRetry: async () => ({ won: true }),
-				replayKey: () => 'replay-key',
-			},
-			'@/core/guards/route-preamble': {
-				readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
-			},
-			'@/core/idempotency-store': {
-				RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
-				getCachedResponse: async () => null,
-				readIdempotencyKey: () => null,
-			},
-			'@/core/infra/observability': { logApiError: () => undefined },
-			'@/features/expenses/expense-payments': {
-				withExpensePaymentLock: async (
-					_wgId: string,
-					operation: (tx: unknown) => Promise<unknown>,
-				) => operation({}),
-			},
-			'@/features/expenses/split-math': splitMath,
-		});
+				loadTs,
+			),
+		);
 		const itemRoute = loadTs<{
 			PATCH: (req: Request, ctx: unknown) => Promise<Response>;
 		}>(path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/[id]/route.ts'), {
@@ -1308,65 +1333,71 @@ test.describe('expense integrity regressions', () => {
 		let committed: Record<string, unknown> | undefined;
 		const response = await loadTs<{
 			POST: (req: Request, ctx: unknown) => Promise<Response>;
-		}>(IMPORT_ROUTE, {
-			'@/core/http/api-errors': {
-				badRequest: (code: string) => responseError(code, 400),
-				serverError: () => responseError('server_error', 500),
-				tooMany: () => responseError('too_many', 429),
-			},
-			'@/core/guards/idempotency': {
-				ReplayCache: class {
-					get() {
-						return null;
-					}
-					remember() {}
-					reserve() {
-						return null;
-					}
+		}>(
+			IMPORT_ROUTE,
+			withRouteHelpers(
+				{
+					'@/core/http/api-errors': {
+						badRequest: (code: string) => responseError(code, 400),
+						serverError: () => responseError('server_error', 500),
+						tooMany: () => responseError('too_many', 429),
+					},
+					'@/core/guards/admin': { isWgAdmin: async () => false },
+					'@/core/guards/require-wg-member': {
+						requireWgMember: async () => ({
+							ok: true,
+							wg: { id: WG_ID, name: 'WG', shareCode: 'MTE8PZAT' },
+							member: { memberId: CALLER_ID, name: 'Mina' },
+						}),
+					},
+					'@/core/guards/route-preamble': {
+						readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
+					},
+					'@/core/idempotency-store': {
+						getCachedResponse: async () => null,
+						readIdempotencyKey: () => null,
+					},
+					'@/core/infra/observability': { logApiError: () => undefined },
+					'@/core/rate-limit': {
+						checkRateLimit: async () => ({ success: true }),
+						importCommitLimiter: {},
+					},
+					'@/features/expenses/import-body': {
+						MAX_CSV_BYTES: 100_000,
+						MAX_OCR_BYTES: 100_000,
+						readImportJsonBody: async (req: Request) => ({ ok: true, value: await req.json() }),
+					},
+					'@/features/expenses/import-commit': {
+						commitImport: async (
+							_replay: unknown,
+							prepare: () => Promise<{ stop: Response } | { input: Record<string, unknown> }>,
+						) => {
+							const prepared = await prepare();
+							if ('stop' in prepared) return { kind: 'stopped', response: prepared.stop };
+							committed = prepared.input;
+							return {
+								kind: 'committed',
+								result: {
+									importId: 'import-1',
+									inserted: 0,
+									skipped: 1,
+									errors: [],
+									warning: null,
+								},
+							};
+						},
+					},
+					'@/features/expenses/import-hash': { hashPayload: () => 'payload-hash' },
+					'@/features/expenses/import-parsers': {
+						...parser,
+						parseSplitwiseCsv: () => [parsedExpense],
+						parseSplidCsv: () => [parsedExpense],
+					},
+					'@/features/expenses/ocr': { parseOcrText: () => ({ expenses: [parsedExpense] }) },
 				},
-				claimReplaySlotWithRetry: async () => ({ won: true }),
-				replayKey: () => 'replay-key',
-			},
-			'@/core/guards/admin': { isWgAdmin: async () => false },
-			'@/core/guards/require-wg-member': {
-				requireWgMember: async () => ({
-					ok: true,
-					wg: { id: WG_ID, name: 'WG', shareCode: 'MTE8PZAT' },
-					member: { memberId: CALLER_ID, name: 'Mina' },
-				}),
-			},
-			'@/core/guards/route-preamble': {
-				readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
-			},
-			'@/core/idempotency-store': {
-				getCachedResponse: async () => null,
-				readIdempotencyKey: () => null,
-				setCachedResponse: async () => undefined,
-			},
-			'@/core/infra/observability': { logApiError: () => undefined },
-			'@/core/rate-limit': {
-				checkRateLimit: async () => ({ success: true }),
-				importCommitLimiter: {},
-			},
-			'@/features/expenses/import-body': {
-				MAX_CSV_BYTES: 100_000,
-				MAX_OCR_BYTES: 100_000,
-				readImportJsonBody: async (req: Request) => ({ ok: true, value: await req.json() }),
-			},
-			'@/features/expenses/import-commit': {
-				commitImport: async (input: Record<string, unknown>) => {
-					committed = input;
-					return { importId: 'import-1', inserted: 0, skipped: 1, errors: [], warning: null };
-				},
-			},
-			'@/features/expenses/import-hash': { hashPayload: () => 'payload-hash' },
-			'@/features/expenses/import-parsers': {
-				...parser,
-				parseSplitwiseCsv: () => [parsedExpense],
-				parseSplidCsv: () => [parsedExpense],
-			},
-			'@/features/expenses/ocr': { parseOcrText: () => ({ expenses: [parsedExpense] }) },
-		}).POST(
+				loadTs,
+			),
+		).POST(
 			new Request('http://localhost', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
@@ -1409,53 +1440,64 @@ test.describe('expense integrity regressions', () => {
 			operation: (value: typeof tx) => Promise<unknown>,
 		) => operation(tx);
 		const commitImport = loadTs<{
-			commitImport: (input: unknown) => Promise<{ skipped: number }>;
-		}>(IMPORT_COMMIT, {
-			'@/core/activity-feed': { postSystemNotice: async () => undefined },
-			'@/core/idempotency-store': { RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60 },
-			'@/core/audit': { recordAuditEvent: async () => undefined },
-			'@/core/db': { db, expenseImports, expenseSplits: {}, expenses: {}, wgMembers: {} },
-			'@/core/db/claimed-response': loadClaimedResponse({
-				'@/core/db': { db, idempotencyResponses },
-			}),
-			'@/core/notifications/notification-dispatch': {
-				dispatchNotificationSafely: async () => ({ warning: null }),
-			},
-			'@/core/utils/money': { formatEuroCents: () => '0,00 €' },
-			'@/features/expenses/expense-payments': {
-				hasCapturingExpensePayment: async () => false,
-				withExpensePaymentLock: withPaymentLock,
-			},
-			'@/features/expenses/split-math': { settledAtForOwnShare: () => null },
-			'@/features/expenses/paid-by-guard': loadTs(PAID_BY_GUARD),
-		});
-		const foreignMemberId = '24ba761e-a429-45c3-a311-18e9a44b9be8';
-		const result = await commitImport.commitImport({
-			wg: { id: WG_ID, name: 'WG', shareCode: 'MTE8PZAT' },
-			source: 'splitwise_csv',
-			importedByMemberId: CALLER_ID,
-			importedByName: 'Mina',
-			mayRecordForOthers: false,
-			expenses: [
+			commitImport: (
+				replay: { scope: string; key: string | null },
+				prepare: () => Promise<{ input: unknown }>,
+			) => Promise<{ result: { skipped: number } }>;
+		}>(
+			IMPORT_COMMIT,
+			withRouteHelpers(
 				{
-					parsed: {
-						date: '2026-09-01T00:00:00.000Z',
-						description: 'Alte Ausgabe',
-						amountCents: 500,
-						currency: 'EUR',
-						paidByName: 'Ausgetretene Person',
-						splits: [{ memberName: 'Ausgetretene Person', amountCents: 500 }],
-						warnings: [],
+					'@/core/activity-feed': { postSystemNotice: async () => undefined },
+					'@/core/idempotency-store': { RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60 },
+					'@/core/audit': { recordAuditEvent: async () => undefined },
+					'@/core/db': { db, expenseImports, expenseSplits: {}, expenses: {}, wgMembers: {} },
+					'@/core/db/claimed-response': loadClaimedResponse({
+						'@/core/db': { db, idempotencyResponses },
+					}),
+					'@/core/notifications/notification-dispatch': {
+						dispatchNotificationSafely: async () => ({ warning: null }),
 					},
-					skip: true,
+					'@/core/utils/money': { formatEuroCents: () => '0,00 €' },
+					'@/features/expenses/expense-payments': {
+						hasCapturingExpensePayment: async () => false,
+						withExpensePaymentLock: withPaymentLock,
+					},
+					'@/features/expenses/split-math': { settledAtForOwnShare: () => null },
+					'@/features/expenses/paid-by-guard': loadTs(PAID_BY_GUARD),
 				},
-			],
-			mapping: { 'Ausgetretene Person': foreignMemberId },
-			skipDuplicates: false,
-			rawPayloadHash: 'hash',
-		});
+				loadTs,
+			),
+		);
+		const foreignMemberId = '24ba761e-a429-45c3-a311-18e9a44b9be8';
+		const outcome = await commitImport.commitImport({ scope: 'import', key: null }, async () => ({
+			input: {
+				wg: { id: WG_ID, name: 'WG', shareCode: 'MTE8PZAT' },
+				source: 'splitwise_csv',
+				importedByMemberId: CALLER_ID,
+				importedByName: 'Mina',
+				mayRecordForOthers: false,
+				expenses: [
+					{
+						parsed: {
+							date: '2026-09-01T00:00:00.000Z',
+							description: 'Alte Ausgabe',
+							amountCents: 500,
+							currency: 'EUR',
+							paidByName: 'Ausgetretene Person',
+							splits: [{ memberName: 'Ausgetretene Person', amountCents: 500 }],
+							warnings: [],
+						},
+						skip: true,
+					},
+				],
+				mapping: { 'Ausgetretene Person': foreignMemberId },
+				skipDuplicates: false,
+				rawPayloadHash: 'hash',
+			},
+		}));
 
-		expect(result.skipped).toBe(1);
+		expect(outcome.result.skipped).toBe(1);
 		expect(memberLookups).toBe(0);
 	});
 
@@ -1511,91 +1553,86 @@ test.describe('expense integrity regressions', () => {
 		);
 		const route = loadTs<{
 			POST: (req: Request, ctx: unknown) => Promise<Response>;
-		}>(path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/route.ts'), {
-			...EXPENSE_VALIDATION_MODULES,
-			'@/core/audit': { recordAuditEvent: async () => undefined },
-			'@/core/db': {
-				db: {
-					select: () => ({ from: () => ({ where: async () => memberRows }) }),
+		}>(
+			path.join(ROOT, 'src/app/api/wg/[code]/recurring-expenses/route.ts'),
+			withRouteHelpers(
+				{
+					...EXPENSE_VALIDATION_MODULES,
+					'@/core/audit': { recordAuditEvent: async () => undefined },
+					'@/core/db': {
+						db: {
+							select: () => ({ from: () => ({ where: async () => memberRows }) }),
+						},
+						idempotencyResponses: {},
+						recurringExpenses,
+						wgMembers: {},
+					},
+					'@/core/db/claimed-response': loadClaimedResponse({
+						'@/core/db': { idempotencyResponses: {} },
+					}),
+					'@/core/db/transaction': {
+						TransactionAbort: class TransactionAbort extends Error {},
+					},
+					'@/core/http/api-errors': {
+						apiError: (code: string, status: number) => responseError(code, status),
+						badRequest: (code: string) => responseError(code, 400),
+						conflict: (code: string) => responseError(code, 409),
+						forbidden: (code: string) => responseError(code, 403),
+						notFound: (code: string) => responseError(code, 404),
+						serverError: (code: string) => responseError(code, 500),
+						tooMany: () => responseError('too_many', 429),
+					},
+					'@/core/guards/admin': { requireOwnerOrAdmin: async () => null },
+					'@/core/guards/require-wg-member': {
+						requireWgMember: async () => ({
+							ok: true,
+							wg: { id: WG_ID, name: 'WG', shareCode: 'MTE8PZAT' },
+							member: { memberId: CALLER_ID, name: 'Mina' },
+						}),
+					},
+					'@/core/guards/route-preamble': {
+						readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
+					},
+					'@/core/guards/with-wg-route': {
+						withWgRoute: (_name: string, handler: unknown) => handler,
+					},
+					'@/core/idempotency-store': {
+						RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
+						getCachedResponse: async () => null,
+						readIdempotencyKey: () => null,
+					},
+					'@/core/infra/observability': { logApiError: () => undefined },
+					'@/core/rate-limit': {
+						checkRateLimit: async () => ({ success: true }),
+						wgWriteLimiter: {},
+					},
+					'@/core/validators/currency': { currencySchema: z.string() },
+					'@/features/expenses/expense-payments': {
+						withExpensePaymentLock: async (
+							_wgId: string,
+							operation: (tx: unknown) => Promise<unknown>,
+						) => operation(tx),
+					},
+					'@/features/expenses/expenses': expenseFeatures,
+					'@/features/expenses/paid-by-guard': loadTs(PAID_BY_GUARD),
+					'@/features/expenses/recurring-expenses': {
+						parseRecurringSplits: JSON.parse,
+						serializeRecurringExpense: serializeRecurringExpenseStub,
+					},
+					'@/features/expenses/split-math': loadTs(SPLIT_MATH),
+					'drizzle-orm': {
+						and: (...conditions: unknown[]) => conditions,
+						asc: () => undefined,
+						eq: () => undefined,
+						gt: () => undefined,
+						inArray: () => undefined,
+						isNull: () => undefined,
+						sql: () => undefined,
+					},
 				},
-				idempotencyResponses: {},
-				recurringExpenses,
-				wgMembers: {},
-			},
-			'@/core/db/claimed-response': loadClaimedResponse({
-				'@/core/db': { idempotencyResponses: {} },
-			}),
-			'@/core/db/transaction': {
-				TransactionAbort: class TransactionAbort extends Error {},
-			},
-			'@/core/http/api-errors': {
-				apiError: (code: string, status: number) => responseError(code, status),
-				badRequest: (code: string) => responseError(code, 400),
-				conflict: (code: string) => responseError(code, 409),
-				forbidden: (code: string) => responseError(code, 403),
-				notFound: (code: string) => responseError(code, 404),
-				serverError: (code: string) => responseError(code, 500),
-				tooMany: () => responseError('too_many', 429),
-			},
-			'@/core/guards/admin': { requireOwnerOrAdmin: async () => null },
-			'@/core/guards/idempotency': {
-				ReplayCache: class {
-					get() {
-						return null;
-					}
-					remember() {}
-					reserve() {
-						return null;
-					}
-				},
-				claimReplaySlotWithRetry: async () => ({ won: true }),
-				replayKey: () => 'replay-key',
-			},
-			'@/core/guards/require-wg-member': {
-				requireWgMember: async () => ({
-					ok: true,
-					wg: { id: WG_ID, name: 'WG', shareCode: 'MTE8PZAT' },
-					member: { memberId: CALLER_ID, name: 'Mina' },
-				}),
-			},
-			'@/core/guards/route-preamble': {
-				readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
-			},
-			'@/core/guards/with-wg-route': { withWgRoute: (_name: string, handler: unknown) => handler },
-			'@/core/idempotency-store': {
-				RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
-				getCachedResponse: async () => null,
-				readIdempotencyKey: () => null,
-			},
-			'@/core/infra/observability': { logApiError: () => undefined },
-			'@/core/rate-limit': {
-				checkRateLimit: async () => ({ success: true }),
-				wgWriteLimiter: {},
-			},
-			'@/core/validators/currency': { currencySchema: z.string() },
-			'@/features/expenses/expense-payments': {
-				withExpensePaymentLock: async (
-					_wgId: string,
-					operation: (tx: unknown) => Promise<unknown>,
-				) => operation(tx),
-			},
-			'@/features/expenses/expenses': expenseFeatures,
-			'@/features/expenses/paid-by-guard': loadTs(PAID_BY_GUARD),
-			'@/features/expenses/recurring-expenses': {
-				parseRecurringSplits: JSON.parse,
-				serializeRecurringExpense: serializeRecurringExpenseStub,
-			},
-			'@/features/expenses/split-math': loadTs(SPLIT_MATH),
-			'drizzle-orm': {
-				and: (...conditions: unknown[]) => conditions,
-				asc: () => undefined,
-				eq: () => undefined,
-				gt: () => undefined,
-				inArray: () => undefined,
-				isNull: () => undefined,
-				sql: () => undefined,
-			},
-		});
+				loadTs,
+			),
+		);
 		const post = (splits: Array<{ debtorMemberId: string; amountCents: number }>) =>
 			route.POST(
 				new Request('http://localhost', {
@@ -1840,21 +1877,11 @@ test.describe('expense create replay atomic', () => {
 				tooMany: () => responseError('too_many', 429),
 			},
 			'@/core/guards/admin': { requireOwnerOrAdmin: async () => null },
-			'@/core/guards/idempotency': {
-				ReplayCache: class {
-					get() {
-						return null;
-					}
-					remember() {}
-					reserve() {
-						return { owned: true, resolve: () => undefined, reject: () => undefined };
-					}
-				},
-				claimReplaySlotWithRetry: async () => {
+			'@/core/guards/replay-slot': {
+				claimReplaySlot: async () => {
 					state.slot ??= { body: { _claimed: true }, expiresAt: new Date(Date.now() + 60_000) };
 					return { won: true };
 				},
-				replayKey: () => 'local-key',
 			},
 			'@/core/guards/require-wg-member': {
 				requireWgMember: async () => ({
@@ -1871,9 +1898,8 @@ test.describe('expense create replay atomic', () => {
 				RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
 				getCachedResponse: async () => null,
 				readIdempotencyKey: (req: Request) => req.headers.get('idempotency-key'),
-				setCachedResponse: () => {
-					throw new Error('post-commit cache write');
-				},
+				setReplayWarning: (...args: unknown[]) =>
+					loadIdempotencyStore(common).setReplayWarning(...args),
 			},
 			'@/core/infra/observability': {
 				logApiError: (message: string, err: unknown) => {
@@ -1894,40 +1920,51 @@ test.describe('expense create replay atomic', () => {
 				? 'src/app/api/wg/[code]/expenses/route.ts'
 				: 'src/app/api/wg/[code]/recurring-expenses/route.ts',
 		);
-		const route = loadTs<{ POST: (req: Request, ctx: unknown) => Promise<Response> }>(file, {
-			...EXPENSE_VALIDATION_MODULES,
-			...common,
-			'@/core/db/claimed-response': loadClaimedResponse(common),
-			'@/core/validators/image-url': {
-				imageUrlSchema: requireFromWeb('zod').z.string().nullable().optional(),
-				isAllowedImageUrlForWg: () => true,
-			},
-			'@/features/expenses/paid-by-guard': { checkPaidByGuard: () => ({ ok: true }) },
-			'@/features/expenses/expenses': {
-				findExpenseMemberIds: async () => new Set([MEMBER_ID]),
-				insertExpenseWithSplits: async (
-					tx: { addExpense: () => void },
-					input: Record<string, unknown>,
-				) => {
-					tx.addExpense();
-					return {
-						expense: { id: EXPENSE_ID, ...input },
-						splits: [
-							{ id: SPLIT_ID, expenseId: EXPENSE_ID, debtorMemberId: MEMBER_ID, amountCents: 1200 },
-						],
-					};
+		const route = loadTs<{ POST: (req: Request, ctx: unknown) => Promise<Response> }>(
+			file,
+			withRouteHelpers(
+				{
+					...EXPENSE_VALIDATION_MODULES,
+					...common,
+					'@/core/db/claimed-response': loadClaimedResponse(common),
+					'@/core/validators/image-url': {
+						imageUrlSchema: requireFromWeb('zod').z.string().nullable().optional(),
+						isAllowedImageUrlForWg: () => true,
+					},
+					'@/features/expenses/paid-by-guard': { checkPaidByGuard: () => ({ ok: true }) },
+					'@/features/expenses/expenses': {
+						findExpenseMemberIds: async () => new Set([MEMBER_ID]),
+						insertExpenseWithSplits: async (
+							tx: { addExpense: () => void },
+							input: Record<string, unknown>,
+						) => {
+							tx.addExpense();
+							return {
+								expense: { id: EXPENSE_ID, ...input },
+								splits: [
+									{
+										id: SPLIT_ID,
+										expenseId: EXPENSE_ID,
+										debtorMemberId: MEMBER_ID,
+										amountCents: 1200,
+									},
+								],
+							};
+						},
+						recordExpenseCreatedSideEffects: async () => {
+							state.sideEffects += 1;
+							return warning;
+						},
+						resolveExpensePayer: (_payer: unknown, caller: string) => caller,
+					},
+					'@/features/expenses/recurring-expenses': {
+						parseRecurringSplits: JSON.parse,
+						serializeRecurringExpense: serializeRecurringExpenseStub,
+					},
 				},
-				recordExpenseCreatedSideEffects: async () => {
-					state.sideEffects += 1;
-					return warning;
-				},
-				resolveExpensePayer: (_payer: unknown, caller: string) => caller,
-			},
-			'@/features/expenses/recurring-expenses': {
-				parseRecurringSplits: JSON.parse,
-				serializeRecurringExpense: serializeRecurringExpenseStub,
-			},
-		});
+				loadTs,
+			),
+		);
 		const request = () =>
 			new Request('http://localhost', {
 				method: 'POST',
