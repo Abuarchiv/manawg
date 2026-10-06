@@ -2,7 +2,7 @@ import { TransactionAbort } from '@/core/db/transaction';
 import { isWgAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, serverError, tooMany } from '@/core/http/api-errors';
+import { badRequest, conflict, tooMany } from '@/core/http/api-errors';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, importCommitLimiter } from '@/core/rate-limit';
@@ -156,7 +156,6 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 		if (err instanceof Error && err.message === 'member_not_in_wg') {
 			return badRequest('member_not_in_wg');
 		}
-		logApiError('[imports/commit]', err);
-		return serverError(err);
+		throw err;
 	}
 });

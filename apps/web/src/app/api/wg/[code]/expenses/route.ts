@@ -104,109 +104,99 @@ export const POST = withWgRoute('expenses POST', async (req, { code }) => {
 	const splitCheck = validateSplits(body.amountCents, body.splits);
 	if (!splitCheck.ok) return badRequest(splitValidationErrorCode(splitCheck.reason));
 
-	try {
-		const auth = await requireWgMember(req, code);
-		if (!auth.ok) return auth.response;
-		const { wg, member } = auth;
-		if (!isAllowedImageUrlForWg(imageUrl, wg.id)) return badRequest('image_invalid');
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const { wg, member } = auth;
+	if (!isAllowedImageUrlForWg(imageUrl, wg.id)) return badRequest('image_invalid');
 
-		// Replay is scoped by WG and member, so a client-chosen key never reaches another
-		// member's response.
-		const scope = `expenses-create:${wg.id}:${member.memberId}`;
-		const key = readIdempotencyKey(req);
-		const input: Omit<ExpenseCreateInput, 'paidByMemberId'> = {
-			wgId: wg.id,
-			amountCents: body.amountCents,
-			currency: body.currency,
-			description: body.description,
-			imageUrl,
-			occurredAt: body.occurredAt ? new Date(body.occurredAt) : new Date(),
-			splits: body.splits,
-			...(body.recurringExpenseId && body.expectedRecurringNextDueAt
-				? {
-						recurring: {
-							id: body.recurringExpenseId,
-							expectedDueAt: new Date(body.expectedRecurringNextDueAt),
-						},
-					}
-				: {}),
-		};
-		const prepare = async () => {
-			const limited = await checkRateLimit(wgWriteLimiter, `expense:${wg.id}:${member.memberId}`);
-			if (!limited.success) return { stop: tooMany() };
-			const paidBy = resolveExpensePayer(body.paidByMemberId, member.memberId);
-			if (paidBy === null) return { stop: badRequest('member_id_invalid') };
-			if (!checkPaidByGuard(paidBy, member.memberId, body.splits).ok) {
-				return { stop: forbidden('paid_by_must_include_caller', 'paid_by_must_include_caller') };
-			}
-			const memberIds = Array.from(new Set([paidBy, ...body.splits.map((s) => s.debtorMemberId)]));
-			const foundMemberIds = await findExpenseMemberIds(wg.id, memberIds);
-			if (foundMemberIds.size !== memberIds.length) return { stop: badRequest('member_not_in_wg') };
-			return { input: { ...input, paidByMemberId: paidBy } };
-		};
-
-		const create = () =>
-			withIdempotentWrite(
-				{
-					scope,
-					key,
-					codec: expenseCreateCodec,
-					// The payment lock comes before the claim row and any WG or member row lock.
-					inTransaction: (work) => withExpensePaymentLock(wg.id, work),
-					prepare,
-					retryAfterRollback: (error, attempt) =>
-						attempt === 1 && input.recurring && isRecurringDueUniqueViolation(error)
-							? replayRecurringBooking(error)
-							: null,
-				},
-				writeExpense,
-			);
-		let result: Awaited<ReturnType<typeof create>>;
-		try {
-			result = await create();
-		} catch (writeErr) {
-			const abortResponse = expenseCreateAbortResponse(writeErr);
-			if (abortResponse) return abortResponse;
-			if (writeErr instanceof TransactionAbort) return serverError(writeErr.code);
-			throw writeErr;
+	// Replay is scoped by WG and member, so a client-chosen key never reaches another
+	// member's response.
+	const scope = `expenses-create:${wg.id}:${member.memberId}`;
+	const key = readIdempotencyKey(req);
+	const input: Omit<ExpenseCreateInput, 'paidByMemberId'> = {
+		wgId: wg.id,
+		amountCents: body.amountCents,
+		currency: body.currency,
+		description: body.description,
+		imageUrl,
+		occurredAt: body.occurredAt ? new Date(body.occurredAt) : new Date(),
+		splits: body.splits,
+		...(body.recurringExpenseId && body.expectedRecurringNextDueAt
+			? {
+					recurring: {
+						id: body.recurringExpenseId,
+						expectedDueAt: new Date(body.expectedRecurringNextDueAt),
+					},
+				}
+			: {}),
+	};
+	const prepare = async () => {
+		const limited = await checkRateLimit(wgWriteLimiter, `expense:${wg.id}:${member.memberId}`);
+		if (!limited.success) return { stop: tooMany() };
+		const paidBy = resolveExpensePayer(body.paidByMemberId, member.memberId);
+		if (paidBy === null) return { stop: badRequest('member_id_invalid') };
+		if (!checkPaidByGuard(paidBy, member.memberId, body.splits).ok) {
+			return { stop: forbidden('paid_by_must_include_caller', 'paid_by_must_include_caller') };
 		}
-		if (result.kind === 'stopped') return result.response;
-		if (result.kind === 'replayed' || !result.context || !('created' in result.context)) {
-			return NextResponse.json(result.body, { status: result.status });
-		}
+		const memberIds = Array.from(new Set([paidBy, ...body.splits.map((s) => s.debtorMemberId)]));
+		const foundMemberIds = await findExpenseMemberIds(wg.id, memberIds);
+		if (foundMemberIds.size !== memberIds.length) return { stop: badRequest('member_not_in_wg') };
+		return { input: { ...input, paidByMemberId: paidBy } };
+	};
 
-		const created = result.context.created;
-		const warning = await recordExpenseCreatedSideEffects({
-			wg,
-			actor: { memberId: member.memberId, name: member.name },
-			expense: created,
-		});
-		const written = result.body as ExpenseCreateResponseBody;
-		if (!key || warning === null) return NextResponse.json({ ...written, warning });
-		try {
-			const persisted = await setReplayWarning(
+	const create = () =>
+		withIdempotentWrite(
+			{
 				scope,
 				key,
-				{
-					match: [{ path: ['expense', 'id'], equals: created.id }],
-					warningPath: ['warning'],
-					replaces: [null],
-				},
-				warning,
-			);
-			if (persisted) return NextResponse.json({ ...written, warning });
-			logApiError(
-				'[expenses POST] warning replay update missed',
-				new Error('replay_warning_missed'),
-			);
-		} catch (err) {
-			logApiError('[expenses POST] warning replay update failed', err);
-		}
-		return NextResponse.json(written);
-	} catch (err) {
-		const abortResponse = expenseCreateAbortResponse(err);
+				codec: expenseCreateCodec,
+				// The payment lock comes before the claim row and any WG or member row lock.
+				inTransaction: (work) => withExpensePaymentLock(wg.id, work),
+				prepare,
+				retryAfterRollback: (error, attempt) =>
+					attempt === 1 && input.recurring && isRecurringDueUniqueViolation(error)
+						? replayRecurringBooking(error)
+						: null,
+			},
+			writeExpense,
+		);
+	let result: Awaited<ReturnType<typeof create>>;
+	try {
+		result = await create();
+	} catch (writeErr) {
+		const abortResponse = expenseCreateAbortResponse(writeErr);
 		if (abortResponse) return abortResponse;
-		logApiError('[expenses POST]', err);
-		return serverError(err);
+		if (writeErr instanceof TransactionAbort) return serverError(writeErr.code);
+		throw writeErr;
 	}
+	if (result.kind === 'stopped') return result.response;
+	if (result.kind === 'replayed' || !result.context || !('created' in result.context)) {
+		return NextResponse.json(result.body, { status: result.status });
+	}
+
+	const created = result.context.created;
+	const warning = await recordExpenseCreatedSideEffects({
+		wg,
+		actor: { memberId: member.memberId, name: member.name },
+		expense: created,
+	});
+	const written = result.body as ExpenseCreateResponseBody;
+	if (!key || warning === null) return NextResponse.json({ ...written, warning });
+	try {
+		const persisted = await setReplayWarning(
+			scope,
+			key,
+			{
+				match: [{ path: ['expense', 'id'], equals: created.id }],
+				warningPath: ['warning'],
+				replaces: [null],
+			},
+			warning,
+		);
+		if (persisted) return NextResponse.json({ ...written, warning });
+		logApiError('[expenses POST] warning replay update missed', new Error('replay_warning_missed'));
+	} catch (err) {
+		logApiError('[expenses POST] warning replay update failed', err);
+	}
+	return NextResponse.json(written);
 });

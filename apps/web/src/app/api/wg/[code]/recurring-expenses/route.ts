@@ -200,8 +200,7 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 			logApiError('[recurring-expenses POST] transaction aborted');
 			return serverError('transaction_aborted');
 		}
-		logApiError('[recurring-expenses POST]', err);
-		return serverError(err);
+		throw err;
 	}
 });
 

@@ -362,7 +362,17 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 		'@/core/guards/route-preamble': {
 			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
 		},
-		'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },
+		// Like the real wrapper: an uncaught error becomes a logged 500.
+		'@/core/guards/with-wg-route': {
+			withWgRoute: (label, handler) => async (req, ctx) => {
+				try {
+					return await handler(req, ctx);
+				} catch (err) {
+					state.errors.push(`[${label}]: ${err}`);
+					return Response.json({ error: 'server_error' }, { status: 500 });
+				}
+			},
+		},
 		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 604_800,
 			getCachedResponse: async (scope, key) => {

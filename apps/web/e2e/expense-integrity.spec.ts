@@ -1893,7 +1893,19 @@ test.describe('expense create replay atomic', () => {
 			'@/core/guards/route-preamble': {
 				readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
 			},
-			'@/core/guards/with-wg-route': { withWgRoute: (_name: string, handler: unknown) => handler },
+			// Like the real wrapper: an uncaught error becomes a logged 500.
+			'@/core/guards/with-wg-route': {
+				withWgRoute:
+					(name: string, handler: (req: Request, ctx: unknown) => Promise<Response>) =>
+					async (req: Request, ctx: unknown) => {
+						try {
+							return await handler(req, ctx);
+						} catch (err) {
+							state.errors.push(`[${name}]: ${String(err)}`);
+							return responseError('server_error', 500);
+						}
+					},
+			},
 			'@/core/idempotency-store': {
 				RESPONSE_REPLAY_TTL_SECONDS: 7 * 24 * 60 * 60,
 				getCachedResponse: async () => null,
