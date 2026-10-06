@@ -1041,7 +1041,7 @@ test.describe('marker mobile overflow', () => {
 
 	async function setTextScale(page: Page) {
 		await page.evaluate(() => {
-			const nonce = document.querySelector('script[nonce]')?.nonce;
+			const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce;
 			if (!nonce) throw new Error('CSP nonce not found');
 			const style = document.createElement('style');
 			style.nonce = nonce;

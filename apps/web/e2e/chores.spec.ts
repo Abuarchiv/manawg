@@ -675,7 +675,10 @@ test.describe('chore next assignee', () => {
 		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 		const title = page.getByPlaceholder('z. B. Müll rausbringen');
 		await title.fill('Entwurf bleibt');
-		let failure = { status: 401, json: { error: 'auth_required', code: 'auth_required' } };
+		let failure: { status: number; json: Record<string, string> } = {
+			status: 401,
+			json: { error: 'auth_required', code: 'auth_required' },
+		};
 		await page.route(`**/api/wg/${SHARE_CODE}/chores`, async (route) => {
 			if (route.request().method() === 'POST') {
 				await route.fulfill(failure);
@@ -970,12 +973,7 @@ test.describe('domain regressions (recurring retry, activity, fairness)', () => 
 	}
 
 	test('retries a recurring advance carried by an expense action', () => {
-		const createRetry = Reflect.get(offlineClient, 'createRecurringAdvanceRetry') as
-			| ((action: Record<string, unknown>, now: number) => unknown)
-			| undefined;
-
-		expect(createRetry).toBeDefined();
-		const retry = createRetry?.(
+		const retry = offlineClient.createRecurringAdvanceRetry(
 			{
 				id: 'queued-recurring',
 				type: 'expense.create',

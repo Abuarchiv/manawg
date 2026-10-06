@@ -15,6 +15,7 @@ import {
 	parsePayPalAmountCents,
 	terminalPayPalCaptureOutcome,
 } from '../src/features/expenses/paypal-settlement.ts';
+import { jsonResponse } from './_helpers';
 
 test.describe('paypal capture state', () => {
 	const CAPTURE_ROUTE_PATH = path.join(
@@ -57,15 +58,6 @@ test.describe('paypal capture state', () => {
 			payments?: ReadonlyArray<ExpensePaymentInput>,
 		) => PairBalance[];
 	}>(DEBTS_PATH, { '@/core/utils/time': { MS_PER_DAY: 86_400_000 } });
-
-	function jsonResponse(body: unknown, init: number | ResponseInit = 200): Response {
-		const status = typeof init === 'number' ? init : (init.status ?? 200);
-		return new Response(JSON.stringify(body), {
-			...(typeof init === 'number' ? {} : init),
-			status,
-			headers: { 'content-type': 'application/json' },
-		});
-	}
 
 	type ProviderResponse = Record<string, unknown> | Error;
 
@@ -750,13 +742,6 @@ test.describe('paypal capture membership lock', () => {
 			module.exports,
 		);
 		return module.exports;
-	}
-
-	function jsonResponse(body: unknown, status = 200): Response {
-		return new Response(JSON.stringify(body), {
-			status,
-			headers: { 'content-type': 'application/json' },
-		});
 	}
 
 	test('PayPal capture rechecks active membership under the payment lock', async () => {

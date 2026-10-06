@@ -1,0 +1,16 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"allowImportingTsExtensions": true,
+		"incremental": false
+	},
+	"include": [
+		"next-env.d.ts",
+		"src/**/*.d.ts",
+		"e2e/**/*.ts",
+		"tests/*.test.ts",
+		"playwright.config.ts",
+		"playwright.webkit-fixtures.config.ts"
+	],
+	"exclude": ["node_modules", ".next"]
+}

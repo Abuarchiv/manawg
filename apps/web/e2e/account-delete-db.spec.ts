@@ -2,6 +2,7 @@
 // Why: deletion must be atomic, fenced and leave no residue; only a real database proves FK/cascade behaviour.
 
 import { expect, test } from '@playwright/test';
+import { takeRows } from './_helpers';
 
 const accountDeleteTestUrl = process.env.ACCOUNT_DELETE_TEST_URL?.trim() ?? '';
 const loopbackHosts = new Set(['localhost', '127.0.0.1', '::1']);
@@ -35,6 +36,10 @@ if (accountDeleteDatabaseUrl) {
 	}
 }
 
+interface PgResolvedClient {
+	connectionParameters: { host: string; port: number; database: string; user: string };
+}
+
 const deletionFixtureIds = new Set<string>();
 
 test.beforeAll(async () => {
@@ -42,7 +47,9 @@ test.beforeAll(async () => {
 
 	const { Client } = await import('pg');
 	const client = new Client({ connectionString: accountDeleteTestUrl });
-	const { host, port, database, user } = client.connectionParameters;
+	// pg resolves the final target (env, defaults) into this untyped field.
+	const { host, port, database, user } = (client as unknown as PgResolvedClient)
+		.connectionParameters;
 	const actualHost = String(host)
 		.toLowerCase()
 		.replace(/^\[|\]$/g, '');
@@ -100,25 +107,25 @@ test('account deletion hands over admin, moves out, and deletes solo WGs', async
 	const code = () => crypto.randomUUID().slice(0, 8).toUpperCase();
 
 	const ids = await withTransaction(async (tx) => {
-		const [shared, solo] = await tx
+		const [shared, solo] = takeRows(await tx
 			.insert(wgs)
 			.values([
 				{ shareCode: code(), name: 'Shared' },
 				{ shareCode: code(), name: 'Solo' },
 			])
-			.returning({ id: wgs.id });
-		const [me, guest, mate] = await tx
+			.returning({ id: wgs.id }), 2);
+		const [me, guest, mate] = takeRows(await tx
 			.insert(wgMembers)
 			.values([
 				{ wgId: shared.id, name: 'Me', role: 'admin', authUserId: user },
 				{ wgId: shared.id, name: 'Guest', role: 'member' },
 				{ wgId: shared.id, name: 'Mate', role: 'member', authUserId: flatmate },
 			])
-			.returning({ id: wgMembers.id });
-		const [soloMe] = await tx
+			.returning({ id: wgMembers.id }), 3);
+		const [soloMe] = takeRows(await tx
 			.insert(wgMembers)
 			.values({ wgId: solo.id, name: 'Me', role: 'admin', authUserId: user })
-			.returning({ id: wgMembers.id });
+			.returning({ id: wgMembers.id }), 1);
 		await tx.insert(expenses).values([
 			{ wgId: shared.id, paidByMemberId: me.id, amountCents: 1000, description: 'Kept' },
 			{ wgId: solo.id, paidByMemberId: soloMe.id, amountCents: 500, description: 'Gone' },
@@ -172,20 +179,20 @@ test('account deletion keeps a durable fence and revokes only the departing memb
 	trackDeletionFixture(user);
 	const otherUser = crypto.randomUUID();
 	const ids = await withTransaction(async (tx) => {
-		const [wg] = await tx
+		const [wg] = takeRows(await tx
 			.insert(wgs)
 			.values({
 				shareCode: crypto.randomUUID().slice(0, 8).toUpperCase(),
 				name: 'Credential fence',
 			})
-			.returning({ id: wgs.id });
-		const [departing, other] = await tx
+			.returning({ id: wgs.id }), 1);
+		const [departing, other] = takeRows(await tx
 			.insert(wgMembers)
 			.values([
 				{ wgId: wg.id, name: 'Departing', role: 'admin', authUserId: user, pushOptIn: true },
 				{ wgId: wg.id, name: 'Staying', role: 'member', authUserId: otherUser, pushOptIn: true },
 			])
-			.returning({ id: wgMembers.id });
+			.returning({ id: wgMembers.id }), 2);
 		await tx.insert(calendarSubscriptions).values([
 			{ wgId: wg.id, memberId: departing.id, tokenSeed: crypto.randomUUID() },
 			{ wgId: wg.id, memberId: other.id, tokenSeed: crypto.randomUUID() },
@@ -443,15 +450,15 @@ test('deletion includes a membership whose join transaction commits first', asyn
 	trackDeletionFixture(user);
 	const otherUser = crypto.randomUUID();
 	const [wg, other] = await withTransaction(async (tx) => {
-		const [created] = await tx
+		const [created] = takeRows(await tx
 			.insert(wgs)
 			.values({ shareCode: crypto.randomUUID().slice(0, 8).toUpperCase(), name: 'Join race' })
-			.returning({ id: wgs.id });
-		const [member] = await tx
+			.returning({ id: wgs.id }), 1);
+		const [member] = takeRows(await tx
 			.insert(wgMembers)
 			.values({ wgId: created.id, name: 'Staying', role: 'admin', authUserId: otherUser })
-			.returning({ id: wgMembers.id });
-		return [created, member];
+			.returning({ id: wgMembers.id }), 1);
+		return [created, member] as const;
 	});
 	const joinApp = `join-${crypto.randomUUID()}`;
 	const deleteApp = `delete-${crypto.randomUUID()}`;
@@ -464,10 +471,10 @@ test('deletion includes a membership whose join transaction commits first', asyn
 		await tx.execute(sql`select set_config('application_name', ${joinApp}, true)`);
 		await assertAccountCanAcquireMembership(tx, user);
 		await tx.select({ id: wgs.id }).from(wgs).where(eq(wgs.id, wg.id)).for('update');
-		const [joiner] = await tx
+		const [joiner] = takeRows(await tx
 			.insert(wgMembers)
 			.values({ wgId: wg.id, name: 'Joined first', role: 'member', authUserId: user })
-			.returning({ id: wgMembers.id });
+			.returning({ id: wgMembers.id }), 1);
 		joinerId = joiner.id;
 		joinReady.resolve();
 		await releaseJoin.promise;
@@ -519,11 +526,11 @@ test('an unrelated account joining a solo WG before deletion becomes the success
 	trackDeletionFixture(deletingUser);
 	const joiningUser = crypto.randomUUID();
 	const [wg, departing] = await withTransaction(async (tx) => {
-		const [created] = await tx
+		const [created] = takeRows(await tx
 			.insert(wgs)
 			.values({ shareCode: crypto.randomUUID().slice(0, 8).toUpperCase(), name: 'Solo WG race' })
-			.returning({ id: wgs.id });
-		const [member] = await tx
+			.returning({ id: wgs.id }), 1);
+		const [member] = takeRows(await tx
 			.insert(wgMembers)
 			.values({
 				wgId: created.id,
@@ -531,7 +538,7 @@ test('an unrelated account joining a solo WG before deletion becomes the success
 				role: 'admin',
 				authUserId: deletingUser,
 			})
-			.returning({ id: wgMembers.id });
+			.returning({ id: wgMembers.id }), 1);
 		return [created, member] as const;
 	});
 	const joinApp = `join-${crypto.randomUUID()}`;
@@ -545,10 +552,10 @@ test('an unrelated account joining a solo WG before deletion becomes the success
 		await tx.execute(sql`select set_config('application_name', ${joinApp}, true)`);
 		await assertAccountCanAcquireMembership(tx, joiningUser);
 		await tx.select({ id: wgs.id }).from(wgs).where(eq(wgs.id, wg.id)).for('update');
-		const [joined] = await tx
+		const [joined] = takeRows(await tx
 			.insert(wgMembers)
 			.values({ wgId: wg.id, name: 'Joining account', role: 'member', authUserId: joiningUser })
-			.returning({ id: wgMembers.id });
+			.returning({ id: wgMembers.id }), 1);
 		joinedId = joined.id;
 		joinReady.resolve();
 		await releaseJoin.promise;
@@ -615,14 +622,14 @@ test('admin deletion chooses a fallback after its pending successor moves out', 
 	const leavingUser = crypto.randomUUID();
 	const fallbackUser = crypto.randomUUID();
 	const [wg, departing, pendingSuccessor, fallback] = await withTransaction(async (tx) => {
-		const [created] = await tx
+		const [created] = takeRows(await tx
 			.insert(wgs)
 			.values({
 				shareCode: crypto.randomUUID().slice(0, 8).toUpperCase(),
 				name: 'Successor exit race',
 			})
-			.returning({ id: wgs.id });
-		const [admin, successor, remaining] = await tx
+			.returning({ id: wgs.id }), 1);
+		const [admin, successor, remaining] = takeRows(await tx
 			.insert(wgMembers)
 			.values([
 				{ wgId: created.id, name: 'Departing admin', role: 'admin', authUserId: deletingUser },
@@ -641,7 +648,7 @@ test('admin deletion chooses a fallback after its pending successor moves out', 
 					createdAt: new Date('2025-01-02T00:00:00.000Z'),
 				},
 			])
-			.returning({ id: wgMembers.id });
+			.returning({ id: wgMembers.id }), 3);
 		return [created, admin, successor, remaining] as const;
 	});
 	const leaveApp = `leave-${crypto.randomUUID()}`;
@@ -733,17 +740,17 @@ test('a calendar writer waiting behind account cleanup cannot restore its creden
 	trackDeletionFixture(user);
 	const otherUser = crypto.randomUUID();
 	const ids = await withTransaction(async (tx) => {
-		const [wg] = await tx
+		const [wg] = takeRows(await tx
 			.insert(wgs)
 			.values({ shareCode: crypto.randomUUID().slice(0, 8).toUpperCase(), name: 'Feed race' })
-			.returning({ id: wgs.id });
-		const [departing] = await tx
+			.returning({ id: wgs.id }), 1);
+		const [departing] = takeRows(await tx
 			.insert(wgMembers)
 			.values([
 				{ wgId: wg.id, name: 'Leaving', role: 'admin', authUserId: user },
 				{ wgId: wg.id, name: 'Staying', role: 'member', authUserId: otherUser },
 			])
-			.returning({ id: wgMembers.id });
+			.returning({ id: wgMembers.id }), 1);
 		await tx.insert(calendarSubscriptions).values({
 			wgId: wg.id,
 			memberId: departing.id,
@@ -815,13 +822,13 @@ test('concurrent account deletions across two shared WGs retain each remaining m
 	trackDeletionFixture(userB);
 	const code = () => crypto.randomUUID().slice(0, 8).toUpperCase();
 	const fixture = await withTransaction(async (tx) => {
-		const [wgA, wgB] = await tx
+		const [wgA, wgB] = takeRows(await tx
 			.insert(wgs)
 			.values([
 				{ shareCode: code(), name: 'Shared A' },
 				{ shareCode: code(), name: 'Shared B' },
 			])
-			.returning({ id: wgs.id });
+			.returning({ id: wgs.id }), 2);
 		const createdMembers = await tx
 			.insert(wgMembers)
 			.values([
@@ -904,17 +911,17 @@ test('a failed local deletion transaction leaves no fence, cleanup, audit, or Au
 	trackDeletionFixture(user);
 	const otherUser = crypto.randomUUID();
 	const ids = await withTransaction(async (tx) => {
-		const [wg] = await tx
+		const [wg] = takeRows(await tx
 			.insert(wgs)
 			.values({ shareCode: crypto.randomUUID().slice(0, 8).toUpperCase(), name: 'Rollback' })
-			.returning({ id: wgs.id });
-		const [departing, staying] = await tx
+			.returning({ id: wgs.id }), 1);
+		const [departing, staying] = takeRows(await tx
 			.insert(wgMembers)
 			.values([
 				{ wgId: wg.id, name: 'Departing', role: 'admin', authUserId: user, pushOptIn: true },
 				{ wgId: wg.id, name: 'Staying', role: 'member', authUserId: otherUser },
 			])
-			.returning({ id: wgMembers.id });
+			.returning({ id: wgMembers.id }), 2);
 		await tx.insert(calendarSubscriptions).values({
 			wgId: wg.id,
 			memberId: departing.id,

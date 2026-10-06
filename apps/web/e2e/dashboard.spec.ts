@@ -1,7 +1,7 @@
 // Start/daily overview: read models (Berlin week agenda, ranking), home cards, navigation, large-data limits.
 // Why: the first screen aggregates every feature; ordering and day edges must be deterministic.
 
-import { expect, test } from '@playwright/test';
+import { type Page, expect, test } from '@playwright/test';
 import { initials } from '../src/components/wg/MemberAvatar';
 import { groupActivityItemsByDay } from '../src/core/reads/activity';
 import {
@@ -20,6 +20,7 @@ import { parseShoppingInput } from '../src/features/shopping/parse-shopping-inpu
 import {
 	FIXTURE_WG,
 	dismissOnboarding,
+	mockDashboard,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
@@ -128,10 +129,8 @@ test.describe('daily overview home', () => {
 		};
 	}
 
-	async function mockDashboard(page: import('@playwright/test').Page, dueChores: unknown[]) {
-		await page.route(`**${BASE}/dashboard`, (route) =>
-			route.fulfill({ status: 200, json: fixtureDashboard(dueChores) }),
-		);
+	async function mockChoresDashboard(page: Page, dueChores: unknown[]) {
+		await mockDashboard(page, BASE, fixtureDashboard(dueChores));
 		await mockUnreadCount(page, BASE);
 	}
 
@@ -172,7 +171,7 @@ test.describe('daily overview home', () => {
 				assignedColor: null,
 			},
 		];
-		await mockDashboard(page, chores);
+		await mockChoresDashboard(page, chores);
 		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
 			route.fulfill({
 				status: 200,
@@ -243,7 +242,7 @@ test.describe('daily overview home', () => {
 				await expect
 					.poll(() => page.locator('html').evaluate((node) => node.classList.contains('dark')))
 					.toBe(theme === 'dark');
-				await page.evaluate(() => window.scrollTo(0, 0));
+				await page.evaluate(() => globalThis.scrollTo(0, 0));
 				const layout = await page.evaluate(() => ({
 					viewport: document.documentElement.clientWidth,
 					page: document.documentElement.scrollWidth,
@@ -306,7 +305,7 @@ test.describe('daily overview home', () => {
 				await page.locator('html').evaluate((node) => {
 					node.style.fontSize = '32px';
 				});
-				await page.evaluate(() => window.scrollTo(0, 0));
+				await page.evaluate(() => globalThis.scrollTo(0, 0));
 
 				await expect(calendarLink).toBeVisible();
 				const [rootFontSize, headingFontSize, hitTarget] = await Promise.all([
@@ -350,7 +349,7 @@ test.describe('daily overview home', () => {
 		await setupMember(page);
 		const window = getBerlinWeekWindow(Date.now());
 		const agendaDay = nextAgendaDay(window.todayKey);
-		await mockDashboard(page, [
+		await mockChoresDashboard(page, [
 			{
 				id: 'other',
 				title: 'Küche putzen',
@@ -450,7 +449,7 @@ test.describe('daily overview home', () => {
 			assignedMemberName: FIXTURE_WG.memberName,
 			assignedColor: null,
 		};
-		await mockDashboard(page, [chore]);
+		await mockChoresDashboard(page, [chore]);
 		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
 			route.fulfill({ status: 200, json: { events: [] } }),
 		);
@@ -503,7 +502,7 @@ test.describe('daily overview home', () => {
 	test('refreshes the agenda range after Berlin midnight on resume', async ({ page }) => {
 		await page.clock.install({ time: new Date('2026-09-27T21:59:30.000Z') });
 		await setupMember(page);
-		await mockDashboard(page, []);
+		await mockChoresDashboard(page, []);
 		await mockUnreadCount(page, BASE);
 		const eventRangeStarts: string[] = [];
 		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) => {
@@ -888,12 +887,6 @@ test.describe('daily overview model', () => {
 test.describe('daily overview navigation', () => {
 	const BASE = '/api/wg/MTE8PZAT';
 
-	function mockDashboard(page: import('@playwright/test').Page, value: unknown) {
-		return page.route(`**${BASE}/dashboard`, (route) =>
-			route.fulfill({ status: 200, json: value }),
-		);
-	}
-
 	test('keeps Kalender in Austausch and shows confirmed unread count', async ({ page }) => {
 		await setupMember(page);
 		let dashboardReads = 0;
@@ -929,7 +922,7 @@ test.describe('daily overview navigation', () => {
 
 	test('marks an unavailable count without fabricating zero', async ({ page }) => {
 		await setupMember(page);
-		await mockDashboard(page, {
+		await mockDashboard(page, BASE, {
 			openShoppingCount: 0,
 			dueChores: [],
 			dueRecurringExpenses: [],
@@ -949,7 +942,7 @@ test.describe('daily overview navigation', () => {
 
 	test('hides confirmed zero visually and keeps its meaning accessible', async ({ page }) => {
 		await setupMember(page);
-		await mockDashboard(page, {
+		await mockDashboard(page, BASE, {
 			openShoppingCount: 0,
 			dueChores: [],
 			dueRecurringExpenses: [],
@@ -970,7 +963,7 @@ test.describe('daily overview navigation', () => {
 		await setupMember(page);
 		const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 		const nextQuarter = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
-		await mockDashboard(page, {
+		await mockDashboard(page, BASE, {
 			openShoppingCount: 123,
 			dueChores: [
 				{
@@ -1005,7 +998,7 @@ test.describe('daily overview navigation', () => {
 		page,
 	}) => {
 		await setupMember(page);
-		await mockDashboard(page, {
+		await mockDashboard(page, BASE, {
 			openShoppingCount: 2,
 			dueChores: [],
 			dueRecurringExpenses: [],
@@ -1083,7 +1076,7 @@ test.describe('daily overview navigation', () => {
 
 	test('keeps unread count after a failed chat read acknowledgement', async ({ page }) => {
 		await setupMember(page);
-		await mockDashboard(page, {
+		await mockDashboard(page, BASE, {
 			openShoppingCount: 0,
 			dueChores: [],
 			dueRecurringExpenses: [],
@@ -1110,7 +1103,7 @@ test.describe('daily overview navigation', () => {
 
 	test('refreshes the Chat count after a successful read acknowledgement', async ({ page }) => {
 		await setupMember(page);
-		await mockDashboard(page, { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] });
+		await mockDashboard(page, BASE, { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] });
 		let unreadReads = 0;
 		let acknowledged = false;
 		let readAcknowledgements = 0;
@@ -1159,7 +1152,7 @@ test.describe('daily overview navigation', () => {
 		page,
 	}) => {
 		await setupMember(page);
-		await mockDashboard(page, { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] });
+		await mockDashboard(page, BASE, { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] });
 		await page.route(`**${BASE}/chat/unread-count`, (route) =>
 			route.fulfill({
 				status: 200,
@@ -1187,7 +1180,7 @@ test.describe('daily overview navigation', () => {
 		page,
 	}, testInfo) => {
 		await setupMember(page);
-		await mockDashboard(page, { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] });
+		await mockDashboard(page, BASE, { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] });
 		await page.route(`**${BASE}/chat/unread-count`, (route) =>
 			route.fulfill({
 				status: 200,
@@ -1247,7 +1240,7 @@ test.describe('daily overview navigation', () => {
 
 	test('marks cached counts stale when the refresh fails', async ({ page }) => {
 		await setupMember(page);
-		await mockDashboard(page, {
+		await mockDashboard(page, BASE, {
 			openShoppingCount: 0,
 			dueChores: [],
 			dueRecurringExpenses: [],
