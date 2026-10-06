@@ -1,36 +1,79 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { mkdtempSync, rmSync } from 'node:fs';
 import net from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import test from 'node:test';
+import { mock, test } from 'node:test';
+import * as realConnection from '@/core/db/connection';
 import { sql } from 'drizzle-orm';
+import { drizzle as realDrizzle } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
 
-const require = createRequire(import.meta.url);
-const ts = require('typescript');
+// `@/core/db` is loaded once. Its pool class, drizzle factory and connection module are
+// delegates, so the configuration check can use stand-ins and the optional integration run
+// can switch to the real driver behind the same module.
 
-function load(relativePath, mocks, env, logs = []) {
-	const source = readFileSync(new URL(`../src/${relativePath}`, import.meta.url), 'utf8');
-	const compiled = ts.transpileModule(source, {
-		compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-	}).outputText;
-	const module = { exports: {} };
-	new Function('require', 'module', 'exports', 'process', 'console', compiled)(
-		(id) => (Object.hasOwn(mocks, id) ? mocks[id] : require(id)),
-		module,
-		module.exports,
-		{ env },
-		{ warn: () => {}, error: (...args) => logs.push(args) },
-	);
-	return module.exports;
+type PoolOptions = ConstructorParameters<typeof pg.Pool>[0];
+type Connection = Pick<
+	typeof realConnection,
+	'closeClientOnQueryTimeout' | 'resolveConnectionString'
+>;
+
+const driver = {
+	Pool: pg.Pool as new (options: PoolOptions) => unknown,
+	drizzle: realDrizzle as (pool: never) => unknown,
+	connection: realConnection as Connection,
+};
+
+mock.module('@/core/db/connection', {
+	namedExports: {
+		closeClientOnQueryTimeout: (...args: Parameters<Connection['closeClientOnQueryTimeout']>) =>
+			driver.connection.closeClientOnQueryTimeout(...args),
+		resolveConnectionString: () => driver.connection.resolveConnectionString(),
+	},
+});
+mock.module('@/core/db/schema', { namedExports: {} });
+mock.module('pg', {
+	defaultExport: pg,
+	namedExports: {
+		Pool: function DelegatingPool(options: PoolOptions) {
+			return new driver.Pool(options);
+		},
+	},
+});
+mock.module('drizzle-orm/node-postgres', {
+	namedExports: { drizzle: (pool: never) => driver.drizzle(pool) },
+});
+
+const runtimeDb = await import('@/core/db');
+
+const env = process.env as Record<string, string | undefined>;
+function setDatabaseUrl(url: string): void {
+	env.POSTGRES_URL = url;
+	Reflect.deleteProperty(env, 'DATABASE_URL');
+}
+
+function hasCauseCode(error: unknown, code: string): boolean {
+	const cause = error instanceof Error ? error.cause : undefined;
+	return typeof cause === 'object' && cause !== null && Reflect.get(cause, 'code') === code;
 }
 
 test(
 	'runtime database pools time out stalled, locked, and slow queries and recover',
 	{ timeout: 60_000 },
 	async (t) => {
+		const previousUrls = [env.POSTGRES_URL, env.DATABASE_URL] as const;
+		t.after(() => {
+			for (const [name, value] of [
+				['POSTGRES_URL', previousUrls[0]],
+				['DATABASE_URL', previousUrls[1]],
+			] as const) {
+				if (value === undefined) Reflect.deleteProperty(env, name);
+				else env[name] = value;
+			}
+		});
+		t.mock.method(console, 'warn', () => undefined);
 		const runtimeUrl = 'postgresql://postgres@127.0.0.1:6543/postgres?sslmode=disable';
 		const expected = {
 			connectionString: runtimeUrl,
@@ -43,57 +86,41 @@ test(
 		for (const parameter of ['lock_timeout', 'query_timeout', 'statement_timeout']) {
 			const url = new URL(runtimeUrl);
 			url.searchParams.set(parameter, '0');
-			const resolver = load(
-				'core/db/connection.ts',
-				{ './supabase-ca': {} },
-				{ POSTGRES_URL: url.href },
-			);
-			assert.throws(() => resolver.resolveConnectionString(), new RegExp(parameter));
+			setDatabaseUrl(url.href);
+			assert.throws(() => realConnection.resolveConnectionString(), new RegExp(parameter));
 		}
 		const configuredUrl = new URL(runtimeUrl);
 		configuredUrl.searchParams.set('application_name', 'runtime-pool-test');
 		configuredUrl.searchParams.set('connect_timeout', '0');
-		const resolver = load(
-			'core/db/connection.ts',
-			{ './supabase-ca': {} },
-			{ POSTGRES_URL: configuredUrl.href },
-		);
-		const preserved = new URL(resolver.resolveConnectionString());
+		setDatabaseUrl(configuredUrl.href);
+		const preserved = new URL(realConnection.resolveConnectionString());
 		assert.equal(preserved.searchParams.get('application_name'), 'runtime-pool-test');
 		assert.equal(preserved.searchParams.get('connect_timeout'), '0');
 
-		const configEnv = { POSTGRES_URL: runtimeUrl };
-		const connection = {
-			closeClientOnQueryTimeout: () => {},
-			resolveConnectionString: () => runtimeUrl,
-		};
-		const configPools = [];
+		setDatabaseUrl(runtimeUrl);
+		const configPools: ConfigPool[] = [];
 		class ConfigPool {
-			constructor(options) {
+			options: PoolOptions;
+			constructor(options: PoolOptions) {
 				this.options = options;
 				configPools.push(this);
 			}
 
 			on() {}
 		}
-		const poolMock = { Pool: ConfigPool };
-		const configDb = load(
-			'core/db/index.ts',
-			{
-				'./connection': connection,
-				'./schema': {},
-				pg: poolMock,
-				'drizzle-orm/node-postgres': {
-					drizzle: (pool) => ({
-						getConfig: () => pool.options,
-						transaction: async () => pool.options,
-					}),
-				},
-			},
-			configEnv,
-		);
-		assert.deepEqual(configDb.db.getConfig(), expected);
-		assert.deepEqual(await configDb.withTransaction(() => undefined), expected);
+		driver.connection = {
+			closeClientOnQueryTimeout: () => {},
+			resolveConnectionString: () => runtimeUrl,
+		};
+		driver.Pool = ConfigPool;
+		driver.drizzle = (pool: ConfigPool) => ({
+			getConfig: () => pool.options,
+			transaction: async () => pool.options,
+		});
+		// The stand-in drizzle instance exposes only what this check reads.
+		const configDb = runtimeDb.db as unknown as { getConfig(): unknown };
+		assert.deepEqual(configDb.getConfig(), expected);
+		assert.deepEqual(await runtimeDb.withTransaction(async () => undefined), expected);
 		assert.equal(configPools.length, 1, 'queries and transactions share one pool');
 
 		if (process.env.RUN_DB_TIMEOUT_INTEGRATION !== '1') return;
@@ -108,27 +135,27 @@ test(
 
 		const dataDir = mkdtempSync(join(tmpdir(), 'manawg-db-timeouts-'));
 		const portProbe = net.createServer();
-		await new Promise((resolve, reject) => {
+		await new Promise<void>((resolve, reject) => {
 			portProbe.once('error', reject);
 			portProbe.listen(0, '127.0.0.1', resolve);
 		});
 		const address = portProbe.address();
 		assert.ok(address && typeof address !== 'string');
 		const pgPort = address.port;
-		await new Promise((resolve, reject) => {
+		await new Promise<void>((resolve, reject) => {
 			portProbe.close((error) => (error ? reject(error) : resolve()));
 		});
 
-		const run = (binary, args) => {
+		const run = (binary: string, args: string[]) => {
 			const result = spawnSync(binary, args, { encoding: 'utf8', timeout: 30_000 });
 			assert.equal(result.status, 0, `${binary} failed: ${result.stderr || result.stdout}`);
 		};
-		let proxy;
+		let proxy: net.Server | undefined;
 		let proxyStarted = false;
-		let dropRepliesForQuery = null;
+		let dropRepliesForQuery: string | null = null;
 		let droppedReplyBytes = 0;
-		const proxySockets = new Set();
-		const pools = [];
+		const proxySockets = new Set<net.Socket>();
+		const pools: pg.Pool[] = [];
 		let pgStarted = false;
 		try {
 			run(initdb.stdout.trim(), [
@@ -190,41 +217,35 @@ test(
 					client.write(chunk);
 				});
 			});
-			await new Promise((resolve, reject) => {
-				proxy.once('error', reject);
-				proxy.listen(0, '127.0.0.1', resolve);
+			const server = proxy;
+			await new Promise<void>((resolve, reject) => {
+				server.once('error', reject);
+				server.listen(0, '127.0.0.1', resolve);
 			});
 			proxyStarted = true;
 			const proxyAddress = proxy.address();
 			assert.ok(proxyAddress && typeof proxyAddress !== 'string');
 			const testRuntimeUrl = `postgresql://postgres@127.0.0.1:${proxyAddress.port}/postgres?sslmode=disable`;
-			const env = { POSTGRES_URL: testRuntimeUrl };
-			const testConnection = load('core/db/connection.ts', { './supabase-ca': {} }, env);
-			const { Pool, Client } = require('pg');
-			class TrackedPool extends Pool {
-				constructor(options) {
+			setDatabaseUrl(testRuntimeUrl);
+			const { Client } = pg;
+			class TrackedPool extends pg.Pool {
+				testEndPromise: Promise<void> | undefined;
+				constructor(options: PoolOptions) {
 					super(options);
 					pools.push(this);
 				}
 
-				end() {
+				override end(): Promise<void> {
 					this.testEndPromise ??= super.end();
 					return this.testEndPromise;
 				}
 			}
-			const drizzlePg = require('drizzle-orm/node-postgres');
-			const db = load(
-				'core/db/index.ts',
-				{
-					'./connection': testConnection,
-					'./schema': {},
-					pg: { Pool: TrackedPool },
-					'drizzle-orm/node-postgres': drizzlePg,
-				},
-				env,
-			);
+			driver.connection = realConnection;
+			driver.Pool = TrackedPool;
+			driver.drizzle = realDrizzle;
+			const db = runtimeDb;
 
-			const expectConnectTimeout = async (operation) => {
+			const expectConnectTimeout = async (operation: () => Promise<unknown>) => {
 				stalledConnections += 1;
 				const startedAt = Date.now();
 				await assert.rejects(operation(), (error) => error instanceof Error);
@@ -275,7 +296,7 @@ test(
 				const lockStartedAt = Date.now();
 				await assert.rejects(
 					withTransaction((tx) => tx.execute(sql`select pg_advisory_xact_lock(147258369)`)),
-					(error) => error.cause?.code === '55P03',
+					(error) => hasCauseCode(error, '55P03'),
 				);
 				assert.ok(
 					Date.now() - lockStartedAt < 3_500,
@@ -288,7 +309,7 @@ test(
 
 			await assert.rejects(
 				withTransaction((tx) => tx.execute(sql`select pg_sleep(10)`)),
-				(error) => error.cause?.code === '57014',
+				(error) => hasCauseCode(error, '57014'),
 			);
 			const probeClient = new Client({
 				connectionString: `postgresql://postgres@127.0.0.1:${pgPort}/postgres?sslmode=disable`,
@@ -331,7 +352,7 @@ test(
 			if (proxyStarted) {
 				await Promise.all(pools.map((pool) => pool.end()));
 				for (const socket of proxySockets) socket.destroy();
-				await new Promise((resolve) => proxy.close(resolve));
+				await new Promise((resolve) => proxy?.close(resolve));
 			}
 			if (pgStarted) {
 				const stopped = spawnSync(
