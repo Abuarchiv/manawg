@@ -5,7 +5,10 @@ import { badRequest, conflict, forbidden, notFound } from '@/core/http/api-error
 import { isRecurringDueAtEditAllowed } from '@/core/validators/recurring-due-date';
 import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import {
-	buildRecurringAdvance,
+	advanceRecurringDue,
+	recordRecurringAdvanced,
+} from '@/features/expenses/recurring-booking';
+import {
 	parseRecurringSplits,
 	recurringDueDateMatchesExpected,
 	serializeRecurringExpense,
@@ -195,23 +198,7 @@ export async function advanceRecurringTemplate(
 		return conflict('recurring_expense_already_advanced');
 	}
 	if (template.pausedAt) return badRequest('abo_paused');
-	const advance = buildRecurringAdvance({
-		nextDueAt: template.nextDueAt.toISOString(),
-		intervalMonths: template.intervalMonths,
-		anchorAt: template.anchorAt ? template.anchorAt.toISOString() : null,
-	});
-	const [updated] = await db
-		.update(recurringExpenses)
-		.set(advance)
-		.where(
-			and(
-				eq(recurringExpenses.id, template.id),
-				eq(recurringExpenses.wgId, wgId),
-				eq(recurringExpenses.nextDueAt, template.nextDueAt),
-				isNull(recurringExpenses.pausedAt),
-			),
-		)
-		.returning();
+	const updated = await advanceRecurringDue(db, template);
 	if (!updated) {
 		const [current] = await db
 			.select()
@@ -230,17 +217,6 @@ export async function advanceRecurringTemplate(
 		if (current.pausedAt) return badRequest('abo_paused');
 		return conflict('recurring_expense_already_advanced');
 	}
-	await recordAuditEvent({
-		wgId,
-		memberId: member.memberId,
-		eventType: 'recurring.advanced',
-		entityType: 'recurring_expense',
-		entityId: updated.id,
-		summary: `${updated.description} wurde aus einer Fixkosten-Vorlage übernommen.`,
-		metadata: {
-			...auditMetadata(updated, parseRecurringSplits(updated.splitsJson).length),
-			lastCreatedAt: updated.lastCreatedAt?.toISOString() ?? null,
-		},
-	});
+	await recordRecurringAdvanced(member.memberId, updated);
 	return NextResponse.json({ recurringExpense: serializeRecurringExpense(updated) });
 }

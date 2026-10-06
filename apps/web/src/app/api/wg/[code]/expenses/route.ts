@@ -3,7 +3,13 @@ import { withIdempotentWrite } from '@/core/db/idempotent-write';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, forbidden, serverError, tooMany } from '@/core/http/api-errors';
+import {
+	badRequest,
+	forbidden,
+	rateLimitResponse,
+	serverError,
+	tooMany,
+} from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
@@ -30,6 +36,7 @@ import {
 	resolveExpensePayer,
 } from '@/features/expenses/expenses';
 import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
+import { recordRecurringAdvanced } from '@/features/expenses/recurring-booking';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
 import { desc, eq, getTableColumns } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -132,7 +139,8 @@ export const POST = withWgRoute('expenses POST', async (req, { code }) => {
 	};
 	const prepare = async () => {
 		const limited = await checkRateLimit(wgWriteLimiter, `expense:${wg.id}:${member.memberId}`);
-		if (!limited.success) return { stop: tooMany() };
+		const limitedResponse = rateLimitResponse(limited);
+		if (limitedResponse) return { stop: limitedResponse };
 		const paidBy = resolveExpensePayer(body.paidByMemberId, member.memberId);
 		if (paidBy === null) return { stop: badRequest('member_id_invalid') };
 		if (!checkPaidByGuard(paidBy, member.memberId, body.splits).ok) {
@@ -174,7 +182,8 @@ export const POST = withWgRoute('expenses POST', async (req, { code }) => {
 		return NextResponse.json(result.body, { status: result.status });
 	}
 
-	const created = result.context.created;
+	const { created, advanced } = result.context;
+	if (advanced) await recordRecurringAdvanced(member.memberId, advanced);
 	const warning = await recordExpenseCreatedSideEffects({
 		wg,
 		actor: { memberId: member.memberId, name: member.name },

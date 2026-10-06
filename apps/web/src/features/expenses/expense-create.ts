@@ -14,12 +14,14 @@ import {
 	expenseSplitSchema,
 } from '@/features/expenses/expense-schemas';
 import { insertExpenseWithSplits } from '@/features/expenses/expenses';
+import { advanceRecurringDue } from '@/features/expenses/recurring-booking';
 import { and, eq } from 'drizzle-orm';
 import type { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 export type ExpenseCreateResponseBody = { expense: unknown; warning: NotificationDispatchWarning };
 type ExpenseRow = typeof expenses.$inferSelect;
+type RecurringTemplate = typeof recurringExpenses.$inferSelect;
 type Split = { debtorMemberId: string; amountCents: number };
 
 export const expenseCreateCodec = bodyCodec(
@@ -80,8 +82,13 @@ export interface ExpenseCreateInput {
 	recurring?: { id: string; expectedDueAt: Date };
 }
 
-/** What the route does after commit: side effects for a new expense, nothing for a replay. */
-type ExpenseCreateContext = { created: ExpenseRow } | { existing: true };
+/**
+ * What the route does after commit: side effects for a new expense (and the audit of the
+ * template its booking advanced), nothing for a replay.
+ */
+type ExpenseCreateContext =
+	| { created: ExpenseRow; advanced: RecurringTemplate | null }
+	| { existing: true };
 
 async function findRecurringExpense(
 	tx: DbTransaction,
@@ -115,17 +122,19 @@ function existingOutcome(expense: unknown) {
 /**
  * Insert the expense and its splits. A booked recurring charge is written once per due date:
  * an existing booking answers instead, and the template must still be due, unpaused and
- * locked for the rest of the transaction. Aborts while a PayPal capture is in flight.
+ * locked for the rest of the transaction. The booking moves the template on to its next due
+ * date in the same transaction, so a lost follow-up request cannot leave the charge due.
+ * Aborts while a PayPal capture is in flight.
  */
 export async function writeExpense(tx: DbTransaction, input: ExpenseCreateInput) {
 	await assertPrivateImageCanBeAttached(tx, input.wgId, input.imageUrl);
 
-	let recurringDueAt: Date | undefined;
+	let template: RecurringTemplate | null = null;
 	if (input.recurring) {
 		const existing = await findRecurringExpense(tx, input.wgId, input.recurring);
 		if (existing) return existingOutcome(existing);
 
-		const [template] = await tx
+		const [locked] = await tx
 			.select()
 			.from(recurringExpenses)
 			.where(
@@ -133,12 +142,12 @@ export async function writeExpense(tx: DbTransaction, input: ExpenseCreateInput)
 			)
 			.limit(1)
 			.for('update');
-		if (!template) throw new TransactionAbort('recurring_expense_not_found');
-		if (template.pausedAt) throw new TransactionAbort('abo_paused');
-		if (template.nextDueAt.getTime() !== input.recurring.expectedDueAt.getTime()) {
+		if (!locked) throw new TransactionAbort('recurring_expense_not_found');
+		if (locked.pausedAt) throw new TransactionAbort('abo_paused');
+		if (locked.nextDueAt.getTime() !== input.recurring.expectedDueAt.getTime()) {
 			throw new TransactionAbort('recurring_expense_already_advanced');
 		}
-		recurringDueAt = template.nextDueAt;
+		template = locked;
 	}
 	if (await hasCapturingExpensePayment(tx, input.wgId)) {
 		throw new TransactionAbort('paypal_payment_pending');
@@ -152,15 +161,19 @@ export async function writeExpense(tx: DbTransaction, input: ExpenseCreateInput)
 		imageUrl: input.imageUrl,
 		occurredAt: input.occurredAt,
 		splits: input.splits,
-		...(input.recurring && recurringDueAt
-			? { recurringExpenseId: input.recurring.id, recurringDueAt }
-			: {}),
+		...(template ? { recurringExpenseId: template.id, recurringDueAt: template.nextDueAt } : {}),
 	});
+	const advanced = template ? await advanceRecurringDue(tx, template) : null;
+	if (template && !advanced) throw new TransactionAbort('recurring_expense_already_advanced');
 	const body: ExpenseCreateResponseBody = {
 		expense: { ...created.expense, splits: created.splits },
 		warning: null,
 	};
-	return { status: 200, body, context: { created: created.expense } as ExpenseCreateContext };
+	return {
+		status: 200,
+		body,
+		context: { created: created.expense, advanced } as ExpenseCreateContext,
+	};
 }
 
 /**
