@@ -432,7 +432,7 @@ test('an unreadable stored response fails instead of replaying', async () => {
 });
 
 test('responseCodec reads legacy rows through its fallback', () => {
-	const legacy = responseCodec((stored) =>
+	const legacy = responseCodec<unknown>((stored) =>
 		'event' in stored ? { status: 200, body: stored } : null,
 	);
 	assert.deepEqual(legacy.decode({ status: 201, body: { a: 1 } }), { status: 201, body: { a: 1 } });

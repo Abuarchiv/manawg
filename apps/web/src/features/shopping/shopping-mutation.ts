@@ -1,13 +1,7 @@
 import { shoppingItems } from '@/core/db';
-import {
-	completeClaimedResponse,
-	lockClaimedResponse,
-	releaseClaimedResponse,
-} from '@/core/db/claimed-response';
+import type { ReplayCodec } from '@/core/db/idempotent-write';
 import type { ShoppingItem } from '@/core/db/schema';
 import type { DbTransaction } from '@/core/db/transaction';
-import { TransactionAbort } from '@/core/db/transaction-abort';
-import type { ReplayReservation } from '@/core/guards/idempotency';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -88,15 +82,6 @@ export function normalizeShoppingCreateReplayResponse(
 	return null;
 }
 
-export function normalizeShoppingCreateReplayOrReject(
-	value: unknown,
-	reservation: OwnedShoppingCreateReservation | null,
-): ShoppingCreateReplayResponse | null {
-	const response = normalizeShoppingCreateReplayResponse(value);
-	if (!response) reservation?.reject(new Error('idempotency_response_pending'));
-	return response;
-}
-
 export const SHOPPING_CREATE_DUPLICATE_RESPONSE = {
 	status: 409,
 	body: { error: 'shopping_item_duplicate' },
@@ -106,10 +91,11 @@ export function shoppingCreateHttpResponse(response: ShoppingCreateReplayRespons
 	return NextResponse.json(response.body, { status: response.status });
 }
 
-type OwnedShoppingCreateReservation = Extract<
-	ReplayReservation<ShoppingCreateReplayResponse>,
-	{ owned: true }
->;
+/** Stores `{ status, body }`; rows from before the envelope hold the bare body. */
+export const shoppingCreateCodec: ReplayCodec<unknown> = {
+	encode: (response) => ({ status: response.status, body: response.body }),
+	decode: normalizeShoppingCreateReplayResponse,
+};
 
 export interface ShoppingCreateInput {
 	wgId: string;
@@ -117,73 +103,6 @@ export interface ShoppingCreateInput {
 	name: string;
 	quantity: string | null;
 	bought: boolean;
-	/** The claim locked by `lockShoppingCreateClaim` in the same transaction. */
-	replay?: { scope: string; key: string; leaseExpiresAt: Date };
-}
-
-export class ShoppingCreateTransactionRollback extends Error {
-	constructor(cause: unknown) {
-		super('shopping_create_rolled_back', { cause });
-		this.name = 'ShoppingCreateTransactionRollback';
-	}
-}
-
-export function resolveShoppingCreateReplay(
-	reservation: OwnedShoppingCreateReservation | null,
-	response: ShoppingCreateReplayResponse,
-): void {
-	reservation?.resolve(response);
-}
-
-export async function finalizeShoppingCreateDuplicateReplay(
-	reservation: OwnedShoppingCreateReservation | null,
-	dependencies: {
-		persist: () => Promise<boolean>;
-		read: () => Promise<ShoppingCreateReplayResponse | null>;
-		release: () => Promise<boolean>;
-	},
-): Promise<ShoppingCreateReplayResponse | null> {
-	try {
-		if (await dependencies.persist()) {
-			resolveShoppingCreateReplay(reservation, SHOPPING_CREATE_DUPLICATE_RESPONSE);
-			return SHOPPING_CREATE_DUPLICATE_RESPONSE;
-		}
-	} catch {
-		// A read distinguishes a failed write from a write that committed but
-		// lost its acknowledgement before cleanup is considered.
-	}
-
-	try {
-		const cached = await dependencies.read();
-		if (cached) {
-			resolveShoppingCreateReplay(reservation, cached);
-			return cached;
-		}
-	} catch {
-		// Keep the placeholder unless a strict cleanup proves it was removed.
-	}
-
-	try {
-		if (await dependencies.release()) {
-			resolveShoppingCreateReplay(reservation, SHOPPING_CREATE_DUPLICATE_RESPONSE);
-			return SHOPPING_CREATE_DUPLICATE_RESPONSE;
-		}
-	} catch {
-		// A failed delete leaves the claim unresolved and retries fail closed.
-	}
-
-	try {
-		const cached = await dependencies.read();
-		if (cached) {
-			resolveShoppingCreateReplay(reservation, cached);
-			return cached;
-		}
-	} catch {
-		// The route returns a retryable response when neither cache nor cleanup is proven.
-	}
-
-	reservation?.reject(new Error('idempotency_response_pending'));
-	return null;
 }
 
 export async function withShoppingCreatePostCommitFallback(
@@ -203,65 +122,7 @@ export async function withShoppingCreatePostCommitFallback(
 	}
 }
 
-export async function persistShoppingCreateReplayResponse(
-	tx: DbTransaction,
-	scope: string,
-	key: string,
-	response: ShoppingCreateReplayResponse,
-	leaseExpiresAt: Date,
-): Promise<boolean> {
-	try {
-		await completeClaimedResponse(tx, scope, key, response, leaseExpiresAt);
-		return true;
-	} catch (err) {
-		if (err instanceof TransactionAbort && err.code === 'idempotency_claim_missing') return false;
-		throw err;
-	}
-}
-
-export function releaseShoppingCreateClaim(
-	scope: string,
-	key: string,
-	leaseExpiresAt: Date,
-): Promise<boolean> {
-	return releaseClaimedResponse(scope, key, leaseExpiresAt);
-}
-
-function isShoppingCreateReplayable(value: unknown): value is unknown {
-	return normalizeShoppingCreateReplayResponse(value) !== null;
-}
-
-/**
- * Lock the create claim before inserting. A request whose lease ran out while
- * another one took the key over and saved its item replays that response
- * instead of inserting a second item.
- */
-export async function lockShoppingCreateClaim(
-	tx: DbTransaction,
-	scope: string,
-	key: string,
-): Promise<
-	| { kind: 'claimed'; leaseExpiresAt: Date }
-	| { kind: 'completed'; response: ShoppingCreateReplayResponse }
-> {
-	const claim = await lockClaimedResponse(tx, scope, key, isShoppingCreateReplayable);
-	if (claim.kind === 'claimed') return claim;
-	const response = normalizeShoppingCreateReplayResponse(claim.body);
-	if (!response) throw new TransactionAbort('idempotency_claim_invalid');
-	return { kind: 'completed', response };
-}
-
-export async function handleShoppingCreateTransactionFailure(
-	reservation: OwnedShoppingCreateReservation | null,
-	error: unknown,
-	releaseClaim: () => Promise<boolean>,
-): Promise<'rolled_back' | 'unknown_commit'> {
-	reservation?.reject(error);
-	if (!(error instanceof ShoppingCreateTransactionRollback)) return 'unknown_commit';
-	return (await releaseClaim()) ? 'rolled_back' : 'unknown_commit';
-}
-
-export async function insertShoppingItemWithReplay(
+export async function insertShoppingItem(
 	tx: DbTransaction,
 	input: ShoppingCreateInput,
 ): Promise<ShoppingItem | undefined> {
@@ -276,21 +137,5 @@ export async function insertShoppingItemWithReplay(
 			boughtByMemberId: input.bought ? input.addedByMemberId : null,
 		})
 		.returning();
-	if (!item || !input.replay) return item;
-
-	// Commit a safe response with the item. A retry stays replayable if
-	// notification delivery or the later response-cache refresh fails.
-	const responseBody: ShoppingCreateReplayResponse = {
-		status: 200,
-		body: { item, warning: 'notification_delivery_unknown' },
-	};
-	await completeClaimedResponse(
-		tx,
-		input.replay.scope,
-		input.replay.key,
-		responseBody,
-		input.replay.leaseExpiresAt,
-	);
-
 	return item;
 }

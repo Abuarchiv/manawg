@@ -1,7 +1,7 @@
 import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseImports, expenseSplits, expenses, wgMembers } from '@/core/db';
-import { completeClaimedResponse, lockClaimedResponse } from '@/core/db/claimed-response';
+import { type Prepared, bodyCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
 import {
 	type NotificationDispatchWarning,
@@ -17,7 +17,7 @@ import { settledAtForOwnShare } from '@/features/expenses/split-math';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { ImportSource, ParsedExpense } from './import-parsers';
 
-interface CommitInput {
+export interface CommitInput {
 	wg: { id: string; name: string; shareCode: string };
 	source: ImportSource;
 	importedByMemberId: string;
@@ -31,7 +31,6 @@ interface CommitInput {
 	mapping: Readonly<Record<string, string | null>>;
 	skipDuplicates: boolean;
 	rawPayloadHash: string;
-	replay?: { scope: string; key: string };
 }
 
 export interface CommitResult {
@@ -173,10 +172,6 @@ interface ImportWriteResult {
 	totalAmountCents: number;
 }
 
-type ImportTransactionResult =
-	| { replayed: true; result: CommitResult }
-	| { replayed: false; value: ImportWriteResult };
-
 export function isCommitResult(value: unknown): value is CommitResult {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
 	const body = value as Record<string, unknown>;
@@ -208,22 +203,7 @@ export function isCommitResult(value: unknown): value is CommitResult {
  * exactly as it was: an expense without splits, or expenses without the import
  * row that documents where they came from, would both be wrong balances.
  */
-async function writeImport(
-	tx: DbTransaction,
-	input: CommitInput,
-): Promise<ImportTransactionResult> {
-	let lease: Date | null = null;
-	if (input.replay) {
-		const claim = await lockClaimedResponse(
-			tx,
-			input.replay.scope,
-			input.replay.key,
-			isCommitResult,
-		);
-		if (claim.kind === 'completed') return { replayed: true, result: claim.body };
-		lease = claim.leaseExpiresAt;
-	}
-
+async function writeImport(tx: DbTransaction, input: CommitInput) {
 	if (await hasCapturingExpensePayment(tx, input.wg.id)) {
 		throw new TransactionAbort('paypal_payment_pending');
 	}
@@ -318,15 +298,15 @@ async function writeImport(
 		})
 		.where(eq(expenseImports.id, imp.id));
 
-	if (input.replay && lease) {
-		const result: CommitResult = { importId: imp.id, inserted, skipped, errors, warning: null };
-		await completeClaimedResponse(tx, input.replay.scope, input.replay.key, result, lease);
-	}
-
-	return {
-		replayed: false,
-		value: { importId: imp.id, inserted, skipped, errors, totalAmountCents },
+	const body: CommitResult = { importId: imp.id, inserted, skipped, errors, warning: null };
+	const value: ImportWriteResult = {
+		importId: imp.id,
+		inserted,
+		skipped,
+		errors,
+		totalAmountCents,
 	};
+	return { status: 200, body, context: value };
 }
 
 const IMPORT_SOURCE_LABELS: Partial<Record<ImportSource, string>> = {
@@ -335,21 +315,52 @@ const IMPORT_SOURCE_LABELS: Partial<Record<ImportSource, string>> = {
 	ocr_screenshot: 'Screenshot',
 };
 
-export async function commitImport(input: CommitInput): Promise<CommitResult> {
-	await assertMembersInWg(input);
+const importCommitCodec = bodyCodec(isCommitResult);
 
-	// The whole import is one transaction. It used to be a sequence of separate
-	// statements with a hand-written repair on failure: delete the expenses
-	// already written, delete the import row, both with `.catch(() => undefined)`
-	// on top. That repair is itself a database call, and swallowing its failure
-	// meant a half-written import stayed in the WG while the caller only saw an
-	// error and imported the same file again.
-	const transactionResult = await withExpensePaymentLock(input.wg.id, (tx) =>
-		writeImport(tx, input),
+export type ImportCommitOutcome<S> =
+	| { kind: 'stopped'; response: S }
+	| { kind: 'replayed'; result: CommitResult }
+	| { kind: 'committed'; result: CommitResult };
+
+/**
+ * Commit an import at most once per Idempotency-Key. `prepare` runs the caller's checks after a
+ * stored result missed and before the claim, and yields the import to write. The whole import
+ * is one transaction under the WG's payment lock, so a failure leaves the WG as it was; a stored
+ * result replays however many rows it lists.
+ */
+export async function commitImport<S>(
+	replay: { scope: string; key: string | null },
+	prepare: () => Promise<Prepared<CommitInput, S>>,
+): Promise<ImportCommitOutcome<S>> {
+	let importInput: CommitInput | null = null;
+	const result = await withIdempotentWrite(
+		{
+			scope: replay.scope,
+			key: replay.key,
+			codec: importCommitCodec,
+			maxStoredBytes: null,
+			prepare: async () => {
+				const prepared = await prepare();
+				if ('input' in prepared) {
+					importInput = prepared.input;
+					await assertMembersInWg(prepared.input);
+				}
+				return prepared;
+			},
+			inTransaction: (work) => withExpensePaymentLock(importInput?.wg.id ?? '', work),
+		},
+		writeImport,
 	);
-	if (transactionResult.replayed) return transactionResult.result;
-	const { importId, inserted, skipped, errors, totalAmountCents } = transactionResult.value;
+	if (result.kind === 'stopped') return result;
+	if (result.kind === 'replayed' || !result.context || !importInput) {
+		return { kind: 'replayed', result: result.body as CommitResult };
+	}
+	return { kind: 'committed', result: await announceImport(importInput, result.context) };
+}
 
+/** Tell the WG about an import that already committed; a failure here must not undo it. */
+async function announceImport(input: CommitInput, value: ImportWriteResult): Promise<CommitResult> {
+	const { importId, inserted, skipped, errors, totalAmountCents } = value;
 	// Everything below is deliberately outside the transaction: it informs the
 	// WG about an import that already happened, so a failure here must not undo
 	// the import itself.
@@ -360,7 +371,7 @@ export async function commitImport(input: CommitInput): Promise<CommitResult> {
 		authorMemberId: input.importedByMemberId,
 		kind: 'info',
 		source: 'expense',
-		// Der interne Schlüssel (z. B. „splitwise_csv“) gehört nicht in den Pinnwand-Text.
+		// The internal source key (e.g. "splitwise_csv") does not belong in the pinboard text.
 		content: `${input.importedByName} hat ${importedLabel} importiert${sourceLabel ? ` (${sourceLabel})` : ''}.`,
 	});
 

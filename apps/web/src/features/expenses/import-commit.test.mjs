@@ -4,7 +4,10 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import { loadClaimedResponse } from '../../../tests/support/claimed-response.cjs';
+import {
+	loadClaimedResponse,
+	loadIdempotentWrite,
+} from '../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const sourcePath = path.join(process.cwd(), 'src/features/expenses/import-commit.ts');
@@ -136,11 +139,12 @@ function runCommit(existingExpenses, { rows, mapping, mayRecordForOthers = false
 		},
 	};
 	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
+	mocks['@/core/db/idempotent-write'] = loadIdempotentWrite(mocks);
 	const module = loadTsModule(sourcePath, mocks);
 	return {
 		state,
-		commit: () =>
-			module.commitImport({
+		commit: async () => {
+			const input = {
 				wg: { id: wgId, name: 'WG', shareCode: 'MTE8PZAT' },
 				source: 'manual',
 				importedByMemberId: memberId,
@@ -162,7 +166,15 @@ function runCommit(existingExpenses, { rows, mapping, mayRecordForOthers = false
 				mapping: mapping ?? { Alice: memberId },
 				skipDuplicates: true,
 				rawPayloadHash: 'payload-hash',
-			}),
+			};
+			const outcome = await module.commitImport(
+				{ scope: 'import-commit', key: null },
+				async () => ({
+					input,
+				}),
+			);
+			return outcome.result;
+		},
 	};
 }
 

@@ -4,7 +4,11 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import { loadClaimedResponse } from '../../../tests/support/claimed-response.cjs';
+import {
+	loadClaimedResponse,
+	loadIdempotentWrite,
+	loadParseBody,
+} from '../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const connectionString = process.env.PRIVATE_IMAGE_TEST_DATABASE_URL;
@@ -24,6 +28,13 @@ function expenseValidationModules() {
 			{ '@/features/expenses/expense-constants': constants },
 		),
 	};
+}
+
+/** Adds the real idempotent-write and parse-body helpers on top of a route's mocks. */
+function withRouteHelpers(mocks) {
+	mocks['@/core/db/idempotent-write'] = loadIdempotentWrite(mocks);
+	mocks['@/core/http/parse-body'] = loadParseBody(mocks);
+	return mocks;
 }
 
 function loadTypeScript(file, overrides = {}) {
@@ -524,7 +535,7 @@ test(
 				const responseJson = (error, status) => Response.json({ error }, { status });
 				const route = loadTypeScript(
 					path.join(process.cwd(), 'src/app/api/wg/[code]/chat/messages/route.ts'),
-					{
+					withRouteHelpers({
 						'@/core/audit': { recordAuditEvent: async () => undefined },
 						'@/core/db': {
 							db,
@@ -541,13 +552,14 @@ test(
 						'@/core/db/private-image-deletions': helper,
 						'@/core/db/transaction': transaction,
 						'@/core/http/api-errors': {
+							HTTP: { BAD_REQUEST: 400, TOO_MANY: 429 },
 							badRequest: (error) => responseJson(error, 400),
 							conflict: (error, code) =>
 								Response.json({ error, ...(code ? { code } : {}) }, { status: 409 }),
 							payloadTooLarge: () => responseJson('payload_too_large', 413),
 						},
 						'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
-						'@/core/guards/idempotency': { claimReplaySlotWithRetry: async () => ({ won: true }) },
+						'@/core/guards/replay-slot': { claimReplaySlot: async () => ({ won: true }) },
 						'@/core/guards/require-wg-member': {
 							requireWgMember: async () => ({
 								ok: true,
@@ -584,7 +596,7 @@ test(
 						'next/server': {
 							NextResponse: { json: (body, init) => Response.json(body, init) },
 						},
-					},
+					}),
 				);
 				observeRouteLock = true;
 				post = route.POST(
@@ -908,21 +920,21 @@ test(
 				assert.equal(holderAcquiredLock, true, 'test transaction holds the WG lock');
 				const replayModule = loadTypeScript(
 					path.join(process.cwd(), 'src/features/pinnwand/announcement-replay.ts'),
-					{
+					withRouteHelpers({
 						'@/core/db': { db, idempotencyResponses: schema.idempotencyResponses },
 						'@/core/db/claimed-response': loadClaimedResponse({
 							'@/core/db': { db, idempotencyResponses: schema.idempotencyResponses },
 							'@/core/db/transaction': transaction,
 						}),
 						'@/core/db/transaction': transaction,
-						'@/core/guards/idempotency': { claimReplaySlotWithRetry: async () => ({ won: true }) },
+						'@/core/guards/replay-slot': { claimReplaySlot: async () => ({ won: true }) },
 						'@/core/idempotency-store': {
 							RESPONSE_REPLAY_TTL_SECONDS: 604_800,
 							getCachedResponse: async () => null,
 							readIdempotencyKey: (request) => request.headers.get('Idempotency-Key'),
 						},
 						'@/core/infra/observability': { logApiError: () => undefined },
-					},
+					}),
 				);
 				let mutateStarted = false;
 				const replay = replayModule.withAnnouncementReplay(
