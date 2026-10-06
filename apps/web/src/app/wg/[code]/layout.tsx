@@ -8,7 +8,6 @@ import { OfflineBanner } from '@/components/wg/OfflineBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
 import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
-import { deriveMemberToken } from '@/core/guards/member-token';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { loadFixtureWgView } from '@/fixtures/pages';
 import type { StoredIdentity } from '@/shared/lib/identity';
@@ -16,6 +15,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { type ReactNode, cache } from 'react';
+import { TabWarmup } from './_components/TabWarmup';
 
 interface Props {
 	children: ReactNode;
@@ -98,13 +98,7 @@ export default async function WgLayout({ children, params }: Props) {
 		redirect(`/neu?next=${encodeURIComponent(`/wg/${encodeURIComponent(code)}`)}`);
 	}
 	const { memberId, memberName, ...wg } = access;
-	const memberToken = deriveMemberToken(wg.id, memberId);
-	const initialIdentity: StoredIdentity = {
-		memberId,
-		name: memberName,
-		authUserId: user.id,
-		...(memberToken ? { memberToken } : {}),
-	};
+	const initialIdentity: StoredIdentity = { memberId, name: memberName, authUserId: user.id };
 
 	// Load the full roster including deactivated members: history and balances
 	// need every name. Choice UIs filter on `active` downstream (see
@@ -181,6 +175,7 @@ function WgShell({
 			initialIsAdmin={initialIsAdmin}
 			sessionless={sessionless}
 		>
+			<TabWarmup />
 			<div
 				className="group/wg-shell min-h-svh bg-background"
 				style={{

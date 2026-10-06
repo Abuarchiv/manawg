@@ -1,9 +1,9 @@
 'use client';
 
+import { LogoMark } from '@/components/ui/LogoMark';
 import { buttonVariants } from '@/components/ui/button';
 import { ChatTopBarLink } from '@/components/wg/ChatTopBarLink';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { LogoMark } from '@/shared/components/ui/LogoMark';
 import { cn } from '@/shared/lib/cn';
 import { UserRound } from 'lucide-react';
 import Link from 'next/link';

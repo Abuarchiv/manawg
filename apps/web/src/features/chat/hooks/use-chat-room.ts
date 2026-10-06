@@ -176,7 +176,6 @@ export function useChatRoom({
 			const res = await apiFetch(`/api/wg/${encodedShareCode}/chat/read`, {
 				method: 'POST',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				body: JSON.stringify({ lastReadMessageId: messageId }),
 			});
 			// An older response must not overwrite a newer receipt's state.
@@ -185,7 +184,7 @@ export function useChatRoom({
 			if (!res.ok) lastReadSentIdRef.current = null;
 			else notifyChatReadConfirmed(shareCode);
 		},
-		[encodedShareCode, identity.memberId, identity.memberToken, shareCode],
+		[encodedShareCode, identity.memberId, shareCode],
 	);
 
 	const markLatestRead = useCallback(() => {
@@ -356,7 +355,6 @@ export function useChatRoom({
 		}>(messagesUrl, {
 			method: 'POST',
 			memberId: identity.memberId,
-			memberToken: identity.memberToken,
 			headers: { 'Idempotency-Key': idempotencyKey },
 			body: JSON.stringify(input),
 		});
@@ -409,14 +407,12 @@ export function useChatRoom({
 					? await apiFetch(reactionsUrl, {
 							method: 'POST',
 							memberId: identity.memberId,
-							memberToken: identity.memberToken,
 							headers: { 'Idempotency-Key': idempotencyKey },
 							body: JSON.stringify({ emoji }),
 						})
 					: await apiFetch(`${reactionsUrl}?emoji=${encodeURIComponent(emoji)}`, {
 							method: 'DELETE',
 							memberId: identity.memberId,
-							memberToken: identity.memberToken,
 							headers: { 'Idempotency-Key': idempotencyKey },
 						});
 			if (!res.ok) {
@@ -456,7 +452,6 @@ export function useChatRoom({
 		const res = await apiFetch<{ message: ChatMessageDto }>(`${messagesUrl}/${messageId}`, {
 			method: 'PATCH',
 			memberId: identity.memberId,
-			memberToken: identity.memberToken,
 			body: JSON.stringify({ body: next }),
 		});
 		if (!res.ok) {
@@ -485,7 +480,6 @@ export function useChatRoom({
 		const res = await apiFetch(`${messagesUrl}/${messageId}`, {
 			method: 'DELETE',
 			memberId: identity.memberId,
-			memberToken: identity.memberToken,
 		});
 		if (!res.ok) {
 			toast.error(explainChatError('delete', res.error));

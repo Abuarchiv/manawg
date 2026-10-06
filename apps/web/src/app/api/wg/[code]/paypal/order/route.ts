@@ -6,7 +6,6 @@ import {
 	badRequest,
 	conflict,
 	forbidden,
-	requireVerifiedMember,
 	serverError,
 	tooMany,
 	unreadableJsonBody,
@@ -51,8 +50,6 @@ export const GET = withWgRoute('paypal order GET', async (req, { code }) => {
 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
-	const verified = requireVerifiedMember(auth.member);
-	if (verified) return verified;
 	if (auth.member.memberId === parsed.data.toMemberId) return badRequest('member_ids_invalid');
 
 	try {
@@ -118,8 +115,6 @@ export const POST = withWgRoute('paypal order POST', async (req, { code }) => {
 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
-	const verified = requireVerifiedMember(auth.member);
-	if (verified) return verified;
 	if (auth.member.memberId !== parsed.data.fromMemberId) {
 		return forbidden('not_party_to_debt', 'not_party_to_debt');
 	}

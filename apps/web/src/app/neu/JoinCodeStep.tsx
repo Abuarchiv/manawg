@@ -1,7 +1,7 @@
 'use client';
 
-import { BackButton } from '@/components/neu/BackButton';
-import { ErrorBox } from '@/components/neu/ErrorBox';
+import { BackButton } from '@/components/app/BackButton';
+import { ErrorBox } from '@/components/app/ErrorBox';
 import { Button } from '@/components/ui/button';
 import { FieldDescription, FieldGroup, FieldLabel, Field as UiField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';

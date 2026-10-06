@@ -1,7 +1,7 @@
 import { calendarSubscriptions, wgEvents, wgMembers, wgs } from '@/core/db';
 import { withTransaction } from '@/core/db/transaction';
 import { isUuid } from '@/core/guards/api-auth';
-import { HTTP, apiError, notFound, serverError, tooMany } from '@/core/http/api-errors';
+import { notFound, serverError, serviceUnavailable, tooMany } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgReadLimiter } from '@/core/rate-limit';
@@ -120,7 +120,7 @@ export async function GET(
 		});
 		if (!feed) return notFound('calendar_feed_not_found');
 		if (feed === 'window_too_large') {
-			return apiError('events_window_too_large', HTTP.SERVICE_UNAVAILABLE);
+			return serviceUnavailable('events_window_too_large');
 		}
 
 		const occurrences: CalendarFeedOccurrence[] = feed.rows.flatMap((row) =>

@@ -34,7 +34,7 @@ export async function setupMember(page: Page): Promise<void> {
 			try {
 				localStorage.setItem(
 					`manawg_identity:${wgId}`,
-					JSON.stringify({ memberId, name: memberName, memberToken: 'fixture-member-token' }),
+					JSON.stringify({ memberId, name: memberName }),
 				);
 				// Wipe any stale offline queue from previous specs.
 				localStorage.removeItem('manawg:offline-actions');
@@ -122,6 +122,21 @@ export async function mockNoWgs(page: Page): Promise<void> {
  */
 export function inMinimalMatrix(c: { width: number; dark: boolean; large: boolean }): boolean {
 	return c.width === 320 && c.dark === c.large;
+}
+
+/**
+ * Resolves on the next history pop, or after 2 s when it already happened. A closed dialog
+ * pops its history marker 50 ms later (useDismissOnBack); a page.goto started before that
+ * pop gets aborted by it, so wait for it before leaving the page.
+ */
+export function nextHistoryPop(page: Page): Promise<unknown> {
+	return page.evaluate(
+		() =>
+			new Promise((done) => {
+				window.addEventListener('popstate', done, { once: true });
+				window.setTimeout(done, 2000);
+			}),
+	);
 }
 
 /** Mocks the WG dashboard read under `base`, e.g. `/api/wg/MTE8PZAT`. */

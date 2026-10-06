@@ -5,7 +5,7 @@ import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { withIdempotentJsonResponse } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { apiError, forbidden, notFound, serverError, tooMany } from '@/core/http/api-errors';
+import { forbidden, notFound, serverError, tooMany, unauthorized } from '@/core/http/api-errors';
 import { badRequest, payloadTooLarge } from '@/core/http/api-errors';
 import { readJsonBody } from '@/core/http/read-json';
 import { checkEnv } from '@/core/infra/env';
@@ -187,7 +187,7 @@ export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) =>
 				}
 				return current;
 			});
-			if (!member) return apiError('member_deactivated', 401, 'member_deactivated');
+			if (!member) return unauthorized('member_deactivated', 'member_deactivated');
 			await recordAuditEvent({
 				wgId: wg.id,
 				memberId: auth.member.memberId,
@@ -210,7 +210,7 @@ export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) =>
 			const member = await withTransaction((tx) =>
 				lockActiveAccountMember(tx, wg.id, auth.member.memberId, auth.authUserId),
 			);
-			return member ? null : apiError('member_deactivated', 401, 'member_deactivated');
+			return member ? null : unauthorized('member_deactivated', 'member_deactivated');
 		},
 	);
 });
@@ -346,7 +346,7 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 				} catch (subscribeErr) {
 					if (subscribeErr instanceof TransactionAbort) {
 						if (subscribeErr.code === 'member_deactivated') {
-							return apiError('member_deactivated', 401, 'member_deactivated');
+							return unauthorized('member_deactivated', 'member_deactivated');
 						}
 						return forbidden('endpoint_owned', 'endpoint_owned');
 					}
@@ -414,7 +414,7 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 					endpointInUse: otherUse !== undefined,
 				};
 			});
-			if (!result) return apiError('member_deactivated', 401, 'member_deactivated');
+			if (!result) return unauthorized('member_deactivated', 'member_deactivated');
 			await recordAuditEvent({
 				wgId: wg.id,
 				memberId: auth.member.memberId,
@@ -430,7 +430,7 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 			const member = await withTransaction((tx) =>
 				lockActiveAccountMember(tx, wg.id, auth.member.memberId, auth.authUserId),
 			);
-			return member ? null : apiError('member_deactivated', 401, 'member_deactivated');
+			return member ? null : unauthorized('member_deactivated', 'member_deactivated');
 		},
 	);
 });

@@ -18,7 +18,6 @@ interface InventoryItemRowProps {
 	item: InventoryItemDto;
 	shareCode: string;
 	memberId: string;
-	memberToken?: string | undefined;
 	onChanged: (item?: InventoryMutationItemDto, deletedId?: string) => void;
 	onEdit: (item: InventoryItemDto) => void;
 }
@@ -34,7 +33,6 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	item,
 	shareCode,
 	memberId,
-	memberToken,
 	onChanged,
 	onEdit,
 }: InventoryItemRowProps) {
@@ -80,7 +78,6 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 					{
 						method: 'POST',
 						memberId,
-						memberToken,
 						headers: { 'Idempotency-Key': idempotencyKey },
 						body: JSON.stringify({ delta }),
 					},
@@ -119,7 +116,6 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 					{
 						method: 'PATCH',
 						memberId,
-						memberToken,
 						headers: { 'Idempotency-Key': idempotencyKey },
 						body: JSON.stringify({ quantityDelta: delta }),
 					},
@@ -149,7 +145,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 		try {
 			const res = await apiFetch(
 				`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}`,
-				{ method: 'DELETE', memberId, memberToken },
+				{ method: 'DELETE', memberId },
 			);
 			if (res.ok) {
 				setRemoved(true);

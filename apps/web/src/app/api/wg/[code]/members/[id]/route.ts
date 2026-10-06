@@ -6,12 +6,12 @@ import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
-	apiError,
 	badRequest,
 	conflict,
 	forbidden,
 	notFound,
 	tooMany,
+	unauthorized,
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
@@ -101,9 +101,7 @@ export const GET = withWgRoute<{ id: string }>('members/[id] GET', async (req, {
 			id: target.id,
 			name: target.name,
 			active: target.deactivatedAt === null,
-			...(auth.member.memberId === target.id && auth.member.verified
-				? { paypalMerchantId: target.paypalMerchantId }
-				: {}),
+			...(auth.member.memberId === target.id ? { paypalMerchantId: target.paypalMerchantId } : {}),
 		},
 		openBalances,
 	});
@@ -146,7 +144,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 
 		const result = await withExpensePaymentLock(wgId, async (tx) => {
 			const actor = await lockActiveAccountMember(tx, wgId, auth.member.memberId, auth.authUserId);
-			if (!actor) return { ok: false as const, response: apiError('member_deactivated', 401) };
+			if (!actor) return { ok: false as const, response: unauthorized('member_deactivated') };
 			const [target] = await tx
 				.select({
 					id: wgMembers.id,
@@ -160,9 +158,9 @@ export const PATCH = withWgRoute<{ id: string }>(
 				.for('update');
 			if (!target) return { ok: false as const, response: notFound('member_not_found') };
 
-			const verifiedOwner = auth.member.verified && actor.id === target.id;
-			const verifiedAdmin = auth.member.verified && actor.role === 'admin';
-			if (active !== undefined && !verifiedOwner && !verifiedAdmin) {
+			const isOwner = actor.id === target.id;
+			const isAdmin = actor.role === 'admin';
+			if (active !== undefined && !isOwner && !isAdmin) {
 				return { ok: false as const, response: forbidden('not_owner', 'not_owner') };
 			}
 			if (active === false && target.role === 'admin') {
@@ -226,7 +224,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				id: result.member.id,
 				name: result.member.name,
 				active: result.member.deactivatedAt === null,
-				...(auth.member.memberId === result.member.id && auth.member.verified
+				...(auth.member.memberId === result.member.id
 					? { paypalMerchantId: result.member.paypalMerchantId }
 					: {}),
 			},

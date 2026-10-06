@@ -1,7 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { CHORE_RECURRENCE_TYPES, chores, db, wgMembers } from '@/core/db';
 import type { ChoreRecurrenceType } from '@/core/db';
-import { isVerifiedWgAdmin } from '@/core/guards/admin';
+import { isWgAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -204,7 +204,7 @@ export const DELETE = withWgRoute<{ id: string }>('chores DELETE', async (req, {
 	// but only the admin may permanently remove a chore from the plan.
 	// Without this check, any member could wipe the chore plan (P1 audit
 	// finding).
-	if (!(await isVerifiedWgAdmin(wgId, auth.member.memberId, auth.member.verified))) {
+	if (!(await isWgAdmin(wgId, auth.member.memberId))) {
 		return forbidden('admin_required', 'admin_required');
 	}
 

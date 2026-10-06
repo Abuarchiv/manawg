@@ -176,7 +176,6 @@ async function post({
 			conflict: (error) => responseJson({ error }, { status: 409 }),
 			forbidden: (error) => responseJson({ error }, { status: 403 }),
 			notFound: (error) => responseJson({ error }, { status: 404 }),
-			requireVerifiedMember: () => null,
 			tooMany: () => responseJson({ error: 'rate_limited' }, { status: 429 }),
 		},
 		'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
@@ -184,7 +183,7 @@ async function post({
 			requireWgMember: async () => ({
 				ok: true,
 				wg: { id: wgId },
-				member: { memberId: currentMemberId, name: 'Member', verified: true },
+				member: { memberId: currentMemberId, name: 'Member' },
 			}),
 		},
 		'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },

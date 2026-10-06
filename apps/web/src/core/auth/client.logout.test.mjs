@@ -88,7 +88,7 @@ test('shared logout retires this browser endpoint before clearing its local subs
 	const state = harness();
 	try {
 		const result = await state.client.signOutSocialAccount([
-			{ code: 'ABCD2345', memberId: 'member-a', memberToken: 'token-a' },
+			{ code: 'ABCD2345', memberId: 'member-a' },
 			{ code: 'BCDE2345', memberId: 'member-b' },
 		]);
 		const serverCleanups = state.events.filter((event) => event.type === 'server-unsubscribe');
@@ -100,7 +100,7 @@ test('shared logout retires this browser endpoint before clearing its local subs
 			endpoint: state.endpoint,
 		});
 		assert.equal(serverCleanups[0].init.memberId, 'member-a');
-		assert.equal(serverCleanups[0].init.memberToken, 'token-a');
+		assert.equal(Object.hasOwn(serverCleanups[0].init, 'memberToken'), false);
 		assert.equal(serverCleanups[1].url, '/api/wg/BCDE2345/notifications');
 		assert.equal(JSON.parse(serverCleanups[1].init.body).endpoint, state.endpoint);
 		assert.equal(serverCleanups[1].init.memberId, 'member-b');
@@ -116,7 +116,7 @@ test('logout still unsubscribes locally and signs out when the server is offline
 	const state = harness({ serverAvailable: false });
 	try {
 		const result = await state.client.signOutSocialAccount([
-			{ code: 'ABCD2345', memberId: 'member-a', memberToken: 'token-a' },
+			{ code: 'ABCD2345', memberId: 'member-a' },
 		]);
 		assert.equal(state.isSubscriptionActive(), false);
 		assert.deepEqual(result, { pushCleanup: 'unsubscribed' });
@@ -130,7 +130,7 @@ test('logout reports when browser unsubscribe failed but still clears the auth s
 	const state = harness({ unsubscribeResult: false });
 	try {
 		const result = await state.client.signOutSocialAccount([
-			{ code: 'ABCD2345', memberId: 'member-a', memberToken: 'token-a' },
+			{ code: 'ABCD2345', memberId: 'member-a' },
 		]);
 		assert.deepEqual(result, { pushCleanup: 'failed' });
 		assert.equal(state.events.at(-1).type, 'sign-out');

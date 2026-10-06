@@ -15,9 +15,9 @@ import {
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
-	apiError,
 	badRequest,
 	conflict,
+	forbidden,
 	notFound,
 	serverError,
 	tooMany,
@@ -299,7 +299,7 @@ export const POST = withWgRoute('expenses POST', async (req, { code }) => {
 
 		const guard = checkPaidByGuard(paidBy, auth.member.memberId, validatedSplits);
 		if (!guard.ok) {
-			return apiError('paid_by_must_include_caller', 403, 'paid_by_must_include_caller');
+			return forbidden('paid_by_must_include_caller', 'paid_by_must_include_caller');
 		}
 		const memberIds = Array.from(new Set([paidBy, ...debtorIds]));
 		const foundMemberIds = await findExpenseMemberIds(wg.id, memberIds);

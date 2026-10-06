@@ -18,8 +18,8 @@ apps/web/
                   core/reads/ is the cross-feature read/composition layer (dashboard, activity, export)
   src/features/   vertical slices (chat, chores, events, expenses, inventory, pinnwand, shopping)
                   a feature may import core/, shared/ and itself, never another feature
-  src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell), wg/ (WG-wide)
-  src/shared/     presentation-level utilities: theme, fonts, css, brand, analytics, identity
+  src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide)
+  src/shared/     framework-light utilities (lib/, fonts, css): theme, brand, analytics, identity
   drizzle/        SQL migrations (`pnpm --filter @manawg/web db:generate` / `db:migrate`)
   e2e/            Playwright specs (fixture mode needs no database)
   tests/          node:test suites that are not colocated with a module
@@ -49,7 +49,7 @@ Minimum variables in `apps/web/.env.local` (`checkEnv` in `src/core/infra/env.ts
 | --- | --- |
 | `POSTGRES_URL` (or `DATABASE_URL`) | Runtime database. Remote URLs need an explicit port; TLS is enforced (`src/core/db/connection.ts`). |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase Auth. Without them every `/wg/*` page redirects to `/neu`. |
-| `MEMBER_SESSION_SECRET` | Signs member tokens (`openssl rand -hex 32`). Without it verified-only writes answer `403 member_not_verified`. |
+| `MEMBER_SESSION_SECRET` | Signs calendar feed URLs and verifies legacy-profile recovery proofs (`openssl rand -hex 32`). Not used for normal API access. |
 
 Optional features degrade when unset and are reported as `[env] DEGRADED ...`: Upstash rate
 limiting (`UPSTASH_REDIS_REST_*`, fails open outside production), Web Push (`VAPID_*`,
@@ -80,17 +80,17 @@ The app can run against in-memory fixtures from `src/fixtures/` (two fixture WGs
 `MTE8PZAT` and `SMKETEST`). `isE2EDbDownMode()` (`src/fixtures/mode.ts`) only switches on when all
 of these hold: `E2E_FIXTURE_MODE=true` (or `NODE_ENV=test`), `NEXT_PUBLIC_DB_DOWN=true`,
 `CI=true`, `VERCEL` not `1`, `VERCEL_ENV` not `production`, and neither `POSTGRES_URL` nor
-`DATABASE_URL` set. It trusts a plain member-id header without real authentication, so it can
-never activate on a Vercel deployment. `test:e2e:fixtures` sets all of this and builds an isolated
-server on port `3101` (`E2E_PORT`).
+`DATABASE_URL` set. It trusts the plain `x-manawg-expected-member-id` header without real
+authentication, so it can never activate on a Vercel deployment. `test:e2e:fixtures` sets all of
+this and builds an isolated server on port `3101` (`E2E_PORT`).
 
 Only `src/app/` (including `src/middleware.ts`) imports `src/fixtures/`, through one seam per
 entry: `resolveFixtureRequest` in the middleware answers fixture API reads and `POST /api/wg`
 before any route runs, `loadFixtureWgView` feeds the WG layout and chat page,
-`fixtureClientProps` hands `sessionless` to the `/neu` and `/offline` clients, and
-`FixtureClientSetup` in the root layout configures the API client. Core, components and features
-receive plain options (`requireWgSignIn`, `sessionless`, `configureApiClient`) and never see
-fixture mode.
+and `fixtureClientProps` hands `sessionless` to the `/neu` and `/offline` clients. The API client
+needs no fixture switch: it always sends `x-manawg-expected-member-id`, which the fixture API
+reads as the caller. Core, components and features receive plain options (`requireWgSignIn`,
+`sessionless`) and never see fixture mode.
 
 ## Commands
 
@@ -182,7 +182,6 @@ answers `503 cron_secret_missing`, with a wrong header `401`.
 | --- | --- |
 | `/api/health` returns 503 `degraded` | `missingRequiredCount > 0` or `database: unreachable`. Variable names are only in the boot log line `[env] MISSING REQUIRED: ...` (`src/instrumentation.ts`), never in the response. |
 | API answers `503 rate_limiter_unavailable` | Limiter fails closed when `VERCEL_ENV=production`, `NODE_ENV=test`, or `NODE_ENV=production` without `VERCEL_ENV` (e.g. local `next start`) and Upstash is missing or erroring (`src/core/rate-limit.ts`). Set `UPSTASH_REDIS_REST_URL` (https) and `UPSTASH_REDIS_REST_TOKEN`. |
-| Writes answer `403 member_not_verified` | `MEMBER_SESSION_SECRET` unset, so `GET /api/wg/<code>` issues no member token and verified-only mutations reject (`src/core/http/api-errors.ts`, `src/core/guards/member-token.ts`). |
 | Writes answer `403 cross_origin_blocked` | Middleware requires a same-origin `Origin` header on mutating requests to the matched API paths (`/api/wg`, `/api/account`, `/api/auth/*`, `/api/upload/*`, ...). |
 | Writes and crons answer `503 migration_read_only` | `MIGRATION_READ_ONLY=true` is set (migration window). |
 | Cron answers `503 cron_secret_missing` / `401` | `CRON_SECRET` unset / wrong bearer header. |

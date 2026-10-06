@@ -17,7 +17,7 @@ import { Plus } from 'lucide-react';
 export default function VorraetePage() {
 	const { wg, identity } = useWg();
 	const { items, initialLoading, loadError, addOpen, setAddOpen, load, onChanged } =
-		useInventoryPage(wg.shareCode, identity.memberId, identity.memberToken);
+		useInventoryPage(wg.shareCode, identity.memberId);
 
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-3">
@@ -90,7 +90,6 @@ export default function VorraetePage() {
 					items={items}
 					shareCode={wg.shareCode}
 					memberId={identity.memberId}
-					memberToken={identity.memberToken}
 					onChanged={onChanged}
 					addOpen={addOpen}
 					onAddOpenChange={setAddOpen}

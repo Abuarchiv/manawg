@@ -2,7 +2,7 @@ import { recordAuditEvent } from '@/core/audit';
 import { announcementReactions, announcements, db } from '@/core/db';
 import { revokePrivateImageIfUnreferenced } from '@/core/db/private-image-deletions';
 import { lockExpensePayments, withTransaction } from '@/core/db/transaction';
-import { isVerifiedWgAdmin, requireOwnerOrAdmin } from '@/core/guards/admin';
+import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -73,15 +73,10 @@ export const PATCH = withWgRoute<{ id: string }>(
 
 		const changesModeratedFields =
 			parsed.data.kind !== undefined || parsed.data.pinned !== undefined;
-		// A bare x-manawg-member-id is spoofable, so self-authorship only counts
-		// when the request carries a verified HMAC token.
-		const isAuthor = auth.member.verified && row.authorMemberId === auth.member.memberId;
-		if (
-			changesModeratedFields &&
-			!isAuthor &&
-			!(await isVerifiedWgAdmin(wg.id, auth.member.memberId, auth.member.verified))
-		) {
-			return forbidden('not_owner', 'not_owner');
+		const isAuthor = row.authorMemberId === auth.member.memberId;
+		if (changesModeratedFields) {
+			const denied = await requireOwnerOrAdmin(wg.id, auth.member, row.authorMemberId);
+			if (denied) return denied;
 		}
 
 		const now = new Date();

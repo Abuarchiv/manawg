@@ -68,7 +68,6 @@ export function useCalendarSubscription(encodedShareCode: string) {
 		setLoadingState({ scope: requestedScope, value: true });
 		const res = await apiFetch<CalendarSubscriptionResponse>(endpoint, {
 			memberId: identity.memberId,
-			memberToken: identity.memberToken,
 		});
 		if (scopeRef.current !== requestedScope || readRequestIdRef.current !== requestId) return;
 		if (res.ok) {
@@ -78,7 +77,7 @@ export function useCalendarSubscription(encodedShareCode: string) {
 			setErrorState({ scope: requestedScope, value: 'Kalender-Feed konnte nicht geladen werden.' });
 		}
 		setLoadingState({ scope: requestedScope, value: false });
-	}, [identity.memberId, identity.memberToken, endpoint, scope]);
+	}, [identity.memberId, endpoint, scope]);
 
 	useEffect(() => {
 		void load();
@@ -128,7 +127,6 @@ export function useCalendarSubscription(encodedShareCode: string) {
 				const res = await apiFetch<CalendarSubscriptionResponse>(endpoint, {
 					method,
 					memberId: identity.memberId,
-					memberToken: identity.memberToken,
 					headers: { 'Idempotency-Key': idempotencyKey },
 				});
 				if (res.ok && res.data.subscription) {
@@ -155,7 +153,6 @@ export function useCalendarSubscription(encodedShareCode: string) {
 				const res = await apiFetch<unknown>(endpoint, {
 					method: 'DELETE',
 					memberId: identity.memberId,
-					memberToken: identity.memberToken,
 					headers: { 'Idempotency-Key': idempotencyKey },
 				});
 				if (res.ok) {

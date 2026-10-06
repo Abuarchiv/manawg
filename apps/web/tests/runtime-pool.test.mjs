@@ -49,7 +49,6 @@ test(
 				{ POSTGRES_URL: url.href },
 			);
 			assert.throws(() => resolver.resolveConnectionString(), new RegExp(parameter));
-			assert.throws(() => resolver.resolveTransactionConnectionString(), new RegExp(parameter));
 		}
 		const configuredUrl = new URL(runtimeUrl);
 		configuredUrl.searchParams.set('application_name', 'runtime-pool-test');
@@ -67,11 +66,12 @@ test(
 		const connection = {
 			closeClientOnQueryTimeout: () => {},
 			resolveConnectionString: () => runtimeUrl,
-			resolveTransactionConnectionString: () => runtimeUrl,
 		};
+		const configPools = [];
 		class ConfigPool {
 			constructor(options) {
 				this.options = options;
+				configPools.push(this);
 			}
 
 			on() {}
@@ -83,25 +83,18 @@ test(
 				'./connection': connection,
 				'./schema': {},
 				pg: poolMock,
-				'drizzle-orm/node-postgres': { drizzle: (pool) => ({ getConfig: () => pool.options }) },
-			},
-			configEnv,
-		);
-		assert.deepEqual(configDb.db.getConfig(), expected);
-		const { withTransaction: configTransaction } = load(
-			'core/db/transaction.ts',
-			{
-				'./connection': connection,
-				'./schema': {},
-				'./transaction-abort': {},
-				pg: poolMock,
 				'drizzle-orm/node-postgres': {
-					drizzle: (pool) => ({ transaction: async () => pool.options }),
+					drizzle: (pool) => ({
+						getConfig: () => pool.options,
+						transaction: async () => pool.options,
+					}),
 				},
 			},
 			configEnv,
 		);
-		assert.deepEqual(await configTransaction(() => undefined), expected);
+		assert.deepEqual(configDb.db.getConfig(), expected);
+		assert.deepEqual(await configDb.withTransaction(() => undefined), expected);
+		assert.equal(configPools.length, 1, 'queries and transactions share one pool');
 
 		if (process.env.RUN_DB_TIMEOUT_INTEGRATION !== '1') return;
 		const initdb = spawnSync('which', ['initdb'], { encoding: 'utf8' });
@@ -261,17 +254,7 @@ test(
 			const readRecovered = await db.db.execute(sql`select 43::integer as answer`);
 			assert.equal(readRecovered.rows[0]?.answer, 43);
 
-			const { withTransaction } = load(
-				'core/db/transaction.ts',
-				{
-					'./connection': testConnection,
-					'./schema': {},
-					'./transaction-abort': {},
-					pg: { Pool: TrackedPool, Client },
-					'drizzle-orm/node-postgres': drizzlePg,
-				},
-				env,
-			);
+			const { withTransaction } = db;
 			await expectConnectTimeout(() => withTransaction((tx) => tx.execute(sql`select 1`)));
 
 			const transactionSettings = await withTransaction((tx) =>

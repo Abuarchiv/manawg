@@ -1,55 +1,23 @@
 'use client';
 
-import {
-	Collapsible,
-	CollapsiblePanel,
-	CollapsibleTrigger,
-} from '@/components/animate-ui/primitives/base/collapsible';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import {
-	Field,
-	FieldDescription,
-	FieldError,
-	FieldGroup,
-	FieldLabel,
-	FieldLegend,
-	FieldSet,
-} from '@/components/ui/field';
-import {
-	InputGroup,
-	InputGroupAddon,
-	InputGroupInput,
-	InputGroupText,
-} from '@/components/ui/input-group';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
-import { ImageUploader } from '@/components/wg/ImageUploader';
 import type { Member } from '@/components/wg/WgContextProvider';
-import { formatEuroCents } from '@/core/utils/money';
-import { remainderCandidates } from '@/features/expenses/expense-split-input';
-import { ArrowLeft, ChevronDown, Receipt, Repeat2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
-import { ManualSplitSummary } from './ManualSplitSummary';
-import { SplitReview } from './SplitReview';
+import { CloseDraftDialog, ReplaceDraftDialog } from './ExpenseDraftDialogs';
+import { ExpenseExtras } from './ExpenseExtras';
+import { ExpenseSplitFieldset } from './ExpenseSplitFieldset';
 import { TextField } from './TextField';
-import { DESCRIPTION_MAX, RECURRING_INTERVAL_OPTIONS } from './constants';
+import { DESCRIPTION_MAX } from './constants';
 import type { RecurringExpense } from './expense-types';
+import { useExpenseFormDirty } from './use-expense-form-dirty';
 import type { SplitMode } from './useExpenseForm';
 
 const EXPENSE_DESCRIPTION_FIELD_ID = 'expense-description';
@@ -148,13 +116,9 @@ export function ExpenseFormSection({
 	editingExpenseId,
 	notice,
 }: ExpenseFormSectionProps): React.ReactElement {
-	const [showRecurring, setShowRecurring] = useState(false);
-	const [showReceipt, setShowReceipt] = useState(Boolean(imageUrl));
 	const [confirmClose, setConfirmClose] = useState(false);
 	const [replaceOpen, setReplaceOpen] = useState(false);
 	const formRef = useRef<HTMLFormElement>(null);
-	const recurringOpen =
-		showRecurring || editingRecurringExpense !== null || isEditingQueuedRecurring;
 	const editingTemplate = Boolean(
 		editingRecurringExpense && !isEditingQueuedExpense && !isEditingQueuedRecurring,
 	);
@@ -163,47 +127,23 @@ export function ExpenseFormSection({
 		: isEditingExpense
 			? `expense:${editingExpenseId ?? 'invalid'}`
 			: 'new';
-	const formStateKey = JSON.stringify({
+	const isDirty = useExpenseFormDirty({
 		description,
 		amountStr,
 		paidByMemberId,
 		splitMode,
-		manualSplits: Object.entries(manualSplits).sort(([left], [right]) => left.localeCompare(right)),
+		manualSplits,
 		imageUrl,
 		recurringIntervalMonths,
+		identityMemberId,
+		formModeKey,
+		startsFromCurrentValues: isEditingExpense || editingRecurringExpense !== null,
 	});
-	const emptyFormStateKey = JSON.stringify({
-		description: '',
-		amountStr: '',
-		paidByMemberId: identityMemberId,
-		splitMode: 'equal',
-		manualSplits: [],
-		imageUrl: null,
-		recurringIntervalMonths: 1,
-	});
-	const initialStateKey =
-		isEditingExpense || editingRecurringExpense !== null ? formStateKey : emptyFormStateKey;
-	const initialFormStateRef = useRef({ formModeKey, formStateKey: initialStateKey });
-
-	useEffect(() => {
-		if (initialFormStateRef.current.formModeKey === formModeKey) return;
-		initialFormStateRef.current = { formModeKey, formStateKey: initialStateKey };
-	}, [formModeKey, initialStateKey]);
 
 	useEffect(() => {
 		if (validationAttempt === 0) return;
 		formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
 	}, [validationAttempt]);
-
-	const isDirty = initialFormStateRef.current.formStateKey !== formStateKey;
-	const splitErrorId = 'expense-splits-error';
-	const hasLockedHistoricalShare =
-		isEditingExpense && splitCandidates.some((member) => !member.active);
-	const historicalShareHintId = `${splitErrorId}-inactive-share`;
-	const remainderMembers = remainderCandidates(members);
-	const firstSplitMemberId = splitCandidates[0]?.id;
-	const splitErrorTargetsMode =
-		Boolean(fieldErrors.splits) && (splitMode !== 'manual' || firstSplitMemberId === undefined);
 
 	function requestClose() {
 		if (formSaving || savingRecurringTemplate) return;
@@ -327,219 +267,36 @@ export function ExpenseFormSection({
 										</FieldDescription>
 									)}
 								</Field>
-								<FieldSet disabled={formSaving} data-invalid={Boolean(fieldErrors.splits)}>
-									<FieldLegend variant="label">Beteiligte & Aufteilung</FieldLegend>
-									<ToggleGroup
-										variant="segmented"
-										value={[splitMode]}
-										onValueChange={(values) => {
-											onClearFieldError('splits');
-											const value = values[0];
-											if (value === 'equal' || value === 'manual') setSplitMode(value);
-										}}
-										className="w-full"
-										aria-label="Aufteilung"
-										aria-invalid={splitErrorTargetsMode ? true : undefined}
-										aria-describedby={splitErrorTargetsMode ? splitErrorId : undefined}
-									>
-										<ToggleGroupItem
-											value="equal"
-											className="flex-1"
-											disabled={hasLockedHistoricalShare}
-											aria-label="Aufteilung: Gleichmäßig"
-											aria-describedby={
-												hasLockedHistoricalShare ? historicalShareHintId : undefined
-											}
-										>
-											Gleichmäßig
-										</ToggleGroupItem>
-										<ToggleGroupItem
-											value="manual"
-											className="flex-1"
-											aria-label="Aufteilung: Manuell"
-										>
-											Manuell
-										</ToggleGroupItem>
-									</ToggleGroup>
-									{hasLockedHistoricalShare && (
-										<FieldDescription id={historicalShareHintId}>
-											Ausgezogene Anteile bleiben unverändert; nur aktive Personen übernehmen den
-											Rest.
-										</FieldDescription>
-									)}
-									{fieldErrors.splits && (
-										<FieldError id={splitErrorId}>{fieldErrors.splits}</FieldError>
-									)}
-									{splitMode === 'manual' && (
-										<FieldGroup className={fieldErrors.splits ? 'block space-y-3' : 'gap-3'}>
-											{splitCandidates.map((member, index) => (
-												<Field
-													key={member.id}
-													orientation="responsive"
-													data-disabled={formSaving || (isEditingExpense && !member.active)}
-													data-invalid={
-														Boolean(fieldErrors.splits) && member.id === firstSplitMemberId
-													}
-												>
-													<FieldLabel
-														htmlFor={`share-${member.id}`}
-														className="min-w-0 flex-1 break-words"
-													>
-														{member.name}
-														{isEditingExpense && !member.active && (
-															<span className="ml-1 text-xs font-normal text-muted-foreground">
-																(ausgezogen)
-															</span>
-														)}
-													</FieldLabel>
-													<InputGroup className="w-full min-w-32 shrink-0 @md/field-group:max-w-32">
-														<InputGroupInput
-															id={`share-${member.id}`}
-															type="text"
-															inputMode="decimal"
-															value={manualSplits[member.id] ?? ''}
-															onChange={(event) => {
-																setManualSplits((previous) => ({
-																	...previous,
-																	[member.id]: event.target.value,
-																}));
-																onClearFieldError('splits');
-															}}
-															placeholder="0,00"
-															disabled={formSaving || (isEditingExpense && !member.active)}
-															enterKeyHint={index === splitCandidates.length - 1 ? 'done' : 'next'}
-															aria-label={`Anteil ${member.name} in ${currency === 'EUR' ? 'Euro' : currency}${isEditingExpense && !member.active ? ', ausgezogen. Anteil bleibt unverändert.' : ''}`}
-															aria-invalid={
-																Boolean(fieldErrors.splits) && member.id === firstSplitMemberId
-																	? true
-																	: undefined
-															}
-															aria-describedby={
-																Boolean(fieldErrors.splits) && member.id === firstSplitMemberId
-																	? splitErrorId
-																	: undefined
-															}
-															className="min-h-11 font-mono tabular-nums text-base"
-														/>
-														<InputGroupAddon align="inline-end">
-															<InputGroupText>{currency === 'EUR' ? '€' : currency}</InputGroupText>
-														</InputGroupAddon>
-													</InputGroup>
-												</Field>
-											))}
-											<ManualSplitSummary
-												amountStr={amountStr}
-												currency={currency}
-												manualSplits={manualSplits}
-												members={remainderMembers}
-												setManualSplits={setManualSplits}
-												disabled={formSaving}
-											/>
-											{!fieldErrors.splits && (
-												<FieldDescription>
-													Leer lassen oder{' '}
-													<span className="font-mono tabular-nums">
-														{formatEuroCents(0, currency)}
-													</span>{' '}
-													für keinen Anteil.
-												</FieldDescription>
-											)}
-										</FieldGroup>
-									)}
-									{splitMode !== 'manual' && (
-										<SplitReview
-											members={splitCandidates}
-											splits={previewSplits}
-											paidByMemberId={paidByMemberId}
-											currency={currency}
-										/>
-									)}
-								</FieldSet>
+								<ExpenseSplitFieldset
+									members={members}
+									splitCandidates={splitCandidates}
+									splitMode={splitMode}
+									setSplitMode={setSplitMode}
+									manualSplits={manualSplits}
+									setManualSplits={setManualSplits}
+									splitsError={fieldErrors.splits}
+									onClearSplitsError={() => onClearFieldError('splits')}
+									amountStr={amountStr}
+									currency={currency}
+									paidByMemberId={paidByMemberId}
+									previewSplits={previewSplits}
+									isEditingExpense={isEditingExpense}
+									formSaving={formSaving}
+								/>
 								<Separator />
-								<Collapsible open={showReceipt} onOpenChange={setShowReceipt}>
-									<CollapsibleTrigger
-										render={
-											<Button type="button" variant="ghost" className="w-full justify-start" />
-										}
-										disabled={formSaving}
-									>
-										<Receipt data-icon="inline-start" />
-										Beleg hinzufügen
-										{imageUrl && <Badge variant="secondary">Angehängt</Badge>}
-										<ChevronDown data-icon="inline-end" className="ml-auto" />
-									</CollapsibleTrigger>
-									<CollapsiblePanel>
-										<div className="pt-3">
-											<ImageUploader
-												shareCode={shareCode}
-												purpose="expense"
-												value={imageUrl}
-												onChange={setImageUrl}
-												disabled={formSaving}
-												imageLabel="Beleg"
-											/>
-										</div>
-									</CollapsiblePanel>
-								</Collapsible>
-								<Collapsible open={recurringOpen} onOpenChange={setShowRecurring}>
-									<CollapsibleTrigger
-										render={
-											<Button type="button" variant="ghost" className="w-full justify-start" />
-										}
-										disabled={
-											formSaving || editingRecurringExpense !== null || isEditingQueuedRecurring
-										}
-									>
-										<Repeat2 data-icon="inline-start" />
-										Fixkosten-Vorlage
-										{recurringOpen && (
-											<Badge variant="secondary">
-												{recurringIntervalMonths === 1
-													? 'Monatlich'
-													: `Alle ${recurringIntervalMonths} Monate`}
-											</Badge>
-										)}
-										<ChevronDown data-icon="inline-end" className="ml-auto" />
-									</CollapsibleTrigger>
-									<CollapsiblePanel>
-										<FieldGroup className="pt-3">
-											<Field>
-												<FieldLabel htmlFor="expense-interval">Wiederholung</FieldLabel>
-												<NativeSelect
-													id="expense-interval"
-													value={recurringIntervalMonths}
-													onChange={(event) =>
-														setRecurringIntervalMonths(Number(event.target.value))
-													}
-													disabled={formSaving}
-													className="w-full [&_select]:h-11 [&_select]:text-base"
-												>
-													{RECURRING_INTERVAL_OPTIONS.map(({ value, label }) => (
-														<NativeSelectOption key={value} value={value}>
-															{label}
-														</NativeSelectOption>
-													))}
-												</NativeSelect>
-												<FieldDescription>
-													Die Vorlage merkt Betrag, zahlende Person und diese Aufteilung.
-												</FieldDescription>
-											</Field>
-											{!isEditingQueuedExpense &&
-												!isEditingQueuedRecurring &&
-												!editingRecurringExpense && (
-													<Button
-														type="button"
-														variant="outline"
-														onClick={onSaveRecurringTemplate}
-														disabled={formSaving}
-													>
-														{savingRecurringTemplate && <Spinner data-icon="inline-start" />}Als
-														Vorlage merken
-													</Button>
-												)}
-										</FieldGroup>
-									</CollapsiblePanel>
-								</Collapsible>
+								<ExpenseExtras
+									shareCode={shareCode}
+									imageUrl={imageUrl}
+									setImageUrl={setImageUrl}
+									recurringIntervalMonths={recurringIntervalMonths}
+									setRecurringIntervalMonths={setRecurringIntervalMonths}
+									editingRecurringExpense={editingRecurringExpense}
+									isEditingQueuedExpense={isEditingQueuedExpense}
+									isEditingQueuedRecurring={isEditingQueuedRecurring}
+									savingRecurringTemplate={savingRecurringTemplate}
+									onSaveRecurringTemplate={onSaveRecurringTemplate}
+									formSaving={formSaving}
+								/>
 								{formError && (
 									<Alert variant="destructive">
 										<AlertDescription>{formError}</AlertDescription>
@@ -604,47 +361,18 @@ export function ExpenseFormSection({
 				</DialogContent>
 			</Dialog>
 
-			<AlertDialog open={replaceOpen} onOpenChange={setReplaceOpen}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Entwurf verwerfen?</AlertDialogTitle>
-						<AlertDialogDescription>
-							Deine ungespeicherten Eingaben werden durch „{pendingPrefillDescription}“ ersetzt.
-							Bereits gespeicherte Ausgaben bleiben erhalten.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter className="flex-col">
-						<AlertDialogCancel className="min-h-11">Entwurf behalten</AlertDialogCancel>
-						<AlertDialogAction
-							variant="destructive"
-							className="min-h-11"
-							onClick={onReplacePrefill}
-						>
-							Entwurf verwerfen
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
-			<AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Entwurf behalten?</AlertDialogTitle>
-						<AlertDialogDescription>
-							Es wird keine Ausgabe gespeichert. Du kannst deinen Entwurf später weiterbearbeiten
-							oder ausdrücklich verwerfen.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter className="flex-col">
-						<AlertDialogCancel className="min-h-11">Weiterbearbeiten</AlertDialogCancel>
-						<AlertDialogAction variant="destructive" className="min-h-11" onClick={onDiscard}>
-							Entwurf verwerfen
-						</AlertDialogAction>
-						<AlertDialogAction className="min-h-11" onClick={onCancel}>
-							Entwurf behalten
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+			<ReplaceDraftDialog
+				open={replaceOpen}
+				onOpenChange={setReplaceOpen}
+				prefillDescription={pendingPrefillDescription}
+				onReplace={onReplacePrefill}
+			/>
+			<CloseDraftDialog
+				open={confirmClose}
+				onOpenChange={setConfirmClose}
+				onDiscard={onDiscard}
+				onKeep={onCancel}
+			/>
 		</>
 	);
 }

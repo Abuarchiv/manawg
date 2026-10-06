@@ -28,7 +28,6 @@ const IMPORT_ERROR_MESSAGES: Readonly<Record<string, string>> = {
 	member_id_required: 'Deine WG-Zuordnung fehlt. Tritt der WG erneut bei.',
 	member_id_invalid: 'Deine WG-Zuordnung ist ungültig. Tritt der WG erneut bei.',
 	member_deactivated: 'Deine Mitgliedschaft ist nicht mehr aktiv. Tritt der WG erneut bei.',
-	member_not_verified: 'Bestätige deine Mitgliedschaft erneut, bevor du importierst.',
 	member_not_in_wg:
 		'Mindestens eine Zuordnung gehört nicht mehr zu dieser WG. Prüfe die Zuordnung.',
 	mapping_incomplete: 'Bitte ordne alle Namen einem WG-Mitglied zu.',

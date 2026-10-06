@@ -111,7 +111,6 @@ export function useAnnouncementActions(
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				body: JSON.stringify(body),
 			},
 		);
@@ -210,7 +209,6 @@ export function useAnnouncementActions(
 			{
 				method: 'POST',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({ reaction, active: !active }),
 			},
@@ -269,7 +267,6 @@ export function useAnnouncementActions(
 			{
 				method: 'POST',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({ content }),
 			},
@@ -329,7 +326,6 @@ export function useAnnouncementActions(
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				body: JSON.stringify({ content }),
 			},
 		);
@@ -377,7 +373,6 @@ export function useAnnouncementActions(
 			{
 				method: 'DELETE',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 			},
 		);
 		end(pendingKey);
@@ -404,7 +399,6 @@ export function useAnnouncementActions(
 			{
 				method: 'DELETE',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 			},
 		);
 		end(id);

@@ -1,24 +1,13 @@
 import { recordAuditEvent } from '@/core/audit';
-import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
 import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { deleteWgCascade } from '@/core/db/delete-wg';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { requireMember } from '@/core/guards/api-auth';
-import { deriveMemberToken } from '@/core/guards/member-token';
 import { requireWgAdmin } from '@/core/guards/require-wg-admin';
+import { requireWgMembership } from '@/core/guards/require-wg-member';
 import { readShareCode } from '@/core/guards/route-preamble';
-import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
-import {
-	apiError,
-	badRequest,
-	conflict,
-	forbidden,
-	notFound,
-	serverError,
-	unreadableJsonBody,
-} from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
+import { conflict, forbidden, notFound, serverError } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { generateShareCode } from '@/core/utils/share-code';
@@ -64,41 +53,22 @@ export async function GET(
 	if (!codeResult.ok) return codeResult.response;
 	const { code } = codeResult;
 
-	let user: Awaited<ReturnType<typeof getAuthenticatedUser>>;
 	try {
-		user = await getAuthenticatedUser(req);
-	} catch (err) {
-		// A transient Auth outage is retryable, not an unauthenticated caller.
-		logApiError('[api/wg/[code] GET] auth error', err);
-		return apiError('db_error', 503);
-	}
-	if (!user) return apiError('auth_required', 401, 'auth_required');
-
-	try {
-		const wg = await db.query.wgs.findFirst({
-			where: (w, { eq }) => eq(w.shareCode, code),
-			columns: {
-				id: true,
-				name: true,
-				shareCode: true,
-				joiningEnabled: true,
-				shareCodeRotatedAt: true,
-				createdAt: true,
-			},
-		});
-		if (!wg) return await shareCodeMissResponse(user.id, notFound('wg_not_found'));
-		const auth = await requireMember(req, wg.id, user);
-		if (!auth.ok) {
-			const body = (await auth.response
-				.clone()
-				.json()
-				.catch(() => null)) as { error?: unknown } | null;
-			// Same enumeration budget as requireWgMember: unknown and foreign codes both count.
-			return body?.error === 'not_a_member'
-				? await shareCodeMissResponse(user.id, auth.response)
-				: auth.response;
-		}
-		const memberToken = deriveMemberToken(wg.id, auth.member.memberId);
+		const auth = await requireWgMembership(req, code, 'api/wg/[code] GET', (shareCode) =>
+			db.query.wgs.findFirst({
+				where: (w, { eq }) => eq(w.shareCode, shareCode),
+				columns: {
+					id: true,
+					name: true,
+					shareCode: true,
+					joiningEnabled: true,
+					shareCodeRotatedAt: true,
+					createdAt: true,
+				},
+			}),
+		);
+		if (!auth.ok) return auth.response;
+		const { wg } = auth;
 
 		const members = await db
 			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
@@ -107,11 +77,7 @@ export async function GET(
 		return NextResponse.json({
 			wg,
 			members,
-			currentMember: {
-				memberId: auth.member.memberId,
-				name: auth.member.name,
-				...(memberToken ? { memberToken } : {}),
-			},
+			currentMember: { memberId: auth.member.memberId, name: auth.member.name },
 		});
 	} catch (err) {
 		logApiError('[api/wg/[code] GET] failed', err);
@@ -126,14 +92,8 @@ export async function PATCH(
 	const codeResult = await readShareCode(ctx);
 	if (!codeResult.ok) return codeResult.response;
 	const { code } = codeResult;
-	let raw: unknown;
-	try {
-		raw = await readJsonLimited(req);
-	} catch (err) {
-		return unreadableJsonBody(err);
-	}
-	const parsed = patchWgSchema.safeParse(raw);
-	if (!parsed.success) return badRequest('wg_update_invalid');
+	const parsed = await parseBody(req, patchWgSchema, { invalid: 'wg_update_invalid' });
+	if (!parsed.ok) return parsed.response;
 	const { name, joiningEnabled, rotateShareCode } = parsed.data;
 
 	try {
@@ -157,7 +117,7 @@ export async function PATCH(
 
 		const result = await withTransaction(async (tx) => {
 			const actor = await lockActiveAccountMember(tx, wg.id, member.memberId, admin.authUserId);
-			if (!actor || actor.role !== 'admin' || !member.verified) {
+			if (!actor || actor.role !== 'admin') {
 				return { ok: false as const, response: forbidden('not_admin', 'not_admin') };
 			}
 			const [currentWg] = await tx
@@ -214,7 +174,7 @@ export async function DELETE(
 		const { wg, member } = admin;
 		const result = await withExpensePaymentLock(wg.id, async (tx) => {
 			const actor = await lockActiveAccountMember(tx, wg.id, member.memberId, admin.authUserId);
-			if (!actor || actor.role !== 'admin' || !member.verified) {
+			if (!actor || actor.role !== 'admin') {
 				return { ok: false as const, reason: 'not_admin' as const };
 			}
 			return { ok: true as const, deleted: await deleteWgCascade(tx, wg.id) };

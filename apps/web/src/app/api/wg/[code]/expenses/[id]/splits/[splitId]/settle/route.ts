@@ -8,7 +8,6 @@ import {
 	conflict,
 	forbidden,
 	notFound,
-	requireVerifiedMember,
 	tooMany,
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
@@ -60,11 +59,6 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 			.limit(1);
 		const expense = expenseRow[0];
 		if (!expense) return notFound('expense_not_found');
-		// Money mutation: a bare x-manawg-member-id is spoofable (harvested from
-		// GET /api/wg/[code]/members), so require a verified HMAC token before
-		// trusting the caller's claimed identity for the debtor/payer check.
-		const unverified = requireVerifiedMember(auth.member);
-		if (unverified) return unverified;
 
 		const splitRow = await db
 			.select({

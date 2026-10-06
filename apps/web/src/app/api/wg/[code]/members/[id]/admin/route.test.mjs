@@ -57,7 +57,7 @@ function harness({
 			requireWgAdmin: async () => ({
 				ok: true,
 				wg: { id: wgId },
-				member: { memberId: adminId, name: 'Ada', verified: true },
+				member: { memberId: adminId, name: 'Ada' },
 				authUserId: 'auth-1',
 			}),
 		},

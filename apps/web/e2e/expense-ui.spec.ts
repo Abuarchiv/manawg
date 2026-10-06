@@ -13,6 +13,7 @@ import {
 	inMinimalMatrix,
 	mockUnreadCount,
 	navigateToFeature,
+	nextHistoryPop,
 	setupMember,
 } from './_helpers';
 
@@ -723,16 +724,19 @@ test.describe('finance dialog mobile', () => {
 			document.documentElement.style.fontSize = '16px';
 		});
 		await page.setViewportSize({ width: 1440, height: 900 });
-		const wideMetrics = await rows.first().evaluate((element) => {
-			const row = element as HTMLElement;
-			const amount = row.querySelector<HTMLElement>('[data-slot="input-group"]');
-			return {
-				direction: getComputedStyle(row).flexDirection,
-				amountWidth: amount?.getBoundingClientRect().width ?? 0,
-			};
-		});
-		expect(wideMetrics.direction).toBe('row');
-		expect(wideMetrics.amountWidth).toBeCloseTo(128, 0);
+		// The dialog re-renders for the wide layout after the resize event, so poll until it settles.
+		await expect
+			.poll(() =>
+				rows.first().evaluate((element) => {
+					const row = element as HTMLElement;
+					const amount = row.querySelector<HTMLElement>('[data-slot="input-group"]');
+					return {
+						direction: getComputedStyle(row).flexDirection,
+						amountWidth: Math.round(amount?.getBoundingClientRect().width ?? 0),
+					};
+				}),
+			)
+			.toEqual({ direction: 'row', amountWidth: 128 });
 	}
 
 	test('keeps finance forms in narrow viewports at 200% text size', async ({ page }) => {
@@ -760,7 +764,6 @@ test.describe('finance dialog mobile', () => {
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
 		await mockUnreadCount(page, `/api/wg/${shareCode}`);
-
 		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Ausgabe hinzufügen' }).first().click();
@@ -771,7 +774,7 @@ test.describe('finance dialog mobile', () => {
 		await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
 		await page.getByRole('alertdialog').getByRole('button', { name: 'Entwurf verwerfen' }).click();
 		await expect(expenseDialog).toBeHidden();
-
+		await nextHistoryPop(page);
 		await page.goto(`/wg/${shareCode}/abos`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();

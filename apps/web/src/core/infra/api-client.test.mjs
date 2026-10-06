@@ -37,8 +37,6 @@ function loadTypeScript(file, overrides = {}) {
 const { apiFetch } = loadTypeScript(apiClientPath, {
 	'@/shared/lib/member-header': {
 		EXPECTED_MEMBER_ID_HEADER: 'x-manawg-expected-member-id',
-		MEMBER_ID_HEADER: 'x-manawg-member-id',
-		MEMBER_TOKEN_HEADER: 'x-manawg-member-token',
 	},
 });
 
@@ -110,7 +108,7 @@ function loadSendMessage({ pendingMessageRequestRef, createOfflineIdempotencyKey
 		pendingMessageRequestRef,
 		createOfflineIdempotencyKey,
 		'/api/wg/MTE8PZAT/chat/messages',
-		{ memberId: 'member-1', memberToken: 'token-1' },
+		{ memberId: 'member-1' },
 		() => 'chat_error',
 	);
 	return loaded.exports;
@@ -185,13 +183,14 @@ test('keeps the expected-member header and combines the caller abort signal', as
 	const result = await apiFetch('/api/write', {
 		method: 'POST',
 		memberId: 'member-1',
-		memberToken: 'token-1',
 		signal: controller.signal,
 		body: '{}',
 	});
 
 	assert.equal(result.ok, true);
 	assert.equal(requestHeaders.get('x-manawg-expected-member-id'), 'member-1');
+	assert.equal(requestHeaders.get('x-manawg-member-id'), null);
+	assert.equal(requestHeaders.get('x-manawg-member-token'), null);
 	assert.notEqual(requestSignal, controller.signal);
 	assert.equal(requestSignal.aborted, true);
 });
@@ -239,8 +238,6 @@ test('anySignal aborts with the first source, also without AbortSignal.any', asy
 	const { anySignal } = loadTypeScript(apiClientPath, {
 		'@/shared/lib/member-header': {
 			EXPECTED_MEMBER_ID_HEADER: 'x-manawg-expected-member-id',
-			MEMBER_ID_HEADER: 'x-manawg-member-id',
-			MEMBER_TOKEN_HEADER: 'x-manawg-member-token',
 		},
 	});
 	const nativeAny = AbortSignal.any;

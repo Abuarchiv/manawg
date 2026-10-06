@@ -1,4 +1,4 @@
-import { LogoMark } from '@/shared/components/ui/LogoMark';
+import { LogoMark } from '@/components/ui/LogoMark';
 import { cn } from '@/shared/lib/cn';
 
 function Spinner({ className, ...props }: React.ComponentProps<'svg'>) {

@@ -1,7 +1,13 @@
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { isPrivateImageKeyRevoked } from '@/core/db/private-image-deletions';
 import { requireMember } from '@/core/guards/api-auth';
-import { apiError, badRequest, notFound, serverError } from '@/core/http/api-errors';
+import {
+	badRequest,
+	notFound,
+	serverError,
+	serviceUnavailable,
+	unauthorized,
+} from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
 import {
 	ImageStorageConfigurationError,
@@ -27,9 +33,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 	} catch (err) {
 		// A transient Auth outage is retryable, not an unauthenticated caller.
 		logApiError('[upload read] auth error', err);
-		return noStore(apiError('db_error', 503));
+		return noStore(serviceUnavailable('db_error'));
 	}
-	if (!authenticatedUser) return noStore(apiError('auth_required', 401, 'auth_required'));
+	if (!authenticatedUser) return noStore(unauthorized('auth_required', 'auth_required'));
 
 	const auth = await requireMember(req, privateImage.wgId, authenticatedUser);
 	if (!auth.ok) return noStore(auth.response);

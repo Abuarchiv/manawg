@@ -10,9 +10,9 @@ import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
-	apiError,
 	badRequest,
 	serverError,
+	serviceUnavailable,
 	tooMany,
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
@@ -123,7 +123,7 @@ export const GET = withWgRoute('events GET', async (req, { code }) => {
 				.orderBy(asc(wgEvents.startsAt), asc(wgEvents.id))
 				.limit(pageLimit);
 		},
-		() => apiError('events_window_too_large', 503),
+		() => serviceUnavailable('events_window_too_large'),
 		(rows) => {
 			const events: SerializedWgEvent[] = rows.map(serializeWgEvent);
 			return NextResponse.json({ events });

@@ -9,10 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { expect, test } from '@playwright/test';
 import { Client } from 'pg';
-import {
-	resolveConnectionString,
-	resolveTransactionConnectionString,
-} from '../src/core/db/connection';
+import { resolveConnectionString } from '../src/core/db/connection';
 
 interface DrizzleJournal {
 	entries: Array<{ idx: number; tag: string; when: number }>;
@@ -38,7 +35,7 @@ test.describe('db connection', () => {
 				const runtimeUrl = 'postgresql://app:example@db.example.test:5432/app?sslmode=verify-full';
 				process.env.POSTGRES_URL = runtimeUrl;
 				process.env.DATABASE_MIGRATION_URL = migrationUrl;
-				expect(resolveTransactionConnectionString()).toBe(runtimeUrl);
+				expect(resolveConnectionString()).toBe(runtimeUrl);
 			} finally {
 				for (const key of keys) {
 					if (previous[key] === undefined) delete process.env[key];
@@ -48,34 +45,23 @@ test.describe('db connection', () => {
 		});
 	}
 
-	test('transaction runtime aliases retain priority and validation', () => {
+	test('runtime aliases retain priority and ignore direct-connection variables', () => {
 		const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
 		try {
 			for (const key of keys) delete process.env[key];
-			expect(() => resolveTransactionConnectionString()).toThrow(
-				'POSTGRES_URL (or DATABASE_URL) is not set',
-			);
+			expect(() => resolveConnectionString()).toThrow('POSTGRES_URL (or DATABASE_URL) is not set');
 			process.env.DATABASE_URL =
 				'postgresql://app:example@db.example.test:5432/fallback?sslmode=verify-full';
-			expect(resolveTransactionConnectionString()).toBe(process.env.DATABASE_URL);
+			expect(resolveConnectionString()).toBe(process.env.DATABASE_URL);
 			process.env.POSTGRES_URL =
 				'postgresql://app:example@db.example.test:5432/runtime?sslmode=verify-full';
-			expect(resolveTransactionConnectionString()).toBe(process.env.POSTGRES_URL);
+			expect(resolveConnectionString()).toBe(process.env.POSTGRES_URL);
 			process.env.DATABASE_URL_UNPOOLED =
 				'postgresql://app:example@db.example.test:5432/unpooled?sslmode=verify-full';
-			expect(resolveTransactionConnectionString()).toBe(process.env.DATABASE_URL_UNPOOLED);
-			process.env.POSTGRES_URL_NON_POOLING =
-				'postgresql://app:example@db.example.test:5432/direct?sslmode=verify-full';
-			expect(resolveTransactionConnectionString()).toBe(process.env.POSTGRES_URL_NON_POOLING);
 			process.env.POSTGRES_URL_NON_POOLING = 'placeholder';
-			expect(() => resolveTransactionConnectionString()).toThrow('not a valid URL');
-			process.env.POSTGRES_URL_NON_POOLING =
-				'postgresql://app:example@db.example.test:6543/app?sslmode=verify-full';
-			expect(resolveTransactionConnectionString()).toBe(process.env.POSTGRES_URL_NON_POOLING);
-			process.env.POSTGRES_URL_NON_POOLING = 'postgresql://app:example@db.example.test:5432/app';
-			expect(new URL(resolveTransactionConnectionString()).searchParams.get('sslmode')).toBe(
-				'verify-full',
-			);
+			expect(resolveConnectionString()).toBe(process.env.POSTGRES_URL);
+			process.env.POSTGRES_URL = 'postgresql://app:example@db.example.test:5432/app';
+			expect(new URL(resolveConnectionString()).searchParams.get('sslmode')).toBe('verify-full');
 		} finally {
 			for (const key of keys) {
 				if (previous[key] === undefined) delete process.env[key];
@@ -120,27 +106,21 @@ test.describe('db connection', () => {
 				url.searchParams.set('uselibpqcompat', 'true');
 				url.searchParams.set('sslrootcert', '/private/certs/database-ca.pem');
 				process.env.POSTGRES_URL = url.href;
-				for (const resolve of [resolveConnectionString, resolveTransactionConnectionString]) {
-					const result = new URL(resolve());
-					expect(result.searchParams.get('sslmode')).toBe('verify-full');
-					expect(result.searchParams.get('application_name')).toBe('release-check');
-					expect(result.searchParams.get('sslrootcert')).toBe('/private/certs/database-ca.pem');
-					expect(result.hostname).toBe(url.hostname);
-				}
+				const result = new URL(resolveConnectionString());
+				expect(result.searchParams.get('sslmode')).toBe('verify-full');
+				expect(result.searchParams.get('application_name')).toBe('release-check');
+				expect(result.searchParams.get('sslrootcert')).toBe('/private/certs/database-ca.pem');
+				expect(result.hostname).toBe(url.hostname);
 			}
 			process.env.POSTGRES_URL = 'postgresql://app:example@localhost/app';
 			expect(resolveConnectionString()).toBe(process.env.POSTGRES_URL);
-			expect(resolveTransactionConnectionString()).toBe(process.env.POSTGRES_URL);
 			process.env.POSTGRES_URL = 'postgresql://app:example@[::1]/app';
 			expect(resolveConnectionString()).toBe(process.env.POSTGRES_URL);
-			expect(resolveTransactionConnectionString()).toBe(process.env.POSTGRES_URL);
 			process.env.POSTGRES_URL = 'https://db.example.test:5432/app';
 			expect(() => resolveConnectionString()).toThrow('must be a PostgreSQL URL');
-			expect(() => resolveTransactionConnectionString()).toThrow('must be a PostgreSQL URL');
 			process.env.POSTGRES_URL =
 				'postgresql://app:example@localhost:5432/app?host=remote.example.test&sslmode=disable';
 			expect(() => resolveConnectionString()).toThrow('must not override its host');
-			expect(() => resolveTransactionConnectionString()).toThrow('must not override its host');
 		} finally {
 			for (const key of keys) {
 				if (previous[key] === undefined) delete process.env[key];

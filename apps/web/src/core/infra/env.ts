@@ -11,8 +11,8 @@
  *
  * Split into two severities:
  *   - `missingRequired` — the app cannot serve correctly at all (no database,
- *     no signed member sessions so every write is rejected, unprotected cron
- *     routes). The database and member-session secret are checked in every
+ *     no signing secret for calendar feeds, unprotected cron routes). The
+ *     database and `MEMBER_SESSION_SECRET` are checked in every
  *     environment; unprotected cron routes and the image-storage variables of
  *     the configured provider (e.g. `AWS_REGION` for the AWS default) are only
  *     fatal in production, where a silently broken upload path is invisible
@@ -80,13 +80,12 @@ const OPTIONAL_FEATURES: readonly FeatureSpec[] = [
 const PRODUCTION_REQUIRED = ['CRON_SECRET', 'SUPABASE_SERVICE_ROLE_KEY'] as const;
 
 /**
- * Required in every environment, alongside the database. Unlike the
- * production-only list above, going without `MEMBER_SESSION_SECRET` doesn't
- * degrade a named feature — every member token derives to `null`
- * (`deriveMemberToken`), so `requireMember` rejects every mutating request
- * with `member_not_verified` (`src/core/guards/api-auth.ts`). That's a
- * server-side 403 on every write with no client-visible cause, so it has to
- * be loud at boot the same way a missing database is.
+ * Required in every environment, alongside the database. `MEMBER_SESSION_SECRET`
+ * signs calendar feed URLs (`features/events/calendar-subscription.ts`) and
+ * verifies legacy-profile recovery proofs (`core/guards/legacy-claim-proof.ts`).
+ * Without it every calendar feed and every recovery attempt fails with no
+ * client-visible cause, so it has to be loud at boot the same way a missing
+ * database is.
  */
 const ALWAYS_REQUIRED = [
 	'MEMBER_SESSION_SECRET',

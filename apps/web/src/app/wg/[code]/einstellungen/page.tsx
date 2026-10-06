@@ -12,7 +12,7 @@ import {
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { SETTINGS_TABS, getSettingsTabFromHash } from '@/core/guards/settings-tabs';
 import type { SettingsTab } from '@/core/guards/settings-tabs';
-import { memberAuthHeader } from '@/shared/lib/identity';
+import { memberContextHeader } from '@/shared/lib/identity';
 import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 
@@ -71,7 +71,7 @@ export default function EinstellungenPage() {
 		async function loadExportSummary(): Promise<void> {
 			try {
 				const response = await fetch(`/api/wg/${encodedShareCode}/export?summary=counts`, {
-					headers: memberAuthHeader(identity.memberId),
+					headers: memberContextHeader(identity.memberId),
 				});
 				if (cancelled) return;
 				if (!response.ok) {
@@ -172,16 +172,11 @@ export default function EinstellungenPage() {
 								wgName={wg.name}
 								shareCode={wg.shareCode}
 								memberId={identity.memberId}
-								memberToken={identity.memberToken}
 							/>
 						)}
 
 						{activeTab === 'notifications' && (
-							<NotificationSection
-								code={wg.shareCode}
-								memberId={identity.memberId}
-								memberToken={identity.memberToken}
-							/>
+							<NotificationSection code={wg.shareCode} memberId={identity.memberId} />
 						)}
 
 						{activeTab === 'access' && <AccessTab wg={wg} members={members} identity={identity} />}

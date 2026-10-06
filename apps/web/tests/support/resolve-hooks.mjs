@@ -28,6 +28,14 @@ export async function resolve(specifier, context, nextResolve) {
 	if (basePath) {
 		const file = findFile(basePath);
 		if (file) return nextResolve(pathToFileURL(file).href, context);
+		return nextResolve(specifier, context);
 	}
-	return nextResolve(specifier, context);
+	try {
+		return await nextResolve(specifier, context);
+	} catch (error) {
+		// Packages without an `exports` map (e.g. `next/server`) need the file extension under
+		// Node's ESM resolution; the bundler adds it implicitly.
+		if (error?.code !== 'ERR_MODULE_NOT_FOUND' || !/^[@a-z]/i.test(specifier)) throw error;
+		return nextResolve(`${specifier}.js`, context);
+	}
 }

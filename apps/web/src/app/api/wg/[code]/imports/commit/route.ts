@@ -1,5 +1,5 @@
 import { TransactionAbort } from '@/core/db/transaction';
-import { isVerifiedWgAdmin } from '@/core/guards/admin';
+import { isWgAdmin } from '@/core/guards/admin';
 import {
 	ReplayCache,
 	type ReplayReservation,
@@ -144,11 +144,7 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 		}));
 
 		// Resolved before the claim: a failure here must not leave a claim behind.
-		const mayRecordForOthers = await isVerifiedWgAdmin(
-			wg.id,
-			auth.member.memberId,
-			auth.member.verified,
-		);
+		const mayRecordForOthers = await isWgAdmin(wg.id, auth.member.memberId);
 
 		const replaySlot = idemReplayKey === null ? null : importCommitReplay.reserve(idemReplayKey);
 		if (replaySlot?.owned === false) {

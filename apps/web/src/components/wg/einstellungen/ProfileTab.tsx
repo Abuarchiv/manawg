@@ -1,5 +1,7 @@
 'use client';
 
+import { InstallButton } from '@/components/app/InstallButton';
+import { useTheme } from '@/components/app/ThemeProvider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -8,8 +10,6 @@ import { PayPalConnect } from '@/components/wg/einstellungen/PayPalConnect';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { WgNameSection } from '@/components/wg/einstellungen/WgNameSection';
 import { isPayPalSdkEnabled } from '@/core/infra/security-headers';
-import { InstallButton } from '@/shared/components/install-button';
-import { useTheme } from '@/shared/components/theme/ThemeProvider';
 import { haptic } from '@/shared/lib/haptics';
 import { Monitor, Moon, Sun } from 'lucide-react';
 
@@ -30,16 +30,9 @@ interface ProfileTabProps {
 	wgName: string;
 	shareCode: string;
 	memberId: string;
-	memberToken?: string | undefined;
 }
 
-export function ProfileTab({
-	memberName,
-	wgName,
-	shareCode,
-	memberId,
-	memberToken,
-}: ProfileTabProps) {
+export function ProfileTab({ memberName, wgName, shareCode, memberId }: ProfileTabProps) {
 	const { theme, setTheme } = useTheme();
 	const { isAdmin } = useWg();
 
@@ -78,18 +71,11 @@ export function ProfileTab({
 				</div>
 			</Section>
 
-			{isAdmin && (
-				<WgNameSection
-					wgName={wgName}
-					shareCode={shareCode}
-					memberId={memberId}
-					memberToken={memberToken}
-				/>
-			)}
+			{isAdmin && <WgNameSection wgName={wgName} shareCode={shareCode} memberId={memberId} />}
 
 			{PAYPAL_ENABLED && (
 				<Section title="PayPal">
-					<PayPalConnect shareCode={shareCode} memberId={memberId} memberToken={memberToken} />
+					<PayPalConnect shareCode={shareCode} memberId={memberId} />
 				</Section>
 			)}
 

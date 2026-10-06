@@ -339,21 +339,14 @@ test.describe('private storage contract', () => {
 			'@/core/db/private-image-deletions': {
 				isPrivateImageKeyRevoked: async () => false,
 			},
-			'@/core/http/api-errors': {
-				apiError: (message: string, status: number, code?: string) =>
-					nextServer.NextResponse.json({ error: message, ...(code ? { code } : {}) }, { status }),
-				badRequest: (message: string) =>
-					nextServer.NextResponse.json({ error: message }, { status: 400 }),
-				notFound: (message: string) =>
-					nextServer.NextResponse.json({ error: message }, { status: 404 }),
-				serverError: (message: string) =>
-					nextServer.NextResponse.json({ error: message }, { status: 500 }),
-			},
+			'@/core/http/api-errors': loadTs(path.join(process.cwd(), 'src/core/http/api-errors.ts'), {
+				'@/core/infra/observability': { captureException: () => undefined },
+			}),
 			'@/core/guards/api-auth': {
 				requireMember: async () => {
 					membershipCalls += 1;
 					return membership === 'active'
-						? { ok: true, member: { memberId: 'member-1', name: 'Member', verified: true } }
+						? { ok: true, member: { memberId: 'member-1', name: 'Member' } }
 						: {
 								ok: false,
 								response: nextServer.NextResponse.json(
@@ -448,7 +441,7 @@ test.describe('private storage contract', () => {
 		expect(source).toContain('parsePrivateImageKey');
 		expect(source).toContain('getAuthenticatedUser');
 		expect(source).toContain('requireMember');
-		expect(source).toContain("apiError('auth_required'");
+		expect(source).toContain("unauthorized('auth_required'");
 		expect(source).toContain('if (!auth.ok) return noStore(auth.response)');
 		expect(source).toContain('downloadSupabaseImage');
 		expect(source).not.toContain('getImageStorageProvider');
@@ -541,27 +534,18 @@ test.describe('upload sign s3 config contract', () => {
 			success: true,
 		},
 	): SignRoute {
-		const nextServer = createRequire(ROUTE_PATH)('next/server') as typeof import('next/server');
-		const json = (body: unknown, status: number) =>
-			nextServer.NextResponse.json(body as Record<string, unknown>, { status });
 		return loadTs<SignRoute>(ROUTE_PATH, {
 			'@/core/auth/server': { getAuthenticatedUser: async () => ({ id: 'user-1' }) },
 			'@/core/db': {
 				db: { query: { wgs: { findFirst: async () => ({ id: 'wg-1' }) } } },
 			},
-			'@/core/http/api-errors': {
-				apiError: (message: string, status: number, code?: string) =>
-					json(code !== undefined ? { error: message, code } : { error: message }, status),
-				badRequest: (message: string) => json({ error: message }, 400),
-				notFound: (message: string) => json({ error: message }, 404),
-				tooMany: (message: string, code?: string) =>
-					json(code !== undefined ? { error: message, code } : { error: message }, 429),
-				serverError: (message: string) => json({ error: message }, 500),
-			},
+			'@/core/http/api-errors': loadTs(path.join(process.cwd(), 'src/core/http/api-errors.ts'), {
+				'@/core/infra/observability': { captureException: () => undefined },
+			}),
 			'@/core/guards/api-auth': {
 				requireMember: async () => ({
 					ok: true,
-					member: { memberId: 'member-1', name: 'Member', verified: true },
+					member: { memberId: 'member-1', name: 'Member' },
 				}),
 			},
 			'@/core/http/read-json': { readJsonBody },

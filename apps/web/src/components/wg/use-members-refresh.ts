@@ -58,7 +58,6 @@ export function useMembersRefresh({
 				viewerIsAdmin?: boolean;
 			}>(`/api/wg/${encodedShareCode}/members`, {
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 			});
 			if (authGeneration !== authGenerationRef.current) return;
 			// Normalize defensively: an omitted flag (e.g. E2E fixtures) means active.

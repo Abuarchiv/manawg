@@ -1,20 +1,22 @@
 /**
- * Header name the API expects on every mutating /api/wg/[code]/* request.
- *
- * Lives in a server-safe module (no `'use client'`) so both API routes and
- * client code can import it without triggering Next.js's client/server
- * boundary wrapping.
+ * Header names shared by API routes and client code. Lives in a server-safe
+ * module (no `'use client'`) so both sides can import it without triggering
+ * Next.js's client/server boundary wrapping.
  */
-export const MEMBER_ID_HEADER = 'x-manawg-member-id';
 
-/** Client's expected identity scope, checked against the cookie-authenticated membership. */
+/**
+ * The member a tab was rendered for. Not an identity proof: the server
+ * compares it with the membership of the cookie-authenticated user and answers
+ * 409 `member_context_changed` on a mismatch, so a stale tab cannot act as a
+ * different member. The E2E fixture mode, which has no Supabase session, reads
+ * it as the caller.
+ */
 export const EXPECTED_MEMBER_ID_HEADER = 'x-manawg-expected-member-id';
 
 /**
- * Header carrying the HMAC session token derived from
- * `MEMBER_SESSION_SECRET` (see `@/core/guards/member-token`). Optional on most
- * requests (legacy `x-manawg-member-id`-only auth still works for
- * non-destructive routes) but required for admin-gated mutations
- * (WG delete/rename/rotate-share-code).
+ * Legacy-profile recovery only (`POST /api/wg/[code]/members/[id]/claim`):
+ * the stored member id and its HMAC token from before account login. See
+ * `@/core/guards/legacy-claim-proof`.
  */
-export const MEMBER_TOKEN_HEADER = 'x-manawg-member-token';
+export const LEGACY_CLAIM_MEMBER_ID_HEADER = 'x-manawg-member-id';
+export const LEGACY_CLAIM_TOKEN_HEADER = 'x-manawg-member-token';

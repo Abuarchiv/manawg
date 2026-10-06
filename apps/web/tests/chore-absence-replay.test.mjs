@@ -162,7 +162,10 @@ function harness(kind, bodyOverride) {
 			serverError: (code) => jsonError(code, 500),
 			tooMany: () => jsonError('too_many', 429),
 		},
-		'@/core/guards/admin': { isVerifiedWgAdmin: async () => false },
+		'@/core/guards/admin': {
+			requireOwnerOrAdmin: async (_wgId, member, ownerId) =>
+				ownerId === member.memberId ? null : jsonError('not_owner', 403),
+		},
 		'@/core/guards/idempotency': {
 			ReplayCache,
 			claimReplaySlotWithRetry: async () => {
@@ -181,7 +184,7 @@ function harness(kind, bodyOverride) {
 			requireWgMember: async () => ({
 				ok: true,
 				wg: { id: wgId, shareCode: 'MTE8PZAT' },
-				member: { memberId, name: 'Mina', verified: true },
+				member: { memberId, name: 'Mina' },
 			}),
 		},
 		'@/core/guards/with-wg-route': {

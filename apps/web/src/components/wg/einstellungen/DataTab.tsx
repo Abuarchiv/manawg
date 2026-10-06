@@ -12,18 +12,24 @@ import {
 	exportErrorMessage,
 	readResponseErrorCode,
 } from '@/components/wg/einstellungen/settings-errors';
-import type { ExportSectionKey, ExportSectionSummary } from '@/composition/export';
 import { cn } from '@/shared/lib/cn';
 import type { StoredIdentity } from '@/shared/lib/identity';
-import { memberAuthHeader } from '@/shared/lib/identity';
+import { memberContextHeader } from '@/shared/lib/identity';
 import { Download, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 
+/** One exportable section as the export summary lists it; `key` is the CSV `section` parameter. */
+export interface ExportSectionOption {
+	key: string;
+	label: string;
+	count: number;
+}
+
 interface DataTabProps {
 	wg: WgSummary;
 	identity: StoredIdentity;
-	exportSummary: ExportSectionSummary[];
+	exportSummary: ExportSectionOption[];
 	exportSummaryError: string | null;
 }
 
@@ -33,12 +39,12 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 	const [exportError, setExportError] = useState<string | null>(null);
 	const [exportMessage, setExportMessage] = useState<string | null>(null);
 	const [exportPending, setExportPending] = useState<'json' | 'csv' | null>(null);
-	const [csvExportSection, setCsvExportSection] = useState<ExportSectionKey>('expenses');
+	const [csvExportSection, setCsvExportSection] = useState('expenses');
 	const exportPendingRef = useRef(false);
 	const csvExportLabel =
 		exportSummary.find((item) => item.key === csvExportSection)?.label ?? 'CSV';
 
-	async function downloadExport(format: 'json' | 'csv', section?: ExportSectionKey): Promise<void> {
+	async function downloadExport(format: 'json' | 'csv', section?: string): Promise<void> {
 		if (exportPendingRef.current) return;
 		exportPendingRef.current = true;
 		setExportError(null);
@@ -50,7 +56,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 				format === 'csv'
 					? `/api/wg/${encodedShareCode}/export?format=csv&section=${encodeURIComponent(csvSection)}`
 					: `/api/wg/${encodedShareCode}/export`;
-			const res = await fetch(url, { headers: memberAuthHeader(identity.memberId) });
+			const res = await fetch(url, { headers: memberContextHeader(identity.memberId) });
 			if (!res.ok) {
 				setExportError(exportErrorMessage(res.status, await readResponseErrorCode(res)));
 				return;
@@ -126,7 +132,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 							aria-label="CSV-Bereich"
 							value={csvExportSection}
 							disabled={exportPending !== null}
-							onChange={(event) => setCsvExportSection(event.target.value as ExportSectionKey)}
+							onChange={(event) => setCsvExportSection(event.target.value)}
 							className="min-w-0 flex-1 text-base"
 						>
 							{exportSummary.map((section) => (

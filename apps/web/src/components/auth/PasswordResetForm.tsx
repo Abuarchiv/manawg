@@ -1,6 +1,6 @@
 'use client';
 
-import { NEW_PASSWORD_MIN_LENGTH } from '@/components/auth/CredentialsAuth';
+import { NEW_PASSWORD_MIN_LENGTH } from '@/components/auth/auth-form-shared';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';

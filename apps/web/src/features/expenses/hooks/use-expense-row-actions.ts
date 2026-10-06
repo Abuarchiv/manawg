@@ -30,7 +30,6 @@ export function useExpenseRowActions({
 		const res = await apiFetch<unknown>(expenseApiUrl(id), {
 			method: 'DELETE',
 			memberId: identity.memberId,
-			memberToken: identity.memberToken,
 		});
 
 		// A 404 means someone else already deleted it, so the row has to go
@@ -90,7 +89,6 @@ export function useExpenseRowActions({
 			{
 				method: 'POST',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				body: JSON.stringify({ settled }),
 			},
 		);

@@ -59,7 +59,10 @@ function sharedMocks(state) {
 			notFound: (error) => NextResponse.json({ error }, { status: 404 }),
 			payloadTooLarge: () => NextResponse.json({ error: 'payload_too_large' }, { status: 413 }),
 			serverError: (error) => NextResponse.json({ error }, { status: 500 }),
+			serviceUnavailable: (error) => NextResponse.json({ error }, { status: 503 }),
 			tooMany: () => NextResponse.json({ error: 'rate_limited' }, { status: 429 }),
+			unauthorized: (error, code) =>
+				NextResponse.json(code === undefined ? { error } : { error, code }, { status: 401 }),
 		},
 		'@/core/guards/api-auth': { requireMember: unreachable('requireMember') },
 		'@/core/infra/observability': {
@@ -214,7 +217,7 @@ function wgRouteMocks(state) {
 		'@/core/activity-feed': { postSystemNotice: unreachable('postSystemNotice') },
 		'@/core/audit': { recordAuditEvent: unreachable('recordAuditEvent') },
 		'@/core/db/delete-wg': { deleteWgCascade: unreachable('deleteWgCascade') },
-		'@/core/guards/admin': { isVerifiedWgAdmin: unreachable('isVerifiedWgAdmin') },
+		'@/core/guards/admin': { isWgAdmin: unreachable('isWgAdmin') },
 		'@/core/guards/api-auth': {
 			UUID_PATTERN: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
 			requireMember: unreachable('requireMember'),
@@ -223,12 +226,18 @@ function wgRouteMocks(state) {
 			claimReplaySlotWithRetry: unreachable('claimReplaySlotWithRetry'),
 			withIdempotentJsonResponse: unreachable('withIdempotentJsonResponse'),
 		},
-		'@/core/guards/member-token': {
-			deriveMemberToken: unreachable('deriveMemberToken'),
-			verifyMemberToken: unreachable('verifyMemberToken'),
+		'@/core/guards/legacy-claim-proof': {
+			verifyLegacyClaimProof: unreachable('verifyLegacyClaimProof'),
 		},
 		'@/core/guards/require-wg-admin': { requireWgAdmin: unreachable('requireWgAdmin') },
-		'@/core/guards/require-wg-member': { requireWgMember: unreachable('requireWgMember') },
+		'@/core/guards/require-wg-member': loadRoute('src/core/guards/require-wg-member.ts', {
+			...mocks,
+			'@/core/guards/resolve': { resolveWg: unreachable('resolveWg') },
+			'@/core/guards/share-code-miss': {
+				shareCodeMissResponse: unreachable('shareCodeMissResponse'),
+			},
+		}),
+		'@/core/http/parse-body': { parseBody: unreachable('parseBody') },
 		'@/core/guards/route-preamble': { readShareCode },
 		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 60,
@@ -239,8 +248,8 @@ function wgRouteMocks(state) {
 			withExpensePaymentLock: unreachable('withExpensePaymentLock'),
 		},
 		'@/shared/lib/member-header': {
-			MEMBER_ID_HEADER: 'x-member-id',
-			MEMBER_TOKEN_HEADER: 'x-member-token',
+			LEGACY_CLAIM_MEMBER_ID_HEADER: 'x-member-id',
+			LEGACY_CLAIM_TOKEN_HEADER: 'x-member-token',
 		},
 		'@/core/utils/share-code': {
 			generateShareCode: unreachable('generateShareCode'),

@@ -1,10 +1,16 @@
 'use client';
 
 import { useWg } from '@/components/wg/WgContextProvider';
-import type { DashboardData } from '@/composition/dashboard-data';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import { getChoreStatus } from '@/features/chores/chore-status';
 import { useCallback, useEffect } from 'react';
+import { type DueChoreRef, countOwnDueChores } from './own-due-chores';
+
+/** The part of the dashboard read (`GET /api/wg/<code>/dashboard`) the segment counts use. */
+interface DashboardCountsRead {
+	openShoppingCount: number;
+	dueChores: DueChoreRef[];
+	dueRecurringExpenses: unknown[];
+}
 
 export type SegmentCountState = 'ready' | 'loading' | 'unavailable' | 'stale';
 
@@ -41,7 +47,6 @@ export function useChatUnreadCount(): ChatUnreadSnapshot {
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const chat = useCachedFetch<ChatUnreadCount>(`/api/wg/${encodedShareCode}/chat/unread-count`, {
 		memberId: identity.memberId,
-		memberToken: identity.memberToken,
 	});
 	const refresh = useCallback(() => void chat.refresh(), [chat.refresh]);
 
@@ -66,17 +71,14 @@ function countState<T>(data: T | undefined, error: unknown): SegmentCountState {
 export function useDashboardCounts(): Record<string, SegmentCount> {
 	const { wg, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
-	const dashboard = useCachedFetch<DashboardData>(`/api/wg/${encodedShareCode}/dashboard`, {
+	const dashboard = useCachedFetch<DashboardCountsRead>(`/api/wg/${encodedShareCode}/dashboard`, {
 		memberId: identity.memberId,
-		memberToken: identity.memberToken,
 	});
 
 	const dashboardState = countState(dashboard.data, dashboard.error);
-	const ownDueCount = dashboard.data?.dueChores.filter(
-		(chore) =>
-			chore.assignedMemberId === identity.memberId &&
-			['due', 'overdue'].includes(getChoreStatus(chore.nextDueAt).state),
-	).length;
+	const ownDueCount = dashboard.data
+		? countOwnDueChores(dashboard.data.dueChores, identity.memberId)
+		: undefined;
 	return {
 		einkauf: {
 			count: dashboard.data?.openShoppingCount,

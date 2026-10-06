@@ -11,7 +11,7 @@ type CreatedWgResponse = {
 
 type WgManifestResponse = {
 	wg?: { id?: unknown; shareCode?: unknown };
-	currentMember?: { memberId?: unknown; memberToken?: unknown };
+	currentMember?: { memberId?: unknown };
 };
 
 type MineWgResponse = {
@@ -309,16 +309,9 @@ test.describe('ManaWG launch smoke', () => {
 				typeof manifest.currentMember?.memberId === 'string'
 					? manifest.currentMember.memberId
 					: null;
-			const memberToken =
-				typeof manifest.currentMember?.memberToken === 'string'
-					? manifest.currentMember.memberToken
-					: null;
-			if (!memberId || !memberToken) {
-				throw new Error('created WG member proof was not returned');
-			}
+			if (!memberId) throw new Error('created WG member was not returned');
 			memberHeaders = {
-				'x-manawg-member-id': memberId,
-				'x-manawg-member-token': memberToken,
+				'x-manawg-expected-member-id': memberId,
 				origin: new URL(page.url()).origin,
 			};
 

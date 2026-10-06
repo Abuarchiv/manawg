@@ -15,11 +15,10 @@ interface WgNameSectionProps {
 	wgName: string;
 	shareCode: string;
 	memberId: string;
-	memberToken?: string | undefined;
 }
 
 /** Admin-only rename; the PATCH route has always accepted `name`, this is its UI. */
-export function WgNameSection({ wgName, shareCode, memberId, memberToken }: WgNameSectionProps) {
+export function WgNameSection({ wgName, shareCode, memberId }: WgNameSectionProps) {
 	const router = useRouter();
 	const [name, setName] = useState(wgName);
 	const [pending, setPending] = useState(false);
@@ -43,7 +42,6 @@ export function WgNameSection({ wgName, shareCode, memberId, memberToken }: WgNa
 			const res = await apiFetch<unknown>(`/api/wg/${encodeURIComponent(shareCode)}`, {
 				method: 'PATCH',
 				memberId,
-				memberToken,
 				body: JSON.stringify({ name: trimmed }),
 			});
 			if (!res.ok) {

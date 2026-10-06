@@ -5,7 +5,6 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
 interface CachedFetchOptions {
 	memberId?: string | undefined;
-	memberToken?: string | undefined;
 	headers?: HeadersInit | undefined;
 }
 
@@ -114,7 +113,6 @@ function startFetch<T>(key: string, url: string, options: CachedFetchOptions): P
 
 	const request = apiFetch<T>(url, {
 		...(options.memberId === undefined ? {} : { memberId: options.memberId }),
-		...(options.memberToken === undefined ? {} : { memberToken: options.memberToken }),
 		...(options.headers === undefined ? {} : { headers: options.headers }),
 	})
 		.then((result) => {
@@ -228,7 +226,7 @@ export function prefetchCachedFetch<T>(
 }
 
 export function useCachedFetch<T>(url: string, options: CachedFetchOptions = {}) {
-	const { memberId, memberToken, headers } = options;
+	const { memberId, headers } = options;
 	const key = cacheKey(url, memberId);
 	const getSnapshot = useCallback(() => snapshotFor<T>(key), [key]);
 	const subscribeToUrl = useCallback((listener: () => void) => subscribe(key, listener), [key]);
@@ -242,7 +240,7 @@ export function useCachedFetch<T>(url: string, options: CachedFetchOptions = {})
 		async ({
 			afterMutation = false,
 		}: { afterMutation?: boolean } = {}): Promise<FetchResult<T>> => {
-			await fetchAndCache<T>(key, url, { memberId, memberToken, headers }, afterMutation);
+			await fetchAndCache<T>(key, url, { memberId, headers }, afterMutation);
 			const current = snapshotFor<T>(key);
 			if (current.error) return { ok: false, ...current.error };
 			if (current.data !== undefined) {
@@ -255,7 +253,7 @@ export function useCachedFetch<T>(url: string, options: CachedFetchOptions = {})
 			}
 			return { ok: false, status: 0, error: 'Netzwerkfehler' };
 		},
-		[headers, key, memberId, memberToken, url],
+		[headers, key, memberId, url],
 	);
 
 	const setData = useCallback((update: DataUpdate<T>) => updateCache(key, update), [key]);

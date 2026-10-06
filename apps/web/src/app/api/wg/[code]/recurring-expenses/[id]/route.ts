@@ -5,9 +5,9 @@ import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
-	apiError,
 	badRequest,
 	conflict,
+	forbidden,
 	notFound,
 	tooMany,
 	unreadableJsonBody,
@@ -207,7 +207,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 			hasFinancialChange &&
 			!checkPaidByGuard(nextPaidByMemberId, auth.member.memberId, nextSplits).ok
 		) {
-			return apiError('paid_by_must_include_caller', 403, 'paid_by_must_include_caller');
+			return forbidden('paid_by_must_include_caller', 'paid_by_must_include_caller');
 		}
 
 		const pauseTransition =

@@ -172,8 +172,6 @@ export const DELETE = withWgRoute<{ id: string }>('shopping DELETE', async (req,
 		.limit(1);
 	const row = existing[0];
 	if (!row) return notFound('item_not_found');
-	// Ownership and the admin override both require a verified caller — the
-	// bare member-id header is spoofable.
 	const denied = await requireOwnerOrAdmin(wgId, auth.member, row.addedByMemberId);
 	if (denied) return denied;
 

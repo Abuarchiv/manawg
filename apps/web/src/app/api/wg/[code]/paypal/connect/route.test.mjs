@@ -140,7 +140,7 @@ function harness({
 	const auth = {
 		ok: true,
 		wg: { id: wgId },
-		member: { memberId, name: 'Abu', verified: true },
+		member: { memberId, name: 'Abu' },
 		authUserId,
 	};
 	const errors = {
@@ -149,7 +149,6 @@ function harness({
 		conflict: (error) => responseError(error, 409),
 		forbidden: (error) => responseError(error, 403),
 		notFound: (error) => responseError(error, 404),
-		requireVerifiedMember: () => null,
 		serverError: (error) => responseError(error, 500),
 		tooMany: () => new Response(null, { status: 429 }),
 	};

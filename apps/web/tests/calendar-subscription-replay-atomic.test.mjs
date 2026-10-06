@@ -150,7 +150,6 @@ function harness({
 		},
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/http/api-errors': {
-			requireVerifiedMember: () => null,
 			serverError: (code) => Response.json({ error: code }, { status: 500 }),
 			tooMany: () => Response.json({ error: 'rate_limited' }, { status: 429 }),
 		},
@@ -167,7 +166,7 @@ function harness({
 			requireWgMember: async () => ({
 				ok: true,
 				wg: { id: 'wg-1' },
-				member: { memberId: 'member-1', name: 'Mina', verified: true },
+				member: { memberId: 'member-1', name: 'Mina' },
 				authUserId: 'auth-user',
 			}),
 		},

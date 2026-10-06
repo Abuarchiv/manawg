@@ -411,29 +411,28 @@ test.describe('daily overview home', () => {
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
 		await dismissOnboarding(page);
-		// Nach einem Fehler bleibt der Dialog offen: Wiederholen heißt nur noch bestätigen.
+		// After a failure the dialog stays open: retrying only means confirming again.
 		const confirmCompletion = async (): Promise<void> => {
 			await page.getByRole('button', { name: 'Erledigt bestätigen: Bad putzen' }).click();
 		};
+		const dialogError = page
+			.getByRole('alertdialog')
+			.getByText('Erledigt-Aktion konnte nicht gespeichert werden: Versuche es gleich erneut.');
 
 		await page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' }).click();
 		await confirmCompletion();
-		await expect(
-			page.getByText('Erledigt konnte nicht gespeichert werden. Versuche es gleich erneut.'),
-		).toBeVisible();
+		await expect(dialogError).toBeVisible();
 		await confirmCompletion();
-		await expect(
-			page.getByText('Erledigt konnte nicht gespeichert werden. Versuche es gleich erneut.'),
-		).toBeVisible();
+		await expect(dialogError).toBeVisible();
+		// Offline the completion is queued like in the cleaning plan, with the same key.
 		await confirmCompletion();
-		await expect(
-			page.getByText('Offline: Öffne den Putzplan, dort wird die Erledigung vorgemerkt.'),
-		).toBeVisible();
-		await confirmCompletion();
-		await expect(page.getByText('Bad putzen erledigt.')).toBeVisible();
+		await expect(page.getByText(/Erledigung offline vorgemerkt/)).toBeVisible();
+		await expect(page.getByRole('alertdialog')).toHaveCount(0);
+		await expect(page.getByText('Bad putzen', { exact: true })).toHaveCount(0);
+		// With the dialog closed, a fourth request can only be the sync replaying the queued key.
+		await page.evaluate(() => globalThis.dispatchEvent(new Event('online')));
 		await expect.poll(() => idempotencyKeys.length).toBe(4);
 		expect(new Set(idempotencyKeys).size).toBe(1);
-		await expect(page.getByText('Bad putzen', { exact: true })).toHaveCount(0);
 	});
 
 	test('shows a saving label and keeps focus while a completion request is in flight', async ({

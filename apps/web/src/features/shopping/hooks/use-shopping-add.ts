@@ -32,7 +32,7 @@ type ShoppingCreateResponse = { item: ShoppingItem; warning: NotificationWarning
 
 interface UseShoppingAddOptions {
 	wg: { id: string; shareCode: string };
-	identity: { memberId: string; memberToken?: string };
+	identity: { memberId: string };
 	prefillName: string | null;
 	commitItems: (update: ShoppingItem[] | ((current: ShoppingItem[]) => ShoppingItem[])) => void;
 	/** Noch unbestätigte Zeilen; Polls dürfen sie nicht überschreiben. */
@@ -194,7 +194,6 @@ export function useShoppingAdd({
 			const res = await apiFetch<ShoppingCreateResponse>(`/api/wg/${encodedShareCode}/shopping`, {
 				method: 'POST',
 				memberId: identity.memberId,
-				memberToken: identity.memberToken,
 				headers: { 'Idempotency-Key': idempotencyKey },
 				body: JSON.stringify({
 					name,

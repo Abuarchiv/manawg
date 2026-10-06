@@ -13,7 +13,6 @@ import {
 	conflict,
 	forbidden,
 	notFound,
-	requireVerifiedMember,
 	serverError,
 	tooMany,
 	unreadableJsonBody,
@@ -56,12 +55,6 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
-
-	// Money mutation: a bare x-manawg-member-id is spoofable, so require a
-	// verified HMAC token before trusting the caller's claimed identity for
-	// the payer/debtor ownership check below.
-	const unverified = requireVerifiedMember(auth.member);
-	if (unverified) return unverified;
 
 	const limited = await checkRateLimit(wgWriteLimiter, `expense:${wgId}:${auth.member.memberId}`);
 	if (!limited.success) return tooMany();
@@ -176,12 +169,6 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
 	if (!isAllowedImageUrlForWg(imageUrl, wgId)) return badRequest('image_invalid');
-
-	// Money mutation: a bare x-manawg-member-id is spoofable, so require a
-	// verified HMAC token before trusting the caller's claimed identity for
-	// the payer-only check below.
-	const unverified = requireVerifiedMember(auth.member);
-	if (unverified) return unverified;
 
 	const limited = await checkRateLimit(wgWriteLimiter, `expense:${wgId}:${auth.member.memberId}`);
 	if (!limited.success) return tooMany();
