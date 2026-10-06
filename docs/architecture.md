@@ -234,8 +234,9 @@ All `online`/`offline` and `visibilitychange` listeners go through
 
 ## Database
 
-- Schema: `core/db/schema.ts` (Drizzle). Migrations: `apps/web/drizzle/` with
-  `meta/_journal.json`; `0000_baseline.sql` replaced an earlier non-replayable chain.
+- Schema: one Drizzle module per domain in `core/db/schema/`, re-exported by `core/db/schema.ts`.
+  Migrations: `apps/web/drizzle/` with `meta/_journal.json`; `0000_baseline.sql` replaced an
+  earlier non-replayable chain.
   `scripts/db-migrate.mjs` applies them under an advisory lock, checks the ledger against the
   journal (fail-closed, with an explicit legacy-hash allowlist) and verifies the result
   (`--check`).

@@ -71,7 +71,7 @@ non-pooling pair) and only accepts a direct Supabase connection: host `*.supabas
 `5432`, `sslmode` as the only query parameter. The transaction pooler port `6543` is rejected.
 Production is migrated only by the GitHub workflow (see [Deployment](#deployment)).
 
-New migrations: edit `src/core/db/schema.ts`, then `pnpm --filter @manawg/web db:generate`
+New migrations: edit the domain module in `src/core/db/schema/`, then `pnpm --filter @manawg/web db:generate`
 (drizzle-kit; `drizzle.config.ts` loads `.env` via `dotenv/config`).
 
 ### Fixture mode (no database)
