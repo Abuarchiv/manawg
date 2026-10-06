@@ -13,11 +13,13 @@ Further reading: [architecture](docs/architecture.md), [release checklist](docs/
 
 ```
 apps/web/
-  src/app/        routes only: pages, layouts, API handlers (thin, call core/features)
-  src/core/       domain-neutral building blocks: db, auth, guards, http, offline, notifications, infra
-                  core/reads/ is the cross-feature read/composition layer (dashboard, activity, export)
-  src/features/   vertical slices (chat, chores, events, expenses, inventory, pinnwand, shopping)
-                  a feature may import core/, shared/ and itself, never another feature
+  src/app/        routes only: pages, layouts, API handlers (thin, call features/composition)
+  src/composition/ cross-feature read models (dashboard, activity, export)
+  src/features/   vertical slices (chat, chores, events, expenses, inventory, pinnwand, shopping);
+                  server/ holds database and route logic (server-only), the rest is client/pure;
+                  a feature never imports another feature
+  src/core/       domain-neutral building blocks: db, auth, guards, http, sync, offline, notifications, infra
+  src/fixtures/   E2E fixture mode (imported only from app/)
   src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide)
   src/shared/     framework-light utilities (lib/, fonts, css): theme, brand, analytics, identity
   drizzle/        SQL migrations (`pnpm --filter @manawg/web db:generate` / `db:migrate`)
@@ -121,7 +123,7 @@ More scripts in `apps/web/package.json`:
 
 ## Quality gates
 
-CI (`.github/workflows/ci.yml`, job `validate`) runs, in this order:
+CI (`.github/workflows/ci.yml`, job `validate`) runs, in this order (`pnpm verify` runs the same steps locally):
 
 1. `pnpm install --frozen-lockfile`
 2. `pnpm audit --prod --audit-level high`

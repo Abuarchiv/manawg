@@ -13,7 +13,7 @@ browser
        (body validation)              before auth, so invalid_body cannot leak membership
        requireWgMember                Supabase user -> WG by share code -> active wg_members row
        withIdempotentWrite            mutations carrying an Idempotency-Key (and keyless writes)
-       features/<x> / core/reads      domain logic
+       features/<x> / composition     domain logic
        core/db (Drizzle, pg Pool)     Postgres
 ```
 
@@ -52,21 +52,36 @@ under `app/wg/**`; WG APIs belong under `app/api/wg/**`.
 
 | Layer | Contains | May import |
 | --- | --- | --- |
-| `app/` | Pages, layouts, route handlers. Thin. | everything below |
-| `features/<x>/` | Vertical slices: `chat`, `chores`, `events`, `expenses`, `inventory`, `pinnwand`, `shopping`. Pure logic shared by client and server at the slice root, `hooks/` and `components/` for the client, `server/` for database and route logic (every module starts with `import 'server-only'`; only `server/` may import `@/core/db` or `drizzle-orm`) | `core/`, `shared/`, own files |
-| `core/reads/` | Cross-feature reads/composition: dashboard data and insights, activity feed, export | `core/`, several `features/*` (chores, expenses, events, pinnwand) |
-| `core/` (rest) | Domain-neutral blocks: `db`, `auth`, `guards`, `http`, `hooks`, `offline`, `sync`, `notifications`, `infra`, `utils`, `validators` | `core/`, `shared/` (exception: `core/activity-feed.ts` imports chat constants) |
-| `components/` | Shared UI: `ui/` shadcn primitives (plus `LogoMark`, `Toast`, `ConfirmDialog`), `animate-ui/`, `app/` app-wide composites (shell, PWA install/push prompts, theme), `wg/` WG-wide composites | `components/`, `core/`, `shared/` |
-| `shared/` | Framework-light utilities (`lib/`, fonts, css): theme, analytics, identity, header names | `shared/` |
+| `app/` (and root files such as `middleware.ts`) | Pages, layouts, route handlers. Thin: parse, guard, call a feature or composition module, answer. | everything below |
+| `fixtures/` | E2E fixture mode only: mode detection, fixture data, the fixture API answers and seams. Imported only from `app/`. | everything below |
+| `composition/` | Read models that combine features: dashboard data and insights, activity timeline, export. | `features/`, `components/`, `core/`, `shared/` |
+| `features/<x>/` | Vertical slices: `chat`, `chores`, `events`, `expenses`, `inventory`, `pinnwand`, `shopping`. Pure logic shared by client and server at the slice root, `hooks/` and `components/` for the client, `server/` for database and route logic (every module starts with `import 'server-only'`). | `components/`, `core/`, `shared/`, its own files |
+| `components/` | Shared UI: `ui/` shadcn primitives (plus `LogoMark`, `Toast`, `ConfirmDialog`), `animate-ui/`, `app/` app-wide composites (shell, PWA install/push prompts, theme), `wg/` WG-wide composites. | `components/`, `core/`, `shared/` |
+| `core/` | Domain-neutral blocks: `db`, `auth`, `guards`, `http`, `hooks`, `offline`, `sync`, `notifications`, `infra`, `utils`, `validators`, `activity-feed`, `audit`. | `core/`, `shared/` |
+| `shared/` | Framework-light utilities (`lib/`, fonts, css): theme, analytics, identity, header names. | `shared/` |
 
 Rules:
 
-- A feature never imports another feature. `scripts/check-feature-boundaries.mjs` resolves
-  aliased and relative specifiers and fails CI on a cross-feature import.
-- Cross-feature side effects go through `core/` (e.g. `core/activity-feed.ts` posts system
-  notices to the pinnwand feed; `core/audit.ts` records audit events).
-- Cross-feature reads go through `core/reads/`, which the boundary script does not check
-  (it only scans `features/`).
+- A feature never imports another feature. Cross-feature side effects go through `core/`
+  (`core/activity-feed.ts` posts system notices, `core/audit.ts` records audit events);
+  cross-feature reads go through `composition/`.
+- Only `features/<x>/server/` (and `core/`, `composition/`, `app/`) may import `@/core/db` or
+  `drizzle-orm`; a `'use client'` module never imports a `server/` module.
+- WG mutations that accept an `Idempotency-Key` use `withIdempotentWrite`; route handlers never
+  touch the claim protocol directly. Error responses use the `HTTP` constants and helpers in
+  `core/http/api-errors.ts`; request bodies go through `parseBody`.
+- Fixture mode exists only in `src/fixtures/`; no other module checks for it.
+
+### Enforcement
+
+`scripts/check-architecture.mjs` runs in `pnpm --filter @manawg/web lint` and in CI. It fails on:
+the layer matrix above, cross-feature imports, `server/` placement and `server-only`, the
+idempotency and fixture seams, numeric status literals passed to `apiError`, source files over
+400 lines and test files over 800 lines, unit tests that are not `*.test.ts` or that evaluate
+source through `vm`/`transpileModule` or read `src/` as text, imports of removed dependencies,
+German comments and comments that narrate history. Known exceptions live in
+`scripts/architecture-baseline.json`; the check also fails when an entry is fixed but still
+listed, so the baseline only shrinks. Never add entries by hand.
 
 ## Identity model
 
@@ -340,7 +355,7 @@ Route folders under `app/wg/[code]/`, with the code names behind them.
 | Vorräte / Inventar (`vorraete`) | `features/inventory` | `inventory` | `wg_inventory_items`, `wg_inventory_log` |
 | Kalender (`kalender`) | events (`features/events`) | `events`, `calendar-subscription` | `wg_events`, `calendar_subscriptions` |
 | Chat (`chat`) | `features/chat` | `chat` | `wg_chat_messages`, `wg_chat_reactions`, `wg_chat_reads`, `wg_chat_mentions` |
-| Aktivität (`aktivitaet`) | activity (`core/reads/activity.ts`) | `activity` | `audit_events` |
+| Aktivität (`aktivitaet`) | activity (`composition/activity.ts`) | `activity` | `audit_events` |
 | Einstellungen (`einstellungen`) | settings | `notifications`, `export`, ... | |
 
 "Erinnerungen" for chores and events are push notifications sent by the `chore-reminders` and
