@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { type TestContext, mock, test } from 'node:test';
 import { mockDb } from '../../../../../tests/support/db-mock';
-import { type SqlNode, isSqlNode, mockDrizzle } from '../../../../../tests/support/drizzle-mock';
+import {
+	type SqlNode,
+	conditionArg,
+	mockDrizzle,
+} from '../../../../../tests/support/drizzle-mock';
 import { mockObservability, request } from '../../../../../tests/support/route-harness';
 
 // The route, the reminder window and the dispatch helpers run for real; the database keeps the
@@ -66,20 +70,9 @@ function given(options: { failureMode?: FailureMode; eventEndsAt?: string } = {}
 	state.dispatches = [];
 }
 
-/** The value a condition compares `column` with, searched through `and`/`or`. */
-function conditionValue(filter: unknown, op: string, column: string): unknown {
-	if (!isSqlNode(filter)) return undefined;
-	if (filter.op === op && filter.args[0] === column) return filter.args[1];
-	for (const child of filter.args) {
-		const found = conditionValue(child, op, column);
-		if (found !== undefined) return found;
-	}
-	return undefined;
-}
-
 function claimOf(filter: unknown): string {
-	const scope = conditionValue(filter, 'eq', idempotencyResponses.scope);
-	const key = conditionValue(filter, 'eq', idempotencyResponses.key);
+	const scope = conditionArg(filter, 'eq', idempotencyResponses.scope);
+	const key = conditionArg(filter, 'eq', idempotencyResponses.key);
 	return `${scope}:${key}`;
 }
 
@@ -87,8 +80,8 @@ function selectedRows(table: unknown, filter: unknown) {
 	if (table === wgEvents) return state.events;
 	if (table === wgMembers) return state.members;
 	if (table === idempotencyResponses) {
-		const scope = conditionValue(filter, 'eq', idempotencyResponses.scope);
-		const keys = (conditionValue(filter, 'inArray', idempotencyResponses.key) ?? []) as string[];
+		const scope = conditionArg(filter, 'eq', idempotencyResponses.scope);
+		const keys = (conditionArg(filter, 'inArray', idempotencyResponses.key) ?? []) as string[];
 		return [...state.claims.values()]
 			.filter((row) => row.scope === scope && row.expiresAt > new Date())
 			.filter((row) => keys.includes(row.key))

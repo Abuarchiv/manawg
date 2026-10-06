@@ -159,3 +159,14 @@ export function orderRows<R extends Record<string, unknown>>(rows: readonly R[],
 		return 0;
 	});
 }
+
+/** The value a condition compares `column` with, searched through nested `and`/`or`. */
+export function conditionArg(condition: unknown, op: string, column: unknown): unknown {
+	if (!isSqlNode(condition)) return undefined;
+	if (condition.op === op && condition.args[0] === column) return condition.args[1];
+	for (const part of condition.args) {
+		const found = conditionArg(part, op, column);
+		if (found !== undefined) return found;
+	}
+	return undefined;
+}
