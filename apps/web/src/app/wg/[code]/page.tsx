@@ -11,9 +11,6 @@ import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/comp
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { ActivityFeed } from '@/components/wg/dashboard/ActivityFeed';
-import { StartWelcome } from '@/components/wg/dashboard/StartWelcome';
-import { TodayIcon } from '@/components/wg/dashboard/TodayIcon';
 import type { DashboardData } from '@/composition/dashboard-data';
 import {
 	type TodayImportantItem,
@@ -52,9 +49,12 @@ import { useReducedMotion } from 'motion/react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { ActivityFeed } from './_components/ActivityFeed';
+import { StartWelcome } from './_components/StartWelcome';
+import { TodayIcon } from './_components/TodayIcon';
 
 const PushPrimingPrompt = dynamic(
-	() => import('@/shared/components/push-priming-prompt').then((m) => m.PushPrimingPrompt),
+	() => import('@/components/app/PushPrimingPrompt').then((m) => m.PushPrimingPrompt),
 	{ ssr: false },
 );
 

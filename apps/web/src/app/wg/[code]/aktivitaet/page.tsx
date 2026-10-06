@@ -17,7 +17,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { ActivityFeed } from '@/components/wg/dashboard/ActivityFeed';
 import {
 	type ActivityFilter,
 	type ActivityItem,
@@ -34,6 +33,7 @@ import { cn } from '@/shared/lib/cn';
 import { Search } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityFeed } from '../_components/ActivityFeed';
 
 interface ActivityResponse {
 	items: ActivityItem[];

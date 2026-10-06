@@ -1,6 +1,7 @@
 'use client';
 
 import { AppBottomNav } from '@/components/app/AppBottomNav';
+import { ErrorBox } from '@/components/app/ErrorBox';
 import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
 import { WG_SECTIONS } from '@/components/app/navigation';
 import { LegalLinks } from '@/components/entry/LegalLinks';
@@ -10,7 +11,7 @@ import {
 	type PublicPreviewModule,
 } from '@/components/entry/PublicModulePreview';
 import { WgWelcome } from '@/components/entry/WgWelcome';
-import { ErrorBox } from '@/components/neu/ErrorBox';
+import { LogoMark } from '@/components/ui/LogoMark';
 import { AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +23,6 @@ import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDelet
 import { hasSessionCookie } from '@/core/auth/session-hint';
 import { REQUEST_TIMEOUT_MS, anySignal } from '@/core/infra/api-client';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
-import { LogoMark } from '@/shared/components/ui/LogoMark';
 import { cn } from '@/shared/lib/cn';
 import {
 	CalendarDays,

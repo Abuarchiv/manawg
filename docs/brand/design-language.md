@@ -57,4 +57,4 @@ The current app remains a mobile-first shared household interface. Native Icon C
 
 ## Sources in code
 
-`apps/web/src/shared/globals.css` owns colors, type roles, radius and basic motion. `apps/web/components.json` owns registry configuration. `src/shared/lib/brand-mark.json` holds the supplied geometry; `src/shared/components/ui/LogoMark.tsx` renders it. `scripts/generate-brand-assets.mjs` derives browser/PWA assets. Do not revive former forest/mint/blue palettes or the keyhole mark.
+`apps/web/src/shared/globals.css` owns colors, type roles, radius and basic motion. `apps/web/components.json` owns registry configuration. `src/shared/lib/brand-mark.json` holds the supplied geometry; `src/components/ui/LogoMark.tsx` renders it. `scripts/generate-brand-assets.mjs` derives browser/PWA assets. Do not revive former forest/mint/blue palettes or the keyhole mark.

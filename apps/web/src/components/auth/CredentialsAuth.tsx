@@ -1,6 +1,6 @@
 'use client';
 
-import { ErrorBox } from '@/components/neu/ErrorBox';
+import { ErrorBox } from '@/components/app/ErrorBox';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';

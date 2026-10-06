@@ -1,4 +1,4 @@
-import { LogoMark } from '@/shared/components/ui/LogoMark';
+import { LogoMark } from '@/components/ui/LogoMark';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 

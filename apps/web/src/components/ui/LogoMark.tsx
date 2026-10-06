@@ -1,8 +1,8 @@
 'use client';
 
+import geometry from '@/shared/lib/brand-mark.json';
+import { cn } from '@/shared/lib/cn';
 import { type ComponentProps, useId } from 'react';
-import geometry from '../../lib/brand-mark.json';
-import { cn } from '../../lib/cn';
 import styles from './brand-mark.module.css';
 
 interface LogoMarkProps extends ComponentProps<'svg'> {

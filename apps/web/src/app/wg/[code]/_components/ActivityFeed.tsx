@@ -38,8 +38,8 @@ const kindIcon: Record<ActivityItem['kind'], typeof Receipt> = {
 	audit: History,
 };
 
-// Protokoll-Texte beginnen mit einem Verb („hat … geändert“) und brauchen die Person davor;
-// alle anderen sind Stichworte („Brot gekauft“) und stehen als Titel, die Person darunter.
+// Log texts start with a verb („hat … geändert“) and need the person in front;
+// all others are keywords („Brot gekauft“) shown as the title with the person below.
 const VERB_START = /^(hat|ist)\b/;
 
 export function ActivityFeed({ items, inset }: { items: ActivityItem[]; inset?: boolean }) {
