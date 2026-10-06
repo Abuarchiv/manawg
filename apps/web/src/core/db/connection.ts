@@ -43,9 +43,8 @@ function isQueryReadTimeout(error: unknown): boolean {
 }
 
 /**
- * `POSTGRES_URL`/`DATABASE_URL` (and the non-pooling pair below) are supported
- * aliases — Vercel sets one, other platforms the other — so a winner is picked
- * by design. Two non-empty values that *differ* mean the deployment carries
+ * `POSTGRES_URL`/`DATABASE_URL` are supported aliases — Vercel sets one,
+ * other platforms the other — so a winner is picked by design. Two non-empty values that *differ* mean the deployment carries
  * two databases' configuration and one of them is silently ignored, which is
  * exactly the drift that surfaces as "works in Preview, missing table in
  * production". Report which variable wins instead.
@@ -69,15 +68,6 @@ export function resolveConnectionString(): string {
 		);
 	}
 	return secureRuntimeConnectionString(url, 'database connection');
-}
-
-export function resolveTransactionConnectionString(): string {
-	warnOnAmbiguousUrlPair('POSTGRES_URL_NON_POOLING', 'DATABASE_URL_UNPOOLED');
-	const url =
-		process.env.POSTGRES_URL_NON_POOLING ||
-		process.env.DATABASE_URL_UNPOOLED ||
-		resolveConnectionString();
-	return secureRuntimeConnectionString(url, 'transaction database connection');
 }
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]', 'host.docker.internal']);

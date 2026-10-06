@@ -205,10 +205,11 @@ Remaining unleased releases: the CSV import route, inventory consume and
   `authenticated` and `PUBLIC` are revoked (`0007`, `0016`). The app reads and writes tables
   through its own server connection, not the Supabase Data API. Triggers
   (`0013_member_wg_invariants.sql`) enforce that member references belong to the same WG.
-- Runtime connections (`core/db/index.ts`, `transaction.ts`, `connection.ts`): `pg.Pool` with
-  `max: 5`, `statement_timeout` 5 s, `lock_timeout` 2 s, `query_timeout` 5.5 s, connect timeout
-  2 s. Queries use `POSTGRES_URL || DATABASE_URL`; transactions use
-  `POSTGRES_URL_NON_POOLING || DATABASE_URL_UNPOOLED || POSTGRES_URL`. Remote URLs must carry a
+- Runtime connections (`core/db/index.ts`, `transaction.ts`, `connection.ts`): one lazily built
+  `pg.Pool` per instance serves both `db` and `withTransaction`, with `max: 5`,
+  `statement_timeout` 5 s, `lock_timeout` 2 s, `query_timeout` 5.5 s, connect timeout 2 s, on
+  `POSTGRES_URL || DATABASE_URL`. `withFreshTransaction` opens one short-lived client on the same
+  URL to resolve an uncertain commit. Remote URLs must carry a
   port; TLS is forced to `verify-full` with the pinned Supabase root CA (`supabase-ca.ts`). URLs
   may not override timeouts or host via query parameters. Differing alias pairs log a warning.
 

@@ -59,11 +59,10 @@ Not fatal, but expected in Production:
       `image/png`, `image/webp`, `image/heic`, `image/heif`; otherwise uploads and reads answer
       503 (`apps/web/src/core/infra/private-image-policy.ts`).
 - [ ] `POSTGRES_URL` points at the Supavisor transaction pooler (port `6543`).
-- [ ] `POSTGRES_URL_NON_POOLING` / `DATABASE_URL_UNPOOLED` are unset (transactions then use
-      `POSTGRES_URL`) or point at a connection that can absorb up to 5 connections per warm
-      function instance, i.e. not the small session pooler
-      (`apps/web/src/core/db/connection.ts`, `transaction.ts`). If both names of a pair are set
-      they must be equal; otherwise the server logs `[db] ... both set but differ`.
+- [ ] The pooler can absorb up to 5 runtime connections per warm function instance (one pool
+      for queries and transactions, `apps/web/src/core/db/index.ts`). If both `POSTGRES_URL` and
+      `DATABASE_URL` are set they must be equal; otherwise the server logs
+      `[db] ... both set but differ`.
 - [ ] Vercel function max duration (Fluid compute) is long enough for the four crons in
       `apps/web/vercel.json`; no route sets `maxDuration`, so the project default applies.
 - [ ] Supabase Auth: Site URL `https://app.manawg.com`, redirect allowlist includes

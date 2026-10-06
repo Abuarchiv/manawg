@@ -34,7 +34,7 @@ function loadObservability(env, logs) {
 	);
 }
 
-test('transaction pools follow effective URL changes without retrying unknown commits', async () => {
+test('queries and transactions share one pool that follows URL changes without retrying unknown commits', async () => {
 	const env = { POSTGRES_URL: 'postgres://localhost/database_a' };
 	const pools = [];
 	let commitError = null;
@@ -43,7 +43,6 @@ test('transaction pools follow effective URL changes without retrying unknown co
 	const mocks = {
 		'./connection': connection,
 		'./schema': {},
-		'./transaction-abort': {},
 		pg: {
 			Pool: class {
 				constructor({ connectionString }) {
@@ -69,28 +68,24 @@ test('transaction pools follow effective URL changes without retrying unknown co
 			}),
 		},
 	};
-	const { db } = load('core/db/index.ts', mocks, env);
-	const { withTransaction } = load('core/db/transaction.ts', mocks, env);
+	const { db, withTransaction } = load('core/db/index.ts', mocks, env);
 	const transactionUrl = () => withTransaction((tx) => tx.url);
 	assert.equal(db.readUrl(), await transactionUrl());
+	assert.equal(pools.length, 1);
 	env.POSTGRES_URL = 'postgres://localhost/database_b';
 	assert.equal(db.readUrl(), await transactionUrl());
-	assert.ok(pools[0].ended && pools[1].ended);
+	assert.equal(pools.length, 2);
+	assert.ok(pools[0].ended && !pools[1].ended);
 
+	// Direct-connection variables belong to migrations; runtime transactions stay on the pool.
 	env.DATABASE_URL_UNPOOLED = 'postgres://localhost/direct_a';
-	assert.equal(await transactionUrl(), env.DATABASE_URL_UNPOOLED);
 	env.POSTGRES_URL_NON_POOLING = 'postgres://localhost/direct_b';
-	assert.equal(await transactionUrl(), env.POSTGRES_URL_NON_POOLING);
-	const poolCount = pools.length;
-	env.DATABASE_URL_UNPOOLED = 'postgres://localhost/ignored';
-	assert.equal(await transactionUrl(), env.POSTGRES_URL_NON_POOLING);
-	assert.equal(pools.length, poolCount);
-	env.POSTGRES_URL_NON_POOLING = undefined;
-	env.DATABASE_URL_UNPOOLED = undefined;
 	assert.equal(await transactionUrl(), db.readUrl());
+	assert.equal(pools.length, 2);
 	env.POSTGRES_URL = undefined;
 	env.DATABASE_URL = 'postgres://localhost/database_c';
 	assert.equal(db.readUrl(), await transactionUrl());
+	assert.equal(pools.length, 3);
 
 	commitError = new Error('connection lost after COMMIT');
 	const attemptsBefore = attempts;

@@ -163,13 +163,13 @@ test(
 		const schema = loadTypeScript(path.join(process.cwd(), 'src/core/db/schema.ts'));
 		const db = drizzle(pool, { schema });
 		const transaction = loadTypeScript(path.join(process.cwd(), 'src/core/db/transaction.ts'), {
-			'./connection': { resolveTransactionConnectionString: () => connectionString },
+			'./connection': { resolveConnectionString: () => connectionString },
+			'./index': { withTransaction: (operation) => db.transaction(operation) },
 			'./schema': schema,
 			'./transaction-abort': loadTypeScript(
 				path.join(process.cwd(), 'src/core/db/transaction-abort.ts'),
 			),
 		});
-		transaction.withTransaction = (operation) => db.transaction(operation);
 		const validator = loadTypeScript(path.join(process.cwd(), 'src/core/validators/image-url.ts'));
 		const helper = loadTypeScript(
 			path.join(process.cwd(), 'src/core/db/private-image-deletions.ts'),
