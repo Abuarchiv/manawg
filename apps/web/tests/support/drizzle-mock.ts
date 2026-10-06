@@ -93,6 +93,8 @@ export function rowMatches(
 	if (condition === undefined || condition === null) return true;
 	if (!isSqlNode(condition)) throw new Error(`unsupported condition ${String(condition)}`);
 	const [column, value] = condition.args as [string, unknown];
+	// SQL comparisons with NULL are never true.
+	const present = row[column] !== null && row[column] !== undefined;
 	switch (condition.op) {
 		case 'and':
 			return condition.args.every((part) => rowMatches(row, part, sqlMatch));
@@ -103,17 +105,17 @@ export function rowMatches(
 		case 'ne':
 			return !sameValue(row[column], value);
 		case 'gt':
-			return compare(row[column], value) > 0;
+			return present && compare(row[column], value) > 0;
 		case 'gte':
-			return compare(row[column], value) >= 0;
+			return present && compare(row[column], value) >= 0;
 		case 'lt':
-			return compare(row[column], value) < 0;
+			return present && compare(row[column], value) < 0;
 		case 'lte':
-			return compare(row[column], value) <= 0;
+			return present && compare(row[column], value) <= 0;
 		case 'isNull':
-			return row[column] === null || row[column] === undefined;
+			return !present;
 		case 'isNotNull':
-			return row[column] !== null && row[column] !== undefined;
+			return present;
 		case 'inArray':
 			return (value as unknown[]).some((candidate) => sameValue(row[column], candidate));
 		case 'sql':
