@@ -397,8 +397,6 @@
 		"src/app/api/wg/[code]/paypal/capture/route.ts": 406,
 		"src/app/api/wg/[code]/recurring-expenses/route.ts": 659,
 		"src/app/offline/OfflineClient.tsx": 545,
-		"src/components/auth/CredentialsAuth.tsx": 478,
-		"src/components/wg/ImageUploader.tsx": 470,
 		"src/components/wg/einstellungen/NotificationSection.tsx": 496,
 		"src/components/wg/einstellungen/OfflineQueueSection.tsx": 483,
 		"src/composition/activity.ts": 646,
