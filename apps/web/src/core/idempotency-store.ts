@@ -107,8 +107,12 @@ export interface ReplayWarningTarget {
 	replaces: ReadonlyArray<string | null>;
 }
 
-function jsonPath(path: readonly string[]): string {
-	return `{${path.join(',')}}`;
+/** A JSON path literal; the segments are code constants, never request data. */
+function jsonPath(path: readonly string[]): SQL {
+	if (!path.every((segment) => /^[A-Za-z_]+$/.test(segment))) {
+		throw new Error('replay_warning_path_invalid');
+	}
+	return sql.raw(`'{${path.join(',')}}'`);
 }
 
 function jsonText(value: string | null): SQL {
@@ -131,7 +135,7 @@ export async function setReplayWarning(
 	const rows = await db
 		.update(idempotencyResponses)
 		.set({
-			responseBody: sql`jsonb_set(${body}, ${warningPath}::text[], ${jsonText(warning)})`,
+			responseBody: sql`jsonb_set(${body}, ${warningPath}, ${jsonText(warning)})`,
 		})
 		.where(
 			and(
@@ -139,11 +143,11 @@ export async function setReplayWarning(
 				eq(idempotencyResponses.key, key),
 				gt(idempotencyResponses.expiresAt, new Date()),
 				...target.match.map(
-					({ path, equals }) => sql`${body} #>> ${jsonPath(path)}::text[] = ${equals}`,
+					({ path, equals }) => sql`${body} #>> ${jsonPath(path)} = ${equals}`,
 				),
 				or(
 					...target.replaces.map(
-						(value) => sql`${body} #> ${warningPath}::text[] = ${jsonText(value)}`,
+						(value) => sql`${body} #> ${warningPath} = ${jsonText(value)}`,
 					),
 				),
 			),

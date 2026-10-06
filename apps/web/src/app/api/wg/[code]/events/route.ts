@@ -1,23 +1,12 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, idempotencyResponses, wgEvents } from '@/core/db';
-import {
-	completeClaimedResponse,
-	lockClaimedResponse,
-	releaseClaimedResponse,
-} from '@/core/db/claimed-response';
-import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
+import { db, wgEvents } from '@/core/db';
+import { responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
+import { TransactionAbort } from '@/core/db/transaction';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	badRequest,
-	serverError,
-	serviceUnavailable,
-	tooMany,
-	unreadableJsonBody,
-} from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
-import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
+import { badRequest, serverError, serviceUnavailable, tooMany } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
+import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
@@ -38,38 +27,15 @@ import {
 	parseRecurrenceRule,
 	serializeWgEvent,
 } from '@/features/events/events';
-import { and, asc, eq, gt, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 type EventCreateResponseBody = { event: SerializedWgEvent; warning: NotificationWarning };
-type EventCreateReplayResponse<T = unknown> = { status: number; body: T };
-
-function readEventCreateReplayResponse(value: unknown): EventCreateReplayResponse | null {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-	const record = value as Record<string, unknown>;
-	if (
-		typeof record.status === 'number' &&
-		Number.isInteger(record.status) &&
-		record.status >= 200 &&
-		record.status <= 599 &&
-		'body' in record
-	) {
-		return { status: record.status, body: record.body };
-	}
-	return 'event' in record ? { status: 200, body: value as EventCreateResponseBody } : null;
-}
-
-function isEventCreateReplayable(value: unknown): value is unknown {
-	return readEventCreateReplayResponse(value) !== null;
-}
-
-function replayEventCreateResponse(value: unknown): NextResponse {
-	const replay = readEventCreateReplayResponse(value);
-	return replay
-		? NextResponse.json(replay.body, { status: replay.status })
-		: serverError('idempotency_response_invalid');
-}
+// Rows written before responses were stored with their status hold the bare body.
+const eventCreateCodec = responseCodec((stored) =>
+	'event' in stored ? { status: 200, body: stored } : null,
+);
 
 const createSchema = z.object({
 	title: eventTitleSchema,
@@ -132,23 +98,17 @@ export const GET = withWgRoute('events GET', async (req, { code }) => {
 });
 
 export const POST = withWgRoute('events POST', async (req, { code }) => {
-	let raw: unknown;
-	try {
-		raw = await readJsonLimited(req);
-	} catch (err) {
-		return unreadableJsonBody(err);
-	}
-	const parsed = createSchema.safeParse(raw);
-	if (!parsed.success) {
-		const { fieldErrors } = parsed.error.flatten();
-		if (fieldErrors.title) return badRequest('title_invalid');
-		if (fieldErrors.startsAt) return badRequest('starts_at_invalid');
-		if (fieldErrors.endsAt) return badRequest('ends_at_invalid');
-		if (fieldErrors.description) return badRequest('description_invalid');
-		if (fieldErrors.location) return badRequest('location_invalid');
-		if (fieldErrors.recurrence) return badRequest('recurrence_invalid');
-		return badRequest('invalid_body');
-	}
+	const parsed = await parseBody(req, createSchema, {
+		fieldErrors: {
+			title: 'title_invalid',
+			startsAt: 'starts_at_invalid',
+			endsAt: 'ends_at_invalid',
+			description: 'description_invalid',
+			location: 'location_invalid',
+			recurrence: 'recurrence_invalid',
+		},
+	});
+	if (!parsed.ok) return parsed.response;
 	const startsAt = new Date(parsed.data.startsAt);
 	const endsAt = parsed.data.endsAt ? new Date(parsed.data.endsAt) : null;
 	if (endsAt && endsAt.getTime() < startsAt.getTime()) {
@@ -160,86 +120,57 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
 
-	const idemKey = readIdempotencyKey(req);
-	const idemScope = idemKey ? `event-create:${wg.id}:${auth.member.memberId}` : null;
-	if (idemScope && idemKey) {
-		const cached = await getCachedResponse<unknown>(idemScope, idemKey);
-		if (cached) return replayEventCreateResponse(cached);
-	}
-
-	const limit = await checkRateLimit(wgWriteLimiter, `events:${wg.id}:${auth.member.memberId}`);
-	if (!limit.success) return tooMany('rate_limited');
-	if (idemScope && idemKey) {
-		const slot = await claimReplaySlotWithRetry<unknown>(idemScope, idemKey);
-		if (!slot.won) return replayEventCreateResponse(slot.cached);
-	}
-
-	let written:
-		| { replayed: true; response: EventCreateReplayResponse }
-		| {
-				replayed: false;
-				row: typeof wgEvents.$inferSelect;
-				response: EventCreateReplayResponse<EventCreateResponseBody>;
-		  };
-	const rollback = { claimExpiresAt: null as Date | null, failed: false, error: null as unknown };
-	try {
-		written = await withTransaction(async (tx) => {
-			try {
-				if (idemScope && idemKey) {
-					const claim = await lockClaimedResponse(tx, idemScope, idemKey, isEventCreateReplayable);
-					if (claim.kind === 'completed') {
-						const replay = readEventCreateReplayResponse(claim.body);
-						if (!replay) throw new TransactionAbort('idempotency_claim_invalid');
-						return { replayed: true as const, response: replay };
-					}
-					rollback.claimExpiresAt = claim.leaseExpiresAt;
-				}
-
+	const key = readIdempotencyKey(req);
+	const scope = `event-create:${wg.id}:${auth.member.memberId}`;
+	const data = parsed.data;
+	const member = auth.member;
+	const createEvent = () =>
+		withIdempotentWrite(
+			{
+				scope,
+				key,
+				codec: eventCreateCodec,
+				prepare: async () => {
+					const limit = await checkRateLimit(wgWriteLimiter, `events:${wg.id}:${member.memberId}`);
+					return limit.success ? { input: undefined } : { stop: tooMany('rate_limited') };
+				},
+			},
+			async (tx) => {
 				const [row] = await tx
 					.insert(wgEvents)
 					.values({
 						wgId: wg.id,
-						title: parsed.data.title,
-						description: parsed.data.description ?? null,
+						title: data.title,
+						description: data.description ?? null,
 						startsAt,
 						endsAt,
-						allDay: parsed.data.allDay ?? false,
-						location: parsed.data.location ?? null,
+						allDay: data.allDay ?? false,
+						location: data.location ?? null,
 						recurrence,
-						createdByMemberId: auth.member.memberId,
+						createdByMemberId: member.memberId,
 					})
 					.returning();
 				if (!row) throw new TransactionAbort('insert_failed');
-				const response: EventCreateReplayResponse<EventCreateResponseBody> = {
-					status: 200,
-					body: { event: serializeWgEvent(row), warning: null },
-				};
-				if (idemScope && idemKey && rollback.claimExpiresAt) {
-					await completeClaimedResponse(tx, idemScope, idemKey, response, rollback.claimExpiresAt);
-				}
-				return { replayed: false as const, row, response };
-			} catch (err) {
-				rollback.failed = true;
-				rollback.error = err;
-				throw err;
-			}
-		});
+				const body: EventCreateResponseBody = { event: serializeWgEvent(row), warning: null };
+				return { status: 200, body, context: row };
+			},
+		);
+	let result: Awaited<ReturnType<typeof createEvent>>;
+	try {
+		result = await createEvent();
 	} catch (err) {
-		if (
-			rollback.failed &&
-			err === rollback.error &&
-			rollback.claimExpiresAt &&
-			idemScope &&
-			idemKey
-		) {
-			await releaseClaimedResponse(idemScope, idemKey, rollback.claimExpiresAt);
-		}
 		if (err instanceof TransactionAbort) return serverError(err.code);
+		if (err instanceof Error && err.message === 'idempotency_response_invalid') {
+			return serverError('idempotency_response_invalid');
+		}
 		throw err;
 	}
-	if (written.replayed) return replayEventCreateResponse(written.response);
+	if (result.kind === 'stopped') return result.response;
+	if (result.kind === 'replayed' || !result.context) {
+		return NextResponse.json(result.body, { status: result.status });
+	}
 
-	const row = written.row;
+	const row = result.context;
 	await recordAuditEvent({
 		wgId: wg.id,
 		memberId: auth.member.memberId,
@@ -267,32 +198,25 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 		excludeMemberId: auth.member.memberId,
 	});
 
-	let response: EventCreateReplayResponse<EventCreateResponseBody> = {
-		...written.response,
-		body: { ...written.response.body, warning },
-	};
-	if (idemScope && idemKey && warning !== null) {
+	let responseWarning: NotificationWarning = warning;
+	if (key && warning !== null) {
 		try {
-			const updated = await db
-				.update(idempotencyResponses)
-				.set({
-					responseBody: sql`jsonb_set(${idempotencyResponses.responseBody}, '{body,warning}', to_jsonb(${warning}::text))`,
-				})
-				.where(
-					and(
-						eq(idempotencyResponses.scope, idemScope),
-						eq(idempotencyResponses.key, idemKey),
-						gt(idempotencyResponses.expiresAt, new Date()),
-						sql`${idempotencyResponses.responseBody}->'body'->'event'->>'id' = ${row.id}`,
-						sql`${idempotencyResponses.responseBody}->'body'->'warning' = 'null'::jsonb`,
-					),
-				)
-				.returning({ scope: idempotencyResponses.scope });
-			if (updated.length !== 1) response = written.response;
+			const persisted = await setReplayWarning(
+				scope,
+				key,
+				{
+					match: [{ path: ['body', 'event', 'id'], equals: row.id }],
+					warningPath: ['body', 'warning'],
+					replaces: [null],
+				},
+				warning,
+			);
+			if (!persisted) responseWarning = null;
 		} catch {
-			response = written.response;
+			responseWarning = null;
 			console.warn('[events POST] warning replay update failed');
 		}
 	}
-	return replayEventCreateResponse(response);
+	const body: EventCreateResponseBody = { event: serializeWgEvent(row), warning: responseWarning };
+	return NextResponse.json(body, { status: result.status });
 });

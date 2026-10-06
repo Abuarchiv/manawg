@@ -209,47 +209,60 @@ export async function withIdempotentWrite<O extends AnyOutcome, I = undefined, S
 	if (!slot.won) return replay(slot.cached);
 
 	const isStored = (body: unknown): body is unknown => codec.decode(body) !== null;
-	const claim: { lease: Date | null } = { lease: null };
+	// The callback's own error comes back only after ROLLBACK succeeded; any other error (a
+	// failed COMMIT) leaves the outcome unknown, and the claim then stays until its lease ends.
+	const claim: { lease: Date | null; callbackError: unknown } = {
+		lease: null,
+		callbackError: undefined,
+	};
 	let attemptWrite = write;
+	const lockAndWrite = async (tx: DbTransaction) => {
+		const locked = await lockClaimedResponse(tx, scope, key, isStored);
+		if (locked.kind === 'completed') {
+			const response = codec.decode(locked.body);
+			if (!response) throw new TransactionAbort('idempotency_claim_invalid');
+			return { replayed: response };
+		}
+		// A retry must still hold the lease it started with; a different one means
+		// the claim expired and another request owns the key now.
+		if (claim.lease && claim.lease.getTime() !== locked.leaseExpiresAt.getTime()) {
+			throw new TransactionAbort('idempotency_claim_invalid');
+		}
+		claim.lease = locked.leaseExpiresAt;
+		const outcome = await attemptWrite(tx, input);
+		if (storeStatus(outcome.status)) {
+			await storeResponse(
+				tx,
+				{ scope, key, lease: locked.leaseExpiresAt },
+				codec.encode(outcome),
+				options,
+			);
+		} else {
+			await releaseLockedClaim(tx, scope, key, locked.leaseExpiresAt);
+		}
+		return { outcome };
+	};
 	for (let attempt = 1; ; attempt += 1) {
+		claim.callbackError = undefined;
 		try {
 			const result = await inTransaction(async (tx) => {
-				const locked = await lockClaimedResponse(tx, scope, key, isStored);
-				if (locked.kind === 'completed') {
-					const response = codec.decode(locked.body);
-					if (!response) throw new TransactionAbort('idempotency_claim_invalid');
-					return { replayed: response };
+				try {
+					return await lockAndWrite(tx);
+				} catch (err) {
+					claim.callbackError = err;
+					throw err;
 				}
-				// A retry must still hold the lease it started with; a different one means
-				// the claim expired and another request owns the key now.
-				if (claim.lease && claim.lease.getTime() !== locked.leaseExpiresAt.getTime()) {
-					throw new TransactionAbort('idempotency_claim_invalid');
-				}
-				claim.lease = locked.leaseExpiresAt;
-				const outcome = await attemptWrite(tx, input);
-				if (storeStatus(outcome.status)) {
-					await storeResponse(
-						tx,
-						{ scope, key, lease: locked.leaseExpiresAt },
-						codec.encode(outcome),
-						options,
-					);
-				} else {
-					await releaseLockedClaim(tx, scope, key, locked.leaseExpiresAt);
-				}
-				return { outcome };
 			});
 			if ('replayed' in result) return { kind: 'replayed', ...result.replayed };
 			return written(result.outcome);
 		} catch (error) {
-			const retry = options.retryAfterRollback?.(error, attempt) ?? null;
+			const rolledBack = error === claim.callbackError;
+			const retry = rolledBack ? (options.retryAfterRollback?.(error, attempt) ?? null) : null;
 			if (retry) {
 				attemptWrite = retry;
 				continue;
 			}
-			// Only the placeholder with this lease is deleted, so this is a no-op when
-			// the transaction committed after all.
-			if (claim.lease) await releaseClaimedResponse(scope, key, claim.lease);
+			if (rolledBack && claim.lease) await releaseClaimedResponse(scope, key, claim.lease);
 			throw error;
 		}
 	}

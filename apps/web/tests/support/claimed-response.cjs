@@ -145,4 +145,23 @@ function loadParseBody(mocks) {
 	});
 }
 
-module.exports = { loadClaimedResponse, loadIdempotentWrite, loadParseBody };
+const compiledStore = transpile('src/core/idempotency-store.ts');
+
+/** Loads the real `@/core/idempotency-store` against the harness's `@/core/db` mock. */
+function loadIdempotencyStore(mocks) {
+	return evaluate(compiledStore, {
+		'@/core/db': {
+			get db() {
+				return mocks['@/core/db'].db;
+			},
+			get idempotencyResponses() {
+				return mocks['@/core/db'].idempotencyResponses;
+			},
+		},
+		'@/core/guards/api-auth': {
+			UUID_PATTERN: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+		},
+	});
+}
+
+module.exports = { loadClaimedResponse, loadIdempotencyStore, loadIdempotentWrite, loadParseBody };

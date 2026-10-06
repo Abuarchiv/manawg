@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import test from 'node:test';
-import { loadClaimedResponse } from './support/claimed-response.cjs';
+import {
+	loadClaimedResponse,
+	loadIdempotentWrite,
+	loadParseBody,
+} from './support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(new URL('../package.json', import.meta.url));
 const ts = requireFromWeb('typescript');
@@ -114,15 +118,6 @@ function harness(kind, bodyOverride) {
 			this.code = code;
 		}
 	}
-	class ReplayCache {
-		get() {
-			return null;
-		}
-		reserve() {
-			return { owned: true, resolve() {}, reject() {} };
-		}
-		remember() {}
-	}
 	const jsonError = (code, status) => Response.json({ error: code }, { status });
 	const overrides = {
 		'@/core/audit': {
@@ -166,9 +161,8 @@ function harness(kind, bodyOverride) {
 			requireOwnerOrAdmin: async (_wgId, member, ownerId) =>
 				ownerId === member.memberId ? null : jsonError('not_owner', 403),
 		},
-		'@/core/guards/idempotency': {
-			ReplayCache,
-			claimReplaySlotWithRetry: async () => {
+		'@/core/guards/replay-slot': {
+			claimReplaySlot: async () => {
 				if (state.forceWon) return { won: true };
 				if (state.claim === null) {
 					state.claim = { _claimed: true };
@@ -178,7 +172,6 @@ function harness(kind, bodyOverride) {
 				if ('_claimed' in state.claim) throw new Error('claim_still_held');
 				return { won: false, cached: state.claim };
 			},
-			replayKey: (scope, idemKey) => `${scope}:${idemKey}`,
 		},
 		'@/core/guards/require-wg-member': {
 			requireWgMember: async () => ({
@@ -200,7 +193,6 @@ function harness(kind, bodyOverride) {
 			RESPONSE_REPLAY_TTL_SECONDS: 604800,
 			getCachedResponse: async () => null,
 			readIdempotencyKey: () => key,
-			releaseResponseSlot: async () => undefined,
 		},
 		'@/core/infra/observability': { logApiError: () => undefined },
 		'@/core/notifications/notification-dispatch': {
@@ -234,6 +226,8 @@ function harness(kind, bodyOverride) {
 	};
 	overrides['@/core/db'].CHORE_RECURRENCE_TYPES = ['days', 'months'];
 	overrides['@/core/db/claimed-response'] = loadClaimedResponse(overrides);
+	overrides['@/core/db/idempotent-write'] = loadIdempotentWrite(overrides);
+	overrides['@/core/http/parse-body'] = loadParseBody(overrides);
 	const route = kind === 'chore' ? 'chores' : 'absences';
 	const post = loadPost(route, overrides);
 	const body =
