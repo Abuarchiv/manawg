@@ -123,19 +123,23 @@ More scripts in `apps/web/package.json`:
 CI (`.github/workflows/ci.yml`, job `validate`) runs, in this order:
 
 1. `pnpm install --frozen-lockfile`
-2. `pnpm lint`
-3. `pnpm --dir apps/web analytics:check`
-4. `node scripts/check-feature-boundaries.mjs`
-5. `node scripts/check-wg-auth-invariant.mjs`
-6. `pnpm typecheck`
-7. `pnpm --filter @manawg/web test:unit`
-8. `pnpm build`
-9. `pnpm --filter @manawg/web bundle:check`
+2. `pnpm audit --prod --audit-level high`
+3. `pnpm lint`
+4. `pnpm knip` (unused files, exports and dependencies; config in `knip.json`)
+5. `pnpm --dir apps/web analytics:check`
+6. `node scripts/check-architecture.mjs`
+7. `node scripts/check-wg-auth-invariant.mjs`
+8. `pnpm typecheck` (app, plus `tsconfig.e2e.json` for `e2e/`, `tests/*.test.ts` and Playwright configs)
+9. `pnpm --filter @manawg/web test:unit`
+10. `pnpm build`
+11. `pnpm --filter @manawg/web bundle:check`
 
-Job `e2e-fixtures` (`test:e2e:fixtures`, Chromium) runs on every push to `main` and on PRs only
-with the label `run-e2e`. PRs that only touch `**.md` or `docs/**` skip CI. While the repo
-variable `PREVIEW_GATE` is `on`, the Preview jobs (`preview-source`, `db-supabase-preview`,
-`e2e-preview`) migrate and test the Preview deployment of the current `main` tip.
+`validate` runs on every PR (drafts and docs-only PRs included) and every push to `main`. Job
+`e2e-fixtures` (`test:e2e:fixtures`, Chromium) runs on every non-draft PR and every push to
+`main`. While the repo variable `PREVIEW_GATE` is `on`, the Preview jobs (`preview-source`,
+`db-supabase-preview`, `e2e-preview`) migrate and test the Preview deployment of the current
+`main` tip. Renovate (`.github/renovate.json`) opens one grouped minor/patch PR per week and a
+separate PR per major update; third-party actions are pinned by commit SHA.
 
 Before handoff run the same gates locally and report exact results (`AGENTS.md`).
 

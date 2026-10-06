@@ -1,0 +1,41 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:recommended", "helpers:pinGitHubActionDigests", ":semanticCommitsDisabled"],
+	"timezone": "Europe/Berlin",
+	"schedule": ["before 6am on monday"],
+	"prConcurrentLimit": 5,
+	"rangeStrategy": "bump",
+	"lockFileMaintenance": {
+		"enabled": true,
+		"schedule": ["before 6am on monday"]
+	},
+	"packageRules": [
+		{
+			"description": "One weekly PR for all non-major npm updates.",
+			"matchManagers": ["npm"],
+			"matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+			"groupName": "npm minor and patch"
+		},
+		{
+			"description": "One weekly PR for all non-major GitHub Actions updates.",
+			"matchManagers": ["github-actions"],
+			"matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+			"groupName": "GitHub Actions minor and patch"
+		},
+		{
+			"description": "Majors get their own PR each and wait for an explicit review.",
+			"matchUpdateTypes": ["major"],
+			"dependencyDashboardApproval": true
+		},
+		{
+			"description": "Runtime is Node 22 (engines.node); keep its types on the same major.",
+			"matchPackageNames": ["@types/node"],
+			"allowedVersions": "22.x"
+		},
+		{
+			"description": "next and @next/bundle-analyzer move together.",
+			"matchPackageNames": ["next", "@next/bundle-analyzer"],
+			"groupName": "next"
+		}
+	]
+}
