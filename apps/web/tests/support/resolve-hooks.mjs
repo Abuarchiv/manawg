@@ -16,6 +16,13 @@ function findFile(basePath) {
 }
 
 export async function resolve(specifier, context, nextResolve) {
+	// Unit tests import server modules directly, as the server bundle does (`react-server`).
+	if (specifier === 'server-only') {
+		return nextResolve(specifier, {
+			...context,
+			conditions: [...(context.conditions ?? []), 'react-server'],
+		});
+	}
 	let basePath = null;
 	if (specifier.startsWith('@/')) {
 		basePath = fileURLToPath(new URL(specifier.slice(2), SRC));

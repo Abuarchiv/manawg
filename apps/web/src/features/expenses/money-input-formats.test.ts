@@ -1,22 +1,8 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-import { resolve } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const appRoot = fileURLToPath(new URL('../../..', import.meta.url));
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith('@/')) {
-			const path = resolve(appRoot, 'src', `${specifier.slice(2)}.ts`);
-			return nextResolve(pathToFileURL(path).href, context);
-		}
-		return nextResolve(specifier, context);
-	},
-});
-
-const { parseEuroAmount } = await import('../../core/utils/amount.ts');
-const { parseSplitwiseCsv } = await import('./import-parsers.ts');
+import { parseEuroAmount } from '@/core/utils/amount';
+import { parseSplitwiseCsv } from './import-parsers';
 
 test('parseEuroAmount accepts pasted euro formats and rejects ambiguous ones', () => {
 	const ok = {
@@ -39,7 +25,7 @@ test('parseEuroAmount accepts pasted euro formats and rejects ambiguous ones', (
 });
 
 test('parseSplitwiseCsv reads decimal commas as euros, not as thousands', () => {
-	const total = (amount) =>
+	const total = (amount: string) =>
 		parseSplitwiseCsv(
 			`Datum;Beschreibung;Kosten;Währung;Anna;Bob\n2026-01-15;X;"${amount}";EUR;"${amount}";"-1"\n`,
 		)[0]?.amountCents;

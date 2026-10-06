@@ -1,26 +1,12 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-import { resolve } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const appRoot = fileURLToPath(new URL('../../..', import.meta.url));
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith('@/')) {
-			const path = resolve(appRoot, 'src', `${specifier.slice(2)}.ts`);
-			return nextResolve(pathToFileURL(path).href, context);
-		}
-		return nextResolve(specifier, context);
-	},
-});
-
-const { buildSplitsFromForm, isEqualExpenseSplit, remainderCandidates } = await import(
-	'./expense-split-input.ts'
-);
-const { distributeRemainderCents } = await import(
-	'./components/ausgaben/manual-split-distribute.ts'
-);
+import { distributeRemainderCents } from './components/ausgaben/manual-split-distribute';
+import {
+	buildSplitsFromForm,
+	isEqualExpenseSplit,
+	remainderCandidates,
+} from './expense-split-input';
 
 const members = [
 	{ id: 'a', active: true },
@@ -138,6 +124,7 @@ test('editing an equal split re-splits when the amount or the debtors change', (
 		rotationOffset: 0,
 		previousSplits,
 	});
+	assert.ok(changedAmount.ok);
 	assert.deepEqual(
 		changedAmount.splits.map((split) => split.amountCents),
 		[334, 334, 334],
@@ -150,6 +137,7 @@ test('editing an equal split re-splits when the amount or the debtors change', (
 		rotationOffset: 0,
 		previousSplits,
 	});
+	assert.ok(changedMembers.ok);
 	assert.deepEqual(
 		changedMembers.splits.map((split) => [split.debtorMemberId, split.amountCents]),
 		[

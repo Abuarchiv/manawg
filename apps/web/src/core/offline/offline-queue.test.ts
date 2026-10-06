@@ -1,49 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
 import test from 'node:test';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-
-function loadTs(file, resolve) {
-	const loaded = { exports: {} };
-	const compiled = transpileModule(readFileSync(file, 'utf8'), {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	new Function('require', 'module', 'exports', compiled)(resolve, loaded, loaded.exports);
-	return loaded.exports;
-}
-
-const errorCodes = loadTs(path.join(process.cwd(), 'src/core/http/error-codes.ts'), requireFromWeb);
-const failureCopy = loadTs(
-	path.join(process.cwd(), 'src/core/offline/offline-failure-copy.ts'),
-	(name) => (name === '@/core/http/error-codes' ? errorCodes : requireFromWeb(name)),
-);
-// The queue module re-exports its sibling modules; those load through the same resolver.
-const offlineModules = new Map();
-function resolveOfflineModule(name) {
-	if (name === '@/core/utils/time') {
-		return {
-			parseTimestamp: (value) => (Number.isFinite(Date.parse(value)) ? Date.parse(value) : null),
-		};
-	}
-	if (name === './offline-failure-copy') return failureCopy;
-	if (name.startsWith('./')) {
-		if (!offlineModules.has(name)) {
-			offlineModules.set(
-				name,
-				loadTs(path.join(process.cwd(), 'src/core/offline', `${name}.ts`), resolveOfflineModule),
-			);
-		}
-		return offlineModules.get(name);
-	}
-	return requireFromWeb(name);
-}
-const module = { exports: resolveOfflineModule('./offline-queue') };
-
-const {
+import type { OfflineAction } from './offline-action';
+import {
 	createQueuedAbsence,
 	createQueuedChore,
 	createQueuedChoreCompletion,
@@ -51,10 +9,11 @@ const {
 	createQueuedShoppingUpdate,
 	explainOfflineActionFailure,
 	getOfflineActionRequest,
-	isQueuedCreateId,
 	hasQueuedShoppingUpdate,
+	isQueuedCreateId,
 	withoutQueuedEntry,
-} = module.exports;
+} from './offline-queue';
+
 const key = '55555555-5555-4555-8555-555555555555';
 const shareCode = 'MTE8PZAT';
 const memberId = '33333333-3333-4333-8333-333333333333';
@@ -76,7 +35,7 @@ test('queued chore completion preserves the original due and assignee occurrence
 	assert.equal(action.idempotencyKey, key);
 	assert.deepEqual(getOfflineActionRequest(action).body, expected);
 
-	const legacy = {
+	const legacy: OfflineAction = {
 		id: 'legacy',
 		type: 'chore.complete',
 		shareCode,
@@ -105,17 +64,12 @@ test('queued shopping PATCH preserves the version, expected state, and online id
 	});
 	assert.equal(action.idempotencyKey, key);
 	assert.deepEqual(getOfflineActionRequest(action).body, expected);
-	assert.equal(hasQueuedShoppingUpdate([action], shareCode, memberId, action.payload.itemId), true);
-	assert.equal(
-		hasQueuedShoppingUpdate([action], shareCode, otherMemberId, action.payload.itemId),
-		false,
-	);
-	assert.equal(
-		hasQueuedShoppingUpdate([action], 'another-wg', memberId, action.payload.itemId),
-		false,
-	);
+	const itemId = String(action.payload.itemId);
+	assert.equal(hasQueuedShoppingUpdate([action], shareCode, memberId, itemId), true);
+	assert.equal(hasQueuedShoppingUpdate([action], shareCode, otherMemberId, itemId), false);
+	assert.equal(hasQueuedShoppingUpdate([action], 'another-wg', memberId, itemId), false);
 
-	const legacy = {
+	const legacy: OfflineAction = {
 		id: 'legacy-shopping-update',
 		type: 'shopping.update',
 		shareCode,
@@ -195,7 +149,7 @@ test('a rate-limited replay is explained as retried automatically, not as a fail
 	for (const [status, error] of [
 		[429, 'rate_limited'],
 		[429, 'too_many_requests'],
-	]) {
+	] as const) {
 		assert.equal(explainOfflineActionFailure(status, error).title, 'Zu viele Anfragen');
 	}
 });

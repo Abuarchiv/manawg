@@ -1,33 +1,20 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import test from 'node:test';
+import { mock, test } from 'node:test';
 
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-const { ModuleKind, ScriptTarget, transpileModule } = requireFromWeb('typescript');
+type ApiResult = { ok: true; data: unknown } | { ok: false; status: number; error: string };
 
-function loadPushSubscribe(apiFetch) {
-	const source = readFileSync(
-		path.join(process.cwd(), 'src/core/notifications/push-subscribe.ts'),
-		'utf8',
-	);
-	const compiled = transpileModule(source, {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	const loaded = { exports: {} };
-	new Function('require', 'module', 'exports', compiled)(
-		(name) => (name === '@/core/infra/api-client' ? { apiFetch } : requireFromWeb(name)),
-		loaded,
-		loaded.exports,
-	);
-	return loaded.exports;
-}
+const api = { response: { ok: true, data: { ok: true } } as ApiResult };
+
+mock.module('@/core/infra/api-client', {
+	namedExports: { apiFetch: async () => api.response },
+});
+
+const { unsubscribeWebPush } = await import('./push-subscribe');
 
 async function disablePushInOneWg(
-	endpointInUse,
-	response = { ok: true, data: { ok: true, endpointInUse } },
-) {
+	endpointInUse: boolean,
+	response: ApiResult = { ok: true, data: { ok: true, endpointInUse } },
+): Promise<boolean> {
 	let browserUnsubscribed = false;
 	const subscription = {
 		endpoint: 'https://push.example.test/device',
@@ -46,7 +33,7 @@ async function disablePushInOneWg(
 		},
 	});
 	try {
-		const { unsubscribeWebPush } = loadPushSubscribe(async () => response);
+		api.response = response;
 		await unsubscribeWebPush('MTE8PZAT', 'member-a').catch(() => undefined);
 	} finally {
 		if (previousNavigator) Object.defineProperty(globalThis, 'navigator', previousNavigator);

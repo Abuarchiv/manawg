@@ -1,22 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
 import test from 'node:test';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-const validatorPath = path.join(process.cwd(), 'src/core/validators/image-url.ts');
-const source = transpileModule(readFileSync(validatorPath, 'utf8'), {
-	compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-}).outputText;
-const loaded = { exports: {} };
-new Function('require', 'module', 'exports', source)(requireFromWeb, loaded, loaded.exports);
+import { getPrivateImageKeyFromStoredUrl, isAllowedImageUrlForWg } from './image-url';
 
 const wgId = '11111111-1111-4111-8111-111111111111';
 const otherWgId = '99999999-9999-4999-8999-999999999999';
 const objectKey = `manawg/${wgId}/expense/22222222-2222-4222-8222-222222222222.jpg`;
-const { getPrivateImageKeyFromStoredUrl, isAllowedImageUrlForWg } = loaded.exports;
 
 test('stored private image URLs keep their key across deployment origins', () => {
 	const previousOrigin = process.env.NEXT_PUBLIC_APP_URL;

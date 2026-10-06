@@ -1,21 +1,7 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-import { resolve } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const appRoot = fileURLToPath(new URL('../../..', import.meta.url));
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith('@/')) {
-			const path = resolve(appRoot, 'src', `${specifier.slice(2)}.ts`);
-			return nextResolve(pathToFileURL(path).href, context);
-		}
-		return nextResolve(specifier, context);
-	},
-});
-
-const { validateEventForm } = await import('./events.ts');
+import { validateEventForm } from './events';
 
 // Regression: EventFormFields wires aria-invalid/aria-describedby to the field
 // named here. Without `field` on the failure branch, every validation error

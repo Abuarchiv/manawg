@@ -5,7 +5,7 @@ import {
 	isAnnouncementArchived,
 	reconcilePendingAnnouncements,
 	summarizeAnnouncementReactions,
-} from './announcement-workflow.ts';
+} from './announcement-workflow';
 
 test('tracks A to A+B to A across focus and background revisions before apply', () => {
 	const postA = { id: 'post-a' };

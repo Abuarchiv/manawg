@@ -1,23 +1,16 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-import { resolve } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { buildQueueEditDraft, buildQueueEditHref } from './drafts';
+import type { OfflineAction, OfflineActionType } from './offline-action';
 
-const srcRoot = fileURLToPath(new URL('../..', import.meta.url));
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith('@/')) {
-			const path = resolve(srcRoot, `${specifier.slice(2)}.ts`);
-			return nextResolve(pathToFileURL(path).href, context);
-		}
-		return nextResolve(specifier, context);
-	},
+const action = (type: OfflineActionType, payload: Record<string, unknown>): OfflineAction => ({
+	id: `queued-${type}`,
+	type,
+	shareCode: 'MTE8PZAT',
+	memberId: 'm1',
+	createdAt: '2026-10-01T00:00:00.000Z',
+	payload,
 });
-
-const { buildQueueEditDraft, buildQueueEditHref } = await import('./drafts.ts');
-
-const action = (type, payload) => ({ id: `queued-${type}`, type, payload });
 
 test('a queued absence opens in the Putzplan chore draft that the page reads', () => {
 	const draft = buildQueueEditDraft(

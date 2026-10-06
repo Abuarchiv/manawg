@@ -1,21 +1,7 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-import { resolve } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const appRoot = fileURLToPath(new URL('../../../../..', import.meta.url));
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith('@/')) {
-			const path = resolve(appRoot, 'src', `${specifier.slice(2)}.ts`);
-			return nextResolve(pathToFileURL(path).href, context);
-		}
-		return nextResolve(specifier, context);
-	},
-});
-
-const { distributeRemainderCents } = await import('./manual-split-distribute.ts');
+import { distributeRemainderCents } from './manual-split-distribute';
 
 const members = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
 
@@ -36,8 +22,8 @@ test('claws excess back from filled fields instead of going negative', () => {
 	assert.equal(next.c ?? '', '');
 	// The 5€ excess is clawed back from the two filled fields (a, b).
 	const totalCents = 1500 + 2000 - 500;
-	const aCents = Math.round(Number.parseFloat(next.a.replace(',', '.')) * 100);
-	const bCents = Math.round(Number.parseFloat(next.b.replace(',', '.')) * 100);
+	const aCents = Math.round(Number.parseFloat(String(next.a).replace(',', '.')) * 100);
+	const bCents = Math.round(Number.parseFloat(String(next.b).replace(',', '.')) * 100);
 	assert.equal(aCents + bCents, totalCents);
 	assert.ok(aCents >= 0 && bCents >= 0);
 });

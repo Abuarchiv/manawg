@@ -1,21 +1,7 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-import { resolve } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const appRoot = fileURLToPath(new URL('../../..', import.meta.url));
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith('@/')) {
-			const path = resolve(appRoot, 'src', `${specifier.slice(2)}.ts`);
-			return nextResolve(pathToFileURL(path).href, context);
-		}
-		return nextResolve(specifier, context);
-	},
-});
-
-const { parseSplitwiseCsv } = await import('./import-parsers.ts');
+import { parseSplitwiseCsv } from './import-parsers';
 
 test('parseSplitwiseCsv recovers the payer share from their net-balance column', () => {
 	// Splitwise CSV convention: each person's column holds their NET balance
