@@ -247,10 +247,16 @@ export function refreshCachedFetch<T>(
 	return fetchAndCache<T>(cacheKey(url, options.memberId), url, options, true);
 }
 
-/** Fill the cache for a URL before its page mounts (idle warm-up); the page then renders from cache. */
+/**
+ * Fill the cache for a URL before its page mounts (idle warm-up); the page then renders from cache.
+ * An entry that already holds data needs no warm-up: its page refreshes it on mount anyway, and a
+ * second GET right after the open page's own read would only cost quota.
+ */
 export function prefetchCachedFetch<T>(
 	url: string,
 	options: CachedFetchOptions = {},
 ): Promise<void> {
-	return fetchAndCache<T>(cacheKey(url, options.memberId), url, options);
+	const key = cacheKey(url, options.memberId);
+	if (readCachedSnapshot<T>(key).data !== undefined) return Promise.resolve();
+	return fetchAndCache<T>(key, url, options);
 }
