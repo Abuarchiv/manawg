@@ -403,7 +403,6 @@
 		"src/features/chat/hooks/use-chat-room.ts": 529,
 		"src/features/events/components/CalendarMonth.tsx": 420,
 		"src/features/events/events.ts": 633,
-		"src/features/expenses/components/ausgaben/ExpenseFormSection.tsx": 651,
 		"src/features/expenses/components/ausgaben/useExpenseForm.ts": 444,
 		"src/features/expenses/hooks/use-recurring-expense-actions.ts": 547,
 		"src/features/expenses/import-parsers.ts": 589,
