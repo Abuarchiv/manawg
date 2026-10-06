@@ -1,23 +1,6 @@
 'use client';
 
 import {
-	Collapsible,
-	CollapsiblePanel,
-	CollapsibleTrigger,
-} from '@/components/animate-ui/primitives/base/collapsible';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
-import {
 	Card,
 	CardAction,
 	CardContent,
@@ -25,56 +8,24 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Field } from '@/components/ui/field';
-import {
-	InputGroup,
-	InputGroupAddon,
-	InputGroupButton,
-	InputGroupTextarea,
-} from '@/components/ui/input-group';
-import { Separator } from '@/components/ui/separator';
-import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
-import { buildPinnwandPrefill, getPinnwandPrefillHref } from '@/features/pinnwand/pinnwand-prefill';
+import {
+	REACTION_OPTIONS,
+	SOURCE_LABELS,
+	pickReactionOptions,
+} from '@/features/pinnwand/announcement-card-model';
+import { buildPinnwandPrefill } from '@/features/pinnwand/pinnwand-prefill';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
-import {
-	CheckCircle2,
-	ChevronDown,
-	ChevronUp,
-	ExternalLink,
-	Eye,
-	Hand,
-	ImageOff,
-	ListChecks,
-	MessageCircle,
-	MoreHorizontal,
-	Pin,
-	PinOff,
-	Receipt,
-	Send,
-	Sparkles,
-	ThumbsUp,
-	Trash2,
-} from 'lucide-react';
-import Link from 'next/link';
-import { type ReactElement, memo, useEffect, useRef, useState } from 'react';
-import { CommentRow, actionLabelSubject, useCommentDraft } from './CommentRow';
-import type {
-	Announcement,
-	AnnouncementKind,
-	AnnouncementSource,
-	ReactionKey,
-} from './announcement-types';
+import { Pin } from 'lucide-react';
+import { type ReactElement, memo, useState } from 'react';
+import { AnnouncementActionsMenu } from './AnnouncementActionsMenu';
+import { AnnouncementBody } from './AnnouncementBody';
+import { AnnouncementDeleteDialog } from './AnnouncementDeleteDialog';
+import { AnnouncementFooter } from './AnnouncementFooter';
+import { actionLabelSubject } from './CommentRow';
+import type { Announcement, ReactionKey } from './announcement-types';
 import { KIND_LABELS } from './constants';
 
 interface AnnouncementCardProps {
@@ -83,7 +34,7 @@ interface AnnouncementCardProps {
 	deletePending: boolean;
 	pinPending: boolean;
 	statusPending: boolean;
-	/** Komma-getrennte Reaktionen mit laufender Anfrage (String statt Funktion, damit memo greift). */
+	/** Comma-separated reactions with a request in flight (a string, not a function, so memo holds). */
 	pendingReactions: string;
 	onDelete: (announcement: Announcement) => Promise<boolean>;
 	onTogglePinned: (announcement: Announcement) => void;
@@ -101,26 +52,6 @@ interface AnnouncementCardProps {
 	shareCode: string;
 	highlighted: boolean;
 }
-
-const SOURCE_LABELS: Record<AnnouncementSource, string | null> = {
-	manual: null,
-	system: 'System',
-	chore_swap: 'Putzplan',
-	expense: 'Ausgaben',
-	shopping: 'Einkauf',
-};
-const REACTIONS = [
-	{ key: 'seen', label: 'Gesehen', icon: Eye },
-	{ key: 'take', label: 'Übernehme ich', icon: Hand },
-	{ key: 'ok', label: 'Passt', icon: ThumbsUp },
-] as const;
-const PRIMARY_REACTION: Record<AnnouncementKind, ReactionKey> = {
-	info: 'seen',
-	question: 'seen',
-	problem: 'take',
-	request: 'take',
-	decision: 'ok',
-};
 
 export const AnnouncementCard = memo(function AnnouncementCard({
 	announcement,
@@ -143,22 +74,9 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 }: AnnouncementCardProps): ReactElement {
 	const reactionPending = (key: ReactionKey): boolean => pendingReactions.includes(key);
 	const bodyText = announcement.content.trim();
-	const isLong = bodyText.length > 300 || bodyText.split('\n').length > 6;
-	const [imageFailed, setImageFailed] = useState(false);
-	const [expanded, setExpanded] = useState(false);
-	const [commentsOpen, setCommentsOpen] = useState(false);
-	const [commentPending, setCommentPending] = useState(false);
-	const [commentError, setCommentError] = useState(false);
-	const commentPendingRef = useRef(false);
 	const [deleteOpen, setDeleteOpen] = useState(false);
-	const deletingRef = useRef(false);
-	const [deleteError, setDeleteError] = useState(false);
 	const [touchedReactions, setTouchedReactions] = useState<ReactionKey[]>([]);
 	const draftKey = `manawg:draft:${shareCode}:${currentMemberId}:announcement:${announcement.id}`;
-	const commentDraft = useCommentDraft(`${draftKey}:reply`);
-	useEffect(() => {
-		if (commentDraft.restored) setCommentsOpen(true);
-	}, [commentDraft.restored]);
 
 	const isResolved = announcement.status === 'resolved';
 	const isPinned = Boolean(announcement.pinnedAt);
@@ -170,51 +88,16 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 		? `/wg/${encodeURIComponent(shareCode)}${announcement.sourcePath}`
 		: null;
 	const actionSubject = actionLabelSubject(bodyText, 'leerer Beitrag');
-	const takerNames = announcement.takers.map((taker) => taker.name);
-	const prefill = buildPinnwandPrefill(bodyText);
-	const conversionTargets =
-		announcement.source === 'manual'
-			? ([
-					{ target: 'shopping', label: 'Als Einkauf', icon: ListChecks },
-					{ target: 'chore', label: 'Als Aufgabe', icon: Sparkles },
-					{ target: 'expense', label: 'Als Ausgabe', icon: Receipt },
-				] as const)
-			: [];
-	const reactionOptions = isResolved ? REACTIONS.filter(({ key }) => key !== 'take') : REACTIONS;
-	const visibleReactions = reactionOptions.filter(
-		({ key }) =>
-			key === PRIMARY_REACTION[announcement.kind] ||
-			announcement.myReactions.includes(key) ||
-			touchedReactions.includes(key) ||
-			(announcement.reactionCounts[key] ?? 0) > 0,
-	);
-	const hiddenReactions = reactionOptions.filter(
-		({ key }) => !visibleReactions.some((reaction) => reaction.key === key),
-	);
+	const reactions = pickReactionOptions(announcement, touchedReactions);
 	const busy =
 		deletePending ||
 		pinPending ||
 		statusPending ||
-		REACTIONS.some(({ key }) => reactionPending(key));
+		REACTION_OPTIONS.some(({ key }) => reactionPending(key));
 
 	function react(key: ReactionKey) {
 		setTouchedReactions((current) => (current.includes(key) ? current : [...current, key]));
 		onToggleReaction(announcement, key);
-	}
-	async function submitComment() {
-		const text = commentDraft.draft.trim();
-		if (!text || commentPendingRef.current) return;
-		commentPendingRef.current = true;
-		setCommentPending(true);
-		setCommentError(false);
-		try {
-			const ok = await onAddComment(announcement, text);
-			if (ok) commentDraft.clear();
-			else setCommentError(true);
-		} finally {
-			commentPendingRef.current = false;
-			setCommentPending(false);
-		}
 	}
 
 	return (
@@ -225,7 +108,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 				highlighted && 'ring-2 ring-inset ring-ring',
 			)}
 		>
-			{/* Randlos: die Liste zieht Rahmen und Trennlinien, damit die Pinnwand wie ein Feed liest. */}
+			{/* Borderless: the list draws borders and dividers so the board reads like a feed. */}
 			<Card
 				size="sm"
 				aria-busy={busy}
@@ -250,352 +133,62 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 						)}
 					</CardTitle>
 					<CardAction>
-						<DropdownMenu>
-							<DropdownMenuTrigger
-								render={<Button variant="ghost" size="icon" className="-my-1 size-8" />}
-								aria-label={`Beitragsaktionen: ${actionSubject}`}
-								disabled={deletePending}
-							>
-								<MoreHorizontal aria-hidden />
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end" className="w-64 max-w-[calc(100vw-2rem)]">
-								<DropdownMenuGroup>
-									{sourceHref && (
-										<DropdownMenuItem
-											render={<Link href={sourceHref} />}
-											className="min-h-11"
-											aria-label={`Quelle öffnen: ${actionSubject}`}
-										>
-											<ExternalLink aria-hidden /> Quelle öffnen
-										</DropdownMenuItem>
-									)}
-									{conversionTargets.map(({ target, label, icon: Icon }) => (
-										<DropdownMenuItem
-											key={target}
-											render={<Link href={getPinnwandPrefillHref(shareCode, target, prefill)} />}
-											className="min-h-11"
-											aria-label={`${label} übernehmen: ${actionSubject}`}
-										>
-											<Icon aria-hidden /> {label} übernehmen
-										</DropdownMenuItem>
-									))}
-									{hiddenReactions.map(({ key, label, icon: Icon }) => (
-										<DropdownMenuItem
-											key={key}
-											onClick={() => react(key)}
-											disabled={reactionPending(key)}
-											className="min-h-11"
-											aria-label={`${label}-Reaktion setzen: ${actionSubject}`}
-										>
-											<Icon aria-hidden /> {label}
-										</DropdownMenuItem>
-									))}
-								</DropdownMenuGroup>
-								{(canModerate || canResolve) && <DropdownMenuSeparator />}
-								<DropdownMenuGroup>
-									{canModerate && (
-										<DropdownMenuItem
-											onClick={() => onTogglePinned(announcement)}
-											disabled={pinPending}
-											className="min-h-11"
-											aria-label={
-												(isPinned ? 'Fixierung lösen: ' : 'Beitrag fixieren: ') + actionSubject
-											}
-										>
-											{pinPending ? <Spinner /> : isPinned ? <PinOff /> : <Pin />}
-											{isPinned ? 'Fixierung lösen' : 'Fixieren'}
-										</DropdownMenuItem>
-									)}
-									{canResolve && (
-										<DropdownMenuItem
-											onClick={() => onToggleStatus(announcement)}
-											disabled={statusPending}
-											className="min-h-11"
-											aria-label={
-												(isResolved ? 'Beitrag wieder öffnen: ' : 'Als geklärt markieren: ') +
-												actionSubject
-											}
-										>
-											{statusPending ? <Spinner /> : <CheckCircle2 />}
-											{isResolved ? 'Wieder öffnen' : 'Als geklärt markieren'}
-										</DropdownMenuItem>
-									)}
-									{canModerate && (
-										<DropdownMenuItem
-											variant="destructive"
-											onClick={() => {
-												setDeleteError(false);
-												setDeleteOpen(true);
-											}}
-											className="min-h-11"
-											aria-label={`Beitrag entfernen: ${actionSubject}`}
-										>
-											<Trash2 /> Entfernen
-										</DropdownMenuItem>
-									)}
-								</DropdownMenuGroup>
-							</DropdownMenuContent>
-						</DropdownMenu>
+						<AnnouncementActionsMenu
+							actionSubject={actionSubject}
+							shareCode={shareCode}
+							sourceHref={sourceHref}
+							prefill={announcement.source === 'manual' ? buildPinnwandPrefill(bodyText) : null}
+							hiddenReactions={reactions.hidden}
+							reactionPending={reactionPending}
+							isPinned={isPinned}
+							isResolved={isResolved}
+							canModerate={canModerate}
+							canResolve={canResolve}
+							deletePending={deletePending}
+							pinPending={pinPending}
+							statusPending={statusPending}
+							onReact={react}
+							onTogglePinned={() => onTogglePinned(announcement)}
+							onToggleStatus={() => onToggleStatus(announcement)}
+							onDelete={() => setDeleteOpen(true)}
+						/>
 					</CardAction>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-2">
-					{bodyText && (
-						<div className="flex flex-col items-start gap-1">
-							<p
-								id={`announcement-body-${announcement.id}`}
-								className={cn(
-									'text-[14px] whitespace-pre-wrap leading-normal [overflow-wrap:anywhere]',
-									isLong && !expanded && 'line-clamp-4',
-								)}
-							>
-								{bodyText}
-							</p>
-							{isLong && (
-								<Button
-									variant="ghost"
-									className="-ml-2.5"
-									onClick={() => setExpanded((value) => !value)}
-									aria-expanded={expanded}
-									aria-controls={`announcement-body-${announcement.id}`}
-									aria-label={(expanded ? 'Weniger anzeigen: ' : 'Mehr anzeigen: ') + actionSubject}
-								>
-									{expanded ? (
-										<ChevronUp data-icon="inline-start" />
-									) : (
-										<ChevronDown data-icon="inline-start" />
-									)}
-									{expanded ? 'Weniger' : 'Mehr anzeigen'}
-								</Button>
-							)}
-						</div>
-					)}
-					{announcement.imageUrl && (
-						<a
-							href={announcement.imageUrl}
-							target="_blank"
-							rel="noopener noreferrer"
-							aria-label={`Bildanhang öffnen: ${actionSubject}`}
-							className="block"
-						>
-							{imageFailed ? (
-								<span className="flex h-16 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-									<ImageOff aria-hidden />
-								</span>
-							) : (
-								// eslint-disable-next-line @next/next/no-img-element
-								<img
-									src={announcement.imageUrl}
-									alt=""
-									loading="lazy"
-									onError={() => setImageFailed(true)}
-									className="max-h-40 w-full rounded-lg object-cover"
-								/>
-							)}
-						</a>
-					)}
-					{(takerNames.length > 0 || announcement.resolvedAt || busy) && (
-						<p className="flex flex-wrap items-center gap-x-2 text-[12px] text-muted-foreground [overflow-wrap:anywhere]">
-							{takerNames.length > 0 && (
-								<span className="inline-flex items-center gap-1 text-foreground">
-									<Hand className="size-3.5 shrink-0" aria-hidden />
-									{takerNames.join(', ')} {takerNames.length === 1 ? 'übernimmt' : 'übernehmen'}
-								</span>
-							)}
-							{announcement.resolvedAt && (
-								<span className="inline-flex items-center gap-1">
-									<CheckCircle2 className="size-3.5 shrink-0" aria-hidden />
-									Geklärt {formatRelativeTime(announcement.resolvedAt)}
-								</span>
-							)}
-							{busy && (
-								<output className="inline-flex items-center gap-1">
-									<Spinner /> Wird gespeichert…
-								</output>
-							)}
-						</p>
-					)}
+					<AnnouncementBody
+						announcement={announcement}
+						bodyText={bodyText}
+						actionSubject={actionSubject}
+						busy={busy}
+					/>
 				</CardContent>
 				<CardFooter className="flex-col items-stretch gap-2 border-t-0 bg-transparent px-1.5 pt-0 pb-1">
-					<Collapsible
-						open={commentsOpen}
-						onOpenChange={setCommentsOpen}
-						className="flex min-w-0 max-w-full flex-col gap-2"
-					>
-						<div className="flex flex-wrap items-center gap-1">
-							{visibleReactions.map(({ key, label, icon: Icon }) => {
-								const active = announcement.myReactions.includes(key);
-								const count = announcement.reactionCounts[key] ?? 0;
-								return (
-									<Button
-										key={key}
-										variant={active ? 'secondary' : 'ghost'}
-										size="sm"
-										className="gap-1 pr-2 text-[12px]"
-										onClick={() => react(key)}
-										disabled={reactionPending(key)}
-										aria-pressed={active}
-										aria-label={
-											label +
-											(active ? '-Reaktion entfernen: ' : '-Reaktion setzen: ') +
-											actionSubject
-										}
-									>
-										{reactionPending(key) ? (
-											<Spinner data-icon="inline-start" />
-										) : (
-											<Icon data-icon="inline-start" />
-										)}
-										{label}
-										{count > 0 && <span className="tabular-nums">{count}</span>}
-									</Button>
-								);
-							})}
-							<CollapsibleTrigger
-								render={
-									<Button variant="ghost" size="sm" className="ml-auto min-w-9 gap-1 text-[12px]" />
-								}
-								aria-label={`Antworten anzeigen: ${actionSubject}${announcement.comments.length > 0 ? ` (${announcement.comments.length})` : ''}`}
-								aria-controls={`announcement-comments-${announcement.id}`}
-							>
-								<MessageCircle aria-hidden />
-								{announcement.comments.length > 0 && (
-									<span className="tabular-nums">{announcement.comments.length}</span>
-								)}
-							</CollapsibleTrigger>
-							{/* Infos und Entscheidungen verblassen von selbst; alles andere schließt man hier ab. */}
-							{!isResolved &&
-								canResolve &&
-								announcement.kind !== 'info' &&
-								announcement.kind !== 'decision' && (
-									<Button
-										variant="outline"
-										size="sm"
-										className="gap-1 pr-2 text-[12px]"
-										disabled={statusPending}
-										onClick={() => onToggleStatus(announcement)}
-										aria-label={`Als erledigt markieren: ${actionSubject}`}
-									>
-										{statusPending ? (
-											<Spinner data-icon="inline-start" />
-										) : (
-											<CheckCircle2 data-icon="inline-start" />
-										)}
-										Erledigt
-									</Button>
-								)}
-						</div>
-						<CollapsiblePanel
-							keepRendered
-							inert={!commentsOpen}
-							id={`announcement-comments-${announcement.id}`}
-						>
-							<div className="flex flex-col gap-3">
-								<Separator />
-								{announcement.comments.length > 0 && (
-									<ul className="flex flex-col gap-4">
-										{announcement.comments.map((comment) => (
-											<CommentRow
-												key={comment.id}
-												comment={comment}
-												canEdit={
-													comment.memberId === currentMemberId && !comment.id.startsWith('temp-')
-												}
-												draftKey={`${draftKey}:edit:${comment.id}`}
-												onUpdate={(text) => onUpdateComment(announcement, comment.id, text)}
-												onDelete={() => onDeleteComment(announcement, comment.id)}
-											/>
-										))}
-									</ul>
-								)}
-								{commentError && (
-									<Alert id={`announcement-comment-error-${announcement.id}`} variant="destructive">
-										<AlertDescription>
-											Antwort nicht gespeichert. Dein Text bleibt zum erneuten Senden erhalten.
-										</AlertDescription>
-									</Alert>
-								)}
-								<Field data-invalid={commentError}>
-									<InputGroup>
-										<InputGroupTextarea
-											value={commentDraft.draft}
-											onChange={(event) => commentDraft.change(event.target.value)}
-											disabled={commentPending}
-											aria-invalid={commentError}
-											aria-describedby={
-												commentError ? `announcement-comment-error-${announcement.id}` : undefined
-											}
-											maxLength={600}
-											rows={1}
-											aria-label={`Antwort verfassen: ${actionSubject}`}
-											placeholder="Antwort schreiben"
-											className="max-h-40 text-base"
-										/>
-										<InputGroupAddon align="inline-end">
-											<InputGroupButton
-												variant="default"
-												size="icon-sm"
-												disabled={commentPending || !commentDraft.draft.trim()}
-												onClick={() => void submitComment()}
-												aria-label={`Antworten: ${actionSubject}`}
-											>
-												{commentPending ? <Spinner /> : <Send />}
-											</InputGroupButton>
-										</InputGroupAddon>
-									</InputGroup>
-								</Field>
-							</div>
-						</CollapsiblePanel>
-					</Collapsible>
+					<AnnouncementFooter
+						announcement={announcement}
+						actionSubject={actionSubject}
+						currentMemberId={currentMemberId}
+						draftKey={draftKey}
+						visibleReactions={reactions.visible}
+						reactionPending={reactionPending}
+						canResolve={canResolve}
+						statusPending={statusPending}
+						onReact={react}
+						onToggleStatus={() => onToggleStatus(announcement)}
+						onAddComment={(content) => onAddComment(announcement, content)}
+						onUpdateComment={(commentId, content) =>
+							onUpdateComment(announcement, commentId, content)
+						}
+						onDeleteComment={(commentId) => onDeleteComment(announcement, commentId)}
+					/>
 				</CardFooter>
 			</Card>
-			<AlertDialog
+			<AnnouncementDeleteDialog
 				open={deleteOpen}
-				onOpenChange={(open) => {
-					if (!deletePending && !deletingRef.current) setDeleteOpen(open);
-				}}
-			>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Beitrag entfernen?</AlertDialogTitle>
-						<AlertDialogDescription>
-							„{actionSubject}“ und die zugehörigen Antworten werden entfernt.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					{deleteError && (
-						<Alert variant="destructive">
-							<AlertDescription>
-								Beitrag konnte nicht entfernt werden. Versuche es erneut.
-							</AlertDescription>
-						</Alert>
-					)}
-					<AlertDialogFooter>
-						<AlertDialogCancel disabled={deletePending} className="min-h-11">
-							Abbrechen
-						</AlertDialogCancel>
-						<AlertDialogAction
-							variant="destructive"
-							disabled={deletePending}
-							className="min-h-11"
-							aria-label={`Beitrag entfernen bestätigen: ${actionSubject}`}
-							onClick={async () => {
-								// Synchron sperren: der eingebaute Close läuft vor dem nächsten Render.
-								deletingRef.current = true;
-								setDeleteError(false);
-								try {
-									const ok = await onDelete(announcement);
-									if (ok) setDeleteOpen(false);
-									else setDeleteError(true);
-								} finally {
-									deletingRef.current = false;
-								}
-							}}
-						>
-							{deletePending && <Spinner data-icon="inline-start" />}
-							{deletePending ? 'Wird entfernt…' : 'Entfernen'}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+				onOpenChange={setDeleteOpen}
+				actionSubject={actionSubject}
+				deletePending={deletePending}
+				onDelete={() => onDelete(announcement)}
+			/>
 		</li>
 	);
 });
