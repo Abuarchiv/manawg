@@ -1,53 +1,83 @@
+// Run with the unit-test resolver and module mocks (see the `analytics:check` script): the real
+// src/instrumentation-client.ts is evaluated once per case against a stand-in PostHog SDK.
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { mock } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import vm from 'node:vm';
-import ts from 'typescript';
 
 const root = new URL('../src/', import.meta.url);
-const [instrumentation, createFlow, joinFlow, pwa] = await Promise.all([
-	readFile(new URL('instrumentation-client.ts', root), 'utf8'),
+const [createFlow, joinFlow, pwa] = await Promise.all([
 	readFile(new URL('app/neu/use-create-wg.ts', root), 'utf8'),
 	readFile(new URL('app/neu/use-join-wg.ts', root), 'utf8'),
 	readFile(new URL('components/app/PwaRegister.tsx', root), 'utf8'),
 ]);
 const onboarding = createFlow + joinFlow;
 
-const compiled = ts.transpileModule(instrumentation, {
-	compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-}).outputText;
+mock.module('@/core/infra/sentry', { namedExports: { initializeSentry() {} } });
+Object.defineProperty(globalThis, 'window', {
+	configurable: true,
+	value: { location: { hostname: 'app.manawg.com' } },
+});
+Object.defineProperty(globalThis, 'navigator', {
+	configurable: true,
+	value: { userAgent: 'ManaWG-privacy-check' },
+});
 
+const ENV_NAMES = [
+	'NODE_ENV',
+	'NEXT_PUBLIC_SENTRY_DSN',
+	'NEXT_PUBLIC_POSTHOG_KEY',
+	'NEXT_PUBLIC_POSTHOG_HOST',
+];
+let run = 0;
+
+/** Evaluates the client entrypoint once with `env`; resolves to the SDK loads and init calls. */
 async function initialize(env, failImport = false, failInit = false) {
 	const calls = [];
 	let imports = 0;
-	vm.runInNewContext(
-		compiled,
-		{
-			Date,
-			window: { location: { hostname: 'app.manawg.com' } },
-			navigator: { userAgent: 'ManaWG-privacy-check' },
-			exports: {},
-			process: { env },
-			console: { warn() {}, error() {} },
-			require(name) {
-				if (name === '@/core/infra/sentry') return { initializeSentry() {} };
-				assert.equal(name, 'posthog-js');
-				imports++;
-				if (failImport) throw new Error('provider blocked');
-				return {
-					default: {
-						init(key, config) {
-							if (failInit) throw new Error('initialization failed');
-							calls.push({ key, config });
-						},
-					},
-				};
+	// The SDK loads asynchronously; a load ends in init() or in the warning of the failure branch.
+	let settle = () => {};
+	const settled = new Promise((resolve) => {
+		settle = resolve;
+	});
+	// A fresh SDK mock per case: its exports are read when the entrypoint imports it.
+	const sdk = mock.module('posthog-js', {
+		defaultExport: {
+			init(key, config) {
+				if (failInit) throw new Error('initialization failed');
+				calls.push({ key, config });
+				settle();
 			},
 		},
-		{ timeout: 1000 },
-	);
-	await new Promise(setImmediate);
+		namedExports: {
+			get loaded() {
+				imports++;
+				if (failImport) throw new Error('provider blocked');
+				return true;
+			},
+		},
+	});
+	const previousEnv = ENV_NAMES.map((name) => [name, process.env[name]]);
+	for (const name of ENV_NAMES) delete process.env[name];
+	Object.assign(process.env, env);
+	const restoreConsole = [
+		mock.method(console, 'warn', settle),
+		mock.method(console, 'error', () => {}),
+	];
+	try {
+		run++;
+		await import(new URL(`instrumentation-client.ts?run=${run}`, root).href);
+		// A configuration that must not load the SDK never settles; the wait lets a wrong load show.
+		await Promise.race([settled, new Promise((resolve) => setTimeout(resolve, 500))]);
+	} finally {
+		for (const spy of restoreConsole) spy.mock.restore();
+		for (const [name, value] of previousEnv) {
+			if (value === undefined) delete process.env[name];
+			else process.env[name] = value;
+		}
+		sdk.restore();
+	}
 	return { calls, imports };
 }
 

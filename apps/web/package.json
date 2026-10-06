@@ -18,7 +18,7 @@
 		"test:e2e:webkit": "playwright test --config=playwright.webkit-fixtures.config.ts",
 		"analyze": "ANALYZE=true next build",
 		"bundle:check": "node scripts/check-bundle-budget.mjs",
-		"analytics:check": "node scripts/check-analytics-privacy.mjs",
+		"analytics:check": "node --experimental-strip-types --experimental-test-module-mocks --import ./tests/support/register.mjs scripts/check-analytics-privacy.mjs",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "node scripts/db-migrate.mjs",
 		"db:check": "node scripts/db-migrate.mjs --check"

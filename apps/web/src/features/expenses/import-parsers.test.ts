@@ -6,10 +6,10 @@ import { parseSplitwiseCsv } from './import-parsers';
 test('parseSplitwiseCsv recovers the payer share from their net-balance column', () => {
 	// Splitwise CSV convention: each person's column holds their NET balance
 	// for the row (paid - ownShare for the payer, -share for everyone else),
-	// not their raw share. A previously used Math.abs() on every column,
-	// which reads the payer's own net balance as their "share" — wrong
-	// whenever the split isn't 50/50, and it silently discarded the real
-	// custom split as unrepairable "drift" instead of importing it correctly.
+	// not their raw share. Math.abs() on every column would read the payer's
+	// own net balance as their "share" — wrong whenever the split isn't 50/50 —
+	// and silently discard the real custom split as unrepairable "drift"
+	// instead of importing it correctly.
 	const csv = [
 		'Date,Description,Cost,Currency,Anna,Bob',
 		'2026-01-15,Miete,30.00,EUR,20.00,-20.00',

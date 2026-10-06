@@ -14,9 +14,9 @@ test('tops up empty fields when too little was entered', () => {
 });
 
 test('claws excess back from filled fields instead of going negative', () => {
-	// Regression: overshooting by 5€ used to target the empty "c" field,
-	// driving it to -5,00 — a value the input can't parse back out, so it
-	// silently vanished from the sum instead of fixing the overage.
+	// Regression: overshooting by 5€ must not target the empty "c" field.
+	// -5,00 is a value the input can't parse back out, so it would silently
+	// vanish from the sum instead of fixing the overage.
 	const next = distributeRemainderCents({ a: '15,00', b: '20,00' }, members, -500);
 	assert.notEqual(next.c, '-5,00');
 	assert.equal(next.c ?? '', '');
@@ -68,8 +68,8 @@ test('never writes a negative amount, even when the excess sits outside the targ
 });
 
 test('is pure: same input, same output, input left untouched', () => {
-	// Regression (#493): the leftover counter used to live in a closure that
-	// the state updater mutated, so a second (StrictMode) invocation lost cents.
+	// Regression (#493): a leftover counter in a closure that the state updater
+	// mutates loses cents on a second (StrictMode) invocation.
 	const current = Object.freeze({ a: '10,00' });
 	const first = distributeRemainderCents(current, members, 2001);
 	const second = distributeRemainderCents(current, members, 2001);
