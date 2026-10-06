@@ -60,7 +60,6 @@ const PushPrimingPrompt = dynamic(
 
 const REFRESH_INTERVAL_MS = 30_000;
 /** How long the done notice stays, and how long a tapped chore stays armed for the confirm tap. */
-const TRANSIENT_STATE_MS = 4000;
 const TODAY_VISIBLE = 4;
 
 type PendingAnnouncement = DashboardData['myOpenAnnouncements'][number];
