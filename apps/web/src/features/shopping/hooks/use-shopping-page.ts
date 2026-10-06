@@ -262,13 +262,15 @@ export function useShoppingPage({
 					prev.map((current) => (current.id === item.id ? optimisticItem : current)),
 				),
 			);
-			const rollback = () =>
+			const rollback = () => {
+				optimisticRef.current.delete(item.id);
 				commitItems((prev) =>
 					keepItems(
 						prev,
 						prev.map((current) => (current.id === item.id ? item : current)),
 					),
 				);
+			};
 
 			try {
 				if (queuedCreate) {
