@@ -49,15 +49,15 @@ export function isRetryableServerError(code: string | null, status?: number): bo
 	);
 }
 
-export function isWgUnavailable(code: string | null, status?: number): boolean {
+function isWgUnavailable(code: string | null, status?: number): boolean {
 	return status === HTTP_NOT_FOUND || code === 'wg_not_found';
 }
 
-export function isInvalidShareCode(code: string | null): boolean {
+function isInvalidShareCode(code: string | null): boolean {
 	return code === 'invalid_share_code';
 }
 
-export function isAuthInvalidated(code: string | null, status?: number): boolean {
+function isAuthInvalidated(code: string | null, status?: number): boolean {
 	return (
 		status === HTTP_UNAUTHORIZED ||
 		code === 'not_a_member' ||

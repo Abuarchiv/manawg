@@ -8,7 +8,7 @@ import { type ComponentProps, useState } from 'react';
 
 export type SocialProvider = 'google';
 
-export type SocialLoginStart = (provider: SocialProvider, next: string) => Promise<void> | void;
+type SocialLoginStart = (provider: SocialProvider, next: string) => Promise<void> | void;
 
 type SocialLoginButtonsProps = {
 	next?: string;

@@ -15,6 +15,7 @@ import {
 	parsePayPalAmountCents,
 	terminalPayPalCaptureOutcome,
 } from '../src/features/expenses/paypal-settlement.ts';
+import { jsonResponse } from './_helpers';
 
 test.describe('paypal capture state', () => {
 	const CAPTURE_ROUTE_PATH = path.join(
@@ -57,15 +58,6 @@ test.describe('paypal capture state', () => {
 			payments?: ReadonlyArray<ExpensePaymentInput>,
 		) => PairBalance[];
 	}>(DEBTS_PATH, { '@/core/utils/time': { MS_PER_DAY: 86_400_000 } });
-
-	function jsonResponse(body: unknown, init: number | ResponseInit = 200): Response {
-		const status = typeof init === 'number' ? init : (init.status ?? 200);
-		return new Response(JSON.stringify(body), {
-			...(typeof init === 'number' ? {} : init),
-			status,
-			headers: { 'content-type': 'application/json' },
-		});
-	}
 
 	type ProviderResponse = Record<string, unknown> | Error;
 
@@ -571,8 +563,8 @@ test.describe('paypal capture state', () => {
 		expect(fixture.payment.id).toBe(reservationId);
 		expect(fixture.payment.providerOrderId).toBe('paypal-order-created-once');
 		expect(fixture.createdOrderInputs).toHaveLength(2);
-		expect(fixture.createdOrderInputs[0].requestId).toBe(reservationId);
-		expect(fixture.createdOrderInputs[1].requestId).toBe(reservationId);
+		expect(fixture.createdOrderInputs[0]?.requestId).toBe(reservationId);
+		expect(fixture.createdOrderInputs[1]?.requestId).toBe(reservationId);
 	});
 
 	test('a definitive Payee rejection frees the reservation for a corrected merchant', async () => {
@@ -584,14 +576,14 @@ test.describe('paypal capture state', () => {
 		const first = await fixture.createOrder();
 		expect(first.status).toBe(500);
 		expect(fixture.payment.status).toBe('failed');
-		const rejectedRequestId = fixture.createdOrderInputs[0].requestId;
+		const rejectedRequestId = fixture.createdOrderInputs[0]?.requestId;
 
 		fixture.updatePayeeMerchantId('merchant-corrected');
 		const retry = await fixture.createOrder();
 		expect(retry.status).toBe(200);
 		expect(fixture.payment.status).toBe('created');
-		expect(fixture.createdOrderInputs[1].payeeMerchantId).toBe('merchant-corrected');
-		expect(fixture.createdOrderInputs[1].requestId).not.toBe(rejectedRequestId);
+		expect(fixture.createdOrderInputs[1]?.payeeMerchantId).toBe('merchant-corrected');
+		expect(fixture.createdOrderInputs[1]?.requestId).not.toBe(rejectedRequestId);
 	});
 
 	test('a lost capture response is reconciled from PayPal without retrying a new order', async () => {
@@ -749,13 +741,6 @@ test.describe('paypal capture membership lock', () => {
 			module.exports,
 		);
 		return module.exports;
-	}
-
-	function jsonResponse(body: unknown, status = 200): Response {
-		return new Response(JSON.stringify(body), {
-			status,
-			headers: { 'content-type': 'application/json' },
-		});
 	}
 
 	test('PayPal capture rechecks active membership under the payment lock', async () => {

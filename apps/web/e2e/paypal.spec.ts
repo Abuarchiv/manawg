@@ -828,7 +828,7 @@ test.describe('paypal document security', () => {
 			const headers = response.headers();
 			expect(headers['cross-origin-opener-policy']).toBe('same-origin-allow-popups');
 
-			const csp = headers['content-security-policy'];
+			const csp = headers['content-security-policy'] ?? '';
 			expect(csp).toBeTruthy();
 			const scriptSrc = directive(csp, 'script-src') ?? '';
 			const connectSrc = directive(csp, 'connect-src') ?? '';

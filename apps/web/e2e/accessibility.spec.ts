@@ -32,26 +32,27 @@ test.describe('contrast tokens', () => {
 		/** Compare against this element/pseudo instead of walking up to the nearest opaque ancestor. */
 		against?: { selector: string; pseudo?: string };
 	}) {
-		function parseToLinearSrgb(str: string) {
+		function parseToLinearSrgb(str: string): { r: number; g: number; b: number; a: number } | null {
 			const oklchM = str.match(/oklch\(([^)]+)\)/);
 			const oklabM = str.match(/oklab\(([^)]+)\)/);
 			const rgbM = str.match(/rgba?\(([^)]+)\)/);
 			const oklchOrOklabM = oklchM ?? oklabM;
 			if (oklchOrOklabM) {
-				const raw = oklchOrOklabM[1];
-				const [main, alphaPart] = raw.split('/').map((s) => s.trim());
-				const nums = main.split(/\s+/).map((s) => Number.parseFloat(s));
+				const raw = oklchOrOklabM[1] ?? '';
+				const [main = '', alphaPart] = raw.split('/').map((s) => s.trim());
+				const [n0 = Number.NaN, n1 = Number.NaN, n2 = Number.NaN] = main
+					.split(/\s+/)
+					.map((s) => Number.parseFloat(s));
 				const a = alphaPart ? Number.parseFloat(alphaPart) : 1;
 				let L: number;
 				let A: number;
 				let B: number;
 				if (oklchM) {
-					const [l, c, h] = nums;
-					L = l;
-					A = c * Math.cos((h * Math.PI) / 180);
-					B = c * Math.sin((h * Math.PI) / 180);
+					L = n0;
+					A = n1 * Math.cos((n2 * Math.PI) / 180);
+					B = n1 * Math.sin((n2 * Math.PI) / 180);
 				} else {
-					[L, A, B] = nums;
+					[L, A, B] = [n0, n1, n2];
 				}
 				const l_ = L + 0.3963377774 * A + 0.2158037573 * B;
 				const m_ = L - 0.1055613458 * A - 0.0638541728 * B;
@@ -65,16 +66,18 @@ test.describe('contrast tokens', () => {
 				return { r, g, b, a };
 			}
 			if (rgbM) {
-				const parts = rgbM[1].split(',').map((s) => Number.parseFloat(s.trim()));
+				const [red = Number.NaN, green = Number.NaN, blue = Number.NaN, alpha = 1] = (rgbM[1] ?? '')
+					.split(',')
+					.map((s) => Number.parseFloat(s.trim()));
 				const srgbToLinear = (v: number) => {
 					const c = v / 255;
 					return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 				};
 				return {
-					r: srgbToLinear(parts[0]),
-					g: srgbToLinear(parts[1]),
-					b: srgbToLinear(parts[2]),
-					a: parts.length > 3 ? parts[3] : 1,
+					r: srgbToLinear(red),
+					g: srgbToLinear(green),
+					b: srgbToLinear(blue),
+					a: alpha,
 				};
 			}
 			return null;

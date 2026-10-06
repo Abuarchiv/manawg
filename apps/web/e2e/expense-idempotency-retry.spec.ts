@@ -32,6 +32,9 @@ function recurringExpense(
 		nextDueAt: string;
 	}> = {},
 ) {
+	const splits: Array<{ debtorMemberId: string; amountCents: number }> = [
+		{ debtorMemberId: FIXTURE_WG.memberId, amountCents: 1234 },
+	];
 	return {
 		id: 'recurring-rent',
 		description: 'Miete',
@@ -41,7 +44,7 @@ function recurringExpense(
 		intervalMonths: 1,
 		nextDueAt: '2020-01-01T00:00:00.000Z',
 		lastCreatedAt: null,
-		splits: [{ debtorMemberId: FIXTURE_WG.memberId, amountCents: 1234 }],
+		splits,
 		...overrides,
 	};
 }

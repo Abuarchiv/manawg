@@ -1,0 +1,28 @@
+{
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	"workspaces": {
+		".": {
+			"entry": [],
+			"project": []
+		},
+		"apps/web": {
+			"entry": [
+				"drizzle.config.ts",
+				"sentry.*.config.ts",
+				"scripts/*.mjs",
+				"tests/**/*.test.{mjs,cjs,ts}",
+				"tests/support/*.{mjs,cjs}",
+				"src/**/*.test.{mjs,ts}",
+				"e2e/*.config.cjs",
+				"e2e/preview-global-setup.ts"
+			],
+			"project": [
+				"src/**/*.{ts,tsx,css}",
+				"scripts/**/*.mjs",
+				"e2e/**/*.ts",
+				"tests/**/*.{mjs,cjs,ts}"
+			],
+			"drizzle": false
+		}
+	}
+}

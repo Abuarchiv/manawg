@@ -44,7 +44,7 @@ export function computeOpenGapsByMember(
 	return openGapsByMember;
 }
 
-export interface ChoreFairnessRow {
+interface ChoreFairnessRow {
 	id: string;
 	name: string;
 	assignedCount: number;

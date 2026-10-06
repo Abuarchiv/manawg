@@ -1,9 +1,10 @@
 name: CI
 
 on:
+  # No `labeled`: labels gate nothing, so adding one must not rerun (and cancel) CI.
+  # No paths-ignore: docs-only PRs still report the required `validate` status.
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, labeled]
-    paths-ignore: ['**.md', 'docs/**', '.github/ISSUE_TEMPLATE/**']
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
   deployment_status:
@@ -17,26 +18,30 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Runs on draft PRs too so feedback arrives before review.
   validate:
-    if: github.event_name != 'deployment_status' && !(github.event_name == 'pull_request' && github.event.pull_request.draft)
+    if: github.event_name != 'deployment_status'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
           version: 9.0.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: apps/web/.next/cache
-          key: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          # Keyed by inputs, not the commit, so unchanged sources reuse one entry.
+          key: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/src/**', 'apps/web/public/**', 'apps/web/next.config.ts', 'apps/web/tsconfig.json', 'apps/web/postcss.config.js') }}
           restore-keys: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+      - run: pnpm audit --prod --audit-level high
       - run: pnpm lint
+      - run: pnpm knip
       - run: pnpm --dir apps/web analytics:check
       - run: pnpm --filter @manawg/web exec node scripts/check-architecture.mjs
       - run: pnpm --filter @manawg/web exec node scripts/check-wg-auth-invariant.mjs
@@ -45,23 +50,34 @@ jobs:
       - run: pnpm build
       - run: pnpm --filter @manawg/web bundle:check
 
-  # PRs run e2e only with label `run-e2e`; main always runs it.
+  # Every non-draft PR and every push to main.
   e2e-fixtures:
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'run-e2e'))
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: validate
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
           version: 9.0.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @manawg/web exec playwright install --with-deps chromium
+      - id: playwright
+        run: echo "version=$(pnpm --filter @manawg/web exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - id: playwright-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
+      - if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @manawg/web exec playwright install --with-deps chromium
+      # The cache holds the browser only; system libraries still come from apt.
+      - if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @manawg/web exec playwright install-deps chromium
       - run: pnpm --filter @manawg/web test:e2e:fixtures
       - name: Record fixture execution evidence
         if: always()
@@ -108,7 +124,7 @@ jobs:
 
   # Vercel deployments use commit-SHA refs, so GITHUB_REF can be empty here.
   # Gate on the provider/status/origin before Preview environment access, then
-  # verify approved branch tips and current main SHA before checkout.
+  # verify the current main SHA before checkout.
   db-supabase-preview:
     if: >-
       always() &&
@@ -141,10 +157,10 @@ jobs:
       name: Preview
       deployment: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           # Start from main. Run deployment code only when its SHA is also the
-          # current main tip and the tip of an approved Preview branch.
+          # current main tip.
           ref: main
       - name: Require the trusted Preview source tree
         env:
@@ -155,18 +171,6 @@ jobs:
           if [ "$EVENT_NAME" = deployment_status ]; then
             if ! [[ "$DEPLOYMENT_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
               echo 'deployment SHA must be a full 40-character commit SHA.' >&2
-              exit 1
-            fi
-            TRUSTED_PREVIEW_REF=''
-            for trusted_ref in main fix/audit-158; do
-              trusted_sha="$(git ls-remote origin "refs/heads/$trusted_ref" | awk '{print $1}')"
-              if [ "$trusted_sha" = "$DEPLOYMENT_SHA" ]; then
-                TRUSTED_PREVIEW_REF="$trusted_ref"
-                break
-              fi
-            done
-            if [ -z "$TRUSTED_PREVIEW_REF" ]; then
-              echo 'deployment SHA is not the current tip of an approved Preview branch.' >&2
               exit 1
             fi
             CURRENT_MAIN_SHA="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
@@ -255,10 +259,10 @@ jobs:
             throw new Error('Preview database checks require the direct ManaWG Preview Supabase connection on port 5432.');
           }
           NODE
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
           version: 9.0.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: pnpm
@@ -316,10 +320,10 @@ jobs:
         env:
           MIGRATION_GATE_RESULT: ${{ needs.db-supabase-preview.result }}
         run: test "$MIGRATION_GATE_RESULT" = success
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           # Start from main. Run deployment code only when its SHA is also the
-          # current main tip and the tip of an approved Preview branch.
+          # current main tip.
           ref: main
       - name: Require the trusted deployment tree
         env:
@@ -327,18 +331,6 @@ jobs:
         run: |
           if ! [[ "$DEPLOYMENT_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
             echo 'deployment SHA must be a full 40-character commit SHA.' >&2
-            exit 1
-          fi
-          TRUSTED_PREVIEW_REF=''
-          for trusted_ref in main fix/audit-158; do
-            trusted_sha="$(git ls-remote origin "refs/heads/$trusted_ref" | awk '{print $1}')"
-            if [ "$trusted_sha" = "$DEPLOYMENT_SHA" ]; then
-              TRUSTED_PREVIEW_REF="$trusted_ref"
-              break
-            fi
-          done
-          if [ -z "$TRUSTED_PREVIEW_REF" ]; then
-            echo 'deployment SHA is not the current tip of an approved Preview branch.' >&2
             exit 1
           fi
           CURRENT_MAIN_SHA="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
@@ -385,15 +377,26 @@ jobs:
 
           fs.appendFileSync(process.env.GITHUB_OUTPUT, `base_url=${baseUrl}\n`);
           NODE
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
           version: 9.0.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @manawg/web exec playwright install --with-deps chromium
+      - id: playwright
+        run: echo "version=$(pnpm --filter @manawg/web exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - id: playwright-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
+      - if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @manawg/web exec playwright install --with-deps chromium
+      # The cache holds the browser only; system libraries still come from apt.
+      - if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @manawg/web exec playwright install-deps chromium
       - name: Require real Supabase QA credentials
         env:
           SUPABASE_PREVIEW_PROJECT_HOST: ${{ vars.SUPABASE_PREVIEW_PROJECT_HOST }}

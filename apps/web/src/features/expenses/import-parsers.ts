@@ -6,7 +6,7 @@ const MIN_PLAUSIBLE_YEAR = 2000;
 const MAX_PLAUSIBLE_YEAR = 2100;
 const BOM = '﻿';
 
-export interface ParsedSplit {
+interface ParsedSplit {
 	memberName: string;
 	amountCents: number;
 }

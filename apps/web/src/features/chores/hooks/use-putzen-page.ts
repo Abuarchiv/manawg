@@ -17,8 +17,6 @@ import { useChoreActions } from './use-chore-actions';
 import { useChoreCreate } from './use-chore-create';
 import { useChoresData } from './use-chores-data';
 
-export type { ChoreSuggestion } from './use-chore-create';
-
 /** Putzplan-Seite: verbindet Laden, Anlegen, Aktionen und Abwesenheiten und leitet die Anzeige ab. */
 export function usePutzenPage() {
 	const { wg, members, identity } = useWg();

@@ -36,7 +36,7 @@ export type ReplayReservation<T> =
  * to cover a client's immediate retries; cross-instance replays fall through to
  * the Postgres claim, which lives much longer.
  */
-export const LOCAL_REPLAY_TTL_MS = 5 * MS_PER_MINUTE;
+const LOCAL_REPLAY_TTL_MS = 5 * MS_PER_MINUTE;
 
 /**
  * In-process (single warm-Lambda-instance) response-replay cache, keyed by

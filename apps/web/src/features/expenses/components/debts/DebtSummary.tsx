@@ -20,7 +20,7 @@ import { Bell } from 'lucide-react';
 import Link from 'next/link';
 import { SettlementDebtRow } from './SettlementDebtRow';
 
-export interface MemberBalance {
+interface MemberBalance {
 	memberId: string;
 	memberName: string;
 	currency: string;

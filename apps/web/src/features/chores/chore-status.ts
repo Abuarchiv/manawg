@@ -148,7 +148,7 @@ export function getChoreRepairHint(
 
 export type ChoreGroupKey = 'mine' | 'overdue' | 'week' | 'later';
 
-export const CHORE_GROUPS: { key: ChoreGroupKey; label: string }[] = [
+const CHORE_GROUPS: { key: ChoreGroupKey; label: string }[] = [
 	{ key: 'mine', label: 'Für dich' },
 	{ key: 'overdue', label: 'Noch offen' },
 	{ key: 'week', label: 'Diese Woche' },
@@ -156,7 +156,7 @@ export const CHORE_GROUPS: { key: ChoreGroupKey; label: string }[] = [
 ];
 
 /** Eigene Aufgaben bis morgen stehen oben, fremde nach Dringlichkeit darunter. */
-export function getChoreGroup(
+function getChoreGroup(
 	chore: ChoreRepairInput,
 	currentMemberId: string,
 	now = Date.now(),

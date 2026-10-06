@@ -416,6 +416,11 @@ input[type="month"] {
 		--app-frame-width: 27rem;
 		--app-nav-width: var(--app-frame-width);
 		--app-nav-height: 5rem;
+		/* Bottom safe area for fixed bottom chrome. Installed iOS PWAs report an
+		   inflated env(safe-area-inset-bottom) at launch and correct it a few
+		   seconds later, so the nav sat too high and then dropped. 34px is the
+		   largest home-indicator inset any iPhone reports in portrait. */
+		--safe-area-bottom: min(env(safe-area-inset-bottom, 0px), 34px);
 		/* Backdrop shown in the margins outside the centered app frame. */
 		--app-backdrop: var(--secondary);
 		/* Chapter 10: exact shadcn Neutral light tokens. */

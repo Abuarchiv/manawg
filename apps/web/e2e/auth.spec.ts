@@ -133,7 +133,7 @@ test.describe('auth tab responsive', () => {
 				expect(geometry.rootFontSize).toBe('32px');
 				expect(geometry.documentWidth).toBe(320);
 				expect(geometry.telefonRects).toHaveLength(1);
-				expect(geometry.telefonRects[0].right).toBeLessThanOrEqual(geometry.tabRight);
+				expect(geometry.telefonRects[0]?.right).toBeLessThanOrEqual(geometry.tabRight);
 			});
 		}
 	});
@@ -203,7 +203,7 @@ test.describe('entry accessibility', () => {
 				['Impressum', 'https://manawg.com/impressum'],
 				['Datenschutz', 'https://manawg.com/datenschutz'],
 				['AGB', 'https://manawg.com/agb'],
-			]) {
+			] as const) {
 				await expect(legal.getByRole('link', { name, exact: true })).toHaveAttribute('href', href);
 			}
 		});

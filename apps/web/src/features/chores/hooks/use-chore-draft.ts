@@ -55,7 +55,7 @@ export function useChoreFormFields() {
 	};
 }
 
-export type ChoreFormFields = ReturnType<typeof useChoreFormFields>;
+type ChoreFormFields = ReturnType<typeof useChoreFormFields>;
 
 type StoredChoreDraft = {
 	title?: string;
