@@ -75,13 +75,13 @@ function buildChoreOccurrences(
 		.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
 
-/** Offline, 429 und fehlende Rechte brauchen einen konkreten nächsten Schritt statt der pauschalen Meldung. */
+/** Offline, 429 and missing permissions need a concrete next step instead of the generic message. */
 function eventSaveError(base: string, res: { status: number; error: string }): string {
 	if (isNetworkError(res.error, res.status)) {
 		return `${base}: Prüfe deine Verbindung und versuche es erneut.`;
 	}
 	if (isRateLimited(res.error, res.status)) return RATE_LIMITED_MESSAGE;
-	// Die API lässt nur die Person, die den Termin angelegt hat, und WG-Admins ändern oder löschen.
+	// The API lets only the event creator and WG admins edit or delete it.
 	if (res.status === 403) {
 		return `${base}: Das dürfen nur WG-Admins und wer den Termin angelegt hat.`;
 	}
@@ -89,12 +89,12 @@ function eventSaveError(base: string, res: { status: number; error: string }): s
 	return `${base}.`;
 }
 
-/** Der Termin wurde inzwischen von jemand anderem gelöscht; ihn lokal wiederherzustellen wäre falsch. */
+/** Someone else deleted the event meanwhile; restoring it locally would be wrong. */
 function isEventGone(res: { status: number; error: string }): boolean {
 	return res.status === 404 && res.error === 'event_not_found';
 }
 
-/** Termine und Putzplan-Fälligkeiten laden, optimistisch anlegen/ändern/löschen. */
+/** Loads events and chore due dates; creates, edits and deletes optimistically. */
 export function useCalendarPage(month: Date) {
 	const { wg, identity } = useWg();
 	const toast = useToast();
@@ -157,7 +157,7 @@ export function useCalendarPage(month: Date) {
 
 			const [eventsRes, choreRes] = await Promise.all([refreshEvents(), refreshChores()]);
 
-			// Offline mit vorhandenem Cache: Daten weiter zeigen, kein Fehlerzustand.
+			// Offline with a cache: keep showing the data, no error state.
 			const keepCached = (res: { ok: boolean; status?: number; error?: string }): boolean =>
 				hasCalendarDataRef.current && !res.ok && isNetworkError(res.error ?? null, res.status);
 			let nextError: string | null = null;
@@ -190,7 +190,7 @@ export function useCalendarPage(month: Date) {
 		}
 	}, [cachedChores, cachedEvents, choresReadError, eventsReadError]);
 
-	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
+	// Auto-refresh as on the dashboard, in place of a manual reload button.
 	useVisibilityPausedInterval(() => void load(false), 30_000);
 	useEffect(() => {
 		void load(true);
@@ -308,7 +308,7 @@ export function useCalendarPage(month: Date) {
 			method: 'DELETE',
 			memberId: identity.memberId,
 		});
-		// Bereits von jemand anderem gelöscht: Ziel erreicht, nicht wiederherstellen.
+		// Already deleted by someone else: goal reached, do not restore.
 		if (!res.ok && !isEventGone(res)) {
 			if (previousEvent) {
 				updateEvents((current) => {

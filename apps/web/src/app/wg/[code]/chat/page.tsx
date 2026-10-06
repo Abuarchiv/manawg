@@ -67,8 +67,8 @@ function ChatPageContent({
 		>
 			<header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-4 pt-3 pb-2">
 				<div className="mx-auto flex w-full max-w-4xl items-center gap-2">
-					{/* Das Segment ersetzt den sichtbaren Titel, damit der Chat keine
-					    zusätzliche Höhe verliert. */}
+					{/* The segment replaces the visible title so the chat does not
+					    lose extra height. */}
 					<h1 className="sr-only">Chat</h1>
 					<SubNav className="flex-1" />
 				</div>

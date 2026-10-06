@@ -31,7 +31,7 @@ function useGoogleLinked(): boolean {
 			.then((value) => {
 				if (active) setLinked(value);
 			})
-			// Ohne Auskunft bleibt der Button sichtbar; ein Fehlschlag beim Verknüpfen wird dort erklärt.
+			// Without an answer the button stays visible; a failed link is explained there.
 			.catch(() => {});
 		return () => {
 			active = false;

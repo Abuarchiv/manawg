@@ -62,7 +62,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 			router.replace('/neu');
 		} catch (error) {
 			if (isWeakPasswordError(error)) setError(WEAK_PASSWORD_MESSAGE);
-			// Supabase lehnt das bisherige Passwort ab; ein neuer Link würde daran nichts ändern.
+			// Supabase rejects the current password; a new link would not change that.
 			else if (isSamePasswordError(error)) {
 				setError('Das neue Passwort muss sich vom bisherigen unterscheiden.');
 			} else {

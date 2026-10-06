@@ -40,7 +40,7 @@ function kindFromParam(value: string | null): AnnouncementKind | null {
 	return null;
 }
 
-/** Beitrag verfassen: Composer-Zustand, localStorage-Entwurf, Prefill aus der URL und Anlegen (online/offline). */
+/** Compose a post: composer state, localStorage draft, prefill from the URL and creation (online/offline). */
 export function useAnnouncementComposer(
 	ctx: AnnouncementPageContext,
 	scrollToAnnouncement: (id: string, behavior?: ScrollBehavior) => void,

@@ -30,7 +30,7 @@ const ExpenseFormSection = dynamic(
 	},
 );
 
-/** Das Formular-Chunk einmal online anfordern, damit der Service Worker es für offline hat. */
+/** Request the form chunk once while online so the service worker has it offline. */
 function usePreloadExpenseForm(): void {
 	useEffect(() => {
 		if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
@@ -126,7 +126,7 @@ export default function AusgabenPage() {
 			{page.actionNotice && !showForm && <ActionNoticeBanner notice={page.actionNotice} />}
 			{refreshing && (
 				<output
-					// Schwebt über dem Inhalt: im Fluss würde sein Verschwinden die Karten springen lassen.
+					// Floats above the content: in the flow, its disappearance would make the cards jump.
 					className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.5rem)] z-40 mx-auto flex w-fit items-center gap-2 rounded-full border bg-background px-3 py-1 text-sm text-muted-foreground shadow-sm"
 					aria-live="polite"
 				>
@@ -171,7 +171,7 @@ export default function AusgabenPage() {
 						}}
 					/>
 				)}
-			{/* Fixkosten leben im eigenen Tab; hier nur, wenn ein Link gezielt eine Vorlage öffnet. */}
+			{/* Fixed costs live in their own tab; here only when a link opens a specific template. */}
 			{(page.recurringFilterActive || (page.recurringId && recurringExpenses.length > 0)) && (
 				<RecurringExpensesSection
 					recurringExpenses={recurringExpenses}

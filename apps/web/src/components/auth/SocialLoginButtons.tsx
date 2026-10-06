@@ -68,8 +68,8 @@ export function SocialLoginButtons({
 				error instanceof Error &&
 				typeof Reflect.get(error, 'code') === 'string'
 			) {
-				// Supabase antwortet beim Verknüpfen mit einem Fehlercode (z. B. bereits verknüpft);
-				// das ist kein Verbindungsproblem.
+				// Linking answers with a Supabase error code (e.g. already linked);
+				// that is not a connection problem.
 				setError('Das Konto konnte nicht verknüpft werden. Bitte versuche es später erneut.');
 			} else {
 				setError(

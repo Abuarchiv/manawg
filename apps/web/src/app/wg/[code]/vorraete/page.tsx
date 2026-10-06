@@ -22,7 +22,7 @@ export default function VorraetePage() {
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-3">
 			<SubNav />
-			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
+			{/* The active tab already names the page; title and count stay for screen readers. */}
 			<header className="sr-only">
 				<div className="min-w-0 flex-1">
 					<h1>Vorräte</h1>

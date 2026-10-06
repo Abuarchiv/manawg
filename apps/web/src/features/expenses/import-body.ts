@@ -13,7 +13,7 @@ import { readJsonBody } from '@/core/http/read-json';
  */
 
 export const MAX_CSV_BYTES = 5 * 1024 * 1024;
-// Der Commit schreibt zeilenweise in einer Transaktion; mehr Zeilen sprengen das Funktions-Zeitlimit.
+// The commit writes row by row in one transaction; more rows exceed the function time limit.
 export const MAX_IMPORT_ROWS = 2000;
 export const MAX_OCR_BYTES = 1 * 1024 * 1024;
 const MAX_JSON_OVERHEAD_BYTES = 16 * 1024;

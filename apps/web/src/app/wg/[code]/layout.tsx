@@ -210,11 +210,11 @@ function WgShell({
 						)}
 					/>
 				))}
-				{/* Vier Ziele nach Candidate A: Start, Haushalt (Einkauf/Vorräte/
+				{/* Four destinations (candidate A): Start, Haushalt (Einkauf/Vorräte/
 				    Putzen/Kalender), Finanzen (Ausgaben/Fixkosten/Mahnungen/Import),
-				    Austausch (Pinnwand/Chat). Alle bisherigen Deep Links lösen
-				    weiter auf; Aktivität/Einstellungen bleiben über
-				    Header- und Start-Verlinkungen erreichbar. */}
+				    Austausch (Pinnwand/Chat). All existing deep links still
+				    resolve; Aktivität/Einstellungen stay reachable through
+				    header and start-page links. */}
 			</AppBottomNav>
 			{/* Last in the DOM so Tab reaches a toast's dismiss button right after
 			    whatever the user just did, instead of jumping back to the page top. */}

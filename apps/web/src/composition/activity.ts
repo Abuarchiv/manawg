@@ -1,13 +1,18 @@
-import { berlinDayKey, prevBerlinDayStart, startOfBerlinDay } from '@/core/utils/berlin-day';
-import { formatEuroCents } from '@/core/utils/money';
 import {
 	MS_PER_DAY,
 	formatShortDateRange as formatSharedShortDateRange,
-	formatShortDate,
 	parseTimestamp,
 } from '@/core/utils/time';
 import { getChoreStatus } from '@/features/chores/chore-status';
-import { KIND_LABELS } from '@/features/pinnwand/components/constants';
+import { auditDetail, formatAuditActivityText, getAuditHref } from './activity-audit';
+
+export {
+	type ActivityFilter,
+	buildActivityInbox,
+	filterActivityByScope,
+	filterActivityItems,
+	groupActivityItemsByDay,
+} from './activity-views';
 
 const STALE_SHOPPING_DAYS = 3;
 const STALE_ANNOUNCEMENT_DAYS = 2;
@@ -137,212 +142,12 @@ interface ActivityReminderInput {
 	}>;
 }
 
-export interface ActivityFilter {
-	kind: ActivityKind | 'all';
-	mineOnly: boolean;
-	query: string;
-}
-
-export type ActivityScope = 'all' | 'system' | 'mine' | 'changes' | 'done';
-
-interface ActivityChronicleGroup {
-	date: string;
-	label: string;
-	items: ActivityItem[];
-}
-
-interface ActivityInboxItem {
-	id: string;
-	priority: 'high' | 'normal';
-	title: string;
-	detail: string;
-	href: string;
-	kind: ActivityKind | ActivityReminder['kind'];
-}
-
-interface ActivityInboxInput {
-	reminders: ActivityReminder[];
-	items: ActivityItem[];
-	currentMemberName: string;
-	currentMemberId?: string | null;
-}
-
 function memberName(members: Map<string, MemberInput>, id: string): string {
 	return members.get(id)?.name ?? '—';
 }
 
-function isCurrentMemberActivity(
-	item: ActivityItem,
-	currentMemberName: string,
-	currentMemberId?: string | null,
-): boolean {
-	if (currentMemberId && item.memberId) return item.memberId === currentMemberId;
-	return item.memberName === currentMemberName;
-}
-
 function shortDateRange(startIso: string, endIso: string): string {
 	return formatSharedShortDateRange(startIso, endIso).replace(' bis ', '-');
-}
-
-function parseAuditMetadata(metadataJson?: string | null): Record<string, unknown> | null {
-	if (!metadataJson) return null;
-	try {
-		const metadata = JSON.parse(metadataJson) as unknown;
-		if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) return null;
-		return metadata as Record<string, unknown>;
-	} catch {
-		return null;
-	}
-}
-
-function auditDetail(metadataJson?: string | null): string | undefined {
-	const metadata = parseAuditMetadata(metadataJson);
-	if (!metadata) return undefined;
-	try {
-		const parts: string[] = [];
-		if (typeof metadata.description === 'string' && metadata.description.length > 0) {
-			parts.push(metadata.description);
-		}
-		if (typeof metadata.title === 'string' && metadata.title.length > 0) {
-			parts.push(metadata.title);
-		}
-		if (typeof metadata.quantity === 'string' && metadata.quantity.length > 0) {
-			parts.push(metadata.quantity);
-		}
-		if (typeof metadata.contentPreview === 'string' && metadata.contentPreview.length > 0) {
-			parts.push(`„${metadata.contentPreview}“`);
-		}
-		// Nur bekannte Pinnwand-Arten: Chat-Audits tragen kind 'text'/'image', das ist kein Nutzer-Text.
-		const kindLabel =
-			typeof metadata.kind === 'string'
-				? (KIND_LABELS as Record<string, string | undefined>)[metadata.kind]
-				: undefined;
-		if (kindLabel) parts.push(`Typ: ${kindLabel}`);
-		if (metadata.hasImage === true) {
-			parts.push('mit Bild');
-		}
-		if (Array.isArray(metadata.notificationFields)) {
-			const fields = metadata.notificationFields.filter(
-				(field): field is string => typeof field === 'string' && field.length > 0,
-			);
-			if (fields.length > 0) parts.push(fields.join(', '));
-		}
-		if (typeof metadata.pushOptIn === 'boolean') {
-			parts.push(metadata.pushOptIn ? 'Web Push aktiv' : 'Web Push aus');
-		}
-		if ('quietStartHour' in metadata || 'quietEndHour' in metadata) {
-			const start = typeof metadata.quietStartHour === 'number' ? metadata.quietStartHour : null;
-			const end = typeof metadata.quietEndHour === 'number' ? metadata.quietEndHour : null;
-			if (start !== null || end !== null) {
-				parts.push(`Ruhezeit ${start ?? '?'}-${end ?? '?'} Uhr`);
-			} else {
-				parts.push('Ruhezeit aus');
-			}
-		}
-		if (typeof metadata.reason === 'string' && metadata.reason.length > 0) {
-			parts.push(metadata.reason);
-		}
-		if (typeof metadata.amountCents === 'number') {
-			const currency = typeof metadata.currency === 'string' ? metadata.currency : 'EUR';
-			parts.push(formatEuroCents(metadata.amountCents, currency));
-		}
-		if (typeof metadata.splitCount === 'number') {
-			parts.push(`${metadata.splitCount} Aufteilungen`);
-		}
-		if (typeof metadata.reaction === 'string') {
-			parts.push(`Reaktion: ${metadata.reaction}`);
-		}
-		if (typeof metadata.nameBefore === 'string' && typeof metadata.nameAfter === 'string') {
-			if (metadata.nameBefore !== metadata.nameAfter) {
-				parts.push(`${metadata.nameBefore} → ${metadata.nameAfter}`);
-			}
-		}
-		if (
-			typeof metadata.joiningEnabledBefore === 'boolean' &&
-			typeof metadata.joiningEnabledAfter === 'boolean' &&
-			metadata.joiningEnabledBefore !== metadata.joiningEnabledAfter
-		) {
-			parts.push(metadata.joiningEnabledAfter ? 'Beitritt offen' : 'Beitritt gesperrt');
-		}
-		if (metadata.shareCodeRotated === true) {
-			parts.push('neuer WG-Code');
-		}
-		if (typeof metadata.intervalDays === 'number') {
-			parts.push(metadata.intervalDays === 1 ? 'täglich' : `alle ${metadata.intervalDays} Tage`);
-		}
-		if (typeof metadata.intervalMonths === 'number') {
-			parts.push(
-				metadata.intervalMonths === 1 ? 'monatlich' : `alle ${metadata.intervalMonths} Monate`,
-			);
-		}
-		if (typeof metadata.startDate === 'string' && typeof metadata.endDate === 'string') {
-			parts.push(`abwesend ${formatSharedShortDateRange(metadata.startDate, metadata.endDate)}`);
-		}
-		if (typeof metadata.nextDueAt === 'string') {
-			parts.push(`nächste Fälligkeit ${formatShortDate(metadata.nextDueAt, 'Europe/Berlin')}`);
-		}
-		if (Array.isArray(metadata.splitIds)) {
-			parts.push(`${metadata.splitIds.length} Anteil${metadata.splitIds.length === 1 ? '' : 'e'}`);
-		}
-		return parts.length > 0 ? parts.join(' · ') : undefined;
-	} catch {
-		return undefined;
-	}
-}
-
-export function getAuditHref(event: {
-	eventType: string;
-	entityType?: string;
-	entityId?: string | null;
-	metadataJson?: string | null;
-}): string | undefined {
-	const metadata = parseAuditMetadata(event.metadataJson);
-	const announcementId =
-		typeof metadata?.announcementId === 'string' && metadata.announcementId.length > 0
-			? metadata.announcementId
-			: event.entityType === 'announcement' && event.entityId
-				? event.entityId
-				: null;
-
-	if (announcementId) return `/pinnwand#announcement-${encodeURIComponent(announcementId)}`;
-	if (event.entityType === 'shopping_item' && event.entityId) {
-		return `/einkauf?highlight=${encodeURIComponent(event.entityId)}`;
-	}
-	if (event.entityType === 'chore' && event.entityId) {
-		return `/putzen?highlight=${encodeURIComponent(event.entityId)}`;
-	}
-	if ((event.entityType === 'absence' || event.entityType === 'member_absence') && event.entityId) {
-		return `/putzen?panel=absences&absence=${encodeURIComponent(event.entityId)}`;
-	}
-	if (event.entityType === 'recurring_expense' && event.eventType === 'recurring.deleted') {
-		return '/ausgaben?filter=recurring';
-	}
-	if (event.entityType === 'recurring_expense' && event.entityId) {
-		return `/ausgaben?recurring=${encodeURIComponent(event.entityId)}`;
-	}
-	if (
-		event.entityType === 'expense' ||
-		event.entityType === 'expense_split' ||
-		event.entityType === 'expense_debt'
-	) {
-		return event.entityType === 'expense' && event.entityId
-			? `/ausgaben?highlight=${encodeURIComponent(event.entityId)}`
-			: '/ausgaben';
-	}
-	if (event.entityType === 'member' && event.eventType.startsWith('notification.')) {
-		return '/einstellungen#benachrichtigungen';
-	}
-	if (event.entityType === 'wg') return '/einstellungen#zugang';
-	return undefined;
-}
-
-export function formatAuditActivityText(summary: string, actorName: string): string {
-	const trimmed = summary.trim();
-	const prefix = `${actorName} `;
-	if (trimmed.toLocaleLowerCase('de-DE').startsWith(prefix.toLocaleLowerCase('de-DE'))) {
-		return trimmed.slice(prefix.length);
-	}
-	return trimmed;
 }
 
 export function buildActivityTimeline(input: ActivityTimelineInput): ActivityItem[] {
@@ -523,123 +328,4 @@ export function getActivityReminders(
 		.sort((a, b) => a.priority - b.priority || b.ageDays - a.ageDays)
 		.slice(0, 6)
 		.map(({ item }) => item);
-}
-
-export function filterActivityItems(
-	items: ActivityItem[],
-	filter: ActivityFilter,
-	currentMemberName: string,
-	currentMemberId?: string | null,
-): ActivityItem[] {
-	const query = filter.query.trim().toLocaleLowerCase('de-DE');
-	return items.filter((item) => {
-		if (filter.kind !== 'all' && item.kind !== filter.kind) return false;
-		if (filter.mineOnly && !isCurrentMemberActivity(item, currentMemberName, currentMemberId))
-			return false;
-		if (!query) return true;
-		return `${item.memberName} ${item.text} ${item.detail ?? ''}`
-			.toLocaleLowerCase('de-DE')
-			.includes(query);
-	});
-}
-
-export function filterActivityByScope(
-	items: ActivityItem[],
-	scope: ActivityScope,
-	currentMemberName: string,
-	currentMemberId?: string | null,
-): ActivityItem[] {
-	if (scope === 'all') return items;
-	return items.filter((item) => {
-		const done = item.completed || /erledigt|gekauft|bezahlt/i.test(item.text);
-		const system = item.memberName === 'System';
-		if (scope === 'system') return system;
-		if (scope === 'mine') return isCurrentMemberActivity(item, currentMemberName, currentMemberId);
-		if (scope === 'done') return done;
-		if (scope === 'changes') return !done;
-		return true;
-	});
-}
-
-export function groupActivityItemsByDay(
-	items: ActivityItem[],
-	now = Date.now(),
-): ActivityChronicleGroup[] {
-	const formatter = new Intl.DateTimeFormat('de-DE', {
-		weekday: 'short',
-		day: '2-digit',
-		month: '2-digit',
-		timeZone: 'Europe/Berlin',
-	});
-	// Group by Berlin calendar day so entries around midnight land under the
-	// label the user actually sees (labels are formatted in Berlin time).
-	const todayKey = berlinDayKey(new Date(now));
-	// Not `now - 24h`: on the day after spring-forward (23h) that lands two days back.
-	const yesterdayKey = berlinDayKey(prevBerlinDayStart(startOfBerlinDay(new Date(now))));
-	const groups = new Map<string, ActivityItem[]>();
-
-	for (const item of items) {
-		const key = berlinDayKey(new Date(item.timestamp));
-		groups.set(key, [...(groups.get(key) ?? []), item]);
-	}
-
-	return Array.from(groups.entries())
-		.sort(([a], [b]) => b.localeCompare(a))
-		.map(([date, groupItems]) => ({
-			date,
-			label:
-				date === todayKey
-					? 'Heute'
-					: date === yesterdayKey
-						? 'Gestern'
-						: formatter.format(new Date(`${date}T12:00:00.000Z`)),
-			items: groupItems,
-		}));
-}
-
-function inboxActivityDetail(kind: ActivityKind): string {
-	switch (kind) {
-		case 'expense':
-			return 'Deine Ausgabe';
-		case 'shopping':
-			return 'Dein Einkauf';
-		case 'announcement':
-			return 'Dein Pinnwand-Beitrag';
-		case 'chore':
-			return 'Von dir erledigt';
-		case 'recurring':
-			return 'Deine Fixkosten';
-		case 'absence':
-			return 'Deine Abwesenheit';
-		case 'audit':
-			return 'Deine Änderung';
-	}
-}
-
-export function buildActivityInbox(input: ActivityInboxInput): ActivityInboxItem[] {
-	const urgent = input.reminders.map((item) => ({
-		id: `reminder:${item.kind}:${item.href}`,
-		priority: 'high' as const,
-		title: item.title,
-		detail: item.detail,
-		href: item.href,
-		kind: item.kind,
-	}));
-	const mine = input.items
-		.filter(
-			(item) =>
-				isCurrentMemberActivity(item, input.currentMemberName, input.currentMemberId) && item.href,
-		)
-		.slice(0, 4)
-		.map((item) => ({
-			id: `activity:${item.kind}:${item.id}`,
-			priority: 'normal' as const,
-			// Protokoll-Texte beginnen mit „hat“/„ist“ und brauchen die Person davor (wie im ActivityFeed).
-			title: item.text.replace(/^hat\b/, 'Du hast').replace(/^ist\b/, 'Du bist'),
-			detail: inboxActivityDetail(item.kind),
-			href: item.href ?? '',
-			kind: item.kind,
-		}));
-
-	return [...urgent, ...mine].slice(0, 6);
 }

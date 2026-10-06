@@ -127,7 +127,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 							</p>
 						)}
 						<div className="flex flex-wrap items-center gap-3 border-t pt-3">
-							{/* Pausieren liegt bewusst hier statt als Schalter in der Zeile: kein versehentliches Antippen. */}
+							{/* Pausing lives here on purpose rather than as a toggle in the row: no accidental taps. */}
 							<Button
 								variant="outline"
 								onClick={() => onTogglePause(abo)}

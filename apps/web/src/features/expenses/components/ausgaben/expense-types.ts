@@ -27,7 +27,7 @@ export interface RecurringExpense {
 	intervalMonths: number;
 	nextDueAt: string;
 	lastCreatedAt: string | null;
-	/** Pausierte Vorlagen werden weder vom Cron gebucht noch manuell erfasst (API: abo_paused). */
+	/** Paused templates are neither booked by the cron nor recorded manually (API: abo_paused). */
 	pausedAt?: string | null;
 	splits: Array<{ debtorMemberId: string; amountCents: number }>;
 }

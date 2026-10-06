@@ -1,15 +1,15 @@
 'use client';
 
 /**
- * Globaler Single-Source-of-Truth für das `beforeinstallprompt`-Event.
+ * Single global source of truth for the `beforeinstallprompt` event.
  *
- * Browser feuert das Event nur EINMAL pro Page-Load. Ohne globalen Cache
- * verlieren spät-mountende Komponenten den Event komplett, oder mehrere
- * Listener kämpfen um die Konsumierung.
+ * The browser fires the event only ONCE per page load. Without a global cache,
+ * late-mounting components miss it entirely, or several listeners compete to
+ * consume it.
  *
- * Dieses Modul registriert den Listener so früh wie möglich (Module-Top-Level
- * im Browser), cached den Event auf `window` UND in einem Pub/Sub-Set, sodass
- * jeder Konsument ihn erhält — egal wann er sich subscribed.
+ * This module registers the listener as early as possible (module top level in
+ * the browser) and caches the event on `window` AND in a pub/sub set, so every
+ * consumer receives it no matter when it subscribes.
  */
 
 export type BeforeInstallEvent = Event & {
@@ -48,7 +48,7 @@ function init() {
 		cached = window.__manawgDeferredInstallEvent as BeforeInstallEvent;
 	}
 
-	// Bridge vom inline-script-Custom-Event (für Subscriber-Notifications)
+	// Bridge from the inline script's custom event (for subscriber notifications)
 	window.addEventListener('manawg:install-ready', () => {
 		const ev = window.__manawgDeferredInstallEvent as BeforeInstallEvent | null;
 		if (ev) {
@@ -71,7 +71,7 @@ function init() {
 		notify();
 	});
 
-	// Falls bereits standalone (App schon installiert)
+	// Already standalone (app installed)
 	if (
 		window.matchMedia?.('(display-mode: standalone)').matches ||
 		window.navigator.standalone === true
@@ -110,10 +110,10 @@ export function subscribeInstall(fn: Subscriber): () => void {
 }
 
 /**
- * Triggert den nativen Install-Prompt. Returns:
- *  - 'accepted' / 'dismissed': User hat entschieden
- *  - 'unavailable': Browser hat kein Event geliefert (PWA-Kriterien nicht erfüllt
- *    oder Browser unterstützt kein Native-Prompt — z.B. iOS Safari)
+ * Triggers the native install prompt. Returns:
+ *  - 'accepted' / 'dismissed': the user decided
+ *  - 'unavailable': the browser delivered no event (PWA criteria not met, or the
+ *    browser has no native prompt, e.g. iOS Safari)
  */
 export async function triggerInstall(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
 	const ev = cached;
@@ -121,7 +121,7 @@ export async function triggerInstall(): Promise<'accepted' | 'dismissed' | 'unav
 	try {
 		await ev.prompt();
 		const choice = await ev.userChoice;
-		// Event nach Konsumierung wegwerfen — Browser feuert nicht erneut
+		// Drop the event once consumed: the browser does not fire it again
 		cached = null;
 		window.__manawgDeferredInstallEvent = null;
 		notify();

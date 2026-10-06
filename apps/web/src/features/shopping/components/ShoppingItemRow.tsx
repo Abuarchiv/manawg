@@ -31,7 +31,7 @@ import { Check, MoreHorizontal, Receipt, RotateCcw, Trash2 } from 'lucide-react'
 import Link from 'next/link';
 import { memo, useRef, useState } from 'react';
 
-// Ab dieser Wischstrecke nach rechts gilt der Artikel als abgehakt (bzw. wieder offen).
+// Swiping right this far marks the item as bought (or open again).
 const SWIPE_TOGGLE_PX = 72;
 
 interface ShoppingItemRowProps {
@@ -65,7 +65,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	const deleteConfirm = useConfirmDelete();
 	const isDeleteArmed = deleteConfirm.confirmId === item.id;
 	const { identity } = useWg();
-	// Die eigene Person heißt „dir“/„dich“, nicht beim eigenen Namen.
+	// The viewer is called „dir“/„dich“, never by their own name.
 	const buyerName = item.boughtByMemberId
 		? item.boughtByMemberId === identity.memberId
 			? 'dir'
@@ -91,9 +91,9 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 
 	return (
 		<li className={cn('relative', swipeX > 0 && 'overflow-hidden')}>
-			{/* overflow-hidden nur während aktiver Wischgeste: sonst schneidet es die
-			    unsichtbare Tap-Fläche der Checkbox (after:-inset-2.5) am linken Rand ab,
-			    weil das Item hier px-0 hat und die Checkbox flächenbündig sitzt. */}
+			{/* overflow-hidden only during an active swipe: otherwise it clips the
+			    checkbox's invisible tap area (after:-inset-2.5) at the left edge,
+			    because the item has px-0 here and the checkbox sits flush. */}
 			<div
 				aria-hidden
 				className={cn(
@@ -115,11 +115,11 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 				style={swipeX > 0 ? { transform: `translateX(${swipeX}px)` } : undefined}
 				aria-busy={pending}
 				onPointerDown={(event) => {
-					// Maus bleibt beim Klicken; Wischen ist eine Touch-Geste.
+					// Mouse input keeps plain clicks; swiping is a touch gesture.
 					if (event.pointerType !== 'mouse' && !pending && !queued) {
 						swipeStartX.current = event.clientX;
-						// Ohne Capture würden pointermove/-up bei schnellem Wischen auf ein
-						// Nachbarelement umgeleitet und die Zeile bliebe optisch hängen.
+						// Without capture, fast swipes would redirect pointermove/-up to a
+						// neighbouring element and the row would visually stick.
 						event.currentTarget.setPointerCapture(event.pointerId);
 					}
 				}}

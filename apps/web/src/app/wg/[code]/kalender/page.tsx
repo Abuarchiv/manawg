@@ -33,8 +33,8 @@ export default function KalenderPage() {
 	const calendar = useCalendarPage(month);
 	const highlightEventId = useSearchParams().get('highlight');
 	const { loading, loadError, actionError, editingOccurrence } = calendar;
-	// Liste als Default: eine WG hat selten mehr als eine Handvoll Termine im
-	// Monat — das Grid ist die Ausnahme-Ansicht, nicht der Einstieg.
+	// List by default: a WG rarely has more than a handful of events a
+	// month; the grid is the exception, not the entry view.
 	const [view, setView] = useState<ViewMode>('list');
 	const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
@@ -76,7 +76,7 @@ export default function KalenderPage() {
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-3">
 			<SubNav />
-			{/* Der Tab oben benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
+			{/* The top tab already names the page; title and count stay for screen readers. */}
 			<header className="sr-only">
 				<h1>Kalender</h1>
 				<p>
