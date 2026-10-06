@@ -152,7 +152,7 @@ key the write runs in a plain transaction. The protocol is specified in
   only the WG admin may import a shared history with rows they are not part of.
 - Manual settlement sets `expense_splits.settled_at`
   (`/api/wg/<code>/expenses/[id]/splits/[splitId]/settle`, `/expenses/settle-batch`).
-- PayPal (`/api/wg/<code>/paypal/{connect,order,capture}`, `features/expenses/paypal-*.ts`): the
+- PayPal (`/api/wg/<code>/paypal/{connect,order,capture}`, `features/expenses/paypal-settlement.ts`, `features/expenses/server/paypal-reconcile.ts`): the
   payee connects via PayPal partner referrals (`paypal_merchant_id`). An order is created for the
   simplified net debt; `expense_payments.status` goes `created -> capturing -> completed|failed`,
   with one active payment per member pair. Only a server-confirmed capture counts. Payment work
@@ -331,7 +331,7 @@ Route folders under `app/wg/[code]/`, with the code names behind them.
 | Mitglied, Auszug | members, `deactivatedAt` | `members` | `wg_members` |
 | Ausgaben (`ausgaben`) | `features/expenses` | `expenses` | `expenses`, `expense_splits`, `expense_payments` |
 | Abos (`abos`) | recurring expenses (`features/expenses/recurring-expenses.ts`) | `recurring-expenses` | `recurring_expenses` |
-| Import (`import`) | expense import (`features/expenses/import-*.ts`) | `imports` | `expense_imports` |
+| Import (`import`) | expense import (`features/expenses/import-*.ts`, `features/expenses/server/import-*.ts`) | `imports` | `expense_imports` |
 | Mahnungen / Erinnerungen (`mahnungen`) | payment reminders (`features/expenses/reminders.ts`) | `reminders` | `expense_reminders` |
 | Putzen / Putzplan (`putzen`) | `features/chores` | `chores` | `chores`, `chore_completions` |
 | Abwesenheiten (panel on `putzen`) | absences (`features/chores/absence.ts`) | `absences` | `member_absences` |
