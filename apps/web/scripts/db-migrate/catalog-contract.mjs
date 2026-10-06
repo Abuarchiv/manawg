@@ -15,7 +15,8 @@ export const MEMBER_WG_INVARIANT_FUNCTIONS = [
 	'manawg_assert_chat_mention_wg',
 ];
 // Keep the catalog contract explicit so a removed migration trigger fails closed.
-export const MEMBER_WG_INVARIANT_TRIGGERS = [
+/** @type {{ table_name: string, trigger_name: string, function_name: string, args: string[] }[]} */
+export const MEMBER_WG_INVARIANT_TRIGGERS = /** @type {[string, string, string, string[]?][]} */ ([
 	[
 		'expenses',
 		'expenses_member_wg_same_tenant',
@@ -127,7 +128,7 @@ export const MEMBER_WG_INVARIANT_TRIGGERS = [
 	],
 	['wg_chat_reactions', 'wg_chat_reactions_member_wg_same_tenant', 'manawg_assert_chat_member_wg'],
 	['wg_chat_mentions', 'wg_chat_mentions_member_wg_same_tenant', 'manawg_assert_chat_mention_wg'],
-].map(([table_name, trigger_name, function_name, args = []]) => ({
+]).map(([table_name, trigger_name, function_name, args = []]) => ({
 	table_name,
 	trigger_name,
 	function_name,

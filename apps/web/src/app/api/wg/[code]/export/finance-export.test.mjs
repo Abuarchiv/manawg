@@ -260,12 +260,7 @@ test('exported expenses and completed payments reconstruct the app balances by c
 	assert.equal(JSON.stringify(exported).includes('privateDbPassword123'), false);
 	assert.equal(JSON.stringify(exported).includes('providerOrderId'), false);
 	assert.equal(JSON.stringify(exported).includes('payeeMerchantId'), false);
-	assert.equal(
-		loadTs('src/composition/export.ts')
-			.buildExportSummary(exported)
-			.find(({ key }) => key === 'expensePayments')?.count,
-		2,
-	);
+	assert.equal(exported.sections.expensePayments.length, 2);
 
 	const exportedBalances = computeNetBalances(
 		exported.sections.expenses.map((expense) => ({

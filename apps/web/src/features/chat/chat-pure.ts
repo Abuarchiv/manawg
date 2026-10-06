@@ -4,8 +4,6 @@ const TEXT_MESSAGE_KIND = 'text';
 
 export const CHAT_REFRESH_BATCH_SIZE = 100;
 
-export type { ChatSystemKind } from '@/core/feed-kinds';
-
 interface ChatMessageLike {
 	id: string;
 	senderMemberId: string | null;
@@ -94,8 +92,6 @@ export function canDeleteMessage(message: ChatMessageLike, member: ChatMemberLik
 	if (message.senderMemberId === member.id) return true;
 	return member.role === 'admin';
 }
-
-export { SYSTEM_MESSAGE_KIND };
 
 export function isSingleEmoji(value: unknown): boolean {
 	if (typeof value !== 'string') return false;

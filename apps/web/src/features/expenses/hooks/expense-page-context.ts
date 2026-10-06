@@ -13,7 +13,7 @@ export interface ActionNotifier {
 	success: (message: string) => void;
 }
 
-export interface PendingIds {
+interface PendingIds {
 	isPending: (id: string) => boolean;
 	start: (id: string) => void;
 	end: (id: string) => void;

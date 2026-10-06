@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
  * creation) so the comparison is hardened the same way member tokens are
  * (see `@/core/guards/member-token`).
  */
-export function verifyCronSecret(authorizationHeader: string | null, secret: string): boolean {
+function verifyCronSecret(authorizationHeader: string | null, secret: string): boolean {
 	const expected = Buffer.from(`Bearer ${secret}`);
 	const provided = Buffer.from(authorizationHeader ?? '');
 	if (expected.length !== provided.length) return false;
