@@ -1237,9 +1237,7 @@ test.describe('expense integrity regressions', () => {
 				return query;
 			},
 			update: () => ({
-				set: () => ({
-					where: () => ({ returning: async () => [template] }),
-				}),
+				set: () => ({ where: () => ({ returning: async () => [template] }) }),
 			}),
 		};
 		const recurringHelpers = loadTs<Record<string, unknown>>(RECURRING_HELPERS, {
@@ -1830,6 +1828,7 @@ test.describe('expense create replay atomic', () => {
 				notFound: (code: string) => responseError(code, 404),
 				serverError: () => responseError('server_error', 500),
 				tooMany: () => responseError('too_many', 429),
+				rateLimitResponse: (limit: { success: boolean }) => (limit.success ? null : 429),
 			},
 			'@/core/guards/admin': { requireOwnerOrAdmin: async () => null },
 			'@/core/guards/replay-slot': {
@@ -1994,6 +1993,7 @@ test.describe('finance failure regressions', () => {
 	const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 
 	function loadTs<T>(file: string, overrides: Record<string, unknown>): T {
+		if (/^app\/api/.test(file)) withRouteHelpers(overrides, EXPENSE_WRITES);
 		const code = transpileModule(readFileSync(path.join(process.cwd(), 'src', file), 'utf8'), {
 			compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
 		}).outputText;
@@ -2252,15 +2252,11 @@ test.describe('finance failure regressions', () => {
 			'@/features/expenses/paid-by-guard': { checkPaidByGuard: () => ({ ok: true }) },
 			'@/features/expenses/recurring-expenses': {
 				parseRecurringSplits: JSON.parse,
-				recurringSplitsMatchAmount: () => true,
 				serializeRecurringExpense: serializeRecurringExpenseStub,
 			},
 		});
 		const response = await PATCH(
-			new Request('http://localhost', {
-				method: 'PATCH',
-				body: JSON.stringify(body),
-			}),
+			new Request('http://localhost', { method: 'PATCH', body: JSON.stringify(body) }),
 			{ code: 'code', id: TEMPLATE_ID },
 		);
 		return { response, writes };
@@ -2274,7 +2270,11 @@ test.describe('finance failure regressions', () => {
 	});
 
 	test('inactive participants still block resuming and changing finances', async () => {
-		for (const body of [{ paused: false }, { amountCents: 2000 }]) {
+		const financial = {
+			amountCents: 2000,
+			splits: [{ debtorMemberId: DEPARTED_ID, amountCents: 2000 }],
+		};
+		for (const body of [{ paused: false }, financial]) {
 			const { response, writes } = await patchWithDepartedMember(body, true);
 			expect(response.status).toBe(400);
 			expect(await response.json()).toEqual({ error: 'member_not_in_wg' });
