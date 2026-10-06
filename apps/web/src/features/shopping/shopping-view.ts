@@ -28,3 +28,7 @@ export function splitShoppingItems(items: ShoppingItem[]): {
 		),
 	};
 }
+
+/** Platzhalter-ID eines Artikels, der gerade erst an den Server geht. */
+export const TEMP_ITEM_ID_PREFIX = 'tmp-';
+export const isTempItemId = (id: string): boolean => id.startsWith(TEMP_ITEM_ID_PREFIX);

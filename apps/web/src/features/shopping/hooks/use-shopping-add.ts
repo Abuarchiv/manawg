@@ -25,6 +25,7 @@ import { NAME_MAX } from '@/features/shopping/components/constants';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import { parseShoppingInput } from '@/features/shopping/parse-shopping-input';
 import { shoppingAddErrorMessage } from '@/features/shopping/shopping-errors';
+import { TEMP_ITEM_ID_PREFIX } from '@/features/shopping/shopping-view';
 import { useEffect, useRef, useState } from 'react';
 
 type ShoppingCreateResponse = { item: ShoppingItem; warning: NotificationWarning };
@@ -34,6 +35,8 @@ interface UseShoppingAddOptions {
 	identity: { memberId: string; memberToken?: string };
 	prefillName: string | null;
 	commitItems: (update: ShoppingItem[] | ((current: ShoppingItem[]) => ShoppingItem[])) => void;
+	/** Noch unbestätigte Zeilen; Polls dürfen sie nicht überschreiben. */
+	optimisticRef: { current: Map<string, ShoppingItem> };
 	load: (silent?: boolean, afterMutation?: boolean) => Promise<void>;
 	refreshCount: () => void;
 	setAddNotice: (notice: string | null) => void;
@@ -45,6 +48,7 @@ export function useShoppingAdd({
 	identity,
 	prefillName,
 	commitItems,
+	optimisticRef,
 	load,
 	refreshCount,
 	setAddNotice,
@@ -161,6 +165,31 @@ export function useShoppingAdd({
 			nameValueRef.current = '';
 			setNewName('');
 		}
+		// Artikel erscheint sofort; bei Erfolg wird die Zeile an Ort und Stelle durch die echte ersetzt,
+		// bei Fehlschlag verschwindet sie wieder (Fehlermeldung im Fußbereich).
+		const tempId = `${TEMP_ITEM_ID_PREFIX}${idempotencyKey}`;
+		const tempItem: ShoppingItem = {
+			id: tempId,
+			addedByMemberId: identity.memberId,
+			name,
+			quantity,
+			boughtAt: null,
+			boughtByMemberId: null,
+			createdAt: new Date().toISOString(),
+		};
+		optimisticRef.current.set(tempId, tempItem);
+		commitItems((prev) => [tempItem, ...prev]);
+		const settleTemp = (replacement: ShoppingItem | null): void => {
+			optimisticRef.current.delete(tempId);
+			commitItems((prev) => {
+				if (replacement && prev.some((i) => i.id === replacement.id)) {
+					return prev.filter((i) => i.id !== tempId);
+				}
+				return replacement
+					? prev.map((i) => (i.id === tempId ? replacement : i))
+					: prev.filter((i) => i.id !== tempId);
+			});
+		};
 		try {
 			const res = await apiFetch<ShoppingCreateResponse>(`/api/wg/${encodedShareCode}/shopping`, {
 				method: 'POST',
@@ -187,6 +216,7 @@ export function useShoppingAdd({
 						quantity,
 					});
 					if ((await enqueueOfflineAction(queued)) === 0) {
+						settleTemp(null);
 						setAddError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
@@ -196,23 +226,13 @@ export function useShoppingAdd({
 						setAddError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
-					commitItems((prev) => [
-						{
-							id: queued.id,
-							addedByMemberId: identity.memberId,
-							name,
-							quantity,
-							boughtAt: null,
-							boughtByMemberId: null,
-							createdAt: queued.createdAt,
-						},
-						...prev,
-					]);
+					settleTemp({ ...tempItem, id: queued.id, createdAt: queued.createdAt });
 					saved = true;
 					if (fromInput && nameValueRef.current === '') removeDraft(draftKey);
 					setAddNotice('Offline gespeichert. Wird synchronisiert, sobald ihr wieder online seid.');
 					return;
 				}
+				settleTemp(null);
 				if (res.status === 409 && res.error === 'shopping_item_duplicate') {
 					await load(true);
 				}
@@ -226,6 +246,7 @@ export function useShoppingAdd({
 				return;
 			}
 			addIdempotencyKeyRef.current = null;
+			settleTemp(res.data.item ?? null);
 			if (fromInput && !(await clearEditedQueueItem())) {
 				setAddError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
@@ -234,14 +255,10 @@ export function useShoppingAdd({
 			if (fromInput && nameValueRef.current === '') removeDraft(draftKey);
 			const warningMessage = notificationWarningMessage(res.data.warning);
 			if (warningMessage) toast.info(warningMessage);
-			// Show the created row right away (the POST already returned it) instead of
-			// waiting for the follow-up list fetch, which then reconciles.
-			const created = res.data.item;
-			if (created) {
-				commitItems((prev) => (prev.some((i) => i.id === created.id) ? prev : [created, ...prev]));
-			}
 			void load(true, true);
 		} finally {
+			// Auch bei einer Ausnahme darf keine Temp-Zeile hängen bleiben.
+			if (optimisticRef.current.has(tempId)) settleTemp(null);
 			if (fromInput && !saved && nameValueRef.current === '') {
 				nameValueRef.current = submittedName;
 				setNewName(submittedName);

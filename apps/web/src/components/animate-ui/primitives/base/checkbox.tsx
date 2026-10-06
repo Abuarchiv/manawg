@@ -1,11 +1,14 @@
 'use client';
 
 import { Checkbox as CheckboxPrimitive } from '@base-ui/react/checkbox';
-import { type HTMLMotionProps, type SVGMotionProps, motion } from 'motion/react';
+import type { HTMLMotionProps, SVGMotionProps } from 'motion/react';
+import * as m from 'motion/react-m';
 import type * as React from 'react';
 
 import { useControlledState } from '@/core/hooks/use-controlled-state';
 import { getStrictContext } from '@/shared/lib/get-strict-context';
+
+import { MotionFeatures } from './motion-features';
 
 type CheckboxContextType = {
 	isChecked: boolean;
@@ -46,7 +49,7 @@ function Checkbox({
 		onCheckedChange: setIsChecked,
 		...(indeterminate === undefined ? {} : { indeterminate }),
 		...(value === undefined ? {} : { value }),
-		// Der Render-Target ist immer ein echter <button> (motion.button), wie beim Switch:
+		// Der Render-Target ist immer ein echter <button> (m.button), wie beim Switch:
 		// ohne nativeButton fehlt type="button" (Submit in Formularen) und Base UI warnt.
 		nativeButton: nativeButton ?? true,
 		...(parent === undefined ? {} : { parent }),
@@ -58,14 +61,16 @@ function Checkbox({
 	};
 
 	return (
-		<CheckboxProvider
-			value={{ isChecked: isChecked ?? false, setIsChecked, isIndeterminate: indeterminate }}
-		>
-			<CheckboxPrimitive.Root
-				{...rootProps}
-				render={<motion.button data-slot="checkbox" {...props} />}
-			/>
-		</CheckboxProvider>
+		<MotionFeatures>
+			<CheckboxProvider
+				value={{ isChecked: isChecked ?? false, setIsChecked, isIndeterminate: indeterminate }}
+			>
+				<CheckboxPrimitive.Root
+					{...rootProps}
+					render={<m.button data-slot="checkbox" {...props} />}
+				/>
+			</CheckboxProvider>
+		</MotionFeatures>
 	);
 }
 
@@ -78,7 +83,7 @@ function CheckboxIndicator(props: CheckboxIndicatorProps) {
 		<CheckboxPrimitive.Indicator
 			keepMounted
 			render={
-				<motion.svg
+				<m.svg
 					data-slot="checkbox-indicator"
 					xmlns="http://www.w3.org/2000/svg"
 					fill="none"
@@ -97,7 +102,7 @@ function CheckboxIndicator(props: CheckboxIndicatorProps) {
 								: 'Nicht ausgewählt'}
 					</title>
 					{isIndeterminate ? (
-						<motion.line
+						<m.line
 							x1="5"
 							y1="12"
 							x2="19"
@@ -111,7 +116,7 @@ function CheckboxIndicator(props: CheckboxIndicatorProps) {
 							}}
 						/>
 					) : (
-						<motion.path
+						<m.path
 							strokeLinecap="round"
 							strokeLinejoin="round"
 							d="M4.5 12.75l6 6 9-13.5"
@@ -134,7 +139,7 @@ function CheckboxIndicator(props: CheckboxIndicatorProps) {
 							}}
 						/>
 					)}
-				</motion.svg>
+				</m.svg>
 			}
 		/>
 	);

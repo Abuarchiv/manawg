@@ -388,6 +388,30 @@ test.describe('offline page', () => {
 			await expect(page.getByText('Milch')).toBeVisible();
 		});
 
+		test('offers the remembered WG offline when an identity exists but nothing is queued', async ({
+			page,
+			context,
+		}) => {
+			await page.route('**/api/wg/mine', (route) => fulfillMembership(route));
+			await setupMember(page);
+			await page.addInitScript((storedWg) => {
+				localStorage.setItem('manawg_known_wgs', JSON.stringify([storedWg]));
+			}, knownWg);
+			await navigateToFeature(page, '/offline');
+			await expect(page.getByRole('heading', { name: 'Du bist wieder verbunden.' })).toBeVisible();
+			await page.unroute('**/api/wg/mine');
+			await context.setOffline(true);
+			await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+
+			await expect(page.getByRole('heading', { name: 'Du bist gerade offline.' })).toBeVisible();
+			await expect(page.getByText('Noch keine WG auf diesem Gerät gemerkt')).toHaveCount(0);
+			await expect(page.locator('a', { hasText: 'Zurück zu Fixture WG' })).toHaveAttribute(
+				'href',
+				`/wg/${FIXTURE_WG.shareCode}`,
+			);
+			await expect(page.getByRole('link', { name: 'Fixture WG öffnen' })).toBeVisible();
+		});
+
 		test('keeps queued actions visible when the server is unreachable', async ({ page }) => {
 			await page.route('**/api/wg/mine', (route) => route.abort());
 			await seedOfflineState(page);
