@@ -107,3 +107,26 @@ test('JSON paths accept only plain identifiers', async () => {
 		/replay_warning_path_invalid/,
 	);
 });
+
+test('warning update targets the committed import row with a scoped JSONB update', async () => {
+	captured.length = 0;
+	matchedRows = 1;
+	const warning = 'notification_delivery_failed';
+	const persisted = await setReplayWarning(
+		'import-commit:wg:member',
+		'key',
+		{
+			match: [{ path: ['importId'], equals: 'import-1' }],
+			warningPath: ['warning'],
+			replaces: [null, warning],
+		},
+		warning,
+	);
+	assert.equal(persisted, true);
+	const [query] = captured;
+	assert.ok(query);
+	assert.ok(query.set.sql.includes('jsonb_set'));
+	assert.ok(query.where.sql.includes('expires_at'));
+	assert.ok(query.where.sql.includes('importId'));
+	assert.ok(query.where.params.includes('import-1'));
+});

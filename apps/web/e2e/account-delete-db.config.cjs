@@ -32,7 +32,7 @@ if (!originalResolveFilename.__accountDeleteDbHarness) {
 
 module.exports = defineConfig({
 	testDir: __dirname,
-	testMatch: ['account-delete-db.spec.ts'],
+	testMatch: ['account-delete-db*.spec.ts'],
 	outputDir: fs.mkdtempSync(path.join(os.tmpdir(), 'manawg-account-delete-db-')),
 	reporter: [['list']],
 	projects: [{ name: 'account-delete-db', use: {} }],

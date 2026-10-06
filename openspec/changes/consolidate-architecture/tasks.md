@@ -31,7 +31,7 @@
 
 - [ ] 6.1 Shared unit-test loader; migrate all `vm`/`transpileModule` tests.
 - [ ] 6.2 Replace source-text extraction tests with tests of extracted pure modules.
-- [ ] 6.3 Move pure tests out of `e2e/`; replace SQL-text assertions with behaviour assertions.
+- [x] 6.3 Move pure tests out of `e2e/`; replace SQL-text assertions with behaviour assertions.
 
 ## 7. Structure and comments
 

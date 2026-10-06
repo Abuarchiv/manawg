@@ -9,7 +9,6 @@ import { auditDetail, formatAuditActivityText, getAuditHref } from './activity-a
 export {
 	type ActivityFilter,
 	buildActivityInbox,
-	filterActivityByScope,
 	filterActivityItems,
 	groupActivityItemsByDay,
 } from './activity-views';

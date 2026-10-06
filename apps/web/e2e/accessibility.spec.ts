@@ -673,7 +673,7 @@ test.describe('enter key hint forms', () => {
 
 		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 		await dismissOnboarding(page);
-		// Der Button unten öffnet das Formular.
+		// The button at the bottom opens the form.
 		await page
 			.locator('[data-page-primary-action]')
 			.getByRole('button', { name: 'Ausgabe hinzufügen' })

@@ -21,7 +21,8 @@ apps/web/
   src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide)
   src/shared/     framework-light utilities (lib/, fonts, css): theme, brand, analytics, identity
   drizzle/        SQL migrations (`pnpm --filter @manawg/web db:generate` / `db:migrate`)
-  e2e/            Playwright specs (fixture mode needs no database)
+  e2e/            Playwright specs that drive a page or the HTTP API (fixture mode needs no database);
+                  shared fixtures in e2e/support/. Module logic is tested with node:test, not here
   tests/          node:test suites that are not colocated with a module
   scripts/        CI gates and the migrator
 docs/             brand contract, runbooks, release evidence, research/

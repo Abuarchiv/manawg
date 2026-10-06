@@ -3,27 +3,9 @@
 
 import { writeFile } from 'node:fs/promises';
 import { type Page, type Route, expect, test } from '@playwright/test';
-import { isIosLikeDevice } from '../src/shared/lib/pwa-install';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
 
 test.describe('pwa platform', () => {
-	test('iPadOS desktop Safari is treated as an iOS-like device', () => {
-		expect(
-			isIosLikeDevice({
-				userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1.15',
-				platform: 'MacIntel',
-				maxTouchPoints: 5,
-			}),
-		).toBe(true);
-		expect(
-			isIosLikeDevice({
-				userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1.15',
-				platform: 'MacIntel',
-				maxTouchPoints: 0,
-			}),
-		).toBe(false);
-	});
-
 	async function fireInstallEvent(page: import('@playwright/test').Page) {
 		await page.evaluate(() => {
 			const event = Object.assign(new Event('beforeinstallprompt'), {
