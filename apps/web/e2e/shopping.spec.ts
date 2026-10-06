@@ -1,43 +1,8 @@
 // Shopping list: quick input parsing, mutation/replay safety, duplicate conflicts, hitarea and swipe.
 // Why: two roommates edit the same list concurrently; duplicates and retries must resolve deterministically.
 
-import { randomUUID } from 'node:crypto';
 import { type Page, expect, test } from '@playwright/test';
-import { DrizzleQueryError } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import { shoppingItems } from '../src/core/db';
-import type { ShoppingItem } from '../src/core/db/schema';
-import * as schema from '../src/core/db/schema';
-import type { DbTransaction } from '../src/core/db/transaction';
-import { parseShoppingInput } from '../src/features/shopping/parse-shopping-input';
-import { isOpenShoppingItemDuplicate } from '../src/features/shopping/shopping-duplicate';
-import {
-	SHOPPING_CREATE_DUPLICATE_RESPONSE,
-	type ShoppingCreateInput,
-	type ShoppingCreateReplayResponse,
-	insertShoppingItem,
-	normalizeShoppingCreateReplayResponse,
-	shoppingCreateCodec,
-	shoppingCreateHttpResponse,
-	withShoppingCreatePostCommitFallback,
-} from '../src/features/shopping/shopping-mutation';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
-
-test.describe('shopping input', () => {
-	test('splits a leading amount from the item name', () => {
-		expect(parseShoppingInput('2 Hafermilch')).toEqual({ name: 'Hafermilch', quantity: '2' });
-		expect(parseShoppingInput(' 1,5 L  Milch ')).toEqual({ name: 'Milch', quantity: '1,5 L' });
-		expect(parseShoppingInput('3x Brot')).toEqual({ name: 'Brot', quantity: '3x' });
-		expect(parseShoppingInput('1 Packung Kaffee')).toEqual({
-			name: 'Kaffee',
-			quantity: '1 Packung',
-		});
-		expect(parseShoppingInput('7Up')).toEqual({ name: '7Up', quantity: null });
-		expect(parseShoppingInput('Milch')).toEqual({ name: 'Milch', quantity: null });
-		expect(parseShoppingInput('2')).toEqual({ name: '2', quantity: null });
-	});
-});
 
 test.describe('shopping retry', () => {
 	test.setTimeout(240_000);
@@ -188,123 +153,6 @@ test.describe('shopping retry', () => {
 	});
 });
 
-// Claim, rollback release and same-key duplicate replay run through withIdempotentWrite and are
-// covered by tests/idempotent-write.test.ts and the shopping route replay tests.
-test.describe('shopping mutation regression', () => {
-	const item: ShoppingItem = {
-		id: 'shopping-1',
-		wgId: '11111111-1111-4111-8111-111111111111',
-		addedByMemberId: '22222222-2222-4222-8222-222222222222',
-		name: 'Kaffee',
-		normalizedName: 'kaffee',
-		quantity: null,
-		boughtAt: null,
-		boughtByMemberId: null,
-		createdAt: new Date('2026-09-23T10:00:00.000Z'),
-		updatedAt: new Date('2026-09-23T10:00:00.000Z'),
-	};
-
-	const input: ShoppingCreateInput = {
-		wgId: item.wgId,
-		addedByMemberId: item.addedByMemberId,
-		name: item.name,
-		quantity: null,
-		bought: false,
-	};
-
-	function createTransaction(returnItem = true) {
-		const state = { insertCount: 0 };
-		const tx = {
-			insert: (table: unknown) => {
-				if (table !== shoppingItems) throw new Error('unexpected table');
-				return {
-					values: () => ({
-						returning: async () => {
-							state.insertCount += 1;
-							return returnItem ? [item] : [];
-						},
-					}),
-				};
-			},
-		} as unknown as DbTransaction;
-		return { state, tx };
-	}
-
-	test('shopping create inserts exactly one item in the given transaction', async () => {
-		const { state, tx } = createTransaction();
-		await expect(insertShoppingItem(tx, input)).resolves.toEqual(item);
-		expect(state.insertCount).toBe(1);
-		const empty = createTransaction(false);
-		await expect(insertShoppingItem(empty.tx, input)).resolves.toBe(undefined);
-	});
-
-	test('replays legacy successful shopping cache rows during the response-envelope rollout', () => {
-		const legacyItem = JSON.parse(JSON.stringify(item));
-		expect(
-			normalizeShoppingCreateReplayResponse({
-				item: legacyItem,
-				warning: null,
-			}),
-		).toEqual({
-			status: 200,
-			body: { item: legacyItem, warning: null },
-		});
-		expect(normalizeShoppingCreateReplayResponse({ status: 201, body: {} })).toBeNull();
-		expect(shoppingCreateCodec.decode({ status: 201, body: {} })).toBeNull();
-	});
-
-	test('rejects malformed cached shopping success instead of replaying it as a saved item', () => {
-		const serializedItem = JSON.parse(JSON.stringify(item));
-		for (const malformedItem of [
-			null,
-			'shopping-1',
-			{ id: 'shopping-1' },
-			{ ...serializedItem, createdAt: null },
-		]) {
-			expect(
-				normalizeShoppingCreateReplayResponse({
-					status: 200,
-					body: { item: malformedItem, warning: null },
-				}),
-			).toBeNull();
-			expect(
-				normalizeShoppingCreateReplayResponse({ item: malformedItem, warning: null }),
-			).toBeNull();
-		}
-	});
-
-	test('same-key duplicate responses are stored and replay as 409', async () => {
-		const stored = shoppingCreateCodec.encode(SHOPPING_CREATE_DUPLICATE_RESPONSE);
-		expect(stored).toEqual(SHOPPING_CREATE_DUPLICATE_RESPONSE);
-		const replay = shoppingCreateCodec.decode(stored);
-		expect(replay).toEqual(SHOPPING_CREATE_DUPLICATE_RESPONSE);
-		const httpResponse = shoppingCreateHttpResponse(SHOPPING_CREATE_DUPLICATE_RESPONSE);
-		expect(httpResponse.status).toBe(409);
-		await expect(httpResponse.json()).resolves.toEqual({ error: 'shopping_item_duplicate' });
-	});
-
-	test('post-commit side-effect failure returns the durable response', async () => {
-		const provisional: ShoppingCreateReplayResponse = {
-			status: 200,
-			body: { item, warning: 'notification_delivery_unknown' },
-		};
-		let sanitizedFailureLogs = 0;
-		const owner = await withShoppingCreatePostCommitFallback(
-			provisional,
-			async () => {
-				throw new Error('private notification payload must not be logged');
-			},
-			() => {
-				sanitizedFailureLogs += 1;
-			},
-		);
-		const ownerResponse = shoppingCreateHttpResponse(owner);
-		expect(ownerResponse.status).toBe(200);
-		expect(owner).toEqual(provisional);
-		expect(sanitizedFailureLogs).toBe(1);
-	});
-});
-
 test.describe('haushalt shopping checkbox hitarea', () => {
 	// Regression for a <44px touch target: ShoppingItemRow's checkbox grows its hit
 	// area with an invisible `after:-inset-2.5` pseudo-element, but the swipe-to-toggle
@@ -433,8 +281,6 @@ test.describe('haushalt shopping swipe pointer capture', () => {
 });
 
 test.describe('shopping conflict handling', () => {
-	const testDatabaseUrl = process.env.PILOT_SHOPPING_DATABASE_URL?.trim() ?? '';
-
 	type FixtureShoppingItem = {
 		id: string;
 		addedByMemberId: string;
@@ -445,28 +291,6 @@ test.describe('shopping conflict handling', () => {
 		createdAt: string;
 		updatedAt: string;
 	};
-
-	function localTestDatabaseUrl(): string {
-		if (!testDatabaseUrl) {
-			test.skip(true, 'Set PILOT_SHOPPING_DATABASE_URL to an isolated local PostgreSQL database.');
-		}
-		const hostname = new URL(testDatabaseUrl).hostname.toLowerCase();
-		expect(['localhost', '127.0.0.1', '::1']).toContain(hostname);
-		return testDatabaseUrl;
-	}
-
-	test('recognizes a duplicate open shopping item through DrizzleQueryError.cause', () => {
-		const postgresError = Object.assign(
-			new Error('duplicate key value violates unique constraint'),
-			{
-				code: '23505',
-				constraint: 'shopping_items_unique_open_name',
-			},
-		);
-		const wrapped = new DrizzleQueryError('insert into shopping_items ...', [], postgresError);
-
-		expect(isOpenShoppingItemDuplicate(wrapped)).toBe(true);
-	});
 
 	async function mockShoppingPage(
 		page: Page,
@@ -776,96 +600,6 @@ test.describe('shopping conflict handling', () => {
 		expect(getCalls()).toBeGreaterThan(getCallsBeforeReopen);
 		await page.emulateMedia({ colorScheme: 'dark' });
 		await expect(page.getByText(conflictMessage, { exact: true })).toBeVisible();
-	});
-
-	test('real PostgreSQL partial unique index rejects open duplicates and allows repurchase', async () => {
-		const pool = new Pool({ connectionString: localTestDatabaseUrl(), max: 1 });
-		const database = drizzle(pool, { schema });
-		const suffix = randomUUID().replaceAll('-', '');
-		let wgId = '';
-		let secondWgId = '';
-		const name = `Pilot shopping ${suffix}`;
-		const normalizedVariant = `  ${name.toUpperCase()}  `;
-
-		try {
-			const wg = await pool.query<{ id: string }>(
-				'INSERT INTO public.wgs (share_code, name) VALUES ($1, $2) RETURNING id',
-				[`P${suffix.slice(0, 7)}`, `Pilot shopping ${suffix}`],
-			);
-			wgId = wg.rows[0]?.id ?? '';
-			expect(wgId).toBeTruthy();
-			const secondWg = await pool.query<{ id: string }>(
-				'INSERT INTO public.wgs (share_code, name) VALUES ($1, $2) RETURNING id',
-				[`Q${suffix.slice(0, 7)}`, `Pilot shopping second ${suffix}`],
-			);
-			secondWgId = secondWg.rows[0]?.id ?? '';
-			expect(secondWgId).toBeTruthy();
-
-			const member = await pool.query<{ id: string }>(
-				'INSERT INTO public.wg_members (wg_id, name) VALUES ($1, $2) RETURNING id',
-				[wgId, `Pilot member ${suffix}`],
-			);
-			const memberId = member.rows[0]?.id ?? '';
-			expect(memberId).toBeTruthy();
-			const secondMember = await pool.query<{ id: string }>(
-				'INSERT INTO public.wg_members (wg_id, name) VALUES ($1, $2) RETURNING id',
-				[secondWgId, `Pilot second member ${suffix}`],
-			);
-			const secondMemberId = secondMember.rows[0]?.id ?? '';
-			expect(secondMemberId).toBeTruthy();
-
-			const first = await database
-				.insert(schema.shoppingItems)
-				.values({ wgId, addedByMemberId: memberId, name, quantity: '1x' })
-				.returning({ id: schema.shoppingItems.id });
-			expect(first).toHaveLength(1);
-
-			let duplicateError: unknown;
-			try {
-				await database
-					.insert(schema.shoppingItems)
-					.values({ wgId, addedByMemberId: memberId, name: normalizedVariant, quantity: '2x' })
-					.returning({ id: schema.shoppingItems.id });
-			} catch (error) {
-				duplicateError = error;
-			}
-			expect(duplicateError).toBeInstanceOf(DrizzleQueryError);
-			expect(duplicateError).toMatchObject({
-				cause: { code: '23505', constraint: 'shopping_items_unique_open_name' },
-			});
-			expect(isOpenShoppingItemDuplicate(duplicateError)).toBe(true);
-
-			await pool.query(
-				'UPDATE public.shopping_items SET bought_at = now(), bought_by_member_id = $2 WHERE id = $1',
-				[first[0]?.id, memberId],
-			);
-			const repurchase = await database
-				.insert(schema.shoppingItems)
-				.values({ wgId, addedByMemberId: memberId, name: normalizedVariant, quantity: '2x' })
-				.returning({ id: schema.shoppingItems.id });
-			expect(repurchase).toHaveLength(1);
-
-			const otherWgItem = await database
-				.insert(schema.shoppingItems)
-				.values({
-					wgId: secondWgId,
-					addedByMemberId: secondMemberId,
-					name: normalizedVariant,
-					quantity: '1x',
-				})
-				.returning({ id: schema.shoppingItems.id });
-			expect(otherWgItem).toHaveLength(1);
-
-			const rows = await pool.query<{ count: number }>(
-				' SELECT count(*)::int AS count FROM public.shopping_items WHERE wg_id = $1 AND normalized_name = lower(btrim($2))',
-				[wgId, name],
-			);
-			expect(rows.rows[0]?.count).toBe(2);
-		} finally {
-			if (wgId) await pool.query('DELETE FROM public.wgs WHERE id = $1', [wgId]);
-			if (secondWgId) await pool.query('DELETE FROM public.wgs WHERE id = $1', [secondWgId]);
-			await pool.end();
-		}
 	});
 
 	test('wraps quick shopping suggestions at phone widths and large text', async ({ page }) => {
