@@ -4,7 +4,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { inputDateToIso } from '../src/core/utils/local-date';
-import { computeTomorrowUtcWindow } from '../src/features/events/event-reminder-window';
 import {
 	type EventInput,
 	eventDateForDisplay,
@@ -17,6 +16,7 @@ import {
 	validateEventForm,
 } from '../src/features/events/events';
 import { occurrenceToIcs } from '../src/features/events/ics';
+import { computeTomorrowUtcWindow } from '../src/features/events/server/event-reminder-window';
 import { assertMatchObject } from './support/match-object';
 
 describe('calendar fixes', () => {

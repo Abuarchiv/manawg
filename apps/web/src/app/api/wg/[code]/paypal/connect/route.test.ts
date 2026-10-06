@@ -133,7 +133,7 @@ mock.module('@/core/db/account-deletion', {
 		lockActiveAccountMember: async () => (active.options.inactive ? null : { id: memberId }),
 	},
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		hasActiveExpensePayment: async () => active.options.activePayment,
 		withExpensePaymentLock: async (_wgId: string, operation: (handle: typeof tx) => unknown) =>

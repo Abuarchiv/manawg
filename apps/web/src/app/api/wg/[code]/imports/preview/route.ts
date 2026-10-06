@@ -9,7 +9,6 @@ import {
 	MAX_OCR_BYTES,
 	readImportJsonBody,
 } from '@/features/expenses/import-body';
-import { hashPayload } from '@/features/expenses/import-hash';
 import {
 	type ParsedExpense,
 	UnsupportedCurrencyError,
@@ -20,6 +19,7 @@ import {
 	parseSplitwiseCsv,
 } from '@/features/expenses/import-parsers';
 import { parseOcrText } from '@/features/expenses/ocr';
+import { hashPayload } from '@/features/expenses/server/import-hash';
 import { and, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

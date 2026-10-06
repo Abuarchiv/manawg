@@ -58,7 +58,7 @@ await mockModuleWithReal('@/core/idempotency-store', {
 	readIdempotencyKey: () => null,
 });
 await mockModuleWithReal('@/core/validators/currency', { currencySchema: z.string() });
-await mockModuleWithReal('@/features/expenses/expense-payments', {
+await mockModuleWithReal('@/features/expenses/server/expense-payments', {
 	withExpensePaymentLock: async (_wgId: string, operation: (tx: unknown) => Promise<unknown>) =>
 		operation(tx),
 });

@@ -6,7 +6,7 @@ import { requireWgAdmin } from '@/core/guards/require-wg-admin';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, conflict, forbidden, notFound, payloadTooLarge } from '@/core/http/api-errors';
 import { readJsonBody } from '@/core/http/read-json';
-import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
+import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 

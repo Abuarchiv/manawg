@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { shoppingItems } from '@/core/db';
 import type { ReplayCodec } from '@/core/db/idempotent-write';
 import type { ShoppingItem } from '@/core/db/schema';

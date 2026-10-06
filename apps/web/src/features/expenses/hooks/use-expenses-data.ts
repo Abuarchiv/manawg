@@ -11,7 +11,7 @@ import type {
 	Expense,
 	RecurringExpense,
 } from '@/features/expenses/components/ausgaben/expense-types';
-import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
+import type { ExpensePaymentInput } from '@/features/expenses/debt-reduction';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface UseExpensesDataOptions {

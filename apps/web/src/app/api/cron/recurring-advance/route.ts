@@ -6,15 +6,15 @@ import { logApiError } from '@/core/infra/observability';
 import { withCronLogging } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import {
-	hasCapturingExpensePayment,
-	withExpensePaymentLock,
-} from '@/features/expenses/expense-payments';
-import {
 	type RecurringSplit,
 	addMonthsFromAnchor,
 	parseRecurringSplits,
 	recurringSplitsMatchAmount,
 } from '@/features/expenses/recurring-expenses';
+import {
+	hasCapturingExpensePayment,
+	withExpensePaymentLock,
+} from '@/features/expenses/server/expense-payments';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
 import { and, asc, eq, inArray, isNull, lte } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';

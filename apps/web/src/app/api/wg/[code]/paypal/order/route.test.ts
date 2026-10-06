@@ -159,7 +159,7 @@ mock.module('@/core/infra/paypal', {
 mock.module('@/core/infra/paypal-onboarding', {
 	namedExports: { isPayPalMerchantReady: () => state.isPayPalMerchantReady() },
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		PAYPAL_ORDER_TTL_MS: 60_000,
 		loadCompletedExpensePayments: async () => [],
@@ -167,7 +167,7 @@ mock.module('@/features/expenses/expense-payments', {
 			operation(tx),
 	},
 });
-mock.module('@/features/expenses/open-expenses', {
+mock.module('@/features/expenses/server/open-expenses', {
 	namedExports: { loadOpenExpenses: async () => openExpenses },
 });
 

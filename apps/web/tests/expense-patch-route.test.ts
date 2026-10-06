@@ -160,7 +160,7 @@ await mockModuleWithReal('@/core/validators/image-url', {
 	imageUrlSchema: z.string().nullable().optional(),
 	isAllowedImageUrlForWg: () => true,
 });
-await mockModuleWithReal('@/features/expenses/expense-payments', {
+await mockModuleWithReal('@/features/expenses/server/expense-payments', {
 	hasCapturingExpensePayment: async () => capturing,
 	withExpensePaymentLock: async (
 		_wgId: string,

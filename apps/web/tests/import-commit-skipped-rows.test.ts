@@ -40,7 +40,7 @@ await mockModuleWithReal('@/core/notifications/notification-dispatch', {
 	dispatchNotificationSafely: async () => ({ warning: null }),
 });
 await mockModuleWithReal('@/core/utils/money', { formatEuroCents: () => '0,00 €' });
-await mockModuleWithReal('@/features/expenses/expense-payments', {
+await mockModuleWithReal('@/features/expenses/server/expense-payments', {
 	hasCapturingExpensePayment: async () => false,
 	withExpensePaymentLock: async (
 		_wgId: string,
@@ -49,7 +49,7 @@ await mockModuleWithReal('@/features/expenses/expense-payments', {
 });
 await mockModuleWithReal('@/features/expenses/split-math', { settledAtForOwnShare: () => null });
 
-const { commitImport } = await import('../src/features/expenses/import-commit');
+const { commitImport } = await import('../src/features/expenses/server/import-commit');
 
 test('import helper does not validate member mappings for skipped rows', async () => {
 	const foreignMemberId = '24ba761e-a429-45c3-a311-18e9a44b9be8';

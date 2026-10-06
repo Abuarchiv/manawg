@@ -426,7 +426,7 @@ mock.module('@/core/db/private-image-deletions', {
 		},
 	},
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		hasCapturingExpensePayment: async () => state.capturing,
 		loadCompletedExpensePayments: async () => [],

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { mock, test } from 'node:test';
 
 // The guards are tested against their real modules; only the Supabase user,
@@ -22,6 +23,8 @@ const state = {
 	shareCodeMisses: 0,
 	missBudgetSpent: false,
 	writeLimited: false,
+	events: [] as string[],
+	memberLookups: [] as unknown[],
 };
 
 function reset(): void {
@@ -34,16 +37,23 @@ function reset(): void {
 	state.shareCodeMisses = 0;
 	state.missBudgetSpent = false;
 	state.writeLimited = false;
+	state.events = [];
+	state.memberLookups = [];
 }
 
 const wgsTable = { name: 'wgs' };
-const membersTable = { name: 'wg_members' };
+const membersTable = {
+	name: 'wg_members',
+	wgId: 'wg_members.wg_id',
+	authUserId: 'wg_members.auth_user_id',
+};
 const missLimiter = { name: 'miss' };
 const writeLimiter = { name: 'write' };
 
 mock.module('@/core/auth/server', {
 	namedExports: {
 		getAuthenticatedUser: async () => {
+			state.events.push('user');
 			if (state.authError) throw state.authError;
 			return state.user;
 		},
@@ -56,7 +66,9 @@ mock.module('@/core/db', {
 		db: {
 			query: {
 				wgMembers: {
-					findFirst: async () => {
+					findFirst: async (query: unknown) => {
+						state.events.push('member');
+						state.memberLookups.push(query);
 						if (state.memberError) throw state.memberError;
 						return state.member ?? undefined;
 					},
@@ -101,12 +113,14 @@ mock.module('@/core/rate-limit', {
 });
 
 const { requireMember } = await import('../src/core/guards/api-auth.ts');
-const { requireWgMember } = await import('../src/core/guards/require-wg-member.ts');
+const { requireWgMember, requireWgMembership } = await import(
+	'../src/core/guards/require-wg-member.ts'
+);
 const { requireWgAdmin } = await import('../src/core/guards/require-wg-admin.ts');
 const { requireOwnerOrAdmin } = await import('../src/core/guards/admin.ts');
 
-function request(expectedMemberId?: string) {
-	const headers = new Headers();
+function request(expectedMemberId?: string, extraHeaders: Record<string, string> = {}) {
+	const headers = new Headers(extraHeaders);
 	if (expectedMemberId) headers.set('x-manawg-expected-member-id', expectedMemberId);
 	return new Request('https://app.test/api/wg/MTE8PZAT', { headers }) as never;
 }
@@ -121,6 +135,45 @@ test('requireMember accepts an authenticated active member without any token', a
 	reset();
 	const result = await requireMember(request(), WG.id);
 	assert.deepEqual(result, { ok: true, member: { memberId: 'member-1', name: 'Mina' } });
+});
+
+test('requireMember resolves the member from the Supabase user alone; legacy claim proofs grant nothing', async () => {
+	reset();
+	await requireMember(request(), WG.id);
+	assert.deepEqual(state.memberLookups, [
+		{
+			where: [
+				['wg_members.wg_id', WG.id],
+				['wg_members.auth_user_id', 'user-1'],
+			],
+			columns: { id: true, name: true, deactivatedAt: true },
+		},
+	]);
+
+	const previousSecret = process.env.MEMBER_SESSION_SECRET;
+	process.env.MEMBER_SESSION_SECRET = 'guard-test-secret';
+	try {
+		const proof = createHmac('sha256', 'guard-test-secret')
+			.update(`${WG.id}:member-1`)
+			.digest('hex');
+		const legacyHeaders = { 'x-manawg-member-id': 'member-1', 'x-manawg-member-token': proof };
+
+		reset();
+		state.member = null;
+		const stranger = await requireMember(request(undefined, legacyHeaders), WG.id);
+		assert.equal(stranger.ok, false);
+		if (!stranger.ok) assert.equal(stranger.reason, 'not_a_member');
+
+		reset();
+		state.user = null;
+		const anonymous = await requireMember(request(undefined, legacyHeaders), WG.id);
+		assert.equal(anonymous.ok, false);
+		if (!anonymous.ok) assert.equal(anonymous.reason, 'auth_required');
+		assert.deepEqual(state.memberLookups, []);
+	} finally {
+		if (previousSecret === undefined) Reflect.deleteProperty(process.env, 'MEMBER_SESSION_SECRET');
+		else process.env.MEMBER_SESSION_SECRET = previousSecret;
+	}
 });
 
 test('requireMember reports a typed reason for every rejection', async () => {
@@ -201,6 +254,36 @@ test('requireWgMember counts unknown and foreign WGs against the miss budget onl
 	state.member = null;
 	state.missBudgetSpent = true;
 	assert.equal((await failure(await requireWgMember(request(), WG.shareCode))).status, 429);
+});
+
+test('requireWgMembership authenticates before the WG lookup, then checks membership in that WG', async () => {
+	const lookups: string[] = [];
+	const loadWg = async (code: string) => {
+		state.events.push('wg');
+		lookups.push(code);
+		return state.wg;
+	};
+
+	reset();
+	state.user = null;
+	const anonymous = await requireWgMembership(request(), WG.shareCode, 'test', loadWg);
+	assert.equal((await failure(anonymous)).status, 401);
+	assert.deepEqual(
+		state.events,
+		['user'],
+		'an anonymous caller never learns whether a code exists',
+	);
+	assert.deepEqual(lookups, []);
+
+	reset();
+	const ok = await requireWgMembership(request(), WG.shareCode, 'test', loadWg);
+	assert.equal(ok.ok, true);
+	assert.deepEqual(state.events, ['user', 'wg', 'member']);
+	assert.deepEqual(lookups, [WG.shareCode]);
+	assert.deepEqual((state.memberLookups[0] as { where: unknown }).where, [
+		['wg_members.wg_id', WG.id],
+		['wg_members.auth_user_id', 'user-1'],
+	]);
 });
 
 test('requireWgMember answers a retryable 503 on an Auth outage', async () => {

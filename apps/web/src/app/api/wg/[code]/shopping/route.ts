@@ -17,7 +17,6 @@ import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { isOpenShoppingItemDuplicate } from '@/features/shopping/shopping-duplicate';
 import {
 	SHOPPING_CREATE_DUPLICATE_RESPONSE,
 	type ShoppingCreateReplayResponse,
@@ -25,7 +24,8 @@ import {
 	shoppingCreateCodec,
 	shoppingCreateHttpResponse,
 	withShoppingCreatePostCommitFallback,
-} from '@/features/shopping/shopping-mutation';
+} from '@/features/shopping/server/shopping-mutation';
+import { isOpenShoppingItemDuplicate } from '@/features/shopping/shopping-duplicate';
 import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

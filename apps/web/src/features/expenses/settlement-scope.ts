@@ -1,8 +1,7 @@
 import { isRecord } from '@/core/utils/is-record';
 import { currencySchema } from '@/core/validators/currency';
 import { z } from 'zod';
-import { computeNetBalances, simplifyDebts } from './debt-reduction';
-import type { ExpensePaymentInput } from './expense-payments';
+import { type ExpensePaymentInput, computeNetBalances, simplifyDebts } from './debt-reduction';
 
 const MAX_SETTLEMENT_SPLITS = 50;
 const MAX_REVIEW_CENTS = Number.MAX_SAFE_INTEGER;

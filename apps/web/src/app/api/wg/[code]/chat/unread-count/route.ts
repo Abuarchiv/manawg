@@ -2,7 +2,7 @@ import { db, wgChatMessages, wgChatReads, wgMembers } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { toChatUnreadCountResponse } from '@/features/chat/chat-unread-count';
-import { buildUnreadChatMessagesWhere } from '@/features/chat/chat-unread-query';
+import { buildUnreadChatMessagesWhere } from '@/features/chat/server/chat-unread-query';
 import { and, count, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 

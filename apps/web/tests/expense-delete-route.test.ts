@@ -97,7 +97,7 @@ await mockModuleWithReal('@/core/validators/image-url', {
 	imageUrlSchema: z.string().nullable().optional(),
 	isAllowedImageUrlForWg: () => true,
 });
-await mockModuleWithReal('@/features/expenses/expense-payments', {
+await mockModuleWithReal('@/features/expenses/server/expense-payments', {
 	withExpensePaymentLock: withPaymentLock,
 	hasCapturingExpensePayment: async () => {
 		captureChecks += 1;

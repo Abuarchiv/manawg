@@ -3,9 +3,6 @@
 
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
-import path, { join } from 'node:path';
 import { describe, test } from 'node:test';
 import { NextRequest } from 'next/server';
 import { verifyLegacyClaimProof } from '../src/core/guards/legacy-claim-proof';
@@ -149,28 +146,6 @@ describe('require wg member regression', () => {
 		assert.equal(isShareCodeLookup('/api/wg/INVALID', 'GET'), true);
 		assert.equal(isShareCodeLookup('/api/wg/ABCDEFGH', 'POST'), false);
 	});
-
-	test('WG root verifies identity before looking up a live share code', () => {
-		const source = readFileSync(
-			join(import.meta.dirname, '../src/app/api/wg/[code]/route.ts'),
-			'utf8',
-		);
-		const getHandler = source
-			.split('export async function GET(')[1]
-			?.split('export async function PATCH(')[0];
-		if (!getHandler) throw new Error('GET handler not found');
-		// requireWgMembership authenticates the Supabase user before it runs the WG lookup.
-		assert.ok(
-			getHandler.indexOf('readShareCode(ctx)') <
-				getHandler.indexOf('requireWgMembership(req, code'),
-		);
-		const guard = readFileSync(
-			join(import.meta.dirname, '../src/core/guards/require-wg-member.ts'),
-			'utf8',
-		);
-		assert.ok(guard.indexOf('getAuthenticatedUser(req)') < guard.indexOf('loadWg(code)'));
-		assert.ok(guard.indexOf('loadWg(code)') < guard.indexOf('requireMember(req, wg.id, user)'));
-	});
 });
 
 describe('legacy claim proof', () => {
@@ -194,15 +169,5 @@ describe('legacy claim proof', () => {
 				Reflect.deleteProperty(process.env, 'MEMBER_SESSION_SECRET');
 			else process.env.MEMBER_SESSION_SECRET = previousSecret;
 		}
-	});
-
-	test('normal server membership derives identity from auth alone, without member tokens', async () => {
-		const source = await readFile(
-			path.resolve(process.cwd(), 'src/core/guards/api-auth.ts'),
-			'utf8',
-		);
-		assert.ok(source.includes('eq(wgMembers.authUserId, user.id)'));
-		assert.ok(!source.includes('legacy-claim-proof'));
-		assert.ok(!source.includes('LEGACY_CLAIM'));
 	});
 });

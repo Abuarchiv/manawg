@@ -161,7 +161,7 @@ await mockModuleWithReal('@/features/expenses/debt-reduction', {
 		{ fromId: callerId, toId: recipientId, currency: 'EUR', cents: payment.amountCents },
 	],
 });
-await mockModuleWithReal('@/features/expenses/expense-payments', {
+await mockModuleWithReal('@/features/expenses/server/expense-payments', {
 	withExpensePaymentLock: async (
 		_id: string,
 		operation: (value: typeof tx) => Promise<unknown>,
@@ -175,7 +175,9 @@ await mockModuleWithReal('@/features/expenses/expense-payments', {
 	},
 	loadCompletedExpensePayments: async () => [],
 });
-await mockModuleWithReal('@/features/expenses/open-expenses', { loadOpenExpenses: async () => [] });
+await mockModuleWithReal('@/features/expenses/server/open-expenses', {
+	loadOpenExpenses: async () => [],
+});
 await mockModuleWithReal('@/features/expenses/paypal-settlement', {
 	isPayPalCaptureDebtChanged: () => false,
 });

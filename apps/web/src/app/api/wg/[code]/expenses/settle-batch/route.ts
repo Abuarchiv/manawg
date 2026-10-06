@@ -17,11 +17,11 @@ import {
 import { readJsonLimited } from '@/core/http/read-json';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import type { ExpensePaymentInput } from '@/features/expenses/debt-reduction';
 import {
-	type ExpensePaymentInput,
 	hasCapturingExpensePayment,
 	withExpensePaymentLock,
-} from '@/features/expenses/expense-payments';
+} from '@/features/expenses/server/expense-payments';
 import {
 	type SettlementConfirmation,
 	type SettlementExpenseInput,

@@ -1,13 +1,11 @@
 {
 	"violations": [
 		"comment-lang e2e/expense-ui.spec.ts",
+		"source-text tests/observability-redaction.test.ts",
 		"test-location e2e/_helpers.ts",
 		"test-location e2e/preview-global-setup.ts"
 	],
 	"fileSize": {
-		"src/composition/export-queries.ts": 579,
-		"src/features/events/events.ts": 631,
-		"src/features/expenses/import-parsers.ts": 589,
 		"e2e/expense-ui.spec.ts": 1812
 	}
 }

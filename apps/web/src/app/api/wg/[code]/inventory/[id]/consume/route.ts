@@ -10,8 +10,8 @@ import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { consumeInventoryMutation } from '@/features/inventory/consume-mutation';
 import { INVENTORY_LIMITS } from '@/features/inventory/inventory';
+import { consumeInventoryMutation } from '@/features/inventory/server/consume-mutation';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 

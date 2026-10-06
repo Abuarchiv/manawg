@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { shoppingItems, wgInventoryItems, wgInventoryLog } from '@/core/db';
 import type { WgInventoryItem } from '@/core/db/schema';
 import type { DbTransaction } from '@/core/db/transaction';

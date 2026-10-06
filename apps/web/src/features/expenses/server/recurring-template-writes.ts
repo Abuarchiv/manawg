@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { recordAuditEvent } from '@/core/audit';
 import { db, recurringExpenses, wgMembers } from '@/core/db';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';

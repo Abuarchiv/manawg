@@ -1,5 +1,12 @@
 import { normalizeCurrency } from '@/core/utils/money';
-import type { ExpensePaymentInput } from './expense-payments';
+
+/** A completed payment between two members; nets against open splits. */
+export interface ExpensePaymentInput {
+	fromMemberId: string;
+	toMemberId: string;
+	amountCents: number;
+	currency: string;
+}
 
 export interface SimplifiedDebt {
 	fromId: string;

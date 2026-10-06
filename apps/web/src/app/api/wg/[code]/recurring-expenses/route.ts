@@ -16,7 +16,6 @@ import {
 	recurringDueAtSchema,
 } from '@/core/validators/recurring-due-date';
 import { MAX_SPLITS, RECURRING_INTERVAL_MAX_MONTHS } from '@/features/expenses/expense-constants';
-import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
 import {
 	expenseAmountSchema,
 	expenseDescriptionSchema,
@@ -24,10 +23,11 @@ import {
 } from '@/features/expenses/expense-schemas';
 import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import { serializeRecurringExpense } from '@/features/expenses/recurring-expenses';
+import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import {
 	advanceRecurringTemplate,
 	editRecurringTemplate,
-} from '@/features/expenses/recurring-template-writes';
+} from '@/features/expenses/server/recurring-template-writes';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';

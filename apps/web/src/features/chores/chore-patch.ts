@@ -1,4 +1,4 @@
-import type { ChoreRecurrenceType } from '@/core/db';
+import type { ChoreRecurrenceType } from '@/core/db/schema';
 
 const INTERVAL_MAX_DAYS = 365;
 const INTERVAL_MAX_MONTHS = 60;

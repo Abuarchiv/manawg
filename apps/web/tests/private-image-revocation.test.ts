@@ -75,7 +75,7 @@ mock.module('@/core/idempotency-store', {
 		purgeExpiredIdempotencyResponses: async () => 0,
 	},
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		hasCapturingExpensePayment: async () => false,
 		withExpensePaymentLock: async <T>(
@@ -96,7 +96,9 @@ const chatMessagesRoute = await import('../src/app/api/wg/[code]/chat/messages/r
 const chatMessageRoute = await import('../src/app/api/wg/[code]/chat/messages/[id]/route.ts');
 const expenseRoute = await import('../src/app/api/wg/[code]/expenses/[id]/route.ts');
 const announcementRoute = await import('../src/app/api/wg/[code]/announcements/[id]/route.ts');
-const { withAnnouncementReplay } = await import('../src/features/pinnwand/announcement-replay.ts');
+const { withAnnouncementReplay } = await import(
+	'../src/features/pinnwand/server/announcement-replay.ts'
+);
 
 let ctx: PrivateImageDb;
 

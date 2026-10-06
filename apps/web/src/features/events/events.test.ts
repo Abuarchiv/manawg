@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PgDialect } from 'drizzle-orm/pg-core';
-import { buildEventsWindowFilter } from './event-reminder-window';
 import { eventOverlapsCalendarDay, expandRecurrence, validateEventForm } from './events';
+import { buildEventsWindowFilter } from './server/event-reminder-window';
 
 // Regression: EventFormFields wires aria-invalid/aria-describedby to the field
 // named here. Without `field` on the failure branch, every validation error

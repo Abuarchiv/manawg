@@ -23,7 +23,7 @@ const memberRows = [
 mockDrizzle();
 mockObservability();
 mockRateLimit();
-mockWgMember({ wg: { id: 'wg' }, member: { memberId: ACTIVE, name: 'Alex' } });
+const member = mockWgMember({ wg: { id: 'wg' }, member: { memberId: ACTIVE, name: 'Alex' } });
 mockDb({
 	wgMembers,
 	db: {
@@ -71,4 +71,20 @@ test('preview rejects unknown member ids and keeps valid ones', async () => {
 	assert.deepEqual(body.conflicts, ['Sam']);
 	const clean = await preview({ Sam: ACTIVE });
 	assert.deepEqual(clean.conflicts, []);
+});
+
+test('preview authenticates before it reads the request body', async () => {
+	member.denied = Response.json({ error: 'auth_required' }, { status: 401 });
+	try {
+		const req = request('/api/wg/MTE8PZAT/imports/preview', {
+			method: 'POST',
+			body: { source: 'splitwise_csv', payload: CSV },
+		});
+		const response = await POST(req, routeCtx());
+		assert.equal(response.status, 401);
+		assert.deepEqual(await response.json(), { error: 'auth_required' });
+		assert.equal(req.bodyUsed, false);
+	} finally {
+		member.denied = null;
+	}
 });

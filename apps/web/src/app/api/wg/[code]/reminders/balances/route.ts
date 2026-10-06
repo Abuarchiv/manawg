@@ -2,8 +2,8 @@ import { db, wgMembers } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { computeBalances, computeOldestDebtAges } from '@/features/expenses/debts';
-import { loadCompletedExpensePayments } from '@/features/expenses/expense-payments';
-import { loadOpenExpenses } from '@/features/expenses/open-expenses';
+import { loadCompletedExpensePayments } from '@/features/expenses/server/expense-payments';
+import { loadOpenExpenses } from '@/features/expenses/server/open-expenses';
 import { and, eq, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 

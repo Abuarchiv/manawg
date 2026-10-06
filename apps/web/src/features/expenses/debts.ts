@@ -1,6 +1,6 @@
 import { normalizeCurrency } from '@/core/utils/money';
 import { MS_PER_DAY } from '@/core/utils/time';
-import type { ExpensePaymentInput } from './expense-payments';
+import type { ExpensePaymentInput } from './debt-reduction';
 
 export interface DebtExpenseInput {
 	paidByMemberId: string;

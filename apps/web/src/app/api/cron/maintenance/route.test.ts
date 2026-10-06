@@ -61,7 +61,7 @@ mock.module('@/core/idempotency-store', {
 	namedExports: { purgeExpiredIdempotencyResponses: async () => 0 },
 });
 mock.module('@/core/infra/paypal', { namedExports: { isPayPalConfigured: () => false } });
-mock.module('@/features/expenses/paypal-reconcile', {
+mock.module('@/features/expenses/server/paypal-reconcile', {
 	namedExports: { reconcileStaleCapturingPayments: async () => null },
 });
 mock.module('@/core/infra/supabase-storage', {

@@ -69,7 +69,7 @@ await mockModuleWithReal('@/core/notifications/notification-dispatch', {
 });
 await mockModuleWithReal('@/core/infra/observability', { logApiError: () => undefined });
 await mockModuleWithReal('@/core/utils/money', { formatEuroCents: () => '0,00 €' });
-await mockModuleWithReal('@/features/expenses/expense-payments', {
+await mockModuleWithReal('@/features/expenses/server/expense-payments', {
 	hasCapturingExpensePayment: async () => active().state.capturing,
 	withExpensePaymentLock: (wgId: string, operation: (tx: unknown) => Promise<unknown>) =>
 		active().withExpensePaymentLock(wgId, operation),
@@ -86,7 +86,9 @@ await mockModuleWithReal('drizzle-orm', {
 	sql: () => null,
 });
 
-const { commitImport: commitImportModule } = await import('../src/features/expenses/import-commit');
+const { commitImport: commitImportModule } = await import(
+	'../src/features/expenses/server/import-commit'
+);
 
 describe('import replay atomic', () => {
 	function harness(initialSlot: unknown) {

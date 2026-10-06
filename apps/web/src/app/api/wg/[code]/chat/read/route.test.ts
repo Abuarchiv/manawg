@@ -54,7 +54,7 @@ mockDb({
 });
 
 const { POST } = await import('./route');
-const { buildChatReadMarkerSetWhere } = await import('@/features/chat/chat-read-query');
+const { buildChatReadMarkerSetWhere } = await import('@/features/chat/server/chat-read-query');
 
 function post(lastReadMessageId: string | null, changedRows: unknown[]) {
 	state.changedRows = changedRows;

@@ -323,7 +323,7 @@ mock.module('@/core/notifications/notification-dispatch', {
 		},
 	},
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		hasCapturingExpensePayment: async () => state.capturing,
 		withExpensePaymentLock: async (_id: string, operation: (tx: typeof transaction) => unknown) => {

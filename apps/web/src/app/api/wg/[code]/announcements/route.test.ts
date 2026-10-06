@@ -171,7 +171,7 @@ mock.module('@/core/notifications/notification-dispatch', {
 		},
 	},
 });
-mock.module('@/features/pinnwand/announcement-replay', {
+mock.module('@/features/pinnwand/server/announcement-replay', {
 	namedExports: {
 		withAnnouncementReplay,
 		persistAnnouncementReplayWarning: async (
