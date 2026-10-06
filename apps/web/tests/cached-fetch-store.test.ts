@@ -15,9 +15,14 @@ mock.module('@/core/infra/api-client', {
 	},
 });
 
-const { fetchAndCache, readCachedSnapshot, refreshCacheEntry, updateCache } = await import(
-	'../src/core/hooks/cached-fetch-store.ts'
-);
+const {
+	cacheKey,
+	fetchAndCache,
+	prefetchCachedFetch,
+	readCachedSnapshot,
+	refreshCacheEntry,
+	updateCache,
+} = await import('../src/core/hooks/cached-fetch-store.ts');
 
 let keyCounter = 0;
 /** Every test works on its own cache entry; the store is module state shared by the file. */
@@ -168,4 +173,22 @@ test('local updates made before the first response are replayed on top of it', a
 	const result = await pending;
 	assert.deepEqual(result.ok && result.data, ['server', 'optimistic']);
 	assert.deepEqual(readCachedSnapshot<string[]>(key).serverData, ['server']);
+});
+
+test('the idle warm-up skips an entry that already holds data and fills an empty one', async () => {
+	let calls = 0;
+	transport.apiFetch = () => {
+		calls += 1;
+		return Promise.resolve({ ok: true, data: ['server'] });
+	};
+	const url = `/api/warm-${freshKey()}`;
+	await fetchAndCache(cacheKey(url, 'member'), url, { memberId: 'member' });
+	assert.equal(calls, 1);
+	await prefetchCachedFetch(url, { memberId: 'member' });
+	assert.equal(calls, 1);
+
+	const emptyUrl = `/api/warm-${freshKey()}`;
+	await prefetchCachedFetch(emptyUrl, { memberId: 'member' });
+	assert.equal(calls, 2);
+	assert.deepEqual(readCachedSnapshot<string[]>(cacheKey(emptyUrl, 'member')).data, ['server']);
 });
