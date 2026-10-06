@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 
 /**
  * The one place that listens to the browser's connectivity (`online`/`offline`) and page
@@ -19,12 +19,8 @@ interface SharedSubscription<T> {
 const connectivity: SharedSubscription<boolean> = { listeners: new Set(), detach: null };
 const visibility: SharedSubscription<boolean> = { listeners: new Set(), detach: null };
 
-export function isOnline(): boolean {
+function isOnline(): boolean {
 	return typeof navigator === 'undefined' || navigator.onLine !== false;
-}
-
-export function isDocumentVisible(): boolean {
-	return typeof document === 'undefined' || !document.hidden;
 }
 
 function emit<T>(subscription: SharedSubscription<T>, value: T): void {
@@ -84,14 +80,4 @@ const subscribeOnlineStatus = (onChange: () => void) => subscribeConnectivity(on
 /** `navigator.onLine` as render state; the server render assumes online. */
 export function useOnlineStatus(): boolean {
 	return useSyncExternalStore(subscribeOnlineStatus, isOnline, () => true);
-}
-
-/** Calls the latest `callback` whenever the connection comes back, while `enabled`. */
-export function useOnReconnect(callback: () => void, enabled = true): void {
-	const callbackRef = useRef(callback);
-	callbackRef.current = callback;
-	useEffect(() => {
-		if (!enabled) return;
-		return subscribeOnline(() => callbackRef.current());
-	}, [enabled]);
 }

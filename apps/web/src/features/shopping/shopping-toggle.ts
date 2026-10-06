@@ -74,7 +74,7 @@ function isQueuedCreate(action: OfflineAction, target: QueuedCreateTarget): bool
 
 /**
  * Marks a not-yet-synced create as bought (or open) inside the queue, so it reaches the server in
- * its final state. Returns null when the create is no longer queued.
+ * its final state. Returns null when the create is not queued (anymore).
  */
 export function withQueuedCreateBought(
 	actions: OfflineAction[],

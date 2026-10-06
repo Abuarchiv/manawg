@@ -14,7 +14,7 @@ import {
 	updateCache,
 } from './cached-fetch-store';
 
-export type { CachedFetchError, CachedFetchResult } from './cached-fetch-store';
+export type { CachedFetchResult } from './cached-fetch-store';
 export { prefetchCachedFetch, refreshCachedFetch } from './cached-fetch-store';
 
 /** Subscribes to one cached URL; fetches on mount and on window focus. */

@@ -36,12 +36,18 @@ function deferred<T>() {
 	return { promise, resolve, reject };
 }
 
+function nth<T>(items: readonly T[], index: number): T {
+	const item = items[index];
+	if (item === undefined) throw new Error(`no item ${index}`);
+	return item;
+}
+
 const settle = () => new Promise((done) => setImmediate(done));
 
 test('a refresh during a running GET fetches again instead of joining the stale GET', async () => {
 	const responses = [deferred<FetchResult>(), deferred<FetchResult>()];
 	let calls = 0;
-	transport.apiFetch = () => responses[calls++].promise;
+	transport.apiFetch = () => nth(responses, calls++).promise;
 	const key = freshKey();
 
 	const initial = fetchAndCache(key, '/api/items', {});
@@ -51,11 +57,11 @@ test('a refresh during a running GET fetches again instead of joining the stale 
 	assert.equal(calls, 1);
 	assert.equal(concurrent, afterMutation);
 
-	responses[0].resolve({ ok: true, data: ['before'] });
+	nth(responses, 0).resolve({ ok: true, data: ['before'] });
 	await initial;
 	await settle();
 	assert.equal(calls, 2);
-	responses[1].resolve({ ok: true, data: ['after'] });
+	nth(responses, 1).resolve({ ok: true, data: ['after'] });
 	await afterMutation;
 	assert.equal(calls, 2);
 });
@@ -92,17 +98,17 @@ test('overlapping plain refreshes (focus, polling) share the running GET', async
 test('a plain refresh after any mutation settled does not join the older GET', async () => {
 	const responses = [deferred<FetchResult>(), deferred<FetchResult>()];
 	let calls = 0;
-	transport.apiFetch = () => responses[calls++].promise;
+	transport.apiFetch = () => nth(responses, calls++).promise;
 	const key = freshKey();
 	const running = fetchAndCache(key, '/api/items', {});
 	transport.generation += 1; // e.g. a POST on the Pinnwand finished meanwhile
 	const followUp = fetchAndCache(key, '/api/items', {});
 	assert.notEqual(followUp, running);
-	responses[0].resolve({ ok: true, data: ['before'] });
+	nth(responses, 0).resolve({ ok: true, data: ['before'] });
 	await running;
 	await settle();
 	assert.equal(calls, 2);
-	responses[1].resolve({ ok: true, data: ['after'] });
+	nth(responses, 1).resolve({ ok: true, data: ['after'] });
 	await followUp;
 });
 
