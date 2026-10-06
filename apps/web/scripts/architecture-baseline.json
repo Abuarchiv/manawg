@@ -407,7 +407,7 @@
 		"src/app/api/wg/[code]/chat/messages/route.ts": 448,
 		"src/app/api/wg/[code]/expenses/route.test.mjs": 823,
 		"src/app/api/wg/[code]/expenses/route.ts": 515,
-		"src/app/api/wg/[code]/notifications/route.ts": 432,
+		"src/app/api/wg/[code]/notifications/route.ts": 437,
 		"src/app/api/wg/[code]/paypal/capture/route.ts": 406,
 		"src/app/api/wg/[code]/recurring-expenses/route.ts": 628,
 		"src/app/offline/OfflineClient.tsx": 544,
