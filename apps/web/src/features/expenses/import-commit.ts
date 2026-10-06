@@ -33,7 +33,7 @@ export interface CommitInput {
 	rawPayloadHash: string;
 }
 
-export interface CommitResult {
+interface CommitResult {
 	importId: string;
 	inserted: number;
 	skipped: number;
@@ -172,7 +172,7 @@ interface ImportWriteResult {
 	totalAmountCents: number;
 }
 
-export function isCommitResult(value: unknown): value is CommitResult {
+function isCommitResult(value: unknown): value is CommitResult {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
 	const body = value as Record<string, unknown>;
 	return (

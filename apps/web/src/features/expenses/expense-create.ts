@@ -81,7 +81,7 @@ export interface ExpenseCreateInput {
 }
 
 /** What the route does after commit: side effects for a new expense, nothing for a replay. */
-export type ExpenseCreateContext = { created: ExpenseRow } | { existing: true };
+type ExpenseCreateContext = { created: ExpenseRow } | { existing: true };
 
 async function findRecurringExpense(
 	tx: DbTransaction,
