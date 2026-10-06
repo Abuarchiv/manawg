@@ -14,6 +14,7 @@ import {
 } from './connection.mjs';
 import { assertMigrationLedgerPrefix } from './ledger.mjs';
 import { adoptBaseline, assertBaselineSchema, ledgerHasBaseline } from './legacy-adoption.mjs';
+import { acquireMigrationLock, releaseMigrationLock } from './lock.mjs';
 import {
 	BASELINE_TAG,
 	MIGRATIONS_SCHEMA,
@@ -24,7 +25,6 @@ import {
 } from './migrations.mjs';
 import { verifyDatabase } from './verify.mjs';
 
-const MIGRATION_LOCK = 'manawg:drizzle-migrate';
 /** How long one migration statement may wait for a table lock. */
 const MIGRATION_LOCK_TIMEOUT = '5s';
 /** Any table that only exists once the baseline has been applied. */
@@ -44,7 +44,7 @@ export async function main(progress) {
 	let locked = false;
 	try {
 		progress.stage = 'lock';
-		await client.query('select pg_advisory_lock(hashtext($1))', [MIGRATION_LOCK]);
+		await acquireMigrationLock(client);
 		locked = true;
 		if (process.argv.includes('--check')) {
 			progress.stage = 'verify';
@@ -99,7 +99,7 @@ export async function main(progress) {
 				progress.stage = 'unlock';
 				let unlockSucceeded = false;
 				try {
-					await client.query('select pg_advisory_unlock(hashtext($1))', [MIGRATION_LOCK]);
+					await releaseMigrationLock(client);
 					unlockSucceeded = true;
 				} finally {
 					if (unlockSucceeded) progress.stage = previousStage;
