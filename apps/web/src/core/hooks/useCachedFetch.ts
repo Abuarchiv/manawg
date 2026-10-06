@@ -219,6 +219,14 @@ export function refreshCachedFetch<T>(
 	return fetchAndCache<T>(cacheKey(url, options.memberId), url, options, true);
 }
 
+/** Fill the cache for a URL before its page mounts (idle warm-up); the page then renders from cache. */
+export function prefetchCachedFetch<T>(
+	url: string,
+	options: CachedFetchOptions = {},
+): Promise<void> {
+	return fetchAndCache<T>(cacheKey(url, options.memberId), url, options);
+}
+
 export function useCachedFetch<T>(url: string, options: CachedFetchOptions = {}) {
 	const { memberId, memberToken, headers } = options;
 	const key = cacheKey(url, memberId);
