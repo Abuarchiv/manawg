@@ -59,45 +59,37 @@ const createAbsenceSchema = z.object({
 	reason: z.string().trim().max(120).optional().nullable(),
 });
 
-export const GET = withWgRoute(
-	'absences GET',
-	async (req, { code }) => {
-		const auth = await requireWgMember(req, code);
-		if (!auth.ok) return auth.response;
-		const wg = auth.wg;
-		const rows = await db
-			.select({
-				id: memberAbsences.id,
-				memberId: memberAbsences.memberId,
-				memberName: wgMembers.name,
-				startDate: memberAbsences.startDate,
-				endDate: memberAbsences.endDate,
-				reason: memberAbsences.reason,
-			})
-			.from(memberAbsences)
-			.innerJoin(wgMembers, eq(wgMembers.id, memberAbsences.memberId))
-			.where(
-				and(
-					eq(memberAbsences.wgId, wg.id),
-					gte(memberAbsences.endDate, startOfBerlinDay(new Date())),
-				),
-			)
-			.orderBy(asc(memberAbsences.startDate));
+export const GET = withWgRoute('absences GET', async (req, { code }) => {
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wg = auth.wg;
+	const rows = await db
+		.select({
+			id: memberAbsences.id,
+			memberId: memberAbsences.memberId,
+			memberName: wgMembers.name,
+			startDate: memberAbsences.startDate,
+			endDate: memberAbsences.endDate,
+			reason: memberAbsences.reason,
+		})
+		.from(memberAbsences)
+		.innerJoin(wgMembers, eq(wgMembers.id, memberAbsences.memberId))
+		.where(
+			and(
+				eq(memberAbsences.wgId, wg.id),
+				gte(memberAbsences.endDate, startOfBerlinDay(new Date())),
+			),
+		)
+		.orderBy(asc(memberAbsences.startDate));
 
-		return NextResponse.json({
-			absences: rows.map((row) => ({
-				...row,
-				startDate: row.startDate.toISOString(),
-				endDate: row.endDate.toISOString(),
-			})),
-		});
-	},
-	{
-		fixture: () => {
-			return NextResponse.json({ absences: [] });
-		},
-	},
-);
+	return NextResponse.json({
+		absences: rows.map((row) => ({
+			...row,
+			startDate: row.startDate.toISOString(),
+			endDate: row.endDate.toISOString(),
+		})),
+	});
+});
 
 export const POST = withWgRoute('absences POST', async (req, { code }) => {
 	let replayReservation: Extract<

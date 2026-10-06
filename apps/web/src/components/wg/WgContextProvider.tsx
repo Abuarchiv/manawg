@@ -51,6 +51,11 @@ interface Props {
 	initialIdentity?: StoredIdentity | undefined;
 	/** Server-verified admin flag; only meaningful together with initialIdentity.authUserId. */
 	initialIsAdmin?: boolean | undefined;
+	/**
+	 * The WG is served without any Supabase session; the identity comes from
+	 * the locally stored member (database-free test builds only).
+	 */
+	sessionless?: boolean | undefined;
 	children: ReactNode;
 }
 
@@ -59,6 +64,7 @@ export function WgContextProvider({
 	members: initialMembers,
 	initialIdentity,
 	initialIsAdmin,
+	sessionless = false,
 	children,
 }: Props) {
 	// The WG layout resolved the Supabase session and membership on the server
@@ -80,6 +86,7 @@ export function WgContextProvider({
 	const { hydrated, memberLoadError, loadSessionMember } = useSessionMember({
 		wg,
 		initialIdentity,
+		sessionless,
 		encodedShareCode,
 		authGenerationRef,
 		authUserIdRef,

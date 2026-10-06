@@ -1,7 +1,6 @@
 'use client';
 
 import { apiFetch } from '@/core/infra/api-client';
-import { isClientFixtureMode } from '@/shared/lib/fixture-mode';
 import {
 	type StoredIdentity,
 	clearIdentity,
@@ -21,11 +20,13 @@ import type { WgSummary } from './WgContextProvider';
 
 /**
  * Resolves the signed-in Supabase user to this WG's member: hydration (and the
- * fixture identity), the auth listener, and the /api/wg/[code] member lookup.
+ * stored identity of a sessionless WG), the auth listener, and the
+ * /api/wg/[code] member lookup.
  */
 export function useSessionMember({
 	wg,
 	initialIdentity,
+	sessionless,
 	encodedShareCode,
 	authGenerationRef,
 	authUserIdRef,
@@ -37,6 +38,7 @@ export function useSessionMember({
 }: {
 	wg: WgSummary;
 	initialIdentity: StoredIdentity | undefined;
+	sessionless: boolean;
 	encodedShareCode: string;
 	authGenerationRef: RefObject<number>;
 	authUserIdRef: RefObject<string | null>;
@@ -51,12 +53,12 @@ export function useSessionMember({
 
 	useEffect(() => {
 		const storedIdentity = getIdentity(wg.id);
-		// The database-free Playwright fixture has no Supabase session by design.
-		// It only exists in CI and keeps its old local identity setup working.
-		if (isClientFixtureMode()) {
-			const fixtureIdentity = storedIdentity ?? initialIdentity;
-			if (fixtureIdentity) {
-				setStateIdentity(fixtureIdentity);
+		// A sessionless WG (the database-free Playwright build) has no Supabase
+		// session by design; the locally stored identity is the member.
+		if (sessionless) {
+			const localIdentity = storedIdentity ?? initialIdentity;
+			if (localIdentity) {
+				setStateIdentity(localIdentity);
 				setAccountReady(true);
 			}
 			setMemberLoaded(true);
@@ -65,6 +67,7 @@ export function useSessionMember({
 		rememberWg({ code: wg.shareCode, name: wg.name, lastVisitedAt: Date.now() });
 	}, [
 		initialIdentity,
+		sessionless,
 		setAccountReady,
 		setMemberLoaded,
 		setStateIdentity,
@@ -135,7 +138,7 @@ export function useSessionMember({
 
 	useEffect(() => {
 		if (!hydrated) return;
-		if (isClientFixtureMode()) return;
+		if (sessionless) return;
 		let cancelled = false;
 		let unsubscribe: (() => void) | undefined;
 		void import('@/core/auth/client').then(({ createSupabaseBrowserClient }) => {
@@ -208,6 +211,7 @@ export function useSessionMember({
 		authUserIdRef,
 		hydrated,
 		loadSessionMember,
+		sessionless,
 		setAccountReady,
 		setIsAdmin,
 		setMemberLoaded,

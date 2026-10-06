@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const checker = await import('../scripts/db-migrate.mjs');
@@ -157,7 +159,10 @@ function createCatalogClient({ schemaCreateRows = [], triggerRows = expectedTrig
 			if (text.includes('has_schema_privilege')) return { rows: schemaCreateRows };
 			if (text.includes('rel.relrowsecurity')) {
 				return {
-					rows: params[1].map((table_name) => ({ table_name, rls_enabled: true })),
+					rows: params[1].map((table_name) => ({
+						table_name,
+						rls_enabled: true,
+					})),
 				};
 			}
 			if (text.includes('has_table_privilege')) return { rows: [] };
@@ -302,6 +307,65 @@ test('db:check rejects incomplete trigger events, filters, and member arguments'
 			await assert.rejects(
 				checker.assertCatalogSecurity(client, [{ table: 'wgs' }]),
 				/expenses_member_wg_same_tenant does not cover every inserted or updated row/,
+			);
+		});
+	}
+});
+
+const journalEntries = JSON.parse(
+	readFileSync(new URL('../drizzle/meta/_journal.json', import.meta.url), 'utf8'),
+).entries;
+const ledgerRow = (index, id = index + 1) => {
+	const { tag, when } = journalEntries[index];
+	const sql = readFileSync(new URL(`../drizzle/${tag}.sql`, import.meta.url), 'utf8');
+	return {
+		id,
+		hash: createHash('sha256').update(sql).digest('hex'),
+		created_at: String(when),
+	};
+};
+const LEGACY_0010 = {
+	hash: 'fb524f9b63dd0b63b84d8d1bf6d916781e7cc206682bf23bdd0106d9e9dbbb0e',
+	created_at: '1788436085539',
+};
+const ledgerClient = (rows) => ({
+	query: async (sql) => {
+		if (/from pg_catalog\.pg_class/.test(sql)) return { rows: [{ '?column?': 1 }] };
+		if (/select id, hash, created_at/.test(sql)) return { rows };
+		throw new Error(`unexpected ledger query: ${sql.slice(0, 120)}`);
+	},
+});
+
+test('db:check accepts the canonical ledger and the reviewed legacy 0010 row at its position', async () => {
+	const canonical = journalEntries.map((_, index) => ledgerRow(index));
+	assert.equal(
+		(await checker.assertMigrationLedgerPrefix(ledgerClient(canonical))).appliedCount,
+		journalEntries.length,
+	);
+	const withLegacy = canonical.slice(0, 11);
+	withLegacy[10] = { id: 11, ...LEGACY_0010 };
+	assert.equal(
+		(await checker.assertMigrationLedgerPrefix(ledgerClient(withLegacy))).appliedCount,
+		11,
+	);
+});
+
+test('db:check rejects legacy or unknown ledger rows outside their reviewed position', async (t) => {
+	const prefix = (count) => journalEntries.slice(0, count).map((_, index) => ledgerRow(index));
+	const cases = {
+		'legacy 0010 row at the wrong position': [...prefix(9), { id: 10, ...LEGACY_0010 }],
+		'legacy 0010 row with a different timestamp': [
+			...prefix(10),
+			{ id: 11, hash: LEGACY_0010.hash, created_at: '1788436085540' },
+		],
+		'unknown hash': [...prefix(3), { id: 4, hash: 'a'.repeat(64), created_at: '1' }],
+		'canonical rows out of order': [ledgerRow(0), ledgerRow(2, 2)],
+	};
+	for (const [name, rows] of Object.entries(cases)) {
+		await t.test(name, async () => {
+			await assert.rejects(
+				checker.assertMigrationLedgerPrefix(ledgerClient(rows)),
+				/Database check failed/,
 			);
 		});
 	}

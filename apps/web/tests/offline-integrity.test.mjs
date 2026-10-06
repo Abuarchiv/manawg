@@ -1134,7 +1134,6 @@ test('server guard rejects a stale expected member only after cookie membership 
 			},
 			wgMembers: {},
 		},
-		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/http/api-errors': {
 			HTTP: { UNAUTHORIZED: 401, CONFLICT: 409, SERVICE_UNAVAILABLE: 503 },
 			apiError: (code, status) => ({ code, status }),

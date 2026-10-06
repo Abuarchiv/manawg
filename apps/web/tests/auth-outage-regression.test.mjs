@@ -14,12 +14,6 @@ registerHooks({
 		}
 		if (specifier === 'next/server') return nextResolve('next/server.js', context);
 		if (specifier === 'next/headers') return nextResolve('next/headers.js', context);
-		if (specifier === '@/core/infra/e2e-db-down') {
-			return {
-				url: 'data:text/javascript,export%20function%20isE2EDbDownMode()%20%7B%20return%20false%3B%20%7D',
-				shortCircuit: true,
-			};
-		}
 		if (
 			specifier.startsWith('.') &&
 			!extname(specifier) &&

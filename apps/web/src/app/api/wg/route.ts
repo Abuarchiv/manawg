@@ -21,7 +21,6 @@ import {
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
-import { E2E_CREATED_WG, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
 import { generateShareCode, isValidShareCode } from '@/core/utils/share-code';
@@ -104,17 +103,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	}
 
 	const { name, creatorName } = parsed.data;
-
-	if (isE2EDbDownMode()) {
-		return NextResponse.json({
-			wg: {
-				id: E2E_CREATED_WG.id,
-				shareCode: E2E_CREATED_WG.shareCode,
-				name,
-			},
-			creator: { id: E2E_CREATED_WG.member.id, name: creatorName },
-		});
-	}
 
 	let user: { id: string } | null;
 	try {

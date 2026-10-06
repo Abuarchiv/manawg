@@ -9,7 +9,7 @@ otherwise. Setup, commands and deployment are in the [README](../README.md).
 browser
   -> middleware.ts                    CSP nonce, Origin check, rate limit, Supabase session refresh
   -> app/api/wg/[code]/**/route.ts    thin handler
-       withWgRoute / readShareCode    normalize + validate share code, optional E2E fixture, catch -> server_error
+       withWgRoute / readShareCode    normalize + validate share code, catch -> server_error
        (body validation)              before auth, so invalid_body cannot leak membership
        requireWgMember                Supabase user -> WG by share code -> active wg_members row
        withIdempotentJsonResponse     optional, for mutations carrying Idempotency-Key
@@ -30,7 +30,10 @@ browser
      (`core/rate-limit.ts`). Fail mode is `closed` when `VERCEL_ENV=production`,
      `NODE_ENV=test`, or `NODE_ENV=production` without `VERCEL_ENV`; otherwise `open`. Closed
      plus missing/failing Upstash means `503 rate_limiter_unavailable`.
-  4. Supabase session refresh.
+  4. Database-free fixture build only (`src/fixtures/`, README "Fixture mode"): fixture API
+     reads and `POST /api/wg` are answered here; every other build gets `null` from
+     `resolveFixtureRequest` and skips this step.
+  5. Supabase session refresh.
 - `/api/health` and `/api/paypal/*` are outside the matcher; `/api/health` applies its own limiter.
 
 **Route handlers** use `withWgRoute` (`core/guards/with-wg-route.ts`) for the share-code

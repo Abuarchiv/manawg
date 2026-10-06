@@ -2,7 +2,7 @@
 
 import { expect, test } from '@playwright/test';
 import { apiFetch } from '../src/core/infra/api-client';
-import { E2E_EXISTING_WG } from '../src/core/infra/e2e-db-down';
+import { E2E_EXISTING_WG } from '../src/fixtures/data';
 
 test.describe('public entry api', () => {
 	test('guest membership lookup ignores unrelated and PKCE cookies', async ({ request }) => {

@@ -339,23 +339,9 @@ test.describe('private storage contract', () => {
 			'@/core/db/private-image-deletions': {
 				isPrivateImageKeyRevoked: async () => false,
 			},
-			'@/core/http/api-errors': {
-				apiError: (message: string, status: number, code?: string) =>
-					nextServer.NextResponse.json({ error: message, ...(code ? { code } : {}) }, { status }),
-				badRequest: (message: string) =>
-					nextServer.NextResponse.json({ error: message }, { status: 400 }),
-				notFound: (message: string) =>
-					nextServer.NextResponse.json({ error: message }, { status: 404 }),
-				serverError: (message: string) =>
-					nextServer.NextResponse.json({ error: message }, { status: 500 }),
-				serviceUnavailable: (message: string) =>
-					nextServer.NextResponse.json({ error: message }, { status: 503 }),
-				unauthorized: (message: string, code?: string) =>
-					nextServer.NextResponse.json(
-						{ error: message, ...(code ? { code } : {}) },
-						{ status: 401 },
-					),
-			},
+			'@/core/http/api-errors': loadTs(path.join(process.cwd(), 'src/core/http/api-errors.ts'), {
+				'@/core/infra/observability': { captureException: () => undefined },
+			}),
 			'@/core/guards/api-auth': {
 				requireMember: async () => {
 					membershipCalls += 1;
@@ -548,26 +534,14 @@ test.describe('upload sign s3 config contract', () => {
 			success: true,
 		},
 	): SignRoute {
-		const nextServer = createRequire(ROUTE_PATH)('next/server') as typeof import('next/server');
-		const json = (body: unknown, status: number) =>
-			nextServer.NextResponse.json(body as Record<string, unknown>, { status });
 		return loadTs<SignRoute>(ROUTE_PATH, {
 			'@/core/auth/server': { getAuthenticatedUser: async () => ({ id: 'user-1' }) },
 			'@/core/db': {
 				db: { query: { wgs: { findFirst: async () => ({ id: 'wg-1' }) } } },
 			},
-			'@/core/http/api-errors': {
-				apiError: (message: string, status: number, code?: string) =>
-					json(code !== undefined ? { error: message, code } : { error: message }, status),
-				badRequest: (message: string) => json({ error: message }, 400),
-				notFound: (message: string) => json({ error: message }, 404),
-				tooMany: (message: string, code?: string) =>
-					json(code !== undefined ? { error: message, code } : { error: message }, 429),
-				serverError: (message: string) => json({ error: message }, 500),
-				serviceUnavailable: (message: string) => json({ error: message }, 503),
-				unauthorized: (message: string, code?: string) =>
-					json(code !== undefined ? { error: message, code } : { error: message }, 401),
-			},
+			'@/core/http/api-errors': loadTs(path.join(process.cwd(), 'src/core/http/api-errors.ts'), {
+				'@/core/infra/observability': { captureException: () => undefined },
+			}),
 			'@/core/guards/api-auth': {
 				requireMember: async () => ({
 					ok: true,

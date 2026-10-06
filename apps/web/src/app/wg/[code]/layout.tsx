@@ -8,8 +8,8 @@ import { OfflineBanner } from '@/components/wg/OfflineBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
 import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
-import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
+import { loadFixtureWgView } from '@/fixtures/pages';
 import type { StoredIdentity } from '@/shared/lib/identity';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Metadata } from 'next';
@@ -29,10 +29,10 @@ export async function generateMetadata({
 	if (!isValidShareCode(code)) {
 		return { robots: { index: false, follow: false } };
 	}
-	if (isE2EDbDownMode()) {
-		const fixture = getE2EWgFixture(code);
+	const fixture = loadFixtureWgView(code);
+	if (fixture) {
 		return {
-			title: fixture ? `${fixture.name} — ManaWG` : 'WG — ManaWG',
+			title: fixture === 'not_found' ? 'WG — ManaWG' : `${fixture.wg.name} — ManaWG`,
 			robots: { index: false, follow: false },
 		};
 	}
@@ -80,13 +80,11 @@ export default async function WgLayout({ children, params }: Props) {
 		notFound();
 	}
 
-	if (isE2EDbDownMode()) {
-		const fixture = getE2EWgFixture(code);
-		if (!fixture) notFound();
-		// Fixture rosters are always fully active.
-		const fixtureMembers = fixture.members.map((member) => ({ ...member, active: true }));
+	const fixture = loadFixtureWgView(code);
+	if (fixture === 'not_found') notFound();
+	if (fixture) {
 		return (
-			<WgShell code={code} wg={fixture} members={fixtureMembers}>
+			<WgShell code={code} wg={fixture.wg} members={fixture.members} sessionless>
 				{children}
 			</WgShell>
 		);
@@ -142,6 +140,7 @@ function WgShell({
 	members,
 	initialIdentity,
 	initialIsAdmin,
+	sessionless,
 	children,
 }: {
 	code: string;
@@ -161,6 +160,7 @@ function WgShell({
 	}>;
 	initialIdentity?: StoredIdentity;
 	initialIsAdmin?: boolean;
+	sessionless?: boolean;
 	children: ReactNode;
 }) {
 	const wgBaseHref = `/wg/${encodeURIComponent(code)}`;
@@ -172,6 +172,7 @@ function WgShell({
 			members={members}
 			initialIdentity={initialIdentity}
 			initialIsAdmin={initialIsAdmin}
+			sessionless={sessionless}
 		>
 			<div
 				className="group/wg-shell min-h-svh bg-background"

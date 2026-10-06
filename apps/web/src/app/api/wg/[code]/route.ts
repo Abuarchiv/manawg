@@ -9,7 +9,6 @@ import { readShareCode } from '@/core/guards/route-preamble';
 import { conflict, forbidden, notFound, serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import type { RouteCtx } from '@/core/infra/api-types';
-import { getE2EWgFixture, isE2EDbDownMode } from '@/core/infra/e2e-db-down';
 import { logApiError } from '@/core/infra/observability';
 import { generateShareCode } from '@/core/utils/share-code';
 import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
@@ -53,30 +52,6 @@ export async function GET(
 	const codeResult = await readShareCode(ctx);
 	if (!codeResult.ok) return codeResult.response;
 	const { code } = codeResult;
-
-	if (isE2EDbDownMode()) {
-		const fixture = getE2EWgFixture(code);
-		if (!fixture) return notFound('wg_not_found');
-		return NextResponse.json({
-			wg: {
-				id: fixture.id,
-				name: fixture.name,
-				shareCode: fixture.shareCode,
-				joiningEnabled: fixture.joiningEnabled,
-				shareCodeRotatedAt: fixture.shareCodeRotatedAt,
-				createdAt: new Date().toISOString(),
-			},
-			members: fixture.members,
-			...(fixture.members[0]
-				? {
-						currentMember: {
-							memberId: fixture.members[0].id,
-							name: fixture.members[0].name,
-						},
-					}
-				: {}),
-		});
-	}
 
 	try {
 		const auth = await requireWgMembership(req, code, 'api/wg/[code] GET', (shareCode) =>

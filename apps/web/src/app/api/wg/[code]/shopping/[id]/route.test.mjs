@@ -192,7 +192,6 @@ function harness(returning = async () => [{ id: itemId }]) {
 		},
 		'@/core/guards/route-preamble': {
 			readShareCode: async (ctx) => ({ ok: true, ...(await ctx.params) }),
-			resolveE2EFixture: async () => ({ mode: 'none' }),
 		},
 		'@/core/infra/observability': {
 			logApiError: (_label, error) => state.loggedErrors.push(error),

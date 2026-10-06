@@ -64,39 +64,35 @@ const createShoppingItemSchema = z.object({
 	bought: z.boolean().optional(),
 });
 
-export const GET = withWgRoute(
-	'shopping GET',
-	async (req, { code }) => {
-		const auth = await requireWgMember(req, code);
-		if (!auth.ok) return auth.response;
-		const wgId = auth.wg.id;
-		const listLimit = readListLimit(
-			process.env,
-			'SHOPPING_ITEMS_LIST_LIMIT',
-			SHOPPING_ITEMS_LIST_LIMIT,
-			SHOPPING_ITEMS_LIST_LIMIT_MAX,
-		);
-		// Open items always ship in full (bounded only by the hard ceiling); the
-		// list limit caps the bought history, newest first, so a long purchase
-		// history can never push open items out of the response.
-		const [openItems, boughtItems] = await Promise.all([
-			db
-				.select()
-				.from(shoppingItems)
-				.where(and(eq(shoppingItems.wgId, wgId), isNull(shoppingItems.boughtAt)))
-				.orderBy(asc(shoppingItems.createdAt))
-				.limit(SHOPPING_ITEMS_LIST_LIMIT_MAX),
-			db
-				.select()
-				.from(shoppingItems)
-				.where(and(eq(shoppingItems.wgId, wgId), isNotNull(shoppingItems.boughtAt)))
-				.orderBy(desc(shoppingItems.boughtAt), asc(shoppingItems.createdAt))
-				.limit(listLimit),
-		]);
-		return NextResponse.json({ items: [...openItems, ...boughtItems] });
-	},
-	{ fixture: () => NextResponse.json({ items: [] }) },
-);
+export const GET = withWgRoute('shopping GET', async (req, { code }) => {
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wgId = auth.wg.id;
+	const listLimit = readListLimit(
+		process.env,
+		'SHOPPING_ITEMS_LIST_LIMIT',
+		SHOPPING_ITEMS_LIST_LIMIT,
+		SHOPPING_ITEMS_LIST_LIMIT_MAX,
+	);
+	// Open items always ship in full (bounded only by the hard ceiling); the
+	// list limit caps the bought history, newest first, so a long purchase
+	// history can never push open items out of the response.
+	const [openItems, boughtItems] = await Promise.all([
+		db
+			.select()
+			.from(shoppingItems)
+			.where(and(eq(shoppingItems.wgId, wgId), isNull(shoppingItems.boughtAt)))
+			.orderBy(asc(shoppingItems.createdAt))
+			.limit(SHOPPING_ITEMS_LIST_LIMIT_MAX),
+		db
+			.select()
+			.from(shoppingItems)
+			.where(and(eq(shoppingItems.wgId, wgId), isNotNull(shoppingItems.boughtAt)))
+			.orderBy(desc(shoppingItems.boughtAt), asc(shoppingItems.createdAt))
+			.limit(listLimit),
+	]);
+	return NextResponse.json({ items: [...openItems, ...boughtItems] });
+});
 
 export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 	let replayReservation: Extract<

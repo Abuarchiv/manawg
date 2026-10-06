@@ -1,5 +1,7 @@
+// In-memory WGs, dashboard and chat for the database-free Playwright build.
 import type { DashboardData } from '@/composition/dashboard-data';
 import { getWgHealth } from '@/composition/dashboard-insights';
+import type { wgChatMessages } from '@/core/db';
 
 export const E2E_EXISTING_WG = {
 	id: '989ac820-58b7-431f-9c65-28721264f333',
@@ -28,23 +30,6 @@ export interface E2EWgFixture {
 	joiningEnabled: boolean;
 	shareCodeRotatedAt: string | null;
 	members: Array<{ id: string; name: string; color: string | null }>;
-}
-
-/**
- * Fixture mode serves the fixture roster without real authentication, so it must never activate on a hosted deployment: Vercel
- * sets `VERCEL=1` on every build and function (Preview and Production alike),
- * while the local/CI fixture runs only fake `VERCEL_ENV=preview`.
- */
-export function isE2EDbDownMode(): boolean {
-	return (
-		(process.env.E2E_FIXTURE_MODE === 'true' || process.env.NODE_ENV === 'test') &&
-		process.env.VERCEL !== '1' &&
-		process.env.VERCEL_ENV !== 'production' &&
-		process.env.NEXT_PUBLIC_DB_DOWN === 'true' &&
-		process.env.CI === 'true' &&
-		!process.env.POSTGRES_URL &&
-		!process.env.DATABASE_URL
-	);
 }
 
 export function getE2EWgFixture(code: string): E2EWgFixture | null {
@@ -167,4 +152,40 @@ export function buildE2EDashboardData(code: string): DashboardData {
 			notificationsEnabled: true,
 		},
 	};
+}
+
+type ChatMessageRow = typeof wgChatMessages.$inferSelect;
+
+export function buildE2EChatMessages(wgId: string): ChatMessageRow[] {
+	const now = Date.now();
+	return [
+		{
+			id: '1c2c9254-5945-4774-9f03-d12e772d3a6f',
+			wgId,
+			senderMemberId: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
+			kind: 'text',
+			body: 'Das ist eine ziemlich lange Chat-Nachricht mit einem_sehr_langen_ununterbrochenen_Wort_das_trotzdem_nicht_die_mobile_Ansicht_sprengen_darf.',
+			imageUrl: null,
+			replyToMessageId: null,
+			systemKind: null,
+			systemPayload: null,
+			createdAt: new Date(now - 120_000),
+			editedAt: null,
+			deletedAt: null,
+		},
+		{
+			id: '8c1bb4a9-4722-42fe-bb86-aebf2e2d5b11',
+			wgId,
+			senderMemberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+			kind: 'text',
+			body: 'Alles klar, ich bringe Hafermilch mit.',
+			imageUrl: null,
+			replyToMessageId: '1c2c9254-5945-4774-9f03-d12e772d3a6f',
+			systemKind: null,
+			systemPayload: null,
+			createdAt: new Date(now - 60_000),
+			editedAt: null,
+			deletedAt: null,
+		},
+	] as ChatMessageRow[];
 }

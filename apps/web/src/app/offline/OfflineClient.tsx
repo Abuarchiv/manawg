@@ -23,7 +23,6 @@ import {
 	getOfflineActionSummary,
 } from '@/core/offline/offline-queue';
 import { parseTimestamp } from '@/core/utils/time';
-import { isClientFixtureMode } from '@/shared/lib/fixture-mode';
 import { type KnownWg, getKnownWgs, hasLocalIdentityFor } from '@/shared/lib/identity';
 import { ArrowRight, CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
 import Link from 'next/link';
@@ -97,8 +96,8 @@ async function getAccountMemberships(signal?: AbortSignal): Promise<AccountMembe
 	);
 }
 
-async function getLocalAuthUserId(): Promise<string | null> {
-	if (isClientFixtureMode()) return null;
+async function getLocalAuthUserId(sessionless: boolean): Promise<string | null> {
+	if (sessionless) return null;
 	try {
 		const { data, error } = await createSupabaseBrowserClient().auth.getSession();
 		return error ? null : (data.session?.user.id ?? null);
@@ -117,7 +116,8 @@ function visibleQueueCodes(actions: OfflineAction[]): Set<string> {
 	return new Set(actions.map((action) => action.shareCode));
 }
 
-export function OfflineClient() {
+/** `sessionless`: database-free test build without a Supabase session; the whole local queue is the user's. */
+export function OfflineClient({ sessionless = false }: { sessionless?: boolean }) {
 	const [online, setOnline] = useState(true);
 	const [knownWgs, setKnownWgs] = useState<KnownWg[]>([]);
 	const [hasIdentity, setHasIdentity] = useState(false);
@@ -133,20 +133,19 @@ export function OfflineClient() {
 		const generation = ++refreshGenerationRef.current;
 		const current = () => generation === refreshGenerationRef.current;
 		const browserOffline = typeof navigator !== 'undefined' && !navigator.onLine;
-		const fixtureMode = isClientFixtureMode();
-		const localAuthUserId = await getLocalAuthUserId();
+		const localAuthUserId = await getLocalAuthUserId(sessionless);
 		if (!current()) return [];
 		setOnline(!browserOffline);
 		setMessage(null);
 		if (browserOffline) {
-			const localQueue = fixtureMode
+			const localQueue = sessionless
 				? readOfflineQueue()
 				: filterOfflineActionsForAuthUser(readOfflineQueue(), localAuthUserId);
 			const identityOnDevice = hasLocalIdentityFor(localAuthUserId);
 			setHasIdentity(identityOnDevice);
 			setKnownWgs(visibleKnownWgs(visibleQueueCodes(localQueue), identityOnDevice));
 			setQueue(localQueue);
-			setStatus(fixtureMode || localAuthUserId ? 'browser-offline' : 'unauthenticated');
+			setStatus(sessionless || localAuthUserId ? 'browser-offline' : 'unauthenticated');
 			return localQueue;
 		}
 		try {
@@ -170,17 +169,17 @@ export function OfflineClient() {
 			return nextQueue;
 		} catch {
 			if (!current()) return [];
-			const localQueue = fixtureMode
+			const localQueue = sessionless
 				? readOfflineQueue()
 				: filterOfflineActionsForAuthUser(readOfflineQueue(), localAuthUserId);
 			const identityOnDevice = hasLocalIdentityFor(localAuthUserId);
 			setHasIdentity(identityOnDevice);
 			setKnownWgs(visibleKnownWgs(visibleQueueCodes(localQueue), identityOnDevice));
 			setQueue(localQueue);
-			setStatus(fixtureMode || localAuthUserId ? 'server-unreachable' : 'unauthenticated');
+			setStatus(sessionless || localAuthUserId ? 'server-unreachable' : 'unauthenticated');
 			return localQueue;
 		}
-	}, []);
+	}, [sessionless]);
 
 	useEffect(() => {
 		void refresh();
@@ -198,7 +197,7 @@ export function OfflineClient() {
 		window.addEventListener('manawg:offline-queue', refreshOnEvent);
 		window.addEventListener('storage', refreshOnEvent);
 		let unsubscribe = () => {};
-		if (!isClientFixtureMode()) {
+		if (!sessionless) {
 			try {
 				const { data } = createSupabaseBrowserClient().auth.onAuthStateChange(onAuthStateChange);
 				unsubscribe = () => data.subscription.unsubscribe();
@@ -214,7 +213,7 @@ export function OfflineClient() {
 			window.removeEventListener('manawg:offline-queue', refreshOnEvent);
 			window.removeEventListener('storage', refreshOnEvent);
 		};
-	}, [refresh]);
+	}, [refresh, sessionless]);
 
 	const queueCounts = useMemo(() => countByShareCode(queue), [queue]);
 	const hasRetryableQueue = queue.some((action) => !needsManualOfflineResolution(action));

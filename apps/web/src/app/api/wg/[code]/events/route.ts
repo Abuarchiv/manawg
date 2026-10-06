@@ -88,56 +88,48 @@ function normalizeRecurrence(value: string | null | undefined): string | null {
 	return formatRecurrenceRule(parsed);
 }
 
-export const GET = withWgRoute(
-	'events GET',
-	async (req, { code }) => {
-		const limit = await checkRateLimit(wgReadLimiter, `events:${clientIpKey(req)}`);
-		if (!limit.success) return tooMany('rate_limited');
+export const GET = withWgRoute('events GET', async (req, { code }) => {
+	const limit = await checkRateLimit(wgReadLimiter, `events:${clientIpKey(req)}`);
+	if (!limit.success) return tooMany('rate_limited');
 
-		const url = new URL(req.url);
-		const fromParam = url.searchParams.get('from');
-		const toParam = url.searchParams.get('to');
-		const from = fromParam ? new Date(fromParam) : null;
-		const to = toParam ? new Date(toParam) : null;
-		if (from !== null && Number.isNaN(from.getTime())) return badRequest('from_invalid');
-		if (to !== null && Number.isNaN(to.getTime())) return badRequest('to_invalid');
-		const auth = await requireWgMember(req, code);
-		if (!auth.ok) return auth.response;
-		const wg = auth.wg;
+	const url = new URL(req.url);
+	const fromParam = url.searchParams.get('from');
+	const toParam = url.searchParams.get('to');
+	const from = fromParam ? new Date(fromParam) : null;
+	const to = toParam ? new Date(toParam) : null;
+	if (from !== null && Number.isNaN(from.getTime())) return badRequest('from_invalid');
+	if (to !== null && Number.isNaN(to.getTime())) return badRequest('to_invalid');
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wg = auth.wg;
 
-		const wgFilter = eq(wgEvents.wgId, wg.id);
-		const windowFilter = buildEventsWindowFilter(from, to);
-		return withEventWindowCandidates(
-			from,
-			async (cursor, pageLimit) => {
-				const cursorFilter = cursor
-					? or(
-							gt(wgEvents.startsAt, cursor.startsAt),
-							and(eq(wgEvents.startsAt, cursor.startsAt), gt(wgEvents.id, cursor.id)),
-						)
-					: undefined;
-				const baseFilter = windowFilter ? and(wgFilter, windowFilter) : wgFilter;
-				const where = cursorFilter ? and(baseFilter, cursorFilter) : baseFilter;
-				return db
-					.select()
-					.from(wgEvents)
-					.where(where)
-					.orderBy(asc(wgEvents.startsAt), asc(wgEvents.id))
-					.limit(pageLimit);
-			},
-			() => serviceUnavailable('events_window_too_large'),
-			(rows) => {
-				const events: SerializedWgEvent[] = rows.map(serializeWgEvent);
-				return NextResponse.json({ events });
-			},
-		);
-	},
-	{
-		fixture: () => {
-			return NextResponse.json({ events: [] });
+	const wgFilter = eq(wgEvents.wgId, wg.id);
+	const windowFilter = buildEventsWindowFilter(from, to);
+	return withEventWindowCandidates(
+		from,
+		async (cursor, pageLimit) => {
+			const cursorFilter = cursor
+				? or(
+						gt(wgEvents.startsAt, cursor.startsAt),
+						and(eq(wgEvents.startsAt, cursor.startsAt), gt(wgEvents.id, cursor.id)),
+					)
+				: undefined;
+			const baseFilter = windowFilter ? and(wgFilter, windowFilter) : wgFilter;
+			const where = cursorFilter ? and(baseFilter, cursorFilter) : baseFilter;
+			return db
+				.select()
+				.from(wgEvents)
+				.where(where)
+				.orderBy(asc(wgEvents.startsAt), asc(wgEvents.id))
+				.limit(pageLimit);
 		},
-	},
-);
+		() => serviceUnavailable('events_window_too_large'),
+		(rows) => {
+			const events: SerializedWgEvent[] = rows.map(serializeWgEvent);
+			return NextResponse.json({ events });
+		},
+	);
+});
 
 export const POST = withWgRoute('events POST', async (req, { code }) => {
 	let raw: unknown;

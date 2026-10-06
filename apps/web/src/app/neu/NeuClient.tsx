@@ -37,7 +37,7 @@ import { useStartError } from './use-start-error';
 const AUTH_CALLBACK_ERROR =
 	'Die Anmeldung konnte nicht abgeschlossen werden. Melde dich erneut an und öffne Anmeldelinks im selben Browser, in dem du sie angefordert hast.';
 
-export function NeuClient() {
+export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const {
@@ -108,6 +108,7 @@ export function NeuClient() {
 		setBusy,
 		...errorActions,
 		returnToSignIn,
+		sessionless,
 	});
 
 	async function switchAccount(): Promise<void> {

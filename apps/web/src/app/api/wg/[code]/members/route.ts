@@ -46,61 +46,49 @@ function readPageParams(req: NextRequest): { limit: number; offset: number } {
 	return { limit, offset };
 }
 
-export const GET = withWgRoute(
-	'members GET',
-	async (req, { code }) => {
-		const auth = await requireWgMember(req, code);
-		if (!auth.ok) return auth.response;
-		const wgId = auth.wg.id;
+export const GET = withWgRoute('members GET', async (req, { code }) => {
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wgId = auth.wg.id;
 
-		// Display-only listing for every member of the WG, including deactivated
-		// ("moved-out") ones — they still need to resolve names/balances in
-		// history, and choice UIs (identity picker, split/payer dropdowns, chore
-		// rotation) filter on the `active` flag instead of the server dropping
-		// rows here. Deliberately never includes a token field — a member's
-		// session token must only ever be returned to that member themselves
-		// (see POST below and GET /api/wg/[code] currentMember), never to other
-		// joined members who could otherwise use it to impersonate them on
-		// admin-gated routes.
-		const { limit, offset } = readPageParams(req);
-		const [rows, totalRows] = await Promise.all([
-			db
-				.select({
-					id: wgMembers.id,
-					name: wgMembers.name,
-					color: wgMembers.color,
-					paypalMerchantId: wgMembers.paypalMerchantId,
-					deactivatedAt: wgMembers.deactivatedAt,
-				})
-				.from(wgMembers)
-				.where(eq(wgMembers.wgId, wgId))
-				.orderBy(asc(wgMembers.createdAt), asc(wgMembers.id))
-				.limit(limit)
-				.offset(offset),
-			db.select({ total: count() }).from(wgMembers).where(eq(wgMembers.wgId, wgId)),
-		]);
+	// Display-only listing for every member of the WG, including deactivated
+	// ("moved-out") ones — they still need to resolve names/balances in
+	// history, and choice UIs (identity picker, split/payer dropdowns, chore
+	// rotation) filter on the `active` flag instead of the server dropping
+	// rows here.
+	const { limit, offset } = readPageParams(req);
+	const [rows, totalRows] = await Promise.all([
+		db
+			.select({
+				id: wgMembers.id,
+				name: wgMembers.name,
+				color: wgMembers.color,
+				paypalMerchantId: wgMembers.paypalMerchantId,
+				deactivatedAt: wgMembers.deactivatedAt,
+			})
+			.from(wgMembers)
+			.where(eq(wgMembers.wgId, wgId))
+			.orderBy(asc(wgMembers.createdAt), asc(wgMembers.id))
+			.limit(limit)
+			.offset(offset),
+		db.select({ total: count() }).from(wgMembers).where(eq(wgMembers.wgId, wgId)),
+	]);
 
-		const members = rows.map(({ deactivatedAt, ...member }) => ({
-			...member,
-			active: deactivatedAt === null,
-		}));
-		// Client-side UI gating only (deactivate/reactivate buttons, chat
-		// admin-delete) — every actual mutation re-checks the admin role
-		// server-side, so a stale value here can't grant real access.
-		const viewerIsAdmin = await isWgAdmin(wgId, auth.member.memberId);
+	const members = rows.map(({ deactivatedAt, ...member }) => ({
+		...member,
+		active: deactivatedAt === null,
+	}));
+	// Client-side UI gating only (deactivate/reactivate buttons, chat
+	// admin-delete) — every actual mutation re-checks the admin role
+	// server-side, so a stale value here can't grant real access.
+	const viewerIsAdmin = await isWgAdmin(wgId, auth.member.memberId);
 
-		return NextResponse.json({
-			members,
-			viewerIsAdmin,
-			pagination: { total: totalRows[0]?.total ?? 0, limit, offset },
-		});
-	},
-	{
-		fixture: (fixture) => {
-			return NextResponse.json({ members: fixture.members });
-		},
-	},
-);
+	return NextResponse.json({
+		members,
+		viewerIsAdmin,
+		pagination: { total: totalRows[0]?.total ?? 0, limit, offset },
+	});
+});
 
 function isPostBody(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);

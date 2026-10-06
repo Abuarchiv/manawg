@@ -22,11 +22,11 @@ import {
 import { serverError } from '../src/core/http/api-errors';
 import { readJsonBody } from '../src/core/http/read-json';
 import { apiFetch } from '../src/core/infra/api-client';
-import { isE2EDbDownMode } from '../src/core/infra/e2e-db-down';
 import { captureException, logApiError } from '../src/core/infra/observability';
 import { createPresignedUpload } from '../src/core/infra/s3';
 import { contentSecurityPolicy } from '../src/core/infra/security-headers';
 import { MAX_CSV_BYTES, readImportJsonBody } from '../src/features/expenses/import-body';
+import { isE2EDbDownMode } from '../src/fixtures/mode';
 import { config, isShareCodeLookup, middleware, originAllowed } from '../src/middleware';
 import { FIXTURE_WG, setupMember } from './_helpers';
 
@@ -206,7 +206,7 @@ test.describe('require wg member regression', () => {
 			?.split('export async function PATCH(')[0];
 		if (!getHandler) throw new Error('GET handler not found');
 		// requireWgMembership authenticates the Supabase user before it runs the WG lookup.
-		expect(getHandler.indexOf('if (isE2EDbDownMode())')).toBeLessThan(
+		expect(getHandler.indexOf('readShareCode(ctx)')).toBeLessThan(
 			getHandler.indexOf('requireWgMembership(req, code'),
 		);
 		const guard = readFileSync(join(__dirname, '../src/core/guards/require-wg-member.ts'), 'utf8');

@@ -80,115 +80,88 @@ const createChoreSchema = z
 		}
 	});
 
-export const GET = withWgRoute(
-	'chores GET',
-	async (req, { code }) => {
-		const auth = await requireWgMember(req, code);
-		if (!auth.ok) return auth.response;
-		const wgId = auth.wg.id;
-		const items = await db
-			.select()
-			.from(chores)
-			.where(eq(chores.wgId, wgId))
-			.orderBy(asc(chores.nextDueAt));
+export const GET = withWgRoute('chores GET', async (req, { code }) => {
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wgId = auth.wg.id;
+	const items = await db
+		.select()
+		.from(chores)
+		.where(eq(chores.wgId, wgId))
+		.orderBy(asc(chores.nextDueAt));
 
-		if (items.length === 0) {
-			return NextResponse.json({ chores: [] });
-		}
+	if (items.length === 0) {
+		return NextResponse.json({ chores: [] });
+	}
 
-		const choreIds = items.map((item) => item.id);
-		const now = Date.now();
-		const monthStart = startOfBerlinDay(new Date(`${berlinDayKey(new Date(now)).slice(0, 7)}-01`));
-		// Only the latest completion per chore and this month's per-member counts
-		// are returned, so load exactly that instead of the full history. The
-		// (chore_id, completed_at) index serves the DISTINCT ON; counts keep the
-		// previous key order (most recent completer first).
-		const [latestRows, monthRows] = await Promise.all([
-			db
-				.selectDistinctOn([choreCompletions.choreId], {
-					choreId: choreCompletions.choreId,
-					completedAt: choreCompletions.completedAt,
-					completedByName: wgMembers.name,
-				})
-				.from(choreCompletions)
-				.innerJoin(wgMembers, eq(wgMembers.id, choreCompletions.completedByMemberId))
-				.where(inArray(choreCompletions.choreId, choreIds))
-				.orderBy(choreCompletions.choreId, desc(choreCompletions.completedAt)),
-			db
-				.select({
-					memberId: choreCompletions.completedByMemberId,
-					count: sql<number>`count(*)::int`,
-				})
-				.from(choreCompletions)
-				.where(
-					and(
-						inArray(choreCompletions.choreId, choreIds),
-						gte(choreCompletions.completedAt, monthStart),
-					),
-				)
-				.groupBy(choreCompletions.completedByMemberId)
-				.orderBy(sql`max(${choreCompletions.completedAt}) desc`),
-		]);
+	const choreIds = items.map((item) => item.id);
+	const now = Date.now();
+	const monthStart = startOfBerlinDay(new Date(`${berlinDayKey(new Date(now)).slice(0, 7)}-01`));
+	// Only the latest completion per chore and this month's per-member counts
+	// are returned, so load exactly that instead of the full history. The
+	// (chore_id, completed_at) index serves the DISTINCT ON; counts keep the
+	// previous key order (most recent completer first).
+	const [latestRows, monthRows] = await Promise.all([
+		db
+			.selectDistinctOn([choreCompletions.choreId], {
+				choreId: choreCompletions.choreId,
+				completedAt: choreCompletions.completedAt,
+				completedByName: wgMembers.name,
+			})
+			.from(choreCompletions)
+			.innerJoin(wgMembers, eq(wgMembers.id, choreCompletions.completedByMemberId))
+			.where(inArray(choreCompletions.choreId, choreIds))
+			.orderBy(choreCompletions.choreId, desc(choreCompletions.completedAt)),
+		db
+			.select({
+				memberId: choreCompletions.completedByMemberId,
+				count: sql<number>`count(*)::int`,
+			})
+			.from(choreCompletions)
+			.where(
+				and(
+					inArray(choreCompletions.choreId, choreIds),
+					gte(choreCompletions.completedAt, monthStart),
+				),
+			)
+			.groupBy(choreCompletions.completedByMemberId)
+			.orderBy(sql`max(${choreCompletions.completedAt}) desc`),
+	]);
 
-		const latestCompletionByChore = new Map<
-			string,
-			{ completedAt: Date; completedByName: string }
-		>();
-		for (const row of latestRows) {
-			latestCompletionByChore.set(row.choreId, {
-				completedAt: row.completedAt,
-				completedByName: row.completedByName,
-			});
-		}
-
-		const monthCompletions: Record<string, number> = {};
-		for (const row of monthRows) monthCompletions[row.memberId] = Number(row.count);
-
-		const openGapsByMember = computeOpenGapsByMember(
-			items.map((item) => ({
-				assignedMemberId: item.assignedMemberId,
-				nextDueAt: item.nextDueAt.toISOString(),
-			})),
-			now,
-		);
-
-		return NextResponse.json({
-			monthCompletions,
-			chores: items.map((item) => {
-				const latest = latestCompletionByChore.get(item.id) ?? null;
-				return {
-					...item,
-					lastCompletedAt: latest?.completedAt ?? null,
-					lastCompletedByName: latest?.completedByName ?? null,
-					openGapCountForAssignee: item.assignedMemberId
-						? (openGapsByMember.get(item.assignedMemberId) ?? 0)
-						: 0,
-				};
-			}),
+	const latestCompletionByChore = new Map<string, { completedAt: Date; completedByName: string }>();
+	for (const row of latestRows) {
+		latestCompletionByChore.set(row.choreId, {
+			completedAt: row.completedAt,
+			completedByName: row.completedByName,
 		});
-	},
-	{
-		fixture: (fixture) => {
-			return NextResponse.json({
-				chores: [
-					{
-						id: 'dc02a93f-59f6-4cf9-80a7-53d4a407cb49',
-						wgId: fixture.id,
-						title: 'Bad putzen',
-						intervalDays: 7,
-						recurrenceType: 'days',
-						assignedMemberId: fixture.members[0]?.id ?? null,
-						nextDueAt: new Date(Date.now() + MS_PER_DAY).toISOString(),
-						createdAt: new Date().toISOString(),
-						lastCompletedAt: null,
-						lastCompletedByName: null,
-						openGapCountForAssignee: 0,
-					},
-				],
-			});
-		},
-	},
-);
+	}
+
+	const monthCompletions: Record<string, number> = {};
+	for (const row of monthRows) monthCompletions[row.memberId] = Number(row.count);
+
+	const openGapsByMember = computeOpenGapsByMember(
+		items.map((item) => ({
+			assignedMemberId: item.assignedMemberId,
+			nextDueAt: item.nextDueAt.toISOString(),
+		})),
+		now,
+	);
+
+	return NextResponse.json({
+		monthCompletions,
+		chores: items.map((item) => {
+			const latest = latestCompletionByChore.get(item.id) ?? null;
+			return {
+				...item,
+				lastCompletedAt: latest?.completedAt ?? null,
+				lastCompletedByName: latest?.completedByName ?? null,
+				openGapCountForAssignee: item.assignedMemberId
+					? (openGapsByMember.get(item.assignedMemberId) ?? 0)
+					: 0,
+			};
+		}),
+	});
+});
 
 export const POST = withWgRoute('chores POST', async (req, { code }) => {
 	let replayReservation: Extract<

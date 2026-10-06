@@ -65,11 +65,6 @@ export const GET = withWgRoute<{ id: string }>(
 
 		return NextResponse.json({ comments });
 	},
-	{
-		fixture: () => {
-			return NextResponse.json({ comments: [] });
-		},
-	},
 );
 
 export const POST = withWgRoute<{ id: string }>(

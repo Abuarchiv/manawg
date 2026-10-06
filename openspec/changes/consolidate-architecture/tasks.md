@@ -17,7 +17,7 @@
 
 ## 4. Fixture mode
 
-- [ ] 4.1 Isolate E2E db-down branches behind one seam.
+- [x] 4.1 Isolate E2E db-down branches behind one seam.
 
 ## 5. Client
 
