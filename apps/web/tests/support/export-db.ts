@@ -22,7 +22,7 @@ const TABLE_NAMES = [
 	'wgMembers',
 ] as const;
 
-export type ExportTable = (typeof TABLE_NAMES)[number];
+type ExportTable = (typeof TABLE_NAMES)[number];
 type Row = Record<string, unknown>;
 
 export interface ExportDbState {

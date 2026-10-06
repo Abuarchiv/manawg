@@ -12,9 +12,9 @@ import { mockDb } from './db-mock';
  */
 export const connectionString = process.env.PRIVATE_IMAGE_TEST_DATABASE_URL;
 export const skipWithoutDatabase = { skip: !connectionString };
-export const APPLICATION_NAME = 'manawg_private_image_test';
+const APPLICATION_NAME = 'manawg_private_image_test';
 
-export type TestDb = NodePgDatabase<typeof schema>;
+type TestDb = NodePgDatabase<typeof schema>;
 
 export interface PrivateImageDb {
 	db: TestDb;

@@ -23,7 +23,7 @@ export interface ClaimRow {
 	expiresAt: Date;
 }
 
-export const isPlaceholder = (body: unknown) => JSON.stringify(body) === PLACEHOLDER_JSON;
+const isPlaceholder = (body: unknown) => JSON.stringify(body) === PLACEHOLDER_JSON;
 
 /** The raw fragments the claim helpers use: placeholder jsonb equality and lease expiry. */
 function claimSql(row: Record<string, unknown>, fragment: SqlNode): boolean {
@@ -180,7 +180,7 @@ function at(body: unknown, path: readonly string[]): unknown {
 }
 
 /** `setReplayWarning` on the table: only the live response of the expected row changes. */
-export function setTableReplayWarning(
+function setTableReplayWarning(
 	table: ClaimTable,
 	scope: string,
 	key: string,
