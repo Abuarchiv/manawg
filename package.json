@@ -15,12 +15,13 @@
 	"scripts": {
 		"dev": "pnpm --filter @manawg/web dev",
 		"build": "pnpm --filter @manawg/web build",
-		"test": "pnpm -r run test",
+		"test": "pnpm --filter @manawg/web test:unit",
 		"lint": "biome check .",
 		"format": "biome format --write .",
 		"typecheck": "pnpm -r --if-present run typecheck",
 		"clean": "rm -rf apps/web/.next node_modules/.cache",
-		"e2e": "pnpm --filter @manawg/web test:e2e"
+		"e2e": "pnpm --filter @manawg/web test:e2e",
+		"knip": "pnpm --filter @manawg/web knip"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.0"
