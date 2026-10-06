@@ -508,7 +508,7 @@ test.describe('manual split validation', () => {
 		page,
 	}) => {
 		const { shareCode } = FIXTURE_WG;
-		let submitted: Record<string, unknown> | null = null;
+		let submitted = null as Record<string, unknown> | null;
 		let postCount = 0;
 		await page.setViewportSize({ width: 320, height: 640 });
 		await setupMember(page);
@@ -556,7 +556,7 @@ test.describe('manual split validation', () => {
 		page,
 	}) => {
 		const { shareCode } = FIXTURE_WG;
-		let submitted: Record<string, unknown> | null = null;
+		let submitted = null as Record<string, unknown> | null;
 		let postCount = 0;
 		await page.setViewportSize({ width: 320, height: 640 });
 		await setupMember(page);
@@ -602,7 +602,7 @@ test.describe('manual split validation', () => {
 
 	test('keeps blank and zero Abo shares opt-out while posting valid shares', async ({ page }) => {
 		const { shareCode } = FIXTURE_WG;
-		let submitted: Record<string, unknown> | null = null;
+		let submitted = null as Record<string, unknown> | null;
 		let postCount = 0;
 		await page.setViewportSize({ width: 360, height: 640 });
 		await setupMember(page);
@@ -631,7 +631,7 @@ test.describe('manual split validation', () => {
 		await expect.poll(() => postCount).toBe(1);
 		expect(submitted?.splits).toEqual([{ debtorMemberId: FIXTURE_WG.memberId, amountCents: 1000 }]);
 
-		submitted = null;
+		submitted = null as Record<string, unknown> | null;
 		postCount = 0;
 		await expect(
 			dialog.getByRole('button', { name: 'Fixkosten anlegen', exact: true }),
@@ -724,16 +724,19 @@ test.describe('finance dialog mobile', () => {
 			document.documentElement.style.fontSize = '16px';
 		});
 		await page.setViewportSize({ width: 1440, height: 900 });
-		const wideMetrics = await rows.first().evaluate((element) => {
-			const row = element as HTMLElement;
-			const amount = row.querySelector<HTMLElement>('[data-slot="input-group"]');
-			return {
-				direction: getComputedStyle(row).flexDirection,
-				amountWidth: amount?.getBoundingClientRect().width ?? 0,
-			};
-		});
-		expect(wideMetrics.direction).toBe('row');
-		expect(wideMetrics.amountWidth).toBeCloseTo(128, 0);
+		// The dialog re-renders for the wide layout after the resize event, so poll until it settles.
+		await expect
+			.poll(() =>
+				rows.first().evaluate((element) => {
+					const row = element as HTMLElement;
+					const amount = row.querySelector<HTMLElement>('[data-slot="input-group"]');
+					return {
+						direction: getComputedStyle(row).flexDirection,
+						amountWidth: Math.round(amount?.getBoundingClientRect().width ?? 0),
+					};
+				}),
+			)
+			.toEqual({ direction: 'row', amountWidth: 128 });
 	}
 
 	test('keeps finance forms in narrow viewports at 200% text size', async ({ page }) => {
@@ -788,7 +791,7 @@ test.describe('ocr runtime', () => {
 	const OCR_LANGUAGE_DATA_URLS = [
 		'https://cdn.jsdelivr.net/npm/@tesseract.js-data/deu/4.0.0_best_int/deu.traineddata.gz',
 		'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
-	];
+	] as const;
 	// Tesseract.js-core 5.1.1 tries an optional fetch of its embedded WASM data URI.
 	// WebKit blocks it via connect-src, then successfully falls back to decoding
 	// the same bytes. Match only that exact message and WASM magic prefix; do not

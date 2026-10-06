@@ -6,8 +6,8 @@ export const EVENT_RECURRENCE_MAX = 200;
 
 // Wide enough for yearly birthdays and long-range planning; anything outside is
 // a typo (year 0026, 20266) that would otherwise be stored and expanded.
-export const EVENT_YEAR_MIN = 1900;
-export const EVENT_YEAR_MAX = 2200;
+const EVENT_YEAR_MIN = 1900;
+const EVENT_YEAR_MAX = 2200;
 
 export function isEventYearInRange(date: Date): boolean {
 	const year = date.getUTCFullYear();

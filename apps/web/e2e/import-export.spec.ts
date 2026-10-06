@@ -72,7 +72,7 @@ test.describe('import replay atomic', () => {
 			operation: (tx: unknown) => Promise<unknown>,
 		) => {
 			const waitFor = prior;
-			let release = () => undefined;
+			let release: () => void = () => undefined;
 			prior = new Promise<void>((resolve) => {
 				release = resolve;
 			});
@@ -490,7 +490,7 @@ test.describe('import wizard responsive', () => {
 
 	async function setLargeText(page: Page): Promise<void> {
 		await page.evaluate(() => {
-			const nonce = document.querySelector('script[nonce]')?.nonce;
+			const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce;
 			if (!nonce) throw new Error('CSP nonce not found');
 			const style = document.createElement('style');
 			style.nonce = nonce;

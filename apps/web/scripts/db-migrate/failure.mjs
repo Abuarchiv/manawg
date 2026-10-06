@@ -6,6 +6,7 @@
 /** Maps an error to a fixed, non-secret reason slug. */
 export function safeFailureReason(error) {
 	const text = [error?.message, error?.cause?.message].filter(Boolean).join('\n');
+	if (/advisory lock is held by another session/i.test(text)) return 'migration-lock-busy';
 	if (/unexpected migration row/i.test(text)) return 'unexpected-migration-row';
 	if (/migration ledger is not a canonical prefix/i.test(text)) return 'non-canonical-ledger';
 	if (/timestamp mismatch/i.test(text)) return 'migration-timestamp';

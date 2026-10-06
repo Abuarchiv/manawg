@@ -3,6 +3,7 @@
 import { expect, test } from '@playwright/test';
 import { apiFetch } from '../src/core/infra/api-client';
 import { E2E_EXISTING_WG } from '../src/fixtures/data';
+import { defined } from './_helpers';
 
 test.describe('public entry api', () => {
 	test('guest membership lookup ignores unrelated and PKCE cookies', async ({ request }) => {
@@ -46,7 +47,7 @@ test.describe('public entry api', () => {
 
 		for (const shareCode of ['MTE8PZAT', 'ZZZZZZZZ']) {
 			const response = await request.post('/api/upload/sign', {
-				headers: { origin: new URL(baseURL).origin },
+				headers: { origin: new URL(defined(baseURL, 'baseURL')).origin },
 				data: { ...payload, shareCode },
 			});
 			expect(response.status()).toBe(401);

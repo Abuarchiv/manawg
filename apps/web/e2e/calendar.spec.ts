@@ -945,7 +945,9 @@ test.describe('calendar date and recurrence regressions', () => {
 		// Closing through the UI removes the marker entry: back now leaves the page.
 		await page.getByRole('dialog').getByRole('button', { name: 'Abbrechen', exact: true }).click();
 		await expect(page.getByRole('dialog')).toHaveCount(0);
-		await page.waitForTimeout(150);
+		await expect
+			.poll(() => page.evaluate(() => window.history.state?.overlayId ?? null))
+			.toBeNull();
 		await page.goBack();
 		await expect(page).not.toHaveURL(url);
 	});
@@ -1041,7 +1043,7 @@ test.describe('marker mobile overflow', () => {
 
 	async function setTextScale(page: Page) {
 		await page.evaluate(() => {
-			const nonce = document.querySelector('script[nonce]')?.nonce;
+			const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce;
 			if (!nonce) throw new Error('CSP nonce not found');
 			const style = document.createElement('style');
 			style.nonce = nonce;

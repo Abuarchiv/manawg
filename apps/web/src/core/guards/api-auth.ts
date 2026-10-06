@@ -28,7 +28,7 @@ export interface AuthenticatedMember {
 	name: string;
 }
 
-export type MemberFailureReason =
+type MemberFailureReason =
 	| 'auth_required'
 	| 'not_a_member'
 	| 'member_deactivated'

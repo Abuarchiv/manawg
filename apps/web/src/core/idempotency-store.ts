@@ -1,14 +1,10 @@
 import { db, idempotencyResponses } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
-import { RESPONSE_REPLAY_TTL_SECONDS } from '@/core/offline/replay-retention';
 import { type SQL, and, eq, gt, lte, or, sql } from 'drizzle-orm';
 
 // Response replay lives in Postgres, never in Redis: an empty UPSTASH_* configuration once let a
 // silently disabled Redis client wave duplicate expense inserts through.
 
-// Queued offline writes can be retried days after a lost response, so stored responses must
-// outlive the client's retry window.
-export { RESPONSE_REPLAY_TTL_SECONDS };
 // A claim is only a lease. If the worker dies after inserting the placeholder, another retry
 // must be able to reclaim it instead of being blocked for the whole offline replay window.
 const RESPONSE_CLAIM_LEASE_SECONDS = 15 * 60;
