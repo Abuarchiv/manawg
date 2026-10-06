@@ -69,7 +69,7 @@ test('due chores are the overdue ones, oldest first, so the 120-row cap keeps th
 		'@/core/guards/with-wg-route': {
 			withWgRoute: (_name, handler) => (req) => handler(req, { code: 'MTE8PZAT' }),
 		},
-		'@/core/reads/activity': {
+		'@/composition/activity': {
 			REMINDER_ANNOUNCEMENT_KINDS: ['question', 'problem', 'request'],
 			buildActivityTimeline: () => [],
 			getActivityReminders: () => [],
@@ -180,7 +180,7 @@ test('reminders read open shopping items and open announcements from their own o
 		'@/core/guards/with-wg-route': {
 			withWgRoute: (_name, handler) => (req) => handler(req, { code: 'MTE8PZAT' }),
 		},
-		'@/core/reads/activity': {
+		'@/composition/activity': {
 			REMINDER_ANNOUNCEMENT_KINDS: ['question', 'problem', 'request'],
 			buildActivityTimeline: () => [],
 			getActivityReminders: (input) => {

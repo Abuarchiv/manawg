@@ -1,4 +1,9 @@
 import {
+	REMINDER_ANNOUNCEMENT_KINDS,
+	buildActivityTimeline,
+	getActivityReminders,
+} from '@/composition/activity';
+import {
 	announcements,
 	auditEvents,
 	choreCompletions,
@@ -12,11 +17,6 @@ import {
 } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	REMINDER_ANNOUNCEMENT_KINDS,
-	buildActivityTimeline,
-	getActivityReminders,
-} from '@/core/reads/activity';
 import { and, asc, desc, eq, inArray, isNull, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 

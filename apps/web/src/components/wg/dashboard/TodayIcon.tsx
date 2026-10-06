@@ -1,4 +1,4 @@
-import type { TodayImportantKind } from '@/core/reads/dashboard-insights';
+import type { TodayImportantKind } from '@/composition/dashboard-insights';
 import {
 	AlertTriangle,
 	ListChecks,

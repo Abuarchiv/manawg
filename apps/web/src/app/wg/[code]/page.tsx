@@ -14,19 +14,19 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { ActivityFeed } from '@/components/wg/dashboard/ActivityFeed';
 import { StartWelcome } from '@/components/wg/dashboard/StartWelcome';
 import { TodayIcon } from '@/components/wg/dashboard/TodayIcon';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import type { DashboardData } from '@/core/reads/dashboard-data';
+import type { DashboardData } from '@/composition/dashboard-data';
 import {
 	type TodayImportantItem,
 	type WeekAgendaItem,
 	getBerlinWeekWindow,
 	getForYouItems,
 	getWeekAgenda,
-} from '@/core/reads/dashboard-insights';
-import { getDashboardAnnouncementHref } from '@/core/reads/dashboard-links';
+} from '@/composition/dashboard-insights';
+import { getDashboardAnnouncementHref } from '@/composition/dashboard-links';
+import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { apiFetch } from '@/core/infra/api-client';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 import { MS_PER_DAY } from '@/core/utils/time';

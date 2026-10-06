@@ -18,8 +18,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { ActivityFeed } from '@/components/wg/dashboard/ActivityFeed';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import {
 	type ActivityFilter,
 	type ActivityItem,
@@ -28,7 +26,9 @@ import {
 	buildActivityInbox,
 	filterActivityItems,
 	groupActivityItemsByDay,
-} from '@/core/reads/activity';
+} from '@/composition/activity';
+import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
 import { Search } from 'lucide-react';

@@ -1,8 +1,8 @@
 'use client';
 
 import { useWg } from '@/components/wg/WgContextProvider';
+import type { DashboardData } from '@/composition/dashboard-data';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import type { DashboardData } from '@/core/reads/dashboard-data';
 import { getChoreStatus } from '@/features/chores/chore-status';
 import { useCallback, useEffect } from 'react';
 

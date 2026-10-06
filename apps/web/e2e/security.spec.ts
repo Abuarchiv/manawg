@@ -11,6 +11,7 @@ import { inspect } from 'node:util';
 import { expect, test } from '@playwright/test';
 import { NextRequest } from 'next/server';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { toCsv } from '../src/composition/export';
 import { deriveMemberToken, verifyMemberToken } from '../src/core/guards/member-token';
 import {
 	type ReplaySlotDependencies,
@@ -24,7 +25,6 @@ import { isE2EDbDownMode } from '../src/core/infra/e2e-db-down';
 import { captureException, logApiError } from '../src/core/infra/observability';
 import { createPresignedUpload } from '../src/core/infra/s3';
 import { contentSecurityPolicy } from '../src/core/infra/security-headers';
-import { toCsv } from '../src/core/reads/export';
 import { MAX_CSV_BYTES, readImportJsonBody } from '../src/features/expenses/import-body';
 import { config, isShareCodeLookup, middleware, originAllowed } from '../src/middleware';
 import { FIXTURE_WG, setupMember } from './_helpers';

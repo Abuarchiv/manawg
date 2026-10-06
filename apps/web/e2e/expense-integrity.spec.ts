@@ -2045,7 +2045,7 @@ test.describe('finance failure regressions', () => {
 			const failure = new Error(`${table} unavailable`);
 			const { loadDashboardData } = loadTs<{
 				loadDashboardData: (wgId: string) => Promise<unknown>;
-			}>('core/reads/dashboard-data.ts', {
+			}>('composition/dashboard-data.ts', {
 				'@/core/db': {
 					...schema,
 					db: {
@@ -2125,7 +2125,7 @@ test.describe('finance failure regressions', () => {
 				wgHealth: { dueRecurringCount: number };
 				activity: Array<{ kind: string; text: string }>;
 			}>;
-		}>('core/reads/dashboard-data.ts', {
+		}>('composition/dashboard-data.ts', {
 			'@/core/db': {
 				...schema,
 				db: {

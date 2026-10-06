@@ -1,6 +1,6 @@
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { activityItemKey } from '@/core/reads/activity';
+import { activityItemKey } from '@/composition/activity';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime } from '@/core/utils/time';
 import { cn } from '@/shared/lib/cn';

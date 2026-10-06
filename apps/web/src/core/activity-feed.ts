@@ -1,9 +1,8 @@
 import 'server-only';
 
 import { announcements, db, wgChatMessages } from '@/core/db';
+import { type ChatSystemKind, SYSTEM_MESSAGE_KIND } from '@/core/feed-kinds';
 import { logApiError } from '@/core/infra/observability';
-import { SYSTEM_MESSAGE_KIND } from '@/features/chat/chat-pure';
-import type { ChatSystemKind } from '@/features/chat/chat-pure';
 import { and, eq } from 'drizzle-orm';
 
 export interface SystemNoticeInput {
