@@ -563,7 +563,7 @@ test.describe('inventory restock retry', () => {
 		await expect(page.getByText('3 Packung')).toBeVisible();
 
 		await minus.click();
-		// Die Antwort hängt noch am Gate: die Anzeige ist optimistisch.
+		// The response is still held at the gate: the display is optimistic.
 		await expect(page.getByText('2 Packung')).toBeVisible();
 		releaseConsume();
 		await expect(page.getByText('Aktualisierung fehlgeschlagen.')).toBeVisible();

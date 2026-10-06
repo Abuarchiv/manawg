@@ -142,14 +142,8 @@ export async function setReplayWarning(
 				eq(idempotencyResponses.scope, scope),
 				eq(idempotencyResponses.key, key),
 				gt(idempotencyResponses.expiresAt, new Date()),
-				...target.match.map(
-					({ path, equals }) => sql`${body} #>> ${jsonPath(path)} = ${equals}`,
-				),
-				or(
-					...target.replaces.map(
-						(value) => sql`${body} #> ${warningPath} = ${jsonText(value)}`,
-					),
-				),
+				...target.match.map(({ path, equals }) => sql`${body} #>> ${jsonPath(path)} = ${equals}`),
+				or(...target.replaces.map((value) => sql`${body} #> ${warningPath} = ${jsonText(value)}`)),
 			),
 		)
 		.returning({ scope: idempotencyResponses.scope });

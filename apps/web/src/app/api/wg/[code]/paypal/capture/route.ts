@@ -109,7 +109,7 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 					.where(and(eq(expensePayments.id, current.id), eq(expensePayments.status, 'created')));
 				return { kind: 'expired' as const };
 			}
-			// ponytail: one unresolved PayPal capture per WG; per-account starts if throughput needs it.
+			// One unresolved PayPal capture per WG; per-account starts are possible if throughput needs it.
 			if (await hasCapturingExpensePayment(tx, auth.wg.id)) return { kind: 'busy' as const };
 			// One transaction connection runs one query at a time; issuing them in
 			// parallel is deprecated in pg 8 and rejected in pg 9.
@@ -318,7 +318,7 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 			capturedCents !== capturePayment.amountCents ||
 			capture.amount?.currency_code !== capturePayment.currency
 		) {
-			// Nicht hängen lassen: ein `capturing`-Eintrag sperrt sonst die Finanzen der ganzen WG.
+			// Never leave it hanging: a `capturing` row blocks the whole WG's finances.
 			logApiError(
 				'[paypal capture] captured order does not match payment',
 				new Error(`paypal_capture_mismatch:${capturePayment.id}`),

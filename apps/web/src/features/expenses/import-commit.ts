@@ -128,8 +128,8 @@ function prepareRow(input: CommitInput, parsed: ParsedExpense): PreparedRow {
 	if (!paidByMemberId) return { ok: false, reason: 'payer_unmapped' };
 
 	// Two names in the file can be mapped to the same member (e.g. "Tom" and "Thomas").
-	// A member may have only one share (as with manual expenses), otherwise the expense can
-	// no longer be edited later: amounts are summed.
+	// A member may have only one share (as with manual expenses), otherwise the expense could
+	// not be edited later: amounts are summed.
 	const amountByDebtor = new Map<string, number>();
 	for (const s of parsed.splits) {
 		const debtorMemberId = input.mapping[s.memberName];
@@ -299,13 +299,7 @@ async function writeImport(tx: DbTransaction, input: CommitInput) {
 		.where(eq(expenseImports.id, imp.id));
 
 	const body: CommitResult = { importId: imp.id, inserted, skipped, errors, warning: null };
-	const value: ImportWriteResult = {
-		importId: imp.id,
-		inserted,
-		skipped,
-		errors,
-		totalAmountCents,
-	};
+	const value: ImportWriteResult = { ...body, totalAmountCents };
 	return { status: 200, body, context: value };
 }
 
@@ -361,9 +355,6 @@ export async function commitImport<S>(
 /** Tell the WG about an import that already committed; a failure here must not undo it. */
 async function announceImport(input: CommitInput, value: ImportWriteResult): Promise<CommitResult> {
 	const { importId, inserted, skipped, errors, totalAmountCents } = value;
-	// Everything below is deliberately outside the transaction: it informs the
-	// WG about an import that already happened, so a failure here must not undo
-	// the import itself.
 	const importedLabel = `${inserted} ${inserted === 1 ? 'Ausgabe' : 'Ausgaben'}`;
 	const sourceLabel = IMPORT_SOURCE_LABELS[input.source];
 	await postSystemNotice({

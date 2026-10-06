@@ -167,4 +167,54 @@ function loadIdempotencyStore(mocks) {
 	});
 }
 
-module.exports = { loadClaimedResponse, loadIdempotencyStore, loadIdempotentWrite, loadParseBody };
+/**
+ * Adds the real idempotent-write and parse-body helpers to a route harness's mocks. `lazy` names
+ * further `@/` modules (e.g. the feature module a route delegates to) that load against the same
+ * mocks on first use.
+ */
+/**
+ * @param {Record<string, unknown>} mocks
+ * @param {string[]} [lazy]
+ */
+function withRouteHelpers(mocks, lazy = []) {
+	mocks['@/core/db/idempotent-write'] = loadIdempotentWrite(mocks);
+	mocks['@/core/http/parse-body'] = loadParseBody(mocks);
+	for (const name of lazy) {
+		if (Object.hasOwn(mocks, name)) continue;
+		let loaded;
+		Object.defineProperty(mocks, name, {
+			enumerable: true,
+			get: () => {
+				loaded ??= evaluate(transpile(`src/${name.slice(2)}.ts`), mocks);
+				return loaded;
+			},
+		});
+	}
+	return mocks;
+}
+
+/**
+ * Stand-in for withWgRoute: like the real wrapper, an uncaught error becomes a 500.
+ * @param {(label: string, err: unknown) => void} [onError]
+ */
+function catchingWithWgRoute(onError = () => undefined) {
+	return {
+		withWgRoute: (label, handler) => async (req, ctx) => {
+			try {
+				return await handler(req, ctx);
+			} catch (err) {
+				onError(label, err);
+				return Response.json({ error: 'server_error' }, { status: 500 });
+			}
+		},
+	};
+}
+
+module.exports = {
+	catchingWithWgRoute,
+	loadClaimedResponse,
+	loadIdempotencyStore,
+	loadIdempotentWrite,
+	loadParseBody,
+	withRouteHelpers,
+};

@@ -66,12 +66,12 @@ function isAuthInvalidated(code: string | null, status?: number): boolean {
 	);
 }
 
-/** Supabase-Sitzung abgelaufen (Guards antworten 401 `auth_required`); anders als `authInvalidated` ist die Mitgliedschaft intakt. */
+/** Supabase session expired (guards answer 401 `auth_required`); unlike `authInvalidated`, the membership is intact. */
 export function isSessionExpired(code: string | null): boolean {
 	return code === 'auth_required';
 }
 
-/** Middleware bei `MIGRATION_READ_ONLY=true`: 503 `migration_read_only` auf jede Mutation (Wartung). */
+/** Middleware with `MIGRATION_READ_ONLY=true`: 503 `migration_read_only` on every mutation (maintenance). */
 export function isReadOnlyMode(code: string | null): boolean {
 	return code === 'migration_read_only';
 }
@@ -88,7 +88,7 @@ export type ApiErrorKind =
 /** Single bucket for an error; callers map the bucket to their own copy. */
 export function classifyApiError(code: string | null, status?: number): ApiErrorKind | null {
 	if (isNetworkError(code, status)) return 'network';
-	// Vor retryable/authInvalidated: 503 bzw. 401 würden sonst falsch eingeordnet.
+	// Before retryable/authInvalidated: the 503 or 401 would otherwise be misclassified.
 	if (isReadOnlyMode(code)) return 'readOnly';
 	if (isSessionExpired(code)) return 'sessionExpired';
 	if (isWgUnavailable(code, status)) return 'wgUnavailable';

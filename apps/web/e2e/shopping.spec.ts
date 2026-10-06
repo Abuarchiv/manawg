@@ -139,11 +139,11 @@ test.describe('shopping retry', () => {
 		const input = page.getByLabel('Artikel-Name');
 		await input.fill('Milch');
 		await input.press('Enter');
-		// Der zweite Enter darf nicht am gesperrten Absende-Knopf scheitern.
+		// The second Enter must not fail on the disabled submit button.
 		await input.press('Enter');
 		await input.fill('Brot');
 		await input.press('Enter');
-		// Auch das wartende „Brot“ wird nicht doppelt nachgereiht.
+		// The waiting „Brot“ is not queued twice either.
 		await input.press('Enter');
 		releaseFirst();
 		await expect.poll(() => posted).toEqual(['Milch', 'Brot']);
@@ -309,9 +309,9 @@ test.describe('haushalt shopping checkbox hitarea', () => {
 	// Regression for a <44px touch target: ShoppingItemRow's checkbox grows its hit
 	// area with an invisible `after:-inset-2.5` pseudo-element, but the swipe-to-toggle
 	// row wraps everything in an <li> with `overflow-hidden`. Since the checkbox sits
-	// flush against the row's left edge (Item used px-0), any leftward hit-area
-	// extension used to get clipped by that overflow-hidden, leaving an effective
-	// ~34px target. Fix: `overflow-hidden` only applies while a swipe is in progress.
+	// flush against the row's left edge (Item uses px-0), overflow-hidden would clip any
+	// leftward hit-area extension to an effective ~34px target, so `overflow-hidden` only
+	// applies while a swipe is in progress.
 	test('shopping item checkbox keeps its full hit area when not swiping', async ({ page }) => {
 		test.skip(
 			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
@@ -368,14 +368,11 @@ test.describe('haushalt shopping checkbox hitarea', () => {
 });
 
 test.describe('haushalt shopping swipe pointer capture', () => {
-	// Regression: ShoppingItemRow drives its swipe-to-toggle gesture with raw
-	// pointer events but used to never capture the pointer. Unlike touch events,
-	// pointer events retarget to whatever element sits under the finger at each
-	// point, so a fast/diagonal swipe that drifted off the row before lift-off
-	// meant onPointerUp (which resets swipeX and completes the toggle) never
-	// fired on that row, leaving it visually stuck mid-swipe. Fixed by calling
-	// setPointerCapture on pointerdown so move/up stay targeted at the row for
-	// the whole gesture, matching touch-event semantics.
+	// ShoppingItemRow drives its swipe-to-toggle gesture with raw pointer events. Unlike touch
+	// events, pointer events retarget to whatever element sits under the finger, so a fast or
+	// diagonal swipe that drifts off the row would never fire onPointerUp (which resets swipeX
+	// and completes the toggle) and leave the row stuck mid-swipe. setPointerCapture on
+	// pointerdown keeps move/up on the row for the whole gesture, like touch events.
 	test('shopping row captures the pointer when a touch swipe starts', async ({ page }) => {
 		test.skip(
 			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
@@ -555,8 +552,8 @@ test.describe('shopping conflict handling', () => {
 			createdAt: '2026-09-22T10:00:00.000Z',
 			updatedAt: '2026-09-22T10:00:00.000Z',
 		};
-		// Dasselbe Array speist das Mock-GET: nach dem erfolgreichen DELETE liefert der
-		// „Server“ den Artikel nicht mehr, wie in echt beim Neuladen nach dem Entfernen.
+		// The same array feeds the mock GET: after the successful DELETE the
+		// „server“ stops returning the item, like a real reload after the removal.
 		const serverItems = [item];
 		await mockShoppingPage(page, false, 200, serverItems);
 		let deletes = 0;
@@ -584,7 +581,7 @@ test.describe('shopping conflict handling', () => {
 		await page.getByRole('button', { name: 'Artikelaktionen: Milch' }).click();
 		const remove = page.getByRole('button', { name: /entfernen: Milch$/ });
 		const confirmRemove = page.getByRole('button', { name: 'Endgültig entfernen: Milch' });
-		// Erster Tipp schärft, zweiter bestätigt; erst klicken, wenn der Bestätigungszustand steht.
+		// The first tap arms, the second confirms; click only once the confirm state shows.
 		await remove.click();
 		await confirmRemove.click();
 		await expect(remove).toBeDisabled();
@@ -594,7 +591,7 @@ test.describe('shopping conflict handling', () => {
 		expect(deletes).toBe(1);
 		await remove.click();
 		await confirmRemove.click();
-		// Der Request-Zähler läuft im Route-Handler, also asynchron zum Klick.
+		// The request counter runs in the route handler, so asynchronously to the click.
 		await expect.poll(() => deletes).toBe(2);
 		await expect(page.getByRole('button', { name: 'Artikelaktionen: Milch' })).toHaveCount(0);
 	});
@@ -714,7 +711,7 @@ test.describe('shopping conflict handling', () => {
 		await page.getByLabel('Artikel-Name').fill('Hafermilch');
 		await page.getByRole('button', { name: 'Artikel hinzufügen' }).click();
 
-		// Die Zeile steht da, bevor der Server geantwortet hat; der Haken ist noch gesperrt.
+		// The row shows before the server answered; its checkbox is still disabled.
 		await expect(page.locator('[data-shopping-row]')).toHaveCount(1);
 		await expect(page.locator('[data-shopping-row]')).toContainText('Hafermilch');
 		releaseCreate?.();

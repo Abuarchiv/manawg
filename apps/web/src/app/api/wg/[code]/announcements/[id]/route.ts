@@ -165,11 +165,8 @@ export const DELETE = withWgRoute<{ id: string }>(
 		);
 		if (!limited.success) return tooMany();
 
-		// Author OR admin may delete an announcement. Authors own their own posts;
-		// the WG admin gets an override so they can moderate
-		// stale or inappropriate content when the author is unreachable.
-		// Previously this was author-only, which left the WG with no way to
-		// clean up posts from departed members (P1 audit finding).
+		// Author OR admin may delete an announcement. Authors own their own posts; the WG admin
+		// can moderate stale or inappropriate content, e.g. posts of members who moved out.
 		const deletion = await withTransaction(async (tx) => {
 			await lockExpensePayments(tx, wgId);
 			const [row] = await tx

@@ -206,8 +206,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 						? 'resume'
 						: null;
 
-		// Fortsetzen bucht verpasste Termine nicht nach: der nächste Termin springt
-		// auf den ersten Zyklustag ab heute (heute fällig bleibt fällig), sonst legt der Cron jeden Pausenmonat an.
+		// Resuming does not book the missed charges: the next due date jumps
+		// to the first cycle day from today (due today stays due); otherwise the cron books every paused month.
 		let resumedDueAt = nextDueAt;
 		if (pauseTransition === 'resume' && parsed.data.nextDueAt === undefined) {
 			const anchorDay = (template.anchorAt ?? template.nextDueAt).getUTCDate();
@@ -254,8 +254,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 			paidByMemberId: nextPaidByMemberId,
 			intervalMonths: nextIntervalMonths,
 			nextDueAt: resumedDueAt,
-			// Ein verschobener Termin setzt den Zyklus-Anker neu, sonst springt der
-			// nächste Cron-Lauf auf den alten Monatstag zurück.
+			// A moved due date resets the cycle anchor; otherwise the next
+			// cron run would jump back to the old day of the month.
 			...(parsed.data.nextDueAt !== undefined &&
 			nextDueAt.getTime() !== template.nextDueAt.getTime()
 				? { anchorAt: nextDueAt }

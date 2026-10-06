@@ -198,11 +198,8 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	if (currency !== undefined) updates.currency = currency;
 	if (imageUrl !== undefined) updates.imageUrl = imageUrl ?? null;
 
-	// The amount change and the replaced splits are one edit, so they are
-	// written in one transaction. This used to delete the old splits first
-	// and repair the damage with a snapshot re-insert when the new insert
-	// failed — a best-effort repair that left the expense with zero splits,
-	// and every balance wrong, whenever it failed itself.
+	// The amount change and the replaced splits are one edit, so they are written in one
+	// transaction: a failure leaves the old splits in place instead of an expense with none.
 	try {
 		await withExpensePaymentLock(wgId, async (tx) => {
 			let previousImageUrl: string | null = null;

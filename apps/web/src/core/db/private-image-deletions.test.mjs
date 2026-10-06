@@ -4,11 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import {
-	loadClaimedResponse,
-	loadIdempotentWrite,
-	loadParseBody,
-} from '../../../tests/support/claimed-response.cjs';
+import { loadClaimedResponse, withRouteHelpers } from '../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const connectionString = process.env.PRIVATE_IMAGE_TEST_DATABASE_URL;
@@ -28,13 +24,6 @@ function expenseValidationModules() {
 			{ '@/features/expenses/expense-constants': constants },
 		),
 	};
-}
-
-/** Adds the real idempotent-write and parse-body helpers on top of a route's mocks. */
-function withRouteHelpers(mocks) {
-	mocks['@/core/db/idempotent-write'] = loadIdempotentWrite(mocks);
-	mocks['@/core/http/parse-body'] = loadParseBody(mocks);
-	return mocks;
 }
 
 function loadTypeScript(file, overrides = {}) {
@@ -559,7 +548,6 @@ test(
 							payloadTooLarge: () => responseJson('payload_too_large', 413),
 						},
 						'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
-						'@/core/guards/replay-slot': { claimReplaySlot: async () => ({ won: true }) },
 						'@/core/guards/require-wg-member': {
 							requireWgMember: async () => ({
 								ok: true,
@@ -927,7 +915,6 @@ test(
 							'@/core/db/transaction': transaction,
 						}),
 						'@/core/db/transaction': transaction,
-						'@/core/guards/replay-slot': { claimReplaySlot: async () => ({ won: true }) },
 						'@/core/idempotency-store': {
 							RESPONSE_REPLAY_TTL_SECONDS: 604_800,
 							getCachedResponse: async () => null,
