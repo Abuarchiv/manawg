@@ -1,32 +1,25 @@
 import { apiFetch } from '@/core/infra/api-client';
 import { notificationWarningMessage } from '@/core/notifications/notification-warning';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import {
-	announcementActionErrorMessage,
-	commentActionErrorMessage,
-} from '@/features/pinnwand/announcement-errors';
-import {
-	type CommentOverride,
-	type CommentOverrides,
-	forgetCommentOverride as forgetOverride,
-	rememberCommentOverride as rememberOverride,
-} from '@/features/pinnwand/comment-overrides';
+import { withToggledReaction } from '@/features/pinnwand/announcement-edits';
+import { announcementActionErrorMessage } from '@/features/pinnwand/announcement-errors';
+import type { CommentOverrides } from '@/features/pinnwand/comment-overrides';
 import type {
 	Announcement,
-	AnnouncementComment,
 	AnnouncementKind,
 	AnnouncementStatus,
 	ReactionKey,
 } from '@/features/pinnwand/components/announcement-types';
 import { type MutableRefObject, useRef } from 'react';
+import { announcementListEdits } from './announcement-list-edits';
 import type {
-	AnnouncementCommentResponse,
 	AnnouncementPageContext,
 	AnnouncementReactionResponse,
 	AnnouncementWriteResponse,
 } from './announcement-page-context';
+import { useAnnouncementComments } from './use-announcement-comments';
 
-/** Pinnwand-Karten: Anpinnen, Status, Reaktionen, Kommentare und Löschen, jeweils mit optimistischem Update. */
+/** Pinnwand cards: pin, status, reactions, replies and delete, each with an optimistic update. */
 export function useAnnouncementActions(
 	ctx: AnnouncementPageContext,
 	commentOverridesRef: MutableRefObject<CommentOverrides>,
@@ -45,57 +38,12 @@ export function useAnnouncementActions(
 		commitItems,
 		load,
 	} = ctx;
-	const commentIdempotencyKeysRef = useRef(new Map<string, string>());
 	const reactionIdempotencyKeysRef = useRef(new Map<string, { active: boolean; key: string }>());
-
-	const rememberCommentOverride = (
-		announcementId: string,
-		commentId: string,
-		comment: CommentOverride,
-	): void => rememberOverride(commentOverridesRef.current, announcementId, commentId, comment);
-	const forgetCommentOverride = (announcementId: string, commentId: string): void =>
-		forgetOverride(commentOverridesRef.current, announcementId, commentId);
-
-	function dropVanishedAnnouncement(id: string): void {
-		commitItems(itemsRef.current.filter((item) => item.id !== id));
-		setActionError('Dieser Pinnwand-Beitrag existiert nicht mehr und wurde entfernt.');
-	}
-
-	function updateItem(id: string, updater: (item: Announcement) => Announcement): void {
-		commitItems(itemsRef.current.map((item) => (item.id === id ? updater(item) : item)));
-	}
-
-	/**
-	 * Captures the given fields of one card now and returns a function that puts
-	 * only those back. Restoring a snapshot of the whole list instead would also
-	 * undo changes to other cards that succeeded while this request was in flight.
-	 */
-	function captureFields<K extends keyof Announcement>(id: string, keys: readonly K[]): () => void {
-		const before = itemsRef.current.find((item) => item.id === id);
-		return () => {
-			if (!before) return;
-			updateItem(id, (item) => {
-				const restored = { ...item };
-				for (const key of keys) restored[key] = before[key];
-				return restored;
-			});
-		};
-	}
-
-	function replaceComment(
-		announcementId: string,
-		commentId: string,
-		replacement: AnnouncementComment | null,
-	): void {
-		updateItem(announcementId, (item) => {
-			const others = item.comments.filter((comment) => comment.id !== commentId);
-			const comments = replacement ? [...others, replacement] : others;
-			return {
-				...item,
-				comments: comments.sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
-			};
-		});
-	}
+	const { updateItem, dropVanishedAnnouncement, captureFields } = announcementListEdits(
+		ctx,
+		commentOverridesRef,
+	);
+	const comments = useAnnouncementComments(ctx, commentOverridesRef);
 
 	async function patchAnnouncement(
 		id: string,
@@ -165,29 +113,13 @@ export function useAnnouncementActions(
 		if (isPending(pendingKey)) return;
 		const rollback = captureFields(announcement.id, ['myReactions', 'reactionCounts', 'takers']);
 		const active = announcement.myReactions.includes(reaction);
-		updateItem(announcement.id, (item) => ({
-			...item,
-			myReactions: active
-				? item.myReactions.filter((current) => current !== reaction)
-				: [...item.myReactions, reaction],
-			reactionCounts: {
-				...item.reactionCounts,
-				[reaction]: Math.max(0, (item.reactionCounts[reaction] ?? 0) + (active ? -1 : 1)),
-			},
-			takers:
-				reaction !== 'take'
-					? item.takers
-					: active
-						? item.takers.filter((taker) => taker.memberId !== identity.memberId)
-						: [
-								...item.takers,
-								{
-									memberId: identity.memberId,
-									name: identity.name,
-									color: members.find((member) => member.id === identity.memberId)?.color ?? null,
-								},
-							],
-		}));
+		updateItem(announcement.id, (item) =>
+			withToggledReaction(item, reaction, active, {
+				memberId: identity.memberId,
+				name: identity.name,
+				color: members.find((member) => member.id === identity.memberId)?.color ?? null,
+			}),
+		);
 		start(pendingKey);
 		setActionError(null);
 		const reactionRequestKey = `${announcement.id}:${reaction}`;
@@ -234,162 +166,6 @@ export function useAnnouncementActions(
 		void load();
 	}
 
-	async function addComment(announcement: Announcement, content: string): Promise<boolean> {
-		const pendingKey = `${announcement.id}:comment`;
-		if (isPending(pendingKey)) return false;
-		const optimisticComment: AnnouncementComment = {
-			id: `temp-${Date.now()}`,
-			announcementId: announcement.id,
-			memberId: identity.memberId,
-			content,
-			createdAt: new Date().toISOString(),
-			authorName: identity.name,
-			authorColor: members.find((member) => member.id === identity.memberId)?.color ?? null,
-		};
-		rememberCommentOverride(announcement.id, optimisticComment.id, optimisticComment);
-		updateItem(announcement.id, (item) => ({
-			...item,
-			comments: [...item.comments, optimisticComment],
-		}));
-		start(pendingKey);
-		setActionError(null);
-		const commentRequestKey = `${announcement.id}:${content}`;
-		const idempotencyKey =
-			commentIdempotencyKeysRef.current.get(commentRequestKey) ?? createOfflineIdempotencyKey();
-		if (!idempotencyKey) {
-			end(pendingKey);
-			setActionError('Kommentar konnte nicht sicher gesendet werden. Versuche es erneut.');
-			return false;
-		}
-		commentIdempotencyKeysRef.current.set(commentRequestKey, idempotencyKey);
-		const res = await apiFetch<AnnouncementCommentResponse>(
-			`/api/wg/${encodedShareCode}/announcements/${encodeURIComponent(announcement.id)}/comments`,
-			{
-				method: 'POST',
-				memberId: identity.memberId,
-				headers: { 'Idempotency-Key': idempotencyKey },
-				body: JSON.stringify({ content }),
-			},
-		);
-		end(pendingKey);
-		if (!res.ok) {
-			if (res.status > 0 && res.status < 500 && res.status !== 429) {
-				commentIdempotencyKeysRef.current.delete(commentRequestKey);
-			}
-			if (res.status === 404 && res.error === 'announcement_not_found') {
-				commentOverridesRef.current.delete(announcement.id);
-				dropVanishedAnnouncement(announcement.id);
-			} else {
-				forgetCommentOverride(announcement.id, optimisticComment.id);
-				replaceComment(announcement.id, optimisticComment.id, null);
-				setActionError(commentActionErrorMessage(res.error));
-			}
-			return false;
-		}
-		commentIdempotencyKeysRef.current.delete(commentRequestKey);
-		forgetCommentOverride(announcement.id, optimisticComment.id);
-		const confirmedComment = { ...optimisticComment, ...res.data.comment };
-		rememberCommentOverride(announcement.id, confirmedComment.id, confirmedComment);
-		updateItem(announcement.id, (item) => ({
-			...item,
-			comments: item.comments.map((comment) =>
-				comment.id === optimisticComment.id ? confirmedComment : comment,
-			),
-		}));
-		const warningMessage = notificationWarningMessage(res.data.warning);
-		if (warningMessage) setNotice(warningMessage);
-		void load('background');
-		return true;
-	}
-
-	async function updateComment(
-		announcement: Announcement,
-		commentId: string,
-		content: string,
-	): Promise<boolean> {
-		const pendingKey = `${commentId}:comment-edit`;
-		if (isPending(pendingKey)) return false;
-		const previousComment = announcement.comments.find((comment) => comment.id === commentId);
-		if (previousComment) {
-			rememberCommentOverride(announcement.id, commentId, { ...previousComment, content });
-		}
-		updateItem(announcement.id, (item) => ({
-			...item,
-			comments: item.comments.map((comment) =>
-				comment.id === commentId ? { ...comment, content } : comment,
-			),
-		}));
-		start(pendingKey);
-		setActionError(null);
-		const res = await apiFetch<{ comment: AnnouncementComment }>(
-			`/api/wg/${encodedShareCode}/announcements/${encodeURIComponent(announcement.id)}/comments/${encodeURIComponent(commentId)}`,
-			{
-				method: 'PATCH',
-				memberId: identity.memberId,
-				body: JSON.stringify({ content }),
-			},
-		);
-		end(pendingKey);
-		if (!res.ok) {
-			if (res.status === 404 && res.error === 'comment_not_found') {
-				forgetCommentOverride(announcement.id, commentId);
-				updateItem(announcement.id, (item) => ({
-					...item,
-					comments: item.comments.filter((comment) => comment.id !== commentId),
-				}));
-				setActionError('Dieser Kommentar existiert nicht mehr und wurde entfernt.');
-				return true;
-			}
-			forgetCommentOverride(announcement.id, commentId);
-			if (previousComment) replaceComment(announcement.id, commentId, previousComment);
-			setActionError(commentActionErrorMessage(res.error));
-			return false;
-		}
-		const confirmedComment = { ...previousComment, ...res.data.comment };
-		rememberCommentOverride(announcement.id, confirmedComment.id, confirmedComment);
-		updateItem(announcement.id, (item) => ({
-			...item,
-			comments: item.comments.map((comment) =>
-				comment.id === commentId ? confirmedComment : comment,
-			),
-		}));
-		void load('background');
-		return true;
-	}
-
-	async function deleteComment(announcement: Announcement, commentId: string): Promise<boolean> {
-		const pendingKey = `${commentId}:comment-delete`;
-		if (isPending(pendingKey)) return false;
-		const previousComment = announcement.comments.find((comment) => comment.id === commentId);
-		rememberCommentOverride(announcement.id, commentId, null);
-		updateItem(announcement.id, (item) => ({
-			...item,
-			comments: item.comments.filter((comment) => comment.id !== commentId),
-		}));
-		start(pendingKey);
-		setActionError(null);
-		const res = await apiFetch<Record<string, never>>(
-			`/api/wg/${encodedShareCode}/announcements/${encodeURIComponent(announcement.id)}/comments/${encodeURIComponent(commentId)}`,
-			{
-				method: 'DELETE',
-				memberId: identity.memberId,
-			},
-		);
-		end(pendingKey);
-		if (!res.ok) {
-			if (res.status === 404 && res.error === 'comment_not_found') {
-				setActionError('Dieser Kommentar existiert nicht mehr und wurde entfernt.');
-			} else {
-				forgetCommentOverride(announcement.id, commentId);
-				if (previousComment) replaceComment(announcement.id, commentId, previousComment);
-				setActionError(commentActionErrorMessage(res.error));
-			}
-			return false;
-		}
-		void load('background');
-		return true;
-	}
-
 	async function remove(id: string): Promise<boolean> {
 		if (isPending(id)) return false;
 		start(id);
@@ -423,9 +199,9 @@ export function useAnnouncementActions(
 		togglePinned,
 		toggleStatus,
 		toggleReaction,
-		addComment,
-		updateComment,
-		deleteComment,
+		addComment: comments.addComment,
+		updateComment: comments.updateComment,
+		deleteComment: comments.deleteComment,
 		remove,
 	};
 }
