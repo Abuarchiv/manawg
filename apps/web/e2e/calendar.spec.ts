@@ -922,6 +922,34 @@ test.describe('calendar date and recurrence regressions', () => {
 		await expect(page.locator('#event-create-start')).not.toHaveValue('');
 	});
 
+	test('browser back closes the open create sheet, keeps the page and the draft', async ({
+		page,
+	}) => {
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/events*`, (route) =>
+			route.fulfill({ json: { events: [] } }),
+		);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores*`, (route) =>
+			route.fulfill({ json: { chores: [] } }),
+		);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		const url = page.url();
+		const open = page.getByRole('button', { name: 'Termin hinzufügen', exact: true }).first();
+		await open.click();
+		await page.locator('#event-create-title').fill('Zurück behält Entwurf');
+		await page.goBack();
+		await expect(page.getByRole('dialog')).toHaveCount(0);
+		expect(page.url()).toBe(url);
+		await open.click();
+		await expect(page.locator('#event-create-title')).toHaveValue('Zurück behält Entwurf');
+		// Closing through the UI removes the marker entry: back now leaves the page.
+		await page.getByRole('dialog').getByRole('button', { name: 'Abbrechen', exact: true }).click();
+		await expect(page.getByRole('dialog')).toHaveCount(0);
+		await page.waitForTimeout(150);
+		await page.goBack();
+		await expect(page).not.toHaveURL(url);
+	});
+
 	test('mention autocomplete does not open for an isolated at-sign', () => {
 		expect(detectMention('@', 1)).toBeNull();
 		expect(detectMention('@ ', 1)).toBeNull();
