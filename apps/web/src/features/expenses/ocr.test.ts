@@ -1,42 +1,43 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-import { resolve } from 'node:path';
-import test from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { mock, test } from 'node:test';
 
-const appRoot = fileURLToPath(new URL('../../..', import.meta.url));
-const tesseractMockUrl = `data:text/javascript,${encodeURIComponent(
-	'export const createWorker = (...args) => globalThis.__ocrTesseractMock.createWorker(...args);',
-)}`;
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith('@/')) {
-			const path = resolve(appRoot, 'src', `${specifier.slice(2)}.ts`);
-			return nextResolve(pathToFileURL(path).href, context);
-		}
-		if (specifier === 'tesseract.js') return { url: tesseractMockUrl, shortCircuit: true };
-		return nextResolve(specifier, context);
+type OcrRuntime = NonNullable<Parameters<typeof import('./ocr').runOcrOnImage>[2]>;
+type TesseractModule = Awaited<ReturnType<NonNullable<OcrRuntime['loadTesseract']>>>;
+type CreateWorker = TesseractModule['createWorker'];
+
+const tesseract: TesseractModule = {
+	createWorker: () => new Promise(() => {}),
+};
+
+mock.module('tesseract.js', {
+	namedExports: {
+		createWorker: (...args: Parameters<CreateWorker>) => tesseract.createWorker(...args),
 	},
 });
 
-const { OcrInitializationError, parseOcrText, runOcrOnImage } = await import('./ocr.ts');
+const { OcrInitializationError, parseOcrText, runOcrOnImage } = await import('./ocr');
 const contextDate = '2026-09-27T00:00:00.000Z';
-const reloadRequired = (error) => error instanceof OcrInitializationError && error.requiresReload;
+const reloadRequired = (error: unknown) =>
+	error instanceof OcrInitializationError && error.requiresReload;
 
-function setTesseractMock(createWorker) {
-	globalThis.__ocrTesseractMock = { createWorker };
+function setTesseractMock(createWorker: CreateWorker): void {
+	tesseract.createWorker = createWorker;
 }
 
-function deferred() {
-	let resolve;
-	const promise = new Promise((res) => {
+function deferred<T>() {
+	let resolve: (value: T) => void = () => undefined;
+	const promise = new Promise<T>((res) => {
 		resolve = res;
 	});
 	return { promise, resolve };
 }
 
-async function assertRejectsWithin(promise, timeoutMs, errorPattern) {
-	let timer;
+async function assertRejectsWithin(
+	promise: Promise<unknown>,
+	timeoutMs: number,
+	errorPattern: RegExp | ((error: unknown) => boolean),
+) {
+	let timer: ReturnType<typeof setTimeout> | undefined;
 	try {
 		await assert.rejects(
 			Promise.race([
@@ -134,7 +135,7 @@ test('separate amounts on one line still select the final amount', () => {
 });
 
 test('a timed-out module load does not start a worker when it resolves late', async () => {
-	const moduleLoad = deferred();
+	const moduleLoad = deferred<TesseractModule>();
 	let workerStarts = 0;
 	setTesseractMock(() => {
 		workerStarts += 1;
@@ -151,14 +152,14 @@ test('a timed-out module load does not start a worker when it resolves late', as
 		250,
 		reloadRequired,
 	);
-	moduleLoad.resolve(globalThis.__ocrTesseractMock);
+	moduleLoad.resolve(tesseract);
 	await new Promise((resolve) => setImmediate(resolve));
 	assert.equal(workerStarts, 0);
 });
 
 test('a late worker is terminated if createWorker resolves after the init timeout', async () => {
-	const workerInit = deferred();
-	const terminated = deferred();
+	const workerInit = deferred<Awaited<ReturnType<CreateWorker>>>();
+	const terminated = deferred<void>();
 	let terminateCount = 0;
 	const worker = {
 		recognize: async () => ({ data: { text: 'unused' } }),
@@ -233,7 +234,7 @@ test('SDK init errors reject promptly and repeated attempts do not spawn another
 		queueMicrotask(() => options?.errorHandler?.('TypeError: Failed to fetch language data'));
 		return new Promise(() => {});
 	});
-	const runtime = { loadTesseract: async () => globalThis.__ocrTesseractMock, initTimeoutMs: 100 };
+	const runtime = { loadTesseract: async () => tesseract, initTimeoutMs: 100 };
 	await assertRejectsWithin(runOcrOnImage(new Blob(), undefined, runtime), 250, reloadRequired);
 	await assert.rejects(runOcrOnImage(new Blob(), undefined, runtime), reloadRequired);
 	assert.equal(createCalls, 1);

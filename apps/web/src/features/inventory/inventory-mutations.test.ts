@@ -1,69 +1,46 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import test from 'node:test';
-import { fileURLToPath } from 'node:url';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import { loadClaimedResponse } from '../../../tests/support/claimed-response.cjs';
+import { mock, test } from 'node:test';
 
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-const directory = path.dirname(fileURLToPath(import.meta.url));
 const updatedAt = new Date('2026-09-29T10:00:00.000Z');
+const wgInventoryItems = { id: 'id', wgId: 'wgId', quantity: 'quantity', updatedAt: 'updatedAt' };
 
-function loadRealInventory() {
-	const source = transpileModule(readFileSync(path.join(directory, 'inventory.ts'), 'utf8'), {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	const module = { exports: {} };
-	new Function('require', 'module', 'exports', source)(requireFromWeb, module, module.exports);
-	return module.exports;
-}
+mock.module('@/core/db', {
+	namedExports: {
+		db: {},
+		idempotencyResponses: {},
+		shoppingItems: {},
+		wgInventoryItems,
+		wgInventoryLog: { name: 'log' },
+	},
+});
+// These mutations carry no replay key, so the claim protocol must stay untouched.
+mock.module('@/core/db/claimed-response', {
+	namedExports: {
+		completeClaimedResponse: () => assert.fail('a mutation without a replay key completed a slot'),
+	},
+});
+mock.module('drizzle-orm', {
+	namedExports: {
+		and: (...parts: unknown[]) => parts,
+		eq: (column: unknown, value: unknown) => [column, value],
+		gt: () => null,
+		sql: () => null,
+	},
+});
 
-function loadMutations({ inventory } = {}) {
-	const wgInventoryItems = { id: 'id', wgId: 'wgId', quantity: 'quantity', updatedAt: 'updatedAt' };
-	const source = transpileModule(
-		readFileSync(path.join(directory, 'inventory-mutations.ts'), 'utf8'),
-		{ compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 } },
-	).outputText;
-	const module = { exports: {} };
-	const overrides = {
-		'@/core/db': {
-			db: {},
-			idempotencyResponses: {},
-			shoppingItems: {},
-			wgInventoryItems,
-			wgInventoryLog: { name: 'log' },
-		},
-		'@/core/db/transaction-abort': { TransactionAbort: class extends Error {} },
-		'@/features/inventory/inventory': inventory ?? {
-			buildShoppingPushPayload: () => ({}),
-			clampQuantity: (value) => Math.min(Math.max(value, 0), 9999),
-			isBelowThreshold: () => false,
-		},
-		'drizzle-orm': {
-			and: (...parts) => parts,
-			eq: (column, value) => [column, value],
-			gt: () => null,
-			sql: () => null,
-		},
-	};
-	overrides['@/core/db/claimed-response'] = loadClaimedResponse(overrides);
-	new Function('require', 'module', 'exports', source)(
-		(name) => (name in overrides ? overrides[name] : requireFromWeb(name)),
-		module,
-		module.exports,
-	);
-	return module.exports;
-}
+const { updateInventoryItemMutation } = await import('./inventory-mutations');
+
+type ItemRow = Record<string, unknown>;
+
+// The transaction stand-ins implement only the query chains these mutations use.
 
 /**
  * Another tap committed quantity 5 -> 6 after this transaction started: a
  * plain read still sees the stale 5, a locking read waits and sees the 6.
  */
 function concurrentTapTx() {
-	const row = { id: 'item-1', wgId: 'wg-1', quantity: 6, threshold: 0, updatedAt };
-	const state = { locked: false, logs: [] };
+	const row: ItemRow = { id: 'item-1', wgId: 'wg-1', quantity: 6, threshold: 0, updatedAt };
+	const state = { locked: false, logs: [] as ItemRow[] };
 	const tx = {
 		select: () => ({
 			from: () => ({
@@ -71,7 +48,7 @@ function concurrentTapTx() {
 					limit: () => {
 						const stale = Promise.resolve([{ ...row, quantity: 5 }]);
 						return Object.assign(stale, {
-							for: (mode) => {
+							for: (mode: string) => {
 								assert.equal(mode, 'update');
 								state.locked = true;
 								return Promise.resolve([{ ...row }]);
@@ -82,11 +59,12 @@ function concurrentTapTx() {
 			}),
 		}),
 		update: () => ({
-			set: (updates) => ({
-				where: (conditions) => ({
+			set: (updates: ItemRow) => ({
+				where: (conditions: unknown[]) => ({
 					returning: async () => {
 						const matches = conditions.every(
-							(condition) => !Array.isArray(condition) || row[condition[0]] === condition[1],
+							(condition) =>
+								!Array.isArray(condition) || row[String(condition[0])] === condition[1],
 						);
 						if (!matches) return [];
 						Object.assign(row, updates);
@@ -96,7 +74,7 @@ function concurrentTapTx() {
 			}),
 		}),
 		insert: () => ({
-			values: async (value) => {
+			values: async (value: ItemRow) => {
 				state.logs.push(value);
 			},
 		}),
@@ -105,9 +83,8 @@ function concurrentTapTx() {
 }
 
 test('a concurrent +1 tap is applied on top of the committed quantity instead of 409', async () => {
-	const { updateInventoryItemMutation } = loadMutations();
 	const { tx, row, state } = concurrentTapTx();
-	const result = await updateInventoryItemMutation(tx, {
+	const result = await updateInventoryItemMutation(tx as never, {
 		itemId: 'item-1',
 		wgId: 'wg-1',
 		memberId: 'member-1',
@@ -124,9 +101,8 @@ test('a concurrent +1 tap is applied on top of the committed quantity instead of
 });
 
 test('an absolute write keeps its optimistic conflict check', async () => {
-	const { updateInventoryItemMutation } = loadMutations();
 	const { tx, row, state } = concurrentTapTx();
-	const result = await updateInventoryItemMutation(tx, {
+	const result = await updateInventoryItemMutation(tx as never, {
 		itemId: 'item-1',
 		wgId: 'wg-1',
 		memberId: 'member-1',
@@ -140,9 +116,9 @@ test('an absolute write keeps its optimistic conflict check', async () => {
 });
 
 /** A single item row plus a record of what landed on the shopping list. */
-function itemTx(initial) {
-	const row = { id: 'item-1', wgId: 'wg-1', unit: 'Stück', updatedAt, ...initial };
-	const shopping = [];
+function itemTx(initial: ItemRow) {
+	const row: ItemRow = { id: 'item-1', wgId: 'wg-1', unit: 'Stück', updatedAt, ...initial };
+	const shopping: ItemRow[] = [];
 	const tx = {
 		select: () => ({
 			from: () => ({
@@ -155,7 +131,7 @@ function itemTx(initial) {
 			}),
 		}),
 		update: () => ({
-			set: (updates) => ({
+			set: (updates: ItemRow) => ({
 				where: () => ({
 					returning: async () => {
 						Object.assign(row, updates);
@@ -166,7 +142,7 @@ function itemTx(initial) {
 		}),
 		insert: () => ({
 			// Awaited directly for the log row; chained for the shopping insert.
-			values: (value) => {
+			values: (value: ItemRow) => {
 				const insert = Object.assign(Promise.resolve(undefined), {
 					onConflictDoNothing: () => insert,
 					returning: async () => {
@@ -182,9 +158,8 @@ function itemTx(initial) {
 }
 
 test('renaming an item that is already low does not re-add it to the shopping list', async () => {
-	const { updateInventoryItemMutation } = loadMutations({ inventory: loadRealInventory() });
 	const { tx, shopping } = itemTx({ name: 'Spüli', quantity: 1, threshold: 2 });
-	const result = await updateInventoryItemMutation(tx, {
+	const result = await updateInventoryItemMutation(tx as never, {
 		itemId: 'item-1',
 		wgId: 'wg-1',
 		memberId: 'member-1',
@@ -196,9 +171,8 @@ test('renaming an item that is already low does not re-add it to the shopping li
 });
 
 test('dropping below the threshold puts the item on the shopping list once', async () => {
-	const { updateInventoryItemMutation } = loadMutations({ inventory: loadRealInventory() });
 	const { tx, shopping } = itemTx({ name: 'Spüli', quantity: 3, threshold: 2 });
-	const result = await updateInventoryItemMutation(tx, {
+	const result = await updateInventoryItemMutation(tx as never, {
 		itemId: 'item-1',
 		wgId: 'wg-1',
 		memberId: 'member-1',
