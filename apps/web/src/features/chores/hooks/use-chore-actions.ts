@@ -1,22 +1,19 @@
 import { isNetworkError } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
-import { discardQueuedEntry, enqueueOfflineAction } from '@/core/offline/offline-client';
-import {
-	createOfflineIdempotencyKey,
-	createQueuedChoreCompletion,
-	isQueuedCreateId,
-} from '@/core/offline/offline-queue';
-import { formatShortDate, parseTimestamp } from '@/core/utils/time';
+import { discardQueuedEntry } from '@/core/offline/offline-client';
+import { isQueuedCreateId } from '@/core/offline/offline-queue';
 import { getAbsentMemberIds } from '@/features/chores/absence';
+import { choreCompletionFeedback } from '@/features/chores/chore-completion';
 import { choreActionErrorMessage } from '@/features/chores/chore-errors';
 import { chooseNextAvailableMember } from '@/features/chores/chore-fairness';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import { getChoreStatus } from '@/features/chores/chore-status';
 import type { Chore } from '@/features/chores/components/chore-types';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import type { ChorePageContext } from './chore-page-context';
+import { useChoreCompletion } from './use-chore-completion';
 
-/** Erledigen (mit Bestätigungs-Tap), Tauschanfrage, Übernehmen und Entfernen einer Aufgabe. */
+/** Completing (with a confirm tap), swap request, taking over and removing a chore. */
 export function useChoreActions(ctx: ChorePageContext) {
 	const {
 		wg,
@@ -37,12 +34,12 @@ export function useChoreActions(ctx: ChorePageContext) {
 		load,
 		refreshCount,
 	} = ctx;
-	const completionRequestKeysRef = useRef(new Map<string, string>());
+	const completeChore = useChoreCompletion(wg, identity);
 	const [completeConfirmId, setCompleteConfirmId] = useState<string | null>(null);
 
 	/**
-	 * Eine offline angelegte Aufgabe hat nur eine lokale Pseudo-ID; die Server-Routen lehnen sie
-	 * mit `id_invalid` ab. Statt einer irreführenden Fehlermeldung kommt ein klarer Hinweis.
+	 * A chore created offline only has a local pseudo id, which the server routes reject with
+	 * `id_invalid`. A clear notice replaces the misleading error.
 	 */
 	function isStillQueued(chore: Chore): boolean {
 		if (!isQueuedCreateId(chore.id)) return false;
@@ -51,6 +48,38 @@ export function useChoreActions(ctx: ChorePageContext) {
 			'Diese Aufgabe ist noch offline vorgemerkt und lässt sich erst nach der Synchronisierung bearbeiten.',
 		);
 		return true;
+	}
+
+	function restore(previousChore: Chore): void {
+		updateChores((current) =>
+			current.some((item) => item.id === previousChore.id)
+				? current.map((item) => (item.id === previousChore.id ? previousChore : item))
+				: [...current, previousChore],
+		);
+	}
+
+	/** The chore stays in the plan offline: move it to its next date and assignee locally. */
+	function advanceLocally(previousChore: Chore): void {
+		const localNextDueAt = computeNextDueAt(
+			new Date(previousChore.nextDueAt),
+			previousChore.intervalDays,
+			new Date(),
+			previousChore.recurrenceType,
+		);
+		const localNextAssignee = chooseNextAvailableMember({
+			members: activeMembers,
+			currentMemberId: previousChore.assignedMemberId,
+			absentMemberIds: getAbsentMemberIds(absences, localNextDueAt.getTime()),
+			chores: items,
+		});
+		updateChores((current) => [
+			...current.filter((item) => item.id !== previousChore.id),
+			{
+				...previousChore,
+				nextDueAt: localNextDueAt.toISOString(),
+				assignedMemberId: localNextAssignee ?? previousChore.assignedMemberId,
+			},
+		]);
 	}
 
 	async function handleComplete(chore: Chore): Promise<void> {
@@ -66,172 +95,53 @@ export function useChoreActions(ctx: ChorePageContext) {
 		startPending(chore.id);
 		setActionError(null);
 		setActionNotice(null);
-		const idempotencyKey =
-			completionRequestKeysRef.current.get(chore.id) ?? createOfflineIdempotencyKey();
-		if (!idempotencyKey) {
-			setActionError('Erledigt-Aktion konnte nicht sicher gespeichert werden. Versuche es erneut.');
-			endPending(chore.id);
-			return;
-		}
-		completionRequestKeysRef.current.set(chore.id, idempotencyKey);
 		const previousChore = items.find((item) => item.id === chore.id) ?? chore;
 		updateChores((current) => current.filter((item) => item.id !== chore.id));
 
-		const result = await apiFetch<{ chore?: Pick<Chore, 'id' | 'nextDueAt' | 'assignedMemberId'> }>(
-			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(chore.id)}/complete`,
-			{
-				method: 'POST',
-				memberId: identity.memberId,
-				memberToken: identity.memberToken,
-				headers: { 'Idempotency-Key': idempotencyKey },
-				body: JSON.stringify({
-					expectedNextDueAt: chore.nextDueAt,
-					expectedAssignedMemberId: chore.assignedMemberId,
-				}),
-			},
-		);
-
-		if (!result.ok) {
-			if (result.status > 0 && result.status < 500 && result.status !== 429)
-				completionRequestKeysRef.current.delete(chore.id);
-			if (result.status === 0) {
-				const queuedCount = await enqueueOfflineAction(
-					createQueuedChoreCompletion({
-						wgId: wg.id,
-						shareCode: wg.shareCode,
-						memberId: identity.memberId,
-						idempotencyKey,
-						choreId: chore.id,
-						expectedNextDueAt: chore.nextDueAt,
-						expectedAssignedMemberId: chore.assignedMemberId,
-					}),
-				);
-				if (queuedCount === 0) {
-					updateChores((current) =>
-						current.some((item) => item.id === chore.id)
-							? current.map((item) => (item.id === chore.id ? previousChore : item))
-							: [...current, previousChore],
-					);
-					setActionError(
-						'Offline-Speicher ist blockiert. Versuche es später erneut, sobald dein Browser wieder speichern kann.',
-					);
-					toast.error('Die Erledigung konnte nicht offline vorgemerkt werden.');
-					endPending(chore.id);
-					return;
-				}
-				// Aufgabe bleibt im Plan: lokal auf nächsten Termin/Zuständigen rücken,
-				// der Server bestätigt beides nach der Synchronisierung.
-				const localNextDueAt = computeNextDueAt(
-					new Date(chore.nextDueAt),
-					chore.intervalDays,
-					new Date(),
-					chore.recurrenceType,
-				);
-				const localNextAssignee = chooseNextAvailableMember({
-					members: activeMembers,
-					currentMemberId: chore.assignedMemberId,
-					absentMemberIds: getAbsentMemberIds(absences, localNextDueAt.getTime()),
-					chores: items,
-				});
-				updateChores((current) => [
-					...current.filter((item) => item.id !== chore.id),
-					{
-						...previousChore,
-						nextDueAt: localNextDueAt.toISOString(),
-						assignedMemberId: localNextAssignee ?? previousChore.assignedMemberId,
-					},
-				]);
-				completionRequestKeysRef.current.delete(chore.id);
-				refreshCount();
-				setActionNotice(
-					'Erledigung offline vorgemerkt. Nächster Termin und Zuständigkeit werden nach der Synchronisierung bestätigt.',
-				);
-				setCompleteConfirmId(null);
-				endPending(chore.id);
-				return;
-			}
-			if (result.status === 404 && result.error === 'chore_not_found') {
-				setItems((current) => current.filter((item) => item.id !== chore.id));
-				setCompleteConfirmId(null);
-				const message = 'Diese Putzaufgabe existiert nicht mehr und wurde aus dem Plan entfernt.';
-				setActionError(message);
-				toast.error(message);
-				void load(false);
-				endPending(chore.id);
-				return;
-			}
-			if (
-				(result.status === 404 || result.status === 409) &&
-				result.error === 'chore_already_completed'
-			) {
-				setCompleteConfirmId(null);
-				setActionNotice('Diese Putzaufgabe wurde bereits erledigt. Der Plan wird aktualisiert.');
-				void load(false);
-				endPending(chore.id);
-				return;
-			}
-			if (result.status === 409 && result.error === 'chore_occurrence_changed') {
-				setCompleteConfirmId(null);
-				setActionError(
-					'Termin oder Zuständigkeit haben sich geändert. Prüfe den aktualisierten Plan.',
-				);
-				void load(false);
-				endPending(chore.id);
-				return;
-			}
-			if (result.error === 'completion_insert_failed') {
-				updateChores((current) =>
-					current.some((item) => item.id === chore.id)
-						? current.map((item) => (item.id === chore.id ? previousChore : item))
-						: [...current, previousChore],
-				);
-				const message =
-					'Erledigt-Aktion konnte nicht vollständig gespeichert werden: Lade den Plan neu und prüfe den Verlauf.';
-				setActionError(message);
-				toast.error(message);
-				void load(false);
-				endPending(chore.id);
-				return;
-			}
-			updateChores((current) =>
-				current.some((item) => item.id === chore.id)
-					? current.map((item) => (item.id === chore.id ? previousChore : item))
-					: [...current, previousChore],
-			);
-			const message = 'Erledigt-Aktion konnte nicht gespeichert werden: Versuche es gleich erneut.';
-			setActionError(message);
-			toast.error(message);
-		} else {
-			completionRequestKeysRef.current.delete(chore.id);
-			const updated = result.data.chore;
-			const confirmed = updated?.id === chore.id && parseTimestamp(updated.nextDueAt) !== null;
-			if (confirmed) {
-				updateChores((current) => {
+		const outcome = await completeChore(chore);
+		switch (outcome.kind) {
+			case 'completed':
+				if (outcome.next) {
+					const next = outcome.next;
 					const completed: Chore = {
 						...chore,
-						nextDueAt: updated.nextDueAt,
-						assignedMemberId: updated.assignedMemberId,
+						nextDueAt: next.nextDueAt,
+						assignedMemberId: next.assignedMemberId,
 						lastCompletedAt: new Date().toISOString(),
 						lastCompletedByName: identity.name,
 					};
-					return current.some((item) => item.id === chore.id)
-						? current.map((item) => (item.id === chore.id ? completed : item))
-						: [...current, completed];
-				});
-				const nextName = members.find((member) => member.id === updated.assignedMemberId)?.name;
-				toast.success(
-					`Erledigt. Nächster Termin: ${formatShortDate(updated.nextDueAt, 'Europe/Berlin')}; ${nextName ? `${nextName} ist dran (Rotation).` : 'noch niemand zugewiesen.'}`,
-				);
-			} else {
-				toast.success(
-					'Erledigt. Der bestätigte nächste Termin und die Zuständigkeit werden geladen.',
-				);
-			}
-
-			setCompleteConfirmId(null);
-			void load(false);
+					updateChores((current) =>
+						current.some((item) => item.id === chore.id)
+							? current.map((item) => (item.id === chore.id ? completed : item))
+							: [...current, completed],
+					);
+				}
+				break;
+			case 'queued':
+				advanceLocally(previousChore);
+				refreshCount();
+				break;
+			case 'not_found':
+				setItems((current) => current.filter((item) => item.id !== chore.id));
+				break;
+			case 'already_completed':
+			case 'occurrence_changed':
+				break;
+			default:
+				restore(previousChore);
 		}
 
+		const feedback = choreCompletionFeedback(
+			outcome,
+			chore,
+			(id) => members.find((member) => member.id === id)?.name,
+		);
+		if (feedback.tone === 'success') toast.success(feedback.message);
+		else if (feedback.tone === 'notice') setActionNotice(feedback.message);
+		else setActionError(feedback.message);
+		if (feedback.toast) toast.error(feedback.toast);
+		if (feedback.done) setCompleteConfirmId(null);
+		if (feedback.reload) void load(false);
 		endPending(chore.id);
 	}
 
@@ -254,7 +164,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 					kind: 'request',
 					source: 'chore_swap',
 					choreId: chore.id,
-					// Klammer statt „ist …“: Labels wie „in 7 T.“ oder „Datum prüfen“ ergeben im Satz „T..“ bzw. Unsinn.
+					// Parentheses instead of „ist …“: labels like „in 7 T.“ or „Datum prüfen“ read wrong inside the sentence.
 					content: `${identity.name} bittet um Tausch: „${chore.title}“ (${status.label}). Übernehmen oder kurz absprechen?`,
 				}),
 			},

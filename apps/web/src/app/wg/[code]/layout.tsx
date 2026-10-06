@@ -16,7 +16,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { type ReactNode, cache } from 'react';
-import { TabWarmup } from './TabWarmup';
+import { TabWarmup } from './_components/TabWarmup';
 
 interface Props {
 	children: ReactNode;
