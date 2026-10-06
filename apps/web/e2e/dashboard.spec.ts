@@ -210,7 +210,6 @@ test.describe('daily overview home', () => {
 		await expect(personal.getByText('Bad putzen', { exact: true })).toBeVisible();
 		await expect(personal.getByText('Flur reinigen', { exact: true })).toHaveCount(0);
 		await personal.getByRole('button', { name: 'Weitere anzeigen (2)' }).click();
-		await page.waitForTimeout(300);
 		await expect(personal.getByText('WG · 3 offene Artikel')).toBeVisible();
 		await expect(personal.getByText(/Fixkosten/)).toBeVisible();
 		await expect(personal.getByText('An Anna', { exact: true })).toBeVisible();

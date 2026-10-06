@@ -536,8 +536,6 @@ test.describe('mobile layout matrix', () => {
 		}
 
 		if (route === 'shopping') await page.getByText(/^Erledigt \(/).click();
-		await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-		await page.waitForTimeout(50);
 		const lastAction =
 			route === 'shopping'
 				? page.getByRole('button', { name: /Erledigte Artikel entfernen/ })
@@ -607,7 +605,7 @@ test.describe('mobile layout matrix', () => {
 							document.documentElement.style.fontSize = '200%';
 						});
 						await page.setViewportSize({ width: 320, height: 740 });
-						await page.waitForTimeout(100);
+						await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(320);
 					}
 					const rootFontSize = await page.evaluate(
 						() => getComputedStyle(document.documentElement).fontSize,
@@ -633,7 +631,13 @@ test.describe('mobile layout matrix', () => {
 						});
 						const modalForm = page.locator('[data-slot="drawer-content"] form').last();
 						await modalForm.evaluate((form) => form.scrollTo(0, form.scrollHeight));
-						await page.waitForTimeout(100);
+						await expect
+							.poll(() =>
+								modalForm.evaluate(
+									(form) => Math.ceil(form.scrollTop + form.clientHeight) >= form.scrollHeight,
+								),
+							)
+							.toBe(true);
 						await page.screenshot({
 							path: test
 								.info()
@@ -646,7 +650,14 @@ test.describe('mobile layout matrix', () => {
 							.getByRole('button', { name: 'Abbrechen', exact: true })
 							.click({ force: true });
 						await expect(page.getByRole('heading', { name: 'Neuer Vorrat' })).toBeHidden();
-						await page.waitForTimeout(500);
+						await expect(page.locator('[data-slot="drawer-content"]')).toHaveCount(0);
+						await page.evaluate(() =>
+							Promise.all(
+								document
+									.getAnimations()
+									.map((animation) => animation.finished.catch(() => undefined)),
+							),
+						);
 					}
 					await assertViewportLayout(page, route);
 					await page.screenshot({
@@ -679,7 +690,7 @@ test.describe('mobile layout matrix', () => {
 					document.documentElement.style.fontSize = '200%';
 				});
 				await page.setViewportSize({ width, height: 740 });
-				await page.waitForTimeout(100);
+				await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(width);
 			}
 			const rootFontSize = await page.evaluate(
 				() => getComputedStyle(document.documentElement).fontSize,
@@ -1422,6 +1433,8 @@ test.describe('toast pause on hover', () => {
 			splits: [{ debtorMemberId: FIXTURE_WG.memberId, amountCents: 1499 }],
 		};
 
+		// Fake timers let the test jump past the dismiss delay instead of sleeping.
+		await page.clock.install();
 		await setupMember(page);
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/recurring-expenses`, (route) => {
 			if (route.request().method() === 'GET') {
@@ -1465,19 +1478,19 @@ test.describe('toast pause on hover', () => {
 
 		// Hover pause: still visible well past the normal auto-dismiss point.
 		await toast.hover();
-		await page.waitForTimeout(PAST_DURATION_MS);
+		await page.clock.runFor(PAST_DURATION_MS);
 		await expect(toast).toBeVisible();
 
 		// Leaving restarts a fresh countdown; focusing the close button before it
 		// elapses must pause it again.
 		await page.mouse.move(5, 5);
 		await closeButton.focus();
-		await page.waitForTimeout(PAST_DURATION_MS);
+		await page.clock.runFor(PAST_DURATION_MS);
 		await expect(toast).toBeVisible();
 
 		// Blurring resumes the timer, which then dismisses the toast normally.
 		await closeButton.evaluate((el) => el.blur());
-		await page.waitForTimeout(PAST_DURATION_MS);
+		await page.clock.runFor(PAST_DURATION_MS);
 		await expect(toast).toBeHidden();
 	});
 });
