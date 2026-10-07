@@ -12,6 +12,7 @@ import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { parseQuietHour } from '@/core/notifications/notification-preferences';
 import { Bell, CheckCircle2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { NOTIFICATION_PREFERENCES, useNotificationSettings } from './use-notification-settings';
 
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => ({
@@ -78,6 +79,11 @@ export function NotificationSection({
 	const notificationControlsDisabled = !status || notificationBusy;
 	const pushConfigured = status?.pushConfigured !== false;
 	const quietHoursSet = status?.quietStartHour != null || status?.quietEndHour != null;
+	const feedbackRef = useRef<HTMLDivElement>(null);
+	// Die Meldung steht unter allen Schaltern; wer oben tippt, sähe sie sonst nicht.
+	useEffect(() => {
+		if (message || (status && error)) feedbackRef.current?.scrollIntoView({ block: 'nearest' });
+	}, [message, error, status]);
 
 	return (
 		<Section id="benachrichtigungen" title="Benachrichtigungen">
@@ -160,7 +166,7 @@ export function NotificationSection({
 						</div>
 
 						<div className="border-border grid min-w-0 max-w-full grid-cols-1 gap-1 border-t pt-2">
-							<div className="flex min-h-[44px] items-center justify-between gap-2">
+							<div className="flex min-h-[44px] flex-wrap items-center justify-between gap-2">
 								<div className="text-foreground min-w-0 text-sm font-medium">Ruhezeit</div>
 								{quietHoursSet && (
 									<Button
@@ -169,7 +175,7 @@ export function NotificationSection({
 										onClick={() => void saveQuietHours(null, null)}
 										disabled={notificationControlsDisabled}
 									>
-										Aus
+										Ausschalten
 									</Button>
 								)}
 							</div>
@@ -201,17 +207,19 @@ export function NotificationSection({
 					</>
 				)}
 
-				{message && (
-					<Alert>
-						<CheckCircle2 aria-hidden />
-						<AlertDescription>{message}</AlertDescription>
-					</Alert>
-				)}
-				{status && error && (
-					<Alert variant="destructive">
-						<AlertDescription>{error}</AlertDescription>
-					</Alert>
-				)}
+				<div ref={feedbackRef} className="grid gap-3 scroll-mb-24 empty:hidden">
+					{message && (
+						<Alert>
+							<CheckCircle2 aria-hidden />
+							<AlertDescription>{message}</AlertDescription>
+						</Alert>
+					)}
+					{status && error && (
+						<Alert variant="destructive">
+							<AlertDescription>{error}</AlertDescription>
+						</Alert>
+					)}
+				</div>
 			</div>
 		</Section>
 	);

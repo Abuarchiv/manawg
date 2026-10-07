@@ -386,7 +386,7 @@ test.describe('settings notifications responsive', () => {
 		const endHour = page.getByRole('combobox', { name: 'Ruhezeit bis' });
 		const disableButton = page
 			.locator('#benachrichtigungen')
-			.getByRole('button', { name: 'Aus', exact: true });
+			.getByRole('button', { name: 'Ausschalten', exact: true });
 		await expect(startHour).toBeVisible({ timeout: 30_000 });
 		await expect(endHour).toBeVisible();
 		await expect(disableButton).toBeVisible();
@@ -417,7 +417,7 @@ test.describe('settings notifications responsive', () => {
 					for (const [name, box] of [
 						['Von', startBox],
 						['Bis', selectBox],
-						['Aus', buttonBox],
+						['Ausschalten', buttonBox],
 					] as const) {
 						if (box.x < cardBox.x - 1 || box.x + box.width > cardRight + 1) {
 							overflows.push(

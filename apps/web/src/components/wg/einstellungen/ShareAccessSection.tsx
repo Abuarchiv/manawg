@@ -75,9 +75,6 @@ export function ShareAccessSection({
 				return;
 			}
 			setJoiningEnabled(data.wg.joiningEnabled);
-			setAccessMessage(
-				next ? 'Neue Beitritte sind wieder erlaubt.' : 'Neue Beitritte sind gesperrt.',
-			);
 		} finally {
 			accessPendingRef.current = false;
 			setAccessPending(null);
@@ -118,14 +115,7 @@ export function ShareAccessSection({
 
 	return (
 		<>
-			<Section
-				title="WG teilen"
-				hint={
-					joiningEnabled
-						? undefined
-						: 'Beitritte sind gesperrt. Teilen wird blockiert, bis du den Zugang öffnest.'
-				}
-			>
+			<Section title="WG teilen">
 				{/* ShareWgCard already centres QR and aligns copy buttons */}
 				<div className="p-3">
 					<ShareWgCard wgName={wg.name} shareCode={wg.shareCode} joiningEnabled={joiningEnabled} />
@@ -145,7 +135,7 @@ export function ShareAccessSection({
 									? 'Wird gespeichert…'
 									: joiningEnabled
 										? 'Mit Code können neue Personen beitreten.'
-										: 'Der Code ist für neue Beitritte gesperrt.'}
+										: 'Der Code ist für neue Beitritte gesperrt. Link, QR und Teilen bleiben blockiert.'}
 							</FieldDescription>
 						</FieldContent>
 						<Switch

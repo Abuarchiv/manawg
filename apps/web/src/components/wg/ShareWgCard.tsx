@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { copyViaTextArea } from '@/core/utils/clipboard';
@@ -156,15 +156,6 @@ function ShareWgBody({
 }) {
 	return (
 		<div>
-			{!joiningEnabled ? (
-				<Alert className="mb-3">
-					<AlertTitle>Beitritte gesperrt</AlertTitle>
-					<AlertDescription>
-						Neue Beitritte sind gerade gesperrt. Link, QR und Teilen bleiben blockiert.
-					</AlertDescription>
-				</Alert>
-			) : null}
-
 			<div
 				role="img"
 				aria-label={`QR-Code zum Beitritt der WG ${wgName}`}
@@ -239,11 +230,16 @@ function ShareWgBody({
 					<AlertDescription>{copyError}</AlertDescription>
 				</Alert>
 			) : null}
-			{(copied === 'link' || copied === 'shared') && !copyError ? (
-				<p aria-live="polite" className="text-muted-foreground mt-2 block text-xs">
-					Einladungslink bereit.
-				</p>
-			) : null}
+			{/* Feste Zeile, damit die Rückmeldung nichts verschiebt. */}
+			<p aria-live="polite" className="text-muted-foreground mt-2 min-h-4 text-xs">
+				{copyError
+					? ''
+					: copied === 'code'
+						? 'Code kopiert.'
+						: copied === 'link' || copied === 'shared'
+							? 'Einladungslink bereit.'
+							: ''}
+			</p>
 
 			<Button
 				type="button"

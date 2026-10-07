@@ -18,9 +18,11 @@ import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { RATE_LIMITED_MESSAGE } from '@/core/http/error-codes';
 import { UserX } from 'lucide-react';
-import { useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 const CONFIRM_WORD = 'LÖSCHEN';
+const SIGN_IN_AGAIN_MESSAGE = 'Melde dich erneut an, um dein Konto zu löschen.';
 const UNKNOWN_DELETE_OUTCOME_MESSAGE =
 	'Der Server kann den Status nicht bestätigen. Warte kurz und versuche es erneut; ein bereits angenommener Auftrag wird serverseitig fortgesetzt.';
 
@@ -29,6 +31,12 @@ export function AccountDeleteSection({ embedded = false }: { embedded?: boolean 
 	const [stage, setStage] = useState<'idle' | 'confirm' | 'pending'>('idle');
 	const [confirmText, setConfirmText] = useState('');
 	const [error, setError] = useState<string | null>(null);
+
+	// Bei großer Schrift liegt die Meldung unterhalb des sichtbaren Dialogausschnitts.
+	useEffect(() => {
+		if (error)
+			document.getElementById('delete-account-error')?.scrollIntoView({ block: 'nearest' });
+	}, [error]);
 
 	async function handleDelete(): Promise<void> {
 		setStage('pending');
@@ -47,7 +55,7 @@ export function AccountDeleteSection({ embedded = false }: { embedded?: boolean 
 				}
 			}
 			if (res.status === 401) {
-				setError('Melde dich erneut an, um dein Konto zu löschen.');
+				setError(SIGN_IN_AGAIN_MESSAGE);
 				setStage('confirm');
 				return;
 			}
@@ -148,8 +156,21 @@ export function AccountDeleteSection({ embedded = false }: { embedded?: boolean 
 						</FieldDescription>
 					</Field>
 					{error && (
-						<Alert variant="destructive">
-							<AlertDescription>{error}</AlertDescription>
+						<Alert variant="destructive" id="delete-account-error">
+							<AlertDescription>
+								{error}
+								{error === SIGN_IN_AGAIN_MESSAGE && (
+									<Button
+										variant="outline"
+										size="sm"
+										className="mt-2"
+										render={<Link href="/neu" />}
+										nativeButton={false}
+									>
+										Erneut anmelden
+									</Button>
+								)}
+							</AlertDescription>
 						</Alert>
 					)}
 					<AlertDialogFooter>

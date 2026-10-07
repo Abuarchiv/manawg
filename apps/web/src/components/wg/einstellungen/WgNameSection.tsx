@@ -79,7 +79,7 @@ export function WgNameSection({ wgName, shareCode, memberId }: WgNameSectionProp
 						autoComplete="off"
 						enterKeyHint="done"
 						disabled={pending}
-						className="min-w-[10rem] flex-1"
+						className="min-w-0 flex-1 basis-40"
 					/>
 					<Button
 						type="submit"
