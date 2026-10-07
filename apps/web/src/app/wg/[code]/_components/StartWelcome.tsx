@@ -30,6 +30,8 @@ export function StartWelcome() {
 	}, [storageKey]);
 
 	function dismiss() {
+		// Der Knopf verschwindet gleich: Fokus vorher auf die nächste Überschrift legen.
+		document.getElementById('week-heading')?.focus({ preventScroll: true });
 		setVisibleFor(null);
 		try {
 			localStorage.setItem(storageKey, '1');

@@ -48,8 +48,10 @@ export function ActivityFeed({ items, inset }: { items: ActivityItem[]; inset?: 
 		return (
 			<Empty>
 				<EmptyHeader>
-					<EmptyTitle>Noch keine Aktivität.</EmptyTitle>
-					<EmptyDescription>Neue Einträge erscheinen hier.</EmptyDescription>
+					<EmptyTitle>Noch keine Aktivität</EmptyTitle>
+					<EmptyDescription>
+						Hier erscheint, was in der WG passiert: Ausgaben, Einkäufe, Putzplan.
+					</EmptyDescription>
 				</EmptyHeader>
 			</Empty>
 		);

@@ -90,7 +90,11 @@ export function WeekSection({
 	return (
 		<section aria-labelledby="week-heading" className="flex min-w-0 flex-col gap-2">
 			<div className="flex min-w-0 flex-wrap items-center gap-3">
-				<h2 id="week-heading" className="font-heading min-w-0 text-xl font-semibold">
+				<h2
+					id="week-heading"
+					tabIndex={-1}
+					className="font-heading min-w-0 text-xl font-semibold outline-none"
+				>
 					Diese Woche
 				</h2>
 				<Link
@@ -145,7 +149,7 @@ export function WeekSection({
 					</ul>
 					{agenda.overdue.length > overdueVisible.length && (
 						<MoreLink href={`${wgBaseHref}/putzen?filter=overdue`}>
-							Alle überfälligen Aufgaben ({agenda.overdue.length - overdueVisible.length})
+							Alle {agenda.overdue.length} überfälligen Aufgaben
 						</MoreLink>
 					)}
 				</div>
@@ -163,7 +167,9 @@ export function WeekSection({
 					</ul>
 					{agenda.upcoming.length > upcomingVisible.length && (
 						<MoreLink href={`${wgBaseHref}/kalender`}>
-							Weitere Termine und Aufgaben ({agenda.upcoming.length - upcomingVisible.length})
+							{agenda.upcoming.length - upcomingVisible.length === 1
+								? 'Ein weiterer Termin oder eine Aufgabe'
+								: `${agenda.upcoming.length - upcomingVisible.length} weitere Termine und Aufgaben`}
 						</MoreLink>
 					)}
 				</div>

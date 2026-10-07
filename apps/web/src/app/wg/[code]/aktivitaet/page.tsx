@@ -7,6 +7,7 @@ import {
 	EmptyContent,
 	EmptyDescription,
 	EmptyHeader,
+	EmptyMedia,
 	EmptyTitle,
 } from '@/components/ui/empty';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
@@ -30,7 +31,7 @@ import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
-import { Search } from 'lucide-react';
+import { History, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityFeed } from '../_components/ActivityFeed';
@@ -112,20 +113,9 @@ export default function AktivitaetPage() {
 		[filteredItems, wgBaseHref],
 	);
 	const inboxItems = useMemo(
-		() =>
-			data
-				? buildActivityInbox({
-						reminders: data.reminders,
-						items: data.items,
-						currentMemberName: identity.name,
-						currentMemberId: identity.memberId,
-					})
-				: [],
-		[data, identity.memberId, identity.name],
+		() => (data ? buildActivityInbox({ reminders: data.reminders }) : []),
+		[data],
 	);
-	const openInboxCount = inboxItems.filter((item) => item.priority === 'high').length;
-	const inboxCountLabel =
-		openInboxCount > 0 ? `${openInboxCount} offen` : `${inboxItems.length} für dich`;
 
 	function setKind(kind: ActivityKind | 'all'): void {
 		setFilter((current) => ({ ...current, kind }));
@@ -135,6 +125,8 @@ export default function AktivitaetPage() {
 
 	function resetFilters(): void {
 		setFilter({ kind: 'all', mineOnly: false, query: '' });
+		// Der Knopf verschwindet mit dem Leerzustand: Fokus auf den Bereichsfilter (öffnet keine Tastatur).
+		document.getElementById('activity-kind')?.focus({ preventScroll: true });
 	}
 
 	return (
@@ -152,43 +144,7 @@ export default function AktivitaetPage() {
 				/>
 			)}
 
-			{data && inboxItems.length > 0 && (
-				<Card>
-					<CardHeader>
-						<div className="flex min-w-0 items-baseline justify-between gap-2">
-							<CardTitle className="min-w-0">Offen</CardTitle>
-							<span className="shrink-0 text-xs text-muted-foreground">{inboxCountLabel}</span>
-						</div>
-					</CardHeader>
-					<CardContent>
-						<ItemGroup aria-label="Offene Klärungen">
-							{inboxItems.map((item) => (
-								<Item
-									key={item.id}
-									size="sm"
-									className="rounded-none border-0 border-b border-border px-0 last:border-b-0"
-									render={<Link href={`${wgBaseHref}${item.href}`} />}
-								>
-									<ItemContent className="min-w-0">
-										<ItemTitle className="min-w-0 w-full">
-											<span
-												className={cn('line-clamp-1', item.priority === 'high' && 'font-semibold')}
-											>
-												{item.title}
-											</span>
-										</ItemTitle>
-										<ItemDescription className="min-w-0 line-clamp-1">
-											{item.detail}
-										</ItemDescription>
-									</ItemContent>
-								</Item>
-							))}
-						</ItemGroup>
-					</CardContent>
-				</Card>
-			)}
-
-			{/* Erst mit Daten und nur bei nicht leerem Verlauf zeigen: die Inbox-Karte rutscht sonst darüber ein und schiebt die Filter (CLS 0,2). */}
+			{/* Filter stehen über der Inbox: sie verschwindet beim Suchen und würde das Feld sonst unter dem Finger wegschieben. */}
 			{data && data.items.length > 0 && (
 				<Card className="overflow-visible border-0 bg-transparent py-0 shadow-none">
 					<CardContent className="space-y-3 p-0">
@@ -232,21 +188,60 @@ export default function AktivitaetPage() {
 				</Card>
 			)}
 
+			{data && inboxItems.length > 0 && !hasActiveFilter && (
+				<Card>
+					<CardHeader>
+						<div className="flex min-w-0 items-baseline justify-between gap-2">
+							<CardTitle className="min-w-0">Offen</CardTitle>
+							<span className="shrink-0 text-xs text-muted-foreground">{inboxItems.length}</span>
+						</div>
+					</CardHeader>
+					<CardContent>
+						<ItemGroup aria-label="Offene Klärungen">
+							{inboxItems.map((item) => (
+								<Item
+									key={item.id}
+									size="sm"
+									className="rounded-none border-0 border-b border-border px-0 last:border-b-0"
+									render={<Link href={`${wgBaseHref}${item.href}`} />}
+								>
+									<ItemContent className="min-w-0">
+										<ItemTitle className="min-w-0 w-full">
+											<span
+												className={cn('line-clamp-1', item.priority === 'high' && 'font-semibold')}
+											>
+												{item.title}
+											</span>
+										</ItemTitle>
+										<ItemDescription className="min-w-0 line-clamp-1">
+											{item.detail}
+										</ItemDescription>
+									</ItemContent>
+								</Item>
+							))}
+						</ItemGroup>
+					</CardContent>
+				</Card>
+			)}
+
 			<Card className="overflow-visible border-0 bg-transparent py-0 shadow-none">
 				<CardContent className="p-0">
 					{data ? (
-						chronicleGroups.length > 0 ? (
-							<div className="space-y-3">
+						<div className="space-y-3">
+							{/* Dauerhaft eingehängt, damit Screenreader jede Änderung der Trefferzahl ansagen. */}
+							{data.items.length > 0 && (
 								<output
 									aria-live="polite"
 									className={cn(
 										'block text-[12px] text-muted-foreground',
-										!hasActiveFilter && 'sr-only',
+										(!hasActiveFilter || chronicleGroups.length === 0) && 'sr-only',
 									)}
 								>
 									{formatVisibleActivityCount(filteredItems.length)}
 								</output>
-								{chronicleGroups.map((group) => (
+							)}
+							{chronicleGroups.length > 0 ? (
+								chronicleGroups.map((group) => (
 									<div key={group.date} className="space-y-2">
 										<Marker variant="separator">
 											<MarkerContent>
@@ -255,31 +250,35 @@ export default function AktivitaetPage() {
 										</Marker>
 										<ActivityFeed items={group.items} />
 									</div>
-								))}
-							</div>
-						) : hasActiveFilter ? (
-							<Empty className="items-start gap-3 border-0 px-0 py-5 text-left">
-								<EmptyHeader className="items-start">
-									<EmptyTitle>Keine Aktivität für diesen Filter</EmptyTitle>
-									<EmptyDescription>
-										<output aria-live="polite">
-											{formatVisibleActivityCount(filteredItems.length)}
-										</output>
-									</EmptyDescription>
-								</EmptyHeader>
-								<EmptyContent>
-									<Button type="button" variant="outline" size="sm" onClick={resetFilters}>
-										Filter zurücksetzen
-									</Button>
-								</EmptyContent>
-							</Empty>
-						) : (
-							<Empty className="items-start gap-3 border-0 px-0 py-5 text-left">
-								<EmptyHeader className="items-start">
-									<EmptyTitle>Noch keine Aktivität</EmptyTitle>
-								</EmptyHeader>
-							</Empty>
-						)
+								))
+							) : hasActiveFilter ? (
+								<Empty className="border-0 py-5">
+									<EmptyHeader>
+										<EmptyMedia variant="icon">
+											<Search aria-hidden />
+										</EmptyMedia>
+										<EmptyTitle>Keine Aktivität für diesen Filter</EmptyTitle>
+									</EmptyHeader>
+									<EmptyContent>
+										<Button type="button" variant="outline" size="sm" onClick={resetFilters}>
+											Filter zurücksetzen
+										</Button>
+									</EmptyContent>
+								</Empty>
+							) : (
+								<Empty className="border-0 py-5">
+									<EmptyHeader>
+										<EmptyMedia variant="icon">
+											<History aria-hidden />
+										</EmptyMedia>
+										<EmptyTitle>Noch keine Aktivität</EmptyTitle>
+										<EmptyDescription>
+											Hier erscheint, was in der WG passiert: Ausgaben, Einkäufe, Putzplan.
+										</EmptyDescription>
+									</EmptyHeader>
+								</Empty>
+							)}
+						</div>
 					) : loading ? (
 						// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 						<div className="space-y-2" aria-label="Aktivität lädt" role="status">
