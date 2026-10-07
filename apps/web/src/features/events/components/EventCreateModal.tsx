@@ -13,7 +13,7 @@ import {
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
-import { EventFormFields } from '@/features/events/components/EventFormFields';
+import { EventFormFields, focusEventField } from '@/features/events/components/EventFormFields';
 import {
 	RECURRENCE_OPTIONS,
 	type RecurrenceFreq,
@@ -78,13 +78,32 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 	const [errorField, setErrorField] = useState<'title' | 'startsAt' | 'endsAt' | null>(null);
 	// Die Meldung sitzt unter den Feldern, der Speichern-Button ist angeheftet.
 	useEffect(() => {
-		if (error) document.getElementById('event-create-error')?.scrollIntoView({ block: 'nearest' });
-	}, [error]);
+		// Bei Feldfehlern bleibt das fokussierte Feld im Bild, die Meldung wird vorgelesen.
+		if (error && !errorField)
+			document.getElementById('event-create-error')?.scrollIntoView({ block: 'nearest' });
+	}, [error, errorField]);
+	// Zuletzt angetippte Vorlage; solange gesetzt, darf eine andere Vorlage den Titel ersetzen.
+	const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
+	function clearErrorFor(...fields: Array<'title' | 'startsAt' | 'endsAt'>): void {
+		if (errorField && fields.includes(errorField)) {
+			setErrorField(null);
+			setError(null);
+		}
+	}
 	const draftInitializedRef = useRef(false);
+	// Tag, mit dem der Entwurf zuletzt vorbelegt wurde.
+	const lastSeedDayRef = useRef('');
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: nur beim Öffnen bzw. neuem Tag vorbelegen, nicht bei jedem Tastendruck.
 	useEffect(() => {
-		if (!open || draftInitializedRef.current) return;
+		if (!open) return;
+		const day = defaultDate?.toDateString() ?? '';
+		// Ein unberührter Entwurf folgt dem neu gewählten Tag, ein begonnener bleibt erhalten.
+		const pristine = !title && !description && !location && !endsAt && !allDay && !recurrenceFreq;
+		if (draftInitializedRef.current && !(pristine && day !== lastSeedDayRef.current)) return;
 		draftInitializedRef.current = true;
+		lastSeedDayRef.current = day;
+		setActiveTemplate(null);
 		setError(null);
 		setErrorField(null);
 		// Start at the next full hour; a picked day keeps that time of day
@@ -101,7 +120,11 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 	}, [open, defaultDate]);
 
 	function applyTemplate(template: (typeof QUICK_TEMPLATES)[number]): void {
-		setTitle(template.title);
+		// Ein selbst getippter Titel bleibt; nur leere oder von einer Vorlage stammende Titel werden ersetzt.
+		const previous = QUICK_TEMPLATES.find((t) => t.label === activeTemplate);
+		if (!title || title === previous?.title) setTitle(template.title);
+		setActiveTemplate(template.label);
+		clearErrorFor('title');
 		setAllDay(template.allDay);
 		const freq = template.recurrence ? template.recurrence.replace(/.*FREQ=([A-Z]+).*/, '$1') : '';
 		setRecurrenceFreq(freq);
@@ -116,6 +139,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 		if (!validation.ok) {
 			setError(validation.error);
 			setErrorField(validation.field);
+			focusEventField('event-create', validation.field);
 			return;
 		}
 		const trimmedTitle = title.trim();
@@ -136,6 +160,8 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 				recurrence,
 			});
 			draftInitializedRef.current = false;
+			lastSeedDayRef.current = '';
+			setActiveTemplate(null);
 			setStartsAt('');
 			setEndsAt('');
 			setTitle('');
@@ -159,13 +185,13 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 			}}
 		>
 			<DrawerContent className="mx-auto w-full max-w-md">
-				<DrawerHeader>
+				<DrawerHeader className="border-b pb-3">
 					<DrawerTitle>Neuer Termin</DrawerTitle>
 					<DrawerDescription className="sr-only">
 						Für eure WG · Datum und Uhrzeit wie auf deinem Gerät.
 					</DrawerDescription>
 				</DrawerHeader>
-				<form onSubmit={handleSubmit} className="flex min-h-0 flex-col">
+				<form noValidate onSubmit={handleSubmit} className="flex min-h-0 flex-col">
 					<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
 						<FieldSet disabled={submitting}>
 							<FieldLegend variant="label">Vorlagen</FieldLegend>
@@ -174,7 +200,8 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 									<Button
 										key={template.label}
 										type="button"
-										variant="outline"
+										variant={activeTemplate === template.label ? 'secondary' : 'outline'}
+										aria-pressed={activeTemplate === template.label}
 										className="shrink-0"
 										onClick={() => applyTemplate(template)}
 										disabled={submitting}
@@ -187,13 +214,26 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 						<EventFormFields
 							idPrefix="event-create"
 							title={title}
-							onTitleChange={setTitle}
+							onTitleChange={(value) => {
+								setTitle(value);
+								setActiveTemplate(null);
+								clearErrorFor('title');
+							}}
 							startsAt={startsAt}
-							onStartsAtChange={setStartsAt}
+							onStartsAtChange={(value) => {
+								setStartsAt(value);
+								clearErrorFor('startsAt', 'endsAt');
+							}}
 							endsAt={endsAt}
-							onEndsAtChange={setEndsAt}
+							onEndsAtChange={(value) => {
+								setEndsAt(value);
+								clearErrorFor('startsAt', 'endsAt');
+							}}
 							allDay={allDay}
-							onAllDayChange={setAllDay}
+							onAllDayChange={(value) => {
+								setAllDay(value);
+								clearErrorFor('startsAt', 'endsAt');
+							}}
 							location={location}
 							onLocationChange={setLocation}
 							description={description}

@@ -33,6 +33,8 @@ interface CalendarMonthProps {
 	/** Chore due dates in the agenda range; they get a dot like events. */
 	choreOccurrences: readonly ChoreOccurrence[];
 	wgBaseHref: string;
+	/** Termine noch nicht (oder nicht erfolgreich) geladen: die Tagesliste sagt das statt "keine Termine". */
+	status?: 'loading' | 'error' | undefined;
 }
 
 const WEEKDAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
@@ -54,6 +56,7 @@ export function CalendarMonth({
 	selectedDay,
 	choreOccurrences,
 	wgBaseHref,
+	status,
 }: CalendarMonthProps) {
 	const days = useMemo(
 		() => buildDays(month, occurrences, groupChoresByDay(choreOccurrences)),
@@ -77,6 +80,17 @@ export function CalendarMonth({
 	);
 	const gridRef = useRef<HTMLTableElement>(null);
 	const shouldFocusRef = useRef(false);
+	const sectionRef = useRef<HTMLElement>(null);
+
+	// Die Tagesliste liegt unter dem Raster; auf kleinen Schirmen oder bei großer Schrift
+	// läge sie sonst hinter Navigation und FAB (scroll-mb im className hält den Abstand).
+	useEffect(() => {
+		if (!selectedDay) return;
+		sectionRef.current?.scrollIntoView({
+			block: 'nearest',
+			behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+		});
+	}, [selectedDay]);
 
 	// Reset roving focus with the new month and restore it after keyboard navigation.
 	useEffect(() => {
@@ -196,6 +210,7 @@ export function CalendarMonth({
 			<CardContent className="flex flex-col gap-4 px-[4px]">
 				<table
 					ref={gridRef}
+					aria-busy={status === 'loading' || undefined}
 					// biome-ignore lint/a11y/useSemanticElements: Calendar uses the existing roving-tabindex grid controller.
 					role="grid"
 					aria-label={`Kalender ${monthLabel}`}
@@ -255,7 +270,7 @@ export function CalendarMonth({
 											>
 												<span
 													className={cn(
-														'grid size-8 place-items-center rounded-full',
+														'grid aspect-square w-[min(2rem,100%)] place-items-center rounded-full',
 														isSelected
 															? 'bg-primary text-primary-foreground'
 															: isToday
@@ -268,7 +283,7 @@ export function CalendarMonth({
 												{(day.occurrences.length > 0 || day.chores.length > 0) && (
 													<span
 														aria-hidden
-														className="absolute bottom-1 size-1 rounded-full bg-current"
+														className="absolute bottom-0.5 size-1 rounded-full bg-current"
 													/>
 												)}
 											</Button>
@@ -280,7 +295,11 @@ export function CalendarMonth({
 					</tbody>
 				</table>
 				{selectedDay && (
-					<section aria-label="Termine am ausgewählten Tag" className="flex flex-col gap-2 px-4">
+					<section
+						ref={sectionRef}
+						aria-label="Termine am ausgewählten Tag"
+						className="flex scroll-mb-[calc(var(--app-nav-height,5rem)+4.5rem)] flex-col gap-2 px-4"
+					>
 						<div className="flex flex-wrap items-center gap-2">
 							<h3 className="text-sm font-medium">{FULL_DATE_FORMATTER.format(selectedDay)}</h3>
 							{selectedOccurrences.length + selectedChores.length > 0 && (
@@ -292,7 +311,17 @@ export function CalendarMonth({
 							)}
 						</div>
 						{selectedOccurrences.length === 0 && selectedChores.length === 0 ? (
-							<p className="text-sm text-muted-foreground">Keine Termine an diesem Tag.</p>
+							status === 'loading' ? (
+								<output aria-live="polite" className="text-sm text-muted-foreground">
+									Termine werden geladen…
+								</output>
+							) : status === 'error' ? (
+								<p className="text-sm text-muted-foreground">
+									Termine konnten nicht geladen werden.
+								</p>
+							) : (
+								<p className="text-sm text-muted-foreground">Keine Termine an diesem Tag.</p>
+							)
 						) : (
 							<ul className="flex flex-col divide-y divide-border/60">
 								{selectedOccurrences.map((occurrence) => (

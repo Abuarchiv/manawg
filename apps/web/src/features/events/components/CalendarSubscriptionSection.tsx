@@ -44,13 +44,13 @@ export function CalendarSubscriptionSection({ encodedShareCode }: { encodedShare
 										type="url"
 										readOnly
 										value={subscription.feedUrl}
-										className="min-w-0 flex-1 text-sm"
+										className="min-w-[min(12rem,100%)] flex-1 text-sm"
 									/>
 									<Button
 										type="button"
 										variant="outline"
 										onClick={() => void feed.copyUrl()}
-										className="max-w-full shrink whitespace-normal"
+										className="min-w-[7.5rem] max-w-full shrink-0 py-1 text-left whitespace-normal"
 									>
 										{feed.copyState === 'copied' ? 'Kopiert' : 'Link kopieren'}
 									</Button>
@@ -59,6 +59,7 @@ export function CalendarSubscriptionSection({ encodedShareCode }: { encodedShare
 							<div className="flex flex-wrap gap-2">
 								<Button
 									nativeButton={false}
+									className="py-1 text-left"
 									render={
 										<a href={subscription.feedUrl} target="_blank" rel="noopener noreferrer">
 											<ExternalLink data-icon="inline-start" aria-hidden />
@@ -69,6 +70,7 @@ export function CalendarSubscriptionSection({ encodedShareCode }: { encodedShare
 								<Button
 									type="button"
 									variant="outline"
+									className="py-1 text-left"
 									disabled={feed.busy}
 									onClick={() => feed.setConfirm('rotate')}
 								>
@@ -78,6 +80,7 @@ export function CalendarSubscriptionSection({ encodedShareCode }: { encodedShare
 								<Button
 									type="button"
 									variant="destructive"
+									className="py-1 text-left"
 									disabled={feed.busy}
 									onClick={() => feed.setConfirm('revoke')}
 								>
@@ -125,7 +128,7 @@ export function CalendarSubscriptionSection({ encodedShareCode }: { encodedShare
 							variant="outline"
 							disabled={feed.busy}
 							onClick={() => void feed.create()}
-							className="max-w-full self-start whitespace-normal text-left"
+							className="max-w-full self-start py-1 text-left whitespace-normal"
 						>
 							{feed.busy ? <Spinner data-icon="inline-start" aria-hidden /> : null}
 							Kalender-Feed erstellen

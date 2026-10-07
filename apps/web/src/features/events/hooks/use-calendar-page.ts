@@ -210,6 +210,12 @@ export function useCalendarPage(month: Date) {
 		return all.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 	}, [events]);
 
+	// Die Agenda nennt bei Serien das Intervall; das Vorkommen selbst trägt nur ein Flag.
+	const recurrenceByEventId = useMemo(
+		() => new Map(events.map((event) => [event.id, event.recurrence])),
+		[events],
+	);
+
 	const upcomingChoreOccurrences = useMemo(() => {
 		const from = new Date();
 		const to = new Date(from.getTime() + UPCOMING_DAYS * MS_PER_DAY);
@@ -335,6 +341,7 @@ export function useCalendarPage(month: Date) {
 		reload: () => load(true),
 		monthOccurrences,
 		upcomingOccurrences,
+		recurrenceByEventId,
 		upcomingChoreOccurrences,
 		createOpen,
 		setCreateOpen,

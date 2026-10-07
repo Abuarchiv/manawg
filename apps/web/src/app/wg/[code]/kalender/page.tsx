@@ -2,6 +2,7 @@
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SubNav } from '@/components/wg/SubNav';
 import { ThumbAction } from '@/components/wg/ThumbAction';
@@ -140,15 +141,24 @@ export default function KalenderPage() {
 							Nächste 30 Tage
 						</h2>
 						{loading ? (
-							<output aria-live="polite" className="block text-sm text-muted-foreground">
-								Agenda wird geladen…
-							</output>
+							// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
+							<div
+								role="status"
+								aria-label="Agenda wird geladen"
+								className="flex flex-col divide-y overflow-hidden rounded-xl border"
+							>
+								{[0, 1, 2].map((index) => (
+									<Skeleton key={index} className="h-12 w-full rounded-none" />
+								))}
+								<span className="sr-only">Agenda wird geladen…</span>
+							</div>
 						) : loadError ? null : (
 							<CalendarUpcomingList
 								occurrences={calendar.upcomingOccurrences}
 								choreOccurrences={calendar.upcomingChoreOccurrences}
 								onSelect={calendar.selectOccurrence}
 								wgBaseHref={wgBaseHref}
+								recurrenceByEventId={calendar.recurrenceByEventId}
 								highlightEventId={highlightEventId}
 							/>
 						)}
@@ -165,6 +175,7 @@ export default function KalenderPage() {
 						selectedDay={selectedDay}
 						choreOccurrences={calendar.upcomingChoreOccurrences}
 						wgBaseHref={wgBaseHref}
+						status={loading ? 'loading' : loadError ? 'error' : undefined}
 					/>
 				</TabsContent>
 			</Tabs>
