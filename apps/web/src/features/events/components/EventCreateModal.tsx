@@ -78,8 +78,10 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 	const [errorField, setErrorField] = useState<'title' | 'startsAt' | 'endsAt' | null>(null);
 	// Die Meldung sitzt unter den Feldern, der Speichern-Button ist angeheftet.
 	useEffect(() => {
-		if (error) document.getElementById('event-create-error')?.scrollIntoView({ block: 'nearest' });
-	}, [error]);
+		// Bei Feldfehlern bleibt das fokussierte Feld im Bild, die Meldung wird vorgelesen.
+		if (error && !errorField)
+			document.getElementById('event-create-error')?.scrollIntoView({ block: 'nearest' });
+	}, [error, errorField]);
 	// Zuletzt angetippte Vorlage; solange gesetzt, darf eine andere Vorlage den Titel ersetzen.
 	const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
 	function clearErrorFor(...fields: Array<'title' | 'startsAt' | 'endsAt'>): void {

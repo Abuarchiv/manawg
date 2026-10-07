@@ -106,13 +106,11 @@ export function EventEditModal({
 	}
 	// Die Meldung sitzt unter den Feldern, der Speichern-Button ist angeheftet.
 	const shownError = error || actionError;
+	// Bei Feldfehlern bleibt das fokussierte Feld im Bild, die Meldung wird vorgelesen.
 	useEffect(() => {
-		if (shownError)
+		if (shownError && !errorField)
 			document.getElementById('event-edit-error')?.scrollIntoView({ block: 'nearest' });
-	}, [shownError]);
-	useEffect(() => {
-		if (error) document.getElementById('event-edit-error')?.scrollIntoView({ block: 'nearest' });
-	}, [error]);
+	}, [shownError, errorField]);
 
 	useEffect(() => {
 		if (!event) return;
