@@ -20,25 +20,20 @@ import {
 	DrawerHeader,
 	DrawerTitle,
 } from '@/components/ui/drawer';
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import {
 	INVENTORY_CATEGORIES,
-	INVENTORY_CATEGORY_LABELS,
-	INVENTORY_LIMITS,
 	INVENTORY_UNITS,
 	type InventoryCategory,
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
 	type InventoryUnit,
 	clampQuantity,
-	isBelowThreshold,
 } from '@/features/inventory/inventory';
 import { useEffect, useRef, useState } from 'react';
+import { InventoryFormFields } from './InventoryFormFields';
 
 interface InventoryAddModalProps {
 	open: boolean;
@@ -64,7 +59,7 @@ type InventoryEditorItem = NonNullable<InventoryAddModalProps['initial']>;
 const DEFAULT_UNIT: InventoryUnit = 'Stück';
 const DEFAULT_CATEGORY: InventoryCategory = 'sonstiges';
 
-/** Leeres Feld zählt als 0; erst beim Speichern wird begrenzt, damit das Feld beim Tippen leer sein darf. */
+/** An empty field counts as 0; the value is clamped only on save so the field can stay empty while typing. */
 function parseCount(text: string): number {
 	return clampQuantity(Number(text || 0));
 }
@@ -130,7 +125,7 @@ export function InventoryAddModal({
 		setServerError(null);
 	}, [open]);
 
-	// Der Fehler steht außerhalb des scrollenden Bereichs; Fokus dorthin, damit Tastatur und Screenreader ihn finden.
+	// The error sits outside the scrolling area; focus it so keyboard and screen-reader users find it.
 	useEffect(() => {
 		if (serverError) alertRef.current?.focus({ preventScroll: true });
 	}, [serverError]);
@@ -279,101 +274,26 @@ export function InventoryAddModal({
 						className="flex min-h-0 flex-col"
 					>
 						<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
-							<FieldGroup>
-								<Field data-invalid={Boolean(nameError)}>
-									<FieldLabel htmlFor="inventory-name">Name</FieldLabel>
-									<Input
-										id="inventory-name"
-										type="text"
-										value={name}
-										onChange={(event) => {
-											setName(event.target.value);
-											if (nameError) setNameError(null);
-										}}
-										maxLength={INVENTORY_LIMITS.NAME_MAX}
-										required
-										aria-required="true"
-										aria-invalid={Boolean(nameError)}
-										aria-describedby={nameError ? 'inventory-name-error' : undefined}
-										placeholder="z. B. Nudeln"
-										disabled={saving || conflictNeedsReload}
-										enterKeyHint="next"
-										className="text-base"
-									/>
-									{nameError && <FieldError id="inventory-name-error">{nameError}</FieldError>}
-								</Field>
-								<div className="grid grid-cols-1 gap-2">
-									<Field className="min-w-0">
-										<FieldLabel htmlFor="inventory-qty">Menge</FieldLabel>
-										<Input
-											id="inventory-qty"
-											type="text"
-											inputMode="numeric"
-											pattern="[0-9]*"
-											maxLength={String(INVENTORY_LIMITS.QUANTITY_MAX).length}
-											value={quantityText}
-											onChange={(event) => setQuantityText(event.target.value.replace(/\D/g, ''))}
-											onFocus={(event) => event.currentTarget.select()}
-											disabled={saving || conflictNeedsReload}
-											className="text-base"
-										/>
-									</Field>
-									<Field className="min-w-0">
-										<FieldLabel htmlFor="inventory-threshold">Nachkaufen ab</FieldLabel>
-										<Input
-											id="inventory-threshold"
-											type="text"
-											inputMode="numeric"
-											pattern="[0-9]*"
-											maxLength={String(INVENTORY_LIMITS.THRESHOLD_MAX).length}
-											value={thresholdText}
-											onChange={(event) => setThresholdText(event.target.value.replace(/\D/g, ''))}
-											onFocus={(event) => event.currentTarget.select()}
-											disabled={saving || conflictNeedsReload}
-											className="text-base"
-										/>
-									</Field>
-								</div>
-								<div className="grid grid-cols-1 gap-2">
-									<Field className="min-w-0">
-										<FieldLabel htmlFor="inventory-unit">Einheit</FieldLabel>
-										<NativeSelect
-											id="inventory-unit"
-											value={unit}
-											onChange={(event) => setUnit(event.target.value as InventoryUnit)}
-											disabled={saving || conflictNeedsReload}
-											className="w-full [&_select]:min-h-11 [&_select]:text-base"
-										>
-											{INVENTORY_UNITS.map((u) => (
-												<NativeSelectOption key={u} value={u}>
-													{u}
-												</NativeSelectOption>
-											))}
-										</NativeSelect>
-									</Field>
-									<Field className="min-w-0">
-										<FieldLabel htmlFor="inventory-category">Kategorie</FieldLabel>
-										<NativeSelect
-											id="inventory-category"
-											value={category}
-											onChange={(event) => setCategory(event.target.value as InventoryCategory)}
-											disabled={saving || conflictNeedsReload}
-											className="w-full [&_select]:min-h-11 [&_select]:text-base"
-										>
-											{INVENTORY_CATEGORIES.map((cat) => (
-												<NativeSelectOption key={cat} value={cat}>
-													{INVENTORY_CATEGORY_LABELS[cat]}
-												</NativeSelectOption>
-											))}
-										</NativeSelect>
-									</Field>
-								</div>
-								<FieldDescription aria-live="polite">
-									{mode === 'create' && isBelowThreshold({ quantity, threshold })
-										? 'Kommt beim Speichern direkt auf die Einkaufsliste.'
-										: 'Ab diesem Bestand kommt der Vorrat auf die Einkaufsliste.'}
-								</FieldDescription>
-							</FieldGroup>
+							<InventoryFormFields
+								mode={mode}
+								name={name}
+								quantityText={quantityText}
+								thresholdText={thresholdText}
+								unit={unit}
+								category={category}
+								quantity={quantity}
+								threshold={threshold}
+								nameError={nameError}
+								disabled={saving || conflictNeedsReload}
+								onNameChange={(value) => {
+									setName(value);
+									if (nameError) setNameError(null);
+								}}
+								onQuantityTextChange={setQuantityText}
+								onThresholdTextChange={setThresholdText}
+								onUnitChange={setUnit}
+								onCategoryChange={setCategory}
+							/>
 						</div>
 						{serverError && (
 							<div className="shrink-0 px-4 pb-3">

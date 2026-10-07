@@ -72,9 +72,9 @@ interface ExpenseFormSectionProps {
 	editingExpenseId: string | null;
 	notice: ActionNotice | null;
 	onSubmit: () => void;
-	/** Steuert das Sheet von außen, damit es vor dem Entfernen ausblendet. */
+	/** Controlled from outside so the sheet can fade out before unmounting. */
 	open: boolean;
-	/** Nach der Ausblend-Animation: Das Formular darf entfernt werden. */
+	/** Fires after the exit animation; the form can unmount. */
 	onExited: () => void;
 }
 
@@ -134,6 +134,7 @@ export function ExpenseFormSection({
 	const editingTemplate = Boolean(
 		editingRecurringExpense && !isEditingQueuedExpense && !isEditingQueuedRecurring,
 	);
+	const savesTemplate = isEditingQueuedRecurring || editingTemplate;
 	const formModeKey = editingRecurringExpense
 		? `recurring:${editingRecurringExpense.id}`
 		: isEditingExpense
@@ -157,7 +158,7 @@ export function ExpenseFormSection({
 		formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
 	}, [validationAttempt]);
 
-	// Der Serverfehler steht am Ende des Scrollbereichs; auf kleinen Handys liegt er sonst unterhalb des Sichtbereichs.
+	// The server error sits at the end of the scroll area, below the fold on small phones.
 	useEffect(() => {
 		if (formError) formErrorRef.current?.scrollIntoView({ block: 'nearest' });
 	}, [formError]);
@@ -336,7 +337,7 @@ export function ExpenseFormSection({
 						<div
 							className={cn(
 								'flex shrink-0 flex-col gap-2 px-4',
-								// Mit Tastatur: Safe-Area irrelevant, Abbrechen steckt schon im Zurück-Pfeil; so bleibt mehr vom Formular sichtbar.
+								// With the keyboard open the safe area is irrelevant and the back arrow already cancels, so more of the form stays visible.
 								keyboardOpen ? 'py-2' : 'pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]',
 							)}
 						>
@@ -345,14 +346,10 @@ export function ExpenseFormSection({
 									type="submit"
 									className="w-full"
 									disabled={formSaving || savingRecurringTemplate}
-									aria-label={
-										isEditingQueuedRecurring || editingTemplate
-											? 'Fixkosten-Vorlage speichern'
-											: 'Ausgabe speichern'
-									}
+									aria-label={savesTemplate ? 'Fixkosten-Vorlage speichern' : 'Ausgabe speichern'}
 								>
 									{(formSaving || savingRecurringTemplate) && <Spinner data-icon="inline-start" />}
-									{isEditingQueuedRecurring || editingTemplate
+									{savesTemplate
 										? 'Vorlage speichern'
 										: editingRecurringExpense
 											? 'Als Ausgabe speichern'

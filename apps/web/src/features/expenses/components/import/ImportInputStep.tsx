@@ -51,7 +51,7 @@ function ManualInput({
 	invalid: boolean;
 	disabled: boolean;
 	onChange: (value: string) => void;
-	/** Klappt einmal auf, wenn die Bedingung wahr wird (z. B. OCR-Ergebnis da); Zuklappen bleibt möglich. */
+	/** Expands once when the condition becomes true (e.g. OCR result ready); collapsing stays possible. */
 	openWhen?: boolean;
 }) {
 	const detailsRef = useRef<HTMLDetailsElement>(null);
@@ -114,7 +114,7 @@ function FilePick({
 				onChange={(event) => {
 					const file = event.target.files?.[0];
 					if (file) onFile(file);
-					// Dieselbe Datei muss nach einer Ablehnung erneut wählbar sein.
+					// The same file must be selectable again after a rejection.
 					event.target.value = '';
 				}}
 				className="peer sr-only h-px w-px"

@@ -6,7 +6,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/shared/lib/cn';
 import { CheckCircle2 } from 'lucide-react';
 
-/** Unbestimmter Balken mit kräftigerer Spur; der Indikator füllt die Spur und pulsiert. */
+/** Indeterminate bar with a stronger track; the indicator fills the track and pulses. */
 export function ImportRunningBar({
 	className,
 	decorative = false,

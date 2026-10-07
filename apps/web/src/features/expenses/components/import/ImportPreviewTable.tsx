@@ -89,7 +89,7 @@ export function ImportPreviewTable({
 							className="relative mt-0.5 after:absolute after:-inset-3"
 						/>
 						<ItemContent className="min-w-0 basis-40">
-							{/* Label statt Div: Antippen von Titel oder Meta schaltet den Eintrag um. */}
+							{/* Label instead of div: tapping title or meta toggles the entry. */}
 							<label
 								htmlFor={`import-entry-${index}`}
 								className="flex min-w-0 cursor-pointer flex-col gap-1"

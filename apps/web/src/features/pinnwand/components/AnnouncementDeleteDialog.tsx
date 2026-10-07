@@ -19,7 +19,7 @@ interface AnnouncementDeleteDialogProps {
 	onOpenChange: (open: boolean) => void;
 	actionSubject: string;
 	deletePending: boolean;
-	/** null = entfernt, sonst die Fehlermeldung für den Dialog. */
+	/** null = removed, otherwise the error message for the dialog. */
 	onDelete: () => Promise<string | null>;
 }
 

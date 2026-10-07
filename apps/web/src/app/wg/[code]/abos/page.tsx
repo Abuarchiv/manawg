@@ -161,7 +161,7 @@ export default function AbosPage() {
 					onSubmit={(values) => void handleCreate(values)}
 				/>
 			</AboModalOpenContext.Provider>
-			{/* Bleibt nach dem Schließen mit dem letzten Eintrag eingehängt, bis die Animation durch ist. */}
+			{/* Stays mounted with the last entry after closing until the animation finishes. */}
 			{lastEditingRef.current && (
 				<AboModalOpenContext.Provider value={editing !== null}>
 					<AboEditModal
@@ -185,7 +185,7 @@ export default function AbosPage() {
 			>
 				<AlertDialogContent
 					finalFocus={() => {
-						// Die gelöschte Zeile samt Auslöser ist weg: Fokus bleibt in der Liste statt auf <body>.
+						// The deleted row and its trigger are gone: focus stays in the list instead of falling to <body>.
 						if (!deletedRef.current) return null;
 						deletedRef.current = false;
 						return listRef.current;
@@ -237,7 +237,7 @@ export default function AbosPage() {
 function AbosSkeleton() {
 	return (
 		<>
-			{/* Reserviert die Summenkarte, damit die Liste beim Laden nicht nach unten springt. */}
+			{/* Reserves the summary card so the list does not jump down while loading. */}
 			<Card size="sm" aria-hidden="true">
 				<CardContent className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7.5rem),1fr))] gap-3">
 					{['s1', 's2'].map((key) => (

@@ -28,7 +28,7 @@ interface ExpenseExtrasProps {
 	isEditingQueuedRecurring: boolean;
 	savingRecurringTemplate: boolean;
 	onSaveRecurringTemplate: () => void;
-	/** Anzahl der bekannten Vorlagen: wächst sie während des Speicherns, war es erfolgreich. */
+	/** Number of known templates: if it grows while saving, the save succeeded. */
 	recurringTemplateCount: number;
 	formSaving: boolean;
 }
@@ -53,7 +53,7 @@ export function ExpenseExtras({
 	const [templateSaved, setTemplateSaved] = useState(false);
 	const templateCountAtStart = useRef(recurringTemplateCount);
 	const wasSavingTemplate = useRef(false);
-	// Das Formular scrollt; ein Toast läge unter dem Vollbild-Sheet. Darum bestätigt eine Zeile direkt am Button.
+	// The form scrolls and a toast would sit beneath the fullscreen sheet, so a line right at the button confirms instead.
 	useEffect(() => {
 		if (savingRecurringTemplate) {
 			if (!wasSavingTemplate.current) templateCountAtStart.current = recurringTemplateCount;

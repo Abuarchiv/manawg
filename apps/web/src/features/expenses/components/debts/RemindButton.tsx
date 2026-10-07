@@ -27,13 +27,13 @@ interface RemindButtonProps {
 	cooldownLabel?: string | null;
 	debtorOptedOut?: boolean;
 	onSent?: (reminderId: string) => void;
-	/** Der Server hat abgelehnt (429/403): Seite lädt neu bzw. merkt sich die Person, damit nicht erneut angeboten wird. */
+	/** The server rejected the request (429/403): the page reloads or remembers the person so it is not offered again. */
 	onRejected?: (kind: 'cooldown' | 'optedOut') => void;
 	onOptimistic?: (() => (() => void) | undefined) | undefined;
 	size?: 'sm' | 'md';
 	primary?: boolean;
 	label?: string;
-	/** Für die Bestätigung: „Erinnerung an Jona gesendet“. */
+	/** For the confirmation: „Erinnerung an Jona gesendet“. */
 	debtorName?: string;
 }
 
@@ -136,7 +136,7 @@ export function RemindButton({
 			if (res.ok) {
 				requestKeyRef.current = null;
 				setStatus('sent');
-				// Der primäre Button wechselt sofort zur nächsten Person (Remount): nur ein Toast überlebt das.
+				// The primary button switches to the next person immediately (remount): only a toast survives that.
 				toast.success(
 					res.data.warning || !debtorName
 						? successMessage(res.data.warning)
@@ -202,7 +202,7 @@ export function RemindButton({
 				{status === 'cooldown' && cooldownLabel && <span className="sr-only">Wieder möglich </span>}
 				{label}
 			</Button>
-			{/* Fehler und Hinweise stehen schon im Toast; inline nur beim primären Button, nie doppelt in einer Zeile. */}
+			{/* Errors and hints already appear in the toast; inline only on the primary button, never twice in one row. */}
 			{primary && feedback && status !== 'sent' && (
 				<Alert
 					role={status === 'error' ? 'alert' : 'status'}

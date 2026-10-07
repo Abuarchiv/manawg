@@ -178,10 +178,6 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		}
 	}
 
-	function backToChoose(): void {
-		goBack('choose');
-	}
-
 	// Back to the choose step drops the focused button; land on the heading instead.
 	const previousStepRef = useRef(step);
 	useEffect(() => {
@@ -327,7 +323,6 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 					oder tritt mit dem WG-Code bei.
 				</ErrorBox>
 			)}
-
 			{step === 'choose' && (
 				<ChooseStep
 					accountWgs={accountWgs}
@@ -339,7 +334,6 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 					onJoin={() => goTo('join')}
 				/>
 			)}
-
 			{step === 'create' && (
 				<CreateStep
 					wgName={wgName}
@@ -350,10 +344,9 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 					invalidField={invalidField}
 					busy={busy}
 					onSubmit={() => void createWg()}
-					onBack={backToChoose}
+					onBack={() => goBack('choose')}
 				/>
 			)}
-
 			{step === 'invite' && createdWg && (
 				<InviteStep
 					code={createdWg.code}
@@ -361,7 +354,6 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 					onSkip={() => router.push(`/wg/${encodeURIComponent(createdWg.code)}`)}
 				/>
 			)}
-
 			{step === 'join' && (
 				<JoinCodeStep
 					joinCode={joinCode}
@@ -371,10 +363,9 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 					clearError={clearError}
 					busy={busy}
 					onSubmit={() => void verifyJoinCode()}
-					onBack={backToChoose}
+					onBack={() => goBack('choose')}
 				/>
 			)}
-
 			{step === 'joinName' && joinWg && (
 				<JoinNameStep
 					joinWg={joinWg}
@@ -388,7 +379,6 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 					onBack={() => goBack('join')}
 				/>
 			)}
-
 			{step !== 'invite' && (
 				<Button
 					type="button"

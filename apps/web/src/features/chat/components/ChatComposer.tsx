@@ -12,7 +12,15 @@ import { Spinner } from '@/components/ui/spinner';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { haptic } from '@/shared/lib/haptics';
 import { Send, X } from 'lucide-react';
-import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+	type ChangeEvent,
+	type KeyboardEvent,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from 'react';
 import { type MentionTrigger, detectMention, escapeRegExp } from '../chat-pure';
 import {
 	MentionAutocomplete,
@@ -54,6 +62,7 @@ export function ChatComposer({
 	onRestoreReply,
 	onSend,
 }: ChatComposerProps) {
+	const rootRef = useRef<HTMLDivElement | null>(null);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const draftRef = useRef('');
 	const replyToMessageIdRef = useRef(replyToMessageId);
@@ -220,9 +229,29 @@ export function ChatComposer({
 		}
 	}
 
+	// Toasts read --thumb-action-space so they stack above the composer instead of covering it.
+	useLayoutEffect(() => {
+		const root = rootRef.current;
+		if (!root) return;
+		const doc = document.documentElement;
+		const sync = () =>
+			doc.style.setProperty('--thumb-action-space', `${root.getBoundingClientRect().height + 8}px`);
+		sync();
+		const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(sync);
+		observer?.observe(root);
+		return () => {
+			observer?.disconnect();
+			doc.style.removeProperty('--thumb-action-space');
+		};
+	}, []);
+
 	return (
-		<div className="relative shrink-0 border-t border-border bg-background" aria-busy={pending}>
-			{/* Hinweise scrollen intern, damit der Verlauf bei großer Schrift sichtbar bleibt. */}
+		<div
+			ref={rootRef}
+			className="relative shrink-0 border-t border-border bg-background"
+			aria-busy={pending}
+		>
+			{/* Hints scroll internally so the history stays visible at large font sizes. */}
 			<div className="max-h-[25dvh] overflow-y-auto">
 				{replyToMessageId && (
 					<div className="flex items-start gap-2 border-b border-border bg-muted px-3 py-2 text-xs">
@@ -299,7 +328,7 @@ export function ChatComposer({
 					</InputGroupAddon>
 				</InputGroup>
 			</div>
-			{/* Nur für Screenreader: eine sichtbare Zeile würde den Composer höher machen und die Liste verschieben. */}
+			{/* Screen readers only: a visible line would make the composer taller and shift the list. */}
 			{pending && <output className="sr-only">Nachricht wird gesendet…</output>}
 		</div>
 	);

@@ -4,32 +4,29 @@ import { AppBottomNav } from '@/components/app/AppBottomNav';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { WG_SECTIONS } from '@/components/app/navigation';
 import { LegalLinks } from '@/components/entry/LegalLinks';
+import { type AccountWg, MembershipCard } from '@/components/entry/MembershipCard';
 import {
 	PublicModulePreview,
 	PublicModulePreviews,
 	type PublicPreviewModule,
 } from '@/components/entry/PublicModulePreview';
+import { SignOutActions } from '@/components/entry/SignOutActions';
 import { InvitationNotice, WgWelcome } from '@/components/entry/WgWelcome';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
-import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { hasSessionCookie } from '@/core/auth/session-hint';
 import { REQUEST_TIMEOUT_MS, anySignal } from '@/core/infra/api-client';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { cn } from '@/shared/lib/cn';
 import {
 	CalendarDays,
-	ChevronRight,
 	Clock3,
 	ListChecks,
-	LogOut,
 	Megaphone,
 	MessageCircle,
 	Package,
@@ -40,12 +37,6 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
-
-interface AccountWg {
-	id: string;
-	code: string;
-	name: string;
-}
 
 type PublicModule = PublicPreviewModule;
 
@@ -100,38 +91,6 @@ function withInvitation(path: string, code: string): string {
 	return `${path}?code=${encodeURIComponent(code)}`;
 }
 
-function MembershipCard({ memberships }: { memberships: AccountWg[] }) {
-	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>
-					<h2>Deine WGs</h2>
-				</CardTitle>
-				<CardDescription>Wo möchtest du weitermachen?</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<ItemGroup>
-					{memberships.map((membership) => (
-						// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML
-						<div key={membership.id} role="listitem" className="w-full min-w-0">
-							<Item
-								variant="outline"
-								render={<Link href={`/wg/${encodeURIComponent(membership.code)}`} />}
-							>
-								<ItemContent className="min-w-0">
-									<ItemTitle className="line-clamp-none break-words">{membership.name}</ItemTitle>
-									<ItemDescription>WG öffnen</ItemDescription>
-								</ItemContent>
-								<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-							</Item>
-						</div>
-					))}
-				</ItemGroup>
-			</CardContent>
-		</Card>
-	);
-}
-
 export function PublicApp(props: { activeModule?: string }) {
 	return (
 		<Suspense
@@ -161,8 +120,6 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	const [retried, setRetried] = useState(false);
 	// Client-only: set once a session cookie exists, so guests never see a skeleton flash.
 	const [sessionPending, setSessionPending] = useState(false);
-	const [signingOut, setSigningOut] = useState(false);
-	const [signOutError, setSignOutError] = useState(false);
 	const module = moduleFor(activeModule);
 	const rawCode = (searchParams.get('code') ?? '').trim();
 	const inviteCode = useMemo(() => {
@@ -233,23 +190,6 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 			});
 		return () => controller.abort();
 	}, [retryNonce]);
-
-	// Wrong Google account on a WG-less home: end the session instead of forcing deletion.
-	async function signOut(): Promise<void> {
-		if (signingOut) return;
-		setSigningOut(true);
-		setSignOutError(false);
-		try {
-			const { signOutSocialAccount } = await import('@/core/auth/client');
-			await signOutSocialAccount();
-			setMemberships([]);
-			setMembershipState('signed-out');
-		} catch {
-			setSignOutError(true);
-		} finally {
-			setSigningOut(false);
-		}
-	}
 
 	useEffect(() => {
 		if (module || inviteCode || membershipState !== 'member-list' || memberships.length !== 1)
@@ -402,32 +342,13 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							</Button>
 						</div>
 					)}
-					{/* Signed-in users without a WG never reach WG settings, so offer sign-out and deletion here. */}
 					{membershipState === 'authenticated-empty' && (
-						<div className="mt-4 flex flex-col gap-4">
-							<div className="flex flex-col gap-2">
-								<Button
-									type="button"
-									variant="outline"
-									onClick={() => void signOut()}
-									disabled={signingOut}
-									className="w-full"
-								>
-									{signingOut ? (
-										<Spinner data-icon="inline-start" aria-hidden />
-									) : (
-										<LogOut aria-hidden />
-									)}
-									{signingOut ? 'Meldet ab …' : 'Mit anderem Konto anmelden'}
-								</Button>
-								{signOutError && (
-									<ErrorBox>
-										Konto konnte nicht abgemeldet werden. Bitte versuche es erneut.
-									</ErrorBox>
-								)}
-							</div>
-							<AccountDeleteSection />
-						</div>
+						<SignOutActions
+							onSignedOut={() => {
+								setMemberships([]);
+								setMembershipState('signed-out');
+							}}
+						/>
 					)}
 				</div>
 				<LegalLinks className="mt-auto" />

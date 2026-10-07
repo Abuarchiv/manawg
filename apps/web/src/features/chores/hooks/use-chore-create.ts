@@ -19,6 +19,7 @@ import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+	OFFLINE_SAVED_NOTICE,
 	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
 } from '@/core/offline/offline-copy';
 import {
@@ -151,7 +152,7 @@ export function useChoreCreate(
 	useEffect(() => {
 		if (!prefillTitle || appliedPrefillRef.current === prefillTitle) return;
 		appliedPrefillRef.current = prefillTitle;
-		// Der Parameter ist verbraucht; sonst löst ein Neuladen denselben Entwurf-Konflikt erneut aus.
+		// The parameter is consumed; otherwise a reload triggers the same draft conflict again.
 		const url = new URL(window.location.href);
 		url.searchParams.delete('title');
 		window.history.replaceState(window.history.state, '', url);
@@ -277,9 +278,7 @@ export function useChoreCreate(
 						return;
 					}
 					closeSavedForm();
-					setActionNotice(
-						'Offline gespeichert. Wird synchronisiert, sobald ihr wieder online seid.',
-					);
+					setActionNotice(OFFLINE_SAVED_NOTICE);
 					return;
 				}
 				setActionError(choreCreateErrorMessage(result.error));

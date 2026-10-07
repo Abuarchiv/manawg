@@ -135,8 +135,8 @@ export function QuickRestockSheet({
 											role="listitem"
 											className="px-3 py-2.5 not-last:border-b-border"
 										>
-											{/* min-w statt min-w-0: bei großer Schrift rutscht der Knopf unter den Text,
-											    statt den Namen zeichenweise zu quetschen. */}
+											{/* min-w instead of min-w-0: at large font sizes the button wraps below the text
+											    instead of squeezing the name character by character. */}
 											<ItemContent className="min-w-[10ch] flex-1">
 												<ItemTitle className="w-full min-w-0 line-clamp-none [overflow-wrap:break-word]">
 													<span className="min-w-0 flex-1 break-words hyphens-auto text-sm font-medium">

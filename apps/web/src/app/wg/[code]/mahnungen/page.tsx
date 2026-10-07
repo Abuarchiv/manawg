@@ -51,7 +51,7 @@ export default function ErinnerungenPage() {
 				? `${debtorName} erinnern`
 				: `${debtorName} an ${memberName(row.creditorId)} erinnern · ${formatEuroCents(row.amountCents, row.currency)}`;
 		const cooldown = cooldownFor(row.debtorId, row.creditorId, row.currency);
-		// Kurz halten ("in 2 Tagen"): ein langer Chip bricht unter die Zeile und lässt sie springen.
+		// Keep it short ("in 2 Tagen"): a long chip wraps below the row and makes it jump.
 		const cooldownLabel = cooldown.nextAllowedAt
 			? formatRelativeTime(cooldown.nextAllowedAt.toISOString())
 			: null;

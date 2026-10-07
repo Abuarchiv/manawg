@@ -51,7 +51,7 @@ export function ImportSourcePicker({ value, onChange }: Props) {
 					<ToggleGroupItem
 						key={id}
 						value={id}
-						// onClick statt onValueChange: ein erneutes Antippen der gewählten Quelle liefert dort eine leere Liste.
+						// onClick instead of onValueChange: tapping the selected source again yields an empty list there.
 						onClick={() => onChange(id)}
 						className="h-auto min-h-16 w-full min-w-0 justify-start gap-3 whitespace-normal py-3 text-left"
 					>

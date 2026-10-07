@@ -158,7 +158,7 @@ interface MessageDeleteDialogProps {
 	error: string | null;
 	onOpenChange: (open: boolean) => void;
 	onConfirm: () => void;
-	/** Wohin der Fokus nach dem Schließen geht; true = Standard (Auslöser). */
+	/** Where focus goes after closing; true = default (the trigger). */
 	finalFocus?: () => HTMLElement | true;
 }
 

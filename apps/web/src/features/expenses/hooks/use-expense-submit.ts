@@ -9,6 +9,7 @@ import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+	OFFLINE_SAVED_NOTICE,
 } from '@/core/offline/offline-copy';
 import {
 	createOfflineIdempotencyKey,
@@ -282,7 +283,7 @@ export function useExpenseSubmit(
 				finishSubmitting();
 				pending.end(optimisticId);
 				removeDraft(form.draftKey);
-				notify.warning('Offline gespeichert. Wird synchronisiert, sobald ihr wieder online seid.');
+				notify.warning(OFFLINE_SAVED_NOTICE);
 				return;
 			}
 			if (!isEdit && isPermanentClientError(res.status)) {

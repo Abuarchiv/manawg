@@ -79,7 +79,7 @@ export function AnnouncementFooter({
 		} finally {
 			commentPendingRef.current = false;
 			setCommentPending(false);
-			// Der deaktivierte Senden-Knopf nimmt den Fokus mit: zurück ins Feld, damit der nächste Text direkt geht.
+			// The disabled send button takes focus with it: return focus to the field so the next text can be typed right away.
 			if (document.activeElement === document.body)
 				replyRef.current?.focus({ preventScroll: true });
 		}

@@ -257,7 +257,7 @@
 	],
 	"fileSize": {
 		"src/app/api/wg/[code]/expenses/route.test.mjs": 806,
-		"src/composition/activity.ts": 646,
+		"src/composition/activity.ts": 610,
 		"src/composition/dashboard-data.ts": 761,
 		"src/composition/dashboard-insights.ts": 506,
 		"src/composition/export-queries.ts": 579,
@@ -281,7 +281,7 @@
 		"e2e/security.spec.ts": 958,
 		"e2e/settings.spec.ts": 981,
 		"e2e/settlement.spec.ts": 1174,
-		"e2e/shopping.spec.ts": 1104,
+		"e2e/shopping.spec.ts": 1101,
 		"e2e/storage.spec.ts": 897
 	}
 }

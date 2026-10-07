@@ -90,7 +90,7 @@ export function RecurringExpensesSection({
 }: RecurringExpensesSectionProps): React.ReactElement {
 	const [open, setOpen] = useState(recurringFilterActive || recurringId !== null);
 	const [deleteCandidate, setDeleteCandidate] = useState<RecurringExpense | null>(null);
-	// Der Dialog hat keinen Trigger; nach dem Löschen fehlt die Zeile, auf die der Fokus zurückfiele.
+	// The dialog has no trigger; after deletion the row that focus would return to is gone.
 	const triggerRef = useRef<HTMLButtonElement>(null);
 	const deletedRef = useRef(false);
 	useEffect(() => {

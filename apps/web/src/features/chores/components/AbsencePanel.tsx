@@ -51,13 +51,13 @@ interface AbsencePanelProps {
 	allAbsencesHref: string;
 	visibleAbsences: AbsenceInput[];
 	highlightedAbsenceId: string | null;
-	/** Kurz getönte Zeile nach einem Deeplink; wird nach ein paar Sekunden wieder null. */
+	/** Row briefly tinted after a deep link; resets to null after a few seconds. */
 	flashedAbsenceId: string | null;
 	onRemove: (id: string) => void;
 	isPending: (key: string) => boolean;
-	/** Fehler beim Eintragen: steht im Formular über dem Speichern-Knopf. */
+	/** Error while adding: shown in the form above the save button. */
 	error: string | null;
-	/** Fehler beim Entfernen: steht über der Liste. */
+	/** Error while removing: shown above the list. */
 	listError: string | null;
 }
 
@@ -86,14 +86,14 @@ export function AbsencePanel({
 	error,
 	listError,
 }: AbsencePanelProps) {
-	// Mit ?absence=<id> will man die Zeile sehen, nicht ein leeres Formular.
+	// With ?absence=<id> the user expects to see that row, not an empty form.
 	const openForm = active && !highlightedAbsenceId;
 	const [formOpen, setFormOpen] = useState(openForm || Boolean(start || end || reason));
 	const { confirmId, request: requestRemove, cancel: cancelRemove } = useConfirmDelete();
 	useEffect(() => {
 		if (openForm || start || end || reason) setFormOpen(true);
 	}, [openForm, start, end, reason]);
-	// Ein offenes, leeres Formular startet mit heute: sonst zeigt WebKit ein Datum an, der Knopf bleibt aber tot.
+	// An open, empty form starts with today: otherwise WebKit displays a date while the button stays disabled.
 	useEffect(() => {
 		if (!formOpen || start || end) return;
 		const today = berlinDayKey(new Date());
@@ -102,7 +102,7 @@ export function AbsencePanel({
 	}, [formOpen, start, end, onStartChange, onEndChange]);
 	function toggleForm() {
 		if (formOpen) {
-			// Sonst öffnet der Effekt oben das Formular sofort wieder.
+			// Otherwise the effect above reopens the form immediately.
 			onStartChange('');
 			onEndChange('');
 			onReasonChange('');
@@ -151,7 +151,7 @@ export function AbsencePanel({
 							noValidate
 							className={cn(
 								'flex flex-col gap-3 pt-3',
-								// Platz für die Daumen-Leiste nur, wenn keine Liste mehr folgt.
+								// Room for the thumb bar only when no list follows.
 								totalCount === 0 ? 'pb-[calc(0.75rem+var(--thumb-action-space,0px))]' : 'pb-3',
 							)}
 						>
@@ -182,7 +182,7 @@ export function AbsencePanel({
 											onChange={(event) => {
 												const value = event.target.value;
 												onStartChange(value);
-												// Ein Tag ist der häufigste Fall: Bis folgt Von, solange es leer oder davor liegt.
+												// A single day is the most common case: "until" follows "from" while it is empty or earlier.
 												if (value && (!end || end < value)) onEndChange(value);
 											}}
 											disabled={pending}
@@ -255,7 +255,7 @@ export function AbsencePanel({
 									id={`absence-${absence.id}`}
 									render={<li />}
 									className={cn(
-										// Die Tönung reicht 0,5 rem über den Text hinaus, damit er nicht am Rand klebt.
+										// The tint extends 0.5 rem beyond the text so it does not touch the edge.
 										'scroll-mt-28 -mx-2 w-[calc(100%+1rem)] max-w-none rounded-none px-2 transition-colors duration-700',
 										absence.id === flashedAbsenceId && 'bg-primary/10',
 									)}

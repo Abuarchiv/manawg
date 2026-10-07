@@ -36,11 +36,7 @@ function isEqualQueuedSplit(draft: ExpenseDraft, members: readonly FormMember[])
 	return isEqualExpenseSplit(Math.round(amount * CENTS_PER_EURO), splits, members);
 }
 
-/**
- * Only the fields this hook actually reads. Kept structural rather than
- * importing the WG context's `Member` so the hook stays testable without a
- * provider — every caller passes something wider, which is fine.
- */
+/** The member fields this hook reads; structural so it needs no WG context provider. */
 interface FormMember {
 	id: string;
 	active: boolean;
@@ -105,28 +101,22 @@ export function useExpenseForm({
 	const [recurringSourceId, setRecurringSourceId] = useState<string | null>(null);
 
 	const draftKey = buildDraftKey(shareCode, identityMemberId, 'expense');
-	// Die Wiederherstellung läuft nur einmal je Entwurf, soll aber die aktuellen Mitglieder sehen.
+	// Lets the once-per-draft restore read the current members.
 	const membersRef = useRef(members);
 	membersRef.current = members;
-	// Both prefill sources apply once per distinct URL. Without these guards,
-	// re-renders (or a reload that re-resolves the template) would keep
-	// stomping over edits the user has since made in the open form.
+	// Each prefill source applies once per distinct URL so re-renders cannot overwrite edits.
 	const appliedPrefillRef = useRef<string | null>(null);
 	const appliedRecurringRef = useRef<string | null>(null);
 	const prefillKey = `${prefillDescription ?? ''}|${prefillAmount ?? ''}|${prefillPaidBy ?? ''}`;
 
-	// Restore the stored draft once, before the first write-back runs — that
-	// ordering is what `draftHydrated` guards. Without it the empty initial
-	// state would overwrite the draft on mount.
+	// Restore the stored draft once; `draftHydrated` keeps the empty initial state from overwriting it.
 	useEffect(() => {
 		const draft = readDraft<ExpenseDraft>(draftKey);
 		if (!draft) {
 			setDraftHydrated(true);
 			return;
 		}
-		// A stored draft is restored silently and shows up when the user taps
-		// "Ausgabe hinzufügen"; popping the form open on every visit was
-		// confusing. Only "Bearbeiten" from the offline queue opens it directly.
+		// A stored draft restores silently and shows on "Ausgabe hinzufügen"; only "Bearbeiten" from the offline queue opens it directly.
 		if (draft.queueEditId && !isEmptyModuleDraft('expense', draft, identityMemberId)) {
 			setShowForm(true);
 		}
@@ -144,7 +134,7 @@ export function useExpenseForm({
 		if (draft.amountStr) setAmountStr(draft.amountStr);
 		if (draft.imageUrl !== undefined) setImageUrl(draft.imageUrl);
 		if (draft.paidByMemberId) setPaidByMemberId(draft.paidByMemberId);
-		// Wartende Ausgaben tragen immer Beträge je Person; war es eine gleichmäßige Aufteilung, bleibt sie „Gleichmäßig“.
+		// Queued expenses always carry per-person amounts; an equal split stays "Gleichmäßig".
 		const queuedEqual =
 			draft.queueEditId !== undefined &&
 			draft.splitMode === 'manual' &&
@@ -318,16 +308,12 @@ export function useExpenseForm({
 		setConflictExpenseId(null);
 		setQueueEditId(null);
 		setQueueEditType(null);
-		setEditingExpense({
-			id: expense.id,
-			updatedAt: expense.updatedAt,
-			currency: expense.currency,
-		});
+		setEditingExpense({ id: expense.id, updatedAt: expense.updatedAt, currency: expense.currency });
 		setInvalidEditDraft(false);
 		setShowForm(true);
 	}
 
-	/** Draft bleibt, aber der nächste Speichern-Versuch prüft gegen die aktuelle Server-Version. */
+	/** Keeps the draft; the next save checks against the current server version. */
 	function rebaseEdit(updatedAt: string): void {
 		setEditingExpense((current) => (current ? { ...current, updatedAt } : current));
 	}
@@ -372,9 +358,7 @@ export function useExpenseForm({
 		setFormError,
 		conflictExpenseId,
 		setConflictExpenseId,
-		// Intentionally read-only: `startEdit` is the only way into edit mode and
-		// `resetForm` the only way out, so the two stay in sync with the rest of
-		// the form state.
+		// Read-only: `startEdit` enters edit mode and `resetForm` leaves it.
 		editingExpense,
 		invalidEditDraft,
 		editingRecurringExpense,

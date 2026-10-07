@@ -9,7 +9,7 @@ export function ListSkeleton({ withSuggestions = false }: { withSuggestions?: bo
 	return (
 		<>
 			{withSuggestions && (
-				// Reserviert den Platz der Vorschlags-Chips, damit die Liste beim Laden nicht nach unten springt.
+				// Reserves the space of the suggestion chips so the list does not jump down while loading.
 				<div aria-hidden className="flex flex-col gap-3">
 					{SUGGESTION_KEYS.map((k) => (
 						<div key={k} className="flex flex-col gap-2">

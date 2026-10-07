@@ -230,7 +230,7 @@ function ShareWgBody({
 					<AlertDescription>{copyError}</AlertDescription>
 				</Alert>
 			) : null}
-			{/* Feste Zeile, damit die Rückmeldung nichts verschiebt. */}
+			{/* Fixed-height row so the feedback does not shift the layout. */}
 			<p aria-live="polite" className="text-muted-foreground mt-2 min-h-4 text-xs leading-4">
 				{copyError
 					? ''

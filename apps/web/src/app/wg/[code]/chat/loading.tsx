@@ -1,7 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChatBubbleSkeletons } from '@/features/chat/components/ChatPlaceholder';
 
-// Spiegelt page.tsx (Rahmen, Tab-Leiste, Verlauf, Composer), damit beim Laden nichts springt.
+// Mirrors page.tsx (frame, tab bar, history, composer) so nothing shifts while loading.
 export default function ChatLoading() {
 	return (
 		<output

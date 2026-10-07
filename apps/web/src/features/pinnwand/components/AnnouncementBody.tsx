@@ -98,7 +98,7 @@ export function AnnouncementBody({
 					)}
 				</p>
 			)}
-			{/* Nur für Screenreader: eine sichtbare Zeile würde die Aktionsleiste beim Tippen verschieben. */}
+			{/* Screen readers only: a visible line would shift the action bar while typing. */}
 			{busy && <output className="sr-only">Wird gespeichert…</output>}
 		</>
 	);

@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 const WEEKS = ['w0', 'w1'] as const;
 const ROWS = ['r0', 'r1', 'r2'] as const;
 
-/** Bildet die echte Liste nach: Wochen-Überschrift, darunter eine gerundete Liste mit Zeilen. */
+/** Mirrors the real list: week heading followed by a rounded list of rows. */
 export function ExpensesSkeleton() {
 	return (
 		<div aria-busy="true" aria-label="Ausgaben werden geladen" className="flex flex-col gap-4">

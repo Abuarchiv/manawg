@@ -23,6 +23,7 @@ function harness() {
 		rejectImageAttachment: false,
 		replayWgId: null,
 		existingChoreId: null,
+		existingSwapPosts: [],
 		announcementResults: [],
 		announcementQueries: 0,
 	};
@@ -55,6 +56,9 @@ function harness() {
 			const tx = {
 				select: () => ({
 					from: (table) => {
+						if (table === announcements) {
+							return { where: () => ({ limit: async () => state.existingSwapPosts }) };
+						}
 						assert.equal(table, chores);
 						return {
 							where: () => ({
@@ -267,6 +271,18 @@ test('a swap request for a chore of this WG keeps a server-built source path', a
 		assert.equal(state.created[0].source, 'chore_swap');
 		assert.equal(state.created[0].sourcePath, `/putzen?highlight=${choreId}`);
 	}
+});
+
+test('a repeated swap request returns the open post instead of a duplicate', async () => {
+	const { state, post } = harness();
+	state.existingChoreId = choreId;
+	state.existingSwapPosts = [{ id: 'existing', source: 'chore_swap', status: 'open' }];
+	const res = await post(null, { source: 'chore_swap', choreId });
+	assert.equal(res.status, 200);
+	const body = await res.json();
+	assert.equal(body.duplicate, true);
+	assert.equal(body.announcement.id, 'existing');
+	assert.equal(state.created.length, 0);
 });
 
 test('GET keeps open member posts that system notices pushed out of the newest window', async () => {

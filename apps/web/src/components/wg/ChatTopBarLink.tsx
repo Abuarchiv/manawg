@@ -72,8 +72,8 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 					variant="destructive"
 					aria-hidden
 					className={cn(
-						// An der Ecke zentriert und mit der Schrift mitwachsend: zwei bis drei Zeichen
-						// ragen nach rechts statt über die Sprechblase.
+						// Centered on the corner and growing with the font size: two to three characters
+						// extend to the right instead of past the speech bubble.
 						'absolute top-0 right-0 h-auto min-h-4 min-w-4 translate-x-[60%] -translate-y-[40%] px-0.5 py-0.5 text-xs leading-none',
 						badge.length > 1 && 'ring-2 ring-background',
 					)}

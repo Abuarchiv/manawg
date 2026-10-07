@@ -109,7 +109,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 		const outcome = await completeChore(chore);
 		switch (outcome.kind) {
 			case 'completed':
-				// Die Erledigung schließt die Tauschanfrage; zum nächsten Termin ist eine neue möglich.
+				// Completing a chore closes the swap request; a new one is possible for the next occurrence.
 				setSwapRequestedIds((current) => {
 					if (!current.has(chore.id)) return current;
 					const rest = new Set(current);
@@ -152,7 +152,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 		if (feedback.tone === 'success') toast.success(feedback.message);
 		else if (feedback.tone === 'notice') setActionNotice(feedback.message);
 		else setActionError(feedback.message);
-		// Bleibt der Dialog offen, zeigt sein Alert den Fehler schon; ein Toast wäre eine Doppelmeldung.
+		// While the dialog stays open its alert already shows the error; a toast would duplicate it.
 		if (feedback.done && feedback.toast && feedback.toast !== feedback.message) {
 			toast.error(feedback.toast);
 		}
@@ -161,7 +161,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 		endPending(chore.id);
 	}
 
-	/** Abbrechen räumt auch den Fehler weg, der sonst nach dem Schließen als Seitenbanner stehen bliebe. */
+	/** Cancel also clears the error, which would otherwise linger as a page banner after the dialog closes. */
 	function cancelComplete(): void {
 		setActionError(null);
 		setCompleteConfirmId(null);

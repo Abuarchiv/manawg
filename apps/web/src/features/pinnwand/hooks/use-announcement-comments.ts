@@ -164,10 +164,10 @@ export function useAnnouncementComments(
 		end(pendingKey);
 		const gone = res.ok || (res.status === 404 && res.error === 'comment_not_found');
 		if (!gone) {
-			// Der Kommentar bleibt stehen, bis der Server bestätigt; der offene Dialog zeigt den Fehler.
+			// The comment stays until the server confirms; the open dialog shows the error.
 			return false;
 		}
-		// Erst jetzt entfernen: ein früheres Entfernen würde die Zeile samt Dialog mitten in der Anfrage unmounten.
+		// Remove only now: removing earlier would unmount the row and its dialog mid-request.
 		edits.rememberCommentOverride(announcement.id, commentId, null);
 		edits.updateItem(announcement.id, (item) => ({
 			...item,

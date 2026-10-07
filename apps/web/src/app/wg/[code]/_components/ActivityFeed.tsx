@@ -82,7 +82,7 @@ export function ActivityFeed({ items, inset }: { items: ActivityItem[]; inset?: 
 								aria-hidden
 							/>
 						)}
-						{/* Betrag rutscht bei großer Schrift unter den Text, damit Titel nie in einer schmalen Spalte mitten im Wort brechen. */}
+						{/* The amount drops below the text at large font sizes so titles never break mid-word in a narrow column. */}
 						<div className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
 							<div className="min-w-0 grow basis-[10rem]">
 								<p

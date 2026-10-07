@@ -25,7 +25,7 @@ import type { AboSplitBuildError, SplitMode } from './abo-form-model';
 interface AboSplitFieldsProps {
 	submitting: boolean;
 	splitMode: SplitMode;
-	/** Gesamtbetrag in Cent für die Live-Summe; null, solange der Betrag nicht gültig ist. */
+	/** Total amount in cents for the live sum; null while the amount is invalid. */
 	totalCents: number | null;
 	onSplitModeChange: (mode: SplitMode) => void;
 	splitCandidates: MemberOption[];
@@ -36,7 +36,7 @@ interface AboSplitFieldsProps {
 	paidByMemberId: string;
 }
 
-/** Nur ein Anteil, den man nicht lesen kann, ist selbst das Problem; eine falsche Summe betrifft kein einzelnes Feld. */
+/** Only an unreadable share is a problem in itself; a wrong sum concerns no single field. */
 function isUnreadableShare(raw: string | undefined): boolean {
 	const value = raw?.trim() ?? '';
 	if (value.length === 0) return false;

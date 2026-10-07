@@ -71,7 +71,7 @@ export function usePutzenPage() {
 	const absenceActions = useAbsences(ctx, absenceForm, create.queueEdit);
 	const choreActions = useChoreActions(ctx);
 
-	// Die Markierung ist ein kurzer Hinweis, kein Auswahlzustand: sie klingt nach 2,5 s ab.
+	// The highlight is a brief hint, not a selection state: it fades after 2.5 s.
 	const [flashId, setFlashId] = useState<string | null>(null);
 	const hasItems = items.length > 0;
 	useEffect(() => {
@@ -98,7 +98,7 @@ export function usePutzenPage() {
 		}, 80);
 	}, [overdueFilterActive]);
 
-	// Die Zeile existiert erst nach dem Laden; ohne sie in den Abhängigkeiten liefe der Scroll ins Leere.
+	// The row exists only after loading; without it in the dependencies the scroll would target nothing.
 	const absenceRowExists = absenceId ? absences.some((absence) => absence.id === absenceId) : false;
 	const [flashAbsenceId, setFlashAbsenceId] = useState<string | null>(null);
 	useEffect(() => {

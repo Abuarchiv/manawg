@@ -23,14 +23,14 @@ export function shoppingAddErrorMessage(error: string): string {
 	);
 }
 
-/** Kurz und mit Namen, damit klar ist, welche Zeile gemeint ist. */
+/** Short and named, so it is clear which row is meant. */
 export function shoppingDuplicateMessage(name: string): string {
 	return `„${name}“ steht schon offen auf der Liste.`;
 }
 
 export type ShoppingActionVerb = 'abgehakt' | 'wieder geöffnet' | 'entfernt';
 
-/** Nennt Artikel und Aktion, damit der Text nicht wie ein Fehler beim Hinzufügen wirkt. */
+/** Names item and action so the text does not read like an add error. */
 export function shoppingActionErrorMessage(
 	error: string,
 	itemName: string,

@@ -33,7 +33,7 @@ interface CalendarMonthProps {
 	/** Chore due dates in the agenda range; they get a dot like events. */
 	choreOccurrences: readonly ChoreOccurrence[];
 	wgBaseHref: string;
-	/** Termine noch nicht (oder nicht erfolgreich) geladen: die Tagesliste sagt das statt "keine Termine". */
+	/** Events not loaded yet (or loading failed): the day list says so instead of "keine Termine". */
 	status?: 'loading' | 'error' | undefined;
 }
 
@@ -82,8 +82,8 @@ export function CalendarMonth({
 	const shouldFocusRef = useRef(false);
 	const sectionRef = useRef<HTMLElement>(null);
 
-	// Die Tagesliste liegt unter dem Raster; auf kleinen Schirmen oder bei großer Schrift
-	// läge sie sonst hinter Navigation und FAB (scroll-mb im className hält den Abstand).
+	// The day list sits below the grid; on small screens or at large font sizes
+	// it would otherwise end up behind navigation and FAB (scroll-mb in className keeps the gap).
 	useEffect(() => {
 		if (!selectedDay) return;
 		sectionRef.current?.scrollIntoView({

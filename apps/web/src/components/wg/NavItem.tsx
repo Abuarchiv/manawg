@@ -26,7 +26,7 @@ interface NavItemProps {
 	 * active while all deep links keep resolving.
 	 */
 	activePrefixes?: string[];
-	/** Unterseiten des Bereichs: der Tab öffnet die zuletzt besuchte (pro Sitzung gemerkt). */
+	/** Sub-pages of the section: the tab opens the last visited one (remembered per session). */
 	slugs?: string[];
 }
 
@@ -41,8 +41,8 @@ function readLastSlug(key: string, slugs: string[]): string | null {
 
 export function NavItem({ href, label, iconKey, activePrefixes, slugs }: NavItemProps) {
 	const pathname = usePathname();
-	// SSR und erster Render nutzen den Standard-href (stabile Hydration); danach springt er
-	// auf die gemerkte Unterseite.
+	// SSR and the first render use the default href (stable hydration); afterwards it switches
+	// to the remembered sub-page.
 	const [rememberedHref, setRememberedHref] = useState<string | null>(null);
 	const base = href.slice(0, href.lastIndexOf('/'));
 	const storageKey = `wg-tab:${base}:${iconKey}`;
@@ -56,7 +56,7 @@ export function NavItem({ href, label, iconKey, activePrefixes, slugs }: NavItem
 			try {
 				sessionStorage.setItem(storageKey, match);
 			} catch {
-				// Privater Modus: dann bleibt es beim Standard-Tab.
+				// Private mode: the default tab stays.
 			}
 		}
 		const last = readLastSlug(storageKey, list);

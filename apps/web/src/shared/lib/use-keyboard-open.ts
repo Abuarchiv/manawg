@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 
-/** Schwelle: so viel kleiner als das Fenster muss der sichtbare Bereich sein, damit wir von einer Bildschirmtastatur ausgehen. */
+/** Threshold: how much smaller than the window the visible area must be to assume an on-screen keyboard. */
 const KEYBOARD_MIN_HEIGHT = 100;
 
-/** True, solange ein Eingabefeld Fokus hat und die Bildschirmtastatur den sichtbaren Bereich verkleinert. */
+/** True while an input has focus and the on-screen keyboard shrinks the visible area. */
 export function useKeyboardOpen(): boolean {
 	const [open, setOpen] = useState(false);
 	useEffect(() => {
@@ -17,7 +17,7 @@ export function useKeyboardOpen(): boolean {
 				el instanceof HTMLElement && el.matches('input, textarea, [contenteditable="true"]');
 			setOpen(typing && window.innerHeight - vv.height > KEYBOARD_MIN_HEIGHT);
 		};
-		// Beim Feldwechsel steht activeElement im focusout kurz auf body; erst danach messen.
+		// On a field switch, activeElement is briefly body during focusout; measure only afterwards.
 		const syncLater = () => window.setTimeout(sync, 0);
 		vv.addEventListener('resize', sync);
 		document.addEventListener('focusin', sync);

@@ -48,7 +48,7 @@ export function WgRouteErrorBoundary({
 		captureException(error, { boundary });
 	}, [error, boundary]);
 
-	// Der Fokus lag auf dem verschwundenen Inhalt; ohne Umzug landet er am Seitenanfang.
+	// Focus sat on the removed content; without moving it, focus falls back to the top of the page.
 	useEffect(() => {
 		rootRef.current?.focus();
 	}, []);

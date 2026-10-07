@@ -15,6 +15,7 @@ import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+	OFFLINE_SAVED_NOTICE,
 	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
 } from '@/core/offline/offline-copy';
 import {
@@ -44,7 +45,7 @@ interface UseShoppingAddOptions {
 	load: (silent?: boolean, afterMutation?: boolean) => Promise<void>;
 	refreshCount: () => void;
 	setAddNotice: (notice: string | null) => void;
-	/** 409: Name des Artikels, der schon offen auf der Liste steht. */
+	/** 409: name of the item that is already open on the list. */
 	onDuplicate: (name: string) => void;
 }
 
@@ -235,7 +236,7 @@ export function useShoppingAdd({
 					settleTemp({ ...tempItem, id: queued.id, createdAt: queued.createdAt });
 					saved = true;
 					if (fromInput && nameValueRef.current === '') removeDraft(draftKey);
-					setAddNotice('Offline gespeichert. Wird synchronisiert, sobald ihr wieder online seid.');
+					setAddNotice(OFFLINE_SAVED_NOTICE);
 					return;
 				}
 				settleTemp(null);
@@ -264,7 +265,7 @@ export function useShoppingAdd({
 			if (fromInput && nameValueRef.current === '') removeDraft(draftKey);
 			const warningMessage = notificationWarningMessage(res.data.warning);
 			if (warningMessage) toast.info(warningMessage);
-			// Chips: der Vorschlag verschwindet, die neue Zeile kann außerhalb des Bildes liegen.
+			// Chips: the suggestion disappears, and the new row may lie outside the viewport.
 			else if (!fromInput) toast.success(`${name} hinzugefügt.`);
 			void load(true, true);
 		} finally {

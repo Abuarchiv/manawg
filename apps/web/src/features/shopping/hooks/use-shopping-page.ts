@@ -1,7 +1,6 @@
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
-import { normalizeForMatch } from '@/features/inventory/inventory';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import { useShoppingAdd } from '@/features/shopping/hooks/use-shopping-add';
 import { isTempItemId } from '@/features/shopping/shopping-view';
@@ -39,7 +38,7 @@ export function useShoppingPage({
 	const { isPending, start, end } = usePendingSet();
 	// Checking off shows no "saving" state; this only guards against double taps.
 	const togglingRef = useRef(new Set<string>());
-	// Doppelt hinzugefügt: die vorhandene Zeile kurz markieren, damit man sie nicht suchen muss.
+	// Added twice: briefly highlight the existing row so the user does not have to search for it.
 	const [duplicateName, setDuplicateName] = useState<string | null>(null);
 	const [flashId, setFlashId] = useState<string | null>(null);
 
@@ -124,10 +123,10 @@ export function useShoppingPage({
 
 	useEffect(() => {
 		if (!duplicateName) return;
-		const key = normalizeForMatch(duplicateName);
+		const key = duplicateName.trim().toLowerCase();
 		const match = items.find(
 			(item) =>
-				item.boughtAt === null && !isTempItemId(item.id) && normalizeForMatch(item.name) === key,
+				item.boughtAt === null && !isTempItemId(item.id) && item.name.trim().toLowerCase() === key,
 		);
 		if (!match) return;
 		setDuplicateName(null);

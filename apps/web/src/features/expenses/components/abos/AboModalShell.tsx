@@ -25,8 +25,8 @@ import {
 } from 'react';
 
 /**
- * Die Seite hält Anlegen und Bearbeiten dauerhaft eingehängt und schaltet nur dieses Flag.
- * So läuft die Schließ-Animation des Sheets, statt dass der Knoten im selben Frame verschwindet.
+ * The page keeps create and edit permanently mounted and only toggles this flag,
+ * so the sheet runs its close animation instead of the node vanishing in the same frame.
  */
 export const AboModalOpenContext = createContext(true);
 
@@ -41,7 +41,7 @@ export function AboModalShell({ title, onClose, submitting, children }: AboModal
 	const open = useContext(AboModalOpenContext);
 	const [confirmClose, setConfirmClose] = useState(false);
 	const dirtyRef = useRef(false);
-	// Jedes Öffnen startet sauber: kein Rest vom letzten Entwurf, keine offene Rückfrage.
+	// Every open starts clean: no leftover draft, no pending confirmation.
 	useEffect(() => {
 		if (!open) return;
 		dirtyRef.current = false;

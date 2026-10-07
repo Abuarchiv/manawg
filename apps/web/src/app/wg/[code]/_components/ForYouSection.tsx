@@ -30,7 +30,7 @@ export function ForYouSection({ items, loaded, failed, completion }: ForYouSecti
 	const visible = items.slice(0, TODAY_VISIBLE);
 	const more = items.slice(TODAY_VISIBLE);
 
-	// Nach dem Erledigen verschwindet die Zeile samt Knopf: Fokus auf die Überschrift, sobald er sonst auf body fiele.
+	// Once done, the row and its button disappear: move focus to the heading, otherwise it would fall back to body.
 	const doneSeen = useRef(0);
 	const needsFocus = useRef(false);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: läuft bei neuem Erledigen und bei neuer Liste (nach dem Neuladen)

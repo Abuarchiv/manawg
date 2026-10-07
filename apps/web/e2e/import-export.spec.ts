@@ -460,7 +460,7 @@ test.describe('import wizard responsive', () => {
 		viewportWidth: number,
 	): Promise<void> {
 		await expect(element).toBeVisible();
-		// Mittig statt nur „falls nötig“: ein Element hinter der festen Navigation gilt für Playwright schon als sichtbar.
+		// Center the element: Playwright treats an element behind the fixed navigation as already visible.
 		await element.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
 		const bounds = await element.boundingBox();
 		if (!bounds) throw new Error('Action has no visible bounds');

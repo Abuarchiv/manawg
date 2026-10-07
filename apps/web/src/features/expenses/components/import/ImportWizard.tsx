@@ -50,10 +50,10 @@ const PREVIOUS_STEP: Partial<Record<ImportStep, ImportStep>> = {
 };
 
 /**
- * Browser-Zurück / iOS-Kantenwisch führt im Assistenten einen Schritt zurück, statt die Seite samt
- * Eingaben zu verlassen. Solange `active`, liegt ein Marker-Eintrag im Verlauf (State kopiert, damit
- * der Next-Router ihn erkennt); ein Zurück poppt ihn, wir legen ihn neu und rufen `onBack`. Landet
- * ein Pop wieder auf einem markierten Eintrag (Overlay-Marker des Dialogs), bleibt er unbeachtet.
+ * Browser back / iOS edge swipe steps back within the wizard instead of leaving the page with its
+ * input. While `active`, a marker entry sits in history (state copied so the Next router recognizes
+ * it); a back navigation pops it, the hook pushes it again and calls `onBack`. If a pop lands on
+ * another marked entry (the dialog's overlay marker), it is ignored.
  */
 function useImportBackGuard(active: boolean, onBack: () => void) {
 	const onBackRef = useRef(onBack);
@@ -73,7 +73,7 @@ function useImportBackGuard(active: boolean, onBack: () => void) {
 		window.addEventListener('popstate', onPopState);
 		return () => {
 			window.removeEventListener('popstate', onPopState);
-			// Verzögert, damit eine gleichzeitig gestartete Navigation den State zuerst ersetzen kann.
+			// Deferred so a concurrently started navigation can replace the state first.
 			setTimeout(() => {
 				if (window.history.state?.importGuard) window.history.back();
 			}, 50);
@@ -100,7 +100,7 @@ export function ImportWizard() {
 		if (previous) wizard.goTo(previous);
 		else if (rawPayload) setLeaveOpen(true);
 	});
-	// Mit Marker im Verlauf ersetzt das Verlassen ihn, statt einen weiteren Eintrag zu stapeln.
+	// With a marker in history, leaving replaces it instead of stacking another entry.
 	const leave = () => (backGuardActive ? router.replace(returnHref) : router.push(returnHref));
 
 	return (

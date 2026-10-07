@@ -166,7 +166,7 @@ export function AboForm({
 			else if (splits === 'no_members') setError('Keine Mitglieder vorhanden.');
 			else {
 				setSplitError(splitInputErrorMessage(splits));
-				// Die Meldung steht unter den Feldern, oft außerhalb des sichtbaren Bereichs.
+				// The message sits below the fields, often outside the visible area.
 				requestAnimationFrame(() =>
 					document.getElementById('abo-splits-error')?.scrollIntoView({ block: 'nearest' }),
 				);

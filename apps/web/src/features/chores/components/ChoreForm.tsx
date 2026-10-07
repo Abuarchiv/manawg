@@ -160,7 +160,7 @@ export function ChoreForm({
 							</Field>
 						</FieldGroup>
 					</div>
-					{/* Außerhalb des Scrollbereichs, damit der Fehler nach dem Absenden immer im Bild steht. */}
+					{/* Outside the scroll area so the error is always in view after submitting. */}
 					{error && (
 						<div className="max-h-[35dvh] shrink-0 overflow-y-auto px-4 pb-3">
 							<Alert variant="destructive">

@@ -25,7 +25,7 @@ const PAYPAL_ENABLED = isPayPalSdkEnabled(
 	process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
 );
 
-/** Fokusziel, wenn die Zeile nach dem Ausgleich verschwindet (Überschrift in DebtSummary). */
+/** Focus target when the row disappears after settling (heading in DebtSummary). */
 export const SALDO_HEADING_ID = 'saldo-heading';
 
 interface DebtRowProps {
@@ -62,7 +62,7 @@ export function SettlementDebtRow({
 		currentMemberId,
 		onSettled: handleSettled,
 	});
-	// Verschwindet die Zeile nach unserem Ausgleich samt Fokus, landet er sonst auf body.
+	// When the row vanishes after our settlement, focus would otherwise land on body.
 	useEffect(
 		() => () => {
 			if (settledRef.current && document.activeElement === document.body) {
@@ -74,7 +74,7 @@ export function SettlementDebtRow({
 	const { reviewOpen, settling, reviewing, error, review } = settlement;
 	const settleButtonRef = useRef<HTMLButtonElement>(null);
 	const wasReviewingRef = useRef(false);
-	// Der deaktivierte Button verliert in Chromium den Fokus; nach der Prüfung (ohne Dialog) holen wir ihn zurück.
+	// Chromium drops focus from the disabled button; restore it after the check (no dialog).
 	useEffect(() => {
 		if (wasReviewingRef.current && !reviewing && !reviewOpen) settleButtonRef.current?.focus();
 		wasReviewingRef.current = reviewing;

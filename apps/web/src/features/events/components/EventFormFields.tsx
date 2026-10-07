@@ -122,7 +122,7 @@ export function EventFormFields({
 					disabled={disabled}
 					aria-invalid={errorField === 'endsAt' ? true : undefined}
 					aria-describedby={errorField === 'endsAt' ? errorId : undefined}
-					// WebKit malt in leeren Datumsfeldern die aktuelle Zeit in voller Textfarbe; gedämpft wirkt es nicht wie ein Wert.
+					// WebKit paints the current time in full text color inside empty date fields; muting it keeps it from looking like a value.
 					data-empty={endsAt ? undefined : ''}
 					className="min-w-0 text-base data-[empty]:text-muted-foreground"
 				/>
@@ -159,7 +159,7 @@ export function EventFormFields({
 
 const FIELD_ID_SUFFIX = { title: 'title', startsAt: 'start', endsAt: 'end' } as const;
 
-/** Fokus auf das fehlerhafte Feld; der Browser scrollt es ins Bild. */
+/** Focus the invalid field; the browser scrolls it into view. */
 export function focusEventField(idPrefix: string, field: keyof typeof FIELD_ID_SUFFIX): void {
 	document.getElementById(`${idPrefix}-${FIELD_ID_SUFFIX[field]}`)?.focus();
 }

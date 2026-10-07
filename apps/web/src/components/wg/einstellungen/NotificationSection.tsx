@@ -80,7 +80,7 @@ export function NotificationSection({
 	const pushConfigured = status?.pushConfigured !== false;
 	const quietHoursSet = status?.quietStartHour != null || status?.quietEndHour != null;
 	const feedbackRef = useRef<HTMLDivElement>(null);
-	// Die Meldung steht unter allen Schaltern; wer oben tippt, sähe sie sonst nicht.
+	// The message sits below all switches; a user toggling one at the top would not see it.
 	useEffect(() => {
 		if (message || (status && error)) feedbackRef.current?.scrollIntoView({ block: 'nearest' });
 	}, [message, error, status]);

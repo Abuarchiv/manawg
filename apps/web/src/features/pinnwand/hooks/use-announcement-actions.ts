@@ -105,7 +105,7 @@ export function useAnnouncementActions(
 			resolvedAt: nextStatus === 'resolved' ? new Date().toISOString() : null,
 			resolvedByMemberId: nextStatus === 'resolved' ? identity.memberId : null,
 		}));
-		// Erfolgs-Toast erst nach der Serverantwort, sonst widerspricht er dem Rollback bei Fehlern.
+		// Success toast only after the server responds, otherwise it contradicts the rollback on errors.
 		void patchAnnouncement(
 			announcement.id,
 			{ status: nextStatus },
@@ -174,7 +174,7 @@ export function useAnnouncementActions(
 		void load();
 	}
 
-	/** Der Dialog zeigt den Fehler selbst: null = entfernt (oder schon weg), sonst die Meldung. */
+	/** The dialog shows the error itself: null = removed (or already gone), otherwise the message. */
 	async function remove(id: string): Promise<string | null> {
 		const failed = 'Beitrag konnte nicht entfernt werden. Versuche es erneut.';
 		if (isPending(id)) return failed;

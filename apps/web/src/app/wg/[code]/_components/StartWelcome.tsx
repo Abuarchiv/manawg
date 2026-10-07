@@ -31,7 +31,7 @@ export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.
 	}, [storageKey]);
 
 	function dismiss() {
-		// Der Knopf verschwindet gleich: Fokus vorher auf die nächste Überschrift legen.
+		// The button disappears shortly: move focus to the next heading first.
 		document.getElementById('week-heading')?.focus({ preventScroll: true });
 		setStatus({ key: storageKey, dismissed: true });
 		try {

@@ -86,7 +86,7 @@ export function CommentRow({
 		focusEditorOnEditRef.current = false;
 		editorRef.current?.focus();
 	}, [editing]);
-	// Nach Speichern/Abbrechen ist der Editor weg: Fokus zurück auf den Bearbeiten-Button.
+	// After save/cancel the editor is gone: return focus to the edit button.
 	useEffect(() => {
 		if (editing || pending || !focusEditButtonRef.current) return;
 		focusEditButtonRef.current = false;
@@ -227,7 +227,7 @@ export function CommentRow({
 			<AlertDialog
 				open={confirmOpen}
 				onOpenChange={(open) => {
-					// pendingRef sperrt synchron: das eingebaute Schließen läuft vor dem nächsten Render.
+					// pendingRef locks synchronously: the built-in close runs before the next render.
 					if (pendingRef.current || pending) return;
 					setConfirmOpen(open);
 					if (!open) setError(false);

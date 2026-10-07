@@ -23,7 +23,7 @@ export default function ErrorBoundary({
 		captureException(error, { boundary: 'root' });
 	}, [error]);
 
-	// Der Fokus lag auf dem verschwundenen Element; ohne Umzug landet er am Seitenanfang.
+	// Focus was on the element that disappeared; without moving it, focus lands at the top of the page.
 	useEffect(() => {
 		mainRef.current?.focus();
 	}, []);

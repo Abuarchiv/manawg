@@ -51,8 +51,8 @@ function writeStoredTheme(next: Theme): void {
 function applyResolved(next: ResolvedTheme): void {
 	const root = document.documentElement;
 	root.classList.toggle('dark', next === 'dark');
-	// Tastatur und native Datumsauswahl in iOS-WebKit leiten ihr Erscheinungsbild aus dem
-	// Inline-Wert und dem Meta-Tag ab, nicht zuverlässig aus der .dark-Klasse.
+	// The keyboard and native date picker in iOS WebKit derive their appearance from the
+	// inline value and the meta tag, not reliably from the .dark class.
 	root.style.colorScheme = next;
 	let meta = document.head.querySelector<HTMLMetaElement>('meta[name="color-scheme"]');
 	if (!meta) {

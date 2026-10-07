@@ -48,15 +48,7 @@ export interface EditableEvent {
 	recurrence: string | null;
 }
 
-export interface UpdateEventPayload {
-	title: string;
-	description: string | null;
-	startsAt: string;
-	endsAt: string | null;
-	allDay: boolean;
-	location: string | null;
-	recurrence: string | null;
-}
+export type UpdateEventPayload = Omit<EditableEvent, 'id'>;
 
 interface EventEditModalProps {
 	event: EditableEvent | null;

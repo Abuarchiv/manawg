@@ -35,7 +35,7 @@ export function SettlementReviewDialog({
 	expenses: readonly Expense[];
 	shareCode: string;
 	settlement: DebtSettlement;
-	/** Der Ausgleichen-Button: Der Dialog hat keinen Trigger, sonst fiele der Fokus auf body. */
+	/** The settle button: the dialog has no trigger, so focus would otherwise fall back to body. */
 	finalFocusRef: RefObject<HTMLElement | null>;
 	currentMemberId: string;
 }) {

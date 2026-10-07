@@ -190,7 +190,7 @@ export function useImportWizard() {
 			case 'input':
 				discardDerivedState();
 				setStep('input');
-				// Nach dem Rendern (und dem Fokus auf die Schrittüberschrift) ins Eingabefeld springen.
+				// After rendering (and focusing the step heading), jump to the input field.
 				requestAnimationFrame(() => {
 					const field = document.getElementById(
 						source === 'ocr_screenshot' ? 'import-ocr' : 'import-csv-textarea',
@@ -222,7 +222,7 @@ export function useImportWizard() {
 	function continueFromMapping(): void {
 		if (!allMapped) {
 			setMappingValidated(true);
-			// Nach dem Rendern zum ersten offenen Namen springen (Fokus scrollt ihn ins Bild).
+			// After rendering, jump to the first open name (focus scrolls it into view).
 			const firstOpen = namesNeedingMapping.findIndex(
 				(name) => !memberOptions.some((member) => member.id === mapping[name]),
 			);

@@ -11,6 +11,7 @@ import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+	OFFLINE_SAVED_NOTICE,
 	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
 } from '@/core/offline/offline-copy';
 import { isPendingImageToken } from '@/core/offline/offline-images';
@@ -242,7 +243,7 @@ export function useAnnouncementComposer(
 					setImageUrl(null);
 					setComposerOpen(false);
 					removeDraft(draftKey);
-					setNotice('Offline gespeichert. Wird synchronisiert, sobald ihr wieder online seid.');
+					setNotice(OFFLINE_SAVED_NOTICE);
 					return;
 				}
 				setError(announcementCreateErrorMessage(res.error));

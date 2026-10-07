@@ -10,7 +10,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessageCircle } from 'lucide-react';
 
-/** Drei Sprechblasen-Platzhalter; bewusst kräftiger als --muted, das im hellen Modus fast weiß ist. */
+/** Three speech-bubble placeholders; deliberately stronger than --muted, which is almost white in light mode. */
 export function ChatBubbleSkeletons() {
 	return (
 		<div className="flex flex-col gap-3" aria-hidden>
