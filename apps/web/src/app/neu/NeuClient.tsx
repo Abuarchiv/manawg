@@ -8,11 +8,12 @@ import { LegalLinks } from '@/components/entry/LegalLinks';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { safeNextPath } from '@/core/auth/next-path';
 import { normalizeShareCode } from '@/core/utils/share-code';
 import { getIdentity } from '@/shared/lib/identity';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChooseStep } from './ChooseStep';
 import { CreateStep } from './CreateStep';
 import { InviteStep } from './InviteStep';
@@ -60,6 +61,9 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 	const { error, invalidField, clearError, setFormError, setFieldError } = useStartError();
 	const [accountSwitchError, setAccountSwitchError] = useState<string | null>(null);
 	const [legacyOpen, setLegacyOpen] = useState(false);
+	const [credentialsBusy, setCredentialsBusy] = useState(false);
+	// Keeps the retry button mounted (and focused) while the check reruns.
+	const [retried, setRetried] = useState(false);
 	const {
 		accountWgs,
 		setAccountWgs,
@@ -94,6 +98,10 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		clearError();
 		router.replace(loginNextPath());
 	}
+
+	useEffect(() => {
+		if (authState !== 'loading') setRetried(false);
+	}, [authState]);
 
 	const errorActions = { clearError, setFormError, setFieldError };
 	const { createdWg, setCreatedWg, createWg } = useCreateWg({
@@ -185,11 +193,22 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 			>
 				{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
 				{callbackError && <ErrorBox>{AUTH_CALLBACK_ERROR}</ErrorBox>}
-				{authState === 'error' && (
+				{(authState === 'error' || (retried && authState === 'loading')) && (
 					<div className="flex flex-col gap-2">
 						<ErrorBox>Deine Anmeldung konnte gerade nicht geprüft werden.</ErrorBox>
-						<Button variant="outline" onClick={() => retryAuth()}>
-							Erneut prüfen
+						<Button
+							variant="outline"
+							focusableWhenDisabled
+							disabled={retried}
+							aria-busy={retried}
+							className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
+							onClick={() => {
+								setRetried(true);
+								retryAuth();
+							}}
+						>
+							{retried && <Spinner data-icon="inline-start" aria-hidden />}
+							{retried ? 'Prüfe …' : 'Erneut prüfen'}
 						</Button>
 					</div>
 				)}
@@ -220,9 +239,17 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 					</output>
 				) : (
 					<FieldGroup>
-						<SocialLoginButtons next={loginNextPath()} onOAuthStart={startSocialLogin} />
+						<SocialLoginButtons
+							next={loginNextPath()}
+							onOAuthStart={startSocialLogin}
+							disabled={credentialsBusy}
+						/>
 						<FieldSeparator>oder</FieldSeparator>
-						<CredentialsAuth next={loginNextPath()} onAuthenticated={handleAuthenticated} />
+						<CredentialsAuth
+							next={loginNextPath()}
+							onAuthenticated={handleAuthenticated}
+							onBusyChange={setCredentialsBusy}
+						/>
 					</FieldGroup>
 				)}
 				{!checkingSession && <LegalLinks consent />}

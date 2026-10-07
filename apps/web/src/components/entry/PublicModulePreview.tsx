@@ -151,6 +151,9 @@ export function PublicModulePreviews({
 }) {
 	return (
 		<section aria-label="So kann euer Alltag aussehen">
+			<p className="px-1 pb-1.5 text-xs text-muted-foreground">
+				Beispiel: So kann euer Alltag aussehen
+			</p>
 			<Card className="py-0">
 				<div className="flex flex-col">
 					{modules.map((module) => {

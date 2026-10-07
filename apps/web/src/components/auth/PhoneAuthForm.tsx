@@ -1,6 +1,7 @@
 'use client';
 
 import { ErrorBox } from '@/components/app/ErrorBox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -215,7 +216,11 @@ export function PhoneAuthForm({
 					</div>
 				)}
 				{phoneMessage && (
-					<output className="block text-[13px] text-muted-foreground">{phoneMessage}</output>
+					<Alert>
+						<AlertDescription className="[overflow-wrap:break-word]">
+							{phoneMessage}
+						</AlertDescription>
+					</Alert>
 				)}
 				{otpRequested ? (
 					<div className="flex flex-col gap-2">

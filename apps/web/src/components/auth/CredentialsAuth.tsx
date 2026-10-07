@@ -9,9 +9,11 @@ import type { BusyAction } from './auth-form-shared';
 type CredentialsAuthProps = {
 	next: string;
 	onAuthenticated: () => void;
+	/** Lets the parent lock sibling controls (Google) while a request runs. */
+	onBusyChange?: (busy: boolean) => void;
 };
 
-export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps) {
+export function CredentialsAuth({ next, onAuthenticated, onBusyChange }: CredentialsAuthProps) {
 	const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
 	const [busy, setBusy] = useState<BusyAction>(null);
 	// Offer SMS only where the Supabase project actually has it switched on.
@@ -19,6 +21,12 @@ export function CredentialsAuth({ next, onAuthenticated }: CredentialsAuthProps)
 	// Both forms keep their input while the other tab is shown.
 	const emailAuth = useEmailAuth({ next, busy, setBusy, onAuthenticated });
 	const phoneAuth = usePhoneAuth({ busy, setBusy, onAuthenticated });
+
+	const isBusy = busy !== null;
+	useEffect(() => {
+		onBusyChange?.(isBusy);
+		return () => onBusyChange?.(false);
+	}, [isBusy, onBusyChange]);
 
 	useEffect(() => {
 		let active = true;

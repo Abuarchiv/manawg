@@ -2,7 +2,6 @@
 // Why: only hosted evidence that public exploration, create/join choices and private deep-link protection work against real Supabase.
 
 import { expect, test } from '@playwright/test';
-import { WEAK_PASSWORD_MESSAGE } from '../src/core/auth/password-errors';
 
 test.describe('live public dashboard entry', () => {
 	test.skip(
@@ -77,7 +76,9 @@ test.describe('live public dashboard entry', () => {
 				await route.abort();
 			},
 		);
-		const passwordWarning = page.getByRole('alert').filter({ hasText: WEAK_PASSWORD_MESSAGE });
+		const passwordWarning = page
+			.getByRole('alert')
+			.filter({ hasText: 'Dein Passwort braucht mindestens 8 Zeichen.' });
 		await page.getByLabel('E-Mail-Adresse').fill('kurz@example.invalid');
 		await page.getByLabel('Passwort', { exact: true }).fill('12345');
 		await page.getByRole('button', { name: 'Konto erstellen', exact: true }).click();

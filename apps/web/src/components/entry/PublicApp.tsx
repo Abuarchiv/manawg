@@ -2,7 +2,6 @@
 
 import { AppBottomNav } from '@/components/app/AppBottomNav';
 import { ErrorBox } from '@/components/app/ErrorBox';
-import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
 import { WG_SECTIONS } from '@/components/app/navigation';
 import { LegalLinks } from '@/components/entry/LegalLinks';
 import {
@@ -17,6 +16,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
@@ -36,7 +36,7 @@ import {
 	Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 
 interface AccountWg {
@@ -64,6 +64,9 @@ const OTHER_MODULES: PublicModule[] = [
 ];
 
 const PUBLIC_MODULES = [...PRIMARY_MODULES, ...OTHER_MODULES];
+
+// PublicApp remounts on every public route, so the previous path has to outlive it.
+let lastPublicPath: string | null = null;
 
 function isAccountWg(value: unknown): value is AccountWg {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -143,6 +146,7 @@ export function PublicApp(props: { activeModule?: string }) {
 
 function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	const router = useRouter();
+	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const accountDeletionPending = searchParams.get('accountDeletion') === 'pending';
 	const [memberships, setMemberships] = useState<AccountWg[]>([]);
@@ -150,13 +154,17 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 		'loading' | 'signed-out' | 'authenticated-empty' | 'member-list' | 'error'
 	>('loading');
 	const [retryNonce, setRetryNonce] = useState(0);
+	// Keeps the retry button mounted (and focused) while the lookup reruns.
+	const [retried, setRetried] = useState(false);
 	// Client-only: set once a session cookie exists, so guests never see a skeleton flash.
 	const [sessionPending, setSessionPending] = useState(false);
 	const module = moduleFor(activeModule);
+	const rawCode = (searchParams.get('code') ?? '').trim();
 	const inviteCode = useMemo(() => {
-		const code = normalizeShareCode(searchParams.get('code') ?? '');
+		const code = normalizeShareCode(rawCode);
 		return isValidShareCode(code) ? code : '';
-	}, [searchParams]);
+	}, [rawCode]);
+	const badInvite = rawCode !== '' && inviteCode === '';
 	const publicHref = (path: string): string =>
 		inviteCode ? withInvitation(path, inviteCode) : path;
 	const singleWg =
@@ -174,6 +182,19 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 					? { href: publicHref('/neu'), label: 'Dieser WG beitreten' }
 					: { href: '/neu?action=create', label: 'WG erstellen' }
 				: { href: publicHref('/neu'), label: 'Anmelden' };
+
+	// Client navigation between public pages: land on #main like the WG shell does.
+	useEffect(() => {
+		const previous = lastPublicPath;
+		lastPublicPath = pathname;
+		if (previous === null || previous === pathname) return;
+		const main = document.getElementById('main');
+		if (main && !main.contains(document.activeElement)) main.focus({ preventScroll: true });
+	}, [pathname]);
+
+	useEffect(() => {
+		if (membershipState !== 'loading') setRetried(false);
+	}, [membershipState]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: retryNonce deliberately reruns the lookup without affecting its request shape.
 	useEffect(() => {
@@ -223,6 +244,12 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 					page.slug === activeModule || (page.slug === 'abos' && activeModule === 'fixkosten'),
 			) || item.related.some((slug) => slug === activeModule),
 	);
+	// Related pages (Erinnerungen, Import) have no segment of their own, so they keep a visible h1.
+	const inSectionPages = section?.pages.some(
+		(page) => page.slug === activeModule || (page.slug === 'abos' && activeModule === 'fixkosten'),
+	);
+	// On the home the list of WGs is already right below the header.
+	const hideAccountLink = multi && !module;
 	const discoveryHref = (slug: string) =>
 		publicHref(`/entdecken/${slug === 'abos' ? 'fixkosten' : slug}`);
 
@@ -234,7 +261,6 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 				paddingBottom: 'calc(var(--app-nav-height, 5rem) + 0.5rem)',
 			}}
 		>
-			<RouteFocusOnNavigate />
 			<main
 				id="main"
 				tabIndex={-1}
@@ -267,21 +293,23 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							{checkingSession ? (
 								<Skeleton className="ml-auto h-8 w-20" aria-hidden />
 							) : (
-								<Link
-									href={accountAction.href}
-									className={cn(
-										buttonVariants({ variant: 'link' }),
-										'ml-auto px-0 text-muted-foreground',
-									)}
-								>
-									{accountAction.label}
-								</Link>
+								!hideAccountLink && (
+									<Link
+										href={accountAction.href}
+										className={cn(
+											buttonVariants({ variant: 'link' }),
+											'ml-auto px-0 text-muted-foreground',
+										)}
+									>
+										{accountAction.label}
+									</Link>
+								)
 							)}
 						</div>
 						<h1
 							className={cn(
 								'font-heading text-balance text-lg leading-6 font-semibold tracking-tight',
-								(section || !module) && 'sr-only',
+								(inSectionPages || !module) && 'sr-only',
 							)}
 						>
 							{module?.title ?? 'ManaWG'}
@@ -314,10 +342,16 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							) : (
 								!multi && <PublicModulePreviews modules={PRIMARY_MODULES} hrefFor={discoveryHref} />
 							)}
+							{badInvite && (
+								<ErrorBox>
+									Dieser Einladungslink ist unvollständig oder ungültig. Frag die WG nach einem
+									neuen Link.
+								</ErrorBox>
+							)}
 							{inviteCode ? (
 								<WgWelcome variant="invitation" code={inviteCode} />
 							) : (
-								<WgWelcome variant="create" outline={multi} />
+								membershipState !== 'member-list' && <WgWelcome variant="create" />
 							)}
 						</>
 					)}
@@ -326,15 +360,23 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							<Skeleton className="h-11 w-full" />
 						</output>
 					)}
-					{membershipState === 'error' && (
+					{(membershipState === 'error' || (retried && membershipState === 'loading')) && (
 						<div className="flex flex-col gap-2">
 							<ErrorBox>Deine WGs konnten gerade nicht geladen werden.</ErrorBox>
 							<Button
 								type="button"
 								variant="outline"
-								onClick={() => setRetryNonce((value) => value + 1)}
+								focusableWhenDisabled
+								disabled={retried}
+								aria-busy={retried}
+								className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
+								onClick={() => {
+									setRetried(true);
+									setRetryNonce((value) => value + 1);
+								}}
 							>
-								Erneut prüfen
+								{retried && <Spinner data-icon="inline-start" aria-hidden />}
+								{retried ? 'Prüfe …' : 'Erneut prüfen'}
 							</Button>
 						</div>
 					)}

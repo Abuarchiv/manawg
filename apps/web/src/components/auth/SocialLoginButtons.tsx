@@ -14,6 +14,8 @@ type SocialLoginButtonsProps = {
 	next?: string;
 	onOAuthStart: SocialLoginStart;
 	variant?: 'sign-in' | 'link';
+	/** Locks the button while another sign-in request is running. */
+	disabled?: boolean;
 };
 
 function GoogleG(props: ComponentProps<'svg'>) {
@@ -45,6 +47,7 @@ export function SocialLoginButtons({
 	next = '/',
 	onOAuthStart,
 	variant = 'sign-in',
+	disabled = false,
 }: SocialLoginButtonsProps) {
 	const [pendingProvider, setPendingProvider] = useState<SocialProvider | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -117,7 +120,7 @@ export function SocialLoginButtons({
 						type="button"
 						variant="outline"
 						onClick={() => void start(provider)}
-						disabled={pendingProvider !== null}
+						disabled={disabled || pendingProvider !== null}
 						className="w-full"
 					>
 						{loading ? (
