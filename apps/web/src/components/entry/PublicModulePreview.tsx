@@ -159,12 +159,16 @@ export function PublicModulePreviews({
 					{modules.map((module) => {
 						const copy = PREVIEW_COPY[module.slug];
 						return (
-							<article key={module.slug} aria-label={`${module.title}, Beispiel-WG`}>
+							<article
+								key={module.slug}
+								aria-label={`${module.title}, Beispiel-WG`}
+								className="@container"
+							>
 								<Item
 									render={<Link href={hrefFor(module.slug)} />}
 									className="min-h-11 rounded-none border-0 border-t border-border px-4 py-2.5 in-[article:first-child]:border-t-0"
 								>
-									<ItemMedia variant="icon">
+									<ItemMedia variant="icon" className="@max-[13rem]:hidden">
 										<module.Icon aria-hidden />
 									</ItemMedia>
 									<ItemContent className="min-w-0">
@@ -173,7 +177,10 @@ export function PublicModulePreviews({
 											{copy.title} · {copy.detail}
 										</ItemDescription>
 									</ItemContent>
-									<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+									<ChevronRight
+										className="size-4 shrink-0 text-muted-foreground @max-[13rem]:hidden"
+										aria-hidden
+									/>
 								</Item>
 							</article>
 						);

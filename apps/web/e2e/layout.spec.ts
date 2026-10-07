@@ -743,7 +743,7 @@ test.describe('entry frame overflow', () => {
 			await page.getByLabel('Dein Anzeigename').fill('Anna');
 			await page.getByRole('button', { name: 'WG erstellen', exact: true }).click();
 
-			const heading = page.getByRole('heading', { name: wgName, exact: true, level: 1 });
+			const heading = page.getByText(`Eure WG „${wgName}“ ist live.`, { exact: true });
 			await expect(heading).toBeVisible();
 
 			for (const width of [320, 360]) {
