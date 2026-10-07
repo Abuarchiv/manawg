@@ -50,7 +50,7 @@ export function ImportPreviewStep({ headingRef, wizard }: StepProps) {
 	if (!wizard.preview) return null;
 	return (
 		<section className="flex flex-col gap-4">
-			<div className="flex items-center justify-between gap-2">
+			<div className="flex flex-wrap items-center justify-between gap-2">
 				<ImportStepHeading headingRef={headingRef}>Vorschau</ImportStepHeading>
 				<Badge variant="secondary">{selectedCount} ausgewählt</Badge>
 			</div>

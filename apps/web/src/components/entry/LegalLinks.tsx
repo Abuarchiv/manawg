@@ -22,11 +22,14 @@ export function LegalLinks({
 			{consent && (
 				<p>
 					Mit der Anmeldung akzeptierst du unsere{' '}
-					<a href={AGB.href} className="underline underline-offset-4">
+					<a href={AGB.href} className="-my-3.5 inline-block py-3.5 underline underline-offset-4">
 						AGB
 					</a>{' '}
 					und die{' '}
-					<a href={DATENSCHUTZ.href} className="underline underline-offset-4">
+					<a
+						href={DATENSCHUTZ.href}
+						className="-my-3.5 inline-block py-3.5 underline underline-offset-4"
+					>
 						Datenschutzerklärung
 					</a>
 					.
