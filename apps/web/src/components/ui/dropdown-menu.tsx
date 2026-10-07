@@ -2,6 +2,26 @@
 
 import { cn } from '@/shared/lib/cn';
 import { Menu as MenuPrimitive } from '@base-ui/react/menu';
+import { useState } from 'react';
+
+/**
+ * Space the menu keeps free at the bottom: the fixed tab bar (published by AppBottomNav as
+ * --app-nav-height) plus a margin, so a tall menu flips or shrinks above it instead of
+ * running underneath. Read once when the menu opens (the positioner mounts only then).
+ */
+function bottomCollisionPadding(): number {
+	const nav = Number.parseFloat(
+		document.documentElement.style.getPropertyValue('--app-nav-height'),
+	);
+	return (Number.isFinite(nav) ? nav : 80) + 8;
+}
+
+function MenuPositioner(props: MenuPrimitive.Positioner.Props) {
+	const [bottom] = useState(bottomCollisionPadding);
+	return (
+		<MenuPrimitive.Positioner collisionPadding={{ top: 8, right: 8, left: 8, bottom }} {...props} />
+	);
+}
 
 function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
 	return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
@@ -22,7 +42,7 @@ function DropdownMenuContent({
 	Pick<MenuPrimitive.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset'>) {
 	return (
 		<MenuPrimitive.Portal>
-			<MenuPrimitive.Positioner
+			<MenuPositioner
 				className="isolate z-50 outline-none"
 				align={align}
 				alignOffset={alignOffset}
@@ -32,12 +52,12 @@ function DropdownMenuContent({
 				<MenuPrimitive.Popup
 					data-slot="dropdown-menu-content"
 					className={cn(
-						'z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 outline-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:overflow-hidden data-closed:fade-out-0 data-closed:zoom-out-95',
+						'z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 [&_[data-slot=dropdown-menu-item]]:min-h-[44px] origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 outline-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:overflow-hidden data-closed:fade-out-0 data-closed:zoom-out-95',
 						className,
 					)}
 					{...props}
 				/>
-			</MenuPrimitive.Positioner>
+			</MenuPositioner>
 		</MenuPrimitive.Portal>
 	);
 }

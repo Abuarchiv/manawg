@@ -1,6 +1,7 @@
 'use client';
 
 import { LogoMark } from '@/components/ui/LogoMark';
+import { useHasToasts } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { isEditingTarget } from '@/core/utils/browser';
@@ -70,6 +71,9 @@ export function InstallPrompt() {
 	const dismiss = () => setHidden(true);
 
 	const visible = !(hidden || !onStartPage || (!event && !manual));
+	// A toast lands on the same baseline above the nav. The prompt steps aside while one is
+	// shown (invisible, not unmounted: it keeps its reserved room, so the page does not jump).
+	const toastOpen = useHasToasts();
 	const promptRef = useRef<HTMLDivElement>(null);
 	// The prompt is fixed and covers the page end (legal links, last cards). While it is
 	// shown, publish its height so the app frame reserves that room (see globals.css 1c).
@@ -99,7 +103,7 @@ export function InstallPrompt() {
 		<div
 			ref={promptRef}
 			data-install-prompt
-			className="fixed inset-x-0 z-40 mx-auto w-[calc(100%-1rem)] max-w-[calc(var(--app-frame-width)-1rem)] animate-in fade-in slide-in-from-bottom-2 duration-[220ms]"
+			className={`fixed inset-x-0 z-40 mx-auto w-[calc(100%-1rem)] max-w-[calc(var(--app-frame-width)-1rem)] animate-in fade-in slide-in-from-bottom-2 duration-[220ms] ${toastOpen ? 'invisible' : ''}`}
 			// Use the measured BottomNav height so wrapped labels and zoomed text leave room.
 			style={{ bottom: 'calc(var(--app-nav-height, 5rem) + 0.5rem)' }}
 		>

@@ -243,6 +243,21 @@ body:has(
 	bottom: auto;
 }
 
+/* 1e. A dropdown menu taller than the room it has (200 % text, many entries) scrolls.
+      Scroll shadows show that: the "local" layers cover the shadows once the end is
+      reached, so a menu that fits shows neither. */
+[data-slot="dropdown-menu-content"] {
+	--menu-shade: color-mix(in oklab, var(--foreground) 22%, transparent);
+	background:
+		linear-gradient(var(--popover) 30%, transparent) top / 100% 1.5rem no-repeat local,
+		linear-gradient(transparent, var(--popover) 70%) bottom / 100% 1.5rem no-repeat local,
+		radial-gradient(farthest-side at 50% 0, var(--menu-shade), transparent) top / 100% 0.5rem
+		no-repeat scroll,
+		radial-gradient(farthest-side at 50% 100%, var(--menu-shade), transparent) bottom / 100% 0.5rem
+		no-repeat scroll,
+		var(--popover);
+}
+
 /* 2. Mobile tap highlight suppressed globally (html already has it for legacy,
       but * catches SVGs, custom elements, and pseudo-elements) */
 * {
@@ -430,12 +445,30 @@ input[type="date"],
 input[type="time"],
 input[type="datetime-local"],
 input[type="month"] {
-	display: flex;
+	/* A grid with one shrinkable column, not flex: Chromium's inner container of a flex input
+	   never shrinks below the digits, so at 200 % text the picker icon was pushed out. */
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	align-items: center;
 	min-width: 0;
 	max-width: 100%;
 	-webkit-appearance: none;
 	appearance: none;
+}
+/* At 200 % text the date digits are wider than the field. They give way (clip) before
+   the picker icon does, so the icon stays fully inside the border. */
+input[type="date"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit,
+input[type="datetime-local"]::-webkit-datetime-edit,
+input[type="month"]::-webkit-datetime-edit {
+	min-width: 0;
+	overflow: hidden;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+	flex-shrink: 0;
 }
 
 /* ─── END RESPONSIVE FOUNDATIONS ────────────────────────────────────────── */
@@ -716,27 +749,6 @@ input[type="month"] {
 		outline: 3px solid Highlight;
 		outline-offset: 2px;
 	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.animate-toast-progress {
-		animation: none !important;
-		opacity: 1 !important;
-		transform: none !important;
-	}
-}
-
-@keyframes toast-progress {
-	from {
-		transform: scaleX(1);
-	}
-	to {
-		transform: scaleX(0);
-	}
-}
-.animate-toast-progress {
-	animation: toast-progress var(--toast-duration, 4s) linear forwards;
-	transform-origin: left;
 }
 
 /* ─── NATIVE-APP POLISH ──────────────────────────────────────────────────

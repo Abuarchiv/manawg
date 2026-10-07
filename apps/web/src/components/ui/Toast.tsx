@@ -12,11 +12,14 @@ interface Toast {
 	id: string;
 	message: string;
 	variant: ToastVariant;
+	/** Fading out; removed from the store once the exit animation has run. */
+	leaving?: boolean;
 }
 
 // WCAG 2.2.1: a toast must give enough time to read it. The auto-dismiss timer
 // lives in ToastItem (not here) so it can pause while hovered or focused.
 const TOAST_DURATION_MS = 4000;
+const TOAST_EXIT_MS = 150;
 
 /** Module-level store: toasts survive route changes and any component may raise one. */
 let toasts: Toast[] = [];
@@ -35,8 +38,8 @@ function subscribe(listener: () => void): () => void {
 	};
 }
 
-// More than a few stacked toasts only push the page out of the viewport; the oldest give way.
-const MAX_TOASTS = 3;
+// More than two stacked toasts cover the list and sit next to the FAB; the oldest give way.
+const MAX_TOASTS = 2;
 
 function addToast(message: string, variant: ToastVariant): void {
 	const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -47,7 +50,9 @@ function addToast(message: string, variant: ToastVariant): void {
 }
 
 function removeToast(id: string): void {
-	setToasts(toasts.filter((t) => t.id !== id));
+	if (!toasts.some((t) => t.id === id && !t.leaving)) return;
+	setToasts(toasts.map((t) => (t.id === id ? { ...t, leaving: true } : t)));
+	setTimeout(() => setToasts(toasts.filter((t) => t.id !== id)), TOAST_EXIT_MS);
 }
 
 const toastApi = {
@@ -55,6 +60,15 @@ const toastApi = {
 	error: (message: string) => addToast(message, 'error'),
 	info: (message: string) => addToast(message, 'info'),
 };
+
+/** True while any toast is on screen, so fixed bottom chrome can step aside. */
+export function useHasToasts(): boolean {
+	return useSyncExternalStore(
+		subscribe,
+		() => toasts.length > 0,
+		() => false,
+	);
+}
 
 /** Raising a toast does not subscribe the caller, so it never re-renders on toast changes. */
 export function useToast() {
@@ -81,9 +95,10 @@ function ToastItem({ toast }: { toast: Toast }) {
 	}, [clearTimer, toast.id]);
 
 	useEffect(() => {
+		if (toast.leaving) return;
 		scheduleTimer();
 		return clearTimer;
-	}, [scheduleTimer, clearTimer]);
+	}, [scheduleTimer, clearTimer, toast.leaving]);
 
 	return (
 		<Alert
@@ -91,8 +106,10 @@ function ToastItem({ toast }: { toast: Toast }) {
 			role={toast.variant === 'error' ? 'alert' : 'status'}
 			aria-live={toast.variant === 'error' ? undefined : 'polite'}
 			className="flex flex-wrap items-center gap-x-3 gap-y-1"
-			onMouseEnter={clearTimer}
-			onMouseLeave={scheduleTimer}
+			// Mouse only: a tap fires emulated mouseenter but mouseleave comes after the next tap
+			// elsewhere, which would pin the toast on touch screens.
+			onPointerEnter={(e) => e.pointerType === 'mouse' && clearTimer()}
+			onPointerLeave={(e) => e.pointerType === 'mouse' && scheduleTimer()}
 			onFocus={clearTimer}
 			onBlur={scheduleTimer}
 		>
@@ -133,7 +150,14 @@ export function ToastContainer() {
 		>
 			{/* Newest first in the DOM = lowest on screen, so a stack taller than the cap scrolls away from the newest. */}
 			{[...current].reverse().map((toast) => (
-				<div key={toast.id} className="pointer-events-auto">
+				<div
+					key={toast.id}
+					className={
+						toast.leaving
+							? 'pointer-events-none motion-safe:animate-out motion-safe:fade-out-0 motion-safe:fill-mode-forwards motion-safe:duration-150'
+							: 'pointer-events-auto motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-200'
+					}
+				>
 					<ToastItem toast={toast} />
 				</div>
 			))}
