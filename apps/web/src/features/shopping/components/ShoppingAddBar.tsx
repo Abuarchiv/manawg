@@ -41,7 +41,7 @@ export function ShoppingAddBar({
 						value={value}
 						onChange={(event) => onChange(event.target.value)}
 						maxLength={NAME_MAX}
-						placeholder="z. B. 2 Hafermilch"
+						placeholder="z. B. 2 Reis"
 						aria-label="Artikel-Name"
 						enterKeyHint="done"
 						aria-invalid={Boolean(addError)}

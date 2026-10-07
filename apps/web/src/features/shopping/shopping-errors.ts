@@ -11,8 +11,6 @@ const ADD_ERRORS: Record<string, string> = {
 	bought_invalid: `${ADD_SUBJECT}: Der Status ist ungültig.`,
 	invalid_json: `${ADD_SUBJECT}: Die Anfrage war ungültig.`,
 	invalid_body: `${ADD_SUBJECT}: Die Anfrage war ungültig.`,
-	shopping_item_duplicate:
-		'Dieser Artikel steht bereits offen auf der Einkaufsliste. Prüfe den vorhandenen Eintrag; seine Menge bleibt unverändert.',
 	insert_failed: `${ADD_SUBJECT}: Prüfe die Einkaufsliste und versuche es erneut.`,
 };
 
@@ -23,6 +21,11 @@ export function shoppingAddErrorMessage(error: string): string {
 		ADD_ERRORS,
 		'Hinzufügen fehlgeschlagen. Versuche es gleich erneut.',
 	);
+}
+
+/** Kurz und mit Namen, damit klar ist, welche Zeile gemeint ist. */
+export function shoppingDuplicateMessage(name: string): string {
+	return `„${name}“ steht schon offen auf der Liste.`;
 }
 
 export type ShoppingActionVerb = 'abgehakt' | 'wieder geöffnet' | 'entfernt';

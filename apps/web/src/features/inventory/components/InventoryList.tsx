@@ -49,6 +49,7 @@ export function InventoryList({
 }: InventoryListProps) {
 	const [quickOpen, setQuickOpen] = useState(false);
 	const [editing, setEditing] = useState<InventoryItemDto | null>(null);
+	const [armedDeleteId, setArmedDeleteId] = useState<string | null>(null);
 	// Knappe Vorräte stehen gesammelt oben, der Rest bleibt nach Kategorie sortiert. Die Gruppe
 	// einer bekannten Zeile ändert sich erst nach einer Ruhephase; die Menge bleibt live.
 	const settledLowRef = useRef(new Map<string, boolean>());
@@ -120,6 +121,8 @@ export function InventoryList({
 												memberId={memberId}
 												onChanged={onChanged}
 												onEdit={openEdit}
+												deleteArmed={armedDeleteId === item.id}
+												onDeleteArmedChange={setArmedDeleteId}
 											/>
 										))}
 									</ItemGroup>
@@ -159,6 +162,8 @@ export function InventoryList({
 												memberId={memberId}
 												onChanged={onChanged}
 												onEdit={openEdit}
+												deleteArmed={armedDeleteId === item.id}
+												onDeleteArmedChange={setArmedDeleteId}
 											/>
 										))}
 									</ItemGroup>

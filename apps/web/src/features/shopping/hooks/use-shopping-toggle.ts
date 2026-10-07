@@ -12,7 +12,7 @@ import {
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import {
 	shoppingActionErrorMessage,
-	shoppingAddErrorMessage,
+	shoppingDuplicateMessage,
 } from '@/features/shopping/shopping-errors';
 import {
 	type ShoppingPatchRequest,
@@ -132,7 +132,7 @@ export function useShoppingToggle(ctx: ShoppingActionContext) {
 			} else if (res.status === 409 && res.error === 'shopping_item_duplicate') {
 				rollback();
 				await load(true);
-				setToggleError(shoppingAddErrorMessage(res.error));
+				setToggleError(shoppingDuplicateMessage(item.name));
 			} else if (res.status === 409 && res.error === 'shopping_item_changed') {
 				rollback();
 				await load(true);

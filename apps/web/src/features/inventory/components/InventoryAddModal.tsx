@@ -1,5 +1,6 @@
 'use client';
 
+import { useToast } from '@/components/ui/Toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -92,6 +93,7 @@ export function InventoryAddModal({
 	onSaved,
 	onItemRefreshed,
 }: InventoryAddModalProps) {
+	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(shareCode);
 	const [name, setName] = useState('');
 	const [quantityText, setQuantityText] = useState('0');
@@ -201,6 +203,7 @@ export function InventoryAddModal({
 			setSaving(false);
 			if (mode === 'create') createRequestRef.current = null;
 			onSaved(res.data.item);
+			toast.success(mode === 'edit' ? 'Vorrat aktualisiert.' : 'Vorrat gespeichert.');
 			onClose();
 		} else if (mode === 'edit' && current && res.status === 404 && res.error === 'item_not_found') {
 			setSaving(false);
@@ -256,168 +259,170 @@ export function InventoryAddModal({
 	}
 
 	return (
-		<Drawer
-			open={open}
-			onOpenChange={(next) => {
-				if (!next) requestClose();
-			}}
-		>
-			<DrawerContent className="mx-auto w-full max-w-md">
-				<DrawerHeader>
-					<DrawerTitle>{mode === 'edit' ? 'Vorrat bearbeiten' : 'Neuer Vorrat'}</DrawerTitle>
-				</DrawerHeader>
+		<>
+			<Drawer
+				open={open}
+				onOpenChange={(next) => {
+					if (!next) requestClose();
+				}}
+			>
+				<DrawerContent className="mx-auto w-full max-w-md">
+					<DrawerHeader>
+						<DrawerTitle>{mode === 'edit' ? 'Vorrat bearbeiten' : 'Neuer Vorrat'}</DrawerTitle>
+					</DrawerHeader>
 
-				<form
-					onSubmit={(event) => {
-						event.preventDefault();
-						void save();
-					}}
-					className="flex min-h-0 flex-col"
-				>
-					<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
-						<FieldGroup>
-							<Field data-invalid={Boolean(nameError)}>
-								<FieldLabel htmlFor="inventory-name">Name</FieldLabel>
-								<Input
-									id="inventory-name"
-									type="text"
-									value={name}
-									onChange={(event) => {
-										setName(event.target.value);
-										if (nameError) setNameError(null);
-									}}
-									maxLength={INVENTORY_LIMITS.NAME_MAX}
-									required
-									aria-required="true"
-									aria-invalid={Boolean(nameError)}
-									aria-describedby={nameError ? 'inventory-name-error' : undefined}
-									placeholder="z. B. Nudeln"
-									disabled={saving || conflictNeedsReload}
-									enterKeyHint="next"
-									className="text-base"
-								/>
-								{nameError && <FieldError id="inventory-name-error">{nameError}</FieldError>}
-							</Field>
-							<div className="grid grid-cols-1 gap-2">
-								<Field className="min-w-0">
-									<FieldLabel htmlFor="inventory-qty">Menge</FieldLabel>
+					<form
+						onSubmit={(event) => {
+							event.preventDefault();
+							void save();
+						}}
+						className="flex min-h-0 flex-col"
+					>
+						<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
+							<FieldGroup>
+								<Field data-invalid={Boolean(nameError)}>
+									<FieldLabel htmlFor="inventory-name">Name</FieldLabel>
 									<Input
-										id="inventory-qty"
+										id="inventory-name"
 										type="text"
-										inputMode="numeric"
-										pattern="[0-9]*"
-										maxLength={String(INVENTORY_LIMITS.QUANTITY_MAX).length}
-										value={quantityText}
-										onChange={(event) => setQuantityText(event.target.value.replace(/\D/g, ''))}
-										onFocus={(event) => event.currentTarget.select()}
+										value={name}
+										onChange={(event) => {
+											setName(event.target.value);
+											if (nameError) setNameError(null);
+										}}
+										maxLength={INVENTORY_LIMITS.NAME_MAX}
+										required
+										aria-required="true"
+										aria-invalid={Boolean(nameError)}
+										aria-describedby={nameError ? 'inventory-name-error' : undefined}
+										placeholder="z. B. Nudeln"
 										disabled={saving || conflictNeedsReload}
+										enterKeyHint="next"
 										className="text-base"
 									/>
+									{nameError && <FieldError id="inventory-name-error">{nameError}</FieldError>}
 								</Field>
-								<Field className="min-w-0">
-									<FieldLabel htmlFor="inventory-threshold">Nachkaufen ab</FieldLabel>
-									<Input
-										id="inventory-threshold"
-										type="text"
-										inputMode="numeric"
-										pattern="[0-9]*"
-										maxLength={String(INVENTORY_LIMITS.THRESHOLD_MAX).length}
-										value={thresholdText}
-										onChange={(event) => setThresholdText(event.target.value.replace(/\D/g, ''))}
-										onFocus={(event) => event.currentTarget.select()}
-										disabled={saving || conflictNeedsReload}
-										className="text-base"
-									/>
-								</Field>
-							</div>
-							<div className="grid grid-cols-1 gap-2">
-								<Field className="min-w-0">
-									<FieldLabel htmlFor="inventory-unit">Einheit</FieldLabel>
-									<NativeSelect
-										id="inventory-unit"
-										value={unit}
-										onChange={(event) => setUnit(event.target.value as InventoryUnit)}
-										disabled={saving || conflictNeedsReload}
-										className="w-full [&_select]:min-h-11 [&_select]:text-base"
-									>
-										{INVENTORY_UNITS.map((u) => (
-											<NativeSelectOption key={u} value={u}>
-												{u}
-											</NativeSelectOption>
-										))}
-									</NativeSelect>
-								</Field>
-								<Field className="min-w-0">
-									<FieldLabel htmlFor="inventory-category">Kategorie</FieldLabel>
-									<NativeSelect
-										id="inventory-category"
-										value={category}
-										onChange={(event) => setCategory(event.target.value as InventoryCategory)}
-										disabled={saving || conflictNeedsReload}
-										className="w-full [&_select]:min-h-11 [&_select]:text-base"
-									>
-										{INVENTORY_CATEGORIES.map((cat) => (
-											<NativeSelectOption key={cat} value={cat}>
-												{INVENTORY_CATEGORY_LABELS[cat]}
-											</NativeSelectOption>
-										))}
-									</NativeSelect>
-								</Field>
-							</div>
-							<FieldDescription aria-live="polite">
-								{mode === 'create' && isBelowThreshold({ quantity, threshold })
-									? 'Kommt beim Speichern direkt auf die Einkaufsliste.'
-									: 'Ab diesem Bestand kommt der Vorrat auf die Einkaufsliste.'}
-							</FieldDescription>
-						</FieldGroup>
-					</div>
-					{serverError && (
-						<div className="shrink-0 px-4 pb-3">
-							<Alert
-								ref={alertRef}
-								id="inventory-save-error"
-								variant="destructive"
-								tabIndex={-1}
-								className="outline-none"
-							>
-								<AlertDescription>{serverError}</AlertDescription>
-							</Alert>
+								<div className="grid grid-cols-1 gap-2">
+									<Field className="min-w-0">
+										<FieldLabel htmlFor="inventory-qty">Menge</FieldLabel>
+										<Input
+											id="inventory-qty"
+											type="text"
+											inputMode="numeric"
+											pattern="[0-9]*"
+											maxLength={String(INVENTORY_LIMITS.QUANTITY_MAX).length}
+											value={quantityText}
+											onChange={(event) => setQuantityText(event.target.value.replace(/\D/g, ''))}
+											onFocus={(event) => event.currentTarget.select()}
+											disabled={saving || conflictNeedsReload}
+											className="text-base"
+										/>
+									</Field>
+									<Field className="min-w-0">
+										<FieldLabel htmlFor="inventory-threshold">Nachkaufen ab</FieldLabel>
+										<Input
+											id="inventory-threshold"
+											type="text"
+											inputMode="numeric"
+											pattern="[0-9]*"
+											maxLength={String(INVENTORY_LIMITS.THRESHOLD_MAX).length}
+											value={thresholdText}
+											onChange={(event) => setThresholdText(event.target.value.replace(/\D/g, ''))}
+											onFocus={(event) => event.currentTarget.select()}
+											disabled={saving || conflictNeedsReload}
+											className="text-base"
+										/>
+									</Field>
+								</div>
+								<div className="grid grid-cols-1 gap-2">
+									<Field className="min-w-0">
+										<FieldLabel htmlFor="inventory-unit">Einheit</FieldLabel>
+										<NativeSelect
+											id="inventory-unit"
+											value={unit}
+											onChange={(event) => setUnit(event.target.value as InventoryUnit)}
+											disabled={saving || conflictNeedsReload}
+											className="w-full [&_select]:min-h-11 [&_select]:text-base"
+										>
+											{INVENTORY_UNITS.map((u) => (
+												<NativeSelectOption key={u} value={u}>
+													{u}
+												</NativeSelectOption>
+											))}
+										</NativeSelect>
+									</Field>
+									<Field className="min-w-0">
+										<FieldLabel htmlFor="inventory-category">Kategorie</FieldLabel>
+										<NativeSelect
+											id="inventory-category"
+											value={category}
+											onChange={(event) => setCategory(event.target.value as InventoryCategory)}
+											disabled={saving || conflictNeedsReload}
+											className="w-full [&_select]:min-h-11 [&_select]:text-base"
+										>
+											{INVENTORY_CATEGORIES.map((cat) => (
+												<NativeSelectOption key={cat} value={cat}>
+													{INVENTORY_CATEGORY_LABELS[cat]}
+												</NativeSelectOption>
+											))}
+										</NativeSelect>
+									</Field>
+								</div>
+								<FieldDescription aria-live="polite">
+									{mode === 'create' && isBelowThreshold({ quantity, threshold })
+										? 'Kommt beim Speichern direkt auf die Einkaufsliste.'
+										: 'Ab diesem Bestand kommt der Vorrat auf die Einkaufsliste.'}
+								</FieldDescription>
+							</FieldGroup>
 						</div>
-					)}
-					<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-						<Button type="submit" disabled={saving || conflictNeedsReload} aria-busy={saving}>
-							{saving && <Spinner aria-hidden />}
-							{saving ? 'Speichert…' : 'Speichern'}
-						</Button>
-						<Button type="button" variant="outline" onClick={requestClose}>
-							Abbrechen
-						</Button>
-					</DrawerFooter>
-				</form>
-				<AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
-					<AlertDialogContent className="w-[calc(100%-2rem)]">
-						<AlertDialogHeader>
-							<AlertDialogTitle>Änderungen verwerfen?</AlertDialogTitle>
-							<AlertDialogDescription>
-								Deine Eingaben wurden noch nicht gespeichert.
-							</AlertDialogDescription>
-						</AlertDialogHeader>
-						<AlertDialogFooter>
-							<AlertDialogCancel className="min-h-11">Weiter bearbeiten</AlertDialogCancel>
-							<AlertDialogAction
-								variant="destructive"
-								className="min-h-11"
-								onClick={() => {
-									setDiscardOpen(false);
-									onClose();
-								}}
-							>
-								Verwerfen
-							</AlertDialogAction>
-						</AlertDialogFooter>
-					</AlertDialogContent>
-				</AlertDialog>
-			</DrawerContent>
-		</Drawer>
+						{serverError && (
+							<div className="shrink-0 px-4 pb-3">
+								<Alert
+									ref={alertRef}
+									id="inventory-save-error"
+									variant="destructive"
+									tabIndex={-1}
+									className="outline-none"
+								>
+									<AlertDescription>{serverError}</AlertDescription>
+								</Alert>
+							</div>
+						)}
+						<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+							<Button type="submit" disabled={saving || conflictNeedsReload} aria-busy={saving}>
+								{saving && <Spinner aria-hidden />}
+								{saving ? 'Speichert…' : 'Speichern'}
+							</Button>
+							<Button type="button" variant="outline" onClick={requestClose}>
+								Abbrechen
+							</Button>
+						</DrawerFooter>
+					</form>
+				</DrawerContent>
+			</Drawer>
+			<AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
+				<AlertDialogContent className="w-[calc(100%-2rem)]">
+					<AlertDialogHeader>
+						<AlertDialogTitle>Änderungen verwerfen?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Deine Eingaben wurden noch nicht gespeichert.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel className="min-h-11">Weiter bearbeiten</AlertDialogCancel>
+						<AlertDialogAction
+							variant="destructive"
+							className="min-h-11"
+							onClick={() => {
+								setDiscardOpen(false);
+								onClose();
+							}}
+						>
+							Verwerfen
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
 	);
 }

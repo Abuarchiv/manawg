@@ -61,20 +61,26 @@ export default function VorraetePage() {
 			)}
 
 			{initialLoading && items.length === 0 ? (
-				<Card className="py-0">
-					<CardContent className="p-0">
-						<ItemGroup className="gap-0" aria-busy="true" aria-label="Vorräte werden geladen">
-							{['s0', 's1', 's2'].map((k) => (
-								<Item key={k} className="px-3 py-3">
-									<ItemContent className="flex-1 gap-2">
-										<Skeleton className="h-3.5 w-2/5" />
-										<Skeleton className="h-3 w-3/5" />
-									</ItemContent>
-								</Item>
-							))}
-						</ItemGroup>
-					</CardContent>
-				</Card>
+				<div className="flex flex-col gap-2">
+					{/* Gruppenüberschrift der geladenen Liste: der Inhalt springt beim Laden nicht nach unten. */}
+					<div className="flex h-5 items-center">
+						<Skeleton className="h-3.5 w-24" />
+					</div>
+					<Card className="py-0">
+						<CardContent className="p-0">
+							<ItemGroup className="gap-0" aria-busy="true" aria-label="Vorräte werden geladen">
+								{['s0', 's1', 's2'].map((k) => (
+									<Item key={k} className="px-3 py-3">
+										<ItemContent className="flex-1 gap-2">
+											<Skeleton className="h-3.5 w-2/5" />
+											<Skeleton className="h-3 w-3/5" />
+										</ItemContent>
+									</Item>
+								))}
+							</ItemGroup>
+						</CardContent>
+					</Card>
+				</div>
 			) : loadError && items.length === 0 ? null : (
 				<InventoryList
 					items={items}

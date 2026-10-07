@@ -104,9 +104,7 @@ export default function EinkaufPage() {
 					label: 'Vorschläge',
 					names:
 						items.length === 0
-							? QUICK_SHOPPING_ITEMS.map((item) => item.name).filter(
-									(name) => !taken.has(normalizeForMatch(name)),
-								)
+							? QUICK_SHOPPING_ITEMS.filter((name) => !taken.has(normalizeForMatch(name)))
 							: [],
 				},
 	].filter((group) => !suggestionsPending && group.names.length > 0);
@@ -172,7 +170,7 @@ export default function EinkaufPage() {
 					members={members}
 					memberId={identity.memberId}
 					shareCode={wg.shareCode}
-					highlightedId={highlightedId}
+					highlightedId={shopping.flashId ?? highlightedId}
 					doneOpen={shopping.doneOpen}
 					onDoneOpenChange={shopping.setDoneOpen}
 					isPending={shopping.isPending}

@@ -25,7 +25,10 @@ import type { PendingOverlay } from '@/core/sync/use-synced-collection';
 import { NAME_MAX } from '@/features/shopping/components/constants';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import { parseShoppingInput } from '@/features/shopping/parse-shopping-input';
-import { shoppingAddErrorMessage } from '@/features/shopping/shopping-errors';
+import {
+	shoppingAddErrorMessage,
+	shoppingDuplicateMessage,
+} from '@/features/shopping/shopping-errors';
 import { TEMP_ITEM_ID_PREFIX } from '@/features/shopping/shopping-view';
 import { useEffect, useRef, useState } from 'react';
 
@@ -41,6 +44,8 @@ interface UseShoppingAddOptions {
 	load: (silent?: boolean, afterMutation?: boolean) => Promise<void>;
 	refreshCount: () => void;
 	setAddNotice: (notice: string | null) => void;
+	/** 409: Name des Artikels, der schon offen auf der Liste steht. */
+	onDuplicate: (name: string) => void;
 }
 
 /** Input field, draft (including an offline entry being edited) and adding items. */
@@ -53,6 +58,7 @@ export function useShoppingAdd({
 	load,
 	refreshCount,
 	setAddNotice,
+	onDuplicate,
 }: UseShoppingAddOptions) {
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
@@ -235,13 +241,16 @@ export function useShoppingAdd({
 				settleTemp(null);
 				if (res.status === 409 && res.error === 'shopping_item_duplicate') {
 					await load(true);
+					onDuplicate(name);
 				}
 				if (retryableResponse) await load(true);
 				setAddError(
-					// The middleware rejects 429 and read-only mode before any processing: nothing was saved.
-					retryableResponse && res.status !== 429 && !isReadOnlyMode(res.error)
-						? 'Speicherstatus unklar. Prüfe die Liste und versuche es bei Bedarf erneut.'
-						: shoppingAddErrorMessage(res.error),
+					res.status === 409 && res.error === 'shopping_item_duplicate'
+						? shoppingDuplicateMessage(name)
+						: // The middleware rejects 429 and read-only mode before any processing: nothing was saved.
+							retryableResponse && res.status !== 429 && !isReadOnlyMode(res.error)
+							? 'Konnte nicht hinzugefügt werden. Prüfe kurz die Liste, ob der Artikel schon drin ist, und versuche es noch einmal.'
+							: shoppingAddErrorMessage(res.error),
 				);
 				return;
 			}
@@ -255,6 +264,8 @@ export function useShoppingAdd({
 			if (fromInput && nameValueRef.current === '') removeDraft(draftKey);
 			const warningMessage = notificationWarningMessage(res.data.warning);
 			if (warningMessage) toast.info(warningMessage);
+			// Chips: der Vorschlag verschwindet, die neue Zeile kann außerhalb des Bildes liegen.
+			else if (!fromInput) toast.success(`${name} hinzugefügt.`);
 			void load(true, true);
 		} finally {
 			// No placeholder row may stay behind, not even after an exception.

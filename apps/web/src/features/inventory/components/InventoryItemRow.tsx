@@ -1,9 +1,9 @@
 'use client';
 
+import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/button';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
-import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { apiFetch } from '@/core/infra/api-client';
 import {
 	type NotificationWarning,
@@ -16,7 +16,7 @@ import {
 	formatQuantity,
 } from '@/features/inventory/inventory';
 import { Minus, Pencil, Plus, Trash2 } from 'lucide-react';
-import { memo, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
 interface InventoryItemRowProps {
 	item: InventoryItemDto;
@@ -24,10 +24,16 @@ interface InventoryItemRowProps {
 	memberId: string;
 	onChanged: (item?: InventoryMutationItemDto, deletedId?: string) => void;
 	onEdit: (item: InventoryItemDto) => void;
+	/** Löschen-Bestätigung; die Liste hält nur eine armierte Zeile, damit nie zwei offen stehen. */
+	deleteArmed: boolean;
+	onDeleteArmedChange: (id: string | null) => void;
 }
 
 // Während einer Anfrage bleibt der Fokus auf dem Knopf (aria-disabled statt disabled).
 const BUSY_CLASS = 'aria-disabled:pointer-events-none aria-disabled:opacity-50';
+
+/** So lange bleibt „Entfernen/Abbrechen“ stehen, bevor die Zeile zurückfällt. */
+const DELETE_CONFIRM_MS = 6000;
 
 type PendingAction = 'decrement' | 'increment' | 'delete';
 type ConsumeResponse = {
@@ -42,10 +48,12 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	memberId,
 	onChanged,
 	onEdit,
+	deleteArmed,
+	onDeleteArmedChange,
 }: InventoryItemRowProps) {
+	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(shareCode);
 	const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
-	const [error, setError] = useState<string | null>(null);
 	// Hide a deleted row right away; until the refetch lands it would stay tappable.
 	const [removed, setRemoved] = useState(false);
 	const rowRef = useRef<HTMLDivElement>(null);
@@ -57,8 +65,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	// Fehler setzen ihn im finally zurück (null = zeige den Serverstand).
 	const [optimisticQuantity, setOptimisticQuantity] = useState<number | null>(null);
 	const quantity = optimisticQuantity ?? item.quantity;
-	const deleteConfirm = useConfirmDelete();
-	const isDeleteArmed = deleteConfirm.confirmId === item.id;
+	const isDeleteArmed = deleteArmed;
 	const pending = pendingAction !== null;
 	const armed = isDeleteArmed || pendingAction === 'delete';
 
@@ -73,13 +80,12 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	async function changeQuantity(delta: number): Promise<void> {
 		if (pending) return;
 		setPendingAction(delta < 0 ? 'decrement' : 'increment');
-		setError(null);
 		setOptimisticQuantity(Math.max(0, item.quantity + delta));
 		try {
 			if (delta < 0) {
 				const idempotencyKey = consumeIdempotencyKeyRef.current ?? createOfflineIdempotencyKey();
 				if (!idempotencyKey) {
-					setError('Aktualisierung konnte nicht sicher gesendet werden. Versuche es erneut.');
+					toast.error('Aktualisierung konnte nicht sicher gesendet werden. Versuche es erneut.');
 					return;
 				}
 				consumeIdempotencyKeyRef.current = idempotencyKey;
@@ -99,25 +105,25 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						'Bestand aktualisiert',
 					);
 					if (res.data.clamped && warningMessage) {
-						setError(`Bestand kann nicht unter 0 fallen. ${warningMessage}`);
+						toast.info(`Bestand kann nicht unter 0 fallen. ${warningMessage}`);
 					} else if (res.data.clamped) {
-						setError('Bestand kann nicht unter 0 fallen.');
+						toast.info('Bestand kann nicht unter 0 fallen.');
 					} else if (warningMessage) {
-						setError(warningMessage);
+						toast.info(warningMessage);
 					}
 					onChanged(res.data.item);
 				} else if (dropIfGone(res)) {
 					// row is gone
 				} else if (res.status === 429) {
-					setError('Zu viele Änderungen in kurzer Zeit. Bitte versuche es später erneut.');
+					toast.error('Zu viele Änderungen in kurzer Zeit. Bitte versuche es später erneut.');
 				} else {
 					if (res.status > 0 && res.status < 500) consumeIdempotencyKeyRef.current = null;
-					setError('Aktualisierung fehlgeschlagen. Versuche es erneut.');
+					toast.error(`Aktualisierung fehlgeschlagen. „${item.name}“ ließ sich nicht verringern.`);
 				}
 			} else {
 				const idempotencyKey = restockIdempotencyKeyRef.current ?? createOfflineIdempotencyKey();
 				if (!idempotencyKey) {
-					setError('Aktualisierung konnte nicht sicher gesendet werden. Versuche es erneut.');
+					toast.error('Aktualisierung konnte nicht sicher gesendet werden. Versuche es erneut.');
 					return;
 				}
 				restockIdempotencyKeyRef.current = idempotencyKey;
@@ -136,10 +142,10 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				} else if (dropIfGone(res)) {
 					// row is gone
 				} else if (res.status === 429) {
-					setError('Zu viele Änderungen in kurzer Zeit. Bitte versuche es später erneut.');
+					toast.error('Zu viele Änderungen in kurzer Zeit. Bitte versuche es später erneut.');
 				} else {
 					if (res.status > 0 && res.status < 500) restockIdempotencyKeyRef.current = null;
-					setError('Aktualisierung fehlgeschlagen. Versuche es erneut.');
+					toast.error(`Aktualisierung fehlgeschlagen. „${item.name}“ ließ sich nicht erhöhen.`);
 				}
 			}
 		} finally {
@@ -160,7 +166,6 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	async function remove(): Promise<void> {
 		if (pending) return;
 		setPendingAction('delete');
-		setError(null);
 		try {
 			const res = await apiFetch(
 				`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}`,
@@ -171,7 +176,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				setRemoved(true);
 				onChanged(undefined, item.id);
 			} else if (!dropIfGone(res)) {
-				setError('Löschen fehlgeschlagen. Versuche es erneut.');
+				toast.error(`„${item.name}“ konnte nicht entfernt werden. Versuche es erneut.`);
 			}
 		} finally {
 			setPendingAction(null);
@@ -180,20 +185,32 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 
 	function handleDelete(): void {
 		if (pending) return;
-		if (!deleteConfirm.request(item.id)) {
+		if (!isDeleteArmed) {
+			onDeleteArmedChange(item.id);
 			// Der Papierkorb wird ausgetauscht: der Fokus wandert auf die sichere Wahl.
 			requestAnimationFrame(() => cancelRef.current?.focus());
 			return;
 		}
-		deleteConfirm.cancel();
+		onDeleteArmedChange(null);
 		void remove();
 	}
 
 	function handleCancel(): void {
 		if (pending) return;
-		deleteConfirm.cancel();
+		onDeleteArmedChange(null);
 		requestAnimationFrame(() => trashRef.current?.focus());
 	}
+
+	// Die Bestätigung fällt nach ein paar Sekunden zurück; der Fokus bleibt dabei in der Zeile.
+	useEffect(() => {
+		if (!isDeleteArmed || pending) return;
+		const timer = window.setTimeout(() => {
+			const hadFocus = document.activeElement === cancelRef.current;
+			onDeleteArmedChange(null);
+			if (hadFocus) requestAnimationFrame(() => trashRef.current?.focus());
+		}, DELETE_CONFIRM_MS);
+		return () => window.clearTimeout(timer);
+	}, [isDeleteArmed, pending, onDeleteArmedChange]);
 
 	if (removed) return null;
 
@@ -206,7 +223,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 			>
 				{/* Im Bestätigungsmodus weniger Basisbreite, damit Entfernen/Abbrechen in der Zeile
 				    bleiben und die Liste darunter nicht springt. */}
-				<ItemContent className={armed ? 'min-w-0 flex-[1_1_7rem]' : 'min-w-0 flex-[1_1_9rem]'}>
+				<ItemContent className={armed ? 'min-w-0 flex-[1_1_7rem]' : 'min-w-0 flex-[1_1_6.5rem]'}>
 					<ItemTitle className="w-full min-w-0 gap-2 line-clamp-none">
 						<span className="min-w-0 flex-1 break-words" title={item.name}>
 							{item.name}
@@ -218,7 +235,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 					</ItemDescription>
 				</ItemContent>
 
-				<ItemActions className="ml-auto flex-wrap gap-2">
+				<ItemActions className="ml-auto flex-wrap justify-end gap-1.5">
 					{!armed && (
 						<>
 							<Button
@@ -311,11 +328,6 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 					)}
 				</ItemActions>
 			</div>
-			{error && (
-				<p role="alert" className="text-xs text-destructive">
-					{error}
-				</p>
-			)}
 		</Item>
 	);
 });

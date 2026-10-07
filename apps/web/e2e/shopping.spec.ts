@@ -96,7 +96,9 @@ test.describe('shopping retry', () => {
 		await page.getByLabel('Artikel-Name').fill('Rettich');
 		await page.getByRole('button', { name: 'Artikel hinzufügen', exact: true }).click();
 		await expect(
-			page.getByText('Speicherstatus unklar. Prüfe die Liste und versuche es bei Bedarf erneut.'),
+			page.getByText(
+				'Konnte nicht hinzugefügt werden. Prüfe kurz die Liste, ob der Artikel schon drin ist, und versuche es noch einmal.',
+			),
 		).toBeVisible();
 		await page.getByRole('button', { name: 'Artikel hinzufügen', exact: true }).click();
 		await expect.poll(() => keys.length).toBe(2);
@@ -855,11 +857,7 @@ test.describe('shopping conflict handling', () => {
 		await page.getByLabel('Artikel-Name').fill('2 L Milch');
 		await page.getByRole('button', { name: 'Artikel hinzufügen' }).click();
 
-		await expect(
-			page.getByText(
-				'Dieser Artikel steht bereits offen auf der Einkaufsliste. Prüfe den vorhandenen Eintrag; seine Menge bleibt unverändert.',
-			),
-		).toBeVisible();
+		await expect(page.getByText('„Milch“ steht schon offen auf der Liste.')).toBeVisible();
 		await expect(page.locator('[data-shopping-row]')).toHaveCount(1);
 		await expect(page.locator('[data-shopping-row]')).toContainText('Milch');
 		await expect(page.getByLabel('Artikel-Name')).toHaveValue('2 L Milch');
@@ -952,8 +950,7 @@ test.describe('shopping conflict handling', () => {
 			},
 		];
 		const { getCalls } = await mockShoppingPage(page, true, 200, items, true);
-		const conflictMessage =
-			'Dieser Artikel steht bereits offen auf der Einkaufsliste. Prüfe den vorhandenen Eintrag; seine Menge bleibt unverändert.';
+		const conflictMessage = '„Milch“ steht schon offen auf der Liste.';
 
 		await page.setViewportSize({ width: 320, height: 800 });
 		await setupMember(page);
