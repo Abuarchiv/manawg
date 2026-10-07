@@ -108,7 +108,7 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 						: state === 'codeCopied'
 							? 'WG-Code wurde kopiert.'
 							: state === 'failed'
-								? 'Teilen fehlgeschlagen. Kopiere den Link stattdessen.'
+								? 'Teilen fehlgeschlagen. Kopiere stattdessen den Code oben.'
 								: state === 'codeFailed'
 									? 'WG-Code konnte nicht kopiert werden.'
 									: ''}
@@ -196,7 +196,7 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 					<div className="flex min-h-6 items-center justify-center">
 						{state === 'failed' && (
 							<Badge variant="destructive" className="h-auto whitespace-normal text-center">
-								Teilen fehlgeschlagen
+								Teilen fehlgeschlagen. Kopiere stattdessen den Code oben.
 							</Badge>
 						)}
 					</div>

@@ -154,7 +154,7 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 		label: statusLabel,
 		heading: statusHeading,
 		description: statusDescription,
-	} = offlineStatusCopy(status, online);
+	} = offlineStatusCopy(status, online, knownWgs.length > 0);
 
 	async function recheck(): Promise<void> {
 		if (rechecking) return;
@@ -329,7 +329,7 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 					<p className="text-center text-xs leading-relaxed text-muted-foreground">
 						{queue.length > 0
 							? `${Array.from(new Set(queue.map(moduleLabel))).join(', ')} bleibt lokal gespeichert.`
-							: 'Du kannst diese Seite schließen. Sobald du online bist, lädt ManaWG wieder normal.'}
+							: 'Lade die Seite neu, sobald du online bist.'}
 					</p>
 				)}
 			</div>

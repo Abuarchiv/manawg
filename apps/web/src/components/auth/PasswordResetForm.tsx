@@ -1,6 +1,7 @@
 'use client';
 
 import { NEW_PASSWORD_MIN_LENGTH } from '@/components/auth/auth-form-shared';
+import { useToast } from '@/components/ui/Toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -28,6 +29,14 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 	const [password, setPassword] = useState('');
 	const [confirmation, setConfirmation] = useState('');
 	const [error, setError] = useState<string | null>(null);
+	// Server failures are not the fault of a field, so they never mark the inputs invalid.
+	const [serverError, setServerError] = useState<string | null>(null);
+	const toast = useToast();
+
+	function clearErrors(): void {
+		setError(null);
+		setServerError(null);
+	}
 
 	useEffect(() => {
 		setState((prev) =>
@@ -49,7 +58,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 			);
 			return;
 		}
-		setError(null);
+		clearErrors();
 		setState('submitting');
 		try {
 			const { updatePassword } = await import('@/core/auth/client');
@@ -59,6 +68,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 			} catch {
 				// The marker expires quickly; a successful password update must still finish.
 			}
+			toast.success('Passwort gespeichert.');
 			router.replace('/neu');
 		} catch (error) {
 			if (isWeakPasswordError(error)) setError(WEAK_PASSWORD_MESSAGE);
@@ -66,7 +76,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 			else if (isSamePasswordError(error)) {
 				setError('Das neue Passwort muss sich vom bisherigen unterscheiden.');
 			} else {
-				setError(
+				setServerError(
 					'Das Passwort konnte gerade nicht geändert werden. Bitte fordere einen neuen Link an.',
 				);
 			}
@@ -90,54 +100,74 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 	}
 
 	return (
-		<form onSubmit={(event) => void submit(event)} noValidate>
-			<FieldGroup>
-				<Field data-invalid={Boolean(error)}>
-					<FieldLabel htmlFor="reset-password">Neues Passwort</FieldLabel>
-					<Input
-						id="reset-password"
-						name="password"
-						type="password"
-						value={password}
-						onChange={(event) => setPassword(event.target.value)}
-						autoComplete="new-password"
-						minLength={NEW_PASSWORD_MIN_LENGTH}
-						required
-						enterKeyHint="next"
-						aria-describedby={error ? 'reset-password-error' : undefined}
-						aria-invalid={error ? true : undefined}
-						className="text-base"
-					/>
-				</Field>
-				<Field data-invalid={Boolean(error)}>
-					<FieldLabel htmlFor="reset-password-confirmation">Passwort bestätigen</FieldLabel>
-					<Input
-						id="reset-password-confirmation"
-						name="passwordConfirmation"
-						type="password"
-						value={confirmation}
-						onChange={(event) => setConfirmation(event.target.value)}
-						autoComplete="new-password"
-						minLength={NEW_PASSWORD_MIN_LENGTH}
-						required
-						enterKeyHint="done"
-						aria-describedby={error ? 'reset-password-error' : undefined}
-						aria-invalid={error ? true : undefined}
-						className="text-base"
-					/>
-				</Field>
-				{error && <FieldError id="reset-password-error">{error}</FieldError>}
-				<Button
-					type="submit"
-					variant="default"
-					size="lg"
-					disabled={state === 'submitting'}
-					className="w-full"
-				>
-					{state === 'submitting' && <Spinner data-icon="inline-start" aria-hidden />}
-					{state === 'submitting' ? 'Passwort wird gespeichert…' : 'Passwort speichern'}
-				</Button>
-			</FieldGroup>
-		</form>
+		<div className="flex flex-col gap-4">
+			{serverError && (
+				<>
+					<Alert variant="destructive">
+						<AlertDescription>{serverError}</AlertDescription>
+					</Alert>
+					<Link href="/neu" className={cn(buttonVariants({ variant: 'outline' }))}>
+						Neuen Link anfordern
+					</Link>
+				</>
+			)}
+			<form onSubmit={(event) => void submit(event)} noValidate>
+				<FieldGroup>
+					<Field data-invalid={Boolean(error)}>
+						<FieldLabel htmlFor="reset-password">Neues Passwort</FieldLabel>
+						<Input
+							id="reset-password"
+							name="password"
+							type="password"
+							value={password}
+							onChange={(event) => {
+								setPassword(event.target.value);
+								clearErrors();
+							}}
+							autoComplete="new-password"
+							minLength={NEW_PASSWORD_MIN_LENGTH}
+							required
+							readOnly={state === 'submitting'}
+							enterKeyHint="next"
+							aria-describedby={error ? 'reset-password-error' : undefined}
+							aria-invalid={error ? true : undefined}
+							className="text-base"
+						/>
+					</Field>
+					<Field data-invalid={Boolean(error)}>
+						<FieldLabel htmlFor="reset-password-confirmation">Passwort bestätigen</FieldLabel>
+						<Input
+							id="reset-password-confirmation"
+							name="passwordConfirmation"
+							type="password"
+							value={confirmation}
+							onChange={(event) => {
+								setConfirmation(event.target.value);
+								clearErrors();
+							}}
+							autoComplete="new-password"
+							minLength={NEW_PASSWORD_MIN_LENGTH}
+							required
+							readOnly={state === 'submitting'}
+							enterKeyHint="done"
+							aria-describedby={error ? 'reset-password-error' : undefined}
+							aria-invalid={error ? true : undefined}
+							className="text-base"
+						/>
+					</Field>
+					{error && <FieldError id="reset-password-error">{error}</FieldError>}
+					<Button
+						type="submit"
+						variant="default"
+						size="lg"
+						disabled={state === 'submitting'}
+						className="w-full"
+					>
+						{state === 'submitting' && <Spinner data-icon="inline-start" aria-hidden />}
+						{state === 'submitting' ? 'Passwort wird gespeichert…' : 'Passwort speichern'}
+					</Button>
+				</FieldGroup>
+			</form>
+		</div>
 	);
 }

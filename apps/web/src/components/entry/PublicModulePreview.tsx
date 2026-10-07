@@ -1,5 +1,5 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
 	Item,
 	ItemActions,
@@ -24,7 +24,7 @@ const PREVIEW_COPY = {
 	ausgaben: { title: 'Pizzaabend', detail: 'Mika bezahlt · 4 Personen' },
 	putzen: { title: 'Bad putzen', detail: 'Lea · heute' },
 	pinnwand: { title: 'Übergabe am Freitag', detail: 'Jona · Schlüssel liegen im Flur bereit.' },
-	fixkosten: { title: 'Internet', detail: '29,99 € monatlich · nächste Zahlung am 3.' },
+	fixkosten: { title: 'Internet', detail: '29,99 € monatlich · nächste Zahlung am 3. des Monats' },
 	mahnungen: { title: 'Jona bekommt 12,50 €', detail: 'Geteilt aus dem Einkauf · seit 2 Tagen' },
 	vorraete: { title: 'Toilettenpapier', detail: '2 Packungen · Mindestbestand 1' },
 	kalender: { title: 'Putzplan-Check', detail: 'Freitag · 18:00 Uhr · für die ganze WG' },
@@ -189,10 +189,8 @@ export function PublicModulePreview({ module }: { module: PublicPreviewModule })
 		<section aria-label={`Beispielansicht für ${module.title}`}>
 			<article aria-label={`${module.title}, Beispiel-WG`}>
 				<Card className="h-full">
-					<CardHeader>
-						<span className="justify-self-end text-[12px] text-muted-foreground">Beispiel</span>
-					</CardHeader>
 					<CardContent>
+						<span className="mb-1 block text-right text-xs text-muted-foreground">Beispiel</span>
 						<PreviewRows module={module} />
 					</CardContent>
 				</Card>

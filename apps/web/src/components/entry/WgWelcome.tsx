@@ -6,6 +6,15 @@ type WgWelcomeProps =
 	| { variant: 'create'; outline?: boolean }
 	| { variant: 'invitation'; code: string };
 
+/** Names the invitation (code only; the WG name is unknown before joining) above the example. */
+export function InvitationNotice({ code }: { code: string }) {
+	return (
+		<p className="text-sm">
+			Einladung zur WG, Code <span className="font-mono font-semibold tracking-wider">{code}</span>
+		</p>
+	);
+}
+
 export function WgWelcome(props: WgWelcomeProps) {
 	const invitation = props.variant === 'invitation';
 	const actionHref = invitation
@@ -14,7 +23,6 @@ export function WgWelcome(props: WgWelcomeProps) {
 
 	return (
 		<div className="flex flex-col gap-2">
-			{invitation && <p className="text-sm text-muted-foreground">Deine Einladung ist bereit.</p>}
 			<Link
 				href={actionHref}
 				className={cn(
@@ -22,7 +30,7 @@ export function WgWelcome(props: WgWelcomeProps) {
 					'w-full',
 				)}
 			>
-				{invitation ? 'Dieser WG beitreten' : 'WG erstellen'}
+				{invitation ? 'Einladung annehmen' : 'WG erstellen'}
 			</Link>
 		</div>
 	);

@@ -98,7 +98,7 @@ test.describe('live public dashboard entry', () => {
 		const code = 'ABCD2345';
 		await page.goto(`/?code=${code}`);
 		await expect(
-			page.getByRole('link', { name: 'Dieser WG beitreten', exact: true }),
+			page.getByRole('link', { name: 'Einladung annehmen', exact: true }),
 		).toHaveAttribute('href', `/neu?code=${code}`);
 		await page
 			.getByRole('navigation', { name: 'Öffentliche Hauptnavigation' })
@@ -111,7 +111,7 @@ test.describe('live public dashboard entry', () => {
 				.getByRole('link', { name: 'Start', exact: true }),
 		).toHaveAttribute('href', `/?code=${code}`);
 		await page.reload();
-		await page.getByRole('link', { name: 'Dieser WG beitreten', exact: true }).first().click();
+		await page.getByRole('link', { name: 'Einladung annehmen', exact: true }).first().click();
 		await expect(page).toHaveURL(`/neu?code=${code}`);
 		await expect(page.getByText('Melde dich an, um mit deinem WG-Code beizutreten.')).toBeVisible();
 	});

@@ -83,7 +83,7 @@ export function visibleQueueCodes(actions: OfflineAction[]): Set<string> {
 }
 
 /** Badge, heading and description of the offline page for a connection status. */
-export function offlineStatusCopy(status: OfflineStatus, online: boolean) {
+export function offlineStatusCopy(status: OfflineStatus, online: boolean, hasWg = true) {
 	const label =
 		status === 'checking'
 			? 'Wird geprüft…'
@@ -115,6 +115,8 @@ export function offlineStatusCopy(status: OfflineStatus, online: boolean) {
 					? 'Der Server antwortet gerade nicht. Deine lokal gespeicherten Aktionen bleiben erhalten; versuche es später erneut.'
 					: status === 'unauthenticated'
 						? 'Offline-Aktionen und gemerkte WGs hängen an deinem Konto.'
-						: 'ManaWG speichert vorbereitete Aktionen auf diesem Gerät. Sobald das Netz zurück ist, kannst du sie synchronisieren und in deine WG zurückspringen.';
+						: hasWg
+							? 'Deine Verbindung steht. Synchronisiere wartende Aktionen oder geh zurück in deine WG.'
+							: 'Deine Verbindung steht. Wartende Aktionen kannst du jetzt synchronisieren.';
 	return { label, heading, description };
 }

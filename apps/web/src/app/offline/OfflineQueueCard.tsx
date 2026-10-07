@@ -1,6 +1,5 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -53,18 +52,17 @@ export function OfflineQueueCard({
 						const risk = getOfflineActionRisk(item);
 						return (
 							// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML
-							<Item key={item.id} variant="outline" role="listitem">
+							<Item key={item.id} variant="outline" role="listitem" className="items-start">
 								<ItemContent className="basis-40">
 									<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
 										{summary.title}
 									</ItemTitle>
 									<ItemDescription className="line-clamp-1">{summary.detail}</ItemDescription>
-									{item.lastError && (
-										<p className="mt-1 text-xs text-destructive">{item.lastError}</p>
-									)}
-									{risk && (
+									{(item.lastError || risk) && (
 										<p className="mt-1 text-xs text-muted-foreground">
-											{risk.title}: {risk.detail}
+											{item.lastError && <span className="text-destructive">{item.lastError}</span>}
+											{item.lastError && risk ? ' ' : null}
+											{risk && `${risk.title}: ${risk.detail}`}
 										</p>
 									)}
 								</ItemContent>
@@ -83,15 +81,12 @@ export function OfflineQueueCard({
 						+{hiddenQueueCount} weitere Aktion
 						{hiddenQueueCount === 1 ? '' : 'en'} in der Warteschlange.{' '}
 						{primaryWg ? (
-							<Button
-								variant="link"
-								size="lg"
-								render={<Link href={wgHref(primaryWg.code, '/einstellungen#daten')} />}
-								nativeButton={false}
-								className="px-0"
+							<Link
+								href={wgHref(primaryWg.code, '/einstellungen#daten')}
+								className="text-primary underline underline-offset-4"
 							>
 								Alle Aktionen prüfen
-							</Button>
+							</Link>
 						) : (
 							'Alle Aktionen prüfen'
 						)}{' '}

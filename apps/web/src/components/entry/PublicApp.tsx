@@ -9,9 +9,9 @@ import {
 	PublicModulePreviews,
 	type PublicPreviewModule,
 } from '@/components/entry/PublicModulePreview';
-import { WgWelcome } from '@/components/entry/WgWelcome';
+import { InvitationNotice, WgWelcome } from '@/components/entry/WgWelcome';
 import { LogoMark } from '@/components/ui/LogoMark';
-import { AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
@@ -26,6 +26,7 @@ import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { cn } from '@/shared/lib/cn';
 import {
 	CalendarDays,
+	ChevronRight,
 	Clock3,
 	ListChecks,
 	Megaphone,
@@ -120,6 +121,7 @@ function MembershipCard({ memberships }: { memberships: AccountWg[] }) {
 									<ItemTitle className="line-clamp-none break-words">{membership.name}</ItemTitle>
 									<ItemDescription>WG öffnen</ItemDescription>
 								</ItemContent>
+								<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
 							</Item>
 						</div>
 					))}
@@ -179,7 +181,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 				}
 			: membershipState === 'authenticated-empty'
 				? inviteCode
-					? { href: publicHref('/neu'), label: 'Dieser WG beitreten' }
+					? { href: publicHref('/neu'), label: 'Einladung annehmen' }
 					: { href: '/neu?action=create', label: 'WG erstellen' }
 				: { href: publicHref('/neu'), label: 'Anmelden' };
 
@@ -249,7 +251,8 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 		(page) => page.slug === activeModule || (page.slug === 'abos' && activeModule === 'fixkosten'),
 	);
 	// On the home the list of WGs is already right below the header.
-	const hideAccountLink = multi && !module;
+	// The welcome block below already offers the same action for signed-in users without a WG.
+	const hideAccountLink = (multi && !module) || membershipState === 'authenticated-empty';
 	const discoveryHref = (slug: string) =>
 		publicHref(`/entdecken/${slug === 'abos' ? 'fixkosten' : slug}`);
 
@@ -266,17 +269,6 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 				tabIndex={-1}
 				className="flex w-full min-w-0 flex-1 flex-col gap-4 px-4 py-3 focus:outline-none"
 			>
-				{accountDeletionPending && (
-					<output
-						aria-live="polite"
-						className="block w-full min-w-0 rounded-lg border border-border bg-card px-2.5 py-2 text-sm text-card-foreground"
-					>
-						<AlertDescription>
-							ManaWG hat deine Zugänge zu allen WGs entfernt. Die Löschung beim Anmeldedienst steht
-							noch aus und wird automatisch erneut versucht.
-						</AlertDescription>
-					</output>
-				)}
 				<div className={cn('flex min-w-0 flex-col', section ? 'gap-3' : 'gap-4')}>
 					<header className="flex flex-col gap-2">
 						<div className="flex flex-wrap items-center justify-between gap-3">
@@ -315,6 +307,15 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							{module?.title ?? 'ManaWG'}
 						</h1>
 					</header>
+					{accountDeletionPending && (
+						<Alert>
+							<AlertTitle>Konto wird gelöscht</AlertTitle>
+							<AlertDescription className="text-foreground">
+								ManaWG hat deine Zugänge zu allen WGs entfernt. Die Löschung beim Anmeldedienst
+								steht noch aus und wird automatisch erneut versucht.
+							</AlertDescription>
+						</Alert>
+					)}
 					{section && (
 						<SubNav
 							label={`${section.label} – entdecken`}
@@ -336,6 +337,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						</output>
 					) : (
 						<>
+							{inviteCode && <InvitationNotice code={inviteCode} />}
 							{multi && <MembershipCard memberships={memberships} />}
 							{module ? (
 								<PublicModulePreview module={module} />
@@ -381,7 +383,11 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						</div>
 					)}
 					{/* Signed-in users without a WG never reach WG settings, so offer deletion here. */}
-					{membershipState === 'authenticated-empty' && <AccountDeleteSection />}
+					{membershipState === 'authenticated-empty' && (
+						<div className="mt-4">
+							<AccountDeleteSection />
+						</div>
+					)}
 				</div>
 				<LegalLinks className="mt-auto" />
 			</main>
