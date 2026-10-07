@@ -122,7 +122,8 @@ body:has(.group\/wg-shell) [data-slot="field-group"] {
 
 @theme inline {
 	--font-sans: var(--font-inter, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
-	--font-heading: var(--font-inter-tight, var(--font-inter, ui-sans-serif)), ui-sans-serif, system-ui, sans-serif;
+	--font-heading: var(--font-inter-tight, var(--font-inter, ui-sans-serif)), ui-sans-serif,
+		system-ui, sans-serif;
 	--font-mono: var(--font-jetbrains-mono);
 	/* Small text keeps a readable floor under the fluid root size (section 6);
 	   headings and spacing above still scale down on narrow phones. */
@@ -696,7 +697,8 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 	h4,
 	h5,
 	h6 {
-		font-family: var(--font-inter-tight, var(--font-inter, ui-sans-serif)), ui-sans-serif, system-ui, sans-serif;
+		font-family: var(--font-inter-tight, var(--font-inter, ui-sans-serif)), ui-sans-serif, system-ui,
+			sans-serif;
 		font-weight: 600;
 	}
 
@@ -740,8 +742,8 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 	}
 	/* Offene modale Dialoge setzen aria-hidden auf den Skip-Link; dann darf er auch nicht
 	   mehr per Tab erreichbar sein (visibility:hidden nimmt ihn aus der Tab-Reihenfolge). */
-	.skip-link[aria-hidden='true'],
-	body:has(:is([role='dialog'], [role='alertdialog'])[data-open]) .skip-link {
+	.skip-link[aria-hidden="true"],
+	body:has(:is([role="dialog"], [role="alertdialog"])[data-open]) .skip-link {
 		visibility: hidden;
 	}
 	.skip-link:focus,
