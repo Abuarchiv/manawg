@@ -239,7 +239,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				    bleiben und die Liste darunter nicht springt. */}
 					<ItemContent className={armed ? 'min-w-0 flex-[1_1_7rem]' : 'min-w-0 flex-[1_1_6.5rem]'}>
 						<ItemTitle className="w-full min-w-0 gap-2 line-clamp-none">
-							<span className="min-w-0 flex-1 break-words" title={item.name}>
+							<span className="min-w-0 flex-1 break-words hyphens-auto" title={item.name}>
 								{item.name}
 							</span>
 						</ItemTitle>
