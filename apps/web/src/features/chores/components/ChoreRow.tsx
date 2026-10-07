@@ -35,6 +35,7 @@ interface ChoreRowProps {
 	isAdmin: boolean;
 	isPending: boolean;
 	isSwapPending: boolean;
+	isSwapRequested: boolean;
 	isTakePending: boolean;
 	isCompleteArmed: boolean;
 	completeError: string | null;
@@ -69,6 +70,7 @@ export const ChoreRow = memo(function ChoreRow({
 	isAdmin,
 	isPending,
 	isSwapPending,
+	isSwapRequested,
 	isTakePending,
 	isCompleteArmed,
 	completeError,
@@ -212,15 +214,15 @@ export const ChoreRow = memo(function ChoreRow({
 							<Button
 								variant="outline"
 								className="min-h-11 shrink-0"
-								disabled={busy}
-								aria-label={`Tausch auf der Pinnwand anfragen: ${chore.title}`}
+								disabled={busy || isSwapRequested}
+								aria-label={`${isSwapRequested ? 'Tausch angefragt' : 'Tausch auf der Pinnwand anfragen'}: ${chore.title}`}
 								onClick={() => {
 									setActionsOpen(false);
 									onSwapRequest(chore);
 								}}
 							>
 								<MessageSquareMore data-icon="inline-start" aria-hidden />
-								Tausch auf der Pinnwand anfragen
+								{isSwapRequested ? 'Tausch angefragt' : 'Tausch auf der Pinnwand anfragen'}
 							</Button>
 							{isAdmin && (
 								<>

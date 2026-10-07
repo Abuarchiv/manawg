@@ -47,7 +47,7 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 		isPending,
 		startPending,
 		endPending,
-		setActionError,
+		toast,
 		setActionNotice,
 		updateAbsences,
 		refreshCount,
@@ -56,6 +56,8 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 	const { absenceMemberId, absenceStart, absenceEnd, absenceReason } = form;
 	const { setAbsenceStart, setAbsenceEnd, setAbsenceReason } = form;
 	const { setQueueEditId, clearEditedQueueItem, editedQueueItemWasSent } = queueEdit;
+	const [absenceError, setAbsenceError] = useState<string | null>(null);
+	const [absenceListError, setAbsenceListError] = useState<string | null>(null);
 	const absenceCreateRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
 	async function addAbsence(): Promise<void> {
@@ -67,13 +69,13 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 			? instantAtBerlinWallTime(absenceEnd, 0)
 			: null;
 		if (!startDay || !endDay || startDay > endDay) {
-			setActionError('Bitte wähle einen gültigen Zeitraum für die Abwesenheit.');
+			setAbsenceError('Bitte wähle einen gültigen Zeitraum für die Abwesenheit.');
 			return;
 		}
 		// Die Liste zeigt nur laufende und künftige Abwesenheiten; eine vergangene würde
 		// scheinbar gespeichert und sofort wieder aus der Ansicht verschwinden.
 		if (endOfBerlinDay(endDay) < new Date()) {
-			setActionError('Das Ende der Abwesenheit liegt in der Vergangenheit.');
+			setAbsenceError('Das Ende der Abwesenheit liegt in der Vergangenheit.');
 			return;
 		}
 		const pendingKey = 'absence:add';
@@ -83,13 +85,13 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 			setAbsenceStart('');
 			setAbsenceEnd('');
 			setAbsenceReason('');
-			setActionError(null);
+			setAbsenceError(null);
 			setActionNotice(QUEUE_EDIT_ALREADY_SENT_MESSAGE);
 			void load(false);
 			return;
 		}
 		startPending(pendingKey);
-		setActionError(null);
+		setAbsenceError(null);
 		setActionNotice(null);
 		const startDate = startDay.toISOString();
 		const endDate = endOfBerlinDay(endDay).toISOString();
@@ -105,7 +107,7 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 				? pendingRequest.key
 				: createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
-			setActionError('Abwesenheit konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			setAbsenceError('Abwesenheit konnte nicht sicher gespeichert werden. Versuche es erneut.');
 			endPending(pendingKey);
 			return;
 		}
@@ -140,12 +142,12 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 						reason: absenceReason.trim() || null,
 					});
 					if ((await enqueueOfflineAction(queued)) === 0) {
-						setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
+						setAbsenceError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 						return;
 					}
 					absenceCreateRequestRef.current = null;
 					if (!(await clearEditedQueueItem(['absence.create']))) {
-						setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
+						setAbsenceError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 						return;
 					}
 					refreshCount();
@@ -164,12 +166,10 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 					setAbsenceEnd('');
 					setAbsenceReason('');
 					setQueueEditId(null);
-					setActionNotice(
-						'Offline gespeichert. Die Rotation nutzt diese Abwesenheit sofort lokal.',
-					);
+					toast.success('Offline gespeichert. Die Rotation nutzt diese Abwesenheit sofort lokal.');
 					return;
 				}
-				setActionError(absenceSaveErrorMessage(result.error));
+				setAbsenceError(absenceSaveErrorMessage(result.error));
 				return;
 			}
 			absenceCreateRequestRef.current = null;
@@ -177,11 +177,11 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 			setAbsenceEnd('');
 			setAbsenceReason('');
 			if (!(await clearEditedQueueItem(['absence.create']))) {
-				setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
+				setAbsenceError(DRAFT_CLEANUP_FAILED_MESSAGE);
 				return;
 			}
 			setQueueEditId(null);
-			setActionNotice('Abwesenheit gespeichert. Die Rotation überspringt diese Person.');
+			toast.success('Abwesenheit gespeichert. Die Rotation überspringt diese Person.');
 			void load(false);
 		} finally {
 			endPending(pendingKey);
@@ -192,10 +192,11 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 		const pendingKey = `absence:${id}:remove`;
 		if (isPending(pendingKey)) return;
 		startPending(pendingKey);
+		setAbsenceListError(null);
 		try {
 			const queued = await discardQueuedEntry(wg.shareCode, id);
 			if (queued === 'storage_blocked') {
-				setActionError(
+				setAbsenceListError(
 					'Offline-Speicher ist blockiert. Die vorgemerkte Abwesenheit konnte nicht entfernt werden.',
 				);
 				return;
@@ -203,7 +204,7 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 			if (queued === 'removed' || isQueuedCreateId(id)) {
 				updateAbsences((current) => current.filter((absence) => absence.id !== id));
 				refreshCount();
-				setActionError(null);
+				setAbsenceListError(null);
 				setActionNotice('Offline vorgemerkte Abwesenheit wurde entfernt.');
 				return;
 			}
@@ -217,11 +218,13 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 			if (!result.ok) {
 				if (result.status === 404 && result.error === 'absence_not_found') {
 					updateAbsences((current) => current.filter((absence) => absence.id !== id));
-					setActionError('Diese Abwesenheit existiert nicht mehr und wurde aus dem Plan entfernt.');
+					setAbsenceListError(
+						'Diese Abwesenheit existiert nicht mehr und wurde aus dem Plan entfernt.',
+					);
 					void load(false);
 					return;
 				}
-				setActionError(
+				setAbsenceListError(
 					isNetworkError(result.error, result.status)
 						? 'Abwesenheit konnte nicht entfernt werden: Prüfe deine Verbindung und versuche es erneut.'
 						: 'Abwesenheit konnte nicht entfernt werden.',
@@ -234,5 +237,11 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 		}
 	}
 
-	return { addAbsence, removeAbsence };
+	return {
+		addAbsence,
+		removeAbsence,
+		absenceError,
+		absenceListError,
+		clearAbsenceError: () => setAbsenceError(null),
+	};
 }

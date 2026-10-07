@@ -80,11 +80,8 @@ export function useChoresData({
 		items: chores.items,
 		monthCompletions: chores.data?.monthCompletions ?? NO_COMPLETIONS,
 		absences: absences.items,
-		// The skeleton waits for both lists, but only while neither is cached.
-		initialLoading:
-			(chores.initialLoading || absences.initialLoading) &&
-			chores.data === undefined &&
-			absences.data === undefined,
+		// Only the chore list decides: an early absences answer must not show the empty state.
+		initialLoading: chores.initialLoading && chores.data === undefined,
 		refreshing: chores.refreshing || absences.refreshing,
 		loadError: chores.loadError ?? absences.loadError,
 		load,

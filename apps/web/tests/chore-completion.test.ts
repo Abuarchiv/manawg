@@ -27,10 +27,7 @@ test('a confirmed completion names the next date and assignee', () => {
 		names,
 	);
 	assert.equal(feedback.tone, 'success');
-	assert.match(
-		feedback.message,
-		/^Bad putzen erledigt\. Nächster Termin: .+; Anna ist dran \(Rotation\)\.$/,
-	);
+	assert.match(feedback.message, /^Bad putzen erledigt\. Als Nächstes ist Anna am .+ dran\.$/);
 	assert.equal(feedback.done, true);
 	assert.equal(feedback.reload, true);
 });

@@ -90,14 +90,20 @@ export function usePutzenPage() {
 		}, 80);
 	}, [overdueFilterActive]);
 
+	// Die Zeile existiert erst nach dem Laden; ohne sie in den Abhängigkeiten liefe der Scroll ins Leere.
+	const absenceRowExists = absenceId ? absences.some((absence) => absence.id === absenceId) : false;
 	useEffect(() => {
-		if (!absencesPanelActive && !absenceId) return;
+		if ((!absencesPanelActive && !absenceId) || initialLoading) return;
 		window.setTimeout(() => {
+			if (absenceRowExists) {
+				document.getElementById(`absence-${absenceId}`)?.scrollIntoView({ block: 'center' });
+				return;
+			}
 			document.getElementById('absences-panel')?.scrollIntoView({
 				block: 'start',
 			});
 		}, 80);
-	}, [absenceId, absencesPanelActive]);
+	}, [absenceId, absenceRowExists, absencesPanelActive, initialLoading]);
 
 	function memberLookup(id: string | null): MemberInfo {
 		if (!id) return { name: 'Niemand', color: null };
@@ -137,6 +143,8 @@ export function usePutzenPage() {
 		activeMembers,
 		absenceAddPending: isPending('absence:add'),
 		absenceEnd: absenceForm.absenceEnd,
+		absenceError: absenceActions.absenceError,
+		absenceListError: absenceActions.absenceListError,
 		absenceId,
 		absenceMemberId: absenceForm.absenceMemberId,
 		absenceReason: absenceForm.absenceReason,
@@ -159,6 +167,7 @@ export function usePutzenPage() {
 		handleRecurrenceUnitToggle: create.handleRecurrenceUnitToggle,
 		handleRemove: choreActions.handleRemove,
 		handleSwapRequest: choreActions.handleSwapRequest,
+		swapRequestedIds: choreActions.swapRequestedIds,
 		handleTakeOver: choreActions.handleTakeOver,
 		hiddenAbsenceCount: absences.length - visibleAbsences.length,
 		highlightedId,
@@ -181,10 +190,22 @@ export function usePutzenPage() {
 		removeAbsence: absenceActions.removeAbsence,
 		addAbsence: absenceActions.addAbsence,
 		add: create.add,
-		setAbsenceEnd: absenceForm.setAbsenceEnd,
-		setAbsenceMemberId: absenceForm.setAbsenceMemberId,
-		setAbsenceReason: absenceForm.setAbsenceReason,
-		setAbsenceStart: absenceForm.setAbsenceStart,
+		setAbsenceEnd: (value: string) => {
+			absenceActions.clearAbsenceError();
+			absenceForm.setAbsenceEnd(value);
+		},
+		setAbsenceMemberId: (value: string) => {
+			absenceActions.clearAbsenceError();
+			absenceForm.setAbsenceMemberId(value);
+		},
+		setAbsenceReason: (value: string) => {
+			absenceActions.clearAbsenceError();
+			absenceForm.setAbsenceReason(value);
+		},
+		setAbsenceStart: (value: string) => {
+			absenceActions.clearAbsenceError();
+			absenceForm.setAbsenceStart(value);
+		},
 		setCompleteConfirmId: choreActions.setCompleteConfirmId,
 		setConfirmSuggestion: create.setConfirmSuggestion,
 		setNewTitle: create.setNewTitle,

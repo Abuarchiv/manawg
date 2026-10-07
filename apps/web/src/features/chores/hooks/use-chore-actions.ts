@@ -35,6 +35,8 @@ export function useChoreActions(ctx: ChorePageContext) {
 	} = ctx;
 	const completeChore = useChoreCompletion(wg, identity);
 	const [completeConfirmId, setCompleteConfirmId] = useState<string | null>(null);
+	// Chores whose swap request is already on the Pinnwand; a second tap would post a duplicate.
+	const [swapRequestedIds, setSwapRequestedIds] = useState<ReadonlySet<string>>(new Set());
 
 	/**
 	 * A chore created offline only has a local pseudo id, which the server routes reject with
@@ -130,10 +132,8 @@ export function useChoreActions(ctx: ChorePageContext) {
 				restore(previousChore);
 		}
 
-		const feedback = choreCompletionFeedback(
-			outcome,
-			chore,
-			(id) => members.find((member) => member.id === id)?.name,
+		const feedback = choreCompletionFeedback(outcome, chore, (id) =>
+			id === identity.memberId ? 'du' : members.find((member) => member.id === id)?.name,
 		);
 		if (feedback.tone === 'success') toast.success(feedback.message);
 		else if (feedback.tone === 'notice') setActionNotice(feedback.message);
@@ -146,7 +146,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 
 	async function handleSwapRequest(chore: Chore): Promise<void> {
 		const pendingKey = `${chore.id}:swap`;
-		if (isPending(pendingKey) || isStillQueued(chore)) return;
+		if (isPending(pendingKey) || swapRequestedIds.has(chore.id) || isStillQueued(chore)) return;
 
 		startPending(pendingKey);
 		setActionError(null);
@@ -171,7 +171,8 @@ export function useChoreActions(ctx: ChorePageContext) {
 		if (!result.ok) {
 			setActionError(choreActionErrorMessage('Tauschanfrage konnte nicht gepostet werden', result));
 		} else {
-			setActionNotice('Tauschanfrage wurde auf der Pinnwand gepostet.');
+			setSwapRequestedIds((current) => new Set(current).add(chore.id));
+			toast.success('Tauschanfrage wurde auf der Pinnwand gepostet.');
 		}
 
 		endPending(pendingKey);
@@ -212,7 +213,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 					item.id === chore.id ? { ...item, assignedMemberId: memberId } : item,
 				),
 			);
-			setActionNotice(notice);
+			toast.success(notice);
 			void load(false);
 		}
 
@@ -275,6 +276,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 		setCompleteConfirmId,
 		handleComplete,
 		handleSwapRequest,
+		swapRequestedIds,
 		handleTakeOver,
 		handleRemove,
 	};

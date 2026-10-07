@@ -37,7 +37,9 @@ export default function PutzenPage() {
 	const {
 		absenceAddPending,
 		absenceEnd,
+		absenceError,
 		absenceId,
+		absenceListError,
 		absenceMemberId,
 		absenceReason,
 		absenceStart,
@@ -93,6 +95,7 @@ export default function PutzenPage() {
 		setShowForm,
 		showForm,
 		showSkeleton,
+		swapRequestedIds,
 		titleInputRef,
 		visibleAbsences,
 	} = usePutzenPage();
@@ -239,6 +242,7 @@ export default function PutzenPage() {
 										isMine={chore.assignedMemberId === identity.memberId}
 										isPending={isPending(chore.id)}
 										isSwapPending={isPending(`${chore.id}:swap`)}
+										isSwapRequested={swapRequestedIds.has(chore.id)}
 										isTakePending={isPending(`${chore.id}:take`)}
 										isCompleteArmed={completeConfirmId === chore.id}
 										completeError={actionError}
@@ -289,6 +293,8 @@ export default function PutzenPage() {
 					highlightedAbsenceId={absenceId}
 					onRemove={(id) => void removeAbsence(id)}
 					isPending={isPending}
+					error={absenceError}
+					listError={absenceListError}
 				/>
 			)}
 			<ThumbAction>
