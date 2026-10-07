@@ -129,7 +129,7 @@ export function ImageUploader({
 		<div>
 			<label
 				className={cn(
-					'flex h-32 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-background text-sm text-muted-foreground transition-colors focus-within:ring-2 focus-within:ring-ring/50',
+					'flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg px-3 py-3 border-2 border-dashed border-border bg-background text-sm text-muted-foreground transition-colors focus-within:ring-2 focus-within:ring-ring/50',
 					disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-muted/50',
 				)}
 			>
@@ -139,7 +139,9 @@ export function ImageUploader({
 					<ImagePlus className="size-6" aria-hidden="true" />
 				)}
 				<span aria-live="polite">{uploading ? 'Lädt hoch…' : 'Bild hinzufügen'}</span>
-				<span className="text-xs text-muted-foreground">JPG, PNG, WebP, HEIC · max. 8 MB</span>
+				<span className="text-center text-xs text-muted-foreground">
+					JPG, PNG, WebP, HEIC · max. 8 MB
+				</span>
 				<input
 					type="file"
 					accept="image/jpeg,image/png,image/webp,image/heic,image/heif"

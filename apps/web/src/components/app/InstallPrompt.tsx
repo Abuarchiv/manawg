@@ -68,8 +68,6 @@ export function InstallPrompt() {
 		};
 	}, []);
 
-	const dismiss = () => setHidden(true);
-
 	const visible = !(hidden || !onStartPage || (!event && !manual));
 	// A toast lands on the same baseline above the nav. The prompt steps aside while one is
 	// shown (invisible, not unmounted: it keeps its reserved room, so the page does not jump).
@@ -91,6 +89,13 @@ export function InstallPrompt() {
 			root.style.removeProperty('--install-prompt-space');
 		};
 	}, [visible]);
+
+	const dismiss = () => {
+		// The focused button unmounts with the prompt; hand focus to the page instead of <body>.
+		if (promptRef.current?.contains(document.activeElement))
+			document.getElementById('main')?.focus({ preventScroll: true });
+		setHidden(true);
+	};
 
 	const install = async () => {
 		const result = await triggerInstall();
