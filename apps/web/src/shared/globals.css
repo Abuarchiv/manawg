@@ -647,7 +647,10 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--muted-foreground: oklch(0.708 0 0);
 		--accent-foreground: oklch(0.985 0 0);
 		--destructive: oklch(0.704 0.191 22.216);
-		--input: oklch(1 0 0 / 15%);
+		/* Vorher weiß mit 15 % Deckkraft (1,5:1 gegen den Grund). 0,55 ergibt ca. 4,1:1 auf der Seite,
+		   3,7:1 auf Karten und 3,1:1 auf muted-Flächen (WCAG 1.4.11). Flächen mit --input nutzen
+		   foreground/…-Alpha, damit die Füllung nicht mit aufhellt. */
+		--input: oklch(0.55 0 0);
 		--ring: oklch(0.556 0 0);
 		--sidebar: oklch(0.205 0 0);
 		--sidebar-foreground: oklch(0.985 0 0);
@@ -735,6 +738,12 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		font-size: 0.875rem;
 		text-decoration: none;
 		transition: transform 150ms ease-out;
+	}
+	/* Offene modale Dialoge setzen aria-hidden auf den Skip-Link; dann darf er auch nicht
+	   mehr per Tab erreichbar sein (visibility:hidden nimmt ihn aus der Tab-Reihenfolge). */
+	.skip-link[aria-hidden='true'],
+	body:has(:is([role='dialog'], [role='alertdialog'])[data-open]) .skip-link {
+		visibility: hidden;
 	}
 	.skip-link:focus,
 	.skip-link:focus-visible {

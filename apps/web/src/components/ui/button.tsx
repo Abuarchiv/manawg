@@ -11,13 +11,13 @@ const buttonVariantsRaw = cva(
 				default:
 					'bg-primary text-primary-foreground hover:bg-primary/80 active:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100',
 				outline:
-					'border-border bg-background text-foreground hover:bg-muted hover:text-foreground active:bg-muted aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
+					'border-border bg-background text-foreground hover:bg-muted hover:text-foreground active:bg-muted aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-foreground/[0.045] dark:hover:bg-foreground/[0.075]',
 				secondary:
 					'bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] active:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground',
 				ghost:
 					'hover:bg-muted hover:text-foreground active:bg-muted aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50',
 				destructive:
-					'bg-destructive/10 text-destructive hover:bg-destructive/20 active:bg-destructive/30 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40',
+					'bg-destructive/10 text-destructive hover:bg-destructive/20 active:bg-destructive/30 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:text-red-300 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40',
 				link: 'text-primary underline underline-offset-4 active:text-primary/80',
 			},
 			size: {

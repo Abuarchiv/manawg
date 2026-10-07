@@ -205,6 +205,7 @@ function WgShell({
 						href={`${wgBaseHref}/${section.pages[0].slug}`}
 						label={section.label}
 						iconKey={section.iconKey}
+						slugs={section.pages.map((page) => page.slug)}
 						activePrefixes={[...section.pages.map((page) => page.slug), ...section.related].map(
 							(slug) => `${wgBaseHref}/${slug}`,
 						)}
