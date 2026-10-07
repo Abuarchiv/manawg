@@ -47,19 +47,21 @@ export function ChooseStep({
 					</h2>
 					<ItemGroup>
 						{accountWgs.map((accountWg) => (
-							<Item
-								key={accountWg.id}
-								variant="outline"
-								render={<Link href={`/wg/${encodeURIComponent(accountWg.code)}`} />}
-							>
-								<ItemMedia variant="icon">
-									<Home aria-hidden />
-								</ItemMedia>
-								<ItemContent className="min-w-0">
-									<ItemTitle className="line-clamp-none break-words">{accountWg.name}</ItemTitle>
-									<ItemDescription>WG öffnen</ItemDescription>
-								</ItemContent>
-							</Item>
+							// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML
+							<div key={accountWg.id} role="listitem" className="w-full min-w-0">
+								<Item
+									variant="outline"
+									render={<Link href={`/wg/${encodeURIComponent(accountWg.code)}`} />}
+								>
+									<ItemMedia variant="icon">
+										<Home aria-hidden />
+									</ItemMedia>
+									<ItemContent className="min-w-0">
+										<ItemTitle className="line-clamp-none break-words">{accountWg.name}</ItemTitle>
+										<ItemDescription>WG öffnen</ItemDescription>
+									</ItemContent>
+								</Item>
+							</div>
 						))}
 					</ItemGroup>
 				</section>

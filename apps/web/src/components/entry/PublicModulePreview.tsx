@@ -55,7 +55,8 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 		return (
 			<ItemGroup className="gap-0">
 				{SHOPPING_ROWS.map(([title, detail, done]) => (
-					<Item key={title} className={ROW}>
+					// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML
+					<Item key={title} className={ROW} role="listitem">
 						<ItemMedia>
 							<span
 								aria-hidden
@@ -85,15 +86,22 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 	if (module.slug === 'ausgaben') {
 		return (
 			<ItemGroup className="gap-0">
-				<Item className={ROW}>
+				{/* biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML */}
+				<Item className={ROW} role="listitem">
 					<ItemMedia variant="icon">
 						<module.Icon aria-hidden />
 					</ItemMedia>
-					<ItemContent className="min-w-0">
-						<ItemTitle className="line-clamp-none break-words">{copy.title}</ItemTitle>
-						<ItemDescription className="line-clamp-none break-words">{copy.detail}</ItemDescription>
+					<ItemContent className="min-w-[10ch]">
+						<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
+							{copy.title}
+						</ItemTitle>
+						<ItemDescription className="line-clamp-none [overflow-wrap:break-word]">
+							{copy.detail}
+						</ItemDescription>
 					</ItemContent>
-					<ItemActions className="shrink-0 font-mono text-sm tabular-nums">28,40 €</ItemActions>
+					<ItemActions className="ml-auto shrink-0 font-mono text-sm whitespace-nowrap tabular-nums">
+						28,40 €
+					</ItemActions>
 				</Item>
 			</ItemGroup>
 		);
@@ -102,7 +110,8 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 	if (module.slug === 'putzen') {
 		return (
 			<ItemGroup className="gap-0">
-				<Item className={ROW}>
+				{/* biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML */}
+				<Item className={ROW} role="listitem">
 					<ItemMedia>
 						<Avatar size="sm">
 							<AvatarFallback>L</AvatarFallback>
@@ -119,7 +128,8 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 
 	return (
 		<ItemGroup className="gap-0">
-			<Item className={ROW}>
+			{/* biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML */}
+			<Item className={ROW} role="listitem">
 				<ItemMedia variant="icon">
 					<module.Icon aria-hidden />
 				</ItemMedia>

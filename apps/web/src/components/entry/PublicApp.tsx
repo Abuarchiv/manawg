@@ -95,6 +95,37 @@ function withInvitation(path: string, code: string): string {
 	return `${path}?code=${encodeURIComponent(code)}`;
 }
 
+function MembershipCard({ memberships }: { memberships: AccountWg[] }) {
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>
+					<h2>Deine WGs</h2>
+				</CardTitle>
+				<CardDescription>Wo möchtest du weitermachen?</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<ItemGroup>
+					{memberships.map((membership) => (
+						// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML
+						<div key={membership.id} role="listitem" className="w-full min-w-0">
+							<Item
+								variant="outline"
+								render={<Link href={`/wg/${encodeURIComponent(membership.code)}`} />}
+							>
+								<ItemContent className="min-w-0">
+									<ItemTitle className="line-clamp-none break-words">{membership.name}</ItemTitle>
+									<ItemDescription>WG öffnen</ItemDescription>
+								</ItemContent>
+							</Item>
+						</div>
+					))}
+				</ItemGroup>
+			</CardContent>
+		</Card>
+	);
+}
+
 export function PublicApp(props: { activeModule?: string }) {
 	return (
 		<Suspense
@@ -119,6 +150,8 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 		'loading' | 'signed-out' | 'authenticated-empty' | 'member-list' | 'error'
 	>('loading');
 	const [retryNonce, setRetryNonce] = useState(0);
+	// Client-only: set once a session cookie exists, so guests never see a skeleton flash.
+	const [sessionPending, setSessionPending] = useState(false);
 	const module = moduleFor(activeModule);
 	const inviteCode = useMemo(() => {
 		const code = normalizeShareCode(searchParams.get('code') ?? '');
@@ -128,6 +161,8 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 		inviteCode ? withInvitation(path, inviteCode) : path;
 	const singleWg =
 		membershipState === 'member-list' && memberships.length === 1 ? memberships[0] : null;
+	const checkingSession = sessionPending && membershipState === 'loading';
+	const multi = membershipState === 'member-list' && memberships.length > 1 && !inviteCode;
 	const accountAction =
 		membershipState === 'member-list'
 			? {
@@ -148,6 +183,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 			setMembershipState('signed-out');
 			return;
 		}
+		setSessionPending(true);
 		setMembershipState('loading');
 		fetch('/api/wg/mine', {
 			cache: 'no-store',
@@ -228,15 +264,19 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 									ManaWG
 								</span>
 							</Link>
-							<Link
-								href={accountAction.href}
-								className={cn(
-									buttonVariants({ variant: 'link' }),
-									'ml-auto px-0 text-muted-foreground',
-								)}
-							>
-								{accountAction.label}
-							</Link>
+							{checkingSession ? (
+								<Skeleton className="ml-auto h-8 w-20" aria-hidden />
+							) : (
+								<Link
+									href={accountAction.href}
+									className={cn(
+										buttonVariants({ variant: 'link' }),
+										'ml-auto px-0 text-muted-foreground',
+									)}
+								>
+									{accountAction.label}
+								</Link>
+							)}
 						</div>
 						<h1
 							className={cn(
@@ -257,17 +297,31 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							}))}
 						/>
 					)}
-					{module ? (
-						<PublicModulePreview module={module} />
+					{checkingSession && !module ? (
+						<output
+							aria-live="polite"
+							aria-label="Deine WGs werden geprüft"
+							className="flex flex-col gap-4"
+						>
+							<Skeleton className="h-12 w-full" />
+							<Skeleton className="h-48 w-full" />
+						</output>
 					) : (
-						<PublicModulePreviews modules={PRIMARY_MODULES} hrefFor={discoveryHref} />
+						<>
+							{multi && <MembershipCard memberships={memberships} />}
+							{module ? (
+								<PublicModulePreview module={module} />
+							) : (
+								!multi && <PublicModulePreviews modules={PRIMARY_MODULES} hrefFor={discoveryHref} />
+							)}
+							{inviteCode ? (
+								<WgWelcome variant="invitation" code={inviteCode} />
+							) : (
+								<WgWelcome variant="create" outline={multi} />
+							)}
+						</>
 					)}
-					{inviteCode ? (
-						<WgWelcome variant="invitation" code={inviteCode} />
-					) : (
-						<WgWelcome variant="create" />
-					)}
-					{membershipState === 'loading' && (
+					{checkingSession && module && (
 						<output aria-live="polite" aria-label="Deine WGs werden geprüft" className="block">
 							<Skeleton className="h-11 w-full" />
 						</output>
@@ -286,34 +340,6 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 					)}
 					{/* Signed-in users without a WG never reach WG settings, so offer deletion here. */}
 					{membershipState === 'authenticated-empty' && <AccountDeleteSection />}
-					{membershipState === 'member-list' && memberships.length > 1 && !inviteCode && (
-						<Card>
-							<CardHeader>
-								<CardTitle>
-									<h2>Deine WGs</h2>
-								</CardTitle>
-								<CardDescription>Wo möchtest du weitermachen?</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<ItemGroup>
-									{memberships.map((membership) => (
-										<Item
-											key={membership.id}
-											variant="outline"
-											render={<Link href={`/wg/${encodeURIComponent(membership.code)}`} />}
-										>
-											<ItemContent className="min-w-0">
-												<ItemTitle className="line-clamp-none break-words">
-													{membership.name}
-												</ItemTitle>
-												<ItemDescription>WG öffnen</ItemDescription>
-											</ItemContent>
-										</Item>
-									))}
-								</ItemGroup>
-							</CardContent>
-						</Card>
-					)}
 				</div>
 				<LegalLinks className="mt-auto" />
 			</main>

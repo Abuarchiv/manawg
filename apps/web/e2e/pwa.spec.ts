@@ -432,7 +432,9 @@ test.describe('offline page', () => {
 			await expect(
 				page.getByRole('heading', { name: 'Melde dich an, um Offline-Aktionen zu sehen.' }),
 			).toBeVisible();
-			await expect(page.getByText('Keine wartenden Aktionen.')).toBeVisible();
+			await expect(
+				page.getByText('Nach der Anmeldung siehst du deine wartenden Aktionen.'),
+			).toBeVisible();
 			await expect(page.getByText('Milch')).toHaveCount(0);
 			await expect(page.getByText('Fixture WG')).toHaveCount(0);
 		});

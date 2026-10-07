@@ -60,8 +60,15 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 	const { error, invalidField, clearError, setFormError, setFieldError } = useStartError();
 	const [accountSwitchError, setAccountSwitchError] = useState<string | null>(null);
 	const [legacyOpen, setLegacyOpen] = useState(false);
-	const { accountWgs, setAccountWgs, authState, setAuthState, retryAuth, handleAuthenticated } =
-		useAccountWgs({ interactive, step, clearError });
+	const {
+		accountWgs,
+		setAccountWgs,
+		authState,
+		checkingSession,
+		setAuthState,
+		retryAuth,
+		handleAuthenticated,
+	} = useAccountWgs({ interactive, step, clearError });
 	useSaveStartDraft({ interactive, step, wgName, creatorName, joinCode, joinName, joinWg });
 
 	function loginNextPath(): string {
@@ -163,14 +170,16 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 	if (authState !== 'authenticated') {
 		return (
 			<EntryFrame
-				title="Anmelden"
+				title={checkingSession ? 'Deine WG' : 'Anmelden'}
 				headingId="auth-heading"
 				description={
-					step === 'create'
-						? 'Melde dich an, danach erstellst du deine neue WG.'
-						: joinCode
-							? 'Melde dich an, um mit deinem WG-Code beizutreten.'
-							: undefined
+					checkingSession
+						? undefined
+						: step === 'create'
+							? 'Melde dich an, danach erstellst du deine neue WG.'
+							: joinCode
+								? 'Melde dich an, um mit deinem WG-Code beizutreten.'
+								: undefined
 				}
 				backHref={explorationHref()}
 			>
@@ -190,8 +199,23 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 						aria-label="Anmeldung wird geprüft"
 						className="flex flex-col gap-4"
 					>
-						<Skeleton className="h-11 w-full" />
-						<Skeleton className="h-40 w-full" />
+						{checkingSession ? (
+							// Shaped like the two choose buttons that replace it.
+							<div className="flex flex-col gap-2">
+								<Skeleton className="h-9 w-full" />
+								<Skeleton className="h-9 w-full" />
+							</div>
+						) : (
+							// Shaped like the sign-in form (Google, separator, two fields, link, two buttons).
+							<>
+								<Skeleton className="h-8 w-full" />
+								<Skeleton className="h-5 w-full" />
+								<Skeleton className="h-[4.5rem] w-full" />
+								<Skeleton className="h-24 w-full" />
+								<Skeleton className="h-8 w-full" />
+								<Skeleton className="h-[4.5rem] w-full" />
+							</>
+						)}
 						<span className="sr-only">Anmeldung wird geprüft</span>
 					</output>
 				) : (
@@ -201,7 +225,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 						<CredentialsAuth next={loginNextPath()} onAuthenticated={handleAuthenticated} />
 					</FieldGroup>
 				)}
-				<LegalLinks consent />
+				{!checkingSession && <LegalLinks consent />}
 			</EntryFrame>
 		);
 	}

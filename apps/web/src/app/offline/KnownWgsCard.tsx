@@ -47,19 +47,23 @@ export function KnownWgsCard({
 				) : (
 					<ItemGroup aria-label="Bekannte WGs">
 						{knownWgs.slice(0, 3).map((wg) => (
-							<Item
-								key={wg.code}
-								variant="outline"
-								render={<Link href={wgHref(wg.code)} aria-label={`${wg.name} öffnen`} />}
-							>
-								<ItemContent>
-									<ItemTitle>{wg.name}</ItemTitle>
-									<ItemDescription>
-										{formatWgQueuedActionCount(queueCounts.get(wg.code) ?? 0)}
-									</ItemDescription>
-								</ItemContent>
-								<ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-							</Item>
+							// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML
+							<div key={wg.code} role="listitem" className="w-full min-w-0">
+								<Item
+									variant="outline"
+									render={<Link href={wgHref(wg.code)} aria-label={`${wg.name} öffnen`} />}
+								>
+									<ItemContent className="basis-40">
+										<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
+											{wg.name}
+										</ItemTitle>
+										<ItemDescription>
+											{formatWgQueuedActionCount(queueCounts.get(wg.code) ?? 0)}
+										</ItemDescription>
+									</ItemContent>
+									<ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+								</Item>
+							</div>
 						))}
 					</ItemGroup>
 				)}

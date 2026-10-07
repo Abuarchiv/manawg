@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { FieldSet } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
-import { type ComponentProps, useState } from 'react';
+import { type ComponentProps, useEffect, useState } from 'react';
 
 export type SocialProvider = 'google';
 
@@ -51,6 +51,15 @@ export function SocialLoginButtons({
 	const action = variant === 'link' ? 'verknüpfen' : 'anmelden';
 	const pendingLabel = providers.find(({ provider }) => provider === pendingProvider)?.name;
 
+	// Coming back from the provider via the bfcache restores this page with the spinner still on.
+	useEffect(() => {
+		const reset = (event: PageTransitionEvent) => {
+			if (event.persisted) setPendingProvider(null);
+		};
+		window.addEventListener('pageshow', reset);
+		return () => window.removeEventListener('pageshow', reset);
+	}, []);
+
 	async function start(provider: SocialProvider): Promise<void> {
 		if (pendingProvider) return;
 
@@ -76,7 +85,7 @@ export function SocialLoginButtons({
 					'Die Anmeldung ist gerade nicht erreichbar. Bitte prüfe deine Verbindung und versuche es erneut.',
 				);
 			}
-		} finally {
+			// On success the browser is already navigating away: keep the spinner until it does.
 			setPendingProvider(null);
 		}
 	}
