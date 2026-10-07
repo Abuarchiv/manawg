@@ -204,9 +204,7 @@ export function OfflineQueueSection({
 						hasRetryableItems && 'min-h-[44px]',
 					)}
 				>
-					<p className="text-muted-foreground text-[12px]">
-						{formatOfflineQueueCount(items.length)}
-					</p>
+					<p className="text-muted-foreground text-xs">{formatOfflineQueueCount(items.length)}</p>
 					{hasRetryableItems && (
 						<Button
 							type="button"

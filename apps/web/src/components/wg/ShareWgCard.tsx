@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { copyViaTextArea } from '@/core/utils/clipboard';
@@ -156,15 +156,6 @@ function ShareWgBody({
 }) {
 	return (
 		<div>
-			{!joiningEnabled ? (
-				<Alert className="mb-3">
-					<AlertTitle>Beitritte gesperrt</AlertTitle>
-					<AlertDescription>
-						Neue Beitritte sind gerade gesperrt. Link, QR und Teilen bleiben blockiert.
-					</AlertDescription>
-				</Alert>
-			) : null}
-
 			<div
 				role="img"
 				aria-label={`QR-Code zum Beitritt der WG ${wgName}`}
@@ -194,7 +185,7 @@ function ShareWgBody({
 						<span className="text-muted-foreground block text-xs font-medium tracking-wider uppercase">
 							Code
 						</span>
-						<span className="text-foreground mt-0.5 block font-mono text-base font-medium tracking-[0.12em] break-all">
+						<span className="text-foreground mt-0.5 block font-mono text-base font-medium tracking-[0.05em] break-all">
 							{shareCode}
 						</span>
 					</span>
@@ -239,18 +230,23 @@ function ShareWgBody({
 					<AlertDescription>{copyError}</AlertDescription>
 				</Alert>
 			) : null}
-			{(copied === 'link' || copied === 'shared') && !copyError ? (
-				<p aria-live="polite" className="text-muted-foreground mt-2 block text-xs">
-					Einladungslink bereit.
-				</p>
-			) : null}
+			{/* Feste Zeile, damit die Rückmeldung nichts verschiebt. */}
+			<p aria-live="polite" className="text-muted-foreground mt-2 min-h-4 text-xs leading-4">
+				{copyError
+					? ''
+					: copied === 'code'
+						? 'Code kopiert.'
+						: copied === 'link' || copied === 'shared'
+							? 'Einladungslink bereit.'
+							: ''}
+			</p>
 
 			<Button
 				type="button"
 				onClick={onShare}
 				disabled={!joiningEnabled || copying !== null}
 				aria-label={copying === 'share' ? 'WG-Einladung wird geteilt…' : 'WG-Einladung teilen'}
-				className="mt-3 w-full"
+				className="mt-2 w-full"
 			>
 				{copying === 'share' ? <Spinner aria-hidden /> : <Share2 aria-hidden />}
 				{copying === 'share' ? 'Teilt…' : 'Teilen'}

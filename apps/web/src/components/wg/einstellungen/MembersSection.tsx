@@ -126,12 +126,14 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 			<Section title="Mitglieder">
 				<ItemGroup className="gap-0 px-2 py-1">
 					{activeMembers.map((member) => (
-						<Item key={member.id} size="sm" className="min-h-[44px] flex-nowrap">
+						<Item key={member.id} size="sm" className="min-h-[44px]">
 							<ItemMedia>
 								<MemberAvatar name={member.name} size={26} />
 							</ItemMedia>
-							<ItemContent className="min-w-0">
-								<ItemTitle className="line-clamp-none">{member.name}</ItemTitle>
+							<ItemContent className="min-w-[8ch] basis-[8ch]">
+								<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
+									{member.name}
+								</ItemTitle>
 							</ItemContent>
 							<ItemActions>
 								{member.id === identity.memberId ? (
@@ -149,7 +151,7 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 												}}
 												aria-label={`Admin übergeben: ${member.name}`}
 											>
-												Admin
+												Admin übergeben
 											</Button>
 											<Button
 												type="button"
@@ -168,17 +170,19 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 					))}
 				</ItemGroup>
 				{inactiveMembers.length > 0 && (
-					<div className="px-4 pt-2 pb-1">
+					<div className="px-2 pt-2 pb-1">
 						<p className="text-muted-foreground px-0.5 pb-1 text-xs font-medium">Ausgezogen</p>
 						<ItemGroup className="gap-0">
 							{inactiveMembers.map((member) => (
-								<Item key={member.id} size="sm" className="min-h-[44px] flex-nowrap opacity-70">
+								<Item key={member.id} size="sm" className="min-h-[44px] opacity-70">
 									<ItemMedia>
 										<MemberAvatar name={member.name} size={26} />
 									</ItemMedia>
-									<ItemContent className="min-w-0">
-										<ItemTitle className="line-clamp-none">{member.name}</ItemTitle>
-										<ItemDescription className="line-clamp-none">
+									<ItemContent className="min-w-[8ch] basis-[8ch]">
+										<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
+											{member.name}
+										</ItemTitle>
+										<ItemDescription className="line-clamp-none [overflow-wrap:break-word]">
 											Ausgezogen, Verlauf bleibt erhalten
 										</ItemDescription>
 									</ItemContent>
@@ -207,14 +211,14 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 					</div>
 				)}
 				{memberActionMessage && (
-					<div className="px-4 pb-3">
+					<div className="px-2 pb-3">
 						<Alert>
 							<AlertDescription>{memberActionMessage}</AlertDescription>
 						</Alert>
 					</div>
 				)}
 				{memberActionError && (
-					<div className="px-4 pb-3">
+					<div className="px-2 pb-3">
 						<Alert variant="destructive">
 							<AlertDescription>{memberActionError}</AlertDescription>
 						</Alert>

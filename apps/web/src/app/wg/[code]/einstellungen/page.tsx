@@ -25,7 +25,17 @@ import { useEffect, useRef, useState } from 'react';
  * ssr:false because this page is already a client component behind a resolved
  * local identity; there is no server render of these panels to preserve.
  */
-const tabFallback = () => <Skeleton className="h-40 w-full" />;
+// Ahmt Titelzeile plus Karte nach, damit der Tab-Inhalt kaum springt.
+const tabFallback = () => (
+	<div className="grid gap-2.5" aria-hidden>
+		{[0, 1, 2].map((i) => (
+			<div key={i} className="grid gap-1">
+				<Skeleton className="h-3 w-24" />
+				<Skeleton className="h-32 w-full rounded-xl" />
+			</div>
+		))}
+	</div>
+);
 
 const ProfileTab = dynamic(
 	() => import('@/components/wg/einstellungen/ProfileTab').then((m) => m.ProfileTab),
@@ -102,6 +112,21 @@ export default function EinstellungenPage() {
 		};
 	}, [activeTab, encodedShareCode, identity.memberId]);
 
+	// Nach dem Tab-Wechsel zum Anfang des neuen Inhalts, nicht mitten hinein (das Scroll-Padding hält die Leiste frei).
+	const previousTab = useRef(activeTab);
+	useEffect(() => {
+		if (previousTab.current === activeTab) return;
+		previousTab.current = activeTab;
+		const frame = requestAnimationFrame(() => {
+			const strip = document.querySelector<HTMLElement>('[data-sticky-tabs]');
+			const panel = document.querySelector<HTMLElement>('[role="tabpanel"]');
+			if (!strip || !panel) return;
+			if (panel.getBoundingClientRect().top < strip.getBoundingClientRect().bottom)
+				panel.scrollIntoView({ block: 'start' });
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [activeTab]);
+
 	useEffect(() => {
 		const update = () => setActiveTab(getSettingsTabFromHash(window.location.hash));
 		window.addEventListener('hashchange', update);
@@ -128,7 +153,10 @@ export default function EinstellungenPage() {
 	}, []);
 
 	return (
-		<div className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-3 px-4 py-3">
+		<div
+			data-household-content
+			className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-3 px-4 py-3"
+		>
 			<h1 className="font-heading min-w-0 flex-1 text-base font-semibold tracking-tight break-words text-foreground">
 				Einstellungen
 			</h1>
@@ -145,7 +173,7 @@ export default function EinstellungenPage() {
 				>
 					<TabsList
 						data-sticky-tabs
-						className="sticky z-10 flex flex-wrap before:absolute before:-inset-x-4 before:-top-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:h-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:bg-background before:content-[''] h-auto min-w-0 max-w-full w-full gap-1 rounded-xl p-1"
+						className="sticky z-20 flex flex-wrap before:absolute before:-inset-x-4 before:-top-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:h-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:bg-background before:content-[''] h-auto min-w-0 max-w-full w-full gap-1 rounded-xl p-1"
 						style={{
 							top: 'calc(env(safe-area-inset-top, 0px) + var(--offline-banner-height, 0px) + 0.5rem)',
 						}}

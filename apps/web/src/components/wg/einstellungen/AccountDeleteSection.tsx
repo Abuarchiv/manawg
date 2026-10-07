@@ -18,17 +18,26 @@ import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { RATE_LIMITED_MESSAGE } from '@/core/http/error-codes';
 import { UserX } from 'lucide-react';
-import { useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 
 const CONFIRM_WORD = 'LÖSCHEN';
+const SIGN_IN_AGAIN_MESSAGE = 'Melde dich erneut an, um dein Konto zu löschen.';
 const UNKNOWN_DELETE_OUTCOME_MESSAGE =
 	'Der Server kann den Status nicht bestätigen. Warte kurz und versuche es erneut; ein bereits angenommener Auftrag wird serverseitig fortgesetzt.';
 
-/** `embedded`: ohne eigene Rahmenkarte, für den gemeinsamen Abschnitt „Konto“. */
-export function AccountDeleteSection({ embedded = false }: { embedded?: boolean }) {
+export function AccountDeleteSection() {
 	const [stage, setStage] = useState<'idle' | 'confirm' | 'pending'>('idle');
 	const [confirmText, setConfirmText] = useState('');
 	const [error, setError] = useState<string | null>(null);
+	// Fokus auf „Abbrechen“, damit auf iOS nicht ungefragt die Tastatur aufgeht.
+	const cancelRef = useRef<HTMLButtonElement>(null);
+
+	// Bei großer Schrift liegt die Meldung unterhalb des sichtbaren Dialogausschnitts.
+	useEffect(() => {
+		if (error)
+			document.getElementById('delete-account-error')?.scrollIntoView({ block: 'nearest' });
+	}, [error]);
 
 	async function handleDelete(): Promise<void> {
 		setStage('pending');
@@ -47,7 +56,7 @@ export function AccountDeleteSection({ embedded = false }: { embedded?: boolean 
 				}
 			}
 			if (res.status === 401) {
-				setError('Melde dich erneut an, um dein Konto zu löschen.');
+				setError(SIGN_IN_AGAIN_MESSAGE);
 				setStage('confirm');
 				return;
 			}
@@ -78,6 +87,8 @@ export function AccountDeleteSection({ embedded = false }: { embedded?: boolean 
 		}
 	}
 
+	const armed = confirmText === CONFIRM_WORD;
+
 	const trigger = (
 		<Button
 			type="button"
@@ -96,21 +107,12 @@ export function AccountDeleteSection({ embedded = false }: { embedded?: boolean 
 
 	return (
 		<>
-			{embedded ? (
-				<div className="grid gap-1.5">
-					<p className="text-muted-foreground text-xs">
-						Du ziehst aus allen WGs aus; Einträge und Salden bleiben.
-					</p>
-					{trigger}
-				</div>
-			) : (
-				<Section
-					title="Konto löschen"
-					hint="Löscht dein Konto und deine Anmeldedaten. In jeder WG ziehst du aus; Einträge und offene Salden bleiben für die anderen erhalten."
-				>
-					<div className="p-3">{trigger}</div>
-				</Section>
-			)}
+			<Section
+				title="Konto löschen"
+				hint="Löscht dein Konto und deine Anmeldedaten. In jeder WG ziehst du aus; Einträge und offene Salden bleiben für die anderen erhalten."
+			>
+				<div className="p-3">{trigger}</div>
+			</Section>
 
 			<AlertDialog
 				open={stage !== 'idle'}
@@ -118,7 +120,7 @@ export function AccountDeleteSection({ embedded = false }: { embedded?: boolean 
 					if (!open && stage !== 'pending') setStage('idle');
 				}}
 			>
-				<AlertDialogContent>
+				<AlertDialogContent initialFocus={cancelRef}>
 					<AlertDialogHeader>
 						<AlertDialogMedia>
 							<UserX aria-hidden />
@@ -148,19 +150,39 @@ export function AccountDeleteSection({ embedded = false }: { embedded?: boolean 
 						</FieldDescription>
 					</Field>
 					{error && (
-						<Alert variant="destructive">
-							<AlertDescription>{error}</AlertDescription>
+						<Alert variant="destructive" id="delete-account-error">
+							<AlertDescription>
+								<div>{error}</div>
+								{error === SIGN_IN_AGAIN_MESSAGE && (
+									<Button
+										variant="outline"
+										size="sm"
+										className="mt-2 no-underline!"
+										render={<Link href="/neu" />}
+										nativeButton={false}
+									>
+										Erneut anmelden
+									</Button>
+								)}
+							</AlertDescription>
 						</Alert>
 					)}
 					<AlertDialogFooter>
-						<AlertDialogCancel disabled={stage === 'pending'}>Abbrechen</AlertDialogCancel>
+						<AlertDialogCancel ref={cancelRef} disabled={stage === 'pending'}>
+							Abbrechen
+						</AlertDialogCancel>
 						<Button
 							variant="destructive"
+							className={
+								armed
+									? 'bg-destructive text-white hover:bg-destructive/90 dark:bg-destructive dark:text-background dark:hover:bg-destructive/90'
+									: undefined
+							}
 							onClick={(event) => {
 								event.preventDefault();
 								void handleDelete();
 							}}
-							disabled={stage === 'pending' || confirmText !== CONFIRM_WORD}
+							disabled={stage === 'pending' || !armed}
 						>
 							{stage === 'pending' ? <Spinner aria-hidden /> : <UserX aria-hidden />}
 							Konto löschen

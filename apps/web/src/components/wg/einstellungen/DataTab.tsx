@@ -90,8 +90,8 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 				title="Datenexport"
 				hint="Alle WG-Daten inklusive erledigter Zahlungen, ohne Dateianhänge."
 			>
-				{exportSummary.length > 0 && (
-					<div className="border-border grid grid-cols-2 gap-x-4 gap-y-1.5 border-b p-3 text-xs">
+				{exportSummary.length > 0 && !exportSummaryError && (
+					<div className="border-border grid grid-cols-[repeat(auto-fit,minmax(7rem,1fr))] gap-x-4 gap-y-1.5 border-b p-3 text-xs">
 						{exportSummary.map((section) => (
 							<div key={section.key} className="flex min-w-0 items-baseline gap-2">
 								<span className="text-foreground font-mono font-medium tabular-nums">
@@ -104,7 +104,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 				)}
 				{exportSummaryError && (
 					<p
-						className="text-muted-foreground border-border block border-b px-4 py-2 text-[12px]"
+						className="text-muted-foreground border-border block border-b p-3 text-xs"
 						aria-live="polite"
 					>
 						{exportSummaryError} Downloads sind trotzdem möglich.
@@ -133,7 +133,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 							value={csvExportSection}
 							disabled={exportPending !== null}
 							onChange={(event) => setCsvExportSection(event.target.value)}
-							className="min-w-0 flex-1 text-base"
+							className="min-w-36 max-w-full flex-1 text-base"
 						>
 							{exportSummary.map((section) => (
 								<NativeSelectOption key={section.key} value={section.key}>
@@ -151,7 +151,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 									? `${csvExportLabel} wird als CSV exportiert`
 									: `${csvExportLabel} als CSV exportieren`
 							}
-							className="h-11 shrink-0"
+							className="h-11 min-w-fit flex-1"
 						>
 							{exportPending === 'csv' ? <Spinner aria-hidden /> : <Download aria-hidden />}
 							CSV exportieren
@@ -159,14 +159,14 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 					</div>
 				</div>
 				{exportMessage && (
-					<div className="px-4 pb-4">
+					<div className="p-3 pt-0">
 						<Alert>
 							<AlertDescription>{exportMessage}</AlertDescription>
 						</Alert>
 					</div>
 				)}
 				{exportError && (
-					<div className="px-4 pb-4">
+					<div className="p-3 pt-0">
 						<Alert variant="destructive">
 							<AlertTitle>Export fehlgeschlagen</AlertTitle>
 							<AlertDescription>{exportError}</AlertDescription>
@@ -179,7 +179,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 				<div className="p-3">
 					<Link
 						href={`${wgBaseHref}/import`}
-						className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}
+						className={cn(buttonVariants({ variant: 'outline' }), 'h-11 w-full')}
 					>
 						<Upload aria-hidden />
 						Ausgaben importieren
