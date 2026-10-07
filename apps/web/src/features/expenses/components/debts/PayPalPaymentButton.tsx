@@ -35,6 +35,8 @@ const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
 const PAYPAL_PARTNER_ATTRIBUTION_ID = process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID;
 const PAYPAL_ERROR =
 	'PayPal konnte die Zahlung nicht bestätigen. Prüfe den Zahlungsstatus bei PayPal, bevor du erneut zahlst oder die Zahlung als beglichen vermerkst.';
+const PAYPAL_STATUS_ERROR =
+	'Der Zahlungsstatus konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.';
 const payPalSdkLoads = new Map<string, Promise<void>>();
 
 type CaptureOutcome = 'completed' | 'pending' | 'failed';
@@ -210,7 +212,7 @@ export function PayPalPaymentButton({
 				if (lookupState.kind === 'retry') {
 					statusLookupFailedRef.current = true;
 					setStatusLookupFailed(true);
-					setError(PAYPAL_ERROR);
+					setError(PAYPAL_STATUS_ERROR);
 					return;
 				}
 				statusLookupFailedRef.current = false;
@@ -243,7 +245,7 @@ export function PayPalPaymentButton({
 			if (!cancelled) {
 				statusLookupFailedRef.current = true;
 				setStatusLookupFailed(true);
-				setError(PAYPAL_ERROR);
+				setError(PAYPAL_STATUS_ERROR);
 				setIsCheckingStatus(false);
 			}
 		});
@@ -318,6 +320,11 @@ export function PayPalPaymentButton({
 					</Button>
 				</div>
 			)}
+			{error && (
+				<Alert variant="destructive">
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
+			)}
 			{statusLookupFailed && (
 				<Button
 					type="button"
@@ -327,11 +334,6 @@ export function PayPalPaymentButton({
 				>
 					{isCheckingStatus ? 'Status wird geprüft…' : 'Zahlungsstatus erneut prüfen'}
 				</Button>
-			)}
-			{error && (
-				<Alert variant="destructive">
-					<AlertDescription>{error}</AlertDescription>
-				</Alert>
 			)}
 		</div>
 	);

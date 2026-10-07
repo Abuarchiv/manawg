@@ -158,7 +158,10 @@ export function SettlementDebtRow({
 								render={<Button variant="outline" className="w-full justify-between" />}
 							>
 								Mit PayPal zahlen
-								<ChevronDown data-icon="inline-end" />
+								<ChevronDown
+									data-icon="inline-end"
+									className="transition-transform group-aria-expanded/button:rotate-180"
+								/>
 							</CollapsibleTrigger>
 							<CollapsibleContent>
 								<PayPalPaymentButton

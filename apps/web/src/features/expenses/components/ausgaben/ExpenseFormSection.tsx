@@ -61,6 +61,7 @@ interface ExpenseFormSectionProps {
 	editingRecurringExpense: RecurringExpense | null;
 	formSaving: boolean;
 	onSaveRecurringTemplate: () => void;
+	recurringTemplateCount: number;
 	onCancel: () => void;
 	onDiscard: () => void;
 	title: string;
@@ -71,6 +72,10 @@ interface ExpenseFormSectionProps {
 	editingExpenseId: string | null;
 	notice: ActionNotice | null;
 	onSubmit: () => void;
+	/** Steuert das Sheet von außen, damit es vor dem Entfernen ausblendet. */
+	open: boolean;
+	/** Nach der Ausblend-Animation: Das Formular darf entfernt werden. */
+	onExited: () => void;
 }
 
 export function ExpenseFormSection({
@@ -107,6 +112,7 @@ export function ExpenseFormSection({
 	editingRecurringExpense,
 	formSaving,
 	onSaveRecurringTemplate,
+	recurringTemplateCount,
 	onCancel,
 	onDiscard,
 	onSubmit,
@@ -117,6 +123,8 @@ export function ExpenseFormSection({
 	isEditingExpense,
 	editingExpenseId,
 	notice,
+	open,
+	onExited,
 }: ExpenseFormSectionProps): React.ReactElement {
 	const keyboardOpen = useKeyboardOpen();
 	const [confirmClose, setConfirmClose] = useState(false);
@@ -163,9 +171,12 @@ export function ExpenseFormSection({
 	return (
 		<>
 			<Dialog
-				open
-				onOpenChange={(open) => {
-					if (!open) requestClose();
+				open={open}
+				onOpenChange={(next) => {
+					if (!next) requestClose();
+				}}
+				onOpenChangeComplete={(next) => {
+					if (!next) onExited();
 				}}
 			>
 				<DialogContent
@@ -301,6 +312,7 @@ export function ExpenseFormSection({
 									isEditingQueuedRecurring={isEditingQueuedRecurring}
 									savingRecurringTemplate={savingRecurringTemplate}
 									onSaveRecurringTemplate={onSaveRecurringTemplate}
+									recurringTemplateCount={recurringTemplateCount}
 									formSaving={formSaving}
 								/>
 								{formError && (

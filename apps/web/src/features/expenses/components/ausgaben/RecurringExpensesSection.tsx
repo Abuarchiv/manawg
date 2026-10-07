@@ -135,6 +135,51 @@ export function RecurringExpensesSection({
 									const nextDueAt = parseTimestamp(item.nextDueAt);
 									const due = !paused && nextDueAt !== null && nextDueAt <= Date.now();
 									const pending = recurringActionPending || isPending(item.id);
+									const primary = due || alreadyCreated;
+									const menu = (
+										<ItemActions className="shrink-0 self-start">
+											<DropdownMenu>
+												<DropdownMenuTrigger
+													render={<Button variant="ghost" size="icon" />}
+													disabled={pending}
+													aria-label={`Fixkosten-Aktionen: ${item.description}`}
+												>
+													<MoreHorizontal aria-hidden />
+												</DropdownMenuTrigger>
+												<DropdownMenuContent align="end" className="w-52 max-w-[calc(100vw-2rem)]">
+													<DropdownMenuGroup>
+														<DropdownMenuItem
+															onClick={() => onEditTemplate(item)}
+															disabled={pending}
+															className="min-h-11"
+															aria-label={`Fixkosten-Vorlage bearbeiten: ${item.description}`}
+														>
+															<Pencil aria-hidden />
+															Vorlage bearbeiten
+														</DropdownMenuItem>
+														<DropdownMenuItem
+															render={<Link href={getRecurringExpenseHref(shareCode, item.id)} />}
+															disabled={pending || paused}
+															className="min-h-11"
+															aria-label={`Fixkosten-Ausgabe manuell erfassen: ${item.description}`}
+														>
+															Manuell erfassen
+														</DropdownMenuItem>
+														<DropdownMenuItem
+															variant="destructive"
+															onClick={() => setDeleteCandidate(item)}
+															disabled={pending}
+															className="min-h-11"
+															aria-label={`Fixkosten-Vorlage löschen: ${item.description}`}
+														>
+															<Trash2 aria-hidden />
+															Löschen
+														</DropdownMenuItem>
+													</DropdownMenuGroup>
+												</DropdownMenuContent>
+											</DropdownMenu>
+										</ItemActions>
+									);
 									return (
 										<Item
 											key={item.id}
@@ -176,84 +221,41 @@ export function RecurringExpensesSection({
 													</ItemDescription>
 												)}
 											</ItemContent>
-											<ItemFooter className="flex-row items-center justify-end gap-2">
-												{due && !alreadyCreated ? (
-													<Button
-														className="flex-1"
-														onClick={() => onCreateFromTemplate(item)}
-														disabled={pending}
-														aria-label={`Fixkosten-Ausgabe direkt erstellen: ${item.description}`}
-													>
-														{creatingRecurringId === item.id && (
-															<Spinner data-icon="inline-start" />
-														)}
-														Erfassen
-													</Button>
-												) : alreadyCreated ? (
-													<Link
-														href={getRecurringExpenseHref(shareCode, item.id)}
-														className={cn(
-															buttonVariants({ variant: 'outline', className: 'flex-1' }),
-															pending && 'pointer-events-none opacity-50',
-														)}
-														aria-disabled={pending || undefined}
-														tabIndex={pending ? -1 : undefined}
-														aria-label={`Fixkosten-Ausgabe prüfen: ${item.description}`}
-														onClick={(event) => {
-															if (pending) event.preventDefault();
-														}}
-													>
-														Prüfen
-													</Link>
-												) : null}
-												<ItemActions className="shrink-0">
-													<DropdownMenu>
-														<DropdownMenuTrigger
-															render={<Button variant="ghost" size="icon" />}
+											{!primary && menu}
+											{primary && (
+												<ItemFooter className="flex-row items-center justify-end gap-2">
+													{due && !alreadyCreated ? (
+														<Button
+															className="flex-1"
+															onClick={() => onCreateFromTemplate(item)}
 															disabled={pending}
-															aria-label={`Fixkosten-Aktionen: ${item.description}`}
+															aria-label={`Fixkosten-Ausgabe direkt erstellen: ${item.description}`}
 														>
-															<MoreHorizontal aria-hidden />
-														</DropdownMenuTrigger>
-														<DropdownMenuContent
-															align="end"
-															className="w-52 max-w-[calc(100vw-2rem)]"
+															{creatingRecurringId === item.id && (
+																<Spinner data-icon="inline-start" />
+															)}
+															Erfassen
+														</Button>
+													) : alreadyCreated ? (
+														<Link
+															href={getRecurringExpenseHref(shareCode, item.id)}
+															className={cn(
+																buttonVariants({ variant: 'outline', className: 'flex-1' }),
+																pending && 'pointer-events-none opacity-50',
+															)}
+															aria-disabled={pending || undefined}
+															tabIndex={pending ? -1 : undefined}
+															aria-label={`Fixkosten-Ausgabe prüfen: ${item.description}`}
+															onClick={(event) => {
+																if (pending) event.preventDefault();
+															}}
 														>
-															<DropdownMenuGroup>
-																<DropdownMenuItem
-																	onClick={() => onEditTemplate(item)}
-																	disabled={pending}
-																	className="min-h-11"
-																	aria-label={`Fixkosten-Vorlage bearbeiten: ${item.description}`}
-																>
-																	<Pencil aria-hidden />
-																	Vorlage bearbeiten
-																</DropdownMenuItem>
-																<DropdownMenuItem
-																	render={
-																		<Link href={getRecurringExpenseHref(shareCode, item.id)} />
-																	}
-																	disabled={pending || paused}
-																	className="min-h-11"
-																	aria-label={`Fixkosten-Ausgabe manuell erfassen: ${item.description}`}
-																>
-																	Manuell erfassen
-																</DropdownMenuItem>
-																<DropdownMenuItem
-																	variant="destructive"
-																	onClick={() => setDeleteCandidate(item)}
-																	disabled={pending}
-																	className="min-h-11"
-																	aria-label={`Fixkosten-Vorlage löschen: ${item.description}`}
-																>
-																	<Trash2 aria-hidden />
-																	Löschen
-																</DropdownMenuItem>
-															</DropdownMenuGroup>
-														</DropdownMenuContent>
-													</DropdownMenu>
-												</ItemActions>
-											</ItemFooter>
+															Prüfen
+														</Link>
+													) : null}
+													{menu}
+												</ItemFooter>
+											)}
 										</Item>
 									);
 								})}

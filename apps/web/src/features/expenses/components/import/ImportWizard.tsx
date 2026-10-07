@@ -38,7 +38,7 @@ function useStepHeadingFocus(step: ImportStep) {
 		const heading = stepHeadingRef.current;
 		if (!heading) return;
 		heading.focus({ preventScroll: true });
-		heading.scrollIntoView({ block: 'start', behavior: 'auto' });
+		heading.scrollIntoView({ block: 'nearest', behavior: 'auto' });
 	}, [step]);
 	return stepHeadingRef;
 }

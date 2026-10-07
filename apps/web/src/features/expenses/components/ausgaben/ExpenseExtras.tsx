@@ -11,8 +11,9 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
 import { ImageUploader } from '@/components/wg/ImageUploader';
-import { ChevronDown, Receipt, Repeat2 } from 'lucide-react';
-import { type Dispatch, type SetStateAction, useState } from 'react';
+import { cn } from '@/shared/lib/cn';
+import { Check, ChevronDown, Receipt, Repeat2 } from 'lucide-react';
+import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
 import { RECURRING_INTERVAL_OPTIONS } from './constants';
 import type { RecurringExpense } from './expense-types';
 
@@ -27,6 +28,8 @@ interface ExpenseExtrasProps {
 	isEditingQueuedRecurring: boolean;
 	savingRecurringTemplate: boolean;
 	onSaveRecurringTemplate: () => void;
+	/** Anzahl der bekannten Vorlagen: wächst sie während des Speicherns, war es erfolgreich. */
+	recurringTemplateCount: number;
 	formSaving: boolean;
 }
 
@@ -42,10 +45,31 @@ export function ExpenseExtras({
 	isEditingQueuedRecurring,
 	savingRecurringTemplate,
 	onSaveRecurringTemplate,
+	recurringTemplateCount,
 	formSaving,
 }: ExpenseExtrasProps) {
 	const [showRecurring, setShowRecurring] = useState(false);
 	const [showReceipt, setShowReceipt] = useState(Boolean(imageUrl));
+	const [templateSaved, setTemplateSaved] = useState(false);
+	const templateCountAtStart = useRef(recurringTemplateCount);
+	const wasSavingTemplate = useRef(false);
+	// Das Formular scrollt; ein Toast läge unter dem Vollbild-Sheet. Darum bestätigt eine Zeile direkt am Button.
+	useEffect(() => {
+		if (savingRecurringTemplate) {
+			if (!wasSavingTemplate.current) templateCountAtStart.current = recurringTemplateCount;
+			wasSavingTemplate.current = true;
+			setTemplateSaved(false);
+			return;
+		}
+		if (!wasSavingTemplate.current) return;
+		wasSavingTemplate.current = false;
+		if (recurringTemplateCount > templateCountAtStart.current) setTemplateSaved(true);
+	}, [savingRecurringTemplate, recurringTemplateCount]);
+	useEffect(() => {
+		if (!templateSaved) return;
+		const timer = window.setTimeout(() => setTemplateSaved(false), 6000);
+		return () => window.clearTimeout(timer);
+	}, [templateSaved]);
 	const recurringOpen =
 		showRecurring || editingRecurringExpense !== null || isEditingQueuedRecurring;
 	return (
@@ -62,7 +86,10 @@ export function ExpenseExtras({
 							Angehängt
 						</Badge>
 					)}
-					<ChevronDown data-icon="inline-end" className="shrink-0" />
+					<ChevronDown
+						data-icon="inline-end"
+						className="shrink-0 transition-transform group-aria-expanded/button:rotate-180"
+					/>
 				</CollapsibleTrigger>
 				<CollapsiblePanel>
 					<div className="pt-3">
@@ -91,7 +118,10 @@ export function ExpenseExtras({
 								: `Alle ${recurringIntervalMonths} Monate`}
 						</Badge>
 					)}
-					<ChevronDown data-icon="inline-end" className="shrink-0" />
+					<ChevronDown
+						data-icon="inline-end"
+						className="shrink-0 transition-transform group-aria-expanded/button:rotate-180"
+					/>
 				</CollapsibleTrigger>
 				<CollapsiblePanel>
 					<FieldGroup className="pt-3">
@@ -124,6 +154,19 @@ export function ExpenseExtras({
 								{savingRecurringTemplate && <Spinner data-icon="inline-start" />}Als Vorlage merken
 							</Button>
 						)}
+						<output
+							className={cn(
+								'flex items-center gap-1.5 text-sm text-foreground',
+								!templateSaved && 'sr-only',
+							)}
+						>
+							{templateSaved && (
+								<>
+									<Check className="size-4 shrink-0" aria-hidden />
+									Als Vorlage gespeichert. Sie steht unter Fixkosten.
+								</>
+							)}
+						</output>
 					</FieldGroup>
 				</CollapsiblePanel>
 			</Collapsible>

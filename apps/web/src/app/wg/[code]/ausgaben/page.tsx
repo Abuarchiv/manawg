@@ -16,7 +16,7 @@ import { useAusgabenPage } from '@/features/expenses/hooks/use-ausgaben-page';
 import { haptic } from '@/shared/lib/haptics';
 import { Plus } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const ExpenseFormSection = dynamic(
 	() =>
@@ -50,6 +50,13 @@ export default function AusgabenPage() {
 	const { showForm, setShowForm, editingExpense, editingRecurringExpense } = form;
 	const isEditingQueuedRecurring = form.queueEditType === 'recurring.create';
 	const formSaving = submit.submitting || recurring.savingRecurringTemplate;
+	// Das Formular bleibt nach dem Schließen gemountet, bis die Ausblend-Animation durch ist; jedes Öffnen startet frisch.
+	const [formSession, setFormSession] = useState({ mounted: showForm, key: 0 });
+	const [previousShowForm, setPreviousShowForm] = useState(showForm);
+	if (showForm !== previousShowForm) {
+		setPreviousShowForm(showForm);
+		if (showForm) setFormSession((session) => ({ mounted: true, key: session.key + 1 }));
+	}
 
 	/** Nach einem Bearbeitungs-Konflikt gegen die frische Server-Version entscheiden. */
 	async function resolveConflict(choice: 'server' | 'draft'): Promise<void> {
@@ -85,8 +92,11 @@ export default function AusgabenPage() {
 		>
 			<SubNav />
 			<AusgabenHeader expenseCount={expenses.length} initialLoading={initialLoading} />
-			{showForm && (
+			{formSession.mounted && (
 				<ExpenseFormSection
+					key={formSession.key}
+					open={showForm}
+					onExited={() => setFormSession((session) => ({ ...session, mounted: false }))}
 					title={
 						editingRecurringExpense
 							? 'Fixkosten-Vorlage bearbeiten'
@@ -140,6 +150,7 @@ export default function AusgabenPage() {
 					editingRecurringExpense={editingRecurringExpense}
 					formSaving={formSaving}
 					onSaveRecurringTemplate={() => void recurring.saveRecurringTemplate()}
+					recurringTemplateCount={recurringExpenses.length}
 					onCancel={() => setShowForm(false)}
 					onDiscard={() => {
 						page.clearPendingCreateRequests();
@@ -169,7 +180,7 @@ export default function AusgabenPage() {
 				/>
 			)}
 			{page.showSkeleton && (
-				<div aria-hidden className="flex min-h-[26rem] flex-col gap-3 rounded-xl border p-3">
+				<div aria-hidden className="flex min-h-[18rem] flex-col gap-3 rounded-xl border p-3">
 					<Skeleton className="h-3 w-20" />
 					<Skeleton className="h-7 w-2/3" />
 					<Skeleton className="h-4 w-1/3" />

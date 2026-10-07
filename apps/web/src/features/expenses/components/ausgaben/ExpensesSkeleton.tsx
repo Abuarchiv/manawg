@@ -1,18 +1,28 @@
-import { Item, ItemContent, ItemGroup } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 
+const WEEKS = ['w0', 'w1'] as const;
+const ROWS = ['r0', 'r1', 'r2'] as const;
+
+/** Bildet die echte Liste nach: Wochen-Überschrift, darunter eine gerundete Liste mit Zeilen. */
 export function ExpensesSkeleton() {
 	return (
-		<ItemGroup aria-busy="true" aria-label="Ausgaben werden geladen">
-			{['s0', 's1', 's2', 's3'].map((key) => (
-				<Item key={key} variant="outline" aria-hidden="true">
-					<ItemContent>
-						<Skeleton className="h-4 w-2/3" />
-						<Skeleton className="h-3 w-1/2" />
-					</ItemContent>
-					<Skeleton className="h-4 w-20" />
-				</Item>
+		<div aria-busy="true" aria-label="Ausgaben werden geladen" className="flex flex-col gap-4">
+			{WEEKS.map((week) => (
+				<div key={week} aria-hidden="true" className="flex flex-col gap-1.5">
+					<Skeleton className="h-3 w-16" />
+					<div className="divide-y divide-border/60 overflow-hidden rounded-xl border">
+						{ROWS.map((row) => (
+							<div key={row} className="flex items-center gap-3 px-3 py-2.5">
+								<div className="flex min-w-0 flex-1 flex-col gap-1.5">
+									<Skeleton className="h-4 w-2/3" />
+									<Skeleton className="h-3 w-1/2" />
+								</div>
+								<Skeleton className="h-4 w-16" />
+							</div>
+						))}
+					</div>
+				</div>
 			))}
-		</ItemGroup>
+		</div>
 	);
 }

@@ -78,7 +78,7 @@ export function ImportPreviewTable({
 					<Item
 						key={`${parsed.date}-${index}`}
 						variant="outline"
-						className={cn('items-start', skipped && 'opacity-60')}
+						className={cn('items-start', skipped && '[&>:not([data-slot=checkbox])]:opacity-60')}
 					>
 						<Checkbox
 							id={`import-entry-${index}`}

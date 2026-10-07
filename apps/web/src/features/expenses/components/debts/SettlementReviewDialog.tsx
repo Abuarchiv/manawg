@@ -53,16 +53,25 @@ export function SettlementReviewDialog({
 					{(preview?.splits ?? []).map((split) => {
 						const expense = expenses.find((item) => item.id === split.expenseId);
 						return (
-							<Item key={split.id} variant="muted" size="xs">
-								<ItemContent className="min-w-0">
-									<ItemTitle className="line-clamp-none break-words">
-										<Link
-											href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?highlight=${encodeURIComponent(split.expenseId)}`}
-											onClick={() => setReviewOpen(false)}
-											className="underline underline-offset-4"
-										>
-											{expense?.description ?? 'Ausgabe'}
-										</Link>
+							<Item
+								key={split.id}
+								variant="muted"
+								size="xs"
+								className="relative min-h-11 has-[a:focus-visible]:ring-[3px] has-[a:focus-visible]:ring-ring/50"
+							>
+								<ItemContent className="min-w-0 group-data-[size=xs]/item:gap-0.5">
+									<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
+										{expense ? (
+											<Link
+												href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?highlight=${encodeURIComponent(split.expenseId)}`}
+												onClick={() => setReviewOpen(false)}
+												className="underline underline-offset-4 outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
+											>
+												{expense.description}
+											</Link>
+										) : (
+											<span>Ausgabe</span>
+										)}
 									</ItemTitle>
 									<ItemDescription>
 										{expense ? formatShortDate(expense.occurredAt) : 'Aktueller offener Anteil'}
