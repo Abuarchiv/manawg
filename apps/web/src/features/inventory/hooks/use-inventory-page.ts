@@ -45,7 +45,8 @@ export function useInventoryPage(shareCode: string, memberId: string) {
 		select: (data) => data.items,
 		assemble: (items) => ({ items, grouped: groupItemsByCategory(items) }),
 		getId: (item) => item.id,
-		describeError: (error) => getWgLoadErrorMessage('Vorräte', error.status, error.error),
+		describeError: (error) =>
+			getWgLoadErrorMessage('Vorräte', error.status, error.error, { verb: 'konnten' }),
 		// A background refresh, or a network failure with a list on screen, adds no banner.
 		hideError: (error, { silent, hasData }) =>
 			hasData && (silent || isNetworkError(error.error, error.status)),

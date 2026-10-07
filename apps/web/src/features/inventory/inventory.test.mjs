@@ -7,7 +7,7 @@ test('shopping payload asks for enough to get back above the threshold', () => {
 		buildShoppingPushPayload({ name: 'Klopapier', unit: 'Rolle', quantity: 1, threshold: 3 }),
 		{
 			name: 'Klopapier',
-			quantity: '3 Rolle',
+			quantity: '3 Rollen',
 			note: 'Auto: Vorrat unter Schwelle',
 		},
 	);

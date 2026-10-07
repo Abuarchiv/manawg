@@ -2,7 +2,13 @@
 
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
 import { ItemGroup } from '@/components/ui/item';
 import { InventoryAddModal } from '@/features/inventory/components/InventoryAddModal';
 import { InventoryItemRow } from '@/features/inventory/components/InventoryItemRow';
@@ -19,7 +25,10 @@ import {
 import { cn } from '@/shared/lib/cn';
 import { Package, ShoppingBasket, Zap } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+/** So lange bleibt eine Zeile nach +/- in ihrer Gruppe, damit sie nicht unter dem Daumen wegspringt. */
+const REGROUP_DELAY_MS = 1500;
 
 interface InventoryListProps {
 	items: InventoryItemDto[];
@@ -28,6 +37,7 @@ interface InventoryListProps {
 	onChanged: (item?: InventoryMutationItemDto, deletedId?: string) => void;
 	addOpen: boolean;
 	onAddOpenChange: (open: boolean) => void;
+	highlightedId?: string | null;
 }
 
 export function InventoryList({
@@ -37,15 +47,30 @@ export function InventoryList({
 	onChanged,
 	addOpen,
 	onAddOpenChange: setAddOpen,
+	highlightedId = null,
 }: InventoryListProps) {
 	const [quickOpen, setQuickOpen] = useState(false);
 	const [editing, setEditing] = useState<InventoryItemDto | null>(null);
-	// Knappe Vorräte stehen gesammelt oben, der Rest bleibt nach Kategorie sortiert.
-	const lowItems = useMemo(() => items.filter(isBelowThreshold), [items]);
-	const grouped = useMemo(
-		() => groupItemsByCategory(items.filter((item) => !isBelowThreshold(item))),
-		[items],
-	);
+	const [armedDeleteId, setArmedDeleteId] = useState<string | null>(null);
+	// Knappe Vorräte stehen gesammelt oben, der Rest bleibt nach Kategorie sortiert. Die Gruppe
+	// einer bekannten Zeile ändert sich erst nach einer Ruhephase; die Menge bleibt live.
+	const settledLowRef = useRef(new Map<string, boolean>());
+	const [, setRegroupTick] = useState(0);
+	const settledLow = settledLowRef.current;
+	for (const item of items) {
+		if (!settledLow.has(item.id)) settledLow.set(item.id, isBelowThreshold(item));
+	}
+	useEffect(() => {
+		const timer = window.setTimeout(() => {
+			settledLowRef.current = new Map(items.map((item) => [item.id, isBelowThreshold(item)]));
+			setRegroupTick((tick) => tick + 1);
+		}, REGROUP_DELAY_MS);
+		return () => window.clearTimeout(timer);
+	}, [items]);
+	const isLow = (item: InventoryItemDto): boolean =>
+		settledLow.get(item.id) ?? isBelowThreshold(item);
+	const lowItems = items.filter(isLow);
+	const grouped = groupItemsByCategory(items.filter((item) => !isLow(item)));
 	const isEmpty = items.length === 0;
 	const hasQuickRestockItems = items.some(
 		(item) => item.decrementCount30d > 0 || item.lastDecrementedAt !== null,
@@ -75,6 +100,9 @@ export function InventoryList({
 							<Package aria-hidden />
 						</EmptyMedia>
 						<EmptyTitle>Noch keine Vorräte erfasst</EmptyTitle>
+						<EmptyDescription>
+							Fällt ein Vorrat unter seine Grenze, landet er automatisch auf der Einkaufsliste.
+						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (
@@ -91,10 +119,13 @@ export function InventoryList({
 											<InventoryItemRow
 												key={item.id}
 												item={item}
+												highlighted={item.id === highlightedId}
 												shareCode={shareCode}
 												memberId={memberId}
 												onChanged={onChanged}
 												onEdit={openEdit}
+												deleteArmed={armedDeleteId === item.id}
+												onDeleteArmedChange={setArmedDeleteId}
 											/>
 										))}
 									</ItemGroup>
@@ -130,10 +161,13 @@ export function InventoryList({
 											<InventoryItemRow
 												key={item.id}
 												item={item}
+												highlighted={item.id === highlightedId}
 												shareCode={shareCode}
 												memberId={memberId}
 												onChanged={onChanged}
 												onEdit={openEdit}
+												deleteArmed={armedDeleteId === item.id}
+												onDeleteArmedChange={setArmedDeleteId}
 											/>
 										))}
 									</ItemGroup>

@@ -11,8 +11,6 @@ const ADD_ERRORS: Record<string, string> = {
 	bought_invalid: `${ADD_SUBJECT}: Der Status ist ungültig.`,
 	invalid_json: `${ADD_SUBJECT}: Die Anfrage war ungültig.`,
 	invalid_body: `${ADD_SUBJECT}: Die Anfrage war ungültig.`,
-	shopping_item_duplicate:
-		'Dieser Artikel steht bereits offen auf der Einkaufsliste. Prüfe den vorhandenen Eintrag; seine Menge bleibt unverändert.',
 	insert_failed: `${ADD_SUBJECT}: Prüfe die Einkaufsliste und versuche es erneut.`,
 };
 
@@ -25,16 +23,31 @@ export function shoppingAddErrorMessage(error: string): string {
 	);
 }
 
-const ACTION_SUBJECT = 'Einkaufsaktion konnte nicht gespeichert werden';
-const ACTION_ERRORS: Record<string, string> = {
-	invalid_body: `${ACTION_SUBJECT}: Die Anfrage war ungültig.`,
-	invalid_json: `${ACTION_SUBJECT}: Die Anfrage war ungültig.`,
-	bought_invalid: `${ACTION_SUBJECT}: Der Status ist ungültig.`,
-	id_invalid: 'Dieser Einkaufsartikel kann nicht mehr eindeutig zugeordnet werden.',
-};
+/** Kurz und mit Namen, damit klar ist, welche Zeile gemeint ist. */
+export function shoppingDuplicateMessage(name: string): string {
+	return `„${name}“ steht schon offen auf der Liste.`;
+}
 
-export function shoppingActionErrorMessage(error: string, fallback: string): string {
-	return mutationErrorMessage(ACTION_SUBJECT, error, ACTION_ERRORS, fallback);
+export type ShoppingActionVerb = 'abgehakt' | 'wieder geöffnet' | 'entfernt';
+
+/** Nennt Artikel und Aktion, damit der Text nicht wie ein Fehler beim Hinzufügen wirkt. */
+export function shoppingActionErrorMessage(
+	error: string,
+	itemName: string,
+	verb: ShoppingActionVerb,
+): string {
+	const subject = `„${itemName}“ konnte nicht ${verb} werden`;
+	return mutationErrorMessage(
+		subject,
+		error,
+		{
+			invalid_body: `${subject}: Die Anfrage war ungültig.`,
+			invalid_json: `${subject}: Die Anfrage war ungültig.`,
+			bought_invalid: `${subject}: Der Status ist ungültig.`,
+			id_invalid: 'Dieser Einkaufsartikel kann nicht mehr eindeutig zugeordnet werden.',
+		},
+		`${subject}. Versuche es gleich erneut.`,
+	);
 }
 
 export function clearBoughtErrorMessage(status: number, error: string): string {

@@ -41,7 +41,7 @@ export function ShoppingAddBar({
 						value={value}
 						onChange={(event) => onChange(event.target.value)}
 						maxLength={NAME_MAX}
-						placeholder="z. B. 2 Hafermilch"
+						placeholder="z. B. 2 Reis"
 						aria-label="Artikel-Name"
 						enterKeyHint="done"
 						aria-invalid={Boolean(addError)}
@@ -56,7 +56,8 @@ export function ShoppingAddBar({
 						disabled={!value.trim()}
 						aria-busy={adding}
 						aria-label="Artikel hinzufügen"
-						onPointerDown={(event) => event.preventDefault()}
+						// mousedown statt pointerdown: WebKit löst nach pointerdown-preventDefault bei Touch keinen Click aus.
+						onMouseDown={(event) => event.preventDefault()}
 						className="size-11 shrink-0"
 					>
 						{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}

@@ -1,8 +1,10 @@
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
+import { normalizeForMatch } from '@/features/inventory/inventory';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import { useShoppingAdd } from '@/features/shopping/hooks/use-shopping-add';
+import { isTempItemId } from '@/features/shopping/shopping-view';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ShoppingActionContext } from './shopping-action-context';
 import { useShoppingRemoval } from './use-shopping-removal';
@@ -37,6 +39,9 @@ export function useShoppingPage({
 	const { isPending, start, end } = usePendingSet();
 	// Checking off shows no "saving" state; this only guards against double taps.
 	const togglingRef = useRef(new Set<string>());
+	// Doppelt hinzugefügt: die vorhandene Zeile kurz markieren, damit man sie nicht suchen muss.
+	const [duplicateName, setDuplicateName] = useState<string | null>(null);
+	const [flashId, setFlashId] = useState<string | null>(null);
 
 	const shopping = useSyncedCollection<ShoppingResponse, ShoppingItem>({
 		url: `/api/wg/${encodedShareCode}/shopping`,
@@ -94,6 +99,7 @@ export function useShoppingPage({
 		load,
 		refreshCount,
 		// A new add attempt also clears the previous toggle error.
+		onDuplicate: setDuplicateName,
 		setAddNotice: (notice) => {
 			setAddNotice(notice);
 			if (notice === null) setToggleError(null);
@@ -116,7 +122,28 @@ export function useShoppingPage({
 		}, 80);
 	}, [highlightedId, itemCount, items]);
 
+	useEffect(() => {
+		if (!duplicateName) return;
+		const key = normalizeForMatch(duplicateName);
+		const match = items.find(
+			(item) =>
+				item.boughtAt === null && !isTempItemId(item.id) && normalizeForMatch(item.name) === key,
+		);
+		if (!match) return;
+		setDuplicateName(null);
+		setFlashId(match.id);
+		requestAnimationFrame(() =>
+			document.getElementById(`shopping-${match.id}`)?.scrollIntoView({ block: 'center' }),
+		);
+	}, [duplicateName, items]);
+	useEffect(() => {
+		if (!flashId) return;
+		const timer = window.setTimeout(() => setFlashId(null), 2500);
+		return () => window.clearTimeout(timer);
+	}, [flashId]);
+
 	return {
+		flashId,
 		items,
 		initialLoading: shopping.initialLoading,
 		loadError: shopping.loadError,

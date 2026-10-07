@@ -29,7 +29,7 @@ import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
 import { Check, MoreHorizontal, Receipt, RotateCcw, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { memo, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
 // Ab dieser Wischstrecke nach rechts gilt der Artikel als abgehakt (bzw. wieder offen).
 const SWIPE_TOGGLE_PX = 72;
@@ -41,7 +41,7 @@ interface ShoppingItemRowProps {
 	pending: boolean;
 	queued?: boolean;
 	onToggle: (item: ShoppingItem) => void;
-	onRemove: (id: string) => void;
+	onRemove: (id: string, itemName: string) => void;
 	removeError?: string | null;
 	highlighted: boolean;
 	shareCode: string;
@@ -73,7 +73,13 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 		: null;
 	const adderName = item.addedByMemberId === identity.memberId ? 'dir' : adder.name;
 	const swipeStartX = useRef<number | null>(null);
+	const confirmAlertRef = useRef<HTMLDivElement>(null);
 	const [swipeX, setSwipeX] = useState(0);
+
+	// Bei großer Schrift schiebt der Hinweis den Bereich über die Schließen-Leiste: in den Blick holen.
+	useEffect(() => {
+		if (isDeleteArmed) confirmAlertRef.current?.scrollIntoView({ block: 'nearest' });
+	}, [isDeleteArmed]);
 
 	function endSwipe(): void {
 		if (swipeStartX.current !== null && swipeX >= SWIPE_TOGGLE_PX && !pending && !queued) {
@@ -86,7 +92,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	function handleDelete(): void {
 		if (!deleteConfirm.request(item.id)) return;
 		deleteConfirm.cancel();
-		onRemove(item.id);
+		onRemove(item.id, item.name);
 	}
 
 	return (
@@ -143,10 +149,12 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 						aria-label={isBought ? `${item.name} wieder öffnen` : `${item.name} erledigen`}
 					/>
 				</ItemMedia>
-				<ItemContent className="min-w-0 basis-32 gap-0.5">
+				{/* basis-0 + min-w statt basis-32: bei großer Schrift bleiben Häkchen, Text und ⋯ in einer Zeile;
+				    das ⋯ rutscht nur darunter, wenn ein Wort sonst mitten im Wort brechen müsste. */}
+				<ItemContent className="min-w-[10ch] basis-0 gap-0.5">
 					<ItemTitle
 						className={cn(
-							'block line-clamp-none break-words [overflow-wrap:anywhere]',
+							'block line-clamp-none [overflow-wrap:break-word]',
 							isBought && 'text-muted-foreground line-through',
 						)}
 					>
@@ -215,7 +223,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 									</>
 								)}
 								{canRemove && isDeleteArmed && (
-									<Alert>
+									<Alert ref={confirmAlertRef}>
 										<AlertDescription>
 											„{item.name}“ endgültig entfernen? Das lässt sich nicht rückgängig machen.
 										</AlertDescription>

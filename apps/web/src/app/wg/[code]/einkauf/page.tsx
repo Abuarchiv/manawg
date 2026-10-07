@@ -28,9 +28,10 @@ import { useShoppingPage } from '@/features/shopping/hooks/use-shopping-page';
 import { splitShoppingItems } from '@/features/shopping/shopping-view';
 import { ListChecks } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 const NO_INVENTORY: InventoryItemDto[] = [];
+const RECENTLY_BOUGHT_MS = 24 * 60 * 60 * 1000;
 
 export default function EinkaufPage() {
 	const { wg, members, identity, isAdmin } = useWg();
@@ -49,6 +50,11 @@ export default function EinkaufPage() {
 	const shopping = useShoppingPage({ wg, identity, prefillName, highlightedId, refreshInventory });
 	const { items, initialLoading, loadError, add } = shopping;
 	const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+	const headingRef = useRef<HTMLHeadingElement>(null);
+	// Zeile oder Erledigt-Block verschwinden samt Fokus: er bleibt auf der Seite statt auf BODY zu fallen.
+	const keepFocus = (ok: boolean): void => {
+		if (ok) requestAnimationFrame(() => headingRef.current?.focus());
+	};
 
 	// Direkt abgeleitet statt per Effect gespiegelt: sonst rendert ein Frame mit
 	// leerem Vorrat und die Vorschläge springen.
@@ -59,10 +65,21 @@ export default function EinkaufPage() {
 
 	// Vorschläge ohne Artikel, die schon offen auf der Liste stehen.
 	const openNames = new Set(open.map((item) => normalizeForMatch(item.name)));
+	// Gerade Gekauftes nicht sofort wieder anbieten: sonst taucht beim Abhaken ein Chip auf,
+	// schiebt die Liste und lädt zum Nachkaufen ein.
+	const recentCutoff = Date.now() - RECENTLY_BOUGHT_MS;
+	const recentlyBought = new Set(
+		done
+			.filter((item) => item.boughtAt !== null && Date.parse(item.boughtAt) > recentCutoff)
+			.map((item) => normalizeForMatch(item.name)),
+	);
 	const lowStock = inventory
-		.filter((item) => isBelowThreshold(item) && !openNames.has(normalizeForMatch(item.name)))
+		.filter((item) => {
+			const key = normalizeForMatch(item.name);
+			return isBelowThreshold(item) && !openNames.has(key) && !recentlyBought.has(key);
+		})
 		.map((item) => item.name);
-	const taken = new Set([...openNames, ...lowStock.map(normalizeForMatch)]);
+	const taken = new Set([...openNames, ...recentlyBought, ...lowStock.map(normalizeForMatch)]);
 	const frequent = [
 		...inventory
 			.filter((item) => item.decrementCount30d > 0)
@@ -76,7 +93,9 @@ export default function EinkaufPage() {
 	});
 	// Vorschläge und Liste erscheinen gemeinsam, sobald Liste und Vorrat da sind: sonst
 	// tauschen die Gruppen nach dem Laden und schieben die Liste nach unten (Layout Shift).
-	const suggestionsPending = initialLoading || inventoryLoading;
+	// Ohne Liste (Ladefehler) kennen wir die offenen Artikel nicht und bieten nichts zum Hinzufügen an.
+	const listUnknown = Boolean(loadError) && items.length === 0;
+	const suggestionsPending = initialLoading || inventoryLoading || listUnknown;
 	const suggestionGroups = [
 		{ label: 'Bald leer', names: lowStock.slice(0, 4) },
 		frequent.length > 0
@@ -85,9 +104,7 @@ export default function EinkaufPage() {
 					label: 'Vorschläge',
 					names:
 						items.length === 0
-							? QUICK_SHOPPING_ITEMS.map((item) => item.name).filter(
-									(name) => !taken.has(normalizeForMatch(name)),
-								)
+							? QUICK_SHOPPING_ITEMS.filter((name) => !taken.has(normalizeForMatch(name)))
 							: [],
 				},
 	].filter((group) => !suggestionsPending && group.names.length > 0);
@@ -97,7 +114,9 @@ export default function EinkaufPage() {
 			<SubNav liveCount={!initialLoading && !loadError ? open.length : undefined} />
 			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
 			<header className="sr-only">
-				<h1>Einkäufe</h1>
+				<h1 ref={headingRef} tabIndex={-1}>
+					Einkäufe
+				</h1>
 				<p
 					className="mt-0.5 text-[12px] text-muted-foreground tabular-nums"
 					aria-live="polite"
@@ -129,23 +148,19 @@ export default function EinkaufPage() {
 				/>
 			)}
 			{inventoryLoading || (initialLoading && items.length === 0) ? (
-				<ListSkeleton />
-			) : loadError && items.length === 0 ? (
-				<Empty>
-					<EmptyHeader>
-						<EmptyTitle>Noch keine Artikel geladen</EmptyTitle>
-						<EmptyDescription>
-							Versuche es erneut, sobald die Verbindung wieder da ist.
-						</EmptyDescription>
-					</EmptyHeader>
-				</Empty>
-			) : items.length === 0 ? (
+				<ListSkeleton withSuggestions />
+			) : listUnknown ? null : items.length === 0 ? (
 				<Empty>
 					<EmptyHeader>
 						<EmptyMedia variant="icon">
 							<ListChecks aria-hidden />
 						</EmptyMedia>
 						<EmptyTitle>Noch nichts auf der Liste</EmptyTitle>
+						<EmptyDescription>
+							{suggestionGroups.length > 0
+								? 'Schreib unten einen Artikel auf oder tippe einen Vorschlag.'
+								: 'Schreib unten einen Artikel auf.'}
+						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (
@@ -155,12 +170,12 @@ export default function EinkaufPage() {
 					members={members}
 					memberId={identity.memberId}
 					shareCode={wg.shareCode}
-					highlightedId={highlightedId}
+					highlightedId={shopping.flashId ?? highlightedId}
 					doneOpen={shopping.doneOpen}
 					onDoneOpenChange={shopping.setDoneOpen}
 					isPending={shopping.isPending}
 					onToggle={shopping.toggleBought}
-					onRemove={shopping.remove}
+					onRemove={(id, name) => shopping.remove(id, name).then(keepFocus)}
 					removeError={shopping.removeError}
 					removeErrorId={shopping.removeErrorId}
 					isAdmin={isAdmin}
@@ -189,7 +204,7 @@ export default function EinkaufPage() {
 					onOpenChange={setClearConfirmOpen}
 					doneCount={done.length}
 					clearing={shopping.clearingBought}
-					onConfirm={() => void shopping.clearBought()}
+					onConfirm={() => void shopping.clearBought().then(keepFocus)}
 				/>
 			)}
 		</div>

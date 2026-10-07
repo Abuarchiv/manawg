@@ -17,7 +17,11 @@ import { ItemGroup } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import type { InventoryItemDto, InventoryMutationItemDto } from '@/features/inventory/inventory';
+import {
+	type InventoryItemDto,
+	type InventoryMutationItemDto,
+	formatQuantity,
+} from '@/features/inventory/inventory';
 import { Plus } from 'lucide-react';
 import { useRef, useState } from 'react';
 
@@ -125,27 +129,38 @@ export function QuickRestockSheet({
 							<CardContent className="p-0">
 								<ItemGroup className="gap-0 divide-y divide-border">
 									{sorted.map((item) => (
-										<Item key={item.id} className="px-3 py-2.5">
-											<ItemContent className="min-w-0 flex-1">
-												<ItemTitle className="w-full min-w-0 line-clamp-none">
-													<span className="min-w-0 flex-1 break-words text-sm font-medium">
+										<Item
+											key={item.id}
+											// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist role=list über <div>, Kinder brauchen role=listitem.
+											role="listitem"
+											className="px-3 py-2.5 not-last:border-b-border"
+										>
+											{/* min-w statt min-w-0: bei großer Schrift rutscht der Knopf unter den Text,
+											    statt den Namen zeichenweise zu quetschen. */}
+											<ItemContent className="min-w-[10ch] flex-1">
+												<ItemTitle className="w-full min-w-0 line-clamp-none [overflow-wrap:break-word]">
+													<span className="min-w-0 flex-1 break-words hyphens-auto text-sm font-medium">
 														{item.name}
 													</span>
 												</ItemTitle>
-												<ItemDescription className="text-xs tabular-nums">
-													{item.quantity} {item.unit} · {item.decrementCount30d}× in 30 Tagen
+												<ItemDescription className="line-clamp-none text-xs tabular-nums [overflow-wrap:break-word]">
+													{formatQuantity(item.quantity, item.unit)} · {item.decrementCount30d}× in
+													30 Tagen
 												</ItemDescription>
 											</ItemContent>
-											<ItemActions>
+											<ItemActions className="shrink-0">
 												<Button
 													type="button"
+													variant="outline"
+													size="icon"
 													onClick={() => void quickRestock(item)}
 													disabled={pendingId !== null}
+													focusableWhenDisabled
+													className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
 													aria-busy={pendingId === item.id}
 													aria-label={`${item.name} um eins erhöhen`}
 												>
 													{pendingId === item.id ? <Spinner aria-hidden /> : <Plus aria-hidden />}
-													+1
 												</Button>
 											</ItemActions>
 										</Item>
