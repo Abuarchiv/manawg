@@ -108,7 +108,11 @@ export function FairnessPanel({
 						<span className="min-w-0 flex-1 text-left break-normal whitespace-normal">
 							So wird verteilt
 						</span>
-						<ChevronDown data-icon="inline-end" aria-hidden />
+						<ChevronDown
+							data-icon="inline-end"
+							aria-hidden
+							className="transition-transform group-aria-expanded/button:rotate-180 motion-reduce:transition-none"
+						/>
 					</CollapsibleTrigger>
 					<CollapsiblePanel>
 						<div className="flex flex-col gap-3 pt-3">
@@ -119,7 +123,7 @@ export function FairnessPanel({
 							</ul>
 							<ItemGroup className="gap-0 divide-y">
 								{fairness.rows.map((row) => (
-									<Item key={row.id} className="px-0">
+									<Item key={row.id} render={<li />} className="px-0">
 										<ItemContent className="min-w-0">
 											<ItemTitle className="line-clamp-none break-words">
 												{row.id === currentMemberId ? 'Du' : row.name}

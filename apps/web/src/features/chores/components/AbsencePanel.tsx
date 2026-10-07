@@ -235,6 +235,7 @@ export function AbsencePanel({
 								<Item
 									key={absence.id}
 									id={`absence-${absence.id}`}
+									render={<li />}
 									className={cn(
 										// Die Tönung reicht 0,5 rem über den Text hinaus, damit er nicht am Rand klebt.
 										'scroll-mt-28 -mx-2 w-[calc(100%+1rem)] max-w-none rounded-none px-2 transition-colors duration-700',
@@ -285,7 +286,7 @@ export function AbsencePanel({
 				{hiddenCount > 0 && (
 					<Link
 						href={allAbsencesHref}
-						className={buttonVariants({ variant: 'outline', className: 'mt-3 min-h-11' })}
+						className={cn(buttonVariants({ variant: 'outline' }), 'mt-3 min-h-11')}
 					>
 						Alle {totalCount} Abwesenheiten anzeigen
 					</Link>

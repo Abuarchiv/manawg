@@ -20,7 +20,6 @@ import {
 	INTERVAL_PRESETS_MONTHS,
 	TITLE_MAX,
 } from '@/features/chores/components/constants';
-import { Plus } from 'lucide-react';
 import type React from 'react';
 
 interface ChoreFormProps {
@@ -173,15 +172,11 @@ export function ChoreForm({
 						<Button
 							type="submit"
 							disabled={!title.trim() || pending}
-							aria-label="Aufgabe hinzufügen"
+							aria-label="Aufgabe speichern"
 							className="flex-1"
 						>
-							{pending ? (
-								<Spinner data-icon="inline-start" aria-hidden />
-							) : (
-								<Plus data-icon="inline-start" aria-hidden />
-							)}
-							{pending ? 'Speichert…' : 'Hinzufügen'}
+							{pending && <Spinner data-icon="inline-start" aria-hidden />}
+							{pending ? 'Speichert…' : 'Speichern'}
 						</Button>
 						<Button
 							type="button"

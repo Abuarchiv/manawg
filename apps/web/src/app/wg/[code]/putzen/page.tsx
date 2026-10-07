@@ -143,7 +143,7 @@ export default function PutzenPage() {
 								variant="outline"
 								onClick={() => setConfirmSuggestion(true)}
 								disabled={choreAddPending}
-								className="h-auto whitespace-normal"
+								className="h-auto whitespace-normal text-foreground"
 							>
 								Entwurf verwerfen und „{pendingSuggestion.title}“ übernehmen
 							</Button>

@@ -66,6 +66,7 @@ export function useChoreCreate(
 		endPending,
 		setActionError,
 		setActionNotice,
+		toast,
 		updateChores,
 		load,
 		refreshCount,
@@ -150,6 +151,10 @@ export function useChoreCreate(
 	useEffect(() => {
 		if (!prefillTitle || appliedPrefillRef.current === prefillTitle) return;
 		appliedPrefillRef.current = prefillTitle;
+		// Der Parameter ist verbraucht; sonst löst ein Neuladen denselben Entwurf-Konflikt erneut aus.
+		const url = new URL(window.location.href);
+		url.searchParams.delete('title');
+		window.history.replaceState(window.history.state, '', url);
 		suggestChore({
 			title: prefillTitle.slice(0, TITLE_MAX),
 			intervalDays: 7,
@@ -291,6 +296,7 @@ export function useChoreCreate(
 			void load(false);
 			const warningMessage = notificationWarningMessage(result.data.warning);
 			if (warningMessage) setActionNotice(warningMessage);
+			else toast.success('Aufgabe gespeichert.');
 		} finally {
 			endPending(pendingKey);
 		}
