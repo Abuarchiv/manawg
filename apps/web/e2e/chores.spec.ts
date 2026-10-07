@@ -646,7 +646,7 @@ test.describe('chore next assignee', () => {
 			}
 			await route.fallback();
 		});
-		await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
+		await page.getByRole('button', { name: 'Aufgabe speichern' }).click();
 		await expect.poll(() => postedAssigneeId).toBe(CURRENT_MEMBER);
 	});
 
@@ -663,7 +663,7 @@ test.describe('chore next assignee', () => {
 			}
 			await route.fallback();
 		});
-		await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
+		await page.getByRole('button', { name: 'Aufgabe speichern' }).click();
 		await expect(
 			page.getByText('Putzaufgabe konnte nicht gespeichert werden: Versuche es gleich erneut.'),
 		).toBeVisible();
@@ -686,7 +686,7 @@ test.describe('chore next assignee', () => {
 			}
 			await route.fallback();
 		});
-		await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
+		await page.getByRole('button', { name: 'Aufgabe speichern' }).click();
 		await expect(
 			page.getByText(
 				'Putzaufgabe konnte nicht gespeichert werden: Deine Sitzung ist abgelaufen. Melde dich neu an.',
@@ -695,7 +695,7 @@ test.describe('chore next assignee', () => {
 		await expect(title).toHaveValue('Entwurf bleibt');
 		// Middleware bei MIGRATION_READ_ONLY: 503 `migration_read_only`.
 		failure = { status: 503, json: { error: 'migration_read_only', retryAfter: '300' } };
-		await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
+		await page.getByRole('button', { name: 'Aufgabe speichern' }).click();
 		await expect(
 			page.getByText(
 				'Putzaufgabe konnte nicht gespeichert werden: Die App ist gerade in Wartung und nur lesbar. Versuche es später erneut.',

@@ -11,6 +11,7 @@ import {
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import type { ReactElement } from 'react';
 
 /** Wortlaut des Auslösers: Start und Putzplan nutzen dieselben Beschriftungen. */
@@ -78,7 +79,14 @@ export function ChoreCompleteDialog({
 						className="aria-disabled:opacity-50"
 						aria-label={`${actionLabel} bestätigen: ${title}`}
 					>
-						{actionLabel} bestätigen
+						{busy ? (
+							<>
+								<Spinner data-icon="inline-start" aria-hidden />
+								Wird gespeichert…
+							</>
+						) : (
+							`${actionLabel} bestätigen`
+						)}
 					</Button>
 				</AlertDialogFooter>
 			</AlertDialogContent>

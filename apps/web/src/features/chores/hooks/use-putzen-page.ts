@@ -71,15 +71,23 @@ export function usePutzenPage() {
 	const absenceActions = useAbsences(ctx, absenceForm, create.queueEdit);
 	const choreActions = useChoreActions(ctx);
 
-	const itemCount = items.length;
+	// Die Markierung ist ein kurzer Hinweis, kein Auswahlzustand: sie klingt nach 2,5 s ab.
+	const [flashId, setFlashId] = useState<string | null>(null);
+	const hasItems = items.length > 0;
 	useEffect(() => {
-		if (!highlightedId || itemCount === 0) return;
-		window.setTimeout(() => {
+		if (!highlightedId || !hasItems) return;
+		setFlashId(highlightedId);
+		const scrollTimer = window.setTimeout(() => {
 			document.getElementById(`chore-${highlightedId}`)?.scrollIntoView({
 				block: 'center',
 			});
 		}, 80);
-	}, [highlightedId, itemCount]);
+		const clearTimer = window.setTimeout(() => setFlashId(null), 2500);
+		return () => {
+			window.clearTimeout(scrollTimer);
+			window.clearTimeout(clearTimer);
+		};
+	}, [highlightedId, hasItems]);
 
 	useEffect(() => {
 		if (!overdueFilterActive) return;
@@ -90,14 +98,27 @@ export function usePutzenPage() {
 		}, 80);
 	}, [overdueFilterActive]);
 
+	// Die Zeile existiert erst nach dem Laden; ohne sie in den Abhängigkeiten liefe der Scroll ins Leere.
+	const absenceRowExists = absenceId ? absences.some((absence) => absence.id === absenceId) : false;
+	const [flashAbsenceId, setFlashAbsenceId] = useState<string | null>(null);
 	useEffect(() => {
-		if (!absencesPanelActive && !absenceId) return;
-		window.setTimeout(() => {
+		if ((!absencesPanelActive && !absenceId) || initialLoading) return;
+		if (absenceRowExists) setFlashAbsenceId(absenceId);
+		const scrollTimer = window.setTimeout(() => {
+			if (absenceRowExists) {
+				document.getElementById(`absence-${absenceId}`)?.scrollIntoView({ block: 'center' });
+				return;
+			}
 			document.getElementById('absences-panel')?.scrollIntoView({
 				block: 'start',
 			});
 		}, 80);
-	}, [absenceId, absencesPanelActive]);
+		const clearTimer = window.setTimeout(() => setFlashAbsenceId(null), 2500);
+		return () => {
+			window.clearTimeout(scrollTimer);
+			window.clearTimeout(clearTimer);
+		};
+	}, [absenceId, absenceRowExists, absencesPanelActive, initialLoading]);
 
 	function memberLookup(id: string | null): MemberInfo {
 		if (!id) return { name: 'Niemand', color: null };
@@ -137,6 +158,8 @@ export function usePutzenPage() {
 		activeMembers,
 		absenceAddPending: isPending('absence:add'),
 		absenceEnd: absenceForm.absenceEnd,
+		absenceError: absenceActions.absenceError,
+		absenceListError: absenceActions.absenceListError,
 		absenceId,
 		absenceMemberId: absenceForm.absenceMemberId,
 		absenceReason: absenceForm.absenceReason,
@@ -153,15 +176,17 @@ export function usePutzenPage() {
 		completeConfirmId: choreActions.completeConfirmId,
 		confirmSuggestion: create.confirmSuggestion,
 		fairness,
+		flashAbsenceId,
 		handleAssignedMemberIdChange: create.handleAssignedMemberIdChange,
 		handleComplete: choreActions.handleComplete,
 		handleIntervalPresetSelect: create.handleIntervalPresetSelect,
 		handleRecurrenceUnitToggle: create.handleRecurrenceUnitToggle,
 		handleRemove: choreActions.handleRemove,
 		handleSwapRequest: choreActions.handleSwapRequest,
+		swapRequestedIds: choreActions.swapRequestedIds,
 		handleTakeOver: choreActions.handleTakeOver,
 		hiddenAbsenceCount: absences.length - visibleAbsences.length,
-		highlightedId,
+		highlightedId: flashId,
 		initialLoading,
 		isPending,
 		items,
@@ -181,11 +206,23 @@ export function usePutzenPage() {
 		removeAbsence: absenceActions.removeAbsence,
 		addAbsence: absenceActions.addAbsence,
 		add: create.add,
-		setAbsenceEnd: absenceForm.setAbsenceEnd,
-		setAbsenceMemberId: absenceForm.setAbsenceMemberId,
-		setAbsenceReason: absenceForm.setAbsenceReason,
-		setAbsenceStart: absenceForm.setAbsenceStart,
-		setCompleteConfirmId: choreActions.setCompleteConfirmId,
+		setAbsenceEnd: (value: string) => {
+			absenceActions.clearAbsenceError();
+			absenceForm.setAbsenceEnd(value);
+		},
+		setAbsenceMemberId: (value: string) => {
+			absenceActions.clearAbsenceError();
+			absenceForm.setAbsenceMemberId(value);
+		},
+		setAbsenceReason: (value: string) => {
+			absenceActions.clearAbsenceError();
+			absenceForm.setAbsenceReason(value);
+		},
+		setAbsenceStart: (value: string) => {
+			absenceActions.clearAbsenceError();
+			absenceForm.setAbsenceStart(value);
+		},
+		cancelComplete: choreActions.cancelComplete,
 		setConfirmSuggestion: create.setConfirmSuggestion,
 		setNewTitle: create.setNewTitle,
 		setShowForm: create.setShowForm,

@@ -18,6 +18,11 @@ const FAIRNESS_RULES = [
 	'Nach Erledigung neu berechnet, Abwesende übersprungen',
 ];
 
+/** Balkensegment und Legendenpunkt teilen sich die Abstufung, damit man sie zuordnen kann. */
+function segmentTint(index: number): string {
+	return `color-mix(in oklab, var(--primary) ${Math.max(100 - index * 25, 20)}%, transparent)`;
+}
+
 export function FairnessPanel({
 	fairness,
 	monthCompletions,
@@ -67,16 +72,23 @@ export function FairnessPanel({
 										className="h-full border-background border-r-2 last:border-r-0"
 										style={{
 											width: `${(member.count / total) * 100}%`,
-											backgroundColor: `color-mix(in oklab, var(--primary) ${100 - index * 25}%, transparent)`,
+											backgroundColor: segmentTint(index),
 										}}
 									/>
 								))}
 							</div>
 							<ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
-								{shares.map((member) => (
-									<li key={member.id}>
-										{member.id === currentMemberId ? 'Du' : member.name}:{' '}
-										{Math.round((member.count / total) * 100)} % ({member.count})
+								{shares.map((member, index) => (
+									<li key={member.id} className="flex items-center gap-1.5">
+										<span
+											aria-hidden
+											className="size-2 shrink-0 rounded-full"
+											style={{ backgroundColor: segmentTint(index) }}
+										/>
+										<span>
+											{member.id === currentMemberId ? 'Du' : member.name}:{' '}
+											{Math.round((member.count / total) * 100)} % ({member.count})
+										</span>
 									</li>
 								))}
 							</ul>
@@ -89,14 +101,18 @@ export function FairnessPanel({
 							<Button
 								variant="ghost"
 								size="sm"
-								className="-mx-2.5 w-[calc(100%+1.25rem)] break-normal"
+								className="-mx-2.5 w-[calc(100%+1.25rem)] max-w-none break-normal"
 							/>
 						}
 					>
 						<span className="min-w-0 flex-1 text-left break-normal whitespace-normal">
 							So wird verteilt
 						</span>
-						<ChevronDown data-icon="inline-end" aria-hidden />
+						<ChevronDown
+							data-icon="inline-end"
+							aria-hidden
+							className="transition-transform group-aria-expanded/button:rotate-180 motion-reduce:transition-none"
+						/>
 					</CollapsibleTrigger>
 					<CollapsiblePanel>
 						<div className="flex flex-col gap-3 pt-3">
@@ -107,7 +123,7 @@ export function FairnessPanel({
 							</ul>
 							<ItemGroup className="gap-0 divide-y">
 								{fairness.rows.map((row) => (
-									<Item key={row.id} className="px-0">
+									<Item key={row.id} render={<li />} className="px-0">
 										<ItemContent className="min-w-0">
 											<ItemTitle className="line-clamp-none break-words">
 												{row.id === currentMemberId ? 'Du' : row.name}

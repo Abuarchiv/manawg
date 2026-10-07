@@ -2,6 +2,7 @@ import { isNetworkError } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { discardQueuedEntry } from '@/core/offline/offline-client';
 import { isQueuedCreateId } from '@/core/offline/offline-queue';
+import { parseValidDate } from '@/core/utils/time';
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import { choreCompletionFeedback } from '@/features/chores/chore-completion';
 import { choreActionErrorMessage } from '@/features/chores/chore-errors';
@@ -35,6 +36,8 @@ export function useChoreActions(ctx: ChorePageContext) {
 	} = ctx;
 	const completeChore = useChoreCompletion(wg, identity);
 	const [completeConfirmId, setCompleteConfirmId] = useState<string | null>(null);
+	// Chores whose swap request is already on the Pinnwand; a second tap would post a duplicate.
+	const [swapRequestedIds, setSwapRequestedIds] = useState<ReadonlySet<string>>(new Set());
 
 	/**
 	 * A chore created offline only has a local pseudo id, which the server routes reject with
@@ -59,8 +62,14 @@ export function useChoreActions(ctx: ChorePageContext) {
 
 	/** The chore stays in the plan offline: move it to its next date and assignee locally. */
 	function advanceLocally(previousChore: Chore): void {
+		const dueAt = parseValidDate(previousChore.nextDueAt);
+		if (!dueAt) {
+			// Ohne gültiges Datum gibt es nichts zu verschieben; die Zeile bleibt, wie sie war.
+			restore(previousChore);
+			return;
+		}
 		const localNextDueAt = computeNextDueAt(
-			new Date(previousChore.nextDueAt),
+			dueAt,
 			previousChore.intervalDays,
 			new Date(),
 			previousChore.recurrenceType,
@@ -100,6 +109,13 @@ export function useChoreActions(ctx: ChorePageContext) {
 		const outcome = await completeChore(chore);
 		switch (outcome.kind) {
 			case 'completed':
+				// Die Erledigung schließt die Tauschanfrage; zum nächsten Termin ist eine neue möglich.
+				setSwapRequestedIds((current) => {
+					if (!current.has(chore.id)) return current;
+					const rest = new Set(current);
+					rest.delete(chore.id);
+					return rest;
+				});
 				if (outcome.next) {
 					const next = outcome.next;
 					const completed: Chore = {
@@ -130,23 +146,30 @@ export function useChoreActions(ctx: ChorePageContext) {
 				restore(previousChore);
 		}
 
-		const feedback = choreCompletionFeedback(
-			outcome,
-			chore,
-			(id) => members.find((member) => member.id === id)?.name,
+		const feedback = choreCompletionFeedback(outcome, chore, (id) =>
+			id === identity.memberId ? 'du' : members.find((member) => member.id === id)?.name,
 		);
 		if (feedback.tone === 'success') toast.success(feedback.message);
 		else if (feedback.tone === 'notice') setActionNotice(feedback.message);
 		else setActionError(feedback.message);
-		if (feedback.toast) toast.error(feedback.toast);
+		// Bleibt der Dialog offen, zeigt sein Alert den Fehler schon; ein Toast wäre eine Doppelmeldung.
+		if (feedback.done && feedback.toast && feedback.toast !== feedback.message) {
+			toast.error(feedback.toast);
+		}
 		if (feedback.done) setCompleteConfirmId(null);
 		if (feedback.reload) void load(false);
 		endPending(chore.id);
 	}
 
+	/** Abbrechen räumt auch den Fehler weg, der sonst nach dem Schließen als Seitenbanner stehen bliebe. */
+	function cancelComplete(): void {
+		setActionError(null);
+		setCompleteConfirmId(null);
+	}
+
 	async function handleSwapRequest(chore: Chore): Promise<void> {
 		const pendingKey = `${chore.id}:swap`;
-		if (isPending(pendingKey) || isStillQueued(chore)) return;
+		if (isPending(pendingKey) || swapRequestedIds.has(chore.id) || isStillQueued(chore)) return;
 
 		startPending(pendingKey);
 		setActionError(null);
@@ -171,7 +194,8 @@ export function useChoreActions(ctx: ChorePageContext) {
 		if (!result.ok) {
 			setActionError(choreActionErrorMessage('Tauschanfrage konnte nicht gepostet werden', result));
 		} else {
-			setActionNotice('Tauschanfrage wurde auf der Pinnwand gepostet.');
+			setSwapRequestedIds((current) => new Set(current).add(chore.id));
+			toast.success('Tauschanfrage wurde auf der Pinnwand gepostet.');
 		}
 
 		endPending(pendingKey);
@@ -212,7 +236,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 					item.id === chore.id ? { ...item, assignedMemberId: memberId } : item,
 				),
 			);
-			setActionNotice(notice);
+			toast.success(notice);
 			void load(false);
 		}
 
@@ -262,7 +286,9 @@ export function useChoreActions(ctx: ChorePageContext) {
 					void load(false);
 				}
 			} else {
+				const removedTitle = items.find((item) => item.id === id)?.title;
 				updateChores((current) => current.filter((item) => item.id !== id));
+				toast.success(removedTitle ? `„${removedTitle}“ entfernt.` : 'Aufgabe entfernt.');
 				void load(false);
 			}
 		} finally {
@@ -272,9 +298,10 @@ export function useChoreActions(ctx: ChorePageContext) {
 
 	return {
 		completeConfirmId,
-		setCompleteConfirmId,
+		cancelComplete,
 		handleComplete,
 		handleSwapRequest,
+		swapRequestedIds,
 		handleTakeOver,
 		handleRemove,
 	};

@@ -35,6 +35,7 @@ interface ChoreRowProps {
 	isAdmin: boolean;
 	isPending: boolean;
 	isSwapPending: boolean;
+	isSwapRequested: boolean;
 	isTakePending: boolean;
 	isCompleteArmed: boolean;
 	completeError: string | null;
@@ -46,6 +47,14 @@ interface ChoreRowProps {
 	onRemove: (id: string) => void;
 	highlighted: boolean;
 }
+
+/** Zweistellig wie im Formular („06.10.2026“), nicht „6.10.2026“. */
+const DUE_DATE_FORMAT = new Intl.DateTimeFormat('de-DE', {
+	day: '2-digit',
+	month: '2-digit',
+	year: 'numeric',
+	timeZone: 'Europe/Berlin',
+});
 
 function formatChoreCadence(interval: number, type: RecurrenceType): string {
 	if (interval <= 0) return 'einmalig';
@@ -69,6 +78,7 @@ export const ChoreRow = memo(function ChoreRow({
 	isAdmin,
 	isPending,
 	isSwapPending,
+	isSwapRequested,
 	isTakePending,
 	isCompleteArmed,
 	completeError,
@@ -87,14 +97,15 @@ export const ChoreRow = memo(function ChoreRow({
 	const needsTakeOver = !isMine && getChoreRepairHint(chore) !== null;
 	const cadence = formatChoreCadence(chore.intervalDays, chore.recurrenceType);
 	const busy = isPending || isTakePending || isSwapPending;
+	const dueDate = parseValidDate(chore.nextDueAt);
 
 	return (
 		<Item
 			id={`chore-${chore.id}`}
 			render={<li />}
 			className={cn(
-				'scroll-mt-24 rounded-none py-2 pr-1.5 [contain-intrinsic-size:auto_4.5rem] [content-visibility:auto]',
-				highlighted && 'ring-2 ring-inset ring-ring',
+				'scroll-mt-24 rounded-none py-2 pr-1.5 transition-colors duration-700 [contain-intrinsic-size:auto_4.5rem] [content-visibility:auto]',
+				highlighted && 'bg-primary/10',
 			)}
 			aria-busy={busy}
 		>
@@ -176,10 +187,7 @@ export const ChoreRow = memo(function ChoreRow({
 								<dd>{isMine ? 'du' : assignee.name}</dd>
 								<dt className="text-muted-foreground">Fällig</dt>
 								<dd>
-									{parseValidDate(chore.nextDueAt)?.toLocaleDateString('de-DE', {
-										timeZone: 'Europe/Berlin',
-									}) ?? 'unbekannt'}{' '}
-									({status.label})
+									{dueDate ? DUE_DATE_FORMAT.format(dueDate) : 'unbekannt'} ({status.label})
 								</dd>
 								<dt className="text-muted-foreground">Rhythmus</dt>
 								<dd>{cadence}</dd>
@@ -198,7 +206,7 @@ export const ChoreRow = memo(function ChoreRow({
 							{!isMine && (
 								<Button
 									variant="outline"
-									className="min-h-11 shrink-0"
+									className="min-h-11 shrink-0 py-2"
 									disabled={busy}
 									onClick={() => {
 										setActionsOpen(false);
@@ -211,16 +219,16 @@ export const ChoreRow = memo(function ChoreRow({
 							)}
 							<Button
 								variant="outline"
-								className="min-h-11 shrink-0"
-								disabled={busy}
-								aria-label={`Tausch auf der Pinnwand anfragen: ${chore.title}`}
+								className="min-h-11 shrink-0 py-2"
+								disabled={busy || isSwapRequested}
+								aria-label={`${isSwapRequested ? 'Tausch angefragt' : 'Tausch auf der Pinnwand anfragen'}: ${chore.title}`}
 								onClick={() => {
 									setActionsOpen(false);
 									onSwapRequest(chore);
 								}}
 							>
 								<MessageSquareMore data-icon="inline-start" aria-hidden />
-								Tausch auf der Pinnwand anfragen
+								{isSwapRequested ? 'Tausch angefragt' : 'Tausch auf der Pinnwand anfragen'}
 							</Button>
 							{isAdmin && (
 								<>
@@ -233,7 +241,7 @@ export const ChoreRow = memo(function ChoreRow({
 									)}
 									<Button
 										variant="destructive"
-										className="min-h-11 shrink-0"
+										className="min-h-11 shrink-0 py-2"
 										disabled={busy}
 										aria-label={`${removeConfirm.confirmId === chore.id ? 'Endgültig entfernen' : 'Aufgabe entfernen'}: ${chore.title}`}
 										onClick={() => {
@@ -252,7 +260,7 @@ export const ChoreRow = memo(function ChoreRow({
 							)}
 						</div>
 						<DrawerFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
-							<DrawerClose render={<Button variant="outline" className="min-h-11" />}>
+							<DrawerClose render={<Button variant="outline" className="min-h-11 py-2" />}>
 								Schließen
 							</DrawerClose>
 						</DrawerFooter>

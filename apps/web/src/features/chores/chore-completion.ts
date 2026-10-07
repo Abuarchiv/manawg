@@ -149,10 +149,13 @@ function choreCompletedMessage(
 	if (!next) {
 		return `${title} erledigt. Der bestätigte nächste Termin und die Zuständigkeit werden geladen.`;
 	}
-	const assignee = nextAssigneeName
-		? `${nextAssigneeName} ist dran (Rotation).`
-		: 'noch niemand zugewiesen.';
-	return `${title} erledigt. Nächster Termin: ${formatShortDate(next.nextDueAt, 'Europe/Berlin')}; ${assignee}`;
+	const date = formatShortDate(next.nextDueAt, 'Europe/Berlin');
+	if (!nextAssigneeName) {
+		return `${title} erledigt. Nächster Termin: ${date}, noch niemand zugewiesen.`;
+	}
+	// "du" is the own member (callers map it), the dialog before says "Danach bist du dran".
+	const verb = nextAssigneeName === 'du' ? 'bist' : 'ist';
+	return `${title} erledigt. Als Nächstes ${verb} ${nextAssigneeName} am ${date} dran.`;
 }
 
 /** What the member sees for an outcome; the start page and the cleaning plan share it. */

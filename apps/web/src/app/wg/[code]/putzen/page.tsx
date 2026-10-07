@@ -37,7 +37,9 @@ export default function PutzenPage() {
 	const {
 		absenceAddPending,
 		absenceEnd,
+		absenceError,
 		absenceId,
+		absenceListError,
 		absenceMemberId,
 		absenceReason,
 		absenceStart,
@@ -51,11 +53,13 @@ export default function PutzenPage() {
 		addAbsence,
 		applyChoreSuggestion,
 		applyQuickChore,
+		cancelComplete,
 		choreAddPending,
 		choreGroups,
 		completeConfirmId,
 		confirmSuggestion,
 		fairness,
+		flashAbsenceId,
 		handleAssignedMemberIdChange,
 		handleComplete,
 		handleIntervalPresetSelect,
@@ -87,12 +91,12 @@ export default function PutzenPage() {
 		setAbsenceMemberId,
 		setAbsenceReason,
 		setAbsenceStart,
-		setCompleteConfirmId,
 		setConfirmSuggestion,
 		setNewTitle,
 		setShowForm,
 		showForm,
 		showSkeleton,
+		swapRequestedIds,
 		titleInputRef,
 		visibleAbsences,
 	} = usePutzenPage();
@@ -139,7 +143,7 @@ export default function PutzenPage() {
 								variant="outline"
 								onClick={() => setConfirmSuggestion(true)}
 								disabled={choreAddPending}
-								className="h-auto whitespace-normal"
+								className="h-auto whitespace-normal text-foreground"
 							>
 								Entwurf verwerfen und „{pendingSuggestion.title}“ übernehmen
 							</Button>
@@ -161,7 +165,7 @@ export default function PutzenPage() {
 				)}
 			</ChoreForm>
 			{actionErrorVisible && (
-				<Alert variant="destructive" id="chore-action-error">
+				<Alert variant="destructive" id="chore-action-error" className="scroll-mt-24">
 					<AlertDescription>{actionError}</AlertDescription>
 				</Alert>
 			)}
@@ -239,11 +243,12 @@ export default function PutzenPage() {
 										isMine={chore.assignedMemberId === identity.memberId}
 										isPending={isPending(chore.id)}
 										isSwapPending={isPending(`${chore.id}:swap`)}
+										isSwapRequested={swapRequestedIds.has(chore.id)}
 										isTakePending={isPending(`${chore.id}:take`)}
 										isCompleteArmed={completeConfirmId === chore.id}
 										completeError={actionError}
 										nextAssigneeName={nextAssigneeNameByChoreId.get(chore.id) ?? null}
-										onCancelComplete={() => setCompleteConfirmId(null)}
+										onCancelComplete={cancelComplete}
 										onComplete={handleComplete}
 										onSwapRequest={handleSwapRequest}
 										onTakeOver={handleTakeOver}
@@ -287,8 +292,11 @@ export default function PutzenPage() {
 					allAbsencesHref={`${wgBaseHref}/putzen?panel=absences`}
 					visibleAbsences={visibleAbsences}
 					highlightedAbsenceId={absenceId}
+					flashedAbsenceId={flashAbsenceId}
 					onRemove={(id) => void removeAbsence(id)}
 					isPending={isPending}
+					error={absenceError}
+					listError={absenceListError}
 				/>
 			)}
 			<ThumbAction>

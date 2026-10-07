@@ -20,7 +20,6 @@ import {
 	INTERVAL_PRESETS_MONTHS,
 	TITLE_MAX,
 } from '@/features/chores/components/constants';
-import { Plus } from 'lucide-react';
 import type React from 'react';
 
 interface ChoreFormProps {
@@ -160,26 +159,32 @@ export function ChoreForm({
 								</NativeSelect>
 							</Field>
 						</FieldGroup>
-						{error && (
+					</div>
+					{/* Außerhalb des Scrollbereichs, damit der Fehler nach dem Absenden immer im Bild steht. */}
+					{error && (
+						<div className="max-h-[35dvh] shrink-0 overflow-y-auto px-4 pb-3">
 							<Alert variant="destructive">
 								<AlertDescription>{error}</AlertDescription>
 							</Alert>
-						)}
-					</div>
-					<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+						</div>
+					)}
+					<DrawerFooter className="flex-row flex-wrap border-t pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
 						<Button
 							type="submit"
 							disabled={!title.trim() || pending}
-							aria-label="Aufgabe hinzufügen"
+							aria-label="Aufgabe speichern"
+							className="flex-1"
 						>
-							{pending ? (
-								<Spinner data-icon="inline-start" aria-hidden />
-							) : (
-								<Plus data-icon="inline-start" aria-hidden />
-							)}
-							{pending ? 'Speichert…' : 'Hinzufügen'}
+							{pending && <Spinner data-icon="inline-start" aria-hidden />}
+							{pending ? 'Speichert…' : 'Speichern'}
 						</Button>
-						<Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={onClose}
+							disabled={pending}
+							className="flex-1"
+						>
 							Abbrechen
 						</Button>
 					</DrawerFooter>
