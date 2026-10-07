@@ -28,7 +28,7 @@ import { useShoppingPage } from '@/features/shopping/hooks/use-shopping-page';
 import { splitShoppingItems } from '@/features/shopping/shopping-view';
 import { ListChecks } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 const NO_INVENTORY: InventoryItemDto[] = [];
 const RECENTLY_BOUGHT_MS = 24 * 60 * 60 * 1000;
@@ -50,6 +50,11 @@ export default function EinkaufPage() {
 	const shopping = useShoppingPage({ wg, identity, prefillName, highlightedId, refreshInventory });
 	const { items, initialLoading, loadError, add } = shopping;
 	const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+	const headingRef = useRef<HTMLHeadingElement>(null);
+	// Zeile oder Erledigt-Block verschwinden samt Fokus: er bleibt auf der Seite statt auf BODY zu fallen.
+	const keepFocus = (ok: boolean): void => {
+		if (ok) requestAnimationFrame(() => headingRef.current?.focus());
+	};
 
 	// Direkt abgeleitet statt per Effect gespiegelt: sonst rendert ein Frame mit
 	// leerem Vorrat und die Vorschläge springen.
@@ -88,7 +93,9 @@ export default function EinkaufPage() {
 	});
 	// Vorschläge und Liste erscheinen gemeinsam, sobald Liste und Vorrat da sind: sonst
 	// tauschen die Gruppen nach dem Laden und schieben die Liste nach unten (Layout Shift).
-	const suggestionsPending = initialLoading || inventoryLoading;
+	// Ohne Liste (Ladefehler) kennen wir die offenen Artikel nicht und bieten nichts zum Hinzufügen an.
+	const listUnknown = Boolean(loadError) && items.length === 0;
+	const suggestionsPending = initialLoading || inventoryLoading || listUnknown;
 	const suggestionGroups = [
 		{ label: 'Bald leer', names: lowStock.slice(0, 4) },
 		frequent.length > 0
@@ -109,7 +116,9 @@ export default function EinkaufPage() {
 			<SubNav liveCount={!initialLoading && !loadError ? open.length : undefined} />
 			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
 			<header className="sr-only">
-				<h1>Einkäufe</h1>
+				<h1 ref={headingRef} tabIndex={-1}>
+					Einkäufe
+				</h1>
 				<p
 					className="mt-0.5 text-[12px] text-muted-foreground tabular-nums"
 					aria-live="polite"
@@ -142,16 +151,7 @@ export default function EinkaufPage() {
 			)}
 			{inventoryLoading || (initialLoading && items.length === 0) ? (
 				<ListSkeleton withSuggestions />
-			) : loadError && items.length === 0 ? (
-				<Empty>
-					<EmptyHeader>
-						<EmptyTitle>Noch keine Artikel geladen</EmptyTitle>
-						<EmptyDescription>
-							Versuche es erneut, sobald die Verbindung wieder da ist.
-						</EmptyDescription>
-					</EmptyHeader>
-				</Empty>
-			) : items.length === 0 ? (
+			) : listUnknown ? null : items.length === 0 ? (
 				<Empty>
 					<EmptyHeader>
 						<EmptyMedia variant="icon">
@@ -177,7 +177,7 @@ export default function EinkaufPage() {
 					onDoneOpenChange={shopping.setDoneOpen}
 					isPending={shopping.isPending}
 					onToggle={shopping.toggleBought}
-					onRemove={shopping.remove}
+					onRemove={(id, name) => shopping.remove(id, name).then(keepFocus)}
 					removeError={shopping.removeError}
 					removeErrorId={shopping.removeErrorId}
 					isAdmin={isAdmin}
@@ -206,7 +206,7 @@ export default function EinkaufPage() {
 					onOpenChange={setClearConfirmOpen}
 					doneCount={done.length}
 					clearing={shopping.clearingBought}
-					onConfirm={() => void shopping.clearBought()}
+					onConfirm={() => void shopping.clearBought().then(keepFocus)}
 				/>
 			)}
 		</div>

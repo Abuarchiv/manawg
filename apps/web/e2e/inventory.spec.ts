@@ -421,7 +421,7 @@ test.describe('inventory restock retry', () => {
 
 		try {
 			await page.getByRole('button', { name: 'Reis um eins erhöhen' }).click();
-			await expect(page.getByText('6 Packung · Nachkaufen ab 1')).toBeVisible();
+			await expect(page.getByText('6 Packungen · Nachkaufen ab 1')).toBeVisible();
 
 			await page.getByRole('button', { name: 'Vorrat hinzufügen' }).click();
 			await page.locator('#inventory-name').fill('Seife');
@@ -450,7 +450,7 @@ test.describe('inventory restock retry', () => {
 
 			await expect(page.getByRole('button', { name: 'Seife um eins erhöhen' })).toBeVisible();
 			await expect(page.getByRole('button', { name: 'Reis um eins erhöhen' })).toBeVisible();
-			await expect(page.getByText('6 Packung · Nachkaufen ab 1')).toBeVisible();
+			await expect(page.getByText('6 Packungen · Nachkaufen ab 1')).toBeVisible();
 			await expect(page.getByRole('button', { name: 'Milch um eins erhöhen' })).toHaveCount(0);
 
 			await page.getByRole('button', { name: 'Schnell nachfüllen' }).click();

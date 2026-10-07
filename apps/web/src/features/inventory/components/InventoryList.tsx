@@ -2,7 +2,13 @@
 
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
 import { ItemGroup } from '@/components/ui/item';
 import { InventoryAddModal } from '@/features/inventory/components/InventoryAddModal';
 import { InventoryItemRow } from '@/features/inventory/components/InventoryItemRow';
@@ -91,6 +97,9 @@ export function InventoryList({
 							<Package aria-hidden />
 						</EmptyMedia>
 						<EmptyTitle>Noch keine Vorräte erfasst</EmptyTitle>
+						<EmptyDescription>
+							Fällt ein Vorrat unter seine Grenze, landet er automatisch auf der Einkaufsliste.
+						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (

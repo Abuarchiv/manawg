@@ -10,7 +10,11 @@ import {
 	notificationWarningMessage,
 } from '@/core/notifications/notification-warning';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import type { InventoryItemDto, InventoryMutationItemDto } from '@/features/inventory/inventory';
+import {
+	type InventoryItemDto,
+	type InventoryMutationItemDto,
+	formatQuantity,
+} from '@/features/inventory/inventory';
 import { Minus, Pencil, Plus, Trash2 } from 'lucide-react';
 import { memo, useRef, useState } from 'react';
 
@@ -21,6 +25,9 @@ interface InventoryItemRowProps {
 	onChanged: (item?: InventoryMutationItemDto, deletedId?: string) => void;
 	onEdit: (item: InventoryItemDto) => void;
 }
+
+// Während einer Anfrage bleibt der Fokus auf dem Knopf (aria-disabled statt disabled).
+const BUSY_CLASS = 'aria-disabled:pointer-events-none aria-disabled:opacity-50';
 
 type PendingAction = 'decrement' | 'increment' | 'delete';
 type ConsumeResponse = {
@@ -41,6 +48,9 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	const [error, setError] = useState<string | null>(null);
 	// Hide a deleted row right away; until the refetch lands it would stay tappable.
 	const [removed, setRemoved] = useState(false);
+	const rowRef = useRef<HTMLDivElement>(null);
+	const trashRef = useRef<HTMLButtonElement>(null);
+	const cancelRef = useRef<HTMLButtonElement>(null);
 	const consumeIdempotencyKeyRef = useRef<string | null>(null);
 	const restockIdempotencyKeyRef = useRef<string | null>(null);
 	// Optimistisch: der Bestand ändert sich sofort beim Tippen; Erfolg ersetzt ihn durch den Serverwert,
@@ -138,6 +148,15 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 		}
 	}
 
+	// Die Zeile verschwindet: der Fokus geht an die Nachbarzeile statt auf BODY.
+	function focusNeighborRow(): void {
+		const rows = [...document.querySelectorAll<HTMLElement>('[data-inventory-row]')];
+		const index = rows.findIndex((row) => row === rowRef.current);
+		const neighbor = rows[index + 1] ?? rows[index - 1];
+		const target = neighbor?.querySelector<HTMLElement>('button') ?? document.querySelector('h1');
+		requestAnimationFrame(() => target?.focus());
+	}
+
 	async function remove(): Promise<void> {
 		if (pending) return;
 		setPendingAction('delete');
@@ -148,6 +167,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				{ method: 'DELETE', memberId },
 			);
 			if (res.ok) {
+				focusNeighborRow();
 				setRemoved(true);
 				onChanged(undefined, item.id);
 			} else if (!dropIfGone(res)) {
@@ -160,24 +180,40 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 
 	function handleDelete(): void {
 		if (pending) return;
-		if (!deleteConfirm.request(item.id)) return;
+		if (!deleteConfirm.request(item.id)) {
+			// Der Papierkorb wird ausgetauscht: der Fokus wandert auf die sichere Wahl.
+			requestAnimationFrame(() => cancelRef.current?.focus());
+			return;
+		}
 		deleteConfirm.cancel();
 		void remove();
+	}
+
+	function handleCancel(): void {
+		if (pending) return;
+		deleteConfirm.cancel();
+		requestAnimationFrame(() => trashRef.current?.focus());
 	}
 
 	if (removed) return null;
 
 	return (
 		<Item className="flex-col items-stretch gap-2" aria-busy={pending}>
-			<div className="flex w-full min-w-0 flex-wrap items-center gap-2">
-				<ItemContent className="min-w-0 flex-[1_1_9rem]">
+			<div
+				ref={rowRef}
+				data-inventory-row
+				className="flex w-full min-w-0 flex-wrap items-center gap-2"
+			>
+				{/* Im Bestätigungsmodus weniger Basisbreite, damit Entfernen/Abbrechen in der Zeile
+				    bleiben und die Liste darunter nicht springt. */}
+				<ItemContent className={armed ? 'min-w-0 flex-[1_1_7rem]' : 'min-w-0 flex-[1_1_9rem]'}>
 					<ItemTitle className="w-full min-w-0 gap-2 line-clamp-none">
 						<span className="min-w-0 flex-1 break-words" title={item.name}>
 							{item.name}
 						</span>
 					</ItemTitle>
 					<ItemDescription className="line-clamp-none tabular-nums">
-						{quantity} {item.unit} · Nachkaufen ab{'\u00a0'}
+						{formatQuantity(quantity, item.unit)} · Nachkaufen{'\u00a0'}ab{'\u00a0'}
 						{item.threshold}
 					</ItemDescription>
 				</ItemContent>
@@ -191,6 +227,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 								size="icon"
 								onClick={() => void changeQuantity(-1)}
 								disabled={pending || quantity === 0}
+								focusableWhenDisabled
+								className={BUSY_CLASS}
 								aria-busy={pendingAction === 'decrement'}
 								aria-label={
 									quantity === 0
@@ -206,6 +244,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 								size="icon"
 								onClick={() => void changeQuantity(1)}
 								disabled={pending}
+								focusableWhenDisabled
+								className={BUSY_CLASS}
 								aria-busy={pendingAction === 'increment'}
 								aria-label={`${item.name} um eins erhöhen`}
 							>
@@ -232,19 +272,23 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 								size="sm"
 								onClick={handleDelete}
 								disabled={pending}
+								focusableWhenDisabled
 								aria-busy={pendingAction === 'delete'}
 								aria-label={`Endgültig entfernen: ${item.name}`}
-								className="px-3.5"
+								className={`px-3.5 ${BUSY_CLASS}`}
 							>
-								{pendingAction === 'delete' ? <Spinner aria-hidden /> : <Trash2 aria-hidden />}
+								{pendingAction === 'delete' && <Spinner aria-hidden />}
 								Entfernen
 							</Button>
 							<Button
 								type="button"
 								variant="outline"
 								size="sm"
-								onClick={() => deleteConfirm.cancel()}
+								ref={cancelRef}
+								onClick={handleCancel}
 								disabled={pending}
+								focusableWhenDisabled
+								className={BUSY_CLASS}
 								aria-label={`Abbrechen: Löschen von ${item.name}`}
 							>
 								Abbrechen
@@ -255,10 +299,12 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 							type="button"
 							variant="ghost"
 							size="icon"
+							ref={trashRef}
 							onClick={handleDelete}
 							disabled={pending}
+							focusableWhenDisabled
 							aria-label={`${item.name} entfernen`}
-							className="text-muted-foreground hover:text-destructive active:text-destructive"
+							className={`text-muted-foreground hover:text-destructive active:text-destructive ${BUSY_CLASS}`}
 						>
 							<Trash2 aria-hidden />
 						</Button>

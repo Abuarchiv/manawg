@@ -3,7 +3,6 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Item, ItemContent, ItemGroup } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
@@ -25,7 +24,7 @@ export default function VorraetePage() {
 			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
 			<header className="sr-only">
 				<div className="min-w-0 flex-1">
-					<h1>Vorräte</h1>
+					<h1 tabIndex={-1}>Vorräte</h1>
 					<p
 						className="mt-0.5 text-[12px] text-muted-foreground tabular-nums"
 						aria-live="polite"
@@ -76,16 +75,7 @@ export default function VorraetePage() {
 						</ItemGroup>
 					</CardContent>
 				</Card>
-			) : loadError && items.length === 0 ? (
-				<Empty className="border border-dashed">
-					<EmptyHeader>
-						<EmptyTitle>Noch keine Vorräte geladen</EmptyTitle>
-						<EmptyDescription>
-							Versuche es erneut, sobald die Verbindung wieder da ist.
-						</EmptyDescription>
-					</EmptyHeader>
-				</Empty>
-			) : (
+			) : loadError && items.length === 0 ? null : (
 				<InventoryList
 					items={items}
 					shareCode={wg.shareCode}

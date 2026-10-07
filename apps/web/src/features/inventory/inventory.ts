@@ -72,6 +72,13 @@ interface ShoppingPushPayload {
 	note: string;
 }
 
+const UNIT_PLURALS: Partial<Record<string, string>> = { Rolle: 'Rollen', Packung: 'Packungen' };
+
+/** "2 Rollen", "1 Rolle": Stück, L and kg stay as they are. */
+export function formatQuantity(quantity: number, unit: string): string {
+	return `${quantity} ${quantity === 1 ? unit : (UNIT_PLURALS[unit] ?? unit)}`;
+}
+
 export function buildShoppingPushPayload(
 	item: Pick<InventoryItemForThresholdCheck, 'quantity' | 'threshold'> & {
 		name: string;
@@ -81,7 +88,7 @@ export function buildShoppingPushPayload(
 	const missing = Math.max(0, item.threshold - item.quantity) + 1;
 	return {
 		name: item.name,
-		quantity: `${missing} ${item.unit}`,
+		quantity: formatQuantity(missing, item.unit),
 		note: 'Auto: Vorrat unter Schwelle',
 	};
 }

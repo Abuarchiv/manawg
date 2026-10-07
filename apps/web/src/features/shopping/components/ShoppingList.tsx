@@ -24,7 +24,7 @@ interface ShoppingListProps {
 	onDoneOpenChange: (open: boolean) => void;
 	isPending: (id: string) => boolean;
 	onToggle: (item: ShoppingItem) => Promise<void>;
-	onRemove: (id: string, itemName: string) => Promise<void>;
+	onRemove: (id: string, itemName: string) => Promise<unknown>;
 	removeError: string | null;
 	removeErrorId: string | null;
 	isAdmin: boolean;

@@ -29,7 +29,7 @@ import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
 import { Check, MoreHorizontal, Receipt, RotateCcw, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { memo, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
 // Ab dieser Wischstrecke nach rechts gilt der Artikel als abgehakt (bzw. wieder offen).
 const SWIPE_TOGGLE_PX = 72;
@@ -73,7 +73,13 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 		: null;
 	const adderName = item.addedByMemberId === identity.memberId ? 'dir' : adder.name;
 	const swipeStartX = useRef<number | null>(null);
+	const confirmAlertRef = useRef<HTMLDivElement>(null);
 	const [swipeX, setSwipeX] = useState(0);
+
+	// Bei großer Schrift schiebt der Hinweis den Bereich über die Schließen-Leiste: in den Blick holen.
+	useEffect(() => {
+		if (isDeleteArmed) confirmAlertRef.current?.scrollIntoView({ block: 'nearest' });
+	}, [isDeleteArmed]);
 
 	function endSwipe(): void {
 		if (swipeStartX.current !== null && swipeX >= SWIPE_TOGGLE_PX && !pending && !queued) {
@@ -217,7 +223,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 									</>
 								)}
 								{canRemove && isDeleteArmed && (
-									<Alert>
+									<Alert ref={confirmAlertRef}>
 										<AlertDescription>
 											„{item.name}“ endgültig entfernen? Das lässt sich nicht rückgängig machen.
 										</AlertDescription>
