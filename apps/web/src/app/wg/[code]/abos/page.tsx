@@ -22,7 +22,9 @@ import { ThumbAction } from '@/components/wg/ThumbAction';
 import { formatEuroCents } from '@/core/utils/money';
 import { AboCreateModal } from '@/features/expenses/components/abos/AboCreateModal';
 import { AboEditModal } from '@/features/expenses/components/abos/AboEditModal';
+import { AboModalOpenContext } from '@/features/expenses/components/abos/AboModalShell';
 import { AbosList } from '@/features/expenses/components/abos/AbosList';
+import type { Abo } from '@/features/expenses/components/abos/abos-types';
 import { useAbosPage } from '@/features/expenses/hooks/use-abos-page';
 import { cn } from '@/shared/lib/cn';
 import { Plus } from 'lucide-react';
@@ -59,6 +61,8 @@ export default function AbosPage() {
 	} = useAbosPage();
 	const listRef = useRef<HTMLElement>(null);
 	const deletedRef = useRef(false);
+	const lastEditingRef = useRef<Abo | null>(null);
+	if (editing) lastEditingRef.current = editing;
 
 	return (
 		<div
@@ -144,7 +148,7 @@ export default function AbosPage() {
 					onDelete={setDeleteCandidate}
 				/>
 			)}
-			{showCreate && (
+			<AboModalOpenContext.Provider value={showCreate}>
 				<AboCreateModal
 					members={memberOptions}
 					defaultPaidByMemberId={identity.memberId}
@@ -156,19 +160,22 @@ export default function AbosPage() {
 					}}
 					onSubmit={(values) => void handleCreate(values)}
 				/>
-			)}
-			{editing && (
-				<AboEditModal
-					abo={editing}
-					members={memberOptions}
-					submitting={submitting}
-					saveError={notice?.tone === 'error' ? notice.message : null}
-					onClose={() => {
-						setEditing(null);
-						setNotice(null);
-					}}
-					onSubmit={(values) => void handleEdit(values)}
-				/>
+			</AboModalOpenContext.Provider>
+			{/* Bleibt nach dem Schließen mit dem letzten Eintrag eingehängt, bis die Animation durch ist. */}
+			{lastEditingRef.current && (
+				<AboModalOpenContext.Provider value={editing !== null}>
+					<AboEditModal
+						abo={lastEditingRef.current}
+						members={memberOptions}
+						submitting={submitting}
+						saveError={notice?.tone === 'error' ? notice.message : null}
+						onClose={() => {
+							setEditing(null);
+							setNotice(null);
+						}}
+						onSubmit={(values) => void handleEdit(values)}
+					/>
+				</AboModalOpenContext.Provider>
 			)}
 			<AlertDialog
 				open={deleteCandidate !== null}

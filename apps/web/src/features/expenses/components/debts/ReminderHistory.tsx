@@ -57,7 +57,8 @@ export function ReminderHistory({ items, memberName, currentMemberId }: Reminder
 	return (
 		<ItemGroup>
 			{items.map((item) => (
-				<Item key={item.id} variant="outline" size="sm">
+				// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist ein div mit role="list", die Kinder brauchen role="listitem"
+				<Item key={item.id} role="listitem" variant="outline" size="sm">
 					<ItemContent className="min-w-0">
 						<ItemTitle className="line-clamp-none break-words">
 							{item.debtorMemberId === currentMemberId
