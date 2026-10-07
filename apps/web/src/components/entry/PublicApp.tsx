@@ -29,6 +29,7 @@ import {
 	ChevronRight,
 	Clock3,
 	ListChecks,
+	LogOut,
 	Megaphone,
 	MessageCircle,
 	Package,
@@ -160,6 +161,8 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	const [retried, setRetried] = useState(false);
 	// Client-only: set once a session cookie exists, so guests never see a skeleton flash.
 	const [sessionPending, setSessionPending] = useState(false);
+	const [signingOut, setSigningOut] = useState(false);
+	const [signOutError, setSignOutError] = useState(false);
 	const module = moduleFor(activeModule);
 	const rawCode = (searchParams.get('code') ?? '').trim();
 	const inviteCode = useMemo(() => {
@@ -230,6 +233,23 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 			});
 		return () => controller.abort();
 	}, [retryNonce]);
+
+	// Wrong Google account on a WG-less home: end the session instead of forcing deletion.
+	async function signOut(): Promise<void> {
+		if (signingOut) return;
+		setSigningOut(true);
+		setSignOutError(false);
+		try {
+			const { signOutSocialAccount } = await import('@/core/auth/client');
+			await signOutSocialAccount();
+			setMemberships([]);
+			setMembershipState('signed-out');
+		} catch {
+			setSignOutError(true);
+		} finally {
+			setSigningOut(false);
+		}
+	}
 
 	useEffect(() => {
 		if (module || inviteCode || membershipState !== 'member-list' || memberships.length !== 1)
@@ -382,9 +402,30 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							</Button>
 						</div>
 					)}
-					{/* Signed-in users without a WG never reach WG settings, so offer deletion here. */}
+					{/* Signed-in users without a WG never reach WG settings, so offer sign-out and deletion here. */}
 					{membershipState === 'authenticated-empty' && (
-						<div className="mt-4">
+						<div className="mt-4 flex flex-col gap-4">
+							<div className="flex flex-col gap-2">
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => void signOut()}
+									disabled={signingOut}
+									className="w-full"
+								>
+									{signingOut ? (
+										<Spinner data-icon="inline-start" aria-hidden />
+									) : (
+										<LogOut aria-hidden />
+									)}
+									{signingOut ? 'Meldet ab …' : 'Mit anderem Konto anmelden'}
+								</Button>
+								{signOutError && (
+									<ErrorBox>
+										Konto konnte nicht abgemeldet werden. Bitte versuche es erneut.
+									</ErrorBox>
+								)}
+							</div>
 							<AccountDeleteSection />
 						</div>
 					)}
