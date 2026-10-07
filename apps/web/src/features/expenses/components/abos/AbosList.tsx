@@ -11,6 +11,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { AboRow } from '@/features/expenses/components/abos/AboRow';
 import type { Abo, AboFilter, MemberOption } from '@/features/expenses/components/abos/abos-types';
 import { RefreshCw } from 'lucide-react';
+import type { Ref } from 'react';
 
 interface AbosListProps {
 	abos: Abo[];
@@ -18,6 +19,8 @@ interface AbosListProps {
 	filter: AboFilter;
 	pendingId: string | null;
 	loadError?: string | null;
+	/** Fokusziel nach dem Löschen einer Zeile; der Container bleibt auch bei leerer Liste gerendert. */
+	listRef?: Ref<HTMLElement>;
 	onFilterChange: (next: AboFilter) => void;
 	onEdit: (abo: Abo) => void;
 	onTogglePause: (abo: Abo) => void;
@@ -42,6 +45,7 @@ export function AbosList({
 	filter,
 	pendingId,
 	loadError,
+	listRef,
 	onFilterChange,
 	onEdit,
 	onTogglePause,
@@ -52,7 +56,7 @@ export function AbosList({
 	const filtered = applyFilter(abos, showFilter ? filter : 'all');
 
 	return (
-		<section className="flex flex-col gap-4">
+		<section ref={listRef} tabIndex={-1} className="flex flex-col gap-4 outline-none">
 			{showFilter && (
 				<ToggleGroup
 					variant="segmented"

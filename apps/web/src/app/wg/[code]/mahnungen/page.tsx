@@ -104,6 +104,7 @@ export default function ErinnerungenPage() {
 				primary={primary}
 				size={primary ? 'md' : 'sm'}
 				label={primary ? primaryLabel : 'Erinnern'}
+				debtorName={debtorName}
 			/>
 		);
 	}

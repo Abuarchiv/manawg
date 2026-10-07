@@ -31,6 +31,8 @@ interface RemindButtonProps {
 	size?: 'sm' | 'md';
 	primary?: boolean;
 	label?: string;
+	/** Für die Bestätigung: „Erinnerung an Jona gesendet“. */
+	debtorName?: string;
 }
 
 function errorMessage(error: string): string {
@@ -70,6 +72,7 @@ export function RemindButton({
 	size = 'md',
 	primary = false,
 	label: idleLabel = 'Erinnern',
+	debtorName,
 }: RemindButtonProps) {
 	const toast = useToast();
 	const [status, setStatus] = useState<RemindButtonStatus>(
@@ -130,7 +133,12 @@ export function RemindButton({
 			if (res.ok) {
 				requestKeyRef.current = null;
 				setStatus('sent');
-				setFeedback(successMessage(res.data.warning));
+				// Der primäre Button wechselt sofort zur nächsten Person (Remount): nur ein Toast überlebt das.
+				toast.success(
+					res.data.warning || !debtorName
+						? successMessage(res.data.warning)
+						: `Erinnerung an ${debtorName} gesendet.`,
+				);
 				onSent?.(res.data.reminder.id);
 				return;
 			}
@@ -188,12 +196,15 @@ export function RemindButton({
 				)}
 				{label}
 			</Button>
-			{feedback && !(status === 'sent' && feedback === successMessage(null)) && (
+			{/* Fehler und Hinweise stehen schon im Toast; inline nur beim primären Button, nie doppelt in einer Zeile. */}
+			{primary && feedback && status !== 'sent' && (
 				<Alert
 					role={status === 'error' ? 'alert' : 'status'}
 					variant={status === 'error' ? 'destructive' : 'default'}
 				>
-					<AlertDescription>{feedback}</AlertDescription>
+					<AlertDescription className="whitespace-normal [overflow-wrap:break-word]">
+						{feedback}
+					</AlertDescription>
 				</Alert>
 			)}
 		</div>

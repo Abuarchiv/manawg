@@ -122,6 +122,12 @@ export function useAbosPage() {
 	useVisibilityPausedInterval(() => void load(false), 30_000);
 
 	function setNoticeMessage(tone: ActionNoticeTone, message: string): void {
+		// Erfolg als Toast: verschwindet von selbst, schiebt nichts und ist auch weit unten in der Liste sichtbar.
+		if (tone === 'success') {
+			setNotice(null);
+			toast.success(message);
+			return;
+		}
 		setNotice({ tone, message });
 	}
 
