@@ -8,6 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import type { Ref } from 'react';
 import { ImportMemberMapping } from './ImportMemberMapping';
 import { ImportPreviewTable } from './ImportPreviewTable';
+import { ImportRunningBar } from './ImportProgress';
 import { ImportStepHeading } from './ImportStepHeading';
 import type { ImportWizardState } from './use-import-wizard';
 
@@ -22,7 +23,7 @@ export function ImportMappingStep({ headingRef, wizard }: StepProps) {
 			<ImportStepHeading headingRef={headingRef}>Namen WG-Mitgliedern zuordnen</ImportStepHeading>
 			<p className="text-sm text-muted-foreground">
 				{wizard.conflicts.length > 0
-					? 'Ordne die markierten Namen zu.'
+					? 'Ordne die Namen zu, die noch offen sind.'
 					: 'Alle Namen automatisch erkannt. Bitte prüfen.'}
 			</p>
 			<ImportMemberMapping
@@ -67,7 +68,7 @@ export function ImportPreviewStep({ headingRef, wizard }: StepProps) {
 			<FieldGroup>
 				<Field orientation="horizontal" className="min-h-11 items-start" data-disabled={busy}>
 					<Checkbox
-						className="mt-0.5"
+						className="relative mt-0.5 after:absolute after:-inset-3"
 						id="import-duplicates"
 						checked={wizard.skipDuplicates}
 						onCheckedChange={(checked) => wizard.setSkipDuplicates(checked === true)}
@@ -82,6 +83,7 @@ export function ImportPreviewStep({ headingRef, wizard }: StepProps) {
 				</Field>
 			</FieldGroup>
 			<div className="sticky bottom-[var(--app-nav-height,5rem)] flex min-w-0 flex-wrap gap-2 bg-background py-3">
+				{busy && <ImportRunningBar decorative className="w-full basis-full" />}
 				<Button
 					className="flex-1"
 					disabled={busy || selectedCount === 0}

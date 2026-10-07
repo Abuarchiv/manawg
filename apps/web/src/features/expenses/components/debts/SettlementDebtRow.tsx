@@ -15,6 +15,7 @@ import type { SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import { cn } from '@/shared/lib/cn';
 import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useRef } from 'react';
 import { SettlementReviewDialog } from './SettlementReviewDialog';
 import { useDebtSettlement } from './use-debt-settlement';
 
@@ -23,6 +24,9 @@ const PAYPAL_ENABLED = isPayPalSdkEnabled(
 	process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
 	process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
 );
+
+/** Fokusziel, wenn die Zeile nach dem Ausgleich verschwindet (Überschrift in DebtSummary). */
+export const SALDO_HEADING_ID = 'saldo-heading';
 
 interface DebtRowProps {
 	debt: SimplifiedDebt;
@@ -47,13 +51,34 @@ export function SettlementDebtRow({
 	showPayPalHint,
 	onSettled,
 }: DebtRowProps) {
+	const settledRef = useRef(false);
+	const handleSettled = (message?: string) => {
+		settledRef.current = true;
+		onSettled(message);
+	};
 	const settlement = useDebtSettlement({
 		debt,
 		shareCode,
 		currentMemberId,
-		onSettled,
+		onSettled: handleSettled,
 	});
+	// Verschwindet die Zeile nach unserem Ausgleich samt Fokus, landet er sonst auf body.
+	useEffect(
+		() => () => {
+			if (settledRef.current && document.activeElement === document.body) {
+				document.getElementById(SALDO_HEADING_ID)?.focus();
+			}
+		},
+		[],
+	);
 	const { reviewOpen, settling, reviewing, error, review } = settlement;
+	const settleButtonRef = useRef<HTMLButtonElement>(null);
+	const wasReviewingRef = useRef(false);
+	// Der deaktivierte Button verliert in Chromium den Fokus; nach der Prüfung (ohne Dialog) holen wir ihn zurück.
+	useEffect(() => {
+		if (wasReviewingRef.current && !reviewing && !reviewOpen) settleButtonRef.current?.focus();
+		wasReviewingRef.current = reviewing;
+	}, [reviewing, reviewOpen]);
 	const canSettle = debt.fromId === currentMemberId || debt.toId === currentMemberId;
 	const payeeMerchantId = memberPayPalMerchantId(debt.toId);
 	const canPayWithPayPal =
@@ -66,7 +91,8 @@ export function SettlementDebtRow({
 	const owedToMe = debt.toId === currentMemberId;
 
 	return (
-		<Item size="sm" className="flex-wrap items-center gap-x-2.5 px-0 py-1">
+		// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist role="list"; Item bleibt ein div für das Layout.
+		<Item role="listitem" size="sm" className="flex-wrap items-center gap-x-2.5 px-0 py-1">
 			<div aria-hidden className="flex shrink-0 items-center -space-x-0.5">
 				<MemberAvatar name={debt.fromName} size={24} className="ring-2 ring-card" />
 				<MemberAvatar name={debt.toName} size={24} className="ring-2 ring-card" />
@@ -89,6 +115,7 @@ export function SettlementDebtRow({
 			{canSettle && (
 				<ItemFooter className="-mt-1 basis-full justify-start gap-2 pl-[54px] max-[359px]:pl-0 [&>*]:min-w-0">
 					<Button
+						ref={settleButtonRef}
 						variant={iOwe ? 'default' : 'outline'}
 						size="sm"
 						className="h-auto whitespace-normal"
@@ -115,7 +142,7 @@ export function SettlementDebtRow({
 							</p>
 							<Link
 								href={`/wg/${encodeURIComponent(shareCode)}/einstellungen`}
-								className={cn(buttonVariants({ variant: 'link' }), 'min-h-11 justify-start px-0')}
+								className={cn(buttonVariants({ variant: 'link' }), 'justify-start px-0 underline')}
 							>
 								PayPal verbinden
 							</Link>
@@ -132,7 +159,10 @@ export function SettlementDebtRow({
 								render={<Button variant="outline" className="w-full justify-between" />}
 							>
 								Mit PayPal zahlen
-								<ChevronDown data-icon="inline-end" />
+								<ChevronDown
+									data-icon="inline-end"
+									className="transition-transform group-aria-expanded/button:rotate-180"
+								/>
 							</CollapsibleTrigger>
 							<CollapsibleContent>
 								<PayPalPaymentButton
@@ -143,7 +173,7 @@ export function SettlementDebtRow({
 									payeeMerchantId={payeeMerchantId}
 									amountCents={debt.cents}
 									currency={debt.currency ?? 'EUR'}
-									onPaid={onSettled}
+									onPaid={handleSettled}
 								/>
 							</CollapsibleContent>
 						</Collapsible>
@@ -162,6 +192,8 @@ export function SettlementDebtRow({
 				expenses={expenses}
 				shareCode={shareCode}
 				settlement={settlement}
+				finalFocusRef={settleButtonRef}
+				currentMemberId={currentMemberId}
 			/>
 		</Item>
 	);

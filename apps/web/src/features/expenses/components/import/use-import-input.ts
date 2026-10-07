@@ -66,14 +66,15 @@ export function useImportInput({
 	}
 
 	async function handleOcrFile(file: File): Promise<void> {
-		setPickedFileName(file.name);
 		const runId = beginInputReplacement();
 		if (file.size > MAX_IMAGE_BYTES) {
+			setPickedFileName(null);
 			setInputStatus('error');
 			setError('Das Bild ist zu groß (max. 10 MB).');
 			setOcrRunning(false);
 			return;
 		}
+		setPickedFileName(file.name);
 		setOcrRunning(true);
 		try {
 			const text = await runOcrOnImage(file);
@@ -84,6 +85,7 @@ export function useImportInput({
 		} catch (err) {
 			if (inputRunIdRef.current !== runId) return;
 			console.error('[ImportWizard] OCR failed', err);
+			setPickedFileName(null);
 			setInputStatus('error');
 			setError(
 				err instanceof OcrInitializationError
@@ -100,13 +102,14 @@ export function useImportInput({
 	}
 
 	function handleCsvFile(file: File): void {
-		setPickedFileName(file.name);
 		const runId = beginInputReplacement();
 		if (file.size > MAX_CSV_BYTES) {
+			setPickedFileName(null);
 			setInputStatus('error');
 			setError('Die CSV-Datei ist zu groß (max. 5 MB).');
 			return;
 		}
+		setPickedFileName(file.name);
 		void file
 			.arrayBuffer()
 			.then((buffer) => {
@@ -117,6 +120,7 @@ export function useImportInput({
 			})
 			.catch(() => {
 				if (inputRunIdRef.current !== runId) return;
+				setPickedFileName(null);
 				setInputStatus('error');
 				setError('Die Datei konnte nicht gelesen werden. Wähle sie erneut aus.');
 			});

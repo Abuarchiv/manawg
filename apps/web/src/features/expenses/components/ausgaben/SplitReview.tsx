@@ -25,7 +25,8 @@ export function SplitReview({
 			{members.map((member) => {
 				const share = splits?.find((split) => split.debtorMemberId === member.id);
 				return (
-					<Item key={member.id} variant="muted" size="xs">
+					// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist role="list"; Item bleibt ein div für das Layout.
+					<Item key={member.id} role="listitem" variant="muted" size="xs">
 						<ItemContent className="min-w-0">
 							<ItemTitle className="line-clamp-none break-words">{member.name}</ItemTitle>
 							{(!share || share.amountCents === 0) && (

@@ -190,6 +190,15 @@ export function useImportWizard() {
 			case 'input':
 				discardDerivedState();
 				setStep('input');
+				// Nach dem Rendern (und dem Fokus auf die Schrittüberschrift) ins Eingabefeld springen.
+				requestAnimationFrame(() => {
+					const field = document.getElementById(
+						source === 'ocr_screenshot' ? 'import-ocr' : 'import-csv-textarea',
+					);
+					const details = field?.closest('details');
+					if (details) details.open = true;
+					field?.focus();
+				});
 				return;
 		}
 	}
@@ -213,6 +222,11 @@ export function useImportWizard() {
 	function continueFromMapping(): void {
 		if (!allMapped) {
 			setMappingValidated(true);
+			// Nach dem Rendern zum ersten offenen Namen springen (Fokus scrollt ihn ins Bild).
+			const firstOpen = namesNeedingMapping.findIndex(
+				(name) => !memberOptions.some((member) => member.id === mapping[name]),
+			);
+			requestAnimationFrame(() => document.getElementById(`import-map-${firstOpen}`)?.focus());
 			return;
 		}
 		setMappingValidated(false);

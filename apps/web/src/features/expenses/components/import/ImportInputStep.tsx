@@ -8,7 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/shared/lib/cn';
 import { ChevronDown } from 'lucide-react';
-import type { ReactNode, Ref } from 'react';
+import { type ReactNode, type Ref, useEffect, useRef } from 'react';
 import type { ImportSourceKind } from './ImportSourcePicker';
 import { ImportStepHeading } from './ImportStepHeading';
 import type { ImportInput } from './use-import-input';
@@ -41,6 +41,7 @@ function ManualInput({
 	invalid,
 	disabled,
 	onChange,
+	openWhen = false,
 }: {
 	summary: string;
 	id: string;
@@ -50,9 +51,15 @@ function ManualInput({
 	invalid: boolean;
 	disabled: boolean;
 	onChange: (value: string) => void;
+	/** Klappt einmal auf, wenn die Bedingung wahr wird (z. B. OCR-Ergebnis da); Zuklappen bleibt möglich. */
+	openWhen?: boolean;
 }) {
+	const detailsRef = useRef<HTMLDetailsElement>(null);
+	useEffect(() => {
+		if (openWhen && detailsRef.current) detailsRef.current.open = true;
+	}, [openWhen]);
 	return (
-		<details>
+		<details ref={detailsRef}>
 			<summary className="flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-medium [&::-webkit-details-marker]:hidden">
 				<ChevronDown className="size-4" aria-hidden />
 				{summary}
@@ -107,6 +114,8 @@ function FilePick({
 				onChange={(event) => {
 					const file = event.target.files?.[0];
 					if (file) onFile(file);
+					// Dieselbe Datei muss nach einer Ablehnung erneut wählbar sein.
+					event.target.value = '';
 				}}
 				className="peer sr-only h-px w-px"
 			/>
@@ -168,9 +177,10 @@ export function ImportInputStep({
 							label="Erkannte Daten"
 							placeholder="Ergebnis hier prüfen und korrigieren"
 							value={input.ocrText}
-							invalid={invalid}
+							invalid={invalid && input.ocrText.length > 0}
 							disabled={busy || ocrRunning}
 							onChange={input.setManualPayload}
+							openWhen={input.ocrText.length > 0}
 						/>
 					</>
 				) : (
@@ -192,7 +202,7 @@ export function ImportInputStep({
 							label="Inhalt des Exports"
 							placeholder="Füge den Inhalt deines Exports hier ein"
 							value={input.rawPayload}
-							invalid={invalid}
+							invalid={invalid && input.rawPayload.length > 0}
 							disabled={busy || inputStatus === 'reading'}
 							onChange={input.setManualPayload}
 						/>

@@ -1,43 +1,20 @@
 'use client';
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { captureException } from '@/core/infra/capture-client';
-import { AlertTriangle } from 'lucide-react';
-import Link from 'next/link';
-import { useEffect } from 'react';
+import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
 
-interface Props {
+interface ImportErrorProps {
 	error: Error & { digest?: string };
 	reset: () => void;
 }
 
-export default function ImportError({ error, reset }: Props) {
-	useEffect(() => {
-		captureException(error, { boundary: 'wg-import' });
-	}, [error]);
+export default function ImportError({ error, reset }: ImportErrorProps) {
 	return (
-		<div className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-8">
-			<Alert variant="destructive">
-				<AlertTriangle aria-hidden="true" />
-				<AlertTitle>Import-Assistent konnte nicht geladen werden</AlertTitle>
-				<AlertDescription>
-					{process.env.NODE_ENV === 'development' ? error.message : 'Bitte versuche es erneut.'}
-				</AlertDescription>
-			</Alert>
-			<div className="flex flex-col gap-2">
-				<Button type="button" className="flex-1" onClick={reset}>
-					Erneut versuchen
-				</Button>
-				<Button
-					variant="outline"
-					className="flex-1"
-					render={<Link href="../ausgaben" />}
-					nativeButton={false}
-				>
-					Zurück zu Ausgaben
-				</Button>
-			</div>
-		</div>
+		<WgRouteErrorBoundary
+			error={error}
+			reset={reset}
+			boundary="wg-import"
+			title="Import-Assistent konnte nicht geladen werden"
+			body="Beim Laden des Import-Assistenten ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
+		/>
 	);
 }

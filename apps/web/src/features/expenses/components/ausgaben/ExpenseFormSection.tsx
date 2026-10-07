@@ -9,6 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import type { Member } from '@/components/wg/WgContextProvider';
+import { cn } from '@/shared/lib/cn';
+import { useKeyboardOpen } from '@/shared/lib/use-keyboard-open';
 import { ArrowLeft } from 'lucide-react';
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
 import { CloseDraftDialog, ReplaceDraftDialog } from './ExpenseDraftDialogs';
@@ -59,6 +61,7 @@ interface ExpenseFormSectionProps {
 	editingRecurringExpense: RecurringExpense | null;
 	formSaving: boolean;
 	onSaveRecurringTemplate: () => void;
+	recurringTemplateCount: number;
 	onCancel: () => void;
 	onDiscard: () => void;
 	title: string;
@@ -69,6 +72,10 @@ interface ExpenseFormSectionProps {
 	editingExpenseId: string | null;
 	notice: ActionNotice | null;
 	onSubmit: () => void;
+	/** Steuert das Sheet von außen, damit es vor dem Entfernen ausblendet. */
+	open: boolean;
+	/** Nach der Ausblend-Animation: Das Formular darf entfernt werden. */
+	onExited: () => void;
 }
 
 export function ExpenseFormSection({
@@ -105,6 +112,7 @@ export function ExpenseFormSection({
 	editingRecurringExpense,
 	formSaving,
 	onSaveRecurringTemplate,
+	recurringTemplateCount,
 	onCancel,
 	onDiscard,
 	onSubmit,
@@ -115,10 +123,14 @@ export function ExpenseFormSection({
 	isEditingExpense,
 	editingExpenseId,
 	notice,
+	open,
+	onExited,
 }: ExpenseFormSectionProps): React.ReactElement {
+	const keyboardOpen = useKeyboardOpen();
 	const [confirmClose, setConfirmClose] = useState(false);
 	const [replaceOpen, setReplaceOpen] = useState(false);
 	const formRef = useRef<HTMLFormElement>(null);
+	const formErrorRef = useRef<HTMLDivElement>(null);
 	const editingTemplate = Boolean(
 		editingRecurringExpense && !isEditingQueuedExpense && !isEditingQueuedRecurring,
 	);
@@ -145,6 +157,11 @@ export function ExpenseFormSection({
 		formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
 	}, [validationAttempt]);
 
+	// Der Serverfehler steht am Ende des Scrollbereichs; auf kleinen Handys liegt er sonst unterhalb des Sichtbereichs.
+	useEffect(() => {
+		if (formError) formErrorRef.current?.scrollIntoView({ block: 'nearest' });
+	}, [formError]);
+
 	function requestClose() {
 		if (formSaving || savingRecurringTemplate) return;
 		if (isDirty) setConfirmClose(true);
@@ -154,9 +171,12 @@ export function ExpenseFormSection({
 	return (
 		<>
 			<Dialog
-				open
-				onOpenChange={(open) => {
-					if (!open) requestClose();
+				open={open}
+				onOpenChange={(next) => {
+					if (!next) requestClose();
+				}}
+				onOpenChangeComplete={(next) => {
+					if (!next) onExited();
 				}}
 			>
 				<DialogContent
@@ -208,11 +228,8 @@ export function ExpenseFormSection({
 								)}
 								{(isEditingQueuedExpense || isEditingQueuedRecurring) && (
 									<Alert>
-										<AlertDescription>
-											{isEditingQueuedRecurring
-												? 'Wartende Fixkosten-Vorlage bearbeiten'
-												: 'Wartende Ausgabe bearbeiten'}{' '}
-											· noch nicht synchronisiert.
+										<AlertDescription className="text-foreground">
+											Noch nicht synchronisiert. Die Änderung wird gesendet, sobald du online bist.
 										</AlertDescription>
 									</Alert>
 								)}
@@ -252,7 +269,7 @@ export function ExpenseFormSection({
 										value={paidByMemberId}
 										onChange={(event) => setPaidByMemberId(event.target.value)}
 										disabled={formSaving || isEditingExpense}
-										className="w-full [&_select]:h-11 [&_select]:text-base"
+										className="w-full [&_select]:h-auto [&_select]:py-[0.5625rem] [&_select]:text-base"
 									>
 										{payerOptions.map((member) => (
 											<NativeSelectOption key={member.id} value={member.id}>
@@ -295,10 +312,11 @@ export function ExpenseFormSection({
 									isEditingQueuedRecurring={isEditingQueuedRecurring}
 									savingRecurringTemplate={savingRecurringTemplate}
 									onSaveRecurringTemplate={onSaveRecurringTemplate}
+									recurringTemplateCount={recurringTemplateCount}
 									formSaving={formSaving}
 								/>
 								{formError && (
-									<Alert variant="destructive">
+									<Alert ref={formErrorRef} variant="destructive">
 										<AlertDescription>{formError}</AlertDescription>
 										{conflictExpenseId && (
 											<div className="flex flex-col gap-2 pt-3">
@@ -315,7 +333,13 @@ export function ExpenseFormSection({
 							</FieldGroup>
 						</div>
 						<Separator />
-						<div className="flex shrink-0 flex-col gap-2 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+						<div
+							className={cn(
+								'flex shrink-0 flex-col gap-2 px-4',
+								// Mit Tastatur: Safe-Area irrelevant, Abbrechen steckt schon im Zurück-Pfeil; so bleibt mehr vom Formular sichtbar.
+								keyboardOpen ? 'py-2' : 'pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]',
+							)}
+						>
 							<div className="flex flex-col gap-2">
 								<Button
 									type="submit"
@@ -337,7 +361,7 @@ export function ExpenseFormSection({
 								<Button
 									type="button"
 									variant="ghost"
-									className="w-full"
+									className={cn('w-full', keyboardOpen && 'hidden')}
 									onClick={requestClose}
 									disabled={formSaving || savingRecurringTemplate}
 								>

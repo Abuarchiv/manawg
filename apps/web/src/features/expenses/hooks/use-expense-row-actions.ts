@@ -109,6 +109,7 @@ export function useExpenseRowActions({
 				if (res.error === 'split_already_offset') void reload();
 			}
 		} else {
+			toast.success(settled ? 'Zahlung verbucht.' : 'Zahlung wieder geöffnet.');
 			void reload();
 		}
 

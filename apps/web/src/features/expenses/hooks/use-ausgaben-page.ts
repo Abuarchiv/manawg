@@ -19,8 +19,8 @@ import {
 	computeNetBalances,
 } from '@/features/expenses/debt-reduction';
 import { payerOptions, splitCandidates } from '@/features/expenses/expense-split-input';
-import { useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ActionNotifier, ExpensePageContext } from './expense-page-context';
 import { useExpenseFormSupport } from './use-expense-form-support';
 import { useExpenseRowActions } from './use-expense-row-actions';
@@ -38,6 +38,8 @@ export function useAusgabenPage() {
 	const { wg, members, identity } = useWg();
 	const toast = useToast();
 	const searchParams = useSearchParams();
+	const router = useRouter();
+	const pathname = usePathname();
 	const highlightedId = searchParams.get('highlight');
 	const openNewExpense = searchParams.get('new') === '1';
 	const recurringId = searchParams.get('recurring');
@@ -47,7 +49,8 @@ export function useAusgabenPage() {
 	const notify: ActionNotifier = {
 		error: (message) => setActionNotice(message ? { message, tone: 'error' } : null),
 		warning: (message) => setActionNotice({ message, tone: 'warning' }),
-		success: (message) => setActionNotice({ message, tone: 'success' }),
+		// Erfolg als schwebender Toast: ein Banner im Fluss bliebe stehen, tauchte im nächsten Formular wieder auf und schöbe die Seite.
+		success: (message) => toast.success(message),
 	};
 	const pending = usePendingSet();
 
@@ -82,7 +85,9 @@ export function useAusgabenPage() {
 		recurringExpenses,
 		updateExpenses: data.updateExpenses,
 		updateRecurringExpenses: data.updateRecurringExpenses,
-		reload: () => data.load(false),
+		reload: async () => {
+			await data.load(false);
+		},
 		refreshQueuedCount: data.refreshQueuedCount,
 	};
 	const support = useExpenseFormSupport(ctx, form);
@@ -93,6 +98,26 @@ export function useAusgabenPage() {
 	useEffect(() => {
 		if (openNewExpense) setShowForm(true);
 	}, [openNewExpense, setShowForm]);
+
+	// Deep-Link-Parameter erst beim Schließen entfernen (Abbrechen, Speichern): ein Neuladen bei
+	// offenem Formular stellt es weiter wieder her, danach aber nicht mehr ungefragt.
+	const prevShowFormRef = useRef(form.showForm);
+	useEffect(() => {
+		const wasOpen = prevShowFormRef.current;
+		prevShowFormRef.current = form.showForm;
+		if (!wasOpen || form.showForm) return;
+		const next = new URLSearchParams(searchParams.toString());
+		let changed = false;
+		for (const key of ['new', 'desc', 'amount', 'paidBy', 'recurring']) {
+			if (next.has(key)) {
+				next.delete(key);
+				changed = true;
+			}
+		}
+		if (!changed) return;
+		const query = next.toString();
+		router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+	}, [form.showForm, searchParams, router, pathname]);
 
 	const expenseCount = expenses.length;
 	useEffect(() => {

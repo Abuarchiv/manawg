@@ -18,7 +18,7 @@ import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt
 import { cn } from '@/shared/lib/cn';
 import { Bell } from 'lucide-react';
 import Link from 'next/link';
-import { SettlementDebtRow } from './SettlementDebtRow';
+import { SALDO_HEADING_ID, SettlementDebtRow } from './SettlementDebtRow';
 
 interface MemberBalance {
 	memberId: string;
@@ -107,7 +107,7 @@ export function DebtSummary({
 			<CardHeader>
 				<CardDescription>Dein Saldo</CardDescription>
 				<CardTitle>
-					<h2>
+					<h2 id={SALDO_HEADING_ID} tabIndex={-1} className="outline-none">
 						{ownBalances.length > 1 ? (
 							<>
 								Offene Salden{' '}
@@ -198,12 +198,18 @@ export function DebtSummary({
 							So wird ausgeglichen
 						</h3>
 						{personal.length > 0 && (
-							<ItemGroup aria-label="Deine offenen Zahlungen" className="gap-0 divide-y">
+							<ItemGroup
+								aria-label="Deine offenen Zahlungen"
+								className="gap-0 divide-y [&>[data-slot=item]:not(:last-child)]:border-b-border"
+							>
 								{personal.map((debt) => renderDebt(debt))}
 							</ItemGroup>
 						)}
 						{others.length > 0 && (
-							<ItemGroup aria-label="Weitere Zahlungen in der WG" className="gap-0 divide-y">
+							<ItemGroup
+								aria-label="Weitere Zahlungen in der WG"
+								className="gap-0 divide-y [&>[data-slot=item]:not(:last-child)]:border-b-border"
+							>
 								{others.map((debt) => renderDebt(debt))}
 							</ItemGroup>
 						)}

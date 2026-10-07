@@ -8,8 +8,8 @@ export function amountErrorMessage(euros: number | null, raw = ''): string {
 		return 'Maximal zwei Nachkommastellen.';
 	}
 	return euros !== null && euros > AMOUNT_MAX_EUROS
-		? 'Der Betrag darf höchstens 1.000.000 € betragen.'
-		: 'Gib einen Betrag über 0 € ein, z. B. 12,50.';
+		? 'Der Betrag darf höchstens 1.000.000 € betragen.'
+		: 'Gib einen Betrag über 0 € ein, z. B. 12,50.';
 }
 
 export const RECURRING_INTERVAL_OPTIONS = [

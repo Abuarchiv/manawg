@@ -53,14 +53,14 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 	const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>(
 		() => cachedRecurringExpenses?.recurringExpenses ?? [],
 	);
-	const [initialLoading, setInitialLoading] = useState(!cachedExpenses && !cachedRecurringExpenses);
+	const [initialLoading, setInitialLoading] = useState(!cachedExpenses);
 	const [refreshing, setRefreshing] = useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
 
 	const loadRequestIdRef = useRef(0);
 	const initialLoadStartedRef = useRef(false);
 	const mountedRef = useRef(false);
-	const hasPageCacheRef = useRef(Boolean(cachedExpenses || cachedRecurringExpenses));
+	const hasPageCacheRef = useRef(Boolean(cachedExpenses));
 
 	function updateExpenses(update: (current: Expense[]) => Expense[]): void {
 		setExpenses(update);
@@ -85,7 +85,7 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 	}
 
 	const load = useCallback(
-		async (isInitial: boolean): Promise<void> => {
+		async (isInitial: boolean): Promise<Expense[] | null> => {
 			const requestId = loadRequestIdRef.current + 1;
 			loadRequestIdRef.current = requestId;
 			if (isInitial && !hasPageCacheRef.current) setInitialLoading(true);
@@ -95,9 +95,10 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 				refreshExpenses(),
 				refreshRecurringExpenses(),
 			]);
+			const freshExpenses = res.ok ? res.data.expenses : null;
 			// A newer load superseded this one; its result is the one to show.
-			if (requestId !== loadRequestIdRef.current) return;
-			if (!mountedRef.current) return;
+			if (requestId !== loadRequestIdRef.current) return freshExpenses;
+			if (!mountedRef.current) return freshExpenses;
 
 			let nextLoadError: string | null = null;
 
@@ -135,6 +136,7 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 
 			setInitialLoading(false);
 			setRefreshing(false);
+			return freshExpenses;
 		},
 		[memberId, refreshExpenses, refreshRecurringExpenses, shareCode, setActionNotice],
 	);
@@ -147,13 +149,13 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 			setExpenses(cachedExpenses.expenses);
 			setPayments(cachedExpenses.payments ?? []);
 			setLoadError(null);
+			// Das Skeleton hängt nur an den Ausgaben selbst, nicht an den Fixkosten.
+			setInitialLoading(false);
 		}
 		if (cachedRecurringExpenses) {
-			hasPageCacheRef.current = true;
 			setRecurringExpenses(cachedRecurringExpenses.recurringExpenses);
 			setLoadError(null);
 		}
-		if (cachedExpenses || cachedRecurringExpenses) setInitialLoading(false);
 		if (expensesReadError) {
 			setLoadError(
 				getWgLoadErrorMessage('Ausgaben', expensesReadError.status, expensesReadError.error, {

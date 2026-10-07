@@ -516,7 +516,8 @@ test.describe('import wizard responsive', () => {
 		viewportWidth: number,
 	): Promise<void> {
 		await expect(element).toBeVisible();
-		await element.scrollIntoViewIfNeeded();
+		// Mittig statt nur „falls nötig“: ein Element hinter der festen Navigation gilt für Playwright schon als sichtbar.
+		await element.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
 		const bounds = await element.boundingBox();
 		if (!bounds) throw new Error('Action has no visible bounds');
 		const viewport = page.viewportSize();
@@ -660,6 +661,62 @@ test.describe('import wizard responsive', () => {
 test.describe('import error notice', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 	test.use({ hasTouch: true, isMobile: true });
+
+	test('browser back moves one wizard step back and asks before leaving with input', async ({
+		page,
+	}) => {
+		const preview = {
+			parsed: [
+				{
+					date: '2026-01-01',
+					description: 'Testeintrag',
+					amountCents: 1000,
+					currency: 'EUR',
+					paidByName: FIXTURE_WG.memberName,
+					splits: [{ memberName: FIXTURE_WG.memberName, amountCents: 1000 }],
+					warnings: [],
+				},
+			],
+			payloadHash: 'hash-back',
+			memberMapping: { [FIXTURE_WG.memberName]: FIXTURE_WG.memberId },
+			conflicts: [],
+			members: [{ id: FIXTURE_WG.memberId, name: FIXTURE_WG.memberName }],
+		};
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/imports/preview`, (route) =>
+			route.fulfill({ json: preview }),
+		);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/import`);
+		await dismissOnboarding(page);
+
+		const source = page.getByRole('button', { name: 'Splitwise CSV' });
+		await source.click();
+		await page.getByText('Oder Inhalt einfügen').click();
+		await page.getByLabel('Inhalt des Exports').fill('irrelevant, response is mocked');
+		await page.getByRole('button', { name: 'Vorschau erstellen' }).click();
+		await expect(
+			page.getByRole('heading', { name: 'Namen WG-Mitgliedern zuordnen' }),
+		).toBeVisible();
+
+		await page.goBack();
+		await expect(page.getByLabel('Inhalt des Exports')).toHaveValue(
+			'irrelevant, response is mocked',
+		);
+		await page.goBack();
+		await expect(page.getByRole('heading', { name: 'Importquelle wählen' })).toBeVisible();
+		// Die gewählte Quelle erneut antippen geht weiter, die Eingabe bleibt erhalten.
+		await expect(source).toHaveAttribute('aria-pressed', 'true');
+		await source.click();
+		await expect(page.getByLabel('Inhalt des Exports')).toHaveValue(
+			'irrelevant, response is mocked',
+		);
+
+		await page.goBack();
+		await page.goBack();
+		await expect(page.getByRole('alertdialog')).toContainText('Import-Eingaben verwerfen?');
+		await page.getByRole('button', { name: 'Verwerfen' }).click();
+		await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/ausgaben`));
+	});
 
 	test('going back from the preview step clears a stale commit error', async ({ page }) => {
 		const preview = {

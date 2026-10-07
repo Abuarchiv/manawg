@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/input-group';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { Member } from '@/components/wg/WgContextProvider';
+import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
 import { formatEuroCents } from '@/core/utils/money';
 import { remainderCandidates } from '@/features/expenses/expense-split-input';
 import type { Dispatch, SetStateAction } from 'react';
@@ -111,7 +112,6 @@ export function ExpenseSplitFieldset({
 							key={member.id}
 							orientation="responsive"
 							data-disabled={formSaving || (isEditingExpense && !member.active)}
-							data-invalid={Boolean(splitsError) && member.id === firstSplitMemberId}
 						>
 							<FieldLabel htmlFor={`share-${member.id}`} className="min-w-0 flex-1 break-words">
 								{member.name}
@@ -121,7 +121,7 @@ export function ExpenseSplitFieldset({
 									</span>
 								)}
 							</FieldLabel>
-							<InputGroup className="w-full min-w-32 shrink-0 @md/field-group:max-w-32">
+							<InputGroup className="w-full min-w-32 shrink-0 has-[[data-slot][aria-invalid=true]]:border-input has-[[data-slot][aria-invalid=true]]:ring-0 @md/field-group:max-w-32">
 								<InputGroupInput
 									id={`share-${member.id}`}
 									type="text"
@@ -133,6 +133,12 @@ export function ExpenseSplitFieldset({
 											[member.id]: event.target.value,
 										}));
 										onClearSplitsError();
+									}}
+									onBlur={(event) => {
+										const euros = parseEuroAmount(event.target.value);
+										if (euros === null || euros < 0) return;
+										const formatted = formatEuroInput(euros);
+										setManualSplits((previous) => ({ ...previous, [member.id]: formatted }));
 									}}
 									placeholder="0,00"
 									disabled={formSaving || (isEditingExpense && !member.active)}

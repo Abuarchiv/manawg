@@ -38,9 +38,47 @@ function useStepHeadingFocus(step: ImportStep) {
 		const heading = stepHeadingRef.current;
 		if (!heading) return;
 		heading.focus({ preventScroll: true });
-		heading.scrollIntoView({ block: 'start', behavior: 'auto' });
+		heading.scrollIntoView({ block: 'nearest', behavior: 'auto' });
 	}, [step]);
 	return stepHeadingRef;
+}
+
+const PREVIOUS_STEP: Partial<Record<ImportStep, ImportStep>> = {
+	input: 'source',
+	mapping: 'input',
+	preview: 'mapping',
+};
+
+/**
+ * Browser-Zurück / iOS-Kantenwisch führt im Assistenten einen Schritt zurück, statt die Seite samt
+ * Eingaben zu verlassen. Solange `active`, liegt ein Marker-Eintrag im Verlauf (State kopiert, damit
+ * der Next-Router ihn erkennt); ein Zurück poppt ihn, wir legen ihn neu und rufen `onBack`. Landet
+ * ein Pop wieder auf einem markierten Eintrag (Overlay-Marker des Dialogs), bleibt er unbeachtet.
+ */
+function useImportBackGuard(active: boolean, onBack: () => void) {
+	const onBackRef = useRef(onBack);
+	useEffect(() => {
+		onBackRef.current = onBack;
+	});
+	useEffect(() => {
+		if (!active) return;
+		const pushGuard = () =>
+			window.history.pushState({ ...window.history.state, importGuard: true }, '');
+		pushGuard();
+		function onPopState() {
+			if (window.history.state?.importGuard) return;
+			pushGuard();
+			onBackRef.current();
+		}
+		window.addEventListener('popstate', onPopState);
+		return () => {
+			window.removeEventListener('popstate', onPopState);
+			// Verzögert, damit eine gleichzeitig gestartete Navigation den State zuerst ersetzen kann.
+			setTimeout(() => {
+				if (window.history.state?.importGuard) window.history.back();
+			}, 50);
+		};
+	}, [active]);
 }
 
 export function ImportWizard() {
@@ -52,6 +90,18 @@ export function ImportWizard() {
 	const [leaveOpen, setLeaveOpen] = useState(false);
 	const [sourceToChange, setSourceToChange] = useState<ImportSourceKind | null>(null);
 	const returnHref = `/wg/${wizard.encodedCode}/ausgaben`;
+	const backGuardActive =
+		step !== 'commit' &&
+		wizard.commitState !== 'done' &&
+		(step !== 'source' || Boolean(rawPayload));
+	useImportBackGuard(backGuardActive, () => {
+		if (busy || ocrRunning) return;
+		const previous = PREVIOUS_STEP[step];
+		if (previous) wizard.goTo(previous);
+		else if (rawPayload) setLeaveOpen(true);
+	});
+	// Mit Marker im Verlauf ersetzt das Verlassen ihn, statt einen weiteren Eintrag zu stapeln.
+	const leave = () => (backGuardActive ? router.replace(returnHref) : router.push(returnHref));
 
 	return (
 		<div className="flex flex-col gap-5">
@@ -71,6 +121,9 @@ export function ImportWizard() {
 						if (rawPayload && wizard.commitState !== 'done') {
 							event.preventDefault();
 							setLeaveOpen(true);
+						} else if (backGuardActive) {
+							event.preventDefault();
+							leave();
 						}
 					}}
 				>
@@ -166,7 +219,7 @@ export function ImportWizard() {
 								if (sourceToChange) {
 									wizard.chooseSource(sourceToChange);
 									setSourceToChange(null);
-								} else router.push(returnHref);
+								} else leave();
 							}}
 						>
 							Verwerfen

@@ -16,7 +16,7 @@ import { useAusgabenPage } from '@/features/expenses/hooks/use-ausgaben-page';
 import { haptic } from '@/shared/lib/haptics';
 import { Plus } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const ExpenseFormSection = dynamic(
 	() =>
@@ -25,7 +25,11 @@ const ExpenseFormSection = dynamic(
 		),
 	{
 		loading: () => (
-			<output className="block text-sm text-[var(--text-2)]">Ausgabenformular wird geladen…</output>
+			// Außerhalb des Flusses, damit der Hintergrund nicht springt; das echte Sheet ersetzt es an Ort und Stelle.
+			<output className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-popover text-sm text-popover-foreground">
+				<Spinner aria-hidden className="size-6" />
+				Ausgabenformular wird geladen…
+			</output>
 		),
 	},
 );
@@ -46,6 +50,40 @@ export default function AusgabenPage() {
 	const { showForm, setShowForm, editingExpense, editingRecurringExpense } = form;
 	const isEditingQueuedRecurring = form.queueEditType === 'recurring.create';
 	const formSaving = submit.submitting || recurring.savingRecurringTemplate;
+	// Das Formular bleibt nach dem Schließen gemountet, bis die Ausblend-Animation durch ist; jedes Öffnen startet frisch.
+	const [formSession, setFormSession] = useState({ mounted: showForm, key: 0 });
+	const [previousShowForm, setPreviousShowForm] = useState(showForm);
+	if (showForm !== previousShowForm) {
+		setPreviousShowForm(showForm);
+		if (showForm) setFormSession((session) => ({ mounted: true, key: session.key + 1 }));
+	}
+
+	/** Nach einem Bearbeitungs-Konflikt gegen die frische Server-Version entscheiden. */
+	async function resolveConflict(choice: 'server' | 'draft'): Promise<void> {
+		const editedId = form.editingExpense?.id;
+		const fresh = await data.load(false);
+		const serverExpense = fresh?.find((expense) => expense.id === editedId);
+		if (!fresh || !editedId) {
+			form.setFormError(
+				'Die Liste konnte nicht neu geladen werden. Versuche es gleich noch einmal.',
+			);
+			return;
+		}
+		if (!serverExpense) {
+			form.setConflictExpenseId(null);
+			form.setFormError(
+				'Die ursprüngliche Ausgabe wurde gelöscht. Deine ungespeicherten Änderungen bleiben im Entwurf; du kannst sie kopieren oder den Entwurf verwerfen.',
+			);
+			return;
+		}
+		if (choice === 'server') {
+			form.startEdit(serverExpense);
+			return;
+		}
+		form.rebaseEdit(serverExpense.updatedAt);
+		form.setConflictExpenseId(null);
+		form.setFormError(null);
+	}
 
 	return (
 		<div
@@ -54,14 +92,21 @@ export default function AusgabenPage() {
 		>
 			<SubNav />
 			<AusgabenHeader expenseCount={expenses.length} initialLoading={initialLoading} />
-			{showForm && (
+			{formSession.mounted && (
 				<ExpenseFormSection
+					key={formSession.key}
+					open={showForm}
+					onExited={() => setFormSession((session) => ({ ...session, mounted: false }))}
 					title={
 						editingRecurringExpense
 							? 'Fixkosten-Vorlage bearbeiten'
-							: editingExpense
-								? 'Ausgabe bearbeiten'
-								: 'Ausgabe hinzufügen'
+							: isEditingQueuedRecurring
+								? 'Wartende Fixkosten-Vorlage bearbeiten'
+								: form.queueEditType === 'expense.create'
+									? 'Wartende Ausgabe bearbeiten'
+									: editingExpense
+										? 'Ausgabe bearbeiten'
+										: 'Ausgabe hinzufügen'
 					}
 					previewSplits={page.splitPreview?.ok ? page.splitPreview.splits : null}
 					pendingPrefillDescription={form.pendingPrefill?.description ?? null}
@@ -99,16 +144,13 @@ export default function AusgabenPage() {
 					validationAttempt={support.validationAttempt}
 					onClearFieldError={support.clearFieldError}
 					conflictExpenseId={form.conflictExpenseId}
-					onReloadServerVersion={() => {
-						form.setConflictExpenseId(null);
-						form.setFormError(null);
-						void data.load(false);
-					}}
-					onKeepDraft={() => form.setConflictExpenseId(null)}
+					onReloadServerVersion={() => void resolveConflict('server')}
+					onKeepDraft={() => void resolveConflict('draft')}
 					savingRecurringTemplate={recurring.savingRecurringTemplate}
 					editingRecurringExpense={editingRecurringExpense}
 					formSaving={formSaving}
 					onSaveRecurringTemplate={() => void recurring.saveRecurringTemplate()}
+					recurringTemplateCount={recurringExpenses.length}
 					onCancel={() => setShowForm(false)}
 					onDiscard={() => {
 						page.clearPendingCreateRequests();
@@ -124,16 +166,10 @@ export default function AusgabenPage() {
 				/>
 			)}
 			{page.actionNotice && !showForm && <ActionNoticeBanner notice={page.actionNotice} />}
-			{refreshing && (
-				<output
-					// Schwebt über dem Inhalt: im Fluss würde sein Verschwinden die Karten springen lassen.
-					className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.5rem)] z-40 mx-auto flex w-fit items-center gap-2 rounded-full border bg-background px-3 py-1 text-sm text-muted-foreground shadow-sm"
-					aria-live="polite"
-				>
-					<Spinner />
-					Wird aktualisiert…
-				</output>
-			)}
+			{/* Nur für Screenreader: ein sichtbarer Hinweis würde die Kopfzeile verdecken und beim Poll aufblitzen. */}
+			<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
+				{refreshing ? 'Wird aktualisiert…' : ''}
+			</output>
 			<OfflineQueueNotice queuedCount={data.queuedCount} />
 			{loadError && (
 				<LoadErrorBanner
@@ -144,7 +180,7 @@ export default function AusgabenPage() {
 				/>
 			)}
 			{page.showSkeleton && (
-				<div aria-hidden className="flex min-h-[26rem] flex-col gap-3 rounded-xl border p-3">
+				<div aria-hidden className="flex min-h-[18rem] flex-col gap-3 rounded-xl border p-3">
 					<Skeleton className="h-3 w-20" />
 					<Skeleton className="h-7 w-2/3" />
 					<Skeleton className="h-4 w-1/3" />

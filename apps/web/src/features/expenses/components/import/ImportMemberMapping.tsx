@@ -42,7 +42,7 @@ export function ImportMemberMapping({
 							aria-label={`Mitglied für ${name} wählen`}
 							aria-invalid={invalid || undefined}
 							aria-describedby={invalid ? `import-map-error-${index}` : undefined}
-							className="w-full [&_select]:h-11 [&_select]:text-base"
+							className="w-full [&_select]:h-auto [&_select]:py-[0.5625rem] [&_select]:text-base"
 						>
 							<NativeSelectOption value="">Noch zuordnen</NativeSelectOption>
 							{members.map((member) => (

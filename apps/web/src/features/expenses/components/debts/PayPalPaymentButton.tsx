@@ -35,6 +35,8 @@ const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
 const PAYPAL_PARTNER_ATTRIBUTION_ID = process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID;
 const PAYPAL_ERROR =
 	'PayPal konnte die Zahlung nicht bestätigen. Prüfe den Zahlungsstatus bei PayPal, bevor du erneut zahlst oder die Zahlung als beglichen vermerkst.';
+const PAYPAL_STATUS_ERROR =
+	'Der Zahlungsstatus konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.';
 const payPalSdkLoads = new Map<string, Promise<void>>();
 
 type CaptureOutcome = 'completed' | 'pending' | 'failed';
@@ -92,7 +94,7 @@ interface PayPalPaymentButtonProps {
 	payeeMerchantId: string;
 	amountCents: number;
 	currency: string;
-	onPaid: () => void;
+	onPaid: (message?: string) => void;
 }
 
 export function PayPalPaymentButton({
@@ -119,6 +121,8 @@ export function PayPalPaymentButton({
 	const [isCheckingStatus, setIsCheckingStatus] = useState(true);
 	const [isRetrying, setIsRetrying] = useState(false);
 	onPaidRef.current = onPaid;
+	const paidMessageRef = useRef('');
+	paidMessageRef.current = `PayPal-Zahlung über ${formatEuroCents(amountCents, currency)} verbucht.`;
 
 	useEffect(() => {
 		if (!PAYPAL_CLIENT_ID || !PAYPAL_PARTNER_ATTRIBUTION_ID || !containerRef.current) return;
@@ -145,7 +149,7 @@ export function PayPalPaymentButton({
 				if (result.ok && result.data.status === 'COMPLETED') {
 					updatePendingOrder(null);
 					setError(null);
-					onPaidRef.current();
+					onPaidRef.current(paidMessageRef.current);
 					return 'completed';
 				}
 				if (result.ok && result.data.status === 'PENDING') {
@@ -208,7 +212,7 @@ export function PayPalPaymentButton({
 				if (lookupState.kind === 'retry') {
 					statusLookupFailedRef.current = true;
 					setStatusLookupFailed(true);
-					setError(PAYPAL_ERROR);
+					setError(PAYPAL_STATUS_ERROR);
 					return;
 				}
 				statusLookupFailedRef.current = false;
@@ -241,7 +245,7 @@ export function PayPalPaymentButton({
 			if (!cancelled) {
 				statusLookupFailedRef.current = true;
 				setStatusLookupFailed(true);
-				setError(PAYPAL_ERROR);
+				setError(PAYPAL_STATUS_ERROR);
 				setIsCheckingStatus(false);
 			}
 		});
@@ -301,7 +305,7 @@ export function PayPalPaymentButton({
 			{pendingOrderId && (
 				<div className="flex flex-col gap-2">
 					<output
-						className="rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground"
+						className="rounded-md border bg-muted px-3 py-2 text-sm text-foreground"
 						aria-live="polite"
 					>
 						PayPal verarbeitet diese Zahlung noch. Starte keine weitere Zahlung.
@@ -316,6 +320,11 @@ export function PayPalPaymentButton({
 					</Button>
 				</div>
 			)}
+			{error && (
+				<Alert variant="destructive">
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
+			)}
 			{statusLookupFailed && (
 				<Button
 					type="button"
@@ -325,11 +334,6 @@ export function PayPalPaymentButton({
 				>
 					{isCheckingStatus ? 'Status wird geprüft…' : 'Zahlungsstatus erneut prüfen'}
 				</Button>
-			)}
-			{error && (
-				<Alert variant="destructive">
-					<AlertDescription>{error}</AlertDescription>
-				</Alert>
 			)}
 		</div>
 	);

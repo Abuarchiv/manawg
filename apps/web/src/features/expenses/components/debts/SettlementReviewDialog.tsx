@@ -19,6 +19,7 @@ import { formatShortDate } from '@/core/utils/time';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import type { SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import Link from 'next/link';
+import type { RefObject } from 'react';
 import type { DebtSettlement } from './use-debt-settlement';
 
 /** Confirms a payment that already happened, listing the expense shares it settles. */
@@ -27,50 +28,69 @@ export function SettlementReviewDialog({
 	expenses,
 	shareCode,
 	settlement,
+	finalFocusRef,
+	currentMemberId,
 }: {
 	debt: SimplifiedDebt;
 	expenses: readonly Expense[];
 	shareCode: string;
 	settlement: DebtSettlement;
+	/** Der Ausgleichen-Button: Der Dialog hat keinen Trigger, sonst fiele der Fokus auf body. */
+	finalFocusRef: RefObject<HTMLElement | null>;
+	currentMemberId: string;
 }) {
 	const { reviewOpen, setReviewOpen, settling, preview, error, settle } = settlement;
 	return (
 		<AlertDialog open={reviewOpen} onOpenChange={settlement.setReviewDialogOpen}>
-			<AlertDialogContent className="max-h-[90dvh] overflow-y-auto">
+			<AlertDialogContent className="max-h-[90dvh] overflow-y-auto" finalFocus={finalFocusRef}>
 				<AlertDialogHeader className="place-items-start text-left">
 					<AlertDialogTitle>Bereits erfolgte Zahlung bestätigen</AlertDialogTitle>
 					<AlertDialogDescription>
-						Nur bestätigen, wenn {debt.fromName}{' '}
-						{formatEuroCents(preview?.settleableCents ?? 0, debt.currency)} bereits an {debt.toName}{' '}
-						gezahlt hat. Es wird kein Geld überwiesen.
+						Nur bestätigen, wenn {debt.fromId === currentMemberId ? 'du' : debt.fromName}{' '}
+						{formatEuroCents(preview?.settleableCents ?? 0, debt.currency)} bereits an{' '}
+						{debt.toId === currentMemberId ? 'dich' : debt.toName} gezahlt{' '}
+						{debt.fromId === currentMemberId ? 'hast' : 'hat'}. Es wird kein Geld überwiesen.
 					</AlertDialogDescription>
 				</AlertDialogHeader>
-				<ItemGroup aria-label="Unterstützte Ausgabenanteile">
-					{(preview?.splits ?? []).map((split) => {
-						const expense = expenses.find((item) => item.id === split.expenseId);
-						return (
-							<Item key={split.id} variant="muted" size="xs">
-								<ItemContent className="min-w-0">
-									<ItemTitle className="line-clamp-none break-words">
-										<Link
-											href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?highlight=${encodeURIComponent(split.expenseId)}`}
-											onClick={() => setReviewOpen(false)}
-											className="underline underline-offset-4"
-										>
-											{expense?.description ?? 'Ausgabe'}
-										</Link>
-									</ItemTitle>
-									<ItemDescription>
-										{expense ? formatShortDate(expense.occurredAt) : 'Aktueller offener Anteil'}
-									</ItemDescription>
-								</ItemContent>
-								<Badge variant="outline" className="font-mono tabular-nums">
-									{formatEuroCents(split.amountCents, debt.currency)}
-								</Badge>
-							</Item>
-						);
-					})}
-				</ItemGroup>
+				{(preview?.splits.length ?? 0) > 0 && (
+					<ItemGroup aria-label="Unterstützte Ausgabenanteile">
+						{(preview?.splits ?? []).map((split) => {
+							const expense = expenses.find((item) => item.id === split.expenseId);
+							return (
+								<Item
+									key={split.id}
+									// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist role="list"; Item bleibt ein div für das Layout.
+									role="listitem"
+									variant="muted"
+									size="xs"
+									className="relative min-h-11 has-[a:focus-visible]:ring-[3px] has-[a:focus-visible]:ring-ring/50"
+								>
+									<ItemContent className="min-w-0 group-data-[size=xs]/item:gap-0.5">
+										<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
+											{expense ? (
+												<Link
+													href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?highlight=${encodeURIComponent(split.expenseId)}`}
+													onClick={() => setReviewOpen(false)}
+													className="underline underline-offset-4 outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
+												>
+													{expense.description}
+												</Link>
+											) : (
+												<span>Ausgabe</span>
+											)}
+										</ItemTitle>
+										<ItemDescription className="line-clamp-none [overflow-wrap:break-word]">
+											{expense ? formatShortDate(expense.occurredAt) : 'Aktueller offener Anteil'}
+										</ItemDescription>
+									</ItemContent>
+									<Badge variant="outline" className="font-mono tabular-nums">
+										{formatEuroCents(split.amountCents, debt.currency)}
+									</Badge>
+								</Item>
+							);
+						})}
+					</ItemGroup>
+				)}
 				{preview && preview.remainingCents > 0 && (
 					<Alert>
 						<AlertDescription>
@@ -103,7 +123,7 @@ export function SettlementReviewDialog({
 					</AlertDialogCancel>
 					{preview && preview.settleableCents > 0 && (
 						<Button
-							className="h-auto whitespace-normal"
+							className="h-auto min-h-11 whitespace-normal py-2 leading-snug"
 							disabled={settling || !preview || preview.settleableCents <= 0}
 							onClick={() => void settle()}
 						>
