@@ -153,7 +153,10 @@ export function CommentRow({
 								size="icon-sm"
 								disabled={pending}
 								aria-label={`Kommentar entfernen: ${actionSubject}`}
-								onClick={() => setConfirmOpen(true)}
+								onClick={() => {
+									setError(false);
+									setConfirmOpen(true);
+								}}
 							>
 								<Trash2 aria-hidden />
 							</Button>
@@ -201,7 +204,15 @@ export function CommentRow({
 					</Alert>
 				)}
 			</div>
-			<AlertDialog open={confirmOpen} onOpenChange={(open) => !pending && setConfirmOpen(open)}>
+			<AlertDialog
+				open={confirmOpen}
+				onOpenChange={(open) => {
+					// pendingRef sperrt synchron: das eingebaute Schließen läuft vor dem nächsten Render.
+					if (pendingRef.current || pending) return;
+					setConfirmOpen(open);
+					if (!open) setError(false);
+				}}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Kommentar entfernen?</AlertDialogTitle>

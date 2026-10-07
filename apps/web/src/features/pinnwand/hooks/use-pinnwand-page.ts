@@ -23,7 +23,6 @@ export function usePinnwandPage() {
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const searchParams = useSearchParams();
 	const [notice, setNotice] = useState<string | null>(null);
-	const [actionError, setActionError] = useState<string | null>(null);
 	const [archiveOpen, setArchiveOpen] = useState(searchParams.get('status') === 'resolved');
 	const [highlightedId, setHighlightedId] = useState<string | null>(null);
 	const { isPending, start, end } = usePendingSet();
@@ -41,7 +40,10 @@ export function usePinnwandPage() {
 		isPending,
 		start,
 		end,
-		setActionError,
+		// Fehler als Toast: Ein Seiten-Alert über der Liste liegt außerhalb des Sichtfelds, wo man gerade tippt.
+		setActionError: (message) => {
+			if (message) toast.error(message);
+		},
 		setNotice,
 		itemsRef,
 		commitItems: data.commitItems,
@@ -76,13 +78,17 @@ export function usePinnwandPage() {
 		if (!highlightedId || itemCount === 0) return;
 		// Verlinkte Beiträge können im eingeklappten Archiv liegen.
 		const target = itemsRef.current.find((item) => item.id === highlightedId);
-		if (target && isAnnouncementArchived(target, Date.now())) setArchiveOpen(true);
-		const timer = window.setTimeout(() => {
+		const archived = Boolean(target && isAnnouncementArchived(target, Date.now()));
+		if (archived) setArchiveOpen(true);
+		const scroll = () =>
 			document.getElementById(`announcement-${highlightedId}`)?.scrollIntoView({
 				block: 'center',
 			});
-		}, 80);
-		return () => window.clearTimeout(timer);
+		// Das Archiv klappt animiert auf: ein zweites Scrollen nach der Animation, sonst bleibt die Karte unter der Tab-Leiste.
+		const timers = (archived ? [80, 400] : [80]).map((ms) => window.setTimeout(scroll, ms));
+		return () => {
+			for (const timer of timers) window.clearTimeout(timer);
+		};
 	}, [highlightedId, itemCount, itemsRef]);
 
 	const composer = useAnnouncementComposer(ctx, scrollToAnnouncement);
@@ -147,7 +153,6 @@ export function usePinnwandPage() {
 		queuedCount: data.queuedCount,
 		notice,
 		setNotice,
-		actionError,
 		highlightedId,
 		scrollToAnnouncement,
 		archiveOpen,

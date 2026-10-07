@@ -11,10 +11,10 @@ export function ChatBanner({
 	onAction: () => void;
 }) {
 	return (
-		<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1.5">
-			<AlertDescription className="flex flex-row flex-wrap items-start justify-between gap-x-2 gap-y-1 text-xs">
+		<Alert variant="destructive" className="rounded-none border-x-0 border-t-0 px-4 py-1">
+			<AlertDescription className="flex flex-row flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs">
 				<span className="min-w-0 flex-[1_1_10rem]">{message}</span>
-				<Button variant="ghost" size="sm" className="-mx-2 shrink-0 text-xs" onClick={onAction}>
+				<Button variant="outline" size="sm" className="shrink-0 text-xs" onClick={onAction}>
 					{actionLabel}
 				</Button>
 			</AlertDescription>

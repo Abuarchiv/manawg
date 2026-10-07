@@ -42,7 +42,6 @@ export default function PinnwandPage(): React.ReactElement {
 		queuedCount,
 		notice,
 		setNotice,
-		actionError,
 		highlightedId,
 		scrollToAnnouncement,
 		archiveOpen,
@@ -142,12 +141,6 @@ export default function PinnwandPage(): React.ReactElement {
 			{notice && (
 				<Alert aria-live="polite">
 					<AlertDescription>{notice}</AlertDescription>
-				</Alert>
-			)}
-
-			{actionError && (
-				<Alert variant="destructive">
-					<AlertDescription>{actionError}</AlertDescription>
 				</Alert>
 			)}
 

@@ -90,13 +90,21 @@ export const MessageBubble = memo(function MessageBubble({
 	);
 
 	useEffect(() => {
-		if (editing) {
-			wasEditingRef.current = true;
-			editTextareaRef.current?.focus();
-		} else if (wasEditingRef.current) {
-			wasEditingRef.current = false;
-			actionsTriggerRef.current?.focus();
+		if (!editing) {
+			if (wasEditingRef.current) {
+				wasEditingRef.current = false;
+				actionsTriggerRef.current?.focus();
+			}
+			return;
 		}
+		wasEditingRef.current = true;
+		const textarea = editTextareaRef.current;
+		// WebKit scrolls the grown bubble not into view on its own; do it after layout so that Speichern/Abbrechen stay visible.
+		textarea?.focus({ preventScroll: true });
+		const frame = requestAnimationFrame(() =>
+			textarea?.closest('[data-slot="message"]')?.scrollIntoView({ block: 'nearest' }),
+		);
+		return () => cancelAnimationFrame(frame);
 	}, [editing]);
 
 	return (

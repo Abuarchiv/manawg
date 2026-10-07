@@ -13,7 +13,7 @@ import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { haptic } from '@/shared/lib/haptics';
 import { Send, X } from 'lucide-react';
 import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { type MentionTrigger, detectMention } from '../chat-pure';
+import { type MentionTrigger, detectMention, escapeRegExp } from '../chat-pure';
 import {
 	MentionAutocomplete,
 	type MentionMember,
@@ -22,10 +22,6 @@ import {
 } from './MentionAutocomplete';
 
 const BODY_MAX = 4000;
-
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 interface ChatComposerProps {
 	draftKey: string;
@@ -300,11 +296,8 @@ export function ChatComposer({
 					</InputGroupAddon>
 				</InputGroup>
 			</div>
-			{pending && (
-				<output className="px-3 pb-2 text-xs text-muted-foreground">
-					Nachricht wird gesendet…
-				</output>
-			)}
+			{/* Nur für Screenreader: eine sichtbare Zeile würde den Composer höher machen und die Liste verschieben. */}
+			{pending && <output className="sr-only">Nachricht wird gesendet…</output>}
 		</div>
 	);
 }

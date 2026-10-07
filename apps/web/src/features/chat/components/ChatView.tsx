@@ -4,7 +4,6 @@ import {
 	MessageScroller,
 	MessageScrollerButton,
 	MessageScrollerContent,
-	MessageScrollerItem,
 	MessageScrollerProvider,
 	MessageScrollerViewport,
 } from '@/components/ui/message-scroller';
@@ -130,9 +129,8 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 									onReply={onReply}
 								/>
 							)}
-							<MessageScrollerItem>
-								<div ref={chat.readSentinelRef} className="h-px" aria-hidden />
-							</MessageScrollerItem>
+							{/* Kein MessageScrollerItem: ein Item vor den echten Nachrichten verbraucht die einmalige Startposition "end" auf leerer Liste. */}
+							<div ref={chat.readSentinelRef} className="h-px shrink-0" aria-hidden />
 						</MessageScrollerContent>
 					</MessageScrollerViewport>
 					<MessageScrollerButton

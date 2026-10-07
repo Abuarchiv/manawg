@@ -37,7 +37,7 @@ export function commentActionErrorMessage(error: string): string {
 	);
 }
 
-const ACTION_SUBJECT = 'Pinnwand-Aktion fehlgeschlagen';
+const ACTION_SUBJECT = 'Aktion konnte nicht gespeichert werden';
 const ACTION_ERRORS: Record<string, string> = {
 	reaction_invalid: 'Reaktion konnte nicht gespeichert werden: Die Reaktion ist ungültig.',
 	insert_failed:
@@ -51,10 +51,15 @@ const ACTION_ERRORS: Record<string, string> = {
 	kind_invalid: `${ACTION_SUBJECT}: Die Beitragsart ist ungültig.`,
 	status_change_not_allowed:
 		'Nur wer den Beitrag geschrieben hat oder ihn übernommen hat, kann diesen Beitrag als geklärt markieren.',
-	invalid_body: 'Pinnwand-Aktion konnte nicht gespeichert werden: Die Anfrage war ungültig.',
-	invalid_json: 'Pinnwand-Aktion konnte nicht gespeichert werden: Die Anfrage war ungültig.',
+	invalid_body: `${ACTION_SUBJECT}: Die Anfrage war ungültig.`,
+	invalid_json: `${ACTION_SUBJECT}: Die Anfrage war ungültig.`,
 };
 
 export function announcementActionErrorMessage(error: string): string {
-	return mutationErrorMessage(ACTION_SUBJECT, error, ACTION_ERRORS, `${ACTION_SUBJECT}.`);
+	return mutationErrorMessage(
+		ACTION_SUBJECT,
+		error,
+		ACTION_ERRORS,
+		`${ACTION_SUBJECT}. Versuche es erneut.`,
+	);
 }

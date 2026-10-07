@@ -7,24 +7,23 @@ import {
 	EmptyMedia,
 	EmptyTitle,
 } from '@/components/ui/empty';
-import { MessageScrollerItem } from '@/components/ui/message-scroller';
 import { Spinner } from '@/components/ui/spinner';
 import { MessageCircle } from 'lucide-react';
 
 export function ChatLoadingPlaceholder() {
 	return (
-		<MessageScrollerItem>
+		<div>
 			<output className="flex min-h-40 items-center justify-center">
 				<Spinner className="size-5" aria-hidden />
 				<span className="sr-only">Nachrichten werden geladen</span>
 			</output>
-		</MessageScrollerItem>
+		</div>
 	);
 }
 
 export function ChatLoadErrorPlaceholder({ onRetry }: { onRetry: () => void }) {
 	return (
-		<MessageScrollerItem className="flex min-h-40 w-full items-center justify-center">
+		<div className="flex min-h-40 w-full items-center justify-center">
 			<Alert variant="destructive" className="max-w-sm text-center">
 				<AlertTitle>Chat konnte nicht geladen werden.</AlertTitle>
 				<AlertDescription>
@@ -33,13 +32,13 @@ export function ChatLoadErrorPlaceholder({ onRetry }: { onRetry: () => void }) {
 					</Button>
 				</AlertDescription>
 			</Alert>
-		</MessageScrollerItem>
+		</div>
 	);
 }
 
 export function ChatEmptyPlaceholder() {
 	return (
-		<MessageScrollerItem className="py-6">
+		<div className="py-6">
 			<Empty className="border border-dashed">
 				<EmptyHeader>
 					<EmptyMedia>
@@ -49,6 +48,6 @@ export function ChatEmptyPlaceholder() {
 					<EmptyDescription>Schreib die erste.</EmptyDescription>
 				</EmptyHeader>
 			</Empty>
-		</MessageScrollerItem>
+		</div>
 	);
 }

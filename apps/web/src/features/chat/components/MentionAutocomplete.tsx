@@ -26,7 +26,7 @@ export function mentionOptionId(listboxId: string, index: number): string {
 export function filterMentionMembers(members: MentionMember[], query: string): MentionMember[] {
 	const needle = query.toLowerCase();
 	return members
-		.filter((member) => member.name.toLowerCase().includes(needle))
+		.filter((member) => member.name.toLowerCase().startsWith(needle))
 		.slice(0, MAX_MENTION_SUGGESTIONS);
 }
 
