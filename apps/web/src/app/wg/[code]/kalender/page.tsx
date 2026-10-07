@@ -165,6 +165,7 @@ export default function KalenderPage() {
 						selectedDay={selectedDay}
 						choreOccurrences={calendar.upcomingChoreOccurrences}
 						wgBaseHref={wgBaseHref}
+						status={loading ? 'loading' : loadError ? 'error' : undefined}
 					/>
 				</TabsContent>
 			</Tabs>

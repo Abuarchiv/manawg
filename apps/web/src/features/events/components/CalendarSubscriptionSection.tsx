@@ -44,13 +44,13 @@ export function CalendarSubscriptionSection({ encodedShareCode }: { encodedShare
 										type="url"
 										readOnly
 										value={subscription.feedUrl}
-										className="min-w-0 flex-1 text-sm"
+										className="min-w-[min(12rem,100%)] flex-1 text-sm"
 									/>
 									<Button
 										type="button"
 										variant="outline"
 										onClick={() => void feed.copyUrl()}
-										className="max-w-full shrink whitespace-normal"
+										className="min-w-[7.5rem] max-w-full shrink-0 whitespace-normal"
 									>
 										{feed.copyState === 'copied' ? 'Kopiert' : 'Link kopieren'}
 									</Button>

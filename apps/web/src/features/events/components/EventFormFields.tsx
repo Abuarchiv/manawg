@@ -154,3 +154,10 @@ export function EventFormFields({
 		</FieldGroup>
 	);
 }
+
+const FIELD_ID_SUFFIX = { title: 'title', startsAt: 'start', endsAt: 'end' } as const;
+
+/** Fokus auf das fehlerhafte Feld; preventScroll, damit das Scrollen zur Meldung nicht dagegen arbeitet. */
+export function focusEventField(idPrefix: string, field: keyof typeof FIELD_ID_SUFFIX): void {
+	document.getElementById(`${idPrefix}-${FIELD_ID_SUFFIX[field]}`)?.focus({ preventScroll: true });
+}

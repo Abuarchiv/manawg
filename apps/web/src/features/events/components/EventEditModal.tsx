@@ -23,7 +23,7 @@ import {
 import { Field, FieldLabel } from '@/components/ui/field';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
-import { EventFormFields } from '@/features/events/components/EventFormFields';
+import { EventFormFields, focusEventField } from '@/features/events/components/EventFormFields';
 import {
 	RECURRENCE_OPTIONS,
 	type RecurrenceFreq,
@@ -158,6 +158,7 @@ export function EventEditModal({
 		if (!validation.ok) {
 			setError(validation.error);
 			setErrorField(validation.field);
+			focusEventField('event-edit', validation.field);
 			return;
 		}
 		const trimmedTitle = title.trim();
@@ -273,27 +274,27 @@ export function EventEditModal({
 						)}
 					</div>
 					<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-						<div className="flex gap-2">
-							<Button type="submit" className="flex-1" disabled={saving || deleting}>
+						<div className="flex flex-wrap gap-2">
+							<Button type="submit" className="min-w-fit flex-1" disabled={saving || deleting}>
 								{saving && <Spinner data-icon="inline-start" aria-hidden />}
 								{saving ? 'Speichert…' : 'Speichern'}
 							</Button>
 							<Button
 								type="button"
 								variant="outline"
-								className="flex-1"
+								className="min-w-fit flex-1"
 								onClick={requestClose}
 								disabled={saving || deleting}
 							>
 								Abbrechen
 							</Button>
 						</div>
-						<div className={onExportIcs ? 'grid grid-cols-2 gap-2' : 'flex gap-2'}>
+						<div className="flex flex-wrap gap-2">
 							{onExportIcs && (
 								<Button
 									type="button"
 									variant="outline"
-									className="h-auto min-h-8"
+									className="h-auto min-h-8 min-w-fit flex-1 py-1.5"
 									onClick={onExportIcs}
 									aria-label="In Kalender-App übernehmen"
 								>
@@ -304,7 +305,7 @@ export function EventEditModal({
 							<Button
 								type="button"
 								variant="destructive"
-								className="h-auto min-h-8 flex-1"
+								className="h-auto min-h-8 min-w-fit flex-1 py-1.5"
 								onClick={() => setConfirmingDelete(true)}
 								disabled={saving || deleting}
 								aria-label="Termin löschen"

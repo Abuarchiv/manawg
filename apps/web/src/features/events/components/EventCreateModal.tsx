@@ -13,7 +13,7 @@ import {
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
-import { EventFormFields } from '@/features/events/components/EventFormFields';
+import { EventFormFields, focusEventField } from '@/features/events/components/EventFormFields';
 import {
 	RECURRENCE_OPTIONS,
 	type RecurrenceFreq,
@@ -81,10 +81,18 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 		if (error) document.getElementById('event-create-error')?.scrollIntoView({ block: 'nearest' });
 	}, [error]);
 	const draftInitializedRef = useRef(false);
+	// Tag, mit dem der Entwurf zuletzt vorbelegt wurde.
+	const lastSeedDayRef = useRef('');
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: nur beim Öffnen bzw. neuem Tag vorbelegen, nicht bei jedem Tastendruck.
 	useEffect(() => {
-		if (!open || draftInitializedRef.current) return;
+		if (!open) return;
+		const day = defaultDate?.toDateString() ?? '';
+		// Ein unberührter Entwurf folgt dem neu gewählten Tag, ein begonnener bleibt erhalten.
+		const pristine = !title && !description && !location && !endsAt && !allDay && !recurrenceFreq;
+		if (draftInitializedRef.current && !(pristine && day !== lastSeedDayRef.current)) return;
 		draftInitializedRef.current = true;
+		lastSeedDayRef.current = day;
 		setError(null);
 		setErrorField(null);
 		// Start at the next full hour; a picked day keeps that time of day
@@ -116,6 +124,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 		if (!validation.ok) {
 			setError(validation.error);
 			setErrorField(validation.field);
+			focusEventField('event-create', validation.field);
 			return;
 		}
 		const trimmedTitle = title.trim();
@@ -136,6 +145,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 				recurrence,
 			});
 			draftInitializedRef.current = false;
+			lastSeedDayRef.current = '';
 			setStartsAt('');
 			setEndsAt('');
 			setTitle('');
@@ -165,7 +175,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 						Für eure WG · Datum und Uhrzeit wie auf deinem Gerät.
 					</DrawerDescription>
 				</DrawerHeader>
-				<form onSubmit={handleSubmit} className="flex min-h-0 flex-col">
+				<form noValidate onSubmit={handleSubmit} className="flex min-h-0 flex-col">
 					<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
 						<FieldSet disabled={submitting}>
 							<FieldLegend variant="label">Vorlagen</FieldLegend>
