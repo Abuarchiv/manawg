@@ -235,7 +235,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 					</ItemDescription>
 				</ItemContent>
 
-				<ItemActions className="ml-auto flex-wrap justify-end gap-1.5">
+				{/* pr-1.5: die 44-px-Trefferfläche des letzten Knopfs ragt sonst über den Zeilenrand hinaus. */}
+				<ItemActions className="ml-auto flex-wrap justify-end gap-1.5 pr-1.5">
 					{!armed && (
 						<>
 							<Button
