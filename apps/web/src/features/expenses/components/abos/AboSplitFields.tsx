@@ -16,6 +16,8 @@ import {
 	InputGroupText,
 } from '@/components/ui/input-group';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { parseEuroAmount } from '@/core/utils/amount';
+import { CENTS_PER_EURO, formatEuroCents } from '@/core/utils/money';
 import type { AboSplit, MemberOption } from '@/features/expenses/components/abos/abos-types';
 import { SplitReview } from '@/features/expenses/components/ausgaben/SplitReview';
 import type { AboSplitBuildError, SplitMode } from './abo-form-model';
@@ -23,6 +25,8 @@ import type { AboSplitBuildError, SplitMode } from './abo-form-model';
 interface AboSplitFieldsProps {
 	submitting: boolean;
 	splitMode: SplitMode;
+	/** Gesamtbetrag in Cent für die Live-Summe; null, solange der Betrag nicht gültig ist. */
+	totalCents: number | null;
 	onSplitModeChange: (mode: SplitMode) => void;
 	splitCandidates: MemberOption[];
 	manualSplits: Record<string, string>;
@@ -32,10 +36,33 @@ interface AboSplitFieldsProps {
 	paidByMemberId: string;
 }
 
+/** Nur ein Anteil, den man nicht lesen kann, ist selbst das Problem; eine falsche Summe betrifft kein einzelnes Feld. */
+function isUnreadableShare(raw: string | undefined): boolean {
+	const value = raw?.trim() ?? '';
+	if (value.length === 0) return false;
+	const parsed = parseEuroAmount(value);
+	return parsed === null || parsed < 0;
+}
+
+function splitSumHint(manualSplits: Record<string, string>, totalCents: number | null): string {
+	if (totalCents === null) return 'Die Anteile müssen zusammen den Gesamtbetrag ergeben.';
+	let sumCents = 0;
+	for (const raw of Object.values(manualSplits)) {
+		const parsed = parseEuroAmount(raw);
+		if (parsed !== null && parsed > 0) sumCents += Math.round(parsed * CENTS_PER_EURO);
+	}
+	const base = `Verteilt ${formatEuroCents(sumCents)} von ${formatEuroCents(totalCents)}`;
+	if (sumCents === totalCents) return `${base} · passt`;
+	return sumCents < totalCents
+		? `${base} · noch ${formatEuroCents(totalCents - sumCents)} offen`
+		: `${base} · ${formatEuroCents(sumCents - totalCents)} zu viel`;
+}
+
 /** "Beteiligte & Aufteilung": equal split preview or one amount field per member. */
 export function AboSplitFields({
 	submitting,
 	splitMode,
+	totalCents,
 	onSplitModeChange,
 	splitCandidates,
 	manualSplits,
@@ -45,7 +72,11 @@ export function AboSplitFields({
 	paidByMemberId,
 }: AboSplitFieldsProps) {
 	return (
-		<FieldSet disabled={submitting} data-invalid={Boolean(splitError)}>
+		<FieldSet
+			disabled={submitting}
+			data-invalid={Boolean(splitError)}
+			aria-describedby={splitError ? 'abo-splits-error' : undefined}
+		>
 			<FieldLegend variant="label">Beteiligte & Aufteilung</FieldLegend>
 			<ToggleGroup
 				variant="segmented"
@@ -65,6 +96,9 @@ export function AboSplitFields({
 				</ToggleGroupItem>
 			</ToggleGroup>
 			{splitMode === 'manual' && (
+				<FieldDescription>{splitSumHint(manualSplits, totalCents)}</FieldDescription>
+			)}
+			{splitMode === 'manual' && (
 				<FieldGroup className={splitError ? 'block space-y-3' : 'gap-3'}>
 					{splitCandidates.map((member, index) => (
 						<Field key={member.id} orientation="responsive">
@@ -82,8 +116,12 @@ export function AboSplitFields({
 									enterKeyHint={index === splitCandidates.length - 1 ? 'done' : 'next'}
 									aria-label={`Anteil ${member.name} in Euro`}
 									disabled={submitting}
-									aria-invalid={Boolean(splitError)}
-									aria-describedby={splitError ? 'abo-splits-error' : undefined}
+									aria-invalid={Boolean(splitError) && isUnreadableShare(manualSplits[member.id])}
+									aria-describedby={
+										splitError && isUnreadableShare(manualSplits[member.id])
+											? 'abo-splits-error'
+											: undefined
+									}
 									className="min-h-11 font-mono tabular-nums text-base"
 								/>
 								<InputGroupAddon align="inline-end">
@@ -92,10 +130,13 @@ export function AboSplitFields({
 							</InputGroup>
 						</Field>
 					))}
-					<FieldDescription>Die Anteile müssen zusammen den Gesamtbetrag ergeben.</FieldDescription>
 				</FieldGroup>
 			)}
-			{splitError && <FieldError id="abo-splits-error">{splitError}</FieldError>}
+			{splitError && (
+				<FieldError id="abo-splits-error" className="scroll-mb-32">
+					{splitError}
+				</FieldError>
+			)}
 			{splitMode !== 'manual' &&
 				(typeof splitPreview === 'string' ? (
 					<FieldDescription>Betrag eingeben, dann wird gleichmäßig aufgeteilt.</FieldDescription>

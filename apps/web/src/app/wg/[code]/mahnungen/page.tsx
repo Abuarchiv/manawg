@@ -38,6 +38,8 @@ export default function ErinnerungenPage() {
 		cooldownFor,
 		canRemind,
 		primaryReminder,
+		optedOutIds,
+		markOptedOut,
 		allClear,
 	} = useRemindersPage();
 	const wgBaseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
@@ -49,8 +51,9 @@ export default function ErinnerungenPage() {
 				? `${debtorName} erinnern`
 				: `${debtorName} an ${memberName(row.creditorId)} erinnern · ${formatEuroCents(row.amountCents, row.currency)}`;
 		const cooldown = cooldownFor(row.debtorId, row.creditorId, row.currency);
+		// Kurz halten ("in 2 Tagen"): ein langer Chip bricht unter die Zeile und lässt sie springen.
 		const cooldownLabel = cooldown.nextAllowedAt
-			? `Wieder möglich ${formatRelativeTime(cooldown.nextAllowedAt.toISOString())}`
+			? formatRelativeTime(cooldown.nextAllowedAt.toISOString())
 			: null;
 		return (
 			<RemindButton
@@ -62,6 +65,11 @@ export default function ErinnerungenPage() {
 				currentMemberId={identity.memberId}
 				cooldownActive={!cooldown.allowed}
 				cooldownLabel={cooldownLabel}
+				debtorOptedOut={optedOutIds.has(row.debtorId)}
+				onRejected={(kind) => {
+					if (kind === 'optedOut') markOptedOut(row.debtorId);
+					else void load(false);
+				}}
 				onSent={(reminderId) => {
 					if (primary) {
 						setPrimaryReminderKey(null);
@@ -104,6 +112,7 @@ export default function ErinnerungenPage() {
 				primary={primary}
 				size={primary ? 'md' : 'sm'}
 				label={primary ? primaryLabel : 'Erinnern'}
+				debtorName={debtorName}
 			/>
 		);
 	}
@@ -149,8 +158,11 @@ export default function ErinnerungenPage() {
 								// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 								role="status"
 							>
-								<Skeleton className="h-24 w-full" />
-								<Skeleton className="h-24 w-full" />
+								<div className="divide-y overflow-hidden rounded-xl border">
+									<Skeleton className="h-[52px] w-full rounded-none" />
+									<Skeleton className="h-[52px] w-full rounded-none" />
+									<Skeleton className="h-[52px] w-full rounded-none" />
+								</div>
 							</div>
 						) : expensesLoadFailed && rows.length === 0 ? null : rows.length === 0 ? (
 							<Empty>
@@ -179,7 +191,9 @@ export default function ErinnerungenPage() {
 											oldestDebtAgeDays={row.oldestAge}
 											currentMemberId={identity.memberId}
 											action={
-												row === primaryReminder || !canRemind(row) ? null : reminderButton(row)
+												row === primaryReminder || !canRemind(row) || remindersLoadFailed
+													? null
+													: reminderButton(row)
 											}
 										/>
 									);
@@ -200,7 +214,11 @@ export default function ErinnerungenPage() {
 							/>
 						)}
 						{loading ? (
-							<Skeleton className="h-20 w-full" />
+							<div className="flex flex-col gap-2" aria-hidden>
+								<Skeleton className="h-[50px] w-full" />
+								<Skeleton className="h-[50px] w-full" />
+								<Skeleton className="h-[50px] w-full" />
+							</div>
 						) : remindersLoadFailed && reminders.length === 0 ? null : (
 							<ReminderHistory
 								items={reminders}

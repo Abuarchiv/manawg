@@ -47,7 +47,7 @@ export function aboSaveErrorMessage(error: string, action: 'angelegt' | 'aktuali
 		return `${prefix}: Prüfe das nächste Fälligkeitsdatum.`;
 	}
 	if (error === 'splits_invalid' || error === 'splits_sum_mismatch') {
-		return 'Beträge stimmen nicht überein: Summe muss exakt dem Gesamtbetrag entsprechen.';
+		return 'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.';
 	}
 	if (error === 'invalid_body' || error === 'invalid_json') {
 		return `${prefix}: Die Anfrage war ungültig.`;
@@ -81,7 +81,7 @@ export function aboActionErrorMessage(error: string): string {
 	if (error === 'invalid_body' || error === 'invalid_json') {
 		return 'Fixkosten-Aktion fehlgeschlagen: Die Anfrage war ungültig.';
 	}
-	return 'Fixkosten-Aktion fehlgeschlagen.';
+	return 'Fixkosten-Aktion fehlgeschlagen. Versuche es gleich erneut.';
 }
 
 export function aboDeleteErrorMessage(error: string): string {

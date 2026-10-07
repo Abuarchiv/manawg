@@ -22,10 +22,13 @@ import { ThumbAction } from '@/components/wg/ThumbAction';
 import { formatEuroCents } from '@/core/utils/money';
 import { AboCreateModal } from '@/features/expenses/components/abos/AboCreateModal';
 import { AboEditModal } from '@/features/expenses/components/abos/AboEditModal';
+import { AboModalOpenContext } from '@/features/expenses/components/abos/AboModalShell';
 import { AbosList } from '@/features/expenses/components/abos/AbosList';
+import type { Abo } from '@/features/expenses/components/abos/abos-types';
 import { useAbosPage } from '@/features/expenses/hooks/use-abos-page';
 import { cn } from '@/shared/lib/cn';
 import { Plus } from 'lucide-react';
+import { useRef } from 'react';
 
 export default function AbosPage() {
 	const {
@@ -56,6 +59,10 @@ export default function AbosPage() {
 		dueCount,
 		monthly,
 	} = useAbosPage();
+	const listRef = useRef<HTMLElement>(null);
+	const deletedRef = useRef(false);
+	const lastEditingRef = useRef<Abo | null>(null);
+	if (editing) lastEditingRef.current = editing;
 
 	return (
 		<div
@@ -131,6 +138,7 @@ export default function AbosPage() {
 					filter={filter}
 					pendingId={pendingId}
 					loadError={loadError}
+					listRef={listRef}
 					onFilterChange={setFilter}
 					onEdit={(abo) => {
 						setNotice(null);
@@ -140,25 +148,34 @@ export default function AbosPage() {
 					onDelete={setDeleteCandidate}
 				/>
 			)}
-			{showCreate && (
+			<AboModalOpenContext.Provider value={showCreate}>
 				<AboCreateModal
 					members={memberOptions}
 					defaultPaidByMemberId={identity.memberId}
 					submitting={submitting}
 					saveError={notice?.tone === 'error' ? notice.message : null}
-					onClose={() => setShowCreate(false)}
+					onClose={() => {
+						setShowCreate(false);
+						setNotice(null);
+					}}
 					onSubmit={(values) => void handleCreate(values)}
 				/>
-			)}
-			{editing && (
-				<AboEditModal
-					abo={editing}
-					members={memberOptions}
-					submitting={submitting}
-					saveError={notice?.tone === 'error' ? notice.message : null}
-					onClose={() => setEditing(null)}
-					onSubmit={(values) => void handleEdit(values)}
-				/>
+			</AboModalOpenContext.Provider>
+			{/* Bleibt nach dem Schließen mit dem letzten Eintrag eingehängt, bis die Animation durch ist. */}
+			{lastEditingRef.current && (
+				<AboModalOpenContext.Provider value={editing !== null}>
+					<AboEditModal
+						abo={lastEditingRef.current}
+						members={memberOptions}
+						submitting={submitting}
+						saveError={notice?.tone === 'error' ? notice.message : null}
+						onClose={() => {
+							setEditing(null);
+							setNotice(null);
+						}}
+						onSubmit={(values) => void handleEdit(values)}
+					/>
+				</AboModalOpenContext.Provider>
 			)}
 			<AlertDialog
 				open={deleteCandidate !== null}
@@ -166,7 +183,14 @@ export default function AbosPage() {
 					if (!open) setDeleteCandidate(null);
 				}}
 			>
-				<AlertDialogContent>
+				<AlertDialogContent
+					finalFocus={() => {
+						// Die gelöschte Zeile samt Auslöser ist weg: Fokus bleibt in der Liste statt auf <body>.
+						if (!deletedRef.current) return null;
+						deletedRef.current = false;
+						return listRef.current;
+					}}
+				>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Fixkosten löschen?</AlertDialogTitle>
 						<AlertDialogDescription>
@@ -181,7 +205,10 @@ export default function AbosPage() {
 							className="min-h-11"
 							disabled={pendingId !== null}
 							onClick={() => {
-								if (deleteCandidate) void handleDelete(deleteCandidate);
+								if (deleteCandidate) {
+									deletedRef.current = true;
+									void handleDelete(deleteCandidate);
+								}
 								setDeleteCandidate(null);
 							}}
 						>
@@ -209,16 +236,33 @@ export default function AbosPage() {
 
 function AbosSkeleton() {
 	return (
-		<ItemGroup aria-busy="true" aria-label="Fixkosten werden geladen">
-			{['s1', 's2', 's3', 's4'].map((key) => (
-				<Item key={key} variant="outline" aria-hidden="true">
-					<ItemContent>
-						<Skeleton className="h-4 w-2/3" />
-						<Skeleton className="h-3 w-1/3" />
-					</ItemContent>
-					<Skeleton className="h-4 w-16" />
-				</Item>
-			))}
-		</ItemGroup>
+		<>
+			{/* Reserviert die Summenkarte, damit die Liste beim Laden nicht nach unten springt. */}
+			<Card size="sm" aria-hidden="true">
+				<CardContent className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7.5rem),1fr))] gap-3">
+					{['s1', 's2'].map((key) => (
+						<div key={key} className="min-w-0">
+							<div className="flex h-5 items-center">
+								<Skeleton className="h-3 w-16" />
+							</div>
+							<div className="flex h-7 items-center">
+								<Skeleton className="h-5 w-24" />
+							</div>
+						</div>
+					))}
+				</CardContent>
+			</Card>
+			<ItemGroup aria-busy="true" aria-label="Fixkosten werden geladen">
+				{['s1', 's2', 's3', 's4'].map((key) => (
+					<Item key={key} variant="outline" aria-hidden="true">
+						<ItemContent>
+							<Skeleton className="h-4 w-2/3" />
+							<Skeleton className="h-3 w-1/3" />
+						</ItemContent>
+						<Skeleton className="h-4 w-16" />
+					</Item>
+				))}
+			</ItemGroup>
+		</>
 	);
 }

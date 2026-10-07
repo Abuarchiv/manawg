@@ -10,7 +10,8 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { AboRow } from '@/features/expenses/components/abos/AboRow';
 import type { Abo, AboFilter, MemberOption } from '@/features/expenses/components/abos/abos-types';
-import { RefreshCw } from 'lucide-react';
+import { Repeat2 } from 'lucide-react';
+import type { Ref } from 'react';
 
 interface AbosListProps {
 	abos: Abo[];
@@ -18,6 +19,8 @@ interface AbosListProps {
 	filter: AboFilter;
 	pendingId: string | null;
 	loadError?: string | null;
+	/** Fokusziel nach dem Löschen einer Zeile; der Container bleibt auch bei leerer Liste gerendert. */
+	listRef?: Ref<HTMLElement>;
 	onFilterChange: (next: AboFilter) => void;
 	onEdit: (abo: Abo) => void;
 	onTogglePause: (abo: Abo) => void;
@@ -42,6 +45,7 @@ export function AbosList({
 	filter,
 	pendingId,
 	loadError,
+	listRef,
 	onFilterChange,
 	onEdit,
 	onTogglePause,
@@ -52,7 +56,7 @@ export function AbosList({
 	const filtered = applyFilter(abos, showFilter ? filter : 'all');
 
 	return (
-		<section className="flex flex-col gap-4">
+		<section ref={listRef} tabIndex={-1} className="flex flex-col gap-4 outline-none">
 			{showFilter && (
 				<ToggleGroup
 					variant="segmented"
@@ -79,22 +83,20 @@ export function AbosList({
 					<Empty>
 						<EmptyHeader>
 							<EmptyMedia variant="icon">
-								<RefreshCw />
+								<Repeat2 />
 							</EmptyMedia>
 							<EmptyTitle>
-								{loadError && abos.length === 0
-									? 'Noch keine Fixkosten geladen'
-									: abos.length === 0
-										? 'Noch keine Fixkosten'
-										: `Keine ${filter === 'paused' ? 'pausierten' : 'aktiven'} Fixkosten`}
+								{abos.length === 0
+									? 'Noch keine Fixkosten'
+									: `Keine ${filter === 'paused' ? 'pausierten' : 'aktiven'} Fixkosten`}
 							</EmptyTitle>
-							{abos.length > 0 || loadError ? (
-								<EmptyDescription>
-									{loadError && abos.length === 0
-										? 'Versuche es erneut, sobald die Verbindung wieder da ist.'
-										: 'Wähle einen anderen Filter.'}
-								</EmptyDescription>
-							) : null}
+							<EmptyDescription>
+								{abos.length === 0
+									? 'Lege Miete, Strom oder Netflix an, ManaWG bucht sie automatisch.'
+									: filter === 'paused'
+										? 'Keine Fixkosten sind pausiert.'
+										: 'Alle Fixkosten sind pausiert. Zeige sie unter „Pausiert“.'}
+							</EmptyDescription>
 						</EmptyHeader>
 					</Empty>
 				)

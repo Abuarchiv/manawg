@@ -27,10 +27,14 @@ interface RemindButtonProps {
 	cooldownLabel?: string | null;
 	debtorOptedOut?: boolean;
 	onSent?: (reminderId: string) => void;
+	/** Der Server hat abgelehnt (429/403): Seite lädt neu bzw. merkt sich die Person, damit nicht erneut angeboten wird. */
+	onRejected?: (kind: 'cooldown' | 'optedOut') => void;
 	onOptimistic?: (() => (() => void) | undefined) | undefined;
 	size?: 'sm' | 'md';
 	primary?: boolean;
 	label?: string;
+	/** Für die Bestätigung: „Erinnerung an Jona gesendet“. */
+	debtorName?: string;
 }
 
 function errorMessage(error: string): string {
@@ -66,10 +70,12 @@ export function RemindButton({
 	cooldownLabel,
 	debtorOptedOut,
 	onSent,
+	onRejected,
 	onOptimistic,
 	size = 'md',
 	primary = false,
 	label: idleLabel = 'Erinnern',
+	debtorName,
 }: RemindButtonProps) {
 	const toast = useToast();
 	const [status, setStatus] = useState<RemindButtonStatus>(
@@ -88,10 +94,10 @@ export function RemindButton({
 				? 'cooldown'
 				: 'idle';
 		setStatus((current) => {
-			// 'sent' is terminal, but a leftover 'sending' without an in-flight
-			// request must not stick — otherwise the button stays on "Sende…"
-			// forever with no way to retry after the conditions changed.
-			if (current === 'sent') return current;
+			// 'sent' holds until the reloaded history reports the cooldown; a leftover
+			// 'sending' without an in-flight request must not stick — otherwise the
+			// button stays on "Sende…" forever with no way to retry.
+			if (current === 'sent' && nextStatus !== 'cooldown') return current;
 			return nextStatus;
 		});
 		if (nextStatus === 'idle') setFeedback(null);
@@ -130,7 +136,12 @@ export function RemindButton({
 			if (res.ok) {
 				requestKeyRef.current = null;
 				setStatus('sent');
-				setFeedback(successMessage(res.data.warning));
+				// Der primäre Button wechselt sofort zur nächsten Person (Remount): nur ein Toast überlebt das.
+				toast.success(
+					res.data.warning || !debtorName
+						? successMessage(res.data.warning)
+						: `Erinnerung an ${debtorName} gesendet.`,
+				);
 				onSent?.(res.data.reminder.id);
 				return;
 			}
@@ -138,8 +149,10 @@ export function RemindButton({
 			if (res.status > 0 && res.status < 500) requestKeyRef.current = null;
 			if (res.status === 429 && res.error === 'reminder_cooldown') {
 				setStatus('cooldown');
+				onRejected?.('cooldown');
 			} else if (res.status === 403 && res.error === 'debtor_opted_out') {
 				setStatus('optedOut');
+				onRejected?.('optedOut');
 			} else {
 				setStatus('error');
 			}
@@ -160,8 +173,8 @@ export function RemindButton({
 	let label = idleLabel;
 	if (status === 'sending') label = 'Sendet…';
 	else if (status === 'sent') label = 'Gesendet';
-	else if (status === 'cooldown') label = cooldownLabel ?? 'Noch gesperrt';
-	else if (status === 'optedOut') label = 'Erinnerungen deaktiviert';
+	else if (status === 'cooldown') label = cooldownLabel ?? 'Wieder später möglich';
+	else if (status === 'optedOut') label = 'Mag keine Erinnerungen';
 
 	return (
 		<div
@@ -186,14 +199,18 @@ export function RemindButton({
 				) : (
 					<Bell data-icon="inline-start" />
 				)}
+				{status === 'cooldown' && cooldownLabel && <span className="sr-only">Wieder möglich </span>}
 				{label}
 			</Button>
-			{feedback && !(status === 'sent' && feedback === successMessage(null)) && (
+			{/* Fehler und Hinweise stehen schon im Toast; inline nur beim primären Button, nie doppelt in einer Zeile. */}
+			{primary && feedback && status !== 'sent' && (
 				<Alert
 					role={status === 'error' ? 'alert' : 'status'}
 					variant={status === 'error' ? 'destructive' : 'default'}
 				>
-					<AlertDescription>{feedback}</AlertDescription>
+					<AlertDescription className="whitespace-normal [overflow-wrap:break-word]">
+						{feedback}
+					</AlertDescription>
 				</Alert>
 			)}
 		</div>

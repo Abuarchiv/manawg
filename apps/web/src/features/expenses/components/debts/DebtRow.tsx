@@ -62,7 +62,7 @@ export function DebtRow({
 						</span>
 					</ItemDescription>
 				</ItemContent>
-				{action && <div className="ml-auto shrink-0">{action}</div>}
+				{action && <div className="ml-auto min-w-0 max-w-full">{action}</div>}
 			</Item>
 		</li>
 	);

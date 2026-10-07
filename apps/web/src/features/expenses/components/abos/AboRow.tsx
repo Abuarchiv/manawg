@@ -10,13 +10,25 @@ import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
-import { formatShortDate } from '@/core/utils/time';
+import { formatShortDate, parseValidDate } from '@/core/utils/time';
 import type { Abo, MemberOption } from '@/features/expenses/components/abos/abos-types';
 import {
 	formatIntervalLabel,
 	previewNextOccurrences,
 } from '@/features/expenses/recurring-expenses';
 import { ChevronDown, Pause, Pencil, Play, Trash2 } from 'lucide-react';
+
+const DATE_WITH_YEAR = new Intl.DateTimeFormat('de-DE', {
+	day: '2-digit',
+	month: '2-digit',
+	year: 'numeric',
+});
+
+/** Jährliche Fixkosten: ohne Jahr sähen alle Termine gleich aus (03.02., 03.02., 03.02.). */
+function formatAboDate(iso: string, intervalMonths: number): string {
+	const date = intervalMonths >= 12 ? parseValidDate(iso) : null;
+	return date ? DATE_WITH_YEAR.format(date) : formatShortDate(iso);
+}
 
 interface AboRowProps {
 	abo: Abo;
@@ -57,13 +69,14 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 					<span className="mt-0.5 flex">
 						<MemberAvatar name={payerName} size={28} />
 					</span>
-					<span className="flex min-w-0 flex-1 flex-col gap-0.5">
-						<span className="flex min-w-0 items-baseline gap-3">
+					{/* Betrag rechts neben dem Titel; erst wenn die Zeile zu schmal wird (320 px, große Schrift), darunter. */}
+					<span className="@container flex min-w-0 flex-1 flex-col gap-0.5">
+						<span className="flex min-w-0 flex-col gap-0.5 @[14rem]:flex-row @[14rem]:items-baseline @[14rem]:gap-3">
 							<span className="sr-only">Details öffnen:</span>
-							<span className="min-w-0 flex-1 break-words text-[14px] font-medium leading-snug">
+							<span className="min-w-0 flex-1 hyphens-auto text-[14px] font-medium leading-snug [overflow-wrap:break-word]">
 								{abo.description}
 							</span>
-							<span className="shrink-0 whitespace-nowrap font-mono tabular-nums">
+							<span className="whitespace-nowrap font-mono tabular-nums @[14rem]:shrink-0">
 								{formatEuroCents(abo.amountCents, abo.currency)}
 							</span>
 						</span>
@@ -74,10 +87,10 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 								<span className="font-medium text-foreground">wird nicht gebucht</span>
 							) : isOverdue ? (
 								<span className="font-medium text-foreground">
-									seit {formatShortDate(abo.nextDueAt)} fällig
+									seit {formatAboDate(abo.nextDueAt, abo.intervalMonths)} fällig
 								</span>
 							) : (
-								`nächste am ${formatShortDate(abo.nextDueAt)}`
+								`nächste am ${formatAboDate(abo.nextDueAt, abo.intervalMonths)}`
 							)}
 							{` · ${formatIntervalLabel(abo.intervalMonths)} · `}
 							<span className="sr-only">bezahlt von </span>
@@ -101,13 +114,13 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 								return (
 									<li
 										key={split.debtorMemberId}
-										className="flex items-baseline justify-between gap-3 text-sm"
+										className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm"
 									>
-										<span className="min-w-0 break-words">
+										<span className="min-w-[10ch] flex-1 hyphens-auto [overflow-wrap:break-word]">
 											{name}
 											{split.debtorMemberId === abo.paidByMemberId ? ' · eigener Anteil' : ''}
 										</span>
-										<span className="shrink-0 font-mono tabular-nums">
+										<span className="ml-auto font-mono tabular-nums">
 											{formatEuroCents(split.amountCents, abo.currency)}
 										</span>
 									</li>
@@ -123,7 +136,9 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 						{preview.length > 0 && !isPaused && !blockedByMovedOut && (
 							<p className="text-sm text-muted-foreground">
 								Nächste {preview.length} Buchungen:{' '}
-								{preview.map((date) => formatShortDate(date.toISOString())).join(', ')}
+								{preview
+									.map((date) => formatAboDate(date.toISOString(), abo.intervalMonths))
+									.join(', ')}
 							</p>
 						)}
 						<div className="flex flex-wrap items-center gap-3 border-t pt-3">

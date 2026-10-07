@@ -164,7 +164,13 @@ export function AboForm({
 		if (typeof splits === 'string') {
 			if (splits === 'amount_invalid') setError('Gib einen Betrag über 0 € ein, z. B. 12,50.');
 			else if (splits === 'no_members') setError('Keine Mitglieder vorhanden.');
-			else setSplitError(splitInputErrorMessage(splits));
+			else {
+				setSplitError(splitInputErrorMessage(splits));
+				// Die Meldung steht unter den Feldern, oft außerhalb des sichtbaren Bereichs.
+				requestAnimationFrame(() =>
+					document.getElementById('abo-splits-error')?.scrollIntoView({ block: 'nearest' }),
+				);
+			}
 			return;
 		}
 		onSubmit({
@@ -279,6 +285,7 @@ export function AboForm({
 				<AboSplitFields
 					submitting={submitting}
 					splitMode={splitMode}
+					totalCents={parsedAmountCents}
 					onSplitModeChange={(value) => {
 						setSplitMode(value);
 						setSplitError(null);

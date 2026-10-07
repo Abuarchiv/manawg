@@ -14,7 +14,21 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft } from 'lucide-react';
-import { type ReactNode, type SyntheticEvent, useRef, useState } from 'react';
+import {
+	type ReactNode,
+	type SyntheticEvent,
+	createContext,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+} from 'react';
+
+/**
+ * Die Seite hält Anlegen und Bearbeiten dauerhaft eingehängt und schaltet nur dieses Flag.
+ * So läuft die Schließ-Animation des Sheets, statt dass der Knoten im selben Frame verschwindet.
+ */
+export const AboModalOpenContext = createContext(true);
 
 interface AboModalShellProps {
 	title: string;
@@ -24,8 +38,15 @@ interface AboModalShellProps {
 }
 
 export function AboModalShell({ title, onClose, submitting, children }: AboModalShellProps) {
+	const open = useContext(AboModalOpenContext);
 	const [confirmClose, setConfirmClose] = useState(false);
 	const dirtyRef = useRef(false);
+	// Jedes Öffnen startet sauber: kein Rest vom letzten Entwurf, keine offene Rückfrage.
+	useEffect(() => {
+		if (!open) return;
+		dirtyRef.current = false;
+		setConfirmClose(false);
+	}, [open]);
 	const trackFieldChange = (event: SyntheticEvent<HTMLDivElement>) => {
 		const target = event.target;
 		if (target instanceof Element && target.matches('input, select, textarea'))
@@ -48,7 +69,7 @@ export function AboModalShell({ title, onClose, submitting, children }: AboModal
 	return (
 		<>
 			<Dialog
-				open
+				open={open}
 				onOpenChange={(open) => {
 					if (!open) requestClose();
 				}}
@@ -74,7 +95,7 @@ export function AboModalShell({ title, onClose, submitting, children }: AboModal
 					</DialogHeader>
 					<Separator />
 					<div
-						className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4"
+						className="min-h-0 flex-1 scroll-pb-40 overflow-y-auto overscroll-contain px-4 pt-4"
 						onChangeCapture={trackFieldChange}
 						onInputCapture={trackFieldChange}
 						onClickCapture={trackToggleChange}
