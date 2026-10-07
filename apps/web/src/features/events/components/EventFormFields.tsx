@@ -122,7 +122,9 @@ export function EventFormFields({
 					disabled={disabled}
 					aria-invalid={errorField === 'endsAt' ? true : undefined}
 					aria-describedby={errorField === 'endsAt' ? errorId : undefined}
-					className="min-w-0 text-base"
+					// WebKit malt in leeren Datumsfeldern die aktuelle Zeit in voller Textfarbe; gedämpft wirkt es nicht wie ein Wert.
+					data-empty={endsAt ? undefined : ''}
+					className="min-w-0 text-base data-[empty]:text-muted-foreground"
 				/>
 			</Field>
 			<Field data-disabled={disabled}>

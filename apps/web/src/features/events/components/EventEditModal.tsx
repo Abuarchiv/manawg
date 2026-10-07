@@ -33,7 +33,7 @@ import {
 	validateEventForm,
 } from '@/features/events/events';
 import { CalendarPlus, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const KEEP_EXISTING_RECURRENCE = '__keep__';
 
@@ -95,6 +95,15 @@ export function EventEditModal({
 	const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [errorField, setErrorField] = useState<'title' | 'startsAt' | 'endsAt' | null>(null);
+	// Synchron gesetzt, bevor der Bestätigungsdialog per Klick schließen will (State käme zu spät).
+	const deletingRef = useRef(false);
+	// Wer das betroffene Feld ändert, räumt dessen Fehlerzustand und die Meldung ab.
+	function clearErrorFor(...fields: Array<'title' | 'startsAt' | 'endsAt'>): void {
+		if (errorField && fields.includes(errorField)) {
+			setErrorField(null);
+			setError(null);
+		}
+	}
 	// Die Meldung sitzt unter den Feldern, der Speichern-Button ist angeheftet.
 	const shownError = error || actionError;
 	useEffect(() => {
@@ -188,12 +197,15 @@ export function EventEditModal({
 	async function handleDelete(): Promise<void> {
 		if (!event) return;
 		setError(null);
+		setErrorField(null);
+		deletingRef.current = true;
 		setDeleting(true);
 		try {
 			await onDelete(event.id);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen. Versuche es erneut.');
 		} finally {
+			deletingRef.current = false;
 			setDeleting(false);
 			setConfirmingDelete(false);
 		}
@@ -207,7 +219,7 @@ export function EventEditModal({
 			}}
 		>
 			<DrawerContent className="mx-auto w-full max-w-md">
-				<DrawerHeader>
+				<DrawerHeader className="border-b pb-3">
 					<DrawerTitle>Termin bearbeiten</DrawerTitle>
 					{event.recurrence && (
 						<DrawerDescription>Änderungen gelten für die gesamte Terminserie.</DrawerDescription>
@@ -218,13 +230,25 @@ export function EventEditModal({
 						<EventFormFields
 							idPrefix="event-edit"
 							title={title}
-							onTitleChange={setTitle}
+							onTitleChange={(value) => {
+								setTitle(value);
+								clearErrorFor('title');
+							}}
 							startsAt={startsAt}
-							onStartsAtChange={setStartsAt}
+							onStartsAtChange={(value) => {
+								setStartsAt(value);
+								clearErrorFor('startsAt', 'endsAt');
+							}}
 							endsAt={endsAt}
-							onEndsAtChange={setEndsAt}
+							onEndsAtChange={(value) => {
+								setEndsAt(value);
+								clearErrorFor('startsAt', 'endsAt');
+							}}
 							allDay={allDay}
-							onAllDayChange={setAllDay}
+							onAllDayChange={(value) => {
+								setAllDay(value);
+								clearErrorFor('startsAt', 'endsAt');
+							}}
 							location={location}
 							onLocationChange={setLocation}
 							description={description}
@@ -319,7 +343,7 @@ export function EventEditModal({
 				<AlertDialog
 					open={confirmingDelete}
 					onOpenChange={(open) => {
-						if (!deleting) setConfirmingDelete(open);
+						if (!deletingRef.current) setConfirmingDelete(open);
 					}}
 				>
 					<AlertDialogContent className="w-[calc(100%-2rem)]">

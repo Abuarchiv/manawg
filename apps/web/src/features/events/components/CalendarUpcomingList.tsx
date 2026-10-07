@@ -1,15 +1,23 @@
 'use client';
 
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
 import { MS_PER_DAY } from '@/core/utils/time';
 import {
 	type EventOccurrence,
+	RECURRENCE_OPTIONS,
 	eventDateForDisplay,
 	formatEventTimeOfDay,
+	parseRecurrenceRule,
 } from '@/features/events/events';
 import { occurrenceToIcs } from '@/features/events/ics';
 import { cn } from '@/shared/lib/cn';
-import { CalendarClock, ChevronRight, Sparkles } from 'lucide-react';
+import { CalendarClock, ChevronRight, Repeat, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
 
@@ -22,6 +30,8 @@ interface CalendarUpcomingListProps {
 	}>;
 	onSelect: (occurrence: EventOccurrence) => void;
 	wgBaseHref: string;
+	/** Regel je Termin (eventId), daraus entsteht das Intervall hinter der Uhrzeit. */
+	recurrenceByEventId?: ReadonlyMap<string, string | null>;
 	/** Termin aus dem Push-Link (`?highlight=`); die nächste Fälligkeit wird markiert und angescrollt. */
 	highlightEventId?: string | null;
 }
@@ -36,6 +46,14 @@ const DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 });
 const MONTH_SHORT_FORMATTER = new Intl.DateTimeFormat('de-DE', { month: 'short' });
 const WEEKDAY_FORMATTER = new Intl.DateTimeFormat('de-DE', { weekday: 'short' });
+
+/** Kurzes Intervall wie "wöchentlich"; komplexere Regeln heißen allgemein "wiederkehrend". */
+function recurrenceLabel(rule: string | null | undefined): string {
+	const parsed = parseRecurrenceRule(rule);
+	const simple = parsed && parsed.interval === 1 && parsed.byDay === undefined;
+	const option = simple ? RECURRENCE_OPTIONS.find((o) => o.value === parsed.freq) : undefined;
+	return option ? option.label.toLowerCase() : 'wiederkehrend';
+}
 
 function formatDayLabel(date: Date, now = new Date()): string {
 	const dayMs = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
@@ -64,6 +82,7 @@ export function CalendarUpcomingList({
 	choreOccurrences,
 	onSelect,
 	wgBaseHref,
+	recurrenceByEventId,
 	highlightEventId = null,
 }: CalendarUpcomingListProps) {
 	useEffect(() => {
@@ -92,6 +111,7 @@ export function CalendarUpcomingList({
 						<CalendarClock aria-hidden />
 					</EmptyMedia>
 					<EmptyTitle>Keine Termine in den nächsten 30 Tagen</EmptyTitle>
+					<EmptyDescription>Tippe auf +, um einen Termin anzulegen.</EmptyDescription>
 				</EmptyHeader>
 			</Empty>
 		);
@@ -189,7 +209,17 @@ export function CalendarUpcomingList({
 													<CalendarClock className="mr-1 inline size-4 align-[-2px]" aria-hidden />
 													{formatEventTimeOfDay(entry.occurrence)}
 													{entry.occurrence.location && ` · ${entry.occurrence.location}`}
-													{entry.occurrence.recurring && ' · wiederholt sich'}
+													{entry.occurrence.recurring && (
+														<>
+															{' · '}
+															<span className="whitespace-nowrap">
+																<Repeat className="mr-0.5 inline size-3 align-[-1px]" aria-hidden />
+																{recurrenceLabel(
+																	recurrenceByEventId?.get(entry.occurrence.eventId),
+																)}
+															</span>
+														</>
+													)}
 												</span>
 											</span>
 											<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
