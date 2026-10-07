@@ -2,7 +2,7 @@ import { cn } from '@/shared/lib/cn';
 import { Button as ButtonPrimitive } from '@base-ui/react/button';
 import { type VariantProps, cva } from 'class-variance-authority';
 
-const buttonVariants = cva(
+const buttonVariantsRaw = cva(
 	"group/button relative inline-flex max-w-full items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-normal [overflow-wrap:break-word] transition-[color,background-color,border-color,transform] duration-[80ms] ease-out motion-safe:active:scale-[0.97] motion-reduce:active:scale-100 motion-reduce:transition-none outline-none select-none after:absolute after:left-1/2 after:top-1/2 after:h-11 after:w-full after:min-w-11 after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] data-[bottom-nav-item]:after:hidden in-data-[slot=button-group]:after:min-w-0 in-data-[slot=input-group]:after:min-w-0 [@media(any-hover:hover)]:focus-visible:border-ring [@media(any-hover:hover)]:focus-visible:ring-3 [@media(any-hover:hover)]:focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
 	{
 		variants: {
@@ -38,6 +38,13 @@ const buttonVariants = cva(
 		},
 	},
 );
+
+/**
+ * Merged, so `<a className={buttonVariants({ variant: 'outline' })}>` does not keep the base
+ * `border-transparent` next to the variant's `border-border` (the transparent one won in light mode).
+ */
+const buttonVariants = (props?: Parameters<typeof buttonVariantsRaw>[0]) =>
+	cn(buttonVariantsRaw(props));
 
 function Button({
 	className,

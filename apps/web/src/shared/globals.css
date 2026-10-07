@@ -209,6 +209,34 @@ html:has([data-sticky-tabs]) {
 	);
 }
 
+/* 1c. The fixed install prompt (InstallPrompt) publishes its height as
+      --install-prompt-space. The frame's page content gives that room up so legal
+      links and the last content can scroll above it, and focus/scrollIntoView
+      does not land under it. */
+[data-app-frame] > .min-h-svh {
+	min-height: calc(100svh - var(--install-prompt-space, 0px));
+}
+html:has([data-install-prompt]) {
+	scroll-padding-bottom: calc(
+		var(--app-nav-height, 5rem) +
+		0.5rem +
+		var(--install-prompt-space, 0px)
+	);
+}
+
+/* 1d. Toasts sit above modal dialogs and sheets. There they move to the top, so
+      they neither hide the dialog's footer buttons nor end up behind the overlay. */
+body:has(
+		[data-slot="dialog-content"],
+		[data-slot="alert-dialog-content"],
+		[data-slot="drawer-popup"]
+	)
+	[data-toast-stack] {
+	z-index: 60;
+	top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+	bottom: auto;
+}
+
 /* 2. Mobile tap highlight suppressed globally (html already has it for legacy,
       but * catches SVGs, custom elements, and pseudo-elements) */
 * {

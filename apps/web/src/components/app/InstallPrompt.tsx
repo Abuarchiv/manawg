@@ -12,7 +12,7 @@ import {
 } from '@/shared/lib/pwa-install';
 import { X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { InstallButton } from './InstallButton';
 
 /**
@@ -69,15 +69,36 @@ export function InstallPrompt() {
 
 	const dismiss = () => setHidden(true);
 
+	const visible = !(hidden || !onStartPage || (!event && !manual));
+	const promptRef = useRef<HTMLDivElement>(null);
+	// The prompt is fixed and covers the page end (legal links, last cards). While it is
+	// shown, publish its height so the app frame reserves that room (see globals.css 1c).
+	useLayoutEffect(() => {
+		const el = promptRef.current;
+		if (!visible || !el) return;
+		const root = document.documentElement;
+		const publish = () =>
+			root.style.setProperty('--install-prompt-space', `${el.offsetHeight + 8}px`);
+		publish();
+		const observer = new ResizeObserver(publish);
+		observer.observe(el);
+		return () => {
+			observer.disconnect();
+			root.style.removeProperty('--install-prompt-space');
+		};
+	}, [visible]);
+
 	const install = async () => {
 		const result = await triggerInstall();
 		if (result !== 'unavailable') dismiss();
 	};
 
-	if (hidden || !onStartPage || (!event && !manual)) return null;
+	if (!visible) return null;
 
 	return (
 		<div
+			ref={promptRef}
+			data-install-prompt
 			className="fixed inset-x-0 z-40 mx-auto w-[calc(100%-1rem)] max-w-[calc(var(--app-frame-width)-1rem)] animate-in fade-in slide-in-from-bottom-2 duration-[220ms]"
 			// Use the measured BottomNav height so wrapped labels and zoomed text leave room.
 			style={{ bottom: 'calc(var(--app-nav-height, 5rem) + 0.5rem)' }}

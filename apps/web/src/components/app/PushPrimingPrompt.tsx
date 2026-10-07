@@ -11,7 +11,7 @@ import {
 import { isPushSupported, subscribeWebPush } from '@/core/notifications/push-subscribe';
 import { isEditingTarget, safeLocalStorage } from '@/core/utils/browser';
 import { X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 function rememberDismissed(): void {
 	try {
@@ -43,6 +43,13 @@ export function PushPrimingPrompt({
 	const [visible, setVisible] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [activationError, setActivationError] = useState<string | null>(null);
+	const cardRef = useRef<HTMLDivElement>(null);
+
+	// The card sits at the page end: the error line makes it taller, so bring it fully back
+	// into view (above the bottom navigation, see scroll-mb on the card).
+	useEffect(() => {
+		if (activationError) cardRef.current?.scrollIntoView({ block: 'nearest' });
+	}, [activationError]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
@@ -144,7 +151,8 @@ export function PushPrimingPrompt({
 			role="status"
 			aria-live="polite"
 			aria-label="Benachrichtigungen aktivieren"
-			className="flex w-full flex-wrap items-center gap-3 rounded-xl border p-3"
+			ref={cardRef}
+			className="flex w-full scroll-mb-[calc(var(--app-nav-height,5rem)+0.5rem)] flex-wrap items-center gap-3 rounded-xl border p-3"
 		>
 			<div className="min-w-0 flex-1 basis-48">
 				<p className="text-sm font-medium">Benachrichtigungen</p>
@@ -161,7 +169,8 @@ export function PushPrimingPrompt({
 					variant="outline"
 					size="sm"
 					onClick={() => void enable()}
-					disabled={busy}
+					aria-disabled={busy}
+					className="aria-disabled:opacity-50"
 				>
 					{busy && <Spinner data-icon="inline-start" aria-hidden />}
 					Aktivieren

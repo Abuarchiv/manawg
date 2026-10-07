@@ -11,6 +11,8 @@ import { SearchX } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
+// Lives in app/wg (not app/wg/[code]): a not-found file does not catch notFound()
+// thrown by the layout of its own segment, the parent segment's boundary does.
 export const metadata: Metadata = {
 	title: 'WG nicht gefunden — ManaWG',
 	robots: { index: false, follow: false },
@@ -18,7 +20,11 @@ export const metadata: Metadata = {
 
 export default function WgNotFound() {
 	return (
-		<div className="flex min-h-[calc(100svh-4.25rem)] items-center justify-center bg-background px-4 pb-[env(safe-area-inset-bottom)]">
+		<main
+			id="main"
+			tabIndex={-1}
+			className="flex min-h-svh items-center justify-center bg-background px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] focus:outline-none"
+		>
 			<Card className="w-full max-w-md">
 				<CardContent className="pt-6">
 					<Empty>
@@ -49,6 +55,6 @@ export default function WgNotFound() {
 					</Empty>
 				</CardContent>
 			</Card>
-		</div>
+		</main>
 	);
 }

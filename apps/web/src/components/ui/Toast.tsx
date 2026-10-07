@@ -35,9 +35,14 @@ function subscribe(listener: () => void): () => void {
 	};
 }
 
+// More than a few stacked toasts only push the page out of the viewport; the oldest give way.
+const MAX_TOASTS = 3;
+
 function addToast(message: string, variant: ToastVariant): void {
 	const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-	setToasts([...toasts, { id, message, variant }]);
+	// The same message again restarts one toast (new id = fresh timer) instead of stacking copies.
+	const rest = toasts.filter((t) => !(t.message === message && t.variant === variant));
+	setToasts([...rest, { id, message, variant }].slice(-MAX_TOASTS));
 	haptic(variant === 'error' ? 'heavy' : variant === 'success' ? 'medium' : 'light');
 }
 
@@ -118,12 +123,14 @@ export function ToastContainer() {
 
 	return (
 		<div
-			className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--app-nav-height,5rem)+0.5rem+var(--thumb-action-space,0px))] z-50 mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-2 px-4"
+			data-toast-stack
+			className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--app-nav-height,5rem)+0.5rem+var(--thumb-action-space,0px))] z-50 mx-auto flex max-h-[60svh] w-full max-w-[var(--app-frame-width)] flex-col-reverse gap-2 overflow-y-auto overscroll-contain px-4"
 			aria-label="Benachrichtigungen"
 			// biome-ignore lint/a11y/useSemanticElements: role="region" names the fixed toast stack; <section> would add another landmark.
 			role="region"
 		>
-			{current.map((toast) => (
+			{/* Newest first in the DOM = lowest on screen, so a stack taller than the cap scrolls away from the newest. */}
+			{[...current].reverse().map((toast) => (
 				<div key={toast.id} className="pointer-events-auto">
 					<ToastItem toast={toast} />
 				</div>

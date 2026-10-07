@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/capture-client';
 import { THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
+import '@/shared/globals.css';
 import { TriangleAlert } from 'lucide-react';
 import { useEffect } from 'react';
 

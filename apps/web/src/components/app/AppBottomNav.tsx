@@ -11,6 +11,9 @@ export function AppBottomNav({ label, children }: { label: string; children: Rea
 	const ref = useRef<HTMLElement>(null);
 	const [keyboardOpen, setKeyboardOpen] = useState(false);
 	// iOS keeps fixed bars at the layout viewport, so with the keyboard open the bar floats mid-screen.
+	// Hidden by collapsing to zero height at the viewport bottom (not display:none): a display:none
+	// element reports an all-zero rect, and the chat frame fit would then reserve the whole
+	// visible height for it and collapse to 0px. A zero-height rect at the bottom reserves nothing.
 	useEffect(() => {
 		const vv = window.visualViewport;
 		if (!vv) return;
@@ -51,7 +54,7 @@ export function AppBottomNav({ label, children }: { label: string; children: Rea
 			ref={ref}
 			aria-label={label}
 			data-app-chrome
-			className={`fixed inset-x-0 bottom-0 z-30 mx-auto bg-background w-full min-w-0 max-w-[var(--app-nav-width)] px-2 pb-[max(0.5rem,var(--safe-area-bottom,0px))] ${keyboardOpen ? 'hidden' : ''}`}
+			className={`fixed inset-x-0 bottom-0 z-30 mx-auto bg-background w-full min-w-0 max-w-[var(--app-nav-width)] px-2 ${keyboardOpen ? 'invisible h-0 overflow-hidden pb-0' : 'pb-[max(0.5rem,var(--safe-area-bottom,0px))]'}`}
 		>
 			<div className="rounded-[20px] border border-border bg-background text-foreground">
 				<ul className="flex flex-wrap gap-0.5 p-0.5 [&>li]:min-w-fit [&>li]:flex-1">{children}</ul>

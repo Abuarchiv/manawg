@@ -17,7 +17,7 @@ import {
 } from '@/core/offline/offline-copy';
 import { AlertCircle, CheckCircle2, WifiOff } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const SUCCESS_NOTICE_MS = 6000;
 
@@ -40,6 +40,24 @@ export function OfflineBanner() {
 		text: string;
 	} | null>(null);
 	const syncingRef = useRef(false);
+
+	// The bar wraps instead of truncating, so its real height (small phones, large text) feeds
+	// the sticky offsets of settings tabs and the chat frame via --offline-banner-height.
+	const observerRef = useRef<ResizeObserver | null>(null);
+	const bannerRef = useCallback((el: HTMLOutputElement | null) => {
+		observerRef.current?.disconnect();
+		observerRef.current = null;
+		const root = document.documentElement;
+		if (!el) {
+			root.style.removeProperty('--offline-banner-height');
+			return;
+		}
+		const measure = () =>
+			root.style.setProperty('--offline-banner-height', `${el.getBoundingClientRect().height}px`);
+		measure();
+		observerRef.current = new ResizeObserver(measure);
+		observerRef.current.observe(el);
+	}, []);
 
 	useEffect(() => {
 		const update = (options?: { clearNotice?: boolean }) => {
@@ -116,8 +134,9 @@ export function OfflineBanner() {
 	if (!online) {
 		return (
 			<output
+				ref={bannerRef}
 				data-offline-banner
-				className="bg-muted text-foreground border-border sticky top-0 z-20 grid min-h-[var(--offline-banner-height)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[12px] font-medium"
+				className="bg-muted text-foreground border-border sticky top-0 z-20 grid min-h-[calc(44px+1rem+1px)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[12px] font-medium"
 				aria-live="polite"
 			>
 				<div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
@@ -147,8 +166,9 @@ export function OfflineBanner() {
 	if (notice && queueCount === 0) {
 		return (
 			<output
+				ref={bannerRef}
 				data-offline-banner
-				className="bg-card text-foreground border-border sticky top-0 z-20 grid min-h-[var(--offline-banner-height)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[12px] font-medium"
+				className="bg-card text-foreground border-border sticky top-0 z-20 grid min-h-[calc(44px+1rem+1px)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[12px] font-medium"
 				aria-live="polite"
 			>
 				<div className="mx-auto flex w-full max-w-2xl items-center gap-2">
@@ -161,12 +181,16 @@ export function OfflineBanner() {
 
 	return (
 		<output
+			ref={bannerRef}
 			data-offline-banner
-			className="bg-card text-foreground border-border sticky top-0 z-20 grid min-h-[var(--offline-banner-height)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[12px] font-medium"
+			className="bg-card text-foreground border-border sticky top-0 z-20 grid min-h-[calc(44px+1rem+1px)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[12px] font-medium"
 			aria-live="polite"
 		>
 			<div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
-				<Link href={settingsDataHref} className="min-w-0 flex-1 truncate">
+				<Link
+					href={settingsDataHref}
+					className="flex min-h-[44px] min-w-0 flex-1 items-center leading-snug text-pretty"
+				>
 					{notice ? notice.text : formatQueuedOfflineActions(queueCount)}
 				</Link>
 				<Button

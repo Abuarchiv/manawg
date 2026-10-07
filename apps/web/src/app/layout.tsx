@@ -181,7 +181,11 @@ export default function RootLayout({
 				<ThemeProvider>
 					{/* Phone column on every screen; wider viewports show backdrop
 					    and a hairline edge around it. */}
-					<div className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] bg-background min-[30rem]:border-x">
+					<div
+						data-app-frame
+						className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] bg-background min-[30rem]:border-x"
+						style={{ paddingBottom: 'var(--install-prompt-space, 0px)' }}
+					>
 						{children}
 						<PwaRegister />
 						<InstallPrompt />
