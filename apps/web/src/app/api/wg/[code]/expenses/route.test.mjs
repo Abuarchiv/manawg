@@ -5,7 +5,11 @@ import path from 'node:path';
 import test from 'node:test';
 import { PgDialect, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import { loadClaimedResponse } from '../../../../../../tests/support/claimed-response.cjs';
+import {
+	loadClaimedResponse,
+	loadIdempotentWrite,
+	loadParseBody,
+} from '../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const routePath = path.join(process.cwd(), 'src/app/api/wg/[code]/expenses/route.ts');
@@ -87,43 +91,6 @@ function loadTypeScript(file, overrides) {
 		loaded.exports,
 	);
 	return loaded.exports;
-}
-
-class ReplayCache {
-	constructor() {
-		this.entries = new Map();
-	}
-	get(key) {
-		const entry = this.entries.get(key);
-		return entry?.value ?? null;
-	}
-	remember(key, value) {
-		this.entries.set(key, { value, promise: Promise.resolve(value) });
-	}
-	reserve(key) {
-		const existing = this.entries.get(key);
-		if (existing) return { owned: false, promise: existing.promise };
-		let resolve;
-		let reject;
-		const promise = new Promise((resolvePromise, rejectPromise) => {
-			resolve = resolvePromise;
-			reject = rejectPromise;
-		});
-		promise.catch(() => undefined);
-		this.entries.set(key, { promise });
-		return {
-			owned: true,
-			promise,
-			resolve: (value) => {
-				this.remember(key, value);
-				resolve(value);
-			},
-			reject: (error) => {
-				this.entries.delete(key);
-				reject(error);
-			},
-		};
-	}
 }
 
 function defaultBody(overrides = {}) {
@@ -366,9 +333,8 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 			serverError: () => Response.json({ error: 'server_error' }, { status: 500 }),
 			tooMany: () => Response.json({ error: 'too_many' }, { status: 429 }),
 		},
-		'@/core/guards/idempotency': {
-			ReplayCache,
-			claimReplaySlotWithRetry: async (scope, key) => {
+		'@/core/guards/replay-slot': {
+			claimReplaySlot: async (scope, key) => {
 				const id = claimId(scope, key);
 				state.currentClaimId = id;
 				state.idempotencyClaims.push({ scope, key, memberId: state.memberId });
@@ -382,7 +348,6 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 				}
 				return { won: true };
 			},
-			replayKey: (scope, key) => `${scope}:${key}`,
 		},
 		'@/core/guards/require-wg-member': {
 			requireWgMember: async () => ({
@@ -397,7 +362,17 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 		'@/core/guards/route-preamble': {
 			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
 		},
-		'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },
+		// Like the real wrapper: an uncaught error becomes a logged 500.
+		'@/core/guards/with-wg-route': {
+			withWgRoute: (label, handler) => async (req, ctx) => {
+				try {
+					return await handler(req, ctx);
+				} catch (err) {
+					state.errors.push(`[${label}]: ${err}`);
+					return Response.json({ error: 'server_error' }, { status: 500 });
+				}
+			},
+		},
 		'@/core/idempotency-store': {
 			RESPONSE_REPLAY_TTL_SECONDS: 604_800,
 			getCachedResponse: async (scope, key) => {
@@ -472,6 +447,12 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	};
 	routeMocks['@/core/db/claimed-response'] = loadClaimedResponse(routeMocks);
+	routeMocks['@/core/db/idempotent-write'] = loadIdempotentWrite(routeMocks);
+	routeMocks['@/core/http/parse-body'] = loadParseBody(routeMocks);
+	routeMocks['@/features/expenses/expense-create'] = loadTypeScript(
+		path.join(process.cwd(), 'src/features/expenses/expense-create.ts'),
+		routeMocks,
+	);
 	const route = loadTypeScript(routePath, routeMocks);
 
 	return {
@@ -750,7 +731,9 @@ function getHarness({ expenseCount, readLimited = false }) {
 			serverError: stub.serverError,
 			tooMany: (message) => Response.json({ error: message }, { status: 429 }),
 		},
-		'@/core/guards/idempotency': { ReplayCache },
+		'@/core/db/idempotent-write': stub,
+		'@/core/http/parse-body': stub,
+		'@/features/expenses/expense-create': stub,
 		'@/core/guards/require-wg-member': {
 			requireWgMember: async () => ({
 				ok: true,

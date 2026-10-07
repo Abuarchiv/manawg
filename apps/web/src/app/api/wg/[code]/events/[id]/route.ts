@@ -4,8 +4,8 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, notFound, tooMany, unreadableJsonBody } from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
+import { badRequest, notFound, tooMany } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	eventDateTimeSchema,
@@ -61,23 +61,17 @@ export const GET = withWgRoute<{ id: string }>('events GET id', async (req, { co
 export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { code, id }) => {
 	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
 
-	let raw: unknown;
-	try {
-		raw = await readJsonLimited(req);
-	} catch (err) {
-		return unreadableJsonBody(err);
-	}
-	const parsed = patchSchema.safeParse(raw);
-	if (!parsed.success) {
-		const { fieldErrors } = parsed.error.flatten();
-		if (fieldErrors.title) return badRequest('title_invalid');
-		if (fieldErrors.startsAt) return badRequest('starts_at_invalid');
-		if (fieldErrors.endsAt) return badRequest('ends_at_invalid');
-		if (fieldErrors.description) return badRequest('description_invalid');
-		if (fieldErrors.location) return badRequest('location_invalid');
-		if (fieldErrors.recurrence) return badRequest('recurrence_invalid');
-		return badRequest('invalid_body');
-	}
+	const parsed = await parseBody(req, patchSchema, {
+		fieldErrors: {
+			title: 'title_invalid',
+			startsAt: 'starts_at_invalid',
+			endsAt: 'ends_at_invalid',
+			description: 'description_invalid',
+			location: 'location_invalid',
+			recurrence: 'recurrence_invalid',
+		},
+	});
+	if (!parsed.ok) return parsed.response;
 
 	const recurrence =
 		parsed.data.recurrence === undefined ? undefined : normalizeRecurrence(parsed.data.recurrence);

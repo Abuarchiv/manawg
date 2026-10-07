@@ -3,15 +3,8 @@ import { db, expensePayments, wgMembers } from '@/core/db';
 import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	badRequest,
-	conflict,
-	forbidden,
-	serverError,
-	tooMany,
-	unreadableJsonBody,
-} from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
+import { conflict, forbidden, serverError, tooMany } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import {
 	type PayPalOrderResponse,
@@ -43,14 +36,8 @@ const captureSchema = z.object({ orderId: z.string().trim().min(1).max(100) });
 export const POST = withWgRoute('paypal capture POST', async (req, { code }) => {
 	if (!isPayPalConfigured()) return conflict('paypal_not_configured');
 
-	let body: unknown;
-	try {
-		body = await readJsonLimited(req);
-	} catch (err) {
-		return unreadableJsonBody(err);
-	}
-	const parsed = captureSchema.safeParse(body);
-	if (!parsed.success) return badRequest('order_id_invalid');
+	const parsed = await parseBody(req, captureSchema, { invalid: 'order_id_invalid' });
+	if (!parsed.ok) return parsed.response;
 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
@@ -122,7 +109,7 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 					.where(and(eq(expensePayments.id, current.id), eq(expensePayments.status, 'created')));
 				return { kind: 'expired' as const };
 			}
-			// ponytail: one unresolved PayPal capture per WG; per-account starts if throughput needs it.
+			// One unresolved PayPal capture per WG; per-account starts are possible if throughput needs it.
 			if (await hasCapturingExpensePayment(tx, auth.wg.id)) return { kind: 'busy' as const };
 			// One transaction connection runs one query at a time; issuing them in
 			// parallel is deprecated in pg 8 and rejected in pg 9.
@@ -331,7 +318,7 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 			capturedCents !== capturePayment.amountCents ||
 			capture.amount?.currency_code !== capturePayment.currency
 		) {
-			// Nicht hängen lassen: ein `capturing`-Eintrag sperrt sonst die Finanzen der ganzen WG.
+			// Never leave it hanging: a `capturing` row blocks the whole WG's finances.
 			logApiError(
 				'[paypal capture] captured order does not match payment',
 				new Error(`paypal_capture_mismatch:${capturePayment.id}`),

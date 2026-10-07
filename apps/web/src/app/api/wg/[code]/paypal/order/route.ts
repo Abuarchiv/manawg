@@ -2,15 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { db, expensePayments, wgMembers } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	badRequest,
-	conflict,
-	forbidden,
-	serverError,
-	tooMany,
-	unreadableJsonBody,
-} from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
+import { badRequest, conflict, forbidden, serverError, tooMany } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import {
 	createPayPalOrder,
@@ -101,16 +94,9 @@ export const GET = withWgRoute('paypal order GET', async (req, { code }) => {
 export const POST = withWgRoute('paypal order POST', async (req, { code }) => {
 	if (!isPayPalConfigured()) return conflict('paypal_not_configured');
 
-	let body: unknown;
-	try {
-		body = await readJsonLimited(req);
-	} catch (err) {
-		return unreadableJsonBody(err);
-	}
-	const parsed = orderSchema.safeParse(body);
-	if (!parsed.success || parsed.data.fromMemberId === parsed.data.toMemberId) {
-		return badRequest('member_ids_invalid');
-	}
+	const parsed = await parseBody(req, orderSchema, { invalid: 'member_ids_invalid' });
+	if (!parsed.ok) return parsed.response;
+	if (parsed.data.fromMemberId === parsed.data.toMemberId) return badRequest('member_ids_invalid');
 	if (parsed.data.currency !== 'EUR') return conflict('paypal_currency_unsupported');
 
 	const auth = await requireWgMember(req, code);

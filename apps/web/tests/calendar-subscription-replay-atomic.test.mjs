@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
-import { loadClaimedResponse } from './support/claimed-response.cjs';
+import {
+	loadClaimedResponse,
+	loadIdempotentWrite,
+	loadParseBody,
+} from './support/claimed-response.cjs';
 
 const webDir = path.resolve(import.meta.dirname, '..');
 const requireFromWeb = createRequire(path.join(webDir, 'package.json'));
@@ -153,8 +157,8 @@ function harness({
 			serverError: (code) => Response.json({ error: code }, { status: 500 }),
 			tooMany: () => Response.json({ error: 'rate_limited' }, { status: 429 }),
 		},
-		'@/core/guards/idempotency': {
-			claimReplaySlotWithRetry: async () => {
+		'@/core/guards/replay-slot': {
+			claimReplaySlot: async () => {
 				state.claims += 1;
 				if (state.slot && state.slot.expiresAt > new Date())
 					return { won: false, cached: state.slot.body };
@@ -199,6 +203,8 @@ function harness({
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	};
 	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
+	mocks['@/core/db/idempotent-write'] = loadIdempotentWrite(mocks);
+	mocks['@/core/http/parse-body'] = loadParseBody(mocks);
 	const source = readFileSync(
 		path.join(webDir, 'src/app/api/wg/[code]/calendar-subscription/route.ts'),
 		'utf8',

@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { loadParseBody } from '../../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const wgId = '1bc67a5a-5c08-4c0d-8eaf-520def98021a';
@@ -188,6 +189,7 @@ function makeOrderHarness({ isPayPalMerchantReady, createPayPalOrder }) {
 		},
 		'next/server': { NextResponse: Response },
 	};
+	dependencies['@/core/http/parse-body'] = loadParseBody(dependencies);
 	const { POST } = loadOrderRoute(dependencies);
 	const post = () =>
 		POST(
@@ -292,6 +294,7 @@ test('new PayPal order is refused when the recipient has lost provider readiness
 		},
 		'next/server': { NextResponse: Response },
 	};
+	overrides['@/core/http/parse-body'] = loadParseBody(overrides);
 	const { POST } = loadOrderRoute(overrides);
 	const response = await POST(
 		new Request('https://manawg.example/api/paypal/order', {

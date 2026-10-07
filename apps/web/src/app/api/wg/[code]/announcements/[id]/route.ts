@@ -6,14 +6,8 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	badRequest,
-	forbidden,
-	notFound,
-	tooMany,
-	unreadableJsonBody,
-} from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
+import { badRequest, forbidden, notFound, tooMany } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
 import {
 	type NotificationDispatchWarning,
 	dispatchNotificationSafely,
@@ -35,20 +29,14 @@ export const PATCH = withWgRoute<{ id: string }>(
 	async (req, { code, id }) => {
 		if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
 
-		let raw: unknown;
-		try {
-			raw = await readJsonLimited(req);
-		} catch (err) {
-			return unreadableJsonBody(err);
-		}
-		const parsed = patchAnnouncementSchema.safeParse(raw);
-		if (!parsed.success) {
-			const { fieldErrors } = parsed.error.flatten();
-			if (fieldErrors.status) return badRequest('status_invalid');
-			if (fieldErrors.pinned) return badRequest('pinned_invalid');
-			if (fieldErrors.kind) return badRequest('kind_invalid');
-			return badRequest('invalid_body');
-		}
+		const parsed = await parseBody(req, patchAnnouncementSchema, {
+			fieldErrors: {
+				status: 'status_invalid',
+				pinned: 'pinned_invalid',
+				kind: 'kind_invalid',
+			},
+		});
+		if (!parsed.ok) return parsed.response;
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wg = auth.wg;
@@ -177,11 +165,8 @@ export const DELETE = withWgRoute<{ id: string }>(
 		);
 		if (!limited.success) return tooMany();
 
-		// Author OR admin may delete an announcement. Authors own their own posts;
-		// the WG admin gets an override so they can moderate
-		// stale or inappropriate content when the author is unreachable.
-		// Previously this was author-only, which left the WG with no way to
-		// clean up posts from departed members (P1 audit finding).
+		// Author OR admin may delete an announcement. Authors own their own posts; the WG admin
+		// can moderate stale or inappropriate content, e.g. posts of members who moved out.
 		const deletion = await withTransaction(async (tx) => {
 			await lockExpensePayments(tx, wgId);
 			const [row] = await tx

@@ -1,29 +1,12 @@
 import { recordAuditEvent } from '@/core/audit';
-import {
-	CHORE_RECURRENCE_TYPES,
-	choreCompletions,
-	chores,
-	db,
-	idempotencyResponses,
-	wgMembers,
-} from '@/core/db';
-import {
-	completeClaimedResponse,
-	lockClaimedResponse,
-	releaseClaimedResponse,
-} from '@/core/db/claimed-response';
-import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import {
-	ReplayCache,
-	type ReplayReservation,
-	claimReplaySlotWithRetry,
-	replayKey,
-} from '@/core/guards/idempotency';
+import { CHORE_RECURRENCE_TYPES, choreCompletions, chores, db, wgMembers } from '@/core/db';
+import { bodyCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
+import { TransactionAbort } from '@/core/db/transaction';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, serverError, tooMany, unreadableJsonBody } from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
-import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
+import { badRequest, serverError, tooMany } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
+import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
@@ -32,28 +15,24 @@ import { berlinDayKey, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { computeOpenGapsByMember } from '@/features/chores/chore-fairness';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
-import { and, asc, desc, eq, gt, gte, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const TITLE_MIN = 1;
 const TITLE_MAX = 120;
 const INTERVAL_MIN = 1;
-// Cap depends on unit: 365 days OR 60 months (=5y) — both reasonable for a WG.
+// Cap depends on unit: 365 days or 60 months (5 years), both reasonable for a WG.
 const INTERVAL_MAX_DAYS = 365;
 const INTERVAL_MAX_MONTHS = 60;
 
 type ChoreCreateResponseBody = { chore: unknown; warning: NotificationWarning };
 
-const choreCreateReplay = new ReplayCache<ChoreCreateResponseBody>();
+const choreCreateCodec = bodyCodec(
+	(body): body is ChoreCreateResponseBody =>
+		body !== null && typeof body === 'object' && 'chore' in body,
+);
 
-function isChoreCreateResponseBody(body: unknown): body is ChoreCreateResponseBody {
-	return body !== null && typeof body === 'object' && 'chore' in body;
-}
-
-function choreCreateIdempotencyScope(wgId: string, memberId: string): string {
-	return `chores-create:${wgId}:${memberId}`;
-}
 const createChoreSchema = z
 	.object({
 		title: z.string().trim().min(TITLE_MIN).max(TITLE_MAX),
@@ -164,28 +143,16 @@ export const GET = withWgRoute('chores GET', async (req, { code }) => {
 });
 
 export const POST = withWgRoute('chores POST', async (req, { code }) => {
-	let replayReservation: Extract<
-		ReplayReservation<ChoreCreateResponseBody>,
-		{ owned: true }
-	> | null = null;
-	let claimedLeaseExpiresAt: Date | null = null;
-	let raw: unknown;
-	try {
-		raw = await readJsonLimited(req);
-	} catch (err) {
-		return unreadableJsonBody(err);
-	}
-
-	const parsed = createChoreSchema.safeParse(raw);
-	if (!parsed.success) {
-		const issues = parsed.error.flatten();
-		if (issues.fieldErrors.title) return badRequest('title_invalid');
-		if (issues.fieldErrors.intervalDays) return badRequest('interval_invalid');
-		if (issues.fieldErrors.recurrenceType) return badRequest('recurrence_type_invalid');
-		if (issues.fieldErrors.assignedMemberId) return badRequest('member_id_invalid');
-		if (issues.fieldErrors.nextDueAt) return badRequest('due_date_invalid');
-		return badRequest('invalid_body');
-	}
+	const parsed = await parseBody(req, createChoreSchema, {
+		fieldErrors: {
+			title: 'title_invalid',
+			intervalDays: 'interval_invalid',
+			recurrenceType: 'recurrence_type_invalid',
+			assignedMemberId: 'member_id_invalid',
+			nextDueAt: 'due_date_invalid',
+		},
+	});
+	if (!parsed.ok) return parsed.response;
 
 	const {
 		title,
@@ -197,162 +164,126 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 	const createdAt = new Date();
 	const nextDueAt = nextDueAtStr
 		? new Date(nextDueAtStr)
-		: // Calendar-aware initial due: months-based chores anchor on
-			// today + N months (not today + 30N days), matching the cadence the
-			// completion handler will use later. See chore-recurrence.ts.
+		: // Months-based chores are first due today + N months (not today + 30N days), the
+			// cadence the completion handler uses later. See chore-recurrence.ts.
 			computeNextDueAt(createdAt, intervalDays, createdAt, recurrenceType);
 	// Store the unclamped cadence anchor: a monthly chore created on 31.01 is
 	// first due 28.02 but must keep day 31 for 31.03, 30.04, …
 	const anchorAt = nextDueAtStr ? nextDueAt : createdAt;
-	const idemKey = readIdempotencyKey(req);
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
-	const idemScope = idemKey ? choreCreateIdempotencyScope(wg.id, auth.member.memberId) : null;
-	const idemReplayKey = idemScope && idemKey ? replayKey(idemScope, idemKey) : null;
-	if (idemScope && idemKey && idemReplayKey) {
-		const localReplay = choreCreateReplay.get(idemReplayKey);
-		if (localReplay) return NextResponse.json(await localReplay);
-		const cached = await getCachedResponse<ChoreCreateResponseBody>(idemScope, idemKey);
-		if (cached) {
-			choreCreateReplay.remember(idemReplayKey, cached);
-			return NextResponse.json(cached);
-		}
-	}
+	const member = auth.member;
+	const key = readIdempotencyKey(req);
+	const scope = `chores-create:${wg.id}:${member.memberId}`;
 
-	const limited = await checkRateLimit(wgWriteLimiter, `chore:${wg.id}:${auth.member.memberId}`);
-	if (!limited.success) return tooMany();
-
-	if (assignedMemberId) {
-		// A chore may only be assigned to an active member — never to someone
-		// who has moved out (deactivated).
-		const memberExists = await db
-			.select({ id: wgMembers.id })
-			.from(wgMembers)
-			.where(
-				and(
-					eq(wgMembers.id, assignedMemberId),
-					eq(wgMembers.wgId, wg.id),
-					isNull(wgMembers.deactivatedAt),
-				),
-			)
-			.limit(1);
-		if (memberExists.length === 0) return badRequest('member_not_in_wg');
-	}
-	const replaySlot = idemReplayKey === null ? null : choreCreateReplay.reserve(idemReplayKey);
-	if (replaySlot?.owned === false) return NextResponse.json(await replaySlot.promise);
-	replayReservation = replaySlot;
-
-	try {
-		if (idemScope && idemKey) {
-			const slot = await claimReplaySlotWithRetry<ChoreCreateResponseBody>(idemScope, idemKey);
-			if (!slot.won) {
-				replayReservation?.resolve(slot.cached);
-				return NextResponse.json(slot.cached);
-			}
-		}
-		const written = await withTransaction(async (tx) => {
-			let lease: Date | null = null;
-			if (idemScope && idemKey) {
-				const claim = await lockClaimedResponse(tx, idemScope, idemKey, isChoreCreateResponseBody);
-				if (claim.kind === 'completed') return { replayed: true as const, body: claim.body };
-				lease = claim.leaseExpiresAt;
-				claimedLeaseExpiresAt = lease;
-			}
-			const [chore] = await tx
-				.insert(chores)
-				.values({
-					wgId: wg.id,
-					title,
-					intervalDays,
-					recurrenceType,
-					assignedMemberId,
-					nextDueAt,
-					anchorAt,
-				})
-				.returning();
-			if (!chore) throw new TransactionAbort('insert_failed');
-			const body: ChoreCreateResponseBody = { chore, warning: null };
-			if (idemScope && idemKey && lease) {
-				await completeClaimedResponse(tx, idemScope, idemKey, body, lease).catch((err: unknown) => {
-					if (!(err instanceof TransactionAbort))
-						logApiError('[chores POST] replay write failed', err);
-					throw new TransactionAbort('idempotency_response_write_failed');
-				});
-			}
-			return { replayed: false as const, chore, body };
-		});
-		if (written.replayed) {
-			replayReservation?.resolve(written.body);
-			return NextResponse.json(written.body);
-		}
-		const chore = written.chore;
-		await recordAuditEvent({
-			wgId: wg.id,
-			memberId: auth.member.memberId,
-			eventType: 'chore.created',
-			entityType: 'chore',
-			entityId: chore.id,
-			summary: `${auth.member.name} hat ${chore.title} im Putzplan angelegt.`,
-			metadata: {
-				title: chore.title,
-				intervalDays: chore.intervalDays,
-				recurrenceType: chore.recurrenceType,
-				assignedMemberId: chore.assignedMemberId,
-				nextDueAt: chore.nextDueAt,
+	const createChore = () =>
+		withIdempotentWrite(
+			{
+				scope,
+				key,
+				codec: choreCreateCodec,
+				completeFailureCode: 'idempotency_response_write_failed',
+				prepare: async () => {
+					const limited = await checkRateLimit(wgWriteLimiter, `chore:${wg.id}:${member.memberId}`);
+					if (!limited.success) return { stop: tooMany() };
+					if (!assignedMemberId) return { input: undefined };
+					// A chore may only be assigned to an active member, never to someone who
+					// moved out.
+					const memberExists = await db
+						.select({ id: wgMembers.id })
+						.from(wgMembers)
+						.where(
+							and(
+								eq(wgMembers.id, assignedMemberId),
+								eq(wgMembers.wgId, wg.id),
+								isNull(wgMembers.deactivatedAt),
+							),
+						)
+						.limit(1);
+					return memberExists.length === 0
+						? { stop: badRequest('member_not_in_wg') }
+						: { input: undefined };
+				},
 			},
-		});
-		let warning: NotificationWarning = null;
-		if (assignedMemberId && nextDueAt.getTime() <= Date.now() + MS_PER_DAY) {
-			({ warning } = await dispatchNotificationSafely({
-				wg,
-				event: 'chore.due',
-				payload: { title, choreId: chore.id, nextDueAt: nextDueAt.toISOString() },
-				targetMemberIds: [assignedMemberId],
-			}));
-		}
-		let responseBody: ChoreCreateResponseBody = { ...written.body, warning };
-		if (idemScope && idemKey && warning !== null) {
-			try {
-				const rows = await db
-					.update(idempotencyResponses)
-					.set({
-						responseBody: sql`jsonb_set(${idempotencyResponses.responseBody}, '{warning}', to_jsonb(${warning}::text))`,
+			async (tx) => {
+				const [chore] = await tx
+					.insert(chores)
+					.values({
+						wgId: wg.id,
+						title,
+						intervalDays,
+						recurrenceType,
+						assignedMemberId,
+						nextDueAt,
+						anchorAt,
 					})
-					.where(
-						and(
-							eq(idempotencyResponses.scope, idemScope),
-							eq(idempotencyResponses.key, idemKey),
-							gt(idempotencyResponses.expiresAt, new Date()),
-							sql`${idempotencyResponses.responseBody}->'chore'->>'id' = ${chore.id}`,
-							sql`${idempotencyResponses.responseBody}->'warning' = 'null'::jsonb`,
-						),
-					)
-					.returning({ scope: idempotencyResponses.scope });
-				if (rows.length !== 1) {
-					responseBody = written.body;
-					logApiError(
-						'[chores POST] warning replay update missed',
-						new Error('replay_warning_missed'),
-					);
-				}
-			} catch (err) {
-				responseBody = written.body;
-				logApiError('[chores POST] warning replay update failed', err);
-			}
-		}
-		replayReservation?.resolve(responseBody);
-		return NextResponse.json(responseBody);
+					.returning();
+				if (!chore) throw new TransactionAbort('insert_failed');
+				const body: ChoreCreateResponseBody = { chore, warning: null };
+				return { status: 200, body, context: chore };
+			},
+		);
+	let result: Awaited<ReturnType<typeof createChore>>;
+	try {
+		result = await createChore();
 	} catch (err) {
-		replayReservation?.reject(err);
-		// Only the still-unfinished placeholder of this lease is removed, so this is
-		// a no-op when the write committed before the failure.
-		if (idemScope && idemKey && claimedLeaseExpiresAt) {
-			await releaseClaimedResponse(idemScope, idemKey, claimedLeaseExpiresAt);
-		}
-		if (err instanceof TransactionAbort) {
-			return serverError(err.code);
-		}
+		if (err instanceof TransactionAbort) return serverError(err.code);
 		throw err;
 	}
+	if (result.kind === 'stopped') return result.response;
+	if (result.kind === 'replayed' || !result.context) {
+		return NextResponse.json(result.body, { status: result.status });
+	}
+	const chore = result.context;
+	await recordAuditEvent({
+		wgId: wg.id,
+		memberId: member.memberId,
+		eventType: 'chore.created',
+		entityType: 'chore',
+		entityId: chore.id,
+		summary: `${member.name} hat ${chore.title} im Putzplan angelegt.`,
+		metadata: {
+			title: chore.title,
+			intervalDays: chore.intervalDays,
+			recurrenceType: chore.recurrenceType,
+			assignedMemberId: chore.assignedMemberId,
+			nextDueAt: chore.nextDueAt,
+		},
+	});
+	let warning: NotificationWarning = null;
+	if (assignedMemberId && nextDueAt.getTime() <= Date.now() + MS_PER_DAY) {
+		({ warning } = await dispatchNotificationSafely({
+			wg,
+			event: 'chore.due',
+			payload: { title, choreId: chore.id, nextDueAt: nextDueAt.toISOString() },
+			targetMemberIds: [assignedMemberId],
+		}));
+	}
+	if (key && warning !== null) {
+		try {
+			const persisted = await setReplayWarning(
+				scope,
+				key,
+				{
+					match: [{ path: ['chore', 'id'], equals: chore.id }],
+					warningPath: ['warning'],
+					replaces: [null],
+				},
+				warning,
+			);
+			if (!persisted) {
+				warning = null;
+				logApiError(
+					'[chores POST] warning replay update missed',
+					new Error('replay_warning_missed'),
+				);
+			}
+		} catch (err) {
+			warning = null;
+			logApiError('[chores POST] warning replay update failed', err);
+		}
+	}
+	const responseBody: ChoreCreateResponseBody = { chore, warning };
+	return NextResponse.json(responseBody);
 });

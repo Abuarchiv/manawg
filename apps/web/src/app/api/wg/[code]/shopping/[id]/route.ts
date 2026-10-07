@@ -5,14 +5,8 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	badRequest,
-	conflict,
-	notFound,
-	tooMany,
-	unreadableJsonBody,
-} from '@/core/http/api-errors';
-import { readJsonLimited } from '@/core/http/read-json';
+import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { withAnnouncementReplay } from '@/features/pinnwand/announcement-replay';
@@ -30,19 +24,12 @@ const patchShoppingItemSchema = z.object({
 export const PATCH = withWgRoute<{ id: string }>('shopping PATCH', async (req, { code, id }) => {
 	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
 
-	let raw: unknown;
-	try {
-		raw = await readJsonLimited(req);
-	} catch (err) {
-		return unreadableJsonBody(err);
-	}
-
-	const parsed = patchShoppingItemSchema.safeParse(raw);
-	if (!parsed.success) {
-		const issues = parsed.error.flatten();
-		if (issues.fieldErrors.bought) return badRequest('bought_invalid');
-		return badRequest('invalid_body');
-	}
+	const parsed = await parseBody(req, patchShoppingItemSchema, {
+		fieldErrors: {
+			bought: 'bought_invalid',
+		},
+	});
+	if (!parsed.ok) return parsed.response;
 
 	const isBought = parsed.data.bought;
 	const auth = await requireWgMember(req, code);

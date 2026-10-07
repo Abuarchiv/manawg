@@ -11,9 +11,9 @@
 
 ## 3. HTTP and idempotency
 
-- [ ] 3.1 One error-helper set (`HTTP` defined once, no numeric literals) and `parseBody(schema)`.
-- [ ] 3.2 `withIdempotentWrite`; migrate every route; remove `ReplayCache` and the Upstash slot.
-- [ ] 3.3 Remove nested catch-alls inside `withWgRoute`; split oversized handlers.
+- [x] 3.1 One error-helper set (`HTTP` defined once, no numeric literals) and `parseBody(schema)`.
+- [x] 3.2 `withIdempotentWrite`; migrate every route; remove `ReplayCache` and the Upstash slot.
+- [x] 3.3 Remove nested catch-alls inside `withWgRoute`; split oversized handlers.
 
 ## 4. Fixture mode
 

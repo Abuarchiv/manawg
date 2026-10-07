@@ -1,27 +1,19 @@
 import { recordAuditEvent } from '@/core/audit';
-import {
-	db,
-	idempotencyResponses,
-	wgChatMentions,
-	wgChatMessages,
-	wgChatReactions,
-	wgMembers,
-} from '@/core/db';
-import {
-	completeClaimedResponse,
-	lockClaimedResponse,
-	releaseClaimedResponse,
-	releaseLockedClaim,
-} from '@/core/db/claimed-response';
+import { db, wgChatMentions, wgChatMessages, wgChatReactions, wgMembers } from '@/core/db';
+import { responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
-import { TransactionAbort, lockExpensePayments, withTransaction } from '@/core/db/transaction';
+import {
+	type DbTransaction,
+	TransactionAbort,
+	lockExpensePayments,
+	withTransaction,
+} from '@/core/db/transaction';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
-import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, payloadTooLarge } from '@/core/http/api-errors';
-import { readJsonBody } from '@/core/http/read-json';
-import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
+import { HTTP, badRequest, conflict } from '@/core/http/api-errors';
+import { parseBody } from '@/core/http/parse-body';
+import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
@@ -35,7 +27,7 @@ import {
 	sanitizeMessageBody,
 } from '@/features/chat/chat-pure';
 import { buildChatCursorWhere } from '@/features/chat/chat-unread-query';
-import { and, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -51,49 +43,9 @@ const PAGE_DEFAULT = readListLimit(process.env, 'CHAT_MESSAGES_PAGE_DEFAULT', 50
 const PREVIEW_LENGTH = 120;
 const MENTIONS_MAX = 20;
 
-interface CachedJsonResponse {
-	status: number;
-	body: unknown;
-}
-
-type ChatMessageRow = typeof wgChatMessages.$inferSelect;
-
-function isCachedJsonResponse(value: unknown): value is CachedJsonResponse {
-	return (
-		value !== null &&
-		typeof value === 'object' &&
-		!Array.isArray(value) &&
-		Number.isInteger((value as CachedJsonResponse).status) &&
-		(value as CachedJsonResponse).status >= 200 &&
-		(value as CachedJsonResponse).status < 600 &&
-		'body' in value
-	);
-}
-
-async function persistChatReplayWarning(
-	scope: string,
-	key: string,
-	messageId: string,
-	warning: 'notification_delivery_failed' | 'notification_delivery_unknown',
-): Promise<boolean> {
-	const rows = await db
-		.update(idempotencyResponses)
-		.set({
-			responseBody: sql`jsonb_set(${idempotencyResponses.responseBody}, '{body,warning}', to_jsonb(${warning}::text))`,
-		})
-		.where(
-			and(
-				eq(idempotencyResponses.scope, scope),
-				eq(idempotencyResponses.key, key),
-				gt(idempotencyResponses.expiresAt, new Date()),
-				sql`${idempotencyResponses.responseBody}->'body'->'message'->>'id' = ${messageId}`,
-				sql`${idempotencyResponses.responseBody}->'body' ? 'warning'`,
-				sql`(${idempotencyResponses.responseBody}->'body'->'warning' = 'null'::jsonb OR ${idempotencyResponses.responseBody}->'body'->>'warning' = ${warning})`,
-			),
-		)
-		.returning({ scope: idempotencyResponses.scope });
-	return rows.length === 1;
-}
+// Rejected replies (400) replay as stored; a rate-limited send may retry the same key.
+const chatMessageCodec = responseCodec();
+const storeChatStatus = (status: number) => status !== HTTP.TOO_MANY;
 
 const createMessageSchema = z
 	.object({
@@ -205,22 +157,18 @@ export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 });
 
 export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
-	const rawResult = await readJsonBody(req, 64 * 1024);
-	if (!rawResult.ok)
-		return rawResult.reason === 'payload_too_large'
-			? payloadTooLarge()
-			: badRequest('invalid_json');
-	const raw = rawResult.body;
-
-	const parsed = createMessageSchema.safeParse(raw);
-	if (!parsed.success) {
-		const { formErrors, fieldErrors } = parsed.error.flatten();
-		if (formErrors.includes('empty_message')) return badRequest('empty_message');
-		if (fieldErrors.imageUrl) return badRequest('image_invalid');
-		if (fieldErrors.replyToMessageId) return badRequest('reply_to_invalid');
-		if (fieldErrors.mentionMemberIds) return badRequest('mentions_invalid');
-		return badRequest('body_invalid');
-	}
+	const parsed = await parseBody(req, createMessageSchema, {
+		maxBytes: 64 * 1024,
+		formErrors: { empty_message: 'empty_message' },
+		formErrorsFirst: true,
+		fieldErrors: {
+			imageUrl: 'image_invalid',
+			replyToMessageId: 'reply_to_invalid',
+			mentionMemberIds: 'mentions_invalid',
+		},
+		invalid: 'body_invalid',
+	});
+	if (!parsed.ok) return parsed.response;
 
 	const cleanBody = sanitizeMessageBody(parsed.data.body ?? null, BODY_MAX);
 	const imageUrl =
@@ -229,209 +177,110 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 			: null;
 	const kind = imageUrl ? 'image' : 'text';
 	const replyToMessageId = parsed.data.replyToMessageId ?? null;
+	const requestedMentionIds = parsed.data.mentionMemberIds ?? [];
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
+	const member = auth.member;
 	if (!isAllowedImageUrlForWg(imageUrl, wg.id)) return badRequest('image_invalid');
 
-	const replayKey = readIdempotencyKey(req);
-	const replayScope = `chat-message:${wg.id}:${auth.member.memberId}`;
-	if (replayKey) {
-		const cached = await getCachedResponse<CachedJsonResponse>(replayScope, replayKey);
-		if (cached) {
-			if (!isCachedJsonResponse(cached)) throw new Error('idempotency_claim_invalid');
-			return NextResponse.json(cached.body, { status: cached.status });
-		}
-		const slot = await claimReplaySlotWithRetry<CachedJsonResponse>(replayScope, replayKey);
-		if (!slot.won) {
-			if (!isCachedJsonResponse(slot.cached)) throw new Error('idempotency_claim_invalid');
-			return NextResponse.json(slot.cached.body, { status: slot.cached.status });
-		}
-	}
-
-	let lockedClaimExpiry: Date | null = null;
-	let callbackFailure: unknown;
-	let failedInCallback = false;
-	let outcome: {
-		response: CachedJsonResponse;
-		created: ChatMessageRow | null;
-		mentionIds: string[];
-	};
-	try {
-		outcome = await withTransaction(async (tx) => {
-			try {
-				await lockExpensePayments(tx, wg.id);
-				if (replayKey) {
-					const claim = await lockClaimedResponse(tx, replayScope, replayKey, isCachedJsonResponse);
-					if (claim.kind === 'completed') {
-						return { response: claim.body, created: null, mentionIds: [] as string[] };
-					}
-					lockedClaimExpiry = claim.leaseExpiresAt;
-				}
-
-				async function complete(
-					response: CachedJsonResponse,
-					created: ChatMessageRow | null = null,
-					mentionIds: string[] = [],
-				) {
-					if (replayKey && lockedClaimExpiry) {
-						await completeClaimedResponse(tx, replayScope, replayKey, response, lockedClaimExpiry);
-					}
-					return { response, created, mentionIds };
-				}
-
+	const key = readIdempotencyKey(req);
+	const scope = `chat-message:${wg.id}:${member.memberId}`;
+	const send = () =>
+		withIdempotentWrite(
+			{
+				scope,
+				key,
+				codec: chatMessageCodec,
+				storeStatus: storeChatStatus,
+				inTransaction: (work) =>
+					withTransaction(async (tx) => {
+						await lockExpensePayments(tx, wg.id);
+						return work(tx);
+					}),
+			},
+			async (tx) => {
+				// The rate limit runs under the claim, so only the request that sends counts.
 				const limited = await checkRateLimit(
 					chatMessageLimiter,
-					`chat:${wg.id}:${auth.member.memberId}`,
+					`chat:${wg.id}:${member.memberId}`,
 				);
 				if (!limited.success) {
-					// A rejected write can retry the same key once its rate limit clears,
-					// so the claim is released instead of caching the 429.
-					if (replayKey && lockedClaimExpiry) {
-						await releaseLockedClaim(tx, replayScope, replayKey, lockedClaimExpiry);
-					}
-					return {
-						response: { status: 429, body: { error: 'too_many_requests' } },
-						created: null,
-						mentionIds: [] as string[],
-					};
+					return { status: HTTP.TOO_MANY, body: { error: 'too_many_requests' } };
 				}
-
-				if (replyToMessageId) {
-					if (!UUID_PATTERN.test(replyToMessageId)) {
-						return await complete({ status: 400, body: { error: 'reply_to_invalid' } });
-					}
-					const replyRow = await tx
-						.select({ id: wgChatMessages.id })
-						.from(wgChatMessages)
-						.where(
-							and(
-								eq(wgChatMessages.id, replyToMessageId),
-								eq(wgChatMessages.wgId, wg.id),
-								isNull(wgChatMessages.deletedAt),
-							),
-						)
-						.limit(1);
-					if (replyRow.length === 0) {
-						return await complete({ status: 400, body: { error: 'reply_to_not_found' } });
-					}
-				}
-				await assertPrivateImageCanBeAttached(tx, wg.id, imageUrl);
-
-				const requestedMentionIds = Array.from(
-					new Set((parsed.data.mentionMemberIds ?? []).filter((id) => UUID_PATTERN.test(id))),
-				);
-				let validMentionIds: string[] = [];
-				if (requestedMentionIds.length > 0) {
-					const validRows = await tx
-						.select({ id: wgMembers.id })
-						.from(wgMembers)
-						.where(and(eq(wgMembers.wgId, wg.id), inArray(wgMembers.id, requestedMentionIds)));
-					validMentionIds = validRows
-						.map((row) => row.id)
-						.filter((id) => id !== auth.member.memberId);
-				}
-
-				const [inserted] = await tx
-					.insert(wgChatMessages)
-					.values({
-						wgId: wg.id,
-						senderMemberId: auth.member.memberId,
-						kind,
-						body: cleanBody,
-						imageUrl,
-						replyToMessageId,
-					})
-					.returning();
-				if (!inserted) throw new Error('chat_message_insert_failed');
-
-				let persistedMentionIds: string[] = [];
-				if (validMentionIds.length > 0) {
-					const insertedMentionRows = await tx
-						.insert(wgChatMentions)
-						.values(
-							validMentionIds.map((mentionedMemberId) => ({
-								messageId: inserted.id,
-								mentionedMemberId,
-							})),
-						)
-						.onConflictDoNothing()
-						.returning({ mentionedMemberId: wgChatMentions.mentionedMemberId });
-					persistedMentionIds = filterPersistedMentionIds(validMentionIds, insertedMentionRows);
-				}
-				return await complete(
-					{
-						status: 200,
-						body: { message: inserted, mentions: persistedMentionIds, warning: null },
-					},
-					inserted,
-					persistedMentionIds,
-				);
-			} catch (err) {
-				callbackFailure = err;
-				failedInCallback = true;
-				throw err;
-			}
-		});
+				return insertMessage(tx, {
+					wgId: wg.id,
+					senderMemberId: member.memberId,
+					kind,
+					body: cleanBody,
+					imageUrl,
+					replyToMessageId,
+					requestedMentionIds,
+				});
+			},
+		);
+	let result: Awaited<ReturnType<typeof send>>;
+	try {
+		result = await send();
 	} catch (err) {
-		// Drizzle rethrows the callback error only after ROLLBACK succeeds. A COMMIT
-		// failure never enters the callback catch and keeps its claim fail-closed.
-		if (replayKey && lockedClaimExpiry && failedInCallback && err === callbackFailure) {
-			await releaseClaimedResponse(replayScope, replayKey, lockedClaimExpiry);
-		}
 		if (err instanceof TransactionAbort && err.code === 'image_removed') {
 			return conflict('image_removed', 'image_removed');
 		}
 		throw err;
 	}
-
-	if (!outcome.created) {
-		return NextResponse.json(outcome.response.body, { status: outcome.response.status });
+	if (result.kind === 'replayed' || !result.context) {
+		return NextResponse.json(result.body, { status: result.status });
 	}
+	const { created, mentionIds } = result.context;
 
 	const preview = previewBody(cleanBody ?? (imageUrl ? 'Bild' : ''), PREVIEW_LENGTH);
 	const notificationDispatches = [
 		dispatchNotificationSafely({
 			wg,
 			event: 'chat.message',
-			payload: { messageId: outcome.created.id, actorName: auth.member.name, preview },
-			excludeMemberId: auth.member.memberId,
+			payload: { messageId: created.id, actorName: member.name, preview },
+			excludeMemberId: member.memberId,
 			// Mentioned members get only the targeted mention push, not the general one on top.
-			excludeMemberIds: outcome.mentionIds,
+			excludeMemberIds: mentionIds,
 		}),
 	];
-	if (outcome.mentionIds.length > 0) {
+	if (mentionIds.length > 0) {
 		notificationDispatches.push(
 			dispatchNotificationSafely({
 				wg,
 				event: 'chat.mention',
-				payload: { messageId: outcome.created.id, actorName: auth.member.name, preview },
-				targetMemberIds: outcome.mentionIds,
-				excludeMemberId: auth.member.memberId,
+				payload: { messageId: created.id, actorName: member.name, preview },
+				targetMemberIds: mentionIds,
+				excludeMemberId: member.memberId,
 			}),
 		);
 	}
 	await recordAuditEvent({
 		wgId: wg.id,
-		memberId: auth.member.memberId,
+		memberId: member.memberId,
 		eventType: 'chat.message.created',
 		entityType: 'chat_message',
-		entityId: outcome.created.id,
-		summary: `${auth.member.name} hat im Chat eine Nachricht gesendet.`,
+		entityId: created.id,
+		summary: `${member.name} hat im Chat eine Nachricht gesendet.`,
 		// No text preview: audit rows outlive message deletion, chat text must not.
-		metadata: { kind, mentions: outcome.mentionIds.length },
+		metadata: { kind, mentions: mentionIds.length },
 	});
 
 	const notificationResults = await Promise.all(notificationDispatches);
 	let warning: 'notification_delivery_failed' | 'notification_delivery_unknown' | null =
-		notificationResults.some((result) => result.warning === 'notification_delivery_unknown')
+		notificationResults.some((entry) => entry.warning === 'notification_delivery_unknown')
 			? 'notification_delivery_unknown'
-			: notificationResults.some((result) => result.warning === 'notification_delivery_failed')
+			: notificationResults.some((entry) => entry.warning === 'notification_delivery_failed')
 				? 'notification_delivery_failed'
 				: null;
-	if (warning && replayKey) {
+	if (warning && key) {
 		try {
-			if (!(await persistChatReplayWarning(replayScope, replayKey, outcome.created.id, warning))) {
+			const target = {
+				match: [{ path: ['body', 'message', 'id'], equals: created.id }],
+				warningPath: ['body', 'warning'],
+				replaces: [null, warning],
+			};
+			if (!(await setReplayWarning(scope, key, target, warning))) {
 				logApiError(
 					'[chat/messages] replay warning persistence failed',
 					new Error('replay_row_missing'),
@@ -443,5 +292,85 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 			warning = null;
 		}
 	}
-	return NextResponse.json({ message: outcome.created, mentions: outcome.mentionIds, warning });
+	return NextResponse.json({ message: created, mentions: mentionIds, warning });
 });
+
+/** Insert the message and its mentions. A missing reply target answers 400 and is stored. */
+async function insertMessage(
+	tx: DbTransaction,
+	input: {
+		wgId: string;
+		senderMemberId: string;
+		kind: 'image' | 'text';
+		body: string | null;
+		imageUrl: string | null;
+		replyToMessageId: string | null;
+		requestedMentionIds: string[];
+	},
+) {
+	if (input.replyToMessageId) {
+		if (!UUID_PATTERN.test(input.replyToMessageId)) {
+			return { status: HTTP.BAD_REQUEST, body: { error: 'reply_to_invalid' } };
+		}
+		const replyRow = await tx
+			.select({ id: wgChatMessages.id })
+			.from(wgChatMessages)
+			.where(
+				and(
+					eq(wgChatMessages.id, input.replyToMessageId),
+					eq(wgChatMessages.wgId, input.wgId),
+					isNull(wgChatMessages.deletedAt),
+				),
+			)
+			.limit(1);
+		if (replyRow.length === 0) {
+			return { status: HTTP.BAD_REQUEST, body: { error: 'reply_to_not_found' } };
+		}
+	}
+	await assertPrivateImageCanBeAttached(tx, input.wgId, input.imageUrl);
+
+	const requestedMentionIds = Array.from(
+		new Set(input.requestedMentionIds.filter((id) => UUID_PATTERN.test(id))),
+	);
+	let validMentionIds: string[] = [];
+	if (requestedMentionIds.length > 0) {
+		const validRows = await tx
+			.select({ id: wgMembers.id })
+			.from(wgMembers)
+			.where(and(eq(wgMembers.wgId, input.wgId), inArray(wgMembers.id, requestedMentionIds)));
+		validMentionIds = validRows.map((row) => row.id).filter((id) => id !== input.senderMemberId);
+	}
+
+	const [inserted] = await tx
+		.insert(wgChatMessages)
+		.values({
+			wgId: input.wgId,
+			senderMemberId: input.senderMemberId,
+			kind: input.kind,
+			body: input.body,
+			imageUrl: input.imageUrl,
+			replyToMessageId: input.replyToMessageId,
+		})
+		.returning();
+	if (!inserted) throw new Error('chat_message_insert_failed');
+
+	let persistedMentionIds: string[] = [];
+	if (validMentionIds.length > 0) {
+		const insertedMentionRows = await tx
+			.insert(wgChatMentions)
+			.values(
+				validMentionIds.map((mentionedMemberId) => ({
+					messageId: inserted.id,
+					mentionedMemberId,
+				})),
+			)
+			.onConflictDoNothing()
+			.returning({ mentionedMemberId: wgChatMentions.mentionedMemberId });
+		persistedMentionIds = filterPersistedMentionIds(validMentionIds, insertedMentionRows);
+	}
+	return {
+		status: 200,
+		body: { message: inserted, mentions: persistedMentionIds, warning: null },
+		context: { created: inserted, mentionIds: persistedMentionIds },
+	};
+}

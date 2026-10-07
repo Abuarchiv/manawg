@@ -1,60 +1,12 @@
-import {
-	db,
-	idempotencyResponses,
-	shoppingItems,
-	wgInventoryItems,
-	wgInventoryLog,
-} from '@/core/db';
-import { completeClaimedResponse } from '@/core/db/claimed-response';
+import { shoppingItems, wgInventoryItems, wgInventoryLog } from '@/core/db';
 import type { WgInventoryItem } from '@/core/db/schema';
 import type { DbTransaction } from '@/core/db/transaction';
-import { TransactionAbort } from '@/core/db/transaction-abort';
 import {
 	buildShoppingPushPayload,
 	clampQuantity,
 	isBelowThreshold,
 } from '@/features/inventory/inventory';
-import { and, eq, gt, sql } from 'drizzle-orm';
-
-export async function completeInventoryReplay(
-	tx: DbTransaction,
-	scope: string,
-	key: string,
-	payload: object,
-): Promise<void> {
-	try {
-		await completeClaimedResponse(tx, scope, key, payload);
-	} catch (err) {
-		if (err instanceof TransactionAbort && err.code === 'idempotency_claim_missing') {
-			throw new Error('inventory_replay_completion_failed');
-		}
-		throw err;
-	}
-}
-
-export async function persistInventoryReplayWarning(
-	scope: string,
-	key: string,
-	itemId: string,
-	warning: 'notification_delivery_failed' | 'notification_delivery_unknown',
-): Promise<boolean> {
-	const rows = await db
-		.update(idempotencyResponses)
-		.set({
-			responseBody: sql`jsonb_set(${idempotencyResponses.responseBody}, '{warning}', to_jsonb(${warning}::text))`,
-		})
-		.where(
-			and(
-				eq(idempotencyResponses.scope, scope),
-				eq(idempotencyResponses.key, key),
-				gt(idempotencyResponses.expiresAt, new Date()),
-				sql`${idempotencyResponses.responseBody}->'item'->>'id' = ${itemId}`,
-				sql`${idempotencyResponses.responseBody}->'warning' = 'null'::jsonb`,
-			),
-		)
-		.returning({ scope: idempotencyResponses.scope });
-	return rows.length === 1;
-}
+import { and, eq, sql } from 'drizzle-orm';
 
 type InventoryItemInput = Pick<
 	WgInventoryItem,

@@ -1,20 +1,9 @@
 import { TransactionAbort } from '@/core/db/transaction';
 import { isWgAdmin } from '@/core/guards/admin';
-import {
-	ReplayCache,
-	type ReplayReservation,
-	claimReplaySlotWithRetry,
-	replayKey,
-} from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, serverError, tooMany } from '@/core/http/api-errors';
-import {
-	getCachedResponse,
-	persistImportReplayWarning,
-	readIdempotencyKey,
-	releaseResponseSlot,
-} from '@/core/idempotency-store';
+import { badRequest, conflict, tooMany } from '@/core/http/api-errors';
+import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, importCommitLimiter } from '@/core/rate-limit';
 import {
@@ -23,7 +12,7 @@ import {
 	MAX_OCR_BYTES,
 	readImportJsonBody,
 } from '@/features/expenses/import-body';
-import { type CommitResult, commitImport, isCommitResult } from '@/features/expenses/import-commit';
+import { commitImport } from '@/features/expenses/import-commit';
 import { hashPayload } from '@/features/expenses/import-hash';
 import {
 	type ParsedExpense,
@@ -35,16 +24,6 @@ import {
 import { parseOcrText } from '@/features/expenses/ocr';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-
-// Generous TTL: a re-submitted commit (double click, retry after a client
-// timeout) must replay the SAME result — with skipDuplicates:false there is
-// no other guard against inserting the same expenses twice.
-
-const importCommitReplay = new ReplayCache<CommitResult>();
-
-function importCommitIdempotencyScope(wgId: string, memberId: string): string {
-	return `import-commit:${wgId}:${memberId}`;
-}
 
 const commitSchema = z.object({
 	source: z.enum(['splitwise_csv', 'splid_csv', 'ocr_text']),
@@ -62,9 +41,6 @@ function parseFor(source: string, payload: string): ParsedExpense[] {
 }
 
 export const POST = withWgRoute('imports/commit', async (req, { code }) => {
-	const idemKey = readIdempotencyKey(req);
-	let replayReservation: Extract<ReplayReservation<CommitResult>, { owned: true }> | null = null;
-
 	const raw = await readImportJsonBody(req);
 	if (!raw.ok) return badRequest(raw.error);
 	const parsedBody = commitSchema.safeParse(raw.value);
@@ -86,116 +62,80 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 	try {
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
-		const wg = auth.wg;
+		const { wg, member } = auth;
 
-		const idemScope = idemKey ? importCommitIdempotencyScope(wg.id, auth.member.memberId) : null;
-		const idemReplayKey = idemScope && idemKey ? replayKey(idemScope, idemKey) : null;
+		// A re-submitted commit (double click, retry after a client timeout) must replay the
+		// same result: with skipDuplicates false nothing else keeps the expenses from being
+		// inserted twice. The scope holds WG and member, so a key never reaches another member.
+		const scope = `import-commit:${wg.id}:${member.memberId}`;
+		const key = readIdempotencyKey(req);
+		const outcome = await commitImport({ scope, key }, async () => {
+			const limited = await checkRateLimit(
+				importCommitLimiter,
+				`import-commit:${wg.id}:${member.memberId}`,
+			);
+			if (!limited.success) return { stop: tooMany() };
 
-		// Replay only after WG/member auth, scoped by both IDs to prevent
-		// cross-WG or cross-member response leaks for client-provided keys.
-		if (idemScope && idemKey && idemReplayKey) {
-			const localReplay = importCommitReplay.get(idemReplayKey);
-			if (localReplay) return NextResponse.json(await localReplay);
-
-			const cached = await getCachedResponse<CommitResult>(idemScope, idemKey);
-			if (cached) {
-				if (!isCommitResult(cached)) throw new Error('idempotency_response_unavailable');
-				importCommitReplay.remember(idemReplayKey, cached);
-				return NextResponse.json(cached);
-			}
-		}
-
-		const limited = await checkRateLimit(
-			importCommitLimiter,
-			`import-commit:${wg.id}:${auth.member.memberId}`,
-		);
-		if (!limited.success) return tooMany();
-
-		let parsedExpenses: ParsedExpense[];
-		try {
-			parsedExpenses = parseFor(source, payload);
-		} catch (parseErr) {
-			if (parseErr instanceof UnsupportedCurrencyError) {
-				return NextResponse.json(
-					{ error: 'unsupported_currency', message: parseErr.message, currency: parseErr.currency },
-					{ status: 400 },
-				);
-			}
-			throw parseErr;
-		}
-		if (parsedExpenses.length === 0) return badRequest('empty_payload');
-		if (parsedExpenses.length > MAX_IMPORT_ROWS) return badRequest('too_many_rows');
-		if (skipIndexes.some((index) => index >= parsedExpenses.length)) {
-			return badRequest('invalid_skip_indexes');
-		}
-
-		const skipSet = new Set(skipIndexes);
-		const conflicts = findMappingConflicts(
-			parsedExpenses.filter((_expense, index) => !skipSet.has(index)),
-			memberMapping,
-		);
-		if (conflicts.length > 0) {
-			return NextResponse.json({ error: 'mapping_incomplete', conflicts }, { status: 400 });
-		}
-
-		const items = parsedExpenses.map((parsed, index) => ({
-			parsed,
-			skip: skipSet.has(index),
-		}));
-
-		// Resolved before the claim: a failure here must not leave a claim behind.
-		const mayRecordForOthers = await isWgAdmin(wg.id, auth.member.memberId);
-
-		const replaySlot = idemReplayKey === null ? null : importCommitReplay.reserve(idemReplayKey);
-		if (replaySlot?.owned === false) {
-			return NextResponse.json(await replaySlot.promise);
-		}
-		replayReservation = replaySlot;
-
-		// Cross-process dedup: claim a Postgres slot so a concurrent cold Lambda
-		// with the same Idempotency-Key sees our claim and fetches the cached
-		// response instead of committing the import a second time.
-		if (idemScope && idemKey) {
-			const slot = await claimReplaySlotWithRetry<CommitResult>(idemScope, idemKey);
-			if (!slot.won) {
-				if (!isCommitResult(slot.cached)) throw new Error('idempotency_response_unavailable');
-				replayReservation?.resolve(slot.cached);
-				return NextResponse.json(slot.cached);
-			}
-		}
-
-		const dbSource = source === 'ocr_text' ? ('ocr_screenshot' as const) : source;
-		let result: CommitResult;
-		try {
-			result = await commitImport({
-				wg,
-				source: dbSource,
-				importedByMemberId: auth.member.memberId,
-				importedByName: auth.member.name,
-				mayRecordForOthers,
-				expenses: items,
-				mapping: memberMapping,
-				skipDuplicates,
-				rawPayloadHash: payloadHash,
-				...(idemScope && idemKey ? { replay: { scope: idemScope, key: idemKey } } : {}),
-			});
-		} catch (writeErr) {
-			replayReservation?.reject(writeErr);
-			// The commit rolled back, so free the Postgres claim: a retry with the
-			// same key must re-run and get the real error, not a pending 500.
-			if (idemScope && idemKey) await releaseResponseSlot(idemScope, idemKey);
-			if (writeErr instanceof TransactionAbort && writeErr.code === 'paypal_payment_pending') {
-				return conflict('paypal_payment_pending');
-			}
-			throw writeErr;
-		}
-
-		if (idemScope && idemKey && result.warning !== null) {
+			let parsedExpenses: ParsedExpense[];
 			try {
-				const persisted = await persistImportReplayWarning(
-					idemScope,
-					idemKey,
-					result.importId,
+				parsedExpenses = parseFor(source, payload);
+			} catch (parseErr) {
+				if (parseErr instanceof UnsupportedCurrencyError) {
+					return {
+						stop: NextResponse.json(
+							{
+								error: 'unsupported_currency',
+								message: parseErr.message,
+								currency: parseErr.currency,
+							},
+							{ status: 400 },
+						),
+					};
+				}
+				throw parseErr;
+			}
+			if (parsedExpenses.length === 0) return { stop: badRequest('empty_payload') };
+			if (parsedExpenses.length > MAX_IMPORT_ROWS) return { stop: badRequest('too_many_rows') };
+			if (skipIndexes.some((index) => index >= parsedExpenses.length)) {
+				return { stop: badRequest('invalid_skip_indexes') };
+			}
+
+			const skipSet = new Set(skipIndexes);
+			const conflicts = findMappingConflicts(
+				parsedExpenses.filter((_expense, index) => !skipSet.has(index)),
+				memberMapping,
+			);
+			if (conflicts.length > 0) {
+				return {
+					stop: NextResponse.json({ error: 'mapping_incomplete', conflicts }, { status: 400 }),
+				};
+			}
+			return {
+				input: {
+					wg,
+					source: source === 'ocr_text' ? ('ocr_screenshot' as const) : source,
+					importedByMemberId: member.memberId,
+					importedByName: member.name,
+					mayRecordForOthers: await isWgAdmin(wg.id, member.memberId),
+					expenses: parsedExpenses.map((parsed, index) => ({ parsed, skip: skipSet.has(index) })),
+					mapping: memberMapping,
+					skipDuplicates,
+					rawPayloadHash: payloadHash,
+				},
+			};
+		});
+		if (outcome.kind === 'stopped') return outcome.response;
+		const { result } = outcome;
+		if (outcome.kind === 'committed' && key && result.warning !== null) {
+			try {
+				const persisted = await setReplayWarning(
+					scope,
+					key,
+					{
+						match: [{ path: ['importId'], equals: result.importId }],
+						warningPath: ['warning'],
+						replaces: [null, result.warning],
+					},
 					result.warning,
 				);
 				if (!persisted) {
@@ -208,14 +148,14 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 				logApiError('[imports/commit] replay warning persistence failed', warningErr);
 			}
 		}
-		if (replayReservation?.owned) replayReservation.resolve(result);
 		return NextResponse.json(result);
 	} catch (err) {
-		replayReservation?.reject(err);
+		if (err instanceof TransactionAbort && err.code === 'paypal_payment_pending') {
+			return conflict('paypal_payment_pending');
+		}
 		if (err instanceof Error && err.message === 'member_not_in_wg') {
 			return badRequest('member_not_in_wg');
 		}
-		logApiError('[imports/commit]', err);
-		return serverError(err);
+		throw err;
 	}
 });

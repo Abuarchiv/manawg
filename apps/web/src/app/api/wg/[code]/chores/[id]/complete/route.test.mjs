@@ -4,7 +4,11 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import { loadClaimedResponse } from '../../../../../../../../tests/support/claimed-response.cjs';
+import {
+	loadClaimedResponse,
+	loadIdempotentWrite,
+	loadParseBody,
+} from '../../../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const routeFile = path.join(process.cwd(), 'src/app/api/wg/[code]/chores/[id]/complete/route.ts');
@@ -62,7 +66,6 @@ function makeRoute(state) {
 			deactivatedAt: 'wg_members.deactivated_at',
 		},
 	};
-	const localReplay = new Map();
 	const rowsFor = (table, projection, draft = state) => {
 		if (table === tables.chores) {
 			return projection?.intervalDays
@@ -166,37 +169,6 @@ function makeRoute(state) {
 		state.claimExpiresAt = draft.claimExpiresAt;
 		return result;
 	};
-	class ReplayCache {
-		get(key) {
-			return localReplay.get(key) ?? null;
-		}
-		remember(key, body) {
-			localReplay.set(key, Promise.resolve(body));
-		}
-		reserve(key) {
-			const existing = this.get(key);
-			if (existing) return { owned: false, promise: existing };
-			let resolvePromise;
-			let rejectPromise;
-			const promise = new Promise((resolve, reject) => {
-				resolvePromise = resolve;
-				rejectPromise = reject;
-			});
-			promise.catch(() => undefined);
-			localReplay.set(key, promise);
-			return {
-				owned: true,
-				resolve: (body) => {
-					this.remember(key, body);
-					resolvePromise(body);
-				},
-				reject: (error) => {
-					localReplay.delete(key);
-					rejectPromise(error);
-				},
-			};
-		}
-	}
 	const overrides = {
 		'@/core/audit': {
 			recordAuditEvent: async () => {
@@ -214,16 +186,14 @@ function makeRoute(state) {
 			tooMany: () => json({ error: 'too_many' }, 429),
 		},
 		'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
-		'@/core/guards/idempotency': {
-			ReplayCache,
-			claimReplaySlotWithRetry: async () => {
+		'@/core/guards/replay-slot': {
+			claimReplaySlot: async () => {
 				if (state.claim && state.claim._claimed !== true)
 					return { won: false, cached: state.claim };
 				state.claim = { _claimed: true };
 				state.claimExpiresAt = new Date(Date.now() + 15 * 60_000);
 				return { won: true };
 			},
-			replayKey: (scope, key) => `${scope}:${key}`,
 		},
 		'@/core/guards/require-wg-member': {
 			requireWgMember: async () => ({
@@ -270,9 +240,11 @@ function makeRoute(state) {
 			isNull: (value) => [value, null],
 			sql: () => null,
 		},
-		'next/server': { NextResponse: { json } },
+		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	};
 	overrides['@/core/db/claimed-response'] = loadClaimedResponse(overrides);
+	overrides['@/core/db/idempotent-write'] = loadIdempotentWrite(overrides);
+	overrides['@/core/http/parse-body'] = loadParseBody(overrides);
 	const compiled = transpileModule(readFileSync(routeFile, 'utf8'), {
 		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
 	}).outputText;

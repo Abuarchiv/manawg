@@ -1,13 +1,4 @@
-// Inventory: consume, restock and save with replay/CAS semantics.
-// Why: stock counts are shared state; a retry or concurrent save must not double-apply.
-
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import type { SQL } from 'drizzle-orm';
-import { PgDialect } from 'drizzle-orm/pg-core';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 import {
 	idempotencyResponses,
 	shoppingItems,
@@ -572,7 +563,7 @@ test.describe('inventory restock retry', () => {
 		await expect(page.getByText('3 Packung')).toBeVisible();
 
 		await minus.click();
-		// Die Antwort hängt noch am Gate: die Anzeige ist optimistisch.
+		// The response is still held at the gate: the display is optimistic.
 		await expect(page.getByText('2 Packung')).toBeVisible();
 		releaseConsume();
 		await expect(page.getByText('Aktualisierung fehlgeschlagen.')).toBeVisible();
@@ -628,8 +619,6 @@ test.describe('inventory restock retry', () => {
 });
 
 test.describe('inventory save regression', () => {
-	const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-
 	type State = {
 		items: WgInventoryItem[];
 		logs: Array<Record<string, unknown>>;
@@ -886,107 +875,5 @@ test.describe('inventory save regression', () => {
 		expect(result).toMatchObject({ kind: 'conflict' });
 		expect(state.updateCount).toBe(0);
 		expect(onlyItem(state).quantity).toBe(4);
-	});
-
-	test('inventory replay completion replaces its claim in the mutation transaction', async () => {
-		const completeReplay = Reflect.get(inventoryMutations, 'completeInventoryReplay');
-		expect(typeof completeReplay).toBe('function');
-		if (typeof completeReplay !== 'function') return;
-
-		const state = createState(0);
-		state.replay = {
-			responseBody: { _claimed: true },
-			expiresAt: new Date('2026-01-01T00:15:00Z'),
-		};
-		const tx = createFakeTransaction(state);
-		const result = await Reflect.get(inventoryMutations, 'createInventoryItemMutation')(
-			tx,
-			mutationInput,
-		);
-		const replay = { status: 200, body: { item: result.item } };
-		await completeReplay(tx, 'inventory-create:test-member', 'request-key', replay);
-
-		expect(state.items).toHaveLength(2);
-		expect(state.replay?.responseBody).toEqual(replay);
-		expect(state.replay?.expiresAt.getTime()).toBeGreaterThan(Date.now());
-	});
-
-	test('inventory replay completion failure rejects the mutation transaction callback', async () => {
-		const completeReplay = Reflect.get(inventoryMutations, 'completeInventoryReplay');
-		expect(typeof completeReplay).toBe('function');
-		if (typeof completeReplay !== 'function') return;
-
-		await expect(
-			completeReplay(
-				createFakeTransaction(createState()),
-				'inventory-create:test-member',
-				'request-key',
-				{
-					status: 200,
-					body: { item: { id: 'item-1' } },
-				},
-			),
-		).rejects.toThrow('inventory_replay_completion_failed');
-	});
-
-	test('consume warning persists only on the matching completed replay row', async () => {
-		const file = path.join(process.cwd(), 'src/features/inventory/inventory-mutations.ts');
-		const source = transpileModule(readFileSync(file, 'utf8'), {
-			compilerOptions: {
-				module: ModuleKind.CommonJS,
-				target: ScriptTarget.ES2022,
-				esModuleInterop: true,
-			},
-		}).outputText;
-		const module = { exports: {} as typeof inventoryMutations };
-		const dialect = new PgDialect();
-		const item = { id: 'inventory-1', name: 'Milk' };
-		const body: { item: typeof item; warning: string | null } = { item, warning: null };
-		const db = {
-			update: () => ({
-				set: (values: { responseBody: SQL }) => ({
-					where: (condition: SQL) => ({
-						returning: async () => {
-							const update = dialect.sqlToQuery(values.responseBody);
-							const guard = dialect.sqlToQuery(condition);
-							expect(update.sql).toContain('jsonb_set');
-							expect(guard.sql).toContain("->'item'->>'id'");
-							expect(guard.sql).toContain("->'warning' = 'null'::jsonb");
-							if (guard.params[3] !== item.id) return [];
-							body.warning = update.params[0] as string;
-							return [{ scope: guard.params[0] }];
-						},
-					}),
-				}),
-			}),
-		};
-		new Function('require', 'module', 'exports', source)(
-			(name: string) =>
-				name === '@/core/db'
-					? { db, idempotencyResponses }
-					: name === '@/features/inventory/inventory'
-						? {}
-						: requireFromWeb(name),
-			module,
-			module.exports,
-		);
-		const persist = module.exports.persistInventoryReplayWarning;
-		expect(
-			await persist(
-				'inventory-consume:wg:member:inventory-1',
-				'key',
-				item.id,
-				'notification_delivery_failed',
-			),
-		).toBe(true);
-		expect(body).toEqual({ item, warning: 'notification_delivery_failed' });
-		expect(
-			await persist(
-				'inventory-consume:wg:member:inventory-1',
-				'key',
-				'other-item',
-				'notification_delivery_unknown',
-			),
-		).toBe(false);
 	});
 });

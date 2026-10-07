@@ -2,16 +2,15 @@ import { recordAuditEvent } from '@/core/audit';
 import { calendarSubscriptions, db } from '@/core/db';
 import { type ActiveAccountMember, lockActiveAccountMember } from '@/core/db/account-deletion';
 import {
-	completeClaimedResponse,
-	lockClaimedResponse,
-	releaseClaimedResponse,
-} from '@/core/db/claimed-response';
+	type StoredResponse,
+	responseCodec,
+	withIdempotentWrite,
+} from '@/core/db/idempotent-write';
 import { type DbTransaction, TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { claimReplaySlotWithRetry } from '@/core/guards/idempotency';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { serverError, tooMany } from '@/core/http/api-errors';
-import { getCachedResponse, readIdempotencyKey } from '@/core/idempotency-store';
+import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	calendarFeedUrl,
@@ -23,108 +22,64 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 type CalendarSubscriptionRow = typeof calendarSubscriptions.$inferSelect;
-type CachedJsonResponse = { status: number; body: unknown };
 type MutationResult = {
-	response: CachedJsonResponse;
+	response: StoredResponse;
 	audit?: Parameters<typeof recordAuditEvent>[0];
 };
 
-function cachedResponse(value: unknown): CachedJsonResponse | null {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-	const row = value as Record<string, unknown>;
-	if (
-		typeof row.status === 'number' &&
-		Number.isInteger(row.status) &&
-		row.status >= 200 &&
-		row.status <= 599 &&
-		'body' in row
-	)
-		return { status: row.status, body: row.body };
-	// Older calendar replay rows stored the successful JSON body directly.
-	if ('subscription' in row || row.revoked === true) return { status: 200, body: row };
-	return null;
+// Rows written before responses were stored with their status hold the bare body.
+const calendarCodec = responseCodec((stored) =>
+	'subscription' in stored || (stored as { revoked?: unknown }).revoked === true
+		? { status: 200, body: stored }
+		: null,
+);
+
+function memberDeactivated(): NextResponse {
+	return NextResponse.json({ error: 'member_deactivated' }, { status: 401 });
 }
 
-function isReplayable(value: unknown): value is unknown {
-	return cachedResponse(value) !== null;
-}
-
-function replayResponse(response: CachedJsonResponse): NextResponse {
-	return NextResponse.json(response.body, { status: response.status });
-}
-
+/**
+ * Runs a calendar feed mutation behind the caller's locked member row. Every outcome is stored
+ * for replay, including "not found" and "member deactivated".
+ */
 async function withCalendarMutation(
 	req: NextRequest,
 	scope: string,
 	auth: { wg: { id: string }; member: { memberId: string }; authUserId: string },
 	mutate: (tx: DbTransaction, member: ActiveAccountMember) => Promise<MutationResult>,
 ): Promise<NextResponse> {
-	const key = readIdempotencyKey(req);
-	const currentMember = () =>
-		withTransaction((tx) =>
-			lockActiveAccountMember(tx, auth.wg.id, auth.member.memberId, auth.authUserId),
-		);
-	if (key) {
-		const cached = await getCachedResponse<unknown>(scope, key);
-		if (cached) {
-			if (!(await currentMember())) {
-				return NextResponse.json({ error: 'member_deactivated' }, { status: 401 });
-			}
-			const response = cachedResponse(cached);
-			if (!response) throw new Error('idempotency_response_invalid');
-			return replayResponse(response);
-		}
-		const claim = await claimReplaySlotWithRetry<unknown>(scope, key);
-		if (!claim.won) {
-			if (!(await currentMember())) {
-				return NextResponse.json({ error: 'member_deactivated' }, { status: 401 });
-			}
-			const response = cachedResponse(claim.cached);
-			if (!response) throw new Error('idempotency_response_invalid');
-			return replayResponse(response);
-		}
-	}
-
-	let result:
-		| { replayed: true; response: CachedJsonResponse }
-		| { replayed: false; outcome: MutationResult };
-	let claimedLeaseExpiresAt: Date | null = null;
+	const lockMember = (tx: DbTransaction) =>
+		lockActiveAccountMember(tx, auth.wg.id, auth.member.memberId, auth.authUserId);
+	let member: ActiveAccountMember | null = null;
 	try {
-		result = await withTransaction(async (tx) => {
-			const member = await lockActiveAccountMember(
-				tx,
-				auth.wg.id,
-				auth.member.memberId,
-				auth.authUserId,
-			);
-			if (key) {
-				const claim = await lockClaimedResponse(tx, scope, key, isReplayable);
-				if (claim.kind === 'completed') {
-					const response = cachedResponse(claim.body);
-					if (!response) throw new TransactionAbort('idempotency_claim_invalid');
-					return { replayed: true as const, response };
-				}
-				claimedLeaseExpiresAt = claim.leaseExpiresAt;
-			}
-			const outcome = member
-				? await mutate(tx, member)
-				: { response: { status: 401, body: { error: 'member_deactivated' } } };
-			if (key && claimedLeaseExpiresAt) {
-				await completeClaimedResponse(tx, scope, key, outcome.response, claimedLeaseExpiresAt);
-			}
-			return { replayed: false as const, outcome };
-		});
+		const result = await withIdempotentWrite(
+			{
+				scope,
+				key: readIdempotencyKey(req),
+				codec: calendarCodec,
+				storeStatus: () => true,
+				beforeReplay: async () =>
+					(await withTransaction(lockMember)) ? null : memberDeactivated(),
+				inTransaction: (work) =>
+					withTransaction(async (tx) => {
+						member = await lockMember(tx);
+						return work(tx);
+					}),
+			},
+			async (tx) => {
+				const outcome: MutationResult = member
+					? await mutate(tx, member)
+					: { response: { status: 401, body: { error: 'member_deactivated' } } };
+				return { ...outcome.response, context: outcome.audit };
+			},
+		);
+		if (result.kind === 'stopped') return result.response;
+		if (result.kind === 'written' && result.context) await recordAuditEvent(result.context);
+		return NextResponse.json(result.body, { status: result.status });
 	} catch (err) {
-		// The write rolled back: free the claim so a same-key retry runs at once.
-		if (key && claimedLeaseExpiresAt) {
-			await releaseClaimedResponse(scope, key, claimedLeaseExpiresAt);
-		}
 		if (err instanceof TransactionAbort) return serverError(err.code);
 		throw err;
 	}
-	if (result.replayed) return replayResponse(result.response);
-	if (result.outcome.audit) await recordAuditEvent(result.outcome.audit);
-	return replayResponse(result.outcome.response);
 }
 
 function responseFor(row: CalendarSubscriptionRow): {

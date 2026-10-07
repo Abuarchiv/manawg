@@ -5,7 +5,11 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import { loadClaimedResponse } from '../../../../../../tests/support/claimed-response.cjs';
+import {
+	loadClaimedResponse,
+	loadIdempotentWrite,
+	loadParseBody,
+} from '../../../../../../tests/support/claimed-response.cjs';
 
 const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const directory = path.dirname(fileURLToPath(import.meta.url));
@@ -64,39 +68,6 @@ function claimMatches(slot, condition) {
 	throw new Error(`unsupported predicate ${op}`);
 }
 
-class ReplayCache {
-	entries = new Map();
-	get(key) {
-		return this.entries.get(key) ?? null;
-	}
-	remember(key, response) {
-		this.entries.set(key, Promise.resolve(response));
-	}
-	reserve(key) {
-		const existing = this.get(key);
-		if (existing) return { owned: false, promise: existing };
-		let resolve;
-		let reject;
-		const promise = new Promise((onResolve, onReject) => {
-			resolve = onResolve;
-			reject = onReject;
-		});
-		promise.catch(() => undefined);
-		this.entries.set(key, promise);
-		return {
-			owned: true,
-			resolve: (response) => {
-				this.remember(key, response);
-				resolve(response);
-			},
-			reject: (error) => {
-				this.entries.delete(key);
-				reject(error);
-			},
-		};
-	}
-}
-
 class TransactionAbort extends Error {
 	constructor(code) {
 		super(code);
@@ -105,8 +76,7 @@ class TransactionAbort extends Error {
 }
 
 /**
- * Every `post()` is its own server process sharing one database, so the
- * in-process replay cache cannot hide a cross-process duplicate.
+ * Every `post()` is its own server process sharing one database.
  */
 function harness() {
 	const state = {
@@ -225,13 +195,12 @@ function harness() {
 			'@/core/db/transaction-abort': { TransactionAbort },
 			'next/server': { NextResponse: Response },
 		});
-		const route = evaluate(routeSource, {
+		const routeMocks = {
 			'@/core/db': coreDb,
 			'@/core/db/transaction': { TransactionAbort, withTransaction },
-			'@/core/guards/idempotency': {
-				ReplayCache,
-				replayKey: (scope, key) => `${scope}:${key}`,
-				claimReplaySlotWithRetry: async (scope, key) => {
+			'@/core/db/claimed-response': claimedResponse,
+			'@/core/guards/replay-slot': {
+				claimReplaySlot: async (scope, key) => {
 					const cached = cachedBody();
 					if (cached) return { won: false, cached };
 					if (state.slot && state.slot.expiresAt > new Date()) {
@@ -266,8 +235,9 @@ function harness() {
 			'@/core/idempotency-store': {
 				getCachedResponse: async () => cachedBody(),
 				readIdempotencyKey: (req) => req.headers.get('idempotency-key'),
-				setCachedResponse: async (_scope, _key, response) => {
-					state.slot = { ...state.slot, responseBody: JSON.parse(JSON.stringify(response)) };
+				setReplayWarning: async (_scope, _key, _target, warning) => {
+					state.slot.responseBody.body.warning = warning;
+					return true;
 				},
 			},
 			'@/core/notifications/notification-dispatch': {
@@ -278,7 +248,10 @@ function harness() {
 			'@/features/shopping/shopping-mutation': mutation,
 			'drizzle-orm': drizzle,
 			'next/server': { NextResponse: Response },
-		});
+		};
+		routeMocks['@/core/db/idempotent-write'] = loadIdempotentWrite(routeMocks);
+		routeMocks['@/core/http/parse-body'] = loadParseBody(routeMocks);
+		const route = evaluate(routeSource, routeMocks);
 		return route.POST(
 			new Request('https://example.invalid/api/wg/MTE8PZAT/shopping', {
 				method: 'POST',
