@@ -35,10 +35,10 @@ interface MessageBubbleProps {
 	reactions: ReactionSummary[];
 	replyTo: BubbleMessage | null;
 	replyToSender: { name: string } | null;
-	onReact: (messageId: string, emoji: string) => Promise<boolean>;
-	onUnreact: (messageId: string, emoji: string) => Promise<boolean>;
-	onEdit: (messageId: string, next: string) => Promise<boolean>;
-	onDelete: (messageId: string) => Promise<boolean>;
+	onReact: (messageId: string, emoji: string) => Promise<string | null>;
+	onUnreact: (messageId: string, emoji: string) => Promise<string | null>;
+	onEdit: (messageId: string, next: string) => Promise<string | null>;
+	onDelete: (messageId: string) => Promise<string | null>;
 	onReply: (messageId: string) => void;
 }
 
@@ -71,6 +71,7 @@ export const MessageBubble = memo(function MessageBubble({
 	const editTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const actionsTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const wasEditingRef = useRef(false);
+	const deletedRef = useRef<HTMLParagraphElement | null>(null);
 	const isDeleted = Boolean(message.deletedAt);
 	const editable = canEditMessage(message, { id: currentMemberId });
 	const deletable = canDeleteMessage(message, {
@@ -148,7 +149,7 @@ export const MessageBubble = memo(function MessageBubble({
 						>
 							{isDeleted ? (
 								<BubbleContent className={BUBBLE_TEXT}>
-									<p>
+									<p ref={deletedRef} tabIndex={-1} className="outline-none">
 										Diese Nachricht wurde gelöscht.
 										{timeStamp}
 									</p>
@@ -208,6 +209,7 @@ export const MessageBubble = memo(function MessageBubble({
 						if (!actions.pendingRef.current) actions.setDeleteOpen(open);
 					}}
 					onConfirm={() => void actions.remove()}
+					finalFocus={() => deletedRef.current ?? true}
 				/>
 			</MessageContent>
 		</Message>

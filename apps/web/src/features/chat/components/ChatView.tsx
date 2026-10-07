@@ -137,7 +137,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 						direction="end"
 						aria-label="Zum Ende scrollen"
 						behavior="smooth"
-						className="min-h-11 min-w-11"
+						className="inset-s-auto end-3 translate-x-0 rounded-full shadow-md rtl:translate-x-0"
 						onClick={() => haptic('selection')}
 					>
 						<ChevronDown aria-hidden />

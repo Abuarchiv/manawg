@@ -23,7 +23,9 @@ import type { AnnouncementComment } from './announcement-types';
 
 export function actionLabelSubject(value: string, fallback: string): string {
 	const normalized = value.trim().replace(/\s+/g, ' ');
-	return normalized.length > 48 ? `${normalized.slice(0, 47)}…` : normalized || fallback;
+	return normalized.length > 48
+		? `${normalized.slice(0, 47).replace(/[\s,;:.–-]+$/, '')}…`
+		: normalized || fallback;
 }
 
 // Comment input survives hiding a thread, filtering a card, and route changes.
@@ -75,7 +77,7 @@ export function CommentRow({
 	const [error, setError] = useState(false);
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const pendingRef = useRef(false);
-	const actionSubject = actionLabelSubject(comment.content, 'leerer Kommentar');
+	const actionSubject = actionLabelSubject(comment.content, 'leere Antwort');
 	useEffect(() => {
 		if (draft.restored && canEdit) setEditing(true);
 	}, [draft.restored, canEdit]);
@@ -84,7 +86,7 @@ export function CommentRow({
 		focusEditorOnEditRef.current = false;
 		editorRef.current?.focus();
 	}, [editing]);
-	// Nach Speichern/Später ist der Editor weg: Fokus zurück auf den Bearbeiten-Button.
+	// Nach Speichern/Abbrechen ist der Editor weg: Fokus zurück auf den Bearbeiten-Button.
 	useEffect(() => {
 		if (editing || pending || !focusEditButtonRef.current) return;
 		focusEditButtonRef.current = false;
@@ -149,7 +151,7 @@ export function CommentRow({
 								variant="ghost"
 								size="icon-sm"
 								disabled={pending}
-								aria-label={`Kommentar bearbeiten: ${actionSubject}`}
+								aria-label={`Antwort bearbeiten: ${actionSubject}`}
 								onClick={() => {
 									if (!draft.restored) draft.change(comment.content);
 									focusEditorOnEditRef.current = true;
@@ -162,7 +164,7 @@ export function CommentRow({
 								variant="ghost"
 								size="icon-sm"
 								disabled={pending}
-								aria-label={`Kommentar entfernen: ${actionSubject}`}
+								aria-label={`Antwort entfernen: ${actionSubject}`}
 								onClick={() => {
 									setError(false);
 									setConfirmOpen(true);
@@ -175,7 +177,7 @@ export function CommentRow({
 				</div>
 				{editing ? (
 					<FieldGroup className="gap-2">
-						<Field data-invalid={error}>
+						<Field data-invalid={error} className="data-[invalid=true]:text-foreground">
 							<Textarea
 								ref={editorRef}
 								value={draft.draft}
@@ -184,7 +186,7 @@ export function CommentRow({
 								aria-busy={pending}
 								maxLength={600}
 								rows={2}
-								aria-label="Kommentar bearbeiten"
+								aria-label="Antwort bearbeiten"
 								aria-invalid={error}
 								aria-describedby={error ? `comment-edit-error-${comment.id}` : undefined}
 								className="text-base read-only:opacity-60"
@@ -199,12 +201,12 @@ export function CommentRow({
 									setEditing(false);
 								}}
 							>
-								Später
+								Abbrechen
 							</Button>
 							<Button
 								disabled={pending || !draft.draft.trim()}
 								onClick={() => void save()}
-								aria-label={`Kommentar speichern: ${actionSubject}`}
+								aria-label={`Antwort speichern: ${actionSubject}`}
 							>
 								{pending && <Spinner data-icon="inline-start" />}{' '}
 								{pending ? 'Wird gespeichert…' : 'Speichern'}
@@ -217,7 +219,7 @@ export function CommentRow({
 				{error && (
 					<Alert id={`comment-edit-error-${comment.id}`} variant="destructive">
 						<AlertDescription>
-							Kommentar konnte nicht gespeichert oder entfernt werden. Versuche es erneut.
+							Antwort konnte nicht gespeichert oder entfernt werden. Versuche es erneut.
 						</AlertDescription>
 					</Alert>
 				)}
@@ -233,13 +235,13 @@ export function CommentRow({
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Kommentar entfernen?</AlertDialogTitle>
+						<AlertDialogTitle>Antwort entfernen?</AlertDialogTitle>
 						<AlertDialogDescription>„{actionSubject}“ wird entfernt.</AlertDialogDescription>
 					</AlertDialogHeader>
 					{error && (
 						<Alert variant="destructive">
 							<AlertDescription>
-								Kommentar konnte nicht entfernt werden. Versuche es erneut.
+								Antwort konnte nicht entfernt werden. Versuche es erneut.
 							</AlertDescription>
 						</Alert>
 					)}
@@ -251,7 +253,7 @@ export function CommentRow({
 							variant="destructive"
 							disabled={pending}
 							className="min-h-11"
-							aria-label={`Kommentar entfernen bestätigen: ${actionSubject}`}
+							aria-label={`Antwort entfernen bestätigen: ${actionSubject}`}
 							onClick={() => void remove()}
 						>
 							{pending && <Spinner data-icon="inline-start" />}

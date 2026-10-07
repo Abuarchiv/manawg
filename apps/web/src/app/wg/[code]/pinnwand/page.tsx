@@ -32,7 +32,6 @@ export default function PinnwandPage(): React.ReactElement {
 		visibleArchivedCount,
 		showMoreOpen,
 		showMoreArchived,
-		initialLoading,
 		showSkeleton,
 		loadError,
 		refreshing,
@@ -213,7 +212,7 @@ export default function PinnwandPage(): React.ReactElement {
 					ref={composer.buttonRef}
 					type="button"
 					className="relative min-h-11 w-full"
-					disabled={composer.submitting || initialLoading}
+					disabled={composer.submitting}
 					onClick={() => {
 						composer.setOpen(true);
 						setNotice(null);

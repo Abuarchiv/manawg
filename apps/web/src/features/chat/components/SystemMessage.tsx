@@ -54,11 +54,14 @@ function SystemRow({
 	text: ReactNode;
 }) {
 	return (
-		<Marker variant="separator" className="my-2 justify-center text-xs">
+		<Marker
+			variant="separator"
+			className="my-2 justify-center text-xs before:min-w-3 after:min-w-3"
+		>
 			<MarkerIcon>
 				<Icon aria-hidden />
 			</MarkerIcon>
-			<MarkerContent className="max-w-[80%] rounded-full bg-muted px-3 py-1 text-center">
+			<MarkerContent className="max-w-[85%] rounded-2xl bg-muted px-3 py-1 text-center text-foreground/80">
 				{text}
 			</MarkerContent>
 		</Marker>

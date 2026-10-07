@@ -143,14 +143,14 @@ export function AnnouncementFooter({
 							className="gap-1 pr-2 text-[12px]"
 							disabled={statusPending}
 							onClick={onToggleStatus}
-							aria-label={`Als erledigt markieren: ${actionSubject}`}
+							aria-label={`Als geklärt markieren: ${actionSubject}`}
 						>
 							{statusPending ? (
 								<Spinner data-icon="inline-start" />
 							) : (
 								<CheckCircle2 data-icon="inline-start" />
 							)}
-							Erledigt
+							Geklärt
 						</Button>
 					)}
 			</div>
@@ -182,7 +182,7 @@ export function AnnouncementFooter({
 							</AlertDescription>
 						</Alert>
 					)}
-					<Field data-invalid={commentError}>
+					<Field data-invalid={commentError} className="data-[invalid=true]:text-foreground">
 						<InputGroup>
 							<InputGroupTextarea
 								ref={replyRef}

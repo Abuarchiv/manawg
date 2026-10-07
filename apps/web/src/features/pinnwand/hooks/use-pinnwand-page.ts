@@ -63,13 +63,18 @@ export function usePinnwandPage() {
 	}, []);
 
 	useEffect(() => {
-		function applyHash(): void {
+		function applyHash(): boolean {
 			const hash = window.location.hash;
-			if (!hash.startsWith('#announcement-')) return;
+			if (!hash.startsWith('#announcement-')) return false;
 			const id = decodeURIComponent(hash.slice('#announcement-'.length));
 			if (id) scrollToAnnouncement(id, 'auto');
+			return Boolean(id);
 		}
-		applyHash();
+		// ?highlight=<id> wie in den anderen Bereichen; #announcement-<id> hat Vorrang.
+		if (!applyHash()) {
+			const id = new URLSearchParams(window.location.search).get('highlight');
+			if (id) scrollToAnnouncement(id, 'auto');
+		}
 		window.addEventListener('hashchange', applyHash);
 		return () => window.removeEventListener('hashchange', applyHash);
 	}, [scrollToAnnouncement]);

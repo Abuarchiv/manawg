@@ -1,4 +1,3 @@
-import type { useToast } from '@/components/ui/Toast';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { type Dispatch, type SetStateAction, useRef } from 'react';
@@ -10,7 +9,6 @@ import type { ChatReactionRow } from '../chat-types';
 interface ChatReactionsOptions {
 	encodedShareCode: string;
 	memberId: string;
-	toast: ReturnType<typeof useToast>;
 	setReactionRows: Dispatch<SetStateAction<ChatReactionRow[]>>;
 }
 
@@ -21,7 +19,6 @@ interface ChatReactionsOptions {
 export function useChatReactions({
 	encodedShareCode,
 	memberId,
-	toast,
 	setReactionRows,
 }: ChatReactionsOptions) {
 	const requestKeysRef = useRef(new Map<string, string>());
@@ -31,14 +28,13 @@ export function useChatReactions({
 		kind: 'add' | 'remove',
 		messageId: string,
 		emoji: string,
-	): Promise<boolean> {
+	): Promise<string | null> {
 		const action = kind === 'add' ? 'react' : 'unreact';
 		const requestKeyId = `${kind}:${messageId}:${emoji}`;
 		const idempotencyKey =
 			requestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
-			toast.error(explainChatError(action, 'Netzwerkfehler'));
-			return false;
+			return explainChatError(action, 'Netzwerkfehler');
 		}
 		requestKeysRef.current.set(requestKeyId, idempotencyKey);
 
@@ -65,8 +61,7 @@ export function useChatReactions({
 						});
 			if (!res.ok) {
 				if (res.status > 0 && res.status < 500) requestKeysRef.current.delete(requestKeyId);
-				toast.error(explainChatError(action, res.error));
-				return false;
+				return explainChatError(action, res.error);
 			}
 			committed = true;
 			// A committed add or remove settles both directions: a key kept from an earlier
@@ -75,7 +70,7 @@ export function useChatReactions({
 			requestKeysRef.current.delete(`add:${messageId}:${emoji}`);
 			requestKeysRef.current.delete(`remove:${messageId}:${emoji}`);
 			setReactionRows((prev) => withOwnReaction(prev, kind, { messageId, memberId, emoji }));
-			return true;
+			return null;
 		} finally {
 			const latest = tracker.versions.get(mutationKey);
 			if (committed && latest) {

@@ -63,7 +63,7 @@ export function useAnnouncementComments(
 			commentIdempotencyKeysRef.current.get(commentRequestKey) ?? createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
 			end(pendingKey);
-			setActionError('Kommentar konnte nicht sicher gesendet werden. Versuche es erneut.');
+			setActionError('Antwort konnte nicht sicher gesendet werden. Versuche es erneut.');
 			return false;
 		}
 		commentIdempotencyKeysRef.current.set(commentRequestKey, idempotencyKey);
@@ -138,7 +138,7 @@ export function useAnnouncementComments(
 					...item,
 					comments: item.comments.filter((comment) => comment.id !== commentId),
 				}));
-				setActionError('Dieser Kommentar existiert nicht mehr und wurde entfernt.');
+				setActionError('Diese Antwort existiert nicht mehr und wurde entfernt.');
 				return true;
 			}
 			if (previousComment) edits.replaceComment(announcement.id, commentId, previousComment);
@@ -177,7 +177,7 @@ export function useAnnouncementComments(
 			...item,
 			comments: item.comments.filter((comment) => comment.id !== commentId),
 		}));
-		if (!res.ok) setActionError('Dieser Kommentar existiert nicht mehr und wurde entfernt.');
+		if (!res.ok) setActionError('Diese Antwort existiert nicht mehr und wurde entfernt.');
 		void load('background');
 		return true;
 	}

@@ -112,7 +112,7 @@ export function useAnnouncementActions(
 			pendingKey,
 			rollback,
 			nextStatus === 'resolved'
-				? () => toast.success('Erledigt – liegt jetzt unter „Geklärt & älter“.')
+				? () => toast.success('Geklärt – liegt jetzt unter „Geklärt & älter“.')
 				: undefined,
 		);
 	}
@@ -174,8 +174,10 @@ export function useAnnouncementActions(
 		void load();
 	}
 
-	async function remove(id: string): Promise<boolean> {
-		if (isPending(id)) return false;
+	/** Der Dialog zeigt den Fehler selbst: null = entfernt (oder schon weg), sonst die Meldung. */
+	async function remove(id: string): Promise<string | null> {
+		const failed = 'Beitrag konnte nicht entfernt werden. Versuche es erneut.';
+		if (isPending(id)) return failed;
 		start(id);
 		const res = await apiFetch<Record<string, never>>(
 			`/api/wg/${encodedShareCode}/announcements/${encodeURIComponent(id)}`,
@@ -188,19 +190,15 @@ export function useAnnouncementActions(
 		if (!res.ok) {
 			if (res.status === 404 && res.error === 'announcement_not_found') {
 				dropVanishedAnnouncement(id);
-			} else {
-				// Der Dialog zeigt den allgemeinen Fehler selbst; nur die Berechtigung braucht eine eigene Meldung.
-				if (res.status === 403) {
-					setActionError(
-						'Nur wer den Beitrag geschrieben hat oder WG-Admins können ihn entfernen.',
-					);
-				}
+				return null;
 			}
-			return false;
+			return res.status === 403
+				? 'Nur wer den Beitrag geschrieben hat oder WG-Admins können ihn entfernen.'
+				: failed;
 		}
 		commitItems(itemsRef.current.filter((item) => item.id !== id));
 		void load();
-		return true;
+		return null;
 	}
 
 	return {

@@ -36,7 +36,7 @@ interface AnnouncementCardProps {
 	statusPending: boolean;
 	/** Comma-separated reactions with a request in flight (a string, not a function, so memo holds). */
 	pendingReactions: string;
-	onDelete: (announcement: Announcement) => Promise<boolean>;
+	onDelete: (announcement: Announcement) => Promise<string | null>;
 	onTogglePinned: (announcement: Announcement) => void;
 	onToggleStatus: (announcement: Announcement) => void;
 	onToggleReaction: (announcement: Announcement, reaction: ReactionKey) => void;

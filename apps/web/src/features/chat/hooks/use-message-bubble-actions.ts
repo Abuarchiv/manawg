@@ -6,10 +6,10 @@ import type { BubbleMessage } from '../chat-types';
 interface BubbleActionsOptions {
 	message: BubbleMessage;
 	draftKey: string;
-	onReact: (messageId: string, emoji: string) => Promise<boolean>;
-	onUnreact: (messageId: string, emoji: string) => Promise<boolean>;
-	onEdit: (messageId: string, next: string) => Promise<boolean>;
-	onDelete: (messageId: string) => Promise<boolean>;
+	onReact: (messageId: string, emoji: string) => Promise<string | null>;
+	onUnreact: (messageId: string, emoji: string) => Promise<string | null>;
+	onEdit: (messageId: string, next: string) => Promise<string | null>;
+	onDelete: (messageId: string) => Promise<string | null>;
 }
 
 /**
@@ -84,20 +84,22 @@ export function useMessageBubbleActions({
 			return;
 		}
 		await runExclusive(async () => {
-			if (await onEdit(message.id, text)) {
+			const failure = await onEdit(message.id, text);
+			if (failure === null) {
 				setEditing(false);
 				setHasDraft(false);
 				removeDraft(draftKey);
-			} else setError('Änderung nicht gespeichert. Dein Text ist noch da.');
+			} else setError(`${failure} Dein Text ist noch da.`);
 		});
 	}
 
 	async function remove() {
 		await runExclusive(async () => {
-			if (await onDelete(message.id)) {
+			const failure = await onDelete(message.id);
+			if (failure === null) {
 				setDeleteOpen(false);
 				removeDraft(draftKey);
-			} else setError('Nachricht konnte nicht gelöscht werden.');
+			} else setError(failure);
 		});
 	}
 
@@ -113,9 +115,9 @@ export function useMessageBubbleActions({
 		setError(null);
 		haptic('selection');
 		try {
-			const ok = await (mine ? onUnreact(message.id, emoji) : onReact(message.id, emoji));
-			if (!ok) setError('Reaktion konnte nicht gespeichert werden.');
-			return ok;
+			const failure = await (mine ? onUnreact(message.id, emoji) : onReact(message.id, emoji));
+			if (failure !== null) setError(failure);
+			return failure === null;
 		} finally {
 			reactionRef.current = false;
 			setReactionPending(null);

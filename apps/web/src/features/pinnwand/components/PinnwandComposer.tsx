@@ -106,7 +106,7 @@ export function PinnwandComposer({
 								))}
 							</ToggleGroup>
 						</Field>
-						<Field data-invalid={fieldInvalid}>
+						<Field data-invalid={fieldInvalid} className="data-[invalid=true]:text-foreground">
 							<FieldLabel htmlFor="announcement-content" className="sr-only">
 								Beitragstext
 							</FieldLabel>

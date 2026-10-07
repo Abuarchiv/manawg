@@ -15,15 +15,15 @@ export function announcementCreateErrorMessage(error: string): string {
 	return mutationErrorMessage(CREATE_SUBJECT, error, CREATE_ERRORS, `${CREATE_SUBJECT}.`);
 }
 
-const COMMENT_SUBJECT = 'Kommentar konnte nicht gespeichert werden';
+const COMMENT_SUBJECT = 'Antwort konnte nicht gespeichert werden';
 const COMMENT_ERRORS: Record<string, string> = {
 	comment_invalid: `${COMMENT_SUBJECT}: Der Text muss 1 bis 600 Zeichen haben.`,
-	not_owner: 'Nur wer den Kommentar geschrieben hat, kann ihn ändern.',
+	not_owner: 'Nur wer die Antwort geschrieben hat, kann sie ändern.',
 	insert_failed: `${COMMENT_SUBJECT}: Lade den Beitrag neu und versuche es erneut.`,
 	delete_failed:
-		'Kommentar konnte nicht gelöscht werden: Lade den Beitrag neu und prüfe, ob er noch existiert.',
+		'Antwort konnte nicht entfernt werden: Lade den Beitrag neu und prüfe, ob er noch existiert.',
 	comment_not_found:
-		'Kommentar existiert nicht mehr. Lade den Beitrag neu, um den aktuellen Stand zu sehen.',
+		'Antwort existiert nicht mehr. Lade den Beitrag neu, um den aktuellen Stand zu sehen.',
 	invalid_json: `${COMMENT_SUBJECT}: Die Anfrage war ungültig.`,
 };
 
@@ -32,8 +32,8 @@ export function commentActionErrorMessage(error: string): string {
 		COMMENT_SUBJECT,
 		error,
 		COMMENT_ERRORS,
-		'Kommentar-Aktion fehlgeschlagen.',
-		'Kommentar-Aktion fehlgeschlagen',
+		'Antwort-Aktion fehlgeschlagen.',
+		'Antwort-Aktion fehlgeschlagen',
 	);
 }
 
